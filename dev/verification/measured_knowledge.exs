@@ -1,10 +1,8 @@
 defmodule Ipse.Development.Verification.MeasuredKnowledge do
   @moduledoc false
-  alias Ipse.Development.Evaluation.{
-    Freeze,
-    Contract,
-    MeasuredExecution
-  }
+  alias Ipse.Development.Evaluation.Freeze
+  alias Ipse.Development.Evaluation.Contract
+  alias Ipse.Development.Evaluation.MeasuredExecution
 
   @variants ~w(lexical graph_explicit graph_model dense hybrid rerank research)
 
@@ -178,7 +176,7 @@ defmodule Ipse.Development.Verification.MeasuredKnowledge do
     save!(data_path, data)
 
     spec =
-      JSON.decode!(File.read!(Path.join(repository, "examples/knowledge/benchmark-spec.json")))
+      JSON.decode!(File.read!(Path.join(repository, "dev/evaluation/benchmark-spec.json")))
 
     spec =
       spec
@@ -595,7 +593,9 @@ end
 
 defmodule Ipse.Development.Verification.MeasuredKnowledge.Scoring do
   @moduledoc "Post-execution controls for the measured CLI audit and label boundary."
-  alias Ipse.Development.Evaluation.{Freeze, MeasuredExecution, Runner}
+  alias Ipse.Development.Evaluation.Freeze
+  alias Ipse.Development.Evaluation.MeasuredExecution
+  alias Ipse.Development.Evaluation.Runner
   @log_limit 1_048_576
 
   def verify(run, result, repository) do
@@ -755,7 +755,7 @@ defmodule Ipse.Development.Verification.MeasuredKnowledge.Scoring do
         {:source, launch} ->
           MeasuredExecution.command(
             launch,
-            [Path.join(repository, "scripts/evaluate-knowledge.exs")],
+            [Path.join(repository, "dev/evaluate-knowledge.exs")],
             ":ok",
             argv
           )
@@ -764,7 +764,7 @@ defmodule Ipse.Development.Verification.MeasuredKnowledge.Scoring do
           MeasuredExecution.precompiled_command(
             execution,
             :cli,
-            "Ipse.Development.Evaluation.CLI.main(System.argv())",
+            "Ipse.Development.Evaluation.Runner.main(System.argv())",
             argv
           )
       end

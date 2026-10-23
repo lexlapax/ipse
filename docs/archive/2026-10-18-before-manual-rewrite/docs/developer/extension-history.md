@@ -1,6 +1,6 @@
 > Historical reference only. Snapshot of `docs/developer/extension-history.md` at `10b9dd66d06ef28718b58530a7e5b01c7c50397a` on 2026-10-18.
 > Original body retained; relative links rebased for this archive.
-> Use the [current manual](../../../../developer/extension-feeds.md#capture-a-fixed-historical-prefix).
+> Use the [current manual](../../../2026-10-22-before-structural-consolidation/docs/developer/extension-feeds.md#capture-a-fixed-historical-prefix).
 
 # Explicit session-history reads
 

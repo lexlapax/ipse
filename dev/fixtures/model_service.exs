@@ -23,7 +23,7 @@ defmodule Ipse.Development.Fixtures.ModelService do
     true = verification in [false, true]
     true = is_boolean(gpu)
     true = Path.type(root) == :absolute
-    {:ok, ^root} = Ipse.WorkspaceContext.canonical_path(root)
+    {:ok, ^root} = Ipse.Workspace.canonical_path(root)
     private_root(root)
     validate_launch!(launch)
     source = Path.join(root, "measured-model-source")

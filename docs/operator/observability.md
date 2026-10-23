@@ -145,7 +145,7 @@ Trusted worker code retains ordinary OS permissions, so metadata contracts are
 not a network sandbox.
 
 For a reproducible extension bug, prefer a synthetic
-[conformance fixture](../developer/extensions.md#turn-the-hook-into-a-repeatable-scenario) with no account data.
+[conformance fixture](../developer/testing.md#diagnose-with-synthetic-data) with no account data.
 Developer dispatcher tracing is a separate bounded diagnostic, not attachment to
 an existing private session. Use [Recovery](recovery.md) for saved-session
 inspection and handoff.

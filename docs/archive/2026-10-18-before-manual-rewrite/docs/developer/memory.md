@@ -1,6 +1,6 @@
 > Historical reference only. Snapshot of `docs/developer/memory.md` at `10b9dd66d06ef28718b58530a7e5b01c7c50397a` on 2026-10-18.
 > Original body retained; relative links rebased for this archive.
-> Use the [current manual](../../../../developer/memory.md).
+> Use the [current manual](../../../2026-10-22-before-structural-consolidation/docs/developer/memory.md).
 
 # Explicit memory extension contract
 
@@ -152,10 +152,10 @@ substitutes for live model/algorithm evaluation.
 
 | Acceptance boundary | Evidence |
 | --- | --- |
-| Independent/default-off packages, session/project isolation, explicit operator sharing | [Real-session tests](../../../../../test/extensions_memory_session_test.exs), inert registry cases and the actual documented two-package config/CLI check |
-| Stable reviewed storage, legacy compatibility and scope/grant ceilings | [Binding tests](../../../../../test/extensions_state_binding_test.exs); byte-identical legacy namespaces, shared bound CAS, malformed policies and project-override refusal |
-| Bounded value reads, exact receipts and no extended write authority | [Scan tests](../../../../../test/extensions_state_scan_test.exs) and the real-worker scan beyond step 16; step 513, ungranted reads and step-17 writes refuse |
-| Notes, selected export, source versions, TTL, conflicts and suppression | [Domain tests](../../../../../test/extensions_memory_test.exs) plus [state quota/locking tests](../../../../../test/extensions_state_test.exs); delayed continuation, reread/reingestion, stale imports, expired values and retained suppression |
+| Independent/default-off packages, session/project isolation, explicit operator sharing | [Real-session tests](https://github.com/lexlapax/ipse/blob/5bffe00364d66f5012e5a0d4cd86c4180c74ebcb/test/extensions_memory_session_test.exs), inert registry cases and the actual documented two-package config/CLI check |
+| Stable reviewed storage, legacy compatibility and scope/grant ceilings | [Binding tests](https://github.com/lexlapax/ipse/blob/5bffe00364d66f5012e5a0d4cd86c4180c74ebcb/test/extensions_state_binding_test.exs); byte-identical legacy namespaces, shared bound CAS, malformed policies and project-override refusal |
+| Bounded value reads, exact receipts and no extended write authority | [Scan tests](https://github.com/lexlapax/ipse/blob/5bffe00364d66f5012e5a0d4cd86c4180c74ebcb/test/extensions_state_scan_test.exs) and the real-worker scan beyond step 16; step 513, ungranted reads and step-17 writes refuse |
+| Notes, selected export, source versions, TTL, conflicts and suppression | [Domain tests](https://github.com/lexlapax/ipse/blob/5bffe00364d66f5012e5a0d4cd86c4180c74ebcb/test/extensions_memory_test.exs) plus [state quota/locking tests](https://github.com/lexlapax/ipse/blob/5bffe00364d66f5012e5a0d4cd86c4180c74ebcb/test/extensions_state_test.exs); delayed continuation, reread/reingestion, stale imports, expired values and retained suppression |
 | Derivative integrity and approved schema/namespace transfer | Domain transitive/missing-parent exclusion, portable suppression export, direct collection, active v1 migration and digest-only legacy suppression import; every mutation retains generic host approval/CAS |
 | Cancellation, denial and unchanged recovery | Real tool/write approval and cancel/denial tests; inert resume and [recorded controlled probes](testing.md#current-evidence-and-next-checks) with backend forget, retained cached messages and no resume inference |
 | Quality/resources and platform delivery | Frozen source/installed corpus below, local full native suite, both real formatter floors, package/unchanged-artifact proofs and exact-source Linux/macOS gates at `108aa86`, plus cleanup/platform verification at `fb4627e` |
@@ -167,7 +167,7 @@ revocation or semantic-engine evaluation. The retained first Mac cleanup failure
 local causal reproduction and receipt repair remain part of the verification record.
 
 `mix run scripts/measure-memory.exs` uses the frozen
-[`examples/memory/corpus.json`](../../../../../examples/memory/corpus.json) across six
+[`examples/memory/corpus.json`](https://github.com/lexlapax/ipse/blob/5bffe00364d66f5012e5a0d4cd86c4180c74ebcb/examples/memory/corpus.json) across six
 real Sessions/two projects: 100 records and 100 queries, including updated,
 expired, forgotten and unanswerable cases. Commands use no provider; a provider
 callback raises if inference is attempted. Each saved session is validated after

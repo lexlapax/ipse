@@ -1,6 +1,6 @@
 # Historical observability proposal
 
-Historical reference only. Archived 2026-10-17 from `docs/developer/observability.md` at commit `1d2d1cc`. Relative links were rebased; the body below retains its original claims. Current replacements: [operator controls](../../operator/observability.md), [developer contract](../../developer/observability.md).
+Historical reference only. Archived 2026-10-17 from `docs/developer/observability.md` at commit `1d2d1cc`. Relative links were rebased; the body below retains its original claims. Current replacements: [operator controls](../../operator/observability.md), [developer contract](../2026-10-22-before-structural-consolidation/docs/developer/observability.md).
 
 ---
 
@@ -233,6 +233,6 @@ paths without accounts or collectors. External export and developer raw traces
 need separate evidence. See [P19](../../plan.md#p19-long-session-diagnosis-and-recovery)
 and [P22](../../plan.md#p22-extension-scaffold-and-lifecycle-hooks).
 
-See the [runtime comparison](../../developer/runtime-capabilities.md) for why optional diagnostics,
+See the [runtime comparison](../2026-10-22-before-structural-consolidation/docs/developer/runtime-capabilities.md) for why optional diagnostics,
 durable usage facts and visible text/audio use distinct channels. Cost reports and
 realtime media are P23/P24 follow-ons, with generic contracts established in P22.

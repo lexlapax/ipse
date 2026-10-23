@@ -2,7 +2,7 @@
 
 Historical implementation and verification record after `250080e`. The
 containing commit owns the changes. Current contributor instructions are in the
-[evaluation manual](../../developer/knowledge-evaluation.md#verify-retained-storage-without-querying-through-the-audit).
+[evaluation manual](../2026-10-22-before-structural-consolidation/docs/developer/knowledge-evaluation.md#verify-retained-storage-without-querying-through-the-audit).
 This increment does not expose held-out inputs, run model weights, select an
 engine or complete P27.
 

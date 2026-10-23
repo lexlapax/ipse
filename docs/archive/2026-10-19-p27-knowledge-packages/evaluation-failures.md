@@ -3,7 +3,7 @@
 Historical verification after `94dc78d`. The commit containing this record adds
 four public-Session negative cases and their contributor exercise. It changes
 no production runtime, domain module or evaluation-helper behavior. Use the
-current [evaluation training chapter](../../developer/knowledge-evaluation.md#exercise-failed-paging-and-lost-completion)
+current [evaluation training chapter](../2026-10-22-before-structural-consolidation/docs/developer/knowledge-evaluation.md#exercise-failed-paging-and-lost-completion)
 for the procedure. Full P27 acceptance remains open in the
 [plan](../../plan.md#p27-optional-research-graph-and-rag).
 

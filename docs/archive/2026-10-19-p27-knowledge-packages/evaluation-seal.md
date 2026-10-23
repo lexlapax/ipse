@@ -2,7 +2,7 @@
 
 Historical tooling increment after `2cbbd00`. The commit containing this record
 adds maintained input and freeze helpers. Use the current
-[evaluation training chapter](../../developer/knowledge-evaluation.md#seal-identities-before-opening-inputs)
+[evaluation training chapter](../2026-10-22-before-structural-consolidation/docs/developer/knowledge-evaluation.md#seal-identities-before-opening-inputs)
 for their exercise. Full P27 acceptance remains open in the
 [plan](../../plan.md#p27-optional-research-graph-and-rag).
 

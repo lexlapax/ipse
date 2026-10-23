@@ -3,7 +3,7 @@
 Historical implementation and review record following `21d710c`. The source
 commit containing this record owns the declaration, local seal and schedule
 foundation. This is not a measured comparison or P27 completion verdict. Use
-the [evaluation training manual](../../developer/knowledge-evaluation.md#seal-identities-before-opening-inputs)
+the [evaluation training manual](../2026-10-22-before-structural-consolidation/docs/developer/knowledge-evaluation.md#seal-identities-before-opening-inputs)
 for current procedures and the [plan](../../plan.md#p27-optional-research-graph-and-rag)
 for acceptance status.
 

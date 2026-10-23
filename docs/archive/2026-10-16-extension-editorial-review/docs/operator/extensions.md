@@ -16,7 +16,7 @@ there is no new stream CLI flag or installed-worker subscription capability yet.
 It receives raw visible model text; completed-answer formatting remains separate.
 Slow consumers can backpressure their request and receive explicit incomplete
 shutdown on timeout/cancel. Subscriptions are ephemeral and do not replay on
-resume. See the [embedded contract](../../../../developer/text-streams.md).
+resume. See the [embedded contract](../../../2026-10-22-before-structural-consolidation/docs/developer/text-streams.md).
 
 ## Import and inspect
 
@@ -35,7 +35,7 @@ Incompatible artifacts can be stored. Inspect lists descriptors or verifies the
 exact installation; it does not initialize an extension. Review code, licensing,
 dependencies and options before granting trust. A digest establishes identity,
 not authenticity or safety. Do not add artifacts to Ipse's code path.
-See the [author contract](../../../../developer/extension-artifacts.md).
+See the [author contract](../../../2026-10-22-before-structural-consolidation/docs/developer/extension-artifacts.md).
 
 ## Configure selections
 
@@ -179,7 +179,7 @@ cannot be constrained by a return-value schema alone. Context contributions,
 broader nested service contracts, lifecycle observation,
 live controls and the extension-only
 memory/workflow proof remain [P22 work](../../../../plan.md#p22-extension-scaffold-and-lifecycle-hooks).
-See the [implemented hook contract](../../../../developer/extensions.md#run-a-prompt-and-presentation-hook).
+See the [implemented hook contract](../../../2026-10-22-before-structural-consolidation/docs/developer/extensions.md#run-a-prompt-and-presentation-hook).
 
 ## Tools, commands and services
 
@@ -250,7 +250,7 @@ calls share the same 16-operation invocation budget.
 If interruption occurs after an answer/continuation intent, resume stays idle
 with unknown work and does not rerun the callback. Inspect receipts before
 explicitly choosing a fresh action. Exact artifact/config/host pins and expiry
-still apply. See [SDK checkpoint and recovery details](../../../../developer/extension-state.md#suspend-with-a-durable-question).
+still apply. See [SDK checkpoint and recovery details](../../../2026-10-22-before-structural-consolidation/docs/developer/extension-state.md#suspend-with-a-durable-question).
 
 ## Workflow tools
 
@@ -283,7 +283,7 @@ and `host.services`. Add `service_bindings` only to the caller artifact's operat
 trust record, selecting exact caller/target instances, target artifact and local
 service ID. Project configuration or a skill cannot grant a route. The target
 must already be imported, trusted and explicitly selected; there is no automatic
-dependency install/enable or fallback. See the [complete data contract](../../../../developer/extension-composition.md#declare-the-value-contract).
+dependency install/enable or fallback. See the [complete data contract](../../../2026-10-22-before-structural-consolidation/docs/developer/extension-composition.md#declare-the-value-contract).
 
 Both required schemas must exactly match the selected service export. Missing
 routes, incompatible schemas and cycles refuse startup without running callbacks.
@@ -300,7 +300,7 @@ their explicitly declared invocation capabilities.
 Caller and target identity/lease are pinned. Expiry, failure or interruption stops
 with unknown outcome, without replay. Idle resume restores committed values without
 initializing either artifact. Config/code changes require the usual frozen-runner
-or reviewed fresh-session recovery. See [SDK ownership and limits](../../../../developer/extension-composition.md#declare-the-value-contract).
+or reviewed fresh-session recovery. See [SDK ownership and limits](../../../2026-10-22-before-structural-consolidation/docs/developer/extension-composition.md#declare-the-value-contract).
 
 ## Context and evidence
 
@@ -316,7 +316,7 @@ text from an earlier successful host action in that invocation; provenance prove
 recorded text, not truth or freshness. Main requests use attributed JSON context
 after mandatory instructions. Global rendered context is limited to 16 KiB and
 full SDK envelopes must fit; refusal preserves existing context without eviction
-or truncation. See [request examples and exact limits](../../../../developer/extension-composition.md#publish-a-bounded-reference-set).
+or truncation. See [request examples and exact limits](../../../2026-10-22-before-structural-consolidation/docs/developer/extension-composition.md#publish-a-bounded-reference-set).
 
 Idle resume restores committed contributions and request snapshots without
 running callbacks or fetching again. A committed publication survives cancellation

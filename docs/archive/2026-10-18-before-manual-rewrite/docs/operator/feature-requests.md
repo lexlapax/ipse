@@ -1,6 +1,6 @@
 > Historical reference only. Snapshot of `docs/operator/feature-requests.md` at `10b9dd66d06ef28718b58530a7e5b01c7c50397a` on 2026-10-18.
 > Original body retained; relative links rebased for this archive.
-> Use the [current manual](../../../../operator/feature-requests.md).
+> Use the [current manual](../../../2026-10-22-before-structural-consolidation/docs/operator/feature-requests.md).
 
 # Choosing how to add a feature
 

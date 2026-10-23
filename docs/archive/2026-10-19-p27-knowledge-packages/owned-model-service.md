@@ -2,7 +2,7 @@
 
 Historical implementation and verification record following `75b7077`. The
 source commit containing this record owns the component and synthetic verifiers.
-Use the [evaluation training manual](../../developer/knowledge-evaluation.md#exercise-ownership-of-a-model-service)
+Use the [evaluation training manual](../2026-10-22-before-structural-consolidation/docs/developer/knowledge-evaluation.md#exercise-ownership-of-a-model-service)
 for current procedures and the [plan](../../plan.md#p27-optional-research-graph-and-rag)
 for acceptance status. This component does not complete P27 or enable a measured
 comparison.

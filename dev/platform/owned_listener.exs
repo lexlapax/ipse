@@ -298,7 +298,7 @@ defmodule Ipse.Development.Platform.OwnedListener do
 
   defp metadata!(port) do
     request = Finch.build(:get, "http://127.0.0.1:#{port}/api/tags")
-    {:ok, 200, bytes} = Ipse.HTTPProfile.bounded_request(request, 4096, 1_000)
+    {:ok, 200, bytes} = Ipse.HTTP.bounded_request(request, 4096, 1_000)
     {:ok, %{"models" => []}} = Ipse.JSON.decode_bounded(bytes, 4096)
     :ok
   end

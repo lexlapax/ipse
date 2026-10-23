@@ -6,7 +6,7 @@ Work through this chapter after [text model calls](extension-model-calls.md) and
 [MCP result reads](extension-mcp-actions.md). Embeddings use the same session,
 approval and budget owners, with a distinct typed provider response and explicit
 output-token non-applicability. Start with
-[`examples/embedding-actions/src/embed.ex`](../../../../../../examples/embedding-actions/src/embed.ex).
+[`examples/embedding-actions/src/embed.ex`](https://github.com/lexlapax/ipse/blob/5bffe00364d66f5012e5a0d4cd86c4180c74ebcb/examples/embedding-actions/src/embed.ex).
 The worker requests inference and reads bounded pages; it contains no HTTP client
 or credential lookup.
 
@@ -50,7 +50,7 @@ destination. Metadata snapshots contain the destination's origin and actual
 wire-target digest, so recovery can compare hidden URL paths without storing
 them in public selection facts. Approval shows the complete request and these
 exact facts. Profile existence and an enclosing tool approval grant no egress.
-The [operator procedure](../../../../../operator/embeddings.md) gives a complete configuration.
+The [operator procedure](../../../../2026-10-22-before-structural-consolidation/docs/operator/embeddings.md) gives a complete configuration.
 
 ## Trace ownership through transport and settlement
 
@@ -219,6 +219,6 @@ applicable liabilities must remain booked. Run the unchanged text model-job
 proof after changing the shared coordinator.
 
 Follow [usage accounting](usage-accounting.md), [costs](costs.md) and
-[budgets](../../../../../developer/budgets.md) for operation-aware units and conservative pricing. Synthetic
+[budgets](../../../../2026-10-22-before-structural-consolidation/docs/developer/budgets.md) for operation-aware units and conservative pricing. Synthetic
 vectors prove transport, authority and reconstruction. Select retrieval models
 only after a separate frozen-workload quality/resource evaluation.

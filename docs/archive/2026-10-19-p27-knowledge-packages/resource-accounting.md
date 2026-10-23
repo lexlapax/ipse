@@ -2,7 +2,7 @@
 
 Historical implementation and verification record after `48bb176`. The commit
 containing this record owns the measurement changes. Use the current
-[evaluation training chapter](../../developer/knowledge-evaluation.md#reconcile-model-work-with-durable-accounting)
+[evaluation training chapter](../2026-10-22-before-structural-consolidation/docs/developer/knowledge-evaluation.md#reconcile-model-work-with-durable-accounting)
 for execution flow and exercises. The [plan](../../plan.md#p27-optional-research-graph-and-rag)
 retains the complete P27 acceptance requirements. This increment opens no
 held-out member, runs no model weights and selects no retrieval engine.

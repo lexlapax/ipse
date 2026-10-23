@@ -2,7 +2,7 @@ Historical snapshot from `7c2df84`, archived 2026-10-16. Commands and status may
 
 # Architecture
 
-Mandatory [request accounting](../../../../developer/usage-accounting.md) is separate from optional
+Mandatory [request accounting](../../../2026-10-22-before-structural-consolidation/docs/developer/usage-accounting.md) is separate from optional
 diagnostics: Session journals admission before provider dispatch and normalized
 outcomes before assistant/summary validation. Unknown failed/interrupted usage
 survives inert resume. Pricing and budget policy remain separate capabilities.
@@ -17,7 +17,7 @@ Separately negotiated [host calls](../../../../developer/extension-state.md#read
 state requests with normal mutation approval, intent-before-IO and ordered
 receipts. The native lock/JSON CAS store runs in the owned task, outside Session.
 Unknown outcomes stop without replay; no workflow framework is introduced.
-Structured [extension questions](../../../../developer/extension-state.md#suspend-with-a-durable-question) close their worker before
+Structured [extension questions](../../../2026-10-22-before-structural-consolidation/docs/developer/extension-state.md#suspend-with-a-durable-question) close their worker before
 publication. Pending checkpoints restore inertly. An explicit validated answer
 commits its receipt/continuation intent before a fresh owned worker initializes;
 it never grants later mutation approval or manufactures a native provider call.
@@ -25,12 +25,12 @@ it never grants later mutation approval or manufactures a native provider call.
 linked leaf task. Session owns full approval and a request/job/identity/workspace
 gate; new nested instructions stop admission. Durable results preserve output
 completeness and native tool provenance without synthetic assistant calls.
-[Service composition](../../../../developer/extension-composition.md#declare-the-value-contract) resolves manifest requirements only
+[Service composition](../../../2026-10-22-before-structural-consolidation/docs/developer/extension-composition.md#declare-the-value-contract) resolves manifest requirements only
 through operator routes. OTP acyclic graph ordering pins complete dependency
 identities before startup; owned value jobs journal intent before target loading
 and result after schema/lease/cleanup checks. Nested effects are not inferred from
 returned data, and idle restore never executes either artifact.
-[Context contributions](../../../../developer/extension-composition.md#publish-a-bounded-reference-set) replace only the caller's session
+[Context contributions](../../../2026-10-22-before-structural-consolidation/docs/developer/extension-composition.md#publish-a-bounded-reference-set) replace only the caller's session
 set, with bounded asserted data or excerpts bound to earlier successful action
 receipts. Main requests sync exact snapshots before dispatch; cached sets survive
 idle resume without retrieval. Mandatory instructions/messages/native data remain
@@ -80,7 +80,7 @@ selected task,
 context, and saved workspace snapshot. Required child mutation approvals return
 through the parent session. The child uses a configured profile/role or inherited
 provider/model and shares the workspace; it does not inherit MCP servers or parent conversation history. See
-the [delegation contract](../../../../developer/delegation.md).
+the [delegation contract](../../../2026-10-22-before-structural-consolidation/docs/developer/delegation.md).
 
 `Ipse.Provider` selects a provider adapter. Adapters stream text and
 normalized tool calls into the session; provider-specific continuation data is
@@ -338,7 +338,7 @@ questions, emits typed client events and commits answers before continuation.
 No model task remains active while waiting. Other proposed batch calls are
 settled as not started so the answer can change the plan. Questions are separate
 from boolean action approvals and grant no permission. Headless/child requests
-fail explicitly. See the [question contract](../../../../developer/operator-questions.md) for bounds,
+fail explicitly. See the [question contract](../../../2026-10-22-before-structural-consolidation/docs/developer/operator-questions.md) for bounds,
 durable restore and terminal behavior. MCP elicitation remains unavailable.
 
 ## Configuration and profile boundaries
@@ -365,7 +365,7 @@ successful original MCP results. Native bookkeeping stays in private durable
 journal events, is revalidated on resume and survives context compaction without
 retrieval replay. Call IDs/time are explicit host provenance, while source content
 and semantic support assessments remain untrusted. Search services are operator
-MCP configuration, never embedded endpoints. See [research contract](../../../../developer/research.md).
+MCP configuration, never embedded endpoints. See [research contract](../../../2026-10-22-before-structural-consolidation/docs/developer/research.md).
 
 ## Supervised development skill
 
@@ -375,4 +375,4 @@ engine or executable hook is loaded by the skill. A deterministic provider fixtu
 loads it and both resources through the real Session/journal with effect policy
 denied; the source and extracted-package checks run that fixture explicitly.
 Live application is separately verified in P21. See the
-[operator procedure](../../../../operator/self-development.md).
+[operator procedure](../../../2026-10-22-before-structural-consolidation/docs/operator/self-development.md).

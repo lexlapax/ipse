@@ -3,7 +3,7 @@
 Historical evidence record, dated 2026-10-22. The failed execution used runtime
 `1d40eeee57d55cdfec3c9b377dd86d2c07fe4862`. The corrective increment is
 `817ab84944c347f76e297efaad313b1ec841ee91`. Current procedures belong to the
-[evaluation training manual](../../developer/knowledge-evaluation.md#build-the-six-local-bindings)
+[evaluation training manual](../2026-10-22-before-structural-consolidation/docs/developer/knowledge-evaluation.md#build-the-six-local-bindings)
 and [native measurement reference](../../../native/README.md#optional-exact-aggregate-memory-scopes).
 The [plan](../../plan.md#p27-optional-research-graph-and-rag) owns acceptance status.
 This record does not establish a qualifying strategy or P27 completion.

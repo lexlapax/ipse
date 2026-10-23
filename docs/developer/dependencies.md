@@ -10,7 +10,7 @@ The inventories below are the authoritative current package and host requirement
 Find the owner of the requirement in [the architecture](architecture.md). For
 example, a new note-ranking function belongs in a memory extension. It can use the
 existing bounded state/CAS host calls without installing a database. A provider
-stream change should reuse `Ipse.Provider.HTTP` and `Ipse.HTTPProfile`, which own
+stream change should reuse `Ipse.Provider.Transport` and `Ipse.HTTP`, which own
 bounded responses, TLS and request-specific client lifetime.
 
 Before adding common validation, transport or persistence machinery, inspect the
@@ -21,11 +21,11 @@ code is necessary; "we need more control" is not enough.
 Work through this example before writing a new schema checker:
 
 ```sh
-rg 'validate_arguments|validate_object' lib/ipse/mcp/schema.ex
-mix test test/mcp/schema_test.exs
+rg 'validate_arguments|validate_object' lib/ipse/json.ex
+mix test test/ipse/json_test.exs
 ```
 
-`Ipse.MCP.Schema` reuses JSONSchex for admitted JSON Schema validation. Ipse still
+`Ipse.JSON` reuses JSONSchex for admitted JSON Schema validation. Ipse still
 owns closed keyword/byte/depth bounds and disables remote loading. A second
 validator would need to preserve the same boundary and keep two definitions in
 sync. Extend the small adapter only after checking its existing supported subset.
@@ -69,7 +69,7 @@ and its own license/dependency inventory.
 | NimblePool | Hex 1.1.0, locked | Finch process pooling | Apache-2.0 |
 | PlugCrypto | Hex 2.2.0, locked | Plug cryptographic helpers | Apache-2.0 |
 | Telemetry | Hex 1.4.2, locked; developer approved on 2026-10-15 | Erlang/BEAM events used by Finch/Plug; adds no outside runtime service | Apache-2.0 with upstream NOTICE |
-| Rust toolchain and standard library | Rust 1.85+; `native/build.sh` invokes `rustc --edition=2021` | Build the OS helper; no third-party Cargo packages | MIT OR Apache-2.0 |
+| Rust toolchain and standard library | Rust 1.85+; `dev/build-native.sh` invokes `rustc --edition=2021` | Build the OS helper; no third-party Cargo packages | MIT OR Apache-2.0 |
 | Ipse native helper | `native/ipse-runner.rs`, `native/ipse-process-group.rs`, `native/ipse-stdio.rs`, `native/ipse-linux-sandbox.rs`, `native/ipse-macos-sandbox.rs`, `native/ipse-measure.rs`, `native/ipse-sequence.rs`, `native/ipse-bound.rs`, `native/ipse-listener.rs`, `native/ipse-file-copy.rs`, `native/ipse-environment.rs`, compiled as `priv/ipse-runner` | Runtime anchored process groups, advisory locks, bidirectional OS pipes, optional Linux user/mount/network/PID namespaces, private descriptor procfs, Landlock/seccomp and macOS signed App Sandbox worker policies; optional owned cgroup measurement, execution-bound serial stages, direct-child loopback-listener observations, retained-descriptor regular-file copies and selected child-environment forwarding; used by tests | Apache-2.0 (project source) |
 
 OTP libraries ship with OTP. The application starts `logger`, `inets` and `ssl`;
@@ -133,13 +133,13 @@ updates. Introducing another action requires the same outside-language dependenc
 approval as a local executable.
 
 ```sh
-elixir scripts/check-ci-policy.exs
+elixir dev/check-ci-policy.exs
 ```
 
 That command rejects mutable action selectors. It does not audit an action's
 implementation, license or hosted service terms.
 
-The workflow also runs `elixir scripts/check-docs.exs` using the existing Elixir/OTP
+The workflow also runs `elixir dev/check-docs.exs` using the existing Elixir/OTP
 and Git toolchain. It checks local documentation links, headings, JSON examples,
 manual rules and preserved snapshot hashes without executing example commands.
 
@@ -150,13 +150,13 @@ behavior. Check transitive applications and notices, not just the top-level name
 
 ```sh
 mix deps
-./scripts/build.sh
+./dev/build.sh
 mix compile --warnings-as-errors
-mix test test/mcp/schema_test.exs
+mix test test/ipse/json_test.exs
 ```
 
 The focused command above is an example for a schema-adapter change. Choose the
-actual affected fixture for another dependency. Run the [source baseline](testing.md#run-a-complete-source-baseline)
+actual affected fixture for another dependency. Run the [source baseline](testing.md#run-the-complete-source-baseline)
 for runtime changes. Keep the source/build output fixed while checks are active.
 
 If the dependency affects worker or runtime paths, also build the package and

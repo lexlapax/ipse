@@ -1,4 +1,4 @@
-Historical manual from `d35287afbfc0101938f0c86e70748a5e1c354c9f`, archived on 2026-10-21 before topic consolidation. Commands and ownership may be obsolete. Use [the current chapter](../../../../../developer/usage-accounting.md). The original body is retained; relative links outside code fences are rebased, and links to jointly preserved chapters point to these snapshots.
+Historical manual from `d35287afbfc0101938f0c86e70748a5e1c354c9f`, archived on 2026-10-21 before topic consolidation. Commands and ownership may be obsolete. Use [the current chapter](../../../../2026-10-22-before-structural-consolidation/docs/developer/usage-accounting.md). The original body is retained; relative links outside code fences are rebased, and links to jointly preserved chapters point to these snapshots.
 
 # Following a request through durable accounting
 
@@ -33,7 +33,7 @@ double count", then follow the interrupted version. Cancellation/failure keeps
 the last observation with `finality: partial`; abrupt owner loss leaves an unknown
 outcome. Failed work may still have consumed resources.
 
-[Budgeted text requests](../../../../../developer/budgets.md) cover an observation in the shared ledger
+[Budgeted text requests](../../../../2026-10-22-before-structural-consolidation/docs/developer/budgets.md) cover an observation in the shared ledger
 before forwarding it to Session. Embeddings capture genuine nonstreaming final
 metering before the guarded observation and settlement. Failed writes prevent
 readable vector publication; Session can still retain the actual final counters.

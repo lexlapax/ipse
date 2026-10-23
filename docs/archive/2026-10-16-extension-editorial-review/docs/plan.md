@@ -353,7 +353,7 @@ limit. The optional signed App Sandbox backend now enforces file/network
 restrictions, applies per-process resource ceilings, and validates immutable
 per-workspace signed workers through a bounded protected cache. Ordinary child
 cleanup remains active; detached children may survive and keep workspace access.
-See [the exact boundary](../../../developer/sandbox.md#macos-production-boundary) and
+See [the exact boundary](../../2026-10-22-before-structural-consolidation/docs/developer/sandbox.md#macos-production-boundary) and
 [current verification](../../2026-10-18-before-manual-rewrite/docs/developer/testing.md#macos-native-backend-2026-10-15).
 
 The final implementation CI passed Linux and macOS 14 source/package checks,
@@ -410,7 +410,7 @@ approval forwarding, ownership/cancellation, bounded results and model budgets,
 and unknown-outcome recovery before exposing the tool. Children must not approve
 themselves, spawn recursive children, or inherit MCP by default.
 
-Acceptance: the [delegation contract](../../../developer/delegation.md), focused fixtures
+Acceptance: the [delegation contract](../../2026-10-22-before-structural-consolidation/docs/developer/delegation.md), focused fixtures
 for policy/lifetime/recovery, a bounded live subscription scratch check, supported
 Linux/macOS source/package checks, reviewed operator/developer guidance, and a
 focused commit/push. The local implementation, focused fixtures, source baseline,
@@ -851,7 +851,7 @@ Selected and authorized on 2026-10-16. Implemented on main. The feature passed
 25 focused tests, 293 native Linux tests, live subscription single/multiple/text
 answers, extracted runtime checks and hosted Linux/macOS checks. Combined main
 source passed 324 native Linux tests (14 macOS excluded locally); extracted
-release and hosted Linux/macOS checks passed. See [contract](../../../developer/operator-questions.md).
+release and hosted Linux/macOS checks passed. See [contract](../../2026-10-22-before-structural-consolidation/docs/developer/operator-questions.md).
 
 Acceptance:
 
@@ -887,7 +887,7 @@ runbook now uses that timing. An initial review exhausted its six-step budget
 and returned unknown; a narrower explicit review completed without findings.
 Context compaction later stopped safely, so the supervisor finished the evidence
 updates without changing Ipse's source or tests. See the
-[Mac runbook](../../../operator/self-development.md) and
+[Mac runbook](../../2026-10-22-before-structural-consolidation/docs/operator/self-development.md) and
 [local evidence](../../2026-10-18-before-manual-rewrite/docs/developer/testing.md#p18-macos-supervised-self-development-evidence).
 
 The operator delegated final review and publication to the supervisor after the
@@ -947,7 +947,7 @@ Acceptance direction:
 4. Verify cancellation, refusal/corruption paths, idle resume and source/package
    behavior; update operator/developer docs and actual evidence, then commit/push.
 
-See the [diagnostics proposal](../../../developer/observability.md).
+See the [diagnostics proposal](../../2026-10-22-before-structural-consolidation/docs/developer/observability.md).
 
 ## P20: repeatable supervised self-development
 
@@ -1009,7 +1009,7 @@ and Claude Code primary documentation/source, alongside Elixir/OTP, Telemetry an
 OpenTelemetry. The resulting recommendation is a versioned Elixir behaviour with owned workers,
 explicit configuration and separate observational events/ordered transformations.
 See [research and architecture](../../../developer/extensions.md) and
-[runtime diagnostics/tracing](../../../developer/observability.md).
+[runtime diagnostics/tracing](../../2026-10-22-before-structural-consolidation/docs/developer/observability.md).
 
 The operator selected an **extension-first** direction: new domain features,
 memory, presentation and optional workflows should use supported extension APIs
@@ -1023,7 +1023,7 @@ memory/workflow package with no core edits, and P22D observability/compatibility
 The [SDK coverage matrix](../../2026-10-18-before-manual-rewrite/docs/developer/extensions.md#core-boundary-and-sdk-coverage)
 includes tools, commands, context/state, approved effects and bounded workflows.
 The operator's bundled/third-party/assisted/generated permanent and temporary
-use cases are tested as [design walkthroughs](../../../developer/extensions.md#trial-an-independently-built-package).
+use cases are tested as [design walkthroughs](../../2026-10-22-before-structural-consolidation/docs/developer/extensions.md#trial-an-independently-built-package).
 They revealed a rebuild-only loading gap. P22 now includes backend-independent
 SDK values, package/installed/activation identity, a minimal local immutable
 artifact import, worker execution and scoped config/session leases. Remote
@@ -1033,7 +1033,7 @@ dispatch in core. These are architectural tests, not implemented runtime results
 This is a design target, not a promise that unknown future capabilities or core
 bugs will never require a core change.
 
-The subsequent [runtime capability review](../../../developer/runtime-capabilities.md)
+The subsequent [runtime capability review](../../2026-10-22-before-structural-consolidation/docs/developer/runtime-capabilities.md)
 keeps observability on/off controls, local developer diagnosis, canonical usage
 facts and bounded text subscriptions in P22. Cost reports/budgets become P23;
 voice/realtime becomes P24. The operator also requested a shipped default-off
@@ -1045,12 +1045,12 @@ execution pipeline. P25 can proceed independently of voice.
 P22A1 implements the inert local artifact manifest/store API: bounded closed v1
 JSON, nested duplicate rejection, file/runtime/license declarations, pinned hashes,
 private staging and advisory-locked publication. This does not yet expose a CLI,
-grant trust or execute an extension. See the [artifact contract](../../../developer/extension-artifacts.md)
+grant trust or execute an extension. See the [artifact contract](../../2026-10-22-before-structural-consolidation/docs/developer/extension-artifacts.md)
 and [installation status](../../../operator/extensions.md). P22A2 adds the explicit developer
 worker API and SDK behaviour: pinned trust assertion, separate Elixir VM, bounded
 JSON protocol, schema/capability admission, deadline/crash/owner cleanup and
 credential environment exclusion. See the
-[worker contract](../../../developer/extension-artifacts.md#independent-worker-sdk).
+[worker contract](../../2026-10-22-before-structural-consolidation/docs/developer/extension-artifacts.md#independent-worker-sdk).
 P22A3 adds inert import/inspect CLI commands and scoped data-only instance/trust
 configuration, temporary selection, disable flags and option-digest inspection.
 P22A4 connects a generic registry/session host and two default-off built-ins:
@@ -1062,17 +1062,17 @@ before journal repair. Child scope, expiry and actual worker cancellation are te
 Source and extracted-package fixtures exercise both examples. Broader lifecycle/
 tools/commands/state/services/jobs, worker subscription access, live controls and the
 extension-only memory/workflow proof remain in progress. See the
-[implemented hook contract](../../../developer/extensions.md#run-a-prompt-and-presentation-hook).
+[implemented hook contract](../../2026-10-22-before-structural-consolidation/docs/developer/extensions.md#run-a-prompt-and-presentation-hook).
 
-P22A5 implements [durable request accounting](../../../developer/usage-accounting.md):
+P22A5 implements [durable request accounting](../../2026-10-22-before-structural-consolidation/docs/developer/usage-accounting.md):
 request/attempt/turn/parent identity, cumulative allowlisted usage observations,
 final/partial/unknown outcomes, rejected-summary retention, child attribution and
 pre-repair resume validation. Linux native-suite and focused recovery/provider tests
 pass; counters remain independent of optional tracing. P23 estimates/budgets and
 the remaining P22 contracts are still in progress. See
-[operator inspection](../../../operator/usage-accounting.md).
+[operator inspection](../../2026-10-22-before-structural-consolidation/docs/operator/usage-accounting.md).
 
-P22A6 implements the [private visible-text host channel](../../../developer/text-streams.md):
+P22A6 implements the [private visible-text host channel](../../2026-10-22-before-structural-consolidation/docs/developer/text-streams.md):
 bounded coalescing/acknowledgment, producer/request correlation and explicit
 incomplete shutdown on cancellation, owner death, slow consumers or overload.
 Source/package fixtures consume raw visible output alongside completed formatting.
@@ -1098,7 +1098,7 @@ not select a production memory backend. Context/evidence, questions/tool actions
 service composition, worker stream handles, observability and the independent
 memory/workflow package proof remain required P22 work.
 
-P22A9 implements [structured-question checkpoints](../../../developer/extension-state.md#suspend-with-a-durable-question)
+P22A9 implements [structured-question checkpoints](../../2026-10-22-before-structural-consolidation/docs/developer/extension-state.md#suspend-with-a-durable-question)
 for extension tools/commands/services. Workers close before question publication.
 Idle resume restores the question/checkpoint without running code. Only an
 explicit validated answer authorizes a newly journaled continuation; it never
@@ -1113,7 +1113,7 @@ incomplete/ambiguous effect outcomes stop the callback
 chain without replay. Service composition, context/evidence, worker streams,
 observability and the independent package proof remain required P22 work.
 
-P22A11 implements [typed requirements and explicit operator service routes](../../../developer/extension-composition.md#declare-the-value-contract).
+P22A11 implements [typed requirements and explicit operator service routes](../../2026-10-22-before-structural-consolidation/docs/developer/extension-composition.md#declare-the-value-contract).
 Value contract 1 pins full dependency identities/schema, rejects missing/cyclic
 dependencies before activation, and journals owned jobs with typed result
 provenance. Idle restore runs no code. Nested interactive/effectful services
@@ -1121,7 +1121,7 @@ require a separately negotiated future contract; value replies cannot acquire
 host effects. Context/evidence, worker streams, observability and the independent
 package coverage proof remain P22 work.
 
-P22A12 implements [session context and receipt-bound evidence](../../../developer/extension-composition.md#publish-a-bounded-reference-set).
+P22A12 implements [session context and receipt-bound evidence](../../2026-10-22-before-structural-consolidation/docs/developer/extension-composition.md#publish-a-bounded-reference-set).
 Explicit publications replace only the caller's bounded set. Assertions remain
 unverified; literal excerpts can bind successful prior action receipts. Main
 requests pin exact context snapshots before dispatch; idle resume uses committed

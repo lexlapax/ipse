@@ -1,4 +1,4 @@
-Historical reference only. Used prompt at `20b377c`, targeting `091b2bd`; archived 2026-10-17 after its review returned. Relative links are rebased. Use the [current handoff](../../operator/architecture-review.md) and [archive provenance](index.md).
+Historical reference only. Used prompt at `20b377c`, targeting `091b2bd`; archived 2026-10-17 after its review returned. Relative links are rebased. Use the [current handoff](../2026-10-22-before-structural-consolidation/docs/operator/architecture-review.md) and [archive provenance](index.md).
 
 # Architecture-review coverage and repair handoff
 

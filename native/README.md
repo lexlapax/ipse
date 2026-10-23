@@ -1,6 +1,6 @@
 # Shell supervisor
 
-Build with `native/build.sh` (Rust standard library only; Linux/macOS). Runner
+Build with `dev/build-native.sh` (Rust standard library only; Linux/macOS). Runner
 can also build it on demand for trusted execution in a source checkout when
 `rustc` is available; native mode requires a prebuilt helper outside the workspace. Package
 `priv/ipse-runner` with releases/escripts, or set `IPSE_RUNNER_PATH`.
@@ -106,7 +106,7 @@ rustc --edition=2021 --test -D warnings native/ipse-file-copy.rs -o /tmp/ipse-co
 
 The six active controls include a bounded subprocess for a writerless FIFO.
 The child-only ignored test runs through that parent control. The
-[service-owner exercise](../docs/developer/knowledge-evaluation.md#exercise-ownership-of-a-model-service)
+[service-owner exercise](../docs/developer/measurement.md#separate-service-work-from-cleanup-and-inventory)
 checks private runtime/cache copies through the public Runner path.
 
 ## Optional exact aggregate memory scopes
@@ -193,10 +193,10 @@ Run the real no-model controls on a Linux host with the approved systemd
 user-service tools, delegated memory controller and clone-into-cgroup support:
 
 ```sh
-./scripts/build.sh
-elixir scripts/verify-memory-scope.exs "$PWD/priv/ipse-runner"
-elixir scripts/verify-memory-drain.exs "$PWD/priv/ipse-runner"
-elixir scripts/verify-memory-terminal.exs "$PWD/priv/ipse-runner"
+./dev/build.sh
+elixir dev/verify-memory-scope.exs "$PWD/priv/ipse-runner"
+elixir dev/verify-memory-drain.exs "$PWD/priv/ipse-runner"
+elixir dev/verify-memory-terminal.exs "$PWD/priv/ipse-runner"
 ```
 
 The commands report ten scope controls and twelve drain controls, each with a
@@ -209,7 +209,7 @@ barrier at the final decision, then compares the guard with its deliberate
 reversal. Only the reversed copy may accept cancellation at that boundary;
 the guarded copy also refuses an expired original deadline. Production source
 is unchanged, and diagnostic peaks are not experiment results. Follow the
-[training exercise](../docs/developer/knowledge-evaluation.md#exercise-the-native-aggregate-collector)
+[training exercise](../docs/developer/measurement.md#prove-ownership-and-loss-behavior-independently)
 to interpret their subjects and failure records. The knowledge evaluator uses
 this protocol through its optional measured-execution owner. Its complete
 synthetic exercise is separate from these collector controls.
@@ -278,13 +278,13 @@ comparison. This generic sequence facility does not implement that domain policy
 Run its separate no-model controls on the same supported Linux host:
 
 ```sh
-elixir scripts/verify-memory-sequence.exs "$PWD/priv/ipse-runner"
+elixir dev/verify-memory-sequence.exs "$PWD/priv/ipse-runner"
 ```
 
 Expect six cases, including preparation/finalization allocations, an excluded
 unrelated sibling, a failed stage with forged child output, retained attempts,
 collector loss and both FIFO descriptor seams. The
-[contributor exercise](../docs/developer/knowledge-evaluation.md#exercise-complete-measured-sequences)
+[contributor exercise](../docs/developer/measurement.md#require-natural-population-closure-under-original-deadlines)
 connects these records to the evaluator's domain claims and post-exit audit.
 
 ### Bind a measured sequence to one execution
@@ -508,7 +508,7 @@ unavailability; that test alone is not evidence that enforcement was exercised.
 Run actual adversarial OS tests on a suitable Linux host with:
 
 ```sh
-mix test test/linux_sandbox_test.exs --include native_sandbox
+mix test test/ipse/tools/sandbox_test.exs --include native_sandbox
 ```
 
 Included enforcement tests fail if the backend is unavailable. They compile a
@@ -666,8 +666,8 @@ this observation supplies neither confinement nor detached-descendant cleanup.
 Run its public API and pure native controls on a Linux host:
 
 ```sh
-mix run scripts/verify-owned-listener.exs
-mix run scripts/verify-owned-listener-regressions.exs
+mix run dev/verify-owned-listener.exs
+mix run dev/verify-owned-listener-regressions.exs
 IPSE_LISTENER_TESTS=$(mktemp -d)
 rustc --edition=2021 --test -D warnings native/ipse-listener.rs \
   -o "$IPSE_LISTENER_TESTS/listener"
@@ -682,5 +682,5 @@ with an inherited ancestor procfs, ordinary stdio compatibility in that setup,
 and an owned listener inside a nested PID namespace with its own private procfs.
 Unavailable user/network/PID/mount namespaces produce incomplete coverage and
 exit status 2. No model service, systemd or cgroup hierarchy is required. The
-[runtime-contract exercise](../docs/developer/runtime-capabilities.md#check-a-directly-owned-local-listener)
+[runtime-contract exercise](../docs/developer/extensions.md)
 connects the fields to source, admission and cleanup.

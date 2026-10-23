@@ -1,6 +1,6 @@
 > Historical reference only. Snapshot of `docs/operator/self-development.md` at `10b9dd66d06ef28718b58530a7e5b01c7c50397a` on 2026-10-18.
 > Original body retained; relative links rebased for this archive.
-> Use the [current manual](../../../../operator/self-development.md).
+> Use the [current manual](../../../2026-10-22-before-structural-consolidation/docs/operator/self-development.md).
 
 # Supervised self-development
 

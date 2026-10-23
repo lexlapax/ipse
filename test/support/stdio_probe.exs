@@ -1,13 +1,13 @@
 defmodule Ipse.Test.StdioProbe do
   @moduledoc false
   @calls [
-    {Ipse.Observability.Resources, :close, 2},
+    {Ipse.Observability, :close, 2},
     {Ipse.Observability.Channel, :close, 1},
-    {Ipse.Extensions.WorkerLease, :close, 3},
-    {Ipse.Extensions.WorkerLease, :await, 2},
-    {Ipse.TaskResources, :close_task, 1},
-    {Ipse.Extensions.Worker, :call, 4},
-    {Ipse.Extensions.Worker, :close, 2},
+    {Ipse.Extension.Worker, :close_lease, 3},
+    {Ipse.Extension.Worker, :await_cleanup, 2},
+    {Ipse.Session.Resources, :close_task, 1},
+    {Ipse.Extension.Worker, :call, 4},
+    {Ipse.Extension.Worker, :close, 2},
     {Ipse.Runner, :open_owned_stdio, 8},
     {Ipse.Runner, :close_stdio, 2}
   ]

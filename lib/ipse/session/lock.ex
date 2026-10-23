@@ -110,7 +110,7 @@ defmodule Ipse.Session.Lock do
   defp quiesce(dependents) do
     Enum.each(dependents, fn {_, {pid, kind}} ->
       case kind do
-        :scope -> Ipse.TaskResources.stop_async(pid)
+        :scope -> Ipse.Session.Resources.stop_async(pid)
         :peer -> :ok
         _ -> Process.exit(pid, :kill)
       end

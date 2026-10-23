@@ -3,7 +3,7 @@
 Historical implementation and fixture record after `579f609`. The commit
 containing this record owns the runner, prediction-format change and optional
 Research time argument. Use the current [evaluation training chapter](../../developer/knowledge-evaluation.md)
-and [Research user procedure](../../operator/research-extensions.md) for current
+and [Research user procedure](../2026-10-22-before-structural-consolidation/docs/operator/research-extensions.md) for current
 instructions. The [plan](../../plan.md#p27-optional-research-graph-and-rag) retains
 the complete acceptance scope. This increment does not complete P27.
 

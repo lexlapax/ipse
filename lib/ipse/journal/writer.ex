@@ -1,8 +1,7 @@
 defmodule Ipse.Journal.Writer do
   @moduledoc "Session-owned durable appends; validates before linking and monitors normal owner exit."
   use GenServer
-  alias Ipse.Lifecycle.Source
-  alias Ipse.Journal.{Limits, Reader}
+  alias Ipse.Journal
 
   def start(directory, id, owner, policy \\ nil)
 
@@ -42,7 +41,7 @@ defmodule Ipse.Journal.Writer do
   @doc false
   def append_inactive(directory, id, event, mode)
       when is_map(event) and mode in [:plain, :observed, :source] do
-    Ipse.FileEffect.run(fn ->
+    Ipse.Session.Resources.file_effect(fn ->
       with {:ok, state} <- open(directory, id, self(), nil) do
         try do
           case append_record(state, mode, event) do
@@ -71,7 +70,7 @@ defmodule Ipse.Journal.Writer do
   end
 
   defp open(directory, id, owner, policy) do
-    with {:ok, limits} <- Limits.normalize(policy),
+    with {:ok, limits} <- Journal.normalize_limits(policy),
          true <- is_pid(owner) and Regex.match?(~r/\A[0-9a-f]{32}\z/, id),
          path = Path.join(directory, id <> ".jsonl"),
          {:ok, stat} <- File.lstat(path),
@@ -236,7 +235,7 @@ defmodule Ipse.Journal.Writer do
   end
 
   defp available?(state, bytes, events) do
-    state.offset + state.reserved_bytes + bytes + Limits.reserve_bytes() <=
+    state.offset + state.reserved_bytes + bytes + Journal.reserve_bytes() <=
       state.limits["max_bytes"] and
       state.count + state.reserved_events + events + 1 <= state.limits["max_events"]
   end
@@ -261,11 +260,11 @@ defmodule Ipse.Journal.Writer do
 
   defp validate_open(state) do
     with :ok <- unchanged(state),
-         {:ok, stats} <- Reader.scan(state.file, state.limits),
+         {:ok, stats} <- Journal.scan_file(state.file, state.limits),
          true <- stats.tail == :none and stats.count > 0,
          :ok <- unchanged(state) do
       if stats.last_quota != nil or
-           stats.bytes + Limits.reserve_bytes() > state.limits["max_bytes"] or
+           stats.bytes + Journal.reserve_bytes() > state.limits["max_bytes"] or
            stats.count + 1 > state.limits["max_events"],
          do: {:error, :journal_limit_reached},
          else: {:ok, stats.count}
@@ -276,7 +275,7 @@ defmodule Ipse.Journal.Writer do
   end
 
   defp append_line(state, line) do
-    Ipse.FileEffect.run(
+    Ipse.Session.Resources.file_effect(
       fn ->
         with {:ok, file} <- :file.open(String.to_charlist(state.path), [:append, :binary, :raw]) do
           try do
@@ -314,9 +313,9 @@ defmodule Ipse.Journal.Writer do
     do: {:error, :journal_record_refused}
 
   defp encode(state, mode, event) do
-    with {:ok, encoded} <- Limits.encode(event, state.limits),
+    with {:ok, encoded} <- Journal.encode_event(event, state.limits),
          {:ok, result} <- source(state, mode, event, encoded) do
-      case Limits.admit(
+      case Journal.admit(
              state.limits,
              state.offset + state.reserved_bytes,
              state.count + state.reserved_events,
@@ -334,10 +333,10 @@ defmodule Ipse.Journal.Writer do
   end
 
   defp seal(state, reason) do
-    event = Limits.receipt(state.limits, state.offset, state.count, reason)
+    event = Journal.limit_receipt(state.limits, state.offset, state.count, reason)
     line = Jason.encode!(event) <> "\n"
 
-    with true <- byte_size(line) <= Limits.reserve_bytes(),
+    with true <- byte_size(line) <= Journal.reserve_bytes(),
          :ok <- unchanged(state),
          :ok <- append_line(state, line) do
       {:reply, {:error, :journal_limit_reached},
@@ -351,7 +350,7 @@ defmodule Ipse.Journal.Writer do
 
   defp source(state, :observed, event, _) do
     reference =
-      case Source.build(state.id, state.offset, event) do
+      case Journal.source(state.id, state.offset, event) do
         {:ok, reference} -> reference
         _ -> nil
       end
@@ -360,8 +359,8 @@ defmodule Ipse.Journal.Writer do
   end
 
   defp source(state, :source, _, encoded) do
-    with {:ok, decoded} <- Ipse.JSON.decode_bounded(encoded, Source.record_bytes()),
-         {:ok, reference} <- Source.build(state.id, state.offset, decoded) do
+    with {:ok, decoded} <- Ipse.JSON.decode_bounded(encoded, Journal.source_record_bytes()),
+         {:ok, reference} <- Journal.source(state.id, state.offset, decoded) do
       {:ok, {:ok, reference}}
     end
   end

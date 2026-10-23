@@ -6,7 +6,7 @@ manual or completion verdict. Read [AGENTS.md](../../../AGENTS.md), this file an
 the [P27 acceptance criteria](../../plan.md#p27-optional-research-graph-and-rag)
 before resuming. Reinspect the actual branch, worktree, processes and CI state.
 Current procedures are in [Corpus](../../operator/corpus.md),
-[Graph](../../operator/graph.md), [Research](../../operator/research-extensions.md)
+[Graph](../../operator/graph.md), [Research](../2026-10-22-before-structural-consolidation/docs/operator/research-extensions.md)
 and [evaluation training](../../developer/knowledge-evaluation.md).
 
 ## Source, pause and P26 review

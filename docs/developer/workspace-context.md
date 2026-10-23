@@ -1,38 +1,34 @@
 # Construct and reduce active context
 
-Follow a conversation's context from instruction discovery to a bounded provider
-request and durable recovery. `WorkspaceContext` owns discovery and source
-identity. `Skills` owns its saved catalog. `Compaction` builds pure reductions.
-Session decides when to adopt and commit each projection. The journal retains
-the original evidence throughout this process.
+Context is a projection of retained evidence. [`Workspace`](../../lib/ipse/workspace.ex)
+owns instruction discovery and the saved skill catalog.
+[`Session.Context`](../../lib/ipse/session/context.ex) constructs provider messages,
+plans reductions, records runtime facts, and measures encoded context. Session
+admits and commits each change. [`Session.Saved`](../../lib/ipse/session/saved.ex)
+reconstructs committed projections without new inference. The journal keeps the
+original evidence.
 
-Workspace text describes how a project wants work done. It never selects
-credentials, grants tool permission or enforces an OS sandbox. Explicit operator
-requests take precedence; nearer project `AGENTS.md` guidance overrides broader
-project guidance, and Ipse-wide instructions supply defaults.
+Workspace text tells Ipse how a project wants work done. It grants no credentials,
+tools, or OS authority. Explicit operator requests take precedence; nearer project
+instructions override broader project guidance, with user defaults beneath them.
 
-## Discover a bounded launch snapshot
+## Discover instructions and observe drift
 
-Read `WorkspaceContext.snapshot/2` and its fixtures in
-`test/workspace_context_test.exs`. Discovery canonicalizes the launch directory
-and finds a valid repository/worktree boundary. A Git directory needs a regular
-`HEAD`; a worktree pointer must resolve to a valid Git directory. Outside a
-repository, the launch directory itself is the boundary.
+Read `Workspace.snapshot/2` and `test/ipse/workspace_test.exs`. Discovery canonicalizes
+the launch directory and validates repository/worktree pointers. A Git directory
+needs regular `HEAD`; outside Git, the selected directory is the boundary.
+It reads `IPSE_HOME/AGENTS.md`, applicable boundary-to-workspace instructions,
+and workspace README. One level of local Markdown references can contribute
+`.md`, `.txt`, `.adoc`, or `.rst` text within that boundary.
 
-Discovery reads `IPSE_HOME/AGENTS.md`, boundary-to-workspace `AGENTS.md` files and
-the workspace `README.md`. One level of explicit local Markdown references may
-load `.md`, `.txt`, `.adoc` or `.rst` resources within the boundary. It never
-executes scripts or follows arbitrary remote links. Absolute/outside links,
-symlink sources and sensitive components such as `.git`, `.ipse`, `.ssh`, `.aws`,
-`.codex`, `auth`, `secrets` and `tokens` are excluded.
+No referenced script executes and no arbitrary remote link loads. Absolute/outside
+references, symlinks, and sensitive path components such as `.git`, `.ipse`, `.ssh`,
+`.aws`, `.codex`, `auth`, `secrets`, and `tokens` are excluded. A UTF-8 source allows
+32 KiB; a snapshot allows sixteen sources and 128 KiB total. Optional absence is
+normal. Invalid/inaccessible/oversized sources yield bounded diagnostics. Retain
+path, scope, kind, and SHA-256. These checks do not defeat hostile concurrent replacement.
 
-One UTF-8 source allows 32 KiB. A snapshot allows 16 sources and 128 KiB of source
-text. Missing optional files are normal; invalid, oversized and inaccessible
-files produce bounded diagnostics. Sources retain path, scope, kind and SHA-256.
-Path validation does not protect against a hostile process replacing entries
-concurrently.
-
-Try drift detection in `iex -S mix`:
+Run this complete drift exercise in `iex -S mix`:
 
 ```elixir
 scratch = Path.join(System.tmp_dir!(), "ipse-context-exercise-" <> Ipse.Usage.id())
@@ -42,143 +38,125 @@ File.mkdir_p!(workspace)
 File.mkdir_p!(home)
 path = Path.join(workspace, "AGENTS.md")
 File.write!(path, "Use a scratch fixture for the example.\n")
-{:ok, saved} = Ipse.WorkspaceContext.snapshot(workspace, home)
-[] = Ipse.WorkspaceContext.drift(saved)
+{:ok, saved} = Ipse.Workspace.snapshot(workspace, home)
+[] = Ipse.Workspace.drift(saved)
 File.write!(path, "Review the changed fixture before continuing.\n")
-[_] = Ipse.WorkspaceContext.drift(saved)
+[_] = Ipse.Workspace.drift(saved)
 true = Enum.any?(saved["sources"], &(&1["content"] == "Use a scratch fixture for the example.\n"))
 File.rm_rf!(scratch)
 ```
 
-The saved value retains its original text. Detecting drift does not adopt the
-changed instructions. Session persists the bounded value as
-`workspace_context_snapshot`; malformed saved snapshots refuse recovery.
+The saved snapshot retains original text. Drift detection adopts nothing.
+Session records `workspace_context_snapshot`; malformed saved snapshots refuse
+recovery. Read the Session counterpart before changing discovery, because pure
+path tests cannot establish approval/intent ordering.
 
-## Adopt deeper guidance before admitting a file effect
+## Adopt deeper guidance and refresh atomically
 
-Before starting a file tool or asking for its approval, Session performs nested
-target preflight. Newly discovered scoped guidance is synced as a new snapshot.
-The old proposal settles not started, and the model must reconsider it with the
-new context. The affected call gets its specific diagnosis; later queued calls
-get a generic stopped-before-start result. Approval stays `not_decided`.
+Before file-tool execution or approval, nested-target preflight can discover new
+scoped instructions. Session syncs the new snapshot, settles the old proposal
+not started, and asks the model to reconsider with that context. That call gets
+the specific diagnosis; later queued calls stop generically before execution.
+Approval remains `not_decided`. A revised mutation needs its own approval.
+Shell strings can hide targets, so this cannot certify every reachable directory.
 
-A revised mutation needs its own approval. Preflight is neither a read receipt
-nor evidence that an effect started. Actually started interrupted work remains
-unknown. Shell strings have no reliably inferable complete target set, so this
-check cannot certify every directory a shell command may reach.
+Resume uses the saved selection and reports drift. `/context refresh` performs
+owned idle work and commits instructions plus skills together. Cancellation must
+not save half a refresh. Configuration and extension code are not reloaded.
+The skill catalog permits 256 entries and 256 KiB of encoded names/descriptions,
+canonical paths, digests, and shadowed provenance, without bodies. Loading a body
+or resource rechecks path/digest. Drift refuses until explicit refresh. Older
+journals acquire their first catalog at a model boundary, never idle inspection.
+`/context` and `/skills` show saved values; standalone `ipse skills` discovers current files.
 
-Read the one-level-reference/nested-guidance discovery fixture, then its Session
-counterpart in `test/workspace_session_test.exs`. Pure discovery alone cannot
-prove intent and approval ordering.
-
-## Keep instruction and skill selections stable
-
-Resume uses validated saved instructions and reports drift without adopting new
-text. `/context refresh` runs as an owned idle task and commits instruction and
-skill selections together. Cancellation must not save half a refresh. Execution
-configuration is not reloaded.
-
-The skill catalog allows 256 entries and 256 KiB of encoded metadata. It stores
-names, descriptions, canonical paths, digests and shadowed-source provenance,
-not bodies. Loading a selected body/resource rechecks path and digest. Drift
-refuses until explicit refresh. Older journals acquire their first catalog at
-the next model boundary, never during idle inspection. `/context` and `/skills`
-show saved selections; standalone `ipse skills` discovers current files.
-
-Workspace text, skill metadata and extension contributions enter a labelled
-user-role reference message. Core rules stay in system text. Explicitly
-requested skill bodies remain in the requesting operator turn. These placements
-do not turn reference text into a new task or permission grant.
+Core rules remain system text. Workspace references, skill metadata, and extension
+contributions use a labelled user-role reference message. Explicitly requested
+skill bodies stay in their requesting turn. Placement does not promote reference
+text into a new task or authority.
 
 ## Plan a reduction at the model boundary
 
-Read `Compaction.prepare/3`, `finish/4` and `restore_tool_results/2`. The default
-encoded context ceiling is 400000 bytes, including system/reference messages.
-After tools settle, automatic reduction triggers above 80% of that ceiling.
-`--context-bytes` accepts at least 8192; `--no-compact` disables reduction while
-retaining the hard admission bound. Encoded bytes are not provider tokens.
+Follow `Context.prepare_compaction/3`, `finish_compaction/4`, and
+`restore_tool_results/2`. The default context ceiling is 400000 encoded bytes,
+including system/references. After tools settle, reduction triggers above 80%.
+`--context-bytes` permits 8192..16000000; `--no-compact` disables reduction while
+preserving hard admission. Encoded bytes are not provider tokens.
 
-The summary planner selects a complete older prefix while preserving the two
-latest user turns and all their assistant/tool/native data exactly. It pins
-older user requests verbatim in an intent ledger. Its action ledger retains
-call IDs, names, exact arguments, host approval/outcome facts, and result excerpts
-with SHA-256, original size and a shortened flag. Excerpts allow 256 characters.
-Unclassified legacy results stay unclassified; result text cannot prove approval.
+The planner selects a complete older prefix, preserving the latest two user
+turns and all associated assistant/tool/native data exactly. It retains older
+user requests verbatim in an intent ledger. The action ledger keeps exact IDs,
+names, arguments, host approval/outcome, and 256-character result excerpts with
+original size/digest/shortened flag. Legacy results remain unclassified; result
+text cannot establish approval.
 
-The summary request contains normalized older transcript JSON under a separate
-summarization instruction. It excludes old opaque/native reasoning from that
-request, while the journal retains the original. The reply must contain exactly
-three string arrays, for example:
+The summarizer receives normalized older transcript JSON under its separate
+instruction, excluding opaque/native reasoning from that request while retaining
+it in the journal. The reply has exactly three string arrays:
 
 ```json
 {"decisions":["Keep changes local"],"facts":["The failure is reproducible"],"open_questions":["Which input triggers it?"]}
 ```
 
-One exact outer JSON Markdown fence is accepted. Extra prose, multiple documents,
-wrong keys/types, tool calls and oversized content refuse. Summary JSON allows
-16000 bytes; the request must fit the ceiling and the projected context must
-shrink below the trigger. Required ledgers/native data are not trimmed to force
-success. Structural validation cannot prove semantic fidelity.
+One exact outer Markdown JSON fence is accepted. Extra prose/documents, wrong
+fields/types, tools, or oversized content refuse. Summary JSON allows 16000 bytes;
+the request must fit context and the projection must shrink below the trigger.
+Required ledgers/native data are not trimmed to force success. Structural checks
+cannot establish semantic fidelity.
 
-Summary inference uses the main selected provider/model and ordinary accounting
-and budgets. Ollama's summary-only request selects the schema, `think: false`,
-zero temperature and a 4096-token cap narrowed by configured limits. Ordinary
-turns keep their own settings. Summary deltas never enter the UI.
+Summary work uses the main selected route and ordinary accounting/budgets. Ollama
+summary-only options choose the schema, `think: false`, zero temperature, and a
+4096-token ceiling narrowed by configured limits. Normal turns retain their own
+settings. Summary deltas never display as assistant output.
 
 ## Preserve provenance when shortening tool output
 
-A single long turn may have no complete older prefix. The deterministic fallback
-keeps every message, user/assistant text, call arguments, native continuation and
-host metadata. It shortens only eligible settled results above 4096 bytes.
-The two newest assistant tool-call batches, including parallel results, remain
-complete. Unknown, denied, unclassified, already shortened, unresolved or
-duplicated calls cannot be shortened.
+One long turn may have no reducible older prefix. The deterministic fallback
+retains every message, user/assistant text, argument, native continuation, and
+host fact. It shortens only eligible settled results above 4096 bytes. The newest
+two assistant tool batches, including parallel results, remain complete. Unknown,
+denied, unclassified, unresolved, duplicate, or already-shortened calls stay full.
 
-An eligible result becomes explicitly incomplete beginning/end excerpts of
-256 characters each, original byte count, SHA-256 and an instruction to inspect
-original evidence before repeating an effect. This intentionally loses result
-text. It is not full semantic preservation. The complete projection must fit
-below the trigger or nothing is saved. A later summary retains the original
-provenance instead of treating the excerpt as the original result.
+Eligible results become explicitly incomplete beginning/end excerpts of 256
+characters each, original byte count/digest, and guidance to inspect original
+evidence before repeating an effect. This loses result text. It is not complete
+semantic preservation. If the whole projection cannot fit below the trigger,
+nothing commits. Later summarization retains original provenance rather than
+promoting an excerpt to the full result.
 
 ## Commit and reconstruct the projection
 
-Session syncs `context_compacted` before replacing its messages. Version 1 binds
-checkpoint, covered effective-message count, canonical prefix digest and sizes.
-`tool_results_compacted` binds original/projected digests and deterministic result
-indices. Original message events remain in the journal.
+Session syncs `context_compacted` before replacing messages. Version 1 binds
+checkpoint, covered effective-message count, canonical prefix digest, and sizes.
+`tool_results_compacted` additionally binds original/projected digests and
+deterministic indices. Original events remain durable.
 
-`JSON.digest/1` hashes a JSON list with recursively sorted object keys, preserved
-list order and the maintained encoder's scalar representation. It also binds
-configuration, usage and extension records. `JSON.sha256/1` hashes original bytes.
-Do not substitute one for the other or change a persisted encoding casually.
+`JSON.digest/1` hashes lists with recursively sorted object keys, preserved list
+order, and the maintained encoder's scalar representation. `JSON.sha256/1` hashes
+original bytes. They are different identities; changing persistent encoding is
+a compatibility change, not a cleanup. Saved reconstruction validates covered
+prefixes, unknown outcomes, and projections chronologically, preserving later
+messages. Corruption refuses unchanged, without alternate inference. Cancellation
+commits no partial summary; owner death after commit retains the checkpoint.
 
-`Session.Saved` reconstructs unknown outcomes, verifies covered prefixes and
-applies committed projections in event order. Later messages survive. A damaged
-checkpoint refuses recovery unchanged; there is no alternate inference or
-projection. Cancellation saves no partial summary. Owner death after commit
-retains the checkpoint without replaying old effects.
+`compaction_failed` records stage and bounded host diagnosis, without raw provider
+errors. Required recent data may still prevent reduction. A shorter continuation,
+explicit ceiling change, or reviewed [handoff](../operator/recovery.md) remains an
+operator decision. Handoffs transfer bounded context, not native history or approvals.
+`Context.measure/3` reports encoded categories using the same trigger, without
+exporting source text. Fewer bytes alone prove neither summary fidelity nor safe recovery.
 
-`compaction_failed` records the prepare/summary/validation stage and a bounded
-host diagnosis, not raw provider errors. Large recent data or pinned ledgers can
-still prevent reduction. A shorter continuation, changed ceiling or reviewed
-fresh session is an explicit operator decision. [Handoff](../operator/recovery.md)
-exports a bounded reviewed note, not native history, permissions or calls.
+## Practice a checkpoint change
 
-## Verify the boundary you change
+Follow the fixture preserving the two latest user turns. Compare native messages
+before/after `finish_compaction/4`, then explain why the fallback's denied result
+stays full. Exercise a corrupt committed field and owner loss after commit:
 
 ```sh
-mix test test/workspace_context_test.exs test/workspace_session_test.exs
-mix test test/compaction_test.exs test/tool_result_compaction_test.exs test/compaction_session_test.exs test/json_test.exs
+mix test test/ipse/workspace_test.exs test/ipse/workspace_integration_test.exs
+mix test test/ipse/session/context_test.exs test/ipse/session/context_tools_test.exs
+mix test test/ipse/session/context_integration_test.exs test/ipse/json_test.exs
 ```
 
-For a compaction exercise, follow the fixture preserving two recent user turns.
-Compare native messages before and after `finish/4`. Then explain why the denied
-result in the deterministic fallback stays full. The pure suites check projection
-and validation; Session fixtures check sync-before-replacement, accounting,
-cancellation and recovery. Test a corrupted committed field and an interruption
-after commit before claiming a checkpoint change safe.
-
-`Diagnostics.context/3` reports exact encoded categories using the same trigger.
-It exports counts and fixed labels, not source text. A smaller encoded context
-alone proves neither faithful summarization nor safe effect recovery.
+Pure suites establish projection shape. Session fixtures establish sync-before-
+replacement, usage, cancellation, and inert recovery. Keep those distinct when
+reporting the evidence for a context change.

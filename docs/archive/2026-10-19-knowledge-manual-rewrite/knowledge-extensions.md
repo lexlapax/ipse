@@ -10,8 +10,8 @@ or automatic cross-session memory policy.
 
 Use this chapter to place a new feature in the existing architecture. The
 [extension SDK](../../developer/extensions.md) owns protocol details;
-[memory](../../developer/memory.md) teaches the implemented note domain, and
-[research](../../developer/research.md) teaches evidence provenance. Historical candidate studies
+[memory](../2026-10-22-before-structural-consolidation/docs/developer/memory.md) teaches the implemented note domain, and
+[research](../2026-10-22-before-structural-consolidation/docs/developer/research.md) teaches evidence provenance. Historical candidate studies
 belong in the archive, not in the current runtime contract.
 
 ## Start with the user operation
@@ -90,7 +90,7 @@ automatically budgeted by Ipse.
 When inference is needed, select a permitted helper profile and use its approved
 accounted action. Keep extraction input, generated candidates, and accepted facts
 separate. A returned action proposal is not proof the write ran; an acknowledgment
-is not a commit receipt. See [runtime capabilities](../../developer/runtime-capabilities.md).
+is not a commit receipt. See [runtime capabilities](../2026-10-22-before-structural-consolidation/docs/developer/runtime-capabilities.md).
 
 ## Make gaps and retention visible
 

@@ -1,29 +1,52 @@
-# Build, exercise and upgrade an extension
+# Build and verify an extension
 
-Start with a prompt hook, turn its behavior into a conformance scenario, then
-trial an independent package. Use extensions for domain behavior that fits the
-existing contracts. Keep permission decisions, durable host receipts, provider
-routing and process ownership in the host.
+Build one optional behavior, import its inert artifact, then follow activation,
+execution, and recovery through a real Session. The host owns approval, provider
+routing, durable receipts, and resource lifetime. Feature code owns its domain
+algorithm. Run these exercises from a built checkout using temporary state.
+No account or model service is needed.
 
-You need the repository's Elixir/OTP and Rust toolchain. Run commands from the
-repository root with synthetic data and dedicated scratch state. The exercises
-below need no provider credentials or model service.
+## Choose the smallest existing contract
 
-## Run a prompt and presentation hook
+| Required result | Use |
+| --- | --- |
+| Prompt reference or completed presentation | Transform |
+| Typed model tool or explicit local command | Invocation |
+| Typed value supplied to another selected extension | Bound service |
+| Approved state/file/MCP/text/embedding work | Host action continuation |
+| Finite work before a request or after a turn | Event job |
+| Selected notifications or acknowledged live events | Notification/feed |
+| Visible provider text | Text consumer |
+| Canonical counters or configured estimates | Accounting reads |
+| Optional diagnostic metadata | Observability sink |
+
+A read-only consumer cannot return an action request. An observer cannot enforce
+a budget after dispatch. Stream completion does not establish answer admission.
+For example, a word-count consumer can acknowledge visible frames in private
+worker state. Persisting the result needs an explicit invocation or admitted job.
+Use `answer.committed` for a workflow requiring an admitted answer, rather than
+transport end. [Lifecycle delivery](lifecycle-events.md) teaches those distinctions.
+
+Generic SDK code is in `lib/ipse/extension.ex`, with host contracts in
+`lib/ipse/extension/`. Feature implementations share `extensions/`: shipped
+Memory/reports/transforms are in `bundled/`, independently built Knowledge packages
+in `knowledge/`. Bundled entrypoint names and artifact IDs remain stable; source
+location alone grants no special authority.
+
+## Follow a prompt hook through a real Session
 
 ```sh
-./scripts/build.sh
-mix run -e 'Code.require_file("priv/extension-demo.exs"); Ipse.ExtensionDemo.run()'
+./dev/build.sh
+mix run -e 'Code.require_file("priv/demo/extensions.exs"); Ipse.ExtensionDemo.run()'
 ```
 
-Read `priv/extension-demo.exs` beside the output. It starts a real Session with
-a synthetic provider and checks the original prompt, derived model input,
-completed presentation, saved native assistant message and idle resume.
-Those values deliberately differ. Display text must not replace provider-native
-continuation.
+Read the [driver](../../priv/demo/extensions.exs) alongside the
+[bundled transforms](../../extensions/bundled/transforms.ex). It checks five
+separate values: original prompt, effective provider input, streamed raw text,
+completed presentation, and retained native assistant data. Predict which values
+change before editing the annotation option.
 
-The bundled annotation implements these callbacks in
-`lib/ipse/builtins/prompt_annotation.ex`:
+This callback fragment is the core of the prompt annotation:
 
 ```elixir
 @behaviour Ipse.Extension
@@ -34,287 +57,292 @@ def handle("transform.prompt", _payload, options),
   do: {:ok, %{"append" => options["text"]}, options}
 ```
 
-This is a callback fragment, not a complete independent artifact. `describe/0`
-declares the executable contract, `init/1` receives schema-checked options and
-`handle/3` returns a public stage result plus private worker state. The host
-validates public output even from bundled code.
+It is not a complete artifact. `describe/0` declares the executable contract;
+`init/1` receives schema-checked options; `handle/3` returns public JSON plus
+private state. The host validates output even from bundled code. Trace the
+option through `Registry.prepare/4`, `Host.run/4`, and `Projection`.
 
-Trace the `text` option through `Registry.builtins/0`, `Registry.prepare/4`,
-`Host.run/4` and `Projection`. Find the options schema, intent append, reply
-validation and derived user message. Then trace the adjacent answer formatter:
-
-| Stage | Payload | Closed reply | Projection |
+| Stage | Payload | Closed output | Effect |
 | --- | --- | --- | --- |
-| `transform.prompt` | Visible `text` | `{"append":"fragment"}` | Attributed reference appended to the effective user message |
-| `transform.presentation` | Visible `text` | `{"prefix":"before","suffix":"after"}` | Completed visible answer only |
+| `transform.prompt` | Visible `text` | `{"append":"fragment"}` | Attributed reference added to effective user input |
+| `transform.presentation` | Visible `text` | `{"prefix":"before","suffix":"after"}` | Completed display only |
 
-Prompt annotations retain original operator input in the journal and grant no
-instruction or approval authority. Presentation updates `Session.info.final`
-and sends a separate presentation event. It changes neither saved assistant
-data nor previously streamed text. Change the demo's annotation option and
-predict all five observed values before running it again.
+Original operator input and assistant continuation remain durable. An annotation
+grants no instructions or permissions. Presentation can change `Session.info.final`
+and its presentation event, without changing previously streamed text or saved
+native data. Private worker state is not durable memory.
 
-## Follow selection, execution and recovery
+## Build an independent artifact
 
-Keep these identities separate:
-
-| Identity | Contents and purpose |
-| --- | --- |
-| Artifact | Immutable manifest, license and declared file bytes; import alone grants nothing |
-| Operator trust | Reviewed capability, scope, child, route and binding ceilings for those exact bytes |
-| Activation | Artifact plus alias/options, order, scope, configuration source, lease and host/runtime identity pinned to one session |
-
-`Registry.builtins/0` returns inert descriptors such as
-`builtin:prompt-annotation:1` and `builtin:answer-format:1`. Disabled discovery
-does not open installed artifacts or initialize workers. Imported artifacts
-cannot claim the builtin backend or shadow its IDs. `Registry.prepare/4`
-checks selected identities, schema, options, ceilings and expiry outside Session.
-`Session.start_link/1` revalidates code/schema in a monitored task with a
-five-second preflight bound before opening its journal.
-
-The activation pins SDK/protocol, normalized exports/requirements/subscriptions,
-options and configuration digests, earliest expiry, child ceiling, generation 1,
-host implementation digest, Elixir, OTP major, ERTS and architecture. An embedded
-caller must prepare current entries. Reusing a stale private entry or replacing
-code behind a saved identity refuses.
-
-For each transform, Session launches a monitored host job in configuration order.
-The job obtains a synced `extension_transform_intent` before executable startup,
-including `on_load`, `describe` or `init`. `Host` performs slow work outside the
-GenServer. `Worker` owns an independent VM and native process group; it starts
-a clean ERTS instance without the parent's application tree or credentials.
-Initialization and callback each have five-second deadlines.
-
-The callback sees visible text and options, not a Session PID, auth, full context,
-hidden reasoning or native continuation. SDK objects allow 16 KiB; input strings
-allow 8 KiB. Hook fragments also have a 4096-character bound. Derived text allows
-16 KiB and a complete projection record 64 KiB. Later hooks receive earlier
-output; an over-budget next input fails explicitly. Reserved extension-context
-framing markers in prompt fragments refuse. Nothing silently truncates.
-
-After schema, identity, source, lease and cleanup checks, Session commits the
-result with exact input, reply, derived output and hashes. `Projection` restores
-the derivation without invoking a callback. It checks versions, ordering,
-uniqueness and matching intent/result/source/context bindings before permitted
-tail repair. Idle resume stays idle. An unmatched intent is interrupted work,
-not a request to run it again.
-
-Timeout, crash, expiry, invalid reply or unconfirmed cleanup stops the job without
-retry. Worker stderr/private callback reasons do not become user diagnostics.
-Prompt failure prevents that attempt's inference; presentation failure retains
-the already completed assistant answer. Expiry is checked at admission and
-commit, not through continuous wall-clock preemption. Hashes detect inconsistent
-records, not a malicious coherent replacement of the whole private journal.
-
-Independent VMs separate dependencies and resource lifetimes. They do not
-sandbox executable worker code: trusted workers retain the user's OS permissions.
-Supervision, approvals and OS confinement remain distinct. Children inherit only
-operator-permitted instances, with fresh private workers and no parent transcript,
-MCP or recursive-delegation authority.
-
-## Turn the hook into a repeatable scenario
-
-Read `priv/conformance-operator.json` and `priv/conformance-demo.json`, then run:
+Choose a fresh output path and compile the reviewed lab sources separately:
 
 ```sh
-./bin/ipse extension check --config priv/conformance-operator.json --fixture priv/conformance-demo.json --extension annotation --no-project-config
+IPSE_ARTIFACT_ROOT=$(mktemp -d)
+elixir dev/build-artifact.exs extension-lab \
+  --sdk _build/dev/lib/ipse/ebin --output "$IPSE_ARTIFACT_ROOT/lab"
 ```
 
-The operator file trusts the known builtin but leaves its instance disabled.
-The flag selects it only for this run. The fixture grants no trust or capability:
+Inspect `lookup/extension.json` in that output and
+[lookup.ex](../../examples/extension-lab/src/lookup.ex). The builder records actual
+BEAM/license lengths and hashes plus current runtime compatibility. It executes
+trusted compilation, not extension installation or selection.
 
-```json
-{
-  "version": 1,
-  "cases": [{
-    "id": "annotate", "kind": "prompt", "text": "Synthetic question",
-    "expect": {
-      "status": "ok", "requests": 1, "user_contains": "Synthetic note",
-      "final": "Conformance fixture completed.",
-      "records": {"extension_transform_result": 1}
-    }
-  }]
-}
-```
+| Trusted recipe | Output | SDK |
+| --- | --- | --- |
+| `extension-lab` | Seven artifacts, including two Memory versions | 1 |
+| `model-calls` | Accounted text helper | 1 |
+| `embedding-actions` | Native vector helper | 1 |
+| `mcp-actions` | Bound MCP helper | 1 |
+| `saved-results` | Complete document command | 2 |
 
-The report contains assertion results, counts, fixture digest and exact artifact,
-runtime and API identities. It omits input text, options, answers, values and
-journal bodies. A nonzero exit means invalid setup, unexpected behavior or an
-incomplete suite. A matching negative case is useful evidence of refusal, not
-platform-containment certification.
+`dev/build-artifact.exs` accepts this finite recipe set, not arbitrary source.
+Only `mcp-actions` accepts `--omit` with a unique comma-separated subset of its
+capabilities for denial fixtures. Unknown/duplicate options and existing output
+paths, including dangling links, refuse. The builder loads the SDK's existing
+JSON/schema dependencies, compiles in a private staging working directory,
+rejects diagnostics/warnings, verifies declarations/inventory, and renames only
+a complete output. Failure removes its owned stage. Load callbacks can execute
+during trusted compilation, so this is not a sandbox for arbitrary code.
 
-`Conformance.schema/0` owns the closed v1 fixture, at most 16 KiB with no duplicate
-keys or unknown fields. Use these fields to describe the author's actual task:
+Stable source locations and deterministic compilation keep temporary paths and
+map order out of rebuild identity. The lab's spec supplies exact descriptions and
+entrypoints; the builder checks each compiled module against it. Different versions
+compile separately. See `test/dev/artifact_builder_test.exs` for collisions,
+warning/refusal, declaration drift, marker containment, and stable rebuilds.
+A package-owned builder, such as Knowledge's, must bind final bytes and every
+runtime dependency without claiming untested platforms.
 
-| Field | Contract |
+## Bind the manifest to immutable bytes
+
+[`Artifact.decode/1`](../../lib/ipse/extension/artifact.ex) reads duplicate-free
+UTF-8 `extension.json` within 16 KiB. Required fields are:
+
+| Fields | Meaning |
 | --- | --- |
-| `files` | Up to sixteen safe relative seed paths, each at most 256 bytes, with contents at most 4096 bytes |
-| `options` | Instance option objects for already selected IDs; per-case objects replace common objects |
-| `cases` | One to sixteen ordered cases with unique lowercase ASCII IDs up to 32 characters |
-| `kind` | `prompt`, `tool`, `command` or `service` |
-| `text` | Required prompt text; optional synthetic prompt for a tool |
-| `name`, `arguments` | Qualified export and schema-valid tool/command/service arguments |
-| `script` | Prompt-only, up to eight exact assistant-text or tool-call replies |
-| `answers` | Up to eight explicit answers through the real validator |
-| `timeout_ms` | 100..60000, default 15000; expiry cancels owned work |
-| `cancel_after_ms` | Optional 1..60000 cancellation delay |
-| `expect` | Required status and selected observable assertions |
+| `format`, `protocol` | Integer 1 |
+| `sdk` | 1, or 2 with `invoke.result.pages` |
+| `id`, `version`, `backend`, `entrypoint` | Identity/display version; imported backend `elixir_worker`; worker-only module name |
+| `license_file`, `files` | Declared license and exact relative file inventory |
+| `capabilities`, `options_schema` | Declared operations and bounded options |
+| `runtime` | Elixir requirement, OTP majors, exact platform strings |
 
-Tool cases request one synthetic call then finish. Exhausted prompt scripts
-return `Conformance fixture completed.` Commands/services invoke their exports
-explicitly. Model-selected tools and later mutations remain denied without
-`--yes`. Answers grant no action permission; missing answers stop at `question`
-instead of selecting a recommendation.
+Optional `exports`, `requires`, and `subscriptions` declare inert invocation,
+service, and delivery contracts. Declarations are requirements, not operator grants.
+Unknown shapes/operations refuse. Artifact identity is SHA-256 of original manifest
+bytes. Whitespace changes identity too. Versions do not select mutable code.
 
-Cases share one isolated scratch workspace/home but use fresh session IDs, so
-remember/recall sequences can share explicit state. Files seed once. Literal
-`{{workspace}}` and `{{home}}` expand in option/input/expected values, not keys;
-there is no shell or environment interpolation. Options are validated and pinned.
-Use these placeholders for IO adapters: real absolute paths are not redirected.
-Host inference is synthetic; MCP, delegation and compaction are not activated.
-Live-provider/replay flags refuse. Worker code and explicitly approved shell
-still have their documented OS permissions.
+Artifacts declare 2..64 files, each at most 8 MiB and 32 MiB together. Portable
+ASCII paths allow 256 bytes/eight components. Absolute paths, traversal,
+backslashes, manifest replacement, and file/directory prefix collisions refuse.
+The inventory includes license and entrypoint BEAM. Options/descriptors use the
+[bounded schema subset](mcp.md#schema-subset), without remote schema loading.
+`Artifact.compatible?/1` checks Elixir requirements, OTP major, and exact system
+architecture. Import may retain incompatible bytes; activation refuses them.
+Validation certifies no publisher, license compliance, dependency safety, or
+cross-platform execution merely because a file is BEAM.
 
-Choose assertions that prove effects, not merely a callback's success label:
+## Import, grant, and select separately
 
-| Assertion | Observable result |
+The generic store is part of Artifact. `Artifact.import/2` captures declared regular
+files, verifies lengths/hashes, syncs private staging, and atomically publishes under
+a per-digest native advisory lock. Directories use `0700`, files `0600`. Busy
+imports fail. Unlock retains the lock inode. Roots/descendants reject symlinks;
+selected-root ancestors remain trusted. Inventory inspection has a 1024-entry
+cap after ordinary directory listing. Same-user hostile replacement remains
+outside those cooperative checks.
+
+`Artifact.lookup/2` revalidates manifest, declared files, and installed inventory.
+Missing/changed/extra/symlinked entries refuse. It does not repair or replace an
+invalid digest directory. Interrupted staging remains inert. Content addressing
+is not author authentication or an OS read-only mount.
+
+| Identity | What it binds |
 | --- | --- |
-| `requests` | Synthetic admitted count, 0..10 |
-| `final`, `value` | Exact completed presentation or last invocation object |
-| `user_contains`, `context_contains` | Effective model input or labelled reference marker |
-| `records` | Exact named journal counts, each 0..1000 |
-| `action_statuses` | Exact ordered outcomes, up to 128 |
-| `files` | Exact safe relative workspace contents |
-| `cleanup` | Close acknowledgment, default true |
+| Artifact | Manifest/license/declared final files |
+| Operator trust | Capability/scope/child/route/binding ceilings for exact bytes |
+| Activation | Artifact/instance/options/order/source/expiry plus host/runtime identity pinned to a Session |
 
-After close, the runner validates saved diagnostics, accounting/session links,
-physical sources and text resources without repair or replay. Cases run once.
-Unexpected assertions or unconfirmed cleanup stop later cases. Inspect
-`case_count`, `declared_cases`, `stopped_early` and `safe_to_continue`.
-An expected unknown-cleanup case can match while still preventing more work.
+`Registry.builtins/0` returns inert descriptors. Disabled discovery initializes
+nothing. Imported code cannot claim builtin IDs/backend. `Registry.prepare/4`
+checks schemas, options, trust, and expiry outside Session; Session revalidates
+in monitored preflight before opening the journal. Activation binds normalized
+SDK/protocol/exports/requirements/subscriptions, option/source digests, earliest
+expiry, child ceiling, generation, host digest, Elixir/OTP/ERTS, and architecture.
+Stale embedded entries or substituted code refuse. The host digest validates its
+complete compiled application inventory, excluding independently artifact-bound
+builtin modules; moving files is not automatically identity-neutral.
 
-Copy the shipped fixture to a scratch file. Change `user_contains` to a marker
-that is absent and observe the failed assertion, then restore it and add a record
-count. Use `--keep-fixture` to retain private scratch journals for diagnosis.
-Normal cleanup removes them without that flag; abrupt termination may leave
-them behind. Filesystem deletion is distinct from confirmed process cleanup.
+Follow [operator selection](../operator/extensions.md) for complete import/trust/
+configuration commands. The [example journey](../../examples/README.md) provides
+manual lab commands without duplicating that operator procedure here.
 
-For argument-free dispatcher samples, add `--developer-trace`; `--trace-ms`
-allows 1..5000, default 1000, and `--trace-events` allows 1..128, default 32.
-Both require tracing. Capture failure fails the check; a normal sample/time
-limit does not. These flags are operator policy, never fixture permissions.
-See [diagnostic training](observability.md#diagnose-with-synthetic-data).
+## Exercise incompatible bytes before activation
 
-## Trial an independently built package
-
-The extension lab combines explicit notes with a routed synthetic lookup service:
+Use the lab output built above in the same terminal:
 
 ```sh
-IPSE_LAB_ARTIFACTS=$(mktemp -d)/artifacts
-IPSE_LAB_HOME=$(mktemp -d)
-IPSE_LAB_WORKSPACE=$(mktemp -d)
-elixir scripts/build-artifact.exs extension-lab --sdk _build/dev/lib/ipse/ebin --output "$IPSE_LAB_ARTIFACTS"
-elixir examples/extension-lab/config.exs "$IPSE_LAB_ARTIFACTS" "$IPSE_LAB_ARTIFACTS/operator.json"
-IPSE_HOME="$IPSE_LAB_HOME" ./bin/ipse extension import "$IPSE_LAB_ARTIFACTS/memory"
-IPSE_HOME="$IPSE_LAB_HOME" ./bin/ipse extension import "$IPSE_LAB_ARTIFACTS/lookup"
-IPSE_HOME="$IPSE_LAB_HOME" ./bin/ipse chat --provider demo --config "$IPSE_LAB_ARTIFACTS/operator.json" --extension memory --extension lookup --no-project-config --cwd "$IPSE_LAB_WORKSPACE"
+IPSE_LAB_LOOKUP="$IPSE_ARTIFACT_ROOT/lab/lookup" iex -S mix
 ```
 
-Build Ipse first. Compilation executes trusted build code; import only validates
-and copies declared final files. Review source, license, manifest and generated
-configuration before activation. The generated file leaves instances disabled.
-Memory requires lookup selected and imported; the host neither fetches a missing
-package nor silently drops its dependency.
+Run this complete exercise in that shell. It changes only a scratch copy:
 
-Inside chat, try these explicit commands:
-
-```text
-/ext ext__memory__remember {"text":"entity: Ada; link: Ada -> OTP"}
-/ext ext__memory__recall {"text":"Ada"}
-/ext ext__memory__stats {}
-/ext ext__memory__workflow {"path":"lab-note.txt"}
-/ext ext__memory__export {}
+```elixir
+alias Ipse.Extension.{Artifact, Worker}
+root = Path.join(System.tmp_dir!(), "ipse-incompatible-" <> Ipse.Usage.id())
+scratch = Path.join(root, "source")
+File.mkdir_p!(root)
+File.chmod!(root, 0o700)
+{:ok, _} = File.cp_r(System.fetch_env!("IPSE_LAB_LOOKUP"), scratch)
+path = Path.join(scratch, "extension.json")
+manifest = path |> File.read!() |> Jason.decode!()
+manifest = put_in(manifest, ["runtime", "platforms"], ["different-host"])
+File.write!(path, Jason.encode!(manifest))
+store = Path.join(root, "store")
+{:ok, artifact} = Artifact.import(scratch, store)
+false = Artifact.compatible?(artifact.manifest)
+{:error, :extension_admission_refused} = Worker.start(owner: self(), store: store,
+  digest: artifact.digest, trusted: artifact.digest, options: %{})
+File.write!(Path.join(artifact.path, "LICENSE"), "changed fixture")
+{:error, :invalid_extension_artifact} = Artifact.lookup(store, artifact.digest)
+File.rm_rf!(root)
 ```
 
-Remember proposes a separately approved write. Recall reads state and the routed
-synthetic corpus, then publishes bounded reference evidence. Stats returns counts
-and revision/deletion metadata without inference. Workflow asks a question,
-closes its VM and continues after an explicit answer; its file write still needs
-approval. Inspect the file and receipts. The deterministic label parser teaches
-contracts, not general language extraction.
+Import accepts inert incompatible bytes; Worker refuses activation before code
+initialization. Tampering with the stored license then refuses lookup. This
+distinguishes storage validity from execution compatibility. Keep all edits in
+the disposable store.
 
-For persistent selection, explicitly set the reviewed instances to
-`enabled: true` and `lifetime: "persistent"`, then start a fresh session.
-Flags are temporary selections, not configuration writers. Project data can
-select only what the operator permits; it creates no trust, routes or bindings.
+## Follow the worker and its public values
 
-## Upgrade and recover without replay
+The SDK exposes `describe/0`, `init/1`, and `handle/3`. Public objects are string-keyed
+JSON maps, bounded to 16 KiB encoded, 8-KiB strings, depth twelve, and 128 members
+per map/list. Schemas separately permit 32 KiB, depth eight, and 256 nodes. Count
+the complete enclosing callback object, not just the domain value. PIDs/references/
+functions/structs/arbitrary Erlang terms remain private worker data. SDK-2's private
+`ResultPublication.Output` is consumed inside Bootstrap, without Erlang-term transport.
+[Invocations](extension-invocations.md) teaches complete document publication and
+its separate aggregate limits.
 
-The lab builds memory versions 0.1.0 and 0.2.0 side by side. Import publishes a
-new digest directory without replacing the first. Fresh sessions can select new
-bytes; old sessions retain their original code/options/runtime identity.
-Hot activation, remote catalogs, automatic upgrade/build and garbage collection
-are unavailable. Keep referenced old bytes for reproducible recovery.
+Worker launches clean ERTS with existing Elixir/Jason/SDK/schema paths and only
+the chosen artifact. It starts Elixir, not the host application. Artifact loading
+waits for initialization. No artifact module atom or BEAM is introduced into the
+host. Native launch clears inherited environment, selecting PATH/baseline LANG;
+ERTS derives its own variables. Payload/options cross, not Session state, secrets,
+provider continuation, or hidden reasoning. Code still has the user's OS permissions.
 
-Without an explicit logical binding, artifact/instance/configuration-source
-changes isolate state. A reviewed `state_binding` permits selected versions to
-share a namespace; it neither migrates schemas nor widens operations. Keep
-migration as explicit approved work, never hidden in `init/1` or idle resume.
-Trace the two versions and binding assertions in `examples/extension-lab/proof.exs`.
+Protocol 1 uses 32-bit-length-prefixed JSON, envelopes within 32 KiB, and monotonically
+increasing call IDs. Stdout is protocol-only binary IO; `-noinput` is incompatible.
+Malformed/duplicate-key/wrong-ID/version replies fail closed. Stderr is discarded;
+combined stdout/stderr traffic permits 64 MiB per lifetime. Only one call is active;
+contention returns `extension_busy`. Initialize exactly once with selected options;
+undeclared stages refuse. Calls default to five seconds, with explicit 1..30000-ms
+bounds and narrower host-stage deadlines where applicable.
 
-Pending questions restore their bounded JSON checkpoint without worker startup.
-Only a valid explicit answer starts a new continuation. Prior callbacks and
-writes are not replayed. For an interrupted effect intent, inspect the file or
-record and operation ID before requesting new work. Cancellation cannot undo an
-already completed rename or remote request. A committed receipt restores its
-cached result; an uncommitted outcome remains unknown.
+A raw `Worker.start/1` needs owner, store, digest, `trusted: digest`, and validated
+options. This assertion does not grant trust; Session supplies it after admission.
+The initialization description must match SDK/capabilities and normalized declarations.
+Owner death, timeout, exit, or protocol failure closes the native stdio group.
+No call restarts. `close/1` and cleanup leases retain real helper receipts even
+on callback failure; process disappearance alone is not descendant cleanup proof.
 
-Feeds recover differently: pressure/cancellation closes coverage visibly, retaining
-the first rejected source and acknowledgment counts. Idle resume starts no queue
-or worker. Explicit historical catch-up is new bounded work with separately
-granted reads and ordinary write/CAS approval. Deduplicate occurrence IDs and
-retain captured revisions so catch-up cannot resurrect forgotten facts.
+## Commit the result before depending on it
 
-## Choose the next host contract
+Session syncs transform intent before executable startup, including load/describe/
+init callbacks. Slow Host work runs outside its GenServer. Initialization and
+transform callbacks each have five-second deadlines. Payloads expose visible text,
+without Session PID, full context, auth, native continuation, or hidden reasoning.
+Hook fragments allow 4096 characters, derived text 16 KiB, and full projection
+records 64 KiB. Earlier hooks feed later hooks; an oversized next input refuses.
+Reserved reference-framing markers refuse, with no silent truncation.
 
-| Learning task | Chapter |
-| --- | --- |
-| Build/import a package and understand the SDK VM | [Artifacts](extension-artifacts.md) |
-| Declare a typed tool, command or service and publish results | [Invocations](extension-invocations.md) |
-| Continue scoped state operations or questions | [State and continuations](extension-state.md) |
-| Request file, MCP, text-model or embedding effects | [Typed effects](extension-effects.md) |
-| Compose services and publish attributed context | [Composition](extension-composition.md) |
-| Observe prompt/answer boundaries or run admitted jobs | [Events](extension-events.md) |
-| Consume acknowledged live views or catch up on history | [Feeds and history](extension-feeds.md) |
-| Read canonical counters or estimate configured costs | [Accounting](usage-accounting.md) |
-| Own visible-text delivery or optional diagnostic capture | [Text streams](text-streams.md), [observability](observability.md) |
-| Implement explicit notes or source/graph/research features | [Memory](memory.md), [knowledge packages](knowledge-extensions.md) |
+Schema/identity/source/expiry/cleanup checks precede committed input/reply/derived
+output hashes. Projection restores exact derivations without callbacks. Version,
+order, uniqueness, intent/source/context binding checks precede permitted tail
+repair. Unmatched intent remains interrupted work, not instructions to replay it.
+Crashes, timeout, expiry, malformed output, or unknown cleanup stop the lane.
+Prompt failure prevents inference; presentation failure retains the admitted
+assistant answer. Expiry is checked at admission/commit, without continuous
+wall-clock preemption. Hashes catch inconsistency, not malicious coherent rewriting
+of a private journal.
 
-The public SDK is `Ipse.Extension` and `lib/ipse/extension/`. Generic host
-implementations live under `lib/ipse/extensions/`; bundled behavior lives under
-`lib/ipse/builtins/`. Independently built domain packages live under `extensions/`.
-Substantive development fixtures and evaluation tools live under `dev/`, while
-`examples/` keeps small runnable package journeys. Follow the
-[architecture map](architecture.md#find-extension-code-by-its-role) for ownership.
-
-If no current contract fits, identify the missing generic operation before
-adding a domain conditional to Session. Change schema, capability negotiation,
-admission, execution ownership, journal facts and pure recovery together.
-Plain JSON public values are bounded; arbitrary Elixir terms remain private
-worker state. Action-looking data in an ordinary result executes nothing.
-Selection allows eight instances and sixteen operator trust records.
-
-## Verify the author's complete journey
+## Turn the behavior into a conformance scenario
 
 ```sh
-mix test test/extensions_registry_test.exs test/extensions_session_test.exs test/extensions_conformance_test.exs
-mix test test/extensions_config_test.exs test/extensions_state_binding_test.exs test/extensions_invocation_test.exs test/extensions_services_test.exs
-mix test test/extensions_event_job_test.exs test/extensions_history_test.exs test/extensions_feeds_test.exs
+./bin/ipse extension check --config priv/demo/operator.json \
+  --fixture priv/demo/conformance.json --extension annotation --no-project-config
 ```
 
-Check actual prompt/native/presentation values, action receipts, effects and
-cleanup. For relevant changes include invalid output, owner loss, cancellation,
-expiry and interrupted intent. Resume must restore committed facts while idle.
-Use [installed verification](testing.md) for worker/release compatibility and
-the complete handoff checks. Synthetic conformance is not evidence of live model
-quality, provider billing, every crash schedule or OS containment.
+Read both files first. Operator configuration trusts the builtin but leaves it
+disabled. The flag selects it; the fixture grants no authority. Its prompt case
+expects one synthetic request, an annotation marker, completed text, and exact
+transform-record count. Change an expected marker in a scratch copy to observe
+failure, then restore it and add an effect assertion.
+
+Conformance is a closed duplicate-free v1 object within 16 KiB. It permits sixteen
+safe seed files, each path 256 bytes/content 4096 bytes; sixteen ordered uniquely
+named prompt/tool/command/service cases; eight scripted assistant replies or explicit
+answers; and validated options for selected instances. Cases have 100..60000-ms
+timeouts, default 15000, and optional 1..60000-ms cancellation. Missing answers
+stop at question, without recommendations submitted on the user's behalf.
+Model tools/later mutations remain denied without explicit `--yes`.
+
+Cases share scratch home/workspace, with fresh Session IDs for state sequences.
+`{{workspace}}`/`{{home}}` substitute values, not keys, without shell/environment
+interpolation. Absolute adapter paths are not redirected. Host inference is
+synthetic; MCP/delegation/compaction are not activated. Live/replay flags refuse.
+Workers and approved shell retain ordinary OS authority.
+
+Assert actual request counts, final/value, effective input/context, named record
+counts, ordered action outcomes, exact safe file contents, and cleanup. After close,
+the runner validates saved accounting/session/source/text facts without repair.
+Cases run once and unexpected failure/cleanup stops later cases. Inspect declared/
+executed counts, `stopped_early`, and `safe_to_continue`. Expected unknown cleanup
+can match while still preventing later work. `--keep-fixture` retains private
+scratch journals; filesystem removal is separate from process cleanup. Developer
+trace flags are described in [testing](testing.md), not permissions embedded in fixtures.
+
+## Upgrade without replay and identify genuine host gaps
+
+The lab builds Memory 0.1.0/0.2.0 side by side. New import does not overwrite old
+bytes. Fresh sessions select new code; old ones pin their original selection.
+No hot activation, automatic builds/upgrades/catalog fetch, or garbage collection
+exists. Keep referenced artifacts. Without an explicit logical state binding,
+artifact/instance/source changes isolate namespaces. A reviewed binding permits
+sharing but does not migrate schemas or widen operations. Migration is explicit
+approved work, never hidden initialization or idle resume.
+
+Pending questions restore JSON checkpoints without worker startup. Only a valid
+explicit answer starts a continuation; prior effects do not replay. Feeds restore
+coverage/acknowledgment facts without a live queue. Catch-up is new separately
+granted work with occurrence deduplication and current revisions. See
+[state](extension-state.md) and [events](extension-events.md).
+
+Current contracts do not supply audio IO, STT/TTS, bidirectional realtime inference,
+playback acknowledgment, or stateful stream rewriting. Completed formatting cannot
+promise live redaction or erase journals/context. Such a capability needs explicit
+bounded formats/handles, ownership/interruption/cleanup, retention/consent, and
+separate generation-versus-delivery facts. These are design requirements, not flags.
+
+For a shared host gap, specify its exact missing operation, closed schema, numerical
+bounds, stale/wrong-owner refusal, and recovery. Change negotiation/admission,
+ownership, durable facts, and restoration together. Reuse suitable maintained
+Elixir/OTP facilities before adding protocol machinery. Runtime facts, for example,
+are an allowlisted `Session.Context.runtime_snapshot` projection, not arbitrary
+configuration or process state. A new field needs a concrete reader need and
+exclusion tests for nearby private data.
+
+## Verify the complete authoring journey
+
+```sh
+mix test test/ipse/extension/registry_test.exs test/ipse/extension/session_test.exs
+mix test test/ipse/extension/store_test.exs test/ipse/extension/worker_test.exs
+mix test test/ipse/extension/conformance_test.exs test/dev/artifact_builder_test.exs
+```
+
+Inspect actual input/native/presentation values, receipts/effects, and cleanup.
+Include refusal, owner death, cancellation, expiry, and inert resume for relevant
+changes. [Typed invocations](extension-invocations.md), [state](extension-state.md),
+[effects](extension-effects.md), [events](extension-events.md), and
+[accounting](accounting.md) teach the next contracts. [Testing](testing.md) owns
+installed-runtime and final handoff procedures. Synthetic conformance establishes
+neither real model quality, billing accuracy, every crash schedule, nor OS confinement.

@@ -3,7 +3,7 @@ Code.require_file("dataset.exs", __DIR__)
 
 defmodule Ipse.Development.Evaluation.Review do
   @moduledoc "Prepare label-bearing blind review only after verifying the complete first-prediction grid."
-  alias Ipse.Development.Evaluation.Score, as: Score
+  alias Ipse.Development.Evaluation.Score
   alias Ipse.Development.Evaluation.Dataset
 
   @instructions """

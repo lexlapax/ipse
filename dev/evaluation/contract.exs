@@ -316,8 +316,8 @@ defmodule Ipse.Development.Evaluation.Contract do
       )
 
       require!(
-        Ipse.Profiles.validate(plan["profiles"], %{}) == :ok and
-          Ipse.EmbeddingProfiles.validate(plan["embedding_profiles"]) == :ok,
+        Ipse.Config.Profiles.validate(plan["profiles"], %{}) == :ok and
+          Ipse.Config.Profiles.validate_embeddings(plan["embedding_profiles"]) == :ok,
         :profiles
       )
 
@@ -615,7 +615,7 @@ defmodule Ipse.Development.Evaluation.Contract do
     require!(variant["query_options"]["top_k"] in [nil, 10], :rank_capacity)
 
     require!(
-      Ipse.Budget.Policy.validate(variant["budget"]) == :ok and
+      Ipse.Usage.Budget.validate_policy(variant["budget"]) == :ok and
         is_integer(variant["budget"]["max_requests"]) and variant["budget"]["max_requests"] > 0,
       :variant_budget
     )

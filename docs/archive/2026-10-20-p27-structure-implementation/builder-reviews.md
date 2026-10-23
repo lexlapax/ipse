@@ -4,7 +4,7 @@ Historical scoped records, 2026-10-20, against the S04 draft over `c9c4999`.
 The private integration baseline was `c516602`; only its S04 diff was transferred
 to main. The [verification receipt](builder-verification.json) binds the exact
 459-file runtime/test/tool inventory and passing platform executions. Current
-construction guidance belongs to the [artifact training chapter](../../developer/extension-artifacts.md).
+construction guidance belongs to the [artifact training chapter](../2026-10-22-before-structural-consolidation/docs/developer/extension-artifacts.md).
 Whole-P27 acceptance remains in the [plan](../../plan.md#p27-optional-research-graph-and-rag).
 
 ## Lead disposition

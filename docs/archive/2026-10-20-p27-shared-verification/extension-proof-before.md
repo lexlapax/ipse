@@ -36,7 +36,7 @@ Read these files in order:
    service routes, and disabled operator selections.
 2. `scripts/build-artifact.exs` compiles the finite `extension-lab` recipe in its
    own VM and emits data-only manifests. Follow the shared construction flow in
-   [the artifact chapter](../../developer/extension-artifacts.md#build-and-inspect-a-package).
+   [the artifact chapter](../2026-10-22-before-structural-consolidation/docs/developer/extension-artifacts.md#build-and-inspect-a-package).
 3. `src/memory.ex` and `src/lookup.ex` implement domain behavior through public
    callbacks and finite host calls.
 4. `proof.exs` drives installation, Sessions, approvals, questions, and assertions
@@ -148,6 +148,6 @@ mix test test/extension_lab_test.exs
 
 This integration builds and runs the source proof in separate VMs. The package
 command above establishes installed execution separately. For helper inference,
-use the additional [model-call artifact proof](../../developer/../../examples/model-calls/README.md),
+use the additional [model-call artifact proof](../2026-10-22-before-structural-consolidation/examples/model-calls/README.md),
 which uses a local HTTP fixture. Neither proof establishes paid billing, model
 quality, external retrieval quality, or unsupported SDK contracts.

@@ -2,7 +2,7 @@
 
 Design and investigation record for P26 remediation. Current behavior belongs in
 the [memory user manual](../../operator/memory.md) and
-[developer training chapter](../../developer/memory.md). This draft does not
+[developer training chapter](../2026-10-22-before-structural-consolidation/docs/developer/memory.md). This draft does not
 establish implementation, verification or milestone completion.
 
 The user selected rejection when an existing note expires while its update is

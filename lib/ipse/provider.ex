@@ -9,19 +9,19 @@ defmodule Ipse.Provider do
       try do
         with :ok <- response_contract(config),
              :ok <-
-               Ipse.Profiles.reasoning(
+               Ipse.Config.Profiles.reasoning(
                  to_string(config[:provider]),
                  config[:model],
                  config[:reasoning_effort]
                ),
-             :ok <- Ipse.Provider.Limits.validate(config) do
+             :ok <- validate_output_limit(config) do
           case apply(adapter, :complete, [config, messages, tools, emit]) do
             {:error, message} when is_binary(message) -> error(message, config)
             result -> result
           end
         end
       rescue
-        error in Ipse.TextStream.RequiredFailure -> {:error, Exception.message(error)}
+        error in Ipse.Session.TextStream.RequiredFailure -> {:error, Exception.message(error)}
         _ -> {:error, "Provider request failed (invalid response or configuration)."}
       catch
         :exit, _ -> {:error, "Provider connection terminated."}
@@ -144,4 +144,82 @@ defmodule Ipse.Provider do
 
     {:error, String.slice(text, 0, 500)}
   end
+
+  def request_embedding(%{operation: :embedding, provider: provider} = config, inputs, emit)
+      when provider in [:openai, :ollama] do
+    key = if provider == :openai, do: System.get_env("OPENAI_API_KEY")
+    Ipse.Provider.Embedding.embed(Map.put(config, :api_key, key), inputs, emit)
+  end
+
+  def request_embedding(_, _, _), do: {:error, "Unsupported embedding request."}
+
+  def request_complete(config, messages, tools, emit) do
+    provider =
+      Map.get(
+        config,
+        :provider_module,
+        if(config.provider == :demo, do: Ipse.Provider.Demo, else: Ipse.Provider)
+      )
+
+    credentials =
+      if config.provider == :chatgpt do
+        case Ipse.Auth.token(config.auth_dir) do
+          {:ok, token} -> {:ok, Map.put(config, :api_key, token)}
+          error -> error
+        end
+      else
+        key =
+          case config.provider do
+            :openai -> System.get_env("OPENAI_API_KEY")
+            :anthropic -> System.get_env("ANTHROPIC_API_KEY")
+            _ -> nil
+          end
+
+        {:ok, Map.put_new(config, :api_key, key)}
+      end
+
+    with {:ok, config} <- credentials, do: provider.complete(config, messages, tools, emit)
+  end
+
+  @maximum 1_000_000
+  def max_output_tokens, do: @maximum
+
+  def validate_output_limit(config) do
+    case {config[:provider], config[:max_output_tokens]} do
+      {_, nil} ->
+        :ok
+
+      {:chatgpt, _} ->
+        {:error,
+         "ChatGPT subscription does not support max_output_tokens; no provider or billing fallback was attempted."}
+
+      {:openai, n} when is_integer(n) and n >= 16 and n <= @maximum ->
+        :ok
+
+      {provider, n}
+      when provider in [:ollama, :anthropic] and is_integer(n) and n >= 1 and n <= @maximum ->
+        :ok
+
+      _ ->
+        {:error,
+         "Invalid max_output_tokens: use 16..1000000 for OpenAI API or 1..1000000 for Ollama/Anthropic; unsupported providers refuse a cap."}
+    end
+  end
+
+  def output_tokens(config, existing \\ nil) do
+    case validate_output_limit(config) do
+      :ok -> narrow_output_tokens(config[:max_output_tokens], existing)
+      {:error, reason} -> raise ArgumentError, reason
+    end
+  end
+
+  def narrow_output_tokens(nil, other), do: other
+  def narrow_output_tokens(value, nil), do: value
+  def narrow_output_tokens(value, other), do: min(value, other)
+
+  def model_name(value) when is_binary(value) and byte_size(value) in 1..200 do
+    if Regex.match?(~r/\A[A-Za-z0-9][A-Za-z0-9._:\/@+\-]*\z/, value), do: value
+  end
+
+  def model_name(_), do: nil
 end

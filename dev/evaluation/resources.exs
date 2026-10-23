@@ -73,11 +73,11 @@ defmodule Ipse.Development.Evaluation.Resources do
 
           admission === actual.admission and admission["session_id"] == session_id and
             if entry do
-              liability = Ipse.Budget.Ledger.liability(state, id)
+              liability = Ipse.Usage.Budget.liability(state, id)
 
               known =
                 [
-                  Ipse.Budget.Policy.known(
+                  Ipse.Usage.Budget.known(
                     state.policy,
                     admission,
                     actual.observation,
@@ -85,7 +85,7 @@ defmodule Ipse.Development.Evaluation.Resources do
                   )
                 ] ++
                   Enum.map(Map.get(observations, id, []), fn observation ->
-                    Ipse.Budget.Policy.known(state.policy, admission, observation, nil)
+                    Ipse.Usage.Budget.known(state.policy, admission, observation, nil)
                   end)
 
               Enum.all?(known, fn counters ->

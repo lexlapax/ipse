@@ -21,7 +21,7 @@ defmodule Ipse.Development.Evaluation.Freeze do
   and attempt-registry paths. Its semantic launch recipe authorizes no execution
   and establishes no attempt claim. Version 1 seals keep their original contract.
   """
-  alias Ipse.Extensions.{Store}
+  alias Ipse.Extension.Artifact
   alias Ipse.Development.Evaluation.Contract
 
   @max_measured_lifetime_ms 15 * 86_400_000
@@ -220,7 +220,7 @@ defmodule Ipse.Development.Evaluation.Freeze do
 
       copied =
         Map.new(artifacts, fn {name, path} ->
-          case Store.import(path, store) do
+          case Artifact.import(path, store) do
             {:ok, installed} -> {name, installed.digest}
             _ -> fail!(:artifact_import)
           end
@@ -284,7 +284,7 @@ defmodule Ipse.Development.Evaluation.Freeze do
       Map.new(manifest["artifacts"], fn {name, digest} ->
         require!(name?(name) and hash?(digest), :invalid_artifacts)
 
-        case Store.lookup(store, digest) do
+        case Artifact.lookup(store, digest) do
           {:ok, artifact} -> {name, artifact.path}
           _ -> fail!(:artifact_changed)
         end
@@ -357,7 +357,7 @@ defmodule Ipse.Development.Evaluation.Freeze do
 
     paths =
       Map.new(manifest["artifacts"], fn {name, digest} ->
-        case Store.lookup(Path.join(root, "artifacts"), digest) do
+        case Artifact.lookup(Path.join(root, "artifacts"), digest) do
           {:ok, artifact} -> {name, artifact.path}
           _ -> fail!(:artifact_changed)
         end
@@ -596,7 +596,7 @@ defmodule Ipse.Development.Evaluation.Freeze do
 
   defp import_artifacts!(artifacts, store) do
     Map.new(artifacts, fn {name, path} ->
-      case Store.import(path, store) do
+      case Artifact.import(path, store) do
         {:ok, installed} -> {name, installed.digest}
         _ -> fail!(:artifact_import)
       end
@@ -638,7 +638,7 @@ defmodule Ipse.Development.Evaluation.Freeze do
       :invalid_path
     )
 
-    {:ok, canonical} = Ipse.WorkspaceContext.canonical_path(path)
+    {:ok, canonical} = Ipse.Workspace.canonical_path(path)
     canonical
   end
 

@@ -1,7 +1,7 @@
-# Retrieve sources with the knowledge extensions
+# Store sources and retrieve cited passages
 
 Use Corpus to retain source text and retrieve cited passages. Use [Graph](graph.md) for
-explicit attributed facts and bounded traversal. Use [Research](research-extensions.md) to investigate
+explicit attributed facts and bounded traversal. Use [Research](research.md) to investigate
 provided sources or selected search/fetch services for one invocation. Select
 each package independently. The [memory extensions](memory.md) keep their own
 working and persistent note stores.
@@ -13,7 +13,7 @@ you already have a reviewed compatible artifact, start at import instead.
 ## Build and select a corpus
 
 Install the [source toolchain](arch-linux.md) or use your existing supported
-Elixir/OTP installation. Run `./scripts/build.sh` from the repository root, then:
+Elixir/OTP installation. Run `./dev/build.sh` from the repository root, then:
 
 ```sh
 IPSE_CORPUS_ARTIFACTS=$(mktemp -d)
@@ -147,7 +147,7 @@ IPSE_HOME="$IPSE_CORPUS_HOME" ./bin/ipse result "$IPSE_CORPUS_OUTPUT_ID" \
 Saved documents allow up to 4 MiB of encoded JSON. Each quotation still has its
 1024-byte domain limit. Transport does not shorten quotes, remove provenance,
 or discard claims to fit an inline reply. An aggregate or journal-capacity
-refusal publishes no partial success. Follow [saved-result reading](extensions.md#read-a-saved-result)
+refusal publishes no partial success. Follow [saved-result reading](extensions.md#invoke-a-command-and-inspect-its-complete-result)
 for bounded views, continuation cursors and read errors.
 
 Reading starts no query, worker or model call. The document is a historical
@@ -189,7 +189,7 @@ or aborting it. Resume never completes it automatically.
 This example needs an already running local Ollama service with
 `embeddinggemma:latest` and `qwen3.5:9b` already available. It installs or downloads
 nothing. Select your actual models and native embedding dimensions explicitly if
-they differ. The [embedding manual](embeddings.md) explains host profile fields.
+they differ. The [embedding manual](extensions.md) explains host profile fields.
 Keep the lexical route when you do not want model calls.
 
 Exit the earlier chat with `/exit`. Keep the artifact parent and application home
@@ -376,7 +376,7 @@ follow the independent [Graph procedure](graph.md).
 ## Select a remote store
 
 Use an MCP store with a reviewed server implementing the
-[knowledge CAS contract](../developer/knowledge-extensions.md#implement-a-compatible-remote-store)
+[knowledge CAS contract](../developer/knowledge-storage.md#implement-a-compatible-remote-cas-owner)
 and enforcing its partition permissions. New record-adding work requires an
 explicit `ipse-cas-v3` selection. The server must atomically limit the partition
 to 88 retained records across every accepted writer route. Client receipt checks
@@ -451,7 +451,7 @@ lacks atomic root admission and can report `atomic_admission_unavailable`.
 Use `mcp_query` when your reviewed service supplies ranked source/chunk
 references through `query-v1`. The selected store must be `mcp_cas`, and its
 partition must equal the retrieval partition. Search/fetch gateway contracts for
-[Research](research-extensions.md) are separate and cannot replace this route.
+[Research](research.md) are separate and cannot replace this route.
 
 Keep the imported `corpus-remote` artifact from the preceding procedure. Save
 these complete options as `$IPSE_CORPUS_ARTIFACTS/query-options.json`:
@@ -501,7 +501,7 @@ In chat, query the remote sources already ingested through `notes`:
 Review the query call and subsequent storage reads separately. The query request
 contains only version 1, `contract: "query-v1"`, partition, fresh request ID,
 query, `top_k` and `as_of_ms`. The complete
-[request/reply contract](../developer/knowledge-extensions.md#implement-selected-remote-retrieval)
+[request/reply contract](../developer/knowledge-storage.md#implement-selected-remote-retrieval)
 specifies every field and bound.
 
 Expect `method: "mcp_query"` candidates with locally validated citations,

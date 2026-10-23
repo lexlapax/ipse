@@ -123,10 +123,10 @@ unrelated work and never force-push. Detailed procedures are in
 
 ## P23: usage, cost reporting and budget controls
 
-**Complete within the selected scope.** The [usage contract](developer/usage-accounting.md) supplies durable
+**Complete within the selected scope.** The [usage contract](developer/accounting.md) supplies durable
 request/attempt/provider/billing/model facts separately from diagnostics. The
-[configured cost implementation](developer/usage-accounting.md#calculate-a-synthetic-rate) and
-[operator guide](operator/usage-accounting.md) define the available reports:
+[configured cost implementation](developer/accounting.md) and
+[operator guide](operator/resources.md) define the available reports:
 
 | Increment | Delivery state and scope |
 | --- | --- |
@@ -138,12 +138,12 @@ request/attempt/provider/billing/model facts separately from diagnostics. The
 | P23E2 | Optional atomic session-tree reservations for main/summary/children, conservative settlement, protected inspection and historical-source validation; local and hosted Linux/macOS source/package/installed checks passed |
 | P23F | Explicit one-shot `host.model` text requests, profile-bound approvals/receipts, canonical usage and shared reservations; source/native/package and both independent artifact proofs passed locally and in hosted Linux/macOS checks |
 
-[Provider output ceilings](developer/provider-limits.md) apply only to supported
+[Provider output ceilings](developer/configuration.md) apply only to supported
 API/Ollama requests. ChatGPT subscription refuses the unsupported setting; no
 output-token ceiling is invented for that public interface. Verification scope
 and limitations are recorded in
 [actual evidence](archive/2026-10-18-before-manual-rewrite/docs/developer/testing.md#current-evidence-and-next-checks).
-The [shared budget contract](developer/budgets.md) covers main, summary and local
+The [shared budget contract](developer/accounting.md) covers main, summary and local
 children and [extension model operations](developer/extension-effects.md#request-bounded-text-inference)
 independently of reports. P23F's source and installed proofs passed locally and on
 both hosted platforms; the measured coverage remains distinct from live billing.
@@ -153,7 +153,7 @@ promise an invoice ceiling. Rates are configured; subscription equivalents,
 API estimates and local inference resource costs remain distinct. Missing usage
 or failed-child cleanup cannot be converted to zero liability.
 
-The [independently built model artifact](../examples/model-calls/README.md) and
+The [independently built model artifact](../examples/README.md) and
 existing seven-artifact compatibility lab passed against unchanged extracted
 packages. Acceptance includes real parallel child inference, nested approvals,
 owner-loss cancellation, refusal/overdraw, source-bound cached cost recovery and
@@ -223,7 +223,7 @@ The [frozen common brief](archive/2026-10-18-before-manual-rewrite/docs/develope
 controls and identical source manifest before scored execution.
 The [preserved knowledge design](archive/2026-10-18-before-manual-rewrite/docs/developer/knowledge-extensions.md)
 owns that study's domain questions and selection gates. New evaluation work follows
-the [contributor training](developer/self-hosting-evaluation.md). Existing P14 tools/skills/ledger and P22 SDK are available; engine
+the [contributor training](developer/testing.md). Existing P14 tools/skills/ledger and P22 SDK are available; engine
 installation or production implementation is not required by this milestone.
 
 Execution readiness requires a passing frozen runner, reviewed task/resource
@@ -338,7 +338,7 @@ retained; memory deletion must state its separate recall/suppression and cached
 context limits. See the [knowledge development manual](developer/knowledge-extensions.md)
 for current placement and design guidance.
 The [operator guide](operator/memory.md) owns configuration/retention/recovery;
-the [extension contract](developer/memory.md) owns suppression and measurement limits.
+the [extension contract](developer/extension-state.md) owns suppression and measurement limits.
 
 ## P27: optional research, graph and RAG
 
@@ -413,7 +413,7 @@ The complete milestone requires all of the following:
 | P27H5 | Explicit schema-bound inference and independently selected extraction and rerank contracts | Compatibility and protocol checks complete; semantic acceptance open |
 | P27A | Independent Research and lexical Corpus packages with cited evidence, explicit limits, partial failures and suppression | Implementation and review repairs verified; held-out acceptance open |
 | P27B | Independent Graph, optional extraction, dense/hybrid retrieval and reranking | Implementation and review repairs verified; matched comparison and selection open |
-| Structural readiness | Earlier source ownership and manual changes are recorded at `18af42e` | Open; whole-tree consolidation must meet the clarified layout, deletion and maintenance requirements below |
+| Structural readiness | Whole-codebase and manual consolidation implemented; three independent reviews and supported-toolchain loading corrections repaired; full default, macOS native, floor and source/installed package proofs pass | Open; exact-candidate hosted/external review and final Linux native-inclusive checks remain |
 | Comparison audit repair | Stream merged execution against closed cell inventories without materializing the raw aggregate | Reviewed; platform suites and all four source/installed CPU/GPU measured proofs pass |
 | Explicit context repair | Bind portable and local context; verify loaded completion context while allowing separate embedding windows | Reviewed; platform/floor checks, 31-case service proofs, all four measured proofs and eight exposed GPU requests pass |
 | Duration composition repair | Compose fourteen legal service lifetimes within one finite measured-root ceiling; preserve existing request and service limits | Reviews, platform and supported-toolchain checks, native controls, package checks, all four source/installed CPU/GPU measured proofs and exact-source hosted CI pass at `817ab84` |
@@ -437,11 +437,35 @@ public-contract ownership. Keep separate developer commands, with their shared
 implementation grouped into fewer directories. Retain individual historical files
 and simplify current material only.
 
+Session retains the conversation process. Its turn and extension-invocation
+implementations run synchronously in that process, with caller/reference/phase
+admission and resource completion retained by Session. A source split must not
+introduce another conversation owner.
+
+The [current consolidation review](archive/2026-10-22-p27-structural-review/index.md)
+records the independent findings and their causal checks. Current manuals now have
+14 operator and 22 developer chapters. Remaining structural tasks are the final
+Linux native-inclusive checks, exact-candidate hosted/external review, and
+commit/push. File-count reductions alone do not establish
+deletion of unnecessary interfaces or lower implementation complexity. The earlier
+broad default suite now passes with 1,459 passed, one skipped and 36 excluded.
+The supported-toolchain loading correction passes 161 integrated caller tests and
+77 focused floor tests. The clean floor snapshot also passes packaging, installed
+package/model-service checks, all fifteen Knowledge builds and ten source plus ten
+installed Knowledge routes. These use synthetic services, not actual model quality
+or Linux native enforcement evidence.
+
 The implementation proposal must cover runtime code, extension packages, tests,
 developer tooling, examples, shipped resources and both current manuals. Identify
 specific deletions and merges separately from file moves, then verify callers,
 packaging and documented usage against the resulting structure. The running
 comparison retains its original frozen source and provenance throughout this work.
+The developer accepted that comparison at
+`817ab84944c347f76e297efaad313b1ec841ee91` as explicitly versioned evidence,
+alongside correctness and platform checks on the final consolidated code. A new
+350-answer comparison is not required solely because of structural consolidation.
+Quality qualification and publication still require the full outcomes, joined
+resource audit and independent semantic review.
 
 The [preceding launch-verification record](archive/2026-10-21-p27-gpu-policy/index.md#preserve-the-first-private-preparation-refusal)
 binds the canonical command correction, actual fresh-VM regression, macOS and
@@ -584,7 +608,7 @@ Implemented allowlisted application/configured-provider/requested-model facts fo
 and model self-descriptions cannot establish backend revisions. No keyword answer
 interception or credential exposure. The historical extension proposal was
 subsequently implemented within P22's documented boundaries; see
-[runtime facts](../lib/ipse/runtime_info.ex) and [extension architecture](developer/extensions.md).
+[runtime facts](../lib/ipse/session/context.ex) and [extension architecture](developer/extensions.md).
 
 ## P2a: automatic context compaction
 
@@ -601,7 +625,7 @@ resource boundary. Trusted execution remains the default; requested native polic
 fails closed. Mac enforcement and best-effort descendant lifetime have distinct
 limits. See [sandbox contract](developer/sandbox.md),
 [Linux evidence](archive/2026-10-18-before-manual-rewrite/docs/developer/testing.md#p2-native-linux-sandbox-2026-10-15) and
-[Mac boundary](developer/sandbox.md#macos-production-boundary).
+[Mac boundary](developer/sandbox.md#understand-the-macos-workspace-profile).
 
 ## P3: workspace context from any directory
 
@@ -631,7 +655,7 @@ not certified by the demo. See [MCP contract](developer/mcp.md).
 
 Complete: opt-in serial local children, separate journals/approvals, bounded
 context/results, parent ownership and no recursive delegation/child MCP. See
-[delegation contract](developer/delegation.md) and
+[delegation contract](developer/architecture.md) and
 [P6 evidence](archive/2026-10-18-before-manual-rewrite/docs/developer/testing.md#p6-local-delegation-2026-10-15).
 
 ## P7: expanded MCP capability
@@ -702,7 +726,7 @@ comparative evaluation without claiming unattended self-development.
 Complete: inert research skill, configured provider-agnostic MCP retrieval and
 bounded durable source/claim ledger/export, plus an independently checked live
 primary-source trial. No mandatory search service, recursive research engine or
-production knowledge backend. See [research contract](developer/research.md) and
+production knowledge backend. See [research contract](developer/knowledge-extensions.md) and
 [five-stage evidence](archive/2026-10-18-before-manual-rewrite/docs/developer/testing.md#five-stage-integrated-verification-2026-10-16).
 
 ## P15: scoped configuration and shared operator skills
@@ -728,7 +752,7 @@ fallback or automatic summary routing is claimed. See
 Complete: validated single-choice, multiple-choice and text answers, explicit
 submission, durable waiting/resume, cancellation/EOF/headless behavior and separate
 approval authority. Child questions and MCP elicitation remain unsupported.
-See [contract](developer/operator-questions.md) and
+See [contract](developer/architecture.md) and
 [integrated evidence](archive/2026-10-18-before-manual-rewrite/docs/developer/testing.md#five-stage-integrated-verification-2026-10-16).
 
 ## P18: supervised self-development on the operator's Mac
@@ -737,7 +761,7 @@ Complete: frozen-runner `sessions --json` change, structured clarification,
 independent local Mac/native/package checks, bounded review and hosted Linux/Mac
 verification before PR #1 merged. Review budget exhaustion, supervisor assistance
 and safe context refusal remain recorded. See the
-[Mac runbook](operator/self-development.md) and
+[Mac runbook](operator/development-workflows.md) and
 [local evidence](archive/2026-10-18-before-manual-rewrite/docs/developer/testing.md#p18-macos-supervised-self-development-evidence).
 
 ## P19: long-session diagnosis and recovery
@@ -745,7 +769,7 @@ and safe context refusal remain recorded. See the
 Complete: content-free context/timing diagnostics and explicit reviewed handoff
 without silently trimming native continuation or intent. Synthetic fixtures
 reproduce the failure shape, not a private original Mac transcript. See
-[observability contract](developer/observability.md),
+[observability contract](developer/lifecycle-events.md),
 [operator recovery](operator/recovery.md) and
 [P19 evidence](archive/2026-10-18-before-manual-rewrite/docs/developer/testing.md#p19-diagnosis-and-explicit-recovery).
 
@@ -774,7 +798,7 @@ off/local/export controls, bounded retention and synthetic developer tracing.
 Two shipped prompt/presentation examples are default-off.
 
 The [architecture/comparison](developer/extensions.md),
-[adoption scenarios](developer/extensions.md#trial-an-independently-built-package) and
+[adoption scenarios](developer/testing.md#learn-a-complete-workflow-through-the-compatibility-lab) and
 [lifecycle coverage audit](archive/2026-10-18-before-manual-rewrite/docs/developer/lifecycle-events.md#supported-lifecycle-coverage)
 define supported and unsupported seams. Hooks share lifecycle occurrence identity
 with notifications/feeds/jobs while retaining distinct private-view, ordering and

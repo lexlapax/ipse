@@ -9,11 +9,11 @@ Choose the host operation that owns the effect:
 
 | Work | Operation | Additional capability | Implementation owner |
 | --- | --- | --- | --- |
-| Existing file or shell tool | `tool.call` | `host.tools` | `Ipse.Extensions.ToolAction` |
-| Selected external tool, resource or prompt | `mcp.call` | `host.mcp` | `Ipse.Extensions.MCPCall` |
-| Text or schema-constrained inference | `model.complete` | `host.model` | `Ipse.Extensions.ModelCall` |
-| Native vector generation | `embedding.create` | `host.embedding` | `Ipse.Extensions.EmbeddingCall` |
-| Read a successful retained effect | `effect.result.read` | `host.results` | `Ipse.Extensions.EffectResult` |
+| Existing file or shell tool | `tool.call` | `host.tools` | `Ipse.Extension.ToolAction` |
+| Selected external tool, resource or prompt | `mcp.call` | `host.mcp` | `Ipse.Extension.MCPCall` |
+| Text or schema-constrained inference | `model.complete` | `host.model` | `Ipse.Extension.ModelCall` |
+| Native vector generation | `embedding.create` | `host.embedding` | `Ipse.Extension.EmbeddingCall` |
+| Read a successful retained effect | `effect.result.read` | `host.results` | `Ipse.Extension.EffectResult` |
 
 Every operation also needs `host.actions` in the artifact and the operator trust
 ceiling. An installed package, command invocation or answered question grants no
@@ -21,8 +21,8 @@ additional effect authority. Child use requires explicit delegation and
 `allow_children`; children cannot use MCP or delegate recursively.
 
 Read `examples/extension-lab/src/memory.ex`,
-`examples/mcp-actions/src/read.ex`, `examples/model-calls/src/complete.ex` and
-`examples/embedding-actions/src/embed.ex` beside their proofs. Each worker returns
+`examples/mcp.ex`, `examples/model.ex`, and `examples/embedding.ex` beside their
+proofs in `dev/verification/`. Each worker returns
 a typed proposal. The host supplies credentials and transport only after admission.
 Workers are trusted executable code with ordinary OS permissions; these APIs
 govern host-mediated effects and do not sandbox arbitrary worker code.
@@ -243,7 +243,7 @@ URLs reject userinfo, queries, fragments and invalid ports; project profiles
 cannot replace operator IDs, choose endpoints or grant longer model deadlines. The same adapter route supplies
 both disclosure and dispatch. See [configuration training](configuration.md).
 
-`Provider.Request` resolves the selected credential inside the admitted task.
+`Ipse.Provider.request_complete/4` resolves the selected credential inside the admitted task.
 No main key, injected provider module or SDK handle is inherited. Named ChatGPT,
 OpenAI, Ollama and Anthropic profiles retain their own provider/billing mode.
 Demo cannot perform inference. Missing credentials, service or model fail without
@@ -257,7 +257,7 @@ must support the choice. It remains visible in approval and saved execution
 facts. Input bounds remain independent of the main conversation's context limit;
 the service owns its model context window.
 
-`Ipse.Extensions.Inference` owns shared text/embedding task, monitor, deadline
+`Ipse.Extension.Inference` owns shared text/embedding task, monitor, deadline
 and usage forwarding. Worker death or cancellation closes its owned HTTP profile;
 remote work may already have happened. Text deltas do not enter the main stream.
 Keep text-specific validation in `ModelCall` when changing that coordinator.
@@ -290,10 +290,10 @@ refund or final charge from interruption.
 
 Restore checks the original profile/policy before tail repair, retained response,
 canonical completion, request source and invocation/session/turn. Versions two and three
-reapplies the approved schema. Child usage readers validate the same sources.
+reapply the approved schema. Child usage readers validate the same sources.
 Idle resume performs no inference; interrupted work retains unknown/partial
-measurements and shared liabilities. See [usage accounting](usage-accounting.md)
-and [budgets](budgets.md).
+measurements and shared liabilities. See [usage accounting](accounting.md)
+and [budgets](accounting.md).
 
 ## Generate and reconstruct embeddings
 
@@ -310,21 +310,21 @@ each and 12288 bytes together. The request fits the ordinary 16 KiB SDK object;
 the deadline is 1000..120000 milliseconds. Arguments cannot select dimensions,
 model, endpoint, credentials, headers, output caps, truncation or provider modules.
 Use `host.embedding` and, for pages, `host.results`. The
-[operator embedding procedure](../operator/embeddings.md) gives complete setup.
+[operator embedding procedure](../operator/extensions.md) gives complete setup.
 
 Trace `Operation.validate/1` into `EmbeddingCall`, then Session action admission.
-`EmbeddingProfiles.prepare/2` selects only operator settings and private budget/
+`Ipse.Config.Profiles.prepare_embedding/2` selects only operator settings and private budget/
 origin references. Parent history, keys, tools, injected modules, text caps and
 reasoning settings are absent. The v2 `effect_binding` pins embedding execution
 and safe destination. Approval uses those exact facts.
 
-Before approval, `EffectCapacity` constructs bounded canonical request, source,
+Before approval, `EffectResult`'s capacity planner constructs bounded canonical request, source,
 usage, completion and action-result records for selected input count/width,
 including repeated arguments and legal metadata. A known unrepresentable result
 refuses without provider dispatch or journal sealing. Admission rechecks capacity
 immediately before dispatch. Aggregate bytes/events remain unreserved.
 
-`Provider.Request.embed/3` resolves `OPENAI_API_KEY` only for OpenAI; Ollama gets
+`Ipse.Provider.request_embedding/3` resolves `OPENAI_API_KEY` only for OpenAI; Ollama gets
 no inherited authorization. `Provider.Embedding` makes one bounded nonstreaming
 POST to OpenAI `/embeddings` with `encoding_format:"float"`, or Ollama
 `/api/embed` with `truncate:false`. Request dimension mode adds dimensions; native
@@ -346,7 +346,7 @@ Successful v2 results have this shape, with actual values substituted:
          encoding:"float32le.base64", vector_count, dimensions}}
 ```
 
-`EmbeddingProfiles.selection_sha256/2` hashes an ordered identity tagged
+`Ipse.Config.Profiles.embedding_selection_sha256/2` hashes an ordered identity tagged
 `ipse.embedding.selection`, version 1, containing profile, operation, provider,
 requested model, billing, destination origin/target digest, dimensions and mode.
 Timeouts, inputs, credentials, budgets and request/session IDs do not alter it.
@@ -395,15 +395,15 @@ Build and run one SDK-only fixture per operation you change:
 
 ```sh
 IPSE_EFFECT_ARTIFACTS=$(mktemp -d)
-elixir scripts/build-artifact.exs mcp-actions --sdk _build/dev/lib/ipse/ebin --output "$IPSE_EFFECT_ARTIFACTS/mcp"
-elixir scripts/verify.exs source mcp --sdk _build/dev/lib/ipse/ebin --input "$IPSE_EFFECT_ARTIFACTS/mcp"
-elixir scripts/build-artifact.exs model-calls --sdk _build/dev/lib/ipse/ebin --output "$IPSE_EFFECT_ARTIFACTS/model"
-elixir scripts/verify.exs source model --sdk _build/dev/lib/ipse/ebin --input "$IPSE_EFFECT_ARTIFACTS/model" --selection default
-elixir scripts/verify.exs source model --sdk _build/dev/lib/ipse/ebin --input "$IPSE_EFFECT_ARTIFACTS/model" --selection none
-elixir scripts/verify.exs source model --sdk _build/dev/lib/ipse/ebin --input "$IPSE_EFFECT_ARTIFACTS/model" --selection json
-elixir scripts/verify.exs source model --sdk _build/dev/lib/ipse/ebin --input "$IPSE_EFFECT_ARTIFACTS/model" --selection json-none
-elixir scripts/build-artifact.exs embedding-actions --sdk _build/dev/lib/ipse/ebin --output "$IPSE_EFFECT_ARTIFACTS/embedding"
-elixir scripts/verify.exs source embedding --sdk _build/dev/lib/ipse/ebin --input "$IPSE_EFFECT_ARTIFACTS/embedding"
+elixir dev/build-artifact.exs mcp-actions --sdk _build/dev/lib/ipse/ebin --output "$IPSE_EFFECT_ARTIFACTS/mcp"
+elixir dev/verify.exs source mcp --sdk _build/dev/lib/ipse/ebin --input "$IPSE_EFFECT_ARTIFACTS/mcp"
+elixir dev/build-artifact.exs model-calls --sdk _build/dev/lib/ipse/ebin --output "$IPSE_EFFECT_ARTIFACTS/model"
+elixir dev/verify.exs source model --sdk _build/dev/lib/ipse/ebin --input "$IPSE_EFFECT_ARTIFACTS/model" --selection default
+elixir dev/verify.exs source model --sdk _build/dev/lib/ipse/ebin --input "$IPSE_EFFECT_ARTIFACTS/model" --selection none
+elixir dev/verify.exs source model --sdk _build/dev/lib/ipse/ebin --input "$IPSE_EFFECT_ARTIFACTS/model" --selection json
+elixir dev/verify.exs source model --sdk _build/dev/lib/ipse/ebin --input "$IPSE_EFFECT_ARTIFACTS/model" --selection json-none
+elixir dev/build-artifact.exs embedding-actions --sdk _build/dev/lib/ipse/ebin --output "$IPSE_EFFECT_ARTIFACTS/embedding"
+elixir dev/verify.exs source embedding --sdk _build/dev/lib/ipse/ebin --input "$IPSE_EFFECT_ARTIFACTS/embedding"
 ```
 
 The four model selections cover text/schema output with omitted/explicit Ollama
@@ -415,12 +415,12 @@ Choose a regression that proves the boundary, including its refusal path:
 
 | Boundary | Exercise | Focused checks |
 | --- | --- | --- |
-| File/shell ownership | Deny a write, then stop an owner whose shell is still running; require no denied file and no promoted interrupted success | `test/extensions_invocation_test.exs`, `test/extensions_event_job_test.exs` |
-| MCP source/capacity | Select a 65536-byte record ceiling; require zero discovery/effects and an unsealed journal. Compare exact 262144-byte encoded source with one byte less | `test/extensions_effect_result_test.exs`, `test/extensions_mcp_call_session_test.exs`, `test/mcp/` |
-| Text wire/result | Keep a small answer with more than 64 KiB valid framing; refuse above 1 MiB wire. Reject oversized text while retaining completed usage | `test/extensions_invocation_test.exs`, `test/extensions_model_call_test.exs`, `test/extensions_model_jobs_test.exs` |
-| Embedding identity | Change only a successful selection hash and recompute the superficial outcome hash; standalone Actions and Session must still refuse | `test/extensions_embedding_call_session_test.exs`, `test/embedding_profiles_test.exs` |
-| Embedding capacity | Four 4096-coordinate vectors under a 65536-byte ceiling must dispatch zero requests; normal-ceiling and one-vector controls complete | `test/extensions_embedding_result_test.exs`, `test/provider/embedding_test.exs` |
-| Settlement | Fail settlement after response; require known counters, no readable vectors and retained applicable liability | `test/embedding_accounting_test.exs`, `test/embedding_costs_test.exs` |
+| File/shell ownership | Deny a write, then stop an owner whose shell is still running; require no denied file and no promoted interrupted success | `test/ipse/extension/invocation_test.exs`, `test/ipse/extension/event_job_test.exs` |
+| MCP source/capacity | Select a 65536-byte record ceiling; require zero discovery/effects and an unsealed journal. Compare exact 262144-byte encoded source with one byte less | `test/ipse/extension/effect_result_test.exs`, `test/ipse/extension/mcp_call_session_test.exs`, `test/ipse/mcp/` |
+| Text wire/result | Keep a small answer with more than 64 KiB valid framing; refuse above 1 MiB wire. Reject oversized text while retaining completed usage | `test/ipse/extension/invocation_test.exs`, `test/ipse/extension/model_call_test.exs`, `test/ipse/extension/model_jobs_test.exs` |
+| Embedding identity | Change only a successful selection hash and recompute the superficial outcome hash; standalone Actions and Session must still refuse | `test/ipse/extension/embedding_call_session_test.exs`, `test/ipse/config/profiles_test.exs` |
+| Embedding capacity | Four 4096-coordinate vectors under a 65536-byte ceiling must dispatch zero requests; normal-ceiling and one-vector controls complete | `test/ipse/extension/embedding_result_test.exs`, `test/ipse/provider/embedding_test.exs` |
+| Settlement | Fail settlement after response; require known counters, no readable vectors and retained applicable liability | `test/ipse/usage/embedding_test.exs`, `test/ipse/usage/costs_test.exs` |
 
 Keep confirmed cleanup assertions. HTTP cleanup needs a local resource receipt
 after owner death, not merely a dead process. When changing shared inference,

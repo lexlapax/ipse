@@ -3,7 +3,7 @@
 Historical verification increment after `12dbc73`. The commit containing this
 record adds barrier-controlled Graph and Corpus checks and runs them in source
 and extracted-runtime environments. Use the current
-[contributor exercise](../../developer/knowledge-extensions.md#exercise-delayed-publication-and-interrupted-inference)
+[contributor exercise](../2026-10-22-before-structural-consolidation/docs/developer/knowledge-extensions.md#exercise-delayed-publication-and-interrupted-inference)
 for commands and execution flow. The [plan](../../plan.md#p27-optional-research-graph-and-rag)
 retains the complete P27 acceptance scope. These controls do not establish
 held-out quality or complete P27.

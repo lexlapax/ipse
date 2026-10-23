@@ -1,235 +1,248 @@
 # Follow a turn through Ipse
 
-Ipse is an OTP application that owns a conversation, requests an answer from a
-selected provider, and executes approved tool calls. Start here when you need to
-change the turn loop or understand where a new feature belongs. You will follow
-one request from the public Session API through persistence, provider work and
-cleanup, then identify the tests that protect each boundary.
+Start with a complete conversation, then follow its admitted work into the owner
+that can commit the result. Ipse keeps the agent loop, provider adapters, approvals,
+persistence, and orchestration in Elixir/OTP. Small Rust helpers own OS facilities.
+Optional domain behavior belongs in extensions unless it needs a generic host
+guarantee. [Setup](index.md) provides the development prerequisites.
 
-Read the [developer learning path](index.md) for build prerequisites. Domain
-features normally belong in [extensions](extensions.md); change the host when the
-requirement concerns authority, ownership, accounting or recovery shared by all
-features.
-
-## Run a session without an account
+## Run the shortest complete conversation
 
 From a built checkout:
 
 ```sh
-mix run examples/session/hello.exs
+mix run examples/session.exs
 ```
 
-The [example](../../examples/session/hello.exs) supplies a small provider module
-that returns a fixed assistant message. It creates isolated temporary state,
-submits a prompt, waits for completion, reads the saved journal and resumes the
-session without requesting another answer. It removes its files afterward.
-Expect:
+Read the [example](../../examples/session.exs) alongside its output. Its fixed
+provider returns an assistant message without credentials or a model service.
+The driver starts a Session in temporary state, prompts it, waits for completion,
+reads the journal, closes the owner, and resumes idle. Expect:
 
 ```text
 Session completed, journal retained its answer, and idle resume made no model call.
 ```
 
-This is the shortest complete path through the harness. The provider is a fixture,
-so the exercise uses no credentials, network model or billing. Change the returned
-text and run it again before modifying the host.
+Change only the fixture response and run it again. Find the response in the
+journal before cleanup. This connects the provider return value to durable
+conversation state; returning text alone is not the complete host contract.
 
 ## Find the owners
 
-[`Ipse.Application`](../../lib/ipse/application.ex) starts three shared services:
-a unique Registry, a task supervisor and the Sessions dynamic supervisor. Session
-children are temporary. A crashed conversation does not automatically restart and
-replay its work.
+[`Application`](../../lib/ipse/application.ex) starts a Registry, task supervisor,
+and dynamic Session supervisor. Session children are temporary. A crash does not
+automatically restart a conversation and replay its work.
 
 ```mermaid
 flowchart TD
-  App[Ipse.Supervisor] --> Registry[Ipse.Registry]
-  App --> Tasks[Ipse.Tasks]
-  App --> Sessions[Ipse.Sessions]
-  Sessions --> Session[One Ipse.Session per conversation]
+  App[Ipse.Supervisor] --> Registry[Registry]
+  App --> Tasks[Task supervisor]
+  App --> Sessions[Dynamic Session supervisor]
+  Sessions --> Session[One Session per conversation]
   Session --> Writer[Journal.Writer]
-  Session --> Guard[Session.Lock guardian]
-  Session --> Work[Owned provider and tool tasks]
-  Work --> Resources[TaskResources and OS helpers]
+  Session --> Lock[Session.Lock guardian]
+  Session --> Work[Owned provider/tool/extension work]
+  Work --> Resources[Session.Resources and native helpers]
 ```
 
-The arrows describe supervision or resource ownership, not permission grants.
-Session owns conversation messages, the current phase, approval/question state and
-which task result it will accept. Slow provider, tool and extension IO runs outside
-its GenServer. A task result carries identity that Session checks before advancing
-the turn; a result arriving after cancellation cannot revive the cancelled job.
+These arrows show supervision or resource ownership, not permission. Session owns
+the conversation, phase, pending decisions, and accepted task identity. Slow IO
+runs outside its GenServer. The implementation is divided by responsibility:
 
-The writer owns the append descriptor. The lock guardian retains the native
-advisory lock until tracked writers, workers, resource scopes and file effects
-have stopped. `TaskResources` retains OS-helper receipts across task completion.
-`FileEffect` fences an admitted filesystem critical section even if its caller
-exits during IO. These processes solve different completion problems. Replacing
-them with a task monitor alone would release ownership too early.
+| Read | Responsibility |
+| --- | --- |
+| [`Session`](../../lib/ipse/session.ex) | Public calls, caller/reference/phase admission, resources, accounting, cancellation, and authoritative state |
+| [`Session.Turn`](../../lib/ipse/session/turn.ex) | Prompt preparation, model requests, native tools, questions, and turn transitions |
+| [`Session.Invocation`](../../lib/ipse/session/invocation.ex) | Extension continuations, host calls, inference, and validated publication |
+| [`Session.Context`](../../lib/ipse/session/context.ex) | Effective messages, compaction, runtime facts, and context measurement |
+| [`Session.Saved`](../../lib/ipse/session/saved.ex) | Pure reconstruction plus validated inspection/handoff procedures |
 
-### Find extension code by its role
+Turn and Invocation are synchronous implementation modules in the same Session
+process. They have no independent mailbox or conversation state. For worker
+results, Session first matches the active task/ref/phase, closes its resource
+scope, and records the applicable accounting. Only then does the matching
+transition advance work. A stale result cannot revive a cancelled job.
 
-An extension calls the public SDK inside its worker. Host contracts admit those
-calls and preserve approval, persistence and process ownership. Bundled behavior
-uses that SDK too; its location reflects how Ipse distributes it.
+The writer owns the append descriptor. The lock guardian waits for registered
+writers, workers, scopes, and file effects before releasing the OS advisory lock.
+`Session.Resources.file_effect/2` starts a separately tracked critical-section
+process so filesystem IO can settle after caller death. A task monitor cannot
+replace either that barrier or native cleanup evidence. See
+[persistence](persistence.md) before changing close/recovery ordering.
 
-| Role | Source | Change here when you need to |
-| --- | --- | --- |
-| Public worker SDK | `lib/ipse/extension.ex`, `lib/ipse/extension/` | Change callbacks, value validation or result publication |
-| Generic host contracts | `lib/ipse/extensions/` | Admit and execute extension actions or manage workers |
-| Bundled domain behavior | `lib/ipse/builtins/` | Change shipped Memory, reports, prompt annotation or answer formatting |
-| Independent packages | `extensions/knowledge/` | Build Corpus, Graph or Research outside the host application |
+## Trace prompt admission and the provider response
 
-For example, follow a note write from `Ipse.Builtins.Memory` into the generic
-State action and Session's approval flow. The [memory exercise](memory.md) traces
-that complete continuation. Rate-card arithmetic belongs to `Ipse.Usage.Costs`;
-the bundled reports obtain canonical records through the same host read contracts
-available to an imported extension.
-
-## Trace prompt admission
-
-The public calls live at the top of
-[`session.ex`](../../lib/ipse/session.ex). In the example, the important pair is:
+The example's central exchange is:
 
 ```elixir
 :ok = Ipse.Session.prompt(session, "Say hello")
-
 receive do
   {:ipse, ^session, {:done, :ok}} -> :ok
 end
 ```
 
-The first `:ok` means the prompt was accepted. It does not mean inference or tools
-finished. Subscriber events arrive in `{:ipse, session_pid, event}` envelopes.
-The terminal client in [`cli.ex`](../../lib/ipse/cli.ex) translates those events
-into display and user decisions.
+The return `:ok` means admission. The subscriber event means turn completion.
+Follow Session's prompt handler into `Turn.prompt/2`. It bounds input, expands
+selected skills, retains the accepted prompt, and starts registered owned work.
+[`Workspace`](../../lib/ipse/workspace.ex) supplies saved instructions/skills.
+Those documents are untrusted reference text, never authority for actions.
 
-Follow `handle_call({:prompt, text}, ...)` in Session. Admission rejects invalid or
-oversized input, checks whether work is already active, records accepted input,
-and starts the appropriate owned task. Workspace instructions and skills come
-from the saved [workspace context](workspace-context.md). They are untrusted
-reference material, not action permission. The effective provider request is a
-projection of retained conversation and context, rather than an arbitrary copy of
-the entire journal.
+Context construction projects retained conversation and references into the next
+provider request. Input, active context, provider response, and journal growth
+have separate bounds. Changing one does not enlarge the others. Follow
+[workspace context](workspace-context.md), [configuration](configuration.md),
+and [persistence](persistence.md) when choosing which limit to change.
 
-For a change to input handling, distinguish four separate bounds: input bytes,
-active context bytes, provider response limits and journal growth. Increasing one
-does not increase the others. Use [compaction](workspace-context.md#plan-a-reduction-at-the-model-boundary),
-[provider limits](provider-limits.md) and [persistence](persistence.md) to choose
-the correct boundary.
+`Turn.launch_request` admits usage and budget liability before provider dispatch.
+[`Provider.request_complete/4`](../../lib/ipse/provider.ex) resolves the selected
+route and credentials, then calls its adapter. The example's `provider_module`
+hook substitutes a controlled transport; it is not an operator configuration
+field or fallback provider. Production OpenAI, Anthropic, and Ollama adapters
+retain separate wire formats and provider continuation data.
 
-## Follow the provider result
+A provider returns assistant data separately from usage metadata. Preserve native
+continuation when changing visible text, and never render hidden reasoning.
+[`Provider.Transport`](../../lib/ipse/provider/transport.ex) bounds response bytes,
+deadlines, and sanitized errors; [`Provider.Stream`](../../lib/ipse/provider/stream.ex)
+owns bounded line/SSE/fragment assembly. [`HTTP`](../../lib/ipse/http.ex) owns
+isolated clients/proxy policy across inference, auth, and MCP.
+[`Auth`](../../lib/ipse/auth.ex) owns public login, identity validation, protected
+storage, and refresh locking. No failure silently changes billing or endpoint.
 
-[`Ipse.Provider`](../../lib/ipse/provider.ex) selects the configured adapter.
-Provider adapters translate wire responses into assistant messages, tool-call
-proposals, visible stream events and usage facts. The `provider_module` hook used
-by the example and Session tests replaces that transport for controlled fixtures.
-It is not an operator configuration field or an automatic fallback provider.
-
-Read the returned value in the example:
-
-```elixir
-{:ok,
- %{"role" => "assistant", "content" => "Hello from the session example."},
- %{}}
-```
-
-The assistant message is separate from usage metadata. Production adapters also
-preserve provider-native continuation information. Do not render hidden reasoning
-or discard required native data when changing the visible answer path. The
-[private text stream](text-streams.md) is a separate bounded delivery contract.
-
-A provider may propose tools instead of a final answer. Session validates the
-whole response before dispatch: malformed identities or an over-limit response
-must not execute its first apparently valid call. Request usage and
-[budget reservations](budgets.md) survive later response or transport failures.
-Provider errors never silently change endpoint, model, account or billing mode.
+Visible streaming is a separate delivery contract from final answer admission.
+A required consumer failure can prevent admission after text was already shown.
+Usage and reservations survive later transport, framing, or response failures.
+Read [lifecycle delivery](lifecycle-events.md) and [accounting](accounting.md)
+before modifying this path.
 
 ## Trace a tool and its approval
 
-Use `writes wait for approval; denied actions remain in transcript` in
-[`session_test.exs`](../../test/session_test.exs) as the second reading exercise.
-Its fixture provider proposes a real `write` call. The test receives the full
-proposal, denies it and verifies that no file was created.
+Find the write-denial case in [`session_test.exs`](../../test/ipse/session_test.exs).
+Its fixture proposes a real file write, receives the complete approval proposal,
+denies it, and verifies no target exists. Then follow the allowed case:
 
-The sequence to preserve is:
+1. Admit the response's call identities, counts, and aggregate argument bytes.
+   Then decode and validate each call's arguments, workspace policy, and nested
+   guidance when that call reaches the head of the queue. Earlier calls may have
+   completed before a later call refuses; a batch is not a transaction.
+2. Bind approval to the exact proposal. Interactive terminal codes and embedded
+   `Session.approve/3` references are distinct client representations of that decision.
+3. Journal admitted intent before starting the effect in owned work.
+4. Retain outcome and cleanup evidence before admitting dependent work.
 
-1. Validate the call identity, arguments, workspace policy and applicable nested
-   instructions before asking for approval or starting the effect.
-2. Bind approval to that exact proposal. A question answer or skill instruction
-   cannot grant mutation permission.
-3. Journal admitted intent before execution. Run the effect in owned work.
-4. Record its outcome and cleanup evidence before admitting dependent work.
+[`Tools`](../../lib/ipse/tools.ex) owns native tool definitions and call admission.
+Specific research, question, delegation, and sandbox implementations live in
+`lib/ipse/tools/`. `CLI` parses/starts/closes the application; `CLI.Terminal` handles
+subscriber display, input codes, queued tasks, and interactive decisions.
+A skill, question answer, or instruction file grants no mutation permission.
+Headless effects require explicit `--yes`.
 
-`read` is ordinarily read-only; `write`, `edit`, `shell`, MCP and delegation have
-explicit action rules. Interactive CLI approvals use a fresh displayed code.
-Embedded clients call `Session.approve/3` with the received reference. Headless
-mutation is denied without `--yes`. See [tool sources](lifecycle-events.md#bind-admitted-tool-input-and-result) and
-[workflow actions](extension-effects.md#reuse-file-and-shell-ownership) before adding another tool path.
+Known setup refusal can be `not_started`. Missing evidence after execution may
+have begun is `unknown`. A dead consumer is not proof the effect failed. That
+classification governs whether another attempt could repeat a real action.
 
-A failed setup known to precede execution can be `not_started`. Loss after an
-effect might have begun is unknown. Never infer a definite failure merely because
-the consumer died or a result was not recorded. That distinction determines
-whether a user could safely request the action again.
+## Suspend for a question
 
-## Understand completion and recovery
+Read [`Questions`](../../lib/ipse/tools/questions.ex) and the
+[pure question cases](../../test/ipse/tools/questions_test.exs). This is a complete
+single-choice request:
 
-These are different facts:
-
-| Observation | What it establishes |
-| --- | --- |
-| `prompt/2` returns `:ok` | Input was accepted |
-| A subscriber receives `{:done, :ok}` | The turn reached its successful terminal state |
-| A journal append succeeds | That record was durably accepted by the writer |
-| A task exits | That BEAM process stopped |
-| A native cleanup receipt succeeds | The helper confirmed its supported cleanup contract |
-| `close_confirmed/1` succeeds | The owned Session acknowledged close and exited |
-
-The example deliberately uses `close_confirmed/1`. Ordinary `close/1` can accept
-an already-dead Session where an embedded owner requires the stronger
-acknowledgment. Neither API converts missing helper evidence into proof that all
-possible descendants stopped. In particular, deliberately detached macOS
-children retain the [documented sandbox limits](sandbox.md).
-
-On resume, Session acquires ownership, loads and validates canonical records,
-checks receipts and source links, then repairs only a permissible torn tail.
-`Session.Saved` reconstructs pure facts after reload; Session retains recovery
-that reads source pages and starts owned resources. The current invocation's
-parent, pending action and recorded outcomes share `Session.Invocation`.
-Session retains lifecycle phase, approval callers, timers and writer reservations.
-It does not replay an interrupted tool, initialize an old unfinished callback or
-ask the provider to continue while idle. Read the
-[journal chapter](persistence.md) before changing restore order.
-
-## Choose the place for a change
-
-| Requirement | Start reading |
-| --- | --- |
-| Add note retrieval, a report or a domain command | [Extension authoring](extensions.md) |
-| Add a provider setting or response field | [Profiles](configuration.md#trace-main-and-child-profile-selection), [provider limits](provider-limits.md) |
-| Change shared approval or cancellation behavior | Session and its behavioral tests |
-| Change file/process completion | `FileEffect`, `TaskResources`, `Session.Lock`, [native sandbox](sandbox.md) |
-| Change durable records or recovery | [Persistence](persistence.md), [lifecycle sources](lifecycle-events.md) |
-| Decode bounded host JSON or preserve raw/canonical digests | `Ipse.JSON`, `test/json_test.exs`, [checkpoint identities](workspace-context.md#commit-and-reconstruct-the-projection) |
-| Add external tools | [MCP](mcp.md), [dependency policy](dependencies.md) |
-
-Keep domain logic outside Session. Use existing OTP, schema, journal and helper
-adapters before creating new protocol or validation machinery. Every new external
-action needs an explicit owner, authority boundary and uncertain-outcome rule.
-
-## Practice making a safe change
-
-Add a second fixed response to the example provider, selected by an explicit
-field in its fixture configuration. Observe where that field is read and where
-messages become durable. Then extend a Session fixture to propose a write and
-verify denial, approval and idle resume independently.
-
-Run the closest behavioral checks first:
-
-```sh
-mix test test/session_test.exs test/question_session_test.exs
-mix test test/tool_recovery_test.exs test/task_resources_test.exs
+```json
+{"questions":[{"id":"stack","prompt":"Choose a stack","kind":"single","options":[{"id":"local","label":"Local"},{"id":"remote","label":"Remote"}],"recommended":"local"}]}
 ```
 
-The first set exercises the conversation and user-decision boundary. The second
-set exercises unknown effects and owned cleanup. They use synthetic providers
-and temporary files. Follow the [verification guide](testing.md) for the complete
-handoff checks and OS-specific enforcement.
+The complete answer is `%{"stack" => "remote"}`. A recommendation is not an answer.
+One request contains one to three questions. Choice questions have two to eight
+unique option IDs; text questions omit choice fields or use null. Unknown fields,
+stale IDs, missing answers, duplicate choices, and oversized values refuse.
+The schema's nullable optional fields and provider `strict: false` do not weaken
+host validation. Question/answer objects allow 16 KiB; free text allows 8000 bytes.
+
+Session emits `{:ipse, pid, {:question, call_id, arguments}}`. The provider call ID
+is separate from each question ID. Before emission it durably records the validated
+question, model-step/message count, and canonical effective-context digest. No
+model worker remains active during the wait. Later calls from the old batch are
+not started; after an explicit answer the model reconsiders with continuation data.
+`operator_answer` commits the complete validated bundle before continuation.
+Cancellation closes the question without inventing an answer.
+
+Terminal partial answers stay client-local until complete. Its fresh
+`answer CODE VALUE` changes after each accepted partial reply, preventing stale
+buffered input from answering a new question. `=` escapes literal slash text.
+Headless and child sessions refuse required questions instead of inventing answers.
+
+Saved reconstruction validates questions against the effective context at their
+chronological position. Temporary checkpoint normalization must not synthesize
+unknown results that hide later real results. Resume restores unanswered questions
+without inference; a committed answer survives a crash without restarting work.
+Corrupt bindings refuse before tail repair. Exercise stale input in Terminal as
+well as Session: a valid Session answer can still originate from a broken UI.
+
+## Own child conversations
+
+[`Tools.Delegation`](../../lib/ipse/tools/delegation.ex) owns definitions, route
+policy, serial/pair execution, and child completion validation. It runs real tasks
+and real child Sessions. Session admits child registrations and forwarded approvals
+against the active parent job and exact origin call. Register before prompting a
+child; stale/unrelated workers cannot attach work.
+
+A child receives selected task/context, workspace policy, saved instructions, and
+the explicit configured route. It has its own lock, journal, approvals, and usage.
+The parent gets only a bounded untrusted result and host routing facts, not the
+child transcript. Children cannot use MCP, recursively delegate, or ask structured
+questions. Approval of delegation grants no later child effects.
+
+Two children per turn, six main/helper calls each, 120 seconds active time, 8-KiB
+task/context fields, 16-KiB final text, and 32-KiB displayed approval arguments
+bound work. Approval waits pause active time. `delegate_parallel` admits exactly
+two task objects, keeps result order, and cancels a sibling after an unknown result.
+Only authorized group workers can register or forward approvals.
+
+Parent serialization permits one child mutation at a time. File claims use
+normalized/case-folded path keys while retaining original spelling in approval
+and execution. Cross-child equivalent paths conflict; parallel mutations reject
+hardlinks. Shell claims the whole workspace. This is conservative conflict
+avoidance, without snapshots or protection against unrelated processes/reads.
+
+The worker closes the child before reporting. Session binds `delegation_finished`
+to the actual start source, child/request/turn, and observed duration. Process
+exit cannot certify cleanup or erase a report already received. Failure, timeout,
+oversized output, or lost cleanup remains unknown and stops dependent work.
+Parent death/cancellation stops registered children. Detached descendants retain
+[OS limitations](sandbox.md). Resume starts no children; a child journal cannot
+resume as a standalone root. Inspect both journals and files before a new attempt.
+
+## Place domain behavior and verify completion
+
+| Ownership | Location |
+| --- | --- |
+| Generic public SDK | `lib/ipse/extension.ex` |
+| Generic extension host/worker contracts | `lib/ipse/extension/` |
+| Shipped Memory/reports/transforms | `extensions/bundled/` |
+| Independently built Corpus/Graph/Research | `extensions/knowledge/` |
+
+The feature tree is `extensions/`; distribution is a build choice. Bundled entry
+points retain `Ipse.Builtins` names and compile with the host. Independent packages
+use separately built workers and remain unloaded in the host. Follow
+[extension authoring](extensions.md) before adding domain behavior. State,
+composition, and Memory are taught together in [extension state](extension-state.md).
+
+Distinguish input admission, turn completion, durable append, task exit, native
+cleanup, and confirmed Session close. `close_confirmed/1` requires owner
+acknowledgment and exit. `close/1` also supports idempotent already-dead owners.
+Neither proves every deliberately detached descendant stopped.
+
+For a change exercise, extend the fixed provider to propose a write. Verify denial,
+approval, and idle resume independently, then trace a pending question through
+saved recovery. Use matching feature suites:
+
+```sh
+mix test test/ipse/session_test.exs test/ipse/tools/questions_integration_test.exs
+mix test test/ipse/session/recovery_test.exs test/ipse/session/resources_test.exs
+mix test test/ipse/tools/delegation_integration_test.exs test/ipse/tools/delegation_parallel_test.exs
+```
+
+These fixtures use temporary files and scripted providers. A pure helper test
+cannot prove parent death stops a child or a delayed write keeps its lock. Add
+a real ownership fixture for those changes, then follow [testing](testing.md)
+for source, installed, platform, documentation, and independent-review checks.

@@ -6,7 +6,7 @@
 
 The extension lab exercises domain behavior against candidate core
 [`3b0ef78`](../../../../../examples/extension-lab/FROZEN_CORE). Its implementation lives
-entirely under [examples/extension-lab](../../../../../examples/extension-lab/README.md),
+entirely under [examples/extension-lab](../../../2026-10-22-before-structural-consolidation/examples/extension-lab/README.md),
 with an integration test and package-verification workflow. No domain feature
 branch, runtime module, native helper change or project dependency is required.
 This is one layer of P22 completion evidence. Production knowledge engines remain
@@ -127,7 +127,7 @@ event publication, concurrent effectful jobs, remote installation and media stay
 explicit negotiated enhancements, not silently available callbacks. The
 [plan](../plan.md#p22-extension-scaffold-and-lifecycle-hooks) records the completion
 scope and future capabilities.
-P23F adds a separate [accounted model artifact proof](../../../../../examples/model-calls/README.md);
+P23F adds a separate [accounted model artifact proof](../../../2026-10-22-before-structural-consolidation/examples/model-calls/README.md);
 its verification does not alter this lab's historical frozen scope. P24 now
 challenges the architecture externally and establishes baseline security review;
 P25 researches knowledge designs and exercises self-development, including final

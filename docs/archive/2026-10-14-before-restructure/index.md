@@ -11,7 +11,7 @@ unchanged to preserve its legal text.
 | [README.md](README.md) | [Overview](../../../README.md), [usage](../../operator/usage.md) |
 | [AGENTS.md](AGENTS.md) | [Agent instructions](../../../AGENTS.md) |
 | [CONTRIBUTING.md](CONTRIBUTING.md) | [Contributing](../../../CONTRIBUTING.md) |
-| [docs/arch-linux.md](docs/arch-linux.md) | [Setup](../../operator/arch-linux.md), [troubleshooting](../../operator/troubleshooting.md) |
+| [docs/arch-linux.md](docs/arch-linux.md) | [Setup](../../operator/arch-linux.md), [troubleshooting](../2026-10-22-before-structural-consolidation/docs/operator/troubleshooting.md) |
 | [docs/architecture.md](docs/architecture.md) | [Architecture](../../developer/architecture.md) |
 | [docs/testing.md](docs/testing.md) | [Testing and evidence](../../developer/testing.md) |
 | [docs/plan.md](docs/plan.md) | [Plan](../../plan.md) |

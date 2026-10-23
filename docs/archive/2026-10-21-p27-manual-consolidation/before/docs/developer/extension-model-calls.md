@@ -229,6 +229,6 @@ ceiling. All four check actual loopback routing,
 complete approval, private response, canonical usage, budgets, and unchanged
 idle-resume state. Tests add limits,
 parallel children, cancellation, worker death, and corruption. Use the package
-procedure in [the example README](../../../../../../examples/model-calls/README.md) for an
+procedure in [the example README](../../../../2026-10-22-before-structural-consolidation/examples/model-calls/README.md) for an
 unchanged installed release. These are credential-free fixtures; actual billing
 and model quality need separate live evaluation.

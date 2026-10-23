@@ -7,13 +7,13 @@ Start with the explicit preset below. It uses no model, embeddings, MCP server,
 or network service.
 
 Graph is an independently built extension. It is separate from
-[Corpus](corpus.md), [Research](research-extensions.md), and the [memory extensions](memory.md).
+[Corpus](corpus.md), [Research](research.md), and the [memory extensions](memory.md).
 Importing or selecting one does not enable the others.
 
 ## Build and review an explicit graph
 
 You need the source checkout and its [supported toolchain](arch-linux.md).
-Run `./scripts/build.sh` from the repository root first, then run the following
+Run `./dev/build.sh` from the repository root first, then run the following
 commands in that same terminal:
 
 ```sh
@@ -286,7 +286,7 @@ This read starts no traversal, extraction, worker or model call. It returns a
 historical receipt, not a new eligibility check on its sources. Suppression or
 expiry affects future queries while earlier journal bytes remain. A model can
 read a saved result only after an original tool invocation discloses it in that
-session; direct command output stays separate. See [saved-result reading](extensions.md#read-a-saved-result)
+session; direct command output stays separate. See [saved-result reading](extensions.md#invoke-a-command-and-inspect-its-complete-result)
 for bounded views, cursors and capacity or recovery errors.
 
 ## Replace, suppress, and recover a source

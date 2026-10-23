@@ -2,12 +2,13 @@
 
 The journal is the recovery authority for conversation and admitted effects.
 `Ipse.Journal` creates/reads JSONL and handles inactive appends and allowed tail
-repair. `Ipse.Journal.Writer` owns an active append descriptor. `Journal.Reader`
-decodes bounded records; `Journal.Limits` enforces finite growth. The independent
+repair. `Ipse.Journal.Writer` owns an active append descriptor. The same `Journal` module
+decodes bounded records and enforces finite growth. The independent
 `Ipse.Session.Lock` guardian retains the Rust advisory lock until owned work has
 actually quiesced. Lock files remain in place to preserve inode identity.
 
-Start with `lib/ipse/journal/writer.ex`, `file_effect.ex`, and `session/lock.ex`.
+Start with `lib/ipse/journal.ex`, `journal/writer.ex`,
+`session/resources.ex`, and `session/lock.ex`.
 Follow a synced tool intent into execution before attempting a storage refactor.
 The timing of the receipt is part of correctness, not an implementation detail.
 
@@ -44,8 +45,8 @@ true = before == File.read!(path)
 File.rm_rf!(scratch)
 ```
 
-Then follow the interrupted-write case in `test/tool_recovery_test.exs` and the
-pending-question cases in `test/question_session_test.exs`. Verify that an idle
+Then follow the interrupted-write case in `test/ipse/session/recovery_test.exs` and the
+pending-question cases in `test/ipse/tools/questions_integration_test.exs`. Verify that an idle
 resume preserves the journal and workspace, and that a saved question still
 requires a fresh explicit answer. `Questions.tool_result/3` supplies the same
 message shape to live question handling and saved-checkpoint validation.
@@ -79,13 +80,13 @@ Never retry the same append merely because its caller timed out.
 ## Keep the lock longer than the caller
 
 A BEAM process can die while ordinary file-server or dirty IO continues.
-`Ipse.FileEffect` therefore owns admitted writes until synchronous IO returns and
-is tracked before dispatch. Cancellation does not kill that completion owner.
+`Ipse.Session.Resources.file_effect/2` starts a completion owner before dispatch
+and retains it until synchronous IO returns. Cancellation does not kill that completion owner.
 The lock guardian waits for writer, root/nested workers, scopes, registered
 resources, child guards, and filesystem completion owners before unlocking,
 including after an untrappable Session death.
 
-Read the blocked-write fixture in `test/journal_writer_test.exs`. Its FIFO delays
+Read the blocked-write fixture in `test/ipse/journal/writer_test.exs`. Its FIFO delays
 real IO while Session dies. A replacement session must remain locked until the
 reader drains and completion returns. A monitor `DOWN` for the original caller
 cannot establish that fact. A stuck completion owner can retain the lock
@@ -169,13 +170,13 @@ model context, not retained evidence. Automatic rotation, deletion, redaction, a
 secure erasure are not implemented.
 
 ```sh
-mix test test/ipse/journal_test.exs test/journal_writer_test.exs test/journal_limits_test.exs test/journal_reservations_test.exs test/inactive_journal_test.exs
+mix test test/ipse/journal_test.exs test/ipse/journal/writer_test.exs test/ipse/journal/reservations_test.exs
 ```
 
 Use writer tests for ownership/IO races and limits tests for sealing and strict
 recovery. A meaningful storage change must preserve intent-before-effect,
 confirmation-before-success, lock retention after owner loss, and unknown outcomes
-without replay. See [budget storage](budgets.md) for its stronger live-prefix check.
+without replay. See [budget storage](accounting.md) for its stronger live-prefix check.
 
 Follow the reservation test with a 1,024-byte journal policy. It reserves every
 remaining nonterminal byte, rejects an ordinary append without changing the

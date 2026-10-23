@@ -2,8 +2,8 @@
 
 Historical implementation and verification record. The containing commit follows
 `3181f54`. Current procedures are in the
-[evaluation training manual](../../developer/knowledge-evaluation.md#declare-the-complete-comparison)
-and [Research user manual](../../operator/research-extensions.md).
+[evaluation training manual](../2026-10-22-before-structural-consolidation/docs/developer/knowledge-evaluation.md#declare-the-complete-comparison)
+and [Research user manual](../2026-10-22-before-structural-consolidation/docs/operator/research-extensions.md).
 This increment does not complete P27 or establish held-out quality.
 
 ## Declare every strategy without reading data

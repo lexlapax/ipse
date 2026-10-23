@@ -1,6 +1,7 @@
 defmodule Ipse.Provider.Ollama do
   @moduledoc "Ollama native streaming chat adapter."
-  alias Ipse.Provider.{Fragments, HTTP, Lines}
+  alias Ipse.Provider.Stream
+  alias Ipse.Provider.Transport
 
   def endpoint(config), do: Ipse.Provider.endpoint(config, "http://127.0.0.1:11434", "/api/chat")
 
@@ -34,7 +35,7 @@ defmodule Ipse.Provider.Ollama do
       "stream" => true
     }
 
-    limit = Ipse.Provider.Limits.output_tokens(config)
+    limit = Ipse.Provider.output_tokens(config)
     body = if limit, do: Map.put(body, "options", %{"num_predict" => limit}), else: body
     body = if config[:reasoning_effort] == "none", do: Map.put(body, "think", false), else: body
 
@@ -50,7 +51,7 @@ defmodule Ipse.Provider.Ollama do
           "think" => false,
           "options" => %{
             "temperature" => 0,
-            "num_predict" => Ipse.Provider.Limits.narrow(limit, 4096)
+            "num_predict" => Ipse.Provider.narrow_output_tokens(limit, 4096)
           }
         })
       else
@@ -58,9 +59,9 @@ defmodule Ipse.Provider.Ollama do
       end
 
     state = %{
-      lines: Lines.new(:lf),
-      content: Fragments.new(),
-      thinking: Fragments.new(),
+      lines: Stream.new_lines(:lf),
+      content: Stream.new_buffer(),
+      thinking: Stream.new_buffer(),
       calls: [],
       call_count: 0,
       done: false,
@@ -74,15 +75,15 @@ defmodule Ipse.Provider.Ollama do
         else: [{"authorization", "Bearer " <> config[:api_key]}]
 
     with {:ok, state} <-
-           HTTP.stream(url, headers, body, config, state, fn state, chunk ->
+           Transport.stream(url, headers, body, config, state, fn state, chunk ->
              consume(state, chunk, emit)
            end),
          {:ok, state} <- last_line(state, emit),
-         :ok <- Fragments.check_deadline(state) do
+         :ok <- Stream.check_deadline(state) do
       if state.done do
         response_id = :crypto.strong_rand_bytes(8) |> Base.encode16(case: :lower)
-        content = Fragments.value(state.content)
-        thinking = Fragments.value(state.thinking)
+        content = Stream.buffer_value(state.content)
+        thinking = Stream.buffer_value(state.thinking)
         native_calls = Enum.reverse(state.calls)
 
         calls =
@@ -117,7 +118,7 @@ defmodule Ipse.Provider.Ollama do
             else: message
 
         message = if calls == [], do: message, else: Map.put(message, "tool_calls", calls)
-        with :ok <- Fragments.check_deadline(state), do: {:ok, message, state.usage}
+        with :ok <- Stream.check_deadline(state), do: {:ok, message, state.usage}
       else
         {:error, "Ollama stream ended before its completion marker; no tools were executed."}
       end
@@ -148,26 +149,28 @@ defmodule Ipse.Provider.Ollama do
 
   defp consume(state, chunk, emit) do
     with {:ok, parser, state} <-
-           Lines.reduce(state.lines, chunk, state, fn line, state -> line(state, line, emit) end),
+           Stream.reduce_lines(state.lines, chunk, state, fn line, state ->
+             line(state, line, emit)
+           end),
          do: {:ok, %{state | lines: parser}}
   end
 
   defp last_line(state, emit) do
-    with :ok <- Fragments.check_deadline(state),
-         {:ok, tail, parser} <- Lines.finish(state.lines) do
+    with :ok <- Stream.check_deadline(state),
+         {:ok, tail, parser} <- Stream.finish_lines(state.lines) do
       state = %{state | lines: parser}
       if is_nil(tail), do: {:ok, state}, else: line(state, tail, emit)
     end
   end
 
   defp line(state, "", _) do
-    with :ok <- Fragments.check_deadline(state), do: {:ok, state}
+    with :ok <- Stream.check_deadline(state), do: {:ok, state}
   end
 
   defp line(state, line, emit) do
-    with {:ok, state} <- Fragments.tick(state),
+    with {:ok, state} <- Stream.tick(state),
          {:ok, state} <- decode_line(state, line, emit),
-         :ok <- Fragments.check_deadline(state),
+         :ok <- Stream.check_deadline(state),
          do: {:ok, state}
   end
 
@@ -198,8 +201,8 @@ defmodule Ipse.Provider.Ollama do
            "Ollama reached a generation limit; the response is incomplete and no tools were executed."}
         else
           with true <- is_list(calls) and length(Enum.take(calls, 33)) + state.call_count <= 32,
-               {:ok, content} <- Fragments.append(state.content, delta),
-               {:ok, thinking} <- Fragments.append(state.thinking, message["thinking"] || "") do
+               {:ok, content} <- Stream.append_buffer(state.content, delta),
+               {:ok, thinking} <- Stream.append_buffer(state.thinking, message["thinking"] || "") do
             if delta != "", do: emit.({:text, delta})
 
             {:ok,
@@ -211,11 +214,10 @@ defmodule Ipse.Provider.Ollama do
                  call_count: state.call_count + length(calls),
                  done: state.done or data["done"] == true,
                  usage: usage,
-                 reported_model:
-                   Ipse.RuntimeInfo.model_name(data["model"]) || state.reported_model
+                 reported_model: Ipse.Provider.model_name(data["model"]) || state.reported_model
              }}
           else
-            _ -> Fragments.error()
+            _ -> Stream.error()
           end
         end
 

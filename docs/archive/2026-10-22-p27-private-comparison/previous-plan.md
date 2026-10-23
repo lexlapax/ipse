@@ -129,7 +129,7 @@ retains source/installed protocol evidence and controlled Research repairs. It
 does not establish model quality or select an optional engine. The full frozen
 held-out evaluation remains required before completion.
 
-The [complete comparison declaration](../../developer/knowledge-evaluation.md#declare-the-complete-comparison)
+The [complete comparison declaration](../2026-10-22-before-structural-consolidation/docs/developer/knowledge-evaluation.md#declare-the-complete-comparison)
 generates all seven strategies and explicit budgets without opening inputs.
 Its [initial capacity record](../../archive/2026-10-19-p27-knowledge-packages/benchmark-declaration.md)
 and [whole-run/identity controls](../../archive/2026-10-19-p27-knowledge-packages/comparison-capacity.md)
@@ -158,7 +158,7 @@ The [storage lifecycle exercise](../../archive/2026-10-19-p27-knowledge-packages
 adds explicit post-prediction suppression/collection, exact page approvals and
 per-projection inventories. Its controlled fixtures remain separate from the
 required held-out resource comparison.
-The [review preparation workflow](../../developer/knowledge-evaluation.md#prepare-independent-review-from-finalized-predictions)
+The [review preparation workflow](../2026-10-22-before-structural-consolidation/docs/developer/knowledge-evaluation.md#prepare-independent-review-from-finalized-predictions)
 verifies the complete hashed grid before references, builds blinded review
 packets and separates literal integrity from independent semantic verdicts.
 Its [controlled verification](../../archive/2026-10-19-p27-knowledge-packages/review-preparation.md)

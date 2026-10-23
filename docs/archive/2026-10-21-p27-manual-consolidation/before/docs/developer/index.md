@@ -43,7 +43,7 @@ platform exclusion as enforcement evidence.
    example, locate each owner and distinguish acceptance from completion.
 2. [Follow durable records](../../../../../developer/persistence.md) through intent, effect, result and
    saved validation. Understand what remains unknown after interruption.
-3. [Review authority and ownership](../../../../../developer/reviewing-changes.md) using a complete source
+3. [Review authority and ownership](../../../../2026-10-22-before-structural-consolidation/docs/developer/reviewing-changes.md) using a complete source
    path and both allowed/refused controls.
 4. [Verify the change](testing.md) with the nearest fixture. Use the common
    source/installed proof command for the changed contract, then run applicable
@@ -63,12 +63,12 @@ Read [AGENTS.md](../../../../../../AGENTS.md) for repository conventions and
 | Route main, child and helper requests explicitly | [Model profiles](model-profiles.md) |
 | Admit instruction/skill snapshots and refresh them | [Workspace context](workspace-context.md) |
 | Reduce active context while preserving history | [Compaction](context-compaction.md) |
-| Ask and restore explicit user questions | [Operator questions](../../../../../developer/operator-questions.md) |
-| Bound provider requests and response assembly | [Provider limits](../../../../../developer/provider-limits.md) |
+| Ask and restore explicit user questions | [Operator questions](../../../../2026-10-22-before-structural-consolidation/docs/developer/operator-questions.md) |
+| Bound provider requests and response assembly | [Provider limits](../../../../2026-10-22-before-structural-consolidation/docs/developer/provider-limits.md) |
 | Retain canonical usage and unknown coverage | [Usage accounting](usage-accounting.md) |
 | Calculate configured local cost estimates | [Costs](costs.md) |
-| Reserve shared request quotas conservatively | [Budgets](../../../../../developer/budgets.md) |
-| Preserve research source/claim provenance | [Research](../../../../../developer/research.md) |
+| Reserve shared request quotas conservatively | [Budgets](../../../../2026-10-22-before-structural-consolidation/docs/developer/budgets.md) |
+| Preserve research source/claim provenance | [Research](../../../../2026-10-22-before-structural-consolidation/docs/developer/research.md) |
 
 ## Work across process boundaries
 
@@ -76,12 +76,12 @@ Read [AGENTS.md](../../../../../../AGENTS.md) for repository conventions and
 | --- | --- |
 | Launch, confine and confirm local OS work | [Native sandbox](../../../../../developer/sandbox.md) |
 | Integrate external tools through bounded transports | [MCP](../../../../../developer/mcp.md) |
-| Own child conversations and their approvals | [Delegation](../../../../../developer/delegation.md) |
+| Own child conversations and their approvals | [Delegation](../../../../2026-10-22-before-structural-consolidation/docs/developer/delegation.md) |
 | Deliver bounded visible text to clients/workers | [Text streams](text-streams.md) |
 | Bind text frames to negotiated event identities | [Stream events](stream-events.md) |
 | Project durable metadata and runtime epochs | [Lifecycle events](lifecycle-events.md) |
 | Bind admitted tool input/results to sources | [Tool events](tool-events.md) |
-| Capture optional sanitized diagnostics | [Observability](../../../../../developer/observability.md) |
+| Capture optional sanitized diagnostics | [Observability](../../../../2026-10-22-before-structural-consolidation/docs/developer/observability.md) |
 
 Supervision, approval and OS confinement are distinct boundaries. A task exit
 cannot confirm a started OS effect or revoke a remote request. Work through the
@@ -95,7 +95,7 @@ synthetic check. Then choose the host interaction you need:
 
 | Goal | Chapter |
 | --- | --- |
-| Import an inert package and launch its owned VM | [Artifacts and workers](../../../../../developer/extension-artifacts.md) |
+| Import an inert package and launch its owned VM | [Artifacts and workers](../../../../2026-10-22-before-structural-consolidation/docs/developer/extension-artifacts.md) |
 | Transform prompt or presentation projections | [Hooks](extension-hooks.md) |
 | Export typed tools, commands and value services | [Invocations](../../../../../developer/extension-invocations.md) |
 | Use scoped CAS storage and durable continuations | [Host calls](extension-host-calls.md) |
@@ -114,7 +114,7 @@ synthetic check. Then choose the host interaction you need:
 | Verify unchanged artifacts in an installed runtime | [Compatibility proofs](extension-proof.md) |
 | Combine these contracts into a complete feature | [Worked scenarios](extension-scenarios.md) |
 
-[Explicit memory](../../../../../developer/memory.md) is a worked domain implementation using generic
+[Explicit memory](../../../../2026-10-22-before-structural-consolidation/docs/developer/memory.md) is a worked domain implementation using generic
 state/actions. [Knowledge extensions](../../../../../developer/knowledge-extensions.md) traces the
 independent Corpus, Research and Graph workers, source-root publication, exact
 citations and projection preflight, with a ranker change exercise.
@@ -123,7 +123,7 @@ detached answer custody, prediction/label separation,
 captured runtime preparation and cold audit, complete measured execution through
 the optional Linux backend, private model-service ownership and separate
 retrieval, span and semantic measurements.
-[Capability placement](../../../../../developer/runtime-capabilities.md) helps decide when a new generic
+[Capability placement](../../../../2026-10-22-before-structural-consolidation/docs/developer/runtime-capabilities.md) helps decide when a new generic
 host contract is necessary.
 
 ## Finish with a reviewable result
@@ -132,7 +132,7 @@ Keep a change focused on an observable behavior. Add a meaningful regression whe
 state/protocol behavior changes, update the affected manual as a coherent chapter,
 and run the [handoff checks](testing.md). Use [dependency maintenance](../../../../../developer/dependencies.md)
 before adding packages, executables or services. For a comparative or supervised
-self-development task, use [evaluation design](../../../../../developer/self-hosting-evaluation.md).
+self-development task, use [evaluation design](../../../../2026-10-22-before-structural-consolidation/docs/developer/self-hosting-evaluation.md).
 
 Current priority and acceptance decisions live in the [plan](../../../../../plan.md). Dated
 measurements, investigations, reviews and failed/successful verification records

@@ -1,7 +1,7 @@
 # Owned loopback listener review, 2026-10-19
 
 Historical implementation and verification record after `ee825bc`. Current
-procedures belong to the [runtime training manual](../../developer/runtime-capabilities.md#check-a-directly-owned-local-listener)
+procedures belong to the [runtime training manual](../2026-10-22-before-structural-consolidation/docs/developer/runtime-capabilities.md#check-a-directly-owned-local-listener)
 and [native protocol](../../../native/README.md#observe-an-owned-loopback-listener).
 The [plan](../../plan.md#p27-optional-research-graph-and-rag) owns milestone
 acceptance. This generic protocol does not select a benchmark measurement backend

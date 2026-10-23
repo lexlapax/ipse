@@ -30,7 +30,7 @@ conversation. For an Arch source installation, use [Install on Arch Linux](../..
   precedence, inspection, and journal limits.
 - [Model profiles](model-profiles.md) gives named model configurations and explicit
   routing for main work and child reviews.
-- [Subagents](../../../../../operator/subagents.md) explains delegated work, separate approvals, and the
+- [Subagents](../../../../2026-10-22-before-structural-consolidation/docs/operator/subagents.md) explains delegated work, separate approvals, and the
   limits of sharing one workspace.
 - [MCP servers](../../../../../operator/mcp.md) connects explicitly selected local or remote tools.
 
@@ -42,33 +42,33 @@ conversation. For an Arch source installation, use [Install on Arch Linux](../..
   deletion, and cross-session sharing.
 - [Source retrieval](../../../../../operator/corpus.md) builds a lexical corpus and retrieves exact passages.
 - [Graph](../../../../../operator/graph.md) records attributed facts and follows bounded relationships.
-- [Research extension](../../../../../operator/research-extensions.md) investigates supplied sources or
+- [Research extension](../../../../2026-10-22-before-structural-consolidation/docs/operator/research-extensions.md) investigates supplied sources or
   explicitly selected search/fetch tools independently of the main agent.
-- [Embeddings](../../../../../operator/embeddings.md) selects a separate model profile and explicitly
+- [Embeddings](../../../../2026-10-22-before-structural-consolidation/docs/operator/embeddings.md) selects a separate model profile and explicitly
   submits text through a reviewed extension.
 - [Native research](../../../../../operator/research.md) runs a main-agent source-gathering task and
   exports its evidence ledger.
-- [Extension lab](../../../../../operator/extension-lab.md) tries independently built examples with
+- [Extension lab](../../../../2026-10-22-before-structural-consolidation/docs/operator/extension-lab.md) tries independently built examples with
   synthetic data and no model service.
-- [Feature requests](../../../../../operator/feature-requests.md) helps you specify a skill, integration,
+- [Feature requests](../../../../2026-10-22-before-structural-consolidation/docs/operator/feature-requests.md) helps you specify a skill, integration,
   extension, or necessary core change.
 
 ## Inspect and recover
 
 Use [Recovery](../../../../../operator/recovery.md) after an interruption, a context refusal, or a change
-that prevents resume. Use [Troubleshooting](../../../../../operator/troubleshooting.md) to diagnose setup,
+that prevents resume. Use [Troubleshooting](../../../../2026-10-22-before-structural-consolidation/docs/operator/troubleshooting.md) to diagnose setup,
 provider, sandbox, and cleanup errors.
 
-[Usage accounting](../../../../../operator/usage-accounting.md) explains recorded counters and optional
-configured cost reports. [Budgets](../../../../../operator/budgets.md) limits admission for one session
+[Usage accounting](../../../../2026-10-22-before-structural-consolidation/docs/operator/usage-accounting.md) explains recorded counters and optional
+configured cost reports. [Budgets](../../../../2026-10-22-before-structural-consolidation/docs/operator/budgets.md) limits admission for one session
 tree. [Diagnostic capture](../../../../../operator/observability.md) records selected metadata locally.
 These controls have different purposes. Disabling a trace does not delete
 conversation journals or usage facts.
 
 ## Review and develop with Ipse
 
-[Architecture review](../../../../../operator/architecture-review.md) requests a bounded read-only
-assessment and checks its evidence. [Self-development](../../../../../operator/self-development.md) keeps
+[Architecture review](../../../../2026-10-22-before-structural-consolidation/docs/operator/architecture-review.md) requests a bounded read-only
+assessment and checks its evidence. [Self-development](../../../../2026-10-22-before-structural-consolidation/docs/operator/self-development.md) keeps
 an installed runner separate from the Ipse checkout it changes.
 
 Keep session journals, exports, authentication, and private configuration outside

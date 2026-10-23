@@ -1,6 +1,7 @@
 defmodule Ipse.Provider.Anthropic do
   @moduledoc "Anthropic Messages streaming adapter with native content replay."
-  alias Ipse.Provider.{Fragments, HTTP, SSE}
+  alias Ipse.Provider.Stream
+  alias Ipse.Provider.Transport
 
   def endpoint(config),
     do: Ipse.Provider.endpoint(config, "https://api.anthropic.com", "/v1/messages")
@@ -19,7 +20,7 @@ defmodule Ipse.Provider.Anthropic do
       ]
 
       state = %{
-        sse: SSE.new(),
+        sse: Stream.new_sse(),
         blocks: %{},
         done: false,
         stop_reason: nil,
@@ -28,7 +29,7 @@ defmodule Ipse.Provider.Anthropic do
       }
 
       with {:ok, state} <-
-             HTTP.stream(url, headers, body, config, state, fn state, chunk ->
+             Transport.stream(url, headers, body, config, state, fn state, chunk ->
                consume(state, chunk, emit)
              end) do
         finish(state)
@@ -42,7 +43,7 @@ defmodule Ipse.Provider.Anthropic do
     %{
       "model" => config[:model],
       "stream" => true,
-      "max_tokens" => Ipse.Provider.Limits.output_tokens(config, config[:max_tokens] || 8192),
+      "max_tokens" => Ipse.Provider.output_tokens(config, config[:max_tokens] || 8192),
       "system" => Enum.map_join(system, "\n\n", &(&1["content"] || "")),
       "messages" => Enum.map(messages, &native/1),
       "tools" =>
@@ -59,7 +60,7 @@ defmodule Ipse.Provider.Anthropic do
   end
 
   defp native(%{"ipse_checkpoint" => _} = message) do
-    if Ipse.Compaction.valid_checkpoint?(message),
+    if Ipse.Session.Context.valid_checkpoint?(message),
       do: %{"role" => "user", "content" => message["content"]},
       else: raise(ArgumentError, "invalid historical context checkpoint")
   end
@@ -105,7 +106,7 @@ defmodule Ipse.Provider.Anthropic do
 
   def consume(state, chunk, emit) do
     handler = fn event, state ->
-      with {:ok, state} <- Fragments.tick(state),
+      with {:ok, state} <- Stream.tick(state),
            {:ok, data} when is_map(data) <- Jason.decode(event.data) do
         event(state, data, emit)
       else
@@ -114,7 +115,7 @@ defmodule Ipse.Provider.Anthropic do
       end
     end
 
-    with {:ok, state, parser} <- SSE.reduce(state.sse, chunk, state, handler),
+    with {:ok, state, parser} <- Stream.reduce_sse(state.sse, chunk, state, handler),
          do: {:ok, %{state | sse: parser}}
   end
 
@@ -130,7 +131,7 @@ defmodule Ipse.Provider.Anthropic do
      %{
        state
        | usage: message["usage"] || %{},
-         reported_model: Ipse.RuntimeInfo.model_name(message["model"])
+         reported_model: Ipse.Provider.model_name(message["model"])
      }}
   end
 
@@ -161,13 +162,13 @@ defmodule Ipse.Provider.Anthropic do
       end
 
     if field do
-      with true <- Fragments.index?(index),
-           {:ok, block} <- Fragments.update(Map.get(state.blocks, index, %{}), field, value),
+      with true <- Stream.index?(index),
+           {:ok, block} <- Stream.update_field(Map.get(state.blocks, index, %{}), field, value),
            {:ok, state} <- put_block(state, index, block) do
         if field == "text", do: emit.({:text, value})
         {:ok, state}
       else
-        _ -> Fragments.error()
+        _ -> Stream.error()
       end
     else
       {:ok, state}
@@ -191,12 +192,12 @@ defmodule Ipse.Provider.Anthropic do
 
   def finish(%{done: true, stop_reason: reason} = state)
       when reason in ["end_turn", "tool_use", "stop_sequence"] do
-    with :ok <- Fragments.check_deadline(state) do
+    with :ok <- Stream.check_deadline(state) do
       content =
         state.blocks
         |> Enum.sort_by(&elem(&1, 0))
         |> Enum.map(fn {_, block} ->
-          case Map.pop(Fragments.materialize(block), "__json") do
+          case Map.pop(Stream.materialize_fields(block), "__json") do
             {nil, block} -> block
             {json, block} -> Map.put(block, "input", Jason.decode!(json))
           end
@@ -227,21 +228,21 @@ defmodule Ipse.Provider.Anthropic do
           else: message
 
       message = if calls == [], do: message, else: Map.put(message, "tool_calls", calls)
-      with :ok <- Fragments.check_deadline(state), do: {:ok, message, state.usage}
+      with :ok <- Stream.check_deadline(state), do: {:ok, message, state.usage}
     end
   end
 
   def finish(_), do: {:error, "Anthropic response was incomplete; no tools were executed."}
 
   defp put_block(state, index, block) do
-    if Fragments.index?(index) and is_map(block) do
+    if Stream.index?(index) and is_map(block) do
       blocks = Map.put(state.blocks, index, block)
 
-      if Fragments.items?(Map.values(blocks), "tool_use"),
+      if Stream.items?(Map.values(blocks), "tool_use"),
         do: {:ok, %{state | blocks: blocks}},
-        else: Fragments.error()
+        else: Stream.error()
     else
-      Fragments.error()
+      Stream.error()
     end
   end
 end

@@ -917,7 +917,7 @@ as failed, submit no second command and make zero model requests. That fixture
 changes internal test state; it does not alter a saved journal or establish an
 OS enforcement boundary.
 
-For the real independently built packages, follow the [complete-result exercise](../../developer/knowledge-extensions.md#publish-and-read-the-complete-domain-value).
+For the real independently built packages, follow the [complete-result exercise](../2026-10-22-before-structural-consolidation/docs/developer/knowledge-extensions.md#publish-and-read-the-complete-domain-value).
 It checks ten full Corpus and Research quotes, Graph bases outside `top_k`,
 and exact inert historical recovery. Historical reads supply the original
 retrieval snapshot; they do not rerun its current-source eligibility policy.
@@ -1069,7 +1069,7 @@ Compare the current-source and suppressed-source fixtures. Intentional exclusion
 remain visible while complete retrieval of eligible sources can succeed. The
 package owns that classification; the runner preserves its returned status.
 An unpublished source, missing-vector fallback or bounded incomplete traversal
-must remain partial. The [query completeness exercise](../../developer/knowledge-extensions.md#trace-a-source-and-a-query)
+must remain partial. The [query completeness exercise](../2026-10-22-before-structural-consolidation/docs/developer/knowledge-extensions.md#trace-a-source-and-a-query)
 tests those distinctions through public workers. The scorer still gives partial
 results zero successful retrieval utility; it does not upgrade a useful-looking passage.
 The model fixture also proves that forgotten and expired text never enters its

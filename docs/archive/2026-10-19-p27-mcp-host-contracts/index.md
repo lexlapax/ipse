@@ -105,7 +105,7 @@ source persistence before the public descriptor, UTF-8 reconstruction, inert
 idle resume, twenty reads before an approved effect, denied dispatch,
 pre-discovery alias refusal, descriptor drift, source corruption and refusal of
 the seventeenth external effect. Its verifier and package wrapper are under
-[`examples/mcp-actions/`](../../../examples/mcp-actions/README.md).
+[`examples/mcp-actions/`](../2026-10-22-before-structural-consolidation/examples/mcp-actions/README.md).
 
 The module and Session cases additionally exercise child/ungranted/unconfigured
 denial, invalid schemas, cross-invocation readers, malformed sources/windows,

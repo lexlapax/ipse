@@ -1,55 +1,53 @@
-# Observe turns and run scheduled jobs
+# Observe boundaries, run jobs, and catch up from history
 
-Choose a notification when an extension needs one selected prompt or completed
-answer view and can return only an acknowledgment. Choose a job when it needs an
-owned invocation with state, services, context publication or separately approved
-effects. Jobs run before the request for awaited recall, or after the completed
-answer for maintenance. Work proceeds through one serial effectful lane.
+Choose the delivery contract before writing a callback. A notification acknowledges
+one selected prompt/answer occurrence. A job performs finite admitted work before
+a request or after a turn. A feed observes committed live facts while Session work
+continues. History is a separate explicit read of a fixed recorded prefix.
+None of those selections grants another's private views or effects.
 
-Read `examples/extension-lab/src/metadata.ex` for a notification, then
-`spec.exs` and `src/memory.ex` for recall/capture jobs. Start from
-`handle("event.job", ...)` and follow its state read, routed lookup and context
-publication. The examples need a built checkout and Elixir toolchain; their
-synthetic proofs need no account or model service.
+Read [metadata.ex](../../examples/extension-lab/src/metadata.ex),
+[observer.ex](../../examples/extension-lab/src/observer.ex), and the recall/capture/
+catch-up handlers in [memory.ex](../../examples/extension-lab/src/memory.ex).
+Their [spec](../../examples/extension-lab/spec.exs) declares different grants.
+The synthetic lab needs a built checkout and no account/model service.
 
-## Select a source view explicitly
+## Select the occurrence and its private view
 
-All declarations are inert manifest data and must match executable `describe/0`.
+Declarations are inert manifest data matching executable descriptions. Version is
+one; IDs are lowercase ASCII up to 32 characters. Unknown stages/versions/views/
+modes, wildcards, or executable filters refuse. Notifications/jobs/feeds share
+four subscriptions per artifact and eight active total. Activation pins normalized
+subscriptions and digest.
 
-| Event | Views | Private capability |
-| --- | --- | --- |
-| `prompt.received` | `metadata`, `prompt.original` | `event.prompt.original` |
-| `prompt.effective_committed` | `metadata`, `prompt.effective` | `event.prompt.effective` |
-| `answer.committed` | `metadata`, `answer.original`, `answer.presented` | `event.answer.original` or `event.answer.presented` |
+| Occurrence/view | Required authority |
+| --- | --- |
+| Prompt received, original | Notification/job plus `event.prompt.original` for text |
+| Effective prompt committed | Notification/job plus `event.prompt.effective` for text |
+| Answer committed, original/presented | Notification/job plus exact `event.answer.original` / `.presented` |
+| Supported live metadata | Declared `event.feed`; tool/wait facts also need source-recording grants |
+| Live tool input/result | `lifecycle.record`, `lifecycle.tools`, exact `event.tool.input` / `.result` |
+| Historical metadata | `host.actions`, `host.history` |
+| Historical private prompt/answer/tool | History plus exact `host.history.*` view and a recorded source |
 
-Metadata grants no private content. Each private capability is present exactly
-when a declaration uses that view, and every capability needs operator trust.
-Children receive only their own permitted session facts. Installation,
-diagnostics and an answer-only selection grant no prompt view.
+Metadata carries no private content. Children see only their own permitted facts.
+Live grants imply no history. Installation or diagnostic selection grants no
+private view. `Feeds.types/0` owns supported live types; prompt/answer boundaries
+use notifications/jobs. Creation/start/resume/final-close lie outside live enrollment,
+so use authorized history for recorded metadata.
 
-Event version is 1. Subscription IDs are lowercase ASCII up to 32 characters.
-Unknown stages, versions, views, modes, wildcard topics and executable filters
-refuse activation. Notifications, jobs and feeds share four subscriptions per
-artifact and eight active subscriptions total. Normalization pins
-`subscriptions_sha256` in activation identity and saved metadata.
+## Write an acknowledgment-only notification
 
-## Write a notification and acknowledgment
-
-Add this fragment to a complete manifest for a presented-answer notification:
+This fragment selects presented-answer delivery:
 
 ```json
 {"capabilities":["event.notify","event.answer.presented"],"subscriptions":[{"id":"observe_answer","event":"answer.committed","event_version":1,"view":"answer.presented","mode":"notify","schedule":"after_turn","required":true}]}
 ```
 
-`event.notify` is present exactly when notifications exist. Answer notifications
-require `schedule:"after_turn"`; prompt notifications omit schedule and retain
-their six-field declaration.
-
-Before worker initialization, Session syncs `extension_event_intent` with delivery
-ID, identity, declaration, source, turn and exact payload digest. The closed
-callback payload contains `api_version:1`, host-issued 32-hex `delivery_id` and
-`turn_id`, `subscription_id` and the selected version-one event envelope. Echo
-the actual delivery/event IDs:
+`event.notify` exists exactly when notifications do. Answer notifications require
+`after_turn`; prompt declarations omit schedule and retain their six-field shape.
+Session syncs delivery intent binding identity/declaration/source/turn/payload digest
+before startup. Echo actual IDs from the closed payload:
 
 ```elixir
 def handle("event.notify", payload, state) do
@@ -60,159 +58,200 @@ def handle("event.notify", payload, state) do
 end
 ```
 
-An invented ID or `host_call` fails, even if this artifact separately has action
-grants. Each notification gets a fresh VM; private state does not survive it.
-Initialization and callback have separate five-second deadlines. The SDK retains
-16 KiB objects and 8 KiB strings. Projection overflow records `not_started` with
-a null payload digest before startup; text is never truncated to fit.
-
-After reply validation and confirmed worker cleanup, Session commits
-`extension_event_result`. Outcomes are `acknowledged`, `not_started` or `unknown`.
-An acknowledgment also requires a live lease. Timeout, invalid reply and
-interruption are never silently retried. VM disappearance alone is not proof of
-descendant cleanup; a missing cleanup receipt remains visible.
+Wrong IDs or host calls refuse, even if this artifact has other grants. Every
+notification gets a fresh worker; private state does not survive it. Initialization
+and callback have separate five-second bounds and ordinary SDK limits. Overflow
+records not-started with null payload digest before startup, without truncation.
+A live lease, validated acknowledgment, and confirmed cleanup precede committed
+`extension_event_result`. Timeout/malformed/interrupted work is not retried.
 
 ## Declare a job with an exported handler
 
-A job names a handler in the same artifact's `exports.jobs`. This manifest
-fragment declares awaited recall:
+A job names an `exports.jobs` descriptor in its own artifact. This complete-shaped
+fragment declares awaited recall; it is not a full manifest:
 
 ```json
 {"capabilities":["event.job","event.prompt.effective","host.actions","host.state.read","host.context"],"subscriptions":[{"id":"recall","event":"prompt.effective_committed","event_version":1,"view":"prompt.effective","mode":"job","handler":"recall","schedule":"before_request","required":true}],"exports":{"version":1,"tools":[],"commands":[],"services":[],"jobs":[{"id":"recall","description":"Recall selected scoped evidence","arguments_schema":{"type":"object","additionalProperties":false,"required":["event"],"properties":{"event":{"type":"object"}}},"result_schema":{"type":"object","additionalProperties":false,"required":["status"],"properties":{"status":{"type":"string","enum":["ok"]}}}}]}}
 ```
 
-Job descriptors share eight-per-group and 32-total catalog limits. Missing or
-empty jobs normalize to none. They do not enter the model tool catalog and
-cannot be called through `Session.invoke_export/4`. `describe/0` must match
-capabilities, exports and subscriptions. Only `before_request` and `after_turn`
-are supported; answer jobs always use `after_turn`.
+Job descriptors share eight-per-group/32-total limits. Empty/missing jobs normalize
+to none. Jobs are not model tools, `/ext` commands, or callable through the public
+export route. Only before-request/after-turn schedules exist; answer jobs are after-
+turn. Selection permits the handler, not its later effects. State/services/context/
+model calls retain separate grants and approvals.
 
-`event.job` permits the declared job, while `host.actions` and each operation's
-capability authorize proposals. They do not replace required approval. The
-notification acknowledgment contract stays read-only regardless of job exports.
-
-Session records source-bound delivery intent, validates arguments and commits
-invocation intent before executable startup. Callback stage is `event.job`, with
-standard invocation/session/turn/handler/arguments fields.
-`arguments.event` contains the selected event-delivery envelope. Top-level
-`trigger` is host-created with kind `event`, delivery ID, source event ID and
-schedule. Similar-looking argument fields remain domain data.
-
-The callback returns a schema-valid final `result` or a finite `host_call`.
-Use [state and questions](extension-state.md), [composition](extension-composition.md)
-and [approved effects](extension-effects.md) for the corresponding protocols.
-Event selection, a prior tool approval or a question answer cannot authorize a
-new write or model egress.
-
-Each job gets a fresh worker with separate five-second initialization/callback
-deadlines and unchanged SDK bounds. Ordinary chains permit 16 calls; explicit
-mixed grants keep their separate read/other counters. Jobs share the session's
-10000-invocation and separate 10000-delivery ceilings. There are no recursive
-turns, concurrent background effect lanes or unbounded subscriber mailboxes.
+Source-bound delivery intent, argument validation, and invocation intent precede
+startup. `event.job` receives ordinary invocation fields and `arguments.event`.
+Top-level trigger is host-made, binding delivery/source event/schedule. Similar
+fields in domain arguments grant nothing. The callback returns a valid result or
+finite host call under [state/effect protocols](extension-state.md). Jobs have fresh
+workers, five-second callback/init bounds, ordinary sixteen calls or explicit mixed
+counters, and Session-wide 10000-invocation/10000-delivery ceilings. They introduce
+no concurrent background effect lane, recursive turn, or unbounded mailbox.
 
 ## Trace the order around inference
 
-On explicit `Session.prompt/2`, `lifecycle_prompt_received` binds original text
-to a turn. `lifecycle_prompt_committed` binds the effective user text to the saved
-expanded/transformed message and original source. Both notifications deliver
-after skill expansion and all prompt transforms. Received subscriptions run
-first, then effective subscriptions; instance/ID and subscription ID order each
-stage. Received notification describes an earlier occurrence, not interception.
-
-Prompt views contain user text, not full provider context, required system
-instructions or native continuation. Original/effective source records have a
-1 MiB bound. Oversized original input refuses while idle; oversized effective
-input stops before delivery and inference.
+Accepted prompt occurrences bind original and effective text to a turn/source.
+Both notification stages deliver after skill expansion and all transforms. Received
+runs first, then effective, ordered by instance/ID and subscription ID. Received
+is an observation of an earlier occurrence, not an interception hook. Views expose
+user text, not full provider context/system instructions/native continuation.
+Original/effective source records permit 1 MiB. Oversized original input refuses
+idle; oversized effective input stops before delivery/inference.
 
 Before-request jobs run after expansion/transforms and before MCP discovery,
-compaction and inference. Awaited recall can read state, query its bound service
-and publish context. The main-request snapshot then freezes contributions for
-this answer. An answer-only selection still records prompt boundaries for causal
-recovery without exposing prompt text to the worker.
+compaction, and inference. Recall can read, call a bound service, and publish
+context; the request snapshot freezes the resulting contributions. An answer-only
+selection still records causal prompt boundaries without exposing that text.
 
-After saved native completion and successful presentation,
-`lifecycle_turn_settling` precedes `lifecycle_answer_committed`. The answer binds
-original/presented text, final native message, request/turn IDs and effective
-prompt source. Every view retains one occurrence ID. Intermediate tool messages,
-failed inference and failed presentation produce no completed-answer occurrence.
-After-turn prompt jobs run first, then answer declarations in instance/ID order.
-The frozen answer marker cannot be changed by later maintenance.
+After native answer completion and successful presentation, settling precedes
+answer-committed. The source binds original/presented text, native message,
+request/turn, and effective prompt. Views share one occurrence ID. Intermediate
+tool messages or failed inference/presentation produce no completed-answer event.
+After-turn prompt jobs precede answer declarations. Maintenance cannot change the
+frozen answer or retract streamed text; it keeps Session busy until settlement.
+Private answer views retain 8 KiB; larger views are unavailable with original counts/
+digests retained, while metadata or a smaller presented view may remain available.
+No payload exposes hidden reasoning, credentials, raw native data, or arbitrary journal bodies.
 
-Each private answer view retains at most 8 KiB. Oversized text becomes unavailable
-while original byte counts and private digests remain; a smaller presented view
-or metadata may still be available. No worker payload contains credentials,
-hidden reasoning, raw provider data or arbitrary journal bodies. See
-[lifecycle records](lifecycle-events.md) for schemas.
-
-After-turn work keeps the session busy until settlement. Approval or a question
-may wait for the user. It cannot change the completed request or retract streamed
-text. Publications become eligible only for a later request. Native question
-continuations preserve source context rather than creating new prompt events.
-
-## Derive success from committed outcomes
-
-Notification and job failures have different completion rules:
-
-| Boundary | Required declaration | Optional declaration |
+| Failure | Required policy | Optional policy |
 | --- | --- | --- |
-| Prompt notification does not acknowledge | Stop that inference attempt | Save receipt/notice and permit later work |
-| Answer notification does not acknowledge | Stop later maintenance and mark settlement error | Save receipt/notice and permit later work |
-| Job has known failed action | Stop later declarations; before-request failure prevents inference | May continue after notice |
-| Job has unknown action or cleanup | Stop the lane | Stop the lane |
+| Prompt notification unacknowledged | Stop inference | Retain receipt/notice; later work allowed |
+| Answer notification unacknowledged | Stop maintenance; settlement error | Retain receipt/notice; later work allowed |
+| Job has known failed action | Stop later declarations; before-request failure prevents inference | May continue with notice |
+| Job has unknown action/cleanup | Stop lane | Stop lane |
 
-A job completes only with a valid final result, confirmed cleanup and every
-action `ok` or `answered`. Denied, conflicting, failed and cancelled actions
-produce `failed`, regardless of the handler's success claim. A pure job can
-complete without actions; its value remains an assertion, not proof of effects.
-Pre-execution schema/budget refusal can be `not_started`; interrupted execution
-or cleanup cannot. After-turn failure cannot undo the answer or its accounting.
+Job success needs valid final result, confirmed cleanup, and every action ok/answered.
+Denied/conflicting/failed/cancelled actions fail it regardless of callback claims.
+Pure successful values remain assertions. Known pre-execution refusal may be not-
+started; interrupted execution cannot. After-turn failure cannot undo answer/accounting.
 
-## Continue questions without replaying work
+## Preserve questions and delayed-write identity
 
-A question closes the worker and saves its bounded checkpoint. An explicit
-validated answer commits the action result and continuation intent before a
-fresh worker enters `host.actions`. The original callback and earlier effects do
-not rerun. Later writes still need approval and the remaining action allowance.
+A question closes its worker and retains a bounded checkpoint. Explicit answer
+commits result/continuation intent before a fresh worker receives host actions.
+Original callbacks/effects do not rerun. Pending recovery retains prompt/answer
+sources, schedule/declaration, and immutable remaining plan. Completed declarations
+are skipped. Idle resume initializes no subscriber/job or executable queue.
+Unfinished intent remains unknown; identical later text has fresh occurrence IDs.
 
-Pending-question restore retains prompt sources, applicable answer source,
-schedule, declaration and immutable remaining plan. Completed declarations are
-skipped. Only the explicitly answered continuation runs the rest. Idle resume
-initializes no subscriber or job and restores no executable queue. An unfinished
-intent remains historical unknown. Fresh identical text gets new turn/event/
-delivery IDs.
+Restoration checks declaration/identity/source/turn/payload/order/receipt and actual
+physical source positions before repair. Private job parents additionally bind
+delivery intent and prompt/answer sources, without exposing those references in
+metadata-only triggers. Missing question-source checkpoints refuse rather than guess.
+Cancellation stops owned work, preserving committed state/context and uncertainty.
+For extraction, retain the revision/generation captured before work across the
+checkpoint. Rereading after forget must not authorize resurrection. Domain suppression
+and cutoffs build on generic CAS, as taught in [state](extension-state.md).
 
-Restore validates declarations, identities, source/turn, payloads, ordering,
-unique deliveries and required receipts. Session startup and saved diagnostics
-resolve physical source positions against the actual journal before repair.
-Private job parents also bind delivery-intent digest and original/effective
-sources, plus answer source when applicable. Those references do not enter a
-metadata-only public trigger. Native and extension-tool questions retain adjacent
-`lifecycle_question_sources` checkpoints when prompt context exists; missing or
-changed checkpoints refuse instead of guessing.
+## Declare and acknowledge a bounded live feed
 
-Cancellation stops dependent tasks/workers within the OS cleanup boundary.
-Committed state/context remains and interrupted effects never automatically
-retry. Diagnostics count outcomes without exposing inputs. For delayed extraction,
-capture revision/generation before extraction and retain it across checkpoints.
-A later CAS must use that captured identity. A fresh read after forget must not
-authorize resurrection of an old captured fact. The extension owns suppression,
-source cutoffs and derivative deletion policy; host tombstones supply the CAS.
-
-## Verify observation, recall and maintenance
-
-Compare metadata/private payloads for one occurrence in the subscription tests:
-the event ID stays stable while grants change selected data. Change an ack ID
-in a scratch worker; a required prompt subscriber must prevent inference.
-Then inspect awaited recall's context result, request snapshot and provider call
-in order. After-turn publication must affect only a later request.
-
-```sh
-mix test test/extensions_subscriptions_test.exs test/extensions_event_job_test.exs
+```json
+{"capabilities":["event.feed"],"subscriptions":[{"id":"requests","event":"model.admitted","event_version":1,"view":"metadata","mode":"feed","queue_events":8}]}
 ```
 
-These checks also cover full write denial, false success claims, byte bounds,
-questions in both schedules, captured-revision conflict after concurrent forget,
-physical source corruption, cleanup and byte-identical idle resume. Add request
-counts and receipt counts to a [conformance fixture](extensions.md) for your own
-subscriber. Use [history reads](extension-feeds.md) for explicit catch-up; history
-permission creates no new trigger and never starts reindexing by itself.
+These six fields are exact. Queue size is 1..32 including callback, queued events,
+and acknowledgments awaiting durable commit. Required policies/schedules/handlers/
+filters/arbitrary topics refuse. Selection alone starts no worker. Accepted input,
+question answer, command/service, or context refresh enrolls once per process.
+Invalid input and idle resume do not. Intent is the lower coverage boundary;
+ready commits before draining. One worker retains private state for that lease.
+
+Feed payloads bind host handle/subscription, consecutive lease-local sequence from
+one, enrollment `after` source, and selected event. Echo the actual values:
+
+```elixir
+def handle("event.feed", payload, state) do
+  {:ok,
+   %{"api_version" => 1, "kind" => "ack", "handle" => payload["handle"],
+     "sequence" => payload["sequence"],
+     "event_id" => payload["event"]["event_id"]}, state}
+end
+```
+
+Metadata excludes arguments/text/native data/arbitrary errors/private hashes.
+Tool views add only selected recorded input/result. Feed views never cross Sessions.
+Five-second init/callback bounds and SDK limits remain; an ack never executes an
+action even with separate grants. Diagnostic sampling enables no feed.
+
+After source commit, Session reserves capacity before mailbox admission and commits
+delivery intent. Only synced valid delivery result releases a slot. Each worker
+has one serial lane. Feed-control receipts have no feed projection, preventing
+ack loops. A Session permits 10000 deliveries and 10000 leases. Full queues,
+capacity/oversized/unavailable private sources, invalid replies, timeout, expiry,
+or resource loss close coverage visibly with its first rejected source. Ordinary
+agent work continues, without silent drop, retry, or catch-up.
+
+Stop/cancel/close revokes admission and can abandon queued work. The close receipt
+retains cause, admitted/acknowledged counts, rejection reference, and actual cleanup.
+A callback without committed ack is unacknowledged. Cleanup and coverage remain
+separate. Same-process additional input does not restart stopped enrollment; a
+compatible resumed process can enroll after explicit work. Idle resume starts none.
+Stopping tool recording closes affected feeds while tools may continue.
+
+Saved validation checks identity/declaration/sequence/ready-close/payload/physical
+positions before repair. Intent resolution examines at most ten records, including
+eight feed intents and adjacent question checkpoint, without scanning the whole
+journal per frame. Raw records permit 1 MiB. Later torn tails remain for ordinary
+recovery; interrupted leases remain historical incomplete coverage, without queues.
+
+## Capture and page a fixed historical prefix
+
+History is new explicit work through this inner host-call request:
+
+```json
+{"op":"history.read","view":"prompt.effective","cursor":0,"snapshot":null,"limit":8}
+```
+
+Cursor is an inclusive JSONL byte boundary. Limit 1..8 counts scanned records,
+not matching events. No paths/foreign Session/scope selectors are accepted. Reads
+need no mutation approval, without approving later writes or model transfers.
+The first action intent's starting offset becomes the exclusive upper bound.
+Its snapshot binds Session/offset/event/operation/view, without path/private digest.
+Continue with exact snapshot and returned `next`, rechecking current grants/lease.
+Changed/missing capture anchors refuse. Worker-supplied references grant nothing.
+
+The fixed `[0, boundary)` excludes capture/later receipts, so catch-up cannot chase
+itself. It can continue across invocations or answered questions in the same pinned
+Session. Cursor is position, not permission or an automatically saved progress promise.
+The guarantee relies on owned append-only storage, not hostile same-user replacement.
+
+A page has exactly version/coverage/snapshot/cursor/next/scanned/records, with
+`coverage: "recorded_views_only"`. Rows are selected events, content-free other-view
+skips, or unsupported/unavailable/page-budget gaps. Null `next` means that range
+was examined, not complete conversation coverage. Old missing prompt/answer/tool
+boundaries are not invented from adjacent messages. Expanded prompt stays a
+distinct saved-user-message view.
+
+Each call scans eight records/1 MiB raw bytes plus bounded anchor resolution.
+Page values permit 12288 encoded bytes inside all SDK bounds. An overflowing next
+event stays unconsumed if a page has rows; an event too large for an empty page
+becomes a page-budget gap, without truncation. Cursor/source/timeout/snapshot
+failures return fixed known diagnoses, without paths/prose/unchecked partial pages.
+Linked history IO runs outside Session with five-second wait then brutal shutdown.
+Every page consumes the invocation allowance. No host paging/reindex loop runs.
+
+Deduplicate by original occurrence and retain skips/gaps before claiming complete
+ingestion. A context excerpt cites the PAGE action receipt, for example path
+`["records",0,"event","data","text"]`; that can differ from the capture action.
+Source IDs establish recorded provenance, not semantic support or exactly-once
+remote writes. Forgetting notes erases no journals and revokes no independent
+history grant. Recovery validates cached anchors/projections/contiguous spans/gaps
+without rerunning reads. Missing/changed/omitted spans refuse before repair.
+
+## Verify observation, recall, maintenance, and catch-up
+
+```sh
+mix test test/ipse/extension/subscriptions_test.exs test/ipse/extension/event_job_test.exs
+mix test test/ipse/extension/feeds_test.exs test/ipse/extension/history_test.exs
+```
+
+Compare metadata/private views of one occurrence, then corrupt an ack ID and require
+prompt inference refusal. Trace before-request recall into its frozen model input,
+and verify after-turn publication affects only a later request. For pressure,
+identify first rejected source and admitted/acked counts, then verify idle resume
+starts no worker. Capture history, append more facts, and ensure later facts stay
+outside continuation. Zero matches may still advance the cursor. Preserve explicit
+question and captured-revision-after-forget controls. [Conformance](extensions.md)
+and the [installed lab](testing.md) complete the authoring journey without claiming
+unexecuted live-quality or OS guarantees.

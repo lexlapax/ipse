@@ -3,7 +3,7 @@
 Historical implementation and verification record after `aae6b1f`. This extends
 the [native collector](aggregate-memory-native.md) with generic measured stages.
 It does not complete P27. The [plan](../../plan.md#p27-optional-research-graph-and-rag)
-owns acceptance, the [developer exercise](../../developer/knowledge-evaluation.md#exercise-complete-measured-sequences)
+owns acceptance, the [developer exercise](../2026-10-22-before-structural-consolidation/docs/developer/knowledge-evaluation.md#exercise-complete-measured-sequences)
 teaches verification, and the [native protocol](../../../native/README.md#sequence-complete-measured-stages)
 owns the binary layouts and lifetime rules.
 

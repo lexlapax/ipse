@@ -2,7 +2,7 @@
 
 Historical investigation record, not an external acceptance or completion verdict.
 Current instructions are in the [memory user manual](../../operator/memory.md)
-and [developer training chapter](../../developer/memory.md). See the
+and [developer training chapter](../2026-10-22-before-structural-consolidation/docs/developer/memory.md). See the
 [remediation record](index.md) for subsequent verification and disposition.
 
 ## Intent and frozen scope

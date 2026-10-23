@@ -1,45 +1,39 @@
-# Resolve configuration and route model requests
+# Resolve configuration and bound a model request
 
-A configuration value crosses three boundaries: source admission, runtime
-admission and request dispatch. Trace those boundaries before adding a setting
-or changing model routing. Repository data can suggest a model or a tighter
-limit; it cannot select its own credential endpoint or authorize an effect.
-The [operator procedure](../operator/configuration.md) supplies complete files
-and commands for users.
+A setting crosses source resolution, Session admission, and dispatch. Trace all
+three before changing it. A trusted project can suggest a route or tighter limit;
+it cannot select its own credential endpoint or authorize effects. The
+[operator manual](../operator/configuration.md) supplies complete configuration files.
 
-## Follow a value through its owners
+## Follow a value through the current owners
 
-| Owner | Input and result | Authority retained elsewhere |
-| --- | --- | --- |
-| `Config.resolve/4` | Scoped JSON, selected profile, allowlisted environment and CLI settings become effective values, provenance and fingerprint | No credential lookup, executable artifact launch or inference |
-| `Config.runtime/2` | Effective settings and explicit client facts become admitted Session policy | CLI retains interaction policy and credential preflight |
-| `Profiles` | Closed profile data and role IDs become exact main/child execution facts | No task classification, workflow scheduler or automatic provider fallback |
-| `Provider.Request` | An admitted request resolves fresh credentials in its owned task | Session retains admission, accounting and history |
-| `Session` | Selected runtime and saved evidence become one owned conversation | Journal/source validation precedes recovery and effects |
+| Owner | Responsibility |
+| --- | --- |
+| [`Config.resolve/4`](../../lib/ipse/config.ex) | Scoped JSON, selected profile, allowlisted environment, and explicit CLI become values/provenance/fingerprint, without credentials or execution |
+| `Config.runtime/2` | Values plus explicit client facts become admitted Session policy |
+| [`Config.Profiles`](../../lib/ipse/config/profiles.ex) | Closed text/embedding registries and selected execution facts, without scheduling/fallback |
+| [`Provider`](../../lib/ipse/provider.ex) | Fresh credential resolution, output-cap validation/narrowing, and adapter dispatch in owned work |
+| [`Provider.Transport` and `Stream`](../../lib/ipse/provider/) | Bounded HTTP/error handling and incremental response assembly |
+| [`Session`](../../lib/ipse/session.ex) | Pin runtime identity and validate saved evidence before recovery/effects |
 
-Start in `lib/ipse/config.ex`, then read `Profiles.validate_profile/1`,
-`select/3`, `validate_route/2` and `child_config/3`. Finish with
-`lib/ipse/provider/request.ex` and Session's initialization checks.
+Start at Config's fixed provider/field/CLI/environment tables. Arbitrary JSON keys
+never create atoms. Then trace `Profiles.validate_profile/1`, `select/3`,
+`validate_route/2`, and `child_config/3`, finishing at Provider's request functions.
 
-`Config.resolve/4` canonicalizes the workspace and finds the nearest Git
-boundary, including a worktree's `.git` file. Outside Git, only the launch
-directory contributes project settings. Missing default files are optional;
-an explicitly selected operator file must exist. Project files require explicit
-current-run trust.
+Resolution canonicalizes the workspace and nearest Git boundary, including
+worktree `.git` files. Outside Git, only the launch directory contributes project
+settings. Missing default files are optional; explicit operator files must exist.
+Project files need current-run trust.
 
-Resolution overlays built-in defaults, operator JSON, project scopes from root
-to launch directory, the selected main profile, allowlisted environment values
-and explicit CLI fields. Nearer profile records replace whole project-defined
-profiles; role assignments merge by key. The selected main route cannot be
-silently replaced by conflicting provider/model settings or a direct endpoint.
-Config's closed `@providers` table owns supported provider atoms and defaults.
-`@fields`, `@option_keys` and `@env_keys` admit only named settings. Arbitrary
-JSON keys never create atoms.
+Precedence is defaults, operator JSON, project scopes from root to launch directory,
+selected main profile, allowlisted environment, then explicit CLI fields. Nearer
+project profile definitions replace entire records; role keys merge. Conflicting
+provider/model settings or a direct endpoint cannot silently replace a selected
+main route. Source bytes, path, and scope contribute to fingerprinting.
 
-## Reproduce precedence and identity drift
+## Reproduce precedence and source drift
 
-Run `iex -S mix` from the repository root. Build a synthetic operator source and
-choose the same setting in the environment and CLI layers:
+Run this complete exercise in `iex -S mix`:
 
 ```elixir
 scratch = Path.join(System.tmp_dir!(), "ipse-config-exercise-" <> Ipse.Usage.id())
@@ -59,142 +53,169 @@ true = first.fingerprint != second.fingerprint
 File.rm_rf!(scratch)
 ```
 
-Both effective limits are seven, but the source bytes changed. Source descriptors
-include path, scope and SHA-256, so that drift changes resume identity. Whitespace
-changes have the same consequence. Equivalent CLI provenance alone does not
-change identity. Raw source bodies do not enter model context or journal metadata.
+Both effective limits are seven. Different source bytes still change resume
+identity; whitespace can do the same. Equivalent CLI provenance alone does not.
+Raw configuration bodies enter neither model context nor journal metadata.
+Extend the precedence fixture in `test/ipse/config_test.exs` with both value and
+provenance assertions. Its integration suite checks drift refusal before work
+or permissible tail repair, beyond successful JSON decoding.
 
-Extend the existing precedence fixture in `test/config_test.exs` when adding a
-field. Check both the winning value and its provenance. Use
-`test/config_session_test.exs` to verify changed-source refusal before work or
-permitted journal repair, rather than testing only decoded JSON.
+## Separate authority from precedence
 
-## Distinguish authority from precedence
-
-These rules apply even after a project is trusted:
-
-| Input | Admission rule |
+| Source | Rule even after project trust |
 | --- | --- |
-| Project `sandbox` | May tighten to `native`; cannot weaken an earlier `native` to `off` |
-| Explicit operator environment or CLI sandbox | May select either supported mode |
-| Profile endpoints, extended model-call deadlines and operator profile IDs | Project scopes cannot introduce `base_url` or `model_call_timeout_ms`, or replace operator IDs |
-| `embedding_profiles` | Operator-only, separate from text profiles and roles |
-| Budget, journal policy, extension trust and diagnostic capture | Operator-only policy; project declarations refuse |
-| Extension options and selection | Still require independent artifact/trust admission before callbacks |
+| Project sandbox | May tighten to native, never weaken an earlier native selection |
+| Explicit operator environment/CLI sandbox | May choose either supported mode |
+| Profile endpoints/deadlines/IDs | Projects cannot introduce `base_url` or `model_call_timeout_ms`, or replace operator IDs |
+| Embedding profiles | Operator-only, separate from text profiles/roles |
+| Budget/journal/trust/diagnostics | Operator-only policies; project declarations refuse |
+| Extension options/selection | Still require artifact/trust admission before callbacks |
 
-Files allow at most 16 KiB, with at most 17 sources. Unknown fields, duplicate
-keys, unsupported versions, invalid UTF-8/JSON and escaping automatic project
-aliases refuse. Errors omit file contents. Environment parsing uses a fixed
-allowlist, never an environment dump. `settings_schema/0` owns settings bounds;
-the [operator limits](../operator/configuration.md#set-request-and-journal-limits)
-describe their effect on a run.
+Files allow 16 KiB and at most seventeen sources. Unknown fields, duplicate keys,
+unsupported versions, invalid UTF-8/JSON, and escaping automatic project aliases
+refuse without displaying file contents. Environment reads use a fixed allowlist,
+not a dump. Nested owners validate profiles, `Usage.Budget`, Journal limits,
+`Extension.Config`, and Observability policy. A digest is not secret protection;
+keep credentials out of extension options.
 
-Nested owners validate their own contracts: `Profiles`, `EmbeddingProfiles`,
-`Budget.Policy`, `Journal.Limits`, `Extensions.Config` and
-`Observability.Config`. Extension manifests expose option digests, not a safe
-place to store credentials. Hashing inspection output does not protect the file.
-
-## Assemble runtime policy once
-
-`Config.runtime/2` reads validated effective settings directly. Its client map
-contains workspace, home/auth/operator paths, the explicit MCP file and direct
-endpoint, approval mode and permission to ask operator questions. The CLI does
-not apply another default table or precedence pass.
-
-Admission checks the direct endpoint, prepares extension metadata, loads the
-selected MCP configuration and verifies the sandbox, in that order. Selected
-profile runtime facts merge last, retaining the profile endpoint and reasoning
-selection. The CLI then performs credential preflight. It discards that key;
-Config neither reads credentials nor caches one in the runtime map.
-`Provider.Request` resolves credentials again in the owned request task.
-Explicit embedded fixture keys retain their supported behavior.
-
-The local `ipse config` command calls only `resolve/4` and `manifest/1`.
-Inspection performs no runtime admission or sign-in. Preserve that distinction
-when adding a new optional integration.
+`Config.runtime/2` consumes validated values without a second CLI defaults pass.
+Client facts include workspace/home/auth/operator paths, explicit MCP/direct
+endpoint, approval mode, and question permission. Admission checks the direct
+endpoint, prepares extension metadata, loads MCP configuration, then verifies
+sandbox setup. Selected profile runtime facts merge last. CLI credential preflight
+discards the key; Config neither loads nor caches credentials. Provider resolves
+them again in the owned task. Explicit embedded fixture keys keep their supported
+behavior. `ipse config` calls only resolve/manifest, without sign-in/runtime launch.
 
 ## Trace main and child profile selection
 
-At most eight profiles are admitted. IDs begin with an ASCII letter and contain
-at most 64 letters, digits, underscores or hyphens. `main`, `routine` and `review`
-roles refer to configured IDs. Every definition, role and selected execution fact
-enters the configuration fingerprint. A profile names an existing route; it
-does not schedule work or infer which task deserves that route.
+At most eight text profiles use IDs starting with an ASCII letter and up to 64
+letters/digits/underscores/hyphens. `main`, `routine`, and `review` reference IDs.
+Every definition, role, and selected execution fact contributes to identity.
+Profiles describe routes, without classifying tasks or scheduling work.
 
-For main work, selection follows explicit profile ID, `IPSE_PROFILE`, then the
-`main` role. The selected profile overlays file settings before environment and
-CLI limits. Conflicting provider/model choices and a direct endpoint refuse.
-No unavailable model triggers another provider or billing mode.
+Main selection follows explicit profile ID, `IPSE_PROFILE`, then `main` role.
+The profile overlays file settings before environment/CLI limits. Conflicting
+provider/model/direct endpoint refuses. Main compaction stays on that route.
+A delegate proposes only a configured ID/role; resolve it before approval/creation.
+The model cannot introduce URLs or choose credentials.
 
-For delegation, the parent proposes a configured ID or role. The host resolves
-that route before approval and child creation, including within parallel groups.
-The model cannot supply an arbitrary provider URL. Read the fixture named
-"child profile isolates credentials and parent payloads while preserving host
-policy" in `test/profiles_test.exs`:
+Read the child-isolation fixture in `test/ipse/config/profiles_test.exs`:
 
-- The child inherits allowlisted workspace, sandbox, instruction/skill, approval,
-  origin, journal/budget and parallel-child hardlink policy.
-- The selected profile supplies execution fields. Parent keys, provider module,
-  direct endpoint, transcript, native continuation, profile catalog and MCP state
-  are dropped. Only a ChatGPT child receives the protected auth-directory reference.
-- The child's owned request resolves its own credentials. Its answer cannot
-  establish routing: host routing facts precede the explicitly untrusted answer.
+- Workspace, confinement, instructions/skills, approvals, origin, journal/budget,
+  and parallel-child hardlink policy are inherited through a fixed allowlist.
+- The route supplies execution fields. Parent key, provider module, direct endpoint,
+  transcript, continuation, profile catalog, and MCP state are dropped. Only a
+  ChatGPT child receives its protected auth-directory reference.
+- Owned child requests resolve their own credentials. Host routing facts precede
+  the untrusted answer, whose prose cannot establish which route ran.
 
-A selected child can narrow an inherited output cap, but cannot widen or omit it.
-Provider capability checks precede approval. Children retain at most six admitted
-model/helper calls, 120 seconds of active work and the parent's context ceiling.
-See [delegation](delegation.md) for scheduling and [provider limits](provider-limits.md)
-for wire fields. Main compaction stays on the main route. Separately granted
-extension inference uses a private helper-profile catalog; roles do not select it.
-Its SDK payload contains no provider key or routing authority.
+Child profiles can narrow an inherited output cap, never widen/omit it. Check
+provider support before approval. Children retain six admitted main/helper calls,
+120 seconds active time, and the parent's context ceiling. [Architecture](architecture.md)
+teaches child ownership. Extension inference uses its separately granted private
+profile catalog; main/routine/review roles do not select it.
 
-Extension deadlines have a separate opt-in field. `Profiles.validate_profile/1`
-admits `model_call_timeout_ms`, but `Profiles.@settings` excludes it from main
-and child settings. `ModelCall.snapshot/1` captures its minimum with the root
-timeout and 600000. Without that field it retains the historical minimum with
-120000, including when an old ordinary profile timeout was larger. This preserves
-saved model-profile equality on resume. `ModelCall.execution/2` then narrows by
-the admitted request's own deadline; versions one and two retain their original
-120000 request ceiling. Test these distinctions in
-`test/extensions_model_call_test.exs` before changing either projection.
+Extended helper deadlines require `model_call_timeout_ms`. Profiles validates it
+without projecting it into main/child settings. `Extension.ModelCall.snapshot/1`
+captures its minimum with root timeout and 600000. Without the field, historical
+snapshots retain the minimum with 120000 even if ordinary timeout was larger.
+This preserves saved equality. Request execution narrows again; v1/v2 requests
+retain their 120000 ceiling. Exercise these distinctions in
+`test/ipse/extension/model_call_test.exs` before changing a projection.
 
 ## Preserve reasoning and destination facts
 
-Reasoning effort is distinct from the model name. Ipse supports `low`, `medium`,
-`high`, `xhigh` and `max` for exact `gpt-6.1-sol` OpenAI/ChatGPT profiles, mapping
-the selection into Responses `reasoning.effort`. Ollama's explicit `none` maps
-to native `think: false`; omission leaves the backend default unchanged. Other
-combinations, including Anthropic thinking settings, refuse. The operator remains
-responsible for choosing a backend that supports the requested control.
+Reasoning effort is separate from model identity. Exact `gpt-6.1-sol`
+OpenAI/ChatGPT profiles accept `low`, `medium`, `high`, `xhigh`, and `max`, mapping
+to Responses `reasoning.effort`. Ollama `none` means native `think: false`;
+omission preserves backend default. Other combinations, including Anthropic
+thinking settings, refuse. Operators still need a supporting service/model.
 
-Trace the Ollama selection through profile validation, execution manifests,
-`ModelCall.prepare/2` and `Provider.Ollama.complete/4`. The profile Session fixture
-checks the actual synthetic HTTP body, saved execution facts and idle resume for
-explicit `none`. The standalone model proof also checks omission. Keep both
-controls: a recorded setting is evidence of a request, not of internal model work.
+Trace profile validation, saved execution, ModelCall preparation, and Ollama wire
+construction. The profile integration fixture checks the synthetic HTTP body,
+saved facts, and idle resume for `none`; the model proof also checks omission.
+A recorded setting proves the request, not internal model behavior.
 
-Destination identity comes from the actual adapter's `endpoint/1`: a non-secret
-egress origin plus full-target SHA-256. Session pins main destinations and
-approvals display helper destinations. Invalid routes refuse before journal
-creation. Equivalent implicit/explicit default routes compare equally. Legacy
-recovery uses recorded endpoint hashes; request-free legacy sessions accept only
-an implicit default or an exactly pinned profile. Do not weaken these checks to
-make a changed endpoint resume.
+Actual adapter `endpoint/1` supplies a non-secret origin and full-target digest.
+Session pins main destinations; helper approvals display them. Invalid endpoints
+refuse before journal creation. Equivalent implicit/explicit defaults compare
+equally. Legacy request-free sessions allow only implicit defaults or exactly
+pinned profiles. Never weaken destination identity to make a changed route resume.
 
-## Verify a configuration change across recovery
+## Follow an output ceiling to the wire
 
-```sh
-mix test test/config_test.exs test/config_session_test.exs test/profiles_test.exs test/profile_session_test.exs test/embedding_config_test.exs
+Provider owns `validate_output_limit/1`, `output_tokens/1`, and
+`narrow_output_tokens/2`. Absence adds no wire field. OpenAI API permits
+16..1000000; Anthropic/Ollama permit 1..1000000. ChatGPT subscription/demo refuse
+explicit caps without dropping them or switching billing.
+
+| Adapter | Effective field |
+| --- | --- |
+| OpenAI API Responses | `max_output_tokens` |
+| Anthropic Messages | `max_tokens`, narrowed by existing adapter value |
+| Ollama Chat | `options.num_predict`, narrowed by existing summary options |
+| ChatGPT subscription | Unsupported; refusal before dispatch |
+
+In IEx:
+
+```elixir
+100 = Ipse.Provider.narrow_output_tokens(100, 4096)
+{:error, _} = Ipse.Provider.validate_output_limit(%{provider: :chatgpt, max_output_tokens: 100})
 ```
 
-These fixtures need no account. They cover source authority, provenance, schema
-refusals, routing, secret isolation, native continuation, inherited ceilings and
-inert resume. For a new setting, update the schema, fixed CLI/environment maps,
-runtime projection and fingerprint policy together. Decide whether absence must
-retain legacy identity. Add precedence and saved-value-drift cases to the
-existing suites. A field working only on fresh CLI launches is incomplete.
+Config and Session validate/pin the effective cap, including embedded callers
+and resume before repair. Summaries narrow rather than widen their own limit.
+Read actual ordinary/summary request-body fixtures in `test/ipse/provider_test.exs`;
+a configuration-only assertion cannot establish wire behavior.
 
-Instruction refresh changes workspace text and skills, not execution policy.
-To adopt a new route after a refusal, preserve the original journal and use the
-[recovery procedure](../operator/recovery.md). Never resolve a missing credential
-or incompatible endpoint by silently changing providers.
+Explicit length/incomplete completion is response failure. Retain usage, admit
+none of that response's tools, and preserve earlier visible text/effects. Do not
+execute partial arguments or label truncation successful because HTTP ended.
+[Accounting](accounting.md) explains liability after response refusal.
+
+## Bound response assembly separately
+
+Transport accepts 8 MiB or a smaller selected `max_response_bytes`, with at most
+131072 data chunks. Error bodies retain only a bounded diagnostic prefix.
+Stream scans new line bytes, retains fragments, and joins once at a delimiter.
+Field accumulators materialize completed text/arguments/native data once. Avoid
+repeated whole-prefix joining or scanning.
+
+| Resource | Hard ceiling |
+| --- | --- |
+| Partial line, joined SSE data, accumulated field | 8 MiB |
+| Nonempty fragments per line/field | 32768 |
+| Data lines per SSE event | 32768 |
+| Parsed lines per response | 131072 |
+| SSE events and decoded provider events | 65536 each |
+| Output items/Anthropic blocks | 256, indices 0..255 |
+| Tool calls including incremental Ollama batches | 32 |
+
+The first bound refuses the response. Ollama's nonempty EOF tail counts as a line;
+SSE EOF invents no event. CR/LF/split CRLF, split UTF-8, and multiline data retain
+protocol meaning. Production reducers process each completed line/event before
+later suffixes, so earlier usage survives suffix overflow and earlier errors keep
+precedence. Collecting feed helpers return no successful prefix after failure;
+use reducers for observable accounting callbacks.
+
+Deadline checks occur during framing, around callbacks, and before materialization.
+They are cooperative and cannot forcibly interrupt a decoder/callback. Cleanup
+can outlast inference. A late success refuses admission. Native signatures and
+private reasoning remain only in continuation where required, never visible text.
+
+## Verify a complete setting change
+
+```sh
+mix test test/ipse/config_test.exs test/ipse/config/integration_test.exs test/ipse/config/profiles_test.exs
+mix test test/ipse/config/profile_integration_test.exs test/ipse/config/embedding_test.exs
+mix test test/ipse/provider_test.exs test/ipse/provider/stream_test.exs
+```
+
+For a new field, update schema, fixed CLI/environment maps, runtime projection,
+and identity together. Decide whether absence must preserve legacy equality.
+Test precedence, changed saved source, actual wire fields, fragmented boundaries,
+overflow after usage, and native continuation. A larger bound also needs transport,
+materialization, and journal review. Instruction refresh changes no execution
+policy. Preserve old evidence and use [recovery](../operator/recovery.md) for an
+incompatible route, without silent provider fallback.

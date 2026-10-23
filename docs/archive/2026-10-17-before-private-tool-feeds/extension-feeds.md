@@ -1,4 +1,4 @@
-> Historical reference only: metadata-only feed contract from commit `b8aae70`, archived 2026-10-17. Use the [current feed contract](../../developer/extension-feeds.md). Relative links were rebased for this snapshot.
+> Historical reference only: metadata-only feed contract from commit `b8aae70`, archived 2026-10-17. Use the [current feed contract](../2026-10-22-before-structural-consolidation/docs/developer/extension-feeds.md). Relative links were rebased for this snapshot.
 
 # Live lifecycle metadata feeds
 
@@ -39,7 +39,7 @@ Waits and `session.recording_stopped` additionally require `lifecycle.record` in
 that artifact's trust ceiling so their sources exist with diagnostics off.
 Prompt/answer stages use their existing boundary subscriptions. Creation,
 process start/resume and final logical close are outside this live enrollment;
-authorized [history reads](../../developer/extension-feeds.md#capture-a-fixed-historical-prefix) expose recorded metadata for them.
+authorized [history reads](../2026-10-22-before-structural-consolidation/docs/developer/extension-feeds.md#capture-a-fixed-historical-prefix) expose recorded metadata for them.
 Declaring those types as feeds refuses explicitly.
 
 ## Enrollment and callback

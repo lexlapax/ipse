@@ -2,7 +2,7 @@
 
 Historical investigation and verification increment after `e98575e`. Use the
 current [Corpus](../../operator/corpus.md) and [Graph](../../operator/graph.md)
-manuals for operation, and the [query exercise](../../developer/knowledge-extensions.md#trace-a-source-and-a-query)
+manuals for operation, and the [query exercise](../2026-10-22-before-structural-consolidation/docs/developer/knowledge-extensions.md#trace-a-source-and-a-query)
 for contributor training. The [plan](../../plan.md#p27-optional-research-graph-and-rag)
 retains the full acceptance scope. This increment neither completes P27 nor
 measures model quality. Held-out corpus, qrels, manifest and evaluator remain

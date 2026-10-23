@@ -2,7 +2,7 @@
 
 Historical implementation and verification record after `dd02f56`. The
 containing commit owns these corrections. Current procedures are in the
-[evaluation manual](../../developer/knowledge-evaluation.md#follow-a-matched-public-session-comparison)
+[evaluation manual](../2026-10-22-before-structural-consolidation/docs/developer/knowledge-evaluation.md#follow-a-matched-public-session-comparison)
 and [verification training](../../developer/testing.md).
 This work does not complete P27, expose held-out inputs or measure model quality.
 

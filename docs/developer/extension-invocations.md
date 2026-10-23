@@ -1,23 +1,17 @@
-# Build typed tools, commands, and readable results
+# Declare a typed invocation and publish its complete result
 
-An export connects a worker callback to a named tool, command, or service. Its
-argument schema controls admission. Its result schema controls the domain value
-that the caller receives. The host owns approval, execution, durable receipts,
-and cleanup. Keep those responsibilities out of extension domain code.
+An export connects worker code to a tool, explicit command, or bound value service.
+Argument schemas control admission; result schemas control the returned domain
+value. Follow one invocation through approval, effects, publication, and historical
+reading. [Extension authoring](extensions.md) covers build/import/activation;
+[state continuations](extension-state.md) teach approved work before completion.
 
-This chapter follows a result from its inert declaration through publication and
-later reading. Start with the [artifact and SDK training](extension-artifacts.md)
-for compilation and import. Use [host calls](extension-state.md#read-a-revision-and-propose-a-write) when a
-callback needs approved effects before it returns a value.
+## Declare what the caller can invoke
 
-## Declare the caller's contract
-
-A manifest with `invoke.tool`, `invoke.command`, or `invoke.service` declares a
-matching nonempty group in `exports`. Tools enter the model's function catalog.
-Operators invoke commands explicitly. Services return typed values to embedded
-callers or explicitly routed extensions.
-
-The following `exports` fragment declares a tool that accepts and returns text:
+The matching `invoke.tool`, `invoke.command`, or `invoke.service` capability needs
+a nonempty group in `exports`. Tools enter the model catalog. Commands run at an
+operator's explicit request. Services return values to embedded or routed callers.
+This is an export fragment, not a complete manifest:
 
 ```json
 {
@@ -26,12 +20,12 @@ The following `exports` fragment declares a tool that accepts and returns text:
     "id": "echo",
     "description": "Return a typed text value",
     "arguments_schema": {
-      "type": "object", "additionalProperties": false,
-      "properties": {"text": {"type": "string"}}, "required": ["text"]
+      "type":"object","additionalProperties":false,
+      "properties":{"text":{"type":"string"}},"required":["text"]
     },
     "result_schema": {
-      "type": "object", "additionalProperties": false,
-      "properties": {"text": {"type": "string"}}, "required": ["text"]
+      "type":"object","additionalProperties":false,
+      "properties":{"text":{"type":"string"}},"required":["text"]
     }
   }],
   "commands": [],
@@ -39,42 +33,38 @@ The following `exports` fragment declares a tool that accepts and returns text:
 }
 ```
 
-This fragment is not a complete artifact. Each group allows at most eight
-descriptors. Local IDs are unique lowercase ASCII identifiers up to 32
-characters. Descriptions allow 1,024 UTF8 bytes. Both schemas use the checked
-[object-schema subset](mcp.md#schema-subset). External schema references cannot
-load code or fetch documents.
+Each group permits eight descriptors. IDs are unique lowercase ASCII identifiers,
+at most 32 characters; descriptions permit 1024 UTF-8 bytes. Both schemas use the
+[checked object subset](mcp.md#schema-subset), without external loading.
+[`Catalog`](../../lib/ipse/extension/catalog.ex) constructs qualified names such as
+`ext__memory__remember`. It rejects ambiguity, cross-instance collisions, native/MCP
+shadowing, names beyond 64 bytes, more than 32 exports, or catalogs over 16 KiB.
+Tools/services have separate namespaces; event jobs use a separate lane.
 
-`Catalog` creates exact names such as `ext__memory__remember`. It rejects
-ambiguous names, cross-instance collisions, builtin or MCP shadowing, names above
-64 bytes, more than 32 total exports, and a catalog above 16 KiB. Tools and
-services have separate namespaces. Event jobs use their own admission path.
+Activation pins normalized exports, SDK, and logical state bindings. Executable
+`describe/0` must match after startup authorization. That handshake cannot certify
+arbitrary code before execution. A provider's opaque call ID is a different
+identity from the qualified name or host-generated invocation ID; validate the
+whole response before admitting any of its calls.
 
-The activation identity pins the normalized catalog, SDK version, and any logical
-state bindings. Executable `describe/0` must match those declarations. That
-handshake runs after startup authorization, so it cannot certify arbitrary code
-before execution.
+## Return inline data or prepare complete output
 
-## Return a value through the SDK
-
-The host supplies the declared `invoke.*` stage with this closed payload:
+The host sends a closed purpose-specific payload:
 
 ```json
 {
-  "api_version": 1,
-  "invocation_id": "00000000000000000000000000000000",
-  "session_id": "11111111111111111111111111111111",
-  "turn_id": "22222222222222222222222222222222",
-  "id": "echo",
-  "arguments": {"text": "example"}
+  "api_version":1,
+  "invocation_id":"00000000000000000000000000000000",
+  "session_id":"11111111111111111111111111111111",
+  "turn_id":"22222222222222222222222222222222",
+  "id":"echo",
+  "arguments":{"text":"example"}
 }
 ```
 
-The host generates the real IDs. The complete payload fits the SDK's 16-KiB
-object limit. It contains no Session PID, credentials, transcript, workspace
-instructions, provider configuration, or native continuation.
-
-An ordinary callback returns a bounded reply and private worker state:
+Real IDs come from the host. The entire object fits 16 KiB. It carries no Session
+PID, credentials, transcript, instructions, provider config, or continuation.
+An inline callback fragment returns public JSON and private state:
 
 ```elixir
 {:ok,
@@ -82,260 +72,188 @@ An ordinary callback returns a bounded reply and private worker state:
  state}
 ```
 
-The host checks `value` against the declared result schema. Action-looking keys
-inside `value` remain data. Request an effect through the separate
-[host-call protocol](extension-state.md#read-a-revision-and-propose-a-write).
+Only `value` is validated against the original domain schema. Action-like data
+inside it executes nothing; use the host-call protocol for effects.
 
-For a tool or command that needs complete larger results, declare SDK version 2
-and capability `invoke.result.pages` in the manifest and matching description.
-Keep the ordinary invocation capability too. Use the SDK helper at completion:
+To publish a larger complete tool/command value, declare SDK 2 and
+`invoke.result.pages` in both manifest and description, with the normal invocation
+capability. In `iex -S mix`, compare aggregate validation to ordinary wire validation:
 
 ```elixir
-alias Ipse.Extension.ResultPublication
-
+alias Ipse.Extension.{ResultDocument, ResultPublication}
+schema = %{"type" => "object", "additionalProperties" => true}
 value = %{"items" => Enum.to_list(1..256)}
+{:ok, bytes} = ResultDocument.encode(value, schema)
+{:ok, ^value} = ResultDocument.decode(bytes, schema)
+{:error, :invalid_extension_value} = Ipse.Extension.validate(value)
 {:ok, delivery} = ResultPublication.prepare(value)
+true = match?(%ResultPublication.Output{}, delivery)
 ```
 
-Run this example in `iex -S mix`. Return `{:ok, delivery, state}` from your callback.
-The 256-member array exceeds the
-ordinary SDK collection bound, so `delivery` is a private
-`ResultPublication.Output` value. A small value instead produces the ordinary
-`kind: "result"` reply when its whole wrapper fits 12,000 encoded bytes and all
-SDK bounds. The helper returns
-`{:error, :invalid_result_document}` for an invalid or over-cap document. Handle
-that error with the extension's declared bounded refusal response. Do not drop
-items to make a successful response fit.
+The 256-member collection exceeds wire limits. `prepare/1` freezes a private
+`Output`; a smaller wrapper fitting 12000 encoded bytes and all SDK bounds remains
+an inline result. Invalid/over-limit values return `invalid_result_document`.
+Handle that with an explicit domain refusal rather than dropping items to fit.
+Return `{:ok, delivery, state}` from the original callback.
 
-The SDK helper creates the private Output value. Bootstrap recognizes it,
-freezes the encoded bytes, discards domain callback state, and enters a terminal
-transport phase. Bootstrap intercepts `result.output`; it does not call domain
-code for fragments. Worker independently enforces the grant and transition.
-Later domain callbacks, effects, questions, and another offer refuse.
+Bootstrap consumes `Output`, discards domain state, and answers terminal
+`result.output` requests from frozen bytes. It does not rerun domain callbacks for
+fragments. Worker independently enforces eligibility, offsets, and commitments.
+Later domain calls, effects, questions, or another offer refuse. Original top-level
+SDK-2 tools/commands and their ordinary host-action continuations are eligible.
+Services, transforms, jobs, and recovered question continuations stay inline.
+SDK-1 contracts and protocol/API version 1 remain unchanged.
 
-Paged publication is available only to an original top-level `invoke.tool` or
-`invoke.command`. Services, event jobs, transforms, and recovered question
-continuations retain inline results. Ordinary host-action continuations inside
-the original invocation retain that invocation's eligibility. SDK-1 artifacts
-keep their existing contracts. Protocol framing and `api_version` remain 1.
+## Trace the Session and worker owners
 
-## Follow ownership through publication
-
-Read these modules in execution order:
-
-| Owner | Responsibility |
+| Read in execution order | Responsibility |
 | --- | --- |
-| `Catalog` and `Invocation` | Resolve the export, validate arguments, and bind identity and approval to the invocation intent |
-| `Session` | Admit the owned job, sync its intent, enforce the current lease, reserve capacity, and authorize reads |
-| `Host` | Initialize and call the worker, perform admitted host actions, drain frozen output, validate the document, and confirm worker close |
-| `ResultSource` | Check pure source transitions, identities, fragment commitments, quotas, and final source closure |
-| `Journal.Writer` | Admit owner-only reservations and durably append within those reservations |
-| `ResultReader` and `ResultView` | Materialize exact committed bytes and expose bounded structured views outside Session's GenServer |
+| `Extension.Catalog` / `Extension.Invocation` | Resolve/validate export, arguments, identity, and durable protocol |
+| `Session` / `Session.Invocation` | Admit work, commit intent, retain decisions/resources/capacity, and apply transitions in one process |
+| `Extension.Host` / `Worker` | Execute owned work outside the GenServer, negotiate output, validate bytes/schema, and confirm close |
+| `Extension.ResultSource` | Validate source transitions/closure, materialize committed bytes, and derive read/quota indexes |
+| `Journal.Writer` | Durably append using owner-only reservations |
+| `Extension.ResultView` | Construct bounded structured views of authorized historical output |
 
-Model tools require ordinary full-argument approval unless the operator explicitly
-enables session-wide execution. Only literal boolean `true` approves. Headless
-and child policies still apply. Provider tool-call IDs are opaque UTF8 values of
-1–256 bytes, unique within the response. They differ from export names and
-internal invocation IDs.
+Model tools need ordinary full-argument approval unless session-wide effects are
+explicitly enabled. Only literal boolean `true` authorizes. Headless/child policies
+still apply. Provider call IDs are valid opaque UTF-8, 1..256 bytes, unique within
+the response. Invalid batches execute no first apparently valid call.
 
-Session syncs `extension_invocation_intent` before opening a worker. Host
-reverifies the artifact and initializes it. Each initialization or callback keeps
-its five-second bound. Slow execution stays outside Session's GenServer; Session
-checks the caller PID and current job reference before accepting durable work.
+Session syncs `extension_invocation_intent` before worker startup. Host rechecks
+the artifact and initializes it, with ordinary five-second callback bounds.
+Session admits slow-worker messages by caller, active reference, and phase.
+[`Session.Invocation`](../../lib/ipse/session/invocation.ex) contains current
+parent/action/step/results/source facts and the synchronous transition implementation.
+It is not another process or a separate approval authority.
 
-An eligible SDK-2 invocation also has a 120,000-ms aggregate deadline. Session
-starts that clock at original admission, before initialization. Computation,
-approval, actions, draining, validation, appends, cleanup, and final publication
-share the same clock. Each callback gets at most its ordinary deadline and the
-remaining aggregate time. Offering output or reading another fragment never
-resets the clock. An SDK-2 invocation can therefore expire while waiting for an
-operator's approval.
+Follow `invoke_export/4`, `begin/6`, `begin_action/4`, and final result transitions.
+Session retains public handler guards, actual resource completion, and applicable
+accounting before calling these functions. It installs proposed facts only after
+required durable appends. An action decision consumes its step only after the
+record succeeds. An unknown action blocks dependent effects/publication. Questions
+retain the parent and prior sources but reconstruct no timer, approval caller,
+or writer reservation after restart. Publication resources and current domain
+facts remain separate; do not add a competing lifecycle enum.
 
-For saved output, Session reserves journal capacity before source begin. Host
-then submits begin, fragment, and seal requests through Session. Host never gets
-a writer handle or chooses a journal path. Session checks the lease before each
-append. Host validates the full bytes and declared schema, seals the source,
-and confirms ordinary worker cleanup. Session can then sync the version-2 final
-invocation result. That final receipt alone publishes the saved descriptor.
+## Reserve capacity and commit publication
 
-The elapsed checks guard admission to each boundary. They do not promise that a
-filesystem sync finishes before a realtime deadline. A durably committed final
-receipt remains committed after a later timer fires.
+Eligible SDK-2 calls share a 120000-ms deadline from original admission, before
+initialization. Approvals, computation, actions, transfer, validation, appends,
+cleanup, and publication consume it. Each callback is bounded by ordinary and
+remaining time. Offering output or reading a page never resets the clock; waiting
+for operator approval can exhaust it.
 
-## Follow current facts through the owner
-
-`Ipse.Extensions.Invocation` validates the durable invocation protocol.
-`Ipse.Session.Invocation`, aliased as `CurrentInvocation` in Session, holds only
-the current parent/request, action, step, bound effect sources, results and
-interrupted-outcome flag. It is a value inside Session, not another process or
-an admission authority. Session installs proposed facts only after the required
-intent or result append succeeds.
-
-Read these transitions in `lib/ipse/session.ex` alongside the value definition
-in `lib/ipse/session/invocation.ex`:
-
-| Transition | Current facts | Session's retained responsibility |
-| --- | --- | --- |
-| Operator export request | Exact stage, name and arguments | Own the worker and fence its messages |
-| Parent admission | Fresh parent and empty action history | Validate identity/catalog and sync intent before installing it |
-| Approval needed | Proposed action; step not yet consumed | Keep the reply caller, approval reference and return phase |
-| Approval or denial | Recorded action and incremented step | Sync the decision before replying; denial dispatches no effect |
-| Effect/usage source | Source bound to the current operation | Validate and commit the source before exposing it |
-| Action result | Append result, clear action, mark an unknown outcome interrupted | Commit usage/context changes and refuse further effects or publication after unknown outcomes |
-| Question suspension/resume | Parent, action step, prior results and sources | Own the question/wait; require an explicit answer before continuation |
-| Output publication | Retain the parent and complete action results | Own the output index, reservation token and deadline; final receipt publishes the value |
-| Completion/cancel/timeout | Clear current facts when returning idle | Release publication capacity, stop owned work and retain unknown-effect evidence |
-
-Publication resources and pending action facts are separate dimensions. Do not
-add a second lifecycle enum to the value or assume that one boolean summarizes
-all owner states. Session's existing phase and resource checks remain the
-authority. Recovered extension questions construct current facts from validated
-records; they never reconstruct an approval caller, timer or reservation token.
-
-For a worked change exercise, follow the approval, unknown-result, question-resume
-and output-deadline cases in `test/extensions_invocation_test.exs` and
-`test/extensions_result_session_test.exs`. Trace each append before its state
-update. A change to the value should preserve these refusal and cleanup paths,
-not merely the successful callback result.
-
-## Keep wire bounds separate from document bounds
-
-Saved output does not enlarge ordinary callback objects or model messages:
+Before begin, Session reserves journal capacity. Host submits begin/fragment/seal
+requests through the owning Session, without getting a writer handle or choosing
+a journal path. Lease checks precede every append. Host verifies the complete
+document/schema and confirms worker cleanup. Only the final version-2 invocation
+result publishes the saved descriptor. A complete source/seal alone does not.
+Elapsed checks guard admission, not realtime completion of filesystem sync.
+A committed final receipt remains committed after a later timer fires.
 
 | Resource | Bound |
 | --- | --- |
-| Encoded SDK object | 16,384 bytes |
-| SDK string, depth, collection | 8,192 bytes, 12 levels, 128 members |
-| Worker frame and lifetime traffic | 32,768 bytes and 64 MiB |
-| Encoded output fragment reply | 12,000 bytes |
-| Raw fragment and maximum fragment count | 4,096 bytes and 1,024 fragments |
-| Complete document | 4 MiB received and canonical encoded JSON |
-| Aggregate string, depth, collection | 8,192 bytes, 12 levels, 4,096 members |
-| Aggregate nodes, including keys | 262,144 |
-| Begun source attempts per Session | 64, including interrupted attempts |
-| Encoded source records per Session | 64 MiB, including unreadable prefixes |
+| SDK encoded object | 16384 bytes |
+| SDK string/depth/collection | 8192 bytes / 12 levels / 128 members |
+| Worker frame / lifetime traffic | 32768 bytes / 64 MiB |
+| Encoded fragment reply / raw fragment | 12000 / 4096 bytes |
+| Fragments / complete received and re-encoded document | 1024 / 4 MiB |
+| Aggregate string/depth/collection | 8192 bytes / 12 levels / 4096 members |
+| Aggregate nodes, including keys | 262144 |
+| Begun attempts per Session, including interrupted | 64 |
+| Encoded source records, including unreadable prefixes | 64 MiB |
 
-The [aggregate adapter](extension-artifacts.md#independent-worker-sdk) checks a
-map root, duplicate decoded keys, lexical resource bounds, finite numbers, and
-the declared result schema. It does not weaken `Ipse.Extension.validate/1`.
-Operator journal byte, event, and record limits can refuse publication earlier.
-A legal combination of large claims and provenance can still exceed 4 MiB.
-Return an explicit capacity refusal rather than an incomplete success.
+ResultDocument requires a map root, duplicate-free decoded keys, lexical resource
+checks before decoding, finite numbers, and the original result schema. Integer
+tokens retain the maintained decoder's 1024-byte limit, including a minus sign.
+General `JSON.decode_bounded/2` instead defaults to 32 KiB, permits at most 1 MiB
+explicitly, and limits nesting to sixteen. Raising that general limit cannot
+replace the dedicated aggregate checks or enlarge SDK wire values.
 
-Writer reservations cover begin, every fixed-stride fragment, seal, final result,
-and the ordinary quota-marker headroom. Other appends cannot consume reserved
-capacity. Cancellation releases unused reservation before its control outcome.
-Already written bytes remain charged. A reservation cannot guarantee successful
-IO and does not authorize replay after restart. Read
-[persistence training](persistence.md) before changing reservation or lock logic.
+Reservations cover begin, fixed-stride fragments, seal, final result, and quota
+marker headroom. Other appends cannot spend them. Cancellation releases unused
+capacity before its control result; written bytes remain charged. Lower operator
+journal limits can refuse earlier. Reservations guarantee neither successful IO
+nor replay authority. [Persistence](persistence.md) teaches their completion owner.
 
-## Read a delivery without repeating execution
+## Materialize without repeating execution
 
-An inline delivery already contains its domain `value`. A saved delivery is this
-small descriptor instead:
+Inline delivery contains the value. Saved delivery instead contains this illustrative
+descriptor, whose real hashes identify exact retained bytes:
 
 ```json
 {
-  "version": 1,
-  "kind": "saved.result",
-  "output_id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-  "byte_count": 16911,
-  "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
-  "historical_receipt": true
+  "version":1,"kind":"saved.result",
+  "output_id":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "byte_count":16911,
+  "sha256":"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+  "historical_receipt":true
 }
 ```
 
-The IDs illustrate the shape. Real hashes bind the exact source. The version-2
-`extension_invocation_result` retains the original intent and ordered action-chain
-commitments. Its display text encodes the descriptor, not the domain value.
-Never validate that descriptor against the domain schema or treat it as the
-complete domain answer.
-
-An embedded caller materializes a committed saved delivery through its Session:
+The final invocation record also binds original intent and ordered action-chain
+commitments. Do not validate a descriptor against the domain schema or treat its
+display text as the domain answer. An embedded API fragment materializes it:
 
 ```elixir
 {:ok, %{bytes: bytes, value: value, provenance: "historical_receipt"}} =
   Ipse.Session.materialize_result(session, delivery)
 ```
 
-Materialization verifies the complete byte count, digest, aggregate limits, and
-original result schema before returning a usable value. A failed read returns
-an error, not a partial document. It starts no worker, model request, or query.
-The local CLI's complete-reader procedure is in the
-[operator manual](../operator/extensions.md#read-a-saved-result).
+The complete size/digest/aggregate/schema checks precede a usable value. Failure
+returns no partial document. Reading starts no worker, query, or model call.
+[Operator reading](../operator/extensions.md#invoke-a-command-and-inspect-its-complete-result)
+covers the CLI. `Session.read_saved_result/2` provides an authorized bounded root/
+path view, with exact returned cursors for continuation. Views allow sixteen
+children or 1024 UTF-8 bytes and fit 12000 encoded bytes plus all SDK bounds.
+Large children/keys carry references. Ordinal cursor paths keep long escaped
+keys reachable. `complete` describes the target, not every referenced subtree.
 
-For structured inspection, call `Session.read_saved_result/2` with `output_id`
-and a `path` of object keys or array indices. Submit a returned cursor under the
-single `cursor` key to continue. Views enumerate at most 16 children or 1,024 raw
-UTF8 bytes. Each complete view fits 12,000 encoded bytes and every SDK bound.
-Large children and key names carry explicit references. Cursors use ordinal
-paths, so an 8-KiB escaped key remains reachable without repeating it in a
-request. `complete` describes the requested target, not all referenced subtrees.
+A cursor grants no authority. Model `saved_result_read` sees only outputs previously
+disclosed through that Session's model tools. Direct commands and operator views
+remain outside model history. Children/unrelated extensions gain no access through
+an ID, service route, history, or `host.results`. Historical receipts retain older
+bytes after expiry/forgetting/replacement. They assert no current eligibility,
+freshness, truth, or semantic support.
 
-Session authorizes every read against committed source identity. A cursor grants
-no authority. Model `saved_result_read` can inspect only a saved result disclosed
-through a tool in that Session. An operator's `/ext` command result stays outside
-the model conversation. Its output ID does not let the model read it. Child
-Sessions and unrelated extensions gain no access through `host.results`, history,
-or service routing.
+## Restore closure before repairing a journal
 
-These reads return historical receipts. Forgetting, expiring, or replacing source
-records controls future retrieval; it does not erase earlier output bytes.
-Reads do not assert current eligibility, truth, or freshness. Do not feed hidden
-source records into model history automatically.
+Invocation validates closed records, exact identity/argument digest, approval,
+parent provenance, tool receipts, and ordered actions. ResultSource restoration
+validates every source before permitted tail repair, deriving quota/read indexes
+without executable initialization.
 
-## Recover committed results and inspect interrupted work
+An interrupted begin/fragment prefix remains unreadable, even if it contains all
+declared bytes of invalid JSON or a schema-invalid value. Seal requires a complete
+valid document. Foreign/missing/corrupt/mismatched sources behind seals or final
+receipts refuse recovery. A valid seal without final publication is an orphan.
 
-`Invocation` validates closed records, exact identities, argument digests,
-approval, parent call provenance, tool receipts, and ordered host actions.
-`ResultSource.restore/1` also checks every source record before allowed tail
-repair. It derives quota charges and the committed read index without executing
-extension code.
+A committed tool receipt reconstructs its exact message if the redundant message
+append was interrupted; an existing message is added once. Command/service displays
+restore separately from assistant answers. Idle resume starts no callback, action,
+query, or unfinished output. Inspect unknown evidence before new work.
+One serialized lane permits at most 10000 invocations. Intent records permit
+64 KiB and final records 128 KiB; those journal bounds do not enlarge SDK messages.
 
-A valid interrupted prefix can contain begin and fragments without a seal. It
-can even contain every declared byte of invalid JSON or a schema-invalid value.
-That prefix remains unreadable diagnostic evidence. A seal requires a complete
-valid document. A missing, foreign, corrupted, or mismatched source behind a
-sealed or final result refuses recovery before repair. A seal without a final
-receipt remains an unreadable orphan.
+## Practice a complete change
 
-A committed tool receipt restores its exact tool message if interruption
-prevented the redundant message append. An existing message is added once.
-Commands and services restore their last display separately from the assistant
-answer. Idle resume starts no callbacks. Unknown intents, effects, and unfinished
-publications never replay automatically. Inspect their saved evidence before
-starting new work.
-
-A Session has one serialized invocation lane and at most 10,000 invocations.
-Intent records allow 64 KiB and final result records allow 128 KiB. The larger
-journal record bound accommodates separately bounded schemas and rendered text;
-it does not enlarge SDK messages.
-
-## Practice a change at the correct owner
-
-Trace the lab's `stats` command from `examples/extension-lab/spec.exs` into
-`src/memory.ex`. Follow its state-read action to the final typed value. Then find
-the assertion in `proof.exs` that checks no inference and no tombstone mutation.
-A similar command needs an extension descriptor, callback, and behavior checks.
-It needs no command-specific CLI branch.
-
-For a saved-result change, follow `test/extensions_result_publication_test.exs`
-through preparation and terminal transport. Next read the source closure and
-structured-view tests. Run the focused checks for the owner you change:
+Trace lab `stats` from [its spec](../../examples/extension-lab/spec.exs) and
+[worker](../../examples/extension-lab/src/memory.ex) into a state read and typed
+result. Find [the proof](../../dev/verification/lab.exs) asserting no inference or
+tombstone mutation. A similar command needs a descriptor/callback and behavioral
+proof, without a feature-specific CLI branch.
 
 ```sh
-mix test test/extensions_catalog_test.exs test/extensions_invocation_test.exs
-mix test test/extensions_result_document_test.exs test/extensions_result_publication_test.exs
-mix test test/extensions_result_source_test.exs test/extensions_result_view_test.exs
-mix test test/extensions_result_session_test.exs
+mix test test/ipse/extension/catalog_test.exs test/ipse/extension/invocation_test.exs
+mix test test/ipse/extension/result_document_test.exs test/ipse/extension/result_publication_test.exs
+mix test test/ipse/extension/result_source_test.exs test/ipse/extension/result_view_test.exs
+mix test test/ipse/extension/result_session_test.exs
 ```
 
-Keep interruption, identity, cleanup, quota, and disclosure cases when extending
-this path. Use [installed compatibility training](testing.md#learn-a-complete-workflow-through-the-compatibility-lab) for the
-separate packaged-worker checks. Passing a pure source test does not verify
-Session publication or native cleanup.
-
-Run the [saved-result example](../../examples/saved-results/README.md) to publish
-exactly 4 MiB through an independently built artifact, then recover the same
-historical bytes. Its source and installed-runtime verifiers check one callback,
-1,024 fragments, unchanged journals on resume, and no model requests.
+Follow preparation/terminal transport, source closure, disclosure, then Session
+publication. Preserve interruption, identity, cleanup, quota, and denial cases.
+The [saved-result example](../../examples/README.md) verifies one callback and
+1024 fragments totaling 4 MiB, inert resume, and no model request. Run source and
+installed variants through [testing](testing.md); a pure source reducer pass does
+not prove actual worker cleanup or packaged runtime behavior.

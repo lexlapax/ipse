@@ -19,7 +19,7 @@ git clone https://github.com/lexlapax/ipse.git
 cd ipse
 mix local.hex --force
 mix local.rebar --force
-./scripts/build.sh
+./dev/build.sh
 ./bin/ipse demo
 ```
 
@@ -69,7 +69,7 @@ providers or billing modes.
 | Select reviewed extensions | [Extensions](docs/operator/extensions.md) |
 | Store explicit notes with retention and suppression | [Memory](docs/operator/memory.md) |
 | Recover interrupted work or start from a reviewed handoff | [Session recovery](docs/operator/recovery.md) |
-| Inspect usage and shared quotas | [Usage](docs/operator/usage-accounting.md), [budgets](docs/operator/budgets.md) |
+| Inspect usage and shared quotas | [Resource controls](docs/operator/resources.md) |
 | Contribute to the harness or build an extension | [Developer training](docs/developer/index.md) |
 
 Shell commands use your ordinary account permissions by default. An explicit

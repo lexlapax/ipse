@@ -6,6 +6,7 @@ defmodule Ipse.MixProject do
       app: :ipse,
       version: "0.1.0",
       elixir: "~> 1.18",
+      elixirc_paths: ["lib", "extensions/bundled"],
       start_permanent: Mix.env() == :prod,
       test_ignore_filters: [~r/^test\/support\/mcp_(catalog_)?server\.exs$/],
       escript: [main_module: Ipse.CLI],

@@ -16,7 +16,7 @@ and make the result unsuitable as a baseline.
 ## Start with a behavior
 
 Suppose you change write approval. Begin with
-[`session_test.exs`](../../developer/../../test/session_test.exs), where a fixture provider proposes
+[`session_test.exs`](https://github.com/lexlapax/ipse/blob/5bffe00364d66f5012e5a0d4cd86c4180c74ebcb/test/session_test.exs), where a fixture provider proposes
 a real write and the test observes the full approval request. Denial must leave
 the file absent, record the denied outcome and allow the turn to finish. Approval
 must authorize only the exact pending proposal.
@@ -37,7 +37,7 @@ before approving the pending write. Recheck that condition after sleeping;
 a timer's elapsed duration does not prove that wall time has reached the expiry.
 Bound the wait with a monotonic deadline, then retain the unchanged-record,
 failure-receipt and inert-resume assertions. The
-[`memory session fixture`](../../developer/../../test/extensions_memory_session_test.exs)
+[`memory session fixture`](https://github.com/lexlapax/ipse/blob/5bffe00364d66f5012e5a0d4cd86c4180c74ebcb/test/extensions_memory_session_test.exs)
 exercises both approval before expiry and rejection after expiry.
 
 ### Choose the closest fixture

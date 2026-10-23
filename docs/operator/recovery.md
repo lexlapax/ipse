@@ -1,98 +1,87 @@
-# Inspect a session and recover work
+# Diagnose and recover interrupted work
 
-After an interruption, inspect the workspace before asking Ipse to continue.
-An error can mean an effect completed without a recorded result. Resume preserves
-that uncertainty and never automatically repeats the action.
+Inspect the workspace and any external service before asking Ipse to continue.
+An effect can finish without a recorded result. Resume preserves that uncertainty
+and never automatically repeats the action.
 
-## Find the session and inspect it locally
+## Find the original session
 
-Use the state directory from the original invocation. Without `--state-dir`, the
-store is `IPSE_HOME/sessions`, normally `~/.ipse/sessions`.
+Use its original state directory, normally `IPSE_HOME/sessions`:
 
 ```sh
 ipse sessions --json --state-dir /private/path/sessions
 ipse diagnose --resume SESSION_ID --state-dir /private/path/sessions
 ```
 
-Replace `SESSION_ID` with an ID from the listing. These commands do not sign in,
-make model requests, execute extensions, or repair journals. Listing reads bounded
-metadata; a listed session can still fail whole-history validation.
+Replace the ID with one from the listing. Omit `--state-dir` for the default.
+Both commands are local. They make no model requests, activate no extensions,
+and repair no journal. Listing reads bounded metadata; a listed session may
+still fail whole-history validation.
 
-Diagnosis shows the saved phase, unknown-call count, context-byte categories,
-accounting, recent request durations, and any recorded journal-limit receipt.
-Its context scope is `effective_transcript_without_system`: reconstructed live
-system headers are excluded. Bytes are not provider token counts. Duration
-measurements cover owned model/compaction work, not all tool work or approval
-waiting. No prompts, results, credentials, or hidden reasoning are exported.
+Diagnosis reports phase, unknown calls, context bytes, accounting, recent request
+durations, and journal-limit receipts. Its context scope excludes live system
+headers. Bytes are not tokens. Durations cover owned model/compaction work, not
+all tools or approval waits. Normal diagnostics omit conversation text and hidden
+reasoning, but the underlying journal remains private. For live work, use
+`/session`, `/diagnostics`, `/context`, and `/info` without inference.
 
-For a live session, `/session`, `/diagnostics`, `/context`, and `/info` provide
-local inspection. They make no inference. Keep journals private even when the
-standard diagnostic display contains no conversation text.
+## Decide whether an effect needs inspection
 
-## Distinguish an unstarted action from an unknown effect
+A validation/setup refusal before execution is a known failure. `not_started`
+means that proposal did not run. A missing result after intent, transport loss,
+timeout, incomplete output, or worker failure can mean `unknown`.
 
-A validation, configuration, or setup refusal before execution is a known
-failure. A tool shown as `not_started` did not execute that proposal. A missing
-result after intent, transport loss, timeout, incomplete output, or worker failure
-can leave the outcome `unknown`.
+| Effect | Inspect before another attempt |
+| --- | --- |
+| File write/edit | Read the actual target and compare it with the proposed content |
+| Shell work | Inspect changed files and still-running processes |
+| Remote MCP | Check service-side records; a closed local connection does not stop remote work |
+| Delegation | Inspect child results, approvals, changes, and reported cleanup |
+| Model request | Keep recorded usage/liability, including failed or incomplete responses |
 
-For an unknown file write, read the actual target and compare it with the proposed
-content. For shell work, inspect files and running processes. For remote MCP,
-inspect the service's records as well. A closed local connection does not prove
-remote work stopped. Ask for another action only after deciding what remains
-necessary. Do not repeat work just to recover a lost display.
+Do not repeat a producer merely to recover a lost display. Cancellation stops
+owned tasks and ordinary process groups. Detached descendants can remain.
+Cleanup acknowledgment, process exit, and successful work are separate facts.
+Resolve unconfirmed cleanup before overlapping another attempt.
 
-Cancellation stops owned tasks and ordinary process groups. Detached descendants
-can remain. Cleanup acknowledgments are separate from task/VM exit and from the
-success of the requested work. If Ipse reports cleanup unconfirmed, resolve
-running work before starting an overlapping attempt.
-
-## Resume compatible saved work
+## Resume compatible work
 
 ```sh
 ipse chat --resume SESSION_ID --state-dir /private/path/sessions
 ```
 
-Repeat the original explicit configuration, MCP selection, endpoint, and temporary
-extension selection when applicable. Resume retains the original workspace,
-provider/model, sandbox, delegation settings, and instruction snapshots. Changed
-configuration digests or pinned extension/runtime identities can refuse recovery.
-Restore the original inputs or use a fresh handoff. Do not edit saved records to
-remove a mismatch.
+Repeat original explicit configuration, endpoint, MCP file, and temporary
+extension selections. Resume keeps the original workspace, provider/model,
+sandbox, delegation settings, and instruction snapshot. Changed digests or pinned
+artifact/runtime identities can refuse recovery. Restore original inputs or use
+a reviewed handoff; do not edit records to remove a mismatch.
 
-Idle resume reconstructs history without provider requests, callbacks, children,
-or tool replay. Pending structured questions reappear for an explicit answer.
-A recorded answer survives interruption, but ordinary idle resume does not start
-inference automatically. Use interactive chat for a pending question; headless
-`run` cannot answer it.
+Idle resume starts no inference, callbacks, children, or tools. Pending questions
+reappear for an explicit answer. A recorded answer survives interruption, but
+ordinary resume still starts idle. Use interactive chat for questions; headless
+`run` cannot answer them. `/context refresh` changes instructions/skills only,
+without making a changed execution configuration compatible.
 
-A torn final journal record can be repaired during validated ordinary resume
-under the session lock. Corrupt committed records or checkpoints refuse recovery.
-Read-only diagnosis does not repair the tail. Preserve the original files for
-investigation rather than deleting suspect records.
+Validated ordinary resume may repair a torn final journal record while holding
+the lock. Read-only diagnosis does not. Corrupt committed records/checkpoints
+refuse recovery. Preserve originals for investigation.
 
-## Respect the session lock
+## Respect active ownership
 
-One active owner holds the journal lock. Close or cancel the other session
-normally. A lock can remain held after the visible Session process disappears
-while tracked work, storage, or cleanup is still settling. An approved operation
-may still complete during that time.
+One owner holds the journal lock. Close/cancel it normally. The visible Session
+can disappear before storage or tracked work settles, and an approved effect
+may still complete. Never delete lock files, truncate records, or open another
+writer to force resume. Persistent lock files preserve inode identity.
 
-Do not delete lock files, truncate journals, or open a second writer to force
-resume. Locks release through ownership, while the persistent file preserves
-its identity. Missing acknowledgments and `journal_unavailable` mean a record
-may already have reached disk. Ipse stops and does not retry it. Slow storage can
-outlast caller deadlines; `--timeout-ms` changes provider deadlines, not those
-storage/Session calls.
+`journal_unavailable` or a missing acknowledgment can mean an append already
+reached disk. Ipse stops without retry. Slow storage can outlast caller deadlines;
+`--timeout-ms` controls provider timeouts, not storage/Session call deadlines.
 
 ## Continue in a fresh session
 
-Use a handoff when required history cannot fit, a journal is sealed, or a reviewed
-configuration/runtime change prevents compatible resume. First inspect unresolved
-effects. Write your own concise continuation note with the goal, decisions,
-relevant files, and remaining uncertainty.
-
-Create the output in a private directory. The shell controls output permissions:
+Use a handoff when necessary history cannot fit, a journal is sealed, or you
+cannot restore the old runtime. Write a concrete note identifying the task,
+relevant files, unknown effects, and remaining uncertainty:
 
 ```sh
 umask 077
@@ -101,54 +90,119 @@ ipse handoff --resume SESSION_ID --state-dir /private/path/sessions \
   --note 'Continue the reviewed CLI change. Inspect hello.exs and the pending shell effect before retrying. Preserve existing edits.' \
   > "$IPSE_RECOVERY_DIR/handoff.json"
 cat "$IPSE_RECOVERY_DIR/handoff.json"
-```
-
-Review the note and provenance, then import it with your deliberately selected
-current provider and configuration:
-
-```sh
 ipse chat --provider chatgpt --cwd /path/to/project \
   --handoff "$IPSE_RECOVERY_DIR/handoff.json"
 ```
 
-This starts a fresh idle conversation. Type a new task to begin. The example uses
-real subscription inference only after you submit that task. The note is
-attributed historical context; it does not become an action request or transfer
-credentials, approvals, tools, provider settings, or native continuation.
+Review the artifact before import. The fresh conversation starts idle and makes
+real subscription requests only after a new task. Historical context grants no
+permissions and transfers no credentials, provider settings, native continuation,
+tools, or approvals. The new journal saves the artifact once; later resume the
+new ID normally without its original handoff file.
 
-The export includes source ID, a digest of decoded source events, unknown-call
-count, and up to 16 bounded unknown-call references with an omission count. It
-excludes original arguments/results and provider data. The digest establishes
-provenance, not authenticity or independent review. Your note itself can contain
-private information; no automatic secret scanner reviews it.
+The artifact contains a source ID, decoded-event digest, unknown count, and up to
+sixteen bounded unknown-call references with an omission count. It omits original
+arguments/results and provider data. Its digest proves provenance, not authenticity
+or independent review. Your note can contain secrets; no scanner reviews it.
+Notes allow 8192 UTF-8 bytes and the full version-1 artifact allows 16 KiB, including
+JSON escaping. Extra/duplicate fields and inconsistent counts refuse before sign-in
+or session creation. Import is only for fresh interactive chat, without `--resume`,
+`run`, or `demo`. A new root neither transfers nor refunds old budget liability.
 
-The UTF-8 note is at most 8192 bytes and the entire version-1 artifact at most
-16 KiB. Escaping can make a shorter note exceed the encoded limit. Extra or
-duplicate fields and inconsistent unknown-call counts are rejected before
-sign-in or session creation. Import works only for fresh interactive chat;
-it cannot combine with `--resume`, `run`, or `demo`.
+A sealed journal stays sealed after raising limits. Diagnosis/handoff can inspect
+valid bounded histories, but oversized legacy files may refuse export. Preserve
+them and request developer-assisted source-page inspection; individual source
+records have a separate 1-MiB bound. Do not delete records to make them fit.
 
-The new journal saves the validated artifact once. Later use normal
-`ipse chat --resume NEW_SESSION_ID`; the original handoff path is no longer
-required. A fresh session does not resolve source uncertainty or refund its old
-[budget liability](budgets.md).
+## Diagnose startup and service errors
 
-## Recover from storage and identity limits
+For a source checkout:
 
-A journal sealed at its byte/event/record limit cannot resume, even after limits
-are raised. Diagnosis and handoff can inspect valid bounded histories. Oversized
-legacy files may refuse whole-history export too. Ask a developer for bounded
-source-page inspection and prepare a reviewed manual note if automatic handoff
-cannot validate the file. Source-page reads have their own 1 MiB record bound.
+```sh
+elixir --version
+rustc --version
+./dev/build.sh
+./bin/ipse demo
+```
 
-Extension sessions pin exact artifacts, options, host API, and runtime identity.
-Keep a matching frozen runner for old sessions. Changing built-in license bytes
-also changes identity. A reviewed logical memory binding can preserve note data
-across versions, but does not make an old session resumable. See
-[extension upgrades](extensions.md#recovery-and-execution-boundaries) and
-[memory migration](memory.md#export-migrate-and-upgrade).
+The source build needs Elixir 1.18+, OTP 27+, Rust 1.85+, a C linker, and access
+to locked dependency sources. A bundled release needs a matching OS/architecture/
+Linux-libc archive, without the development toolchain. Mix locks and HTTP fixtures
+need loopback sockets. If execution policy refuses them, use an appropriately
+permitted terminal. Keep TLS verification and test assertions intact.
 
-Budget-ledger corruption is a separate refusal. Preserve both ledger and journal;
-a handoff can continue a validated conversation without repairing or activating
-the damaged tree. Diagnostic trace-ring corruption likewise needs a fresh trace
-directory and session, not journal editing. See [Diagnostic capture](observability.md).
+| Symptom | Recovery |
+| --- | --- |
+| Expired/refused browser callback | Keep the terminal open and start a new `ipse login`; each callback has five minutes and must reach that host's loopback listener |
+| Stale login completion after refresh/logout | Start a new login; do not resubmit an older callback |
+| Terminal refresh-token rejection | Sign in again; unusable tokens are cleared while registration is retained |
+| Registration or account/workspace rejection | Check the selected registration and account policy; repeated inference does not repair eligibility |
+| Subscription usage/plan error | Check account limits and plan permission; the error alone gives no reset time |
+| Credential lock busy | Let the other login/refresh/logout finish, preserving lock files |
+| Model refused | Choose an available model/profile explicitly, preserving billing choice |
+| HTTP clients busy | Wait; an application permits 64 simultaneous clients |
+| Stream/body/output bound | Inspect usage and effects before a fresh task; none of that incomplete response's tools execute |
+
+Ipse does not switch subscription failures to paid API calls. Supply the matching
+API environment variable privately. Include sanitized status/code/request IDs in
+reports, not raw provider prose. A refresh awaiting network identity validation
+retains credentials privately, without using an unverified identity or consumed
+refresh token. If identity expires, sign in again. Unconfirmed logout revocation
+may need account-side disconnection.
+
+Auth, inference, and HTTP MCP share proxy policy. HTTPS destinations use
+`HTTPS_PROXY`, whose supported proxy URL syntax is `http://`. Encoded proxy
+credentials are allowed. An unsupported/failed selected proxy does not fall back
+to direct access. Check `NO_PROXY` and browser loopback bypass separately.
+
+For incomplete Ollama answers, compare input plus output tokens, including reasoning,
+with the loaded model's context window. Raising output allowance does not enlarge
+that window. Inspect actual `context_length` and
+[answer policy](configuration.md#allow-a-longer-extension-answer). Keep the failed
+outcome before a separately authorized request.
+
+## Diagnose native policy, MCP, and extensions
+
+`--yes` approves effects without broadening native confinement. `/session` reports
+visibility. Linux needs Landlock ABI 6+ and permitted user/mount/network/PID
+namespaces. Keep the application/helper outside the writable workspace. Helpers
+must be user-owned, singly linked, and not group/other writable. On macOS use
+an installed bundle outside the candidate checkout; existing `IPSE_HOME` needs
+mode `0700`. Unsafe signatures/cache entries or a full 32-generation cache refuse
+setup. Do not remove cache generations while work may still use them.
+
+Native commands do not inherit the host environment. Missing home toolchains,
+sibling checkouts, caches, or package network access can be expected policy
+restrictions. A hidden path is not proof it is absent on the host. Report skipped
+checks and follow [shell confinement](usage.md#choose-shell-confinement), without
+silently rerunning unsandboxed.
+
+MCP requires explicit `--mcp-config PATH`. Check executable/URL, protocol, exact
+item allowlists, schemas, CA trust, and the selected bearer variable. Discovery
+installs nothing. Descriptor changes refuse dispatch. Token rotation needs a
+restart; automatic reconnect/replay, redirects, and OAuth negotiation are unsupported.
+Server sandbox selection is separate from shell policy. Remote work remains
+outside local confinement and can be unknown after dispatch. See [MCP](mcp.md).
+
+For extensions, inspect digest, trust, options, selected instance, compatibility,
+and `/ext`. Import alone enables nothing. Changed code/options may require a
+fresh session. An operator-scope Memory option needs a binding that permits that
+scope; compare both when `extension_admission_refused` occurs. See
+[Memory configuration](memory.md#configure-project-notes). Resume needs pinned
+identities, including builtin license bytes. A logical binding can preserve data
+across upgrades without making an old session resumable. See
+[extension recovery](extensions.md#recover-without-replaying-unknown-work).
+
+Corrupt budget ledgers and trace catalogs are separate from journals. Preserve
+both journal and ledger on budget refusal. Start a new private trace directory
+and session for a corrupt ring; do not rewrite old samples. [Capture controls](observability.md)
+explain readiness, drops, closure, and retention.
+
+## Report a reproducible problem
+
+Provide the command with secrets removed, application version, OS/architecture,
+provider/model, selected sandbox, sanitized error/request ID, and a minimal
+sequence using synthetic files. Distinguish executed, failed, denied, and skipped
+checks. For capture failures include readiness, drops, closure reason, and cleanup.
+Never attach auth files, authorization URLs/codes, environment dumps, hidden
+reasoning, or complete private journals.

@@ -2,7 +2,7 @@
 
 Historical investigation and verification increment after `e77331d`. The commit
 containing this record owns the runner, Session helper and CLI changes. Use the
-current [evaluation training chapter](../../developer/knowledge-evaluation.md#check-every-selection-before-opening-the-dataset)
+current [evaluation training chapter](../2026-10-22-before-structural-consolidation/docs/developer/knowledge-evaluation.md#check-every-selection-before-opening-the-dataset)
 for execution flow and exercises. The [plan](../../plan.md#p27-optional-research-graph-and-rag)
 retains the full P27 acceptance scope. No held-out member, expected answer,
 model service, model weights or paid provider was opened for this increment.

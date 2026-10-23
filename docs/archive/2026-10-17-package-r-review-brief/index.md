@@ -6,7 +6,7 @@ Historical reference only. Archived 2026-10-17 from
 The [original body](architecture-review.md) is retained with relative links rebased;
 no private critique or transcript is included.
 
-Current replacements: [handoff](../../operator/architecture-review.md),
+Current replacements: [handoff](../2026-10-22-before-structural-consolidation/docs/operator/architecture-review.md),
 [dispositions](../2026-10-18-before-manual-rewrite/docs/developer/architecture-review-dispositions.md),
 [internal audit](../2026-10-18-before-manual-rewrite/docs/developer/architecture-self-audit.md),
 [verification](../2026-10-18-before-manual-rewrite/docs/developer/testing.md#current-evidence-and-next-checks) and

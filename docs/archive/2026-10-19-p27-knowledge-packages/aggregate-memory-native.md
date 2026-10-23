@@ -3,7 +3,7 @@
 Historical implementation and verification record after `19d67d2`. This is the
 first native backend unit of the [aggregate design](aggregate-memory-design.md),
 not P27 completion. The [plan](../../plan.md#p27-optional-research-graph-and-rag)
-owns acceptance; the [training exercise](../../developer/knowledge-evaluation.md#exercise-the-native-aggregate-collector)
+owns acceptance; the [training exercise](../2026-10-22-before-structural-consolidation/docs/developer/knowledge-evaluation.md#exercise-the-native-aggregate-collector)
 and [native protocol](../../../native/README.md#optional-exact-aggregate-memory-scopes)
 own current procedures. The user approved the optional systemd user-service
 tooling dependency; its source, scope and license are in the dependency inventory.

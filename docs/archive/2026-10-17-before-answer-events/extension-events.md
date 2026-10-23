@@ -15,7 +15,7 @@ or inference for that input. This implements the first subscription seams in the
 this guide covers read-only delivery. Broader lifecycle observation remains pending.
 
 Use [operator selection](../2026-10-18-before-manual-rewrite/docs/operator/extensions.md#event-subscribers) for
-trust/configuration and [artifacts](../../developer/extension-artifacts.md) for installation.
+trust/configuration and [artifacts](../2026-10-22-before-structural-consolidation/docs/developer/extension-artifacts.md) for installation.
 The [source/view adapter](../2026-10-18-before-manual-rewrite/docs/developer/lifecycle-events.md#internal-journal-source-and-prompt-views)
 owns occurrence identity and source paging. This guide owns subscription
 declarations, callback values and delivery recovery.
@@ -180,7 +180,7 @@ coherently forged physical references before repair. See
 The separate [job contract](extension-event-jobs.md) now provides finite host
 actions, pre-request recall and after-turn maintenance. Remaining foundation work
 includes broader lifecycle types/causal links and explicit catch-up.
-[Diagnostic sinks](../../developer/observability.md) have separate metadata capture/stop controls.
+[Diagnostic sinks](../2026-10-22-before-structural-consolidation/docs/developer/observability.md) have separate metadata capture/stop controls.
 Continuous private feeds and external adapters need their own negotiated
 ownership/flow/egress contract. Notification acknowledgments must not silently
 gain effectful semantics in a future implementation. Production graph extraction

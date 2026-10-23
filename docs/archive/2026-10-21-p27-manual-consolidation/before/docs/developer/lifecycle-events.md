@@ -141,7 +141,7 @@ stopping ordinary work or cleanup. Tool recording has its separate
 | [Live feed](extension-feeds.md) | Selected committed facts, bounded serial queue, incomplete closure | Exact acknowledgment |
 | [Event job](extension-event-jobs.md) | Owned source-bound before-request/after-turn job in one effectful lane | Negotiated approved host actions |
 | [Transforms](extension-hooks.md) | Ordered awaited boundary | Validated projection at that seam |
-| [Diagnostics](../../../../../developer/observability.md) | Independent sampled queues with drop counters | Metadata acknowledgment |
+| [Diagnostics](../../../../2026-10-22-before-structural-consolidation/docs/developer/observability.md) | Independent sampled queues with drop counters | Metadata acknowledgment |
 | [Visible text](text-streams.md) | Private ordered flow with acknowledgment and pressure | Text receipt only |
 
 Declarations select exact types, versions, views, and mode under artifact/options,
@@ -171,7 +171,7 @@ does not erase source journals, cached context, or past egress.
 
 Child completion requires an authenticated worker report after bounded result and
 actual child cleanup acknowledgment; death alone cannot promote unknown to
-`result_recorded`. See [delegation](../../../../../developer/delegation.md). Ephemeral text sources have
+`result_recorded`. See [delegation](../../../../2026-10-22-before-structural-consolidation/docs/developer/delegation.md). Ephemeral text sources have
 broker epochs/ranges rather than journal offsets and are rejected by durable
 history/feed readers; see [stream events](stream-events.md).
 

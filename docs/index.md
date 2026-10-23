@@ -22,11 +22,11 @@ quick start. Try the demo before configuring a model account.
 | Remember an explicit project note | [Use memory](operator/memory.md) |
 | Retain source text and retrieve exact passages | [Use a corpus](operator/corpus.md) |
 | Record relationships with exact source quotations | [Use Graph](operator/graph.md) |
-| Investigate provided text or selected search/fetch tools | [Use the Research extension](operator/research-extensions.md) |
+| Investigate provided text or selected search/fetch tools | [Use the Research extension](operator/research.md) |
 | Gather sources with the main agent and export its ledger | [Run native research](operator/research.md) |
-| Configure explicit vector generation | [Use embeddings](operator/embeddings.md) |
+| Configure explicit vector generation | [Use embeddings](operator/extensions.md) |
 | Inspect or recover interrupted work | [Recover a session](operator/recovery.md) |
-| Find why a command failed | [Troubleshoot](operator/troubleshooting.md) |
+| Find why a command failed | [Troubleshoot](operator/recovery.md) |
 | Understand which process owns an operation | [Follow a turn](developer/architecture.md) |
 | Add a domain tool without changing the host | [Build an extension](developer/extensions.md) |
 | Change source retrieval, graph or investigation behavior | [Study knowledge packages](developer/knowledge-extensions.md) |
@@ -60,7 +60,7 @@ put status in the plan and preserved records in the archive.
 From the repository root, check the navigation and examples after an edit:
 
 ```sh
-elixir scripts/check-docs.exs
+elixir dev/check-docs.exs
 ```
 
 The checker cannot judge the usefulness of prose. Follow the changed instructions

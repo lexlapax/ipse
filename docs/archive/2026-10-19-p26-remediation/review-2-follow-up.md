@@ -4,7 +4,7 @@ Historical investigation record, not a completion verdict. The
 [second external review](review-2.md) reviewed `b1dc820`; the
 [remediation index](index.md) owns later verification and acceptance.
 Current procedures belong in the [memory user manual](../../operator/memory.md)
-and [developer training chapter](../../developer/memory.md).
+and [developer training chapter](../2026-10-22-before-structural-consolidation/docs/developer/memory.md).
 
 ## Intent and scope
 

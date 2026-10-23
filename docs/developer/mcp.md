@@ -18,9 +18,8 @@ Read these modules in runtime order:
 | Module | Work |
 | --- | --- |
 | `Ipse.MCP.Config` | Load one explicit bounded config and public fingerprint |
-| `Ipse.MCP.Client` | Handshake, selected tool discovery, descriptor binding |
-| `Ipse.MCP.Catalog` | Selected resource/prompt metadata |
-| `Ipse.MCP.Transport` | Owned stdio framing and cleanup |
+| `Ipse.MCP` | Handshake, selected tool/resource/prompt discovery, descriptor binding |
+| `Ipse.MCP.StdioTransport` | Owned stdio framing and cleanup |
 | `Ipse.MCP.HTTPTransport` | Owned finite Streamable HTTP requests |
 | `Ipse.Session` | Review, approval, synced intent, effect/result admission |
 
@@ -43,7 +42,7 @@ Extensions use the separate [MCP host-call contract](extension-effects.md#bind-a
 Their action intent replaces the model tool's `tool_started` record; routing,
 descriptor rediscovery, transport ownership and unknown-outcome rules are shared.
 
-Follow this in `test/mcp/session_test.exs`, then read the catalog Session fixture
+Follow this in `test/ipse/mcp/session_test.exs`, then read the catalog Session fixture
 for a selected resource. Both should reach the same approval/intent boundary.
 Resource text and prompt messages remain data, with returned roles preserved;
 they never become system instructions. Non-text resource/prompt results refuse.
@@ -103,10 +102,10 @@ public endpoint/name/allowlists/timeout bind the fingerprint. Rotation requires
 restart with the same public config. Authentication failures discard raw bodies.
 OAuth discovery, registration, negotiation, and refresh are unsupported.
 
-`Ipse.HTTPProxy` supplies selected proxy options without origin-header credential
+`Ipse.HTTP` supplies selected proxy options without origin-header credential
 leaks. Loopback bypasses ambient proxies; a chosen proxy failure does not fall
 back to direct egress. Each request uses a private one-connection HTTP/1 Finch pool
-owned by an `HTTPProfile` guardian. IO runs outside the transport GenServer; the
+owned by an `Ipse.HTTP` guardian. IO runs outside the transport GenServer; the
 guardian lease remains through cancellation and pool cleanup. Closure attempts a
 bounded authenticated DELETE for an assigned session, without claiming remote
 work stopped.
@@ -114,12 +113,12 @@ work stopped.
 The HTTP transport monitors the SDK owner and registers with the task cleanup
 scope. It starts without a process link because owner-exit system termination
 would interrupt its asynchronous pool closure. Owner loss enters the same
-bounded close path as cancellation. `test/mcp/http_owner_cleanup_test.exs`
+bounded close path as cancellation. `test/ipse/mcp/http_owner_cleanup_test.exs`
 checks the actual receipt and normal transport exit after abnormal owner death.
 
 When testing idle resume, capture traffic after the old transport finishes its
 cleanup exchange. Closing an active POST socket precedes the separate DELETE
-request. In `test/extensions_mcp_call_session_test.exs`, the HTTP fixture assigns
+request. In `test/ipse/extension/mcp_call_session_test.exs`, the HTTP fixture assigns
 each initialized connection a synthetic session ID. Its DELETE barrier lets you
 hold that request, observe POST closure, then release and confirm the exact
 session's DELETE before taking the full traffic snapshot. Compare all recorded
@@ -152,8 +151,8 @@ elicitation, tasks, resource templates, or server mode is implemented.
 | Local close calls | Stdio 2 seconds; HTTP 3 seconds |
 
 ```sh
-mix test test/mcp/schema_test.exs test/mcp/config_test.exs
-mix test test/mcp/client_test.exs test/mcp/session_test.exs test/mcp/http_test.exs
+mix test test/ipse/json_test.exs test/ipse/mcp/config_test.exs
+mix test test/ipse/mcp/client_test.exs test/ipse/mcp/session_test.exs test/ipse/mcp/http_test.exs
 ```
 
 Schema tests establish the closed subset. Local server/HTTP fixtures establish

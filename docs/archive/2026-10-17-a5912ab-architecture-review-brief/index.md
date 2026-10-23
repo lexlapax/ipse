@@ -6,7 +6,7 @@ The consolidated assessment returned without acceptance. The
 [original body](architecture-review.md) is retained with relative links rebased;
 no private critique or transcript is included.
 
-Current replacements: [review checkpoint](../../operator/architecture-review.md),
+Current replacements: [review checkpoint](../2026-10-22-before-structural-consolidation/docs/operator/architecture-review.md),
 [dispositions](../2026-10-18-before-manual-rewrite/docs/developer/architecture-review-dispositions.md),
 [internal audit](../2026-10-18-before-manual-rewrite/docs/developer/architecture-self-audit.md),
 [verification](../2026-10-18-before-manual-rewrite/docs/developer/testing.md#current-evidence-and-next-checks) and

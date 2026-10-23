@@ -7,7 +7,9 @@ defmodule Ipse.Development.Evaluation.ModelService do
   work, service admission and native cleanup are separate outcomes. No execution
   claim, measurement scope, provider fallback or retry is supplied by this module.
   """
-  alias Ipse.{HTTPProfile, Runner, WorkspaceContext}
+  alias Ipse.HTTP
+  alias Ipse.Runner
+  alias Ipse.Workspace
 
   @gib 68_719_476_736
   @json 1_048_576
@@ -1121,7 +1123,7 @@ defmodule Ipse.Development.Evaluation.ModelService do
     payload = if body, do: JSON.encode!(body), else: nil
     send(owner, {token, :metadata_request})
 
-    case HTTPProfile.bounded_request(
+    case HTTP.bounded_request(
            Finch.build(method, config["origin"] <> path, headers, payload),
            @json,
            timeout
@@ -1392,7 +1394,7 @@ defmodule Ipse.Development.Evaluation.ModelService do
   end
 
   defp canonical(path) do
-    {:ok, resolved} = WorkspaceContext.canonical_path(path)
+    {:ok, resolved} = Workspace.canonical_path(path)
     resolved
   end
 

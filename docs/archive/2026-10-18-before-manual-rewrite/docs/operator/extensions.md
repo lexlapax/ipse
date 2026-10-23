@@ -465,7 +465,7 @@ or grant for a new session. Existing pinned sessions require their saved configu
 Embeddings and audio need separately supported contracts.
 
 The [request and recovery contract](../developer/extension-model-calls.md) owns
-bounds and failure codes. The [credential-free artifact example](../../../../../examples/model-calls/README.md)
+bounds and failure codes. The [credential-free artifact example](../../../2026-10-22-before-structural-consolidation/examples/model-calls/README.md)
 demonstrates source/package verification with a synthetic loopback provider; it
 does not establish live provider/account or model-quality coverage.
 

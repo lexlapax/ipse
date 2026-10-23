@@ -2,7 +2,7 @@
 
 Historical verification record after `8297096`. The containing commit owns the
 proof and CI additions. Follow the current
-[selection exercise](../../developer/knowledge-extensions.md#verify-independent-memory-and-knowledge-selections)
+[selection exercise](../2026-10-22-before-structural-consolidation/docs/developer/knowledge-extensions.md#verify-independent-memory-and-knowledge-selections)
 for commands and expected behavior. This record does not reopen P26 or complete
 P27's held-out quality and engine-selection gates.
 

@@ -1,6 +1,6 @@
 > Historical reference only. Snapshot of `docs/developer/budgets.md` at `10b9dd66d06ef28718b58530a7e5b01c7c50397a` on 2026-10-18.
 > Original body retained; relative links rebased for this archive.
-> Use the [current manual](../../../../developer/budgets.md).
+> Use the [current manual](../../../2026-10-22-before-structural-consolidation/docs/developer/budgets.md).
 
 # Host-owned shared admission
 
@@ -172,7 +172,7 @@ follow-up call refuses, default-off creates no ledger, and idle resume changes n
 journal/ledger bytes. A separate last-slot race covers fail-fast sibling
 cancellation while preserving booked liability, rather than assuming every
 reservation reaches the provider.
-The separate [model-call artifact](../../../../../examples/model-calls/README.md) exercises
+The separate [model-call artifact](../../../2026-10-22-before-structural-consolidation/examples/model-calls/README.md) exercises
 the same admission boundary through an independent worker and actual loopback
 provider in source and the extracted runtime. Model-job fixtures hold two real
 child HTTP requests open together and validate registered-child source facts;

@@ -1,7 +1,7 @@
 defmodule Ipse.Development.Evaluation.Session do
   @moduledoc "One owned, catalog-bound Session for a declared knowledge evaluation variant."
   alias Ipse.{Journal, Session, Usage}
-  alias Ipse.Extensions.{Catalog, Config, Registry, Store, Worker, WorkerLease}
+  alias Ipse.Extension.{Catalog, Config, Registry, Artifact, Worker}
 
   @verbs ~w(ingest inspect index extract query research answer abort forget export import collect)
   @command_ids %{
@@ -109,7 +109,7 @@ defmodule Ipse.Development.Evaluation.Session do
               not knowledge?
             end
 
-          cleanup = WorkerLease.close(worker, lease)
+          cleanup = Worker.close_lease(worker, lease)
 
           Map.merge(identity, %{
             "status" =>
@@ -122,7 +122,7 @@ defmodule Ipse.Development.Evaluation.Session do
             "cleanup" => if(cleanup == :ok, do: "confirmed", else: "unconfirmed")
           })
         after
-          if Process.alive?(worker), do: WorkerLease.close(worker, lease)
+          if Process.alive?(worker), do: Worker.close_lease(worker, lease)
         end
 
       {:error, _} ->
@@ -262,7 +262,7 @@ defmodule Ipse.Development.Evaluation.Session do
   def invoke(run, "answer", %{"request" => request} = params) do
     if exact?(params, ["request"]) and is_map(request) and request["version"] in [2, 3] and
          request["profile"] == "p27_answer" and
-         Ipse.Extensions.ModelCall.validate(request) == :ok and
+         Ipse.Extension.ModelCall.validate(request) == :ok and
          text?(request["instruction"], 2048) and text?(request["input"], 4096),
        do: one(run, "answer", params),
        else: {:error, :invalid_answer, run}
@@ -865,7 +865,7 @@ defmodule Ipse.Development.Evaluation.Session do
   defp import_artifacts(artifacts, home) do
     Enum.reduce_while(artifacts, {:ok, [], []}, fn artifact, {:ok, instances, trusts} ->
       with {:ok, imported_knowledge_artifact} <-
-             Store.import(artifact.path, Path.join(home, "extensions/artifacts")),
+             Artifact.import(artifact.path, Path.join(home, "extensions/artifacts")),
            true <- imported_knowledge_artifact.digest == artifact.digest,
            true <- artifact.trust["artifact"] == artifact.digest do
         instance = %{
@@ -918,7 +918,7 @@ defmodule Ipse.Development.Evaluation.Session do
           ~w(home operator_home extensions approval budget_root budget_checkpoint delegation_origin)a,
           &Map.has_key?(runtime, &1)
         ) and is_map(budget) and
-        Ipse.Budget.Policy.validate(budget) == :ok and
+        Ipse.Usage.Budget.validate_policy(budget) == :ok and
         Map.has_key?(budget, "max_requests") and
         positive?(budget["max_requests"]) and
         is_function(spec.approval_validator, 1) and

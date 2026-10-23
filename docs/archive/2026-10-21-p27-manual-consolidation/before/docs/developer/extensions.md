@@ -59,7 +59,7 @@ original form.
 | You need to build | Start with |
 | --- | --- |
 | An attributed prompt annotation or completed-answer wrapper | [Session hooks](extension-hooks.md) |
-| An independently compiled package | [Artifacts and worker SDK](../../../../../developer/extension-artifacts.md) |
+| An independently compiled package | [Artifacts and worker SDK](../../../../2026-10-22-before-structural-consolidation/docs/developer/extension-artifacts.md) |
 | A model tool, terminal command, or typed service | [Catalogs and invocations](../../../../../developer/extension-invocations.md) |
 | A sequence of host operations and private scoped records | [Host calls and state](extension-host-calls.md) |
 | Clarification that can survive process exit | [Questions](extension-questions.md) |
@@ -77,10 +77,10 @@ original form.
 
 Read [end-to-end workflows](extension-scenarios.md) after the first hook. It
 connects installation, trial, state, upgrade, and recovery. For explicit-note
-behavior, continue with [memory](../../../../../developer/memory.md). Accounting reads, costs, private
+behavior, continue with [memory](../../../../2026-10-22-before-structural-consolidation/docs/developer/memory.md). Accounting reads, costs, private
 visible-text delivery, and diagnostic capture have their own chapters in
 [usage accounting](usage-accounting.md), [costs](costs.md),
-[text streams](text-streams.md), and [observability](../../../../../developer/observability.md).
+[text streams](text-streams.md), and [observability](../../../../2026-10-22-before-structural-consolidation/docs/developer/observability.md).
 
 ## Follow the ownership chain
 

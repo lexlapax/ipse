@@ -19,8 +19,8 @@ defmodule Ipse.Runner do
          {:ok, %{type: :regular, links: 1, mode: mode, size: size}} <- File.lstat(helper),
          true <- Bitwise.band(mode, 0o022) == 0 and Bitwise.band(mode, 0o111) != 0,
          true <- size <= 32 * 1024 * 1024,
-         {:ok, canonical} <- Ipse.WorkspaceContext.canonical_path(helper),
-         :ok <- Ipse.Sandbox.helper_boundary(cwd, canonical) do
+         {:ok, canonical} <- Ipse.Workspace.canonical_path(helper),
+         :ok <- Ipse.Tools.Sandbox.helper_boundary(cwd, canonical) do
       {:ok, canonical}
     else
       {:error, reason} when is_binary(reason) ->
@@ -72,7 +72,7 @@ defmodule Ipse.Runner do
         end
       end
 
-    Ipse.TaskResources.closed(ticket, result)
+    Ipse.Session.Resources.closed(ticket, result)
     result
   rescue
     ArgumentError -> :ok
@@ -89,7 +89,7 @@ defmodule Ipse.Runner do
         {:ok, port}
 
       <<?E, size::unsigned-big-32, error::binary-size(size), _::binary>> ->
-        Ipse.TaskResources.closed(
+        Ipse.Session.Resources.closed(
           ticket,
           await_stdio_exit(port, System.monotonic_time(:millisecond) + 2_000, true)
         )
@@ -102,11 +102,11 @@ defmodule Ipse.Runner do
             receive_lock(port, buffer <> bytes, deadline, ticket)
 
           {^port, {:exit_status, _}} ->
-            Ipse.TaskResources.closed(ticket, :ok)
+            Ipse.Session.Resources.closed(ticket, :ok)
             {:error, "session lock helper exited unexpectedly"}
 
           {:ipse_cancel_resource, id} when ticket != nil and ticket.id == id ->
-            Ipse.TaskResources.closed(ticket, close_process(port, true))
+            Ipse.Session.Resources.closed(ticket, close_process(port, true))
             {:error, "session lock acquisition cancelled"}
         after
           max(deadline - System.monotonic_time(:millisecond), 0) ->
@@ -137,7 +137,7 @@ defmodule Ipse.Runner do
         {:error, "working directory does not exist"}
 
       true ->
-        with {:ok, policy} <- Ipse.Sandbox.resolve(sandbox, cwd) do
+        with {:ok, policy} <- Ipse.Tools.Sandbox.resolve(sandbox, cwd) do
           run_supervised(
             command,
             policy.cwd,
@@ -218,7 +218,7 @@ defmodule Ipse.Runner do
         {:error, "owned_listener executable must be absolute"}
 
       true ->
-        with {:ok, policy} <- Ipse.Sandbox.resolve(Keyword.get(opts, :sandbox, :off), cwd),
+        with {:ok, policy} <- Ipse.Tools.Sandbox.resolve(Keyword.get(opts, :sandbox, :off), cwd),
              {:ok, helper} <- selected_helper(policy.profile, policy.cwd),
              {:ok, launch} <-
                stdio_launch_args(helper, policy, timeout_ms, executable, args, listener) do
@@ -274,7 +274,7 @@ defmodule Ipse.Runner do
   @doc false
   def open_owned_stdio(kind, scope, executable, args, cwd, env, timeout, opts \\ [])
       when kind in [:mcp, :extension] do
-    with {:ok, ticket} <- Ipse.TaskResources.register(kind, scope) do
+    with {:ok, ticket} <- Ipse.Session.Resources.register(kind, scope) do
       case open_stdio(
              executable,
              args,
@@ -287,11 +287,11 @@ defmodule Ipse.Runner do
           {:ok, port, ticket}
 
         {:error, {:cleanup_unconfirmed, _}} = error ->
-          Ipse.TaskResources.closed(ticket, {:error, :cleanup_unconfirmed})
+          Ipse.Session.Resources.closed(ticket, {:error, :cleanup_unconfirmed})
           error
 
         {:error, _} = error ->
-          Ipse.TaskResources.closed(ticket, :ok)
+          Ipse.Session.Resources.closed(ticket, :ok)
           error
       end
     end
@@ -341,12 +341,12 @@ defmodule Ipse.Runner do
   end
 
   defp owned_port(kind, helper, options) do
-    with {:ok, ticket} <- Ipse.TaskResources.register(kind) do
+    with {:ok, ticket} <- Ipse.Session.Resources.register(kind) do
       try do
         {:ok, Port.open({:spawn_executable, String.to_charlist(helper)}, options), ticket}
       rescue
         _ ->
-          Ipse.TaskResources.closed(ticket, :ok)
+          Ipse.Session.Resources.closed(ticket, :ok)
           {:error, "could not start OS helper"}
       end
     end
@@ -389,7 +389,7 @@ defmodule Ipse.Runner do
          args,
          nil
        ) do
-    with {:ok, policy} <- Ipse.MacOSSandbox.prepare(helper, cwd) do
+    with {:ok, policy} <- Ipse.Tools.MacOSSandbox.prepare(helper, cwd) do
       {:ok,
        [
          "--stdio",
@@ -624,7 +624,7 @@ defmodule Ipse.Runner do
            "Shell supervision was interrupted after possible dispatch. Inspect before retrying."}
       after
         cleanup = if Port.info(port), do: close_stdio(port), else: {:error, :cleanup_unconfirmed}
-        Ipse.TaskResources.closed(ticket, cleanup)
+        Ipse.Session.Resources.closed(ticket, cleanup)
       end
     end
   end
@@ -662,7 +662,7 @@ defmodule Ipse.Runner do
   end
 
   defp launch_args(helper, "macos-workspace-v1" = profile, cwd, timeout, command) do
-    with {:ok, policy} <- Ipse.MacOSSandbox.prepare(helper, cwd) do
+    with {:ok, policy} <- Ipse.Tools.MacOSSandbox.prepare(helper, cwd) do
       {:ok,
        [
          "--sandbox",
@@ -698,7 +698,7 @@ defmodule Ipse.Runner do
             do: :ok,
             else: {:error, :cleanup_unconfirmed}
 
-        Ipse.TaskResources.closed(state.cleanup_ticket, cleanup)
+        Ipse.Session.Resources.closed(state.cleanup_ticket, cleanup)
 
         cond do
           state.error ->
@@ -721,7 +721,7 @@ defmodule Ipse.Runner do
 
       {:ipse_cancel_resource, id}
       when state.cleanup_ticket != nil and state.cleanup_ticket.id == id ->
-        Ipse.TaskResources.closed(state.cleanup_ticket, close_stdio(port))
+        Ipse.Session.Resources.closed(state.cleanup_ticket, close_stdio(port))
         {:unknown, "Shell cancelled; started effects may have occurred. Inspect before retrying."}
     after
       remaining -> {:unknown, "shell supervisor stopped responding"}
@@ -814,7 +814,7 @@ defmodule Ipse.Runner do
 
     case Enum.find(paths, &(is_binary(&1) and File.regular?(&1))) do
       nil when allow_build -> build_helper()
-      nil -> {:error, "native helper missing; run scripts/build.sh before starting Ipse"}
+      nil -> {:error, "native helper missing; run dev/build.sh before starting Ipse"}
       path -> {:ok, Path.expand(path)}
     end
   end
@@ -867,7 +867,7 @@ defmodule Ipse.Runner do
         end
       end)
     else
-      {:error, "shell supervisor missing; run native/build.sh with rustc installed"}
+      {:error, "shell supervisor missing; run dev/build-native.sh with rustc installed"}
     end
   end
 end

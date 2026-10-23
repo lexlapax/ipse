@@ -6,7 +6,10 @@ defmodule Ipse.Development.Verification.Package do
 
   defp verify_memory!(runtime, corpus) do
     report =
-      Runtime.eval!(runtime, "Ipse.Development.Experiments.Memory.run(" <> inspect(corpus) <> ")")
+      Runtime.eval!(
+        runtime,
+        "Ipse.Development.Verification.Memory.run(" <> inspect(corpus) <> ")"
+      )
 
     :ok = Scenarios.validate!(Scenarios.fetch!("memory"), report, "default")
 
@@ -77,21 +80,21 @@ defmodule Ipse.Development.Verification.Package do
     {:error, _} = Ipse.Runner.run("true", Path.join(workspace, "missing"))
     {:error, _} = Ipse.Tools.execute("write", %{"path" => "missing/child", "content" => "x"}, %{cwd: workspace})
     opaque = String.duplicate(<<0xE9, 0x9B, 0xAA>>, 85) <> "x"
-    true = Ipse.ToolCall.valid_id?(opaque)
-    false = Ipse.ToolCall.valid_id?(opaque <> "x")
-    {:ok, _} = Ipse.Sandbox.resolve(:native, workspace)
-    {:error, boundary} = Ipse.Sandbox.resolve(:native, Application.app_dir(:ipse))
+    true = Ipse.Tools.valid_call_id?(opaque)
+    false = Ipse.Tools.valid_call_id?(opaque <> "x")
+    {:ok, _} = Ipse.Tools.Sandbox.resolve(:native, workspace)
+    {:error, boundary} = Ipse.Tools.Sandbox.resolve(:native, Application.app_dir(:ipse))
     true = String.contains?(boundary, "overlaps the active helper or application")
     calls = for i <- 1..33, do: %{"id" => "bounded-" <> Integer.to_string(i),
       "function" => %{"name" => "read", "arguments" => "{}"}}
-    {:error, :tool_call_limit} = Ipse.ToolCall.admit(calls, Ipse.ToolCall.empty_budget())
-    used = Enum.reduce(1..4, Ipse.ToolCall.empty_budget(), fn _, used ->
-      {:ok, next} = Ipse.ToolCall.admit(Enum.take(calls, 32), used)
+    {:error, :tool_call_limit} = Ipse.Tools.admit_calls(calls, Ipse.Tools.empty_call_budget())
+    used = Enum.reduce(1..4, Ipse.Tools.empty_call_budget(), fn _, used ->
+      {:ok, next} = Ipse.Tools.admit_calls(Enum.take(calls, 32), used)
       next
     end)
-    {:error, :tool_call_limit} = Ipse.ToolCall.admit(Enum.take(calls, 1), used)
+    {:error, :tool_call_limit} = Ipse.Tools.admit_calls(Enum.take(calls, 1), used)
     source = %{"tool_calls" => [%{"id" => opaque, "function" => %{"name" => "fixture", "arguments" => "{}"}}]}
-    true = Ipse.Extensions.Invocation.source_call_valid?(source, opaque, "fixture", %{})
+    true = Ipse.Extension.Invocation.source_call_valid?(source, opaque, "fixture", %{})
     call = %{"id" => "duplicate", "function" => %{"name" => "write", "arguments" => "{}"}}
     assistant = %{"role" => "assistant", "content" => "", "tool_calls" => [call, call]}
     result = %{"role" => "tool", "tool_call_id" => "duplicate", "content" => "First completed"}
@@ -124,25 +127,25 @@ defmodule Ipse.Development.Verification.Package do
     text = "x" <> String.duplicate(<<0xC3, 0xA9, 0xF0, 0x9F, 0x99, 0x82>>, 23_000)
     owner = self()
     request = Ipse.Usage.id()
-    {:ok, stream} = Ipse.TextStream.start(owner, Ipse.Usage.id())
-    {:ok, handle} = Ipse.TextStream.subscribe(stream, owner, 2)
+    {:ok, stream} = Ipse.Session.TextStream.start(owner, Ipse.Usage.id())
+    {:ok, handle} = Ipse.Session.TextStream.subscribe(stream, owner, 2)
     producer = spawn(fn ->
       receive do
         :start ->
-          :ok = Ipse.TextStream.push_delta(stream, request, text)
+          :ok = Ipse.Session.TextStream.push_delta(stream, request, text)
           send(owner, :delta_accepted)
       end
     end)
-    :ok = Ipse.TextStream.begin(stream, request, producer)
+    :ok = Ipse.Session.TextStream.begin(stream, request, producer)
     send(producer, :start)
     collect = fn collect, chunks ->
       receive do
         :delta_accepted ->
-          :ok = Ipse.TextStream.finish(stream, request, "completed")
+          :ok = Ipse.Session.TextStream.finish(stream, request, "completed")
           collect.(collect, chunks)
         {:ipse_text, ^stream, %{"sequence" => sequence} = frame} ->
-          true = Ipse.Lifecycle.Ephemeral.valid_frame?(frame)
-          :ok = Ipse.TextStream.ack(handle, sequence)
+          true = Ipse.Session.TextStream.valid_frame?(frame)
+          :ok = Ipse.Session.TextStream.ack(handle, sequence)
           chunks = [frame["text"] || "" | chunks]
           if frame["kind"] == "end" do
             true = frame["complete"]
@@ -206,9 +209,9 @@ defmodule Ipse.Development.Verification.Package do
           "extension",
           "check",
           "--config",
-          Path.join(app, "priv/conformance-operator.json"),
+          Path.join(app, "priv/demo/operator.json"),
           "--fixture",
-          Path.join(app, "priv/conformance-demo.json"),
+          Path.join(app, "priv/demo/conformance.json"),
           "--extension",
           "annotation",
           "--no-project-config",

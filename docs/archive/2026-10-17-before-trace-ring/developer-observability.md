@@ -1,6 +1,6 @@
 # Historical developer capture guide
 
-Historical only. Archived 2026-10-17 from `docs/developer/observability.md` at commit `59dd52f`. Relative links were rebased; original claims below are unchanged. Current replacement: [developer observability](../../developer/observability.md).
+Historical only. Archived 2026-10-17 from `docs/developer/observability.md` at commit `59dd52f`. Relative links were rebased; original claims below are unchanged. Current replacement: [developer observability](../2026-10-22-before-structural-consolidation/docs/developer/observability.md).
 
 ---
 
@@ -135,7 +135,7 @@ For future OTLP export, evaluate maintained
 `observe.export`; inventory versions/licenses before adoption. Use explicit
 endpoints, credential references and verified TLS, with no fallback or mandatory
 collector. No OTLP adapter or live exporter is verified. Comparisons remain in
-[runtime capabilities](../../developer/runtime-capabilities.md).
+[runtime capabilities](../2026-10-22-before-structural-consolidation/docs/developer/runtime-capabilities.md).
 
 ## Developer diagnosis and remaining gates
 

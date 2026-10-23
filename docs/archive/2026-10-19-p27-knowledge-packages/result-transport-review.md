@@ -105,7 +105,7 @@ rejects a SIGTERM log before accepting subsequent checks. That replacement
 completed successfully with the results above. All 22 runtime file hashes still
 match the fresh whole-implementation review.
 
-The [saved-result example](../../../examples/saved-results/README.md) supplies
+The [saved-result example](../2026-10-22-before-structural-consolidation/examples/saved-results/README.md) supplies
 the reproducible source and installed checks. The installed runtime uses a
 precompiled harness and artifact with a utility-only PATH plus bundled `erl`.
 Archive, artifact, extracted host, harness and utility inventories remain unchanged.

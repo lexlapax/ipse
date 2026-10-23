@@ -80,8 +80,8 @@ A selected child's output cap can narrow its parent's cap, but cannot widen or
 omit it. Combined provider capability checks precede delegation approval. A route
 to a provider that cannot honor the inherited cap refuses. Child limits also
 retain at most six model/helper calls, 120 seconds of active work, and the
-parent's context ceiling. See [delegation](../../../../../developer/delegation.md) for scheduling and
-[provider limits](../../../../../developer/provider-limits.md) for wire fields.
+parent's context ceiling. See [delegation](../../../../2026-10-22-before-structural-consolidation/docs/developer/delegation.md) for scheduling and
+[provider limits](../../../../2026-10-22-before-structural-consolidation/docs/developer/provider-limits.md) for wire fields.
 
 Separately granted `host.model` extensions keep a private helper-profile catalog
 and protected credential reference. Those are host runtime values, never SDK

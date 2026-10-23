@@ -1,6 +1,7 @@
 defmodule Ipse.Provider.OpenAI do
   @moduledoc "Stateless Responses API adapter; retains native reasoning and function call items."
-  alias Ipse.Provider.{Fragments, HTTP, SSE}
+  alias Ipse.Provider.Stream
+  alias Ipse.Provider.Transport
 
   def endpoint(config),
     do: Ipse.Provider.endpoint(config, "https://api.openai.com/v1", "/responses")
@@ -17,7 +18,7 @@ defmodule Ipse.Provider.OpenAI do
       ]
 
       with {:ok, state} <-
-             HTTP.stream(
+             Transport.stream(
                url,
                headers,
                request_body(config, messages, tools),
@@ -59,7 +60,7 @@ defmodule Ipse.Provider.OpenAI do
         do: Map.put(body, "reasoning", %{"effort" => config.reasoning_effort}),
         else: body
 
-    limit = Ipse.Provider.Limits.output_tokens(config)
+    limit = Ipse.Provider.output_tokens(config)
     body = if limit, do: Map.put(body, "max_output_tokens", limit), else: body
 
     if config[:provider] == :chatgpt,
@@ -119,11 +120,11 @@ defmodule Ipse.Provider.OpenAI do
   def new, do: new(:openai)
 
   def new(provider),
-    do: %{sse: SSE.new(), response: nil, items: %{}, terminal: false, provider: provider}
+    do: %{sse: Stream.new_sse(), response: nil, items: %{}, terminal: false, provider: provider}
 
   def consume(state, chunk, emit) do
     handler = fn event, state ->
-      with {:ok, state} <- Fragments.tick(state),
+      with {:ok, state} <- Stream.tick(state),
            {:ok, data} when is_map(data) <- Jason.decode(event.data) do
         event(state, data, emit)
       else
@@ -132,7 +133,7 @@ defmodule Ipse.Provider.OpenAI do
       end
     end
 
-    with {:ok, state, parser} <- SSE.reduce(state.sse, chunk, state, handler),
+    with {:ok, state, parser} <- Stream.reduce_sse(state.sse, chunk, state, handler),
          do: {:ok, %{state | sse: parser}}
   end
 
@@ -158,11 +159,11 @@ defmodule Ipse.Provider.OpenAI do
          },
          _
        ) do
-    with true <- Fragments.index?(index),
-         {:ok, item} <- Fragments.update(Map.get(state.items, index, %{}), "arguments", delta) do
+    with true <- Stream.index?(index),
+         {:ok, item} <- Stream.update_field(Map.get(state.items, index, %{}), "arguments", delta) do
       put_item(state, index, item)
     else
-      _ -> Fragments.error()
+      _ -> Stream.error()
     end
   end
 
@@ -178,11 +179,11 @@ defmodule Ipse.Provider.OpenAI do
     emit.({:provider_usage, response["usage"]})
 
     if response["status"] in [nil, "completed"] and
-         (is_nil(response["output"]) or Fragments.items?(response["output"], "function_call")) do
+         (is_nil(response["output"]) or Stream.items?(response["output"], "function_call")) do
       {:ok, %{state | terminal: true, response: response}}
     else
       if response["status"] in [nil, "completed"],
-        do: Fragments.error(),
+        do: Stream.error(),
         else: {:error, "OpenAI response did not complete."}
     end
   end
@@ -190,7 +191,7 @@ defmodule Ipse.Provider.OpenAI do
   defp event(state, %{"type" => type} = data, emit)
        when type in ["error", "response.failed"] do
     if is_map(data["response"]), do: emit.({:provider_usage, data["response"]["usage"]})
-    Ipse.Provider.Error.stream(data, state.provider, state[:request_id])
+    Ipse.Provider.Transport.stream_error(data, state.provider, state[:request_id])
   end
 
   defp event(_, %{"type" => "response.incomplete"} = data, emit) do
@@ -203,11 +204,13 @@ defmodule Ipse.Provider.OpenAI do
   defp event(state, _, _), do: {:ok, state}
 
   def finish(%{terminal: true, response: response, items: items} = state) do
-    with :ok <- Fragments.check_deadline(state) do
+    with :ok <- Stream.check_deadline(state) do
       output =
         case response["output"] do
           value when value in [nil, []] ->
-            items |> Enum.sort_by(&elem(&1, 0)) |> Enum.map(&Fragments.materialize(elem(&1, 1)))
+            items
+            |> Enum.sort_by(&elem(&1, 0))
+            |> Enum.map(&Stream.materialize_fields(elem(&1, 1)))
 
           value ->
             value
@@ -240,7 +243,7 @@ defmodule Ipse.Provider.OpenAI do
       message = put_reported_model(message, response["model"])
 
       message = if calls == [], do: message, else: Map.put(message, "tool_calls", calls)
-      with :ok <- Fragments.check_deadline(state), do: {:ok, message, response["usage"] || %{}}
+      with :ok <- Stream.check_deadline(state), do: {:ok, message, response["usage"] || %{}}
     end
   end
 
@@ -248,19 +251,19 @@ defmodule Ipse.Provider.OpenAI do
     do: {:error, "OpenAI stream ended before response.completed; no tools were executed."}
 
   defp put_item(state, index, item) do
-    if Fragments.index?(index) and is_map(item) do
+    if Stream.index?(index) and is_map(item) do
       items = Map.put(state.items, index, item)
 
-      if Fragments.items?(Map.values(items), "function_call"),
+      if Stream.items?(Map.values(items), "function_call"),
         do: {:ok, %{state | items: items}},
-        else: Fragments.error()
+        else: Stream.error()
     else
-      Fragments.error()
+      Stream.error()
     end
   end
 
   defp put_reported_model(message, model) do
-    case Ipse.RuntimeInfo.model_name(model) do
+    case Ipse.Provider.model_name(model) do
       nil -> message
       model -> put_in(message, ["provider_data", "reported_model"], model)
     end

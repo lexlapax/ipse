@@ -185,7 +185,7 @@ package verification pass with a utility-only runtime PATH. All 22 reviewed
 runtime hashes still match.
 
 The generic SDK-2 installed proof also passes. The independently built
-[saved-result example](../../../examples/saved-results/README.md) publishes exact
+[saved-result example](../2026-10-22-before-structural-consolidation/examples/saved-results/README.md) publishes exact
 4 MiB through 1,024 fragments, with one worker load and callback, no model calls,
 confirmed cleanup and exact inert recovery. The lead independently reran its
 source and installed verifiers. The installed runtime has only declared utilities

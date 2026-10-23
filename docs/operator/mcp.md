@@ -69,11 +69,11 @@ unsupported blocks. Returned content grants no permissions.
 
 An extension can call one explicitly bound MCP item when it declares
 `host.actions` and `host.mcp`. Import and review the artifact using the
-[extension procedure](extensions.md#import-an-independently-built-artifact).
+[extension procedure](extensions.md#import-a-reviewed-artifact).
 Its author must supply its options, capabilities, export schema and binding
 aliases. Binding an item does not approve its execution.
 
-For the independently built [MCP reader example](../../examples/mcp-actions/README.md),
+For the independently built [MCP reader example](../../examples/README.md),
 save this complete operator configuration. Replace `DIGEST` in both places with
 the imported artifact's printed digest. The selected MCP server must have ID
 `fixture` and an allowlisted `fetch` tool accepting the example's `text` field.
@@ -256,11 +256,11 @@ their immutable snapshot. Follow [Recovery](recovery.md) when uncertainty remain
 From an already-built source checkout with its Elixir toolchain:
 
 ```sh
-mix run scripts/demo-mcp.exs
+mix run dev/demo-mcp.exs
 ```
 
 A scripted model requests a scratch write, a fixed guide resource, and a summary
-prompt through `priv/mcp-notes.exs`. The demo approves only its exact synthetic
+prompt through `priv/demo/mcp-notes.exs`. The demo approves only its exact synthetic
 proposals and checks file bytes and journal outcomes without a model service.
 It does not install a general-purpose server. For real research retrieval, follow
 [Research](research.md) with your own explicitly chosen service.

@@ -32,7 +32,7 @@ capability. Return the ordinary outer protocol:
 ```
 
 The request has exactly `op`, `arguments`, and `checkpoint`. Arguments use the
-[question schema](../../../../../developer/operator-questions.md), supporting single-choice,
+[question schema](../../../../2026-10-22-before-structural-consolidation/docs/developer/operator-questions.md), supporting single-choice,
 multiple-choice, and text questions. There are at most three questions and eight
 options per question, with unique IDs. Recommendations are never auto-answered.
 Checkpoint is a plain JSON object up to 8 KiB encoded. The whole proposal also

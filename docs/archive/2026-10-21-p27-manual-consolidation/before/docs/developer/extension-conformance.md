@@ -121,7 +121,7 @@ For bounded argument-free dispatcher samples, add `--developer-trace`.
 `--trace-ms` is 1–5,000, default 1,000; `--trace-events` is 1–128, default 32.
 Both require tracing. Capture failure fails the check; a normal sample/time limit
 does not. These flags are operator policy, never fixture grants. See
-[synthetic tracing](../../../../../developer/observability.md#diagnose-with-synthetic-data).
+[synthetic tracing](../../../../2026-10-22-before-structural-consolidation/docs/developer/observability.md#diagnose-with-synthetic-data).
 
 ## Extend the training fixture
 

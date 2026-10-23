@@ -9,6 +9,6 @@ self-development evaluation and P26/P27 production-package split.
 | Original path and snapshot | Current replacement |
 | --- | --- |
 | `docs/plan.md`: [plan](plan.md) | [Current plan](../../plan.md) |
-| `docs/developer/knowledge-extensions.md`: [knowledge design](knowledge-extensions.md) | [Current knowledge design](../../developer/knowledge-extensions.md), [P25 evaluation protocol](../../developer/self-hosting-evaluation.md) |
+| `docs/developer/knowledge-extensions.md`: [knowledge design](knowledge-extensions.md) | [Current knowledge design](../../developer/knowledge-extensions.md), [P25 evaluation protocol](../2026-10-22-before-structural-consolidation/docs/developer/self-hosting-evaluation.md) |
 
 Use the [documentation map](../../index.md) for current procedures and status.

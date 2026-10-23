@@ -90,3 +90,5 @@ recorded source revision, platform, exclusions and limitations.
 - [`docs/operator/usage-accounting.md`](docs/operator/usage-accounting.md)
 - [`docs/operator/usage.md`](docs/operator/usage.md)
 - [`docs/plan.md`](docs/plan.md)
+
+On 2026-10-22, only broken prose links were redirected to individual pre-structural snapshots or the exact5bffe00 source. Historical bodies/claims stay unchanged. Prior snapshot digests are retained alongside updated digests.

@@ -117,7 +117,7 @@ Credential references are fixed lookups, not token values:
 | `ollama`, `demo` | `none` |
 
 Omit `credential` to use the provider's fixed lookup. Text roles never select
-vector generation; configure that separately through [embeddings](embeddings.md).
+vector generation; configure that separately through [embeddings](extensions.md).
 
 Only operator profiles may set `base_url`. Endpoints require HTTPS, or HTTP to
 literal loopback or `localhost`, with a port in 1..65535. Credentials in URLs,
@@ -150,7 +150,7 @@ They do not receive the parent's transcript, tokens or native provider payloads.
 Each child has at most six admitted main/helper calls and 120 seconds of active
 work. Effects need separate approvals. An inherited output cap remains or narrows;
 an incompatible route refuses before work. Main-model compaction stays on the
-main profile. See [delegated work](subagents.md) for a complete operating procedure.
+main profile. See [delegated work](usage.md) for a complete operating procedure.
 Extensions request one-shot text inference separately through named profiles;
 roles do not route those calls automatically.
 
@@ -196,7 +196,7 @@ server you manage, select its context through Ollama's
 then check the loaded model's `context_length` in `/api/ps` after a request.
 Ipse's ordinary provider profile does not configure that server setting.
 For the optional measured comparison, use the explicit service context in the
-[evaluation procedure](../developer/knowledge-evaluation.md#build-the-six-local-bindings).
+[evaluation procedure](../developer/knowledge-evaluation.md#bind-a-fresh-service-and-local-output-paths).
 
 `model_call_timeout_ms` accepts integers in 1000..600000. It replaces that
 profile's ordinary `timeout_ms` for extension model calls only. The root request
@@ -265,7 +265,7 @@ either supported mode.
 Output caps apply per supported request, including summaries. Subscription and
 demo reject them. Model limits may be tighter; Anthropic defaults to 8192 and
 Ollama summaries retain a 4096 cap. A per-request cap does not bound input tokens
-or an invoice. Use [budgets](budgets.md) for covered aggregate admission.
+or an invoice. Use [budgets](resources.md) for covered aggregate admission.
 Provider responses have a separate 8 MiB accumulation ceiling; sign-in responses
 allow 1 MiB. Redirects and automatic retries are disabled.
 
@@ -298,8 +298,8 @@ oversized legacy files; preserve those files for bounded inspection.
 ## Add optional behavior or recover a changed configuration
 
 Use [Extensions](extensions.md) for `extensions` and operator-only
-`extension_trust`, [Embeddings](embeddings.md) for `embedding_profiles`,
-[Budgets](budgets.md) for `budget`, and [Diagnostic capture](observability.md)
+`extension_trust`, [Embeddings](extensions.md) for `embedding_profiles`,
+[Budgets](resources.md) for `budget`, and [Diagnostic capture](observability.md)
 for `observability`. Generic project trust grants none of these operator-only
 authorities. Inspection shows extension option digests, not their contents;
 the file itself remains a private configuration file, not a secret store.

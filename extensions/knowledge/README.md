@@ -7,12 +7,12 @@ persistent memory extensions keep their own selections.
 
 Follow the complete user procedures for [Corpus](../../docs/operator/corpus.md),
 [Graph](../../docs/operator/graph.md) and
-[Research](../../docs/operator/research-extensions.md). The native main-agent
+[Research](../../docs/operator/research.md). The native main-agent
 [research ledger](../../docs/operator/research.md) remains a separate workflow.
 
 The builders require Elixir 1.18 or later, OTP 27 or later, and Ipse's public SDK
 BEAM directory. Run these commands from the repository root after
-`./scripts/build.sh`. They use no additional packages.
+`./dev/build.sh`. They use no additional packages.
 
 ## Build a lexical corpus
 
@@ -93,7 +93,7 @@ For inference presets, supply `--inference-config FILE`. The file accepts only
 every host profile referenced by the package's embedding, extraction and rerank
 registries, with an explicit provider and model. The generator preserves those
 registries in its output. It never reads the ordinary home configuration or
-chooses a provider. Follow the [embedding manual](../../docs/operator/embeddings.md)
+chooses a provider. Follow the [embedding manual](../../docs/operator/extensions.md)
 and [profile manual](../../docs/operator/configuration.md#reuse-a-named-model-profile) to define those routes.
 Run `ipse config --config FILE --no-project-config --extension INSTANCE` to
 validate the complete generated configuration before starting a session.
@@ -112,7 +112,7 @@ elixir extensions/knowledge/build.exs \
   --sdk _build/dev/lib/ipse/ebin \
   --output "$IPSE_KNOWLEDGE_ARTIFACTS/research" \
   --package research --preset offline
-elixir scripts/verify.exs source knowledge \
+elixir dev/verify.exs source knowledge \
   --sdk _build/dev/lib/ipse/ebin --input "$IPSE_KNOWLEDGE_ARTIFACTS"
 ```
 
@@ -128,9 +128,9 @@ synthetic text and no model service. To inspect a narrower boundary, select its
 explicit scenario with the same three artifacts:
 
 ```sh
-elixir scripts/verify.exs source knowledge-complete \
+elixir dev/verify.exs source knowledge-complete \
   --sdk _build/dev/lib/ipse/ebin --input "$IPSE_KNOWLEDGE_ARTIFACTS"
-elixir scripts/verify.exs source knowledge-independence \
+elixir dev/verify.exs source knowledge-independence \
   --sdk _build/dev/lib/ipse/ebin --input "$IPSE_KNOWLEDGE_ARTIFACTS"
 ```
 
@@ -143,21 +143,21 @@ historical reads, inert restart, unchanged journals and confirmed cleanup.
 `knowledge-independence` pairs each package with session-, project- and
 operator-scoped explicit memory. It checks idle/resume dispatch counters,
 note/evidence isolation and the combined catalog ceiling. Follow
-[the selection exercise](../../docs/developer/knowledge-extensions.md#verify-independent-memory-and-knowledge-selections)
+[the selection exercise](../../docs/developer/knowledge-extensions.md#verify-independent-selection-before-algorithm-work)
 for its expected observations.
 
 Small results return inline JSON. Larger results use a `saved.result` descriptor
 for a complete document of at most 4 MiB, subject to aggregate and journal limits.
 Read the complete document before consuming its fields; do not remove quotes or
 provenance to fit an inline reply. Follow
-[contributor training](../../docs/developer/knowledge-extensions.md#publish-and-read-the-complete-domain-value)
-for SDK ownership and [the user procedure](../../docs/operator/extensions.md#read-a-saved-result)
+[contributor training](../../docs/developer/knowledge-extensions.md#publish-and-materialize-the-complete-domain-value)
+for SDK ownership and [the user procedure](../../docs/operator/extensions.md#invoke-a-command-and-inspect-its-complete-result)
 for `ipse result` and `/result` examples.
 
 For the Session evaluation driver, pass the lexical Corpus artifact itself:
 
 ```sh
-elixir scripts/verify.exs source knowledge-evaluation \
+elixir dev/verify.exs source knowledge-evaluation \
   --sdk _build/dev/lib/ipse/ebin --input "$IPSE_KNOWLEDGE_ARTIFACTS/corpus"
 ```
 
@@ -171,9 +171,9 @@ elixir extensions/knowledge/build.exs --sdk _build/dev/lib/ipse/ebin \
   --output "$IPSE_KNOWLEDGE_ARTIFACTS/corpus-mcp" --package corpus --preset mcp-lexical
 elixir extensions/knowledge/build.exs --sdk _build/dev/lib/ipse/ebin \
   --output "$IPSE_KNOWLEDGE_ARTIFACTS/research-mcp" --package research --preset mcp
-elixir scripts/verify.exs source knowledge-mcp \
+elixir dev/verify.exs source knowledge-mcp \
   --sdk _build/dev/lib/ipse/ebin --input "$IPSE_KNOWLEDGE_ARTIFACTS/corpus-mcp"
-elixir scripts/verify.exs source knowledge-research \
+elixir dev/verify.exs source knowledge-research \
   --sdk _build/dev/lib/ipse/ebin --input "$IPSE_KNOWLEDGE_ARTIFACTS/research-mcp"
 ```
 
@@ -188,19 +188,19 @@ Package for the actual host, then set `IPSE_ARCHIVE` to the exact compatible fil
 printed by the packager:
 
 ```sh
-./scripts/package.sh
+./dev/package.sh
 IPSE_ARCHIVE=/absolute/path/to/the-compatible-archive.tar.gz
-elixir scripts/verify.exs installed knowledge \
+elixir dev/verify.exs installed knowledge \
   --archive "$IPSE_ARCHIVE" --input "$IPSE_KNOWLEDGE_ARTIFACTS"
-elixir scripts/verify.exs installed knowledge-independence \
+elixir dev/verify.exs installed knowledge-independence \
   --archive "$IPSE_ARCHIVE" --input "$IPSE_KNOWLEDGE_ARTIFACTS"
-elixir scripts/verify.exs installed knowledge-complete \
+elixir dev/verify.exs installed knowledge-complete \
   --archive "$IPSE_ARCHIVE" --input "$IPSE_KNOWLEDGE_ARTIFACTS"
-elixir scripts/verify.exs installed knowledge-evaluation \
+elixir dev/verify.exs installed knowledge-evaluation \
   --archive "$IPSE_ARCHIVE" --input "$IPSE_KNOWLEDGE_ARTIFACTS/corpus"
-elixir scripts/verify.exs installed knowledge-mcp \
+elixir dev/verify.exs installed knowledge-mcp \
   --archive "$IPSE_ARCHIVE" --input "$IPSE_KNOWLEDGE_ARTIFACTS/corpus-mcp"
-elixir scripts/verify.exs installed knowledge-research \
+elixir dev/verify.exs installed knowledge-research \
   --archive "$IPSE_ARCHIVE" --input "$IPSE_KNOWLEDGE_ARTIFACTS/research-mcp"
 ```
 

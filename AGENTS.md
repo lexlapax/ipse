@@ -54,7 +54,7 @@ repository conventions rather than a second milestone ledger.
 - [docs/developer/index.md](docs/developer/index.md): contributor training path.
 - [docs/operator/arch-linux.md](docs/operator/arch-linux.md): Arch installation and native policy setup.
 - [docs/operator/usage.md](docs/operator/usage.md): providers, approvals, and sessions.
-- [docs/operator/troubleshooting.md](docs/operator/troubleshooting.md): diagnosis and recovery.
+- [docs/operator/recovery.md](docs/operator/recovery.md): diagnosis and recovery.
 - [docs/plan.md](docs/plan.md): priorities and acceptance criteria.
 - [docs/developer/architecture.md](docs/developer/architecture.md): ownership and trust boundaries.
 - [docs/developer/dependencies.md](docs/developer/dependencies.md): dependency inventory and approval policy.
@@ -72,7 +72,7 @@ Make progress without repeated confirmation for routine reversible changes.
 Run from the repository root after installing the toolchain:
 
 ```sh
-./scripts/build.sh
+./dev/build.sh
 mix format --check-formatted
 mix compile --warnings-as-errors
 mix test
@@ -82,49 +82,43 @@ mix test
 Use `mix format` after Elixir edits and focused tests while iterating. The full
 checks above are the handoff baseline for runtime changes. For documentation
 changes, verify examples against the CLI and check links; do not invent tests.
-Build a bundled runtime with `./scripts/package.sh` when changing packaging.
+Build a bundled runtime with `./dev/package.sh` when changing packaging.
 Tests use local HTTP servers and need loopback sockets. Network restrictions
 can also block Mix itself; report that accurately instead of changing TLS or
 weakening tests. Dependency fetching needs GitHub access. No paid credentials
 are needed for tests or the demo.
 
+## Source organization
+
+Keep host runtime code under `lib/ipse/` and organize tests by the same feature
+under `test/ipse/`. Generic extension hosting and the SDK belong under
+`lib/ipse/extension/` and `lib/ipse/extension.ex`; bundled and optional feature
+implementations belong under `extensions/`. Merge tightly coupled helpers and
+one-caller wrappers into their feature owner. Retain separate processes and
+substantial provider or transport contracts when they have independent ownership.
+Session remains the sole conversation process; Turn and Invocation are
+synchronous implementation modules in that process. Preserve individual
+historical records when simplifying current source, commands and manuals.
+
 ## Code map
 
-| Area | Location |
+| Ownership | Location |
 | --- | --- |
-| Application supervision | `lib/ipse/application.ex` |
-| Scoped settings and admitted session runtime policy | `lib/ipse/config.ex` |
-| Session state, turn loop, approval, cancellation | `lib/ipse/session.ex` |
-| Pure reconstruction from loaded journal events | `lib/ipse/session/saved.ex` |
-| Current invocation facts, excluding owner resources | `lib/ipse/session/invocation.ex` |
-| Bounded context checkpoints | `lib/ipse/compaction.ex` |
-| Bounded host JSON, raw SHA-256 and canonical list digests | `lib/ipse/json.ex` |
-| Canonical usage and shared admission | `lib/ipse/usage.ex`, `lib/ipse/usage/`, `lib/ipse/budget.ex`, `lib/ipse/budget/` |
-| Profile-bound extension inference | `lib/ipse/extensions/model_call.ex`, `lib/ipse/provider/request.ex` |
-| Public worker SDK and result publication | `lib/ipse/extension.ex`, `lib/ipse/extension/` |
-| Generic extension admission, workers and host contracts | `lib/ipse/extensions/` |
-| Bundled memory, reports and transforms | `lib/ipse/builtins/` |
-| Independently built knowledge packages | `extensions/knowledge/` |
-| Scoped workspace instruction snapshots | `lib/ipse/workspace_context.ex` |
-| Allowlisted application/provider/model facts | `lib/ipse/runtime_info.ex` |
-| Terminal client, option parsing and display escaping | `lib/ipse/cli.ex`, `lib/ipse/cli/terminal.ex` |
-| Provider selection and wire formats | `lib/ipse/provider.ex`, `lib/ipse/provider/` |
-| Isolated HTTP profile ownership | `lib/ipse/http_profile.ex` |
-| Authentication and protected storage | `lib/ipse/auth.ex`, `lib/ipse/auth/` |
-| Context, skills, JSONL persistence | `lib/ipse/context.ex`, `skills.ex`, `journal.ex` |
-| Session-owned durable appends | `lib/ipse/journal/writer.ex` |
-| Session lock and quiescence | `lib/ipse/session/lock.ex` |
-| Opt-in local delegation | `lib/ipse/delegation.ex`, `lib/ipse/delegation/worker.ex` |
-| Filesystem completion ownership | `lib/ipse/file_effect.ex` |
-| File tools and native Port protocol | `lib/ipse/tools.ex`, `runner.ex` |
-| Unix process groups and advisory locks | `native/ipse-runner.rs`, `native/ipse-process-group.rs` |
-| Bundled skill instructions | `priv/skills/` |
-| Frozen knowledge evaluation, pure declarations and dataset checks | `dev/evaluation/` |
-| Shared source/installed proof compilation and runtime ownership | `dev/verification/`, `scripts/verify.exs` |
-| Reusable synthetic services and direct experiments | `dev/fixtures/`, `dev/experiments/` |
-| Shared development OS probes | `dev/platform/`; explicit commands in `scripts/` |
-| Trusted example artifact construction | `scripts/build-artifact.exs` |
-| Behavior and local protocol fixtures | `test/` |
+| Application supervision and admitted configuration/profiles | `lib/ipse/application.ex`, `lib/ipse/config.ex`, `lib/ipse/config/` |
+| Conversation owner, Turn/Invocation implementations, context and saved reconstruction | `lib/ipse/session.ex`, `lib/ipse/session/` |
+| Durable JSONL appends/source pages and retained OS lock | `lib/ipse/journal.ex`, `lib/ipse/journal/`, `lib/ipse/session/lock.ex` |
+| Generic public SDK, artifact admission, independent workers and host calls | `lib/ipse/extension.ex`, `lib/ipse/extension/` |
+| Bundled and independently built domain features | `extensions/bundled/`, `extensions/knowledge/` |
+| Provider adapters, bounded transport/parsers, HTTP clients/proxies and authentication | `lib/ipse/provider.ex`, `lib/ipse/provider/`, `lib/ipse/http.ex`, `lib/ipse/auth.ex` |
+| Usage/costs/shared budgets and optional diagnostics | `lib/ipse/usage.ex`, `lib/ipse/usage/`, `lib/ipse/observability.ex`, `lib/ipse/observability/` |
+| Workspace instructions/skills and terminal client | `lib/ipse/workspace.ex`, `lib/ipse/cli.ex`, `lib/ipse/cli/` |
+| Native tools, questions, research, delegation and sandbox policy | `lib/ipse/tools.ex`, `lib/ipse/tools/`, `lib/ipse/runner.ex` |
+| Selected MCP descriptors/discovery and stdio/HTTP adapters | `lib/ipse/mcp.ex`, `lib/ipse/mcp/` |
+| Bounded JSON/schema/hash primitives | `lib/ipse/json.ex` |
+| Small OS helpers and exact native protocols | `native/` |
+| Separate developer commands, evaluation, verification and synthetic fixtures | `dev/`, `dev/evaluation/`, `dev/verification/`, `dev/fixtures/`, `dev/platform/` |
+| Public example sources and shipped demos/instructions | `examples/`, `priv/demo/`, `priv/skills/` |
+| Matching host, feature-package and developer-tool tests | `test/ipse/`, `test/extensions/`, `test/dev/`; reusable fixtures in `test/support/` |
 
 ## Invariants to preserve
 
@@ -167,7 +161,7 @@ Keep milestone status in `docs/plan.md` and dated investigations, benchmarks,
 CI receipts and review/evaluation records in `docs/archive/`, with provenance and
 replacement links. Manuals describe current behavior and relevant limits, not
 the project's implementation history. Update the audience indexes and run
-`elixir scripts/check-docs.exs` after documentation changes.
+`elixir dev/check-docs.exs` after documentation changes.
 
 ## Finish a change
 

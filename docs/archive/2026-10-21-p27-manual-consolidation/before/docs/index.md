@@ -24,11 +24,11 @@ quick start. Try the demo before configuring a model account.
 | Remember an explicit project note | [Use memory](../../../../operator/memory.md) |
 | Retain source text and retrieve exact passages | [Use a corpus](../../../../operator/corpus.md) |
 | Record relationships with exact source quotations | [Use Graph](../../../../operator/graph.md) |
-| Investigate provided text or selected search/fetch tools | [Use the Research extension](../../../../operator/research-extensions.md) |
+| Investigate provided text or selected search/fetch tools | [Use the Research extension](../../../2026-10-22-before-structural-consolidation/docs/operator/research-extensions.md) |
 | Gather sources with the main agent and export its ledger | [Run native research](../../../../operator/research.md) |
-| Configure explicit vector generation | [Use embeddings](../../../../operator/embeddings.md) |
+| Configure explicit vector generation | [Use embeddings](../../../2026-10-22-before-structural-consolidation/docs/operator/embeddings.md) |
 | Inspect or recover interrupted work | [Recover a session](../../../../operator/recovery.md) |
-| Find why a command failed | [Troubleshoot](../../../../operator/troubleshooting.md) |
+| Find why a command failed | [Troubleshoot](../../../2026-10-22-before-structural-consolidation/docs/operator/troubleshooting.md) |
 | Understand which process owns an operation | [Follow a turn](../../../../developer/architecture.md) |
 | Add a domain tool without changing the host | [Build an extension](developer/extensions.md) |
 | Change source retrieval, graph or investigation behavior | [Study knowledge packages](../../../../developer/knowledge-extensions.md) |

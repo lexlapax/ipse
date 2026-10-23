@@ -1,7 +1,7 @@
 defmodule Ipse.Usage.Costs do
   @moduledoc "Pure estimates from explicit rate cards; no invoice, IO or request admission."
-  alias Ipse.MCP.Schema
-  alias Ipse.Usage.Normalizer
+  alias Ipse.JSON, as: Schema
+  alias Ipse.Usage
   @scale 1_000_000_000
   @safe 9_007_199_254_740_991
   @token_units ~w(input input_uncached input_cached input_cache_write input_cache_write_5m input_cache_write_1h output)
@@ -10,7 +10,7 @@ defmodule Ipse.Usage.Costs do
 
   def schema do
     text = %{"type" => "string", "minLength" => 1, "maxLength" => 256}
-    count = %{"type" => "integer", "minimum" => 0, "maximum" => Normalizer.limit()}
+    count = %{"type" => "integer", "minimum" => 0, "maximum" => Usage.counter_limit()}
     rates = Map.new(@token_units ++ @extra_units, &{&1, %{"type" => "string", "maxLength" => 24}})
 
     row =
@@ -27,7 +27,7 @@ defmodule Ipse.Usage.Costs do
         "input_max" => %{
           "type" => ["integer", "null"],
           "minimum" => 0,
-          "maximum" => Normalizer.limit()
+          "maximum" => Usage.counter_limit()
         },
         "input_mode" => %{"type" => "string", "enum" => ~w(flat cache_split cache_ttl_split)},
         "rates" => Map.put(object(rates), "required", [])
@@ -285,14 +285,14 @@ defmodule Ipse.Usage.Costs do
       operation in ~w(text embedding) and
       (operation == "text" or r["provider"] in ~w(openai ollama)) and
       r["provider"] in ~w(openai chatgpt anthropic ollama demo) and
-      r["billing_mode"] == Normalizer.billing_mode(provider(r["provider"])) and
+      r["billing_mode"] == Usage.billing_mode(provider(r["provider"])) and
       is_binary(r["model"]) and byte_size(r["model"]) in 1..256 and
       (is_nil(r["reported_model"]) or
          (is_binary(r["reported_model"]) and byte_size(r["reported_model"]) in 1..256)) and
       hash_or_nil?(r["endpoint_sha256"]) and is_integer(r["admitted_at_ms"]) and
       r["admitted_at_ms"] in 0..253_402_300_799_999 and
       r["outcome"] in ~w(completed failed cancelled unknown) and
-      r["finality"] in ~w(final partial) and Normalizer.valid?(r["usage"], operation)
+      r["finality"] in ~w(final partial) and Usage.valid_usage?(r["usage"], operation)
   end
 
   defp provider("openai"), do: :openai
@@ -326,7 +326,7 @@ defmodule Ipse.Usage.Costs do
 
     expected != [] and (not embedding or r["provider"] in ~w(openai ollama)) and
       (not embedding or Enum.all?(Map.keys(r["rates"]), &(&1 in ~w(input duration_second)))) and
-      r["billing_mode"] == Normalizer.billing_mode(provider(r["provider"])) and
+      r["billing_mode"] == Usage.billing_mode(provider(r["provider"])) and
       r["basis"] ==
         %{
           "api" => "api_estimate",
@@ -395,4 +395,185 @@ defmodule Ipse.Usage.Costs do
       "properties" => properties,
       "required" => Map.keys(properties)
     }
+
+  alias Ipse.Usage
+
+  @fields ~w(operation provider billing_mode model reported_model endpoint_sha256 admitted_at_ms outcome finality usage)
+  @limit 10_000
+
+  def summary(card, limit \\ @limit) when is_integer(limit) and limit in 1..40_000 do
+    with :ok <- validate(card), do: {:ok, %{card: card, requests: %{}, limit: limit}}
+  end
+
+  @doc "Replace the contribution for an actual request attempt, never add cumulative observations as deltas."
+  def put_request(state, request) do
+    key = {request["session_id"], request["request_id"], request["attempt_id"]}
+
+    admission =
+      request
+      |> Map.drop(~w(outcome finality duration_ms reported_model usage))
+      |> then(&Ipse.JSON.digest([&1]))
+
+    with true <- Usage.valid_request_record?(request),
+         true <- map_size(state.requests) < state.limit or Map.has_key?(state.requests, key),
+         true <-
+           not Map.has_key?(state.requests, key) or state.requests[key].admission == admission,
+         {:ok, quote} <- estimate(state.card, Map.take(request, @fields)) do
+      contribution = %{
+        admission: admission,
+        group:
+          {request["provider"], request["billing_mode"], quote["basis"],
+           request["operation"] || "text"},
+        amount: quote["amount_nanos"],
+        known: quote["known_amount_nanos"],
+        overflow: "amount_overflow" in quote["missing"],
+        final: request["outcome"] == "completed" and request["finality"] == "final",
+        unknown: request["outcome"] == "unknown",
+        counts: request["usage"]["counts"]
+      }
+
+      {:ok, %{state | requests: Map.put(state.requests, key, contribution)}}
+    else
+      _ -> {:error, :invalid_summary_request}
+    end
+  rescue
+    _ -> {:error, :invalid_summary_request}
+  end
+
+  def report(state, snapshot, enumeration_complete) do
+    report_scope(state, snapshot, enumeration_complete, snapshot["request_count"], [
+      snapshot["source"]["session_id"]
+    ])
+  end
+
+  def tree_report(state, snapshot, discovery, children, descriptors) do
+    snapshots = for %{"snapshot" => s} <- children, s != nil, do: s
+    count = if discovery, do: discovery["child_count"]
+    captured = Enum.count(children, &(&1["complete"] == true))
+
+    unknown =
+      Enum.count(descriptors, &(&1["status"] != "result_recorded" or not &1["cleanup_confirmed"]))
+
+    legacy = snapshot["legacy_unmetered"] or Enum.any?(snapshots, & &1["legacy_unmetered"])
+    expected = snapshot["request_count"] + Enum.sum(Enum.map(snapshots, & &1["request_count"]))
+    sessions = [snapshot["source"]["session_id"] | Enum.map(snapshots, & &1["child_id"])]
+    complete = count != nil and captured == count
+
+    report =
+      report_scope(
+        state,
+        %{snapshot | "legacy_unmetered" => legacy},
+        complete,
+        expected,
+        sessions
+      )
+
+    gaps =
+      children
+      |> Enum.reject(& &1["complete"])
+      |> Enum.map(&(&1["error"] || "scan_limit"))
+      |> Enum.frequencies()
+
+    unvisited = if count, do: count - length(children), else: 0
+
+    gaps =
+      if unvisited > 0,
+        do: Map.update(gaps, "scan_limit", unvisited, &(&1 + unvisited)),
+        else: gaps
+
+    Map.merge(report, %{
+      "coverage" => "session_tree",
+      "snapshot" => snapshot,
+      "discovery_snapshot" => discovery,
+      "child_count" => count,
+      "captured_child_count" => captured,
+      "unknown_child_outcome_count" => unknown,
+      "legacy_unmetered" => legacy,
+      "gap_count" => if(count, do: count - captured),
+      "gap_reasons" => gaps,
+      "child_manifest_sha256" => Ipse.JSON.digest([children]),
+      "cost_estimate_complete" => report["cost_estimate_complete"] and unknown == 0
+    })
+  end
+
+  defp report_scope(state, snapshot, enumeration_complete, expected, sessions) do
+    enumeration_complete =
+      enumeration_complete and map_size(state.requests) == expected and
+        Enum.all?(Map.keys(state.requests), fn {session, _, _} ->
+          session in sessions
+        end)
+
+    groups =
+      state.requests
+      |> Map.values()
+      |> Enum.group_by(& &1.group)
+      |> Enum.sort_by(fn {key, _} -> key end)
+      |> Enum.map(fn {{provider, billing, basis, operation}, rows} ->
+        known = sum(Enum.map(rows, & &1.known))
+        amounts = Enum.map(rows, & &1.amount)
+        overflow = known.overflow or Enum.any?(rows, & &1.overflow)
+
+        group = %{
+          "provider" => provider,
+          "billing_mode" => billing,
+          "basis" => basis,
+          "request_count" => length(rows),
+          "unknown_cost_count" => Enum.count(amounts, &is_nil/1),
+          "unknown_outcome_count" => Enum.count(rows, & &1.unknown),
+          "partial_request_count" => Enum.count(rows, &(not &1.final)),
+          "amount_nanos" =>
+            if(Enum.all?(amounts, &is_integer/1) and not overflow, do: known.value),
+          "known_amount_nanos" => if(not overflow, do: known.value),
+          "overflow" => overflow,
+          "counts" =>
+            Map.new(Usage.counter_fields(), fn field ->
+              values = Enum.map(rows, & &1.counts[field])
+              subtotal = sum(values)
+              complete = Enum.all?(rows, & &1.final) and Enum.all?(values, &is_integer/1)
+
+              counters = %{
+                "total" => if(complete, do: subtotal.value),
+                "known_subtotal" => subtotal.value,
+                "unknown_count" => Enum.count(values, &is_nil/1),
+                "overflow" => subtotal.overflow
+              }
+
+              counters =
+                if operation == "embedding" and field == "output_tokens",
+                  do: counters |> Map.put("unknown_count", 0) |> Map.put("not_applicable", true),
+                  else: counters
+
+              {field, counters}
+            end)
+        }
+
+        if operation == "embedding", do: Map.put(group, "operation", operation), else: group
+      end)
+
+    complete =
+      enumeration_complete and not snapshot["legacy_unmetered"] and
+        Enum.all?(groups, &is_integer(&1["amount_nanos"]))
+
+    %{
+      "status" => "summarized",
+      "coverage" => "session",
+      "snapshot" => snapshot,
+      "request_count" => map_size(state.requests),
+      "enumeration_complete" => enumeration_complete,
+      "cost_estimate_complete" => complete,
+      "groups" => groups,
+      "rate_card" =>
+        Map.take(state.card, ~w(id revision currency source published_on))
+        |> Map.put("sha256", Ipse.JSON.digest([state.card])),
+      "currency_scale" => 9,
+      "rounding" => "ceiling_per_request"
+    }
+  end
+
+  defp sum(values) do
+    known = Enum.filter(values, &is_integer/1)
+    value = Enum.sum(known)
+    overflow = value > @safe
+    %{value: if(known != [] and not overflow, do: value), overflow: overflow}
+  end
 end

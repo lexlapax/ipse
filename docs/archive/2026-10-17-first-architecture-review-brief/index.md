@@ -8,7 +8,7 @@ the returned critique and supervisor repairs. It requests no new review or scan.
 - Document source: `fe542068e6ec0a37ca665b794c0e6aa9ff489585`.
 - Archived on 2026-10-17; the body is retained with relative Markdown links rebased.
 - [Archived brief](architecture-review.md).
-- Current replacement: [follow-up review handoff](../../operator/architecture-review.md).
+- Current replacement: [follow-up review handoff](../2026-10-22-before-structural-consolidation/docs/operator/architecture-review.md).
 
 The private critique itself is not archived here. Its sanitized findings and
 verification belong to the [disposition register](../2026-10-18-before-manual-rewrite/docs/developer/architecture-review-dispositions.md),

@@ -75,3 +75,5 @@ These are credential-free execution and protocol fixtures. They use no private
 workload or actual model inference and establish no model-quality improvement,
 matched actual-model resource result or engine selection. The whole-codebase
 consolidation and final P27 acceptance remain open in the plan.
+
+On 2026-10-22, only broken prose links were redirected to individual pre-structural snapshots or the exact5bffe00 source. Historical bodies/claims stay unchanged. Prior snapshot digests are retained alongside updated digests.

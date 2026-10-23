@@ -1,6 +1,6 @@
 defmodule Ipse.Usage do
   @moduledoc "Durable content-free request identities and cumulative provider usage snapshots."
-  alias Ipse.Usage.Normalizer
+
   @types ~w(request_admitted request_usage_observed request_finished)
   @providers %{
     "chatgpt" => :chatgpt,
@@ -45,8 +45,8 @@ defmodule Ipse.Usage do
       "parent_request_id" => origin["parent_request_id"],
       "kind" => kind,
       "provider" => to_string(config.provider),
-      "model" => Ipse.RuntimeInfo.model_name(config.model),
-      "billing_mode" => Normalizer.billing_mode(config.provider),
+      "model" => Ipse.Provider.model_name(config.model),
+      "billing_mode" => billing_mode(config.provider),
       "selected_profile" => profile(config[:execution]),
       "endpoint_sha256" =>
         if(is_binary(config[:base_url]), do: Ipse.JSON.sha256(config.base_url)),
@@ -68,8 +68,7 @@ defmodule Ipse.Usage do
       "request_id" => admission["request_id"],
       "attempt_id" => admission["attempt_id"],
       "sequence" => sequence,
-      "usage" =>
-        Normalizer.normalize(@providers[admission["provider"]], operation(admission), raw)
+      "usage" => normalize(@providers[admission["provider"]], operation(admission), raw)
     })
   end
 
@@ -82,15 +81,13 @@ defmodule Ipse.Usage do
               do: value["reported_model"],
               else: get_in(value, ["provider_data", "reported_model"])
 
-          {"completed",
-           Normalizer.normalize(@providers[admission["provider"]], operation(admission), raw),
-           Ipse.RuntimeInfo.model_name(reported)}
+          {"completed", normalize(@providers[admission["provider"]], operation(admission), raw),
+           Ipse.Provider.model_name(reported)}
 
         other ->
           {if(other == :cancelled, do: "cancelled", else: "failed"),
            observed ||
-             Normalizer.normalize(@providers[admission["provider"]], operation(admission), nil),
-           nil}
+             normalize(@providers[admission["provider"]], operation(admission), nil), nil}
       end
 
     versioned(admission, %{
@@ -161,7 +158,7 @@ defmodule Ipse.Usage do
   def apply_event(ledger, %{"type" => "extension_model_request"} = event) do
     if ledger.model_route == nil and
          not Map.has_key?(ledger.model_sources, event["operation_id"]) and
-         Ipse.Extensions.ModelCall.valid_source?(event, ledger.model_action, ledger.scope),
+         Ipse.Extension.ModelCall.valid_source?(event, ledger.model_action, ledger.scope),
        do:
          {:ok,
           %{
@@ -175,7 +172,7 @@ defmodule Ipse.Usage do
   def apply_event(ledger, %{"type" => "extension_embedding_request"} = event) do
     if ledger.usage_version == 2 and ledger.model_route == nil and
          not Map.has_key?(ledger.model_sources, event["operation_id"]) and
-         Ipse.Extensions.EmbeddingCall.valid_source?(event, ledger.model_action, ledger.scope),
+         Ipse.Extension.EmbeddingCall.valid_source?(event, ledger.model_action, ledger.scope),
        do:
          {:ok,
           %{
@@ -193,7 +190,7 @@ defmodule Ipse.Usage do
          request.admission["kind"] == "extension" and
          request.completion == nil and
          not Map.has_key?(ledger.model_responses, event["request_id"]) and
-         Ipse.Extensions.ModelCall.valid_response?(event, request.admission),
+         Ipse.Extension.ModelCall.valid_response?(event, request.admission),
        do:
          {:ok,
           %{ledger | model_responses: Map.put(ledger.model_responses, event["request_id"], event)}},
@@ -211,7 +208,7 @@ defmodule Ipse.Usage do
     if request != nil and operation(request.admission) == "embedding" and
          request.completion == nil and
          not Map.has_key?(ledger.model_responses, id) and
-         Ipse.Extensions.EmbeddingCall.valid_response?(
+         Ipse.Extension.EmbeddingCall.valid_response?(
            event,
            request.admission,
            ledger.model_action
@@ -226,9 +223,9 @@ defmodule Ipse.Usage do
       ) do
     id = event["operation_id"]
 
-    if Ipse.Extensions.Actions.result_intent(event) == ledger.model_action and
-         Ipse.Extensions.Actions.valid_result?(event) and
-         Ipse.Extensions.ModelCall.valid_result_source?(
+    if Ipse.Extension.Actions.result_intent(event) == ledger.model_action and
+         Ipse.Extension.Actions.valid_result?(event) and
+         Ipse.Extension.ModelCall.valid_result_source?(
            event,
            ledger.requests[id],
            ledger.model_responses[id]
@@ -246,9 +243,9 @@ defmodule Ipse.Usage do
       ) do
     id = event["operation_id"]
 
-    if Ipse.Extensions.Actions.result_intent(event) == ledger.model_action and
-         Ipse.Extensions.Actions.valid_result?(event) and
-         Ipse.Extensions.EmbeddingCall.valid_result_source?(
+    if Ipse.Extension.Actions.result_intent(event) == ledger.model_action and
+         Ipse.Extension.Actions.valid_result?(event) and
+         Ipse.Extension.EmbeddingCall.valid_result_source?(
            event,
            ledger.requests[id],
            ledger.model_responses[id]
@@ -358,7 +355,7 @@ defmodule Ipse.Usage do
 
     request.admission["kind"] != "extension" or response == nil or
       event["reported_model"] ==
-        Ipse.RuntimeInfo.model_name(
+        Ipse.Provider.model_name(
           get_in(response, ["assistant", "provider_data", "reported_model"])
         )
   end
@@ -416,7 +413,7 @@ defmodule Ipse.Usage do
           "reported_model" => nil,
           "usage" =>
             request.observation ||
-              Normalizer.normalize(
+              normalize(
                 @providers[request.admission["provider"]],
                 operation(request.admission),
                 nil
@@ -444,7 +441,7 @@ defmodule Ipse.Usage do
         do:
           record["finality"] == "partial" and record["duration_ms"] == nil and
             record["reported_model"] == nil and
-            Normalizer.valid?(record["usage"], operation(admission)),
+            valid_usage?(record["usage"], operation(admission)),
         else: valid_result?(result)
       )
   rescue
@@ -460,7 +457,7 @@ defmodule Ipse.Usage do
       Enum.all?(~w(request_id attempt_id session_id turn_id), &id?(e[&1])) and
       Enum.all?(~w(parent_session_id parent_request_id), &(is_nil(e[&1]) or id?(e[&1]))) and
       e["kind"] in ~w(model compaction extension) and Map.has_key?(@providers, e["provider"]) and
-      e["billing_mode"] == Normalizer.billing_mode(@providers[e["provider"]]) and
+      e["billing_mode"] == billing_mode(@providers[e["provider"]]) and
       (is_nil(e["selected_profile"]) or model?(e["selected_profile"])) and
       (is_nil(e["endpoint_sha256"]) or
          (is_binary(e["endpoint_sha256"]) and
@@ -492,7 +489,7 @@ defmodule Ipse.Usage do
     closed?(e, version_fields(e, ~w(type version request_id attempt_id sequence usage))) and
       operation_tag(e) != nil and
       is_integer(e["sequence"]) and e["sequence"] > 0 and
-      Normalizer.valid?(e["usage"], operation_tag(e))
+      valid_usage?(e["usage"], operation_tag(e))
   end
 
   defp valid_result?(%{"type" => "request_finished"} = e) do
@@ -506,7 +503,7 @@ defmodule Ipse.Usage do
       operation_tag(e) != nil and e["outcome"] in ~w(completed failed cancelled) and
       integer?(e["duration_ms"]) and (is_nil(e["reported_model"]) or model?(e["reported_model"])) and
       e["finality"] == if(e["outcome"] == "completed", do: "final", else: "partial") and
-      Normalizer.valid?(e["usage"], operation_tag(e))
+      valid_usage?(e["usage"], operation_tag(e))
   end
 
   defp valid_result?(_), do: false
@@ -536,14 +533,344 @@ defmodule Ipse.Usage do
     do: if(Enum.any?(requests, &(operation_tag(&1.admission) == "embedding")), do: 2, else: 1)
 
   defp closed?(e, fields),
-    do: Enum.sort(Map.keys(e)) == Enum.sort(fields) and Ipse.MCP.Schema.validate_object(e) == :ok
+    do: Enum.sort(Map.keys(e)) == Enum.sort(fields) and Ipse.JSON.validate_object(e) == :ok
 
   defp integer?(n), do: is_integer(n) and n >= 0 and n <= 9_007_199_254_740_991
 
   defp profile(execution) when is_map(execution),
-    do: Ipse.RuntimeInfo.model_name(execution[:id] || execution["id"])
+    do: Ipse.Provider.model_name(execution[:id] || execution["id"])
 
   defp profile(_), do: nil
-  defp model?(m), do: is_binary(m) and Ipse.RuntimeInfo.model_name(m) == m
+  defp model?(m), do: is_binary(m) and Ipse.Provider.model_name(m) == m
   defp id?(id), do: is_binary(id) and Regex.match?(~r/\A[0-9a-f]{32}\z/, id)
+  @counter_limit 1_000_000_000_000
+  @fields ~w(input_tokens output_tokens total_tokens input_uncached_tokens input_cached_tokens input_cache_write_tokens input_cache_write_5m_tokens input_cache_write_1h_tokens output_reasoning_tokens provider_web_search_requests provider_web_fetch_requests provider_duration_ns)
+  @billing %{
+    chatgpt: "subscription",
+    openai: "api",
+    ollama: "local",
+    anthropic: "api",
+    demo: "none"
+  }
+  def counter_fields, do: @fields
+  def counter_limit, do: @counter_limit
+  def billing_mode(provider), do: @billing[provider]
+
+  def normalize(:demo, _usage), do: record(empty(), [], "not_applicable", [])
+
+  def normalize(provider, usage) when provider in [:chatgpt, :openai, :ollama, :anthropic] do
+    usage = if is_nil(usage), do: %{}, else: usage
+
+    with true <- is_map(usage),
+         {:ok, counts} <- extract(provider, usage),
+         {:ok, counts, derived} <- derive(provider, counts),
+         true <- consistent?(counts) do
+      quality =
+        cond do
+          is_integer(counts["input_tokens"]) and is_integer(counts["output_tokens"]) ->
+            "totals_known"
+
+          Enum.any?(Map.values(counts), &is_integer/1) ->
+            "partial"
+
+          true ->
+            "unavailable"
+        end
+
+      record(counts, derived, quality, [])
+    else
+      _ -> record(empty(), [], "invalid", ["invalid_or_inconsistent_provider_counters"])
+    end
+  rescue
+    _ -> record(empty(), [], "invalid", ["invalid_or_inconsistent_provider_counters"])
+  end
+
+  def normalize(_, _), do: record(empty(), [], "invalid", ["unsupported_provider"])
+
+  def normalize(provider, operation, raw) when operation in [:text, "text"],
+    do: normalize(provider, raw)
+
+  def normalize(provider, operation, raw) when operation in [:embedding, "embedding"] do
+    raw = if is_nil(raw), do: %{}, else: raw
+
+    with true <- provider in [:openai, :ollama],
+         true <- is_map(raw),
+         {:ok, counts} <- embedding_counts(provider, raw),
+         true <- embedding_consistent?(counts) do
+      {counts, derived} =
+        if is_integer(counts["input_tokens"]) and is_nil(counts["total_tokens"]),
+          do: {Map.put(counts, "total_tokens", counts["input_tokens"]), ["total_tokens"]},
+          else: {counts, []}
+
+      quality =
+        cond do
+          is_integer(counts["input_tokens"]) and is_integer(counts["total_tokens"]) ->
+            "totals_known"
+
+          Enum.any?(Map.values(counts), &is_integer/1) ->
+            "partial"
+
+          true ->
+            "unavailable"
+        end
+
+      embedding_record(counts, derived, quality, [])
+    else
+      _ ->
+        issue =
+          if provider in [:openai, :ollama],
+            do: "invalid_or_inconsistent_provider_counters",
+            else: "unsupported_provider"
+
+        embedding_record(empty(), [], "invalid", [issue])
+    end
+  rescue
+    _ -> embedding_record(empty(), [], "invalid", ["invalid_or_inconsistent_provider_counters"])
+  end
+
+  def normalize(_, _, _), do: record(empty(), [], "invalid", ["unsupported_provider"])
+
+  def valid_usage?(usage, "text"),
+    do: is_map(usage) and usage["version"] === 1 and valid_usage?(usage)
+
+  def valid_usage?(usage, "embedding"),
+    do: is_map(usage) and usage["version"] === 2 and valid_usage?(usage)
+
+  def valid_usage?(_, _), do: false
+
+  @doc "Validate stored normalized counters without accessing provider data or credentials."
+  def valid_usage?(
+        %{
+          "version" => 1,
+          "counts" => counts,
+          "derived_fields" => derived,
+          "quality" => quality,
+          "issues" => issues
+        } = record
+      ) do
+    Ipse.JSON.validate_object(record) == :ok and
+      Enum.sort(Map.keys(record)) == ~w(counts derived_fields issues quality version) and
+      is_map(counts) and Enum.all?(Map.keys(counts), &(&1 in @fields)) and
+      Enum.all?(~w(input_tokens output_tokens total_tokens), &Map.has_key?(counts, &1)) and
+      Enum.all?(Map.values(counts), &(is_nil(&1) or counter?(&1))) and
+      is_list(derived) and length(derived) == length(Enum.uniq(derived)) and
+      Enum.all?(derived, &(&1 in ~w(input_tokens total_tokens))) and
+      Enum.all?(derived, &is_integer(counts[&1])) and
+      quality in ~w(totals_known partial unavailable invalid not_applicable) and
+      is_list(issues) and
+      Enum.all?(
+        issues,
+        &(&1 in ~w(invalid_or_inconsistent_provider_counters unsupported_provider))
+      ) and
+      consistent?(counts) and quality_matches?(counts, quality)
+  rescue
+    _ -> false
+  end
+
+  def valid_usage?(%{"version" => 2, "operation" => "embedding"} = record) do
+    counts = record["counts"]
+    derived = record["derived_fields"]
+    quality = record["quality"]
+    issues = record["issues"]
+
+    Ipse.JSON.validate_object(record) == :ok and
+      Enum.sort(Map.keys(record)) ==
+        ~w(counts derived_fields issues not_applicable_fields operation quality version) and
+      record["not_applicable_fields"] == ["output_tokens"] and
+      is_map(counts) and Enum.sort(Map.keys(counts)) == Enum.sort(@fields) and
+      Enum.all?(Map.values(counts), &(is_nil(&1) or counter?(&1))) and
+      Enum.all?(
+        @fields -- ~w(input_tokens total_tokens provider_duration_ns),
+        &is_nil(counts[&1])
+      ) and
+      derived in [[], ["total_tokens"]] and
+      (derived == [] or
+         (is_integer(counts["input_tokens"]) and is_integer(counts["total_tokens"]))) and
+      embedding_consistent?(counts) and
+      is_list(issues) and
+      Enum.all?(
+        issues,
+        &(&1 in ~w(invalid_or_inconsistent_provider_counters unsupported_provider))
+      ) and
+      ((quality == "invalid" and issues != []) or (quality != "invalid" and issues == [])) and
+      embedding_quality?(counts, quality)
+  rescue
+    _ -> false
+  end
+
+  def valid_usage?(_), do: false
+
+  defp embedding_counts(provider, raw) do
+    paths =
+      case provider do
+        :openai ->
+          %{"input_tokens" => ["prompt_tokens"], "total_tokens" => ["total_tokens"]}
+
+        :ollama ->
+          %{"input_tokens" => ["prompt_eval_count"], "provider_duration_ns" => ["total_duration"]}
+      end
+
+    Enum.reduce_while(paths, {:ok, empty()}, fn {field, path}, {:ok, counts} ->
+      case read(raw, path) do
+        nil ->
+          {:cont, {:ok, counts}}
+
+        value when is_integer(value) and value >= 0 and value <= @counter_limit ->
+          {:cont, {:ok, Map.put(counts, field, value)}}
+
+        _ ->
+          {:halt, :error}
+      end
+    end)
+  end
+
+  defp embedding_consistent?(counts),
+    do:
+      is_nil(counts["input_tokens"]) or is_nil(counts["total_tokens"]) or
+        counts["input_tokens"] == counts["total_tokens"]
+
+  defp embedding_quality?(counts, "totals_known"),
+    do: is_integer(counts["input_tokens"]) and is_integer(counts["total_tokens"])
+
+  defp embedding_quality?(counts, quality) when quality in ~w(unavailable invalid),
+    do: Enum.all?(Map.values(counts), &is_nil/1)
+
+  defp embedding_quality?(counts, "partial"),
+    do:
+      Enum.any?(Map.values(counts), &is_integer/1) and
+        not embedding_quality?(counts, "totals_known")
+
+  defp embedding_quality?(_, _), do: false
+
+  defp embedding_record(counts, derived, quality, issues),
+    do: %{
+      "version" => 2,
+      "operation" => "embedding",
+      "counts" => counts,
+      "derived_fields" => derived,
+      "quality" => quality,
+      "issues" => issues,
+      "not_applicable_fields" => ["output_tokens"]
+    }
+
+  defp extract(provider, raw) do
+    paths =
+      case provider do
+        p when p in [:chatgpt, :openai] ->
+          %{
+            "input_tokens" => ["input_tokens"],
+            "output_tokens" => ["output_tokens"],
+            "total_tokens" => ["total_tokens"],
+            "input_cached_tokens" => ["input_tokens_details", "cached_tokens"],
+            "input_cache_write_tokens" => ["input_tokens_details", "cache_write_tokens"],
+            "output_reasoning_tokens" => ["output_tokens_details", "reasoning_tokens"]
+          }
+
+        :anthropic ->
+          %{
+            "input_uncached_tokens" => ["input_tokens"],
+            "output_tokens" => ["output_tokens"],
+            "input_cached_tokens" => ["cache_read_input_tokens"],
+            "input_cache_write_tokens" => ["cache_creation_input_tokens"],
+            "input_cache_write_5m_tokens" => ["cache_creation", "ephemeral_5m_input_tokens"],
+            "input_cache_write_1h_tokens" => ["cache_creation", "ephemeral_1h_input_tokens"],
+            "output_reasoning_tokens" => ["output_tokens_details", "thinking_tokens"],
+            "provider_web_search_requests" => ["server_tool_use", "web_search_requests"],
+            "provider_web_fetch_requests" => ["server_tool_use", "web_fetch_requests"]
+          }
+
+        :ollama ->
+          Map.new(
+            ~w(input_tokens output_tokens input_cached_tokens provider_duration_ns),
+            &{&1, [&1]}
+          )
+      end
+
+    Enum.reduce_while(paths, {:ok, empty()}, fn {field, path}, {:ok, counts} ->
+      case read(raw, path) do
+        nil ->
+          {:cont, {:ok, counts}}
+
+        value when is_integer(value) and value >= 0 and value <= @counter_limit ->
+          {:cont, {:ok, Map.put(counts, field, value)}}
+
+        _ ->
+          {:halt, :error}
+      end
+    end)
+  end
+
+  defp read(value, []), do: value
+  defp read(nil, _path), do: nil
+  defp read(map, [key | rest]) when is_map(map), do: read(Map.get(map, key), rest)
+  defp read(_, _), do: :invalid
+
+  defp derive(provider, counts) do
+    {counts, derived} =
+      if provider == :anthropic do
+        parts =
+          Enum.map(
+            ~w(input_uncached_tokens input_cached_tokens input_cache_write_tokens),
+            &counts[&1]
+          )
+
+        if Enum.all?(parts, &is_integer/1),
+          do: {Map.put(counts, "input_tokens", Enum.sum(parts)), ["input_tokens"]},
+          else: {counts, []}
+      else
+        {counts, []}
+      end
+
+    {counts, derived} =
+      if is_nil(counts["total_tokens"]) and is_integer(counts["input_tokens"]) and
+           is_integer(counts["output_tokens"]) do
+        {Map.put(counts, "total_tokens", counts["input_tokens"] + counts["output_tokens"]),
+         derived ++ ["total_tokens"]}
+      else
+        {counts, derived}
+      end
+
+    if Enum.all?(Map.values(counts), &(is_nil(&1) or counter?(&1))),
+      do: {:ok, counts, derived},
+      else: :error
+  end
+
+  defp consistent?(counts) do
+    input = counts["input_tokens"]
+    output = counts["output_tokens"]
+    total = counts["total_tokens"]
+
+    (is_nil(input) or is_nil(output) or is_nil(total) or input + output == total) and
+      subset?(counts["input_cached_tokens"], input) and
+      subset?(counts["input_cache_write_tokens"], input) and
+      subset?(counts["output_reasoning_tokens"], output) and
+      subset?(counts["input_cache_write_5m_tokens"], counts["input_cache_write_tokens"]) and
+      subset?(counts["input_cache_write_1h_tokens"], counts["input_cache_write_tokens"])
+  end
+
+  defp subset?(nil, _), do: true
+  defp subset?(_, nil), do: true
+  defp subset?(part, total), do: part <= total
+  defp counter?(value), do: is_integer(value) and value >= 0 and value <= @counter_limit
+  defp empty, do: Map.new(@fields, &{&1, nil})
+
+  defp record(counts, derived, quality, issues),
+    do: %{
+      "version" => 1,
+      "counts" => counts,
+      "derived_fields" => derived,
+      "quality" => quality,
+      "issues" => issues
+    }
+
+  defp quality_matches?(counts, "totals_known"),
+    do: is_integer(counts["input_tokens"]) and is_integer(counts["output_tokens"])
+
+  defp quality_matches?(counts, quality) when quality in ~w(unavailable invalid not_applicable),
+    do: Enum.all?(Map.values(counts), &is_nil/1)
+
+  defp quality_matches?(counts, "partial"),
+    do:
+      Enum.any?(Map.values(counts), &is_integer/1) and
+        not (is_integer(counts["input_tokens"]) and is_integer(counts["output_tokens"]))
 end

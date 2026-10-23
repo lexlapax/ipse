@@ -103,7 +103,7 @@ A file is at most 16 KiB; at most 17 candidate scopes are examined.
 `max_output_tokens` caps each supported request, including summaries. ChatGPT
 subscription and demo reject it. Adapter/model limits can be tighter;
 Anthropic's default is 8192 and Ollama summaries retain a 4096 cap. A per-request
-cap is separate from [aggregate admission budgets](../../../../../operator/budgets.md) and does not limit
+cap is separate from [aggregate admission budgets](../../../../2026-10-22-before-structural-consolidation/docs/operator/budgets.md) and does not limit
 input tokens or promise an invoice ceiling.
 
 Provider response bodies have an independent 8 MiB accumulation ceiling and
@@ -149,9 +149,9 @@ The operator file can also contain these documented top-level objects:
 
 - `profiles` and `roles` select [named models](model-profiles.md). Projects can
   add default-endpoint profiles but cannot replace operator IDs or set endpoints.
-- `embedding_profiles` selects [embedding services](../../../../../operator/embeddings.md) through a
+- `embedding_profiles` selects [embedding services](../../../../2026-10-22-before-structural-consolidation/docs/operator/embeddings.md) through a
   separate operator-only registry. It supplies no automatic text/model routing.
-- `budget` reserves covered work for [one session tree](../../../../../operator/budgets.md).
+- `budget` reserves covered work for [one session tree](../../../../2026-10-22-before-structural-consolidation/docs/operator/budgets.md).
 - `extensions` selects instances; operator-only `extension_trust` grants their
   reviewed ceilings and optional storage/service bindings. See [Extensions](../../../../../operator/extensions.md).
 - Operator-only `observability` controls [diagnostic capture](../../../../../operator/observability.md).

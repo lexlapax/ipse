@@ -1,4 +1,4 @@
-Historical reference only. Brief at `a21469e`, targeting `a5912ab`; archived 2026-10-17 after the consolidated assessment returned without acceptance. Original body retained with rebased links. Use the [current checkpoint](../../operator/architecture-review.md).
+Historical reference only. Brief at `a21469e`, targeting `a5912ab`; archived 2026-10-17 after the consolidated assessment returned without acceptance. Original body retained with rebased links. Use the [current checkpoint](../2026-10-22-before-structural-consolidation/docs/operator/architecture-review.md).
 
 # Architecture-review handoff
 

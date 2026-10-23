@@ -1,5 +1,5 @@
 Historical reference only. Archived 2026-10-17 from `b08cd76`, targeting `b5297be`.
-Use the [current handoff](../../operator/architecture-review.md); this prompt has already returned.
+Use the [current handoff](../2026-10-22-before-structural-consolidation/docs/operator/architecture-review.md); this prompt has already returned.
 Relative documentation links are rebased; the original body follows. No private critique is included.
 
 ---

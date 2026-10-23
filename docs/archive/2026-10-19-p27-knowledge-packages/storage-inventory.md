@@ -2,7 +2,7 @@
 
 Historical development record after `f5b91b0`. The source commit containing this
 record owns the inventory implementation. Use the
-[evaluation training chapter](../../developer/knowledge-evaluation.md#verify-retained-storage-without-querying-through-the-audit)
+[evaluation training chapter](../2026-10-22-before-structural-consolidation/docs/developer/knowledge-evaluation.md#verify-retained-storage-without-querying-through-the-audit)
 for the current audit boundary and exercises. The
 [plan](../../plan.md#p27-optional-research-graph-and-rag) retains the complete
 acceptance requirements. No held-out member or actual model inference was opened.

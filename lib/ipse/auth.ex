@@ -8,7 +8,7 @@ defmodule Ipse.Auth do
   Protocol: https://developers.openai.com/siwc/token-sharing-open-source/sign-in
   Sessions: https://developers.openai.com/siwc/token-sharing-open-source/profiles-and-sessions
   """
-  alias Ipse.Auth.{HTTP, JWT, Store}
+
   @issuer "https://auth.openai.com"
   @resource "https://api.openai.com/v1"
   @token_endpoint @issuer <> "/api/accounts/oauth/token"
@@ -20,8 +20,8 @@ defmodule Ipse.Auth do
   @doc "Print a browser sign-in URL and await its loopback callback for five minutes."
   def login(auth_dir, opts \\ []) do
     snapshot =
-      Store.with_lock(auth_dir, fn ->
-        with {:ok, existing} <- Store.read(auth_dir), do: ensure_host(auth_dir, existing)
+      with_credential_lock(auth_dir, fn ->
+        with {:ok, existing} <- read_credentials(auth_dir), do: ensure_host(auth_dir, existing)
       end)
 
     with {:ok, existing} <- snapshot,
@@ -55,8 +55,8 @@ defmodule Ipse.Auth do
         deadline = System.monotonic_time(:millisecond) + 300_000
 
         with {:ok, callback} <- await_callback(listener, pending, deadline) do
-          Store.with_lock(auth_dir, fn ->
-            with {:ok, current} <- Store.read(auth_dir),
+          with_credential_lock(auth_dir, fn ->
+            with {:ok, current} <- read_credentials(auth_dir),
                  true <- current == existing do
               complete_login(auth_dir, existing, pending, callback)
             else
@@ -82,7 +82,7 @@ defmodule Ipse.Auth do
 
   defp complete_login(auth_dir, existing, pending, callback) do
     with {:ok, response} <-
-           HTTP.request(:post, @token_endpoint, %{
+           auth_request(:post, @token_endpoint, %{
              "grant_type" => "authorization_code",
              "client_id" => callback["client_id"],
              "code" => callback["code"],
@@ -110,7 +110,7 @@ defmodule Ipse.Auth do
              callback["client_id"],
              claims
            ),
-         :ok <- Store.write(auth_dir, record),
+         :ok <- write_credentials(auth_dir, record),
          :ok <- permitted(record) do
       :ok
     else
@@ -127,8 +127,8 @@ defmodule Ipse.Auth do
 
   @doc "Return a usable access token, serializing refreshes across OS processes."
   def token(auth_dir) do
-    Store.with_lock(auth_dir, fn ->
-      with {:ok, record} <- Store.read(auth_dir),
+    with_credential_lock(auth_dir, fn ->
+      with {:ok, record} <- read_credentials(auth_dir),
            {:ok, record} <- resolve_pending(auth_dir, record),
            :ok <- signed_in(record),
            :ok <- permitted(record) do
@@ -147,7 +147,7 @@ defmodule Ipse.Auth do
 
   @doc "Return selected account information without tokens or secrets."
   def status(auth_dir) do
-    with {:ok, record} <- Store.read(auth_dir), :ok <- signed_in(record) do
+    with {:ok, record} <- read_credentials(auth_dir), :ok <- signed_in(record) do
       {:ok,
        %{
          email: record["email"],
@@ -163,13 +163,13 @@ defmodule Ipse.Auth do
 
   @doc "Revoke the renewable session and clear local tokens while retaining registration."
   def logout(auth_dir) do
-    Store.with_lock(auth_dir, fn ->
-      with {:ok, record} <- Store.read(auth_dir) do
+    with_credential_lock(auth_dir, fn ->
+      with {:ok, record} <- read_credentials(auth_dir) do
         remote = revoke(revocation_record(record))
 
         clean = record |> Map.drop(@token_fields) |> Map.put("authorization_epoch", random())
 
-        with :ok <- Store.write(auth_dir, clean) do
+        with :ok <- write_credentials(auth_dir, clean) do
           case remote do
             :ok ->
               :ok
@@ -205,7 +205,7 @@ defmodule Ipse.Auth do
 
   defp refresh(auth_dir, record) do
     if nonempty?(record["refresh_token"]) do
-      case HTTP.request(:post, @token_endpoint, %{
+      case auth_request(:post, @token_endpoint, %{
              "grant_type" => "refresh_token",
              "client_id" => record["client_id"],
              "refresh_token" => record["refresh_token"],
@@ -219,7 +219,7 @@ defmodule Ipse.Auth do
           end
 
         {:error, {:oauth, code}} when code in @terminal_refresh_errors ->
-          with :ok <- Store.write(auth_dir, Map.drop(record, @token_fields)) do
+          with :ok <- write_credentials(auth_dir, Map.drop(record, @token_fields)) do
             {:error, "ChatGPT session expired or was revoked. Run `ipse login`."}
           end
 
@@ -254,7 +254,7 @@ defmodule Ipse.Auth do
       }
 
       next = Map.put(record, "pending_refresh", pending)
-      with :ok <- Store.write(auth_dir, next), do: {:ok, next}
+      with :ok <- write_credentials(auth_dir, next), do: {:ok, next}
     end
   end
 
@@ -276,7 +276,7 @@ defmodule Ipse.Auth do
            ) do
       # Retry time must never extend the access token lifetime granted earlier.
       next = Map.put(next, "expires_at", expires)
-      with :ok <- Store.write(auth_dir, next), do: {:ok, next}
+      with :ok <- write_credentials(auth_dir, next), do: {:ok, next}
     else
       {:error, _} = error -> error
       _ -> {:error, "ChatGPT pending refresh is invalid. Run `ipse login`."}
@@ -353,8 +353,8 @@ defmodule Ipse.Auth do
   defp validate_identity(token, client_id, nonce, subject) do
     with true <- nonempty?(token),
          {:ok, discovery} <- discovery(),
-         {:ok, jwks} <- HTTP.request(:get, discovery["jwks_uri"]) do
-      JWT.validate(token, jwks, client_id, nonce, subject)
+         {:ok, jwks} <- auth_request(:get, discovery["jwks_uri"]) do
+      validate_token(token, jwks, client_id, nonce, subject)
     else
       {:error, _} = error -> error
       _ -> {:error, "ChatGPT did not return an identity token."}
@@ -362,7 +362,7 @@ defmodule Ipse.Auth do
   end
 
   defp discovery do
-    with {:ok, doc} <- HTTP.request(:get, @issuer <> "/.well-known/openid-configuration"),
+    with {:ok, doc} <- auth_request(:get, @issuer <> "/.well-known/openid-configuration"),
          true <- doc["issuer"] == @issuer,
          true <- trusted_endpoint?(doc["jwks_uri"]) do
       {:ok, doc}
@@ -394,7 +394,7 @@ defmodule Ipse.Auth do
   end
 
   defp revoke_attempt(endpoint, record, attempt) do
-    case HTTP.request(:post, endpoint, %{
+    case auth_request(:post, endpoint, %{
            "token" => record["refresh_token"],
            "token_type_hint" => "refresh_token",
            "client_id" => record["client_id"]
@@ -425,7 +425,7 @@ defmodule Ipse.Auth do
         "#{hex.(a, 8)}-#{hex.(b, 4)}-#{hex.(Bitwise.bor(c, 0x4000), 4)}-#{hex.(Bitwise.bor(d, 0x8000), 4)}-#{hex.(e, 12)}"
 
       next = Map.put(existing, "ext_agent_host_id", "urn:uuid:" <> uuid)
-      with :ok <- Store.write(dir, next), do: {:ok, next}
+      with :ok <- write_credentials(dir, next), do: {:ok, next}
     end
   end
 
@@ -486,7 +486,7 @@ defmodule Ipse.Auth do
          %URI{path: "/auth/callback", query: query, host: nil} when is_binary(query) <-
            URI.parse(target),
          {:ok, params} <- query_params(query),
-         true <- JWT.secure_equal?(params["state"], pending.state) do
+         true <- secure_equal?(params["state"], pending.state) do
       result = callback_result(params, pending.client_id)
 
       case result do
@@ -551,4 +551,280 @@ defmodule Ipse.Auth do
 
   defp random, do: Base.url_encode64(:crypto.strong_rand_bytes(32), padding: false)
   defp nonempty?(value), do: is_binary(value) and byte_size(value) > 0
+
+  @oauth_errors ~w(invalid_grant invalid_refresh_token token_expired refresh_token_expired refresh_token_invalidated refresh_token_reused invalid_client)
+
+  @doc false
+  def decode_auth_response(status, body) when status in 200..299 and is_binary(body) do
+    if body == "", do: {:ok, %{}}, else: decode_auth_body(body)
+  end
+
+  def decode_auth_response(status, body) when is_integer(status) do
+    code =
+      if status in 400..499 and status != 429 and is_binary(body) and
+           byte_size(body) <= 1_048_576 do
+        case Jason.decode(body) do
+          {:ok, %{"error" => error}} when is_binary(error) -> error
+          {:ok, %{"error" => %{"code" => error}}} when is_binary(error) -> error
+          _ -> nil
+        end
+      end
+
+    if code in @oauth_errors do
+      {:error, {:oauth, code}}
+    else
+      {:error,
+       "ChatGPT authorization returned HTTP #{status}. Sign in again if the session expired."}
+    end
+  end
+
+  if Code.ensure_loaded?(Mix) and Mix.env() == :test do
+    def with_auth_transport(transport, fun) do
+      key = {__MODULE__, :transport}
+      previous = Process.put(key, transport)
+
+      try do
+        fun.()
+      after
+        if previous, do: Process.put(key, previous), else: Process.delete(key)
+      end
+    end
+
+    def auth_request(method, url, fields \\ []) do
+      case Process.get({__MODULE__, :transport}) do
+        nil -> real_request(method, url, fields)
+        fun -> fun.(method, url, fields)
+      end
+    end
+  else
+    def auth_request(method, url, fields \\ []), do: real_request(method, url, fields)
+  end
+
+  defp real_request(method, url, fields) do
+    uri = URI.parse(url)
+
+    if uri.scheme == "https" and uri.host == "auth.openai.com" and uri.port == 443 and
+         is_nil(uri.userinfo) and is_nil(uri.fragment) and method in [:get, :post] do
+      headers = [
+        {"accept-encoding", "identity"},
+        {"content-type", "application/x-www-form-urlencoded"}
+      ]
+
+      body = if method == :get, do: nil, else: URI.encode_query(fields)
+      request = Finch.build(method, url, headers, body)
+
+      case Ipse.HTTP.bounded_request(request, 1_048_576) do
+        {:ok, status, body} ->
+          decode_auth_response(status, body)
+
+        {:error, :response_too_large} ->
+          {:error, "ChatGPT authorization response exceeded the size limit."}
+
+        _ ->
+          {:error, "Could not reach ChatGPT authorization. Check your network and retry."}
+      end
+    else
+      {:error, "ChatGPT authorization endpoint is not trusted."}
+    end
+  rescue
+    _ -> {:error, "ChatGPT authorization request failed."}
+  end
+
+  defp decode_auth_body(body) when byte_size(body) <= 1_048_576 do
+    case Jason.decode(body) do
+      {:ok, map} when is_map(map) -> {:ok, map}
+      _ -> {:error, "ChatGPT authorization returned an invalid response."}
+    end
+  end
+
+  defp decode_auth_body(_),
+    do: {:error, "ChatGPT authorization response exceeded the size limit."}
+
+  # Algorithm and key type are pinned; untrusted token URLs are never followed.
+  def validate_token(token, jwks, client_id, nonce, subject \\ nil)
+
+  def validate_token(token, %{"keys" => keys}, client_id, nonce, subject)
+      when is_binary(token) and byte_size(token) <= 32_768 and is_list(keys) do
+    with true <- length(Enum.take(keys, 65)) in 1..64,
+         [header, payload, signature] <- String.split(token, ".", parts: 4),
+         true <-
+           byte_size(header) <= 4_096 and byte_size(payload) <= 24_576 and
+             byte_size(signature) <= 1_368,
+         {:ok, header_bytes} <- decode_token_component(header),
+         {:ok, %{"alg" => "RS256", "kid" => kid} = metadata} <- Jason.decode(header_bytes),
+         true <-
+           is_binary(kid) and byte_size(kid) in 1..256 and not Map.has_key?(metadata, "crit"),
+         [key] <- Enum.filter(keys, &usable_key?(&1, kid)),
+         {:ok, n} <- component(key["n"], 1_368),
+         true <- byte_size(n) in 256..1_024 and :binary.first(n) > 0,
+         true <- byte_size(n) > 256 or :binary.first(n) >= 128,
+         {:ok, e} <- component(key["e"], 6),
+         true <- byte_size(e) in 1..4 and :binary.first(e) > 0,
+         exponent = :binary.decode_unsigned(e),
+         true <- exponent >= 3 and rem(exponent, 2) == 1,
+         {:ok, sig} <- decode_token_component(signature),
+         true <- byte_size(sig) == byte_size(n),
+         true <-
+           :public_key.verify(
+             header <> "." <> payload,
+             :sha256,
+             sig,
+             {:RSAPublicKey, :binary.decode_unsigned(n), exponent}
+           ),
+         {:ok, payload_bytes} <- decode_token_component(payload),
+         {:ok, claims} <- Jason.decode(payload_bytes),
+         true <- valid_claims?(claims, client_id, nonce, subject) do
+      {:ok, claims}
+    else
+      _ -> {:error, "ChatGPT identity token validation failed. Start a fresh login."}
+    end
+  rescue
+    _ -> {:error, "ChatGPT identity token validation failed. Start a fresh login."}
+  end
+
+  def validate_token(_, _, _, _, _), do: {:error, "ChatGPT identity token validation failed."}
+
+  def secure_equal?(a, b) when is_binary(a) and is_binary(b) and byte_size(a) == byte_size(b) do
+    a
+    |> :binary.bin_to_list()
+    |> Enum.zip(:binary.bin_to_list(b))
+    |> Enum.reduce(0, fn {x, y}, acc -> Bitwise.bor(acc, Bitwise.bxor(x, y)) end)
+    |> Kernel.==(0)
+  end
+
+  def secure_equal?(_, _), do: false
+
+  defp decode_token_component(value) when is_binary(value),
+    do: Base.url_decode64(value, padding: false)
+
+  defp decode_token_component(_), do: :error
+
+  defp component(value, limit) when is_binary(value) and byte_size(value) <= limit,
+    do: decode_token_component(value)
+
+  defp component(_, _), do: :error
+
+  defp usable_key?(key, kid) when is_map(key) do
+    key["kid"] == kid and key["kty"] == "RSA" and
+      key["alg"] in [nil, "RS256"] and key["use"] in [nil, "sig"] and
+      (is_nil(key["key_ops"]) or "verify" in key["key_ops"])
+  end
+
+  defp usable_key?(_, _), do: false
+
+  defp valid_claims?(claims, client, nonce, subject) when is_map(claims) do
+    now = System.system_time(:second)
+    audience = claims["aud"]
+    aud_ok = audience == client or (is_list(audience) and client in audience)
+
+    azp_ok =
+      (not is_list(audience) or length(audience) <= 1 or claims["azp"] == client) and
+        (is_nil(claims["azp"]) or claims["azp"] == client)
+
+    claims["iss"] == @issuer and aud_ok and azp_ok and
+      is_integer(claims["exp"]) and claims["exp"] > now and
+      (is_nil(claims["nbf"]) or (is_integer(claims["nbf"]) and claims["nbf"] <= now + 30)) and
+      (is_nil(claims["iat"]) or (is_integer(claims["iat"]) and claims["iat"] <= now + 30)) and
+      is_binary(claims["sub"]) and byte_size(claims["sub"]) > 0 and
+      (is_nil(nonce) or secure_equal?(claims["nonce"], nonce)) and
+      (is_nil(subject) or secure_equal?(claims["sub"], subject))
+  end
+
+  defp valid_claims?(_, _, _, _), do: false
+
+  @filename "chatgpt.json"
+
+  def with_credential_lock(dir, fun, timeout \\ 10_000) do
+    with :ok <- prepare_credential_dir(dir) do
+      lock = Path.join(dir, ".chatgpt.lock")
+      deadline = System.monotonic_time(:millisecond) + timeout
+      acquire_credential_lock(lock, deadline, fun)
+    end
+  end
+
+  def read_credentials(dir) do
+    path = Path.join(dir, @filename)
+
+    case File.lstat(path) do
+      {:error, :enoent} ->
+        {:ok, %{}}
+
+      {:ok, %{type: :regular, mode: mode, size: size}} when size <= 1_048_576 ->
+        if Bitwise.band(mode, 0o077) == 0 do
+          with {:ok, bytes} <- File.read(path),
+               {:ok, value} when is_map(value) <- Jason.decode(bytes) do
+            {:ok, value}
+          else
+            _ -> {:error, "ChatGPT credential file is unreadable or invalid."}
+          end
+        else
+          {:error, "ChatGPT credential file must have owner-only permissions (chmod 600)."}
+        end
+
+      _ ->
+        {:error, "ChatGPT credential path must be a regular protected file."}
+    end
+  end
+
+  def write_credentials(dir, value) do
+    temp =
+      Path.join(
+        dir,
+        ".chatgpt-#{Base.url_encode64(:crypto.strong_rand_bytes(18), padding: false)}"
+      )
+
+    try do
+      with {:ok, file} <- :file.open(String.to_charlist(temp), [:write, :binary, :exclusive]) do
+        result =
+          with :ok <- File.chmod(temp, 0o600),
+               :ok <- :file.write(file, Jason.encode!(value)),
+               :ok <- :file.sync(file),
+               do: :ok
+
+        :file.close(file)
+        with :ok <- result, :ok <- File.rename(temp, Path.join(dir, @filename)), do: :ok
+      end
+    after
+      File.rm(temp)
+    end
+    |> case do
+      :ok -> :ok
+      _ -> {:error, "Could not save protected ChatGPT credentials."}
+    end
+  end
+
+  defp prepare_credential_dir(dir) do
+    with :ok <- File.mkdir_p(dir),
+         {:ok, %{type: :directory}} <- File.lstat(dir),
+         :ok <- File.chmod(dir, 0o700) do
+      :ok
+    else
+      _ -> {:error, "Could not prepare protected ChatGPT credential directory."}
+    end
+  end
+
+  defp acquire_credential_lock(lock, deadline, fun) do
+    case Ipse.Runner.lock(lock) do
+      {:ok, owner} ->
+        try do
+          File.chmod(lock, 0o600)
+          fun.()
+        after
+          Ipse.Runner.unlock(owner)
+        end
+
+      {:error, reason} when is_binary(reason) ->
+        if String.starts_with?(reason, "cannot acquire session lock") and
+             System.monotonic_time(:millisecond) < deadline do
+          Process.sleep(50)
+          acquire_credential_lock(lock, deadline, fun)
+        else
+          {:error,
+           "ChatGPT credentials are busy. Retry after the other sign-in or refresh finishes."}
+        end
+
+      _ ->
+        {:error, "Could not lock ChatGPT credentials."}
+    end
+  end
 end

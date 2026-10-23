@@ -2,13 +2,12 @@ defmodule Ipse.Development.Verification.Scenarios do
   @moduledoc "Finite verification entrypoints and their distinct acceptance assertions."
 
   @ordinary %{
-    "model" =>
-      {"examples/model-calls/proof.exs", IpseModelExample.Proof, [IpseModelExample.Proof]},
+    "model" => {"dev/verification/model.exs", IpseModelExample.Proof, [IpseModelExample.Proof]},
     "embedding" =>
-      {"examples/embedding-actions/proof.exs", IpseEmbeddingExample.Proof,
+      {"dev/verification/embedding.exs", IpseEmbeddingExample.Proof,
        [IpseEmbeddingExample.Proof, IpseEmbeddingExample.Proof.NoModel]},
     "mcp" =>
-      {"examples/mcp-actions/proof.exs", IpseMCPExample.Proof,
+      {"dev/verification/mcp.exs", IpseMCPExample.Proof,
        [
          IpseMCPExample.Proof,
          IpseMCPExample.Proof.NoModel,
@@ -16,71 +15,71 @@ defmodule Ipse.Development.Verification.Scenarios do
          IpseMCPExample.Fixture.HTTPLifecycle
        ]},
     "saved-results" =>
-      {"examples/saved-results/proof.exs", IpseSavedResultsExample.Proof,
+      {"dev/verification/saved_results.exs", IpseSavedResultsExample.Proof,
        [IpseSavedResultsExample.Proof, IpseSavedResultsExample.Proof.NoModel]},
     "lab" =>
-      {"examples/extension-lab/proof.exs", IpseLab.Proof,
+      {"dev/verification/lab.exs", IpseLab.Proof,
        [IpseLab.Proof, IpseLab.Proof.Model, IpseLab.Spec]},
     "memory" =>
-      {"dev/experiments/memory.exs", Ipse.Development.Experiments.Memory,
-       [Ipse.Development.Experiments.Memory]},
+      {"dev/verification/memory.exs", Ipse.Development.Verification.Memory,
+       [Ipse.Development.Verification.Memory]},
     "knowledge" =>
-      {"examples/knowledge/proof.exs", IpseKnowledgeExample.Proof,
+      {"dev/verification/knowledge.exs", IpseKnowledgeExample.Proof,
        [
          IpseKnowledgeExample.Proof,
          IpseKnowledgeExample.Proof.NoModel,
          Ipse.Development.Evaluation.Session
        ]},
     "knowledge-independence" =>
-      {"examples/knowledge/proof.exs", IpseKnowledgeExample.Proof,
+      {"dev/verification/knowledge.exs", IpseKnowledgeExample.Proof,
        [
          IpseKnowledgeExample.Proof,
          IpseKnowledgeExample.Proof.NoModel,
          Ipse.Development.Evaluation.Session
        ]},
     "knowledge-complete" =>
-      {"examples/knowledge/complete-result-proof.exs", IpseKnowledgeExample.CompleteResultProof,
+      {"dev/verification/knowledge_complete.exs", IpseKnowledgeExample.CompleteResultProof,
        [
          IpseKnowledgeExample.CompleteResultProof,
          IpseKnowledgeExample.CompleteResultProof.NoModel
        ]},
     "knowledge-evaluation" =>
-      {"examples/knowledge/evaluation-proof.exs", IpseKnowledgeExample.EvaluationProof,
+      {"dev/verification/knowledge_evaluation.exs", IpseKnowledgeExample.EvaluationProof,
        [
          IpseKnowledgeExample.EvaluationProof,
          IpseKnowledgeExample.EvaluationProof.NoModel,
          Ipse.Development.Evaluation.Session
        ]},
     "knowledge-recovery" =>
-      {"examples/knowledge/recovery-proof.exs", IpseKnowledgeExample.RecoveryProof,
+      {"dev/verification/knowledge_recovery.exs", IpseKnowledgeExample.RecoveryProof,
        [
          IpseKnowledgeExample.RecoveryProof,
          IpseKnowledgeExample.RecoveryProof.NoModel,
          Ipse.Development.Evaluation.Session
        ]},
     "knowledge-graph-lifecycle" =>
-      {"examples/knowledge/lifecycle-proof.exs", IpseKnowledgeExample.LifecycleProof,
+      {"dev/verification/knowledge_lifecycle.exs", IpseKnowledgeExample.LifecycleProof,
        [
          IpseKnowledgeExample.LifecycleProof,
          IpseKnowledgeExample.LifecycleProof.NoMain,
          Ipse.Development.Evaluation.Session
        ]},
     "knowledge-corpus-lifecycle" =>
-      {"examples/knowledge/lifecycle-proof.exs", IpseKnowledgeExample.LifecycleProof,
+      {"dev/verification/knowledge_lifecycle.exs", IpseKnowledgeExample.LifecycleProof,
        [
          IpseKnowledgeExample.LifecycleProof,
          IpseKnowledgeExample.LifecycleProof.NoMain,
          Ipse.Development.Evaluation.Session
        ]},
     "knowledge-selection" =>
-      {"examples/knowledge/lifecycle-proof.exs", IpseKnowledgeExample.LifecycleProof,
+      {"dev/verification/knowledge_lifecycle.exs", IpseKnowledgeExample.LifecycleProof,
        [
          IpseKnowledgeExample.LifecycleProof,
          IpseKnowledgeExample.LifecycleProof.NoMain,
          Ipse.Development.Evaluation.Session
        ]},
     "knowledge-mcp" =>
-      {["dev/fixtures/knowledge.exs", "examples/knowledge/mcp-proof.exs"],
+      {["dev/fixtures/knowledge.exs", "dev/verification/knowledge_mcp.exs"],
        IpseKnowledgeExample.MCPProof,
        [
          Ipse.Development.Fixtures.Knowledge,
@@ -90,7 +89,7 @@ defmodule Ipse.Development.Verification.Scenarios do
          IpseKnowledgeExample.MCPProof.NoModel
        ]},
     "knowledge-research" =>
-      {["dev/fixtures/knowledge.exs", "examples/knowledge/research-proof.exs"],
+      {["dev/fixtures/knowledge.exs", "dev/verification/knowledge_research.exs"],
        IpseKnowledgeExample.ResearchProof,
        [
          Ipse.Development.Fixtures.Knowledge,
@@ -107,12 +106,12 @@ defmodule Ipse.Development.Verification.Scenarios do
   def evaluator do
     %{
       native_environment: :base,
-      source: "dev/evaluation/cli.exs",
+      source: "dev/evaluation/runner.exs",
       sources: [
         "extensions/knowledge/src/evidence.ex",
         "dev/evaluation/author.exs",
         "dev/fixtures/knowledge.exs",
-        "dev/evaluation/cli.exs"
+        "dev/evaluation/runner.exs"
       ],
       module: Ipse.Development.Evaluation.MeasuredExecution,
       modules: [
@@ -135,15 +134,14 @@ defmodule Ipse.Development.Verification.Scenarios do
         Ipse.Development.Fixtures.Knowledge,
         Ipse.Development.Fixtures.Knowledge.Backend,
         Ipse.Development.Evaluation.Author,
-        IpseKnowledge.Evidence,
-        Ipse.Development.Evaluation.CLI
+        IpseKnowledge.Evidence
       ]
     }
   end
 
   def fixture!(:mcp) do
     %{
-      source: "examples/mcp-actions/fixture.exs",
+      source: "dev/fixtures/mcp.exs",
       module: IpseMCPExample.Fixture,
       modules: [IpseMCPExample.Fixture, IpseMCPExample.Fixture.HTTPLifecycle]
     }
@@ -539,4 +537,37 @@ defmodule Ipse.Development.Verification.Scenarios do
   defp model_selection("json"), do: {nil, :json_schema}
   defp model_selection("json-none"), do: {"none", :json_schema}
   defp model_selection("json-long"), do: {nil, :json_schema_long}
+
+  def parse!([mode, scenario | argv]) when mode in ~w(source installed) do
+    true = scenario in names()
+    false = mode == "source" and scenario == "package"
+
+    {options, [], []} =
+      OptionParser.parse(argv,
+        strict: [
+          sdk: [:string, :keep],
+          archive: [:string, :keep],
+          input: [:string, :keep],
+          output: [:string, :keep],
+          repository: [:string, :keep],
+          selection: [:string, :keep]
+        ]
+      )
+
+    true = length(Keyword.keys(options)) == length(Enum.uniq(Keyword.keys(options)))
+    required = if mode == "source", do: :sdk, else: :archive
+    forbidden = if mode == "source", do: :archive, else: :sdk
+    true = Keyword.has_key?(options, required) and Keyword.has_key?(options, :input)
+    false = Keyword.has_key?(options, forbidden)
+    true = Keyword.has_key?(options, :output) == output_required?(scenario)
+    true = Keyword.has_key?(options, :repository) == repository_required?(scenario)
+    :ok = selection!(scenario, Keyword.get(options, :selection, "default"))
+    {scenario, options}
+  end
+
+  def parse!(_),
+    do:
+      raise(
+        "usage: elixir dev/verify.exs source|installed SCENARIO --sdk EBIN|--archive ARCHIVE --input PATH [--selection MODE] [--output EVIDENCE] [--repository CLEAN_REPO]"
+      )
 end

@@ -1,6 +1,7 @@
 defmodule Ipse.Config do
   @moduledoc "Bounded configuration resolution and admitted session runtime policy."
-  alias Ipse.{MCP.Schema, WorkspaceContext, RuntimeInfo}
+  alias Ipse.Workspace
+  alias Ipse.JSON, as: Schema
 
   @file_bytes 16_384
   @max_sources 17
@@ -27,7 +28,7 @@ defmodule Ipse.Config do
   @env_keys Map.new(@fields, &{&1, "IPSE_" <> String.upcase(&1)})
 
   def resolve(cwd, home, opts \\ [], environment \\ System.get_env()) do
-    with {:ok, cwd} <- WorkspaceContext.canonical_path(cwd),
+    with {:ok, cwd} <- Workspace.canonical_path(cwd),
          true <- File.dir?(cwd),
          {:ok, dirs} <- project_dirs(cwd),
          {:ok, sources} <- sources(dirs, home, opts, environment),
@@ -64,19 +65,21 @@ defmodule Ipse.Config do
           }
         end)
 
-      with {:ok, extensions} <- Ipse.Extensions.Config.resolve(loaded, opts),
-           {:ok, embedding_profiles} <- Ipse.EmbeddingProfiles.resolve(loaded),
-           {:ok, budget} <- Ipse.Budget.Policy.resolve(loaded),
-           {:ok, journal} <- Ipse.Journal.Limits.resolve(loaded),
-           {:ok, observation} <- Ipse.Observability.Config.resolve(loaded, opts, environment),
-           :ok <- Ipse.Profiles.validate(effective.profiles, effective.roles),
+      with {:ok, extensions} <- Ipse.Extension.Config.resolve(loaded, opts),
+           {:ok, embedding_profiles} <- Ipse.Config.Profiles.resolve_embeddings(loaded),
+           {:ok, budget} <- Ipse.Usage.Budget.resolve_policy(loaded),
+           {:ok, journal} <- Ipse.Journal.resolve_limits(loaded),
+           {:ok, observation} <- Ipse.Observability.resolve(loaded, opts, environment),
+           :ok <- Ipse.Config.Profiles.validate(effective.profiles, effective.roles),
            {:ok, profile_id, profile} <-
-             Ipse.Profiles.select(
+             Ipse.Config.Profiles.select(
                effective.profiles,
                effective.roles,
                opts[:profile] || environment["IPSE_PROFILE"]
              ) do
-        effective = overlay(effective, Ipse.Profiles.settings(profile), "profile #{profile_id}")
+        effective =
+          overlay(effective, Ipse.Config.Profiles.settings(profile), "profile #{profile_id}")
+
         effective = overlay(effective, env, "environment")
 
         cli =
@@ -97,22 +100,22 @@ defmodule Ipse.Config do
 
         provenance = Map.put_new(effective.provenance, "model", "provider default")
 
-        execution = Ipse.Profiles.manifest(profile_id, profile)
+        execution = Ipse.Config.Profiles.manifest(profile_id, profile)
 
         with :ok <- validate_settings(settings),
              :ok <-
-               Ipse.Profiles.reasoning(
+               Ipse.Config.Profiles.reasoning(
                  settings["provider"],
                  settings["model"],
                  profile["reasoning_effort"]
                ),
              :ok <-
-               Ipse.Provider.Limits.validate(%{
+               Ipse.Provider.validate_output_limit(%{
                  provider: elem(@providers[settings["provider"]], 0),
                  max_output_tokens: settings["max_output_tokens"]
                }),
              :ok <-
-               Ipse.Budget.Policy.runtime(%{
+               Ipse.Usage.Budget.validate_configuration(%{
                  budget: budget,
                  provider: elem(@providers[settings["provider"]], 0),
                  max_output_tokens: settings["max_output_tokens"]
@@ -184,9 +187,9 @@ defmodule Ipse.Config do
 
       true ->
         with {:ok, extensions} <-
-               Ipse.Extensions.Registry.prepare(effective.extensions, client.home),
+               Ipse.Extension.Registry.prepare(effective.extensions, client.home),
              {:ok, servers} <- Ipse.MCP.Config.load(client.mcp_config),
-             {:ok, _policy} <- Ipse.Sandbox.resolve(sandbox, client.workspace) do
+             {:ok, _policy} <- Ipse.Tools.Sandbox.resolve(sandbox, client.workspace) do
           {:ok,
            Map.merge(
              %{
@@ -214,7 +217,7 @@ defmodule Ipse.Config do
                operator_questions: client.operator_questions,
                approval: client.approval
              },
-             Ipse.Profiles.runtime(effective)
+             Ipse.Config.Profiles.runtime(effective)
            )}
         end
     end
@@ -231,7 +234,7 @@ defmodule Ipse.Config do
         :roles,
         :execution
       ])
-      |> Map.put(:extensions, Ipse.Extensions.Config.inspect_config(effective.extensions))
+      |> Map.put(:extensions, Ipse.Extension.Config.inspect_config(effective.extensions))
       |> Map.put(:observability, effective.observability)
       |> Map.put(:budget, effective.budget)
       |> Map.put(:journal, effective.journal)
@@ -257,7 +260,7 @@ defmodule Ipse.Config do
         "subagents" => %{"type" => "boolean"},
         "subagent_concurrency" => integer(1, 2),
         "timeout_ms" => integer(1000, 600_000),
-        "max_output_tokens" => integer(1, Ipse.Provider.Limits.maximum())
+        "max_output_tokens" => integer(1, Ipse.Provider.max_output_tokens())
       },
       "additionalProperties" => false
     }
@@ -274,11 +277,11 @@ defmodule Ipse.Config do
             "profiles" => %{"type" => "object"},
             "embedding_profiles" => %{"type" => "object"},
             "roles" => %{"type" => "object"},
-            "observability" => Ipse.Observability.Config.schema(),
-            "budget" => Ipse.Budget.Policy.schema(),
-            "journal" => Ipse.Journal.Limits.schema()
+            "observability" => Ipse.Observability.schema(),
+            "budget" => Ipse.Usage.Budget.schema(),
+            "journal" => Ipse.Journal.limit_schema()
           },
-          Ipse.Extensions.Config.schema()
+          Ipse.Extension.Config.schema()
         ),
       "required" => ["version"],
       "additionalProperties" => false
@@ -289,7 +292,7 @@ defmodule Ipse.Config do
     with :ok <- Schema.validate_arguments(settings_schema(), settings),
          true <-
            not Map.has_key?(settings, "model") or
-             not is_nil(RuntimeInfo.model_name(settings["model"])) do
+             not is_nil(Ipse.Provider.model_name(settings["model"])) do
       :ok
     else
       _ -> {:error, "Invalid configuration settings."}
@@ -338,14 +341,14 @@ defmodule Ipse.Config do
   defp read_source(source) do
     with {:ok, stat} <- File.lstat(source.path) do
       with true <- stat.type in [:regular, :symlink],
-           {:ok, canonical} <- WorkspaceContext.canonical_path(source.path),
+           {:ok, canonical} <- Workspace.canonical_path(source.path),
            true <- is_nil(source.boundary) or within?(canonical, source.boundary),
            {:ok, raw} <- read_bounded(canonical),
            {:ok, data} <- Ipse.JSON.decode_bounded(raw),
            :ok <- Schema.validate_arguments(schema(), data),
-           :ok <- Ipse.Profiles.validate(data["profiles"] || %{}, %{}),
-           :ok <- Ipse.EmbeddingProfiles.validate(data["embedding_profiles"] || %{}),
-           :ok <- Ipse.Extensions.Config.validate(data),
+           :ok <- Ipse.Config.Profiles.validate(data["profiles"] || %{}, %{}),
+           :ok <- Ipse.Config.Profiles.validate_embeddings(data["embedding_profiles"] || %{}),
+           :ok <- Ipse.Extension.Config.validate(data),
            :ok <- validate_settings(data["settings"] || %{}) do
         {:ok,
          %{

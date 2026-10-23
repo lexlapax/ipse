@@ -125,7 +125,7 @@ defmodule Ipse.Development.Verification.ModelService do
         "\n"
     )
 
-    {:ok, executable} = Ipse.WorkspaceContext.canonical_path(fixture)
+    {:ok, executable} = Ipse.Workspace.canonical_path(fixture)
 
     runtime_file = fn path, target, executable? ->
       %{
@@ -638,7 +638,7 @@ defmodule Ipse.Development.Verification.ModelService do
   end
 
   defp request(url, timeout),
-    do: Ipse.HTTPProfile.bounded_request(Finch.build(:get, url), 1024, timeout)
+    do: Ipse.HTTP.bounded_request(Finch.build(:get, url), 1024, timeout)
 
   defp unused_port do
     {:ok, socket} = :gen_tcp.listen(0, [:binary, active: false, ip: {127, 0, 0, 1}])

@@ -2,7 +2,7 @@
 
 Historical development-tool verification record after `a3007ee`. The containing
 commit owns the review packet and quality-result changes. Follow the current
-[review exercise](../../developer/knowledge-evaluation.md#prepare-independent-review-from-finalized-predictions)
+[review exercise](../2026-10-22-before-structural-consolidation/docs/developer/knowledge-evaluation.md#prepare-independent-review-from-finalized-predictions)
 for commands and expected output. This increment does not complete P27, expose
 held-out inputs or supply independent semantic judgments.
 

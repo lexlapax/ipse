@@ -151,7 +151,7 @@ promise an invoice ceiling. Rates are configured; subscription equivalents,
 API estimates and local inference resource costs remain distinct. Missing usage
 or failed-child cleanup cannot be converted to zero liability.
 
-The [independently built model artifact](../../../../examples/model-calls/README.md) and
+The [independently built model artifact](../../2026-10-22-before-structural-consolidation/examples/model-calls/README.md) and
 existing seven-artifact compatibility lab passed against unchanged extracted
 packages. Acceptance includes real parallel child inference, nested approvals,
 owner-loss cancellation, refusal/overdraw, source-bound cached cost recovery and
@@ -404,7 +404,7 @@ Implemented allowlisted application/configured-provider/requested-model facts fo
 and model self-descriptions cannot establish backend revisions. No keyword answer
 interception or credential exposure. The historical extension proposal was
 subsequently implemented within P22's documented boundaries; see
-[runtime facts](../../../../lib/ipse/runtime_info.ex) and [extension architecture](developer/extensions.md).
+[runtime facts](https://github.com/lexlapax/ipse/blob/5bffe00364d66f5012e5a0d4cd86c4180c74ebcb/lib/ipse/runtime_info.ex) and [extension architecture](developer/extensions.md).
 
 ## P2a: automatic context compaction
 

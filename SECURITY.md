@@ -4,7 +4,7 @@ Ipse is a local AI harness running with an operator's account. This document own
 the review threat model and finding criteria. It is context for reviewers, not
 permission to execute code, access credentials, install tools or publish findings.
 The [architecture](docs/developer/architecture.md) and linked contracts describe
-implementation; the [review manual](docs/developer/reviewing-changes.md)
+implementation; the [review manual](docs/developer/testing.md)
 teaches source review, reproduction and evidence assessment. The
 [plan](docs/plan.md) owns acceptance gates and links to dated verification records
 in the [archive](docs/archive/index.md).
@@ -85,12 +85,12 @@ must retain their promised behavior under those failures.
   must not initialize workers, stores, connections or model calls.
 
 Contracts for [configuration](docs/developer/configuration.md),
-[artifacts/workers](docs/developer/extension-artifacts.md),
+[artifacts/workers](docs/developer/extensions.md),
 [host calls](docs/developer/extension-state.md#read-a-revision-and-propose-a-write),
 [model calls](docs/developer/extension-effects.md#request-bounded-text-inference),
 [lifecycle delivery](docs/developer/lifecycle-events.md),
-[accounting](docs/developer/usage-accounting.md) and
-[budgets](docs/developer/budgets.md) define the exact supported boundaries.
+[accounting](docs/developer/accounting.md) and
+[budgets](docs/developer/accounting.md) define the exact supported boundaries.
 
 ## Boundaries and accepted limitations
 

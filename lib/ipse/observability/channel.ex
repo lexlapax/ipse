@@ -1,7 +1,7 @@
 defmodule Ipse.Observability.Channel do
   @moduledoc "Atomically bounded metadata admission, separate from callback IO and text flow control."
   use GenServer
-  alias Ipse.Extensions.{Worker, Registry}
+  alias Ipse.Extension.{Worker, Registry}
 
   def start(owner, entry, policy, intent) do
     counters = :atomics.new(9, signed: false)
@@ -156,7 +156,7 @@ defmodule Ipse.Observability.Channel do
 
   @impl true
   def handle_info({:observation, event}, s) do
-    if :atomics.get(s.counters, 6) == 1 and Ipse.Observability.Event.valid?(event) do
+    if :atomics.get(s.counters, 6) == 1 and Ipse.Observability.valid_event?(event) do
       {:noreply, schedule(%{s | queue: :queue.in(event, s.queue)})}
     else
       release(s.counters)
@@ -187,7 +187,7 @@ defmodule Ipse.Observability.Channel do
 
         with true <- Registry.live?(s.entry.identity),
              {:ok, ^reply} <-
-               Worker.call(s.worker, Ipse.Observability.Config.stage(s.entry), payload),
+               Worker.call(s.worker, Ipse.Observability.stage(s.entry), payload),
              true <- Registry.live?(s.entry.identity) and :atomics.get(s.counters, 6) == 1 do
           release(s.counters)
           :atomics.add(s.counters, 4, 1)
@@ -248,10 +248,10 @@ defmodule Ipse.Observability.Channel do
   end
 
   defp close_worker(worker, counters) do
-    Ipse.Extensions.WorkerLease.close(worker, counters)
+    Ipse.Extension.Worker.close_lease(worker, counters)
   end
 
-  defp await_cleanup(counters), do: Ipse.Extensions.WorkerLease.await(counters)
+  defp await_cleanup(counters), do: Ipse.Extension.Worker.await_cleanup(counters)
 
   defp release(counters) do
     current = :atomics.get(counters, 1)

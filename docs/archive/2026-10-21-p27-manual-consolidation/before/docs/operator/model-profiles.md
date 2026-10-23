@@ -7,7 +7,7 @@ want a child review to use a separately chosen model. A profile names an existin
 service. It does not install a model, sign you in, or permit effects.
 
 These profiles route text generation. Configure vector generation through the
-separate operator [embedding profiles](../../../../../operator/embeddings.md); text roles never select
+separate operator [embedding profiles](../../../../2026-10-22-before-structural-consolidation/docs/operator/embeddings.md); text roles never select
 an embedding model automatically.
 
 ## Configure a main model and a local routine model
@@ -125,13 +125,13 @@ A routed child gets fresh history and credential lookup, selected context, and
 workspace instructions. It does not receive the parent's full conversation,
 credentials, or native provider payloads. Additional requests consume additional
 resources. Each child has at most six admitted main/helper calls and 120 seconds
-of active work. Its effects need separate approvals. See [Subagents](../../../../../operator/subagents.md).
+of active work. Its effects need separate approvals. See [Subagents](../../../../2026-10-22-before-structural-consolidation/docs/operator/subagents.md).
 
 Inherited output caps remain or narrow for selected children. Routing to a
 provider that cannot support the inherited cap refuses before work starts.
 Main-model compaction stays on the main profile. Extensions can separately request
 approved one-shot inference through named profiles; roles do not route those
-calls automatically. See [accounted model calls](../../../../../operator/extensions.md#accounted-model-calls).
+calls automatically. See [accounted model calls](../../../../2026-10-22-before-structural-consolidation/docs/operator/extensions.md#accounted-model-calls).
 
 ## Recover after a profile change
 

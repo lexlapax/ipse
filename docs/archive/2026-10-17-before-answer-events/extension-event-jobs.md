@@ -196,4 +196,4 @@ This is a generic host contract and synthetic coverage, not a production graph
 engine or the frozen-core independent installed-package proof. Explicit history
 catch-up, broader lifecycle views, full causal taxonomy, developer controls and
 P23's model/budget admission remain separate completion work. Optional
-[diagnostic capture](../../developer/observability.md) does not gate these jobs or their receipts.
+[diagnostic capture](../2026-10-22-before-structural-consolidation/docs/developer/observability.md) does not gate these jobs or their receipts.

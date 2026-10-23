@@ -130,7 +130,7 @@ matched real-model resource result, engine choice or whole-P27 acceptance.
 
 Historical S04 implementation record, 2026-10-20, over `c9c4999`. Current
 construction instructions belong to the
-[artifact training chapter](../../developer/extension-artifacts.md#build-and-inspect-a-package).
+[artifact training chapter](../2026-10-22-before-structural-consolidation/docs/developer/extension-artifacts.md#build-and-inspect-a-package).
 One finite `scripts/build-artifact.exs` command replaces five example builders.
 Its 214 implementation lines replace 311 lines, while preserving eleven
 artifacts across the five recipes, both Memory versions, SDK-1/2 declarations,
@@ -262,7 +262,7 @@ increases by 30 through formatting and the compiler repair/check. It establishes
 ownership and exercised compatibility, not held-out quality or engine selection.
 Current procedures belong to [evaluation training](../../developer/knowledge-evaluation.md),
 [verification training](../../developer/testing.md) and
-[artifact construction](../../developer/extension-artifacts.md). Remaining core
+[artifact construction](../2026-10-22-before-structural-consolidation/docs/developer/extension-artifacts.md). Remaining core
 consolidation, whole-manual work and final integrated P27 gates remain open.
 
 ## Separate usage arithmetic from bundled behavior
@@ -274,7 +274,7 @@ belongs to `Ipse.Builtins`. Ten files and eleven modules move with every active
 caller, Registry closure, fixture and manual reference. Old implementations and
 compatibility aliases are absent. Public `Ipse.Extension`, generic host
 `Ipse.Extensions` and independently built `extensions/knowledge` retain distinct
-roles. The [architecture chapter](../../developer/architecture.md#find-extension-code-by-its-role)
+roles. The [architecture chapter](../2026-10-22-before-structural-consolidation/docs/developer/architecture.md#find-extension-code-by-its-role)
 teaches how to find each owner.
 
 All eight inert builtin descriptors are identical before and after on both
@@ -360,7 +360,7 @@ and writer reservations. Registry pins the added helper. The existing durable
 `Extensions.Invocation` contract remains separate, with an explicit distinct
 alias for the current value.
 
-The lifecycle mapping in [invocation training](../../developer/extension-invocations.md#follow-current-facts-through-the-owner)
+The lifecycle mapping in [invocation training](../2026-10-22-before-structural-consolidation/docs/developer/extension-invocations.md#follow-current-facts-through-the-owner)
 covers admission, action begin, approval/denial/expiry, source and result commit,
 questions, publication, cancellation and deadlines. A competing lifecycle enum
 was deliberately avoided: publication resources and action facts are separate

@@ -1,4 +1,4 @@
-Historical reference only. Brief at `a46cc66`, targeting `7810925`; archived 2026-10-17 after package R returned without acceptance. Original body retained with rebased links. Use the [current handoff](../../operator/architecture-review.md).
+Historical reference only. Brief at `a46cc66`, targeting `7810925`; archived 2026-10-17 after package R returned without acceptance. Original body retained with rebased links. Use the [current handoff](../2026-10-22-before-structural-consolidation/docs/operator/architecture-review.md).
 
 # Architecture-review handoff
 

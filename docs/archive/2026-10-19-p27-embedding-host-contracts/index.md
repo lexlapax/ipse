@@ -2,7 +2,7 @@
 
 Historical verification record only. This records the generic embedding increment
 after `b55f39c`, not completion of P27 or a model-quality evaluation. Current
-procedures are the [embedding user manual](../../operator/embeddings.md) and
+procedures are the [embedding user manual](../2026-10-22-before-structural-consolidation/docs/operator/embeddings.md) and
 [extension training chapter](../../developer/extension-effects.md#generate-and-reconstruct-embeddings).
 The [plan](../../plan.md#p27-optional-research-graph-and-rag) owns current status.
 The source commit containing this record owns the runtime, fixtures and manuals.
@@ -68,7 +68,7 @@ documentation edits do not assert a rebuilt archive. Existing Mix support-file
 and fixture type warnings, the Rust unused-helper warning and the optional macOS
 probe module warning remain distinguished from failing checks.
 
-The [rerunnable SDK artifact](../../../examples/embedding-actions/README.md)
+The [rerunnable SDK artifact](../2026-10-22-before-structural-consolidation/examples/embedding-actions/README.md)
 drives real loopback Ollama/OpenAI native wire formats. It validates reversed
 OpenAI indices, widths 768/4096, eight vectors reconstructed through 48 bounded
 reads, whole-vector hashes, full approval, denied/exhausted zero dispatch,

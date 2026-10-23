@@ -1,6 +1,6 @@
 > Historical reference only. Snapshot of `docs/developer/runtime-capabilities.md` at `10b9dd66d06ef28718b58530a7e5b01c7c50397a` on 2026-10-18.
 > Original body retained; relative links rebased for this archive.
-> Use the [current manual](../../../../developer/runtime-capabilities.md).
+> Use the [current manual](../../../2026-10-22-before-structural-consolidation/docs/developer/runtime-capabilities.md).
 
 # Observability, usage and streaming boundaries
 

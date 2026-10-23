@@ -2,13 +2,11 @@ Code.require_file("contract.exs", __DIR__)
 
 defmodule Ipse.Development.Evaluation.MeasuredExecution do
   @moduledoc "One permanently claimed, sealed measured knowledge population and its read-only audit."
-  alias Ipse.Development.Evaluation.{
-    Contract,
-    Freeze,
-    Runner,
-    ModelService,
-    Resources
-  }
+  alias Ipse.Development.Evaluation.Contract
+  alias Ipse.Development.Evaluation.Freeze
+  alias Ipse.Development.Evaluation.Runner
+  alias Ipse.Development.Evaluation.ModelService
+  alias Ipse.Development.Evaluation.Resources
 
   @compile {:no_warn_undefined, Runner}
   @metric "linux_memcg_charged_peak_bytes_v1"
@@ -23,11 +21,11 @@ defmodule Ipse.Development.Evaluation.MeasuredExecution do
       def launch!(launch, arguments) do
         policy = policy!()
         verify_shell!(policy.shell)
-        {:ok, executable} = Ipse.WorkspaceContext.canonical_path(launch["executable"])
+        {:ok, executable} = Ipse.Workspace.canonical_path(launch["executable"])
         true = executable == policy.executable
         bindir = Path.dirname(executable)
         root = Path.expand("../..", bindir)
-        {:ok, ^root} = Ipse.WorkspaceContext.canonical_path(launch["root"])
+        {:ok, ^root} = Ipse.Workspace.canonical_path(launch["root"])
         erlexec = Path.join(bindir, "erlexec")
         [identity] = Enum.filter(launch["files"], &(&1["path"] == erlexec))
         %{type: :regular, size: size} = File.lstat!(erlexec)
@@ -69,7 +67,7 @@ defmodule Ipse.Development.Evaluation.MeasuredExecution do
           %{type: :symlink, mode: mode} = File.lstat!(file.link)
           true = mode == file.link_mode
           true = File.read_link!(file.link) == file.target
-          {:ok, resolved} = Ipse.WorkspaceContext.canonical_path(file.link)
+          {:ok, resolved} = Ipse.Workspace.canonical_path(file.link)
           true = resolved == file.resolved
           %{type: :regular, mode: mode, size: size} = File.lstat!(resolved)
           true = mode == file.mode and size == file.bytes
@@ -77,7 +75,7 @@ defmodule Ipse.Development.Evaluation.MeasuredExecution do
         end
 
         for directory <- [home, tmp] do
-          {:ok, ^directory} = Ipse.WorkspaceContext.canonical_path(directory)
+          {:ok, ^directory} = Ipse.Workspace.canonical_path(directory)
           %{type: :directory, mode: mode} = File.lstat!(directory)
           true = Bitwise.band(mode, 0o077) == 0
         end
@@ -110,7 +108,7 @@ defmodule Ipse.Development.Evaluation.MeasuredExecution do
       defp policy!, do: @policy
 
       defp verify_shell!(shell) do
-        {:ok, resolved} = Ipse.WorkspaceContext.canonical_path("/bin/sh")
+        {:ok, resolved} = Ipse.Workspace.canonical_path("/bin/sh")
         true = resolved == shell.path
         %{type: :regular, mode: mode, size: size} = File.lstat!(shell.path)
         true = mode == shell.mode and size == shell.bytes
@@ -166,7 +164,7 @@ defmodule Ipse.Development.Evaluation.MeasuredExecution do
     author: [Ipse.Development.Evaluation.Author, IpseKnowledge.Evidence],
     input: [Ipse.Development.Evaluation.Dataset],
     inventory: [],
-    cli: [Ipse.Development.Evaluation.CLI | @evaluator_modules]
+    cli: @evaluator_modules
   }
   @fds [
     {"IPSE_BOUND_ROOT_FD", 4},
@@ -585,7 +583,7 @@ defmodule Ipse.Development.Evaluation.MeasuredExecution do
 
   @doc false
   def validate_stage_launch!(helper, stage) do
-    {:ok, helper} = Ipse.WorkspaceContext.canonical_path(helper)
+    {:ok, helper} = Ipse.Workspace.canonical_path(helper)
 
     arguments =
       [

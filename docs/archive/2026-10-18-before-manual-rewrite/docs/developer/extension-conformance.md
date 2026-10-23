@@ -1,6 +1,6 @@
 > Historical reference only. Snapshot of `docs/developer/extension-conformance.md` at `10b9dd66d06ef28718b58530a7e5b01c7c50397a` on 2026-10-18.
 > Original body retained; relative links rebased for this archive.
-> Use the [current manual](../../../../developer/extensions.md#turn-the-hook-into-a-repeatable-scenario).
+> Use the [current manual](../../../2026-10-22-before-structural-consolidation/docs/developer/extensions.md#turn-the-hook-into-a-repeatable-scenario).
 
 # Synthetic extension conformance checks
 
@@ -55,8 +55,8 @@ Save this separate fixture:
 ./bin/ipse extension check --config /path/to/fixture-operator.json --fixture /path/to/scenarios.json --extension annotation --no-project-config
 ```
 
-The same reviewed examples ship as [operator config](../../../../../priv/conformance-operator.json)
-and [fixture](../../../../../priv/conformance-demo.json), runnable directly from the checkout:
+The same reviewed examples ship as [operator config](https://github.com/lexlapax/ipse/blob/5bffe00364d66f5012e5a0d4cd86c4180c74ebcb/priv/conformance-operator.json)
+and [fixture](https://github.com/lexlapax/ipse/blob/5bffe00364d66f5012e5a0d4cd86c4180c74ebcb/priv/conformance-demo.json), runnable directly from the checkout:
 
 ```sh
 ./bin/ipse extension check --config priv/conformance-operator.json --fixture priv/conformance-demo.json --extension annotation --no-project-config

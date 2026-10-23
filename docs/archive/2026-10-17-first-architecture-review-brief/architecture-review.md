@@ -1,4 +1,4 @@
-> Historical reference only. Archived 2026-10-17 from `fe542068e6ec0a37ca665b794c0e6aa9ff489585`; see [snapshot provenance](index.md) and the [current follow-up brief](../../operator/architecture-review.md).
+> Historical reference only. Archived 2026-10-17 from `fe542068e6ec0a37ca665b794c0e6aa9ff489585`; see [snapshot provenance](index.md) and the [current follow-up brief](../2026-10-22-before-structural-consolidation/docs/operator/architecture-review.md).
 
 # Independent architecture-review handoff
 

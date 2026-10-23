@@ -60,7 +60,7 @@ defmodule Ipse.Provider.Embedding do
          timeout = config[:timeout_ms] || 120_000,
          true <- is_integer(timeout) and timeout in 1..120_000,
          request = Finch.build(:post, endpoint(config), headers, Jason.encode!(body)),
-         {:ok, status, bytes} <- Ipse.HTTPProfile.bounded_request(request, @body_limit, timeout),
+         {:ok, status, bytes} <- Ipse.HTTP.bounded_request(request, @body_limit, timeout),
          true <- status in 200..299 do
       parse(config.provider, bytes, config, inputs)
     else
@@ -80,7 +80,7 @@ defmodule Ipse.Provider.Embedding do
          true <- is_binary(body) and byte_size(body) <= @body_limit,
          {:ok, native} when is_map(native) <- Jason.decode(body),
          model when is_binary(model) <- native["model"],
-         true <- Ipse.RuntimeInfo.model_name(model) == model,
+         true <- Ipse.Provider.model_name(model) == model,
          {:ok, rows} <- native_vectors(provider, native, length(inputs)),
          {:ok, vectors} <- vectors(rows, inputs, config.dimensions),
          result = %{
@@ -108,7 +108,7 @@ defmodule Ipse.Provider.Embedding do
     ) and
       execution?(execution) and
       result["kind"] == "embedding" and result["version"] === 1 and
-      Ipse.RuntimeInfo.model_name(result["reported_model"]) == result["reported_model"] and
+      Ipse.Provider.model_name(result["reported_model"]) == result["reported_model"] and
       is_binary(result["reported_model"]) and hash?(result["provider_response_sha256"]) and
       valid_data?(
         Map.take(result, ~w(encoding dimensions vectors)),
@@ -243,7 +243,7 @@ defmodule Ipse.Provider.Embedding do
       Regex.match?(~r/\A[A-Za-z][A-Za-z0-9_-]{0,63}\z/, execution["id"]) and
       execution["operation"] == "embedding" and execution["provider"] in ~w(openai ollama) and
       is_binary(execution["model"]) and
-      Ipse.RuntimeInfo.model_name(execution["model"]) == execution["model"] and
+      Ipse.Provider.model_name(execution["model"]) == execution["model"] and
       execution["billing_mode"] == if(execution["provider"] == "openai", do: "api", else: "local") and
       (is_nil(execution["endpoint_sha256"]) or hash?(execution["endpoint_sha256"])) and
       dimensions?(execution["dimensions"]) and execution["dimension_mode"] in ~w(native request) and
@@ -254,7 +254,7 @@ defmodule Ipse.Provider.Embedding do
 
   defp runtime?(config) do
     is_map(config) and config[:provider] in [:openai, :ollama] and
-      is_binary(config[:model]) and Ipse.RuntimeInfo.model_name(config[:model]) == config[:model] and
+      is_binary(config[:model]) and Ipse.Provider.model_name(config[:model]) == config[:model] and
       dimensions?(config[:dimensions]) and config[:dimension_mode] in ~w(native request)
   end
 

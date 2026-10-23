@@ -94,11 +94,11 @@ not a dump of the operator's process environment.
 | `subagents` | false | Boolean |
 | `subagent_concurrency` | 1 | 1–2; 2 requires subagents |
 | `timeout_ms` | 120,000 | 1,000–600,000 |
-| `max_output_tokens` | absent | Provider-specific validation in [provider limits](../../../../../developer/provider-limits.md) |
+| `max_output_tokens` | absent | Provider-specific validation in [provider limits](../../../../2026-10-22-before-structural-consolidation/docs/developer/provider-limits.md) |
 
 `model` is a nonempty string of at most 200 characters. When omitted, resolution
 selects the configured provider's default in `@providers`; consult that table when
-updating defaults. [Profiles](model-profiles.md), [budgets](../../../../../developer/budgets.md), and
+updating defaults. [Profiles](model-profiles.md), [budgets](../../../../2026-10-22-before-structural-consolidation/docs/developer/budgets.md), and
 [persistence](../../../../../developer/persistence.md) own their nested schemas.
 
 `EmbeddingProfiles` owns its separate registry and selected execution snapshot.

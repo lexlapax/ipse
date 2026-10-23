@@ -104,6 +104,6 @@ shipped or live remote exporter verified. Only metadata crosses this host path;
 reviewed worker code retains ordinary OS permissions, so these checks are not a
 network sandbox.
 
-Use the [developer contract](../../developer/observability.md) for SDK details and
+Use the [developer contract](../2026-10-22-before-structural-consolidation/docs/developer/observability.md) for SDK details and
 remaining tracing work. [Recovery](../../operator/recovery.md) owns saved inspection and reviewed
 handoff export; a private journal is not a sanitized trace.

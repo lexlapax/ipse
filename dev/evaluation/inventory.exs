@@ -1,7 +1,7 @@
 defmodule Ipse.Development.Evaluation.Inventory do
   @moduledoc "Read-only State metadata audit in a separately loaded, verified domain artifact."
   import Bitwise
-  alias Ipse.Extensions.{Registry, State}
+  alias Ipse.Extension.{Registry, State}
   @compile {:no_warn_undefined, Ipse.Development.Evaluation.MeasuredExecution}
   @bytes 1_048_576
 

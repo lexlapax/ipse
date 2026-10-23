@@ -7,8 +7,30 @@ defmodule Ipse.Development.Verification.Runtime do
   @source_root Path.expand("../..", __DIR__)
   @erts_bootstrap ~S'ROOTDIR=$1; BINDIR=$2; EMU=beam; PROGNAME=erl; export ROOTDIR BINDIR EMU PROGNAME; shift 2; exec "$BINDIR/erlexec" "$@"'
 
+  alias Ipse.Development.Verification.Package
+
+  def verification_main(argv) do
+    {scenario, options} = Scenarios.parse!(argv)
+
+    report =
+      case scenario do
+        "package" ->
+          Code.require_file("package.exs", __DIR__)
+
+          run(scenario, options, fn runtime, selected ->
+            apply(Package, :run, [runtime, selected])
+          end)
+
+        _ ->
+          run(scenario, options)
+      end
+
+    IO.puts(:json.encode(report))
+  end
+
   def evaluation_main(argv) do
-    alias Ipse.Development.Verification.{Runtime, Scenarios}
+    alias Ipse.Development.Verification.Runtime
+    alias Ipse.Development.Verification.Scenarios
 
     arguments =
       case argv do
@@ -94,8 +116,8 @@ defmodule Ipse.Development.Verification.Runtime do
 
   defp source_evaluation!(options, arguments) do
     evaluate = fn ->
-      Code.require_file("../evaluation/cli.exs", __DIR__)
-      cli = Code.ensure_loaded!(Ipse.Development.Evaluation.CLI)
+      Code.require_file("../evaluation/runner.exs", __DIR__)
+      cli = Code.ensure_loaded!(Ipse.Development.Evaluation.Runner)
       {_, status} = result = cli.evaluate(arguments)
       if status != 0, do: throw({:evaluation_result, result})
       result
@@ -383,7 +405,7 @@ defmodule Ipse.Development.Verification.Runtime do
   end
 
   def invoke_evaluation!(runtime, argv) do
-    expression = "Ipse.Development.Evaluation.CLI.main(#{inspect(argv)})"
+    expression = "Ipse.Development.Evaluation.Runner.main(#{inspect(argv)})"
     program = bootstrap(runtime) <> "\nCode.eval_string(#{inspect(expression)})"
     launch(runtime, program, runtime.repository)
   end
@@ -435,7 +457,11 @@ defmodule Ipse.Development.Verification.Runtime do
     manifest = decode_manifest!(bytes)
     files = manifest["runtime"]["files"]
     true = is_list(files) and length(files) in 1..4096
-    modules = Scenarios.evaluator().modules
+    legacy_cli = :"Elixir.Ipse.Development.Evaluation.CLI"
+    legacy_name = Atom.to_string(legacy_cli) <> ".beam"
+    separate_cli = Enum.any?(files, &(Path.basename(&1["path"]) == legacy_name))
+    modules = Scenarios.evaluator().modules ++ if(separate_cli, do: [legacy_cli], else: [])
+    entrypoint = if separate_cli, do: legacy_cli, else: Ipse.Development.Evaluation.Runner
     names = Enum.map(modules, &(Atom.to_string(&1) <> ".beam"))
     captured = Enum.filter(files, &(Path.basename(&1["path"]) in names))
 
@@ -515,7 +541,7 @@ defmodule Ipse.Development.Verification.Runtime do
         :ok = apply(environment, #{inspect(if manager_cli?(argv), do: :enter_manager!, else: :enter!)}, [])
         for module <- #{inspect(modules, limit: :infinity)}, module != #{inspect(environment)}, do: load.(module)
         freeze = Enum.find(Map.keys(verified), &(&1 == Ipse.Development.Evaluation.Freeze))
-        cli = Enum.find(Map.keys(verified), &(&1 == Ipse.Development.Evaluation.CLI))
+        cli = Enum.find(Map.keys(verified), &(&1 == #{inspect(entrypoint)}))
         case apply(freeze, :verify, [#{inspect(path)}, #{inspect(expected)}]) do
           {:ok, _} -> apply(cli, :main, [#{inspect(argv)}])
           {:error, reason} ->
@@ -720,7 +746,7 @@ defmodule Ipse.Development.Verification.Runtime do
 
     """
     :ok = :io.setopts(:standard_io, encoding: :unicode)
-    canonical = fn path -> {:ok, resolved} = Ipse.WorkspaceContext.canonical_path(path); resolved end
+    canonical = fn path -> {:ok, resolved} = Ipse.Workspace.canonical_path(path); resolved end
     erl = canonical.(#{inspect(runtime.erl)})
     startup_path = Path.dirname(erl) <> ":" <> Path.expand("../../bin", Path.dirname(erl)) <> ":" <> #{inspect(runtime.path)}
     ^startup_path = System.fetch_env!("PATH")
@@ -964,7 +990,7 @@ defmodule Ipse.Development.Verification.Runtime do
       files = for {link, target} <- policy.links do
         %{type: :symlink, mode: link_mode} = File.lstat!(link)
         ^target = File.read_link!(link)
-        {:ok, resolved} = Ipse.WorkspaceContext.canonical_path(target)
+        {:ok, resolved} = Ipse.Workspace.canonical_path(target)
         %{type: :regular, mode: mode, size: size} = File.lstat!(resolved)
         true = size <= 67_108_864
         %{link: link, target: target, resolved: resolved, link_mode: link_mode,
@@ -974,8 +1000,8 @@ defmodule Ipse.Development.Verification.Runtime do
         %{type: :directory, mode: mode} = File.lstat!(directory)
         %{path: directory, mode: mode, names: Enum.sort(File.ls!(directory))}
       end
-      {:ok, erl} = Ipse.WorkspaceContext.canonical_path(policy.executable)
-      {:ok, shell} = Ipse.WorkspaceContext.canonical_path("/bin/sh")
+      {:ok, erl} = Ipse.Workspace.canonical_path(policy.executable)
+      {:ok, shell} = Ipse.Workspace.canonical_path("/bin/sh")
       %{type: :regular, mode: shell_mode, size: shell_size} = File.lstat!(shell)
       true = shell_size <= 67_108_864
       shell = %{path: shell, mode: shell_mode, bytes: shell_size, sha256: Ipse.JSON.sha256(File.read!(shell))}
@@ -991,7 +1017,7 @@ defmodule Ipse.Development.Verification.Runtime do
     end
     true = Enum.sort(modules) == Enum.sort(#{inspect(spec.modules)})
     executable = if #{inspect(executable)} do
-      {:ok, canonical} = Ipse.WorkspaceContext.canonical_path(#{inspect(executable)})
+      {:ok, canonical} = Ipse.Workspace.canonical_path(#{inspect(executable)})
       canonical
     end
     IO.puts(:json.encode(%{"executable" => executable}))

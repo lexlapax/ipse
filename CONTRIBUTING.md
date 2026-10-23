@@ -29,7 +29,7 @@ potential vulnerabilities through the [private reporting procedure](SECURITY.md#
 For runtime changes, run the baseline from the repository root:
 
 ```sh
-./scripts/build.sh
+./dev/build.sh
 mix format --check-formatted
 mix compile --warnings-as-errors
 mix test
@@ -53,7 +53,7 @@ For documentation changes, validate the examples against the implementation and
 run the local link, heading, manual and archive checks:
 
 ```sh
-elixir scripts/check-docs.exs
+elixir dev/check-docs.exs
 ```
 
 ## Submit focused work

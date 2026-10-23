@@ -35,7 +35,7 @@ git clone https://github.com/lexlapax/ipse.git
 cd ipse
 mix local.hex --force
 mix local.rebar --force
-./scripts/build.sh
+./dev/build.sh
 ./bin/ipse demo
 ```
 
@@ -64,7 +64,7 @@ For ChatGPT subscription use:
 Complete the printed browser sign-in on a browser that reaches the same host's
 loopback callback. The last command makes real subscription requests only after
 you submit a task. API and local providers need their own explicit setup; see
-[Using Ipse](usage.md#choose-your-provider).
+[Using Ipse](usage.md#select-a-provider).
 
 Start with a read-only orientation prompt or a disposable directory. Approve each
 proposed effect using its printed `allow CODE`. Keep credentials and journals
@@ -84,7 +84,7 @@ This requests workspace/private-temp writes, selected system reads, and denied
 external network access for shell calls. Approvals remain required. Setup fails
 closed rather than retrying with broader permissions. Keep the running application
 and helper outside the target workspace; use an installed bundle for Ipse
-self-development. See [shell policy](usage.md#shell-policy) for toolchain visibility
+self-development. See [shell policy](usage.md#choose-shell-confinement) for toolchain visibility
 and cleanup limits.
 
 ## Recover from installation errors
@@ -97,4 +97,4 @@ TLS verification or weaken checks.
 
 If an archive fails because of loader/libc incompatibility, use a matching build;
 renaming an archive does not make it portable. Keep the sanitized error and host
-versions for a bug report. Continue with [Troubleshooting](troubleshooting.md).
+versions for a bug report. Continue with [Troubleshooting](recovery.md).

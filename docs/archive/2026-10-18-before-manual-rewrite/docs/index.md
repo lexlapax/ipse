@@ -71,7 +71,7 @@ start. Use the guides below for operation, development, and project context.
 | [Extension adoption scenarios](developer/extension-scenarios.md) | Bundled/third-party/generated feature walkthroughs, artifact installation, temporary use and deferred host capabilities |
 | [Extension conformance](developer/extension-conformance.md) | Synthetic SDK scenarios, ordinary trust/approvals, scratch state, structured answers, reports and optional dispatcher tracing |
 | [Independent extension proof](developer/extension-proof.md) | Candidate core freeze, installed memory/workflow artifacts, source provenance, catch-up, deletion and negative cleanup evidence |
-| [Model-call artifact example](../../../../examples/model-calls/README.md) | Independent SDK artifact with the same credential-free source/unchanged-package proof and no system development toolchain at runtime |
+| [Model-call artifact example](../../2026-10-22-before-structural-consolidation/examples/model-calls/README.md) | Independent SDK artifact with the same credential-free source/unchanged-package proof and no system development toolchain at runtime |
 | [Runtime capability boundaries](developer/runtime-capabilities.md) | Framework comparison, usage/cost facts, text/voice streams and core versus extension ownership |
 | [Usage accounting](developer/usage-accounting.md) | Canonical facts, granted own-session/registered-child pages and cached/source recovery validation |
 | [Provider generation and response limits](developer/provider-limits.md) | Explicit request caps, subscription refusal, child narrowing, pinned resume and bounded incoming stream assembly |

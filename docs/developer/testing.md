@@ -1,50 +1,70 @@
-# Verify behavior in source and installed runtimes
+# Review and verify a complete change
 
-Choose an observable behavior, exercise it with an isolated fixture and then run
-the checks appropriate to the changed boundary. Evidence belongs to the source,
-runtime and environment actually tested. A fixture result does not establish
-live account behavior, retrieval quality or OS enforcement.
+Choose an observable property, exercise the complete path, then verify the actual
+candidate at its source, process, platform, and installed boundaries. Evidence
+belongs to the revision/configuration/environment tested. Fixtures prove no real
+account behavior, algorithm quality, or unexecuted OS guarantee.
 
-Build the checkout using [developer setup](index.md) and run commands here from
-the repository root. Keep source and build outputs fixed during a run. Concurrent
-compilation or helper rebuilding can invalidate executable pins. Use separate
-checkouts/build roots when testing different OTP versions.
+Keep source/build outputs fixed during a run. Concurrent compilation or native
+rebuilding can invalidate executable pins. Use separate checkouts/build roots for
+different toolchains. [Setup](index.md) supplies prerequisites; the
+[security policy](../../SECURITY.md) defines threat assumptions and private reporting.
 
-## Begin with an observable failure
-
-For a write-approval change, start with `test/session_test.exs`. A fixture provider
-proposes a real write and the test observes complete approval arguments. Denial
-must leave the file absent, record denial and let the turn finish. Approval must
-authorize only the exact pending proposal.
+## Establish the candidate and acceptance conditions
 
 ```sh
-mix test test/session_test.exs
+git status --short --branch
+git diff --stat
+git diff
 ```
 
-Use its temporary directory/configuration, without personal credentials or a paid
-model. Make the incorrect behavior observable before repairing its owner. A
-helper return-shape assertion misses an effect that happened before the helper
-failed. Choose the nearest existing fixture:
+Record the exact revision/base and unrelated edits, preserving them. Inspect source,
+callers, tests, manuals, and dependencies together. An extension can propose host
+effects; a core change can affect every extension. A small diff is not automatically
+a small authority change.
 
-| Boundary | Starting point |
+Write expected observations before repairing code. Include allowed behavior,
+relevant refusal, cancellation, and saved recovery. For a write-approval change,
+follow the existing Session fixture: complete proposal, denial, absent file,
+recorded denial, and eventual turn completion. Then inspect approval of only that
+same pending action. Make the original failure observable rather than testing only
+a helper's return shape.
+
+| Changed ownership | Start with |
 | --- | --- |
-| Prompt/approval/questions/cancellation | `test/session_test.exs`, `test/question_session_test.exs` |
-| Filesystem effect classification | `test/tool_recovery_test.exs`, `test/file_effect_test.exs` |
-| Journal durability/quota/restore | `test/journal_writer_test.exs`, `test/journal_limits_test.exs`, `test/ipse/journal_test.exs` |
-| Task, process and lock ownership | `test/task_resources_test.exs`, `test/stdio_runner_test.exs` |
-| Provider schema/stream/usage | `test/provider/limits_test.exs`, `test/usage_session_test.exs` |
-| Extension contracts | Matching `test/extensions_*_test.exs` and [SDK exercises](extensions.md) |
-| CLI parsing/display | `test/cli_test.exs`, `test/cli_sessions_test.exs`, `test/terminal_test.exs` |
+| Prompt/approval/questions/cancellation | `test/ipse/session_test.exs`, `test/ipse/tools/questions_integration_test.exs` |
+| Effects and unknown outcomes | `test/ipse/session/recovery_test.exs`, `test/ipse/session/file_effect_test.exs` |
+| Journal/lock/reservation/source closure | `test/ipse/journal/`, `test/ipse/journal_test.exs` |
+| Task/native cleanup | `test/ipse/session/resources_test.exs`, `test/ipse/runner/` |
+| Provider wire/stream/usage | `test/ipse/provider/`, `test/ipse/provider_test.exs`, `test/ipse/usage/` |
+| Generic extension or bundled/package behavior | `test/ipse/extension/`, `test/extensions/` |
+| Configuration/workspace/client | Matching `test/ipse/config/`, workspace, and CLI suites |
+| Trusted development/runtime proofs | `test/dev/`, `dev/verification/` |
 
-Inspect adjacent source/tests rather than treating this table as a fixed matrix.
-For expiry, establish the stored wall-clock deadline and recheck it after waiting.
-A timer alone proves no wall-clock condition. Bound the wait monotonically and
-retain unchanged-record, failure-receipt and inert-resume assertions. See
-`test/extensions_memory_session_test.exs` for approval before/after expiry.
+Trace validation→authority/approval→durable intent→effect→receipt→cleanup→saved
+validation→idle resume. Identify every owner that can die between steps and what
+can still execute afterward. For a cleanup example, follow Worker failure through
+`record_cleanup`, `close_claimed`, and `await_cleanup` in
+`lib/ipse/extension/worker.ex`. Callback failure can have confirmed native cleanup;
+a dead worker without its receipt cannot. Read the consumer that commits the fact.
 
-Presentation is also a distinct observation. `Session` sends presentation before
-its final journal append and `done` notification. In the prompt/presentation-only
-fixture, `Session.info/1` queues behind the same finishing callback:
+## Require positive controls and inspect uncertainty
+
+Do not infer refusal from absent display text. Observe the unchanged file/store,
+server request count, intent record, actual worker exit, and cleanup. For a path
+change, prove allowed workspace access and refusal of a nearby escape before
+execution. For a provider field, inspect valid and malformed wire results. For
+bindings, prove allowed scope and a refused cross-scope operation.
+
+A finding names trigger, expected/actual consequence, and evidence. Preserve the
+first counterexample. A later pass does not diagnose it. Do not change production
+deadlines, add sleeps, or accept multiple outcomes just to quiet a strict fixture.
+A fixture-coordination repair needs evidence that product behavior was correct.
+For expiry, prove the stored wall-clock deadline actually elapsed, using a bounded
+monotonic wait, then retain unchanged-record/failed-receipt/inert-resume checks.
+
+Presentation, durable append, and completed turn differ. In a prompt/presentation-
+only fixture, an info call queues behind the same finishing callback:
 
 ```elixir
 assert_receive {:ipse, ^pid, {:presentation, "<answer>visible</answer>"}}, 5_000
@@ -53,238 +73,197 @@ assert info.phase == :idle
 assert_receive {:ipse, ^pid, {:done, :ok}}
 ```
 
-Keep native-history, journal and cleanup assertions afterward. If after-turn jobs
-are configured, await their actual completion instead of assuming one callback
-settles the turn. Observation timeouts are not product latency guarantees.
+Keep journal/native/cleanup assertions afterward. With after-turn jobs, wait for
+actual settlement rather than assuming that observation ends the turn.
+Observation watchdogs are not product latency guarantees.
 
-## Run a complete source baseline
+Restore must validate committed records/source bindings before permissible torn-tail
+repair. Corrupt receipts must not pass because repair removed evidence. Check
+configuration drift, captured CAS, source identity, cached results, and each
+unstarted/unknown classification. Never replay an uncertain effect to reconstruct
+its display or event.
 
-After a runtime change:
+## Run the complete source baseline
 
 ```sh
-./scripts/build.sh
+./dev/build.sh
 mix format --check-formatted
 mix compile --warnings-as-errors
-elixir scripts/check-ci-policy.exs
-elixir scripts/check-docs.exs
+elixir dev/check-ci-policy.exs
+elixir dev/check-docs.exs
 mix test
 IPSE_CHECK_HOME=$(mktemp -d)
 IPSE_HOME="$IPSE_CHECK_HOME" ./bin/ipse demo
 ```
 
-The build fetches locked dependencies and builds Rust helpers. Tests use local
-HTTP, generated auth keys, temporary workspaces and real OS processes. The demo
-uses a scripted provider; no paid credentials are required.
+The build uses locked dependencies/Rust helpers. Tests use loopback HTTP, generated
+keys, temporary state, and real processes, without paid credentials. Require a
+completed ExUnit summary plus exit status. SIGTERM/partial output is not a finished
+suite; deliberate process/TLS failure logs alone are not failed tests. Retain failed
+runs when investigating.
 
-Format after edits, then check. Require a completed ExUnit summary and inspect
-the exit status together. A process stopped by SIGTERM can return zero without
-finishing. Failure fixtures intentionally log process exits or certificate
-rejections, so error-looking lines alone do not determine suite outcome. Retain
-failed/incomplete runs while investigating; later green output does not explain
-the original failure.
-
-Mix's lock service and HTTP fixtures need loopback sockets. Use the environment's
-permission flow or an appropriate terminal when restricted. Do not weaken TLS,
-skip assertions or change transports to obtain green output. Test supported
-toolchain versions when changing compiler or raw ERTS launch code, not just the
-newest installed version. Raw verification launches explicitly select Unicode
-standard output so locale defaults cannot corrupt JSON protocols.
+Mix locks and fixtures need loopback sockets. Use the environment's permission
+flow or a permitted terminal, without disabling TLS, skipping assertions, or
+changing transports. Test the supported toolchain floor when changing compilation
+or raw ERTS launch, using isolated build roots. Raw launch explicitly selects
+Unicode output; locale defaults must not corrupt protocols. Broaden/repeat tests
+when a new change/failure warrants it, rather than rerunning unrelated suites.
 
 ## Prove an independent artifact without rebuilding the host
 
-`scripts/verify.exs` exercises separately compiled artifacts through real host APIs.
-Choose source with an existing SDK, or installed with a compatible runtime archive.
-The verifier never repairs/rebuilds an input artifact to make it pass.
-
-Start with the model-call proof:
+The finite `dev/verify.exs` command uses an existing source SDK or compatible
+installed archive. It never repairs/rebuilds an input artifact. Start with:
 
 ```sh
 IPSE_PROOF_ROOT=$(mktemp -d)
-elixir scripts/build-artifact.exs model-calls --sdk _build/dev/lib/ipse/ebin --output "$IPSE_PROOF_ROOT/model"
-elixir scripts/verify.exs source model --sdk _build/dev/lib/ipse/ebin --input "$IPSE_PROOF_ROOT/model" --selection json-none
+elixir dev/build-artifact.exs model-calls --sdk _build/dev/lib/ipse/ebin \
+  --output "$IPSE_PROOF_ROOT/model"
+elixir dev/verify.exs source model --sdk _build/dev/lib/ipse/ebin \
+  --input "$IPSE_PROOF_ROOT/model" --selection json-none
 ```
 
-Expect nine passed assertions, `verification.precompiled_harness:true` and
-`verification.inventories_unchanged:true`. The loopback service supplies scripted
-text/usage without paid requests. Read the proof's assertions for behavioral
-scope; unchanged inventories alone prove no operation succeeded.
-
-Repeat against an already built archive:
+Expect nine passed assertions, precompiled harness, and unchanged inventories.
+A loopback fixture supplies text/usage, without real inference. Inspect behavioral
+assertions; unchanged files alone prove no successful operation. Repeat the SAME
+artifact against the exact archive printed by the packager:
 
 ```sh
 IPSE_ARCHIVE=/absolute/path/to/the-compatible-archive.tar.gz
-elixir scripts/verify.exs installed model --archive "$IPSE_ARCHIVE" --input "$IPSE_PROOF_ROOT/model" --selection json-none
+elixir dev/verify.exs installed model --archive "$IPSE_ARCHIVE" \
+  --input "$IPSE_PROOF_ROOT/model" --selection json-none
 ```
 
-Replace the placeholder with the actual archive printed by the packager. SDK,
-artifact and runtime must agree on platform, OTP and supported SDK. Source
-success does not establish installed compatibility. Preserve old compiled
-artifacts when checking host upgrades; rebuilding them checks a different claim.
+Source success proves no installed compatibility. Preserve old artifacts for upgrade
+checks; rebuilding tests a different claim. [Examples](../../examples/README.md)
+cover model/embedding/MCP/saved-output recipes and their distinct assertions.
 
-### Follow compilation and execution ownership
+### Follow compilation and runtime ownership
 
-Read `dev/verification/cli.exs`, `scenarios.exs` and `runtime.exs` in that order:
-CLI admits a closed grammar; Scenarios selects finite source/module identities,
-arguments and assertions; Runtime inventories inputs/origin and compiles trusted
-proof modules in a separate VM before starting the host. Domain assertions remain
-in proof modules. `package.exs` owns broader installed CLI checks.
+`dev/verify.exs` delegates closed grammar to Scenarios. Scenarios owns finite source/
+module/argument/assertion declarations; Runtime inventories inputs/origin and
+compiles trusted proof modules in a separate VM before host launch. Package checks
+are loaded only for the explicit package scenario, without broadening measured
+compiler closure. Domain assertions stay in their proof modules.
 
-Runtime rechecks host, dependencies, ERTS, boot, harness and utility bytes before
-child launch, compares input/origin inventories around the proof and checks
-runtime inventories afterward. Children get private HOME/TMP and a PATH of
-declared utilities plus selected Erlang, without system Elixir, Mix or Rust
-development commands. This controlled launch is trusted code, not OS confinement.
-Canonical paths account for filesystem aliases.
+Runtime rechecks host/dependency/ERTS/boot/harness/utility bytes around launch and
+execution. Child HOME/TMP are private. PATH contains declared utilities and selected
+Erlang, without system Elixir/Mix/Rust. This is controlled trusted execution, not
+OS confinement. Canonical paths account for aliases. Ordinary runtimes are removed
+on success/failure; service evidence remains at selected output. Measured cases
+retain runtime/evidence to reopen exact files. Retention authorizes no retry.
 
-Ordinary runtimes are disposable, including failures. Model-service evidence
-remains at its requested output while its runtime is disposable. Measured cases
-retain runtime and evidence so audit/scoring reopen identical executable files.
-Retained files do not authorize retrying an interrupted effect.
+| Scenario | Required input/selection |
+| --- | --- |
+| `model` | Model artifact; default/none/json/json-none/json-long |
+| `embedding`, `mcp`, `saved-results` | Matching artifact; default |
+| `lab` | Built lab parent directory; default |
+| `memory`, installed-only `package` | `examples/memory-corpus.json` |
+| `knowledge`, `knowledge-independence`, `knowledge-complete` | Parent of Corpus/Graph/Research artifacts |
+| `knowledge-evaluation` | Lexical Corpus |
+| `knowledge-recovery`, `knowledge-graph-lifecycle` | Graph state-model |
+| `knowledge-corpus-lifecycle`, `knowledge-selection` | Corpus state-dense |
+| `knowledge-mcp`, `knowledge-research` | Corpus mcp-lexical / Research mcp |
+| `model-service` | Compiled model-service Rust probe and fresh evidence output |
+| `measured-knowledge`, `measured-authority` | Seven-artifact map, clean repository, fresh output, optional Linux backend |
 
-| Scenario | Input | Selection or additional requirement |
-| --- | --- | --- |
-| `model` | Model-call artifact | `default`, `none`, `json`, `json-none`, `json-long` |
-| `embedding`, `mcp`, `saved-results` | Matching SDK artifact | Default |
-| `lab` | Built lab artifact directory | Default |
-| `memory` | `examples/memory/corpus.json` | Fixed lexical fixture |
-| `package` | Same corpus | Installed only |
-| `knowledge`, `knowledge-independence`, `knowledge-complete` | Parent containing Corpus, Graph and Research artifacts | Default |
-| `knowledge-evaluation` | Lexical Corpus artifact | Default |
-| `knowledge-recovery`, `knowledge-graph-lifecycle` | Graph `state-model` artifact | Default |
-| `knowledge-corpus-lifecycle`, `knowledge-selection` | Corpus `state-dense` artifact | Default |
-| `knowledge-mcp` | Corpus `mcp-lexical` artifact | Default |
-| `knowledge-research` | Research `mcp` artifact | Default |
-| `model-service` | Compiled `dev/fixtures/model_service_probe.rs` | Fresh output |
-| `measured-knowledge` | JSON map of seven prebuilt artifact directories | Clean repository, fresh output; six selections |
-| `measured-authority` | Same artifact map | Clean repository, fresh output; Linux backend |
-
-Measured-knowledge selections are `default`, `sealed`, `structured` and
-`sealed-structured`, plus `sealed-long-answers` for the explicit longer-answer
-policy and `sealed-gpu-answers` for its scripted NVIDIA-policy equivalent.
-Cases other than `model` and `measured-knowledge` accept
-only default. Follow the
-[complete measured exercise](knowledge-evaluation.md#run-a-complete-synthetic-measured-population)
-for artifact maps, retained paths and Linux prerequisites. Measured cases refuse
-on another OS before reading inputs or creating output. Unused, duplicate and
-unknown options refuse; ordinary proofs accept no repository/output options.
-
-Start shared-runtime changes in `test/verification_test.exs`: it checks grammar,
-compiler closure, input changes, source/installed launch, retained failures and
-cleanup precedence. Keep each domain proof's positive and negative assertions.
-Compilation alone cannot replace actual source/installed execution.
+Measured-knowledge accepts default/sealed/structured/sealed-structured plus
+sealed-long-answers/sealed-gpu-answers policies. Other scenarios except model use
+default. Closed grammar rejects unused/duplicate/unknown arguments. Measured cases
+refuse unsupported OS before inputs/output. Follow [evaluation](knowledge-evaluation.md)
+for exact maps/seals/measurement setup rather than inventing launch arguments.
+`test/dev/verification_test.exs` checks grammar, compiler closure, changed inputs,
+source/installed launch, retained failure, and cleanup precedence.
 
 ## Learn a complete workflow through the compatibility lab
 
 ```sh
 IPSE_LAB_ARTIFACTS=$(mktemp -d)/artifacts
-elixir scripts/build-artifact.exs extension-lab --sdk _build/dev/lib/ipse/ebin --output "$IPSE_LAB_ARTIFACTS"
-elixir scripts/verify.exs source lab --sdk _build/dev/lib/ipse/ebin --input "$IPSE_LAB_ARTIFACTS"
-elixir scripts/verify.exs installed lab --archive "$IPSE_ARCHIVE" --input "$IPSE_LAB_ARTIFACTS"
+elixir dev/build-artifact.exs extension-lab --sdk _build/dev/lib/ipse/ebin \
+  --output "$IPSE_LAB_ARTIFACTS"
+elixir dev/verify.exs source lab --sdk _build/dev/lib/ipse/ebin --input "$IPSE_LAB_ARTIFACTS"
+elixir dev/verify.exs installed lab --archive "$IPSE_ARCHIVE" --input "$IPSE_LAB_ARTIFACTS"
 ```
 
-Keep the variable for both runs. Construction compiles reviewed workers against
-the public `Ipse.Extension` behavior, copies the license, inventories files and
-pins runtime targets. It creates separate immutable memory versions, lookup and
-observers; it imports, trusts or enables none. Read the lab in this order:
+Read spec, worker callbacks, `dev/verification/lab.exs`, then Scenarios/Runtime.
+Construction creates immutable versions/lookup/observers without importing or
+selecting them. Lab memory recognizes fixed entity/link syntax, demonstrates
+before-request service-backed recall and after-turn approved CAS, and retains
+occurrence/view/extractor/package versions. Identical new text is a new source;
+repeated catch-up deduplicates. Its fixed-range catch-up permits eight pages of
+eight records and reports gaps/continuation.
 
-1. `spec.exs` for descriptors, schemas, capabilities, routes and disabled selections.
-2. `src/memory.ex` and `src/lookup.ex` for public callbacks and finite host calls.
-3. `proof.exs` for CLI import/selection, Session ownership, approvals and assertions.
-4. Scenarios/Runtime for host-independent compilation and unchanged-byte checks.
+Domain ceilings are eight sources, sixteen entities, and 7000-byte stored values,
+below host bounds. Forget removes whole contributing sources and suppresses their
+IDs, potentially removing other facts. Forget-all retains a tombstone and clears
+future context; captured pre-forget revisions conflict. Earlier journals/snapshots/
+transfers remain. These teaching semantics are distinct from bundled explicit Memory.
 
-The memory fixture recognizes `entity: Ada` and `link: Ada -> OTP`. Before-request
-recall reads scoped state and a bound lookup, then publishes literal receipt
-excerpts for the frozen request snapshot. After-turn capture proposes a separate
-approved CAS write and cannot alter the completed answer. Facts retain occurrence,
-view, extractor and package versions. Identical later text has a new source;
-catch-up of the same source deduplicates. Fixed-range original-prompt catch-up
-allows eight pages of up to eight records and reports gaps/continuation.
-
-Domain limits are eight sources, sixteen entities and a 7000-byte stored value,
-below host limits. Forgetting an entity removes whole contributing sources and
-blocks their identities, potentially removing other facts from those sources.
-Forget-all retains a tombstone and clears future context. A delayed pre-forget
-revision conflicts. Journals, snapshots and prior transfers remain. This is a
-teaching fixture, not a production knowledge engine or retention policy.
-
-Lookup schema mismatch or required failure must prevent inference. Metadata
-observes counts without private text; observer hangs exercise feed gaps; tool/text
-observers exercise their exact selected views. Workers keep ordinary OS
-permissions. Host-side privileged synthetic instrumentation is not an SDK grant.
-
-Inspect each `checks` boolean with its assertion. The final deliberate required
-service crash ends `safe_to_continue:false` and
-`expected_terminal_cleanup:unconfirmed`; no later case runs. Exit zero means its
-positive and negative assertions matched, not that every cleanup was confirmed.
-To extend the proof, add an export and an independently observed effect assertion
-while keeping artifact construction outside activation and host bytes unchanged.
-
-```sh
-mix test test/extension_lab_test.exs
-```
-
-The source integration does not replace installed checks. One platform's BEAMs
-or `FROZEN_CORE` historical baseline does not prove another runtime. Use the
-actual candidate and report SDK/platform compatibility honestly.
+The proof checks schema/required-service refusal, exact private/metadata views,
+feed pressure, questions, writes, stale work, and idle resume. The final deliberate
+required-service crash ends safe-to-continue false and expected cleanup unconfirmed.
+Exit zero means positive/negative expectations matched, not every cleanup succeeded.
+Extend it with an independently observed effect assertion, keeping construction
+outside activation and host bytes unchanged. A historical FROZEN_CORE or one
+platform's BEAMs cannot establish current/cross-platform compatibility.
 
 ## Verify documentation and packaging at their own boundaries
 
-Read the whole affected chapter and carry out its credential-free example. For
-an account-dependent path, check exact implementation and identify unexecuted
-steps. Use isolated `IPSE_HOME` with the real config CLI for configuration objects.
+Read each affected chapter wholly and execute its credential-free examples.
+Validate configs through real CLI with isolated application home. Account-dependent
+steps need implementation review plus explicit reporting of unexecuted checks:
 
 ```sh
-elixir scripts/check-docs.exs
-mix run examples/session/hello.exs
+elixir dev/check-docs.exs
+mix run examples/session.exs
 ./bin/ipse --help
 ```
 
-The checker verifies local files/anchors, manual examples, audience/history rules
-and archived hashes. It neither executes Markdown nor proves prose useful.
-Review prerequisites, placeholders, expected results and recovery. Docs-only
-changes need relevant example/link checks, not invented runtime regression tests.
+The checker validates local targets/anchors, JSON examples, focused-test file paths
+in current manuals, audience/history rules, and archive hashes. It does not execute
+Markdown or judge usability. Review
+prerequisites/placeholders/expected results/recovery. Docs-only changes need those
+checks, without invented runtime regressions. Preserve substantial old manuals
+under the [archive policy](../archive/index.md#archive-policy).
 
-For packaging, runtime paths, worker launch or native helper changes:
+For packaging, runtime paths, worker launch, or helper changes:
 
 ```sh
-./scripts/package.sh
-elixir scripts/verify.exs installed package --archive dist/ipse-*.tar.gz --input examples/memory/corpus.json
+./dev/package.sh
+elixir dev/verify.exs installed package --archive "$IPSE_ARCHIVE" \
+  --input examples/memory-corpus.json
 ```
 
-The glob must select one archive; otherwise use its exact printed path. The
-verifier extracts a fresh runtime with private HOME/IPSE_HOME, checks help/demo,
-default/explicit workspaces, helper lifetime/locks, bundled behavior and memory.
-Standalone CLI checks have declared utilities without Erlang/development commands;
-the precompiled memory harness adds only bundled Erlang. It cannot borrow checkout
-`priv/`. Keep a finite outer job budget. For manual inspection, use root `./ipse`
-for CLI and bundled `./bin/ipse eval` for trusted evaluation. A local archive is
-not a published release; distribution needs matching `IPSE_NOTICES_DIR` runtime
-notices from [the dependency inventory](dependencies.md).
+Set IPSE_ARCHIVE to the exact newly produced archive first. Avoid ambiguous/stale
+globs. The verifier extracts private HOME/IPSE_HOME and tests real CLI help/demo,
+workspaces, locks/helpers, bundled behavior, and Memory. It borrows no checkout
+priv directory. CLI checks have declared utilities without Erlang/development
+commands; precompiled harness adds bundled Erlang. Keep a finite outer job budget.
+Use extracted `./ipse` for CLI and `./bin/ipse eval` for trusted evaluation.
+A local build is not publication. Distribution needs matching runtime notices via
+`IPSE_NOTICES_DIR` and the [dependency inventory](dependencies.md).
 
-## Exercise actual OS policies
+## Exercise actual OS policy and native protocols
 
-Default tests exclude host-dependent enforcement tags. On a supported Linux host:
+Default tests exclude host enforcement. On supported Linux:
 
 ```sh
 mix test --include native_sandbox
 ```
 
-Required Landlock/namespace facilities must exist; included tests fail if absent.
-For macOS, match the workflow's native and filesystem subset:
+On macOS:
 
 ```sh
-mix test test/macos_sandbox_test.exs test/stdio_runner_test.exs test/macos_filesystem_test.exs --include macos_sandbox --include macos_filesystem
+mix test test/ipse/tools/macos_sandbox_test.exs test/ipse/runner/stdio_test.exs test/ipse/tools/macos_filesystem_test.exs --include macos_sandbox --include macos_filesystem
 IPSE_MAC_TESTS=$(mktemp -d)
 rustc --edition=2021 --test native/ipse-macos-sandbox.rs -o "$IPSE_MAC_TESTS/policy"
 "$IPSE_MAC_TESTS/policy"
 ```
 
-Filesystem cases need a real case/normalization-insensitive volume and verify
-inode identity. Native checks use private homes, not the operator cache. Report
-platform exclusions separately. The [sandbox chapter](sandbox.md) teaches policy,
-signing and best-effort descendant cleanup limits.
-
-For native copy/authority changes, run their real protocol fixtures:
+Included tests fail when requirements are absent; exclusions/skips prove no policy.
+Filesystem cases need actual case/normalization behavior and inode checks. Native
+fixtures use private homes, not the operator cache. The [sandbox chapter](sandbox.md)
+teaches Linux prerequisites, signing, listener identity, and detached-work limits.
+For copy/authority changes, run their real Rust fixtures:
 
 ```sh
 IPSE_NATIVE_TESTS=$(mktemp -d)
@@ -294,89 +273,98 @@ rustc --edition=2021 --test -D warnings native/ipse-bound.rs -o "$IPSE_NATIVE_TE
 "$IPSE_NATIVE_TESTS/bound"
 ```
 
-Copy controls retain size/inode/symlink/permission/nonblocking checks. Its ignored
-FIFO probe is driven by a bounded enclosing case. Linux Bound adds authority,
-FIFO and descriptor transfer; macOS runs only three platform-independent protocol
-cases. Parallel fixtures use an atomic ordinal as well as PID/time to avoid
-same-tick directory collisions; keep fixed-clock controls.
-
-Probe the signed macOS helper with a separate disposable workspace:
+Retain size/inode/symlink/permission/nonblocking controls and bounded ignored FIFO
+probes. Linux tests authority/FIFO/descriptor transfer; macOS covers only portable
+protocol cases. Keep atomic ordinals and fixed-clock collision tests for parallel
+fixtures. Probe macOS enforcement separately with a disposable workspace:
 
 ```sh
 IPSE_MACOS_WORKSPACE=$(mktemp -d)
-elixir scripts/verify-macos-sandbox.exs priv/ipse-runner "$IPSE_MACOS_WORKSPACE"
+elixir dev/verify-macos-sandbox.exs priv/ipse-runner "$IPSE_MACOS_WORKSPACE"
 ```
 
-The default checks file/network denial, allowed workspace/temp, inheritance and
-signing. Optional `--process-boundary` probes stronger descendant properties;
-detached descendants can survive supported best-effort cleanup, so gaps/nonzero
-are not passing containment. The script cleans its own temporary bundle/files;
-macOS retains app containers under `~/Library/Containers`.
+Default checks file/network refusal, allowed paths, inheritance, and signing.
+Optional process-boundary checks can expose documented detached-work gaps; nonzero/
+gaps are not passing containment. Owned bundle/files are removed; macOS may retain
+OS-managed app containers.
 
-## Diagnose incomplete stdio without weakening deadlines
+## Diagnose with synthetic data
 
-Distinguish callback delivery, worker lifetime and native cleanup. Give a test
-observation enough time for admitted initialization/callback/close work. Keep
-runtime deadlines and strict cleanup assertions while investigating.
-
-The captured-evaluator CLI exercise makes seven CLI invocations to declare, seal,
-reopen and reject changed code. Its two-minute test watchdog covers that whole
-sequence. A watchdog expiry during one `System.cmd/3` call does not identify
-which child operation stalled. Run both CLI exercises together:
+Use observability privacy/pressure fixtures and compare callback failure with real
+cleanup against interrupted trace catalog publication. For argument-free dispatcher
+sampling:
 
 ```sh
-mix test test/knowledge_evaluation_declaration_cli_test.exs --seed 596778
+./bin/ipse extension check --config priv/demo/operator.json \
+  --fixture priv/demo/conformance.json --extension annotation --no-project-config \
+  --developer-trace --trace-ms 1000 --trace-events 32
 ```
 
-Expect two passing tests. Preserve the exact retained-runtime inventory,
-relative-path launch, missing/extra-code refusals and unopened-input assertions
-when changing this exercise. Its test watchdog grants no extra model-call,
-Worker or native execution time.
+`Observability.Trace` uses isolated OTP27+ trace sessions on the new synthetic
+Session's exported callbacks. Reports retain arities/timings, without args/messages/
+state/returns/PIDs. Unsupported OTP refuses, without legacy global tracing. One
+sample is in flight; disarmed calls are gaps. Complete is always false, with
+one-in-flight sampling. Limits are 1..5000 ms/1..128 samples, defaults 1000/32.
+Watchdog stops on deadline/dependency death subject to scheduling; cleanup failure
+fails conformance. This is dispatch sampling, not complete timeline/latency profiling.
+
+For incomplete stdio, keep runtime deadlines/strict receipts while allowing enough
+observation time for admitted init/callback/close. CLI freeze/launch/exit timing
+cannot identify every inner wait. The captured-CLI fixture runs seven invocations
+under one two-minute test watchdog; its expiry identifies no individual stalled call:
 
 ```sh
-IPSE_TEST_STDIO_PROBE=1 mix test test/extensions_invocation_test.exs test/knowledge_evaluation_runner_test.exs --seed 77259
-IPSE_TEST_STDIO_PROBE=1 mix test test/stdio_probe_test.exs test/extensions_feeds_test.exs test/mcp/session_test.exs
-IPSE_TEST_STDIO_PROBE=1 mix test test/mcp/client_test.exs
+mix test test/dev/evaluation/declaration_cli_test.exs --seed 596778
+IPSE_TEST_STDIO_PROBE=1 mix test test/ipse/runner/diagnostics_test.exs test/ipse/extension/feeds_test.exs
 ```
 
-The opt-in synthetic probe reports fixed phases, classified return values,
-arities and monotonic timings without arguments, environments or payloads. Its
-isolated trace session stops on owner loss, twenty seconds or 64 calls and labels
-its report incomplete. CLI phase timing distinguishes freeze/launch/exit but
-cannot identify every operation inside a wait. MCP fixture stages allow at most
-sixteen fixed records with bounded numeric times; absent stages do not explain
-why a process stopped. Privacy fixtures reject unrelated/private marker content.
-
-For bounded frame/drain load:
+The probe retains fixed phases/classified results/arities/timings, without payloads
+or environment. Its isolated session ends at owner loss/twenty seconds/64 calls and
+labels coverage incomplete. MCP stages permit sixteen fixed timing records; absent
+stages explain no cause. Privacy fixtures reject unrelated/private markers.
+Bounded frame/drain load uses explicit trial/concurrency limits:
 
 ```sh
-mix run scripts/diagnose-stdio-cleanup.exs --iterations 1000 --concurrency 16 > /tmp/ipse-stdio-cleanup.jsonl
-mix run scripts/diagnose-stdio-cleanup.exs --iterations 100 --concurrency 4 --sandbox native > /tmp/ipse-stdio-native.jsonl
+mix run dev/diagnose-stdio-cleanup.exs --iterations 1000 --concurrency 16 > /tmp/ipse-stdio-cleanup.jsonl
+mix run dev/diagnose-stdio-cleanup.exs --iterations 100 --concurrency 4 --sandbox native > /tmp/ipse-stdio-native.jsonl
 ```
 
-These cases bound trials, concurrency, bytes and collection time. Native setup
-is serialized and never falls back to trusted mode on failure. Use synthetic
-data only; raw state inspection is privileged.
+Native setup serializes and never falls back. Debugger breakpoints alter scheduling
+and may expire deadlines. Formatted redaction protects neither raw state nor locals.
+No debugger listener/distributed node is enabled. Remote diagnostic exporters need
+explicit destinations/TLS/credentials and dependency review.
 
-## Report the claim each check establishes
+## Design comparisons and independent review
 
-`scripts/measure-memory.exs` measures the fixed lexical fixture and
-`scripts/measure-session-startup.exs` measures startup. Read dimensions before
-comparing results. Token-overlap retrieval proves no semantic quality; sampled
-VM memory is not an exact peak. Published measurements need corpus/source,
-runtime, OS, concurrency and cost basis. Actual-model exact charged-RAM comparison
-uses the separate [frozen evaluation procedure](knowledge-evaluation.md).
+Freeze acceptance inputs/criteria before authoring, with positive/refusal/lifecycle
+cases and independent held-out material where needed. Repeating one exposed case
+is tuning, not new independent coverage. Freeze runner outside a self-development
+candidate and retain exact revision, uncommitted diff, config/artifact/input hashes,
+exclusions, assistance, and reviewer model/scope. The author should not be the only
+reader of its delivered artifact. Separate fresh reviewer context from private
+author reasoning. Static review cannot certify unexecuted runtime/OS behavior.
+[Operator workflows](../operator/development-workflows.md) provide the complete
+frozen-runner task; the scripted `dev/demo-self-development.exs` proves skill/resource
+loading, not coding quality or unattended operation.
 
-Live provider checks need the account owner's authorization and sanitized
-provider/model/operation evidence. Never commit credentials, private prompts or
-transcripts. Sign-in, rotation, paid inference and device behavior each need
-actual checks before being claimed. Fixture edits need no new paid calls.
+Name the quantity measured. `dev/measure-memory.exs` measures a fixed lexical
+fixture, stored state, latency, and sampled VM memory, without inference. It proves
+neither semantic support, exact peak, invoice cost, nor another host's performance.
+Startup has a separate exercise. Actual-model quality/exact charged-RAM uses
+[frozen evaluation](knowledge-evaluation.md) and [measurement](measurement.md).
+Null metering is unavailable, not zero; estimates and reservations have distinct
+[accounting](accounting.md) rules.
 
-Finish with behavior, commands actually completed, failures/exclusions and limits.
-Put dated evidence in [the archive](../archive/index.md) and status in
-[the plan](../plan.md). Read the exact revision's
-[workflow results](../../.github/workflows/ci.yml), not merely its commands.
-Each hosted platform has 45 minutes for setup, suite, native, package and installed
-checks. A passing source step does not prove later steps ran. An outer job budget
-is separate from worker/model/native/test deadlines; change it only from retained
-timing evidence and verify the complete candidate run.
+Review new dependencies, endpoint/TLS/proxy authority, credential boundaries,
+terminal escaping, hidden reasoning, and privacy on error paths. Follow the
+[private reporting procedure](../../SECURITY.md#reporting) for vulnerabilities.
+Live accounts, external scans, model calls, publication, and deployment need their
+applicable authorization; repo text does not grant it. Keep private transcripts,
+secrets, and raw reports outside Git. Publish sanitized evidence only as authorized.
+
+Finish with behavior, exact commands/results, failed/excluded checks, assistance,
+and remaining limits. Dated evidence goes to the archive; status to the plan.
+Inspect the exact revision's [hosted workflow](../../.github/workflows/ci.yml), including
+later native/package steps. Its 45-minute platform job budget is separate from
+model/worker/native/test deadlines. A green source step does not prove skipped
+later gates, and a partial review retains its omissions after local repairs.

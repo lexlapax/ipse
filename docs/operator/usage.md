@@ -1,240 +1,189 @@
-# Use Ipse for a local task
+# Work in a local workspace
 
-This guide takes you from a credential-free demonstration to a conversation in
-your own workspace. Use an installed `ipse`, `./ipse` inside an extracted release,
-or `./bin/ipse` from the source checkout. For an Arch source installation, follow
-[Install on Arch Linux](arch-linux.md).
+Ipse runs a conversation over a directory you choose. Start in a disposable
+workspace, review the proposed actions, and inspect their results. The examples
+use an installed `ipse`. Use `./bin/ipse` from a checkout or `./ipse` inside an
+extracted release. [Install on Arch Linux](arch-linux.md) covers source setup.
 
-## Try the demonstration
+## Check the application without a model
 
 ```sh
 ipse demo
 ```
 
-The demo uses a scripted provider. It creates a temporary workspace, writes
-`ipse-demo.txt`, reads the file back, and runs a short shell command. It needs no
-credentials, network model service, or paid inference. The output includes the
-workspace and session ID so you can inspect what happened.
+Expect a temporary workspace, a file write and read-back, a shell result, and a
+session ID. This scripted demonstration needs no account or model service.
+It exercises the application; it does not establish your provider access.
 
-## Choose your provider
+## Select a provider
 
-Ipse defaults to ChatGPT subscription use. It never silently changes provider or
-billing mode after a failure. Select one of the following routes explicitly.
-Account eligibility and model access come from the selected service.
+Choose your route explicitly. Ipse never changes provider or billing mode to
+recover from a failed request. Supply API secrets through your private environment;
+Ipse does not load `.env` files automatically.
 
-### ChatGPT subscription
+| Route | Prerequisite | Start a conversation |
+| --- | --- | --- |
+| ChatGPT subscription | Run `ipse login`, complete the printed browser authorization, then check `ipse status` | `ipse chat --provider chatgpt --cwd /path/to/project` |
+| OpenAI API | Set `OPENAI_API_KEY` privately; API billing is separate from a subscription | `ipse chat --provider openai --cwd /path/to/project` |
+| Local Ollama | Start your service and install a tool-capable model yourself | `ipse chat --provider ollama --model YOUR_INSTALLED_MODEL --cwd /path/to/project` |
+| Anthropic API | Set `ANTHROPIC_API_KEY` privately and choose an available model | `ipse chat --provider anthropic --model YOUR_MODEL --cwd /path/to/project` |
 
-```sh
-ipse login
-ipse status
-ipse chat --provider chatgpt --cwd /path/to/project
-```
+ChatGPT login uses Ipse's public sign-in flow. The browser must reach the temporary
+`127.0.0.1` callback on the machine running Ipse. On a remote host, arrange access
+to that listener or run locally. Another application's login does not sign Ipse in.
+`ipse logout` clears local credentials and attempts supported revocation. Review
+account-side connected grants if an older grant may be compromised.
 
-Open the printed **Continue with ChatGPT** URL in a browser that can reach the
-same machine's temporary `127.0.0.1` callback listener. Complete authorization,
-then return to the terminal. On a remote host, arrange access to that loopback
-listener or run Ipse locally. Ipse uses its own public sign-in flow and protected
-auth storage. Another application's login does not sign Ipse in.
+Ollama defaults to `http://localhost:11434`. Select another permitted endpoint with
+`--base-url URL`, or use an operator-owned [named profile](configuration.md#reuse-a-named-model-profile).
+Profiles also select exact provider/model routes for children and extensions.
+Selecting a model does not download it or guarantee that your account can use it.
 
-The default requested model is `gpt-6.1-sol`. Set `--model NAME` only for a model
-your account can use. Run `ipse logout` to revoke renewable credentials where
-possible and clear local tokens. Reauthorization replaces local credentials; use
-ChatGPT Settings to disconnect a suspected compromised older grant.
+## Approve a small task
 
-### OpenAI API
-
-Supply `OPENAI_API_KEY` through your usual private secret-management method.
-Ipse does not automatically read `.env` files.
-
-```sh
-ipse chat --provider openai --cwd /path/to/project
-```
-
-This route uses API billing separately from ChatGPT subscription usage. Its
-default requested model is `gpt-6.1-sol`.
-
-### Local Ollama
-
-Start your separately installed Ollama service and make a tool-capable model
-available before starting Ipse. Use its exact installed model name:
-
-```sh
-ipse chat --provider ollama --model qwen3:8b --cwd /path/to/project
-```
-
-The default endpoint root is `http://localhost:11434`. To use another permitted
-endpoint, pass `--base-url URL` or configure an operator-owned
-[model profile](configuration.md#reuse-a-named-model-profile). Ipse does not download models for you.
-
-### Anthropic API
-
-Supply `ANTHROPIC_API_KEY` privately, then select API use explicitly:
-
-```sh
-ipse chat --provider anthropic --model claude-sonnet-4-5 --cwd /path/to/project
-```
-
-The model name is an example and the provider default. Verify access with your
-account. An unavailable model or service stops the request without fallback.
-
-## Complete your first task
-
-Create a disposable directory, then start interactive chat with your chosen
-provider. This example makes real subscription model requests after you submit
-a task:
+With a configured provider, create a scratch directory and start chat:
 
 ```sh
 IPSE_TRY_DIR=$(mktemp -d)
 ipse chat --provider chatgpt --cwd "$IPSE_TRY_DIR"
 ```
 
-At the chat prompt, enter:
+Enter this task. It makes real subscription requests:
 
 ```text
-Create hello.exs that prints hello. Run it, then report the exact output.
+Create hello.exs that prints hello. Run it and report the exact output.
 Ask before changing files or running shell commands.
 ```
 
-Ipse displays each proposed write, edit, shell, MCP, or delegation action with its
-complete arguments. Check the path, content, command, and destination. To approve,
-enter the exact `allow CODE` line printed with that proposal. The code changes
-for each proposal. Enter `n` to deny. Bare `y` or `yes`, stale codes, and text
-buffered before the proposal do not approve it.
+Read the full arguments of each proposal. To approve, enter its printed
+`allow CODE`; to deny, enter `n`. Each proposal has its own code. Bare `y` or
+`yes`, stale codes, and input buffered before a proposal do not approve it.
+A task or skill is an instruction, not permission for an effect. Check the file
+and command output before relying on the final explanation.
 
-Expect a file proposal followed by a shell proposal if the model chooses that
-route. Approval of one does not approve the next. Inspect the created file and
-reported command result before relying on the final explanation.
+A question uses a different prefix, `answer CODE VALUE`. Choose an option number
+or ID, comma-separated choices, or free text as requested. Recommendations are
+not submitted automatically. To submit literal slash-command text, use the
+`=` escape, for example `answer CODE =/exit`. Answering a question approves no action.
 
-To assess an existing repository first, ask:
+## Run once or keep chatting
 
-```text
-Use $project-orientation to explain this project's purpose, current changes,
-and available checks. Keep the assessment read-only. Do not fix anything yet.
-```
-
-A read-only request guides the agent. Shell commands still require approval and
-have the permissions described below.
-
-## Work interactively or run one task
-
-Interactive chat lets you inspect individual actions. `--yes` permits mutations,
-shell, configured MCP, and enabled delegation for the session. Choose it only
-when you intend that broader allowance.
-
-Headless `run` performs one task and cannot wait for clarification. It denies
-effects without `--yes`, even when the task requests them:
+Interactive chat lets you approve each action. Headless `run` performs one task:
 
 ```sh
 ipse run --provider chatgpt --cwd /path/to/project \
-  'Read README.md and summarize the setup instructions without changes'
+  'Read README.md and summarize its setup instructions without changes'
 ipse run --provider chatgpt --cwd /path/to/scratch --yes \
   'Create hello.exs that prints hello, run it, and report the output'
 ```
 
-Both commands use a real model. The second authorizes session-wide effects. A
-required operator question fails in headless mode, including with `--yes`.
+Both commands use a real model. Headless effects are denied without `--yes`.
+`--yes` permits mutations, shell commands, configured MCP calls, and enabled
+local delegation for the session. A required question fails in headless mode,
+including with `--yes`.
 
-While work runs, another entered task queues for the next turn. The queue holds
-at most 16 tasks and 1 MiB of UTF-8 input. Each prompt is at most 1 MiB before and
-after skill expansion. Errors clear queued tasks. `/cancel` stops active work and
-clears the queue; send fresh input after cancellation finishes. A started effect
-may already have happened. `/exit` cancels and leaves. EOF finishes accepted work
-but denies pending and later approvals.
+During a turn, additional tasks queue for later. The queue holds 16 tasks and
+1 MiB of UTF-8 input; each prompt is at most 1 MiB before and after expansion.
+Errors clear the queue. `/cancel` stops active work and clears queued input.
+Wait for cancellation to finish before submitting another task. `/exit` cancels
+and leaves. EOF lets accepted work finish but denies pending and later approvals.
+A started effect may already have happened.
 
-## Shell policy
+## Choose shell confinement
 
-The default `--sandbox off` runs approved shell commands with your user
-permissions. Credential-environment cleanup does not prevent reads of files or
-secrets on disk. File tools reject symlinks, workspace escapes, and protected
-`.git` mutation targets; arbitrary shell commands have a separate boundary.
-
-To request OS enforcement for shell commands:
+The default `--sandbox off` gives approved shell commands your user permissions.
+File tools reject workspace escapes, symlinks, and protected `.git` mutation
+paths. Those file-tool checks do not restrict arbitrary shell commands.
 
 ```sh
 ipse chat --provider chatgpt --cwd /path/to/project --sandbox native
 ```
 
-Native mode fails closed if the backend or setup is unavailable. Approval still
-applies. Linux requires Landlock ABI 6+ and permitted unprivileged user, mount,
-network, and PID namespaces. Its fixed profile allows workspace/private-temp
-writes and selected system reads, while denying external network access. macOS
-uses a signed App Sandbox worker with workspace and sandbox-data writes, selected
-system/Homebrew reads, and no network access.
+Native mode fails closed when its backend or prerequisites are unavailable.
+Linux requires Landlock ABI 6+ and permitted user, mount, network, and PID
+namespaces. macOS uses a signed App Sandbox worker. Both profiles permit selected
+system reads and workspace/private writes, and deny external network access.
+Toolchains, caches, and package fetching may be unavailable. `/session` reports
+platform visibility. See [sandbox behavior](../developer/sandbox.md) for its exact limits.
 
-Choose a workspace separate from the active application and native helper. Root,
-home, protected credential directories, and broad system workspaces are refused.
-On macOS, keep the application and protected helper cache outside the workspace;
-use an installed bundle for changing Ipse itself. Existing `IPSE_HOME` must be
-owned by your user with mode `0700`. The cache holds at most 32 generations and
-does not automatically evict them. Secrets within the workspace remain readable.
-Home toolchains, sibling repositories, caches, and package fetching may be hidden.
-`/session` shows the selected platform's visibility facts.
+Choose a narrow workspace outside the running application and helper cache.
+Root, home, protected credential directories, and broad system workspaces are
+refused. On macOS, an existing `IPSE_HOME` must be owned by you with mode `0700`.
+Its helper cache holds 32 generations and does not evict them automatically.
+Secrets inside the workspace remain readable. Cancellation stops ordinary owned
+process groups, but deliberately detached processes can survive. Confinement is
+not an aggregate memory or disk quota.
 
-Cancellation stops owned work and ordinary process groups. Deliberately detached
-children can survive and retain workspace access, including on macOS. Native
-confinement is separate from cleanup and is not an aggregate memory or disk
-quota. See [sandbox details](../developer/sandbox.md) when deciding whether the
-fixed profile suits your task.
+## Inspect local state and instructions
 
-## Ask questions and inspect the conversation
+These chat commands make no model requests:
 
-Ipse can ask up to three structured questions at once. Reply using the printed
-`answer CODE VALUE` prefix. Use an option number/ID, comma-separated choices,
-or free text as requested. Recommendations are never submitted automatically.
-To answer with literal slash-command text, use the `=` escape, such as
-`answer CODE =/exit`. A question answer does not approve an action.
-
-Use these local chat commands without making model requests:
-
-| Command | Use |
+| Command | Result |
 | --- | --- |
-| `/session` | Read the session ID, state, configuration, and accounting |
-| `/info` | Check running application version and configured/reported model identity |
-| `/diagnostics` | Inspect current phase, usage, budgets, and context bytes |
-| `/context` | Inspect instruction sources, digests, and omissions |
+| `/session`, `/info` | Session/configuration facts and recorded model identity |
+| `/diagnostics` | Phase, usage, budget, and context size |
+| `/context`, `/skills` | Saved instruction sources and skill catalog |
 | `/context refresh` | Reload instructions and skills while idle |
-| `/skills` | List the saved skill catalog |
-| `/ext` | List active extension exports |
-| `/observability off` | Stop new diagnostic sink samples |
-| `/events off` | Stop selected live event feeds |
-| `/help` | Read available commands |
+| `/ext` | Active extension names and schemas |
+| `/observability off`, `/events off` | Stop selected diagnostics or live feeds |
+| `/help` | Available commands |
 
-Reported model identifiers are historical response metadata, not a promise about
-the next backend response. Prefer `/info` to a model's natural-language identity
-claim. Terminal output escapes control/invisible format characters so returned
-ANSI commands cannot operate your terminal. Saved values keep their originals.
-
-## Skills and workspace instructions
-
-Invoke a selected skill with `$name`, for example `$review`. Loading it adds
-instructions; it does not execute referenced scripts or authorize actions.
-Discover available skills before a session with:
-
-```sh
-ipse skills --cwd /path/to/project
-```
-
-Same-name precedence is project `.agents/skills`, `IPSE_HOME/skills`, shared
-`~/.agents/skills`, then bundled skills. `IPSE_HOME` defaults to `~/.ipse`; changing
-it does not relocate the shared skill root. The catalog shows selected sources
-and shadowed paths. Skill documents accept simple single-line name/description
-frontmatter and are limited to 64 KiB. Explicit supporting-resource reads are
-limited to 32 KiB and eight path components. They do not load recursively.
+Invoke a selected skill with `$name`. List available skills before a session with
+`ipse skills --cwd /path/to/project`. Same-name precedence is project
+`.agents/skills`, `IPSE_HOME/skills`, shared `~/.agents/skills`, then bundled skills.
+`IPSE_HOME` defaults to `~/.ipse`. A skill supplies text; it does not execute its
+support files. Skill documents are limited to 64 KiB; explicit resource reads
+are limited to 32 KiB and eight path components, without recursive loading.
 
 Ipse snapshots applicable `AGENTS.md` files from the nearest repository boundary
-to `--cwd`, or just the selected directory outside Git. Optional
-`IPSE_HOME/AGENTS.md` supplies user defaults. README and one level of text references
-can contribute bounded context. Limits are 16 sources, 32 KiB each, and 128 KiB
-total. Invalid, sensitive, symlink, or oversized sources produce diagnostics.
-For deeper file targets, newly found guidance can stop an unstarted call for
-reconsideration. Review `/context` before requesting another attempt. Shell
-arguments can refer indirectly to directories whose guidance Ipse cannot infer.
+to the workspace, plus optional `IPSE_HOME/AGENTS.md`. Outside Git, discovery
+starts at the selected directory. README and one level of text references can
+contribute context. The total is bounded to 16 sources, 32 KiB each, and 128 KiB.
+`/context` reports omissions and invalid sources. Newly discovered guidance for
+a deeper file target can stop an unstarted call for reconsideration. Indirect
+shell targets cannot always be inferred.
 
-Resume keeps saved instructions and skills. To adopt changes, finish/cancel
-active work and use `/context refresh`. This reloads neither configuration nor
-extension code. Instructions remain reference text and never grant permissions.
+Resume keeps saved instructions. `/context refresh` adopts changed instructions
+and skills while idle, without reloading configuration or extension code.
+Terminal output escapes control characters; retained values keep original bytes.
+Reported model names are response metadata, not proof of the next response's identity.
 
-## Save, resume, and manage long work
+## Delegate a bounded review
+
+Enable children explicitly, then ask for a small task with inspectable evidence:
+
+```sh
+ipse chat --provider chatgpt --subagents --cwd /path/to/project
+```
+
+```text
+Delegate a read-only review of the changed error handling. Supply only the
+necessary context. Check the child's findings against source and tests, and
+report actionable problems with file locations. Do not edit.
+```
+
+Review the proposed task and context before approving delegation. Children share
+the workspace but have separate conversations, journals, approvals, and accounting.
+They receive selected context and the saved instruction snapshot, not the full
+parent transcript. A completed child result still needs review. Children cannot
+use MCP, delegate again, or ask structured questions. They can use explicitly
+allowed extensions under separate grants and the tree budget.
+
+To allow a pair of independent reviews, add `--subagent-concurrency 2` and request
+two bounded tasks. A `delegate_parallel` proposal has exactly two task/context
+objects and one group approval. Results return in task order. Only one child
+mutation executes at a time. File claims conflict across equivalent case/Unicode
+paths; hardlinked targets are refused. Shell mutation claims the whole workspace.
+Reads can still observe changes, so this is not a filesystem snapshot.
+
+A parent turn admits two children, serially by default. Each child has six admitted
+main/helper model calls and two minutes of active work, excluding approval waits.
+Task and context are each 8 KiB; final output is 16 KiB and displayed approval
+arguments are 32 KiB. Failure, timeout, oversized output, or unknown cleanup
+stops remaining delegation, including a parallel sibling. Inspect effects before
+another attempt. [Resource controls](resources.md) explain shared reservations.
+
+## Resume or hand off long work
 
 ```sh
 ipse sessions
@@ -242,34 +191,25 @@ ipse sessions --json
 ipse chat --resume SESSION_ID
 ```
 
-Replace `SESSION_ID` with an ID from the listing. Add the original `--state-dir`
-if you used a custom store. JSON listing returns only `id`, `provider`, `model`,
-and `cwd`, sorted by ID. Listing is local and does not validate an entire history.
+Use the original `--state-dir` if customized. Listing is local and returns bounded
+session metadata; it does not validate the full journal. Resume restores the
+workspace, provider/model, pinned configuration, and instruction snapshot. Idle
+resume makes no inference or tool calls. Interrupted effects remain unknown.
+[Recovery](recovery.md) explains refusals and fresh-session handoffs.
 
-Resume restores the original workspace, provider, model, instruction snapshot,
-and compatible execution configuration. It does not replay tools or start new
-inference while idle. Interrupted actions without results remain unknown. Keep
-the original endpoint and pinned configuration; see [Recovery](recovery.md) if
-compatibility checks refuse resume.
+By default, a turn allows 30 model calls and context holds 400,000 bytes.
+Compaction begins above 80%, retaining original journal evidence. A summary makes
+another same-provider request; the older-output fallback does not. Set
+`--context-bytes N` within 8192..16000000, or use `--no-compact` to stop at the
+ceiling. Required retained content can still prevent compaction.
 
-The default turn allows 30 model calls. The context ceiling is 400,000 bytes;
-automatic compaction begins above 80%. Summarizing older turns makes an additional
-request to the same provider. The local older-output fallback makes none. Both
-retain original evidence in the journal. `--context-bytes N` changes the ceiling
-within 8192..16000000 bytes; `--no-compact` stops at the ceiling. Compaction can
-still refuse when necessary retained content cannot fit. Use a reviewed
-[fresh-session handoff](recovery.md#continue-in-a-fresh-session) for such work.
+One response admits 32 tools and 2 MiB of arguments; a turn admits 128 tools and
+8 MiB. Invalid/denied proposals count. Excess or incomplete responses execute none
+of their proposed tools. Prior effects can remain. Journals have separate finite
+limits and may seal even when context is small.
 
-One response can propose at most 32 tools/2 MiB of arguments; one turn admits
-128 tools/8 MiB. Invalid and denied proposals count. Excess or incomplete provider
-responses execute none of their proposed tools. Prior effects can remain.
-Journals separately have finite limits and can seal even when context is small.
-
-Default journals live under `IPSE_HOME/sessions`. `--state-dir` changes journal
-and associated budget-ledger storage, not authentication, artifacts, or extension
-state. Journals retain private prompts, tool output, instruction snapshots, and
-provider continuation. Protect them and keep them outside Git. Hidden reasoning
-is not displayed. Diagnostic captures and exports have separate privacy scopes.
-
-Continue with [configuration](configuration.md), [optional subagents](subagents.md),
-[external tools](mcp.md), or [troubleshooting](troubleshooting.md) as needed.
+Journals default to `IPSE_HOME/sessions`. `--state-dir` relocates journals and
+budget ledgers, not authentication, artifacts, or extension state. Journals retain
+private prompts, results, instruction snapshots, and provider continuation. Keep
+them outside Git. Hidden reasoning is not displayed. Continue with
+[configuration](configuration.md), [extensions](extensions.md), or [recovery](recovery.md).

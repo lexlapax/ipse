@@ -174,7 +174,7 @@ not prompt/answer history views or diagnostic content.
 `extensions_model_jobs_test.exs` cover strict requests, private routing, full
 approval/denial, actual parallel child HTTP requests, nested mutation leases,
 overdraw, byte/time limits, cancellation/worker death, corruption and inert resume.
-The [standalone artifact](../../../../../examples/model-calls/README.md) runs the same
+The [standalone artifact](../../../2026-10-22-before-structural-consolidation/examples/model-calls/README.md) runs the same
 credential-free proof in source and an unchanged extracted package. Existing
 reports/budget fixtures and the independent seven-artifact extension lab retain
 their own compatibility gates. These are local fixtures, not paid-account or

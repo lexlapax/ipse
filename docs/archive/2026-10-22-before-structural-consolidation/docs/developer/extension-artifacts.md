@@ -1,0 +1,295 @@
+> Historical only. Preserved on 2026-10-22 from `5bffe00364d66f5012e5a0d4cd86c4180c74ebcb` before the structural/manual rewrite. Use [current guidance](https://github.com/lexlapax/ipse/blob/main/docs/developer/extensions.md). Relative prose links point to the original commit; commands and claims retain their original text.
+
+# Build an independent extension artifact
+
+An installed extension runs in a worker VM, so its compiled modules do not enter
+Ipse's host code path. This chapter takes you through the existing artifact
+builder, then explains the manifest, import transaction, and worker protocol you
+must preserve when changing the host.
+
+## Build and inspect a package
+
+After building Ipse, compile the local lab in a separate compiler process. Use a
+fresh child directory for its output:
+
+```sh
+IPSE_ARTIFACT_ROOT=$(mktemp -d)
+elixir scripts/build-artifact.exs extension-lab --sdk _build/dev/lib/ipse/ebin --output "$IPSE_ARTIFACT_ROOT/lab"
+```
+
+Inspect `$IPSE_ARTIFACT_ROOT/lab/lookup/extension.json` and the corresponding
+`examples/extension-lab/src/lookup.ex`. The builder writes a license and compiled
+BEAM, records their real lengths and SHA-256 digests, and emits runtime constraints
+for the current machine. Nothing is installed or enabled by this command.
+
+The command accepts exactly these trusted repository recipes:
+
+| Recipe | Output | SDK |
+| --- | --- | --- |
+| `extension-lab` | Seven artifacts, including both Memory versions | 1 |
+| `model-calls` | One accounted text-model command | 1 |
+| `embedding-actions` | One native embedding command | 1 |
+| `mcp-actions` | One approved MCP-call command | 1 |
+| `saved-results` | One complete-result publication command | 2 |
+
+The SDK path names the built host's `ebin`; the builder also loads its existing
+JSON/schema dependencies for descriptor validation. `mcp-actions` alone accepts
+`--omit host.mcp` or another unique comma-separated subset of its declared
+capabilities. This creates permission-denial fixtures. Unknown recipes, unknown
+options and duplicate flags refuse. An existing output directory or dangling
+output link also refuses. Choose another fresh path instead of clearing an
+unrelated directory.
+
+Trace `Ipse.Development.ArtifactBuilder.build/4` in
+`scripts/build-artifact.exs`. It compiles fixed reviewed source in its own VM and
+a private staging working directory, captures diagnostics and refuses warnings.
+`compile_worker/2` adds deterministic compilation to the recipe's single module
+while retaining its source locations. The stable filename and canonical checker
+metadata keep temporary stages and map encoding order out of rebuild identity.
+It checks the final
+descriptor and file inventory before renaming the stage to the requested output.
+Compilation or descriptor failures remove the owned stage and publish no final
+artifact. Trusted compilation can run module load callbacks; the saved-result
+recipe's load marker stays in staging and is absent from the published files.
+This construction process is not an OS sandbox for arbitrary source.
+
+The lab's `examples/extension-lab/spec.exs` supplies descriptions, options and
+entrypoint names. The builder checks the compiled module and `describe/0`
+against those same declarations. Different Memory versions compile separately.
+`test/artifact_builder_test.exs` exercises collision preservation, closed options,
+compiler warnings, declaration drift, load-marker containment and stable rebuild
+identity.
+
+For another independent package, supply an entrypoint implementing
+`Ipse.Extension` and a package-owned builder. Follow the construction boundaries
+above rather than passing arbitrary source paths to this finite example command.
+Declare every runtime file and write the descriptor from the final bytes. The
+[knowledge package walkthrough](https://github.com/lexlapax/ipse/blob/5bffe00364d66f5012e5a0d4cd86c4180c74ebcb/docs/developer/knowledge-extensions.md) teaches the separate
+`extensions/knowledge/build.exs` builder. Never copy placeholder hashes or claim
+another platform without testing it.
+
+## Descriptor and identity
+
+`Ipse.Extensions.Manifest.decode/1` accepts UTF-8 `extension.json` up to 16 KiB.
+Objects reject duplicate keys at every depth. The required fields are:
+
+| Field | Value |
+| --- | --- |
+| `format`, `protocol` | Integer 1 |
+| `sdk` | Integer 1, or 2 with `invoke.result.pages` |
+| `id`, `version` | Package identifier and display version |
+| `backend` | `elixir_worker` for imported artifacts |
+| `entrypoint` | Compiled Elixir module name, handled only in the worker |
+| `license_file` | Declared relative license path |
+| `capabilities` | Exact declared capability strings |
+| `options_schema` | Bounded object schema |
+| `runtime` | `elixir` requirement, admitted OTP majors, exact platform strings |
+| `files` | Relative path, byte count, and SHA-256 for each file |
+
+Optional `exports`, `requires`, and `subscriptions` add
+[catalogs](https://github.com/lexlapax/ipse/blob/5bffe00364d66f5012e5a0d4cd86c4180c74ebcb/docs/developer/extension-invocations.md), [service dependencies](https://github.com/lexlapax/ipse/blob/5bffe00364d66f5012e5a0d4cd86c4180c74ebcb/docs/developer/extension-composition.md#declare-the-value-contract),
+and [notifications, jobs, or feeds](https://github.com/lexlapax/ipse/blob/5bffe00364d66f5012e5a0d4cd86c4180c74ebcb/docs/developer/extension-events.md). These are inert data.
+Capability declarations are requirements, not operator grants. Unknown operations
+or unsupported declaration shapes fail validation.
+
+Artifact identity is SHA-256 of the original manifest bytes. Because those bytes
+bind the file inventory, changing code, options schemas, or even manifest
+whitespace creates a new identity. Display versions do not select mutable code.
+
+An artifact has 2–64 files, each at most 8 MiB and together at most 32 MiB. Paths
+are portable ASCII relative paths, at most 256 bytes and eight components. Absolute
+paths, traversal, backslashes, manifest replacement, and file/directory prefix
+collisions fail. The inventory must include the license and entrypoint BEAM.
+Options and descriptor schemas use the [bounded schema subset](https://github.com/lexlapax/ipse/blob/5bffe00364d66f5012e5a0d4cd86c4180c74ebcb/docs/developer/mcp.md#schema-subset)
+without external schema loading.
+
+`Manifest.compatible?/1` checks Elixir `Version` requirements, OTP major, and exact
+`:erlang.system_info(:system_architecture)` strings. Import may store an
+incompatible artifact, but activation rechecks and refuses to execute it. A BEAM
+file alone is no claim of cross-OTP, native-library, or platform compatibility.
+Manifest validation does not execute or inspect compiled code and cannot certify
+its safety, licensing, or dependencies.
+
+## Store behavior
+
+Read `Store.import/2` with `test/extensions_store_test.exs`. Import captures only
+declared regular files, verifies lengths and hashes, and publishes a private
+staging directory with an atomic rename. Directories use 0700 and files 0600.
+Synced writes and a per-digest native advisory lock keep cooperative imports from
+publishing a normal partial snapshot. A busy import fails. Unlock releases the
+OS lock but leaves its inode in place.
+
+The return value is `{:ok, %{digest: digest, manifest: manifest, path: path}}`.
+`Store.lookup/2` revalidates manifest bytes, declared files, and installed inventory.
+Missing, changed, extra, or symlinked entries fail. It never repairs or overwrites
+an invalid digest directory. Interrupted `.staging-*` directories remain inert.
+
+Store roots and descendants reject symlinks. Ancestors of the selected root are
+trusted. Inventory inspection has a 1,024-entry cap after ordinary directory
+listing. These checks protect ordinary API operations, not malicious same-user
+filesystem races. Content addressing is neither publisher authentication nor an
+OS read-only mount.
+
+## Independent worker SDK
+
+The public callbacks in `lib/ipse/extension.ex` are:
+
+```elixir
+@callback describe() :: object()
+@callback init(object()) :: {:ok, term()}
+@callback handle(String.t(), object(), term()) ::
+  {:ok, object() | Ipse.Extension.ResultPublication.Output.t(), term()}
+```
+
+Public `object()` values use string-keyed JSON maps. PIDs, references, functions,
+structs, and arbitrary Erlang terms cannot cross the bridge. SDK-2's private
+`Output` is consumed inside Bootstrap and never serialized as an Erlang term.
+Private state can
+contain ordinary runtime terms. `Ipse.Extension.validate/1` delegates to the shared
+bounded JSON adapter, with 16 KiB encoded-object, string, depth, and collection
+limits. A string is at most 8 KiB, nesting depth is at most 12, and a map or list
+has at most 128 members. Schemas independently allow at most 32 KiB encoded,
+depth eight, and 256 schema nodes. Keep the full enclosing callback object within
+its limit rather than budgeting only the domain value.
+
+Host-side complete document validation has a separate adapter,
+`Ipse.Extensions.ResultDocument`. It accepts at most 4 MiB of received and
+re-encoded JSON, with a map root, depth twelve, 8-KiB strings, 4,096 members per
+collection and 262,144 nodes including keys. Integer tokens retain Jason's
+1,024-byte limit, including a minus sign. A lexical resource guard runs before
+decoding; duplicate decoded keys refuse at every depth. Schema validation uses
+the same checked subset as the ordinary adapter. General host inputs instead use
+`Ipse.JSON.decode_bounded/2`, with a default 32-KiB encoded limit and a maximum
+explicit limit of 1 MiB. It rejects duplicate decoded keys and nesting beyond
+sixteen levels. Manifest validation applies its own narrower 16-KiB limit before
+using this decoder. Complete result documents need their dedicated adapter;
+raising a general input limit cannot substitute for its resource checks.
+
+Run this exercise in `iex -S mix`:
+
+```elixir
+alias Ipse.Extensions.ResultDocument
+schema = %{"type" => "object", "additionalProperties" => true}
+value = %{"items" => Enum.to_list(1..256)}
+{:ok, bytes} = ResultDocument.encode(value, schema)
+{:ok, ^value} = ResultDocument.decode(bytes, schema)
+{:error, :invalid_extension_value} = Ipse.Extension.validate(value)
+```
+
+The aggregate adapter accepts this document; the wire SDK rejects its 256-member
+array. To return the complete object from a tool or command, declare SDK 2 and
+`invoke.result.pages` in both the manifest and `describe/0`. The operator must
+grant that capability. Use the preparation helper in the worker:
+
+```elixir
+alias Ipse.Extension.ResultPublication
+{:ok, reply} = ResultPublication.prepare(%{"items" => Enum.to_list(1..256)})
+true = match?(%ResultPublication.Output{}, reply)
+```
+
+Return `{:ok, reply, state}` from the original tool or command callback, or its
+ordinary `host.actions` continuation. The helper returns an inline result when
+the complete wrapper fits SDK limits and 12,000 encoded bytes. Otherwise it
+freezes one aggregate JSON document in `Output`. Invalid or oversized values
+return `{:error, :invalid_result_document}`. Handle that error with an explicit
+domain refusal rather than dropping fields to force success.
+
+Bootstrap drops domain state after accepting `Output` and answers only
+`result.output` requests with fixed 4,096-byte fragments. Worker independently
+checks eligibility, offsets, fragment hashes, and the complete hash. The enclosing
+wire objects retain the ordinary SDK limits. Services, jobs, transforms, and
+recovered question continuations cannot return `Output`.
+
+The host validates the reconstructed object against the original declared result
+schema before Session can publish it. Follow [saved-result invocation flow](https://github.com/lexlapax/ipse/blob/5bffe00364d66f5012e5a0d4cd86c4180c74ebcb/docs/developer/extension-invocations.md)
+for journal ownership and historical reads. Use
+`test/extensions_result_document_test.exs` for aggregate boundaries and
+`test/extensions_result_publication_test.exs` for Bootstrap and Worker negotiation,
+terminal paging, and malicious wire replies.
+Build the [saved-result example](https://github.com/lexlapax/ipse/blob/5bffe00364d66f5012e5a0d4cd86c4180c74ebcb/examples/saved-results/README.md) to verify
+the same SDK-2 artifact through source and packaged runtimes.
+
+A raw developer call to `Worker.start/1` supplies `owner`, `store`, `digest`,
+`trusted`, and schema-valid `options`. `trusted` must equal the selected digest.
+It is a caller assertion; Session supplies it only after configuration/trust
+admission. Initialize with `Worker.call(pid, "initialize", options)` using those
+exact options before calling a declared stage. `describe/0` must match SDK,
+capabilities, and normalized exports/requirements/subscriptions exactly.
+
+Only one call may be active. Competing calls return `:extension_busy`. Calls
+default to five seconds; explicit deadlines are 1–30,000 ms. Duplicate
+initialization and undeclared stages refuse. Session adapters may impose narrower
+stage-specific deadlines and result schemas.
+
+## Worker boundary
+
+`Worker` launches current ERTS with a clean boot and the existing Elixir,
+Jason, Ipse SDK, JSONSchex, and ex_json_pointer code paths plus the selected
+artifact. It starts Elixir, not Ipse's application tree. Executable module loading
+waits for initialization. The host does not create module atoms from artifact
+identifiers or load the worker's BEAMs.
+
+The native launcher clears inherited environment, selecting only caller PATH and
+baseline LANG before ERTS derives its own runtime variables. Options and the
+purpose-specific payload cross the boundary; credentials, provider continuation,
+and Session state do not. Package execution remains trusted OS-level code.
+
+Protocol 1 uses 32-bit length-prefixed JSON objects, at most 32 KiB per envelope,
+and monotonically increasing call IDs. Stdout belongs exclusively to the protocol.
+Use binary standard IO; `-noinput` is incompatible. Unexpected stdout, duplicate
+JSON keys, wrong versions/IDs, and malformed results fail closed. Stderr is
+discarded rather than copied into diagnostics. Total stdout/stderr traffic is
+capped at 64 MiB per worker lifetime.
+
+Owner death, timeout, process exit, or protocol failure closes the owned native
+stdio process group. Calls are not restarted. `Worker.close/1` reports the native
+cleanup result; resource leases preserve actual cleanup receipts even when the
+callback fails. Process disappearance alone cannot prove descendant cleanup.
+Status formatting exposes readiness and counters, not options or payloads.
+
+## Exercise an incompatible package
+
+Use the Lookup artifact built above. Start a development shell with its path:
+
+```sh
+IPSE_LAB_LOOKUP="$IPSE_ARTIFACT_ROOT/lab/lookup" iex -S mix
+```
+
+Copy that artifact into a temporary directory and change only the scratch
+manifest's platform. Import computes a new identity from the edited manifest
+bytes; the finite builder does not consume modified artifacts.
+
+```elixir
+alias Ipse.Extensions.{Manifest, Store, Worker}
+root = Path.join(System.tmp_dir!(), "ipse-incompatible-" <> Ipse.Usage.id())
+scratch = Path.join(root, "source")
+File.mkdir_p!(root)
+File.chmod!(root, 0o700)
+{:ok, _} = File.cp_r(System.fetch_env!("IPSE_LAB_LOOKUP"), scratch)
+path = Path.join(scratch, "extension.json")
+manifest = path |> File.read!() |> Jason.decode!()
+manifest = put_in(manifest, ["runtime", "platforms"], ["different-host"])
+File.write!(path, Jason.encode!(manifest))
+store = Path.join(root, "store")
+{:ok, artifact} = Store.import(scratch, store)
+false = Manifest.compatible?(artifact.manifest)
+{:error, :extension_admission_refused} = Worker.start(owner: self(), store: store, digest: artifact.digest,
+  trusted: artifact.digest, options: %{})
+File.write!(Path.join(artifact.path, "LICENSE"), "changed fixture")
+{:error, :invalid_extension_artifact} = Store.lookup(store, artifact.digest)
+File.rm_rf!(root)
+```
+
+Import succeeds without executable initialization. Activation refuses the
+incompatible platform. Changing the imported fixture's license then makes
+lookup refuse its file hash. Keep this exercise in the disposable store.
+
+```sh
+mix test test/extensions_store_test.exs test/extensions_worker_test.exs
+```
+
+Store tests establish inert import, path/schema/hash limits, corruption refusal,
+and locking. Worker tests compile independent modules and check explicit trust,
+handshake, environment exclusion, deadlines, protocol failure, contention, and
+owner death. Continue with [hooks](https://github.com/lexlapax/ipse/blob/5bffe00364d66f5012e5a0d4cd86c4180c74ebcb/docs/developer/extensions.md#run-a-prompt-and-presentation-hook) or
+[invocations](https://github.com/lexlapax/ipse/blob/5bffe00364d66f5012e5a0d4cd86c4180c74ebcb/docs/developer/extension-invocations.md) to learn how Session journals execution.

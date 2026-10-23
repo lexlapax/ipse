@@ -103,7 +103,7 @@ defmodule Ipse.Development.Evaluation.Answer do
            bundle["request"]
            |> Map.put("version", 2)
            |> Map.put("response_schema", response_schema(bundle["shown"])),
-         :ok <- Ipse.Extensions.ModelCall.validate(request) do
+         :ok <- Ipse.Extension.ModelCall.validate(request) do
       {:ok, %{bundle | "version" => 2, "request" => request}}
     end
   end
@@ -114,7 +114,7 @@ defmodule Ipse.Development.Evaluation.Answer do
   def prepare(query, as_of_ms, ranked_evidence, "json_schema_v3", timeout_ms) do
     with {:ok, bundle} <- prepare(query, as_of_ms, ranked_evidence, "json_schema_v2"),
          request = Map.merge(bundle["request"], %{"version" => 3, "timeout_ms" => timeout_ms}),
-         :ok <- Ipse.Extensions.ModelCall.validate(request) do
+         :ok <- Ipse.Extension.ModelCall.validate(request) do
       {:ok, %{bundle | "version" => 3, "request" => request}}
     end
   end
@@ -258,7 +258,7 @@ defmodule Ipse.Development.Evaluation.Answer do
     do:
       exact?(request, @request_keys ++ ["response_schema"]) and request["version"] === version and
         request["response_schema"] == response_schema(shown) and
-        Ipse.Extensions.ModelCall.validate(request) == :ok and
+        Ipse.Extension.ModelCall.validate(request) == :ok and
         (version == 3 or request["timeout_ms"] === 120_000)
 
   defp request_contract?(_, _, _), do: false

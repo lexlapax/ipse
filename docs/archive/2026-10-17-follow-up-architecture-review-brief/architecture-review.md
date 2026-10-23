@@ -1,5 +1,5 @@
 Historical reference only. Superseded after the returned same-session follow-up.
-Use the [current fresh-session brief](../../operator/architecture-review.md).
+Use the [current fresh-session brief](../2026-10-22-before-structural-consolidation/docs/operator/architecture-review.md).
 
 # Independent architecture-review handoff
 

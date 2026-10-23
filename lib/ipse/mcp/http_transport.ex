@@ -2,14 +2,14 @@ defmodule Ipse.MCP.HTTPTransport do
   @moduledoc "Bounded, session-owned Streamable HTTP adapter for the existing MCP SDK."
   use GenServer
   @behaviour MCP.Transport
-  alias Ipse.MCP.Transport
+  alias Ipse.MCP.StdioTransport
   @body_limit 262_144
   @traffic_limit 1_048_576
 
   # SDK ownership uses a monitor so its exit cannot interrupt asynchronous pool cleanup.
   def start_link(opts), do: GenServer.start(__MODULE__, opts)
   def send_message(pid, message), do: GenServer.call(pid, {:send, message})
-  def close(pid), do: Transport.close(pid)
+  def close(pid), do: StdioTransport.close(pid)
 
   def init(opts) do
     owner = Keyword.fetch!(opts, :owner)
@@ -23,7 +23,7 @@ defmodule Ipse.MCP.HTTPTransport do
       end
 
     with :ok <- registered,
-         {:ok, cleanup_ticket} <- Ipse.TaskResources.register(:mcp, opts[:cleanup_scope]) do
+         {:ok, cleanup_ticket} <- Ipse.Session.Resources.register(:mcp, opts[:cleanup_scope]) do
       Process.send_after(self(), :expired, server.timeout_ms)
 
       {:ok,
@@ -120,8 +120,8 @@ defmodule Ipse.MCP.HTTPTransport do
 
   def terminate(_, s) do
     if s.task, do: Process.exit(s.task.pid, :kill)
-    Ipse.HTTPProfile.cancel_finch(s.task_guardian)
-    Ipse.TaskResources.closed(s.cleanup_ticket, s.cleanup_result)
+    Ipse.HTTP.cancel_finch(s.task_guardian)
+    Ipse.Session.Resources.closed(s.cleanup_ticket, s.cleanup_result)
     send(s.cleanup_owner, {:mcp_cleanup, self(), s.cleanup_result})
   end
 
@@ -140,7 +140,7 @@ defmodule Ipse.MCP.HTTPTransport do
     parent = self()
     server = s.server
     session_id = s.session_id
-    lease = Ipse.HTTPProfile.prepare_finch(parent)
+    lease = Ipse.HTTP.prepare_finch(parent)
 
     task =
       Task.Supervisor.async_nolink(Ipse.Tasks, fn ->
@@ -160,13 +160,13 @@ defmodule Ipse.MCP.HTTPTransport do
 
         result =
           try do
-            with :ok <- Ipse.HTTPProfile.await_guardian(previous_guardian) do
+            with :ok <- Ipse.HTTP.await_guardian(previous_guardian) do
               if method == :delete and is_nil(session_id) do
                 :ok
               else
-                proxy_options = Ipse.HTTPProxy.finch_options(URI.parse(server.url))
+                proxy_options = Ipse.HTTP.finch_options(URI.parse(server.url))
 
-                Ipse.HTTPProfile.with_finch(
+                Ipse.HTTP.with_finch(
                   fn finch ->
                     # The Finch guardian closes this private pool on borrower death too.
                     headers = [
@@ -218,7 +218,7 @@ defmodule Ipse.MCP.HTTPTransport do
             _, _ -> {:error, :http_failure}
           end
 
-        cleanup = lease |> Ipse.HTTPProfile.cancel_finch() |> Ipse.HTTPProfile.await_guardian()
+        cleanup = lease |> Ipse.HTTP.cancel_finch() |> Ipse.HTTP.await_guardian()
         send(guard, :finished)
         if cleanup == :ok, do: result, else: {:error, :cleanup_unconfirmed}
       end)
@@ -317,7 +317,7 @@ defmodule Ipse.MCP.HTTPTransport do
 
       admission =
         if supported,
-          do: Transport.admit_response(message, current.pending, private),
+          do: StdioTransport.admit_response(message, current.pending, private),
           else: :error
 
       case admission do
@@ -354,7 +354,7 @@ defmodule Ipse.MCP.HTTPTransport do
   defp begin_close(%{closing: true} = s, from), do: %{s | close_from: s.close_from || from}
 
   defp begin_close(s, from) do
-    guardian = Ipse.HTTPProfile.cancel_finch(s.task_guardian)
+    guardian = Ipse.HTTP.cancel_finch(s.task_guardian)
 
     if s.task do
       Process.exit(s.task.pid, :kill)

@@ -19,7 +19,7 @@ defmodule Ipse.Development.Evaluation.Runner do
     Review
   }
 
-  alias Ipse.Extensions.{Manifest, ModelCall, EmbeddingCall, State, MCPCall}
+  alias Ipse.Extension.{Artifact, ModelCall, EmbeddingCall, State, MCPCall}
   alias Ipse.Development.Fixtures.Knowledge, as: CASFixture
 
   @merged_files ~w(predictions.jsonl execution.jsonl usage.jsonl request-resources.jsonl resources.jsonl timings.jsonl)
@@ -1046,7 +1046,7 @@ defmodule Ipse.Development.Evaluation.Runner do
       |> Enum.map(fn {entry, index} ->
         path = paths[entry["alias"]]
         bytes = read!(Path.join(path, "extension.json"))
-        {:ok, manifest} = Manifest.decode(bytes)
+        {:ok, manifest} = Artifact.decode(bytes)
         digest = sha(bytes)
 
         trust = %{
@@ -1262,7 +1262,7 @@ defmodule Ipse.Development.Evaluation.Runner do
          ) do
       {:ok, run} ->
         Process.put(:comparison_run, run)
-        {:ok, cwd} = Ipse.WorkspaceContext.canonical_path(Path.join(run.directory, "workspace"))
+        {:ok, cwd} = Ipse.Workspace.canonical_path(Path.join(run.directory, "workspace"))
         entry = Enum.find(variant["artifacts"], &(&1["state_binding"] != nil))
 
         namespace =
@@ -2393,7 +2393,7 @@ defmodule Ipse.Development.Evaluation.Runner do
     else
       origin = checked(Contract.model_origin(plan))
       request = Finch.build(:get, origin <> "/api/tags")
-      {:ok, 200, bytes} = Ipse.HTTPProfile.bounded_request(request, 1_048_576, 10_000)
+      {:ok, 200, bytes} = Ipse.HTTP.bounded_request(request, 1_048_576, 10_000)
       tags = decode!(bytes)["models"]
 
       models =
@@ -2408,7 +2408,7 @@ defmodule Ipse.Development.Evaluation.Runner do
               JSON.encode!(%{"model" => name})
             )
 
-          {:ok, 200, bytes} = Ipse.HTTPProfile.bounded_request(request, 1_048_576, 10_000)
+          {:ok, 200, bytes} = Ipse.HTTP.bounded_request(request, 1_048_576, 10_000)
           details = decode!(bytes)
 
           if name == "qwen3.5:9b" do
@@ -2507,10 +2507,10 @@ defmodule Ipse.Development.Evaluation.Runner do
     }
 
     {:ok, config} =
-      Ipse.Budget.Store.attach(config, run.state_dir, run.session_id, false, :inspect)
+      Ipse.Usage.BudgetStore.attach(config, run.state_dir, run.session_id, false, :inspect)
 
     {:ok, {budget, dispositions}} =
-      Ipse.Budget.Store.transaction(
+      Ipse.Usage.BudgetStore.transaction(
         config.budget_root,
         config.budget,
         fn state ->
@@ -2532,7 +2532,7 @@ defmodule Ipse.Development.Evaluation.Runner do
                %{"budget_admitted" => false, "dispatch_intent" => false, "budget_settled" => nil}}
             end)
 
-          {:read, {Ipse.Budget.Ledger.snapshot(state), Map.merge(admitted, refused)}}
+          {:read, {Ipse.Usage.Budget.ledger_snapshot(state), Map.merge(admitted, refused)}}
         end,
         false,
         config[:budget_checkpoint]
@@ -2762,4 +2762,88 @@ defmodule Ipse.Development.Evaluation.Runner do
   defp require!(true, _), do: :ok
   defp require!(_, code), do: fail!(code)
   defp fail!(code), do: throw({:evaluation_runner, code})
+
+  def main(argv) do
+    {output, status} = evaluate(argv)
+    IO.puts(output)
+    if status != 0, do: System.halt(status)
+  end
+
+  @doc "Build the public phase result without exiting its owner's cleanup scope."
+  def evaluate(argv) do
+    arguments =
+      case argv do
+        ["--" | rest] -> rest
+        rest -> rest
+      end
+
+    {options, rest, invalid} =
+      OptionParser.parse(arguments,
+        strict: [
+          phase: :string,
+          plan: :string,
+          corpus: :string,
+          queries: :string,
+          output: :string,
+          freeze: :string,
+          freeze_sha256: :string,
+          experiment: :string,
+          experiment_sha256: :string,
+          resolution: :string,
+          data_manifest: :string,
+          predictions: :string,
+          prediction_sha256: :string,
+          audit_sha256: :string,
+          labels: :string,
+          reviews: :string
+        ]
+      )
+
+    phases = %{
+      "freeze" => :freeze,
+      "declare" => :declare,
+      "freeze-measured" => :freeze_measured,
+      "measure" => :measure,
+      "audit" => :audit,
+      "predict" => :predict,
+      "tune" => :tune,
+      "verify" => :verify,
+      "verify-frozen" => :verify_frozen,
+      "review" => :review,
+      "score" => :score
+    }
+
+    phase = phases[options[:phase]]
+
+    result =
+      if rest == [] and invalid == [] and phase != nil do
+        run(phase, Keyword.delete(options, :phase))
+      else
+        {:error, %{"code" => "invalid_options"}}
+      end
+
+    case result do
+      {:ok, report} ->
+        summary =
+          if is_map(report),
+            do:
+              Map.take(
+                report,
+                ~w(path sha256 source_commit mode prediction_sha256 rows failed_rows execution_complete heldout_quality_complete packet_sha256 reference_integrity_complete quality_gates_passed quality_gate_scope gates contracts complete_first_grid complete_review eligible_variants disqualified_variants)
+              ),
+            else: %{}
+
+        failed =
+          is_map(report) and
+            ((report["failed_rows"] || 0) > 0 or report["execution_complete"] == false or
+               report["reference_integrity_complete"] == false or
+               (phase == :score and report["quality_gates_passed"] != true))
+
+        {JSON.encode!(%{"status" => if(failed, do: "failed", else: "ok"), "result" => summary}),
+         if(failed, do: 1, else: 0)}
+
+      {:error, reason} ->
+        {JSON.encode!(%{"status" => "failed", "reason" => reason}), 1}
+    end
+  end
 end

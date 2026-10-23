@@ -3,8 +3,8 @@
 Historical implementation and verification record after generic transport
 candidate `11d067f6e19c670702168b196fb550ea0aadb34d`. This unit does not complete
 P27 or establish model quality. The [plan](../../plan.md#p27-optional-research-graph-and-rag)
-owns acceptance. Use [knowledge training](../../developer/knowledge-extensions.md#publish-and-read-the-complete-domain-value)
-and the [evaluation manual](../../developer/knowledge-evaluation.md#materialize-before-interpreting-a-result)
+owns acceptance. Use [knowledge training](../2026-10-22-before-structural-consolidation/docs/developer/knowledge-extensions.md#publish-and-read-the-complete-domain-value)
+and the [evaluation manual](../2026-10-22-before-structural-consolidation/docs/developer/knowledge-evaluation.md#materialize-before-interpreting-a-result)
 for current procedures. The [generic transport review](result-transport-review.md)
 owns its separate architecture, deadline and publication checks.
 The later [platform record](platform-verification.md) completes exact-source

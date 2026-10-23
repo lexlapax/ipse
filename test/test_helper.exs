@@ -1,6 +1,6 @@
 # macOS exposes /var aliases for temporary directories. Keep fixture expectations
 # physical, as session workspace metadata intentionally resolves those aliases.
-{:ok, temporary_root} = Ipse.WorkspaceContext.canonical_path(System.tmp_dir!())
+{:ok, temporary_root} = Ipse.Workspace.canonical_path(System.tmp_dir!())
 System.put_env("TMPDIR", temporary_root)
 
 # CLI/default discovery must never inspect the operator's installed skills or
@@ -13,7 +13,7 @@ File.mkdir_p!(operator_home)
 # Rustup resolves its toolchain from HOME unless configured separately. Preserve
 # that compiler location before isolating operator discovery; no skills/auth from
 # the real home are loaded by this fixture setup.
-rustup_home = Path.join(Ipse.Skills.operator_home(), ".rustup")
+rustup_home = Path.join(Ipse.Workspace.operator_home(), ".rustup")
 
 if is_nil(System.get_env("RUSTUP_HOME")) and File.dir?(rustup_home),
   do: System.put_env("RUSTUP_HOME", rustup_home)

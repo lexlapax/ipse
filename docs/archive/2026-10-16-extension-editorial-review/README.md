@@ -53,7 +53,7 @@ Interactive chat also supports validated single-choice, multi-select and free-te
 answers and resumable waiting; answers grant no action permission.
 Shell commands use trusted local execution by default. `--sandbox native` requests
 the opt-in Linux or macOS workspace sandbox and fails closed when unavailable; see
-[shell policy](../../operator/usage.md#shell-policy).
+[shell policy](../2026-10-22-before-structural-consolidation/docs/operator/usage.md#shell-policy).
 Core and bundled-release checks passed on Linux x86_64 and macOS arm64;
 native macOS enforcement also passed on macOS 26.7.2 locally and macOS 14 CI, both arm64. Detached
 children may survive cancellation with workspace access. Windows is future work.
@@ -62,7 +62,7 @@ Automatic context compaction retains the original journal. Older-turn summaries
 use the selected provider; a long-turn fallback excerpts older settled tool output
 without a model request; see [operation and limits](../2026-10-18-before-manual-rewrite/docs/operator/usage.md#context-compaction).
 Use `/diagnostics` or local `ipse diagnose` for context byte accounting and
-[provider usage facts](../../operator/usage-accounting.md). For an
+[provider usage facts](../2026-10-22-before-structural-consolidation/docs/operator/usage-accounting.md). For an
 explicit reviewed recovery into a fresh idle chat, export a bounded handoff note
 and import it with `chat --handoff PATH`; see [context recovery](../../operator/recovery.md).
 Run from any working directory or use `--cwd`; `/context` shows applicable saved
@@ -107,7 +107,7 @@ Opt-in local delegation is available with `--subagents`; it runs serial children
 by default or two parallel children with `--subagent-concurrency 2`,
 in the same workspace with separate journals and parent-mediated approvals.
 [Named profiles and task roles](../../operator/configuration.md#reuse-a-named-model-profile) can route bounded
-children to an explicitly configured provider/model, including local Ollama. See [local subagents](../../operator/subagents.md) for limits and
+children to an explicitly configured provider/model, including local Ollama. See [local subagents](../2026-10-22-before-structural-consolidation/docs/operator/subagents.md) for limits and
 recovery behavior. There is no full-screen TUI, remote-agent, or Windows support.
 See [runtime limits](../2026-10-18-before-manual-rewrite/docs/operator/usage.md#runtime-and-limits)
 and [architecture](../../developer/architecture.md) for details.

@@ -1,0 +1,30 @@
+> Historical correction review, captured 2026-10-22. The body and dated addendum below are unchanged. Use the [review disposition](index.md#supported-toolchain-loading-correction) for the final assessment and the [developer manual](../../developer/index.md) for current instructions. Intermediate warnings are superseded only where the report or disposition explicitly says so.
+
+# Explicit Runtime loading correction review
+
+Scope: compared only the 16 files in `/tmp/ipse-p27-explicit-loads-isolated.patch-receipt.json` between the frozen main checkout and `/tmp/ipse-p27-structure-floor-20261022-c2/source`. No source edits or tests were run.
+
+## Findings
+
+No new actionable defect found in the proposed explicit-load correction.
+
+**Carry-over warning, outside this patch:** `/tmp/ipse-p27-structure-floor-20261022-c2/source/dev/verification/runtime.exs:439` still derives the expected captured module list from the *current* `Scenarios.evaluator/0`, and lines 519–521 still invoke `Runner.main/1` on a reopened capture. The pre-consolidation evaluator closure instead includes `Ipse.Development.Evaluation.CLI.main/1`; its captured Runner has no `main/1`. Thus a valid earlier version-2 seal may refuse or fail when reopened through the new loader. This is the source-supported finding recorded in `/tmp/ipse-p27-structure-review-six.md`, not introduced by removing Scenarios' file-level require. Its exact effect on the private retained comparison remains untested because that capture was not read.
+
+## Root cause and caller coverage
+
+- The measured closure names both `dev/verification/scenarios.exs` and `dev/verification/runtime.exs` as sources and requires an exact 26/27-module compiler result with empty diagnostics. In the main checkout, the trailing file-level `Code.require_file("runtime.exs", __DIR__)` in Scenarios loads Runtime during Scenarios compilation; `Kernel.ParallelCompiler.compile_to_path/3` then compiles Runtime as a declared source. The resulting redefinition diagnostic correctly fails the strict closure check. Removing the side effect permits each source to compile once without weakening the diagnostic contract.
+- The source entrypoint `dev/verify.exs` now requires Scenarios and Runtime in order before calling `Scenarios.main/1`; `dev/evaluate-knowledge.exs` already does so. All changed test entrypoints that previously relied on the side effect now load Runtime explicitly. The three subprocess `-r` lists in knowledge tests also add Runtime, preserving their former fixture-loading behavior. The legacy-checkout fixture in `test/dev/evaluation/declaration_cli_test.exs` inherits the explicit load from `dev/evaluate-knowledge.exs`.
+- Measured Scenarios still declares both source files and both modules. Fresh captured closures therefore reflect the changed Scenarios bytes and have a new source identity; the patch does not mutate or authorize replay of an older seal. `Runtime.reopen_evaluation!/3` itself is unchanged.
+- At `test/dev/verification_test.exs:115-133` in the isolated target, the new unique-reference marker is sent only after the callback has entered and `Runtime.eval!/2` has confirmed the precompiled environment. `assert_receive ^entered` distinguishes a compiler failure from a later rejection. The callback then changes an inventoried input, and `with_runtime/3` rechecks it after callback return (`runtime.exs:335-350`); the expected `MatchError` is consistent with the intended post-input mutation refusal. The marker does not itself prove every downstream measured phase, which remains for the floor/full checks.
+
+## Verification limits
+
+Read-only inspection of the receipt, all 16 diffs, public direct callers of Scenarios/Runtime, exact closure declarations, and post-callback verification path. I did not run the focused test, full floor suite, package checks, or any private/captured workload. The supplied floor results (14.5-second focused pass; 26/27 closure checks; previous 74-test strict-diagnostic failure) were treated as external evidence, not reproduced here.
+
+## 2026-10-22 addendum: corrected capture assessment and execution entrypoint
+
+**Correction — retract the carry-over warning above and finding 1 in `/tmp/ipse-p27-structure-review-six.md`.** I read an earlier state of Runtime while the main checkout was changing. The actual frozen main source at `dev/verification/runtime.exs:439-443` detects an `Ipse.Development.Evaluation.CLI.beam` in the sealed file list, adds that legacy module to the exact verified closure, and selects it as the entrypoint. At lines 523-525, the child invokes that selected, verified module's `main/1`. The isolated target preserves this behavior at `runtime.exs:460-464,544-546`. A pre-consolidation seal containing the separate CLI therefore does not fail for the reason I claimed. The parent reports a synthetic two-layout CLI regression passed in 50.4 seconds; I did not run it or inspect a private capture.
+
+The latest isolated extension moves only the execution body from `Scenarios.main/1` into `Runtime.verification_main/1` (`runtime.exs:12-32`) and updates the sole call in `dev/verify.exs:3`. `Scenarios.parse!/1`, catalog definitions, and scenario-specific assertions stay in Scenarios. The `package` branch still requires `package.exs` from the same `dev/verification` directory before calling `Package.run/2`; the ordinary branch still calls `Runtime.run/2`. A public-source search found no remaining `Scenarios.main/1` caller. `dev/evaluate-knowledge.exs` already requires Scenarios then Runtime and calls `Runtime.evaluation_main/1`, so its entry remains intact.
+
+This extension addresses the next floor warning at its owner: compiling Scenarios no longer references Runtime functions before Runtime is compiled, while Runtime may reference the already-compiled Scenarios catalog. It leaves `Kernel.ParallelCompiler.compile_to_path/3`'s empty-diagnostics and exact-module checks unchanged. The explicit source and test loads and callback-entry marker reviewed above remain. **No new actionable finding** from this extension. The 77-case floor rerun was live at review time and is not claimed here.

@@ -6,11 +6,11 @@ defmodule IpseLab.TextObserver do
 
   def handle("stream.text", payload, state) do
     frame = payload["frame"]
-    true = Ipse.Lifecycle.Ephemeral.valid_frame?(frame)
-    {:ok, metadata} = Ipse.Lifecycle.Ephemeral.project(frame, "metadata")
+    true = Ipse.Session.TextStream.valid_frame?(frame)
+    {:ok, metadata} = Ipse.Session.TextStream.project_frame(frame, "metadata")
 
     if frame["kind"] == "text" do
-      {:ok, private} = Ipse.Lifecycle.Ephemeral.project(frame, "text.visible")
+      {:ok, private} = Ipse.Session.TextStream.project_frame(frame, "text.visible")
       true = metadata["event_id"] == private["event_id"]
       true = private["data"]["text"] == "Synthetic answer"
     end

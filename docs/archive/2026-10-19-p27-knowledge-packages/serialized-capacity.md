@@ -3,7 +3,7 @@
 Historical correctness and verification record after `d04b610`. This closes
 serialized prediction/review consumer mismatches. It does not execute the held-out
 comparison, establish model quality or complete P27. The
-[training manual](../../developer/knowledge-evaluation.md#trace-an-answers-evidence)
+[training manual](../2026-10-22-before-structural-consolidation/docs/developer/knowledge-evaluation.md#trace-an-answers-evidence)
 owns current procedures and bounds; the [plan](../../plan.md#p27-optional-research-graph-and-rag)
 owns acceptance.
 

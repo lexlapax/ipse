@@ -1,37 +1,38 @@
-# Continue state operations and operator questions
+# Continue state work and publish bound evidence
 
-Build a read/compare/write sequence whose state and questions survive process
-loss. A worker proposes a closed host call; Session validates authority and
-records intent, owned host work performs IO, and a committed receipt returns to
-the worker. Domain code never receives direct Session or storage handles.
+Follow the lab's read/write, question, service, and context-publication sequence.
+A callback proposes one closed host call; Session admits authority and commits
+intent, owned work executes it, and only a committed receipt resumes the worker.
+The domain receives no Session or storage handle. Read the
+[lab worker](../../examples/extension-lab/src/memory.ex),
+[Actions](../../lib/ipse/extension/actions.ex),
+[State](../../lib/ipse/extension/state.ex), and
+[Session.Invocation](../../lib/ipse/session/invocation.ex) together.
 
-Follow the lab memory worker in `examples/extension-lab/src/memory.ex` alongside
-`Extensions.Operation`, `Actions`, `State` and the action loop in `Host`.
-For other operation families use [typed effects](extension-effects.md),
-[composition](extension-composition.md), [accounting](usage-accounting.md) or
-[feeds/history](extension-feeds.md).
+## Negotiate the operations before execution
 
-## Negotiate before proposing an operation
+Artifacts need `host.actions`, an admitted invocation/job entrypoint, and each
+operation's capability. Operator trust must cover them. Transforms, notifications,
+feeds, and read-only consumers cannot enter this continuation protocol.
 
-An artifact needs `host.actions`, an `invoke.*` or `event.job` entrypoint, and
-each operation's capability. Operator trust must allow the complete set.
-Transforms, notifications and feed replies cannot enter this protocol.
-
-| Capability | State or continuation contract |
+| Capability | Allowed contract |
 | --- | --- |
-| `host.state.read` | `state.get`, `state.list` |
-| `host.state.write` | `state.put`, `state.delete` |
-| `host.state.scan` | Value-bearing scans and extended reads; also needs read capability |
-| `host.state.bound` | Requires an operator logical binding and read capability; grants no operation itself |
-| `host.question` | Explicit structured operator question |
-| `host.actions.mixed` | Separate read/action counters, without granting the operations themselves |
+| `host.state.read` | Get/list |
+| `host.state.write` | Separately approved put/delete |
+| `host.state.scan` | Value scans and extended state reads, with read grant |
+| `host.state.bound` | Require an operator logical binding; grants no operation |
+| `host.question` | Explicit durable question |
+| `host.services` | Operator-bound typed value service |
+| `host.context` | Replace this instance's current reference set |
+| `host.actions.mixed` | Separate read/other counters, without granting either family |
 
-An operation capability without `host.actions` fails inert validation. Neither
-project configuration nor callback data can expand operator authority.
+No project or callback can expand the ceiling. An operation grant without
+`host.actions` refuses inert validation. [Effects](extension-effects.md) and
+[accounting](accounting.md) own other operation families.
 
 ## Read a revision and propose a write
 
-The worker returns this callback reply to request one read:
+This callback fragment requests a project record:
 
 ```elixir
 {:ok,
@@ -40,257 +41,316 @@ The worker returns this callback reply to request one read:
  state}
 ```
 
-Session commits `extension_action_intent` before storage IO. After validating
-and committing the result, it calls the same worker at `host.actions` with
-host-issued invocation/operation IDs, sequential step and outcome. For a missing
-record, an illustrative payload is:
-
-```json
-{
-  "api_version": 1,
-  "invocation_id": "00000000000000000000000000000000",
-  "operation_id": "11111111111111111111111111111111",
-  "step": 1,
-  "outcome": {"status": "ok", "value": {
-    "generation": 0,
-    "record": {"key": "note", "revision": 0, "deleted": true,
-      "value": null, "operation_id": null}
-  }}
-}
-```
-
-Create the record by returning another outer `host_call` reply containing this
-request fragment:
+Session syncs `extension_action_intent` before IO. The validated committed outcome
+returns to `handle("host.actions", payload, state)` with host-generated invocation/
+operation IDs, sequential step, and outcome. A missing key has revision zero,
+deleted true, null value/writer, plus the observed namespace generation. Propose
+creation using that exact observation, with this inner request fragment:
 
 ```json
 {"op":"state.put","scope":"project","key":"note","expected_revision":0,"value":{"text":"Use small changes"}}
 ```
 
-The write needs separate approval even if the enclosing command/tool was
-approved. Approval shows instance, artifact digest, derived namespace and the
-complete request. No callback runs while it waits. `--yes` permits session-wide
-execution; denial records a definite denied result without changing storage.
-Finish with a schema-valid export result only after the receipt. On conflict,
-make a deliberate domain decision; do not automatically reread and overwrite
-a deletion on behalf of stale work.
+Its write needs full separate approval, showing instance/artifact, derived namespace,
+and complete request. No callback executes during the wait. Denial records a
+known denied result without storage change. `--yes` is the explicit broad allowance.
+Return a schema-valid result after the receipt. On conflict, make a domain decision,
+without silently rereading and overwriting a deletion on behalf of stale work.
 
-## Preserve record and namespace compare-and-swap
+## Keep record and namespace CAS distinct
 
-State requests have `op`, scope and exactly their admitted fields. Scope is
-`operator`, `project` or `session`:
-
-| Operation | Required fields | Result |
+| Operation | Fields beyond `op`/`scope` | Returned value |
 | --- | --- | --- |
-| `state.get` | `key` | Generation and full record |
-| `state.list` | `after`, `generation`, `limit` | Sorted value-free record metadata and `next` |
-| `state.scan` | `after`, `generation`, `limit` | Sorted full records and `next` |
-| `state.put` | `key`, `expected_revision`, object `value` | New generation and record |
-| `state.delete` | `key`, `expected_revision` | New generation and retained tombstone |
+| `state.get` | `key` | Generation/full record |
+| `state.list` | `after`, `generation`, `limit` | Sorted metadata, no values, plus `next` |
+| `state.scan` | `after`, `generation`, `limit` | Sorted full records plus `next` |
+| `state.put` | `key`, `expected_revision`, object `value` | New generation/record |
+| `state.delete` | `key`, `expected_revision` | New generation/retained tombstone |
 
-Keys contain 1..64 ASCII letters, digits, underscore, dot or hyphen, beginning
-with a letter or digit. Values allow 8 KiB encoded; SDK envelopes still allow
-16 KiB. Revisions/generations are integers from zero through 2^53−1. Successful
-puts and deletes increment both counters and retain the operation ID of the
-last successful write. Exhausted counters refuse writes.
+Scope is operator/project/session. Keys are 1..64 ASCII letters/digits/underscore/
+dot/hyphen, starting with letter/digit. Encoded values allow 8 KiB inside 16-KiB
+SDK envelopes. Revisions/generations range from zero through 2^53−1. Successful
+writes increment both and retain their operation ID. Exhausted counters refuse.
+Deleting a missing key still increments revision, blocking old revision-zero work.
+A deliberate later write using the current tombstone is possible; stronger domain
+suppression must be enforced by the extension.
 
-CAS requires the exact record revision. A conflict exposes metadata, not the
-current private value. Deleting even a missing key increments its revision, so
-an older captured revision cannot recreate it. A deliberate new write using
-the current tombstone revision remains possible. The extension owns suppression
-policy distinguishing that decision from stale extraction.
+For a decision depending on other keys, a put can add `expected_generation`:
 
-If a put depends on other records, include `expected_generation`:
-
-```elixir
-request = %{
-  "op" => "state.put", "scope" => "project", "key" => "new-source",
-  "expected_revision" => 0, "expected_generation" => snapshot_generation,
-  "value" => new_source
-}
+```json
+{"op":"state.put","scope":"project","key":"new-source","expected_revision":0,"expected_generation":12,"value":{"text":"approved source"}}
 ```
 
-Two writers can otherwise observe the last available slot and insert different
-missing keys with revision zero. State checks revision, then optional namespace
-generation under the lock. Either mismatch conflicts with value-free target
-metadata. It does not rescan or retry. The optional generation is non-null and
-within the same integer range; other operations reject it. Success reports
-`expected_generation + 1`; conditioned conflict proves a revision or generation
-mismatch. A rejected action cannot claim to be the previous successful writer.
-
-Run the serialized distinct-key fixture in `test/extensions_state_test.exs`:
-the first put succeeds and the second conflicts while its own key stays missing.
-The separate-process fixture additionally exercises native lock contention;
-lock refusal is not permission to replay.
+The numbers illustrate observed values, not values to guess. State checks revision
+then optional namespace generation under one lock. Distinct-key writers that both
+saw the final free slot cannot both publish against generation twelve. Conflicts
+return value-free metadata and do not retry. The optional generation is a non-null
+integer; other operations reject it. Conditioned success returns generation+1;
+conflict proves a mismatch. Failed receipts cannot name their own operation as
+the previous successful writer. See the same-process and separate-process fixtures
+in `test/ipse/extension/state_test.exs`.
 
 ## Reject an expired prepared write
 
-For an expiring decision, include absolute Unix milliseconds as `write_before_ms`:
+A put can also carry absolute Unix milliseconds `write_before_ms`:
 
-```elixir
-request = %{
-  "op" => "state.put", "scope" => "project", "key" => "note",
-  "expected_revision" => observed_revision, "value" => replacement,
-  "write_before_ms" => observed_expiry_ms
-}
+```json
+{"op":"state.put","scope":"project","key":"note","expected_revision":3,"write_before_ms":1700000001000,"value":{"text":"replacement"}}
 ```
 
-The extension derives the deadline from its observed domain state. State treats
-the value as opaque JSON. The condition accepts integers from zero through
-2^53−1, not explicit null, and is valid only on puts. Omitting it retains ordinary
-put behavior; it grants no extra operation or authority.
+Use a justified deadline from observed domain state. State treats the value as
+opaque JSON; it reads no note-specific fields. Zero through 2^53−1 is accepted,
+explicit null is not. Omitting the field preserves ordinary puts. Revision/generation
+conflicts take precedence over expiry.
 
-Revision/generation conflicts take precedence over expiry. State samples its
-clock under the lock and again after syncing temporary output, immediately
-before rename. At or after the deadline it returns a known failure, cleans the
-temporary output and leaves stored value, revision, generation and last writer
-unchanged. Lock contention still refuses. Other uncertain IO outcomes retain
-their existing classification.
-
-The failed value contains exactly `code: "write_deadline_elapsed"`,
-`checked_at_ms`, `generation` and the unchanged value-free record summary.
-Key/revision must match the request; a conditioned generation must also match.
-The recorded checked time must meet the deadline. Recovery validates those
-recorded timestamps, never today's clock. Success retains its ordinary shape;
-an interrupted write without a receipt stays unknown. The final clock sample
-is a decision boundary, not a real-time syscall-completion guarantee or a
-defense against wall-clock rollback. Never remove a deadline for automatic retry.
+State samples its clock under the lock and after syncing staged output immediately
+before rename. At/after deadline it removes that output and returns known
+`write_deadline_elapsed`, leaving value/revision/generation/last writer unchanged.
+The failed value contains exactly code, `checked_at_ms`, generation, and unchanged
+value-free record summary. Request key/revision and any conditioned generation must
+match; recorded checked time meets the deadline. Recovery validates recorded time,
+not today's clock. Interrupted IO without a receipt remains unknown. This decision
+boundary is neither a realtime syscall guarantee nor protection against wall-clock
+rollback. Never drop the condition for an automatic retry.
 
 ## Page and bind storage deliberately
 
-List/scan accept a key-or-null `after`, integer-or-null generation and limit
-1..16. A pinned generation makes concurrent writes conflict on later pages.
-Scans allow sixteen records and 12000 encoded array bytes. Byte-limited pages
-may be shorter, with `next` at the last returned key if more remain. Every
-admitted value fits, so nonterminal pages advance. Null `next` describes that
-read's remaining range, not an immutable namespace.
+List/scan accept key-or-null `after`, integer-or-null generation, and limit 1..16.
+Pinned generations detect writes between pages. Full scan arrays allow sixteen
+records/12000 encoded bytes. Byte-limited pages can be shorter; nonterminal pages
+advance with `next` at the last returned key. A null cursor ends that read's range,
+without making the namespace immutable.
 
-Without a logical binding, namespace identity includes instance, artifact,
-configuration-source path hash, scope and applicable canonical project/session.
-Artifact or configuration moves therefore isolate the legacy store. Operator
-trust may explicitly share reviewed state with this trust-record fragment:
+Legacy namespace identity binds instance, artifact, configuration-source path hash,
+scope, and applicable canonical project/session. A reviewed operator trust fragment
+can share state independently of exact code/source location:
 
 ```json
 {"state_bindings":[{"version":1,"instance":"notes","id":"reviewed-notes","scopes":["project"]}]}
 ```
 
-Bindings are unique by instance, at most eight, with state-key IDs and distinct
-nonempty scopes. The selected identity pins the binding without its instance.
-Namespace descriptor v2 uses binding ID, scope and applicable project/session,
-intentionally sharing authority across reviewed artifacts. `host.state.bound`
-refuses activation without a binding.
+There are eight unique instance bindings, state-key-shaped IDs, and nonempty distinct
+scopes. Activation pins the binding without its instance; namespace v2 uses binding
+ID/scope/applicable project/session. This deliberately shares reviewed authority
+across artifacts. `host.state.bound` requires the binding plus read grant.
+Bindings grant no operations, migration, cross-scope access, or executable trust.
+Project instances cannot receive them or replace a bound operator instance. Workers
+choose no paths. Operator scope spans projects, project scope binds the workspace,
+and session scope adds durable Session ID.
 
-Bindings do not grant operations, cross scope boundaries, migrate schemas or
-relax executable identity. Project instances cannot receive them or replace a
-bound operator instance. Workers choose neither paths nor namespaces. Operator
-scope spans projects; project scope binds the working directory; session scope
-also binds its durable ID.
+State lives privately under `IPSE_HOME/extension-state-v1/NAMESPACE/state.json`,
+with 256 records including tombstones and a 1-MiB file. Native persistent-inode
+locks protect CAS; synced temporary files and same-directory rename publish changes.
+Corrupt/duplicate-key/oversized/symlinked/permissive storage refuses without repair.
+Orphan pending files are inert. Capacity refusal is known `extension_state_quota`
+with unchanged generation/value-free summary and previous writer, after matching
+revision/generation. Unconfirmed IO remains unknown. A filesystem completion owner
+retains the native lock through validation/sync/rename after caller cancellation;
+Session quiescence can wait. Cancellation does not undo an admitted rename.
 
-Storage is private `IPSE_HOME/extension-state-v1/NAMESPACE/state.json`, allowing
-256 records including tombstones and a 1 MiB file. Persistent-inode native locks
-protect CAS; synced temporary files and same-directory rename publish updates.
-Corrupt, duplicate-key, oversized, symlinked or permissive storage refuses
-without repair. Orphan `.pending-*` files are inert.
+## Suspend without keeping a worker alive
 
-A put/delete exceeding record, file or revision quota fails before publication
-with `code: "extension_state_quota"`, unchanged generation and value-free record
-summary. Requested revision and any generation must still match; the summary
-retains the previous writer. This is a definite refusal. Unconfirmed IO without
-that guarantee remains unknown. A filesystem completion owner keeps the native
-lock through admitted validation/sync/rename after caller cancellation. Cleanup
-may wait for completion, retaining the Session lock; cancellation cannot undo it.
+A callback's inner request can ask a durable question:
 
-## Suspend with a durable question
-
-The lab workflow requests clarification before its separately approved file write:
-
-```elixir
-{:ok,
- %{"api_version" => 1, "kind" => "host_call",
-   "request" => %{
-     "op" => "operator.question",
-     "arguments" => %{"questions" => [
-       %{"id" => "choice", "prompt" => "Which note should be written?",
-         "kind" => "single", "recommended" => "first",
-         "options" => [%{"id" => "first", "label" => "First note"},
-                       %{"id" => "second", "label" => "Second note"}]}
-     ]},
-     "checkpoint" => %{"path" => "result.txt"}
-   }},
- state}
+```json
+{"op":"operator.question","arguments":{"questions":[{"id":"choice","prompt":"Which note should be written?","kind":"single","recommended":"first","options":[{"id":"first","label":"First note"},{"id":"second","label":"Second note"}]}]},"checkpoint":{"path":"result.txt"}}
 ```
 
-Requests have exactly `op`, `arguments` and `checkpoint`. Arguments use the
-[operator question schema](operator-questions.md): at most three questions,
-single/multiple/text kinds, unique IDs and up to eight options. Recommendations
-are not implicit answers. Checkpoints are JSON objects up to 8 KiB within the
-proposal's SDK bounds. Persist enough domain data to continue after `init/1`
-runs again; never serialize an Erlang heap.
+The exact fields are op/arguments/checkpoint. Arguments use the
+[question contract](architecture.md#suspend-for-a-question); checkpoints are JSON
+objects within 8 KiB and the enclosing SDK bound. Save enough data for fresh
+initialization, not an Erlang heap. Availability/lease/schema/capability/action-budget
+checks precede intent. Host confirms worker cleanup before Session commits the
+question and emits it. No worker waits on terminal input. Headless/child requests
+stop without inventing answers.
 
-Session checks availability, lease, schema, capability and remaining action
-budget before syncing intent. Host confirms worker cleanup before Session saves
-`extension_question` and emits `{:question, operation_id, arguments}`. No worker
-waits for input. Unavailable headless/child questions stop without choosing.
+Session checks current ID, complete answers, live identity, and checkpoint/answer
+size. Invalid/stale/oversized replies leave journal/wait unchanged. A valid reply
+syncs answered result plus unique continuation intent before new initialization.
+The continuation receives saved checkpoint and answers under
+`outcome.value.answers`. It can construct the next request from those values.
+Answering approves no file/model transfer, and prior operation counts carry forward.
+Native model-selected tools keep their original call/result identities; commands
+need no inference to ask questions.
 
-`Session.answer/3` checks the current ID, complete answers, live identity and
-checkpoint/answer envelope. Invalid, stale or oversized answers leave the
-question and journal unchanged. A valid answer syncs an `answered` result and
-unique continuation intent before a fresh worker can initialize and receive
-`handle("host.actions", payload, state)`. That payload includes the saved
-checkpoint. For example, extract the selected ID from
-`payload["outcome"]["value"]["answers"]["choice"]` and construct the next request
-using `payload["checkpoint"]["path"]`.
+## Declare the value contract for a service
 
-An answer authorizes continuation, not a write or provider transfer. The next
-`tool.call` still needs approval, and previous action counts carry forward.
-A native model-selected extension tool retains its real original call/result;
-commands/services need no model inference to ask a question.
+The lab's memory caller uses a selected lookup worker. Its manifest requirements
+include this fragment:
 
-## Preserve finite work and unknown outcomes
+```json
+{"version":1,"services":[{"alias":"search","contract":1,"arguments_schema":{"type":"object"},"result_schema":{"type":"object"}}]}
+```
 
-Ordinary invocations allow sixteen host calls with five-second initialization/
-callback bounds. `host.state.scan` extends only get/list/scan through step 512;
-`host.usage.scan` separately extends accounting reads through step 10000;
-`host.results` extends same-invocation result reads through step 512. Extended
-reads have a two-minute boundary-admission deadline. Combining grants does not
-extend another family's allowance or permit a late effect.
+At most eight unique lowercase aliases permit 32 characters. Both schemas use the
+bounded object subset. Nonempty requirements need `host.services`; that grant
+without requirements refuses. Missing declarations normalize to empty. Executable
+description must match normalized capabilities/exports/requirements.
 
-Explicit `host.actions.mixed` instead allows 512 reads and sixteen other calls,
-528 total. Its read set is `state.get`, `state.list`, `state.scan`, `history.read`,
-`usage.read`, `usage.children`, `usage.child.read` and `effect.result.read`.
-Each still needs its own grant. This permits an approved effect after a long
-read without changing legacy budgets. Operation-specific deadlines and output
-limits still apply.
+The containing operator trust record supplies the route:
 
-Receipts bind invocation, operation, step, identity, namespace, request, approval
-and outcome digest. Final results bind the ordered chain. Pure restoration
-rejects altered, orphaned, reordered, duplicated or unknown-continuing chains
-before repair. Pending questions restore their checkpoint/parent/steps without
-code execution; native-tool restoration removes only the corresponding generated
-unknown placeholder. Event-job questions additionally retain their source-bound
-schedule and remaining declaration plan.
+```json
+{"service_bindings":[{"caller":"client","alias":"search","target":"retrieval","artifact":"TARGET_ARTIFACT_DIGEST","service":"query"}]}
+```
 
-Cancellation records a cancelled question result without an answer/continuation.
-An already started native effect remains unknown. Owner loss preserves a pending
-question; interruption after answer/continuation admission instead restores idle
-with unknown work, without offering the answer or starting code again. Expiry
-cannot be overridden by answering. Inspect operation IDs and stored revisions
-before explicit recovery. Hashes establish consistency, not same-user authenticity.
+Substitute the selected target's real reference. At most 64 unique caller/alias
+bindings are allowed. Project trust grants none. The target must already be
+imported/trusted/selected. Requirement schemas must equal service schemas and
+contract must be one. Missing/extra active routes, unavailable targets, mismatch,
+and cycles refuse before initialization. Inactive routes remain inert. Child
+subsets still need targets and child ceilings. Catalog's service graph binds each
+caller's sorted routes to complete downstream activation identities.
 
-State is private data until explicitly published. Deletion removes its current
-value, not journal history or previous provider transfers. Domain schema, TTL,
-export and deliberate migration belong to the extension.
+A callback requests the bound alias, without selecting a new target:
 
-## Exercise stale work and both sides of a pause
+```json
+{"op":"service.call","alias":"search","arguments":{"text":"explicit query"},"checkpoint":{"next":"use_result"}}
+```
+
+The checkpoint allows 8 KiB in the continuation envelope. This is an other-call,
+not an extended read. Session checks both leases and commits intent before target
+startup. A separate owned target receives normal invocation fields plus
+`service_contract: 1` and `parent_invocation_id`; its ID is the operation ID.
+Five-second initialization/callback bounds remain. The routed target returns only
+a schema-valid inline result, without nested host calls/questions/services/output.
+After cleanup, the caller receives `result` plus host-made service provenance.
+Domain fields remain untrusted. The caller can then request its own permitted work.
+Direct standalone services use their own invocation contract.
+
+Restore validates route/arguments/schema/receipt/chain before repair, without
+starting either worker. Owner death/cancellation stops owned work; interruption
+stays unknown, and target expiry can refuse admission after callback execution.
+A valid returned value does not prove arbitrary trusted code had no OS effects.
+
+## Publish a literal excerpt with its receipt
+
+`host.context` allows this inner request:
+
+```json
+{"op":"context.publish","items":[{"id":"project-note","version":"revision-1","text":"Use small reviewed changes.","priority":10,"source":{"kind":"assertion","uri":"fixture:preferences"}}]}
+```
+
+Publication replaces this instance's set atomically; empty clears only that set.
+Sets are Session-local, without child/fresh-session inheritance. There are eight
+unique lowercase IDs of 32 characters, version labels of 128 bytes, text of 2048
+bytes, priority 0..100, and nullable unfetched assertion URIs of 1024 bytes.
+All sets render within 16 KiB, sorted by descending priority then instance/ID.
+Malformed/duplicate/oversized values refuse; `context_refused` preserves old sets
+without truncating, evicting peers, or discarding required instructions.
+
+For recorded provenance, replace assertion source with an actual successful action:
+
+```json
+{"kind":"receipt","operation_id":"00000000000000000000000000000000","path":["result","text"]}
+```
+
+Use its real ID. The path addresses outcome `value`, at most eight object-key/array-
+index segments, keys 128 bytes and indices 0..255. Empty selects the whole value.
+Text must be a literal substring of that selected string. Missing/failed/unknown/
+ambiguous/foreign-invocation receipts refuse. No lookup occurs. Provenance binds
+publisher/activation, publishing operation, and source receipt digest. Assertions
+have null receipt digest; URL/version labels remain unverified claims.
+
+The committed outcome precedes installation and includes admitted items/provenance
+plus full-map digest. Each main request saves `extension_context_snapshot` after
+admission/before dispatch, binding request/map/exact rendered bytes. A labelled
+user-role reference carries it; core rules remain system text. Summary requests
+omit this extra context. Before-request jobs can publish for that request;
+after-turn work affects later requests. Historical interpretation uses its saved
+request snapshot. Idle resume restores sets without workers/retrieval; changed
+proof chains refuse before repair. Diagnostics show counts/bytes/digest, not text.
+Clearing or forgetting erases no prior journal or provider transfer.
+
+## Use explicit Memory as the domain exercise
+
+[`extensions/bundled/memory.ex`](../../extensions/bundled/memory.ex) contains Memory,
+WorkingMemory, and Records. The host sees generic State requests, not special note
+fields. WorkingMemory limits initialization to session scope. Persistent Memory
+requires reviewed project/operator binding. Registry compares declared scope with
+the binding ceiling before executable activation/revalidation. Neither automatically
+captures prompts, calls models, reads history, or publishes context.
+
+Remember reads actual storage revision/logical source generation and proposes a
+separately approved put. Generations version one literal assertion; updates must
+strictly increase them. Conflicts do not retry. After reading an active target,
+remember and active import carry the TARGET's expiry as `write_before_ms`, never
+the replacement's later expiry. Delayed approval after expiry becomes domain
+`source_expired` without another write. Inspect the real renewal/delayed-approval/
+resume controls before changing that translation.
+
+Version-2 active notes bind literal source/digest, positive generation,
+`task_card`/`project_fact` kind, title/text/provenance, creation≤update<expiry, and up to eight
+literal dependencies. Bounds are source/dependency 512 bytes, title 128, text 2048,
+provenance 512, and encoded value 8 KiB. IDs are not entity resolution or path
+aliases. Retention is checked at write/import; configuration changes do not rewrite
+old expiry. Clock rollback remains a limitation.
+
+Forget writes minimal suppression, not generic deletion. Revision CAS blocks
+prepared stale work; domain suppression also blocks reread-and-recreate. Suppression
+consumes quota and is not silently collected. Recall scans one fixed generation,
+starts exclusion from expired/suppressed/unmigrated/orphan-derived records, and
+propagates through dependencies before lexical ranking. Word overlap ranks up to
+five with deterministic key ties and exact byte-span/text-hash provenance. It
+synthesizes no answer and proves no semantic support. Inspect starts with the actual
+get revision, then scans that generation; ineligible data becomes metadata-only,
+without a read-triggered rewrite.
+
+Export preserves every stored value, including expired and transitively blocked
+active notes. Missing parents may arrive later or approved updates may remove a
+dependency; turning hidden values into suppression would change restoration.
+Inventory omits text/title/provenance. Collection explicitly replaces expired or
+eligible direct-derivative content; traverse dependency edges for further collection
+and explicitly forget orphan IDs. A missing target at revision zero returns
+not-found without writing suppression, before cause lookup; mismatched revision
+still conflicts. Explicit forget of a missing ID deliberately consumes a slot.
+
+Import merges one approved record with target CAS. Suppression wins; stale generations,
+unknown formats, and excessive retention refuse. Expired active import can hide a
+live target immediately without renewing it. Valid version-one import can turn a
+live version-two target legacy/hidden until explicit migration. An expired,
+suppressed, or unmigrated target cannot be renewed by active import/remember.
+Incoming suppression still wins. Migration preserves generation/expiry/provenance,
+so it cannot make expired data visible. Restore fresh namespaces from complete
+exports with suppression first; a partial old backup cannot prove no forget occurred.
+
+Memory state is private until returned. Recall/tool history and private scan receipts
+can retain even nonselected data. TTL/forget/collection erases none of that history
+or prior provider transfer. Close affected sessions and start fresh without that
+text in handoffs when needed. Secure erasure, cross-session revocation, backup
+removal, and undoing disclosure are not implemented.
+
+## Keep action chains finite and recovery inert
+
+Ordinary calls allow sixteen steps with five-second callback/init bounds. State
+scan extends only state reads through 512; result reads through 512 and accounting
+through 10000 have their own grants. Extended reads admit no new work after two
+minutes. Combining them extends no other family or late effect.
+`host.actions.mixed` permits 512 reads plus sixteen other calls, 528 total. Its read
+set is state get/list/scan, history, own/child usage, and effect-result reads.
+Every operation still needs its grant, deadlines, and output limits.
+
+Receipts bind invocation/operation/step/identity/namespace/request/approval/outcome;
+final results bind their ordered chain. Altered/orphan/reordered/duplicate/unknown-
+continuing chains refuse before repair. Pending questions restore parent/checkpoint/
+counts, without code or runtime handles. Cancellation closes without answer;
+owner loss preserves the wait. Loss after answer/continuation intent restores idle
+unknown work rather than offering or executing the answer again. Expiry cannot be
+overridden by answering. State deletion changes current value, not retained history.
+
+## Exercise stale work, provenance, and both sides of a pause
 
 ```sh
-mix test test/extensions_state_test.exs test/extensions_state_scan_test.exs test/extensions_state_binding_test.exs
-mix test test/extensions_invocation_test.exs test/extensions_event_job_test.exs
+mix test test/ipse/extension/state_test.exs test/ipse/extension/state_scan_test.exs test/ipse/extension/state_binding_test.exs
+mix test test/ipse/extension/services_test.exs test/ipse/extension/contributions_test.exs
+mix test test/ipse/extension/invocation_test.exs test/ipse/extension/event_job_test.exs
+mix test test/extensions/bundled/memory_test.exs test/extensions/bundled/memory_session_test.exs
 ```
 
-Trace a read, concurrent delete and stale put: it must conflict without restoring
-the deleted value. Compare bytes around an idle pending-question resume, then
-answer explicitly and find exactly one new continuation intent. Add a denied
-write after the answer to prove clarification grants no mutation authority.
-Use [conformance scenarios](extensions.md#turn-the-hook-into-a-repeatable-scenario)
-with explicit answers for your own workflow. An interrupted intent must never
-produce IO merely because the journal reopened.
+Trace read→concurrent forget→stale put, which must not resurrect content. Compare
+pending-question resume bytes, then find one continuation after explicit answer
+and a separately denied write. Change a service schema and require pre-start refusal;
+change one excerpt character and require atomic context refusal. Follow export and
+fresh import through missing parents, forgotten ancestors, expiry, and later
+approved dependency removal. Domain fixtures prove policy; real Session tests
+prove approval/ownership/recovery. Use [conformance](extensions.md#turn-the-behavior-into-a-conformance-scenario)
+and the [installed lab](testing.md) for your own complete workflow.

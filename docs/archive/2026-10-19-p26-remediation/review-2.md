@@ -5,7 +5,7 @@ The original report body follows unchanged. It reviewed
 `b1dc82094afdae8708cdb45dea16beb6c948f88b`; later repairs and acceptance
 belong in the [remediation record](index.md). Current user procedures are in the
 [memory manual](../../operator/memory.md), contributor guidance in the
-[memory training chapter](../../developer/memory.md), and status in the
+[memory training chapter](../2026-10-22-before-structural-consolidation/docs/developer/memory.md), and status in the
 [plan](../../plan.md#p26-optional-working-and-long-term-memory).
 
 ---
