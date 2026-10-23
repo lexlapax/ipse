@@ -116,6 +116,44 @@ defmodule Ipse.MCP.SessionTest do
     assert File.read!(Path.join(ctx.root, "calls.log")) == "write_note\n"
   end
 
+  for scenario <- ~w(redaction_error redaction_success) do
+    test "#{scenario}: ordinary results with redaction collisions stop without disclosure or replay",
+         ctx do
+      scenario = unquote(scenario)
+      File.write!(Path.join(ctx.root, "response-text"), "qzz")
+
+      options = [
+        scenario: scenario,
+        approval: :allow,
+        call_count: 2,
+        env: %{"FIRST_TOKEN" => "q[redacted]", "SECOND_TOKEN" => "zz"}
+      ]
+
+      pid = session(ctx, options)
+      id = Ipse.Session.info(pid).id
+      assert :ok = Ipse.Session.prompt(pid, "write")
+      assert_receive {:model_input, _, _}, 5000
+      assert_receive {:ipse, ^pid, {:done, :error}}, 5000
+      assert File.read!(Path.join(ctx.root, "note.txt")) == "approved fixture 1"
+      assert File.read!(Path.join(ctx.root, "calls.log")) == "write_note\n"
+      assert {:ok, events} = Ipse.Journal.load(ctx.dir, id)
+      assert {:ok, _} = Ipse.Session.restore_context(events)
+
+      outcomes =
+        for e <- events,
+            get_in(e, ["message", "role"]) == "tool",
+            do: get_in(e, ["message", "ipse_tool_outcome", "status"])
+
+      assert outcomes == ["unknown", "not_started"]
+      refute Jason.encode!(events) =~ "q[redacted]"
+      refute_receive {:model_input, _, _}
+      assert :ok = Ipse.Session.close_confirmed(pid)
+      resumed = session(ctx, options, id)
+      assert Ipse.Session.info(resumed).phase == :idle
+      assert File.read!(Path.join(ctx.root, "calls.log")) == "write_note\n"
+    end
+  end
+
   test "headless policy denies all external tools and resume never replays completed calls",
        ctx do
     denied = session(ctx, approval: :deny)
@@ -469,7 +507,11 @@ defmodule Ipse.MCP.SessionTest do
             scenario
           ],
           "tools" => ["write_note"],
-          "env" => %{"PATH" => Path.join(to_string(:code.root_dir()), "bin") <> ":/usr/bin:/bin"},
+          "env" =>
+            Map.merge(
+              %{"PATH" => Path.join(to_string(:code.root_dir()), "bin") <> ":/usr/bin:/bin"},
+              Keyword.get(opts, :env, %{})
+            ),
           "timeout_ms" => 10_000
         }
       ]

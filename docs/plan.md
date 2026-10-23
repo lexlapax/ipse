@@ -552,8 +552,11 @@ then verified `ca5838b` with 1532 native-inclusive Linux tests, its exact packag
 and installed proof, and green Ubuntu/macOS hosted run 40014715937. It confirms
 acceptance and independently recomputes all published evidence. Its remaining P3
 MCP corners and documentation/record gaps are addressed in the accompanying
-follow-up, with separate verification in that record. Frozen outcomes and scores
-are unchanged.
+follow-up at `89151b6`, with separate verification in that record. The subsequent
+[internal whole-P27 adversarial audit](archive/2026-10-23-p27-final-review/internal-audit.md)
+also repairs shared MCP output admission and legacy public-argument/hash agreement.
+Its individual reviews, causal probes and final platform/package checks are
+recorded separately. Frozen outcomes and scores are unchanged.
 
 ### Final comparison policy
 

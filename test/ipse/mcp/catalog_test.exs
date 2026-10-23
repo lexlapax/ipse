@@ -133,6 +133,28 @@ defmodule Ipse.MCP.CatalogTest do
            ]
   end
 
+  test "resource and prompt redaction collisions publish no private content" do
+    selected = server(%{"FIRST_TOKEN" => "q[redacted]", "SECOND_TOKEN" => "zz"})
+
+    {:ok, client} =
+      ClientFixture.start_link(
+        resource_reply: {:ok, %{"contents" => [%{"uri" => "notes://guide", "text" => "qzz"}]}},
+        prompt_reply:
+          {:ok,
+           %{
+             "messages" => [
+               %{"role" => "user", "content" => %{"type" => "text", "text" => "qzz"}}
+             ]
+           }}
+      )
+
+    assert {:ok, [resource, prompt]} = MCP.discover_catalog(client, selected)
+    assert {:unknown, resource_text} = MCP.dispatch_catalog(client, resource, %{})
+    assert {:unknown, prompt_text} = MCP.dispatch_catalog(client, prompt, %{"topic" => "public"})
+    refute resource_text =~ "q[redacted]"
+    refute prompt_text =~ "q[redacted]"
+  end
+
   test "resource reads and prompt gets occur only on dispatch and preserve prompt roles" do
     {:ok, client} = ClientFixture.start_link([])
     assert {:ok, [resource, prompt]} = MCP.discover_catalog(client, server())

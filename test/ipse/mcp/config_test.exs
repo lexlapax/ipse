@@ -107,8 +107,28 @@ defmodule Ipse.MCP.ConfigTest do
     assert Config.fingerprint_version(selected, 1).fingerprint == expected
     assert Config.fingerprint_version(selected, 2).fingerprint == selected.fingerprint
     assert Config.manifest(selected).args == ["--k=[redacted]"]
-    assert Config.manifest(Config.fingerprint_version(selected, 1)).args == ["--k=[redacted]"]
+    legacy = Config.fingerprint_version(selected, 1)
+    assert Config.manifest(legacy).args == ["--k=x[redacted]"]
+
+    assert legacy.fingerprint ==
+             Config.public_fingerprint(
+               Config.manifest(legacy)
+               |> Jason.encode!()
+               |> Jason.decode!()
+             )
+
     assert Config.redact("xabc", Config.fingerprint_version(selected, 1)) == "[redacted]"
+  end
+
+  test "public argument redaction cannot create another server's private value", ctx do
+    entries = [
+      server() |> Map.put("args", ["qzabc"]) |> Map.put("env", %{"TOKEN" => "abc"}),
+      server() |> Map.put("id", "second") |> Map.put("env", %{"TOKEN" => "zabc"}),
+      server() |> Map.put("id", "third") |> Map.put("env", %{"TOKEN" => "q[redacted]"})
+    ]
+
+    write(ctx.path, %{"servers" => entries})
+    assert {:error, "MCP configuration is invalid or unreadable."} = Config.load(ctx.path)
   end
 
   test "resources-only and prompts-only servers get stable bounded model IDs", ctx do

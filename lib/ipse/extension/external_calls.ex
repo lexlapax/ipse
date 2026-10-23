@@ -149,9 +149,7 @@ defmodule Ipse.Extension.MCPCall do
           persist_source(context, intent, text)
 
         {:tool_error, text} when is_binary(text) ->
-          if Config.contains_private?(text, descriptor.server),
-            do: @unknown,
-            else: tool_error(text)
+          tool_error(text)
 
         {:error, _} ->
           @refused

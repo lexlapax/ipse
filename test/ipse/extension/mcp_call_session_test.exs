@@ -249,6 +249,53 @@ defmodule Ipse.Extension.MCPCallSessionTest do
     assert :ok = Ipse.Extension.validate(Actions.resume(result))
   end
 
+  test "overlapping secrets retain a verifiable legacy binding through approval and idle resume",
+       ctx do
+    first =
+      Fixture.stdio_config(ctx.root)
+      |> Map.update!("args", fn args ->
+        List.update_at(args, -1, &("_ = <<\"xabc\">>, " <> &1))
+      end)
+      |> Map.put("env", %{"FIRST_TOKEN" => "abc"})
+
+    second = first |> Map.put("id", "other") |> Map.put("env", %{"SECOND_TOKEN" => "xabc"})
+    path = Path.join(ctx.root, "overlap-mcp.json")
+    File.write!(path, Jason.encode!(%{"servers" => [first, second]}))
+    assert {:ok, [selected | _] = servers} = Ipse.MCP.Config.load(path)
+    cfg = config(ctx, selected) |> Map.put(:mcp_servers, servers) |> Map.put(:approval, :ask)
+    fresh = start(ctx, cfg)
+    [header | initial] = events(ctx, fresh)
+    assert :ok = Session.close_confirmed(fresh)
+    legacy = Ipse.MCP.fingerprint_version(cfg, 1)
+
+    metadata =
+      header["metadata"]
+      |> Map.delete("mcp_fingerprint_version")
+      |> Map.put("mcp_servers", Ipse.MCP.fingerprints(legacy))
+
+    assert {:ok, id} = Journal.create(ctx.dir, metadata)
+    for event <- initial, do: assert(:ok = Journal.append(ctx.dir, id, event))
+    pid = start(ctx, cfg, id)
+    invoke(pid)
+    assert_receive {:ipse, ^pid, {:approval, ref, "extension:mcp.call", proposed}}, 10_000
+    public = proposed["effect_binding"]["server"]
+    assert Enum.any?(public["args"], &String.contains?(&1, "x[redacted]"))
+    assert public["fingerprint"] == Ipse.MCP.Config.public_fingerprint(public)
+    assert Fixture.calls(ctx.root) == 0
+    assert :ok = Session.approve(pid, ref, true)
+    done(pid)
+    assert Fixture.calls(ctx.root) == 1
+    assert {:ok, _} = Actions.restore(events(ctx, pid))
+    assert :ok = Session.close_confirmed(pid)
+    before = File.read!(Path.join(ctx.dir, id <> ".jsonl"))
+    discoveries = Fixture.discoveries(ctx.root)
+    resumed = start(ctx, cfg, id)
+    assert Session.info(resumed).phase == :idle
+    assert File.read!(Path.join(ctx.dir, id <> ".jsonl")) == before
+    assert Fixture.calls(ctx.root) == 1 and Fixture.discoveries(ctx.root) == discoveries
+    assert hd(events(ctx, resumed))["metadata"] == metadata
+  end
+
   test "a diagnostic that becomes a configured secret after redaction remains unknown", ctx do
     File.write!(Path.join(ctx.root, "error-text"), "qzz")
     entry = Fixture.stdio_config(ctx.root, "tool_error")

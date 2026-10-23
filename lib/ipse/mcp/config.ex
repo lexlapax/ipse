@@ -53,10 +53,20 @@ defmodule Ipse.MCP.Config do
   def prompt_id(server_id, name), do: "mcp__#{server_id}__p_#{digest(name)}"
 
   def manifest(server) when is_map(server) do
+    redactor =
+      if Map.get(server, :fingerprint_version, 1) == 1,
+        do: Map.delete(server, :redactions),
+        else: server
+
+    args = Enum.map(server.args, &redact(&1, redactor))
+
+    if contains_private?(args, server),
+      do: raise(ArgumentError, "MCP public arguments contain configured private values.")
+
     base = %{
       id: server.id,
       command: server.command,
-      args: Enum.map(server.args, &redact(&1, server)),
+      args: args,
       tools: Map.get(server, :tools, []),
       resources: Map.get(server, :resources, []),
       prompts: Map.get(server, :prompts, []),

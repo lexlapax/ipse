@@ -46,6 +46,12 @@ action outcome. Exercise both transports in
 `test/ipse/extension/mcp_call_session_test.exs`; its error fixture writes a marker
 before returning the error, then verifies that idle resume does not repeat it.
 
+Shared MCP response admission rechecks tool text after redaction, before returning
+either success or tool error. Resource and prompt rendering applies the same
+private-value check to the complete published text. A collision returns unknown
+with no server text, stopping the batch. This belongs at the shared publication
+boundary so ordinary and extension calls cannot diverge.
+
 Extensions use the separate [MCP host-call contract](extension-effects.md#bind-and-call-an-external-mcp-item).
 Their action intent replaces the model tool's `tool_started` record; routing,
 descriptor rediscovery, transport ownership and unknown-outcome rules are shared.
@@ -65,9 +71,11 @@ separate `ipse.mcp.tool` and `ipse.mcp.catalog` tags. The public-field validator
 and loader share Config's fingerprint implementation.
 
 Load-time and resumed version-two hashes use the same cross-server redaction
-set. Legacy hashes use only the original server's secrets, as their writer did;
-output redaction still covers every configured server's secrets. The overlapping
-secret controls pin this distinction without exposing environment values.
+set. Legacy hashes and public arguments use only the original server's argument
+redaction rule, as their writer did. A final check rejects public arguments that
+still contain any configured private value. Response redaction still covers every
+configured server's secrets. The overlapping-secret controls exercise approval,
+dispatch, saved binding validation and idle resume, not just opening a journal.
 
 An absent metadata version means legacy version one; an explicit one is refused
 because no writer produces it. Only an explicit integer two selects the new format.
@@ -83,6 +91,8 @@ Run these controls when changing either format:
 
 ```sh
 mix test test/ipse/mcp/config_test.exs test/ipse/mcp/session_test.exs \
+  test/ipse/mcp/catalog_test.exs test/ipse/mcp/catalog_session_test.exs \
+  test/ipse/mcp/http_test.exs \
   test/ipse/extension/effect_result_test.exs \
   test/ipse/extension/mcp_call_session_test.exs
 ```

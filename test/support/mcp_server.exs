@@ -178,6 +178,16 @@ loop = fn loop, changed ->
                   "error" => %{"code" => -32_000, "message" => "private fixture detail"}
                 })
 
+              scenario in ["redaction_error", "redaction_success"] ->
+                write.(%{
+                  "jsonrpc" => "2.0",
+                  "id" => id,
+                  "result" => %{
+                    "content" => [%{"type" => "text", "text" => File.read!("response-text")}],
+                    "isError" => scenario == "redaction_error"
+                  }
+                })
+
               scenario == "is_error" ->
                 write.(%{
                   "jsonrpc" => "2.0",

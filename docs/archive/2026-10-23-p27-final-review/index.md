@@ -6,7 +6,10 @@ are retained. It confirms optional-package acceptance with no P1 or P2, a passin
 1532-test native-inclusive Linux suite, an exact package/installed proof and green
 [hosted run 40014715937](https://github.com/lexlapax/ipse/actions/runs/40014715937).
 Those are the external reviewer's checks of that subject, not fresh checks of the
-follow-up. The enclosing commit identifies the repairs below.
+follow-up. The initial repairs below are implemented in
+`89151b6e049e1f7c8b2d396ea42f7c788e155955`; their receipt remains unchanged.
+The later [internal whole-P27 audit](internal-audit.md) records three reviewers,
+additional causal findings, their integrated repairs and separate final checks.
 
 Current procedures belong to the [MCP manual](../../operator/mcp.md),
 [Corpus manual](../../operator/corpus.md), [MCP training](../../developer/mcp.md)
@@ -65,3 +68,13 @@ The primary Serenity checkout, its untracked settings and existing services are
 left untouched. The earlier macOS package was copied and hash-verified before
 the new build replaced its generated path; the receipt retains that copy's identity.
 No fresh macOS sandbox-specific run or local OTP 27 runtime check is claimed.
+
+## Internal adversarial follow-up
+
+The [internal audit](internal-audit.md) preserves its common brief and individual
+reports, including original findings and post-fix assessments. It closes the
+ordinary/catalog post-redaction privacy gap and legacy public-argument/hash
+disagreement without changing frozen evaluation evidence. The owner selected
+unknown-and-stop when a server-error diagnostic remains private after redaction.
+The [internal receipt](internal-verification.json) binds that follow-up's exact
+source and checks; the table above continues to describe 89151b6 only.

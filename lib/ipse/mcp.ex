@@ -350,6 +350,7 @@ defmodule Ipse.MCP do
 
       cond do
         not String.valid?(text) or byte_size(text) > 65_536 -> unknown()
+        Config.contains_private?(text, server) -> unknown()
         result["isError"] == true -> {:tool_error, text}
         true -> {:ok, text}
       end
@@ -739,9 +740,10 @@ defmodule Ipse.MCP do
          body)
       |> Config.redact(server)
 
-    if String.valid?(result) and byte_size(result) <= @content_limit,
-      do: {:ok, result},
-      else: unknown_catalog()
+    if String.valid?(result) and byte_size(result) <= @content_limit and
+         not Config.contains_private?(result, server),
+       do: {:ok, result},
+       else: unknown_catalog()
   end
 
   defp valid_binding(%{server: server, source: source, input_schema: schema})
