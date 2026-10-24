@@ -28,7 +28,7 @@ requirement; authority, recovery and correctness regressions remain unacceptable
 | P29 WP2 | Shared server and adapter conformance tests | Focused and complete Ubuntu/macOS matrix pass ([local receipt](p29-wp2-verification.json), [hosted receipt](p29-wp2-hosted.json)) |
 | P29 WP3 | Pinned OpenRouter and explicit loopback compatible adapter | Implemented; focused/conformance/owned-extension checks pass ([receipt](p29-wp3-verification.json)); full/platform gates pending |
 | P29 WP4 | Native Gemini, signed continuation and canonical accounting | Implemented; [fixtures](p29-wp4-verification.json) and [live text/tool](p29-live-checkpoint.json) pass; final combined/platform gates pending |
-| P29 WP5 | Registry-driven doctor/setup and coherent provider manuals | Pending |
+| P29 WP5 | Registry-driven doctor/setup and coherent provider manuals | Implemented; explicit new-route prompts, private profile writes and preservation controls pass; final combined gates pending |
 | Auditor handoff | Requirement matrix, exact commits/checks, exclusions and commands | Pending |
 
 Release publication, real account probes and a genuinely unassisted fresh-user
@@ -362,3 +362,22 @@ all independent installed proofs. This closes the earlier formatter repair gate
 for setup/lifecycle/registry/shared fixtures; it does not accept later adapters.
 The final manuals, new-route guided setup, RC rehearsal, fresh-operator walkthrough
 and auditor requirement matrix remain open.
+
+## P29 WP5
+
+Guided setup now collects and previews OpenRouter's required upstream and explicit
+collection policy, and a compatible server's required loopback URL. Gemini,
+OpenRouter and compatible routes have no implicit model choice. The registry
+supplies menus, billing labels, defaults, credentials and doctor metadata probes.
+Profiles admit native route values before any preview/write. Routes requiring
+extra fields or an endpoint get a new selected `setup_PROVIDER` profile. Existing
+main profiles require matching requested fields; collisions and route changes
+refuse without backups or writes. Existing role/profile data stays preserved.
+
+The complete CLI suite passes 83 controls, seed 713138, including interactive
+model re-prompts, route questions, exact previews, save/cancel, native credential
+sources, loopback refusal and preserved-profile collision controls. The provider
+chapters now teach those choices alongside manual profiles and native continuation
+limits. This is a tested implementation checkpoint; final full/native, installed
+and exact-source platform gates remain open. The live plan also prints compiled
+build identity for the final exact-commit repeat.

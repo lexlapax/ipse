@@ -68,6 +68,14 @@ proposal to catch environment or profile conflicts before saving. The pure
 preview seam belongs in Config because copying resolution into a CLI writer
 would create a second admission policy.
 
+Setup's provider menu, labels, defaults and credential source come from the
+registry. Route prompts collect OpenRouter's upstream/data policy or a compatible
+server's loopback URL. `Profiles.validate_profile/1` admits that complete route
+before preview. Settings-only choices keep the ordinary settings shape; route
+fields or an endpoint require a new selected `setup_PROVIDER` profile. An existing
+main profile is reused only when its requested fields agree. Name collisions and
+route changes refuse without modifying old profiles, roles or backup bytes.
+
 `CLI.Setup` owns prompts, exact preview and explicit write consent. It preserves
 unowned fields, compares the current file before mutation, and creates an exclusive
 timestamped backup on replacement. `PrivateFile.write_atomic/3` creates missing

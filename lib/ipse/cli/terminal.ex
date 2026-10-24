@@ -89,6 +89,8 @@ defmodule Ipse.CLI.Terminal do
   --resume ID                          Resume a saved session
   --yes                                Allow mutations, shell, configured MCP, and enabled delegation
   --base-url URL                       API endpoint root (API/Ollama only)
+  --upstream SLUG                      setup only: pinned OpenRouter upstream
+  --data-collection deny|allow          setup only: OpenRouter policy (default deny)
   --state-dir PATH                     Session directory
   --json                               sessions: id/provider/model/cwd; version/doctor: structured facts
   --probe-provider                     doctor only: bounded GET reachability checks, no inference

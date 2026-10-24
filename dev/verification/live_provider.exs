@@ -42,6 +42,7 @@ defmodule Ipse.Development.Verification.LiveProvider do
          {:ok, destination} <- Ipse.Provider.destination(config) do
       selected = %{
         "event" => "live_provider_plan",
+        "build" => Ipse.build_info(),
         "provider" => provider,
         "model" => config.model,
         "upstream" => config[:upstream],

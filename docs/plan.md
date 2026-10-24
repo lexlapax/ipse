@@ -661,13 +661,16 @@ dependencies.
 [`provider registry`](../lib/ipse/provider/registry.ex) now supplies configuration,
 profiles, credentials, billing, accounting, capability, setup and diagnosis facts.
 Pre-refactor fixtures captured from `dd510a7` and 312 focused checks pass; final
-native baseline (1601) and installed checks pass; hosted verification is pending.
+native baseline (1601) and installed checks pass. The subsequent shared-fixture
+commit `61ed1f9` passes the complete Ubuntu/macOS matrix.
 Shared conformance covers the existing adapters, pinned OpenRouter and explicit
 loopback-compatible servers. OpenRouter profile/continuation/accounting and owned
 extension tests pass; final combined gates remain pending. Native Gemini now passes
 protocol/conformance, session/child/SDK, compaction, accounting and resume fixtures.
 Explicit live Gemini and pinned OpenRouter text/tool checks pass separately;
-Gemini's omitted counters remain partial. Guided new-route setup remains pending.
+Gemini's omitted counters remain partial. Guided new-route setup now previews and
+saves explicit pins, data policy and local endpoints while preserving existing
+profiles. Final combined source, installed and hosted gates remain pending.
 Native embeddings stay limited to OpenAI/Ollama.
 The [P29 implementation brief](archive/2026-10-23-p28-p29-design/p29.md) breaks
 this scope into ordered work packages with files, tests and decisions.

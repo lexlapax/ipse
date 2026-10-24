@@ -243,6 +243,179 @@ defmodule Ipse.CLI.SetupTest do
     assert File.read!(c.path) == raw
   end
 
+  test "OpenRouter setup previews and saves the exact upstream policy in a selected private profile",
+       c do
+    previous = System.get_env("OPENROUTER_API_KEY")
+    System.put_env("OPENROUTER_API_KEY", "setup-router-private")
+
+    on_exit(fn ->
+      if previous,
+        do: System.put_env("OPENROUTER_API_KEY", previous),
+        else: System.delete_env("OPENROUTER_API_KEY")
+    end)
+
+    argv = [
+      "setup",
+      "--cwd",
+      c.cwd,
+      "--provider",
+      "openrouter",
+      "--model",
+      "org/model",
+      "--upstream",
+      "openai"
+    ]
+
+    output = capture_io(fn -> assert Ipse.CLI.run(argv) == 0 end)
+    assert output =~ "\"upstream\": \"openai\""
+    assert output =~ "\"data_collection\": \"deny\""
+    refute output =~ "setup-router-private"
+    refute File.exists?(c.home)
+
+    capture_io(fn ->
+      assert Ipse.CLI.run(argv ++ ["--data-collection", "allow", "--write"]) == 0
+    end)
+
+    document = Jason.decode!(File.read!(c.path))
+    assert document["roles"]["main"] == "setup_openrouter"
+
+    assert document["profiles"]["setup_openrouter"] == %{
+             "provider" => "openrouter",
+             "model" => "org/model",
+             "upstream" => "openai",
+             "data_collection" => "allow"
+           }
+
+    assert Bitwise.band(File.stat!(c.path).mode, 0o777) == 0o600
+    {:ok, effective} = Ipse.Config.resolve(c.cwd, c.home, [project_config: false], %{})
+    assert effective.execution.upstream == "openai"
+    assert effective.execution.data_collection == "allow"
+    before = File.read!(c.path)
+
+    error =
+      capture_io(:stderr, fn ->
+        capture_io(fn -> assert Ipse.CLI.run(argv ++ ["--replace", "--write"]) == 1 end)
+      end)
+
+    assert error =~ "preserves the existing main profile"
+    assert File.read!(c.path) == before
+    assert Path.wildcard(c.path <> ".bak-*") == []
+  end
+
+  test "local setup requires loopback and persists it; wrong route flags never grant inference",
+       c do
+    argv = ["setup", "--cwd", c.cwd, "--provider", "openai_compatible", "--model", "local"]
+
+    for extra <- [[], ["--base-url", "https://example.com/v1"]] do
+      capture_io(:stderr, fn -> assert Ipse.CLI.run(argv ++ extra ++ ["--write"]) == 1 end)
+      refute File.exists?(c.home)
+    end
+
+    capture_io(fn ->
+      assert Ipse.CLI.run(argv ++ ["--base-url", "http://127.0.0.1:8000/v1", "--write"]) == 0
+    end)
+
+    {:ok, effective} = Ipse.Config.resolve(c.cwd, c.home, [project_config: false], %{})
+    assert effective.execution.provider == "openai_compatible"
+    assert effective.execution.base_url == "http://127.0.0.1:8000/v1"
+
+    for command <- ["run", "chat", "doctor", "config"] do
+      assert capture_io(:stderr, fn ->
+               assert Ipse.CLI.run([command, "--upstream", "openai"]) == 1
+             end) =~ "require ipse setup"
+    end
+  end
+
+  test "interactive router prompts record both policy choices and never choose a model by default",
+       c do
+    previous = System.get_env("OPENROUTER_API_KEY")
+    System.put_env("OPENROUTER_API_KEY", "setup-router-private")
+
+    on_exit(fn ->
+      if previous,
+        do: System.put_env("OPENROUTER_API_KEY", previous),
+        else: System.delete_env("OPENROUTER_API_KEY")
+    end)
+
+    lines =
+      ["openrouter", "", "org/model", "openai", ""] ++
+        if(:os.type() == {:unix, :linux}, do: [""], else: []) ++ ["write", :eof]
+
+    {0, output} = interactive(c, lines)
+    assert output =~ "Model (required; no default)"
+    assert output =~ "Invalid model name"
+    assert output =~ "OpenRouter upstream slug (required)"
+    assert output =~ "Data collection deny/allow"
+    assert output =~ "\"data_collection\": \"deny\""
+    refute output =~ "setup-router-private"
+    assert output =~ File.read!(c.path)
+  end
+
+  test "Gemini setup requires an explicit model, selects only its key source and never starts login",
+       c do
+    lines =
+      ["gemini", "gemini-fixture"] ++
+        if(:os.type() == {:unix, :linux}, do: [""], else: []) ++ ["cancel", :eof]
+
+    {0, output} = interactive(c, lines)
+    assert output =~ "Model (required; no default)"
+    assert output =~ "Credential source: GEMINI_API_KEY"
+    assert output =~ "api billing"
+    refute output =~ "Run ipse login now?"
+    refute File.exists?(c.home)
+  end
+
+  test "interactive compatible setup asks for and saves the explicit loopback endpoint", c do
+    lines =
+      ["openai_compatible", "local", "http://127.0.0.1:8000/v1"] ++
+        if(:os.type() == {:unix, :linux}, do: [""], else: []) ++ ["write", :eof]
+
+    {0, output} = interactive(c, lines)
+    assert output =~ "Loopback base URL (required)"
+    assert output =~ "local billing"
+    assert output =~ "Credential source: none"
+    document = Jason.decode!(File.read!(c.path))
+    assert document["roles"]["main"] == "setup_openai_compatible"
+
+    assert document["profiles"]["setup_openai_compatible"]["base_url"] ==
+             "http://127.0.0.1:8000/v1"
+
+    assert output =~ File.read!(c.path)
+  end
+
+  test "generated route profiles never overwrite an unrelated profile or role", c do
+    File.mkdir_p!(c.home)
+
+    document = %{
+      "version" => 1,
+      "profiles" => %{"setup_openrouter" => %{"provider" => "ollama", "model" => "kept"}},
+      "roles" => %{"review" => "setup_openrouter"}
+    }
+
+    before = Jason.encode!(document)
+    File.write!(c.path, before)
+
+    argv = [
+      "setup",
+      "--cwd",
+      c.cwd,
+      "--provider",
+      "openrouter",
+      "--model",
+      "org/model",
+      "--upstream",
+      "openai",
+      "--replace",
+      "--write"
+    ]
+
+    assert capture_io(:stderr, fn -> assert Ipse.CLI.run(argv) == 1 end) =~
+             "setup profile name already exists"
+
+    assert File.read!(c.path) == before
+    assert File.ls!(c.home) == ["config.json"]
+  end
+
   defp interactive(c, lines) do
     {:ok, io} = IOFixture.start_link(self())
     on_exit(fn -> if Process.alive?(io), do: GenServer.stop(io) end)

@@ -2,7 +2,7 @@ defmodule Ipse.CLI.Setup do
   @moduledoc "Explicit first-run provider choice, review and private configuration writes."
   alias Ipse.CLI.{Doctor, Errors, Terminal}
   @providers Ipse.Provider.Registry.ids()
-  @options ~w(provider model sandbox config cwd write replace)a
+  @options ~w(provider model sandbox config cwd write replace base_url upstream data_collection)a
   @limit 16_384
 
   def run(opts, home, cwd) do
@@ -14,15 +14,13 @@ defmodule Ipse.CLI.Setup do
     with true <-
            Enum.all?(Keyword.keys(opts), &(&1 in @options)) ||
              {:error,
-              "Unsupported setup options. Use --provider, --model, --sandbox, --cwd, --config, --replace and --write; see ipse --help."},
+              "Unsupported setup options. See ipse --help for provider/model, route, shell, preview and save options."},
          {:ok, cwd} <- Ipse.Workspace.canonical_path(cwd),
          true <- File.dir?(cwd) || {:error, :workspace_not_found},
          {:ok, original} <- read_existing(path),
          :ok <- replacement(original, opts, path, cwd, home),
-         {:ok, selection, interactive?} <- select(opts, original, cwd, home),
-         document =
-           Map.update(original.document, "settings", selection, &Map.merge(&1, selection)),
-         :ok <- compatible_main(document, selection),
+         {:ok, selection, route, interactive?} <- select(opts, original, cwd, home),
+         {:ok, document} <- document(original.document, selection, route),
          :ok <- validate(document),
          bytes = Jason.encode!(document, pretty: true) <> "\n",
          true <-
@@ -115,9 +113,11 @@ defmodule Ipse.CLI.Setup do
       true ->
         with {:ok, provider} <- choose_provider(opts[:provider]),
              {:ok, model} <- choose_model(provider, opts[:model], interactive?),
+             {:ok, route} <- choose_route(provider, model, opts, interactive?),
              {:ok, sandbox} <-
                choose_sandbox(opts[:sandbox], original.document, cwd, home, interactive?) do
-          {:ok, %{"provider" => provider, "model" => model, "sandbox" => sandbox}, interactive?}
+          {:ok, %{"provider" => provider, "model" => model, "sandbox" => sandbox}, route,
+           interactive?}
         end
     end
   end
@@ -161,7 +161,10 @@ defmodule Ipse.CLI.Setup do
   defp choose_model(provider, nil, true) do
     default = Ipse.Config.default_model(provider)
 
-    case read_line("Model (default #{default}): ") do
+    prompt =
+      if default, do: "Model (default #{default}): ", else: "Model (required; no default): "
+
+    case read_line(prompt) do
       {:ok, answer} ->
         case choose_model(provider, if(answer == "", do: default, else: answer), false) do
           {:ok, model} ->
@@ -184,6 +187,98 @@ defmodule Ipse.CLI.Setup do
     case Ipse.Provider.model_name(model) do
       nil -> {:error, "Invalid setup model; supply a valid --model identifier."}
       model -> {:ok, model}
+    end
+  end
+
+  defp choose_route(provider, model, opts, interactive?) do
+    route = %{"provider" => provider, "model" => model}
+    route = if opts[:base_url], do: Map.put(route, "base_url", opts[:base_url]), else: route
+
+    cond do
+      provider == "openrouter" ->
+        with {:ok, upstream} <-
+               route_field(
+                 "OpenRouter upstream slug (required): ",
+                 opts[:upstream],
+                 interactive?,
+                 nil
+               ),
+             {:ok, policy} <-
+               route_field(
+                 "Data collection deny/allow (default deny): ",
+                 opts[:data_collection],
+                 interactive?,
+                 "deny"
+               ),
+             route = Map.merge(route, %{"upstream" => upstream, "data_collection" => policy}),
+             :ok <- Ipse.Config.Profiles.validate_profile(route),
+             do: {:ok, route}
+
+      Keyword.has_key?(opts, :upstream) or Keyword.has_key?(opts, :data_collection) ->
+        {:error, "Upstream and data collection options apply only to OpenRouter setup."}
+
+      provider == "openai_compatible" ->
+        with {:ok, url} <-
+               route_field("Loopback base URL (required): ", opts[:base_url], interactive?, nil),
+             route = Map.put(route, "base_url", url),
+             :ok <- Ipse.Config.Profiles.validate_profile(route),
+             do: {:ok, route}
+
+      true ->
+        with :ok <- Ipse.Config.Profiles.validate_profile(route), do: {:ok, route}
+    end
+  end
+
+  defp route_field(_, value, _, _) when is_binary(value), do: {:ok, value}
+
+  defp route_field(prompt, nil, true, default) do
+    case read_line(prompt) do
+      {:ok, ""} -> {:ok, default}
+      {:ok, answer} -> {:ok, answer}
+      _ -> {:error, "Setup cancelled at end of input; no configuration was written."}
+    end
+  end
+
+  defp route_field(_, nil, false, default), do: {:ok, default}
+
+  defp document(original, selection, route) do
+    with :ok <- compatible_main(original, selection) do
+      document = Map.update(original, "settings", selection, &Map.merge(&1, selection))
+
+      needs_profile? =
+        route["provider"] in ["openrouter", "openai_compatible"] or
+          Map.has_key?(route, "base_url")
+
+      main = get_in(original, ["roles", "main"])
+      profile = get_in(original, ["profiles", main])
+
+      cond do
+        not needs_profile? ->
+          {:ok, document}
+
+        is_map(profile) ->
+          values = Map.merge(Ipse.Provider.Registry.profile_values(profile), profile)
+
+          if Enum.all?(route, fn {key, value} -> values[key] == value end),
+            do: {:ok, document},
+            else:
+              {:error,
+               "Setup preserves the existing main profile. Its endpoint, upstream or data policy differs; edit and review the operator file explicitly."}
+
+        true ->
+          id = "setup_" <> route["provider"]
+          profiles = original["profiles"] || %{}
+
+          if Map.has_key?(profiles, id) do
+            {:error,
+             "The setup profile name already exists. Setup preserves it; edit and review profiles explicitly."}
+          else
+            {:ok,
+             document
+             |> Map.put("profiles", Map.put(profiles, id, route))
+             |> Map.put("roles", Map.put(original["roles"] || %{}, "main", id))}
+          end
+      end
     end
   end
 

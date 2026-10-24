@@ -18,6 +18,11 @@ never asks for or stores a key. ChatGPT setup can offer the existing `ipse login
 browser flow after validating the proposal. Extensions are selected separately
 through the [extensions manual](extensions.md).
 
+OpenRouter, Gemini and compatible local servers have no model default: an empty
+answer asks again. OpenRouter also asks for a pinned upstream and a data-collection
+policy, defaulting to `deny`. A compatible server requires a loopback base URL.
+Review those fields in the preview before saving.
+
 For scripts, supply both provider and model. Preview first:
 
 ```sh
@@ -26,6 +31,23 @@ ipse setup --provider demo --model scripted --write
 ipse doctor
 ipse demo
 ```
+
+For a new API/local route, these commands preview complete configuration without
+making a model request. Replace models and endpoints with ones you can access;
+provide keys privately before the saved configuration's doctor check:
+
+```sh
+ipse setup --provider openrouter --model openai/gpt-4.1-mini --upstream openai --data-collection deny
+ipse setup --provider gemini --model gemini-3.8-flash
+ipse setup --provider openai_compatible --model YOUR_LOCAL_MODEL --base-url http://127.0.0.1:8080/v1
+```
+
+Repeat the chosen command with `--write` only after reviewing it. Routing fields
+or an explicit endpoint are saved in a new `setup_PROVIDER` profile selected for
+the main role. Setup refuses a name collision and preserves existing profiles and
+roles. To change an existing profile's endpoint, upstream or collection policy,
+edit and review the operator file explicitly. `--upstream` and `--data-collection`
+apply only to OpenRouter setup; inference selects the saved profile.
 
 The first command writes nothing, including directories. `--write` authorizes the
 non-interactive save. The target is `--config PATH`, then `IPSE_CONFIG`, then

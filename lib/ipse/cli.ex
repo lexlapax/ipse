@@ -24,6 +24,8 @@ defmodule Ipse.CLI do
           handoff: :string,
           yes: :boolean,
           base_url: :string,
+          upstream: :string,
+          data_collection: :string,
           max_steps: :integer,
           max_output_tokens: :integer,
           context_bytes: :integer,
@@ -84,6 +86,12 @@ defmodule Ipse.CLI do
 
       Enum.any?([:write, :replace], &Keyword.has_key?(opts, &1)) and rest != ["setup"] ->
         report({:error, "--write and --replace require ipse setup; no task was started."})
+
+      Enum.any?([:upstream, :data_collection], &Keyword.has_key?(opts, &1)) and rest != ["setup"] ->
+        report(
+          {:error,
+           "--upstream and --data-collection require ipse setup; select a pinned profile for inference."}
+        )
 
       opts[:help] ->
         Terminal.help()
