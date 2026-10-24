@@ -1,0 +1,98 @@
+{
+  "scope": {
+    "budget": null,
+    "delegation_origin": null,
+    "embedding_profiles": null,
+    "max_output_tokens": null,
+    "model": "gpt-6.1-sol",
+    "model_profiles": null,
+    "provider": "chatgpt"
+  },
+  "requests": {
+    "ddfcff4ba4ebe4ef45ff5aef7b7b3597": {
+      "completion": {
+        "attempt_id": "4312a41f13d99721d7dd97c9abc394f4",
+        "duration_ms": 1,
+        "finality": "final",
+        "outcome": "completed",
+        "reported_model": null,
+        "request_id": "ddfcff4ba4ebe4ef45ff5aef7b7b3597",
+        "type": "request_finished",
+        "usage": {
+          "counts": {
+            "input_cache_write_1h_tokens": null,
+            "input_cache_write_5m_tokens": null,
+            "input_cache_write_tokens": null,
+            "input_cached_tokens": 2,
+            "input_tokens": 12,
+            "input_uncached_tokens": null,
+            "output_reasoning_tokens": 3,
+            "output_tokens": 8,
+            "provider_duration_ns": null,
+            "provider_web_fetch_requests": null,
+            "provider_web_search_requests": null,
+            "total_tokens": 20
+          },
+          "derived_fields": [],
+          "issues": [],
+          "quality": "totals_known",
+          "version": 1
+        },
+        "version": 1
+      },
+      "admission": {
+        "admitted_at_ms": 1792804152897,
+        "attempt": 1,
+        "attempt_id": "4312a41f13d99721d7dd97c9abc394f4",
+        "billing_mode": "subscription",
+        "endpoint_sha256": null,
+        "kind": "model",
+        "model": "gpt-6.1-sol",
+        "parent_request_id": null,
+        "parent_session_id": null,
+        "provider": "chatgpt",
+        "request_id": "ddfcff4ba4ebe4ef45ff5aef7b7b3597",
+        "selected_profile": null,
+        "session_id": "309bc4fb35d79430b52a0610a27f7172",
+        "turn_id": "4aec8cbd788b792b520b15f2112fcc3d",
+        "type": "request_admitted",
+        "version": 1
+      },
+      "observation": {
+        "counts": {
+          "input_cache_write_1h_tokens": null,
+          "input_cache_write_5m_tokens": null,
+          "input_cache_write_tokens": null,
+          "input_cached_tokens": 2,
+          "input_tokens": 12,
+          "input_uncached_tokens": null,
+          "output_reasoning_tokens": 3,
+          "output_tokens": 8,
+          "provider_duration_ns": null,
+          "provider_web_fetch_requests": null,
+          "provider_web_search_requests": null,
+          "total_tokens": 20
+        },
+        "derived_fields": [],
+        "issues": [],
+        "quality": "totals_known",
+        "version": 1
+      },
+      "sequence": 1
+    }
+  },
+  "bindings": [],
+  "session_id": "309bc4fb35d79430b52a0610a27f7172",
+  "model_responses": {},
+  "model_route": null,
+  "model_sources": {},
+  "model_action": null,
+  "usage_version": 1,
+  "attempts": [
+    "4312a41f13d99721d7dd97c9abc394f4"
+  ],
+  "order": [
+    "ddfcff4ba4ebe4ef45ff5aef7b7b3597"
+  ],
+  "legacy_unmetered": false
+}

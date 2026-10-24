@@ -16,9 +16,9 @@ defmodule Ipse.Usage.Costs do
     row =
       object(%{
         "id" => text,
-        "provider" => %{"type" => "string", "enum" => ~w(openai chatgpt anthropic ollama)},
-        "billing_mode" => %{"type" => "string", "enum" => ~w(api subscription local)},
-        "basis" => %{"type" => "string", "enum" => ~w(api_estimate api_equivalent local_estimate)},
+        "provider" => %{"type" => "string", "enum" => Ipse.Provider.Registry.rate_card_ids()},
+        "billing_mode" => %{"type" => "string", "enum" => Ipse.Provider.Registry.billing_modes()},
+        "basis" => %{"type" => "string", "enum" => Ipse.Provider.Registry.cost_bases()},
         "model" => text,
         "endpoint_sha256" => %{"type" => ["string", "null"], "maxLength" => 64},
         "from" => text,
@@ -283,8 +283,8 @@ defmodule Ipse.Usage.Costs do
 
     Schema.validate_object(r) == :ok and Enum.sort(Map.keys(r)) == Enum.sort(keys) and
       operation in ~w(text embedding) and
-      (operation == "text" or r["provider"] in ~w(openai ollama)) and
-      r["provider"] in ~w(openai chatgpt anthropic ollama demo) and
+      (operation == "text" or Ipse.Provider.Registry.embedding?(r["provider"])) and
+      r["provider"] in Ipse.Provider.Registry.ids() and
       r["billing_mode"] == Usage.billing_mode(provider(r["provider"])) and
       is_binary(r["model"]) and byte_size(r["model"]) in 1..256 and
       (is_nil(r["reported_model"]) or
@@ -295,11 +295,7 @@ defmodule Ipse.Usage.Costs do
       r["finality"] in ~w(final partial) and Usage.valid_usage?(r["usage"], operation)
   end
 
-  defp provider("openai"), do: :openai
-  defp provider("chatgpt"), do: :chatgpt
-  defp provider("anthropic"), do: :anthropic
-  defp provider("ollama"), do: :ollama
-  defp provider("demo"), do: :demo
+  defp provider(value), do: Ipse.Provider.Registry.atoms()[value]
 
   defp row?(r) do
     embedding = r["operation"] == "embedding"
@@ -324,15 +320,11 @@ defmodule Ipse.Usage.Costs do
 
     until_valid = is_nil(r["until"]) or date?(r["until"])
 
-    expected != [] and (not embedding or r["provider"] in ~w(openai ollama)) and
+    expected != [] and (not embedding or Ipse.Provider.Registry.embedding?(r["provider"])) and
       (not embedding or Enum.all?(Map.keys(r["rates"]), &(&1 in ~w(input duration_second)))) and
       r["billing_mode"] == Usage.billing_mode(provider(r["provider"])) and
       r["basis"] ==
-        %{
-          "api" => "api_estimate",
-          "subscription" => "api_equivalent",
-          "local" => "local_estimate"
-        }[r["billing_mode"]] and
+        Ipse.Provider.Registry.cost_basis(r["billing_mode"]) and
       hash_or_nil?(r["endpoint_sha256"]) and date?(r["from"]) and until_valid and
       (is_nil(r["until"]) or r["from"] < r["until"]) and
       (is_nil(r["input_max"]) or r["input_min"] < r["input_max"]) and

@@ -148,26 +148,6 @@ defmodule Ipse.Provider.Transport do
   defdelegate bypass_proxy?(host), to: Ipse.HTTP, as: :bypass?
 
   @body_limit 32_768
-  @codes %{
-    "subscription_sharing_user_not_eligible" =>
-      "ChatGPT plan usage is unavailable for this account, workspace, or policy. Check eligibility; the request was not retried.",
-    "subscription_sharing_usage_limit_exceeded" =>
-      "ChatGPT plan usage is blocked by a limit or app setting. Pause plan requests and check ChatGPT Settings > Usage; no reset time is inferred.",
-    "subscription_sharing_usage_unavailable" =>
-      "ChatGPT plan usage availability could not be checked. Preserve sign-in and try again later.",
-    "subscription_sharing_unsupported_capability" =>
-      "This request uses an unsupported ChatGPT plan capability. Check the parameter and adjust the request before trying again.",
-    "subscription_sharing_route_not_supported" =>
-      "ChatGPT plan usage does not support this method or endpoint. Verify that the request uses POST /v1/responses.",
-    "subscription_sharing_invalid_user" =>
-      "The ChatGPT subscriber context was rejected. Check the selected account and scopes; sign in again only after confirmed revocation or terminal refresh failure.",
-    "chatpass_v2_scope_not_authorized" =>
-      "The ChatGPT permission context does not authorize this operation. Check the client and grant configuration; billing was not changed.",
-    "chatpass_v2_invalid_authorization_context" =>
-      "The ChatGPT permission context does not authorize this operation. Check the client and grant configuration; billing was not changed.",
-    "subscription_sharing_user_unavailable" =>
-      "ChatGPT user or workspace information is temporarily unavailable. Preserve sign-in and try again later."
-  }
 
   def http_error(status, body, headers, provider) do
     parsed = parse_body(body)
@@ -220,35 +200,8 @@ defmodule Ipse.Provider.Transport do
 
   def request_id(headers), do: header_request_id(headers)
 
-  defp hint(code, _status, _shape) when is_binary(code) and is_map_key(@codes, code),
-    do: Map.fetch!(@codes, code)
-
-  defp hint(_code, status, "detail") when status == 403,
-    do:
-      "Direct-route admission was denied. Check account, scopes, policy, or serving region; billing was not changed."
-
-  defp hint(_code, status, _shape) when status == 503,
-    do:
-      "ChatGPT plan routing or usage availability is temporarily unavailable. Preserve sign-in and try again later."
-
-  defp hint(_code, status, _shape) when status == 403,
-    do:
-      "A ChatGPT policy or permission check denied the request. Check account, scopes, and serving-region eligibility."
-
-  defp hint(_code, status, _shape) when status == 400,
-    do:
-      "ChatGPT rejected the request. Check supported inputs, tools, model, and service-tier settings."
-
-  defp hint(_code, status, _shape) when status == 429,
-    do: "ChatGPT plan usage is limited. Pause plan requests and check ChatGPT Settings > Usage."
-
-  defp hint(_code, status, _shape) when status == 401,
-    do:
-      "The ChatGPT subscriber context was not accepted. Check the selected account and granted scopes."
-
-  defp hint(_code, _status, _shape),
-    do:
-      "Check ChatGPT plan access, account limits, and request settings. No billing path was changed."
+  defp hint(code, status, shape),
+    do: Ipse.Provider.Registry.fetch!(:chatgpt).http_hints.fallback.(code, status, shape)
 
   defp parse_body(body) when is_binary(body) and byte_size(body) <= @body_limit do
     case Jason.decode(body) do

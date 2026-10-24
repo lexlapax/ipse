@@ -142,14 +142,7 @@ defmodule Ipse.Usage.Budget do
          {:ok, config} <-
            BudgetStore.attach(
              %{
-               provider:
-                 %{
-                   "chatgpt" => :chatgpt,
-                   "openai" => :openai,
-                   "ollama" => :ollama,
-                   "anthropic" => :anthropic,
-                   "demo" => :demo
-                 }[meta["provider"]],
+               provider: Ipse.Provider.Registry.atoms()[meta["provider"]],
                max_output_tokens: meta["max_output_tokens"],
                budget: meta["budget"],
                budget_root: meta["budget_root"],
@@ -793,10 +786,7 @@ defmodule Ipse.Usage.Budget do
     end
   end
 
-  defp basis("api"), do: "api_estimate"
-  defp basis("subscription"), do: "api_equivalent"
-  defp basis("local"), do: "local_estimate"
-  defp basis(_), do: nil
+  defp basis(billing), do: Ipse.Provider.Registry.cost_basis(billing)
   defp paired?(map, left, right), do: Map.has_key?(map, left) == Map.has_key?(map, right)
   defp integer(low, high), do: %{"type" => "integer", "minimum" => low, "maximum" => high}
 end

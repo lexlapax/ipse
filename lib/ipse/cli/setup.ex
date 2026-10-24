@@ -1,7 +1,7 @@
 defmodule Ipse.CLI.Setup do
   @moduledoc "Explicit first-run provider choice, review and private configuration writes."
   alias Ipse.CLI.{Doctor, Errors, Terminal}
-  @providers ~w(chatgpt openai ollama anthropic demo)
+  @providers Ipse.Provider.Registry.ids()
   @options ~w(provider model sandbox config cwd write replace)a
   @limit 16_384
 
@@ -139,8 +139,11 @@ defmodule Ipse.CLI.Setup do
       {:ok, answer} ->
         provider =
           case Integer.parse(answer) do
-            {index, ""} when index in 1..5 -> Enum.at(@providers, index - 1)
-            _ -> answer
+            {index, ""} when index >= 1 and index <= length(@providers) ->
+              Enum.at(@providers, index - 1)
+
+            _ ->
+              answer
           end
 
         if provider in @providers do
@@ -184,7 +187,24 @@ defmodule Ipse.CLI.Setup do
     end
   end
 
-  defp credential_step("chatgpt", interactive?, home) do
+  defp credential_step(provider, interactive?, home) do
+    case Ipse.Provider.Registry.fetch!(provider).credential do
+      :chatgpt_auth ->
+        subscription_step(interactive?, home)
+
+      credential ->
+        source =
+          case credential do
+            {:env, name} -> name <> " (private environment)"
+            :none -> "none"
+          end
+
+        Terminal.puts("Credential source: #{source}. Setup never asks for or stores an API key.")
+        :ok
+    end
+  end
+
+  defp subscription_step(interactive?, home) do
     Terminal.puts(
       "Credential source: protected ChatGPT sign-in. Run ipse login; no API key is stored in configuration."
     )
@@ -196,18 +216,6 @@ defmodule Ipse.CLI.Setup do
     else
       :ok
     end
-  end
-
-  defp credential_step(provider, _, _) do
-    source =
-      case provider do
-        "openai" -> "OPENAI_API_KEY (private environment)"
-        "anthropic" -> "ANTHROPIC_API_KEY (private environment)"
-        _ -> "none"
-      end
-
-    Terminal.puts("Credential source: #{source}. Setup never asks for or stores an API key.")
-    :ok
   end
 
   defp choose_sandbox(value, document, cwd, home, interactive?) do
@@ -358,11 +366,7 @@ defmodule Ipse.CLI.Setup do
   end
 
   defp billing(provider), do: Ipse.Usage.billing_mode(String.to_existing_atom(provider))
-  defp provider_label("chatgpt"), do: "ChatGPT subscription"
-  defp provider_label("openai"), do: "OpenAI API (billed)"
-  defp provider_label("ollama"), do: "Ollama (local)"
-  defp provider_label("anthropic"), do: "Anthropic API (billed)"
-  defp provider_label("demo"), do: "Demo (no model service)"
+  defp provider_label(provider), do: Ipse.Provider.Registry.fetch!(provider).label
   defp quote_arg(value), do: "'" <> String.replace(value, "'", "'\\''") <> "'"
 
   defp fail(reason) do

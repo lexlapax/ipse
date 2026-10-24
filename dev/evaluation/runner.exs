@@ -2500,6 +2500,8 @@ defmodule Ipse.Development.Evaluation.Runner do
 
     metadata = hd(events)["metadata"]
 
+    # Frozen evaluation compatibility map; current host routes use Ipse.Provider.Registry.
+
     config = %{
       provider:
         %{

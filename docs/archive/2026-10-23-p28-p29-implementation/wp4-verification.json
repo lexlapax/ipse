@@ -3,7 +3,7 @@
   "source_commit": "9907877ba73a25be21a8f93ed272719b00c89e6d",
   "focused": {"combined_passed": 141, "final_setup_private_file_passed": 14, "final_seed": 497535},
   "installed": {"archive": "/tmp/ipse-p28-wp4-package-rs5qZt/dist/ipse-0.1.0-linux-x86_64-glibc-2.44.tar.gz", "command": "elixir dev/verify.exs installed package --archive EXACT_ARCHIVE --input examples/memory-corpus.json", "exit_code": 0, "log": "/tmp/ipse-p28-wp4-installed.log", "first_run": "Fresh isolated HOME/IPSE_HOME: no-write preview, private save, provider provenance, configured offline doctor and scripted demo; utility-only PATH"},
-  "native_suite": {"status": "running", "log": "/tmp/ipse-p28-wp4-native-tests.log"},
+  "native_suite": {"status": "passed", "command": "mix test --include native_sandbox", "passed": 1591, "excluded": 19, "seed": 950188, "duration_seconds": 1049.6, "exit_code": 0, "log": "/tmp/ipse-p28-wp4-native-tests.log"},
   "hosted": {"run_id": 40047790899, "url": "https://github.com/lexlapax/ipse/actions/runs/40047790899", "status": "failed", "cause": "Elixir 1.18 formats a conditional differently from local 1.20", "repair": "Use conventional if/do/else block, preserving behavior and existing assertions; rerun on later commit"},
-  "limits": ["No live sign-in or provider inference", "No new OS user", "Final native/platform verdict still pending"]
+  "limits": ["No live sign-in or provider inference", "No new OS user", "Final hosted verdict still pending"]
 }

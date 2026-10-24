@@ -1,0 +1,104 @@
+{
+  "scope": {
+    "budget": null,
+    "delegation_origin": null,
+    "embedding_profiles": null,
+    "max_output_tokens": null,
+    "model": "claude-sonnet-4-5",
+    "model_profiles": null,
+    "provider": "anthropic"
+  },
+  "requests": {
+    "018f5b0b835661b5bb1e3a136b05d7fc": {
+      "completion": {
+        "attempt_id": "dfb90e382f149db597eea38105a88dd4",
+        "duration_ms": 1,
+        "finality": "final",
+        "outcome": "completed",
+        "reported_model": null,
+        "request_id": "018f5b0b835661b5bb1e3a136b05d7fc",
+        "type": "request_finished",
+        "usage": {
+          "counts": {
+            "input_cache_write_1h_tokens": null,
+            "input_cache_write_5m_tokens": null,
+            "input_cache_write_tokens": 0,
+            "input_cached_tokens": 2,
+            "input_tokens": 12,
+            "input_uncached_tokens": 10,
+            "output_reasoning_tokens": null,
+            "output_tokens": 8,
+            "provider_duration_ns": null,
+            "provider_web_fetch_requests": null,
+            "provider_web_search_requests": null,
+            "total_tokens": 20
+          },
+          "derived_fields": [
+            "input_tokens",
+            "total_tokens"
+          ],
+          "issues": [],
+          "quality": "totals_known",
+          "version": 1
+        },
+        "version": 1
+      },
+      "admission": {
+        "admitted_at_ms": 1792804152909,
+        "attempt": 1,
+        "attempt_id": "dfb90e382f149db597eea38105a88dd4",
+        "billing_mode": "api",
+        "endpoint_sha256": null,
+        "kind": "model",
+        "model": "claude-sonnet-4-5",
+        "parent_request_id": null,
+        "parent_session_id": null,
+        "provider": "anthropic",
+        "request_id": "018f5b0b835661b5bb1e3a136b05d7fc",
+        "selected_profile": null,
+        "session_id": "d1827e5334a254802a6e1418fc16c62c",
+        "turn_id": "d5d65f41dde6e3f78c43ebaee3809693",
+        "type": "request_admitted",
+        "version": 1
+      },
+      "observation": {
+        "counts": {
+          "input_cache_write_1h_tokens": null,
+          "input_cache_write_5m_tokens": null,
+          "input_cache_write_tokens": 0,
+          "input_cached_tokens": 2,
+          "input_tokens": 12,
+          "input_uncached_tokens": 10,
+          "output_reasoning_tokens": null,
+          "output_tokens": 8,
+          "provider_duration_ns": null,
+          "provider_web_fetch_requests": null,
+          "provider_web_search_requests": null,
+          "total_tokens": 20
+        },
+        "derived_fields": [
+          "input_tokens",
+          "total_tokens"
+        ],
+        "issues": [],
+        "quality": "totals_known",
+        "version": 1
+      },
+      "sequence": 1
+    }
+  },
+  "bindings": [],
+  "session_id": "d1827e5334a254802a6e1418fc16c62c",
+  "model_responses": {},
+  "model_route": null,
+  "model_sources": {},
+  "model_action": null,
+  "usage_version": 1,
+  "attempts": [
+    "dfb90e382f149db597eea38105a88dd4"
+  ],
+  "order": [
+    "018f5b0b835661b5bb1e3a136b05d7fc"
+  ],
+  "legacy_unmetered": false
+}

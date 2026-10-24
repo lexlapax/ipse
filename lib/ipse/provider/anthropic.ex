@@ -4,7 +4,12 @@ defmodule Ipse.Provider.Anthropic do
   alias Ipse.Provider.Transport
 
   def endpoint(config),
-    do: Ipse.Provider.endpoint(config, "https://api.anthropic.com", "/v1/messages")
+    do:
+      Ipse.Provider.endpoint(
+        config,
+        Ipse.Provider.Registry.fetch!(:anthropic).default_base_url,
+        "/v1/messages"
+      )
 
   def complete(config, messages, tools, emit) do
     if config[:api_key] in [nil, ""] do

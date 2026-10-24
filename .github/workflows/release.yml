@@ -8,7 +8,6 @@ concurrency:
   group: release-${{ github.ref }}
   cancel-in-progress: false
 env:
-  GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
   GH_REPO: ${{ github.repository }}
   IPSE_RELEASE_TAG: ${{ github.ref_name }}
 jobs:
@@ -27,6 +26,7 @@ jobs:
           elixir -r dev/release.exs -e 'Mix.start(); Code.require_file("mix.exs"); notes = Ipse.Development.Release.validate_tag!(System.fetch_env!("IPSE_RELEASE_TAG"), Mix.Project.config()[:version], File.cwd!()); IO.puts("notes=" <> notes)' >> "$GITHUB_OUTPUT"
       - name: Create or recover an unpublished draft
         env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           IPSE_RELEASE_NOTES: ${{ steps.metadata.outputs.notes }}
         run: |
           gh --version
@@ -156,6 +156,8 @@ jobs:
           trap 'rm -rf "$IPSE_MACOS_WORKSPACE"' EXIT
           elixir dev/verify-macos-sandbox.exs priv/ipse-runner "$IPSE_MACOS_WORKSPACE"
       - name: Attach verified archives to the unpublished draft
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           test "$(gh release view "$IPSE_RELEASE_TAG" --json isDraft --jq .isDraft)" = true
           gh release upload "$IPSE_RELEASE_TAG" dist/ipse-*.tar.gz dist/ipse-*.tar.gz.sha256 --clobber
@@ -170,6 +172,8 @@ jobs:
           otp-version: '27'
           elixir-version: '1.18'
       - name: Re-download and inspect the complete draft asset set
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           test "$(gh release view "$IPSE_RELEASE_TAG" --json isDraft --jq .isDraft)" = true
           mkdir "$RUNNER_TEMP/ipse-release-assets"

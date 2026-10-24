@@ -1,0 +1,975 @@
+{
+  "anthropic": {
+    "cost": {
+      "admitted_at_ms": 1792713600000,
+      "amount_nanos": 104000,
+      "basis": "api_estimate",
+      "billing_mode": "api",
+      "card_id": "registry-fixture",
+      "card_sha256": "5830df38b78d1be4fbbefbc80b8fe6647013b3d3d4985a997e345deeff1f785a",
+      "components": [
+        {
+          "count": 12,
+          "per": 1000000,
+          "rate": "2",
+          "unit": "input"
+        },
+        {
+          "count": 8,
+          "per": 1000000,
+          "rate": "10",
+          "unit": "output"
+        }
+      ],
+      "currency": "USD",
+      "currency_scale": 9,
+      "endpoint_sha256": null,
+      "input_mode": "flat",
+      "known_amount_nanos": 104000,
+      "missing": [],
+      "provider": "anthropic",
+      "published_on": "2026-10-23",
+      "rated_model": "claude-sonnet-4-5",
+      "reported_model": null,
+      "requested_model": "claude-sonnet-4-5",
+      "revision": "synthetic-1",
+      "rounding": "ceiling_per_request",
+      "row_id": "anthropic",
+      "scope": "text_tokens_and_reported_extras",
+      "source": "operator:registry-fixture",
+      "status": "estimated",
+      "version": 1
+    },
+    "destination": {
+      "origin": "https://api.anthropic.com",
+      "target_sha256": "dd9dd182b406f181aa1efb245fd4182c6588c3430bcab8d7db04199ab682acbc"
+    },
+    "manifest": {
+      "budget": null,
+      "execution": null,
+      "extensions": {
+        "instances": [],
+        "trust": []
+      },
+      "fingerprint": "38427dc4357445e8c63108f7dbbe7e983fc47d0596ba55f020fea984a03f1604",
+      "journal": {
+        "max_bytes": 134217728,
+        "max_events": 100000,
+        "max_record_bytes": 16777216
+      },
+      "observability": {
+        "mode_source": "built-in",
+        "policy": {
+          "event_bytes": 16384,
+          "file_bytes": 10485760,
+          "groups": [
+            "session",
+            "prompt",
+            "context",
+            "model",
+            "stream",
+            "tool",
+            "approval",
+            "question",
+            "child",
+            "compaction",
+            "extension",
+            "turn",
+            "error"
+          ],
+          "level": "info",
+          "mode": "off",
+          "queue_events": 256,
+          "retained_files": 2,
+          "sample_every": 1
+        }
+      },
+      "profiles": {},
+      "provenance": {
+        "compact": "built-in",
+        "context_bytes": "built-in",
+        "max_steps": "built-in",
+        "model": "provider default",
+        "provider": "CLI",
+        "sandbox": "built-in",
+        "subagent_concurrency": "built-in",
+        "subagents": "built-in",
+        "timeout_ms": "built-in"
+      },
+      "roles": {},
+      "settings": {
+        "compact": true,
+        "context_bytes": 400000,
+        "max_steps": 30,
+        "model": "claude-sonnet-4-5",
+        "provider": "anthropic",
+        "sandbox": "off",
+        "subagent_concurrency": 1,
+        "subagents": false,
+        "timeout_ms": 120000
+      },
+      "sources": []
+    },
+    "usage": [
+      {
+        "counts": {
+          "input_cache_write_1h_tokens": null,
+          "input_cache_write_5m_tokens": null,
+          "input_cache_write_tokens": 0,
+          "input_cached_tokens": 2,
+          "input_tokens": 12,
+          "input_uncached_tokens": 10,
+          "output_reasoning_tokens": null,
+          "output_tokens": 8,
+          "provider_duration_ns": null,
+          "provider_web_fetch_requests": null,
+          "provider_web_search_requests": null,
+          "total_tokens": 20
+        },
+        "derived_fields": [
+          "input_tokens",
+          "total_tokens"
+        ],
+        "issues": [],
+        "quality": "totals_known",
+        "version": 1
+      },
+      {
+        "counts": {
+          "input_cache_write_1h_tokens": null,
+          "input_cache_write_5m_tokens": null,
+          "input_cache_write_tokens": null,
+          "input_cached_tokens": null,
+          "input_tokens": null,
+          "input_uncached_tokens": null,
+          "output_reasoning_tokens": null,
+          "output_tokens": null,
+          "provider_duration_ns": null,
+          "provider_web_fetch_requests": null,
+          "provider_web_search_requests": null,
+          "total_tokens": null
+        },
+        "derived_fields": [],
+        "issues": [],
+        "quality": "unavailable",
+        "version": 1
+      },
+      {
+        "counts": {
+          "input_cache_write_1h_tokens": null,
+          "input_cache_write_5m_tokens": null,
+          "input_cache_write_tokens": null,
+          "input_cached_tokens": null,
+          "input_tokens": null,
+          "input_uncached_tokens": null,
+          "output_reasoning_tokens": null,
+          "output_tokens": null,
+          "provider_duration_ns": null,
+          "provider_web_fetch_requests": null,
+          "provider_web_search_requests": null,
+          "total_tokens": null
+        },
+        "derived_fields": [],
+        "issues": [],
+        "quality": "unavailable",
+        "version": 1
+      },
+      {
+        "counts": {
+          "input_cache_write_1h_tokens": null,
+          "input_cache_write_5m_tokens": null,
+          "input_cache_write_tokens": null,
+          "input_cached_tokens": null,
+          "input_tokens": null,
+          "input_uncached_tokens": null,
+          "output_reasoning_tokens": null,
+          "output_tokens": null,
+          "provider_duration_ns": null,
+          "provider_web_fetch_requests": null,
+          "provider_web_search_requests": null,
+          "total_tokens": null
+        },
+        "derived_fields": [],
+        "issues": [
+          "invalid_or_inconsistent_provider_counters"
+        ],
+        "quality": "invalid",
+        "version": 1
+      }
+    ]
+  },
+  "chatgpt": {
+    "cost": {
+      "admitted_at_ms": 1792713600000,
+      "amount_nanos": 104000,
+      "basis": "api_equivalent",
+      "billing_mode": "subscription",
+      "card_id": "registry-fixture",
+      "card_sha256": "5f93e16fc79a616bbae8c9e8cb740973ea885567eab6c0ae83d7e5950234957d",
+      "components": [
+        {
+          "count": 12,
+          "per": 1000000,
+          "rate": "2",
+          "unit": "input"
+        },
+        {
+          "count": 8,
+          "per": 1000000,
+          "rate": "10",
+          "unit": "output"
+        }
+      ],
+      "currency": "USD",
+      "currency_scale": 9,
+      "endpoint_sha256": null,
+      "input_mode": "flat",
+      "known_amount_nanos": 104000,
+      "missing": [],
+      "provider": "chatgpt",
+      "published_on": "2026-10-23",
+      "rated_model": "gpt-6.1-sol",
+      "reported_model": null,
+      "requested_model": "gpt-6.1-sol",
+      "revision": "synthetic-1",
+      "rounding": "ceiling_per_request",
+      "row_id": "chatgpt",
+      "scope": "text_tokens_and_reported_extras",
+      "source": "operator:registry-fixture",
+      "status": "estimated",
+      "version": 1
+    },
+    "destination": {
+      "origin": "https://api.openai.com",
+      "target_sha256": "ee0291cefbb5b6136483fb38ba9efe9264f9b685d5006c273e293a54b43a1883"
+    },
+    "manifest": {
+      "budget": null,
+      "execution": null,
+      "extensions": {
+        "instances": [],
+        "trust": []
+      },
+      "fingerprint": "a5d123519772abf5eded97cb38951325789d4ee61813174a25b56b57070258eb",
+      "journal": {
+        "max_bytes": 134217728,
+        "max_events": 100000,
+        "max_record_bytes": 16777216
+      },
+      "observability": {
+        "mode_source": "built-in",
+        "policy": {
+          "event_bytes": 16384,
+          "file_bytes": 10485760,
+          "groups": [
+            "session",
+            "prompt",
+            "context",
+            "model",
+            "stream",
+            "tool",
+            "approval",
+            "question",
+            "child",
+            "compaction",
+            "extension",
+            "turn",
+            "error"
+          ],
+          "level": "info",
+          "mode": "off",
+          "queue_events": 256,
+          "retained_files": 2,
+          "sample_every": 1
+        }
+      },
+      "profiles": {},
+      "provenance": {
+        "compact": "built-in",
+        "context_bytes": "built-in",
+        "max_steps": "built-in",
+        "model": "provider default",
+        "provider": "CLI",
+        "sandbox": "built-in",
+        "subagent_concurrency": "built-in",
+        "subagents": "built-in",
+        "timeout_ms": "built-in"
+      },
+      "roles": {},
+      "settings": {
+        "compact": true,
+        "context_bytes": 400000,
+        "max_steps": 30,
+        "model": "gpt-6.1-sol",
+        "provider": "chatgpt",
+        "sandbox": "off",
+        "subagent_concurrency": 1,
+        "subagents": false,
+        "timeout_ms": 120000
+      },
+      "sources": []
+    },
+    "usage": [
+      {
+        "counts": {
+          "input_cache_write_1h_tokens": null,
+          "input_cache_write_5m_tokens": null,
+          "input_cache_write_tokens": null,
+          "input_cached_tokens": 2,
+          "input_tokens": 12,
+          "input_uncached_tokens": null,
+          "output_reasoning_tokens": 3,
+          "output_tokens": 8,
+          "provider_duration_ns": null,
+          "provider_web_fetch_requests": null,
+          "provider_web_search_requests": null,
+          "total_tokens": 20
+        },
+        "derived_fields": [],
+        "issues": [],
+        "quality": "totals_known",
+        "version": 1
+      },
+      {
+        "counts": {
+          "input_cache_write_1h_tokens": null,
+          "input_cache_write_5m_tokens": null,
+          "input_cache_write_tokens": null,
+          "input_cached_tokens": null,
+          "input_tokens": null,
+          "input_uncached_tokens": null,
+          "output_reasoning_tokens": null,
+          "output_tokens": null,
+          "provider_duration_ns": null,
+          "provider_web_fetch_requests": null,
+          "provider_web_search_requests": null,
+          "total_tokens": null
+        },
+        "derived_fields": [],
+        "issues": [],
+        "quality": "unavailable",
+        "version": 1
+      },
+      {
+        "counts": {
+          "input_cache_write_1h_tokens": null,
+          "input_cache_write_5m_tokens": null,
+          "input_cache_write_tokens": null,
+          "input_cached_tokens": null,
+          "input_tokens": null,
+          "input_uncached_tokens": null,
+          "output_reasoning_tokens": null,
+          "output_tokens": null,
+          "provider_duration_ns": null,
+          "provider_web_fetch_requests": null,
+          "provider_web_search_requests": null,
+          "total_tokens": null
+        },
+        "derived_fields": [],
+        "issues": [],
+        "quality": "unavailable",
+        "version": 1
+      },
+      {
+        "counts": {
+          "input_cache_write_1h_tokens": null,
+          "input_cache_write_5m_tokens": null,
+          "input_cache_write_tokens": null,
+          "input_cached_tokens": null,
+          "input_tokens": null,
+          "input_uncached_tokens": null,
+          "output_reasoning_tokens": null,
+          "output_tokens": null,
+          "provider_duration_ns": null,
+          "provider_web_fetch_requests": null,
+          "provider_web_search_requests": null,
+          "total_tokens": null
+        },
+        "derived_fields": [],
+        "issues": [
+          "invalid_or_inconsistent_provider_counters"
+        ],
+        "quality": "invalid",
+        "version": 1
+      }
+    ]
+  },
+  "demo": {
+    "cost": {
+      "admitted_at_ms": 1792713600000,
+      "amount_nanos": null,
+      "basis": null,
+      "billing_mode": "none",
+      "card_id": "registry-fixture",
+      "card_sha256": "45dde3ff8f2a83b5aa599b4878700a11e1b28bfd9687e2f378bca063fe000449",
+      "components": [],
+      "currency": "USD",
+      "currency_scale": 9,
+      "endpoint_sha256": null,
+      "input_mode": null,
+      "known_amount_nanos": null,
+      "missing": [
+        "scripted_usage"
+      ],
+      "provider": "demo",
+      "published_on": "2026-10-23",
+      "rated_model": "scripted",
+      "reported_model": null,
+      "requested_model": "scripted",
+      "revision": "synthetic-1",
+      "rounding": "ceiling_per_request",
+      "row_id": null,
+      "scope": "text_tokens_and_reported_extras",
+      "source": "operator:registry-fixture",
+      "status": "not_applicable",
+      "version": 1
+    },
+    "destination": {
+      "error": "invalid_provider_destination"
+    },
+    "manifest": {
+      "budget": null,
+      "execution": null,
+      "extensions": {
+        "instances": [],
+        "trust": []
+      },
+      "fingerprint": "41edbc4e9da51caaa3a8216ec445072e88fd13fe4c4c2725186f262206f23e45",
+      "journal": {
+        "max_bytes": 134217728,
+        "max_events": 100000,
+        "max_record_bytes": 16777216
+      },
+      "observability": {
+        "mode_source": "built-in",
+        "policy": {
+          "event_bytes": 16384,
+          "file_bytes": 10485760,
+          "groups": [
+            "session",
+            "prompt",
+            "context",
+            "model",
+            "stream",
+            "tool",
+            "approval",
+            "question",
+            "child",
+            "compaction",
+            "extension",
+            "turn",
+            "error"
+          ],
+          "level": "info",
+          "mode": "off",
+          "queue_events": 256,
+          "retained_files": 2,
+          "sample_every": 1
+        }
+      },
+      "profiles": {},
+      "provenance": {
+        "compact": "built-in",
+        "context_bytes": "built-in",
+        "max_steps": "built-in",
+        "model": "provider default",
+        "provider": "CLI",
+        "sandbox": "built-in",
+        "subagent_concurrency": "built-in",
+        "subagents": "built-in",
+        "timeout_ms": "built-in"
+      },
+      "roles": {},
+      "settings": {
+        "compact": true,
+        "context_bytes": 400000,
+        "max_steps": 30,
+        "model": "scripted",
+        "provider": "demo",
+        "sandbox": "off",
+        "subagent_concurrency": 1,
+        "subagents": false,
+        "timeout_ms": 120000
+      },
+      "sources": []
+    },
+    "usage": [
+      {
+        "counts": {
+          "input_cache_write_1h_tokens": null,
+          "input_cache_write_5m_tokens": null,
+          "input_cache_write_tokens": null,
+          "input_cached_tokens": null,
+          "input_tokens": null,
+          "input_uncached_tokens": null,
+          "output_reasoning_tokens": null,
+          "output_tokens": null,
+          "provider_duration_ns": null,
+          "provider_web_fetch_requests": null,
+          "provider_web_search_requests": null,
+          "total_tokens": null
+        },
+        "derived_fields": [],
+        "issues": [],
+        "quality": "not_applicable",
+        "version": 1
+      },
+      {
+        "counts": {
+          "input_cache_write_1h_tokens": null,
+          "input_cache_write_5m_tokens": null,
+          "input_cache_write_tokens": null,
+          "input_cached_tokens": null,
+          "input_tokens": null,
+          "input_uncached_tokens": null,
+          "output_reasoning_tokens": null,
+          "output_tokens": null,
+          "provider_duration_ns": null,
+          "provider_web_fetch_requests": null,
+          "provider_web_search_requests": null,
+          "total_tokens": null
+        },
+        "derived_fields": [],
+        "issues": [],
+        "quality": "not_applicable",
+        "version": 1
+      },
+      {
+        "counts": {
+          "input_cache_write_1h_tokens": null,
+          "input_cache_write_5m_tokens": null,
+          "input_cache_write_tokens": null,
+          "input_cached_tokens": null,
+          "input_tokens": null,
+          "input_uncached_tokens": null,
+          "output_reasoning_tokens": null,
+          "output_tokens": null,
+          "provider_duration_ns": null,
+          "provider_web_fetch_requests": null,
+          "provider_web_search_requests": null,
+          "total_tokens": null
+        },
+        "derived_fields": [],
+        "issues": [],
+        "quality": "not_applicable",
+        "version": 1
+      },
+      {
+        "counts": {
+          "input_cache_write_1h_tokens": null,
+          "input_cache_write_5m_tokens": null,
+          "input_cache_write_tokens": null,
+          "input_cached_tokens": null,
+          "input_tokens": null,
+          "input_uncached_tokens": null,
+          "output_reasoning_tokens": null,
+          "output_tokens": null,
+          "provider_duration_ns": null,
+          "provider_web_fetch_requests": null,
+          "provider_web_search_requests": null,
+          "total_tokens": null
+        },
+        "derived_fields": [],
+        "issues": [],
+        "quality": "not_applicable",
+        "version": 1
+      }
+    ]
+  },
+  "ollama": {
+    "cost": {
+      "admitted_at_ms": 1792713600000,
+      "amount_nanos": null,
+      "basis": "local_estimate",
+      "billing_mode": "local",
+      "card_id": "registry-fixture",
+      "card_sha256": "7c6dc7eda7b39732b775b65a4a5f33658c106113c711de087befe96b930ffbb9",
+      "components": [
+        {
+          "count": 12,
+          "per": 1000000,
+          "rate": "2",
+          "unit": "input"
+        },
+        {
+          "count": 8,
+          "per": 1000000,
+          "rate": "10",
+          "unit": "output"
+        }
+      ],
+      "currency": "USD",
+      "currency_scale": 9,
+      "endpoint_sha256": null,
+      "input_mode": "flat",
+      "known_amount_nanos": 104000,
+      "missing": [
+        "rate:duration_second"
+      ],
+      "provider": "ollama",
+      "published_on": "2026-10-23",
+      "rated_model": "qwen3:8b",
+      "reported_model": null,
+      "requested_model": "qwen3:8b",
+      "revision": "synthetic-1",
+      "rounding": "ceiling_per_request",
+      "row_id": "ollama",
+      "scope": "text_tokens_and_reported_extras",
+      "source": "operator:registry-fixture",
+      "status": "partial",
+      "version": 1
+    },
+    "destination": {
+      "origin": "http://127.0.0.1:11434",
+      "target_sha256": "32ac826c7f5e901e1a7d2d7e054fe6388df4b62ca7c8e7e6f7de9ec987ca5e7a"
+    },
+    "manifest": {
+      "budget": null,
+      "execution": null,
+      "extensions": {
+        "instances": [],
+        "trust": []
+      },
+      "fingerprint": "a38114efb2756e9db7ac88d96beb129f01b9ebc9d16022d487f2aafc84acfe62",
+      "journal": {
+        "max_bytes": 134217728,
+        "max_events": 100000,
+        "max_record_bytes": 16777216
+      },
+      "observability": {
+        "mode_source": "built-in",
+        "policy": {
+          "event_bytes": 16384,
+          "file_bytes": 10485760,
+          "groups": [
+            "session",
+            "prompt",
+            "context",
+            "model",
+            "stream",
+            "tool",
+            "approval",
+            "question",
+            "child",
+            "compaction",
+            "extension",
+            "turn",
+            "error"
+          ],
+          "level": "info",
+          "mode": "off",
+          "queue_events": 256,
+          "retained_files": 2,
+          "sample_every": 1
+        }
+      },
+      "profiles": {},
+      "provenance": {
+        "compact": "built-in",
+        "context_bytes": "built-in",
+        "max_steps": "built-in",
+        "model": "provider default",
+        "provider": "CLI",
+        "sandbox": "built-in",
+        "subagent_concurrency": "built-in",
+        "subagents": "built-in",
+        "timeout_ms": "built-in"
+      },
+      "roles": {},
+      "settings": {
+        "compact": true,
+        "context_bytes": 400000,
+        "max_steps": 30,
+        "model": "qwen3:8b",
+        "provider": "ollama",
+        "sandbox": "off",
+        "subagent_concurrency": 1,
+        "subagents": false,
+        "timeout_ms": 120000
+      },
+      "sources": []
+    },
+    "usage": [
+      {
+        "counts": {
+          "input_cache_write_1h_tokens": null,
+          "input_cache_write_5m_tokens": null,
+          "input_cache_write_tokens": null,
+          "input_cached_tokens": 2,
+          "input_tokens": 12,
+          "input_uncached_tokens": null,
+          "output_reasoning_tokens": null,
+          "output_tokens": 8,
+          "provider_duration_ns": 1000000000,
+          "provider_web_fetch_requests": null,
+          "provider_web_search_requests": null,
+          "total_tokens": 20
+        },
+        "derived_fields": [
+          "total_tokens"
+        ],
+        "issues": [],
+        "quality": "totals_known",
+        "version": 1
+      },
+      {
+        "counts": {
+          "input_cache_write_1h_tokens": null,
+          "input_cache_write_5m_tokens": null,
+          "input_cache_write_tokens": null,
+          "input_cached_tokens": null,
+          "input_tokens": null,
+          "input_uncached_tokens": null,
+          "output_reasoning_tokens": null,
+          "output_tokens": null,
+          "provider_duration_ns": null,
+          "provider_web_fetch_requests": null,
+          "provider_web_search_requests": null,
+          "total_tokens": null
+        },
+        "derived_fields": [],
+        "issues": [],
+        "quality": "unavailable",
+        "version": 1
+      },
+      {
+        "counts": {
+          "input_cache_write_1h_tokens": null,
+          "input_cache_write_5m_tokens": null,
+          "input_cache_write_tokens": null,
+          "input_cached_tokens": null,
+          "input_tokens": null,
+          "input_uncached_tokens": null,
+          "output_reasoning_tokens": null,
+          "output_tokens": null,
+          "provider_duration_ns": null,
+          "provider_web_fetch_requests": null,
+          "provider_web_search_requests": null,
+          "total_tokens": null
+        },
+        "derived_fields": [],
+        "issues": [],
+        "quality": "unavailable",
+        "version": 1
+      },
+      {
+        "counts": {
+          "input_cache_write_1h_tokens": null,
+          "input_cache_write_5m_tokens": null,
+          "input_cache_write_tokens": null,
+          "input_cached_tokens": null,
+          "input_tokens": null,
+          "input_uncached_tokens": null,
+          "output_reasoning_tokens": null,
+          "output_tokens": null,
+          "provider_duration_ns": null,
+          "provider_web_fetch_requests": null,
+          "provider_web_search_requests": null,
+          "total_tokens": null
+        },
+        "derived_fields": [],
+        "issues": [
+          "invalid_or_inconsistent_provider_counters"
+        ],
+        "quality": "invalid",
+        "version": 1
+      }
+    ]
+  },
+  "openai": {
+    "cost": {
+      "admitted_at_ms": 1792713600000,
+      "amount_nanos": 104000,
+      "basis": "api_estimate",
+      "billing_mode": "api",
+      "card_id": "registry-fixture",
+      "card_sha256": "a52528477d179c5f9ff800d1f435d8a4c921be2d2c7774b0625539c480e5b10b",
+      "components": [
+        {
+          "count": 12,
+          "per": 1000000,
+          "rate": "2",
+          "unit": "input"
+        },
+        {
+          "count": 8,
+          "per": 1000000,
+          "rate": "10",
+          "unit": "output"
+        }
+      ],
+      "currency": "USD",
+      "currency_scale": 9,
+      "endpoint_sha256": null,
+      "input_mode": "flat",
+      "known_amount_nanos": 104000,
+      "missing": [],
+      "provider": "openai",
+      "published_on": "2026-10-23",
+      "rated_model": "gpt-6.1-sol",
+      "reported_model": null,
+      "requested_model": "gpt-6.1-sol",
+      "revision": "synthetic-1",
+      "rounding": "ceiling_per_request",
+      "row_id": "openai",
+      "scope": "text_tokens_and_reported_extras",
+      "source": "operator:registry-fixture",
+      "status": "estimated",
+      "version": 1
+    },
+    "destination": {
+      "origin": "https://api.openai.com",
+      "target_sha256": "ee0291cefbb5b6136483fb38ba9efe9264f9b685d5006c273e293a54b43a1883"
+    },
+    "manifest": {
+      "budget": null,
+      "execution": null,
+      "extensions": {
+        "instances": [],
+        "trust": []
+      },
+      "fingerprint": "9b240dafe80799add65837f8382047aa94a1c6d566c9bca56b4b149231792683",
+      "journal": {
+        "max_bytes": 134217728,
+        "max_events": 100000,
+        "max_record_bytes": 16777216
+      },
+      "observability": {
+        "mode_source": "built-in",
+        "policy": {
+          "event_bytes": 16384,
+          "file_bytes": 10485760,
+          "groups": [
+            "session",
+            "prompt",
+            "context",
+            "model",
+            "stream",
+            "tool",
+            "approval",
+            "question",
+            "child",
+            "compaction",
+            "extension",
+            "turn",
+            "error"
+          ],
+          "level": "info",
+          "mode": "off",
+          "queue_events": 256,
+          "retained_files": 2,
+          "sample_every": 1
+        }
+      },
+      "profiles": {},
+      "provenance": {
+        "compact": "built-in",
+        "context_bytes": "built-in",
+        "max_steps": "built-in",
+        "model": "provider default",
+        "provider": "CLI",
+        "sandbox": "built-in",
+        "subagent_concurrency": "built-in",
+        "subagents": "built-in",
+        "timeout_ms": "built-in"
+      },
+      "roles": {},
+      "settings": {
+        "compact": true,
+        "context_bytes": 400000,
+        "max_steps": 30,
+        "model": "gpt-6.1-sol",
+        "provider": "openai",
+        "sandbox": "off",
+        "subagent_concurrency": 1,
+        "subagents": false,
+        "timeout_ms": 120000
+      },
+      "sources": []
+    },
+    "usage": [
+      {
+        "counts": {
+          "input_cache_write_1h_tokens": null,
+          "input_cache_write_5m_tokens": null,
+          "input_cache_write_tokens": null,
+          "input_cached_tokens": 2,
+          "input_tokens": 12,
+          "input_uncached_tokens": null,
+          "output_reasoning_tokens": 3,
+          "output_tokens": 8,
+          "provider_duration_ns": null,
+          "provider_web_fetch_requests": null,
+          "provider_web_search_requests": null,
+          "total_tokens": 20
+        },
+        "derived_fields": [],
+        "issues": [],
+        "quality": "totals_known",
+        "version": 1
+      },
+      {
+        "counts": {
+          "input_cache_write_1h_tokens": null,
+          "input_cache_write_5m_tokens": null,
+          "input_cache_write_tokens": null,
+          "input_cached_tokens": null,
+          "input_tokens": null,
+          "input_uncached_tokens": null,
+          "output_reasoning_tokens": null,
+          "output_tokens": null,
+          "provider_duration_ns": null,
+          "provider_web_fetch_requests": null,
+          "provider_web_search_requests": null,
+          "total_tokens": null
+        },
+        "derived_fields": [],
+        "issues": [],
+        "quality": "unavailable",
+        "version": 1
+      },
+      {
+        "counts": {
+          "input_cache_write_1h_tokens": null,
+          "input_cache_write_5m_tokens": null,
+          "input_cache_write_tokens": null,
+          "input_cached_tokens": null,
+          "input_tokens": null,
+          "input_uncached_tokens": null,
+          "output_reasoning_tokens": null,
+          "output_tokens": null,
+          "provider_duration_ns": null,
+          "provider_web_fetch_requests": null,
+          "provider_web_search_requests": null,
+          "total_tokens": null
+        },
+        "derived_fields": [],
+        "issues": [],
+        "quality": "unavailable",
+        "version": 1
+      },
+      {
+        "counts": {
+          "input_cache_write_1h_tokens": null,
+          "input_cache_write_5m_tokens": null,
+          "input_cache_write_tokens": null,
+          "input_cached_tokens": null,
+          "input_tokens": null,
+          "input_uncached_tokens": null,
+          "output_reasoning_tokens": null,
+          "output_tokens": null,
+          "provider_duration_ns": null,
+          "provider_web_fetch_requests": null,
+          "provider_web_search_requests": null,
+          "total_tokens": null
+        },
+        "derived_fields": [],
+        "issues": [
+          "invalid_or_inconsistent_provider_counters"
+        ],
+        "quality": "invalid",
+        "version": 1
+      }
+    ]
+  }
+}

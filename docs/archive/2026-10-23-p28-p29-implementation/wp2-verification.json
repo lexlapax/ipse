@@ -7,6 +7,6 @@
   "log": "/tmp/ipse-p28-wp2-candidate-tests.log",
   "other_checks": ["source build", "formatting", "warnings-as-errors compile", "CI pin policy", "documentation and links", "113 focused source tests", "53 complete CLI tests after the help correction", "isolated credential-free demo"],
   "previous_failure": {"passed": 1547, "failed": 1, "excluded": 36, "seed": 66291, "duration_seconds": 1018.7, "exit_code": 2, "cause": "Help description omitted the sessions JSON field names", "repair": "Restore the field description, retaining the original test", "log": "/tmp/ipse-p28-wp2-candidate-help-failure.log"},
-  "hosted": {"run_id": 40045562195, "url": "https://github.com/lexlapax/ipse/actions/runs/40045562195", "status": "in_progress"},
-  "limits": ["Fixture checks only; no live account or provider inference", "No final hosted verdict yet", "Native-inclusive doctor verification belongs to the following package"]
+  "hosted": {"run_id": 40045562195, "url": "https://github.com/lexlapax/ipse/actions/runs/40045562195", "status": "completed", "conclusion": "success", "receipt": "wp2-hosted.json"},
+  "limits": ["Fixture checks only; no live account or provider inference", "Native-inclusive doctor verification belongs to the following package"]
 }

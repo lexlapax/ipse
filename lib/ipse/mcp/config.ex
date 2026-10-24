@@ -16,7 +16,7 @@ defmodule Ipse.MCP.Config do
   @tool ~r/\A[A-Za-z0-9_.-]{1,32}\z/
   @prompt ~r/\A[A-Za-z0-9_.-]{1,32}\z/
   @env_name ~r/\A[A-Z_][A-Z0-9_]{0,63}\z/
-  @blocked_env ~w(OPENAI_API_KEY ANTHROPIC_API_KEY IPSE_CHATGPT_ACCESS_TOKEN)
+  @blocked_env Ipse.Provider.Registry.secret_env()
 
   def load(nil), do: {:ok, []}
 

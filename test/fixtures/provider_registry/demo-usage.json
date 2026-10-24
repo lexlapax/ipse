@@ -1,0 +1,98 @@
+{
+  "scope": {
+    "budget": null,
+    "delegation_origin": null,
+    "embedding_profiles": null,
+    "max_output_tokens": null,
+    "model": "scripted",
+    "model_profiles": null,
+    "provider": "demo"
+  },
+  "requests": {
+    "891ddf4552da16a89d6636ae241cf74b": {
+      "completion": {
+        "attempt_id": "87484ff70d5691d50a36a45345d63cab",
+        "duration_ms": 1,
+        "finality": "final",
+        "outcome": "completed",
+        "reported_model": null,
+        "request_id": "891ddf4552da16a89d6636ae241cf74b",
+        "type": "request_finished",
+        "usage": {
+          "counts": {
+            "input_cache_write_1h_tokens": null,
+            "input_cache_write_5m_tokens": null,
+            "input_cache_write_tokens": null,
+            "input_cached_tokens": null,
+            "input_tokens": null,
+            "input_uncached_tokens": null,
+            "output_reasoning_tokens": null,
+            "output_tokens": null,
+            "provider_duration_ns": null,
+            "provider_web_fetch_requests": null,
+            "provider_web_search_requests": null,
+            "total_tokens": null
+          },
+          "derived_fields": [],
+          "issues": [],
+          "quality": "not_applicable",
+          "version": 1
+        },
+        "version": 1
+      },
+      "admission": {
+        "admitted_at_ms": 1792804152912,
+        "attempt": 1,
+        "attempt_id": "87484ff70d5691d50a36a45345d63cab",
+        "billing_mode": "none",
+        "endpoint_sha256": null,
+        "kind": "model",
+        "model": "scripted",
+        "parent_request_id": null,
+        "parent_session_id": null,
+        "provider": "demo",
+        "request_id": "891ddf4552da16a89d6636ae241cf74b",
+        "selected_profile": null,
+        "session_id": "c7f1c54164ed70d178fd7b0c61d870a4",
+        "turn_id": "5039a442cd46d7564e36c02e2f141d91",
+        "type": "request_admitted",
+        "version": 1
+      },
+      "observation": {
+        "counts": {
+          "input_cache_write_1h_tokens": null,
+          "input_cache_write_5m_tokens": null,
+          "input_cache_write_tokens": null,
+          "input_cached_tokens": null,
+          "input_tokens": null,
+          "input_uncached_tokens": null,
+          "output_reasoning_tokens": null,
+          "output_tokens": null,
+          "provider_duration_ns": null,
+          "provider_web_fetch_requests": null,
+          "provider_web_search_requests": null,
+          "total_tokens": null
+        },
+        "derived_fields": [],
+        "issues": [],
+        "quality": "not_applicable",
+        "version": 1
+      },
+      "sequence": 1
+    }
+  },
+  "bindings": [],
+  "session_id": "c7f1c54164ed70d178fd7b0c61d870a4",
+  "model_responses": {},
+  "model_route": null,
+  "model_sources": {},
+  "model_action": null,
+  "usage_version": 1,
+  "attempts": [
+    "87484ff70d5691d50a36a45345d63cab"
+  ],
+  "order": [
+    "891ddf4552da16a89d6636ae241cf74b"
+  ],
+  "legacy_unmetered": false
+}

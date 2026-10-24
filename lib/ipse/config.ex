@@ -6,7 +6,7 @@ defmodule Ipse.Config do
   @file_bytes 16_384
   @max_sources 17
   @defaults %{
-    "provider" => "chatgpt",
+    "provider" => Ipse.Provider.Registry.default_id(),
     "sandbox" => "off",
     "max_steps" => 30,
     "context_bytes" => 400_000,
@@ -15,13 +15,7 @@ defmodule Ipse.Config do
     "subagent_concurrency" => 1,
     "timeout_ms" => 120_000
   }
-  @providers %{
-    "chatgpt" => {:chatgpt, "gpt-6.1-sol"},
-    "openai" => {:openai, "gpt-6.1-sol"},
-    "ollama" => {:ollama, "qwen3:8b"},
-    "anthropic" => {:anthropic, "claude-sonnet-4-5"},
-    "demo" => {:demo, "scripted"}
-  }
+  @providers Ipse.Provider.Registry.defaults()
   @sandboxes %{"off" => :off, "native" => :native}
   @fields ~w(provider model sandbox max_steps context_bytes compact subagents subagent_concurrency timeout_ms max_output_tokens)
   @option_keys Map.new(@fields, fn key -> {key, String.to_atom(key)} end)
@@ -198,7 +192,7 @@ defmodule Ipse.Config do
     sandbox = Map.fetch!(@sandboxes, settings["sandbox"])
 
     cond do
-      provider == :chatgpt && client.base_url ->
+      Ipse.Provider.Registry.auth?(provider) && client.base_url ->
         {:error, "Subscription credentials only go to the official OpenAI endpoint."}
 
       not Ipse.Provider.valid_base_url?(provider, client.base_url) ->

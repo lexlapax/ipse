@@ -489,17 +489,20 @@ defmodule Ipse.CLI do
     if effective.provenance["provider"] == "built-in" do
       Terminal.puts(
         :stderr,
-        "Using built-in provider default chatgpt (ChatGPT subscription). Run ipse setup to choose explicitly."
+        "Using built-in provider default #{Ipse.Provider.Registry.default_id()} (#{Ipse.Provider.Registry.fetch!(Ipse.Provider.Registry.default_id()).label}). Run ipse setup to choose explicitly."
       )
     end
 
     :ok
   end
 
-  defp credential(:chatgpt), do: Ipse.Auth.token(auth_dir())
-  defp credential(:openai), do: env_key("OPENAI_API_KEY")
-  defp credential(:anthropic), do: env_key("ANTHROPIC_API_KEY")
-  defp credential(_), do: {:ok, nil}
+  defp credential(provider) do
+    case Ipse.Provider.Registry.fetch(provider) do
+      {:ok, %{credential: :chatgpt_auth}} -> Ipse.Auth.token(auth_dir())
+      {:ok, %{credential: {:env, name}}} -> env_key(name)
+      _ -> {:ok, nil}
+    end
+  end
 
   defp env_key(name) do
     case System.get_env(name) do

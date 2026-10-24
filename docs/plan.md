@@ -620,7 +620,7 @@ The [implementation record](archive/2026-10-23-p28-p29-implementation/index.md)
 tracks the ordered work packages, actual checks and auditor handoff requirements.
 Version/build identity is complete at `b4788b4`, with local source and
 installed-archive checks and exact-source hosted Ubuntu/macOS verification.
-Actionable errors pass the full local suite at `6818000`. Offline doctor passes
+Actionable errors pass full local and hosted checks at `6818000`. Offline doctor passes
 the native-inclusive suite at `a89fce7`. Private setup passes focused and installed
 first-run checks. Release checksums, symlink handling, draft workflow and lifecycle
 manuals are implemented; the local installed upgrade proof passes. Hosted gates,
@@ -657,12 +657,12 @@ dependencies.
 
 ## P29: provider registry, OpenRouter and Gemini
 
-**Selected; implementation follows P28's operator foundations.** Provider identity is currently a closed list repeated in
-[`Ipse.Provider`](../lib/ipse/provider.ex), [profiles](../lib/ipse/config/profiles.ex),
-[usage](../lib/ipse/usage.ex) and [authentication](../lib/ipse/auth.ex), with
-embeddings limited to OpenAI and Ollama in
-[`Ipse.Provider.Embedding`](../lib/ipse/provider/embedding.ex). Adding providers
-one branch at a time would spread credential, billing and continuation rules.
+**Selected; implementation in progress.** The central
+[`provider registry`](../lib/ipse/provider/registry.ex) now supplies configuration,
+profiles, credentials, billing, accounting, capability, setup and diagnosis facts.
+Pre-refactor fixtures captured from `dd510a7` and 312 focused checks pass; final
+baseline/platform gates remain pending. Shared conformance and the new adapters
+remain unimplemented. Native embeddings remain limited to OpenAI and Ollama.
 The [P29 implementation brief](archive/2026-10-23-p28-p29-design/p29.md) breaks
 this scope into ordered work packages with files, tests and decisions.
 The developer accepted its recommended decisions on 2026-10-23. Gemini, then

@@ -1,0 +1,333 @@
+defmodule Ipse.Provider.Spec do
+  @moduledoc "Closed provider capabilities and operator-facing identity."
+  @enforce_keys [:id, :atom, :adapter, :credential, :billing_mode]
+  defstruct [
+    :id,
+    :atom,
+    :adapter,
+    :replay_key,
+    :default_model,
+    :default_base_url,
+    :base_url_policy,
+    :credential,
+    :billing_mode,
+    :output_limit,
+    :reasoning,
+    :usage_extractor,
+    :embedding,
+    :label,
+    :probe,
+    :probe_base_url,
+    :input_components,
+    structured_output?: false,
+    summary_schema?: false,
+    http_hints: %{},
+    secret_env: []
+  ]
+end
+
+defmodule Ipse.Provider.Registry do
+  @moduledoc "Provider identity, capability and credential metadata; selection never falls back."
+  alias Ipse.Provider.Spec
+
+  @codes %{
+    "subscription_sharing_user_not_eligible" =>
+      "ChatGPT plan usage is unavailable for this account, workspace, or policy. Check eligibility; the request was not retried.",
+    "subscription_sharing_usage_limit_exceeded" =>
+      "ChatGPT plan usage is blocked by a limit or app setting. Pause plan requests and check ChatGPT Settings > Usage; no reset time is inferred.",
+    "subscription_sharing_usage_unavailable" =>
+      "ChatGPT plan usage availability could not be checked. Preserve sign-in and try again later.",
+    "subscription_sharing_unsupported_capability" =>
+      "This request uses an unsupported ChatGPT plan capability. Check the parameter and adjust the request before trying again.",
+    "subscription_sharing_route_not_supported" =>
+      "ChatGPT plan usage does not support this method or endpoint. Verify that the request uses POST /v1/responses.",
+    "subscription_sharing_invalid_user" =>
+      "The ChatGPT subscriber context was rejected. Check the selected account and scopes; sign in again only after confirmed revocation or terminal refresh failure.",
+    "chatpass_v2_scope_not_authorized" =>
+      "The ChatGPT permission context does not authorize this operation. Check the client and grant configuration; billing was not changed.",
+    "chatpass_v2_invalid_authorization_context" =>
+      "The ChatGPT permission context does not authorize this operation. Check the client and grant configuration; billing was not changed.",
+    "subscription_sharing_user_unavailable" =>
+      "ChatGPT user or workspace information is temporarily unavailable. Preserve sign-in and try again later."
+  }
+
+  @specs [
+    %Spec{
+      id: "chatgpt",
+      http_hints: %{codes: @codes, fallback: &__MODULE__.chatgpt_hint/3},
+      atom: :chatgpt,
+      adapter: Ipse.Provider.OpenAI,
+      replay_key: "openai",
+      default_model: "gpt-6.1-sol",
+      default_base_url: "https://api.openai.com/v1",
+      base_url_policy: :fixed,
+      credential: :chatgpt_auth,
+      billing_mode: "subscription",
+      output_limit: :refuse_cap,
+      reasoning: &__MODULE__.responses_reasoning/2,
+      usage_extractor: &__MODULE__.responses_usage/1,
+      secret_env: ["IPSE_CHATGPT_ACCESS_TOKEN"],
+      label: "ChatGPT subscription",
+      probe: :subscription
+    },
+    %Spec{
+      id: "openai",
+      atom: :openai,
+      adapter: Ipse.Provider.OpenAI,
+      replay_key: "openai",
+      default_model: "gpt-6.1-sol",
+      default_base_url: "https://api.openai.com/v1",
+      base_url_policy: :https_or_loopback,
+      credential: {:env, "OPENAI_API_KEY"},
+      billing_mode: "api",
+      output_limit: 16..1_000_000,
+      reasoning: &__MODULE__.responses_reasoning/2,
+      usage_extractor: &__MODULE__.responses_usage/1,
+      embedding: %{
+        usage_extractor: &__MODULE__.openai_embedding_usage/1,
+        capacity_inputs: &__MODULE__.openai_embedding_inputs/0
+      },
+      secret_env: ["OPENAI_API_KEY"],
+      label: "OpenAI API (billed)",
+      probe: {"/models", :bearer}
+    },
+    %Spec{
+      id: "ollama",
+      atom: :ollama,
+      adapter: Ipse.Provider.Ollama,
+      replay_key: "ollama",
+      default_model: "qwen3:8b",
+      default_base_url: "http://127.0.0.1:11434",
+      probe_base_url: "http://localhost:11434",
+      base_url_policy: :https_or_loopback,
+      credential: :none,
+      billing_mode: "local",
+      output_limit: 1..1_000_000,
+      reasoning: &__MODULE__.ollama_reasoning/2,
+      usage_extractor: &__MODULE__.ollama_usage/1,
+      embedding: %{
+        usage_extractor: &__MODULE__.ollama_embedding_usage/1,
+        capacity_inputs: &__MODULE__.ollama_embedding_inputs/0
+      },
+      structured_output?: true,
+      summary_schema?: true,
+      label: "Ollama (local)",
+      probe: {"/api/tags", :none}
+    },
+    %Spec{
+      id: "anthropic",
+      atom: :anthropic,
+      adapter: Ipse.Provider.Anthropic,
+      replay_key: "anthropic",
+      default_model: "claude-sonnet-4-5",
+      default_base_url: "https://api.anthropic.com",
+      base_url_policy: :https_or_loopback,
+      credential: {:env, "ANTHROPIC_API_KEY"},
+      billing_mode: "api",
+      output_limit: 1..1_000_000,
+      reasoning: &__MODULE__.no_reasoning/2,
+      usage_extractor: &__MODULE__.anthropic_usage/1,
+      input_components: ~w(input_uncached_tokens input_cached_tokens input_cache_write_tokens),
+      secret_env: ["ANTHROPIC_API_KEY"],
+      label: "Anthropic API (billed)",
+      probe: {"/v1/models", :anthropic}
+    },
+    %Spec{
+      id: "demo",
+      atom: :demo,
+      adapter: Ipse.Provider.Demo,
+      replay_key: "demo",
+      default_model: "scripted",
+      base_url_policy: :https_or_loopback,
+      credential: :none,
+      billing_mode: "none",
+      output_limit: :refuse_cap,
+      reasoning: &__MODULE__.no_reasoning/2,
+      label: "Demo (no model service)",
+      probe: :demo
+    }
+  ]
+  @by_id Map.new(@specs, &{&1.id, &1})
+  @by_atom Map.new(@specs, &{&1.atom, &1})
+
+  def fetch(value) when is_atom(value), do: Map.fetch(@by_atom, value)
+  def fetch(value) when is_binary(value), do: Map.fetch(@by_id, value)
+  def fetch(_), do: :error
+
+  def fetch!(value) do
+    case fetch(value) do
+      {:ok, spec} -> spec
+      :error -> raise ArgumentError, "Unknown provider"
+    end
+  end
+
+  def ids, do: Enum.map(@specs, & &1.id)
+  def default_id, do: "chatgpt"
+  def chat_ids, do: for(spec <- @specs, spec.billing_mode != "none", do: spec.id)
+  def embedding_ids, do: for(spec <- @specs, not is_nil(spec.embedding), do: spec.id)
+  def atoms, do: Map.new(@specs, &{&1.id, &1.atom})
+  def defaults, do: Map.new(@specs, &{&1.id, {&1.atom, &1.default_model}})
+  def credentials, do: Map.new(@specs, &{&1.id, credential_reference(&1.credential)})
+  def billing, do: Map.new(@specs, &{&1.atom, &1.billing_mode})
+  # Rate-card enums preserve their historical presentation order.
+  def rate_card_ids, do: ~w(openai chatgpt anthropic ollama)
+  def billing_modes, do: rate_card_ids() |> Enum.map(&fetch!(&1).billing_mode) |> Enum.uniq()
+  def cost_bases, do: billing_modes() |> Enum.map(&cost_basis/1)
+  def cost_basis("api"), do: "api_estimate"
+  def cost_basis("subscription"), do: "api_equivalent"
+  def cost_basis("local"), do: "local_estimate"
+  def cost_basis(_), do: nil
+
+  def secret_env do
+    @specs
+    |> Enum.sort_by(&if(&1.credential == :chatgpt_auth, do: 1, else: 0))
+    |> Enum.flat_map(& &1.secret_env)
+    |> Enum.uniq()
+  end
+
+  def credential_reference(:chatgpt_auth), do: "ipse-auth"
+  def credential_reference({:env, name}), do: name
+  def credential_reference(:none), do: "none"
+
+  def openai_embedding_usage(raw),
+    do: extract(raw, %{"input_tokens" => ["prompt_tokens"], "total_tokens" => ["total_tokens"]})
+
+  def ollama_embedding_usage(raw),
+    do:
+      extract(raw, %{
+        "input_tokens" => ["prompt_eval_count"],
+        "provider_duration_ns" => ["total_duration"]
+      })
+
+  def openai_embedding_inputs,
+    do: [%{"prompt_tokens" => Ipse.Usage.counter_limit()}, %{"prompt_tokens" => "invalid"}]
+
+  def ollama_embedding_inputs,
+    do: [
+      %{
+        "prompt_eval_count" => Ipse.Usage.counter_limit(),
+        "total_duration" => Ipse.Usage.counter_limit()
+      },
+      %{"prompt_eval_count" => "invalid"}
+    ]
+
+  def supports?(provider, field) do
+    case fetch(provider) do
+      {:ok, spec} -> Map.get(spec, field) == true
+      :error -> false
+    end
+  end
+
+  def embedding?(provider),
+    do: match?({:ok, %Spec{embedding: value}} when not is_nil(value), fetch(provider))
+
+  def auth?(provider), do: match?({:ok, %Spec{credential: :chatgpt_auth}}, fetch(provider))
+
+  def reasoning(_, _, nil), do: :ok
+
+  def reasoning(provider, model, effort) do
+    case fetch(provider) do
+      {:ok, spec} -> spec.reasoning.(model, effort)
+      _ -> unsupported_reasoning()
+    end
+  end
+
+  def responses_reasoning("gpt-6.1-sol", effort) when effort in ~w(low medium high xhigh max),
+    do: :ok
+
+  def responses_reasoning(_, _), do: unsupported_reasoning()
+  def ollama_reasoning(_, "none"), do: :ok
+  def ollama_reasoning(_, _), do: unsupported_reasoning()
+  def no_reasoning(_, _), do: unsupported_reasoning()
+
+  defp unsupported_reasoning,
+    do: {:error, "Unsupported reasoning setting for the selected provider/model profile."}
+
+  def responses_usage(raw),
+    do:
+      extract(raw, %{
+        "input_tokens" => ["input_tokens"],
+        "output_tokens" => ["output_tokens"],
+        "total_tokens" => ["total_tokens"],
+        "input_cached_tokens" => ["input_tokens_details", "cached_tokens"],
+        "input_cache_write_tokens" => ["input_tokens_details", "cache_write_tokens"],
+        "output_reasoning_tokens" => ["output_tokens_details", "reasoning_tokens"]
+      })
+
+  def anthropic_usage(raw),
+    do:
+      extract(raw, %{
+        "input_uncached_tokens" => ["input_tokens"],
+        "output_tokens" => ["output_tokens"],
+        "input_cached_tokens" => ["cache_read_input_tokens"],
+        "input_cache_write_tokens" => ["cache_creation_input_tokens"],
+        "input_cache_write_5m_tokens" => ["cache_creation", "ephemeral_5m_input_tokens"],
+        "input_cache_write_1h_tokens" => ["cache_creation", "ephemeral_1h_input_tokens"],
+        "output_reasoning_tokens" => ["output_tokens_details", "thinking_tokens"],
+        "provider_web_search_requests" => ["server_tool_use", "web_search_requests"],
+        "provider_web_fetch_requests" => ["server_tool_use", "web_fetch_requests"]
+      })
+
+  def ollama_usage(raw),
+    do:
+      extract(
+        raw,
+        Map.new(
+          ~w(input_tokens output_tokens input_cached_tokens provider_duration_ns),
+          &{&1, [&1]}
+        )
+      )
+
+  defp extract(raw, paths) do
+    empty = Map.new(Ipse.Usage.counter_fields(), &{&1, nil})
+    limit = Ipse.Usage.counter_limit()
+
+    Enum.reduce_while(paths, {:ok, empty}, fn {field, path}, {:ok, counts} ->
+      case read(raw, path) do
+        nil ->
+          {:cont, {:ok, counts}}
+
+        n when is_integer(n) and n >= 0 and n <= limit ->
+          {:cont, {:ok, Map.put(counts, field, n)}}
+
+        _ ->
+          {:halt, :error}
+      end
+    end)
+  end
+
+  defp read(value, []), do: value
+  defp read(nil, _), do: nil
+  defp read(value, [key | rest]) when is_map(value), do: read(value[key], rest)
+  defp read(_, _), do: :invalid
+
+  def chatgpt_hint(code, _status, _shape) when is_binary(code) and is_map_key(@codes, code),
+    do: Map.fetch!(@codes, code)
+
+  def chatgpt_hint(_code, status, "detail") when status == 403,
+    do:
+      "Direct-route admission was denied. Check account, scopes, policy, or serving region; billing was not changed."
+
+  def chatgpt_hint(_code, status, _shape) when status == 503,
+    do:
+      "ChatGPT plan routing or usage availability is temporarily unavailable. Preserve sign-in and try again later."
+
+  def chatgpt_hint(_code, status, _shape) when status == 403,
+    do:
+      "A ChatGPT policy or permission check denied the request. Check account, scopes, and serving-region eligibility."
+
+  def chatgpt_hint(_code, status, _shape) when status == 400,
+    do:
+      "ChatGPT rejected the request. Check supported inputs, tools, model, and service-tier settings."
+
+  def chatgpt_hint(_code, status, _shape) when status == 429,
+    do: "ChatGPT plan usage is limited. Pause plan requests and check ChatGPT Settings > Usage."
+
+  def chatgpt_hint(_code, status, _shape) when status == 401,
+    do:
+      "The ChatGPT subscriber context was not accepted. Check the selected account and granted scopes."
+
+  def chatgpt_hint(_code, _status, _shape),
+    do:
+      "Check ChatGPT plan access, account limits, and request settings. No billing path was changed."
+end

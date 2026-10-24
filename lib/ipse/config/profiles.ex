@@ -2,20 +2,8 @@ defmodule Ipse.Config.Profiles do
   @moduledoc "Operator-defined execution profiles and explicit bounded child routing."
   alias Ipse.JSON, as: Schema
 
-  @providers %{
-    "chatgpt" => :chatgpt,
-    "openai" => :openai,
-    "ollama" => :ollama,
-    "anthropic" => :anthropic,
-    "demo" => :demo
-  }
-  @credentials %{
-    "chatgpt" => "ipse-auth",
-    "openai" => "OPENAI_API_KEY",
-    "anthropic" => "ANTHROPIC_API_KEY",
-    "ollama" => "none",
-    "demo" => "none"
-  }
+  @providers Ipse.Provider.Registry.atoms()
+  @credentials Ipse.Provider.Registry.credentials()
   @settings ~w(provider model max_steps context_bytes timeout_ms max_output_tokens)
 
   def validate(profiles, roles)
@@ -137,17 +125,7 @@ defmodule Ipse.Config.Profiles do
 
   defp invalid_field(_, _), do: "record"
 
-  def reasoning(_provider, _model, nil), do: :ok
-
-  def reasoning("ollama", _model, "none"), do: :ok
-
-  def reasoning(provider, "gpt-6.1-sol", effort)
-      when provider in ["chatgpt", "openai"] and effort in ~w(low medium high xhigh max) do
-    :ok
-  end
-
-  def reasoning(_, _, _),
-    do: {:error, "Unsupported reasoning setting for the selected provider/model profile."}
+  defdelegate reasoning(provider, model, effort), to: Ipse.Provider.Registry
 
   def select(profiles, roles, requested) do
     id = requested || roles["main"]
@@ -266,7 +244,7 @@ defmodule Ipse.Config.Profiles do
           ])
 
         policy =
-          if profile["provider"] == "chatgpt",
+          if Ipse.Provider.Registry.auth?(profile["provider"]),
             do: Map.put(policy, :auth_dir, config[:auth_dir]),
             else: policy
 
@@ -320,8 +298,8 @@ defmodule Ipse.Config.Profiles do
     do: args["profile"] || Map.get(config, :roles, %{})[args["role"] || "routine"]
 
   alias Ipse.Provider.Embedding
-  @embedding_providers %{"openai" => :openai, "ollama" => :ollama}
-  @embedding_credentials %{"openai" => "OPENAI_API_KEY", "ollama" => "none"}
+  @embedding_providers Map.take(@providers, Ipse.Provider.Registry.embedding_ids())
+  @embedding_credentials Map.take(@credentials, Ipse.Provider.Registry.embedding_ids())
   @required ~w(operation provider model dimensions dimension_mode)
   @optional ~w(credential base_url timeout_ms)
   @public ~w(id operation provider model billing_mode endpoint_sha256 dimensions dimension_mode timeout_ms destination)

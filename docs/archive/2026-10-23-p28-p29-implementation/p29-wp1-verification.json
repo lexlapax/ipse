@@ -1,0 +1,10 @@
+{
+  "record_version": 1,
+  "baseline_commit": "dd510a72e31e15402eeb473fcf29929243b8ca2c",
+  "baseline_capture": {"source": "independent git archive and build", "capture_owner": "dev/fixtures/capture-provider-registry.exs", "provenance": "test/fixtures/provider_registry/provenance.json", "log": "/tmp/ipse-p29-baseline-capture.log", "exit_code": 0},
+  "before_refactor": {"command": "mix test test/ipse/provider/registry_test.exs", "passed": 3, "seed": 700869, "log": "/tmp/ipse-p29-before-registry.log"},
+  "focused": {"passed": 312, "seed": 757986, "duration_seconds": 39.3, "exit_code": 0, "log": "/tmp/ipse-p29-registry-focused-final.log", "coverage": ["Provider adapters and framing", "Config and profiles", "Usage, costs and budgets", "CLI including doctor/setup", "MCP configuration", "Extension model calls and effect capacity", "Fixed baseline facts, old journals and request-free legacy", "Fixture hashes and implicit/explicit destination agreement"]},
+  "other_checks": ["warnings-as-errors compile", "Elixir 1.18.4 floor formatting", "Elixir 1.20.4 formatting", "documentation/manual links", "CI action pin policy"],
+  "exceptions": ["Native adapter wire/replay code", "Subscription diagnostic envelope and default overload in Transport", "Native header schemes in Doctor", "Frozen evaluation map with comment only", "Demo direct deterministic dispatch"],
+  "limits": ["No new provider adapters yet", "Full source/native/package/hosted gates pending", "No live inference or account verification"]
+}

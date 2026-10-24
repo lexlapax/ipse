@@ -128,7 +128,13 @@ defmodule Ipse.Session.Context do
   @excerpt_chars 256
 
   @doc "Provider-specific summary controls without changing ordinary turns or routing."
-  def summary_config(%{provider: :ollama} = config) do
+  def summary_config(config) do
+    if Ipse.Provider.Registry.supports?(config[:provider], :summary_schema?),
+      do: with_summary_schema(config),
+      else: config
+  end
+
+  defp with_summary_schema(config) do
     schema = %{
       "type" => "object",
       "properties" =>
@@ -142,8 +148,6 @@ defmodule Ipse.Session.Context do
 
     Map.put(config, :summary_schema, schema)
   end
-
-  def summary_config(config), do: config
 
   @type plan :: %{
           prefix: [map()],
@@ -700,10 +704,12 @@ defmodule Ipse.Session.Context do
     """
   end
 
-  defp provider_name(value) when value in [:chatgpt, :openai, :ollama, :anthropic, :demo],
-    do: Atom.to_string(value)
-
-  defp provider_name(_), do: nil
+  defp provider_name(value) do
+    case Ipse.Provider.Registry.fetch(value) do
+      {:ok, spec} when is_atom(value) -> spec.id
+      _ -> nil
+    end
+  end
 
   @categories ~w(instructions reference_context user_text assistant_text recent_tool_results older_tool_results tool_calls native_continuation checkpoint_data tool_provenance envelope)
 

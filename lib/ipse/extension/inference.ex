@@ -4,13 +4,7 @@ defmodule Ipse.Extension.ModelCall do
   alias Ipse.Config.Profiles
   @wire_bytes 1_048_576
 
-  @providers %{
-    "chatgpt" => :chatgpt,
-    "openai" => :openai,
-    "ollama" => :ollama,
-    "anthropic" => :anthropic,
-    "demo" => :demo
-  }
+  @providers Ipse.Provider.Registry.atoms()
   @source_keys ~w(type version operation_id parent_invocation_id identity_sha256 request_sha256 execution admission)
   @execution_keys ~w(id provider model billing_mode endpoint_sha256 reasoning_effort max_output_tokens timeout_ms)
   @error {:error, :invalid_extension_model_call}
@@ -27,7 +21,7 @@ defmodule Ipse.Extension.ModelCall do
       validate(proposed["request"]) == :ok and valid_profile?(proposed["execution"]) and
       proposed["execution"]["timeout_ms"] <= proposed["request"]["timeout_ms"] and
       proposed["execution"]["id"] == proposed["request"]["profile"] and
-      proposed["execution"]["provider"] in ~w(chatgpt openai ollama anthropic) and
+      proposed["execution"]["provider"] in Ipse.Provider.Registry.chat_ids() and
       supported_response?(proposed["request"], proposed["execution"]["provider"]) and
       Ipse.Provider.valid_destination?(proposed["destination"]) and
       id?(proposed["namespace"])
@@ -128,7 +122,7 @@ defmodule Ipse.Extension.ModelCall do
          true <- valid_profile?(profile),
          true <-
            profile["id"] == request["profile"] and
-             profile["provider"] in ~w(chatgpt openai ollama anthropic),
+             profile["provider"] in Ipse.Provider.Registry.chat_ids(),
          true <- supported_response?(request, profile["provider"]),
          cap =
            Ipse.Provider.narrow_output_tokens(
@@ -194,7 +188,7 @@ defmodule Ipse.Extension.ModelCall do
           else: runtime
 
       runtime =
-        if runtime.provider == :chatgpt,
+        if Ipse.Provider.Registry.auth?(runtime.provider),
           do: Map.put(runtime, :auth_dir, config[:model_auth_dir] || config[:auth_dir]),
           else: runtime
 
@@ -435,7 +429,7 @@ defmodule Ipse.Extension.ModelCall do
   defp validate_response_schema(_), do: @error
 
   defp supported_response?(request, provider),
-    do: request["version"] == 1 or provider == "ollama"
+    do: request["version"] == 1 or Ipse.Provider.Registry.supports?(provider, :structured_output?)
 
   defp matches_response?(%{"version" => 1}, _text), do: true
 

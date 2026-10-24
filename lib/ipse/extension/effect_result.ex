@@ -437,19 +437,8 @@ defmodule Ipse.Extension.EffectResult do
     _ -> {:error, :effect_record_capacity}
   end
 
-  defp usage_inputs("openai") do
-    limit = Usage.counter_limit()
-    [%{"prompt_tokens" => limit}, %{"prompt_tokens" => "invalid"}]
-  end
-
-  defp usage_inputs("ollama") do
-    limit = Usage.counter_limit()
-
-    [
-      %{"prompt_eval_count" => limit, "total_duration" => limit},
-      %{"prompt_eval_count" => "invalid"}
-    ]
-  end
+  defp usage_inputs(provider),
+    do: Ipse.Provider.Registry.fetch!(provider).embedding.capacity_inputs.()
 
   defp capacity(records) do
     {:ok, %{max_record_bytes: records |> Enum.map(&byte_size(Jason.encode!(&1))) |> Enum.max()}}

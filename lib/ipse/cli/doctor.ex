@@ -162,7 +162,7 @@ defmodule Ipse.CLI.Doctor do
 
     valid? =
       Ipse.Provider.valid_base_url?(provider, endpoint) and
-        not (provider == "chatgpt" and not is_nil(opts[:base_url]))
+        not (Ipse.Provider.Registry.auth?(provider) and not is_nil(opts[:base_url]))
 
     if not valid? do
       check("config.provider", "fail", Errors.format(:invalid_provider_endpoint))
@@ -201,8 +201,8 @@ defmodule Ipse.CLI.Doctor do
         provider = route["provider"]
 
         {status, summary} =
-          case provider do
-            "chatgpt" ->
+          case Ipse.Provider.Registry.fetch!(provider).credential do
+            :chatgpt_auth ->
               with {:ok, %{type: :regular, uid: owner, mode: mode}} <-
                      File.lstat(Path.join(home, "auth/chatgpt.json")),
                    true <- not is_nil(uid) and owner == uid and band(mode, 0o077) == 0,
@@ -215,9 +215,7 @@ defmodule Ipse.CLI.Doctor do
                   {"fail", "Subscription credentials missing, expired or unsafe; run ipse login"}
               end
 
-            provider when provider in ["openai", "anthropic"] ->
-              name = if provider == "openai", do: "OPENAI_API_KEY", else: "ANTHROPIC_API_KEY"
-
+            {:env, name} ->
               if System.get_env(name) not in [nil, ""],
                 do: {"ok", "#{name} present"},
                 else: {"fail", "Set #{name} privately"}
@@ -365,39 +363,48 @@ defmodule Ipse.CLI.Doctor do
     end
   end
 
-  defp probe(%{"provider" => "chatgpt"}),
-    do: %{
-      "provider" => "chatgpt",
-      "status" => "skip",
-      "summary" => "Subscription reachability is verified by a real session"
-    }
-
-  defp probe(%{"provider" => "demo"}),
-    do: %{
-      "provider" => "demo",
-      "status" => "skip",
-      "summary" => "Scripted demo uses no model service"
-    }
-
   defp probe(route) do
+    spec = Ipse.Provider.Registry.fetch!(route["provider"])
+
+    case spec.probe do
+      :subscription ->
+        %{
+          "provider" => spec.id,
+          "status" => "skip",
+          "summary" => "Subscription reachability is verified by a real session"
+        }
+
+      :demo ->
+        %{
+          "provider" => spec.id,
+          "status" => "skip",
+          "summary" => "Scripted demo uses no model service"
+        }
+
+      {suffix, authentication} ->
+        probe_route(
+          route,
+          spec.probe_base_url || spec.default_base_url,
+          suffix,
+          probe_headers(spec, authentication)
+        )
+    end
+  end
+
+  defp probe_headers(_spec, :none), do: []
+
+  defp probe_headers(spec, authentication) do
+    {:env, name} = spec.credential
+    key = System.get_env(name) || ""
+
+    case authentication do
+      :bearer -> [{"authorization", "Bearer " <> key}]
+      :anthropic -> [{"x-api-key", key}, {"anthropic-version", "2023-06-01"}]
+    end
+  end
+
+  defp probe_route(route, default, suffix, headers) do
     provider = route["provider"]
-
-    {default, suffix, headers} =
-      case provider do
-        "ollama" ->
-          {"http://localhost:11434", "/api/tags", []}
-
-        "openai" ->
-          {"https://api.openai.com/v1", "/models",
-           [{"authorization", "Bearer " <> (System.get_env("OPENAI_API_KEY") || "")}]}
-
-        "anthropic" ->
-          {"https://api.anthropic.com", "/v1/models",
-           [
-             {"x-api-key", System.get_env("ANTHROPIC_API_KEY") || ""},
-             {"anthropic-version", "2023-06-01"}
-           ]}
-      end
 
     {status, summary} =
       if Ipse.Provider.valid_base_url?(provider, route["base_url"]) do

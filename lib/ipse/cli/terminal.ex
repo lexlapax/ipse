@@ -82,7 +82,7 @@ defmodule Ipse.CLI.Terminal do
   ipse budget --resume ID          Inspect saved shared admission reservations
   ipse handoff --resume ID --note TEXT  Export an explicit recovery note locally
 
-  --provider chatgpt|openai|ollama|anthropic|demo  (default: chatgpt)
+  --provider #{Enum.join(Ipse.Provider.Registry.ids(), "|")}  (default: #{Ipse.Provider.Registry.default_id()})
   --model NAME                         Override the provider default
   --cwd PATH                           Workspace (default: current directory)
   --handoff PATH                       Fresh chat only: import reviewed historical recovery context

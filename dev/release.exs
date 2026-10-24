@@ -20,7 +20,8 @@ defmodule Ipse.Development.Release do
   def verify_checksum!(archive) do
     expected = checksum(archive) <> "  " <> Path.basename(archive) <> "\n"
 
-    with {:ok, %{type: :regular, size: size}} when size <= 512 <- File.lstat(archive <> ".sha256"),
+    with {:ok, %{type: :regular, size: size}} <- File.lstat(archive <> ".sha256"),
+         true <- size <= 512,
          {:ok, ^expected} <- File.read(archive <> ".sha256") do
       :ok
     else

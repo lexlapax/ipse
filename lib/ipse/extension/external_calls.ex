@@ -378,7 +378,7 @@ defmodule Ipse.Extension.MCPCall do
   defp env_name?(value),
     do:
       is_binary(value) and Regex.match?(~r/\A[A-Z_][A-Z0-9_]{0,63}\z/, value) and
-        value not in ~w(OPENAI_API_KEY ANTHROPIC_API_KEY IPSE_CHATGPT_ACCESS_TOKEN)
+        value not in Ipse.Provider.Registry.secret_env()
 
   defp resource_uri?(value),
     do:

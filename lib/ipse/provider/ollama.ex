@@ -3,7 +3,13 @@ defmodule Ipse.Provider.Ollama do
   alias Ipse.Provider.Stream
   alias Ipse.Provider.Transport
 
-  def endpoint(config), do: Ipse.Provider.endpoint(config, "http://127.0.0.1:11434", "/api/chat")
+  def endpoint(config),
+    do:
+      Ipse.Provider.endpoint(
+        config,
+        Ipse.Provider.Registry.fetch!(:ollama).default_base_url,
+        "/api/chat"
+      )
 
   def complete(config, messages, tools, emit) do
     url = endpoint(config)

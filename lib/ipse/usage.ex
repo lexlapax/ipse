@@ -2,13 +2,8 @@ defmodule Ipse.Usage do
   @moduledoc "Durable content-free request identities and cumulative provider usage snapshots."
 
   @types ~w(request_admitted request_usage_observed request_finished)
-  @providers %{
-    "chatgpt" => :chatgpt,
-    "openai" => :openai,
-    "ollama" => :ollama,
-    "anthropic" => :anthropic,
-    "demo" => :demo
-  }
+  @providers Ipse.Provider.Registry.atoms()
+  @text_providers Enum.map(Ipse.Provider.Registry.chat_ids(), &Map.fetch!(@providers, &1))
   @limit 10_000
 
   def id, do: Base.encode16(:crypto.strong_rand_bytes(16), case: :lower)
@@ -464,7 +459,7 @@ defmodule Ipse.Usage do
             Regex.match?(~r/\A[0-9a-f]{64}\z/, e["endpoint_sha256"]))) and
       model?(e["model"]) and Ipse.JSON.safe_uint?(e["admitted_at_ms"]) and
       (operation_tag(e) == "text" or
-         (e["kind"] == "extension" and e["provider"] in ~w(openai ollama) and
+         (e["kind"] == "extension" and Ipse.Provider.Registry.embedding?(e["provider"]) and
             model?(e["selected_profile"])))
   end
 
@@ -544,20 +539,14 @@ defmodule Ipse.Usage do
   defp id?(id), do: is_binary(id) and Regex.match?(~r/\A[0-9a-f]{32}\z/, id)
   @counter_limit 1_000_000_000_000
   @fields ~w(input_tokens output_tokens total_tokens input_uncached_tokens input_cached_tokens input_cache_write_tokens input_cache_write_5m_tokens input_cache_write_1h_tokens output_reasoning_tokens provider_web_search_requests provider_web_fetch_requests provider_duration_ns)
-  @billing %{
-    chatgpt: "subscription",
-    openai: "api",
-    ollama: "local",
-    anthropic: "api",
-    demo: "none"
-  }
+  @billing Ipse.Provider.Registry.billing()
   def counter_fields, do: @fields
   def counter_limit, do: @counter_limit
   def billing_mode(provider), do: @billing[provider]
 
   def normalize(:demo, _usage), do: record(empty(), [], "not_applicable", [])
 
-  def normalize(provider, usage) when provider in [:chatgpt, :openai, :ollama, :anthropic] do
+  def normalize(provider, usage) when provider in @text_providers do
     usage = if is_nil(usage), do: %{}, else: usage
 
     with true <- is_map(usage),
@@ -592,7 +581,7 @@ defmodule Ipse.Usage do
   def normalize(provider, operation, raw) when operation in [:embedding, "embedding"] do
     raw = if is_nil(raw), do: %{}, else: raw
 
-    with true <- provider in [:openai, :ollama],
+    with true <- Ipse.Provider.Registry.embedding?(provider),
          true <- is_map(raw),
          {:ok, counts} <- embedding_counts(provider, raw),
          true <- embedding_consistent?(counts) do
@@ -617,7 +606,7 @@ defmodule Ipse.Usage do
     else
       _ ->
         issue =
-          if provider in [:openai, :ollama],
+          if Ipse.Provider.Registry.embedding?(provider),
             do: "invalid_or_inconsistent_provider_counters",
             else: "unsupported_provider"
 
@@ -699,29 +688,8 @@ defmodule Ipse.Usage do
 
   def valid_usage?(_), do: false
 
-  defp embedding_counts(provider, raw) do
-    paths =
-      case provider do
-        :openai ->
-          %{"input_tokens" => ["prompt_tokens"], "total_tokens" => ["total_tokens"]}
-
-        :ollama ->
-          %{"input_tokens" => ["prompt_eval_count"], "provider_duration_ns" => ["total_duration"]}
-      end
-
-    Enum.reduce_while(paths, {:ok, empty()}, fn {field, path}, {:ok, counts} ->
-      case read(raw, path) do
-        nil ->
-          {:cont, {:ok, counts}}
-
-        value when is_integer(value) and value >= 0 and value <= @counter_limit ->
-          {:cont, {:ok, Map.put(counts, field, value)}}
-
-        _ ->
-          {:halt, :error}
-      end
-    end)
-  end
+  defp embedding_counts(provider, raw),
+    do: Ipse.Provider.Registry.fetch!(provider).embedding.usage_extractor.(raw)
 
   defp embedding_consistent?(counts),
     do:
@@ -752,64 +720,14 @@ defmodule Ipse.Usage do
       "not_applicable_fields" => ["output_tokens"]
     }
 
-  defp extract(provider, raw) do
-    paths =
-      case provider do
-        p when p in [:chatgpt, :openai] ->
-          %{
-            "input_tokens" => ["input_tokens"],
-            "output_tokens" => ["output_tokens"],
-            "total_tokens" => ["total_tokens"],
-            "input_cached_tokens" => ["input_tokens_details", "cached_tokens"],
-            "input_cache_write_tokens" => ["input_tokens_details", "cache_write_tokens"],
-            "output_reasoning_tokens" => ["output_tokens_details", "reasoning_tokens"]
-          }
-
-        :anthropic ->
-          %{
-            "input_uncached_tokens" => ["input_tokens"],
-            "output_tokens" => ["output_tokens"],
-            "input_cached_tokens" => ["cache_read_input_tokens"],
-            "input_cache_write_tokens" => ["cache_creation_input_tokens"],
-            "input_cache_write_5m_tokens" => ["cache_creation", "ephemeral_5m_input_tokens"],
-            "input_cache_write_1h_tokens" => ["cache_creation", "ephemeral_1h_input_tokens"],
-            "output_reasoning_tokens" => ["output_tokens_details", "thinking_tokens"],
-            "provider_web_search_requests" => ["server_tool_use", "web_search_requests"],
-            "provider_web_fetch_requests" => ["server_tool_use", "web_fetch_requests"]
-          }
-
-        :ollama ->
-          Map.new(
-            ~w(input_tokens output_tokens input_cached_tokens provider_duration_ns),
-            &{&1, [&1]}
-          )
-      end
-
-    Enum.reduce_while(paths, {:ok, empty()}, fn {field, path}, {:ok, counts} ->
-      case read(raw, path) do
-        nil ->
-          {:cont, {:ok, counts}}
-
-        value when is_integer(value) and value >= 0 and value <= @counter_limit ->
-          {:cont, {:ok, Map.put(counts, field, value)}}
-
-        _ ->
-          {:halt, :error}
-      end
-    end)
-  end
-
-  defp read(value, []), do: value
-  defp read(nil, _path), do: nil
-  defp read(map, [key | rest]) when is_map(map), do: read(Map.get(map, key), rest)
-  defp read(_, _), do: :invalid
+  defp extract(provider, raw), do: Ipse.Provider.Registry.fetch!(provider).usage_extractor.(raw)
 
   defp derive(provider, counts) do
     {counts, derived} =
-      if provider == :anthropic do
+      if is_list(Ipse.Provider.Registry.fetch!(provider).input_components) do
         parts =
           Enum.map(
-            ~w(input_uncached_tokens input_cached_tokens input_cache_write_tokens),
+            Ipse.Provider.Registry.fetch!(provider).input_components,
             &counts[&1]
           )
 

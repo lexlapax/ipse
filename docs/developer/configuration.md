@@ -11,14 +11,41 @@ it cannot select its own credential endpoint or authorize effects. The
 | --- | --- |
 | [`Config.resolve/4`](../../lib/ipse/config.ex) | Scoped JSON, selected profile, allowlisted environment, and explicit CLI become values/provenance/fingerprint, without credentials or execution |
 | `Config.runtime/2` | Values plus explicit client facts become admitted Session policy |
-| [`Config.Profiles`](../../lib/ipse/config/profiles.ex) | Closed text/embedding registries and selected execution facts, without scheduling/fallback |
+| [`Provider.Registry`](../../lib/ipse/provider/registry.ex) | Closed string/atom specs, credential sources, defaults, capabilities, usage extraction and operator labels/probes |
+| [`Config.Profiles`](../../lib/ipse/config/profiles.ex) | Validated text/embedding profiles and selected execution facts, without scheduling/fallback |
 | [`Provider`](../../lib/ipse/provider.ex) | Fresh credential resolution, output-cap validation/narrowing, and adapter dispatch in owned work |
 | [`Provider.Transport` and `Stream`](../../lib/ipse/provider/) | Bounded HTTP/error handling and incremental response assembly |
 | [`Session`](../../lib/ipse/session.ex) | Pin runtime identity and validate saved evidence before recovery/effects |
 
-Start at Config's fixed provider/field/CLI/environment tables. Arbitrary JSON keys
-never create atoms. Then trace `Profiles.validate_profile/1`, `select/3`,
+Start at `Provider.Registry.fetch/1`: a trusted Spec binds a string ID to an
+existing atom and adapter. Config retains fixed field/CLI/environment tables;
+arbitrary JSON keys never create atoms. Then trace `Profiles.validate_profile/1`, `select/3`,
 `validate_route/2`, and `child_config/3`, finishing at Provider's request functions.
+
+The registry owns provider differences rather than registering untrusted code.
+Its ordered views preserve operator and rate-card presentation; callbacks validate
+reasoning and extract counters using fixed native paths. Usage owns consistency,
+derivation and persisted validation. Adapters own wire shapes and opaque replay.
+ChatGPT and OpenAI retain the same `openai` replay key with distinct billing and
+endpoint policy. Transport retains bounded error parsing/redaction; subscription
+diagnostic hints belong to its spec. A spec never authorizes a request or changes
+credential source silently.
+
+In `iex -S mix`, inspect a route without calling it:
+
+```elixir
+{:ok, spec} = Ipse.Provider.Registry.fetch("openai")
+:openai = spec.atom
+{:env, "OPENAI_API_KEY"} = spec.credential
+"api" = spec.billing_mode
+:error = Ipse.Provider.Registry.fetch("unknown-provider")
+```
+
+Before changing existing metadata, run `mix test test/ipse/provider/registry_test.exs`.
+Pre-refactor fixtures compare full Config manifests, destinations, canonical usage
+and cost, then restore old journals and request-free legacy sessions without
+mutation. Updating goldens to match a refactor removes that protection; investigate
+differences before changing evidence.
 
 Resolution canonicalizes the workspace and nearest Git boundary, including
 worktree `.git` files. Outside Git, only the launch directory contributes project

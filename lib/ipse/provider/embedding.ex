@@ -6,10 +6,20 @@ defmodule Ipse.Provider.Embedding do
   @error {:error, "Embedding response or configuration is invalid or unavailable."}
 
   def endpoint(%{provider: :openai} = config),
-    do: Ipse.Provider.endpoint(config, "https://api.openai.com/v1", "/embeddings")
+    do:
+      Ipse.Provider.endpoint(
+        config,
+        Ipse.Provider.Registry.fetch!(:openai).default_base_url,
+        "/embeddings"
+      )
 
   def endpoint(%{provider: :ollama} = config),
-    do: Ipse.Provider.endpoint(config, "http://127.0.0.1:11434", "/api/embed")
+    do:
+      Ipse.Provider.endpoint(
+        config,
+        Ipse.Provider.Registry.fetch!(:ollama).default_base_url,
+        "/api/embed"
+      )
 
   def endpoint(_), do: raise(ArgumentError, "Unsupported embedding provider.")
 

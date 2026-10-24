@@ -4,7 +4,12 @@ defmodule Ipse.Provider.OpenAI do
   alias Ipse.Provider.Transport
 
   def endpoint(config),
-    do: Ipse.Provider.endpoint(config, "https://api.openai.com/v1", "/responses")
+    do:
+      Ipse.Provider.endpoint(
+        config,
+        Ipse.Provider.Registry.fetch!(:openai).default_base_url,
+        "/responses"
+      )
 
   def complete(config, messages, tools, emit) do
     if config[:api_key] in [nil, ""] do
