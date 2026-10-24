@@ -21,15 +21,15 @@ requirement; authority, recovery and correctness regressions remain unacceptable
 | P28 WP2 | Redacted actionable errors and matching recovery instructions | Complete at `6818000`; full local and hosted Ubuntu/macOS checks pass |
 | P28 WP3 | Offline doctor, explicit bounded probes and finding fixtures | Full native and hosted Ubuntu/macOS pass at `a89fce7`; later installed proof passes |
 | P28 WP4 | Guided/private setup, previews, backups and resolution fixtures | Full native suite and installed first run pass at `9907877`; repaired platform matrix passes at `61ed1f9` |
-| P28 WP5 | Checksums, symlink launcher, draft tag workflow and install lifecycle | Local lifecycle and repaired platform matrix pass; tag rehearsal remains pending |
-| P28 WP6 | Whole-manual first-user review and fresh-account walkthrough | Pending |
+| P28 WP5 | Checksums, symlink launcher, draft tag workflow and install lifecycle | Local lifecycle and runtime-notice package checks pass; RC1 draft exists, both platform jobs running |
+| P28 WP6 | Whole-manual first-user review and fresh-account walkthrough | Editorial review and installed examples pass; developer will run the fresh-account walkthrough when RC archives are ready |
 | P29 WP0 | Verified official wire facts and continuation examples | [Recorded](wire-facts.md); both new adapters now have protocol fixtures and separate live evidence |
 | P29 WP1 | Central registry, existing-provider equivalence and recovery tests | Exact `cd74f91` native suite (1601) and installed proof pass; subsequent `61ed1f9` platform matrix passes |
 | P29 WP2 | Shared server and adapter conformance tests | Focused and complete Ubuntu/macOS matrix pass ([local receipt](p29-wp2-verification.json), [hosted receipt](p29-wp2-hosted.json)) |
 | P29 WP3 | Pinned OpenRouter and explicit loopback compatible adapter | Implemented; focused/conformance/owned-extension checks pass ([receipt](p29-wp3-verification.json)); full/platform gates pending |
 | P29 WP4 | Native Gemini, signed continuation and canonical accounting | Implemented; [fixtures](p29-wp4-verification.json) and [live text/tool](p29-live-checkpoint.json) pass; final combined/platform gates pending |
 | P29 WP5 | Registry-driven doctor/setup and coherent provider manuals | Implemented; explicit new-route prompts, private profile writes and preservation controls pass; final combined gates pending |
-| Auditor handoff | Requirement matrix, exact commits/checks, exclusions and commands | Pending |
+| Auditor handoff | Requirement matrix, exact commits/checks, exclusions and commands | Draft prepared; final verification and acceptance gates remain open |
 
 Release publication, real account probes and a genuinely unassisted fresh-user
 walkthrough require their own evidence. Synthetic tests cannot establish these.
@@ -429,3 +429,13 @@ no rejected value in the message. Late OpenRouter mismatch wording now says the
 response was refused, without implying that previously streamed text disappeared.
 All 303 provider/configuration/CLI controls pass, seed 198707. These are subsequent
 error-only corrections; RC1 remains an explicitly earlier rehearsal candidate.
+
+The [combined verification receipt](combined-verification.json) records the
+completed `492d091` native-inclusive suite: 1710 passed, 19 excluded, seed 681881,
+1070.7 seconds, exit 0, followed by a passing isolated demo. The latest `9c5eb6a`
+archive passes the complete installed proof, and all 24 bundled runtime-notice
+files match their manifest hashes. Its full native suite and exact-source hosted
+run 40054636574 remain in progress. These completed checks do not establish a
+fresh-OS-account walkthrough. The developer will perform that check once RC
+assets are ready; the [observation record](../2026-10-24-p28-walkthrough/index.md)
+is prepared and explicitly not started.

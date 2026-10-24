@@ -623,9 +623,11 @@ installed-archive checks and exact-source hosted Ubuntu/macOS verification.
 Actionable errors pass full local and hosted checks at `6818000`. Offline doctor passes
 the native-inclusive suite at `a89fce7`. Private setup passes focused and installed
 first-run checks. Release checksums, symlink handling, draft workflow and lifecycle
-manuals are implemented; the local installed upgrade proof passes. Hosted gates,
-RC rehearsal, final baseline and unassisted fresh-account walkthrough remain
-pending. The real release remains unpublished.
+manuals are implemented; the local installed upgrade proof passes. Whole-manual
+review and installed examples pass. RC1 has an unpublished draft with both
+platform jobs running. The developer will perform the unassisted fresh-account
+walkthrough once its archives are ready. Final hosted and exact-candidate source
+gates remain pending. The real release remains unpublished.
 
 Scope:
 
@@ -670,7 +672,11 @@ protocol/conformance, session/child/SDK, compaction, accounting and resume fixtu
 Explicit live Gemini and pinned OpenRouter text/tool checks pass separately;
 Gemini's omitted counters remain partial. Guided new-route setup now previews and
 saves explicit pins, data policy and local endpoints while preserving existing
-profiles. Final combined source, installed and hosted gates remain pending.
+profiles. The `492d091` native-inclusive baseline passes 1710 tests with 19
+excluded; the latest `9c5eb6a` installed archive proof passes, including runtime
+notices. Its full source and hosted gates remain pending; the
+[combined receipt](archive/2026-10-23-p28-p29-implementation/combined-verification.json)
+distinguishes these exact revisions.
 Native embeddings stay limited to OpenAI/Ollama.
 The [P29 implementation brief](archive/2026-10-23-p28-p29-design/p29.md) breaks
 this scope into ordered work packages with files, tests and decisions.

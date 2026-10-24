@@ -1,6 +1,7 @@
 # P28 and P29 implementation audit preparation
 
-Prepared 2026-10-24 against runtime candidate `492d091d6f217ca4c4dbb7b629dfa228bcd17a3a`.
+Prepared 2026-10-24; runtime candidate is now `9c5eb6a`, with exact live wire
+evidence at `492d091` and RC1 release preparation at `e944fcf`.
 This is a draft handoff, not an external audit or a completeness verdict. Final
 combined verification, release rehearsal and fresh-operator acceptance remain
 open. Use the [current plan](../../plan.md) for status and the
@@ -39,7 +40,7 @@ step, field and refusal in the briefs. Inspect both positive and negative contro
 | P28 optional WP3b kernel probe | Existing native sandbox policy and doctor availability wording | Explicitly deferred under the brief's allowance; availability is never enforcement |
 | P28 WP4: explicit billing/provider choice, TTY/headless preview/save, exact JSON, private atomic write/backup, preservation, optional login, offline diagnosis | `lib/ipse/cli/setup.ex`, `lib/ipse/private_file.ex`, setup/private-file/Auth suites | [WP4 receipt](wp4-verification.json), later installed/platform checks; P29 adds explicit route profiles |
 | P28 WP5: sidecars, strict matching tags/notes/assets, symlink/cwd handling, draft-only release matrix, install/upgrade/uninstall | `dev/release.exs`, `.github/workflows/release.yml`, `dev/release-launcher.sh`, `test/dev/release_test.exs`, installed verifier | [WP5 receipt](wp5-verification.json), [later full platform matrix](p29-wp2-hosted.json); actual RC draft/assets/inspection/deletion still required |
-| P28 WP6: whole first-user manual, examples/links/limits, unassisted fresh OS account walkthrough | Operator install/index/configuration/usage/recovery, developer testing/configuration | Editorial changes and link checks exist; final whole-manual review and genuine walkthrough record remain open |
+| P28 WP6: whole first-user manual, examples/links/limits, unassisted fresh OS account walkthrough | Operator install/index/configuration/usage/recovery, developer testing/configuration | Whole-manual review and installed examples pass; genuine walkthrough remains open |
 | P29 WP0: primary protocol research before coding, native continuation and usage semantics | [Wire facts](wire-facts.md), linked official sources and schematic examples | Recorded before adapter work; explicitly verified OpenAI display-name/slug pair added after first live refusal |
 | P29 WP1: closed registry, existing constants/manifests/destinations/usage/cost/journal equivalence, documented exceptions | `lib/ipse/provider/registry.ex`, `test/ipse/provider/registry_test.exs`, `test/fixtures/provider_registry/provenance.json` | [Registry receipt](p29-wp1-verification.json); fixtures captured from independent `dd510a7`, not regenerated from refactor |
 | P29 WP2: shared fragmented server, native builders and common text/tools/replay/limits/errors/usage/terminal controls | `test/support/provider_fixture.ex`, `test/support/provider_conformance.ex`, provider conformance suite | [Local receipt](p29-wp2-verification.json), [Ubuntu/macOS full matrix](p29-wp2-hosted.json); six routes use common controls, with dedicated ChatGPT controls retained |
@@ -107,6 +108,19 @@ The required unassisted fresh-OS-account install-to-first-task walkthrough has n
 occurred. An isolated `IPSE_HOME` fixture is not that evidence. Record actual
 operator confusion and repairs rather than inventing a pass. Final `v0.1.0`
 publication belongs to the developer after WP6 acceptance and review.
+
+The [walkthrough observation record](../2026-10-24-p28-walkthrough/index.md) is
+prepared but not started. RC1's draft workflow is running at
+`e944fcf`; it must finish before draft assets can be inspected. `9c5eb6a` adds
+only more precise invalid-cap and late identity-refusal messages to the runtime.
+It has 303 passing provider/configuration/CLI controls and a passing complete
+installed proof, including 24 verified runtime-notice files. Its fixed full/native
+check remains in progress. The earlier `492d091` native-inclusive suite completed
+with 1710 passed and 19 excluded, followed by a passing isolated demo. The
+[combined receipt](combined-verification.json) preserves exact build scope.
+Successful wire handling is unchanged from the
+exact live-tested `492d091`; inspect that source difference rather than calling
+the earlier live receipt an exact-final-build test.
 
 After those gates, replace this draft status with the exact audit candidate and
 remaining limitations. The independent auditor should return requirement-level

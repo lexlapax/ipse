@@ -7,6 +7,7 @@ preserved pre-rewrite chapters. Their dated bodies and verdicts are unchanged.
 
 | Snapshot | Provenance | Current guidance and retained records |
 | --- | --- | --- |
+| [2026-10-24 P28 fresh-operator walkthrough](2026-10-24-p28-walkthrough/index.md) | Prepared observation record; not started and no fresh-account/unassisted pass claimed | [Installation](../operator/install.md), [user manual](../operator/index.md), [implementation evidence](2026-10-23-p28-p29-implementation/index.md) |
 | [2026-10-23 P28 and P29 implementation](2026-10-23-p28-p29-implementation/index.md) | Ordered implementation, verification and external-auditor handoff preparation from `2294395`; in progress | [Plan](../plan.md), [recovery](../operator/recovery.md), [verification training](../developer/testing.md) |
 | [2026-10-23 P28 and P29 implementation briefs](2026-10-23-p28-p29-design/index.md) | Proposal written against `dd510a7` from a read-only source survey; ordered work packages, decisions and checks for operator usability and the provider registry, OpenRouter and Gemini; nothing implemented | [Plan](../plan.md), [user manual](../operator/index.md), [contributor manual](../developer/index.md) |
 | [2026-10-23 final whole-P27 review and follow-up](2026-10-23-p27-final-review/index.md) | Independent review of `ca5838b`, repairs at `89151b6`, and a three-reviewer internal whole-P27 audit with further MCP publication/legacy-binding repairs and separate verification | [MCP manual](../operator/mcp.md), [Corpus manual](../operator/corpus.md), [plan](../plan.md) |
