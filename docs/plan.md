@@ -90,7 +90,7 @@ P30 remains proposed. Each milestone keeps its own acceptance evidence.
 | [P26: memory baseline](#p26-optional-working-and-long-term-memory) | Complete within explicit-note scope at `25f1d8e`; review repairs and local/hosted gates pass | Preserve lifecycle, authority and documented retention limits |
 | [P27: research, graph and RAG](#p27-optional-research-graph-and-rag) | Complete; all acceptance tasks closed within optional-package scope; hybrid qualified and selected | Preserve versioned evidence and explicit configuration; evaluate new workloads independently |
 | [P28: operator usability and release](#p28-operator-usability-and-release-readiness) | Selected; implementation in progress | First-run setup, environment diagnosis, actionable errors and a tagged, installable release |
-| [P29: provider registry, OpenRouter and Gemini](#p29-provider-registry-openrouter-and-gemini) | Selected; follows operator foundations | Registry refactor without behavior change, then fixture-verified adapters and separate live account checks |
+| [P29: provider registry, OpenRouter and Gemini](#p29-provider-registry-openrouter-and-gemini) | Complete at `9c5eb6a`; local/native/installed and hosted Ubuntu/macOS pass | Preserve explicit routing, private continuation and honest accounting; independent completeness audit pending |
 | [P30: decision engines](#p30-advisory-decision-engines) | Proposed | Typed closed-answer contract, fixture engines, then OpenAI Decisions and SystemOne-compatible adapters |
 | [P31: voice and media](#p31-voice-and-realtime-media) | Deferred; unimplemented; P28 in archived records | Explicit media contracts and later device/service validation |
 | [Apache-2.0 transition](#license-transition) | Complete; local and hosted `7bb642b` checks pass | Preserve bundled identity/recovery and third-party license boundaries |
@@ -624,11 +624,14 @@ Actionable errors pass full local and hosted checks at `6818000`. Offline doctor
 the native-inclusive suite at `a89fce7`. Private setup passes focused and installed
 first-run checks. Release checksums, symlink handling, draft workflow and lifecycle
 manuals are implemented; the local installed upgrade proof passes. Whole-manual
-review and installed examples pass. RC1 has an unpublished draft with both
-platform jobs running. The developer will perform the unassisted fresh-account
-walkthrough once its archives are ready. The latest `9c5eb6a` native-inclusive
-baseline, isolated demo and installed proof pass; final hosted and RC asset
-gates remain pending. The real release remains unpublished.
+review and installed examples pass. The latest `9c5eb6a` native-inclusive baseline,
+isolated demo, installed proof and complete hosted Ubuntu/macOS matrix pass.
+RC1's workflow and both platform archives/checksums pass, including re-download
+and runtime-notice inspection ([receipts](archive/2026-10-23-p28-p29-implementation/rc-assets.json)).
+The developer has been given the ready draft for the unassisted fresh-account
+walkthrough. Its [observation record](archive/2026-10-24-p28-walkthrough/index.md)
+has no results yet. Draft deletion waits for that walkthrough; the real stable
+tag and publication remain open.
 
 Scope:
 
@@ -660,26 +663,27 @@ dependencies.
 
 ## P29: provider registry, OpenRouter and Gemini
 
-**Selected; implementation in progress.** The central
-[`provider registry`](../lib/ipse/provider/registry.ex) now supplies configuration,
-profiles, credentials, billing, accounting, capability, setup and diagnosis facts.
-Pre-refactor fixtures captured from `dd510a7` and 312 focused checks pass; final
-native baseline (1601) and installed checks pass. The subsequent shared-fixture
-commit `61ed1f9` passes the complete Ubuntu/macOS matrix.
-Shared conformance covers the existing adapters, pinned OpenRouter and explicit
-loopback-compatible servers. OpenRouter profile/continuation/accounting and owned
-extension tests pass; final combined gates remain pending. Native Gemini now passes
-protocol/conformance, session/child/SDK, compaction, accounting and resume fixtures.
-Explicit live Gemini and pinned OpenRouter text/tool checks pass separately;
-Gemini's omitted counters remain partial. Guided new-route setup now previews and
-saves explicit pins, data policy and local endpoints while preserving existing
-profiles. The `492d091` native-inclusive baseline passes 1710 tests with 19
-excluded; the latest `9c5eb6a` installed archive proof passes, including runtime
-notices. Its full native-inclusive source baseline passes 1713 tests with 19
-excluded, followed by a passing isolated demo. Hosted gates remain pending; the
+**Complete at `9c5eb6a`.** The central
+[`provider registry`](../lib/ipse/provider/registry.ex) supplies configuration,
+profiles, credentials, billing, accounting, capabilities, setup and diagnosis.
+Independent pre-refactor fixtures from `dd510a7` retain existing manifests,
+destinations, usage, costs and saved-session behavior. Shared conformance covers
+the existing adapters, pinned OpenRouter, explicit loopback-compatible servers
+and native Gemini. Session/child/SDK, compaction, privacy, budgets and recovery
+controls pass. Guided setup saves explicit route profiles while preserving
+existing configuration. Native embeddings remain limited to OpenAI/Ollama.
+
+Final verification passes the Linux native-inclusive suite (1713 passed,
+19 excluded), isolated demo, complete installed proof and the exact-source
+[Ubuntu/macOS matrix](archive/2026-10-23-p28-p29-implementation/final-hosted.json),
+including all independent proofs. Whole-manual review and installed examples pass.
+Separate [live Gemini and pinned OpenRouter text/tool checks](archive/2026-10-23-p28-p29-implementation/p29-live-final.json)
+pass at `492d091`; the only subsequent runtime changes refine refusal messages.
+Missing Gemini counters remain partial. The
 [combined receipt](archive/2026-10-23-p28-p29-implementation/combined-verification.json)
-distinguishes these exact revisions.
-Native embeddings stay limited to OpenAI/Ollama.
+preserves exact revisions, exclusions and earlier failures. Independent external
+completeness review remains separate; P28's human walkthrough/publication gates
+are still open.
 The [P29 implementation brief](archive/2026-10-23-p28-p29-design/p29.md) breaks
 this scope into ordered work packages with files, tests and decisions.
 The developer accepted its recommended decisions on 2026-10-23. Gemini, then

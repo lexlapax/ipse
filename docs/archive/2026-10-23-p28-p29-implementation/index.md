@@ -21,15 +21,15 @@ requirement; authority, recovery and correctness regressions remain unacceptable
 | P28 WP2 | Redacted actionable errors and matching recovery instructions | Complete at `6818000`; full local and hosted Ubuntu/macOS checks pass |
 | P28 WP3 | Offline doctor, explicit bounded probes and finding fixtures | Full native and hosted Ubuntu/macOS pass at `a89fce7`; later installed proof passes |
 | P28 WP4 | Guided/private setup, previews, backups and resolution fixtures | Full native suite and installed first run pass at `9907877`; repaired platform matrix passes at `61ed1f9` |
-| P28 WP5 | Checksums, symlink launcher, draft tag workflow and install lifecycle | Local lifecycle and runtime-notice package checks pass; RC1 draft exists, both platform jobs running |
-| P28 WP6 | Whole-manual first-user review and fresh-account walkthrough | Editorial review and installed examples pass; developer will run the fresh-account walkthrough when RC archives are ready |
+| P28 WP5 | Checksums, symlink launcher, draft tag workflow and install lifecycle | RC1 workflow, both platform archives, installed proofs and downloaded asset/notice inspection pass; draft deletion waits for walkthrough |
+| P28 WP6 | Whole-manual first-user review and fresh-account walkthrough | Editorial review, examples and final source/package/platform checks pass; developer has ready archives, actual walkthrough and stable publication pending |
 | P29 WP0 | Verified official wire facts and continuation examples | [Recorded](wire-facts.md); both new adapters now have protocol fixtures and separate live evidence |
 | P29 WP1 | Central registry, existing-provider equivalence and recovery tests | Exact `cd74f91` native suite (1601) and installed proof pass; subsequent `61ed1f9` platform matrix passes |
 | P29 WP2 | Shared server and adapter conformance tests | Focused and complete Ubuntu/macOS matrix pass ([local receipt](p29-wp2-verification.json), [hosted receipt](p29-wp2-hosted.json)) |
-| P29 WP3 | Pinned OpenRouter and explicit loopback compatible adapter | Implemented; focused/conformance/owned-extension checks and final native/installed proofs pass; hosted gate pending |
-| P29 WP4 | Native Gemini, signed continuation and canonical accounting | Implemented; fixtures, separate live text/tool checks and final native/installed proofs pass; hosted gate pending |
-| P29 WP5 | Registry-driven doctor/setup and coherent provider manuals | Implemented; prompts/private profiles/preservation controls and final native/installed proofs pass; hosted gate pending |
-| Auditor handoff | Requirement matrix, exact commits/checks, exclusions and commands | Draft prepared; final verification and acceptance gates remain open |
+| P29 WP3 | Pinned OpenRouter and explicit loopback compatible adapter | Complete; focused/conformance/integration and final source/installed/hosted proofs pass |
+| P29 WP4 | Native Gemini, signed continuation and canonical accounting | Complete; fixtures, separate live text/tool checks and final source/installed/hosted proofs pass |
+| P29 WP5 | Registry-driven doctor/setup and coherent provider manuals | Complete; prompts/private profiles/preservation controls, manuals and final source/installed/hosted proofs pass |
+| Auditor handoff | Requirement matrix, exact commits/checks, exclusions and commands | Prepared with final automated evidence and explicit remaining P28 human/release gates; no independent audit performed |
 
 Release publication, real account probes and a genuinely unassisted fresh-user
 walkthrough require their own evidence. Synthetic tests cannot establish these.
@@ -454,3 +454,24 @@ remained unchanged. Excluded categories are macOS sandbox/filesystem and optiona
 memory-scope checks. The [combined receipt](combined-verification.json) now records
 both the final source and installed proofs. Hosted run 40054636574 and RC1's
 platform/asset checks remain open.
+
+The exact `9c5eb6a` [hosted matrix](final-hosted.json) subsequently passed both
+platforms and every independent proof. Ubuntu reported 1732 tests, zero failures
+and 36 excluded; macOS reported 1697 tests, zero failures, 36 excluded and one
+Linux-only listener skip. The separate macOS native suite reported 36 tests,
+zero failures and six excluded. Exact seeds, elapsed times and scope are in the
+combined receipt. Relevant operator/developer manuals remain unchanged from the
+recorded whole-document review; later commits contain evidence/status updates.
+P29 is complete within its implementation and verification scope, subject to
+independent external audit.
+
+RC1 run 40054387769 also completed successfully, including both platform matrices,
+uploads and the final complete-set re-download inspection. Independent local
+[download inspection](rc-assets.json) verified both archives, both sidecars,
+GitHub asset digests and all 13 runtime notice files per archive. The actual
+bundles use Elixir 1.18.5/OTP 27.3.4.19. The downloaded Linux bundle independently
+passes isolated setup/doctor/demo and reports the expected `e944fcf` identity;
+that is still not a fresh-OS-account walkthrough. The draft and its downloads
+were provided to the developer for that walkthrough and remain unpublished.
+Draft deletion, actual walkthrough findings/repairs, stable tag/publication and
+the external completeness verdict remain open.
