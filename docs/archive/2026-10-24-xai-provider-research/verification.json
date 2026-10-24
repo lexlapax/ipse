@@ -1,4 +1,14 @@
 {
+  "automated_implementation_checks": {
+    "latest_verification_candidate": "288a6a2ee0317002f66d041f19cbae4ad0da043b",
+    "runtime_candidate": "622a2c898d7c5140f12e679adb3b4d9c36d28e3c",
+    "status": "passed",
+    "unverified_external_gates": [
+      "xAI API inference after HTTP 403",
+      "registered-client xAI OAuth and subscription eligibility",
+      "stable release acceptance and publication"
+    ]
+  },
   "candidate": "622a2c898d7c5140f12e679adb3b4d9c36d28e3c",
   "documentation": {
     "committed_clean_package_checkout": true,
@@ -63,11 +73,26 @@
     "status": "failed"
   },
   "fixture_repair": {
+    "all_installed_and_independent_proofs": "passed on both platforms",
     "candidate": "288a6a2ee0317002f66d041f19cbae4ad0da043b",
-    "receipt": "fixture-coordination.json",
+    "macos": {
+      "experimental_app_sandbox": "passed",
+      "native_seconds": 26.0,
+      "native_seed": 247045,
+      "native_summary": "36 tests, 0 failures, 6 excluded",
+      "seconds": 1724.6,
+      "seed": 424461,
+      "source_summary": "1746 tests, 0 failures, 36 excluded, 1 skipped"
+    },
+    "receipt": "final-hosted.json",
     "run_id": 40124552353,
     "runtime_source_unchanged_from": "622a2c898d7c5140f12e679adb3b4d9c36d28e3c",
-    "status": "running",
+    "status": "passed",
+    "ubuntu": {
+      "seconds": 1386.6,
+      "seed": 93554,
+      "source_summary": "1781 tests, 0 failures, 36 excluded"
+    },
     "url": "https://github.com/lexlapax/ipse/actions/runs/40124552353"
   },
   "formatter_repaired_hosted": {
@@ -96,6 +121,13 @@
     "run_id": 40119384442,
     "status": "failed"
   },
+  "handoff_documentation": {
+    "errors": 0,
+    "local_links": 3879,
+    "log": "/tmp/ipse-final-audit-docs.log",
+    "markdown_files": 416,
+    "scope": "final working-tree documentation check before evidence commit"
+  },
   "hosted": {
     "all_installed_and_independent_proofs": "passed on both platforms",
     "macos": {
@@ -116,6 +148,14 @@
       "source_summary": "1779 tests, 0 failures, 36 excluded"
     },
     "url": "https://github.com/lexlapax/ipse/actions/runs/40120009675"
+  },
+  "human_walkthrough": {
+    "assistance": "account preparation and product navigation",
+    "developer_accepted": true,
+    "fresh_linux_account": true,
+    "human_upgrade": "skipped; automated upgrade proof separate",
+    "record": "../2026-10-24-p28-walkthrough/index.md",
+    "wholly_unassisted_claimed": false
   },
   "installed": {
     "archive": "/tmp/ipse-grok-package-pPTOvd/dist/ipse-0.1.0-linux-x86_64-glibc-2.44.tar.gz",

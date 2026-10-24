@@ -287,14 +287,18 @@ defines the queue and default.
 
 The affected evaluation-session, HTTP and live-driver set passes 26 controls
 (final seed 991229, 23.4 seconds), and both formatters pass. Only test fixtures change;
-product deadlines and frozen evaluator implementation remain unchanged. Fresh
-hosted verification is required before closing this repair.
+product deadlines and frozen evaluator implementation remain unchanged. The fresh
+hosted verification below closes the automated repair checks.
 
 The repair is committed at `288a6a2`; a clean committed checkout repeats all 26
 affected controls successfully (seed 552515, 23.5 seconds) and checks 416 Markdown
 files/3873 local links with zero errors. Its
-[fresh platform matrix](https://github.com/lexlapax/ipse/actions/runs/40124552353)
-is running. Application/native/package source and the frozen evaluator remain
+[final platform matrix](final-hosted.json), run 40124552353, passes both platforms.
+Ubuntu reports 1781 tests, zero failures, 36 excluded (seed 93554, 1386.6 seconds).
+macOS reports 1746 tests, zero failures, 36 excluded and one skipped (seed 424461,
+1724.6 seconds), followed by 36 native tests, zero failures and six excluded
+(seed 247045, 26.0 seconds). Both installed-package and all independent proofs
+pass; experimental macOS App Sandbox checks pass. Application/native/package source and the frozen evaluator remain
 identical to the fully verified `622a2c8` runtime; the receipt does not present the
 earlier runtime matrix as a verdict on these changed test fixtures.
 

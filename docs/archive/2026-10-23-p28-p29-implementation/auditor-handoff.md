@@ -1,17 +1,17 @@
 # P28 and P29 implementation audit preparation
 
-Prepared 2026-10-24; the newest runtime increment adds
-[Grok API and registered-client OAuth](../2026-10-24-xai-provider-research/index.md)
-after `5bb5761`. Runtime `622a2c8` passes full local native, demo, installed and
-complete hosted Ubuntu/macOS checks. `b52c32e` adds the live driver without changing
-runtime source; its macOS suite failed two fixture assumptions. Test-only repairs
-have controlled evidence and require a fresh matrix, so final audit readiness is
-unproven. Earlier exact live wire evidence is at
-`492d091`, and RC1 release preparation is at `e944fcf`.
-This handoff is prepared for independent implementation review, not an external
-audit or a completeness verdict. P29's original registry/Gemini/OpenRouter gates
-pass; its newly authorized Grok scope remains under verification. Final release
-acceptance and stable publication remain open.
+Prepared 2026-10-24 for independent implementation completeness review.
+Final verification candidate `288a6a2` passes the
+[complete Ubuntu/macOS matrix](../2026-10-24-xai-provider-research/final-hosted.json),
+including every independent proof and experimental macOS checks. Its runtime
+source is unchanged from `622a2c8`, which also passes the full local native suite,
+demo and installed proof. This includes the authorized approval UX, ChatGPT
+machine-name hint and [Grok API/registered-client OAuth](../2026-10-24-xai-provider-research/index.md).
+
+The handoff supplies evidence for an independent verdict; it is not that verdict.
+Final release acceptance/publication and Grok live-account eligibility remain
+open. Earlier exact Gemini/OpenRouter live wire evidence is at `492d091`, and RC1
+release preparation is at `e944fcf`; those retain their own verified scope.
 The developer has authorized the [approval UX implementation](../2026-10-24-approval-implementation/index.md)
 before external audit. Its candidate and fresh verification supersede the old
 baseline only when explicitly recorded in the [new receipt](../2026-10-24-approval-implementation/verification.json);
@@ -76,7 +76,7 @@ earlier green matrices do not prove that newly authorized scope.
 | P29 WP5: registry menus/billing/credentials/probes, route questions/private previews, coherent provider/accounting manuals and priority | Setup/doctor/CLI suites, `AGENTS.md`, operator/developer provider chapters | [WP5 receipt](p29-wp5-verification.json): 83 CLI controls pass; final source/native/installed/hosted gates and whole-manual review pass |
 | Authorized approval follow-up: root native edit mode, exact full-argument/cwd/sandbox shell reuse, bounded grants, inspect/revoke, fresh input, denial, cancellation, non-inheritance and inert resume | `lib/ipse/session/permissions.ex`, Session/Turn, CLI/Terminal, native path checks; `test/ipse/session/permissions_test.exs`, CLI/delegation suites; installed permission proof | [Implementation and receipt](../2026-10-24-approval-implementation/index.md); seven-effect fixture reduces seven decisions to two; inspect limitations and current gate status |
 | Requested machine label during ChatGPT authorization | `lib/ipse/auth.ex`, Auth/setup fixtures and operator login procedure | [Machine-label record](../2026-10-24-sign-in-host-label/index.md); initial `ipse@HOST` hint, returning IDs and omitted hint, hostname fallback; no new real browser trial |
-| Grok X0: explicit API-key/subscription identity, model choice and credential/billing isolation | `Provider.Registry`, Config/profiles, CLI setup/doctor; registry golden and Grok tests | [Research/work packages](../2026-10-24-xai-provider-research/index.md); original provider goldens unchanged; full runtime matrix passes, later test-only repair needs fresh verification |
+| Grok X0: explicit API-key/subscription identity, model choice and credential/billing isolation | `Provider.Registry`, Config/profiles, CLI setup/doctor; registry golden and Grok tests | [Research/work packages](../2026-10-24-xai-provider-research/index.md); original provider goldens unchanged; runtime and final repaired-fixture matrices pass |
 | Grok X1: native Responses, no hosted tools, private xAI replay, foreign ciphertext refusal, exact tool results, completed terminal before trailing marker | `lib/ipse/provider/openai.ex`, shared XAI/XAIOAuth conformance and `test/ipse/provider/xai_test.exs` | Byte-fragmented real HTTP fixtures plus Session approvals/replay; no live Grok inference claimed |
 | Grok X2: registered-client device grant, safe verification URI, finite polling, private credentials, retained OS lock, pending refresh, scope binding, logout uncertainty | `lib/ipse/auth/xai.ex`, closed Auth storage namespaces, `test/ipse/auth/xai_test.exs` | Controlled omitted-scope reproduction and repair; eight final OAuth cases pass; no Ipse registration or real browser grant exists yet |
 | Grok X3: modern/legacy reasoning accounting, visible-only cap, budgets, SDK/child privacy, native/environment token filtering | Registry/Budget, profile/extension integration suites, native shell/measurement filters and MCP environment admission | Both credential routes tested in real child requests, approved SDK requests, actual shell and Rust controls; full runtime source/installed/platform verification passes |
@@ -154,6 +154,15 @@ There is no Ipse xAI client registration yet. The authorized
 `622a2c8` and stopped after its first request returned HTTP 403. It proves no
 successful text/tool inference or subscription entitlement.
 The older Gemini/OpenRouter live receipt does not verify Grok or new auth code.
+The final verification candidate is `288a6a2`; its complete hosted matrix passes
+with 1781 Ubuntu tests, zero failures and 36 excluded, and 1746 macOS tests, zero
+failures, 36 excluded and one skipped. macOS adds 36 native tests, zero failures,
+six excluded, and the experimental App Sandbox proof. Controlled fixture changes
+retain the one-second pre-effect case, observe active work before post-effect
+cancellation, and size the listener for eight simultaneous clients. Product
+deadlines and frozen evaluation implementation remain unchanged. The
+[coordination receipt](../2026-10-24-xai-provider-research/fixture-coordination.json)
+preserves reproductions, focused results and the exact terminal matrix.
 Later documentation-only commits can embed a later build identity without
 changing runtime source; distinguish them from the tested binary. Preserve the
 unrelated working-copy edit in `docs/operator/usage.md` and `.claude/`.
@@ -177,16 +186,17 @@ fresh-state check. That run selected Demo and real Ollama `qwen3.5:9b`; the
 developer accepts it and requests work on excessive approval prompts. The record
 retains account/product-navigation assistance, so it is not claimed to be wholly
 unassisted. The [approval UX research](../2026-10-24-p28-approval-ux/index.md)
-compares primary documentation. The authorized follow-up is now implemented and
-under final combined verification. Human upgrade was skipped because only one release was
+compares primary documentation. The authorized follow-up is implemented and passes
+combined local, installed and hosted verification. Human upgrade was skipped because only one release was
 available; the automated upgrade proof remains separate evidence.
 
 The inspected draft has been deleted on explicit developer authorization, with
 downloaded bytes/checksums, the RC tag and workflow facts retained.
 Final `v0.1.0` tag/publication belongs to the developer after WP6
 acceptance and inspection. These are explicit open P28 gates. P29's original
-scope passed its own gates; the selected Grok increment needs final verification
-and an explicit disposition of unavailable registration/live-account evidence.
+scope passed its own gates, and the selected Grok increment passes its automated
+implementation checks. API inference and registered-client subscription access
+remain explicitly unverified account-dependent limits.
 
 The independent auditor should check every brief item and return requirement-level
 findings with file/line evidence, commands actually run, severity/consequence and

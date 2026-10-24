@@ -94,8 +94,8 @@ third-party OAuth precedent; an Ipse client registration is still required.
 | [P25: comparative self-development](#p25-comparative-research-and-supervised-self-development) | Complete within declared supervision/assistance at `3307563`; security findings triaged and corrected scopes verified | Preserve frozen evidence; select a later production increment separately |
 | [P26: memory baseline](#p26-optional-working-and-long-term-memory) | Complete within explicit-note scope at `25f1d8e`; review repairs and local/hosted gates pass | Preserve lifecycle, authority and documented retention limits |
 | [P27: research, graph and RAG](#p27-optional-research-graph-and-rag) | Complete; all acceptance tasks closed within optional-package scope; hybrid qualified and selected | Preserve versioned evidence and explicit configuration; evaluate new workloads independently |
-| [P28: operator usability and release](#p28-operator-usability-and-release-readiness) | Selected; implementation in progress | First-run setup, environment diagnosis, actionable errors and a tagged, installable release |
-| [P29: provider registry, OpenRouter and Gemini](#p29-provider-registry-openrouter-and-gemini) | Original scope complete at `9c5eb6a`; Grok API/OAuth follow-up implemented, verification in progress | Complete Grok gates and record missing Ipse OAuth registration before external audit |
+| [P28: operator usability and release](#p28-operator-usability-and-release-readiness) | Implementation and automated checks pass; accepted fresh-account run is qualified; stable publication open | Final release acceptance, tag and publication |
+| [P29: provider registry, OpenRouter and Gemini](#p29-provider-registry-openrouter-and-gemini) | Original scope complete at `9c5eb6a`; Grok API/OAuth implementation and automated checks pass; live eligibility unverified | Independent completeness review; separate xAI API permissions and approved-client OAuth checks |
 | [P30: decision engines](#p30-advisory-decision-engines) | Proposed | Typed closed-answer contract, fixture engines, then OpenAI Decisions and SystemOne-compatible adapters |
 | [P31: voice and media](#p31-voice-and-realtime-media) | Deferred; unimplemented; P28 in archived records | Explicit media contracts and later device/service validation |
 | [Apache-2.0 transition](#license-transition) | Complete; local and hosted `7bb642b` checks pass | Preserve bundled identity/recovery and third-party license boundaries |
@@ -610,7 +610,8 @@ the engine decision and whole-document editorial integration.
 
 ## P28: operator usability and release readiness
 
-**Selected; implementation in progress.** P0–P27 established correctness, recovery and evidence for a
+**Implementation and automated checks pass; final release acceptance/publication open.**
+P0–P27 established correctness, recovery and evidence for a
 supervised developer. This milestone makes the same harness usable by an operator
 who did not build it, without weakening approvals, explicit provider selection or
 fail-closed behavior. It adds no provider, model service or dependency by default.
@@ -618,9 +619,9 @@ The [P28 implementation brief](archive/2026-10-23-p28-p29-design/p28.md) breaks
 this scope into ordered work packages with files, tests and decisions.
 The developer accepted its recommended decisions on 2026-10-23. A missing
 configuration keeps the built-in `chatgpt` default, and interactive starts print
-a notice that names it and points to `ipse setup`. The first tag is `v0.1.0`. The
+a notice that names it and points to `ipse setup`. The first stable version is `v0.1.0`. The
 release workflow drafts releases with the runner-provided `gh` CLI and the default
-token, recorded in the dependency inventory when it is added.
+token, as recorded in the dependency inventory.
 The [implementation record](archive/2026-10-23-p28-p29-implementation/index.md)
 tracks the ordered work packages, actual checks and auditor handoff requirements.
 Version/build identity is complete at `b4788b4`, with local source and
@@ -629,7 +630,7 @@ Actionable errors pass full local and hosted checks at `6818000`. Offline doctor
 the native-inclusive suite at `a89fce7`. Private setup passes focused and installed
 first-run checks. Release checksums, symlink handling, draft workflow and lifecycle
 manuals are implemented; the local installed upgrade proof passes. Whole-manual
-review and installed examples pass. The latest `9c5eb6a` native-inclusive baseline,
+review and installed examples pass. The original `9c5eb6a` native-inclusive baseline,
 isolated demo, installed proof and complete hosted Ubuntu/macOS matrix pass.
 RC1's workflow and both platform archives/checksums pass, including re-download
 and runtime-notice inspection ([receipts](archive/2026-10-23-p28-p29-implementation/rc-assets.json)).
@@ -660,8 +661,8 @@ verification includes browser-prefill request construction, without claiming a
 new real browser authorization.
 The inspected RC draft was deleted on explicit developer authorization after all
 four exact assets and inspection metadata were retained locally; its RC tag remains.
-Final acceptance of the qualifications and stable
-publication remain open. The external-auditor handoff includes these findings.
+Final acceptance of the qualifications and stable publication remain open.
+The external-auditor handoff includes these findings.
 
 Scope:
 
@@ -671,8 +672,9 @@ Scope:
    never prints or copies credentials.
 2. An `ipse doctor` diagnosis of toolchain, runtime identity, configuration
    resolution, credential presence (not values), provider reachability on explicit
-   request, native policy availability, MCP and extension selection, session store
-   and lock health. Every finding names the documented recovery step.
+   request, native policy availability, MCP and extension selection, and session
+   store permissions/bounded headers without acquiring locks. Every finding names
+   the documented recovery step.
 3. An audit of operator-visible refusals and errors from `ipse chat`, `run`,
    `config`, resume and extension/MCP paths. Each states the cause, what did or
    might have happened and the next command, matching
@@ -751,7 +753,8 @@ recorded before release.
 
 ### P29 follow-up: Grok API and subscription OAuth
 
-**Selected for implementation before the external audit, 2026-10-24; incomplete.**
+**Implemented and automatically verified before external audit, 2026-10-24;
+live API/subscription eligibility remains unverified.**
 The [primary-source research and work packages](archive/2026-10-24-xai-provider-research/index.md)
 cover xAI/SpaceXAI's Grok API, its officially supported Hermes subscription
 integration, device authorization, native Responses, continuation, billing and
@@ -785,11 +788,13 @@ Reported USD ticks remain separate from aggregate rate-card estimates. Focused
 source/integration checks and the `622a2c8` installed proof pass. Its full Linux
 native-inclusive suite passes 1760 tests, 19 excluded, followed by an isolated demo;
 its complete Ubuntu/macOS matrix passes, including all independent proofs and
-experimental macOS checks. The later live-driver candidate passes Ubuntu but
-fails two macOS fixture assumptions: cancellation before callback startup and
-an undersized eight-client listener queue. Controlled reproductions and 26 focused
-checks support test-only repairs; their fresh hosted verification is pending.
-Product deadlines and frozen evaluator implementation are unchanged.
+experimental macOS checks. The later live-driver candidate exposed two macOS
+fixture assumptions: cancellation before command-handler startup and an undersized
+eight-client listener queue. Controlled reproductions and 26 focused checks support
+test-only repairs. Repaired candidate `288a6a2` passes its complete Ubuntu/macOS
+matrix, including all independent and experimental macOS proofs; the
+[final receipt](archive/2026-10-24-xai-provider-research/final-hosted.json) preserves
+the exact run. Product deadlines and frozen evaluator implementation are unchanged.
 The authorized live API check found a project key
 but received HTTP 403 on its first `grok-4.7` request and stopped without retry.
 API inference remains unverified pending team billing/model permissions; no OAuth

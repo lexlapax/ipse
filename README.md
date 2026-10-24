@@ -15,8 +15,9 @@ selected hybrid reference configuration and its limits. OpenRouter, Gemini and
 the provider registry (P29) are implemented and pass local and hosted checks.
 The developer accepts the fresh-account P28 run; session permission improvements
 are implemented and their verification is recorded in the plan. Grok API-key and
-registered-client subscription routes are under verification as a P29 follow-up;
-live OAuth requires an Ipse registration from xAI. Release acceptance and stable
+registered-client subscription routes are implemented and pass automated checks.
+Grok API inference remains unverified after an HTTP 403; live OAuth requires an
+Ipse registration from xAI. Release acceptance and stable
 publication remain open. Advisory decision engines (P30) remain proposed; voice
 and media (P31) remain deferred.
 

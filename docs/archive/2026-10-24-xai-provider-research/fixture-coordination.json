@@ -53,9 +53,25 @@
   "formatters": "Elixir 1.18 and 1.20 pass",
   "frozen_evaluator_implementation_changed": false,
   "hosted_repaired_candidate": {
+    "all_installed_and_independent_proofs": "passed on both platforms",
     "candidate": "288a6a2ee0317002f66d041f19cbae4ad0da043b",
+    "macos": {
+      "experimental_app_sandbox": "passed",
+      "native_seconds": 26.0,
+      "native_seed": 247045,
+      "native_summary": "36 tests, 0 failures, 6 excluded",
+      "seconds": 1724.6,
+      "seed": 424461,
+      "source_summary": "1746 tests, 0 failures, 36 excluded, 1 skipped"
+    },
+    "receipt": "final-hosted.json",
     "run_id": 40124552353,
-    "status": "running",
+    "status": "passed",
+    "ubuntu": {
+      "seconds": 1386.6,
+      "seed": 93554,
+      "source_summary": "1781 tests, 0 failures, 36 excluded"
+    },
     "url": "https://github.com/lexlapax/ipse/actions/runs/40124552353"
   },
   "initial_control_attempts": [

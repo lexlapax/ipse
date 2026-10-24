@@ -21,7 +21,7 @@ requirement; authority, recovery and correctness regressions remain unacceptable
 | P28 WP2 | Redacted actionable errors and matching recovery instructions | Complete at `6818000`; full local and hosted Ubuntu/macOS checks pass |
 | P28 WP3 | Offline doctor, explicit bounded probes and finding fixtures | Full native and hosted Ubuntu/macOS pass at `a89fce7`; later installed proof passes |
 | P28 WP4 | Guided/private setup, previews, backups and resolution fixtures | Full native suite and installed first run pass at `9907877`; repaired platform matrix passes at `61ed1f9` |
-| P28 WP5 | Checksums, symlink launcher, draft tag workflow and install lifecycle | RC1 workflow, both platform archives, installed proofs and downloaded asset/notice inspection pass; draft deletion waits for walkthrough |
+| P28 WP5 | Checksums, symlink launcher, draft tag workflow and install lifecycle | RC1 workflow, both platform archives, installed proofs and downloaded asset/notice inspection pass; RC draft deleted on explicit authorization, tag/files retained |
 | P28 WP6 | Whole-manual first-user review and fresh-account walkthrough | Automated checks and fresh Linux run accepted by developer; assistance qualification and approval-fatigue finding recorded; stable publication pending |
 | P29 WP0 | Verified official wire facts and continuation examples | [Recorded](wire-facts.md); both new adapters now have protocol fixtures and separate live evidence |
 | P29 WP1 | Central registry, existing-provider equivalence and recovery tests | Exact `cd74f91` native suite (1601) and installed proof pass; subsequent `61ed1f9` platform matrix passes |
@@ -29,6 +29,8 @@ requirement; authority, recovery and correctness regressions remain unacceptable
 | P29 WP3 | Pinned OpenRouter and explicit loopback compatible adapter | Complete; focused/conformance/integration and final source/installed/hosted proofs pass |
 | P29 WP4 | Native Gemini, signed continuation and canonical accounting | Complete; fixtures, separate live text/tool checks and final source/installed/hosted proofs pass |
 | P29 WP5 | Registry-driven doctor/setup and coherent provider manuals | Complete; prompts/private profiles/preservation controls, manuals and final source/installed/hosted proofs pass |
+| Authorized P28 follow-up | Native session edit/exact-command permissions and initial ChatGPT machine-name hint | Implemented; combined local/native/installed and full Ubuntu/macOS verification passes; no new real browser trial |
+| Authorized P29 follow-up | Grok API and registered-client OAuth with explicit billing, native replay and protected auth | [Implementation and verification](../2026-10-24-xai-provider-research/index.md) pass, including final `288a6a2` complete matrix; API HTTP 403 and missing Ipse registration remain explicit live-account limits |
 | Auditor handoff | Requirement matrix, exact commits/checks, exclusions and commands | Prepared with final automated evidence and explicit remaining P28 human/release gates; no independent audit performed |
 
 Release publication, real account probes and a genuinely unassisted fresh-user
