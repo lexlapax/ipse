@@ -439,3 +439,10 @@ run 40054636574 remain in progress. These completed checks do not establish a
 fresh-OS-account walkthrough. The developer will perform that check once RC
 assets are ready; the [observation record](../2026-10-24-p28-walkthrough/index.md)
 is prepared and explicitly not started.
+
+Inspection of historical run 40052177255 confirms that Ubuntu passed its complete
+matrix; macOS failed only the existing Research four-mode evaluation test's
+120-second timeout while `frozen_api_inputs/6` waited in `System.cmd/3`.
+The [failed hosted receipt](p29-wp3-hosted-failure.json) retains the exact source,
+test, seed, counts and job links. No assertion or timeout was changed. This is a
+failed historical check; latest-candidate hosted checks must independently pass.
