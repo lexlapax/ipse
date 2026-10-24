@@ -351,10 +351,24 @@ Before a tag, run `mix test test/dev/release_test.exs` and the full package proo
 The tag workflow admits only the `mix.exs` version or a numbered RC and requires
 `docs/releases/vVERSION.md`. It repeats every ordinary CI step on both platforms;
 a guard test catches omissions when CI changes. The approved runner `gh` creates
-an unpublished draft before the matrix, uploads only after checks, then downloads
-both archives/sidecars for inspection. Failures may leave an incomplete draft.
+an unpublished draft only after both matrix jobs pass and their retained archives
+are collected and admitted as a complete set. A failed platform creates no draft.
+The final job uploads the admitted files and re-downloads them for inspection.
+An upload/network failure can still leave an incomplete draft; inspect the final
+job result before publishing.
 Retries may replace draft assets; a published release refuses modification.
 Publication and RC deletion are explicit developer actions after inspection.
+
+Exercise the same artifact handoff without creating or changing a release:
+
+```sh
+gh workflow run release.yml --ref main
+```
+
+This manual event derives the version from `mix.exs`, runs the full platform
+matrix and admits the collected assets. Draft mutation and remote re-download
+steps run only for a matching tag-push event. Record the manual run's source and
+terminal result; it proves artifact handoff, not draft creation or publication.
 
 ## Exercise actual OS policy and native protocols
 

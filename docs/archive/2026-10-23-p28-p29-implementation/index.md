@@ -10,6 +10,12 @@ outside this work.
 
 ## Execution and acceptance map
 
+Follow-up dated 2026-10-24: the developer supplied an
+[independent audit of `1084f9a`](../2026-10-24-p28-p29-audit-repair/independent-audit.md).
+Its findings and subsequent verification belong to the
+[audit repair record](../2026-10-24-p28-p29-audit-repair/index.md). The historical
+checkpoint results below do not verify those later repairs or close human gates.
+
 Implement each ordered package with behavior tests, whole-chapter manual review,
 source checks, and the relevant installed/native controls. Push verified focused
 commits and retain hosted platform results. Backward compatibility is not a user

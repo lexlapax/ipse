@@ -14,6 +14,28 @@ defmodule Ipse.Development.ReleaseTest do
     refute release =~ "--draft=false"
   end
 
+  test "draft mutation follows both verified platform artifacts and manual validation never publishes" do
+    release = File.read!(Path.expand("../../.github/workflows/release.yml", __DIR__))
+    [_, prepare, matrix, draft] = Regex.split(~r/^  (?:prepare|test|draft):\n/m, release)
+
+    for job <- [prepare, matrix] do
+      refute job =~ "gh release create"
+      refute job =~ "gh release upload"
+    end
+
+    assert matrix =~ "actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9"
+    assert draft =~ "actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333"
+    assert matrix =~ "if-no-files-found: error"
+    assert draft =~ "needs: [prepare, test]"
+    {admit, _} = :binary.match(draft, "Release.verify_assets!")
+    {create, _} = :binary.match(draft, "gh release create")
+    assert admit < create
+    assert release =~ "workflow_dispatch:"
+    assert prepare =~ "GITHUB_EVENT_NAME"
+    assert length(Regex.scan(~r/if: github.event_name == 'push'/, draft)) == 2
+    refute release =~ "--draft=false"
+  end
+
   setup do
     root = Path.join(System.tmp_dir!(), "ipse-release-test-" <> Ipse.Usage.id())
     File.mkdir!(root)

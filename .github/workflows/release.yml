@@ -2,8 +2,9 @@ name: Draft release
 on:
   push:
     tags: ['v*']
+  workflow_dispatch:
 permissions:
-  contents: write
+  contents: read
 concurrency:
   group: release-${{ github.ref }}
   cancel-in-progress: false
@@ -23,22 +24,7 @@ jobs:
       - name: Admit exact tag and release notes
         id: metadata
         run: |
-          elixir -r dev/release.exs -e 'Mix.start(); Code.require_file("mix.exs"); notes = Ipse.Development.Release.validate_tag!(System.fetch_env!("IPSE_RELEASE_TAG"), Mix.Project.config()[:version], File.cwd!()); IO.puts("notes=" <> notes)' >> "$GITHUB_OUTPUT"
-      - name: Create or recover an unpublished draft
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          IPSE_RELEASE_NOTES: ${{ steps.metadata.outputs.notes }}
-        run: |
-          gh --version
-          if gh release view "$IPSE_RELEASE_TAG" --json isDraft > /dev/null 2>&1; then
-            test "$(gh release view "$IPSE_RELEASE_TAG" --json isDraft --jq .isDraft)" = true
-          else
-            case "$IPSE_RELEASE_TAG" in
-              *-rc.*) set -- --prerelease ;;
-              *) set -- ;;
-            esac
-            gh release create "$IPSE_RELEASE_TAG" --draft --verify-tag --title "$IPSE_RELEASE_TAG" --notes-file "$IPSE_RELEASE_NOTES" "$@"
-          fi
+          elixir -r dev/release.exs -e 'Mix.start(); Code.require_file("mix.exs"); version = Mix.Project.config()[:version]; tag = if System.get_env("GITHUB_EVENT_NAME") == "workflow_dispatch", do: "v" <> version, else: System.fetch_env!("IPSE_RELEASE_TAG"); notes = Ipse.Development.Release.validate_tag!(tag, version, File.cwd!()); IO.puts("notes=" <> notes)' >> "$GITHUB_OUTPUT"
   test:
     needs: prepare
     strategy:
@@ -163,14 +149,21 @@ jobs:
           IPSE_MACOS_WORKSPACE=$(mktemp -d)
           trap 'rm -rf "$IPSE_MACOS_WORKSPACE"' EXIT
           elixir dev/verify-macos-sandbox.exs priv/ipse-runner "$IPSE_MACOS_WORKSPACE"
-      - name: Attach verified archives to the unpublished draft
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          test "$(gh release view "$IPSE_RELEASE_TAG" --json isDraft --jq .isDraft)" = true
-          gh release upload "$IPSE_RELEASE_TAG" dist/ipse-*.tar.gz dist/ipse-*.tar.gz.sha256 --clobber
-  inspect:
-    needs: test
+      - name: Retain verified archives for final admission
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: verified-${{ matrix.os }}
+          path: |
+            dist/ipse-*.tar.gz
+            dist/ipse-*.tar.gz.sha256
+          if-no-files-found: error
+          retention-days: 7
+          compression-level: 0
+          overwrite: true
+  draft:
+    permissions:
+      contents: write
+    needs: [prepare, test]
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -179,11 +172,38 @@ jobs:
         with:
           otp-version: '27'
           elixir-version: '1.18'
+      - name: Collect both verified platform builds
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          pattern: verified-*
+          path: ${{ runner.temp }}/ipse-release-assets
+          merge-multiple: true
+      - name: Admit the complete asset set before creating any draft
+        run: |
+          elixir -r dev/release.exs -e 'Ipse.Development.Release.verify_assets!(hd(System.argv()))' -- "$RUNNER_TEMP/ipse-release-assets"
+      - name: Create or recover an unpublished draft and attach all verified assets
+        if: github.event_name == 'push'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh --version
+          IPSE_RELEASE_NOTES=$(elixir -r dev/release.exs -e 'Mix.start(); Code.require_file("mix.exs"); IO.puts(Ipse.Development.Release.validate_tag!(System.fetch_env!("IPSE_RELEASE_TAG"), Mix.Project.config()[:version], File.cwd!()))')
+          if gh release view "$IPSE_RELEASE_TAG" --json isDraft > /dev/null 2>&1; then
+            test "$(gh release view "$IPSE_RELEASE_TAG" --json isDraft --jq .isDraft)" = true
+            gh release upload "$IPSE_RELEASE_TAG" "$RUNNER_TEMP"/ipse-release-assets/* --clobber
+          else
+            case "$IPSE_RELEASE_TAG" in
+              *-rc.*) set -- --prerelease ;;
+              *) set -- ;;
+            esac
+            gh release create "$IPSE_RELEASE_TAG" --draft --verify-tag --title "$IPSE_RELEASE_TAG" --notes-file "$IPSE_RELEASE_NOTES" "$@" "$RUNNER_TEMP"/ipse-release-assets/*
+          fi
       - name: Re-download and inspect the complete draft asset set
+        if: github.event_name == 'push'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           test "$(gh release view "$IPSE_RELEASE_TAG" --json isDraft --jq .isDraft)" = true
-          mkdir "$RUNNER_TEMP/ipse-release-assets"
-          gh release download "$IPSE_RELEASE_TAG" --dir "$RUNNER_TEMP/ipse-release-assets"
-          elixir -r dev/release.exs -e 'Ipse.Development.Release.verify_assets!(hd(System.argv()))' -- "$RUNNER_TEMP/ipse-release-assets"
+          mkdir "$RUNNER_TEMP/ipse-release-inspection"
+          gh release download "$IPSE_RELEASE_TAG" --dir "$RUNNER_TEMP/ipse-release-inspection"
+          elixir -r dev/release.exs -e 'Ipse.Development.Release.verify_assets!(hd(System.argv()))' -- "$RUNNER_TEMP/ipse-release-inspection"

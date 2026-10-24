@@ -25,7 +25,7 @@ There is no approved Ipse xAI OAuth registration yet.
 | --- | --- |
 | F1 | Remove arbitrary reason inspection from runtime error producers; bound binary diagnostics and refuse term/path/control dumps. Test recovery anchors and context-refresh recovery text. |
 | F2 | Apply the existing Transport safe-identifier filter to stream error messages; withhold arbitrary provider prose and retain usage-before-refusal. |
-| F3 | Pending approval to add official pinned GitHub artifact actions, collect both verified archives and only then create the draft. Current release workflow remains unchanged until that dependency decision. |
+| F3 | Developer approved the official artifact actions on 2026-10-24. Both matrix jobs retain their verified archives; the final job collects and admits the complete set before creating any draft. Manual dispatch exercises the handoff while tag-only guards skip release mutations. Actual hosted handoff verification remains required. |
 | F4 | Replace the release body with standalone installation/features/limits and absolute versioned GitHub links. The [previous notes](release-notes-before.md) retain the earlier evidence narrative; relative links are adjusted for this archive location. |
 | F5–F6 | Doctor recommends saved setup and lists discovered configuration sources with independent parse/trust status, including refused project configuration; no settings are applied by source inspection. |
 | F7 | Test actual saved API configuration for every registry secret, validate recovery heading anchors, align Ollama probe/inference loopback and reject unexpected installed-doctor warnings. The explicit macOS experimental-native warning remains expected. |
