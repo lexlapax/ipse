@@ -126,6 +126,7 @@ rm -rf "$IPSE_DIR"
 
 Keep `~/.ipse` to retain sign-in, settings and saved work. Deleting it is a separate
 decision that removes credentials, journals, handoffs and extension state. Export
-anything needed first. For revocation, run `ipse logout` before removing the last
-executable and review account-side grants. A custom `IPSE_HOME` remains at its
-configured location.
+anything needed first. Before removing the last executable, revoke saved sign-ins
+with `ipse logout` for ChatGPT and `ipse logout --provider xai_oauth` for Grok.
+Review each command's remote-revocation result and the corresponding account-side
+grants. A custom `IPSE_HOME` remains at its configured location.

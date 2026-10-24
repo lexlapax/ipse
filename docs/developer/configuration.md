@@ -204,8 +204,9 @@ Read the child-isolation fixture in `test/ipse/config/profiles_test.exs`:
 - Workspace, confinement, instructions/skills, approvals, origin, journal/budget,
   and parallel-child hardlink policy are inherited through a fixed allowlist.
 - The route supplies execution fields. Parent key, provider module, direct endpoint,
-  transcript, continuation, profile catalog, and MCP state are dropped. Only a
-  ChatGPT child receives its protected auth-directory reference.
+  transcript, continuation, profile catalog, and MCP state are dropped. Subscription
+  children (`chatgpt` or `xai_oauth`) receive the protected auth-directory reference
+  for their selected provider; API/local children do not.
 - Owned child requests resolve their own credentials. Host routing facts precede
   the untrusted answer, whose prose cannot establish which route ran.
 
