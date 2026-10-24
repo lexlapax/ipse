@@ -149,8 +149,21 @@
     },
     "commit": "b52c32e66efbd14fffe765bc14b942ce887487ba",
     "hosted": {
+      "macos": {
+        "later_proofs": "skipped after source failure",
+        "seconds": 1901.0,
+        "seed": 99473,
+        "summary": "1745 tests, 2 failures, 36 excluded, 1 skipped"
+      },
+      "receipt": "driver-hosted-failure.json",
       "run_id": 40121156399,
-      "status": "running",
+      "status": "failed",
+      "ubuntu": {
+        "all_gates": "passed",
+        "seconds": 1607.6,
+        "seed": 127964,
+        "summary": "1780 tests, 0 failures, 36 excluded"
+      },
       "url": "https://github.com/lexlapax/ipse/actions/runs/40121156399"
     },
     "runtime_source_unchanged_from": "622a2c898d7c5140f12e679adb3b4d9c36d28e3c"

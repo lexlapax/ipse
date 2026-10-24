@@ -289,7 +289,7 @@ defmodule Ipse.HTTPProfileTest do
   end
 
   test "overlapping Finch requests are isolated and cancellation does not stop peers" do
-    {:ok, listener} = :gen_tcp.listen(0, [:binary, active: false, ip: {127, 0, 0, 1}])
+    {:ok, listener} = :gen_tcp.listen(0, [:binary, active: false, ip: {127, 0, 0, 1}, backlog: 8])
     {:ok, {_, port}} = :inet.sockname(listener)
     parent = self()
 

@@ -251,10 +251,44 @@ coordination issue, not evidence of a provider failure. No production deadline
 or assertion was weakened.
 
 The driver is committed at `b52c32e`; its clean-checkout focused repeat also passes
-six controls (seed 466803, 0.8 seconds). Its full hosted matrix is running separately
-as run 40121156399. Runtime source, native helpers, dependencies, package construction
+six controls (seed 466803, 0.8 seconds). Its
+[full hosted matrix](driver-hosted-failure.json), run 40121156399, fails: Ubuntu
+passes every gate, while macOS reports 1745 tests, two failures, 36 excluded and
+one skipped (seed 99473, 1901.0 seconds). Its later native/installed checks were
+skipped. Runtime source, native helpers, dependencies, package construction
 and the installed-package verifier are unchanged from `622a2c8`; the live receipt
 records the actually loaded `622a2c8` build rather than claiming a later binary.
+
+### Controlled fixture coordination repair
+
+The two macOS failures were a missing callback action log in the timeout-cancellation
+fixture and a TCP accept timeout in the eight-client HTTP isolation fixture.
+The [controlled receipt](fixture-coordination.json) separates reproduction from
+inference. A deliberate 1500 ms fixture startup with the original 1000 ms policy
+reproduces the missing-log assertion: timeout/done/settled receipt assertions pass,
+but the command handler has not run. The repaired coverage tests that pre-effect outcome
+explicitly, preserving the one-second policy, no-effect assertion, cleanup and
+later read without replay. A separate post-effect scenario uses an explicit
+four-second test configuration, observes worker readiness and active Session phase
+before cancellation, and retains the real elapsed timeout, `put`, receipt,
+later-read and worker-exit assertions. Under the same delayed startup the final
+readiness-observed version passes one selected case (seed 906807, 6.7 seconds).
+That configured wait remains below the worker's five-second RPC limit, so the
+test exercises caller cancellation rather than substituting a worker timeout.
+
+The HTTP fixture started eight connections before accepting from a default queue
+of five. An independent loopback control with no early accepts and identical
+one-second connect deadlines observes six successes/two timeouts at backlog five,
+then eight successes/zero timeouts at backlog eight. The fixture now reserves
+eight slots; its two-second accept/receive assertions and cancellation checks are
+unchanged. This proves the capacity defect locally, not the exact macOS scheduling
+cause. [OTP's listen contract](https://www.erlang.org/docs/27/apps/kernel/gen_tcp.html#listen/2)
+defines the queue and default.
+
+The affected evaluation-session, HTTP and live-driver set passes 26 controls
+(final seed 991229, 23.4 seconds), and both formatters pass. Only test fixtures change;
+product deadlines and frozen evaluator implementation remain unchanged. Fresh
+hosted verification is required before closing this repair.
 
 ### Open external gates
 

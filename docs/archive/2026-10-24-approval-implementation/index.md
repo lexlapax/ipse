@@ -86,8 +86,8 @@ declaration/Research fixtures. Its
 [runtime matrix](../2026-10-24-xai-provider-research/runtime-hosted.json) verifies
 the permission and browser-hint behavior together with Grok. This supersedes the
 standalone prefill candidate for current combined verification; it does not
-diagnose or erase the earlier timeouts. The later developer live-driver commit
-keeps its own pending matrix in the Grok record.
+diagnose or erase the earlier timeouts. The later developer live-driver commit's
+failed macOS controls and their test-only repair remain separate in the Grok record.
 
 ## Release rehearsal cleanup
 

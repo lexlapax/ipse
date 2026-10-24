@@ -1,0 +1,81 @@
+{
+  "backlog_control": {
+    "accepts_before_observation": 0,
+    "backlog_eight": {
+      "connected": 8,
+      "timed_out": 0
+    },
+    "backlog_five": {
+      "connected": 6,
+      "timed_out": 2
+    },
+    "client_count": 8,
+    "connect_timeout_ms": 1000,
+    "interpretation": "Controlled local capacity defect; exact macOS timing mechanism remains unconfirmed.",
+    "log": "/tmp/ipse-listen-backlog-control.jsonl",
+    "script": "/tmp/ipse-listen-backlog-control.exs",
+    "source": "https://www.erlang.org/docs/27/apps/kernel/gen_tcp.html#listen/2"
+  },
+  "base": "0fe2a1c0cd6dbf5986abd1a0f3c0cf10947d4d62",
+  "ci_policy": "passed",
+  "date": "2026-10-24",
+  "delayed_after_effect_control": {
+    "excluded": 10,
+    "fixture_init_delay_ms": 1500,
+    "log": "/tmp/ipse-driver-timeout-after-start-control.log",
+    "policy_ms": 4000,
+    "readiness_and_active_session_observed_before_cancellation": true,
+    "seconds": 6.7,
+    "seed": 906807,
+    "status": "passed",
+    "tests": 1
+  },
+  "failure_run": 40121156399,
+  "focused": {
+    "log": "/tmp/ipse-grok-coordination-final-focused.log",
+    "seconds": 23.4,
+    "seed": 991229,
+    "status": "passed",
+    "tests": 26
+  },
+  "formatters": "Elixir 1.18 and 1.20 pass",
+  "frozen_evaluator_implementation_changed": false,
+  "hosted_repaired_candidate": "pending",
+  "initial_control_attempts": [
+    "An initial shifted line selector matched two adjacent generated tests; corrected selector reproduced the intended case.",
+    "An after-control wrapper syntax error occurred before file mutation or test launch; corrected script then passed."
+  ],
+  "initial_delayed_after_effect_control": {
+    "excluded": 10,
+    "fixture_init_delay_ms": 1500,
+    "log": "/tmp/ipse-driver-timeout-after-start-control.log",
+    "policy_ms": 4000,
+    "seconds": 6.6,
+    "seed": 295496,
+    "status": "passed",
+    "tests": 1
+  },
+  "initial_focused": {
+    "log": "/tmp/ipse-grok-coordination-focused.log",
+    "seconds": 23.7,
+    "seed": 704259,
+    "status": "passed",
+    "tests": 26
+  },
+  "record_version": 1,
+  "repair": {
+    "after_effect": "Explicit 4000ms test configuration, real timeout elapsed asserted, original put/receipt/later-read/worker-exit assertions retained",
+    "before_effect": "Explicit 1500ms fixture init delay, original 1000ms policy, real timeout elapsed asserted, no action log, confirmed cleanup and later inspect without replay",
+    "http": "Eight clients use backlog eight; original accept/receive/cancellation deadlines and all isolation assertions unchanged"
+  },
+  "runtime_source_changed": false,
+  "startup_reproduction": {
+    "effect": "Original callback-start assumption fails with absent actions log, after timeout/done/settled receipt assertions pass.",
+    "fixture_init_delay_ms": 1500,
+    "log": "/tmp/ipse-driver-timeout-startup-reproduction-selected.log",
+    "original_policy_ms": 1000,
+    "seed": 754011,
+    "status": "failed as expected",
+    "summary": "0/1 passed, 9 excluded"
+  }
+}

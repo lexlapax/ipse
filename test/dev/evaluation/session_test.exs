@@ -66,7 +66,10 @@ defmodule Ipse.KnowledgeEvaluationSessionTest do
     defmodule #{entrypoint} do
       @behaviour Ipse.Extension
       def describe, do: %{"sdk" => 2, "capabilities" => #{inspect(capabilities)}, "exports" => #{inspect(exports)}}
-      def init(options), do: {:ok, options}
+      def init(options) do
+        if options["mode"] == "slow_start", do: Process.sleep(1500)
+        {:ok, options}
+      end
       def handle("invoke.command", payload, options) do
         args = payload["arguments"]
         action = args["action"]
@@ -124,7 +127,10 @@ defmodule Ipse.KnowledgeEvaluationSessionTest do
         "required" => ~w(mode log ready),
         "additionalProperties" => false,
         "properties" => %{
-          "mode" => %{"type" => "string", "enum" => ~w(bad_open bad_append hang large fail)},
+          "mode" => %{
+            "type" => "string",
+            "enum" => ~w(bad_open bad_append hang large fail slow_start)
+          },
           "log" => %{"type" => "string"},
           "ready" => %{"type" => "string"}
         }
@@ -192,8 +198,9 @@ defmodule Ipse.KnowledgeEvaluationSessionTest do
     end
   end
 
-  test "confirmed timeout cancellation keeps its receipt and allows a later read", ctx do
-    {run, paths} = open(ctx, "hang")
+  test "timeout before the command handler starts records cancellation without executing the action",
+       ctx do
+    {run, paths} = open(ctx, "slow_start")
 
     assert {:error, {:command_failed, "failed"}, next} =
              Evaluation.invoke(run, "ingest", %{
@@ -205,6 +212,47 @@ defmodule Ipse.KnowledgeEvaluationSessionTest do
     [receipt] = next.receipts
     assert receipt["outcome"] =~ ":timeout"
     assert receipt["outcome"] =~ ":done"
+    assert receipt["elapsed_ms"] >= 1000
+    refute next.unsettled
+    refute File.exists?(paths.log)
+
+    assert {:ok, _, latest} =
+             Evaluation.invoke(%{next | timeout_ms: 4000}, "inspect", %{
+               "store" => "notes",
+               "source_id" => "fixture:source"
+             })
+
+    assert actions(paths.log) == ["inspect"]
+    assert {:ok, %{"cleanup" => "confirmed"}} = Evaluation.close(latest)
+  end
+
+  test "confirmed timeout after the command handler starts keeps its receipt and allows a later read",
+       ctx do
+    {run, paths} = open(ctx, "hang")
+    run = %{run | timeout_ms: 4000}
+
+    invocation =
+      Task.async(fn ->
+        Evaluation.invoke(run, "ingest", %{
+          "store" => "notes",
+          "source" => source("fixture"),
+          "expected_revision" => 0
+        })
+      end)
+
+    await(fn -> File.exists?(paths.ready) end)
+    assert Ipse.Session.info(run.pid).phase == :extension_command
+    assert actions(paths.log) == ["put"]
+    pid = run.pid
+    assert_receive {:ipse, ^pid, {:done, :cancelled}} = completed, 10_000
+    send(invocation.pid, completed)
+
+    assert {:error, {:command_failed, "failed"}, next} = Task.await(invocation, 10_000)
+
+    [receipt] = next.receipts
+    assert receipt["outcome"] =~ ":timeout"
+    assert receipt["outcome"] =~ ":done"
+    assert receipt["elapsed_ms"] >= 4000
     refute next.unsettled
     assert is_binary(receipt["invocation_id"])
     assert actions(paths.log) == ["put"]

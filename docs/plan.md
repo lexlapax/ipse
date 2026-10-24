@@ -785,8 +785,12 @@ Reported USD ticks remain separate from aggregate rate-card estimates. Focused
 source/integration checks and the `622a2c8` installed proof pass. Its full Linux
 native-inclusive suite passes 1760 tests, 19 excluded, followed by an isolated demo;
 its complete Ubuntu/macOS matrix passes, including all independent proofs and
-experimental macOS checks. The later live-driver candidate's matrix is still
-running. The authorized live API check found a project key
+experimental macOS checks. The later live-driver candidate passes Ubuntu but
+fails two macOS fixture assumptions: cancellation before callback startup and
+an undersized eight-client listener queue. Controlled reproductions and 26 focused
+checks support test-only repairs; their fresh hosted verification is pending.
+Product deadlines and frozen evaluator implementation are unchanged.
+The authorized live API check found a project key
 but received HTTP 403 on its first `grok-4.7` request and stopped without retry.
 API inference remains unverified pending team billing/model permissions; no OAuth
 account check has run. The [receipt](archive/2026-10-24-xai-provider-research/verification.json)

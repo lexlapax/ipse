@@ -80,6 +80,12 @@ Keep journal/native/cleanup assertions afterward. With after-turn jobs, wait for
 actual settlement rather than assuming that observation ends the turn.
 Observation watchdogs are not product latency guarantees.
 
+Distinguish timeout before command-handler startup from timeout during active work.
+The evaluation-session fixture observes its worker's readiness and active Session
+phase before asserting post-effect cancellation; a separate delayed-start case
+keeps the short policy and proves that no command handler ran. Concurrent HTTP fixtures
+must also reserve enough listener backlog for all clients started before accepts.
+
 Restore must validate committed records/source bindings before permissible torn-tail
 repair. Corrupt receipts must not pass because repair removed evidence. Check
 configuration drift, captured CAS, source identity, cached results, and each
