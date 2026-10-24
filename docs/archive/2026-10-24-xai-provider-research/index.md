@@ -151,6 +151,18 @@ real child/extension/Session set passes 78 cases before the final accounting
 refinement. A later 90-case affected set passes after rebuilding the native helper.
 Final full source/native/demo, installed and hosted gates remain pending.
 
+The frozen `b2d838638f03c9f0f3950f2517e54c8159657a57` installed proof passes,
+including toolchain-free Grok setup, offline doctor and missing-registration
+refusal without contacting model/auth services. Its archive SHA256 is
+`6a3f7a92348b2471a7e2d043cba6a18aa5c5ad31dcb5657dd4af53449b7ca4ce`.
+The full local native suite is still running. Its first
+[hosted matrix](first-hosted-failure.json), run 40119130959, stopped on both
+platforms at formatting before ExUnit/installed checks: Elixir 1.18 wraps a long
+new `with` expression differently from local 1.20. A short token-result binding
+preserves evaluation order and is accepted by both formatters; seven OAuth
+controls pass afterward (seed 902377, 0.2 seconds). Fresh exact-source hosted
+verification is required for that repair, not a rerun claim for the failed run.
+
 Initial verification failures are retained as distinct observations: a new
 resume fixture expected an absent `status` field and a last-turn `final` value
 that existing idle resume intentionally clears; the fixture now checks `phase`,
@@ -159,6 +171,8 @@ changed. A real shell control then reproduced forwarding of the newly introduced
 `XAI_API_KEY` through the helper's fixed scrub list. Adding it to shell and
 measurement filters and rebuilding closes that observed leak; MCP/extension
 environment admission already derives its blocked names from the registry.
+The failing shell set was 308/309 passed (seed 46749, 44.3 seconds); the corrected
+341-case set is the later successful result above. No real key was used.
 
 1. xAI must provide or document an Ipse client registration, approved device grant,
    scopes and entitlement/billing behavior. Implementing fixtures cannot close this

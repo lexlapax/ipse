@@ -109,9 +109,12 @@ defmodule Ipse.Auth.XAI do
              "refresh_token" => record["refresh_token"]
            }) do
         {:ok, response} ->
-          with {:ok, next} <- token_record(record["client_id"], response, record["refresh_token"]),
-               :ok <- save(dir, next),
-               do: {:ok, next["access_token"]}
+          tokens = token_record(record["client_id"], response, record["refresh_token"])
+
+          with {:ok, next} <- tokens,
+               :ok <- save(dir, next) do
+            {:ok, next["access_token"]}
+          end
 
         {:oauth_error, code}
         when code in ["invalid_grant", "invalid_client", "unauthorized_client"] ->
