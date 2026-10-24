@@ -37,26 +37,26 @@ defmodule Ipse.Auth do
            ]) do
       try do
         {:ok, {{127, 0, 0, 1}, port}} = :inet.sockname(listener)
+        host_label = host_label()
 
         pending = %{
           state: random(),
           nonce: random(),
           verifier: random(),
           redirect_uri: "http://127.0.0.1:#{port}/auth/callback",
-          client_id: existing["client_id"]
+          client_id: existing["client_id"],
+          registration_name: host_label
         }
 
         url = authorization_url(existing, pending)
         # The printed URL never includes an ID token hint or credentials.
         output = Keyword.get(opts, :output, &IO.puts/1)
 
-        host_label = host_label()
-
         naming =
           if pending.client_id,
             do: "This machine: #{host_label}.",
             else:
-              "This machine: #{host_label}. When the browser asks you to name this registration, use #{host_label} to distinguish it from other machines."
+              "This machine: #{host_label}. New registration name: #{host_label}. Review or edit this suggestion in the browser before approving."
 
         output.(
           "Continue with ChatGPT:\n#{url}\n#{naming}\nWaiting up to five minutes for browser sign-in…"
@@ -468,7 +468,9 @@ defmodule Ipse.Auth do
     }
 
     params =
-      if pending.client_id, do: params, else: Map.put(params, "agent_name_hint", "Ipse")
+      if pending.client_id,
+        do: params,
+        else: Map.put(params, "agent_name_hint", pending.registration_name)
 
     params =
       if nonempty?(existing["email"]),

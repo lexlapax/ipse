@@ -51,10 +51,10 @@ session may need refresh or a new login, rather than proving the account usable.
 account-side connected grants if an older grant may be compromised.
 
 Login prints a machine label such as `ipse@serenity`, using the short local
-hostname. For a new registration, enter that label when the browser asks for its
-name so you can recognize the machine in ChatGPT. The initial application hint
-remains `Ipse`; the browser lets you edit the registration name. Returning login
-keeps the existing registration name. The display label does not replace the
+hostname. New registrations send that label as the browser's suggested name so
+you can recognize the machine in ChatGPT. Review or edit it before approving.
+Returning login keeps the existing registration name and sends no new name hint.
+The display label does not replace the
 stored opaque host ID. If the hostname is unavailable or unsuitable for display,
 the label is `ipse@unknown-host`.
 

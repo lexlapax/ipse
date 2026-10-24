@@ -172,11 +172,11 @@ defmodule Ipse.AuthTest do
          ctx do
       output = fn message ->
         assert message =~ "This machine: #{Auth.host_label()}."
-        assert message =~ "When the browser asks you to name this registration"
+        assert message =~ "New registration name: #{Auth.host_label()}."
         [_, url | _] = String.split(message, "\n")
         params = URI.parse(url).query |> URI.decode_query()
         assert params["client_id"] == "dynamic_agent_client"
-        assert params["agent_name_hint"] == "Ipse"
+        assert params["agent_name_hint"] == Auth.host_label()
         assert params["code_challenge_method"] == "S256"
         assert params["resource"] == "https://api.openai.com/v1"
 
@@ -248,7 +248,7 @@ defmodule Ipse.AuthTest do
 
       output = fn message ->
         assert message =~ "This machine: #{Auth.host_label()}."
-        refute message =~ "When the browser asks you to name this registration"
+        refute message =~ "New registration name:"
         [_, url | _] = String.split(message, "\n")
         params = URI.parse(url).query |> URI.decode_query()
         assert params["client_id"] == saved["client_id"]

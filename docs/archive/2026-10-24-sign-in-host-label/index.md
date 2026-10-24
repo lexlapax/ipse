@@ -1,29 +1,37 @@
 # Machine identification during ChatGPT sign-in
 
-Requested 2026-10-24 while the session-permission candidate was under verification.
-Starting point: `58fdf4a`. Current procedure belongs to
-[terminal usage](../../operator/usage.md#select-a-provider); runtime ownership is
-in [architecture](../../developer/architecture.md).
+Requested 2026-10-24 while session permissions were under verification, starting
+from `58fdf4a`. Current procedure belongs to
+[terminal usage](../../operator/usage.md#select-a-provider); ownership belongs to
+[architecture](../../developer/architecture.md).
 
-The developer requested a machine-qualified name such as `ipse@serenity`.
+The requested authorization label is machine-qualified, for example
+`ipse@serenity`. New registrations now send the bounded short-hostname label as
+`agent_name_hint`, and print the same sampled value in the terminal. The browser
+can edit the suggestion. Returning authorization omits that hint and preserves
+the issued client ID and opaque host UUID. No registration is silently replaced
+or renamed on returning login.
+
 The [official registration protocol](https://developers.openai.com/siwc/token-sharing-open-source/sign-in),
-read on this date, distinguishes the application hint from the browser's editable
-registration name. The implementation therefore displays a short local hostname
-and suggests that label during new registration, preserving the existing OAuth
-parameters and returning client/host identity. It does not automatically rename
-an existing registration or send an undocumented name parameter.
+read on this date, documents the hint as editable display metadata and recommends
+an app name consistent across installations. Ipse intentionally adds the machine
+qualifier to its consistent `ipse` prefix to satisfy the requested distinction.
+It uses the documented hint, not a new hostname parameter or private endpoint.
+The label is not an authentication identity or permission grant.
 
-The hostname comes from OTP, without a shell command or new dependency. Domain
-suffixes are omitted; absent, oversized or unsafe names use `ipse@unknown-host`.
-No credentials, token record, host UUID, scope or callback behavior changes.
+The hostname comes from OTP, without a shell or new dependency. Domain suffixes
+are omitted; absent, oversized or unsafe names use `ipse@unknown-host`. Scopes,
+PKCE/state/nonce, callback handling, credential storage and identity validation
+remain unchanged. The name is sampled once per login so URL and terminal agree.
 
-Local OAuth/setup fixtures pass: 39 tests, seed 579899, 0.7 seconds, including
-new/returning output, stable application hint, hostname bounds and fallback.
-This is fixture evidence; no new real browser sign-in was performed. The combined
-candidate still requires full source/native, installed and hosted verification.
+The first `8ee16dc` implementation printed the label and suggested typing it in
+the browser while retaining a constant hint. Its Auth/setup fixtures passed 39
+cases (seed 579899, 0.7 seconds), and its full source/installed checks passed.
+That terminal-only behavior was superseded because it did not set the requested
+browser default. The updated OAuth/setup, permission and terminal set passes 76
+cases, including the machine-qualified initial hint and absent returning hint.
 
-Committed/pushed combined candidate: `8ee16dc538912b01e05281fa84551472772be253`.
-Its complete installed-package proof passes. Full local native-inclusive and
-hosted Ubuntu/macOS results are tracked in the
-[combined receipt](../2026-10-24-approval-implementation/verification.json);
-the older approval-only full-suite success does not substitute for those gates.
+No new real browser authorization was performed. Fixture evidence proves request
+construction and existing validation paths, not a new account/server acceptance
+trial. The [combined receipt](../2026-10-24-approval-implementation/verification.json)
+tracks exact candidates and final source, installed and hosted gates separately.

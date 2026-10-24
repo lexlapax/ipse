@@ -5,91 +5,84 @@ selected implementing approval UX before the external audit, extending the P28
 brief's original exclusion of approval semantics. The
 [research](../2026-10-24-p28-approval-ux/index.md) and
 [walkthrough](../2026-10-24-p28-walkthrough/index.md) explain the scope.
-Current instructions belong to [terminal usage](../../operator/usage.md#approve-a-small-task)
+Current procedures belong to [terminal usage](../../operator/usage.md#approve-a-small-task)
 and [architecture training](../../developer/architecture.md#trace-a-tool-and-its-approval).
 
-## Implemented candidate
+## Completed local baseline and successor
 
-`48a42d81a224c069ee89250e52272d44593a5948` is committed and pushed. The
-[verification receipt](verification.json) distinguishes completed checks from
-running gates. Isolated source/package copies exclude unrelated user edits.
-The later [machine-label request](../2026-10-24-sign-in-host-label/index.md) adds
-sign-in display guidance. Its combined candidate needs a fresh hosted matrix;
-the existing approval-only source result remains separate.
-The combined candidate is `8ee16dc538912b01e05281fa84551472772be253`.
+The completed local baseline is `dac11dcbca0bb6787a74052885e1e02301fc2f9c`. Its runtime source
+is unchanged from the default-mode repair at `b874fc7`; the subsequent commit
+includes missing receipt files and reconciles the audit documentation. The
+[verification receipt](verification.json) separates this candidate from earlier
+successful, failed and cancelled checks. Isolated copies exclude unrelated user
+edits. The [machine-label follow-up](../2026-10-24-sign-in-host-label/index.md)
+initial terminal guidance is included in this baseline. Browser prefilling then
+superseded that guidance to fulfill the requested authorization label; 76 focused
+cases pass (seed 516367, 19.2 seconds). Its successor needs its own full
+source, installed and hosted gates. The table below describes `dac11dc`, not that
+later name-hint request change.
+
+| Gate | Actual result |
+| --- | --- |
+| Focused permissions, Session, terminal, Auth/setup, child and release controls | 127 passed, seed 924329, 22.5 seconds |
+| Build, formatting, warnings-as-errors compile and CI policy | Passed in a clean fixed source copy |
+| Full Linux suite including native confinement | 1721 passed, zero failures, 19 excluded; seed 580519, 1068.8 seconds, exit 0 |
+| Isolated credential-free demo | Passed after the full suite; tracked source tree remains clean |
+| Complete installed-package proof | Passed; real grant reuse/revocation/resume, existing upgrade/recovery, memory, MCP, extension and child checks; inventories unchanged |
+| Exact archive and runtime notices | SHA256 `7fb89d0e07e9032d1beae0d4e0f174a0a56b9284aee36bc0332ba7207233b036`; all 24 runtime-notice files rehashed against SHA256 and Git blob identities; Elixir 1.20.4/OTP 29.1.1 |
+| Operator examples against packaged CLI | Build identity, machine-label code, and headless/`--yes` flag refusals passed |
+| Committed-tree documentation | Clean Git checkout: 415 Markdown files, 3836 local links, zero errors |
+| Hosted Ubuntu/macOS and independent proofs | Run [40114556208](https://github.com/lexlapax/ipse/actions/runs/40114556208) remains in progress; no final platform verdict yet |
+
+No real provider was contacted for these changes. Earlier P29 live receipts and
+human browser/account observations retain their own exact source and scope.
+
+## Implemented authority
 
 - Review each effect remains the interactive default. `--accept-edits` explicitly
   permits root native file edits in chat; it cannot combine with `--yes` or `run`.
 - A fresh write/edit proposal offers `edits CODE`; a shell proposal offers
-  `session CODE`. Once and deny remain available. Exact shell matching includes
-  the entire argument map, cwd and requested sandbox policy, with no prefix/glob
-  parser or new dependency.
+  `session CODE`. Once and deny remain available. Shell reuse matches the entire
+  argument map, cwd and requested sandbox policy, without prefix/glob parsing.
 - Session owns at most 32 shell grants, each with at most 16 KiB of arguments.
   `/permissions` inspects; `/permissions clear` revokes future dispatch authority.
   Cancellation retains grants; closing/resuming loses them. Children, MCP and
   extension/SDK effects retain separate approval. Headless denial takes precedence.
-- Intent-before-effect is retained. Grant/revoke records and `approval_source`
-  explain session authority without replaying it on resume. Edit grants retain
-  native path checks and additionally reject hardlinks. Existing concurrent
-  filesystem replacement and trusted-shell limitations remain explicit.
-- The installed-package proof exercises real write/shell reuse, revocation and
-  idle resume using a fixed provider and no account or development toolchain.
-
-## Verification in progress
-
-The first focused run had four failures in terminal fixtures that matched the old
-prompt wording. The production fresh-code binding was retained; fixture expectations
-were updated to the explicit “allow once” wording. The next focused run passed
-all 53 tests (seed 776245, 19.1 seconds). The expanded run passes 88 tests
-(seed 253648, 22.6 seconds), including the chat flag, native edit behavior and
-child/release controls. Full local native-inclusive
-and hosted verification is still required for this new candidate;
-the older P28/P29 baseline does not establish this change's acceptance.
+- Intent-before-effect is retained. Prompt grant/revoke records and each tool's
+  `approval_source` explain authority without restoring it on resume. Native edit
+  grants retain path checks and additionally reject hardlinks. Existing filesystem
+  replacement races and trusted-shell limits remain explicit.
+- Embedded callers that omit approval mode retain the same `:ask` default in
+  dispatch, startup edit consent and grant admission. No dependency was added.
 
 The fixed seven-effect task compares four writes plus three identical shell calls:
 seven decisions with once-only consent, two with explicit edit/exact-command
-grants. This is a deterministic fixture comparison, not a new human walkthrough
-or a benchmark of arbitrary tasks. No real provider was contacted for this change.
+grants. This is a fixture comparison, not a new human walkthrough or a benchmark
+of arbitrary tasks. The installed control independently executes four effects
+with two decisions, inspects/clears grants, closes and resumes idle.
 
-The complete local installed-package proof passes. Its new grant control executes
-four effects using two decisions, inspects and clears permissions, closes and
-resumes idle. Existing upgrade, recovery, memory, MCP, extension, child and native
-checks also pass. The archive reports the candidate identity and has SHA256
-`a49d0663aeacdf87baa6c1bb01de9f63546bf8cdfe6935cba26ed7fa2b3aeb5e`.
-Manual command checks against the packaged CLI confirm help and refusal of
-`--accept-edits` with headless `run` or broad `--yes`. Source/native and hosted
-Ubuntu/macOS gates remain running; installed success is not their result.
+## Verification chronology and repairs
 
-The approval-only candidate subsequently passes its complete Linux native-inclusive
-suite: 1720 tests, zero failures, 19 excluded, seed 45144, 1069.3 seconds, exit 0.
-Its isolated demo passes and the tracked tree remains clean. Its hosted run was
-cancelled after the machine-label follow-up created a combined candidate; the
-[terminal cancelled receipt](superseded-hosted.json) is not a platform pass.
-The combined candidate's installed proof also passes, with archive SHA256
-`916596ef2b56ad871a7791b0b405c9bcaa72819d519354211a3ca8923fa90f69`.
-Its full source/native suite and hosted run 40112830571 remain in progress.
+| Candidate / check | Retained observation |
+| --- | --- |
+| Initial focused run, seed 675536 | Four terminal fixture failures matched the old prompt wording. Fresh-code binding was retained; expectations now match explicit allow-once wording. |
+| Focused follow-ups | 53 passed, seed 776245, 19.1 seconds; then 88 passed, seed 253648, 22.6 seconds, including chat flag, native edits and child/release controls. |
+| Approval-only `48a42d8` | 1720 native-inclusive tests passed, 19 excluded, seed 45144, 1069.3 seconds, exit 0; isolated demo and installed proof passed. Archive SHA256 `a49d0663aeacdf87baa6c1bb01de9f63546bf8cdfe6935cba26ed7fa2b3aeb5e`. [Hosted run cancelled](superseded-hosted.json) after the machine-label request. |
+| Combined `8ee16dc` | 1721 native-inclusive tests passed, 19 excluded, seed 393182, 1062.3 seconds, exit 0; isolated demo and installed proof passed. Archive SHA256 `916596ef2b56ad871a7791b0b405c9bcaa72819d519354211a3ca8923fa90f69`. [Hosted run cancelled](superseded-combined-hosted.json) after the default-mode finding. |
+| Controlled default-mode reproduction | Omitting `approval` in the real Session fixture returned `{:error, :grant_unavailable}` despite dispatch's default ask policy. One selected case failed, seed 389754. The repair aligns all three permission checks with dispatch; 127 focused cases then passed. |
+| `b874fc7` hosted run 40114244391 | Both platforms stopped at docs validation: the index linked a receipt that had not been staged. Local checking saw the untracked file. [Failure retained](final-hosted-failure.json); no hosted ExUnit/installed/later success claimed. |
+| Documentation repair `dac11dc` | Missing receipts committed; clean Git checkout docs validation passes. An archive-only check attempt was unsuitable because the checker requires Git metadata; the clean-checkout result replaces that attempt. Final source/installed checks pass as listed above; hosted verdict remains pending. |
 
-Final review reproduced an embedded-API mismatch: omitting `approval` uses the
-existing `:ask` dispatch default, but grant admission initially required an
-explicit key. Removing that key from the real Session fixture failed the
-seven-effect case with `{:error, :grant_unavailable}` (seed 389754). Grant creation,
-matching and startup edit consent now use the same default as dispatch. The
-repaired focused set passes 127 tests, including implicit-mode real effects,
-terminal, Auth/setup, child and release controls. The final successor candidate
-requires its own complete source/installed/hosted results; previous running or
-passing candidates do not prove this repair.
+Cancelled or failed matrices are not platform passes. Earlier successful suites
+used explicit ask mode and do not establish the repaired implicit-mode behavior.
 
-The `b874fc7` hosted run 40114244391 stopped at the docs gate on both platforms:
-this index linked the superseded CI receipt before that JSON file was staged.
-The local working-tree checker saw the untracked file; a committed checkout did
-not. The [failure receipt](final-hosted-failure.json) is retained. No hosted ExUnit,
-installed or later proof result is claimed for this run. The repair commits the
-receipt and validates a clean committed tree before restarting the matrix.
+## Release rehearsal cleanup
 
-The RC files were copied into ignored `dist/rc-rehearsal/v0.1.0-rc.1/assets` and
-all four GitHub digests plus archive sidecars were rechecked. Automatic approval
-review initially rejected draft deletion without explicit authorization. The
-developer then authorized deleting the draft while retaining the tag/files.
-Deletion succeeded; the release query returns not found and the RC tag remains
-on origin at `e944fcf`. The [cleanup receipt](../2026-10-23-p28-p29-implementation/rc-assets.json)
-retains both original inspection and actual deletion facts.
+The four RC files were copied into ignored
+`dist/rc-rehearsal/v0.1.0-rc.1/assets` and their GitHub digests and archive sidecars
+were rechecked. Automatic approval review initially rejected draft deletion without
+explicit authorization. The developer then authorized deleting the draft while
+retaining the tag/files. Deletion succeeded; the release query returns not found
+and the RC tag remains on origin at `e944fcf`. The
+[cleanup receipt](../2026-10-23-p28-p29-implementation/rc-assets.json) retains
+original inspection and actual deletion facts. Stable publication remains open.
