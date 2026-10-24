@@ -150,6 +150,7 @@ defmodule Ipse.Session do
          :ok <- ModelCall.configuration(config),
          :ok <- Ipse.Config.Profiles.embedding_configuration(config),
          :ok <- Ipse.Provider.validate_output_limit(config),
+         :ok <- Ipse.Provider.Registry.validate_request(config),
          :ok <- provider_configuration(config),
          :ok <- Ipse.Usage.Budget.validate_configuration(config),
          {:ok, _journal_limits} <- Ipse.Journal.normalize_limits(config[:journal]),

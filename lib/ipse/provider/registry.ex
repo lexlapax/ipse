@@ -19,6 +19,11 @@ defmodule Ipse.Provider.Spec do
     :probe,
     :probe_base_url,
     :input_components,
+    :profile_validator,
+    :request_validator,
+    profile_fields: %{},
+    profile_defaults: %{},
+    route_fields: [],
     structured_output?: false,
     summary_schema?: false,
     http_hints: %{},
@@ -133,6 +138,53 @@ defmodule Ipse.Provider.Registry do
       probe: {"/v1/models", :anthropic}
     },
     %Spec{
+      id: "openrouter",
+      atom: :openrouter,
+      adapter: Ipse.Provider.ChatCompletions,
+      replay_key: "openrouter",
+      default_base_url: "https://openrouter.ai/api/v1",
+      base_url_policy: :https_or_loopback,
+      credential: {:env, "OPENROUTER_API_KEY"},
+      billing_mode: "api",
+      output_limit: 1..1_000_000,
+      reasoning: &__MODULE__.router_reasoning/2,
+      usage_extractor: &__MODULE__.chat_usage/1,
+      secret_env: ["OPENROUTER_API_KEY"],
+      label: "OpenRouter API (billed, pinned upstream)",
+      http_hints: %{
+        401 => "Check OPENROUTER_API_KEY.",
+        402 => "The OpenRouter account has insufficient credits.",
+        404 => "No upstream satisfies the pinned model, upstream and data policy.",
+        429 => "OpenRouter rate limited the request.",
+        :server => "The pinned upstream is unavailable; nothing was retried."
+      },
+      probe: {"/models", :bearer},
+      profile_validator: &Ipse.Provider.ChatCompletions.validate_profile/1,
+      request_validator: &Ipse.Provider.ChatCompletions.validate_request/1,
+      profile_fields: %{
+        "upstream" => %{"type" => "string", "minLength" => 1, "maxLength" => 64},
+        "data_collection" => %{"type" => "string", "enum" => ["deny", "allow"]}
+      },
+      profile_defaults: %{"data_collection" => "deny"},
+      route_fields: [{"upstream", :upstream}, {"data_collection", :data_collection}]
+    },
+    %Spec{
+      id: "openai_compatible",
+      atom: :openai_compatible,
+      adapter: Ipse.Provider.ChatCompletions,
+      replay_key: "openai_compatible",
+      base_url_policy: :loopback_only,
+      credential: :none,
+      billing_mode: "local",
+      output_limit: 1..1_000_000,
+      reasoning: &__MODULE__.no_reasoning/2,
+      usage_extractor: &__MODULE__.chat_usage/1,
+      label: "Compatible server (local, loopback only)",
+      probe: {"/models", :none},
+      profile_validator: &Ipse.Provider.ChatCompletions.validate_profile/1,
+      request_validator: &Ipse.Provider.ChatCompletions.validate_request/1
+    },
+    %Spec{
       id: "demo",
       atom: :demo,
       adapter: Ipse.Provider.Demo,
@@ -170,7 +222,7 @@ defmodule Ipse.Provider.Registry do
   def credentials, do: Map.new(@specs, &{&1.id, credential_reference(&1.credential)})
   def billing, do: Map.new(@specs, &{&1.atom, &1.billing_mode})
   # Rate-card enums preserve their historical presentation order.
-  def rate_card_ids, do: ~w(openai chatgpt anthropic ollama)
+  def rate_card_ids, do: ~w(openai chatgpt anthropic ollama openrouter openai_compatible)
   def billing_modes, do: rate_card_ids() |> Enum.map(&fetch!(&1).billing_mode) |> Enum.uniq()
   def cost_bases, do: billing_modes() |> Enum.map(&cost_basis/1)
   def cost_basis("api"), do: "api_estimate"
@@ -188,6 +240,114 @@ defmodule Ipse.Provider.Registry do
   def credential_reference(:chatgpt_auth), do: "ipse-auth"
   def credential_reference({:env, name}), do: name
   def credential_reference(:none), do: "none"
+
+  def http_hint(provider, status) do
+    case fetch(provider) do
+      {:ok, spec} ->
+        Map.get(spec.http_hints, status) ||
+          if(status in 500..599, do: Map.get(spec.http_hints, :server))
+
+      _ ->
+        nil
+    end
+  end
+
+  def profile_schema do
+    Enum.reduce(@specs, %{}, &Map.merge(&2, &1.profile_fields))
+  end
+
+  def profile_keys(provider) do
+    case fetch(provider) do
+      {:ok, spec} -> Enum.map(spec.route_fields, &elem(&1, 0))
+      _ -> []
+    end
+  end
+
+  def profile_values(profile) do
+    spec = fetch!(profile["provider"])
+    Map.merge(spec.profile_defaults, Map.take(profile, profile_keys(spec.id)))
+  end
+
+  def profile_runtime(profile) do
+    values = profile_values(profile)
+    Map.new(fetch!(profile["provider"]).route_fields, fn {key, atom} -> {atom, values[key]} end)
+  end
+
+  def runtime_fields(nil), do: %{}
+
+  def runtime_fields(execution) do
+    spec = fetch!(execution[:provider] || execution["provider"])
+
+    Map.new(spec.route_fields, fn {key, atom} ->
+      {atom, Map.get(execution, atom, execution[key])}
+    end)
+  end
+
+  def validate_profile(profile) do
+    spec = fetch!(profile["provider"])
+    invalid = Map.keys(profile_schema()) -- Map.keys(spec.profile_fields)
+
+    cond do
+      Enum.any?(invalid, &Map.has_key?(profile, &1)) ->
+        {:error, "Provider profile contains unsupported route fields."}
+
+      spec.profile_validator ->
+        spec.profile_validator.(profile)
+
+      true ->
+        :ok
+    end
+  end
+
+  def validate_selection(settings, profile, opts) do
+    case fetch(settings["provider"]) do
+      {:ok, %{profile_validator: validator}} when not is_nil(validator) ->
+        profile =
+          profile
+          |> Map.merge(Map.take(settings, ~w(provider model)))
+          |> Map.put("base_url", profile["base_url"] || opts[:base_url])
+
+        validator.(profile)
+
+      _ ->
+        :ok
+    end
+  end
+
+  def validate_request(config) do
+    case fetch(config[:provider]) do
+      {:ok, %{request_validator: validator}} when not is_nil(validator) -> validator.(config)
+      _ -> :ok
+    end
+  end
+
+  def valid_profile_values?(profile) do
+    spec = fetch!(profile["provider"])
+
+    Ipse.JSON.validate_arguments(
+      %{
+        "type" => "object",
+        "properties" => spec.profile_fields,
+        "required" => profile_keys(spec.id),
+        "additionalProperties" => false
+      },
+      Map.take(profile, profile_keys(spec.id))
+    ) == :ok and (spec.route_fields == [] or spec.profile_validator.(profile) == :ok)
+  end
+
+  def router_reasoning(_, effort) when effort in ~w(none low medium high xhigh max), do: :ok
+  def router_reasoning(_, _), do: unsupported_reasoning()
+
+  def chat_usage(raw),
+    do:
+      extract(raw, %{
+        "input_tokens" => ["prompt_tokens"],
+        "output_tokens" => ["completion_tokens"],
+        "total_tokens" => ["total_tokens"],
+        "input_cached_tokens" => ["prompt_tokens_details", "cached_tokens"],
+        "input_cache_write_tokens" => ["prompt_tokens_details", "cache_write_tokens"],
+        "output_reasoning_tokens" => ["completion_tokens_details", "reasoning_tokens"]
+      })
 
   def openai_embedding_usage(raw),
     do: extract(raw, %{"input_tokens" => ["prompt_tokens"], "total_tokens" => ["total_tokens"]})

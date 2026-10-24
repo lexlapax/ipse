@@ -661,9 +661,11 @@ dependencies.
 [`provider registry`](../lib/ipse/provider/registry.ex) now supplies configuration,
 profiles, credentials, billing, accounting, capability, setup and diagnosis facts.
 Pre-refactor fixtures captured from `dd510a7` and 312 focused checks pass; final
-baseline/platform gates remain pending. Shared adapter conformance passes across
-OpenAI, Anthropic and Ollama; the new adapters remain unimplemented. Native
-embeddings remain limited to OpenAI and Ollama.
+native baseline (1601) and installed checks pass; hosted verification is pending.
+Shared conformance covers the existing adapters, pinned OpenRouter and explicit
+loopback-compatible servers. OpenRouter profile/continuation/accounting and owned
+extension tests pass; final combined gates remain pending. Gemini and guided new
+route setup remain unimplemented. Native embeddings stay limited to OpenAI/Ollama.
 The [P29 implementation brief](archive/2026-10-23-p28-p29-design/p29.md) breaks
 this scope into ordered work packages with files, tests and decisions.
 The developer accepted its recommended decisions on 2026-10-23. Gemini, then

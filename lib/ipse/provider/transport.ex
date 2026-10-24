@@ -163,7 +163,8 @@ defmodule Ipse.Provider.Transport do
       {:error,
        "ChatGPT plan request failed (#{metadata(status, shape, code, param, request_id)}): #{hint}"}
     else
-      {:error, "Provider returned HTTP #{status}."}
+      hint = Ipse.Provider.Registry.http_hint(provider, status)
+      {:error, "Provider returned HTTP #{status}." <> if(hint, do: " " <> hint, else: "")}
     end
   end
 

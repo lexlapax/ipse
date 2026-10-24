@@ -158,7 +158,8 @@ Credential references are fixed lookups, not token values:
 | `chatgpt` | `ipse-auth` |
 | `openai` | `OPENAI_API_KEY` |
 | `anthropic` | `ANTHROPIC_API_KEY` |
-| `ollama`, `demo` | `none` |
+| `openrouter` | `OPENROUTER_API_KEY` |
+| `ollama`, `openai_compatible`, `demo` | `none` |
 
 Omit `credential` to use the provider's fixed lookup. Text roles never select
 vector generation; configure that separately through [embeddings](extensions.md).
@@ -174,6 +175,87 @@ request context. Subscription access stays on the public OpenAI endpoint.
 `think: false`; choose it only for a server/model supporting that control.
 Omitting it retains the model's default behavior. Other unsupported combinations
 refuse. Anthropic extended-thinking configuration is unavailable.
+OpenRouter accepts `none`, `low`, `medium`, `high`, `xhigh` and `max`; the pinned
+upstream decides support. Compatible local profiles omit reasoning controls.
+
+### Pin an OpenRouter upstream
+
+Choose an available model and its upstream slug from OpenRouter's
+[routing documentation](https://openrouter.ai/docs/guides/routing/provider-selection).
+Set `OPENROUTER_API_KEY` privately. Save this complete operator file as
+`/private/path/router.json`, replacing `openai/YOUR_MODEL` and `openai` with your
+matching model and upstream. No model is selected by default:
+
+```json
+{
+  "version": 1,
+  "profiles": {
+    "router": {
+      "provider": "openrouter",
+      "model": "openai/YOUR_MODEL",
+      "upstream": "openai",
+      "data_collection": "deny",
+      "max_output_tokens": 4096
+    }
+  },
+  "roles": {"main": "router"}
+}
+```
+
+```sh
+ipse config --config /private/path/router.json --no-project-config
+ipse doctor --config /private/path/router.json --no-project-config
+ipse chat --config /private/path/router.json --no-project-config --profile router --cwd /path/to/project
+```
+
+The request restricts both upstream lists to your slug, disables fallbacks and
+requires support for its parameters. `deny` excludes collecting endpoints;
+`allow` requires an explicit profile change. This is separate from a zero-retention
+guarantee. Only base slugs with 1..64 lowercase letters, digits, dots, underscores
+or hyphens are supported; region/variant slash selectors are unavailable.
+`openrouter/auto`, comma-separated models and `:nitro`/`:floor` routing shortcuts
+refuse. An unsupported model/upstream/data-policy combination returns a refusal;
+Ipse does not broaden the route.
+
+The first stream chunk must report exactly the requested model and upstream before
+content is admitted. Later reported changes also refuse. A request may still be
+charged; observed usage remains recorded. No undocumented alias conversion is
+performed. Native reasoning details remain private and preserve their order on
+tool continuation. Changing the upstream or data policy requires a fresh session
+or restoration of the original profile for resume.
+
+### Connect a loopback compatible server
+
+Start and configure the model service yourself. Save `/private/path/local.json`
+with your actual installed model and loopback address:
+
+```json
+{
+  "version": 1,
+  "profiles": {
+    "local": {
+      "provider": "openai_compatible",
+      "model": "YOUR_LOCAL_MODEL",
+      "base_url": "http://127.0.0.1:8080/v1",
+      "max_output_tokens": 1024
+    }
+  },
+  "roles": {"main": "local"}
+}
+```
+
+```sh
+ipse config --config /private/path/local.json --no-project-config
+ipse doctor --config /private/path/local.json --no-project-config
+ipse chat --config /private/path/local.json --no-project-config --cwd /path/to/project
+```
+
+An explicit `base_url` and model are required. Only literal loopback or `localhost`
+is accepted, including with HTTPS; credentials, queries and fragments in URLs
+refuse. No API credential, provider-routing object or reasoning request is sent.
+The local service supplies model behavior and standard Chat Completions usage.
+Missing counters remain unavailable. This route is recorded as local billing;
+remote compatible services require a separately defined billing policy.
 
 ### Route a child review
 
@@ -295,7 +377,7 @@ either supported mode.
 
 | Setting | Default | Accepted values |
 | --- | --- | --- |
-| `provider` | `chatgpt` | `chatgpt`, `openai`, `ollama`, `anthropic`, `demo` |
+| `provider` | `chatgpt` | `chatgpt`, `openai`, `ollama`, `anthropic`, `openrouter`, `openai_compatible`, `demo` |
 | `model` | Provider default | Nonempty, at most 200 characters |
 | `max_steps` | 30 calls per turn | 1..100000 |
 | `context_bytes` | 400000 | 8192..16000000 bytes |
@@ -304,7 +386,7 @@ either supported mode.
 | `sandbox` | `off` | `off`, `native` |
 | `subagents` | `false` | Boolean |
 | `subagent_concurrency` | 1 | 1 or 2; 2 requires subagents |
-| `max_output_tokens` | Absent | OpenAI API 16..1000000; Ollama/Anthropic 1..1000000 |
+| `max_output_tokens` | Absent | OpenAI API 16..1000000; Ollama/Anthropic/OpenRouter/compatible 1..1000000 |
 
 Output caps apply per supported request, including summaries. Subscription and
 demo reject them. Model limits may be tighter; Anthropic defaults to 8192 and

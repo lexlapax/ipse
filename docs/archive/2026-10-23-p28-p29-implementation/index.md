@@ -19,14 +19,14 @@ requirement; authority, recovery and correctness regressions remain unacceptable
 | --- | --- | --- |
 | P28 WP1 | One version source, compiled build identity and installed agreement | Complete at `b4788b4`; local source/package and both hosted platforms pass |
 | P28 WP2 | Redacted actionable errors and matching recovery instructions | Complete at `6818000`; full local and hosted Ubuntu/macOS checks pass |
-| P28 WP3 | Offline doctor, explicit bounded probes and finding fixtures | Full native suite passes at `a89fce7`; hosted pending; later installed proof passes |
+| P28 WP3 | Offline doctor, explicit bounded probes and finding fixtures | Full native and hosted Ubuntu/macOS pass at `a89fce7`; later installed proof passes |
 | P28 WP4 | Guided/private setup, previews, backups and resolution fixtures | Full native suite and installed first run pass at `9907877`; repaired hosted gate pending |
 | P28 WP5 | Checksums, symlink launcher, draft tag workflow and install lifecycle | Implemented; local package/upgrade proof passes; tag rehearsal and hosted pending |
 | P28 WP6 | Whole-manual first-user review and fresh-account walkthrough | Pending |
 | P29 WP0 | Verified official wire facts and continuation examples | [Recorded](wire-facts.md); adapter fixtures still required |
-| P29 WP1 | Central registry, existing-provider equivalence and recovery tests | Implemented; fixed pre-refactor fixtures and 312 focused checks pass; full/platform gates pending |
+| P29 WP1 | Central registry, existing-provider equivalence and recovery tests | Exact `cd74f91` native suite (1601) and installed proof pass; hosted pending |
 | P29 WP2 | Shared server and adapter conformance tests | Shared server preserves 54 tests; 33 conformance cases and all 110 provider tests pass ([receipt](p29-wp2-verification.json)) |
-| P29 WP3 | Pinned OpenRouter and explicit loopback compatible adapter | Pending |
+| P29 WP3 | Pinned OpenRouter and explicit loopback compatible adapter | Implemented; focused/conformance/owned-extension checks pass ([receipt](p29-wp3-verification.json)); full/platform gates pending |
 | P29 WP4 | Native Gemini, signed continuation and canonical accounting | Pending |
 | P29 WP5 | Registry-driven doctor/setup and coherent provider manuals | Pending |
 | Auditor handoff | Requirement matrix, exact commits/checks, exclusions and commands | Pending |
@@ -276,3 +276,48 @@ The independent exact-`9907877` WP4 source subsequently passed its complete
 native-inclusive suite: 1591 passed, 19 excluded, seed 950188, 1049.6 seconds,
 exit 0. Its tracked runtime/test/tool sources remain unchanged. The earlier
 installed first-run pass and later installed upgrade proof remain distinct receipts.
+
+The exact `cd74f91` registry snapshot passed the complete native-inclusive suite:
+1601 passed, 19 excluded, 1052.7 seconds, exit 0. Its installed archive also passes
+checksum, first run, upgrade, symlink and existing package proofs. The P28 doctor
+hosted run at `a89fce7` completed successfully on both platforms;
+[job/step receipt](wp3-hosted.json) preserves its exact scope.
+
+## P29 WP3
+
+ChatCompletions supports pinned OpenRouter and explicit loopback-only compatible
+servers. Router requests require a selected model/upstream profile and default to
+collection deny. Both routing lists contain one upstream, fallbacks stay disabled,
+parameter support is required, and no attribution/routing shortcuts are sent.
+First-frame model/upstream mismatch refuses text; observed usage remains accounted.
+Successful finish plus DONE is mandatory, with the documented repeated usage
+finish accepted. Indexed call fields use existing bounded buffers and call budgets;
+reasoning and ordered details stay private native continuation.
+
+Registry route metadata drives profile schema/defaults, main/child execution,
+helper snapshots and approvals. Session validates it before journal opening or
+repair. Existing manifest/billing/destination/usage fixtures remain unchanged.
+Rate cards recognize API/local routes; provider credit cost is ignored and missing
+prices stay unpriced. Tests cover actual approved SDK inference, credential
+isolation, changed pin/policy refusal before repair, bounded budget admission and
+native replay. A draft initially used a JSON-schema pattern keyword outside the
+host's deliberately bounded subset; existing profile tests caught it. Length
+bounds plus native slug validation fix the draft without widening that subset.
+
+Credential privacy required a small native scope expansion beyond the brief's
+MCP/extension map: standalone Rust shell/measured launchers also remove the new
+key. Their fixed native environment protocol keeps a defensive denylist, tested
+through the real shell and measured-launch environment controls. No benchmark
+logic or executable code under `dev/evaluation/` changed, and no dependency was added.
+The operator/developer provider, accounting, policy, request-limit and recovery
+guidance has been integrated around choosing and preserving an explicit route.
+Guided router setup, Gemini, the opt-in live verifier and final combined/platform
+gates remain pending; none is inferred from the local fixtures.
+
+The final adapter/conformance/profile run passed 69 controls, seed 785951.
+Hosted registry run 40049304565 failed on macOS in two timed waits: overlapping
+Finch fixture acceptance and the existing Research frozen-input evaluation test.
+No assertion was weakened. The subsequent shared-fixture commit's macOS full
+suite, native enforcement and installed package steps pass in run 40049620426;
+its remaining independent proofs are still running. The earlier run remains a
+failed receipt rather than a platform pass.

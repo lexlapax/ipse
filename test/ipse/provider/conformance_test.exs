@@ -26,3 +26,21 @@ defmodule Ipse.Provider.OllamaConformanceTest do
     adapter: Ipse.Provider.Ollama,
     events: Ipse.Test.ProviderConformance.Ollama
 end
+
+defmodule Ipse.Provider.OpenRouterConformanceTest do
+  use ExUnit.Case, async: false
+
+  use Ipse.Test.ProviderConformance,
+    provider: :openrouter,
+    adapter: Ipse.Provider.ChatCompletions,
+    events: Ipse.Test.ProviderConformance.OpenRouter
+end
+
+defmodule Ipse.Provider.LocalCompatibleConformanceTest do
+  use ExUnit.Case, async: false
+
+  use Ipse.Test.ProviderConformance,
+    provider: :openai_compatible,
+    adapter: Ipse.Provider.ChatCompletions,
+    events: Ipse.Test.ProviderConformance.ChatCompletions
+end

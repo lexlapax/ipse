@@ -57,8 +57,16 @@ defmodule Ipse.Config.Profiles do
       "additionalProperties" => false
     }
 
+    schema =
+      update_in(schema, ["properties"], &Map.merge(&1, Ipse.Provider.Registry.profile_schema()))
+
     with :ok <- Schema.validate_arguments(schema, profile),
          true <- not is_nil(Ipse.Provider.model_name(profile["model"])),
+         :ok <-
+           (case Ipse.Provider.Registry.validate_profile(profile) do
+              :ok -> :ok
+              {:error, message} -> {:error, {:provider_profile, message}}
+            end),
          true <-
            Map.get(profile, "credential", @credentials[profile["provider"]]) ==
              @credentials[profile["provider"]],
@@ -71,6 +79,9 @@ defmodule Ipse.Config.Profiles do
          true <- Ipse.Provider.valid_base_url?(profile["provider"], profile["base_url"]) do
       :ok
     else
+      {:error, {:provider_profile, message}} ->
+        {:error, message}
+
       _ ->
         {:error,
          "Invalid profile field #{invalid_field(profile, schema)}. No model request was sent; see docs/operator/configuration.md#reuse-a-named-model-profile."}
@@ -146,25 +157,29 @@ defmodule Ipse.Config.Profiles do
   def manifest(nil, _), do: nil
 
   def manifest(id, profile),
-    do: %{
-      id: id,
-      role: "main",
-      provider: profile["provider"],
-      model: profile["model"],
-      credential: Map.get(profile, "credential", @credentials[profile["provider"]]),
-      reasoning_effort: profile["reasoning_effort"],
-      base_url: profile["base_url"]
-    }
+    do:
+      %{
+        id: id,
+        role: "main",
+        provider: profile["provider"],
+        model: profile["model"],
+        credential: Map.get(profile, "credential", @credentials[profile["provider"]]),
+        reasoning_effort: profile["reasoning_effort"],
+        base_url: profile["base_url"]
+      }
+      |> Map.merge(Ipse.Provider.Registry.profile_runtime(profile))
 
   def runtime(effective) do
     selected = effective.execution
 
-    runtime = %{
-      profiles: effective.profiles,
-      roles: effective.roles,
-      execution: selected,
-      reasoning_effort: if(selected, do: selected.reasoning_effort)
-    }
+    runtime =
+      %{
+        profiles: effective.profiles,
+        roles: effective.roles,
+        execution: selected,
+        reasoning_effort: if(selected, do: selected.reasoning_effort)
+      }
+      |> Map.merge(Ipse.Provider.Registry.runtime_fields(selected))
 
     if selected && selected.base_url,
       do: Map.put(runtime, :base_url, selected.base_url),
@@ -260,6 +275,7 @@ defmodule Ipse.Config.Profiles do
           Map.new(settings(profile), fn {key, value} -> {String.to_existing_atom(key), value} end)
 
         runtime = Map.put(runtime, :provider, @providers[profile["provider"]])
+        runtime = Map.merge(runtime, Ipse.Provider.Registry.profile_runtime(profile))
 
         runtime =
           if profile["base_url"],

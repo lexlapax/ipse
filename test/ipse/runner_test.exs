@@ -163,7 +163,13 @@ defmodule Ipse.RunnerTest do
   end
 
   test "provider credentials do not reach the shell", %{cwd: cwd} do
-    keys = ["OPENAI_API_KEY", "ANTHROPIC_API_KEY", "IPSE_CHATGPT_ACCESS_TOKEN"]
+    keys = [
+      "OPENAI_API_KEY",
+      "ANTHROPIC_API_KEY",
+      "IPSE_CHATGPT_ACCESS_TOKEN",
+      "OPENROUTER_API_KEY"
+    ]
+
     previous = Map.new(keys, &{&1, System.get_env(&1)})
     Enum.each(keys, &System.put_env(&1, "must-not-leak"))
 
@@ -175,7 +181,7 @@ defmodule Ipse.RunnerTest do
 
     assert {:ok, result} =
              Runner.run(
-               "printf '%s%s%s' \"$OPENAI_API_KEY\" \"$ANTHROPIC_API_KEY\" \"$IPSE_CHATGPT_ACCESS_TOKEN\"",
+               "printf '%s%s%s%s' \"$OPENAI_API_KEY\" \"$ANTHROPIC_API_KEY\" \"$IPSE_CHATGPT_ACCESS_TOKEN\" \"$OPENROUTER_API_KEY\"",
                cwd
              )
 

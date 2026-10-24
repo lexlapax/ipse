@@ -1,0 +1,12 @@
+{
+  "record_version": 1,
+  "scope": "Pinned OpenRouter and explicit loopback-compatible Chat Completions",
+  "broad": {"passed": 379, "duration_seconds": 40.8, "exit_code": 0, "log": "/tmp/ipse-p29-router-broad.log"},
+  "native_secrets": {"passed": 36, "exit_code": 0, "log": "/tmp/ipse-p29-router-native-secrets.log", "rust": "Runner test harness: measured/bound environment control passed, 39 unrelated Rust tests filtered"},
+  "conformance": {"passed": 62, "seed": 680984, "exit_code": 0, "log": "/tmp/ipse-p29-router-conformance.log", "coverage": "Five adapters' common cases plus initial Chat Completions controls"},
+  "final_targeted": {"passed": 13, "seed": 599969, "exit_code": 0, "log": "/tmp/ipse-p29-router-final-targeted.log", "coverage": "Nine native CC tests and four profile/resume/budget tests"},
+  "final_contract": {"passed": 69, "seed": 785951, "exit_code": 0, "log": "/tmp/ipse-p29-router-final-contract.log", "coverage": "Five adapters' common conformance cases, ten native Chat Completions controls, and four profile/resume/budget tests after final argument and nullable-continuation fixes"},
+  "owned_extension": {"passed": 1, "excluded": 57, "seed": 795371, "exit_code": 0, "log": "/tmp/ipse-p29-router-extension.log", "coverage": "Real SDK worker, explicit model approval, own fresh credential, native private continuation, canonical accounting and byte-identical idle resume"},
+  "other_checks": ["full source/native build", "warnings-as-errors compilation", "Elixir 1.18/1.20 formatting", "documentation links/manual rules"],
+  "limits": ["Loopback fixture verification only", "Full current native suite, installed package and exact-source hosted gates pending", "No live OpenRouter or compatible-server account request", "Gemini and guided new-route setup remain pending"]
+}

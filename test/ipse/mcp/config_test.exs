@@ -302,7 +302,12 @@ defmodule Ipse.MCP.ConfigTest do
   end
 
   test "rejects credential environment names, inherited secrets are never accepted", ctx do
-    for key <- ["OPENAI_API_KEY", "ANTHROPIC_API_KEY", "IPSE_CHATGPT_ACCESS_TOKEN"] do
+    for key <- [
+          "OPENAI_API_KEY",
+          "ANTHROPIC_API_KEY",
+          "IPSE_CHATGPT_ACCESS_TOKEN",
+          "OPENROUTER_API_KEY"
+        ] do
       write(ctx.path, %{"servers" => [%{server() | "env" => %{key => "secret"}}]})
       assert {:error, _} = Config.load(ctx.path)
     end

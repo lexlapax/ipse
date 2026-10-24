@@ -101,7 +101,8 @@ defmodule Ipse.Extension.ModelCall do
            "reasoning_effort" => profile["reasoning_effort"],
            "max_output_tokens" => profile["max_output_tokens"],
            "timeout_ms" => profile_timeout(profile, config)
-         }}
+         }
+         |> Map.merge(Ipse.Provider.Registry.profile_values(profile))}
       end)
     end
   end
@@ -176,6 +177,7 @@ defmodule Ipse.Extension.ModelCall do
           max_response_bytes: @wire_bytes,
           timeout_ms: execution["timeout_ms"]
         })
+        |> Map.merge(Ipse.Provider.Registry.profile_runtime(profile))
 
       runtime =
         if request["version"] in [2, 3],
@@ -270,7 +272,8 @@ defmodule Ipse.Extension.ModelCall do
   def valid_outcome?(_, _, _, _), do: false
 
   def valid_profile?(profile) do
-    keys?(profile, @execution_keys) and
+    keys?(profile, @execution_keys ++ Ipse.Provider.Registry.profile_keys(profile["provider"])) and
+      Ipse.Provider.Registry.valid_profile_values?(profile) and
       is_binary(profile["id"]) and
       Regex.match?(~r/\A[A-Za-z][A-Za-z0-9_-]{0,63}\z/, profile["id"]) and
       profile["provider"] in Map.keys(@providers) and

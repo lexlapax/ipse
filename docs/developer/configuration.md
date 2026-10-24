@@ -177,6 +177,17 @@ OpenAI/ChatGPT profiles accept `low`, `medium`, `high`, `xhigh`, and `max`, mapp
 to Responses `reasoning.effort`. Ollama `none` means native `think: false`;
 omission preserves backend default. Other combinations, including Anthropic
 thinking settings, refuse. Operators still need a supporting service/model.
+OpenRouter's declared efforts pass through to its pinned upstream; compatible
+local profiles support no explicit effort. The profile route fields `upstream`
+and `data_collection` propagate through main/child manifests and extension
+snapshots only for their declared provider. Ordinary providers gain no extra
+saved keys. Session validates the route before opening or repairing a journal.
+
+ChatCompletions checks first-frame model/upstream identity before text, observes
+usage before refusals, and requires a successful finish plus `[DONE]`. A repeated
+finish on a content-free final usage frame is accounting. Indexed call fields use
+Stream buffers; native reasoning-detail arrays retain order without text emission.
+Fixtures cover actual approved extension requests and unchanged idle resume.
 
 Trace profile validation, saved execution, ModelCall preparation, and Ollama wire
 construction. The profile integration fixture checks the synthetic HTTP body,
@@ -193,7 +204,7 @@ pinned profiles. Never weaken destination identity to make a changed route resum
 
 Provider owns `validate_output_limit/1`, `output_tokens/1`, and
 `narrow_output_tokens/2`. Absence adds no wire field. OpenAI API permits
-16..1000000; Anthropic/Ollama permit 1..1000000. ChatGPT subscription/demo refuse
+16..1000000; Anthropic/Ollama/OpenRouter/compatible permit 1..1000000. ChatGPT subscription/demo refuse
 explicit caps without dropping them or switching billing.
 
 | Adapter | Effective field |
@@ -201,6 +212,7 @@ explicit caps without dropping them or switching billing.
 | OpenAI API Responses | `max_output_tokens` |
 | Anthropic Messages | `max_tokens`, narrowed by existing adapter value |
 | Ollama Chat | `options.num_predict`, narrowed by existing summary options |
+| OpenRouter/compatible Chat Completions | `max_tokens` |
 | ChatGPT subscription | Unsupported; refusal before dispatch |
 
 In IEx:

@@ -124,7 +124,10 @@ defmodule Ipse.Test.ProviderConformance do
     config =
       Map.merge(
         %{provider: provider, model: "fixture", base_url: base, api_key: key, timeout_ms: 5000},
-        options
+        if(function_exported?(events, :config, 1),
+          do: Map.merge(events.config(base), options),
+          else: options
+        )
       )
 
     tools = [
@@ -154,6 +157,89 @@ defmodule Ipse.Test.ProviderConformance do
     after
       0 -> Enum.reverse(events)
     end
+  end
+end
+
+defmodule Ipse.Test.ProviderConformance.ChatCompletions do
+  alias Ipse.Test.ProviderFixture
+
+  def body(scenario) do
+    calls =
+      if scenario in [:tool, :parallel, :length] do
+        for i <- 1..if(scenario == :tool, do: 1, else: 2),
+            do: %{
+              "index" => i - 1,
+              "id" => "call-#{i}",
+              "type" => "function",
+              "function" => %{"name" => "read", "arguments" => Jason.encode!(%{"path" => "#{i}"})}
+            }
+      else
+        []
+      end
+
+    private = %{
+      "reasoning_details" => [
+        %{"type" => "reasoning.encrypted", "data" => "PRIVATE_CONTINUATION", "index" => 0}
+      ]
+    }
+
+    prefix =
+      [chunk(private)] ++
+        if calls == [] do
+          for text <- ["Hello ", "雪"], do: chunk(%{"content" => text})
+        else
+          [chunk(%{"tool_calls" => calls})]
+        end
+
+    reason = if calls == [], do: "stop", else: "tool_calls"
+    usage = %{"prompt_tokens" => 3, "completion_tokens" => 2, "total_tokens" => 5}
+
+    terminal =
+      case scenario do
+        :truncated ->
+          []
+
+        :error ->
+          [chunk(%{}, "error") |> Map.put("error", %{"message" => "fixture"})]
+
+        :length ->
+          [chunk(%{}, "length") |> Map.put("usage", usage)]
+
+        _ ->
+          [
+            chunk(%{}, reason),
+            chunk(%{"role" => "assistant", "content" => ""}, reason) |> Map.put("usage", usage),
+            "[DONE]"
+          ]
+      end
+
+    ProviderFixture.sse(prefix ++ terminal)
+  end
+
+  defp chunk(delta, reason \\ nil),
+    do: %{
+      "model" => "fixture",
+      "provider" => "openai",
+      "choices" => [%{"index" => 0, "delta" => delta, "finish_reason" => reason}]
+    }
+
+  def replayed?(body, native, results), do: body["messages"] == [native["message"] | results]
+end
+
+defmodule Ipse.Test.ProviderConformance.OpenRouter do
+  defdelegate body(scenario), to: Ipse.Test.ProviderConformance.ChatCompletions
+  defdelegate replayed?(body, native, results), to: Ipse.Test.ProviderConformance.ChatCompletions
+
+  def config(base) do
+    profile = %{
+      "provider" => "openrouter",
+      "model" => "fixture",
+      "upstream" => "openai",
+      "base_url" => base
+    }
+
+    Ipse.Provider.Registry.profile_runtime(profile)
+    |> Map.put(:execution, Ipse.Config.Profiles.manifest("conformance", profile))
   end
 end
 

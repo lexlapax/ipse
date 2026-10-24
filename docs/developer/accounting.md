@@ -70,6 +70,7 @@ fixed issues/invalid counters. Unknown provider fields are discarded.
 | Route | Meaning |
 | --- | --- |
 | OpenAI/ChatGPT text | Inclusive input/output/total; cache and reasoning are subsets |
+| OpenRouter/compatible chat | Prompt/completion/total with cache and reasoning subsets; provider credit cost is ignored |
 | Anthropic text | Input sums uncached/cache-read/cache-create only when all are known; TTL subsets stay separate; output includes thinking |
 | Ollama | Prompt/generated evaluation counts, optional cached prompt, nanosecond duration |
 | Demo | Inapplicable |

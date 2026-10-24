@@ -26,7 +26,7 @@ configuration, credentials, journals, and exports outside version control.
 | Install from source and prepare Linux native policy | [Arch Linux setup](arch-linux.md) |
 | Preview, save or replace a private first-run provider choice | [Guided setup](configuration.md#choose-and-save-a-provider) |
 | Work interactively or run once, approve effects, use skills, delegate, resume | [Use a workspace](usage.md) |
-| Select providers/profiles and resolve operator/project policy | [Configuration](configuration.md) |
+| Select profiles, pin an OpenRouter upstream, connect a local compatible server and resolve policy | [Configuration](configuration.md) |
 | Connect explicitly selected external tools/resources/prompts | [MCP](mcp.md) |
 | Review/import/select extensions, read complete results, generate vectors, try the lab | [Extensions](extensions.md) |
 | Retain explicit notes, update revisions, expire, forget, export/migrate | [Memory](memory.md) |

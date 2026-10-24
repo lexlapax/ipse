@@ -271,7 +271,7 @@ mod linux {
 
     fn environment_key(key: &[u8], bound: bool, cell: bool) -> bool {
         if !bound {
-            return !matches!(key, b"IPSE_MEASURE_ROOT" | b"OPENAI_API_KEY" | b"ANTHROPIC_API_KEY" | b"IPSE_CHATGPT_ACCESS_TOKEN");
+            return !matches!(key, b"IPSE_MEASURE_ROOT" | b"OPENAI_API_KEY" | b"ANTHROPIC_API_KEY" | b"IPSE_CHATGPT_ACCESS_TOKEN" | b"OPENROUTER_API_KEY");
         }
         if crate::ipse_bound::is_bound_key(key) { return false; }
         matches!(key, b"PATH" | b"LANG" | b"HOME" | b"TMPDIR")
@@ -529,6 +529,7 @@ mod linux {
             assert!(environment_key(b"DBUS_SESSION_BUS_ADDRESS", false, false));
             assert!(environment_key(b"IPSE_BOUND_ROOT_FD", false, false));
             assert!(!environment_key(b"OPENAI_API_KEY", false, false));
+            assert!(!environment_key(b"OPENROUTER_API_KEY", false, false));
             assert!(!environment_key(b"IPSE_MEASURE_ROOT", false, false));
         }
     }

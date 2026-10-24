@@ -1,4 +1,5 @@
 Code.require_file("../../support/stdio_probe.exs", __DIR__)
+Code.require_file("../../support/provider_fixture.ex", __DIR__)
 
 defmodule Ipse.Extension.InvocationTest do
   use ExUnit.Case, async: false
@@ -605,6 +606,109 @@ defmodule Ipse.Extension.InvocationTest do
     assert File.read!(Path.join(ctx.dir, id <> ".jsonl")) == bytes
     assert File.read!(ctx.called) == calls
     refute_receive {:model_http, _, _}, 20
+  end
+
+  test "pinned OpenRouter extension inference preserves approval, private continuation and idle resume",
+       ctx do
+    previous = System.get_env("OPENROUTER_API_KEY")
+    System.put_env("OPENROUTER_API_KEY", "fixture-router-only-key")
+
+    on_exit(fn ->
+      if previous,
+        do: System.put_env("OPENROUTER_API_KEY", previous),
+        else: System.delete_env("OPENROUTER_API_KEY")
+    end)
+
+    frame = fn delta, reason ->
+      %{
+        "model" => "org/model",
+        "provider" => "openai",
+        "choices" => [%{"index" => 0, "delta" => delta, "finish_reason" => reason}]
+      }
+    end
+
+    body =
+      Ipse.Test.ProviderFixture.sse([
+        frame.(
+          %{
+            "content" => "entities",
+            "reasoning_details" => [
+              %{"type" => "reasoning.encrypted", "data" => "private-router-continuation"}
+            ]
+          },
+          nil
+        ),
+        frame.(%{}, "stop")
+        |> Map.put("usage", %{
+          "prompt_tokens" => 7,
+          "completion_tokens" => 3,
+          "total_tokens" => 10,
+          "cost" => 123.45
+        }),
+        "[DONE]"
+      ])
+
+    {base, server} = Ipse.Test.ProviderFixture.start(body)
+    config = model_config(ctx.config, base)
+
+    route = %{
+      "provider" => "openrouter",
+      "model" => "org/model",
+      "base_url" => base,
+      "upstream" => "openai",
+      "max_output_tokens" => 32
+    }
+
+    config = put_in(config, [:profiles, "extract"], route)
+    pid = start(%{ctx | config: config})
+    :ok = host_command(pid, model_request())
+    assert_receive {:ipse, ^pid, {:approval, ref, "extension:model.complete", proposed}}, 3000
+    assert proposed["execution"]["provider"] == "openrouter"
+    assert proposed["execution"]["upstream"] == "openai"
+    assert proposed["execution"]["data_collection"] == "deny"
+    assert Ipse.Extension.ModelCall.delegated_approval?("extension:model.complete", proposed)
+    assert :ok = Session.approve(pid, ref, true)
+    assert_receive {:ipse, ^pid, {:done, :ok}}, 3000
+    {headers, payload} = Task.await(server)
+    assert headers =~ "authorization: Bearer fixture-router-only-key"
+    refute headers =~ "main-only-fixture"
+
+    assert payload["provider"] == %{
+             "only" => ["openai"],
+             "order" => ["openai"],
+             "allow_fallbacks" => false,
+             "require_parameters" => true,
+             "data_collection" => "deny"
+           }
+
+    assert payload["max_tokens"] == 32
+    refute Map.has_key?(payload, "tools")
+    assert %{"status" => "ok", "value" => value} = host_outcome(pid)
+    assert value["text"] == "entities"
+    assert value["usage"]["counts"]["total_tokens"] == 10
+    refute Jason.encode!(value) =~ "private-router-continuation"
+    refute Jason.encode!(value) =~ "123.45"
+    refute_receive {:ipse, ^pid, {:text, _}}, 20
+    id = Session.info(pid).id
+    {:ok, events} = Journal.load(ctx.dir, id)
+    assert :ok = Ipse.Extension.Projection.validate_events(events)
+    assert {:ok, ledger} = Ipse.Usage.restore(events, id)
+    [record] = Ipse.Usage.snapshot(ledger)["requests"]
+    assert record["provider"] == "openrouter"
+    assert record["billing_mode"] == "api"
+    native = Enum.find(events, &(&1["type"] == "extension_model_response"))
+
+    assert get_in(native, ["assistant", "provider_data", "message", "reasoning_details"]) == [
+             %{"type" => "reasoning.encrypted", "data" => "private-router-continuation"}
+           ]
+
+    assert :ok = Session.close(pid)
+    bytes = File.read!(Path.join(ctx.dir, id <> ".jsonl"))
+    calls = File.read!(ctx.called)
+    resumed = start(%{ctx | config: config}, id)
+    assert Session.info(resumed).phase == :idle
+    assert File.read!(Path.join(ctx.dir, id <> ".jsonl")) == bytes
+    assert File.read!(ctx.called) == calls
   end
 
   test "structured inference binds full approval and native format to live and saved results",

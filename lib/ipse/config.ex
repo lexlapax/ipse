@@ -116,7 +116,8 @@ defmodule Ipse.Config do
 
         execution = Ipse.Config.Profiles.manifest(profile_id, profile)
 
-        with :ok <- validate_settings(settings),
+        with :ok <- Ipse.Provider.Registry.validate_selection(settings, profile, opts),
+             :ok <- validate_settings(settings),
              :ok <-
                Ipse.Config.Profiles.reasoning(
                  settings["provider"],
@@ -190,12 +191,13 @@ defmodule Ipse.Config do
     settings = effective.settings
     {provider, _} = Map.fetch!(@providers, settings["provider"])
     sandbox = Map.fetch!(@sandboxes, settings["sandbox"])
+    base_url = client.base_url || get_in(effective, [:execution, :base_url])
 
     cond do
       Ipse.Provider.Registry.auth?(provider) && client.base_url ->
         {:error, "Subscription credentials only go to the official OpenAI endpoint."}
 
-      not Ipse.Provider.valid_base_url?(provider, client.base_url) ->
+      not Ipse.Provider.valid_base_url?(provider, base_url) ->
         {:error,
          "Provider endpoint requires HTTPS or explicit HTTP loopback, without credentials, query or fragment."}
 

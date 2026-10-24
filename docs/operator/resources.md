@@ -191,6 +191,15 @@ component rates. [Accounting training](../developer/accounting.md) defines exact
 arithmetic and selection. Missing rates remain unknown. Estimates retain the card
 revision/digest and provenance, and never contact a price service.
 
+OpenRouter uses `provider: "openrouter"`, `billing_mode: "api"` and
+`basis: "api_estimate"`; its provider-reported credit `cost`/`cost_details` fields
+are ignored. Local compatible servers use `provider: "openai_compatible"`,
+`billing_mode: "local"` and `basis: "local_estimate"`. Cached and reasoning
+counts are subsets of Chat Completions prompt/completion totals. Without a
+matching reviewed row, the amount remains unpriced/null rather than zero.
+Upstream is not a rate-card dimension: use prices appropriate to the pinned
+routes in that session, or leave them unpriced when one row cannot express them.
+
 For embeddings, use version 2 and declare `operation: "text"` or `"embedding"`
 on every row. Embedding rows use flat input and optionally `duration_second`;
 they have no output/cache/search/fetch rates. A text row cannot price embeddings

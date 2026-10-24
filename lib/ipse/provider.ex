@@ -12,6 +12,7 @@ defmodule Ipse.Provider do
     if adapter do
       try do
         with :ok <- response_contract(config),
+             :ok <- Registry.validate_request(config),
              :ok <-
                Ipse.Config.Profiles.reasoning(
                  to_string(config[:provider]),
@@ -114,12 +115,20 @@ defmodule Ipse.Provider do
     String.trim_trailing(base, "/") <> suffix
   end
 
-  def valid_base_url?(_, nil), do: true
+  def valid_base_url?(provider, nil) do
+    case Registry.fetch(provider) do
+      {:ok, %{base_url_policy: :loopback_only}} -> false
+      _ -> true
+    end
+  end
 
   def valid_base_url?(provider, url) when is_binary(url) do
     case Registry.fetch(provider) do
       {:ok, %{base_url_policy: :fixed, default_base_url: fixed}} ->
         url == fixed or test_endpoint?(url)
+
+      {:ok, %{base_url_policy: :loopback_only}} ->
+        valid_endpoint_url?(url) and URI.parse(url).host in ["127.0.0.1", "localhost", "::1"]
 
       _ ->
         valid_endpoint_url?(url)

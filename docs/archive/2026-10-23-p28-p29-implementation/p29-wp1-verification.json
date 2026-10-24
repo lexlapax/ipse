@@ -8,5 +8,6 @@
   "exceptions": ["Native adapter wire/replay code", "Subscription diagnostic envelope and default overload in Transport", "Native header schemes in Doctor", "Frozen evaluation map with comment only", "Demo direct deterministic dispatch"],
   "installed": {"source_commit": "cd74f91c4b4fe6dfab9954b2b466f2e1c6bc530a", "archive": "/tmp/ipse-p29-registry-package-vOCKFC/dist/ipse-0.1.0-linux-x86_64-glibc-2.44.tar.gz", "sha256": "666eac828da5fc56f96f2edb5cb9119d5b6e877df33ff1d065dbb5f09e084e95", "exit_code": 0, "log": "/tmp/ipse-p29-registry-installed.log", "controls": "Full installed package proof including checksum, setup/doctor/demo, changed-host upgrades, symlinks and unchanged inventories"},
   "hosted": {"run_id": 40049304565, "url": "https://github.com/lexlapax/ipse/actions/runs/40049304565", "status": "in_progress"},
-  "limits": ["No new provider adapters yet", "Full source/native and hosted gates pending", "No live inference or account verification"]
+  "native_suite": {"source_commit": "cd74f91c4b4fe6dfab9954b2b466f2e1c6bc530a", "passed": 1601, "excluded": 19, "duration_seconds": 1052.7, "exit_code": 0, "log": "/tmp/ipse-p29-registry-native-tests.log"},
+  "limits": ["New adapters belong to later checkpoints", "Hosted gate pending", "No live inference or account verification"]
 }

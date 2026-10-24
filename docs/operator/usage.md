@@ -36,6 +36,8 @@ run announce the built-in ChatGPT subscription default before checking access.
 | OpenAI API | Set `OPENAI_API_KEY` privately; API billing is separate from a subscription | `ipse chat --provider openai --cwd /path/to/project` |
 | Local Ollama | Start your service and install a tool-capable model yourself | `ipse chat --provider ollama --model YOUR_INSTALLED_MODEL --cwd /path/to/project` |
 | Anthropic API | Set `ANTHROPIC_API_KEY` privately and choose an available model | `ipse chat --provider anthropic --model YOUR_MODEL --cwd /path/to/project` |
+| OpenRouter API | Set `OPENROUTER_API_KEY` privately; save a model/upstream profile | `ipse chat --config /private/path/router.json --profile router --cwd /path/to/project` |
+| Local compatible server | Start a Chat Completions service on explicit loopback; no credential is sent | `ipse chat --provider openai_compatible --model YOUR_LOCAL_MODEL --base-url http://127.0.0.1:8080/v1 --cwd /path/to/project` |
 
 ChatGPT login uses Ipse's public sign-in flow. The browser must reach the temporary
 `127.0.0.1` callback on the machine running Ipse. On a remote host, arrange access
@@ -51,6 +53,10 @@ Ollama defaults to `http://localhost:11434`. Select another permitted endpoint w
 `--base-url URL`, or use an operator-owned [named profile](configuration.md#reuse-a-named-model-profile).
 Profiles also select exact provider/model routes for children and extensions.
 Selecting a model does not download it or guarantee that your account can use it.
+For OpenRouter, follow [upstream pinning](configuration.md#pin-an-openrouter-upstream)
+before starting; both model and upstream are required. API credits and usage stay
+separate from ChatGPT subscription access. Compatible local services use the
+Chat Completions protocol; remote compatible endpoints are refused.
 
 ## Approve a small task
 

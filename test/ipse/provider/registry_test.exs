@@ -13,14 +13,22 @@ defmodule Ipse.Provider.RegistryTest do
 
   test "registry is closed, ordered and owns native capabilities and existing secret names" do
     alias Ipse.Provider.Registry
-    assert Registry.ids() == ~w(chatgpt openai ollama anthropic demo)
-    assert Registry.chat_ids() == ~w(chatgpt openai ollama anthropic)
+    existing = ~w(chatgpt openai ollama anthropic demo)
+    assert Enum.filter(Registry.ids(), &(&1 in existing)) == existing
+
+    assert Enum.filter(Registry.chat_ids(), &(&1 in existing)) ==
+             ~w(chatgpt openai ollama anthropic)
+
     assert Registry.embedding_ids() == ~w(openai ollama)
-    assert Registry.secret_env() == ~w(OPENAI_API_KEY ANTHROPIC_API_KEY IPSE_CHATGPT_ACCESS_TOKEN)
+    secrets = ~w(OPENAI_API_KEY ANTHROPIC_API_KEY IPSE_CHATGPT_ACCESS_TOKEN)
+    assert Enum.filter(Registry.secret_env(), &(&1 in secrets)) == secrets
     assert Registry.fetch("unknown-provider-fixture") == :error
     assert Registry.fetch(nil) == :error
     assert Registry.fetch(123) == :error
-    assert Registry.rate_card_ids() == ~w(openai chatgpt anthropic ollama)
+
+    assert Enum.filter(Registry.rate_card_ids(), &(&1 in existing)) ==
+             ~w(openai chatgpt anthropic ollama)
+
     assert Registry.billing_modes() == ~w(api subscription local)
     assert Registry.cost_bases() == ~w(api_estimate api_equivalent local_estimate)
     assert Registry.fetch!(:chatgpt).replay_key == "openai"

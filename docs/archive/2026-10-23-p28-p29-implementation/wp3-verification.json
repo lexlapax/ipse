@@ -6,6 +6,6 @@
   "suite": {"passed": 1577, "excluded": 19, "seed": 3667, "duration_seconds": 1043.0, "exit_code": 0},
   "log": "/tmp/ipse-p28-wp3-native-tests.log",
   "other_checks": ["12 focused doctor controls including total deadline", "65 complete CLI controls", "source build", "formatting", "warnings-as-errors compilation", "documentation checker", "isolated demo"],
-  "hosted": {"run_id": 40047127805, "url": "https://github.com/lexlapax/ipse/actions/runs/40047127805", "status": "pending"},
+  "hosted": {"run_id": 40047127805, "url": "https://github.com/lexlapax/ipse/actions/runs/40047127805", "status": "completed", "conclusion": "success", "receipt": "wp3-hosted.json"},
   "limits": ["Earlier installed package predates the final deadline/help fixes", "Later setup/release installed proof covers final doctor code plus subsequent changes", "No live inference, browser sign-in or fresh OS user walkthrough"]
 }
