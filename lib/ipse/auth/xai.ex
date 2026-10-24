@@ -106,10 +106,11 @@ defmodule Ipse.Auth.XAI do
       case request("/oauth2/token", %{
              "grant_type" => "refresh_token",
              "client_id" => record["client_id"],
+             "scope" => record["scope"],
              "refresh_token" => record["refresh_token"]
            }) do
         {:ok, response} ->
-          tokens = token_record(record["client_id"], response, record["refresh_token"])
+          tokens = token_record(record["client_id"], response, record)
 
           with {:ok, next} <- tokens,
                :ok <- save(dir, next) do
@@ -180,15 +181,17 @@ defmodule Ipse.Auth.XAI do
        else: {:error, "xAI returned an invalid or untrusted device authorization response."}
   end
 
-  defp token_record(client, response, previous_refresh) do
-    refresh = response["refresh_token"] || previous_refresh
-    scope = response["scope"] || @scope
+  defp token_record(client, response, previous) do
+    previous = previous || %{}
+    requested = previous["scope"] || @scope
+    refresh = response["refresh_token"] || previous["refresh_token"]
+    scope = response["scope"] || requested
     granted = if is_binary(scope), do: String.split(scope), else: []
 
     if response["token_type"] in ["Bearer", "bearer"] and token_string?(response["access_token"]) and
          token_string?(refresh) and is_integer(response["expires_in"]) and
          response["expires_in"] in 1..31_536_000 and
-         "api:access" in granted and Enum.all?(granted, &(&1 in String.split(@scope))) do
+         "api:access" in granted and Enum.all?(granted, &(&1 in String.split(requested))) do
       {:ok,
        %{
          "version" => 1,

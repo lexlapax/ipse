@@ -174,6 +174,18 @@ environment admission already derives its blocked names from the registry.
 The failing shell set was 308/309 passed (seed 46749, 44.3 seconds); the corrected
 341-case set is the later successful result above. No real key was used.
 
+A subsequent review reproduced a refresh-scope defect with a narrower initial
+grant: an omitted response scope incorrectly restored the initial requested
+scope list. The controlled set was 7/8 passed, seed 492845. Refresh now sends the
+saved grant explicitly, preserves it when the response omits scope, and rejects
+expansion. This follows [OAuth refresh rules](https://www.rfc-editor.org/rfc/rfc6749#section-6).
+The affected auth/provider/setup/doctor set passes 66 cases, seed 87442,
+11.0 seconds, before the final explicit-request assertion; the final eight OAuth
+cases then pass, seed 804653, 0.2 seconds, including omitted-scope preservation
+and expansion refusal. Both supported formatters pass. Final verification
+must use the repaired source; the earlier frozen candidate does not cover this
+newly reproduced edge case.
+
 1. xAI must provide or document an Ipse client registration, approved device grant,
    scopes and entitlement/billing behavior. Implementing fixtures cannot close this
    external gate. Until then login must refuse before sending a request without

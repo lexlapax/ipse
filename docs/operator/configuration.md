@@ -262,7 +262,8 @@ and slow-down responses and has a finite expiry; interrupting it leaves existing
 credentials intact. Missing client registration refuses before network access.
 Credentials are saved separately in `IPSE_HOME/auth/xai.json`, owner-only. Status
 and ordinary doctor inspect saved metadata without refreshing. A real model call
-refreshes an expiring grant under an OS lock. If refresh is interrupted after
+refreshes an expiring grant under an OS lock, preserving its granted scopes.
+If refresh is interrupted after
 dispatch, its outcome is unknown: sign in again rather than replaying it.
 
 To remove this sign-in, use `ipse logout --provider xai_oauth`. Local removal is

@@ -76,11 +76,15 @@ private-file and retained OS-lock helpers admit closed `:chatgpt`/`:xai`
 namespaces, preserving the existing ChatGPT paths. Mark refresh pending durably
 before dispatch: a transport interruption or owner death cannot justify replaying
 a rotating refresh token. A successful response must be saved before returning
-its access token. Status/doctor never refresh. Device polling fixtures check
-pending, slow-down, expiry and denial; rotation fixtures check concurrent callers
+its access token. Refresh explicitly requests only the saved granted scopes. If
+its response omits scope, retain that request; reject expansion rather than
+replacing a narrower grant with the initial request's broader scope list.
+Status/doctor never refresh. Device polling fixtures check pending, slow-down,
+expiry and denial; rotation fixtures check concurrent callers
 and unknown outcome recovery. Run `mix test test/ipse/auth/xai_test.exs test/ipse/auth_test.exs`.
 Fixture success does not establish xAI's approval of an Ipse registration or a
 subscription entitlement.
+
 Pre-refactor fixtures compare full Config manifests, destinations, canonical usage
 and cost, then restore old journals and request-free legacy sessions without
 mutation. Updating goldens to match a refactor removes that protection; investigate

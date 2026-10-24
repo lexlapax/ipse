@@ -248,6 +248,24 @@ defmodule Ipse.Auth.XAITest do
     assert File.read!(target) == before
   end
 
+  test "refresh without a scope response preserves the actual narrower grant", c do
+    save(c, saved(%{"scope" => "api:access"}))
+
+    fixture([{:ok, Map.delete(tokens(), "scope")}], fn ->
+      assert {:ok, "PRIVATE_ACCESS"} = XAI.token(c.dir)
+      [{_, fields}] = Process.get(:xai_test_calls)
+      assert fields["scope"] == "api:access"
+    end)
+
+    assert {:ok, record} = Ipse.Auth.read_credentials(c.dir, :xai)
+    assert record["scope"] == "api:access"
+    save(c, saved(%{"scope" => "api:access"}))
+    fixture([{:ok, tokens()}], fn -> assert {:error, _} = XAI.token(c.dir) end)
+    assert {:ok, record} = Ipse.Auth.read_credentials(c.dir, :xai)
+    assert record["refresh_pending"] == true
+    assert record["scope"] == "api:access"
+  end
+
   test "bounded decoding exposes no server-provided descriptions or credentials" do
     assert {:oauth_error, "access_denied"} =
              XAI.decode(400, ~s({"error":"access_denied","error_description":"PRIVATE"}))
