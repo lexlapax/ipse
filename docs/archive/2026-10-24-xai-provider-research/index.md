@@ -141,21 +141,34 @@ requests. Existing ChatGPT registration/refresh validation must retain its own
 provider contract. A shared wire format is not shared token identity or replay
 authority.
 
-## Open gates
+## Implementation and verification
 
-The implementation checkpoint now includes API/subscription registry entries,
+The [verification receipt](verification.json) separates exact candidates, earlier
+successes, the formatter failure and the controlled scope repair. The latest
+`622a2c8` installed proof passes, including all existing package/lifecycle checks
+and the new offline Grok path. Its archive SHA256 is
+`b3f6e27da4b40c786a179da2226fb19839aa4e9df570562fb49dbeb820a83752`
+(32,089,978 bytes). All 24 runtime notices were rehashed against SHA256 and Git
+blob identities, and the archive identity module matches the packaged CLI's
+`622a2c8` build facts (Elixir 1.20.4/OTP 29.1.1). Its full local source/native and
+hosted Linux/macOS checks are running. The earlier `b2d8386` full native suite
+passes 1759 tests, zero failures, 19 excluded, seed 541413, 1066.8 seconds, followed
+by an isolated demo and unchanged tracked source. That earlier full suite does
+not establish the later refresh-scope repair.
+
+The implementation includes API/subscription registry entries,
 shared bounded Responses with xAI-native replay, issuer-bound device login,
 private locked refresh, setup/doctor and shell/measurement key filtering.
 The expanded focused set passes 341 cases (seed 493844, 64.7 seconds), and the
 real child/extension/Session set passes 78 cases before the final accounting
 refinement. A later 90-case affected set passes after rebuilding the native helper.
-Final full source/native/demo, installed and hosted gates remain pending.
+Those focused controls are distinct from the exact latest full-suite results above.
 
 The frozen `b2d838638f03c9f0f3950f2517e54c8159657a57` installed proof passes,
 including toolchain-free Grok setup, offline doctor and missing-registration
 refusal without contacting model/auth services. Its archive SHA256 is
 `6a3f7a92348b2471a7e2d043cba6a18aa5c5ad31dcb5657dd4af53449b7ca4ce`.
-The full local native suite is still running. Its first
+That candidate's full local result is recorded above. Its first
 [hosted matrix](first-hosted-failure.json), run 40119130959, stopped on both
 platforms at formatting before ExUnit/installed checks: Elixir 1.18 wraps a long
 new `with` expression differently from local 1.20. A short token-result binding
@@ -186,12 +199,38 @@ and expansion refusal. Both supported formatters pass. Final verification
 must use the repaired source; the earlier frozen candidate does not cover this
 newly reproduced edge case.
 
+### Live API check
+
+At the developer's request, the nonempty `XAI_API_KEY` entry in the ignored project
+environment file was admitted privately. The key was never printed or saved in
+the receipt. The [live receipt](live-api.json) identifies runtime `622a2c8`, API
+billing, `https://api.x.ai/v1/responses`, explicit `grok-4.7`, low reasoning effort,
+128 visible output tokens and a three-request maximum. The first text request
+returned HTTP 403 after 268 ms. The driver stopped after one request without retry,
+fallback or tool execution. Usage was unavailable; no successful inference, zero
+charge or working key entitlement is inferred. The developer was asked to check
+team billing and model/API permissions before a new attempt.
+
+The developer verification driver now admits only the explicit `xai` API route in
+addition to its existing Gemini/OpenRouter routes. Its real loopback three-request
+fixture verifies encrypted reasoning and call-ID replay without exposing native
+payloads. Six focused controls pass (seed 390654, 0.8 seconds); both Elixir 1.18 and
+1.20 formatting checks pass. A standalone CLI control in an isolated checkout
+admits xAI confirmation, then refuses an absent config before traffic. A proposed
+nested CLI test was stopped after it waited on its parent Mix build lock; it was
+removed and the standalone control was used instead. This was a developer-test
+coordination issue, not evidence of a provider failure. No production deadline
+or assertion was weakened.
+
+### Open external gates
+
 1. xAI must provide or document an Ipse client registration, approved device grant,
    scopes and entitlement/billing behavior. Implementing fixtures cannot close this
    external gate. Until then login must refuse before sending a request without
    an explicitly supplied client ID; no bundled third-party ID is permitted.
-2. API-key and subscription paths need separate opt-in account checks. No xAI key
-   availability is assumed from earlier Gemini/OpenRouter authorization.
+2. API inference remains unverified after the recorded HTTP 403. Subscription
+   access separately needs its own registered-client/account check; the API key
+   cannot establish subscription entitlement.
 3. Keep P29's original completed registry/Gemini/OpenRouter acceptance separate
    from this newly authorized increment. The external auditor must see both scopes
    and any unresolved registration/live limits.

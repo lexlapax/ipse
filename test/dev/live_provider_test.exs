@@ -78,6 +78,90 @@ defmodule Ipse.Development.LiveProviderTest do
     assert Enum.at(third["contents"], 1) == %{"role" => "model", "parts" => signed}
   end
 
+  test "Grok verifies encrypted tool continuation while keeping native payloads private" do
+    reasoning = %{"type" => "reasoning", "encrypted_content" => "PRIVATE_XAI_CIPHER"}
+
+    text = fn value ->
+      %{
+        "type" => "message",
+        "role" => "assistant",
+        "content" => [%{"type" => "output_text", "text" => value}]
+      }
+    end
+
+    call = %{
+      "type" => "function_call",
+      "call_id" => "echo-call",
+      "name" => "ipse_live_echo",
+      "arguments" => Jason.encode!(%{"value" => "p29"})
+    }
+
+    responses =
+      for output <- [
+            [text.("IPSE_LIVE_TEXT_OK")],
+            [reasoning, call],
+            [text.("IPSE_LIVE_TOOL_OK")]
+          ] do
+        Fixture.sse(%{
+          "type" => "response.completed",
+          "response" => %{
+            "status" => "completed",
+            "model" => "grok-fixture",
+            "output" => output,
+            "usage" => %{
+              "input_tokens" => 3,
+              "output_tokens" => 2,
+              "total_tokens" => 5,
+              "cost_in_usd_ticks" => 123
+            }
+          }
+        })
+      end
+
+    {base, server} = Fixture.sequence(responses)
+
+    report =
+      LiveProvider.run(
+        config(%{
+          provider: :xai,
+          model: "grok-4.7",
+          base_url: base,
+          max_output_tokens: 32,
+          timeout_ms: 4000
+        }),
+        &Ipse.Provider.request_complete/4
+      )
+
+    assert report["status"] == "passed"
+    assert report["billing_mode"] == "api"
+    assert length(report["requests"]) == 3
+
+    assert Enum.at(report["requests"], 1)["native_continuation"] == %{
+             "items" => 2,
+             "encrypted_reasoning_items" => 1,
+             "reported_model" => "grok-fixture",
+             "reported_cost_usd_ticks" => 123
+           }
+
+    refute Jason.encode!(report) =~ "PRIVATE_XAI_CIPHER"
+    refute Jason.encode!(report) =~ "live-fixture-secret"
+    requests = Task.await(server)
+
+    assert Enum.all?(requests, fn {headers, body} ->
+             headers =~ "authorization: Bearer live-fixture-secret" and
+               body["max_output_tokens"] == 32 and body["store"] == false
+           end)
+
+    {_, third} = Enum.at(requests, 2)
+    assert reasoning in third["input"]
+    assert call in third["input"]
+
+    assert Enum.any?(
+             third["input"],
+             &(&1["type"] == "function_call_output" and &1["call_id"] == "echo-call")
+           )
+  end
+
   test "a failed second request remains in the receipt with observed usage and cannot retry" do
     counter = make_ref()
 
@@ -147,6 +231,7 @@ defmodule Ipse.Development.LiveProviderTest do
     for selected <- [
           config(%{budget: %{"version" => 1}}),
           config(%{provider: :openai}),
+          config(%{provider: :xai_oauth}),
           config(%{model: "Bad/Path"})
         ] do
       report = LiveProvider.run(selected, fn _, _, _, _ -> flunk("preflight bypass") end)

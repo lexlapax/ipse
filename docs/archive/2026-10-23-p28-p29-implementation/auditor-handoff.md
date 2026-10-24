@@ -48,8 +48,10 @@ step, field and refusal in the briefs. Inspect both positive and negative contro
 The [earlier hosted receipt](final-hosted.json) records every job/step in the exact
 `9c5eb6a` Ubuntu/macOS matrix; its [combined receipt](combined-verification.json)
 connects that baseline to local native-inclusive and installed proofs. The
-[current candidate receipt](../2026-10-24-approval-implementation/verification.json)
-keeps new and superseded verification separate.
+[permission/prefill receipt](../2026-10-24-approval-implementation/verification.json)
+keeps that follow-up and its superseded checks separate. The
+[Grok record](../2026-10-24-xai-provider-research/index.md) owns its later candidates;
+earlier green matrices do not prove that newly authorized scope.
 
 | Package / required behavior | Implementation and verification entry points | Evidence and remaining gate |
 | --- | --- | --- |
@@ -70,7 +72,12 @@ keeps new and superseded verification separate.
 | P29 live: explicit confirmation, bounded text plus two-step tool turn, no secrets/transcripts, no retries | `dev/verification/live_provider.exs`, `test/dev/live_provider_test.exs` | [Exact `492d091` live receipt](p29-live-final.json): both providers pass; Gemini signed parts observed; missing counters remain partial |
 | P29 WP5: registry menus/billing/credentials/probes, route questions/private previews, coherent provider/accounting manuals and priority | Setup/doctor/CLI suites, `AGENTS.md`, operator/developer provider chapters | [WP5 receipt](p29-wp5-verification.json): 83 CLI controls pass; final source/native/installed/hosted gates and whole-manual review pass |
 | Authorized approval follow-up: root native edit mode, exact full-argument/cwd/sandbox shell reuse, bounded grants, inspect/revoke, fresh input, denial, cancellation, non-inheritance and inert resume | `lib/ipse/session/permissions.ex`, Session/Turn, CLI/Terminal, native path checks; `test/ipse/session/permissions_test.exs`, CLI/delegation suites; installed permission proof | [Implementation and receipt](../2026-10-24-approval-implementation/index.md); seven-effect fixture reduces seven decisions to two; inspect limitations and current gate status |
-| Requested machine label during ChatGPT authorization | `lib/ipse/auth.ex`, Auth/setup fixtures and operator login procedure | [Machine-label record](../2026-10-24-sign-in-host-label/index.md); fixture-tested hostname/fallback and unchanged protocol; no new real browser trial |
+| Requested machine label during ChatGPT authorization | `lib/ipse/auth.ex`, Auth/setup fixtures and operator login procedure | [Machine-label record](../2026-10-24-sign-in-host-label/index.md); initial `ipse@HOST` hint, returning IDs and omitted hint, hostname fallback; no new real browser trial |
+| Grok X0: explicit API-key/subscription identity, model choice and credential/billing isolation | `Provider.Registry`, Config/profiles, CLI setup/doctor; registry golden and Grok tests | [Research/work packages](../2026-10-24-xai-provider-research/index.md); original provider goldens unchanged; full latest matrix pending |
+| Grok X1: native Responses, no hosted tools, private xAI replay, foreign ciphertext refusal, exact tool results, completed terminal before trailing marker | `lib/ipse/provider/openai.ex`, shared XAI/XAIOAuth conformance and `test/ipse/provider/xai_test.exs` | Byte-fragmented real HTTP fixtures plus Session approvals/replay; no live Grok inference claimed |
+| Grok X2: registered-client device grant, safe verification URI, finite polling, private credentials, retained OS lock, pending refresh, scope binding, logout uncertainty | `lib/ipse/auth/xai.ex`, closed Auth storage namespaces, `test/ipse/auth/xai_test.exs` | Controlled omitted-scope reproduction and repair; eight final OAuth cases pass; no Ipse registration or real browser grant exists yet |
+| Grok X3: modern/legacy reasoning accounting, visible-only cap, budgets, SDK/child privacy, native/environment token filtering | Registry/Budget, profile/extension integration suites, native shell/measurement filters and MCP environment admission | Both credential routes tested in real child requests, approved SDK requests, actual shell and Rust controls; full final verification pending |
+| Grok X4: coherent operator/developer procedures and installed lifecycle | Grok configuration, accounting/dependency training, `dev/verification/package.exs` | Installed API setup/offline doctor/missing-registration refusal pass at earlier exact candidates; scope-repaired package and source/platform checks in progress |
 
 ## Material implementation decisions to inspect
 
@@ -134,7 +141,10 @@ setup/doctor, output-budget admission and native secret filtering. Its
 original brief explicitly. Inspect API/subscription credential isolation,
 foreign ciphertext refusal, trailing stream marker admission, legacy reasoning
 accounting, visible-only output caps and unknown rotating-refresh outcomes.
-There is no Ipse xAI client registration yet and no Grok live inference result.
+There is no Ipse xAI client registration yet. The authorized
+[Grok API attempt](../2026-10-24-xai-provider-research/live-api.json) used runtime
+`622a2c8` and stopped after its first request returned HTTP 403. It proves no
+successful text/tool inference or subscription entitlement.
 The older Gemini/OpenRouter live receipt does not verify Grok or new auth code.
 Later documentation-only commits can embed a later build identity without
 changing runtime source; distinguish them from the tested binary. Preserve the

@@ -15,8 +15,11 @@
     "tests": 76
   },
   "hosted": {
+    "macos": "mix test timed out in declaration_cli_test.exs separate_cli case at the second declare System.cmd, after 120000ms; cause unconfirmed; later gates not run",
+    "receipt": "prefill-hosted-failure.json",
     "run_id": 40117303058,
-    "status": "running",
+    "status": "failed",
+    "ubuntu": "complete matrix passed",
     "url": "https://github.com/lexlapax/ipse/actions/runs/40117303058"
   },
   "hostname_fixture": {

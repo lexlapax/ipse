@@ -10,7 +10,7 @@ defmodule Ipse.Development.Verification.Runtime do
   alias Ipse.Development.Verification.Package
 
   def verification_main(["live", "provider" | argv]) do
-    unless System.get_env("IPSE_LIVE_PROVIDER_CONFIRM") in ~w(openrouter gemini) do
+    unless System.get_env("IPSE_LIVE_PROVIDER_CONFIRM") in ~w(openrouter gemini xai) do
       IO.puts(
         :json.encode(%{
           "status" => "refused",

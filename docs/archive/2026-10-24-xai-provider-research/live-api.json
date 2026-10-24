@@ -1,0 +1,74 @@
+{
+  "credential_source": "nonempty XAI_API_KEY admitted privately from ignored project .env; value not retained",
+  "date": "2026-10-24",
+  "exit_code": 1,
+  "fallbacks": 0,
+  "interpretation": "HTTP 403; inference and entitlement unverified. Usage unavailable does not establish zero charge.",
+  "live_oauth": false,
+  "plan": {
+    "billing_mode": "api",
+    "build": {
+      "arch": "x86_64",
+      "commit": "622a2c898d7c5140f12e679adb3b4d9c36d28e3c",
+      "elixir": "1.20.4",
+      "os": "linux",
+      "otp_release": "29",
+      "version": "0.1.0"
+    },
+    "destination": {
+      "origin": "https://api.x.ai",
+      "target_sha256": "ebb5dec7d8c69fa5c35a5bfa5ae24d96b7d763c30f68df44bceb7195465ce82b"
+    },
+    "event": "live_provider_plan",
+    "max_output_tokens_per_request": 128,
+    "max_requests": 3,
+    "model": "grok-4.7",
+    "output_limit_scope": "visible",
+    "provider": "xai",
+    "upstream": null
+  },
+  "reasoning_effort": "low",
+  "record_version": 1,
+  "result": {
+    "billing_mode": "api",
+    "model": "grok-4.7",
+    "native_tool_continuation_verified": false,
+    "provider": "xai",
+    "requests": [
+      {
+        "elapsed_ms": 268,
+        "error": "Provider returned HTTP 403. Check xAI team, model and endpoint permissions; billing was not changed.",
+        "index": 1,
+        "outcome": "failed",
+        "usage": {
+          "counts": {
+            "input_cache_write_1h_tokens": null,
+            "input_cache_write_5m_tokens": null,
+            "input_cache_write_tokens": null,
+            "input_cached_tokens": null,
+            "input_tokens": null,
+            "input_uncached_tokens": null,
+            "output_reasoning_tokens": null,
+            "output_tokens": null,
+            "provider_duration_ns": null,
+            "provider_web_fetch_requests": null,
+            "provider_web_search_requests": null,
+            "total_tokens": null
+          },
+          "derived_fields": [],
+          "issues": [],
+          "quality": "unavailable",
+          "version": 1
+        }
+      }
+    ],
+    "stage": "text_request_refused",
+    "status": "failed",
+    "text_verified": false,
+    "upstream": null,
+    "version": 1
+  },
+  "retries": 0,
+  "runtime_candidate": "622a2c898d7c5140f12e679adb3b4d9c36d28e3c",
+  "stderr_bytes": 0
+}

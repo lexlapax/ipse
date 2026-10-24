@@ -1,0 +1,165 @@
+{
+  "candidate": "622a2c898d7c5140f12e679adb3b4d9c36d28e3c",
+  "documentation": {
+    "committed_clean_package_checkout": true,
+    "errors": 0,
+    "local_links": 3860,
+    "markdown_files": 416
+  },
+  "earlier_complete_source": {
+    "candidate": "b2d838638f03c9f0f3950f2517e54c8159657a57",
+    "demo_exit_code": 0,
+    "demo_log": "/tmp/ipse-grok-demo.log",
+    "excluded": 19,
+    "exit_code": 0,
+    "log": "/tmp/ipse-grok-source-tests.log",
+    "seconds": 1066.8,
+    "seed": 541413,
+    "status": "passed",
+    "tests": 1759,
+    "tracked_tree_clean_after_checks": true
+  },
+  "earlier_focused": {
+    "candidate": "b2d838638f03c9f0f3950f2517e54c8159657a57",
+    "log": "/tmp/ipse-xai-freeze-focused.log",
+    "seconds": 64.7,
+    "seed": 493844,
+    "status": "passed",
+    "tests": 341
+  },
+  "earlier_installed": [
+    {
+      "candidate": "b2d838638f03c9f0f3950f2517e54c8159657a57",
+      "log": "/tmp/ipse-grok-installed.log",
+      "notice_receipt": {
+        "archive_bytes": 32088719,
+        "archive_sha256": "6a3f7a92348b2471a7e2d043cba6a18aa5c5ad31dcb5657dd4af53449b7ca4ce",
+        "elixir": "1.20.4",
+        "files_verified": 24,
+        "otp": "29.1.1",
+        "status": "passed"
+      },
+      "status": "passed"
+    },
+    {
+      "candidate": "fc8393a70e533602cdcac5b49e2503cbc5133e89",
+      "log": "/tmp/ipse-grok-final-installed.log",
+      "notice_receipt": {
+        "archive_bytes": 32086533,
+        "archive_sha256": "0dacf4eb369d2ea461e03f86fe755f50c75d3e80f9a0ce24fd80df58b6cb5c71",
+        "candidate": "fc8393a70e533602cdcac5b49e2503cbc5133e89",
+        "elixir": "1.20.4",
+        "files_verified": 24,
+        "otp": "29.1.1",
+        "status": "passed"
+      },
+      "status": "passed"
+    }
+  ],
+  "first_hosted_failure": {
+    "reason": "both platforms stop at Elixir 1.18 formatting before tests; repaired in fc8393a",
+    "receipt": "first-hosted-failure.json",
+    "run_id": 40119130959,
+    "status": "failed"
+  },
+  "hosted": {
+    "run_id": 40120009675,
+    "status": "running",
+    "url": "https://github.com/lexlapax/ipse/actions/runs/40120009675"
+  },
+  "installed": {
+    "archive": "/tmp/ipse-grok-package-pPTOvd/dist/ipse-0.1.0-linux-x86_64-glibc-2.44.tar.gz",
+    "archive_identity_module_matches_cli": true,
+    "bytes": 32089978,
+    "exit_code": 0,
+    "grok_setup_doctor_missing_registration": "passed; no remote auth or inference",
+    "identity": {
+      "arch": "x86_64",
+      "commit": "622a2c898d7c5140f12e679adb3b4d9c36d28e3c",
+      "elixir": "1.20.4",
+      "os": "linux",
+      "otp_release": "29",
+      "version": "0.1.0"
+    },
+    "inventories_unchanged": true,
+    "log": "/tmp/ipse-grok-scope-installed.log",
+    "private_home": true,
+    "runtime_notices": {
+      "archive_bytes": 32089978,
+      "archive_sha256": "b3f6e27da4b40c786a179da2226fb19839aa4e9df570562fb49dbeb820a83752",
+      "candidate": "622a2c898d7c5140f12e679adb3b4d9c36d28e3c",
+      "elixir": "1.20.4",
+      "files_verified": 24,
+      "otp": "29.1.1",
+      "status": "passed"
+    },
+    "sha256": "b3f6e27da4b40c786a179da2226fb19839aa4e9df570562fb49dbeb820a83752",
+    "status": "passed",
+    "system_toolchain_on_runtime_path": false
+  },
+  "live": {
+    "api_receipt": "live-api.json",
+    "api_requests": 1,
+    "api_status": "HTTP 403 on initial text request; stopped without retry",
+    "ipse_xai_registration": "not available",
+    "oauth_browser_check": false,
+    "successful_api_inference": false,
+    "xai_api_key_availability": "nonempty project .env entry; value not retained"
+  },
+  "live_driver": {
+    "aborted_nested_cli_control": "Stopped parent and child blocked on the same Mix build lock; removed nested control and ran standalone in isolated checkout.",
+    "floor_and_current_formatters": "passed",
+    "focused_tests": 6,
+    "log": "/tmp/ipse-grok-live-driver-repaired-tests.log",
+    "runtime_source_changed": false,
+    "seconds": 0.8,
+    "seed": 390654,
+    "standalone_cli_missing_config": "refused before traffic with explicit xai confirmation",
+    "status": "passed"
+  },
+  "local_source": {
+    "include": [
+      "native_sandbox"
+    ],
+    "log": "/tmp/ipse-grok-scope-source-tests.log",
+    "root": "/tmp/ipse-grok-source-kgmFxa",
+    "status": "running"
+  },
+  "native_environment": {
+    "filtered": 39,
+    "log": "/tmp/ipse-grok-native-environment.log",
+    "status": "passed",
+    "tests": 1
+  },
+  "record_version": 1,
+  "scope_reproduction": {
+    "affected_after": {
+      "log": "/tmp/ipse-grok-scope-after.log",
+      "seconds": 11.0,
+      "seed": 87442,
+      "status": "passed",
+      "tests": 66
+    },
+    "before": {
+      "failed": 1,
+      "log": "/tmp/ipse-grok-scope-before.log",
+      "passed": 7,
+      "seconds": 0.2,
+      "seed": 492845,
+      "status": "failed",
+      "tests": 8
+    },
+    "final_auth": {
+      "log": "/tmp/ipse-grok-scope-final-auth.log",
+      "seconds": 0.2,
+      "seed": 804653,
+      "status": "passed",
+      "tests": 8
+    },
+    "floor_and_current_formatters": "passed"
+  },
+  "unrelated_edits_preserved": [
+    "docs/operator/usage.md",
+    ".claude/"
+  ]
+}

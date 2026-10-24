@@ -130,7 +130,7 @@ and checks that those modules remain unloaded in the parent.
 ## Verify a real provider explicitly
 
 After building the source checkout, prepare a dedicated operator configuration
-with an explicit Gemini or pinned OpenRouter profile as described in
+with an explicit Gemini, Grok API or pinned OpenRouter profile as described in
 [provider configuration](../operator/configuration.md). Supply its key privately
 through the documented environment variable. These commands make real API
 requests and can incur charges:
@@ -140,6 +140,8 @@ IPSE_LIVE_PROVIDER_CONFIRM=openrouter elixir dev/verify.exs live provider \
   --provider openrouter --profile router --config /private/path/router.json
 IPSE_LIVE_PROVIDER_CONFIRM=gemini elixir dev/verify.exs live provider \
   --provider gemini --profile gemini --config /private/path/gemini.json
+IPSE_LIVE_PROVIDER_CONFIRM=xai elixir dev/verify.exs live provider \
+  --provider xai --profile grok --config /private/path/grok.json
 ```
 
 The confirmation must exactly match the resolved provider. Project configuration
@@ -152,9 +154,15 @@ because this standalone driver cannot enforce its ledger; use a dedicated bounde
 verification config or a normal budgeted session. It does not bypass a configured
 policy. Exit 0 requires both text and tool checks to pass.
 
+For Grok, the printed output limit covers visible output only; xAI excludes
+reasoning and function-call tokens from that parameter. It is not a total-token
+or spending ceiling. Select a low reasoning effort explicitly when appropriate.
+This driver supports the API-key route only, not subscription OAuth.
+
 Retain the non-secret JSON plan/result with the exact source revision, environment
 and date in a dated archive receipt. Results include canonical usage, failed
-requests and counts of Gemini signed parts, without text, signatures or keys.
+requests, counts of Gemini signed parts and Grok encrypted reasoning items, and
+Grok's reported model and cost ticks, without text, signatures, ciphertext or keys.
 Partial usage is valid evidence of missing API counters, not evidence of zero
 cost. `test/dev/live_provider_test.exs` uses loopback/stub controls only; those
 fixtures do not establish live access. The command loads the already-built source

@@ -780,7 +780,12 @@ output reservations therefore refuse. Reported legacy totals disambiguate whethe
 completion includes reasoning, counting it once; missing evidence stays partial
 and mixed dialects/contradictions are invalid.
 Reported USD ticks remain separate from aggregate rate-card estimates. Focused
-source and integration checks pass; full final verification is still required.
+source/integration checks and the `622a2c8` installed proof pass; its full source
+and hosted checks are running. The authorized live API check found a project key
+but received HTTP 403 on its first `grok-4.7` request and stopped without retry.
+API inference remains unverified pending team billing/model permissions; no OAuth
+account check has run. The [receipt](archive/2026-10-24-xai-provider-research/verification.json)
+keeps these scopes and candidates separate.
 
 Acceptance: unchanged existing-provider golden fixtures; Grok Responses
 conformance and native replay/privacy; device/refresh/expiry/denial/rotation and

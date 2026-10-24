@@ -31,7 +31,7 @@ verification and does not inherit these exact-build results.
 | Exact archive and runtime notices | SHA256 `2b1f6745a7815778424a23fb13e71e6fd72458383b18e915033049b49b41cc6c`; all 24 runtime-notice files rehashed against SHA256 and Git blob identities; Elixir 1.20.4/OTP 29.1.1 |
 | Operator examples against packaged CLI | Archive/application/CLI identity and complete installed behavior proof pass |
 | Committed-tree documentation | Clean Git checkout: 415 Markdown files, 3837 local links, zero errors |
-| Hosted Ubuntu/macOS and independent proofs | New prefill run [40117303058](https://github.com/lexlapax/ipse/actions/runs/40117303058) remains in progress; predecessor `dac11dc` passes its complete matrix |
+| Hosted Ubuntu/macOS and independent proofs | [Prefill run 40117303058](prefill-hosted-failure.json): Ubuntu complete matrix passes; macOS fails a 120-second declaration-CLI fixture timeout, so no combined platform pass; predecessor `dac11dc` passes its complete matrix |
 
 No real provider was contacted for these changes. Earlier P29 live receipts and
 human browser/account observations retain their own exact source and scope.
@@ -74,6 +74,11 @@ with two decisions, inspects/clears grants, closes and resumes idle.
 
 Cancelled or failed matrices are not platform passes. Earlier successful suites
 used explicit ask mode and do not establish the repaired implicit-mode behavior.
+The later prefill failure occurs in the second declaration call of the
+`separate_cli` captured-evaluator fixture, inside `System.cmd/3`. That test and
+evaluation implementation are unchanged between the passing predecessor and this
+candidate. Its cause remains unconfirmed; no assertion or deadline was weakened.
+The latest Grok source must obtain its own full platform verdict.
 
 ## Release rehearsal cleanup
 

@@ -17,7 +17,7 @@ defmodule Ipse.Development.Verification.LiveProvider do
     with true <-
            rest == [] and invalid == [] and
              length(opts) == length(Enum.uniq_by(opts, &elem(&1, 0))),
-         provider when provider in ~w(openrouter gemini) <- opts[:provider],
+         provider when provider in ~w(openrouter gemini xai) <- opts[:provider],
          true <- System.get_env("IPSE_LIVE_PROVIDER_CONFIRM") == provider,
          cwd = Path.expand(opts[:cwd] || File.cwd!()),
          home = System.get_env("IPSE_HOME") || Path.join(System.user_home!(), ".ipse"),
@@ -49,7 +49,8 @@ defmodule Ipse.Development.Verification.LiveProvider do
         "billing_mode" => Registry.fetch!(provider).billing_mode,
         "destination" => destination,
         "max_requests" => 3,
-        "max_output_tokens_per_request" => cap(config)
+        "max_output_tokens_per_request" => cap(config),
+        "output_limit_scope" => Registry.fetch!(provider).output_limit_scope
       }
 
       IO.puts(Jason.encode!(selected))
@@ -62,7 +63,7 @@ defmodule Ipse.Development.Verification.LiveProvider do
 
       _ ->
         refuse(
-          "Choose openrouter or gemini, an explicit model/profile, and set IPSE_LIVE_PROVIDER_CONFIRM to the same provider. No request was sent."
+          "Choose openrouter, gemini or xai, an explicit model/profile, and set IPSE_LIVE_PROVIDER_CONFIRM to the same provider. No request was sent."
         )
     end
   rescue
@@ -76,8 +77,8 @@ defmodule Ipse.Development.Verification.LiveProvider do
 
   def preflight(config, provider) do
     cond do
-      provider not in ~w(openrouter gemini) ->
-        {:error, "Live provider verification supports only openrouter and gemini."}
+      provider not in ~w(openrouter gemini xai) ->
+        {:error, "Live provider verification supports only openrouter, gemini and xai."}
 
       to_string(config[:provider]) != provider ->
         {:error,
@@ -232,6 +233,15 @@ defmodule Ipse.Development.Verification.LiveProvider do
                 parts,
                 &(is_binary(&1["thoughtSignature"]) and &1["thoughtSignature"] != "")
               )
+          })
+
+        {:ok, %{"provider_data" => %{"provider" => "xai", "output" => output} = native}, _} ->
+          Map.put(record, "native_continuation", %{
+            "items" => length(output),
+            "encrypted_reasoning_items" =>
+              Enum.count(output, &is_binary(&1["encrypted_content"])),
+            "reported_model" => native["reported_model"],
+            "reported_cost_usd_ticks" => native["reported_cost_usd_ticks"]
           })
 
         _ ->
