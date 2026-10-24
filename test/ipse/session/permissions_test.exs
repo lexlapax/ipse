@@ -28,7 +28,6 @@ defmodule Ipse.Session.PermissionsTest do
           provider: :demo,
           model: "fixture",
           provider_module: Fixture,
-          approval: :ask,
           home: Path.join(ctx.root, "home")
         },
         extra

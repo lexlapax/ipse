@@ -16,6 +16,7 @@ running gates. Isolated source/package copies exclude unrelated user edits.
 The later [machine-label request](../2026-10-24-sign-in-host-label/index.md) adds
 sign-in display guidance. Its combined candidate needs a fresh hosted matrix;
 the existing approval-only source result remains separate.
+The combined candidate is `8ee16dc538912b01e05281fa84551472772be253`.
 
 - Review each effect remains the interactive default. `--accept-edits` explicitly
   permits root native file edits in chat; it cannot combine with `--yes` or `run`.
@@ -58,6 +59,25 @@ checks also pass. The archive reports the candidate identity and has SHA256
 Manual command checks against the packaged CLI confirm help and refusal of
 `--accept-edits` with headless `run` or broad `--yes`. Source/native and hosted
 Ubuntu/macOS gates remain running; installed success is not their result.
+
+The approval-only candidate subsequently passes its complete Linux native-inclusive
+suite: 1720 tests, zero failures, 19 excluded, seed 45144, 1069.3 seconds, exit 0.
+Its isolated demo passes and the tracked tree remains clean. Its hosted run was
+cancelled after the machine-label follow-up created a combined candidate; the
+[terminal cancelled receipt](superseded-hosted.json) is not a platform pass.
+The combined candidate's installed proof also passes, with archive SHA256
+`916596ef2b56ad871a7791b0b405c9bcaa72819d519354211a3ca8923fa90f69`.
+Its full source/native suite and hosted run 40112830571 remain in progress.
+
+Final review reproduced an embedded-API mismatch: omitting `approval` uses the
+existing `:ask` dispatch default, but grant admission initially required an
+explicit key. Removing that key from the real Session fixture failed the
+seven-effect case with `{:error, :grant_unavailable}` (seed 389754). Grant creation,
+matching and startup edit consent now use the same default as dispatch. The
+repaired focused set passes 127 tests, including implicit-mode real effects,
+terminal, Auth/setup, child and release controls. The final successor candidate
+requires its own complete source/installed/hosted results; previous running or
+passing candidates do not prove this repair.
 
 The RC files were copied into ignored `dist/rc-rehearsal/v0.1.0-rc.1/assets` and
 all four GitHub digests plus archive sidecars were rechecked. Automatic approval

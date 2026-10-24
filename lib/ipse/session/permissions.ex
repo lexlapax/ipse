@@ -4,7 +4,7 @@ defmodule Ipse.Session.Permissions do
   def new(config) do
     %{
       edits:
-        config[:approval] == :ask and config[:accept_edits] == true and
+        Map.get(config, :approval, :ask) == :ask and config[:accept_edits] == true and
           is_nil(config[:delegation_origin]),
       commands: []
     }
@@ -12,7 +12,7 @@ defmodule Ipse.Session.Permissions do
 
   def source(s, name, args) do
     cond do
-      s.config[:approval] != :ask or s.config[:delegation_origin] != nil -> nil
+      Map.get(s.config, :approval, :ask) != :ask or s.config[:delegation_origin] != nil -> nil
       name in ["write", "edit"] and s.permissions.edits -> "workspace_edits"
       name == "shell" and key(s, args) in s.permissions.commands -> "exact_command"
       true -> nil
@@ -50,6 +50,8 @@ defmodule Ipse.Session.Permissions do
     }
   end
 
-  defp eligible?(s), do: s.config[:approval] == :ask and is_nil(s.config[:delegation_origin])
+  defp eligible?(s),
+    do: Map.get(s.config, :approval, :ask) == :ask and is_nil(s.config[:delegation_origin])
+
   defp key(s, args), do: {s.cwd, Map.get(s.config, :sandbox, :off), args}
 end
