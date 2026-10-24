@@ -21,3 +21,9 @@ Local OAuth/setup fixtures pass: 39 tests, seed 579899, 0.7 seconds, including
 new/returning output, stable application hint, hostname bounds and fallback.
 This is fixture evidence; no new real browser sign-in was performed. The combined
 candidate still requires full source/native, installed and hosted verification.
+
+Committed/pushed combined candidate: `8ee16dc538912b01e05281fa84551472772be253`.
+Its complete installed-package proof passes. Full local native-inclusive and
+hosted Ubuntu/macOS results are tracked in the
+[combined receipt](../2026-10-24-approval-implementation/verification.json);
+the older approval-only full-suite success does not substitute for those gates.

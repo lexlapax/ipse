@@ -79,6 +79,13 @@ terminal, Auth/setup, child and release controls. The final successor candidate
 requires its own complete source/installed/hosted results; previous running or
 passing candidates do not prove this repair.
 
+The `b874fc7` hosted run 40114244391 stopped at the docs gate on both platforms:
+this index linked the superseded CI receipt before that JSON file was staged.
+The local working-tree checker saw the untracked file; a committed checkout did
+not. The [failure receipt](final-hosted-failure.json) is retained. No hosted ExUnit,
+installed or later proof result is claimed for this run. The repair commits the
+receipt and validates a clean committed tree before restarting the matrix.
+
 The RC files were copied into ignored `dist/rc-rehearsal/v0.1.0-rc.1/assets` and
 all four GitHub digests plus archive sidecars were rechecked. Automatic approval
 review initially rejected draft deletion without explicit authorization. The

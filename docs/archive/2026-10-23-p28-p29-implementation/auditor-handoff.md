@@ -1,13 +1,14 @@
 # P28 and P29 implementation audit preparation
 
-Prepared 2026-10-24; the completed baseline is `9c5eb6a`, with exact live wire
-evidence at `492d091` and RC1 release preparation at `e944fcf`.
+Prepared 2026-10-24; the current combined candidate is `8ee16dc`, with exact live
+wire evidence at `492d091` and RC1 release preparation at `e944fcf`.
 This handoff is prepared for independent implementation review, not an external
 audit or a completeness verdict. P29's implementation and automated gates pass;
 P28's new approval verification, final release acceptance and stable publication remain open.
 The developer has authorized the [approval UX implementation](../2026-10-24-approval-implementation/index.md)
 before external audit. Its candidate and fresh verification supersede the old
-baseline only when explicitly recorded; inspect the new grants, root/child/SDK
+baseline only when explicitly recorded in the [new receipt](../2026-10-24-approval-implementation/verification.json);
+inspect the new grants, root/child/SDK
 scope, revocation, stale input and inert resume in addition to both original briefs.
 RC draft cleanup is complete: [receipt](rc-assets.json) records absent release,
 retained tag and verified local files after explicit developer authorization.
@@ -40,9 +41,11 @@ or repeat paid inference as part of an ordinary read-only audit.
 
 Each row is an audit starting point, not a substitute for checking every numbered
 step, field and refusal in the briefs. Inspect both positive and negative controls.
-The [final hosted receipt](final-hosted.json) records every job/step in the exact
-`9c5eb6a` Ubuntu/macOS matrix; the [combined receipt](combined-verification.json)
-connects it to the local native-inclusive and installed proofs.
+The [earlier hosted receipt](final-hosted.json) records every job/step in the exact
+`9c5eb6a` Ubuntu/macOS matrix; its [combined receipt](combined-verification.json)
+connects that baseline to local native-inclusive and installed proofs. The
+[current candidate receipt](../2026-10-24-approval-implementation/verification.json)
+keeps new and superseded verification separate.
 
 | Package / required behavior | Implementation and verification entry points | Evidence and remaining gate |
 | --- | --- | --- |
@@ -51,7 +54,7 @@ connects it to the local native-inclusive and installed proofs.
 | P28 WP3: stable doctor IDs/status/recovery, offline invariance, bounded explicit GETs, credentials/permissions/store/extension findings | `lib/ipse/cli/doctor.ex`, `test/ipse/cli/doctor_test.exs`, `Ipse.Runner.current_uid/0` | [Doctor receipt](wp3-verification.json), [earlier hosted receipt](wp3-hosted.json); new probes and UID repair pass final source/native/installed/hosted gates |
 | P28 optional WP3b kernel probe | Existing native sandbox policy and doctor availability wording | Explicitly deferred under the brief's allowance; availability is never enforcement |
 | P28 WP4: explicit billing/provider choice, TTY/headless preview/save, exact JSON, private atomic write/backup, preservation, optional login, offline diagnosis | `lib/ipse/cli/setup.ex`, `lib/ipse/private_file.ex`, setup/private-file/Auth suites | [WP4 receipt](wp4-verification.json), later installed/platform checks; P29 adds explicit route profiles |
-| P28 WP5: sidecars, strict matching tags/notes/assets, symlink/cwd handling, draft-only release matrix, install/upgrade/uninstall | `dev/release.exs`, `.github/workflows/release.yml`, `dev/release-launcher.sh`, `test/dev/release_test.exs`, installed verifier | [WP5 receipt](wp5-verification.json), [successful RC workflow](rc-hosted.json), [downloaded asset inspection](rc-assets.json); draft deletion pending walkthrough |
+| P28 WP5: sidecars, strict matching tags/notes/assets, symlink/cwd handling, draft-only release matrix, install/upgrade/uninstall | `dev/release.exs`, `.github/workflows/release.yml`, `dev/release-launcher.sh`, `test/dev/release_test.exs`, installed verifier | [WP5 receipt](wp5-verification.json), [successful RC workflow](rc-hosted.json), [downloaded asset inspection and completed cleanup](rc-assets.json); stable publication open |
 | P28 WP6: whole first-user manual, examples/links/limits, unassisted fresh OS account walkthrough | Operator install/index/configuration/usage/recovery, developer testing/configuration | Fresh Linux run recorded and accepted; product-navigation assistance and approval-fatigue finding remain explicit qualifications |
 | P29 WP0: primary protocol research before coding, native continuation and usage semantics | [Wire facts](wire-facts.md), linked official sources and schematic examples | Recorded before adapter work; explicitly verified OpenAI display-name/slug pair added after first live refusal |
 | P29 WP1: closed registry, existing constants/manifests/destinations/usage/cost/journal equivalence, documented exceptions | `lib/ipse/provider/registry.ex`, `test/ipse/provider/registry_test.exs`, `test/fixtures/provider_registry/provenance.json` | [Registry receipt](p29-wp1-verification.json); fixtures captured from independent `dd510a7`, not regenerated from refactor |
@@ -62,6 +65,8 @@ connects it to the local native-inclusive and installed proofs.
 | P29 WP4 response/recovery: original signed parts/order, hidden thoughts, native/synthetic IDs, parallel result grouping, terminal refusals, usage partiality | Gemini protocol/session/child/SDK/compaction/usage/budget tests | Positive wire round trips, idle/torn-tail controls and final native/installed/hosted gates pass |
 | P29 live: explicit confirmation, bounded text plus two-step tool turn, no secrets/transcripts, no retries | `dev/verification/live_provider.exs`, `test/dev/live_provider_test.exs` | [Exact `492d091` live receipt](p29-live-final.json): both providers pass; Gemini signed parts observed; missing counters remain partial |
 | P29 WP5: registry menus/billing/credentials/probes, route questions/private previews, coherent provider/accounting manuals and priority | Setup/doctor/CLI suites, `AGENTS.md`, operator/developer provider chapters | [WP5 receipt](p29-wp5-verification.json): 83 CLI controls pass; final source/native/installed/hosted gates and whole-manual review pass |
+| Authorized approval follow-up: root native edit mode, exact full-argument/cwd/sandbox shell reuse, bounded grants, inspect/revoke, fresh input, denial, cancellation, non-inheritance and inert resume | `lib/ipse/session/permissions.ex`, Session/Turn, CLI/Terminal, native path checks; `test/ipse/session/permissions_test.exs`, CLI/delegation suites; installed permission proof | [Implementation and receipt](../2026-10-24-approval-implementation/index.md); seven-effect fixture reduces seven decisions to two; inspect limitations and current gate status |
+| Requested machine label during ChatGPT authorization | `lib/ipse/auth.ex`, Auth/setup fixtures and operator login procedure | [Machine-label record](../2026-10-24-sign-in-host-label/index.md); fixture-tested hostname/fallback and unchanged protocol; no new real browser trial |
 
 ## Material implementation decisions to inspect
 
@@ -111,22 +116,22 @@ earlier successful platforms do not prove later code.
 
 ## Candidate identity and verified scope
 
-The runtime candidate is `9c5eb6aa74521366cdfd116b212f31da475f29a5`. Its full
-native-inclusive suite passes 1713 tests with 19 excluded, seed 856205, followed
-by a passing isolated demo. The complete local installed proof passes, including
-24 runtime-notice files for the local Elixir 1.20.4/OTP 29.1.1 toolchain.
-The exact-source hosted matrix passes every source, native, installed and
-independent feature proof on Ubuntu and macOS. The combined receipt retains
-literal platform summaries, exclusions and the Linux-only listener skip.
+The runtime candidate is `8ee16dc538912b01e05281fa84551472772be253`. Its complete
+local installed proof passes, including the new permission controls. Its full
+native-inclusive source suite and hosted run 40112830571 are still running;
+consult the current receipt before treating them as passed. The approval-only
+`48a42d8` candidate passes 1720 tests with 19 excluded, seed 45144, plus an isolated
+demo. Its superseded hosted run is cancelled, not a platform pass. The older
+`9c5eb6a` full source/installed/hosted successes remain historical evidence.
 
-Successful wire handling is unchanged from the exact live-tested `492d091`;
-subsequent runtime changes refine invalid-cap and late identity-refusal messages.
-Inspect that source difference rather than calling the earlier live receipt an
-exact-final-build test. Later evidence commits change no `lib`, `native`,
-`extensions`, `priv`, `test`, `dev`, `.github`, Mix, launcher or example source.
-The committed operator/developer guidance retains its recorded whole-document
-review; inspect later or working-copy edits separately. Rebuilding at a later documentation commit still embeds
-that later identity; distinguish it from the tested binary.
+Provider, HTTP, usage and profile source remains unchanged from `9c5eb6a`.
+Successful wire handling traces to the exact live-tested `492d091`; intervening
+provider changes refine invalid-cap and late identity-refusal messages. Auth's
+new hostname guidance changes display, not OAuth requests or identity validation.
+Inspect those differences rather than calling the live receipt an exact-final-build
+test. Later documentation-only commits can embed a later build identity without
+changing runtime source; distinguish them from the tested binary. Preserve the
+unrelated working-copy edit in `docs/operator/usage.md` and `.claude/`.
 
 RC1 is an earlier rehearsal at `e944fcf`, with its own passing complete workflow.
 Both downloaded archives, sidecars, GitHub digests and 13 runtime-notice files per
@@ -147,13 +152,13 @@ fresh-state check. That run selected Demo and real Ollama `qwen3.5:9b`; the
 developer accepts it and requests work on excessive approval prompts. The record
 retains account/product-navigation assistance, so it is not claimed to be wholly
 unassisted. The [approval UX research](../2026-10-24-p28-approval-ux/index.md)
-compares primary documentation and proposes reusable permissions, not an
-implemented policy. Human upgrade was skipped because only one release was
+compares primary documentation. The authorized follow-up is now implemented and
+under final combined verification. Human upgrade was skipped because only one release was
 available; the automated upgrade proof remains separate evidence.
 
-Keep the draft available for the developer's download and walkthrough, then
-delete it as the brief requires, retaining the downloaded bytes/checksums and
-workflow facts. Final `v0.1.0` tag/publication belongs to the developer after WP6
+The inspected draft has been deleted on explicit developer authorization, with
+downloaded bytes/checksums, the RC tag and workflow facts retained.
+Final `v0.1.0` tag/publication belongs to the developer after WP6
 acceptance and inspection. These are explicit open P28 gates; P29's code and
 verification scope is complete.
 
