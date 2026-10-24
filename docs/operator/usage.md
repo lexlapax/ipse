@@ -50,6 +50,14 @@ session may need refresh or a new login, rather than proving the account usable.
 `ipse logout` clears local credentials and attempts supported revocation. Review
 account-side connected grants if an older grant may be compromised.
 
+Login prints a machine label such as `ipse@serenity`, using the short local
+hostname. For a new registration, enter that label when the browser asks for its
+name so you can recognize the machine in ChatGPT. The initial application hint
+remains `Ipse`; the browser lets you edit the registration name. Returning login
+keeps the existing registration name. The display label does not replace the
+stored opaque host ID. If the hostname is unavailable or unsuitable for display,
+the label is `ipse@unknown-host`.
+
 Ollama defaults to `http://127.0.0.1:11434`. Select another permitted endpoint with
 `--base-url URL`, or use an operator-owned [named profile](configuration.md#reuse-a-named-model-profile).
 Profiles also select exact provider/model routes for children and extensions.

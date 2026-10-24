@@ -151,9 +151,28 @@ defmodule Ipse.AuthTest do
       end
     end
 
+    test "machine labels use a short bounded hostname and a safe fallback" do
+      assert Auth.host_label({:ok, ~c"serenity"}) == "ipse@serenity"
+      assert Auth.host_label({:ok, ~c"serenity.example.internal"}) == "ipse@serenity"
+
+      for host <- [
+            ~c"",
+            ~c".internal",
+            ~c"bad\nname",
+            ~c"bad@name",
+            String.to_charlist(String.duplicate("a", 64))
+          ] do
+        assert Auth.host_label({:ok, host}) == "ipse@unknown-host"
+      end
+
+      assert Auth.host_label({:error, :hostname_unavailable}) == "ipse@unknown-host"
+    end
+
     test "new login uses PKCE loopback and issued client; ignores forged state and saves protected identity",
          ctx do
       output = fn message ->
+        assert message =~ "This machine: #{Auth.host_label()}."
+        assert message =~ "When the browser asks you to name this registration"
         [_, url | _] = String.split(message, "\n")
         params = URI.parse(url).query |> URI.decode_query()
         assert params["client_id"] == "dynamic_agent_client"
@@ -228,6 +247,8 @@ defmodule Ipse.AuthTest do
       save(ctx.dir, saved)
 
       output = fn message ->
+        assert message =~ "This machine: #{Auth.host_label()}."
+        refute message =~ "When the browser asks you to name this registration"
         [_, url | _] = String.split(message, "\n")
         params = URI.parse(url).query |> URI.decode_query()
         assert params["client_id"] == saved["client_id"]

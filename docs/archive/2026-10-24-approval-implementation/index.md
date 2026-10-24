@@ -13,6 +13,9 @@ and [architecture training](../../developer/architecture.md#trace-a-tool-and-its
 `48a42d81a224c069ee89250e52272d44593a5948` is committed and pushed. The
 [verification receipt](verification.json) distinguishes completed checks from
 running gates. Isolated source/package copies exclude unrelated user edits.
+The later [machine-label request](../2026-10-24-sign-in-host-label/index.md) adds
+sign-in display guidance. Its combined candidate needs a fresh hosted matrix;
+the existing approval-only source result remains separate.
 
 - Review each effect remains the interactive default. `--accept-edits` explicitly
   permits root native file edits in chat; it cannot combine with `--yes` or `run`.

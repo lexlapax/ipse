@@ -646,6 +646,10 @@ session grants are implemented in the
 [new candidate](archive/2026-10-24-approval-implementation/index.md), with inspect/revoke,
 fresh proposal binding and no inherited/resumed grants. Final verification is in
 progress; the older baseline does not prove this change.
+The developer also requested [machine identification during sign-in](archive/2026-10-24-sign-in-host-label/index.md).
+The terminal now suggests a short `ipse@HOST` registration name using the supported
+browser naming step, with OAuth registration identity preserved. Combined verification
+must include this follow-up.
 The inspected RC draft was deleted on explicit developer authorization after all
 four exact assets and inspection metadata were retained locally; its RC tag remains.
 Final acceptance of the qualifications, new approval verification and stable

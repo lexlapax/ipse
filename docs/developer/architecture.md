@@ -117,6 +117,10 @@ private Finch clients and proxy policy across inference, auth, and MCP. A monito
 guardian keeps each bounded pool name until its client and descendants close.
 [`Auth`](../../lib/ipse/auth.ex) owns public login, identity validation, protected
 storage, and refresh locking. No failure silently changes billing or endpoint.
+During login, Auth displays a bounded short hostname as `ipse@HOST` and suggests
+it for the browser's editable name on initial registration. The documented OAuth
+application hint remains consistent across installations; machine names do not
+replace the stable opaque host UUID or alter returning registration identity.
 
 Visible streaming is a separate delivery contract from final answer admission.
 A required consumer failure can prevent admission after text was already shown.

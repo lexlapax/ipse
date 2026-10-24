@@ -50,7 +50,17 @@ defmodule Ipse.Auth do
         # The printed URL never includes an ID token hint or credentials.
         output = Keyword.get(opts, :output, &IO.puts/1)
 
-        output.("Continue with ChatGPT:\n#{url}\nWaiting up to five minutes for browser sign-in…")
+        host_label = host_label()
+
+        naming =
+          if pending.client_id,
+            do: "This machine: #{host_label}.",
+            else:
+              "This machine: #{host_label}. When the browser asks you to name this registration, use #{host_label} to distinguish it from other machines."
+
+        output.(
+          "Continue with ChatGPT:\n#{url}\n#{naming}\nWaiting up to five minutes for browser sign-in…"
+        )
 
         deadline = System.monotonic_time(:millisecond) + 300_000
 
@@ -79,6 +89,19 @@ defmodule Ipse.Auth do
   rescue
     _ -> {:error, "ChatGPT sign-in failed. Retry the login command."}
   end
+
+  @doc false
+  def host_label(host \\ :inet.gethostname())
+
+  def host_label({:ok, hostname}) when is_list(hostname) do
+    short = hostname |> List.to_string() |> String.split(".", parts: 2) |> hd()
+
+    if Regex.match?(~r/\A[A-Za-z0-9][A-Za-z0-9_-]{0,62}\z/, short),
+      do: "ipse@" <> short,
+      else: "ipse@unknown-host"
+  end
+
+  def host_label(_), do: "ipse@unknown-host"
 
   defp complete_login(auth_dir, existing, pending, callback) do
     with {:ok, response} <-
