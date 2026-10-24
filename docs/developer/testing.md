@@ -277,6 +277,23 @@ The package verifier compares the archive name and both version commands with th
 packaged application specification without a development toolchain. This metadata
 does not prove that a checkout was clean; record its diff separately.
 
+Packaging writes a streaming OTP SHA256 sidecar in standard checksum format.
+The installed package command validates it before extraction. Its launcher proof
+uses a relative symlink chain and checks the caller's actual workspace. An upgrade
+control copies the release and recompiles a test copy of the public identity
+module, changing a real inventoried host BEAM. An extension-free saved session must
+resume; one with selected extensions must refuse without journal mutation, and
+still resume with the previous release. The original archive/host stay unchanged.
+
+Before a tag, run `mix test test/dev/release_test.exs` and the full package proof.
+The tag workflow admits only the `mix.exs` version or a numbered RC and requires
+`docs/releases/vVERSION.md`. It repeats every ordinary CI step on both platforms;
+a guard test catches omissions when CI changes. The approved runner `gh` creates
+an unpublished draft before the matrix, uploads only after checks, then downloads
+both archives/sidecars for inspection. Failures may leave an incomplete draft.
+Retries may replace draft assets; a published release refuses modification.
+Publication and RC deletion are explicit developer actions after inspection.
+
 ## Exercise actual OS policy and native protocols
 
 Default tests exclude host enforcement. They compile the complete experimental

@@ -145,6 +145,98 @@ defmodule Ipse.Development.Verification.Package do
     )
   end
 
+  defp verify_upgrade!(launcher, release, env, root) do
+    upgraded = Path.join(root, "changed-host-release")
+    File.cp_r!(release, upgraded)
+    workspace = Path.join(root, "upgrade-workspace")
+    File.mkdir!(workspace)
+    state = Path.join(root, "upgrade-state")
+    ids = Path.join(root, "upgrade-ids.json")
+
+    configuration = """
+    {:ok, _} = Application.ensure_all_started(:ipse)
+    workspace = #{inspect(workspace)}
+    state = #{inspect(state)}
+    source = %{scope: "operator", path: "/fixture/upgrade.json", data: %{
+      "extensions" => [%{"instance" => "annotation", "artifact" => "builtin:prompt-annotation:1",
+        "enabled" => true, "options" => %{"text" => "upgrade fixture"}, "order" => 1, "lifetime" => "persistent"}],
+      "extension_trust" => [%{"artifact" => "builtin:prompt-annotation:1", "capabilities" => ["transform.prompt"],
+        "allow_project" => false, "allow_children" => false}]}}
+    {:ok, catalog} = Ipse.Extension.Config.resolve([source], [])
+    {:ok, entries} = Ipse.Extension.Registry.prepare(catalog, #{inspect(Path.join(root, "upgrade-home"))})
+    config = fn selected -> %{provider: :demo, model: "scripted", approval: :deny, sandbox: :off,
+      home: #{inspect(Path.join(root, "upgrade-home"))}, extensions: if(selected, do: entries, else: [])} end
+    start = fn selected, id -> DynamicSupervisor.start_child(Ipse.Sessions,
+      {Ipse.Session, [config: config.(selected), cwd: workspace, state_dir: state, subscriber: self()] ++ if(id, do: [id: id], else: [])}) end
+    """
+
+    create =
+      configuration <>
+        """
+        ids = for selected <- [false, true] do
+          {:ok, pid} = start.(selected, nil)
+          id = Ipse.Session.info(pid).id
+          :ok = Ipse.Session.close(pid)
+          {:ok, resumed} = start.(selected, id)
+          :ok = Ipse.Session.close(resumed)
+          id
+        end
+        File.write!(#{inspect(ids)}, Jason.encode!(ids))
+        """
+
+    run!(launcher, ["eval", create], release, env, "same-build upgrade controls")
+
+    frozen =
+      for id <- :json.decode(File.read!(ids)),
+          into: %{},
+          do: {id, File.read!(Path.join(state, id <> ".jsonl"))}
+
+    # Recompile only a test copy of the public identity module. The production
+    # archive and source remain untouched; this changes a real inventoried host BEAM.
+    source = File.read!(Path.expand("../../lib/ipse.ex", __DIR__))
+
+    changed =
+      Regex.replace(~r/end\s*\z/, source, "  def upgrade_fixture_marker, do: :changed\nend\n")
+
+    compile = """
+    [{Ipse, bytes}] = Code.compile_string(#{inspect(changed)})
+    file = Path.join(Application.app_dir(:ipse, "ebin"), "Elixir.Ipse.beam")
+    true = File.read!(file) != bytes
+    File.write!(file, bytes)
+    """
+
+    next_launcher = Path.join(upgraded, "bin/ipse")
+    run!(next_launcher, ["eval", compile], upgraded, env, "changed-host fixture rebuild")
+
+    check =
+      configuration <>
+        """
+        [plain, selected] = Jason.decode!(File.read!(#{inspect(ids)}))
+        {:ok, resumed} = start.(false, plain)
+        %{phase: :idle} = Ipse.Session.info(resumed)
+        :ok = Ipse.Session.close(resumed)
+        {:error, :resume_configuration_mismatch} = start.(true, selected)
+        true = String.contains?(Ipse.CLI.Errors.format(:resume_configuration_mismatch), "handoff")
+        """
+
+    run!(next_launcher, ["eval", check], upgraded, env, "changed-host resume behavior")
+
+    old =
+      configuration <>
+        """
+        [_, selected] = Jason.decode!(File.read!(#{inspect(ids)}))
+        {:ok, resumed} = start.(true, selected)
+        :ok = Ipse.Session.close(resumed)
+        """
+
+    run!(launcher, ["eval", old], release, env, "previous release resume recovery")
+    for {id, bytes} <- frozen, do: ^bytes = File.read!(Path.join(state, id <> ".jsonl"))
+
+    IO.puts(
+      "PASS: a changed host resumes an extension-free session, refuses selected extensions without mutation, and the previous build still resumes them."
+    )
+  end
+
   defp verify_recovery!(launcher, release, env, root) do
     workspace = Path.join(root, "recovery-probe")
     File.mkdir_p!(Path.join(workspace, ".git"))
@@ -300,6 +392,30 @@ defmodule Ipse.Development.Verification.Package do
 
     verify_doctor!(wrapper, release, env, home, default_workspace, version)
     verify_setup!(wrapper, release, env, root)
+    verify_upgrade!(otp_launcher, release, env, root)
+
+    links = Path.join(root, "launcher links")
+    File.mkdir!(links)
+    File.ln_s!(Path.join("..", Path.relative_to(wrapper, root)), Path.join(links, "second"))
+    linked = Path.join(links, "ipse")
+    File.ln_s!("second", linked)
+
+    ^version =
+      String.trim(
+        run!(linked, ["--version"], override_caller, env, "symlinked launcher identity")
+      )
+
+    run!(
+      linked,
+      ["run", "--provider", "demo", "--yes", "Create and read the deterministic demo file"],
+      override_caller,
+      env,
+      "symlinked caller workspace"
+    )
+
+    assert_demo_file!(override_caller)
+    File.rm!(Path.join(override_caller, "ipse-demo.txt"))
+    IO.puts("PASS: relative symlink chain resolves the release and preserves caller workspace.")
 
     verify_terminal!(wrapper, release, env, root)
     verify_recovery!(otp_launcher, release, env, root)

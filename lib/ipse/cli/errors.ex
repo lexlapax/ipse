@@ -10,7 +10,7 @@ defmodule Ipse.CLI.Errors do
       {"Invalid committed handoff record; refusing recovery. Preserve the original journal for inspection.",
        "continue-in-a-fresh-session"},
     resume_configuration_mismatch:
-      {"Saved session configuration differs. Restore its provider, model, endpoint (--base-url), profiles, extensions and MCP configuration. Legacy MCP fingerprints also require a compatible OTP runtime. Otherwise start a fresh session. No saved work was replayed.",
+      {"Saved session configuration differs. Restore its provider, model, endpoint (--base-url), profiles, extensions and MCP configuration. Legacy MCP fingerprints also require a compatible OTP runtime. Otherwise export a handoff or start a fresh session. No saved work was replayed.",
        "resume-compatible-work"},
     journal_limit_reached:
       {"Journal resource limit reached. History was preserved; inspect it and use an explicit fresh-session handoff. Oversized legacy files require bounded source-page inspection.",

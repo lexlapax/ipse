@@ -42,4 +42,5 @@ fi
 mkdir -p dist
 IPSE_ARCHIVE="dist/ipse-$IPSE_VERSION-$IPSE_OS-$IPSE_ARCH$IPSE_ABI.tar.gz"
 tar -czf "$IPSE_ARCHIVE" -C "$IPSE_RELEASE" .
+elixir -r dev/release.exs -e 'Ipse.Development.Release.write_checksum!(hd(System.argv()))' -- "$IPSE_ARCHIVE"
 printf 'Built %s\n' "$IPSE_ARCHIVE"

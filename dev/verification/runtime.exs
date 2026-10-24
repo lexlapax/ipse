@@ -15,6 +15,8 @@ defmodule Ipse.Development.Verification.Runtime do
     report =
       case scenario do
         "package" ->
+          Code.require_file("../release.exs", __DIR__)
+          apply(Ipse.Development.Release, :verify_checksum!, [Keyword.fetch!(options, :archive)])
           Code.require_file("package.exs", __DIR__)
 
           run(scenario, options, fn runtime, selected ->

@@ -11,9 +11,10 @@ choose a provider explicitly when you are ready to use a model.
 
 P27 is complete within its optional Corpus, Graph and Research scope. The
 [plan](docs/plan.md#p27-optional-research-graph-and-rag) records acceptance, the
-selected hybrid reference configuration and its limits. The plan proposes operator
-usability and release readiness (P28), OpenRouter and Gemini providers (P29) and
-advisory decision engines (P30) next; voice and media (P31) remain deferred.
+selected hybrid reference configuration and its limits. Operator usability and
+release readiness (P28), and OpenRouter and Gemini providers (P29), are selected
+and in progress. Advisory decision engines (P30) remain proposed; voice and media
+(P31) remain deferred.
 
 ## Build and try the demo
 
@@ -34,13 +35,15 @@ writes and reads `ipse-demo.txt`, and runs a small shell command. It needs no
 credentials or model service. Its answer is scripted, not inference. Expect tool
 results followed by `Demo finished` and a saved session ID.
 
-For a bundled release, extract an archive matching your OS/architecture/libc and
-run `./ipse demo` from its root. It contains the VM, application and helper; a
-development toolchain is not needed to run it.
+For a bundled release, follow [installation](docs/operator/install.md) to verify
+the checksum, extract an OS/architecture/libc-compatible archive and link the
+launcher. The bundle contains the VM, application and helper; no development
+toolchain is needed. Run `ipse setup`, `ipse doctor`, then `ipse demo`.
 
 ## Start a real conversation
 
-ChatGPT subscription is the default provider:
+Use `ipse setup` to save an explicit provider/model choice. Without a choice,
+chat and run announce the built-in ChatGPT subscription default before auth:
 
 ```sh
 ./bin/ipse login

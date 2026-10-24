@@ -1,26 +1,8 @@
 # Install and run Ipse on Arch Linux
 
-Use a bundled release that matches your machine, or build from source. The
+Use a [bundled release](install.md) that matches your machine, or build from source. The
 credential-free demo lets you check the installation before signing in to a model
 service. Ipse's own ChatGPT login is separate from other coding tools' logins.
-
-## Run a bundled release
-
-Obtain a release archive for your OS, architecture, and compatible libc. Extract
-it into a directory outside the projects Ipse will modify. From that directory:
-
-```sh
-./ipse --help
-./ipse demo
-```
-
-The archive includes Erlang, application code, and native helpers. Running it does
-not require Elixir or Rust on your host. Expect the demo to print a temporary
-workspace and session ID, write/read `ipse-demo.txt`, and run a short shell probe.
-No model service or account is used.
-
-Use `./ipse` in the remaining manual examples wherever they say `ipse`, or put
-the release launcher on your own `PATH`. Keep the release files together.
 
 ## Build from source
 

@@ -19,9 +19,9 @@ requirement; authority, recovery and correctness regressions remain unacceptable
 | --- | --- | --- |
 | P28 WP1 | One version source, compiled build identity and installed agreement | Complete at `b4788b4`; local source/package and both hosted platforms pass |
 | P28 WP2 | Redacted actionable errors and matching recovery instructions | Local baseline passes at `6818000`; hosted pending |
-| P28 WP3 | Offline doctor, explicit bounded probes and finding fixtures | Implemented; final native/package/platform checks pending |
+| P28 WP3 | Offline doctor, explicit bounded probes and finding fixtures | Full native suite passes at `a89fce7`; hosted pending; later installed proof passes |
 | P28 WP4 | Guided/private setup, previews, backups and resolution fixtures | Implemented; focused checks pass, full/installed/platform gates pending |
-| P28 WP5 | Checksums, symlink launcher, draft tag workflow and install lifecycle | Pending |
+| P28 WP5 | Checksums, symlink launcher, draft tag workflow and install lifecycle | Implemented; local package/upgrade proof passes; tag rehearsal and hosted pending |
 | P28 WP6 | Whole-manual first-user review and fresh-account walkthrough | Pending |
 | P29 WP0 | Verified official wire facts and continuation examples | [Recorded](wire-facts.md); adapter fixtures still required |
 | P29 WP1 | Central registry, existing-provider equivalence and recovery tests | Pending |
@@ -191,4 +191,39 @@ and private-file checks pass 141 tests; the final setup/private-file run passes
 The installed verifier now contains isolated preview/save/doctor/demo controls.
 Its run, full source and hosted results remain pending. The operator and developer
 configuration/usage/testing chapters are integrated around writing and validating
-settings, with audience links.
+settings, with audience links. The [WP4 receipt](wp4-verification.json) records the
+passing installed first-run proof and the hosted Elixir-floor formatting failure,
+now repaired with a conventional conditional. No assertion or check was weakened.
+
+The corrected WP3 native-inclusive suite completed with 1577 passed and 19 excluded,
+seed 3667, in 1043.0 seconds, exit 0. Its indexed runtime/test/developer-tool source
+compares identically to `a89fce7`; [WP3 receipt](wp3-verification.json) records scope.
+
+## P28 WP5
+
+Packaging writes a standard SHA256 sidecar with streaming OTP crypto. This replaces
+the brief's proposed platform checksum command with the already required toolchain,
+avoiding a new mandatory executable dependency. The installed package command
+checks the sidecar before extraction. The launcher resolves bounded portable
+symlink chains and preserves the original caller workspace.
+
+The release workflow retains every ordinary CI step, with a consistency test,
+uses the approved runner `gh`, and refuses published releases. It creates a draft,
+attaches assets after both platform checks, and downloads the complete asset set
+for integrity checks. Draft creation precedes the matrix to avoid a new artifact
+action dependency; a failed matrix may leave an incomplete unpublished draft.
+Official CLI [create](https://cli.github.com/manual/gh_release_create),
+[upload](https://cli.github.com/manual/gh_release_upload) and GitHub
+[tag trigger](https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#push)
+documentation was checked on 2026-10-24. No workflow publication command exists.
+
+New installation/release notes cover checksum, first run, side-by-side upgrades,
+rollback and uninstall. Arch source setup links to the lifecycle owner instead of
+duplicating bundle instructions. Recovery and refusal wording explain handoff.
+The installed proof copies a release and recompiles only its test identity module,
+then verifies extension-free resume, selected-extension refusal without journal
+mutation, recovery using the old release and relative symlink workspace handling.
+All existing installed controls pass. The [WP5 receipt](wp5-verification.json)
+retains the dirty-snapshot provenance and preliminary verifier failures.
+Final hosted checks, RC creation/inspection/deletion, unassisted fresh-account
+walkthrough and real release publication remain unperformed.

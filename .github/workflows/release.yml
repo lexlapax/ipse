@@ -1,0 +1,177 @@
+name: Draft release
+on:
+  push:
+    tags: ['v*']
+permissions:
+  contents: write
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+env:
+  GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  GH_REPO: ${{ github.repository }}
+  IPSE_RELEASE_TAG: ${{ github.ref_name }}
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: erlef/setup-beam@54075bcc5e249e4758d363f27d099f55d843f124 # v1
+        with:
+          otp-version: '27'
+          elixir-version: '1.18'
+      - name: Admit exact tag and release notes
+        id: metadata
+        run: |
+          elixir -r dev/release.exs -e 'Mix.start(); Code.require_file("mix.exs"); notes = Ipse.Development.Release.validate_tag!(System.fetch_env!("IPSE_RELEASE_TAG"), Mix.Project.config()[:version], File.cwd!()); IO.puts("notes=" <> notes)' >> "$GITHUB_OUTPUT"
+      - name: Create or recover an unpublished draft
+        env:
+          IPSE_RELEASE_NOTES: ${{ steps.metadata.outputs.notes }}
+        run: |
+          gh --version
+          if gh release view "$IPSE_RELEASE_TAG" --json isDraft > /dev/null 2>&1; then
+            test "$(gh release view "$IPSE_RELEASE_TAG" --json isDraft --jq .isDraft)" = true
+          else
+            case "$IPSE_RELEASE_TAG" in
+              *-rc.*) set -- --prerelease ;;
+              *) set -- ;;
+            esac
+            gh release create "$IPSE_RELEASE_TAG" --draft --verify-tag --title "$IPSE_RELEASE_TAG" --notes-file "$IPSE_RELEASE_NOTES" "$@"
+          fi
+  test:
+    needs: prepare
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-14]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: erlef/setup-beam@54075bcc5e249e4758d363f27d099f55d843f124 # v1
+        with:
+          otp-version: '27'
+          elixir-version: '1.18'
+      - uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec # stable action
+      - run: mix local.rebar --force
+      - run: ./dev/build.sh
+      - run: mix format --check-formatted
+      - run: mix compile --warnings-as-errors
+      - name: Native optional protocols
+        if: runner.os == 'Linux'
+        run: |
+          rustc --edition=2021 --test -D warnings native/ipse-sequence.rs -o "$RUNNER_TEMP/ipse-sequence-tests"
+          "$RUNNER_TEMP/ipse-sequence-tests"
+          rustc --edition=2021 --test -D warnings native/ipse-listener.rs -o "$RUNNER_TEMP/ipse-listener-tests"
+          "$RUNNER_TEMP/ipse-listener-tests"
+          rustc --edition=2021 --test -D warnings native/ipse-runner.rs -o "$RUNNER_TEMP/ipse-runner-tests"
+          "$RUNNER_TEMP/ipse-runner-tests" bound_environment_excludes_manager_state_and_keeps_only_selected_values
+      - name: Native bound authority controls
+        run: |
+          rustc --edition=2021 --test -D warnings native/ipse-bound.rs -o "$RUNNER_TEMP/ipse-bound-tests"
+          "$RUNNER_TEMP/ipse-bound-tests"
+      - name: Native regular-file copy controls
+        run: |
+          rustc --edition=2021 --test -D warnings native/ipse-file-copy.rs -o "$RUNNER_TEMP/ipse-file-copy-tests"
+          "$RUNNER_TEMP/ipse-file-copy-tests"
+      - run: elixir dev/check-ci-policy.exs
+      - run: elixir dev/check-docs.exs
+      - run: mix test
+        env:
+          IPSE_TEST_STDIO_PROBE: '1'
+      - name: macOS native enforcement
+        if: runner.os == 'macOS'
+        run: |
+          rustc --edition=2021 --test native/ipse-macos-sandbox.rs -o "$RUNNER_TEMP/ipse-macos-policy-test"
+          "$RUNNER_TEMP/ipse-macos-policy-test"
+          mix test test/ipse/tools/macos_sandbox_test.exs test/ipse/runner/stdio_test.exs test/ipse/tools/macos_filesystem_test.exs --include macos_sandbox --include macos_filesystem
+      - run: ./bin/ipse demo
+      - run: ./dev/package.sh
+      - run: elixir dev/verify.exs installed package --archive dist/ipse-*.tar.gz --input examples/memory-corpus.json
+      - name: Independent installed model-service ownership proof
+        run: |
+          rustc --edition=2021 -D warnings dev/fixtures/model_service_probe.rs -o "$RUNNER_TEMP/ipse-model-service-probe"
+          elixir dev/verify.exs installed model-service --archive dist/ipse-*.tar.gz --input "$RUNNER_TEMP/ipse-model-service-probe" --output "$RUNNER_TEMP/ipse-model-service-installed"
+      - name: Independent installed extension proof
+        run: |
+          elixir dev/build-artifact.exs extension-lab --sdk _build/dev/lib/ipse/ebin --output "$RUNNER_TEMP/ipse-extension-lab"
+          elixir dev/verify.exs installed lab --archive dist/ipse-*.tar.gz --input "$RUNNER_TEMP/ipse-extension-lab"
+      - name: Independent installed model-call proof
+        run: |
+          elixir dev/build-artifact.exs model-calls --sdk _build/dev/lib/ipse/ebin --output "$RUNNER_TEMP/ipse-model-calls"
+          elixir dev/verify.exs installed model --archive dist/ipse-*.tar.gz --input "$RUNNER_TEMP/ipse-model-calls" --selection default
+          elixir dev/verify.exs installed model --archive dist/ipse-*.tar.gz --input "$RUNNER_TEMP/ipse-model-calls" --selection none
+          elixir dev/verify.exs installed model --archive dist/ipse-*.tar.gz --input "$RUNNER_TEMP/ipse-model-calls" --selection json
+          elixir dev/verify.exs installed model --archive dist/ipse-*.tar.gz --input "$RUNNER_TEMP/ipse-model-calls" --selection json-none
+      - name: Independent source and installed MCP-call proof
+        run: |
+          elixir dev/build-artifact.exs mcp-actions --sdk _build/dev/lib/ipse/ebin --output "$RUNNER_TEMP/ipse-mcp-actions"
+          elixir dev/verify.exs source mcp --sdk _build/dev/lib/ipse/ebin --input "$RUNNER_TEMP/ipse-mcp-actions"
+          elixir dev/verify.exs installed mcp --archive dist/ipse-*.tar.gz --input "$RUNNER_TEMP/ipse-mcp-actions"
+      - name: Independent source and installed embedding proof
+        run: |
+          elixir dev/build-artifact.exs embedding-actions --sdk _build/dev/lib/ipse/ebin --output "$RUNNER_TEMP/ipse-embedding-actions"
+          elixir dev/verify.exs source embedding --sdk _build/dev/lib/ipse/ebin --input "$RUNNER_TEMP/ipse-embedding-actions"
+          elixir dev/verify.exs installed embedding --archive dist/ipse-*.tar.gz --input "$RUNNER_TEMP/ipse-embedding-actions"
+      - name: Independent knowledge preset admission
+        run: |
+          mix run dev/verify-knowledge-builds.exs _build/dev/lib/ipse/ebin "$RUNNER_TEMP/ipse-knowledge-presets"
+      - name: Independent source and installed saved-result proof
+        run: |
+          elixir dev/build-artifact.exs saved-results --sdk _build/dev/lib/ipse/ebin --output "$RUNNER_TEMP/ipse-saved-results"
+          elixir dev/verify.exs source saved-results --sdk _build/dev/lib/ipse/ebin --input "$RUNNER_TEMP/ipse-saved-results"
+          elixir dev/verify.exs installed saved-results --archive dist/ipse-*.tar.gz --input "$RUNNER_TEMP/ipse-saved-results"
+      - name: Independent source and installed knowledge proof
+        run: |
+          elixir extensions/knowledge/build.exs --sdk _build/dev/lib/ipse/ebin --output "$RUNNER_TEMP/ipse-knowledge/corpus" --package corpus --preset state-lexical
+          elixir extensions/knowledge/build.exs --sdk _build/dev/lib/ipse/ebin --output "$RUNNER_TEMP/ipse-knowledge/graph" --package graph --preset state-explicit
+          elixir extensions/knowledge/build.exs --sdk _build/dev/lib/ipse/ebin --output "$RUNNER_TEMP/ipse-knowledge/research" --package research --preset offline
+          elixir extensions/knowledge/build.exs --sdk _build/dev/lib/ipse/ebin --output "$RUNNER_TEMP/ipse-knowledge/corpus-mcp" --package corpus --preset mcp-lexical
+          elixir extensions/knowledge/build.exs --sdk _build/dev/lib/ipse/ebin --output "$RUNNER_TEMP/ipse-knowledge/research-mcp" --package research --preset mcp
+          elixir dev/verify.exs source knowledge --sdk _build/dev/lib/ipse/ebin --input "$RUNNER_TEMP/ipse-knowledge"
+          elixir dev/verify.exs source knowledge-complete --sdk _build/dev/lib/ipse/ebin --input "$RUNNER_TEMP/ipse-knowledge"
+          elixir dev/verify.exs source knowledge-independence --sdk _build/dev/lib/ipse/ebin --input "$RUNNER_TEMP/ipse-knowledge"
+          elixir dev/verify.exs source knowledge-evaluation --sdk _build/dev/lib/ipse/ebin --input "$RUNNER_TEMP/ipse-knowledge/corpus"
+          elixir dev/verify.exs source knowledge-mcp --sdk _build/dev/lib/ipse/ebin --input "$RUNNER_TEMP/ipse-knowledge/corpus-mcp"
+          elixir dev/verify.exs source knowledge-research --sdk _build/dev/lib/ipse/ebin --input "$RUNNER_TEMP/ipse-knowledge/research-mcp"
+          elixir dev/verify.exs source knowledge-recovery --sdk _build/dev/lib/ipse/ebin --input "$RUNNER_TEMP/ipse-knowledge-presets/graph-state-model"
+          elixir dev/verify.exs source knowledge-graph-lifecycle --sdk _build/dev/lib/ipse/ebin --input "$RUNNER_TEMP/ipse-knowledge-presets/graph-state-model"
+          elixir dev/verify.exs source knowledge-corpus-lifecycle --sdk _build/dev/lib/ipse/ebin --input "$RUNNER_TEMP/ipse-knowledge-presets/corpus-state-dense"
+          elixir dev/verify.exs source knowledge-selection --sdk _build/dev/lib/ipse/ebin --input "$RUNNER_TEMP/ipse-knowledge-presets/corpus-state-dense"
+          elixir dev/verify.exs installed knowledge --archive dist/ipse-*.tar.gz --input "$RUNNER_TEMP/ipse-knowledge"
+          elixir dev/verify.exs installed knowledge-complete --archive dist/ipse-*.tar.gz --input "$RUNNER_TEMP/ipse-knowledge"
+          elixir dev/verify.exs installed knowledge-independence --archive dist/ipse-*.tar.gz --input "$RUNNER_TEMP/ipse-knowledge"
+          elixir dev/verify.exs installed knowledge-evaluation --archive dist/ipse-*.tar.gz --input "$RUNNER_TEMP/ipse-knowledge/corpus"
+          elixir dev/verify.exs installed knowledge-mcp --archive dist/ipse-*.tar.gz --input "$RUNNER_TEMP/ipse-knowledge/corpus-mcp"
+          elixir dev/verify.exs installed knowledge-research --archive dist/ipse-*.tar.gz --input "$RUNNER_TEMP/ipse-knowledge/research-mcp"
+          elixir dev/verify.exs installed knowledge-recovery --archive dist/ipse-*.tar.gz --input "$RUNNER_TEMP/ipse-knowledge-presets/graph-state-model"
+          elixir dev/verify.exs installed knowledge-graph-lifecycle --archive dist/ipse-*.tar.gz --input "$RUNNER_TEMP/ipse-knowledge-presets/graph-state-model"
+          elixir dev/verify.exs installed knowledge-corpus-lifecycle --archive dist/ipse-*.tar.gz --input "$RUNNER_TEMP/ipse-knowledge-presets/corpus-state-dense"
+          elixir dev/verify.exs installed knowledge-selection --archive dist/ipse-*.tar.gz --input "$RUNNER_TEMP/ipse-knowledge-presets/corpus-state-dense"
+      - name: Experimental macOS App Sandbox enforcement
+        if: runner.os == 'macOS'
+        run: |
+          IPSE_MACOS_WORKSPACE=$(mktemp -d)
+          trap 'rm -rf "$IPSE_MACOS_WORKSPACE"' EXIT
+          elixir dev/verify-macos-sandbox.exs priv/ipse-runner "$IPSE_MACOS_WORKSPACE"
+      - name: Attach verified archives to the unpublished draft
+        run: |
+          test "$(gh release view "$IPSE_RELEASE_TAG" --json isDraft --jq .isDraft)" = true
+          gh release upload "$IPSE_RELEASE_TAG" dist/ipse-*.tar.gz dist/ipse-*.tar.gz.sha256 --clobber
+  inspect:
+    needs: test
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: erlef/setup-beam@54075bcc5e249e4758d363f27d099f55d843f124 # v1
+        with:
+          otp-version: '27'
+          elixir-version: '1.18'
+      - name: Re-download and inspect the complete draft asset set
+        run: |
+          test "$(gh release view "$IPSE_RELEASE_TAG" --json isDraft --jq .isDraft)" = true
+          mkdir "$RUNNER_TEMP/ipse-release-assets"
+          gh release download "$IPSE_RELEASE_TAG" --dir "$RUNNER_TEMP/ipse-release-assets"
+          elixir -r dev/release.exs -e 'Ipse.Development.Release.verify_assets!(hd(System.argv()))' -- "$RUNNER_TEMP/ipse-release-assets"

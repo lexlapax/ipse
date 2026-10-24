@@ -66,6 +66,11 @@ extension selections. Resume keeps the original workspace, provider/model,
 sandbox, delegation settings, and instruction snapshot. Changed digests or pinned
 artifact/runtime identities can refuse recovery. Restore original inputs or use
 a reviewed handoff; do not edit records to remove a mismatch.
+Selected extensions also pin every host BEAM: a different application build can
+refuse even when the configuration text is unchanged. Keep the old release for
+resume/export; [upgrading](install.md#upgrade-without-losing-recovery-options)
+explains switching and rollback. Extension-free sessions still require matching
+configuration.
 
 Idle resume starts no inference, callbacks, children, or tools. Pending questions
 reappear for an explicit answer. A recorded answer survives interruption, but

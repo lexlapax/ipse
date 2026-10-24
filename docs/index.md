@@ -16,6 +16,7 @@ quick start. Try the demo before configuring a model account.
 
 | I want to... | Start here |
 | --- | --- |
+| Install, upgrade or remove a runtime bundle | [Install Ipse](operator/install.md) |
 | Start a conversation and approve a file change | [Use the terminal](operator/usage.md) |
 | Set an endpoint, profile or project policy | [Configure Ipse](operator/configuration.md) |
 | Connect tools from another service | [Configure MCP](operator/mcp.md) |
@@ -35,6 +36,10 @@ quick start. Try the demo before configuring a model account.
 | Prove a repair against source or an installed runtime | [Verify a change](developer/testing.md) |
 
 ## Project context
+
+[Release notes](releases/v0.1.0.md) describe supported use, limits and verification
+status for a version. The operator install chapter owns lifecycle procedures;
+dated evidence remains in the archive.
 
 The [plan](plan.md) records priorities, selected scopes and acceptance decisions.
 [The archive](archive/index.md) preserves dated source/verification/research

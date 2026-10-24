@@ -1,0 +1,13 @@
+{
+  "record_version": 1,
+  "source_base": "9907877ba73a25be21a8f93ed272719b00c89e6d",
+  "source_overlay": "Release/checksum/launcher/verifier/manual changes and conventional setup conditional; later errors renderer adds explicit handoff guidance. This is a dirty snapshot, not an exact-source commit claim.",
+  "archive": "/tmp/ipse-p28-wp5-package-C5KRqb/dist/ipse-0.1.0-linux-x86_64-glibc-2.44.tar.gz",
+  "archive_sha256": "6d2b8b75a6e79d2bbedfa7f8f2bbeb089d7f5f84628777eac024389293c72d03",
+  "package": {"exit_code": 0, "log": "/tmp/ipse-p28-wp5-package-final.log"},
+  "installed": {"exit_code": 0, "log": "/tmp/ipse-p28-wp5-installed-final.log", "controls": ["SHA256 sidecar before extraction", "setup/doctor/demo", "changed host BEAM in copied release", "extension-free resume", "selected-extension refusal with unchanged journal", "old release resumes selected extension", "relative symlink chain preserves caller cwd", "all existing package checks and unchanged inventories"]},
+  "focused": {"passed": 24, "seed": 656259, "log": "/tmp/ipse-p28-wp5-final-focused.log"},
+  "other_checks": ["formatting", "warnings-as-errors compilation", "CI pin policy", "documentation links/manual rules"],
+  "previous_failures": ["Upgrade verifier first omitted Application.ensure_all_started in eval VM", "Upgrade verifier then exposed missing explicit handoff wording; renderer and manual now agree"],
+  "limits": ["Tag workflow not executed", "No RC tag, release creation or publication", "No hosted final-code acceptance", "No fresh OS account or live inference"]
+}

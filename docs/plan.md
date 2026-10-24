@@ -620,13 +620,12 @@ The [implementation record](archive/2026-10-23-p28-p29-implementation/index.md)
 tracks the ordered work packages, actual checks and auditor handoff requirements.
 Version/build identity is complete at `b4788b4`, with local source and
 installed-archive checks and exact-source hosted Ubuntu/macOS verification.
-Actionable error and refusal handling is
-implemented and undergoing full-suite verification. Offline doctor and explicit
-metadata probes are implemented, with focused and preliminary installed checks;
-final native/platform verification is pending. Private guided setup, dry runs,
-replacement backups and explicit-default notices are implemented with focused
-checks; full and installed verification is pending. Release lifecycle remains
-unimplemented.
+Actionable errors pass the full local suite at `6818000`. Offline doctor passes
+the native-inclusive suite at `a89fce7`. Private setup passes focused and installed
+first-run checks. Release checksums, symlink handling, draft workflow and lifecycle
+manuals are implemented; the local installed upgrade proof passes. Hosted gates,
+RC rehearsal, final baseline and unassisted fresh-account walkthrough remain
+pending. The real release remains unpublished.
 
 Scope:
 

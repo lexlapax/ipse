@@ -22,6 +22,7 @@ configuration, credentials, journals, and exports outside version control.
 
 | Task | Chapter |
 | --- | --- |
+| Download/check a bundle, install, upgrade or uninstall on Linux/macOS | [Install Ipse](install.md) |
 | Install from source and prepare Linux native policy | [Arch Linux setup](arch-linux.md) |
 | Preview, save or replace a private first-run provider choice | [Guided setup](configuration.md#choose-and-save-a-provider) |
 | Work interactively or run once, approve effects, use skills, delegate, resume | [Use a workspace](usage.md) |

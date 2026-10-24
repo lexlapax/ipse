@@ -191,7 +191,11 @@ defmodule Ipse.CLI.Setup do
 
     if interactive? and
          read_line("Run ipse login now? Type yes to start browser authorization: ") ==
-           {:ok, "yes"}, do: Ipse.Auth.login(Path.join(home, "auth")), else: :ok
+           {:ok, "yes"} do
+      Ipse.Auth.login(Path.join(home, "auth"))
+    else
+      :ok
+    end
   end
 
   defp credential_step(provider, _, _) do

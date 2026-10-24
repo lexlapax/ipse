@@ -3,7 +3,8 @@
 Ipse runs a conversation over a directory you choose. Start in a disposable
 workspace, review the proposed actions, and inspect their results. The examples
 use an installed `ipse`. Use `./bin/ipse` from a checkout or `./ipse` inside an
-extracted release. [Install on Arch Linux](arch-linux.md) covers source setup.
+extracted release. [Installation](install.md) covers bundles on Linux/macOS;
+[Arch Linux setup](arch-linux.md) covers a source build and native prerequisites.
 
 ## Check the application without a model
 
