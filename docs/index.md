@@ -17,7 +17,7 @@ quick start. Try the demo before configuring a model account.
 | I want to... | Start here |
 | --- | --- |
 | Install, upgrade or remove a runtime bundle | [Install Ipse](operator/install.md) |
-| Start a conversation and approve a file change | [Use the terminal](operator/usage.md) |
+| Start a conversation, approve changes and manage session permissions | [Use the terminal](operator/usage.md) |
 | Set an endpoint, profile or project policy | [Configure Ipse](operator/configuration.md) |
 | Connect tools from another service | [Configure MCP](operator/mcp.md) |
 | Remember an explicit project note | [Use memory](operator/memory.md) |

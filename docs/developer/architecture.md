@@ -139,6 +139,31 @@ denies it, and verifies no target exists. Then follow the allowed case:
 3. Journal admitted intent before starting the effect in owned work.
 4. Retain outcome and cleanup evidence before admitting dependent work.
 
+`Session.Permissions` owns bounded, ephemeral grants in Session state. A native
+write/edit proposal may grant workspace edits; a shell proposal may grant that
+complete argument map, cwd and sandbox policy. `Session.approve/3` accepts
+`:session_edits` or `:session_command` only for an eligible pending root native
+tool. Unsupported choices leave the proposal pending. Existing booleans still
+approve once or deny. The terminal binds each choice to its fresh proposal code.
+`--accept-edits` supplies explicit initial client authority only in chat.
+
+Inspect with `Session.permissions/1`; `Session.clear_permissions/1` revokes future
+dispatch authority without cancelling an effect already dispatched. Grants survive
+turn cancellation, never reconstruction or child creation. Native edit grants
+retain path validation and additionally refuse hardlinks. This is not a claim of
+race-free filesystem confinement. Shell matching does no parsing, prefix inference
+or safety classification. External/SDK effects and delegated approvals retain their
+own policy. Read-only denial takes precedence over any grant.
+
+Grant creation/revocation is journaled before changing authority; each native
+`tool_started` records `approval_source` alongside the existing approval decision.
+`session_allow` means explicit session authority, with source `workspace_edits` or
+`exact_command` for these grants. Recovery uses records as evidence, never permission.
+The seven-effect fixture in `test/ipse/session/permissions_test.exs` compares
+per-action consent with edit/command reuse, then exercises revocation and idle
+resume. Add a changed-argument refusal when extending matching; never infer a
+command prefix from a previously approved compound shell string.
+
 [`Tools`](../../lib/ipse/tools.ex) owns native tool definitions and call admission.
 Specific research, question, delegation, and sandbox implementations live in
 `lib/ipse/tools/`. `CLI` parses/starts/closes the application; `CLI.Terminal` handles

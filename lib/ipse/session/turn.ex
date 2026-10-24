@@ -129,6 +129,24 @@ defmodule Ipse.Session.Turn do
     end
   end
 
+  def approve(s, choice, call, args) when choice in [:session_edits, :session_command] do
+    case Ipse.Session.Permissions.grant(s, get_in(call, ["function", "name"]), args, choice) do
+      {:ok, permissions, source} ->
+        Session.record(s, %{
+          "type" => "approval_grant",
+          "source" => source,
+          "call_id" => call["id"],
+          "cwd" => s.cwd
+        })
+
+        s = Session.finish_wait(%{s | approval: nil, permissions: permissions}, "approved")
+        {:reply, :ok, launch_tool(s, call, args, "session_allow")}
+
+      error ->
+        {:reply, error, s}
+    end
+  end
+
   def approve(s, allowed, call, args) do
     s =
       Session.finish_wait(
@@ -632,6 +650,8 @@ defmodule Ipse.Session.Turn do
       Tools.mutating?(name) or external or Catalog.external?(name) or
         name in ["delegate", "delegate_parallel"]
 
+    grant_source = Ipse.Session.Permissions.source(s, name, args)
+
     cond do
       name == "ask_operator" ->
         start_question(s, call, args)
@@ -649,7 +669,7 @@ defmodule Ipse.Session.Turn do
           "policy_denied"
         )
 
-      requires_approval and mode == :ask ->
+      requires_approval and mode == :ask and is_nil(grant_source) ->
         ref = make_ref()
 
         s =
@@ -683,6 +703,7 @@ defmodule Ipse.Session.Turn do
       "call_id" => call["id"],
       "name" => name,
       "approval" => decision,
+      "approval_source" => Ipse.Session.Permissions.source(s, name, args) || decision,
       "arguments" =>
         if(external || Catalog.external?(name) || name in ["delegate", "delegate_parallel"],
           do: args
@@ -713,6 +734,7 @@ defmodule Ipse.Session.Turn do
       skills: s.skills,
       sandbox: Map.get(s.config, :sandbox, :off),
       parallel_child: Map.get(s.config, :parallel_child, false),
+      workspace_edit_grant: Ipse.Session.Permissions.source(s, name, args) == "workspace_edits",
       emit: fn event -> send(owner, {:progress, job_ref, event}) end
     }
 

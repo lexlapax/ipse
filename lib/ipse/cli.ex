@@ -23,6 +23,7 @@ defmodule Ipse.CLI do
           resume: :string,
           handoff: :string,
           yes: :boolean,
+          accept_edits: :boolean,
           base_url: :string,
           upstream: :string,
           data_collection: :string,
@@ -92,6 +93,9 @@ defmodule Ipse.CLI do
           {:error,
            "--upstream and --data-collection require ipse setup; select a pinned profile for inference."}
         )
+
+      opts[:accept_edits] == true and (rest not in [[], ["chat"]] or opts[:yes] == true) ->
+        report({:error, "--accept-edits requires interactive chat without --yes."})
 
       opts[:help] ->
         Terminal.help()
@@ -445,6 +449,13 @@ defmodule Ipse.CLI do
             "Mutations, shell, configured MCP, and enabled delegation are allowed for this session (--yes)."
           )
 
+      if config[:accept_edits],
+        do:
+          Terminal.puts(
+            :stderr,
+            "Native workspace file edits allowed for this session (--accept-edits). Shell, children and external tools still ask. Use /permissions to inspect or clear grants."
+          )
+
       if handoff_opts != [],
         do: Terminal.puts(:stderr, Ipse.Session.Saved.handoff_notice(handoff_opts[:handoff]))
 
@@ -482,6 +493,7 @@ defmodule Ipse.CLI do
       mcp_config: opts[:mcp_config],
       base_url: opts[:base_url],
       operator_questions: interactive,
+      accept_edits: interactive and opts[:accept_edits] == true,
       approval: if(opts[:yes], do: :allow, else: if(interactive, do: :ask, else: :deny))
     }
 

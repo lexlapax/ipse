@@ -639,7 +639,13 @@ are recorded, so this is not labelled an entirely unassisted manual-only pass.
 Human upgrade was skipped because only one version was available; automated
 upgrade evidence remains separate. The requested
 [approval UX research](archive/2026-10-24-p28-approval-ux/index.md) compares existing
-agents and proposes modes plus reusable consent; no policy change is implemented.
+agents and proposes modes plus reusable consent. The developer explicitly selected
+implementing this follow-up before external audit, extending the brief's original
+approval-semantics exclusion. Native workspace edit consent and exact shell-call
+session grants are implemented in the
+[new candidate](archive/2026-10-24-approval-implementation/index.md), with inspect/revoke,
+fresh proposal binding and no inherited/resumed grants. Final verification is in
+progress; the older baseline does not prove this change.
 RC draft cleanup, final acceptance of these qualifications and stable publication
 remain open. The external-auditor handoff includes these findings.
 

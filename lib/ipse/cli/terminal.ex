@@ -122,7 +122,8 @@ defmodule Ipse.CLI.Terminal do
   Chat asks before writes, shell, MCP, and delegation. Headless run denies them without --yes.
   Shell execution uses your user permissions unless --sandbox native is selected.
   Native enforcement fails closed when unavailable; approvals remain required.
-  Chat commands: /help /skills /session /info /diagnostics /observability off /events off /context /context refresh /ext [NAME JSON] /result JSON /cancel /exit.
+  --accept-edits                       Allow native workspace file edits in interactive chat
+  Chat commands: /help /skills /session /info /diagnostics /permissions /permissions clear /observability off /events off /context /context refresh /ext [NAME JSON] /result JSON /cancel /exit.
   Invoke skills with $name.
   EOF finishes accepted work; errors and /cancel clear queued input.
   """
@@ -153,7 +154,8 @@ defmodule Ipse.CLI.Terminal do
 
       puts(
         :stderr,
-        "\nWaiting for approval: #{name}\nAllow #{name}?\n#{Jason.encode!(args, pretty: true)}\nType allow #{s.approval_token} to allow, n to deny."
+        "\nWaiting for approval: #{name}\nAllow #{name}?\n#{Jason.encode!(args, pretty: true)}\nType allow #{s.approval_token} to allow once, n to deny." <>
+          permission_choice(name, s.approval_token, s.cwd)
       )
     end
 
@@ -218,6 +220,20 @@ defmodule Ipse.CLI.Terminal do
 
       {:input, "/help"} ->
         help()
+        client_loop(s)
+
+      {:input, "/permissions"} ->
+        puts(Jason.encode!(Ipse.Session.permissions(s.pid), pretty: true))
+        client_loop(s)
+
+      {:input, "/permissions clear"} ->
+        :ok = Ipse.Session.clear_permissions(s.pid)
+
+        puts(
+          :stderr,
+          "Session grants cleared. Already dispatched effects may finish; --yes authority is unchanged."
+        )
+
         client_loop(s)
 
       {:input, "/skills"} ->
@@ -382,6 +398,30 @@ defmodule Ipse.CLI.Terminal do
           confirmation == "allow #{s.approval_token}" ->
             Ipse.Session.approve(s.pid, s.approval, true)
             client_loop(%{s | approval: nil, approval_token: nil})
+
+          confirmation in ["edits #{s.approval_token}", "session #{s.approval_token}"] ->
+            choice =
+              if String.starts_with?(confirmation, "edits "),
+                do: :session_edits,
+                else: :session_command
+
+            case Ipse.Session.approve(s.pid, s.approval, choice) do
+              :ok ->
+                puts(
+                  :stderr,
+                  "Session grant saved; expires when this session closes. /permissions inspects; /permissions clear revokes."
+                )
+
+                client_loop(%{s | approval: nil, approval_token: nil})
+
+              _ ->
+                puts(
+                  :stderr,
+                  "Reusable grant unavailable for this proposal (native root tools only; at most 32 shell grants, 16 KiB each). Use allow CODE once or n."
+                )
+
+                client_loop(s)
+            end
 
           confirmation in ["n", "no", "deny"] ->
             Ipse.Session.approve(s.pid, s.approval, false)
@@ -636,6 +676,16 @@ defmodule Ipse.CLI.Terminal do
         :error
     end
   end
+
+  defp permission_choice(name, token, cwd) when name in ["write", "edit"],
+    do:
+      "\nOr edits #{token} to allow native workspace edits for this session in #{Jason.encode!(cwd)}; excludes shell, children and extensions."
+
+  defp permission_choice("shell", token, cwd),
+    do:
+      "\nOr session #{token} to allow this exact shell call (all arguments) for this session in #{Jason.encode!(cwd)}. Shell retains the requested OS policy; command text is not confinement."
+
+  defp permission_choice(_, _, _), do: ""
 
   defp next_client_event(%{approval: nil, deferred_display: [_ | _]} = s) do
     s = release_display(s)

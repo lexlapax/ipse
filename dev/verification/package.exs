@@ -145,6 +145,67 @@ defmodule Ipse.Development.Verification.Package do
     )
   end
 
+  defp verify_permissions!(launcher, release, env, root) do
+    workspace = Path.join(root, "permissions-workspace")
+    File.mkdir!(workspace)
+
+    source = """
+    {:ok, _} = Application.ensure_all_started(:ipse)
+    defmodule IpsePackagePermissionFixture do
+      def complete(_config, messages, _tools, _emit) do
+        if List.last(messages)["role"] == "tool" do
+          {:ok, %{"role" => "assistant", "content" => "Done"}, %{}}
+        else
+          calls = for {name, args, id} <- [
+            {"write", %{"path" => "first", "content" => "hello"}, "w1"},
+            {"write", %{"path" => "second", "content" => "hello"}, "w2"},
+            {"shell", %{"command" => "printf fixture"}, "s1"},
+            {"shell", %{"command" => "printf fixture"}, "s2"}] do
+            %{"id" => id, "type" => "function", "function" => %{"name" => name,
+              "arguments" => Jason.encode!(args)}}
+          end
+          {:ok, %{"role" => "assistant", "content" => "", "tool_calls" => calls}, %{}}
+        end
+      end
+    end
+    config = %{provider: :demo, model: "scripted", approval: :ask,
+      provider_module: IpsePackagePermissionFixture, home: #{inspect(Path.join(root, "permissions-home"))}}
+    opts = [config: config, cwd: #{inspect(workspace)},
+      state_dir: #{inspect(Path.join(root, "permissions-state"))}, subscriber: self()]
+    {:ok, pid} = DynamicSupervisor.start_child(Ipse.Sessions, {Ipse.Session, opts})
+    :ok = Ipse.Session.prompt(pid, "fixed four effects")
+    wait = fn wait, count ->
+      receive do
+        {:ipse, ^pid, {:approval, ref, name, _}} ->
+          choice = if name == "write", do: :session_edits, else: :session_command
+          :ok = Ipse.Session.approve(pid, ref, choice)
+          wait.(wait, count + 1)
+        {:ipse, ^pid, {:done, :ok}} -> count
+        _ -> wait.(wait, count)
+      after
+        5000 -> raise "permission proof timed out"
+      end
+    end
+    2 = wait.(wait, 0)
+    "hello" = File.read!(#{inspect(Path.join(workspace, "second"))})
+    %{"workspace_edits" => true, "commands" => [_]} = Ipse.Session.permissions(pid)
+    :ok = Ipse.Session.clear_permissions(pid)
+    %{"workspace_edits" => false, "commands" => []} = Ipse.Session.permissions(pid)
+    id = Ipse.Session.info(pid).id
+    :ok = Ipse.Session.close_confirmed(pid)
+    {:ok, resumed} = DynamicSupervisor.start_child(Ipse.Sessions, {Ipse.Session, opts ++ [id: id]})
+    %{phase: :idle} = Ipse.Session.info(resumed)
+    %{"workspace_edits" => false, "commands" => []} = Ipse.Session.permissions(resumed)
+    :ok = Ipse.Session.close_confirmed(resumed)
+    """
+
+    run!(launcher, ["eval", source], release, env, "installed session permissions")
+
+    IO.puts(
+      "PASS: installed edit/exact-command grants reduce four prompts to two; revocation and idle resume retain no authority."
+    )
+  end
+
   defp verify_upgrade!(launcher, release, env, root) do
     upgraded = Path.join(root, "changed-host-release")
     File.cp_r!(release, upgraded)
@@ -392,6 +453,7 @@ defmodule Ipse.Development.Verification.Package do
 
     verify_doctor!(wrapper, release, env, home, default_workspace, version)
     verify_setup!(wrapper, release, env, root)
+    verify_permissions!(otp_launcher, release, env, root)
     verify_upgrade!(otp_launcher, release, env, root)
 
     links = Path.join(root, "launcher links")

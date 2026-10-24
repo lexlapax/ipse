@@ -64,7 +64,9 @@ Read README.md and explain how to run this project. Do not change files.
 
 Review full proposed arguments before approving any mutation or shell command.
 Interactive approvals require the fresh `allow CODE` printed with that proposal;
-`n` denies it. A question answer grants no action permission. Headless `run`
+`n` denies it. For repeated work, [session permissions](docs/operator/usage.md#approve-a-small-task)
+offer native workspace edits and exact shell-call reuse. Inspect or revoke them
+with `/permissions` and `/permissions clear`. A question answer grants no action permission. Headless `run`
 denies mutations without `--yes`.
 
 Use the [user manual](docs/operator/index.md) for API or local providers, model

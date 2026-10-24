@@ -83,6 +83,39 @@ Read the full arguments of each proposal. To approve, enter its printed
 A task or skill is an instruction, not permission for an effect. Check the file
 and command output before relying on the final explanation.
 
+For repeated work, choose the smallest permission that fits:
+
+| Choice | Authority and duration |
+| --- | --- |
+| `allow CODE` | Only the displayed proposal |
+| `edits CODE` on a native write/edit proposal | Native workspace file edits until this session closes |
+| `session CODE` on a native shell proposal | That exact shell call, including all arguments, cwd and requested sandbox policy, until this session closes |
+| `n` | Deny this proposal |
+
+These choices use the fresh code displayed with the pending proposal. To start
+interactive chat with native edits already enabled, use:
+
+```sh
+ipse chat --accept-edits --cwd /path/to/project
+```
+
+Shell, MCP, extension effects and child actions still require their own approvals.
+Native file checks continue to reject workspace escapes, symlinks and `.git`
+mutations; session edit grants also refuse hardlinked targets. These checks are
+not protection against hostile concurrent filesystem replacement. Use a reviewed
+workspace. Shell consent permits the complete command, including any compound
+operations it contains; it is not a safe-command classification or a prefix rule.
+With confinement off, an approved shell command has your user permissions.
+
+Use `/permissions` to inspect grants and `/permissions clear` to revoke all edit
+and command grants. Clearing affects later dispatches; an already dispatched
+effect may finish. `/cancel` stops work but retains session grants. Closing and
+resuming discards grants, unless you explicitly select `--accept-edits` again.
+Children and extensions never inherit these native-tool grants. Shell grants are
+limited to 32 entries of at most 16 KiB of arguments each. If a grant is refused,
+you can still approve the proposal once. `--accept-edits` is restricted to chat
+and cannot combine with `--yes`; headless behavior is unchanged.
+
 A question uses a different prefix, `answer CODE VALUE`. Choose an option number
 or ID, comma-separated choices, or free text as requested. Recommendations are
 not submitted automatically. To submit literal slash-command text, use the
@@ -90,7 +123,8 @@ not submitted automatically. To submit literal slash-command text, use the
 
 ## Run once or keep chatting
 
-Interactive chat lets you approve each action. Headless `run` performs one task:
+Interactive chat uses individual approvals or your explicit session grants.
+Headless `run` performs one task:
 
 ```sh
 ipse run --cwd /path/to/project \
@@ -144,6 +178,7 @@ These chat commands make no model requests:
 | --- | --- |
 | `/session`, `/info` | Session/configuration facts and recorded model identity |
 | `/diagnostics` | Phase, usage, budget, and context size |
+| `/permissions`, `/permissions clear` | Inspect or revoke native edit/command grants; makes no change to broad `--yes` authority |
 | `/context`, `/skills` | Saved instruction sources and skill catalog |
 | `/context refresh` | Reload instructions and skills while idle |
 | `/ext` | Active extension names and schemas |

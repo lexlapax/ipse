@@ -1,7 +1,9 @@
 # Approval UX research from the P28 operator walkthrough
 
 Research and proposal, 2026-10-24, against runtime `9c5eb6a`; no policy change is
-implemented. The [walkthrough](../2026-10-24-p28-walkthrough/index.md) supplies the
+implemented by this research. The subsequent authorized
+[implementation record](../2026-10-24-approval-implementation/index.md) tracks the
+follow-up before audit. The [walkthrough](../2026-10-24-p28-walkthrough/index.md) supplies the
 operator feedback. [Terminal usage](../../operator/usage.md) owns current behavior;
 the [plan](../../plan.md#p28-operator-usability-and-release-readiness) owns status.
 

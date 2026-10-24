@@ -496,3 +496,8 @@ retains seven distinct proposals across the supplied run (four writes, three
 shell calls), five printed confirmation-mismatch messages, preparation/navigation
 assistance and the evidence limits. A [primary-source approval UX comparison](../2026-10-24-p28-approval-ux/index.md)
 now records the requested follow-up; approval behavior remains unchanged.
+
+The developer subsequently authorized implementing approval UX before the
+external audit. The [session permission implementation](../2026-10-24-approval-implementation/index.md)
+tracks native edit consent, exact shell-call reuse, revocation and fresh
+verification separately from the completed older baseline.

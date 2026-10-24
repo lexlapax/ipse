@@ -32,7 +32,7 @@ a helper's return shape.
 
 | Changed ownership | Start with |
 | --- | --- |
-| Prompt/approval/questions/cancellation | `test/ipse/session_test.exs`, `test/ipse/tools/questions_integration_test.exs` |
+| Prompt/approval/questions/cancellation | `test/ipse/session_test.exs`, `test/ipse/session/permissions_test.exs`, `test/ipse/cli_test.exs`, `test/ipse/tools/questions_integration_test.exs` |
 | Effects and unknown outcomes | `test/ipse/session/recovery_test.exs`, `test/ipse/session/file_effect_test.exs` |
 | Journal/lock/reservation/source closure | `test/ipse/journal/`, `test/ipse/journal_test.exs` |
 | Task/native cleanup | `test/ipse/session/resources_test.exs`, `test/ipse/runner/` |

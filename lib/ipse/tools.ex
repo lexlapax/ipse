@@ -197,16 +197,24 @@ defmodule Ipse.Tools do
   end
 
   defp reject_parallel_hardlinks(path, true, %{parallel_child: true}) do
+    reject_hardlinks(path)
+  end
+
+  defp reject_parallel_hardlinks(path, true, %{workspace_edit_grant: true}) do
+    reject_hardlinks(path)
+  end
+
+  defp reject_parallel_hardlinks(_, _, _), do: :ok
+
+  defp reject_hardlinks(path) do
     case File.stat(path) do
       {:ok, %{links: links}} when links > 1 ->
-        {:error, "parallel children cannot mutate hardlinked files"}
+        {:error, "scoped workspace edits cannot mutate hardlinked files"}
 
       _ ->
         :ok
     end
   end
-
-  defp reject_parallel_hardlinks(_, _, _), do: :ok
 
   defp reject_symlinks(path) do
     result =

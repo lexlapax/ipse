@@ -134,7 +134,9 @@ keep credentials out of extension options.
 
 `Config.runtime/2` consumes validated values without a second CLI defaults pass.
 Client facts include workspace/home/auth/operator paths, explicit MCP/direct
-endpoint, approval mode, and question permission. Admission checks the direct
+endpoint, approval mode, explicit chat-only native edit consent, and question permission.
+Edit consent is a client flag, never a project configuration permission grant.
+Admission checks the direct
 endpoint, prepares extension metadata, loads MCP configuration, then verifies
 sandbox setup. Selected profile runtime facts merge last. CLI credential preflight
 discards the key; Config neither loads nor caches credentials. Provider resolves

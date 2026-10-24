@@ -28,7 +28,7 @@ resume with zero new model calls. Tests exercise approval/lifecycle through
 synthetic providers; no paid account is required. Mix needs loopback. Resolve
 `:eperm` through the environment's permission flow, keeping TLS verification enabled.
 
-Read [Architecture](architecture.md) to follow prompt through completion, then
+Read [Architecture](architecture.md) to follow prompt, session permissions and completion, then
 [Persistence](persistence.md) for intent-before-effect and interrupted outcomes.
 Use [Testing](testing.md) to review the complete path and verify a changed artifact.
 

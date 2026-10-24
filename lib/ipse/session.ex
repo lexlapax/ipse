@@ -59,6 +59,8 @@ defmodule Ipse.Session do
 
   def prompt(pid, text), do: GenServer.call(pid, {:prompt, text})
   def approve(pid, ref, allowed), do: GenServer.call(pid, {:approve, ref, allowed})
+  def permissions(pid), do: GenServer.call(pid, :permissions)
+  def clear_permissions(pid), do: GenServer.call(pid, :clear_permissions)
   def answer(pid, id, answers), do: GenServer.call(pid, {:answer, id, answers})
   def cancel(pid), do: GenServer.call(pid, :cancel, 10_000)
   def materialize_result(pid, delivery), do: ResultSource.materialize_session(pid, delivery)
@@ -229,6 +231,7 @@ defmodule Ipse.Session do
         calls: if(question && question.call, do: [question.call], else: []),
         question: question,
         approval: nil,
+        permissions: Ipse.Session.Permissions.new(config),
         steps: if(question, do: question.steps, else: 0),
         tool_budget: Tools.restore_call_budget(messages),
         lock: lock,
@@ -1097,6 +1100,14 @@ defmodule Ipse.Session do
   def handle_call({:extension_action_commit, _, _}, _, s),
     do: {:reply, {:error, :extension_action_refused}, s}
 
+  def handle_call(:permissions, _from, s),
+    do: {:reply, Ipse.Session.Permissions.snapshot(s), s}
+
+  def handle_call(:clear_permissions, _from, s) do
+    record(s, %{"type" => "approval_grants_cleared"})
+    {:reply, :ok, %{s | permissions: %{edits: false, commands: []}}}
+  end
+
   def handle_call(:diagnostics, _from, s) do
     {:reply,
      %{
@@ -1203,6 +1214,11 @@ defmodule Ipse.Session do
   end
 
   def handle_call({:prompt, _}, _from, s), do: {:reply, {:error, :empty_prompt}, s}
+
+  def handle_call({:approve, _, choice}, _from, %{approval: approval} = s)
+      when choice in [:session_edits, :session_command] and
+             (not is_tuple(approval) or tuple_size(approval) != 3),
+      do: {:reply, {:error, :grant_unavailable}, s}
 
   def handle_call(
         {:approve, ref, allowed},

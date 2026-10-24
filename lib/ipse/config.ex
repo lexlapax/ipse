@@ -231,6 +231,7 @@ defmodule Ipse.Config do
                subagents: settings["subagents"],
                subagent_concurrency: settings["subagent_concurrency"],
                operator_questions: client.operator_questions,
+               accept_edits: Map.get(client, :accept_edits, false),
                approval: client.approval
              },
              Ipse.Config.Profiles.runtime(effective)
