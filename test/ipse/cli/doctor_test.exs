@@ -116,6 +116,10 @@ defmodule Ipse.CLI.DoctorTest do
     assert row["parsed"]
     refute row["trusted"]
     assert row["summary"] =~ "not admitted"
+
+    assert finding(report, "config.files")["summary"] =~
+             "requires explicit --trust-project-config"
+
     File.write!(path, "{private-invalid")
     {1, report} = Doctor.run([], c.home, c.cwd)
     row = Enum.find(finding(report, "config.files")["detail"], &(&1["path"] == path))

@@ -153,7 +153,14 @@ defmodule Ipse.CLI.Doctor do
       end
 
     status = if match?({:error, _}, resolved), do: "fail", else: aggregate(rows)
-    check("config.files", status, "#{length(rows)} discovered configuration files", rows)
+
+    cause =
+      case resolved do
+        {:error, reason} -> "; " <> Errors.format(reason)
+        _ -> ""
+      end
+
+    check("config.files", status, "#{length(rows)} discovered configuration files" <> cause, rows)
   end
 
   defp config_files({:error, reason}, _), do: check("config.files", "fail", Errors.format(reason))

@@ -3,7 +3,7 @@ defmodule Ipse.CLI.ErrorsTest do
   import ExUnit.CaptureIO
   alias Ipse.CLI.Errors
 
-  @mapped ~w(invalid_handoff invalid_handoff_record resume_configuration_mismatch journal_limit_reached invalid_session session_not_found invalid_id invalid_journal incomplete_journal session_locked journal_unavailable workspace_not_found invalid_provider_endpoint question_confirmation invalid_answer)a
+  @mapped ~w(invalid_handoff invalid_handoff_record resume_configuration_mismatch journal_limit_reached invalid_session session_not_found invalid_id invalid_journal incomplete_journal session_locked journal_unavailable workspace_not_found workspace_path_unavailable invalid_provider_endpoint question_confirmation invalid_answer)a
 
   test "each mapped error supplies a cause and a real recovery anchor without term dumps" do
     for reason <- @mapped do
