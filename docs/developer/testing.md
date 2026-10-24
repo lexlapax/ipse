@@ -116,6 +116,12 @@ Run subprocess controls in isolation as well as in the full suite. Declare every
 module they load and use absolute source/code paths with a private working
 directory. A plain Elixir VM can otherwise resolve an application from the
 checkout's basename, and a previously loaded fixture can hide a missing dependency.
+
+The declaration-CLI fixture copies tracked and nonignored untracked repository
+files into a temporary synthetic repository. Run the full suite from a clean
+committed clone when the working checkout contains private or unrelated untracked
+files; do not let a verification fixture copy those files as test input.
+
 When transferring code paths with `-pa`, exclude the implicit current-directory
 entry and reverse the argument sequence so successive prepends retain the original
 search order.

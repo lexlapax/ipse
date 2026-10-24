@@ -109,6 +109,11 @@ supported Linux host, also run `mix test --include native_sandbox`. Report skipp
 excluded and unsupported checks explicitly. Run native protocol tests with
 warnings denied. Use separate build roots for the supported Elixir floor.
 
+Use a clean committed clone for the full suite: the declaration-CLI fixture copies
+tracked and nonignored untracked repository files. Running it in the original
+checkout would read the unrelated private `.claude/` directory. Do not use that
+checkout as the fixture's source.
+
 Build the package and use its exact printed archive path, not a wildcard matching
 an older archive:
 
