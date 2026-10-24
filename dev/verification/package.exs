@@ -145,6 +145,53 @@ defmodule Ipse.Development.Verification.Package do
     )
   end
 
+  defp verify_xai!(wrapper, release, env, root) do
+    home = Path.join(root, "grok-home")
+    workspace = Path.join(root, "grok-workspace")
+    File.mkdir!(workspace)
+
+    env =
+      env
+      |> List.keystore("IPSE_HOME", 0, {"IPSE_HOME", home})
+      |> List.keystore("IPSE_XAI_CLIENT_ID", 0, {"IPSE_XAI_CLIENT_ID", nil})
+      |> List.keystore("XAI_API_KEY", 0, {"XAI_API_KEY", "installed-grok-fixture-key"})
+
+    args = ["setup", "--provider", "xai", "--model", "grok-4.7", "--cwd", workspace]
+    preview = run!(wrapper, args, release, env, "Grok setup preview")
+    true = String.contains?(preview, "api billing")
+    false = String.contains?(preview, "installed-grok-fixture-key")
+    false = File.exists?(home)
+    run!(wrapper, args ++ ["--write"], release, env, "Grok private API setup")
+
+    report =
+      run!(
+        wrapper,
+        ["doctor", "--cwd", workspace, "--no-project-config", "--json"],
+        release,
+        env,
+        "Grok offline doctor"
+      )
+      |> :json.decode()
+
+    false = Enum.any?(report["checks"], &(&1["status"] == "fail"))
+    false = File.exists?(Path.join(home, "auth"))
+
+    {refusal, 1} =
+      System.cmd(wrapper, ["login", "--provider", "xai_oauth"],
+        cd: release,
+        env: env,
+        stderr_to_stdout: true
+      )
+
+    true = String.contains?(refusal, "approved Ipse client registration")
+    false = String.contains?(refusal, "installed-grok-fixture-key")
+    false = File.exists?(Path.join(home, "auth"))
+
+    IO.puts(
+      "PASS: installed Grok API setup/offline diagnosis and missing OAuth registration refusal; no model or authorization service contacted."
+    )
+  end
+
   defp verify_permissions!(launcher, release, env, root) do
     workspace = Path.join(root, "permissions-workspace")
     File.mkdir!(workspace)
@@ -453,6 +500,7 @@ defmodule Ipse.Development.Verification.Package do
 
     verify_doctor!(wrapper, release, env, home, default_workspace, version)
     verify_setup!(wrapper, release, env, root)
+    verify_xai!(wrapper, release, env, root)
     verify_permissions!(otp_launcher, release, env, root)
     verify_upgrade!(otp_launcher, release, env, root)
 

@@ -408,6 +408,19 @@ defmodule Ipse.Test.ProviderConformance.OpenAI do
   end
 end
 
+defmodule Ipse.Test.ProviderConformance.XAI do
+  def body(scenario) do
+    body = Ipse.Test.ProviderConformance.OpenAI.body(scenario)
+
+    if scenario in [:text, :tool, :parallel],
+      do: body <> Ipse.Test.ProviderFixture.sse("[DONE]"),
+      else: body
+  end
+
+  def replayed?(body, native, results),
+    do: Ipse.Test.ProviderConformance.OpenAI.replayed?(body, native, results)
+end
+
 defmodule Ipse.Test.ProviderConformance.Anthropic do
   alias Ipse.Test.ProviderFixture
 

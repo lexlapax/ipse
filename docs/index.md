@@ -19,6 +19,7 @@ quick start. Try the demo before configuring a model account.
 | Install, upgrade or remove a runtime bundle | [Install Ipse](operator/install.md) |
 | Start a conversation, approve changes and manage session permissions | [Use the terminal](operator/usage.md) |
 | Set an endpoint, profile or project policy | [Configure Ipse](operator/configuration.md) |
+| Choose Grok API billing or prepare registered-client subscription access | [Grok configuration](operator/configuration.md#use-grok-through-xai) |
 | Connect tools from another service | [Configure MCP](operator/mcp.md) |
 | Remember an explicit project note | [Use memory](operator/memory.md) |
 | Retain source text and retrieve exact passages | [Use a corpus](operator/corpus.md) |

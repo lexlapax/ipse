@@ -759,16 +759,17 @@ defmodule Ipse.Auth do
 
   @filename "chatgpt.json"
 
-  def with_credential_lock(dir, fun, timeout \\ 10_000) do
+  def with_credential_lock(dir, fun, timeout \\ 10_000, provider \\ :chatgpt)
+      when provider in [:chatgpt, :xai] do
     with :ok <- prepare_credential_dir(dir) do
-      lock = Path.join(dir, ".chatgpt.lock")
+      lock = Path.join(dir, ".#{provider}.lock")
       deadline = System.monotonic_time(:millisecond) + timeout
       acquire_credential_lock(lock, deadline, fun)
     end
   end
 
-  def read_credentials(dir) do
-    path = Path.join(dir, @filename)
+  def read_credentials(dir, provider \\ :chatgpt) when provider in [:chatgpt, :xai] do
+    path = Path.join(dir, if(provider == :chatgpt, do: @filename, else: "xai.json"))
 
     case File.lstat(path) do
       {:error, :enoent} ->
@@ -791,9 +792,11 @@ defmodule Ipse.Auth do
     end
   end
 
-  def write_credentials(dir, value) do
+  def write_credentials(dir, value, provider \\ :chatgpt) when provider in [:chatgpt, :xai] do
+    filename = if provider == :chatgpt, do: @filename, else: "xai.json"
+
     with true <- File.dir?(dir),
-         :ok <- Ipse.PrivateFile.write_atomic(Path.join(dir, @filename), Jason.encode!(value)) do
+         :ok <- Ipse.PrivateFile.write_atomic(Path.join(dir, filename), Jason.encode!(value)) do
       :ok
     else
       _ -> {:error, "Could not save protected ChatGPT credentials."}

@@ -112,6 +112,18 @@ features need separate effect/accounting contracts.
 
 ## Selected implementation shape
 
+The [public OpenAPI cap definition](output-cap.json) was checked during
+implementation. `max_output_tokens` covers visible text only, excluding reasoning
+and function calls. It cannot enforce Ipse's total-output reservation: both Grok
+routes must refuse `reserve_output_tokens`, while request-count policies remain
+available. The schema describes inclusive legacy totals, but its examples also
+show completion excluding reasoning. The selected normalizer requires a reported
+total that agrees with input+completion or input+completion+reasoning; otherwise
+output remains partial or inconsistent data is invalid. It does not guess a
+missing reasoning charge. The [OpenAPI source](https://docs.x.ai/openapi.json)
+also specifies a trailing `[DONE]`; accept that only after a complete Responses
+terminal event, never as a substitute for one.
+
 These are Ipse design decisions, not assertions that implementation has passed.
 
 | Work package | Change | Required evidence |
@@ -130,6 +142,23 @@ provider contract. A shared wire format is not shared token identity or replay
 authority.
 
 ## Open gates
+
+The implementation checkpoint now includes API/subscription registry entries,
+shared bounded Responses with xAI-native replay, issuer-bound device login,
+private locked refresh, setup/doctor and shell/measurement key filtering.
+The expanded focused set passes 341 cases (seed 493844, 64.7 seconds), and the
+real child/extension/Session set passes 78 cases before the final accounting
+refinement. A later 90-case affected set passes after rebuilding the native helper.
+Final full source/native/demo, installed and hosted gates remain pending.
+
+Initial verification failures are retained as distinct observations: a new
+resume fixture expected an absent `status` field and a last-turn `final` value
+that existing idle resume intentionally clears; the fixture now checks `phase`,
+historical model and unchanged request count. Existing Session behavior was not
+changed. A real shell control then reproduced forwarding of the newly introduced
+`XAI_API_KEY` through the helper's fixed scrub list. Adding it to shell and
+measurement filters and rebuilding closes that observed leak; MCP/extension
+environment admission already derives its blocked names from the registry.
 
 1. xAI must provide or document an Ipse client registration, approved device grant,
    scopes and entitlement/billing behavior. Implementing fixtures cannot close this

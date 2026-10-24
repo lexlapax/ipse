@@ -72,6 +72,7 @@ fixed issues/invalid counters. Unknown provider fields are discarded.
 | OpenAI/ChatGPT text | Inclusive input/output/total; cache and reasoning are subsets |
 | OpenRouter/compatible chat | Prompt/completion/total with cache and reasoning subsets; provider credit cost is ignored |
 | Gemini text | Input=prompt+tool-use prompt, output=candidates+thoughts; cached input and thoughts are subsets; missing summands stay partial |
+| Grok text | Modern Responses inclusive totals; reported legacy totals disambiguate whether completion includes reasoning; mixed dialects/contradictions invalid, missing evidence partial |
 | Anthropic text | Input sums uncached/cache-read/cache-create only when all are known; TTL subsets stay separate; output includes thinking |
 | Ollama | Prompt/generated evaluation counts, optional cached prompt, nanosecond duration |
 | Demo | Inapplicable |
@@ -161,6 +162,12 @@ can release unused booking down to observed peaks. Failure, cancellation, absent
 measurement, or uncertain settlement retains at least booking/peak. Billing bases
 cannot offset each other. Input/money bookings cannot guarantee actual in-flight
 charges. Unsupported subscription output quotas refuse rather than simulate a cap.
+Grok's Spec declares a visible-only cap: reasoning and function-call tokens are
+outside it. `Budget.request_config/1` refuses total-output reservations for both
+Grok billing routes. Request-count admission remains supported; no inference
+fallback is a way around this restriction. A completed native response may retain
+bounded provider-reported USD ticks, but canonical usage and cost estimates do
+not turn that value into an invoice or subscription balance.
 
 Embedding marks generated-output liability zero before dispatch while canonical
 output remains null/inapplicable. Applicable request/input/money still share the

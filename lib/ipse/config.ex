@@ -195,7 +195,11 @@ defmodule Ipse.Config do
 
     cond do
       Ipse.Provider.Registry.auth?(provider) && client.base_url ->
-        {:error, "Subscription credentials only go to the official OpenAI endpoint."}
+        {:error,
+         if(provider == :chatgpt,
+           do: "Subscription credentials only go to the official OpenAI endpoint.",
+           else: "xAI subscription credentials only go to the official xAI endpoint."
+         )}
 
       not Ipse.Provider.valid_base_url?(provider, base_url) ->
         {:error,

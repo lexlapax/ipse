@@ -62,8 +62,11 @@ defmodule Ipse.CLI.Terminal do
   ipse --version                  Show the application version
   ipse version [--json]           Show version or non-secret runtime build identity
   ipse login                      Continue with ChatGPT
+  ipse login --provider xai_oauth  Grok device login (registered Ipse client required)
   ipse status                     Show subscription sign-in status as JSON
   ipse logout                     Sign out of ChatGPT
+  ipse status --provider xai_oauth  Inspect Grok subscription sign-in
+  ipse logout --provider xai_oauth  Remove Grok subscription sign-in
   ipse chat [options]              Interactive conversation
   ipse run [options] "task"         Run one task
   ipse demo                        Scripted demo in a temporary directory

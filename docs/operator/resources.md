@@ -72,6 +72,11 @@ least 16. ChatGPT subscription does not support that public cap and refuses an
 output-token budget; omit both output fields for that route. A child must support
 its inherited effective cap before delegation starts.
 
+Grok (`xai` and `xai_oauth`) also refuses an output-token budget: its wire cap
+limits visible text but excludes reasoning and function calls. Use a request-count
+policy, or another provider with a suitable cap. See [Grok configuration](configuration.md#use-grok-through-xai)
+for explicit billing and subscription-registration prerequisites.
+
 Embeddings reserve no generated output tokens. Their request, input, and money
 liabilities still apply. Without a budget, Ipse creates no budget worker/ledger
 and adds no provider cap. Tools, MCP effects, external-service costs, audio, and
@@ -208,6 +213,18 @@ reported model version. Gemini input includes separate prompt and tool-use promp
 counts, and output includes candidates and thoughts. If the API omits a needed
 count, pricing remains partial/unpriced. Key presence establishes neither a free
 tier nor zero cost.
+
+Grok API rows use `provider: "xai"`, `billing_mode: "api"` and
+`basis: "api_estimate"`; subscription rows use `provider: "xai_oauth"`,
+`billing_mode: "subscription"` and `basis: "api_equivalent"`. Modern Responses
+output includes reasoning. Older prompt/completion-style examples differ in
+whether completion includes reasoning. Ipse uses the reported total to resolve
+that distinction and counts it once; missing evidence stays partial. Mixed
+counter dialects and contradictory totals refuse normalization. A valid provider-reported
+`cost_in_usd_ticks` is retained with a completed native response, separately from
+these configured estimates. It is not used as an invoice reconciliation or a
+subscription balance, and does not supply an aggregate price when a reviewed
+rate-card row is missing.
 
 For embeddings, use version 2 and declare `operation: "text"` or `"embedding"`
 on every row. Embedding rows use flat input and optionally `duration_second`;

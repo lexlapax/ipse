@@ -1,10 +1,14 @@
 # P28 and P29 implementation audit preparation
 
-Prepared 2026-10-24; the current combined candidate is `8ee16dc`, with exact live
-wire evidence at `492d091` and RC1 release preparation at `e944fcf`.
+Prepared 2026-10-24; the newest runtime increment adds
+[Grok API and registered-client OAuth](../2026-10-24-xai-provider-research/index.md)
+after `5bb5761`. Its frozen identity and final verification must be recorded
+before treating it as audit-ready. Earlier exact live wire evidence is at
+`492d091`, and RC1 release preparation is at `e944fcf`.
 This handoff is prepared for independent implementation review, not an external
-audit or a completeness verdict. P29's implementation and automated gates pass;
-P28's new approval verification, final release acceptance and stable publication remain open.
+audit or a completeness verdict. P29's original registry/Gemini/OpenRouter gates
+pass; its newly authorized Grok scope remains under verification. Final release
+acceptance and stable publication remain open.
 The developer has authorized the [approval UX implementation](../2026-10-24-approval-implementation/index.md)
 before external audit. Its candidate and fresh verification supersede the old
 baseline only when explicitly recorded in the [new receipt](../2026-10-24-approval-implementation/verification.json);
@@ -116,20 +120,23 @@ earlier successful platforms do not prove later code.
 
 ## Candidate identity and verified scope
 
-The runtime candidate is `8ee16dc538912b01e05281fa84551472772be253`. Its complete
-local installed proof passes, including the new permission controls. Its full
-native-inclusive source suite and hosted run 40112830571 are still running;
-consult the current receipt before treating them as passed. The approval-only
-`48a42d8` candidate passes 1720 tests with 19 excluded, seed 45144, plus an isolated
-demo. Its superseded hosted run is cancelled, not a platform pass. The older
-`9c5eb6a` full source/installed/hosted successes remain historical evidence.
+The approval/default-mode baseline `dac11dc` passes the complete local and
+[hosted Linux/macOS matrix](../2026-10-24-approval-implementation/dac-hosted.json).
+The successor `5bb5761` changes initial ChatGPT `agent_name_hint` to `ipse@HOST`
+while preserving returning registrations. Its local native-inclusive suite and
+installed proof pass; consult the current receipt for its hosted result.
+`8ee16dc` and its cancelled run 40112830571 are superseded, not still running.
+Earlier successful `48a42d8` and `9c5eb6a` checks retain their narrower scopes.
 
-Provider, HTTP, usage and profile source remains unchanged from `9c5eb6a`.
-Successful wire handling traces to the exact live-tested `492d091`; intervening
-provider changes refine invalid-cap and late identity-refusal messages. Auth's
-new hostname guidance changes display, not OAuth requests or identity validation.
-Inspect those differences rather than calling the live receipt an exact-final-build
-test. Later documentation-only commits can embed a later build identity without
+The new Grok increment changes registry, shared Responses handling, OAuth/storage,
+setup/doctor, output-budget admission and native secret filtering. Its
+[research/work packages](../2026-10-24-xai-provider-research/index.md) extend the
+original brief explicitly. Inspect API/subscription credential isolation,
+foreign ciphertext refusal, trailing stream marker admission, legacy reasoning
+accounting, visible-only output caps and unknown rotating-refresh outcomes.
+There is no Ipse xAI client registration yet and no Grok live inference result.
+The older Gemini/OpenRouter live receipt does not verify Grok or new auth code.
+Later documentation-only commits can embed a later build identity without
 changing runtime source; distinguish them from the tested binary. Preserve the
 unrelated working-copy edit in `docs/operator/usage.md` and `.claude/`.
 
@@ -159,8 +166,9 @@ available; the automated upgrade proof remains separate evidence.
 The inspected draft has been deleted on explicit developer authorization, with
 downloaded bytes/checksums, the RC tag and workflow facts retained.
 Final `v0.1.0` tag/publication belongs to the developer after WP6
-acceptance and inspection. These are explicit open P28 gates; P29's code and
-verification scope is complete.
+acceptance and inspection. These are explicit open P28 gates. P29's original
+scope passed its own gates; the selected Grok increment needs final verification
+and an explicit disposition of unavailable registration/live-account evidence.
 
 The independent auditor should check every brief item and return requirement-level
 findings with file/line evidence, commands actually run, severity/consequence and

@@ -1,5 +1,5 @@
 defmodule Ipse.Provider.OpenAI do
-  @moduledoc "Stateless Responses API adapter; retains native reasoning and function call items."
+  @moduledoc "Stateless Responses API adapter with provider-bound native continuation."
   alias Ipse.Provider.Stream
   alias Ipse.Provider.Transport
 
@@ -7,13 +7,14 @@ defmodule Ipse.Provider.OpenAI do
     do:
       Ipse.Provider.endpoint(
         config,
-        Ipse.Provider.Registry.fetch!(:openai).default_base_url,
+        Ipse.Provider.Registry.fetch!(config[:provider] || :openai).default_base_url,
         "/responses"
       )
 
   def complete(config, messages, tools, emit) do
     if config[:api_key] in [nil, ""] do
-      {:error, "OpenAI credentials are missing. Sign in or configure an API key."}
+      {:error,
+       "#{label(config[:provider])} credentials are missing. Sign in or configure an API key."}
     else
       url = endpoint(config)
 
@@ -22,21 +23,41 @@ defmodule Ipse.Provider.OpenAI do
         {"accept", "text/event-stream"}
       ]
 
-      with {:ok, state} <-
-             Transport.stream(
-               url,
-               headers,
-               request_body(config, messages, tools),
-               config,
-               new(config[:provider]),
-               fn state, chunk -> consume(state, chunk, emit) end
-             ) do
-        finish(state)
+      result =
+        with {:ok, state} <-
+               Transport.stream(
+                 url,
+                 headers,
+                 request_body(config, messages, tools),
+                 config,
+                 new(config[:provider]),
+                 fn state, chunk -> consume(state, chunk, emit) end
+               ) do
+          finish(state)
+        end
+
+      case result do
+        {:error, message} when config.provider in [:xai, :xai_oauth] and is_binary(message) ->
+          {:error, String.replace_prefix(message, "OpenAI", "Grok / xAI")}
+
+        other ->
+          other
       end
     end
   end
 
   def request_body(config, messages, tools) do
+    if config[:provider] in [:xai, :xai_oauth] and
+         Enum.any?(messages, fn message ->
+           case message["provider_data"] do
+             %{"provider" => source} -> source != "xai"
+             _ -> false
+           end
+         end) do
+      raise ArgumentError,
+            "Grok history contains another provider's native continuation; use a reviewed handoff."
+    end
+
     input = Enum.flat_map(messages, &input(&1, config[:provider]))
 
     input =
@@ -94,12 +115,18 @@ defmodule Ipse.Provider.OpenAI do
   defp input(
          %{
            "role" => "assistant",
-           "provider_data" => %{"provider" => "openai", "output" => output}
+           "provider_data" => %{"provider" => source, "output" => output}
          },
-         _provider
+         provider
        )
-       when is_list(output),
-       do: output
+       when is_list(output) do
+    if source == replay_key(provider) do
+      output
+    else
+      raise ArgumentError,
+            "Responses history belongs to a different provider; start a fresh session or use a reviewed handoff."
+    end
+  end
 
   defp input(%{"role" => "assistant"} = message, _provider) do
     text =
@@ -129,12 +156,17 @@ defmodule Ipse.Provider.OpenAI do
 
   def consume(state, chunk, emit) do
     handler = fn event, state ->
-      with {:ok, state} <- Stream.tick(state),
-           {:ok, data} when is_map(data) <- Jason.decode(event.data) do
-        event(state, data, emit)
+      with {:ok, state} <- Stream.tick(state) do
+        if event.data == "[DONE]" and state.provider in [:xai, :xai_oauth] and state.terminal do
+          {:ok, state}
+        else
+          case Jason.decode(event.data) do
+            {:ok, data} when is_map(data) -> event(state, data, emit)
+            _ -> {:error, "Invalid JSON in provider stream."}
+          end
+        end
       else
         {:error, message} when is_binary(message) -> {:error, message}
-        _ -> {:error, "Invalid JSON in provider stream."}
       end
     end
 
@@ -242,10 +274,11 @@ defmodule Ipse.Provider.OpenAI do
       message = %{
         "role" => "assistant",
         "content" => text,
-        "provider_data" => %{"provider" => "openai", "output" => output}
+        "provider_data" => %{"provider" => replay_key(state.provider), "output" => output}
       }
 
       message = put_reported_model(message, response["model"])
+      message = put_reported_cost(message, state.provider, response["usage"])
 
       message = if calls == [], do: message, else: Map.put(message, "tool_calls", calls)
       with :ok <- Stream.check_deadline(state), do: {:ok, message, response["usage"] || %{}}
@@ -273,4 +306,16 @@ defmodule Ipse.Provider.OpenAI do
       model -> put_in(message, ["provider_data", "reported_model"], model)
     end
   end
+
+  defp replay_key(nil), do: "openai"
+  defp replay_key(provider), do: Ipse.Provider.Registry.fetch!(provider).replay_key
+  defp label(provider) when provider in [:xai, :xai_oauth], do: "Grok / xAI"
+  defp label(_), do: "OpenAI"
+
+  defp put_reported_cost(message, provider, %{"cost_in_usd_ticks" => ticks})
+       when provider in [:xai, :xai_oauth] and is_integer(ticks) and ticks >= 0 and
+              ticks <= 9_007_199_254_740_991,
+       do: put_in(message, ["provider_data", "reported_cost_usd_ticks"], ticks)
+
+  defp put_reported_cost(message, _, _), do: message
 end

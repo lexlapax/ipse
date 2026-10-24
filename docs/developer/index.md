@@ -72,7 +72,7 @@ they must not acquire a host dependency merely to share a small predicate.
 | Learning task | Chapter |
 | --- | --- |
 | Follow turns, questions, child conversations, and approvals | [Architecture](architecture.md) |
-| Resolve/preview settings, extend provider specs and signed wire contracts, diagnose setup and bound requests | [Configuration](configuration.md) |
+| Resolve/preview settings, extend provider specs and native wire/auth contracts, diagnose setup and bound requests | [Configuration](configuration.md) |
 | Snapshot instructions/skills and compact active context | [Workspace and context](workspace-context.md) |
 | Change journals, recovery, locks, or saved-result capacity | [Persistence](persistence.md) |
 | Restore canonical usage and reserve shared budget liability | [Accounting](accounting.md) |

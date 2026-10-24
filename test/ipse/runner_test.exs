@@ -176,7 +176,8 @@ defmodule Ipse.RunnerTest do
       "IPSE_CHATGPT_ACCESS_TOKEN",
       "OPENROUTER_API_KEY",
       "GEMINI_API_KEY",
-      "GOOGLE_API_KEY"
+      "GOOGLE_API_KEY",
+      "XAI_API_KEY"
     ]
 
     previous = Map.new(keys, &{&1, System.get_env(&1)})
@@ -190,7 +191,7 @@ defmodule Ipse.RunnerTest do
 
     assert {:ok, result} =
              Runner.run(
-               "printf '%s%s%s%s%s%s' \"$OPENAI_API_KEY\" \"$ANTHROPIC_API_KEY\" \"$IPSE_CHATGPT_ACCESS_TOKEN\" \"$OPENROUTER_API_KEY\" \"$GEMINI_API_KEY\" \"$GOOGLE_API_KEY\"",
+               "printf '%s%s%s%s%s%s%s' \"$OPENAI_API_KEY\" \"$ANTHROPIC_API_KEY\" \"$IPSE_CHATGPT_ACCESS_TOKEN\" \"$OPENROUTER_API_KEY\" \"$GEMINI_API_KEY\" \"$GOOGLE_API_KEY\" \"$XAI_API_KEY\"",
                cwd
              )
 

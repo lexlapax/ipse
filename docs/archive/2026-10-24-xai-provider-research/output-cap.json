@@ -1,0 +1,16 @@
+{
+  "source": "https://docs.x.ai/openapi.json",
+  "record_version": 1,
+  "retrieved_on": "2026-10-24",
+  "source_sha256": "f34f5c20564fefd1869ce9c91b2f3926abf735b2c50df8956712c0511fd95280",
+  "schema_pointer": "/components/schemas/ModelRequest/properties/max_output_tokens",
+  "schema": {
+    "description": "Max number of tokens that can be generated in a response. Only applies to visible output tokens (i.e. does not apply to tokens used for reasoning or function calls). Defaults to 128,000 when unset; set a larger value to allow longer generations.",
+    "format": "int32",
+    "type": [
+      "integer",
+      "null"
+    ]
+  },
+  "decision": "Visible-text cap is not a total-output reservation including reasoning and function calls"
+}

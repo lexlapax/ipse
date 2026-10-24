@@ -118,7 +118,7 @@ defmodule Ipse.CLI do
     0
   end
 
-  defp dispatch(["login"], _opts), do: report(Ipse.Auth.login(auth_dir()))
+  defp dispatch(["login"], opts), do: auth_command(:login, opts)
 
   defp dispatch(["doctor"], opts) do
     {code, report} = Ipse.CLI.Doctor.run(opts, home(), opts[:cwd] || default_cwd())
@@ -144,18 +144,9 @@ defmodule Ipse.CLI do
     end
   end
 
-  defp dispatch(["logout"], _opts), do: report(Ipse.Auth.logout(auth_dir()))
+  defp dispatch(["logout"], opts), do: auth_command(:logout, opts)
 
-  defp dispatch(["status"], _opts) do
-    case Ipse.Auth.status(auth_dir()) do
-      {:ok, status} ->
-        Terminal.puts(Jason.encode!(status, pretty: true))
-        0
-
-      {:error, error} ->
-        report({:error, error})
-    end
-  end
+  defp dispatch(["status"], opts), do: auth_command(:status, opts)
 
   defp dispatch(["sessions"], opts) do
     if opts[:json] do
@@ -519,8 +510,34 @@ defmodule Ipse.CLI do
   defp credential(provider) do
     case Ipse.Provider.Registry.fetch(provider) do
       {:ok, %{credential: :chatgpt_auth}} -> Ipse.Auth.token(auth_dir())
+      {:ok, %{credential: :xai_auth}} -> Ipse.Auth.XAI.token(auth_dir())
       {:ok, %{credential: {:env, name}}} -> env_key(name)
       _ -> {:ok, nil}
+    end
+  end
+
+  defp auth_command(action, opts) do
+    auth =
+      case opts[:provider] do
+        value when value in [nil, "chatgpt"] -> Ipse.Auth
+        "xai_oauth" -> Ipse.Auth.XAI
+        _ -> nil
+      end
+
+    result =
+      if auth,
+        do: apply(auth, action, [auth_dir()]),
+        else:
+          {:error,
+           "Sign-in commands require provider chatgpt or xai_oauth. API keys are configured separately."}
+
+    case {action, result} do
+      {:status, {:ok, status}} ->
+        Terminal.puts(Jason.encode!(status, pretty: true))
+        0
+
+      {_, other} ->
+        report(other)
     end
   end
 

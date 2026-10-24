@@ -49,7 +49,38 @@ It distinguishes xAI API-key billing from subscription OAuth and records the
 missing Ipse registration prerequisite. Reuse bounded protocol owners while
 keeping native replay and credentials provider-specific; an OpenAI-compatible
 wire format does not make opaque continuation transferable between providers.
-Current registry examples below describe implemented providers.
+The xAI entries use separate credentials/billing with a shared xAI replay
+namespace. The stateless Responses owner in `provider/openai.ex` selects its
+endpoint/replay key from the registry; the existing OpenAI/ChatGPT manifests stay
+unchanged. xAI permits its trailing `[DONE]` only after `response.completed`.
+An early marker or EOF still refuses tool execution. Foreign native output
+cannot be flattened into another provider's request.
+
+Modern xAI input/output counters use the Responses contract. Legacy documentation
+contains an example where reasoning is separate from completion, alongside a
+schema description of inclusive totals. The normalizer requires the reported
+total to disambiguate: use completion directly when input+completion agrees, or
+add reasoning when input+completion+reasoning agrees. Missing evidence stays
+partial; contradictory totals and mixed dialects refuse instead of guessing. The visible-only output limit is
+declared in the Spec; Budget refuses using it for a total-output reservation.
+Private native metadata retains a bounded reported USD-tick cost separately
+from configured aggregate estimates. That value is not an invoice reconciliation.
+Exercise these boundaries with `mix test test/ipse/provider/xai_test.exs` and
+the shared conformance set before changing them.
+
+`Auth.XAI` owns registered-client RFC 8628 login and RFC 7009 revocation, independently
+of ChatGPT's registration/JWT identity contract. It uses only fixed issuer
+endpoints, an explicitly supplied public client ID and minimal API/offline scopes.
+It does not perform dynamic registration or borrow another app's identity. Shared
+private-file and retained OS-lock helpers admit closed `:chatgpt`/`:xai`
+namespaces, preserving the existing ChatGPT paths. Mark refresh pending durably
+before dispatch: a transport interruption or owner death cannot justify replaying
+a rotating refresh token. A successful response must be saved before returning
+its access token. Status/doctor never refresh. Device polling fixtures check
+pending, slow-down, expiry and denial; rotation fixtures check concurrent callers
+and unknown outcome recovery. Run `mix test test/ipse/auth/xai_test.exs test/ipse/auth_test.exs`.
+Fixture success does not establish xAI's approval of an Ipse registration or a
+subscription entitlement.
 Pre-refactor fixtures compare full Config manifests, destinations, canonical usage
 and cost, then restore old journals and request-free legacy sessions without
 mutation. Updating goldens to match a refactor removes that protection; investigate
@@ -236,7 +267,7 @@ URLs still cannot contain a query. Existing-provider golden digests are unchange
 
 Provider owns `validate_output_limit/1`, `output_tokens/1`, and
 `narrow_output_tokens/2`. Absence adds no wire field. OpenAI API permits
-16..1000000; Anthropic/Ollama/Gemini/OpenRouter/compatible permit 1..1000000. ChatGPT subscription/demo refuse
+16..1000000; Anthropic/Ollama/Gemini/OpenRouter/compatible/Grok permit 1..1000000. ChatGPT subscription/demo refuse
 explicit caps without dropping them or switching billing.
 
 | Adapter | Effective field |
@@ -246,6 +277,7 @@ explicit caps without dropping them or switching billing.
 | Ollama Chat | `options.num_predict`, narrowed by existing summary options |
 | OpenRouter/compatible Chat Completions | `max_tokens` |
 | Gemini GenerateContent | `generationConfig.maxOutputTokens` |
+| Grok Responses, API or registered OAuth | `max_output_tokens`, visible text only; total-output budget reservations refuse |
 | ChatGPT subscription | Unsupported; refusal before dispatch |
 
 In IEx:

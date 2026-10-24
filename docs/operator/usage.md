@@ -38,6 +38,8 @@ run announce the built-in ChatGPT subscription default before checking access.
 | Anthropic API | Set `ANTHROPIC_API_KEY` privately and choose an available model | `ipse chat --provider anthropic --model YOUR_MODEL --cwd /path/to/project` |
 | Gemini API | Set `GEMINI_API_KEY` privately; choose an explicit model and review project billing | `ipse chat --config /private/path/gemini.json --profile gemini --cwd /path/to/project` |
 | OpenRouter API | Set `OPENROUTER_API_KEY` privately; save a model/upstream profile | `ipse chat --config /private/path/router.json --profile router --cwd /path/to/project` |
+| Grok API | Set `XAI_API_KEY` privately and choose API billing explicitly | `ipse chat --provider xai --model grok-4.7 --cwd /path/to/project` |
+| Grok subscription | Obtain an approved Ipse registration from xAI and follow [device sign-in](configuration.md#use-grok-through-xai); live access is unverified | `ipse chat --provider xai_oauth --model grok-4.7 --cwd /path/to/project` |
 | Local compatible server | Start a Chat Completions service on explicit loopback; no credential is sent | `ipse chat --provider openai_compatible --model YOUR_LOCAL_MODEL --base-url http://127.0.0.1:8080/v1 --cwd /path/to/project` |
 
 ChatGPT login uses Ipse's public sign-in flow. The browser must reach the temporary

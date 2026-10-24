@@ -25,6 +25,7 @@ defmodule Ipse.Provider.Spec do
     profile_fields: %{},
     profile_defaults: %{},
     route_fields: [],
+    output_limit_scope: :all_output,
     structured_output?: false,
     summary_schema?: false,
     http_hints: %{},
@@ -198,6 +199,52 @@ defmodule Ipse.Provider.Registry do
       route_fields: [{"upstream", :upstream}, {"data_collection", :data_collection}]
     },
     %Spec{
+      id: "xai",
+      atom: :xai,
+      adapter: Ipse.Provider.OpenAI,
+      replay_key: "xai",
+      default_base_url: "https://api.x.ai/v1",
+      base_url_policy: :https_or_loopback,
+      credential: {:env, "XAI_API_KEY"},
+      billing_mode: "api",
+      output_limit: 1..1_000_000,
+      output_limit_scope: :visible,
+      reasoning: &__MODULE__.xai_reasoning/2,
+      usage_extractor: &__MODULE__.xai_usage/1,
+      secret_env: ["XAI_API_KEY"],
+      label: "Grok / xAI API (billed)",
+      probe: {"/models", :bearer},
+      http_hints: %{
+        401 => "Check XAI_API_KEY; subscription credentials are a separate route.",
+        403 => "Check xAI team, model and endpoint permissions; billing was not changed.",
+        429 => "xAI rate or token quota reached; no fallback was attempted.",
+        :server => "xAI is unavailable; nothing was retried."
+      }
+    },
+    %Spec{
+      id: "xai_oauth",
+      atom: :xai_oauth,
+      adapter: Ipse.Provider.OpenAI,
+      replay_key: "xai",
+      default_base_url: "https://api.x.ai/v1",
+      base_url_policy: :fixed,
+      credential: :xai_auth,
+      billing_mode: "subscription",
+      output_limit: 1..1_000_000,
+      output_limit_scope: :visible,
+      reasoning: &__MODULE__.xai_reasoning/2,
+      usage_extractor: &__MODULE__.xai_usage/1,
+      label: "Grok / xAI subscription (registered Ipse client required)",
+      probe: :subscription,
+      http_hints: %{
+        401 => "Check xAI subscription sign-in; no API-key fallback was attempted.",
+        403 =>
+          "xAI refused client or subscription entitlement; successful browser login does not prove model access.",
+        429 => "xAI subscription or model limit reached; no API-key fallback was attempted.",
+        :server => "xAI is unavailable; nothing was retried."
+      }
+    },
+    %Spec{
       id: "openai_compatible",
       atom: :openai_compatible,
       adapter: Ipse.Provider.ChatCompletions,
@@ -251,7 +298,9 @@ defmodule Ipse.Provider.Registry do
   def credentials, do: Map.new(@specs, &{&1.id, credential_reference(&1.credential)})
   def billing, do: Map.new(@specs, &{&1.atom, &1.billing_mode})
   # Rate-card enums preserve their historical presentation order.
-  def rate_card_ids, do: ~w(openai chatgpt anthropic ollama gemini openrouter openai_compatible)
+  def rate_card_ids,
+    do: ~w(openai chatgpt anthropic ollama gemini openrouter openai_compatible xai xai_oauth)
+
   def billing_modes, do: rate_card_ids() |> Enum.map(&fetch!(&1).billing_mode) |> Enum.uniq()
   def cost_bases, do: billing_modes() |> Enum.map(&cost_basis/1)
   def cost_basis("api"), do: "api_estimate"
@@ -267,6 +316,7 @@ defmodule Ipse.Provider.Registry do
   end
 
   def credential_reference(:chatgpt_auth), do: "ipse-auth"
+  def credential_reference(:xai_auth), do: "ipse-xai-auth"
   def credential_reference({:env, name}), do: name
   def credential_reference(:none), do: "none"
 
@@ -372,6 +422,75 @@ defmodule Ipse.Provider.Registry do
   def gemini_reasoning(_, _),
     do: {:error, "Gemini supports low, medium or high reasoning; none omits the control."}
 
+  def xai_reasoning(model, effort)
+      when model in ~w(grok-4.7 grok-4.6) and effort in ~w(low medium high xhigh),
+      do: :ok
+
+  def xai_reasoning("grok-4.5", effort) when effort in ~w(low medium high), do: :ok
+  def xai_reasoning(_, _), do: unsupported_reasoning()
+
+  def xai_usage(raw) do
+    legacy? =
+      Enum.any?(
+        ~w(prompt_tokens completion_tokens prompt_tokens_details completion_tokens_details),
+        &Map.has_key?(raw, &1)
+      )
+
+    modern? =
+      Enum.any?(
+        ~w(input_tokens output_tokens input_tokens_details output_tokens_details),
+        &Map.has_key?(raw, &1)
+      )
+
+    cond do
+      legacy? and modern? ->
+        :error
+
+      legacy? ->
+        extract(Map.put(raw, "ipse_output_tokens", xai_legacy_output(raw)), %{
+          "input_tokens" => ["prompt_tokens"],
+          "output_tokens" => ["ipse_output_tokens"],
+          "total_tokens" => ["total_tokens"],
+          "input_cached_tokens" => ["prompt_tokens_details", "cached_tokens"],
+          "output_reasoning_tokens" => ["completion_tokens_details", "reasoning_tokens"]
+        })
+
+      true ->
+        responses_usage(raw)
+    end
+  end
+
+  defp xai_legacy_output(raw) do
+    input = raw["prompt_tokens"]
+    visible = raw["completion_tokens"]
+    reasoning = get_in(raw, ["completion_tokens_details", "reasoning_tokens"])
+    total = raw["total_tokens"]
+
+    cond do
+      Enum.any?(
+        [input, visible, reasoning, total],
+        &(not is_nil(&1) and not Ipse.JSON.safe_uint?(&1))
+      ) ->
+        :invalid
+
+      is_nil(visible) ->
+        nil
+
+      is_integer(input) and is_integer(total) ->
+        cond do
+          total == input + visible and (is_nil(reasoning) or reasoning <= visible) -> visible
+          is_integer(reasoning) and total == input + visible + reasoning -> visible + reasoning
+          true -> :invalid
+        end
+
+      reasoning == 0 ->
+        visible
+
+      true ->
+        nil
+    end
+  end
+
   def gemini_usage(raw),
     do:
       extract(raw, %{
@@ -425,7 +544,12 @@ defmodule Ipse.Provider.Registry do
   def embedding?(provider),
     do: match?({:ok, %Spec{embedding: value}} when not is_nil(value), fetch(provider))
 
-  def auth?(provider), do: match?({:ok, %Spec{credential: :chatgpt_auth}}, fetch(provider))
+  def auth?(provider),
+    do:
+      match?(
+        {:ok, %Spec{credential: credential}} when credential in [:chatgpt_auth, :xai_auth],
+        fetch(provider)
+      )
 
   def reasoning(_, _, nil), do: :ok
 

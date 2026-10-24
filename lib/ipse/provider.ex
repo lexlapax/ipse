@@ -109,7 +109,11 @@ defmodule Ipse.Provider do
     if Registry.auth?(config[:provider]) and
          base != Registry.fetch!(config[:provider]).default_base_url and
          not test_endpoint?(base) do
-      raise ArgumentError, "Subscription credentials only go to the official OpenAI endpoint."
+      raise ArgumentError,
+            if(config[:provider] == :chatgpt,
+              do: "Subscription credentials only go to the official OpenAI endpoint.",
+              else: "xAI subscription credentials only go to the official xAI endpoint."
+            )
     end
 
     String.trim_trailing(base, "/") <> suffix
@@ -197,13 +201,17 @@ defmodule Ipse.Provider do
       )
 
     credentials =
-      if Registry.auth?(config.provider) do
-        case Ipse.Auth.token(config.auth_dir) do
-          {:ok, token} -> {:ok, Map.put(config, :api_key, token)}
-          error -> error
-        end
-      else
-        {:ok, Map.put_new(config, :api_key, environment_key(config.provider))}
+      case Registry.fetch!(config.provider).credential do
+        credential when credential in [:chatgpt_auth, :xai_auth] ->
+          auth = if credential == :chatgpt_auth, do: Ipse.Auth, else: Ipse.Auth.XAI
+
+          case auth.token(config.auth_dir) do
+            {:ok, token} -> {:ok, Map.put(config, :api_key, token)}
+            error -> error
+          end
+
+        _ ->
+          {:ok, Map.put_new(config, :api_key, environment_key(config.provider))}
       end
 
     with {:ok, config} <- credentials, do: provider.complete(config, messages, tools, emit)
@@ -233,7 +241,7 @@ defmodule Ipse.Provider do
       is_nil(value) ->
         :ok
 
-      Registry.auth?(provider) ->
+      provider == :chatgpt ->
         {:error,
          "ChatGPT subscription does not support max_output_tokens; no provider or billing fallback was attempted."}
 

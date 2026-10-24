@@ -679,7 +679,12 @@ defmodule Ipse.Usage.Budget do
             Ipse.Provider.narrow_output_tokens(config[:max_output_tokens], reserve)
           )
 
-        with :ok <- Ipse.Provider.validate_output_limit(capped), do: {:ok, capped}
+        if Ipse.Provider.Registry.fetch!(config.provider).output_limit_scope == :visible do
+          {:error,
+           "The selected provider caps visible text only, excluding reasoning and function calls. A total-output token reservation cannot be enforced; choose a request-count policy or another provider."}
+        else
+          with :ok <- Ipse.Provider.validate_output_limit(capped), do: {:ok, capped}
+        end
 
       _ ->
         {:ok, config}

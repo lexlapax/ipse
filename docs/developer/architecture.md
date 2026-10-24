@@ -105,8 +105,10 @@ and [persistence](persistence.md) when choosing which limit to change.
 [`Provider.request_complete/4`](../../lib/ipse/provider.ex) resolves the selected
 route and credentials, then calls its adapter. The example's `provider_module`
 hook substitutes a controlled transport; it is not an operator configuration
-field or fallback provider. Production OpenAI, Anthropic, and Ollama adapters
-retain separate wire formats and provider continuation data.
+field or fallback provider. Native adapters retain separate wire formats and
+provider continuation data. OpenAI/ChatGPT and Grok share bounded Responses
+machinery with distinct native replay namespaces; a shared wire format does not
+make their encrypted continuation or credentials interchangeable.
 
 A provider returns assistant data separately from usage metadata. Preserve native
 continuation when changing visible text, and never render hidden reasoning.
@@ -117,6 +119,12 @@ private Finch clients and proxy policy across inference, auth, and MCP. A monito
 guardian keeps each bounded pool name until its client and descendants close.
 [`Auth`](../../lib/ipse/auth.ex) owns public login, identity validation, protected
 storage, and refresh locking. No failure silently changes billing or endpoint.
+[`Auth.XAI`](../../lib/ipse/auth/xai.ex) separately owns registered-client device
+authorization and opaque bearer credentials. It reuses protected files and OS
+locks with its own filename/lock namespace. A pending rotating refresh is marked
+durably before dispatch; interruption requires reauthorization rather than replay.
+Its `status` and offline doctor perform no refresh. See
+[provider training](configuration.md) for wire, usage and registration boundaries.
 During login, Auth samples a bounded short hostname once as `ipse@HOST` and uses
 it as `agent_name_hint` on initial registration and in the terminal display.
 The browser can edit that suggestion. Returning authorization omits the name hint;

@@ -95,7 +95,7 @@ third-party OAuth precedent; an Ipse client registration is still required.
 | [P26: memory baseline](#p26-optional-working-and-long-term-memory) | Complete within explicit-note scope at `25f1d8e`; review repairs and local/hosted gates pass | Preserve lifecycle, authority and documented retention limits |
 | [P27: research, graph and RAG](#p27-optional-research-graph-and-rag) | Complete; all acceptance tasks closed within optional-package scope; hybrid qualified and selected | Preserve versioned evidence and explicit configuration; evaluate new workloads independently |
 | [P28: operator usability and release](#p28-operator-usability-and-release-readiness) | Selected; implementation in progress | First-run setup, environment diagnosis, actionable errors and a tagged, installable release |
-| [P29: provider registry, OpenRouter and Gemini](#p29-provider-registry-openrouter-and-gemini) | Complete at `9c5eb6a`; local/native/installed and hosted Ubuntu/macOS pass | Preserve explicit routing, private continuation and honest accounting; independent completeness audit pending |
+| [P29: provider registry, OpenRouter and Gemini](#p29-provider-registry-openrouter-and-gemini) | Original scope complete at `9c5eb6a`; Grok API/OAuth follow-up implemented, verification in progress | Complete Grok gates and record missing Ipse OAuth registration before external audit |
 | [P30: decision engines](#p30-advisory-decision-engines) | Proposed | Typed closed-answer contract, fixture engines, then OpenAI Decisions and SystemOne-compatible adapters |
 | [P31: voice and media](#p31-voice-and-realtime-media) | Deferred; unimplemented; P28 in archived records | Explicit media contracts and later device/service validation |
 | [Apache-2.0 transition](#license-transition) | Complete; local and hosted `7bb642b` checks pass | Preserve bundled identity/recovery and third-party license boundaries |
@@ -771,6 +771,16 @@ Hermes announcement does not grant Ipse its client identity. Require an approved
 Ipse client ID, and refuse missing registration before network access. Do not
 borrow another app's ID or saved tokens. Document registration and entitlement
 as open external gates; fixture success cannot establish subscriber eligibility.
+
+The working implementation adds both routes, provider-bound Responses, minimal
+registered-client device authorization with locked rotating credentials, private
+setup/doctor, explicit billing and native-replay isolation. xAI's public OpenAPI
+schema clarifies that the output cap excludes reasoning and function calls; total-
+output reservations therefore refuse. Reported legacy totals disambiguate whether
+completion includes reasoning, counting it once; missing evidence stays partial
+and mixed dialects/contradictions are invalid.
+Reported USD ticks remain separate from aggregate rate-card estimates. Focused
+source and integration checks pass; full final verification is still required.
 
 Acceptance: unchanged existing-provider golden fixtures; Grok Responses
 conformance and native replay/privacy; device/refresh/expiry/denial/rotation and

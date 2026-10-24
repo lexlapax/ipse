@@ -711,6 +711,81 @@ defmodule Ipse.Extension.InvocationTest do
     assert File.read!(ctx.called) == calls
   end
 
+  test "Grok extension inference uses its selected key and retains opaque output privately",
+       ctx do
+    previous = System.get_env("XAI_API_KEY")
+    System.put_env("XAI_API_KEY", "helper-xai-fixture-key")
+
+    on_exit(fn ->
+      if previous,
+        do: System.put_env("XAI_API_KEY", previous),
+        else: System.delete_env("XAI_API_KEY")
+    end)
+
+    native = [
+      %{"type" => "reasoning", "encrypted_content" => "PRIVATE_XAI_HELPER", "summary" => []},
+      %{
+        "type" => "message",
+        "role" => "assistant",
+        "content" => [%{"type" => "output_text", "text" => "entities"}]
+      }
+    ]
+
+    body =
+      Ipse.Test.ProviderFixture.sse([
+        %{
+          "type" => "response.completed",
+          "response" => %{
+            "status" => "completed",
+            "model" => "grok-fixture",
+            "output" => native,
+            "usage" => %{
+              "input_tokens" => 7,
+              "output_tokens" => 3,
+              "total_tokens" => 10,
+              "cost_in_usd_ticks" => 12345
+            }
+          }
+        },
+        "[DONE]"
+      ])
+
+    {base, server} = Ipse.Test.ProviderFixture.start(body)
+    config = model_config(ctx.config, base)
+
+    config =
+      put_in(config, [:profiles, "extract"], %{
+        "provider" => "xai",
+        "model" => "grok-4.7",
+        "base_url" => base,
+        "max_output_tokens" => 32
+      })
+
+    pid = start(%{ctx | config: config})
+    :ok = host_command(pid, model_request())
+    assert_receive {:ipse, ^pid, {:approval, ref, "extension:model.complete", proposed}}, 3000
+    assert proposed["execution"]["provider"] == "xai"
+    assert proposed["execution"]["billing_mode"] == "api"
+    assert :ok = Session.approve(pid, ref, true)
+    assert_receive {:ipse, ^pid, {:done, :ok}}, 5000
+    {headers, payload} = Task.await(server)
+    assert headers =~ "authorization: Bearer helper-xai-fixture-key"
+    refute headers =~ "main-only-fixture"
+    assert payload["store"] == false
+    assert payload["tools"] == []
+    assert payload["max_output_tokens"] == 32
+    assert %{"status" => "ok", "value" => value} = host_outcome(pid)
+    assert value["text"] == "entities"
+    assert value["usage"]["counts"]["total_tokens"] == 10
+    refute Jason.encode!(value) =~ "PRIVATE_XAI_HELPER"
+    refute_receive {:ipse, ^pid, {:text, _}}, 20
+    {:ok, events} = Journal.load(ctx.dir, Session.info(pid).id)
+    assert :ok = Ipse.Extension.Projection.validate_events(events)
+    response = Enum.find(events, &(&1["type"] == "extension_model_response"))
+    assert get_in(response, ["assistant", "provider_data", "output"]) == native
+    assert get_in(response, ["assistant", "provider_data", "reported_cost_usd_ticks"]) == 12345
+  end
+
   test "Gemini extension inference keeps signed parts private and uses the helper's credential",
        ctx do
     previous = System.get_env("GEMINI_API_KEY")

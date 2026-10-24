@@ -18,12 +18,11 @@ never asks for or stores a key. ChatGPT setup can offer the existing `ipse login
 browser flow after validating the proposal. Extensions are selected separately
 through the [extensions manual](extensions.md).
 
-Grok/xAI is not yet an available Ipse route. Its API-key and subscription OAuth
-integration is selected in the [development plan](../plan.md#p29-follow-up-grok-api-and-subscription-oauth).
-Existing OpenAI credentials cannot authorize xAI. Continue using a currently
-listed provider until the Grok instructions and verification are available.
+Grok uses separate API-key and registered-client subscription choices. Follow
+[Grok configuration](#use-grok-through-xai) before selecting either route;
+OpenAI credentials cannot authorize xAI.
 
-OpenRouter, Gemini and compatible local servers have no model default: an empty
+OpenRouter, Gemini, Grok and compatible local servers have no model default: an empty
 answer asks again. OpenRouter also asks for a pinned upstream and a data-collection
 policy, defaulting to `deny`. A compatible server requires a loopback base URL.
 Review those fields in the preview before saving.
@@ -187,6 +186,8 @@ Credential references are fixed lookups, not token values:
 | `anthropic` | `ANTHROPIC_API_KEY` |
 | `gemini` | `GEMINI_API_KEY` |
 | `openrouter` | `OPENROUTER_API_KEY` |
+| `xai` | `XAI_API_KEY` |
+| `xai_oauth` | `ipse-xai-auth` |
 | `ollama`, `openai_compatible`, `demo` | `none` |
 
 Omit `credential` to use the provider's fixed lookup. Text roles never select
@@ -207,6 +208,93 @@ OpenRouter accepts `none`, `low`, `medium`, `high`, `xhigh` and `max`; the pinne
 upstream decides support. Compatible local profiles omit reasoning controls.
 Gemini accepts `low`, `medium` and `high`; `none` omits its thinking control.
 The selected model decides which thinking levels it supports.
+
+### Use Grok through xAI
+
+Choose the billing route explicitly. `xai` uses an API key and xAI team API
+billing. `xai_oauth` uses a separately stored subscription grant; it requires an
+approved Ipse OAuth client registration and an eligible account. Neither route
+falls back to the other when credentials, quota or entitlement are unavailable.
+Both require an explicit model. Provider aliases can change their underlying
+model; use a dated model ID available to your account when reproducibility matters.
+
+For API access, create a key in the [xAI Console](https://console.x.ai), arrange
+the intended team's billing/model permissions, and make `XAI_API_KEY` available
+in your private environment. Keep it out of commands, JSON, journals and Git.
+Then preview and save the route:
+
+```sh
+ipse setup --provider xai --model grok-4.7
+ipse setup --provider xai --model grok-4.7 --write
+ipse doctor
+ipse chat --cwd /path/to/scratch-workspace
+```
+
+The preview writes nothing; `--write` saves private configuration. If a saved
+operator file already exists, review it and use the documented `--replace` path.
+Doctor checks key presence offline. `--probe-provider` can make a bounded models
+GET; it does not establish inference access or spend model tokens. A normal chat
+uses the selected team's API billing.
+
+Subscription setup has an additional prerequisite: obtain an OAuth client ID
+registered for Ipse, approved for the device grant and `api:access offline_access`
+scopes. There is no bundled Grok Build or Hermes client ID. xAI officially
+[supports subscription access in Hermes](https://x.ai/news/grok-hermes), but that
+does not register Ipse. The developer currently has no Ipse registration, so live
+Ipse subscription access is unverified. Do not copy another application's tokens.
+
+Once xAI has supplied that registration, set its public identifier and sign in:
+
+```sh
+export IPSE_XAI_CLIENT_ID=YOUR_REGISTERED_IPSE_CLIENT_ID
+ipse login --provider xai_oauth
+ipse status --provider xai_oauth
+ipse setup --provider xai_oauth --model grok-4.7
+ipse setup --provider xai_oauth --model grok-4.7 --write
+ipse doctor
+ipse chat --cwd /path/to/scratch-workspace
+```
+
+Login prints an xAI verification address and user code. Open that address in a
+browser on any device, enter the code and approve only your Ipse registration.
+No local callback or SSH tunnel is required. Polling honors the server interval
+and slow-down responses and has a finite expiry; interrupting it leaves existing
+credentials intact. Missing client registration refuses before network access.
+Credentials are saved separately in `IPSE_HOME/auth/xai.json`, owner-only. Status
+and ordinary doctor inspect saved metadata without refreshing. A real model call
+refreshes an expiring grant under an OS lock. If refresh is interrupted after
+dispatch, its outcome is unknown: sign in again rather than replaying it.
+
+To remove this sign-in, use `ipse logout --provider xai_oauth`. Local removal is
+reported separately if remote revocation could not be confirmed; revoke the Ipse
+app through xAI account settings in that case. Sign-in commands without a provider
+still select ChatGPT. Switching a model profile does not select a different
+subscription account automatically.
+
+A 403 after successful browser approval can indicate client or subscription
+entitlement rather than an expired token. Check those permissions with xAI;
+repeated login cannot grant a missing entitlement. Choosing API billing instead
+requires an explicit change to `xai` and a separate key. Quota or service errors
+do not trigger retries or fallback to another model/provider.
+
+Grok Responses requests use local conversation history and `store: false`.
+Encrypted continuation stays private and is replayed to xAI; it cannot be moved
+into an OpenAI request. This setting does not promise zero provider retention.
+Review [xAI's data policy](https://docs.x.ai/developers/faq/security) and the
+applicable subscription terms before submitting sensitive material. Initial
+support covers text and Ipse's approved local tools. Hosted search, execution,
+remote MCP, media and xAI multi-agent features are not enabled.
+
+`reasoning_effort` accepts low/medium/high for exact `grok-4.5`, and additionally
+xhigh for exact `grok-4.6` and `grok-4.7`. Omit the setting for another model;
+unsupported explicit combinations refuse. A `max_output_tokens` limit caps
+visible text only: xAI excludes reasoning and function calls. Consequently a
+budget with `reserve_output_tokens` refuses for Grok; request-count budgets remain
+available. Token usage can be partial when the server omits counters or does not
+disambiguate older reasoning accounting. A valid
+provider-reported cost is retained as integer USD ticks with the private native
+response; aggregate cost commands continue to use explicit Ipse rate cards, not
+that field as a verified invoice or a subscription balance.
 
 ### Use a Gemini API key
 
@@ -458,7 +546,7 @@ either supported mode.
 
 | Setting | Default | Accepted values |
 | --- | --- | --- |
-| `provider` | `chatgpt` | `chatgpt`, `openai`, `ollama`, `anthropic`, `gemini`, `openrouter`, `openai_compatible`, `demo` |
+| `provider` | `chatgpt` | `chatgpt`, `openai`, `ollama`, `anthropic`, `gemini`, `openrouter`, `xai`, `xai_oauth`, `openai_compatible`, `demo` |
 | `model` | Provider default | Nonempty, at most 200 characters |
 | `max_steps` | 30 calls per turn | 1..100000 |
 | `context_bytes` | 400000 | 8192..16000000 bytes |
@@ -467,14 +555,17 @@ either supported mode.
 | `sandbox` | `off` | `off`, `native` |
 | `subagents` | `false` | Boolean |
 | `subagent_concurrency` | 1 | 1 or 2; 2 requires subagents |
-| `max_output_tokens` | Absent | OpenAI API 16..1000000; Ollama/Anthropic/Gemini/OpenRouter/compatible 1..1000000 |
+| `max_output_tokens` | Absent | OpenAI API 16..1000000; Ollama/Anthropic/Gemini/OpenRouter/compatible/Grok 1..1000000; Grok caps visible text only |
 
-Output caps apply per supported request, including summaries. Subscription and
-demo reject them. Model limits may be tighter; Anthropic defaults to 8192 and
+Output caps apply per supported request, including summaries. ChatGPT subscription
+and demo reject them. Grok's cap excludes reasoning/function calls and cannot
+enforce an output-token budget. Model limits may be tighter; Anthropic defaults to 8192 and
 Ollama summaries retain a 4096 cap. A per-request cap does not bound input tokens
 or an invoice. Use [budgets](resources.md) for covered aggregate admission.
-Provider responses have a separate 8 MiB accumulation ceiling; sign-in responses
-allow 1 MiB. Redirects and automatic retries are disabled.
+Provider responses have a separate 8 MiB accumulation ceiling; ChatGPT sign-in
+responses allow 1 MiB and xAI authorization responses 64 KiB. Redirects and
+automatic inference retries are disabled. xAI device authorization polls only
+while awaiting explicit browser approval.
 
 To lower mandatory journal bounds, add operator-only `journal` alongside
 `settings`, or use this complete journal-only file:

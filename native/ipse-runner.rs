@@ -183,7 +183,7 @@ fn run() -> Result<(), String> {
             command.env("HOME",policy.temp_dir()).env("TMPDIR",policy.temp_dir());
         }
     } else {
-        for key in ["OPENAI_API_KEY", "ANTHROPIC_API_KEY", "IPSE_CHATGPT_ACCESS_TOKEN", "OPENROUTER_API_KEY", "GEMINI_API_KEY", "GOOGLE_API_KEY"] {
+        for key in ["OPENAI_API_KEY", "ANTHROPIC_API_KEY", "IPSE_CHATGPT_ACCESS_TOKEN", "OPENROUTER_API_KEY", "GEMINI_API_KEY", "GOOGLE_API_KEY", "XAI_API_KEY"] {
             command.env_remove(key);
         }
     }

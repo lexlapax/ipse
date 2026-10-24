@@ -287,6 +287,16 @@ defmodule Ipse.CLI.Setup do
       :chatgpt_auth ->
         subscription_step(interactive?, home)
 
+      :xai_auth ->
+        Terminal.puts(
+          "Credential source: protected xAI subscription sign-in. An approved Ipse OAuth client is required; set IPSE_XAI_CLIENT_ID, then run ipse login --provider xai_oauth. No API-key fallback is used."
+        )
+
+        if interactive? and
+             read_line("Run xAI device authorization now? Type yes to continue: ") == {:ok, "yes"},
+           do: Ipse.Auth.XAI.login(Path.join(home, "auth")),
+           else: :ok
+
       credential ->
         source =
           case credential do

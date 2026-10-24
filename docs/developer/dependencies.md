@@ -202,6 +202,21 @@ service, endpoint, credentials and billing choice explicit. The deterministic de
 and ordinary tests require no model service. A browser is needed for subscription
 sign-in; an operator's separate coding assistant is not part of Ipse's graph.
 
+The optional Grok integration was explicitly requested on 2026-10-24 for delivery
+before external audit. Its sources are the documented xAI Responses
+service at `https://api.x.ai/v1` and registered-client OAuth issuer at
+`https://auth.x.ai`. Models/API contracts are externally versioned and change;
+record the requested/reported model and dated verification, rather than assigning
+the service a package version or open-source license. Access uses the provider's
+commercial service terms; no xAI SDK or third-party source is bundled. API-key
+team billing and subscription access are separate explicit selections. An approved
+Ipse OAuth registration remains an external prerequisite, not a packaged dependency.
+The [research and scope](../archive/2026-10-24-xai-provider-research/index.md)
+records source links and the approval. Existing Finch/OTP, bounded JSON, private
+files and retained native locks supply the implementation; no new package,
+executable or language runtime is added. The small provider-owned device polling
+state uses RFC 8628 while reusing those existing transport/storage owners.
+
 The optional owned-model evaluation uses an operator-selected Ollama distribution
 and local model cache. It copies the declared executable, helper libraries and
 selected manifest/blob closure into fresh private files. No installation,

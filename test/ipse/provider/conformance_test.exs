@@ -18,6 +18,24 @@ defmodule Ipse.Provider.OpenAIConformanceTest do
     events: Ipse.Test.ProviderConformance.OpenAI
 end
 
+defmodule Ipse.Provider.XAIConformanceTest do
+  use ExUnit.Case, async: false
+
+  use Ipse.Test.ProviderConformance,
+    provider: :xai,
+    adapter: Ipse.Provider.OpenAI,
+    events: Ipse.Test.ProviderConformance.XAI
+end
+
+defmodule Ipse.Provider.XAIOAuthConformanceTest do
+  use ExUnit.Case, async: false
+
+  use Ipse.Test.ProviderConformance,
+    provider: :xai_oauth,
+    adapter: Ipse.Provider.OpenAI,
+    events: Ipse.Test.ProviderConformance.XAI
+end
+
 defmodule Ipse.Provider.AnthropicConformanceTest do
   use ExUnit.Case, async: false
 

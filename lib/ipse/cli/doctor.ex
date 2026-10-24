@@ -211,6 +211,20 @@ defmodule Ipse.CLI.Doctor do
                   {"fail", "Subscription credentials missing, expired or unsafe; run ipse login"}
               end
 
+            :xai_auth ->
+              with {:ok, %{type: :regular, uid: owner, mode: mode}} <-
+                     File.lstat(Path.join(home, "auth/xai.json")),
+                   true <- not is_nil(uid) and owner == uid and band(mode, 0o077) == 0,
+                   {:ok, %{expires_at: expiry, refresh_pending: false}} <-
+                     Ipse.Auth.XAI.status(Path.join(home, "auth")),
+                   true <- expiry > System.system_time(:second) do
+                {"ok", "Protected unexpired xAI subscription credentials; no refresh attempted"}
+              else
+                _ ->
+                  {"fail",
+                   "xAI credentials missing, expired, pending or unsafe; register Ipse and run ipse login --provider xai_oauth"}
+              end
+
             {:env, name} ->
               if System.get_env(name) not in [nil, ""],
                 do: {"ok", "#{name} present"},

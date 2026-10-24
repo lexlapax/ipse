@@ -57,6 +57,7 @@ defmodule Ipse.ProfileSessionTest do
       sandbox: :off,
       max_steps: 4,
       api_key: "PARENT_CREDENTIAL_PRIVATE",
+      auth_dir: c[:auth_dir],
       subagents: true,
       selected: selected,
       profiles: %{"local" => profile},
@@ -71,6 +72,95 @@ defmodule Ipse.ProfileSessionTest do
 
     on_exit(fn -> if Process.alive?(pid), do: Session.close(pid) end)
     pid
+  end
+
+  for route <- ["xai", "xai_oauth"] do
+    @grok_route route
+    test "Grok child route #{@grok_route} selects separate credentials and billing", c do
+      previous = System.get_env("XAI_API_KEY")
+      System.put_env("XAI_API_KEY", "child-xai-api-key")
+
+      on_exit(fn ->
+        if previous,
+          do: System.put_env("XAI_API_KEY", previous),
+          else: System.delete_env("XAI_API_KEY")
+      end)
+
+      auth = Path.join(c.root, "auth")
+      File.mkdir!(auth)
+      File.chmod!(auth, 0o700)
+
+      :ok =
+        Ipse.Auth.write_credentials(
+          auth,
+          %{
+            "version" => 1,
+            "issuer" => "https://auth.x.ai",
+            "client_id" => "ipse-fixture",
+            "access_token" => "child-xai-subscription-token",
+            "refresh_token" => "child-xai-refresh-token",
+            "expires_at" => System.system_time(:second) + 3600,
+            "scope" => "api:access offline_access"
+          },
+          :xai
+        )
+
+      output = [
+        %{"type" => "reasoning", "encrypted_content" => "PRIVATE_CHILD", "summary" => []},
+        %{
+          "type" => "message",
+          "role" => "assistant",
+          "content" => [%{"type" => "output_text", "text" => "Child verified SELECTED_EVIDENCE"}]
+        }
+      ]
+
+      body =
+        Ipse.Test.ProviderFixture.sse([
+          %{
+            "type" => "response.completed",
+            "response" => %{
+              "status" => "completed",
+              "model" => "grok-fixture",
+              "output" => output,
+              "usage" => %{"input_tokens" => 7, "output_tokens" => 3, "total_tokens" => 10}
+            }
+          },
+          "[DONE]"
+        ])
+
+      {base, server} = Ipse.Test.ProviderFixture.start(body)
+
+      parent =
+        start(Map.put(c, :auth_dir, auth), %{
+          "provider" => @grok_route,
+          "model" => "grok-4.7",
+          "base_url" => base
+        })
+
+      :ok = Session.prompt(parent, "PARENT_HISTORY_PRIVATE")
+      assert_receive {:ipse, ^parent, {:approval, ref, "delegate", _}}, 3000
+      assert :ok = Session.approve(parent, ref, true)
+      assert_receive {:ipse, ^parent, {:subagent, child, :started}}, 3000
+      assert_receive {:ipse, ^parent, {:done, :ok}}, 5000
+      {headers, request} = Task.await(server)
+
+      expected =
+        if @grok_route == "xai", do: "child-xai-api-key", else: "child-xai-subscription-token"
+
+      assert headers =~ "authorization: Bearer " <> expected
+      refute headers =~ "PARENT_CREDENTIAL_PRIVATE"
+      refute Jason.encode!(request) =~ "PARENT_HISTORY_PRIVATE"
+      refute Jason.encode!(request) =~ "PARENT_NATIVE_PRIVATE"
+      assert request["store"] == false
+      id = Session.info(parent).id
+      {:ok, events} = Journal.load(Path.join([c.dir, "subagents", id]), child)
+      assert hd(events)["metadata"]["provider"] == @grok_route
+      assert {:ok, ledger} = Ipse.Usage.restore(events, child)
+      [record] = Ipse.Usage.snapshot(ledger)["requests"]
+      assert record["billing_mode"] == if(@grok_route == "xai", do: "api", else: "subscription")
+      assert record["usage"]["counts"]["total_tokens"] == 10
+      refute Session.info(parent).final =~ "PRIVATE_CHILD"
+    end
   end
 
   test "approved routing uses real Ollama wire, private child history and durable execution metadata",
