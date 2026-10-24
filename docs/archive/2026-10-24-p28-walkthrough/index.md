@@ -1,7 +1,8 @@
 # P28 fresh-operator walkthrough record
 
-Prepared 2026-10-24. **Not started; no unassisted pass is claimed.** This dated
-record is reserved for the actual operator's observations, not a scripted
+Prepared and updated 2026-10-24. **Successful existing-account attempt reported;
+the required fresh-OS-account pass remains open.** This dated record summarizes
+the operator's terminal evidence and follow-up confirmation, not a scripted
 acceptance result. The [current installation manual](../../operator/install.md)
 and [user manual](../../operator/index.md) own the instructions. The
 [implementation record](../2026-10-23-p28-p29-implementation/index.md) owns build,
@@ -25,9 +26,9 @@ do not substitute a local archive while describing it as a draft-release downloa
 
 These bundles report version 0.1.0 and RC1's source identity. The later runtime
 candidate `9c5eb6a` refines refusal messages and has separate passing source and
-platform evidence. The developer has been given the ready draft and asked to
-report actual observations. A scripted isolated-home smoke check of the downloaded
-Linux bundle passed; it does not fill any human walkthrough result below.
+platform evidence. The developer supplied the existing-account observations below.
+A separate scripted isolated-home smoke check of the downloaded Linux bundle
+passed; it does not establish a fresh-OS-account human walkthrough.
 
 Use a fresh OS user account on Linux, and macOS where available. Record the host
 and account freshness evidence without credentials or personal account details.
@@ -45,37 +46,46 @@ not evidence of a fresh OS account.
 
 | Field | Observation |
 | --- | --- |
-| Operator / observer identifiers | The developer volunteered to perform the walkthrough once RC assets are ready; use non-personal labels in observations |
-| OS, architecture and available toolchain | Pending |
-| Fresh OS account evidence | Pending |
-| RC asset name and SHA256 | Pending |
-| `ipse version --json` build identity | Pending |
-| Manual revision used | Pending |
-| Provider/model/billing choice | Pending |
-| Credential source type, without value | Pending |
-| Assistance or deviations | Unknown until the attempt |
+| Operator / observer identifiers | Developer/operator A; terminal excerpt and follow-up supplied in this implementation conversation |
+| OS, architecture and available toolchain | Linux x86_64; bundled Elixir 1.18.5/OTP 27; distribution and separate development toolchain not reported |
+| Fresh OS account evidence | Operator explicitly confirmed an existing account and existing state; doctor reported 58 readable saved-session headers |
+| RC asset name and SHA256 | Linux archive named above; operator's `sha256sum -c` reported `OK`; expected digest is retained in the inspected asset receipt |
+| `ipse version --json` build identity | Version 0.1.0, commit `e944fcf6223127f5db0bc290437f7989a9db3069`, Linux x86_64, Elixir 1.18.5, OTP 27 |
+| Manual revision used | Installation procedure linked from the RC handoff; exact manual revision not supplied; pasted commands match that procedure |
+| Provider/model/billing choice | Setup explicitly selected ChatGPT, saved `gpt-6.1-sol`, subscription billing, shell policy off |
+| Credential source type, without value | Explicit browser sign-in offer accepted; subsequent doctor reported protected, unexpired subscription credentials |
+| Assistance or deviations | No confusion or assistance reported; existing account/state used; human upgrade exercise skipped because only one release was available |
 
 | Manual task | Status | Actual result, confusion or sanitized error |
 | --- | --- | --- |
-| Download intended archive and verify checksum | Not run | Pending |
-| Extract and link the launcher; check version/build | Not run | Pending |
-| Fresh scratch workspace; reviewed demo setup | Not run | Pending |
-| Offline doctor and credential-free demo | Not run | Pending |
-| Explicit real-provider setup and diagnosis | Not run | Pending |
-| First real task, full proposed arguments and individual approvals | Not run | Pending |
-| Inspect the actual file and shell outputs | Not run | Pending |
-| List and resume saved work while idle | Not run | Pending |
-| Follow recovery for any refusal | Not run | Pending |
-| Inspect upgrade/uninstall instructions and retained-state consequences | Not run | Pending |
+| Download intended archive and verify checksum | Pass, terminal evidence | Intended Linux archive; sidecar check reported `OK` |
+| Extract and link the launcher; check version/build | Pass, terminal evidence | Extraction, launcher link and both version commands succeeded with expected RC1 identity |
+| Fresh scratch workspace; reviewed setup | Pass, terminal evidence | Temporary workspace created; explicit ChatGPT choice, optional sign-in and exact configuration preview followed by typed `write` |
+| Offline doctor and credential-free demo | Pass, terminal evidence | Doctor findings were `ok` or explained reachability `skip`; scripted demo wrote/read its fixture and completed its shell command with exit 0 |
+| Explicit real-provider setup and diagnosis | Pass, terminal evidence | ChatGPT subscription selected explicitly; browser flow returned to setup; protected unexpired credentials reported without refresh |
+| First real task, full proposed arguments and individual approvals | Pass, operator confirmation | Operator confirmed completing the manual's real task with individual approvals successfully; raw task transcript not retained |
+| Inspect the actual file and shell outputs | Pass, operator confirmation | Operator confirmed output inspection succeeded; demo's expected file/read/shell outcomes are also visible in the excerpt |
+| List and resume saved work while idle | Pass, operator confirmation | Operator confirmed listing and resuming the saved session successfully |
+| Follow recovery for any refusal | Not exercised | No product refusal or recovery incident reported |
+| Exercise upgrade | Skipped by operator | Only one release available; separate automated changed-build/resume/recovery proof remains the upgrade evidence |
+| Remove installed release and launcher | Commands reported successful | Removal commands returned without a reported error; filesystem removal and retained-state contents were not independently inspected |
 
 ## Findings, repairs and disposition
 
-No walkthrough findings exist yet. For each actual issue, retain its trigger,
-expected/actual result, exact sanitized message, whether author assistance was
-needed, the repair revision and repeated-step result. Keep keys, authorization
-URLs, private transcripts and raw journals out of this record.
+No product failure or confusion was reported. The terminal evidence supports
+installation, explicit setup/sign-in, offline diagnosis and scripted demo; the
+follow-up supports the real task, approvals, inspection and resume as operator
+attestations. The paste contained a browser authorization URL and private account
+paths; neither those details nor session IDs/transcripts are copied into this
+record. No credentials or authorization data are retained here.
 
-The final disposition must distinguish an unassisted pass, an assisted/incomplete
-attempt, an unavailable platform and a failed step. Leave this record incomplete
-until actual evidence supports the selected disposition. The real stable tag and
-publication remain separate developer decisions after acceptance and inspection.
+This is a successful existing-account attempt, not the accepted fresh-OS-account
+pass. The existing state is explicit evidence of that distinction. A fresh Linux
+OS account walkthrough remains required; macOS observations have not been
+provided. Skipping the human upgrade exercise is recorded rather than relabelled
+as a pass; the separate automated upgrade proof remains valid. No manual/runtime
+repair is justified solely by these successful observations.
+
+Keep subsequent fresh-account findings and any repeated-step repair results in
+this record without replacing the first attempt. Stable tag/publication and RC
+draft cleanup remain open after the required acceptance and inspection.

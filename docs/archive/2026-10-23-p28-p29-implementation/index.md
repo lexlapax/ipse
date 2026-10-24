@@ -22,7 +22,7 @@ requirement; authority, recovery and correctness regressions remain unacceptable
 | P28 WP3 | Offline doctor, explicit bounded probes and finding fixtures | Full native and hosted Ubuntu/macOS pass at `a89fce7`; later installed proof passes |
 | P28 WP4 | Guided/private setup, previews, backups and resolution fixtures | Full native suite and installed first run pass at `9907877`; repaired platform matrix passes at `61ed1f9` |
 | P28 WP5 | Checksums, symlink launcher, draft tag workflow and install lifecycle | RC1 workflow, both platform archives, installed proofs and downloaded asset/notice inspection pass; draft deletion waits for walkthrough |
-| P28 WP6 | Whole-manual first-user review and fresh-account walkthrough | Editorial review, examples and final source/package/platform checks pass; developer has ready archives, actual walkthrough and stable publication pending |
+| P28 WP6 | Whole-manual first-user review and fresh-account walkthrough | Editorial/source/package/platform checks pass; existing-account Linux attempt succeeds with real-task/resume attestation; fresh-OS-account pass and stable publication pending |
 | P29 WP0 | Verified official wire facts and continuation examples | [Recorded](wire-facts.md); both new adapters now have protocol fixtures and separate live evidence |
 | P29 WP1 | Central registry, existing-provider equivalence and recovery tests | Exact `cd74f91` native suite (1601) and installed proof pass; subsequent `61ed1f9` platform matrix passes |
 | P29 WP2 | Shared server and adapter conformance tests | Focused and complete Ubuntu/macOS matrix pass ([local receipt](p29-wp2-verification.json), [hosted receipt](p29-wp2-hosted.json)) |
@@ -475,3 +475,15 @@ that is still not a fresh-OS-account walkthrough. The draft and its downloads
 were provided to the developer for that walkthrough and remain unpublished.
 Draft deletion, actual walkthrough findings/repairs, stable tag/publication and
 the external completeness verdict remain open.
+
+On 2026-10-24 the developer supplied a Linux RC1 terminal run showing checksum,
+install/version, explicit ChatGPT setup/browser sign-in, offline doctor, scripted
+demo and uninstall commands succeeding. Follow-up confirms the manual's real
+task, individual approvals, output inspection and list/resume succeeded. The
+developer also confirmed existing account/state; doctor reported 58 saved-session
+headers. The [sanitized observation record](../2026-10-24-p28-walkthrough/index.md)
+preserves terminal evidence separately from operator attestations. Human upgrade
+was skipped because only one version was available; the automated upgrade proof
+remains separate. This successful attempt does not close the fresh-OS-account
+criterion. No authorization URL, account path, private transcript or session ID
+from the supplied paste is retained in repository evidence.

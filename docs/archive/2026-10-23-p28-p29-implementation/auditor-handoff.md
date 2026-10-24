@@ -23,8 +23,10 @@ automation, add Gemini then OpenRouter after the previous four providers, restri
 compatible services to explicit loopback/local billing, and default OpenRouter
 data collection to deny. No dependency was added for the new adapters.
 
-Preserve unrelated `.claude/` and `erl_crash.dump`; do not read, stage or delete
-them. The ignored `.env` contains private credentials and is not audit input.
+Preserve unrelated `.claude/`; do not read, stage or delete it. The initially
+untracked `erl_crash.dump` was inspected privately and removed on the developer's
+explicit 2026-10-24 request; `9ba3994` adds its ignore rule. The ignored `.env`
+contains private credentials and is not audit input.
 Use synthetic fixtures and the non-secret live receipts. Do not publish a release
 or repeat paid inference as part of an ordinary read-only audit.
 
@@ -129,11 +131,14 @@ by its hosted installed checks.
 
 ## Open acceptance and independent verdict
 
-The developer volunteered to perform the required unassisted fresh-OS-account
-install-to-first-task walkthrough and has received the ready unpublished draft.
-The [observation record](../2026-10-24-p28-walkthrough/index.md) has no actual
-results yet. An isolated `IPSE_HOME` fixture is not that evidence. Record actual
-confusion, sanitized errors, assistance and repeated-step repairs.
+The developer reports a successful existing-account Linux attempt from the draft:
+installation, explicit ChatGPT setup/browser sign-in, doctor and demo have terminal
+evidence; real task, individual approvals, inspection and resume have follow-up
+operator confirmation. The [observation record](../2026-10-24-p28-walkthrough/index.md)
+retains this distinction without authorization URLs or private transcripts.
+The operator confirmed existing account/state, so the required fresh-OS-account
+walkthrough remains open. Human upgrade was skipped because only one release
+was available; the automated upgrade proof remains separate evidence.
 
 Keep the draft available for the developer's download and walkthrough, then
 delete it as the brief requires, retaining the downloaded bytes/checksums and

@@ -628,10 +628,14 @@ review and installed examples pass. The latest `9c5eb6a` native-inclusive baseli
 isolated demo, installed proof and complete hosted Ubuntu/macOS matrix pass.
 RC1's workflow and both platform archives/checksums pass, including re-download
 and runtime-notice inspection ([receipts](archive/2026-10-23-p28-p29-implementation/rc-assets.json)).
-The developer has been given the ready draft for the unassisted fresh-account
-walkthrough. Its [observation record](archive/2026-10-24-p28-walkthrough/index.md)
-has no results yet. Draft deletion waits for that walkthrough; the real stable
-tag and publication remain open.
+The developer reports a successful existing-account Linux walkthrough, including
+ChatGPT sign-in, doctor/demo and follow-up confirmation of the real task,
+individual approvals, output inspection and resume. The
+[observation record](archive/2026-10-24-p28-walkthrough/index.md) distinguishes
+terminal evidence from operator attestations. The required fresh-OS-account
+walkthrough remains open; human upgrade was skipped because only one version
+was available, with automated upgrade evidence retained separately. Draft
+deletion and the real stable tag/publication still wait for acceptance.
 
 Scope:
 
