@@ -2,9 +2,10 @@
 
 Prepared 2026-10-24; the newest runtime increment adds
 [Grok API and registered-client OAuth](../2026-10-24-xai-provider-research/index.md)
-after `5bb5761`. Runtime `622a2c8` passes full local native, demo and installed
-checks; `b52c32e` adds the live driver without changing runtime source. Their
-hosted verdicts remain pending, so final audit readiness is unproven. Earlier exact live wire evidence is at
+after `5bb5761`. Runtime `622a2c8` passes full local native, demo, installed and
+complete hosted Ubuntu/macOS checks. `b52c32e` adds the live driver without changing
+runtime source; its full hosted verdict remains pending, so final audit readiness
+is unproven. Earlier exact live wire evidence is at
 `492d091`, and RC1 release preparation is at `e944fcf`.
 This handoff is prepared for independent implementation review, not an external
 audit or a completeness verdict. P29's original registry/Gemini/OpenRouter gates
@@ -74,11 +75,11 @@ earlier green matrices do not prove that newly authorized scope.
 | P29 WP5: registry menus/billing/credentials/probes, route questions/private previews, coherent provider/accounting manuals and priority | Setup/doctor/CLI suites, `AGENTS.md`, operator/developer provider chapters | [WP5 receipt](p29-wp5-verification.json): 83 CLI controls pass; final source/native/installed/hosted gates and whole-manual review pass |
 | Authorized approval follow-up: root native edit mode, exact full-argument/cwd/sandbox shell reuse, bounded grants, inspect/revoke, fresh input, denial, cancellation, non-inheritance and inert resume | `lib/ipse/session/permissions.ex`, Session/Turn, CLI/Terminal, native path checks; `test/ipse/session/permissions_test.exs`, CLI/delegation suites; installed permission proof | [Implementation and receipt](../2026-10-24-approval-implementation/index.md); seven-effect fixture reduces seven decisions to two; inspect limitations and current gate status |
 | Requested machine label during ChatGPT authorization | `lib/ipse/auth.ex`, Auth/setup fixtures and operator login procedure | [Machine-label record](../2026-10-24-sign-in-host-label/index.md); initial `ipse@HOST` hint, returning IDs and omitted hint, hostname fallback; no new real browser trial |
-| Grok X0: explicit API-key/subscription identity, model choice and credential/billing isolation | `Provider.Registry`, Config/profiles, CLI setup/doctor; registry golden and Grok tests | [Research/work packages](../2026-10-24-xai-provider-research/index.md); original provider goldens unchanged; full latest matrix pending |
+| Grok X0: explicit API-key/subscription identity, model choice and credential/billing isolation | `Provider.Registry`, Config/profiles, CLI setup/doctor; registry golden and Grok tests | [Research/work packages](../2026-10-24-xai-provider-research/index.md); original provider goldens unchanged; full runtime matrix passes, later live-driver matrix pending |
 | Grok X1: native Responses, no hosted tools, private xAI replay, foreign ciphertext refusal, exact tool results, completed terminal before trailing marker | `lib/ipse/provider/openai.ex`, shared XAI/XAIOAuth conformance and `test/ipse/provider/xai_test.exs` | Byte-fragmented real HTTP fixtures plus Session approvals/replay; no live Grok inference claimed |
 | Grok X2: registered-client device grant, safe verification URI, finite polling, private credentials, retained OS lock, pending refresh, scope binding, logout uncertainty | `lib/ipse/auth/xai.ex`, closed Auth storage namespaces, `test/ipse/auth/xai_test.exs` | Controlled omitted-scope reproduction and repair; eight final OAuth cases pass; no Ipse registration or real browser grant exists yet |
-| Grok X3: modern/legacy reasoning accounting, visible-only cap, budgets, SDK/child privacy, native/environment token filtering | Registry/Budget, profile/extension integration suites, native shell/measurement filters and MCP environment admission | Both credential routes tested in real child requests, approved SDK requests, actual shell and Rust controls; full final verification pending |
-| Grok X4: coherent operator/developer procedures and installed lifecycle | Grok configuration, accounting/dependency training, `dev/verification/package.exs` | Scope-repaired `622a2c8` full local native suite, demo and installed lifecycle pass; hosted platform checks pending |
+| Grok X3: modern/legacy reasoning accounting, visible-only cap, budgets, SDK/child privacy, native/environment token filtering | Registry/Budget, profile/extension integration suites, native shell/measurement filters and MCP environment admission | Both credential routes tested in real child requests, approved SDK requests, actual shell and Rust controls; full runtime source/installed/platform verification passes |
+| Grok X4: coherent operator/developer procedures and installed lifecycle | Grok configuration, accounting/dependency training, `dev/verification/package.exs` | Scope-repaired `622a2c8` full local native suite, demo, installed lifecycle and complete Ubuntu/macOS matrix pass |
 
 ## Material implementation decisions to inspect
 

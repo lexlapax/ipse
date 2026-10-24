@@ -649,16 +649,18 @@ implementing this follow-up before external audit, extending the brief's origina
 approval-semantics exclusion. Native workspace edit consent and exact shell-call
 session grants are implemented in the
 [new candidate](archive/2026-10-24-approval-implementation/index.md), with inspect/revoke,
-fresh proposal binding and no inherited/resumed grants. Final verification is in
-progress; the older baseline does not prove this change.
+fresh proposal binding and no inherited/resumed grants. The combined `622a2c8`
+runtime passes full local native, installed and hosted Ubuntu/macOS checks;
+the older baseline retains its narrower scope.
 The developer also requested [machine identification during sign-in](archive/2026-10-24-sign-in-host-label/index.md).
 New registrations now use a short `ipse@HOST` display-name hint to prefill the
 browser's editable name. Returning authorization preserves registration identity
-and omits that hint. The earlier terminal-only guidance is superseded; final
-combined verification must include browser-prefill request construction.
+and omits that hint. The earlier terminal-only guidance is superseded; combined
+verification includes browser-prefill request construction, without claiming a
+new real browser authorization.
 The inspected RC draft was deleted on explicit developer authorization after all
 four exact assets and inspection metadata were retained locally; its RC tag remains.
-Final acceptance of the qualifications, new approval verification and stable
+Final acceptance of the qualifications and stable
 publication remain open. The external-auditor handoff includes these findings.
 
 Scope:
@@ -782,7 +784,9 @@ and mixed dialects/contradictions are invalid.
 Reported USD ticks remain separate from aggregate rate-card estimates. Focused
 source/integration checks and the `622a2c8` installed proof pass. Its full Linux
 native-inclusive suite passes 1760 tests, 19 excluded, followed by an isolated demo;
-hosted checks are running. The authorized live API check found a project key
+its complete Ubuntu/macOS matrix passes, including all independent proofs and
+experimental macOS checks. The later live-driver candidate's matrix is still
+running. The authorized live API check found a project key
 but received HTTP 403 on its first `grok-4.7` request and stopped without retry.
 API inference remains unverified pending team billing/model permissions; no OAuth
 account check has run. The [receipt](archive/2026-10-24-xai-provider-research/verification.json)

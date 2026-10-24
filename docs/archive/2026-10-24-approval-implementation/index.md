@@ -78,7 +78,16 @@ The later prefill failure occurs in the second declaration call of the
 `separate_cli` captured-evaluator fixture, inside `System.cmd/3`. That test and
 evaluation implementation are unchanged between the passing predecessor and this
 candidate. Its cause remains unconfirmed; no assertion or deadline was weakened.
-The latest Grok source must obtain its own full platform verdict.
+That failure supplied no platform verdict for the later Grok source.
+
+The later combined runtime `622a2c8` now passes its full local native-inclusive
+suite, installed proof and complete Ubuntu/macOS matrix, including the unchanged
+declaration/Research fixtures. Its
+[runtime matrix](../2026-10-24-xai-provider-research/runtime-hosted.json) verifies
+the permission and browser-hint behavior together with Grok. This supersedes the
+standalone prefill candidate for current combined verification; it does not
+diagnose or erase the earlier timeouts. The later developer live-driver commit
+keeps its own pending matrix in the Grok record.
 
 ## Release rehearsal cleanup
 

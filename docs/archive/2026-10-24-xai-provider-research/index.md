@@ -1,13 +1,15 @@
-# Grok API and subscription OAuth research
+# Grok API and subscription OAuth research and verification
 
 Research and implementation brief requested 2026-10-24 against `5bb5761`.
 The developer selected implementation before the P28/P29 external audit, then
-confirmed that Ipse has no xAI OAuth registration yet. This is dated research,
-not evidence of working Ipse integration or account eligibility. Current status
+confirmed that Ipse has no xAI OAuth registration yet. The primary findings below
+record the design basis; later sections retain implementation and verification
+evidence separately from live-account eligibility. Current status
 belongs to the [plan](../../plan.md#p29-follow-up-grok-api-and-subscription-oauth);
 current procedures belong to [configuration](../../operator/configuration.md).
 No account was signed in, credential inspected, paid inference requested, or
-third-party software installed during this research.
+third-party software installed during the initial research. The later authorized
+API attempt and its refusal are recorded below.
 
 ## Findings from primary sources
 
@@ -124,7 +126,8 @@ missing reasoning charge. The [OpenAPI source](https://docs.x.ai/openapi.json)
 also specifies a trailing `[DONE]`; accept that only after a complete Responses
 terminal event, never as a substitute for one.
 
-These are Ipse design decisions, not assertions that implementation has passed.
+These design decisions define the checks below; their dated implementation
+results appear later in this record.
 
 | Work package | Change | Required evidence |
 | --- | --- | --- |
@@ -153,8 +156,15 @@ blob identities, and the archive identity module matches the packaged CLI's
 `622a2c8` build facts (Elixir 1.20.4/OTP 29.1.1). Its full local source/native suite
 passes 1760 tests, zero failures, 19 excluded, seed 954604, 1062.9 seconds, followed
 by an isolated demo and unchanged tracked source. Build, both formatting checks,
-warnings-as-errors compilation, CI policy and documentation checks pass. Hosted
-Linux/macOS checks are running. The earlier `b2d8386` full native suite
+warnings-as-errors compilation, CI policy and documentation checks pass. Its
+[complete hosted Linux/macOS matrix](runtime-hosted.json), run 40120009675, passes
+both source suites, installed lifecycle and every independent model-service,
+extension, model-call, MCP, embedding, preset, saved-result and knowledge proof.
+macOS native enforcement and experimental App Sandbox checks also pass.
+Ubuntu's source summary is 1779 tests, zero failures, 36 excluded (seed 188121,
+1581.5 seconds); macOS reports 1744 tests, zero failures, 36 excluded and one
+skipped (seed 716971, 1702.7 seconds), followed by 36 native tests, zero failures,
+six excluded (seed 35166, 26.2 seconds). The earlier `b2d8386` full native suite
 passes 1759 tests, zero failures, 19 excluded, seed 541413, 1066.8 seconds, followed
 by an isolated demo and unchanged tracked source. That earlier full suite does
 not establish the later refresh-scope repair.
@@ -213,8 +223,8 @@ The affected auth/provider/setup/doctor set passes 66 cases, seed 87442,
 11.0 seconds, before the final explicit-request assertion; the final eight OAuth
 cases then pass, seed 804653, 0.2 seconds, including omitted-scope preservation
 and expansion refusal. Both supported formatters pass. Final verification
-uses the repaired source for the full local suite and installed proof; hosted
-checks remain pending. The earlier frozen candidate does not cover this newly
+uses the repaired source for the full local suite, installed proof and complete
+hosted matrix. The earlier frozen candidate does not cover this newly
 reproduced edge case.
 
 ### Live API check

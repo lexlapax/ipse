@@ -89,8 +89,24 @@
     "status": "failed"
   },
   "hosted": {
+    "all_installed_and_independent_proofs": "passed on both platforms",
+    "macos": {
+      "experimental_app_sandbox": "passed",
+      "native_seconds": 26.2,
+      "native_seed": 35166,
+      "native_summary": "36 tests, 0 failures, 6 excluded",
+      "seconds": 1702.7,
+      "seed": 716971,
+      "source_summary": "1744 tests, 0 failures, 36 excluded, 1 skipped"
+    },
+    "receipt": "runtime-hosted.json",
     "run_id": 40120009675,
-    "status": "running",
+    "status": "passed",
+    "ubuntu": {
+      "seconds": 1581.5,
+      "seed": 188121,
+      "source_summary": "1779 tests, 0 failures, 36 excluded"
+    },
     "url": "https://github.com/lexlapax/ipse/actions/runs/40120009675"
   },
   "installed": {
