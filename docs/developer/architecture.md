@@ -155,7 +155,8 @@ race-free filesystem confinement. Shell matching does no parsing, prefix inferen
 or safety classification. External/SDK effects and delegated approvals retain their
 own policy. Read-only denial takes precedence over any grant.
 
-Grant creation/revocation is journaled before changing authority; each native
+Prompt-based grant creation and revocation are journaled before changing authority;
+startup edit consent comes from the explicit client flag. Each native
 `tool_started` records `approval_source` alongside the existing approval decision.
 `session_allow` means explicit session authority, with source `workspace_edits` or
 `exact_command` for these grants. Recovery uses records as evidence, never permission.

@@ -646,8 +646,10 @@ session grants are implemented in the
 [new candidate](archive/2026-10-24-approval-implementation/index.md), with inspect/revoke,
 fresh proposal binding and no inherited/resumed grants. Final verification is in
 progress; the older baseline does not prove this change.
-RC draft cleanup, final acceptance of these qualifications and stable publication
-remain open. The external-auditor handoff includes these findings.
+The inspected RC draft was deleted on explicit developer authorization after all
+four exact assets and inspection metadata were retained locally; its RC tag remains.
+Final acceptance of the qualifications, new approval verification and stable
+publication remain open. The external-auditor handoff includes these findings.
 
 Scope:
 

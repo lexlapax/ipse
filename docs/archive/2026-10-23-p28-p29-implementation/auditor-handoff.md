@@ -4,11 +4,13 @@ Prepared 2026-10-24; the completed baseline is `9c5eb6a`, with exact live wire
 evidence at `492d091` and RC1 release preparation at `e944fcf`.
 This handoff is prepared for independent implementation review, not an external
 audit or a completeness verdict. P29's implementation and automated gates pass;
-P28's approval UX finding, final release acceptance, draft cleanup and stable publication remain open.
+P28's new approval verification, final release acceptance and stable publication remain open.
 The developer has authorized the [approval UX implementation](../2026-10-24-approval-implementation/index.md)
 before external audit. Its candidate and fresh verification supersede the old
 baseline only when explicitly recorded; inspect the new grants, root/child/SDK
 scope, revocation, stale input and inert resume in addition to both original briefs.
+RC draft cleanup is complete: [receipt](rc-assets.json) records absent release,
+retained tag and verified local files after explicit developer authorization.
 Use the [current plan](../../plan.md) for status and the
 [implementation index](index.md) for subsequent receipts. This dated record can
 be superseded; the operator and developer manuals own current procedures.

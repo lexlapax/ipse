@@ -501,3 +501,10 @@ The developer subsequently authorized implementing approval UX before the
 external audit. The [session permission implementation](../2026-10-24-approval-implementation/index.md)
 tracks native edit consent, exact shell-call reuse, revocation and fresh
 verification separately from the completed older baseline.
+
+On explicit developer authorization, the unpublished RC1 draft was deleted after
+the four verified assets and original inspection metadata were copied into ignored
+`dist/rc-rehearsal/v0.1.0-rc.1/`. The release query now returns not found, while
+the annotated RC tag and its `e944fcf` target remain on origin. The
+[asset receipt](rc-assets.json) preserves original release metadata and the later
+cleanup result separately. This closes rehearsal cleanup, not stable publication.
