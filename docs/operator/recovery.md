@@ -18,6 +18,17 @@ Both commands are local. They make no model requests, activate no extensions,
 and repair no journal. Listing reads bounded metadata; a listed session may
 still fail whole-history validation.
 
+Use the startup message to choose the next step. These refusals replay no saved
+work and do not make an incompatible or damaged journal safe to rewrite:
+
+| Message | Next step |
+| --- | --- |
+| Saved session was not found | Repeat `ipse sessions --json` with the original `--state-dir` |
+| Invalid session ID | Copy a listed ID rather than a filename or path |
+| Saved session is malformed or incomplete | Preserve the file and use `ipse diagnose --resume SESSION_ID` with its original state directory |
+| Saved journal is malformed or unreadable | Preserve the original; check directory access and request developer-assisted inspection if diagnosis also refuses |
+| Saved journal is incomplete | Inspect with diagnosis before deciding whether ordinary locked resume can repair a torn final record |
+
 Diagnosis reports phase, unknown calls, context bytes, accounting, recent request
 durations, and journal-limit receipts. Its context scope excludes live system
 headers. Bytes are not tokens. Durations cover owned model/compaction work, not
@@ -62,6 +73,11 @@ ordinary resume still starts idle. Use interactive chat for questions; headless
 `run` cannot answer them. `/context refresh` changes instructions/skills only,
 without making a changed execution configuration compatible.
 
+An answer rejection leaves the question pending. Review its choices and use the
+explicit confirmation printed by the terminal; an answer grants no action
+permission. A saved-configuration mismatch requires the original inputs or a
+fresh handoff, even when no model request had yet been made.
+
 Validated ordinary resume may repair a torn final journal record while holding
 the lock. Read-only diagnosis does not. Corrupt committed records/checkpoints
 refuse recovery. Preserve originals for investigation.
@@ -72,6 +88,11 @@ One owner holds the journal lock. Close/cancel it normally. The visible Session
 can disappear before storage or tracked work settles, and an approved effect
 may still complete. Never delete lock files, truncate records, or open another
 writer to force resume. Persistent lock files preserve inode identity.
+
+"Saved session already has an owner" means this attempt started no work. Close
+the existing owner normally before retrying. A journal resource-limit refusal
+preserves history; use the fresh-session handoff procedure below rather than
+truncating the file or raising a limit to unseal it.
 
 `journal_unavailable` or a missing acknowledgment can mean an append already
 reached disk. Ipse stops without retry. Slow storage can outlast caller deadlines;
@@ -109,6 +130,11 @@ JSON escaping. Extra/duplicate fields and inconsistent counts refuse before sign
 or session creation. Import is only for fresh interactive chat, without `--resume`,
 `run`, or `demo`. A new root neither transfers nor refunds old budget liability.
 
+An invalid handoff artifact refuses before a session starts: review its closed
+version-1 format and size rather than retrying the same file. An invalid committed
+handoff record refuses recovery: keep the original journal for investigation.
+Neither failure permits editing history to remove provenance checks.
+
 A sealed journal stays sealed after raising limits. Diagnosis/handoff can inspect
 valid bounded histories, but oversized legacy files may refuse export. Preserve
 them and request developer-assisted source-page inspection; individual source
@@ -133,6 +159,11 @@ permitted terminal. Keep TLS verification and test assertions intact.
 
 | Symptom | Recovery |
 | --- | --- |
+| Workspace directory does not exist or cannot be read | Pass `--cwd` with an existing readable directory; use `ipse config` to inspect the selected settings before starting work |
+| Provider endpoint refused before dispatch | Inspect `ipse config`; choose HTTPS or explicit HTTP loopback without URL credentials, query or fragment; ChatGPT subscription uses its fixed official endpoint |
+| Invalid profile field | Fix the named field in the named profile using the [profile examples](configuration.md#reuse-a-named-model-profile); values are deliberately omitted from the error |
+| MCP server has an invalid field | Fix its command, URL, allowlists or private environment/header source using the [MCP manual](mcp.md); a numeric server label means its identifier was invalid or private |
+| Unexpected error with a stable code | Preserve saved state and report a minimal synthetic reproduction using the final section below; arbitrary error terms and exception messages are withheld |
 | Expired/refused browser callback | Keep the terminal open and start a new `ipse login`; each callback has five minutes and must reach that host's loopback listener |
 | Stale login completion after refresh/logout | Start a new login; do not resubmit an older callback |
 | Terminal refresh-token rejection | Sign in again; unusable tokens are cleared while registration is retained |

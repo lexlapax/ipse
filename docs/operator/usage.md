@@ -31,6 +31,10 @@ Ipse does not load `.env` files automatically.
 ChatGPT login uses Ipse's public sign-in flow. The browser must reach the temporary
 `127.0.0.1` callback on the machine running Ipse. On a remote host, arrange access
 to that listener or run locally. Another application's login does not sign Ipse in.
+`ipse status` reads local sign-in state without refreshing tokens or making a
+network request. It prints JSON with `email`, `client_id`, `label`, `expires_at`
+and `plan_usage`; it prints no tokens. An expired timestamp means a later real
+session may need refresh or a new login, rather than proving the account usable.
 `ipse logout` clears local credentials and attempts supported revocation. Review
 account-side connected grants if an older grant may be compromised.
 

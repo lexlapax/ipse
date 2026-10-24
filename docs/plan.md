@@ -618,6 +618,10 @@ release workflow drafts releases with the runner-provided `gh` CLI and the defau
 token, recorded in the dependency inventory when it is added.
 The [implementation record](archive/2026-10-23-p28-p29-implementation/index.md)
 tracks the ordered work packages, actual checks and auditor handoff requirements.
+Version/build identity has passed local source and installed-archive checks;
+hosted verification is pending. Actionable error and refusal handling is
+implemented and undergoing full-suite verification. Doctor, setup and release
+lifecycle remain unimplemented.
 
 Scope:
 

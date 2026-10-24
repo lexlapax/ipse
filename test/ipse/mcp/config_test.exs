@@ -120,6 +120,15 @@ defmodule Ipse.MCP.ConfigTest do
     assert Config.redact("xabc", Config.fingerprint_version(selected, 1)) == "[redacted]"
   end
 
+  defp assert_configuration_error(path) do
+    assert {:error, message} = Config.load(path)
+
+    assert Regex.match?(
+             ~r/\AMCP (configuration is invalid or unreadable \(document, server identities or public-field redaction\)|server (?:[a-z][a-z0-9_]{0,23}|#[1-4]) has invalid (?:fields|transport|id|command|args|tools|resources|prompts|allowlists|sandbox|env|public-field redaction|timeout_ms|url|allow_insecure_loopback|headers|record))\. No server was launched; see docs\/operator\/mcp\.md#configure-a-local-stdio-server\.\z/,
+             message
+           )
+  end
+
   test "public argument redaction cannot create another server's private value", ctx do
     entries = [
       server() |> Map.put("args", ["qzabc"]) |> Map.put("env", %{"TOKEN" => "abc"}),
@@ -128,7 +137,7 @@ defmodule Ipse.MCP.ConfigTest do
     ]
 
     write(ctx.path, %{"servers" => entries})
-    assert {:error, "MCP configuration is invalid or unreadable."} = Config.load(ctx.path)
+    assert_configuration_error(ctx.path)
   end
 
   test "resources-only and prompts-only servers get stable bounded model IDs", ctx do
@@ -171,7 +180,7 @@ defmodule Ipse.MCP.ConfigTest do
 
     for value <- invalid do
       write(ctx.path, %{"servers" => [value]})
-      assert {:error, "MCP configuration is invalid or unreadable."} = Config.load(ctx.path)
+      assert_configuration_error(ctx.path)
     end
 
     write(ctx.path, %{"servers" => [with_options(%{"sandbox" => "native"})]})
@@ -197,7 +206,7 @@ defmodule Ipse.MCP.ConfigTest do
 
     for value <- invalid_servers do
       write(ctx.path, %{"servers" => [value]})
-      assert {:error, "MCP configuration is invalid or unreadable."} = Config.load(ctx.path)
+      assert_configuration_error(ctx.path)
     end
   end
 
@@ -215,7 +224,7 @@ defmodule Ipse.MCP.ConfigTest do
     for fields <- foreign_public_fields do
       foreign = server() |> Map.put("id", "foreign") |> Map.merge(fields)
       write(ctx.path, %{"servers" => [owner, foreign]})
-      assert {:error, "MCP configuration is invalid or unreadable."} = Config.load(ctx.path)
+      assert_configuration_error(ctx.path)
     end
   end
 
@@ -288,7 +297,7 @@ defmodule Ipse.MCP.ConfigTest do
 
     for value <- invalid do
       write(ctx.path, value)
-      assert {:error, "MCP configuration is invalid or unreadable."} = Config.load(ctx.path)
+      assert_configuration_error(ctx.path)
     end
   end
 

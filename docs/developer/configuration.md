@@ -204,6 +204,36 @@ They are cooperative and cannot forcibly interrupt a decoder/callback. Cleanup
 can outlast inference. A late success refuses admission. Native signatures and
 private reasoning remain only in continuation where required, never visible text.
 
+## Make a refusal useful without exposing values
+
+Validation owners describe their own failures. Profiles reports a validated
+profile ID and a known field name; it never echoes the failing value. MCP tags
+its existing checks with field classes, reports a validated server ID or its
+one-based position, and withholds identifiers that overlap any configured secret.
+Neither path launches a worker or model request to diagnose configuration.
+
+Trace a refused credential reference in IEx:
+
+```elixir
+{:error, message} = Ipse.Config.Profiles.validate(
+  %{"local" => %{"provider" => "ollama", "model" => "fixture", "credential" => "OPENAI_API_KEY"}},
+  %{}
+)
+true = String.contains?(message, "Profile local: Invalid profile field credential.")
+false = String.contains?(message, "OPENAI_API_KEY")
+```
+
+The CLI renders those sanitized strings through `Ipse.CLI.Errors`. Known host
+reasons have a cause, effect-state guidance and a recovery anchor. Unexpected
+terms and exceptions produce only a stable code, never `inspect(reason)` or an
+exception message. Terminal question refusals and Session error events use the
+same renderer. `ipse status` serializes only `Auth.status/1`'s public keys as JSON.
+
+Add the causal CLI fixture in `test/ipse/cli/errors_test.exs` when extending this
+boundary. Assert the exact distinct refusal, unchanged journal bytes, absent
+dispatch/state creation, and absence of a synthetic private value. Do not replace
+a detailed expectation with a substring that the old generic refusal also met.
+
 ## Verify a complete setting change
 
 ```sh

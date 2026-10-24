@@ -464,7 +464,9 @@ defmodule Ipse.Extension.EffectResultTest do
     File.write!(path, Jason.encode!(document))
 
     try do
-      assert {:error, "MCP configuration is invalid or unreadable."} = Config.load(path)
+      assert {:error,
+              "MCP configuration is invalid or unreadable (document, server identities or public-field redaction). No server was launched; see docs/operator/mcp.md#configure-a-local-stdio-server."} =
+               Config.load(path)
     after
       File.rm!(path)
     end

@@ -166,7 +166,7 @@ defmodule Ipse.Config do
         end
       end
     else
-      false -> {:error, "Invalid configuration workspace."}
+      false -> {:error, :workspace_not_found}
       {:error, _} = error -> error
     end
   end
@@ -346,7 +346,11 @@ defmodule Ipse.Config do
            {:ok, raw} <- read_bounded(canonical),
            {:ok, data} <- Ipse.JSON.decode_bounded(raw),
            :ok <- Schema.validate_arguments(schema(), data),
-           :ok <- Ipse.Config.Profiles.validate(data["profiles"] || %{}, %{}),
+           :ok <-
+             (case Ipse.Config.Profiles.validate(data["profiles"] || %{}, %{}) do
+                :ok -> :ok
+                {:error, message} -> {:error, {:profile_configuration, message}}
+              end),
            :ok <- Ipse.Config.Profiles.validate_embeddings(data["embedding_profiles"] || %{}),
            :ok <- Ipse.Extension.Config.validate(data),
            :ok <- validate_settings(data["settings"] || %{}) do
@@ -359,6 +363,7 @@ defmodule Ipse.Config do
            data: data
          }}
       else
+        {:error, {:profile_configuration, message}} -> {:error, message}
         _ -> {:error, "Invalid, oversized or unsafe configuration: #{source.path}"}
       end
     else

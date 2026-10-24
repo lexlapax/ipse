@@ -55,7 +55,10 @@ defmodule Ipse.ConfigSessionTest do
         assert Ipse.CLI.run(["config", "--cwd", c.cwd, "--mcp-config", path]) == 1
       end)
 
-    assert output =~ "MCP configuration is invalid"
+    assert output ==
+             Ipse.CLI.Errors.format(
+               "MCP server #1 has invalid id. No server was launched; see docs/operator/mcp.md#configure-a-local-stdio-server."
+             ) <> "\n"
 
     File.write!(
       path,

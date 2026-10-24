@@ -8,7 +8,7 @@ defmodule Ipse.CLI do
     if code != 0, do: System.halt(code)
   rescue
     e in [ArgumentError, File.Error] ->
-      Terminal.puts(:stderr, "Error: #{Exception.message(e)}")
+      Terminal.puts(:stderr, "Error: #{format_error(e)}")
       System.halt(1)
   end
 
@@ -56,8 +56,10 @@ defmodule Ipse.CLI do
 
     cond do
       invalid != [] ->
-        Terminal.puts(:stderr, "Unknown options: #{inspect(invalid)}")
-        1
+        report(
+          {:error,
+           "Unknown or invalid options. Run ipse --help to review supported options; no task was started."}
+        )
 
       Enum.any?(
         ~w(fixture keep_fixture developer_trace trace_ms trace_events)a,
@@ -117,12 +119,11 @@ defmodule Ipse.CLI do
   defp dispatch(["status"], _opts) do
     case Ipse.Auth.status(auth_dir()) do
       {:ok, status} ->
-        Terminal.puts(inspect(status))
+        Terminal.puts(Jason.encode!(status, pretty: true))
         0
 
       {:error, error} ->
-        Terminal.puts(:stderr, to_string(error))
-        1
+        report({:error, error})
     end
   end
 
@@ -519,7 +520,9 @@ defmodule Ipse.CLI do
              else: restored
          end)}
       else
-        _ -> {:error, "Session could not be loaded."}
+        {:error, :enoent} -> {:error, :session_not_found}
+        {:error, :invalid_id} -> {:error, :invalid_id}
+        _ -> {:error, :invalid_journal}
       end
     else
       {:ok, opts}
@@ -543,22 +546,5 @@ defmodule Ipse.CLI do
         1
       )
 
-  defp format_error(:invalid_handoff),
-    do:
-      "Invalid handoff: expected one closed version-1 UTF-8 artifact of at most 16 KiB with consistent unknown-effect provenance."
-
-  defp format_error(:invalid_handoff_record),
-    do:
-      "Invalid committed handoff record; refusing recovery. Preserve the original journal for inspection."
-
-  defp format_error(:resume_configuration_mismatch),
-    do:
-      "Saved session configuration differs. Restore its provider, model, endpoint (--base-url), profiles, extensions and MCP configuration. Legacy MCP fingerprints also require a compatible OTP runtime. Otherwise start a fresh session."
-
-  defp format_error(:journal_limit_reached),
-    do:
-      "Journal resource limit reached. History was preserved; inspect it and use an explicit fresh-session handoff. Oversized legacy files require bounded source-page inspection."
-
-  defp format_error(reason) when is_binary(reason), do: reason
-  defp format_error(reason), do: inspect(reason)
+  defp format_error(reason), do: Ipse.CLI.Errors.format(reason)
 end

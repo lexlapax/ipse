@@ -20,17 +20,37 @@ defmodule Ipse.Config.Profiles do
 
   def validate(profiles, roles)
       when is_map(profiles) and is_map(roles) and map_size(profiles) <= 8 do
-    if Enum.all?(profiles, fn {id, profile} -> id?(id) and validate_profile(profile) == :ok end) and
-         Enum.all?(roles, fn {role, id} ->
-           role in ~w(main routine review) and Map.has_key?(profiles, id)
-         end) do
-      :ok
-    else
-      {:error, "Invalid profile or role configuration."}
+    Enum.reduce_while(Enum.sort(profiles), :ok, fn {id, profile}, :ok ->
+      if id?(id) do
+        case validate_profile(profile) do
+          :ok -> {:cont, :ok}
+          {:error, message} -> {:halt, {:error, "Profile #{id}: " <> message}}
+        end
+      else
+        {:halt,
+         {:error,
+          "Invalid profile ID; use a letter followed by at most 63 letters, digits, underscores or hyphens. See docs/operator/configuration.md#reuse-a-named-model-profile."}}
+      end
+    end)
+    |> case do
+      :ok ->
+        if Enum.all?(roles, fn {role, id} ->
+             role in ~w(main routine review) and Map.has_key?(profiles, id)
+           end),
+           do: :ok,
+           else:
+             {:error,
+              "Invalid role reference; main, routine and review must name configured profiles. See docs/operator/configuration.md#reuse-a-named-model-profile."}
+
+      error ->
+        error
     end
   end
 
-  def validate(_, _), do: {:error, "Invalid profile or role configuration."}
+  def validate(_, _),
+    do:
+      {:error,
+       "Profiles and roles must be objects with at most eight profiles. See docs/operator/configuration.md#reuse-a-named-model-profile."}
 
   def validate_profile(profile) do
     schema = %{
@@ -63,9 +83,59 @@ defmodule Ipse.Config.Profiles do
          true <- Ipse.Provider.valid_base_url?(profile["provider"], profile["base_url"]) do
       :ok
     else
-      _ -> {:error, "Unsupported profile settings, model or credential reference."}
+      _ ->
+        {:error,
+         "Invalid profile field #{invalid_field(profile, schema)}. No model request was sent; see docs/operator/configuration.md#reuse-a-named-model-profile."}
     end
   end
+
+  defp invalid_field(profile, schema) when is_map(profile) do
+    properties = schema["properties"]
+
+    field =
+      properties
+      |> Enum.sort()
+      |> Enum.find_value(fn {field, rule} ->
+        if Map.has_key?(profile, field) do
+          single = %{"type" => "object", "properties" => %{field => rule}}
+          if Schema.validate_arguments(single, Map.take(profile, [field])) != :ok, do: field
+        else
+          if field in schema["required"], do: field
+        end
+      end)
+
+    cond do
+      Enum.any?(Map.keys(profile), &(not Map.has_key?(properties, &1))) ->
+        "fields"
+
+      field ->
+        field
+
+      is_nil(Ipse.Provider.model_name(profile["model"])) ->
+        "model"
+
+      Map.get(profile, "credential", @credentials[profile["provider"]]) !=
+          @credentials[profile["provider"]] ->
+        "credential"
+
+      reasoning(profile["provider"], profile["model"], profile["reasoning_effort"]) != :ok ->
+        "reasoning_effort"
+
+      Ipse.Provider.validate_output_limit(%{
+        provider: @providers[profile["provider"]],
+        max_output_tokens: profile["max_output_tokens"]
+      }) != :ok ->
+        "max_output_tokens"
+
+      not Ipse.Provider.valid_base_url?(profile["provider"], profile["base_url"]) ->
+        "base_url"
+
+      true ->
+        "settings"
+    end
+  end
+
+  defp invalid_field(_, _), do: "record"
 
   def reasoning(_provider, _model, nil), do: :ok
 

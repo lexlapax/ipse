@@ -34,14 +34,19 @@ defmodule Ipse.MCP.Config do
          true <- public_manifests_clear?(parsed, secrets) do
       {:ok, Enum.map(parsed, &(&1 |> Map.put(:redactions, secrets) |> fingerprint_version(2)))}
     else
-      {:error, _} -> {:error, "MCP configuration is invalid or unreadable."}
-      _ -> {:error, "MCP configuration is invalid or unreadable."}
+      {:error, message} when is_binary(message) -> {:error, message}
+      _ -> configuration_error()
     end
   rescue
-    _ -> {:error, "MCP configuration is invalid or unreadable."}
+    _ -> configuration_error()
   end
 
-  def load(_), do: {:error, "MCP configuration is invalid or unreadable."}
+  def load(_), do: configuration_error()
+
+  defp configuration_error,
+    do:
+      {:error,
+       "MCP configuration is invalid or unreadable (document, server identities or public-field redaction). No server was launched; see docs/operator/mcp.md#configure-a-local-stdio-server."}
 
   @doc "Build a tool model ID; validated server IDs and tool names keep it within 64 bytes."
   def tool_id(server_id, name), do: "mcp__#{server_id}__#{String.replace(name, ".", "_")}"
@@ -187,10 +192,44 @@ defmodule Ipse.MCP.Config do
   end
 
   defp parse_servers(servers) do
-    Enum.reduce_while(servers, {:ok, []}, fn entry, {:ok, acc} ->
+    secrets =
+      Enum.flat_map(servers, fn
+        entry when is_map(entry) ->
+          values = if is_map(entry["env"]), do: Map.values(entry["env"]), else: []
+          bearer = entry["bearer_env"]
+
+          key =
+            if is_binary(bearer) and Regex.match?(@env_name, bearer), do: System.get_env(bearer)
+
+          Enum.filter([key | values], &(is_binary(&1) and byte_size(&1) > 0))
+
+        _ ->
+          []
+      end)
+
+    Enum.reduce_while(Enum.with_index(servers, 1), {:ok, []}, fn {entry, index}, {:ok, acc} ->
       case parse_server(entry) do
-        {:ok, server} -> {:cont, {:ok, [server | acc]}}
-        _ -> {:halt, {:error, :invalid_server}}
+        {:ok, server} ->
+          {:cont, {:ok, [server | acc]}}
+
+        result ->
+          id = if is_map(entry), do: entry["id"]
+
+          label =
+            if is_binary(id) and Regex.match?(@id, id) and
+                 not Enum.any?(secrets, &String.contains?(id, &1)),
+               do: "server #{id}",
+               else: "server ##{index}"
+
+          field =
+            case result do
+              {:error, {:field, field}} -> field
+              _ -> "record"
+            end
+
+          {:halt,
+           {:error,
+            "MCP #{label} has invalid #{field}. No server was launched; see docs/operator/mcp.md#configure-a-local-stdio-server."}}
       end
     end)
     |> case do
@@ -215,22 +254,32 @@ defmodule Ipse.MCP.Config do
       "transport"
     ]
 
-    with true <- keys?(entry, allowed),
-         true <- Map.get(entry, "transport", "stdio") == "stdio",
-         id when is_binary(id) <- entry["id"],
-         true <- Regex.match?(@id, id),
-         command when is_binary(command) <- entry["command"],
-         :ok <- executable(command),
-         {:ok, args} <- validate_args(Map.get(entry, "args", [])),
-         {:ok, tools} <- validate_tools(Map.get(entry, "tools", [])),
-         {:ok, resources} <- validate_resources(Map.get(entry, "resources", [])),
-         {:ok, prompts} <- validate_prompts(Map.get(entry, "prompts", [])),
-         true <- (length(tools) + length(resources) + length(prompts)) in 1..@allowlist_limit,
-         {:ok, sandbox} <- validate_sandbox(Map.get(entry, "sandbox", "off")),
-         {:ok, env} <- validate_env(Map.get(entry, "env", %{})),
-         true <- public_fields_clear?(id, command, tools, resources, prompts, env),
-         timeout when is_integer(timeout) and timeout in 1..120_000 <-
-           Map.get(entry, "timeout_ms", 30_000) do
+    with :ok <- field("fields", keys?(entry, allowed)),
+         :ok <- field("transport", Map.get(entry, "transport", "stdio") == "stdio"),
+         id = entry["id"],
+         :ok <- field("id", is_binary(id) and Regex.match?(@id, id)),
+         command = entry["command"],
+         :ok <- field("command", is_binary(command)),
+         :ok <- field("command", executable(command)),
+         {:ok, args} <- field("args", validate_args(Map.get(entry, "args", []))),
+         {:ok, tools} <- field("tools", validate_tools(Map.get(entry, "tools", []))),
+         {:ok, resources} <-
+           field("resources", validate_resources(Map.get(entry, "resources", []))),
+         {:ok, prompts} <- field("prompts", validate_prompts(Map.get(entry, "prompts", []))),
+         :ok <-
+           field(
+             "allowlists",
+             (length(tools) + length(resources) + length(prompts)) in 1..@allowlist_limit
+           ),
+         {:ok, sandbox} <- field("sandbox", validate_sandbox(Map.get(entry, "sandbox", "off"))),
+         {:ok, env} <- field("env", validate_env(Map.get(entry, "env", %{}))),
+         :ok <-
+           field(
+             "public-field redaction",
+             public_fields_clear?(id, command, tools, resources, prompts, env)
+           ),
+         timeout = Map.get(entry, "timeout_ms", 30_000),
+         :ok <- field("timeout_ms", is_integer(timeout) and timeout in 1..120_000) do
       {:ok,
        fingerprint_version(
          %{
@@ -248,7 +297,7 @@ defmodule Ipse.MCP.Config do
          2
        )}
     else
-      _ -> {:error, :invalid_server}
+      error -> error
     end
   end
 
@@ -258,20 +307,31 @@ defmodule Ipse.MCP.Config do
     allowed =
       ~w(id transport url tools resources prompts bearer_env allow_insecure_loopback timeout_ms)
 
-    with true <- keys?(entry, allowed),
-         id when is_binary(id) <- entry["id"],
-         true <- Regex.match?(@id, id),
-         url when is_binary(url) and byte_size(url) <= 4096 <- entry["url"],
-         insecure when is_boolean(insecure) <- Map.get(entry, "allow_insecure_loopback", false),
-         true <- valid_http_endpoint?(url, insecure),
-         {:ok, tools} <- validate_tools(Map.get(entry, "tools", [])),
-         {:ok, resources} <- validate_resources(Map.get(entry, "resources", [])),
-         {:ok, prompts} <- validate_prompts(Map.get(entry, "prompts", [])),
-         true <- (length(tools) + length(resources) + length(prompts)) in 1..@allowlist_limit,
-         {:ok, env} <- bearer_environment(entry["bearer_env"]),
-         true <- public_fields_clear?(id, url, tools, resources, prompts, env),
-         timeout when is_integer(timeout) and timeout in 1..120_000 <-
-           Map.get(entry, "timeout_ms", 30_000) do
+    with :ok <- field("fields", keys?(entry, allowed)),
+         id = entry["id"],
+         :ok <- field("id", is_binary(id) and Regex.match?(@id, id)),
+         url = entry["url"],
+         :ok <- field("url", is_binary(url) and byte_size(url) <= 4096),
+         insecure = Map.get(entry, "allow_insecure_loopback", false),
+         :ok <- field("allow_insecure_loopback", is_boolean(insecure)),
+         :ok <- field("url", valid_http_endpoint?(url, insecure)),
+         {:ok, tools} <- field("tools", validate_tools(Map.get(entry, "tools", []))),
+         {:ok, resources} <-
+           field("resources", validate_resources(Map.get(entry, "resources", []))),
+         {:ok, prompts} <- field("prompts", validate_prompts(Map.get(entry, "prompts", []))),
+         :ok <-
+           field(
+             "allowlists",
+             (length(tools) + length(resources) + length(prompts)) in 1..@allowlist_limit
+           ),
+         {:ok, env} <- field("headers", bearer_environment(entry["bearer_env"])),
+         :ok <-
+           field(
+             "public-field redaction",
+             public_fields_clear?(id, url, tools, resources, prompts, env)
+           ),
+         timeout = Map.get(entry, "timeout_ms", 30_000),
+         :ok <- field("timeout_ms", is_integer(timeout) and timeout in 1..120_000) do
       {:ok,
        fingerprint_version(
          %{
@@ -291,9 +351,13 @@ defmodule Ipse.MCP.Config do
          2
        )}
     else
-      _ -> {:error, :invalid_http_server}
+      error -> error
     end
   end
+
+  defp field(_name, value) when value in [true, :ok], do: :ok
+  defp field(_name, {:ok, _} = value), do: value
+  defp field(name, _), do: {:error, {:field, name}}
 
   defp valid_http_endpoint?(url, insecure) do
     uri = URI.parse(url)

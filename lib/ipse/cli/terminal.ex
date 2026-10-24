@@ -62,7 +62,7 @@ defmodule Ipse.CLI.Terminal do
   ipse --version                  Show the application version
   ipse version [--json]           Show version or non-secret runtime build identity
   ipse login                      Continue with ChatGPT
-  ipse status                     Show subscription sign-in status
+  ipse status                     Show subscription sign-in status as JSON
   ipse logout                     Sign out of ChatGPT
   ipse chat [options]              Interactive conversation
   ipse run [options] "task"         Run one task
@@ -88,7 +88,7 @@ defmodule Ipse.CLI.Terminal do
   --yes                                Allow mutations, shell, configured MCP, and enabled delegation
   --base-url URL                       API endpoint root (API/Ollama only)
   --state-dir PATH                     Session directory
-  --json                               sessions only: JSON array of id/provider/model/cwd
+  --json                               sessions: id/provider/model/cwd; version: build identity
   --note TEXT                          handoff only: operator-written continuation note
   --max-steps N                        Model calls per turn (default: 30)
   --max-output-tokens N                Per-request provider cap (API/Ollama only; no aggregate budget)
@@ -335,7 +335,7 @@ defmodule Ipse.CLI.Terminal do
                   })
 
                 {:error, reason} ->
-                  puts(:stderr, "Answer rejected: #{inspect(reason)}")
+                  puts(:stderr, "Answer rejected: #{Ipse.CLI.Errors.format(reason)}")
                   client_loop(s)
               end
             else
@@ -499,7 +499,7 @@ defmodule Ipse.CLI.Terminal do
         end
 
       {:ipse, ^pid, {:error, error}} ->
-        puts(:stderr, "\nError: #{error}")
+        puts(:stderr, "\nError: #{Ipse.CLI.Errors.format(error)}")
         client_loop(s)
 
       {:ipse, ^pid, {:done, status}} when s.cancelling and status != :cancelled ->
