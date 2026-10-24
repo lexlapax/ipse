@@ -2,8 +2,9 @@
 
 Prepared 2026-10-24; the newest runtime increment adds
 [Grok API and registered-client OAuth](../2026-10-24-xai-provider-research/index.md)
-after `5bb5761`. Its frozen identity and final verification must be recorded
-before treating it as audit-ready. Earlier exact live wire evidence is at
+after `5bb5761`. Runtime `622a2c8` passes full local native, demo and installed
+checks; `b52c32e` adds the live driver without changing runtime source. Their
+hosted verdicts remain pending, so final audit readiness is unproven. Earlier exact live wire evidence is at
 `492d091`, and RC1 release preparation is at `e944fcf`.
 This handoff is prepared for independent implementation review, not an external
 audit or a completeness verdict. P29's original registry/Gemini/OpenRouter gates
@@ -77,7 +78,7 @@ earlier green matrices do not prove that newly authorized scope.
 | Grok X1: native Responses, no hosted tools, private xAI replay, foreign ciphertext refusal, exact tool results, completed terminal before trailing marker | `lib/ipse/provider/openai.ex`, shared XAI/XAIOAuth conformance and `test/ipse/provider/xai_test.exs` | Byte-fragmented real HTTP fixtures plus Session approvals/replay; no live Grok inference claimed |
 | Grok X2: registered-client device grant, safe verification URI, finite polling, private credentials, retained OS lock, pending refresh, scope binding, logout uncertainty | `lib/ipse/auth/xai.ex`, closed Auth storage namespaces, `test/ipse/auth/xai_test.exs` | Controlled omitted-scope reproduction and repair; eight final OAuth cases pass; no Ipse registration or real browser grant exists yet |
 | Grok X3: modern/legacy reasoning accounting, visible-only cap, budgets, SDK/child privacy, native/environment token filtering | Registry/Budget, profile/extension integration suites, native shell/measurement filters and MCP environment admission | Both credential routes tested in real child requests, approved SDK requests, actual shell and Rust controls; full final verification pending |
-| Grok X4: coherent operator/developer procedures and installed lifecycle | Grok configuration, accounting/dependency training, `dev/verification/package.exs` | Installed API setup/offline doctor/missing-registration refusal pass at earlier exact candidates; scope-repaired package and source/platform checks in progress |
+| Grok X4: coherent operator/developer procedures and installed lifecycle | Grok configuration, accounting/dependency training, `dev/verification/package.exs` | Scope-repaired `622a2c8` full local native suite, demo and installed lifecycle pass; hosted platform checks pending |
 
 ## Material implementation decisions to inspect
 

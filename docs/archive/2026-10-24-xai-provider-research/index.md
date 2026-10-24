@@ -150,8 +150,11 @@ and the new offline Grok path. Its archive SHA256 is
 `b3f6e27da4b40c786a179da2226fb19839aa4e9df570562fb49dbeb820a83752`
 (32,089,978 bytes). All 24 runtime notices were rehashed against SHA256 and Git
 blob identities, and the archive identity module matches the packaged CLI's
-`622a2c8` build facts (Elixir 1.20.4/OTP 29.1.1). Its full local source/native and
-hosted Linux/macOS checks are running. The earlier `b2d8386` full native suite
+`622a2c8` build facts (Elixir 1.20.4/OTP 29.1.1). Its full local source/native suite
+passes 1760 tests, zero failures, 19 excluded, seed 954604, 1062.9 seconds, followed
+by an isolated demo and unchanged tracked source. Build, both formatting checks,
+warnings-as-errors compilation, CI policy and documentation checks pass. Hosted
+Linux/macOS checks are running. The earlier `b2d8386` full native suite
 passes 1759 tests, zero failures, 19 excluded, seed 541413, 1066.8 seconds, followed
 by an isolated demo and unchanged tracked source. That earlier full suite does
 not establish the later refresh-scope repair.
@@ -176,6 +179,16 @@ preserves evaluation order and is accepted by both formatters; seven OAuth
 controls pass afterward (seed 902377, 0.2 seconds). Fresh exact-source hosted
 verification is required for that repair, not a rerun claim for the failed run.
 
+The formatter-repaired `fc8393a` macOS job subsequently reached ExUnit but failed
+the unchanged four-path Research evaluator fixture's 120-second watchdog during
+its later `freeze_fixture` call. Six completed CLI phases took 18.791, 13.051,
+10.529, 6.271, 20.621 and 27.378 seconds before that call. Its
+[job receipt](format-macos-failure.json) retains the exact stack and suite summary:
+1743 tests, one failure, 36 excluded, one skipped, seed 876937. The cause is
+unconfirmed; neither the evaluator nor its fixture changed from the passing
+`dac11dc` baseline, and no assertion or deadline was weakened. Later candidates
+must obtain their own verdicts rather than inheriting this failed job.
+
 Initial verification failures are retained as distinct observations: a new
 resume fixture expected an absent `status` field and a last-turn `final` value
 that existing idle resume intentionally clears; the fixture now checks `phase`,
@@ -196,8 +209,9 @@ The affected auth/provider/setup/doctor set passes 66 cases, seed 87442,
 11.0 seconds, before the final explicit-request assertion; the final eight OAuth
 cases then pass, seed 804653, 0.2 seconds, including omitted-scope preservation
 and expansion refusal. Both supported formatters pass. Final verification
-must use the repaired source; the earlier frozen candidate does not cover this
-newly reproduced edge case.
+uses the repaired source for the full local suite and installed proof; hosted
+checks remain pending. The earlier frozen candidate does not cover this newly
+reproduced edge case.
 
 ### Live API check
 
@@ -221,6 +235,12 @@ nested CLI test was stopped after it waited on its parent Mix build lock; it was
 removed and the standalone control was used instead. This was a developer-test
 coordination issue, not evidence of a provider failure. No production deadline
 or assertion was weakened.
+
+The driver is committed at `b52c32e`; its clean-checkout focused repeat also passes
+six controls (seed 466803, 0.8 seconds). Its full hosted matrix is running separately
+as run 40121156399. Runtime source, native helpers, dependencies, package construction
+and the installed-package verifier are unchanged from `622a2c8`; the live receipt
+records the actually loaded `622a2c8` build rather than claiming a later binary.
 
 ### Open external gates
 

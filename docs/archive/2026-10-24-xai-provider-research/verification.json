@@ -62,6 +62,14 @@
     "run_id": 40119130959,
     "status": "failed"
   },
+  "formatter_repaired_macos_failure": {
+    "candidate": "fc8393a70e533602cdcac5b49e2503cbc5133e89",
+    "cause": "unconfirmed; 120-second cumulative four-path Research evaluator fixture timeout",
+    "job_id": 120947395801,
+    "receipt": "format-macos-failure.json",
+    "run_id": 40119384442,
+    "status": "failed"
+  },
   "hosted": {
     "run_id": 40120009675,
     "status": "running",
@@ -97,6 +105,22 @@
     "status": "passed",
     "system_toolchain_on_runtime_path": false
   },
+  "latest_driver_candidate": {
+    "clean_focused_repeat": {
+      "log": "/tmp/ipse-grok-live-driver-clean-tests.log",
+      "seconds": 0.8,
+      "seed": 466803,
+      "status": "passed",
+      "tests": 6
+    },
+    "commit": "b52c32e66efbd14fffe765bc14b942ce887487ba",
+    "hosted": {
+      "run_id": 40121156399,
+      "status": "running",
+      "url": "https://github.com/lexlapax/ipse/actions/runs/40121156399"
+    },
+    "runtime_source_unchanged_from": "622a2c898d7c5140f12e679adb3b4d9c36d28e3c"
+  },
   "live": {
     "api_receipt": "live-api.json",
     "api_requests": 1,
@@ -118,18 +142,35 @@
     "status": "passed"
   },
   "local_source": {
+    "build_format_compile_policy_docs": "passed",
+    "excluded": 19,
+    "exit_code": 0,
+    "failures": 0,
     "include": [
       "native_sandbox"
     ],
+    "isolated_demo_exit": 0,
     "log": "/tmp/ipse-grok-scope-source-tests.log",
     "root": "/tmp/ipse-grok-source-kgmFxa",
-    "status": "running"
+    "seconds": 1062.9,
+    "seed": 954604,
+    "status": "passed",
+    "tests": 1760,
+    "tracked_tree_clean": true
   },
   "native_environment": {
     "filtered": 39,
     "log": "/tmp/ipse-grok-native-environment.log",
     "status": "passed",
     "tests": 1
+  },
+  "p28_remote_release_state": {
+    "checked_date": "2026-10-24",
+    "interpretation": "RC draft cleanup complete; stable publication remains open",
+    "published_or_draft_releases": [],
+    "rc_tag_object": "badf447186323c6c113208a1759c875ea0cc2729",
+    "rc_target": "e944fcf6223127f5db0bc290437f7989a9db3069",
+    "stable_v0_1_0_tag_present": false
   },
   "record_version": 1,
   "scope_reproduction": {
