@@ -37,6 +37,7 @@ a helper's return shape.
 | Journal/lock/reservation/source closure | `test/ipse/journal/`, `test/ipse/journal_test.exs` |
 | Task/native cleanup | `test/ipse/session/resources_test.exs`, `test/ipse/runner/` |
 | Provider wire/stream/usage | `test/ipse/provider/`, `test/ipse/provider_test.exs`, `test/ipse/usage/` |
+| Shared adapter contract and captured HTTP requests | `test/ipse/provider/conformance_test.exs`; event builders in `test/support/provider_conformance.ex`, transport fixture in `test/support/provider_fixture.ex` |
 | Generic extension or bundled/package behavior | `test/ipse/extension/`, `test/extensions/` |
 | Configuration/workspace/client | Matching `test/ipse/config/`, workspace, and CLI suites |
 | Operator error/recovery rendering | `test/ipse/cli/errors_test.exs`, configuration and MCP validation suites; include private synthetic values and unchanged-journal controls |

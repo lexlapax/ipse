@@ -1,4 +1,7 @@
+Code.require_file("../../support/provider_fixture.ex", __DIR__)
+
 defmodule Ipse.Provider.StreamTest do
+  import Ipse.Test.ProviderFixture, only: [sse: 1]
   use ExUnit.Case, async: false
   alias Ipse.Provider.Stream
   alias Ipse.Provider.OpenAI
@@ -451,8 +454,6 @@ defmodule Ipse.Provider.StreamTest do
       assert {[], ^state} = Stream.finish_sse(state)
     end
   end
-
-  defp sse(data), do: "data: " <> Jason.encode!(data) <> "\n\n"
 
   defp chunks("", _), do: []
 

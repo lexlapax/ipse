@@ -111,6 +111,13 @@ signed history must round-trip unchanged, including parallel call ordering.
 
 ## Verification still required
 
+The OpenRouter routing, streaming and reasoning documentation above was rechecked
+on 2026-10-24 before adapter work. The streaming guide still gives the upstream
+as a lowercase slug in its explicit error example and documents the repeated
+terminal reason in the final accounting frame. Exact configured identity remains
+the initial policy; no undocumented alias normalization is authorized by this
+research. This is documentation verification without a live model request.
+
 Turn these facts into loopback fixtures for fragmented streaming, identity pins,
 parallel tool continuation, hidden reasoning, usage and every terminal refusal.
 Run source/installed recovery and budget checks. Live text/tool checks remain

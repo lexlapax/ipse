@@ -301,6 +301,7 @@ GET. Expired-credential bytes and held session locks must survive inspection.
 mix test test/ipse/config_test.exs test/ipse/config/integration_test.exs test/ipse/config/profiles_test.exs
 mix test test/ipse/config/profile_integration_test.exs test/ipse/config/embedding_test.exs
 mix test test/ipse/provider_test.exs test/ipse/provider/stream_test.exs
+mix test test/ipse/provider/conformance_test.exs test/ipse/provider/http_test.exs
 mix test test/ipse/cli/doctor_test.exs
 mix test test/ipse/cli/setup_test.exs test/ipse/private_file_test.exs test/ipse/auth_test.exs
 ```
@@ -312,3 +313,13 @@ overflow after usage, and native continuation. A larger bound also needs transpo
 materialization, and journal review. Instruction refresh changes no execution
 policy. Preserve old evidence and use [recovery](../operator/recovery.md) for an
 incompatible route, without silent provider fallback.
+
+For an adapter change, use the shared ProviderFixture for local byte-fragmented or
+whole responses. Its task returns captured headers and the decoded request, so
+wire assertions check what the adapter sent. ProviderConformance takes a fixed
+provider/adapter and native event builder. Its common cases require visible deltas,
+private continuation, exact tool arguments, ordered native replay, usage, terminal
+markers, HTTP errors and the transport byte limit. Implement the protocol builder
+and run these cases before special signature, route-pin or accounting fixtures.
+Synthetic conformance proves local contracts, without establishing service access
+or live compatibility.

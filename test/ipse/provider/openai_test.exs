@@ -1,4 +1,7 @@
+Code.require_file("../../support/provider_fixture.ex", __DIR__)
+
 defmodule Ipse.Provider.OpenAITest do
+  import Ipse.Test.ProviderFixture, only: [sse: 1]
   use ExUnit.Case, async: true
   alias Ipse.Provider.OpenAI
 
@@ -198,6 +201,4 @@ defmodule Ipse.Provider.OpenAITest do
              output ++
                [%{"type" => "function_call_output", "call_id" => "call-1", "output" => "done"}]
   end
-
-  defp sse(data), do: "data: " <> Jason.encode!(data) <> "\n\n"
 end

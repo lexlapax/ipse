@@ -1,0 +1,10 @@
+{
+  "record_version": 1,
+  "scope": "Shared test transport and conformance; no runtime behavior change",
+  "shared_fixture": {"passed": 54, "log": "/tmp/ipse-p29-shared-fixture.log", "exit_code": 0},
+  "conformance": {"passed": 33, "seed": 34376, "log": "/tmp/ipse-p29-conformance.log", "exit_code": 0, "adapters": ["openai", "anthropic", "ollama"]},
+  "provider_suite": {"passed": 110, "duration_seconds": 7.0, "log": "/tmp/ipse-p29-conformance-provider-suite.log", "exit_code": 0},
+  "contracts": ["Fragmented Unicode visible text", "Private native continuation is retained without text emission", "One and parallel tool calls with complete arguments", "Native continuation and tool-result order on a second request", "Usage emission", "Truncation preserves usage but refuses completion", "Stream and HTTP 401/429/503 errors", "Missing terminal refusal", "Transport byte ceiling before admission"],
+  "other_checks": ["Elixir 1.18 and 1.20 formatting", "Documentation and links"],
+  "limits": ["Synthetic loopback fixtures only", "New adapters not yet implemented", "Full combined baseline and hosted checks still pending"]
+}

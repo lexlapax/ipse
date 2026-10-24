@@ -25,7 +25,7 @@ requirement; authority, recovery and correctness regressions remain unacceptable
 | P28 WP6 | Whole-manual first-user review and fresh-account walkthrough | Pending |
 | P29 WP0 | Verified official wire facts and continuation examples | [Recorded](wire-facts.md); adapter fixtures still required |
 | P29 WP1 | Central registry, existing-provider equivalence and recovery tests | Implemented; fixed pre-refactor fixtures and 312 focused checks pass; full/platform gates pending |
-| P29 WP2 | Shared server and adapter conformance tests | Pending |
+| P29 WP2 | Shared server and adapter conformance tests | Shared server preserves 54 tests; 33 conformance cases and all 110 provider tests pass ([receipt](p29-wp2-verification.json)) |
 | P29 WP3 | Pinned OpenRouter and explicit loopback compatible adapter | Pending |
 | P29 WP4 | Native Gemini, signed continuation and canonical accounting | Pending |
 | P29 WP5 | Registry-driven doctor/setup and coherent provider manuals | Pending |

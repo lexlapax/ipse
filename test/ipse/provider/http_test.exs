@@ -1,3 +1,5 @@
+Code.require_file("../../support/provider_fixture.ex", __DIR__)
+
 defmodule Ipse.Provider.HTTPTest do
   use ExUnit.Case, async: false
   alias Ipse.Provider
@@ -920,54 +922,10 @@ defmodule Ipse.Provider.HTTPTest do
     Task.await(server)
   end
 
-  defp fixture(body, status \\ 200, response_headers \\ "", send_mode \\ :fragmented) do
-    {:ok, listener} =
-      :gen_tcp.listen(0, [:binary, active: false, reuseaddr: true, ip: {127, 0, 0, 1}])
+  defp fixture(body, status \\ 200, headers \\ "", mode \\ :fragmented),
+    do: Ipse.Test.ProviderFixture.start(body, status, headers, mode)
 
-    {:ok, {_, port}} = :inet.sockname(listener)
-
-    task =
-      Task.async(fn ->
-        {:ok, socket} = :gen_tcp.accept(listener, 5000)
-        {headers, payload} = request(socket, "")
-
-        response =
-          "HTTP/1.1 #{status} Fixture\r\ncontent-type: text/event-stream\r\n#{response_headers}content-length: #{byte_size(body)}\r\nconnection: close\r\n\r\n"
-
-        :ok = :gen_tcp.send(socket, response)
-
-        if send_mode == :whole do
-          :ok = :gen_tcp.send(socket, body)
-        else
-          for <<byte <- body>>, do: :ok = :gen_tcp.send(socket, <<byte>>)
-        end
-
-        :gen_tcp.close(socket)
-        :gen_tcp.close(listener)
-        {headers, Jason.decode!(payload)}
-      end)
-
-    {"http://127.0.0.1:#{port}", task}
-  end
-
-  defp request(socket, buffer) do
-    case :binary.split(buffer, "\r\n\r\n") do
-      [headers, body] ->
-        [_, size] = Regex.run(~r/content-length:\s*(\d+)/i, headers)
-        {headers, rest(socket, body, String.to_integer(size))}
-
-      [_] ->
-        {:ok, chunk} = :gen_tcp.recv(socket, 0, 5000)
-        request(socket, buffer <> chunk)
-    end
-  end
-
-  defp rest(_, body, size) when byte_size(body) >= size, do: body
-
-  defp rest(socket, body, size) do
-    {:ok, chunk} = :gen_tcp.recv(socket, 0, 5000)
-    rest(socket, body <> chunk, size)
-  end
+  defp request(socket, buffer), do: Ipse.Test.ProviderFixture.request(socket, buffer)
 
   defp event(data), do: "data: " <> Jason.encode!(data) <> "\n\n"
 
