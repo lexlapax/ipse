@@ -56,3 +56,15 @@ queued-call, journal, restoration and non-replay assertions remain. The original
 changed-skill assertion is unchanged. The corrected focused workspace/native
 selection passes 56 tests (9 excluded), and 31 additional resource/Session-context
 checks pass. Final baseline verification must use this subsequent source.
+
+The subsequent `dc70463` native-inclusive run exposed an MCP overlap fixture
+admission failure. Its synthetic secrets `abc` and `xabc` can collide with generated
+public metadata. The [controlled reproduction](mcp-overlap-control.exs) finds a
+fingerprint containing `abc`; the unchanged privacy guard refuses it. Replacing
+the suffix with `synthetic-overlap-token` admits the same fixture while retaining
+the original legacy `x[redacted]` assertion. See the [receipt](mcp-overlap-control.json).
+The original failed root was removed by test cleanup, so its exact collision field
+is unavailable. The fix changes only the overlapping test strings: no assertion,
+privacy check, product timeout or runtime code changes. All 63 focused MCP
+configuration/session/effect tests pass; their actual seed is retained in the
+verification receipt. Full verification remains required.

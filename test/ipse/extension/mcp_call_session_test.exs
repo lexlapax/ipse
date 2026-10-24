@@ -254,11 +254,15 @@ defmodule Ipse.Extension.MCPCallSessionTest do
     first =
       Fixture.stdio_config(ctx.root)
       |> Map.update!("args", fn args ->
-        List.update_at(args, -1, &("_ = <<\"xabc\">>, " <> &1))
+        List.update_at(args, -1, &("_ = <<\"xsynthetic-overlap-token\">>, " <> &1))
       end)
-      |> Map.put("env", %{"FIRST_TOKEN" => "abc"})
+      |> Map.put("env", %{"FIRST_TOKEN" => "synthetic-overlap-token"})
 
-    second = first |> Map.put("id", "other") |> Map.put("env", %{"SECOND_TOKEN" => "xabc"})
+    second =
+      first
+      |> Map.put("id", "other")
+      |> Map.put("env", %{"SECOND_TOKEN" => "xsynthetic-overlap-token"})
+
     path = Path.join(ctx.root, "overlap-mcp.json")
     File.write!(path, Jason.encode!(%{"servers" => [first, second]}))
     assert {:ok, [selected | _] = servers} = Ipse.MCP.Config.load(path)
