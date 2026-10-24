@@ -11,6 +11,13 @@ defmodule Ipse.RunnerTest do
     %{cwd: cwd}
   end
 
+  test "host UID query does not treat the application as a sandbox workspace", %{cwd: cwd} do
+    assert {:ok, uid} = Runner.current_uid()
+    assert uid == File.stat!(cwd).uid
+    assert {:error, message} = Runner.native_helper(Application.app_dir(:ipse))
+    assert message =~ "overlaps"
+  end
+
   test "group ownership survives command reaping and helper loss closes the child's lease",
        %{cwd: cwd} do
     probe = Path.join(cwd, "process-group-probe")
@@ -167,7 +174,9 @@ defmodule Ipse.RunnerTest do
       "OPENAI_API_KEY",
       "ANTHROPIC_API_KEY",
       "IPSE_CHATGPT_ACCESS_TOKEN",
-      "OPENROUTER_API_KEY"
+      "OPENROUTER_API_KEY",
+      "GEMINI_API_KEY",
+      "GOOGLE_API_KEY"
     ]
 
     previous = Map.new(keys, &{&1, System.get_env(&1)})
@@ -181,7 +190,7 @@ defmodule Ipse.RunnerTest do
 
     assert {:ok, result} =
              Runner.run(
-               "printf '%s%s%s%s' \"$OPENAI_API_KEY\" \"$ANTHROPIC_API_KEY\" \"$IPSE_CHATGPT_ACCESS_TOKEN\" \"$OPENROUTER_API_KEY\"",
+               "printf '%s%s%s%s%s%s' \"$OPENAI_API_KEY\" \"$ANTHROPIC_API_KEY\" \"$IPSE_CHATGPT_ACCESS_TOKEN\" \"$OPENROUTER_API_KEY\" \"$GEMINI_API_KEY\" \"$GOOGLE_API_KEY\"",
                cwd
              )
 

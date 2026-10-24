@@ -114,6 +114,34 @@ defmodule Ipse.Provider.ChatCompletionsTest do
     assert {:ok, %{"content" => "done"}, _} = ChatCompletions.finish(state)
   end
 
+  test "OpenAI's catalogued display name identifies the pinned slug without guessing other aliases" do
+    for name <- ["openai", "OpenAI"] do
+      bytes =
+        Fixture.sse([
+          Map.put(chunk(%{"content" => "done"}), "provider", name),
+          Map.put(terminal(), "provider", name),
+          "[DONE]"
+        ])
+
+      assert {:ok, state} =
+               ChatCompletions.consume(ChatCompletions.new(config(profile())), bytes, fn _ ->
+                 :ok
+               end)
+
+      assert {:ok, message, _} = ChatCompletions.finish(state)
+      assert message["provider_data"]["reported_upstream"] == name
+    end
+
+    for name <- ["OPENAI", "Open AI", "Azure", "openai/other"] do
+      assert {:error, _} =
+               ChatCompletions.consume(
+                 ChatCompletions.new(config(profile())),
+                 Fixture.sse(Map.put(chunk(%{"content" => "untrusted"}), "provider", name)),
+                 fn _ -> flunk("wrong upstream") end
+               )
+    end
+  end
+
   test "local compatibility requires an explicit loopback endpoint and no reasoning or credential" do
     for url <- [
           nil,

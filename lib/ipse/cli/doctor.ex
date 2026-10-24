@@ -67,11 +67,7 @@ defmodule Ipse.CLI.Doctor do
   end
 
   defp current_uid do
-    with {:ok, helper} <- Ipse.Runner.native_helper(System.tmp_dir!()),
-         command = "'" <> String.replace(helper, "'", "'\\''") <> "' --uid",
-         {:ok, %{exit_code: 0, timed_out: false, output: output}} <-
-           Ipse.Runner.run(command, System.tmp_dir!(), timeout_ms: 2_000, output_limit: 64),
-         {uid, ""} when uid >= 0 <- Integer.parse(String.trim(output)) do
+    with {:ok, uid} <- Ipse.Runner.current_uid() do
       uid
     else
       _ -> nil
@@ -400,6 +396,7 @@ defmodule Ipse.CLI.Doctor do
     case authentication do
       :bearer -> [{"authorization", "Bearer " <> key}]
       :anthropic -> [{"x-api-key", key}, {"anthropic-version", "2023-06-01"}]
+      :gemini -> [{"x-goog-api-key", key}]
     end
   end
 

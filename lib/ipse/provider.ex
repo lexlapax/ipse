@@ -57,7 +57,7 @@ defmodule Ipse.Provider do
          {:ok, uri} <- URI.new(target),
          true <-
            is_binary(uri.host) and uri.host != "" and is_nil(uri.userinfo) and
-             is_nil(uri.query) and is_nil(uri.fragment),
+             uri.query == Registry.fetch!(config[:provider]).wire_query and is_nil(uri.fragment),
          origin = URI.to_string(%URI{scheme: uri.scheme, host: uri.host, port: uri.port}),
          facts = %{
            "origin" => origin,

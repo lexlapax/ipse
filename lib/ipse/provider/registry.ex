@@ -19,6 +19,7 @@ defmodule Ipse.Provider.Spec do
     :probe,
     :probe_base_url,
     :input_components,
+    :wire_query,
     :profile_validator,
     :request_validator,
     profile_fields: %{},
@@ -138,6 +139,34 @@ defmodule Ipse.Provider.Registry do
       probe: {"/v1/models", :anthropic}
     },
     %Spec{
+      id: "gemini",
+      atom: :gemini,
+      adapter: Ipse.Provider.Gemini,
+      replay_key: "gemini",
+      default_base_url: "https://generativelanguage.googleapis.com/v1beta",
+      base_url_policy: :https_or_loopback,
+      wire_query: "alt=sse",
+      credential: {:env, "GEMINI_API_KEY"},
+      billing_mode: "api",
+      output_limit: 1..1_000_000,
+      reasoning: &__MODULE__.gemini_reasoning/2,
+      usage_extractor: &__MODULE__.gemini_usage/1,
+      secret_env: ["GEMINI_API_KEY", "GOOGLE_API_KEY"],
+      label: "Gemini API (project billing; tier unknown)",
+      probe: {"/models", :gemini},
+      profile_validator: &Ipse.Provider.Gemini.validate_profile/1,
+      request_validator: &Ipse.Provider.Gemini.validate_request/1,
+      http_hints: %{
+        400 =>
+          "Request rejected; check model id and thinking level. Gemini requires its own signed history; start a fresh session or hand off if imported history is refused.",
+        401 => "Check GEMINI_API_KEY and that the key is enabled for the Gemini API.",
+        403 => "Check GEMINI_API_KEY and that the key is enabled for the Gemini API.",
+        404 => "Unknown Gemini model; check the explicit model id.",
+        429 => "Gemini quota or rate limit reached; check project limits and tier.",
+        :server => "Gemini is unavailable; nothing was retried."
+      }
+    },
+    %Spec{
       id: "openrouter",
       atom: :openrouter,
       adapter: Ipse.Provider.ChatCompletions,
@@ -222,7 +251,7 @@ defmodule Ipse.Provider.Registry do
   def credentials, do: Map.new(@specs, &{&1.id, credential_reference(&1.credential)})
   def billing, do: Map.new(@specs, &{&1.atom, &1.billing_mode})
   # Rate-card enums preserve their historical presentation order.
-  def rate_card_ids, do: ~w(openai chatgpt anthropic ollama openrouter openai_compatible)
+  def rate_card_ids, do: ~w(openai chatgpt anthropic ollama gemini openrouter openai_compatible)
   def billing_modes, do: rate_card_ids() |> Enum.map(&fetch!(&1).billing_mode) |> Enum.uniq()
   def cost_bases, do: billing_modes() |> Enum.map(&cost_basis/1)
   def cost_basis("api"), do: "api_estimate"
@@ -332,11 +361,26 @@ defmodule Ipse.Provider.Registry do
         "additionalProperties" => false
       },
       Map.take(profile, profile_keys(spec.id))
-    ) == :ok and (spec.route_fields == [] or spec.profile_validator.(profile) == :ok)
+    ) == :ok and (is_nil(spec.profile_validator) or spec.profile_validator.(profile) == :ok)
   end
 
   def router_reasoning(_, effort) when effort in ~w(none low medium high xhigh max), do: :ok
   def router_reasoning(_, _), do: unsupported_reasoning()
+
+  def gemini_reasoning(_, effort) when effort in ~w(none low medium high), do: :ok
+
+  def gemini_reasoning(_, _),
+    do: {:error, "Gemini supports low, medium or high reasoning; none omits the control."}
+
+  def gemini_usage(raw),
+    do:
+      extract(raw, %{
+        "input_tokens" => {:sum, [["promptTokenCount"], ["toolUsePromptTokenCount"]]},
+        "output_tokens" => {:sum, [["candidatesTokenCount"], ["thoughtsTokenCount"]]},
+        "input_cached_tokens" => ["cachedContentTokenCount"],
+        "output_reasoning_tokens" => ["thoughtsTokenCount"],
+        "total_tokens" => ["totalTokenCount"]
+      })
 
   def chat_usage(raw),
     do:
@@ -454,6 +498,24 @@ defmodule Ipse.Provider.Registry do
           {:halt, :error}
       end
     end)
+  end
+
+  defp read(value, {:sum, paths}) do
+    values = Enum.map(paths, &read(value, &1))
+
+    cond do
+      Enum.any?(
+        values,
+        &(not is_nil(&1) and not (is_integer(&1) and &1 >= 0 and &1 <= Ipse.Usage.counter_limit()))
+      ) ->
+        :invalid
+
+      Enum.any?(values, &is_nil/1) ->
+        nil
+
+      true ->
+        Enum.sum(values)
+    end
   end
 
   defp read(value, []), do: value

@@ -9,6 +9,28 @@ defmodule Ipse.Development.Verification.Runtime do
 
   alias Ipse.Development.Verification.Package
 
+  def verification_main(["live", "provider" | argv]) do
+    unless System.get_env("IPSE_LIVE_PROVIDER_CONFIRM") in ~w(openrouter gemini) do
+      IO.puts(
+        :json.encode(%{
+          "status" => "refused",
+          "reason" =>
+            "Set IPSE_LIVE_PROVIDER_CONFIRM to the explicitly selected provider; no request was sent."
+        })
+      )
+
+      System.halt(1)
+    end
+
+    Mix.start()
+
+    Mix.Project.in_project(:ipse, @source_root, fn _ ->
+      Mix.Task.run("app.start", ["--no-compile"])
+      Code.require_file("live_provider.exs", __DIR__)
+      apply(Ipse.Development.Verification.LiveProvider, :main, [argv])
+    end)
+  end
+
   def verification_main(argv) do
     {scenario, options} = Scenarios.parse!(argv)
 

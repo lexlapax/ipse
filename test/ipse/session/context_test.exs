@@ -67,6 +67,51 @@ defmodule Ipse.CompactionTest do
     end
   end
 
+  test "Gemini maps a real checkpoint to user context and preserves the signed recent tail" do
+    content = %{
+      "role" => "model",
+      "parts" => [%{"text" => "", "thoughtSignature" => "private-signed-tail"}]
+    }
+
+    messages =
+      three_turns() ++
+        [
+          %{
+            "role" => "assistant",
+            "content" => "",
+            "provider_data" => %{"provider" => "gemini", "content" => content}
+          },
+          %{"role" => "user", "content" => "Latest task"}
+        ]
+
+    config = %{
+      provider: :gemini,
+      model: "gemini-fixture",
+      context_bytes: 10_000,
+      compact_threshold_bytes: 1_500
+    }
+
+    assert {:ok, plan} = Context.prepare_compaction(messages, config, system())
+
+    assert {:ok, projected, checkpoint, _} =
+             Context.finish_compaction(plan, summary(), system(), config)
+
+    before = Jason.encode!(projected)
+    body = Ipse.Provider.Gemini.request_body(config, [system() | projected], [])
+
+    assert hd(body["contents"]) == %{
+             "role" => "user",
+             "parts" => [%{"text" => checkpoint["content"]}]
+           }
+
+    assert content in body["contents"]
+    assert Jason.encode!(projected) == before
+
+    assert_raise ArgumentError, fn ->
+      Ipse.Provider.Gemini.request_body(config, [Map.put(checkpoint, "content", "forged")], [])
+    end
+  end
+
   test "prepares a bounded old prefix and preserves two recent user turns" do
     messages = three_turns()
     config = %{context_bytes: 10_000, compact_threshold_bytes: 1_500}

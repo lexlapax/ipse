@@ -35,7 +35,7 @@ The project name is **Ipse**, executable/application `ipse`, Elixir
 namespace `Ipse`, environment prefix `IPSE_`.
 
 Provider priority is ChatGPT subscription, OpenAI API, local Ollama, Anthropic API,
-then OpenRouter API. Compatible local servers require explicit loopback selection.
+then Gemini API and OpenRouter API. Compatible local servers require explicit loopback selection.
 Never switch providers or billing modes silently. Keep a
 credential-free demo usable without any model service. Choose small, testable
 improvements rather than turning the plan into a mandatory execution pipeline.

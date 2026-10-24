@@ -406,6 +406,86 @@ defmodule Ipse.CLI.DoctorTest do
     end
   end
 
+  test "new provider probes stay offline by default and use only their native metadata headers",
+       c do
+    for {provider, variable, header} <- [
+          {"gemini", "GEMINI_API_KEY", "x-goog-api-key"},
+          {"openrouter", "OPENROUTER_API_KEY", "authorization"},
+          {"openai_compatible", nil, nil}
+        ] do
+      previous = if variable, do: System.get_env(variable)
+      if variable, do: System.put_env(variable, "fixture-probe-private")
+
+      {:ok, listener} =
+        :gen_tcp.listen(0, [:binary, active: false, reuseaddr: true, ip: {127, 0, 0, 1}])
+
+      {:ok, {_, port}} = :inet.sockname(listener)
+
+      profile = %{
+        "provider" => provider,
+        "model" => "fixture",
+        "base_url" => "http://127.0.0.1:#{port}"
+      }
+
+      profile =
+        if provider == "openrouter", do: Map.put(profile, "upstream", "openai"), else: profile
+
+      save(c, %{
+        "version" => 1,
+        "profiles" => %{"selected" => profile},
+        "roles" => %{"main" => "selected"}
+      })
+
+      try do
+        assert {0, report} = Doctor.run([project_config: false], c.home, c.cwd)
+        assert finding(report, "provider.reachability")["status"] == "skip"
+        assert {:error, :timeout} = :gen_tcp.accept(listener, 0)
+
+        server =
+          Task.async(fn ->
+            {:ok, socket} = :gen_tcp.accept(listener, 5000)
+            {:ok, request} = :gen_tcp.recv(socket, 0, 5000)
+
+            :ok =
+              :gen_tcp.send(
+                socket,
+                "HTTP/1.1 200 OK\r\ncontent-length: 0\r\nconnection: close\r\n\r\n"
+              )
+
+            :gen_tcp.close(socket)
+            String.downcase(request)
+          end)
+
+        assert {0, report} =
+                 Doctor.run([project_config: false, probe_provider: true], c.home, c.cwd)
+
+        assert finding(report, "provider.reachability")["status"] == "ok"
+        request = Task.await(server)
+        assert String.starts_with?(request, "get /models http/1.1\r\n")
+
+        if header do
+          assert request =~
+                   header <>
+                     ": " <>
+                     if(provider == "openrouter", do: "bearer ", else: "") <>
+                     "fixture-probe-private"
+        else
+          refute request =~ "authorization:"
+          refute request =~ "x-goog-api-key:"
+        end
+
+        refute Jason.encode!(report) =~ "fixture-probe-private"
+        assert {:error, :timeout} = :gen_tcp.accept(listener, 0)
+      after
+        :gen_tcp.close(listener)
+
+        if variable do
+          if previous, do: System.put_env(variable, previous), else: System.delete_env(variable)
+        end
+      end
+    end
+  end
+
   @tag timeout: 20_000
   test "a stalled metadata response reaches the total deadline and closes its client", c do
     {:ok, listener} =

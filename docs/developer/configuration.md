@@ -79,6 +79,12 @@ against hostile concurrent directory replacement; setup is for reviewed local
 paths. Offline doctor follows a successful save; its failure does not roll back
 the reviewed configuration.
 
+Doctor obtains the current UID through the verified Rust helper's read-only
+`--uid` command, using a bounded Port without a shell. This host identity query
+does not select a sandbox workspace. Native shell admission still independently
+refuses workspace overlap with the application/helper; using a checkout under
+the system temporary directory must not make credential ownership unknowable.
+
 Run this complete exercise in `iex -S mix`:
 
 ```elixir
@@ -189,6 +195,16 @@ finish on a content-free final usage frame is accounting. Indexed call fields us
 Stream buffers; native reasoning-detail arrays retain order without text emission.
 Fixtures cover actual approved extension requests and unchanged idle resume.
 
+Gemini's adapter retains up to 4096 original native parts, without merging signed
+parts. It buffers only visible text separately, translates whole function calls
+to host calls, and maps consecutive results back to one user content in call
+order. Native IDs survive; missing IDs get host-only synthetic IDs. A real
+checkpoint becomes user text, while a recent signed tail replays unchanged.
+Follow `Gemini.request_body/3`, `consume/3`, and the session/child/SDK fixtures to
+trace both directions. `STOP` is success; all other terminal reasons and missing
+completion refuse tools while preserving observed usage. Low/medium/high efforts
+map to uppercase API enums; none omits the control.
+
 Trace profile validation, saved execution, ModelCall preparation, and Ollama wire
 construction. The profile integration fixture checks the synthetic HTTP body,
 saved facts, and idle resume for `none`; the model proof also checks omission.
@@ -199,12 +215,16 @@ Session pins main destinations; helper approvals display them. Invalid endpoints
 refuse before journal creation. Equivalent implicit/explicit defaults compare
 equally. Legacy request-free sessions allow only implicit defaults or exactly
 pinned profiles. Never weaken destination identity to make a changed route resume.
+Gemini alone declares the fixed wire query `alt=sse`. The adapter appends it to
+the validated model path; destination validation permits only that spec's query.
+The digest covers the query, while the reported origin has none. Operator base
+URLs still cannot contain a query. Existing-provider golden digests are unchanged.
 
 ## Follow an output ceiling to the wire
 
 Provider owns `validate_output_limit/1`, `output_tokens/1`, and
 `narrow_output_tokens/2`. Absence adds no wire field. OpenAI API permits
-16..1000000; Anthropic/Ollama/OpenRouter/compatible permit 1..1000000. ChatGPT subscription/demo refuse
+16..1000000; Anthropic/Ollama/Gemini/OpenRouter/compatible permit 1..1000000. ChatGPT subscription/demo refuse
 explicit caps without dropping them or switching billing.
 
 | Adapter | Effective field |
@@ -213,6 +233,7 @@ explicit caps without dropping them or switching billing.
 | Anthropic Messages | `max_tokens`, narrowed by existing adapter value |
 | Ollama Chat | `options.num_predict`, narrowed by existing summary options |
 | OpenRouter/compatible Chat Completions | `max_tokens` |
+| Gemini GenerateContent | `generationConfig.maxOutputTokens` |
 | ChatGPT subscription | Unsupported; refusal before dispatch |
 
 In IEx:
@@ -249,6 +270,7 @@ repeated whole-prefix joining or scanning.
 | SSE events and decoded provider events | 65536 each |
 | Output items/Anthropic blocks | 256, indices 0..255 |
 | Tool calls including incremental Ollama batches | 32 |
+| Gemini original replay parts | 4096, with an aggregate 8 MiB ceiling |
 
 The first bound refuses the response. Ollama's nonempty EOF tail counts as a line;
 SSE EOF invents no event. CR/LF/split CRLF, split UTF-8, and multiline data retain

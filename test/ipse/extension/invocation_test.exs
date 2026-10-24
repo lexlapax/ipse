@@ -711,6 +711,80 @@ defmodule Ipse.Extension.InvocationTest do
     assert File.read!(ctx.called) == calls
   end
 
+  test "Gemini extension inference keeps signed parts private and uses the helper's credential",
+       ctx do
+    previous = System.get_env("GEMINI_API_KEY")
+    System.put_env("GEMINI_API_KEY", "helper-gemini-fixture-key")
+
+    on_exit(fn ->
+      if previous,
+        do: System.put_env("GEMINI_API_KEY", previous),
+        else: System.delete_env("GEMINI_API_KEY")
+    end)
+
+    parts = [
+      %{"text" => "PRIVATE_HELPER_THOUGHT", "thought" => true},
+      %{"text" => "entities", "thoughtSignature" => "PRIVATE_HELPER_SIGNATURE"}
+    ]
+
+    body =
+      Ipse.Test.ProviderFixture.sse(%{
+        "modelVersion" => "gemini-fixture-001",
+        "candidates" => [
+          %{"content" => %{"role" => "model", "parts" => parts}, "finishReason" => "STOP"}
+        ],
+        "usageMetadata" => %{
+          "promptTokenCount" => 3,
+          "toolUsePromptTokenCount" => 0,
+          "candidatesTokenCount" => 2,
+          "thoughtsTokenCount" => 1,
+          "totalTokenCount" => 6
+        }
+      })
+
+    {base, server} = Ipse.Test.ProviderFixture.start(body)
+    config = model_config(ctx.config, base)
+
+    config =
+      put_in(config, [:profiles, "extract"], %{
+        "provider" => "gemini",
+        "model" => "gemini-fixture",
+        "base_url" => base,
+        "max_output_tokens" => 32
+      })
+
+    pid = start(%{ctx | config: config})
+    :ok = host_command(pid, model_request())
+    assert_receive {:ipse, ^pid, {:approval, ref, "extension:model.complete", proposed}}, 3000
+    assert proposed["execution"]["provider"] == "gemini"
+    assert Ipse.Extension.ModelCall.delegated_approval?("extension:model.complete", proposed)
+    assert :ok = Session.approve(pid, ref, true)
+    assert_receive {:ipse, ^pid, {:done, :ok}}, 5000
+    {headers, payload} = Task.await(server)
+    assert headers =~ "x-goog-api-key: helper-gemini-fixture-key"
+    refute headers =~ "main-only-fixture"
+    assert payload["generationConfig"]["maxOutputTokens"] == 32
+    refute Map.has_key?(payload, "tools")
+    assert %{"status" => "ok", "value" => value} = host_outcome(pid)
+    assert value["text"] == "entities"
+    assert value["usage"]["counts"]["output_tokens"] == 3
+    refute Jason.encode!(value) =~ "PRIVATE_HELPER"
+    refute_receive {:ipse, ^pid, {:text, _}}, 20
+    id = Session.info(pid).id
+    {:ok, events} = Journal.load(ctx.dir, id)
+    assert :ok = Ipse.Extension.Projection.validate_events(events)
+    native = Enum.find(events, &(&1["type"] == "extension_model_response"))
+    assert get_in(native, ["assistant", "provider_data", "content", "parts"]) == parts
+    assert {:ok, _} = Ipse.Usage.restore(events, id)
+    assert :ok = Session.close(pid)
+    bytes = File.read!(Path.join(ctx.dir, id <> ".jsonl"))
+    calls = File.read!(ctx.called)
+    resumed = start(%{ctx | config: config}, id)
+    assert Session.info(resumed).phase == :idle
+    assert File.read!(Path.join(ctx.dir, id <> ".jsonl")) == bytes
+    assert File.read!(ctx.called) == calls
+  end
+
   test "structured inference binds full approval and native format to live and saved results",
        ctx do
     {base, server} = model_fixture(self(), text: ~s({"names":["Ada"]}))

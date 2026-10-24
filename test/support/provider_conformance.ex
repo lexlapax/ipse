@@ -160,6 +160,82 @@ defmodule Ipse.Test.ProviderConformance do
   end
 end
 
+defmodule Ipse.Test.ProviderConformance.Gemini do
+  alias Ipse.Test.ProviderFixture
+
+  def body(scenario) do
+    private = %{
+      "text" => "PRIVATE_CONTINUATION",
+      "thought" => true,
+      "thoughtSignature" => "fixture-signature"
+    }
+
+    parts =
+      if scenario in [:tool, :parallel, :length] do
+        for i <- 1..if(scenario == :tool, do: 1, else: 2),
+            do: %{
+              "functionCall" => %{
+                "id" => "call-#{i}",
+                "name" => "read",
+                "args" => %{"path" => "#{i}"}
+              }
+            }
+      else
+        [%{"text" => "Hello "}, %{"text" => "雪"}]
+      end
+
+    usage = %{
+      "promptTokenCount" => 3,
+      "toolUsePromptTokenCount" => 0,
+      "candidatesTokenCount" => 2,
+      "thoughtsTokenCount" => 0,
+      "totalTokenCount" => 5
+    }
+
+    prefix = for part <- [private | parts], do: chunk([part])
+
+    terminal =
+      case scenario do
+        :truncated -> []
+        :error -> [%{"error" => %{"message" => "fixture"}}]
+        :length -> [chunk([], "MAX_TOKENS") |> Map.put("usageMetadata", usage)]
+        _ -> [chunk([], "STOP") |> Map.put("usageMetadata", usage)]
+      end
+
+    ProviderFixture.sse(prefix ++ terminal)
+  end
+
+  defp chunk(parts, reason \\ nil),
+    do: %{
+      "modelVersion" => "fixture",
+      "candidates" => [
+        %{
+          "index" => 0,
+          "content" => %{"role" => "model", "parts" => parts},
+          "finishReason" => reason
+        }
+      ]
+    }
+
+  def replayed?(body, native, results) do
+    calls = for %{"functionCall" => call} <- native["content"]["parts"], do: call
+
+    parts =
+      Enum.zip(calls, results)
+      |> Enum.map(fn {call, result} ->
+        %{
+          "functionResponse" => %{
+            "id" => call["id"],
+            "name" => call["name"],
+            "response" => %{"content" => result["content"]}
+          }
+        }
+      end)
+
+    body["contents"] == [native["content"], %{"role" => "user", "parts" => parts}]
+  end
+end
+
 defmodule Ipse.Test.ProviderConformance.ChatCompletions do
   alias Ipse.Test.ProviderFixture
 

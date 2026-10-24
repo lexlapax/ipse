@@ -36,6 +36,7 @@ run announce the built-in ChatGPT subscription default before checking access.
 | OpenAI API | Set `OPENAI_API_KEY` privately; API billing is separate from a subscription | `ipse chat --provider openai --cwd /path/to/project` |
 | Local Ollama | Start your service and install a tool-capable model yourself | `ipse chat --provider ollama --model YOUR_INSTALLED_MODEL --cwd /path/to/project` |
 | Anthropic API | Set `ANTHROPIC_API_KEY` privately and choose an available model | `ipse chat --provider anthropic --model YOUR_MODEL --cwd /path/to/project` |
+| Gemini API | Set `GEMINI_API_KEY` privately; choose an explicit model and review project billing | `ipse chat --config /private/path/gemini.json --profile gemini --cwd /path/to/project` |
 | OpenRouter API | Set `OPENROUTER_API_KEY` privately; save a model/upstream profile | `ipse chat --config /private/path/router.json --profile router --cwd /path/to/project` |
 | Local compatible server | Start a Chat Completions service on explicit loopback; no credential is sent | `ipse chat --provider openai_compatible --model YOUR_LOCAL_MODEL --base-url http://127.0.0.1:8080/v1 --cwd /path/to/project` |
 

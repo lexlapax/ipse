@@ -50,6 +50,41 @@ defmodule Ipse.Test.ProviderFixture do
     end
   end
 
+  def sequence(bodies) do
+    {:ok, listener} =
+      :gen_tcp.listen(0, [:binary, active: false, reuseaddr: true, ip: {127, 0, 0, 1}])
+
+    {:ok, {_, port}} = :inet.sockname(listener)
+
+    task =
+      Task.async(fn ->
+        try do
+          for body <- bodies do
+            {:ok, socket} = :gen_tcp.accept(listener, 5000)
+
+            try do
+              {headers, payload} = request(socket, "")
+
+              :ok =
+                :gen_tcp.send(
+                  socket,
+                  "HTTP/1.1 200 Fixture\r\ncontent-type: text/event-stream\r\ncontent-length: #{byte_size(body)}\r\nconnection: close\r\n\r\n" <>
+                    body
+                )
+
+              {headers, Jason.decode!(payload)}
+            after
+              :gen_tcp.close(socket)
+            end
+          end
+        after
+          :gen_tcp.close(listener)
+        end
+      end)
+
+    {"http://127.0.0.1:#{port}", task}
+  end
+
   defp rest(_, body, size) when byte_size(body) >= size, do: body
 
   defp rest(socket, body, size) do

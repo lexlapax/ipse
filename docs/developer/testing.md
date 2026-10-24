@@ -127,6 +127,39 @@ The [MCP-store contract control](../../test/extensions/knowledge/store_contract_
 loads Profiles, Evidence and MCPCAS explicitly, runs in a temporary directory,
 and checks that those modules remain unloaded in the parent.
 
+## Verify a real provider explicitly
+
+After building the source checkout, prepare a dedicated operator configuration
+with an explicit Gemini or pinned OpenRouter profile as described in
+[provider configuration](../operator/configuration.md). Supply its key privately
+through the documented environment variable. These commands make real API
+requests and can incur charges:
+
+```sh
+IPSE_LIVE_PROVIDER_CONFIRM=openrouter elixir dev/verify.exs live provider \
+  --provider openrouter --profile router --config /private/path/router.json
+IPSE_LIVE_PROVIDER_CONFIRM=gemini elixir dev/verify.exs live provider \
+  --provider gemini --profile gemini --config /private/path/gemini.json
+```
+
+The confirmation must exactly match the resolved provider. Project configuration
+is disabled. Review the printed model, upstream, API billing and destination.
+The driver makes at most three requests: exact text, one fixed echo call, and its
+native continuation. It executes no model-selected external tool, retries nothing,
+and narrows each request to at most 1024 output tokens, 64 KiB and 60 seconds.
+An existing tighter profile cap remains tighter. A session budget causes refusal
+because this standalone driver cannot enforce its ledger; use a dedicated bounded
+verification config or a normal budgeted session. It does not bypass a configured
+policy. Exit 0 requires both text and tool checks to pass.
+
+Retain the non-secret JSON plan/result with the exact source revision, environment
+and date in a dated archive receipt. Results include canonical usage, failed
+requests and counts of Gemini signed parts, without text, signatures or keys.
+Partial usage is valid evidence of missing API counters, not evidence of zero
+cost. `test/dev/live_provider_test.exs` uses loopback/stub controls only; those
+fixtures do not establish live access. The command loads the already-built source
+application without compiling; it is separate from the artifact verifier below.
+
 ## Prove an independent artifact without rebuilding the host
 
 The finite `dev/verify.exs` command uses an existing source SDK or compatible

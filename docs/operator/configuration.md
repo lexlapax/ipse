@@ -158,6 +158,7 @@ Credential references are fixed lookups, not token values:
 | `chatgpt` | `ipse-auth` |
 | `openai` | `OPENAI_API_KEY` |
 | `anthropic` | `ANTHROPIC_API_KEY` |
+| `gemini` | `GEMINI_API_KEY` |
 | `openrouter` | `OPENROUTER_API_KEY` |
 | `ollama`, `openai_compatible`, `demo` | `none` |
 
@@ -177,6 +178,57 @@ Omitting it retains the model's default behavior. Other unsupported combinations
 refuse. Anthropic extended-thinking configuration is unavailable.
 OpenRouter accepts `none`, `low`, `medium`, `high`, `xhigh` and `max`; the pinned
 upstream decides support. Compatible local profiles omit reasoning controls.
+Gemini accepts `low`, `medium` and `high`; `none` omits its thinking control.
+The selected model decides which thinking levels it supports.
+
+### Use a Gemini API key
+
+Create a Gemini API key in Google AI Studio and provide it privately through
+`GEMINI_API_KEY`. `GOOGLE_API_KEY` is not selected implicitly. Both variables are
+removed from tool and extension child environments. The key goes only in the
+`x-goog-api-key` header, never in a URL. Vertex AI endpoints and OAuth/service
+account authentication are unsupported.
+
+Choose an available model explicitly; there is no Gemini default. Save this
+complete example as `/private/path/gemini.json`, adjusting the model to one your
+project can access:
+
+```json
+{
+  "version": 1,
+  "profiles": {
+    "gemini": {
+      "provider": "gemini",
+      "model": "gemini-3.8-flash",
+      "reasoning_effort": "low",
+      "max_output_tokens": 1024
+    }
+  },
+  "roles": {"main": "gemini"}
+}
+```
+
+```sh
+ipse config --config /private/path/gemini.json --no-project-config
+ipse doctor --config /private/path/gemini.json --no-project-config
+ipse chat --config /private/path/gemini.json --no-project-config --cwd /path/to/project
+```
+
+Use lowercase model IDs containing letters, digits, dots and hyphens, optionally
+prefixed with `models/`. Query characters, fragments, other slashes and uppercase
+IDs refuse before a request. Ipse uses the native stateless GenerateContent API.
+Original response parts and signatures remain private continuation data in the
+journal, in their original order. Thoughts never become displayed answer text.
+Tool results retain the API's call IDs when supplied; synthetic host IDs do not
+alter signed parts. Compaction retains the recent native history and replaces
+older history with an explicitly historical user checkpoint.
+
+Imported history has no invented signature. If Gemini refuses it, start a fresh
+session or export a handoff. A `400` can also mean the model rejected a thinking
+level; inspect the selected model before retrying. Free and paid tiers use the
+same API-key interface. Ipse records API billing and cannot observe the tier;
+configure a reviewed [rate card and budget](resources.md) for spend controls.
+Missing usage counters stay partial rather than becoming zero.
 
 ### Pin an OpenRouter upstream
 
@@ -217,10 +269,12 @@ or hyphens are supported; region/variant slash selectors are unavailable.
 refuse. An unsupported model/upstream/data-policy combination returns a refusal;
 Ipse does not broaden the route.
 
-The first stream chunk must report exactly the requested model and upstream before
+The first stream chunk must report the requested model and upstream before
 content is admitted. Later reported changes also refuse. A request may still be
 charged; observed usage remains recorded. No undocumented alias conversion is
-performed. Native reasoning details remain private and preserve their order on
+performed. The verified OpenRouter catalog pair `openai`/`OpenAI` is recognized;
+all other upstream names require exact equality with the configured slug. Native
+reasoning details remain private and preserve their order on
 tool continuation. Changing the upstream or data policy requires a fresh session
 or restoration of the original profile for resume.
 
@@ -377,7 +431,7 @@ either supported mode.
 
 | Setting | Default | Accepted values |
 | --- | --- | --- |
-| `provider` | `chatgpt` | `chatgpt`, `openai`, `ollama`, `anthropic`, `openrouter`, `openai_compatible`, `demo` |
+| `provider` | `chatgpt` | `chatgpt`, `openai`, `ollama`, `anthropic`, `gemini`, `openrouter`, `openai_compatible`, `demo` |
 | `model` | Provider default | Nonempty, at most 200 characters |
 | `max_steps` | 30 calls per turn | 1..100000 |
 | `context_bytes` | 400000 | 8192..16000000 bytes |
@@ -386,7 +440,7 @@ either supported mode.
 | `sandbox` | `off` | `off`, `native` |
 | `subagents` | `false` | Boolean |
 | `subagent_concurrency` | 1 | 1 or 2; 2 requires subagents |
-| `max_output_tokens` | Absent | OpenAI API 16..1000000; Ollama/Anthropic/OpenRouter/compatible 1..1000000 |
+| `max_output_tokens` | Absent | OpenAI API 16..1000000; Ollama/Anthropic/Gemini/OpenRouter/compatible 1..1000000 |
 
 Output caps apply per supported request, including summaries. Subscription and
 demo reject them. Model limits may be tighter; Anthropic defaults to 8192 and

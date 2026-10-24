@@ -20,14 +20,14 @@ requirement; authority, recovery and correctness regressions remain unacceptable
 | P28 WP1 | One version source, compiled build identity and installed agreement | Complete at `b4788b4`; local source/package and both hosted platforms pass |
 | P28 WP2 | Redacted actionable errors and matching recovery instructions | Complete at `6818000`; full local and hosted Ubuntu/macOS checks pass |
 | P28 WP3 | Offline doctor, explicit bounded probes and finding fixtures | Full native and hosted Ubuntu/macOS pass at `a89fce7`; later installed proof passes |
-| P28 WP4 | Guided/private setup, previews, backups and resolution fixtures | Full native suite and installed first run pass at `9907877`; repaired hosted gate pending |
-| P28 WP5 | Checksums, symlink launcher, draft tag workflow and install lifecycle | Implemented; local package/upgrade proof passes; tag rehearsal and hosted pending |
+| P28 WP4 | Guided/private setup, previews, backups and resolution fixtures | Full native suite and installed first run pass at `9907877`; repaired platform matrix passes at `61ed1f9` |
+| P28 WP5 | Checksums, symlink launcher, draft tag workflow and install lifecycle | Local lifecycle and repaired platform matrix pass; tag rehearsal remains pending |
 | P28 WP6 | Whole-manual first-user review and fresh-account walkthrough | Pending |
-| P29 WP0 | Verified official wire facts and continuation examples | [Recorded](wire-facts.md); adapter fixtures still required |
-| P29 WP1 | Central registry, existing-provider equivalence and recovery tests | Exact `cd74f91` native suite (1601) and installed proof pass; hosted pending |
-| P29 WP2 | Shared server and adapter conformance tests | Shared server preserves 54 tests; 33 conformance cases and all 110 provider tests pass ([receipt](p29-wp2-verification.json)) |
+| P29 WP0 | Verified official wire facts and continuation examples | [Recorded](wire-facts.md); both new adapters now have protocol fixtures and separate live evidence |
+| P29 WP1 | Central registry, existing-provider equivalence and recovery tests | Exact `cd74f91` native suite (1601) and installed proof pass; subsequent `61ed1f9` platform matrix passes |
+| P29 WP2 | Shared server and adapter conformance tests | Focused and complete Ubuntu/macOS matrix pass ([local receipt](p29-wp2-verification.json), [hosted receipt](p29-wp2-hosted.json)) |
 | P29 WP3 | Pinned OpenRouter and explicit loopback compatible adapter | Implemented; focused/conformance/owned-extension checks pass ([receipt](p29-wp3-verification.json)); full/platform gates pending |
-| P29 WP4 | Native Gemini, signed continuation and canonical accounting | Pending |
+| P29 WP4 | Native Gemini, signed continuation and canonical accounting | Implemented; [fixtures](p29-wp4-verification.json) and [live text/tool](p29-live-checkpoint.json) pass; final combined/platform gates pending |
 | P29 WP5 | Registry-driven doctor/setup and coherent provider manuals | Pending |
 | Auditor handoff | Requirement matrix, exact commits/checks, exclusions and commands | Pending |
 
@@ -321,3 +321,44 @@ No assertion was weakened. The subsequent shared-fixture commit's macOS full
 suite, native enforcement and installed package steps pass in run 40049620426;
 its remaining independent proofs are still running. The earlier run remains a
 failed receipt rather than a platform pass.
+
+## P29 WP4 and live verification
+
+The native Gemini adapter uses the stateless GenerateContent SSE route and a
+header-only API key. It validates model path grammar and refuses Vertex endpoints.
+All original parts stay in order, including signed function calls, thought parts,
+empty signed final text and unknown native parts. Visible text has its own buffer.
+Consecutive tool results share one user content, preserving call order and native
+IDs; synthetic host IDs never alter replay parts. Successful STOP is required.
+Blocked, truncated, malformed or unterminated responses cannot return tools.
+
+Registry metadata supplies Gemini credentials, billing, reasoning, usage and the
+one fixed wire query. Existing-provider destination/fingerprint fixtures remain
+unchanged. Missing summands in prompt/tool-use and candidate/thought counts remain
+partial. Main sessions, child profiles, actual SDK workers, private diagnostics,
+compaction, shared budgets, missing prices and idle/torn-tail recovery have focused
+controls. The [receipt](p29-wp4-verification.json) distinguishes each run.
+
+The explicit live verifier runs at most three bounded requests and never executes
+an arbitrary proposed tool. It prints route/billing first and canonical counters
+afterward without transcripts or signatures. Configured session budgets refuse
+rather than being bypassed. The user authorized using the ignored project `.env`
+for these tests; only the selected key was read into each verifier process.
+[Initial live receipts](p29-live-checkpoint.json) show Gemini text and signed tool
+continuation passing, OpenRouter's strict-slug refusal, and the subsequent pass
+after recognizing the catalogued `openai`/`OpenAI` pair. No broad normalization or
+routing fallback was added. These requests predate final checkpoint repairs and
+are not represented as exact-final-revision acceptance.
+
+The exact `8160f0d` installed package proof passed. Its full native source run
+found a doctor ownership refusal when the application lived under `/tmp`: the UID
+query incorrectly applied sandbox overlap admission to the entire system temporary
+directory. Runner now makes a bounded direct read-only helper query. Native shell
+overlap refusal stays unchanged, with a positive identity/refusal control. Final
+source/package/platform gates will verify the combined repair and Gemini changes.
+
+The complete `61ed1f9` matrix subsequently passed both Ubuntu and macOS, including
+all independent installed proofs. This closes the earlier formatter repair gate
+for setup/lifecycle/registry/shared fixtures; it does not accept later adapters.
+The final manuals, new-route guided setup, RC rehearsal, fresh-operator walkthrough
+and auditor requirement matrix remain open.

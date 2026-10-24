@@ -664,8 +664,11 @@ Pre-refactor fixtures captured from `dd510a7` and 312 focused checks pass; final
 native baseline (1601) and installed checks pass; hosted verification is pending.
 Shared conformance covers the existing adapters, pinned OpenRouter and explicit
 loopback-compatible servers. OpenRouter profile/continuation/accounting and owned
-extension tests pass; final combined gates remain pending. Gemini and guided new
-route setup remain unimplemented. Native embeddings stay limited to OpenAI/Ollama.
+extension tests pass; final combined gates remain pending. Native Gemini now passes
+protocol/conformance, session/child/SDK, compaction, accounting and resume fixtures.
+Explicit live Gemini and pinned OpenRouter text/tool checks pass separately;
+Gemini's omitted counters remain partial. Guided new-route setup remains pending.
+Native embeddings stay limited to OpenAI/Ollama.
 The [P29 implementation brief](archive/2026-10-23-p28-p29-design/p29.md) breaks
 this scope into ordered work packages with files, tests and decisions.
 The developer accepted its recommended decisions on 2026-10-23. Gemini, then

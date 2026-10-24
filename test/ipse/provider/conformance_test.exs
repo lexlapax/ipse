@@ -1,5 +1,14 @@
 Code.require_file("../../support/provider_conformance.ex", __DIR__)
 
+defmodule Ipse.Provider.GeminiConformanceTest do
+  use ExUnit.Case, async: false
+
+  use Ipse.Test.ProviderConformance,
+    provider: :gemini,
+    adapter: Ipse.Provider.Gemini,
+    events: Ipse.Test.ProviderConformance.Gemini
+end
+
 defmodule Ipse.Provider.OpenAIConformanceTest do
   use ExUnit.Case, async: false
 

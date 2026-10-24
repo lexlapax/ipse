@@ -200,6 +200,15 @@ matching reviewed row, the amount remains unpriced/null rather than zero.
 Upstream is not a rate-card dimension: use prices appropriate to the pinned
 routes in that session, or leave them unpriced when one row cannot express them.
 
+For an OpenRouter row, copy the complete synthetic example above and change
+`provider` to `openrouter` and `model` to the exact reported model, then replace
+the synthetic prices and provenance with your reviewed rates. Gemini rows use
+`provider: "gemini"`, `billing_mode: "api"` and `basis: "api_estimate"`, with the
+reported model version. Gemini input includes separate prompt and tool-use prompt
+counts, and output includes candidates and thoughts. If the API omits a needed
+count, pricing remains partial/unpriced. Key presence establishes neither a free
+tier nor zero cost.
+
 For embeddings, use version 2 and declare `operation: "text"` or `"embedding"`
 on every row. Embedding rows use flat input and optionally `duration_second`;
 they have no output/cache/search/fetch rates. A text row cannot price embeddings

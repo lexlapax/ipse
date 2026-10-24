@@ -33,7 +33,8 @@ it on timeout, parent-pipe EOF, failed output delivery, and shell exit.
 The timeout includes the shell and its ordinary descendants. A deliberately
 adversarial process can escape by creating a new session; this is **not a
 sandbox**. Shell runs with the user's local filesystem and network access.
-Provider credentials OPENAI_API_KEY, ANTHROPIC_API_KEY, OPENROUTER_API_KEY and
+Provider credentials OPENAI_API_KEY, ANTHROPIC_API_KEY, OPENROUTER_API_KEY,
+GEMINI_API_KEY, GOOGLE_API_KEY and
 IPSE_CHATGPT_ACCESS_TOKEN are removed from the shell environment. Other
 inherited environment values remain available.
 

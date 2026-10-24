@@ -15,12 +15,17 @@ defmodule Ipse.Runner do
 
   @doc false
   def native_helper(cwd) do
+    with {:ok, helper} <- verified_helper(),
+         :ok <- Ipse.Tools.Sandbox.helper_boundary(cwd, helper),
+         do: {:ok, helper}
+  end
+
+  defp verified_helper do
     with {:ok, helper} <- helper_path(false),
          {:ok, %{type: :regular, links: 1, mode: mode, size: size}} <- File.lstat(helper),
          true <- Bitwise.band(mode, 0o022) == 0 and Bitwise.band(mode, 0o111) != 0,
          true <- size <= 32 * 1024 * 1024,
-         {:ok, canonical} <- Ipse.Workspace.canonical_path(helper),
-         :ok <- Ipse.Tools.Sandbox.helper_boundary(cwd, canonical) do
+         {:ok, canonical} <- Ipse.Workspace.canonical_path(helper) do
       {:ok, canonical}
     else
       {:error, reason} when is_binary(reason) ->
@@ -28,6 +33,43 @@ defmodule Ipse.Runner do
 
       _ ->
         {:error, "native helper must be a bounded, single-link, non-writable regular executable"}
+    end
+  end
+
+  @doc "Read the current OS user from the verified host helper, without launching a shell."
+  def current_uid do
+    with {:ok, helper} <- verified_helper() do
+      port =
+        Port.open(
+          {:spawn_executable, String.to_charlist(helper)},
+          [:binary, :exit_status, :use_stdio, :hide, args: ["--uid"]]
+        )
+
+      try do
+        receive_uid(port, "", System.monotonic_time(:millisecond) + 2_000)
+      after
+        if Port.info(port), do: Port.close(port)
+      end
+    end
+  rescue
+    _ -> {:error, :uid_unavailable}
+  end
+
+  defp receive_uid(port, bytes, deadline) do
+    receive do
+      {^port, {:data, data}} when byte_size(bytes) + byte_size(data) <= 64 ->
+        receive_uid(port, bytes <> data, deadline)
+
+      {^port, {:exit_status, 0}} ->
+        case Integer.parse(String.trim(bytes)) do
+          {uid, ""} when uid >= 0 -> {:ok, uid}
+          _ -> {:error, :invalid_uid}
+        end
+
+      {^port, _} ->
+        {:error, :uid_unavailable}
+    after
+      max(deadline - System.monotonic_time(:millisecond), 0) -> {:error, :uid_unavailable}
     end
   end
 

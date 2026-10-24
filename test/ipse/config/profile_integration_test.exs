@@ -1,3 +1,5 @@
+Code.require_file("../../support/provider_fixture.ex", __DIR__)
+
 defmodule Ipse.ProfileSessionTest do
   use ExUnit.Case, async: false
   alias Ipse.Session
@@ -147,6 +149,78 @@ defmodule Ipse.ProfileSessionTest do
     refute_receive {:ipse, ^parent, {:subagent, _, :started}}, 50
     assert Session.info(parent).final =~ "not configured"
     refute File.exists?(Path.join(c.dir, "subagents"))
+  end
+
+  test "approved Gemini child uses its own key, native tools and separate private accounting",
+       c do
+    previous = System.get_env("GEMINI_API_KEY")
+    System.put_env("GEMINI_API_KEY", "child-gemini-fixture-key")
+
+    on_exit(fn ->
+      if previous,
+        do: System.put_env("GEMINI_API_KEY", previous),
+        else: System.delete_env("GEMINI_API_KEY")
+    end)
+
+    body =
+      Ipse.Test.ProviderFixture.sse(%{
+        "modelVersion" => "gemini-fixture-001",
+        "candidates" => [
+          %{
+            "content" => %{
+              "role" => "model",
+              "parts" => [
+                %{"text" => "PRIVATE_CHILD_THOUGHT", "thought" => true},
+                %{
+                  "text" => "Child verified SELECTED_EVIDENCE",
+                  "thoughtSignature" => "PRIVATE_CHILD_SIGNATURE"
+                }
+              ]
+            },
+            "finishReason" => "STOP"
+          }
+        ],
+        "usageMetadata" => %{
+          "promptTokenCount" => 3,
+          "toolUsePromptTokenCount" => 0,
+          "candidatesTokenCount" => 2,
+          "thoughtsTokenCount" => 1,
+          "totalTokenCount" => 6
+        }
+      })
+
+    {base, server} = Ipse.Test.ProviderFixture.start(body)
+
+    parent =
+      start(c, %{
+        "provider" => "gemini",
+        "model" => "gemini-fixture",
+        "base_url" => base,
+        "max_output_tokens" => 64
+      })
+
+    :ok = Session.prompt(parent, "PARENT_HISTORY_PRIVATE")
+    assert_receive {:ipse, ^parent, {:approval, ref, "delegate", _}}, 3000
+    assert :ok = Session.approve(parent, ref, true)
+    assert_receive {:ipse, ^parent, {:subagent, child, :started}}, 3000
+    assert_receive {:ipse, ^parent, {:done, :ok}}, 5000
+    {headers, request} = Task.await(server)
+    assert headers =~ "x-goog-api-key: child-gemini-fixture-key"
+    refute headers =~ "PARENT_CREDENTIAL_PRIVATE"
+    assert Jason.encode!(request) =~ "SELECTED_EVIDENCE"
+    refute Jason.encode!(request) =~ "PARENT_HISTORY_PRIVATE"
+    refute Jason.encode!(request) =~ "PARENT_NATIVE_PRIVATE"
+    functions = hd(request["tools"])["functionDeclarations"]
+    refute Enum.any?(functions, &(&1["name"] in ["delegate", "delegate_parallel"]))
+    id = Session.info(parent).id
+    {:ok, events} = Journal.load(Path.join([c.dir, "subagents", id]), child)
+    assert hd(events)["metadata"]["provider"] == "gemini"
+    assert {:ok, ledger} = Ipse.Usage.restore(events, child)
+    assert [record] = Ipse.Usage.snapshot(ledger)["requests"]
+    assert record["billing_mode"] == "api"
+    assert record["usage"]["counts"]["output_tokens"] == 3
+    assert Session.info(parent).final =~ "Child verified SELECTED_EVIDENCE"
+    refute Session.info(parent).final =~ "PRIVATE_CHILD"
   end
 
   defp fixture(body) do

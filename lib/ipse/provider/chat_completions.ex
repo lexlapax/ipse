@@ -231,7 +231,7 @@ defmodule Ipse.Provider.ChatCompletions do
         {:error, "OpenRouter served a different model than requested; nothing was used."}
 
       (not state.verified or Map.has_key?(data, "provider")) and
-          data["provider"] != state.config.upstream ->
+          not upstream?(state.config.upstream, data["provider"]) ->
         {:error, "OpenRouter served a different upstream than pinned; nothing was used."}
 
       true ->
@@ -253,6 +253,11 @@ defmodule Ipse.Provider.ChatCompletions do
          | verified: true,
            reported_model: Ipse.Provider.model_name(data["model"]) || state.reported_model
        }}
+
+  # The public providers catalog explicitly pairs this display name and slug.
+  # Other names require exact equality; never guess aliases by case or punctuation.
+  defp upstream?("openai", "OpenAI"), do: true
+  defp upstream?(pinned, reported), do: pinned == reported
 
   defp stream_error(%{"error" => error}, config), do: reported_error(error, config)
   defp stream_error(_, _), do: :ok

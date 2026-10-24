@@ -36,8 +36,17 @@ the finish reason. Schematic frame:
 Implementation policy: require model/upstream identity before exposing content,
 reject a reported mismatch throughout the stream, and require a terminal
 `[DONE]` plus a successful finish reason. Preserve any observed usage on refusal.
-Only documented equality is accepted initially; unknown alias equivalence is
-insufficient evidence to weaken a pin.
+Unknown alias equivalence is insufficient evidence to weaken a pin. During the
+authorized 2026-10-24 live check, the public
+[providers catalog](https://openrouter.ai/api/v1/providers) explicitly returned
+`{"name":"OpenAI","slug":"openai"}`; the
+[model endpoints](https://openrouter.ai/api/v1/models/openai/gpt-4.1-mini/endpoints)
+returned `provider_name: "OpenAI"` with `tag: "openai"`. The initial strict-slug
+implementation refused that route before displaying text. The adapter now accepts
+this one verified pair, retaining the raw reported name. It does not case-fold or
+guess aliases for any other name. The same pin subsequently passed live text and
+tool continuation with collection denied. The request's upstream lists did not
+change.
 
 The [generation metadata endpoint](https://openrouter.ai/docs/api/api-reference/generations/get-request-&-usage-metadata-for-a-generation)
 is `GET /api/v1/generation?id=...`; it reports `provider_name` alongside model,
