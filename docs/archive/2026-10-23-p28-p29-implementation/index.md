@@ -365,6 +365,9 @@ and auditor requirement matrix remain open.
 
 ## P29 WP5
 
+The [draft auditor handoff](auditor-handoff.md) maps the accepted briefs to source,
+fixtures, receipts and remaining external gates. It is not a completeness verdict.
+
 Guided setup now collects and previews OpenRouter's required upstream and explicit
 collection policy, and a compatible server's required loopback URL. Gemini,
 OpenRouter and compatible routes have no implicit model choice. The registry
@@ -381,3 +384,10 @@ chapters now teach those choices alongside manual profiles and native continuati
 limits. This is a tested implementation checkpoint; final full/native, installed
 and exact-source platform gates remain open. The live plan also prints compiled
 build identity for the final exact-commit repeat.
+
+The [exact `492d091` live receipt](p29-live-final.json) now records both providers
+passing all three bounded requests with the compiled commit printed first.
+Gemini signed parts are observed, and missing counters remain partial. No key,
+signature or transcript is retained. The full `8160f0d` native run completed with
+1670 passed, one failed and 19 excluded; the failed doctor UID case is repaired,
+and the final combined `492d091` native run is in progress in a fixed checkout.
