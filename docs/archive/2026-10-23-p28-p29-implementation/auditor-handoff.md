@@ -4,7 +4,7 @@ Prepared 2026-10-24; runtime candidate is now `9c5eb6a`, with exact live wire
 evidence at `492d091` and RC1 release preparation at `e944fcf`.
 This handoff is prepared for independent implementation review, not an external
 audit or a completeness verdict. P29's implementation and automated gates pass;
-P28's fresh-operator acceptance, draft cleanup and stable publication remain open.
+P28's approval UX finding, final release acceptance, draft cleanup and stable publication remain open.
 Use the [current plan](../../plan.md) for status and the
 [implementation index](index.md) for subsequent receipts. This dated record can
 be superseded; the operator and developer manuals own current procedures.
@@ -46,7 +46,7 @@ connects it to the local native-inclusive and installed proofs.
 | P28 optional WP3b kernel probe | Existing native sandbox policy and doctor availability wording | Explicitly deferred under the brief's allowance; availability is never enforcement |
 | P28 WP4: explicit billing/provider choice, TTY/headless preview/save, exact JSON, private atomic write/backup, preservation, optional login, offline diagnosis | `lib/ipse/cli/setup.ex`, `lib/ipse/private_file.ex`, setup/private-file/Auth suites | [WP4 receipt](wp4-verification.json), later installed/platform checks; P29 adds explicit route profiles |
 | P28 WP5: sidecars, strict matching tags/notes/assets, symlink/cwd handling, draft-only release matrix, install/upgrade/uninstall | `dev/release.exs`, `.github/workflows/release.yml`, `dev/release-launcher.sh`, `test/dev/release_test.exs`, installed verifier | [WP5 receipt](wp5-verification.json), [successful RC workflow](rc-hosted.json), [downloaded asset inspection](rc-assets.json); draft deletion pending walkthrough |
-| P28 WP6: whole first-user manual, examples/links/limits, unassisted fresh OS account walkthrough | Operator install/index/configuration/usage/recovery, developer testing/configuration | Whole-manual review and installed examples pass; genuine walkthrough remains open |
+| P28 WP6: whole first-user manual, examples/links/limits, unassisted fresh OS account walkthrough | Operator install/index/configuration/usage/recovery, developer testing/configuration | Fresh Linux run recorded and accepted; product-navigation assistance and approval-fatigue finding remain explicit qualifications |
 | P29 WP0: primary protocol research before coding, native continuation and usage semantics | [Wire facts](wire-facts.md), linked official sources and schematic examples | Recorded before adapter work; explicitly verified OpenAI display-name/slug pair added after first live refusal |
 | P29 WP1: closed registry, existing constants/manifests/destinations/usage/cost/journal equivalence, documented exceptions | `lib/ipse/provider/registry.ex`, `test/ipse/provider/registry_test.exs`, `test/fixtures/provider_registry/provenance.json` | [Registry receipt](p29-wp1-verification.json); fixtures captured from independent `dd510a7`, not regenerated from refactor |
 | P29 WP2: shared fragmented server, native builders and common text/tools/replay/limits/errors/usage/terminal controls | `test/support/provider_fixture.ex`, `test/support/provider_conformance.ex`, provider conformance suite | [Local receipt](p29-wp2-verification.json), [Ubuntu/macOS full matrix](p29-wp2-hosted.json); six routes use common controls, with dedicated ChatGPT controls retained |
@@ -118,8 +118,8 @@ subsequent runtime changes refine invalid-cap and late identity-refusal messages
 Inspect that source difference rather than calling the earlier live receipt an
 exact-final-build test. Later evidence commits change no `lib`, `native`,
 `extensions`, `priv`, `test`, `dev`, `.github`, Mix, launcher or example source.
-The relevant operator/developer manuals remain unchanged from their recorded
-whole-document review. Rebuilding at a later documentation commit still embeds
+The committed operator/developer guidance retains its recorded whole-document
+review; inspect later or working-copy edits separately. Rebuilding at a later documentation commit still embeds
 that later identity; distinguish it from the tested binary.
 
 RC1 is an earlier rehearsal at `e944fcf`, with its own passing complete workflow.
@@ -136,9 +136,14 @@ installation, explicit ChatGPT setup/browser sign-in, doctor and demo have termi
 evidence; real task, individual approvals, inspection and resume have follow-up
 operator confirmation. The [observation record](../2026-10-24-p28-walkthrough/index.md)
 retains this distinction without authorization URLs or private transcripts.
-The operator confirmed existing account/state, so the required fresh-OS-account
-walkthrough remains open. Human upgrade was skipped because only one release
-was available; the automated upgrade proof remains separate evidence.
+A later attachment establishes a newly created Linux account/home and an explicit
+fresh-state check. That run selected Demo and real Ollama `qwen3.5:9b`; the
+developer accepts it and requests work on excessive approval prompts. The record
+retains account/product-navigation assistance, so it is not claimed to be wholly
+unassisted. The [approval UX research](../2026-10-24-p28-approval-ux/index.md)
+compares primary documentation and proposes reusable permissions, not an
+implemented policy. Human upgrade was skipped because only one release was
+available; the automated upgrade proof remains separate evidence.
 
 Keep the draft available for the developer's download and walkthrough, then
 delete it as the brief requires, retaining the downloaded bytes/checksums and

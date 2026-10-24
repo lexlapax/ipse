@@ -632,10 +632,16 @@ The developer reports a successful existing-account Linux walkthrough, including
 ChatGPT sign-in, doctor/demo and follow-up confirmation of the real task,
 individual approvals, output inspection and resume. The
 [observation record](archive/2026-10-24-p28-walkthrough/index.md) distinguishes
-terminal evidence from operator attestations. The required fresh-OS-account
-walkthrough remains open; human upgrade was skipped because only one version
-was available, with automated upgrade evidence retained separately. Draft
-deletion and the real stable tag/publication still wait for acceptance.
+terminal evidence from operator attestations. A subsequent fresh Linux account
+run used Demo and Ollama `qwen3.5:9b`; the developer accepts the run and reports
+excessive individual approval prompts. Account setup and product-navigation help
+are recorded, so this is not labelled an entirely unassisted manual-only pass.
+Human upgrade was skipped because only one version was available; automated
+upgrade evidence remains separate. The requested
+[approval UX research](archive/2026-10-24-p28-approval-ux/index.md) compares existing
+agents and proposes modes plus reusable consent; no policy change is implemented.
+RC draft cleanup, final acceptance of these qualifications and stable publication
+remain open. The external-auditor handoff includes these findings.
 
 Scope:
 

@@ -13,8 +13,8 @@ P27 is complete within its optional Corpus, Graph and Research scope. The
 [plan](docs/plan.md#p27-optional-research-graph-and-rag) records acceptance, the
 selected hybrid reference configuration and its limits. OpenRouter, Gemini and
 the provider registry (P29) are implemented and pass local and hosted checks.
-Operator usability and release readiness (P28) await the fresh-account walkthrough
-and stable publication. Advisory decision engines (P30) remain proposed; voice
+The developer accepts the fresh-account P28 run and requests approval UX work;
+release acceptance and stable publication remain open. Advisory decision engines (P30) remain proposed; voice
 and media (P31) remain deferred.
 
 ## Build and try the demo

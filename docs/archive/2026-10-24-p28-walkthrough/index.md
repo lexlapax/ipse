@@ -1,7 +1,7 @@
 # P28 fresh-operator walkthrough record
 
-Prepared and updated 2026-10-24. **Successful existing-account attempt reported;
-the required fresh-OS-account pass remains open.** This dated record summarizes
+Prepared and updated 2026-10-24. **Fresh-account Linux run completed and accepted
+by the developer; excessive approval prompts are an open usability finding.** This dated record summarizes
 the operator's terminal evidence and follow-up confirmation, not a scripted
 acceptance result. The [current installation manual](../../operator/install.md)
 and [user manual](../../operator/index.md) own the instructions. The
@@ -26,7 +26,7 @@ do not substitute a local archive while describing it as a draft-release downloa
 
 These bundles report version 0.1.0 and RC1's source identity. The later runtime
 candidate `9c5eb6a` refines refusal messages and has separate passing source and
-platform evidence. The developer supplied the existing-account observations below.
+platform evidence. The developer supplied both attempts recorded below.
 A separate scripted isolated-home smoke check of the downloaded Linux bundle
 passed; it does not establish a fresh-OS-account human walkthrough.
 
@@ -42,7 +42,7 @@ of confusion; repair the manual/message and repeat that step. Do not label an
 assisted or scripted run unassisted. Private temporary application state alone is
 not evidence of a fresh OS account.
 
-## Record actual observations
+## Attempt 1: existing account
 
 | Field | Observation |
 | --- | --- |
@@ -70,7 +70,7 @@ not evidence of a fresh OS account.
 | Exercise upgrade | Skipped by operator | Only one release available; separate automated changed-build/resume/recovery proof remains the upgrade evidence |
 | Remove installed release and launcher | Commands reported successful | Removal commands returned without a reported error; filesystem removal and retained-state contents were not independently inspected |
 
-## Findings, repairs and disposition
+### Initial findings and disposition
 
 No product failure or confusion was reported. The terminal evidence supports
 installation, explicit setup/sign-in, offline diagnosis and scripted demo; the
@@ -79,13 +79,48 @@ attestations. The paste contained a browser authorization URL and private accoun
 paths; neither those details nor session IDs/transcripts are copied into this
 record. No credentials or authorization data are retained here.
 
-This is a successful existing-account attempt, not the accepted fresh-OS-account
-pass. The existing state is explicit evidence of that distinction. A fresh Linux
-OS account walkthrough remains required; macOS observations have not been
-provided. Skipping the human upgrade exercise is recorded rather than relabelled
-as a pass; the separate automated upgrade proof remains valid. No manual/runtime
-repair is justified solely by these successful observations.
+This first attempt used an existing account and did not establish freshness.
+Skipping the human upgrade exercise is recorded rather than relabelled as a pass;
+the separate automated upgrade proof remains valid. The subsequent attempt below
+retains this earlier evidence rather than replacing it.
 
-Keep subsequent fresh-account findings and any repeated-step repair results in
-this record without replacing the first attempt. Stable tag/publication and RC
-draft cleanup remain open after the required acceptance and inspection.
+## Attempt 2: fresh Linux account
+
+The developer supplied a terminal attachment on 2026-10-24, then stated that the
+run was satisfactory and declined another exhaustive walkthrough. The attachment
+was inspected through a summary that withholds URLs, private content, approval
+codes and session IDs. The raw attachment is not copied into the repository.
+
+| Item | Evidence and outcome |
+| --- | --- |
+| Fresh OS account | Terminal output identifies the newly created `ipse-walkthrough` account and its new home; the explicit pre-install check prints `Fresh Ipse state` |
+| Candidate | Version output reports RC1 commit `e944fcf6223127f5db0bc290437f7989a9db3069`; the supplied Linux archive matches the previously inspected candidate |
+| Local setup and demo | Demo configuration and completed scripted-demo output appear in the run; a later doctor reports one readable session header rather than the old account's 58 |
+| Explicit real provider | Configuration and live conversation banners select Ollama, model `qwen3.5:9b`; billing is local and no provider credential is required |
+| Effects and approvals | The run contains seven distinct proposal confirmation codes: four writes and three shell calls; printed shell exit codes are zero and successful writes are reported |
+| Confirmation friction | Five confirmation-mismatch messages are printed; counts describe the supplied run, not a controlled per-task benchmark |
+| Operator disposition | Developer reports completing a substantial set of actions and being satisfied; requests follow-up because individual `allow CODE` prompts are too frequent for an operator |
+| Resume evidence | The first attempt's successful list/resume attestation remains available; this attachment alone is not treated as independent proof of every resume step |
+| Preparation and assistance | Account-provisioning instructions were supplied on request; incorrect chat-local heading links were replaced with file/line links, and `ipse setup --replace` was explained after initial Demo configuration |
+| Cleanup | Developer reports deleting the new OS account after the run |
+| Other platforms and upgrade | No macOS human run reported; human upgrade remains skipped with the independent automated proof retained |
+
+## Current disposition and follow-up
+
+The developer accepts the completed fresh-account run. Do not ask for another
+full walkthrough on the basis that the first attempt used existing state. Record
+the product-navigation assistance above; this is not an entirely unassisted
+manual-only trial. The accepted brief's unassisted criterion therefore has this
+explicit qualification rather than an invented pristine pass.
+
+The material finding is approval fatigue. The existing runtime asks separately
+for file writes/edits and shell calls unless the session was explicitly started
+with `--yes`. Wrong confirmation input leaves the pending proposal intact and
+prints another instruction. The [approval UX proposal](../2026-10-24-p28-approval-ux/index.md)
+records a concrete follow-up; no approval authority has been changed by recording
+the finding. Existing full argument display, fresh confirmation binding,
+journaling and cancellation behavior remain the reviewed baseline.
+
+Stable tag/publication, independent completeness review and any approval-policy
+implementation remain separate decisions. The automated installed upgrade and
+platform receipts are not relabelled as human walkthrough results.
