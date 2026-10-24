@@ -14,6 +14,10 @@ ipse demo
 Expect a temporary workspace, a file write and read-back, a shell result, and a
 session ID. This scripted demonstration needs no account or model service.
 It exercises the application; it does not establish your provider access.
+Use `ipse doctor --provider demo` for offline configuration/storage diagnostics
+without an account. Omit the provider override to inspect your configured route
+and its credential requirements. [Diagnosis](recovery.md#diagnose-your-setup)
+explains warnings, failures and the explicit network-probe option.
 
 ## Select a provider
 

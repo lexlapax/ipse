@@ -32,7 +32,7 @@ configuration, credentials, journals, and exports outside version control.
 | Investigate with the main agent, supplied text, or an explicit retrieval gateway | [Research](research.md) |
 | Inspect usage/cost estimates and reserve shared model allowances | [Resource controls](resources.md) |
 | Configure local diagnostic sinks and retention | [Diagnostic capture](observability.md) |
-| Interpret startup refusals, diagnose errors, inspect unknown effects, resume or hand off | [Recovery](recovery.md) |
+| Run offline setup checks, interpret refusals, inspect unknown effects, resume or hand off | [Recovery](recovery.md) |
 | Review architecture, request a capability, or change Ipse with a frozen runner | [Development workflows](development-workflows.md) |
 
 Approvals, process supervision, and native confinement solve different problems.

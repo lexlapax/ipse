@@ -17,9 +17,9 @@ requirement; authority, recovery and correctness regressions remain unacceptable
 
 | Package | Required result | State |
 | --- | --- | --- |
-| P28 WP1 | One version source, compiled build identity and installed agreement | Local source/package checks passed; hosted pending |
-| P28 WP2 | Redacted actionable errors and matching recovery instructions | Implemented; full candidate verification running |
-| P28 WP3 | Offline doctor, explicit bounded probes and finding fixtures | Pending |
+| P28 WP1 | One version source, compiled build identity and installed agreement | Complete at `b4788b4`; local source/package and both hosted platforms pass |
+| P28 WP2 | Redacted actionable errors and matching recovery instructions | Local baseline passes at `6818000`; hosted pending |
+| P28 WP3 | Offline doctor, explicit bounded probes and finding fixtures | Implemented; final native/package/platform checks pending |
 | P28 WP4 | Guided/private setup, previews, backups and resolution fixtures | Pending |
 | P28 WP5 | Checksums, symlink launcher, draft tag workflow and install lifecycle | Pending |
 | P28 WP6 | Whole-manual first-user review and fresh-account walkthrough | Pending |
@@ -77,9 +77,11 @@ explicit `IPSE_BUILD_COMMIT`, produced the exact Linux archive recorded in the
 including archive/application/CLI agreement, toolchain-free runtime behavior,
 unchanged inventories and the existing memory/MCP/delegation/recovery controls.
 The packaged identity reports the intended source commit, version 0.1.0,
-Elixir 1.20.4 and OTP 29. Hosted run 40042497037 remains live; WP1 is not yet
-declared complete. No live account, fresh-account walkthrough or release was
-verified.
+Elixir 1.20.4 and OTP 29. Hosted run 40042497037 completed successfully on
+Ubuntu and macOS for the exact `b4788b4` source. Its [job/step receipt](wp1-hosted.json)
+includes the full source, native protocol, package, installed feature proofs and
+the final experimental macOS verifier. WP1 is complete within its version/build
+identity scope. No live account, fresh-account walkthrough or release was verified.
 
 ## P28 WP2
 
@@ -109,8 +111,11 @@ assertion is unchanged. All 53 CLI tests now pass, including sessions, version
 and the existing interactive suite. The complete corrected suite is running in
 the fixed independent source/build/temp snapshot. Main-checkout build,
 formatting, warnings-as-errors, documentation, 113 earlier focused tests and
-isolated demo also pass. These results do not yet establish the corrected full
-baseline.
+isolated demo also pass. The corrected full suite subsequently passed 1548 tests,
+with 36 excluded, seed 887600, in 1028.0 seconds, exit 0. The candidate's runtime,
+test and developer-tool sources compare identically to committed `6818000`,
+including the new files. The [receipt](wp2-verification.json) retains both results.
+Exact-source hosted run 40045562195 is pending; no hosted pass is claimed yet.
 
 Two preliminary candidate runs are retained under `/tmp`: the first was stopped
 after its temporary directory inherited the source checkout's Git boundary and
@@ -120,3 +125,51 @@ expectation failed. Neither interrupted run is a passing suite. Source and build
 outputs remain fixed during each run. The operator recovery/usage chapters and
 developer configuration/testing chapters have been reviewed together and updated
 around diagnosis and verification tasks; final checks remain pending.
+
+## P28 WP3
+
+Doctor reuses existing configuration, authentication status, artifact, MCP,
+journal, native-helper and private HTTP owners. Offline checks do not refresh
+credentials, start workers/servers, acquire session locks or create private state.
+The existing Rust `--uid` facility supplies current-user identity through a
+bounded Runner invocation. Explicit provider probes send metadata GETs only,
+stop after the response status, enforce finite request limits and never retry or
+follow redirects. Subscription reachability stays skipped.
+
+The optional WP3b kernel probe is deferred. Linux confinement couples Landlock
+preparation with namespace/mount activation in the supervised child's pre-exec
+path. Reusing that as a separate standalone probe would require changes beyond
+the diagnostic path. Doctor therefore reports helper/workspace policy checks,
+explicitly states that kernel enforcement is unprobed, and keeps macOS
+experimental. No native implementation or dependency changed.
+
+Ten focused draft controls and 48 independently compiled CLI/error/doctor controls
+passed. The main checkout then passed all 63 CLI tests. Review of the maintained
+Finch source showed that its request timeout is best-effort and does not establish
+a total request ceiling. Doctor now adds an outer owned-task deadline, rejects late
+results, and relies on the private HTTP guardian for cleanup. Twelve focused
+doctor controls pass, including a stalled response reaching the ten-second ceiling,
+client closure, exact API headers, two deduplicated route probes and a failed main
+route that cannot be masked by a successful role probe.
+The final main-checkout CLI run passes all 65 tests, and the isolated scripted
+demo passes. Formatting, warnings-as-errors compilation and documentation checks
+also pass. These are checkpoint results while the corrected full/native and
+exact-source hosted gates remain pending.
+
+A separate source/build snapshot passed packaging and installed verification,
+including a new toolchain-free doctor check and unchanged auth/session state.
+That preliminary package and the first native-inclusive suite contain the earlier
+JSON help-description regression and precede the outer-deadline repair; they do
+not establish final-code acceptance. The first native-inclusive suite completed
+with 1574 of 1575 passed and 19 excluded, seed 958251, in 1014.5 seconds, exit 2.
+Its only failed assertion is the retained help-description regression. The full
+native-inclusive suite is now running against the corrected doctor source.
+The main source restores the description while retaining the original assertion.
+Native, package and hosted checks for final source remain pending. The draft
+extension control initially refused memory-only module loading, as the host BEAM
+identity guard requires real files; a run using actual temporary BEAMs passes
+without changing that guard.
+
+Recovery/usage and developer configuration/testing chapters are integrated around
+offline diagnosis, explicit egress and the distinction between availability and
+actual confinement. Their audience indexes link the revised learning tasks.

@@ -48,6 +48,7 @@ defmodule Ipse.CLI do
           json: :boolean,
           note: :string,
           version: :boolean,
+          probe_provider: :boolean,
           help: :boolean,
           demo: :boolean
         ],
@@ -60,6 +61,9 @@ defmodule Ipse.CLI do
           {:error,
            "Unknown or invalid options. Run ipse --help to review supported options; no task was started."}
         )
+
+      Keyword.has_key?(opts, :probe_provider) and rest != ["doctor"] ->
+        report({:error, "--probe-provider requires ipse doctor; no provider request was sent."})
 
       Enum.any?(
         ~w(fixture keep_fixture developer_trace trace_ms trace_events)a,
@@ -98,6 +102,12 @@ defmodule Ipse.CLI do
   end
 
   defp dispatch(["login"], _opts), do: report(Ipse.Auth.login(auth_dir()))
+
+  defp dispatch(["doctor"], opts) do
+    {code, report} = Ipse.CLI.Doctor.run(opts, home(), opts[:cwd] || default_cwd())
+    Ipse.CLI.Doctor.print(report, opts[:json] == true)
+    code
+  end
 
   defp dispatch(["budget"], opts) do
     if opts[:resume] do

@@ -40,6 +40,7 @@ a helper's return shape.
 | Generic extension or bundled/package behavior | `test/ipse/extension/`, `test/extensions/` |
 | Configuration/workspace/client | Matching `test/ipse/config/`, workspace, and CLI suites |
 | Operator error/recovery rendering | `test/ipse/cli/errors_test.exs`, configuration and MCP validation suites; include private synthetic values and unchanged-journal controls |
+| Offline diagnosis and explicit metadata probes | `test/ipse/cli/doctor_test.exs`; preserve untouched listeners, credential bytes, held locks and absent workers/state |
 | Trusted development/runtime proofs | `test/dev/`, `dev/verification/` |
 
 Trace validation→authority/approval→durable intent→effect→receipt→cleanup→saved
@@ -257,8 +258,10 @@ elixir dev/verify.exs installed package --archive "$IPSE_ARCHIVE" \
 Set IPSE_ARCHIVE to the exact newly produced archive first. Avoid ambiguous/stale
 globs. The verifier extracts private HOME/IPSE_HOME and tests real CLI help/demo,
 workspaces, locks/helpers, bundled behavior, and Memory. It borrows no checkout
-priv directory. CLI checks have declared utilities without Erlang/development
-commands; precompiled harness adds bundled Erlang. Keep a finite outer job budget.
+priv directory. Its offline doctor check verifies stable findings and no auth or
+session-directory creation with a demo route. CLI checks have declared utilities
+without Erlang/development commands; the precompiled harness adds bundled Erlang.
+Keep a finite outer job budget.
 Use extracted `./ipse` for CLI and `./bin/ipse eval` for trusted evaluation.
 A local build is not publication. Distribution needs matching runtime notices via
 `IPSE_NOTICES_DIR` and the [dependency inventory](dependencies.md).

@@ -63,6 +63,34 @@ defmodule Ipse.Development.Verification.Package do
     IO.puts("PASS: bundled CLI terminal escaping, original JSON values and unchanged journal.")
   end
 
+  defp verify_doctor!(wrapper, release, env, home, workspace, version) do
+    report =
+      run!(
+        wrapper,
+        ["doctor", "--provider", "demo", "--cwd", workspace, "--no-project-config", "--json"],
+        release,
+        env,
+        "bundled offline doctor"
+      )
+      |> :json.decode()
+
+    1 = report["version"]
+    ^version = report["build"]["version"]
+
+    expected =
+      ~w(runtime.build home.layout config.files config.provider credentials.selected sandbox.native mcp.config extensions.selection sessions.store provider.reachability)
+
+    ^expected = Enum.map(report["checks"], & &1["id"])
+    false = Enum.any?(report["checks"], &(&1["status"] == "fail"))
+    %{"status" => "skip"} = Enum.find(report["checks"], &(&1["id"] == "provider.reachability"))
+    false = File.exists?(Path.join(home, ".ipse/auth"))
+    false = File.exists?(Path.join(home, ".ipse/sessions"))
+
+    IO.puts(
+      "PASS: toolchain-free offline doctor, stable findings and no auth/session state creation."
+    )
+  end
+
   defp verify_recovery!(launcher, release, env, root) do
     workspace = Path.join(root, "recovery-probe")
     File.mkdir_p!(Path.join(workspace, ".git"))
@@ -215,6 +243,8 @@ defmodule Ipse.Development.Verification.Package do
     IO.puts(
       "PASS: archive name, application version and toolchain-free CLI build identity agree."
     )
+
+    verify_doctor!(wrapper, release, env, home, default_workspace, version)
 
     verify_terminal!(wrapper, release, env, root)
     verify_recovery!(otp_launcher, release, env, root)

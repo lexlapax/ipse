@@ -1,0 +1,12 @@
+{
+  "record_version": 1,
+  "source_commit": "6818000eb828ab025a865c8aaab941f99207e8d9",
+  "source_match": "Independent candidate lib/test/native/extensions/dev/bin/mix.exs/mix.lock compare identically to source_commit, including new files admitted to the candidate index.",
+  "command": "mix test",
+  "suite": {"passed": 1548, "excluded": 36, "seed": 887600, "duration_seconds": 1028.0, "exit_code": 0},
+  "log": "/tmp/ipse-p28-wp2-candidate-tests.log",
+  "other_checks": ["source build", "formatting", "warnings-as-errors compile", "CI pin policy", "documentation and links", "113 focused source tests", "53 complete CLI tests after the help correction", "isolated credential-free demo"],
+  "previous_failure": {"passed": 1547, "failed": 1, "excluded": 36, "seed": 66291, "duration_seconds": 1018.7, "exit_code": 2, "cause": "Help description omitted the sessions JSON field names", "repair": "Restore the field description, retaining the original test", "log": "/tmp/ipse-p28-wp2-candidate-help-failure.log"},
+  "hosted": {"run_id": 40045562195, "url": "https://github.com/lexlapax/ipse/actions/runs/40045562195", "status": "in_progress"},
+  "limits": ["Fixture checks only; no live account or provider inference", "No final hosted verdict yet", "Native-inclusive doctor verification belongs to the following package"]
+}

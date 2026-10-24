@@ -236,10 +236,26 @@ a detailed expectation with a substring that the old generic refusal also met.
 
 ## Verify a complete setting change
 
+For an operator-facing readiness check, follow `CLI.Doctor.run/3` before changing
+Session startup. It reuses Config resolution, artifact preparation, MCP parsing,
+Auth status and bounded journal headers without creating a conversation, testing
+locks, refreshing tokens or launching workers. Current UID comes from the
+existing Rust helper's `--uid` facility through a bounded Runner invocation;
+no platform command or dependency is added. Native diagnosis reports helper and
+workspace policy, without executing the kernel confinement path.
+
+Only the explicit probe branch borrows a private Finch client. It sends metadata
+GETs, stops after status, retains no response body, and uses the existing proxy/TLS
+policy with finite deadlines. Subscription reachability stays skipped. Preserve
+the no-network positive control in `test/ipse/cli/doctor_test.exs`: an offline run
+must leave the listener untouched, and the explicit probe must send exactly one
+GET. Expired-credential bytes and held session locks must survive inspection.
+
 ```sh
 mix test test/ipse/config_test.exs test/ipse/config/integration_test.exs test/ipse/config/profiles_test.exs
 mix test test/ipse/config/profile_integration_test.exs test/ipse/config/embedding_test.exs
 mix test test/ipse/provider_test.exs test/ipse/provider/stream_test.exs
+mix test test/ipse/cli/doctor_test.exs
 ```
 
 For a new field, update schema, fixed CLI/environment maps, runtime projection,

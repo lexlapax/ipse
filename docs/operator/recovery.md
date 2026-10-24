@@ -140,6 +140,52 @@ valid bounded histories, but oversized legacy files may refuse export. Preserve
 them and request developer-assisted source-page inspection; individual source
 records have a separate 1-MiB bound. Do not delete records to make them fit.
 
+## Diagnose your setup
+
+Run the offline checks before starting work:
+
+```sh
+ipse doctor
+ipse doctor --json --cwd /path/to/project --config /private/path/operator.json
+```
+
+Use the same `--cwd`, configuration, profile, project-trust, endpoint, MCP and
+state-directory options that you use for the intended session. The command
+reports runtime identity, admitted configuration, selected provider/billing,
+credential presence and expiry, private-directory modes, native-policy
+availability, MCP configuration, selected extension artifacts and bounded session
+headers. Every finding supplies a recovery route. Exit 1 means at least one
+finding failed; warnings and explained skips alone exit 0.
+
+The default command makes no network requests, refreshes no credentials, starts
+no MCP servers or extension workers, and tests no session locks. Missing private
+directories are reported as created on first use; diagnosis does not create them.
+An unsafe home/session directory or an auth directory with group/other access
+fails. Restore ownership and private modes before starting a session. Operator
+configuration readable or writable by others warns; keep it mode `0600` and keep
+credentials out of it.
+
+To request reachability checks explicitly:
+
+```sh
+ipse doctor --probe-provider --profile YOUR_CONFIGURED_PROFILE
+```
+
+This sends bounded metadata GET requests for the selected route and configured
+routine/review roles, using the existing TLS/proxy policy and their credential
+sources. Each request has a ten-second deadline; response bodies are discarded,
+redirects are refused and failures are never retried. No inference occurs.
+401/403 indicates credential refusal; other HTTP or connection failures require
+endpoint/account inspection. A successful GET does not prove that a particular
+model can run. Subscription reachability is skipped and requires a real session;
+the demo needs no provider connection.
+
+`sandbox.native` checks the helper and workspace policy. An `ok` finding does
+not probe kernel namespaces or establish enforcement. A requested native policy
+that fails these checks is a failure; an unavailable optional policy warns.
+macOS remains experimental and warns. Check actual command receipts and the
+[native-policy prerequisites](usage.md#choose-shell-confinement).
+
 ## Diagnose startup and service errors
 
 For a source checkout:
