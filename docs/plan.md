@@ -626,7 +626,8 @@ first-run checks. Release checksums, symlink handling, draft workflow and lifecy
 manuals are implemented; the local installed upgrade proof passes. Whole-manual
 review and installed examples pass. RC1 has an unpublished draft with both
 platform jobs running. The developer will perform the unassisted fresh-account
-walkthrough once its archives are ready. Final hosted and exact-candidate source
+walkthrough once its archives are ready. The latest `9c5eb6a` native-inclusive
+baseline, isolated demo and installed proof pass; final hosted and RC asset
 gates remain pending. The real release remains unpublished.
 
 Scope:
@@ -674,7 +675,8 @@ Gemini's omitted counters remain partial. Guided new-route setup now previews an
 saves explicit pins, data policy and local endpoints while preserving existing
 profiles. The `492d091` native-inclusive baseline passes 1710 tests with 19
 excluded; the latest `9c5eb6a` installed archive proof passes, including runtime
-notices. Its full source and hosted gates remain pending; the
+notices. Its full native-inclusive source baseline passes 1713 tests with 19
+excluded, followed by a passing isolated demo. Hosted gates remain pending; the
 [combined receipt](archive/2026-10-23-p28-p29-implementation/combined-verification.json)
 distinguishes these exact revisions.
 Native embeddings stay limited to OpenAI/Ollama.

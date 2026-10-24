@@ -3,7 +3,7 @@
 Prepared 2026-10-24; runtime candidate is now `9c5eb6a`, with exact live wire
 evidence at `492d091` and RC1 release preparation at `e944fcf`.
 This is a draft handoff, not an external audit or a completeness verdict. Final
-combined verification, release rehearsal and fresh-operator acceptance remain
+hosted verification, release rehearsal and fresh-operator acceptance remain
 open. Use the [current plan](../../plan.md) for status and the
 [implementation index](index.md) for subsequent receipts. This dated record can
 be superseded; the operator and developer manuals own current procedures.
@@ -34,9 +34,9 @@ step, field and refusal in the briefs. Inspect both positive and negative contro
 
 | Package / required behavior | Implementation and verification entry points | Evidence and remaining gate |
 | --- | --- | --- |
-| P28 WP1: one version source, compiled identity, both version commands, help/archive/application agreement | `mix.exs`, `lib/ipse.ex`, `test/ipse/cli/version_test.exs`, `dev/verification/package.exs` | [WP1 receipt](wp1-verification.json), [platform receipt](wp1-hosted.json); repeat on final candidate |
+| P28 WP1: one version source, compiled identity, both version commands, help/archive/application agreement | `mix.exs`, `lib/ipse.ex`, `test/ipse/cli/version_test.exs`, `dev/verification/package.exs` | [WP1 receipt](wp1-verification.json), [platform receipt](wp1-hosted.json), [final local source/installed proof](combined-verification.json) |
 | P28 WP2: actionable safe refusals, status JSON, unchanged locked/mismatched/torn journals, no term/credential dumps | `lib/ipse/cli/errors.ex`, `test/ipse/cli/errors_test.exs`, configuration/MCP suites | [WP2 receipt](wp2-verification.json), [platform receipt](wp2-hosted.json); survey CLI-reachable errors independently |
-| P28 WP3: stable doctor IDs/status/recovery, offline invariance, bounded explicit GETs, credentials/permissions/store/extension findings | `lib/ipse/cli/doctor.ex`, `test/ipse/cli/doctor_test.exs`, `Ipse.Runner.current_uid/0` | [Doctor receipt](wp3-verification.json), [hosted receipt](wp3-hosted.json); new provider probes and UID repair need final combined gate |
+| P28 WP3: stable doctor IDs/status/recovery, offline invariance, bounded explicit GETs, credentials/permissions/store/extension findings | `lib/ipse/cli/doctor.ex`, `test/ipse/cli/doctor_test.exs`, `Ipse.Runner.current_uid/0` | [Doctor receipt](wp3-verification.json), [hosted receipt](wp3-hosted.json); new probes and UID repair pass final local source/installed proof; final hosted gate open |
 | P28 optional WP3b kernel probe | Existing native sandbox policy and doctor availability wording | Explicitly deferred under the brief's allowance; availability is never enforcement |
 | P28 WP4: explicit billing/provider choice, TTY/headless preview/save, exact JSON, private atomic write/backup, preservation, optional login, offline diagnosis | `lib/ipse/cli/setup.ex`, `lib/ipse/private_file.ex`, setup/private-file/Auth suites | [WP4 receipt](wp4-verification.json), later installed/platform checks; P29 adds explicit route profiles |
 | P28 WP5: sidecars, strict matching tags/notes/assets, symlink/cwd handling, draft-only release matrix, install/upgrade/uninstall | `dev/release.exs`, `.github/workflows/release.yml`, `dev/release-launcher.sh`, `test/dev/release_test.exs`, installed verifier | [WP5 receipt](wp5-verification.json), [later full platform matrix](p29-wp2-hosted.json); actual RC draft/assets/inspection/deletion still required |
@@ -45,11 +45,11 @@ step, field and refusal in the briefs. Inspect both positive and negative contro
 | P29 WP1: closed registry, existing constants/manifests/destinations/usage/cost/journal equivalence, documented exceptions | `lib/ipse/provider/registry.ex`, `test/ipse/provider/registry_test.exs`, `test/fixtures/provider_registry/provenance.json` | [Registry receipt](p29-wp1-verification.json); fixtures captured from independent `dd510a7`, not regenerated from refactor |
 | P29 WP2: shared fragmented server, native builders and common text/tools/replay/limits/errors/usage/terminal controls | `test/support/provider_fixture.ex`, `test/support/provider_conformance.ex`, provider conformance suite | [Local receipt](p29-wp2-verification.json), [Ubuntu/macOS full matrix](p29-wp2-hosted.json); six routes use common controls, with dedicated ChatGPT controls retained |
 | P29 WP3: explicit model/upstream, no fallback/shortcuts, collection policy, first/later identity checks, native private continuation, bounded complete calls and usage | `lib/ipse/provider/chat_completions.ex`, native protocol tests and shared conformance | [WP3 receipt](p29-wp3-verification.json); inspect mismatch-before-text and usage-before-refusal controls |
-| P29 WP3 integration: API/local billing, fresh selected credentials, profile/child/SDK projection, resume drift and budgets/unpriced costs | Router integration and extension invocation suites; registry/MCP/native environment filters | Focused controls pass; exact `8160f0d` full suite failed only the diagnosed doctor UID issue, repaired at `62d3ad7`; final suite pending |
+| P29 WP3 integration: API/local billing, fresh selected credentials, profile/child/SDK projection, resume drift and budgets/unpriced costs | Router integration and extension invocation suites; registry/MCP/native environment filters | Focused controls and final native suite pass; earlier doctor UID failure and macOS timed wait retained in their receipts; final hosted gate open |
 | P29 WP4 request/destination: native GenerateContent, header-only key, fixed query digest, explicit model grammar, Vertex refusal, schema/thinking/tool conversion | `lib/ipse/provider/gemini.ex`, Gemini native/conformance suites | [WP4 receipt](p29-wp4-verification.json); existing destination goldens remain unchanged |
-| P29 WP4 response/recovery: original signed parts/order, hidden thoughts, native/synthetic IDs, parallel result grouping, terminal refusals, usage partiality | Gemini protocol/session/child/SDK/compaction/usage/budget tests | Positive wire round trips and idle/torn-tail controls pass; final suite/platform gate pending |
+| P29 WP4 response/recovery: original signed parts/order, hidden thoughts, native/synthetic IDs, parallel result grouping, terminal refusals, usage partiality | Gemini protocol/session/child/SDK/compaction/usage/budget tests | Positive wire round trips, idle/torn-tail controls and final native/installed proofs pass; final hosted gate open |
 | P29 live: explicit confirmation, bounded text plus two-step tool turn, no secrets/transcripts, no retries | `dev/verification/live_provider.exs`, `test/dev/live_provider_test.exs` | [Exact `492d091` live receipt](p29-live-final.json): both providers pass; Gemini signed parts observed; missing counters remain partial |
-| P29 WP5: registry menus/billing/credentials/probes, route questions/private previews, coherent provider/accounting manuals and priority | Setup/doctor/CLI suites, `AGENTS.md`, operator/developer provider chapters | [WP5 receipt](p29-wp5-verification.json): 83 CLI controls pass; final combined source/package/platform gates pending |
+| P29 WP5: registry menus/billing/credentials/probes, route questions/private previews, coherent provider/accounting manuals and priority | Setup/doctor/CLI suites, `AGENTS.md`, operator/developer provider chapters | [WP5 receipt](p29-wp5-verification.json): 83 CLI controls pass; final source/installed proofs pass; final hosted gate open |
 
 ## Material implementation decisions to inspect
 
@@ -99,10 +99,14 @@ earlier successful platforms do not prove later code.
 
 ## Open acceptance gates
 
-Final combined source/native, installed and hosted receipts must finish and be
-reviewed. Then rehearse `v0.1.0-rc.1`: inspect the draft's two platform archives
+Final source/native and installed proofs pass at `9c5eb6a`; hosted receipts must
+finish and be reviewed. Finish the `v0.1.0-rc.1` rehearsal: inspect its two platform archives
 and checksum sidecars, verify them, retain the workflow/asset facts, and delete
 the draft as the brief requires. This is distinct from actual publication.
+
+Keep the unpublished draft available for the developer's download and walkthrough
+before cleanup. Retain the exact downloaded bytes, checksums and workflow facts;
+do not substitute a locally built archive for a draft-release download.
 
 The required unassisted fresh-OS-account install-to-first-task walkthrough has not
 occurred. An isolated `IPSE_HOME` fixture is not that evidence. Record actual
@@ -115,7 +119,8 @@ prepared but not started. RC1's draft workflow is running at
 only more precise invalid-cap and late identity-refusal messages to the runtime.
 It has 303 passing provider/configuration/CLI controls and a passing complete
 installed proof, including 24 verified runtime-notice files. Its fixed full/native
-check remains in progress. The earlier `492d091` native-inclusive suite completed
+check passes 1713 tests with 19 excluded, seed 856205, followed by a passing
+isolated demo. The earlier `492d091` native-inclusive suite completed
 with 1710 passed and 19 excluded, followed by a passing isolated demo. The
 [combined receipt](combined-verification.json) preserves exact build scope.
 Successful wire handling is unchanged from the

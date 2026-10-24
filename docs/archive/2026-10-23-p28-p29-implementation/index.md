@@ -26,9 +26,9 @@ requirement; authority, recovery and correctness regressions remain unacceptable
 | P29 WP0 | Verified official wire facts and continuation examples | [Recorded](wire-facts.md); both new adapters now have protocol fixtures and separate live evidence |
 | P29 WP1 | Central registry, existing-provider equivalence and recovery tests | Exact `cd74f91` native suite (1601) and installed proof pass; subsequent `61ed1f9` platform matrix passes |
 | P29 WP2 | Shared server and adapter conformance tests | Focused and complete Ubuntu/macOS matrix pass ([local receipt](p29-wp2-verification.json), [hosted receipt](p29-wp2-hosted.json)) |
-| P29 WP3 | Pinned OpenRouter and explicit loopback compatible adapter | Implemented; focused/conformance/owned-extension checks pass ([receipt](p29-wp3-verification.json)); full/platform gates pending |
-| P29 WP4 | Native Gemini, signed continuation and canonical accounting | Implemented; [fixtures](p29-wp4-verification.json) and [live text/tool](p29-live-checkpoint.json) pass; final combined/platform gates pending |
-| P29 WP5 | Registry-driven doctor/setup and coherent provider manuals | Implemented; explicit new-route prompts, private profile writes and preservation controls pass; final combined gates pending |
+| P29 WP3 | Pinned OpenRouter and explicit loopback compatible adapter | Implemented; focused/conformance/owned-extension checks and final native/installed proofs pass; hosted gate pending |
+| P29 WP4 | Native Gemini, signed continuation and canonical accounting | Implemented; fixtures, separate live text/tool checks and final native/installed proofs pass; hosted gate pending |
+| P29 WP5 | Registry-driven doctor/setup and coherent provider manuals | Implemented; prompts/private profiles/preservation controls and final native/installed proofs pass; hosted gate pending |
 | Auditor handoff | Requirement matrix, exact commits/checks, exclusions and commands | Draft prepared; final verification and acceptance gates remain open |
 
 Release publication, real account probes and a genuinely unassisted fresh-user
@@ -446,3 +446,11 @@ matrix; macOS failed only the existing Research four-mode evaluation test's
 The [failed hosted receipt](p29-wp3-hosted-failure.json) retains the exact source,
 test, seed, counts and job links. No assertion or timeout was changed. This is a
 failed historical check; latest-candidate hosted checks must independently pass.
+
+The exact `9c5eb6a` full native-inclusive source run subsequently completed with
+1713 passed and 19 excluded, seed 856205, 1059.5 seconds, exit 0. Build, formatting,
+warnings-as-errors compilation and the chained isolated demo pass; tracked source
+remained unchanged. Excluded categories are macOS sandbox/filesystem and optional
+memory-scope checks. The [combined receipt](combined-verification.json) now records
+both the final source and installed proofs. Hosted run 40054636574 and RC1's
+platform/asset checks remain open.
