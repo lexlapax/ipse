@@ -18,6 +18,18 @@
   },
   "base": "0fe2a1c0cd6dbf5986abd1a0f3c0cf10947d4d62",
   "ci_policy": "passed",
+  "clean_committed_repeat": {
+    "documentation": {
+      "errors": 0,
+      "local_links": 3873,
+      "markdown_files": 416
+    },
+    "log": "/tmp/ipse-fixture-coordination-committed-tests.log",
+    "seconds": 23.5,
+    "seed": 552515,
+    "status": "passed",
+    "tests": 26
+  },
   "date": "2026-10-24",
   "delayed_after_effect_control": {
     "excluded": 10,
@@ -40,7 +52,12 @@
   },
   "formatters": "Elixir 1.18 and 1.20 pass",
   "frozen_evaluator_implementation_changed": false,
-  "hosted_repaired_candidate": "pending",
+  "hosted_repaired_candidate": {
+    "candidate": "288a6a2ee0317002f66d041f19cbae4ad0da043b",
+    "run_id": 40124552353,
+    "status": "running",
+    "url": "https://github.com/lexlapax/ipse/actions/runs/40124552353"
+  },
   "initial_control_attempts": [
     "An initial shifted line selector matched two adjacent generated tests; corrected selector reproduced the intended case.",
     "An after-control wrapper syntax error occurred before file mutation or test launch; corrected script then passed."

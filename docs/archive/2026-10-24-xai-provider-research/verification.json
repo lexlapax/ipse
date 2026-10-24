@@ -62,6 +62,14 @@
     "run_id": 40119130959,
     "status": "failed"
   },
+  "fixture_repair": {
+    "candidate": "288a6a2ee0317002f66d041f19cbae4ad0da043b",
+    "receipt": "fixture-coordination.json",
+    "run_id": 40124552353,
+    "runtime_source_unchanged_from": "622a2c898d7c5140f12e679adb3b4d9c36d28e3c",
+    "status": "running",
+    "url": "https://github.com/lexlapax/ipse/actions/runs/40124552353"
+  },
   "formatter_repaired_hosted": {
     "candidate": "fc8393a70e533602cdcac5b49e2503cbc5133e89",
     "macos": {
