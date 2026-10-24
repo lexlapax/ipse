@@ -116,12 +116,12 @@ ipse handoff --resume SESSION_ID --state-dir /private/path/sessions \
   --note 'Continue the reviewed CLI change. Inspect hello.exs and the pending shell effect before retrying. Preserve existing edits.' \
   > "$IPSE_RECOVERY_DIR/handoff.json"
 cat "$IPSE_RECOVERY_DIR/handoff.json"
-ipse chat --provider chatgpt --cwd /path/to/project \
+ipse chat --cwd /path/to/project \
   --handoff "$IPSE_RECOVERY_DIR/handoff.json"
 ```
 
 Review the artifact before import. The fresh conversation starts idle and makes
-real subscription requests only after a new task. Historical context grants no
+requests through the configured provider only after a new task. Historical context grants no
 permissions and transfers no credentials, provider settings, native continuation,
 tools, or approvals. The new journal saves the artifact once; later resume the
 new ID normally without its original handoff file.

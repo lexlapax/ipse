@@ -136,7 +136,7 @@ The [checks workflow](../../.github/workflows/ci.yml) uses GitHub Actions with
 | checkout | `actions/checkout@11d5960a326750d5838078e36cf38b85af677262` | Checkout the candidate repository; MIT |
 | setup-beam | `erlef/setup-beam@54075bcc5e249e4758d363f27d099f55d843f124` | Supply Elixir 1.18/OTP 27 for floor compatibility; MIT |
 | rust-toolchain | `dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec` | Select stable Rust; MIT for the action, separate compiler/standard-library notices |
-| GitHub CLI (`gh`) | Preinstalled GitHub-hosted runner version, a rolling image input; record the actual version with release evidence | Create/recover drafts, upload and re-download verified assets using the default `GITHUB_TOKEN`; MIT. Developer approved the release-workflow dependency on 2026-10-23 ([decision D3](../archive/2026-10-23-p28-p29-design/p28.md#decisions)); no additional action or runtime dependency |
+| GitHub CLI (`gh`) | Preinstalled GitHub-hosted runner version, a rolling image input; record the actual version with release evidence | Create/recover drafts, upload/re-download verified assets, and fetch exact-version upstream runtime notices in CI/release jobs with step-scoped `GITHUB_TOKEN`; MIT. Developer approved the release-workflow dependency on 2026-10-23 ([decision D3](../archive/2026-10-23-p28-p29-design/p28.md#decisions)); no additional action or runtime dependency |
 
 Runner images and stable toolchain channels remain rolling inputs. Record their
 actual versions with results. Pin any external action to a full commit and review
@@ -156,6 +156,15 @@ executable to build/CI requirements. Manual download checks use the platform's
 `sha256sum` (Linux/coreutils) or `shasum` (macOS/Perl distribution); these are
 operator commands rather than new harness dependencies. The portable release
 launcher reuses the already inventoried `readlink` utility.
+
+Before packaging, hosted jobs use that same approved `gh` executable to retain
+the running Elixir/OTP versions' upstream license/notice files, including modern
+`LICENSES/` layouts. The collector accepts only the two official repositories and
+exact release tags, checks Git blob identities and bounded text, and records
+source references and SHA256s in `runtime-notices.json`. Downloaded text is not
+executed. The token is scoped to the collection step; only the notice-directory
+path is carried into later steps. Custom toolchain distributors still provide
+their additional notices through `IPSE_NOTICES_DIR`.
 
 The workflow also runs `elixir dev/check-docs.exs` using the existing Elixir/OTP
 and Git toolchain. It checks local documentation links, headings, JSON examples,

@@ -18,6 +18,14 @@ jobs:
           elixir-version: '1.18'
       - uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec # stable action
       - run: mix local.rebar --force
+      - name: Retain version-matched runtime notices
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh --version
+          IPSE_NOTICES_DIR="$RUNNER_TEMP/ipse-runtime-notices"
+          elixir -r dev/release.exs -e 'Ipse.Development.Release.runtime_notices!(hd(System.argv()))' -- "$IPSE_NOTICES_DIR"
+          printf 'IPSE_NOTICES_DIR=%s\n' "$IPSE_NOTICES_DIR" >> "$GITHUB_ENV"
       - run: ./dev/build.sh
       - run: mix format --check-formatted
       - run: mix compile --warnings-as-errors

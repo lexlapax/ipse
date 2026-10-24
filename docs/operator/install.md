@@ -65,6 +65,8 @@ macOS native confinement remains experimental; see
 From a scratch directory:
 
 ```sh
+IPSE_FIRST_WORKSPACE=$(mktemp -d)
+cd "$IPSE_FIRST_WORKSPACE"
 ipse setup
 ipse doctor
 ipse demo

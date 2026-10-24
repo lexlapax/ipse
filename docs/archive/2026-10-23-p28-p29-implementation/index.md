@@ -391,3 +391,27 @@ Gemini signed parts are observed, and missing counters remain partial. No key,
 signature or transcript is retained. The full `8160f0d` native run completed with
 1670 passed, one failed and 19 excluded; the failed doctor UID case is repaired,
 and the final combined `492d091` native run is in progress in a fixed checkout.
+
+## Final manual and release review
+
+Whole-document review of README, audience entry points, install, Arch setup,
+configuration, usage, recovery, contributor configuration/testing/accounting and
+the dependency inventory found two first-run issues: examples forced ChatGPT
+after another route could have been saved, and the sample first task required a
+separate Elixir installation. Examples now retain the configured route and use
+a portable file/read/shell-builtin task. Install creates its scratch directory
+explicitly; the Ollama default matches the registry. Credential-free installed
+setup/doctor/demo and all seven complete configuration examples pass. This is
+editorial/command validation, not the unassisted fresh-account walkthrough.
+
+The same review found that hosted packaging did not supply `IPSE_NOTICES_DIR`.
+Both ordinary CI and draft release jobs now collect version-matched notices from
+the two official upstream repositories through the already-approved `gh` CLI.
+The collector verifies bounded paths/text, Git blob identities and SHA256s,
+retains legacy NOTICE/current LICENSES layouts, and records provenance. A failed
+collection stops before packaging. The token is scoped to that step. Seven release
+controls pass, including no-overwrite, path escape, truncated/missing metadata,
+oversized entries and changed-blob refusal. Actual collection retained 24 files
+for Elixir 1.20.4/OTP 29.1.1 and 13 for Elixir 1.18.5/OTP 27.3.4.6, using the
+supported floor compiler for the latter. No downloaded code was executed.
+Package inclusion and the RC workflow still require exact-commit verification.

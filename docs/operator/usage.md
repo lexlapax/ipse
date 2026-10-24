@@ -50,7 +50,7 @@ session may need refresh or a new login, rather than proving the account usable.
 `ipse logout` clears local credentials and attempts supported revocation. Review
 account-side connected grants if an older grant may be compromised.
 
-Ollama defaults to `http://localhost:11434`. Select another permitted endpoint with
+Ollama defaults to `http://127.0.0.1:11434`. Select another permitted endpoint with
 `--base-url URL`, or use an operator-owned [named profile](configuration.md#reuse-a-named-model-profile).
 Profiles also select exact provider/model routes for children and extensions.
 Selecting a model does not download it or guarantee that your account can use it.
@@ -65,13 +65,15 @@ With a configured provider, create a scratch directory and start chat:
 
 ```sh
 IPSE_TRY_DIR=$(mktemp -d)
-ipse chat --provider chatgpt --cwd "$IPSE_TRY_DIR"
+ipse chat --cwd "$IPSE_TRY_DIR"
 ```
 
-Enter this task. It makes real subscription requests:
+This uses your saved provider/profile. Enter this task; a real model route makes
+service requests and can incur its configured charges:
 
 ```text
-Create hello.exs that prints hello. Run it and report the exact output.
+Create greeting.txt containing hello followed by a newline. Read it back, then
+use the shell builtin printf to print hello. Report both exact outputs.
 Ask before changing files or running shell commands.
 ```
 
@@ -91,13 +93,13 @@ not submitted automatically. To submit literal slash-command text, use the
 Interactive chat lets you approve each action. Headless `run` performs one task:
 
 ```sh
-ipse run --provider chatgpt --cwd /path/to/project \
+ipse run --cwd /path/to/project \
   'Read README.md and summarize its setup instructions without changes'
-ipse run --provider chatgpt --cwd /path/to/scratch --yes \
-  'Create hello.exs that prints hello, run it, and report the output'
+ipse run --cwd /path/to/scratch --yes \
+  'Create greeting.txt containing hello and a newline, read it back, then use the shell builtin printf to print hello. Report both outputs.'
 ```
 
-Both commands use a real model. Headless effects are denied without `--yes`.
+Both commands use the saved provider/profile. Headless effects are denied without `--yes`.
 `--yes` permits mutations, shell commands, configured MCP calls, and enabled
 local delegation for the session. A required question fails in headless mode,
 including with `--yes`.
@@ -116,7 +118,7 @@ File tools reject workspace escapes, symlinks, and protected `.git` mutation
 paths. Those file-tool checks do not restrict arbitrary shell commands.
 
 ```sh
-ipse chat --provider chatgpt --cwd /path/to/project --sandbox native
+ipse chat --cwd /path/to/project --sandbox native
 ```
 
 Native mode fails closed when its backend or prerequisites are unavailable.
@@ -180,7 +182,7 @@ Reported model names are response metadata, not proof of the next response's ide
 Enable children explicitly, then ask for a small task with inspectable evidence:
 
 ```sh
-ipse chat --provider chatgpt --subagents --cwd /path/to/project
+ipse chat --subagents --cwd /path/to/project
 ```
 
 ```text

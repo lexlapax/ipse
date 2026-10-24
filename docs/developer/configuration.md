@@ -87,12 +87,6 @@ against hostile concurrent directory replacement; setup is for reviewed local
 paths. Offline doctor follows a successful save; its failure does not roll back
 the reviewed configuration.
 
-Doctor obtains the current UID through the verified Rust helper's read-only
-`--uid` command, using a bounded Port without a shell. This host identity query
-does not select a sandbox workspace. Native shell admission still independently
-refuses workspace overlap with the application/helper; using a checkout under
-the system temporary directory must not make credential ownership unknowable.
-
 Run this complete exercise in `iex -S mix`:
 
 ```elixir
@@ -328,8 +322,10 @@ For an operator-facing readiness check, follow `CLI.Doctor.run/3` before changin
 Session startup. It reuses Config resolution, artifact preparation, MCP parsing,
 Auth status and bounded journal headers without creating a conversation, testing
 locks, refreshing tokens or launching workers. Current UID comes from the
-existing Rust helper's `--uid` facility through a bounded Runner invocation;
-no platform command or dependency is added. Native diagnosis reports helper and
+existing Rust helper's read-only `--uid` facility through a bounded Port in Runner,
+without a shell. This host identity query does not select a sandbox workspace.
+Native shell admission independently refuses application/helper overlap. No
+platform command or dependency is added. Native diagnosis reports helper and
 workspace policy, without executing the kernel confinement path.
 
 Only the explicit probe branch borrows a private Finch client. It sends metadata

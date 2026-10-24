@@ -319,6 +319,14 @@ module, changing a real inventoried host BEAM. An extension-free saved session m
 resume; one with selected extensions must refuse without journal mutation, and
 still resume with the previous release. The original archive/host stay unchanged.
 
+For a local distribution, prepare the exact bundled toolchain's notices in
+`IPSE_NOTICES_DIR` before packaging. Hosted CI/release jobs obtain the official
+versioned Elixir and OTP notice files through the already-approved `gh` CLI,
+verify blob/content hashes, and retain provenance in `licenses/runtime-notices.json`.
+Legacy `NOTICE` files and current `LICENSES/` layouts are both preserved. A
+missing/truncated source, unsafe path or mismatched blob stops the job before
+packaging. Custom-distribution notices remain the packager's responsibility.
+
 Before a tag, run `mix test test/dev/release_test.exs` and the full package proof.
 The tag workflow admits only the `mix.exs` version or a numbered RC and requires
 `docs/releases/vVERSION.md`. It repeats every ordinary CI step on both platforms;

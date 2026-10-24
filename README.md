@@ -42,17 +42,20 @@ toolchain is needed. Run `ipse setup`, `ipse doctor`, then `ipse demo`.
 
 ## Start a real conversation
 
-Use `ipse setup` to save an explicit provider/model choice. Without a choice,
-chat and run announce the built-in ChatGPT subscription default before auth:
+Save an explicit provider/model choice, check it, then start a conversation using
+that route. Without a choice, chat and run announce the built-in ChatGPT
+subscription default before auth:
 
 ```sh
-./bin/ipse login
+./bin/ipse setup
+./bin/ipse doctor
 ./bin/ipse chat --cwd /path/to/your/project
 ```
 
-Open the displayed sign-in URL and complete authorization in a browser that can
-reach the same machine's loopback listener. Replace the example project path with
-an existing directory. Then ask a bounded task, such as:
+For ChatGPT subscription, complete the setup sign-in offer or run `./bin/ipse login`.
+Open its displayed URL in a browser that can reach the same machine's loopback
+listener. Other providers use their documented credential source. Replace the
+example project path with an existing directory. Then ask a bounded task, such as:
 
 ```text
 Read README.md and explain how to run this project. Do not change files.

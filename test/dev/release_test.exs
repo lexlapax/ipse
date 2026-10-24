@@ -121,4 +121,137 @@ defmodule Ipse.Development.ReleaseTest do
 
     assert output =~ "too many symlinks; inspect the installation link"
   end
+
+  defp notice_fixture do
+    contents = %{
+      "LICENSE" => "Elixir upstream fixture\n",
+      "NOTICE" => "Old upstream notice\n",
+      "LICENSES/BSD-3-Clause.txt" => "New component notice\n",
+      "LICENSE.txt" => "OTP upstream fixture\n"
+    }
+
+    blobs =
+      Map.new(contents, fn {path, bytes} ->
+        sha =
+          :crypto.hash(:sha, ["blob #{byte_size(bytes)}", <<0>>, bytes])
+          |> Base.encode16(case: :lower)
+
+        {path,
+         {%{"path" => path, "type" => "blob", "size" => byte_size(bytes), "sha" => sha},
+          %{"encoding" => "base64", "content" => Base.encode64(bytes)}}}
+      end)
+
+    fetch = fn path ->
+      cond do
+        path == "repos/elixir-lang/elixir/git/trees/v1.20.4?recursive=1" ->
+          %{
+            "truncated" => false,
+            "sha" => String.duplicate("a", 40),
+            "tree" =>
+              for(key <- ~w(LICENSE NOTICE LICENSES/BSD-3-Clause.txt), do: elem(blobs[key], 0))
+          }
+
+        path == "repos/erlang/otp/git/trees/OTP-29.1.1?recursive=1" ->
+          %{
+            "truncated" => false,
+            "sha" => String.duplicate("b", 40),
+            "tree" => [elem(blobs["LICENSE.txt"], 0)]
+          }
+
+        true ->
+          Enum.find_value(blobs, fn {_, {item, blob}} ->
+            if String.ends_with?(path, "/" <> item["sha"]), do: blob
+          end) || flunk("unexpected notice request")
+      end
+    end
+
+    {contents, fetch}
+  end
+
+  test "runtime notices retain both upstream layouts and bind exact decoded bytes and versions",
+       %{root: root} do
+    {contents, fetch} = notice_fixture()
+    destination = Path.join(root, "notices")
+    manifest = Release.runtime_notices!(destination, versions: {"1.20.4", "29.1.1"}, fetch: fetch)
+    assert manifest["elixir"] == "1.20.4"
+    assert manifest["otp"] == "29.1.1"
+
+    for {path, bytes} <- contents do
+      prefix = if path == "LICENSE.txt", do: "otp", else: "elixir"
+      assert File.read!(Path.join([destination, prefix, path])) == bytes
+    end
+
+    for source <- manifest["sources"], file <- source["files"] do
+      assert Release.checksum(Path.join(destination, file["path"])) == file["sha256"]
+
+      assert file["source"] =~
+               "https://api.github.com/repos/" <> source["repository"] <> "/git/blobs/"
+    end
+
+    assert :json.decode(File.read!(Path.join(destination, "runtime-notices.json"))) == manifest
+
+    assert_raise RuntimeError, ~r/already exists/, fn ->
+      Release.runtime_notices!(destination,
+        versions: {"1.20.4", "29.1.1"},
+        fetch: fn _ -> flunk("existing destination must not fetch") end
+      )
+    end
+  end
+
+  test "truncated trees, missing required files, unsafe paths and changed blob bytes stop publication",
+       %{root: root} do
+    {_, fetch} = notice_fixture()
+
+    for corruption <- [:truncated, :missing, :escape, :changed, :oversized] do
+      tampered = fn path ->
+        data = fetch.(path)
+
+        if String.contains?(path, "/git/trees/") do
+          case corruption do
+            :truncated ->
+              Map.put(data, "truncated", true)
+
+            :missing ->
+              Map.put(data, "tree", [])
+
+            :escape ->
+              Map.update!(
+                data,
+                "tree",
+                &(&1 ++
+                    [
+                      %{
+                        "type" => "blob",
+                        "path" => "../LICENSE",
+                        "sha" => String.duplicate("c", 40),
+                        "size" => 1
+                      }
+                    ])
+              )
+
+            :oversized ->
+              Map.update!(data, "tree", fn items ->
+                Enum.map(items, &Map.put(&1, "size", 1_048_577))
+              end)
+
+            _ ->
+              data
+          end
+        else
+          if corruption == :changed,
+            do: Map.put(data, "content", Base.encode64("changed upstream bytes")),
+            else: data
+        end
+      end
+
+      destination = Path.join(root, Atom.to_string(corruption))
+
+      assert_raise RuntimeError, fn ->
+        Release.runtime_notices!(destination, versions: {"1.20.4", "29.1.1"}, fetch: tampered)
+      end
+
+      refute File.exists?(Path.join(destination, "runtime-notices.json"))
+      refute File.exists?(Path.join(root, "LICENSE"))
+    end
+  end
 end

@@ -49,7 +49,7 @@ roles. To change an existing profile's endpoint, upstream or collection policy,
 edit and review the operator file explicitly. `--upstream` and `--data-collection`
 apply only to OpenRouter setup; inference selects the saved profile.
 
-The first command writes nothing, including directories. `--write` authorizes the
+Preview commands write nothing, including directories. `--write` authorizes the
 non-interactive save. The target is `--config PATH`, then `IPSE_CONFIG`, then
 `IPSE_HOME/config.json`. New directories are mode `0700` and the file is `0600`;
 existing parent directory permissions are retained. Setup refuses symlink targets
