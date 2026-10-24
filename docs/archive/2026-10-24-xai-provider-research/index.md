@@ -188,6 +188,10 @@ its later `freeze_fixture` call. Six completed CLI phases took 18.791, 13.051,
 unconfirmed; neither the evaluator nor its fixture changed from the passing
 `dac11dc` baseline, and no assertion or deadline was weakened. Later candidates
 must obtain their own verdicts rather than inheriting this failed job.
+The [complete matrix receipt](format-hosted-failure.json) records terminal failure
+for run 40119384442: Ubuntu passes its full source suite (1778 tests, zero failures,
+36 excluded, seed 1455, 1386.8 seconds) and all installed/independent proofs;
+macOS skips native, demo, package and subsequent proofs after the source failure.
 
 Initial verification failures are retained as distinct observations: a new
 resume fixture expected an absent `status` field and a last-turn `final` value

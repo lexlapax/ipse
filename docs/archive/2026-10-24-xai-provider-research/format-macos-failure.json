@@ -258,6 +258,13 @@
   },
   "last_phase": "freeze_fixture started; no completion before watchdog",
   "observed_cli_phase_ms": [18791,13051,10529,6271,20621,27378],
+  "passing_predecessor_phase_comparison": {
+    "candidate": "dac11dcbca0bb6787a74052885e1e02301fc2f9c",
+    "interpretation": "Uncontrolled separate hosted jobs; timing variation is observed, not a diagnosis of host load or a product regression.",
+    "log": "/tmp/ipse-dac-hosted-final.log",
+    "next_freeze_fixture_ms": 9493,
+    "six_completed_cli_phases_ms": [18817,10061,10023,11842,19293,14021]
+  },
   "raw_log": "/tmp/ipse-grok-format-macos-job.log",
   "record_version": 1,
   "run_id": 40119384442,
