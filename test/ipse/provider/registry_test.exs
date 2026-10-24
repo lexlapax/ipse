@@ -25,6 +25,9 @@ defmodule Ipse.Provider.RegistryTest do
     assert Registry.fetch("unknown-provider-fixture") == :error
     assert Registry.fetch(nil) == :error
     assert Registry.fetch(123) == :error
+    assert Enum.sort(Registry.rate_card_ids()) == Enum.sort(Registry.chat_ids())
+    assert length(Registry.rate_card_ids()) == length(Enum.uniq(Registry.rate_card_ids()))
+    assert Registry.fetch!(:ollama).probe_base_url == Registry.fetch!(:ollama).default_base_url
 
     assert Enum.filter(Registry.rate_card_ids(), &(&1 in existing)) ==
              ~w(openai chatgpt anthropic ollama)

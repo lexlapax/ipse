@@ -242,7 +242,8 @@ defmodule Ipse.Provider.Transport do
   defp get_field(map, key) when is_map(map), do: Map.get(map, key)
   defp get_field(_, _), do: nil
 
-  defp safe(value, kind) when is_binary(value) do
+  @doc "Allowlisted diagnostic identifier; arbitrary provider prose is withheld."
+  def safe(value, kind) when is_binary(value) do
     max = if kind == :param, do: 96, else: 128
 
     pattern =
@@ -259,7 +260,7 @@ defmodule Ipse.Provider.Transport do
     end
   end
 
-  defp safe(_, _), do: nil
+  def safe(_, _), do: nil
 
   defp metadata(status, shape, code, param, request_id) do
     fields = [

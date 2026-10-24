@@ -1,0 +1,75 @@
+# Ipse v0.1.0
+
+Prepared release notes. Final release acceptance and stable publication remain open in the
+[implementation record](../2026-10-23-p28-p29-implementation/index.md).
+This file is not evidence of a published release or live-account verification.
+
+Ipse is an Apache-2.0 general-purpose local AI harness with a coding-oriented
+prototype. Elixir/OTP owns conversations, approvals, durable intent, providers
+and optional extensions. Small Rust helpers own OS facilities.
+
+## Supported use
+
+- Credential-free demo, interactive chat and one-shot tasks.
+- Explicit ChatGPT subscription, OpenAI API, Ollama, Anthropic API, Gemini API,
+  pinned OpenRouter API and loopback-compatible routes;
+  no silent provider or billing fallback.
+- Grok API-key and registered-client OAuth routes pass automated verification.
+  API inference remains unverified after HTTP 403; OAuth requires an approved
+  Ipse client registration from xAI and an eligible subscription.
+- Reviewed private setup, offline doctor, explicit metadata probes and build facts.
+- Journaled file/shell tools, approvals, recovery, opt-in local children, MCP and
+  optional built-in or independently built extensions.
+- Explicit native workspace edit and exact shell-call session grants, with
+  inspection/revocation; external tools and children retain separate approvals.
+- Linux/macOS runtime bundles with ERTS, native helpers and SHA256 sidecars.
+  See [installation and lifecycle](../../operator/install.md).
+
+## Limits and upgrades
+
+Releases are unsigned and unnotarized. Windows and package-manager distribution
+are outside this release. Linux needs compatible libc/libraries. Native Linux
+confinement requires the documented kernel/namespace facilities; macOS confinement
+is experimental. Doctor's availability check does not prove kernel enforcement.
+Approvals and supervision remain separate boundaries. Read
+[shell policy and cancellation limits](../../operator/usage.md#choose-shell-confinement).
+
+Selected extensions bind the host BEAM build. Finish their sessions or retain the
+old release for resume/export before upgrading. Extension-free sessions require
+matching configuration. A mismatch refuses before work; journals are not silently
+migrated. The [upgrade procedure](../../operator/install.md#upgrade-without-losing-recovery-options)
+explains handoff/rollback. Credentials never come from another application's token
+store. API billing and subscription access remain separate.
+
+## Verification status
+
+Evidence belongs to the exact candidate and check performed:
+
+| Candidate or scope | Recorded verification |
+| --- | --- |
+| Original P28/P29 implementation, `9c5eb6a` | 1713 local Linux native-inclusive tests, 19 excluded; isolated demo, installed-package proof and complete hosted Ubuntu/macOS matrix pass |
+| RC1 rehearsal, `e944fcf` | Both hosted matrices and downloaded archive/sidecar/runtime-notice inspection pass; Linux x86_64/glibc 2.39 and macOS arm64, Elixir 1.18.5/OTP 27.3.4.19 |
+| Session permissions and default ask policy, `dac11dc` | Full local, installed and hosted Ubuntu/macOS checks pass |
+| Initial ChatGPT browser-name hint, `5bb5761` | Local/installed pass; Ubuntu matrix passes, macOS declaration-CLI fixture times out; no new real browser trial |
+| Grok scope repair, `622a2c8` | 1760 local Linux native-inclusive tests, 19 excluded, isolated demo and complete installed proof pass; complete Ubuntu/macOS matrix, all independent proofs and experimental macOS checks pass |
+| Grok live driver, `b52c32e` | Six focused loopback controls and complete Ubuntu matrix pass; macOS fails cancellation-startup and HTTP fixture controls, repaired and independently verified at `288a6a2` |
+| Final fixture repair, `288a6a2` | Complete Ubuntu/macOS source, native, demo, installed-package and independent proofs pass, including experimental macOS enforcement; product deadlines and frozen evaluator implementation are unchanged |
+
+The [approval record](../2026-10-24-approval-implementation/index.md) and
+[Grok record](../2026-10-24-xai-provider-research/index.md) preserve failed
+and superseded runs as well as successes. Earlier green matrices do not verify
+later source. Grok's first authorized API request returned HTTP 403; no successful
+Grok text/tool inference or subscription eligibility is claimed. OAuth additionally
+requires an approved Ipse client registration from xAI. Grok's output cap excludes
+reasoning and function calls, so total-output token reservations refuse.
+Provider-reported costs remain separate from configured estimates.
+
+Live Gemini and pinned OpenRouter text/tool checks are recorded separately. The
+operator reports successful ChatGPT browser sign-in and a real task, approvals
+and resume on an existing Linux account. A later fresh-OS-account run uses Demo
+and Ollama and is accepted by the developer, with preparation/navigation assistance
+and approval fatigue recorded. It is not claimed as a wholly unassisted trial.
+
+The inspected RC draft was deleted on explicit developer authorization; verified
+local files and the RC tag remain. External audit, final release acceptance and
+stable publication remain open. Automated checks do not establish those decisions.

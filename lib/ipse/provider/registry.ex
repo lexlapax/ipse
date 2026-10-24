@@ -105,7 +105,7 @@ defmodule Ipse.Provider.Registry do
       replay_key: "ollama",
       default_model: "qwen3:8b",
       default_base_url: "http://127.0.0.1:11434",
-      probe_base_url: "http://localhost:11434",
+      probe_base_url: "http://127.0.0.1:11434",
       base_url_policy: :https_or_loopback,
       credential: :none,
       billing_mode: "local",

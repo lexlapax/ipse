@@ -70,7 +70,19 @@ defmodule Ipse.Config.Profiles do
          true <-
            Map.get(profile, "credential", @credentials[profile["provider"]]) ==
              @credentials[profile["provider"]],
-         :ok <- reasoning(profile["provider"], profile["model"], profile["reasoning_effort"]),
+         :ok <-
+           (case reasoning(profile["provider"], profile["model"], profile["reasoning_effort"]) do
+              :ok ->
+                :ok
+
+              {:error, message} ->
+                if profile["provider"] == "gemini",
+                  do: {:error, {:provider_profile, message}},
+                  else: {:error, :invalid_reasoning}
+
+              _ ->
+                {:error, :invalid_reasoning}
+            end),
          :ok <-
            Ipse.Provider.validate_output_limit(%{
              provider: @providers[profile["provider"]],

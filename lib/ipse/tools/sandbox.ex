@@ -175,8 +175,11 @@ defmodule Ipse.Tools.Sandbox do
 
     Enum.reduce_while(homes, {:ok, []}, fn home, {:ok, acc} ->
       case Ipse.Workspace.canonical_path(home) do
-        {:ok, canonical} -> {:cont, {:ok, [canonical | acc]}}
-        {:error, reason} -> {:halt, {:error, "cannot resolve home directory: #{inspect(reason)}"}}
+        {:ok, canonical} ->
+          {:cont, {:ok, [canonical | acc]}}
+
+        {:error, _} ->
+          {:halt, {:error, "Cannot resolve home directory; check access and symbolic links."}}
       end
     end)
     |> case do
@@ -199,11 +202,12 @@ defmodule Ipse.Tools.Sandbox do
         {:ok, protected} ->
           if (path == "/tmp" and cwd == protected) or
                (path != "/tmp" and overlap?(cwd, protected)),
-             do: {:halt, {:error, "sandbox workspace overlaps a protected path: #{protected}"}},
+             do: {:halt, {:error, "sandbox workspace overlaps a protected path"}},
              else: {:cont, :ok}
 
-        {:error, reason} ->
-          {:halt, {:error, "cannot resolve protected path #{path}: #{inspect(reason)}"}}
+        {:error, _} ->
+          {:halt,
+           {:error, "Cannot resolve a protected sandbox path; check access and symbolic links."}}
       end
     end)
   end

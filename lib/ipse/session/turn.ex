@@ -1179,11 +1179,11 @@ defmodule Ipse.Session.Turn do
   end
 
   @doc false
-  def context_check_failed(s, reason) do
+  def context_check_failed(s, _reason) do
     s =
       settle_preflight_calls(
         s,
-        "Not executed: scoped context could not be loaded (#{inspect(reason)}). Check this call's target path and review workspace guidance before retrying."
+        "Not executed: scoped context could not be loaded. Check this call's target path and review workspace guidance before retrying."
       )
 
     {:noreply, model(s)}
@@ -1204,7 +1204,12 @@ defmodule Ipse.Session.Turn do
 
   @doc false
   def context_refresh_failed(s, reason) do
-    Session.notify(s, {:error, "Workspace context refresh failed: #{inspect(reason)}"})
+    Session.notify(
+      s,
+      {:error,
+       "Workspace context refresh failed. Check workspace access and instruction files, then retry the context refresh command."}
+    )
+
     Session.notify(s, {:done, {:error, reason}})
     {:noreply, %{s | phase: :idle, job_ref: nil}}
   end

@@ -215,6 +215,7 @@ permitted terminal. Keep TLS verification and test assertions intact.
 | Invalid profile field | Fix the named field in the named profile using the [profile examples](configuration.md#reuse-a-named-model-profile); values are deliberately omitted from the error |
 | MCP server has an invalid field | Fix its command, URL, allowlists or private environment/header source using the [MCP manual](mcp.md); a numeric server label means its identifier was invalid or private |
 | Unexpected error with a stable code | Preserve saved state and report a minimal synthetic reproduction using the final section below; arbitrary error terms and exception messages are withheld |
+| Workspace path cannot be resolved | Check directory permissions and symbolic links, then retry with an existing readable `--cwd`; raw paths and filesystem terms are withheld from error prose |
 | Expired/refused browser callback | Keep the terminal open and start a new `ipse login`; each callback has five minutes and must reach that host's loopback listener |
 | Stale login completion after refresh/logout | Start a new login; do not resubmit an older callback |
 | Terminal refresh-token rejection | Sign in again; unusable tokens are cleared while registration is retained |

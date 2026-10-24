@@ -116,6 +116,10 @@ not protection against hostile concurrent filesystem replacement. Use a reviewed
 workspace. Shell consent permits the complete command, including any compound
 operations it contains; it is not a safe-command classification or a prefix rule.
 It does not freeze the files or environment used by that command.
+An edit grant combined with `session CODE` for `sh script.sh` permits the model
+to rewrite `script.sh` and run that same command again without another prompt.
+Use `allow CODE` for a single execution when the script's reviewed contents
+matter, or clear the command grant before editing or rerunning it.
 With confinement off, an approved shell command has your user permissions.
 
 Use `/permissions` to inspect grants and `/permissions clear` to revoke all edit

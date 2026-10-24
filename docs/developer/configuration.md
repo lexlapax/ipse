@@ -31,6 +31,12 @@ endpoint policy. Transport retains bounded error parsing/redaction; subscription
 diagnostic hints belong to its spec. A spec never authorizes a request or changes
 credential source silently.
 
+Native trusted shells and measurement launchers share `native/ipse-secrets.rs`.
+The runner suite checks every `Registry.secret_env/0` name against that policy and
+the real shell boundary. A provider addition must update that native policy or
+the conformance check fails. Rate-card order intentionally differs from setup
+order, with exact registry coverage checked by the registry suite.
+
 In `iex -S mix`, inspect a route without calling it:
 
 ```elixir
@@ -248,6 +254,8 @@ parts. It buffers only visible text separately, translates whole function calls
 to host calls, and maps consecutive results back to one user content in call
 order. Native IDs survive; missing IDs get host-only synthetic IDs. A real
 checkpoint becomes user text, while a recent signed tail replays unchanged.
+When rebuilding foreign history, omit foreign call IDs on the Gemini wire and
+match responses by the host's call/name mapping; only Gemini-native IDs replay.
 Follow `Gemini.request_body/3`, `consume/3`, and the session/child/SDK fixtures to
 trace both directions. `STOP` is success; all other terminal reasons and missing
 completion refuse tools while preserving observed usage. Low/medium/high efforts

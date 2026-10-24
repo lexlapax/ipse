@@ -76,6 +76,7 @@ defmodule Ipse.CLI.DoctorTest do
     assert finding(report, "config.files")["status"] == "warn"
     assert finding(report, "config.provider")["status"] == "warn"
     assert finding(report, "config.provider")["summary"] =~ "built-in default"
+    assert finding(report, "config.provider")["summary"] =~ "ipse setup"
     assert File.stat!(path).mode |> Bitwise.band(0o777) == 0o644
 
     File.mkdir!(Path.join(c.home, "auth"))
@@ -104,6 +105,24 @@ defmodule Ipse.CLI.DoctorTest do
 
     {1, report} = doctor(c, mcp_config: Path.join(c.root, "missing-mcp"))
     assert finding(report, "mcp.config")["status"] == "fail"
+  end
+
+  test "untrusted project files retain independent parse and trust diagnostics", c do
+    path = Path.join(c.cwd, ".ipse/config.json")
+    File.mkdir_p!(Path.dirname(path))
+    File.write!(path, Jason.encode!(%{version: 1, settings: %{provider: "demo"}}))
+    {1, report} = Doctor.run([], c.home, c.cwd)
+    row = Enum.find(finding(report, "config.files")["detail"], &(&1["path"] == path))
+    assert row["parsed"]
+    refute row["trusted"]
+    assert row["summary"] =~ "not admitted"
+    File.write!(path, "{private-invalid")
+    {1, report} = Doctor.run([], c.home, c.cwd)
+    row = Enum.find(finding(report, "config.files")["detail"], &(&1["path"] == path))
+    refute row["parsed"]
+    refute row["trusted"]
+    refute Jason.encode!(report) =~ "private-invalid"
+    refute File.exists?(c.home)
   end
 
   test "selected profile and role credentials never expose their synthetic key", c do

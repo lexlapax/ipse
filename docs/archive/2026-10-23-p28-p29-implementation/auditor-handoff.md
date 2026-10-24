@@ -158,7 +158,8 @@ The final verification candidate is `288a6a2`; its complete hosted matrix passes
 with 1781 Ubuntu tests, zero failures and 36 excluded, and 1746 macOS tests, zero
 failures, 36 excluded and one skipped. macOS adds 36 native tests, zero failures,
 six excluded, and the experimental App Sandbox proof. Controlled fixture changes
-retain the one-second pre-effect case, observe active work before post-effect
+retain the one-second pre-effect case, use a four-second test-local timeout
+(previously one second) while observing active work before post-effect
 cancellation, and size the listener for eight simultaneous clients. Product
 deadlines and frozen evaluation implementation remain unchanged. The
 [coordination receipt](../2026-10-24-xai-provider-research/fixture-coordination.json)
@@ -203,5 +204,4 @@ findings with file/line evidence, commands actually run, severity/consequence an
 whether each item is implemented, missing, contradicted or unverified. Treat the
 open human/release gates as unverified, not as successes inferred from fixtures.
 Verify that each receipt supports its claimed scope; green tests alone are not a
-completeness verdict. No external audit has been performed by preparing this
-handoff, and the overall P28/P29 goal remains open.
+completeness verdict. Preparing this handoff did not perform an external audit. The developer subsequently supplied the [independent audit of 1084f9a](../2026-10-24-p28-p29-audit-repair/independent-audit.md); its findings and repair verification are tracked in the [follow-up record](../2026-10-24-p28-p29-audit-repair/index.md). The overall P28/P29 goal remains open.

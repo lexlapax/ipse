@@ -509,6 +509,12 @@ starting new work. The remote request may have happened; Ipse does not replay it
 
 ## Review project settings before trusting them
 
+Run `ipse doctor --cwd /path/to/project --json` to list discovered configuration
+files and each file's parse and trust status. A parsed project file remains
+untrusted until you explicitly select `--trust-project-config`; doctor reports
+that refusal without applying its settings. Invalid files are listed without
+printing their contents. `--no-project-config` omits project sources entirely.
+
 Project settings live at `.ipse/config.json`. Within Git, discovery runs from
 the nearest repository boundary through `--cwd`; a worktree's `.git` file counts
 as a boundary. Outside Git, only the selected directory contributes settings.

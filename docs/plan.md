@@ -610,7 +610,7 @@ the engine decision and whole-document editorial integration.
 
 ## P28: operator usability and release readiness
 
-**Implementation and automated checks pass; final release acceptance/publication open.**
+**Implementation passed its baseline; independent audit repairs are in progress. Final release acceptance/publication remain open.**
 P0–P27 established correctness, recovery and evidence for a
 supervised developer. This milestone makes the same harness usable by an operator
 who did not build it, without weakening approvals, explicit provider selection or
@@ -695,7 +695,7 @@ dependencies.
 
 ## P29: provider registry, OpenRouter and Gemini
 
-**Complete at `9c5eb6a`.** The central
+**Original P29 scope completed at `9c5eb6a`; independent audit follow-up in progress.** The central
 [`provider registry`](../lib/ipse/provider/registry.ex) supplies configuration,
 profiles, credentials, billing, accounting, capabilities, setup and diagnosis.
 Independent pre-refactor fixtures from `dd510a7` retain existing manifests,
@@ -705,7 +705,7 @@ and native Gemini. Session/child/SDK, compaction, privacy, budgets and recovery
 controls pass. Guided setup saves explicit route profiles while preserving
 existing configuration. Native embeddings remain limited to OpenAI/Ollama.
 
-Final verification passes the Linux native-inclusive suite (1713 passed,
+Original-scope verification at `9c5eb6a` passes the Linux native-inclusive suite (1713 passed,
 19 excluded), isolated demo, complete installed proof and the exact-source
 [Ubuntu/macOS matrix](archive/2026-10-23-p28-p29-implementation/final-hosted.json),
 including all independent proofs. Whole-manual review and installed examples pass.
@@ -713,8 +713,7 @@ Separate [live Gemini and pinned OpenRouter text/tool checks](archive/2026-10-23
 pass at `492d091`; the only subsequent runtime changes refine refusal messages.
 Missing Gemini counters remain partial. The
 [combined receipt](archive/2026-10-23-p28-p29-implementation/combined-verification.json)
-preserves exact revisions, exclusions and earlier failures. Independent external
-completeness review remains separate; P28's human walkthrough/publication gates
+preserves exact revisions, exclusions and earlier failures. The developer supplied an [independent completeness audit](archive/2026-10-24-p28-p29-audit-repair/index.md); confirmed findings are being repaired. Earlier receipts cover their exact source, not the repairs; P28's human walkthrough/publication gates
 are still open.
 The [P29 implementation brief](archive/2026-10-23-p28-p29-design/p29.md) breaks
 this scope into ordered work packages with files, tests and decisions.

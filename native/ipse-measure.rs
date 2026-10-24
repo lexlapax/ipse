@@ -271,7 +271,7 @@ mod linux {
 
     fn environment_key(key: &[u8], bound: bool, cell: bool) -> bool {
         if !bound {
-            return !matches!(key, b"IPSE_MEASURE_ROOT" | b"OPENAI_API_KEY" | b"ANTHROPIC_API_KEY" | b"IPSE_CHATGPT_ACCESS_TOKEN" | b"OPENROUTER_API_KEY" | b"GEMINI_API_KEY" | b"GOOGLE_API_KEY" | b"XAI_API_KEY");
+            return key != b"IPSE_MEASURE_ROOT" && !crate::ipse_secrets::contains(key);
         }
         if crate::ipse_bound::is_bound_key(key) { return false; }
         matches!(key, b"PATH" | b"LANG" | b"HOME" | b"TMPDIR")

@@ -325,7 +325,7 @@ defmodule Ipse.Workspace do
       {:error, :symlink} -> {:error, :symlink}
       {:error, :oversized} -> {:error, :oversized}
       {:error, :invalid_utf8} -> {:error, :invalid_utf8}
-      {:error, reason} -> {:error, "read error #{inspect(reason)}"}
+      {:error, _} -> {:error, :source_unreadable}
       false -> {:error, :invalid_source}
     end
   end
@@ -520,8 +520,8 @@ defmodule Ipse.Workspace do
       {:error, :enoent} ->
         {:ok, Path.join([next | rest])}
 
-      {:error, reason} ->
-        {:error, "cannot resolve #{next}: #{inspect(reason)}"}
+      {:error, _} ->
+        {:error, :workspace_path_unavailable}
     end
   end
 
@@ -677,8 +677,8 @@ defmodule Ipse.Workspace do
                 {:error, "Skill file is malformed: #{skill["path"]}"}
             end
 
-          {:error, reason} ->
-            {:error, "Could not read skill #{skill["name"]}: #{inspect(reason)}"}
+          {:error, _} ->
+            {:error, "Could not read the selected skill; check access and rediscover skills."}
         end
     end
   end
@@ -705,7 +705,7 @@ defmodule Ipse.Workspace do
          source["content"]}
     else
       nil -> {:error, "Unknown skill."}
-      {:error, reason} -> {:error, "Skill resource omitted: #{inspect(reason)}"}
+      {:error, _} -> {:error, "Skill resource omitted; check its relative path, access and size."}
     end
   end
 

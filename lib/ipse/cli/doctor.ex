@@ -12,7 +12,7 @@ defmodule Ipse.CLI.Doctor do
     checks = [
       check("runtime.build", "ok", "Ipse #{Ipse.version()} runtime", Ipse.build_info()),
       home_layout(home, uid),
-      config_files(resolved),
+      config_files(resolved, Ipse.Config.inspect_sources(cwd, home, opts)),
       config_provider(resolved, opts),
       credentials(resolved, home, uid),
       native(cwd, resolved),
@@ -118,35 +118,45 @@ defmodule Ipse.CLI.Doctor do
     %{"path" => path, "status" => status, "summary" => summary}
   end
 
-  defp config_files({:error, reason}), do: check("config.files", "fail", Errors.format(reason))
-
-  defp config_files({:ok, effective}) do
+  defp config_files(resolved, {:ok, sources}) do
     rows =
-      for source <- effective.sources do
+      for source <- sources do
+        scope = source["scope"]
+
         status =
-          case File.stat(source.path) do
-            {:ok, %{mode: mode}} when source.scope == "operator" ->
+          case {source["parsed"], source["trusted"], File.stat(source["path"])} do
+            {false, _, _} ->
+              "fail"
+
+            {_, false, _} ->
+              "warn"
+
+            {_, _, {:ok, %{mode: mode}}} when scope == "operator" ->
               if band(mode, 0o077) != 0, do: "warn", else: "ok"
 
-            {:ok, _} ->
+            {_, _, {:ok, _}} ->
               "ok"
 
             _ ->
               "fail"
           end
 
-        %{
-          "path" => source.path,
-          "scope" => source.scope,
-          "trusted" => true,
-          "parsed" => true,
+        Map.merge(source, %{
           "status" => status,
-          "summary" => "Parsed and admitted; project sources require explicit trust"
-        }
+          "summary" =>
+            cond do
+              not source["parsed"] -> "Unreadable or invalid; settings were not admitted"
+              not source["trusted"] -> "Parsed; not admitted without --trust-project-config"
+              true -> "Parsed; source trust granted"
+            end
+        })
       end
 
-    check("config.files", aggregate(rows), "#{length(rows)} admitted configuration files", rows)
+    status = if match?({:error, _}, resolved), do: "fail", else: aggregate(rows)
+    check("config.files", status, "#{length(rows)} discovered configuration files", rows)
   end
+
+  defp config_files({:error, reason}, _), do: check("config.files", "fail", Errors.format(reason))
 
   defp config_provider({:error, _}, _opts),
     do: check("config.provider", "skip", "Resolve configuration first")
@@ -167,7 +177,10 @@ defmodule Ipse.CLI.Doctor do
         "config.provider",
         if(default?, do: "warn", else: "ok"),
         "#{provider}/#{effective.settings["model"]}; #{billing(provider)} billing" <>
-          if(default?, do: "; built-in default, choose explicitly with --provider", else: "")
+          if(default?,
+            do: "; built-in default, choose and save explicitly with ipse setup",
+            else: ""
+          )
       )
     end
   end

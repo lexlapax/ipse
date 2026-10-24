@@ -414,9 +414,34 @@ defmodule Ipse.Provider.ChatCompletionsTest do
                &send(owner, &1)
              )
 
-    assert error =~ "[redacted]"
+    assert error =~ "details withheld"
     refute error =~ "fixture-router-key"
     assert_receive {:provider_usage, _}
+  end
+
+  test "upstream stream errors only retain safe diagnostic identifiers" do
+    for message <- [
+          "private text\e[2J",
+          "sk-private",
+          "Bearer-token",
+          String.duplicate("a", 129),
+          <<255>>
+        ] do
+      # Invalid UTF-8 is tested at the filter boundary; JSON frames require UTF-8.
+      assert Ipse.Provider.Transport.safe(message, :message) == nil
+    end
+
+    for message <- ["private text\e[2J", "sk-private", "Bearer-token", String.duplicate("a", 129)] do
+      bytes = Fixture.sse(chunk(%{}, %{"error" => %{"message" => message}}))
+
+      assert {:error, error} =
+               ChatCompletions.consume(ChatCompletions.new(config(profile())), bytes, fn _ ->
+                 :ok
+               end)
+
+      assert error =~ "details withheld"
+      refute error =~ message
+    end
   end
 
   test "router HTTP refusals give bounded cause-specific hints without server bodies" do

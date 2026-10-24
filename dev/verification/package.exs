@@ -81,7 +81,15 @@ defmodule Ipse.Development.Verification.Package do
       ~w(runtime.build home.layout config.files config.provider credentials.selected sandbox.native mcp.config extensions.selection sessions.store provider.reachability)
 
     ^expected = Enum.map(report["checks"], & &1["id"])
-    false = Enum.any?(report["checks"], &(&1["status"] == "fail"))
+
+    for row <- report["checks"] do
+      expected_experimental_warning =
+        :os.type() == {:unix, :darwin} and row["id"] == "sandbox.native" and
+          row["status"] == "warn" and row["detail"] =~ "macOS is experimental."
+
+      true = row["status"] in ["ok", "skip"] or expected_experimental_warning
+    end
+
     %{"status" => "skip"} = Enum.find(report["checks"], &(&1["id"] == "provider.reachability"))
     false = File.exists?(Path.join(home, ".ipse/auth"))
     false = File.exists?(Path.join(home, ".ipse/sessions"))

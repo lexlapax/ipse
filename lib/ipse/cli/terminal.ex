@@ -91,7 +91,7 @@ defmodule Ipse.CLI.Terminal do
   --handoff PATH                       Fresh chat only: import reviewed historical recovery context
   --resume ID                          Resume a saved session
   --yes                                Allow mutations, shell, configured MCP, and enabled delegation
-  --base-url URL                       API endpoint root (API/Ollama only)
+  --base-url URL                       Explicit API/local endpoint (no subscription override)
   --upstream SLUG                      setup only: pinned OpenRouter upstream
   --data-collection deny|allow          setup only: OpenRouter policy (default deny)
   --state-dir PATH                     Session directory

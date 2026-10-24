@@ -88,6 +88,8 @@ defmodule Ipse.Provider.GeminiTest do
 
     for host <- [
           "aiplatform.googleapis.com",
+          "aiplatform.mtls.googleapis.com",
+          "us-central1-aiplatform.mtls.googleapis.com",
           "us-central1-aiplatform.googleapis.com",
           "US-CENTRAL1-AIPLATFORM.GOOGLEAPIS.COM."
         ] do
@@ -171,6 +173,17 @@ defmodule Ipse.Provider.GeminiTest do
 
     for effort <- ~w(xhigh max),
         do: assert({:error, _} = Gemini.validate_request(config(%{reasoning_effort: effort})))
+
+    for effort <- ~w(xhigh max) do
+      assert {:error, text} =
+               Ipse.Config.Profiles.validate_profile(%{
+                 "provider" => "gemini",
+                 "model" => "gemini-fixture",
+                 "reasoning_effort" => effort
+               })
+
+      assert text =~ "Gemini supports low, medium or high reasoning"
+    end
   end
 
   test "signed parallel calls and empty final signed text replay without merging or invented ids" do
@@ -278,11 +291,12 @@ defmodule Ipse.Provider.GeminiTest do
              "role" => "model",
              "parts" => [
                %{"text" => "imported"},
-               %{"functionCall" => %{"id" => "imported-call", "name" => "read", "args" => %{}}}
+               %{"functionCall" => %{"name" => "read", "args" => %{}}}
              ]
            }
 
     refute Jason.encode!(body) =~ "thoughtSignature"
+    refute Jason.encode!(body) =~ "imported-call"
     refute Jason.encode!(body) =~ "PRIVATE_OTHER"
     {base, server} = Fixture.start("private rejection", 400)
 

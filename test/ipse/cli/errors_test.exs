@@ -15,9 +15,53 @@ defmodule Ipse.CLI.ErrorsTest do
       refute text =~ "fixture-private-key"
       [path, anchor] = String.split(recovery, "#")
       assert File.regular?(path)
-      assert is_binary(anchor) and anchor != ""
+      assert anchor in recovery_anchors(path)
       assert Errors.format(reason) == text <> " See " <> recovery <> "."
     end
+  end
+
+  defp recovery_anchors(path) do
+    Regex.scan(~r/^\#+ (.+)$/m, File.read!(path), capture: :all_but_first)
+    |> Enum.map(fn [heading] ->
+      heading
+      |> String.downcase()
+      |> String.replace(~r/[^\p{L}\p{N}_ -]/u, "")
+      |> String.replace(" ", "-")
+    end)
+  end
+
+  test "binary diagnostics refuse raw paths, terms, controls and oversized text" do
+    for text <- [
+          "cannot resolve /home/private: :eacces",
+          "failed %{token: secret}",
+          "failed {:secret, value}",
+          "failed #PID<0.1.0>",
+          "oops\e[2J",
+          <<255>>,
+          String.duplicate("x", 2049)
+        ] do
+      output = Errors.format(text)
+      assert output =~ "Unexpected error"
+      refute output =~ text
+    end
+  end
+
+  test "runtime error producers do not inspect arbitrary reasons" do
+    for path <- Path.wildcard("lib/ipse/**/*.ex") do
+      refute File.read!(path) =~ ~r/inspect\((?:reason|error)\)/,
+             "arbitrary error inspection in #{path}"
+    end
+  end
+
+  test "context refresh reports recovery without embedding its reason" do
+    state = %{subscriber: self(), phase: :idle, job_ref: nil}
+    reason = {:unexpected, "/home/private", %{token: "fixture-private"}}
+    assert {:noreply, _} = Ipse.Session.Turn.context_refresh_failed(state, reason)
+    assert_receive {:ipse, _, {:error, text}}
+    assert text =~ "retry the context refresh command"
+    refute text =~ "private"
+    refute text =~ "%{"
+    assert_receive {:ipse, _, {:done, {:error, ^reason}}}
   end
 
   test "unexpected terms and exception messages never become diagnostics" do
@@ -28,7 +72,8 @@ defmodule Ipse.CLI.ErrorsTest do
           {:unrecognized, secret, self()},
           %{__exception__: true, __struct__: secret},
           ArgumentError.exception(secret),
-          File.Error.exception(reason: :enoent, path: secret, action: "read")
+          File.Error.exception(reason: :enoent, path: secret, action: "read"),
+          :"/home/private/fixture-private-key"
         ] do
       output = Errors.format(term)
       assert output =~ "Unexpected error ("

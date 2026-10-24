@@ -1,4 +1,6 @@
 //! Dependency-free Unix shell supervisor. See native/README.md for the protocol.
+#[path = "ipse-secrets.rs"]
+mod ipse_secrets;
 use std::env;
 use std::fs::{OpenOptions, Permissions};
 use std::io::{self, Read, Write};
@@ -183,8 +185,9 @@ fn run() -> Result<(), String> {
             command.env("HOME",policy.temp_dir()).env("TMPDIR",policy.temp_dir());
         }
     } else {
-        for key in ["OPENAI_API_KEY", "ANTHROPIC_API_KEY", "IPSE_CHATGPT_ACCESS_TOKEN", "OPENROUTER_API_KEY", "GEMINI_API_KEY", "GOOGLE_API_KEY", "XAI_API_KEY"] {
-            command.env_remove(key);
+        for (key, _) in std::env::vars_os() {
+            use std::os::unix::ffi::OsStrExt;
+            if ipse_secrets::contains(key.as_bytes()) { command.env_remove(key); }
         }
     }
     let cleanup = GroupGuard::start(child_slot.clone())

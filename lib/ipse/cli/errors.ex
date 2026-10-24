@@ -39,6 +39,9 @@ defmodule Ipse.CLI.Errors do
     workspace_not_found:
       {"Workspace directory does not exist or cannot be read. No task was started; pass --cwd with an existing readable directory and inspect ipse config.",
        "diagnose-startup-and-service-errors"},
+    workspace_path_unavailable:
+      {"Workspace path cannot be resolved. Check directory access and symbolic links, then retry with a readable --cwd.",
+       "diagnose-startup-and-service-errors"},
     invalid_provider_endpoint:
       {"Provider endpoint was refused before dispatch. Inspect ipse config and choose an HTTPS endpoint or explicit HTTP loopback; subscription credentials require the official endpoint.",
        "diagnose-startup-and-service-errors"},
@@ -59,7 +62,17 @@ defmodule Ipse.CLI.Errors do
   def message("cannot acquire session lock" <> _), do: message(:session_locked)
 
   def message(reason) when is_binary(reason) do
-    %{text: reason, recovery: @manual <> "#diagnose-startup-and-service-errors"}
+    # Inner adapters still return prose. Refuse term dumps, terminal controls and
+    # absolute filesystem paths instead of treating arbitrary bytes as prose.
+    if String.valid?(reason) and byte_size(reason) <= 2048 and
+         not Regex.match?(
+           ~r/[\x00-\x1f\x7f]|%\{|#(?:PID|Port|Reference)<|\{:[a-z_]|(?<![\p{L}\p{N}_.\/])\/(?!\/)/u,
+           reason
+         ) do
+      %{text: reason, recovery: @manual <> "#diagnose-startup-and-service-errors"}
+    else
+      message(:unexpected_diagnostic)
+    end
   end
 
   def message(reason) do
@@ -82,8 +95,12 @@ defmodule Ipse.CLI.Errors do
   end
 
   defp code(%{__exception__: true, __struct__: module}) when is_atom(module),
-    do: module |> Module.split() |> List.last()
+    do: module |> Module.split() |> List.last() |> safe_code()
 
-  defp code(reason) when is_atom(reason), do: Atom.to_string(reason)
+  defp code(reason) when is_atom(reason), do: reason |> Atom.to_string() |> safe_code()
   defp code(_), do: "unknown"
+
+  defp safe_code(value) do
+    if Regex.match?(~r/\A[A-Za-z][A-Za-z0-9_]{0,63}\z/, value), do: value, else: "unknown"
+  end
 end

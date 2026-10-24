@@ -177,6 +177,24 @@ defmodule Ipse.Session.PermissionsTest do
     refute Session.permissions(pid)["workspace_edits"]
   end
 
+  test "cancel retains existing edit and command grants for later work", ctx do
+    pid = start(ctx)
+    write = call("write", %{"path" => "kept", "content" => "yes"}, "w")
+    shell = call("shell", %{"command" => "printf retained"}, "s")
+    :ok = prompt(pid, [write, shell])
+    assert approve_until_done(pid, true, 0) == 2
+    grants = Session.permissions(pid)
+    :ok = prompt(pid, [call("shell", %{"command" => "printf different"})])
+    assert_receive {:ipse, ^pid, {:approval, _, "shell", _}}, 2000
+    :ok = Session.cancel(pid)
+    assert_receive {:ipse, ^pid, {:done, _}}, 2000
+    assert Session.permissions(pid) == grants
+    :ok = prompt(pid, [write, shell])
+    assert_receive {:ipse, ^pid, {:done, :ok}}, 2000
+    refute_received {:ipse, ^pid, {:approval, _, _, _}}
+    assert File.read!(Path.join(ctx.root, "kept")) == "yes"
+  end
+
   test "shell reuse matches entire arguments, cwd and sandbox, with bounded grants" do
     config = %{approval: :ask}
     s = %{config: config, cwd: "/workspace", permissions: Permissions.new(config)}

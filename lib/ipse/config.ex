@@ -32,6 +32,36 @@ defmodule Ipse.Config do
   def resolve(cwd, home, opts \\ [], environment \\ System.get_env()),
     do: do_resolve(cwd, home, opts, environment, nil)
 
+  @doc "Read bounded source admission diagnostics without trusting or applying project settings."
+  def inspect_sources(cwd, home, opts, environment \\ System.get_env()) do
+    with {:ok, cwd} <- Workspace.canonical_path(cwd),
+         {:ok, dirs} <- project_dirs(cwd),
+         {:ok, sources} <- sources(dirs, home, opts, environment) do
+      rows =
+        Enum.flat_map(sources, fn source ->
+          case read_source(source) do
+            :missing ->
+              []
+
+            result ->
+              parsed = match?({:ok, _}, result)
+              trusted = source.scope == "operator" or opts[:trust_project_config] == true
+
+              [
+                %{
+                  "path" => source.path,
+                  "scope" => source.scope,
+                  "parsed" => parsed,
+                  "trusted" => trusted
+                }
+              ]
+          end
+        end)
+
+      {:ok, rows}
+    end
+  end
+
   @doc "Resolve proposed operator JSON through normal admission without writing it."
   def preview(cwd, home, opts, bytes, environment \\ System.get_env())
 

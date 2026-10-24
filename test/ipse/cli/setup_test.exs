@@ -67,6 +67,40 @@ defmodule Ipse.CLI.SetupTest do
     refute File.exists?(Path.join(c.home, "sessions"))
   end
 
+  test "saved API configuration contains no key bytes", c do
+    keys = Ipse.Provider.Registry.secret_env()
+    previous = Map.new(keys, &{&1, System.get_env(&1)})
+    Enum.each(keys, &System.put_env(&1, "fixture-private-" <> &1))
+
+    on_exit(fn ->
+      for {key, value} <- previous do
+        if value, do: System.put_env(key, value), else: System.delete_env(key)
+      end
+    end)
+
+    output =
+      capture_io(fn ->
+        assert Ipse.CLI.run([
+                 "setup",
+                 "--cwd",
+                 c.cwd,
+                 "--provider",
+                 "openai",
+                 "--model",
+                 "fixture",
+                 "--write"
+               ]) == 0
+      end)
+
+    bytes = File.read!(c.path)
+    assert Jason.decode!(bytes)["settings"]["provider"] == "openai"
+
+    for key <- keys do
+      refute bytes =~ "fixture-private-#{key}"
+      refute output =~ "fixture-private-#{key}"
+    end
+  end
+
   test "existing target refuses without replace and preserves all bytes", c do
     File.mkdir_p!(c.home)
     bytes = Jason.encode!(%{version: 1, settings: %{provider: "ollama", model: "old"}})

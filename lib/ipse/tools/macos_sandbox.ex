@@ -131,7 +131,7 @@ defmodule Ipse.Tools.MacOSSandbox do
         check_path(path, :directory, 0o700, uid)
 
       {:error, reason} ->
-        failure("cannot create protected directory #{path}", reason)
+        failure("cannot create protected directory", reason)
     end
   end
 
@@ -592,5 +592,7 @@ defmodule Ipse.Tools.MacOSSandbox do
 
   defp overlap?(left, right), do: within?(left, right) or within?(right, left)
   defp shell_quote(value), do: "'" <> String.replace(value, "'", "'\\''") <> "'"
-  defp failure(context, reason), do: {:error, "#{context}: #{inspect(reason)}"}
+
+  defp failure(context, _reason),
+    do: {:error, "#{context}; check filesystem access and sandbox cache permissions."}
 end

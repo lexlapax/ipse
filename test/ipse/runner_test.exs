@@ -170,15 +170,7 @@ defmodule Ipse.RunnerTest do
   end
 
   test "provider credentials do not reach the shell", %{cwd: cwd} do
-    keys = [
-      "OPENAI_API_KEY",
-      "ANTHROPIC_API_KEY",
-      "IPSE_CHATGPT_ACCESS_TOKEN",
-      "OPENROUTER_API_KEY",
-      "GEMINI_API_KEY",
-      "GOOGLE_API_KEY",
-      "XAI_API_KEY"
-    ]
+    keys = Ipse.Provider.Registry.secret_env()
 
     previous = Map.new(keys, &{&1, System.get_env(&1)})
     Enum.each(keys, &System.put_env(&1, "must-not-leak"))
@@ -191,10 +183,32 @@ defmodule Ipse.RunnerTest do
 
     assert {:ok, result} =
              Runner.run(
-               "printf '%s%s%s%s%s%s%s' \"$OPENAI_API_KEY\" \"$ANTHROPIC_API_KEY\" \"$IPSE_CHATGPT_ACCESS_TOKEN\" \"$OPENROUTER_API_KEY\" \"$GEMINI_API_KEY\" \"$GOOGLE_API_KEY\" \"$XAI_API_KEY\"",
+               Enum.map_join(keys, "; ", &("printf '%s' \"$" <> &1 <> "\"")),
                cwd
              )
 
     assert result.output == ""
+  end
+
+  test "native shell and measurement credential policy covers the registry", %{cwd: cwd} do
+    source = Path.join(cwd, "secrets.rs")
+    binary = Path.join(cwd, "secrets")
+    module = Path.expand("native/ipse-secrets.rs")
+    keys = Ipse.Provider.Registry.secret_env() |> Enum.map_join(",", &inspect/1)
+
+    File.write!(source, """
+    #[path = #{inspect(module)}] mod secrets;
+    fn main() {
+      for key in [#{keys}] { assert!(secrets::contains(key.as_bytes()), "missing {}", key); }
+      assert!(!secrets::contains(b"PATH"));
+    }
+    """)
+
+    assert {_, 0} =
+             System.cmd("rustc", ["--edition=2021", "-D", "warnings", source, "-o", binary],
+               stderr_to_stdout: true
+             )
+
+    assert {"", 0} = System.cmd(binary, [])
   end
 end

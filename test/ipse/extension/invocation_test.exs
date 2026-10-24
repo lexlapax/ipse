@@ -2489,11 +2489,13 @@ defmodule Ipse.Extension.InvocationTest do
     do: %{"op" => "tool.call", "name" => name, "arguments" => args, "timeout_ms" => timeout}
 
   test "workflow writes use full separate approval and pinned workspace context receipts", ctx do
-    pid = start(ctx)
+    pid = start(%{ctx | config: Map.put(ctx.config, :accept_edits, true)})
+    assert Session.permissions(pid)["workspace_edits"]
     request = tool_request("write", %{"path" => "workflow.txt", "content" => "approved"})
     :ok = host_command(pid, request)
     assert_receive {:ipse, ^pid, {:approval, ref, "extension:tool.call", proposed}}, 3000
     assert proposed["request"] == request
+    assert {:error, :grant_unavailable} = Session.approve(pid, ref, :session_edits)
     refute File.exists?(Path.join(ctx.root, "workflow.txt"))
     :ok = Session.approve(pid, ref, true)
     assert_receive {:ipse, ^pid, {:done, :ok}}, 3000

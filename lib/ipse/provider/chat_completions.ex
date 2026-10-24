@@ -264,9 +264,9 @@ defmodule Ipse.Provider.ChatCompletions do
 
   defp reported_error(error, config) do
     text =
-      if is_map(error) and is_binary(error["message"]),
-        do: error["message"],
-        else: "provider refused the response"
+      if is_map(error), do: Transport.safe(error["message"], :message)
+
+    text = text || "provider refused the response (details withheld)"
 
     Ipse.Provider.error("Chat Completions stream failed: " <> text, config)
   end

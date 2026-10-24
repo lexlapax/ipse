@@ -139,7 +139,15 @@ defmodule Ipse.DelegationSessionTest do
 
   test "parent approval precedes child start and exact child mutation approval is forwarded",
        ctx do
-    parent = start(ctx, %{subagents: true, delegation_behavior: :write, sandbox: :native})
+    parent =
+      start(ctx, %{
+        subagents: true,
+        delegation_behavior: :write,
+        sandbox: :native,
+        accept_edits: true
+      })
+
+    assert Session.permissions(parent)["workspace_edits"]
     parent_id = Session.info(parent).id
     :ok = Session.prompt(parent, "Parent private history: DO_NOT_FORWARD_THIS")
 

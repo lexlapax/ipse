@@ -19,7 +19,9 @@ defmodule Ipse.Provider.Gemini do
 
     cond do
       is_binary(host) and
-          (host == "aiplatform.googleapis.com" or
+          (host == "aiplatform.googleapis.com" or host == "aiplatform.mtls.googleapis.com" or
+             String.ends_with?(host, "-aiplatform.mtls.googleapis.com") or
+             String.ends_with?(host, ".aiplatform.mtls.googleapis.com") or
              String.ends_with?(host, "-aiplatform.googleapis.com") or
              String.ends_with?(host, ".aiplatform.googleapis.com")) ->
         {:error, "Vertex AI is not supported yet; use a Gemini API key."}
@@ -172,7 +174,6 @@ defmodule Ipse.Provider.Gemini do
 
               %{
                 "functionCall" => %{
-                  "id" => call["id"],
                   "name" => call["function"]["name"],
                   "args" => args
                 }

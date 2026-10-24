@@ -1,7 +1,7 @@
 # P28 fresh-operator walkthrough record
 
 Prepared and updated 2026-10-24. **Fresh-account Linux run completed and accepted
-by the developer; excessive approval prompts are an open usability finding.** This dated record summarizes
+by the developer; excessive approval prompts led to the implemented session-grant follow-up.** This dated record summarizes
 the operator's terminal evidence and follow-up confirmation, not a scripted
 acceptance result. The [current installation manual](../../operator/install.md)
 and [user manual](../../operator/index.md) own the instructions. The
@@ -12,7 +12,7 @@ fixture and release receipts; those do not replace this walkthrough.
 
 The RC1 rehearsal is `v0.1.0-rc.1`, source
 `e944fcf6223127f5db0bc290437f7989a9db3069`, with an
-[unpublished draft](https://github.com/lexlapax/ipse/releases/tag/untagged-4e6186a5e3de63bc4040).
+then-unpublished draft. It was subsequently deleted on explicit developer authorization; the tag and verified local archives remain. See the [RC cleanup receipt](../2026-10-23-p28-p29-implementation/combined-verification.json).
 Both platform matrices and the final re-download inspection pass. The archives,
 sidecars, GitHub digests and 13 runtime notices per archive were independently
 verified ([receipt](../2026-10-23-p28-p29-implementation/rc-assets.json)). Record
@@ -113,14 +113,11 @@ the product-navigation assistance above; this is not an entirely unassisted
 manual-only trial. The accepted brief's unassisted criterion therefore has this
 explicit qualification rather than an invented pristine pass.
 
-The material finding is approval fatigue. The existing runtime asks separately
+The material finding was approval fatigue. The RC1 runtime asked separately
 for file writes/edits and shell calls unless the session was explicitly started
 with `--yes`. Wrong confirmation input leaves the pending proposal intact and
 prints another instruction. The [approval UX proposal](../2026-10-24-p28-approval-ux/index.md)
-records a concrete follow-up; no approval authority has been changed by recording
-the finding. Existing full argument display, fresh confirmation binding,
-journaling and cancellation behavior remain the reviewed baseline.
+records the proposed follow-up. The later [approval implementation](../2026-10-24-approval-implementation/index.md) adds explicit ephemeral edit and exact-command grants with automated verification. This earlier human walkthrough does not verify that later runtime.
 
-Stable tag/publication, independent completeness review and any approval-policy
-implementation remain separate decisions. The automated installed upgrade and
+Stable tag/publication remain open. The independent completeness audit and follow-up repairs are recorded [separately](../2026-10-24-p28-p29-audit-repair/index.md). The automated installed upgrade and
 platform receipts are not relabelled as human walkthrough results.
