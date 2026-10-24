@@ -156,11 +156,15 @@ ipse doctor --json --cwd /path/to/project --config /private/path/operator.json
 
 Use the same `--cwd`, configuration, profile, project-trust, endpoint, MCP and
 state-directory options that you use for the intended session. The command
-reports runtime identity, admitted configuration, selected provider/billing,
-credential presence and expiry, private-directory modes, native-policy
-availability, MCP configuration, selected extension artifacts and bounded session
-headers. Every finding supplies a recovery route. Exit 1 means at least one
-finding failed; warnings and explained skips alone exit 0.
+reports runtime identity, discovered configuration files and their parse/trust
+status, selected provider/billing, credential presence and expiry, private-directory
+modes, native-policy availability, MCP configuration, selected extension artifacts
+and bounded session headers. Every finding supplies a recovery route. Exit 1 means
+at least one finding failed; warnings and explained skips alone exit 0.
+
+A project file can appear as untrusted even when its settings were refused.
+Inspection does not apply those settings or grant trust. Review the file and
+the configuration refusal before explicitly trusting it for a session.
 
 The default command makes no network requests, refreshes no credentials, starts
 no MCP servers or extension workers, and tests no session locks. Missing private

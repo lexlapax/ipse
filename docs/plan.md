@@ -95,7 +95,7 @@ third-party OAuth precedent; an Ipse client registration is still required.
 | [P26: memory baseline](#p26-optional-working-and-long-term-memory) | Complete within explicit-note scope at `25f1d8e`; review repairs and local/hosted gates pass | Preserve lifecycle, authority and documented retention limits |
 | [P27: research, graph and RAG](#p27-optional-research-graph-and-rag) | Complete; all acceptance tasks closed within optional-package scope; hybrid qualified and selected | Preserve versioned evidence and explicit configuration; evaluate new workloads independently |
 | [P28: operator usability and release](#p28-operator-usability-and-release-readiness) | Implementation and automated checks pass; accepted fresh-account run is qualified; stable publication open | Final release acceptance, tag and publication |
-| [P29: provider registry, OpenRouter and Gemini](#p29-provider-registry-openrouter-and-gemini) | Original scope complete at `9c5eb6a`; Grok API/OAuth implementation and automated checks pass; live eligibility unverified | Independent completeness review; separate xAI API permissions and approved-client OAuth checks |
+| [P29: provider registry, OpenRouter and Gemini](#p29-provider-registry-openrouter-and-gemini) | Original scope complete at `9c5eb6a`; Grok API/OAuth implementation and automated checks pass; live eligibility unverified | Independent re-review of audit repairs; separate xAI API permissions and approved-client OAuth checks |
 | [P30: decision engines](#p30-advisory-decision-engines) | Proposed | Typed closed-answer contract, fixture engines, then OpenAI Decisions and SystemOne-compatible adapters |
 | [P31: voice and media](#p31-voice-and-realtime-media) | Deferred; unimplemented; P28 in archived records | Explicit media contracts and later device/service validation |
 | [Apache-2.0 transition](#license-transition) | Complete; local and hosted `7bb642b` checks pass | Preserve bundled identity/recovery and third-party license boundaries |
@@ -610,7 +610,7 @@ the engine decision and whole-document editorial integration.
 
 ## P28: operator usability and release readiness
 
-**Implementation passed its baseline; independent audit repairs are in progress. Final release acceptance/publication remain open.**
+**Implementation and audit repairs pass automated verification. Final human acceptance and stable publication remain open.**
 P0–P27 established correctness, recovery and evidence for a
 supervised developer. This milestone makes the same harness usable by an operator
 who did not build it, without weakening approvals, explicit provider selection or
@@ -695,7 +695,7 @@ dependencies.
 
 ## P29: provider registry, OpenRouter and Gemini
 
-**Original P29 scope completed at `9c5eb6a`; independent audit follow-up in progress.** The central
+**Original P29 scope completed at `9c5eb6a`; audit repairs pass automated verification. Independent re-review and live xAI gates remain.** The central
 [`provider registry`](../lib/ipse/provider/registry.ex) supplies configuration,
 profiles, credentials, billing, accounting, capabilities, setup and diagnosis.
 Independent pre-refactor fixtures from `dd510a7` retain existing manifests,
@@ -710,11 +710,18 @@ Original-scope verification at `9c5eb6a` passes the Linux native-inclusive suite
 [Ubuntu/macOS matrix](archive/2026-10-23-p28-p29-implementation/final-hosted.json),
 including all independent proofs. Whole-manual review and installed examples pass.
 Separate [live Gemini and pinned OpenRouter text/tool checks](archive/2026-10-23-p28-p29-implementation/p29-live-final.json)
-pass at `492d091`; the only subsequent runtime changes refine refusal messages.
-Missing Gemini counters remain partial. The
+pass at `492d091`. Later error, endpoint and Gemini history-conversion repairs
+have fixture coverage; those live checks do not verify the new paths. Live
+Gemini foreign-history acceptance remains unverified. Missing Gemini counters
+remain partial. The
 [combined receipt](archive/2026-10-23-p28-p29-implementation/combined-verification.json)
-preserves exact revisions, exclusions and earlier failures. The developer supplied an [independent completeness audit](archive/2026-10-24-p28-p29-audit-repair/index.md); confirmed findings are being repaired. Earlier receipts cover their exact source, not the repairs; P28's human walkthrough/publication gates
-are still open.
+preserves exact revisions, exclusions and earlier failures. The developer supplied
+an [independent completeness audit](archive/2026-10-24-p28-p29-audit-repair/index.md).
+Its findings are repaired and verified at `aee0ad8`; the approved artifact handoff
+passes at `dc70463`, which has the same runtime source. The follow-up record retains
+earlier failed/canceled runs and the separate hosted scopes. Independent re-review
+remains distinct from implementation checks. Earlier receipts cover their exact
+source; P28's human walkthrough/publication gates remain open.
 The [P29 implementation brief](archive/2026-10-23-p28-p29-design/p29.md) breaks
 this scope into ordered work packages with files, tests and decisions.
 The developer accepted its recommended decisions on 2026-10-23. Gemini, then

@@ -25,7 +25,7 @@ There is no approved Ipse xAI OAuth registration yet.
 | --- | --- |
 | F1 | Remove arbitrary reason inspection from runtime error producers; bound binary diagnostics and refuse term/path/control dumps. Test recovery anchors and context-refresh recovery text. |
 | F2 | Apply the existing Transport safe-identifier filter to stream error messages; withhold arbitrary provider prose and retain usage-before-refusal. |
-| F3 | Developer approved the official artifact actions on 2026-10-24. Both matrix jobs retain their verified archives; the final job collects and admits the complete set before creating any draft. Manual dispatch exercises the handoff while tag-only guards skip release mutations. Actual hosted handoff verification remains required. |
+| F3 | Developer approved the official artifact actions on 2026-10-24. Both matrix jobs retain their verified archives; the final job collects and admits the complete set before creating any draft. The manual hosted handoff passes collection/admission with both tag-only release mutation steps skipped. |
 | F4 | Replace the release body with standalone installation/features/limits and absolute versioned GitHub links. The [previous notes](release-notes-before.md) retain the earlier evidence narrative; relative links are adjusted for this archive location. |
 | F5–F6 | Doctor recommends saved setup and lists discovered configuration sources with independent parse/trust status, including refused project configuration; no settings are applied by source inspection. |
 | F7 | Test actual saved API configuration for every registry secret, validate recovery heading anchors, align Ollama probe/inference loopback and reject unexpected installed-doctor warnings. The explicit macOS experimental-native warning remains expected. |
@@ -36,16 +36,45 @@ There is no approved Ipse xAI OAuth registration yet.
 | F13 | Exercise SDK and child writes with an active parent edit grant; cancel real work and verify existing edit/command grants survive. |
 | F14 | Reconcile RC deletion/current walkthrough wording and distinguish original-scope verification; add missing hosted identities/job steps from GitHub; disclose the four-second after-effect fixture timeout. |
 
-## Verification in progress
+## Verified repair candidate
+
+Candidate `aee0ad8` passes the clean Linux native-inclusive suite: **1772 passed,
+0 failed, 19 excluded**, seed 805106, 1076.2 seconds (Elixir 1.20.4 / OTP 29.1.1).
+Build, formatting, warnings-as-errors compilation, pinned-action policy, isolated
+demo and warnings-denied native protocol/environment controls pass. The bundled
+runtime passes installed first-run/upgrade/standalone checks; its 24 exact-version
+notice files match both SHA256 and Git blob hashes in the actual archive.
+
+The [ordinary Ubuntu/macOS run](https://github.com/lexlapax/ipse/actions/runs/40137711178)
+passes at that exact source, including platform enforcement and independent
+installed/extension proofs. The [manual release run](https://github.com/lexlapax/ipse/actions/runs/40136316520)
+passes at `dc70463`: both platform jobs upload verified assets, then collection and
+complete-set admission pass. Draft mutation and remote-release re-download are
+explicitly skipped. Runtime source is identical between these revisions; the only
+later test change replaces the MCP overlap strings described below.
+
+Both workflow archives and sidecars are retained under
+`dist/audit-repair/workflow-dc70463`; their complete set, checksums and actual
+runtime-notice bytes pass local inspection. The final local archive is retained
+under `dist/audit-repair/aee0ad8`. These ignored local binaries are not source
+attachments or a published release. The [verification receipt](verification.json)
+retains exact identities, terminal job/step results, seeds, archive hashes and
+superseded failures. The [hosted summaries](hosted-summaries.json) retain actual
+test summaries and toolchain lines extracted from the corresponding private logs.
+
+No new live inference, browser authorization, stable tag or release publication
+was performed. The human and live qualifications above remain open. Repair
+implementation and automated verification do not constitute independent re-review.
+
+## Retained iterations
 
 The first focused iteration had 84 passing tests and one failure: the new stream
 error fixture omitted the required pinned identity and was refused before its
 error message. Adding the normal identity frame corrected the fixture. The next
 expanded run passed 160 tests (seed 797885, 46.3 seconds), including real child/SDK
 effects. That run preceded the final anchor/context and Gemini refusal assertions.
-Final focused, full native-inclusive, installed-package and hosted checks are
-still required for the resulting candidate. No paid/live inference or release
-creation/publication is part of these repairs.
+Those iterations are followed by the verified candidate above. No paid/live
+inference or release creation/publication is part of these repairs.
 
 The `2a9d950` full run exposed two regressions in the first F1 repair: changed
 skills lost their stable `skill_catalog_changed` cause, and scoped preflight
@@ -55,7 +84,8 @@ requires `target does not exist` rather than raw `:enoent`; all outcome, unchang
 queued-call, journal, restoration and non-replay assertions remain. The original
 changed-skill assertion is unchanged. The corrected focused workspace/native
 selection passes 56 tests (9 excluded), and 31 additional resource/Session-context
-checks pass. Final baseline verification must use this subsequent source.
+checks pass. The `2a9d950` local and hosted failures remain failures in the receipt;
+subsequent verification uses the corrected source.
 
 The subsequent `dc70463` native-inclusive run exposed an MCP overlap fixture
 admission failure. Its synthetic secrets `abc` and `xabc` can collide with generated
@@ -67,4 +97,5 @@ The original failed root was removed by test cleanup, so its exact collision fie
 is unavailable. The fix changes only the overlapping test strings: no assertion,
 privacy check, product timeout or runtime code changes. All 63 focused MCP
 configuration/session/effect tests pass; their actual seed is retained in the
-verification receipt. Full verification remains required.
+verification receipt. The final native-inclusive local and exact-source hosted
+checks above pass.

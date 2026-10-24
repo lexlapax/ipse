@@ -390,6 +390,11 @@ Native shell admission independently refuses application/helper overlap. No
 platform command or dependency is added. Native diagnosis reports helper and
 workspace policy, without executing the kernel confinement path.
 
+`Config.inspect_sources/4` supplies bounded per-file parse/trust findings even
+when ordinary resolution refuses a project source. It does not merge settings
+or grant project trust. Keep the resolution refusal alongside the source rows;
+otherwise a useful inventory could hide the cause that prevents startup.
+
 Only the explicit probe branch borrows a private Finch client. It sends metadata
 GETs, stops after status, retains no response body, and uses the existing proxy/TLS
 policy with finite deadlines. Subscription reachability stays skipped. Preserve
