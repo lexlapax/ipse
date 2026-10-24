@@ -46,3 +46,13 @@ effects. That run preceded the final anchor/context and Gemini refusal assertion
 Final focused, full native-inclusive, installed-package and hosted checks are
 still required for the resulting candidate. No paid/live inference or release
 creation/publication is part of these repairs.
+
+The `2a9d950` full run exposed two regressions in the first F1 repair: changed
+skills lost their stable `skill_catalog_changed` cause, and scoped preflight
+refusals lost their specific cause. The correction maps known causes to fixed
+workspace prose and withholds arbitrary terms. The missing-target assertion now
+requires `target does not exist` rather than raw `:enoent`; all outcome, unchanged
+queued-call, journal, restoration and non-replay assertions remain. The original
+changed-skill assertion is unchanged. The corrected focused workspace/native
+selection passes 56 tests (9 excluded), and 31 additional resource/Session-context
+checks pass. Final baseline verification must use this subsequent source.

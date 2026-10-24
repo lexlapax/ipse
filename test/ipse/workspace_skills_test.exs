@@ -150,6 +150,23 @@ defmodule Ipse.SkillsTest do
     assert {:error, _} = Workspace.load_skill_resource(skills, "missing", "references/check.sh")
   end
 
+  test "workspace failure descriptions retain known causes and withhold arbitrary details" do
+    assert Workspace.failure_message(:enoent) == "target does not exist"
+    assert Workspace.failure_message(:skill_catalog_changed) =~ "skill_catalog_changed"
+
+    for reason <- [
+          "/home/private/secret",
+          {:unexpected, "/home/private/secret"},
+          %{secret: self()}
+        ] do
+      text = Workspace.failure_message(reason)
+      assert text == "workspace source unavailable; inspect access and selected paths"
+      refute text =~ "/home/"
+      refute text =~ "#PID"
+      refute text =~ "%{"
+    end
+  end
+
   defp install(root, directory, name, body \\ "Inert body") do
     dir = Path.join(root, directory)
     File.mkdir_p!(dir)

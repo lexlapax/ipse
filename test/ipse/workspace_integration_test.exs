@@ -352,7 +352,7 @@ defmodule Ipse.WorkspaceSessionTest do
     File.write!(Path.join(ctx.cwd, "known.txt"), "queued read must not run")
 
     for {target, reason} <- [
-          {"missing/result.txt", ":enoent"},
+          {"missing/result.txt", "target does not exist"},
           {nil, "invalid nested context request"},
           {"/absolute.txt", "target must be workspace-relative"},
           {"../outside.txt", "target is outside the workspace"}
