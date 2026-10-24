@@ -82,6 +82,11 @@ media is renumbered P31 and remains deferred; archived records call it P28.
 P28 and P29 are selected for implementation and auditor handoff preparation.
 P30 remains proposed. Each milestone keeps its own acceptance evidence.
 
+The developer additionally selected a Grok increment before the external audit:
+the [P29 follow-up](#p29-follow-up-grok-api-and-subscription-oauth) covers xAI API
+keys and subscription OAuth as separate routes. Research confirms official
+third-party OAuth precedent; an Ipse client registration is still required.
+
 | Milestone or gate | Current state | Next result |
 | --- | --- | --- |
 | [P23: accounting and budgets](#p23-usage-cost-reporting-and-budget-controls) | Complete within selected scope | Preserve accounting through the trial |
@@ -741,6 +746,39 @@ unknown prices kept unpriced; destination and egress facts; and separately
 recorded opt-in live account checks. Whether OpenRouter and Gemini join the
 provider priority order in [AGENTS.md](../AGENTS.md) is a developer decision
 recorded before release.
+
+### P29 follow-up: Grok API and subscription OAuth
+
+**Selected for implementation before the external audit, 2026-10-24; incomplete.**
+The [primary-source research and work packages](archive/2026-10-24-xai-provider-research/index.md)
+cover xAI/SpaceXAI's Grok API, its officially supported Hermes subscription
+integration, device authorization, native Responses, continuation, billing and
+retention. This extends the accepted P29 scope; the earlier registry/Gemini/
+OpenRouter verification does not prove Grok compatibility.
+
+Add separate explicit `xai` API-key and `xai_oauth` subscription routes, with no
+automatic credential/billing fallback and an explicit model. Prefer native
+Responses with local history and `store: false`; preserve opaque continuation in
+an xAI-specific namespace, and retain Ipse approval/journal authority over tools.
+Use existing bounded Elixir transport, private storage and OS locks, with no new
+language runtime or mandatory service. Integrate profiles, roles, accounting,
+setup, offline doctor, SDK/children, compaction and resume. Keep xAI hosted search,
+execution, MCP, media and multi-agent features outside this text/tool increment.
+
+The developer has no Ipse OAuth registration yet. Public discovery supports
+device authorization but advertises no registration endpoint; the official
+Hermes announcement does not grant Ipse its client identity. Require an approved
+Ipse client ID, and refuse missing registration before network access. Do not
+borrow another app's ID or saved tokens. Document registration and entitlement
+as open external gates; fixture success cannot establish subscriber eligibility.
+
+Acceptance: unchanged existing-provider golden fixtures; Grok Responses
+conformance and native replay/privacy; device/refresh/expiry/denial/rotation and
+unsafe-file tests; explicit billing and accurate partial usage/costs; real Session
+integration; whole-manual review; full source/native/demo and installed checks;
+hosted Linux/macOS. Record API-key and OAuth live checks separately when their
+credentials/registration are available. The external-auditor handoff must name
+any remaining registration or live-account limits explicitly.
 
 ## P30: advisory decision engines
 

@@ -18,6 +18,11 @@ never asks for or stores a key. ChatGPT setup can offer the existing `ipse login
 browser flow after validating the proposal. Extensions are selected separately
 through the [extensions manual](extensions.md).
 
+Grok/xAI is not yet an available Ipse route. Its API-key and subscription OAuth
+integration is selected in the [development plan](../plan.md#p29-follow-up-grok-api-and-subscription-oauth).
+Existing OpenAI credentials cannot authorize xAI. Continue using a currently
+listed provider until the Grok instructions and verification are available.
+
 OpenRouter, Gemini and compatible local servers have no model default: an empty
 answer asks again. OpenRouter also asks for a pinned upstream and a data-collection
 policy, defaulting to `deny`. A compatible server requires a loopback base URL.

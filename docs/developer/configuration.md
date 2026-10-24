@@ -42,6 +42,14 @@ In `iex -S mix`, inspect a route without calling it:
 ```
 
 Before changing existing metadata, run `mix test test/ipse/provider/registry_test.exs`.
+
+For the selected Grok increment, begin with the
+[source research and acceptance map](../archive/2026-10-24-xai-provider-research/index.md).
+It distinguishes xAI API-key billing from subscription OAuth and records the
+missing Ipse registration prerequisite. Reuse bounded protocol owners while
+keeping native replay and credentials provider-specific; an OpenAI-compatible
+wire format does not make opaque continuation transferable between providers.
+Current registry examples below describe implemented providers.
 Pre-refactor fixtures compare full Config manifests, destinations, canonical usage
 and cost, then restore old journals and request-free legacy sessions without
 mutation. Updating goldens to match a refactor removes that protection; investigate
