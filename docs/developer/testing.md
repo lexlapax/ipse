@@ -259,7 +259,9 @@ Set IPSE_ARCHIVE to the exact newly produced archive first. Avoid ambiguous/stal
 globs. The verifier extracts private HOME/IPSE_HOME and tests real CLI help/demo,
 workspaces, locks/helpers, bundled behavior, and Memory. It borrows no checkout
 priv directory. Its offline doctor check verifies stable findings and no auth or
-session-directory creation with a demo route. CLI checks have declared utilities
+session-directory creation with a demo route. A separate fresh home follows setup
+preview, private save, configured doctor and demo; preview must leave no directory,
+and saved provider provenance must identify the operator file. CLI checks have declared utilities
 without Erlang/development commands; the precompiled harness adds bundled Erlang.
 Keep a finite outer job budget.
 Use extracted `./ipse` for CLI and `./bin/ipse eval` for trusted evaluation.

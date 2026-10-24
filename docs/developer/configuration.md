@@ -33,6 +33,25 @@ main route. Source bytes, path, and scope contribute to fingerprinting.
 
 ## Reproduce precedence and source drift
 
+Guided setup uses `Config.preview/5` to substitute proposed operator bytes into
+the same resolution path without creating a temporary configuration or directory.
+Schema, profiles, caps, provenance and fingerprint therefore agree with a later
+file-based resolve. Setup compares the admitted provider/model/sandbox with the
+proposal to catch environment or profile conflicts before saving. The pure
+preview seam belongs in Config because copying resolution into a CLI writer
+would create a second admission policy.
+
+`CLI.Setup` owns prompts, exact preview and explicit write consent. It preserves
+unowned fields, compares the current file before mutation, and creates an exclusive
+timestamped backup on replacement. `PrivateFile.write_atomic/3` creates missing
+directories privately, writes an exclusive mode-0600 temporary file, syncs it and
+publishes by rename. Exclusive backup publication uses a hard link instead of
+replacement. Existing parent modes stay unchanged. Auth reuses that helper with
+its original credential error and locking behavior. These checks do not protect
+against hostile concurrent directory replacement; setup is for reviewed local
+paths. Offline doctor follows a successful save; its failure does not roll back
+the reviewed configuration.
+
 Run this complete exercise in `iex -S mix`:
 
 ```elixir
@@ -256,6 +275,7 @@ mix test test/ipse/config_test.exs test/ipse/config/integration_test.exs test/ip
 mix test test/ipse/config/profile_integration_test.exs test/ipse/config/embedding_test.exs
 mix test test/ipse/provider_test.exs test/ipse/provider/stream_test.exs
 mix test test/ipse/cli/doctor_test.exs
+mix test test/ipse/cli/setup_test.exs test/ipse/private_file_test.exs test/ipse/auth_test.exs
 ```
 
 For a new field, update schema, fixed CLI/environment maps, runtime projection,

@@ -1,7 +1,8 @@
 # Ipse user manual
 
 Use Ipse to work on local files through a conversation. You choose the model,
-workspace, and permitted effects. Begin in a scratch directory with `ipse demo`;
+workspace, and permitted effects. Choose and save a route with `ipse setup`, check
+it with `ipse doctor`, then begin in a scratch directory with `ipse demo`;
 it needs no account or model service. [Usage](usage.md) then takes you through a
 real task, approval, questions, delegation, and resume.
 
@@ -22,6 +23,7 @@ configuration, credentials, journals, and exports outside version control.
 | Task | Chapter |
 | --- | --- |
 | Install from source and prepare Linux native policy | [Arch Linux setup](arch-linux.md) |
+| Preview, save or replace a private first-run provider choice | [Guided setup](configuration.md#choose-and-save-a-provider) |
 | Work interactively or run once, approve effects, use skills, delegate, resume | [Use a workspace](usage.md) |
 | Select providers/profiles and resolve operator/project policy | [Configuration](configuration.md) |
 | Connect explicitly selected external tools/resources/prompts | [MCP](mcp.md) |

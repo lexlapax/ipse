@@ -71,6 +71,7 @@ defmodule Ipse.CLI.Terminal do
   ipse skills [--cwd PATH]         List available skills
   ipse config [options]            Show effective non-secret configuration
   ipse doctor [options] [--json]    Diagnose setup offline; --probe-provider opts into GET probes
+  ipse setup [options]             Preview or confirm private provider/model defaults
   ipse extension import PATH       Copy a local inert extension artifact
   ipse extension inspect DIGEST    Verify an installed artifact without executing it
   ipse extension list              List inert built-in extension descriptors
@@ -91,6 +92,8 @@ defmodule Ipse.CLI.Terminal do
   --state-dir PATH                     Session directory
   --json                               sessions: id/provider/model/cwd; version/doctor: structured facts
   --probe-provider                     doctor only: bounded GET reachability checks, no inference
+  --write                              setup only: save an explicit provider/model configuration
+  --replace                            setup only: back up and replace setup-owned settings
   --note TEXT                          handoff only: operator-written continuation note
   --max-steps N                        Model calls per turn (default: 30)
   --max-output-tokens N                Per-request provider cap (API/Ollama only; no aggregate budget)

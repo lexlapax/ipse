@@ -623,7 +623,9 @@ installed-archive checks and exact-source hosted Ubuntu/macOS verification.
 Actionable error and refusal handling is
 implemented and undergoing full-suite verification. Offline doctor and explicit
 metadata probes are implemented, with focused and preliminary installed checks;
-final native/platform verification is pending. Setup and release lifecycle remain
+final native/platform verification is pending. Private guided setup, dry runs,
+replacement backups and explicit-default notices are implemented with focused
+checks; full and installed verification is pending. Release lifecycle remains
 unimplemented.
 
 Scope:

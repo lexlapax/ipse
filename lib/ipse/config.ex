@@ -27,12 +27,32 @@ defmodule Ipse.Config do
   @option_keys Map.new(@fields, fn key -> {key, String.to_atom(key)} end)
   @env_keys Map.new(@fields, &{&1, "IPSE_" <> String.upcase(&1)})
 
-  def resolve(cwd, home, opts \\ [], environment \\ System.get_env()) do
+  @doc "Configured default model for an admitted provider ID; never selects a route."
+  def default_model(provider) do
+    case @providers[provider] do
+      {_, model} -> model
+      _ -> nil
+    end
+  end
+
+  def resolve(cwd, home, opts \\ [], environment \\ System.get_env()),
+    do: do_resolve(cwd, home, opts, environment, nil)
+
+  @doc "Resolve proposed operator JSON through normal admission without writing it."
+  def preview(cwd, home, opts, bytes, environment \\ System.get_env())
+
+  def preview(cwd, home, opts, bytes, environment) when is_binary(bytes),
+    do: do_resolve(cwd, home, opts, environment, bytes)
+
+  def preview(_, _, _, _, _),
+    do: {:error, "Proposed operator configuration must be JSON bytes; inspect ipse config."}
+
+  defp do_resolve(cwd, home, opts, environment, preview) do
     with {:ok, cwd} <- Workspace.canonical_path(cwd),
          true <- File.dir?(cwd),
          {:ok, dirs} <- project_dirs(cwd),
          {:ok, sources} <- sources(dirs, home, opts, environment),
-         {:ok, loaded} <- load_sources(sources),
+         {:ok, loaded} <- load_sources(sources, preview),
          :ok <- project_trust(loaded, opts),
          :ok <- profile_authority(loaded),
          {:ok, env} <- environment_settings(environment) do
@@ -266,7 +286,8 @@ defmodule Ipse.Config do
     }
   end
 
-  defp schema do
+  @doc "Version-one configuration schema, shared by admission and setup preview validation."
+  def schema do
     %{
       "type" => "object",
       "properties" =>
@@ -328,9 +349,17 @@ defmodule Ipse.Config do
       else: {:error, "Too many project configuration scopes."}
   end
 
-  defp load_sources(sources) do
+  defp load_sources(sources, preview) do
     Enum.reduce_while(sources, {:ok, []}, fn source, {:ok, loaded} ->
-      case read_source(source) do
+      result =
+        if source.scope == "operator" and is_binary(preview) do
+          with {:ok, canonical} <- Workspace.canonical_path(source.path),
+               do: decode_source(source, canonical, preview)
+        else
+          read_source(source)
+        end
+
+      case result do
         :missing -> {:cont, {:ok, loaded}}
         {:ok, value} -> {:cont, {:ok, loaded ++ [value]}}
         error -> {:halt, error}
@@ -343,27 +372,9 @@ defmodule Ipse.Config do
       with true <- stat.type in [:regular, :symlink],
            {:ok, canonical} <- Workspace.canonical_path(source.path),
            true <- is_nil(source.boundary) or within?(canonical, source.boundary),
-           {:ok, raw} <- read_bounded(canonical),
-           {:ok, data} <- Ipse.JSON.decode_bounded(raw),
-           :ok <- Schema.validate_arguments(schema(), data),
-           :ok <-
-             (case Ipse.Config.Profiles.validate(data["profiles"] || %{}, %{}) do
-                :ok -> :ok
-                {:error, message} -> {:error, {:profile_configuration, message}}
-              end),
-           :ok <- Ipse.Config.Profiles.validate_embeddings(data["embedding_profiles"] || %{}),
-           :ok <- Ipse.Extension.Config.validate(data),
-           :ok <- validate_settings(data["settings"] || %{}) do
-        {:ok,
-         %{
-           path: source.path,
-           canonical_path: canonical,
-           scope: source.scope,
-           sha256: Ipse.JSON.sha256(raw),
-           data: data
-         }}
+           {:ok, raw} <- read_bounded(canonical) do
+        decode_source(source, canonical, raw)
       else
-        {:error, {:profile_configuration, message}} -> {:error, message}
         _ -> {:error, "Invalid, oversized or unsafe configuration: #{source.path}"}
       end
     else
@@ -375,6 +386,32 @@ defmodule Ipse.Config do
 
       _ ->
         {:error, "Could not read configuration: #{source.path}"}
+    end
+  end
+
+  defp decode_source(source, canonical, raw) do
+    with true <- byte_size(raw) <= @file_bytes,
+         {:ok, data} <- Ipse.JSON.decode_bounded(raw),
+         :ok <- Schema.validate_arguments(schema(), data),
+         :ok <-
+           (case Ipse.Config.Profiles.validate(data["profiles"] || %{}, %{}) do
+              :ok -> :ok
+              {:error, message} -> {:error, {:profile_configuration, message}}
+            end),
+         :ok <- Ipse.Config.Profiles.validate_embeddings(data["embedding_profiles"] || %{}),
+         :ok <- Ipse.Extension.Config.validate(data),
+         :ok <- validate_settings(data["settings"] || %{}) do
+      {:ok,
+       %{
+         path: source.path,
+         canonical_path: canonical,
+         scope: source.scope,
+         sha256: Ipse.JSON.sha256(raw),
+         data: data
+       }}
+    else
+      {:error, {:profile_configuration, message}} -> {:error, message}
+      _ -> {:error, "Invalid, oversized or unsafe configuration: #{source.path}"}
     end
   end
 

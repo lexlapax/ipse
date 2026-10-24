@@ -49,6 +49,8 @@ defmodule Ipse.CLI do
           note: :string,
           version: :boolean,
           probe_provider: :boolean,
+          write: :boolean,
+          replace: :boolean,
           help: :boolean,
           demo: :boolean
         ],
@@ -80,6 +82,9 @@ defmodule Ipse.CLI do
            "--handoff requires fresh interactive chat; cannot combine with --resume or another command mode."}
         )
 
+      Enum.any?([:write, :replace], &Keyword.has_key?(opts, &1)) and rest != ["setup"] ->
+        report({:error, "--write and --replace require ipse setup; no task was started."})
+
       opts[:help] ->
         Terminal.help()
         0
@@ -108,6 +113,9 @@ defmodule Ipse.CLI do
     Ipse.CLI.Doctor.print(report, opts[:json] == true)
     code
   end
+
+  defp dispatch(["setup"], opts),
+    do: Ipse.CLI.Setup.run(opts, home(), opts[:cwd] || default_cwd())
 
   defp dispatch(["budget"], opts) do
     if opts[:resume] do
@@ -470,10 +478,22 @@ defmodule Ipse.CLI do
     }
 
     with {:ok, effective} <- Ipse.Config.resolve(workspace, home, opts),
+         :ok <- default_provider_notice(effective),
          {:ok, runtime} <- Ipse.Config.runtime(effective, client),
          {:ok, _key} <- credential(runtime.provider) do
       {:ok, runtime}
     end
+  end
+
+  defp default_provider_notice(effective) do
+    if effective.provenance["provider"] == "built-in" do
+      Terminal.puts(
+        :stderr,
+        "Using built-in provider default chatgpt (ChatGPT subscription). Run ipse setup to choose explicitly."
+      )
+    end
+
+    :ok
   end
 
   defp credential(:chatgpt), do: Ipse.Auth.token(auth_dir())

@@ -8,9 +8,50 @@ selected service and model to be available.
 The commands below use an installed `ipse`. In a source checkout, use
 `./bin/ipse`; in an extracted release, use `./ipse`.
 
-## Save and inspect operator settings
+## Choose and save a provider
 
-Create `~/.ipse/config.json`, or another private file outside your workspace:
+Run `ipse setup` from a terminal. Choose a provider explicitly: there is no menu
+default. The menu labels subscription, API billing and local service routes.
+Choose a model and optional shell policy, then review the exact JSON and type
+`write` to save it. API credentials come from your private environment; setup
+never asks for or stores a key. ChatGPT setup can offer the existing `ipse login`
+browser flow after validating the proposal. Extensions are selected separately
+through the [extensions manual](extensions.md).
+
+For scripts, supply both provider and model. Preview first:
+
+```sh
+ipse setup --provider demo --model scripted
+ipse setup --provider demo --model scripted --write
+ipse doctor
+ipse demo
+```
+
+The first command writes nothing, including directories. `--write` authorizes the
+non-interactive save. The target is `--config PATH`, then `IPSE_CONFIG`, then
+`IPSE_HOME/config.json`. New directories are mode `0700` and the file is `0600`;
+existing parent directory permissions are retained. Setup refuses symlink targets
+and invalid or oversized existing files. It never changes project configuration.
+
+An existing target requires `--replace`. The preview preserves unrelated settings,
+profiles, roles, extension selections and trust. Saving first retains the exact
+old bytes in a private `config.json.bak-YYYYMMDDTHHMMSSZ` beside the target. A
+backup collision refuses rather than overwriting it. A main profile or environment
+override that conflicts with your choice refuses before any backup or write;
+inspect `ipse config` and resolve that conflict explicitly. Incompatible preserved
+settings, such as an unsupported output cap, also refuse before writing.
+
+After saving, setup runs offline doctor and prints the next command. A failed
+doctor check returns exit code 1 while keeping the saved configuration; follow
+[diagnosis](recovery.md#diagnose-your-setup) before starting real work. Native
+shell policy is offered interactively only when availability checks pass on Linux;
+the check does not establish kernel enforcement. macOS native policy remains
+experimental and requires explicit selection.
+
+## Edit and inspect operator settings
+
+For settings beyond guided setup, edit `~/.ipse/config.json`, or another private
+file outside your workspace. For example:
 
 ```json
 {

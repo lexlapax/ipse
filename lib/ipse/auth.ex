@@ -767,28 +767,10 @@ defmodule Ipse.Auth do
   end
 
   def write_credentials(dir, value) do
-    temp =
-      Path.join(
-        dir,
-        ".chatgpt-#{Base.url_encode64(:crypto.strong_rand_bytes(18), padding: false)}"
-      )
-
-    try do
-      with {:ok, file} <- :file.open(String.to_charlist(temp), [:write, :binary, :exclusive]) do
-        result =
-          with :ok <- File.chmod(temp, 0o600),
-               :ok <- :file.write(file, Jason.encode!(value)),
-               :ok <- :file.sync(file),
-               do: :ok
-
-        :file.close(file)
-        with :ok <- result, :ok <- File.rename(temp, Path.join(dir, @filename)), do: :ok
-      end
-    after
-      File.rm(temp)
-    end
-    |> case do
-      :ok -> :ok
+    with true <- File.dir?(dir),
+         :ok <- Ipse.PrivateFile.write_atomic(Path.join(dir, @filename), Jason.encode!(value)) do
+      :ok
+    else
       _ -> {:error, "Could not save protected ChatGPT credentials."}
     end
   end

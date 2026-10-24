@@ -20,7 +20,7 @@ requirement; authority, recovery and correctness regressions remain unacceptable
 | P28 WP1 | One version source, compiled build identity and installed agreement | Complete at `b4788b4`; local source/package and both hosted platforms pass |
 | P28 WP2 | Redacted actionable errors and matching recovery instructions | Local baseline passes at `6818000`; hosted pending |
 | P28 WP3 | Offline doctor, explicit bounded probes and finding fixtures | Implemented; final native/package/platform checks pending |
-| P28 WP4 | Guided/private setup, previews, backups and resolution fixtures | Pending |
+| P28 WP4 | Guided/private setup, previews, backups and resolution fixtures | Implemented; focused checks pass, full/installed/platform gates pending |
 | P28 WP5 | Checksums, symlink launcher, draft tag workflow and install lifecycle | Pending |
 | P28 WP6 | Whole-manual first-user review and fresh-account walkthrough | Pending |
 | P29 WP0 | Verified official wire facts and continuation examples | [Recorded](wire-facts.md); adapter fixtures still required |
@@ -173,3 +173,22 @@ without changing that guard.
 Recovery/usage and developer configuration/testing chapters are integrated around
 offline diagnosis, explicit egress and the distinction between availability and
 actual confinement. Their audience indexes link the revised learning tasks.
+
+## P28 WP4
+
+Guided setup requires an explicit provider choice, shows billing and credential
+sources, previews exact JSON, and requires typed `write` or non-interactive
+`--write`. Existing files require `--replace`; unrelated values are preserved and
+an exclusive private timestamped backup retains the exact old bytes. PrivateFile
+uses existing OTP file operations; Auth retains its original messages and locks.
+No dependency was added. Config's pure preview uses the full existing resolver
+to reject preserved cap/profile/environment conflicts before any save or sign-in
+offer. The built-in default notice precedes auth and disappears after setup.
+
+Actual-main build, formatting and compilation pass. Combined CLI, Config, Auth
+and private-file checks pass 141 tests; the final setup/private-file run passes
+14 tests, seed 497535. Earlier prototype checks are not installed acceptance.
+The installed verifier now contains isolated preview/save/doctor/demo controls.
+Its run, full source and hosted results remain pending. The operator and developer
+configuration/usage/testing chapters are integrated around writing and validating
+settings, with audience links.

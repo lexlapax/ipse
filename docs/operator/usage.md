@@ -24,6 +24,10 @@ explains warnings, failures and the explicit network-probe option.
 Choose your route explicitly. Ipse never changes provider or billing mode to
 recover from a failed request. Supply API secrets through your private environment;
 Ipse does not load `.env` files automatically.
+Use `ipse setup` to save a reviewed private choice, then `ipse doctor` before your
+first conversation. [Configuration](configuration.md#choose-and-save-a-provider)
+explains preview, replacement and backup. Without any explicit choice, chat and
+run announce the built-in ChatGPT subscription default before checking access.
 
 | Route | Prerequisite | Start a conversation |
 | --- | --- | --- |

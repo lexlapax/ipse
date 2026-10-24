@@ -91,6 +91,60 @@ defmodule Ipse.Development.Verification.Package do
     )
   end
 
+  defp verify_setup!(wrapper, release, env, root) do
+    home = Path.join(root, "first-run-home")
+    operator = Path.join(home, ".ipse")
+    workspace = Path.join(root, "first-run-workspace")
+    File.mkdir!(home)
+    File.chmod!(home, 0o700)
+    File.mkdir!(workspace)
+
+    env =
+      env
+      |> List.keystore("HOME", 0, {"HOME", home})
+      |> List.keystore("IPSE_HOME", 0, {"IPSE_HOME", operator})
+
+    args = ["setup", "--provider", "demo", "--model", "scripted", "--cwd", workspace]
+    preview = run!(wrapper, args, release, env, "first-run preview")
+    true = String.contains?(preview, "Dry run; add --write")
+    false = File.exists?(operator)
+    run!(wrapper, args ++ ["--write"], release, env, "first-run private setup")
+    0o700 = Bitwise.band(File.stat!(operator).mode, 0o777)
+    path = Path.join(operator, "config.json")
+    0o600 = Bitwise.band(File.stat!(path).mode, 0o777)
+    ["config.json"] = File.ls!(operator)
+
+    config =
+      run!(
+        wrapper,
+        ["config", "--cwd", workspace, "--no-project-config"],
+        release,
+        env,
+        "first-run resolved route"
+      )
+      |> :json.decode()
+
+    "demo" = config["settings"]["provider"]
+    ^path = config["provenance"]["provider"]
+
+    report =
+      run!(
+        wrapper,
+        ["doctor", "--cwd", workspace, "--no-project-config", "--json"],
+        release,
+        env,
+        "first-run configured doctor"
+      )
+      |> :json.decode()
+
+    false = Enum.any?(report["checks"], &(&1["status"] == "fail"))
+    run!(wrapper, ["demo"], workspace, env, "first-run credential-free demo")
+
+    IO.puts(
+      "PASS: toolchain-free setup preview, private save, configured doctor and demo in an isolated fresh home."
+    )
+  end
+
   defp verify_recovery!(launcher, release, env, root) do
     workspace = Path.join(root, "recovery-probe")
     File.mkdir_p!(Path.join(workspace, ".git"))
@@ -245,6 +299,7 @@ defmodule Ipse.Development.Verification.Package do
     )
 
     verify_doctor!(wrapper, release, env, home, default_workspace, version)
+    verify_setup!(wrapper, release, env, root)
 
     verify_terminal!(wrapper, release, env, root)
     verify_recovery!(otp_launcher, release, env, root)
