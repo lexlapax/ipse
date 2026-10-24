@@ -415,3 +415,17 @@ oversized entries and changed-blob refusal. Actual collection retained 24 files
 for Elixir 1.20.4/OTP 29.1.1 and 13 for Elixir 1.18.5/OTP 27.3.4.6, using the
 supported floor compiler for the latter. No downloaded code was executed.
 Package inclusion and the RC workflow still require exact-commit verification.
+
+The exact `e944fcf` local archive subsequently passed the full installed verifier.
+Inspection of the archive verified all 24 runtime notice hashes against its
+included manifest. The unused `v0.1.0-rc.1` tag was pushed at that revision; release
+run 40054387769 created an unpublished prerelease draft and is checking both
+platforms. Superseded ordinary CI runs were cancelled to free runner capacity;
+their pre-cancellation state is retained rather than treated as a pass.
+
+A final actionable-error audit found that output-cap refusals still named only
+the older routes. They now use the selected registry ID and actual bounds, with
+no rejected value in the message. Late OpenRouter mismatch wording now says the
+response was refused, without implying that previously streamed text disappeared.
+All 303 provider/configuration/CLI controls pass, seed 198707. These are subsequent
+error-only corrections; RC1 remains an explicitly earlier rehearsal candidate.

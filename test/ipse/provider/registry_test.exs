@@ -53,6 +53,27 @@ defmodule Ipse.Provider.RegistryTest do
     end
   end
 
+  test "output cap refusals name the actual route and registry bounds without echoing the value" do
+    for id <- ~w(openai anthropic ollama gemini openrouter openai_compatible) do
+      spec = Ipse.Provider.Registry.fetch!(id)
+
+      assert {:error, message} =
+               Ipse.Provider.validate_output_limit(%{
+                 provider: spec.atom,
+                 max_output_tokens: "private-invalid-value"
+               })
+
+      assert message =~ "for #{id}: use #{spec.output_limit.first}..#{spec.output_limit.last}"
+      assert message =~ "No request was sent"
+      refute message =~ "private-invalid-value"
+    end
+
+    assert {:error, message} =
+             Ipse.Provider.validate_output_limit(%{provider: :demo, max_output_tokens: 1})
+
+    assert message =~ "does not support"
+  end
+
   setup do
     root = Path.join(System.tmp_dir!(), "ipse-registry-equivalence-" <> Ipse.Usage.id())
     File.mkdir!(root)

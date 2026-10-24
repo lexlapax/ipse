@@ -228,11 +228,11 @@ defmodule Ipse.Provider.ChatCompletions do
   defp identity(%{config: %{provider: :openrouter}} = state, data) do
     cond do
       (not state.verified or Map.has_key?(data, "model")) and data["model"] != state.config.model ->
-        {:error, "OpenRouter served a different model than requested; nothing was used."}
+        {:error, "OpenRouter served a different model than requested; the response was refused."}
 
       (not state.verified or Map.has_key?(data, "provider")) and
           not upstream?(state.config.upstream, data["provider"]) ->
-        {:error, "OpenRouter served a different upstream than pinned; nothing was used."}
+        {:error, "OpenRouter served a different upstream than pinned; the response was refused."}
 
       true ->
         {:ok,

@@ -240,9 +240,12 @@ defmodule Ipse.Provider do
       is_struct(limit, Range) and is_integer(value) and value in limit ->
         :ok
 
-      true ->
+      is_struct(limit, Range) ->
         {:error,
-         "Invalid max_output_tokens: use 16..1000000 for OpenAI API or 1..1000000 for Ollama/Anthropic; unsupported providers refuse a cap."}
+         "Invalid max_output_tokens for #{Registry.fetch!(provider).id}: use #{limit.first}..#{limit.last}. No request was sent."}
+
+      true ->
+        {:error, "The selected provider does not support max_output_tokens; no request was sent."}
     end
   end
 
