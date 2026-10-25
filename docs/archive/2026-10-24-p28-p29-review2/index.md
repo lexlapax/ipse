@@ -42,6 +42,11 @@ The final [focused receipt](candidate-verification.json) records 128 passed,
 11 excluded, seed 397392, 96.8 seconds. It retains the earlier failed iterations.
 
 Final focused, full native-inclusive, installed and hosted results are pending.
+Candidate `b7d3bce` passes the installed archive proof. Its local preflight and
+both hosted matrix jobs fail formatting in one new release-policy control, before
+the full suite runs; the draft job is skipped. The correction changes whitespace
+only. Those failed gates are retained, and baseline verification restarts at the
+subsequent revision.
 No tag/release creation, publication, new browser authorization or live inference
 is part of this correction. Assisted Linux qualifications, missing human macOS/
 upgrade walkthroughs, stable publication, Grok live access/registration and Gemini

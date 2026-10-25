@@ -27,7 +27,9 @@ defmodule Ipse.Development.ReleaseTest do
           String.replace(
             release,
             "        if: github.event_name == 'push'",
-            "        if: always()", global: false),
+            "        if: always()",
+            global: false
+          ),
           String.replace(release, "gh release upload", "gh release edit"),
           String.replace(release, "gh release upload", "gh api"),
           String.replace(
