@@ -373,6 +373,12 @@ terms and exceptions produce only a stable code, never `inspect(reason)` or an
 exception message. Terminal question refusals and Session error events use the
 same renderer. `ipse status` serializes only `Auth.status/1`'s public keys as JSON.
 
+Configuration-file producers name operator/project scope and the corrective
+option rather than interpolating a path. They know startup refused before a task.
+The renderer bounds binary prose and refuses controls and term syntax; it does
+not infer private paths or effect uncertainty from a slash. Preserve ordinary
+`/context refresh`, endpoint hints and service names when adding a cause.
+
 Add the causal CLI fixture in `test/ipse/cli/errors_test.exs` when extending this
 boundary. Assert the exact distinct refusal, unchanged journal bytes, absent
 dispatch/state creation, and absence of a synthetic private value. Do not replace

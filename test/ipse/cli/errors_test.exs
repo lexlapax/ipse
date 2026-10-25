@@ -30,7 +30,7 @@ defmodule Ipse.CLI.ErrorsTest do
     end)
   end
 
-  test "binary diagnostics refuse raw paths, terms, controls and oversized text" do
+  test "binary diagnostics refuse terms, controls and oversized text" do
     for text <- [
           "cannot resolve /home/private: :eacces",
           "failed %{token: secret}",
@@ -43,6 +43,101 @@ defmodule Ipse.CLI.ErrorsTest do
       output = Errors.format(text)
       assert output =~ "Unexpected error"
       refute output =~ text
+    end
+  end
+
+  test "configuration causes survive CLI rendering without private paths or false effects", c do
+    args = ["--cwd", c.cwd, "--provider", "demo"]
+    missing = Path.join(c.home, "private-missing.json")
+
+    output =
+      capture_io(:stderr, fn ->
+        assert Ipse.CLI.run(["run", "--config", missing | args] ++ ["hello"]) == 1
+      end)
+
+    assert output =~ "Configuration file not found (operator scope)"
+    assert output =~ "No task was started"
+    refute output =~ missing
+
+    malformed = Path.join(c.home, "config.json")
+    File.write!(malformed, "{malformed")
+
+    for command <- ["run", "config"] do
+      output =
+        capture_io(:stderr, fn ->
+          tail = if command == "run", do: ["hello"], else: []
+          assert Ipse.CLI.run([command | args] ++ tail) == 1
+        end)
+
+      assert output =~ "Invalid, oversized or unsafe configuration (operator scope)"
+      assert output =~ "No task was started"
+      refute output =~ malformed
+      refute output =~ "An effect may have happened"
+    end
+
+    report =
+      capture_io(fn ->
+        assert Ipse.CLI.run(["doctor", "--json" | args]) == 1
+      end)
+      |> Jason.decode!()
+
+    row = Enum.find(report["checks"], &(&1["id"] == "config.files"))
+    assert row["summary"] =~ "operator scope"
+    refute row["summary"] =~ "Unexpected error"
+    refute row["summary"] =~ "An effect may have happened"
+
+    File.rm!(malformed)
+    project = Path.join(c.cwd, ".ipse/config.json")
+    File.mkdir_p!(Path.dirname(project))
+
+    File.write!(
+      project,
+      Jason.encode!(%{
+        version: 1,
+        profiles: %{
+          bad: %{provider: "openai", model: "fixture", base_url: "https://example.test/v1"}
+        }
+      })
+    )
+
+    output =
+      capture_io(:stderr, fn ->
+        assert Ipse.CLI.run(["run", "--trust-project-config" | args] ++ ["hello"]) == 1
+      end)
+
+    assert output =~ "Project configuration cannot define provider endpoints"
+    assert output =~ "No task was started"
+    refute output =~ project
+    refute output =~ "Unexpected error"
+    refute File.exists?(c.state)
+  end
+
+  test "Grok missing-credential recovery reaches the CLI without slash masking", c do
+    previous = System.get_env("XAI_API_KEY")
+    System.delete_env("XAI_API_KEY")
+
+    try do
+      output =
+        capture_io(:stderr, fn ->
+          assert Ipse.CLI.run([
+                   "run",
+                   "--provider",
+                   "xai",
+                   "--model",
+                   "grok-4.7",
+                   "--cwd",
+                   c.cwd,
+                   "--no-project-config",
+                   "hello"
+                 ]) == 1
+        end)
+
+      assert output =~ "Set XAI_API_KEY first"
+      refute output =~ "unexpected_diagnostic"
+    after
+      if previous,
+        do: System.put_env("XAI_API_KEY", previous),
+        else: System.delete_env("XAI_API_KEY")
     end
   end
 
@@ -185,6 +280,12 @@ defmodule Ipse.CLI.ErrorsTest do
     assert output =~ "Unknown or invalid options. Run ipse --help"
     refute output =~ "fixture-private-key"
     refute File.exists?(c.state)
+  end
+
+  test "help describes output caps for API, local and Grok subscription routes" do
+    output = capture_io(fn -> assert Ipse.CLI.run(["--help"]) == 0 end)
+    assert output =~ "API/local/Grok subscription"
+    refute output =~ "API/Ollama only"
   end
 
   test "status emits the Auth status keys as JSON without credentials", c do

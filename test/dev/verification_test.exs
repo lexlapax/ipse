@@ -1,10 +1,48 @@
 Code.require_file("../../dev/verification/scenarios.exs", __DIR__)
 Code.require_file("../../dev/verification/runtime.exs", __DIR__)
+Code.require_file("../../dev/verification/package.exs", __DIR__)
 
 defmodule Ipse.Development.VerificationTest do
   use ExUnit.Case, async: false
   alias Ipse.Development.Verification.Scenarios
   alias Ipse.Development.Verification.Runtime
+
+  test "installed diagnosis rejects unexpected warnings for bare and configured routes" do
+    validate = &Ipse.Development.Verification.Package.validate_doctor!/2
+
+    for platform <- [{:unix, :linux}, {:unix, :darwin}] do
+      assert :ok =
+               validate.(%{"checks" => [%{"id" => "runtime.build", "status" => "ok"}]}, platform)
+
+      for id <- ["config.files", "config.provider", "credentials.selected", "sandbox.native"] do
+        assert_raise MatchError, fn ->
+          validate.(
+            %{"checks" => [%{"id" => id, "status" => "warn", "detail" => "unexpected warning"}]},
+            platform
+          )
+        end
+      end
+    end
+
+    report = %{
+      "checks" => [
+        %{"id" => "sandbox.native", "status" => "warn", "detail" => "macOS is experimental."}
+      ]
+    }
+
+    assert :ok = validate.(report, {:unix, :darwin})
+    assert_raise MatchError, fn -> validate.(report, {:unix, :linux}) end
+
+    assert_raise MatchError, fn ->
+      validate.(
+        %{"checks" => [%{"id" => "provider.reachability", "status" => "skip", "summary" => ""}]},
+        {:unix, :linux}
+      )
+    end
+
+    source = File.read!("dev/verification/package.exs")
+    assert length(Regex.scan(~r/:ok = validate_doctor!\(report\)/, source)) == 3
+  end
 
   test "standalone fixture bootstrap resolves the SDK despite a shadowing application directory" do
     root =

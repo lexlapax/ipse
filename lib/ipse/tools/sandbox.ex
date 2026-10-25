@@ -202,7 +202,7 @@ defmodule Ipse.Tools.Sandbox do
         {:ok, protected} ->
           if (path == "/tmp" and cwd == protected) or
                (path != "/tmp" and overlap?(cwd, protected)),
-             do: {:halt, {:error, "sandbox workspace overlaps a protected path"}},
+             do: {:halt, {:error, "sandbox workspace overlaps protected #{path_category(path)}"}},
              else: {:cont, :ok}
 
         {:error, _} ->
@@ -210,6 +210,15 @@ defmodule Ipse.Tools.Sandbox do
            {:error, "Cannot resolve a protected sandbox path; check access and symbolic links."}}
       end
     end)
+  end
+
+  defp path_category(path) do
+    cond do
+      Path.basename(path) in @credential_dirs -> Path.basename(path) <> " credentials/state"
+      path in ipse_home() -> "IPSE_HOME state"
+      path in system_paths() -> "system directory " <> path
+      true -> "credential/state directory"
+    end
   end
 
   defp overlap?(left, right), do: within?(left, right) or within?(right, left)

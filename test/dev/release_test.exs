@@ -16,6 +16,43 @@ defmodule Ipse.Development.ReleaseTest do
 
   test "draft mutation follows both verified platform artifacts and manual validation never publishes" do
     release = File.read!(Path.expand("../../.github/workflows/release.yml", __DIR__))
+    assert_release_policy!(release)
+
+    for weakened <- [
+          String.replace(
+            release,
+            "permissions:\n  contents: read",
+            "permissions:\n  contents: write"
+          ),
+          String.replace(
+            release,
+            "        if: github.event_name == 'push'",
+            "        if: always()", global: false),
+          String.replace(release, "gh release upload", "gh release edit"),
+          String.replace(release, "gh release upload", "gh api"),
+          String.replace(
+            release,
+            "          gh --version",
+            "          gh --version\n          gh api repos/owner/repo/releases --method POST"
+          ),
+          String.replace(
+            release,
+            "          gh --version",
+            "          gh --version\n          gh release edit tag --draft=false"
+          ),
+          String.replace(
+            release,
+            "      - name: Admit the complete asset set before creating any draft",
+            "      - name: Premature upload\n        run: gh release upload tag assets\n      - name: Admit the complete asset set before creating any draft"
+          )
+        ] do
+      assert_raise ExUnit.AssertionError, fn -> assert_release_policy!(weakened) end
+    end
+  end
+
+  defp assert_release_policy!(release) do
+    [header | _] = String.split(release, "jobs:\n", parts: 2)
+    assert header =~ "permissions:\n  contents: read\n"
     [_, prepare, matrix, draft] = Regex.split(~r/^  (?:prepare|test|draft):\n/m, release)
 
     for job <- [prepare, matrix] do
@@ -27,13 +64,36 @@ defmodule Ipse.Development.ReleaseTest do
     assert draft =~ "actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333"
     assert matrix =~ "if-no-files-found: error"
     assert draft =~ "needs: [prepare, test]"
-    {admit, _} = :binary.match(draft, "Release.verify_assets!")
-    {create, _} = :binary.match(draft, "gh release create")
+    assert {admit, _} = :binary.match(draft, "Release.verify_assets!")
+    assert {create, _} = :binary.match(draft, "gh release create")
+    assert {upload, _} = :binary.match(draft, "gh release upload")
     assert admit < create
+    assert admit < upload
     assert release =~ "workflow_dispatch:"
     assert prepare =~ "GITHUB_EVENT_NAME"
-    assert length(Regex.scan(~r/if: github.event_name == 'push'/, draft)) == 2
-    refute release =~ "--draft=false"
+    blocks = Regex.split(~r/(?=^      - name:)/m, draft)
+
+    for name <- [
+          "Create or recover an unpublished draft and attach all verified assets",
+          "Re-download and inspect the complete draft asset set"
+        ] do
+      block = Enum.find(blocks, &String.starts_with?(&1, "      - name: " <> name <> "\n"))
+      assert is_binary(block)
+      assert block =~ "        if: github.event_name == 'push'\n"
+    end
+
+    for [command | args] <-
+          Regex.scan(~r/\bgh\s+([a-z-]+)(?:\s+([a-z-]+))?/, release, capture: :all_but_first) do
+      if command == "--version" do
+        assert args in [[], [""]]
+      else
+        assert command == "release"
+        assert List.first(args) in ~w(view create upload download)
+      end
+    end
+
+    refute Regex.match?(~r/--draft(?:=|\s+)false/, release)
+    assert draft =~ "gh release create \"$IPSE_RELEASE_TAG\" --draft --verify-tag"
   end
 
   setup do
@@ -86,13 +146,50 @@ defmodule Ipse.Development.ReleaseTest do
       Release.write_checksum!(path)
     end
 
-    assert :ok = Release.verify_assets!(root)
+    assert :ok = Release.verify_assets!(root, "0.1.0")
     File.write!(Path.join(root, "unexpected"), "extra")
-    assert_raise RuntimeError, ~r/exactly/, fn -> Release.verify_assets!(root) end
+    assert_raise RuntimeError, ~r/exactly/, fn -> Release.verify_assets!(root, "0.1.0") end
     File.rm!(Path.join(root, "unexpected"))
     [path | _] = Path.wildcard(Path.join(root, "*.tar.gz"))
     File.write!(path, "damaged")
-    assert_raise RuntimeError, ~r/mismatching/, fn -> Release.verify_assets!(root) end
+    assert_raise RuntimeError, ~r/mismatching/, fn -> Release.verify_assets!(root, "0.1.0") end
+  end
+
+  test "asset admission rejects wrong versions, prefixes, architectures and platform substrings",
+       %{root: root} do
+    for linux <- [
+          "other-0.1.0-linux-x86_64-glibc-2.39.tar.gz",
+          "ipse-9.9.9-linux-x86_64-glibc-2.39.tar.gz",
+          "ipse-0.1.0-linux-wrong-glibc-2.39.tar.gz",
+          "ipse-0.1.0-linux-x86_64-glibc-2.39-extra.tar.gz"
+        ] do
+      paths = [Path.join(root, linux), Path.join(root, "ipse-0.1.0-darwin-arm64.tar.gz")]
+
+      for path <- paths do
+        File.write!(path, "fixture")
+        Release.write_checksum!(path)
+      end
+
+      assert_raise RuntimeError, ~r/exactly/, fn -> Release.verify_assets!(root, "0.1.0") end
+      for path <- paths, suffix <- ["", ".sha256"], do: File.rm!(path <> suffix)
+    end
+  end
+
+  test "RC release notes link to their actual tag without waiting for a stable tag", %{root: root} do
+    source = Path.join(root, "docs/releases/v1.2.3.md")
+    File.mkdir_p!(Path.dirname(source))
+
+    File.write!(
+      source,
+      "[Install](https://github.com/lexlapax/ipse/blob/v1.2.3/docs/operator/install.md#complete-first-run)"
+    )
+
+    output = Path.join(root, "rendered.md")
+    assert Release.release_notes!("v1.2.3-rc.1", "1.2.3", root, output) == output
+    assert File.read!(output) =~ "/blob/v1.2.3-rc.1/"
+    refute File.read!(output) =~ "/blob/v1.2.3/"
+    Release.release_notes!("v1.2.3", "1.2.3", root, output)
+    assert File.read!(output) == File.read!(source)
   end
 
   test "launcher follows relative links with spaces, preserves cwd and bounds link depth", %{

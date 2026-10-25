@@ -11,6 +11,19 @@ defmodule Ipse.MCP.ConfigTest do
     %{path: path}
   end
 
+  test "short environment values can collide with generated public fingerprints", ctx do
+    entry = Map.put(server(), "env", %{"DEBUG" => ""})
+    write(ctx.path, %{"servers" => [entry]})
+    assert {:ok, [selected]} = Config.load(ctx.path)
+    assert selected.fingerprint =~ "1"
+    public = Config.manifest(selected) |> Map.delete(:fingerprint)
+    refute Config.contains_private?(public, %{env: %{"DEBUG" => "1"}})
+    write(ctx.path, %{"servers" => [Map.put(entry, "env", %{"DEBUG" => "1"})]})
+    assert {:error, error} = Config.load(ctx.path)
+    assert error =~ "public-field redaction"
+    assert error =~ "No server was launched"
+  end
+
   test "nil disables MCP and a valid explicit file yields a redacted manifest", ctx do
     assert {:ok, []} = Config.load(nil)
     write(ctx.path, document())

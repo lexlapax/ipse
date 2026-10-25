@@ -610,7 +610,7 @@ the engine decision and whole-document editorial integration.
 
 ## P28: operator usability and release readiness
 
-**Implementation and audit repairs pass automated verification. Final human acceptance and stable publication remain open.**
+**The second independent review found a diagnostic regression; corrections are under verification. Final human acceptance and stable publication remain open.**
 P0–P27 established correctness, recovery and evidence for a
 supervised developer. This milestone makes the same harness usable by an operator
 who did not build it, without weakening approvals, explicit provider selection or
@@ -695,7 +695,7 @@ dependencies.
 
 ## P29: provider registry, OpenRouter and Gemini
 
-**Original P29 scope completed at `9c5eb6a`; audit repairs pass automated verification. Independent re-review and live xAI gates remain.** The central
+**Original P29 scope completed at `9c5eb6a`; second-review corrections are under verification. Independent re-review and live xAI gates remain.** The central
 [`provider registry`](../lib/ipse/provider/registry.ex) supplies configuration,
 profiles, credentials, billing, accounting, capabilities, setup and diagnosis.
 Independent pre-refactor fixtures from `dd510a7` retain existing manifests,
@@ -722,6 +722,9 @@ passes at `dc70463`, which has the same runtime source. The follow-up record ret
 earlier failed/canceled runs and the separate hosted scopes. Independent re-review
 remains distinct from implementation checks. Earlier receipts cover their exact
 source; P28's human walkthrough/publication gates remain open.
+The [second independent review and corrections](archive/2026-10-24-p28-p29-review2/index.md)
+supersede acceptance of the first repair: its slash filter masked legitimate
+configuration, skill and provider causes despite green automated checks.
 The [P29 implementation brief](archive/2026-10-23-p28-p29-design/p29.md) breaks
 this scope into ordered work packages with files, tests and decisions.
 The developer accepted its recommended decisions on 2026-10-23. Gemini, then

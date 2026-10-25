@@ -267,6 +267,44 @@ defmodule Ipse.CLITest do
     end)
   end
 
+  test "runtime slash commands and endpoint hints retain their terminal recovery text" do
+    with_fixture_and_cli(fn _fixture, cli ->
+      await_input(cli.stdio)
+      skill = Path.join(cli.cwd, ".agents/skills/local/SKILL.md")
+      File.mkdir_p!(Path.dirname(skill))
+      File.write!(skill, "---\nname: local\ndescription: Local fixture\n---\nFirst body")
+      Ipse.CLITest.IOFixture.feed(cli.stdio, "/context refresh")
+      await_text(cli.stderr, "Finished.")
+      File.write!(skill, "---\nname: local\ndescription: Local fixture\n---\nChanged body")
+      Ipse.CLITest.IOFixture.feed(cli.stdio, "Use $local")
+      await_text(cli.stderr, "Use /context refresh before loading it.")
+      refute_receive {:ollama_request, _, _, _}, 100
+
+      session = lookup_session(cli.state_dir, session_id(cli.stderr))
+
+      hint =
+        Ipse.Provider.Registry.chatgpt_hint(
+          "subscription_sharing_route_not_supported",
+          400,
+          "error"
+        )
+
+      send(cli.task.pid, {:ipse, session, {:error, hint}})
+      await_text(cli.stderr, "POST /v1/responses")
+
+      {:error, grok} =
+        Ipse.Provider.OpenAI.complete(%{provider: :xai, api_key: nil}, [], [], fn _ ->
+          flunk("no dispatch")
+        end)
+
+      send(cli.task.pid, {:ipse, session, {:error, grok}})
+      await_text(cli.stderr, "Grok / xAI credentials are missing")
+      refute Ipse.CLITest.IOFixture.output(cli.stderr) =~ "unexpected_diagnostic"
+      Ipse.CLITest.IOFixture.feed(cli.stdio, :eof)
+      assert 0 == Task.await(cli.task, 3_000)
+    end)
+  end
+
   test "/context refresh adopts instructions locally and is refused during work" do
     with_fixture_and_cli(fn fixture, cli ->
       await_input(cli.stdio)

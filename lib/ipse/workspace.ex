@@ -84,7 +84,7 @@ defmodule Ipse.Workspace do
 
   def snapshot(cwd, home) when is_binary(cwd) and is_binary(home) do
     with {:ok, cwd} <- canonical(cwd),
-         true <- File.dir?(cwd) || {:error, "workspace is not a directory: #{cwd}"},
+         true <- File.dir?(cwd) || {:error, :workspace_not_found},
          {:ok, home} <- canonical(home) do
       boundary = boundary(cwd)
 

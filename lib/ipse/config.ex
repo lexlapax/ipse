@@ -406,17 +406,17 @@ defmodule Ipse.Config do
            {:ok, raw} <- read_bounded(canonical) do
         decode_source(source, canonical, raw)
       else
-        _ -> {:error, "Invalid, oversized or unsafe configuration: #{source.path}"}
+        _ -> source_error(source, "Invalid, oversized or unsafe configuration")
       end
     else
       {:error, :enoent} ->
         if(source.required,
-          do: {:error, "Configuration file not found: #{source.path}"},
+          do: source_error(source, "Configuration file not found"),
           else: :missing
         )
 
       _ ->
-        {:error, "Could not read configuration: #{source.path}"}
+        source_error(source, "Could not read configuration")
     end
   end
 
@@ -442,8 +442,18 @@ defmodule Ipse.Config do
        }}
     else
       {:error, {:profile_configuration, message}} -> {:error, message}
-      _ -> {:error, "Invalid, oversized or unsafe configuration: #{source.path}"}
+      _ -> source_error(source, "Invalid, oversized or unsafe configuration")
     end
+  end
+
+  defp source_error(source, cause) do
+    {scope, recovery} =
+      case source.scope do
+        "project" -> {"project", "review .ipse/config.json or use --no-project-config"}
+        "operator" -> {"operator", "check --config, IPSE_CONFIG or IPSE_HOME/config.json"}
+      end
+
+    {:error, "#{cause} (#{scope} scope). No task was started; #{recovery}."}
   end
 
   defp read_bounded(path) do
@@ -479,7 +489,7 @@ defmodule Ipse.Config do
     if invalid,
       do:
         {:error,
-         "Project configuration cannot define provider endpoints, extend model-call timeouts or replace operator profiles: #{invalid.path}"},
+         "Project configuration cannot define provider endpoints, extend model-call timeouts or replace operator profiles. No task was started; move those settings to operator configuration or use --no-project-config."},
       else: :ok
   end
 

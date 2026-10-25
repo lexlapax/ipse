@@ -1,5 +1,10 @@
 # P28/P29 independent audit and follow-up
 
+Historical candidate: the [second independent review](../2026-10-24-p28-p29-review2/index.md)
+rejected the `c2a19cb` repair because the diagnostic filter masked valid causes.
+The checks below remain evidence for their exact revisions, not acceptance of
+that behavior. Follow the second-review record for subsequent corrections.
+
 Dated 2026-10-24. This record preserves the independent audit supplied by the
 developer, then tracks implementation repairs. The [plan](../../plan.md) owns
 current acceptance; the [operator](../../operator/index.md) and

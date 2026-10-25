@@ -420,6 +420,40 @@ defmodule Ipse.Provider.ChatCompletionsTest do
   end
 
   test "upstream stream errors only retain safe diagnostic identifiers" do
+    bytes =
+      Fixture.sse(
+        chunk(%{}, %{
+          "error" => %{"message" => "upstream_unavailable", "code" => "capacity_exceeded"}
+        })
+      )
+
+    assert {:error, diagnostic} =
+             ChatCompletions.consume(ChatCompletions.new(config(profile())), bytes, fn _ ->
+               :ok
+             end)
+
+    assert diagnostic =~ "upstream_unavailable"
+    assert diagnostic =~ "code: capacity_exceeded"
+
+    bytes =
+      Fixture.sse(
+        chunk(%{}, %{
+          "error" => %{
+            "message" => "Provider capacity is exhausted.",
+            "code" => "capacity_exceeded"
+          }
+        })
+      )
+
+    assert {:error, diagnostic} =
+             ChatCompletions.consume(ChatCompletions.new(config(profile())), bytes, fn _ ->
+               :ok
+             end)
+
+    assert diagnostic =~ "details withheld"
+    assert diagnostic =~ "code: capacity_exceeded"
+    refute diagnostic =~ "Provider capacity is exhausted."
+
     for message <- [
           "private text\e[2J",
           "sk-private",

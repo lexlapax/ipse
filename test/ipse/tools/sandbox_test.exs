@@ -40,6 +40,33 @@ defmodule Ipse.LinuxSandboxTest do
     %{root: root, cwd: cwd}
   end
 
+  test "protected workspace refusal names only the overlapping category", ctx do
+    home = Path.join(ctx.root, "private-account")
+    state = Path.join(ctx.root, "private-state")
+    previous = Map.new(["HOME", "IPSE_HOME"], &{&1, System.get_env(&1)})
+    System.put_env("HOME", home)
+    System.put_env("IPSE_HOME", state)
+
+    on_exit(fn ->
+      for {key, value} <- previous do
+        if value, do: System.put_env(key, value), else: System.delete_env(key)
+      end
+    end)
+
+    for {path, category} <- [
+          {Path.join(home, ".ssh"), ".ssh credentials/state"},
+          {Path.join(home, ".ipse"), ".ipse credentials/state"},
+          {state, "IPSE_HOME state"}
+        ] do
+      File.mkdir_p!(path)
+      assert {:error, reason} = Ipse.Tools.Sandbox.resolve(:native, path)
+      assert reason =~ category
+      refute reason =~ home
+      refute reason =~ state
+      assert Ipse.CLI.Errors.format(reason) =~ category
+    end
+  end
+
   test "native capability either executes explicitly or fails closed without effects", %{cwd: cwd} do
     previous = System.get_env("IPSE_HOME")
     home = Path.join(Path.dirname(cwd), "state")

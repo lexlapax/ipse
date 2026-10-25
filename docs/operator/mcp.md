@@ -159,6 +159,13 @@ detector or an OS permission boundary. The macOS native helper transfers the
 selected environment through a private pipe prefix and stages no environment
 file. This transport does not erase files left by older installations.
 
+Every non-empty configured environment value is treated as private, including
+ordinary settings such as `DEBUG=1`. Admission checks public server metadata and
+generated fingerprints for those values. A short value can therefore cause a
+public-field-redaction refusal even when no credential was exposed; no server
+starts. Omit unnecessary entries or choose a server option that does not require
+that short environment value. There is currently no public-value exemption.
+
 ## Configure a remote HTTP endpoint
 
 Save a separate configuration using the endpoint and exact tools you intend to

@@ -214,6 +214,8 @@ permitted terminal. Keep TLS verification and test assertions intact.
 
 | Symptom | Recovery |
 | --- | --- |
+| Configuration file missing, unreadable, invalid or unsafe (operator scope) | Check `--config`, `IPSE_CONFIG` or `IPSE_HOME/config.json`; no task started. Use `ipse doctor --json` with the same options to list discovered source paths |
+| Invalid or refused project configuration | Review `.ipse/config.json`; move operator-only endpoint/profile settings to private operator configuration, or use `--no-project-config`. A refusal starts no task |
 | Workspace directory does not exist or cannot be read | Pass `--cwd` with an existing readable directory; use `ipse config` to inspect the selected settings before starting work |
 | Provider endpoint refused before dispatch | Inspect `ipse config`; choose HTTPS or explicit HTTP loopback without URL credentials, query or fragment; ChatGPT subscription uses its fixed official endpoint |
 | Invalid profile field | Fix the named field in the named profile using the [profile examples](configuration.md#reuse-a-named-model-profile); values are deliberately omitted from the error |
@@ -229,6 +231,10 @@ permitted terminal. Keep TLS verification and test assertions intact.
 | Model refused | Choose an available model/profile explicitly, preserving billing choice |
 | HTTP clients busy | Wait; an application permits 64 simultaneous clients |
 | Stream/body/output bound | Inspect usage and effects before a fresh task; none of that incomplete response's tools execute |
+
+Stream refusals retain safe provider error codes and identifier-shaped messages.
+Arbitrary provider prose is withheld. Preserve any shown code with the request
+identity when reporting a failure; inspect recorded usage before retrying.
 
 Ipse does not switch subscription failures to paid API calls. Supply the matching
 API environment variable privately. Include sanitized status/code/request IDs in

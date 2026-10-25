@@ -82,13 +82,7 @@ defmodule Ipse.Development.Verification.Package do
 
     ^expected = Enum.map(report["checks"], & &1["id"])
 
-    for row <- report["checks"] do
-      expected_experimental_warning =
-        :os.type() == {:unix, :darwin} and row["id"] == "sandbox.native" and
-          row["status"] == "warn" and row["detail"] =~ "macOS is experimental."
-
-      true = row["status"] in ["ok", "skip"] or expected_experimental_warning
-    end
+    :ok = validate_doctor!(report)
 
     %{"status" => "skip"} = Enum.find(report["checks"], &(&1["id"] == "provider.reachability"))
     false = File.exists?(Path.join(home, ".ipse/auth"))
@@ -97,6 +91,23 @@ defmodule Ipse.Development.Verification.Package do
     IO.puts(
       "PASS: toolchain-free offline doctor, stable findings and no auth/session state creation."
     )
+  end
+
+  @doc "Admit installed doctor findings; only the documented macOS native warning is expected."
+  def validate_doctor!(report, platform \\ :os.type()) do
+    for row <- report["checks"] do
+      expected_experimental_warning =
+        platform == {:unix, :darwin} and row["id"] == "sandbox.native" and
+          row["status"] == "warn" and is_binary(row["detail"]) and
+          row["detail"] =~ "macOS is experimental."
+
+      true = row["status"] in ["ok", "skip"] or expected_experimental_warning
+
+      if row["status"] == "skip",
+        do: true = is_binary(row["summary"]) and String.trim(row["summary"]) != ""
+    end
+
+    :ok
   end
 
   defp verify_setup!(wrapper, release, env, root) do
@@ -145,7 +156,7 @@ defmodule Ipse.Development.Verification.Package do
       )
       |> :json.decode()
 
-    false = Enum.any?(report["checks"], &(&1["status"] == "fail"))
+    :ok = validate_doctor!(report)
     run!(wrapper, ["demo"], workspace, env, "first-run credential-free demo")
 
     IO.puts(
@@ -181,7 +192,7 @@ defmodule Ipse.Development.Verification.Package do
       )
       |> :json.decode()
 
-    false = Enum.any?(report["checks"], &(&1["status"] == "fail"))
+    :ok = validate_doctor!(report)
     false = File.exists?(Path.join(home, "auth"))
 
     {refusal, 1} =

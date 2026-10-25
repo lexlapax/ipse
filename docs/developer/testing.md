@@ -350,7 +350,11 @@ packaging. Custom-distribution notices remain the packager's responsibility.
 Before a tag, run `mix test test/dev/release_test.exs` and the full package proof.
 The tag workflow admits only the `mix.exs` version or a numbered RC and requires
 `docs/releases/vVERSION.md`. It repeats every ordinary CI step on both platforms;
-a guard test catches omissions when CI changes. The approved runner `gh` creates
+a guard test catches omissions when CI changes. Asset admission checks exact
+supported basenames and the `mix.exs` version, both platform archives and their
+checksum sidecars. The draft body renders the notes' versioned links against the
+actual stable or RC tag, so an RC does not depend on a future stable tag.
+The approved runner `gh` creates
 an unpublished draft only after both matrix jobs pass and their retained archives
 are collected and admitted as a complete set. A failed platform creates no draft.
 The final job uploads the admitted files and re-downloads them for inspection.

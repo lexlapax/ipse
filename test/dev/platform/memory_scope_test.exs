@@ -51,12 +51,16 @@ defmodule Ipse.MemoryScopeTest do
     assert {bytes, 0} =
              System.cmd(
                "elixir",
-               ["dev/verify-memory-scope.exs", Path.expand("priv/ipse-runner")],
+               [
+                 "dev/verify-memory-scope.exs",
+                 Path.expand("priv/ipse-runner") | Ipse.Provider.Registry.secret_env()
+               ],
                stderr_to_stdout: true
              )
 
     result = JSON.decode!(String.trim(bytes))
-    assert result["checks"] == 10
+    assert result["checks"] == 11
+    assert result["credential_filter_keys"] == length(Ipse.Provider.Registry.secret_env())
     assert result["inference_requests"] == 0
     assert result["timeout_cleanup"]
     assert result["owner_loss_cleanup"]

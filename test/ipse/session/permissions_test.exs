@@ -195,6 +195,38 @@ defmodule Ipse.Session.PermissionsTest do
     assert File.read!(Path.join(ctx.root, "kept")) == "yes"
   end
 
+  test "cancel of an executing granted shell retains grants and journals the started effect",
+       ctx do
+    pid = start(ctx)
+    write = call("write", %{"path" => "kept-executing", "content" => "yes"}, "w")
+
+    shell =
+      call(
+        "shell",
+        %{"command" => "printf grant-started; while [ ! -f gate ]; do sleep 0.02; done"},
+        "s"
+      )
+
+    # Output confirms execution; only the explicit gate can complete the shell.
+    :ok = prompt(pid, [write])
+    assert approve_until_done(pid, true, 0) == 1
+    :ok = prompt(pid, [shell])
+    assert_receive {:ipse, ^pid, {:approval, ref, "shell", _}}, 2000
+    :ok = Session.approve(pid, ref, :session_command)
+    assert_receive {:ipse, ^pid, {:tool_output, "grant-started"}}, 5000
+    grants = Session.permissions(pid)
+    :ok = Session.cancel(pid)
+    assert_receive {:ipse, ^pid, {:done, _}}, 5000
+    assert Session.permissions(pid) == grants
+    {:ok, events} = Ipse.Journal.load(ctx.dir, Session.info(pid).id)
+    assert Enum.any?(events, &(&1["type"] == "tool_started" and &1["name"] == "shell"))
+    File.write!(Path.join(ctx.root, "gate"), "done\n")
+    :ok = prompt(pid, [write, shell])
+    assert_receive {:ipse, ^pid, {:done, :ok}}, 5000
+    refute_received {:ipse, ^pid, {:approval, _, _, _}}
+    assert File.read!(Path.join(ctx.root, "kept-executing")) == "yes"
+  end
+
   test "shell reuse matches entire arguments, cwd and sandbox, with bounded grants" do
     config = %{approval: :ask}
     s = %{config: config, cwd: "/workspace", permissions: Permissions.new(config)}

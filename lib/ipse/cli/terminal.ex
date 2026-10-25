@@ -101,7 +101,7 @@ defmodule Ipse.CLI.Terminal do
   --replace                            setup only: back up and replace setup-owned settings
   --note TEXT                          handoff only: operator-written continuation note
   --max-steps N                        Model calls per turn (default: 30)
-  --max-output-tokens N                Per-request provider cap (API/Ollama only; no aggregate budget)
+  --max-output-tokens N                Per-request cap (API/local/Grok subscription; no aggregate budget)
   --context-bytes N                    Context byte ceiling (default: 400000)
   --no-compact                         Stop at the ceiling without automatic reduction
   --sandbox off|native                 Shell OS policy (default: off)

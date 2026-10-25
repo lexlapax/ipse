@@ -1,7 +1,7 @@
 unless match?({:unix, :linux}, :os.type()),
   do: raise("exact aggregate scope verification requires Linux")
 
-[helper] = System.argv()
+[helper | credential_keys] = System.argv()
 helper = Path.expand(helper)
 
 root =
@@ -30,6 +30,25 @@ fixture = Path.join(root, "probe")
 Code.require_file("platform/memory_scope.exs", __DIR__)
 
 alias Ipse.Development.Platform.MemoryScope, as: Verify
+
+if credential_keys != [] do
+  true = Enum.all?(credential_keys, &Regex.match?(~r/\A[A-Z][A-Z0-9_]+\z/, &1))
+  output = Path.join(root, "credential-filter")
+
+  command =
+    Enum.map_join(credential_keys, "; ", &("printf '%s' \"$" <> &1 <> "\"")) <>
+      "; printf '%s' \"$IPSE_FILTER_CONTROL\""
+
+  environment =
+    Enum.map(credential_keys, &("--setenv=" <> &1 <> "=synthetic-measure-secret")) ++
+      ["--setenv=IPSE_FILTER_CONTROL=retained"]
+
+  Verify.start(helper, output, ["/bin/sh", "-c", command], 10_000, environment)
+  |> Verify.finish()
+  |> Verify.assert_closed(true)
+
+  true = File.read!(Path.join(output, "process.log")) == "retained"
+end
 
 serial =
   Verify.start(helper, Path.join(root, "serial"), [fixture, "serial"])
@@ -148,7 +167,8 @@ true = File.exists?(Path.join(collector.output, "started.json"))
 
 IO.puts(
   JSON.encode!(%{
-    checks: 10,
+    checks: if(credential_keys == [], do: 10, else: 11),
+    credential_filter_keys: length(credential_keys),
     serial_peak: serial["peak_bytes"],
     overlapping_peak: overlap["peak_bytes"],
     erts_peak: erts["peak_bytes"],

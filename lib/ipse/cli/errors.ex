@@ -62,11 +62,11 @@ defmodule Ipse.CLI.Errors do
   def message("cannot acquire session lock" <> _), do: message(:session_locked)
 
   def message(reason) when is_binary(reason) do
-    # Inner adapters still return prose. Refuse term dumps, terminal controls and
-    # absolute filesystem paths instead of treating arbitrary bytes as prose.
+    # Producers own fixed causes and effect-state guidance. Slash commands,
+    # endpoint paths and service names are ordinary prose, not term dumps.
     if String.valid?(reason) and byte_size(reason) <= 2048 and
          not Regex.match?(
-           ~r/[\x00-\x1f\x7f]|%\{|#(?:PID|Port|Reference)<|\{:[a-z_]|(?<![\p{L}\p{N}_.\/])\/(?!\/)/u,
+           ~r/[\x00-\x1f\x7f]|%\{|#(?:PID|Port|Reference)<|\{:[a-z_]|(?:\A|\s):[a-z][a-z0-9_]*/u,
            reason
          ) do
       %{text: reason, recovery: @manual <> "#diagnose-startup-and-service-errors"}

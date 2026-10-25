@@ -180,14 +180,14 @@ jobs:
           merge-multiple: true
       - name: Admit the complete asset set before creating any draft
         run: |
-          elixir -r dev/release.exs -e 'Ipse.Development.Release.verify_assets!(hd(System.argv()))' -- "$RUNNER_TEMP/ipse-release-assets"
+          elixir -r dev/release.exs -e 'Mix.start(); Code.require_file("mix.exs"); Ipse.Development.Release.verify_assets!(hd(System.argv()), Mix.Project.config()[:version])' -- "$RUNNER_TEMP/ipse-release-assets"
       - name: Create or recover an unpublished draft and attach all verified assets
         if: github.event_name == 'push'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           gh --version
-          IPSE_RELEASE_NOTES=$(elixir -r dev/release.exs -e 'Mix.start(); Code.require_file("mix.exs"); IO.puts(Ipse.Development.Release.validate_tag!(System.fetch_env!("IPSE_RELEASE_TAG"), Mix.Project.config()[:version], File.cwd!()))')
+          IPSE_RELEASE_NOTES=$(elixir -r dev/release.exs -e 'Mix.start(); Code.require_file("mix.exs"); IO.puts(Ipse.Development.Release.release_notes!(System.fetch_env!("IPSE_RELEASE_TAG"), Mix.Project.config()[:version], File.cwd!(), hd(System.argv())))' -- "$RUNNER_TEMP/ipse-release-notes.md")
           if gh release view "$IPSE_RELEASE_TAG" --json isDraft > /dev/null 2>&1; then
             test "$(gh release view "$IPSE_RELEASE_TAG" --json isDraft --jq .isDraft)" = true
             gh release upload "$IPSE_RELEASE_TAG" "$RUNNER_TEMP"/ipse-release-assets/* --clobber
@@ -206,4 +206,4 @@ jobs:
           test "$(gh release view "$IPSE_RELEASE_TAG" --json isDraft --jq .isDraft)" = true
           mkdir "$RUNNER_TEMP/ipse-release-inspection"
           gh release download "$IPSE_RELEASE_TAG" --dir "$RUNNER_TEMP/ipse-release-inspection"
-          elixir -r dev/release.exs -e 'Ipse.Development.Release.verify_assets!(hd(System.argv()))' -- "$RUNNER_TEMP/ipse-release-inspection"
+          elixir -r dev/release.exs -e 'Mix.start(); Code.require_file("mix.exs"); Ipse.Development.Release.verify_assets!(hd(System.argv()), Mix.Project.config()[:version])' -- "$RUNNER_TEMP/ipse-release-inspection"

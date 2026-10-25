@@ -41,15 +41,33 @@ defmodule Ipse.Development.Release do
     notes
   end
 
-  def verify_assets!(directory) do
+  def release_notes!(tag, version, root, destination) do
+    notes = validate_tag!(tag, version, root)
+    body = File.read!(notes) |> String.replace("/blob/v#{version}/", "/blob/#{tag}/")
+    File.write!(destination, body)
+    destination
+  end
+
+  def verify_assets!(directory, version) do
+    unless Regex.match?(~r/\A[0-9]+\.[0-9]+\.[0-9]+\z/, version),
+      do: raise("Expected a stable application version for archive admission")
+
     archives = Path.wildcard(Path.join(directory, "*.tar.gz"))
 
     platforms =
       Enum.map(archives, fn path ->
         cond do
-          String.contains?(Path.basename(path), "-linux-") -> :linux
-          String.contains?(Path.basename(path), "-darwin-") -> :darwin
-          true -> :unknown
+          Regex.match?(
+            ~r/\Aipse-#{Regex.escape(version)}-linux-x86_64-(?:glibc-[0-9]+\.[0-9]+|system-libc)\.tar\.gz\z/,
+            Path.basename(path)
+          ) ->
+            :linux
+
+          Path.basename(path) == "ipse-#{version}-darwin-arm64.tar.gz" ->
+            :darwin
+
+          true ->
+            :unknown
         end
       end)
 
