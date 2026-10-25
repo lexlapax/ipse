@@ -198,3 +198,56 @@ and approved-client OAuth, and unverified Gemini foreign-history live acceptance
 This documentation review neither closes those limits nor creates a fresh
 independent runtime verdict. Publication remains a separate authorization after
 candidate reconciliation, complete platform verification and draft inspection.
+
+## Authorized reconciliation on 2026-10-25
+
+The developer explicitly authorized replacing the pre-audit tag and unpublished
+draft with `341e4585072afa26bfcee2429b033aef1e21f0a2`, rebuilding and inspecting its
+assets while keeping publication separate. The original four checksum-verified
+assets and serialized annotated tag object remain under the ignored local
+`dist/documentation-audit/1617657-draft/` directory. The replacement tag object is
+`e86938fee7d59367444579cd7f7db59084dbd697`; no force push was used.
+
+The [reconciliation receipt](release-reconciliation.json) records the complete
+[release workflow](https://github.com/lexlapax/ipse/actions/runs/40202117315) and
+[job/step metadata](release-hosted-workflow.json). Linux reports 1,806 tests,
+zero failures and 36 exclusions. macOS reports 1,771 tests, zero failures,
+36 exclusions and one skip; its native suite reports 36 tests, zero failures
+and six exclusions. Every executed step succeeds, including all independent
+source/installed proofs, experimental macOS enforcement, both artifact uploads,
+complete four-asset admission before draft creation, and hosted re-download.
+
+Independent local re-download inspection admits the exact four draft assets,
+including GitHub digests and sidecar checksums. Both archives' compiled identities
+and bundled-documentation provenance name `341e458`. Each has 46 own documentation
+pages, zero missing local targets, 205 pinned references resolving to 120 actual
+Git targets, and 13 matching Elixir 1.18.5/OTP 27.3.4.19 notice files verified
+against SHA256 and Git blob identities. An independent second link scanner also
+finds zero missing targets. The downloaded Linux archive executes locally with
+an isolated home and returns the expected version/build identity. macOS execution
+is established by its hosted job; its local identity inspection uses offline
+BEAM disassembly. The exact four rebuilt files and new tag object are retained
+under `dist/documentation-audit/341e458-rebuilt/`.
+
+The final main check's [first attempt](final-main-attempt1.json) passed Linux but
+failed the macOS fixture for declared environment bytes with verification enabled:
+`stdio cleanup unconfirmed`. Its [unchanged failed-job retry](final-main-attempt2.json)
+passes all remaining macOS gates. Focused local fixture tests pass all three
+variants; the local stdio suite passes 15 tests with 11 platform/native-policy
+exclusions. These checks do not establish the earlier macOS failure's cause.
+No assertion, deadline or source was changed to obtain the successful retry or
+fresh release results.
+
+The receipt also retains the tag-update correction: protected local Git metadata
+initially refused the ref edit, and a later push briefly restored the old remote
+tag. Its [obsolete workflow](obsolete-release-cancelled.json) was cancelled before
+draft creation, then the exact authorized replacement was pushed. The first ad hoc
+Linux identity probe omitted a UTF-8 locale and combined the VM's locale warning
+with JSON; the corrected isolated UTF-8 invocation passes. These attempts remain
+distinct from the successful release and asset inspections.
+
+The [rebuilt draft](https://github.com/lexlapax/ipse/releases/tag/untagged-9d8c02fe11faad19ab9c)
+remains unpublished. This follow-up updates release evidence and the current plan
+after the frozen `341e458` build; it does not require another tag move. The
+qualified human/live acceptance above remains unchanged. Publication still
+requires separate authorization.
