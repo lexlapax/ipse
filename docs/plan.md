@@ -19,9 +19,11 @@ are preserved with provenance.
 
 ## Current priorities and status
 
-The active release work is the requested whole-repository
-[semantic documentation review and remediation](archive/2026-10-25-prepublication-docs/index.md).
-Qualified v0.1.0 readiness was accepted with the recorded
+The requested whole-repository
+[semantic documentation remediation](archive/2026-10-25-prepublication-docs/index.md)
+is implemented and passes local example, archive and installed-runtime checks.
+The active release work is final platform verification and candidate
+reconciliation. Qualified v0.1.0 readiness was accepted with the recorded
 human/live limits. The stable tag `v0.1.0` was pushed at `1617657`; publication is
 still unauthorized. Documentation fixes that change bundled bytes need a new
 verified candidate and an explicit decision about that already pushed tag.
@@ -34,7 +36,7 @@ verified candidate and an explicit decision about that already pushed tag.
 | [P25: comparative self-development](#p25-comparative-research-and-supervised-self-development) | Accepted within declared supervision/assistance at `3307563` | Preserve frozen inputs, failures and bounded comparison claims |
 | [P26: memory baseline](#p26-optional-working-and-long-term-memory) | Explicit-note scope accepted at `25f1d8e` | Keep automatic memory separately scoped |
 | [P27: research, graph and RAG](#p27-optional-research-graph-and-rag) | Optional-package scope complete; hybrid qualified and selected | Evaluate new workloads independently; retain all seven strategies' original results |
-| [P28: operator usability and release](#p28-operator-usability-and-release-readiness) | Qualified readiness accepted; tag pushed; unpublished; documentation audit in progress | Finish semantic remediation, reconcile the release candidate, inspect rebuilt draft assets, then obtain publication approval |
+| [P28: operator usability and release](#p28-operator-usability-and-release-readiness) | Qualified readiness accepted; semantic documentation remediation implemented and locally verified; original draft remains unpublished | Finish repaired-candidate platform checks, reconcile the pushed tag/draft, inspect rebuilt assets, then obtain publication approval |
 | [P29: provider registry, OpenRouter and Gemini](#p29-provider-registry-openrouter-and-gemini) | Original scope and repairs accepted for qualified readiness; added Grok routes pass automated checks | Preserve unverified Grok API/OAuth eligibility and Gemini foreign-history live acceptance |
 | [P30: decision engines](#p30-advisory-decision-engines) | Proposed; unimplemented | Select a typed advisory contract and verify primary engine interfaces before implementation |
 | [P31: voice and media](#p31-voice-and-realtime-media) | Deferred; unimplemented | Select media contracts and device/service validation in a later increment |
@@ -554,7 +556,7 @@ the engine decision and whole-document editorial integration.
 
 ## P28: operator usability and release readiness
 
-**Release readiness accepted with documented qualifications on 2026-10-24. Stable tag `v0.1.0` points to `1617657`; draft verification and the required documentation audit are in progress. Publication remains unauthorized.**
+**Release readiness accepted with documented qualifications on 2026-10-24. Stable tag `v0.1.0` points to `1617657`; its unpublished draft passed verification. Semantic documentation remediation is implemented and locally verified; repaired-candidate platform checks and tag/draft reconciliation remain. Publication remains unauthorized.**
 P0–P27 established correctness, recovery and evidence for a
 supervised developer. This milestone makes the same harness usable by an operator
 who did not build it, without weakening approvals, explicit provider selection or

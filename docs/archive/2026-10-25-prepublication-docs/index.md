@@ -116,11 +116,28 @@ refuses absolute filesystem links and repository escapes. A separate
 false pass, both refusals and valid relative/HTTPS links in an independent tiny
 repository. No source-test or package success is claimed for that failed run.
 
+The corrected `050fe76` was built in a clean clone with the exact matching
+Elixir/OTP notices retained from the previously verified local distribution.
+The [clean archive inspection](clean-local-archive.json) verifies its checksum,
+compiled source identity, 46 documentation pages, 205 pinned source/history
+references and all 24 modern-toolchain notice files against SHA256 and Git blob
+identities. The [independent scan](clean-local-links.json) finds zero unresolved
+local targets. All twelve installed-package checks pass with unchanged inventories,
+private state and no system development toolchain on the runtime path. This is
+local Linux/Elixir 1.20.4/OTP 29 evidence; floor and macOS evidence remain separate.
+
 ## Reconcile the release candidate before publication
 
 The stable-tag [workflow at 1617657](https://github.com/lexlapax/ipse/actions/runs/40169083307)
 belongs to the pre-audit candidate. Documentation and packaging repairs change
 shipped bytes; green checks on that older candidate cannot verify these repairs.
+That run succeeded on both platforms and created an unpublished draft. The
+[re-download inspection](original-draft-inspection.json) admits its exact four
+assets, GitHub digests and checksums, offline compiled `1617657` identities and
+13 floor-toolchain notice files per archive. The
+[workflow metadata](original-draft-workflow.json) is retained. Its Linux archive
+still reproduces 123 missing prose targets, including 89 in current documents;
+successful packaging did not resolve the documentation defect.
 Keep its artifacts/evidence distinct and unpublished. Moving an already pushed
 tag or deleting/replacing a remote draft requires an explicit decision after the
 repaired candidate is concrete and verified. No tag has been silently moved.
