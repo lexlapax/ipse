@@ -7,7 +7,7 @@ automated checks. The [plan](../../plan.md) owns acceptance; the
 [operator](../../operator/index.md) and [developer](../../developer/index.md)
 manuals own procedures.
 
-## Corrections under verification
+## Corrections
 
 | Finding | Change and verification boundary |
 | --- | --- |
@@ -41,7 +41,6 @@ was removed.
 The final [focused receipt](candidate-verification.json) records 128 passed,
 11 excluded, seed 397392, 96.8 seconds. It retains the earlier failed iterations.
 
-Final focused, full native-inclusive, installed and hosted results are pending.
 Candidate `b7d3bce` passes the installed archive proof. Its local preflight and
 both hosted matrix jobs fail formatting in one new release-policy control, before
 the full suite runs; the draft job is skipped. The correction changes whitespace
@@ -68,3 +67,49 @@ No tag/release creation, publication, new browser authorization or live inferenc
 is part of this correction. Assisted Linux qualifications, missing human macOS/
 upgrade walkthroughs, stable publication, Grok live access/registration and Gemini
 foreign-history live acceptance remain open.
+
+## Final verification and release preparation
+
+Final candidate `45cae30` includes the compiler-isolation follow-up. Its
+[exact-source hosted rehearsal](https://github.com/lexlapax/ipse/actions/runs/40154297591)
+passes on Ubuntu and macOS with Elixir 1.18 / OTP 27. Every ordinary CI step and
+all independent installed/extension proofs remain in the matrix. Both artifacts
+upload; collection and complete version/name/regular-file/checksum admission
+pass. The tag-only draft-mutation and remote-inspection steps are skipped.
+The [verification receipt](verification.json) and
+[selected hosted summaries](hosted-summaries.json) keep exact sources, actual
+counts/seeds, exclusions and failed/canceled runs distinct.
+
+The [preceding runtime baseline](runtime-5d9650e.json) at `5d9650e` passes **1,783
+native-inclusive tests, 0 failures, 19 excluded**, seed 392647, 1069.4 seconds.
+Build, format, warnings-as-errors compile, docs, action policy and an isolated
+demo pass. Host code, native helpers, configuration, dependency versions, release
+workflow and packaging scripts are unchanged in `45cae30`; only the developer verifier, its test and corresponding
+records/manuals differ. The compiled commit identity is expected to change.
+The follow-up has 33 passing verifier tests and twelve installed checks for
+each actual compiler/runtime family, with its failed iterations preserved.
+
+The exact local `45cae30` archive passes all twelve installed checks, with
+private homes, utility-only runtime PATH and unchanged inventories. Its
+[actual CLI examples](installed-errors-current.json) retain precise configuration
+causes, no misleading effect uncertainty and no session creation. Earlier
+[B7](installed-errors.json) and [5d](installed-errors-final.json) examples retain
+their original identities. The bundled floor runtime also launches on the local
+Linux host and its repaired developer verifier passes; this is automated archive
+coverage, not a new human walkthrough.
+
+Both final hosted platform archives/sidecars and the local newer-toolchain Linux
+archive are retained separately under `dist/release-readiness/45cae30`, with build
+identity, checked runtime notice bytes and a rendered release body. The earlier
+`5d9650e` rehearsal and files remain preserved. The
+[release-readiness handoff](release-readiness.md) includes a review prompt and the
+remaining tag/draft/inspection/publication actions. Its
+[offline controls](offline-release-flow.json), with
+[historical fixture source](offline-release-flow.exs), exercise unchanged workflow
+shell bodies against a fake CLI, not real tag-push API/token permissions.
+
+Independent acceptance, stable tagging/publication and recorded human/live
+qualifications remain separate. No new authorization or paid inference occurred.
+The private short-MCP-value collision remains documented; no privacy exemption
+was introduced. Operator/developer chapters, release notes and entry points were
+reviewed as whole documents and reconciled with actual verification.

@@ -4,7 +4,10 @@ Dated 2026-10-24. Historical evidence of the developer-requested author review o
 `e2aefb5`, after the second independent review's runtime repairs. This is not a
 new independent acceptance verdict. The [plan](../../plan.md) owns remaining
 release decisions; [verification training](../../developer/testing.md) owns the
-current procedure. The [receipt](self-review.json) records controls and results.
+current procedure. The [initial receipt](self-review.json) records S1/S2; the
+[numeric control](numeric-code-control.json) records S3. The later
+[compiler-isolation follow-up](compiler-isolation.md) records S4, with its own
+failed iterations, focused and actual cross-toolchain installed results.
 
 ## Findings and repairs
 
@@ -74,3 +77,7 @@ once terminal. No native implementation or dependency changes are involved.
 No stable tag, release draft or publication, new authorization, paid inference,
 or private transcript was created by this review. Human walkthrough qualifications
 and live-provider acceptance are not inferred from these checks.
+
+Final runtime and hosted scopes are recorded in the [verification receipt](verification.json).
+The product/native baseline is at `5d9650e`; the developer-verifier follow-up and
+final hosted rehearsal are at `45cae30`. None is a new independent acceptance verdict.
