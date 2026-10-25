@@ -9,9 +9,11 @@ qualified candidate and already pushed stable tag. Publication remains on hold.
 
 ## Review the reader's task and the product contract
 
-The [coverage ledger](coverage.json) inventories 426 starting text documents:
-15 operator chapters, 22 contributor chapters, 22 entry/reference documents and
-367 historical documents. It records each current document's reader task,
+The [coverage ledger](coverage.json) inventories 429 starting narrative/legal
+documents: 15 operator chapters, 22 contributor chapters, 24 entry/reference
+documents and 368 historical documents. The initial Markdown/plaintext inventory
+contained 426 files; three extensionless license files are explicitly included
+in this complete ledger. It records each current document's reader task,
 editorial disposition and byte identity. Current documents were reviewed as whole
 documents for prerequisites, sequence, concepts, complete examples, expected
 results, failure recovery, authority, terminology and implementation limits.
@@ -40,7 +42,7 @@ makes that review boundary explicit instead of calling a hash check semantic rev
 | Finding | Reader consequence and repair |
 | --- | --- |
 | Existing installation could be overwritten after a failed `mkdir` | The original exact shell block continued and exited zero while replacing a sentinel executable. The revised grouped first-install commands stop on failure and refuse existing directories, dangling links and occupied launcher paths before extraction. |
-| Upgrade/removal instructions depended on implicit state | Add a complete separate next-version extraction procedure, guard launcher switching, explain partial extraction and rollback, and make uninstall choose an explicit version and matching link. Revoke sign-ins before deleting the last executable. |
+| Upgrade/removal instructions depended on implicit state | Add a complete separate next-version extraction procedure, guard launcher switching, explain partial extraction and rollback, and make uninstall choose an explicit version and matching link. Retain sign-in revocation before deleting the last executable. |
 | First-use entry points disagreed about account selection | Align README, installation, user index and release notes around demo before account setup; then teach setup, doctor, the first real task and resume. |
 | Multi-command extension examples concealed asynchronous sequencing | State explicitly that each `/ext` operation must finish, including approvals, before the next. Corpus, Graph, Memory and reporting examples otherwise invite a multi-line paste whose later commands are refused as busy rather than queued. |
 | Money-policy procedure required readers to assemble fragments | Explain accounting, admission policy and estimated reporting separately. Replace assembly instructions with complete synthetic operator JSON, offline inspection, expected output, real-route substitution and uncertainty/recovery. A report's rate card does not install a spending policy. |
@@ -125,6 +127,20 @@ identities. The [independent scan](clean-local-links.json) finds zero unresolved
 local targets. All twelve installed-package checks pass with unchanged inventories,
 private state and no system development toolchain on the runtime path. This is
 local Linux/Elixir 1.20.4/OTP 29 evidence; floor and macOS evidence remain separate.
+
+The corrected implementation's [hosted matrix](implementation-hosted.json) at
+`050fe76`, [run 40171323951](https://github.com/lexlapax/ipse/actions/runs/40171323951),
+has Linux success and macOS cancellation. Linux reports 1,806 tests, zero failures
+and 36 exclusions and completes every installed proof. macOS reports 1,771 tests,
+zero failures, 36 exclusions and one skip; its native suite reports 36 tests,
+zero failures and six exclusions. It builds/admit-checks the archive and completes
+the earlier installed proofs, then hits the explicit 45-minute outer job deadline
+during the final Knowledge proof. The later experimental sandbox gate did not run.
+The [timing and correction](ci-job-budget.json) retain GitHub's timeout annotation.
+Both workflows now allow a finite 60-minute matrix budget for the complete
+sequence. Product, provider, worker, per-test and proof deadlines and assertions
+are unchanged. This does not establish why that host was slower, and the canceled
+matrix is not called a passing result.
 
 ## Reconcile the release candidate before publication
 

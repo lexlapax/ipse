@@ -327,7 +327,10 @@ reordered findings refuse verification, as do unexplained skips and unexpected
 warnings; only the documented experimental native-policy warning is admitted on
 macOS. CLI checks have declared utilities
 without Erlang/development commands; the precompiled harness adds bundled Erlang.
-Keep a finite outer job budget.
+The hosted matrix allows 60 minutes for the whole build, test, package and
+independent-proof sequence. This finite orchestration budget is separate from
+individual assertions and product deadlines. Record an outer job cancellation
+separately from a failing test, and retain which proofs actually finished.
 Use extracted `./ipse` for CLI and `./bin/ipse eval` for trusted evaluation.
 A local build is not publication. Distribution needs matching runtime notices via
 `IPSE_NOTICES_DIR` and the [dependency inventory](dependencies.md).

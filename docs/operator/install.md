@@ -20,7 +20,9 @@ commit and need Internet access. Those procedures still require a source checkou
 and its toolchain. When a build has no full Git commit identity, such links use
 the application version's tag; `docs/bundle-links.json` records that fallback.
 
-Set the version and exact asset name; replace `RELEASE_ASSET_NAME` first:
+Change to the directory containing both downloads; `~/Downloads` below is an
+example, so replace it if you saved them elsewhere. Set the version and exact
+asset name, replacing `RELEASE_ASSET_NAME` first:
 
 ```sh
 IPSE_VERSION=0.1.0
@@ -30,8 +32,9 @@ sha256sum -c "$IPSE_ARCHIVE.sha256"
 ```
 
 On macOS use `shasum -a 256 -c "$IPSE_ARCHIVE.sha256"`. Expect the archive name
-followed by `OK`. Stop on a mismatch or missing file and download both again from
-the intended repository. A checksum detects changed bytes; it is not a signature
+followed by `OK`. Stop if changing directories or checking the checksum fails.
+Check the directory and filenames; on a checksum mismatch, download both again
+from the intended repository. A checksum detects changed bytes; it is not a signature
 or independent proof of the publisher's identity.
 
 ## Extract and put the launcher on PATH
