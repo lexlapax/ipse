@@ -113,3 +113,11 @@ qualifications remain separate. No new authorization or paid inference occurred.
 The private short-MCP-value collision remains documented; no privacy exemption
 was introduced. Operator/developer chapters, release notes and entry points were
 reviewed as whole documents and reconciled with actual verification.
+
+## Subsequent developer acceptance
+
+After final CI passed on documentation/evidence head `bde0777`, the developer
+[accepted v0.1.0 readiness with the documented qualifications](acceptance.md).
+This subsequent decision supersedes the pending readiness choice above; it does
+not change the earlier independent verdict, human/live evidence, or the separate
+authorization required for stable tagging and publication.

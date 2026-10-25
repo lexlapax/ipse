@@ -76,9 +76,13 @@ with independent acceptance separate from human/live qualifications/publication.
 
 ## Remaining release actions
 
-First obtain final acceptance of the repaired candidate and the recorded human/
-live qualifications. Choose the exact release commit after inspecting any later
-evidence-only diff. Keep the unrelated working-copy manual edit out of that tag.
+The developer [accepted the repaired candidate with its recorded qualifications](acceptance.md)
+on 2026-10-24 Pacific, after final CI passed on `bde0777`. This closes the
+readiness decision; it is not a fresh independent verdict or authorization to
+tag or publish. The accidental working-copy manual edit has been restored.
+
+Choose the exact release commit after inspecting any later evidence-only diff
+and obtain authorization for the stable-tag action.
 The stable tag must be `v0.1.0`, matching `mix.exs`; pushing it invokes the verified
 workflow and creates an unpublished draft only after both platform jobs and asset
 admission succeed.

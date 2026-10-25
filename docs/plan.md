@@ -610,7 +610,7 @@ the engine decision and whole-document editorial integration.
 
 ## P28: operator usability and release readiness
 
-**Second-review corrections and author adversarial fixes pass automated verification. Final independent/human acceptance and stable publication remain open.**
+**Release readiness accepted by the developer with documented qualifications on 2026-10-24. Stable tagging and publication remain open.**
 P0–P27 established correctness, recovery and evidence for a
 supervised developer. This milestone makes the same harness usable by an operator
 who did not build it, without weakening approvals, explicit provider selection or
@@ -661,8 +661,11 @@ verification includes browser-prefill request construction, without claiming a
 new real browser authorization.
 The inspected RC draft was deleted on explicit developer authorization after all
 four exact assets and inspection metadata were retained locally; its RC tag remains.
-Final acceptance of the qualifications and stable publication remain open.
-The external-auditor handoff includes these findings.
+The developer subsequently [accepted the repaired candidate with its documented
+qualifications](archive/2026-10-24-p28-p29-review2/acceptance.md), including the
+assisted walkthrough and missing human macOS/upgrade checks. This is a qualified
+readiness decision, not an unassisted pass or a fresh independent verdict.
+Stable tagging and publication remain separate, unauthorized release actions.
 
 Scope:
 
@@ -689,13 +692,15 @@ Scope:
 Acceptance: fixture tests for setup output, configuration resolution and each
 doctor finding; no network traffic without an explicit request; installed-archive
 first-run and upgrade checks on Linux; hosted macOS package checks; and a recorded
-unassisted walkthrough by a fresh operator account. Signing, notarization and
+unassisted walkthrough by a fresh operator account. The developer's recorded
+readiness decision accepts the walkthrough qualifications for v0.1.0 without
+claiming that original human criterion was met. Signing, notarization and
 distribution channels such as package managers need separate approval as release
 dependencies.
 
 ## P29: provider registry, OpenRouter and Gemini
 
-**Original P29 scope completed at `9c5eb6a`; second-review and author-review fixes pass automated verification through `45cae30`. Independent acceptance and live xAI gates remain.** The central
+**Original P29 scope completed at `9c5eb6a`; repaired candidate accepted for v0.1.0 readiness with documented qualifications on 2026-10-24. Live xAI access and registration remain unverified.** The central
 [`provider registry`](../lib/ipse/provider/registry.ex) supplies configuration,
 profiles, credentials, billing, accounting, capabilities, setup and diagnosis.
 Independent pre-refactor fixtures from `dd510a7` retain existing manifests,
@@ -721,7 +726,7 @@ Its findings are repaired and verified at `aee0ad8`; the approved artifact hando
 passes at `dc70463`, which has the same runtime source. The follow-up record retains
 earlier failed/canceled runs and the separate hosted scopes. Independent re-review
 remains distinct from implementation checks. Earlier receipts cover their exact
-source; P28's human walkthrough/publication gates remain open.
+source; P28's human walkthrough qualifications and publication status remain distinct.
 The [second independent review and corrections](archive/2026-10-24-p28-p29-review2/index.md)
 supersede acceptance of the first repair: its slash filter masked legitimate
 configuration, skill and provider causes despite green automated checks. Those
@@ -734,7 +739,9 @@ the release workflow are unchanged in that follow-up. The record retains failed 
 superseded/canceled runs. The pre-existing short private MCP-value collision
 remains documented, without weakening privacy. The
 [release-readiness handoff](archive/2026-10-24-p28-p29-review2/release-readiness.md)
-prepares v0.1.0 while retaining final acceptance and publication gates.
+prepares v0.1.0. The developer's [qualified acceptance](archive/2026-10-24-p28-p29-review2/acceptance.md)
+closes the readiness decision without a fresh independent verdict or new live
+provider checks; stable tagging and publication remain separate.
 The [P29 implementation brief](archive/2026-10-23-p28-p29-design/p29.md) breaks
 this scope into ordered work packages with files, tests and decisions.
 The developer accepted its recommended decisions on 2026-10-23. Gemini, then
