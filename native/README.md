@@ -395,7 +395,7 @@ most 32 generations. The workspace cannot overlap the active helper, application
 or cache. Run from an installed bundle outside the workspace; a source checkout
 inside the selected workspace is refused.
 
-The worker applies per-process ceilings: CPU time `ceil(timeout)+1` seconds,
+The worker applies per-process ceilings: CPU time `ceil(timeout_ms/1000)+1` seconds,
 64 MiB regular-file size, 256 open descriptors, and zero core-file size. There
 is no aggregate memory or disk quota. Shell and ordinary descendants inherit
 the App Sandbox filesystem and network limits. A descendant that calls
@@ -471,7 +471,7 @@ available; `clone3` reports `ENOSYS` for libc's legacy-clone fallback. Inherited
 nonstandard descriptors close at exec. The child environment contains only
 `PATH=/usr/bin:/bin`, `LANG=C.UTF-8`, and private `HOME`/`TMPDIR` values.
 
-Resource ceilings are: no core dumps, CPU seconds `ceil(timeout)+1`, address
+Resource ceilings are: no core dumps, CPU seconds `ceil(timeout_ms/1000)+1`, address
 space 16 GiB, 256 open descriptors, and regular file size 64 MiB. NPROC is the
 observed real-UID thread count plus 1024, clamped to the caller's existing hard
 limit; exhausted hard limits or failed bounded `/proc` scans fail setup. These

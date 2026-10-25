@@ -173,6 +173,13 @@ their additional notices through `IPSE_NOTICES_DIR`.
 The workflow also runs `elixir dev/check-docs.exs` using the existing Elixir/OTP
 and Git toolchain. It checks local documentation links, headings, JSON examples,
 manual rules and preserved snapshot hashes without executing example commands.
+Packaging uses the same existing OTP file, URI, regular-expression and tar
+facilities for bundled-manual link rendering and archive inspection. This small
+release-specific pass supports the repository's inline-link/fenced-example
+conventions; it is not a general Markdown renderer and adds no package or tool.
+Current manuals stay local, while omitted source/history targets link to the
+recorded commit (or explicitly labelled version-tag fallback). Third-party notices
+are outside that rewriting pass.
 
 ## Verify an update
 

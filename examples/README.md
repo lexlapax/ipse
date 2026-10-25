@@ -19,7 +19,9 @@ Modify its fixed response to see how provider data becomes journaled state.
 ## Build an inert extension
 
 Choose a new output path, compile the reviewed source, then verify it through
-an ordinary Session. Building does not import, trust, select, or execute it:
+an ordinary Session. Building compiles trusted source; it does not import, trust,
+select, or start the extension worker. Compile-time callbacks can execute, so
+review sources before building; the builder is not a sandbox:
 
 ```sh
 IPSE_EXAMPLE_ARTIFACT=$(mktemp -d)/artifact
@@ -141,8 +143,11 @@ elixir dev/verify.exs installed saved-results \
 Substitute the same scenario/artifact used in the source proof. For `model`,
 repeat all five selections with installed mode. The outer verifier needs the
 development toolchain and `tar`; it compiles the trusted harness before launch.
-The extracted release uses its bundled runtime with system Elixir/Erlang/Mix/Rust
-hidden, and does not compile artifacts or the harness. Inventories bind the
+For installed proofs, that preparation runs the selected bundle's own compiler
+in a private environment, avoiding a mixture with the driver's compiler modules.
+The subsequent verification phase runs the precompiled harness with system
+Elixir/Erlang/Mix/Rust hidden. It rebuilds neither the input artifact nor the
+harness during verification. Inventories bind the
 archive, artifact, release, harness, and declared utilities before/after execution.
 A source result alone establishes no installed-runtime result.
 

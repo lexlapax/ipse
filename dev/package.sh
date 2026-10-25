@@ -18,6 +18,8 @@ cp LICENSE README.md AGENTS.md CONTRIBUTING.md SECURITY.md THIRD_PARTY_NOTICES.m
 cp dev/verify-release.exs "$IPSE_RELEASE/"
 rm -rf "$IPSE_RELEASE/docs" "$IPSE_RELEASE/licenses"
 cp -R docs "$IPSE_RELEASE/"
+rm -rf "$IPSE_RELEASE/docs/archive"
+elixir -r dev/release.exs -e 'Ipse.Development.Release.bundle_documentation!(Enum.at(System.argv(), 0), File.cwd!(), Enum.at(System.argv(), 1), System.get_env("IPSE_BUILD_COMMIT"))' -- "$IPSE_RELEASE" "$IPSE_VERSION"
 mkdir -p "$IPSE_RELEASE/licenses"
 MIX_ENV=prod mix run --no-start dev/copy-package-notices.exs "$IPSE_RELEASE/licenses"
 cp third_party/APACHE-2.0.txt "$IPSE_RELEASE/licenses/"
@@ -42,5 +44,6 @@ fi
 mkdir -p dist
 IPSE_ARCHIVE="dist/ipse-$IPSE_VERSION-$IPSE_OS-$IPSE_ARCH$IPSE_ABI.tar.gz"
 tar -czf "$IPSE_ARCHIVE" -C "$IPSE_RELEASE" .
+elixir -r dev/release.exs -e 'IO.puts(:json.encode(Ipse.Development.Release.verify_documentation_archive!(hd(System.argv()))))' -- "$IPSE_ARCHIVE"
 elixir -r dev/release.exs -e 'Ipse.Development.Release.write_checksum!(hd(System.argv()))' -- "$IPSE_ARCHIVE"
 printf 'Built %s\n' "$IPSE_ARCHIVE"

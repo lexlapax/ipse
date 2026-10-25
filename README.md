@@ -9,17 +9,14 @@ The current prototype runs on Linux and macOS. It is a line-oriented terminal
 application and an embeddable Session API. Start with the scripted demo, then
 choose a provider explicitly when you are ready to use a model.
 
-P27 is complete within its optional Corpus, Graph and Research scope. The
-[plan](docs/plan.md#p27-optional-research-graph-and-rag) records acceptance, the
-selected hybrid reference configuration and its limits. OpenRouter, Gemini and
-the provider registry (P29) are implemented and pass local and hosted checks.
-The developer accepts the fresh-account P28 run; session permission improvements
-are implemented and their verification is recorded in the plan. Grok API-key and
-registered-client subscription routes are implemented and pass automated checks.
-Grok API inference remains unverified after an HTTP 403; live OAuth requires an
-Ipse registration from xAI. Release acceptance and stable
-publication remain open. Advisory decision engines (P30) remain proposed; voice
-and media (P31) remain deferred.
+Optional Corpus, Graph and Research extensions retain cited sources and
+attributed relationships. Explicit provider routes include ChatGPT subscription,
+OpenAI API, Ollama, Anthropic, Gemini, pinned OpenRouter, Grok and loopback
+compatible servers. Grok API inference remains unverified after HTTP 403;
+subscription access requires an approved Ipse registration from xAI.
+The [plan](docs/plan.md) owns release status, acceptance qualifications and future
+work. The [release notes](docs/releases/v0.1.0.md) describe the version's scope
+and operating limits.
 
 ## Build and try the demo
 
@@ -43,7 +40,7 @@ results followed by `Demo finished` and a saved session ID.
 For a bundled release, follow [installation](docs/operator/install.md) to verify
 the checksum, extract an OS/architecture/libc-compatible archive and link the
 launcher. The bundle contains the VM, application and helper; no development
-toolchain is needed. Run `ipse setup`, `ipse doctor`, then `ipse demo`.
+toolchain is needed. Run `ipse demo` before selecting a model account.
 
 ## Start a real conversation
 

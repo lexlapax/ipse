@@ -5,7 +5,7 @@ milestone completion claim. Base: `166914a365784e80afb48551138be01bc6b1044b`.
 Current acceptance belongs to the [plan](../../plan.md). Follow the
 [knowledge implementation course](../../developer/knowledge-extensions.md),
 [evaluation course](../../developer/knowledge-evaluation.md) and
-[question recovery course](../2026-10-22-before-structural-consolidation/docs/developer/operator-questions.md) for current behavior.
+[question recovery course](../../developer/architecture.md#suspend-for-a-question) for current behavior.
 
 ## Findings and decisions
 

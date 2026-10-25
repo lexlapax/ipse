@@ -8,7 +8,7 @@ increment over `beb9009`; it does not close P27 or establish corrected-source
 model quality.
 
 Current procedures belong to [Corpus](../../operator/corpus.md),
-[Graph](../../operator/graph.md), [Research](../2026-10-22-before-structural-consolidation/docs/operator/research-extensions.md)
+[Graph](../../operator/graph.md), [Research](../../operator/research.md#rank-a-supplied-source-without-external-services)
 and the [knowledge contributor manual](../../developer/knowledge-extensions.md).
 [Evaluation training](../../developer/knowledge-evaluation.md) owns scoring and
 measurement procedures. The [plan](../../plan.md#p27-optional-research-graph-and-rag)

@@ -92,3 +92,15 @@ build identities, notes, exact four assets, checksums and runtime notices after
 remote re-download. A failed upload can leave a partial draft; do not publish it.
 A successful manual rehearsal does not close this real remote inspection step.
 Publication remains an explicit developer action after draft inspection.
+
+## Subsequent tag authorization and documentation requirement
+
+After the qualified readiness decision, the developer authorized the stable tag
+and an unpublished draft. The annotated `v0.1.0` tag was pushed at
+`16176571780ec43e526549c41be6a660373da2e4`, starting
+[the tag-triggered workflow](https://github.com/lexlapax/ipse/actions/runs/40169083307).
+The developer then required a whole-repository semantic documentation audit and
+remediation before publication. Its [separate record](../2026-10-25-prepublication-docs/index.md)
+owns the findings, changed documentation/package bytes and subsequent candidate
+reconciliation. The earlier instructions above retain their checkpoint meaning;
+they are not another pending request for the already authorized tag.

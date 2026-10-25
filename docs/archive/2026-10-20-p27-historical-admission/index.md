@@ -9,7 +9,7 @@ It establishes neither semantic quality nor P27 completion.
 
 Current contributor procedures are in [knowledge evaluation](../../developer/knowledge-evaluation.md).
 Current user procedures are in [Corpus](../../operator/corpus.md),
-[Graph](../../operator/graph.md) and [Research](../2026-10-22-before-structural-consolidation/docs/operator/research-extensions.md).
+[Graph](../../operator/graph.md) and [Research](../../operator/research.md#rank-a-supplied-source-without-external-services).
 The [plan](../../plan.md#p27-optional-research-graph-and-rag) owns acceptance status.
 The [preceding whole-source review](../2026-10-20-p27-whole-source-review/index.md)
 records the domain and atomic-admission corrections.

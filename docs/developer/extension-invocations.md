@@ -167,7 +167,7 @@ A committed final receipt remains committed after a later timer fires.
 ResultDocument requires a map root, duplicate-free decoded keys, lexical resource
 checks before decoding, finite numbers, and the original result schema. Integer
 tokens retain the maintained decoder's 1024-byte limit, including a minus sign.
-General `JSON.decode_bounded/2` instead defaults to 32 KiB, permits at most 1 MiB
+General `Ipse.JSON.decode_bounded/2` instead defaults to 32 KiB, permits at most 1 MiB
 explicitly, and limits nesting to sixteen. Raising that general limit cannot
 replace the dedicated aggregate checks or enlarge SDK wire values.
 

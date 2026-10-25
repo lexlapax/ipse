@@ -178,7 +178,7 @@ missing records explicitly. Immutable writes need unused keys and exact revision
 values. Collection checks snapshot generation and all live/draft reachability under
 one atomic owner, tombstoning only unprotected pages and advancing revisions/store
 generation once. CAS JSON result permits 60000 bytes, read in 4096-byte exact-bound
-MCP text windows. Requests fit SDK,15000 encoded bytes, and32768-byte approval bounds.
+MCP text windows. Requests fit SDK, 15000 encoded bytes, and 32768-byte approval bounds.
 Write batches test the real selected envelope before choosing one/two pages.
 
 ### Enforce root conditions and capacity atomically
@@ -197,7 +197,7 @@ cannot claim conflict, and no source body is disclosed.
 
 Qualified v3 owners atomically enforce at most 88 retained keys in the partition,
 including pages/orphans/tombstones/roots, across every accepted writer/version route.
-Per-client counting is insufficient. Store also checks88/32 roots/encoded bytes/
+Per-client counting is insufficient. Store also checks 88 records/32 roots/encoded bytes/
 remaining effects locally. Draft claims reserve no future slots; competition can
 still refuse final publication and leave an exactly abortable draft.
 A full snapshot needs one directory plus ceil(records/8) effects, twelve at 88.
@@ -238,7 +238,7 @@ for complete options/bindings with mcp-lexical. The closed request/reply shape i
 ```
 
 Only ok/complete is accepted. Echo identity and captured generation. Algorithm
-names use1..64 ASCII letters/digits/underscore/dot/hyphen, version positive safe
+names use 1..64 ASCII letters/digits/underscore/dot/hyphen, version positive safe
 integer, scanned sources 0..32/chunks 0..1024. Query permits 1..1024 UTF-8 bytes,
 top-k 1..10, as-of nonnegative safe integer. Each real call gets a fresh ID.
 Nonempty refs contain exactly source_id/source_key/generation/content_sha256/

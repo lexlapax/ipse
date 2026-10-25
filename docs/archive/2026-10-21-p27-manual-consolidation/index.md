@@ -25,8 +25,8 @@ coverage, accepted corrections and verification limits.
 | [docs/developer/extension-embedding-actions.md](before/docs/developer/extension-embedding-actions.md) | [Current chapter](../../developer/extension-effects.md) |
 | [docs/developer/extension-event-jobs.md](before/docs/developer/extension-event-jobs.md) | [Current chapter](../../developer/extension-events.md) |
 | [docs/developer/extension-events.md](before/docs/developer/extension-events.md) | [Current chapter](../../developer/extension-events.md) |
-| [docs/developer/extension-feeds.md](before/docs/developer/extension-feeds.md) | [Current chapter](../2026-10-22-before-structural-consolidation/docs/developer/extension-feeds.md) |
-| [docs/developer/extension-history.md](before/docs/developer/extension-history.md) | [Current chapter](../2026-10-22-before-structural-consolidation/docs/developer/extension-feeds.md) |
+| [docs/developer/extension-feeds.md](before/docs/developer/extension-feeds.md) | [Current chapter](../../developer/extension-events.md#declare-and-acknowledge-a-bounded-live-feed) |
+| [docs/developer/extension-history.md](before/docs/developer/extension-history.md) | [Current chapter](../../developer/extension-events.md#declare-and-acknowledge-a-bounded-live-feed) |
 | [docs/developer/extension-hooks.md](before/docs/developer/extension-hooks.md) | [Current chapter](../../developer/extensions.md) |
 | [docs/developer/extension-host-calls.md](before/docs/developer/extension-host-calls.md) | [Current chapter](../../developer/extension-state.md) |
 | [docs/developer/extension-mcp-actions.md](before/docs/developer/extension-mcp-actions.md) | [Current chapter](../../developer/extension-effects.md) |

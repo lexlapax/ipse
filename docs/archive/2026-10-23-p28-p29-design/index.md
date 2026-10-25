@@ -1,6 +1,9 @@
 # P28 and P29 implementation briefs
 
-Proposal record, 2026-10-23. Nothing in these briefs is implemented. They were
+Historical proposal record, 2026-10-23. These briefs establish the proposed design
+at that checkpoint. Subsequent [implementation](../2026-10-23-p28-p29-implementation/index.md)
+and [qualified acceptance](../2026-10-24-p28-p29-review2/acceptance.md) are recorded
+separately; the original proposed requirements are retained. The briefs were
 written against `dd510a7` from a read-only survey of the source, with file and
 line references taken at that commit. Line numbers drift; treat each reference as
 a starting point and confirm it before editing. Scope and acceptance belong to the

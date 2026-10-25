@@ -14,6 +14,12 @@ a published version and read its notes. Download the matching `.tar.gz` and its
 collaborators. If no version is published, there is no public release to install
 yet. Renaming an archive does not make it compatible with a different platform.
 
+The bundle includes the current manuals. Links to source files, source-build
+examples and historical records open the repository at the build's recorded
+commit and need Internet access. Those procedures still require a source checkout
+and its toolchain. When a build has no full Git commit identity, such links use
+the application version's tag; `docs/bundle-links.json` records that fallback.
+
 Set the version and exact asset name; replace `RELEASE_ASSET_NAME` first:
 
 ```sh
@@ -34,17 +40,29 @@ Keep releases outside workspaces that Ipse will modify:
 
 ```sh
 IPSE_DIR="$HOME/.local/opt/ipse-$IPSE_VERSION"
-mkdir -p "$HOME/.local/opt" "$HOME/.local/bin"
-mkdir "$IPSE_DIR"
-tar -xzf "$IPSE_ARCHIVE" -C "$IPSE_DIR"
-ln -s "$IPSE_DIR/ipse" "$HOME/.local/bin/ipse"
+IPSE_LINK="$HOME/.local/bin/ipse"
 export PATH="$HOME/.local/bin:$PATH"
-ipse --version
-ipse version --json
+(
+  set -eu
+  if [ -e "$IPSE_DIR" ] || [ -L "$IPSE_DIR" ] ||
+     [ -e "$IPSE_LINK" ] || [ -L "$IPSE_LINK" ]; then
+    printf '%s\n' 'Installation path already exists; inspect it and use the upgrade procedure.' >&2
+    exit 1
+  fi
+  mkdir -p "$HOME/.local/opt" "$HOME/.local/bin"
+  mkdir "$IPSE_DIR"
+  tar -xzf "$IPSE_ARCHIVE" -C "$IPSE_DIR"
+  ln -s "$IPSE_DIR/ipse" "$IPSE_LINK"
+  ipse --version
+  ipse version --json
+)
 ```
 
-An existing directory or launcher link stops this first-install procedure; use
-the upgrade procedure below. Keep the release files together. Add the PATH
+The grouped commands stop at the first failure. An existing installation path,
+including a dangling link or a directory at the launcher path, refuses before
+extraction. Use the upgrade procedure below for an installed release. A failed
+extraction can leave a partial new directory; inspect it before removing that
+failed installation and retrying. Keep the release files together. Add the PATH
 assignment to your shell startup file if needed. Expect the selected version
 and build/runtime facts. On loader/libc errors, choose a compatible archive or
 build from source.
@@ -67,34 +85,71 @@ From a scratch directory:
 ```sh
 IPSE_FIRST_WORKSPACE=$(mktemp -d)
 cd "$IPSE_FIRST_WORKSPACE"
+ipse demo
 ipse setup
 ipse doctor
-ipse demo
 ```
 
-Setup requires a provider choice, labels billing and credential sources, and
-prints the exact private configuration for confirmation. To try without an
-account, choose `demo` and model `scripted`. Doctor is offline by default; resolve
-its failures before real work. Demo prints a temporary workspace/session ID,
+Demo prints a temporary workspace/session ID,
 writes/reads `ipse-demo.txt` and runs a shell probe. It proves local operation,
-not provider access. Continue with [provider setup](configuration.md#choose-and-save-a-provider),
-[a first real task](usage.md#approve-a-small-task) and
-[diagnosis](recovery.md#diagnose-your-setup).
+not provider access. Setup then requires an explicit provider choice, labels
+billing and credential sources, and prints the exact private configuration for
+confirmation. You can stop after the demo if you do not want to configure an
+account yet. Doctor is offline by default; resolve its failures before
+[your first real task](usage.md#approve-a-small-task). See
+[provider setup](configuration.md#choose-and-save-a-provider) for account choices
+and [diagnosis](recovery.md#diagnose-your-setup) for doctor findings.
 
 ## Upgrade without losing recovery options
 
-Finish active work before switching builds. Download, verify and extract the next
-version into a different directory, keeping the old release. Set `IPSE_DIR` to
-the new extracted directory and switch future launches explicitly:
+Finish active work before switching builds. Record `readlink "$HOME/.local/bin/ipse"`
+so you can return to the old release. Download the next version and its sidecar,
+then verify them using the checksum procedure above. Keep the old directory.
+From the download directory, replace both placeholders and extract separately:
 
 ```sh
-ln -sfn "$IPSE_DIR/ipse" "$HOME/.local/bin/ipse"
-ipse version --json
-ipse doctor
+IPSE_VERSION=NEXT_VERSION
+IPSE_ARCHIVE=RELEASE_ASSET_NAME
+IPSE_DIR="$HOME/.local/opt/ipse-$IPSE_VERSION"
+(
+  set -eu
+  if [ -e "$IPSE_DIR" ] || [ -L "$IPSE_DIR" ]; then
+    printf '%s\n' 'New release directory already exists; inspect it before extracting.' >&2
+    exit 1
+  fi
+  mkdir -p "$HOME/.local/opt"
+  mkdir "$IPSE_DIR"
+  tar -xzf "$IPSE_ARCHIVE" -C "$IPSE_DIR"
+  "$IPSE_DIR/ipse" version --json
+)
+```
+
+Expect the next version and its build identity. Stop on extraction or loader
+failure; the launcher still points to the old release. Inspect a partially
+extracted new directory before removing or retrying it. Once the new executable
+works, switch future launches explicitly:
+
+```sh
+IPSE_LINK="$HOME/.local/bin/ipse"
+(
+  set -eu
+  test -x "$IPSE_DIR/ipse"
+  if [ ! -L "$IPSE_LINK" ]; then
+    printf '%s\n' 'Expected the existing launcher to be a symbolic link; inspect its path before switching.' >&2
+    exit 1
+  fi
+  ln -sfn "$IPSE_DIR/ipse" "$IPSE_LINK"
+  "$IPSE_LINK" version --json
+  "$IPSE_LINK" doctor
+)
 ```
 
 Settings, credentials and journals remain in `IPSE_HOME` (normally `~/.ipse`).
 Switching a link does not migrate a running conversation.
+The procedure refuses a regular file or directory at the launcher path. If the
+new doctor's checks fail, retain both releases and follow [diagnosis](recovery.md)
+before new work. To roll back, set `IPSE_DIR` to the retained old release and
+repeat the same guarded switch.
 
 Selected extensions pin the host BEAM build. A different build refuses their
 resume with configuration-mismatch and handoff guidance. Finish those sessions,
@@ -122,12 +177,30 @@ sign-ins with `ipse logout` for ChatGPT and `ipse logout --provider xai_oauth` f
 Grok, if configured. Review each command's remote-revocation result and the
 corresponding account-side grants.
 
-Check `readlink "$HOME/.local/bin/ipse"`, then remove the intended link and release:
+Choose the version to remove and inspect the link first. For the standard layout:
 
 ```sh
-rm "$HOME/.local/bin/ipse"
-rm -rf "$IPSE_DIR"
+IPSE_VERSION=0.1.0
+IPSE_DIR="$HOME/.local/opt/ipse-$IPSE_VERSION"
+IPSE_LINK="$HOME/.local/bin/ipse"
+readlink "$IPSE_LINK"
 ```
+
+After confirming the displayed target is that release, remove only the matching
+link and directory:
+
+```sh
+(
+  set -eu
+  test -L "$IPSE_LINK"
+  test "$(readlink "$IPSE_LINK")" = "$IPSE_DIR/ipse"
+  rm "$IPSE_LINK"
+  rm -rf "$IPSE_DIR"
+)
+```
+
+A mismatch refuses before deletion. Review a custom installation's equivalent
+paths separately rather than substituting a broad directory.
 
 Keep `~/.ipse` to retain settings and saved work. Deleting it is a separate
 decision that removes credentials, journals, handoffs and extension state. Export

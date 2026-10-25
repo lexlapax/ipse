@@ -269,6 +269,130 @@ defmodule Ipse.Development.ReleaseTest do
     assert output =~ "too many symlinks; inspect the installation link"
   end
 
+  defp documentation_fixture(root) do
+    source = Path.join(root, "source")
+    bundle = Path.join(root, "bundle")
+
+    for path <-
+          ~w(README.md docs/index.md docs/operator/index.md docs/operator/install.md docs/operator/usage.md docs/developer/index.md) do
+      for directory <- [source, bundle] do
+        target = Path.join(directory, path)
+        File.mkdir_p!(Path.dirname(target))
+        File.write!(target, "# Fixture\n")
+      end
+    end
+
+    for path <- ["lib/helper.ex", "examples/read me.md", "docs/archive/old/index.md"] do
+      target = Path.join(source, path)
+      File.mkdir_p!(Path.dirname(target))
+      File.write!(target, "source fixture\n")
+    end
+
+    File.mkdir!(Path.join(source, "native"))
+    {source, bundle}
+  end
+
+  defp documentation_archive!(root, bundle) do
+    archive = Path.join(root, "docs.tar.gz")
+    {_, 0} = System.cmd("tar", ["-czf", archive, "-C", bundle, "."])
+    archive
+  end
+
+  test "bundled manuals retain local pages and pin omitted source/history references", %{
+    root: root
+  } do
+    {source, bundle} = documentation_fixture(root)
+    commit = String.duplicate("a", 40)
+
+    document =
+      "[Install](docs/operator/install.md#fixture) [Source](lib/helper.ex) [History](docs/archive/old/index.md) [Directory](native/) [Spaced](<examples/read me.md>) [External](https://example.test/page) [Here](#fixture)\n````text\n[Literal](missing.example)\n```\n````\n~~~text\n[Literal](also-missing.example)\n~~~\n"
+
+    File.write!(Path.join(bundle, "README.md"), document)
+    notice = Path.join(bundle, "licenses/vendor-README.md")
+    File.mkdir_p!(Path.dirname(notice))
+    notice_bytes = "Upstream notice. [Original link](not-distributed.example)\n"
+    File.write!(notice, notice_bytes)
+
+    manifest = Release.bundle_documentation!(bundle, source, "0.1.0", commit)
+    assert manifest["rewritten_links"] == 4
+    assert manifest["source_ref_kind"] == "commit"
+    rendered = File.read!(Path.join(bundle, "README.md"))
+    assert rendered =~ "[Install](docs/operator/install.md#fixture)"
+    assert rendered =~ "[Source](https://github.com/lexlapax/ipse/blob/#{commit}/lib/helper.ex)"
+    assert rendered =~ "[Directory](https://github.com/lexlapax/ipse/tree/#{commit}/native)"
+
+    assert rendered =~
+             "[Spaced](<https://github.com/lexlapax/ipse/blob/#{commit}/examples/read%20me.md>)"
+
+    assert rendered =~ "[External](https://example.test/page) [Here](#fixture)"
+    assert rendered =~ "````text\n[Literal](missing.example)\n```\n````"
+    assert rendered =~ "~~~text\n[Literal](also-missing.example)\n~~~"
+    refute File.exists?(Path.join(bundle, "docs/archive"))
+    assert File.read!(notice) == notice_bytes
+
+    assert Release.verify_documentation_archive!(documentation_archive!(root, bundle)) == %{
+             "documents" => 6,
+             "source_ref" => commit,
+             "missing_local_targets" => 0
+           }
+
+    assert File.read!(Path.join(source, "docs/archive/old/index.md")) == "source fixture\n"
+  end
+
+  test "documentation admission detects an omitted bundled page or unrendered source link", %{
+    root: root
+  } do
+    {source, bundle} = documentation_fixture(root)
+    Release.bundle_documentation!(bundle, source, "0.1.0", String.duplicate("b", 40))
+    File.write!(Path.join(bundle, "README.md"), "[Missing](lib/helper.ex)\n")
+
+    assert_raise RuntimeError, ~r/Missing bundled documentation target/, fn ->
+      Release.verify_documentation_archive!(documentation_archive!(root, bundle))
+    end
+
+    File.write!(Path.join(bundle, "README.md"), "# Fixture\n")
+    File.rm!(Path.join(bundle, "docs/operator/usage.md"))
+
+    assert_raise MatchError, fn ->
+      Release.verify_documentation_archive!(documentation_archive!(root, bundle))
+    end
+  end
+
+  test "documentation rendering refuses unknown or escaping targets and labels version fallback",
+       %{root: root} do
+    {source, bundle} = documentation_fixture(root)
+    manifest = Release.bundle_documentation!(bundle, source, "0.1.0")
+    assert manifest["source_ref"] == "v0.1.0"
+    assert manifest["source_ref_kind"] == "version_tag"
+
+    assert Release.verify_documentation_archive!(documentation_archive!(root, bundle))[
+             "source_ref"
+           ] == "v0.1.0"
+
+    manifest_path = Path.join(bundle, "docs/bundle-links.json")
+
+    File.write!(manifest_path, :json.encode(%{manifest | "source_ref_kind" => "commit"}))
+
+    assert_raise MatchError, fn ->
+      Release.verify_documentation_archive!(documentation_archive!(root, bundle))
+    end
+
+    File.write!(Path.join(bundle, "README.md"), "[Unknown](missing.md)\n")
+
+    assert_raise RuntimeError, ~r/missing from the source/, fn ->
+      Release.bundle_documentation!(bundle, source, "0.1.0")
+    end
+
+    File.write!(Path.join(bundle, "README.md"), "[Escape](../outside.md)\n")
+    File.write!(Path.join(root, "outside.md"), "private fixture")
+
+    assert_raise RuntimeError, ~r/escapes/, fn ->
+      Release.bundle_documentation!(bundle, source, "0.1.0")
+    end
+
+    assert File.read!(Path.join(root, "outside.md")) == "private fixture"
+  end
+
   defp notice_fixture do
     contents = %{
       "LICENSE" => "Elixir upstream fixture\n",

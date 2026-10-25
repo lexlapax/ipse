@@ -6,4 +6,4 @@ relative links were rebased for this location.
 
 - [Original proposal](observability.md)
 - Current replacements: [operator controls](../../operator/observability.md) and
-  [developer contract](../2026-10-22-before-structural-consolidation/docs/developer/observability.md).
+  [developer contract](../../developer/lifecycle-events.md#deliver-optional-diagnostic-metadata).

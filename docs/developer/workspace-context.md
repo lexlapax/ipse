@@ -139,8 +139,8 @@ checkpoint, covered effective-message count, canonical prefix digest, and sizes.
 `tool_results_compacted` additionally binds original/projected digests and
 deterministic indices. Original events remain durable.
 
-`JSON.digest/1` hashes lists with recursively sorted object keys, preserved list
-order, and the maintained encoder's scalar representation. `JSON.sha256/1` hashes
+`Ipse.JSON.digest/1` hashes lists with recursively sorted object keys, preserved list
+order, and the maintained encoder's scalar representation. `Ipse.JSON.sha256/1` hashes
 original bytes. They are different identities; changing persistent encoding is
 a compatibility change, not a cleanup. Saved reconstruction validates covered
 prefixes, unknown outcomes, and projections chronologically, preserving later

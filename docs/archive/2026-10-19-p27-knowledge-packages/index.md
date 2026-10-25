@@ -6,7 +6,7 @@ The source commit containing this record owns the implementation and verifiers.
 It does not complete P27 or select an optional model or retrieval engine.
 
 Use the current [Corpus](../../operator/corpus.md), [Graph](../../operator/graph.md)
-and [Research extension](../2026-10-22-before-structural-consolidation/docs/operator/research-extensions.md) procedures to run
+and [Research extension](../../operator/research.md#rank-a-supplied-source-without-external-services) procedures to run
 the packages. The [contributor training chapter](../../developer/knowledge-extensions.md)
 teaches their ownership and execution flow. The
 [plan](../../plan.md#p27-optional-research-graph-and-rag) owns acceptance status.

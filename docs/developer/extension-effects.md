@@ -257,8 +257,8 @@ cannot replace operator IDs, choose endpoints or grant longer model deadlines. T
 both disclosure and dispatch. See [configuration training](configuration.md).
 
 `Ipse.Provider.request_complete/4` resolves the selected credential inside the admitted task.
-No main key, injected provider module or SDK handle is inherited. Named ChatGPT,
-OpenAI, Ollama and Anthropic profiles retain their own provider/billing mode.
+No main key, injected provider module or SDK handle is inherited. Each supported
+named profile retains its selected provider and billing mode.
 Demo cannot perform inference. Missing credentials, service or model fail without
 fallback. Unsupported subscription output caps refuse. Preparation narrows output
 and deadline against owner policy and reservations; each request consumes an

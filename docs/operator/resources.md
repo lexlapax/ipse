@@ -1,8 +1,19 @@
 # Inspect usage and limit model work
 
-Use accounting to inspect observed requests. Configure a budget to reserve an
-allowance before dispatch. Add a report extension for broader totals or configured
-cost estimates. These controls are independent of diagnostic tracing.
+Use accounting to understand what a session requested and which usage remains
+unknown. Add a budget when you want Ipse to reserve a declared allowance before
+dispatch. Add a report extension when you need captured totals or estimates from
+your own reviewed prices. You can use each independently:
+
+| Need | Control | What it establishes |
+| --- | --- | --- |
+| Inspect work already attempted | `ipse diagnose` and `ipse budget` | Recorded usage, reservations and uncertainty for the original session |
+| Refuse further covered work at a declared allowance | Operator `budget` configuration | Admission against a root-session ledger, including covered child/extension requests |
+| Estimate a monetary amount | A pinned rate card and report extension | An estimate from recorded usage and your configured prices |
+
+None is an account-wide spending limit or a provider invoice. Tools and external
+services can incur costs outside model accounting. Diagnostic tracing is a
+separate optional facility; turning it off does not remove usage or liability.
 
 ## Inspect one session
 
@@ -236,20 +247,67 @@ letter currency. Changing a pinned card requires a fresh session.
 
 ## Reserve configured money
 
-In the budget example, add `rate_card` as a sibling of `money` inside `budget`.
-Use the complete reviewed card above, and this bucket:
+A monetary budget needs both a rate card and a `money` array inside `budget`.
+The report extension's card is a separate selection; enabling a report does not
+install a spending policy. This complete example deliberately names a synthetic
+model and prices. Save it as `/private/path/money-budget.json` and inspect it
+offline before substituting a real route:
 
 ```json
-{"basis":"api_estimate","limit_nanos":1000000000,"reserve_nanos":50000000}
+{
+  "version": 1,
+  "settings": {"provider": "openai", "model": "fixture"},
+  "budget": {
+    "version": 1,
+    "max_requests": 20,
+    "money": [{
+      "basis": "api_estimate",
+      "limit_nanos": 1000000000,
+      "reserve_nanos": 50000000
+    }],
+    "rate_card": {
+      "version": 1,
+      "id": "synthetic-card",
+      "revision": "example-1",
+      "currency": "USD",
+      "source": "operator:synthetic-example",
+      "published_on": "2026-10-18",
+      "rows": [{
+        "id": "fixture-model",
+        "provider": "openai",
+        "billing_mode": "api",
+        "basis": "api_estimate",
+        "model": "fixture",
+        "endpoint_sha256": null,
+        "from": "2026-01-01",
+        "until": "2027-01-01",
+        "input_min": 0,
+        "input_max": null,
+        "input_mode": "flat",
+        "rates": {"input": "2", "output": "10"}
+      }]
+    }
+  }
+}
 ```
 
-This JSON object is one item of the `budget.money` array, not a complete config.
+```sh
+ipse config --config /private/path/money-budget.json --no-project-config
+```
+
+Expect the selected `openai/fixture` route and the admitted policy; this inspection
+makes no request and does not validate those prices or model availability. Before
+real work, choose an available model, update its matching rate-card row and replace
+all synthetic prices, dates and provenance with reviewed values. Keep the policy
+fixed for that session. Use the earlier chat procedure with this configuration,
+then inspect `ipse budget` using the resulting session ID and store.
+
 The bucket reserves 0.05 toward a limit of 1 in the card currency. Nanos have nine
 decimal places and cannot exceed 9007199254740991; the reservation must be positive.
 At most one bucket is allowed per estimate basis. A bucket covers only its matching
-billing mode. Add request/token limits or other explicit bases for other routes.
-Inspect the assembled file with `ipse config --config FILE --no-project-config`
-before starting work. Replace all synthetic identities/rates with reviewed values.
+billing mode; the request limit also bounds the number of covered attempts. Add
+token limits or other explicit bases if the selected routes need them. A missing
+price leaves uncertainty and retains liability rather than proving free work.
 
 ## Read uncertainty and recover
 

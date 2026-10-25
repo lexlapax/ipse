@@ -331,6 +331,15 @@ Use extracted `./ipse` for CLI and `./bin/ipse eval` for trusted evaluation.
 A local build is not publication. Distribution needs matching runtime notices via
 `IPSE_NOTICES_DIR` and the [dependency inventory](dependencies.md).
 
+The packager includes current manuals and renders references to omitted source
+files, examples and historical records as repository links at the recorded build
+commit. Historical records remain unchanged in Git; they are not duplicated in
+the runtime bundle. A missing full commit falls back to the application version's
+tag and is labelled in `docs/bundle-links.json`. The archive is checked after
+creation for required manuals and unresolved local prose links. Fenced example
+text and third-party notice bytes are preserved. Source-build instructions still
+require a checkout and development tools; a link does not bundle those inputs.
+
 The application version comes from `mix.exs`. Build and package scripts force
 compilation with `IPSE_BUILD_COMMIT` set to the current Git revision, unless an
 explicit build value was supplied. A source archive without Git metadata reports
@@ -357,6 +366,10 @@ missing/truncated source, unsafe path or mismatched blob stops the job before
 packaging. Custom-distribution notices remain the packager's responsibility.
 
 Before a tag, run `mix test test/dev/release_test.exs` and the full package proof.
+Complete documentation repairs before selecting that tag: root guides and current
+manuals are shipped files, so a later checkout edit does not repair an existing
+archive. Keep an affected draft unpublished while reconciling its source and
+rebuilding. Never silently move a published tag or replace published assets.
 The tag workflow admits only the `mix.exs` version or a numbered RC and requires
 `docs/releases/vVERSION.md`. It repeats every ordinary CI step on both platforms;
 a guard test catches omissions when CI changes. Asset admission checks exact

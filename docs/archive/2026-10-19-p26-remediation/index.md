@@ -4,7 +4,7 @@ Historical investigation and review record. P26 remediation is complete within
 the explicit-note scope at `25f1d8e`; the acceptance decision below combines
 review and execution evidence. Current user guidance is in the
 [memory manual](../../operator/memory.md), contributor guidance in the
-[memory training chapter](../2026-10-22-before-structural-consolidation/docs/developer/memory.md), and acceptance status in the
+[memory training chapter](../../developer/extension-state.md#use-explicit-memory-as-the-domain-exercise), and acceptance status in the
 [plan](../../plan.md#p26-optional-working-and-long-term-memory).
 
 The [first external review](review-1.md) targets

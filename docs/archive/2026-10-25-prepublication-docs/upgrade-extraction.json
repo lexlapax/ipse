@@ -1,0 +1,1 @@
+{"scope":"Exact new upgrade extraction block; synthetic archive; private home substitution","results":[{"case":"upgrade-extraction-fresh","exit_code":0,"old_launcher_unchanged":true},{"case":"upgrade-extraction-existing","exit_code":1,"old_launcher_unchanged":true},{"case":"upgrade-extraction-bad_archive","exit_code":2,"old_launcher_unchanged":true}]}

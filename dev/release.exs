@@ -49,6 +49,200 @@ defmodule Ipse.Development.Release do
     destination
   end
 
+  def bundle_documentation!(directory, source, version, commit \\ nil) do
+    unless Regex.match?(~r/\A[0-9]+\.[0-9]+\.[0-9]+\z/, version),
+      do: raise("Invalid documentation version")
+
+    directory = Path.expand(directory)
+    source = Path.expand(source)
+    exact_commit = is_binary(commit) and Regex.match?(~r/\A[0-9a-f]{40}\z/, commit)
+    reference = if exact_commit, do: commit, else: "v" <> version
+
+    rewritten =
+      for path <- documentation_paths(directory), reduce: 0 do
+        count ->
+          {bytes, links} =
+            map_document_links(File.read!(path), fn target ->
+              {file, fragment} = document_target(target)
+
+              if external_document_target?(target) or file == "" do
+                target
+              else
+                relative = document_relative!(directory, path, file)
+
+                if File.exists?(Path.join(directory, relative)) do
+                  target
+                else
+                  original = Path.join(source, relative)
+
+                  unless File.exists?(original),
+                    do: raise("Documentation target is missing from the source: " <> relative)
+
+                  kind = if File.dir?(original), do: "tree", else: "blob"
+                  encoded = Enum.map_join(Path.split(relative), "/", &URI.encode/1)
+                  "https://github.com/lexlapax/ipse/#{kind}/#{reference}/#{encoded}" <> fragment
+                end
+              end
+            end)
+
+          File.write!(path, bytes)
+          count + links
+      end
+
+    manifest = %{
+      "version" => 1,
+      "source_ref" => reference,
+      "source_ref_kind" => if(exact_commit, do: "commit", else: "version_tag"),
+      "rewritten_links" => rewritten,
+      "historical_records" => "repository"
+    }
+
+    File.write!(Path.join(directory, "docs/bundle-links.json"), :json.encode(manifest))
+    manifest
+  end
+
+  def verify_documentation_archive!(archive) do
+    {:ok, inventory} = :erl_tar.table(String.to_charlist(archive), [:compressed])
+
+    names =
+      MapSet.new(
+        inventory,
+        &(to_string(&1) |> String.replace_prefix("./", "") |> String.trim_trailing("/"))
+      )
+
+    selected =
+      Enum.filter(
+        inventory,
+        &(manual_document_path?(String.replace_prefix(to_string(&1), "./", "")) or
+            String.replace_prefix(to_string(&1), "./", "") == "docs/bundle-links.json")
+      )
+
+    {:ok, entries} =
+      :erl_tar.extract(String.to_charlist(archive), [:compressed, :memory, {:files, selected}])
+
+    files =
+      Map.new(entries, fn {name, bytes} ->
+        {to_string(name) |> String.replace_prefix("./", ""), bytes}
+      end)
+
+    for path <-
+          ~w(README.md docs/index.md docs/operator/index.md docs/operator/install.md docs/operator/usage.md docs/developer/index.md),
+        do: true = Map.has_key?(files, path)
+
+    %{
+      "version" => 1,
+      "source_ref" => reference,
+      "source_ref_kind" => reference_kind,
+      "historical_records" => "repository"
+    } =
+      :json.decode(Map.fetch!(files, "docs/bundle-links.json"))
+
+    true =
+      case reference_kind do
+        "commit" -> Regex.match?(~r/\A[0-9a-f]{40}\z/, reference)
+        "version_tag" -> Regex.match?(~r/\Av[0-9]+\.[0-9]+\.[0-9]+\z/, reference)
+        _ -> false
+      end
+
+    false = Enum.any?(names, &String.starts_with?(&1, "docs/archive/"))
+
+    documents = for {path, bytes} <- files, String.ends_with?(path, ".md"), do: {path, bytes}
+
+    for {path, bytes} <- documents do
+      map_document_links(bytes, fn target ->
+        {file, _} = document_target(target)
+
+        unless external_document_target?(target) or file == "" do
+          relative = document_relative!("/bundle", Path.join("/bundle", path), file)
+
+          unless MapSet.member?(names, relative),
+            do: raise("Missing bundled documentation target: " <> relative)
+        end
+
+        target
+      end)
+    end
+
+    %{"documents" => length(documents), "source_ref" => reference, "missing_local_targets" => 0}
+  end
+
+  defp documentation_paths(directory) do
+    (Path.wildcard(Path.join(directory, "*.md")) ++
+       Path.wildcard(Path.join(directory, "docs/**/*.md")))
+    |> Enum.sort()
+  end
+
+  defp manual_document_path?(path),
+    do:
+      String.ends_with?(path, ".md") and
+        (Path.dirname(path) == "." or String.starts_with?(path, "docs/"))
+
+  defp external_document_target?(target),
+    do: String.starts_with?(target, "//") or Regex.match?(~r/\A[A-Za-z][A-Za-z0-9+.-]*:/, target)
+
+  defp document_target(target) do
+    case String.split(target, "#", parts: 2) do
+      [file] -> {URI.decode(file), ""}
+      [file, fragment] -> {URI.decode(file), "#" <> fragment}
+    end
+  end
+
+  defp document_relative!(root, document, file) do
+    relative = Path.expand(file, Path.dirname(document)) |> Path.relative_to(root)
+
+    if Path.type(relative) != :relative or relative == ".." or
+         String.starts_with?(relative, "../"),
+       do: raise("Documentation target escapes its root")
+
+    relative
+  end
+
+  defp map_document_links(bytes, rewrite) do
+    {lines, {_, count}} =
+      bytes
+      |> String.split("\n")
+      |> Enum.map_reduce({nil, 0}, fn line, {fence, count} ->
+        marker = Regex.run(~r/^\s{0,3}(`{3,}|~{3,})/, line)
+
+        cond do
+          fence == nil and marker != nil ->
+            [_, marker] = marker
+            {line, {{String.first(marker), String.length(marker)}, count}}
+
+          fence != nil ->
+            {kind, length} = fence
+            close = Regex.run(~r/^\s{0,3}(`{3,}|~{3,})\s*$/, line)
+
+            closed =
+              close != nil and String.first(Enum.at(close, 1)) == kind and
+                String.length(Enum.at(close, 1)) >= length
+
+            {line, {if(closed, do: nil, else: fence), count}}
+
+          true ->
+            matches = Regex.scan(~r/\]\((<[^>\n]+>|[^\s)]+)/, line)
+
+            {rendered, changed} =
+              Enum.reduce(matches, {line, 0}, fn [whole, captured], {text, n} ->
+                target = captured |> String.trim_leading("<") |> String.trim_trailing(">")
+                replacement = rewrite.(target)
+
+                wrapped =
+                  if String.starts_with?(captured, "<"),
+                    do: "<" <> replacement <> ">",
+                    else: replacement
+
+                {String.replace(text, whole, "](" <> wrapped, global: false),
+                 n + if(target == replacement, do: 0, else: 1)}
+              end)
+
+            {rendered, {nil, count + changed}}
+        end
+      end)
+
+    {Enum.join(lines, "\n"), count}
+  end
+
   def verify_assets!(directory, version) do
     unless Regex.match?(~r/\A[0-9]+\.[0-9]+\.[0-9]+\z/, version),
       do: raise("Expected a stable application version for archive admission")

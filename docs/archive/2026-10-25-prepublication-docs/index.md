@@ -1,0 +1,111 @@
+# Prepublication semantic documentation review
+
+Dated 2026-10-25 UTC (2026-10-24 Pacific). The developer required a complete
+repository documentation audit and remediation before publishing v0.1.0, then
+clarified that this means semantic editorial work, not just links or superficial
+changes. Starting source is `16176571780ec43e526549c41be6a660373da2e4`, the accepted
+qualified candidate and already pushed stable tag. Publication remains on hold.
+
+## Review the reader's task and the product contract
+
+The [coverage ledger](coverage.json) inventories 426 starting text documents:
+15 operator chapters, 22 contributor chapters, 22 entry/reference documents and
+367 historical documents. It records each current document's reader task,
+editorial disposition and byte identity. Current documents were reviewed as whole
+documents for prerequisites, sequence, concepts, complete examples, expected
+results, failure recovery, authority, terminology and implementation limits.
+A correct link or passing JSON parser is insufficient for that review.
+
+The user journey is installation/build → credential-free demo → explicit route
+and credential setup → offline diagnosis → first real task and approval → result
+inspection → saved-session recovery. Optional tools, extensions, retained sources,
+accounting and diagnostics branch from that working baseline. The contributor
+journey starts with a complete synthetic Session, traces its owners and invariants,
+then chooses a feature owner and a meaningful source/installed proof. Existing
+chapters that already teach those tasks coherently are retained, rather than
+rewritten simply to enlarge the diff.
+
+Historical material is reviewed as historical material: provenance, supersession,
+current-versus-retained navigation, original verdict and preservation. Old source
+commands, failed experiments, withdrawn verdicts and then-open gates are not
+silently rewritten to describe today's implementation. This does not claim a fresh
+line-by-line revalidation or rerun of every historical experiment. Original report
+bodies and frozen evaluation evidence are unchanged. Archive-index corrections
+identify current guidance without expanding old acceptance. The coverage ledger
+makes that review boundary explicit instead of calling a hash check semantic review.
+
+## Findings and remediation
+
+| Finding | Reader consequence and repair |
+| --- | --- |
+| Existing installation could be overwritten after a failed `mkdir` | The original exact shell block continued and exited zero while replacing a sentinel executable. The revised grouped first-install commands stop on failure and refuse existing directories, dangling links and occupied launcher paths before extraction. |
+| Upgrade/removal instructions depended on implicit state | Add a complete separate next-version extraction procedure, guard launcher switching, explain partial extraction and rollback, and make uninstall choose an explicit version and matching link. Revoke sign-ins before deleting the last executable. |
+| First-use entry points disagreed about account selection | Align README, installation, user index and release notes around demo before account setup; then teach setup, doctor, the first real task and resume. |
+| Money-policy procedure required readers to assemble fragments | Explain accounting, admission policy and estimated reporting separately. Replace assembly instructions with complete synthetic operator JSON, offline inspection, expected output, real-route substitution and uncertainty/recovery. A report's rate card does not install a spending policy. |
+| Artifact compilation was described as inert | Correct the example guide: compilation of trusted source can execute compile-time code. Distinguish inspection/import, trusted compiler preparation, worker startup and subsequent precompiled verification. |
+| Current plan mixed today's gates with long historical narratives | Rewrite its opening around selected scope and next results, link bounded decisions, and keep publication, live-account eligibility and human qualifications distinct. Old text-only accounting scope does not prohibit later embedding support. Gemini's implemented route is not Vertex/OAuth. |
+| Decision-engine research claims exceeded verified sources | Refresh the proposed scope against primary OpenAI Decisions and SystemOne documentation. Decisions is generally available and typed scores/probabilities need not be categorical choices. Qualify the unverified Zev repository/license/protocol selection instead of asserting one. The milestone remains proposed and unimplemented. |
+| Contributor references obscured the actual contract | Name `Ipse.JSON` explicitly, use the supported selected-provider contract rather than an old subset, clarify storage units and write the native CPU allowance as `ceil(timeout_ms / 1000) + 1` seconds. Preserve narrower domain bounds. |
+| Archive navigation called superseded material current | Route embedding, Memory, Research, feed, diagnostic, question and evaluation learning tasks to their current owners. Name earlier review handoffs historical and distinguish retained closure evidence from today's verification procedure. Preserve original bodies and claims. |
+| Extracted manuals linked to files absent from the package | An actual retained Linux archive had 123 unresolved local prose targets, including 89 in current documents. Bundle current manuals; pin omitted source/example/history references to the recorded build commit and label a version-tag fallback. Preserve fenced examples and third-party notices. Admit the actual tar's required manuals and local targets after creation. |
+
+The substantial original installation, resource-control and plan documents are
+preserved under `before/`. [Provenance](manual-provenance.json) binds original
+revision, source hash, archived hash and the historical-banner/prose-link
+adjustment. Legal text and historical report bodies are not editorially rewritten.
+
+Primary research refreshed on 2026-10-25 UTC uses
+[OpenAI Decisions](https://developers.openai.com/api/docs/guides/decisions),
+[SystemOne](https://docs.typesafe.ai/api/system-one),
+[xAI's security FAQ](https://docs.x.ai/developers/faq/security) and
+[its Hermes announcement](https://x.ai/news/grok-hermes).
+These sources establish documented interfaces or precedent, not an Ipse live
+account check or approved xAI client registration.
+
+## Verification and its boundaries
+
+The [verification receipt](verification.json) records commands and observations.
+The initial inventory and per-document hashes are in [coverage](coverage.json).
+Current CLI configuration examples are admitted through the actual bundled CLI
+with isolated application homes; reviewed-artifact templates are explicitly not
+called runnable without their required artifact. Selected pure contributor
+examples and the documented Session/lab exercise use built source and synthetic
+providers. No paid inference, sign-in or provider eligibility check is added.
+
+Exact installation shell blocks are exercised with synthetic archives and private
+home substitution. The old overwrite is retained as a causal negative control;
+first install, occupied paths, symlink switching, failed extraction and guarded
+uninstall are observed directly. This is automated procedure verification, not
+a human upgrade walkthrough or a new macOS installation claim.
+
+Packaging has behavior tests for local/manual versus source/history references,
+exact revision and labelled fallback, fenced examples, actual-tar admission,
+missing manuals/targets, root escape and malformed provenance. A separate scanner
+checks the resulting archive's local prose targets. The full installed-package
+proof exercises real bundled CLI/runtime paths, setup/doctor/demo, helpers/locks,
+extension-free versus selected-extension upgrade behavior, Unicode and the
+synthetic Memory workload. Runtime/host inventories must remain unchanged.
+
+A preparation attempt used an older scratch checkout without a newly linked
+acceptance record and correctly failed source-target validation. Complete public
+documentation was then supplied; the guard was retained. Sandboxed Mix attempts
+were refused for loopback/filesystem-lock `eperm`; permitted runs retain TLS and
+test assertions. An invocation missing the package verifier's required `--input`
+was rejected by its closed grammar and was corrected. None is relabelled as a
+completed proof or a product defect.
+
+## Reconcile the release candidate before publication
+
+The stable-tag [workflow at 1617657](https://github.com/lexlapax/ipse/actions/runs/40169083307)
+belongs to the pre-audit candidate. Documentation and packaging repairs change
+shipped bytes; green checks on that older candidate cannot verify these repairs.
+Keep its artifacts/evidence distinct and unpublished. Moving an already pushed
+tag or deleting/replacing a remote draft requires an explicit decision after the
+repaired candidate is concrete and verified. No tag has been silently moved.
+
+The prior qualified acceptance remains bounded: assisted fresh-account Linux
+walkthrough, no human macOS/upgrade walkthrough, unverified Grok live inference
+and approved-client OAuth, and unverified Gemini foreign-history live acceptance.
+This documentation review neither closes those limits nor creates a fresh
+independent runtime verdict. Publication remains a separate authorization after
+candidate reconciliation, complete platform verification and draft inspection.

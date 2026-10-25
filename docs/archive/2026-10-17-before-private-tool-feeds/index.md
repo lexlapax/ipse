@@ -7,6 +7,6 @@ archive location. It does not describe the current complete feed view selection.
 
 | Original | Snapshot | Current replacement |
 | --- | --- | --- |
-| `docs/developer/extension-feeds.md` | [Metadata-only feeds](extension-feeds.md) | [Feed contract](../2026-10-22-before-structural-consolidation/docs/developer/extension-feeds.md), [tool sources/views](../../developer/lifecycle-events.md#bind-admitted-tool-input-and-result) |
+| `docs/developer/extension-feeds.md` | [Metadata-only feeds](extension-feeds.md) | [Feed contract](../../developer/extension-events.md#declare-and-acknowledge-a-bounded-live-feed), [tool sources/views](../../developer/lifecycle-events.md#bind-admitted-tool-input-and-result) |
 
 Use the [documentation map](../../index.md) for current procedures.

@@ -1,10 +1,9 @@
 # Ipse user manual
 
 Use Ipse to work on local files through a conversation. You choose the model,
-workspace, and permitted effects. Choose and save a route with `ipse setup`, check
-it with `ipse doctor`, then begin in a scratch directory with `ipse demo`;
-it needs no account or model service. [Usage](usage.md) then takes you through a
-real task, approval, questions, delegation, and resume.
+workspace, and permitted effects. First [install a runtime](install.md) or
+[build a checkout](arch-linux.md), then try the scripted demo. It needs no account
+or model service:
 
 ```sh
 ipse demo
@@ -12,6 +11,12 @@ ipse --help
 ```
 
 Expect a scripted file/shell task followed by the available command syntax.
+
+When you are ready for a model, save an explicit route with `ipse setup`, check
+it with `ipse doctor`, and follow [your first real task](usage.md#approve-a-small-task).
+That procedure teaches individual approvals, reusable session permissions and
+output inspection. Continue through usage to save and resume the conversation;
+add optional tools or extensions after this basic path works.
 
 Examples use `ipse` for an installed executable. Use `./bin/ipse` from a source
 checkout or `./ipse` inside an extracted release. Replace `/path/to/...` and

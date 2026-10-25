@@ -15,4 +15,6 @@ milestone acceptance criterion is changed by this archive.
 | [Plan](docs/plan.md) | [Current plan](../../plan.md) |
 
 Use the [current documentation map](../../index.md) for supported guidance and
-the [verification record](../../developer/testing.md) for dated evidence.
+the [preserved verification record](../2026-10-18-before-manual-rewrite/docs/developer/testing.md)
+for dated evidence. [Current testing guidance](../../developer/testing.md) teaches
+how to verify a new change.

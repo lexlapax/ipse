@@ -4,7 +4,8 @@ Ipse is an Apache-2.0-licensed general-purpose local AI harness. Its core stays 
 Elixir/OTP, with Rust for small OS helpers; target projects may use any suitable
 stack. Prefer extensions, tools and inert skills for domain features, ordinary
 OTP for ownership, and reviewed generic core changes for missing host invariants.
-No mandatory workflow framework, service, database or hardcoded external endpoint.
+No mandatory workflow framework, external service or database. Integrations use
+explicit provider/service selections and their documented endpoint policy.
 
 This document owns priorities, scope and acceptance. The
 [documentation map](index.md) owns navigation. The [user manual](operator/index.md)
@@ -18,102 +19,44 @@ are preserved with provenance.
 
 ## Current priorities and status
 
-P0–P22 are complete within the scopes summarized under
-[completed milestones](#completed-milestones-p0p22). P23 is complete within its
-one-shot text/accounting scope. Provider/account combinations have separate
-[verification](archive/2026-10-18-before-manual-rewrite/docs/developer/testing.md#provider-verification-status); these milestones
-do not establish production knowledge quality or unattended self-development.
-
-P24 is complete as a scoped readiness gate for the supervised P25 trial at
-`375e607`. The external architecture critiques retain their original partial
-coverage and withheld verdicts. After the focused report was interrupted, the
-operator approved baseline scanning first without another architecture-review
-round. Security Cloud then reported complete static coverage of 399 paths at
-`8b4f706`: one High, one Medium and three Low findings. Four applicable repairs
-passed local and hosted checks at `bfce156`; the private-journal finding retains
-the documented same-user storage trust limit.
-
-Supervisor follow-through separately repaired private macOS credential transfer,
-optional-consumer retirement and large-launch-frame readiness. The final
-`375e607` source passed local native-inclusive checks and the complete hosted
-Linux/macOS source/native/package/installed matrix. The
-[readiness decision](archive/2026-10-18-before-manual-rewrite/docs/developer/architecture-review-dispositions.md#p24-scoped-readiness-decision)
-combines that evidence and records accepted limits. This is supervisor acceptance
-for a trusted, cooperative workspace under supervision, not a new independent
-post-fix verdict, a second scan, or a security certification. Raw findings remain
-private. No R/S/C/O review sequence or continuous monitoring is scheduled.
-
-P25 is complete as a scoped supervised evaluation at `3307563`. Installed Ipse
-authored a meaningful diagnostic repair; two fresh reports meet every criterion
-at 14/21, matching the checked reference. Held-out cases and live question/resume,
-compaction and cancellation controls pass with declared assistance. The
-[acceptance decision](archive/2026-10-18-before-manual-rewrite/docs/developer/p25-evaluation.md#scoped-acceptance-decision)
-retains initial failures, interventions, resource differences and unconfirmed
-intermittent CI causes. This establishes supervised research/self-development
-within those conditions, not unattended operation or statistical parity.
-
-Final Security Cloud scans have partial coverage and findings, not a clean-scan
-verdict. All applicable findings and subsequent review gaps are reproduced,
-corrected and closed within their documented scopes. The final provider patch
-passes affected source review, bounded same-reviewer follow-up, local native and
-installed checks, and the complete exact-source Linux/macOS matrix at `3307563`.
-Earlier independent architecture omissions and withheld verdicts remain unchanged;
-no security certification or further review/scan loop is claimed. The
-[verification record](archive/2026-10-18-before-manual-rewrite/docs/developer/testing.md#current-evidence-and-next-checks)
-owns exact source, failed attempts, checks and exclusions. The requested license
-transition follows this completed campaign as a separate verified change.
-
-The research subject is optional working/long-term memory, research, graph and
-RAG, including the operator's Zero-Mem inspiration. P26's explicit-note baseline
-is complete at `25f1d8e` after external and whole-milestone internal review,
-reproduced repairs and passing local and exact-source hosted checks. The
-[remediation record](archive/2026-10-19-p26-remediation/index.md) preserves the
-findings, failures and scoped acceptance. P27 research, graph and RAG is complete
-within its optional-package scope. Whole-milestone review repairs, consolidation,
-final-code platform/installed checks, held-out review, publication and acceptance
-audit pass. Hybrid is selected as the qualifying reference configuration;
-media remains deferred to P31. External services remain configurable; no third-party
-engine, database or mandatory backend is selected.
-
-The next sequence turns the verified harness into an operator-facing product:
-P28 operator usability and release readiness, P29 a provider registry with
-OpenRouter and Gemini, and P30 an advisory decision-engine contract. Voice and
-media is renumbered P31 and remains deferred; archived records call it P28.
-P28 and P29 are selected for implementation and auditor handoff preparation.
-P30 remains proposed. Each milestone keeps its own acceptance evidence.
-
-The developer additionally selected a Grok increment before the external audit:
-the [P29 follow-up](#p29-follow-up-grok-api-and-subscription-oauth) covers xAI API
-keys and subscription OAuth as separate routes. Research confirms official
-third-party OAuth precedent; an Ipse client registration is still required.
+The active release work is the requested whole-repository
+[semantic documentation review and remediation](archive/2026-10-25-prepublication-docs/index.md).
+Qualified v0.1.0 readiness was accepted with the recorded
+human/live limits. The stable tag `v0.1.0` was pushed at `1617657`; publication is
+still unauthorized. Documentation fixes that change bundled bytes need a new
+verified candidate and an explicit decision about that already pushed tag.
 
 | Milestone or gate | Current state | Next result |
 | --- | --- | --- |
-| [P23: accounting and budgets](#p23-usage-cost-reporting-and-budget-controls) | Complete within selected scope | Preserve accounting through the trial |
-| [P24: architecture/security readiness](#p24-independent-architecture-validation-and-baseline-security) | Complete for supervised P25 at `375e607`; accepted limits recorded | Refresh affected validation after trial changes |
-| [P25: comparative self-development](#p25-comparative-research-and-supervised-self-development) | Complete within declared supervision/assistance at `3307563`; security findings triaged and corrected scopes verified | Preserve frozen evidence; select a later production increment separately |
-| [P26: memory baseline](#p26-optional-working-and-long-term-memory) | Complete within explicit-note scope at `25f1d8e`; review repairs and local/hosted gates pass | Preserve lifecycle, authority and documented retention limits |
-| [P27: research, graph and RAG](#p27-optional-research-graph-and-rag) | Complete; all acceptance tasks closed within optional-package scope; hybrid qualified and selected | Preserve versioned evidence and explicit configuration; evaluate new workloads independently |
-| [P28: operator usability and release](#p28-operator-usability-and-release-readiness) | Implementation and automated checks pass; accepted fresh-account run is qualified; stable publication open | Final release acceptance, tag and publication |
-| [P29: provider registry, OpenRouter and Gemini](#p29-provider-registry-openrouter-and-gemini) | Original scope complete at `9c5eb6a`; Grok API/OAuth implementation and automated checks pass; live eligibility unverified | Independent re-review of audit repairs; separate xAI API permissions and approved-client OAuth checks |
-| [P30: decision engines](#p30-advisory-decision-engines) | Proposed | Typed closed-answer contract, fixture engines, then OpenAI Decisions and SystemOne-compatible adapters |
-| [P31: voice and media](#p31-voice-and-realtime-media) | Deferred; unimplemented; P28 in archived records | Explicit media contracts and later device/service validation |
-| [Apache-2.0 transition](#license-transition) | Complete; local and hosted `7bb642b` checks pass | Preserve bundled identity/recovery and third-party license boundaries |
+| P0–P22 | Complete within [the scopes below](#completed-milestones-p0p22) | Preserve their invariants when extending the host |
+| [P23: accounting and budgets](#p23-usage-cost-reporting-and-budget-controls) | Complete within one-shot text/accounting scope | Keep later embedding and provider coverage separately identified |
+| [P24: architecture/security readiness](#p24-independent-architecture-validation-and-baseline-security) | Accepted for supervised P25 at `375e607` | Preserve the scoped verdicts and accepted same-user storage limit |
+| [P25: comparative self-development](#p25-comparative-research-and-supervised-self-development) | Accepted within declared supervision/assistance at `3307563` | Preserve frozen inputs, failures and bounded comparison claims |
+| [P26: memory baseline](#p26-optional-working-and-long-term-memory) | Explicit-note scope accepted at `25f1d8e` | Keep automatic memory separately scoped |
+| [P27: research, graph and RAG](#p27-optional-research-graph-and-rag) | Optional-package scope complete; hybrid qualified and selected | Evaluate new workloads independently; retain all seven strategies' original results |
+| [P28: operator usability and release](#p28-operator-usability-and-release-readiness) | Qualified readiness accepted; tag pushed; unpublished; documentation audit in progress | Finish semantic remediation, reconcile the release candidate, inspect rebuilt draft assets, then obtain publication approval |
+| [P29: provider registry, OpenRouter and Gemini](#p29-provider-registry-openrouter-and-gemini) | Original scope and repairs accepted for qualified readiness; added Grok routes pass automated checks | Preserve unverified Grok API/OAuth eligibility and Gemini foreign-history live acceptance |
+| [P30: decision engines](#p30-advisory-decision-engines) | Proposed; unimplemented | Select a typed advisory contract and verify primary engine interfaces before implementation |
+| [P31: voice and media](#p31-voice-and-realtime-media) | Deferred; unimplemented | Select media contracts and device/service validation in a later increment |
+| [Apache-2.0 transition](#license-transition) | Complete at `7bb642b` | Preserve runtime, dependency and extension license boundaries |
 
-The requested P22–P25 campaign and separate Apache-2.0 transition are complete
-within their documented scopes. P26 remediation and P27 are complete, and
-P31 remains deferred. Preserve P25's frozen
-inputs, runners, source/review/scan identities, scores and failed attempts; newer
-documentation does not rescan code or expand an earlier verdict. P27 follows the
-researched proposal; further memory automation remains separately scoped. Keep P31
-deferred. No further broad architecture-review loop or Cloud scan is scheduled.
+Acceptance is bounded by the evidence for each milestone. Internal source review,
+external critique, static scanning, fixture execution, hosted platform checks and
+live accounts establish different claims. P24/P25 acceptance is supervised use in
+a trusted, cooperative workspace; partial security scans and withheld independent
+verdicts remain partial. P27's versioned held-out comparison is not a universal
+engine ranking. No unattended operation or security certification is claimed.
+No further broad architecture-review loop or security scan is scheduled.
 
-The [register](archive/2026-10-18-before-manual-rewrite/docs/developer/architecture-review-dispositions.md) owns dispositions,
-the [internal audit](archive/2026-10-18-before-manual-rewrite/docs/developer/architecture-self-audit.md) owns supervisor methods,
-and [testing](archive/2026-10-18-before-manual-rewrite/docs/developer/testing.md#current-evidence-and-next-checks) owns dated
-commands, receipts, failures and exclusions. Internal reads, external static
-coverage and actual execution support different claims. Earlier records retain
-their contemporary numbering and verdicts.
+The [architecture dispositions](archive/2026-10-18-before-manual-rewrite/docs/developer/architecture-review-dispositions.md),
+[P25 acceptance](archive/2026-10-18-before-manual-rewrite/docs/developer/p25-evaluation.md#scoped-acceptance-decision),
+[P26 remediation](archive/2026-10-19-p26-remediation/index.md),
+[P27 comparison](archive/2026-10-23-p27-heldout-comparison/index.md) and
+[P28/P29 qualified acceptance](archive/2026-10-24-p28-p29-review2/acceptance.md)
+preserve the decisions and original limitations. Historical plans retain their
+contemporary numbering: archived media proposals called that deferred work P28;
+the current plan calls it P31. The developer-selected Grok follow-up extends P29
+and keeps API billing separate from registered-client subscription OAuth.
 
 ## Completion rules
 
@@ -154,8 +97,8 @@ request/attempt/provider/billing/model facts separately from diagnostics. The
 | P23E2 | Optional atomic session-tree reservations for main/summary/children, conservative settlement, protected inspection and historical-source validation; local and hosted Linux/macOS source/package/installed checks passed |
 | P23F | Explicit one-shot `host.model` text requests, profile-bound approvals/receipts, canonical usage and shared reservations; source/native/package and both independent artifact proofs passed locally and in hosted Linux/macOS checks |
 
-[Provider output ceilings](developer/configuration.md) apply only to supported
-API/Ollama requests. ChatGPT subscription refuses the unsupported setting; no
+[Provider output ceilings](developer/configuration.md) follow the selected route's
+capability contract. ChatGPT subscription refuses the unsupported setting; no
 output-token ceiling is invented for that public interface. Verification scope
 and limitations are recorded in
 [actual evidence](archive/2026-10-18-before-manual-rewrite/docs/developer/testing.md#current-evidence-and-next-checks).
@@ -174,8 +117,9 @@ existing seven-artifact compatibility lab passed against unchanged extracted
 packages. Acceptance includes real parallel child inference, nested approvals,
 owner-loss cancellation, refusal/overdraw, source-bound cached cost recovery and
 inert resume. Exact revisions, archive digests and terminal hosted conclusions
-are recorded in testing. One-shot text is the selected operation; embeddings/audio
-remain unsupported pending separate contracts. In-flight input/money estimation
+are recorded in testing. P23 delivered one-shot text; P27 subsequently added the
+separate native embedding contract. Audio remains unsupported pending separate
+contracts. In-flight input/money estimation
 and arbitrary trusted out-of-band calls cannot establish an invoice ceiling.
 
 ## P24: independent architecture validation and baseline security
@@ -474,8 +418,8 @@ admission and resource completion retained by Session. A source split must not
 introduce another conversation owner.
 
 The [current consolidation review](archive/2026-10-22-p27-structural-review/index.md)
-records the independent findings and their causal checks. Current manuals now have
-14 operator and 22 developer chapters. Corrected-source hosted Ubuntu/macOS,
+records the independent findings and their causal checks. At that consolidation,
+the manuals had 14 operator and 22 developer chapters. Corrected-source hosted Ubuntu/macOS,
 native-inclusive Linux, package and installed-package checks pass at `b81f68f`.
 All four source/installed CPU/GPU measured controls pass. Their
 [final receipts](archive/2026-10-23-p27-heldout-comparison/final-platforms.json)
@@ -498,7 +442,7 @@ platforms, including all installed proofs and the final experimental macOS
 verifier. Its [receipt](archive/2026-10-22-p27-structural-review/hosted-c9a2d80.json)
 records exact source and exclusions. The subsequent verification-record update
 changes documentation only; actual-model quality and final Linux native-inclusive
-checks remain separate gates.
+checks were separate gates at that stage, with later acceptance recorded above.
 
 The consolidation covers runtime code, extension packages, tests, developer
 tooling, examples, shipped resources and both current manuals. The structural
@@ -517,7 +461,7 @@ binds the canonical command correction, actual fresh-VM regression, macOS and
 native-enabled Linux suites, supported toolchain checks, source and installed
 synthetic comparisons, packaging and hosted CI to the corrected runtime. Those
 checks establish implementation and execution behavior for that earlier source.
-They do not verify the current corrective increment. Its
+They do not verify the later corrective increment. Its
 [corrective record](archive/2026-10-22-p27-private-comparison/index.md#verify-the-corrective-increment)
 retains passing macOS and native-enabled Linux suites, the supported toolchain,
 package/installed checks, source comparisons and exposed context diagnostic.
@@ -604,13 +548,13 @@ host rather than a required product configuration.
 
 The [developer evaluation manual](developer/knowledge-evaluation.md) owns the
 runnable declaration, sealing, execution, audit, independent-review and scoring
-procedures. Final acceptance still requires the complete frozen audit, independent
+procedures. The acceptance rule requires the complete frozen audit, independent
 semantic judgments, all-strategy publication, an individual qualifying strategy,
 the engine decision and whole-document editorial integration.
 
 ## P28: operator usability and release readiness
 
-**Release readiness accepted by the developer with documented qualifications on 2026-10-24. Stable tagging and publication remain open.**
+**Release readiness accepted with documented qualifications on 2026-10-24. Stable tag `v0.1.0` points to `1617657`; draft verification and the required documentation audit are in progress. Publication remains unauthorized.**
 P0–P27 established correctness, recovery and evidence for a
 supervised developer. This milestone makes the same harness usable by an operator
 who did not build it, without weakening approvals, explicit provider selection or
@@ -665,7 +609,12 @@ The developer subsequently [accepted the repaired candidate with its documented
 qualifications](archive/2026-10-24-p28-p29-review2/acceptance.md), including the
 assisted walkthrough and missing human macOS/upgrade checks. This is a qualified
 readiness decision, not an unassisted pass or a fresh independent verdict.
-Stable tagging and publication remain separate, unauthorized release actions.
+The developer subsequently authorized stable tagging and draft preparation.
+Tag `v0.1.0` now points to `1617657`; its
+[workflow](https://github.com/lexlapax/ipse/actions/runs/40169083307) is in progress.
+The additional whole-repository documentation audit must finish and its shipped
+files must be reconciled before publication. Publication remains a separate,
+unauthorized action.
 
 Scope:
 
@@ -741,12 +690,13 @@ remains documented, without weakening privacy. The
 [release-readiness handoff](archive/2026-10-24-p28-p29-review2/release-readiness.md)
 prepares v0.1.0. The developer's [qualified acceptance](archive/2026-10-24-p28-p29-review2/acceptance.md)
 closes the readiness decision without a fresh independent verdict or new live
-provider checks; stable tagging and publication remain separate.
+provider checks. Stable tagging/draft preparation is now authorized; publication
+remains separate and awaits documentation remediation and draft inspection.
 The [P29 implementation brief](archive/2026-10-23-p28-p29-design/p29.md) breaks
 this scope into ordered work packages with files, tests and decisions.
 The developer accepted its recommended decisions on 2026-10-23. Gemini, then
-OpenRouter, follow the existing four providers in the documented priority order;
-[AGENTS.md](../AGENTS.md#product-and-scope) changes when those providers land.
+OpenRouter, follow the existing four providers in the implemented priority order
+recorded in [AGENTS.md](../AGENTS.md#product-and-scope).
 An `openai_compatible` provider serves loopback servers only, with local billing.
 OpenRouter profiles send `data_collection: "deny"` unless they explicitly allow
 collection.
@@ -765,17 +715,17 @@ collection.
    mismatch, so no provider or model changes silently.
 3. **Native Gemini adapter.** Use the Gemini API rather than its OpenAI-compatible
    endpoint, so thought signatures and function-call state are preserved as
-   provider continuation data. AI Studio API keys and Vertex credentials are
-   distinct explicit choices, as are free and paid billing. Gemini embeddings may
+   provider continuation data. This increment supports AI Studio API keys;
+   Vertex credentials and OAuth are unsupported. Billing is recorded as API,
+   without inferring the account's free/paid tier. Gemini embeddings may
    follow under the existing versioned embedding contract with its own evaluation.
 
 Acceptance: registry equivalence tests over existing fixtures and saved sessions;
 loopback fixture servers for streaming, tool calls, truncation, errors, usage and
 continuation round trips for each new adapter; budget and cost reporting with
 unknown prices kept unpriced; destination and egress facts; and separately
-recorded opt-in live account checks. Whether OpenRouter and Gemini join the
-provider priority order in [AGENTS.md](../AGENTS.md) is a developer decision
-recorded before release.
+recorded opt-in live account checks. The accepted implementation includes
+OpenRouter and Gemini in the provider priority order in [AGENTS.md](../AGENTS.md).
 
 ### P29 follow-up: Grok API and subscription OAuth
 
@@ -837,20 +787,27 @@ any remaining registration or live-account limits explicitly.
 
 ## P30: advisory decision engines
 
-**Proposed.** Decision engines answer typed questions from closed answer sets
-instead of generating text. Candidates are OpenAI's Decisions API, a beta
-`POST /v1/decisions` endpoint, and the SystemOne wire format used by TypeSafe's
-hosted Jev service and by Zev, an independent MIT-licensed local engine that serves
-both formats on loopback. Public details are recent and partly secondary; verify
-current official documentation before adapter work.
+**Proposed; no decision operation is implemented.** Candidate services are
+[OpenAI Decisions](https://developers.openai.com/api/docs/guides/decisions) at
+`POST /v1/decisions` and TypeSafe's
+[System One API](https://docs.typesafe.ai/api/system-one) for Jev. OpenAI's current
+official guide describes general availability, superseding the earlier beta
+description. Both return typed choices, scores or probabilities rather than
+generated prose. Zev remains a local-engine candidate; its exact source, license
+and protocol compatibility need primary-source verification before selection.
+Recheck external contracts before adapter work; this proposal installs no engine
+or SDK and establishes no live account access.
 
 This is a separate operation, not a chat provider, following the pattern of the
 P27 embedding contract:
 
 1. A versioned request of bounded context plus questions (choice, score and
-   yes/no predicate), each with a closed answer set, and a validated response of
-   one in-set answer per question, an explicit uncertain/insufficient outcome or
-   a refusal. Out-of-set or partial responses refuse the whole decision.
+   yes/no predicate), with explicit option sets, ordered score levels or a
+   probability contract. Validate one typed answer per question: an allowed
+   choice, a finite in-range score/probability, an explicit uncertain/insufficient
+   outcome or a refusal. Scores may fall between rubric levels; probabilities
+   are not boolean permissions. Invalid, missing or partial answers refuse the
+   whole decision.
 2. Adapters for OpenAI Decisions, hosted SystemOne and loopback SystemOne,
    each with operator-configured endpoint, credential, destination facts,
    usage/cost accounting and budgets. There is no fallback between engines or to
@@ -1068,7 +1025,9 @@ production knowledge backend. See [research contract](developer/knowledge-extens
 
 Complete: bounded versioned JSON/provenance and trusted scoped selections;
 project > Ipse user > shared operator `~/.agents/skills` > bundled precedence.
-Project text cannot enable executable extensions, change billing or grant effects.
+Instructions and skills cannot enable executable extensions, change billing or
+grant effects. Explicitly trusted project configuration may select a provider and
+billing route under the configuration rules; that trust grants no effect approval.
 See [operator configuration](operator/configuration.md),
 [developer contract](developer/configuration.md) and
 [integrated evidence](archive/2026-10-18-before-manual-rewrite/docs/developer/testing.md#five-stage-integrated-verification-2026-10-16).

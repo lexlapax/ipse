@@ -2,7 +2,7 @@
 
 Historical verification record only. This records the generic embedding increment
 after `b55f39c`, not completion of P27 or a model-quality evaluation. Current
-procedures are the [embedding user manual](../2026-10-22-before-structural-consolidation/docs/operator/embeddings.md) and
+procedures are the [embedding user manual](../../operator/extensions.md#generate-vectors-explicitly) and
 [extension training chapter](../../developer/extension-effects.md#generate-and-reconstruct-embeddings).
 The [plan](../../plan.md#p27-optional-research-graph-and-rag) owns current status.
 The source commit containing this record owns the runtime, fixtures and manuals.
