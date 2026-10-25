@@ -139,6 +139,32 @@ defmodule Ipse.Development.ReleaseTest do
     assert_raise RuntimeError, ~r/notes/, fn -> Release.validate_tag!("v1.2.3", "1.2.3", root) end
   end
 
+  test "checksum admission refuses linked, missing, empty and non-file archives", %{root: root} do
+    archive = Path.join(root, "fixture.tar.gz")
+    target = Path.join(root, "external")
+    File.write!(target, "synthetic bytes")
+    File.ln_s!(target, archive)
+    Release.write_checksum!(archive)
+
+    assert_raise RuntimeError, ~r/non-regular/, fn -> Release.verify_checksum!(archive) end
+    assert File.read!(target) == "synthetic bytes"
+    File.rm!(archive)
+    assert_raise RuntimeError, fn -> Release.verify_checksum!(archive) end
+    File.write!(archive, "")
+    Release.write_checksum!(archive)
+    assert_raise RuntimeError, ~r/empty/, fn -> Release.verify_checksum!(archive) end
+    File.rm!(archive)
+    File.mkdir!(archive)
+    assert_raise RuntimeError, ~r/non-regular/, fn -> Release.verify_checksum!(archive) end
+    File.rmdir!(archive)
+    File.write!(archive, "regular bytes")
+    Release.write_checksum!(archive)
+    sidecar = archive <> ".sha256"
+    File.rename!(sidecar, target)
+    File.ln_s!(target, sidecar)
+    assert_raise RuntimeError, ~r/non-regular/, fn -> Release.verify_checksum!(archive) end
+  end
+
   test "release asset set requires both platforms and refuses extras or damaged content", %{
     root: root
   } do

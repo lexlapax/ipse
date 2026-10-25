@@ -18,14 +18,15 @@ defmodule Ipse.Development.Release do
   end
 
   def verify_checksum!(archive) do
-    expected = checksum(archive) <> "  " <> Path.basename(archive) <> "\n"
-
-    with {:ok, %{type: :regular, size: size}} <- File.lstat(archive <> ".sha256"),
+    with {:ok, %{type: :regular, size: archive_size}} <- File.lstat(archive),
+         true <- archive_size > 0,
+         {:ok, %{type: :regular, size: size}} <- File.lstat(archive <> ".sha256"),
          true <- size <= 512,
-         {:ok, ^expected} <- File.read(archive <> ".sha256") do
+         {:ok, actual} <- File.read(archive <> ".sha256"),
+         true <- actual == checksum(archive) <> "  " <> Path.basename(archive) <> "\n" do
       :ok
     else
-      _ -> raise "Missing, malformed or mismatching archive SHA256 sidecar"
+      _ -> raise "Missing, non-regular, empty archive or malformed or mismatching SHA256 sidecar"
     end
   end
 

@@ -47,6 +47,12 @@ both hosted matrix jobs fail formatting in one new release-policy control, befor
 the full suite runs; the draft job is skipped. The correction changes whitespace
 only. Those failed gates are retained, and baseline verification restarts at the
 subsequent revision.
+
+The requested [author adversarial review](self-review.md) reproduces and fixes two
+further verification gaps: linked/empty/non-file archives and incomplete configured
+doctor findings. Its [receipt](self-review.json) records 43 passing focused tests
+and all twelve installed checks using the strengthened verifier. These additional
+changes affect developer verification only; runtime and native source stay fixed.
 No tag/release creation, publication, new browser authorization or live inference
 is part of this correction. Assisted Linux qualifications, missing human macOS/
 upgrade walkthroughs, stable publication, Grok live access/registration and Gemini

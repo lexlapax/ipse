@@ -315,7 +315,11 @@ workspaces, locks/helpers, bundled behavior, and Memory. It borrows no checkout
 priv directory. Its offline doctor check verifies stable findings and no auth or
 session-directory creation with a demo route. A separate fresh home follows setup
 preview, private save, configured doctor and demo; preview must leave no directory,
-and saved provider provenance must identify the operator file. CLI checks have declared utilities
+and saved provider provenance must identify the operator file. Every doctor route
+must return the complete ordered version-1 check set. Missing, duplicate or
+reordered findings refuse verification, as do unexplained skips and unexpected
+warnings; only the documented experimental native-policy warning is admitted on
+macOS. CLI checks have declared utilities
 without Erlang/development commands; the precompiled harness adds bundled Erlang.
 Keep a finite outer job budget.
 Use extracted `./ipse` for CLI and `./bin/ipse eval` for trusted evaluation.
@@ -352,7 +356,9 @@ The tag workflow admits only the `mix.exs` version or a numbered RC and requires
 `docs/releases/vVERSION.md`. It repeats every ordinary CI step on both platforms;
 a guard test catches omissions when CI changes. Asset admission checks exact
 supported basenames and the `mix.exs` version, both platform archives and their
-checksum sidecars. The draft body renders the notes' versioned links against the
+checksum sidecars. Archives must be nonempty regular files, and sidecars must be
+regular files; symbolic links refuse before hashing or upload. The draft body
+renders the notes' versioned links against the
 actual stable or RC tag, so an RC does not depend on a future stable tag.
 The approved runner `gh` creates
 an unpublished draft only after both matrix jobs pass and their retained archives

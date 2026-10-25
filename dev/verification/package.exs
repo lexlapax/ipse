@@ -2,6 +2,8 @@ defmodule Ipse.Development.Verification.Package do
   @moduledoc "Installed package behavior assertions, using the shared verification runtime."
   alias Ipse.Development.Verification.{Runtime, Scenarios}
 
+  @doctor_checks ~w(runtime.build home.layout config.files config.provider credentials.selected sandbox.native mcp.config extensions.selection sessions.store provider.reachability)
+
   @job_timeout_note "Run this verifier under a bounded CI job timeout; System.cmd/3 has no per-process timeout option."
 
   defp verify_memory!(runtime, corpus) do
@@ -77,11 +79,6 @@ defmodule Ipse.Development.Verification.Package do
     1 = report["version"]
     ^version = report["build"]["version"]
 
-    expected =
-      ~w(runtime.build home.layout config.files config.provider credentials.selected sandbox.native mcp.config extensions.selection sessions.store provider.reachability)
-
-    ^expected = Enum.map(report["checks"], & &1["id"])
-
     :ok = validate_doctor!(report)
 
     %{"status" => "skip"} = Enum.find(report["checks"], &(&1["id"] == "provider.reachability"))
@@ -95,6 +92,9 @@ defmodule Ipse.Development.Verification.Package do
 
   @doc "Admit installed doctor findings; only the documented macOS native warning is expected."
   def validate_doctor!(report, platform \\ :os.type()) do
+    true = report["version"] == 1
+    true = Enum.map(report["checks"], & &1["id"]) == @doctor_checks
+
     for row <- report["checks"] do
       expected_experimental_warning =
         platform == {:unix, :darwin} and row["id"] == "sandbox.native" and

@@ -10,34 +10,57 @@ defmodule Ipse.Development.VerificationTest do
   test "installed diagnosis rejects unexpected warnings for bare and configured routes" do
     validate = &Ipse.Development.Verification.Package.validate_doctor!/2
 
+    report = %{
+      "version" => 1,
+      "checks" =>
+        Enum.map(
+          ~w(runtime.build home.layout config.files config.provider credentials.selected sandbox.native mcp.config extensions.selection sessions.store provider.reachability),
+          &%{"id" => &1, "status" => "ok"}
+        )
+    }
+
+    replace = fn id, row ->
+      Map.update!(report, "checks", fn checks ->
+        Enum.map(checks, fn check ->
+          if check["id"] == id, do: Map.merge(check, row), else: check
+        end)
+      end)
+    end
+
     for platform <- [{:unix, :linux}, {:unix, :darwin}] do
-      assert :ok =
-               validate.(%{"checks" => [%{"id" => "runtime.build", "status" => "ok"}]}, platform)
+      assert :ok = validate.(report, platform)
 
       for id <- ["config.files", "config.provider", "credentials.selected", "sandbox.native"] do
         assert_raise MatchError, fn ->
           validate.(
-            %{"checks" => [%{"id" => id, "status" => "warn", "detail" => "unexpected warning"}]},
+            replace.(id, %{"status" => "warn", "detail" => "unexpected warning"}),
             platform
           )
         end
       end
     end
 
-    report = %{
-      "checks" => [
-        %{"id" => "sandbox.native", "status" => "warn", "detail" => "macOS is experimental."}
-      ]
-    }
+    warning =
+      replace.("sandbox.native", %{"status" => "warn", "detail" => "macOS is experimental."})
 
-    assert :ok = validate.(report, {:unix, :darwin})
-    assert_raise MatchError, fn -> validate.(report, {:unix, :linux}) end
+    assert :ok = validate.(warning, {:unix, :darwin})
+    assert_raise MatchError, fn -> validate.(warning, {:unix, :linux}) end
 
     assert_raise MatchError, fn ->
       validate.(
-        %{"checks" => [%{"id" => "provider.reachability", "status" => "skip", "summary" => ""}]},
+        replace.("provider.reachability", %{"status" => "skip", "summary" => ""}),
         {:unix, :linux}
       )
+    end
+
+    for incomplete <- [
+          %{"version" => 1, "checks" => []},
+          Map.put(report, "version", 2),
+          Map.update!(report, "checks", &tl/1),
+          Map.update!(report, "checks", &(&1 ++ [hd(&1)])),
+          Map.update!(report, "checks", &Enum.reverse/1)
+        ] do
+      assert_raise MatchError, fn -> validate.(incomplete, {:unix, :linux}) end
     end
 
     source = File.read!("dev/verification/package.exs")
