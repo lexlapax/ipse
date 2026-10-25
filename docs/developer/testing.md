@@ -299,7 +299,8 @@ mix run examples/session.exs
 ./bin/ipse --help
 ```
 
-The checker validates local targets/anchors, JSON examples, focused-test file paths
+The checker rejects absolute filesystem links and targets outside the repository,
+then validates local targets/anchors, JSON examples, focused-test file paths
 in current manuals, audience/history rules, and archive hashes. It does not execute
 Markdown or judge usability. Review
 prerequisites/placeholders/expected results/recovery. Docs-only changes need those

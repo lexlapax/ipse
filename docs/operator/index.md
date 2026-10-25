@@ -23,6 +23,11 @@ checkout or `./ipse` inside an extracted release. Replace `/path/to/...` and
 uppercase ID/digest placeholders with your actual values. Keep private
 configuration, credentials, journals, and exports outside version control.
 
+An example block with several `/ext` commands describes separate operations.
+Enter one command, handle its approvals or questions, and wait for `Finished.`
+before entering the next. Extension commands submitted during another operation
+are refused as busy; they are not queued for later execution.
+
 ## Choose a task
 
 | Task | Chapter |

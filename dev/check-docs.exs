@@ -25,6 +25,12 @@ defmodule Ipse.DocsCheck do
 
             error =
               cond do
+                file != "" and Path.type(URI.decode(file)) == :absolute ->
+                  "absolute filesystem target #{target}; use a repository-relative link"
+
+                Path.type(Path.relative_to(resolved, File.cwd!())) != :relative ->
+                  "target escapes the repository: #{target}"
+
                 not File.exists?(resolved) ->
                   "missing target #{target}"
 

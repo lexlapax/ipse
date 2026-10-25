@@ -1,4 +1,4 @@
-Historical snapshot from `16176571780ec43e526549c41be6a660373da2e4`, retained before the 2026-10-25 UTC semantic editorial audit. Original claims and fenced examples are preserved; prose links resolve against the original revision. Use the [current document](/home/lexlapax/projects/lexlapax/ipse/docs/operator/resources.md) for supported guidance.
+Historical snapshot from `16176571780ec43e526549c41be6a660373da2e4`, retained before the 2026-10-25 UTC semantic editorial audit. Original claims and fenced examples are preserved; prose links resolve against the original revision. Use the [current document](../../../../../operator/resources.md) for supported guidance.
 
 # Inspect usage and limit model work
 

@@ -59,7 +59,9 @@ Review that grant with the artifact's other capabilities.
 
 ## Store text and retrieve its citation
 
-In chat, enter:
+In chat, run one command at a time. Finish the `put` and all its approvals, wait
+for `Finished.`, then submit the query. Follow that sequence for later command
+blocks too; pasting several `/ext` lines can refuse the later commands as busy:
 
 ```text
 /ext ext__corpus__source {"store":"notes","action":"put","args":{"source_id":"manual:locks","generation":1,"expected_revision":0,"title":"Session locks","text":"Lock files remain on disk. Releasing the OS lock preserves inode identity.","uri":"local:manual-locks","observed_at_ms":1700000000000,"event_at_ms":null,"expires_at_ms":null}}

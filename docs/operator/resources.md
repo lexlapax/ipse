@@ -136,6 +136,8 @@ In chat, enter `/ext ext__costs__summary {}`. Expect an own-session report with
 no priced real usage. The command makes no model request. To report actual work,
 choose your normal provider explicitly, complete a task, then invoke the command.
 No report automatically fetches prices or starts inference.
+Run later `/ext` commands individually and wait for `Finished.` between them;
+they are refused as busy if another operation is still active.
 
 | Artifact | Command for instance `costs` | Coverage |
 | --- | --- | --- |

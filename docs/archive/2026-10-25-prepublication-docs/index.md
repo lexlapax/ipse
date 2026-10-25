@@ -1,6 +1,7 @@
 # Prepublication semantic documentation review
 
-Dated 2026-10-25 UTC (2026-10-24 Pacific). The developer required a complete
+Dated 2026-10-25 UTC (work began 2026-10-24 Pacific and continued on October 25).
+The developer required a complete
 repository documentation audit and remediation before publishing v0.1.0, then
 clarified that this means semantic editorial work, not just links or superficial
 changes. Starting source is `16176571780ec43e526549c41be6a660373da2e4`, the accepted
@@ -41,6 +42,7 @@ makes that review boundary explicit instead of calling a hash check semantic rev
 | Existing installation could be overwritten after a failed `mkdir` | The original exact shell block continued and exited zero while replacing a sentinel executable. The revised grouped first-install commands stop on failure and refuse existing directories, dangling links and occupied launcher paths before extraction. |
 | Upgrade/removal instructions depended on implicit state | Add a complete separate next-version extraction procedure, guard launcher switching, explain partial extraction and rollback, and make uninstall choose an explicit version and matching link. Revoke sign-ins before deleting the last executable. |
 | First-use entry points disagreed about account selection | Align README, installation, user index and release notes around demo before account setup; then teach setup, doctor, the first real task and resume. |
+| Multi-command extension examples concealed asynchronous sequencing | State explicitly that each `/ext` operation must finish, including approvals, before the next. Corpus, Graph, Memory and reporting examples otherwise invite a multi-line paste whose later commands are refused as busy rather than queued. |
 | Money-policy procedure required readers to assemble fragments | Explain accounting, admission policy and estimated reporting separately. Replace assembly instructions with complete synthetic operator JSON, offline inspection, expected output, real-route substitution and uncertainty/recovery. A report's rate card does not install a spending policy. |
 | Artifact compilation was described as inert | Correct the example guide: compilation of trusted source can execute compile-time code. Distinguish inspection/import, trusted compiler preparation, worker startup and subsequent precompiled verification. |
 | Current plan mixed today's gates with long historical narratives | Rewrite its opening around selected scope and next results, link bounded decisions, and keep publication, live-account eligibility and human qualifications distinct. Old text-only accounting scope does not prohibit later embedding support. Gemini's implemented route is not Vertex/OAuth. |
@@ -93,6 +95,26 @@ were refused for loopback/filesystem-lock `eperm`; permitted runs retain TLS and
 test assertions. An invocation missing the package verifier's required `--input`
 was rejected by its closed grammar and was corrected. None is relabelled as a
 completed proof or a product defect.
+
+The [real-terminal sequencing exercise](extension-command-sequencing.json)
+uses the exact Corpus build/import and first source/query commands. Pasting both
+commands before the first approval reproduced the busy refusal. Five fresh
+individual State-write approvals completed the stored source; a new explicit
+query then returned complete coverage and the exact 74-byte quotation. The
+synthetic journal retained two completed invocations and no model request.
+This is an author exercise, not a new human walkthrough.
+
+The first committed remediation at `6d7aa47` passed hosted compilation and format
+but failed documentation checking on both platforms in
+[run 40170977432](https://github.com/lexlapax/ipse/actions/runs/40170977432).
+Two new snapshot-banner links accidentally named the author's absolute checkout;
+the local checker accepted them because that checkout existed. The
+[failed metadata](initial-hosted.json) remains retained. The correction uses
+portable relative links and retains prior snapshot hashes. The checker now
+refuses absolute filesystem links and repository escapes. A separate
+[five-case portability proof](documentation-portability.json) observes the old
+false pass, both refusals and valid relative/HTTPS links in an independent tiny
+repository. No source-test or package success is claimed for that failed run.
 
 ## Reconcile the release candidate before publication
 

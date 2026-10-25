@@ -142,7 +142,9 @@ IPSE_HOME="$IPSE_GRAPH_HOME" ./bin/ipse chat --provider demo \
 ```
 
 The demo main provider avoids model credentials. The following `/ext` commands
-invoke Graph directly. Do not enter an ordinary conversational task if your goal
+invoke Graph directly. Enter one command, finish its approvals and wait for
+`Finished.` before entering the next; a later `/ext` sent while work is active
+is refused as busy. Do not enter an ordinary conversational task if your goal
 is to exercise only these explicit commands.
 
 In chat, enter:

@@ -88,7 +88,9 @@ Long instance names can exhaust catalog bytes before its entry count.
 
 ## Remember and inspect a note
 
-In the configured chat, enter:
+In the configured chat, run these commands individually. After a command starts
+work, handle its approvals and wait for `Finished.` before entering the next.
+Pasting all the `/ext` lines together can refuse later commands as busy:
 
 ```text
 /ext
