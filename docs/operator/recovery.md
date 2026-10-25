@@ -233,6 +233,7 @@ permitted terminal. Keep TLS verification and test assertions intact.
 | Stream/body/output bound | Inspect usage and effects before a fresh task; none of that incomplete response's tools execute |
 
 Stream refusals retain safe provider error codes and identifier-shaped messages.
+Numeric HTTP error codes such as `429` are retained as well.
 Arbitrary provider prose is withheld. Preserve any shown code with the request
 identity when reporting a failure; inspect recorded usage before retrying.
 

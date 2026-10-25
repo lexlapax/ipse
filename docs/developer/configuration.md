@@ -316,10 +316,14 @@ Transport accepts 8 MiB or a smaller selected `max_response_bytes`, with at most
 131072 data chunks. Error bodies retain only a bounded diagnostic prefix.
 `Transport.safe/2` permits diagnostic identifiers, withholding arbitrary upstream
 prose, control bytes, oversized values and secret-like prefixes. Chat Completions
-applies it to mid-stream error messages before removing the selected API key.
+applies it to mid-stream error messages and codes before removing the selected
+API key. Numeric HTTP error codes in 100..599 become decimal identifiers;
+out-of-range integers, floats and structured values are withheld.
 Host errors should use mapped reasons or fixed operator prose; never inspect an
 arbitrary reason into CLI text. `CLI.Errors` supplies recovery routes and refuses
-binary term/path/control dumps. Explicit configuration inventories still show
+binary term/control dumps. Slash commands, endpoint paths and service labels
+remain readable; error producers own fixed causes without private paths.
+Explicit configuration inventories still show
 the source paths the operator needs to inspect.
 Stream scans new line bytes, retains fragments, and joins once at a delimiter.
 Field accumulators materialize completed text/arguments/native data once. Avoid

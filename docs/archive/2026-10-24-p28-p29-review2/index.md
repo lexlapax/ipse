@@ -53,6 +53,10 @@ further verification gaps: linked/empty/non-file archives and incomplete configu
 doctor findings. Its [receipt](self-review.json) records 43 passing focused tests
 and all twelve installed checks using the strengthened verifier. These additional
 changes affect developer verification only; runtime and native source stay fixed.
+A subsequent wire-format control found numeric OpenRouter stream codes were still
+lost. The [parser receipt](numeric-code-control.json) shows `429` withheld before
+and retained after repair, without private prose. The self-review records this
+third finding separately; full runtime verification restarts for that text change.
 No tag/release creation, publication, new browser authorization or live inference
 is part of this correction. Assisted Linux qualifications, missing human macOS/
 upgrade walkthroughs, stable publication, Grok live access/registration and Gemini

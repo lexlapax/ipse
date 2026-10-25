@@ -27,6 +27,19 @@ warning/skip policy. Controls remove all/one findings, duplicate/reorder finding
 change the version and inject warnings or unexplained skips. A full valid report
 and the documented macOS warning remain positive controls.
 
+**S3, P3: numeric stream codes lost.** A subsequent wire-format counterexample
+found that the error-code repair retained string identifiers but discarded numeric
+OpenRouter codes. The [official error contract](https://openrouter.ai/docs/api_reference/errors-and-debugging)
+defines numeric codes and documents their use in mid-stream SSE errors. An actual
+parser call with synthetic code `429` withheld both the prose and the code.
+Chat Completions now converts integer HTTP codes in 100..599 to decimal text;
+other values still pass the existing identifier filter. Both top-level and choice
+error frames retain 400/429/502/503 while withholding private prose. Out-of-range
+integers, floats and maps stay withheld. The actual parser counterexample now
+retains `code: 429` and no private prose; all twelve adapter tests pass, seed
+674910. This changes diagnostic text, so the full runtime baseline is repeated
+and recorded in the final verification receipt.
+
 ## Additional boundary review
 
 Reviewed native grants through Session approval, tool validation, durable start
@@ -39,8 +52,9 @@ explicitly documented operator choice, not a promise of immutable script content
 
 Reviewed diagnostic producers and terminal escaping, selected-key filtering and
 stream error identifiers, fixed subscription endpoints, exact versioned asset
-names, workflow ordering, mutation guards and stable/RC note rendering. No further
-runtime defect was confirmed in that scope. The short private MCP-value collision
+names, workflow ordering, mutation guards and stable/RC note rendering. The numeric
+wire control above found the additional diagnostic defect after the first two
+verification repairs. The short private MCP-value collision
 remains a reproduced and documented limitation; this review does not grant an
 exception to privacy filtering. Fixture checks do not establish live provider or
 subscription behavior.
@@ -52,9 +66,10 @@ refuse them. Focused release/verifier tests pass **43/43**, seed 153432, 79.1 se
 The strengthened installed verifier passes all twelve checks against the retained
 `b7d3bce` Linux archive, including actual bare/demo-setup/Grok-setup doctor reports,
 with unchanged inventories and no model calls. Formatting and manual checks pass.
-The complete native-inclusive suite at `e2aefb5` passes 1,782 tests with 19 excluded;
-these additional repairs change developer verification only, not runtime/native
-source or dependencies. Hosted results are recorded separately once terminal.
+The complete native-inclusive suite at `e2aefb5` passes 1,782 tests with 19 excluded.
+S1/S2 change developer verification only; S3 subsequently changes stream-error
+text. These scopes are kept separate, with new full and hosted results recorded
+once terminal. No native implementation or dependency changes are involved.
 
 No stable tag, release draft or publication, new authorization, paid inference,
 or private transcript was created by this review. Human walkthrough qualifications

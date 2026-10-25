@@ -267,7 +267,15 @@ defmodule Ipse.Provider.ChatCompletions do
       if is_map(error), do: Transport.safe(error["message"], :message)
 
     text = text || "provider refused the response (details withheld)"
-    code = if is_map(error), do: Transport.safe(error["code"], :code)
+
+    code =
+      if is_map(error) do
+        case error["code"] do
+          value when is_integer(value) and value in 100..599 -> Integer.to_string(value)
+          value -> Transport.safe(value, :code)
+        end
+      end
+
     text = if code, do: text <> " (code: " <> code <> ")", else: text
 
     Ipse.Provider.error("Chat Completions stream failed: " <> text, config)

@@ -454,6 +454,41 @@ defmodule Ipse.Provider.ChatCompletionsTest do
     assert diagnostic =~ "code: capacity_exceeded"
     refute diagnostic =~ "Provider capacity is exhausted."
 
+    for code <- [400, 429, 502, 503], shape <- [:top_level, :choice] do
+      error = %{"message" => "Upstream private prose.", "code" => code}
+
+      fields =
+        if shape == :top_level,
+          do: %{"error" => error},
+          else: %{
+            "choices" => [
+              %{"index" => 0, "delta" => %{}, "finish_reason" => "error", "error" => error}
+            ]
+          }
+
+      assert {:error, diagnostic} =
+               ChatCompletions.consume(
+                 ChatCompletions.new(config(profile())),
+                 Fixture.sse(chunk(%{}, fields)),
+                 fn _ -> :ok end
+               )
+
+      assert diagnostic =~ "code: #{code}"
+      assert diagnostic =~ "details withheld"
+      refute diagnostic =~ error["message"]
+    end
+
+    for code <- [-1, 600, 429.5, 9_007_199_254_740_991, %{"private" => "value"}] do
+      assert {:error, diagnostic} =
+               ChatCompletions.consume(
+                 ChatCompletions.new(config(profile())),
+                 Fixture.sse(chunk(%{}, %{"error" => %{"code" => code}})),
+                 fn _ -> :ok end
+               )
+
+      refute diagnostic =~ "code:"
+    end
+
     for message <- [
           "private text\e[2J",
           "sk-private",
