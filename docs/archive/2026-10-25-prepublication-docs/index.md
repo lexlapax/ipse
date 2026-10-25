@@ -142,6 +142,40 @@ sequence. Product, provider, worker, per-test and proof deadlines and assertions
 are unchanged. This does not establish why that host was slower, and the canceled
 matrix is not called a passing result.
 
+## Final verification and editorial disposition
+
+The [complete matrix at 5daf5d0](final-hosted.json),
+[run 40174384724](https://github.com/lexlapax/ipse/actions/runs/40174384724),
+passes both platforms with the 60-minute outer allowance. Ubuntu reports 1,806
+tests, zero failures and 36 exclusions. macOS reports 1,771 tests, zero failures,
+36 exclusions and one skip, plus 36 native tests with zero failures and six
+exclusions. Every executed workflow step succeeds, including archive admission,
+all independent source/installed proofs and experimental macOS sandbox enforcement.
+The [full job/step metadata](final-hosted-workflow.json) preserves those scopes.
+
+The earlier [0aad07c matrix](verification-baseline-hosted.json),
+[run 40171775193](https://github.com/lexlapax/ipse/actions/runs/40171775193),
+also completes successfully on both platforms under the former allowance.
+That later success does not erase the separate `050fe76` cancellation or establish
+its slowdown's cause. Runtime, native implementation, packaging/rendering,
+documentation-checker and release-test source are identical between `0aad07c`
+and `5daf5d0`; the latter adds the outer-budget correction and prose/record work.
+
+The [final clean local archive](final-local-archive.json) binds `5daf5d0`,
+46 documentation pages, zero unresolved local prose targets and 24 modern-runtime
+notice files. Its 205 pinned references resolve to
+[120 actual Git targets](final-git-targets.json) with the expected blob/tree type.
+The [Graph and Research terminal exercises](knowledge-manual-examples.json)
+add the generated source-bound assertion, attributed traversal and provided-text
+investigation, with exact quotes, complete coverage and zero canonical request
+admissions. Their explicit synthetic/approval qualifications remain in the receipt.
+
+The semantic editorial audit and remediation are complete within the review
+boundary above. The final follow-up updates this evidence and the plan's release
+status; it changes no runtime, verifier, test or workflow implementation. Existing
+human/live qualifications remain unchanged. The remaining work is release
+reconciliation and publication authorization, not another documentation rewrite.
+
 ## Reconcile the release candidate before publication
 
 The stable-tag [workflow at 1617657](https://github.com/lexlapax/ipse/actions/runs/40169083307)
