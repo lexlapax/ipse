@@ -906,8 +906,6 @@ defmodule Ipse.Development.Verification.Runtime do
         }
       end
 
-    erts_executable = compile!(spec, code_paths, harness, policy, erl, repository)
-
     inherited = System.get_env()
 
     manager =
@@ -926,6 +924,9 @@ defmodule Ipse.Development.Verification.Runtime do
       })
       |> Map.merge(manager)
       |> Map.to_list()
+
+    erts_executable =
+      compile!(spec, code_paths, harness, policy, erl, repository, launcher: launcher, env: env)
 
     if mode == :installed, do: command!(Path.join(release, "ipse"), ["--help"], release, env)
 
@@ -1006,10 +1007,10 @@ defmodule Ipse.Development.Verification.Runtime do
          harness,
          policy \\ nil,
          executable \\ nil,
-         repository \\ @source_root
+         repository \\ @source_root,
+         options \\ []
        ) do
     sources = Enum.map(Map.get(spec, :sources, [spec.source]), &Path.expand(&1, repository))
-    compiler = System.find_executable("elixir") || raise("Pre-launch Elixir compiler required")
 
     expression = """
     policy = #{inspect(policy, limit: :infinity)}
@@ -1050,8 +1051,18 @@ defmodule Ipse.Development.Verification.Runtime do
     IO.puts(:json.encode(%{"executable" => executable}))
     """
 
-    args = Enum.flat_map(code_paths, &["-pa", &1]) ++ ["--erl", "+S 2:2", "-e", expression]
-    output = command!(compiler, args, repository, [])
+    output =
+      if launcher = options[:launcher] do
+        env = List.keystore(options[:env], "ERL_FLAGS", 0, {"ERL_FLAGS", "+S 2:2"})
+        command!(launcher, ["eval", expression], repository, env)
+      else
+        compiler =
+          System.find_executable("elixir") || raise("Pre-launch Elixir compiler required")
+
+        args = Enum.flat_map(code_paths, &["-pa", &1]) ++ ["--erl", "+S 2:2", "-e", expression]
+        command!(compiler, args, repository, [])
+      end
+
     %{"executable" => executable} = :json.decode(output)
     expected = Enum.map(spec.modules, &Path.basename(beam(harness, &1))) |> Enum.sort()
     ^expected = harness |> File.ls!() |> Enum.sort()

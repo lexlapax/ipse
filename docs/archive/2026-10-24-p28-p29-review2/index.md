@@ -57,6 +57,13 @@ A subsequent wire-format control found numeric OpenRouter stream codes were stil
 lost. The [parser receipt](numeric-code-control.json) shows `429` withheld before
 and retained after repair, without private prose. The self-review records this
 third finding separately; full runtime verification restarts for that text change.
+A final cross-toolchain check found a [developer-verifier compiler defect](compiler-isolation.md):
+the installed harness mixed a newer driver with older archive compiler libraries.
+The repair uses the selected bundled compiler in a private environment. Its
+[receipt](compiler-isolation.json) records 33 passing verifier tests and twelve
+installed checks for each real toolchain, with failed fixture iterations preserved.
+Product runtime and workflow source remain at `5d9650e`; the developer-tool
+follow-up has a separate hosted verification scope.
 No tag/release creation, publication, new browser authorization or live inference
 is part of this correction. Assisted Linux qualifications, missing human macOS/
 upgrade walkthroughs, stable publication, Grok live access/registration and Gemini

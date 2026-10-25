@@ -97,6 +97,79 @@ defmodule Ipse.Development.VerificationTest do
     assert output =~ "fixture loaded from actual SDK"
   end
 
+  test "installed harness compilation uses its launcher and private environment" do
+    root = input_root()
+    release = Path.join(root, "release")
+    bin = Path.join(root, "host-bin")
+    for path <- ["bin", "lib", "erts-fixture/bin"], do: File.mkdir_p!(Path.join(release, path))
+    File.mkdir!(bin)
+    quote = fn value -> "'" <> String.replace(value, "'", "'\\''") <> "'" end
+    compiler = System.find_executable("elixir")
+    erl = System.find_executable("erl")
+    sdk = Application.app_dir(:ipse, "ebin")
+    target_erl = Path.join(release, "erts-fixture/bin/erl")
+    File.write!(target_erl, "#!/bin/sh\nexec #{quote.(erl)} \"$@\"\n")
+    File.chmod!(target_erl, 0o755)
+    launcher = Path.join(release, "bin/ipse")
+
+    File.write!(launcher, """
+    #!/bin/sh
+    case "$1" in
+      --help) exit 0 ;;
+      eval) shift; exec #{quote.(compiler)} -pa #{quote.(sdk)} --erl '+S 2:2' -e "$1" ;;
+      *) exit 1 ;;
+    esac
+    """)
+
+    File.chmod!(launcher, 0o755)
+    File.cp!(launcher, Path.join(release, "ipse"))
+    archive = Path.join(root, "fixture.tar.gz")
+    {_, 0} = System.cmd("tar", ["-czf", archive, "-C", release, "."])
+    marker = Path.join(root, "host-compiler-ran")
+    poisoned = Path.join(bin, "elixir")
+    File.write!(poisoned, "#!/bin/sh\nprintf wrong > #{quote.(marker)}\nexit 1\n")
+    File.chmod!(poisoned, 0o755)
+    source = Path.join(root, "proof.exs")
+
+    File.write!(source, """
+    defmodule IpseInstalledCompilerProof do
+      @taint System.get_env("IPSE_COMPILER_TAINT")
+      @home System.fetch_env!("HOME")
+      def facts, do: %{"taint" => @taint, "home" => @home}
+    end
+    """)
+
+    before = Map.new(~w(PATH IPSE_COMPILER_TAINT), &{&1, System.get_env(&1)})
+    System.put_env("PATH", bin <> ":" <> before["PATH"])
+    System.put_env("IPSE_COMPILER_TAINT", "synthetic-host-state")
+
+    try do
+      spec = %{source: source, modules: [IpseInstalledCompilerProof]}
+
+      Runtime.with_runtime(spec, [archive: archive, input: source], fn runtime ->
+        {output, 0} =
+          System.cmd(
+            compiler,
+            [
+              "-pa",
+              runtime.harness,
+              "-e",
+              "IO.puts(JSON.encode!(IpseInstalledCompilerProof.facts()))"
+            ],
+            env: [{"ERL_FLAGS", "+S 2:2"}],
+            stderr_to_stdout: true
+          )
+
+        assert JSON.decode!(output) == %{"taint" => nil, "home" => runtime.home}
+        refute File.exists?(marker)
+      end)
+    after
+      for {key, value} <- before do
+        if value, do: System.put_env(key, value), else: System.delete_env(key)
+      end
+    end
+  end
+
   test "the complete macOS verifier compiles without launching its platform probes" do
     expression = ~S"""
     [path] = System.argv()

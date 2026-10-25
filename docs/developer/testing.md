@@ -212,7 +212,12 @@ cover model/embedding/MCP/saved-output recipes and their distinct assertions.
 
 `dev/verify.exs` delegates closed grammar to Scenarios. Scenarios owns finite source/
 module/argument/assertion declarations; Runtime inventories inputs/origin and
-compiles trusted proof modules in a separate VM before host launch. Package checks
+compiles trusted proof modules in a separate VM before verification work starts.
+Source proofs use the development compiler with the source SDK. Installed proofs
+use the selected release's own compiler through its bundled launcher, with a
+private environment; the driver's Elixir version must never be mixed with the
+archive's compiler modules. This permits a newer driver to verify an older
+supported bundle. Package checks
 are loaded only for the explicit package scenario, without broadening measured
 compiler closure. Domain assertions stay in their proof modules.
 
