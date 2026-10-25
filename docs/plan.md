@@ -26,8 +26,10 @@ Linux/macOS matrix at `5daf5d0`. On explicit developer authorization, the stable
 tag and unpublished draft were replaced with the audited candidate `341e458`.
 Its complete Linux/macOS release workflow and exact re-downloaded assets pass
 [verification](archive/2026-10-25-prepublication-docs/release-reconciliation.json).
-Qualified v0.1.0 readiness retains its recorded human/live limits. Publication
-awaits separate approval of the rebuilt, inspected draft.
+The developer then explicitly authorized publication. [v0.1.0](https://github.com/lexlapax/ipse/releases/tag/v0.1.0)
+was published as the latest release on 2026-10-25, with the same four inspected
+assets ([publication receipt](archive/2026-10-25-prepublication-docs/publication.json)).
+Qualified readiness retains its recorded human/live limits.
 
 | Milestone or gate | Current state | Next result |
 | --- | --- | --- |
@@ -37,7 +39,7 @@ awaits separate approval of the rebuilt, inspected draft.
 | [P25: comparative self-development](#p25-comparative-research-and-supervised-self-development) | Accepted within declared supervision/assistance at `3307563` | Preserve frozen inputs, failures and bounded comparison claims |
 | [P26: memory baseline](#p26-optional-working-and-long-term-memory) | Explicit-note scope accepted at `25f1d8e` | Keep automatic memory separately scoped |
 | [P27: research, graph and RAG](#p27-optional-research-graph-and-rag) | Optional-package scope complete; hybrid qualified and selected | Evaluate new workloads independently; retain all seven strategies' original results |
-| [P28: operator usability and release](#p28-operator-usability-and-release-readiness) | Qualified readiness accepted; semantic documentation remediation complete; tag `v0.1.0` and rebuilt, inspected draft use `341e458` | Obtain separate publication approval; retain human/live qualifications |
+| [P28: operator usability and release](#p28-operator-usability-and-release-readiness) | v0.1.0 published at `341e458` under qualified acceptance after semantic documentation remediation and exact asset inspection | Retain human/live qualifications; evaluate subsequent changes against their own scope |
 | [P29: provider registry, OpenRouter and Gemini](#p29-provider-registry-openrouter-and-gemini) | Original scope and repairs accepted for qualified readiness; added Grok routes pass automated checks | Preserve unverified Grok API/OAuth eligibility and Gemini foreign-history live acceptance |
 | [P30: decision engines](#p30-advisory-decision-engines) | Proposed; unimplemented | Select a typed advisory contract and verify primary engine interfaces before implementation |
 | [P31: voice and media](#p31-voice-and-realtime-media) | Deferred; unimplemented | Select media contracts and device/service validation in a later increment |
@@ -557,7 +559,7 @@ the engine decision and whole-document editorial integration.
 
 ## P28: operator usability and release readiness
 
-**Release readiness accepted with documented qualifications on 2026-10-24. Semantic documentation remediation is complete. The authorized replacement tag and rebuilt draft use `341e458`; full platform verification and exact downloaded-asset inspection pass. Publication awaits separate approval.**
+**v0.1.0 published on explicit developer authorization on 2026-10-25 at `341e458`, under the qualified readiness accepted on 2026-10-24. Semantic documentation remediation, full platform verification and exact asset inspection pass; the recorded human/live qualifications remain.**
 P0–P27 established correctness, recovery and evidence for a
 supervised developer. This milestone makes the same harness usable by an operator
 who did not build it, without weakening approvals, explicit provider selection or
@@ -625,7 +627,13 @@ both compiled identities, bundled manuals and runtime notices in the
 [reconciliation receipt](archive/2026-10-25-prepublication-docs/release-reconciliation.json).
 The final main check's first macOS attempt failed one cleanup fixture; its
 unchanged retry and the fresh release checks pass. The failure remains recorded
-with its cause unestablished. Publication remains a separate, unauthorized action.
+with its cause unestablished. After inspecting those results, the developer
+explicitly authorized publication on 2026-10-25. The
+[published release](https://github.com/lexlapax/ipse/releases/tag/v0.1.0) is latest;
+its [publication receipt](archive/2026-10-25-prepublication-docs/publication.json)
+verifies the same four pre-inspected asset IDs, sizes and digests, unchanged notes
+and the approved tag/source. This closes publication under the existing qualified
+acceptance without claiming new human walkthroughs or live inference checks.
 
 Scope:
 
@@ -702,8 +710,8 @@ remains documented, without weakening privacy. The
 prepares v0.1.0. The developer's [qualified acceptance](archive/2026-10-24-p28-p29-review2/acceptance.md)
 closes the readiness decision without a fresh independent verdict or new live
 provider checks. Documentation remediation and the authorized tag/draft rebuild
-are complete, including exact asset inspection. Publication awaits separate
-approval; the existing human/live qualifications remain open.
+are complete, including exact asset inspection. The developer subsequently
+authorized v0.1.0 publication; the existing human/live qualifications remain open.
 The [P29 implementation brief](archive/2026-10-23-p28-p29-design/p29.md) breaks
 this scope into ordered work packages with files, tests and decisions.
 The developer accepted its recommended decisions on 2026-10-23. Gemini, then

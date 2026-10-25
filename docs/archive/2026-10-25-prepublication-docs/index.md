@@ -1,11 +1,16 @@
 # Prepublication semantic documentation review
 
+Historical review and release-evidence record. Use the
+[documentation map](../../index.md) for current manuals and the
+[plan](../../plan.md) for current scope and acceptance.
+
 Dated 2026-10-25 UTC (work began 2026-10-24 Pacific and continued on October 25).
 The developer required a complete
 repository documentation audit and remediation before publishing v0.1.0, then
 clarified that this means semantic editorial work, not just links or superficial
 changes. Starting source is `16176571780ec43e526549c41be6a660373da2e4`, the accepted
-qualified candidate and already pushed stable tag. Publication remains on hold.
+qualified candidate and already pushed stable tag. Publication was held during
+this review; the authorized replacement and publication are recorded below.
 
 ## Review the reader's task and the product contract
 
@@ -246,8 +251,27 @@ Linux identity probe omitted a UTF-8 locale and combined the VM's locale warning
 with JSON; the corrected isolated UTF-8 invocation passes. These attempts remain
 distinct from the successful release and asset inspections.
 
-The [rebuilt draft](https://github.com/lexlapax/ipse/releases/tag/untagged-9d8c02fe11faad19ab9c)
-remains unpublished. This follow-up updates release evidence and the current plan
-after the frozen `341e458` build; it does not require another tag move. The
-qualified human/live acceptance above remains unchanged. Publication still
-requires separate authorization.
+At this checkpoint the rebuilt release remained an unpublished draft; the
+reconciliation receipt preserves its former draft URL and state. Its later public
+URL is [v0.1.0](https://github.com/lexlapax/ipse/releases/tag/v0.1.0). This follow-up
+updates release evidence and the current plan after the frozen `341e458` build;
+it does not require another tag move. The qualified human/live acceptance above
+remains unchanged. Publication was still awaiting separate authorization.
+
+## Authorized publication on 2026-10-25
+
+After the rebuilt draft was verified, the developer explicitly selected
+“Publish v0.1.0”. Immediately before publication, the remote tag, draft state,
+release notes and all four complete asset records matched the inspected candidate.
+The [publication receipt](publication.json) records publication at
+`2026-10-25T15:11:47Z`, confirms `isDraft: false`, `isPrerelease: false` and the
+latest-release API, and verifies unchanged notes and the same four asset IDs,
+sizes and SHA256 digests. The approved tag still resolves to `341e458`; no new
+archive or source was substituted during publication.
+
+[v0.1.0 is published](https://github.com/lexlapax/ipse/releases/tag/v0.1.0).
+The original failure/cancellation evidence, successful retry, full fresh release
+matrix and exact downloaded-asset inspection remain distinct. Publication changes
+availability; it does not close the recorded human/live qualifications or explain
+the earlier macOS cleanup-fixture failure. Subsequent current-plan and receipt
+commits contain only status/evidence changes, leaving the release tag fixed.
