@@ -7,6 +7,7 @@ defmodule Ipse.Usage.Costs do
   @token_units ~w(input input_uncached input_cached input_cache_write input_cache_write_5m input_cache_write_1h output)
   @extra_units ~w(web_search web_fetch duration_second)
   @request_keys ~w(provider billing_mode model reported_model endpoint_sha256 admitted_at_ms outcome finality usage)
+  @decision_ids ~w(openai system_one system_one_compatible)
 
   def schema do
     text = %{"type" => "string", "minLength" => 1, "maxLength" => 256}
@@ -16,7 +17,10 @@ defmodule Ipse.Usage.Costs do
     row =
       object(%{
         "id" => text,
-        "provider" => %{"type" => "string", "enum" => Ipse.Provider.Registry.rate_card_ids()},
+        "provider" => %{
+          "type" => "string",
+          "enum" => Enum.uniq(Ipse.Provider.Registry.rate_card_ids() ++ @decision_ids)
+        },
         "billing_mode" => %{"type" => "string", "enum" => Ipse.Provider.Registry.billing_modes()},
         "basis" => %{"type" => "string", "enum" => Ipse.Provider.Registry.cost_bases()},
         "model" => text,
@@ -34,11 +38,14 @@ defmodule Ipse.Usage.Costs do
       })
 
     row =
-      put_in(row, ["properties", "operation"], %{"type" => "string", "enum" => ~w(text embedding)})
+      put_in(row, ["properties", "operation"], %{
+        "type" => "string",
+        "enum" => ~w(text embedding decision)
+      })
 
     card =
       object(%{
-        "version" => %{"type" => "integer", "enum" => [1, 2]},
+        "version" => %{"type" => "integer", "enum" => [1, 2, 3]},
         "id" => text,
         "revision" => text,
         "currency" => %{"type" => "string", "minLength" => 3, "maxLength" => 3},
@@ -53,12 +60,21 @@ defmodule Ipse.Usage.Costs do
   @doc "Validate closed data and nonoverlapping model/endpoint/date/token bands without fetching its source."
   def validate(card) do
     with :ok <- Schema.validate_arguments(schema(), card),
-         true <- card["version"] in [1, 2] and is_integer(card["version"]),
+         true <- card["version"] in [1, 2, 3] and is_integer(card["version"]),
          true <-
            Enum.all?(card["rows"], fn row ->
-             if card["version"] === 1,
-               do: not Map.has_key?(row, "operation"),
-               else: row["operation"] in ~w(text embedding)
+             case card["version"] do
+               1 ->
+                 not Map.has_key?(row, "operation") and
+                   row["provider"] in Ipse.Provider.Registry.rate_card_ids()
+
+               2 ->
+                 row["operation"] in ~w(text embedding) and
+                   row["provider"] in Ipse.Provider.Registry.rate_card_ids()
+
+               3 ->
+                 row["operation"] in ~w(text embedding decision)
+             end
            end),
          true <- Regex.match?(~r/\A[A-Z]{3}\z/, card["currency"]),
          true <- date?(card["published_on"]),
@@ -111,12 +127,16 @@ defmodule Ipse.Usage.Costs do
         if Map.has_key?(request, "operation"),
           do:
             Map.merge(base, %{
-              "version" => 2,
+              "version" => if(request["operation"] == "decision", do: 3, else: 2),
               "operation" => request["operation"],
               "scope" =>
                 if(request["operation"] == "embedding",
                   do: "embedding_tokens_and_reported_duration",
-                  else: base["scope"]
+                  else:
+                    if(request["operation"] == "decision",
+                      do: "decision_tokens",
+                      else: base["scope"]
+                    )
                 )
             }),
           else: base
@@ -151,7 +171,7 @@ defmodule Ipse.Usage.Costs do
       request["billing_mode"] == "none" ->
         %{base | "status" => "not_applicable", "missing" => ["scripted_usage"]}
 
-      request["operation"] == "embedding" and base["version"] == 2 and rows == [] ->
+      request["operation"] in ~w(embedding decision) and rows == [] ->
         %{base | "missing" => ["operation_rate_unavailable"]}
 
       rows != [] and is_nil(counts["input_tokens"]) ->
@@ -282,9 +302,10 @@ defmodule Ipse.Usage.Costs do
       if Map.has_key?(r, "operation"), do: @request_keys ++ ["operation"], else: @request_keys
 
     Schema.validate_object(r) == :ok and Enum.sort(Map.keys(r)) == Enum.sort(keys) and
-      operation in ~w(text embedding) and
-      (operation == "text" or Ipse.Provider.Registry.embedding?(r["provider"])) and
-      r["provider"] in Ipse.Provider.Registry.ids() and
+      operation in ~w(text embedding decision) and
+      ((operation == "text" and r["provider"] in Ipse.Provider.Registry.ids()) or
+         (operation == "embedding" and Ipse.Provider.Registry.embedding?(r["provider"])) or
+         (operation == "decision" and r["provider"] in @decision_ids)) and
       r["billing_mode"] == Usage.billing_mode(provider(r["provider"])) and
       is_binary(r["model"]) and byte_size(r["model"]) in 1..256 and
       (is_nil(r["reported_model"]) or
@@ -295,7 +316,7 @@ defmodule Ipse.Usage.Costs do
       r["finality"] in ~w(final partial) and Usage.valid_usage?(r["usage"], operation)
   end
 
-  defp provider(value), do: Ipse.Provider.Registry.atoms()[value]
+  defp provider(value), do: Usage.provider(value)
 
   defp row?(r) do
     embedding = r["operation"] == "embedding"
@@ -320,7 +341,14 @@ defmodule Ipse.Usage.Costs do
 
     until_valid = is_nil(r["until"]) or date?(r["until"])
 
-    expected != [] and (not embedding or Ipse.Provider.Registry.embedding?(r["provider"])) and
+    expected != [] and
+      if(r["operation"] == "decision",
+        do:
+          r["provider"] in @decision_ids and
+            Enum.all?(Map.keys(r["rates"]), &(&1 in @token_units)),
+        else: r["provider"] in Ipse.Provider.Registry.rate_card_ids()
+      ) and
+      (not embedding or Ipse.Provider.Registry.embedding?(r["provider"])) and
       (not embedding or Enum.all?(Map.keys(r["rates"]), &(&1 in ~w(input duration_second)))) and
       r["billing_mode"] == Usage.billing_mode(provider(r["provider"])) and
       r["basis"] ==
@@ -539,7 +567,9 @@ defmodule Ipse.Usage.Costs do
             end)
         }
 
-        if operation == "embedding", do: Map.put(group, "operation", operation), else: group
+        if operation in ~w(embedding decision),
+          do: Map.put(group, "operation", operation),
+          else: group
       end)
 
     complete =

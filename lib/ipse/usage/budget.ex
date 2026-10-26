@@ -535,7 +535,7 @@ defmodule Ipse.Usage.Budget do
     fields =
       ~w(attempt_id duration_ms finality outcome reported_model request_id type usage version)
 
-    fields = if entry.admission["version"] === 2, do: fields ++ ["operation"], else: fields
+    fields = if entry.admission["version"] in [2, 3], do: fields ++ ["operation"], else: fields
 
     Enum.sort(Map.keys(completion)) ==
       Enum.sort(fields) and
@@ -669,6 +669,14 @@ defmodule Ipse.Usage.Budget do
 
   def request_config(%{operation: :embedding} = config), do: {:ok, config}
 
+  def request_config(%{operation: :decision} = config) do
+    if get_in(config, [:budget, "max_output_tokens"]),
+      do:
+        {:error,
+         "Decision endpoints have no enforceable output-token cap; choose a request-count, input-token or money budget."},
+      else: {:ok, config}
+  end
+
   def request_config(config) do
     case config[:budget] do
       %{"reserve_output_tokens" => reserve} ->
@@ -783,7 +791,7 @@ defmodule Ipse.Usage.Budget do
     fields =
       ~w(provider billing_mode model reported_model endpoint_sha256 admitted_at_ms outcome finality usage)
 
-    fields = if record["version"] == 2, do: fields ++ ["operation"], else: fields
+    fields = if record["version"] in [2, 3], do: fields ++ ["operation"], else: fields
 
     case Ipse.Usage.Costs.estimate(policy["rate_card"], Map.take(record, fields)) do
       {:ok, value} -> value

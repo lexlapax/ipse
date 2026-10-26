@@ -2,7 +2,12 @@ defmodule Ipse.Usage do
   @moduledoc "Durable content-free request identities and cumulative provider usage snapshots."
 
   @types ~w(request_admitted request_usage_observed request_finished)
-  @providers Ipse.Provider.Registry.atoms()
+  @decision_providers %{
+    "openai" => :openai,
+    "system_one" => :system_one,
+    "system_one_compatible" => :system_one_compatible
+  }
+  @providers Map.merge(Ipse.Provider.Registry.atoms(), @decision_providers)
   @text_providers Enum.map(Ipse.Provider.Registry.chat_ids(), &Map.fetch!(@providers, &1))
   @limit 10_000
 
@@ -16,7 +21,7 @@ defmodule Ipse.Usage do
   end
 
   def configuration(config) do
-    kind = if config[:operation] == :embedding, do: "extension", else: "model"
+    kind = if config[:operation] in [:embedding, :decision], do: "extension", else: "model"
 
     if valid_admission?(admission(id(), config, kind, id())),
       do: :ok,
@@ -49,10 +54,25 @@ defmodule Ipse.Usage do
     }
 
     case config[:operation] do
-      nil -> event
-      :text -> event
-      :embedding -> Map.merge(event, %{"version" => 2, "operation" => "embedding"})
-      _ -> Map.put(event, "operation", "unsupported")
+      nil ->
+        event
+
+      :text ->
+        event
+
+      :embedding ->
+        Map.merge(event, %{"version" => 2, "operation" => "embedding"})
+
+      :decision ->
+        Map.merge(event, %{
+          "version" => 3,
+          "operation" => "decision",
+          "service_id" => config[:service_id],
+          "expected_model" => config[:expected_model] || config.model
+        })
+
+      _ ->
+        Map.put(event, "operation", "unsupported")
     end
   end
 
@@ -72,7 +92,7 @@ defmodule Ipse.Usage do
       case result do
         {:ok, value, raw} ->
           reported =
-            if operation(admission) == "embedding",
+            if operation(admission) in ["embedding", "decision"],
               do: value["reported_model"],
               else: get_in(value, ["provider_data", "reported_model"])
 
@@ -102,7 +122,7 @@ defmodule Ipse.Usage do
     metadata = (List.first(events) || %{})["metadata"] || %{}
     version = metadata["usage_version"]
 
-    if version in [nil, 1, 2] do
+    if version in [nil, 1, 2, 3] do
       Enum.reduce_while(
         events,
         {:ok,
@@ -121,7 +141,7 @@ defmodule Ipse.Usage do
            scope:
              Map.take(
                metadata,
-               ~w(provider model delegation_origin model_profiles embedding_profiles max_output_tokens budget)
+               ~w(provider model delegation_origin model_profiles embedding_profiles decision_profiles max_output_tokens budget)
              )
          }},
         fn event, {:ok, ledger} ->
@@ -150,6 +170,66 @@ defmodule Ipse.Usage do
       ),
       do: {:ok, %{ledger | model_action: event, model_route: nil}}
 
+  def apply_event(
+        ledger,
+        %{"type" => "extension_action_intent", "request" => %{"op" => "decision.create"}} = event
+      ),
+      do:
+        if(ledger.usage_version == 3,
+          do: {:ok, %{ledger | model_action: event, model_route: nil}},
+          else: {:error, :invalid_usage_journal}
+        )
+
+  def apply_event(ledger, %{"type" => "extension_decision_request"} = event) do
+    if ledger.usage_version == 3 and ledger.model_route == nil and
+         not Map.has_key?(ledger.model_sources, event["operation_id"]) and
+         Ipse.Extension.DecisionCall.valid_source?(event, ledger.model_action, ledger.scope),
+       do:
+         {:ok,
+          %{
+            ledger
+            | model_route: event["admission"],
+              model_sources: Map.put(ledger.model_sources, event["operation_id"], event)
+          }},
+       else: {:error, :invalid_usage_journal}
+  end
+
+  def apply_event(ledger, %{"type" => "extension_decision_response"} = event) do
+    request = ledger.requests[event["request_id"]]
+
+    if request != nil and operation(request.admission) == "decision" and request.completion == nil and
+         not Map.has_key?(ledger.model_responses, event["request_id"]) and
+         Ipse.Extension.DecisionCall.valid_response?(
+           event,
+           request.admission,
+           ledger.model_action
+         ),
+       do:
+         {:ok,
+          %{ledger | model_responses: Map.put(ledger.model_responses, event["request_id"], event)}},
+       else: {:error, :invalid_usage_journal}
+  end
+
+  def apply_event(
+        ledger,
+        %{"type" => "extension_action_result", "request" => %{"op" => "decision.create"}} = event
+      ) do
+    id = event["operation_id"]
+
+    if ledger.usage_version == 3 and
+         Ipse.Extension.Actions.result_intent(event) == ledger.model_action and
+         Ipse.Extension.Actions.valid_result?(event) and
+         Ipse.Extension.DecisionCall.valid_result_source?(
+           event,
+           ledger.requests[id],
+           ledger.model_responses[id]
+         ) and ledger.model_route == nil,
+       do:
+         {:ok,
+          %{ledger | model_action: nil, model_responses: Map.delete(ledger.model_responses, id)}},
+       else: {:error, :invalid_usage_journal}
+  end
+
   def apply_event(ledger, %{"type" => "extension_model_request"} = event) do
     if ledger.model_route == nil and
          not Map.has_key?(ledger.model_sources, event["operation_id"]) and
@@ -165,7 +245,7 @@ defmodule Ipse.Usage do
   end
 
   def apply_event(ledger, %{"type" => "extension_embedding_request"} = event) do
-    if ledger.usage_version == 2 and ledger.model_route == nil and
+    if ledger.usage_version in [2, 3] and ledger.model_route == nil and
          not Map.has_key?(ledger.model_sources, event["operation_id"]) and
          Ipse.Extension.EmbeddingCall.valid_source?(event, ledger.model_action, ledger.scope),
        do:
@@ -330,6 +410,20 @@ defmodule Ipse.Usage do
 
   defp response_matches?(
          ledger,
+         %{admission: %{"version" => 3, "operation" => "decision"} = admission},
+         %{"type" => "request_finished"} = event
+       ) do
+    response = ledger.model_responses[event["request_id"]]
+
+    (event["outcome"] != "completed" or event["reported_model"] == admission["expected_model"]) and
+      (response == nil or
+         (event["outcome"] == "completed" and event["finality"] == "final" and
+            event["reported_model"] == response["payload"]["reported_model"] and
+            event["usage"] === response["usage"]))
+  end
+
+  defp response_matches?(
+         ledger,
          %{admission: %{"version" => 2, "operation" => "embedding"}},
          %{"type" => "request_finished"} = event
        ) do
@@ -432,6 +526,8 @@ defmodule Ipse.Usage do
 
     valid_admission?(admission) and
       closed?(record, fields ++ ~w(outcome finality duration_ms reported_model usage)) and
+      (operation_tag(admission) != "decision" or record["outcome"] != "completed" or
+         record["reported_model"] == admission["expected_model"]) and
       if(record["outcome"] == "unknown",
         do:
           record["finality"] == "partial" and record["duration_ms"] == nil and
@@ -448,7 +544,7 @@ defmodule Ipse.Usage do
       e,
       admission_fields(e)
     ) and
-      operation_tag(e) != nil and e["attempt"] === 1 and
+      e["type"] == "request_admitted" and operation_tag(e) != nil and e["attempt"] === 1 and
       Enum.all?(~w(request_id attempt_id session_id turn_id), &id?(e[&1])) and
       Enum.all?(~w(parent_session_id parent_request_id), &(is_nil(e[&1]) or id?(e[&1]))) and
       e["kind"] in ~w(model compaction extension) and Map.has_key?(@providers, e["provider"]) and
@@ -458,15 +554,34 @@ defmodule Ipse.Usage do
          (is_binary(e["endpoint_sha256"]) and
             Regex.match?(~r/\A[0-9a-f]{64}\z/, e["endpoint_sha256"]))) and
       model?(e["model"]) and Ipse.JSON.safe_uint?(e["admitted_at_ms"]) and
-      (operation_tag(e) == "text" or
-         (e["kind"] == "extension" and Ipse.Provider.Registry.embedding?(e["provider"]) and
-            model?(e["selected_profile"])))
+      case operation_tag(e) do
+        "text" ->
+          e["provider"] in Ipse.Provider.Registry.ids()
+
+        "embedding" ->
+          e["kind"] == "extension" and Ipse.Provider.Registry.embedding?(e["provider"]) and
+            model?(e["selected_profile"])
+
+        "decision" ->
+          e["kind"] == "extension" and is_map_key(@decision_providers, e["provider"]) and
+            model?(e["selected_profile"]) and
+            is_binary(e["service_id"]) and
+            Regex.match?(~r/\A[A-Za-z][A-Za-z0-9_-]{0,63}\z/, e["service_id"]) and
+            model?(e["expected_model"]) and
+            (e["provider"] != "openai" or
+               (e["model"] == "gpt-6-luna" and e["expected_model"] == "gpt-6-luna"))
+
+        _ ->
+          false
+      end
   end
 
   defp scope_matches?(ledger, event) do
     origin = ledger.scope["delegation_origin"] || %{}
 
-    (operation_tag(event) == "text" or ledger.usage_version == 2) and
+    (operation_tag(event) == "text" or
+       (operation_tag(event) == "embedding" and ledger.usage_version in [2, 3]) or
+       (operation_tag(event) == "decision" and ledger.usage_version == 3)) and
       (is_nil(ledger.session_id) or ledger.session_id == event["session_id"]) and
       if event["kind"] == "extension" do
         ledger.model_route === event
@@ -504,18 +619,25 @@ defmodule Ipse.Usage do
 
   defp valid_result?(_), do: false
 
-  defp admission_fields(e),
-    do:
+  defp admission_fields(e) do
+    fields =
       version_fields(
         e,
         ~w(type version request_id attempt_id attempt session_id turn_id parent_session_id parent_request_id kind provider model billing_mode selected_profile endpoint_sha256 admitted_at_ms)
       )
 
+    if operation_tag(e) == "decision", do: fields ++ ~w(service_id expected_model), else: fields
+  end
+
   defp version_fields(%{"version" => 2}, fields), do: fields ++ ["operation"]
+  defp version_fields(%{"version" => 3}, fields), do: fields ++ ["operation"]
   defp version_fields(_, fields), do: fields
 
   defp versioned(%{"version" => 2, "operation" => "embedding"}, event),
     do: Map.merge(event, %{"version" => 2, "operation" => "embedding"})
+
+  defp versioned(%{"version" => 3, "operation" => "decision"}, event),
+    do: Map.merge(event, %{"version" => 3, "operation" => "decision"})
 
   defp versioned(_, event), do: event
 
@@ -523,10 +645,11 @@ defmodule Ipse.Usage do
     do: if(not Map.has_key?(event, "operation"), do: "text")
 
   defp operation_tag(%{"version" => 2, "operation" => "embedding"}), do: "embedding"
+  defp operation_tag(%{"version" => 3, "operation" => "decision"}), do: "decision"
   defp operation_tag(_), do: nil
 
   defp projection_version(requests),
-    do: if(Enum.any?(requests, &(operation_tag(&1.admission) == "embedding")), do: 2, else: 1)
+    do: Enum.reduce(requests, 1, &max(&1.admission["version"], &2))
 
   defp closed?(e, fields),
     do: Enum.sort(Map.keys(e)) == Enum.sort(fields) and Ipse.JSON.validate_object(e) == :ok
@@ -542,7 +665,11 @@ defmodule Ipse.Usage do
   @billing Ipse.Provider.Registry.billing()
   def counter_fields, do: @fields
   def counter_limit, do: @counter_limit
-  def billing_mode(provider), do: @billing[provider]
+
+  def billing_mode(provider),
+    do: @billing[provider] || Ipse.Config.Decisions.billing(to_string(provider))
+
+  def provider(id), do: @providers[id]
 
   def normalize(:demo, _usage), do: record(empty(), [], "not_applicable", [])
 
@@ -577,6 +704,34 @@ defmodule Ipse.Usage do
 
   def normalize(provider, operation, raw) when operation in [:text, "text"],
     do: normalize(provider, raw)
+
+  def normalize(provider, operation, raw) when operation in [:decision, "decision"] do
+    raw = if is_nil(raw), do: %{}, else: raw
+
+    with true <- provider in [:openai, :system_one, :system_one_compatible],
+         true <- decision_raw?(raw),
+         {:ok, counts} <- Ipse.Provider.Registry.responses_usage(raw),
+         {:ok, counts, derived} <- derive(:openai, counts),
+         true <- consistent?(counts) and decision_partitions?(counts) do
+      quality =
+        cond do
+          is_integer(counts["input_tokens"]) and is_integer(counts["output_tokens"]) ->
+            "totals_known"
+
+          Enum.any?(Map.values(counts), &is_integer/1) ->
+            "partial"
+
+          true ->
+            "unavailable"
+        end
+
+      decision_record(counts, derived, quality, [])
+    else
+      _ -> decision_record(empty(), [], "invalid", ["invalid_or_inconsistent_provider_counters"])
+    end
+  rescue
+    _ -> decision_record(empty(), [], "invalid", ["invalid_or_inconsistent_provider_counters"])
+  end
 
   def normalize(provider, operation, raw) when operation in [:embedding, "embedding"] do
     raw = if is_nil(raw), do: %{}, else: raw
@@ -623,6 +778,9 @@ defmodule Ipse.Usage do
 
   def valid_usage?(usage, "embedding"),
     do: is_map(usage) and usage["version"] === 2 and valid_usage?(usage)
+
+  def valid_usage?(usage, "decision"),
+    do: is_map(usage) and usage["version"] === 3 and valid_usage?(usage)
 
   def valid_usage?(_, _), do: false
 
@@ -686,7 +844,59 @@ defmodule Ipse.Usage do
     _ -> false
   end
 
+  def valid_usage?(%{"version" => 3, "operation" => "decision"} = record) do
+    base = record |> Map.delete("operation") |> Map.put("version", 1)
+
+    valid_usage?(base) and Enum.sort(Map.keys(record["counts"])) == Enum.sort(@fields) and
+      record["quality"] != "not_applicable" and decision_partitions?(record["counts"]) and
+      Enum.all?(
+        @fields --
+          ~w(input_tokens output_tokens total_tokens input_cached_tokens input_cache_write_tokens output_reasoning_tokens),
+        &is_nil(record["counts"][&1])
+      ) and
+      ((record["quality"] == "invalid" and record["issues"] != []) or
+         (record["quality"] != "invalid" and record["issues"] == []))
+  rescue
+    _ -> false
+  end
+
   def valid_usage?(_), do: false
+
+  defp decision_raw?(raw) do
+    is_map(raw) and
+      Enum.all?(
+        Map.keys(raw),
+        &(&1 in ~w(input_tokens output_tokens total_tokens input_tokens_details output_tokens_details))
+      ) and
+      Enum.all?(Map.take(raw, ~w(input_tokens output_tokens total_tokens)), fn {_, value} ->
+        is_nil(value) or counter?(value)
+      end) and
+      Enum.all?(
+        [
+          {"input_tokens_details", ~w(cached_tokens cache_write_tokens)},
+          {"output_tokens_details", ~w(reasoning_tokens)}
+        ],
+        fn {key, allowed} ->
+          not Map.has_key?(raw, key) or
+            (is_map(raw[key]) and
+               Enum.all?(raw[key], fn {field, value} ->
+                 field in allowed and (is_nil(value) or counter?(value))
+               end))
+        end
+      )
+  end
+
+  defp decision_partitions?(counts) do
+    values = Enum.map(~w(input_tokens input_cached_tokens input_cache_write_tokens), &counts[&1])
+
+    not Enum.all?(values, &is_integer/1) or
+      counts["input_cached_tokens"] + counts["input_cache_write_tokens"] <= counts["input_tokens"]
+  end
+
+  defp decision_record(counts, derived, quality, issues),
+    do:
+      record(counts, derived, quality, issues)
+      |> Map.merge(%{"version" => 3, "operation" => "decision"})
 
   defp embedding_counts(provider, raw),
     do: Ipse.Provider.Registry.fetch!(provider).embedding.usage_extractor.(raw)

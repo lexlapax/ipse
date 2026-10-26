@@ -127,7 +127,7 @@ defmodule Ipse.UsageTest do
       assert Usage.snapshot(ledger)["legacy_unmetered"]
 
       assert {:error, :unsupported_usage_version} =
-               Usage.restore([put_in(metadata(), ["metadata", "usage_version"], 3)])
+               Usage.restore([put_in(metadata(), ["metadata", "usage_version"], 4)])
 
       session_id = Usage.id()
       requests = for _ <- 1..18, do: admitted(session_id)
