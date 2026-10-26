@@ -8,7 +8,10 @@ notices = options |> Keyword.fetch!(:notices) |> Path.expand()
 
 target =
   options
-  |> Keyword.get(:target_dir, Path.expand("../../_build/ipse-pdf", __DIR__))
+  |> Keyword.get(
+    :target_dir,
+    System.get_env("CARGO_TARGET_DIR") || Path.expand("../../_build/ipse-pdf", __DIR__)
+  )
   |> Path.expand()
 
 manifest = Path.join(__DIR__, "Cargo.toml")
@@ -72,6 +75,8 @@ end
 
 for name <- ~w(DEPENDENCIES.md dependency-inventory.json Cargo.lock),
     do: File.cp!(Path.join(__DIR__, name), Path.join(notices, name))
+
+File.cp_r!(Path.join(__DIR__, "notices"), Path.join(notices, "notices"))
 
 File.cp!(Path.expand("../../LICENSE", __DIR__), Path.join(notices, "IPSE-LICENSE"))
 IO.puts("Built optional experimental PDF parser and retained dependency notices.")

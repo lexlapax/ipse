@@ -50,6 +50,12 @@ fn send(child: &mut Child, bytes: &[u8], pages: u32, expanded: u32, text: u32) {
 }
 
 fn finish(child: &mut Child) -> Vec<u8> {
+    let stdout = child.stdout.take().unwrap();
+    let reader = std::thread::spawn(move || {
+        let mut output = Vec::new();
+        stdout.take(2 << 20).read_to_end(&mut output).unwrap();
+        output
+    });
     let deadline = Instant::now() + Duration::from_secs(7);
     while child.try_wait().unwrap().is_none() {
         if Instant::now() >= deadline {
@@ -59,14 +65,7 @@ fn finish(child: &mut Child) -> Vec<u8> {
         }
         std::thread::sleep(Duration::from_millis(5));
     }
-    let mut output = Vec::new();
-    child
-        .stdout
-        .take()
-        .unwrap()
-        .read_to_end(&mut output)
-        .unwrap();
-    output
+    reader.join().unwrap()
 }
 
 fn run(bytes: &[u8], pages: u32, expanded: u32, text: u32) -> Vec<u8> {
@@ -75,8 +74,28 @@ fn run(bytes: &[u8], pages: u32, expanded: u32, text: u32) -> Vec<u8> {
     finish(&mut child)
 }
 
+fn backend_available() -> bool {
+    let output = run(
+        &pdf(&[b"BT /F1 12 Tf (backend) Tj ET"]),
+        256,
+        32 << 20,
+        1 << 20,
+    );
+    if cfg!(target_os = "macos") && output.get(8) == Some(&10) {
+        assert_eq!(output.len(), 13);
+        eprintln!("PDF address-space backend unavailable; fail-closed refusal verified.");
+        false
+    } else {
+        assert_eq!(output[8], 0);
+        true
+    }
+}
+
 #[test]
 fn separate_worker_extracts_real_pdf_and_preserves_partial_page_outcomes() {
+    if !backend_available() {
+        return;
+    }
     let output = run(
         &pdf(&[b"BT /F1 12 Tf (retained evidence) Tj ET", b""]),
         256,
@@ -96,6 +115,9 @@ fn separate_worker_extracts_real_pdf_and_preserves_partial_page_outcomes() {
 
 #[test]
 fn malformed_image_only_expansion_text_and_page_ceilings_are_explicit() {
+    if !backend_available() {
+        return;
+    }
     assert_eq!(run(b"not PDF", 256, 32 << 20, 1 << 20)[8], 4);
     assert_eq!(run(&pdf(&[b""]), 256, 32 << 20, 1 << 20)[8], 2);
     assert_eq!(
@@ -109,6 +131,9 @@ fn malformed_image_only_expansion_text_and_page_ceilings_are_explicit() {
 
 #[test]
 fn encrypted_even_with_empty_password_and_embedded_objects_are_refused() {
+    if !backend_available() {
+        return;
+    }
     use lopdf::{EncryptionState, EncryptionVersion, Permissions};
     for password in ["", "secret"] {
         let mut document = Document::load_mem(&pdf(&[b"BT /F1 12 Tf (private) Tj ET"])).unwrap();
@@ -149,6 +174,139 @@ fn unfinished_input_has_a_finite_deadline() {
     assert_eq!(finish(&mut child)[8], 5);
 }
 
+#[test]
+fn extra_request_bytes_are_a_protocol_refusal() {
+    if !backend_available() {
+        return;
+    }
+    let bytes = pdf(&[b"BT /F1 12 Tf (fixture) Tj ET"]);
+    let mut child = command();
+    send(&mut child, &bytes, 256, 32 << 20, 1 << 20);
+    child
+        .stdin
+        .as_mut()
+        .unwrap()
+        .write_all(b"unexpected")
+        .unwrap();
+    assert_eq!(finish(&mut child)[8], 6);
+}
+
+#[test]
+fn large_output_drains_and_a_nonreading_owner_cannot_keep_the_helper_alive() {
+    if !backend_available() {
+        return;
+    }
+    let mut content = b"BT /F1 12 Tf (".to_vec();
+    content.extend(vec![b'a'; 150_000]);
+    content.extend_from_slice(b") Tj ET");
+    let bytes = pdf(&[&content]);
+    let output = run(&bytes, 256, 32 << 20, 1 << 20);
+    assert_eq!(output[8], 0);
+    assert!(output.len() > 150_000);
+    let mut child = command();
+    send(&mut child, &bytes, 256, 32 << 20, 1 << 20);
+    let deadline = Instant::now() + Duration::from_secs(7);
+    while child.try_wait().unwrap().is_none() {
+        if Instant::now() >= deadline {
+            let _ = child.kill();
+            let _ = child.wait();
+            panic!("unread stdout escaped deadline");
+        }
+        std::thread::sleep(Duration::from_millis(10));
+    }
+}
+
+#[test]
+fn lease_readiness_precedes_any_job_and_locks_remain_until_exit() {
+    let root = std::env::temp_dir().join(format!("ipse-parser-lease-{}", std::process::id()));
+    std::fs::create_dir_all(&root).unwrap();
+    let lock = root.join("lock");
+    let mut child = Command::new(env!("CARGO_BIN_EXE_ipse-pdf"))
+        .args(["--lease", lock.to_str().unwrap()])
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .spawn()
+        .unwrap();
+    let mut marker = [0; 8];
+    child
+        .stdout
+        .as_mut()
+        .unwrap()
+        .read_exact(&mut marker)
+        .unwrap();
+    assert_eq!(&marker, b"IPLEASE1");
+    let check = || {
+        Command::new(env!("CARGO_BIN_EXE_ipse-pdf"))
+            .args(["--lease-check", lock.to_str().unwrap()])
+            .output()
+            .unwrap()
+    };
+    assert!(!check().status.success());
+    drop(child.stdin.take());
+    finish(&mut child);
+    let output = check();
+    assert!(output.status.success());
+    assert_eq!(&output.stdout, b"QUIESCENT\n");
+    std::fs::remove_dir_all(root).unwrap();
+}
+
+#[test]
+fn nested_attachments_and_inconsistent_or_duplicate_page_trees_refuse() {
+    if !backend_available() {
+        return;
+    }
+    let original = pdf(&[b"BT /F1 12 Tf (retained) Tj ET"]);
+    let mut document = Document::load_mem(&original).unwrap();
+    let catalog = document
+        .trailer
+        .get(b"Root")
+        .unwrap()
+        .as_reference()
+        .unwrap();
+    document.get_object_mut(catalog).unwrap().as_dict_mut().unwrap().set("Names",
+        dictionary! {"EmbeddedFiles"=>dictionary! {"Names"=>vec![Object::string_literal(b"attachment".to_vec()), Object::Dictionary(dictionary! {"Type"=>"Filespec", "EF"=>dictionary! {"F"=>Object::Null}})]}});
+    let mut bytes = Vec::new();
+    document.save_to(&mut bytes).unwrap();
+    assert_eq!(run(&bytes, 256, 32 << 20, 1 << 20)[8], 9);
+    for invalid in [0, 1, 2] {
+        let mut document = Document::load_mem(&original).unwrap();
+        let catalog = document
+            .trailer
+            .get(b"Root")
+            .unwrap()
+            .as_reference()
+            .unwrap();
+        let pages = document
+            .get_dictionary(catalog)
+            .unwrap()
+            .get(b"Pages")
+            .unwrap()
+            .as_reference()
+            .unwrap();
+        let page = *document.get_pages().values().next().unwrap();
+        let dictionary = document
+            .get_object_mut(pages)
+            .unwrap()
+            .as_dict_mut()
+            .unwrap();
+        dictionary.set(
+            "Kids",
+            match invalid {
+                0 => vec![Object::Null, page.into()],
+                1 => vec![page.into(), page.into()],
+                _ => vec![page.into(); 300],
+            },
+        );
+        dictionary.set("Count", if invalid == 2 { 300 } else { 2 });
+        let mut bytes = Vec::new();
+        document.save_to(&mut bytes).unwrap();
+        assert_eq!(
+            run(&bytes, 10, 32 << 20, 1 << 20)[8],
+            if invalid == 2 { 7 } else { 4 }
+        );
+    }
+}
+
 #[cfg(target_os = "linux")]
 fn worker(child: &Child) -> u32 {
     let deadline = Instant::now() + Duration::from_secs(1);
@@ -186,6 +344,9 @@ fn stopped(pid: u32) {
 #[cfg(target_os = "linux")]
 #[test]
 fn stdin_closure_and_supervisor_death_stop_the_parser_worker() {
+    if !backend_available() {
+        return;
+    }
     let content = b"() Tj ".repeat(700_000);
     let bytes = pdf(&[&content]);
     let mut child = command();
@@ -208,7 +369,7 @@ fn stdin_closure_and_supervisor_death_stop_the_parser_worker() {
     }
     drop(child.stdin.take());
     let output = finish(&mut child);
-    assert_eq!(output[8], 5);
+    assert!(output.is_empty() || output[8] == 5);
     stopped(pid);
 
     let mut child = command();

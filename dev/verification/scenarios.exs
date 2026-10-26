@@ -2,6 +2,9 @@ defmodule Ipse.Development.Verification.Scenarios do
   @moduledoc "Finite verification entrypoints and their distinct acceptance assertions."
 
   @ordinary %{
+    "documents" =>
+      {"dev/verification/documents.exs", Ipse.Development.Verification.Documents,
+       [Ipse.Development.Verification.Documents]},
     "model" => {"dev/verification/model.exs", IpseModelExample.Proof, [IpseModelExample.Proof]},
     "embedding" =>
       {"dev/verification/embedding.exs", IpseEmbeddingExample.Proof,
@@ -323,6 +326,11 @@ defmodule Ipse.Development.Verification.Scenarios do
     end
 
     :ok
+  end
+
+  def validate!(%{name: "documents"}, report, "default") do
+    true = report["synthetic"] and report["live_inference"] == false
+    checks!(report, 6)
   end
 
   def validate!(%{name: "model"}, report, selection) do

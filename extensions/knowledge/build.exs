@@ -30,7 +30,8 @@ try do
   File.write!(entry_path, transformed)
 
   helpers =
-    for path <- ~w(evidence store store/state store/mcp_cas adapters),
+    for path <-
+          ~w(evidence store store/state store/mcp_cas adapters documents documents/zip documents/docx documents/parser_stage documents/pdf),
         do: Path.join([__DIR__, "src", path <> ".ex"])
 
   result =

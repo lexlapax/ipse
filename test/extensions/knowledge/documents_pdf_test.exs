@@ -4,7 +4,7 @@ defmodule Ipse.KnowledgeDocumentsPdfTest do
   @parser System.get_env("IPSE_TEST_PDF_PARSER") || Path.join(@root, "priv/ipse-pdf")
 
   defp pure(body) do
-    files = ~w(documents/zip documents/docx documents/pdf documents)
+    files = ~w(documents/zip documents/docx documents/parser_stage documents/pdf documents)
     args = Enum.flat_map(files, &["-r", Path.join(@root, "extensions/knowledge/src/#{&1}.ex")])
 
     bootstrap =
@@ -32,6 +32,14 @@ defmodule Ipse.KnowledgeDocumentsPdfTest do
   test "explicit owned parser extracts a real PDF and maps per-file failures" do
     pure(~S'''
     descriptor=%{path: parser_path,sha256: Base.encode16(:crypto.hash(:sha256,File.read!(parser_path)),case: :lower)}
+    {uid,0}=System.cmd("id",["-u"])
+    root=Path.join(System.tmp_dir!(),"ipse-pdf-integration-"<>Base.encode16(:crypto.strong_rand_bytes(8)))
+    File.mkdir!(root); File.chmod!(root,0o700)
+    File.mkdir!(Path.join(root,"home")); File.chmod!(Path.join(root,"home"),0o700)
+    System.at_exit(fn _ -> File.rm_rf!(root) end)
+    descriptor=Map.merge(descriptor,%{uid: String.trim(uid)|>String.to_integer(), staging_root: Path.join(root,"home/document-parsers"), workspace: Path.join(root,"selected-workspace")})
+    copy_path=Path.expand("priv/ipse-runner")
+    descriptor=Map.put(descriptor,:copy_helper,%{path: copy_path,sha256: Base.encode16(:crypto.hash(:sha256,File.read!(copy_path)),case: :lower)})
     content="BT /F1 12 Tf 10 50 Td (independent extraction evidence) Tj ET"
     objects=["<< /Type /Catalog /Pages 2 0 R >>","<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
       "<< /Type /Page /Parent 2 0 R /Resources << /Font << /F1 4 0 R >> >> /MediaBox [0 0 200 100] /Contents 5 0 R >>",

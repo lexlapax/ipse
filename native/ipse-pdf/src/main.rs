@@ -1,6 +1,5 @@
 use lopdf::{Document, LoadOptions, Object};
 use std::io::{Read, Write};
-use std::process::{Command, Stdio};
 use std::time::{Duration, Instant};
 
 const INPUT: usize = 16 * 1024 * 1024;
@@ -20,6 +19,7 @@ const PROTOCOL: u8 = 6;
 const PAGE_LIMIT: u8 = 7;
 const TEXT_LIMIT: u8 = 8;
 const EMBEDDED: u8 = 9;
+const RESOURCE_BACKEND: u8 = 10;
 
 #[derive(Clone, Copy)]
 struct Limits {
@@ -78,6 +78,28 @@ fn extraction(request: &Request) -> Result<Vec<u8>, u8> {
     if document.objects.len() > 100_000 {
         return Err(RESOURCE);
     }
+    let mut inspected = 0;
+    for object in document.objects.values() {
+        inspect_embedded(object, 0, &mut inspected)?;
+    }
+    let catalog = document
+        .trailer
+        .get(b"Root")
+        .and_then(Object::as_reference)
+        .map_err(classify)?;
+    let root = document
+        .get_dictionary(catalog)
+        .and_then(|dictionary| dictionary.get(b"Pages"))
+        .and_then(Object::as_reference)
+        .map_err(classify)?;
+    let ordered = validate_pages(
+        &document,
+        root,
+        None,
+        &mut std::collections::HashSet::new(),
+        0,
+        request.limits.pages,
+    )?;
     // Retained non-image streams are decoded once against an aggregate envelope.
     // Load-time xref/object streams have the library's per-stream cap; the OS
     // address-space and CPU ceilings contain their combined parse cost.
@@ -118,6 +140,9 @@ fn extraction(request: &Request) -> Result<Vec<u8>, u8> {
     }
     if pages.len() > request.limits.pages {
         return Err(PAGE_LIMIT);
+    }
+    if pages.values().copied().collect::<Vec<_>>() != ordered {
+        return Err(MALFORMED);
     }
     let mut rows = Vec::new();
     let mut text_bytes = 0_usize;
@@ -163,6 +188,111 @@ fn extraction(request: &Request) -> Result<Vec<u8>, u8> {
     Ok(output)
 }
 
+fn inspect_embedded(object: &Object, depth: usize, inspected: &mut usize) -> Result<(), u8> {
+    *inspected += 1;
+    if depth > 64 || *inspected > 200_000 {
+        return Err(RESOURCE);
+    }
+    let dictionary = match object {
+        Object::Dictionary(dictionary) => Some(dictionary),
+        Object::Stream(stream) => Some(&stream.dict),
+        Object::Array(values) => {
+            for value in values {
+                inspect_embedded(value, depth + 1, inspected)?;
+            }
+            None
+        }
+        _ => None,
+    };
+    if let Some(dictionary) = dictionary {
+        let kind = dictionary
+            .get(b"Type")
+            .and_then(Object::as_name)
+            .unwrap_or_default();
+        if kind == b"EmbeddedFile"
+            || kind == b"Filespec"
+            || dictionary.has(b"EmbeddedFiles")
+            || dictionary.has(b"EF")
+        {
+            return Err(EMBEDDED);
+        }
+        for (_, value) in dictionary {
+            inspect_embedded(value, depth + 1, inspected)?;
+        }
+    }
+    Ok(())
+}
+
+fn validate_pages(
+    document: &Document,
+    id: lopdf::ObjectId,
+    parent: Option<lopdf::ObjectId>,
+    seen: &mut std::collections::HashSet<lopdf::ObjectId>,
+    depth: usize,
+    limit: usize,
+) -> Result<Vec<lopdf::ObjectId>, u8> {
+    if depth > 64 || !seen.insert(id) {
+        return Err(MALFORMED);
+    }
+    let dictionary = document.get_dictionary(id).map_err(classify)?;
+    if let Some(parent) = parent {
+        if dictionary
+            .get(b"Parent")
+            .and_then(Object::as_reference)
+            .ok()
+            != Some(parent)
+        {
+            return Err(MALFORMED);
+        }
+    }
+    match dictionary
+        .get(b"Type")
+        .and_then(Object::as_name)
+        .map_err(classify)?
+    {
+        b"Page" => Ok(vec![id]),
+        b"Pages" => {
+            let count = dictionary
+                .get(b"Count")
+                .and_then(Object::as_i64)
+                .map_err(classify)?;
+            if count < 0 {
+                return Err(MALFORMED);
+            }
+            if count as u64 > limit as u64 {
+                return Err(PAGE_LIMIT);
+            }
+            let children = dictionary
+                .get(b"Kids")
+                .and_then(Object::as_array)
+                .map_err(classify)?;
+            if children.len() > limit {
+                return Err(PAGE_LIMIT);
+            }
+            let mut pages = Vec::new();
+            for child in children {
+                let child = child.as_reference().map_err(classify)?;
+                pages.extend(validate_pages(
+                    document,
+                    child,
+                    Some(id),
+                    seen,
+                    depth + 1,
+                    limit,
+                )?);
+                if pages.len() > limit {
+                    return Err(PAGE_LIMIT);
+                }
+            }
+            if pages.len() != count as usize {
+                return Err(MALFORMED);
+            }
+            Ok(pages)
+        }
+        _ => Err(MALFORMED),
+    }
+}
+
 fn classify(error: lopdf::Error) -> u8 {
     match error {
         lopdf::Error::Decryption(_)
@@ -177,8 +307,8 @@ fn classify(error: lopdf::Error) -> u8 {
 mod platform {
     use super::*;
     use std::ffi::c_int;
-    use std::os::fd::FromRawFd;
-    use std::os::unix::process::CommandExt;
+    use std::os::fd::{AsRawFd, FromRawFd};
+    use std::os::unix::fs::{MetadataExt, OpenOptionsExt};
     #[repr(C)]
     struct Rlimit {
         current: u64,
@@ -194,11 +324,46 @@ mod platform {
         fn setrlimit(resource: c_int, value: *const Rlimit) -> c_int;
         fn poll(fds: *mut Poll, count: usize, timeout: c_int) -> c_int;
         fn getppid() -> c_int;
+        fn geteuid() -> u32;
+        fn flock(fd: c_int, operation: c_int) -> c_int;
+        fn fork() -> c_int;
+        fn pipe(fds: *mut c_int) -> c_int;
+        fn close(fd: c_int) -> c_int;
+        fn fcntl(fd: c_int, command: c_int, ...) -> c_int;
+        fn waitpid(pid: c_int, status: *mut c_int, options: c_int) -> c_int;
+        fn kill(pid: c_int, signal: c_int) -> c_int;
+        fn _exit(status: c_int) -> !;
     }
     #[cfg(target_os = "linux")]
     const ADDRESS_SPACE: c_int = 9;
     #[cfg(target_os = "macos")]
     const ADDRESS_SPACE: c_int = 5;
+
+    pub fn lease(path: &str, create: bool) -> Option<std::fs::File> {
+        #[cfg(target_os = "linux")]
+        const NOFOLLOW: c_int = 0x20000;
+        #[cfg(target_os = "macos")]
+        const NOFOLLOW: c_int = 0x100;
+        let file = std::fs::OpenOptions::new()
+            .read(true)
+            .write(true)
+            .create(create)
+            .mode(0o600)
+            .custom_flags(NOFOLLOW)
+            .open(path)
+            .ok()?;
+        let metadata = file.metadata().ok()?;
+        if !metadata.is_file()
+            || metadata.nlink() != 1
+            || metadata.uid() != unsafe { geteuid() }
+            || metadata.mode() & 0o777 != 0o600
+            || metadata.len() != 0
+            || unsafe { flock(file.as_raw_fd(), 2 | 4) } != 0
+        {
+            return None;
+        }
+        Some(file)
+    }
 
     pub fn restrict() -> std::io::Result<()> {
         for (resource, maximum) in [(0, 4), (ADDRESS_SPACE, 384 * 1024 * 1024), (4, 0)] {
@@ -209,6 +374,13 @@ mod platform {
             if unsafe { setrlimit(resource, &value) } != 0 {
                 return Err(std::io::Error::last_os_error());
             }
+        }
+        // A returned setting alone is not evidence that the address-space
+        // backend constrains allocations on this platform. Fail closed if an
+        // allocation larger than the complete ceiling can still be reserved.
+        let mut probe = Vec::<u8>::new();
+        if probe.try_reserve_exact(384 * 1024 * 1024 + 1).is_ok() {
+            return Err(std::io::Error::other("address-space limit not enforced"));
         }
         Ok(())
     }
@@ -252,9 +424,9 @@ mod platform {
         read_exact(&mut *input, &mut bytes, deadline)?;
         Ok(Request { limits, bytes })
     }
-    pub fn worker(parent: u32) -> Vec<u8> {
+    fn worker(parent: u32, request: &Request) -> Vec<u8> {
         if restrict().is_err() {
-            return error(RESOURCE);
+            return error(RESOURCE_BACKEND);
         }
         if unsafe { getppid() } as u32 != parent {
             return error(RESOURCE);
@@ -268,9 +440,7 @@ mod platform {
                 std::thread::sleep(Duration::from_millis(10));
             }
         });
-        match request(Instant::now() + Duration::from_secs(5))
-            .and_then(|request| extraction(&request))
-        {
+        match extraction(request) {
             Ok(output) => output,
             Err(code) => error(code),
         }
@@ -281,99 +451,201 @@ mod platform {
             Ok(request) => request,
             Err(code) => return error(code),
         };
-        let executable = match std::env::current_exe() {
-            Ok(path) => path,
-            Err(_) => return error(RESOURCE),
-        };
-        let mut command = Command::new(executable);
-        command
-            .arg("--worker")
-            .arg(std::process::id().to_string())
-            .env_clear()
-            .current_dir("/")
-            .stdin(Stdio::piped())
-            .stdout(Stdio::piped())
-            .stderr(Stdio::null());
-        // Limits apply before the parser starts and again in direct worker mode.
-        unsafe {
-            command.pre_exec(restrict);
+        let mut descriptors = [-1; 2];
+        if unsafe { pipe(descriptors.as_mut_ptr()) } != 0 {
+            return error(RESOURCE);
         }
-        let mut child = match command.spawn() {
-            Ok(child) => child,
-            Err(_) => return error(RESOURCE),
-        };
-        let input = child.stdin.take().unwrap();
-        let stdout = child.stdout.take().unwrap();
-        let writer = std::thread::spawn(move || {
-            let mut input = input;
-            input.write_all(MAGIC_IN)?;
-            for value in [
-                request.limits.pages,
-                request.limits.expanded,
-                request.limits.text,
-                request.bytes.len(),
-            ] {
-                input.write_all(&(value as u32).to_be_bytes())?;
+        let parent = std::process::id();
+        // This standalone supervisor is single-threaded at fork. The child
+        // inherits the already admitted image and request bytes; no executable
+        // pathname is reopened and no external loader is involved after fork.
+        let child = unsafe { fork() };
+        if child == 0 {
+            unsafe {
+                close(descriptors[0]);
             }
-            input.write_all(&request.bytes)
-        });
-        let reader = std::thread::spawn(move || {
-            let mut output = Vec::new();
-            stdout
-                .take((OUTPUT + 1) as u64)
-                .read_to_end(&mut output)
-                .map(|_| output)
-        });
+            for (name, _) in std::env::vars_os() {
+                unsafe {
+                    std::env::remove_var(name);
+                }
+            }
+            let output = worker(parent, &request);
+            let mut pipe = unsafe { std::fs::File::from_raw_fd(descriptors[1]) };
+            let _ = pipe.write_all(&output);
+            unsafe {
+                _exit(0);
+            }
+        }
+        unsafe {
+            close(descriptors[1]);
+        }
+        let mut pipe = unsafe { std::fs::File::from_raw_fd(descriptors[0]) };
+        if child < 0 {
+            return error(RESOURCE);
+        }
+        if !nonblocking(descriptors[0]) {
+            unsafe {
+                kill(child, 9);
+                waitpid(child, std::ptr::null_mut(), 0);
+            }
+            return error(RESOURCE);
+        }
+        let mut output = Vec::new();
         let mut good = false;
+        let mut reaped = false;
+        let mut failure = RESOURCE;
         loop {
-            let mut input = Poll {
-                fd: 0,
-                events: 1,
-                revents: 0,
-            };
-            let polled = unsafe { poll(&mut input, 1, 10) };
+            let mut descriptors = [
+                Poll {
+                    fd: 0,
+                    events: 1,
+                    revents: 0,
+                },
+                Poll {
+                    fd: descriptors[0],
+                    events: 1,
+                    revents: 0,
+                },
+            ];
+            let polled = unsafe { poll(descriptors.as_mut_ptr(), 2, 10) };
             // EOF/HUP means the owning Port disappeared. Extra bytes are a
             // protocol failure, never another request or an execution command.
-            if Instant::now() >= deadline || polled < 0 || input.revents != 0 {
+            if Instant::now() >= deadline || polled < 0 || descriptors[0].revents != 0 {
+                if descriptors[0].revents & 1 != 0 {
+                    let mut unexpected = [0_u8; 1];
+                    if std::io::stdin().read(&mut unexpected).ok() == Some(1) {
+                        failure = PROTOCOL;
+                    }
+                }
                 break;
             }
-            match child.try_wait() {
-                Ok(Some(status)) => {
-                    good = status.success();
+            let mut buffer = [0_u8; 8192];
+            loop {
+                match pipe.read(&mut buffer) {
+                    Ok(0) => break,
+                    Ok(count) => output.extend_from_slice(&buffer[..count]),
+                    Err(problem) if problem.kind() == std::io::ErrorKind::WouldBlock => break,
+                    Err(_) => break,
+                }
+                if output.len() > OUTPUT {
                     break;
                 }
-                Ok(None) => {}
-                Err(_) => break,
+            }
+            if output.len() > OUTPUT {
+                break;
+            }
+            let mut status = 0;
+            if unsafe { waitpid(child, &mut status, 1) } == child {
+                reaped = true;
+                // The child can write its final bytes between our last read
+                // and waitpid. Once reaped, drain the closed pipe to EOF before
+                // accepting its frame, still respecting the output ceiling.
+                good = status == 0
+                    && (&mut pipe)
+                        .take((OUTPUT + 1 - output.len()) as u64)
+                        .read_to_end(&mut output)
+                        .is_ok();
+                break;
             }
         }
-        if !good {
-            let _ = child.kill();
+        if !reaped {
+            unsafe {
+                kill(child, 9);
+                waitpid(child, std::ptr::null_mut(), 0);
+            }
         }
-        let _ = child.wait();
-        let written = writer.join().ok().is_some_and(|result| result.is_ok());
-        let output = reader.join().ok().and_then(Result::ok);
-        match output {
-            Some(output) if good && written && output.len() <= OUTPUT => output,
-            _ => error(RESOURCE),
+        if good && output.len() <= OUTPUT {
+            output
+        } else {
+            error(failure)
+        }
+    }
+
+    fn nonblocking(fd: c_int) -> bool {
+        #[cfg(target_os = "linux")]
+        const NONBLOCK: c_int = 0x800;
+        #[cfg(target_os = "macos")]
+        const NONBLOCK: c_int = 4;
+        let flags = unsafe { fcntl(fd, 3) };
+        flags >= 0 && unsafe { fcntl(fd, 4, flags | NONBLOCK) } == 0
+    }
+
+    pub fn write_result(bytes: &[u8], deadline: Instant) {
+        if !nonblocking(1) {
+            return;
+        }
+        let mut output = std::mem::ManuallyDrop::new(unsafe { std::fs::File::from_raw_fd(1) });
+        let mut offset = 0;
+        while offset < bytes.len() && Instant::now() < deadline {
+            let mut descriptors = [
+                Poll {
+                    fd: 0,
+                    events: 1,
+                    revents: 0,
+                },
+                Poll {
+                    fd: 1,
+                    events: 4,
+                    revents: 0,
+                },
+            ];
+            if unsafe { poll(descriptors.as_mut_ptr(), 2, 10) } < 0 || descriptors[0].revents != 0 {
+                return;
+            }
+            match output.write(&bytes[offset..]) {
+                Ok(0) => return,
+                Ok(count) => offset += count,
+                Err(problem) if problem.kind() == std::io::ErrorKind::WouldBlock => {}
+                Err(_) => return,
+            }
         }
     }
 }
 
 fn main() {
     std::panic::set_hook(Box::new(|_| {}));
+    let deadline = Instant::now() + Duration::from_secs(6);
     #[cfg(any(target_os = "linux", target_os = "macos"))]
-    let output = match std::env::args().nth(1).as_deref() {
-        None => platform::supervisor(),
-        Some("--worker") if std::env::args().len() == 3 => std::env::args()
-            .nth(2)
-            .and_then(|value| value.parse::<u32>().ok())
-            .map(platform::worker)
-            .unwrap_or_else(|| error(PROTOCOL)),
-        _ => error(PROTOCOL),
+    let arguments: Vec<_> = std::env::args().collect();
+    #[cfg(any(target_os = "linux", target_os = "macos"))]
+    let _lease = if arguments.len() == 3 && arguments[1] == "--lease-check" {
+        match platform::lease(&arguments[2], false) {
+            Some(_lease) => {
+                let _ = std::io::stdout().write_all(b"QUIESCENT\n");
+                std::process::exit(0);
+            }
+            None => std::process::exit(1),
+        }
+    } else if arguments.len() == 3 && arguments[1] == "--lease" {
+        match platform::lease(&arguments[2], true) {
+            Some(lease) => {
+                // No work input is accepted and no child is forked before this
+                // barrier. The Port guardian can cancel a pre-ready launch
+                // without mistaking an earlier lease probe for quiescence.
+                let _ = std::io::stdout().write_all(b"IPLEASE1");
+                let _ = std::io::stdout().flush();
+                Some(lease)
+            }
+            None => std::process::exit(1),
+        }
+    } else {
+        None
+    };
+    #[cfg(any(target_os = "linux", target_os = "macos"))]
+    let output = if arguments.len() == 1 || (arguments.len() == 3 && arguments[1] == "--lease") {
+        platform::supervisor()
+    } else {
+        error(PROTOCOL)
     };
     #[cfg(not(any(target_os = "linux", target_os = "macos")))]
     let output = error(RESOURCE);
-    let _ = std::io::stdout().lock().write_all(&output);
+    #[cfg(any(target_os = "linux", target_os = "macos"))]
+    platform::write_result(&output, deadline);
+    #[cfg(not(any(target_os = "linux", target_os = "macos")))]
+    {
+        let _ = deadline;
+        let _ = std::io::stdout().lock().write_all(&output);
+    }
 }
 
 #[cfg(test)]

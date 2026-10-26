@@ -2,7 +2,10 @@
 /deps/
 /ipse
 /native/target/
+/native/ipse-pdf/target/
 /priv/ipse-runner
+/priv/ipse-pdf
+/priv/ipse-pdf-notices/
 /.ipse/
 *.ez
 *.tar.gz

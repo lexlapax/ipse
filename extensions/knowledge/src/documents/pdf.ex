@@ -8,72 +8,17 @@ defmodule IpseKnowledge.Documents.Pdf do
     6 => :pdf_protocol_error,
     7 => :page_limit,
     8 => :text_limit,
-    9 => :embedded_objects_unsupported
+    9 => :embedded_objects_unsupported,
+    10 => :pdf_resource_backend_unavailable
   }
 
-  def extract(bytes, %{path: path, sha256: digest}, limits)
-      when is_binary(path) and is_binary(digest) do
-    with true <- Path.type(path) == :absolute and Path.expand(path) == path,
-         {:ok, %{type: :regular, links: 1, mode: mode, size: size}} <- File.lstat(path),
-         true <-
-           size <= 32 * 1024 * 1024 and Bitwise.band(mode, 0o022) == 0 and
-             Bitwise.band(mode, 0o111) != 0,
-         {:ok, executable} <-
-           File.open(path, [:read, :binary], &IO.binread(&1, 32 * 1024 * 1024 + 1)),
-         true <- is_binary(executable) and byte_size(executable) <= 32 * 1024 * 1024,
-         true <- Base.encode16(:crypto.hash(:sha256, executable), case: :lower) == digest do
-      port =
-        Port.open({:spawn_executable, String.to_charlist(path)}, [
-          :binary,
-          :exit_status,
-          :use_stdio,
-          :stderr_to_stdout,
-          :hide,
-          args: []
-        ])
-
-      try do
-        request =
-          <<"IPDF0001", limits.max_pages::big-32, limits.max_expanded_bytes::big-32,
-            limits.max_text_bytes::big-32, byte_size(bytes)::big-32, bytes::binary>>
-
-        true = Port.command(port, request)
-
-        receive_output(
-          port,
-          <<>>,
-          limits,
-          System.monotonic_time(:millisecond) + limits.timeout_ms
-        )
-      after
-        if Port.info(port), do: Port.close(port)
-      end
-    else
-      _ -> {:error, :pdf_parser_identity_unavailable}
+  def extract(bytes, descriptor, limits) do
+    case IpseKnowledge.Documents.ParserStage.run(bytes, descriptor, limits) do
+      {:ok, output} -> decode(output, limits)
+      error -> error
     end
   rescue
     _ -> {:error, :pdf_parser_unavailable}
-  end
-
-  def extract(_, _, _), do: {:error, :pdf_parser_identity_unavailable}
-
-  defp receive_output(port, bytes, limits, deadline) do
-    receive do
-      {^port, {:data, data}}
-      when byte_size(bytes) + byte_size(data) <= limits.max_text_bytes + limits.max_pages * 9 + 13 ->
-        receive_output(port, bytes <> data, limits, deadline)
-
-      {^port, {:data, _}} ->
-        {:error, :pdf_output_limit}
-
-      {^port, {:exit_status, 0}} ->
-        decode(bytes, limits)
-
-      {^port, {:exit_status, _}} ->
-        {:error, :pdf_resource_limit}
-    after
-      max(deadline - System.monotonic_time(:millisecond), 0) -> {:error, :extraction_timeout}
-    end
   end
 
   defp decode(<<"IPDO0001", status, count::big-32, rest::binary>>, limits)

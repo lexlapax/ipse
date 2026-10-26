@@ -3,11 +3,13 @@ set -eu
 cd "$(dirname "$0")/.."
 IPSE_BUILD_COMMIT=${IPSE_BUILD_COMMIT:-$(git rev-parse HEAD 2>/dev/null || true)}
 export IPSE_BUILD_COMMIT
+IPSE_BUILD_PDF=${IPSE_BUILD_PDF:-1}
+export IPSE_BUILD_PDF
 sh dev/build-native.sh
 MIX_ENV=prod mix deps.get
 MIX_ENV=prod mix compile --force --warnings-as-errors
 IPSE_VERSION=$(MIX_ENV=prod mix run --no-start -e 'IO.write(Mix.Project.config()[:version])')
-IPSE_RELEASE=_build/prod/rel/ipse
+IPSE_RELEASE=${MIX_BUILD_PATH:-_build/prod}/rel/ipse
 # Recreate generated staging so an upgraded toolchain or removed application
 # cannot leave obsolete runtime files in the next archive.
 rm -rf "$IPSE_RELEASE"
@@ -22,6 +24,9 @@ rm -rf "$IPSE_RELEASE/docs/archive"
 elixir -r dev/release.exs -e 'Ipse.Development.Release.bundle_documentation!(Enum.at(System.argv(), 0), File.cwd!(), Enum.at(System.argv(), 1), System.get_env("IPSE_BUILD_COMMIT"))' -- "$IPSE_RELEASE" "$IPSE_VERSION"
 mkdir -p "$IPSE_RELEASE/licenses"
 MIX_ENV=prod mix run --no-start dev/copy-package-notices.exs "$IPSE_RELEASE/licenses"
+if [ "$IPSE_BUILD_PDF" = 1 ]; then
+  cp -R priv/ipse-pdf-notices "$IPSE_RELEASE/licenses/ipse-pdf"
+fi
 cp third_party/APACHE-2.0.txt "$IPSE_RELEASE/licenses/"
 # Additional notices can be supplied by the toolchain distributor.
 if [ -n "${IPSE_NOTICES_DIR:-}" ]; then

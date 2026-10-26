@@ -49,7 +49,11 @@ jobs:
           IPSE_NOTICES_DIR="$RUNNER_TEMP/ipse-runtime-notices"
           elixir -r dev/release.exs -e 'Ipse.Development.Release.runtime_notices!(hd(System.argv()))' -- "$IPSE_NOTICES_DIR"
           printf 'IPSE_NOTICES_DIR=%s\n' "$IPSE_NOTICES_DIR" >> "$GITHUB_ENV"
-      - run: ./dev/build.sh
+      - run: IPSE_BUILD_PDF=1 ./dev/build.sh
+      - name: Optional PDF parser protocol and containment
+        env:
+          CARGO_TARGET_DIR: _build/ipse-pdf
+        run: cargo test --locked --manifest-path native/ipse-pdf/Cargo.toml
       - run: mix format --check-formatted
       - run: mix compile --warnings-as-errors
       - name: Native optional protocols
@@ -120,6 +124,11 @@ jobs:
           elixir dev/build-artifact.exs saved-results --sdk _build/dev/lib/ipse/ebin --output "$RUNNER_TEMP/ipse-saved-results"
           elixir dev/verify.exs source saved-results --sdk _build/dev/lib/ipse/ebin --input "$RUNNER_TEMP/ipse-saved-results"
           elixir dev/verify.exs installed saved-results --archive dist/ipse-*.tar.gz --input "$RUNNER_TEMP/ipse-saved-results"
+      - name: Independent source and installed document parser proof
+        run: |
+          elixir extensions/knowledge/build.exs --sdk _build/dev/lib/ipse/ebin --output "$RUNNER_TEMP/ipse-document-parser-corpus" --package corpus --preset state-lexical
+          elixir dev/verify.exs source documents --sdk _build/dev/lib/ipse/ebin --input "$RUNNER_TEMP/ipse-document-parser-corpus"
+          elixir dev/verify.exs installed documents --archive dist/ipse-*.tar.gz --input "$RUNNER_TEMP/ipse-document-parser-corpus"
       - name: Independent source and installed knowledge proof
         run: |
           elixir extensions/knowledge/build.exs --sdk _build/dev/lib/ipse/ebin --output "$RUNNER_TEMP/ipse-knowledge/corpus" --package corpus --preset state-lexical
