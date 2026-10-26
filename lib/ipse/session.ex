@@ -246,6 +246,7 @@ defmodule Ipse.Session do
         task: nil,
         prompt_from: nil,
         input_generation: Ipse.Usage.id(),
+        reference: saved.reference,
         task_cleanup_failed: false,
         job_ref: nil,
         phase: if(question, do: :question, else: :idle),
@@ -318,6 +319,17 @@ defmodule Ipse.Session do
         tool_lifecycle: nil,
         feeds: Feeds.new(events, id)
       }
+
+      state =
+        %{
+          state
+          | reference:
+              Ipse.Session.Reference.seed(
+                state.reference,
+                Ipse.Session.Context.admission_header(state),
+                Ipse.Session.Context.admission_publishers(state)
+              )
+        }
 
       state =
         if handoff do
@@ -2224,7 +2236,7 @@ defmodule Ipse.Session do
   @doc false
   def record(s, event) do
     result =
-      if event["type"] != "input_received" and
+      if event["type"] not in ~w(input_received reference_admitted reference_refresh reference_epoch reference_envelope) and
            ((s.observation != nil and s.observation.policy["mode"] != "off") or
               Feeds.active?(s.feeds)),
          do: Writer.append_observed(s.journal_writer, event),
@@ -2338,7 +2350,16 @@ defmodule Ipse.Session do
       account(s, event)
     else
       record(s, event)
-      s
+
+      contributions =
+        Ipse.Extension.Context.admit_replacement(
+          s.extension_contributions,
+          if(s.invocation.parent, do: s.invocation.parent["identity"]),
+          event,
+          if(s.reference, do: Ipse.Session.Reference.layout())
+        )
+
+      %{s | extension_contributions: contributions}
     end
   end
 
@@ -2404,6 +2425,7 @@ defmodule Ipse.Session do
              dir,
              %{
                "cwd" => cwd,
+               "reference_layout" => Ipse.Session.Reference.layout(),
                "usage_version" =>
                  if(Ipse.Config.Profiles.embeddings_enabled?(config), do: 2, else: 1),
                "embedding_profiles" => Ipse.Config.Profiles.embedding_snapshot(config),

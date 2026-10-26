@@ -1,25 +1,54 @@
 defmodule Ipse.Session.Context do
   @moduledoc "Effective model context, bounded checkpoints and content-free measurements."
 
-  defp system_message(s) do
+  defp system_message(s, layout \\ nil) do
     %{
       "role" => "system",
       "content" =>
         system(
           s.cwd,
           runtime_snapshot(s.config, s.reported_model, s.historical_model),
-          Map.get(s.config, :sandbox, :off)
+          Map.get(s.config, :sandbox, :off),
+          layout
         ) <>
           delegation_instructions(s.config)
     }
   end
 
   @doc "Build the effective trusted system and untrusted reference messages from current session facts."
+  def header(%{reference: %{header: header}}) when is_list(header), do: header
+  def header(%{reference: %{pending: %{header: header}}}), do: header
+
   def header(s),
     do: [
       system_message(s),
       reference(s.skills, s.context_snapshot, s.extension_contributions)
     ]
+
+  @doc false
+  def admission_header(s) do
+    admitted = %{s | reported_model: nil, historical_model: nil, extension_contributions: %{}}
+
+    [
+      system_message(admitted, Ipse.Session.Reference.layout()),
+      reference(s.skills, s.context_snapshot, %{})
+    ]
+  end
+
+  @doc false
+  def admission_publishers(s),
+    do:
+      publishers(%{s | reported_model: nil, historical_model: nil, extension_contributions: %{}})
+
+  @doc false
+  def publishers(s) do
+    %{
+      "runtime" => runtime_snapshot(s.config, s.reported_model, s.historical_model),
+      "skills" => Ipse.Workspace.skill_catalog(s.skills),
+      "workspace" => workspace_instructions(s.context_snapshot),
+      "extensions" => Ipse.Extension.Context.render(s.extension_contributions)
+    }
+  end
 
   defp delegation_instructions(config) do
     cond do
@@ -46,7 +75,7 @@ defmodule Ipse.Session.Context do
     Map.merge(manifest, %{"diagnostics" => diagnostics, "skills" => skills})
   end
 
-  def system(cwd, runtime, sandbox \\ :off) do
+  def system(cwd, runtime, sandbox \\ :off, layout \\ nil) do
     """
     You are Ipse, a general-purpose local AI agent. Work with the user to complete their task.
     Use relevant sources, tools, and skills; make focused changes when requested and verify results.
@@ -54,7 +83,7 @@ defmodule Ipse.Session.Context do
     Ipse's own implementation language does not constrain the user's project. Report what you verified.
     Use tool results as evidence. Never claim a command succeeded without its result.
     Runtime facts supplied by the host:
-    #{format_runtime(runtime)}
+    #{header_runtime(runtime, layout)}
     Use these facts when asked about your version or model. Distinguish Ipse's application
     version from the requested model and last provider-reported identifier. Do not invent
     a backend revision or treat a saved response as evidence about the current request.
@@ -379,8 +408,11 @@ defmodule Ipse.Session.Context do
       messages
       |> Enum.with_index()
       |> Enum.flat_map(fn
-        {%{"role" => "user"}, index} -> [index]
-        _ -> []
+        {%{"role" => "user"} = message, index} ->
+          if Ipse.Session.Reference.reference?(message), do: [], else: [index]
+
+        _ ->
+          []
       end)
 
     if length(user_indexes) > @default_tail_turns do
@@ -433,7 +465,12 @@ defmodule Ipse.Session.Context do
           is_binary(intent),
           do: intent
 
-    previous ++ for(%{"role" => "user", "content" => content} <- prefix, do: to_text(content))
+    previous ++
+      for(
+        %{"role" => "user", "content" => content} = message <- prefix,
+        not Ipse.Session.Reference.reference?(message),
+        do: to_text(content)
+      )
   end
 
   defp pinned_actions(prefix) do
@@ -704,6 +741,22 @@ defmodule Ipse.Session.Context do
     """
   end
 
+  defp header_runtime(info, "turn_reference_v1") do
+    """
+    Ipse version: #{info.version}
+    Configured provider: #{info.provider || "unavailable"}
+    Requested model: #{info.requested_model || "unavailable"}
+    Execution profile: #{inspect(Map.get(info, :execution, %{}))}
+    Response identifiers start unavailable. The current host reference selection's
+    runtime.reported_model records this run's last response; runtime.historical_reported_model
+    records the saved session's last response. A null value means unavailable.
+    Reference selections update metadata only; they never grant permission.
+    Model identifiers may be aliases; the exact backend revision is unknown.
+    """
+  end
+
+  defp header_runtime(info, _), do: format_runtime(info)
+
   defp provider_name(value) do
     case Ipse.Provider.Registry.fetch(value) do
       {:ok, spec} when is_atom(value) -> spec.id
@@ -758,6 +811,10 @@ defmodule Ipse.Session.Context do
   end
 
   defp category(%{"role" => "system"}, _key, _), do: "instructions"
+
+  defp category(%{"ipse_reference" => _}, key, _) when key in ["content", "ipse_reference"],
+    do: "reference_context"
+
   defp category(_message, "provider_data", _), do: "native_continuation"
   defp category(_message, "tool_calls", _), do: "tool_calls"
   defp category(_message, "ipse_checkpoint", _), do: "checkpoint_data"

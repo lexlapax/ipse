@@ -235,8 +235,14 @@ Sets are Session-local, without child/fresh-session inheritance. There are eight
 unique lowercase IDs of 32 characters, version labels of 128 bytes, text of 2048
 bytes, priority 0..100, and nullable unfetched assertion URIs of 1024 bytes.
 All sets render within 16 KiB, sorted by descending priority then instance/ID.
-Malformed/duplicate/oversized values refuse; `context_refused` preserves old sets
-without truncating, evicting peers, or discarding required instructions.
+New `turn_reference_v1` sessions count the final nested JSON/provenance and common
+reference framing against that aggregate limit. An admitted replacement first
+invalidates this caller's prior selection; successful publication installs the
+new set. Refusal, cancellation or interruption after that intent cannot leave
+stale caller context active. Peer sets are retained. A committed publication
+survives a later interrupted callback. Legacy journals retain their former
+rendering bound and preserve old sets on a refused replacement. Neither layout
+truncates excerpts or evicts peers to force success.
 
 For recorded provenance, replace assertion source with an actual successful action:
 
@@ -254,8 +260,11 @@ have null receipt digest; URL/version labels remain unverified claims.
 The committed outcome precedes installation and includes admitted items/provenance
 plus full-map digest. Each main request saves `extension_context_snapshot` after
 admission/before dispatch, binding request/map/exact rendered bytes. A labelled
-user-role reference carries it; core rules remain system text. Summary requests
-omit this extra context. Before-request jobs can publish for that request;
+user-role reference carries it; core rules remain system text. The versioned
+[context layout](workspace-context.md#admit-a-header-and-append-current-references)
+appends selected context after history rather than replacing the admitted header.
+Summary requests omit a new automatic selection; historical references remain
+labelled data in the summarized prefix. Before-request jobs can publish for that request;
 after-turn work affects later requests. Historical interpretation uses its saved
 request snapshot. Idle resume restores sets without workers/retrieval; changed
 proof chains refuse before repair. Diagnostics show counts/bytes/digest, not text.

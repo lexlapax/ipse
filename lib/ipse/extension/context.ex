@@ -20,13 +20,13 @@ defmodule Ipse.Extension.Context do
   end
 
   @doc "Replace caller session context using host-admitted prior actions; no external IO or retrieval."
-  def publish(contexts, identity, request, actions, operation_id) do
+  def publish(contexts, identity, request, actions, operation_id, layout \\ nil) do
     with :ok <- validate(request),
          true <- Ipse.Extension.Registry.valid_identity?(identity) and id?(operation_id),
          {:ok, items} <- admit_items(request["items"], identity, actions, operation_id),
          next = replace(contexts, identity["instance"], items),
          value = %{"items" => items, "snapshot_sha256" => Ipse.JSON.digest([next])},
-         true <- byte_size(render(next)) <= @limit,
+         true <- rendered_bytes(next, layout) <= @limit,
          :ok <-
            Extension.validate(%{
              "api_version" => 1,
@@ -49,7 +49,8 @@ defmodule Ipse.Extension.Context do
            context.identity,
            intent["request"],
            context.actions,
-           intent["operation_id"]
+           intent["operation_id"],
+           Map.get(context, :reference_layout)
          ) do
       {:ok, value, _} -> {:ok, value}
       _ -> {:failed, %{"reason" => "context_refused"}}
@@ -84,21 +85,28 @@ defmodule Ipse.Extension.Context do
 
   def valid_outcome?(_, _, _, _), do: false
 
-  def apply_result(contexts, parent, actions, event) do
+  def apply_result(contexts, parent, actions, event, layout \\ nil) do
     case {event["request"]["op"], event["outcome"]["status"]} do
       {"context.publish", status} ->
         expected =
-          publish(contexts, parent["identity"], event["request"], actions, event["operation_id"])
+          publish(
+            contexts,
+            parent["identity"],
+            event["request"],
+            actions,
+            event["operation_id"],
+            layout
+          )
 
         case {status, expected} do
           {"ok", {:ok, value, next}} ->
             if value == event["outcome"]["value"], do: {:ok, next}, else: @error
 
           {"failed", {:error, _}} ->
-            {:ok, contexts}
+            {:ok, invalidate(contexts, parent, layout)}
 
           {"unknown", _} ->
-            {:ok, contexts}
+            {:ok, invalidate(contexts, parent, layout)}
 
           _ ->
             @error
@@ -108,6 +116,26 @@ defmodule Ipse.Extension.Context do
         {:ok, contexts}
     end
   end
+
+  defp invalidate(contexts, parent, "turn_reference_v1"),
+    do: Map.delete(contexts, parent["identity"]["instance"])
+
+  defp invalidate(contexts, _, _), do: contexts
+
+  def admit_replacement(
+        contexts,
+        identity,
+        %{"type" => "extension_action_intent", "request" => %{"op" => "context.publish"}},
+        "turn_reference_v1"
+      ),
+      do: Map.delete(contexts, identity["instance"])
+
+  def admit_replacement(contexts, _, _, _), do: contexts
+
+  def rendered_bytes(contexts, "turn_reference_v1"),
+    do: Ipse.Session.Reference.extension_bytes(render(contexts))
+
+  def rendered_bytes(contexts, _), do: byte_size(render(contexts))
 
   def snapshot(contexts, request) do
     content = render(contexts)

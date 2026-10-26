@@ -226,33 +226,74 @@ defmodule Ipse.Session.Turn do
         start_extension_text(s)
 
       true ->
-        system = Ipse.Session.Context.header(s)
+        case prepare_reference(s) do
+          {:ok, prepared} ->
+            model_context(prepared)
 
-        case Ipse.Session.Context.prepare_compaction(s.messages, s.config, system) do
-          :skip ->
-            launch_model(s, system ++ s.messages)
-
-          {:ok, plan} ->
-            config = Ipse.Session.Context.summary_config(s.config)
-            Session.notify(s, {:status, :compacting})
-
-            launch_request(
-              %{s | compaction: plan},
-              config,
-              plan.summary_messages,
-              [],
-              :compaction
+          {:error, _} ->
+            fail(
+              s,
+              "Reference context could not be admitted within its bounds, or history or the tool catalog changed. Use /context refresh to review current context, or start a fresh session. No inference was dispatched."
             )
-
-          {:tool_results, messages, event} ->
-            Session.record(s, event)
-            Session.notify(s, {:compacted, event["before_bytes"], event["after_bytes"]})
-            model(%{s | messages: messages})
-
-          {:error, reason} ->
-            compaction_failed(s, reason, "prepare")
         end
     end
+  end
+
+  defp model_context(s) do
+    system = Ipse.Session.Context.header(s)
+
+    case Ipse.Session.Context.prepare_compaction(s.messages, s.config, system) do
+      :skip ->
+        launch_model(s, system ++ s.messages)
+
+      {:ok, plan} ->
+        config = Ipse.Session.Context.summary_config(s.config)
+        Session.notify(s, {:status, :compacting})
+
+        launch_request(
+          %{s | compaction: plan},
+          config,
+          plan.summary_messages,
+          [],
+          :compaction
+        )
+
+      {:tool_results, messages, event} ->
+        Session.record(s, event)
+        Session.notify(s, {:compacted, event["before_bytes"], event["after_bytes"]})
+        model(reference_compacted(%{s | messages: messages}))
+
+      {:error, reason} ->
+        compaction_failed(s, reason, "prepare")
+    end
+  end
+
+  defp prepare_reference(%{reference: nil} = s), do: {:ok, s}
+
+  defp prepare_reference(s) do
+    tools =
+      definitions(s.config, s.extension_result_sources, true) ++ Ipse.MCP.definitions(s.mcp_tools)
+
+    with {:ok, events, reference, appended} <-
+           Ipse.Session.Reference.prepare(
+             s.reference,
+             s.id,
+             s.turn_id,
+             Ipse.Session.Context.publishers(s),
+             tools,
+             s.messages
+           ) do
+      Enum.each(events, &Session.record(s, &1))
+      {:ok, %{s | reference: reference, messages: s.messages ++ appended}}
+    end
+  end
+
+  defp reference_compacted(%{reference: nil} = s), do: s
+
+  defp reference_compacted(s) do
+    {:ok, event, reference} = Ipse.Session.Reference.compacted(s.reference, s.id)
+    Session.record(s, event)
+    %{s | reference: reference}
   end
 
   defp launch_model(s, messages) do
@@ -262,7 +303,7 @@ defmodule Ipse.Session.Turn do
       s,
       s.config,
       messages,
-      definitions(s.config, s.extension_result_sources) ++
+      definitions(s.config, s.extension_result_sources, s.reference != nil) ++
         Ipse.MCP.definitions(s.mcp_tools),
       :model
     )
@@ -513,13 +554,15 @@ defmodule Ipse.Session.Turn do
         Session.notify(s, {:compacted, stats.before_bytes, stats.after_bytes})
         Session.notify(s, {:usage, usage})
 
-        model(%{
-          s
-          | messages: messages,
-            compaction: nil,
-            usage: usage,
-            reported_model: reported_model(assistant)
-        })
+        model(
+          reference_compacted(%{
+            s
+            | messages: messages,
+              compaction: nil,
+              usage: usage,
+              reported_model: reported_model(assistant)
+          })
+        )
 
       {:error, reason} ->
         compaction_failed(s, reason, "validation")
@@ -1197,6 +1240,22 @@ defmodule Ipse.Session.Turn do
     s = Session.persist_context(%{s | context_drift: drift, skill_drift: []}, snapshot)
     s = Session.persist_skills(s, skills)
 
+    s =
+      if s.reference do
+        {:ok, event, reference} =
+          Ipse.Session.Reference.refresh(
+            s.reference,
+            s.id,
+            Ipse.Session.Context.admission_header(s),
+            Ipse.Session.Context.admission_publishers(s)
+          )
+
+        Session.record(s, event)
+        %{s | reference: reference}
+      else
+        s
+      end
+
     manifest =
       Ipse.Session.Context.manifest(s.context_snapshot, s.context_drift, s.skill_drift, s.skills)
 
@@ -1296,9 +1355,9 @@ defmodule Ipse.Session.Turn do
     {:noreply, tool_result(s, hd(s.calls), text, outcome, s.tool_decision)}
   end
 
-  defp definitions(config, result_sources) do
+  defp definitions(config, result_sources, versioned) do
     Tools.definitions(Map.get(config, :sandbox, :off)) ++
-      if(model_saved_results?(result_sources),
+      if(versioned or model_saved_results?(result_sources),
         do: [ResultSource.reader_definition()],
         else: []
       ) ++

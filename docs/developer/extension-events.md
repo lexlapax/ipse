@@ -139,7 +139,11 @@ Restoration checks declaration/identity/source/turn/payload/order/receipt and ac
 physical source positions before repair. Private job parents additionally bind
 delivery intent and prompt/answer sources, without exposing those references in
 metadata-only triggers. Missing question-source checkpoints refuse rather than guess.
-Cancellation stops owned work, preserving committed state/context and uncertainty.
+Cancellation stops owned work, preserving committed state/publications and uncertainty.
+In a versioned reference session, an admitted but unfinished replacement context
+intent has already invalidated that caller's old selection; it cannot return on
+resume. An earlier successful publication followed only by an interrupted callback
+remains committed. See [publication](extension-state.md#publish-a-literal-excerpt-with-its-receipt).
 For extraction, retain the revision/generation captured before work across the
 checkpoint. Rereading after forget must not authorize resurrection. Domain suppression
 and cutoffs build on generic CAS, as taught in [state](extension-state.md).

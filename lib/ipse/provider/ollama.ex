@@ -11,9 +11,7 @@ defmodule Ipse.Provider.Ollama do
         "/api/chat"
       )
 
-  def complete(config, messages, tools, emit) do
-    url = endpoint(config)
-
+  def request_body(config, messages, tools) do
     {messages, _} =
       Enum.map_reduce(messages, %{}, fn message, names ->
         native = to_native(message)
@@ -50,19 +48,23 @@ defmodule Ipse.Provider.Ollama do
         do: Map.put(body, "format", config.extension_response_schema),
         else: body
 
-    body =
-      if is_map(config[:summary_schema]) do
-        Map.merge(body, %{
-          "format" => config.summary_schema,
-          "think" => false,
-          "options" => %{
-            "temperature" => 0,
-            "num_predict" => Ipse.Provider.narrow_output_tokens(limit, 4096)
-          }
-        })
-      else
-        body
-      end
+    if is_map(config[:summary_schema]) do
+      Map.merge(body, %{
+        "format" => config.summary_schema,
+        "think" => false,
+        "options" => %{
+          "temperature" => 0,
+          "num_predict" => Ipse.Provider.narrow_output_tokens(limit, 4096)
+        }
+      })
+    else
+      body
+    end
+  end
+
+  def complete(config, messages, tools, emit) do
+    url = endpoint(config)
+    body = request_body(config, messages, tools)
 
     state = %{
       lines: Stream.new_lines(:lf),

@@ -2,13 +2,20 @@ defmodule Ipse.SessionTest do
   use ExUnit.Case, async: false
 
   defmodule Fake do
-    def complete(config, messages, _tools, _emit) do
+    def complete(config, messages, tools, _emit) do
       send(config.test_pid, {:model_input, messages})
+      send(config.test_pid, {:model_tools, tools})
 
       case config[:scenario] do
         :identity ->
+          user =
+            Enum.find(
+              Enum.reverse(messages),
+              &(&1["role"] == "user" and not Ipse.Session.Reference.reference?(&1))
+            )
+
           reported =
-            if List.last(messages)["content"] == "missing", do: nil, else: config[:reported]
+            if user["content"] == "missing", do: nil, else: config[:reported]
 
           {:ok,
            %{
@@ -366,17 +373,22 @@ defmodule Ipse.SessionTest do
 
     assert Ipse.Session.info(pid).runtime.reported_model == nil
     Ipse.Session.prompt(pid, "identity")
-    assert_receive {:model_input, [system | _]}, 2000
-    assert system["content"] =~ "Configured provider: ollama"
-    assert system["content"] =~ "Requested model: chosen:alias"
-    refute system["content"] =~ "private-token"
+    assert_receive {:model_input, [admitted | _]}, 2000
+    assert_receive {:model_tools, admitted_tools}, 2000
+    assert Enum.any?(admitted_tools, &(&1["function"]["name"] == "saved_result_read"))
+    assert admitted["content"] =~ "Configured provider: ollama"
+    assert admitted["content"] =~ "Requested model: chosen:alias"
+    refute admitted["content"] =~ "private-token"
     assert_receive {:ipse, ^pid, {:done, :ok}}, 2000
     assert Ipse.Session.info(pid).runtime.reported_model == "reported-snapshot"
     refute inspect(Ipse.Session.info(pid)) =~ "private-token"
 
     Ipse.Session.prompt(pid, "missing")
-    assert_receive {:model_input, [system | _]}, 2000
-    assert system["content"] =~ "Last response model (current run): reported-snapshot"
+    assert_receive {:model_input, [system | _] = current}, 2000
+    assert_receive {:model_tools, ^admitted_tools}, 2000
+    assert system == admitted
+    assert List.last(current)["content"] =~ ~s("reported_model":"reported-snapshot")
+    assert Ipse.Session.Reference.reference?(List.last(current))
     assert_receive {:ipse, ^pid, {:done, :ok}}, 2000
     assert Ipse.Session.info(pid).runtime.reported_model == nil
   end
@@ -424,9 +436,11 @@ defmodule Ipse.SessionTest do
     assert info.reported_model == nil
     assert info.historical_reported_model == "saved-snapshot"
     Ipse.Session.prompt(resumed, "identity again")
-    assert_receive {:model_input, [system | _]}, 2000
-    assert system["content"] =~ "Last response model (current run): unavailable"
-    assert system["content"] =~ "Saved session's last response model: saved-snapshot"
+    assert_receive {:model_input, [system | _] = current}, 2000
+    assert system["content"] =~ "Response identifiers start unavailable."
+    refute system["content"] =~ "saved-snapshot"
+    assert List.last(current)["content"] =~ ~s("historical_reported_model":"saved-snapshot")
+    assert Ipse.Session.Reference.reference?(List.last(current))
     assert_receive {:ipse, ^resumed, {:done, :ok}}, 2000
     assert Ipse.Session.info(resumed).runtime.reported_model == "new-snapshot"
   end

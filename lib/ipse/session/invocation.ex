@@ -659,7 +659,8 @@ defmodule Ipse.Session.Invocation do
              s.extension_contributions,
              s.invocation.parent,
              s.invocation.results,
-             event
+             event,
+             if(s.reference, do: Ipse.Session.Reference.layout())
            ) do
       s = Session.record_extension_action(s, event)
 
@@ -1009,6 +1010,7 @@ defmodule Ipse.Session.Invocation do
       sandbox: Map.get(s.config, :sandbox, :off),
       parallel_child: Map.get(s.config, :parallel_child, false),
       contributions: s.extension_contributions,
+      reference_layout: if(s.reference, do: Ipse.Session.Reference.layout()),
       identity: s.invocation.parent["identity"],
       actions: s.invocation.results
     }

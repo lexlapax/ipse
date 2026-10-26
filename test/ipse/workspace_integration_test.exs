@@ -228,7 +228,10 @@ defmodule Ipse.WorkspaceSessionTest do
 
     :ok = Ipse.Session.prompt(pid, "write the nested file")
     assert_receive {:model_input, _first_messages}, 2_000
-    assert_receive {:model_input, [system, reference | replanned_messages]}, 2_000
+    assert_receive {:model_input, [system, admitted | replanned_messages]}, 2_000
+    reference = List.last(replanned_messages)
+    assert Ipse.Session.Reference.reference?(reference)
+    refute admitted["content"] =~ "nested-scope-v1"
     assert reference["content"] =~ "nested-scope-v1"
     refute system["content"] =~ "nested-scope-v1"
 
@@ -285,7 +288,9 @@ defmodule Ipse.WorkspaceSessionTest do
     assert tool_messages(restored_before_approval) == [first, second]
 
     :ok = Ipse.Session.approve(pid, ref, true)
-    assert_receive {:model_input, [_system, reference | _]}, 2_000
+    assert_receive {:model_input, [_system, _admitted | messages]}, 2_000
+    reference = Enum.find(Enum.reverse(messages), &Ipse.Session.Reference.reference?/1)
+    assert Ipse.Session.Reference.reference?(reference)
     assert reference["content"] =~ "nested-scope-v1"
     assert_receive {:ipse, ^pid, {:done, :ok}}, 2_000
     assert File.read!(Path.join(nested, "result.txt")) == "after review"

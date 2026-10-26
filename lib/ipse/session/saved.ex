@@ -8,6 +8,7 @@ defmodule Ipse.Session.Saved do
   @doc "Rebuild pure resume facts after the owner has validated sources and reloaded its journal."
   def restore(events, id) do
     with :ok <- Ipse.Session.Input.validate_events(events, id),
+         {:ok, reference} <- Ipse.Session.Reference.restore(events, id),
          {:ok, accounting} <- Ipse.Usage.restore(events, id),
          {:ok, extension_state} <- Actions.restore(events),
          {:ok, result_sources} <- ResultSource.restore(events),
@@ -25,7 +26,8 @@ defmodule Ipse.Session.Saved do
          question: question,
          historical_model: historical_model(events),
          last_request_id: request_field(events, "request_id"),
-         turn_id: request_field(events, "turn_id")
+         turn_id: request_field(events, "turn_id"),
+         reference: reference
        }}
     end
   end
@@ -82,6 +84,7 @@ defmodule Ipse.Session.Saved do
 
   defp validate_context_events(events) do
     with :ok <- Ipse.Session.Input.validate_events(events),
+         {:ok, _} <- Ipse.Session.Reference.restore(events),
          :ok <- Ipse.Journal.validate_limit_events(events),
          :ok <- validate_handoff_events(events),
          :ok <- Workspace.validate_skill_events(events),
@@ -97,41 +100,99 @@ defmodule Ipse.Session.Saved do
   end
 
   defp project(events, question_mode) do
-    Enum.reduce_while(events, {:ok, [], {:ok, nil}}, fn event, {:ok, messages, native} ->
+    versioned =
+      match?(
+        [%{"metadata" => %{"reference_layout" => "turn_reference_v1"}} | _],
+        events
+      )
+
+    Enum.reduce_while(events, {:ok, [], {:ok, nil}, MapSet.new()}, fn event,
+                                                                      {:ok, messages, native,
+                                                                       pending} ->
       native =
         if question_mode == :validate,
-          do: question_step(event, native, messages),
+          do: question_step(event, native, messages, versioned),
           else: native
 
-      case context_step(event, messages) do
-        {:ok, messages} -> {:cont, {:ok, messages, native}}
+      case project_step(event, messages, versioned, pending) do
+        {:ok, messages, pending} -> {:cont, {:ok, messages, native, pending}}
         error -> {:halt, error}
       end
     end)
     |> case do
-      {:ok, messages, native} -> {:ok, restore_messages(Enum.reverse(messages)), native}
-      error -> error
+      {:ok, messages, native, _} ->
+        {:ok, restore_messages(Enum.reverse(messages), versioned), native}
+
+      error ->
+        error
     end
   end
+
+  defp project_step(event, messages, false, pending) do
+    with {:ok, messages} <- context_step(event, messages, false), do: {:ok, messages, pending}
+  end
+
+  defp project_step(event, reversed, true, pending) do
+    with {:ok, reversed, pending} <- reference_boundary(event, reversed, pending),
+         {:ok, projected} <- context_step(event, reversed, true),
+         {:ok, pending} <- projected_order(projected, reversed, pending) do
+      {:ok, projected, pending}
+    end
+  end
+
+  # An actual new user message closes an interrupted historical suffix. References
+  # and checkpoints must never create that recovery boundary themselves.
+  defp reference_boundary(
+         %{"type" => "message", "message" => %{"role" => "user"} = message},
+         reversed,
+         pending
+       )
+       when not is_map_key(message, "ipse_reference") do
+    if MapSet.size(pending) == 0,
+      do: {:ok, reversed, pending},
+      else: {:ok, Enum.reverse(restore_messages(Enum.reverse(reversed), true)), MapSet.new()}
+  end
+
+  defp reference_boundary(%{"type" => type}, reversed, pending)
+       when type in ~w(reference_envelope context_compacted tool_results_compacted extension_transform_intent extension_transform_result) do
+    if MapSet.size(pending) == 0,
+      do: {:ok, reversed, pending},
+      else: {:error, :invalid_reference_context}
+  end
+
+  defp reference_boundary(_, reversed, pending), do: {:ok, reversed, pending}
+
+  defp projected_order(messages, messages, pending), do: {:ok, pending}
+
+  defp projected_order([message | previous], previous, pending),
+    do: Ipse.Session.Reference.native_message(message, pending)
+
+  defp projected_order(projected, _, _),
+    do: Ipse.Session.Reference.native_order(Enum.reverse(projected))
+
+  defp context_step(%{"type" => "message", "message" => %{"ipse_reference" => _}}, _, _),
+    do: {:error, :invalid_reference_context}
 
   defp context_step(
          %{"type" => "extension_invocation_result", "descriptor" => %{"stage" => "invoke.tool"}} =
            event,
-         messages
+         messages,
+         _versioned
        ),
        do: {:ok, [Invocation.tool_message(event) | messages]}
 
   defp context_step(
          %{"type" => "message", "message" => %{"ipse_extension_result" => _} = message},
-         messages
+         messages,
+         _versioned
        ) do
     if List.first(messages) == message,
       do: {:ok, messages},
       else: {:error, :invalid_extension_invocation}
   end
 
-  defp context_step(%{"type" => "extension_transform_intent"} = event, messages) do
-    messages = restore_messages(Enum.reverse(messages))
+  defp context_step(%{"type" => "extension_transform_intent"} = event, messages, versioned) do
+    messages = restore_messages(Enum.reverse(messages), versioned)
 
     case Projection.validate_intent_context(messages, event) do
       :ok -> {:ok, Enum.reverse(messages)}
@@ -139,22 +200,31 @@ defmodule Ipse.Session.Saved do
     end
   end
 
-  defp context_step(%{"type" => "extension_transform_result"} = event, messages) do
-    case Projection.apply(restore_messages(Enum.reverse(messages)), event) do
+  defp context_step(%{"type" => "extension_transform_result"} = event, messages, versioned) do
+    case Projection.apply(restore_messages(Enum.reverse(messages), versioned), event) do
       {:ok, projected} -> {:ok, Enum.reverse(projected)}
       error -> error
     end
   end
 
-  defp context_step(%{"type" => "handoff_imported", "message" => message}, messages),
+  defp context_step(%{"type" => "handoff_imported", "message" => message}, messages, _),
     do: {:ok, [message | messages]}
 
-  defp context_step(%{"type" => type, "message" => message}, messages)
+  defp context_step(%{"type" => "reference_envelope"} = event, messages, versioned) do
+    with {:ok, projected} <-
+           Ipse.Session.Reference.project(
+             restore_messages(Enum.reverse(messages), versioned),
+             event
+           ),
+         do: {:ok, Enum.reverse(projected)}
+  end
+
+  defp context_step(%{"type" => type, "message" => message}, messages, _)
        when type in ["message", "operator_answer", "operator_question_closed"] and is_map(message),
        do: {:ok, [message | messages]}
 
-  defp context_step(%{"type" => "context_compacted"} = event, messages) do
-    messages = restore_messages(Enum.reverse(messages))
+  defp context_step(%{"type" => "context_compacted"} = event, messages, versioned) do
+    messages = restore_messages(Enum.reverse(messages), versioned)
     count = event["covered_messages"]
 
     if event["version"] == 1 and is_integer(count) and count > 0 and
@@ -166,9 +236,9 @@ defmodule Ipse.Session.Saved do
     end
   end
 
-  defp context_step(%{"type" => "tool_results_compacted"} = event, messages) do
+  defp context_step(%{"type" => "tool_results_compacted"} = event, messages, versioned) do
     case Ipse.Session.Context.restore_tool_results(
-           restore_messages(Enum.reverse(messages)),
+           restore_messages(Enum.reverse(messages), versioned),
            event
          ) do
       {:ok, projected} -> {:ok, Enum.reverse(projected)}
@@ -176,7 +246,24 @@ defmodule Ipse.Session.Saved do
     end
   end
 
-  defp context_step(_, messages), do: {:ok, messages}
+  defp context_step(_, messages, _), do: {:ok, messages}
+
+  defp restore_messages(messages, false), do: restore_messages(messages)
+  defp restore_messages([], true), do: []
+
+  defp restore_messages([%{"role" => "assistant", "tool_calls" => calls} = message | rest], true)
+       when is_list(calls) do
+    {results, tail} = Enum.split_while(rest, &(&1["role"] == "tool"))
+    recorded = MapSet.new(results, & &1["tool_call_id"])
+
+    missing =
+      for call <- calls, not MapSet.member?(recorded, call["id"]), do: unknown_result(call["id"])
+
+    [message | results ++ missing] ++ restore_messages(tail, true)
+  end
+
+  defp restore_messages([message | rest], true),
+    do: [message | restore_messages(rest, true)]
 
   defp restore_messages([]), do: []
 
@@ -192,13 +279,7 @@ defmodule Ipse.Session.Saved do
             {result, Map.put(pending, call["id"], remaining)}
 
           [] ->
-            {%{
-               "role" => "tool",
-               "tool_call_id" => call["id"],
-               "content" =>
-                 "Outcome unknown: session interrupted before a result was recorded. Inspect the workspace before retrying.",
-               "ipse_tool_outcome" => %{"status" => "unknown", "approval" => "historical_unknown"}
-             }, pending}
+            {unknown_result(call["id"]), pending}
         end
       end)
 
@@ -206,6 +287,15 @@ defmodule Ipse.Session.Saved do
   end
 
   defp restore_messages([message | rest]), do: [message | restore_messages(rest)]
+
+  defp unknown_result(id),
+    do: %{
+      "role" => "tool",
+      "tool_call_id" => id,
+      "content" =>
+        "Outcome unknown: session interrupted before a result was recorded. Inspect the workspace before retrying.",
+      "ipse_tool_outcome" => %{"status" => "unknown", "approval" => "historical_unknown"}
+    }
 
   defp restore_extension_question(events, messages, native) do
     with {:ok, state} <- Actions.restore(events) do
@@ -254,9 +344,9 @@ defmodule Ipse.Session.Saved do
 
   defp finish_question(error, _messages), do: error
 
-  defp question_step(_, {:error, _} = error, _messages), do: error
+  defp question_step(_, {:error, _} = error, _messages, _), do: error
 
-  defp question_step(%{"type" => "operator_question"} = event, {:ok, nil}, messages) do
+  defp question_step(%{"type" => "operator_question"} = event, {:ok, nil}, messages, versioned) do
     call = event["call"]
 
     with true <- event["version"] == 1 and is_map(call),
@@ -266,7 +356,8 @@ defmodule Ipse.Session.Saved do
          {:ok, ^args} <- Questions.validate(event["arguments"]),
          true <- is_integer(event["steps"]) and event["steps"] >= 0 and event["steps"] <= 100_000,
          prefix =
-           restore_messages(Enum.reverse(messages)) |> remove_question_placeholder(call["id"]),
+           restore_messages(Enum.reverse(messages), versioned)
+           |> remove_question_placeholder(call["id"]),
          true <-
            length(prefix) == event["covered_messages"] and
              Ipse.JSON.digest(prefix) == event["prefix_sha256"],
@@ -282,7 +373,7 @@ defmodule Ipse.Session.Saved do
     _ -> {:error, :invalid_operator_question_checkpoint}
   end
 
-  defp question_step(%{"type" => type} = event, {:ok, question}, _messages)
+  defp question_step(%{"type" => type} = event, {:ok, question}, _messages, _)
        when type in ["operator_answer", "operator_question_closed"] do
     if valid_question_end?(event, question),
       do: {:ok, nil},
@@ -291,10 +382,10 @@ defmodule Ipse.Session.Saved do
     _ -> {:error, :invalid_operator_question_checkpoint}
   end
 
-  defp question_step(%{"type" => "operator_question"}, _native, _messages),
+  defp question_step(%{"type" => "operator_question"}, _native, _messages, _),
     do: {:error, :invalid_operator_question_checkpoint}
 
-  defp question_step(_, native, _messages), do: native
+  defp question_step(_, native, _messages, _), do: native
 
   defp valid_question_end?(_, nil), do: false
 

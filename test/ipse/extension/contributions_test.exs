@@ -189,6 +189,21 @@ defmodule Ipse.Extension.ContributionsTest do
     assert_receive {:ipse, ^pid, {:done, :ok}}, 3000
   end
 
+  defp start_legacy(ctx) do
+    pid = start(ctx)
+    id = Session.info(pid).id
+    assert :ok = Session.close(pid)
+    {:ok, [first | rest]} = Journal.load(ctx.dir, id)
+    first = update_in(first["metadata"], &Map.delete(&1, "reference_layout"))
+
+    File.write!(
+      Path.join(ctx.dir, id <> ".jsonl"),
+      Enum.map_join([first | rest], "\n", &Jason.encode!/1) <> "\n"
+    )
+
+    start(ctx, id)
+  end
+
   test "assertions remain attributed data and model requests cache exact snapshots", ctx do
     pid = start(ctx)
     invoke(pid, "assertion")
@@ -196,12 +211,15 @@ defmodule Ipse.Extension.ContributionsTest do
     assert Session.diagnostics(pid)["extension_context"]["items"] == 1
     refute inspect(Session.diagnostics(pid)) =~ "literal evidence"
     assert :ok = Session.prompt(pid, "original operator request")
-    assert_receive {:context_request, [system, reference | messages]}, 3000
+    assert_receive {:context_request, [system, admitted | messages]}, 3000
+    assert [user, reference] = messages
+    refute admitted["content"] =~ "literal evidence"
+    assert Ipse.Session.Reference.reference?(reference)
     assert reference["role"] == "user"
     assert reference["content"] =~ "Assertions are unverified"
     assert reference["content"] =~ "literal evidence"
     refute system["content"] =~ "literal evidence"
-    assert messages == [%{"role" => "user", "content" => "original operator request"}]
+    assert user == %{"role" => "user", "content" => "original operator request"}
     assert_receive {:ipse, ^pid, {:done, :ok}}, 3000
     id = Session.info(pid).id
     {:ok, events} = Journal.load(ctx.dir, id)
@@ -250,8 +268,47 @@ defmodule Ipse.Extension.ContributionsTest do
 
     {:ok, events} = Journal.load(ctx.dir, Session.info(pid).id)
     assert {:ok, next} = Actions.restore(events)
-    assert next.contributions == state.contributions
+    assert next.contributions == %{}
+    assert Session.diagnostics(pid)["extension_context"]["items"] == 0
     refute ExtensionContext.render(next.contributions) =~ "invented evidence"
+
+    replacement =
+      Enum.find_index(
+        Enum.reverse(events),
+        &(&1["type"] == "extension_action_intent" and &1["request"]["op"] == "context.publish")
+      )
+
+    cut = length(events) - replacement
+    assert {:ok, interrupted} = Actions.restore(Enum.take(events, cut))
+    assert interrupted.action["request"]["op"] == "context.publish"
+    assert interrupted.contributions == %{}
+  end
+
+  test "legacy sessions keep mutable admission reference placement and failed-replacement behavior",
+       ctx do
+    pid = start_legacy(ctx)
+    invoke(pid, "assertion")
+    assert :ok = Session.prompt(pid, "legacy request")
+    assert_receive {:context_request, [system, reference, user]}, 3000
+    assert reference["content"] =~ "literal evidence"
+    refute system["content"] =~ "literal evidence"
+    assert user["content"] == "legacy request"
+    assert_receive {:ipse, ^pid, {:done, :ok}}, 3000
+    invoke(pid, "invalid")
+    assert Session.diagnostics(pid)["extension_context"]["items"] == 1
+    {:ok, events} = Journal.load(ctx.dir, Session.info(pid).id)
+    assert {:ok, state} = Actions.restore(events)
+    assert state.contributions["notes"] != nil
+    refute Enum.any?(events, &(&1["type"] == "reference_admitted"))
+
+    replacement =
+      Enum.find_index(
+        Enum.reverse(events),
+        &(&1["type"] == "extension_action_intent" and &1["request"]["op"] == "context.publish")
+      )
+
+    assert {:ok, interrupted} = Actions.restore(Enum.take(events, length(events) - replacement))
+    assert interrupted.contributions["notes"] != nil
   end
 
   test "clear replaces only current context and fresh sessions inherit none", ctx do

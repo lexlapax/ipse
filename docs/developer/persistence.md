@@ -21,6 +21,13 @@ unknown tool outcomes without executing a tool. `Saved.restore/2` additionally
 reconstructs accounting, extension action state, saved-result indexes, research
 validation, pending questions and the last recorded model/request facts. It
 returns those facts without starting a Session or reading source pages.
+For new reference-layout sessions it also validates the admitted header/catalog,
+reference epochs, positions, generations and turn bindings. Completed native tool
+results retain recorded order. References cannot close an unfinished group by
+inventing a result; unknown outcomes are materialized at a genuine next-user
+boundary or interrupted-history reconstruction. Legacy reconstruction retains its
+original ordering and layout. Follow the complete [context projection](workspace-context.md#admit-a-header-and-append-current-references)
+before changing either path.
 
 The owner still controls recovery order: acquire the session lock, reload and
 validate the locked journal and its sources, repair only a permitted torn tail,

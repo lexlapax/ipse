@@ -392,7 +392,14 @@ defmodule Ipse.Extension.Actions do
            state
            | action: event,
              step: event["step"],
-             seen: MapSet.put(state.seen, event["operation_id"])
+             seen: MapSet.put(state.seen, event["operation_id"]),
+             contributions:
+               Ipse.Extension.Context.admit_replacement(
+                 state.contributions,
+                 state.parent["identity"],
+                 event,
+                 state.metadata["reference_layout"]
+               )
          }}
       else
         @error
@@ -417,7 +424,8 @@ defmodule Ipse.Extension.Actions do
                do: Enum.reverse(state.results_rev),
                else: []
              ),
-             event
+             event,
+             state.metadata["reference_layout"]
            ) do
       {:ok,
        %{

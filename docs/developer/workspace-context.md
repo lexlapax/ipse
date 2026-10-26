@@ -8,6 +8,11 @@ admits and commits each change. [`Session.Saved`](../../lib/ipse/session/saved.e
 reconstructs committed projections without new inference. The journal keeps the
 original evidence.
 
+[`Session.Reference`](../../lib/ipse/session/reference.ex) owns the versioned
+relationship between the admitted header, ordered tool catalog and subsequent
+reference selections. Read it alongside Context; changing placement changes both
+provider caching and saved reconstruction.
+
 Workspace text tells Ipse how a project wants work done. It grants no credentials,
 tools, or OS authority. Explicit operator requests take precedence; nearer project
 instructions override broader project guidance, with user defaults beneath them.
@@ -79,9 +84,53 @@ and regular-file paths with `test/ipse/workspace_skills_test.exs` and
 do not defeat hostile concurrent replacement.
 
 Core rules remain system text. Workspace references, skill metadata, and extension
-contributions use a labelled user-role reference message. Explicitly requested
+contributions use labelled user-role reference messages. Explicitly requested
 skill bodies stay in their requesting turn. Placement does not promote reference
 text into a new task or authority.
+
+## Admit a header and append current references
+
+New sessions record `reference_layout: "turn_reference_v1"`. Session seeds the
+initial rules, instruction snapshot and skill catalog before callbacks can publish
+context. At the first model boundary it durably admits that two-message header
+and the digest of the ordered tool definitions. Reported response identifiers
+are mutable metadata, so the system header explains how to read their current
+reference fields instead of freezing a last-response claim. Both identifiers
+start unavailable.
+
+Before each main dispatch, compare the runtime, workspace, skill catalog and
+extension publishers with their admitted values. Changed selections append as
+labelled user data after the existing history and complete native tool group.
+No selection uses a system/developer role or a fabricated tool result. Unchanged
+same-turn continuation adds nothing. Each later real user turn repeats the full
+current selection when one is active, so retaining the latest two real turns
+also retains its current references. An empty selection explicitly clears a
+previous override; fields absent from that selection use the admitted baseline.
+Prior selections retain their original historical positions.
+
+`reference_admitted` binds header bytes, publisher baseline hashes, catalog hash
+and epoch. `reference_envelope` binds session/turn, effective-message position,
+source/policy generations, and exact content hash. Generic policy generation is
+currently zero. A source generation advances only when the selected values change.
+These are consistency/provenance checks, not evidence that an assertion is true
+or still current. `reference_refresh` stages a reviewed `/context refresh`;
+the next admission establishes a new header/catalog epoch. Compaction records a
+new `reference_epoch` while retaining that epoch's header/catalog bytes.
+
+The saved-result reader is declared from the first request even before any source
+exists. A newly discovered MCP catalog that differs from the admitted digest stops
+dispatch; explicit context refresh or a fresh session is required. Availability
+of a fixed tool never grants approval to call it. Legacy journals without this
+layout marker retain their previous header placement and conditional reader
+declaration; resume does not migrate their provider history.
+
+Saved reconstruction preserves the recorded order of completed native results,
+including clarification answers delivered after another result in the same batch.
+Only a genuine new user boundary, or final interrupted-history reconstruction,
+adds missing unknown outcomes. A reference/checkpoint cannot manufacture that
+boundary, split a group, or hide an orphan result. References count toward context
+bytes and summaries but never become pinned operator requests. The admission
+records are private journal records, without lifecycle-feed source projection.
 
 ## Plan a reduction at the model boundary
 
@@ -91,7 +140,7 @@ including system/references. After tools settle, reduction triggers above 80%.
 `--context-bytes` permits 8192..16000000; `--no-compact` disables reduction while
 preserving hard admission. Encoded bytes are not provider tokens.
 
-The planner selects a complete older prefix, preserving the latest two user
+The planner selects a complete older prefix, preserving the latest two real user
 turns and all associated assistant/tool/native data exactly. It retains older
 user requests verbatim in an intent ledger. The action ledger keeps exact IDs,
 names, arguments, host approval/outcome, and 256-character result excerpts with
@@ -164,8 +213,11 @@ stays full. Exercise a corrupt committed field and owner loss after commit:
 mix test test/ipse/workspace_test.exs test/ipse/workspace_integration_test.exs
 mix test test/ipse/session/context_test.exs test/ipse/session/context_tools_test.exs
 mix test test/ipse/session/context_integration_test.exs test/ipse/json_test.exs
+mix test test/ipse/session/reference_test.exs test/ipse/session/reference_replay_test.exs test/ipse/session/reference_wire_test.exs
 ```
 
 Pure suites establish projection shape. Session fixtures establish sync-before-
 replacement, usage, cancellation, and inert recovery. Keep those distinct when
-reporting the evidence for a context change.
+reporting the evidence for a context change. The wire suite exercises each main
+adapter's actual request-body builder, checking unchanged serialized history,
+tool declarations, reference role/position and signed continuation preservation.

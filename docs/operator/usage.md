@@ -224,6 +224,10 @@ shell targets cannot always be inferred.
 
 Resume keeps saved instructions. `/context refresh` adopts changed instructions
 and skills while idle, without reloading configuration or extension code.
+New sessions keep their admitted model header and tool catalog fixed between
+explicit refreshes and compaction boundaries. Updated scoped instructions,
+response metadata and extension excerpts enter as labelled reference data after
+conversation history. Older resumed sessions retain their saved layout.
 Terminal output escapes control characters; retained values keep original bytes.
 Reported model names are response metadata, not proof of the next response's identity.
 

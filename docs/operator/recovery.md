@@ -83,6 +83,13 @@ explicit confirmation printed by the terminal; an answer grants no action
 permission. A saved-configuration mismatch requires the original inputs or a
 fresh handoff, even when no model request had yet been made.
 
+If inference stops because reference context or its tool catalog could not be
+admitted, inspect `/context`, `/skills`, `/ext` and the configured MCP selection.
+Use `/context refresh` while idle to adopt reviewed instructions/skills and admit
+a new context epoch, or start a fresh session. Refresh grants no effect permission.
+Do not edit saved reference records or remove native tool results to bypass the
+refusal. An oversized extension selection must be reduced by its publisher.
+
 Validated ordinary resume may repair a torn final journal record while holding
 the lock. Read-only diagnosis does not. Corrupt committed records/checkpoints
 refuse recovery. Preserve originals for investigation.
