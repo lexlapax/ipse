@@ -46,6 +46,8 @@ is retained as a failure. Tests/package/installed checks were skipped after that
 failure and supply no pass. Commit `512ddf3` rewrites the expression as a multiline
 `do` block, preserving semantics; its fourteen focused consent tests pass. Later
 CI evidence must name its repaired revision rather than relabeling this run.
+The repaired [Linux/macOS run](https://github.com/lexlapax/ipse/actions/runs/40411704160)
+subsequently completed successfully at `512ddf3`.
 
 ## Operator primitive `37f5b9d`
 
@@ -57,6 +59,14 @@ had not mirrored it. The next implementation increment adds the identical step;
 the focused release-policy suite passes. The original failed run is preserved.
 Its chained demo/package/installed steps did not run after failure, so supply no
 pass. This is distinct from the earlier foundation package evidence.
+The [hosted run](https://github.com/lexlapax/ipse/actions/runs/40413815567)
+also failed that guard on both platforms. macOS additionally exhausted the default
+60-second aggregate ExUnit allowance in a multi-VM evaluation CLI fixture:
+fixture freezing took 39.2 seconds before the refusal command started. The refusal
+assertions and subprocess limits are retained; the fixture now uses the same
+120-second aggregate allowance as adjacent multi-VM cases. Its focused local
+rerun passed in 27.2 seconds (one test, 26 excluded). This does not turn the failed
+macOS run into a pass; repaired hosted evidence remains separate.
 
 ## Session input increment after `37f5b9d`
 
@@ -73,8 +83,22 @@ The documented single-reader `mix run` observation command was exercised with
 synthetic terminal input and returned its expected hash-checked success text.
 It submitted no task and made no inference request. This machine-driven terminal
 exercise is not independent human evidence. Full source/package/installed and
-hosted platform evidence for the combined Session increment remain pending.
+hosted platform evidence was pending at that checkpoint.
 The [incremental audit](session-input-audit.md) records the repairs and scopes.
+
+## Fixed Session input `a91dedb`
+
+An independent fixed clone at `a91dedbf385daa08498e4760e026f046f66cc38b`
+passed build, local formatting, strict compilation, CI policy, and documentation
+checks, then **1,826 tests, 36 excluded** in 1,067.3 seconds. Its isolated demo,
+package and installed-package checks also passed. The Linux x86_64/glibc-2.44
+archive contains 48 manual documents with zero missing local targets. Installed
+CLI and standalone checks used a utility-only PATH; the explicit-memory harness
+used only the bundled Erlang runtime. The synthetic 100-record/100-query lexical
+memory fixture made zero inference calls. This verifies the input foundation,
+not unimplemented knowledge workflows or later reference/decision/parser changes.
+Raw receipts use the `/tmp/ipse-input-fixed-` prefix. Hosted CI for this exact
+revision was still running when this local receipt was recorded.
 
 Raw logs, including first failures, are retained owner-only outside Git under
 `/home/lexlapax/.codex/visualizations/2026/10/26/01a17a12-c7bb-76e2-af9e-95f589cc6f94/p31-verification/`,

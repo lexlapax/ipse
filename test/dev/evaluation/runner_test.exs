@@ -1658,6 +1658,7 @@ defmodule Ipse.KnowledgeEvaluationRunnerTest do
     end
   end
 
+  @tag timeout: 120_000
   test "CLI refuses an existing review output without replacing its manifest", ctx do
     {_paths, root, manifest, sealed, frozen} = cli_frozen_inputs(ctx, :predictions)
     packet_path = Path.join(root, "existing-review")
