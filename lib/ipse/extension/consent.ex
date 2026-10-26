@@ -215,7 +215,11 @@ defmodule Ipse.Extension.Consent do
     if p != nil and p["expires_at_ms"] > now and r["policy_sha256"] == JSON.digest([p]) and
          r["artifact_sha256"] == p["artifact_sha256"] and
          r["source_sha256"] == p["source_sha256"] and r["operation"] in p["operations"] and
-         (not r["headless"] or p["headless"]), do: :ok, else: {:error, :consent_denied}
+         (not r["headless"] or p["headless"]) do
+      :ok
+    else
+      {:error, :consent_denied}
+    end
   end
 
   defp current(s, t, now) do

@@ -49,6 +49,7 @@ resource/offline qualification. No daemon configuration or existing model was ch
 - [Independent frozen qualification inputs and private-answer provenance](independent-data.md).
 - [Incremental adversarial foundation audit and repairs](foundation-audit.md).
 - [Internal protected control ledger audit and repairs](control-audit.md).
+- [Fixed-revision source and platform verification receipts](verification.md).
 - [Nonpublishing interaction model](../../../dev/knowledge/interaction.exs) and
   [boundary tests](../../../test/dev/knowledge/interaction_test.exs).
 - [Finite main-route pilot](../../../dev/knowledge/pilot.exs),
