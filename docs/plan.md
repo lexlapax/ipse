@@ -886,7 +886,7 @@ and an available Qwen3.5 9B comparison. Model details and contracts live in the
 | Package | Output and prerequisites; runtime features remain unimplemented |
 | --- | --- |
 | P31A | In progress: amended baseline archived; host ownership/contracts, nonpublishing interaction/pilot probes, storage/parser evaluation and human journeys prepared. Main-route pilot and frozen evidence checks in progress; independent intake labels/workload ratification and human/platform evidence remain open. See [record](archive/2026-10-26-p30-p31-implementation/index.md) |
-| P31B | Minimal protected project consent, knowledge-only headless exception, cross-process lock/reservation/revocation contract, local-service acquisition/resource authority and explicit mode ceilings; after A |
+| P31B | In progress: internal protected control ledger and directory-sync primitive under test. Runtime origin, semantic admission, knowledge-only headless exception, endpoint acquisition/slots and explicit mode ceilings remain unimplemented; after A |
 | P31C0 | Prototype source-bound records, paged evidence/source discovery and turn-tail projection, protected identity, exclusions, retention/suppression/export on State; after A/B; internal only |
 | P31C1a | Sustainable notes storage, reciprocal worktree admission, pins/temporal history, safe reclamation/import and 30/90-day plus annual-turnover qualification; after C0, **required before E release** |
 | P31D0 | Guided standalone setup/review/status/retention management, separate local embedding/answer choices, bundled notes catalog and next-new-session activation; UI alongside B/C0, installed notes packaging against C1a; optional local preset delivered through D1/F |

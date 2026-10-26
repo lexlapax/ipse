@@ -98,6 +98,59 @@ They validate history and perform synchronous completion-owned writes; repeated
 inactive appends therefore have linear validation cost. Embedded callers remain
 responsible for their own lock lifetime.
 
+## Serialize protected consent before publication
+
+`Ipse.Extension.Consent` is an internal host ledger, separate from conversation
+history and extension-owned State. It is not exposed as an SDK operation or wired
+to CLI approval. Its caller must first establish operator origin, reviewed
+artifact identity, semantic scope, mode ceilings and a durable Session intent.
+Existing extension writes still use their ordinary separate approval gate.
+
+The caller supplies an admitted project digest and an absolute control root under
+an existing owner-only operator directory. The ledger checks canonical directory
+paths, ownership, regular single-link files and protection before taking the
+retained native lock. Policies bind exact artifact/source hashes, operation names,
+settings, expiry, headless selection and finite period limits. Policy replacement
+and revocation use an epoch CAS; neither discards earlier liabilities. A successful
+acknowledgment follows file sync, same-directory rename and parent-directory sync
+through `Runner.sync_directory/1`. It promises persistence under the filesystem's
+sync contract, not remote cancellation or physical-media failure immunity.
+
+Trace `reserve` → `admit` → `settle` in the
+[consent tests](../../test/ipse/extension/consent_test.exs). Each reservation binds
+an operation ID, request/policy/source hashes, source generation, monotonic
+sequence and complete resource vector. Duplicate IDs return inspection data,
+never a new admission. Pending/unknown work retains liability across period
+boundaries. Cancellation releases only known-unstarted work. Reconciliation is
+an explicit trusted-host action, not a timer or automatic recovery retry.
+
+For storage, `publish/5` rechecks the epoch while holding control before the
+storage lock. It durably marks `publishing` before the short host callback runs.
+The callback must revalidate source/suppression and perform bounded storage IO;
+it must never wait for inference, invoke extension code or take locks in reverse
+order. A lost callback or failed receipt remains unknown and cannot enter that
+callback again. Settlement retains its bounded receipt before Session records
+the result. The storage owner still needs its own durable operation binding to
+resolve an interrupted publication.
+
+A measured overrun is saved as `overrun`, retaining actual usage and blocking
+new reservations plus admission/publication of already-reserved work. Inspection,
+revocation and unrelated known-unstarted cancellation remain usable. Explicit
+reconciliation cannot reduce observed amounts; its terminal record retains actual
+period charges. Malformed measurements never become a settled success.
+
+The internal format allows 128 outstanding operations, 16,384 retained operation
+IDs and an 8-MiB complete ledger. Exhaustion refuses rather than reclaiming unknown
+work or replay protection. This is a bounded control substrate, not sustainable
+notes storage, Git sharing or a finished saved-consent workflow. The
+[plan](../plan.md#p31-usable-knowledge-and-prompt-assistance) owns those delivery
+gates. Exercise separate-VM contention, revocation and VM loss before integrating
+a consumer:
+
+```sh
+mix test test/ipse/extension/consent_test.exs test/ipse/runner_test.exs
+```
+
 ## Understand sealing and recovery bounds
 
 | Resource | Host ceiling |

@@ -105,6 +105,28 @@ fn run() -> Result<(), String> {
         return process_group::run_anchor().map_err(|_| "process-group owner failed".into());
     }
     if args.len() == 2 && args[1] == "--uid" { println!("{}", unsafe { geteuid() }); return Ok(()); }
+    if args.len() == 3 && args[1] == "--sync-directory" {
+        use std::os::unix::fs::MetadataExt;
+        #[cfg(target_os = "linux")]
+        let flags = 0x10000 | 0x20000;
+        #[cfg(target_os = "macos")]
+        let flags = 0x100000 | 0x100;
+        #[cfg(not(any(target_os = "linux", target_os = "macos")))]
+        return Err("directory sync requires Linux or macOS".into());
+        #[cfg(any(target_os = "linux", target_os = "macos"))]
+        {
+            let path = std::path::Path::new(&args[2]);
+            if !path.is_absolute() { return Err("directory sync requires an absolute path".into()); }
+            let directory = OpenOptions::new().read(true).custom_flags(flags).open(path)
+                .map_err(|_| "cannot open protected directory")?;
+            let metadata = directory.metadata().map_err(|_| "cannot inspect protected directory")?;
+            if !metadata.is_dir() || metadata.uid() != unsafe { geteuid() } || metadata.mode() & 0o077 != 0 {
+                return Err("directory sync requires an owner-only directory".into());
+            }
+            directory.sync_all().map_err(|_| "cannot sync protected directory")?;
+            return Ok(());
+        }
+    }
     #[cfg(target_os = "macos")]
     {
         if args.len() == 4 && args[1] == "--macos-entitlements" {

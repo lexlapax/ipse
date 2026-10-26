@@ -32,6 +32,13 @@ Ollama **0.40.5** is already installed. Resident tags include `qwen3.5:9b` and
 `llama3.2:3b`; neither silently substitutes for the primary embedding/answer pair.
 Mutable tags and abbreviated list IDs are discovery data, not immutable model proof.
 No model download or local inference had run at the initial inventory checkpoint.
+Later, the explicitly selected primary pair was pulled to
+`http://127.0.0.1:11434`. The [provisioning receipt](ollama-provisioning.json)
+records full reported digests, sizes, metadata and runtime. Summed artifact size
+is **3,963,324,792 bytes**, below the 12-GiB allowance; this is an upper bound on
+new artifact payload before shared-blob reuse, not measured network transfer.
+No local inference has run. Download success establishes neither quality nor
+resource/offline qualification. No daemon configuration or existing model was changed.
 
 ## P31A contracts and evidence
 
@@ -41,6 +48,7 @@ No model download or local inference had run at the initial inventory checkpoint
 - [Independent fresh-user journeys](journeys.md), prepared but not executed by a person.
 - [Independent frozen qualification inputs and private-answer provenance](independent-data.md).
 - [Incremental adversarial foundation audit and repairs](foundation-audit.md).
+- [Internal protected control ledger audit and repairs](control-audit.md).
 - [Nonpublishing interaction model](../../../dev/knowledge/interaction.exs) and
   [boundary tests](../../../test/dev/knowledge/interaction_test.exs).
 - [Finite main-route pilot](../../../dev/knowledge/pilot.exs),

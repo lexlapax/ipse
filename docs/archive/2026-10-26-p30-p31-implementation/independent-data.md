@@ -37,3 +37,26 @@ These are preparation checks. Integrated first outcomes, useful intake labels,
 human journeys and live model qualification remain open. Freeze implementation
 and recipes before independent execution; preserve failures and declare every
 later corpus, recipe or acceptance change explicitly.
+
+## Capture exposure and sealed supplement
+
+After the first foundation commit, an implementation source search included the
+public fixture tree and returned capture-case text. The original 200 capture
+inputs are therefore exposed development data; they cannot supply the primary
+held-out capture claim. No private gold was read and no original bytes changed.
+Future source searches must target implementation paths and exclude qualification
+fixtures. This incident does not justify tuning against the original answers.
+
+The independent notes author prepared 200 fresh capture cases (twenty classes of
+ten) at the same private artifact root under `notes-capture-supplement/`. Both
+public inputs and gold remain there unread by the implementation author until
+implementation freeze. The author reports zero exact original-source overlap,
+structural validation and deterministic regeneration. Synthetic single-author
+coverage and reused schema/policy machinery remain limits; semantic qualification
+has not run.
+
+| Supplemental artifact | SHA-256 |
+| --- | --- |
+| Manifest | `a8c032c5520db7c2daa2270829f870a5dce2cffaf3f38f39ab46986d030e6128` |
+| Inputs | `10991b23dc8942da5a511399c007098a1f5e57aa398ae93ed747fb30971193c5` |
+| Gold | `56ee99998600234a8c2f8cb657dbcf55f7dd91b4c00961aaf385c09113e7a37c` |

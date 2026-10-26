@@ -76,6 +76,56 @@ defmodule Ipse.Runner do
   defp selected_helper(nil, _cwd), do: helper_path()
   defp selected_helper(_profile, cwd), do: native_helper(cwd)
 
+  @doc "Sync an existing owner-only directory after atomic publication; grants no write authority."
+  def sync_directory(path) when is_binary(path) do
+    with :ok <- launch_text(path),
+         true <- Path.type(path) == :absolute,
+         {:ok, helper} <- verified_helper(),
+         {:ok, port, ticket} <-
+           owned_port(:lock, helper, [
+             :binary,
+             :exit_status,
+             :use_stdio,
+             :hide,
+             args: ["--sync-directory", path]
+           ]) do
+      try do
+        receive_directory_sync(port, ticket, System.monotonic_time(:millisecond) + 2_000, 0)
+      after
+        result = if Port.info(port), do: close_process(port, true), else: :ok
+        Ipse.Session.Resources.closed(ticket, result)
+      end
+    else
+      _ -> {:error, :directory_sync_unavailable}
+    end
+  rescue
+    _ -> {:error, :directory_sync_unavailable}
+  end
+
+  def sync_directory(_), do: {:error, :directory_sync_unavailable}
+
+  defp receive_directory_sync(port, ticket, deadline, bytes) do
+    receive do
+      {^port, {:exit_status, 0}} when bytes == 0 ->
+        :ok
+
+      {^port, {:exit_status, _}} ->
+        {:error, :directory_sync_unavailable}
+
+      {^port, {:data, data}} when bytes + byte_size(data) <= 4_096 ->
+        receive_directory_sync(port, ticket, deadline, bytes + byte_size(data))
+
+      {:ipse_cancel_resource, id} when ticket != nil and ticket.id == id ->
+        {:error, :directory_sync_unavailable}
+
+      {^port, _} ->
+        {:error, :directory_sync_unavailable}
+    after
+      max(deadline - System.monotonic_time(:millisecond), 0) ->
+        {:error, :directory_sync_unavailable}
+    end
+  end
+
   @doc "Acquire a persistent advisory lock. Its Port must remain owned by the session."
   def lock(path) when is_binary(path) do
     with :ok <- launch_text(path),

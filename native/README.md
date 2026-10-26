@@ -376,6 +376,23 @@ Ownership follows the helper process, so an Elixir Port owner's death releases
 the lock automatically. Lock files must **never be deleted**: preserving the
 inode prevents concurrent owners from locking different files at the same path.
 
+## Sync a protected publication directory
+
+`ipse-runner --sync-directory ABS_PATH` opens an existing directory without
+following its final symlink, verifies current effective-user ownership and
+owner-only permissions, then calls the platform directory sync operation. It
+uses no shell, creates no file and changes no permissions. Success emits no
+bytes and exits zero; refusal emits an ordinary bounded error frame. Linux and
+macOS are supported by the implementation; platform verification is a separate
+gate. `Ipse.Runner.sync_directory/1` enforces a two-second response deadline and
+resource cleanup. A failed or lost acknowledgment cannot establish whether an
+earlier caller-owned rename became durable.
+
+The protected consent ledger syncs a staged file, renames it under its retained
+control lock, then uses this operation before acknowledging policy or reservation
+publication. The host separately validates canonical ancestors and exact policy;
+this primitive grants no filesystem, extension or knowledge permission.
+
 ## Optional native macOS workspace sandbox
 
 `ipse-runner --sandbox macos-workspace-v1 WORKER DATA CWD TIMEOUT_MS COMMAND`
