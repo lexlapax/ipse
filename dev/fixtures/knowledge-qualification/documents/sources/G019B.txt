@@ -1,0 +1,2 @@
+Different entity classes
+Aurora the seal is tagged animal AS-6; the rescue log says the boat transported the seal.

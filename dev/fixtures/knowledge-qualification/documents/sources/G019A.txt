@@ -1,0 +1,2 @@
+Different entity classes
+Aurora the rescue boat is registered as craft RB-6.

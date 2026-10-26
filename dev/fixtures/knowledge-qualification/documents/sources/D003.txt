@@ -1,0 +1,6 @@
+Mountain radio log
+Battery rotation
+Station Juniper replaces its beacon battery every 21 days.
+The red case contains spent cells; it must not be treated as emergency stock.
+Measure	Value
+Reserve pack	J-4

@@ -1,0 +1,6 @@
+Pottery kiln notebook
+Cooling cycle
+The studio waits until the kiln falls below 80 °C before opening the lid.
+The earlier 100 °C suggestion was rejected because the glaze cracked.
+Measure	Value
+Test tile	Ω-9

@@ -1,0 +1,6 @@
+Wetland acoustic survey
+Evening transect
+Recorder Wren starts at dusk and stops after 47 minutes.
+A train horn overlaps the second interval; the team labels that interval contaminated.
+Measure	Value
+Recorder channel	左 2

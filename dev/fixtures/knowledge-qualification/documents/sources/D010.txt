@@ -1,0 +1,6 @@
+Amateur astronomy log
+Occultation timing
+Observer Leena records ingress at 22:14:08 UTC using a radio-synchronised clock.
+Thin cloud prevented a reliable egress time; the blank field is not a zero-duration event.
+Measure	Value
+Telescope aperture	152 mm

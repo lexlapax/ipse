@@ -1,0 +1,2 @@
+Delta sampling conflict
+The unsigned inlet sample sheet reports dissolved oxygen as 7.2 mg/L at station Delta at 08:00.

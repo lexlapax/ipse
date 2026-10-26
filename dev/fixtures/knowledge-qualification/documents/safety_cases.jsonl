@@ -1,0 +1,9 @@
+{"id":"S1","path":"public/safety/not-a-zip.docx","stratum":"malformed_zip","expected_safety_policy":"reject; explicit per-file result","executed_against_parser":false}
+{"id":"S2","path":"public/safety/truncated-xml.docx","stratum":"malformed_xml","expected_safety_policy":"reject or explicitly partial, never full indexing","executed_against_parser":false}
+{"id":"S3","path":"public/safety/bounded-entity-expansion.docx","stratum":"entity_expansion","expected_safety_policy":"reject DTD/entity declarations before expansion; 80 logical bytes maximum if expanded","executed_against_parser":false}
+{"id":"S4","path":"public/safety/external-entity-blocked.docx","stratum":"xxe","expected_safety_policy":"reject external entity; no file read or fetch","executed_against_parser":false}
+{"id":"S5","path":"public/safety/external-relationship.docx","stratum":"external_relationship","expected_safety_policy":"no fetch; explicit unsupported/rejected relationship","executed_against_parser":false}
+{"id":"S6","path":"public/safety/bounded-high-ratio.docx","stratum":"zip_expansion","expected_safety_policy":"apply configured binary/expanded/ratio limits; no success inferred from tiny sample","executed_against_parser":false}
+{"id":"S7","path":"public/safety/missing-main-part.docx","stratum":"missing_part","expected_safety_policy":"explicit unsupported/rejected package","executed_against_parser":false}
+{"id":"S8","path":"public/safety/legacy.doc","stratum":"unsupported_format","expected_safety_policy":"explicit unsupported legacy .doc; not genuine OLE coverage","executed_against_parser":false}
+{"id":"S9","path":"public/safety/embedded-object.docx.plan.txt","stratum":"embedded_object_plan","expected_safety_policy":"plan only; no parser outcome established","executed_against_parser":false}

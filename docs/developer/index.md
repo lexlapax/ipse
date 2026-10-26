@@ -76,6 +76,7 @@ they must not acquire a host dependency merely to share a small predicate.
 | Snapshot instructions/skills and compact active context | [Workspace and context](workspace-context.md) |
 | Change journals, recovery, locks, or saved-result capacity | [Persistence](persistence.md) |
 | Restore canonical usage and reserve shared budget liability | [Accounting](accounting.md) |
+| Validate advisory decision types, native subsets and deterministic advice | [Typed decisions](decisions.md) |
 | Launch local work, enforce supported OS policy, and confirm cleanup | [Sandbox](sandbox.md) |
 | Bind selected external tools through bounded transports | [MCP](mcp.md) |
 | Project durable/ephemeral sources into text or diagnostic delivery | [Lifecycle events](lifecycle-events.md) |
@@ -120,6 +121,20 @@ Follow these reader tasks in order:
 Synthetic protocol checks establish no model quality. Failed first outcomes stay
 in the declared grid. Historical/exposed data is suitable for tuning, not fresh
 held-out acceptance.
+
+For knowledge capture and prompt-assistance work, start with the
+[frozen delivery contracts](../archive/2026-10-26-p30-p31-implementation/contracts.md)
+and [finite qualification protocol](../archive/2026-10-26-p30-p31-implementation/qualification.md).
+Exercise the nonpublishing interaction/probe boundary before adding real authority:
+
+```sh
+mix test test/dev/knowledge
+```
+
+Those tests simulate origin proof and provider output; they publish no notes and
+establish no real terminal, model-quality or installed-user result. Follow the
+source owners named in the contracts for integrated changes, retaining old-session
+reconstruction and explicit provider/billing selection.
 
 ## Finish a reviewable change
 

@@ -1,0 +1,1 @@
+Plan only: author an OOXML package with an embedded inert text object; report explicit unsupported object scope. No executable object is included.

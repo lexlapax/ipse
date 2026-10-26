@@ -1,0 +1,6 @@
+Mobile library route
+Island stop
+The book van reaches Iona Pier on alternate Tuesdays at 14:10.
+If the ferry is cancelled, the stop is skipped; books are not left with the café.
+Measure	Value
+Book crate	L-208

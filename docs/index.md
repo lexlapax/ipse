@@ -32,6 +32,7 @@ quick start. Try the demo before configuring a model account.
 | Understand which process owns an operation | [Follow a turn](developer/architecture.md) |
 | Add a domain tool without changing the host | [Build an extension](developer/extensions.md) |
 | Change source retrieval, graph or investigation behavior | [Study knowledge packages](developer/knowledge-extensions.md) |
+| Validate typed advisory decision requests and native results | [Study decision contracts](developer/decisions.md) |
 | Measure retrieval and cited answers without exposing labels | [Work through knowledge evaluation](developer/knowledge-evaluation.md) |
 | Change a durable record or recovery validator | [Study persistence](developer/persistence.md) |
 | Prove a repair against source or an installed runtime | [Verify a change](developer/testing.md) |
@@ -44,12 +45,12 @@ dated evidence remains in the archive.
 
 The [plan](plan.md) records priorities, selected scopes and acceptance decisions.
 Its [P31 knowledge and prompt-assistance scope](plan.md#p31-usable-knowledge-and-prompt-assistance)
-and [P30 decision consumers](plan.md#p30-advisory-decision-engines) describe proposed
-work; the [knowledge and decision design](knowledge-design.md) owns the proposed
-experience and contracts, with [final audit dispositions](archive/2026-10-26-p30-p31-final-handoff/index.md)
+and [P30 decision consumers](plan.md#p30-advisory-decision-engines) track authorized
+implementation. The [knowledge and decision design](knowledge-design.md) points
+to the frozen amended proposal; [implementation records](archive/2026-10-26-p30-p31-implementation/index.md)
+retain contracts, finite experiments and evidence. Earlier [audit dispositions](archive/2026-10-26-p30-p31-final-handoff/index.md)
 and the [implementation handoff](archive/2026-10-26-p30-p31-final-handoff/implementation.md)
-preserved separately. The proposal is frozen into the archive when implementation
-starts. The [local Ollama research amendment](archive/2026-10-26-ollama-local-rag/index.md)
+remain historical preparation. The [local Ollama research amendment](archive/2026-10-26-ollama-local-rag/index.md)
 adds optional open-weight embedding and local-answer qualification to P31;
 current knowledge procedures remain in
 the operator chapters above.

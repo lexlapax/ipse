@@ -1,0 +1,2 @@
+Negated supplier
+The café buys flour from mill Morrow.

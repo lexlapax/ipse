@@ -1,0 +1,6 @@
+Bicycle lending notes
+Weekend access
+The Alder bicycle library lends cargo trailers from 09:30 on Saturdays.
+A blue tag means a trailer is awaiting inspection, not that it is reserved.
+Measure	Value
+Trailer deposit	€25

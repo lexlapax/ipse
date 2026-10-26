@@ -1,0 +1,6 @@
+Orchard field record
+Frost watch
+On 4 April the east orchard recorded a minimum of −2 °C.
+The west plot sensor failed that night; no temperature is inferred for that plot.
+Measure	Value
+East plot trees	37

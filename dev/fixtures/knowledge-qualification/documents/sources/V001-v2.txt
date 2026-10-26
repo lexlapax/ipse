@@ -1,0 +1,5 @@
+Boreal permit depth
+Limits
+Effective 2026-07-01, Maximum excavation depth is 0.5 metres.
+This signed replacement supersedes v1 from its effective date; earlier events retain the old rule.
+Maximum excavation depth	0.5 metres

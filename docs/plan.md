@@ -41,8 +41,8 @@ Qualified readiness retains its recorded human/live limits.
 | [P27: research, graph and RAG](#p27-optional-research-graph-and-rag) | Optional-package scope complete; hybrid qualified and selected | Evaluate new workloads independently; retain all seven strategies' original results |
 | [P28: operator usability and release](#p28-operator-usability-and-release-readiness) | v0.1.0 published at `341e458` under qualified acceptance after semantic documentation remediation and exact asset inspection | Retain human/live qualifications; evaluate subsequent changes against their own scope |
 | [P29: provider registry, OpenRouter and Gemini](#p29-provider-registry-openrouter-and-gemini) | Original scope and repairs accepted for qualified readiness; added Grok routes pass automated checks | Preserve unverified Grok API/OAuth eligibility and Gemini foreign-history live acceptance |
-| [P31: usable knowledge and prompt assistance](#p31-usable-knowledge-and-prompt-assistance) | Active planned delivery track; unimplemented | Start P31A, then sustainable notes storage and the interim notes journey/release; separate later document/graph quality gates |
-| [P30: decision engines](#p30-advisory-decision-engines) | Parallel foundation track; unimplemented | A/B can proceed independently; C–E integrate with P31B/E, without waiting for PDF/graph |
+| [P31: usable knowledge and prompt assistance](#p31-usable-knowledge-and-prompt-assistance) | Implementation authorized; P31A in progress; runtime features unimplemented | Frozen baseline, interaction contracts and nonpublishing main-route pilot; then protected consent and sustainable notes |
+| [P30: decision engines](#p30-advisory-decision-engines) | P30A typed/protocol foundation in progress; no admitted operation or consumer yet | Complete frozen contracts/checks, then B; C–E integrate with P31B/E, without waiting for PDF/graph |
 | [P32: voice and media](#p32-voice-and-realtime-media) | Deferred; unimplemented; formerly P31 | Select media contracts and device/service validation in a later increment |
 | [Apache-2.0 transition](#license-transition) | Complete at `7bb642b` | Preserve runtime, dependency and extension license boundaries |
 
@@ -66,10 +66,13 @@ the [previous scopes](archive/2026-10-26-p30-p31-plan/prior-milestones.md) are p
 The [current design](knowledge-design.md) and
 [latest audit disposition](archive/2026-10-26-p30-p31-final-handoff/index.md) link source
 research, settled user choices and concrete contracts. P31A is the next implementation
-entry point when authorized; P30A/B is independent parallel work.
+entry point; P30A/B is independent parallel work.
 The [implementation handoff](archive/2026-10-26-p30-p31-final-handoff/implementation.md)
 specifies P31A's bounded first work and required evidence.
-This authorizes roadmap/design work, not automatic implementation of P30/P31.
+The developer authorized full P30/P31 implementation on 2026-10-26, with full tests,
+an adversarial audit and review handoff. The [implementation record](archive/2026-10-26-p30-p31-implementation/index.md)
+preserves the frozen amended baseline, finite live allowance and open evidence.
+Publication remains separately authorized.
 The developer-selected Grok follow-up extends P29 and keeps API billing separate
 from registered-client subscription OAuth.
 
@@ -818,8 +821,8 @@ any remaining registration or live-account limits explicitly.
 
 ## P30: advisory decision engines
 
-**Planned; unimplemented; parallel foundation track.** P31 is the active delivery
-path when implementation is authorized. P30A/B can proceed independently; later
+**Authorized; typed/protocol foundation in progress.** P31 is the active delivery
+path. P30A/B can proceed independently; later
 P30 work consumes the first usable notes journey, not the entire P31 milestone.
 The [current design](knowledge-design.md#p30-interfaces-and-useful-consumers)
 owns detailed contracts. The [final audit disposition](archive/2026-10-26-p30-p31-final-handoff/index.md)
@@ -833,7 +836,7 @@ No local engine, SDK, new dependency or live account eligibility is established.
 
 | Package | Output and prerequisites |
 | --- | --- |
-| P30A | Versioned typed contract, engine/subset identities, consumer inputs, protocol fixtures and frozen finite experiment/benefit criteria; independent parallel work |
+| P30A | Versioned neutral text contract and pure OpenAI/System One wire subsets implemented; synthetic fixtures and finite experiment/benefit criteria prepared; full baseline/audit pending. No transport, host effect or qualified consumer is implied. [Developer contract](developer/decisions.md) |
 | P30B | Explicit profiles/adapters and owned `host.decision` effect with strict validation, usage, budgets, cancellation and no substitution; after A |
 | P30C | Deterministic policy mappings and zero-call applicability/bypass over permitted alternatives; integrate saved consent after B and P31B |
 | P30D | Implement bounded experiments: notes selection beyond the context budget and candidate assessment in replay/shadow mode on real main-tool inputs; after C and P31E |
@@ -855,10 +858,10 @@ without an extra call. Protocol success is not model quality.
 
 ## P31: usable knowledge and prompt assistance
 
-**Active planned delivery track; unimplemented.** Start at P31A when runtime work
-is authorized. P30 numbering does not imply it must finish first. P26/P27 retain
+**Active implementation track; P31A in progress.** Runtime features remain
+unimplemented. P30 numbering does not imply it must finish first. P26/P27 retain
 their completed original scopes, P20 remains completed and voice/media stays P32.
-This task authorizes plan remediation, not implementation or a release.
+Implementation is authorized; release publication is not.
 
 The selected outcome is automatic useful-fact/decision capture with visible changes,
 permission remembered across sessions, retrieval before material clarification,
@@ -880,9 +883,9 @@ primary qualification targets, with a smaller EmbeddingGemma 2 text challenger
 and an available Qwen3.5 9B comparison. Model details and contracts live in the
 [design](knowledge-design.md#optional-local-embeddings-and-rag), not this ledger.
 
-| Package | Output and prerequisites; all unimplemented |
+| Package | Output and prerequisites; runtime features remain unimplemented |
 | --- | --- |
-| P31A | Archive the amended proposal baseline; freeze setup/explicit acceptance/review journeys, turn-tail/cache/context and draft contracts, representative intake pilots, provider matrix including optional local embedding/answer presets, finite hardware/quality trials, budgets/corpora, storage/parser evaluations and recruitment; first active task under the implementation handoff |
+| P31A | In progress: amended baseline archived; host ownership/contracts, nonpublishing interaction/pilot probes, storage/parser evaluation and human journeys prepared. Main-route pilot and frozen evidence checks in progress; independent intake labels/workload ratification and human/platform evidence remain open. See [record](archive/2026-10-26-p30-p31-implementation/index.md) |
 | P31B | Minimal protected project consent, knowledge-only headless exception, cross-process lock/reservation/revocation contract, local-service acquisition/resource authority and explicit mode ceilings; after A |
 | P31C0 | Prototype source-bound records, paged evidence/source discovery and turn-tail projection, protected identity, exclusions, retention/suppression/export on State; after A/B; internal only |
 | P31C1a | Sustainable notes storage, reciprocal worktree admission, pins/temporal history, safe reclamation/import and 30/90-day plus annual-turnover qualification; after C0, **required before E release** |

@@ -1,0 +1,2 @@
+Delta sampling conflict
+The unsigned instrument export reports dissolved oxygen as 5.9 mg/L at station Delta at the same 08:00. Neither record is authoritative over the other.

@@ -1,0 +1,100 @@
+{"id":"G001-Q1","mode":"entity_relation_extraction","prompt":"Who curates Port?","source_ids":["G001A","G001B"],"max_source_reads":2,"authorship":"independently_authored_prompt"}
+{"id":"G001-Q2","mode":"entity_relation_extraction","prompt":"Should the two Mina Rao identities be merged?","source_ids":["G001A","G001B"],"max_source_reads":2,"authorship":"independently_authored_prompt"}
+{"id":"G001-Q3","mode":"entity_relation_extraction","prompt":"Who curates Cliff?","source_ids":["G001A","G001B"],"max_source_reads":2,"authorship":"independently_authored_prompt"}
+{"id":"G001-Q4","mode":"entity_relation_extraction","prompt":"Does AR-18 supervise CL-44?","source_ids":["G001A","G001B"],"max_source_reads":2,"authorship":"independently_authored_prompt"}
+{"id":"G002-Q1","mode":"entity_relation_extraction","prompt":"Which pen name is attributed to Niko Venn?","source_ids":["G002A","G002B"],"max_source_reads":2,"authorship":"independently_authored_prompt"}
+{"id":"G002-Q2","mode":"entity_relation_extraction","prompt":"Merge Niko Venn with Northglass?","source_ids":["G002A","G002B"],"max_source_reads":2,"authorship":"independently_authored_prompt"}
+{"id":"G002-Q3","mode":"entity_relation_extraction","prompt":"Is North Glass Ltd the same entity as the writer?","source_ids":["G002A","G002B"],"max_source_reads":2,"authorship":"independently_authored_prompt"}
+{"id":"G002-Q4","mode":"entity_relation_extraction","prompt":"Did the company commission the essays?","source_ids":["G002A","G002B"],"max_source_reads":2,"authorship":"independently_authored_prompt"}
+{"id":"G003-Q1","mode":"entity_relation_extraction","prompt":"Who signs chemist Ada Li's lab sheets?","source_ids":["G003A","G003B"],"max_source_reads":2,"authorship":"independently_authored_prompt"}
+{"id":"G003-Q2","mode":"entity_relation_extraction","prompt":"Can A.L. alone identify one merged person?","source_ids":["G003A","G003B"],"max_source_reads":2,"authorship":"independently_authored_prompt"}
+{"id":"G003-Q3","mode":"entity_relation_extraction","prompt":"Which other signer uses A.L.?","source_ids":["G003A","G003B"],"max_source_reads":2,"authorship":"independently_authored_prompt"}
+{"id":"G003-Q4","mode":"entity_relation_extraction","prompt":"Is Arun Lal employed by Ada Li's lab?","source_ids":["G003A","G003B"],"max_source_reads":2,"authorship":"independently_authored_prompt"}
+{"id":"G004-Q1","mode":"entity_relation_extraction","prompt":"Who chaired Fern Council on 15 June 2025?","source_ids":["G004A","G004B"],"max_source_reads":2,"authorship":"independently_authored_prompt"}
+{"id":"G004-Q2","mode":"entity_relation_extraction","prompt":"Does remaining a member make Osei identical to Inez?","source_ids":["G004A","G004B"],"max_source_reads":2,"authorship":"independently_authored_prompt"}
+{"id":"G004-Q3","mode":"entity_relation_extraction","prompt":"Who chaired on 2 July 2025?","source_ids":["G004A","G004B"],"max_source_reads":2,"authorship":"independently_authored_prompt"}
+{"id":"G004-Q4","mode":"entity_relation_extraction","prompt":"Was Osei expelled from the council?","source_ids":["G004A","G004B"],"max_source_reads":2,"authorship":"independently_authored_prompt"}
+{"id":"G005-Q1","mode":"entity_relation_extraction","prompt":"Which mill supplies the café's flour?","source_ids":["G005A","G005B"],"max_source_reads":2,"authorship":"independently_authored_prompt"}
+{"id":"G005-Q2","mode":"entity_relation_extraction","prompt":"Are Bracken and Morrow aliases here?","source_ids":["G005A","G005B"],"max_source_reads":2,"authorship":"independently_authored_prompt"}
+{"id":"G005-Q3","mode":"entity_relation_extraction","prompt":"Does Morrow supply the café's rye?","source_ids":["G005A","G005B"],"max_source_reads":2,"authorship":"independently_authored_prompt"}
+{"id":"G005-Q4","mode":"entity_relation_extraction","prompt":"Does Bracken own Morrow?","source_ids":["G005A","G005B"],"max_source_reads":2,"authorship":"independently_authored_prompt"}
+{"id":"G006-Q1","mode":"entity_relation_extraction","prompt":"Who does the draft credit as designer?","source_ids":["G006A","G006B"],"max_source_reads":2,"authorship":"independently_authored_prompt"}
+{"id":"G006-Q2","mode":"entity_relation_extraction","prompt":"Merge Jun Park JP-19 and June Park JP-92?","source_ids":["G006A","G006B"],"max_source_reads":2,"authorship":"independently_authored_prompt"}
+{"id":"G006-Q3","mode":"entity_relation_extraction","prompt":"Who is the corrected designer of V-8?","source_ids":["G006A","G006B"],"max_source_reads":2,"authorship":"independently_authored_prompt"}
+{"id":"G006-Q4","mode":"entity_relation_extraction","prompt":"Did June Park manufacture every valve?","source_ids":["G006A","G006B"],"max_source_reads":2,"authorship":"independently_authored_prompt"}
+{"id":"G007-Q1","mode":"entity_relation_extraction","prompt":"Is Helio Trust a confirmed sponsor?","source_ids":["G007A","G007B"],"max_source_reads":2,"authorship":"independently_authored_prompt"}
+{"id":"G007-Q2","mode":"entity_relation_extraction","prompt":"Merge Helio Trust with Helio Studio?","source_ids":["G007A","G007B"],"max_source_reads":2,"authorship":"independently_authored_prompt"}
+{"id":"G007-Q3","mode":"entity_relation_extraction","prompt":"Is there a signed sponsorship agreement?","source_ids":["G007A","G007B"],"max_source_reads":2,"authorship":"independently_authored_prompt"}
+{"id":"G007-Q4","mode":"entity_relation_extraction","prompt":"Does Helio Studio fund the walk?","source_ids":["G007A","G007B"],"max_source_reads":2,"authorship":"independently_authored_prompt"}
+{"id":"G008-Q1","mode":"entity_relation_extraction","prompt":"Where is the lantern fair held?","source_ids":["G008A","G008B"],"max_source_reads":2,"authorship":"independently_authored_prompt"}
+{"id":"G008-Q2","mode":"entity_relation_extraction","prompt":"Merge the two towns called Linden?","source_ids":["G008A","G008B"],"max_source_reads":2,"authorship":"independently_authored_prompt"}
+{"id":"G008-Q3","mode":"entity_relation_extraction","prompt":"Where is the grain market held?","source_ids":["G008A","G008B"],"max_source_reads":2,"authorship":"independently_authored_prompt"}
+{"id":"G008-Q4","mode":"entity_relation_extraction","prompt":"Does one town administer the other?","source_ids":["G008A","G008B"],"max_source_reads":2,"authorship":"independently_authored_prompt"}
+{"id":"G009-Q1","mode":"entity_relation_extraction","prompt":"What was the harbor project's earlier name?","source_ids":["G009A","G009B"],"max_source_reads":2,"authorship":"independently_authored_prompt"}
+{"id":"G009-Q2","mode":"entity_relation_extraction","prompt":"Merge Reedline P-61 and Glasswake P-61?","source_ids":["G009A","G009B"],"max_source_reads":2,"authorship":"independently_authored_prompt"}
+{"id":"G009-Q3","mode":"entity_relation_extraction","prompt":"Is vessel Glasswake V-8 the survey project?","source_ids":["G009A","G009B"],"max_source_reads":2,"authorship":"independently_authored_prompt"}
+{"id":"G009-Q4","mode":"entity_relation_extraction","prompt":"Did the project acquire vessel V-8?","source_ids":["G009A","G009B"],"max_source_reads":2,"authorship":"independently_authored_prompt"}
+{"id":"G010-Q1","mode":"entity_relation_extraction","prompt":"Was Amal a Mica Guild member in 2024?","source_ids":["G010A","G010B"],"max_source_reads":2,"authorship":"independently_authored_prompt"}
+{"id":"G010-Q2","mode":"entity_relation_extraction","prompt":"Are Mica Guild and Basalt Guild the same organization?","source_ids":["G010A","G010B"],"max_source_reads":2,"authorship":"independently_authored_prompt"}
+{"id":"G010-Q3","mode":"entity_relation_extraction","prompt":"Is Amal a member after 12 February 2025 under these records?","source_ids":["G010A","G010B"],"max_source_reads":2,"authorship":"independently_authored_prompt"}
+{"id":"G010-Q4","mode":"entity_relation_extraction","prompt":"Did Amal join Basalt Guild?","source_ids":["G010A","G010B"],"max_source_reads":2,"authorship":"independently_authored_prompt"}
+{"id":"G011-Q1","mode":"entity_relation_extraction","prompt":"What docking location does the morning log assert?","source_ids":["G011A","G011B"],"max_source_reads":2,"authorship":"independently_authored_prompt"}
+{"id":"G011-Q2","mode":"entity_relation_extraction","prompt":"Does a matching vessel name resolve the conflicting pier claims?","source_ids":["G011A","G011B"],"max_source_reads":2,"authorship":"independently_authored_prompt"}
+{"id":"G011-Q3","mode":"entity_relation_extraction","prompt":"Can one noon pier be asserted as settled fact?","source_ids":["G011A","G011B"],"max_source_reads":2,"authorship":"independently_authored_prompt"}
+{"id":"G011-Q4","mode":"entity_relation_extraction","prompt":"Was the morning logger lying?","source_ids":["G011A","G011B"],"max_source_reads":2,"authorship":"independently_authored_prompt"}
+{"id":"G012-Q1","mode":"entity_relation_extraction","prompt":"What is CR-7's charter name?","source_ids":["G012A","G012B"],"max_source_reads":2,"authorship":"independently_authored_prompt"}
+{"id":"G012-Q2","mode":"entity_relation_extraction","prompt":"Merge Casa del Río with River House CR-7?","source_ids":["G012A","G012B"],"max_source_reads":2,"authorship":"independently_authored_prompt"}
+{"id":"G012-Q3","mode":"entity_relation_extraction","prompt":"Merge CR-7 with Riverhouse Café CF-8?","source_ids":["G012A","G012B"],"max_source_reads":2,"authorship":"independently_authored_prompt"}
+{"id":"G012-Q4","mode":"entity_relation_extraction","prompt":"Does CR-7 operate the café?","source_ids":["G012A","G012B"],"max_source_reads":2,"authorship":"independently_authored_prompt"}
+{"id":"G013-Q1","mode":"entity_relation_extraction","prompt":"Who works beside Tala?","source_ids":["G013A","G013B"],"max_source_reads":2,"authorship":"independently_authored_prompt"}
+{"id":"G013-Q2","mode":"entity_relation_extraction","prompt":"Does shared surname Vale justify merging the volunteers?","source_ids":["G013A","G013B"],"max_source_reads":2,"authorship":"independently_authored_prompt"}
+{"id":"G013-Q3","mode":"entity_relation_extraction","prompt":"Are Tala and Nera siblings?","source_ids":["G013A","G013B"],"max_source_reads":2,"authorship":"independently_authored_prompt"}
+{"id":"G013-Q4","mode":"entity_relation_extraction","prompt":"Are they cousins?","source_ids":["G013A","G013B"],"max_source_reads":2,"authorship":"independently_authored_prompt"}
+{"id":"G014-Q1","mode":"entity_relation_extraction","prompt":"Which gallery borrows Kite?","source_ids":["G014A","G014B"],"max_source_reads":2,"authorship":"independently_authored_prompt"}
+{"id":"G014-Q2","mode":"entity_relation_extraction","prompt":"Are Gallery Ash and Gallery Moss interchangeable identities?","source_ids":["G014A","G014B"],"max_source_reads":2,"authorship":"independently_authored_prompt"}
+{"id":"G014-Q3","mode":"entity_relation_extraction","prompt":"Who retains ownership of Kite?","source_ids":["G014A","G014B"],"max_source_reads":2,"authorship":"independently_authored_prompt"}
+{"id":"G014-Q4","mode":"entity_relation_extraction","prompt":"Does Gallery Moss own Kite?","source_ids":["G014A","G014B"],"max_source_reads":2,"authorship":"independently_authored_prompt"}
+{"id":"G015-Q1","mode":"entity_relation_extraction","prompt":"What funding claim is attributed to the leaflet?","source_ids":["G015A","G015B"],"max_source_reads":2,"authorship":"independently_authored_prompt"}
+{"id":"G015-Q2","mode":"entity_relation_extraction","prompt":"Can reporter Cora and the leaflet author be merged?","source_ids":["G015A","G015B"],"max_source_reads":2,"authorship":"independently_authored_prompt"}
+{"id":"G015-Q3","mode":"entity_relation_extraction","prompt":"Is the funding relationship verified by Cora?","source_ids":["G015A","G015B"],"max_source_reads":2,"authorship":"independently_authored_prompt"}
+{"id":"G015-Q4","mode":"entity_relation_extraction","prompt":"Did Cora donate to Cedar Party?","source_ids":["G015A","G015B"],"max_source_reads":2,"authorship":"independently_authored_prompt"}
+{"id":"G016-Q1","mode":"entity_relation_extraction","prompt":"Which Atlas serial is named in the first record?","source_ids":["G016A","G016B"],"max_source_reads":2,"authorship":"independently_authored_prompt"}
+{"id":"G016-Q2","mode":"entity_relation_extraction","prompt":"Merge the two Atlas microscopes?","source_ids":["G016A","G016B"],"max_source_reads":2,"authorship":"independently_authored_prompt"}
+{"id":"G016-Q3","mode":"entity_relation_extraction","prompt":"Which second serial does Finch run?","source_ids":["G016A","G016B"],"max_source_reads":2,"authorship":"independently_authored_prompt"}
+{"id":"G016-Q4","mode":"entity_relation_extraction","prompt":"Was A-11 purchased to replace A-10?","source_ids":["G016A","G016B"],"max_source_reads":2,"authorship":"independently_authored_prompt"}
+{"id":"G017-Q1","mode":"entity_relation_extraction","prompt":"Which accounts did intake provisionally merge?","source_ids":["G017A","G017B"],"max_source_reads":2,"authorship":"independently_authored_prompt"}
+{"id":"G017-Q2","mode":"entity_relation_extraction","prompt":"Should the provisional merge remain active after correction?","source_ids":["G017A","G017B"],"max_source_reads":2,"authorship":"independently_authored_prompt"}
+{"id":"G017-Q3","mode":"entity_relation_extraction","prompt":"Which account belongs to Mira Sol of Hill?","source_ids":["G017A","G017B"],"max_source_reads":2,"authorship":"independently_authored_prompt"}
+{"id":"G017-Q4","mode":"entity_relation_extraction","prompt":"Are the two Mira Sol people related?","source_ids":["G017A","G017B"],"max_source_reads":2,"authorship":"independently_authored_prompt"}
+{"id":"G018-Q1","mode":"entity_relation_extraction","prompt":"Who may approve on 5 May 2026?","source_ids":["G018A","G018B"],"max_source_reads":2,"authorship":"independently_authored_prompt"}
+{"id":"G018-Q2","mode":"entity_relation_extraction","prompt":"Are Ben and Suri aliases?","source_ids":["G018A","G018B"],"max_source_reads":2,"authorship":"independently_authored_prompt"}
+{"id":"G018-Q3","mode":"entity_relation_extraction","prompt":"Who may approve on 10 May 2026?","source_ids":["G018A","G018B"],"max_source_reads":2,"authorship":"independently_authored_prompt"}
+{"id":"G018-Q4","mode":"entity_relation_extraction","prompt":"Does training extend Ben's approval authority past 9 May?","source_ids":["G018A","G018B"],"max_source_reads":2,"authorship":"independently_authored_prompt"}
+{"id":"G019-Q1","mode":"entity_relation_extraction","prompt":"Which craft is called Aurora?","source_ids":["G019A","G019B"],"max_source_reads":2,"authorship":"independently_authored_prompt"}
+{"id":"G019-Q2","mode":"entity_relation_extraction","prompt":"Merge Aurora RB-6 and Aurora AS-6?","source_ids":["G019A","G019B"],"max_source_reads":2,"authorship":"independently_authored_prompt"}
+{"id":"G019-Q3","mode":"entity_relation_extraction","prompt":"What transported animal AS-6?","source_ids":["G019A","G019B"],"max_source_reads":2,"authorship":"independently_authored_prompt"}
+{"id":"G019-Q4","mode":"entity_relation_extraction","prompt":"Is the seal owned by the boat?","source_ids":["G019A","G019B"],"max_source_reads":2,"authorship":"independently_authored_prompt"}
+{"id":"G020-Q1","mode":"entity_relation_extraction","prompt":"What did the board authorize?","source_ids":["G020A","G020B"],"max_source_reads":2,"authorship":"independently_authored_prompt"}
+{"id":"G020-Q2","mode":"entity_relation_extraction","prompt":"Does a shared field name merge Lysa with Field Elm?","source_ids":["G020A","G020B"],"max_source_reads":2,"authorship":"independently_authored_prompt"}
+{"id":"G020-Q3","mode":"entity_relation_extraction","prompt":"Did Lysa become tenant?","source_ids":["G020A","G020B"],"max_source_reads":2,"authorship":"independently_authored_prompt"}
+{"id":"G020-Q4","mode":"entity_relation_extraction","prompt":"Did Lysa pay rent under an executed lease?","source_ids":["G020A","G020B"],"max_source_reads":2,"authorship":"independently_authored_prompt"}
+{"id":"G021-Q1","mode":"entity_relation_extraction","prompt":"Which ID belongs to José Neri?","source_ids":["G021A","G021B"],"max_source_reads":2,"authorship":"independently_authored_prompt"}
+{"id":"G021-Q2","mode":"entity_relation_extraction","prompt":"Can accent folding justify merging E-7 and E-9?","source_ids":["G021A","G021B"],"max_source_reads":2,"authorship":"independently_authored_prompt"}
+{"id":"G021-Q3","mode":"entity_relation_extraction","prompt":"Which ID belongs to Jose Neri without the accent?","source_ids":["G021A","G021B"],"max_source_reads":2,"authorship":"independently_authored_prompt"}
+{"id":"G021-Q4","mode":"entity_relation_extraction","prompt":"Did E-7 supervise E-9?","source_ids":["G021A","G021B"],"max_source_reads":2,"authorship":"independently_authored_prompt"}
+{"id":"G022-Q1","mode":"entity_relation_extraction","prompt":"What year is on the club card?","source_ids":["G022A","G022B"],"max_source_reads":2,"authorship":"independently_authored_prompt"}
+{"id":"G022-Q2","mode":"entity_relation_extraction","prompt":"Does the conflicting year prove there are two people?","source_ids":["G022A","G022B"],"max_source_reads":2,"authorship":"independently_authored_prompt"}
+{"id":"G022-Q3","mode":"entity_relation_extraction","prompt":"What single birth year is established?","source_ids":["G022A","G022B"],"max_source_reads":2,"authorship":"independently_authored_prompt"}
+{"id":"G022-Q4","mode":"entity_relation_extraction","prompt":"Which source was fabricated?","source_ids":["G022A","G022B"],"max_source_reads":2,"authorship":"independently_authored_prompt"}
+{"id":"G023-Q1","mode":"entity_relation_extraction","prompt":"Which Aster project ended in 2023?","source_ids":["G023A","G023B"],"max_source_reads":2,"authorship":"independently_authored_prompt"}
+{"id":"G023-Q2","mode":"entity_relation_extraction","prompt":"Merge PR-1 and PR-9 because of the name?","source_ids":["G023A","G023B"],"max_source_reads":2,"authorship":"independently_authored_prompt"}
+{"id":"G023-Q3","mode":"entity_relation_extraction","prompt":"Which Aster began in 2025?","source_ids":["G023A","G023B"],"max_source_reads":2,"authorship":"independently_authored_prompt"}
+{"id":"G023-Q4","mode":"entity_relation_extraction","prompt":"Did PR-9 inherit PR-1's contracts?","source_ids":["G023A","G023B"],"max_source_reads":2,"authorship":"independently_authored_prompt"}
+{"id":"G024-Q1","mode":"entity_relation_extraction","prompt":"Whose historical stage name was Harbor Fox?","source_ids":["G024A","G024B"],"max_source_reads":2,"authorship":"independently_authored_prompt"}
+{"id":"G024-Q2","mode":"entity_relation_extraction","prompt":"Merge historical Harbor Fox with Luan A-2?","source_ids":["G024A","G024B"],"max_source_reads":2,"authorship":"independently_authored_prompt"}
+{"id":"G024-Q3","mode":"entity_relation_extraction","prompt":"Merge new performer Harborfox A-9 with A-2?","source_ids":["G024A","G024B"],"max_source_reads":2,"authorship":"independently_authored_prompt"}
+{"id":"G024-Q4","mode":"entity_relation_extraction","prompt":"Did A-2 mentor A-9?","source_ids":["G024A","G024B"],"max_source_reads":2,"authorship":"independently_authored_prompt"}
+{"id":"G025-Q1","mode":"entity_relation_extraction","prompt":"What length did S1 originally record?","source_ids":["G025A","G025B"],"max_source_reads":2,"authorship":"independently_authored_prompt"}
+{"id":"G025-Q2","mode":"entity_relation_extraction","prompt":"Does correcting the length create a different Pavel identity?","source_ids":["G025A","G025B"],"max_source_reads":2,"authorship":"independently_authored_prompt"}
+{"id":"G025-Q3","mode":"entity_relation_extraction","prompt":"What length is current under S2?","source_ids":["G025A","G025B"],"max_source_reads":2,"authorship":"independently_authored_prompt"}
+{"id":"G025-Q4","mode":"entity_relation_extraction","prompt":"Did the correction establish that Pavel falsified S1?","source_ids":["G025A","G025B"],"max_source_reads":2,"authorship":"independently_authored_prompt"}

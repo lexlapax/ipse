@@ -1,0 +1,6 @@
+Coastal seed ledger
+Drying room
+The kelp nursery dries twine on cedar racks for 18 hours before sealing it.
+Humidity above 61 percent postpones sealing; no heater adjustment is authorized.
+Measure	Value
+Twine batch	C-17
