@@ -58,6 +58,22 @@ defmodule Ipse.Session do
     do: %{id: make_ref(), start: {__MODULE__, :start_link, [opts]}, restart: :temporary}
 
   def prompt(pid, text), do: GenServer.call(pid, {:prompt, text})
+  @doc "Submit exact observed text with a volatile, single-use input witness."
+  def prompt(pid, text, witness), do: GenServer.call(pid, {:prompt, text, witness})
+
+  @doc "Observe one native terminal input for the current idle Session generation."
+  def observe_input(pid, display, timeout \\ 120_000) do
+    with true <- is_integer(timeout) and timeout in 1000..600_000,
+         {:ok, lease} <- GenServer.call(pid, {:observe_input, display, timeout}) do
+      Ipse.Session.Input.await(lease, timeout)
+    else
+      false -> {:error, :operator_input_unavailable}
+      error -> error
+    end
+  catch
+    :exit, _ -> {:error, :operator_input_unavailable}
+  end
+
   def approve(pid, ref, allowed), do: GenServer.call(pid, {:approve, ref, allowed})
   def permissions(pid), do: GenServer.call(pid, :permissions)
   def clear_permissions(pid), do: GenServer.call(pid, :clear_permissions)
@@ -116,6 +132,10 @@ defmodule Ipse.Session do
 
   def refresh_context(pid), do: GenServer.call(pid, :refresh_context)
   def info(pid), do: GenServer.call(pid, :info)
+
+  defp input_binding(s),
+    do: %{session_id: s.id, cwd: s.cwd, generation: s.input_generation}
+
   def diagnostics(pid), do: GenServer.call(pid, :diagnostics)
   def stop_observability(pid), do: GenServer.call(pid, :stop_observability)
   def stop_feeds(pid), do: GenServer.call(pid, :stop_feeds, :infinity)
@@ -225,6 +245,7 @@ defmodule Ipse.Session do
           ),
         task: nil,
         prompt_from: nil,
+        input_generation: Ipse.Usage.id(),
         task_cleanup_failed: false,
         job_ref: nil,
         phase: if(question, do: :question, else: :idle),
@@ -1206,11 +1227,38 @@ defmodule Ipse.Session do
     {:reply, :ok, %{s | task: task, phase: :context_refresh, job_ref: nil}}
   end
 
+  def handle_call({:observe_input, display, timeout}, {client, _}, %{phase: :idle} = s) do
+    {:ok, scope} = Ipse.Session.Resources.start(self())
+    :ok = Ipse.Session.Lock.track(scope, :scope)
+    result = Ipse.Session.Input.start(input_binding(s), display, timeout, client, scope)
+    if not match?({:ok, _}, result), do: Ipse.Session.Resources.stop_async(scope)
+    {:reply, result, s}
+  end
+
+  def handle_call({:observe_input, _, _}, _from, s), do: {:reply, {:error, :busy}, s}
+
+  def handle_call({:prompt, _, _}, _from, %{phase: phase} = s) when phase != :idle,
+    do: {:reply, {:error, :busy}, s}
+
+  def handle_call({:prompt, text, witness}, from, s)
+      when is_binary(text) and byte_size(text) > 0 do
+    case Ipse.Session.Input.consume(witness, text, input_binding(s)) do
+      {:ok, observation} ->
+        Turn.prompt(%{s | input_generation: Ipse.Usage.id()}, text, from, observation)
+
+      error ->
+        {:reply, error, s}
+    end
+  end
+
+  def handle_call({:prompt, _, _}, _from, s), do: {:reply, {:error, :invalid_input_witness}, s}
+
   def handle_call({:prompt, _}, _from, %{phase: phase} = s) when phase != :idle,
     do: {:reply, {:error, :busy}, s}
 
   def handle_call({:prompt, text}, from, s) when is_binary(text) and byte_size(text) > 0 do
-    Turn.prompt(s, text, from)
+    :ok = Ipse.Session.Input.invalidate()
+    Turn.prompt(%{s | input_generation: Ipse.Usage.id()}, text, from)
   end
 
   def handle_call({:prompt, _}, _from, s), do: {:reply, {:error, :empty_prompt}, s}
@@ -1317,6 +1365,7 @@ defmodule Ipse.Session do
          wait_outcome \\ "cancelled",
          feed_reason \\ "cancelled"
        ) do
+    :ok = Ipse.Session.Input.invalidate()
     s = CurrentInvocation.release_output(s)
     s = finish_wait(s, wait_outcome)
     s = if s.task, do: measure_request(s, :cancelled), else: s
@@ -1399,6 +1448,7 @@ defmodule Ipse.Session do
         s
         | phase: :idle,
           prompt_from: nil,
+          input_generation: Ipse.Usage.id(),
           task: nil,
           approval: nil,
           job_ref: nil,
@@ -2174,8 +2224,9 @@ defmodule Ipse.Session do
   @doc false
   def record(s, event) do
     result =
-      if (s.observation != nil and s.observation.policy["mode"] != "off") or
-           Feeds.active?(s.feeds),
+      if event["type"] != "input_received" and
+           ((s.observation != nil and s.observation.policy["mode"] != "off") or
+              Feeds.active?(s.feeds)),
          do: Writer.append_observed(s.journal_writer, event),
          else: Writer.append(s.journal_writer, event)
 

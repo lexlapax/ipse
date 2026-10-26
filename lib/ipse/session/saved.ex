@@ -7,7 +7,8 @@ defmodule Ipse.Session.Saved do
 
   @doc "Rebuild pure resume facts after the owner has validated sources and reloaded its journal."
   def restore(events, id) do
-    with {:ok, accounting} <- Ipse.Usage.restore(events, id),
+    with :ok <- Ipse.Session.Input.validate_events(events, id),
+         {:ok, accounting} <- Ipse.Usage.restore(events, id),
          {:ok, extension_state} <- Actions.restore(events),
          {:ok, result_sources} <- ResultSource.restore(events),
          :ok <- validate_context_events(events),
@@ -80,7 +81,8 @@ defmodule Ipse.Session.Saved do
   end
 
   defp validate_context_events(events) do
-    with :ok <- Ipse.Journal.validate_limit_events(events),
+    with :ok <- Ipse.Session.Input.validate_events(events),
+         :ok <- Ipse.Journal.validate_limit_events(events),
          :ok <- validate_handoff_events(events),
          :ok <- Workspace.validate_skill_events(events),
          {:ok, _} <- Ipse.Session.RuntimeLifecycle.restore(events),

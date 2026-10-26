@@ -107,28 +107,53 @@ terminal descriptors, using the bundled helper pinned to its build digest.
 It ignores `IPSE_RUNNER_PATH` for this channel. Build native before Mix so a source
 checkout or package embeds the corresponding helper identity.
 
-For a local source exercise in a real terminal, after `./dev/build.sh`, start
-`iex -S mix` and evaluate:
+For a local source exercise in a real terminal, after `./dev/build.sh`, run this
+single-reader command:
 
-```elixir
-prompt = Ipse.CLI.Terminal.escape("Synthetic observation only. Enter one line> ")
-{:ok, observation} = Ipse.Runner.operator_input(prompt, 60_000)
-true = observation["text_sha256"] == Ipse.JSON.sha256(observation["text"])
+```sh
+mix run -e 'prompt = Ipse.CLI.Terminal.escape("Synthetic observation only. Enter one line> "); {:ok, observation} = Ipse.Runner.operator_input(prompt, 60_000); true = observation["text_sha256"] == Ipse.JSON.sha256(observation["text"]); IO.puts("Observed matching terminal input; no task submitted.")'
 ```
 
 This performs no publication or approval. Redirected/mismatched streams refuse.
 The observation binds displayed bytes, input hash and a fresh event ID; it is
-data, not a transferable grant. The future Session integration must mint a private
-single-use witness for the exact target Session/pending version after the verified
-result, consume it at admission and record only its validated origin. Never accept
-an observation-shaped map supplied by a model or untrusted client as proof.
+data, not a transferable grant. A host client uses `Session.observe_input/3` to
+obtain `{text, witness}` for its idle Session, then `Session.prompt/3` to submit
+those exact bytes. The supervised `Session.Input` service admits the read inside
+the owning Session's call, binding its ID, canonical workspace and volatile input
+generation before IO starts. The client awaits IO outside Session. Only the target
+Session can consume the opaque reference, once, within five minutes. Changed text,
+cancel, another prompt, owner/client death, service loss and resume invalidate it.
+Empty input produces no witness. At most 64 completed observations can remain;
+only one active read runs. Existing Session resource scopes retain cleanup and the
+session lock through reader loss. Internal host code is trusted; extension workers
+and JSON clients cannot manufacture a VM reference or submit an observation map
+as proof. This API establishes input origin, not acceptance of a knowledge card.
+
+Turn durably writes `input_received` version 1 before admitting the user message.
+It preserves original bytes and their hash separately from the skill-expanded
+hash. Reconstruction validates source/turn/observation uniqueness and links the
+effective hash to the first following user message. A receipt interrupted before
+that message remains source evidence; a later receipt can replace that incomplete
+link, without replay. Ordinary `prompt/2` records unattended input. Old journals
+retain unverified origin. Private origin records have no public lifecycle-feed
+projection, so they use ordinary durable appends and preserve the existing source
+limits and serialization of lifecycle user-message events.
 
 The native deadline covers request/display/input and observes parent cancellation
 even with a full terminal output buffer. A fresh nonblocking terminal description
-preserves the parent's flags; incomplete input is invalidated. Full Unicode
+preserves the parent's flags; incomplete input is invalidated. A retained native
+regular-file lock under canonical `/tmp/ipse-operator-UID/input.lock` fences reads
+across VMs and terminals for that OS user. The root must be root-owned and sticky;
+the private directory/file must have safe ownership, modes and identity. The
+helper holds the lock through its final flush. A stopped or closing old helper
+therefore makes replacement reads refuse even after the service restarts. Leave
+the lock inode in place while channels may exist. Full Unicode
 escaping stays in the host. [Native protocol and PTY controls](../../native/README.md#observe-one-actual-terminal-display-and-input)
 explain the descriptor boundary. PTY fixtures are automated observations, not
-independent human evidence. The ordinary CLI has not adopted this channel yet.
+independent human evidence. Clients must own terminal reading and quiesce their
+other readers before calling it. The single-prompt helper intentionally discards
+queued future lines. The ordinary CLI and native-question answers have not adopted
+this channel yet; saved knowledge consent and card acceptance remain separate work.
 
 ## Serialize protected consent before publication
 

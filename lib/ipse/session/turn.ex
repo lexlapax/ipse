@@ -25,12 +25,12 @@ defmodule Ipse.Session.Turn do
     end
   end
 
-  def prompt(s, text, from) do
+  def prompt(s, text, from, observation \\ nil) do
     with :ok <- prompt_text(text) do
       if Workspace.explicit_skills(text, s.skills) == [] do
-        commit_prompt(s, text, {:ok, text, []})
+        commit_prompt(s, text, {:ok, text, []}, observation)
       else
-        task = Session.owned_task(fn -> {text, prepare_prompt(text, s.skills)} end)
+        task = Session.owned_task(fn -> {text, prepare_prompt(text, s.skills), observation} end)
         {:noreply, %{s | phase: :prompt_preflight, task: task, prompt_from: from}}
       end
     else
@@ -43,15 +43,15 @@ defmodule Ipse.Session.Turn do
     {:noreply, fail(%{s | prompt_from: nil}, error)}
   end
 
-  def prompt_prepared(s, {original, result}) do
+  def prompt_prepared(s, {original, result, observation}) do
     {:reply, reply, next} =
-      commit_prompt(%{s | phase: :idle, prompt_from: nil}, original, result)
+      commit_prompt(%{s | phase: :idle, prompt_from: nil}, original, result, observation)
 
     GenServer.reply(s.prompt_from, reply)
     {:noreply, next}
   end
 
-  defp commit_prompt(s, original, prepared) do
+  defp commit_prompt(s, original, prepared, observation) do
     turn = Ipse.Usage.id()
 
     case prepared do
@@ -72,6 +72,9 @@ defmodule Ipse.Session.Turn do
                Ipse.Journal.source(s.id, 0, Subscriptions.received(turn, original))
              ) do
           s = Session.enroll_feeds(s)
+
+          input = Ipse.Session.Input.received(s.id, turn, original, text, observation)
+          Session.record(s, input)
 
           s = %{
             s

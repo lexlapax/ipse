@@ -91,7 +91,7 @@ boundary before adding a Plug server or cryptographic caller.
 
 | Dependency | Scope and reason | Source/license notes |
 | --- | --- | --- |
-| Unix OS and C library | Runtime process groups, advisory locks, filesystem, native runtime ABI | Host distribution; libc varies by platform. Match release OS/architecture/libc |
+| Unix OS and C library | Runtime process groups, advisory locks, filesystem, native runtime ABI; native/Session terminal tests allocate synthetic PTYs through POSIX libc with Rust, including `test/support/operator_pty.rs` | Host distribution; libc varies by platform. Match release OS/architecture/libc |
 | OpenSSL and system CA trust | OTP TLS and verified HTTPS provider/auth connections | Host/toolchain distribution; preserve its version-specific notices |
 | `/bin/sh` | Runtime shell tool and source/release launchers; optional native Bash compatibility probes use the already-installed host Bash, required by those project scripts, with no installation or bundled Bash runtime | Host shell implementation/licenses vary; Bash uses GPL-3.0-or-later for the recorded version |
 | C linker/toolchain | Link the Rust helper; compile synthetic loader probes for native enforcement tests (`/usr/bin/cc` on Linux, `/usr/bin/clang` on macOS) | Arch `base-devel` or macOS build toolchain; versions/licenses supplied by distribution |

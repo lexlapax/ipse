@@ -2,11 +2,11 @@
 #[cfg(any(target_os = "linux", target_os = "macos"))]
 mod unix {
     use std::ffi::{CStr, OsStr};
-    use std::fs::{File, OpenOptions};
+    use std::fs::{File, OpenOptions, DirBuilder};
     use std::io::{Read, Write};
     use std::os::fd::{BorrowedFd, AsRawFd};
     use std::os::unix::ffi::OsStrExt;
-    use std::os::unix::fs::{MetadataExt, FileTypeExt, OpenOptionsExt};
+    use std::os::unix::fs::{MetadataExt, FileTypeExt, OpenOptionsExt, DirBuilderExt};
     use std::time::{Duration, Instant};
     #[repr(C)]
     struct Poll { fd: i32, events: i16, revents: i16 }
@@ -20,6 +20,8 @@ mod unix {
         fn tcflush(fd: i32, selector: i32) -> i32;
         fn ttyname_r(fd: i32, name: *mut std::ffi::c_char, size: usize) -> i32;
         fn fcntl(fd: i32, command: i32, ...) -> i32;
+        fn flock(fd: i32, operation: i32) -> i32;
+        fn geteuid() -> u32;
     }
     #[cfg(target_os = "linux")]
     const NONBLOCK: i32 = 0x800;
@@ -71,6 +73,49 @@ mod unix {
             return Err(Failure::Refused("operator terminal identity changed"));
         }
         Ok(tty)
+    }
+    fn channel_lock() -> Result<File> {
+        let fail = |_| Failure::Refused("operator channel lock unavailable");
+        let root = std::fs::canonicalize("/tmp").map_err(fail)?;
+        let metadata = std::fs::symlink_metadata(&root).map_err(fail)?;
+        if !metadata.is_dir() || metadata.uid() != 0 || metadata.mode() & 0o1002 != 0o1002 {
+            return Err(Failure::Refused("protected temporary root required"));
+        }
+        let uid = unsafe { geteuid() };
+        let directory = root.join(format!("ipse-operator-{uid}"));
+        match DirBuilder::new().mode(0o700).create(&directory) {
+            Ok(()) => {},
+            Err(e) if e.kind() == std::io::ErrorKind::AlreadyExists => {},
+            Err(_) => return Err(Failure::Refused("cannot create private operator lock directory")),
+        }
+        let d = std::fs::symlink_metadata(&directory).map_err(fail)?;
+        if !d.is_dir() || d.uid() != uid || d.mode() & 0o077 != 0 ||
+            std::fs::canonicalize(&directory).map_err(fail)? != directory {
+            return Err(Failure::Refused("unsafe operator lock directory"));
+        }
+        let path = directory.join("input.lock");
+        // NONBLOCK also prevents a substituted FIFO from blocking before validation.
+        #[cfg(target_os = "linux")]
+        let flags = NONBLOCK | 0x20000;
+        #[cfg(target_os = "macos")]
+        let flags = NONBLOCK | 0x100;
+        let lock = OpenOptions::new().read(true).write(true).create(true).mode(0o600)
+            .custom_flags(flags).open(&path).map_err(fail)?;
+        let m = lock.metadata().map_err(fail)?;
+        let p = std::fs::symlink_metadata(&path).map_err(fail)?;
+        if !m.is_file() || m.uid() != uid || m.nlink() != 1 || m.mode() & 0o077 != 0 || m.len() != 0 ||
+            (m.dev(), m.ino()) != (p.dev(), p.ino()) || unsafe { flock(lock.as_raw_fd(), 2 | 4) } != 0 {
+            return Err(Failure::Refused("operator channel busy or unsafe lock"));
+        }
+        let current = std::fs::symlink_metadata(&path).map_err(fail)?;
+        let current_directory = std::fs::symlink_metadata(&directory).map_err(fail)?;
+        if !current.is_file() || current.uid() != uid || current.nlink() != 1 || current.mode() & 0o077 != 0 ||
+            (current.dev(), current.ino()) != (m.dev(), m.ino()) ||
+            (current_directory.dev(), current_directory.ino()) != (d.dev(), d.ino()) ||
+            current_directory.uid() != uid || current_directory.mode() & 0o077 != 0 {
+            return Err(Failure::Refused("operator channel lock identity changed"));
+        }
+        Ok(lock)
     }
     fn wait(control: &File, target: &File, event: i16, deadline: Instant, reading_control: bool) -> Result<()> {
         loop {
@@ -174,6 +219,7 @@ mod unix {
             }
             nonblocking(&control)?;
             let mut tty = terminal()?;
+            let _channel_lock = channel_lock()?;
             let (token, body) = display_request(&mut control, deadline)?; nonce = Some(token);
             if unsafe { tcflush(tty.as_raw_fd(), INPUT_QUEUE) } != 0 {
                 return Err(Failure::Refused("cannot clear prior terminal input"));
@@ -281,10 +327,14 @@ mod tests {
             assert_eq!(unsafe { tcsetattr(self.slave.as_raw_fd(), 0, ptr) }, 0);
         }
     }
-    struct Probe { child: Child, input: Option<File>, output: File, tty: Tty, _other: Option<Tty>, _guard: MutexGuard<'static, ()> }
+    struct Probe { child: Child, input: Option<File>, output: File, tty: Tty, _other: Option<Tty>, _guard: Option<MutexGuard<'static, ()>> }
     impl Probe {
         fn new(redirect_input: bool, redirect_output: bool, separate_output: bool, raw: bool) -> Self {
             let guard = PROBES.lock().unwrap_or_else(|error| error.into_inner());
+            Self::unlocked(redirect_input, redirect_output, separate_output, raw, Some(guard))
+        }
+        fn unlocked(redirect_input: bool, redirect_output: bool, separate_output: bool, raw: bool,
+            guard: Option<MutexGuard<'static, ()>>) -> Self {
             let tty = Tty::new(); if raw { tty.raw(); }
             let (read, write) = pipes(); let (result, result_write) = pipes();
             let read = own(unsafe { fcntl(read.as_raw_fd(), 0, 64) });
@@ -447,6 +497,43 @@ mod tests {
         p.tty.master.write_all(b"accept queued\n").unwrap(); p.input.take();
         assert_eq!(unsafe { kill(p.child.id() as i32, resume) }, 0);
         assert_eq!(p.frame(), (b'C', NONCE.to_vec())); p.done();
+    }
+    #[test]
+    fn stopped_old_helper_fences_replacement_until_its_final_flush() {
+        let mut old = Probe::new(false, false, false, false);
+        old.display(b"Old operator channel> "); old.displayed();
+        #[cfg(target_os = "linux")]
+        let (stop, resume) = (19, 18);
+        #[cfg(target_os = "macos")]
+        let (stop, resume) = (17, 19);
+        assert_eq!(unsafe { kill(old.child.id() as i32, stop) }, 0);
+        let until = Instant::now() + Duration::from_secs(1);
+        loop {
+            let mut status = 0;
+            let result = unsafe { waitpid(old.child.id() as i32, &mut status, 1 | 2) };
+            if result == old.child.id() as i32 { assert_eq!(status & 255, 127); break; }
+            assert_eq!(result, 0); assert!(Instant::now() < until);
+            std::thread::sleep(Duration::from_millis(2));
+        }
+        old.input.take();
+        let mut blocked = Probe::unlocked(false, false, false, false, None);
+        let (kind, reason) = blocked.frame();
+        assert_eq!(kind, b'E'); assert!(String::from_utf8_lossy(&reason).contains("channel busy"));
+        let mut preamble = Vec::new();
+        while ready(&blocked.tty.master, 20) {
+            let mut bytes = [0; 512]; let n = blocked.tty.master.read(&mut bytes).unwrap();
+            assert!(n > 0 && preamble.len() + n <= 1024); preamble.extend_from_slice(&bytes[..n]);
+        }
+        assert_eq!(String::from_utf8_lossy(&preamble).trim(), "running 1 test", "unexpected busy-channel terminal output");
+        assert!(!ready(&blocked.tty.master, 50), "busy replacement wrote terminal bytes");
+        blocked.done(); drop(blocked);
+        assert_eq!(unsafe { kill(old.child.id() as i32, resume) }, 0);
+        assert_eq!(old.frame(), (b'C', NONCE.to_vec())); old.done();
+        let mut fresh = Probe::unlocked(false, false, false, false, None);
+        fresh.display(b"Fresh operator channel> "); fresh.displayed();
+        fresh.tty.master.write_all(b"fresh input\n").unwrap();
+        let mut expected = NONCE.to_vec(); expected.extend_from_slice(b"fresh input");
+        assert_eq!(fresh.frame(), (b'I', expected)); fresh.done();
     }
     #[test]
     fn malformed_utf8_and_oversized_raw_lines_never_return_an_input_event() {

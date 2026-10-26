@@ -437,6 +437,25 @@ defmodule Ipse.Extension.FeedsTest do
   defp done(pid), do: assert_receive({:ipse, ^pid, {:done, :ok}}, 10_000)
   defp alive?(pid), do: elem(System.cmd("kill", ["-0", pid], stderr_to_stdout: true), 1) == 0
 
+  test "private input provenance near the source bound does not stop unrelated feeds", c do
+    config = config(c, :normal, gate: true) |> Map.put(:context_bytes, 4_000_000)
+    {:ok, pid} = start(c, config)
+    text = String.duplicate("a", Journal.source_record_bytes() - 300)
+    assert :ok = Session.prompt(pid, text)
+    assert_receive {:feed_model, worker, _}, 10_000
+    eventually(fn -> settled(pid) end)
+    refute Enum.any?(rows(c, Session.info(pid).id), &(&1["type"] == "extension_feed_closed"))
+
+    assert Enum.any?(
+             rows(c, Session.info(pid).id),
+             &(&1["type"] == "extension_feed_delivery_intent")
+           )
+
+    send(worker, :release)
+    done(pid)
+    assert :ok = Session.close_confirmed(pid)
+  end
+
   test "declarations are inert, exact and independent of notification and effect grants" do
     d = %{
       "id" => "model",

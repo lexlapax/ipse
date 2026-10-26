@@ -402,6 +402,19 @@ a controlling terminal; it opens a fresh nonblocking description of the verified
 terminal device with `NOCTTY` and rechecks device/inode identity. It never changes
 the parent's descriptor flags or line discipline.
 
+Before any flush/display/read, a retained regular-file `flock` serializes channels
+for the OS user across terminals and VMs. The canonical root of `/tmp` must be a
+root-owned sticky world-writable directory. `ipse-operator-UID/` is created with
+0700 and `input.lock` with 0600; existing paths must have matching ownership,
+protected modes, canonical directory identity and a regular single-link empty
+file. Opens use no-follow/nonblocking flags, identities are rechecked after
+acquisition, and the inode is never unlinked or replaced by this protocol. The
+lock spans final input invalidation, including parent-loss cleanup. Busy or unsafe
+locks refuse before terminal effects. This deliberately conservative per-user
+scope also fences replacements while an old helper is stopped. OS temporary-state
+maintenance must preserve active lock inodes. Terminal-device `flock` is unsuitable
+on macOS's special-file backend; the regular-file fence is shared by both hosts.
+
 Control uses the ordinary one-byte/four-byte-length frame envelope:
 
 | Direction/type | Payload |
@@ -439,18 +452,22 @@ outside that claim. Session must still bind and consume a private witness agains
 the exact pending version, origin and ceiling. CLI saved-consent/card integration
 is not implemented by this primitive.
 
-Run the actual PTY controls without a model or external terminal utility:
+Run the actual PTY controls and Session-bound witness cases without a model or
+external terminal utility:
 
 ```sh
 rustc --edition=2021 --test -D warnings native/ipse-operator.rs -o /tmp/ipse-operator-tests
 /tmp/ipse-operator-tests
 mix test test/ipse/runner/operator_test.exs
+mix test test/ipse/session/input_test.exs
 ```
 
 Tests use the existing host C library's POSIX PTY functions. Linux pipes are
 atomically close-on-exec; fixture ownership serializes PTY creation/spawn, and
 high control descriptors are mapped only after child exec so the spawn error
-pipe is preserved. Failed first runs remain in the dated implementation record.
+pipe is preserved. macOS's non-atomic pipe fallback is not a claim of race freedom
+against other modules' test spawns. Failed first runs remain in the dated
+implementation record.
 
 ## Optional native macOS workspace sandbox
 

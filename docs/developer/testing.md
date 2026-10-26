@@ -434,11 +434,20 @@ rustc --edition=2021 --test -D warnings native/ipse-file-copy.rs -o "$IPSE_NATIV
 "$IPSE_NATIVE_TESTS/copy"
 rustc --edition=2021 --test -D warnings native/ipse-bound.rs -o "$IPSE_NATIVE_TESTS/bound"
 "$IPSE_NATIVE_TESTS/bound"
+rustc --edition=2021 --test -D warnings native/ipse-operator.rs -o "$IPSE_NATIVE_TESTS/operator"
+"$IPSE_NATIVE_TESTS/operator"
+mix test test/ipse/runner/operator_test.exs test/ipse/session/input_test.exs
 ```
 
 Retain size/inode/symlink/permission/nonblocking controls and bounded ignored FIFO
 probes. Linux tests authority/FIFO/descriptor transfer; macOS covers only portable
-protocol cases. Keep atomic ordinals and fixed-clock collision tests for parallel
+protocol cases. Operator tests use actual synthetic PTYs and the bundled helper's
+compiled identity. They cover terminal matching, deadlines, parent loss, a stopped
+old helper's cleanup fence and opaque Session witnesses. Run these test commands
+serially: their conservative per-user lock intentionally makes overlapping native
+test programs contend. PTY input remains automated, and ordinary CLI/card adoption
+and independent human journeys need separate verification. Keep atomic ordinals
+and fixed-clock collision tests for parallel
 fixtures. Probe macOS enforcement separately with a disposable workspace:
 
 ```sh

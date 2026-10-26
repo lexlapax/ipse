@@ -211,6 +211,9 @@ defmodule Ipse.Runner do
           {:ipse_cancel_resource, id} when ticket != nil and ticket.id == id ->
             {:error, :operator_input_cancelled}
 
+          :ipse_cancel_operator_input ->
+            {:error, :operator_input_cancelled}
+
           {^port, _} ->
             {:error, :operator_input_unavailable}
         after

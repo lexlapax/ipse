@@ -46,3 +46,37 @@ is retained as a failure. Tests/package/installed checks were skipped after that
 failure and supply no pass. Commit `512ddf3` rewrites the expression as a multiline
 `do` block, preserving semantics; its fourteen focused consent tests pass. Later
 CI evidence must name its repaired revision rather than relabeling this run.
+
+## Operator primitive `37f5b9d`
+
+A separate fixed clone passed build, local formatting, strict compilation,
+documentation and CI-policy checks. Its full suite finished in 1,058.7 seconds
+with **1,822/1,823 passed, 36 excluded**. The single failure was the release-policy
+guard: ordinary CI gained the terminal test step, but the draft release matrix
+had not mirrored it. The next implementation increment adds the identical step;
+the focused release-policy suite passes. The original failed run is preserved.
+Its chained demo/package/installed steps did not run after failure, so supply no
+pass. This is distinct from the earlier foundation package evidence.
+
+## Session input increment after `37f5b9d`
+
+The combined changed-feature suite passed **274 tests** in 69.1 seconds, covering
+decisions, pilot/interaction, consent, Runner, Session/reconstruction, subscriptions,
+feeds and release policy. A subsequent startup-race repair passed the dedicated
+two-test origin suite, including its actual PTY resource-attachment barrier and
+unrelated-witness preservation. Complete native tests pass **49**, with two
+deliberately ignored subprocess entry points. Formatting, strict compilation,
+CI-policy and documentation checks pass; the documentation check counted 471
+Markdown files and 4,293 local links at that checkpoint.
+
+The documented single-reader `mix run` observation command was exercised with
+synthetic terminal input and returned its expected hash-checked success text.
+It submitted no task and made no inference request. This machine-driven terminal
+exercise is not independent human evidence. Full source/package/installed and
+hosted platform evidence for the combined Session increment remain pending.
+The [incremental audit](session-input-audit.md) records the repairs and scopes.
+
+Raw logs, including first failures, are retained owner-only outside Git under
+`/home/lexlapax/.codex/visualizations/2026/10/26/01a17a12-c7bb-76e2-af9e-95f589cc6f94/p31-verification/`,
+with a SHA-256 manifest. Their names bind the described checkpoints; they are not
+evidence for future source changes or milestone completion.

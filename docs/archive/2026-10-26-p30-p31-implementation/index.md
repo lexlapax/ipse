@@ -50,6 +50,7 @@ resource/offline qualification. No daemon configuration or existing model was ch
 - [Incremental adversarial foundation audit and repairs](foundation-audit.md).
 - [Internal protected control ledger audit and repairs](control-audit.md).
 - [Native operator-channel incremental audit and fixture repairs](operator-channel-audit.md).
+- [Session input witness audit and source-boundary repairs](session-input-audit.md).
 - [Fixed-revision source and platform verification receipts](verification.md).
 - [Nonpublishing interaction model](../../../dev/knowledge/interaction.exs) and
   [boundary tests](../../../test/dev/knowledge/interaction_test.exs).

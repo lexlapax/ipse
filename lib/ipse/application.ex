@@ -6,6 +6,7 @@ defmodule Ipse.Application do
       [
         {Registry, keys: :unique, name: Ipse.Registry},
         {Task.Supervisor, name: Ipse.Tasks},
+        Ipse.Session.Input,
         {DynamicSupervisor, strategy: :one_for_one, name: Ipse.Sessions}
       ],
       strategy: :one_for_one,
