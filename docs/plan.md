@@ -836,7 +836,7 @@ No local engine, SDK, new dependency or live account eligibility is established.
 
 | Package | Output and prerequisites |
 | --- | --- |
-| P30A | Versioned neutral text contract and pure OpenAI/System One wire subsets implemented; synthetic fixtures and finite experiment/benefit criteria prepared; full baseline/audit pending. No transport, host effect or qualified consumer is implied. [Developer contract](developer/decisions.md) |
+| P30A | Versioned neutral text contract and pure OpenAI/System One wire subsets implemented; synthetic fixtures and finite experiment/benefit criteria prepared; fixed foundation baseline and incremental audit pass. No transport, host effect or qualified consumer is implied. [Developer contract](developer/decisions.md) |
 | P30B | Explicit profiles/adapters and owned `host.decision` effect with strict validation, usage, budgets, cancellation and no substitution; after A |
 | P30C | Deterministic policy mappings and zero-call applicability/bypass over permitted alternatives; integrate saved consent after B and P31B |
 | P30D | Implement bounded experiments: notes selection beyond the context budget and candidate assessment in replay/shadow mode on real main-tool inputs; after C and P31E |
@@ -858,8 +858,9 @@ without an extra call. Protocol success is not model quality.
 
 ## P31: usable knowledge and prompt assistance
 
-**Active implementation track; P31A in progress.** Runtime features remain
-unimplemented. P30 numbering does not imply it must finish first. P26/P27 retain
+**Active implementation track; P31A qualification and P31B host primitives in progress.**
+User-facing P31 workflows remain unimplemented. P30 numbering does not imply it
+must finish first. P26/P27 retain
 their completed original scopes, P20 remains completed and voice/media stays P32.
 Implementation is authorized; release publication is not.
 
@@ -883,10 +884,10 @@ primary qualification targets, with a smaller EmbeddingGemma 2 text challenger
 and an available Qwen3.5 9B comparison. Model details and contracts live in the
 [design](knowledge-design.md#optional-local-embeddings-and-rag), not this ledger.
 
-| Package | Output and prerequisites; runtime features remain unimplemented |
+| Package | Output and prerequisites; user-facing workflows remain unimplemented |
 | --- | --- |
 | P31A | In progress: amended baseline archived; host ownership/contracts, nonpublishing interaction/pilot probes, storage/parser evaluation and human journeys prepared. Main-route pilot and frozen evidence checks in progress; independent intake labels/workload ratification and human/platform evidence remain open. See [record](archive/2026-10-26-p30-p31-implementation/index.md) |
-| P31B | In progress: internal protected control ledger and directory-sync primitive under test. Runtime origin, semantic admission, knowledge-only headless exception, endpoint acquisition/slots and explicit mode ceilings remain unimplemented; after A |
+| P31B | In progress: internal protected control ledger/directory sync verified locally; pinned native terminal observation primitive and PTY controls implemented, platform checks pending. Session origin, semantic admission, knowledge-only headless exception, endpoint acquisition/slots and explicit mode ceilings remain unimplemented; after A |
 | P31C0 | Prototype source-bound records, paged evidence/source discovery and turn-tail projection, protected identity, exclusions, retention/suppression/export on State; after A/B; internal only |
 | P31C1a | Sustainable notes storage, reciprocal worktree admission, pins/temporal history, safe reclamation/import and 30/90-day plus annual-turnover qualification; after C0, **required before E release** |
 | P31D0 | Guided standalone setup/review/status/retention management, separate local embedding/answer choices, bundled notes catalog and next-new-session activation; UI alongside B/C0, installed notes packaging against C1a; optional local preset delivered through D1/F |

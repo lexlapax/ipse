@@ -33,6 +33,8 @@ mod ipse_sequence;
 mod ipse_bound;
 #[path = "ipse-file-copy.rs"]
 mod ipse_file_copy;
+#[path = "ipse-operator.rs"]
+mod ipse_operator;
 use process_group::{signal_group, GroupGuard};
 
 extern "C" {
@@ -97,6 +99,13 @@ fn run() -> Result<(), String> {
         ipse_bound::scrub_ordinary();
     }
     if args.get(1).is_some_and(|arg| arg == "--copy-regular") { return ipse_file_copy::run(&args); }
+    if args.get(1).is_some_and(|arg| arg == "--operator-input") {
+        if let Err(error) = ipse_operator::run(&args) {
+            eprintln!("operator channel unavailable: {error}");
+            std::process::exit(1);
+        }
+        return Ok(());
+    }
     if args.len() == 2 && args[1] == "--measure-anchor" { return ipse_measure::anchor(); }
     if args.get(1).is_some_and(|arg| arg == "--measure-sequence") { return ipse_sequence::run(&args); }
     if args.get(1).is_some_and(|arg| arg == "--measure-stage") { return ipse_measure::stage(&args); }

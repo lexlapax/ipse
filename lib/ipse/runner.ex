@@ -12,6 +12,15 @@ defmodule Ipse.Runner do
   """
   @root Path.expand("../..", __DIR__)
   @default_limit 65_536
+  @operator_helper Path.join(@root, "priv/ipse-runner")
+  @external_resource @operator_helper
+  @operator_helper_sha256 (case File.read(@operator_helper) do
+                             {:ok, bytes} when byte_size(bytes) <= 32 * 1024 * 1024 ->
+                               :crypto.hash(:sha256, bytes)
+
+                             _ ->
+                               nil
+                           end)
 
   @doc false
   def native_helper(cwd) do
@@ -21,7 +30,11 @@ defmodule Ipse.Runner do
   end
 
   defp verified_helper do
-    with {:ok, helper} <- helper_path(false),
+    with {:ok, helper} <- helper_path(false), do: verify_helper_path(helper)
+  end
+
+  defp verify_helper_path(helper) do
+    with true <- is_binary(helper),
          {:ok, %{type: :regular, links: 1, mode: mode, size: size}} <- File.lstat(helper),
          true <- Bitwise.band(mode, 0o022) == 0 and Bitwise.band(mode, 0o111) != 0,
          true <- size <= 32 * 1024 * 1024,
@@ -33,6 +46,17 @@ defmodule Ipse.Runner do
 
       _ ->
         {:error, "native helper must be a bounded, single-link, non-writable regular executable"}
+    end
+  end
+
+  defp verified_operator_helper do
+    with true <- is_binary(@operator_helper_sha256),
+         {:ok, helper} <- verify_helper_path(app_helper()),
+         {:ok, bytes} <- File.read(helper),
+         true <- :crypto.hash(:sha256, bytes) == @operator_helper_sha256 do
+      {:ok, helper}
+    else
+      _ -> {:error, :operator_helper_identity_unavailable}
     end
   end
 
@@ -103,6 +127,117 @@ defmodule Ipse.Runner do
   end
 
   def sync_directory(_), do: {:error, :directory_sync_unavailable}
+
+  @doc """
+  Display an escaped prompt and read one line through matching inherited terminals.
+
+  This host-only primitive returns a display/input observation, never permission
+  or a claim that PTY automation was a human. Clients must bind the observation
+  to their actual pending version and consume it once at Session admission.
+  """
+  def operator_input(prompt, timeout_ms \\ 120_000) do
+    with true <- is_binary(prompt) and String.valid?(prompt) and byte_size(prompt) in 1..8_192,
+         true <- is_integer(timeout_ms) and timeout_ms in 1_000..600_000,
+         true <- Ipse.CLI.Terminal.escape(prompt) == prompt,
+         {:ok, helper} <- verified_operator_helper(),
+         {:ok, port, ticket} <-
+           owned_port(:lock, helper, [
+             :binary,
+             :exit_status,
+             :nouse_stdio,
+             :hide,
+             args: ["--operator-input", Integer.to_string(timeout_ms)]
+           ]) do
+      nonce = :crypto.strong_rand_bytes(16)
+
+      try do
+        body = nonce <> prompt
+        true = Port.command(port, <<?D, byte_size(body)::unsigned-big-32, body::binary>>)
+        state = %{phase: :initial, text: nil, nonce: nonce}
+
+        case receive_operator(
+               port,
+               ticket,
+               <<>>,
+               state,
+               System.monotonic_time(:millisecond) + timeout_ms + 2_000
+             ) do
+          {:ok, text} ->
+            {:ok,
+             %{
+               "version" => 1,
+               "text" => text,
+               "event_id" => Base.encode16(nonce, case: :lower),
+               "display_sha256" => Ipse.JSON.sha256(prompt),
+               "text_sha256" => Ipse.JSON.sha256(text)
+             }}
+
+          error ->
+            error
+        end
+      after
+        result = if Port.info(port), do: close_process(port, true), else: :ok
+        Ipse.Session.Resources.closed(ticket, result)
+      end
+    else
+      _ -> {:error, :operator_input_unavailable}
+    end
+  rescue
+    _ -> {:error, :operator_input_unavailable}
+  end
+
+  defp receive_operator(port, ticket, buffer, state, deadline) do
+    case buffer do
+      <<_kind, size::unsigned-big-32, _::binary>> when size > 8_208 ->
+        {:error, :operator_input_unavailable}
+
+      <<kind, size::unsigned-big-32, value::binary-size(size), rest::binary>> ->
+        case operator_frame(state, kind, value) do
+          {:ok, state} -> receive_operator(port, ticket, rest, state, deadline)
+          error -> error
+        end
+
+      _ ->
+        receive do
+          {^port, {:data, data}} when byte_size(buffer) + byte_size(data) <= 16_384 ->
+            receive_operator(port, ticket, buffer <> data, state, deadline)
+
+          {^port, {:exit_status, 0}} when buffer == <<>> and state.phase == :input ->
+            {:ok, state.text}
+
+          {^port, {:exit_status, _}} ->
+            {:error, :operator_input_unavailable}
+
+          {:ipse_cancel_resource, id} when ticket != nil and ticket.id == id ->
+            {:error, :operator_input_cancelled}
+
+          {^port, _} ->
+            {:error, :operator_input_unavailable}
+        after
+          max(deadline - System.monotonic_time(:millisecond), 0) ->
+            {:error, :operator_input_unavailable}
+        end
+    end
+  end
+
+  defp operator_frame(%{phase: :initial, nonce: nonce} = state, ?Y, nonce),
+    do: {:ok, %{state | phase: :displayed}}
+
+  defp operator_frame(
+         %{phase: :displayed, nonce: nonce} = state,
+         ?I,
+         <<nonce::binary-size(16), text::binary>>
+       )
+       when byte_size(text) <= 8_192 do
+    if String.valid?(text),
+      do: {:ok, %{state | phase: :input, text: text}},
+      else: {:error, :operator_input_unavailable}
+  end
+
+  defp operator_frame(%{phase: :displayed, nonce: nonce}, ?C, nonce),
+    do: {:error, :operator_input_cancelled}
+
+  defp operator_frame(_, _, _), do: {:error, :operator_input_unavailable}
 
   defp receive_directory_sync(port, ticket, deadline, bytes) do
     receive do

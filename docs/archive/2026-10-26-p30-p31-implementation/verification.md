@@ -33,14 +33,16 @@ prefix.
 
 The combined focused suite passed 62 tests. Native helper tests passed 39 with
 one deliberately ignored subprocess entry. The [incremental audit](control-audit.md)
-records findings and independent closure. A full local source run is underway in
-a separate fixed clone; do not infer its result from foundation verification.
+records findings and independent closure. A full local source run in a separate
+fixed clone passed **1,819 tests, 36 excluded**, in 1,061.3 seconds. Build, local
+formatting, strict compilation, documentation and CI-policy checks also passed.
+This receipt covers the control revision; new operator-channel work is not included.
 
 The branch was pushed to origin. Both configured CI platforms built this revision,
 then failed formatting under Elixir 1.18: one long `if` in consent eligibility was
 formatted differently by local Elixir 1.20. The
 [first CI run](https://github.com/lexlapax/ipse/actions/runs/40411106583)
 is retained as a failure. Tests/package/installed checks were skipped after that
-failure and supply no pass. The expression is being rewritten as a multiline
-`do` block, preserving semantics and both formatters; later CI evidence must name
-its repaired revision.
+failure and supply no pass. Commit `512ddf3` rewrites the expression as a multiline
+`do` block, preserving semantics; its fourteen focused consent tests pass. Later
+CI evidence must name its repaired revision rather than relabeling this run.

@@ -393,6 +393,65 @@ control lock, then uses this operation before acknowledging policy or reservatio
 publication. The host separately validates canonical ancestors and exact policy;
 this primitive grants no filesystem, extension or knowledge permission.
 
+## Observe one actual terminal display and input
+
+`--operator-input TIMEOUT_MS` is an internal single-prompt channel, not an approval
+command. It requires matching actual terminal descriptors 0/1. OTP starts it with
+`nouse_stdio`, reserving private pipes 3/4 for control. The helper does not acquire
+a controlling terminal; it opens a fresh nonblocking description of the verified
+terminal device with `NOCTTY` and rechecks device/inode identity. It never changes
+the parent's descriptor flags or line discipline.
+
+Control uses the ordinary one-byte/four-byte-length frame envelope:
+
+| Direction/type | Payload |
+| --- | --- |
+| Parent `D` | Fresh 16-byte nonce plus 1..8,192 display bytes |
+| Helper `Y` | Same nonce after all display bytes were written |
+| Helper `I` | Same nonce plus at most 8,192 UTF-8 input bytes, without line ending |
+| Helper `C` | Nonce on cancellation/deadline/terminal loss; zeros before a complete request |
+| Helper `E` | Bounded setup/protocol refusal text |
+
+Control bytes cannot provide operator input: any control activity after the
+display request cancels input. A single deadline covers request, display and input.
+Nonblocking IO polls parent loss first, including when terminal output is full.
+Prior queued input is flushed before display; partial/queued input is invalidated
+after cancellation or completion. This single-card contract deliberately does not
+preserve pasted future lines. An abrupt OS kill cannot acknowledge cleanup; the
+next admitted channel clears prior input again.
+
+Native display filtering rejects Cc controls except tab/LF. The host must also use
+`CLI.Terminal.escape/1` for its complete Unicode control/bidi/separator policy.
+`Runner.operator_input/2` enforces that escaped form and accepts an observation
+only after exact nonce-bound `Y` → `I` → normal exit, without trailing frames.
+Initial descriptor failures use plain stderr, never binary frames on the human
+display. Missing/malformed/incomplete results supply no observation.
+
+The wrapper accepts only the bundled helper matching its compiled binary digest;
+`IPSE_RUNNER_PATH` cannot select an operator channel. Native build must precede
+Mix compilation, as the source/package scripts already require. Replacement or
+missing helper bytes refuse until a matching build is installed. This assumes the
+same trusted installed build as the host; it is not distribution authentication.
+
+An observation establishes real terminal IO, not a human identity or permission.
+PTY automation and another process with the same user's terminal access remain
+outside that claim. Session must still bind and consume a private witness against
+the exact pending version, origin and ceiling. CLI saved-consent/card integration
+is not implemented by this primitive.
+
+Run the actual PTY controls without a model or external terminal utility:
+
+```sh
+rustc --edition=2021 --test -D warnings native/ipse-operator.rs -o /tmp/ipse-operator-tests
+/tmp/ipse-operator-tests
+mix test test/ipse/runner/operator_test.exs
+```
+
+Tests use the existing host C library's POSIX PTY functions. Linux pipes are
+atomically close-on-exec; fixture ownership serializes PTY creation/spawn, and
+high control descriptors are mapped only after child exec so the spawn error
+pipe is preserved. Failed first runs remain in the dated implementation record.
+
 ## Optional native macOS workspace sandbox
 
 `ipse-runner --sandbox macos-workspace-v1 WORKER DATA CWD TIMEOUT_MS COMMAND`

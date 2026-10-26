@@ -4,6 +4,23 @@ Historical evaluation record, **2026-10-26**, source `fbb207d`; see the
 [implementation record](index.md), [baseline](baseline.md) and [current plan](../../plan.md).
 No dependency is adopted by this evaluation alone.
 
+## Native operator observation boundary
+
+Ordinary BEAM IO uses abstract devices and can be redirected to a capture server;
+it cannot prove matching actual display/input descriptors. OTP's public
+`nouse_stdio` Port mode preserves those terminal descriptors while moving control
+to 3/4. The existing Rust helper therefore owns the narrow descriptor, poll,
+nonblocking IO and terminal-device checks. Elixir retains origin, proposal,
+permission and publication policy. Existing bounded native framing and host
+terminal escaping are reused; no terminal framework or new package is required.
+
+PTY controls use the already-inventoried standard C library's POSIX functions,
+without a separate libutil dependency or external terminal executable. A fresh
+terminal open uses the documented platform nonblock/nofollow/noctty flags;
+[Apple's public header](https://github.com/apple-oss-distributions/xnu/blob/main/bsd/sys/fcntl.h)
+and [POSIX PTY manual](https://developer.apple.com/library/archive/documentation/System/Conceptual/ManPages_iPhoneOS/man3/posix_openpt.3.html)
+support the macOS declarations. Tested platform evidence remains separate.
+
 ## Sustainable local notes
 
 | Candidate | Evidence and fit | Disposition |

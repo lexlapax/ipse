@@ -98,6 +98,38 @@ They validate history and perform synchronous completion-owned writes; repeated
 inactive appends therefore have linear validation cost. Embedded callers remain
 responsible for their own lock lifetime.
 
+## Bind an actual operator observation before recording origin
+
+An ordinary user-role message, argv value or `interactive: true` field cannot
+establish verified origin. The internal `Runner.operator_input/2` primitive
+displays an escaped prompt and reads one bounded line through matching actual
+terminal descriptors, using the bundled helper pinned to its build digest.
+It ignores `IPSE_RUNNER_PATH` for this channel. Build native before Mix so a source
+checkout or package embeds the corresponding helper identity.
+
+For a local source exercise in a real terminal, after `./dev/build.sh`, start
+`iex -S mix` and evaluate:
+
+```elixir
+prompt = Ipse.CLI.Terminal.escape("Synthetic observation only. Enter one line> ")
+{:ok, observation} = Ipse.Runner.operator_input(prompt, 60_000)
+true = observation["text_sha256"] == Ipse.JSON.sha256(observation["text"])
+```
+
+This performs no publication or approval. Redirected/mismatched streams refuse.
+The observation binds displayed bytes, input hash and a fresh event ID; it is
+data, not a transferable grant. The future Session integration must mint a private
+single-use witness for the exact target Session/pending version after the verified
+result, consume it at admission and record only its validated origin. Never accept
+an observation-shaped map supplied by a model or untrusted client as proof.
+
+The native deadline covers request/display/input and observes parent cancellation
+even with a full terminal output buffer. A fresh nonblocking terminal description
+preserves the parent's flags; incomplete input is invalidated. Full Unicode
+escaping stays in the host. [Native protocol and PTY controls](../../native/README.md#observe-one-actual-terminal-display-and-input)
+explain the descriptor boundary. PTY fixtures are automated observations, not
+independent human evidence. The ordinary CLI has not adopted this channel yet.
+
 ## Serialize protected consent before publication
 
 `Ipse.Extension.Consent` is an internal host ledger, separate from conversation

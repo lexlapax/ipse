@@ -46,6 +46,10 @@ jobs:
         run: |
           rustc --edition=2021 --test -D warnings native/ipse-file-copy.rs -o "$RUNNER_TEMP/ipse-file-copy-tests"
           "$RUNNER_TEMP/ipse-file-copy-tests"
+      - name: Native operator display and input controls
+        run: |
+          rustc --edition=2021 --test -D warnings native/ipse-operator.rs -o "$RUNNER_TEMP/ipse-operator-tests"
+          "$RUNNER_TEMP/ipse-operator-tests"
       - run: elixir dev/check-ci-policy.exs
       - run: elixir dev/check-docs.exs
       - run: mix test
