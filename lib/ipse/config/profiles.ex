@@ -265,6 +265,7 @@ defmodule Ipse.Config.Profiles do
             :budget_checkpoint,
             :model_profiles,
             :embedding_profiles,
+            :decision_profiles,
             :model_auth_dir,
             :approval,
             :delegation_origin

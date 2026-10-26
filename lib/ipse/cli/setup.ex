@@ -412,6 +412,7 @@ defmodule Ipse.CLI.Setup do
          :ok <-
            Ipse.Config.Profiles.validate(document["profiles"] || %{}, document["roles"] || %{}),
          :ok <- Ipse.Config.Profiles.validate_embeddings(document["embedding_profiles"] || %{}),
+         :ok <- Ipse.Config.Decisions.validate(document["decision_profiles"] || %{}),
          :ok <- Ipse.Extension.Config.validate(document),
          do: :ok
   end

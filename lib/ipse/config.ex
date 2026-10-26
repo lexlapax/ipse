@@ -111,6 +111,7 @@ defmodule Ipse.Config do
 
       with {:ok, extensions} <- Ipse.Extension.Config.resolve(loaded, opts),
            {:ok, embedding_profiles} <- Ipse.Config.Profiles.resolve_embeddings(loaded),
+           {:ok, decision_profiles} <- Ipse.Config.Decisions.resolve(loaded),
            {:ok, budget} <- Ipse.Usage.Budget.resolve_policy(loaded),
            {:ok, journal} <- Ipse.Journal.resolve_limits(loaded),
            {:ok, observation} <- Ipse.Observability.resolve(loaded, opts, environment),
@@ -190,6 +191,11 @@ defmodule Ipse.Config do
               do: identity,
               else: Map.put(identity, "embedding_profiles", embedding_profiles)
 
+          identity =
+            if decision_profiles == %{},
+              do: identity,
+              else: Map.put(identity, "decision_profiles", decision_profiles)
+
           fingerprint = Ipse.JSON.digest([identity])
 
           {:ok,
@@ -197,6 +203,7 @@ defmodule Ipse.Config do
            |> Map.put(:fingerprint, fingerprint)
            |> Map.put(:extensions, extensions)
            |> Map.put(:embedding_profiles, embedding_profiles)
+           |> Map.put(:decision_profiles, decision_profiles)
            |> Map.put(:budget, budget)
            |> Map.put(:journal, journal)
            |> Map.put(:observability, observation)
@@ -251,6 +258,7 @@ defmodule Ipse.Config do
                configuration: manifest(effective),
                extensions: extensions,
                embedding_profiles: effective.embedding_profiles,
+               decision_profiles: effective.decision_profiles,
                observability: effective.observability.policy,
                timeout_ms: settings["timeout_ms"],
                max_output_tokens: settings["max_output_tokens"],
@@ -295,6 +303,12 @@ defmodule Ipse.Config do
           else: %{embedding_profiles: effective.embedding_profiles}
         )
       )
+      |> Map.merge(
+        if(effective.decision_profiles == %{},
+          do: %{},
+          else: %{decision_profiles: effective.decision_profiles}
+        )
+      )
 
   def legacy_compatible?(effective), do: effective.sources == []
 
@@ -328,6 +342,7 @@ defmodule Ipse.Config do
             "settings" => settings_schema(),
             "profiles" => %{"type" => "object"},
             "embedding_profiles" => %{"type" => "object"},
+            "decision_profiles" => %{"type" => "object"},
             "roles" => %{"type" => "object"},
             "observability" => Ipse.Observability.schema(),
             "budget" => Ipse.Usage.Budget.schema(),
@@ -430,6 +445,7 @@ defmodule Ipse.Config do
               {:error, message} -> {:error, {:profile_configuration, message}}
             end),
          :ok <- Ipse.Config.Profiles.validate_embeddings(data["embedding_profiles"] || %{}),
+         :ok <- Ipse.Config.Decisions.validate(data["decision_profiles"] || %{}),
          :ok <- Ipse.Extension.Config.validate(data),
          :ok <- validate_settings(data["settings"] || %{}) do
       {:ok,

@@ -107,3 +107,38 @@ Elixir 1.18/OTP 27 and macOS require their own verification. Integrated Session
 decision admission/denial and saved reconstruction belong to the integrating
 owner and cannot be inferred from component success. Pure accounting recovery
 and conservative reservation tests are included above.
+
+## Operator configuration and capability integration
+
+The subsequent independent integration carries `decision_profiles` through
+configuration validation, resolution, fingerprinting, runtime admission and setup
+preservation. Trusted project files cannot add, replace or erase that registry.
+Absent registries add no fingerprint field; existing captured provider/configuration
+facts retain their historical values. Editing a source file still changes its hash.
+Selecting advice never selects or changes the conversation provider.
+
+The optional `host.decision` capability requires `host.actions` in the inert SDK
+catalog. Artifact declaration and the operator trust ceiling must both include it.
+The Host dispatches an admitted `decision.create` through its owned inference
+lifecycle. Decision source/response records are recognized by transform recovery
+only outside active transforms. Successful action binding can use the closed
+`DecisionCall.bound_response?/2` helper; it checks operation/request/attempt,
+selection, reported identity, usage, result and payload digest together.
+
+Only an explicitly child-enabled decision extension carries decision profiles
+into a child; named child-route selection preserves that admitted subset.
+Child approvals remain `ask`, MCP remains unavailable and recursive delegation
+remains disabled. Profile availability grants no capability or approval.
+
+`TYPESAFE_API_KEY` is included in the provider-secret policy and native inherited
+environment scrubber. Main MCP configuration and extension MCP environment-name
+validation consequently reject it. The native helper was rebuilt with
+`./dev/build-native.sh`; the two focused Runner credential/conformance tests passed,
+including actual shell execution with every registered provider key replaced by a
+synthetic value. These checks do not exercise a native terminal or an engine.
+
+Strict compilation and a combined **88-test** focused run passed across setup,
+decision loading, artifact/capability/children, MCP configuration, existing
+profile/catalog/registry tests and decision accounting/bindings. Setup replacement
+retains the registry and its exact previous-file backup. No live model service,
+download, new dependency, package build or release was involved in this checkpoint.

@@ -272,6 +272,41 @@ defmodule Ipse.Extension.DecisionCall do
     _ -> @error
   end
 
+  def bound_selection?(event) do
+    with {:ok, selection} <- selection_sha256(Ipse.Extension.Actions.result_intent(event)) do
+      event["outcome"]["value"]["selection_sha256"] === selection
+    else
+      _ -> false
+    end
+  rescue
+    _ -> false
+  end
+
+  def bound_response?(event, response) do
+    value = event["outcome"]["value"]
+
+    event["outcome"]["status"] == "ok" and bound_selection?(event) and
+      valid_outcome?(event["request"], "ok", value, event["operation_id"]) and
+      keys?(
+        response,
+        ~w(type version request_id attempt_id usage request_sha256 payload payload_sha256)
+      ) and
+      response["type"] == "extension_decision_response" and response["version"] === 1 and
+      response["request_id"] == value["request_id"] and
+      response["attempt_id"] == value["attempt_id"] and
+      response["request_sha256"] == Ipse.JSON.digest([event["request"]]) and
+      response["payload_sha256"] == Ipse.JSON.digest([response["payload"]]) and
+      response["usage"] === value["usage"] and response["payload"]["result"] === value["result"] and
+      response["payload"]["reported_model"] == value["reported_model"] and
+      Transport.valid_result?(
+        response["payload"],
+        event["effect_binding"]["execution"],
+        neutral(event["request"])
+      )
+  rescue
+    _ -> false
+  end
+
   def valid_outcome?(_request, status, value, _) when status in ~w(unknown denied),
     do: value == %{}
 

@@ -322,7 +322,8 @@ defmodule Ipse.MCP.ConfigTest do
           "OPENROUTER_API_KEY",
           "GEMINI_API_KEY",
           "GOOGLE_API_KEY",
-          "XAI_API_KEY"
+          "XAI_API_KEY",
+          "TYPESAFE_API_KEY"
         ] do
       write(ctx.path, %{"servers" => [%{server() | "env" => %{key => "secret"}}]})
       assert {:error, _} = Config.load(ctx.path)

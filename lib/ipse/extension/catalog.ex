@@ -12,7 +12,7 @@ defmodule Ipse.Extension.Catalog do
 
   def capabilities,
     do:
-      ~w(transform.prompt transform.presentation invoke.tool invoke.command invoke.service invoke.result.pages host.actions host.actions.mixed host.mcp host.results host.state.read host.state.scan host.state.bound host.state.write host.question host.tools host.services host.context host.usage host.usage.scan host.usage.children host.model host.embedding stream.text stream.text.events lifecycle.record lifecycle.tools event.notify event.job event.feed event.prompt.original event.prompt.effective event.answer.original event.answer.presented event.tool.input event.tool.result observe.local observe.export) ++
+      ~w(transform.prompt transform.presentation invoke.tool invoke.command invoke.service invoke.result.pages host.actions host.actions.mixed host.mcp host.results host.state.read host.state.scan host.state.bound host.state.write host.question host.tools host.services host.context host.usage host.usage.scan host.usage.children host.model host.embedding host.decision stream.text stream.text.events lifecycle.record lifecycle.tools event.notify event.job event.feed event.prompt.original event.prompt.effective event.answer.original event.answer.presented event.tool.input event.tool.result observe.local observe.export) ++
         Ipse.Extension.History.capabilities()
 
   @doc "The initial SDK-2 contract requires the paged-result grant, and SDK-1 excludes it."
@@ -48,7 +48,7 @@ defmodule Ipse.Extension.Catalog do
          true <- "host.usage.children" not in capabilities or "host.usage" in capabilities,
          true <-
            not Enum.any?(
-             ~w(host.actions.mixed host.mcp host.results host.state.read host.state.write host.question host.tools host.services host.context host.usage host.model host.embedding) ++
+             ~w(host.actions.mixed host.mcp host.results host.state.read host.state.write host.question host.tools host.services host.context host.usage host.model host.embedding host.decision) ++
                Ipse.Extension.History.capabilities(),
              &(&1 in capabilities)
            ) or

@@ -125,6 +125,14 @@ defmodule Ipse.CLI.SetupTest do
       "version" => 1,
       "settings" => %{"provider" => "ollama", "model" => "old", "max_steps" => 7},
       "profiles" => %{"unused" => %{"provider" => "ollama", "model" => "kept"}},
+      "decision_profiles" => %{
+        "advice" => %{
+          "operation" => "decision",
+          "provider" => "system_one",
+          "model" => "jev-latest",
+          "service_id" => "typesafe"
+        }
+      },
       "roles" => %{},
       "extension_trust" => [],
       "extensions" => []

@@ -312,6 +312,7 @@ defmodule Ipse.Provider.Registry do
     @specs
     |> Enum.sort_by(&if(&1.credential == :chatgpt_auth, do: 1, else: 0))
     |> Enum.flat_map(& &1.secret_env)
+    |> Kernel.++(["TYPESAFE_API_KEY"])
     |> Enum.uniq()
   end
 

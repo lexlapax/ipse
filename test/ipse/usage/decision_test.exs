@@ -199,6 +199,18 @@ defmodule Ipse.DecisionAccountingTest do
              f.response
            )
 
+    assert DecisionCall.bound_selection?(result)
+    assert DecisionCall.bound_response?(result, f.response)
+
+    refute DecisionCall.bound_response?(
+             result,
+             put_in(
+               f.response,
+               ["payload", "result", "answers", Access.at(0), "probability"],
+               0.1
+             )
+           )
+
     refute DecisionCall.valid_result_source?(
              put_in(result, ["outcome", "value", "selection_sha256"], String.duplicate("b", 64)),
              ledger.requests[f.admission["request_id"]],

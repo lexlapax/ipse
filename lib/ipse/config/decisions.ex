@@ -78,6 +78,11 @@ defmodule Ipse.Config.Decisions do
   def configuration(config),
     do: if(enabled?(config), do: validate(config[:decision_profiles] || %{}), else: :ok)
 
+  def child_profiles(config) do
+    entries = Ipse.Extension.Registry.child_entries(config)
+    if enabled?(%{extensions: entries}), do: config[:decision_profiles] || %{}, else: %{}
+  end
+
   def snapshot(config) do
     if enabled?(config) do
       registry = config[:decision_profiles] || %{}

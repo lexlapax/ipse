@@ -211,6 +211,7 @@ defmodule Ipse.Tools.Delegation do
     |> Map.put(:extensions, Ipse.Extension.Registry.child_entries(config))
     |> Map.put(:model_profiles, Ipse.Extension.ModelCall.profiles(config))
     |> Map.put(:embedding_profiles, config[:embedding_profiles] || %{})
+    |> Map.put(:decision_profiles, Ipse.Config.Decisions.child_profiles(config))
     |> Map.put(:model_auth_dir, config[:model_auth_dir] || config[:auth_dir])
     |> Map.put(:approval, :ask)
     |> Map.put(:max_steps, min(parent_max_steps(config), max_steps()))
