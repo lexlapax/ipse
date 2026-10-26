@@ -10,7 +10,10 @@ application and an embeddable Session API. Start with the scripted demo, then
 choose a provider explicitly when you are ready to use a model.
 
 Optional Corpus, Graph and Research extensions retain cited sources and
-attributed relationships. Explicit provider routes include ChatGPT subscription,
+attributed relationships through separately configured packages. Current memory
+uses explicit note tools; guided enablement and automatic knowledge capture/recall
+are planned in [P31](docs/plan.md#p31-usable-knowledge-and-prompt-assistance).
+Explicit provider routes include ChatGPT subscription,
 OpenAI API, Ollama, Anthropic, Gemini, pinned OpenRouter, Grok and loopback
 compatible servers. Grok API inference remains unverified after HTTP 403;
 subscription access requires an approved Ipse registration from xAI.

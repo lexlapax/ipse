@@ -43,6 +43,11 @@ status for a version. The operator install chapter owns lifecycle procedures;
 dated evidence remains in the archive.
 
 The [plan](plan.md) records priorities, selected scopes and acceptance decisions.
+Its [P31 knowledge and prompt-assistance scope](plan.md#p31-usable-knowledge-and-prompt-assistance)
+and [P30 decision consumers](plan.md#p30-advisory-decision-engines) describe proposed
+work; the [dated delivery design](archive/2026-10-26-p30-p31-plan/index.md) explains
+the selected experience and dependencies. Current knowledge procedures remain in
+the operator chapters above.
 [The archive](archive/index.md) preserves dated source/verification/research
 records and superseded documents with their provenance. Neither replaces current
 operating instructions. [Naming](naming.md) explains the project name.

@@ -37,12 +37,13 @@ Qualified readiness retains its recorded human/live limits.
 | [P23: accounting and budgets](#p23-usage-cost-reporting-and-budget-controls) | Complete within one-shot text/accounting scope | Keep later embedding and provider coverage separately identified |
 | [P24: architecture/security readiness](#p24-independent-architecture-validation-and-baseline-security) | Accepted for supervised P25 at `375e607` | Preserve the scoped verdicts and accepted same-user storage limit |
 | [P25: comparative self-development](#p25-comparative-research-and-supervised-self-development) | Accepted within declared supervision/assistance at `3307563` | Preserve frozen inputs, failures and bounded comparison claims |
-| [P26: memory baseline](#p26-optional-working-and-long-term-memory) | Explicit-note scope accepted at `25f1d8e` | Keep automatic memory separately scoped |
+| [P26: memory baseline](#p26-optional-working-and-long-term-memory) | Explicit-note scope accepted at `25f1d8e` | Productize automatic memory under P31 without changing this historical acceptance |
 | [P27: research, graph and RAG](#p27-optional-research-graph-and-rag) | Optional-package scope complete; hybrid qualified and selected | Evaluate new workloads independently; retain all seven strategies' original results |
 | [P28: operator usability and release](#p28-operator-usability-and-release-readiness) | v0.1.0 published at `341e458` under qualified acceptance after semantic documentation remediation and exact asset inspection | Retain human/live qualifications; evaluate subsequent changes against their own scope |
 | [P29: provider registry, OpenRouter and Gemini](#p29-provider-registry-openrouter-and-gemini) | Original scope and repairs accepted for qualified readiness; added Grok routes pass automated checks | Preserve unverified Grok API/OAuth eligibility and Gemini foreign-history live acceptance |
-| [P30: decision engines](#p30-advisory-decision-engines) | Proposed; unimplemented | Select a typed advisory contract and verify primary engine interfaces before implementation |
-| [P31: voice and media](#p31-voice-and-realtime-media) | Deferred; unimplemented | Select media contracts and device/service validation in a later increment |
+| [P30: decision engines](#p30-advisory-decision-engines) | Planned; unimplemented; expanded to real knowledge consumers | Deliver typed decisions, bounded policy mappings and independently qualified retrieval/capture uses |
+| [P31: usable knowledge and prompt assistance](#p31-usable-knowledge-and-prompt-assistance) | New developer-selected scope; unimplemented | Ordinary-user enablement, persistent project consent, automatic capture/recall and retrieve-first clarification |
+| [P32: voice and media](#p32-voice-and-realtime-media) | Deferred; unimplemented; formerly P31 | Select media contracts and device/service validation in a later increment |
 | [Apache-2.0 transition](#license-transition) | Complete at `7bb642b` | Preserve runtime, dependency and extension license boundaries |
 
 Acceptance is bounded by the evidence for each milestone. Internal source review,
@@ -58,10 +59,15 @@ The [architecture dispositions](archive/2026-10-18-before-manual-rewrite/docs/de
 [P26 remediation](archive/2026-10-19-p26-remediation/index.md),
 [P27 comparison](archive/2026-10-23-p27-heldout-comparison/index.md) and
 [P28/P29 qualified acceptance](archive/2026-10-24-p28-p29-review2/acceptance.md)
-preserve the decisions and original limitations. Historical plans retain their
-contemporary numbering: archived media proposals called that deferred work P28;
-the current plan calls it P31. The developer-selected Grok follow-up extends P29
-and keeps API billing separate from registered-client subscription OAuth.
+preserve the decisions and original limitations. On 2026-10-26 the developer
+inserted knowledge and prompt assistance as P31 and moved voice/media to P32.
+Historical media proposals retain their contemporary P24, P28 or P31 numbering;
+the [previous scopes](archive/2026-10-26-p30-p31-plan/prior-milestones.md) are preserved.
+The [delivery design](archive/2026-10-26-p30-p31-plan/index.md) records the source
+research, selected user experience, dependencies and remaining planning choices.
+This authorizes roadmap/design work, not automatic implementation of P30/P31.
+The developer-selected Grok follow-up extends P29 and keeps API billing separate
+from registered-client subscription OAuth.
 
 ## Completion rules
 
@@ -194,7 +200,7 @@ installation or production implementation is not required by this milestone.
 Execution readiness requires a passing frozen runner, reviewed task/resource
 limits, usable explicit research access for both tracks and P24's architecture
 dispositions and triaged baseline audit. Brief preparation and service-access
-checks can proceed earlier. Live audio (now P31) is not a prerequisite. Scope the trial
+checks can proceed earlier. Live audio (now P32) is not a prerequisite. Scope the trial
 as several reviewable work packages with retained intermediate artifacts, so
 research, long-task recovery and actual self-development have separate evidence.
 
@@ -268,8 +274,8 @@ memory ship as bundled extensions.
 Explicit recall/remember/forget/export tools and commands provide bounded task
 cards/facts and lexical recall. Source suppression, TTL/conflicts, derivative
 inventory/collection and approved migration/import preserve lifecycle integrity.
-Optional automatic recall/capture remains a separately justified adapter; it is
-not enabled by this baseline. Zero-Mem is inspiration, not a selected package or
+Automatic recall/capture is now scoped under [P31](#p31-usable-knowledge-and-prompt-assistance);
+it is not enabled by this baseline. Zero-Mem is inspiration, not a selected package or
 reproduced benchmark result. The [knowledge design](archive/2026-10-18-before-manual-rewrite/docs/developer/knowledge-extensions.md#research-handoff-and-deferred-production-acceptance)
 owns the researched selection and deferred engine comparisons.
 
@@ -495,7 +501,8 @@ Preserve the published outcomes, raw assessments, human resolution, final scores
 matched resources and all earlier failures. The released workload is now exposed;
 future quality acceptance requires independently authored data. Later engine,
 corpus, provider or model changes need their own scoped evaluation rather than
-upgrading this historical result or replaying consumed seals. P31 remains deferred.
+upgrading this historical result or replaying consumed seals. P31 adds a separately
+qualified ordinary-user knowledge experience; voice/media remains deferred as P32.
 
 The [independent review of `a7f4982`](archive/2026-10-23-p27-independent-review/index.md)
 confirms acceptance within this scope. The later
@@ -807,50 +814,254 @@ any remaining registration or live-account limits explicitly.
 
 ## P30: advisory decision engines
 
-**Proposed; no decision operation is implemented.** Candidate services are
-[OpenAI Decisions](https://developers.openai.com/api/docs/guides/decisions) at
-`POST /v1/decisions` and TypeSafe's
-[System One API](https://docs.typesafe.ai/api/system-one) for Jev. OpenAI's current
-official guide describes general availability, superseding the earlier beta
-description. Both return typed choices, scores or probabilities rather than
-generated prose. Zev remains a local-engine candidate; its exact source, license
-and protocol compatibility need primary-source verification before selection.
-Recheck external contracts before adapter work; this proposal installs no engine
-or SDK and establishes no live account access.
+**Planned; unimplemented.** Deliver a separate typed decision operation plus
+usable knowledge consumers. A classifier can assess supplied candidates and choose
+among allowed alternatives; it cannot generate missing evidence, establish truth
+or authorize an effect. The [delivery design](archive/2026-10-26-p30-p31-plan/index.md#p30-as-a-usable-decision-capability)
+records the verified interfaces and their differences.
 
-This is a separate operation, not a chat provider, following the pattern of the
-P27 embedding contract:
+Candidate adapters are [OpenAI Decisions](https://developers.openai.com/api/docs/guides/decisions)
+at `POST /v1/decisions` and [TypeSafe System One](https://docs.typesafe.ai/api/system-one)
+for Jev, using explicit engine/profile/endpoint/credential/billing choices.
+An operator-run loopback engine is optional. The identified
+[Zev candidate](https://github.com/bhubbard/zev-rs) is experimental: similar endpoint
+names do not establish wire, model or quality equivalence. Pin and qualify its
+actual subset before selection. No engine, SDK, dependency or live account access
+is established by this plan. Reverify external contracts before implementation.
 
-1. A versioned request of bounded context plus questions (choice, score and
-   yes/no predicate), with explicit option sets, ordered score levels or a
-   probability contract. Validate one typed answer per question: an allowed
-   choice, a finite in-range score/probability, an explicit uncertain/insufficient
-   outcome or a refusal. Scores may fall between rubric levels; probabilities
-   are not boolean permissions. Invalid, missing or partial answers refuse the
-   whole decision.
-2. Adapters for OpenAI Decisions, hosted SystemOne and loopback SystemOne,
-   each with operator-configured endpoint, credential, destination facts,
-   usage/cost accounting and budgets. There is no fallback between engines or to
-   a language model.
-3. Exposure through a new `host.decision` extension grant beside `host.embedding`
-   and an optional model tool. Results are advisory data. They never approve an
-   effect, grant a capability, choose a provider or profile without operator
-   confirmation, or bypass journaling.
-4. One measured first use, such as suggesting a profile or route for a task, with a
-   small independently labeled workload and published agreement before the
-   suggestion appears to operators. Later uses, including memory capture gating,
-   skill selection and Research/Graph classification, need their own evaluations.
+### Contract and actual consumers
 
-Acceptance: fixture engines for valid, out-of-set, uncertain, slow, oversized and
-disconnected responses; owner death and cancellation; accounting and budget
-refusal with zero dispatch; no-fallback checks; and separately recorded opt-in live
-checks. Zev or another local engine is an operator-run external service, not a
-bundled or required dependency; calling it adds nothing to the dependency
-inventory, but the operator manual documents it as an optional endpoint.
+Expose a versioned `host.decision` effect beside the existing model/embedding
+operations. Requests contain bounded evidence, named questions, string choice IDs,
+ordered score levels or predicates. Preserve finite probabilities, fractional
+scores, distributions and separately identified provider confidence. Validate
+identities, types, ranges, distribution coverage/sums and score consistency;
+never coerce uncertain probabilities into permissions. Structural corruption
+invalidates the result. Valid per-question
+refusals can coexist with independent answers; dependent actions need every
+prerequisite answer. Retain uncertainty, insufficient evidence, refusal, malformed
+output, timeout and budget denial as distinct outcomes.
 
-## P31: voice and realtime media
+| Consumer | Useful behavior | Boundary |
+| --- | --- | --- |
+| Knowledge routing | Select local notes, document search, graph or a combination for a query | Only enabled, eligible sources and approved services within current limits |
+| Capture assessment | Assess durability, support, ambiguity or conflict of extracted candidates | Cannot invent a candidate/source, certify truth or grant write permission |
+| Clarification assessment | Help identify a material unresolved choice after retrieval | Optional measured strategy; no mandatory extra call for every prompt |
+| Provider/profile routing | Assess a finite set of explicit routes | Suggest a change; ask before changing model providers or paid services |
 
-**Deferred; unimplemented. Archived records call it P28, and earlier P24.**
+Decision dispatch itself requires permission, a reserved budget and a journaled
+intent before any egress. Every consumer maps typed results through deterministic policy, then ordinary
+permission, version and budget checks before a journaled effect. Filter prohibited
+alternatives before classification. A decision can choose within prior consent;
+it cannot expand that consent or silently change a provider/billing destination.
+This makes automatic knowledge routing useful without repeating approval prompts.
+
+The host owns cancellation, bounded transport, intent/outcome records, usage and
+atomic reservations. Record engine/resolved model, rubric, input-source versions,
+policy revision, selected action and override reason without diagnostic source
+text dumps. Do not infer zero cost from missing prices or double-count cache tokens.
+P31's project budgets constrain decision calls alongside extraction/embedding.
+No fallback to another engine or chat model. A configured failure policy may defer,
+stop or use a disclosed fixed local strategy; unavailable/uncertain is never a
+successful decision. P31 also has an explicitly engine-free baseline.
+
+### Delivery and acceptance
+
+| Package | Deliverable |
+| --- | --- |
+| P30A | Neutral typed contract, supported adapter subsets, consumer inputs and pinned protocol fixtures |
+| P30B | Engine profiles/adapters, owned host effect, validation, accounting, admission and cancellation |
+| P30C | Per-consumer policy mappings, finite allowed alternatives and visible uncertainty/failure; integrate P31B consent |
+| P30D | Real retrieval-routing and capture-assessment consumers after P30C and P31E/F; graph after P31G; optional separately qualified clarification strategy |
+| P30E | Independent per-consumer evaluation, installed integration, manuals and separately recorded opt-in live eligibility |
+
+P30A/B can progress alongside P31's host contracts. P30 completion requires real
+consumers, not an unused wrapper or a profile-suggestion demo. Compare each consumer
+against deterministic or existing-model behavior on independently labeled inputs,
+including asymmetric error costs, abstention, quality, latency and spend. Freeze
+thresholds before evaluation; preserve failures and engine/model/rubric versions.
+One passing consumer does not qualify every use. An unqualified strategy stays
+experimental/off even when its adapter passes protocol tests.
+
+Required checks cover valid/invalid/mixed-refusal output, independent versus
+dependent questions, oversized/slow/disconnected services, owner death, cancellation
+during an actual request, zero dispatch on denial, accounting and no substitution.
+Installed P31 fixtures must prove the decision changes an eligible route or capture
+outcome without widening authority. Separately qualify live access and each enabled
+automatic strategy; fixtures do not prove model quality or account eligibility.
+
+## P31: usable knowledge and prompt assistance
+
+**New planned milestone; unimplemented.** The developer selected this scope after
+the [post-release assessment](archive/2026-10-26-knowledge-productization/index.md).
+P26's explicit notes and P27's technical packages remain completed within their
+original scopes. P31 makes their capabilities usable through the installed product.
+Voice/media moves to P32; P20 remains completed self-development.
+
+### Product behavior and settled choices
+
+An ordinary user enables project notes, documents or relationships through guided
+setup, works normally, sees useful facts/decisions saved, and receives relevant
+cited recall in later sessions. They can inspect, correct, forget, pause, disable
+and export knowledge without building packages, preparing hashes, writing JSON
+or arranging MCP for local use. Features remain independently selectable and off
+until enabled; basic local retrieval needs no embedding or decision service.
+
+The developer chose **automatic useful-fact/decision capture with visible changes**,
+**permission that persists across project sessions**, and **checking available
+information before asking about material missing choices**. Do not reduce this
+to proposal-only capture or repeated per-session approval. Guided setup makes
+source scope, destinations, retention and finite limits concrete before enabling.
+Automatic extraction may use an explicitly selected model under that policy;
+local storage does not imply local inference or authorize sending all source text.
+
+The developer also chose **automatic routing among enabled knowledge sources,
+with a new choice before changing model providers or paid services**, and **PDF
+and Word ingestion within P31**. The initial proposed format boundary is text,
+Markdown/code, text-bearing PDF and Word `.docx`; scanned/OCR, legacy `.doc` and
+unsupported/encrypted inputs need explicit support decisions and honest per-file
+results. They cannot be silently presented as indexed. PDF/Word work is required
+for P31 completion even when plain text is the first development slice.
+The [delivery design](archive/2026-10-26-p30-p31-plan/index.md) owns the detailed
+journeys, proposed contracts, staged dependencies and qualification cases.
+
+### Required boundaries and lifecycle
+
+1. **Enablement and distribution.** Ship compatible disabled knowledge artifacts
+   and a catalog that admits the supported feature combinations within bounded
+   context. Explain active/pending/disabled/error states. Reconcile current pinned
+   session artifacts through an explicit safe activation/handoff, preserving the
+   conversation and unknown-effect rules. Configuration edits alone cannot hotload
+   a package. Normal users must not repair fingerprints or copy prompts manually.
+2. **Saved permission.** Store protected project consent separately from project
+   configuration. Bind source/features, effect classes, storage/sharing, concrete
+   service/model/billing identities and finite period budgets. Cover outer tool
+   dispatch and inner host effects. Fresh/resumed sessions reuse covered consent;
+   changed scope/service/limits require a concise change review. Revocation fences
+   concurrent dispatch/publication with an atomic ordering and acknowledgment
+   boundary, not independent checks that race. Artifact trust is separate from
+   semantic consent; reviewed compatible upgrades should not re-ask unchanged scope. Deny rules,
+   read-only modes, headless `--yes` and separate child authority still apply.
+3. **Evidence and sustainable storage.** Retain stable source identities/versions,
+   roles, exact support, provenance, observed/event time and derivation links.
+   Evaluate maintained Elixir/OTP/Rust storage facilities before selecting an
+   adapter; no mandatory database service. Replace the current small-namespace
+   capacity bottleneck for ordinary collections. Bound disk, queries, jobs and
+   shared project spend across concurrent sessions, including unresolved effects.
+4. **Automatic capture.** Capture eligible conversation facts, decisions and
+   relationships; distinguish user statements, quoted evidence, tool observations
+   and assistant proposals. Validate citations, handle negation/uncertainty,
+   deduplicate, expose conflicts and show a compact saved/changed/skipped receipt.
+   Never treat recalled/generated text as independent corroboration. Provide
+   complete bounded turn evidence and joins; today's short private views are
+   insufficient for long-turn capture. Define eligibility/status for failed,
+   cancelled and question-waiting turns; the current success-only hook cannot
+   stand for every settlement. Cancellation stops pending capture.
+   No recursive self-capture.
+5. **Documents and recall.** Preview selected files/folders and exclusions; acquire
+   bounded admitted bytes, track revisions/deletions and report unsupported or
+   failed inputs. Include PDF/Word extraction, bounded parser resources and
+   original-file/page/paragraph citations; no macros or automatic external fetches.
+   Evaluate maintained parsers and approve/inventory any non-Elixir/Rust dependency
+   before adoption. Retrieve once per accepted prompt, rank within a shared context
+   budget and preserve inspectable source citations. Clear stale contributions
+   after change/forget/expiry/failure and revalidate before every model dispatch,
+   including same-turn continuations. Explain the limits on already transmitted
+   text/native history. Required-source failures stop dependent work;
+   optional failures disclose a limitation. Semantic modes require explicit profiles.
+6. **Graph and research.** Derive typed entities/relationships automatically from
+   eligible evidence, support reversible aliases/merges and conflicting assertions,
+   and qualify temporal answers against retained versions. Share/transfer Research
+   evidence through explicit contracts; do not assume effectful cross-extension
+   calls already exist. P30 may advise retrieval/capture within the same policy.
+7. **Correction, forgetting and upgrades.** Propagate source invalidation across
+   notes/chunks/graph/vectors/context, including disabled stores before re-enable.
+   Suppress managed lineage and known aliases against late capture, reindex and
+   old-backup import. Explain journal/backup/
+   external-copy limits; do not promise perfect semantic erasure. Provide preflight,
+   export, interruption recovery and rollback for versioned P26/P27 migration;
+   old writers cannot resurrect forgotten facts. Project moves/sharing are explicit.
+8. **Responsive owned work.** Display completed answers promptly and let a new
+   prompt proceed without waiting on unrelated capture. Bound Session-owned queues,
+   concurrency and checkpoints; prioritize foreground work. Show pending/partial/
+   failed/unknown outcomes. Close, cancel, revoke and owner death stop dependent
+   work; unknown effects are never automatically replayed. No unattended daemon.
+9. **Prompt assistance.** Retrieve authorized information first, group material
+   questions and return answers to the executing model. Bound repeated clarification;
+   headless required unknowns return an actionable incomplete outcome. Offer an
+   explicit editable enhancement preserving original/proposed/accepted text.
+   Bind accepted intent to a versioned host state/consuming request and refuse
+   stale confirmation. Unaccepted drafts are not user decisions. Planning-only
+   interaction has a host effect ceiling across tools/extensions/MCP/children/resume, with an explicit
+   transition to execution. Entry accounts for already in-flight effects before
+   acknowledging the ceiling; no stale queued work gains authority on exit.
+   Queued input and interrupt semantics remain visible.
+
+Domain policy, extraction, retrieval, graph logic and prompt assistance belong in
+extensions/skills. Core changes are limited to reviewed gaps in authority, evidence,
+storage/effect ownership, context validity, accepted intent and lifecycle. Do not
+introduce a workflow framework, shell recursion or broad filesystem grants to
+avoid those boundaries. The credential-free demo remains usable.
+
+### Delivery order
+
+| Package | Deliverable and dependency |
+| --- | --- |
+| P31A | Freeze journeys, interaction vocabulary, source/retention/capacity envelope, labeled acceptance data and host-contract gaps |
+| P31B | Protected persistent consent, revocation, aggregate project reservations and effect/mode admission; follows A |
+| P31C | Evidence versions, bounded storage, source access, suppression and migration; follows A/B, with early storage prototypes |
+| P31D | Shipped artifacts, usable catalog, guided setup/status/disable and safe activation/upgrades; overlaps B/C |
+| P31E | First full notes journey: enable → ordinary conversation → visible automatic capture → fresh-session recall → correct/forget; follows B/C/D |
+| P31F | Text, PDF and Word file/folder ingestion, change tracking and cited retrieval with progress/recovery; builds on C/D/E |
+| P31G | Automatic entity/relationship capture, conflict/alias correction and time-qualified retrieval; builds on C/E and shared F acquisition |
+| P31H | Research evidence transfer and cross-store invalidation; integrate optional P30 retrieval/capture strategies when ready |
+| P31I | Retrieve-first clarification, editable accepted prompt and enforced planning interaction; parallel after A/B and the intent contract |
+| P31J | Full installed journeys, adversarial/quality/resource/human checks, upgrade rehearsal and coherent operator/developer manuals |
+
+The smallest complete delivery is P31E, not a new `/enable` command over today's
+manual setup. P31E requires responsive owned capture and usable capacity, even if
+its first fixture is small. P30 and later features develop alongside that slice.
+P31's engine-free workflow must pass independently; P30D/E qualify the optional
+strategies without blocking normal knowledge use on a third-party account.
+
+### Acceptance
+
+P31A freezes workload sizes, error-cost thresholds and latency/resource budgets
+before evaluation. The design includes an explicitly unmeasured starter capacity
+profile for storage prototyping; freeze the supported envelope from those results.
+Do not reuse P27's exposed workload or scores as proof of automatic capture.
+
+- Fresh installed users complete enable/capture/later-session recall, document
+  import, a relationship question, correction/forget, permission inspection/revoke,
+  disable and upgrade. Include coding and non-coding work and Linux/macOS evidence.
+  Record assistance, elapsed time and permission interruptions. Covered automatic
+  work causes zero repeat approval prompts across sessions.
+- Measure supported-attribution precision and important-fact coverage separately
+  from entity false merges, retrieval, cited answers and temporal correctness.
+  Include misleading instructions, hypotheses, negation, ambiguous names, conflict,
+  stale evidence and assistant suggestions. Measure clarification necessity and
+  task completion with human input, not only simulated users or callback tests.
+- Prove no scope crossing, forbidden dispatch, stale publication or unknown-effect
+  replay in deterministic adversarial fixtures. Cover concurrent sessions, reduced
+  budgets, policy revocation during effects, long answers, cancellations during
+  actual work, missing/partial sources, context invalidation and old-backup import.
+- Sustain a fixed active dataset through repeated update/correct/forget cycles
+  without exhausting permanent tombstone slots. Test resource bounds, recoverable
+  migration, matching whole-package catalog admission and actual installed artifacts.
+- Run source/native/demo/package and Linux/macOS checks for changed runtime paths.
+  Qualify actual selected live extraction/decision profiles separately from fixtures;
+  document unavailable services without silently substituting them. Rewrite affected
+  manuals around the completed user journeys and contributor contracts; verify
+  examples/links and preserve dated evidence. A working component is not P31 closure.
+
+Deferred: voice/media (P32), team/cloud synchronization, universal historical-chat
+mining, autonomous service installation, unattended background daemons, general
+workflow graphs and automatic model-provider or paid-service switching. PDF and
+Word ingestion remain required within the explicitly declared format boundary.
+
+## P32: voice and realtime media
+
+**Deferred; unimplemented. Previously P31; older archives call it P28 or P24.**
 Keep the requested scope for a future delivery; it is no longer ahead of
 architecture/security review or self-development.
 Build on the owned text/provider and P23 accounting foundation. Start with a
@@ -875,7 +1086,7 @@ See [media boundaries](archive/2026-10-18-before-manual-rewrite/docs/developer/r
 ## License transition
 
 The operator-requested MIT → Apache-2.0 transition follows the completed P22–P25
-campaign, before the separately deferred P26–P27 features and voice (now P31).
+campaign, before the separately deferred P26–P27 features and voice (now P32).
 Root and bundled extension licenses now carry Apache-2.0 with the original copyright. Current contributor,
 dependency, operator and developer guidance uses that license; upstream dependency
 licenses, prior artifacts and historical evidence retain their own provenance.
