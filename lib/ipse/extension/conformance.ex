@@ -13,14 +13,21 @@ defmodule Ipse.Extension.Conformance do
     @moduledoc false
     def complete(config, messages, _tools, emit) do
       marker = config.conformance_case["expect"]["context_contains"]
-      reference = Enum.at(messages, 1, %{})
+
+      reference =
+        Enum.find(Enum.reverse(messages), &Ipse.Session.Reference.reference?/1) ||
+          Enum.at(messages, 1, %{})
 
       seen =
         is_binary(marker) and reference["role"] == "user" and
           String.contains?(reference["content"] || "", marker)
 
       user_marker = config.conformance_case["expect"]["user_contains"]
-      user = Enum.reverse(messages) |> Enum.find(%{}, &(&1["role"] == "user"))
+
+      user =
+        Enum.reverse(messages)
+        |> Enum.find(%{}, &(&1["role"] == "user" and not Ipse.Session.Reference.reference?(&1)))
+
       user_seen = is_binary(user_marker) and String.contains?(user["content"] || "", user_marker)
 
       send(

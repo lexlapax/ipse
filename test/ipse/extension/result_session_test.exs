@@ -344,9 +344,10 @@ defmodule Ipse.Extension.ResultSessionTest do
     assert byte_size(view["text"]) <= 1024
     assert {:ok, _} = Session.materialize_result(session, result["delivery"])
     assert_receive {:result_session_model, _, before_tools}
-    refute Enum.any?(before_tools, &(get_in(&1, ["function", "name"]) == "saved_result_read"))
+    assert Enum.any?(before_tools, &(get_in(&1, ["function", "name"]) == "saved_result_read"))
     assert_receive {:result_session_model, _, after_tools}
     assert Enum.any?(after_tools, &(get_in(&1, ["function", "name"]) == "saved_result_read"))
+    assert before_tools == after_tools
   end
 
   test "a command output ID known to the model grants no model read access", c do
@@ -356,7 +357,7 @@ defmodule Ipse.Extension.ResultSessionTest do
     assert :ok = Session.prompt(session, Jason.encode!(read_request(delivery)))
     assert_receive {:ipse, ^session, {:done, :ok}}, 10_000
     assert_receive {:result_session_model, _, tools}
-    refute Enum.any?(tools, &(get_in(&1, ["function", "name"]) == "saved_result_read"))
+    assert Enum.any?(tools, &(get_in(&1, ["function", "name"]) == "saved_result_read"))
     assert {:ok, messages} = Session.restore_context(events(c, session))
     read = Enum.find(messages, &(&1["role"] == "tool" and &1["tool_call_id"] == "read"))
     assert is_map(read)

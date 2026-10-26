@@ -82,6 +82,16 @@ reviewed as documents and reconciled; the documentation checker passed 475
 Markdown files and 4,307 local links with zero errors. Full fixed-source/package
 receipts remain separate; none is inferred from these component counts.
 
+The first fixed-source full run at `221fa2d` subsequently exposed three more
+old-layout assumptions: the conformance model inspected only the old second
+message, and two saved-result tests expected the reader declaration to appear
+only after publication. The checker now inspects the latest valid reference
+selection and keeps real-user matching separate. Reader tests assert unchanged
+tools before/after publication while retaining the actual unauthorized-read
+refusal checks. The repaired conformance/result-reader/decision regression run
+passed 27 tests; the original full run remains a failed-run receipt, with final
+counts and later baseline evidence recorded separately.
+
 Wire fixtures cover ChatGPT, OpenAI, Ollama, Anthropic, Gemini, OpenRouter,
 Grok API, Grok subscription and explicit compatible-local routes. They verify
 unchanged earlier serialized messages/tools, tail role, and signed Anthropic/Gemini
