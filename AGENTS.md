@@ -9,7 +9,12 @@ instructions apply throughout this repository.
 Ipse is an Apache-2.0-licensed, general-purpose local AI harness. The current prototype
 has coding-oriented tools and workflows. Keep the agent loop, provider
 adapters, skills, approvals, persistence, and orchestration in Elixir/OTP. Rust
-is for small OS helpers. Do not add JavaScript or Python runtime dependencies.
+is for small OS helpers. The developer-approved PDF exception permits a narrowly
+scoped Rust parser when maintained Elixir/Erlang options are unsuitable; keep
+orchestration and knowledge policy in Elixir/OTP. Evaluate and inventory the
+specific library and its licenses; this does not approve transitive non-Rust
+dependencies. See the [recorded decision](docs/archive/2026-10-26-p30-p31-plan-review/index.md).
+Do not add JavaScript or Python runtime dependencies.
 Prefer ordinary modules, processes, and messages over a workflow framework.
 Evaluate existing Elixir/OTP modules and maintained Mix packages before writing
 common protocol or validation machinery. Reuse suitable implementations behind
@@ -131,8 +136,12 @@ historical records when simplifying current source, commands and manuals.
   resume must mark its outcome unknown and never automatically replay it.
 - Keep cross-process locking for sessions and rotating refresh tokens. Lock
   files remain in place to preserve inode identity; release the OS lock instead.
-- Interactive mutations require approval unless explicitly enabled. Headless
-  mutation is denied without `--yes`. Display full proposed approval arguments.
+- Interactive mutations require approval unless explicitly enabled. Current
+  headless mutation is denied without `--yes`. The approved P31 design permits
+  a future knowledge-only exception using protected saved consent; implementation
+  still requires task authorization. It must not widen workspace, shell, MCP or
+  delegation authority. Until implemented, the existing runtime gate remains.
+  Display full proposed approval arguments.
 - Local child delegation is opt-in with `--subagents`; parent and child approval
   and journaling remain separate. Children cannot use MCP or delegate recursively.
 - External service integrations must be operator-configurable. Do not embed a

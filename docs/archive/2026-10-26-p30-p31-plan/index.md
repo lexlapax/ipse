@@ -1,5 +1,9 @@
 # P30 and P31 delivery design
 
+Superseded after review by the [revised design](../2026-10-26-p30-p31-plan-review/design.md)
+and [audit disposition](../2026-10-26-p30-p31-plan-review/index.md). The original
+body below is retained as historical design, including its unresolved gaps.
+
 Planning record dated **2026-10-26**, based on `caf7221` and the
 [knowledge product assessment](../2026-10-26-knowledge-productization/index.md).
 Historical design record; use the [current plan](../../plan.md) for active scope
