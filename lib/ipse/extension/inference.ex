@@ -791,9 +791,9 @@ defmodule Ipse.Extension.EmbeddingCall do
 end
 
 defmodule Ipse.Extension.Inference do
-  @moduledoc "Owned inference lifetime shared by explicit text and embedding actions."
+  @moduledoc "Owned inference lifetime shared by explicit text, embedding and decision actions."
 
-  def execute(context, intent, kind, perform) when kind in [:text, :embedding] do
+  def execute(context, intent, kind, perform) when kind in [:text, :embedding, :decision] do
     case GenServer.call(context.owner, {begin_message(kind), context.job_ref, intent}, :infinity) do
       {:ok, config, admission} -> run(context, intent, kind, perform, config, admission)
       {:failed, _} = failure -> failure
@@ -824,7 +824,7 @@ defmodule Ipse.Extension.Inference do
             {:ok, value, raw} ->
               capture = %{value: value, usage: Ipse.Usage.observation(admission, raw, 1)["usage"]}
               send(coordinator, {tag, :response, capture})
-              if kind == :embedding, do: guarded_emit.({:provider_usage, raw})
+              if kind in [:embedding, :decision], do: guarded_emit.({:provider_usage, raw})
 
             _ ->
               :ok
@@ -906,14 +906,20 @@ defmodule Ipse.Extension.Inference do
 
   defp begin_message(:text), do: :extension_model_begin
   defp begin_message(:embedding), do: :extension_embedding_begin
+  defp begin_message(:decision), do: :extension_decision_begin
   defp usage_message(:text), do: :extension_model_usage
   defp usage_message(:embedding), do: :extension_embedding_usage
+  defp usage_message(:decision), do: :extension_decision_usage
   defp finish_message(:text), do: :extension_model_finish
   defp finish_message(:embedding), do: :extension_embedding_finish
+  defp finish_message(:decision), do: :extension_decision_finish
   defp code(:text, :limit), do: "model_limit"
   defp code(:text, :timeout), do: "model_timeout"
   defp code(:text, :cancelled), do: "model_cancelled"
   defp code(:embedding, :limit), do: "embedding_limit"
   defp code(:embedding, :timeout), do: "embedding_timeout"
   defp code(:embedding, :cancelled), do: "embedding_cancelled"
+  defp code(:decision, :limit), do: "decision_limit"
+  defp code(:decision, :timeout), do: "decision_timeout"
+  defp code(:decision, :cancelled), do: "decision_cancelled"
 end
