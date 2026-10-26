@@ -1,3 +1,8 @@
+> Historical design from `7f4857b`, superseded on **2026-10-26** after the
+> [second audit repair](../2026-10-26-p30-p31-plan-review2/index.md). Use the
+> [current design](../../knowledge-design.md) and [current plan](../../plan.md).
+> The original body below is preserved unchanged, including superseded limits.
+
 # Revised knowledge and decision delivery design
 
 Design record, **2026-10-26**, replacing the [first design](../2026-10-26-p30-p31-plan/index.md)

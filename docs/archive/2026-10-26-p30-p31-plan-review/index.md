@@ -1,3 +1,9 @@
+> Historical first repair record, superseded by the
+> [second audit repair](../2026-10-26-p30-p31-plan-review2/index.md) on **2026-10-26**.
+> Its developer answers remain authoritative; some design judgments and limits
+> were replaced. Use the [current design](../../knowledge-design.md) and
+> [current plan](../../plan.md). The original body below is unchanged.
+
 # P30/P31 plan audit and remediation
 
 Dated **2026-10-26**. A developer-supplied read-only audit reviewed `eccf7c7` and
