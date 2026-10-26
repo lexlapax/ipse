@@ -1,0 +1,15 @@
+[package]
+name = "ipse-pdf"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.88"
+license = "Apache-2.0"
+publish = false
+
+[dependencies]
+lopdf = { version = "=0.46.0", default-features = false }
+
+[profile.release]
+opt-level = "s"
+strip = true
+panic = "abort"
