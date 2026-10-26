@@ -49,7 +49,9 @@ work; the [knowledge and decision design](knowledge-design.md) owns the proposed
 experience and contracts, with [final audit dispositions](archive/2026-10-26-p30-p31-final-handoff/index.md)
 and the [implementation handoff](archive/2026-10-26-p30-p31-final-handoff/implementation.md)
 preserved separately. The proposal is frozen into the archive when implementation
-starts; current knowledge procedures remain in
+starts. The [local Ollama research amendment](archive/2026-10-26-ollama-local-rag/index.md)
+adds optional open-weight embedding and local-answer qualification to P31;
+current knowledge procedures remain in
 the operator chapters above.
 [The archive](archive/index.md) preserves dated source/verification/research
 records and superseded documents with their provenance. Neither replaces current

@@ -239,6 +239,14 @@ CPU and explicit NVIDIA benchmark selections keep this service optional and
 unbundled. A GPU selection uses the operator's existing compatible driver and
 the declared Ollama libraries; Ipse installs no driver or CUDA toolkit.
 
+Inventory weight assets independently from the serving runtime. Record full model
+digests, quantization/backend, sources, licenses and notices before acquisition or
+packaging; a mutable discovery tag is not an immutable version. Ollama's source
+license does not cover model weights or every GPU library. The
+[dated model-selection research](../archive/2026-10-26-ollama-local-rag/index.md#selected-qualification-targets)
+records candidate-specific sources and terms; the [plan](../plan.md) owns future
+delivery. Operator-selected models remain outside Ipse archives.
+
 The optional NVIDIA benchmark also uses the existing NVIDIA driver and its
 `nvidia-smi` inspection utility to identify a physical GPU. The source is the
 operator's installed NVIDIA or distribution driver package. There is no pinned

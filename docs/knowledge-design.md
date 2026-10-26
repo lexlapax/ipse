@@ -1,6 +1,8 @@
 # Knowledge and decision delivery design
 
-Current **proposal**, revised **2026-10-26** against source baseline `a812369`.
+Current **proposal**, revised **2026-10-26** against source baseline `a812369`,
+with the [local Ollama research amendment](archive/2026-10-26-ollama-local-rag/index.md)
+added after `bd556fa` at the developer's request.
 The [plan](plan.md) owns status, package dependencies and acceptance disposition;
 this document owns the proposed contracts and user journeys. The
 [final repair record](archive/2026-10-26-p30-p31-final-handoff/index.md) explains
@@ -424,12 +426,13 @@ experimental allowance is not a waiver for the core notes/recall journey.
 P31E includes notes-retrieval remediation before its release if its baseline misses
 these bars; this must not wait for document/graph storage. P31F separately includes
 a document-retrieval improvement increment if that baseline misses its bars:
-repair source selection/citations, evaluate main-model query expansion, and assess
-additional Gemini or compatible embedding routes or an optional local embedding
-asset. Select only after API, dependency/model license, resource, privacy and
-packaging review. No new mandatory service or silently downloaded model follows
-from a benchmark failure. If no no-extra-service strategy qualifies, present the
-evidence and seek an explicit scope decision; do not advertise it as solved.
+repair source selection/citations and evaluate main-model query expansion.
+The separately selected optional Ollama path below is required P31F work even if
+the no-extra-service baseline passes; it does not replace that baseline. Additional
+Gemini or compatible embedding routes remain candidates, not selected delivery.
+No new mandatory service or silently downloaded model follows from a benchmark
+failure. If no no-extra-service strategy qualifies, present the evidence and seek
+an explicit scope decision; do not advertise it as solved.
 
 Automatic seed recall executes once per accepted turn using that turn-local envelope;
 subsequent read/search tools remain available. Before every actual model dispatch,
@@ -437,6 +440,98 @@ revalidate selected evidence against source, expiry and consent generations,
 including later tool/question continuations. Clear stale contributions after
 forget/change/failure; required-source failure stops dependent answering, optional
 failure is visible. Do not treat an old context replacement as a valid new recall.
+
+### Optional local embeddings and RAG
+
+Provide two explicit setup choices: **local search with the current main model**,
+or **local search and local answers**. The first still sends selected source
+excerpts to a remote main model when one is selected. The second selects Ollama
+as the main answer/capture route for the next new session; it must not silently
+replace ChatGPT or introduce a hidden answering model. Embeddings produce search
+vectors, not answers, verified facts or graph relationships. No embedding service
+is required for the initial notes journey.
+Local-only preflight inventories every enabled inference stage, including
+extraction, reranking, decisions, compaction and delegation. Show any remote stage
+in the setup preview and require an admitted local selection or disable/refuse it
+under this choice; a previously saved remote helper cannot silently remain active.
+Include knowledge stores and source-processing services in that route inventory;
+remote graph/MCP storage cannot inherit a local-only label from the model pair.
+
+Qualify `qwen3-embedding:0.6b-q8_0` at native **1,024 dimensions** as the primary
+local embedding preset. Compare the smaller text-only
+`embeddinggemma-2:270m-q8_0-text` at **768 dimensions**, with separate platform
+qualification. For fully local answers, qualify `qwen3.5:4b`; compare `qwen3.5:9b`
+when hardware permits. These are Apache-2.0-weight candidates, not benchmark
+winners or already supported presets. The [research record](archive/2026-10-26-ollama-local-rag/index.md)
+owns dated model/size/license sources, alternatives and unverified runtime floors.
+Never substitute candidates automatically or inherit P27's old quality result.
+
+Use the native Ollama HTTP adapters and existing extension ownership. The pipeline
+is admitted source text → bounded citation-preserving chunks → lexical and dense
+indexes → RRF(k=60) → bounded cited passages → selected main model. No new vector
+server, mandatory reranker, Python/JavaScript framework, graph service or P30
+engine is required. P30 can later choose among qualified enabled stores; it cannot
+change the embedding or answering model without the applicable operator choice.
+
+P31A freezes model-specific query/document templates and the actual dispatched
+bytes. Qwen retrieval queries carry its task instruction; document chunks do not.
+Google's candidate uses its own distinct query/document prefixes. Count wrappers
+inside host input limits, retain original source spans for citations, reject
+double-prefixing and keep `truncate:false`. Start with native dimensions; validate
+count, width, finite coordinates, a nonzero vector norm and normalization within
+a frozen tolerance. Dimension reduction requires separate qualification.
+Large publisher context limits do not enlarge Ipse's
+existing 4,096-byte/input, eight-input, 12-KiB aggregate embedding bounds.
+
+Bind an index generation to full installed model digest, quantization/backend,
+runtime/version, dimensions, normalization, chunker and task-template versions.
+Treat moving tags as discovery labels, not immutable identity. P31A must choose
+an enforceable artifact-pinning contract: prefer owned immutable model closure;
+shared-daemon checks alone cannot prove per-request weights under concurrent tag
+replacement. A shared route must explicitly declare its cooperative local-service
+trust boundary, recheck identity around jobs and refuse changed/unverifiable
+results; it cannot claim immutable attestation. Changed identity requires a
+separate bounded rebuild and atomic index publication, never mixed vector spaces.
+Rebuilds preserve exclusions, suppression, citations and revocation; failure leaves
+the previous still-valid generation usable without restoring forgotten material.
+
+P31D0 designs connection/provisioning choices; D1/F deliver the installed local
+preset. Show model license, download/cache space, actual endpoint and both data
+routes before selection. Reuse resident models when suitable. Optional downloads
+require explicit consent; installation of Ollama follows the dependency policy.
+Acquisition has separate model-count/download/disk/deadline/progress bounds and an
+owned, journaled receipt; embedding-request limits are not download limits. Serialize
+Ipse pulls per service/model, coordinate with inference admission, inspect partial
+or unknown completion after cancellation/owner death, and never restart a pull on
+resume automatically. Disconnecting the client may not stop the daemon's download;
+qualify stop behavior and disclose unresolved work. Only verified complete model
+identity can activate a selection. Cleanup cannot remove another client's assets.
+Models stay outside Ipse archives. Do not alter, stop or replace a shared daemon.
+Qualify a local-only choice with resident local models, cloud features disabled on
+an operator-managed service, and knowledge-pipeline egress blocked after provisioning;
+loopback alone is insufficient. External research remains a separate data route.
+
+P31A freezes finite matched trials and resource ceilings; F must qualify at least
+one embedding/answer pair before advertising this optional local route. Measure
+candidate recall, answer/citation support, abstention, poisoned-source resistance,
+tool/capture quality, cold/warm latency, TTFT, RAM/VRAM and index/rebuild disk peak.
+Record effective context and full request budgets; current Ipse profiles do not
+set Ollama's `num_ctx`. Add protected operator-scoped endpoint admission across
+projects/processes for main/child generation and embeddings, separately from
+project budgets. Bind slots to one protected service ID with canonical origin and
+explicitly admitted address aliases, independent of model/profile or `/api/chat`
+versus `/api/embed` paths. Start with one inference slot, foreground priority and
+bounded visible/cancellable waits. Release the slot between a settled model response
+and tool execution so a subsequent embedding tool cannot deadlock. On timeout or
+owner death persist unknown reservation state; a released OS lock does not prove
+the daemon stopped. Clear it after confirmed owned-service quiescence or explicit
+shared-service reconciliation/recovery, never by automatic replay or timeout alone.
+This schedules Ipse dispatches, not other daemon clients or actual shared-server
+concurrency; expose that limit during recovery. No model-card size proves a
+machine will fit. Keep E independent of this later document option;
+any earlier notes use needs its own qualified profile. Failure leaves the local
+slice open or requires an explicit scope decision; graph/PDF's experimental
+allowance does not waive it.
 
 ## Permission, headless operation and coordination
 
@@ -613,7 +708,13 @@ P31C1b's additional document/graph profile targets 1,000 active document sources
 assertions. Its 256-MiB total store envelope includes the notes allocation; source
 and evidence counts for documents do not replace the notes capacity. Ratify these
 targets with temporal history and resource accounting rather than treating them
-as an unlimited all-history promise.
+as an unlimited all-history promise. Local vectors and index metadata count here,
+including both old and staged generations during rebuild. Ten thousand float32
+vectors at 1,024 dimensions alone require 39.1 MiB before metadata/index overhead.
+Preflight peak space and refuse visibly without deleting protected data; qualify
+the target workload and rebuild together. Model downloads/cache use a separately
+disclosed disk allowance outside this store. Any earlier local-notes preset must
+also fit C1a's complete capacity and migration gates.
 
 Forgetting suppresses managed lineage and declared aliases across notes, graph,
 chunks, vectors and context. Disabled stores revalidate before re-enable/import.

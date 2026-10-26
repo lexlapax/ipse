@@ -1,5 +1,11 @@
 # P31 implementation handoff
 
+**Additive amendment, 2026-10-26, after `bd556fa`:** the developer requested an
+optional open-weight Ollama embedding/RAG route. Read the
+[research and P31A additions](../2026-10-26-ollama-local-rag/index.md#finite-qualification-and-handoff-amendment)
+and the amended current proposal/plan before freezing the implementation baseline.
+The original handoff below is retained; its authorization limits still apply.
+
 Prepared **2026-10-26** after the [final plan repair](index.md), against runtime
 source `a812369`. This is a dated handoff, not a current-behavior manual or a second
 milestone ledger. The [plan](../../plan.md#p31-usable-knowledge-and-prompt-assistance)

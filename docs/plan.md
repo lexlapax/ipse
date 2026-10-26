@@ -874,18 +874,23 @@ detailed contract specification: proposed command vocabulary, main-model capture
 source intake, retention, worktree sharing, headless admission, process coordination,
 document extraction, prompt editing and release qualification. This ledger owns
 delivery status/dependencies and gates; do not duplicate its lifecycle prose here.
+The developer's subsequent [local Ollama request](archive/2026-10-26-ollama-local-rag/index.md)
+adds an optional embedding/RAG route: Qwen3-Embedding 0.6B and Qwen3.5 4B are the
+primary qualification targets, with a smaller EmbeddingGemma 2 text challenger
+and an available Qwen3.5 9B comparison. Model details and contracts live in the
+[design](knowledge-design.md#optional-local-embeddings-and-rag), not this ledger.
 
 | Package | Output and prerequisites; all unimplemented |
 | --- | --- |
-| P31A | Archive the proposal baseline; freeze setup/explicit acceptance/review journeys, turn-tail/cache/context and draft contracts, representative intake pilots, provider matrix, budgets/corpora, storage/parser evaluations and recruitment; first active task under the implementation handoff |
-| P31B | Minimal protected project consent, knowledge-only headless exception, cross-process lock/reservation/revocation contract and explicit mode ceilings; after A |
+| P31A | Archive the amended proposal baseline; freeze setup/explicit acceptance/review journeys, turn-tail/cache/context and draft contracts, representative intake pilots, provider matrix including optional local embedding/answer presets, finite hardware/quality trials, budgets/corpora, storage/parser evaluations and recruitment; first active task under the implementation handoff |
+| P31B | Minimal protected project consent, knowledge-only headless exception, cross-process lock/reservation/revocation contract, local-service acquisition/resource authority and explicit mode ceilings; after A |
 | P31C0 | Prototype source-bound records, paged evidence/source discovery and turn-tail projection, protected identity, exclusions, retention/suppression/export on State; after A/B; internal only |
 | P31C1a | Sustainable notes storage, reciprocal worktree admission, pins/temporal history, safe reclamation/import and 30/90-day plus annual-turnover qualification; after C0, **required before E release** |
-| P31D0 | Guided standalone setup/review/status/retention management, bundled notes catalog and next-new-session activation; UI alongside B/C0, installed notes packaging against C1a |
+| P31D0 | Guided standalone setup/review/status/retention management, separate local embedding/answer choices, bundled notes catalog and next-new-session activation; UI alongside B/C0, installed notes packaging against C1a; optional local preset delivered through D1/F |
 | P31E | Main-model capture with explicit proposal acceptance/input origin, stable-prefix turn-local recall/source paging and quality remediation, category receipts, correction/forget and reuse; after B/C1a/D0; **interim notes release checkpoint**, with integrated intake/cache/latency checks |
-| P31C1b | Extend storage for document/graph collections, source versions/indexes, durable work references where needed and safe P26/P27/released-notes migration; after C1a, prototype alongside E |
-| P31D1 | Remaining knowledge/parser artifacts, catalog composition and installed upgrades; follows applicable C1b/F/G contracts |
-| P31F | Text/PDF/DOCX acquisition, change tracking, cited retrieval and explicit no-extra-service quality remediation; after C1b and required D1 packaging; Word can qualify independently of PDF |
+| P31C1b | Extend storage for document/graph collections, source versions/indexes, model/recipe-bound vectors and atomic rebuild capacity, durable work references where needed and safe P26/P27/released-notes migration; after C1a, prototype alongside E |
+| P31D1 | Remaining knowledge/parser artifacts, catalog composition, optional local-model provisioning/identity/context checks and endpoint inference slots, installed upgrades; follows applicable B/C1b/F/G contracts; weights remain unbundled |
+| P31F | Text/PDF/DOCX acquisition, change tracking, cited retrieval, no-extra-service quality remediation and a qualified optional Ollama hybrid/local-answer route; after C1b and required D1 packaging; Word can qualify independently of PDF |
 | P31G | Source-bound automatic relationships, alias/conflict/time handling and correction; after E, with C1b for graph collections; qualifies separately from F |
 | P31H | Research evidence transfer and cross-store lineage/invalidation; integrates each available E/F/G store without requiring unqualified optional backends |
 | P31I | Main-Session draft mode with stable tools, cancelled-intent isolation and line-oriented editing; planning/MCP reads/deferred decisions; UI/contracts after A/B, integrated clarification needs E and F when documents are selected |
@@ -912,6 +917,14 @@ Acceptance gates:
   document retrieval separately, including paraphrases and citation support. Decision
   cards require explicit `accept CODE`; bare yes never accepts them in the first
   release. Models supply exact quotes, not offsets. Standalone review preserves origin.
+- The optional local route qualifies at least one explicit embedding/answer pair
+  on frozen quality/resource gates, with guided setup, versioned preprocessing,
+  unchanged-tag/weight-change handling, bounded atomic reindex, endpoint-wide
+  contention and offline inference evidence. Distinguish local retrieval with a
+  remote main model from fully local answers. No automatic model substitution,
+  hidden downloads or mandatory embedding dependency. E does not wait for this F
+  slice; failure leaves the local slice open pending repair or explicit scope
+  acceptance, not covered by graph/PDF's experimental allowance.
 - Preserve authority, evidence and lifecycle under secret/poisoned inputs, concurrent
   processes, revocation, cancellation, queued work, forged worktree membership, divergence, stale context,
   disabled-store forgetting and old-backup migration. Experimental labels waive
