@@ -46,8 +46,10 @@ The [plan](plan.md) records priorities, selected scopes and acceptance decisions
 Its [P31 knowledge and prompt-assistance scope](plan.md#p31-usable-knowledge-and-prompt-assistance)
 and [P30 decision consumers](plan.md#p30-advisory-decision-engines) describe proposed
 work; the [knowledge and decision design](knowledge-design.md) owns the proposed
-experience and contracts, with [audit dispositions](archive/2026-10-26-p30-p31-plan-review2/index.md)
-preserved separately. Current knowledge procedures remain in
+experience and contracts, with [final audit dispositions](archive/2026-10-26-p30-p31-final-handoff/index.md)
+and the [implementation handoff](archive/2026-10-26-p30-p31-final-handoff/implementation.md)
+preserved separately. The proposal is frozen into the archive when implementation
+starts; current knowledge procedures remain in
 the operator chapters above.
 [The archive](archive/index.md) preserves dated source/verification/research
 records and superseded documents with their provenance. Neither replaces current

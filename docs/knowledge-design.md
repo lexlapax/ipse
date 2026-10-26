@@ -1,14 +1,23 @@
 # Knowledge and decision delivery design
 
-Current **proposal**, revised **2026-10-26** against source baseline `7f4857b`.
+Current **proposal**, revised **2026-10-26** against source baseline `a812369`.
 The [plan](plan.md) owns status, package dependencies and acceptance disposition;
 this document owns the proposed contracts and user journeys. The
-[second audit record](archive/2026-10-26-p30-p31-plan-review2/index.md) explains
-the repairs and preserves earlier designs. Settled developer choices remain in
+[final repair record](archive/2026-10-26-p30-p31-final-handoff/index.md) explains
+the repairs and preserves earlier designs. The
+[implementation handoff](archive/2026-10-26-p30-p31-final-handoff/implementation.md)
+defines the P31A starting work and checks. Settled developer choices remain in
 the [first audit record](archive/2026-10-26-p30-p31-plan-review/index.md#decisions-after-the-audit).
 Current implemented commands remain in the [operator manual](operator/index.md).
 Planning authorizes no runtime work, provider spending, dependency installation
 or publication. Numerical targets below are unmeasured acceptance proposals.
+
+At the first authorized implementation commit, archive this complete final proposal
+unchanged as the dated implementation baseline, rebase links mechanically, and
+replace this live-proposal page with a short pointer. Link that baseline from the
+plan and contributor training; update current manuals only as behavior is implemented.
+Keep subsequent design decisions in dated records and status in the plan. Do not
+leave a second, drifting live specification beside the implementation.
 
 ## A usable first release
 
@@ -72,6 +81,9 @@ Memory/Corpus/Graph names before freezing aliases and flags.
 | Inspect activity and permission | `/knowledge status`, `/knowledge changes`, `/knowledge permissions` |
 | Add documents and refresh | `/knowledge add PATH`, `/knowledge refresh` with inclusion/exclusion preview |
 | Inspect/correct/forget | `/knowledge show ID`, `/knowledge correct ID`, `/knowledge forget ID`; natural-language tool equivalents |
+| Accept a proposed decision | Explicit `accept CODE` shown by the decision card; no bare-yes acceptance in the first release |
+| Review pending items without chat | `ipse knowledge review` opens a bounded interactive review; read-only list/JSON mode supports unattended inspection |
+| Change an assigned retention category | One receipt action or `ipse knowledge retention ID --policy automatic --days 90`; proposed syntax, frozen in A |
 | Stop use or manage parked work | `/knowledge disable`, `/knowledge work`, `/knowledge continue ID`, `/knowledge discard ID` |
 | Exclude this conversation or run | `/knowledge pause` and `--no-knowledge`; explicit read-only mode also forbids publication |
 | Enhance a request | `/enhance TEXT`, `/enhance show`, `/enhance replace TEXT`, `/enhance accept ID`, `/enhance cancel` |
@@ -125,17 +137,22 @@ host; caller-written provenance is not proof. Validate exclusions and consent,
 then commit eligible records and show saved/updated/skipped/conflicted counts.
 No per-fact approval within the saved scope and no invisible repair-model loop.
 
-C0 must specify, and E must integrate, a bounded host-issued source index for each
-main-model turn: occurrence/version ID, origin class and an admitted excerpt or
-read handle for eligible user events, native answers, proposals and typed tool
-receipts. Current provider messages do not expose this index. Supply it through
-host context/tool results within the shared context budget without rewriting native
-messages, changing their authors or exposing hidden reasoning. A bounded evidence
-read resolves only authorized occurrences in the current Session or explicitly
-selected knowledge, never arbitrary journal paths or another session's transcript.
-Mark partial/unavailable sources; do not regenerate missing bytes with a model.
-Include this index and reads in capture overhead/egress measurements. Typed receipt
-fields attest only their host-verifiable meaning; arbitrary output quotes do not.
+C0 must specify, and E must integrate, a host-issued source index for each turn:
+occurrence/version ID, origin class and an admitted excerpt/read handle for eligible
+user events, native answers, proposals and typed tool receipts. Current provider
+messages do not expose this index. Put only a bounded handle, count and coverage
+summary in the turn-local reference envelope defined below. The full index is a
+host-owned paged read tool, not a context contribution containing every receipt.
+Pages carry opaque source IDs, origin and version with explicit next-page/coverage
+status. Missing a context page does not make its admitted receipt uncapturable.
+
+The index and evidence reads resolve only authorized occurrences in the current
+Session or explicitly selected knowledge, never arbitrary journal paths or another
+session's transcript. Revalidate generation, mode and scope at each read. Keep native
+messages/authors unchanged and expose no hidden reasoning. Mark partial/unavailable
+sources; do not regenerate missing bytes with a model. Count index/read operations
+in context, step and overhead budgets. Typed receipt fields attest only their
+host-verifiable meaning; arbitrary output quotes do not.
 
 Every existing main adapter sends tool declarations: ChatGPT subscription, OpenAI
 API, Ollama, Anthropic, Gemini, OpenRouter, Grok and compatible local servers.
@@ -182,25 +199,53 @@ The UI identifies its current decision focus. A model assertion that text was sh
 is not a render acknowledgment. Pending proposals are neither confirmed facts nor
 active recall; creating one does not grant any effect permission.
 
-An unqualified interactive affirmative such as “yes” can bind before the next model
-dispatch only to one currently displayed unresolved proposal, with no competing
-question/approval or intervening input/proposal. Persist the proposal ID/version/hash,
-render revision, Session/client identity and actual interactive answer event. This
-pair establishes the user's accepted decision, not the objective truth of the
-assistant's factual premises. Multiple choices require an ID
-or a stated choice; “yes, but…” requires the revised claim. Do not let the model
-retroactively nominate unseen prose as what the user accepted. If there is no
-unambiguous binding, retain/skip the candidate visibly and clarify only when material
-to the task. Restating the choice in full is a new direct assertion.
+The first release accepts cards only through an explicit displayed `accept CODE`
+interaction, bound to that exact proposal/version; the code is a host-issued,
+project/client-bound capability to select a decision, not permission for an effect.
+Chat codes also bind their Session; standalone review has its own host-issued
+review-client identity and does not create a conversation just to obtain one.
+Persist ID/version/hash, render revision and the actual interactive acceptance event.
+Reject stale, reused-for-another-version, cross-session and unknown codes. A bare
+“yes”, even with one card visible, never confirms it: the assistant may have asked
+a competing question in prose that the host cannot reliably distinguish. Native
+question selections retain their existing explicit identity. Restating a choice
+in full can still supply a new direct assertion; do not retroactively assign it
+to an unseen card. Accepted proposals establish the user's decision, not objective
+truth of the assistant's premises, and grant no workspace/service permissions.
 
-Edit, supersession, interruption and expiry invalidate the focused version. Resume
-must display the pending proposal again before accepting a bare affirmative; repeated
-acceptance is idempotent. Source quotes, tool/child text and headless “yes” cannot
-create an interactive acceptance. A pending batch has at most eight items/8 KiB;
+Edit, supersession, interruption and expiry invalidate outstanding acceptance codes.
+Resume must re-display the still-pending proposal with a fresh code; duplicate receipt
+delivery cannot publish twice. Source quotes, tool/child text and headless input cannot
+accept a card. P31A's trial measures intended versus inferred targets for bare
+affirmatives, including prose questions and multiple pending decisions, in observation
+mode only. Any later enabling of bare-yes acceptance needs a separate reviewed change
+with frozen false-acceptance criteria; it is not necessary for P31 completion.
+A pending batch has at most eight items/8 KiB;
 keep at most 64 pending proposal/review items and 256 KiB per project for seven days,
 then visibly expire or refuse new items. Never promote on expiry or silently evict
 a pending decision to make room. Direct assertions and verified outcomes still save
 under consent without this proposal interaction or a per-fact approval.
+
+The proposed standalone `ipse knowledge review` displays pending candidates with
+their exact text, source class, provenance and proposed retention. It uses a real
+controlling terminal for both display and response, with freshly rendered acceptance
+codes; an `interactive` command flag or piped `IO.gets` input alone is insufficient.
+This is an operator-interface boundary, not proof against same-user PTY automation.
+Argv/stdin content, `--yes`, copied codes and generated text cannot supply human attestation.
+Without that channel it can list/export bounded metadata as JSON but cannot promote
+items. Offer reject/correct/defer and explicit selection of at most eight fully
+displayed items/8 KiB per batch with an immutable manifest hash; never an unseen
+“accept all.” Recheck source versions,
+exclusions and current consent before publication. This supports operators who run
+tasks headlessly but perform occasional human review outside chat; wholly unattended
+promotion remains out of the first release. No model request is needed to review.
+Human review adds an acceptance event linked to the original source and candidate
+version; it never rewrites `run_input` provenance as an interactive original assertion.
+Listing, rejecting, forgetting and reducing retention remain available while knowledge
+is paused, disabled or revoked. Accepting/publishing requires currently active valid
+publication consent; a retained but disabled grant is insufficient. Review cannot
+silently re-enable knowledge or widen scope. Listing alone does not renew a candidate's
+expiry, start a worker or incur inference.
 
 ### Intake and poisoning resistance
 
@@ -213,6 +258,13 @@ not automatically become user preferences or confirmed facts.
 
 The host records input origin independently of provider `role: user`: interactive
 operator input, native operator answer and unattended `run_input` are distinct.
+All human-attestation paths, including ordinary chat assertions, card acceptance
+and native answers reused for capture, require the verified operator channel above.
+The terminal implementation must establish the display/input channel rather than
+trust `interactive: true`, `TERM` or the command name. Redirected/piped `ipse chat`
+input is unattended data unless a separately verified controlling terminal supplies
+the actual operator event. Legacy records lacking origin proof remain unverified
+for new automatic attestation; stored role labels cannot upgrade them.
 Scripts can construct argv/stdin from issues, emails or logs. Their prose is task
 input, not a human attestation. Default headless preference/decision candidates
 remain bounded pending review and are excluded from active recall. A later human
@@ -252,15 +304,104 @@ token overlap, not Corpus BM25. Existing embeddings support OpenAI API and Ollam
 ChatGPT subscription does not provide them. Never silently attach paid OpenAI
 embeddings to a subscription account.
 
-For notes that fit, include complete eligible note text up to an 8-KiB
-shared-context allocation, paged within host contribution limits, with evidence
-IDs. If it does not all fit, expose a complete bounded metadata index and explicit
-partial text coverage, then let the current main model read by ID or search.
-Bound metadata fields/IDs/framing within the same allocation, packing each
-contribution within the host's per-item limit; if the index also exceeds it, page
-the index through explicit read tools and report which pages remain unread.
-Never silently truncate a note and claim full coverage. Complete byte inclusion
-does not prove that the model attends to every note.
+For notes that fit, include complete eligible note text within the granted recall
+allocation below, with evidence IDs. When it does not fit, include a compact
+selection/coverage summary and provide paged metadata, read-by-ID and search tools.
+Do not insert the whole note index into context or assume all eight KiB is always
+available. Each page states remaining coverage; never silently truncate a note and
+claim full inclusion. Complete byte inclusion does not prove model attention.
+
+### Turn-local context and cache preservation
+
+Today's `Session.Context.header/1` renders extension context before all conversation
+history. Using it for changing seed recall/source indexes would invalidate a reusable
+prefix. P31 therefore needs a reviewed host context-placement contract, frozen in A
+and implemented through C0/E. Keep the admitted header and ordered tool declarations
+stable within a context epoch. Never add per-turn timestamps, IDs, recall or source
+indexes to that prefix. An explicit refresh, real catalog/model change, revocation
+or compaction can establish a new epoch; record its reason and measure it separately.
+The versioned contract must cover changing contributions from every selected
+publisher in a P31 session, not move knowledge alone while another per-turn
+`context.publish` still rewrites the header. Preserve existing receipt validation
+and legacy-session replay under their recorded version; qualify the new projection
+only for sessions admitted to it. Ordinary contribution updates use the tail and
+cannot be relabeled intentional epoch resets to evade the cache gate.
+Move mutable reported-model facts to the tail or explicitly change the epoch when
+identity changes; never retain a false old identity just to keep the prefix stable.
+Declare admitted read capabilities from catalog/session start, even while their
+stores are empty. Today `saved_result_read` is added only after the first result;
+remove that conditional catalog churn for the selected capability and validate
+handle existence at dispatch. Do not enumerate changing source IDs in tool schemas.
+
+Render changing knowledge as a labelled, untrusted **user-role turn-local reference envelope
+after the already-admitted conversation history**, adjacent to the current user
+turn, or as a genuine result of an admitted read tool call. Do not fabricate an
+unpaired tool response. Journal envelope identity, source/policy generations,
+position and content hash so saved reconstruction reproduces the same request.
+Previously sent envelopes stay in their original positions in effective history;
+normal turns append instead of replacing old reference text or rewriting native
+assistant/tool items. Stage later tool/answer source updates at the active tail,
+without inserting messages inside a native tool-call/result group. Test each adapter's
+actual serialized body; Anthropic/Gemini hoist system/developer messages, so this
+data envelope cannot use those roles. A provider's role folding must not move the tail
+reference back into its system/header or change historical prefix bytes.
+
+The current host accepts at most eight contribution items **per extension instance**,
+2,048 text bytes/item and 16,384 rendered bytes across all contributions including
+JSON/provenance. Keep this aggregate ceiling; the new placement does not create a
+second free 16-KiB allowance. Within it, allocate at most 8 KiB rendered bytes to
+the knowledge service: at most 6 KiB for recall (at most four items), 1 KiB for
+source-index/read handles (one item), and 1 KiB for framing/coverage (one item).
+Leave the other 8 KiB for existing extension context; enforce limits on final
+rendered bytes, not just excerpt text. The two remaining item slots are not extra
+byte capacity. Existing contributions exceeding the reserved slice do not get
+silently evicted: shrink optional recall to the remaining allocation, retain a
+small index handle if it fits, otherwise emit visible coverage status and use the
+fixed index-read tool with an implicit current-Session scope. Required-context
+failure stops the dependent request. No tool needs a dynamic schema or header
+parameter to address that scope.
+This limit applies to the current automatic context selection; historical envelopes
+also count toward the ordinary conversation bound. Refusal to replace a contribution
+must invalidate its stale selection rather than silently keep yesterday's recall.
+
+The index read defaults to 32 entries/4 KiB rendered per page, returning fewer
+entries when needed to fit. Cursors bind Session, immutable source-window/version
+and policy; refreshing after new receipts creates a new index generation.
+Evidence reads are bounded by the remaining turn/request budget, with a proposed
+8-KiB page maximum.
+Tool results count toward the ordinary conversation/context and step limits; moving
+the index to tools is not an unbounded side channel. Page/read references remain
+available even if optional seed recall has no room. Freeze packing and arbitration
+in A, qualify a tool-heavy turn with multiple extensions and many receipt pages in E.
+
+Before each dispatch revalidate managed reference envelopes, managed read/search
+tool-result projections and their compaction-derived excerpts, including prior
+history occurrences, against suppression/expiry/permission generations. A forgotten
+or revoked managed excerpt must be withdrawn from the effective request even when
+that breaks the prefix: correctness takes priority over cache reuse. Journal a
+deterministic safe projection/retraction, preserve native continuation/tool pairing
+and show the existing original-transcript limit. If an adapter cannot safely project
+it, stop and offer explicit recovery rather than send the stale contribution.
+Preserve tool call IDs, result pairing and original journal bytes; do not treat a
+managed read response as exempt merely because it entered history through a tool.
+The original user/assistant native-transcript limitation remains disclosed, separate
+from the retractable managed retrieval surfaces.
+Compaction must preserve origin, validity and accepted/cancelled intent semantics;
+it cannot turn a reference envelope into a fresh user assertion.
+
+Prefix stability is a request-layout property, not proof of a provider cache hit.
+Per-route qualification records cache eligibility, TTL/settings and actual cached,
+uncached and cache-write partitions when exposed; unavailable values stay unknown.
+The performance gate below includes TTFT (first visible text token), so subscription
+routes still have observable latency evidence without pretending to know their cost.
+[OpenAI's cache guide](https://developers.openai.com/api/docs/guides/prompt-caching)
+describes exact-prefix reuse; it does not establish every control for subscription
+accounts. [Anthropic's guide](https://platform.claude.com/docs/en/build-with-claude/prompt-caching)
+requires cache controls/breakpoints; the current Ipse adapter sends none, so layout
+repair alone cannot claim Anthropic cache hits. Any new control needs separate
+adapter/retention qualification. [Gemini's caching guide](https://ai.google.dev/gemini-api/docs/caching)
+describes model/route-dependent eligibility; qualify Ipse's actual `generateContent`
+route. These sources were checked on 2026-10-26; reverify controls before use.
 
 For documents and larger stores, freeze a deterministic baseline: query each
 enabled eligible store under shared limits, deduplicate by evidence version,
@@ -290,8 +431,8 @@ packaging review. No new mandatory service or silently downloaded model follows
 from a benchmark failure. If no no-extra-service strategy qualifies, present the
 evidence and seek an explicit scope decision; do not advertise it as solved.
 
-Automatic seed recall executes once per accepted turn; subsequent read/search
-tools remain available. Before every actual model dispatch,
+Automatic seed recall executes once per accepted turn using that turn-local envelope;
+subsequent read/search tools remain available. Before every actual model dispatch,
 revalidate selected evidence against source, expiry and consent generations,
 including later tool/question continuations. Clear stale contributions after
 forget/change/failure; required-source failure stops dependent answering, optional
@@ -399,6 +540,19 @@ evicted to admit newer observations. At 80% capacity show a notice; collect elig
 expiry, then pause new capture visibly at the cap. Safe refusal remains necessary,
 but is insufficient evidence of usable capacity.
 
+Every save/update receipt shows the assigned category and expiration/persistence,
+including whether the model inferred an enduring preference. Offer a one-step
+change to ordinary 90-day retention, a user-selected duration, session-only/no durable
+capture, or pin. Persist the operator override against the claim/evidence lineage;
+repeated capture or paraphrase with the same support cannot silently promote it
+back to persistent. Session-only downgrades suppress the selected durable derivative
+and retain its minimal override/suppression metadata. Shared source evidence remains
+while needed by unrelated authorized current/historical dependents; the receipt must
+not claim all bytes were erased. An explicit reduction of the selected claim's
+temporal retention is a user policy override: show the resulting historical coverage
+gap instead of claiming the old 365-day coverage still holds. Do not shorten other
+claims' support or relabel all claims from a shared source event.
+
 Keep journal, original binaries, extracted evidence, indexes, revisions and backups
 separate in status/quotas. Minimal suppression identity may outlive normal evidence;
 bound it with version floors/compaction that reject incompatible old imports.
@@ -415,6 +569,44 @@ separately; the store quota is not a promise to bound the original conversation 
 The tested persistent population includes pins, enduring preferences and current
 temporal assertions together; 200 is the workload mix, not a separate hard pin cap.
 The total quota still bounds an operator who keeps adding persistent records.
+
+### Pilot intake before freezing capacity
+
+Twenty ordinary items/day is an initial floor for a declared 40-turn workload,
+not a measured typical rate. P31A runs a finite nonpublishing capture pilot after
+fixing the provisional tool/source contract: up to three representative, explicitly
+authorized routes (default ChatGPT, a small local tool-capable model where available,
+and an already selected API route), three 20-turn sessions each, on frozen mixed
+tasks with independently labelled useful decisions/facts and few/no-memory turns.
+A lightweight Elixir probe may exercise normal main-provider tool continuations
+with fake storage receipts; it must publish no project notes or execute task effects.
+Fixtures alone do not establish model propensity. Do not add a service or spend
+without an approved finite request/token/cost envelope; unavailable routes remain
+unverified, with the missing pilot evidence an explicit open readiness item.
+
+Measure proposed and admitted items/turn, independent usefulness/critical-fact
+coverage, duplicate/correction/consolidation rates, payload sizes, retention-class
+mix, read/continuation counts and cache/latency metrics. A model that rarely calls
+capture but misses useful decisions does not qualify as efficient. For each piloted
+route, derive intake as the greater of 20 and the ceiling of 40 times the highest
+observed session-average useful-unique rate per turn. This conservative pilot
+bound is not a population estimate. Freeze the workload at the largest qualified
+route's result, with the measured persistent/temporal mix and declared burst margin;
+preserve the initial floor and the 2,000-note minimum. Reconcile storage/history
+envelopes before the held-out tests. E repeats intake checks on real integrated
+sessions so a dummy pilot cannot qualify the final capture behavior by itself.
+
+If measurements exceed the initial envelope, increase sustainable capacity or
+qualify lossless dedup/consolidation with provenance/critical-fact checks, then
+refreeze before evaluation. Do not silently reduce useful capture, forget durable
+facts or call capacity refusal normal success. Exercise a separate worst-case
+320-proposal/day burst at the eight-item/40-turn ceiling: validate/deduplicate,
+report what saved/skipped/pended, warn at 80%, and visibly pause at a finite cap
+without evicting pins or replaying rejected candidates. Status reports observed
+intake, capacity and projected days remaining with uncertainty. Report pause counts
+and time-to-cap in pilots/endurance; exceeding the frozen normal-use envelope in
+the integrated pilot requires remediation or explicit qualified acceptance, not
+an unqualified claim that ordinary use lasts months.
 
 P31C1b's additional document/graph profile targets 1,000 active document sources,
 20 MiB extracted document evidence, 10,000 chunks, 5,000 entities and 20,000 graph
@@ -496,13 +688,37 @@ well as the other selected main routes. Optional independent helpers remain a
 separate opt-in capability requiring their own route/account qualification.
 
 Mark the request and answer as draft material in native history and the journal.
-Enforce the ceiling at dispatch/admission, not only in a prompt: omit prohibited
-tools and reject unsolicited calls, workspace writes, shell, MCP effects,
-delegation, capture publication and effectful extension callbacks before/after the
+Keep the selected ordered tool declarations byte-stable across draft, cancellation
+and ordinary turns. Enforce the ceiling at dispatch/admission, not by removing
+tools or trusting a model instruction: reject prohibited calls, workspace writes,
+shell, MCP effects, delegation, capture publication and effectful extension callbacks before/after the
 turn. Already admitted context, bounded questions and explicitly allowed reads
 remain subject to source/egress permission. Neither saved consent nor `--yes` can
 override the ceiling. Cancelled drafts are non-authoritative history, not facts
 or execution intent; future capture cannot launder them into accepted decisions.
+
+Persist cancellation against the exact draft/version before returning to ordinary
+input; fence queued work and late callbacks. Append a concise, labelled user-role
+host intent-status notice at the active tail, distinct from untrusted source data. The
+notice says the draft was abandoned and may not supply requirements for later
+work; it does not repeat its contents or alter the stable header. The next ordinary
+turn is bound to its own user intent, not the cancelled draft. Preserve cancellation
+in resume, source eligibility and compaction: neither raw draft requests nor their
+summaries may become pinned active user intents. Keep original native records
+inspectable; do not delete provider-native history to conceal the issue.
+
+The host deterministically blocks effects during drafting and blocks cancelled
+draft acceptance/capture. It cannot prove that a model will never be influenced
+by text it has seen. Qualify cancelled-draft carryover explicitly: conflicting
+requirements, filenames and instructions from the cancelled draft must not affect
+the next unrelated task's answer or effects, including under existing session
+grants, resume and compaction. A failure keeps enhancement unqualified for that
+route until repaired; disclose the retained-history limitation and offer an
+explicit fresh-session recovery, never a silent history reset or provider switch.
+Settle prohibited draft tool calls as denied results without execution, preserving
+call/result pairing and step bounds. Do not rely on provider `tool_choice` changes
+to enforce the mode. A later user may explicitly reintroduce a cancelled idea as
+new intent; tests must distinguish that from accidental carryover.
 
 Show the ordinary route and budget. Bound request count, deadline and accepted
 output bytes. The current ChatGPT adapter refuses an output-token cap; do not set
@@ -641,17 +857,43 @@ not measured capabilities. Use fresh independently authored corpora; retain fail
 results and compare matched models, contexts and budgets. A graph traversal score
 does not qualify graph extraction; protocol fixtures do not qualify live models.
 
+Cache/performance qualification has two comparisons: product overhead with knowledge
+on/off on matched tasks, and a cache-isolation replay matching the eligible prefix
+length and changed-suffix budget on the same route/model. Separate cold from warmed
+requests and record warm-up, TTL, controls and intentional resets. Freeze the replay,
+sample count and numerical tolerances in A; mocks qualify serialization only.
+Reuse Usage's existing nullable cache counters: total input, cache reads, cache
+writes and uncached input. `input - cache_read` is non-read input **including** writes;
+subtract writes only for the separate uncached partition when all components are
+known and consistent. Report missing counters as unavailable, never zero or success.
+
+Add monotonic request-dispatch-to-first-visible-text and user-input-to-first-visible-
+text timing, the latter including local recall. Tool-only replies get first usable
+tool-event/completion timing, not zero TTFT; never expose hidden reasoning. Report
+raw sample counts and p50/p95, known cost and cache-read ratio on long sessions.
+Proposed warmed cache-isolation tolerances are <=5 percentage-point cache-read-ratio
+regression and <=10% non-read input increase, with matched suffix budgets; proposed
+product TTFT tolerances are <=20% regression at p50 and p95 on the frozen long-session
+workload. Ratify feasible targets from the pilot before held-out tests, recording
+any change and why; no after-the-fact relaxation to erase a failed result.
+If counters or authorized live access are unavailable, retain that cache metric as
+unverified and qualify only measured layout/latency. A release cannot call the full
+cache/performance gate passed on unchanged token totals or mocks alone; missing
+required route evidence needs an explicit qualification decision.
+
 | Area | Proposed target or required evidence |
 | --- | --- |
-| Notes recall | Separate frozen strata: 100 prompts across independent <=32-note sets and 100 across independent collections of 2,000 active notes exceeding context/index inclusion. Include answers absent from the initial context/index page. Apply answer/citation/critical-decision bars separately to each stratum; fitting fixtures also require 100% eligible-byte coverage. 32 is a small-context test size, not a storage cap |
+| Notes recall | Separate frozen strata: 100 prompts across independent <=32-note sets and 100 across independent collections at the frozen active capacity (at least 2,000 notes) exceeding context/index inclusion. Include answers absent from the initial context/index page and constrained/zero optional recall allocations. Apply semantic bars separately to each stratum; fitting fixtures require 100% eligible-byte coverage within their granted allocation |
 | Larger quality | At least 200 capture cases, 100 document prompts and 100 entity/relation cases; separate negatives, temporal contradictions, absent evidence and PDF/DOCX fidelity |
 | Capture work | At most one ordinary batch per turn, <=8 items/8 KiB proposal; zero mandatory extractor calls on turns with no candidates; no hidden repair loop |
 | Capture overhead | Local admission/publication p95 <250 ms on reference hardware; target median <=10% additional measured input/output tokens over matched 100/500-turn sessions, including history replay and compaction, and <=1 capture-only continuation per turn. Report billed cost where known, tool argument/result bytes, request/history/journal growth, time to compaction, compaction count/cost and end-to-end p50/p95 latency by model; include dedup/no-op and near-context-limit cases |
+| Cache and first response | Actual serialized prefix stability before the changing tail, stable tools across first-result/draft/ordinary transitions, nullable cache/non-read partitions and both TTFT measures under the frozen paired protocol above. Test real adapter role folding and native grouping. Subscription billing absence does not waive latency/cache evidence |
+| Context/source discovery | Multiple publishers, >=64 typed receipts with enough explicitly bounded steps or valid parallel calls, UTF-8/escaped labels and near-limit history; capture from first/last receipt and a native answer using paged reads, including zero optional inline allocation. Test cursor changes/revocation, stale-replacement refusal, unread coverage and actual wire bounds |
 | Optional extraction | Default <=1 request per eligible batch, finite input/output bounds and 30 s deadline; target p95 save lag <=15 s on the qualified reference profile, with foreground priority |
 | Cost setup | No silently chosen paid daily allowance; helper calls remain disabled until an operator chooses a finite cap. Main capture shares the selected main route; unknown/subscription prices show call/token bounds and measured usage |
 | Local retrieval | Target p95 <500 ms warm / <2 s cold on documented four-core/8-GiB/local-SSD hardware, excluding remote inference |
-| Notes endurance before E | C1a: 30 simulated workdays at 40 turns/day, 20 distinct ordinary 90-day items/day, four corrections and two forgets/day; seed 200 persistent records (100 pins, 50 enduring preferences, 50 current temporal assertions) and overlap two OS processes. Continue to day 90 with an offline week, restarts and old imports. Use representative payloads plus a 6-KiB maximum-value envelope. No permanent identity exhaustion or ordinary-use capture pause under this declared workload |
-| Turnover before E | C1a: 10,000 update/correct/forget cycles plus continuation to 365 simulated days at the same daily intake and fixed persistent population. Exercise up to four temporal supersessions/day retaining each prior version/support; separately exercise ordinary corrections, rolling expiry and forgets. Freeze class/payload counts and account for both live and historical bytes. Prove suppression reclamation and refusal of imports older than the supported version floor. This is a tested workload, not unlimited persistent intake or eight additions every turn |
+| Notes endurance before E | C1a: pilot-derived frozen intake/mix, with the initial minimum of 30 simulated workdays at 40 turns/day, 20 ordinary 90-day items/day, four corrections/two forgets per day and 200 persistent records (100 pins/50 preferences/50 current temporal assertions); increase envelope for measured rates/mix. Two overlapping OS processes, continuation to day 90, offline week/restarts/imports, representative plus maximum-value payloads. No ordinary-use pause under the frozen workload |
+| Turnover before E | C1a: 10,000 update/correct/forget cycles plus continuation to 365 days under frozen intake/class/payload counts. At least four temporal supersessions/day with retained prior support; ordinary correction/expiry/forget cases separately. Account for live/history bytes and suppression reclamation; refuse imports below supported version floors. Report high-intake burst pauses separately from the supported ordinary envelope |
 | Platforms | Full source/native/demo/package/installed checks for changed runtime paths on Linux and macOS; parser/model/account/human scopes recorded separately |
 
 Use deterministic tests for forged sources, secrets on every intake, hostile
@@ -663,22 +905,34 @@ receipts and persisted state, not only callback results. Unknown effects never r
 
 Required boundary cases include issue/email-generated headless input attempting to
 save a preference, a legitimate automatic verified headless save, copied provenance,
-multiple/stale/unshown proposal confirmations, and native question acceptance without
-a second permission prompt. Test repeated exact quotes, UTF-8/normalization differences,
+explicit versus bare-yes decision acceptance with competing assistant prose questions,
+multiple/stale/unshown/cross-client codes, and native question selection without
+a second prompt. Standalone review must work without a model/chat, reject generated
+confirmation input and keep batch versions/scope fixed under concurrent changes.
+Test repeated exact quotes, UTF-8/normalization differences,
 redaction and unavailable source versions. A real registered worktree can join; an
 outward-pointing archive, wrong backlink, stale registration, separate clone and
 metadata/symlink swap cannot recall another project's notes before any model request.
+Forget after a paged note/search read, then continue, resume and compact: no managed
+result or derived excerpt may reintroduce it, and tool-pair/native replay validation
+must still pass or visibly stop for recovery.
 
 Retention tests cover explicit remember/duration, enduring versus task-local
 preferences, no TTL renewal from model reads, first temporal supersession after
 day 90, historical questions beyond 30 days and at the 365-day boundary, pins,
 quota accounting and honest expired-evidence gaps.
+Also test visible false-persistence classification, one-step downgrade, duplicate
+recapture respecting the override, required historical dependents and worktree reuse.
 P31A's draft contract and P31I acceptance must inspect the actual default ChatGPT
 request route, ordinary native history and ceiling, including no unsupported output
 cap; edit/accept/cancel/stale acceptance, acceptance while planning/read-only,
 callback effects, failures and resume all need coverage. Any authorized live
 default-route journey is separate from fixtures;
 neither this design nor a passing mock claims live verification.
+Cancel a draft containing a distinctive conflicting requirement/canary path; the
+next unrelated task's response and tool arguments must not adopt it, under existing
+grants as well as ordinary approvals. Repeat through compaction, resume and late
+callbacks; inspect persisted cancellation and request layout, not only capture output.
 
 Recruit usability participants at P31A. Require at least one independent fresh-user
 notes journey for the interim release: standalone setup then first chat, capture/later recall,

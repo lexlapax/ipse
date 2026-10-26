@@ -64,9 +64,11 @@ inserted knowledge and prompt assistance as P31 and moved voice/media to P32.
 Historical media proposals retain their contemporary P24, P28 or P31 numbering;
 the [previous scopes](archive/2026-10-26-p30-p31-plan/prior-milestones.md) are preserved.
 The [current design](knowledge-design.md) and
-[latest audit disposition](archive/2026-10-26-p30-p31-plan-review2/index.md) link source
+[latest audit disposition](archive/2026-10-26-p30-p31-final-handoff/index.md) link source
 research, settled user choices and concrete contracts. P31A is the next implementation
 entry point when authorized; P30A/B is independent parallel work.
+The [implementation handoff](archive/2026-10-26-p30-p31-final-handoff/implementation.md)
+specifies P31A's bounded first work and required evidence.
 This authorizes roadmap/design work, not automatic implementation of P30/P31.
 The developer-selected Grok follow-up extends P29 and keeps API billing separate
 from registered-client subscription OAuth.
@@ -820,8 +822,8 @@ any remaining registration or live-account limits explicitly.
 path when implementation is authorized. P30A/B can proceed independently; later
 P30 work consumes the first usable notes journey, not the entire P31 milestone.
 The [current design](knowledge-design.md#p30-interfaces-and-useful-consumers)
-owns detailed contracts. The [second audit disposition](archive/2026-10-26-p30-p31-plan-review2/index.md)
-records repairs; the [former plan](archive/2026-10-26-p30-p31-plan-review2/prior-plan.md)
+owns detailed contracts. The [final audit disposition](archive/2026-10-26-p30-p31-final-handoff/index.md)
+records repairs; the [former plan](archive/2026-10-26-p30-p31-final-handoff/prior-plan.md)
 preserves the replaced scope.
 
 Target OpenAI Decisions, TypeSafe's hosted System One API for **Jev**, and a
@@ -875,18 +877,18 @@ delivery status/dependencies and gates; do not duplicate its lifecycle prose her
 
 | Package | Output and prerequisites; all unimplemented |
 | --- | --- |
-| P31A | Freeze setup-first journeys, naming trial, main-Session draft contract including ChatGPT, capture/provider matrix, retention/budgets, acceptance corpora, parser/storage evaluations and recruitment; first active task |
+| P31A | Archive the proposal baseline; freeze setup/explicit acceptance/review journeys, turn-tail/cache/context and draft contracts, representative intake pilots, provider matrix, budgets/corpora, storage/parser evaluations and recruitment; first active task under the implementation handoff |
 | P31B | Minimal protected project consent, knowledge-only headless exception, cross-process lock/reservation/revocation contract and explicit mode ceilings; after A |
-| P31C0 | Prototype source-bound records, protected project identity, exclusions, retention/suppression and export on existing State; after A/B; internal only |
+| P31C0 | Prototype source-bound records, paged evidence/source discovery and turn-tail projection, protected identity, exclusions, retention/suppression/export on State; after A/B; internal only |
 | P31C1a | Sustainable notes storage, reciprocal worktree admission, pins/temporal history, safe reclamation/import and 30/90-day plus annual-turnover qualification; after C0, **required before E release** |
-| P31D0 | Guided standalone setup/status/management, bundled notes catalog and next-new-session activation; UI alongside B/C0, installed notes packaging against C1a |
-| P31E | Main-model capture with host quotes/proposals and input origin, bounded inclusion/read/search with quality remediation, visible receipts, correction/forget and fresh-session reuse; after B/C1a/D0; **interim notes release checkpoint** |
+| P31D0 | Guided standalone setup/review/status/retention management, bundled notes catalog and next-new-session activation; UI alongside B/C0, installed notes packaging against C1a |
+| P31E | Main-model capture with explicit proposal acceptance/input origin, stable-prefix turn-local recall/source paging and quality remediation, category receipts, correction/forget and reuse; after B/C1a/D0; **interim notes release checkpoint**, with integrated intake/cache/latency checks |
 | P31C1b | Extend storage for document/graph collections, source versions/indexes, durable work references where needed and safe P26/P27/released-notes migration; after C1a, prototype alongside E |
 | P31D1 | Remaining knowledge/parser artifacts, catalog composition and installed upgrades; follows applicable C1b/F/G contracts |
 | P31F | Text/PDF/DOCX acquisition, change tracking, cited retrieval and explicit no-extra-service quality remediation; after C1b and required D1 packaging; Word can qualify independently of PDF |
 | P31G | Source-bound automatic relationships, alias/conflict/time handling and correction; after E, with C1b for graph collections; qualifies separately from F |
 | P31H | Research evidence transfer and cross-store lineage/invalidation; integrates each available E/F/G store without requiring unqualified optional backends |
-| P31I | Main-Session draft mode and line-oriented enhancement/accepted intent, planning/MCP read classification and deferred decisions; UI/contracts after A/B, integrated clarification needs E and F when documents are selected |
+| P31I | Main-Session draft mode with stable tools, cancelled-intent isolation and line-oriented editing; planning/MCP reads/deferred decisions; UI/contracts after A/B, integrated clarification needs E and F when documents are selected |
 | P31J | Integrated safety, quality, resource, installed-user, migration and whole-manual acceptance; records supported, experimental and unverified slices explicitly |
 
 F and D1 develop together: parser/acquisition code can run in source fixtures
@@ -907,16 +909,19 @@ Acceptance gates:
 - Default capture uses host-validated tools on the selected main route, with all
   adapter protocols covered and live/model quality distinguished. No mandatory
   secondary extractor or new embedding account. Qualify small notes and larger
-  document retrieval separately, including paraphrases and citation support. Bare
-  affirmatives need an exact host-displayed proposal; models supply quotes, not offsets.
+  document retrieval separately, including paraphrases and citation support. Decision
+  cards require explicit `accept CODE`; bare yes never accepts them in the first
+  release. Models supply exact quotes, not offsets. Standalone review preserves origin.
 - Preserve authority, evidence and lifecycle under secret/poisoned inputs, concurrent
   processes, revocation, cancellation, queued work, forged worktree membership, divergence, stale context,
   disabled-store forgetting and old-backup migration. Experimental labels waive
   none of these gates. Unknown effects never replay.
-- Freeze and measure capture/history/compaction overhead, shared budgets, persistent
-  remember/preferences, temporal history, multi-day use, turnover, parser fidelity
-  and storage capacity. Verify enhancement on the default main ChatGPT route with
-  enforced draft effects and preserved history. Complete Linux/macOS source/package/installed
+- Freeze and measure pilot-derived capture intake, history/compaction overhead,
+  serialized prefix stability, cache partitions and TTFT, shared budgets, visible
+  retention/category corrections, temporal history, multi-day use, turnover, parser
+  fidelity and storage capacity. Verify enhancement on the default main ChatGPT route
+  with dispatch-enforced draft effects, stable tools, cancelled-intent tests and
+  preserved history. Complete Linux/macOS source/package/installed
   checks and independent user journeys; absent human-platform evidence stays open
   and needs explicit qualified acceptance at release, never an invented pass.
 - PDF/Word and graph remain in delivery scope. The developer permits qualified

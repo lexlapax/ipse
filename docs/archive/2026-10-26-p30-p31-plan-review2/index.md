@@ -1,3 +1,8 @@
+> Historical repair record at `a812369`, superseded by the
+> [final repair and handoff](../2026-10-26-p30-p31-final-handoff/index.md) on
+> **2026-10-26**. Use the [current design](../../knowledge-design.md) and
+> [current plan](../../plan.md). The original body below remains unchanged.
+
 # Second P30/P31 plan audit and repair
 
 Dated **2026-10-26**, source baseline `7f4857b`. The developer supplied a second
