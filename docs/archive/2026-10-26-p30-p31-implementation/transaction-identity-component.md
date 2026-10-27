@@ -128,9 +128,12 @@ source-bound receipts before completion is claimed.
 
 ## Allocation and platform limits
 
-The divided project envelope remains 64 MiB: 42 MiB for collection state and
-22 MiB conservatively reserved for controls, comprising an 18-MiB consent root
-and the complete shared 4-MiB global identity root charged to each project.
+The initial foundation divided the 64 MiB project envelope into 42 MiB for
+collections and 22 MiB for controls: an 18-MiB consent root plus the shared
+4-MiB identity root. The subsequent [service-slot component](service-slots-component.md)
+partitions the shared four MiB into a three-MiB identity root and a one-MiB
+service-slot tree. The complete shared controls remain charged to each project;
+the total reservation is unchanged.
 Native quota admission rounds each planned dense file to its supported runtime
 unit and reserves twice that amount before payload, while holding all writer
 leases for the scope. Per-stage admission repeats the check. Current observations

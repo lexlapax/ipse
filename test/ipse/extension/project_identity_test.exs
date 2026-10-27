@@ -581,13 +581,13 @@ defmodule Ipse.Extension.ProjectIdentityTest do
     end)
   end
 
-  test "the complete shared identity root counts against its four MiB staging budget", c do
+  test "the complete shared identity root counts against its three MiB staging budget", c do
     assert {:ok, _} = P.admit(c.home, c.primary, :repository)
     root = Path.join(c.home, "project-identities")
     alias Ipse.Test.TransactionFixture, as: T
     assert {:ok, cap} = T.acquire(Path.join(root, ".lock"), cwd: c.primary)
     assert {:ok, %{allocated: before}} = T.allocation(cap, :flat)
-    filler = 4 * 1024 * 1024 - before - 4096
+    filler = 3 * 1024 * 1024 - before - 4096
     assert filler > 0
     name = ".pending-" <> String.duplicate("f", 32)
     assert :ok = T.stage(cap, ".", [{name, :crypto.strong_rand_bytes(filler)}])

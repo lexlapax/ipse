@@ -308,6 +308,23 @@ defmodule Ipse.Session.Resources do
   @doc false
   def file_effect_owner, do: Process.get(@effect_owner_key, self())
 
+  @doc false
+  def bind_effect_owner(owner) when is_pid(owner) and node(owner) == node() do
+    case Process.get(@effect_owner_key) do
+      nil ->
+        Process.put(@effect_owner_key, owner)
+        :ok
+
+      ^owner ->
+        :ok
+
+      _ ->
+        {:error, :effect_owner_already_bound}
+    end
+  end
+
+  def bind_effect_owner(_), do: {:error, :invalid_effect_owner}
+
   def file_effect(fun, guard \\ Ipse.Session.Lock.current()) when is_function(fun, 0) do
     if Process.get(@effect_key) do
       fun.()

@@ -124,7 +124,7 @@ defmodule Ipse.Extension.ProjectIdentity do
         with :ok <- safe_lock(Path.join(root, ".lock"), uid),
              {:error, :enoent} <- File.lstat(Path.join(root, ".metadata-active")),
              :ok <- reclaim_pending(root, lock),
-             :ok <- Transaction.quota(lock, :flat, 4 * 1024 * 1024),
+             :ok <- Transaction.quota(lock, :flat, 3 * 1024 * 1024),
              {:ok, state} <- read(root, uid, lock) do
           case fun.(context, state) do
             {:read, value} ->
