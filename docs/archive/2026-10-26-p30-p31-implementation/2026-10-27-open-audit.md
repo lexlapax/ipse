@@ -23,6 +23,26 @@ to make that distinction. Corruption and substitution of changed pages, native
 owner loss after postproof and during activation, and failure of final Consent
 settlement remain to be exercised at those exact boundaries.
 
+One subsequent owner-loss control was added to the uncommitted Session test.
+Its first ordinary run refused during setup on the unsupported kernel, before
+the fault hook. A separate disposable graph compiled a private helper with a
+test-only exception for the exact host release `7.2.11-arch1-1` and rebuilt its
+private application to bind that helper. The selected synthetic test then
+passed **1 test, 21 excluded** (seed 20261227), closing the Collection native
+owner at the first post-publication read and observing a durable generation,
+prepared Identity, unknown outcome, retained liability and inert resume. See
+the [test output](kernel-7.2.11/postproof-experimental.log) and
+[private compile output](kernel-7.2.11/postproof-experimental-compile.log).
+The test source SHA-256 is
+`4eb6a410e54f356956efb738e3a7b61ee2040d3436b3bd5561b6152806dbb0e9`;
+the private helper SHA-256 is
+`05d5aa7f9f5c6453254b885b91a6a9dcd602e9077842ae4d05ed7e7bdd591d1a`.
+The log SHA-256 is
+`22b0d576c7678be2fabee82e5b0ff2fb5718ea33b13f349c9455a46a2f732bea`.
+This is a functional diagnostic under an **unqualified test override**, not a
+supported-host pass or evidence that the production profile is safe. It does not
+cover a post-close competing Session or owner loss during Identity activation.
+
 ## Inference egress prototype
 
 The uncommitted gate executes before `Finch.stream_while`, which can subsequently
@@ -48,6 +68,14 @@ transport source `3e408c926489e059dd6e5e9f754be63a18a738c63506c997620d4ff14faca3
 and test source `8197559debc553d788a8dd81254537c7effe2bf62946a61f3c41cccaa7053e1c`.
 The output SHA-256 is
 `1577310c04ec059519dea5533b82cf43fd117ac1f20ee449d5e3fe0386eff01b`.
+
+After that reproduction, the uncommitted gate was tightened to require the
+caller's expected body hash and reject a mismatch before invoking its verifier.
+The updated direct gate, witness, embedding and decision transport regression
+run passed 30 tests (seed 20261228); the deliberate TLS reproduction still
+passes because the timing gap remains. This comparison does not establish that
+the expected hash comes from the Session's admitted input, and the gate is not
+yet installed on Session inference paths.
 
 One possible maintained seam is Mint's public connect followed by a final check
 and request, but direct Mint use would need a declared dependency, bounded
