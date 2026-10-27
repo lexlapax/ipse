@@ -143,3 +143,9 @@ prove that final file teardown completed. No loop device was opened.
 The borrowed-loop draft gained a harmless `/dev/null` negative control:
 ENOTTY is refused rather than interpreted as an unbound loop. Its private
 controller suite passed 64 tests. No loop or block device was opened.
+
+The latest private borrowed-loop draft adds a local FD-alias/CLOEXEC refusal and
+records an exact upstream 7.2.11 close/fput source trace. Its 65 tests passed
+serially. The local scan does not exclude foreign or in-flight references, and
+the single-owner protocol still lacks a reviewed live implementation and
+cleanup proof. No loop device was opened.

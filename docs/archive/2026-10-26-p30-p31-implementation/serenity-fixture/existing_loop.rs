@@ -6,7 +6,7 @@ use std::io;
 use std::os::fd::{AsRawFd,IntoRawFd};
 use std::os::unix::fs::{FileTypeExt,MetadataExt,OpenOptionsExt};
 use std::path::Path;
-unsafe extern "C"{fn ioctl(fd:i32,req:u64,...)->i32;fn close(fd:i32)->i32;}
+unsafe extern "C"{fn ioctl(fd:i32,req:u64,...)->i32;fn close(fd:i32)->i32;fn fcntl(fd:i32,cmd:i32,...)->i32;}
 const CONFIGURE:u64=0x4c0a;const GET_STATUS:u64=0x4c05;const CLEAR:u64=0x4c01;const AUTO_CLEAR:u32=4;
 #[repr(C)]#[derive(Clone,Copy)]struct LoopInfo{device:u64,inode:u64,rdevice:u64,offset:u64,sizelimit:u64,number:u32,encrypt_type:u32,encrypt_key_size:u32,flags:u32,file_name:[u8;64],crypt_name:[u8;64],encrypt_key:[u8;32],init:[u64;2]}
 #[repr(C)]struct LoopConfig{fd:u32,block_size:u32,info:LoopInfo,reserved:[u64;8]}
@@ -16,6 +16,13 @@ fn device(major:u64,minor:u64)->u64{((major&0xfff)<<8)|((major&0xffff_f000)<<32)
 // build parity, complete scope cleanup and final backing release are separate.
 struct Rundown {owner:Existing}
 struct CloseAttempted {_private:()}
+// Local FD scan only: it does not rule out other processes or kernel refs.
+fn no_local_aliases(file:&File)->io::Result<()> {
+ let expected=file.metadata()?;let fd=file.as_raw_fd();let flags=unsafe{fcntl(fd,1)};if flags<0 || flags&1==0{return Err(io::ErrorKind::PermissionDenied.into())}
+ let mut seen=0usize;for e in fs::read_dir("/proc/self/fd")? {let e=e?;let m=fs::metadata(e.path())?;
+  if (m.dev(),m.ino())==(expected.dev(),expected.ino()){seen+=1;if e.file_name().to_str().and_then(|s|s.parse::<i32>().ok())!=Some(fd){return Err(io::ErrorKind::PermissionDenied.into())}}
+ }if seen==1{Ok(())}else{Err(io::ErrorKind::PermissionDenied.into())}
+}
 struct Existing {fd:File,sys:File,minor:u32,node_dev:u64,node_inode:u64,sys_dev:u64,sys_inode:u64}
 impl Existing {
  /// Opens only an index already visible in sysfs; it never opens loop-control
@@ -51,6 +58,7 @@ impl Existing {
  fn begin_rundown(self,backing:&File,reference:&str)->Result<Rundown,(Self,io::Error)> {
   let result=(||->io::Result<()> {
    let b=backing.metadata()?;let info=self.status()?;
+   no_local_aliases(&self.fd)?;
    if reference.is_empty()||reference.len()>63||info.device!=b.dev()||info.inode!=b.ino()||info.number!=self.minor||info.offset!=0||info.sizelimit!=b.len()||info.flags!=AUTO_CLEAR||info.file_name[..reference.len()]!=*reference.as_bytes()||info.file_name[reference.len()]!=0{return Err(io::ErrorKind::PermissionDenied.into())}
    if unsafe{ioctl(self.fd.as_raw_fd(),CLEAR)}<0{return Err(io::Error::last_os_error())}
    match self.status(){Err(e) if e.raw_os_error()==Some(6)=>Ok(()),_=>Err(io::ErrorKind::Other.into())}
@@ -69,4 +77,5 @@ impl Rundown {
 }
 #[cfg(test)]mod tests{use super::*;#[test]fn linux_abi_sizes_and_device_encoding(){assert_eq!(std::mem::size_of::<LoopInfo>(),232);assert_eq!(std::mem::size_of::<LoopConfig>(),304);assert_eq!(device(7,42),0x72a);assert_eq!(AUTO_CLEAR,4);}
  #[test]fn non_loop_ioctl_failure_is_not_treated_as_unbound(){let fd=File::open("/dev/null").unwrap();let sys=File::open("/sys").unwrap();let node=fd.metadata().unwrap();let sm=sys.metadata().unwrap();let fake=Existing{fd,sys,minor:0,node_dev:node.dev(),node_inode:node.ino(),sys_dev:sm.dev(),sys_inode:sm.ino()};assert_eq!(fake.status().err().and_then(|e|e.raw_os_error()),Some(25));}
+ #[test]fn local_alias_and_unrelated_reopen_are_rejected(){let path=std::env::temp_dir().join(format!("ipse-fd-alias-{}",std::process::id()));let f=OpenOptions::new().write(true).create_new(true).mode(0o600).open(&path).unwrap();assert!(no_local_aliases(&f).is_ok());let duplicate=f.try_clone().unwrap();assert!(no_local_aliases(&f).is_err());drop(duplicate);let second=File::open(&path).unwrap();assert!(no_local_aliases(&f).is_err());drop(second);drop(f);fs::remove_file(path).unwrap();}
 }

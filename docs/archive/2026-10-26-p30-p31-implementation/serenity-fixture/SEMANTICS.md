@@ -66,3 +66,19 @@ open. The parser rejects overflow/watch invalidation; coalescing and unrelated
 write opens remain ambiguity. The 7.2 base `__fput` emits the close event before
 other release work. Therefore this is not a complete final-release witness.
 No loop device or Btrfs fixture was used in that experiment.
+
+The exact upstream stable v7.2.11 `fs/file_table.c` was later obtained through
+the GitHub connector: Git blob `c68b8c0a4097ae9dcf6d0320fef39c80f1517bcc`.
+It confirms `fput_close_sync` calls `__fput` when `file_ref_put_close` reports
+that it dropped the last file-description reference; ordinary `fput` can defer
+last-reference cleanup, and `fsnotify_close` precedes the file release
+callback. The exact v7.2.11 `include/linux/file_ref.h` blob is
+`31551e4cb8f34c04dafca97a21846df58960e524`: its `file_ref_put_close` tests and
+atomically transitions the final reference, otherwise falls back to ordinary
+reference decrement. These observations are upstream source, not running
+Arch disassembly or a live device test. The protocol still has to prove no
+duplicate, inherited, SCM_RIGHTS, kernel or in-flight references to its block
+file description and retain the backing FD through the close; otherwise a
+successful close does not establish synchronous driver release. Sources:
+[stable file_table.c](https://github.com/gregkh/linux/blob/v7.2.11/fs/file_table.c),
+[stable file_ref.h](https://github.com/gregkh/linux/blob/v7.2.11/include/linux/file_ref.h).
