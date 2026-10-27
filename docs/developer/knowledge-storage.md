@@ -55,8 +55,10 @@ import path exists.
 Keep final Identity activation separate from a successful inner Collection call.
 Before returning a first-publication witness, the host opens one new actual
 ReadView, checks current root and receipt generation/operation/revisions/value
-hashes, verifies format and changed page MACs, and closes it successfully. The
-witness binds that actual root hash and the catalog fence. Native-owner loss
+hashes, verifies the format MAC, and closes it successfully. Changed page values
+are bound by their hashes to the normalizer's captured, host-sealed output; this
+post-publication read does not separately reopen their MACs. The witness binds
+that actual root hash and the catalog fence. Native-owner loss
 after Collection committed can leave durable data with Identity still prepared
 and an unknown outer outcome. Inspect it; never replay or infer activation from
 the inner success alone.

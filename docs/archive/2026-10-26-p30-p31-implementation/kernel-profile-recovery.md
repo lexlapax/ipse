@@ -103,3 +103,5 @@ markers before starting or resuming one. Current recall, complete Session
 dependency propagation and the final inference egress barrier remain open.
 Human and macOS journeys remain prepared rather than executed. The
 [plan](../../plan.md) retains the full P30/P31 acceptance criteria.
+The later [independent review](2026-10-27-open-audit.md) records additional
+writeback-error, managed-publication and inference-egress proof gaps.
