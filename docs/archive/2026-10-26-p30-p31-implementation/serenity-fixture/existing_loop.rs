@@ -67,4 +67,6 @@ impl Rundown {
   let fd=self.owner.fd.into_raw_fd();if unsafe{close(fd)}!=0{return Err(io::Error::last_os_error())}Ok(CloseAttempted{_private:()})
  }
 }
-#[cfg(test)]mod tests{use super::*;#[test]fn linux_abi_sizes_and_device_encoding(){assert_eq!(std::mem::size_of::<LoopInfo>(),232);assert_eq!(std::mem::size_of::<LoopConfig>(),304);assert_eq!(device(7,42),0x72a);assert_eq!(AUTO_CLEAR,4);}}
+#[cfg(test)]mod tests{use super::*;#[test]fn linux_abi_sizes_and_device_encoding(){assert_eq!(std::mem::size_of::<LoopInfo>(),232);assert_eq!(std::mem::size_of::<LoopConfig>(),304);assert_eq!(device(7,42),0x72a);assert_eq!(AUTO_CLEAR,4);}
+ #[test]fn non_loop_ioctl_failure_is_not_treated_as_unbound(){let fd=File::open("/dev/null").unwrap();let sys=File::open("/sys").unwrap();let node=fd.metadata().unwrap();let sm=sys.metadata().unwrap();let fake=Existing{fd,sys,minor:0,node_dev:node.dev(),node_inode:node.ino(),sys_dev:sm.dev(),sys_inode:sm.ino()};assert_eq!(fake.status().err().and_then(|e|e.raw_os_error()),Some(25));}
+}

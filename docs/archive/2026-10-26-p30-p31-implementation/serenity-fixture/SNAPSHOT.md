@@ -139,3 +139,7 @@ added. The running kernel and installed vmlinux reported matching build IDs;
 this alone does not establish upstream source parity. The event identifies an
 inode, can also result from another writable description, and does not by itself
 prove that final file teardown completed. No loop device was opened.
+
+The borrowed-loop draft gained a harmless `/dev/null` negative control:
+ENOTTY is refused rather than interpreted as an unbound loop. Its private
+controller suite passed 64 tests. No loop or block device was opened.
