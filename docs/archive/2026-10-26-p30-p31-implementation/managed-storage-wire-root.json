@@ -1,0 +1,15 @@
+{
+  "root": {
+    "floor": 1000,
+    "floor_anchor": "c240313fccca87c33b7bf169bed30951",
+    "generation": 1000,
+    "manifest": "02946f3c278317514799ccbddbdf8b687522c45988bde7a48b9167dcef7c6353",
+    "project": "f26f73478740cfc004fe85441b33b81d2620a593d7d1b8d280fbc401a3073e4b",
+    "version": 5
+  },
+  "kind": "managed_capacity_native_owner_root_inspection",
+  "root_sha256": "a9c6858c9dfe03f3ad6512510626dcb74e9f7dce3b0c3a863f7ed4b4144331cd",
+  "native_reads": 1,
+  "mutations": 0,
+  "qualification_passed": false
+}

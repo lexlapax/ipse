@@ -1,0 +1,83 @@
+{
+  "kind": "development_managed_capacity_artifacts",
+  "files": [
+    {
+      "archive": "managed-storage-1000.json",
+      "bytes": 20094,
+      "source": "/tmp/ipse-managed-storage-capacity-20261026-01.json",
+      "sha256": "fc599fdf83ceca8a4a3de177113403183a33afabfd0221b3f9088c45d87ee1f2"
+    },
+    {
+      "archive": "managed-storage-1000.log",
+      "bytes": 20521,
+      "source": "/tmp/ipse-managed-storage-capacity-20261026-01.log",
+      "sha256": "2aadd96d29d14e401d82736cece9c1cc63577d2a31696e2d4ea03f04dcb47e50"
+    },
+    {
+      "archive": "managed-storage-runtime.json",
+      "bytes": 112218,
+      "source": "/tmp/ipse-managed-storage-capacity-20261026-01.json.runtime.json",
+      "sha256": "765c451d5efac480d2bb1d6be3ec13460aa726ae73dbd5424b0c33d558359e2b"
+    },
+    {
+      "archive": "managed-storage-wire-root.json",
+      "bytes": 519,
+      "source": "/tmp/ipse-managed-storage-capacity-20261026-01.wire.json",
+      "sha256": "9fa62676b9bb5ab0ac5f8449c4030a6f2505fe56854c94c3a61b6c182899050d"
+    },
+    {
+      "archive": "managed-storage-filesystem.json",
+      "bytes": 521,
+      "source": "/tmp/ipse-managed-storage-capacity-20261026-01.filesystem.json",
+      "sha256": "cec1362a6abf71798c9e6c3e71b1b27425945e39e8097247e3e0c746ed6acb7c"
+    },
+    {
+      "archive": "managed-storage-typed-control.json",
+      "bytes": 5174,
+      "source": "/tmp/ipse-managed-storage-typed-final-20261026-01.json",
+      "sha256": "f22b00a81c79eb78366c2a244c7adc95c33217c8384486e6552dbb11d7f1d5ee"
+    },
+    {
+      "archive": "managed-storage-tests.log",
+      "bytes": 204,
+      "source": "/tmp/ipse-managed-storage-20261026-01/pure-tests-final.log",
+      "sha256": "d8ae3f611d9b4e9c60bb5354a6aa8e99ac60db40e2c20ce57433fc4acebbb5bb"
+    },
+    {
+      "archive": "managed-storage-compile.log",
+      "bytes": 45,
+      "source": "/tmp/ipse-managed-storage-20261026-01/compile-private.log",
+      "sha256": "80f364dca988f39d6ab195aa57e3a3cb9c3ba601cb86a6940a88cdd0418b8cde"
+    },
+    {
+      "archive": "managed-storage-build-sandbox-refusal.log",
+      "bytes": 139,
+      "source": "/tmp/ipse-managed-storage-20261026-01/compile.log",
+      "sha256": "e10cbee50e01b07ab2cf163c0fede103c5bb7cfbb8a51f2ee434856106979efb"
+    },
+    {
+      "archive": "managed-storage-capacity.md",
+      "bytes": 8135,
+      "sha256": "8173424fb7713024d46c0a52147cf1b4d915c5b1309ffa9bc22f401eeaa4b1c2"
+    },
+    {
+      "bytes": 17065,
+      "sha256": "0dc2ffbc5f24e586bda66d3c945c3a4ae49a692912f489e02a57b57b59a5bd6b",
+      "repository_source": "dev/knowledge/managed_storage_workload.ex"
+    },
+    {
+      "bytes": 117,
+      "sha256": "c81a1012970ca1601154eab1c4c03428abbc04a8d734caf87c62f79f74ab0dcf",
+      "repository_source": "dev/knowledge/managed_storage_workload.exs"
+    },
+    {
+      "bytes": 3772,
+      "sha256": "ae445b0920eb8f69e5613e02f08f1ddc22b3518aa578e3f3058a7fb0d88aa448",
+      "repository_source": "test/dev/managed_storage_workload_test.exs"
+    }
+  ],
+  "qualification_passed": false,
+  "observed_execution_session": 29123,
+  "observed_exit_code": 0,
+  "binding_sha256": "ec1339fefc0be4ba8689124555a5c4c8b712fe0de95fc15b2a9ed5f3926ea1a9"
+}

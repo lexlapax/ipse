@@ -1,0 +1,21 @@
+{
+  "filesystem": {
+    "block_size": 4096,
+    "fragment_size": 4096,
+    "measurement": "Linux statfs reporting via stat; bounded selected mountinfo options",
+    "mount_options": [
+      "compress=zstd:3",
+      "discard=async",
+      "nodev",
+      "nosuid",
+      "relatime",
+      "rw",
+      "space_cache=v2",
+      "ssd"
+    ],
+    "mount_type": "btrfs",
+    "type": "btrfs"
+  },
+  "measurement_source_sha256": "435c74b9123ba9be3f05b37bd84767cf1cb020980d6a101dcbe56e2b955aa774",
+  "qualification_passed": false
+}
