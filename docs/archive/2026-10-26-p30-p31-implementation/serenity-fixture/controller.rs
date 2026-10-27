@@ -6,6 +6,7 @@
 #[path = "provisioning.rs"] mod provisioning;
 #[path = "loop_device.rs"] mod loop_device;
 #[path = "existing_loop.rs"] mod existing_loop;
+#[path = "loop_owner_filter.rs"] mod loop_owner_filter;
 #[path = "loop_provenance.rs"] mod loop_provenance;
 #[path = "barrier_orchestration.rs"] mod barrier_orchestration;
 #[path = "barrier_framing.rs"] mod barrier_framing;

@@ -184,3 +184,14 @@ magic, and traverses index checks through that FD. A harmless control rejects
 a temporary directory as sysfs. Current captured serial test outputs report
 66 controller and 6 owner tests passing. This is not a live loop test, and the
 source and namespace assumptions still require independent review.
+
+The disabled owner now inventories acquired descriptors, checks local aliases,
+and installs a strict seccomp filter denying ordinary open and duplication
+routes before attempting configuration. The synthetic owner suite passed seven
+and the controller suite passed 68 tests. An independent audit of the immediately
+preceding strict draft reproduced six tests and identified remaining acquisition
+and confinement gaps, external and kernel references, running-build parity, and
+unknown lifecycle effects when an error drops an AUTOCLEAR descriptor. The later
+inventory and extra negative test have not yet been independently reviewed.
+Neither filter nor a successful close establishes device cleanup. No device
+operation was executed.

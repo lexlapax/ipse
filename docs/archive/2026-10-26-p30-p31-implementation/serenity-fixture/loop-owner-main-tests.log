@@ -1,11 +1,12 @@
 
-running 6 tests
+running 7 tests
 test existing_loop::tests::linux_abi_sizes_and_device_encoding ... ok
 test existing_loop::tests::local_alias_and_unrelated_reopen_are_rejected ... ok
 test existing_loop::tests::non_loop_ioctl_failure_is_not_treated_as_unbound ... ok
 test existing_loop::tests::ordinary_temp_directory_is_not_sysfs ... ok
+test loop_owner_filter::strict_open_tests::strict_filter_refuses_all_open_routes_and_proc_fd_reopen ... ok
 test loop_owner_filter::tests::isolated_child_refuses_dup_and_allows_getfd ... ok
 test tests::inherited_extra_fd_is_refused_in_isolated_child ... ok
 
-test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
 

@@ -16,6 +16,8 @@ fn device(major:u64,minor:u64)->u64{((major&0xfff)<<8)|((major&0xffff_f000)<<32)
 // build parity, complete scope cleanup and final backing release are separate.
 pub(super) struct Rundown {owner:Existing}
 pub(super) struct CloseAttempted {_private:()}
+// Constructed only after a local alias scan and irreversible strict filter.
+pub(super) struct StrictExisting(Existing);
 // Local FD scan only: it does not rule out other processes or kernel refs.
 fn no_local_aliases(file:&File)->io::Result<()> {
  let expected=file.metadata()?;let fd=file.as_raw_fd();let flags=unsafe{fcntl(fd,1)};if flags<0 || flags&1==0{return Err(io::ErrorKind::PermissionDenied.into())}
@@ -43,33 +45,40 @@ impl Existing {
   Ok(Self{fd,sysroot,sys:sys_file,minor,node_dev:held.dev(),node_inode:held.ino(),sys_dev:sys.dev(),sys_inode:sys.ino()})
  }
  fn status(&self)->io::Result<LoopInfo>{let mut info=zero_info();if unsafe{ioctl(self.fd.as_raw_fd(),GET_STATUS,&mut info)}<0{Err(io::Error::last_os_error())}else{Ok(info)}}
+ pub(super) fn fd_numbers(&self)->[i32;3] {[self.fd.as_raw_fd(),self.sysroot.as_raw_fd(),self.sys.as_raw_fd()]}
+ pub(super) fn lock_down(self)->Result<StrictExisting,(Self,io::Error)> {
+  if let Err(e)=no_local_aliases(&self.fd) {return Err((self,e))}
+  if let Err(e)=super::loop_owner_filter::install_strict() {return Err((self,e))}
+  Ok(StrictExisting(self))
+ }
+}
+impl StrictExisting {
  /// Atomic kernel-side configure: a concurrent binder yields EBUSY. A failure
  /// after attempting ioctl is always uncertain until exact identity is checked.
  pub(super) fn configure(&self,backing:&File,reference:&str)->io::Result<()> {
   if reference.is_empty()||reference.len()>63||!reference.bytes().all(|b|b.is_ascii_alphanumeric()||b==b'-'){return Err(io::ErrorKind::InvalidInput.into())}
-  let node=self.fd.metadata()?;let sys=self.sys.metadata()?;let sys_named=fs::metadata(format!("/proc/self/fd/{}/dev/block/7:{}",self.sysroot.as_raw_fd(),self.minor))?;let b=backing.metadata()?;
-  if (sys.dev(),sys.ino())!=(self.sys_dev,self.sys_inode)||(sys_named.dev(),sys_named.ino())!=(self.sys_dev,self.sys_inode){return Err(io::ErrorKind::PermissionDenied.into())}
-  if (node.dev(),node.ino(),node.rdev())!=(self.node_dev,self.node_inode,device(7,self.minor as u64)) || !b.is_file()||b.nlink()!=1||b.len()!=536_870_912{return Err(io::ErrorKind::PermissionDenied.into())}
-  match self.status(){Err(e) if e.raw_os_error()==Some(6)=>(),_=>return Err(io::ErrorKind::PermissionDenied.into())} // ENXIO only
+  let this=&self.0;let node=this.fd.metadata()?;let sys=this.sys.metadata()?;let sys_named=fs::metadata(format!("/proc/self/fd/{}/dev/block/7:{}",this.sysroot.as_raw_fd(),this.minor))?;let b=backing.metadata()?;
+  if (sys.dev(),sys.ino())!=(this.sys_dev,this.sys_inode)||(sys_named.dev(),sys_named.ino())!=(this.sys_dev,this.sys_inode){return Err(io::ErrorKind::PermissionDenied.into())}
+  if (node.dev(),node.ino(),node.rdev())!=(this.node_dev,this.node_inode,device(7,this.minor as u64)) || !b.is_file()||b.nlink()!=1||b.len()!=536_870_912{return Err(io::ErrorKind::PermissionDenied.into())}
+  match this.status(){Err(e) if e.raw_os_error()==Some(6)=>(),_=>return Err(io::ErrorKind::PermissionDenied.into())} // ENXIO only
   let mut info=zero_info();info.flags=AUTO_CLEAR;info.sizelimit=b.len();info.file_name[..reference.len()].copy_from_slice(reference.as_bytes());
   let config=LoopConfig{fd:u32::try_from(backing.as_raw_fd()).map_err(|_|io::ErrorKind::InvalidInput)?,block_size:0,info,reserved:[0;8]};
-  if unsafe{ioctl(self.fd.as_raw_fd(),CONFIGURE,&config)}<0{return Err(io::Error::last_os_error())}
-  let got=self.status()?;if got.device!=b.dev()||got.inode!=b.ino()||got.number!=self.minor||got.offset!=0||got.sizelimit!=b.len()||got.flags!=AUTO_CLEAR||got.file_name[..reference.len()]!=*reference.as_bytes()||got.file_name[reference.len()]!=0{return Err(io::ErrorKind::InvalidData.into())}Ok(())
+  if unsafe{ioctl(this.fd.as_raw_fd(),CONFIGURE,&config)}<0{return Err(io::Error::last_os_error())}
+  let got=this.status()?;if got.device!=b.dev()||got.inode!=b.ino()||got.number!=this.minor||got.offset!=0||got.sizelimit!=b.len()||got.flags!=AUTO_CLEAR||got.file_name[..reference.len()]!=*reference.as_bytes()||got.file_name[reference.len()]!=0{return Err(io::ErrorKind::InvalidData.into())}Ok(())
  }
  /// Begin a source-derived single-opener protocol on the same held block FD.
  /// On failure the caller retains ownership for inspection; no retry occurs.
  pub(super) fn begin_rundown(self,backing:&File,reference:&str)->Result<Rundown,(Self,io::Error)> {
+  let this=&self.0;
   let result=(||->io::Result<()> {
-   let b=backing.metadata()?;let info=self.status()?;
-   no_local_aliases(&self.fd)?;
-   if reference.is_empty()||reference.len()>63||info.device!=b.dev()||info.inode!=b.ino()||info.number!=self.minor||info.offset!=0||info.sizelimit!=b.len()||info.flags!=AUTO_CLEAR||info.file_name[..reference.len()]!=*reference.as_bytes()||info.file_name[reference.len()]!=0{return Err(io::ErrorKind::PermissionDenied.into())}
-   if unsafe{ioctl(self.fd.as_raw_fd(),CLEAR)}<0{return Err(io::Error::last_os_error())}
-   match self.status(){Err(e) if e.raw_os_error()==Some(6)=>Ok(()),_=>Err(io::ErrorKind::Other.into())}
+   let b=backing.metadata()?;let info=this.status()?;
+   if reference.is_empty()||reference.len()>63||info.device!=b.dev()||info.inode!=b.ino()||info.number!=this.minor||info.offset!=0||info.sizelimit!=b.len()||info.flags!=AUTO_CLEAR||info.file_name[..reference.len()]!=*reference.as_bytes()||info.file_name[reference.len()]!=0{return Err(io::ErrorKind::PermissionDenied.into())}
+   if unsafe{ioctl(this.fd.as_raw_fd(),CLEAR)}<0{return Err(io::Error::last_os_error())}
+   match this.status(){Err(e) if e.raw_os_error()==Some(6)=>Ok(()),_=>Err(io::ErrorKind::Other.into())}
   })();
-  match result {Ok(())=>Ok(Rundown{owner:self}),Err(e)=>Err((self,e))}
+  match result {Ok(())=>Ok(Rundown{owner:self.0}),Err(e)=>Err((self,e))}
  }
- /// This ioctl may only schedule autoclear; success is NOT a detach receipt.
- fn request_clear(&self)->io::Result<()> {if unsafe{ioctl(self.fd.as_raw_fd(),CLEAR)}<0{Err(io::Error::last_os_error())}else{Ok(())}}
+
 }
 impl Rundown {
  /// A successful close is not labeled backing-release proof until kernel

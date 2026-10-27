@@ -1,5 +1,5 @@
 
-running 66 tests
+running 68 tests
 test barrier_framing::tests::accepts_every_fragment_boundary_after_gate ... ok
 test barrier_framing::tests::frames_before_gate_and_replayed_gate_are_refused ... ok
 test barrier_framing::tests::partial_wrong_order_trailing_and_oversize_fail_closed ... ok
@@ -27,6 +27,8 @@ test guard::tests::mapper_rejects_wrong_uuid_device_names_opens_and_multiline ..
 test guard::tests::mock_fault_sequence_requires_confirmed_boundaries ... ok
 test guard::tests::mock_switch_emits_only_exact_name_and_bounded_error_table ... ok
 test loop_device::tests::linux_dev_numbers_and_name_bounds ... ok
+test loop_owner_filter::strict_open_tests::strict_filter_refuses_all_open_routes_and_proc_fd_reopen ... ok
+test loop_owner_filter::tests::isolated_child_refuses_dup_and_allows_getfd ... ok
 test loop_provenance::tests::record_is_exclusive_bounded_and_run_specific ... ok
 test peer_channel::tests::report_parser_accepts_only_ordered_nonnegative_kernel_results ... ok
 test peer_channel_container::tests::report_parser_accepts_only_ordered_nonnegative_kernel_results ... ok
@@ -67,5 +69,5 @@ test tests::recovery_restores_only_exact_known_error_state_then_tears_down ... o
 test tests::uncertain_effects_stop_without_replay_or_compensating_action ... ok
 test tests::wrong_existing_or_extra_inactive_table_refuses ... ok
 
-test result: ok. 66 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.89s
+test result: ok. 68 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.86s
 
