@@ -13,8 +13,25 @@ released. Ordinary authorized SDK writes acquire the outer Identity lock, so
 the review did not establish an exposed concurrent-writer bypass. Direct trusted
 Core calls to Collection have different authority and are not evidence that a
 worker can bypass that lock. A deterministic competing-Session test must still
-pause after postproof, verify that a second authorized writer waits for Identity
-activation, and verify the historical first-root binding after a later write.
+pause after postproof, verify that a second authorized writer cannot publish
+before Identity activation, and verify the historical first-root binding after
+a later write. Native Identity lock acquisition uses nonblocking `flock`, so a
+contending attempt may refuse rather than wait.
+
+A later disposable-graph diagnostic inserted a test-only pause after the first
+postproof view closed. The competing authorized Session was refused on Identity
+lock contention and did not advance the collection; after activation a third
+Session advanced it while the historical first-root entry remained unchanged.
+The [single-test output](kernel-7.2.11/compete-diagnostic.log) reports one pass
+and 22 exclusions, seed 20261229. The [historical instrumentation](kernel-7.2.11/compete-instrument.exs)
+is retained for inspection, not as a runnable project test; it modified only a
+private graph and hard-codes that temporary path. Its SHA-256 is
+`57641b2cc1d438fd51fc87a186f99877c5602c57465100350406d2df9dec13e7`;
+the output SHA-256 is
+`1f2122039237b517e30f675f2d1c70f46e4e3224a8643533bfaf4bb9c7184fd2`.
+This used the same unqualified test-only 7.2.11 helper described below and
+instrumented source, so it is neither a supported-host pass nor an unchanged-source
+regression test. A durable unchanged-source test remains open.
 
 The postproof opens the format MAC and compares changed records' operation,
 revision and value hashes to the captured host normalizer output. It does not
