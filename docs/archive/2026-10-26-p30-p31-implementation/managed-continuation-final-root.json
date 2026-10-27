@@ -1,0 +1,24 @@
+{
+  "root": {
+    "floor": 3724,
+    "floor_anchor": "b958e090f29665098b2e30dd22c09cc0",
+    "generation": 3724,
+    "manifest": "3caeee988a04902fae2ad7efa58b274cab16780cc4bd75f4c32fa1164b8ae8ba",
+    "project": "f26f73478740cfc004fe85441b33b81d2620a593d7d1b8d280fbc401a3073e4b",
+    "version": 5
+  },
+  "read_only": true,
+  "root_sha256": "840fa00f9f5f78b278d4622d4ac95a551c3ba8f48c60e6316d7a6d7008b30e41",
+  "pending_marker": ".pending-92286e06f3db0024d10c50fec37c1cff",
+  "pending_marker_sha256": "e788aed217ade2f3e73e126b409d02c35d4e43318e2c1f6f8913045c808e6840",
+  "pending_marker_bytes": 348,
+  "pending_marker_preserved": true,
+  "final_oracle_allocation": {
+    "allocated": 4096,
+    "logical": 464,
+    "entries": 4
+  },
+  "clean_continuation_refused": true,
+  "final_json_present": false,
+  "resource_failure_present": false
+}

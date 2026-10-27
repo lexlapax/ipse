@@ -1,0 +1,635 @@
+{
+  "sources": [
+    {
+      "path": "lib/ipse/usage.ex",
+      "commit": "b55623d",
+      "commit_matches": true
+    },
+    {
+      "path": "lib/ipse/session/managed_reference.ex",
+      "commit": "b55623d",
+      "commit_matches": true
+    },
+    {
+      "path": "lib/ipse/extension/semantic_consent.ex",
+      "commit": "b55623d",
+      "commit_matches": true
+    },
+    {
+      "path": "lib/ipse/runner/operator.ex",
+      "commit": "b55623d",
+      "commit_matches": true
+    },
+    {
+      "path": "lib/ipse/provider/gemini.ex",
+      "commit": "b55623d",
+      "commit_matches": true
+    },
+    {
+      "path": "lib/ipse/extension/usage.ex",
+      "commit": "b55623d",
+      "commit_matches": true
+    },
+    {
+      "path": "lib/ipse/mcp/http_transport.ex",
+      "commit": "b55623d",
+      "commit_matches": true
+    },
+    {
+      "path": "lib/ipse/extension/worker.ex",
+      "commit": "b55623d",
+      "commit_matches": true
+    },
+    {
+      "path": "lib/ipse/session/text_stream.ex",
+      "commit": "b55623d",
+      "commit_matches": true
+    },
+    {
+      "path": "lib/ipse/extension/consent.ex",
+      "commit": "b55623d",
+      "commit_matches": true
+    },
+    {
+      "path": "lib/ipse/extension/collection.ex",
+      "commit": "b55623d",
+      "commit_matches": true
+    },
+    {
+      "path": "lib/ipse/extension/registry.ex",
+      "commit": "b55623d",
+      "commit_matches": true
+    },
+    {
+      "path": "lib/ipse/extension/collection/blocks.ex",
+      "commit": "b55623d",
+      "commit_matches": true
+    },
+    {
+      "path": "lib/ipse/session/invocation.ex",
+      "commit": "b55623d",
+      "commit_matches": true
+    },
+    {
+      "path": "lib/ipse/extension/actions.ex",
+      "commit": "b55623d",
+      "commit_matches": true
+    },
+    {
+      "path": "lib/ipse/extension/collection_policy.ex",
+      "commit": "b55623d",
+      "commit_matches": true
+    },
+    {
+      "path": "lib/ipse/cli/setup.ex",
+      "commit": "b55623d",
+      "commit_matches": true
+    },
+    {
+      "path": "lib/ipse/inference_slots/ledger.ex",
+      "commit": "b55623d",
+      "commit_matches": true
+    },
+    {
+      "path": "lib/ipse/usage/budget.ex",
+      "commit": "b55623d",
+      "commit_matches": true
+    },
+    {
+      "path": "lib/ipse/session/turn.ex",
+      "commit": "b55623d",
+      "commit_matches": true
+    },
+    {
+      "path": "lib/ipse/session/lock.ex",
+      "commit": "b55623d",
+      "commit_matches": true
+    },
+    {
+      "path": "lib/ipse/session/saved.ex",
+      "commit": "b55623d",
+      "commit_matches": true
+    },
+    {
+      "path": "lib/ipse/extension/managed_collection_call.ex",
+      "commit": "b55623d",
+      "commit_matches": true
+    },
+    {
+      "path": "lib/ipse/extension/managed_recipe.ex",
+      "commit": "b55623d",
+      "commit_matches": true
+    },
+    {
+      "path": "lib/ipse/extension/invocation.ex",
+      "commit": "b55623d",
+      "commit_matches": true
+    },
+    {
+      "path": "lib/ipse/cli/doctor.ex",
+      "commit": "b55623d",
+      "commit_matches": true
+    },
+    {
+      "path": "lib/ipse.ex",
+      "commit": "b55623d",
+      "commit_matches": true
+    },
+    {
+      "path": "lib/ipse/mcp/config.ex",
+      "commit": "b55623d",
+      "commit_matches": true
+    },
+    {
+      "path": "lib/ipse/auth/xai.ex",
+      "commit": "b55623d",
+      "commit_matches": true
+    },
+    {
+      "path": "lib/ipse/http.ex",
+      "commit": "b55623d",
+      "commit_matches": true
+    },
+    {
+      "path": "lib/ipse/mcp/stdio_transport.ex",
+      "commit": "b55623d",
+      "commit_matches": true
+    },
+    {
+      "path": "lib/ipse/mcp.ex",
+      "commit": "b55623d",
+      "commit_matches": true
+    },
+    {
+      "path": "lib/ipse/tools/questions.ex",
+      "commit": "b55623d",
+      "commit_matches": true
+    },
+    {
+      "path": "lib/ipse/extension/context.ex",
+      "commit": "b55623d",
+      "commit_matches": true
+    },
+    {
+      "path": "lib/ipse/observability/trace.ex",
+      "commit": "b55623d",
+      "commit_matches": true
+    },
+    {
+      "path": "lib/ipse/extension/text.ex",
+      "commit": "b55623d",
+      "commit_matches": true
+    },
+    {
+      "path": "lib/ipse/extension/subscriptions.ex",
+      "commit": "b55623d",
+      "commit_matches": true
+    },
+    {
+      "path": "lib/ipse/extension/result_source.ex",
+      "commit": "b55623d",
+      "commit_matches": true
+    },
+    {
+      "path": "lib/ipse/extension/source_read.ex",
+      "commit": "b55623d",
+      "commit_matches": true
+    },
+    {
+      "path": "lib/ipse/extension/collection/normalizer.ex",
+      "commit": "b55623d",
+      "commit_matches": true
+    },
+    {
+      "path": "lib/ipse/extension/state.ex",
+      "commit": "b55623d",
+      "commit_matches": true
+    },
+    {
+      "path": "lib/ipse/observability.ex",
+      "commit": "b55623d",
+      "commit_matches": true
+    },
+    {
+      "path": "lib/ipse/extension/external_calls.ex",
+      "commit": "b55623d",
+      "commit_matches": true
+    },
+    {
+      "path": "lib/ipse/provider/stream.ex",
+      "commit": "b55623d",
+      "commit_matches": true
+    },
+    {
+      "path": "lib/ipse/extension/result_view.ex",
+      "commit": "b55623d",
+      "commit_matches": true
+    },
+    {
+      "path": "lib/ipse/session/inference_dispatch.ex",
+      "commit": "b55623d",
+      "commit_matches": true
+    },
+    {
+      "path": "lib/ipse/usage/budget_store.ex",
+      "commit": "b55623d",
+      "commit_matches": true
+    },
+    {
+      "path": "lib/ipse/extension/semantic_admission.ex",
+      "commit": "b55623d",
+      "commit_matches": true
+    },
+    {
+      "path": "lib/ipse/session/reference.ex",
+      "commit": "b55623d",
+      "commit_matches": true
+    },
+    {
+      "path": "lib/ipse/extension/semantic_routes.ex",
+      "commit": "b55623d",
+      "commit_matches": true
+    },
+    {
+      "path": "lib/ipse/extension/collection_call.ex",
+      "commit": "b55623d",
+      "commit_matches": true
+    },
+    {
+      "path": "lib/ipse/cli/input.ex",
+      "commit": "b55623d",
+      "commit_matches": true
+    },
+    {
+      "path": "lib/ipse/extension/host.ex",
+      "commit": "b55623d",
+      "commit_matches": true
+    },
+    {
+      "path": "lib/ipse/extension/projection.ex",
+      "commit": "b55623d",
+      "commit_matches": true
+    },
+    {
+      "path": "lib/ipse/session.ex",
+      "commit": "b55623d",
+      "commit_matches": true
+    },
+    {
+      "path": "lib/ipse/session/source_window.ex",
+      "commit": "b55623d",
+      "commit_matches": true
+    },
+    {
+      "path": "lib/ipse/session/resources.ex",
+      "commit": "b55623d",
+      "commit_matches": true
+    },
+    {
+      "path": "lib/ipse/extension/decision_call.ex",
+      "commit": "b55623d",
+      "commit_matches": true
+    },
+    {
+      "path": "lib/ipse/provider/registry.ex",
+      "commit": "b55623d",
+      "commit_matches": true
+    },
+    {
+      "path": "dev/knowledge/managed_storage_workload.exs",
+      "commit": "423b69f",
+      "commit_matches": true
+    },
+    {
+      "path": "lib/ipse/provider/chat_completions.ex",
+      "commit": "b55623d",
+      "commit_matches": true
+    },
+    {
+      "path": "lib/ipse/config/semantics.ex",
+      "commit": "b55623d",
+      "commit_matches": true
+    },
+    {
+      "path": "lib/ipse/provider/completion_witness.ex",
+      "commit": "b55623d",
+      "commit_matches": true
+    },
+    {
+      "path": "lib/ipse/extension/conformance.ex",
+      "commit": "b55623d",
+      "commit_matches": true
+    },
+    {
+      "path": "lib/ipse/extension/history.ex",
+      "commit": "b55623d",
+      "commit_matches": true
+    },
+    {
+      "path": "lib/ipse/extension/catalog.ex",
+      "commit": "b55623d",
+      "commit_matches": true
+    },
+    {
+      "path": "lib/ipse/extension/collection/planning.ex",
+      "commit": "b55623d",
+      "commit_matches": true
+    },
+    {
+      "path": "lib/ipse/runner.ex",
+      "commit": "b55623d",
+      "commit_matches": true
+    },
+    {
+      "path": "lib/ipse/extension/effect_result.ex",
+      "commit": "b55623d",
+      "commit_matches": true
+    },
+    {
+      "path": "lib/ipse/tools/macos_sandbox.ex",
+      "commit": "b55623d",
+      "commit_matches": true
+    },
+    {
+      "path": "dev/knowledge/managed_storage_workload.ex",
+      "commit": "423b69f",
+      "commit_matches": true
+    },
+    {
+      "path": "lib/ipse/usage/costs.ex",
+      "commit": "b55623d",
+      "commit_matches": true
+    },
+    {
+      "path": "lib/ipse/inference_slots.ex",
+      "commit": "b55623d",
+      "commit_matches": true
+    },
+    {
+      "path": "lib/ipse/cli/errors.ex",
+      "commit": "b55623d",
+      "commit_matches": true
+    },
+    {
+      "path": "lib/ipse/journal/writer.ex",
+      "commit": "b55623d",
+      "commit_matches": true
+    },
+    {
+      "path": "lib/ipse/extension/collection/encoding.ex",
+      "commit": "b55623d",
+      "commit_matches": true
+    },
+    {
+      "path": "lib/ipse/extension/bundles.ex",
+      "commit": "b55623d",
+      "commit_matches": true
+    },
+    {
+      "path": "lib/ipse/provider/embedding.ex",
+      "commit": "b55623d",
+      "commit_matches": true
+    },
+    {
+      "path": "lib/ipse/tools/research.ex",
+      "commit": "b55623d",
+      "commit_matches": true
+    },
+    {
+      "path": "lib/ipse/extension/feeds.ex",
+      "commit": "b55623d",
+      "commit_matches": true
+    },
+    {
+      "path": "lib/ipse/tools/sandbox.ex",
+      "commit": "b55623d",
+      "commit_matches": true
+    },
+    {
+      "path": "lib/ipse/provider.ex",
+      "commit": "b55623d",
+      "commit_matches": true
+    },
+    {
+      "path": "lib/ipse/tools.ex",
+      "commit": "b55623d",
+      "commit_matches": true
+    },
+    {
+      "path": "lib/ipse/cli/terminal.ex",
+      "commit": "b55623d",
+      "commit_matches": true
+    },
+    {
+      "path": "lib/ipse/extension/artifact.ex",
+      "commit": "b55623d",
+      "commit_matches": true
+    },
+    {
+      "path": "lib/ipse/config/profiles.ex",
+      "commit": "b55623d",
+      "commit_matches": true
+    },
+    {
+      "path": "lib/ipse/session/tool_lifecycle.ex",
+      "commit": "b55623d",
+      "commit_matches": true
+    },
+    {
+      "path": "lib/ipse/private_file.ex",
+      "commit": "b55623d",
+      "commit_matches": true
+    },
+    {
+      "path": "lib/ipse/config.ex",
+      "commit": "b55623d",
+      "commit_matches": true
+    },
+    {
+      "path": "lib/ipse/provider/ollama.ex",
+      "commit": "b55623d",
+      "commit_matches": true
+    },
+    {
+      "path": "lib/ipse/provider/anthropic.ex",
+      "commit": "b55623d",
+      "commit_matches": true
+    },
+    {
+      "path": "lib/ipse/extension.ex",
+      "commit": "b55623d",
+      "commit_matches": true
+    },
+    {
+      "path": "lib/ipse/application.ex",
+      "commit": "b55623d",
+      "commit_matches": true
+    },
+    {
+      "path": "lib/ipse/extension/activation.ex",
+      "commit": "b55623d",
+      "commit_matches": true
+    },
+    {
+      "path": "lib/ipse/session/input.ex",
+      "commit": "b55623d",
+      "commit_matches": true
+    },
+    {
+      "path": "lib/ipse/session/lifecycle.ex",
+      "commit": "b55623d",
+      "commit_matches": true
+    },
+    {
+      "path": "lib/ipse/provider/decision.ex",
+      "commit": "b55623d",
+      "commit_matches": true
+    },
+    {
+      "path": "lib/ipse/auth.ex",
+      "commit": "b55623d",
+      "commit_matches": true
+    },
+    {
+      "path": "lib/ipse/extension/mode.ex",
+      "commit": "b55623d",
+      "commit_matches": true
+    },
+    {
+      "path": "lib/ipse/runner/transaction.ex",
+      "commit": "b55623d",
+      "commit_matches": true
+    },
+    {
+      "path": "lib/ipse/extension/collection/migration.ex",
+      "commit": "b55623d",
+      "commit_matches": true
+    },
+    {
+      "path": "lib/ipse/session/operator_answer.ex",
+      "commit": "b55623d",
+      "commit_matches": true
+    },
+    {
+      "path": "lib/ipse/provider/transport.ex",
+      "commit": "b55623d",
+      "commit_matches": true
+    },
+    {
+      "path": "lib/ipse/json.ex",
+      "commit": "b55623d",
+      "commit_matches": true
+    },
+    {
+      "path": "lib/ipse/extension/inference.ex",
+      "commit": "b55623d",
+      "commit_matches": true
+    },
+    {
+      "path": "lib/ipse/session/context.ex",
+      "commit": "b55623d",
+      "commit_matches": true
+    },
+    {
+      "path": "lib/ipse/provider/decision/transport.ex",
+      "commit": "b55623d",
+      "commit_matches": true
+    },
+    {
+      "path": "lib/ipse/observability/channel.ex",
+      "commit": "b55623d",
+      "commit_matches": true
+    },
+    {
+      "path": "extensions/knowledge/src/knowledge/records.ex",
+      "commit": "b55623d",
+      "commit_matches": true
+    },
+    {
+      "path": "lib/ipse/journal.ex",
+      "commit": "b55623d",
+      "commit_matches": true
+    },
+    {
+      "path": "lib/ipse/tools/delegation.ex",
+      "commit": "b55623d",
+      "commit_matches": true
+    },
+    {
+      "path": "lib/ipse/session/source_index.ex",
+      "commit": "b55623d",
+      "commit_matches": true
+    },
+    {
+      "path": "lib/ipse/provider/demo.ex",
+      "commit": "b55623d",
+      "commit_matches": true
+    },
+    {
+      "path": "extensions/knowledge/src/knowledge/contracts.ex",
+      "commit": "b55623d",
+      "commit_matches": true
+    },
+    {
+      "path": "lib/ipse/decision.ex",
+      "commit": "b55623d",
+      "commit_matches": true
+    },
+    {
+      "path": "lib/ipse/extension/project_identity.ex",
+      "commit": "b55623d",
+      "commit_matches": true
+    },
+    {
+      "path": "extensions/knowledge/src/notes.ex",
+      "commit": "b55623d",
+      "commit_matches": true
+    },
+    {
+      "path": "lib/ipse/cli.ex",
+      "commit": "b55623d",
+      "commit_matches": true
+    },
+    {
+      "path": "lib/ipse/document_parser.ex",
+      "commit": "b55623d",
+      "commit_matches": true
+    },
+    {
+      "path": "lib/ipse/config/decisions.ex",
+      "commit": "b55623d",
+      "commit_matches": true
+    },
+    {
+      "path": "lib/ipse/workspace.ex",
+      "commit": "b55623d",
+      "commit_matches": true
+    },
+    {
+      "path": "lib/ipse/session/runtime_lifecycle.ex",
+      "commit": "b55623d",
+      "commit_matches": true
+    },
+    {
+      "path": "lib/ipse/inference_slots/store.ex",
+      "commit": "b55623d",
+      "commit_matches": true
+    },
+    {
+      "path": "lib/ipse/session/permissions.ex",
+      "commit": "b55623d",
+      "commit_matches": true
+    },
+    {
+      "path": "lib/ipse/provider/openai.ex",
+      "commit": "b55623d",
+      "commit_matches": true
+    },
+    {
+      "path": "lib/ipse/inference_dispatch.ex",
+      "commit": "b55623d",
+      "commit_matches": true
+    }
+  ],
+  "all_match": true
+}

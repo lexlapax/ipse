@@ -1,0 +1,64 @@
+{
+  "read_only": true,
+  "generation": 3724,
+  "qualification_passed": false,
+  "root_sha256": "840fa00f9f5f78b278d4622d4ac95a551c3ba8f48c60e6316d7a6d7008b30e41",
+  "note_count": 3724,
+  "receipt_count": 3724,
+  "record_count": 5190,
+  "classes": {
+    "anchor": {
+      "bytes": 438067,
+      "records": 333
+    },
+    "live": {
+      "bytes": 3771902,
+      "records": 1133
+    },
+    "note": {
+      "bytes": 12378576,
+      "records": 3724
+    }
+  },
+  "attempted_operation_id": "c239f0f364fe5de04ceb9a831006a4fd",
+  "attempted_request_sha256": "651fb5a0a0fa4ba93174952818482455b995a706822d0db230d12df17b8070fc",
+  "attempted_record_key": "note.7a551e62f064817ae9e797e1b94d075be18c4d6b9eeee6629f762267164dde50",
+  "attempted_operation_absent": true,
+  "attempted_record_absent": true,
+  "live_shard": "189",
+  "live_pages": [
+    {
+      "attempted_identity_absent": true,
+      "entries": 4,
+      "key": "host.validity.live.189.0",
+      "sha256": "ca789d615d58487d958721a2a2f1b77069675b01cab5371758004d538618488c"
+    },
+    {
+      "attempted_identity_absent": true,
+      "entries": 4,
+      "key": "host.validity.live.189.1",
+      "sha256": "d04c7fb840b89ac4b4069d08dcd61fef335fa9849ef97bbe47123664d72ee3cc"
+    },
+    {
+      "attempted_identity_absent": true,
+      "entries": 4,
+      "key": "host.validity.live.189.2",
+      "sha256": "a6388f7428dfa16b5d83b094463478ae385780b8dd9f828763444fe9d9ccbd3e"
+    },
+    {
+      "attempted_identity_absent": true,
+      "entries": 4,
+      "key": "host.validity.live.189.3",
+      "sha256": "061024355923b88b52ba8f709c5c0cbd2ed6b85b403f711cc58a3f850f1d07fa"
+    }
+  ],
+  "native_collection_allocation": {
+    "allocated": 23044096,
+    "logical": 18941423,
+    "entries": 5285
+  },
+  "managed_control_reserved_bytes": 23068672,
+  "runtime_binding_sha256": "c2a14ef5edbad10d9e9149e5999be1662fbeba6560dd20323c8c1188589d6547",
+  "pending_marker_untouched": true,
+  "marker_directory_hint": "/home/lexlapax/projects/lexlapax/ipse/_build/storage-workloads/ipse-managed-140b1c126752435c71e30a4ca13ce803/managed-oracle/segment-5"
+}

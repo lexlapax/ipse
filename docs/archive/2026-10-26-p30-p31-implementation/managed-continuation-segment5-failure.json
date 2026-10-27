@@ -1,0 +1,82 @@
+{
+  "error": "managed publication stopped without retry at 3724: {:error, :managed_normalization_refused}",
+  "context": {
+    "handle": {
+      "directory": "/home/lexlapax/projects/lexlapax/ipse/_build/storage-workloads/ipse-managed-140b1c126752435c71e30a4ca13ce803/managed-oracle/segment-5",
+      "marker": ".pending-92286e06f3db0024d10c50fec37c1cff"
+    },
+    "progress": 3467,
+    "location": {
+      "project": "f26f73478740cfc004fe85441b33b81d2620a593d7d1b8d280fbc401a3073e4b",
+      "root": "/home/lexlapax/projects/lexlapax/ipse/_build/storage-workloads/ipse-managed-140b1c126752435c71e30a4ca13ce803/collections"
+    },
+    "binding": "c2a14ef5edbad10d9e9149e5999be1662fbeba6560dd20323c8c1188589d6547",
+    "target": 4000,
+    "segment": 5,
+    "original": {
+      "report_sha256": "fc599fdf83ceca8a4a3de177113403183a33afabfd0221b3f9088c45d87ee1f2",
+      "runtime_binding_sha256": "ec1339fefc0be4ba8689124555a5c4c8b712fe0de95fc15b2a9ed5f3926ea1a9",
+      "runtime_sha256": "765c451d5efac480d2bb1d6be3ec13460aa726ae73dbd5424b0c33d558359e2b",
+      "wire_sha256": "9fa62676b9bb5ab0ac5f8449c4030a6f2505fe56854c94c3a61b6c182899050d"
+    },
+    "wall": 1793077416804,
+    "cumulative": 1054861,
+    "previous": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/storage-workloads/ipse-managed-140b1c126752435c71e30a4ca13ce803/managed-oracle/segment-4/root.json",
+      "sha256": "4cb0743206dc62bdbb15781d89b571a1d240d526ff3229ed275a6f852d3d4ccf"
+    }
+  },
+  "kind": "development_managed_continuation_failure",
+  "qualification_passed": false,
+  "automatic_retries": 0,
+  "last_call": {
+    "request": {
+      "advance_floor": true,
+      "changes": [
+        {
+          "expected_revision": 0,
+          "key": "note.7a551e62f064817ae9e797e1b94d075be18c4d6b9eeee6629f762267164dde50",
+          "value": {
+            "category": "ordinary",
+            "created_at_ms": 1800000000000,
+            "event_at_ms": null,
+            "evidence": {
+              "sources": [
+                {
+                  "content_sha256": "638588a8f1fe8993aee2fcfbf8b599f702383d0131d19564b131f40f20869459",
+                  "coverage": "available",
+                  "end_byte": 1024,
+                  "kind": "input.original",
+                  "occurrence_id": "52ee46dd4e6019e7dbe408de07951580",
+                  "origin": "interactive_operator",
+                  "path": null,
+                  "quote": "718b5709661044ff4226aeaa66d5fede3ee0af9f66b6961db73da454d596027f98b857641eaf0250289c274d3adfd006853ed0e09e4ef323a2baa8073c375ff6fe696a6f80c2dd44e4e64960dc68c93f62aa7c46fb05d00b782ce3de6818e50f4e4ed12de0b120b6d5d58083a212265c1cdf59b3126e8047a900a16af8ada73e54b06a16fe4eb04538a87f4b8fa09559d426e9844c21a288e1f24135a868ff356e252bf1b3df0c7b7041b7f72bcde9eb441919d0e9a5f18b528bbf193249b5fa81981e185d878e5d0702e501fa2a01399d61d6dfae390c1e93a94dfdc37494d408d31c12485441d38466edc2e084bb5daa2353a2f407592c95b8464b68d387ac230516acb81e9b4501d742226696b5c2de976854af6dbdabad8c01ba4980928b86c8e307d7310d8cd622b47e90c8db80e143dd95ba6abf19613edc24e87fcf18ee4511f724ca92bba352106e9c9165dfb791ae8b5bc2dcacbba07d33338889559ea7da2b3587521576c12c4e6a86ca3ed683539a605f0e050aae59150676231c45588fae1a58fac3e8a30caa23a9855866b60ed31bc42606cd908f4f2a974002165064baf9e3cdce2705d0d44d7d718f46356ef24c2e6e331aaef9fc766c7880db7f374235a7bb311a06a52cad52de50fc3eb554df905c5e63a1bb52649522e9f7310df7e6112fb74878b839474e194bd24b3c2adc7bd2b895f2464c29cbaf6c",
+                  "quote_sha256": "638588a8f1fe8993aee2fcfbf8b599f702383d0131d19564b131f40f20869459",
+                  "receipt_sha256": "b848bc8438463a3d12f016600d004936f594518fbc2b90efdc87980fcea8e77b",
+                  "session_id": "b3a90d972e0d07a632bdb5f55c04f178",
+                  "start_byte": 0,
+                  "version": 1,
+                  "version_id": "9466dc12695b4ac87367aa4bd19000cd"
+                }
+              ]
+            },
+            "expires_at_ms": 1807776000000,
+            "id": "7a551e62f064817ae9e797e1b94d075be18c4d6b9eeee6629f762267164dde50",
+            "lineage": "7a551e62f064817ae9e797e1b94d075be18c4d6b9eeee6629f762267164dde50",
+            "metadata_reserve": "0000000000000000000000000000000000000000000000000000000000000000",
+            "observed_at_ms": 1800000000000,
+            "previous_category": null,
+            "reason": "b0f40947a553610822f935060ac28b46a554a48c33b694eae8435e1728ab7e69907e7dd0bd7613d21a9687607624af752c896149989e02955854116862bcfd14c1646f6abbeaef29256500533e784fd96a1cdab613e4c5b0147a0b1352576313acef426286602c9ba94f96aa5f439fd427c45bd5b0352aba02003e82aa7c28c6",
+            "superseded_at_ms": null,
+            "text": "718b5709661044ff4226aeaa66d5fede3ee0af9f66b6961db73da454d596027f98b857641eaf0250289c274d3adfd006853ed0e09e4ef323a2baa8073c375ff6fe696a6f80c2dd44e4e64960dc68c93f62aa7c46fb05d00b782ce3de6818e50f4e4ed12de0b120b6d5d58083a212265c1cdf59b3126e8047a900a16af8ada73e54b06a16fe4eb04538a87f4b8fa09559d426e9844c21a288e1f24135a868ff356e252bf1b3df0c7b7041b7f72bcde9eb441919d0e9a5f18b528bbf193249b5fa81981e185d878e5d0702e501fa2a01399d61d6dfae390c1e93a94dfdc37494d408d31c12485441d38466edc2e084bb5daa2353a2f407592c95b8464b68d387ac230516acb81e9b4501d742226696b5c2de976854af6dbdabad8c01ba4980928b86c8e307d7310d8cd622b47e90c8db80e143dd95ba6abf19613edc24e87fcf18ee4511f724ca92bba352106e9c9165dfb791ae8b5bc2dcacbba07d33338889559ea7da2b3587521576c12c4e6a86ca3ed683539a605f0e050aae59150676231c45588fae1a58fac3e8a30caa23a9855866b60ed31bc42606cd908f4f2a974002165064baf9e3cdce2705d0d44d7d718f46356ef24c2e6e331aaef9fc766c7880db7f374235a7bb311a06a52cad52de50fc3eb554df905c5e63a1bb52649522e9f7310df7e6112fb74878b839474e194bd24b3c2adc7bd2b895f2464c29cbaf6c",
+            "version": 1
+          }
+        }
+      ],
+      "expected_generation": 3724,
+      "op": "commit"
+    },
+    "operation_id": "c239f0f364fe5de04ceb9a831006a4fd",
+    "before_generation": 3724
+  }
+}

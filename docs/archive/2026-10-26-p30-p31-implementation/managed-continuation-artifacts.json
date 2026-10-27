@@ -1,0 +1,294 @@
+{
+  "target": 4000,
+  "kind": "development_managed_storage_continuation_artifacts",
+  "files": [
+    {
+      "archive": "managed-continuation-runtime.json",
+      "bytes": 114342,
+      "source": "/tmp/ipse-managed-storage-continuation-freeze-20261026-01.json",
+      "sha256": "7ed66f3331916e42e6c6f9efa527a5a028b606f3ae8d75b045918de27d1637b3"
+    },
+    {
+      "archive": "managed-continuation-controls.json",
+      "bytes": 825,
+      "source": "/tmp/ipse-managed-storage-continuation-controls-20261026-01.json",
+      "sha256": "b15c3995e0ce01ae40269efaf6c366c27d3a076ee5a5d22dee21802e6690f1e9"
+    },
+    {
+      "archive": "managed-continuation-controls.log",
+      "bytes": 825,
+      "source": "/tmp/ipse-managed-storage-continuation-controls-20261026-01.log",
+      "sha256": "b15c3995e0ce01ae40269efaf6c366c27d3a076ee5a5d22dee21802e6690f1e9"
+    },
+    {
+      "archive": "managed-continuation-tests-first-failure.log",
+      "bytes": 630,
+      "source": "/tmp/ipse-managed-storage-20261026-01/continuation-pure-tests.log",
+      "sha256": "439ba3f10b580d50a1d0eeabadfb666225e80c97ce7fb73d906ce634361d55f6"
+    },
+    {
+      "archive": "managed-continuation-tests-repaired.log",
+      "bytes": 206,
+      "source": "/tmp/ipse-managed-storage-20261026-01/continuation-pure-tests-repaired.log",
+      "sha256": "c65af7e400801608c3afe4104e4643276708a2a3bda59e50801696ee63b94816"
+    },
+    {
+      "archive": "managed-continuation-tests-final.log",
+      "bytes": 206,
+      "source": "/tmp/ipse-managed-storage-20261026-01/continuation-pure-tests-final.log",
+      "sha256": "1338264347cefaeb7eab53f0009d04217a3f991eee52d676cf095012b0444395"
+    },
+    {
+      "archive": "managed-continuation-bootstrap.json",
+      "bytes": 47040,
+      "source": "/tmp/ipse-managed-storage-bootstrap-20261026-01.json",
+      "sha256": "3df063b2fd69bd6ee523a26513e369d24a0c1a0325c5d4f732fc74492206ad96"
+    },
+    {
+      "archive": "managed-continuation-bootstrap.log",
+      "bytes": 47472,
+      "source": "/tmp/ipse-managed-storage-bootstrap-20261026-01.log",
+      "sha256": "35b6349f95ab8237785d5ee785d76e1882f0234f7ea5539bfcc2e4df7f55d913"
+    },
+    {
+      "archive": "managed-continuation-bootstrap-checkpoint.json",
+      "bytes": 36813,
+      "source": "/home/lexlapax/projects/lexlapax/ipse/_build/storage-workloads/ipse-managed-140b1c126752435c71e30a4ca13ce803/managed-oracle/segment-1/root.json",
+      "sha256": "e55a538ba4825e2a46e6343cd4e4e88cd384d43b033b64b9aac95f8d5b73b3cc"
+    },
+    {
+      "archive": "managed-continuation-bootstrap-canonical-report.json",
+      "bytes": 36787,
+      "source": "/home/lexlapax/projects/lexlapax/ipse/_build/storage-workloads/ipse-managed-140b1c126752435c71e30a4ca13ce803/managed-oracle/segment-1/c9fbc6be80478b715c77de61d0b9a63035c5b70264aafd6a9be885595b5ed06f.json",
+      "sha256": "c9fbc6be80478b715c77de61d0b9a63035c5b70264aafd6a9be885595b5ed06f"
+    },
+    {
+      "archive": "managed-continuation-segment2.json",
+      "bytes": 103941,
+      "source": "/tmp/ipse-managed-storage-segment2-20261026-01.json",
+      "sha256": "54feb2c9f7e7d5f59f9458016febb7a4dacf0b1ab418e511ee579a305aaca83e"
+    },
+    {
+      "archive": "managed-continuation-segment2.log",
+      "bytes": 104373,
+      "source": "/tmp/ipse-managed-storage-segment2-20261026-01.log",
+      "sha256": "159d33433f893eba05253310a24ae75352dbfad06236d09b7be91b3c1f1fe736"
+    },
+    {
+      "archive": "managed-continuation-segment2-checkpoint.json",
+      "bytes": 72041,
+      "source": "/home/lexlapax/projects/lexlapax/ipse/_build/storage-workloads/ipse-managed-140b1c126752435c71e30a4ca13ce803/managed-oracle/segment-2/root.json",
+      "sha256": "d286319eeb7a147dc8c596985d15d0151fd48c106b996310b0126ea4eb35150d"
+    },
+    {
+      "archive": "managed-continuation-segment2-canonical-report.json",
+      "bytes": 79680,
+      "source": "/home/lexlapax/projects/lexlapax/ipse/_build/storage-workloads/ipse-managed-140b1c126752435c71e30a4ca13ce803/managed-oracle/segment-2/e2f9a2349c7761faa95fb7cd0d7d121ab73fac94e0dd1587cdf94ddec3e6b982.json",
+      "sha256": "e2f9a2349c7761faa95fb7cd0d7d121ab73fac94e0dd1587cdf94ddec3e6b982"
+    },
+    {
+      "archive": "managed-continuation-segment3.json",
+      "bytes": 137556,
+      "source": "/tmp/ipse-managed-storage-segment3-20261026-01.json",
+      "sha256": "8210504de68d44df95fc1bf5f1e43b4e89433410a080a0ff444a42e7e94a1350"
+    },
+    {
+      "archive": "managed-continuation-segment3.log",
+      "bytes": 137988,
+      "source": "/tmp/ipse-managed-storage-segment3-20261026-01.log",
+      "sha256": "5d77a5914477db9b4eaea171d88d379ca0192714d95ca259d4ccf4892434af74"
+    },
+    {
+      "archive": "managed-continuation-segment3-checkpoint.json",
+      "bytes": 100637,
+      "source": "/home/lexlapax/projects/lexlapax/ipse/_build/storage-workloads/ipse-managed-140b1c126752435c71e30a4ca13ce803/managed-oracle/segment-3/root.json",
+      "sha256": "375c48895a6cad9afa1f73364a453544eb943a1dd9060b3a1b1dc220e83a5af9"
+    },
+    {
+      "archive": "managed-continuation-segment3-canonical-report.json",
+      "bytes": 106857,
+      "source": "/home/lexlapax/projects/lexlapax/ipse/_build/storage-workloads/ipse-managed-140b1c126752435c71e30a4ca13ce803/managed-oracle/segment-3/2920e82b00253a7beb715a602144d5d179414cb9f1506940d6a6500240a3d882.json",
+      "sha256": "2920e82b00253a7beb715a602144d5d179414cb9f1506940d6a6500240a3d882"
+    },
+    {
+      "archive": "managed-continuation-segment4.json",
+      "bytes": 163996,
+      "source": "/tmp/ipse-managed-storage-segment4-20261026-01.json",
+      "sha256": "2b24cbce889845cdfea2ec51a2b27aff29e02a7e03a4e505b6b0c0f88256b768"
+    },
+    {
+      "archive": "managed-continuation-segment4.log",
+      "bytes": 164428,
+      "source": "/tmp/ipse-managed-storage-segment4-20261026-01.log",
+      "sha256": "5f91a263da381ced9986658128b620be83f152247a4f925850bed80c106e9dfe"
+    },
+    {
+      "archive": "managed-continuation-segment4-checkpoint.json",
+      "bytes": 123390,
+      "source": "/home/lexlapax/projects/lexlapax/ipse/_build/storage-workloads/ipse-managed-140b1c126752435c71e30a4ca13ce803/managed-oracle/segment-4/root.json",
+      "sha256": "4cb0743206dc62bdbb15781d89b571a1d240d526ff3229ed275a6f852d3d4ccf"
+    },
+    {
+      "archive": "managed-continuation-segment4-canonical-report.json",
+      "bytes": 128282,
+      "source": "/home/lexlapax/projects/lexlapax/ipse/_build/storage-workloads/ipse-managed-140b1c126752435c71e30a4ca13ce803/managed-oracle/segment-4/ae7695b990da9c23db8d692242c56bd0992ce1221c5234b48a9ad265554a033b.json",
+      "sha256": "ae7695b990da9c23db8d692242c56bd0992ce1221c5234b48a9ad265554a033b"
+    },
+    {
+      "archive": "managed-continuation-segment5.log",
+      "bytes": 957,
+      "source": "/tmp/ipse-managed-storage-segment5-20261026-01.log",
+      "sha256": "6fe0d92dc07816273816498c35df4df389054bc47a79ae3f97716ff0ade6a3c8"
+    },
+    {
+      "archive": "managed-continuation-segment5-failure.json",
+      "bytes": 5887,
+      "source": "/tmp/ipse-managed-storage-segment5-20261026-01.json.failure.json",
+      "sha256": "6ad9293d75e6bb5150fb2b5bd0874fd514d2bc14b9d11b5b22f418f7c5e2aed5"
+    },
+    {
+      "archive": "managed-continuation-segment5-partial.json",
+      "bytes": 99,
+      "source": "/tmp/ipse-managed-storage-segment5-20261026-01.json.partial.json",
+      "sha256": "c321f399b461b032adb40a058dc8100c58ea31af5fbb262ea3b66603dfa2d7d8"
+    },
+    {
+      "archive": "managed-continuation-refusal-inspection.json",
+      "bytes": 2082,
+      "source": "/tmp/ipse-managed-storage-refusal-inspection-20261026-01.json",
+      "sha256": "df8168d3600d2c42994e9a685ba5a48d4dccd33649f252d2ba5057551c58688f"
+    },
+    {
+      "archive": "managed-continuation-refusal-inspection.log",
+      "bytes": 2082,
+      "source": "/tmp/ipse-managed-storage-refusal-inspection-20261026-01.log",
+      "sha256": "df8168d3600d2c42994e9a685ba5a48d4dccd33649f252d2ba5057551c58688f"
+    },
+    {
+      "archive": "managed-continuation-refusal-inspection.exs",
+      "bytes": 2762,
+      "source": "/tmp/ipse-inspect-managed-refusal.exs",
+      "sha256": "55d23c8dab66e452738877a29c3afa83cba3be702b0ccbe682a0b758cfcaa980"
+    },
+    {
+      "archive": "managed-continuation-final-root.json",
+      "bytes": 838,
+      "source": "/tmp/ipse-managed-storage-final-root-20261026-01.json",
+      "sha256": "6ce6a3da2c82c225d281b20d5f570e908039d8542e95c5143a88d75b035cc3bc"
+    },
+    {
+      "archive": "managed-continuation-final-root.exs",
+      "bytes": 1861,
+      "source": "/tmp/ipse-managed-final-root.exs",
+      "sha256": "20fcbda64b573fec8cb98f2b9f8f30f41f5c8b9b569af5fdca5c360cf7373bdf"
+    },
+    {
+      "archive": "managed-continuation-source-reconstruction.json",
+      "bytes": 14688,
+      "source": "/tmp/ipse-managed-storage-source-reconstruction-20261026-01.json",
+      "sha256": "6da89647817de1763efe3098b16bb497f85a9025e446a522ef172915880747a8"
+    },
+    {
+      "archive": "managed-continuation-segment5-pending-marker.json",
+      "bytes": 348,
+      "source": "/home/lexlapax/projects/lexlapax/ipse/_build/storage-workloads/ipse-managed-140b1c126752435c71e30a4ca13ce803/managed-oracle/segment-5/.pending-92286e06f3db0024d10c50fec37c1cff",
+      "sha256": "e788aed217ade2f3e73e126b409d02c35d4e43318e2c1f6f8913045c808e6840"
+    },
+    {
+      "archive": "managed-continuation-bootstrap-inspection.json",
+      "bytes": 780,
+      "source": "/tmp/ipse-managed-storage-bootstrap-inspection-20261026-01.json",
+      "sha256": "11fe9f24238b23dd4e3c12546380ed24539bfffd857fa55a75fa5852e76f42fb"
+    },
+    {
+      "archive": "managed-continuation-segment2-inspection.log",
+      "bytes": 53,
+      "source": "/tmp/ipse-managed-storage-segment2-inspection-20261026-01.log",
+      "sha256": "da0f79b12c46092df4b42cf210c2dc004ee4e7c1079784887f19a305038ece20"
+    },
+    {
+      "archive": "managed-continuation-segment3-inspection.log",
+      "bytes": 1000,
+      "source": "/tmp/ipse-managed-storage-segment3-inspection-20261026-01.log",
+      "sha256": "fe5625391f36bade93991ddbe4cc2aa3cae8d5149c3dd1e812f9e66c1f6cfb60"
+    },
+    {
+      "archive": "managed-continuation-segment4-inspection.log",
+      "bytes": 59,
+      "source": "/tmp/ipse-managed-storage-segment4-inspection-20261026-01.log",
+      "sha256": "d885a471d404f11367192ecb36f394179d1bf1fc449119670e48258277d7d161"
+    },
+    {
+      "bytes": 23630,
+      "sha256": "55ac102962f516b6cc9e1f1fae672968b457ececa80abd11f011c42761fc57f3",
+      "repository_source": "dev/knowledge/managed_storage_continuation.ex"
+    },
+    {
+      "bytes": 125,
+      "sha256": "bd28eff1c4bb72e0699aa76682b43e02dd7b6109da9b80cdc15f4a2ffa70f48b",
+      "repository_source": "dev/knowledge/managed_storage_continuation.exs"
+    },
+    {
+      "bytes": 3346,
+      "sha256": "f71aed9c2ce59404caf1936881ada83d25824cbced4db3e088426ea02a0a24de",
+      "repository_source": "dev/knowledge/managed_storage_continuation_check.exs"
+    },
+    {
+      "bytes": 3506,
+      "sha256": "fd3c97137fd7f552f33441f8647d1bc828aba42c3abe73d39bb769f5bb741722",
+      "repository_source": "test/dev/managed_storage_continuation_test.exs"
+    },
+    {
+      "archive": "managed-storage-continuation.md",
+      "bytes": 11279,
+      "sha256": "eb69eb6334dc5f387bb4961d0eba8d83304373cec9e6d7478af5081dc31d057d"
+    }
+  ],
+  "qualification_passed": false,
+  "domain_annual_qualified": false,
+  "performance_qualified": false,
+  "actual_human_input": false,
+  "actual_session_exercised": false,
+  "model_calls": 0,
+  "binding_sha256": "c2a14ef5edbad10d9e9149e5999be1662fbeba6560dd20323c8c1188589d6547",
+  "actual_successful_publications": 3724,
+  "attempted_publications": 3725,
+  "stop_reason": "managed_normalization_refused_full_live_shard_189",
+  "automatic_retries": 0,
+  "terminal_root_sha256": "840fa00f9f5f78b278d4622d4ac95a551c3ba8f48c60e6316d7a6d7008b30e41",
+  "terminal_generation": 3724,
+  "pending_marker_preserved": true,
+  "clean_final_continuation": false,
+  "execution_sessions": [
+    {
+      "session": 82909,
+      "segment": 1,
+      "exit_code": 0
+    },
+    {
+      "session": 49571,
+      "segment": 2,
+      "exit_code": 0
+    },
+    {
+      "session": 30971,
+      "segment": 3,
+      "exit_code": 0
+    },
+    {
+      "session": 83009,
+      "segment": 4,
+      "exit_code": 0
+    },
+    {
+      "session": 68690,
+      "segment": 5,
+      "exit_code": 1
+    },
+    {
+      "session": 32957,
+      "exit_code": 0,
+      "read_only_inspection": true
+    }
+  ]
+}

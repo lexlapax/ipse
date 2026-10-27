@@ -1,0 +1,25 @@
+{
+  "progress": 1000,
+  "binding": "c2a14ef5edbad10d9e9149e5999be1662fbeba6560dd20323c8c1188589d6547",
+  "segment": 1,
+  "root_sha256": "a9c6858c9dfe03f3ad6512510626dcb74e9f7dce3b0c3a863f7ed4b4144331cd",
+  "continuation": {
+    "path": "/home/lexlapax/projects/lexlapax/ipse/_build/storage-workloads/ipse-managed-140b1c126752435c71e30a4ca13ce803/managed-oracle/segment-1/root.json",
+    "sha256": "e55a538ba4825e2a46e6343cd4e4e88cd384d43b033b64b9aac95f8d5b73b3cc"
+  },
+  "bootstrap_elapsed_ms": 1003,
+  "oracle_commit_ms": 29,
+  "oracle": {
+    "final_allocation": {
+      "allocated": 73728,
+      "entries": 5,
+      "logical": 73790
+    },
+    "peak_allocation": {
+      "allocated": 77824,
+      "entries": 6,
+      "logical": 73986
+    },
+    "serialized_bytes": 73600
+  }
+}

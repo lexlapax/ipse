@@ -1,0 +1,14 @@
+Running ExUnit with seed: 905631, max_cases: 4
+Excluding tags: [:native_sandbox, :macos_sandbox, :macos_filesystem, :memory_scope]
+
+     error: imported Kernel.binding/1 conflicts with local function
+     │
+ 589 │   defp binding(location) do
+     │        ^
+     │
+     └─ dev/knowledge/managed_storage_continuation.ex:589:8: Ipse.Development.ManagedStorageContinuation (module)
+
+
+== Compilation error in file test/dev/managed_storage_continuation_test.exs ==
+** (CompileError) dev/knowledge/managed_storage_continuation.ex: cannot compile module Ipse.Development.ManagedStorageContinuation (errors have been logged)
+

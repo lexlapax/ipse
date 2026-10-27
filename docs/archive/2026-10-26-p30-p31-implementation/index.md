@@ -58,6 +58,7 @@ resource/offline qualification. No daemon configuration or existing model was ch
 - [Actual 30/90-day primitive turnover and bounded annual continuation controls](storage-workload-endurance.md).
 - [Annual storage segment 1: incomplete, unknown termination cause and retained read-only evidence](storage-annual-s1-incomplete.md).
 - [First 1,000 actual managed publications, packed metadata and version-5 allocation evidence](managed-storage-capacity.md).
+- [Bounded actual continuation: 2,000 established, 4,000 refused at a full live-metadata shard](managed-storage-continuation.md).
 - [Declarative collection publication constraints](collection-policy-component.md).
 - [Native knowledge capture and precompiled artifact component](native-capture-component.md).
 - [Native artifact integration with managed recipes and actual PTY publication](native-managed-capture-component.md).

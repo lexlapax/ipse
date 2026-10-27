@@ -1,0 +1,16 @@
+{
+  "kind": "managed_continuation_prebootstrap_controls",
+  "qualification_passed": false,
+  "source_drift_detected_and_known_fixture_restored": true,
+  "pending_refused": true,
+  "existing_segment_refused": true,
+  "checksum_refused": true,
+  "corrupt_checkpoint_refused": true,
+  "clean_native_oracle_read_passed": true,
+  "actual_collection_root_unchanged": true,
+  "actual_generation": 1000,
+  "actual_root_sha256": "a9c6858c9dfe03f3ad6512510626dcb74e9f7dce3b0c3a863f7ed4b4144331cd",
+  "binding_sha256": "c2a14ef5edbad10d9e9149e5999be1662fbeba6560dd20323c8c1188589d6547",
+  "baseline_publications_added": 0,
+  "oracle_controls_directory": "/home/lexlapax/projects/lexlapax/ipse/_build/storage-workloads/ipse-managed-140b1c126752435c71e30a4ca13ce803/oracle-controls-ea96fe4ee38e23d194bbe7812fac0c6e/known-fault-fixture"
+}
