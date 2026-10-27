@@ -35,3 +35,34 @@ unrelated processes hold no device file descriptors. The fixture must prove
 quiescence with host-visible cgroup/process evidence and use the kernel's
 nondeferred removal/open-count checks. Any inability to prove the state remains
 unknown and cannot authorize another actor's resource cleanup.
+
+## Borrowed loop release and close observations
+
+A later source trace suggests that an already-existing loop index can be
+atomically configured against a held backing FD without calling GET_FREE, ADD or
+REMOVE; the 7.2.11 loop configuration checks `Lo_unbound` under its internal
+lock. This does not prove no other opener and does not authorize deleting an
+existing index. `LOOP_CLR_FD` can merely mark autoclear; `GET_STATUS64` ENXIO
+means the state is not `Lo_bound` and alone does not prove final backing fput.
+The block layer decrements its opener count before invoking `lo_release`, and
+`__loop_clr_fd` sets `Lo_unbound` before its backing `fput` call. Thus a zero
+opener count, observed ENXIO or sysfs attribute absence is not by itself a
+completion barrier.
+
+Linux 7.2.11 `fs/open.c` calls `fput_close_sync` from the ordinary close syscall.
+The 7.2 base `fs/file_table.c` implements that path synchronously when it gets
+the last file-description reference. That does not establish 7.2.11 source or
+running Arch build parity, nor does disk-openers==1 exclude duplicated,
+inherited or in-flight references to one block file description. The draft
+reports only `CloseAttempted`, not a backing-release receipt. Sources:
+[7.2.11 block release](https://raw.githubusercontent.com/gregkh/linux/v7.2.11/block/bdev.c),
+[7.2.11 close syscall](https://raw.githubusercontent.com/gregkh/linux/v7.2.11/fs/open.c),
+[7.2 base fput implementation](https://raw.githubusercontent.com/torvalds/linux/v7.2/fs/file_table.c).
+
+A harmless regular-file inotify experiment found that dup'ed FDs produce no
+`IN_CLOSE_WRITE` until their shared description is finally closed, but a second
+independently opened writer can emit the same inode event while the first stays
+open. The parser rejects overflow/watch invalidation; coalescing and unrelated
+write opens remain ambiguity. The 7.2 base `__fput` emits the close event before
+other release work. Therefore this is not a complete final-release witness.
+No loop device or Btrfs fixture was used in that experiment.

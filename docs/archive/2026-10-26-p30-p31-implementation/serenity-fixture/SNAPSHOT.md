@@ -133,3 +133,9 @@ regular-file test showed that an unrelated writer can produce an indistinguishab
 close event; it is not a backing-release oracle. The private controller and
 inotify suites passed 63 and 2 tests respectively. Independent review of the
 exact running-kernel release semantics and actual device behavior remains open.
+
+A captured harmless regular-file inotify test and kernel-build-ID note were
+added. The running kernel and installed vmlinux reported matching build IDs;
+this alone does not establish upstream source parity. The event identifies an
+inode, can also result from another writable description, and does not by itself
+prove that final file teardown completed. No loop device was opened.
