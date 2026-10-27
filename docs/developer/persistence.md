@@ -112,6 +112,25 @@ alive to finish ordinary file IO must not keep its protected publication authori
 alive. These are separate obligations: ordinary file-server IO needs completion
 waiting, while protected publication uses the native transaction described below.
 
+`Resources.controlled_owned_effect/2` is a separate internal primitive for a
+reviewed native-controller or owned-transport operation whose complete effects
+and cleanup are fenced by its child scope. It may kill that peer at the deadline;
+never use it for arbitrary file-server IO that can continue after the peer dies.
+A tracked request task starts the child, whose nonce-bound scope inherits the
+Session lock guard and owns its registered controllers. An inactive scope
+refuses before child startup. Normal completion waits for peer and guard exit
+and the child cleanup receipt. After startup, timeout or an unconfirmed receipt
+yields an unknown outcome; unconfirmed cleanup must stop the caller rather than
+permit dependent work. Owner monitors stop the peer but are asynchronous; the
+consumer still needs its own current-authority check at the effect boundary.
+An outer `{:ok, value}` confirms the scoped
+return and cleanup, not the success of an effect represented by `value`; retain
+its own outcome classification. Ordinary nested `file_effect`
+calls inside that peer remain inline; starting another controlled child refuses.
+This primitive is not currently wired into inference and supplies no policy or
+current-source authority on its own. Callbacks and private receipt terms remain
+inside the trusted host boundary.
+
 Read the blocked-write fixture in `test/ipse/journal/writer_test.exs`. Its FIFO delays
 real IO while Session dies. A replacement session must remain locked until the
 reader drains and completion returns. A monitor `DOWN` for the original caller

@@ -74,7 +74,9 @@ The writer owns the append descriptor. The lock guardian waits for registered
 writers, workers, scopes, and file effects before releasing the OS advisory lock.
 `Session.Resources.file_effect/2` starts a separately tracked critical-section
 process so filesystem IO can settle after caller death. A task monitor cannot
-replace either that barrier or native cleanup evidence. See
+replace either that barrier or native cleanup evidence. The separately bounded
+controlled peer is reserved for reviewed, fenced operations, not arbitrary file
+IO, and currently has no inference caller. See
 [persistence](persistence.md) before changing close/recovery ordering.
 
 ## Trace prompt admission and the provider response

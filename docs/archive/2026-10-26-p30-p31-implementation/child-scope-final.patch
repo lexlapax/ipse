@@ -1,0 +1,1268 @@
+--- a/lib/ipse/session/resources.ex
++++ b/lib/ipse/session/resources.ex
+@@ -4,6 +4,10 @@
+   @key {__MODULE__, :scope}
+ 
+   def start(owner), do: GenServer.start(__MODULE__, owner)
++
++  def start_child(root, peer, reporter, token),
++    do: GenServer.start(__MODULE__, {:child, root, peer, reporter, token})
++
+   def bind(scope), do: Process.put(@key, scope)
+   def current, do: Process.get(@key)
+ 
+@@ -111,13 +115,55 @@
+   def stop_async(scope), do: GenServer.cast(scope, :stop)
+ 
+   @impl true
++  def handle_cast({:abandon_child, token, peer, reporter}, state) do
++    case state.child_tokens[token] do
++      %{peer: ^peer, reporter: ^reporter, child: nil} = entry ->
++        tokens =
++          if Process.alive?(peer),
++            do: Map.put(state.child_tokens, token, %{entry | cancelled: true}),
++            else: Map.delete(state.child_tokens, token)
++
++        {:noreply, %{state | child_tokens: tokens}}
++
++      _ ->
++        {:noreply, state}
++    end
++  end
++
+   def handle_cast(:stop, state) do
++    state = if state.child_report != nil, do: stop_child_owner(state), else: state
+     state = close_resources(state)
+     if is_pid(state.worker), do: Process.exit(state.worker, :kill)
++    report_child(state, if(state.failed, do: {:error, :cleanup_unconfirmed}, else: :ok))
+     {:stop, :normal, state}
+   end
+ 
+   @impl true
++  def init({:child, root, peer, reporter, token}) do
++    Process.flag(:trap_exit, true)
++
++    with {:ok, ticket, guard} <- GenServer.call(root, {:register_child, peer, reporter, token}) do
++      {:ok,
++       %{
++         owner: peer,
++         owner_ref: Process.monitor(peer),
++         worker: nil,
++         worker_ref: nil,
++         tasks: %{},
++         effects: %{},
++         lock_guard: guard,
++         resources: %{},
++         failed: false,
++         closed: false,
++         child_tokens: %{},
++         child_report: {ticket, reporter, token},
++         finish_permitted: false
++       }}
++    else
++      _ -> {:stop, :cleanup_scope_closed}
++    end
++  end
++
+   def init(owner) do
+     Process.flag(:trap_exit, true)
+ 
+@@ -132,7 +178,9 @@
+        lock_guard: Ipse.Session.Lock.for_owner(owner),
+        resources: %{},
+        failed: false,
+-       closed: false
++       closed: false,
++       child_tokens: %{},
++       child_report: nil
+      }}
+   end
+ 
+@@ -171,6 +219,102 @@
+     end
+   end
+ 
++  def handle_call({:track_child_effect, pid, token}, {caller, _}, %{closed: false} = state)
++      when is_pid(pid) and is_reference(token) and map_size(state.effects) < 32 and
++             map_size(state.child_tokens) < 32 do
++    if (caller == state.worker or Map.has_key?(state.tasks, caller)) and
++         not Map.has_key?(state.child_tokens, token) and
++         Process.alive?(pid) and Process.alive?(caller) and Process.alive?(state.owner) do
++      :ok = Ipse.Session.Lock.track_in(state.lock_guard, pid, :peer)
++      entry = %{peer: pid, reporter: caller, child: nil, guard: nil, cancelled: false}
++
++      {:reply, {:ok, state.owner},
++       %{
++         state
++         | effects: Map.put(state.effects, pid, Process.monitor(pid)),
++           child_tokens: Map.put(state.child_tokens, token, entry)
++       }}
++    else
++      {:reply, {:error, :cleanup_scope_closed}, state}
++    end
++  end
++
++  def handle_call({:register_child, peer, reporter, token}, {child, _}, %{closed: false} = state) do
++    case state.child_tokens[token] do
++      %{peer: ^peer, reporter: ^reporter, child: nil, cancelled: false} = entry ->
++        if Process.alive?(peer) and Process.alive?(reporter) and Process.alive?(state.owner) do
++          :ok = Ipse.Session.Lock.track_child_scope(state.lock_guard, child)
++          id = make_ref()
++          resource = %{pid: child, kind: :child, monitor: Process.monitor(child)}
++          ticket = %{scope: self(), id: id}
++
++          {:reply, {:ok, ticket, state.lock_guard},
++           %{
++             state
++             | resources: Map.put(state.resources, id, resource),
++               child_tokens: Map.put(state.child_tokens, token, %{entry | child: child})
++           }}
++        else
++          {:reply, {:error, :cleanup_scope_closed}, state}
++        end
++
++      _ ->
++        {:reply, {:error, :cleanup_scope_closed}, state}
++    end
++  end
++
++  def handle_call({:track_child_guard, guard, token}, {peer, _}, %{closed: false} = state)
++      when is_pid(guard) do
++    case state.child_tokens[token] do
++      %{peer: ^peer, guard: nil, cancelled: false} = entry when is_pid(state.owner) ->
++        if Process.alive?(state.owner) do
++          :ok = Ipse.Session.Lock.track_in(state.lock_guard, guard, :peer)
++
++          {:reply, :ok,
++           %{
++             state
++             | effects: Map.put(state.effects, guard, Process.monitor(guard)),
++               child_tokens: Map.put(state.child_tokens, token, %{entry | guard: guard})
++           }}
++        else
++          {:reply, {:error, :cleanup_scope_closed}, state}
++        end
++
++      _ ->
++        {:reply, {:error, :cleanup_scope_closed}, state}
++    end
++  end
++
++  def handle_call({:child_cancelled, token, peer}, {reporter, _}, state) do
++    case state.child_tokens[token] do
++      %{peer: ^peer, reporter: ^reporter} = entry ->
++        {:reply, {entry.child, entry.guard},
++         %{state | child_tokens: Map.put(state.child_tokens, token, %{entry | cancelled: true})}}
++
++      _ ->
++        {:reply, :unconfirmed, state}
++    end
++  end
++
++  def handle_call({:forget_child, token, peer}, {reporter, _}, state) do
++    case state.child_tokens[token] do
++      %{peer: ^peer, reporter: ^reporter, cancelled: true} ->
++        {:reply, :ok, %{state | child_tokens: Map.delete(state.child_tokens, token)}}
++
++      _ ->
++        {:reply, {:error, :cleanup_scope_closed}, state}
++    end
++  end
++
++  def handle_call(
++        {:prepare_child_finish, token},
++        {owner, _},
++        %{owner: owner, child_report: {_, _, token}, finish_permitted: false, closed: false} =
++          state
++      ) do
++    {:reply, :ok, %{state | finish_permitted: true}}
++  end
++
+   def handle_call(
+         {:authorized_effect, worker, caller},
+         {owner, _},
+@@ -193,11 +337,19 @@
+ 
+   def handle_call(:active, _, state), do: {:reply, false, state}
+ 
+-  def handle_call(action, _, state) when action in [:close, :finish] do
++  def handle_call(action, {caller, _}, state) when action in [:close, :finish] do
++    state =
++      if state.child_report != nil and
++           (caller != state.owner or not state.finish_permitted),
++         do: stop_child_owner(state),
++         else: state
++
+     state = close_resources(state)
+     result = if state.failed, do: {:error, :cleanup_unconfirmed}, else: :ok
+ 
+-    if action == :close,
++    if action == :close or state.child_report != nil, do: report_child(state, result)
++
++    if action == :close or state.child_report != nil,
+       do: {:stop, :normal, result, state},
+       else: {:reply, result, %{state | closed: true}}
+   end
+@@ -225,6 +377,14 @@
+   def handle_info({:DOWN, ref, :process, _, _}, %{owner_ref: ref} = state) do
+     if is_pid(state.worker), do: Process.exit(state.worker, :kill)
+     state = close_resources(state)
++    report_child(state, if(state.failed, do: {:error, :cleanup_unconfirmed}, else: :ok))
++    {:stop, :normal, state}
++  end
++
++  def handle_info({:ipse_cancel_resource, id}, %{child_report: {%{id: id}, _, _}} = state) do
++    state = stop_child_owner(state)
++    state = close_resources(state)
++    report_child(state, if(state.failed, do: {:error, :cleanup_unconfirmed}, else: :ok))
+     {:stop, :normal, state}
+   end
+ 
+@@ -245,8 +405,15 @@
+ 
+       nil ->
+         tasks = Map.reject(state.tasks, fn {_, monitor} -> monitor == ref end)
++        dead = Enum.find_value(state.effects, fn {pid, monitor} -> if monitor == ref, do: pid end)
+         effects = Map.reject(state.effects, fn {_, monitor} -> monitor == ref end)
+-        {:noreply, %{state | tasks: tasks, effects: effects}}
++
++        tokens =
++          Map.reject(state.child_tokens, fn {_, entry} ->
++            entry.peer == dead and entry.cancelled and is_nil(entry.child)
++          end)
++
++        {:noreply, %{state | tasks: tasks, effects: effects, child_tokens: tokens}}
+     end
+   end
+ 
+@@ -351,9 +518,268 @@
+     end
+   end
+ 
++  defp report_child(%{child_report: {ticket, reporter, token}}, result) do
++    closed(ticket, result)
++    send(reporter, {:child_scope_finished, token, self(), result})
++  end
++
++  defp report_child(_, _), do: :ok
++
++  defp stop_child_owner(state) do
++    Process.exit(state.owner, :kill)
++
++    receive do
++      {:DOWN, ref, :process, owner, _} when ref == state.owner_ref and owner == state.owner ->
++        state
++    after
++      4_000 -> %{state | failed: true}
++    end
++  end
++
+   @effect_key {__MODULE__, :active}
+   @effect_owner_key {__MODULE__, :effect_owner}
+ 
++  def controlled_file_effect(fun, timeout) when is_function(fun, 0) and timeout in 1..120_000 do
++    if Process.get(@effect_key),
++      do: {:error, :nested_controlled_effect},
++      else: controlled_file_effect_start(fun, timeout)
++  end
++
++  defp controlled_file_effect_start(fun, timeout) do
++    root = current()
++    reporter = self()
++    upstream = file_effect_owner()
++    token = make_ref()
++    deadline = System.monotonic_time(:millisecond) + timeout
++
++    if is_pid(root) and active?(min(timeout, 5_000)) do
++      {peer, monitor} =
++        spawn_monitor(fn ->
++          peer_ref = Process.monitor(reporter)
++          root_ref = Process.monitor(root)
++
++          receive do
++            {:begin_controlled, ^reporter, session_owner} ->
++              Process.demonitor(peer_ref, [:flush])
++              Process.demonitor(root_ref, [:flush])
++              controlled_peer(root, reporter, session_owner, upstream, token, fun)
++
++            {:DOWN, ^peer_ref, :process, _, _} ->
++              :ok
++
++            {:DOWN, ^root_ref, :process, _, _} ->
++              :ok
++          end
++        end)
++
++      remaining = max(deadline - System.monotonic_time(:millisecond), 0)
++
++      tracked =
++        if remaining > 0 do
++          try do
++            GenServer.call(root, {:track_child_effect, peer, token}, min(remaining, 5_000))
++          catch
++            :exit, _ -> :unconfirmed
++          end
++        else
++          :unconfirmed
++        end
++
++      case tracked do
++        {:ok, session_owner} ->
++          send(peer, {:begin_controlled, reporter, session_owner})
++
++          controlled_wait(
++            root,
++            peer,
++            monitor,
++            token,
++            max(deadline - System.monotonic_time(:millisecond), 0)
++          )
++
++        _ ->
++          Process.exit(peer, :kill)
++          GenServer.cast(root, {:abandon_child, token, peer, reporter})
++
++          receive do
++            {:DOWN, ^monitor, :process, ^peer, _} -> :ok
++          after
++            4_000 -> :ok
++          end
++
++          {:unknown, :cleanup_unconfirmed}
++      end
++    else
++      {:error, :cleanup_scope_closed}
++    end
++  catch
++    :exit, _ -> {:unknown, :cleanup_unconfirmed}
++  end
++
++  defp controlled_peer(root, reporter, session_owner, upstream, token, fun) do
++    peer = self()
++
++    guard =
++      spawn_link(fn ->
++        parent_ref = Process.monitor(reporter)
++        session_ref = Process.monitor(session_owner)
++        root_ref = Process.monitor(root)
++        peer_ref = Process.monitor(peer)
++        send(peer, {:guard_ready, self()})
++        controlled_guard(peer, parent_ref, session_ref, root_ref, peer_ref, nil, nil)
++      end)
++
++    receive do
++      {:guard_ready, ^guard} -> :ok
++    end
++
++    :ok = GenServer.call(root, {:track_child_guard, guard, token})
++
++    case start_child(root, peer, reporter, token) do
++      {:ok, child} ->
++        Process.link(child)
++        send(guard, {:watch_child, peer, child})
++
++        receive do
++          {:child_watched, ^guard} -> :ok
++        end
++
++        bind(child)
++        Process.put(@effect_key, true)
++        Process.put(@effect_owner_key, upstream)
++
++        result =
++          try do
++            {:returned, fun.()}
++          catch
++            _, _ -> {:failed, :effect_failed}
++          end
++
++        :ok = GenServer.call(child, {:prepare_child_finish, token})
++        send(guard, {:finish_child, peer})
++
++        receive do
++          {:child_unwatched, ^guard} -> :ok
++        end
++
++        _ = close(child)
++        send(reporter, {:controlled_result, token, peer, result})
++
++      _ ->
++        send(reporter, {:controlled_result, token, peer, {:failed, :child_unavailable}})
++    end
++  end
++
++  defp controlled_guard(peer, parent_ref, session_ref, root_ref, peer_ref, child, child_ref) do
++    receive do
++      {:watch_child, ^peer, pid} when is_nil(child_ref) and is_pid(pid) ->
++        ref = Process.monitor(pid)
++        send(peer, {:child_watched, self()})
++        controlled_guard(peer, parent_ref, session_ref, root_ref, peer_ref, pid, ref)
++
++      {:finish_child, ^peer} when is_reference(child_ref) ->
++        if Process.alive?(child) do
++          Process.demonitor(child_ref, [:flush])
++          send(peer, {:child_unwatched, self()})
++          controlled_guard(peer, parent_ref, session_ref, root_ref, peer_ref, nil, nil)
++        else
++          Process.exit(peer, :kill)
++        end
++
++      {:DOWN, ^parent_ref, :process, _, _} ->
++        Process.exit(peer, :kill)
++
++      {:DOWN, ^session_ref, :process, _, _} ->
++        Process.exit(peer, :kill)
++
++      {:DOWN, ^root_ref, :process, _, _} ->
++        Process.exit(peer, :kill)
++
++      {:DOWN, ^peer_ref, :process, _, _} ->
++        :ok
++
++      {:DOWN, ref, :process, _, _} when ref == child_ref ->
++        Process.exit(peer, :kill)
++    end
++  end
++
++  defp controlled_wait(root, peer, monitor, token, timeout) do
++    result =
++      receive do
++        {:controlled_result, ^token, ^peer, value} -> value
++        {:DOWN, ^monitor, :process, ^peer, _} -> :down
++      after
++        timeout ->
++          Process.exit(peer, :kill)
++          :timeout
++      end
++
++    cleanup_deadline = System.monotonic_time(:millisecond) + 4_000
++
++    down =
++      if result == :down do
++        true
++      else
++        receive do
++          {:DOWN, ^monitor, :process, ^peer, _} -> true
++        after
++          cleanup_remaining(cleanup_deadline) -> false
++        end
++      end
++
++    remaining = cleanup_remaining(cleanup_deadline)
++    if remaining == 0, do: exit(:cleanup_unconfirmed)
++    status = GenServer.call(root, {:child_cancelled, token, peer}, remaining)
++
++    {_child, guard} = if match?({_, _}, status), do: status, else: {nil, nil}
++
++    guard_down =
++      if is_pid(guard) do
++        guard_ref = Process.monitor(guard)
++
++        receive do
++          {:DOWN, ^guard_ref, :process, ^guard, _} -> true
++        after
++          cleanup_remaining(cleanup_deadline) ->
++            Process.demonitor(guard_ref, [:flush])
++            false
++        end
++      else
++        false
++      end
++
++    cleanup =
++      case status do
++        {nil, guard} when is_pid(guard) ->
++          :ok
++
++        {child, guard} when is_pid(child) and is_pid(guard) ->
++          receive do
++            {:child_scope_finished, ^token, ^child, result} -> result
++          after
++            cleanup_remaining(cleanup_deadline) -> {:error, :cleanup_unconfirmed}
++          end
++
++        _ ->
++          {:error, :cleanup_unconfirmed}
++      end
++
++    remaining = cleanup_remaining(cleanup_deadline)
++    if remaining == 0, do: exit(:cleanup_unconfirmed)
++    :ok = GenServer.call(root, {:forget_child, token, peer}, remaining)
++
++    cond do
++      not down or not guard_down or cleanup != :ok -> {:unknown, :cleanup_unconfirmed}
++      match?({:returned, _}, result) -> {:ok, elem(result, 1)}
++      true -> {:unknown, :effect_interrupted}
++    end
++  catch
++    :exit, _ -> {:unknown, :cleanup_unconfirmed}
++  end
++
++  defp cleanup_remaining(deadline),
++    do: max(deadline - System.monotonic_time(:millisecond), 0)
++
+   @doc false
+   def file_effect_owner, do: Process.get(@effect_owner_key, self())
+ 
+--- a/lib/ipse/session/lock.ex
++++ b/lib/ipse/session/lock.ex
+@@ -34,6 +34,9 @@
+   def track_in(nil, _, _), do: :ok
+   def track_in(guard, pid, kind), do: GenServer.call(guard, {:track, pid, kind})
+ 
++  def track_child_scope(nil, _), do: :ok
++  def track_child_scope(guard, pid), do: GenServer.call(guard, {:track_child_scope, pid})
++
+   def track_session(child) do
+     guard = for_owner(child)
+     if is_nil(guard), do: exit(:child_lock_unavailable)
+@@ -76,6 +79,17 @@
+     else
+       {:reply, {:error, :session_lock_refused}, s}
+     end
++  end
++
++  def handle_call({:track_child_scope, pid}, {caller, _}, s) when is_pid(pid) do
++    parent_scope? = Enum.any?(s.dependents, fn {_, pair} -> pair == {caller, :scope} end)
++
++    if parent_scope? and Process.alive?(caller) and Process.alive?(pid) do
++      ref = Process.monitor(pid)
++      {:reply, :ok, %{s | dependents: Map.put(s.dependents, ref, {pid, :scope})}}
++    else
++      {:reply, {:error, :session_lock_refused}, s}
++    end
+   end
+ 
+   def handle_call(:release, {owner, _}, %{owner: owner} = s) do
+--- /dev/null
++++ b/test/ipse/session/resources_controlled_test.exs
+@@ -0,0 +1,375 @@
++defmodule ControlledEffectDiagnosticTest do
++  use ExUnit.Case, async: false
++  alias Ipse.Session.Resources
++
++  setup do
++    {:ok, _} = Application.ensure_all_started(:ipse)
++    {:ok, root} = Resources.start(self())
++
++    worker =
++      spawn(fn ->
++        receive do
++          {:run, parent, timeout, mode} ->
++            Resources.bind(root)
++
++            value =
++              Resources.controlled_file_effect(
++                fn ->
++                  scope = Resources.current()
++                  peer = self()
++
++                  resource =
++                    spawn(fn ->
++                      Resources.bind(scope)
++                      {:ok, ticket} = Resources.register(:lock)
++                      send(parent, {:child_resource, self(), peer, ticket.id})
++
++                      receive do
++                        {:ipse_cancel_resource, id} when id == ticket.id ->
++                          if mode == :confirm,
++                            do: Resources.closed(ticket, :ok),
++                            else: receive(do: (:never -> :ok))
++                      end
++                    end)
++
++                  send(parent, {:effect_running, self(), resource})
++                  receive do: (:never -> :ok)
++                end,
++                timeout
++              )
++
++            send(parent, {:effect_result, value})
++        end
++      end)
++
++    :ok = Resources.attach(root, worker)
++
++    on_exit(fn ->
++      if Process.alive?(worker), do: Process.exit(worker, :kill)
++      if Process.alive?(root), do: Resources.close(root)
++    end)
++
++    %{root: root, worker: worker}
++  end
++
++  test "timeout kills peer and waits for its resource receipt", c do
++    send(c.worker, {:run, self(), 300, :confirm})
++    assert_receive {:child_resource, resource, peer, _}, 3000
++    ref = Process.monitor(resource)
++    assert_receive {:effect_result, {:unknown, :effect_interrupted}}, 7000
++    refute Process.alive?(peer)
++    assert_receive {:DOWN, ^ref, :process, ^resource, _}, 1000
++  end
++
++  test "a withheld resource receipt cannot confirm cleanup", c do
++    send(c.worker, {:run, self(), 1000, :withhold})
++    assert_receive {:child_resource, resource, peer, _}, 3000
++    [{token, entry}] = Map.to_list(:sys.get_state(c.root).child_tokens)
++    assert :unconfirmed == GenServer.call(c.root, {:child_cancelled, token, peer})
++    send(c.worker, {:child_scope_finished, make_ref(), entry.child, :ok})
++    send(c.worker, {:child_scope_finished, token, self(), :ok})
++
++    try do
++      assert_receive {:effect_result, {:unknown, :cleanup_unconfirmed}}, 9000
++    after
++      Process.exit(resource, :kill)
++    end
++  end
++end
++
++defmodule ControlledEffectNativeDiagnosticTest do
++  use ExUnit.Case, async: false
++  alias Ipse.Session.Resources
++  alias Ipse.Runner.Transaction, as: T
++
++  test "deadline awaits native controller cleanup before allowing a fresh lock" do
++    {:ok, _} = Application.ensure_all_started(:ipse)
++    dir = Path.join(Path.expand(System.tmp_dir!()), "controlled-native-" <> Ipse.Usage.id())
++    File.mkdir_p!(dir)
++    File.chmod!(dir, 0o700)
++    path = Path.join(dir, ".lock")
++    {:ok, root} = Resources.start(self())
++    parent = self()
++
++    worker =
++      spawn(fn ->
++        receive do
++          :run ->
++            Resources.bind(root)
++
++            outcome =
++              Resources.controlled_file_effect(
++                fn ->
++                  result = T.acquire(path)
++                  send(parent, {:native_acquire, result})
++                  {:ok, cap} = result
++                  send(parent, {:native_held, self(), cap.controller})
++                  receive do: (:never -> :ok)
++                end,
++                400
++              )
++
++            send(parent, {:native_outcome, outcome})
++        end
++      end)
++
++    try do
++      :ok = Resources.attach(root, worker)
++      send(worker, :run)
++      assert_receive {:native_held, peer, controller}, 5000
++      ref = Process.monitor(controller)
++      assert_receive {:native_outcome, {:unknown, :effect_interrupted}}, 10000
++      refute Process.alive?(peer)
++      assert_receive {:DOWN, ^ref, :process, ^controller, _}, 3000
++      assert {:ok, fresh} = T.acquire(path)
++      assert :ok = T.release(fresh)
++    after
++      if Process.alive?(worker), do: Process.exit(worker, :kill)
++      if Process.alive?(root), do: Resources.close(root)
++      File.rm_rf!(dir)
++    end
++  end
++end
++
++defmodule ControlledEffectIsolationDiagnosticTest do
++  use ExUnit.Case, async: false
++  alias Ipse.Session.Resources
++
++  test "timing out one child does not close a sibling" do
++    {:ok, _} = Application.ensure_all_started(:ipse)
++    {:ok, root} = Resources.start(self())
++    parent = self()
++
++    worker =
++      spawn(fn ->
++        receive do
++          :run ->
++            Resources.bind(root)
++            sibling = Resources.async(fn -> receive do: (:stop -> :done) end)
++            result = Resources.controlled_file_effect(fn -> receive do: (:never -> :ok) end, 200)
++            send(parent, {:isolation, result, sibling.pid, Process.alive?(sibling.pid)})
++            receive do: (:finish -> :ok)
++        end
++      end)
++
++    try do
++      :ok = Resources.attach(root, worker)
++      send(worker, :run)
++      assert_receive {:isolation, {:unknown, :effect_interrupted}, sibling, true}, 7000
++      assert Process.alive?(sibling)
++      send(sibling, :stop)
++      send(worker, :finish)
++    after
++      if Process.alive?(worker), do: Process.exit(worker, :kill)
++      if Process.alive?(root), do: Resources.close(root)
++    end
++  end
++end
++
++defmodule ControlledEffectOwnerLossDiagnosticTest do
++  use ExUnit.Case, async: false
++  alias Ipse.Session.Resources
++
++  test "root owner death stops the peer even while root cleanup is waiting" do
++    {:ok, _} = Application.ensure_all_started(:ipse)
++    observer = self()
++    owner = spawn(fn -> receive do: (:never -> :ok) end)
++    {:ok, root} = Resources.start(owner)
++
++    resource =
++      spawn(fn ->
++        Resources.bind(root)
++        {:ok, ticket} = Resources.register(:lock)
++        send(observer, {:dummy_ready, self()})
++
++        receive do
++          {:ipse_cancel_resource, id} when id == ticket.id ->
++            send(observer, {:cleanup_blocked, self()})
++            receive do: (:release -> :ok)
++            Resources.closed(ticket, :ok)
++        end
++      end)
++
++    worker =
++      spawn(fn ->
++        receive do
++          :run ->
++            Resources.bind(root)
++
++            Resources.controlled_file_effect(
++              fn ->
++                send(observer, {:active_peer, self()})
++                receive do: (:never -> :ok)
++              end,
++              5000
++            )
++        end
++      end)
++
++    try do
++      assert_receive {:dummy_ready, ^resource}, 3000
++      :ok = Resources.attach(root, worker)
++      send(worker, :run)
++      assert_receive {:active_peer, peer}, 3000
++      ref = Process.monitor(peer)
++      Process.exit(owner, :kill)
++      assert_receive {:cleanup_blocked, ^resource}, 3000
++      assert_receive {:DOWN, ^ref, :process, ^peer, _}, 1500
++      send(resource, :release)
++    after
++      if Process.alive?(owner), do: Process.exit(owner, :kill)
++      if Process.alive?(worker), do: Process.exit(worker, :kill)
++      if Process.alive?(resource), do: Process.exit(resource, :kill)
++      if Process.alive?(root), do: Resources.close(root)
++    end
++  end
++end
++
++defmodule ControlledEffectStoppedNativeDiagnosticTest do
++  use ExUnit.Case, async: false
++  alias Ipse.Session.Resources
++  alias Ipse.Runner.Transaction, as: T
++
++  test "stopped actual native controller cannot yield confirmed cleanup" do
++    {:ok, _} = Application.ensure_all_started(:ipse)
++    dir = Path.join(Path.expand(System.tmp_dir!()), "controlled-stopped-" <> Ipse.Usage.id())
++    File.mkdir_p!(dir)
++    File.chmod!(dir, 0o700)
++    path = Path.join(dir, ".lock")
++    {:ok, root} = Resources.start(self())
++    parent = self()
++
++    worker =
++      spawn(fn ->
++        receive do
++          :run ->
++            Resources.bind(root)
++
++            outcome =
++              Resources.controlled_file_effect(
++                fn ->
++                  {:ok, cap} = T.acquire(path)
++                  send(parent, {:stopped_native_held, self(), cap.controller})
++                  receive do: (:never -> :ok)
++                end,
++                1000
++              )
++
++            send(parent, {:stopped_native_outcome, outcome})
++        end
++      end)
++
++    :ok = Resources.attach(root, worker)
++    send(worker, :run)
++    assert_receive {:stopped_native_held, _peer, controller}, 5000
++    port = :sys.get_state(controller).port
++    {:os_pid, helper} = Port.info(port, :os_pid)
++    assert {_, 0} = System.cmd("kill", ["-STOP", Integer.to_string(helper)])
++
++    try do
++      assert_receive {:stopped_native_outcome, {:unknown, :cleanup_unconfirmed}}, 10000
++    after
++      System.cmd("kill", ["-KILL", Integer.to_string(helper)], stderr_to_stdout: true)
++      if Process.alive?(worker), do: Process.exit(worker, :kill)
++      if Process.alive?(root), do: Resources.close(root)
++      File.rm_rf!(dir)
++    end
++  end
++end
++
++defmodule ControlledEffectScopeDeathDiagnosticTest do
++  use ExUnit.Case, async: false
++  alias Ipse.Session.Resources
++
++  test "lost child scope kills peer and never reports confirmed cleanup" do
++    {:ok, _} = Application.ensure_all_started(:ipse)
++    {:ok, root} = Resources.start(self())
++    parent = self()
++
++    worker =
++      spawn(fn ->
++        receive do
++          :run ->
++            Resources.bind(root)
++
++            outcome =
++              Resources.controlled_file_effect(
++                fn ->
++                  send(parent, {:owned_peer_and_scope, self(), Resources.current()})
++                  receive do: (:never -> :ok)
++                end,
++                5000
++              )
++
++            send(parent, {:scope_loss_outcome, outcome})
++            receive do: (:finish -> :ok)
++        end
++      end)
++
++    try do
++      :ok = Resources.attach(root, worker)
++      send(worker, :run)
++      assert_receive {:owned_peer_and_scope, peer, child}, 3000
++      ref = Process.monitor(peer)
++      Process.exit(child, :kill)
++      assert_receive {:DOWN, ^ref, :process, ^peer, _}, 3000
++      assert_receive {:scope_loss_outcome, {:unknown, :cleanup_unconfirmed}}, 9000
++      send(worker, :finish)
++    after
++      if Process.alive?(worker), do: Process.exit(worker, :kill)
++      if Process.alive?(root), do: Resources.close(root)
++    end
++  end
++end
++
++defmodule ControlledEffectNestingDiagnosticTest do
++  use ExUnit.Case, async: false
++  alias Ipse.Session.Resources
++
++  test "ordinary nested effects remain inline while nested controlled scopes refuse" do
++    {:ok, _} = Application.ensure_all_started(:ipse)
++    {:ok, root} = Resources.start(self())
++    parent = self()
++
++    worker =
++      spawn(fn ->
++        receive do
++          :run ->
++            Resources.bind(root)
++
++            outcome =
++              Resources.controlled_file_effect(
++                fn ->
++                  peer = self()
++                  assert Resources.file_effect(fn -> self() end) == peer
++
++                  assert {:error, :nested_controlled_effect} =
++                           Resources.controlled_file_effect(
++                             fn ->
++                               send(parent, :unexpected_nested_effect)
++                             end,
++                             1000
++                           )
++
++                  :ok
++                end,
++                3000
++              )
++
++            send(parent, {:nesting_result, outcome})
++            receive do: (:done -> :ok)
++        end
++      end)
++
++    try do
++      :ok = Resources.attach(root, worker)
++      send(worker, :run)
++      assert_receive {:nesting_result, {:ok, :ok}}, 5000
++      refute_receive :unexpected_nested_effect, 100
++      send(worker, :done)
++    after
++      if Process.alive?(worker), do: Process.exit(worker, :kill)
++      if Process.alive?(root), do: Resources.close(root)
++    end
++  end
++end
+--- /dev/null
++++ b/test/ipse/session/resources_controlled_close_test.exs
+@@ -0,0 +1,148 @@
++defmodule IndependentNormalCloseFixedTest do
++  use ExUnit.Case, async: false
++  alias Ipse.Session.Resources
++
++  test "normal child close fences peer before acknowledging closure" do
++    {:ok, _} = Application.ensure_all_started(:ipse)
++    {:ok, root} = Resources.start(self())
++    parent = self()
++
++    worker =
++      spawn(fn ->
++        receive do
++          :start ->
++            Resources.bind(root)
++
++            outcome =
++              Resources.controlled_file_effect(
++                fn ->
++                  send(parent, {:ready, self(), Resources.current()})
++
++                  receive do
++                    :continue ->
++                      send(parent, :effect_after_close)
++                      :effect_returned
++                  end
++                end,
++                3000
++              )
++
++            send(parent, {:outcome, outcome})
++            receive do: (:done -> :ok)
++        end
++      end)
++
++    try do
++      :ok = Resources.attach(root, worker)
++      send(worker, :start)
++      assert_receive {:ready, peer, child}, 3000
++      assert :ok == Resources.close(child)
++      send(peer, :continue)
++      refute_receive :effect_after_close, 100
++      assert_receive {:outcome, {:unknown, :effect_interrupted}}, 3000
++    after
++      send(worker, :done)
++      if Process.alive?(root), do: Resources.close(root)
++    end
++  end
++end
++
++defmodule ChildSelfCloseDiagnosticTest do
++  use ExUnit.Case, async: false
++  alias Ipse.Session.Resources
++
++  test "active peer cannot close its own scope and continue" do
++    {:ok, _} = Application.ensure_all_started(:ipse)
++    {:ok, root} = Resources.start(self())
++    parent = self()
++
++    worker =
++      spawn(fn ->
++        receive do
++          :start ->
++            Resources.bind(root)
++
++            outcome =
++              Resources.controlled_file_effect(
++                fn ->
++                  Resources.close(Resources.current())
++                  send(parent, :self_close_escaped)
++                end,
++                3000
++              )
++
++            send(parent, {:self_close_outcome, outcome})
++        end
++      end)
++
++    try do
++      :ok = Resources.attach(root, worker)
++      send(worker, :start)
++      assert_receive {:self_close_outcome, {:unknown, :effect_interrupted}}, 5000
++      refute_receive :self_close_escaped, 100
++    after
++      if Process.alive?(worker), do: Process.exit(worker, :kill)
++      if Process.alive?(root), do: Resources.close(root)
++    end
++  end
++end
++
++defmodule ChildStopCastDiagnosticTest do
++  use ExUnit.Case, async: false
++  alias Ipse.Session.Resources
++
++  test "child stop fences peer before child exit even when guard is suspended" do
++    {:ok, _} = Application.ensure_all_started(:ipse)
++    {:ok, root} = Resources.start(self())
++    parent = self()
++
++    worker =
++      spawn(fn ->
++        receive do
++          :start ->
++            Resources.bind(root)
++
++            outcome =
++              Resources.controlled_file_effect(
++                fn ->
++                  send(parent, {:cast_ready, self(), Resources.current()})
++                  receive do: (:continue -> send(parent, :effect_after_cast))
++                end,
++                5000
++              )
++
++            send(parent, {:cast_outcome, outcome})
++            receive do: (:done -> :ok)
++        end
++      end)
++
++    :ok = Resources.attach(root, worker)
++    send(worker, :start)
++    assert_receive {:cast_ready, peer, child}, 3000
++    {:links, links} = Process.info(peer, :links)
++    [guard] = Enum.filter(links, &(is_pid(&1) and &1 != child))
++    assert :erlang.suspend_process(guard)
++
++    try do
++      child_ref = Process.monitor(child)
++      Resources.stop_async(child)
++      assert_receive {:DOWN, ^child_ref, :process, ^child, _}, 5000
++      send(peer, :continue)
++      refute_receive :effect_after_cast, 100
++      refute Process.alive?(peer)
++
++      receive do
++        {:cast_outcome, {:unknown, :effect_interrupted}} ->
++          refute Process.alive?(guard)
++      after
++        100 ->
++          if Process.alive?(guard), do: :erlang.resume_process(guard)
++          assert_receive {:cast_outcome, {:unknown, :effect_interrupted}}, 5000
++      end
++    after
++      if Process.alive?(guard), do: :erlang.resume_process(guard)
++      send(worker, :done)
++      if Process.alive?(root), do: Resources.close(root)
++    end
++  end
++end
+--- /dev/null
++++ b/test/ipse/session/resources_controlled_guard_test.exs
+@@ -0,0 +1,74 @@
++defmodule RetainedGuardDiagnosticTest do
++  use ExUnit.Case, async: false
++  alias Ipse.Session.{Lock, Resources}
++  alias Ipse.Runner.Transaction, as: T
++
++  test "actual retained Session lock guard permits a child native controller" do
++    {:ok, _} = Application.ensure_all_started(:ipse)
++    dir = Path.join(Path.expand(System.tmp_dir!()), "controlled-retained-" <> Ipse.Usage.id())
++    File.mkdir_p!(dir)
++    File.chmod!(dir, 0o700)
++    domain = Path.join(dir, "domain")
++    control = Path.join(dir, "control")
++    File.mkdir_p!(domain)
++    File.mkdir_p!(control)
++    File.chmod!(domain, 0o700)
++    File.chmod!(control, 0o700)
++    {:ok, _} = Lock.acquire(Path.join(dir, "session.lock"))
++    guard = Lock.current()
++    {:ok, root} = Resources.start(self())
++    :ok = Lock.track(root, :scope)
++    assert {:error, :session_lock_refused} = Lock.track_child_scope(guard, self())
++    parent = self()
++
++    worker =
++      spawn(fn ->
++        receive do
++          :run ->
++            Resources.bind(root)
++
++            result =
++              Resources.controlled_file_effect(
++                fn ->
++                  result = T.acquire(Path.join(domain, ".lock"))
++                  send(parent, {:guarded_acquire, result})
++
++                  case result do
++                    {:ok, cap} ->
++                      peer = self()
++
++                      assert :ok =
++                               Resources.file_effect(fn ->
++                                 assert self() == peer
++                                 assert {:ok, nested} = T.acquire(Path.join(control, ".lock"))
++                                 T.release(nested)
++                               end)
++
++                      T.release(cap)
++
++                    _ ->
++                      result
++                  end
++                end,
++                5000
++              )
++
++            send(parent, {:guarded_result, result})
++            receive do: (:finish -> :ok)
++        end
++      end)
++
++    try do
++      :ok = Resources.attach(root, worker)
++      send(worker, :run)
++      assert_receive {:guarded_acquire, {:ok, _}}, 8000
++      assert_receive {:guarded_result, {:ok, :ok}}, 8000
++      send(worker, :finish)
++    after
++      if Process.alive?(worker), do: Process.exit(worker, :kill)
++      if Process.alive?(root), do: Resources.close(root)
++      if Process.alive?(guard), do: Lock.release(guard)
++      File.rm_rf!(dir)
++    end
++  end
++end
+--- /dev/null
++++ b/test/ipse/session/resources_controlled_receipt_test.exs
+@@ -0,0 +1,123 @@
++defmodule ControlledEffectReceiptReplayTest do
++  use ExUnit.Case, async: false
++  alias Ipse.Session.Resources
++
++  test "a replayed prior child receipt cannot settle a later scope" do
++    {:ok, _} = Application.ensure_all_started(:ipse)
++    {:ok, root} = Resources.start(self())
++    parent = self()
++
++    worker =
++      spawn(fn ->
++        receive do
++          :start ->
++            Resources.bind(root)
++
++            first =
++              Resources.controlled_file_effect(
++                fn ->
++                  send(parent, {:first_ready, self(), Resources.current()})
++                  receive do: (:continue -> :ok)
++                end,
++                3000
++              )
++
++            send(parent, {:first_result, first})
++            receive do: (:second -> :ok)
++
++            second =
++              Resources.controlled_file_effect(
++                fn ->
++                  scope = Resources.current()
++
++                  resource =
++                    spawn(fn ->
++                      Resources.bind(scope)
++                      {:ok, ticket} = Resources.register(:lock)
++                      send(parent, {:withholding_resource, self()})
++
++                      receive do
++                        {:ipse_cancel_resource, id} when id == ticket.id ->
++                          receive do: (:never -> :ok)
++                      end
++                    end)
++
++                  send(parent, {:second_ready, self(), resource})
++                  receive do: (:never -> :ok)
++                end,
++                800
++              )
++
++            send(parent, {:second_result, second})
++            receive do: (:finish -> :ok)
++        end
++      end)
++
++    try do
++      :ok = Resources.attach(root, worker)
++      send(worker, :start)
++      assert_receive {:first_ready, peer, child}, 3000
++      [{old_token, _}] = Map.to_list(:sys.get_state(root).child_tokens)
++      send(peer, :continue)
++      assert_receive {:first_result, {:ok, :ok}}, 5000
++      send(worker, :second)
++      assert_receive {:withholding_resource, resource}, 3000
++      assert_receive {:second_ready, _, ^resource}, 3000
++
++      try do
++        send(worker, {:child_scope_finished, old_token, child, :ok})
++        assert_receive {:second_result, {:unknown, :cleanup_unconfirmed}}, 9000
++      after
++        Process.exit(resource, :kill)
++      end
++
++      send(worker, :finish)
++    after
++      if Process.alive?(worker), do: Process.exit(worker, :kill)
++      if Process.alive?(root), do: Resources.close(root)
++    end
++  end
++end
++
++defmodule ControlledEffectDuplicateNonceTest do
++  use ExUnit.Case, async: false
++  alias Ipse.Session.Resources
++
++  test "a duplicate root nonce cannot replace the original peer" do
++    {:ok, _} = Application.ensure_all_started(:ipse)
++    {:ok, root} = Resources.start(self())
++    peer = spawn(fn -> receive do: (:never -> :ok) end)
++    other = spawn(fn -> receive do: (:never -> :ok) end)
++    token = make_ref()
++    parent = self()
++
++    reporter =
++      spawn(fn ->
++        receive do
++          :run ->
++            first = GenServer.call(root, {:track_child_effect, peer, token})
++            second = GenServer.call(root, {:track_child_effect, other, token})
++            send(parent, {:duplicate_results, first, second})
++            receive do: (:finish -> :ok)
++            GenServer.cast(root, {:abandon_child, token, peer, self()})
++        end
++      end)
++
++    try do
++      assert {:error, :cleanup_scope_closed} =
++               GenServer.call(root, {:track_child_effect, peer, token})
++
++      :ok = Resources.attach(root, reporter)
++      send(reporter, :run)
++      assert_receive {:duplicate_results, {:ok, _}, {:error, :cleanup_scope_closed}}, 3000
++      assert :sys.get_state(root).child_tokens[token].peer == peer
++      Process.exit(peer, :kill)
++      send(reporter, :finish)
++    after
++      if Process.alive?(reporter), do: Process.exit(reporter, :kill)
++      if Process.alive?(peer), do: Process.exit(peer, :kill)
++      if Process.alive?(other), do: Process.exit(other, :kill)
++      if Process.alive?(root), do: Resources.close(root)
++    end
++  end
++end

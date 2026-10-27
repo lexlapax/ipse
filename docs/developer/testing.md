@@ -36,6 +36,7 @@ a helper's return shape.
 | Effects and unknown outcomes | `test/ipse/session/recovery_test.exs`, `test/ipse/session/file_effect_test.exs` |
 | Journal/lock/reservation/source closure | `test/ipse/journal/`, `test/ipse/journal_test.exs` |
 | Task/native cleanup | `test/ipse/session/resources_test.exs`, `test/ipse/runner/` |
+| Controlled peer ownership | `test/ipse/session/resources_controlled_test.exs`, `test/ipse/session/resources_controlled_close_test.exs`, `test/ipse/session/resources_controlled_guard_test.exs`, `test/ipse/session/resources_controlled_receipt_test.exs` |
 | Provider wire/stream/usage | `test/ipse/provider/`, `test/ipse/provider_test.exs`, `test/ipse/usage/` |
 | Shared adapter contract and captured HTTP requests | `test/ipse/provider/conformance_test.exs`; event builders in `test/support/provider_conformance.ex`, transport fixture in `test/support/provider_fixture.ex` |
 | Generic extension or bundled/package behavior | `test/ipse/extension/`, `test/extensions/` |

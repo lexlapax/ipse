@@ -34,6 +34,9 @@ defmodule Ipse.Session.Lock do
   def track_in(nil, _, _), do: :ok
   def track_in(guard, pid, kind), do: GenServer.call(guard, {:track, pid, kind})
 
+  def track_child_scope(nil, _), do: :ok
+  def track_child_scope(guard, pid), do: GenServer.call(guard, {:track_child_scope, pid})
+
   def track_session(child) do
     guard = for_owner(child)
     if is_nil(guard), do: exit(:child_lock_unavailable)
@@ -73,6 +76,17 @@ defmodule Ipse.Session.Lock do
     if caller == s.owner or scoped or writer do
       ref = Process.monitor(pid)
       {:reply, :ok, %{s | dependents: Map.put(s.dependents, ref, {pid, kind})}}
+    else
+      {:reply, {:error, :session_lock_refused}, s}
+    end
+  end
+
+  def handle_call({:track_child_scope, pid}, {caller, _}, s) when is_pid(pid) do
+    parent_scope? = Enum.any?(s.dependents, fn {_, pair} -> pair == {caller, :scope} end)
+
+    if parent_scope? and Process.alive?(caller) and Process.alive?(pid) do
+      ref = Process.monitor(pid)
+      {:reply, :ok, %{s | dependents: Map.put(s.dependents, ref, {pid, :scope})}}
     else
       {:reply, {:error, :session_lock_refused}, s}
     end
