@@ -281,7 +281,8 @@ defmodule Ipse.Extension.SessionTest do
     assert {:ok, pid} = start(c, config)
     assert :idle = Session.info(pid).phase
     assert :ok = Session.prompt(pid, "original task")
-    assert_receive {:model_context, [_system, _reference, user]}, 5_000
+    assert_receive {:model_context, [_system, _reference, user, selection]}, 5_000
+    assert Ipse.Session.Reference.reference?(selection)
     assert String.starts_with?(user["content"], "original task")
     [_, first, second] = String.split(user["content"], "[Untrusted extension context:")
     assert first =~ "first; artifact"
@@ -306,8 +307,9 @@ defmodule Ipse.Extension.SessionTest do
                  &1["message"]["content"] == "original task")
            )
 
-    assert {:ok, [restored_user, assistant]} = Session.restore_context(events)
+    assert {:ok, [restored_user, restored_selection, assistant]} = Session.restore_context(events)
     assert restored_user == user
+    assert restored_selection == selection
     assert assistant["content"] == "visible"
     assert assistant["provider_data"] == %{"native" => "synthetic-private-continuation"}
     projections = Enum.filter(events, &(&1["type"] == "extension_transform_result"))
@@ -480,7 +482,8 @@ defmodule Ipse.Extension.SessionTest do
     config = independent(c, "append")
     assert {:ok, pid} = start(c, config)
     assert :ok = Session.prompt(pid, "task")
-    assert_receive {:model_context, [_system, _reference, user]}, 5_000
+    assert_receive {:model_context, [_system, _reference, user, selection]}, 5_000
+    assert Ipse.Session.Reference.reference?(selection)
     assert user["content"] =~ "independent note"
     assert_receive {:ipse, ^pid, {:done, :ok}}, 5_000
     assert_raise ArgumentError, fn -> String.to_existing_atom("Elixir." <> c.independent_name) end

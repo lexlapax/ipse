@@ -206,11 +206,22 @@ defmodule Ipse.MCP.HTTPTest do
 
     assert outcomes == ["unknown", "not_started"]
     :ok = Ipse.Session.close(pid)
+    {:ok, closed_events} = Ipse.Journal.load(opts[:state_dir], id)
+    assert Enum.take(closed_events, length(events)) == events
+
+    assert [
+             %{
+               "type" => "lifecycle_epoch_closed",
+               "session_id" => ^id,
+               "closure" => "close",
+               "cleanup_confirmed" => true
+             }
+           ] = Enum.drop(closed_events, length(events))
 
     {:ok, resumed} =
       DynamicSupervisor.start_child(Ipse.Sessions, {Ipse.Session, Keyword.put(opts, :id, id)})
 
-    assert {:ok, ^events} = Ipse.Journal.load(opts[:state_dir], id)
+    assert {:ok, ^closed_events} = Ipse.Journal.load(opts[:state_dir], id)
     :ok = Ipse.Session.close(resumed)
     assert Agent.get(agent, & &1.calls) == 1
   end

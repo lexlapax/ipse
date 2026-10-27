@@ -80,6 +80,30 @@ Keep journal/native/cleanup assertions afterward. With after-turn jobs, wait for
 actual settlement rather than assuming that observation ends the turn.
 Observation watchdogs are not product latency guarantees.
 
+Fixture providers must distinguish an operator task from host context. A valid
+`Ipse.Session.Reference` message uses the user role and can follow a task or a
+completed tool group. When a fake chooses its next action from the latest task or
+tool result, select that message through the public validator:
+
+```elixir
+last_real = messages |> Enum.reject(&Ipse.Session.Reference.reference?/1) |> List.last()
+```
+
+Keep the complete input for assertions. Check the expected reference placement,
+content and safe tool tail separately; retain ordinary user messages and malformed
+reference markers. This fixture selection grants no production authority and must
+not remove host context from the real provider request.
+
+Compare an idle resume with the journal captured after `Session.close/1` completes.
+Close may append its lifecycle epoch receipt. Assert that the prior records remain
+an exact prefix and inspect that specific close receipt before comparing the
+resumed journal byte-for-byte or record-for-record. A close append is separate
+from an effect replay. When intentionally corrupting a journal, establish the
+original source binding first and assert the earliest actual refusal: a modified
+record or shifted byte offset can invalidate lifecycle sources before the
+domain-specific checkpoint validator runs. Keep a separate pure validator control
+when its narrower refusal is also part of the contract.
+
 Distinguish timeout before command-handler startup from timeout during active work.
 The evaluation-session fixture observes its worker's readiness and active Session
 phase before asserting post-effect cancellation; a separate delayed-start case
@@ -127,6 +151,9 @@ The declaration-CLI fixture copies tracked and nonignored untracked repository
 files into a temporary synthetic repository. Run the full suite from a clean
 committed clone when the working checkout contains private or unrelated untracked
 files; do not let a verification fixture copy those files as test input.
+An isolated source copy also needs its own Git metadata and admitted source index
+for this fixture's `git ls-files` call. Record that setup before execution; a
+directory copied without `.git` cannot establish a passing declaration workflow.
 
 When transferring code paths with `-pa`, exclude the implicit current-directory
 entry and reverse the argument sequence so successive prepends retain the original
@@ -545,6 +572,6 @@ secrets, and raw reports outside Git. Publish sanitized evidence only as authori
 Finish with behavior, exact commands/results, failed/excluded checks, assistance,
 and remaining limits. Dated evidence goes to the archive; status to the plan.
 Inspect the exact revision's [hosted workflow](../../.github/workflows/ci.yml), including
-later native/package steps. Its 45-minute platform job budget is separate from
+later native/package steps. Its 60-minute platform job budget is separate from
 model/worker/native/test deadlines. A green source step does not prove skipped
 later gates, and a partial review retains its omissions after local repairs.

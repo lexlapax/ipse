@@ -129,7 +129,8 @@ defmodule Ipse.WorkspaceSessionTest do
            )
 
     assert :ok = Ipse.Session.prompt(resumed, "$review")
-    assert_receive {:model_input, [system, reference, user_message]}, 2_000
+    assert_receive {:model_input, [system, reference, user_message, selection]}, 2_000
+    assert Ipse.Session.Reference.reference?(selection)
     assert reference["role"] == "user"
     assert reference["content"] =~ "saved-catalog-description"
     refute system["content"] =~ "saved-catalog-description"
@@ -146,7 +147,9 @@ defmodule Ipse.WorkspaceSessionTest do
     assert_receive {:model_input, messages}, 2_000
     assert Enum.at(messages, 1)["content"] =~ "new-shadow-description"
     refute hd(messages)["content"] =~ "new-shadow-description"
-    assert List.last(messages)["content"] =~ "new-shadow-body"
+    [user_message, selection] = Enum.take(messages, -2)
+    assert Ipse.Session.Reference.reference?(selection)
+    assert user_message["content"] =~ "new-shadow-body"
     assert_receive {:ipse, ^resumed, {:done, :ok}}, 2_000
     assert :ok = Ipse.Session.close(resumed)
     again = start(ctx, %{}, id)

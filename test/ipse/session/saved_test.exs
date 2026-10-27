@@ -238,7 +238,9 @@ defmodule Ipse.HandoffTest do
     assert config.provider == :ollama
     assert config.model == "current-fixture-model"
     assert config.approval == :deny
-    assert Enum.at(messages, -1) == %{"role" => "user", "content" => "A genuinely fresh task"}
+    assert [fresh, selection] = Enum.take(messages, -2)
+    assert fresh == %{"role" => "user", "content" => "A genuinely fresh task"}
+    assert Ipse.Session.Reference.reference?(selection)
     assert Enum.any?(messages, &(&1 == hd(state.messages)))
     assert_receive {:ipse, ^pid, {:done, :ok}}, 3000
     refute File.exists?(Path.join(c.root, "never-replay"))

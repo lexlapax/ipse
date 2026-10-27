@@ -5,10 +5,12 @@ defmodule Ipse.Session.PermissionsTest do
 
   defmodule Fixture do
     def complete(_config, messages, _tools, _emit) do
-      if List.last(messages)["role"] == "tool" do
+      last_real = messages |> Enum.reject(&Ipse.Session.Reference.reference?/1) |> List.last()
+
+      if last_real["role"] == "tool" do
         {:ok, %{"role" => "assistant", "content" => "Done"}, %{}}
       else
-        calls = List.last(messages)["content"] |> Jason.decode!()
+        calls = last_real["content"] |> Jason.decode!()
         {:ok, %{"role" => "assistant", "content" => "", "tool_calls" => calls}, %{}}
       end
     end

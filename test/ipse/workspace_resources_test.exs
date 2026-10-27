@@ -133,13 +133,25 @@ defmodule Ipse.SkillResourceSessionTest do
              }
 
       :ok = Ipse.Session.close(pid)
+      {:ok, closed_events} = Ipse.Journal.load(state, id)
+      assert Enum.take(closed_events, length(events)) == events
+
+      assert [
+               %{
+                 "type" => "lifecycle_epoch_closed",
+                 "session_id" => ^id,
+                 "closure" => "close",
+                 "cleanup_confirmed" => true
+               }
+             ] = Enum.drop(closed_events, length(events))
+
       File.write!(resource, "Changed resource must not replace history.")
 
       {:ok, resumed} =
         DynamicSupervisor.start_child(Ipse.Sessions, {Ipse.Session, Keyword.put(opts, :id, id)})
 
       on_exit(fn -> if Process.alive?(resumed), do: Ipse.Session.close(resumed) end)
-      assert {:ok, ^events} = Ipse.Journal.load(state, id)
+      assert {:ok, ^closed_events} = Ipse.Journal.load(state, id)
       :ok = Ipse.Session.prompt(resumed, "Continue from saved evidence.")
       assert_receive {:ipse, ^resumed, {:done, :ok}}, 3000
       {:ok, final_events} = Ipse.Journal.load(state, id)

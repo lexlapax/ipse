@@ -177,11 +177,22 @@ defmodule Ipse.ParallelDelegationTest do
 
     assert :sys.get_state(pid).delegations == 2
     :ok = Session.close(pid)
+    {:ok, closed_events} = Journal.load(ctx.state, id)
+    assert Enum.take(closed_events, length(events)) == events
+
+    assert [
+             %{
+               "type" => "lifecycle_epoch_closed",
+               "session_id" => ^id,
+               "closure" => "close",
+               "cleanup_confirmed" => true
+             }
+           ] = Enum.drop(closed_events, length(events))
 
     {:ok, resumed} =
       DynamicSupervisor.start_child(Ipse.Sessions, {Session, Keyword.put(opts, :id, id)})
 
-    assert {:ok, ^events} = Journal.load(ctx.state, id)
+    assert {:ok, ^closed_events} = Journal.load(ctx.state, id)
     assert Session.info(resumed).phase == :idle
     :ok = Session.close(resumed)
     mismatched = Keyword.put(opts, :config, %{opts[:config] | subagent_concurrency: 1})
@@ -386,11 +397,22 @@ defmodule Ipse.ParallelDelegationTest do
            )
 
     :ok = Session.close(pid)
+    {:ok, closed_events} = Journal.load(ctx.state, id)
+    assert Enum.take(closed_events, length(events)) == events
+
+    assert [
+             %{
+               "type" => "lifecycle_epoch_closed",
+               "session_id" => ^id,
+               "closure" => "close",
+               "cleanup_confirmed" => true
+             }
+           ] = Enum.drop(closed_events, length(events))
 
     {:ok, resumed} =
       DynamicSupervisor.start_child(Ipse.Sessions, {Session, Keyword.put(opts, :id, id)})
 
-    assert {:ok, ^events} = Journal.load(ctx.state, id)
+    assert {:ok, ^closed_events} = Journal.load(ctx.state, id)
     refute_receive {:child_started, _, _, _, _}, 50
     :ok = Session.close(resumed)
   end

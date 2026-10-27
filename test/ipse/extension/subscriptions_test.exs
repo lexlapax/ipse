@@ -491,7 +491,8 @@ defmodule Ipse.Extension.SubscriptionsTest do
     {:ok, session} = start(c, config)
     :ok = Session.prompt(session, "synthetic original")
     done(session, :ok)
-    assert_receive {:subscription_model, [_system, _reference, user]}
+    assert_receive {:subscription_model, [_system, _reference, user, selection]}
+    assert Ipse.Session.Reference.reference?(selection)
     [_, original, _, effective] = trace(c)
     assert original["event"]["data"]["text"] == "synthetic original"
     assert effective["event"]["data"]["text"] == user["content"]

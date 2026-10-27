@@ -8,7 +8,8 @@ defmodule Ipse.Extension.FeedsTest do
   defmodule Model do
     def complete(config, messages, _tools, _emit) do
       send(config.test_pid, {:feed_model, self(), messages})
-      first = List.last(messages)["role"] == "user" and config[:delegation_origin] == nil
+      last_real = messages |> Enum.reject(&Ipse.Session.Reference.reference?/1) |> List.last()
+      first = last_real["role"] == "user" and config[:delegation_origin] == nil
 
       if first and config[:gate_model],
         do:

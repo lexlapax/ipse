@@ -347,8 +347,11 @@ defmodule Ipse.Extension.TextTest do
     refute File.exists?(ctx.path <> ".init")
     assert :ok = Session.prompt(pid, "original input")
 
-    assert_receive {:text_provider, _, [_system, _reference, %{"content" => "original input"}]},
+    assert_receive {:text_provider, _,
+                    [_system, _reference, %{"content" => "original input"}, selection]},
                    5000
+
+    assert Ipse.Session.Reference.reference?(selection)
 
     assert_receive {:ipse, ^pid, {:done, :ok}}, 5000
     await(fn -> Enum.any?(frames(ctx), &(&1["frame"]["kind"] == "end")) end)

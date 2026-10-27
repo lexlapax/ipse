@@ -5,8 +5,9 @@ defmodule Ipse.MCP.CatalogSessionTest do
   defmodule Model do
     def complete(config, messages, tools, _emit) do
       send(config.test_pid, {:catalog_model_input, messages, tools})
+      last_real = messages |> Enum.reject(&Ipse.Session.Reference.reference?/1) |> List.last()
 
-      if List.last(messages)["role"] == "tool" do
+      if last_real["role"] == "tool" do
         {:ok, %{"role" => "assistant", "content" => "Fixture finished"}, %{}}
       else
         calls = [
@@ -72,6 +73,15 @@ defmodule Ipse.MCP.CatalogSessionTest do
     assert Enum.any?(before, &(&1["type"] == "tool_started" and &1["name"] == resource))
     :ok = Ipse.Session.approve(pid, ref, true)
     assert_receive {:catalog_model_input, messages, _}, 5_000
+    assert Ipse.Session.Reference.reference?(List.last(messages))
+    assert List.last(messages)["role"] == "user"
+    assert Ipse.Session.Reference.safe_tail?(messages)
+
+    assert messages
+           |> Enum.reject(&Ipse.Session.Reference.reference?/1)
+           |> List.last()
+           |> Map.fetch!("role") == "tool"
+
     assert_receive {:ipse, ^pid, {:done, :ok}}, 5_000
     results = Enum.filter(messages, &(&1["role"] == "tool"))
     assert length(results) == 2

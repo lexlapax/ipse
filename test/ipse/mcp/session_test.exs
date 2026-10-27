@@ -6,13 +6,14 @@ defmodule Ipse.MCP.SessionTest do
   defmodule Model do
     def complete(config, messages, tools, _emit) do
       send(config.test_pid, {:model_input, messages, tools})
+      last_real = messages |> Enum.reject(&Ipse.Session.Reference.reference?/1) |> List.last()
 
       if config[:model_gate] do
         send(config.model_gate, {:waiting_model, self()})
         receive do: (:release_model -> :ok)
       end
 
-      if List.last(messages)["role"] == "tool" or List.last(messages)["content"] == "inspect" do
+      if last_real["role"] == "tool" or last_real["content"] == "inspect" do
         {:ok, %{"role" => "assistant", "content" => "Fixture finished"}, %{}}
       else
         calls =
@@ -51,6 +52,16 @@ defmodule Ipse.MCP.SessionTest do
     :ok = Ipse.Session.approve(pid, ref, true)
     assert_receive {:ipse, ^pid, {:done, :ok}}, 5_000
     assert File.read!(Path.join(ctx.root, "note.txt")) == "approved fixture 1"
+    assert_receive {:model_input, messages, _}, 5_000
+    assert Ipse.Session.Reference.reference?(List.last(messages))
+    assert List.last(messages)["role"] == "user"
+    assert Ipse.Session.Reference.safe_tail?(messages)
+
+    assert messages
+           |> Enum.reject(&Ipse.Session.Reference.reference?/1)
+           |> List.last()
+           |> Map.fetch!("role") == "tool"
+
     {:ok, events} = Ipse.Journal.load(ctx.dir, Ipse.Session.info(pid).id)
     intent = Enum.find_index(events, &(&1["type"] == "tool_started"))
     result = Enum.find_index(events, &(get_in(&1, ["message", "role"]) == "tool"))
