@@ -60,3 +60,9 @@ review-only orchestration also rechecks a bounded pause before fault and release
 These components are not yet a reviewed privileged live backend. The independent
 cgroup migration and crash recovery requirements remain open; 54 private tests
 passed at this checkpoint.
+
+The next checkpoint includes an experimental bounded child-process adapter for
+that gate, with a fresh supervised temporary-file integration run and report
+parser tests. The adapter and listener remain tied to private `/tmp` paths;
+they cannot safely orchestrate the `/work` device fixture. They do not prove
+privileged process-tree or device cleanup. The private suite passed 55 tests.
