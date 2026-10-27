@@ -23,6 +23,14 @@ control = ~S"""
 """
 if not String.contains?(result, marker), do: raise("control guard mismatch")
 result = String.replace(result, marker, control <> marker)
+file_guard = ~S"""
+ let before=file.metadata()?;let named=fs::symlink_metadata(&pending)?;
+""" |> String.trim()
+if not String.contains?(result, file_guard), do: raise("file guard mismatch")
+guard = ~S"""
+if mount_id(std::process::id() as i32,root_fd.as_raw_fd())? != mount_id(std::process::id() as i32,file.as_raw_fd())? {return Err(io::ErrorKind::PermissionDenied.into())}
+"""
+result = String.replace(result, file_guard, file_guard <> "\n" <> guard)
 output = "/tmp/ipse-serenity-qualification-plan/fixture/peer_listener_container.rs"
 :ok = File.write(output, result, [:exclusive])
 IO.puts("Created private container listener source; no device effects.")

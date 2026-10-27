@@ -14,6 +14,8 @@
 #[path = "cgroup_witness.rs"] mod cgroup_witness;
 #[path = "btrfs_identity.rs"] mod btrfs_identity;
 #[path = "peer_channel.rs"] mod peer_channel;
+#[path = "peer_channel_container.rs"] mod peer_channel_container;
+#[path = "gated_switch.rs"] mod gated_switch;
 use guard::{Expected, Table, loop_matches, mapper_matches, table_matches};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -340,5 +342,22 @@ fn main() {
       let mut m=IndexMock{device:Mock::new(),owned:true,present:true,busy:false,removes:0};m.device.loop_exists=false;
       assert_eq!(finish_index(&mut m,&e,State::Detached),State::IndexRemoved);assert_eq!(m.removes,1);
       assert!(m.device.journal.contains(&(State::IndexRemovePending,None)));
+    }
+    struct GateMock{ready:bool,auth:bool,released:bool}
+    impl gated_switch::Peer for GateMock {
+      fn ready(&mut self)->Result<(),()>{if self.ready {Ok(())}else{Err(())}}
+      fn authorize(&mut self,_:u32)->Result<(),()>{if self.auth {Ok(())}else{Err(())}}
+      fn release(&mut self)->Result<String,()>{self.released=true;Ok("REPORT W=5".into())}
+    }
+    #[test]fn gated_switch_wires_exact_mapper_transition_to_verified_peer_release(){
+      let e=expected();let mut b=Mock::new();let mut p=GateMock{ready:true,auth:true,released:false};
+      assert_eq!(gated_switch::switch(&mut b,&e,&mut p,10).unwrap(),"REPORT W=5");
+      assert!(p.released);assert_eq!(b.effects,vec![Action::Suspend,Action::LoadError,Action::Resume]);
+    }
+    #[test]fn gated_switch_never_releases_after_bad_identity_or_failed_transition(){
+      let e=expected();for (ready,auth,tamper) in [(false,true,false),(true,false,false),(true,true,true)]{
+       let mut b=Mock::new();if tamper{b.tamper_at=Some(1)}let mut p=GateMock{ready,auth,released:false};
+       assert!(gated_switch::switch(&mut b,&e,&mut p,10).is_err());assert!(!p.released);assert!(b.effects.is_empty());
+      }
     }
 }

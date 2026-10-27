@@ -83,3 +83,12 @@ single underlying device through sysfs; the read-only workspace probe matched
 the actual underlying device. This logic is unreviewed and has not been tested
 on the disposable mapper. The private suite passed 56 tests. No device or mount
 creation was performed.
+
+Latest draft anchors Btrfs sysfs traversal using held directory descriptors,
+bounds mountinfo while reading, and records the per-run FSID, mount ID and
+mount namespace with mapper identity. A generic, disabled gated switch composes
+peer verification with the existing mapper transition in mock tests. The real
+backend now refuses path-based unmount because the held-mount-to-unmount and
+namespace-wide absence guarantees are not established. Read-only workspace
+probing still succeeds; 59 private tests passed. Independent re-review and the
+live fixture remain pending.

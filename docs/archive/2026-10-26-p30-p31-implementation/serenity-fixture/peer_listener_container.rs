@@ -70,6 +70,8 @@ fn main()->io::Result<()> {
  let name=std::ffi::CString::new(".pending-bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb").unwrap();
  let rawfile=unsafe{openat(root_fd.as_raw_fd(),name.as_ptr(),0x20000)};if rawfile<0{return Err(io::Error::last_os_error())}let file=unsafe{std::fs::File::from_raw_fd(rawfile)};
  let before=file.metadata()?;let named=fs::symlink_metadata(&pending)?;
+if mount_id(std::process::id() as i32,root_fd.as_raw_fd())? != mount_id(std::process::id() as i32,file.as_raw_fd())? {return Err(io::ErrorKind::PermissionDenied.into())}
+
  if !before.is_file() || before.uid()!=c.uid || before.nlink()!=1 || before.len()==0 || before.len()>=8388608 || (before.dev(),before.ino())!=(named.dev(),named.ino()){return Err(io::ErrorKind::PermissionDenied.into())}
  println!("READY {} {} {} {} {}",c.pid,first.1,before.dev(),before.ino(),before.len());io::stdout().flush()?;
  let expected_parent:i32=control_line()?.parse().map_err(|_|io::ErrorKind::InvalidData)?;

@@ -35,6 +35,8 @@ struct RealBackend {
     image: Option<File>,
     command_limit: u64,
     cleanup_reserved: bool,
+    fixture_fsid: Option<[u8;16]>,
+    fixture_mount_id:Option<u64>, fixture_ns_inode:u64,
 }
 
 impl RealBackend {
@@ -66,7 +68,7 @@ impl RealBackend {
                 backing_inode:0,loop_ref:name.clone(),dm_name:name,dm_uuid:format!("IPSE-Q-{nonce}"),
                 dm_major,dm_minor,sectors:1_048_576 },
             deadline:Instant::now()+Duration::from_secs(seconds), next:0, image:None,
-            command_limit:WORK_COMMANDS, cleanup_reserved:false })
+            command_limit:WORK_COMMANDS, cleanup_reserved:false, fixture_fsid:None, fixture_mount_id:None, fixture_ns_inode:here })
     }
     /// Explicitly reserve a separately bounded cleanup window after a known
     /// restored state. Never invoke this automatically after an unknown effect.
@@ -193,6 +195,16 @@ impl RealBackend {
         file.sync_all().map_err(|_| ())?;
         File::open(&self.work).map_err(|_| ())?.sync_all().map_err(|_| ())
     }
+    fn record_fixture_fsid(&mut self,e:&Expected)->Result<(),()> {
+        if self.fixture_fsid.is_some(){return Err(())}
+        let mount=File::open(&self.mount).map_err(|_| ())?;let info=super::btrfs_identity::inspect(&mount,&self.sysroot).map_err(|_| ())?;
+        let major=u32::try_from(e.dm_major).map_err(|_| ())?;let minor=u32::try_from(e.dm_minor).map_err(|_| ())?;
+        if info.underlying!=(major,minor){return Err(())}
+        let fsid=info.fsid.iter().map(|b|format!("{b:02x}")).collect::<String>();
+        self.ledger(&format!("fixture_fsid={fsid} mount_id={} namespace_inode={}",info.mount_id,self.fixture_ns_inode))?;
+        self.fixture_fsid=Some(info.fsid);self.fixture_mount_id=Some(info.mount_id);
+        if self.fixture_mount(e)!=Ok(true){return Err(())}Ok(())
+    }
     fn image_path(&self) -> Result<PathBuf, ()> {
         if self.work != PathBuf::from("/work/fixture") { return Err(()); }
         Ok(self.work.join("backing.img"))
@@ -266,14 +278,14 @@ impl Backend for RealBackend {
             Action::LoadError => { self.dm(&["reload".into(), name, "--table".into(), format!("0 {} error", e.sectors)])?; }
             Action::LoadLinear => { self.dm(&["reload".into(), name, "--table".into(), format!("0 {} linear {}:{} 0", e.sectors,e.loop_major,e.loop_minor)])?; }
             Action::Resume => { self.dm(&["resume".into(), name])?; }
-            Action::Unmount => { let tool = self.umount.clone(); self.capture(&tool, &[self.mount.to_str().ok_or(())?.to_owned()])?; }
+            Action::Unmount => { return Err(()); } // Path-based umount cannot prove held mount identity.
             Action::RemoveMapper => { self.dm(&["remove".into(), name])?; }
             Action::DetachLoop => { let tool = self.losetup.clone(); self.capture(&tool, &["--detach".into(), self.loop_node.to_str().ok_or(())?.to_owned()])?; }
         }; Ok(())
     }
     fn fixture_mount(&mut self, e: &Expected) -> Result<bool, ()> {
         self.fixed_name(e)?;
-        let contents = fs::read_to_string("/proc/self/mountinfo").map_err(|_| ())?;
+        let mut contents=String::new();File::open("/proc/self/mountinfo").map_err(|_| ())?.take(1_048_577).read_to_string(&mut contents).map_err(|_| ())?;
         if contents.len() > 1_048_576 { return Err(()); }
         let target = self.mount.to_str().ok_or(())?;
         let mut id = None;
@@ -294,7 +306,7 @@ impl Backend for RealBackend {
         if !meta.is_dir() || (named.dev(),named.ino())!=(meta.dev(),meta.ino()) {return Err(())}
         let info=super::btrfs_identity::inspect(&held,&self.sysroot).map_err(|_| ())?;
         let major=u32::try_from(e.dm_major).map_err(|_| ())?;let minor=u32::try_from(e.dm_minor).map_err(|_| ())?;
-        if info.mount_id!=expected_mount || info.underlying!=(major,minor) {return Err(())}
+        if fs::metadata("/proc/self/ns/mnt").map_err(|_| ())?.ino()!=self.fixture_ns_inode || self.fixture_fsid!=Some(info.fsid) || self.fixture_mount_id!=Some(info.mount_id) || info.mount_id!=expected_mount || info.underlying!=(major,minor) {return Err(())}
         let after=fs::symlink_metadata(&self.mount).map_err(|_| ())?;
         if (after.dev(),after.ino())!=(meta.dev(),meta.ino()) {return Err(())}
         Ok(true)
@@ -364,6 +376,7 @@ impl super::provisioning::Backend for RealBackend {
                 let tool=self.mount_tool.clone();
                 self.capture(&tool, &["-t".into(),"btrfs".into(),"-o".into(),"noatime".into(),device,
                     self.mount.to_str().ok_or(())?.into()])?;
+                self.record_fixture_fsid(e)?;
             }
         }
         Ok(())
@@ -428,7 +441,7 @@ impl super::provisioning::Backend for RealBackend {
             losetup:"/usr/bin/losetup".into(),dmsetup:"/usr/bin/dmsetup".into(),umount:"/usr/bin/umount".into(),
             mount_tool:"/usr/bin/mount".into(),mkfs:"/usr/bin/mkfs.btrfs".into(),sysroot:"/sys".into(),
             expected,deadline:Instant::now()+Duration::from_secs(3),next:0,image:None,
-            command_limit:WORK_COMMANDS,cleanup_reserved:false},path)
+            command_limit:WORK_COMMANDS,cleanup_reserved:false,fixture_fsid:None,fixture_mount_id:None,fixture_ns_inode:fs::metadata("/proc/self/ns/mnt").unwrap().ino()},path)
     }
     #[test] fn captured_output_and_exclusive_journal_are_bounded() {
         let (mut b,path)=backend();
