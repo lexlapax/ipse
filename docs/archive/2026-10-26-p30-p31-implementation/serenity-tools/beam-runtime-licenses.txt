@@ -1,0 +1,39 @@
+Name            : erlang-core
+Version         : 29.1.1-1
+Licenses        : Apache-2.0
+Name            : erlang-inets
+Version         : 29.1.1-1
+Licenses        : Apache-2.0
+Name            : erlang-ssl
+Version         : 29.1.1-1
+Licenses        : Apache-2.0
+Name            : elixir
+Version         : 1.20.4-1
+Licenses        : Apache-2.0
+Name            : brotli
+Version         : 1.2.1-1
+Licenses        : MIT
+Name            : glibc
+Version         : 2.44+r50+g1848099f063e-1
+Licenses        : GPL-2.0-or-later  LGPL-2.1-or-later
+Name            : openssl
+Version         : 3.6.5-1
+Licenses        : Apache-2.0
+Name            : libgcc
+Version         : 16.2.1+r23+gd564253eb6c8-1
+Licenses        : GPL-3.0-or-later WITH GCC-exception-3.1  GFDL-1.3-or-later
+Name            : ncurses
+Version         : 6.6-2
+Licenses        : MIT-open-group
+Name            : lksctp-tools
+Version         : 1.0.21-1
+Licenses        : GPL-2.0-or-later  LGPL-2.1-only
+Name            : libstdc++
+Version         : 16.2.1+r23+gd564253eb6c8-1
+Licenses        : GPL-3.0-or-later WITH GCC-exception-3.1  GFDL-1.3-or-later
+Name            : zlib
+Version         : 1:1.3.2-4
+Licenses        : Zlib
+Name            : zstd
+Version         : 1.5.7-3
+Licenses        : BSD-3-Clause  GPL-2.0-only

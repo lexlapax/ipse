@@ -23,6 +23,16 @@ providers of ambiguous virtual dependencies; `pacman -T` found no unmet collecte
 requirements. Its output is a conservative package-level set, not proof of
 dynamic loading, execution, or complete license compliance. The
 [direct dependency data](serenity-tools/host-package-depends.txt) is also retained.
+The pinned image lacks Elixir/OTP. A separate read-only host BEAM startup sample
+loaded 21 mapped files and 369 BEAM files during application startup, crypto and
+Transaction-module loading; its [file hashes](serenity-tools/beam-runtime-inventory.txt),
+[package ownership](serenity-tools/beam-runtime-packages.txt), and
+[package-declared licenses](serenity-tools/beam-runtime-licenses.txt) are retained.
+It observed `libsctp.so` from the existing `lksctp-tools` package. Including
+Elixir and OTP package roots expands the conservative
+[host closure](serenity-tools/host-with-beam-closure.txt) to 110 packages.
+This sample did not launch the helper or exercise a device, and it does not prove
+the complete runtime or dynamic-loading closure for the later test.
 The developer subsequently explicitly approved using the inventoried existing
 image and system-library closure for this isolated test. A live run still needs
 its exact executed closure checked, including dynamic loading and licenses.

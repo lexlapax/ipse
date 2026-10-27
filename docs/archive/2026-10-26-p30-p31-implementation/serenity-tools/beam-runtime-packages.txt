@@ -1,0 +1,21 @@
+unowned: /etc/ld.so.cache
+/usr/lib/erlang/erts-17.1/bin/beam.smp is owned by erlang-core 29.1.1-1
+/usr/lib/erlang/lib/crypto-5.10/priv/lib/crypto.so is owned by erlang-core 29.1.1-1
+/usr/lib/erlang/lib/crypto-5.10/priv/lib/crypto_callback.so is owned by erlang-core 29.1.1-1
+unowned: /usr/lib/gconv/gconv-modules.cache
+/usr/lib/ld-linux-x86-64.so.2 is owned by glibc 2.44+r50+g1848099f063e-1
+/usr/lib/libbrotlicommon.so.1.2.1 is owned by brotli 1.2.1-1
+/usr/lib/libbrotlidec.so.1.2.1 is owned by brotli 1.2.1-1
+/usr/lib/libbrotlienc.so.1.2.1 is owned by brotli 1.2.1-1
+/usr/lib/libc.so.6 is owned by glibc 2.44+r50+g1848099f063e-1
+/usr/lib/libcrypto.so.3 is owned by openssl 3.6.5-1
+/usr/lib/libgcc_s.so.1 is owned by libgcc 16.2.1+r23+gd564253eb6c8-1
+/usr/lib/libm.so.6 is owned by glibc 2.44+r50+g1848099f063e-1
+/usr/lib/libncursesw.so.6.6 is owned by ncurses 6.6-2
+/usr/lib/libsctp.so.1.0.21 is owned by lksctp-tools 1.0.21-1
+/usr/lib/libstdc++.so.6.0.36 is owned by libstdc++ 16.2.1+r23+gd564253eb6c8-1
+/usr/lib/libz.so.1.3.2 is owned by zlib 1:1.3.2-4
+/usr/lib/libzstd.so.1.5.7 is owned by zstd 1.5.7-3
+/usr/lib/locale/C.utf8/LC_CTYPE is owned by glibc 2.44+r50+g1848099f063e-1
+unowned: /usr/lib/locale/locale-archive
+/usr/lib/ossl-modules/legacy.so is owned by openssl 3.6.5-1
