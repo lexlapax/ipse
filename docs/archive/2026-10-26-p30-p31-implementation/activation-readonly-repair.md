@@ -9,6 +9,12 @@ this record supersedes its nonrepairing inspection claim. The
 [configuration chapter](../../developer/configuration.md#apply-a-protected-selection-without-changing-base-configuration)
 owns current API guidance.
 
+Follow-up independent closure confirmed pending preservation but found that an
+absent ancillary `.writer.lock` was still created by native quota acquisition.
+The [existing ancillary-writer precondition](activation-writer-repair.md)
+supersedes that noncreation claim with refused, unchanged missing-writer reads.
+This record retains its original source/runtime and successful pending evidence.
+
 The independent report is retained at the task's durable
 `p31-verification/independent-activation/activation-audit-2026-10-26.txt`, SHA256
 `c5585ba356b79f5eaa55b39c59290596b8971bf8a94d6b1978b2da48da14ecb1`;

@@ -454,6 +454,7 @@ defmodule Ipse.Extension.Consent do
          :ok <- existing_directory(path, uid),
          {:ok, control} <- existing_file(Path.join(path, "control.json"), uid, true),
          {:ok, %{size: 0} = retained} <- existing_file(Path.join(path, ".lock"), uid, false),
+         {:ok, %{size: 0} = writer} <- existing_file(Path.join(path, ".writer.lock"), uid, false),
          {:ok, lock} <- Transaction.acquire(Path.join(path, ".lock")) do
       Process.put(@lock_key, lock)
 
@@ -461,12 +462,15 @@ defmodule Ipse.Extension.Consent do
         try do
           with :ok <- Transaction.check(lock),
                :ok <- retained_file(Path.join(path, ".lock"), retained),
+               :ok <- retained_file(Path.join(path, ".writer.lock"), writer),
                :ok <- Transaction.quota(lock, :flat, @allocated_bytes),
+               :ok <- retained_file(Path.join(path, ".writer.lock"), writer),
                {:ok, _} <- pending_names(path, uid),
                {:ok, state} <- read_present(path, project, uid, control),
                :ok <- retained_file(Path.join(path, "control.json"), control),
                {:ok, _} = result <- existing_callback(fun, state),
                :ok <- retained_file(Path.join(path, ".lock"), retained),
+               :ok <- retained_file(Path.join(path, ".writer.lock"), writer),
                :ok <- retained_file(Path.join(path, "control.json"), control),
                :ok <- Transaction.check(lock) do
             result

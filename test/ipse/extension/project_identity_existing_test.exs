@@ -161,6 +161,85 @@ defmodule Ipse.Extension.ProjectIdentityExistingTest do
     assert inventory(c.home) == before
   end
 
+  test "missing ancillary writer refuses every existing path unchanged; ordinary resolve recreates it",
+       c do
+    assert {:ok, binding} = Identity.admit(c.home, c.primary, :repository)
+    writer = Path.join(c.home, "project-identities/.writer.lock")
+    File.rm!(writer)
+    before = inventory(c.home)
+    assert {:error, _} = Identity.existing(c.home, c.primary)
+
+    assert {:error, _} =
+             Identity.with_existing_binding(c.home, c.primary, binding, fn _ ->
+               flunk("missing writer")
+             end)
+
+    assert {:error, _} =
+             Identity.join_existing(c.home, c.linked, fn _ -> flunk("missing writer") end)
+
+    assert inventory(c.home) == before
+    refute File.exists?(writer)
+    assert {:ok, ^binding} = Identity.resolve(c.home, c.primary)
+    assert File.read!(writer) == ""
+    assert {:ok, ^binding} = Identity.existing(c.home, c.primary)
+  end
+
+  test "unsafe or replaced ancillary writer never yields advisory data", c do
+    assert {:ok, binding} = Identity.admit(c.home, c.primary, :repository)
+    writer = Path.join(c.home, "project-identities/.writer.lock")
+
+    for unsafe <- [:mode, :nonempty, :hardlink, :symlink] do
+      saved = writer <> ".saved"
+
+      case unsafe do
+        :mode ->
+          File.chmod!(writer, 0o644)
+
+        :nonempty ->
+          File.write!(writer, "nonempty")
+
+        :hardlink ->
+          File.ln!(writer, saved)
+
+        :symlink ->
+          File.rename!(writer, saved)
+          File.ln_s!(saved, writer)
+      end
+
+      before = inventory(c.home)
+      assert {:error, _} = Identity.existing(c.home, c.primary)
+      assert inventory(c.home) == before
+
+      case unsafe do
+        :mode ->
+          File.chmod!(writer, 0o600)
+
+        :nonempty ->
+          File.write!(writer, "")
+
+        :hardlink ->
+          File.rm!(saved)
+
+        :symlink ->
+          File.rm!(writer)
+          File.rename!(saved, writer)
+      end
+    end
+
+    index = File.read!(Path.join(c.home, "project-identities/index.json"))
+
+    result =
+      Identity.with_existing_binding(c.home, c.primary, binding, fn _ ->
+        File.rename!(writer, writer <> ".saved")
+        File.write!(writer, "")
+        File.chmod!(writer, 0o600)
+        {:ok, :must_not_escape}
+      end)
+
+    assert elem(result, 0) in [:error, :unknown]
+    assert File.read!(Path.join(c.home, "project-identities/index.json")) == index
+  end
+
   test "ordinary roots and a foreign clone never call authorization or gain membership", c do
     assert {:ok, _} = Identity.admit(c.home, c.primary, :repository)
     folder = Path.join(c.root, "folder")

@@ -189,8 +189,14 @@ Main timeout. It cannot introduce provider endpoints or profile definitions.
 without selecting code. Absent identity/control state returns nil and creates no
 new roots. It uses `ProjectIdentity.with_existing_binding/4` and
 `Consent.existing_snapshot/2`: retained native locked reads that neither join nor
-reclaim pending files, even when selected control bytes are malformed. Ordinary
-mutation/recovery owners keep their separate `with_binding`/`snapshot` paths and
+reclaim pending files, even when selected control bytes are malformed. These
+existing-only reads require `.lock` and ancillary `.writer.lock` to exist as safe
+owner-only, single-link, empty regular files. Missing/unsafe lock files refuse
+before quota acquisition; the reader does not create them. Exact retained writer
+identity is checked around quota and after the callback. These cooperative-host
+prechecks do not make the existing create-capable native protocol atomic against
+arbitrary same-UID concurrent deletion. Ordinary mutation/recovery owners keep
+their separate `with_binding`/`snapshot` paths and
 intentional reclamation. A read cannot enter those paths merely to validate a
 binding. Present malformed state refuses. An already admitted linked worktree
 retains the bounded native metadata-copy/cleanup checks needed to preserve exact

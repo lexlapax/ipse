@@ -621,6 +621,8 @@ setup command or establish that stored knowledge is current for model context.
 Activation status/readiness inspection preserves pending control and identity
 files, including when inspection refuses malformed state. A ready result is a
 current advisory check; later admission/effects recheck the protected grant.
+Missing or unsafe retained `.lock` or ancillary `.writer.lock` files refuse
+inspection instead of being created. Preserve the original state for diagnosis.
 
 Settings stay fixed for a session. `/context refresh` reloads instructions and
 skills only. File/profile/role edits can refuse resume even if effective values

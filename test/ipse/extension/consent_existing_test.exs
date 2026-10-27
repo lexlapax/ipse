@@ -182,4 +182,83 @@ defmodule Ipse.Extension.ConsentExistingTest do
                end
              )
   end
+
+  test "missing ancillary writer refuses unchanged, while an explicit mutation recreates it", c do
+    assert {:ok, _} = grant(c)
+    writer = Path.join(path(c), ".writer.lock")
+    bytes = File.read!(Path.join(path(c), "control.json"))
+    File.rm!(writer)
+    assert {:error, _} = C.existing_snapshot(c.root, c.project)
+
+    assert {:error, _} =
+             C.with_existing_policy(
+               c.root,
+               c.project,
+               1,
+               Ipse.JSON.digest([c.policy]),
+               c.now,
+               fn _ -> flunk("missing writer") end
+             )
+
+    refute File.exists?(writer)
+    assert File.read!(Path.join(path(c), "control.json")) == bytes
+    assert {:ok, _} = C.revoke(c.root, c.project, 1)
+    assert File.read!(writer) == ""
+    assert {:ok, %{"policy" => nil}} = C.existing_snapshot(c.root, c.project)
+  end
+
+  test "unsafe or replaced ancillary writer refuses existing policy data", c do
+    assert {:ok, _} = grant(c)
+    writer = Path.join(path(c), ".writer.lock")
+    control = Path.join(path(c), "control.json")
+    bytes = File.read!(control)
+
+    for unsafe <- [:mode, :nonempty, :hardlink, :symlink] do
+      saved = writer <> ".saved"
+
+      case unsafe do
+        :mode ->
+          File.chmod!(writer, 0o644)
+
+        :nonempty ->
+          File.write!(writer, "nonempty")
+
+        :hardlink ->
+          File.ln!(writer, saved)
+
+        :symlink ->
+          File.rename!(writer, saved)
+          File.ln_s!(saved, writer)
+      end
+
+      assert {:error, _} = C.existing_snapshot(c.root, c.project)
+      assert File.read!(control) == bytes
+
+      case unsafe do
+        :mode ->
+          File.chmod!(writer, 0o600)
+
+        :nonempty ->
+          File.write!(writer, "")
+
+        :hardlink ->
+          File.rm!(saved)
+
+        :symlink ->
+          File.rm!(writer)
+          File.rename!(saved, writer)
+      end
+    end
+
+    result =
+      C.with_existing_policy(c.root, c.project, 1, Ipse.JSON.digest([c.policy]), c.now, fn _ ->
+        File.rename!(writer, writer <> ".saved")
+        File.write!(writer, "")
+        File.chmod!(writer, 0o600)
+        {:ok, :must_not_escape}
+      end)
+
+    assert elem(result, 0) in [:error, :unknown]
+    assert File.read!(control) == bytes
+  end
 end

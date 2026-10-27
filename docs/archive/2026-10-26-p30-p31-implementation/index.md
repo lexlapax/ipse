@@ -74,6 +74,7 @@ resource/offline qualification. No daemon configuration or existing model was ch
 - [Explicit managed SDK publication, reserved metadata and replay boundary](managed-sdk-component.md).
 - [Protected fresh/resumed activation, exact route overlays and reciprocal worktree admission](activation-overlay-component.md).
 - [Accepted inspection-reclamation finding, existing-only reader repair and frozen replay evidence](activation-readonly-repair.md).
+- [Ancillary writer-lock noncreation repair and unchanged independent probe](activation-writer-repair.md).
 - [Native read ownership and staging-frame ordering](native-read-component.md).
 - [Versioned optional native reads and exact missing-file refusal boundaries](native-optional-read-component.md).
 - [Admitted decision operation, incremental review and controls](decision-operation-audit.md).

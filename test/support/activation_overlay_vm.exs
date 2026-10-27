@@ -583,6 +583,24 @@ defmodule Ipse.Test.ActivationOverlayVM do
     revoke(g)
     assert {:ok, %{ready: false}} = Host.readiness(c.config, c.cwd)
   end
+
+  test "current and readiness never create a missing ancillary writer in either ledger", c do
+    g = grant(c)
+    identity_writer = Path.join(c.home, "project-identities/.writer.lock")
+    control_writer = Path.join([g.control, g.binding["project_id"], ".writer.lock"])
+    File.rm!(identity_writer)
+    assert {:error, _} = Host.current(c.config, c.cwd)
+    assert {:error, _} = Host.readiness(c.config, c.cwd)
+    refute File.exists?(identity_writer)
+    assert {:ok, _} = ProjectIdentity.resolve(c.home, c.cwd)
+    assert {:ok, %{ready: true}} = Host.readiness(c.config, c.cwd)
+    File.rm!(control_writer)
+    assert {:error, _} = Host.current(c.config, c.cwd)
+    assert {:error, _} = Host.readiness(c.config, c.cwd)
+    refute File.exists?(control_writer)
+    assert {:ok, _} = Consent.revoke(g.control, g.binding["project_id"], 1)
+    assert {:ok, %{ready: false}} = Host.readiness(c.config, c.cwd)
+  end
 end
 
 ExUnit.after_suite(fn %{failures: failures} ->

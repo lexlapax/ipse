@@ -280,8 +280,12 @@ timeout and registry before their own admission. Follow the
 for noncreating status inspection, reciprocal worktree admission and failure
 fixtures. `current/2` reads only existing retained state; `readiness/2` additionally
 checks the actual overlay under the exact current policy without joining,
-reclaiming pending files or returning a prepared runtime. Its advisory result is
-not an effect ticket or Collection absence witness. Ordinary intentional mutation
+reclaiming pending files or returning a prepared runtime. They require safe
+existing retained and ancillary writer locks; missing `.lock` or `.writer.lock`
+refuses before quota work instead of creating it. Exact
+writer identity is checked through the callback within the cooperative host
+boundary. The advisory result is not an effect ticket or Collection absence
+witness. Ordinary intentional mutation
 recovery remains separate. The pure `draft/3` and `derive/2` functions alone grant
 no authority.
 

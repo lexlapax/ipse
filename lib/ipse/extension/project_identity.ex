@@ -132,6 +132,7 @@ defmodule Ipse.Extension.ProjectIdentity do
     root = Path.join(home, "project-identities")
     index = Path.join(root, "index.json")
     lock_path = Path.join(root, ".lock")
+    writer_path = Path.join(root, ".writer.lock")
 
     with :ok <- existing_directory(root, uid),
          :ok <- existing_directory(home, uid),
@@ -139,6 +140,8 @@ defmodule Ipse.Extension.ProjectIdentity do
          {:ok, index_stat} <- existing_index(index, uid),
          {:ok, before_lock} <- File.lstat(lock_path),
          true <- safe_file?(before_lock, uid) and before_lock.size == 0,
+         {:ok, writer} <- File.lstat(writer_path),
+         true <- safe_file?(writer, uid) and writer.size == 0,
          {:error, :enoent} <- File.lstat(Path.join(root, ".metadata-active")),
          {:ok, lock} <- Transaction.acquire(lock_path, cwd: cwd) do
       Process.put(@held, true)
@@ -146,28 +149,42 @@ defmodule Ipse.Extension.ProjectIdentity do
       released(lock, fn ->
         with {:ok, after_lock} <- File.lstat(lock_path),
              true <- retained_identity(before_lock) == retained_identity(after_lock),
+             :ok <- retained_writer(writer_path, writer),
              :ok <- Transaction.quota(lock, :flat, 3 * 1024 * 1024),
+             :ok <- retained_writer(writer_path, writer),
              {:ok, state} <- read(root, uid, lock),
              {:ok, after_index} <- File.lstat(index),
              true <- retained_identity(index_stat) == retained_identity(after_index),
              {:ok, directory} <- directory(cwd, uid) do
           context = %{root: root, uid: uid, cwd: cwd}
 
-          case existing_action(context, state, directory, authorize) do
-            {:ok, value} ->
-              with :ok <- lease(lock, :before), do: {:ok, value}
+          result =
+            case existing_action(context, state, directory, authorize) do
+              {:ok, value} ->
+                with :ok <- lease(lock, :before), do: {:ok, value}
 
-            {:write, next, value, project, binding} ->
-              publish(context, next, value, project, binding, lock)
+              {:write, next, value, project, binding} ->
+                publish(context, next, value, project, binding, lock)
 
-            {:callback, callback} ->
-              with :ok <- lease(lock, :before) do
-                result = callback.()
-                with :ok <- lease(lock, :after), do: result
-              end
+              {:callback, callback} ->
+                with :ok <- lease(lock, :before) do
+                  result = callback.()
+                  with :ok <- lease(lock, :after), do: result
+                end
 
-            other ->
-              other
+              other ->
+                other
+            end
+
+          case retained_writer(writer_path, writer) do
+            :ok ->
+              result
+
+            _ when is_function(authorize, 1) ->
+              {:unknown, :project_identity_admission_unconfirmed}
+
+            _ ->
+              @error
           end
         else
           _ -> @error
@@ -177,6 +194,13 @@ defmodule Ipse.Extension.ProjectIdentity do
       :absent -> {:ok, nil}
       _ -> @error
     end
+  end
+
+  defp retained_writer(path, expected) do
+    with {:ok, actual} <- File.lstat(path),
+         true <- retained_identity(expected) === retained_identity(actual),
+         do: :ok,
+         else: (_ -> @error)
   end
 
   defp existing_action(context, state, root, authorize) do
