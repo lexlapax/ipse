@@ -123,3 +123,13 @@ topology object with namespace and root FDs but no live constructor, and its
 local unmount receipt explicitly does not claim global mount or device cleanup.
 An independently verified namespace-root boundary and quiescence still do not
 exist. This draft has not performed a Btrfs unmount; its 62 private tests pass.
+
+A disabled borrowed-loop draft retains a pre-existing index and uses an atomic
+LOOP_CONFIGURE attempt; it never removes the index. The host had no loop index
+and its loop module was unloaded when inventoried, so none was opened or loaded.
+The proposed clear/rundown/close sequence is source investigation only and
+returns `CloseAttempted`, not a detach receipt. A separate harmless inotify
+regular-file test showed that an unrelated writer can produce an indistinguishable
+close event; it is not a backing-release oracle. The private controller and
+inotify suites passed 63 and 2 tests respectively. Independent review of the
+exact running-kernel release semantics and actual device behavior remains open.
