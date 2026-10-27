@@ -976,6 +976,106 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
     end
   end
 
+  test "outer Identity loss after checked deferred publication retains full liability across inert resume",
+       c do
+    owner = self()
+
+    tracer =
+      spawn_link(fn ->
+        Process.flag(:priority, :high)
+        send(owner, :settlement_tracer_ready)
+        trace_identity_completion(owner, %{})
+      end)
+
+    assert_receive :settlement_tracer_ready
+
+    assert :erlang.trace_pattern({Consent, :publish_deferred, 5}, [{:_, [], [{:return_trace}]}], [
+             :local
+           ]) == 1
+
+    :erlang.trace(:all, true, [:call, {:tracer, tracer}])
+    handler = {__MODULE__, make_ref()}
+
+    :ok =
+      :telemetry.attach(
+        handler,
+        [:ipse, :extension, :collection, :staged],
+        &__MODULE__.observe_settlement_port/4,
+        tracer
+      )
+
+    try do
+      pid = start(c)
+      id = Session.info(pid).id
+      assert :ok = Session.prompt(pid, "Synthetic café observation")
+      assert_receive {:identity_completion_fenced, true, packet}, 15_000
+      assert packet["version"] === 1
+      assert_receive {:ipse, ^pid, {:done, :error}}, 15_000
+      {:ok, events} = Journal.load(c.dir, id)
+
+      [event] =
+        Enum.filter(
+          events,
+          &(&1["type"] == "extension_action_result" and
+              get_in(&1, ["request", "op"]) == "collection.managed")
+        )
+
+      assert event["outcome"]["status"] == "unknown"
+      {:ok, control} = Consent.snapshot(c.control, c.binding["project_id"])
+      operation = control["operations"][event["operation_id"]]
+      assert operation["status"] in ~w(publishing unknown)
+      assert operation["actual"] == nil and operation["receipt"] == nil
+
+      assert operation["reserved"] ==
+               Ipse.Extension.ManagedCollectionCall.reservation(event["request"])
+
+      assert packet["actual"]["input_bytes"] < operation["reserved"]["input_bytes"]
+      assert collection_read(c, %{"op" => "snapshot"})["generation"] == 1
+      before = File.read!(c.trace)
+      assert {:error, :cleanup_unconfirmed} = Session.close_confirmed(pid)
+      refute Process.alive?(pid)
+      resumed = start(c, %{}, id)
+      assert :ok = Session.close_confirmed(resumed)
+      assert File.read!(c.trace) == before
+      {:ok, after_control} = Consent.snapshot(c.control, c.binding["project_id"])
+      assert after_control["operations"][event["operation_id"]] == operation
+    after
+      :telemetry.detach(handler)
+      :erlang.trace(:all, false, [:call])
+      :erlang.trace_pattern({Consent, :publish_deferred, 5}, false, [:local])
+      if Process.alive?(tracer), do: send(tracer, :stop)
+    end
+  end
+
+  def observe_settlement_port(_, _, _, tracer) do
+    case Process.get({Ipse.Extension.Collection, :lock_held}) do
+      %{port: port} -> send(tracer, {:settlement_native_port, self(), port})
+      _ -> :ok
+    end
+  end
+
+  defp trace_identity_completion(owner, ports) do
+    receive do
+      {:settlement_native_port, pid, port} ->
+        trace_identity_completion(owner, Map.put(ports, pid, port))
+
+      {:trace, pid, :return_from, {Consent, :publish_deferred, 5},
+       {:ok, %{"version" => 1} = packet}} ->
+        case Map.fetch(ports, pid) do
+          {:ok, port} -> send(owner, {:identity_completion_fenced, Port.close(port), packet})
+          :error -> send(owner, :missing_settlement_native_port)
+        end
+
+      :stop ->
+        :ok
+
+      _ ->
+        trace_identity_completion(owner, ports)
+    after
+      30_000 -> exit(:settlement_trace_timeout)
+    end
+  end
+
   defp collection_read(c, request) do
     assert {:ok, value} =
              Ipse.Extension.Collection.execute(

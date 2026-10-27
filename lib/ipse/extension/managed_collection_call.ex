@@ -129,20 +129,65 @@ defmodule Ipse.Extension.ManagedCollectionCall do
   end
 
   defp protected(context, intent) do
-    Ipse.Extension.ProjectIdentity.with_binding(
-      context.config[:home],
-      context.cwd,
-      context.config[:semantic_admission]["binding"],
-      fn _ ->
-        with {:ok, current, proofs} <- current_sources(context, intent),
-             {:ok, plan} <- plan(context, intent, current, proofs) do
-          publish(context, intent, current, proofs, plan)
-        else
-          _ -> failed("collection_consent_denied")
+    accounting_scope(fn key, _ ->
+      protected(Map.put(context, :managed_settlement, key), intent, key)
+    end)
+  end
+
+  defp protected(context, intent, key) do
+    result =
+      Ipse.Extension.ProjectIdentity.with_binding(
+        context.config[:home],
+        context.cwd,
+        context.config[:semantic_admission]["binding"],
+        fn _ ->
+          with {:ok, current, proofs} <- current_sources(context, intent),
+               {:ok, plan} <- plan(context, intent, current, proofs) do
+            publish(context, intent, current, proofs, plan)
+          else
+            _ -> failed("collection_consent_denied")
+          end
         end
-      end
-    )
-    |> normalize()
+      )
+
+    case result do
+      {:deferred, packet} -> settle_deferred(context, intent, packet)
+      other -> if Process.get(key) == :publishing, do: :unknown, else: normalize(other)
+    end
+  end
+
+  # A smaller measured charge must not escape the outer Identity finalization.
+  # Until this point, Consent retains the full publishing reservation.
+  defp settle_deferred(c, i, packet) do
+    alias Ipse.Extension.Consent
+    pin = i["effect_binding"]["pin"]
+
+    with true <- keys?(packet, ~w(version ticket actual receipt)) and packet["version"] === 1,
+         ticket = packet["ticket"],
+         true <- keys?(ticket, ~w(project id sequence epoch request_sha256)),
+         true <- ticket["project"] == pin["project_id"] and ticket["id"] == i["operation_id"],
+         true <-
+           ticket["epoch"] === pin["epoch"] and ticket["request_sha256"] == i["request_sha256"],
+         true <- within_reservation?(packet["actual"], reservation(i["request"])),
+         receipt = packet["receipt"],
+         true <- keys?(receipt, ~w(status value)) and receipt["status"] in ~w(ok conflict failed),
+         true <- Ipse.Session.Resources.active?(),
+         true <- Process.alive?(Ipse.Session.Resources.file_effect_owner()),
+         {:ok, %{"status" => "settled", "receipt" => ^receipt}} <-
+           Consent.settle(
+             SemanticAdmission.control_root(c.config[:home]),
+             pin["project_id"],
+             ticket,
+             {:known, packet["actual"], receipt}
+           ) do
+      {String.to_existing_atom(receipt["status"]), receipt["value"]}
+    else
+      _ -> :unknown
+    end
+  rescue
+    _ -> :unknown
+  catch
+    _, _ -> :unknown
   end
 
   defp current_sources(c, i),
@@ -209,7 +254,9 @@ defmodule Ipse.Extension.ManagedCollectionCall do
     with {:ok, ticket} <- Consent.reserve(root, pin["project_id"], plan.reservation, now()),
          false <- Map.has_key?(ticket, "existing"),
          {:ok, ^ticket} <- Consent.admit(root, pin["project_id"], ticket, now()) do
-      case Consent.publish(root, pin["project_id"], ticket, now(), fn ->
+      case Consent.publish_deferred(root, pin["project_id"], ticket, now(), fn ->
+             Process.put(c.managed_settlement, :publishing)
+
              with {:ok, ^current, ^proofs} <- current_sources(c, i),
                   :ok <-
                     CollectionPolicy.check(
@@ -234,9 +281,8 @@ defmodule Ipse.Extension.ManagedCollectionCall do
                   %{"status" => "failed", "value" => %{"code" => "collection_source_refused"}}}
              end
            end) do
-        {:ok, %{"status" => "settled", "receipt" => %{"status" => status, "value" => value}}}
-        when status in ~w(ok conflict failed) ->
-          {String.to_existing_atom(status), value}
+        {:ok, %{"version" => 1} = packet} ->
+          {:deferred, packet}
 
         {:error, _} ->
           failed("collection_consent_denied")
@@ -386,7 +432,8 @@ defmodule Ipse.Extension.ManagedCollectionCall do
   end
 
   defp within_reservation?(actual, reserved) do
-    is_map(reserved) and Enum.sort(Map.keys(actual)) == Enum.sort(Map.keys(reserved)) and
+    is_map(actual) and is_map(reserved) and
+      Enum.sort(Map.keys(actual)) == Enum.sort(Map.keys(reserved)) and
       Enum.all?(actual, fn {dimension, amount} ->
         JSON.safe_uint?(amount) and JSON.safe_uint?(reserved[dimension]) and
           amount <= reserved[dimension]

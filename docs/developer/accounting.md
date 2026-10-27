@@ -209,18 +209,31 @@ the encoded worker request, both maximum sidecar values and their envelopes,
 effects. On a proven successful save, the host measures encoded outer-request
 bytes plus normalized-commit growth plus encoded normalization-receipt bytes.
 The private, callback-local measurement must match that same successful Collection
-receipt and fit every reserved dimension before `Consent.publish` settles it.
+receipt and fit every reserved dimension. `Consent.publish_deferred` keeps its
+operation in `publishing`, with the full reservation and null actual/receipt,
+while returning a provisional host packet. Identity must finish its checks and
+native release before the host settles that packet with its exact ticket,
+measured vector and receipt. This finalization accounts for already admitted work;
+it dispatches no effect and needs no renewed policy approval.
+
 The operation and output charges remain conservative; other resource charges stay
 zero. Neither a worker-supplied cost nor a smaller partial measurement releases
-liability. Conflict and failed-no-effect results settle the full reservation;
-native loss, cancellation, uncertain publication or settlement retain it without
-an automatic refund or retry.
+liability. Conflict and failed-no-effect results settle the full reservation.
+Observed loss or cancellation before measured settlement leaves full pending
+liability, including a published Collection root whose enclosing Identity fails.
+If the final settlement write, acknowledgement or lock release is uncertain,
+known actual may already be durable. Inspect the operation to distinguish a
+pending full reservation from a completed settlement. Neither state permits an
+automatic refund, replay or second publication.
 
 The managed Session tests make two real protected saves under a period input
 ceiling that would reject their combined full reservations. They reconstruct the
 normalized commits from stored values and compare each exact debit. A separate
-native-owner-loss test interrupts after normalization but before the root switch
-and verifies that no measured refund or successful result escapes.
+native-owner-loss test interrupts after normalization but before the root switch.
+Another interrupts after checked deferred publication and before Identity
+finalization: the Collection is at generation one, the Session outcome is unknown,
+and Consent retains its full pending reservation. Inert resume changes neither
+the operation nor worker-entry trace. These exercise different failure windows.
 
 ## Validate protected storage and recovery
 

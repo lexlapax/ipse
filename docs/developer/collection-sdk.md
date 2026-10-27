@@ -48,10 +48,12 @@ deletion rule to every change. Missing or ambiguous mappings refuse. One strong
 source cannot upgrade other sources in a mixed batch.
 
 ProjectIdentity remains locked while the host reserves and admits protected
-work. `Consent.publish` rechecks the pinned policy under the control lock; its
-callback rederives the current source proofs and applies constraints again before
-the short Collection transaction. Lock order is ProjectIdentity, Consent, then
-Collection. Slow IO runs in owned effect workers, never inside Session.
+work. Legacy `Consent.publish` and managed `Consent.publish_deferred` recheck the
+pinned policy under the control lock. Their callbacks rederive current source
+proofs and apply constraints again before the short Collection transaction.
+Managed settlement waits until the enclosing Identity checks and release succeed.
+Lock order is ProjectIdentity, Consent, then Collection. Slow IO runs in owned
+effect workers, never inside Session.
 
 ## Declare the narrow operations
 
@@ -154,7 +156,7 @@ backups that lack retained source clocks. The host never rewrites a false value,
 its hash, or its approval. Legacy `collection.call` is not promoted into this
 protocol.
 
-Inside `Consent.publish`, current source proofs and reviewed constraints are
+Inside `Consent.publish_deferred`, current source proofs and reviewed constraints are
 checked again. `Collection.execute_managed/6` then checks the original generation,
 revision and operation ID under one native collection lock before invoking the
 trusted `Collection.Normalizer`. Its read closure is host-only and expires when
@@ -322,8 +324,8 @@ Legacy publication reserves one operation, encoded worker-request input bytes an
 sidecar values, their exact worst-case key/revision/change envelopes and comma
 overhead, plus 2048 normalization bytes before effects. Values use the same JSON
 escaping as storage; the boundary test exercises control bytes at the full limit.
-Model, download and money resources are zero. A successful managed save settles
-its measured input inside `Consent.publish`, once:
+Model, download and money resources are zero. A successful managed save measures
+input once in its actual storage callback:
 
 ```text
 encoded outer request bytes
@@ -339,10 +341,27 @@ binding before it can release unused input. Negative growth, malformed or
 over-reservation measurements refuse; SDK fields cannot supply costs. Every
 resource dimension must remain within the original reservation. Output stays at
 16384 bytes; conflicting and failed-no-effect callbacks retain their conservative
-reservation. Unknown storage, cleanup or settlement retains full liability even
-if normalization already measured a smaller input. Duplicate operation
-IDs are inspection facts and never new permission to execute. Cancellation or
-owner loss stops the current owned lane; a saved prefix never replays it.
+reservation.
+
+The publication remains provisional through the enclosing Identity transaction.
+`Consent.publish_deferred` durably records `publishing` with full reserved
+liability and null actual/receipt, then checks and releases its nested native lock
+before returning a host-private ticket/measurement/receipt packet. Only checked
+Identity completion and release permit the host to finalize that exact ticket
+with `Consent.settle(..., {:known, actual, receipt})`. Current scope/owner liveness
+and every reserved dimension are checked again. The callback-started marker
+keeps an enclosing error unknown after an effect may have occurred; it cannot
+become a known consent denial. The packet never crosses the SDK boundary.
+
+Storage, Consent or Identity loss before that final step leaves full pending
+liability even if normalization measured less or the Collection root was already
+published. Final settlement itself can become uncertain after persisting known
+actual. Inspect the durable row without replay, rather than assuming every unknown
+means it is still pending. A revoked policy stops new effects but does not erase
+an already admitted liability or prevent its known accounting completion.
+Duplicate operation IDs are inspection facts and never new permission to execute.
+Cancellation or owner loss stops the current owned lane; a saved prefix never
+replays either publication or deferred settlement.
 
 Session validates the exact current action/job/worker lease before source queries.
 `Resources.authorized_effect?/2` is callable only by the actual owning Session and

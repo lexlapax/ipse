@@ -191,6 +191,24 @@ defmodule Ipse.Extension.Consent do
 
   @doc "Recheck under the control lock, then run only a short host storage publication."
   def publish(root, project, ticket, now, fun) when is_function(fun, 0) do
+    publication(root, project, ticket, now, fun, :settle)
+  end
+
+  @doc """
+  Run a short publication while retaining its full pending reservation.
+
+  A successful result is provisional trusted-host data. It leaves the durable
+  operation publishing, with no actual usage or receipt. Only after all outer
+  authority checks and lock releases succeed may the host settle with
+  `{:known, packet["actual"], packet["receipt"]}`. Never replay the callback.
+  A final settlement failure may have persisted its result; inspect it without
+  replay rather than assuming the full reservation remains after settlement begins.
+  """
+  def publish_deferred(root, project, ticket, now, fun) when is_function(fun, 0) do
+    publication(root, project, ticket, now, fun, :defer)
+  end
+
+  defp publication(root, project, ticket, now, fun, mode) do
     transaction(root, project, fn s ->
       with {:ok, r} <- current(s, ticket, now) do
         admitted = put_in(s["operations"][r["id"]]["status"], "publishing")
@@ -199,7 +217,8 @@ defmodule Ipse.Extension.Consent do
           try do
             case fun.() do
               {:ok, actual, receipt} ->
-                after_effect(finish(admitted, admitted["operations"][r["id"]], actual, receipt))
+                result = finish(admitted, admitted["operations"][r["id"]], actual, receipt)
+                publication_result(result, mode, ticket, actual, receipt)
 
               _ ->
                 {:unknown, :publication_unconfirmed}
@@ -217,6 +236,12 @@ defmodule Ipse.Extension.Consent do
     end)
   end
 
+  defp publication_result({:write, _next, _value}, :defer, ticket, actual, receipt) do
+    {:read, %{"version" => 1, "ticket" => ticket, "actual" => actual, "receipt" => receipt}}
+  end
+
+  defp publication_result(result, _mode, _ticket, _actual, _receipt), do: after_effect(result)
+
   @doc "Settle known work, retain unknown liability, or reconcile explicitly; never replay."
   def settle(root, project, ticket, outcome) do
     transaction(root, project, fn s ->
@@ -228,6 +253,9 @@ defmodule Ipse.Extension.Consent do
 
             {status, {:known, actual}} when status in ~w(admitted publishing) ->
               finish(s, r, actual, %{})
+
+            {status, {:known, actual, receipt}} when status in ~w(admitted publishing) ->
+              finish(s, r, actual, receipt)
 
             {status, :unknown} when status in ~w(admitted publishing unknown) ->
               next = put_in(s["operations"][r["id"]]["status"], "unknown")

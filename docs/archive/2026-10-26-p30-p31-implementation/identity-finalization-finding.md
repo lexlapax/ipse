@@ -1,7 +1,7 @@
 # Existing V2 settlement before final Identity release
 
-Recorded 2026-10-27. **Accepted P2; repair and independent closure pending.** This
-is historical before evidence, not a claim about later repaired behavior. Current
+Recorded 2026-10-27. **Accepted P2; independently closed for the exact repaired V2
+graph below.** Original before evidence is historical and remains immutable. Current
 accounting guidance belongs in [Accounting](../../developer/accounting.md) and
 [the Collection SDK](../../developer/collection-sdk.md). This follows the
 [managed actual-accounting component](managed-actual-accounting.md); that earlier
@@ -91,3 +91,56 @@ All 2,415 payloads are owner-only data with private-helper alias bytes materiali
 byte-checked and files/directories fsynced. Reproduce only in a new writable copy.
 No first-domain activation, SDKv3 postproof, Consent final-settlement rename/ACK
 loss, actual provider or whole-milestone audit is claimed.
+
+## Independent repair closure
+
+The independent repaired copy of
+`/tmp/ipse-managed-settlement-repair-20261027-01` bound all **2,339** regular
+source/runtime rows before/after, exact membership and SHA in both owner and copy.
+Manifest SHA-256:
+`57c45e85f0178cdd15dff8afa50fbfb87d21607baa299374609bc95062594492`.
+ManagedCall source is `1757b4264086895baacdefca68e83b685caa864a3a74f699050aa170b00b00e9`,
+executed BEAM `4aa6bb7585c006d79ae883d91fe1d2e67e41d4c129e92df1a68cad990d211c13`.
+The full report binds Consent, Resources, unchanged Identity, legacy Collection
+and private d84 helper. The graph excludes later V3/Pages/Normalizer integration.
+
+The old bad-state predicates, with an explicitly adapted trace seam at
+`publish_deferred`'s provisional return, produced **1/3**: the positive passed;
+both fault cases failed exactly at `status == settled`, seeing publishing with
+null actual instead. The separate closure companion produced **3/3**, seed
+20261208, 6.5 seconds. Both actual native fault cases retained full publishing
+16,130 bytes, null actual/receipt, C generation one and unknown journal outcome.
+The provisional packet measured less than the reserve; the exact packet amount
+was not logged. Cleanup-unconfirmed, Session death and inert resume were checked.
+The known-success positive still logs actual 3,407/reserved 16,130. No further
+repeats or unchanged broad-suite rerun occurred.
+
+The original before driver is retained verbatim. Trace-function/return-shape,
+finite case-count and diagnostic-output relocation changes are recorded apart
+from the closure's explicit expected-state changes. The first private preparation
+script's ambiguous comparison spacing caused a MatchError, followed by a missing
+closure-loader diagnostic; those raw failures remain visible. The shell wrongly
+continued dependent commands, so the already-created characterization ran while
+the first closure attempt ran no tests. Only that private preparation assertion
+was corrected before the single actual companion run. Production inputs were
+unchanged throughout. No authentication workaround or provider/model call occurred.
+
+Immutable repaired evidence, **2,436 payloads**, owner-only, bytes verified with
+materialized admitted private-helper alias and files/directories fsynced:
+
+`/home/lexlapax/.codex/visualizations/2026/10/26/01a17a12-c7bb-76e2-af9e-95f589cc6f94/p31-verification/independent-identity-finalization-after`
+
+| Evidence | SHA-256 |
+| --- | --- |
+| `REPORT.md` | `a4907937a5e7e6836676d9faa0f0c77758964e716cfb77e9cc6d63c74a265d44` |
+| `files.sha256` | `b9c9f99e7b231d7126e68258efb4709ec90b6ef159c2abd5b6968475a59d0d37` |
+| `provenance.json` | `82a2d214123feb76de717f2568440ac7328054dcc7b60ab26040c545485ddaa3` |
+| `preservation-receipt.json` | `2c2a4a2f05476bde750f60a62defd9220c9fa10d7cf8d01adde84ee315aee79e` |
+
+Whole Accounting and Collection SDK chapters were reread; the final manual
+snapshots and 554-file/4,823-link/zero-error docs check are preserved. Root fixed
+the stale managed API name and clarified nested Consent lock versus outer native
+owner release. The final-settlement acknowledgment uncertainty remains explicit.
+This closes the demonstrated pre-settlement Identity failure window only. No
+final Consent settlement ACK-loss, SDKv3 postproof, first-domain activation,
+whole implementation or annual-capacity acceptance is claimed.
