@@ -23,7 +23,7 @@ defmodule Ipse.Extension.Collection do
   """
   alias Ipse.JSON
   alias Ipse.Runner.Transaction
-  alias Ipse.Extension.Collection.{Blocks, Encoding, Migration, Planning}
+  alias Ipse.Extension.Collection.{Blocks, Encoding, Migration, Planning, ReadView}
   import Bitwise, only: [band: 2]
   @value_bytes 6 * 1024
   @data_bytes 24 * 1024 * 1024
@@ -62,6 +62,83 @@ defmodule Ipse.Extension.Collection do
   rescue
     _ -> @error
   end
+
+  @doc "Open one bounded owner-task index cache after full protected validation; no authority is granted."
+  def open_view(root, project) do
+    with false <- Process.get(@lock_key, false) != false,
+         true <- is_binary(root) and Path.type(root) == :absolute and JSON.sha256?(project),
+         {:ok, view} <- ReadView.begin() do
+      install_view(root, project, view)
+    else
+      {:error, _} = error -> error
+      _ -> {:error, :invalid_collection_view_request}
+    end
+  rescue
+    _ -> @error
+  end
+
+  defp install_view(root, project, view) do
+    try do
+      result =
+        Ipse.Session.Resources.file_effect(fn -> locked(root, project, nil, nil, :view_open) end)
+
+      case result do
+        {:ok, cache} ->
+          case ReadView.install(view, cache) do
+            :ok ->
+              {:ok, view}
+
+            error ->
+              ReadView.close(view)
+              error
+          end
+
+        error ->
+          ReadView.close(view)
+          error
+      end
+    catch
+      _, _ ->
+        ReadView.close(view)
+        {:error, :collection_view_unavailable}
+    end
+  end
+
+  @doc "Read at most eight selected records after reacquiring the native owner and checking the exact current root."
+  def view_read(view, request) do
+    with false <- Process.get(@lock_key, false) != false,
+         true <- ReadView.valid_request?(request),
+         {:ok, token, cache} <- ReadView.borrow(view, request) do
+      read_view(view, token, cache)
+    else
+      {:error, _} = error -> error
+      _ -> {:error, :invalid_collection_view_request}
+    end
+  rescue
+    _ -> {:error, :collection_view_unavailable}
+  end
+
+  defp read_view(view, token, cache) do
+    try do
+      result =
+        Ipse.Session.Resources.file_effect(fn ->
+          locked(cache["collection_root"], cache["project"], nil, nil, {:view_read, cache})
+        end)
+
+      finished =
+        ReadView.finish(view, token, if(match?({:ok, _}, result), do: :ok, else: :invalid))
+
+      if match?({:ok, _}, result) and finished != :ok,
+        do: {:error, :collection_view_unavailable},
+        else: result
+    catch
+      _, _ ->
+        ReadView.finish(view, token, :invalid)
+        {:error, :collection_view_unavailable}
+    end
+  end
+
+  def close_view(view), do: ReadView.close(view)
 
   @doc "Host SDK scan: exclude reserved validity keys before selecting any values, under one lock."
   def scan_visible(root, project, request, operation_id) do
@@ -163,12 +240,14 @@ defmodule Ipse.Extension.Collection do
       result =
         try do
           with :ok <- safe_lock(Path.join(path, ".lock"), uid),
-               {:ok, state, manifest} <- load(path, project, uid),
+               {:ok, state, manifest} <- load_for(path, project, uid, managed),
                :ok <- Transaction.check(cap),
                :ok <- Transaction.quota(cap, :collection, @total_bytes - @control_bytes) do
             case managed do
               nil -> apply_request(path, uid, state, manifest, request, operation_id)
               :visible_scan -> scan(path, uid, state, request, true)
+              :view_open -> view_cache(root, path, project, uid, state, manifest)
+              {:view_read, cache} -> view_records(path, uid, state, cache)
               _ -> apply_managed(path, uid, state, manifest, request, operation_id, managed)
             end
           else
@@ -177,6 +256,9 @@ defmodule Ipse.Extension.Collection do
 
             {:error, :transaction_capacity} ->
               {:failed, %{"code" => "collection_capacity"}}
+
+            {:error, :collection_view_stale} = error ->
+              error
 
             _ ->
               @error
@@ -201,6 +283,75 @@ defmodule Ipse.Extension.Collection do
     end
   rescue
     _ -> @error
+  end
+
+  defp load_for(path, project, uid, {:view_read, cache}) do
+    with true <- cache["project"] === project,
+         {:ok, bytes} <- bounded_file(Path.join(path, "root.json"), uid, 1024),
+         true <- bytes === cache["root_bytes"] and JSON.sha256(bytes) === cache["root_sha256"] do
+      {:ok, Map.put(cache["summary"], "records", cache["records"]), nil}
+    else
+      _ -> {:error, :collection_view_stale}
+    end
+  end
+
+  defp load_for(path, project, uid, _), do: load(path, project, uid)
+
+  # The existing native G operation has no ENOENT discriminator. Refuse an
+  # unmaterialized store instead of turning a generic read error into absence.
+  defp view_cache(_, _, _, _, _, nil), do: {:error, :collection_view_unmaterialized}
+
+  defp view_cache(root, path, project, uid, state, manifest) do
+    with {:ok, bytes} <- bounded_file(Path.join(path, "root.json"), uid, 1024),
+         {:ok, pointer} <- JSON.decode_unique(bytes),
+         true <- pointer["version"] in [4, 5],
+         true <- pointer["manifest"] === manifest.hash,
+         true <- pointer |> Map.delete("manifest") |> Map.put("version", 3) == summary(state) do
+      {:ok,
+       %{
+         "version" => 1,
+         "collection_root" => root,
+         "project" => project,
+         "root_bytes" => bytes,
+         "root_sha256" => JSON.sha256(bytes),
+         "manifest_sha256" => manifest.hash,
+         "summary" => summary(state),
+         "records" => state["records"]
+       }}
+    else
+      false -> {:error, :collection_view_unsupported}
+      _ -> @error
+    end
+  end
+
+  defp view_records(path, uid, state, cache) do
+    :telemetry.execute(
+      [:ipse, :extension, :collection, :view_read],
+      %{records: length(cache["selected"])},
+      %{}
+    )
+
+    with {:ok, records} <- read_records(path, uid, state, cache["selected"]),
+         {:ok, pointer} <- JSON.decode_unique(cache["root_bytes"]),
+         result = %{
+           "version" => 1,
+           "summary" => cache["summary"],
+           "witness" => %{
+             "version" => 1,
+             "root" => pointer,
+             "root_sha256" => cache["root_sha256"],
+             "manifest_sha256" => cache["manifest_sha256"]
+           },
+           "keys" => cache["selected"],
+           "records" => records,
+           "next" => cache["next"]
+         },
+         true <- byte_size(Jason.encode!(result)) <= 65_536 do
+      {:ok, result}
+    else
+      false -> {:error, :collection_view_reply_capacity}
+      _ -> @error
+    end
   end
 
   defp apply_request(path, uid, s, _, %{"op" => "status"}, _) do

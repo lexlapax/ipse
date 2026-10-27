@@ -386,6 +386,85 @@ a consumer:
 mix test test/ipse/extension/consent_test.exs test/ipse/extension/consent_compaction_test.exs test/ipse/runner/transaction_test.exs
 ```
 
+## Read several collection pages under one validated index
+
+An internal storage consumer can use `Collection.open_view/2`, `view_read/2` and
+`close_view/1` when it needs several batches from the same immutable root. Opening
+performs the ordinary full protected Collection validation, including the manifest
+blocks and receipt index. The metadata cache then retains the exact root bytes,
+manifest hash and current record references. It holds no file descriptor or lock
+between reads and creates no durable operation identity for a page.
+
+Each read runs in the current actual file-effect owner, in the existing lock
+order ProjectIdentity → Consent → Collection. It reacquires the Collection native
+owner, reads the current root through native `G`, and requires byte-for-byte
+equality with the admitted root. It reads only selected immutable objects through
+that owner, checking their lengths, hashes and value shapes. Quota, post-read
+lease check and release must succeed before data returns. Losing the upstream
+task or cleanup scope fences the actual native owner even if a paused BEAM
+completion worker survives. Closing the cache proves only cache invalidation;
+it does not establish that other in-flight IO has finished.
+
+The following source exercise creates three synthetic records. Run it in
+`iex -S mix` after building native, on a filesystem supported by the selected
+[allocation profile](../../native/README.md#publish-protected-state-through-its-lock-owner).
+An unsupported filesystem refuses explicitly. This is a trusted host exercise,
+not an SDK permission grant:
+
+```elixir
+alias Ipse.Extension.Collection
+scratch = Path.join(System.tmp_dir!(), "ipse-view-exercise-" <> Ipse.Usage.id())
+File.mkdir!(scratch)
+File.chmod!(scratch, 0o700)
+root = Path.join(scratch, "collections")
+project = Ipse.JSON.sha256("synthetic-view-project")
+changes = for key <- ~w(a b c), do: %{"key" => key, "expected_revision" => 0, "value" => %{"text" => key}}
+request = %{"op" => "commit", "expected_generation" => 0, "advance_floor" => false, "changes" => changes}
+{:ok, _} = Collection.execute(root, project, request, Ipse.Usage.id())
+{:ok, view} = Collection.open_view(root, project)
+try do
+  {:ok, batch} = Collection.view_read(view, %{"op" => "get_many", "keys" => ["b", "missing"]})
+  ["b", "missing"] = batch["keys"]
+  [%{"value" => %{"text" => "b"}}, nil] = batch["records"]
+  {:ok, page} = Collection.view_read(view, %{"op" => "scan", "after" => nil, "limit" => 2})
+  "b" = page["next"]
+after
+  :ok = Collection.close_view(view)
+  File.rm_rf!(scratch)
+end
+```
+
+One original task may hold one view; close it before opening another. Calls from
+its actual active file-effect worker retain that original ownership. A different
+task, a reconstructed JSON handle or a stale reference cannot reuse it. The
+cache admits at most 512 reads within 60 seconds of opening, with no renewal;
+each closed request selects at most eight unique keys or eight scan rows. Replies
+refuse above 64 KiB. At most 16 caches coexist. Each holds at most 8,192 references
+and 4 MiB of encoded metadata including keys and integrity seals; bounded Elixir
+map, binary and process overhead is additional. Capacity refuses rather than
+evicting entries or resetting counters.
+
+A changed root returns `collection_view_stale` and discards the view. The consumer
+may explicitly reopen and revalidate selected record content, lineage and expiry
+against that new root; an unrelated capture does not itself mean every recalled
+record became invalid. Selected objects are rehashed on every read. Unrelated
+immutable objects and cached manifest blocks are not reread on every page, so
+same-root in-place corruption outside the selection can remain undetected until
+a fresh full open. Cooperative protected storage and trusted Core processes are
+the boundary, not containment of arbitrary same-user writers or hostile BEAM
+senders.
+
+Wire-root versions 4 and 5 are supported without implicit legacy adoption.
+An unmaterialized store returns `collection_view_unmaterialized`: the current
+native read protocol cannot distinguish a missing root from every other open
+failure, so it supplies no fabricated absence witness. A materialized empty
+collection does retain a real root/manifest witness. Views grant neither managed
+eligibility nor policy, source or Session authority. Their owning adapter must
+still check those facts and the active job at each dispatch. Cross-turn caching,
+managed recall and fresh-empty integration require their own reviewed integration.
+Run `mix test test/ipse/extension/collection_read_view_test.exs` for native-owner
+loss, separate-VM root changes, cache integrity, caller binding and finite limits.
+
 ## Understand sealing and recovery bounds
 
 | Resource | Host ceiling |

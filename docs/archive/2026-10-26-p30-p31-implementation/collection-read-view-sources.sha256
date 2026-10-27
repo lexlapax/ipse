@@ -1,0 +1,3 @@
+9b875ad008fc0958a520ec3ae8956677d5db50d4fd89dcb47a518fa4d10c423b  lib/ipse/extension/collection.ex
+08e2b43e3298a7db1730c7cbf726cc220439726a8fd49c8a19725b2e5931092f  lib/ipse/extension/collection/read_view.ex
+1a28117b5578e5526809d985df133c84c1206b5edc446d2432faf01184735a14  test/ipse/extension/collection_read_view_test.exs
