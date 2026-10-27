@@ -1,0 +1,1364 @@
+diff --git a/docs/developer/dependencies.md b/docs/developer/dependencies.md
+index d160e99..fa2fd48 100644
+--- a/docs/developer/dependencies.md
++++ b/docs/developer/dependencies.md
+@@ -89,7 +89,7 @@ neither approval authorizes package installation or image downloads.
+ | ex_json_pointer | Hex 0.8.0, transitive JSONSchex dependency, locked in `mix.lock` | JSON Pointer handling inside schema compilation | MIT |
+ | Req and Plug | Hex `req` 0.7.5, `plug` 1.20.3, pinned in `mix.exs` and `mix.lock` | The SDK 1.1.0 advertises optional HTTP dependencies but unconditionally references their modules; required for successful compilation on Elixir 1.20. Ipse also reuses Req for bounded opt-in HTTP MCP; no HTTP server is enabled | Apache-2.0 |
+ | Finch | Hex 0.24.0, locked | All-status bounded inference/authentication streaming and Req/MCP HTTP pools; private HTTP/1 request pools with owned teardown | MIT |
+-| Mint | Hex 1.11.0, locked | Finch transport with default certificate/hostname verification and a header bound | Apache-2.0 |
++| Mint | Hex 1.11.0, direct, locked | Finch transport and an experimental unwired HTTP/1 inference primitive, with default certificate/hostname verification and a header bound | Apache-2.0 |
+ | HPAX | Hex 1.1.0, locked | Mint HTTP/2 compression support | Apache-2.0 |
+ | MIME | Hex 2.0.7, locked | Req/Plug MIME utilities | Apache-2.0 |
+ | NimbleOptions | Hex 1.1.1, locked | Finch option validation | Apache-2.0 |
+diff --git a/extensions/knowledge/src/knowledge.ex b/extensions/knowledge/src/knowledge.ex
+index 171fc41..7b0e5e0 100644
+--- a/extensions/knowledge/src/knowledge.ex
++++ b/extensions/knowledge/src/knowledge.ex
+@@ -213,6 +213,7 @@ defmodule IpseKnowledge.Knowledge do
+ 
+     request = %{
+       "op" => "collection.managed",
++      "metadata_version" => 3,
+       "recipe_sha256" => recipe_sha256,
+       "request" => %{
+         "op" => "commit",
+diff --git a/lib/ipse/extension/managed_collection_call.ex b/lib/ipse/extension/managed_collection_call.ex
+index b5a0253..af61a4a 100644
+--- a/lib/ipse/extension/managed_collection_call.ex
++++ b/lib/ipse/extension/managed_collection_call.ex
+@@ -14,20 +14,19 @@ defmodule Ipse.Extension.ManagedCollectionCall do
+   @error {:error, :invalid_extension_managed_collection_call}
+   @binding ~w(kind version namespace pin outer_sha256 inner_op request_sha256 recipe_sha256)
+   @normalization ~w(version lineage record_key first_admitted_ms valid_until_ms category eligibility anchor_key anchor_value_sha256 live_key live_value_sha256)
++  @normalization_v3 ~w(version lineage record_key first_admitted_ms valid_until_ms category eligibility format_value_sha256 metadata_changes)
+ 
+   def operation?(r), do: is_map(r) and r["op"] == "collection.managed"
+   def capability(_), do: "host.collection.managed"
+   def mutating?(r), do: operation?(r)
+ 
+   def validate(r) do
+-    with true <- keys?(r, ~w(op request proofs recipe_sha256)) and operation?(r),
++    with true <- request_keys?(r) and operation?(r),
+          true <- JSON.sha256?(r["recipe_sha256"]),
+          true <- get_in(r, ["request", "op"]) == "commit",
+          true <- get_in(r, ["request", "advance_floor"]) === true,
+          :ok <-
+-           CollectionCall.validate(
+-             Map.delete(Map.put(r, "op", "collection.call"), "recipe_sha256")
+-           ),
++           CollectionCall.validate(legacy(r)),
+          true <- byte_size(Jason.encode!(r)) <= 8192 do
+       :ok
+     else
+@@ -45,10 +44,11 @@ defmodule Ipse.Extension.ManagedCollectionCall do
+       {:ok,
+        Map.merge(base, %{
+          "kind" => "collection.managed",
+-         "version" => 2,
++         "version" => metadata_version(request),
+          "outer_sha256" => JSON.digest([parent["descriptor"]]),
+          "recipe_sha256" => request["recipe_sha256"]
+-       })}
++       })
++       |> version_binding(request)}
+     else
+       _ -> @error
+     end
+@@ -58,13 +58,13 @@ defmodule Ipse.Extension.ManagedCollectionCall do
+ 
+   def valid_binding?(b, r, identity, metadata \\ nil) do
+     with :ok <- validate(r),
+-         true <- keys?(b, @binding),
+-         true <- b["kind"] == "collection.managed" and b["version"] === 2,
++         true <- binding_keys?(b, r),
++         true <- b["kind"] == "collection.managed" and b["version"] === metadata_version(r),
+          true <- JSON.sha256?(b["outer_sha256"]),
+          true <- b["recipe_sha256"] == r["recipe_sha256"],
+          base =
+            b
+-           |> Map.drop(~w(outer_sha256 recipe_sha256))
++           |> Map.drop(~w(outer_sha256 recipe_sha256 metadata_version))
+            |> Map.merge(%{"kind" => "collection", "version" => 1}) do
+       CollectionCall.valid_binding?(base, legacy(r), identity, metadata) and
+         (is_nil(metadata) or admitted_recipe?(metadata["semantic_admission"], b))
+@@ -77,7 +77,7 @@ defmodule Ipse.Extension.ManagedCollectionCall do
+ 
+   defp admitted_recipe?(admission, b) do
+     settings = admission["policy"]["settings"]
+-    # Registry membership makes this an explicit version-2 journey. It does not
++    # Registry membership makes this an explicit managed journey. It does not
+     # select an effect mapping: denied read-outer attempts still need a receipt.
+     match?({:ok, _}, SemanticConsent.recipe(settings, b))
+   end
+@@ -94,9 +94,14 @@ defmodule Ipse.Extension.ManagedCollectionCall do
+ 
+     envelope = byte_size(Jason.encode!(change)) - 2
+ 
++    sidecars =
++      if metadata_version(request) == 3,
++        do: 4 * (6144 + envelope + 1) + (4 + envelope + 1),
++        else: 2 * (6144 + envelope + 1)
++
+     Map.merge(Ipse.Extension.Consent.zero(), %{
+       "operations" => 1,
+-      "input_bytes" => byte_size(Jason.encode!(request)) + 2 * (6144 + envelope + 1) + 2048,
++      "input_bytes" => byte_size(Jason.encode!(request)) + sidecars + 2048,
+       "output_bytes" => 16_384
+     })
+   end
+@@ -136,26 +141,100 @@ defmodule Ipse.Extension.ManagedCollectionCall do
+ 
+   defp protected(context, intent, key) do
+     result =
+-      Ipse.Extension.ProjectIdentity.with_binding(
+-        context.config[:home],
+-        context.cwd,
+-        context.config[:semantic_admission]["binding"],
+-        fn _ ->
+-          with {:ok, current, proofs} <- current_sources(context, intent),
+-               {:ok, plan} <- plan(context, intent, current, proofs) do
+-            publish(context, intent, current, proofs, plan)
+-          else
+-            _ -> failed("collection_consent_denied")
+-          end
+-        end
+-      )
++      if metadata_version(intent["request"]) == 3 do
++        protected_v3(context, intent)
++      else
++        Ipse.Extension.ProjectIdentity.with_binding(
++          context.config[:home],
++          context.cwd,
++          context.config[:semantic_admission]["binding"],
++          fn _ -> authorized_publication(context, intent) end
++        )
++      end
+ 
+     case result do
++      {:ok, {:deferred, packet}} -> settle_deferred(context, intent, packet)
+       {:deferred, packet} -> settle_deferred(context, intent, packet)
+       other -> if Process.get(key) == :publishing, do: :unknown, else: normalize(other)
+     end
+   end
+ 
++  defp authorized_publication(c, i) do
++    with {:ok, current, proofs} <- current_sources(c, i),
++         {:ok, plan} <- plan(c, i, current, proofs) do
++      publish(c, i, current, proofs, plan)
++    else
++      _ -> failed("collection_consent_denied")
++    end
++  end
++
++  defp protected_v3(c, i) do
++    alias Ipse.Extension.ProjectIdentity
++    binding = c.config[:semantic_admission]["binding"]
++    scope = %{namespace: i["namespace"], format: "managed-metadata-v3"}
++
++    existing =
++      ProjectIdentity.with_existing_domain_auth(c.config[:home], c.cwd, binding, scope, fn _, _ ->
++        :active
++      end)
++
++    scope = Map.merge(scope, %{operation_id: i["operation_id"], initialize: existing != :active})
++
++    ProjectIdentity.with_domain_publication(
++      c.config[:home],
++      c.cwd,
++      binding,
++      scope,
++      fn _ ->
++        with {:ok, current, proofs} <- current_sources(c, i),
++             {:ok, _} <- plan(c, i, current, proofs),
++             :ok <- if(scope.initialize, do: native_absence(c, i), else: :ok) do
++          :ok
++        else
++          _ -> {:error, :collection_domain_refused}
++        end
++      end,
++      fn cap, catalog ->
++        accounting_scope(fn proof_key, _ ->
++          result =
++            authorized_publication(
++              Map.merge(c, %{managed_domain: {cap, catalog}, managed_first_proof: proof_key}),
++              i
++            )
++
++          if catalog["state"] == "prepared" do
++            case {result, Process.get(proof_key)} do
++              {{:deferred, _}, witness} when is_map(witness) ->
++                {:first_publication, witness, result}
++
++              _ ->
++                :unknown
++            end
++          else
++            result
++          end
++        end)
++      end
++    )
++  end
++
++  defp native_absence(c, i) do
++    checked_view(c, i, fn view ->
++      with {:ok, result} <-
++             Collection.view_read(view, %{
++               "op" => "get_many",
++               "keys" => [Collection.ManagedPages.format_key()]
++             }),
++           true <- result["witness"]["root_state"] == "absent",
++           true <- is_nil(result["witness"]["root"]),
++           true <- result["records"] == [nil] do
++        :ok
++      else
++        _ -> {:error, :collection_domain_refused}
++      end
++    end)
++  end
++
+   # A smaller measured charge must not escape the outer Identity finalization.
+   # Until this point, Consent retains the full publishing reservation.
+   defp settle_deferred(c, i, packet) do
+@@ -302,7 +381,12 @@ defmodule Ipse.Extension.ManagedCollectionCall do
+   defp storage(c, i, proofs, plan, key, owner) do
+     request = i["request"]
+ 
+-    case Collection.execute_managed(
++    execute =
++      if metadata_version(request) == 3,
++        do: &Collection.execute_managed_v3/6,
++        else: &Collection.execute_managed/6
++
++    case execute.(
+            SemanticAdmission.collection_root(c.config[:home]),
+            i["namespace"],
+            request["request"],
+@@ -316,14 +400,26 @@ defmodule Ipse.Extension.ManagedCollectionCall do
+                request,
+                plan.reservation["reserved"],
+                fn ->
+-                 Collection.Normalizer.normalize(witness, read, %{
++                 options = %{
+                    request: request["request"],
+                    recipe: plan.recipe,
+                    constraints: plan.constraints,
+                    verified_sources: Enum.map(proofs, & &1["proof"]),
+                    policy_sha256: i["effect_binding"]["pin"]["policy_sha256"],
+                    now_ms: now()
+-                 })
++                 }
++
++                 case Map.get(c, :managed_domain) do
++                   {cap, catalog} ->
++                     Collection.NormalizerV3.normalize(
++                       witness,
++                       read,
++                       Map.merge(options, %{domain_cap: cap, catalog: catalog})
++                     )
++
++                   nil ->
++                     Collection.Normalizer.normalize(witness, read, options)
++                 end
+                end
+              )
+            end
+@@ -338,7 +434,8 @@ defmodule Ipse.Extension.ManagedCollectionCall do
+                  i["operation_id"],
+                  value,
+                  plan.reservation["reserved"]
+-               ) do
++               ),
++             :ok <- verify_first_publication(c, i, value) do
+           {:ok, value, actual}
+         else
+           _ -> :unknown
+@@ -366,6 +463,109 @@ defmodule Ipse.Extension.ManagedCollectionCall do
+     end
+   end
+ 
++  defp verify_first_publication(
++         %{managed_domain: {cap, %{"state" => "prepared"} = catalog}} = c,
++         i,
++         value
++       ) do
++    alias Collection.{ManagedPages, Migration}
++    normalization = value["normalization"]
++    [change] = i["request"]["request"]["changes"]
++
++    keys =
++      Enum.uniq(
++        [ManagedPages.format_key(), change["key"]] ++
++          Enum.map(normalization["metadata_changes"], & &1["key"])
++      )
++
++    result =
++      checked_view(c, i, fn view ->
++        with {:ok, snapshot} <- Collection.view_read(view, %{"op" => "get_many", "keys" => keys}),
++             true <- snapshot["witness"]["root_state"] == "present",
++             true <- snapshot["summary"]["generation"] == value["receipt"]["generation"],
++             true <- snapshot["summary"]["floor"] == value["receipt"]["floor"],
++             records = Map.new(Enum.zip(keys, snapshot["records"])),
++             record = records[change["key"]],
++             true <-
++               published_record?(
++                 record,
++                 i,
++                 value["receipt"]["generation"],
++                 JSON.sha256(Migration.encode(change["value"]))
++               ),
++             {:ok, _} <- ManagedPages.open_format(cap, records[ManagedPages.format_key()]),
++             true <-
++               records[ManagedPages.format_key()]["sha256"] ==
++                 normalization["format_value_sha256"],
++             true <-
++               Enum.all?(normalization["metadata_changes"], fn extra ->
++                 current = records[extra["key"]]
++
++                 if is_nil(extra["value_sha256"]) do
++                   is_nil(current) and extra["expected_revision"] > 0
++                 else
++                   published_record?(
++                     current,
++                     i,
++                     value["receipt"]["generation"],
++                     extra["value_sha256"]
++                   )
++                 end
++               end) do
++          {:ok,
++           %{
++             version: 1,
++             namespace: i["namespace"],
++             format: "managed-metadata-v3",
++             fence_id: catalog["fence_id"],
++             operation_id: i["operation_id"],
++             root_sha256: snapshot["witness"]["root_sha256"]
++           }}
++        else
++          _ -> {:error, :collection_first_publication_unconfirmed}
++        end
++      end)
++
++    case result do
++      {:ok, witness} ->
++        Process.put(c.managed_first_proof, witness)
++        :ok
++
++      _ ->
++        {:error, :collection_first_publication_unconfirmed}
++    end
++  end
++
++  defp verify_first_publication(_, _, _), do: :ok
++
++  defp published_record?(record, i, generation, sha) do
++    is_map(record) and record["revision"] == generation and
++      record["operation_id"] == i["operation_id"] and record["sha256"] == sha and
++      JSON.sha256(Collection.Migration.encode(record["value"])) == sha
++  end
++
++  defp checked_view(c, i, fun) do
++    with {:ok, view} <-
++           Collection.open_view(
++             SemanticAdmission.collection_root(c.config[:home]),
++             i["namespace"]
++           ) do
++      result =
++        try do
++          fun.(view)
++        rescue
++          _ -> {:error, :collection_view_unavailable}
++        catch
++          _, _ -> {:error, :collection_view_unavailable}
++        end
++
++      case Collection.close_view(view) do
++        :ok -> result
++        _ -> {:error, :collection_view_unavailable}
++      end
++    end
++  end
++
+   # This slot exists only in the actual storage callback process. It never crosses
+   # the SDK boundary or supplies authority for an otherwise unproven outcome.
+   defp accounting_scope(fun) do
+@@ -466,8 +666,8 @@ defmodule Ipse.Extension.ManagedCollectionCall do
+   def bound_outcome?(event) do
+     binding = event["effect_binding"]
+ 
+-    keys?(binding, @binding) and binding["kind"] == "collection.managed" and
+-      binding["version"] === 2 and
++    binding_keys?(binding, event["request"]) and binding["kind"] == "collection.managed" and
++      binding["version"] === metadata_version(event["request"]) and
+       SemanticConsent.pin?(binding["pin"]) and binding["namespace"] == event["namespace"] and
+       binding["pin"]["namespace"] == event["namespace"] and
+       binding["pin"]["identity_sha256"] == event["identity_sha256"] and
+@@ -489,7 +689,7 @@ defmodule Ipse.Extension.ManagedCollectionCall do
+   defp normalization?(n, r) do
+     [change] = r["request"]["changes"]
+ 
+-    keys?(n, @normalization) and n["version"] === 2 and n["record_key"] == change["key"] and
++    valid_metadata?(n, r) and n["record_key"] == change["key"] and
+       JSON.sha256?(n["lineage"]) and JSON.safe_uint?(n["first_admitted_ms"]) and
+       (is_nil(n["valid_until_ms"]) or
+          (JSON.safe_uint?(n["valid_until_ms"]) and n["valid_until_ms"] > n["first_admitted_ms"])) and
+@@ -497,12 +697,40 @@ defmodule Ipse.Extension.ManagedCollectionCall do
+       n["eligibility"] in ~w(current never_current) and
+       (not is_nil(n["valid_until_ms"]) or
+          (n["category"] != "ordinary" and n["eligibility"] != "never_current")) and
+-      metadata_key?(n["anchor_key"], "anchor", n["lineage"]) and
+-      metadata_key?(n["live_key"], "live", JSON.sha256(change["key"])) and
+-      JSON.sha256?(n["anchor_value_sha256"]) and JSON.sha256?(n["live_value_sha256"]) and
+       byte_size(Jason.encode!(n)) <= 2048
+   end
+ 
++  defp valid_metadata?(n, r) do
++    if metadata_version(r) == 3 do
++      keys?(n, @normalization_v3) and n["version"] === 3 and
++        JSON.sha256?(n["format_value_sha256"]) and is_list(n["metadata_changes"]) and
++        length(n["metadata_changes"]) in 1..5 and
++        Enum.uniq_by(n["metadata_changes"], & &1["key"]) == n["metadata_changes"] and
++        Enum.count(n["metadata_changes"], &is_nil(&1["value_sha256"])) <= 1 and
++        Enum.count(n["metadata_changes"], &(not is_nil(&1["value_sha256"]))) <= 4 and
++        Enum.all?(n["metadata_changes"], fn change ->
++          keys?(change, ~w(key expected_revision value_sha256)) and
++            metadata_key_v3?(change["key"]) and
++            JSON.safe_uint?(change["expected_revision"]) and
++            (JSON.sha256?(change["value_sha256"]) or
++               (is_nil(change["value_sha256"]) and change["expected_revision"] > 0 and
++                  change["key"] != Collection.ManagedPages.format_key()))
++        end)
++    else
++      keys?(n, @normalization) and n["version"] === 2 and
++        metadata_key?(n["anchor_key"], "anchor", n["lineage"]) and
++        metadata_key?(n["live_key"], "live", JSON.sha256(hd(r["request"]["changes"])["key"])) and
++        JSON.sha256?(n["anchor_value_sha256"]) and JSON.sha256?(n["live_value_sha256"])
++    end
++  end
++
++  defp metadata_key_v3?("host.validity.format"), do: true
++
++  defp metadata_key_v3?(key) when is_binary(key),
++    do: Regex.match?(~r/\Ahost\.validity\.(?:a\.[0-9a-f]{64}|l\.0[0-2][0-9a-f]{64})\z/, key)
++
++  defp metadata_key_v3?(_), do: false
++
+   defp metadata_key?(key, "anchor", lineage),
+     do:
+       key in Enum.map(
+@@ -523,7 +751,26 @@ defmodule Ipse.Extension.ManagedCollectionCall do
+     key in Enum.map(0..3, &("host.validity.live." <> shard <> "." <> Integer.to_string(&1)))
+   end
+ 
+-  defp legacy(r), do: r |> Map.delete("recipe_sha256") |> Map.put("op", "collection.call")
++  defp metadata_version(%{"metadata_version" => 3}), do: 3
++  defp metadata_version(_), do: 2
++
++  defp request_keys?(r),
++    do:
++      keys?(r, ~w(op request proofs recipe_sha256)) or
++        (keys?(r, ~w(op request proofs recipe_sha256 metadata_version)) and
++           r["metadata_version"] === 3)
++
++  defp binding_keys?(b, r),
++    do:
++      keys?(b, if(metadata_version(r) == 3, do: ["metadata_version" | @binding], else: @binding)) and
++        (metadata_version(r) != 3 or b["metadata_version"] === 3)
++
++  defp version_binding(b, r),
++    do: if(metadata_version(r) == 3, do: Map.put(b, "metadata_version", 3), else: b)
++
++  defp legacy(r),
++    do: r |> Map.drop(~w(recipe_sha256 metadata_version)) |> Map.put("op", "collection.call")
++
+   defp normalize({s, _} = r) when s in [:ok, :conflict, :failed], do: r
+   defp normalize({:error, _}), do: failed("collection_consent_denied")
+   defp normalize(_), do: :unknown
+diff --git a/lib/ipse/http.ex b/lib/ipse/http.ex
+index c86f62f..c00483d 100644
+--- a/lib/ipse/http.ex
++++ b/lib/ipse/http.ex
+@@ -19,6 +19,11 @@ defmodule Ipse.HTTP do
+ 
+   @doc false
+   def bounded_request(request, limit, timeout \\ 15_000)
++
++  def bounded_request(request, limit, timeout),
++    do: bounded_request(request, limit, timeout, nil)
++
++  def bounded_request(request, limit, timeout, inference_kind)
+       when is_integer(limit) and limit in 1..8_388_608 and is_integer(timeout) and timeout > 0 do
+     uri = %URI{scheme: to_string(request.scheme), host: request.host, port: request.port}
+ 
+@@ -34,23 +39,32 @@ defmodule Ipse.HTTP do
+         initial = %{status: nil, body: [], bytes: 0, error: nil}
+ 
+         result =
+-          Finch.stream_while(
+-            request,
+-            finch,
+-            initial,
+-            fn event, acc ->
+-              cond do
+-                System.monotonic_time(:millisecond) >= deadline ->
+-                  {:halt, %{acc | error: :timeout}}
+-
+-                true ->
+-                  bounded_event(event, acc, limit)
+-              end
+-            end,
+-            receive_timeout: timeout,
+-            request_timeout: timeout,
+-            pool_timeout: min(timeout, 2000)
+-          )
++          if is_nil(inference_kind) or
++               Ipse.Provider.EgressGate.before_dispatch(
++                 inference_kind,
++                 target,
++                 IO.iodata_to_binary(request.body)
++               ) == :ok do
++            Finch.stream_while(
++              request,
++              finch,
++              initial,
++              fn event, acc ->
++                cond do
++                  System.monotonic_time(:millisecond) >= deadline ->
++                    {:halt, %{acc | error: :timeout}}
++
++                  true ->
++                    bounded_event(event, acc, limit)
++                end
++              end,
++              receive_timeout: timeout,
++              request_timeout: timeout,
++              pool_timeout: min(timeout, 2000)
++            )
++          else
++            {:error, :inference_egress_refused}
++          end
+ 
+         case result do
+           {:ok, %{error: nil} = acc} ->
+@@ -60,6 +74,9 @@ defmodule Ipse.HTTP do
+           {:ok, %{error: error}} ->
+             {:error, error}
+ 
++          {:error, :inference_egress_refused} ->
++            {:error, :inference_egress_refused}
++
+           _ ->
+             {:error, :connection_failed}
+         end
+diff --git a/lib/ipse/provider/completion_witness.ex b/lib/ipse/provider/completion_witness.ex
+index e822e6b..4f2e18d 100644
+--- a/lib/ipse/provider/completion_witness.ex
++++ b/lib/ipse/provider/completion_witness.ex
+@@ -21,7 +21,8 @@ defmodule Ipse.Provider.CompletionWitness do
+       eof: false,
+       cleanup: false,
+       native: false,
+-      invalid: false
++      invalid: false,
++      owned_child: nil
+     })
+ 
+     try do
+@@ -30,7 +31,8 @@ defmodule Ipse.Provider.CompletionWitness do
+ 
+       complete =
+         is_map(state) and state.owner == self() and is_reference(state.ref) and
+-          not state.invalid and state.started and state.eof and state.cleanup and state.native
++          not state.invalid and state.started and state.eof and state.cleanup and state.native and
++          state.owned_child in [nil, :consumed]
+ 
+       {result, complete}
+     after
+@@ -59,7 +61,7 @@ defmodule Ipse.Provider.CompletionWitness do
+ 
+   def http_started(target) do
+     update(fn state ->
+-      if not state.started and state.target == target_hash(target),
++      if not state.started and is_nil(state.owned_child) and state.target == target_hash(target),
+         do: %{state | started: true},
+         else: %{state | invalid: true}
+     end)
+@@ -98,6 +100,66 @@ defmodule Ipse.Provider.CompletionWitness do
+     end)
+   end
+ 
++  # Trusted host only. This reference correlates a single child with its outer
++  # witness; it does not prove a child ran or authenticate a same-BEAM caller.
++  # The host must call completion only after confirmed child cleanup and native
++  # parsing. It is not an extension or JSON receipt.
++  @doc false
++  def reserve_owned_child(runtime, kind, target) do
++    case Process.get(@key) do
++      nil ->
++        {:ok, :unobserved}
++
++      %{owner: owner} = state when owner == self() ->
++        if not state.invalid and not state.started and is_nil(state.http_ref) and
++             is_nil(state.owned_child) and
++             state.provider == runtime.provider and state.model == runtime.model and
++             state.kind == kind and state.target == target_hash(target) do
++          capability = make_ref()
++          Process.put(@key, %{state | owned_child: capability})
++          {:ok, capability}
++        else
++          Process.put(@key, %{state | invalid: true})
++          {:error, :inference_witness_refused}
++        end
++
++      _ ->
++        {:error, :inference_witness_refused}
++    end
++  end
++
++  @doc false
++  def complete_owned_child(runtime, kind, target, capability) do
++    case Process.get(@key) do
++      nil when capability == :unobserved ->
++        :ok
++
++      %{owner: owner} = state when owner == self() ->
++        if is_reference(capability) and state.owned_child === capability and
++             not state.invalid and not state.started and is_nil(state.http_ref) and
++             state.provider == runtime.provider and state.model == runtime.model and
++             state.kind == kind and state.target == target_hash(target) do
++          Process.put(@key, %{
++            state
++            | started: true,
++              http_ref: make_ref(),
++              eof: true,
++              cleanup: true,
++              native: true,
++              owned_child: :consumed
++          })
++
++          :ok
++        else
++          Process.put(@key, %{state | invalid: true})
++          {:error, :inference_witness_refused}
++        end
++
++      _ ->
++        {:error, :inference_witness_refused}
++    end
++  end
++
+   defp update(fun) do
+     case Process.get(@key) do
+       %{owner: owner} = state when owner == self() -> Process.put(@key, fun.(state))
+diff --git a/lib/ipse/provider/decision/transport.ex b/lib/ipse/provider/decision/transport.ex
+index 4e08fcf..fadbfd8 100644
+--- a/lib/ipse/provider/decision/transport.ex
++++ b/lib/ipse/provider/decision/transport.ex
+@@ -58,7 +58,7 @@ defmodule Ipse.Provider.Decision.Transport do
+          true <- is_integer(timeout) and timeout in 1..120_000,
+          {:ok, headers} <- headers(config),
+          wire = Finch.build(:post, endpoint(config), headers, Jason.encode!(body)),
+-         {:ok, status, bytes} <- Ipse.HTTP.bounded_request(wire, @limit, timeout),
++         {:ok, status, bytes} <- Ipse.HTTP.bounded_request(wire, @limit, timeout, "decision"),
+          true <- status in 200..299 do
+       case parse(config, request, bytes) do
+         {:ok, _, _} = result ->
+diff --git a/lib/ipse/provider/embedding.ex b/lib/ipse/provider/embedding.ex
+index fcdb5a5..32728f9 100644
+--- a/lib/ipse/provider/embedding.ex
++++ b/lib/ipse/provider/embedding.ex
+@@ -70,7 +70,8 @@ defmodule Ipse.Provider.Embedding do
+          timeout = config[:timeout_ms] || 120_000,
+          true <- is_integer(timeout) and timeout in 1..120_000,
+          request = Finch.build(:post, endpoint(config), headers, Jason.encode!(body)),
+-         {:ok, status, bytes} <- Ipse.HTTP.bounded_request(request, @body_limit, timeout),
++         {:ok, status, bytes} <-
++           Ipse.HTTP.bounded_request(request, @body_limit, timeout, "embedding"),
+          true <- status in 200..299 do
+       case parse(config.provider, bytes, config, inputs) do
+         {:ok, _, _} = result ->
+diff --git a/lib/ipse/provider/ollama.ex b/lib/ipse/provider/ollama.ex
+index c806858..2fe2236 100644
+--- a/lib/ipse/provider/ollama.ex
++++ b/lib/ipse/provider/ollama.ex
+@@ -66,16 +66,7 @@ defmodule Ipse.Provider.Ollama do
+     url = endpoint(config)
+     body = request_body(config, messages, tools)
+ 
+-    state = %{
+-      lines: Stream.new_lines(:lf),
+-      content: Stream.new_buffer(),
+-      thinking: Stream.new_buffer(),
+-      calls: [],
+-      call_count: 0,
+-      done: false,
+-      usage: %{},
+-      reported_model: nil
+-    }
++    state = new_state()
+ 
+     headers =
+       if config[:api_key] in [nil, ""],
+@@ -87,49 +78,75 @@ defmodule Ipse.Provider.Ollama do
+              consume(state, chunk, emit)
+            end),
+          {:ok, state} <- last_line(state, emit),
+-         :ok <- Stream.check_deadline(state) do
+-      if state.done do
+-        response_id = :crypto.strong_rand_bytes(8) |> Base.encode16(case: :lower)
+-        content = Stream.buffer_value(state.content)
+-        thinking = Stream.buffer_value(state.thinking)
+-        native_calls = Enum.reverse(state.calls)
+-
+-        calls =
+-          Enum.with_index(native_calls)
+-          |> Enum.map(fn {call, index} ->
+-            %{
+-              "id" => call["id"] || "ollama_#{response_id}_#{index}",
+-              "type" => "function",
+-              "function" => %{
+-                "name" => call["function"]["name"],
+-                "arguments" => encode_args(call["function"]["arguments"])
+-              }
+-            }
+-          end)
++         :ok <- Stream.check_deadline(state),
++         do: finish_state(state)
++  end
+ 
+-        native = %{
+-          "role" => "assistant",
+-          "content" => content,
+-          "thinking" => thinking,
+-          "tool_calls" => native_calls
+-        }
++  # Unwired owned transport uses the same native parser with a private sink.
++  @doc false
++  def parse_buffered(bytes) when is_binary(bytes) do
++    sink = fn _ -> :ok end
+ 
+-        message = %{
+-          "role" => "assistant",
+-          "content" => content,
+-          "provider_data" => %{"provider" => "ollama", "message" => native}
+-        }
++    with {:ok, state} <- consume(new_state(), bytes, sink),
++         {:ok, state} <- last_line(state, sink),
++         do: finish_state(state)
++  end
+ 
+-        message =
+-          if state.reported_model,
+-            do: put_in(message, ["provider_data", "reported_model"], state.reported_model),
+-            else: message
++  defp new_state do
++    %{
++      lines: Stream.new_lines(:lf),
++      content: Stream.new_buffer(),
++      thinking: Stream.new_buffer(),
++      calls: [],
++      call_count: 0,
++      done: false,
++      usage: %{},
++      reported_model: nil
++    }
++  end
+ 
+-        message = if calls == [], do: message, else: Map.put(message, "tool_calls", calls)
+-        with :ok <- Stream.check_deadline(state), do: {:ok, message, state.usage}
+-      else
+-        {:error, "Ollama stream ended before its completion marker; no tools were executed."}
+-      end
++  defp finish_state(state) do
++    if state.done do
++      response_id = :crypto.strong_rand_bytes(8) |> Base.encode16(case: :lower)
++      content = Stream.buffer_value(state.content)
++      thinking = Stream.buffer_value(state.thinking)
++      native_calls = Enum.reverse(state.calls)
++
++      calls =
++        Enum.with_index(native_calls)
++        |> Enum.map(fn {call, index} ->
++          %{
++            "id" => call["id"] || "ollama_#{response_id}_#{index}",
++            "type" => "function",
++            "function" => %{
++              "name" => call["function"]["name"],
++              "arguments" => encode_args(call["function"]["arguments"])
++            }
++          }
++        end)
++
++      native = %{
++        "role" => "assistant",
++        "content" => content,
++        "thinking" => thinking,
++        "tool_calls" => native_calls
++      }
++
++      message = %{
++        "role" => "assistant",
++        "content" => content,
++        "provider_data" => %{"provider" => "ollama", "message" => native}
++      }
++
++      message =
++        if state.reported_model,
++          do: put_in(message, ["provider_data", "reported_model"], state.reported_model),
++          else: message
++
++      message = if calls == [], do: message, else: Map.put(message, "tool_calls", calls)
++      with :ok <- Stream.check_deadline(state), do: {:ok, message, state.usage}
++    else
++      {:error, "Ollama stream ended before its completion marker; no tools were executed."}
+     end
+   end
+ 
+diff --git a/lib/ipse/provider/transport.ex b/lib/ipse/provider/transport.ex
+index 4eebad2..1b7d5dc 100644
+--- a/lib/ipse/provider/transport.ex
++++ b/lib/ipse/provider/transport.ex
+@@ -40,24 +40,32 @@ defmodule Ipse.Provider.Transport do
+               deadline: deadline
+             }
+ 
++            body = Jason.encode!(payload)
++
+             request =
+               Finch.build(
+                 :post,
+                 url,
+                 [{"content-type", "application/json"}, {"accept-encoding", "identity"} | headers],
+-                Jason.encode!(payload)
++                body
+               )
+ 
+             result =
+-              Finch.stream_while(
+-                request,
+-                finch,
+-                acc,
+-                fn event, acc -> receive_event(event, acc, limit, consume) end,
+-                pool_timeout: min(timeout, 2000),
+-                receive_timeout: timeout,
+-                request_timeout: timeout
+-              )
++              case Ipse.Provider.EgressGate.before_dispatch("text", url, body) do
++                :ok ->
++                  Finch.stream_while(
++                    request,
++                    finch,
++                    acc,
++                    fn event, acc -> receive_event(event, acc, limit, consume) end,
++                    pool_timeout: min(timeout, 2000),
++                    receive_timeout: timeout,
++                    request_timeout: timeout
++                  )
++
++                _ ->
++                  {:error, :inference_egress_refused}
++              end
+ 
+             case result do
+               {:ok, %{error: nil, status: status} = final} when status in 200..299 ->
+@@ -83,6 +91,9 @@ defmodule Ipse.Provider.Transport do
+ 
+               {:error, _, _} ->
+                 {:error, "Provider connection failed or timed out."}
++
++              {:error, :inference_egress_refused} ->
++                {:error, "Inference dispatch validation changed; no provider request was sent."}
+             end
+           end,
+           options
+diff --git a/mix.exs b/mix.exs
+index 0c2a8c9..281666d 100644
+--- a/mix.exs
++++ b/mix.exs
+@@ -14,6 +14,7 @@ defmodule Ipse.MixProject do
+         {:jason, github: "michalmuskala/jason", tag: "v1.4.4", override: true},
+         {:mcp_elixir_sdk, "== 1.1.0"},
+         {:jsonschex, "== 0.10.0"},
++        {:mint, "== 1.11.0"},
+         {:req, "== 0.7.5"},
+         {:plug, "== 1.20.3"}
+       ],
+diff --git a/test/extensions/knowledge/knowledge_session_test.exs b/test/extensions/knowledge/knowledge_session_test.exs
+index 8dd1691..e9646f7 100644
+--- a/test/extensions/knowledge/knowledge_session_test.exs
++++ b/test/extensions/knowledge/knowledge_session_test.exs
+@@ -330,11 +330,13 @@ defmodule IpseKnowledge.KnowledgeSessionTest do
+     assert commit["approval"] == "saved_consent"
+     assert commit["version"] == 3
+     assert commit["effect_binding"]["kind"] == "collection.managed"
+-    assert commit["effect_binding"]["version"] == 2
++    assert commit["effect_binding"]["version"] == 3
++    assert commit["effect_binding"]["metadata_version"] == 3
++    assert commit["request"]["metadata_version"] == 3
+     assert commit["request"]["recipe_sha256"] == recipe_sha
+     assert commit["request"]["request"]["advance_floor"] == true
+     normalization = commit["outcome"]["value"]["normalization"]
+-    assert normalization["version"] == 2
++    assert normalization["version"] == 3
+     assert normalization["eligibility"] == if(native?, do: "current", else: "never_current")
+     assert is_integer(normalization["valid_until_ms"])
+     [change] = commit["request"]["request"]["changes"]
+@@ -360,6 +362,6 @@ defmodule IpseKnowledge.KnowledgeSessionTest do
+       )
+ 
+     assert stored["generation"] == 1 and stored["floor"] == 1
+-    assert stored["records"] == 3
++    assert stored["records"] == 4
+   end
+ end
+diff --git a/test/ipse/extension/managed_collection_call_session_test.exs b/test/ipse/extension/managed_collection_call_session_test.exs
+index ee71f0c..973f62c 100644
+--- a/test/ipse/extension/managed_collection_call_session_test.exs
++++ b/test/ipse/extension/managed_collection_call_session_test.exs
+@@ -110,6 +110,7 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
+         commit = %{"op" => "collection.managed", "recipe_sha256" => state["recipe"], "request" => %{"op" => "commit", "expected_generation" => if(state["mode"] == "conflict", do: 0, else: snapshot["generation"]), "advance_floor" => true,
+           "changes" => [%{"key" => key, "expected_revision" => 0, "value" => value}]},
+           "proofs" => [%{"handle" => state["page"]["handle"], "quote" => "Synthetic café observation"}]}
++        commit = if state["metadata_version"] == 3, do: Map.put(commit, "metadata_version", 3), else: commit
+         call(commit, Map.put(state, "step", "done"))
+       end
+       defp advance(_, outcome, state) do
+@@ -165,7 +166,11 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
+         "type" => "object",
+         "additionalProperties" => false,
+         "required" => ["trace", "recipe"],
+-        "properties" => %{"trace" => %{"type" => "string"}, "recipe" => %{"type" => "string"}}
++        "properties" => %{
++          "trace" => %{"type" => "string"},
++          "recipe" => %{"type" => "string"},
++          "metadata_version" => %{"type" => "integer", "enum" => [3]}
++        }
+       },
+       "runtime" => %{
+         "elixir" => ">= 1.18.0",
+@@ -204,7 +209,11 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
+           "instance" => "capture",
+           "artifact" => artifact.digest,
+           "enabled" => true,
+-          "options" => %{"trace" => trace, "recipe" => JSON.digest([recipe()])},
++          "options" =>
++            Map.merge(
++              %{"trace" => trace, "recipe" => JSON.digest([recipe()])},
++              if(c[:metadata_version] == 3, do: %{"metadata_version" => 3}, else: %{})
++            ),
+           "order" => 0,
+           "lifetime" => "session"
+         }
+@@ -416,6 +425,190 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
+     pid
+   end
+ 
++  @tag metadata_version: 3
++  test "explicit V3 activates only after actual first publication and resumes without replay",
++       c do
++    pid = start(c)
++    assert :ok = Session.prompt(pid, "Synthetic café observation")
++    assert_receive {:ipse, ^pid, {:done, :ok}}, 15_000
++    id = Session.info(pid).id
++    {:ok, events} = Journal.load(c.dir, id)
++
++    result =
++      Enum.find(
++        events,
++        &(&1["type"] == "extension_action_result" and &1["request"]["op"] == "collection.managed")
++      )
++
++    assert result["outcome"]["status"] == "ok"
++    assert result["effect_binding"]["version"] == 3
++    assert result["effect_binding"]["metadata_version"] == 3
++    assert result["outcome"]["value"]["normalization"]["version"] == 3
++
++    state =
++      c.home |> Path.join("project-identities/index.json") |> File.read!() |> Jason.decode!()
++
++    entry = state["domain_keys"][c.binding["project_id"]]["namespaces"][c.namespace]
++    assert entry["state"] == "active" and JSON.sha256?(entry["first_root_sha256"])
++    assert entry["first_operation_id"] == result["operation_id"]
++    assert :ok = Ipse.Extension.Actions.validate_events(events)
++    assert {:ok, _} = Session.restore_context(events)
++
++    for changed <- [
++          Map.delete(result["request"], "metadata_version"),
++          Map.put(result["request"], "metadata_version", 2)
++        ] do
++      refute Ipse.Extension.ManagedCollectionCall.valid_binding?(
++               result["effect_binding"],
++               changed,
++               hd(c.config.extensions).identity
++             )
++    end
++
++    {:ok, ledger} = Consent.snapshot(c.control, c.binding["project_id"])
++    operation = ledger["operations"][result["operation_id"]]
++    assert operation["status"] == "settled"
++    assert operation["actual"]["input_bytes"] < operation["reserved"]["input_bytes"]
++    assert :ok = Session.close_confirmed(pid)
++    before = File.read!(c.trace)
++    resumed = start(c, %{}, id)
++    assert :ok = Session.close_confirmed(resumed)
++    assert File.read!(c.trace) == before
++
++    next = start(c)
++    assert :ok = Session.prompt(next, "Synthetic café observation")
++    assert_receive {:ipse, ^next, {:done, :ok}}, 15_000
++    {:ok, later} = Journal.load(c.dir, Session.info(next).id)
++
++    follow_on =
++      Enum.find(
++        later,
++        &(&1["type"] == "extension_action_result" and &1["request"]["op"] == "collection.managed")
++      )
++
++    assert follow_on["outcome"]["status"] == "ok"
++    assert follow_on["outcome"]["value"]["receipt"]["generation"] == 2
++
++    state =
++      c.home |> Path.join("project-identities/index.json") |> File.read!() |> Jason.decode!()
++
++    assert state["domain_keys"][c.binding["project_id"]]["namespaces"][c.namespace] == entry
++  end
++
++  @tag metadata_version: 3
++  test "V3 cannot initialize over an existing unsigned store or silently adopt V2 metadata", c do
++    assert {:ok, _} =
++             Ipse.Extension.Collection.execute(
++               SemanticAdmission.collection_root(c.home),
++               c.namespace,
++               %{
++                 "op" => "commit",
++                 "expected_generation" => 0,
++                 "advance_floor" => true,
++                 "changes" => [
++                   %{
++                     "key" => "host.validity.anchor.00.0",
++                     "expected_revision" => 0,
++                     "value" => %{"version" => 2, "kind" => "anchor", "entries" => %{}}
++                   }
++                 ]
++               },
++               Ipse.Usage.id()
++             )
++
++    pid = start(c)
++    assert :ok = Session.prompt(pid, "Synthetic café observation")
++    assert_receive {:ipse, ^pid, {:done, :ok}}, 15_000
++    {:ok, events} = Journal.load(c.dir, Session.info(pid).id)
++
++    result =
++      Enum.find(
++        events,
++        &(&1["type"] == "extension_action_result" and &1["request"]["op"] == "collection.managed")
++      )
++
++    assert result["outcome"]["status"] == "failed"
++
++    state =
++      c.home |> Path.join("project-identities/index.json") |> File.read!() |> Jason.decode!()
++
++    assert get_in(state, ["domain_keys", c.binding["project_id"], "namespaces", c.namespace]) ==
++             nil
++
++    {:ok, ledger} = Consent.snapshot(c.control, c.binding["project_id"])
++    assert ledger["operations"] == %{}
++    assert collection_read(c, %{"op" => "snapshot"})["generation"] == 1
++  end
++
++  @tag metadata_version: 3
++  test "V3 actual Session publications validate a nonzero live split fence", c do
++    {:ok, initial} = Consent.snapshot(c.control, c.binding["project_id"])
++
++    policy =
++      Map.put(
++        initial["policy"],
++        "limits",
++        Map.merge(Consent.zero(), %{
++          "operations" => 40,
++          "input_bytes" => 2_000_000,
++          "output_bytes" => 2_000_000
++        })
++      )
++
++    assert {:ok, _} =
++             Consent.replace(
++               c.control,
++               c.binding["project_id"],
++               initial["epoch"],
++               policy,
++               System.system_time(:millisecond)
++             )
++
++    assert {:ok, selection} = Ipse.Config.Semantics.selection(policy)
++    c = put_in(c, [:config, :semantic_selections], selection)
++
++    nonzero? =
++      Enum.reduce(1..27, false, fn generation, seen ->
++        pid = start(c)
++        assert :ok = Session.prompt(pid, "Synthetic café observation")
++        assert_receive {:ipse, ^pid, {:done, :ok}}, 15_000
++        {:ok, events} = Journal.load(c.dir, Session.info(pid).id)
++
++        result =
++          Enum.find(
++            events,
++            &(&1["type"] == "extension_action_result" and
++                &1["request"]["op"] == "collection.managed")
++          )
++
++        assert result["outcome"]["status"] == "ok"
++        value = result["outcome"]["value"]
++        assert value["receipt"]["generation"] == generation
++
++        assert Ipse.Extension.ManagedCollectionCall.valid_outcome?(
++                 result["request"],
++                 "ok",
++                 value,
++                 result["operation_id"]
++               )
++
++        assert {:ok, _} = Session.restore_context(events)
++        assert :ok = Session.close_confirmed(pid)
++
++        seen or
++          Enum.any?(value["normalization"]["metadata_changes"], fn extra ->
++            String.starts_with?(extra["key"], "host.validity.l.") and
++              extra["key"] !=
++                Ipse.Extension.Collection.ManagedPages.page_key(
++                  :live,
++                  Ipse.Extension.Collection.ManagedPages.zero(:live)
++                )
++          end)
++      end)
++
++    assert nonzero?
++  end
++
+   test "headless protected capture journals exact outer and inner bindings and settles once", c do
+     pid = start(c)
+     assert :sys.get_state(pid).config.semantic_admission["status"] == "active"
+@@ -976,40 +1169,29 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
+     end
+   end
+ 
+-  test "outer Identity loss after checked deferred publication retains full liability across inert resume",
++  @tag metadata_version: 3
++  test "V3 loss of the native owner during first-publication postproof keeps the outcome unknown",
+        c do
+     owner = self()
+-
+-    tracer =
+-      spawn_link(fn ->
+-        Process.flag(:priority, :high)
+-        send(owner, :settlement_tracer_ready)
+-        trace_identity_completion(owner, %{})
+-      end)
+-
+-    assert_receive :settlement_tracer_ready
+-
+-    assert :erlang.trace_pattern({Consent, :publish_deferred, 5}, [{:_, [], [{:return_trace}]}], [
+-             :local
+-           ]) == 1
+-
+-    :erlang.trace(:all, true, [:call, {:tracer, tracer}])
+     handler = {__MODULE__, make_ref()}
++    stage = :atomics.new(1, [])
+ 
+     :ok =
+-      :telemetry.attach(
++      :telemetry.attach_many(
+         handler,
+-        [:ipse, :extension, :collection, :staged],
+-        &__MODULE__.observe_settlement_port/4,
+-        tracer
++        [
++          [:ipse, :extension, :collection, :staged],
++          [:ipse, :extension, :collection, :view_read]
++        ],
++        &__MODULE__.fence_first_postproof/4,
++        {owner, stage}
+       )
+ 
+     try do
+       pid = start(c)
+       id = Session.info(pid).id
+       assert :ok = Session.prompt(pid, "Synthetic café observation")
+-      assert_receive {:identity_completion_fenced, true, packet}, 15_000
+-      assert packet["version"] === 1
++      assert_receive {:first_postproof_fenced, true}, 15_000
+       assert_receive {:ipse, ^pid, {:done, :error}}, 15_000
+       {:ok, events} = Journal.load(c.dir, id)
+ 
+@@ -1029,8 +1211,14 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
+       assert operation["reserved"] ==
+                Ipse.Extension.ManagedCollectionCall.reservation(event["request"])
+ 
+-      assert packet["actual"]["input_bytes"] < operation["reserved"]["input_bytes"]
+       assert collection_read(c, %{"op" => "snapshot"})["generation"] == 1
++
++      state =
++        c.home |> Path.join("project-identities/index.json") |> File.read!() |> Jason.decode!()
++
++      assert state["domain_keys"][c.binding["project_id"]]["namespaces"][c.namespace]["state"] ==
++               "prepared"
++
+       before = File.read!(c.trace)
+       assert {:error, :cleanup_unconfirmed} = Session.close_confirmed(pid)
+       refute Process.alive?(pid)
+@@ -1041,9 +1229,122 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
+       assert after_control["operations"][event["operation_id"]] == operation
+     after
+       :telemetry.detach(handler)
+-      :erlang.trace(:all, false, [:call])
+-      :erlang.trace_pattern({Consent, :publish_deferred, 5}, false, [:local])
+-      if Process.alive?(tracer), do: send(tracer, :stop)
++    end
++  end
++
++  def fence_first_postproof(
++        [:ipse, :extension, :collection, :staged],
++        _,
++        _,
++        {_, stage}
++      ) do
++    :atomics.put(stage, 1, 1)
++  end
++
++  def fence_first_postproof(
++        [:ipse, :extension, :collection, :view_read],
++        %{records: records},
++        _,
++        {owner, stage}
++      )
++      when records >= 3 do
++    if :atomics.compare_exchange(stage, 1, 1, 2) == :ok do
++      case Process.get({Ipse.Extension.Collection, :lock_held}) do
++        %{port: port} -> send(owner, {:first_postproof_fenced, Port.close(port)})
++        _ -> send(owner, {:first_postproof_fenced, false})
++      end
++    end
++  end
++
++  def fence_first_postproof(_, _, _, _), do: :ok
++
++  for version <- [2, 3] do
++    @tag metadata_version: version
++    test "V#{version} outer Identity loss after checked deferred publication retains full liability across inert resume",
++         c do
++      owner = self()
++
++      tracer =
++        spawn_link(fn ->
++          Process.flag(:priority, :high)
++          send(owner, :settlement_tracer_ready)
++          trace_identity_completion(owner, %{})
++        end)
++
++      assert_receive :settlement_tracer_ready
++
++      assert :erlang.trace_pattern(
++               {Consent, :publish_deferred, 5},
++               [{:_, [], [{:return_trace}]}],
++               [
++                 :local
++               ]
++             ) == 1
++
++      :erlang.trace(:all, true, [:call, {:tracer, tracer}])
++      handler = {__MODULE__, make_ref()}
++
++      :ok =
++        :telemetry.attach(
++          handler,
++          [:ipse, :extension, :collection, :staged],
++          &__MODULE__.observe_settlement_port/4,
++          tracer
++        )
++
++      try do
++        pid = start(c)
++        id = Session.info(pid).id
++        assert :ok = Session.prompt(pid, "Synthetic café observation")
++        assert_receive {:identity_completion_fenced, true, packet}, 15_000
++        assert packet["version"] === 1
++        assert_receive {:ipse, ^pid, {:done, :error}}, 15_000
++        {:ok, events} = Journal.load(c.dir, id)
++
++        [event] =
++          Enum.filter(
++            events,
++            &(&1["type"] == "extension_action_result" and
++                get_in(&1, ["request", "op"]) == "collection.managed")
++          )
++
++        assert event["outcome"]["status"] == "unknown"
++        {:ok, control} = Consent.snapshot(c.control, c.binding["project_id"])
++        operation = control["operations"][event["operation_id"]]
++        assert operation["status"] in ~w(publishing unknown)
++        assert operation["actual"] == nil and operation["receipt"] == nil
++
++        assert operation["reserved"] ==
++                 Ipse.Extension.ManagedCollectionCall.reservation(event["request"])
++
++        assert packet["actual"]["input_bytes"] < operation["reserved"]["input_bytes"]
++        assert collection_read(c, %{"op" => "snapshot"})["generation"] == 1
++
++        if c[:metadata_version] == 3 do
++          state =
++            c.home
++            |> Path.join("project-identities/index.json")
++            |> File.read!()
++            |> Jason.decode!()
++
++          assert state["domain_keys"][c.binding["project_id"]]["namespaces"][c.namespace]["state"] ==
++                   "prepared"
++        end
++
++        before = File.read!(c.trace)
++        assert {:error, :cleanup_unconfirmed} = Session.close_confirmed(pid)
++        refute Process.alive?(pid)
++        resumed = start(c, %{}, id)
++        assert :ok = Session.close_confirmed(resumed)
++        assert File.read!(c.trace) == before
++        {:ok, after_control} = Consent.snapshot(c.control, c.binding["project_id"])
++        assert after_control["operations"][event["operation_id"]] == operation
++      after
++        :telemetry.detach(handler)
++        :erlang.trace(:all, false, [:call])
++        :erlang.trace_pattern({Consent, :publish_deferred, 5}, false, [:local])
++        if Process.alive?(tracer), do: send(tracer, :stop)
++      end
+     end
+   end
+ 
+diff --git a/test/ipse/extension/managed_collection_call_test.exs b/test/ipse/extension/managed_collection_call_test.exs
+index d9efd4f..6172d4d 100644
+--- a/test/ipse/extension/managed_collection_call_test.exs
++++ b/test/ipse/extension/managed_collection_call_test.exs
+@@ -131,6 +131,21 @@ defmodule Ipse.Extension.ManagedCollectionCallTest do
+     assert Collection.valid_request?(normalized)
+   end
+ 
++  test "V3 is an explicit exact integer selection with a five-change bounded reservation" do
++    legacy = request()
++    r = Map.put(legacy, "metadata_version", 3)
++    assert :ok = ManagedCollectionCall.validate(r)
++
++    for version <- [nil, 2, 3.0, "3", 4] do
++      assert {:error, _} =
++               ManagedCollectionCall.validate(Map.put(legacy, "metadata_version", version))
++    end
++
++    charge = ManagedCollectionCall.reservation(r)
++    assert charge["input_bytes"] == byte_size(Jason.encode!(r)) + 27_393
++    assert ManagedCollectionCall.reservation(legacy)["input_bytes"] < charge["input_bytes"]
++  end
++
+   test "private scan excludes metadata before selection and preserves exact public continuation" do
+     parent = Path.join(System.tmp_dir!(), "ipse-sdk-visible-" <> Ipse.Usage.id())
+     File.mkdir!(parent)
