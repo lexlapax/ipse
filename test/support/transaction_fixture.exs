@@ -37,6 +37,10 @@ defmodule Ipse.Test.TransactionFixtureLoader do
       path
       |> File.read!()
       |> String.replace("Ipse.Extension.ProjectIdentity", "Ipse.Test.ProjectIdentityFixture")
+      |> String.replace(
+        "Ipse.Test.ProjectIdentityFixture.DomainAuth",
+        "Ipse.Extension.ProjectIdentity.DomainAuth"
+      )
       |> String.replace("Ipse.Runner.Transaction", "Ipse.Test.TransactionFixture")
       |> String.replace(
         "alias Ipse.Test.TransactionFixture\n",

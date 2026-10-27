@@ -336,9 +336,12 @@ Experimental format-1 domain pages refuse adoption rather than gaining authority
 through a storage-format upgrade. Packed pages have closed shapes, bounded rows,
 contiguous page numbers and no duplicate identities; overflow refuses without
 eviction. Live pointers share Collection's record-key grammar. Ordinary and
-pending rows require finite deadlines. These checks establish publication metadata;
-current-read filtering, typed overrides and their operator workflows still need
-their owning adapters.
+pending rows require finite deadlines. These checks establish structurally
+consistent publication metadata. An unsigned format-2 page or imported receipt
+is not an authenticated source attestation. Do not treat an imported clock or an
+unchanged sibling row as trusted merely because a later operation rewrites its
+page. Current-read filtering, authenticated inherited metadata, typed overrides
+and their operator workflows still need their owning adapters.
 
 Exercise successful paired publication, duplicate/refused normalization, expired
 read closures, actual native-owner loss and complete migration with
@@ -388,6 +391,112 @@ a consumer:
 ```sh
 mix test test/ipse/extension/consent_test.exs test/ipse/extension/consent_compaction_test.exs test/ipse/runner/transaction_test.exs
 ```
+
+## Keep project-domain attestations private
+
+Storage hashes establish byte identity; they do not establish that an original
+source was authenticated by the host. `ProjectIdentity` has an internal scoped
+domain-authentication boundary for future metadata adapters. Its persistent
+project master lives in the private top-level `domain_keys` map of index version
+2, outside the public project and binding maps. Existing version-1 indexes remain
+readable and keyless. Adding a key/catalog entry changes the index revision but
+preserves public bindings and their digest. Ordinary identity mutations retain
+the private map. Preview, existing-binding inspection and verifier reads never
+initialize or upgrade it.
+
+The trust root belongs to admitted operator Identity, not a Collection backup.
+Each project has at most one independent 32-byte master; each namespace/format
+uses a derived HMAC-SHA256 key. Neither provider credentials nor volatile source
+window keys are reused. No master, derived key or private index belongs in a
+Session header, configuration view, SDK result, snapshot, export or diagnostic.
+Opaque capabilities are callback-local, exact-owner Core terms, not JSON grants.
+
+The internal APIs have distinct jobs:
+
+| API | Host responsibility |
+| --- | --- |
+| `with_existing_domain_auth/5` | Revalidate an existing exact binding and active catalog, then use a verifier without creating or repairing state. |
+| `with_domain_publication/6` | Supply an exact current-policy authorizer and journaled operation; use its signer only in the trusted authenticated publication adapter. Initialization must be explicitly selected. |
+| `reconcile_domain/6` | Explicitly inspect a prepared entry using the exact expected key/fence/operation and a current-policy/root-proof callback. Never repeat the original publication. |
+
+First use writes a prepared namespace entry under Identity after the short
+authorizer releases its nested Consent lock. Only that callback receives the
+volatile first-use signer. The trusted adapter must distinguish actual native
+absence from a materialized empty root and authenticate its first Collection
+completion witness. Once child locks release, Identity writes the active entry
+and checks/releases before returning success. Later publications do not rewrite
+the Identity index. The current component validates callback bindings, not the
+actual Collection witness: that adapter integration remains unimplemented.
+
+An interrupted first use remains prepared. A matching durable root may be checked
+by an explicit reconciliation callback; absence is not permission to reset the
+entry or replay the effect. An active namespace whose store disappears must not
+be treated as fresh empty history. The eventual adapter must perform that root
+check; the crypto helper does not inspect Collection. A new namespace is distinct
+from a project that already has a master for another namespace.
+
+The callback crypto lease lasts five seconds without renewal and permits at most
+16 seals, 128 verifications and 1 MiB of page-crypto input. Each body is at most
+6,144 bytes; each call charges its 64-byte canonical context digest plus body.
+The call-count/body bounds are tighter than the aggregate limit. A late callback
+return becomes unknown; this is not hard preemption of arbitrary Core IO. Losing
+the original owner, scope or native transaction also withholds the outer result.
+Nested protected operations remain inline and follow Identity → Consent →
+Collection. Check the Identity capability only when it is the stack top; final
+native release is mandatory. Never emit recall or start network IO inside these
+callbacks.
+
+The tag primitive binds the private project/namespace/format/key/fence scope,
+closed page context and exact raw body bytes. Context version 1 selects metadata
+schema 3 and binds its reserved page key, kind, operation ID and positive record
+revision. It returns a 32-byte tag, not a sealed storage envelope. The eventual
+normalizer must authenticate every inherited page before update/reseal and check
+the final envelope's own size and allocation. MAC verification establishes past
+host authentication; it does not establish present permission, source truth,
+expiry, suppression or safe import adoption. Unsigned format-2 pages remain
+unavailable to that future current-read path unless independently recovered from
+actual validated original history. Coherent raw same-user rollback is outside
+the cooperative storage boundary; supported import must retain its separate
+floor and adoption checks.
+
+All private keys/catalogs share the existing index limits: 256 masters, 256 total
+namespace entries, eight per project, 192 KiB encoded private map and 1 MiB total
+index. Native Identity staging retains its 3-MiB envelope inside the existing
+4-MiB Identity/service control reserve. Capacity refuses without evicting a key
+or widening a budget. Key rotation, missing-key regeneration and cross-host
+identity-key migration have no automatic path.
+
+After building native and Mix on a supported allocation profile, run this isolated
+keyless-read exercise in `iex -S mix`. It creates no Collection and mints no tag:
+
+```elixir
+alias Ipse.Extension.ProjectIdentity
+scratch = Path.join(System.tmp_dir!(), "ipse-domain-exercise-" <> Ipse.Usage.id())
+home = Path.join(scratch, "home")
+cwd = Path.join(scratch, "work")
+for path <- [scratch, home, cwd] do
+  File.mkdir!(path)
+  File.chmod!(path, 0o700)
+end
+try do
+  {:ok, binding} = ProjectIdentity.admit(home, cwd, :folder)
+  scope = %{namespace: Ipse.JSON.sha256("synthetic-namespace"), format: "managed-metadata-v3"}
+  {:error, :project_domain_unavailable} =
+    ProjectIdentity.with_existing_domain_auth(home, cwd, binding, scope, fn _, _ ->
+      raise "a keyless read must not enter its callback"
+    end)
+  {:ok, ^binding} = ProjectIdentity.existing(home, cwd)
+  IO.puts("Keyless inspection preserved the admitted binding.")
+after
+  File.rm_rf!(scratch)
+end
+```
+
+Follow the [domain-auth tests](../../test/ipse/extension/project_domain_auth_test.exs)
+for prepared/active transitions, explicit reconciliation, native loss after both
+index switches, owner/scope cancellation and separate-VM contention. Their root
+witnesses are deliberately trusted callback fixtures, not evidence that current
+Collection/source authority has been integrated.
 
 ## Read several collection pages under one validated index
 

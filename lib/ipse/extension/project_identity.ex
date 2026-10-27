@@ -25,6 +25,7 @@ defmodule Ipse.Extension.ProjectIdentity do
   """
   alias Ipse.JSON
   alias Ipse.Runner.Transaction
+  alias Ipse.Extension.ProjectIdentity.DomainAuth
   import Bitwise, only: [band: 2]
   @bytes 1_048_576
   @metadata_bytes 4096
@@ -100,6 +101,120 @@ defmodule Ipse.Extension.ProjectIdentity do
 
   def with_existing_binding(_, _, _, _), do: @error
 
+  @doc "Internal existing-key verifier callback. Never initializes, joins, repairs or exposes private index data."
+  def with_existing_domain_auth(home, cwd, binding, scope, fun) when is_function(fun, 2) do
+    if DomainAuth.scope?(scope) do
+      case existing_read(home, cwd, {:domain, binding, scope, fun}) do
+        {:ok, nil} -> {:error, :project_domain_unavailable}
+        result -> result
+      end
+    else
+      {:error, :project_domain_auth_refused}
+    end
+  end
+
+  def with_existing_domain_auth(_, _, _, _, _), do: @error
+
+  @doc """
+  Internal authorized publication callback. Initialization requires an already
+  journaled first intent and an exact current protected-policy authorizer. The
+  trusted adapter must prove a genuinely new absent root before first use.
+
+  First completion accepts a trusted host root witness, not worker JSON. Actual
+  Collection proof authentication is an adapter obligation and is not provided
+  by this independent component. Prepared state is never automatically retried.
+  Callback output is withheld until native index checks and release succeed.
+  """
+  def with_domain_publication(home, cwd, binding, scope, authorize, fun)
+      when is_function(authorize, 1) and is_function(fun, 2) do
+    if DomainAuth.publication_scope?(scope) do
+      transaction(home, cwd, fn context, state ->
+        domain_callback(context, state, binding, fn ->
+          with :ok <- authorize.(binding),
+               {:ok, next, record, entry, fresh?} <-
+                 DomainAuth.prepare(state, binding["project_id"], scope),
+               :ok <- if(fresh?, do: write(context.root, advance(next), context.lock), else: :ok) do
+            next = if fresh?, do: advance(next), else: next
+
+            result =
+              DomainAuth.with_auth(record, entry, binding["project_id"], scope, :publish, fun)
+
+            finish_domain(context, next, binding["project_id"], scope, entry, fresh?, result)
+          end
+        end)
+      end)
+    else
+      {:error, :project_domain_auth_refused}
+    end
+  end
+
+  def with_domain_publication(_, _, _, _, _, _), do: @error
+
+  @doc "Explicit prepared-state reconciliation by a trusted current-policy/root-proof callback; never publishes Collection work."
+  def reconcile_domain(home, cwd, binding, expected, authorize, prove)
+      when is_function(authorize, 1) and is_function(prove, 2) do
+    if DomainAuth.expected?(expected) do
+      transaction(home, cwd, fn context, state ->
+        domain_callback(context, state, binding, fn ->
+          project = binding["project_id"]
+
+          with {:ok, record, entry} <- DomainAuth.select(state, project, expected, "prepared"),
+               true <-
+                 record["key_id"] == expected.key_id and entry["fence_id"] == expected.fence_id,
+               true <- entry["first_operation_id"] == expected.operation_id,
+               :ok <- authorize.(binding),
+               {:ok, witness} <-
+                 DomainAuth.with_auth(record, entry, project, expected, :verify, prove),
+               {:ok, next} <- DomainAuth.activate(state, project, expected, entry, witness),
+               :ok <- write(context.root, advance(next), context.lock) do
+            {:ok,
+             DomainAuth.receipt(
+               record,
+               next["domain_keys"][project]["namespaces"][expected.namespace],
+               expected.namespace
+             )}
+          else
+            {:unknown, _} = unknown -> unknown
+            _ -> {:error, :project_domain_reconciliation_refused}
+          end
+        end)
+      end)
+    else
+      {:error, :project_domain_auth_refused}
+    end
+  end
+
+  def reconcile_domain(_, _, _, _, _, _), do: @error
+
+  defp domain_callback(context, state, expected, callback) do
+    with {:ok, root} <- directory(context.cwd, context.uid),
+         {:ok, ^expected} <- existing_binding(context, state, root) do
+      {:callback, callback}
+    else
+      _ -> {:error, :stale_project_identity}
+    end
+  end
+
+  defp finish_domain(
+         context,
+         state,
+         project,
+         scope,
+         entry,
+         true,
+         {:first_publication, witness, value}
+       ) do
+    with {:ok, next} <- DomainAuth.activate(state, project, scope, entry, witness),
+         :ok <- write(context.root, advance(next), context.lock),
+         do: {:ok, value},
+         else: (_ -> {:unknown, :project_domain_activation_unconfirmed})
+  end
+
+  defp finish_domain(_, _, _, _, _, true, _),
+    do: {:unknown, :project_domain_initialization_unconfirmed}
+
+  defp finish_domain(_, _, _, _, _, false, result), do: result
+
   @doc """
   Join only a reciprocal worktree of an existing repository after a host authorization callback.
 
@@ -156,7 +271,7 @@ defmodule Ipse.Extension.ProjectIdentity do
              {:ok, after_index} <- File.lstat(index),
              true <- retained_identity(index_stat) == retained_identity(after_index),
              {:ok, directory} <- directory(cwd, uid) do
-          context = %{root: root, uid: uid, cwd: cwd}
+          context = %{root: root, uid: uid, cwd: cwd, lock: lock}
 
           result =
             case existing_action(context, state, directory, authorize) do
@@ -206,6 +321,18 @@ defmodule Ipse.Extension.ProjectIdentity do
   defp existing_action(context, state, root, authorize) do
     with {:ok, value} <- existing_binding(context, state, root) do
       case authorize do
+        {:domain, expected, scope, fun} ->
+          if not is_nil(value) and value === expected do
+            with {:ok, record, entry} <- DomainAuth.select(state, value["project_id"], scope) do
+              {:callback,
+               fn ->
+                 DomainAuth.with_auth(record, entry, value["project_id"], scope, :verify, fun)
+               end}
+            end
+          else
+            {:error, :stale_project_identity}
+          end
+
         {:inspect, expected, fun} ->
           if not is_nil(value) and value === expected,
             do: {:callback, fn -> fun.(value) end},
@@ -343,7 +470,7 @@ defmodule Ipse.Extension.ProjectIdentity do
       Process.put(@held, true)
 
       released(lock, fn ->
-        context = %{root: root, uid: uid, cwd: cwd}
+        context = %{root: root, uid: uid, cwd: cwd, lock: lock}
 
         with :ok <- safe_lock(Path.join(root, ".lock"), uid),
              {:error, :enoent} <- File.lstat(Path.join(root, ".metadata-active")),
@@ -860,7 +987,7 @@ defmodule Ipse.Extension.ProjectIdentity do
     do: Ipse.Extension.ProjectIdentity.Metadata.read(context, path, @metadata_bytes)
 
   defp valid_state?(state) do
-    keys?(state, ~w(version revision projects bindings)) and state["version"] === 1 and
+    state_shape?(state) and
       JSON.safe_uint?(state["revision"]) and
       is_map(state["projects"]) and map_size(state["projects"]) <= @projects and
       is_map(state["bindings"]) and map_size(state["bindings"]) <= @bindings and
@@ -883,6 +1010,16 @@ defmodule Ipse.Extension.ProjectIdentity do
   rescue
     _ -> false
   end
+
+  defp state_shape?(%{"version" => 1} = state),
+    do: keys?(state, ~w(version revision projects bindings))
+
+  defp state_shape?(%{"version" => 2} = state),
+    do:
+      keys?(state, ~w(version revision projects bindings domain_keys)) and
+        DomainAuth.valid_keys?(state["domain_keys"], state["projects"])
+
+  defp state_shape?(_), do: false
 
   defp project?(p),
     do:
