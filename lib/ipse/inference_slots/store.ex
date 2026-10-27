@@ -6,7 +6,7 @@ defmodule Ipse.InferenceSlots.Store do
   @limit 1_048_576
   @bytes 65_536
 
-  def context(home, cwd) do
+  def context(home, cwd, guard \\ nil) do
     with {:ok, uid} <- Ipse.Runner.protected_current_uid(),
          true <- path?(home) and path?(cwd),
          {:ok, ^home} <- Ipse.Workspace.canonical_path(home),
@@ -16,13 +16,24 @@ defmodule Ipse.InferenceSlots.Store do
          :ok <- private_directory(home, uid),
          root = Path.join(home, "inference-services"),
          :ok <- create_directory(root, uid),
-         :ok <- layout(root, uid, cwd) do
+         :ok <- layout(root, uid, cwd, guard) do
       {:ok, %{root: root, uid: uid, cwd: cwd}}
     else
-      {:error, :transaction_filesystem_unsupported} -> {:error, :service_filesystem_unsupported}
-      {:error, :transaction_capacity} -> {:error, :service_capacity}
-      {:unknown, _} -> {:unknown, :service_state_unconfirmed}
-      _ -> @error
+      {:error, :transaction_filesystem_unsupported} ->
+        {:error, :service_filesystem_unsupported}
+
+      {:error, :transaction_capacity} ->
+        {:error, :service_capacity}
+
+      {:error, reason}
+      when reason in [:service_wait_timeout, :service_cancelled, :service_owner_lost] ->
+        {:error, reason}
+
+      {:unknown, _} ->
+        {:unknown, :service_state_unconfirmed}
+
+      _ ->
+        @error
     end
   rescue
     _ -> @error
@@ -30,27 +41,30 @@ defmodule Ipse.InferenceSlots.Store do
 
   # Qualify the finite filesystem before constructing the fixed empty lease tree.
   # A partially constructed tree is visible recovery work, never guessed complete.
-  defp layout(root, uid, cwd) do
-    if Enum.all?(["objects", "manifests" | Enum.map(0..7, &"objects/slot-#{&1}")], fn name ->
-         private_directory(Path.join(root, name), uid) == :ok
-       end) do
+  defp layout(root, uid, cwd, guard) do
+    if complete_layout?(root, uid) do
       :ok
     else
       with :ok <- safe_lock(Path.join(root, ".lock"), uid),
            {:ok, cap} <-
-             Transaction.acquire(Path.join(root, ".lock"), cwd: cwd, timeout_ms: 5_000) do
+             acquire(Path.join(root, ".lock"), cwd, guard) do
         result =
-          with {:ok, names} <- File.ls(root),
-               true <- Enum.all?(names, &(&1 in ~w(.lock .writer.lock))),
-               :ok <- Transaction.quota(cap, :flat, @limit),
-               :ok <- create_directory(Path.join(root, "objects"), uid),
-               :ok <- create_directory(Path.join(root, "manifests"), uid),
-               :ok <- create_slots(root, uid) do
+          if complete_layout?(root, uid) do
             :ok
           else
-            {:error, _} = error -> error
-            {:unknown, _} = unknown -> unknown
-            _ -> {:error, :service_bootstrap_incomplete}
+            with :ok <- allowed(guard, :effect),
+                 {:ok, names} <- File.ls(root),
+                 true <- Enum.all?(names, &(&1 in ~w(.lock .writer.lock))),
+                 :ok <- Transaction.quota(cap, :flat, @limit),
+                 :ok <- create_directory(Path.join(root, "objects"), uid),
+                 :ok <- create_directory(Path.join(root, "manifests"), uid),
+                 :ok <- create_slots(root, uid) do
+              :ok
+            else
+              {:error, _} = error -> error
+              {:unknown, _} = unknown -> unknown
+              _ -> {:error, :service_bootstrap_incomplete}
+            end
           end
 
         case {Transaction.check(cap), Transaction.release(cap)} do
@@ -61,19 +75,23 @@ defmodule Ipse.InferenceSlots.Store do
     end
   end
 
-  def transaction(context, fun) do
+  defp complete_layout?(root, uid) do
+    Enum.all?(["objects", "manifests" | Enum.map(0..7, &"objects/slot-#{&1}")], fn name ->
+      private_directory(Path.join(root, name), uid) == :ok
+    end)
+  end
+
+  def transaction(context, fun, guard \\ nil) do
     with :ok <- namespace(context),
          :ok <- safe_lock(Path.join(context.root, ".lock"), context.uid),
          {:ok, cap} <-
-           Transaction.acquire(Path.join(context.root, ".lock"),
-             cwd: context.cwd,
-             timeout_ms: 5_000
-           ) do
+           acquire(Path.join(context.root, ".lock"), context.cwd, guard) do
       result =
         try do
           with {:ok, state} <- read(context, cap),
                :ok <- reclaim(context, cap),
-               :ok <- Transaction.quota(cap, :collection, @limit) do
+               :ok <- Transaction.quota(cap, :collection, @limit),
+               :ok <- allowed(guard, :effect) do
             case fun.(state) do
               {:read, value} ->
                 with :ok <- Transaction.check(cap), do: {:ok, value}
@@ -102,6 +120,25 @@ defmodule Ipse.InferenceSlots.Store do
       result -> normalize(result)
     end
   end
+
+  # Only the acquire refusal proves that this transaction has not begun any
+  # ledger IO. Never retry normalized errors from read, reclaim or publication.
+  defp acquire(path, cwd, guard) do
+    with :ok <- allowed(guard, :acquire) do
+      case Transaction.acquire(path, cwd: cwd, timeout_ms: 5_000) do
+        {:error, :transaction_busy} when is_function(guard) ->
+          Process.sleep(20)
+          acquire(path, cwd, guard)
+
+        result ->
+          result
+      end
+    end
+  end
+
+  defp allowed(nil, _), do: :ok
+  defp allowed(guard, phase) when is_function(guard, 1), do: guard.(phase)
+  defp allowed(guard, _), do: guard.()
 
   def acquire_service(context, slot, timeout) when is_integer(slot) and slot in 0..7 do
     with :ok <- namespace(context),

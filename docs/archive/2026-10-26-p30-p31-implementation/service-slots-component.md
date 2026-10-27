@@ -19,8 +19,11 @@ or ordinary approval bypass is added by this component.
 
 The caller must supply the actual selected dispatch owner's deadline, without
 taking a silent minimum. Waits above 60 seconds or dispatches above 100 seconds
-refuse before a worker starts. A dedicated resource scope and independent
-watchdog enforce the deadline even when a handle is never awaited. Cancellation
+refuse before a worker starts. Before either startup receive, the child monitors
+its caller, original upstream owner and scope. A bounded readiness handshake waits
+for the watchdog's explicit monitor-ready acknowledgement before work starts.
+A dedicated resource scope and independent watchdog enforce the deadline even
+when a handle is never awaited. Cancellation
 also reaches that watchdog without needing `await`. Status notifications contain
 bounded waiting/admitted facts, with no prompt, transcript or provider credentials.
 The worker preserves the captured original file-effect owner with the narrow
@@ -75,6 +78,13 @@ eligibility rather than extending stale authority. Among current waiters for one
 service, foreground precedes background and arrival sequence orders each class.
 Eligibility is rechecked under the ledger lock after obtaining the service lease.
 
+Only an initial native lock-acquisition busy refusal retries, yielding 20 ms within
+the original absolute wait or dispatch deadline. Each attempt checks owners,
+cancellation and, for nested ledger acquisition, the retained service capability.
+Once the ledger capability is active, its native stack check covers all held
+locks. Enqueue computes the remaining lifetime after acquisition. Later read,
+reclaim, quota, publication or unknown failures never enter this retry loop.
+
 Canonical origin aliases bind persistently to the service ID, independently of
 model, project and API path. A changed alias list or overlapping new ID refuses,
 including after configuration renaming. This component has no automatic rebind
@@ -115,53 +125,259 @@ Provider destination validation and SemanticRoutes. Local protected-directory
 checks mirror the existing private ledger boundary; no new dependency, process
 framework, credential interface or custom wire protocol was added.
 
-## Verification and pending review
+## Author checks and preserved failures
 
-The current author checkpoint passed strict compilation and **22 tests**, seed
-**379046**, in **6.7 seconds**, using the unchanged native helper SHA256
+The initial owner-fenced checkpoint passed strict compilation and **22 tests**,
+seed **379046**, in **6.7 seconds**, using native helper SHA-256
 `108c762ec23085df6aeaba58c8bdfb34d0a8cb4fa80a410584889a81a556ea29`.
-Receipts are `/tmp/ipse-service-slots-owner-07/strict.log` and
-`/tmp/ipse-service-slots-owner-07/tests.log`. The separate exact three-MiB
-identity-capacity regression passed in 2.2 seconds, with 20 unrelated tests
-excluded: `/tmp/ipse-service-slots-identity-budget-01/capacity-repaired.log`.
-Its trace confirms the exact capacity test. An initial line filter selected a
-different test, followed by a first correctly selected run that lacked its
-isolated runtime's protected helper copy; both logs remain beside the final log.
-The existing resource-scope, workspace file-effect and scope-authority regressions
-also passed: **12 tests**, seed **808578**, in **3.4 seconds**, logged at
-`/tmp/ipse-service-slots-owner-07/resources-regression.log`. These include retained
-Session locks during actual blocked workspace IO. Actual Elixir 1.18.5 formatting
-checked all seven directly affected source/test files with no differences; the
-documentation checker passed 488 Markdown documents and 4,433 local links with
-no errors.
+Its receipts remain `/tmp/ipse-service-slots-owner-07/{strict,tests}.log`.
+The exact three-MiB identity-capacity regression passed in 2.2 seconds with
+20 unrelated tests excluded, at
+`/tmp/ipse-service-slots-identity-budget-01/capacity-repaired.log`. Its trace
+confirms the selected test. An initial filter selected a neighboring test, and
+the first correctly selected run lacked the private protected helper copy;
+both failed or misselected logs remain beside the final result.
 
-The supported branch ran on this host. The checks include independent Elixir
-VMs sharing a service across main/embedding/model aliases; foreground priority
-across projects; cancellation and deadlines without await; owner/native-controller
-death, including a deliberately suspended resource scope; a late terminal
-callback after native-owner loss; exact reconciliation CAS; persistent alias conflicts; distinct services
-running concurrently; full-tree allocation/preflight and unsafe file refusal.
-All callbacks are synthetic: no HTTP, model, daemon or paid-account request ran.
+Existing resource-scope, actual blocked workspace file-effect and scope-authority
+checks passed **12 tests**, seed **808578**, in **3.4 seconds** at
+`/tmp/ipse-service-slots-owner-07/resources-regression.log`. These preserve the
+retained Session lock while legacy workspace IO actually completes. Seven affected
+source/test files passed actual Elixir 1.18.5 formatting. The documentation check
+at that checkpoint passed 488 Markdown documents and 4,433 local links.
 
-Initial compiler/fixture failures are retained under
+The supported runtime branch ran on the tested host. The controls include separate
+Elixir VMs sharing aliases and model routes, foreground priority across projects,
+cancellation and deadlines without await, native-controller death, suspended-scope
+owner loss, late callbacks, exact reconciliation, alias conflicts, concurrent
+distinct services, whole-tree allocation and unsafe-file refusal. They use
+synthetic callbacks rather than HTTP, daemon or paid-account requests.
+
+Initial compiler and fixture failures remain under
 `/tmp/ipse-service-slots-pure-01` and `/tmp/ipse-service-slots-runtime-01..03`.
-They include an illegal dynamic guard, uppercase synthetic IDs, missing test
-capabilities, notification-shape expectations and an isolated runtime missing
-its protected helper copy. Self-review repaired classification after releasing
-the service lease, and cancellation that formerly required awaiting a handle.
-These checks are authored by the implementer and do not replace independent
-adversarial review.
+They include a dynamic guard rejected by the compiler, uppercase fixture IDs,
+missing fixture capabilities, notification-shape assumptions and an absent private
+helper copy. Self-review repaired release-result classification and cancellation
+that previously required awaiting the handle. It also exposed upstream owner loss
+being delayed by a suspended scope; direct native-controller owner binding and the
+independent watchdog repaired that path. These author checks are distinct from the
+independent evidence below.
 
-Further self-review found that the original caller reached the native controller
-only through a resource scope, which could delay owner death if suspended. The
-direct upstream-owner binding and independent worker termination described above
-repair that path. Both owner death and cancellation now have actual suspended-
-scope regressions. This is an author-discovered repair awaiting independent audit.
+Independent review of checkpoint 07 then reported two P2 findings:
 
-Before integration, independently audit the service/ledger lock order, late
-publication after actual native death, owner/scope/watchdog lifecycle, foreground
-races, never-awaited cancellation, alias changes, closed persisted state and the
-entire 1 MiB allocation tree. Main/child/model/embedding/decision dispatch still
-needs verified host integration; live daemon cancellation/quiescence and operator
-recovery require qualification. No remote concurrency, local-model quality,
-source/installed parity or complete milestone acceptance is claimed here.
+- A 150 ms shared-ledger hold defeated a configured 2,000 ms wait: enqueue failed
+  after 21 ms; cold bootstrap failed after 34 ms. A trusted terminal callback
+  encountering the same short hold became durable unknown despite remaining
+  dispatch time. No callback replay occurred; unrelated services sharing the
+  ledger could cause this availability failure.
+- Killing the caller after child creation but before resource attachment left the
+  unattached child waiting forever. A scheduling-only private Resources fixture
+  reproduced it without any callback, native lease or ledger IO.
+
+The repaired author snapshot `/tmp/ipse-service-slots-contention-10` passed strict
+compilation and **27 tests**, seed **379046**, in **8.4 seconds**. Receipts are
+`strict.log` and `tests.log` in that directory. The five added controls cover short
+ledger contention during enqueue and settlement, cold bootstrap, cancellation
+before enqueue, the original settlement deadline, and pre-attachment owner death.
+The failed first repair run at `contention-08/tests-first.log` exposed an incorrect
+outer-capability check while the nested ledger capability was active. Snapshot 09
+then passed 26/27 behavior tests; the new child-VM fixture source had been truncated
+by default `inspect`, and strict compilation rejected a redundant fallback clause.
+The corrected source and fixture passed in snapshot 10. All three logs remain
+under their full `/tmp/ipse-service-slots-` paths; none is relabeled as a pass.
+The repaired three source/test files also pass current formatting and actual
+Elixir 1.18.5 formatting without changing their independently tested bytes.
+The final documentation check passed 490 Markdown documents and 4,448 local links.
+These receipts are `format-current.log`, `format118.log` and `docs.log` in the
+same snapshot directory.
+
+The post-durable-admit, pre-callback cancellation cleanup still makes one ledger
+attempt. A fresh collision may leave an admitted marker unknown although no
+callback ran. This conservative refusal conforms to the no-replay contract;
+it does not imply an effect occurred. Operator reconciliation remains necessary
+before a fresh dispatch. No automatic retry or timeout clears that marker.
+
+## Independent adversarial review and closure
+
+The complete independent closure receipt follows, with heading levels and typesetting adjusted
+for this chapter. Its original private file is
+`/tmp/ipse-independent-slots-closure10.md`, SHA-256
+`598198c662d4f52ec51b89202d3ed23b0b5c5e0ab4e03c482b6313aab29bbfb7`.
+The earlier report is `/tmp/ipse-independent-slots-audit.md`, SHA-256
+`153721e0454527ff387a372752e0a62c5224961326ee589c0557b0642a15ba81`.
+The reports and raw receipt locations identify synthetic fixtures only; no private
+transcripts, credentials or held-out qualification inputs are reproduced.
+
+Dated 2026-10-26. Both P2 findings in
+`/tmp/ipse-independent-slots-audit.md` are independently closed for the exact
+source checkpoint below. This permits further host integration review; it does
+not establish complete P30/P31 acceptance or live inference qualification. The
+reviewer changed no repository source or index.
+
+### Bind the disposition to the tested source
+
+The author supplied `/tmp/ipse-service-slots-contention-10`, copied privately to
+`/tmp/ipse-independent-slots-closure10`. Its two repaired source files are:
+
+| Source | SHA-256 |
+| --- | --- |
+| InferenceSlots | `c550baf672e25a8d04d7251e0ca9cefbd31a8088e607d96cc34e68ae7501d3ce` |
+| Store | `2ec28693529f3e5a861469ee3adc8608962f64dc447660c17913199d80e645de` |
+
+Ledger, Resources and ProjectIdentity source remain those from the earlier 07
+snapshot; the current snapshot's Resources BEAM exactly matches 07 at
+`abe690b2237cfc5baa635769c957ed42012af171f66f5e1ea2a2eba5aeaa86d2`.
+The executed InferenceSlots BEAM is
+`efdac901dd8cad746824530a0b5290fa09726a0bca3e146d9dd6fb1f3bc193a8`,
+Store BEAM `b9e23064fc284be01024239d26a5c5b556cfe5f333137a057c1bb0394b2aac13`.
+The actual private helper remains
+`108c762ec23085df6aeaba58c8bdfb34d0a8cb4fa80a410584889a81a556ea29`.
+The tested host is Linux 7.2.10-arch1-1, tmpfs with 4096-byte units, two BEAM schedulers.
+
+All five relevant modules independently compile with `elixirc
+--ignore-module-conflict --warnings-as-errors`, using the complete frozen
+dependency graph and a separate output directory. Exit 0, zero output bytes.
+The unchanged six ledger controls plus 21 runtime controls pass independently:
+**27 passed**, seed 214282, **8.4 seconds**.
+
+### Short ledger contention now respects the existing deadlines
+
+The exact unchanged before-reproduction script now returns successful admission
+after 193 ms for the automatically released 150 ms ledger hold. Its trusted terminal
+callback also settles successfully, leaving active=nil. Its final callback was
+written for the failing version and intentionally raises if redispatched; that
+last artificial unknown is not interpreted as a repaired-component failure.
+The separate assertion companion verifies that a normal fresh callback succeeds
+after terminal settlement without reconciliation.
+
+The unchanged cold-bootstrap probe now succeeds after 223 ms under its 150 ms lock
+hold, followed by a successful fresh control. The assertion companion observes
+196 ms initial waiting, exactly one callback, the exact settled reservation ID,
+and a successful subsequent request. A 50 ms original wait under 150 ms ledger
+contention expires in 60 ms without executing a callback, creating an active marker
+or leaving a queued entry. No deadline is renewed.
+
+Source review confirms retry is restricted to native Transaction.acquire's
+definite busy refusal, before ledger IO. It does not retry a normalized later
+read/reclaim/quota/write error or an unknown outcome. Queue remaining time is
+computed after acquisition. Guard checks cover deadline, owners and cancellation;
+the retained outer service capability is checked before nested ledger acquisition,
+and after acquisition the native owner's complete held stack validates the
+service and ledger locks together.
+
+Additional independent probes verify cancellation while initial ledger acquisition
+is busy never enqueues or dispatches. A trusted terminal response cannot cross
+its original 100 ms dispatch deadline while the ledger is held 250 ms; its admitted
+marker remains unknown after release, rather than settling late.
+
+### The unattached startup child now exits
+
+The exact unchanged startup repro and the identical scheduling-only Resources
+fixture now observe owner=false, scope=false, child=false and no current function
+after the caller dies before attachment. The fixture source still hashes to
+`8065c51b7c432408af719311cd832da1a868560708408830d0e609755ab990f5`.
+Only that scheduling pause is injected; the tested InferenceSlots source is the
+author's unchanged 10 snapshot. No callback, native lock or ledger is invoked by
+this startup probe.
+
+Source review confirms the child monitors the immediate owner, original upstream
+owner and scope before either bootstrap receive. Readiness is bounded by the
+original wait deadline and requires the actual watchdog's acknowledgement before
+work begins. The formerly unbounded unattached receive is gone.
+
+### Ownership and uncertainty still hold while retrying
+
+The earlier independent actual-native SIGKILL, late terminal callback, alias,
+reconciliation, corrupt-control-before-GC and nested upstream-owner probes all
+pass against 10.
+
+A stronger new probe returns a trusted terminal response while its ledger is
+busy, suspends the cleanup scope and kills the original upstream owner while
+the immediate legacy file-effect caller stays alive. By 300 ms the native
+controller is dead. The active marker is not settled. A fresh request positively
+reacquires the actual service lease while the old immediate caller and suspended
+scope still live, then refuses the same durable unknown reservation without
+invoking a callback.
+
+An initial version of this extra probe incorrectly required both native controller
+and dormant result-ack worker to die within 3 seconds. It failed. Diagnosis showed
+the native controller already dead by 300 ms; the worker was only waiting for its
+deliberately non-awaiting immediate caller's result acknowledgement. It then
+terminates through the bounded releasing/ack watchdog (about 5 seconds). The final
+probe separately asserts native fencing and bounded dormant-worker cleanup. This
+failure and diagnostic are preserved, not described as an immediate all-process
+termination pass.
+
+### Preserve harness failures and remaining limits
+
+The first 10 startup-fixture compilation attempted to read Resources source from
+the author's narrow 10 source directory; that directory contains only the two
+changed modules. The corresponding first maintained-test command similarly
+referenced a ledger test omitted from that narrow directory. Neither executed
+the intended check. Resources source and the unchanged ledger test were copied
+from 07 after verifying the exact matching Resources BEAM. The corrected runs
+are identified explicitly below. A deprecated Code.compiler_options flag in that
+first fixture harness also emitted warnings; the corrected strict command uses
+the supported compiler flag and produces no warnings. No runtime check was
+weakened.
+
+Residual conservative behavior: the post-durable-admit cancellation branch still
+uses a single unguarded cancel_unstarted ledger transaction. A fresh collision
+there can retain unknown state even though the callback was never invoked. This
+is a static integration/recovery note, not a newly reproduced replay or ownership
+defect; the exact two reported P2 findings are closed. The author and root were
+notified. The dormant result-ack cleanup delay described above also remains.
+
+No live HTTP transport, daemon cancellation/quiescence, provider classification,
+operator-channel authentication, main/child/SDK dispatch integration, source and
+installed parity, other-kernel/APFS support, annual individual workload or final
+milestone acceptance is established. Native filesystem support remains narrow.
+All callbacks, receipts and retained fixture stores here are synthetic; no
+model calls, credentials or qualification/gold inputs were used.
+
+### Raw closure receipts
+
+| Artifact | SHA-256 |
+| --- | --- |
+| `/tmp/ipse-independent-slots-finite-contention-after10.log` | `0a4ac41e2530bbfc044168ccc23b7940f665e065189aa20f4f7972e70a6c1e58` |
+| `/tmp/ipse-independent-slots-bootstrap-contention-after10.log` | `d385481e4e9914b6d16de52678f7ea15c8612429edb3a024dc314c90d2945042` |
+| `/tmp/ipse-independent-slots-contention-closure.exs` | `b3f035282022894c4ec21f5610fc0a313bc81902eb9b268902be99dbd8aef7c8` |
+| `/tmp/ipse-independent-slots-contention-closure-after10.log` | `011e53687531c1adc47766b098d27c85f4d9df5272e26cfa99716261b9c03a41` |
+| `/tmp/ipse-independent-slots-startup-orphan-after10-repaired.log` | `b88525e48acc81c213a577da83bdf432482cd562e02594b534da2f7e587580b9` |
+| `/tmp/ipse-independent-slots-maintained-after10-repaired.log` | `a864734acb5eec144d993e6b5833f678f2b330ff31fea31e94eeee51617007e1` |
+| `/tmp/ipse-independent-slots-closure10-full-strict.log` | `e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855` |
+| `/tmp/ipse-independent-slots-audit-after10.log` | `979f9f693d8fd70239284cced8905ef335819c7d3390acdb3f1311a2c48ff33c` |
+| `/tmp/ipse-independent-slots-busy-lifecycle-fenced.exs` | `003c39ca4581f21e4a7d889d6e7590738873c976149a24dd9253b00edaf151b4` |
+| `/tmp/ipse-independent-slots-busy-lifecycle-fenced-after10.log` | `bc1e4810ef1003b4e9e02dc36d364921b13986655bc55f5820c3c4b33f3d387c` |
+
+Earlier diagnostic paths are `/tmp/ipse-independent-slots-busy-lifecycle-after10.log`,
+`/tmp/ipse-independent-slots-busy-lifecycle-diagnostic-after10.log`,
+`/tmp/ipse-independent-slots-startup-fixture-after10-compile.log`,
+`/tmp/ipse-independent-slots-startup-orphan-after10.log` and
+`/tmp/ipse-independent-slots-maintained-after10.log`. Corrected fixture compilation
+is `/tmp/ipse-independent-slots-startup-fixture-after10-compile-repaired.log`.
+All completed evidence and source snapshots should be preserved by the root
+evidence owner; fixture paths are printed in their logs.
+
+### Original finding receipts
+
+These unchanged before probes remain paired with the after receipts above.
+The earlier report retains the initial source and BEAM hashes and all diagnostic
+controls; it is superseded only for the two findings' disposition.
+
+| Original artifact | SHA-256 |
+| --- | --- |
+| `/tmp/ipse-independent-slots-finite-contention.exs` | `2220b1a027adcfad8fc846ebcd8f7da10b9874911b5bc143df21dbc8908616a5` |
+| `/tmp/ipse-independent-slots-finite-contention-timed.log` | `754ff804b91bead39d004a389a4c4071dec458fd4faaed550014e76ceab4275e` |
+| `/tmp/ipse-independent-slots-bootstrap-contention.exs` | `c4c1dedfa76c89d93b437a47c728d65e90b7f1caac94d0f9a934f2c23eb49a0d` |
+| `/tmp/ipse-independent-slots-bootstrap-contention.log` | `1f1b05f1509b28c4404eecfc1866385a23dd45b77e960beab5ab78438b131ac8` |
+| `/tmp/ipse-independent-slots-startup-orphan.exs` | `bd49843d8d595a53e8dc7e9a7ad882bd29666a004a81c44042def53ca518b75f` |
+| `/tmp/ipse-independent-slots-startup-orphan.log` | `39ac800198f290a94e55fdb9ba6604748e4486253ead4420a07523670c38e89c` |
+
+## Integration boundary
+
+Both reported P2 findings are independently closed for the exact source hashes
+above. Main, child, model, embedding and decision dispatch integration remains
+separate work. Live provider classification, daemon quiescence, operator recovery,
+source/installed parity and supported-platform qualification also remain open.
+This component receipt establishes no remote concurrency guarantee or complete
+P30/P31 milestone acceptance.

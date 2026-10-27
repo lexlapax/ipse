@@ -115,6 +115,202 @@ defmodule Ipse.InferenceSlotsTest do
         )
   end
 
+  defp hold_ledger(context, release_after) do
+    parent = self()
+
+    task =
+      Task.async(fn ->
+        Store.transaction(context, fn state ->
+          send(parent, {:ledger_held, self()})
+
+          receive do
+            :release_ledger -> {:read, state}
+          after
+            5_000 -> flunk("fixture ledger hold expired")
+          end
+        end)
+      end)
+
+    assert_receive {:ledger_held, holder}, 5_000
+    if is_integer(release_after), do: Process.send_after(holder, :release_ledger, release_after)
+    {task, holder}
+  end
+
+  test "known-unstarted ledger contention waits without quarantining a settled callback", c do
+    checked(c, fn ->
+      assert {:ok, context} = Store.context(c.home, c.cwd)
+      {held, _} = hold_ledger(context, 150)
+      before = System.monotonic_time(:millisecond)
+
+      assert {:ok, :after_enqueue} =
+               InferenceSlots.run(c.config, selector(), meta(), c.opts, fn _ ->
+                 {:settled, :after_enqueue}
+               end)
+
+      assert System.monotonic_time(:millisecond) - before >= 100
+      assert {:ok, _} = Task.await(held)
+
+      assert {:ok, handle} =
+               InferenceSlots.start(
+                 c.config,
+                 selector(),
+                 meta(),
+                 c.opts,
+                 blocked(self(), :terminal)
+               )
+
+      assert_receive {:entered, :terminal, worker, _, _}, 5_000
+      {held, _} = hold_ledger(context, 150)
+      send(worker, :finish_fixture)
+      assert {:ok, :terminal} = InferenceSlots.await(handle)
+      assert {:ok, _} = Task.await(held)
+      assert {:ok, state} = InferenceSlots.status(c.config, cwd: c.cwd)
+      assert state["services"]["local"]["active"] == nil
+      assert length(state["recent"]) == 2
+    end)
+  end
+
+  test "bootstrap waits only for unstarted lock acquisition",
+       c do
+    checked(c, fn ->
+      home = Path.join(c.base, "fresh-operator")
+      root = Path.join(home, "inference-services")
+      File.mkdir!(home)
+      File.chmod!(home, 0o700)
+      File.mkdir!(root)
+      File.chmod!(root, 0o700)
+      parent = self()
+
+      holder =
+        Task.async(fn ->
+          assert {:ok, cap} = Transaction.acquire(Path.join(root, ".lock"), cwd: c.cwd)
+          send(parent, {:bootstrap_held, self()})
+          receive do: (:release_bootstrap -> :ok)
+          assert :ok = Transaction.release(cap)
+        end)
+
+      assert_receive {:bootstrap_held, pid}, 5_000
+      Process.send_after(pid, :release_bootstrap, 150)
+      config = %{c.config | home: home}
+
+      assert {:ok, :fresh} =
+               InferenceSlots.run(config, selector(), meta(), c.opts, fn _ ->
+                 {:settled, :fresh}
+               end)
+
+      assert :ok = Task.await(holder)
+      assert {:ok, _} = InferenceSlots.status(config, cwd: c.cwd)
+    end)
+  end
+
+  test "cancellation during unstarted ledger contention cannot dispatch or leave a queued entry",
+       c do
+    checked(c, fn ->
+      assert {:ok, context} = Store.context(c.home, c.cwd)
+      {held, _} = hold_ledger(context, 150)
+      parent = self()
+
+      assert {:ok, handle} =
+               InferenceSlots.start(c.config, selector(), meta(), c.opts, fn _ ->
+                 send(parent, :unexpected_dispatch)
+                 {:settled, nil}
+               end)
+
+      Process.sleep(40)
+      assert :ok = InferenceSlots.cancel(handle)
+      assert {:error, :service_cancelled} = InferenceSlots.await(handle)
+      assert {:ok, _} = Task.await(held)
+      refute_received :unexpected_dispatch
+      assert {:ok, state} = InferenceSlots.status(c.config, cwd: c.cwd)
+      assert state["queue"] == [] and state["services"] == %{}
+    end)
+  end
+
+  test "ledger contention never extends the original terminal settlement deadline",
+       c do
+    checked(c, fn ->
+      assert {:ok, context} = Store.context(c.home, c.cwd)
+      opts = Keyword.put(c.opts, :dispatch_timeout_ms, 150)
+
+      assert {:ok, handle} =
+               InferenceSlots.start(
+                 c.config,
+                 selector(),
+                 meta(),
+                 opts,
+                 blocked(self(), :deadline)
+               )
+
+      assert_receive {:entered, :deadline, worker, reservation, _}, 5_000
+      {held, _} = hold_ledger(context, 300)
+      send(worker, :finish_fixture)
+      assert {:unknown, _} = InferenceSlots.await(handle)
+      assert {:ok, _} = Task.await(held)
+      assert {:ok, state} = InferenceSlots.status(c.config, cwd: c.cwd)
+      assert state["services"]["local"]["active"]["id"] == reservation["reservation_id"]
+      refute Enum.any?(state["recent"], &(&1["id"] == reservation["reservation_id"]))
+    end)
+  end
+
+  test "startup child exits when its owner dies before Resources attach", c do
+    source = File.read!(Path.join(File.cwd!(), "lib/ipse/session/resources.ex"))
+    original = "def attach(scope, worker), do: GenServer.call(scope, {:attach, worker})"
+    assert String.contains?(source, original)
+
+    fixture =
+      String.replace(source, original, """
+      def attach(scope, worker) do
+        if parent = Process.get(:slot_startup_test_gate) do
+          send(parent, {:before_slot_attach, self(), scope, worker})
+          receive do: (:continue_slot_attach -> :ok)
+        end
+        GenServer.call(scope, {:attach, worker})
+      end
+      """)
+
+    code = """
+    Code.compiler_options(ignore_module_conflict: true)
+    Code.compile_string(#{inspect(fixture, limit: :infinity, printable_limit: :infinity)})
+    {:ok, _} = Application.ensure_all_started(:ipse)
+    parent = self()
+    owner = spawn(fn ->
+      Process.put(:slot_startup_test_gate, parent)
+      Ipse.InferenceSlots.start(#{inspect(c.config)}, #{inspect(selector())}, #{inspect(meta())}, #{inspect(Keyword.delete(c.opts, :notify))}, fn _ ->
+        send(parent, :unexpected_callback)
+        {:settled, nil}
+      end)
+    end)
+    {scope, worker} = receive do
+      {:before_slot_attach, ^owner, scope, worker} -> {scope, worker}
+    after 5000 -> raise "startup gate unavailable"
+    end
+    scope_ref = Process.monitor(scope)
+    worker_ref = Process.monitor(worker)
+    Process.exit(owner, :kill)
+    receive do {:DOWN, ^scope_ref, :process, ^scope, _} -> :ok after 5000 -> raise "scope leaked" end
+    receive do {:DOWN, ^worker_ref, :process, ^worker, _} -> :ok after 5000 -> raise "startup child leaked" end
+    receive do :unexpected_callback -> raise "callback executed before readiness" after 0 -> :ok end
+    IO.puts("STARTUP_OWNER_CLEANUP_OK")
+    """
+
+    paths =
+      :code.get_path()
+      |> Enum.reverse()
+      |> Enum.flat_map(fn path -> ["-pa", List.to_string(path)] end)
+
+    port =
+      Port.open({:spawn_executable, String.to_charlist(System.find_executable("elixir"))}, [
+        :binary,
+        :exit_status,
+        :use_stdio,
+        :hide,
+        args: paths ++ ["-e", code]
+      ])
+
+    on_exit(fn -> if Port.info(port), do: Port.close(port) end)
+    assert :ok = vm_wait(port, "STARTUP_OWNER_CLEANUP_OK", <<>>)
+  end
+
   test "settled main generation releases the service before a nested embedding or named-model tool",
        c do
     checked(c, fn ->

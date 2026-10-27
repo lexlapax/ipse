@@ -84,16 +84,17 @@ defmodule Ipse.InferenceSlots do
 
       {worker, monitor} =
         spawn_monitor(fn ->
-          receive do
-            {:begin_service_slot, ^ref} ->
+          monitors =
+            [owner, upstream, scope]
+            |> Enum.uniq()
+            |> Enum.map(&Process.monitor/1)
+
+          case bootstrap(ref, owner, upstream, scope, min(deadline, mono() + 5_000)) do
+            {:ok, watchdog} ->
+              Enum.each(monitors, &Process.demonitor(&1, [:flush]))
               Resources.bind(scope)
               :ok = Resources.bind_effect_owner(upstream)
               Process.put(@held, true)
-
-              watchdog =
-                receive do
-                  {:service_watchdog, pid} -> pid
-                end
 
               result =
                 work(
@@ -108,13 +109,10 @@ defmodule Ipse.InferenceSlots do
                   deadline
                 )
 
-              send(owner, {ref, :result, result})
+              complete(owner, ref, result)
 
-              receive do
-                {^ref, :finished} -> :ok
-              after
-                10_000 -> :ok
-              end
+            {:error, :service_wait_timeout} = error ->
+              complete(owner, ref, error)
           end
         end)
 
@@ -216,18 +214,35 @@ defmodule Ipse.InferenceSlots do
   end
 
   defp work(config, route, meta, opts, fun, owner, ref, id, deadline) do
-    with {:ok, context} <- Store.context(config[:home], opts[:cwd]),
-         remaining when remaining > 0 <- deadline - mono(),
+    guard = fn -> permit(owner, opts[:upstream], ref, deadline) end
+
+    with {:ok, context} <- Store.context(config[:home], opts[:cwd], guard),
          origins = get_in(config, [:inference_services, route["service_id"], "origins"]),
          {:ok, _} <-
-           Store.transaction(context, fn state ->
-             Ledger.enqueue(state, route["service_id"], origins, id, meta, wall(), remaining)
-           end) do
+           Store.transaction(
+             context,
+             fn state ->
+               remaining = deadline - mono()
+
+               if remaining > 0,
+                 do:
+                   Ledger.enqueue(
+                     state,
+                     route["service_id"],
+                     origins,
+                     id,
+                     meta,
+                     wall(),
+                     remaining
+                   ),
+                 else: {:error, :service_wait_timeout}
+             end,
+             guard
+           ) do
       wait(context, route, meta, opts, fun, owner, ref, id, deadline)
     else
       {:error, _} = error -> error
       {:unknown, _} -> unknown(route, id)
-      _ -> {:error, :service_wait_timeout}
     end
   rescue
     _ -> unknown(route, id)
@@ -237,19 +252,25 @@ defmodule Ipse.InferenceSlots do
 
   defp wait(context, route, meta, opts, fun, owner, ref, id, deadline) do
     cancellation = cancellation(ref)
+    guard = fn -> permit(owner, opts[:upstream], ref, deadline) end
+    cleanup = fn -> permit(owner, opts[:upstream], nil, deadline) end
 
     cond do
       cancellation != nil ->
-        cancel_waiting(context, id, cancellation)
+        cancel_waiting(context, id, cancellation, cleanup)
 
       mono() >= deadline ->
-        cancel_waiting(context, id, :service_wait_timeout)
+        cancel_waiting(context, id, :service_wait_timeout, cleanup)
 
       true ->
-        case Store.transaction(context, fn state ->
-               {:read,
-                {Ledger.eligible?(state, id, wall()), Ledger.slot(state, route["service_id"])}}
-             end) do
+        case Store.transaction(
+               context,
+               fn state ->
+                 {:read,
+                  {Ledger.eligible?(state, id, wall()), Ledger.slot(state, route["service_id"])}}
+               end,
+               guard
+             ) do
           {:ok, {true, slot}} ->
             case Store.acquire_service(context, slot, meta["dispatch_timeout_ms"] + 10_000) do
               {:ok, cap} ->
@@ -265,8 +286,8 @@ defmodule Ipse.InferenceSlots do
           {:ok, {false, _}} ->
             pause(context, route, meta, opts, fun, owner, ref, id, deadline)
 
-          {:error, :service_busy} ->
-            pause(context, route, meta, opts, fun, owner, ref, id, deadline)
+          {:error, reason} when reason in [:service_cancelled, :service_wait_timeout] ->
+            cancel_waiting(context, id, reason, cleanup)
 
           _ ->
             unknown(route, id)
@@ -284,7 +305,9 @@ defmodule Ipse.InferenceSlots do
     receive do
       {:cancel_service_slot, ^ref, reason}
       when reason in [:service_cancelled, :service_wait_timeout] ->
-        cancel_waiting(context, id, reason)
+        cancel_waiting(context, id, reason, fn ->
+          permit(owner, opts[:upstream], nil, deadline)
+        end)
     after
       min(max(deadline - mono(), 0), 500) ->
         wait(context, route, meta, opts, fun, owner, ref, id, deadline)
@@ -292,20 +315,32 @@ defmodule Ipse.InferenceSlots do
   end
 
   defp admitted(context, cap, route, meta, opts, fun, owner, ref, id, deadline) do
+    guard = fn phase ->
+      permit(owner, opts[:upstream], ref, deadline, if(phase == :acquire, do: cap))
+    end
+
+    cleanup = fn phase ->
+      permit(owner, opts[:upstream], nil, deadline, if(phase == :acquire, do: cap))
+    end
+
     result =
-      Store.transaction(context, fn state ->
-        cond do
-          not Ledger.eligible?(state, id, wall()) ->
-            {:read, :not_eligible}
+      Store.transaction(
+        context,
+        fn state ->
+          cond do
+            not Ledger.eligible?(state, id, wall()) ->
+              {:read, :not_eligible}
 
-          is_map(get_in(state, ["services", route["service_id"], "active"])) ->
-            {:read,
-             {:unresolved, get_in(state, ["services", route["service_id"], "active", "id"])}}
+            is_map(get_in(state, ["services", route["service_id"], "active"])) ->
+              {:read,
+               {:unresolved, get_in(state, ["services", route["service_id"], "active", "id"])}}
 
-          true ->
-            Ledger.admit(state, id, wall())
-        end
-      end)
+            true ->
+              Ledger.admit(state, id, wall())
+          end
+        end,
+        guard
+      )
 
     case result do
       {:ok, :not_eligible} ->
@@ -315,7 +350,7 @@ defmodule Ipse.InferenceSlots do
         end
 
       {:ok, {:unresolved, active_id}} ->
-        _ = cancel_waiting(context, id, :service_unresolved)
+        _ = cancel_waiting(context, id, :service_unresolved, cleanup)
 
         release(
           cap,
@@ -355,6 +390,9 @@ defmodule Ipse.InferenceSlots do
         send(opts[:watchdog], {ref, :releasing})
         release(cap, result)
 
+      {:error, reason} when reason in [:service_cancelled, :service_wait_timeout] ->
+        release(cap, cancel_waiting(context, id, reason, cleanup))
+
       _ ->
         release(cap, unknown(route, id))
     end
@@ -363,14 +401,19 @@ defmodule Ipse.InferenceSlots do
   defp invoke(context, cap, route, fun, id, owner, upstream, ref, deadline) do
     case fun.(%{"reservation_id" => id, "route" => route}) do
       {:settled, value} ->
-        with true <-
-               mono() < deadline and cancellation(ref) == nil and Process.alive?(owner) and
-                 Process.alive?(upstream),
-             :ok <- Transaction.check(cap),
+        guard = fn phase ->
+          permit(owner, upstream, ref, deadline, if(phase == :acquire, do: cap))
+        end
+
+        with :ok <- guard.(:acquire),
              {:ok, _} <-
-               Store.transaction(context, fn state ->
-                 Ledger.settle(state, route["service_id"], id, wall())
-               end),
+               Store.transaction(
+                 context,
+                 fn state ->
+                   Ledger.settle(state, route["service_id"], id, wall())
+                 end,
+                 guard
+               ),
              do: {:ok, value},
              else: (_ -> unknown(route, id))
 
@@ -383,9 +426,10 @@ defmodule Ipse.InferenceSlots do
     _, _ -> unknown(route, id)
   end
 
-  defp cancel_waiting(context, id, reason) do
-    case Store.transaction(context, fn state -> Ledger.cancel_waiting(state, id) end) do
+  defp cancel_waiting(context, id, reason, guard) do
+    case Store.transaction(context, fn state -> Ledger.cancel_waiting(state, id) end, guard) do
       {:ok, _} -> {:error, reason}
+      {:error, :service_wait_timeout} -> {:error, reason}
       _ -> {:unknown, %{"reservation_id" => id}}
     end
   end
@@ -468,10 +512,60 @@ defmodule Ipse.InferenceSlots do
     :exit, _ -> {:error, :service_slot_unavailable}
   end
 
+  defp bootstrap(
+         ref,
+         owner,
+         upstream,
+         scope,
+         deadline,
+         begun \\ false,
+         watchdog \\ nil,
+         ready \\ nil
+       ) do
+    cond do
+      not Process.alive?(owner) or not Process.alive?(upstream) or not Process.alive?(scope) ->
+        exit(:normal)
+
+      mono() >= deadline ->
+        {:error, :service_wait_timeout}
+
+      begun and is_pid(watchdog) and ready == watchdog ->
+        {:ok, watchdog}
+
+      true ->
+        receive do
+          {:begin_service_slot, ^ref} ->
+            bootstrap(ref, owner, upstream, scope, deadline, true, watchdog, ready)
+
+          {:service_watchdog, pid} when is_pid(pid) ->
+            bootstrap(ref, owner, upstream, scope, deadline, begun, pid, ready)
+
+          {^ref, :watchdog_ready, pid} when is_pid(pid) ->
+            bootstrap(ref, owner, upstream, scope, deadline, begun, watchdog, pid)
+
+          {:DOWN, _, :process, _, _} ->
+            exit(:normal)
+        after
+          max(deadline - mono(), 0) -> {:error, :service_wait_timeout}
+        end
+    end
+  end
+
+  defp complete(owner, ref, result) do
+    send(owner, {ref, :result, result})
+
+    receive do
+      {^ref, :finished} -> :ok
+    after
+      10_000 -> :ok
+    end
+  end
+
   defp watchdog(owner, worker, scope, ref, deadline) do
     Process.flag(:trap_exit, true)
     Process.link(worker)
     monitors = Enum.map([owner, worker, scope], &Process.monitor/1)
+    send(worker, {ref, :watchdog_ready, self()})
     watchdog_wait(worker, scope, ref, :waiting, deadline, monitors, nil)
   end
 
@@ -557,6 +651,25 @@ defmodule Ipse.InferenceSlots do
         reason
     after
       0 -> nil
+    end
+  end
+
+  defp permit(owner, upstream, ref, deadline, cap \\ nil) do
+    cond do
+      not Process.alive?(owner) or not Process.alive?(upstream) ->
+        {:error, :service_owner_lost}
+
+      mono() >= deadline ->
+        {:error, :service_wait_timeout}
+
+      reason = cancellation(ref) ->
+        {:error, reason}
+
+      is_nil(cap) ->
+        :ok
+
+      true ->
+        Transaction.check(cap)
     end
   end
 
