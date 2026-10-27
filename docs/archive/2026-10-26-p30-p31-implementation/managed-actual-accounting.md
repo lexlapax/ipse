@@ -7,6 +7,12 @@ permission, replay, source or storage formats. The [Collection SDK](../../develo
 and [accounting chapter](../../developer/accounting.md) describe current behavior.
 The [plan](../../plan.md) remains authoritative for milestone acceptance.
 
+A [later native Identity-finalization probe](identity-finalization-finding.md)
+found that this checkpoint settled before the outer Identity release. Its
+blanket full-liability wording does not cover that demonstrated window. The
+original measurements and failed-stage evidence below remain historical facts;
+the linked finding tracks the separate ordering correction.
+
 ## Change and trust boundary
 
 `ManagedCollectionCall` still reserves one operation, the encoded outer request,

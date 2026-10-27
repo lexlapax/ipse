@@ -6,6 +6,10 @@ an incremental audit of the [accounting component](managed-actual-accounting.md)
 not whole-milestone acceptance. The current
 [developer accounting chapter](../../developer/accounting.md) owns the contract.
 
+The separate [Identity-finalization follow-up](identity-finalization-finding.md)
+subsequently reproduced an outer native-loss window that this audit did not
+inject. Its accepted P2 and correction are separate from the scoped pass below.
+
 The reviewer did not author this accounting change. Their separate Collection
 directory work is absent from the audited frozen graph; these results do not
 establish combined directory/accounting integration. Root read the complete
