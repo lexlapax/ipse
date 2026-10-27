@@ -102,6 +102,35 @@ destination metadata. A concurrent-revocation linearization rule and current
 root validation are required regardless of transport; a narrow timing interval
 alone is not a proof. This is a design lead, not an approved or implemented fix.
 
+A later uncommitted Mint primitive permits a trusted same-process callback to
+hold locks while invoking a one-use send continuation. Its [local controls](mint-transport-experimental.log)
+passed **17 tests**, seed 20270106, and an independent private graph reproduced
+17 passes. The source SHA-256 is
+`65dffc656f977e9eb5006953d0418e3974a81b36380696e778d4c123fd81ed4a`;
+the test SHA-256 is
+`b442a9a171a170ecc01fbbc0ab8eb0a52cbc6ae635881cec938379815ae720d7`.
+A separate stalled-send experiment exceeded its configured 200 ms timeout,
+and Mint's close acknowledgment does not itself prove socket cleanup. An
+owned-task deadline, lock cleanup, provider body and target binding, current
+authority and completion-witness integration remain open; this primitive is
+unwired and its controls do not qualify protected egress.
+
+## Same-view read foundation
+
+An uncommitted `ObservedRead` experiment produces a `get` or `snapshot` value,
+request/result digests and a root witness through the same checked view. Its
+[local run](observed-read-experimental.log) passed **27 tests**, including
+existing ReadView controls, and an independent private graph reproduced 27 passes.
+Both used the unqualified private 7.2.11 test override, so these are functional
+diagnostics only. Successful values match the generic operations; legacy roots,
+the view-cache limit and a damaged snapshot probe can conservatively refuse
+where generic reads succeed. The source SHA-256 is
+`06af1dea20a48f0bab4e316e1ea9d833356a55e18cb8c24ef1831a00068579ea`;
+the test SHA-256 is
+`c7abf75d1a27a8ac6e1eefed322cfe358097e134aca6f8f2e0cec6fca006273d`.
+It grants no permission or current source eligibility and is not integrated
+into Session, replay or inference.
+
 ## Linux 7.2.11 qualification
 
 Independent static review compared the downloaded upstream v7.2.10 and v7.2.11
@@ -120,8 +149,10 @@ allocation failure tests. This is an unresolved proof gap, not a demonstrated
 defect. The earlier successful-write kill probe cannot establish that property.
 The user authorized continuing qualification on 7.2.11; the profile remains
 unchanged and fail-closed. A private user/mount namespace can mount a disposable
-tmpfs here, but `/dev/loop-control` and `/dev/mapper/control` were absent in the
-checked environment. No Btrfs fault injection was attempted on the user's
+tmpfs here, but `/dev/loop-control` and `/dev/mapper/control` were absent inside
+the sandbox. The user identified Serenity as the intended host; an escalated
+read-only inspection found both control devices on that same host. No Btrfs
+fault injection was attempted on the user's
 filesystem. See the [recovery record](kernel-profile-recovery.md) for the
 source and preliminary probe provenance. A later
 [partial-write diagnostic](kernel-7.2.11/partial-probe.md) observed stable counts
