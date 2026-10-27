@@ -485,7 +485,10 @@ defmodule Ipse.CLI do
       base_url: opts[:base_url],
       operator_questions: interactive,
       accept_edits: interactive and opts[:accept_edits] == true,
-      approval: if(opts[:yes], do: :allow, else: if(interactive, do: :ask, else: :deny))
+      approval: if(opts[:yes], do: :allow, else: if(interactive, do: :ask, else: :deny)),
+      approval_origin:
+        if(opts[:yes], do: :yes, else: if(interactive, do: :interactive, else: :default_headless)),
+      headless: not interactive
     }
 
     with {:ok, effective} <- Ipse.Config.resolve(workspace, home, opts),

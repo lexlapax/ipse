@@ -112,6 +112,8 @@ defmodule Ipse.Config do
       with {:ok, extensions} <- Ipse.Extension.Config.resolve(loaded, opts),
            {:ok, embedding_profiles} <- Ipse.Config.Profiles.resolve_embeddings(loaded),
            {:ok, decision_profiles} <- Ipse.Config.Decisions.resolve(loaded),
+           {:ok, semantic_selections} <- Ipse.Config.Semantics.resolve(loaded),
+           {:ok, inference_services} <- Ipse.Config.Semantics.resolve_services(loaded),
            {:ok, budget} <- Ipse.Usage.Budget.resolve_policy(loaded),
            {:ok, journal} <- Ipse.Journal.resolve_limits(loaded),
            {:ok, observation} <- Ipse.Observability.resolve(loaded, opts, environment),
@@ -196,6 +198,16 @@ defmodule Ipse.Config do
               do: identity,
               else: Map.put(identity, "decision_profiles", decision_profiles)
 
+          identity =
+            if semantic_selections == %{},
+              do: identity,
+              else: Map.put(identity, "semantic_selections", semantic_selections)
+
+          identity =
+            if inference_services == %{},
+              do: identity,
+              else: Map.put(identity, "inference_services", inference_services)
+
           fingerprint = Ipse.JSON.digest([identity])
 
           {:ok,
@@ -204,6 +216,8 @@ defmodule Ipse.Config do
            |> Map.put(:extensions, extensions)
            |> Map.put(:embedding_profiles, embedding_profiles)
            |> Map.put(:decision_profiles, decision_profiles)
+           |> Map.put(:semantic_selections, semantic_selections)
+           |> Map.put(:inference_services, inference_services)
            |> Map.put(:budget, budget)
            |> Map.put(:journal, journal)
            |> Map.put(:observability, observation)
@@ -246,6 +260,7 @@ defmodule Ipse.Config do
         with {:ok, extensions} <-
                Ipse.Extension.Registry.prepare(effective.extensions, client.home),
              {:ok, servers} <- Ipse.MCP.Config.load(client.mcp_config),
+             {:ok, mode} <- Ipse.Extension.Mode.capture(client),
              {:ok, _policy} <- Ipse.Tools.Sandbox.resolve(sandbox, client.workspace) do
           {:ok,
            Map.merge(
@@ -259,6 +274,8 @@ defmodule Ipse.Config do
                extensions: extensions,
                embedding_profiles: effective.embedding_profiles,
                decision_profiles: effective.decision_profiles,
+               semantic_selections: Map.get(effective, :semantic_selections, %{}),
+               inference_services: Map.get(effective, :inference_services, %{}),
                observability: effective.observability.policy,
                timeout_ms: settings["timeout_ms"],
                max_output_tokens: settings["max_output_tokens"],
@@ -274,7 +291,12 @@ defmodule Ipse.Config do
                subagent_concurrency: settings["subagent_concurrency"],
                operator_questions: client.operator_questions,
                accept_edits: Map.get(client, :accept_edits, false),
-               approval: client.approval
+               approval: client.approval,
+               approval_origin: mode["approval_origin"],
+               headless: mode["headless"],
+               execution_mode: mode["ceiling"],
+               enclosing_mode: mode["enclosing_ceiling"],
+               knowledge_ceiling: mode["knowledge"]
              },
              Ipse.Config.Profiles.runtime(effective)
            )}
@@ -307,6 +329,18 @@ defmodule Ipse.Config do
         if(effective.decision_profiles == %{},
           do: %{},
           else: %{decision_profiles: effective.decision_profiles}
+        )
+      )
+      |> Map.merge(
+        if(Map.get(effective, :semantic_selections, %{}) == %{},
+          do: %{},
+          else: %{semantic_selections: effective.semantic_selections}
+        )
+      )
+      |> Map.merge(
+        if(Map.get(effective, :inference_services, %{}) == %{},
+          do: %{},
+          else: %{inference_services: effective.inference_services}
         )
       )
 
@@ -343,6 +377,8 @@ defmodule Ipse.Config do
             "profiles" => %{"type" => "object"},
             "embedding_profiles" => %{"type" => "object"},
             "decision_profiles" => %{"type" => "object"},
+            "semantic_selections" => Ipse.Config.Semantics.schema(),
+            "inference_services" => Ipse.Config.Semantics.schema(),
             "roles" => %{"type" => "object"},
             "observability" => Ipse.Observability.schema(),
             "budget" => Ipse.Usage.Budget.schema(),
@@ -446,6 +482,8 @@ defmodule Ipse.Config do
             end),
          :ok <- Ipse.Config.Profiles.validate_embeddings(data["embedding_profiles"] || %{}),
          :ok <- Ipse.Config.Decisions.validate(data["decision_profiles"] || %{}),
+         :ok <- Ipse.Config.Semantics.validate(data["semantic_selections"] || %{}),
+         :ok <- Ipse.Config.Semantics.validate_services(data["inference_services"] || %{}),
          :ok <- Ipse.Extension.Config.validate(data),
          :ok <- validate_settings(data["settings"] || %{}) do
       {:ok,

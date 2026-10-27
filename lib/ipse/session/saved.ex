@@ -8,6 +8,7 @@ defmodule Ipse.Session.Saved do
   @doc "Rebuild pure resume facts after the owner has validated sources and reloaded its journal."
   def restore(events, id) do
     with {:ok, _mode} <- execution_mode(events),
+         {:ok, _admission} <- semantic_admission(events, id),
          :ok <- Ipse.Session.Input.validate_events(events, id),
          :ok <- Ipse.Session.OperatorAnswer.validate_events(events, id),
          {:ok, reference} <- Ipse.Session.Reference.restore(events, id),
@@ -48,6 +49,21 @@ defmodule Ipse.Session.Saved do
   end
 
   def execution_mode(_), do: {:error, :invalid_saved_execution_mode}
+
+  @doc false
+  def semantic_admission(events, id \\ nil)
+
+  def semantic_admission([%{"metadata" => metadata} | _], id) when is_map(metadata) do
+    if Map.has_key?(metadata, "semantic_admission") do
+      if Ipse.Extension.SemanticAdmission.valid?(metadata["semantic_admission"], id),
+        do: {:ok, metadata["semantic_admission"]},
+        else: {:error, :invalid_saved_semantic_admission}
+    else
+      {:ok, nil}
+    end
+  end
+
+  def semantic_admission(_, _), do: {:error, :invalid_saved_semantic_admission}
 
   defp reported_model(%{"provider_data" => data}) when is_map(data),
     do: Ipse.Provider.model_name(data["reported_model"])
@@ -100,9 +116,9 @@ defmodule Ipse.Session.Saved do
   end
 
   defp validate_context_events(events) do
-    with {:ok, _mode} <- execution_mode(events),
-         :ok <- Ipse.Session.Input.validate_events(events),
+    with :ok <- Ipse.Session.Input.validate_events(events),
          :ok <- Ipse.Session.OperatorAnswer.validate_events(events),
+         :ok <- validate_context_metadata(events),
          {:ok, _} <- Ipse.Session.Reference.restore(events),
          :ok <- Ipse.Journal.validate_limit_events(events),
          :ok <- validate_handoff_events(events),
@@ -117,6 +133,19 @@ defmodule Ipse.Session.Saved do
       :ok
     end
   end
+
+  # Keep historical projections under their existing context validators. A real
+  # header validates every explicitly present authority marker, including null.
+  defp validate_context_metadata([%{"metadata" => _} | _] = events) do
+    with {:ok, _} <- execution_mode(events),
+         {:ok, _} <- semantic_admission(events),
+         do: :ok
+  end
+
+  defp validate_context_metadata([%{"type" => "session"} | _]),
+    do: {:error, :invalid_saved_execution_mode}
+
+  defp validate_context_metadata(_), do: :ok
 
   defp project(events, question_mode) do
     versioned =

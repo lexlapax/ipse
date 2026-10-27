@@ -7,7 +7,18 @@ defmodule Ipse.Journal do
   def create(state_dir, metadata, policy \\ nil)
 
   def create(state_dir, metadata, policy) when is_map(metadata) do
-    with {:ok, limits} <- normalize_limits(policy),
+    id = :crypto.strong_rand_bytes(16) |> Base.encode16(case: :lower)
+    create_with_id(state_dir, id, metadata, policy)
+  end
+
+  def create(_, _, _), do: {:error, :metadata_must_be_a_map}
+
+  @doc false
+  def create_with_id(state_dir, id, metadata, policy \\ nil)
+
+  def create_with_id(state_dir, id, metadata, policy) when is_map(metadata) do
+    with :ok <- validate_id(id),
+         {:ok, limits} <- normalize_limits(policy),
          :ok <- ensure_state_dir(state_dir),
          {:ok, encoded_metadata} <- Jason.encode(metadata),
          event = %{
@@ -17,8 +28,6 @@ defmodule Ipse.Journal do
          },
          {:ok, encoded} <- encode_event(event, limits),
          :ok <- initial_capacity(encoded, limits) do
-      id = :crypto.strong_rand_bytes(16) |> Base.encode16(case: :lower)
-
       case write_new(journal_path(state_dir, id), encoded <> "\n") do
         :ok -> {:ok, id}
         error -> error
@@ -26,7 +35,7 @@ defmodule Ipse.Journal do
     end
   end
 
-  def create(_, _, _), do: {:error, :metadata_must_be_a_map}
+  def create_with_id(_, _, _, _), do: {:error, :metadata_must_be_a_map}
 
   def append(state_dir, id, event), do: inactive_append(state_dir, id, event, :plain)
   def append_observed(state_dir, id, event), do: inactive_append(state_dir, id, event, :observed)

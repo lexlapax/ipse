@@ -468,6 +468,15 @@ defmodule Ipse.Session do
             ),
           else: state
 
+      if config[:semantic_admission]["status"] not in ["off", "active"] do
+        notify(
+          state,
+          {:status,
+           "Knowledge inactive: saved permission was not admitted (" <>
+             config[:semantic_admission]["status"] <> ")."}
+        )
+      end
+
       if question, do: {:ok, state, {:continue, :question}}, else: {:ok, state}
     else
       false -> {:stop, :workspace_not_found}
@@ -2799,14 +2808,20 @@ defmodule Ipse.Session do
 
     with {:ok, mode} <- Ipse.Extension.Mode.capture(config),
          config = apply_execution_mode(config, mode),
+         selected_id = Ipse.Usage.id(),
+         {:ok, semantic_admission} <-
+           Ipse.Extension.SemanticAdmission.fresh(config, cwd, selected_id),
+         config = Map.put(config, :semantic_admission, semantic_admission),
          {:ok, id} <-
-           Journal.create(
+           Journal.create_with_id(
              dir,
+             selected_id,
              %{
                "cwd" => cwd,
                "reference_layout" => Ipse.Session.Reference.layout(),
                "source_layout" => Ipse.Session.SourceWindow.layout(),
                "execution_mode" => mode,
+               "semantic_admission" => semantic_admission,
                "usage_version" => usage_version(config),
                "embedding_profiles" => Ipse.Config.Profiles.embedding_snapshot(config),
                "decision_profiles" => Ipse.Config.Decisions.snapshot(config),
@@ -2844,6 +2859,10 @@ defmodule Ipse.Session do
          {:ok, saved_mode} <- Saved.execution_mode(events),
          {:ok, mode} <- resume_execution_mode(saved_mode, config),
          config = apply_execution_mode(config, mode),
+         {:ok, saved_admission} <- Saved.semantic_admission(events, id),
+         {:ok, semantic_admission} <-
+           Ipse.Extension.SemanticAdmission.resume(config, cwd, id, saved_admission),
+         config = Map.put(config, :semantic_admission, semantic_admission),
          {:ok, old_cwd} <- Workspace.canonical_path(meta["cwd"]),
          true <-
            old_cwd == cwd and meta["provider"] == to_string(config.provider) and

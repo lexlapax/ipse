@@ -143,4 +143,40 @@ defmodule Ipse.DelegationTest do
     assert Delegation.child_config(%{max_steps: 2}, "origin").max_steps == 2
     assert Delegation.child_config(%{max_steps: 0}, "origin").max_steps == 6
   end
+
+  test "children retain parent ceilings while broad yes still requires separate child approval" do
+    for config <- [
+          %{approval: :allow, approval_origin: :yes, headless: true},
+          %{approval: :deny, approval_origin: :default_headless, headless: true}
+        ] do
+      parent =
+        Map.merge(config, %{
+          semantic_pin: %{"private" => true},
+          semantic_admission: %{"pin" => %{"private" => true}}
+        })
+
+      child = Delegation.child_config(parent, "origin")
+
+      assert child.approval == :ask and child.approval_origin == "explicit"
+      assert child.headless
+      refute Map.has_key?(child, :semantic_pin)
+      refute Map.has_key?(child, :semantic_admission)
+      assert {:ok, mode} = Ipse.Extension.Mode.capture(child)
+      assert Ipse.Extension.Mode.valid?(mode)
+    end
+
+    for config <- [
+          %{approval: :deny},
+          %{execution_mode: :planning},
+          %{execution_mode: :draft, enclosing_mode: :read_only},
+          %{knowledge_ceiling: :disabled}
+        ] do
+      child = Delegation.child_config(config, "origin")
+      assert {:ok, mode} = Ipse.Extension.Mode.capture(child)
+      assert {:error, _} = Ipse.Extension.Mode.knowledge(mode, "collection.publish")
+
+      if config[:knowledge_ceiling] != :disabled,
+        do: assert(:deny == Ipse.Extension.Mode.ordinary(mode, true))
+    end
+  end
 end

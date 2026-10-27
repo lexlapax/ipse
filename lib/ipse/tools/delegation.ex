@@ -191,32 +191,59 @@ defmodule Ipse.Tools.Delegation do
 
   @doc "Build child policy from host configuration without carrying conversation state."
   def child_config(config, origin) when is_map(config) do
-    config
-    |> Map.drop([
-      :messages,
-      :transcript,
-      :history,
-      :context,
-      :context_snapshot,
-      :tools,
-      :mcp_tools,
-      :profiles,
-      :roles,
-      :configuration,
-      :extensions
-    ])
-    |> Map.put(:subagents, false)
-    |> Map.put(:subagent_concurrency, 1)
-    |> Map.put(:mcp_servers, [])
-    |> Map.put(:extensions, Ipse.Extension.Registry.child_entries(config))
-    |> Map.put(:model_profiles, Ipse.Extension.ModelCall.profiles(config))
-    |> Map.put(:embedding_profiles, config[:embedding_profiles] || %{})
-    |> Map.put(:decision_profiles, Ipse.Config.Decisions.child_profiles(config))
-    |> Map.put(:model_auth_dir, config[:model_auth_dir] || config[:auth_dir])
-    |> Map.put(:approval, :ask)
-    |> Map.put(:max_steps, min(parent_max_steps(config), max_steps()))
-    |> Map.put(:compact, false)
-    |> Map.put(:delegation_origin, origin)
+    child =
+      config
+      |> Map.drop([
+        :messages,
+        :transcript,
+        :history,
+        :context,
+        :context_snapshot,
+        :tools,
+        :mcp_tools,
+        :profiles,
+        :roles,
+        :configuration,
+        :semantic_pin,
+        :semantic_pins,
+        :semantic_context,
+        :semantic_contexts,
+        :semantic_admission,
+        :extensions
+      ])
+      |> Map.put(:subagents, false)
+      |> Map.put(:subagent_concurrency, 1)
+      |> Map.put(:mcp_servers, [])
+      |> Map.put(:extensions, Ipse.Extension.Registry.child_entries(config))
+      |> Map.put(:model_profiles, Ipse.Extension.ModelCall.profiles(config))
+      |> Map.put(:embedding_profiles, config[:embedding_profiles] || %{})
+      |> Map.put(:decision_profiles, Ipse.Config.Decisions.child_profiles(config))
+      |> Map.put(:model_auth_dir, config[:model_auth_dir] || config[:auth_dir])
+      |> Map.put(:approval, :ask)
+      |> Map.put(:approval_origin, :explicit)
+      |> Map.put(:max_steps, min(parent_max_steps(config), max_steps()))
+      |> Map.put(:compact, false)
+      |> Map.put(:delegation_origin, origin)
+
+    with {:ok, parent_mode} <- Ipse.Extension.Mode.capture(config),
+         {:ok, mode} <- Ipse.Extension.Mode.inherit(parent_mode, child) do
+      Map.merge(child, %{
+        approval: String.to_existing_atom(mode["approval"]),
+        approval_origin: mode["approval_origin"],
+        headless: mode["headless"],
+        execution_mode: mode["ceiling"],
+        enclosing_mode: mode["enclosing_ceiling"],
+        knowledge_ceiling: mode["knowledge"]
+      })
+    else
+      _ ->
+        Map.merge(child, %{
+          approval: :deny,
+          approval_origin: :explicit,
+          execution_mode: :read_only,
+          knowledge_ceiling: :disabled
+        })
+    end
   end
 
   def child_config(_, origin) do
