@@ -63,6 +63,7 @@ resource/offline qualification. No daemon configuration or existing model was ch
 - [Pure fence-leaf metadata codec: lossless roundtrips, bounded churn and an annual JSON no-fit result](managed-metadata-proof.md).
 - [Separate binary metadata proof: conditional measured size, retained failure controls and open lifecycle/authenticity gates](managed-binary-metadata-proof.md).
 - [Adaptive pure codec and local leaf proof, package comparison and retained capacity misses](managed-adaptive-metadata-proof.md), with its [independent Stage 1 audit](managed-adaptive-independent-audit.md).
+- [Frozen full baseline: 2,474 passed, retained stopped dev-BEAM predecessor and exact revision scope](full-baseline-checkpoint.md).
 - [Declarative collection publication constraints](collection-policy-component.md).
 - [Native knowledge capture and precompiled artifact component](native-capture-component.md).
 - [Native artifact integration with managed recipes and actual PTY publication](native-managed-capture-component.md).

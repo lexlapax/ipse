@@ -1,0 +1,179 @@
+{
+  "byte_copy_and_hash_only": true,
+  "corrected_outcome": {
+    "excluded": 36,
+    "exit_code": 0,
+    "exit_code_basis": "Root observed process completion; retained text log has final successful result but no standalone process-exit receipt",
+    "passed": 2474,
+    "skipped": 4,
+    "wall_seconds": 1613.8
+  },
+  "coverage": "7d3f68c base plus declared then-uncommitted adaptive proof; not later managed-directory/accounting/NativeReview/ManagedPages or milestone acceptance",
+  "directory_fsync_claimed": false,
+  "fixture_content_interpreted": false,
+  "incident": {
+    "affected": 101,
+    "restored": 101,
+    "before_mode": 448,
+    "inferred_after_mode": 493,
+    "pre_change_mode_recorded": false,
+    "ctime_restored": false,
+    "dependency_files_before_after": 744,
+    "byte_hashes_unchanged": true,
+    "files_manifest_sha256": "9072be709640a1eb3f9392bda658b6c1727dd6a7694529354a7187d691d5b907",
+    "restoration_receipt_sha256": "d5ab9f968b06cce15e349d4fa28c02559464b13b2fbad3e9287c998b58c9a1bf",
+    "dependency_bytes_manifest_sha256": "c1e203dcc360261802864bfaeebc6c2c1d5f426902eefb221d3c54614e86f397",
+    "approved_nonfollowing_copy_walker_completed": true
+  },
+  "milestone_acceptance": false,
+  "original_provenance_sha256": "a274908e2bdba31dc8643939ff051454a80c46bf81bd7817cfd63501ac0e110e",
+  "predecessor_outcome": {
+    "intentionally_stopped": true,
+    "last_log": "02:26:18.709 SIGTERM received",
+    "passed": false,
+    "test_exports_missing": true,
+    "wrong_beam_environment": "dev compiled, Mix test --no-compile"
+  },
+  "preservation_model_calls": 0,
+  "preservation_native_calls": 0,
+  "preservation_tests_executed": 0,
+  "purpose": "read-only preservation of Root-run frozen baseline and stopped wrong-environment predecessor",
+  "runs": {
+    "corrected-test": {
+      "auth_exports": {
+        "with_auth_transport_2": true,
+        "with_fixture_3": true
+      },
+      "entries": 4063,
+      "files_manifest_sha256": "5e3ad439a51f4be573cc9ef8e95ebac1f740f597088c39cfdd4ca57334fc8674",
+      "helper_sha256": "d84d77d77dc2393b36d9353b6e6d215ec86dc5ba33fe9ad7c8f378130043f91b",
+      "original": "/tmp/ipse-full-test-baseline-ab100a66d350374e",
+      "original_runtime_manifest_exact_now": true,
+      "original_runtime_manifest_sha256": "0faaca91e4c5526e17b6b12f801dbe6f206983622f5533e16fe8a9be2cd6c393",
+      "preserved": "/home/lexlapax/.codex/visualizations/2026/10/26/01a17a12-c7bb-76e2-af9e-95f589cc6f94/p31-verification/full-baseline-20261027/corrected-test",
+      "regular_runtime_inputs": 2337,
+      "source_comparison": {
+        "16df6608e973ae46f7c1e346c591afb87db199ed": {
+          "different": {
+            "docs/archive/2026-10-26-p30-p31-implementation/managed-adaptive-metadata-proof.md": "different"
+          },
+          "exact": 1703
+        },
+        "7d3f68c35a308569e8df4843db32efba0e111bd2": {
+          "different": {
+            "dev/knowledge/managed_metadata_adaptive.ex": "not_in_tree",
+            "dev/knowledge/managed_metadata_adaptive_cases.ex": "not_in_tree",
+            "dev/knowledge/managed_metadata_adaptive_leaves.ex": "not_in_tree",
+            "dev/knowledge/managed_metadata_adaptive_msgpax.ex": "not_in_tree",
+            "dev/knowledge/managed_metadata_adaptive_run.exs": "not_in_tree",
+            "docs/archive/2026-10-26-p30-p31-implementation/index.md": "different",
+            "docs/archive/2026-10-26-p30-p31-implementation/managed-adaptive-independent-audit.md": "not_in_tree",
+            "docs/archive/2026-10-26-p30-p31-implementation/managed-adaptive-metadata-proof.md": "not_in_tree",
+            "docs/archive/2026-10-26-p30-p31-implementation/managed-adaptive-proof-artifacts.json": "not_in_tree",
+            "docs/developer/dependencies.md": "different",
+            "test/dev/managed_metadata_adaptive_test.exs": "not_in_tree"
+          },
+          "exact": 1693
+        }
+      },
+      "source_copy_inputs": 1704,
+      "symlinks": [
+        {
+          "path": "build/lib/ipse/priv",
+          "target": "../../../project/priv",
+          "type": "symlink"
+        },
+        {
+          "path": "build/lib/telemetry/src",
+          "target": "../../../../home/lexlapax/projects/lexlapax/ipse/deps/telemetry/src",
+          "type": "symlink"
+        },
+        {
+          "path": "project/deps",
+          "target": "/home/lexlapax/projects/lexlapax/ipse/deps",
+          "type": "symlink"
+        }
+      ]
+    },
+    "stopped-dev": {
+      "auth_exports": {
+        "with_auth_transport_2": false,
+        "with_fixture_3": false
+      },
+      "entries": 4686,
+      "files_manifest_sha256": "6017111bf38dd31547af53dd93183d8c16df2352d5bdf789dad97e91d6c8877c",
+      "helper_sha256": "d84d77d77dc2393b36d9353b6e6d215ec86dc5ba33fe9ad7c8f378130043f91b",
+      "original": "/tmp/ipse-full-integrated-baseline-86ee3c62f73d9afa",
+      "original_runtime_manifest_exact_now": true,
+      "original_runtime_manifest_sha256": "bd3e2d1bbd2736647579fad99dc446130b3a9187fe13213575001445f7fdbbda",
+      "preserved": "/home/lexlapax/.codex/visualizations/2026/10/26/01a17a12-c7bb-76e2-af9e-95f589cc6f94/p31-verification/full-baseline-20261027/stopped-dev",
+      "regular_runtime_inputs": 2337,
+      "source_comparison": {
+        "16df6608e973ae46f7c1e346c591afb87db199ed": {
+          "different": {
+            "docs/archive/2026-10-26-p30-p31-implementation/managed-adaptive-metadata-proof.md": "different"
+          },
+          "exact": 1703
+        },
+        "7d3f68c35a308569e8df4843db32efba0e111bd2": {
+          "different": {
+            "dev/knowledge/managed_metadata_adaptive.ex": "not_in_tree",
+            "dev/knowledge/managed_metadata_adaptive_cases.ex": "not_in_tree",
+            "dev/knowledge/managed_metadata_adaptive_leaves.ex": "not_in_tree",
+            "dev/knowledge/managed_metadata_adaptive_msgpax.ex": "not_in_tree",
+            "dev/knowledge/managed_metadata_adaptive_run.exs": "not_in_tree",
+            "docs/archive/2026-10-26-p30-p31-implementation/index.md": "different",
+            "docs/archive/2026-10-26-p30-p31-implementation/managed-adaptive-independent-audit.md": "not_in_tree",
+            "docs/archive/2026-10-26-p30-p31-implementation/managed-adaptive-metadata-proof.md": "not_in_tree",
+            "docs/archive/2026-10-26-p30-p31-implementation/managed-adaptive-proof-artifacts.json": "not_in_tree",
+            "docs/developer/dependencies.md": "different",
+            "test/dev/managed_metadata_adaptive_test.exs": "not_in_tree"
+          },
+          "exact": 1693
+        }
+      },
+      "source_copy_inputs": 1704,
+      "symlinks": [
+        {
+          "path": "build/lib/ipse/priv",
+          "target": "../../../project/priv",
+          "type": "symlink"
+        },
+        {
+          "path": "build/lib/telemetry/src",
+          "target": "../../../../home/lexlapax/projects/lexlapax/ipse/deps/telemetry/src",
+          "type": "symlink"
+        },
+        {
+          "path": "first-build-diagnostic/dev/lib/ipse/priv",
+          "target": "../../../../priv",
+          "type": "symlink"
+        },
+        {
+          "path": "first-build-diagnostic/dev/lib/telemetry/src",
+          "target": "../../../../deps/telemetry/src",
+          "type": "symlink"
+        },
+        {
+          "path": "project/deps",
+          "target": "/home/lexlapax/projects/lexlapax/ipse/deps",
+          "type": "symlink"
+        }
+      ]
+    }
+  },
+  "source_comparison_note": "1703/1704 copied inputs equal16df blobs; sole difference is adaptive archive draft missing subsequent preservation paragraphs; all6 adaptive source/test files exact16df; base7d3 matches1693 and11 declared pureproof/docs differences",
+  "test_logs": {
+    "corrected-test": {
+      "file": "full-test-first.log",
+      "bytes": 25498,
+      "sha256": "a297c933f17450727837b604e581f388e681fd414ecba0d4c140650bdd8fa961"
+    },
+    "stopped-dev": {
+      "file": "full-first.log",
+      "bytes": 19675,
+      "sha256": "19ede61e83b87c8a15d0784b9ed8dc729a1a44905606094263b559df4d8507e6"
+    }
+  },
+  "version": 1
+}
