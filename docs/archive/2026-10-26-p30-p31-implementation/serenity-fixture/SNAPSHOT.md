@@ -168,3 +168,8 @@ backing inode checks. Its standalone synthetic tests passed, including an
 extra-FD refusal; the disabled executable exited 2 without opening a device.
 It has no accepted guardian, authenticated launch, cgroup or final-release
 proof and must not be enabled from this historical snapshot.
+
+The latest harmless filter test additionally verified that a loop-status ioctl
+reached `/dev/null` and returned ENOTTY after the filter, rather than being
+blocked by seccomp. This is syscall-routing evidence only. The standalone owner
+entry remains disabled and has not opened a loop device.
