@@ -175,6 +175,9 @@ defmodule Ipse.Provider.Ollama do
     with :ok <- Stream.check_deadline(state), do: {:ok, state}
   end
 
+  defp line(%{done: true}, _line, _emit),
+    do: {:error, "Ollama stream contained data after its completion marker."}
+
   defp line(state, line, emit) do
     with {:ok, state} <- Stream.tick(state),
          {:ok, state} <- decode_line(state, line, emit),

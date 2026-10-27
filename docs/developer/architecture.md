@@ -135,6 +135,10 @@ machine names do not replace the stable opaque host UUID or alter client identit
 Visible streaming is a separate delivery contract from final answer admission.
 A required consumer failure can prevent admission after text was already shown.
 Usage and reservations survive later transport, framing, or response failures.
+For Ollama, a nonempty frame after the completion marker fails the response;
+earlier text may already be visible, but a later tool call is not admitted.
+Blank trailing lines remain valid. Keep terminal framing and native continuation
+covered together when changing the adapter.
 Read [lifecycle delivery](lifecycle-events.md) and [accounting](accounting.md)
 before modifying this path.
 

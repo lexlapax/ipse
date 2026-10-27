@@ -1,0 +1,7 @@
+Running ExUnit with seed: 20270226, max_cases: 1
+Excluding tags: [:native_sandbox, :macos_sandbox, :macos_filesystem, :memory_scope]
+
+...................................................................................................
+Finished in 1.0 seconds (0.00s async, 1.0s sync)
+
+Result: 99 passed

@@ -1,0 +1,87 @@
+--- a/lib/ipse/provider/ollama.ex
++++ b/lib/ipse/provider/ollama.ex
+@@ -175,6 +175,9 @@
+     with :ok <- Stream.check_deadline(state), do: {:ok, state}
+   end
+ 
++  defp line(%{done: true}, _line, _emit),
++    do: {:error, "Ollama stream contained data after its completion marker."}
++
+   defp line(state, line, emit) do
+     with {:ok, state} <- Stream.tick(state),
+          {:ok, state} <- decode_line(state, line, emit),
+--- /dev/null
++++ b/test/ipse/provider/ollama_terminal_test.exs
+@@ -0,0 +1,72 @@
++Code.require_file("../../support/provider_fixture.ex", __DIR__)
++
++defmodule Ipse.Provider.OllamaTerminalTest do
++  use ExUnit.Case, async: false
++
++  alias Ipse.Provider.Ollama
++  alias Ipse.Test.ProviderFixture
++
++  defp run(body) do
++    {base, server} = ProviderFixture.start(body, 200, "", :whole)
++    parent = self()
++
++    result =
++      Ollama.complete(
++        %{provider: :ollama, model: "fixture", base_url: base, timeout_ms: 4000},
++        [%{"role" => "user", "content" => "hello"}],
++        [],
++        fn event -> send(parent, {:event, event}) end
++      )
++
++    Task.await(server, 5000)
++    result
++  end
++
++  test "rejects later text, tool calls, or duplicate completion after done" do
++    for later <- [
++          %{"message" => %{"content" => "late"}, "done" => false},
++          %{
++            "message" => %{
++              "tool_calls" => [%{"function" => %{"name" => "late", "arguments" => %{}}}]
++            },
++            "done" => false
++          },
++          %{"done" => true}
++        ] do
++      body =
++        ProviderFixture.ndjson([%{"message" => %{"content" => "first"}, "done" => true}, later])
++
++      assert {:error, "Ollama stream contained data after its completion marker."} = run(body)
++      assert_receive {:event, {:text, "first"}}
++      refute_receive {:event, {:text, "late"}}, 100
++    end
++  end
++
++  test "allows blank lines after completion and preserves terminal native continuation" do
++    call = %{"function" => %{"name" => "lookup", "arguments" => %{"q" => "x"}}}
++
++    body =
++      ProviderFixture.ndjson([
++        %{
++          "model" => "fixture",
++          "message" => %{"content" => "ok", "thinking" => "private", "tool_calls" => [call]},
++          "done" => true
++        }
++      ]) <> "\n"
++
++    assert {:ok, message, _} = run(body)
++    assert get_in(message, ["provider_data", "message", "thinking"]) == "private"
++    assert get_in(message, ["provider_data", "message", "tool_calls"]) == [call]
++    assert [%{"function" => %{"name" => "lookup"}}] = message["tool_calls"]
++  end
++
++  test "still refuses terminal frames with a length stop" do
++    body =
++      ProviderFixture.ndjson([
++        %{"message" => %{"content" => "partial"}, "done" => true, "done_reason" => "length"}
++      ])
++
++    assert {:error, message} = run(body)
++    assert message =~ "incomplete"
++  end
++end

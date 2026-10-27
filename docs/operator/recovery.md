@@ -265,6 +265,7 @@ permitted terminal. Keep TLS verification and test assertions intact.
 | Model refused | Choose an available model/profile explicitly, preserving billing choice |
 | HTTP clients busy | Wait; an application permits 64 simultaneous clients |
 | Stream/body/output bound | Inspect usage and effects before a fresh task; none of that incomplete response's tools execute |
+| Ollama data after its completion marker | Treat the response as incomplete; text shown before the error may already be visible, but its proposed tools are not executed. Check the selected service before a new task |
 
 Stream refusals retain safe provider error codes and identifier-shaped messages.
 Numeric HTTP error codes such as `429` are retained as well.
