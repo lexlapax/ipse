@@ -57,6 +57,24 @@ Ipse's implementation graph. Likewise, importing an extension artifact does not
 install its build toolchain; the author must package compatible executable code
 and its own license/dependency inventory.
 
+### Serenity-only fault qualification tools
+
+The developer approved Docker, btrfs-progs, util-linux and device-mapper for a
+disposable Btrfs fault test on Serenity on 2026-10-27; see the
+[approval and scope](../archive/2026-10-26-p30-p31-implementation/serenity-fault-test-approval.md).
+These tools are not shipped or required for ordinary builds or tests. They are
+needed to provide a disposable block device and inject writeback failures that
+the existing successful-write probes cannot exercise. A live run requires a
+reviewed fixture and complete inventory of its exact tool/image/library closure;
+the approval does not authorize package installation or image downloads.
+
+| Host tool | Inspected Arch package | Purpose | Package-declared license |
+| --- | --- | --- | --- |
+| Docker | `1:29.9.2-1` | Run the reviewed disposable test environment | Apache-2.0 |
+| btrfs-progs | `7.3-1` | Format and inspect the isolated Btrfs volume | GPL-2.0-only |
+| util-linux | `2.42.4-1` | Manage its isolated loop device and mount | BSD-2-Clause, BSD-3-Clause, BSD-4-Clause-UC, GPL-2.0-only, GPL-2.0-or-later, GPL-3.0-or-later, ISC, LGPL-2.1-or-later, LicenseRef-PublicDomain |
+| device-mapper | `2.03.43-2` | Map the isolated backing device and inject controlled I/O errors | GPL-2.0-only, LGPL-2.1-only |
+
 ## Runtime and toolchain inventory
 
 | Dependency | Version/source | Scope and purpose | License |
