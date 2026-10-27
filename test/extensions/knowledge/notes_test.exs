@@ -99,6 +99,12 @@ defmodule IpseKnowledge.NotesTest do
   end
 
   test "complete record plus evidence must fit maximum value; malformed policy cannot promote" do
+    nested = Enum.reduce(1..16, %{"quote" => "support"}, fn _, value -> %{"nested" => value} end)
+    assert {:error, :invalid_note} = N.new(Map.put(attrs(), "evidence", nested), 0)
+
+    assert {:error, :invalid_note} =
+             N.new(put_in(attrs(), ["evidence", "quote"], String.duplicate("x", 9000)), 0)
+
     assert {:error, :invalid_note} =
              N.new(Map.put(attrs(), "evidence", %{"quote" => String.duplicate("x", 6144)}), 0)
 

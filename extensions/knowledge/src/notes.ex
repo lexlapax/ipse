@@ -222,7 +222,11 @@ defmodule IpseKnowledge.Notes do
   defp keys?(m, fields), do: is_map(m) and Enum.sort(Map.keys(m)) == Enum.sort(fields)
 
   defp json_size?(m, limit) do
-    bytes = IO.iodata_to_binary(JSON.encode!(m))
-    byte_size(bytes) <= limit and JSON.decode!(bytes) == m
+    if Ipse.Extension.validate(m) == :ok do
+      bytes = IO.iodata_to_binary(JSON.encode!(m))
+      byte_size(bytes) <= limit and JSON.decode!(bytes) == m
+    else
+      false
+    end
   end
 end

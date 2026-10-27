@@ -1,0 +1,65 @@
+Compiling 13 files (.ex)
+Running ExUnit with seed: 628718, max_cases: 1
+Excluding tags: [:test]
+Including tags: [location: {"test/ipse/extension/collection_migration_test.exs", 208}, location: {"test/ipse/extension/collection_migration_test.exs", 227}, location: {"test/ipse/extension/collection_migration_test.exs", 258}]
+
+
+
+  1) test distinct staged and checkpoint references count toward the complete logical envelope (Ipse.Extension.CollectionMigrationTest)
+     test/ipse/extension/collection_migration_test.exs:258
+     match (=) failed
+     code:  assert {:refused, generation} = result
+     left:  {:refused, generation}
+     right: {81, "source999"}
+     stacktrace:
+       test/ipse/extension/collection_migration_test.exs:283: (test)
+
+
+
+  2) test numeric newer floors from a divergent pre-forget fork cannot restore content (Ipse.Extension.CollectionMigrationTest)
+     test/ipse/extension/collection_migration_test.exs:227
+     match (=) failed
+     code:  assert {:failed, %{"code" => "collection_import_lineage"}} =
+              run(c.target, %{
+                "op" => "import.commit",
+                "expected_generation" => generation,
+                "migration_id" => id
+              })
+     left:  {:failed, %{"code" => "collection_import_lineage"}}
+     right: {:ok,
+             %{
+               "checkpoint_id" => nil,
+               "floor" => 3,
+               "generation" => 6,
+               "request_sha256" => "4eac575af56ab43bf6f5cd891fc6156fbc82d25d37cb6121dfc1c2334432c776"
+             }}
+     stacktrace:
+       test/ipse/extension/collection_migration_test.exs:240: (test)
+
+
+
+  3) test opening an import reserves disjoint receipt identities and leaves no permanent fence (Ipse.Extension.CollectionMigrationTest)
+     test/ipse/extension/collection_migration_test.exs:208
+     match (=) failed
+     code:  assert {:failed, %{"code" => "collection_capacity"}} =
+              run(c.target, %{
+                "op" => "import.open",
+                "expected_generation" => 32763,
+                "descriptor" => descriptor
+              })
+     left:  {:failed, %{"code" => "collection_capacity"}}
+     right: {:ok,
+             %{
+               "floor" => 0,
+               "generation" => 32764,
+               "migration_id" => "e030302c8fcf057fa6c6e58ec2d0f72e",
+               "request_sha256" => "05191c4c18be55221aae93708c26c182ff494056aa7d6b736476f61a3c948321"
+             }}
+     stacktrace:
+       test/ipse/extension/collection_migration_test.exs:214: (test)
+
+
+Finished in 10.7 seconds (10.7s async, 0.00s sync)
+
+Result: 0/3 passed, 5 excluded
+Failed: 3 tests

@@ -1,0 +1,31 @@
+Running ExUnit with seed: 790870, max_cases: 1
+Excluding tags: [:test]
+Including tags: [location: {"test/ipse/extension/collection_migration_test.exs", 318}]
+
+
+
+  1) test an aborted import receipt alias is not proof that the source applied a forget (Ipse.Extension.CollectionMigrationTest)
+     test/ipse/extension/collection_migration_test.exs:318
+     match (=) failed
+     code:  assert {:failed, %{"code" => "collection_import_lineage"}} =
+              run(c.target, %{
+                "op" => "import.commit",
+                "expected_generation" => generation,
+                "migration_id" => id
+              })
+     left:  {:failed, %{"code" => "collection_import_lineage"}}
+     right: {:ok,
+             %{
+               "checkpoint_id" => nil,
+               "floor" => 5,
+               "generation" => 6,
+               "request_sha256" => "c6609742db826159457f5e33d95d6071c5ad9b880c4bb6d403148a28e78bb095"
+             }}
+     stacktrace:
+       test/ipse/extension/collection_migration_test.exs:340: (test)
+
+
+Finished in 0.6 seconds (0.6s async, 0.00s sync)
+
+Result: 0/1 passed, 10 excluded
+Failed: 1 test

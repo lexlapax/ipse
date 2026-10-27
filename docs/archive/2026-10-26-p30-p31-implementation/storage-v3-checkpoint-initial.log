@@ -1,0 +1,49 @@
+Running ExUnit with seed: 536007, max_cases: 1
+Excluding tags: [:native_sandbox, :macos_sandbox, :macos_filesystem, :memory_scope]
+
+..............................
+
+  1) test a correction advances destructive lineage without deleting its record while a new addition does not (Ipse.Extension.CollectionMigrationTest)
+     test/ipse/extension/collection_migration_test.exs:258
+     match (=) failed
+     code:  assert {:ok, %{"floor" => 3, "floor_anchor" => anchor}} =
+              run(c.source, put(2, "claim", 1, %{"text" => "corrected"}, true))
+     left:  {:ok, %{"floor" => 3, "floor_anchor" => anchor}}
+     right: {:ok,
+             %{
+               "floor" => 3,
+               "generation" => 3,
+               "request_sha256" => "f856b10c8c1c604291375aa155f06315b85d5c17a79cc5c2949cc178032b8e73"
+             }}
+     stacktrace:
+       test/ipse/extension/collection_migration_test.exs:266: (test)
+
+.....
+
+  2) test complete typed planning imports a near-full logical backup with all receipt IDs already known (Ipse.Extension.CollectionMigrationTest)
+     test/ipse/extension/collection_migration_test.exs:375
+     ** (ExUnit.TimeoutError) test timed out after 180000ms. You can change the timeout:
+
+       1. per test by setting "@tag timeout: x" (accepts :infinity)
+       2. per test module by setting "@moduletag timeout: x" (accepts :infinity)
+       3. globally via "ExUnit.start(timeout: x)" configuration
+       4. by running "mix test --timeout x" which sets timeout
+       5. or by running "mix test --trace" which sets timeout to infinity
+          (useful when using IEx.pry/0)
+
+     where "x" is the timeout given as integer in milliseconds (defaults to 60_000).
+
+     code: 
+     stacktrace:
+       (ipse 0.1.0) lib/ipse/session/resources.ex:336: Ipse.Session.Resources.perform_file_effect/2
+       (ipse 0.1.0) lib/ipse/extension/collection.ex:56: Ipse.Extension.Collection.execute/4
+       test/ipse/extension/collection_migration_test.exs:431: (test)
+       (ex_unit 1.20.4) lib/ex_unit/runner.ex:533: ExUnit.Runner.exec_test/2
+       (stdlib 8.1) timer.erl:599: :timer.tc/2
+       (ex_unit 1.20.4) lib/ex_unit/runner.ex:455: anonymous fn/6 in ExUnit.Runner.spawn_test_monitor/4
+
+...
+Finished in 226.9 seconds (226.9s async, 0.00s sync)
+
+Result: 38/40 passed
+Failed: 2 tests
