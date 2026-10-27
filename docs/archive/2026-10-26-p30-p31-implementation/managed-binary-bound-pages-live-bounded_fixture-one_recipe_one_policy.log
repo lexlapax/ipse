@@ -1,0 +1,1 @@
+live/bounded_fixture/one_recipe_one_policy: 870ms; [%{rows: 3460, pages: 89, encoded_page_bytes: 526326}, %{rows: 3642, pages: 94, encoded_page_bytes: 554106}]

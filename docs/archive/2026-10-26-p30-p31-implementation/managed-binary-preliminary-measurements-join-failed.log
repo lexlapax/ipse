@@ -1,0 +1,9 @@
+    error: undefined variable "sources"
+    │
+ 10 │ sources=~w(dev/knowledge/managed_metadata.ex dev/knowledge/managed_metadata_shapes.exs dev/knowledge/managed_metadata_binary.ex dev/knowledge/managed_metadata_binary_shapes.exs dev/knowledge/managed_metadata_binary_proof.exs dev/knowledge/managed_metadata_binary_measure.exs)
+    │ ^^^^^^^
+    │
+    └─ /tmp/ipse-managed-binary-proof-20261026-01/join.exs:10:1
+
+** (CompileError) /tmp/ipse-managed-binary-proof-20261026-01/join.exs: cannot compile file (errors have been logged)
+

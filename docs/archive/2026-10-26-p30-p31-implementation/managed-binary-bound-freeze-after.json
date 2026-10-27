@@ -1,0 +1,20 @@
+{
+  "otp": "29",
+  "elixir": "1.20.4",
+  "sources": {
+    "dev/knowledge/managed_metadata_binary.ex": "82bef6e5ff7b1c3aabe2d8a61e096318cf770ec68da90e51e4831b7d0cc984bf",
+    "dev/knowledge/managed_metadata_binary_measure.exs": "1b0c2393392a2c74520f5ee1d5736c52e7d49f1462f8518b1d01a7410e786b02",
+    "dev/knowledge/managed_metadata_binary_proof.exs": "a05e9236af1e654948ca1ad20871cd002522ba08c34ffa436c909cee83a63d0e",
+    "dev/knowledge/managed_metadata_binary_shapes.exs": "35bc463756d1b6b42d0b95e041a50adf54dacbf615c11c4740a947111e5e3e14",
+    "docs/archive/2026-10-26-p30-p31-implementation/managed-continuation-runtime.json": "7ed66f3331916e42e6c6f9efa527a5a028b606f3ae8d75b045918de27d1637b3",
+    "docs/archive/2026-10-26-p30-p31-implementation/managed-metadata-calculation-final.json": "27eb6698022e7ac6a8c7680693c2dbf13cd4f8f322d872c0a357d77309510ded",
+    "docs/archive/2026-10-26-p30-p31-implementation/managed-metadata-proof-artifacts.json": "59abbd2110f1c4514a0c40dbdaefe570d4cbdc9f2c0feb36cd17ca5cf33d3308",
+    "test/dev/managed_metadata_binary_test.exs": "17a4b649c21f9cb528f05c044b9bc82cfd0e832eefee5dfa7ea8e31a6c0e1623"
+  },
+  "erts": "17.1",
+  "kind": "pure_binary_metadata_frozen_sources",
+  "dependency_beams_verified": 560,
+  "dependency_sources_verified": 126,
+  "helper_sha256": "108c762ec23085df6aeaba58c8bdfb34d0a8cb4fa80a410584889a81a556ea29",
+  "helper_invocations": 0
+}

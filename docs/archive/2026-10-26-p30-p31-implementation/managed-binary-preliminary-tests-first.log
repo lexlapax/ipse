@@ -1,0 +1,8 @@
+** (SyntaxError) invalid syntax found on nofile:1:67:
+    error: keyword argument must be followed by space after: max_cases:
+    │
+  1 │ spawn(fn->Process.sleep(30_000);System.halt(124)end);ExUnit.start(max_cases:2,timeout:10_000);Code.require_file("test/dev/managed_metadata_binary_test.exs")
+    │                                                                   ^
+    │
+    └─ nofile:1:67
+    (elixir 1.20.4) lib/code.ex:648: Code.validated_eval_string/4

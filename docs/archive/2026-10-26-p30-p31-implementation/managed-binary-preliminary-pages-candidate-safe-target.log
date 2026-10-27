@@ -1,0 +1,29 @@
+    warning: variable "kind!" is unused (if the variable is not meant to be used, prefix it with an underscore)
+    │
+ 94 │         kind! = :live -> 6
+    │         ~
+    │
+    └─ dev/knowledge/managed_metadata_binary_measure.exs:94:9: Ipse.Development.ManagedMetadata.BinaryMeasure.measure/3
+
+anchor_native_candidate/safe_width/target_witness: 1484ms; [%{rows: 20220, pages: 506, encoded_page_bytes: 3003711}]
+    warning: this clause in cond will always match:
+
+        kind! = :live
+
+    since it has type:
+
+        :live
+
+    where "kind!" was given the type:
+
+        # type: :live
+        # from: dev/knowledge/managed_metadata_binary_measure.exs:94:15
+        kind! = :live
+
+    type warning found at:
+    │
+ 94 │         kind! = :live -> 6
+    │                       ~
+    │
+    └─ dev/knowledge/managed_metadata_binary_measure.exs:94:23: Ipse.Development.ManagedMetadata.BinaryMeasure.measure/3
+

@@ -1,0 +1,1 @@
+live/calendar_2026/one_recipe_one_policy: 870ms; [%{rows: 3460, pages: 89, encoded_page_bytes: 530939}, %{rows: 3642, pages: 94, encoded_page_bytes: 558962}]

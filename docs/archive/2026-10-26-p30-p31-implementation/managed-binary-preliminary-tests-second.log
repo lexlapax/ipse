@@ -1,0 +1,112 @@
+     warning: function retirement_encode/1 is unused
+     │
+ 347 │   defp retirement_encode(nil), do: <<0>>
+     │        ~
+     │
+     └─ dev/knowledge/managed_metadata_binary.ex:347:8: Ipse.Development.ManagedMetadata.Binary (module)
+
+     warning: function legacy_encode/2 is unused
+     │
+ 381 │   defp legacy_encode(key, choice) do
+     │        ~
+     │
+     └─ dev/knowledge/managed_metadata_binary.ex:381:8: Ipse.Development.ManagedMetadata.Binary (module)
+
+     warning: function anchor_encode/3 is unused
+     │
+ 287 │   defp anchor_encode(kind, key, row) when kind in [:anchor_full, :anchor_native_candidate] do
+     │        ~
+     │
+     └─ dev/knowledge/managed_metadata_binary.ex:287:8: Ipse.Development.ManagedMetadata.Binary (module)
+
+    warning: unused alias Leaves
+    │
+  4 │   alias Ipse.Development.ManagedMetadata.Leaves
+    │   ~
+    │
+    └─ dev/knowledge/managed_metadata_binary.ex:4:3
+
+     warning: incompatible types given to row_encode/4:
+
+         row_encode(kind, key, row, [])
+
+     given types:
+
+         dynamic(:live), dynamic(), -dynamic(%{binary() => term()})-, empty_list()
+
+     but expected one of:
+
+         :live, term(), non_empty_list(term()), term()
+
+     where "key" was given the type:
+
+         # type: dynamic()
+         # from: dev/knowledge/managed_metadata_binary.ex:321:28
+         key
+
+     where "kind" was given the types:
+
+         # type: dynamic()
+         # from: dev/knowledge/managed_metadata_binary.ex:321:22
+         kind
+
+         # type: dynamic(:live)
+         # from: dev/knowledge/managed_metadata_binary.ex:343:9
+         row_encode(kind, key, row, [])
+
+     where "row" was given the type:
+
+         # type: dynamic(%{binary() => term()})
+         # from: dev/knowledge/managed_metadata_binary.ex:342:9
+         row = %{"clocks" => [a, b, c, d], "choice" => choice, "retirement" => retirement}
+
+     type warning found at:
+     │
+ 343 │     _ = row_encode(kind, key, row, [])
+     │         ~
+     │
+     └─ dev/knowledge/managed_metadata_binary.ex:343:9: Ipse.Development.ManagedMetadata.Binary.anchor_decode/3
+
+Running ExUnit with seed: 426754, max_cases: 2
+
+
+
+  1) test front coding is exact for same-prefix IDs and rejects aliases duplicates and reversed rows (Ipse.Development.ManagedMetadataBinaryTest)
+     test/dev/managed_metadata_binary_test.exs:80
+     match (=) failed
+     code:  assert {:ok, value} = B.encode_page(:anchor_full, B.zero(:anchor_full), entries)
+     left:  {:ok, value}
+     right: {:error, :invalid_binary_metadata}
+     stacktrace:
+       test/dev/managed_metadata_binary_test.exs:86: (test)
+
+.
+
+  2) test safe integer varints are minimal exact and bounded (Ipse.Development.ManagedMetadataBinaryTest)
+     test/dev/managed_metadata_binary_test.exs:12
+     Expected exception MatchError but got FunctionClauseError (no function clause matching in Ipse.Development.ManagedMetadata.Binary.take_uint/4)
+     code: for bad <- [
+     stacktrace:
+       dev/knowledge/managed_metadata_binary.ex:23: Ipse.Development.ManagedMetadata.Binary.take_uint("", 7, 0, <<128>>)
+       (elixir 1.20.4) lib/enum.ex:1725: Enum."-map/2-lists^map/1-1-"/2
+       (elixir 1.20.4) lib/enum.ex:1725: Enum."-map/2-lists^map/1-1-"/2
+       test/dev/managed_metadata_binary_test.exs:18: (test)
+
+.
+
+  3) test legacy full evidence and candidate pages roundtrip independently with all retirement models (Ipse.Development.ManagedMetadataBinaryTest)
+     test/dev/managed_metadata_binary_test.exs:55
+     match (=) failed
+     code:  assert {:ok, value} = B.encode_page(kind, B.zero(kind), entries)
+     left:  {:ok, value}
+     right: {:error, :invalid_binary_metadata}
+     stacktrace:
+       test/dev/managed_metadata_binary_test.exs:60: anonymous fn/4 in Ipse.Development.ManagedMetadataBinaryTest."test legacy full evidence and candidate pages roundtrip independently with all retirement models"/1
+       (elixir 1.20.4) lib/enum.ex:2622: Enum."-reduce/3-lists^foldl/2-0-"/3
+       test/dev/managed_metadata_binary_test.exs:56: (test)
+
+
+Finished in 0.3 seconds (0.3s on load, 0.02s async, 0.00s sync)
+
+Result: 2/5 passed
+Failed: 3 tests

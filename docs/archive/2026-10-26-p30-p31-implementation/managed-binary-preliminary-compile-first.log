@@ -1,0 +1,42 @@
+    warning: the variable "n" is accessed inside size(...) of a bitstring but it was defined outside of the match. You must precede it with the pin operator
+    │
+ 91 │           <<suffix::binary-size(n), rest::binary>> = rest
+    │                                 ~
+    │
+    └─ dev/knowledge/managed_metadata_binary.ex:91:33: Ipse.Development.ManagedMetadata.Binary.decode_page/1
+
+     warning: the variable "length" is accessed inside size(...) of a bitstring but it was defined outside of the match. You must precede it with the pin operator
+     │
+ 140 │     <<reason::binary-size(length), rest::binary>> = rest
+     │                           ~
+     │
+     └─ dev/knowledge/managed_metadata_binary.ex:140:27: Ipse.Development.ManagedMetadata.Binary.capsule_decode/2
+
+     warning: the variable "size" is accessed inside size(...) of a bitstring but it was defined outside of the match. You must precede it with the pin operator
+     │
+ 218 │     <<hashes::binary-size(size), rest::binary>> = rest
+     │                           ~
+     │
+     └─ dev/knowledge/managed_metadata_binary.ex:218:27: Ipse.Development.ManagedMetadata.Binary.take_bank/2
+
+     warning: clauses with the same name and arity (number of arguments) should be grouped together, "defp row_encode/4" was previously defined (dev/knowledge/managed_metadata_binary.ex:226)
+     │
+ 287 │   defp row_encode(kind, key, row, _) when kind in [:anchor_full, :anchor_native_candidate] do
+     │        ~
+     │
+     └─ dev/knowledge/managed_metadata_binary.ex:287:8
+
+     warning: clauses with the same name and arity (number of arguments) should be grouped together, "defp row_decode/4" was previously defined (dev/knowledge/managed_metadata_binary.ex:247)
+     │
+ 321 │   defp row_decode(kind, key, <<flags, rest::binary>>, _) do
+     │        ~
+     │
+     └─ dev/knowledge/managed_metadata_binary.ex:321:8
+
+     warning: the variable "length" is accessed inside size(...) of a bitstring but it was defined outside of the match. You must precede it with the pin operator
+     │
+ 470 │     <<text::binary-size(length), rest::binary>> = rest
+     │                         ~
+     │
+     └─ dev/knowledge/managed_metadata_binary.ex:470:25: Ipse.Development.ManagedMetadata.Binary.take_text/2
+

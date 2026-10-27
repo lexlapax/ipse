@@ -1,0 +1,5 @@
+formatted dev/knowledge/managed_metadata_binary.ex
+formatted dev/knowledge/managed_metadata_binary_proof.exs
+formatted dev/knowledge/managed_metadata_binary_measure.exs
+formatted dev/knowledge/managed_metadata_binary_shapes.exs
+formatted test/dev/managed_metadata_binary_test.exs

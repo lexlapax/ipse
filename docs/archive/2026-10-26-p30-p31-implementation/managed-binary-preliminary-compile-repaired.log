@@ -1,0 +1,69 @@
+     warning: function retirement_encode/1 is unused
+     │
+ 347 │   defp retirement_encode(nil), do: <<0>>
+     │        ~
+     │
+     └─ dev/knowledge/managed_metadata_binary.ex:347:8: Ipse.Development.ManagedMetadata.Binary (module)
+
+     warning: function legacy_encode/2 is unused
+     │
+ 381 │   defp legacy_encode(key, choice) do
+     │        ~
+     │
+     └─ dev/knowledge/managed_metadata_binary.ex:381:8: Ipse.Development.ManagedMetadata.Binary (module)
+
+     warning: function anchor_encode/3 is unused
+     │
+ 287 │   defp anchor_encode(kind, key, row) when kind in [:anchor_full, :anchor_native_candidate] do
+     │        ~
+     │
+     └─ dev/knowledge/managed_metadata_binary.ex:287:8: Ipse.Development.ManagedMetadata.Binary (module)
+
+    warning: unused alias Leaves
+    │
+  4 │   alias Ipse.Development.ManagedMetadata.Leaves
+    │   ~
+    │
+    └─ dev/knowledge/managed_metadata_binary.ex:4:3
+
+     warning: incompatible types given to row_encode/4:
+
+         row_encode(kind, key, row, [])
+
+     given types:
+
+         dynamic(:live), dynamic(), -dynamic(%{binary() => term()})-, empty_list()
+
+     but expected one of:
+
+         :live, term(), non_empty_list(term()), term()
+
+     where "key" was given the type:
+
+         # type: dynamic()
+         # from: dev/knowledge/managed_metadata_binary.ex:321:28
+         key
+
+     where "kind" was given the types:
+
+         # type: dynamic()
+         # from: dev/knowledge/managed_metadata_binary.ex:321:22
+         kind
+
+         # type: dynamic(:live)
+         # from: dev/knowledge/managed_metadata_binary.ex:343:9
+         row_encode(kind, key, row, [])
+
+     where "row" was given the type:
+
+         # type: dynamic(%{binary() => term()})
+         # from: dev/knowledge/managed_metadata_binary.ex:342:9
+         row = %{"clocks" => [a, b, c, d], "choice" => choice, "retirement" => retirement}
+
+     type warning found at:
+     │
+ 343 │     _ = row_encode(kind, key, row, [])
+     │         ~
+     │
+     └─ dev/knowledge/managed_metadata_binary.ex:343:9: Ipse.Development.ManagedMetadata.Binary.anchor_decode/3
+
