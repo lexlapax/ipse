@@ -65,8 +65,9 @@ disposable Btrfs fault test on Serenity on 2026-10-27; see the
 These tools are not shipped or required for ordinary builds or tests. They are
 needed to provide a disposable block device and inject writeback failures that
 the existing successful-write probes cannot exercise. A live run requires a
-reviewed fixture and complete inventory of its exact tool/image/library closure;
-the approval does not authorize package installation or image downloads.
+reviewed fixture and complete inventory of its exact tool/image/library closure.
+The developer also approved the existing inventoried image and system libraries;
+neither approval authorizes package installation or image downloads.
 
 | Host tool | Inspected Arch package | Purpose | Package-declared license |
 | --- | --- | --- | --- |

@@ -23,8 +23,10 @@ providers of ambiguous virtual dependencies; `pacman -T` found no unmet collecte
 requirements. Its output is a conservative package-level set, not proof of
 dynamic loading, execution, or complete license compliance. The
 [direct dependency data](serenity-tools/host-package-depends.txt) is also retained.
-Additional image, library and tool execution scope still needs explicit review
-and any required approval before a live fixture is run. Approval is not a
+The developer subsequently explicitly approved using the inventoried existing
+image and system-library closure for this isolated test. A live run still needs
+its exact executed closure checked, including dynamic loading and licenses.
+Approval is not a
 claim that the proposed container, host-global device controls, fault procedure
 or cleanup is safe or qualified. The live fixture remains under development
 and independent review.
