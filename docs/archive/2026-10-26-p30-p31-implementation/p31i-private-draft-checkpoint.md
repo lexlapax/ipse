@@ -62,3 +62,17 @@ records the test at `draft_vertical_test.exs:358`, seed 20270124: a second
 cancelled draft causes replay to refuse its projection. The experiment is not
 in the current private graph. Host reference lineage and safe compaction remain
 unresolved, and the frozen patch's documented one-draft limit remains.
+
+An independent later [rebase prototype](p31i-private-draft-rebase.patch),
+SHA-256 `f0adf0e0d1ee7d3fcd8c709c57d806bac64b89eab18ebbf830bed78ee9f70b74`,
+is again against commit `52652f8`, rather than the preceding patches. It retains
+bounded draft intervals and adds an internal digest-bound projection event,
+which Saved reconstructs before later compaction. The [test log](p31i-private-draft-rebase.log),
+SHA-256 `b96e83774a1fb006827faa5928a99bc5640dfc82de0237c36ea866538f72583e`,
+records 48 passing focused tests, seed 20270126, including an actual synthetic
+Session compaction and resume. A reference in a withdrawn interval must match
+the host's reference structure; replay separately validates its event lineage.
+Opaque provider continuation and checkpoint material still refuse projection.
+The rebase prototype is private and provisional, lacks operator attestation and
+UI integration, and requires independent adversarial review. It does not close
+P31I or establish live route quality or cross-crash native fencing.

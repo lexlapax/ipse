@@ -1,0 +1,1730 @@
+diff --git a/lib/ipse/session.ex b/lib/ipse/session.ex
+index 2e51045..1d57e19 100644
+--- a/lib/ipse/session.ex
++++ b/lib/ipse/session.ex
+@@ -59,6 +59,22 @@ defmodule Ipse.Session do
+     do: %{id: make_ref(), start: {__MODULE__, :start_link, [opts]}, restart: :temporary}
+ 
+   def prompt(pid, text), do: GenServer.call(pid, {:prompt, text})
++  @doc false
++  def start_draft(pid, text), do: GenServer.call(pid, {:start_draft, text})
++  @doc false
++  def cancel_draft(pid), do: GenServer.call(pid, :cancel_draft, 10_000)
++  @doc false
++  def rebase_draft(pid), do: GenServer.call(pid, :rebase_draft, 10_000)
++  @doc false
++  def draft(pid), do: GenServer.call(pid, :draft)
++  @doc false
++  def replace_draft(pid, id, revision, text),
++    do: GenServer.call(pid, {:replace_draft, id, revision, text})
++
++  @doc false
++  def accept_draft(pid, id, revision), do: GenServer.call(pid, {:accept_draft, id, revision})
++  @doc false
++  def consume_draft(pid, id, revision), do: GenServer.call(pid, {:consume_draft, id, revision})
+   @doc "Submit exact observed text with a volatile, single-use input witness."
+   def prompt(pid, text, witness), do: GenServer.call(pid, {:prompt, text, witness})
+ 
+@@ -267,6 +283,7 @@ defmodule Ipse.Session do
+          :ok <- Journal.repair_tail(dir, id, config[:journal]),
+          {:ok, events} <- Journal.load(dir, id, config[:journal]),
+          {:ok, saved} <- Saved.restore(events, id),
++         :ok <- draft_environment_available(saved.draft, config),
+          {:ok, source_window} <-
+            Ipse.Session.SourceWindow.attach_effective_source(saved.source_window, dir, id),
+          %{
+@@ -316,6 +333,7 @@ defmodule Ipse.Session do
+             else: ["Skill catalog changed; use /context refresh to adopt current discovery."]
+           ),
+         messages: messages,
++        draft: saved.draft,
+         extension_contributions: extension_state.contributions,
+         compaction: nil,
+         tool_decision:
+@@ -983,6 +1001,24 @@ defmodule Ipse.Session do
+ 
+   def handle_call(:exports, _, s), do: {:reply, s.extension_catalog, s}
+ 
++  def handle_call({:invoke_export, _, _, _}, _, %{draft: %{status: status}} = s)
++      when status in [:pending, :completed, :accepted],
++      do: {:reply, {:error, :draft_recovery_required}, s}
++
++  def handle_call(
++        {:invoke_export, _, _, _},
++        _,
++        %{draft: %{status: :cancelled, notice: false}} = s
++      ),
++      do: {:reply, {:error, :draft_recovery_required}, s}
++
++  def handle_call(
++        {:invoke_export, _, _, _},
++        _,
++        %{draft: %{status: :consumed, accepted_message: false}} = s
++      ),
++      do: {:reply, {:error, :draft_recovery_required}, s}
++
+   def handle_call({:invoke_export, kind, name, arguments}, _, %{phase: :idle} = s)
+       when kind in [:command, :service] do
+     CurrentInvocation.invoke_export(s, kind, name, arguments)
+@@ -1607,6 +1643,134 @@ defmodule Ipse.Session do
+ 
+   def handle_call({:observe_input, _, _}, _from, s), do: {:reply, {:error, :busy}, s}
+ 
++  def handle_call({:start_draft, text}, _from, %{phase: :idle} = s)
++      when is_binary(text) and byte_size(text) in 1..32_768 do
++    if String.valid?(text) and next_draft_available?(s.draft) and
++         draft_environment_available(%{}, s.config) == :ok and
++         Workspace.explicit_skills(text, s.skills) == [] do
++      :ok = Ipse.Session.Input.invalidate()
++      id = Ipse.Usage.id()
++      turn = Ipse.Usage.id()
++
++      effective = Ipse.Session.Draft.effective(text)
++      event = Ipse.Session.Draft.started(s.id, turn, id, text, effective, s.messages)
++      record(s, event)
++
++      draft = %{
++        id: id,
++        session_id: s.id,
++        turn_id: turn,
++        status: :pending,
++        prior_config: s.config,
++        revision: 1,
++        proposal: nil,
++        accepted_input: false,
++        accepted_message: false,
++        prefix_count: length(s.messages),
++        prefix_sha256: Ipse.JSON.digest(s.messages),
++        history: if(s.draft, do: s.draft.history ++ [Map.delete(s.draft, :history)], else: [])
++      }
++
++      config = Ipse.Session.Draft.draft_config(s.config)
++
++      Turn.draft_prompt(
++        %{s | draft: draft, config: config, input_generation: Ipse.Usage.id()},
++        text
++      )
++    else
++      {:reply, {:error, :draft_unavailable}, s}
++    end
++  end
++
++  def handle_call({:start_draft, _}, _, s), do: {:reply, {:error, :draft_unavailable}, s}
++
++  def handle_call(:rebase_draft, _, %{phase: :idle, draft: draft} = s) when is_map(draft) do
++    case Ipse.Session.Draft.rebased(draft, s.messages) do
++      {:ok, event, projected} ->
++        record(s, event)
++        {:reply, :ok, %{s | draft: nil, messages: projected}}
++
++      error ->
++        {:reply, error, s}
++    end
++  end
++
++  def handle_call(:rebase_draft, _, s), do: {:reply, {:error, :draft_unavailable}, s}
++
++  def handle_call(:draft, _, %{draft: draft} = s) when is_map(draft),
++    do: {:reply, {:ok, Map.take(draft, [:id, :revision, :status, :proposal])}, s}
++
++  def handle_call(:draft, _, s), do: {:reply, {:error, :draft_unavailable}, s}
++
++  def handle_call(
++        {:replace_draft, id, revision, text},
++        _,
++        %{phase: :idle, draft: %{id: id, revision: revision, status: :completed} = draft} = s
++      )
++      when revision < 100 do
++    if Ipse.Session.Draft.text?(text) do
++      record(s, Ipse.Session.Draft.replaced(draft, text))
++      {:reply, :ok, %{s | draft: %{draft | revision: revision + 1, proposal: text}}}
++    else
++      {:reply, {:error, :invalid_draft_text}, s}
++    end
++  end
++
++  def handle_call({:replace_draft, _, _, _}, _, s), do: {:reply, {:error, :stale_draft}, s}
++
++  def handle_call(
++        {:accept_draft, id, revision},
++        _,
++        %{phase: :idle, draft: %{id: id, revision: revision, status: :completed} = draft} = s
++      ) do
++    if Ipse.Session.Draft.withdrawable?(draft, s.messages) and
++         Workspace.explicit_skills(draft.proposal, s.skills) == [] do
++      record(s, Ipse.Session.Draft.accepted(draft))
++      consume_accepted(%{s | draft: %{draft | status: :accepted}})
++    else
++      {:reply, {:error, :draft_projection_unsafe}, s}
++    end
++  end
++
++  def handle_call({:accept_draft, _, _}, _, s), do: {:reply, {:error, :stale_draft}, s}
++
++  def handle_call(
++        {:consume_draft, id, revision},
++        _,
++        %{phase: :idle, draft: %{id: id, revision: revision, status: :accepted} = draft} = s
++      ) do
++    if Ipse.Session.Draft.withdrawable?(draft, s.messages) and
++         Workspace.explicit_skills(draft.proposal, s.skills) == [],
++       do: consume_accepted(s),
++       else: {:reply, {:error, :draft_projection_unsafe}, s}
++  end
++
++  def handle_call({:consume_draft, _, _}, _, s), do: {:reply, {:error, :stale_draft}, s}
++
++  def handle_call({:prompt, _, _}, _, %{draft: %{status: status}} = s)
++      when status in [:pending, :completed, :accepted],
++      do: {:reply, {:error, :draft_recovery_required}, s}
++
++  def handle_call({:prompt, _}, _, %{draft: %{status: status}} = s)
++      when status in [:pending, :completed, :accepted],
++      do: {:reply, {:error, :draft_recovery_required}, s}
++
++  def handle_call({:prompt, _, _}, _, %{draft: %{status: :cancelled, notice: false}} = s),
++    do: {:reply, {:error, :draft_recovery_required}, s}
++
++  def handle_call({:prompt, _}, _, %{draft: %{status: :cancelled, notice: false}} = s),
++    do: {:reply, {:error, :draft_recovery_required}, s}
++
++  def handle_call(
++        {:prompt, _, _},
++        _,
++        %{draft: %{status: :consumed, accepted_message: false}} = s
++      ),
++      do: {:reply, {:error, :draft_recovery_required}, s}
++
++  def handle_call({:prompt, _}, _, %{draft: %{status: :consumed, accepted_message: false}} = s),
++    do: {:reply, {:error, :draft_recovery_required}, s}
++
+   def handle_call({:prompt, _, _}, _from, %{phase: phase} = s) when phase != :idle,
+     do: {:reply, {:error, :busy}, s}
+ 
+@@ -1749,6 +1913,23 @@ defmodule Ipse.Session do
+   def handle_call({:model_sources, _, _, _}, _, s),
+     do: {:reply, {:error, :source_index_refused}, s}
+ 
++  def handle_call(
++        :cancel_draft,
++        _from,
++        %{phase: :idle, draft: %{status: :cancelled, notice: false} = draft} = s
++      ) do
++    next = Turn.append_message(s, %{"role" => "user", "content" => Ipse.Session.Draft.notice()})
++    {:reply, :ok, %{next | draft: %{draft | notice: true}}}
++  end
++
++  def handle_call(:cancel_draft, _from, %{draft: %{status: status}} = s)
++      when status in [:pending, :completed, :accepted], do: cancel_draft_work(s)
++
++  def handle_call(:cancel_draft, _from, s), do: {:reply, {:error, :no_active_draft}, s}
++
++  def handle_call(:cancel, _from, %{draft: %{status: status}} = s)
++      when status in [:pending, :completed, :accepted], do: cancel_draft_work(s)
++
+   def handle_call(:cancel, _from, s), do: cancel_work(s, false)
+ 
+   def handle_call(:close, _from, s) do
+@@ -1759,6 +1940,30 @@ defmodule Ipse.Session do
+     {:stop, :normal, result, close_epoch(next, "close", result == :ok)}
+   end
+ 
++  defp consume_accepted(s) do
++    draft = s.draft
++    turn = Ipse.Usage.id()
++    event = Ipse.Session.Draft.consumed(draft, turn, s.messages)
++    record(s, event)
++
++    draft =
++      Map.merge(draft, %{
++        status: :consumed,
++        accepted_turn: turn,
++        accepted_input: false,
++        accepted_message: false,
++        end_count: event["end_count"],
++        segment_sha256: event["segment_sha256"]
++      })
++
++    config = Map.get(draft, :prior_config, s.config)
++
++    Turn.accepted_prompt(
++      %{s | draft: draft, config: config, input_generation: Ipse.Usage.id()},
++      draft.proposal
++    )
++  end
++
+   defp cancel_work(s, keep_queued) do
+     {cleanup, next} = stop_work(s, true, "cancelled", "cancelled", keep_queued)
+ 
+@@ -1779,6 +1984,36 @@ defmodule Ipse.Session do
+     end
+   end
+ 
++  defp cancel_draft_work(s) do
++    active = s.phase != :idle
++    {cleanup, next} = if active, do: stop_work(s, true, "cancelled"), else: {[], s}
++
++    if Enum.all?(cleanup, &(&1 == :ok)) do
++      event = Ipse.Session.Draft.cancelled(next.draft, next.messages)
++      record(next, event)
++
++      next =
++        Turn.append_message(next, %{"role" => "user", "content" => Ipse.Session.Draft.notice()})
++
++      config = Map.get(next.draft, :prior_config, next.config)
++
++      draft =
++        Map.merge(next.draft, %{
++          status: :cancelled,
++          notice: true,
++          end_count: event["end_count"],
++          segment_sha256: event["segment_sha256"]
++        })
++
++      next = %{next | config: config, draft: draft}
++      if active, do: notify(s, {:done, :cancelled})
++      {:reply, :ok, next}
++    else
++      {:stop, :normal, {:error, :cleanup_unconfirmed},
++       close_epoch(next, "cleanup_failure", false)}
++    end
++  end
++
+   defp source_query(s, operation, request) do
+     if is_map(request) and
+          Ipse.Extension.SourceRead.validate(Map.put(request, "op", operation)) == :ok,
+@@ -3138,6 +3373,22 @@ defmodule Ipse.Session do
+         "subject_source" => source
+       })
+ 
++  defp next_draft_available?(nil), do: true
++  defp next_draft_available?(%{status: :cancelled, notice: true, history: h}), do: length(h) < 15
++
++  defp next_draft_available?(%{status: :consumed, accepted_message: true, history: h}),
++    do: length(h) < 15
++
++  defp next_draft_available?(_), do: false
++
++  defp draft_environment_available(nil, _), do: :ok
++
++  defp draft_environment_available(_, config) do
++    if Map.get(config, :extensions, []) == [] and Map.get(config, :mcp_servers, []) == [],
++      do: :ok,
++      else: {:error, :draft_environment_unavailable}
++  end
++
+   defp question_available(nil, _), do: :ok
+ 
+   defp question_available(_, config),
+diff --git a/lib/ipse/session/draft.ex b/lib/ipse/session/draft.ex
+new file mode 100644
+index 0000000..b3c621a
+--- /dev/null
++++ b/lib/ipse/session/draft.ex
+@@ -0,0 +1,484 @@
++defmodule Ipse.Session.Draft do
++  @moduledoc false
++  alias Ipse.JSON
++
++  @notice "[Host intent status: the draft was abandoned and must not supply requirements for later work.]"
++  @error {:error, :invalid_saved_draft}
++
++  def notice, do: @notice
++
++  def effective(original),
++    do:
++      "Draft a clearer version of the request below. Do not carry out the request. Return only the proposed request.\n\n" <>
++        original
++
++  def draft_config(config) do
++    {:ok, mode} = Ipse.Extension.Mode.capture(config)
++    rank = %{"normal" => 0, "draft" => 1, "planning" => 2, "read_only" => 3}
++    enclosing = Enum.max_by([mode["ceiling"], mode["enclosing_ceiling"]], &rank[&1])
++
++    config
++    |> Map.put(:execution_mode, :draft)
++    |> Map.put(:enclosing_mode, enclosing)
++    |> Map.put(:max_steps, min(config[:max_steps] || 30, 3))
++    |> Map.put(:max_response_bytes, min(config[:max_response_bytes] || 65_536, 65_536))
++  end
++
++  def started(session, turn, id, original, effective, messages) do
++    %{
++      "type" => "draft_started",
++      "version" => 1,
++      "session_id" => session,
++      "turn_id" => turn,
++      "draft_id" => id,
++      "revision" => 1,
++      "input_sha256" => JSON.sha256(original),
++      "effective_sha256" => JSON.sha256(effective),
++      "prefix_count" => length(messages),
++      "prefix_sha256" => JSON.digest(messages)
++    }
++  end
++
++  def completed(draft, assistant) do
++    %{
++      "type" => "draft_completed",
++      "version" => 1,
++      "session_id" => draft.session_id,
++      "turn_id" => draft.turn_id,
++      "draft_id" => draft.id,
++      "revision" => 1,
++      "assistant_sha256" => JSON.digest([assistant]),
++      "text_sha256" => JSON.sha256(assistant["content"])
++    }
++  end
++
++  def cancelled(draft, messages) do
++    %{
++      "type" => "draft_cancelled",
++      "version" => 1,
++      "session_id" => draft.session_id,
++      "turn_id" => draft.turn_id,
++      "draft_id" => draft.id,
++      "revision" => draft.revision,
++      "end_count" => length(messages),
++      "segment_sha256" =>
++        JSON.digest(
++          Enum.slice(messages, draft.prefix_count, length(messages) - draft.prefix_count)
++        ),
++      "notice_sha256" => JSON.sha256(@notice)
++    }
++  end
++
++  def replaced(draft, text) do
++    %{
++      "type" => "draft_replaced",
++      "version" => 1,
++      "session_id" => draft.session_id,
++      "turn_id" => draft.turn_id,
++      "draft_id" => draft.id,
++      "previous_revision" => draft.revision,
++      "revision" => draft.revision + 1,
++      "text" => text,
++      "text_sha256" => JSON.sha256(text)
++    }
++  end
++
++  def accepted(draft) do
++    %{
++      "type" => "draft_accepted",
++      "version" => 1,
++      "session_id" => draft.session_id,
++      "turn_id" => draft.turn_id,
++      "draft_id" => draft.id,
++      "revision" => draft.revision,
++      "text_sha256" => JSON.sha256(draft.proposal)
++    }
++  end
++
++  def consumed(draft, turn, messages) do
++    %{
++      "type" => "draft_consumed",
++      "version" => 1,
++      "session_id" => draft.session_id,
++      "turn_id" => draft.turn_id,
++      "draft_id" => draft.id,
++      "revision" => draft.revision,
++      "accepted_turn_id" => turn,
++      "text_sha256" => JSON.sha256(draft.proposal),
++      "end_count" => length(messages),
++      "segment_sha256" =>
++        JSON.digest(
++          Enum.slice(messages, draft.prefix_count, length(messages) - draft.prefix_count)
++        )
++    }
++  end
++
++  def text?(text), do: is_binary(text) and String.valid?(text) and byte_size(text) in 1..32_768
++
++  def rebased(draft, messages) do
++    with true <- terminal?(draft), {:ok, projected} <- project(draft, messages) do
++      {:ok,
++       %{
++         "type" => "draft_rebased",
++         "version" => 1,
++         "session_id" => draft.session_id,
++         "draft_id" => draft.id,
++         "revision" => draft.revision,
++         "before_sha256" => JSON.digest(messages),
++         "after_sha256" => JSON.digest(projected)
++       }, projected}
++    else
++      _ -> {:error, :draft_projection_unsafe}
++    end
++  end
++
++  defp terminal?(%{status: :cancelled, notice: true}), do: true
++  defp terminal?(%{status: :consumed, accepted_message: true}), do: true
++  defp terminal?(_), do: false
++
++  def withdrawable?(d, messages) when is_list(messages) do
++    start = d.prefix_count
++
++    is_integer(start) and start >= 0 and start <= length(messages) and
++      JSON.digest(Enum.take(messages, start)) == d.prefix_sha256 and
++      Enum.all?(Enum.drop(messages, start), &safe_to_withdraw?/1) and
++      Ipse.Session.Reference.safe_tail?(Enum.take(messages, start))
++  rescue
++    _ -> false
++  end
++
++  # Historical records stay intact. The exact bounded draft interval is removed
++  # from subsequent model input only after its native prefix, segment and neutral
++  # notice are independently checked against the journaled boundaries.
++  def project(nil, messages) when is_list(messages), do: {:ok, messages}
++
++  def project(%{history: history} = draft, messages)
++      when is_list(history) and is_list(messages) do
++    drafts = history ++ [Map.delete(draft, :history)]
++
++    with true <- length(drafts) <= 16,
++         true <- Enum.all?(drafts, &match?({:ok, _}, project_one(&1, messages))),
++         intervals <- Enum.filter(drafts, &withdrawn?/1),
++         true <- disjoint_intervals?(intervals),
++         projected <-
++           Enum.reduce(Enum.sort_by(intervals, & &1.prefix_count, :desc), messages, fn d, acc ->
++             Enum.take(acc, d.prefix_count) ++ Enum.drop(acc, d.end_count)
++           end),
++         true <- Ipse.Session.Reference.safe_tail?(projected) do
++      {:ok, projected}
++    else
++      _ -> {:error, :draft_projection_unsafe}
++    end
++  rescue
++    _ -> {:error, :draft_projection_unsafe}
++  end
++
++  def project(draft, messages), do: project_one(draft, messages)
++
++  defp withdrawn?(%{status: :cancelled, notice: true}), do: true
++  defp withdrawn?(%{status: :consumed, accepted_message: true}), do: true
++  defp withdrawn?(_), do: false
++
++  defp disjoint_intervals?(intervals) do
++    intervals
++    |> Enum.sort_by(& &1.prefix_count)
++    |> Enum.chunk_every(2, 1, :discard)
++    |> Enum.all?(fn [a, b] -> a.end_count <= b.prefix_count end)
++  end
++
++  defp project_one(%{status: status}, messages)
++       when status in [:pending, :completed, :accepted] and is_list(messages), do: {:ok, messages}
++
++  defp project_one(%{status: :cancelled, notice: true} = d, messages) when is_list(messages),
++    do: withdraw(d, messages, :cancelled)
++
++  defp project_one(%{status: :cancelled, notice: false} = d, messages) when is_list(messages) do
++    case withdraw(d, messages, :incomplete) do
++      {:ok, _} -> {:ok, messages}
++      error -> error
++    end
++  end
++
++  defp project_one(%{status: :consumed, accepted_message: true} = d, messages)
++       when is_list(messages),
++       do: withdraw(d, messages, :accepted)
++
++  defp project_one(%{status: :consumed, accepted_message: false} = d, messages)
++       when is_list(messages) do
++    case withdraw(d, messages, :incomplete) do
++      {:ok, _} -> {:ok, messages}
++      error -> error
++    end
++  end
++
++  defp project_one(_, _), do: {:error, :draft_projection_unsafe}
++
++  defp withdraw(d, messages, kind) do
++    start = d.prefix_count
++    finish = d.end_count
++
++    with true <-
++           is_integer(start) and is_integer(finish) and start >= 0 and finish >= start and
++             if(kind == :incomplete,
++               do: finish == length(messages),
++               else: finish < length(messages)
++             ),
++         prefix = Enum.take(messages, start),
++         segment = Enum.slice(messages, start, finish - start),
++         true <-
++           JSON.digest(prefix) == d.prefix_sha256 and JSON.digest(segment) == d.segment_sha256,
++         true <-
++           kind != :cancelled or
++             Enum.at(messages, finish) === %{"role" => "user", "content" => @notice},
++         true <- Enum.all?(segment, &safe_to_withdraw?/1),
++         projected = prefix ++ Enum.drop(messages, finish),
++         true <- Ipse.Session.Reference.safe_tail?(projected) do
++      {:ok, projected}
++    else
++      _ -> {:error, :draft_projection_unsafe}
++    end
++  rescue
++    _ -> {:error, :draft_projection_unsafe}
++  end
++
++  defp safe_to_withdraw?(message),
++    do:
++      is_map(message) and
++        not Map.has_key?(message, "provider_data") and
++        not Map.has_key?(message, "ipse_checkpoint") and
++        (not Map.has_key?(message, "ipse_reference") or Ipse.Session.Reference.reference?(message))
++
++  def restore(events, session) when is_list(events) do
++    Enum.reduce_while(events, {:ok, nil}, fn event, {:ok, draft} ->
++      case step(draft, event, session) do
++        {:ok, next} -> {:cont, {:ok, next}}
++        _ -> {:halt, @error}
++      end
++    end)
++  rescue
++    _ -> @error
++  end
++
++  def restore(_, _), do: @error
++
++  def advance(draft, event, session), do: step(draft, event, session)
++
++  defp step(nil, %{"type" => "draft_started"} = e, session) do
++    if keys?(
++         e,
++         ~w(type version session_id turn_id draft_id revision input_sha256 effective_sha256 prefix_count prefix_sha256)
++       ) and
++         e["version"] === 1 and e["revision"] === 1 and
++         (is_nil(session) or e["session_id"] == session) and
++         id?(e["session_id"]) and id?(e["turn_id"]) and id?(e["draft_id"]) and
++         JSON.sha256?(e["input_sha256"]) and JSON.sha256?(e["effective_sha256"]) and
++         JSON.safe_uint?(e["prefix_count"]) and JSON.sha256?(e["prefix_sha256"]) do
++      {:ok,
++       %{
++         id: e["draft_id"],
++         session_id: e["session_id"],
++         turn_id: e["turn_id"],
++         input_sha256: e["input_sha256"],
++         effective_sha256: e["effective_sha256"],
++         prefix_count: e["prefix_count"],
++         prefix_sha256: e["prefix_sha256"],
++         end_count: nil,
++         segment_sha256: nil,
++         input: false,
++         message: false,
++         assistant: nil,
++         status: :pending,
++         notice: false,
++         revision: 1,
++         proposal: nil,
++         accepted_turn: nil,
++         accepted_input: false,
++         accepted_message: false,
++         accepted_effective: nil,
++         history: []
++       }}
++    else
++      @error
++    end
++  end
++
++  defp step(nil, %{"type" => type}, _)
++       when type in ~w(draft_completed draft_cancelled draft_replaced draft_accepted draft_consumed draft_rebased),
++       do: @error
++
++  defp step(nil, _, _), do: {:ok, nil}
++
++  defp step(%{status: :cancelled, notice: true} = d, %{"type" => "draft_started"} = e, session),
++    do: next_draft(d, e, session)
++
++  defp step(
++         %{status: :consumed, accepted_message: true} = d,
++         %{"type" => "draft_started"} = e,
++         session
++       ),
++       do: next_draft(d, e, session)
++
++  defp step(_, %{"type" => "draft_started"}, _), do: @error
++
++  defp step(%{status: :pending, input: false} = d, %{"type" => "input_received"} = e, _) do
++    if is_binary(e["text"]) and String.valid?(e["text"]) and
++         byte_size(e["text"]) in 1..32_768 and
++         e["session_id"] == d.session_id and e["turn_id"] == d.turn_id and
++         e["text_sha256"] == d.input_sha256 and e["effective_sha256"] == d.effective_sha256 and
++         JSON.sha256(effective(e["text"])) == d.effective_sha256,
++       do: {:ok, %{d | input: true}},
++       else: @error
++  end
++
++  defp step(
++         %{status: :pending, input: true, message: false} = d,
++         %{"type" => "message", "message" => %{"role" => "user", "content" => text}},
++         _
++       ) do
++    if is_binary(text) and JSON.sha256(text) == d.effective_sha256,
++      do: {:ok, %{d | message: true}},
++      else: @error
++  end
++
++  defp step(
++         %{status: :pending, message: true} = d,
++         %{"type" => "message", "message" => %{"role" => "assistant"} = m},
++         _
++       ) do
++    {:ok, %{d | assistant: m}}
++  end
++
++  defp step(
++         %{status: :pending, message: true, assistant: m} = d,
++         %{"type" => "draft_completed"} = e,
++         _
++       )
++       when is_map(m) do
++    if text?(m["content"]) and m["tool_calls"] in [nil, []] and completed(d, m) === e,
++      do: {:ok, %{d | status: :completed, proposal: m["content"]}},
++      else: @error
++  end
++
++  defp step(
++         %{status: :completed, revision: rev} = d,
++         %{"type" => "draft_replaced", "text" => text} = e,
++         _
++       )
++       when rev < 100 do
++    if text?(text) and replaced(d, text) === e,
++      do: {:ok, %{d | revision: rev + 1, proposal: text}},
++      else: @error
++  end
++
++  defp step(%{status: :completed} = d, %{"type" => "draft_accepted"} = e, _) do
++    if text?(d.proposal) and accepted(d) === e, do: {:ok, %{d | status: :accepted}}, else: @error
++  end
++
++  defp step(
++         %{status: :accepted} = d,
++         %{"type" => "draft_consumed", "accepted_turn_id" => turn} = e,
++         _
++       ) do
++    if keys?(
++         e,
++         ~w(type version session_id turn_id draft_id revision accepted_turn_id text_sha256 end_count segment_sha256)
++       ) and
++         e["version"] === 1 and e["session_id"] == d.session_id and e["turn_id"] == d.turn_id and
++         e["draft_id"] == d.id and e["revision"] === d.revision and id?(turn) and
++         turn != d.turn_id and
++         e["text_sha256"] == JSON.sha256(d.proposal) and JSON.safe_uint?(e["end_count"]) and
++         e["end_count"] >= d.prefix_count and JSON.sha256?(e["segment_sha256"]),
++       do:
++         {:ok,
++          %{
++            d
++            | status: :consumed,
++              accepted_turn: turn,
++              end_count: e["end_count"],
++              segment_sha256: e["segment_sha256"]
++          }},
++       else: @error
++  end
++
++  defp step(%{status: :consumed, accepted_input: false} = d, %{"type" => "input_received"} = e, _) do
++    if e["session_id"] == d.session_id and e["turn_id"] == d.accepted_turn and
++         e["text"] == d.proposal and e["text_sha256"] == JSON.sha256(d.proposal) and
++         e["effective_sha256"] == JSON.sha256(d.proposal),
++       do: {:ok, %{d | accepted_input: true, accepted_effective: e["effective_sha256"]}},
++       else: @error
++  end
++
++  defp step(
++         %{status: :consumed, accepted_input: true, accepted_message: false} = d,
++         %{"type" => "message", "message" => %{"role" => "user", "content" => text}},
++         _
++       ) do
++    if is_binary(text) and JSON.sha256(text) == d.accepted_effective,
++      do: {:ok, %{d | accepted_message: true}},
++      else: @error
++  end
++
++  defp step(%{status: status} = d, %{"type" => "draft_cancelled"} = e, _)
++       when status in [:pending, :completed, :accepted] do
++    if keys?(
++         e,
++         ~w(type version session_id turn_id draft_id revision end_count segment_sha256 notice_sha256)
++       ) and
++         e["version"] === 1 and e["session_id"] == d.session_id and e["turn_id"] == d.turn_id and
++         e["draft_id"] == d.id and e["revision"] === d.revision and
++         JSON.safe_uint?(e["end_count"]) and e["end_count"] >= d.prefix_count and
++         JSON.sha256?(e["segment_sha256"]) and e["notice_sha256"] == JSON.sha256(@notice),
++       do:
++         {:ok,
++          %{
++            d
++            | status: :cancelled,
++              end_count: e["end_count"],
++              segment_sha256: e["segment_sha256"]
++          }},
++       else: @error
++  end
++
++  defp step(
++         %{status: :cancelled, notice: false} = d,
++         %{"type" => "message", "message" => %{"role" => "user", "content" => text}},
++         _
++       ) do
++    if text == @notice, do: {:ok, %{d | notice: true}}, else: @error
++  end
++
++  defp step(d, %{"type" => "draft_rebased"} = event, _) when is_map(d) do
++    if terminal?(d) and
++         keys?(event, ~w(type version session_id draft_id revision before_sha256 after_sha256)) and
++         event["version"] === 1 and event["session_id"] == d.session_id and
++         event["draft_id"] == d.id and event["revision"] === d.revision and
++         JSON.sha256?(event["before_sha256"]) and JSON.sha256?(event["after_sha256"]),
++       do: {:ok, nil},
++       else: @error
++  end
++
++  defp step(_d, %{"type" => type}, _)
++       when type in ~w(draft_started draft_completed draft_cancelled draft_replaced draft_accepted draft_consumed),
++       do: @error
++
++  defp step(%{status: :cancelled, notice: true} = d, %{"type" => "input_received"}, _),
++    do: {:ok, d}
++
++  defp step(%{status: :consumed, accepted_message: true} = d, %{"type" => "input_received"}, _),
++    do: {:ok, d}
++
++  defp step(d, %{"type" => "input_received"}, _) when is_map(d), do: @error
++  defp step(d, _, _), do: {:ok, d}
++
++  defp next_draft(d, event, session) do
++    history = d.history ++ [Map.delete(d, :history)]
++
++    with true <- length(history) < 16,
++         {:ok, next} <- step(nil, event, session),
++         do: {:ok, %{next | history: history}},
++         else: (_ -> @error)
++  end
++
++  defp id?(v), do: is_binary(v) and Regex.match?(~r/\A[0-9a-f]{32}\z/, v)
++  defp keys?(v, keys), do: Enum.sort(Map.keys(v)) == Enum.sort(keys)
++end
+diff --git a/lib/ipse/session/saved.ex b/lib/ipse/session/saved.ex
+index 8d54ca0..7a5d900 100644
+--- a/lib/ipse/session/saved.ex
++++ b/lib/ipse/session/saved.ex
+@@ -11,6 +11,7 @@ defmodule Ipse.Session.Saved do
+          {:ok, _admission} <- semantic_admission(events, id),
+          :ok <- Ipse.Session.Input.validate_events(events, id),
+          :ok <- Ipse.Session.OperatorAnswer.validate_events(events, id),
++         {:ok, draft} <- Ipse.Session.Draft.restore(events, id),
+          {:ok, reference} <- Ipse.Session.Reference.restore(events, id),
+          {:ok, accounting} <- Ipse.Usage.restore(events, id),
+          :ok <- Ipse.Session.InferenceDispatch.validate_events(events),
+@@ -18,6 +19,7 @@ defmodule Ipse.Session.Saved do
+          {:ok, result_sources} <- ResultSource.restore(events),
+          :ok <- validate_context_events(events),
+          {:ok, messages, native} <- project(events, :validate),
++         {:ok, _} <- Ipse.Session.Draft.project(draft, messages),
+          {:ok, _research} <- Ipse.Tools.Research.restore(events),
+          {:ok, question, messages} <- finish_question(native, messages),
+          {:ok, question, messages} <- restore_extension_question(events, messages, question),
+@@ -33,7 +35,8 @@ defmodule Ipse.Session.Saved do
+          last_request_id: request_field(events, "request_id"),
+          turn_id: request_field(events, "turn_id"),
+          reference: reference,
+-         source_window: source_window
++         source_window: source_window,
++         draft: draft
+        }}
+     end
+   end
+@@ -119,6 +122,7 @@ defmodule Ipse.Session.Saved do
+   defp validate_context_events(events) do
+     with :ok <- Ipse.Session.Input.validate_events(events),
+          :ok <- Ipse.Session.OperatorAnswer.validate_events(events),
++         {:ok, _} <- Ipse.Session.Draft.restore(events, nil),
+          :ok <- validate_context_metadata(events),
+          {:ok, _} <- Ipse.Session.Reference.restore(events),
+          :ok <- Ipse.Journal.validate_limit_events(events),
+@@ -156,21 +160,24 @@ defmodule Ipse.Session.Saved do
+         events
+       )
+ 
+-    Enum.reduce_while(events, {:ok, [], {:ok, nil}, MapSet.new()}, fn event,
+-                                                                      {:ok, messages, native,
+-                                                                       pending} ->
++    Enum.reduce_while(events, {:ok, [], {:ok, nil}, MapSet.new(), nil}, fn event,
++                                                                           {:ok, messages, native,
++                                                                            pending, draft} ->
+       native =
+         if question_mode == :validate,
+           do: question_step(event, native, messages, versioned),
+           else: native
+ 
+-      case project_step(event, messages, versioned, pending) do
+-        {:ok, messages, pending} -> {:cont, {:ok, messages, native, pending}}
++      with {:ok, next_draft} <- Ipse.Session.Draft.advance(draft, event, nil),
++           {:ok, messages, pending} <-
++             draft_project_step(event, messages, versioned, pending, draft) do
++        {:cont, {:ok, messages, native, pending, next_draft}}
++      else
+         error -> {:halt, error}
+       end
+     end)
+     |> case do
+-      {:ok, messages, native, _} ->
++      {:ok, messages, native, _, _} ->
+         {:ok, restore_messages(Enum.reverse(messages), versioned), native}
+ 
+       error ->
+@@ -178,6 +185,28 @@ defmodule Ipse.Session.Saved do
+     end
+   end
+ 
++  defp draft_project_step(
++         %{"type" => "draft_rebased"} = event,
++         reversed,
++         versioned,
++         pending,
++         draft
++       ) do
++    messages = restore_messages(Enum.reverse(reversed), versioned)
++
++    with true <- MapSet.size(pending) == 0,
++         {:ok, expected, projected} <- Ipse.Session.Draft.rebased(draft, messages),
++         true <- event === expected,
++         {:ok, pending} <- Ipse.Session.Reference.native_order(projected) do
++      {:ok, Enum.reverse(projected), pending}
++    else
++      _ -> {:error, :draft_projection_unsafe}
++    end
++  end
++
++  defp draft_project_step(event, messages, versioned, pending, _),
++    do: project_step(event, messages, versioned, pending)
++
+   defp project_step(event, messages, false, pending) do
+     with {:ok, messages} <- context_step(event, messages, false), do: {:ok, messages, pending}
+   end
+diff --git a/lib/ipse/session/source_window.ex b/lib/ipse/session/source_window.ex
+index 6e9d427..aabaf8a 100644
+--- a/lib/ipse/session/source_window.ex
++++ b/lib/ipse/session/source_window.ex
+@@ -10,6 +10,7 @@ defmodule Ipse.Session.SourceWindow do
+     :index,
+     :effective_source,
+     :historical_window,
++    :draft_id,
+     admitted: false,
+     pending: %{},
+     pending_bytes: 0,
+@@ -110,6 +111,17 @@ defmodule Ipse.Session.SourceWindow do
+     %{next | index: index}
+   end
+ 
++  defp do_advance(%{draft_id: nil} = w, %{"type" => "draft_started", "draft_id" => id}, _),
++    do: %{w | draft_id: id}
++
++  defp do_advance(%{draft_id: id} = w, %{"type" => "draft_cancelled", "draft_id" => id}, _)
++       when not is_nil(id), do: %{w | draft_id: nil}
++
++  defp do_advance(%{draft_id: id} = w, %{"type" => "draft_consumed", "draft_id" => id}, _)
++       when not is_nil(id), do: %{w | draft_id: nil}
++
++  defp do_advance(%{draft_id: id} = w, _event, _) when not is_nil(id), do: w
++
+   defp do_advance(w, %{"type" => "input_received"} = event, _), do: store(w, :input, event)
+ 
+   defp do_advance(w, %{"type" => "source_window_opened"} = event, _) do
+diff --git a/lib/ipse/session/turn.ex b/lib/ipse/session/turn.ex
+index cb76957..839987f 100644
+--- a/lib/ipse/session/turn.ex
++++ b/lib/ipse/session/turn.ex
+@@ -38,6 +38,24 @@ defmodule Ipse.Session.Turn do
+     end
+   end
+ 
++  @doc false
++  def draft_prompt(s, text) do
++    effective = Ipse.Session.Draft.effective(text)
++
++    with :ok <- prompt_text(text), :ok <- prompt_text(effective) do
++      commit_prompt(s, text, {:ok, effective, []}, nil)
++    else
++      error -> {:reply, error, s}
++    end
++  end
++
++  @doc false
++  def accepted_prompt(s, text) do
++    with :ok <- prompt_text(text),
++         do: commit_prompt(s, text, {:ok, text, []}, nil),
++         else: (error -> {:reply, error, s})
++  end
++
+   def prompt_prepared(s, {:error, error}) when is_binary(error) do
+     GenServer.reply(s.prompt_from, {:error, :skill_preflight_failed})
+     {:noreply, fail(%{s | prompt_from: nil}, error)}
+@@ -52,7 +70,12 @@ defmodule Ipse.Session.Turn do
+   end
+ 
+   defp commit_prompt(s, original, prepared, observation) do
+-    turn = Ipse.Usage.id()
++    turn =
++      case Map.get(s, :draft) do
++        %{status: :pending} = draft -> draft.turn_id
++        %{status: :consumed, accepted_message: false} = draft -> draft.accepted_turn
++        _ -> Ipse.Usage.id()
++      end
+ 
+     case prepared do
+       {:error, error} when error in [:invalid_prompt, :prompt_too_large] ->
+@@ -111,6 +134,23 @@ defmodule Ipse.Session.Turn do
+ 
+           s = append_message(s, %{"role" => "user", "content" => text})
+ 
++          s =
++            case Map.get(s, :draft) do
++              %{status: :consumed, accepted_message: false} = draft ->
++                %{
++                  s
++                  | draft:
++                      Map.merge(draft, %{
++                        accepted_input: true,
++                        accepted_message: true,
++                        accepted_effective: Ipse.JSON.sha256(text)
++                      })
++                }
++
++              _ ->
++                s
++            end
++
+           s = %{
+             s
+             | steps: 0,
+@@ -282,9 +322,19 @@ defmodule Ipse.Session.Turn do
+   defp model_context(s) do
+     system = Ipse.Session.Context.header(s)
+ 
+-    case Ipse.Session.Context.prepare_compaction(s.messages, s.config, system) do
++    case Ipse.Session.Draft.project(Map.get(s, :draft), s.messages) do
++      {:ok, messages} -> model_context(s, system, messages)
++      _ -> fail(s, "Draft history cannot be safely withdrawn; start a fresh session.")
++    end
++  end
++
++  defp model_context(s, system, messages) do
++    case Ipse.Session.Context.prepare_compaction(messages, s.config, system) do
+       :skip ->
+-        launch_model(s, system ++ s.messages)
++        launch_model(s, system ++ messages)
++
++      {:ok, _plan} when not is_nil(s.draft) ->
++        fail(s, "Draft context requires compaction; start a fresh session before drafting.")
+ 
+       {:ok, plan} ->
+         config = Ipse.Session.Context.summary_config(s.config)
+@@ -298,6 +348,9 @@ defmodule Ipse.Session.Turn do
+           :compaction
+         )
+ 
++      {:tool_results, _, _} when not is_nil(s.draft) ->
++        fail(s, "Draft context requires compaction; start a fresh session before drafting.")
++
+       {:tool_results, messages, event} ->
+         Session.record(s, event)
+         Session.notify(s, {:compacted, event["before_bytes"], event["after_bytes"]})
+@@ -563,9 +616,11 @@ defmodule Ipse.Session.Turn do
+   @doc false
+   def dispatch_view(%{phase: :model, active_request: admission} = s, "model")
+       when not is_nil(admission) do
+-    {:ok, s.config, Session.Context.header(s) ++ s.messages,
+-     definitions(s.config, s.extension_result_sources, s.reference != nil) ++
+-       Ipse.MCP.definitions(s.mcp_tools), admission}
++    with {:ok, messages} <- Ipse.Session.Draft.project(Map.get(s, :draft), s.messages) do
++      {:ok, s.config, Session.Context.header(s) ++ messages,
++       definitions(s.config, s.extension_result_sources, s.reference != nil) ++
++         Ipse.MCP.definitions(s.mcp_tools), admission}
++    end
+   end
+ 
+   def dispatch_view(%{phase: :compaction, active_request: admission} = s, "compaction")
+@@ -781,6 +836,15 @@ defmodule Ipse.Session.Turn do
+     grant_source = Ipse.Session.Permissions.source(s, name, args)
+ 
+     cond do
++      name == "ask_operator" and match?(%{status: :pending}, Map.get(s, :draft)) ->
++        tool_result(
++          s,
++          call,
++          "Denied: draft questions are not yet supported by this internal prototype.",
++          "denied",
++          "policy_denied"
++        )
++
+       name == "ask_operator" ->
+         start_question(s, call, args)
+ 
+@@ -1112,6 +1176,7 @@ defmodule Ipse.Session.Turn do
+   @doc false
+   def finish(s, status) do
+     s = CurrentInvocation.release_output(s)
++    s = finish_draft(s, status)
+     after_plans = Subscriptions.declarations(s.config, "after_turn")
+     s = record_source_answer(s, status, after_plans)
+ 
+@@ -1183,7 +1248,11 @@ defmodule Ipse.Session.Turn do
+   defp record_source_answer(s, status, after_plans) do
+     assistant = List.last(s.messages)
+ 
+-    if Ipse.Session.SourceWindow.enabled?(s.config) and status == :ok and
++    if not match?(
++         %{status: draft_status} when draft_status in [:pending, :completed, :accepted],
++         Map.get(s, :draft)
++       ) and Ipse.Session.SourceWindow.enabled?(s.config) and
++         status == :ok and
+          not Enum.any?(after_plans, &(&1.declaration["event"] == "answer.committed")) and
+          is_map(assistant) and assistant["role"] == "assistant" and
+          assistant["tool_calls"] in [nil, []] and is_binary(assistant["content"]) do
+@@ -1210,6 +1279,21 @@ defmodule Ipse.Session.Turn do
+     s
+   end
+ 
++  defp finish_draft(%{draft: %{status: :pending} = draft} = s, :ok) do
++    assistant = List.last(s.messages)
++
++    if is_map(assistant) and assistant["role"] == "assistant" and
++         Ipse.Session.Draft.text?(assistant["content"]) and
++         assistant["tool_calls"] in [nil, []] do
++      Session.record(s, Ipse.Session.Draft.completed(draft, assistant))
++      %{s | draft: Map.merge(draft, %{status: :completed, proposal: assistant["content"]})}
++    else
++      s
++    end
++  end
++
++  defp finish_draft(s, _), do: s
++
+   @doc false
+   def continue_event_plan(s, delivery) do
+     plans = Subscriptions.declarations(s.config, s.event_schedule)
+diff --git a/test/ipse/session/draft_projection_test.exs b/test/ipse/session/draft_projection_test.exs
+new file mode 100644
+index 0000000..2841bc8
+--- /dev/null
++++ b/test/ipse/session/draft_projection_test.exs
+@@ -0,0 +1,81 @@
++defmodule Ipse.Session.DraftProjectionTest do
++  use ExUnit.Case, async: true
++  alias Ipse.Session.Draft
++  alias Ipse.JSON
++
++  defp projection(segment, prefix \\ []) do
++    notice = %{"role" => "user", "content" => Draft.notice()}
++
++    draft = %{
++      status: :cancelled,
++      notice: true,
++      prefix_count: length(prefix),
++      prefix_sha256: JSON.digest(prefix),
++      end_count: length(prefix) + length(segment),
++      segment_sha256: JSON.digest(segment)
++    }
++
++    {draft, prefix ++ segment ++ [notice, %{"role" => "user", "content" => "new task"}]}
++  end
++
++  test "complete draft interval is withheld, but the neutral notice and new intent remain" do
++    prefix = [
++      %{"role" => "user", "content" => "old"},
++      %{"role" => "assistant", "content" => "old reply"}
++    ]
++
++    segment = [
++      %{"role" => "user", "content" => "secret draft"},
++      %{"role" => "assistant", "content" => "draft answer"}
++    ]
++
++    {draft, messages} = projection(segment, prefix)
++    assert {:ok, [_, _, notice, new]} = Draft.project(draft, messages)
++    assert notice["content"] == Draft.notice() and new["content"] == "new task"
++  end
++
++  test "changed bound prefix, draft, notice and invalid range refuse" do
++    {draft, messages} = projection([%{"role" => "user", "content" => "draft"}])
++
++    assert {:error, :draft_projection_unsafe} =
++             Draft.project(
++               draft,
++               List.replace_at(messages, 0, %{"role" => "user", "content" => "changed"})
++             )
++
++    assert {:error, :draft_projection_unsafe} =
++             Draft.project(
++               draft,
++               List.replace_at(messages, 1, %{"role" => "user", "content" => "forged"})
++             )
++
++    assert {:error, :draft_projection_unsafe} = Draft.project(%{draft | end_count: 99}, messages)
++  end
++
++  test "opaque continuation, checkpoint and reference inside the removed interval refuse" do
++    for marker <- ["provider_data", "ipse_checkpoint", "ipse_reference"] do
++      segment = [%{"role" => "assistant", "content" => "sensitive", marker => %{}}]
++      {draft, messages} = projection(segment)
++      assert {:error, :draft_projection_unsafe} = Draft.project(draft, messages)
++    end
++  end
++
++  test "interrupted consumption still authenticates the withdrawn segment" do
++    {cancelled, messages} = projection([%{"role" => "user", "content" => "secret"}])
++    incomplete = cancelled |> Map.put(:status, :consumed) |> Map.put(:accepted_message, false)
++    segment_only = Enum.take(messages, incomplete.end_count)
++    assert {:ok, ^segment_only} = Draft.project(incomplete, segment_only)
++
++    assert {:error, :draft_projection_unsafe} =
++             Draft.project(
++               incomplete,
++               segment_only ++ [%{"role" => "user", "content" => "unexpected"}]
++             )
++
++    assert {:error, :draft_projection_unsafe} =
++             Draft.project(
++               %{incomplete | segment_sha256: String.duplicate("0", 64)},
++               segment_only
++             )
++  end
++end
+diff --git a/test/ipse/session/draft_vertical_test.exs b/test/ipse/session/draft_vertical_test.exs
+new file mode 100644
+index 0000000..6f98a52
+--- /dev/null
++++ b/test/ipse/session/draft_vertical_test.exs
+@@ -0,0 +1,528 @@
++defmodule Ipse.Session.DraftVerticalTest do
++  use ExUnit.Case, async: false
++  alias Ipse.{Journal, Session, Usage}
++
++  defmodule Model do
++    def complete(config, messages, tools, _) do
++      send(config.test_owner, {:request, config.test_label, self(), tools, messages})
++      last = messages |> Enum.reject(&Ipse.Session.Reference.reference?/1) |> List.last()
++
++      cond do
++        tools == [] ->
++          {:ok,
++           %{
++             "role" => "assistant",
++             "content" =>
++               Jason.encode!(%{
++                 "decisions" => [],
++                 "facts" => ["unrelated history"],
++                 "open_questions" => []
++               })
++           }, %{}}
++
++        config[:poison] ->
++          {:ok,
++           %{
++             "role" => "assistant",
++             "content" => "proposal",
++             "provider_data" => %{"reported_model" => "draft-derived-model-canary"}
++           }, %{}}
++
++        last["content"] == "ordinary" ->
++          {:ok, %{"role" => "assistant", "content" => "ordinary result"}, %{}}
++
++        is_binary(last["content"]) and String.starts_with?(last["content"], "history:") ->
++          {:ok, %{"role" => "assistant", "content" => String.duplicate("history response ", 160)},
++           %{}}
++
++        config[:hold] ->
++          receive do
++            :continue -> {:ok, %{"role" => "assistant", "content" => "late"}, %{}}
++          end
++
++        last["role"] == "tool" ->
++          {:ok, %{"role" => "assistant", "content" => "A proposed task."}, %{}}
++
++        true ->
++          {:ok,
++           %{
++             "role" => "assistant",
++             "content" => "",
++             "tool_calls" => [
++               %{
++                 "id" => "w",
++                 "type" => "function",
++                 "function" => %{
++                   "name" => "write",
++                   "arguments" => Jason.encode!(%{"path" => "forbidden", "content" => "bad"})
++                 }
++               },
++               %{
++                 "id" => "claim",
++                 "type" => "function",
++                 "function" => %{
++                   "name" => "research_claim",
++                   "arguments" =>
++                     Jason.encode!(%{
++                       "statement" => "draft-only canary",
++                       "kind" => "open",
++                       "source_ids" => []
++                     })
++                 }
++               }
++             ]
++           }, %{}}
++      end
++    end
++  end
++
++  setup do
++    root = Path.join(System.tmp_dir!(), "ipse-draft-vertical-" <> Usage.id())
++    File.mkdir_p!(root)
++    on_exit(fn -> File.rm_rf!(root) end)
++    %{root: root, dir: Path.join(root, "state")}
++  end
++
++  defp start(c, extra \\ %{}, id \\ nil) do
++    config =
++      Map.merge(
++        %{
++          provider: :demo,
++          model: "fixture",
++          provider_module: Model,
++          home: Path.join(c.root, "home"),
++          test_owner: self(),
++          test_label: make_ref(),
++          approval: :allow,
++          approval_origin: :yes,
++          headless: true,
++          compact: false
++        },
++        extra
++      )
++
++    {:ok, pid} =
++      DynamicSupervisor.start_child(
++        Ipse.Sessions,
++        {Session, config: config, cwd: c.root, state_dir: c.dir, subscriber: self(), id: id}
++      )
++
++    on_exit(fn -> if Process.alive?(pid), do: Session.close(pid) end)
++    {pid, config.test_label}
++  end
++
++  test "draft turn denies effects and withdraws cancelled history from future requests",
++       c do
++    {pid, label} = start(c)
++    id = Session.info(pid).id
++    assert :ok = Session.start_draft(pid, "canary secret requirement")
++    assert_receive {:request, ^label, _, tools, messages}, 5_000
++    assert List.last(messages)["content"] =~ "canary secret requirement"
++    assert_receive {:request, ^label, _, ^tools, _}, 5_000
++    assert_receive {:ipse, ^pid, {:done, :ok}}, 5_000
++    refute File.exists?(Path.join(c.root, "forbidden"))
++    assert {:ok, page} = Session.sources(pid, "source.list", %{"limit" => 32})
++    assert page["sources"] == []
++    assert {:error, :draft_recovery_required} = Session.prompt(pid, "ordinary")
++    assert :ok = Session.cancel_draft(pid)
++    assert :ok = Session.prompt(pid, "ordinary")
++    assert_receive {:request, ^label, _, ^tools, followup}, 5_000
++    refute inspect(followup) =~ "canary secret requirement"
++    refute inspect(followup) =~ "draft-only canary"
++    assert_receive {:ipse, ^pid, {:done, :ok}}, 5_000
++    assert :ok = Session.close_confirmed(pid)
++    {:ok, events} = Journal.load(c.dir, id)
++    refute Enum.any?(events, &(&1["type"] == "research_claim"))
++
++    assert Enum.any?(events, fn event ->
++             get_in(event, ["message", "tool_call_id"]) == "claim" and
++               get_in(event, ["message", "ipse_tool_outcome", "status"]) == "denied"
++           end)
++
++    assert {:ok, %{draft: %{status: :cancelled, notice: true}}} =
++             Session.Saved.restore(events, id)
++
++    assert Enum.any?(events, &(&1["type"] == "draft_completed"))
++    assert Enum.any?(events, &(&1["type"] == "draft_cancelled"))
++    assert {:ok, _} = Session.restore_context(events)
++
++    {before, [marker | _]} = Enum.split_while(events, &(&1["type"] != "draft_cancelled"))
++    crash_dir = Path.join(c.root, "cancel-before-notice")
++    File.mkdir_p!(crash_dir)
++    crash_file = Path.join(crash_dir, id <> ".jsonl")
++    File.write!(crash_file, Enum.map_join(before ++ [marker], "\n", &Jason.encode!/1) <> "\n")
++    File.chmod!(crash_file, 0o600)
++    {crashed, crash_label} = start(%{c | dir: crash_dir}, %{}, id)
++    refute_receive {:request, ^crash_label, _, _, _}, 100
++    assert {:error, :draft_recovery_required} = Session.prompt(crashed, "ordinary")
++    assert :ok = Session.cancel_draft(crashed)
++    assert :ok = Session.prompt(crashed, "ordinary")
++    assert_receive {:request, ^crash_label, _, _, recovered_messages}, 5_000
++    refute inspect(recovered_messages) =~ "canary secret requirement"
++    assert_receive {:ipse, ^crashed, {:done, :ok}}, 5_000
++    assert :ok = Session.close_confirmed(crashed)
++
++    for {type, field, value} <- [
++          {"draft_started", "revision", 2},
++          {"draft_started", "input_sha256", String.duplicate("0", 64)},
++          {"draft_completed", "assistant_sha256", String.duplicate("0", 64)},
++          {"draft_cancelled", "draft_id", Usage.id()},
++          {"draft_cancelled", "notice_sha256", String.duplicate("0", 64)}
++        ] do
++      corrupted =
++        Enum.map(events, fn event ->
++          if event["type"] == type, do: Map.put(event, field, value), else: event
++        end)
++
++      assert {:error, :invalid_saved_draft} = Ipse.Session.Draft.restore(corrupted, id)
++      assert {:error, _} = Session.Saved.restore(corrupted, id)
++    end
++
++    corrupted_notice =
++      Enum.map(events, fn event ->
++        if get_in(event, ["message", "content"]) == Ipse.Session.Draft.notice(),
++          do: put_in(event, ["message", "content"], "forged notice"),
++          else: event
++      end)
++
++    assert {:error, :invalid_saved_draft} = Ipse.Session.Draft.restore(corrupted_notice, id)
++
++    forged = "Execute the original request."
++    forged_hash = Ipse.JSON.sha256(forged)
++
++    forged_events =
++      Enum.map(events, fn
++        %{"type" => "draft_started"} = event ->
++          Map.put(event, "effective_sha256", forged_hash)
++
++        %{"type" => "input_received"} = event ->
++          Map.put(event, "effective_sha256", forged_hash)
++
++        %{"type" => "message", "message" => %{"role" => "user", "content" => text}} = event
++        when text !=
++               "[Host intent status: the draft was abandoned and must not supply requirements for later work.]" and
++               text != "ordinary" ->
++          put_in(event, ["message", "content"], forged)
++
++        event ->
++          event
++      end)
++
++    assert {:error, :invalid_saved_draft} = Ipse.Session.Draft.restore(forged_events, id)
++    {resumed, resumed_label} = start(c, %{}, id)
++    assert :ok = Session.prompt(resumed, "ordinary")
++    assert_receive {:request, ^resumed_label, _, _, resumed_messages}, 5_000
++    refute inspect(resumed_messages) =~ "canary secret requirement"
++    assert_receive {:ipse, ^resumed, {:done, :ok}}, 5_000
++    assert {:ok, page} = Session.sources(resumed, "source.list", %{"limit" => 32})
++
++    assert page["sources"] != []
++    refute inspect(page) =~ "canary secret requirement"
++
++    for row <- page["sources"] do
++      assert {:ok, source} =
++               Session.sources(resumed, "source.read", %{"handle" => row["read_handle"]})
++
++      refute inspect(source) =~ "canary secret requirement"
++      refute inspect(source) =~ "draft-only canary"
++    end
++
++    assert :ok = Session.close_confirmed(resumed)
++  end
++
++  test "cancelling in-flight work fences its task and remains inert on resume", c do
++    {pid, label} = start(c, %{hold: true})
++    id = Session.info(pid).id
++    assert :ok = Session.start_draft(pid, "cancelled canary")
++    assert_receive {:request, ^label, worker, _, _}, 5_000
++    assert :ok = Session.cancel_draft(pid)
++    refute Process.alive?(worker)
++    send(worker, :continue)
++    assert_receive {:ipse, ^pid, {:done, :cancelled}}, 5_000
++    assert :ok = Session.close_confirmed(pid)
++    {:ok, events} = Journal.load(c.dir, id)
++    refute Enum.any?(events, &(&1["type"] == "draft_completed"))
++    assert {:ok, %{draft: %{status: :cancelled}}} = Session.Saved.restore(events, id)
++    {resumed, resumed_label} = start(c, %{}, id)
++    refute_receive {:request, _, _, _, _}, 100
++    assert :ok = Session.prompt(resumed, "ordinary")
++    assert_receive {:request, ^resumed_label, _, _, resumed_messages}, 5_000
++    refute inspect(resumed_messages) =~ "cancelled canary"
++    assert_receive {:ipse, ^resumed, {:done, :ok}}, 5_000
++    assert :ok = Session.close_confirmed(resumed)
++  end
++
++  test "replacement acceptance sends only the accepted intent and survives replay", c do
++    {pid, label} = start(c)
++    id = Session.info(pid).id
++    assert :ok = Session.start_draft(pid, "private draft requirement")
++    assert_receive {:request, ^label, _, _, _}, 5_000
++    assert_receive {:request, ^label, _, _, _}, 5_000
++    assert_receive {:ipse, ^pid, {:done, :ok}}, 5_000
++    assert {:ok, %{id: draft_id, revision: 1, status: :completed}} = Session.draft(pid)
++    assert :ok = Session.replace_draft(pid, draft_id, 1, "ordinary")
++    assert {:error, :stale_draft} = Session.accept_draft(pid, draft_id, 1)
++    assert :ok = Session.accept_draft(pid, draft_id, 2)
++    assert_receive {:request, ^label, _, _, accepted_messages}, 5_000
++
++    assert accepted_messages
++           |> Enum.reject(&Ipse.Session.Reference.reference?/1)
++           |> List.last()
++           |> Map.get("content") == "ordinary"
++
++    refute inspect(accepted_messages) =~ "private draft requirement"
++    refute inspect(accepted_messages) =~ "draft-only canary"
++    assert_receive {:ipse, ^pid, {:done, :ok}}, 5_000
++    assert {:error, :stale_draft} = Session.accept_draft(pid, draft_id, 2)
++    assert :ok = Session.close_confirmed(pid)
++    {:ok, events} = Journal.load(c.dir, id)
++
++    assert {:ok, %{draft: %{status: :consumed, revision: 2, accepted_message: true}}} =
++             Session.Saved.restore(events, id)
++
++    through = fn type ->
++      {before, [event | _]} = Enum.split_while(events, &(&1["type"] != type))
++      before ++ [event]
++    end
++
++    assert {:ok, %{draft: %{status: :accepted}}} =
++             Session.Saved.restore(through.("draft_accepted"), id)
++
++    assert {:ok, %{draft: %{status: :consumed, accepted_message: false}}} =
++             Session.Saved.restore(through.("draft_consumed"), id)
++
++    for boundary <- ["draft_accepted", "draft_consumed"] do
++      state_dir = Path.join(c.root, boundary)
++      File.mkdir_p!(state_dir)
++      journal = through.(boundary) |> Enum.map_join("\n", &Jason.encode!/1)
++      File.write!(Path.join(state_dir, id <> ".jsonl"), journal <> "\n")
++      File.chmod!(Path.join(state_dir, id <> ".jsonl"), 0o600)
++      {interrupted, interrupted_label} = start(%{c | dir: state_dir}, %{}, id)
++      refute_receive {:request, ^interrupted_label, _, _, _}, 100
++      assert {:error, :draft_recovery_required} = Session.prompt(interrupted, "ordinary")
++
++      if boundary == "draft_accepted" do
++        assert :ok = Session.consume_draft(interrupted, draft_id, 2)
++        assert_receive {:request, ^interrupted_label, _, _, input}, 5_000
++        refute inspect(input) =~ "private draft requirement"
++        assert_receive {:ipse, ^interrupted, {:done, :ok}}, 5_000
++      else
++        assert {:error, :stale_draft} = Session.consume_draft(interrupted, draft_id, 2)
++      end
++
++      assert :ok = Session.close_confirmed(interrupted)
++    end
++
++    for {type, field, value} <- [
++          {"draft_accepted", "revision", 1},
++          {"draft_consumed", "segment_sha256", String.duplicate("0", 64)},
++          {"draft_consumed", "end_count", 999},
++          {"input_received", "effective_sha256", String.duplicate("0", 64)}
++        ] do
++      corrupted =
++        Enum.map(events, fn event ->
++          if event["type"] == type and (type != "input_received" or event["text"] == "ordinary"),
++            do: Map.put(event, field, value),
++            else: event
++        end)
++
++      assert {:error, _} = Session.Saved.restore(corrupted, id)
++    end
++
++    {resumed, resumed_label} = start(c, %{}, id)
++    refute_receive {:request, _, _, _, _}, 100
++    assert :ok = Session.prompt(resumed, "ordinary")
++    assert_receive {:request, ^resumed_label, _, _, messages}, 5_000
++    refute inspect(messages) =~ "private draft requirement"
++    refute inspect(messages) =~ "draft-only canary"
++    assert_receive {:ipse, ^resumed, {:done, :ok}}, 5_000
++    assert {:ok, page} = Session.sources(resumed, "source.list", %{"limit" => 32})
++
++    for row <- page["sources"] do
++      assert {:ok, source} =
++               Session.sources(resumed, "source.read", %{"handle" => row["read_handle"]})
++
++      refute inspect(source) =~ "private draft requirement"
++      refute inspect(source) =~ "draft-only canary"
++    end
++  end
++
++  test "accepted intent restores the previous mode without granting draft effects", c do
++    {pid, label} = start(c)
++    assert :ok = Session.start_draft(pid, "private requirement")
++    assert_receive {:request, ^label, _, _, _}, 5_000
++    assert_receive {:request, ^label, _, _, _}, 5_000
++    assert_receive {:ipse, ^pid, {:done, :ok}}, 5_000
++    refute File.exists?(Path.join(c.root, "forbidden"))
++    assert {:ok, %{id: draft_id, revision: 1}} = Session.draft(pid)
++    assert :ok = Session.replace_draft(pid, draft_id, 1, "implement this request")
++    assert :ok = Session.accept_draft(pid, draft_id, 2)
++    assert_receive {:request, ^label, _, _, accepted}, 5_000
++    refute inspect(accepted) =~ "private requirement"
++    assert_receive {:request, ^label, _, _, _}, 5_000
++    assert_receive {:ipse, ^pid, {:done, :ok}}, 5_000
++    assert File.read!(Path.join(c.root, "forbidden")) == "bad"
++  end
++
++  test "acceptance retains an enclosing read-only ceiling", c do
++    {pid, label} = start(c, %{enclosing_mode: :read_only})
++    assert :ok = Session.start_draft(pid, "private requirement")
++    assert_receive {:request, ^label, _, _, _}, 5_000
++    assert_receive {:request, ^label, _, _, _}, 5_000
++    assert_receive {:ipse, ^pid, {:done, :ok}}, 5_000
++    assert {:ok, %{id: draft_id, revision: 1}} = Session.draft(pid)
++    assert :ok = Session.replace_draft(pid, draft_id, 1, "implement this request")
++    assert :ok = Session.accept_draft(pid, draft_id, 2)
++    assert_receive {:request, ^label, _, _, _}, 5_000
++    assert_receive {:request, ^label, _, _, _}, 5_000
++    assert_receive {:ipse, ^pid, {:done, :ok}}, 5_000
++    refute File.exists?(Path.join(c.root, "forbidden"))
++  end
++
++  test "multiple cancelled drafts stay withdrawn during later drafts and replay", c do
++    {pid, label} = start(c)
++    id = Session.info(pid).id
++
++    for {text, prior} <- [
++          {"first private requirement", nil},
++          {"second private requirement", "first private requirement"}
++        ] do
++      assert :ok = Session.start_draft(pid, text)
++      assert_receive {:request, ^label, _, _, first}, 5_000
++      if prior, do: refute(inspect(first) =~ prior)
++      assert_receive {:request, ^label, _, _, _}, 5_000
++      assert_receive {:ipse, ^pid, {:done, :ok}}, 5_000
++      assert :ok = Session.cancel_draft(pid)
++    end
++
++    assert :ok = Session.rebase_draft(pid)
++    assert {:error, :draft_unavailable} = Session.rebase_draft(pid)
++    assert :ok = Session.close_confirmed(pid)
++    {:ok, events} = Journal.load(c.dir, id)
++    assert Enum.any?(events, &(&1["type"] == "draft_rebased"))
++    assert {:ok, %{draft: nil, messages: rebased}} = Session.Saved.restore(events, id)
++    refute inspect(rebased) =~ "first private requirement"
++    refute inspect(rebased) =~ "second private requirement"
++
++    for field <- ["before_sha256", "after_sha256"] do
++      corrupt =
++        Enum.map(events, fn e ->
++          if e["type"] == "draft_rebased",
++            do: Map.put(e, field, String.duplicate("0", 64)),
++            else: e
++        end)
++
++      assert {:error, _} = Session.Saved.restore(corrupt, id)
++    end
++
++    {before, [boundary | _]} = Enum.split_while(events, &(&1["type"] != "draft_rebased"))
++    recovery_dir = Path.join(c.root, "rebased-crash")
++    File.mkdir_p!(recovery_dir)
++    recovery_file = Path.join(recovery_dir, id <> ".jsonl")
++
++    File.write!(
++      recovery_file,
++      Enum.map_join(before ++ [boundary], "\n", &Jason.encode!/1) <> "\n"
++    )
++
++    File.chmod!(recovery_file, 0o600)
++    {recovered, recovered_label} = start(%{c | dir: recovery_dir}, %{}, id)
++    refute_receive {:request, ^recovered_label, _, _, _}, 100
++    assert :ok = Session.prompt(recovered, "ordinary")
++    assert_receive {:request, ^recovered_label, _, _, recovered_messages}, 5_000
++    refute inspect(recovered_messages) =~ "first private requirement"
++    refute inspect(recovered_messages) =~ "second private requirement"
++    assert_receive {:ipse, ^recovered, {:done, :ok}}, 5_000
++    assert :ok = Session.close_confirmed(recovered)
++
++    assert Enum.any?(events, &(&1["type"] == "reference_envelope"))
++
++    forged =
++      Enum.map(events, fn event ->
++        if event["type"] == "reference_envelope",
++          do: %{"type" => "message", "message" => Ipse.Session.Reference.message(event)},
++          else: event
++      end)
++
++    assert {:error, _} = Session.Saved.restore(forged, id)
++    {resumed, resumed_label} = start(c, %{}, id)
++    assert :ok = Session.prompt(resumed, "ordinary")
++    assert_receive {:request, ^resumed_label, _, _, messages}, 5_000
++    refute inspect(messages) =~ "first private requirement"
++    refute inspect(messages) =~ "second private requirement"
++    refute inspect(messages) =~ "draft-only canary"
++    assert_receive {:ipse, ^resumed, {:done, :ok}}, 5_000
++  end
++
++  test "draft-derived provider metadata prevents any later dispatch and replay", c do
++    {pid, label} = start(c, %{poison: true})
++    id = Session.info(pid).id
++    assert :ok = Session.start_draft(pid, "sensitive draft")
++    assert_receive {:request, ^label, _, _, _}, 5_000
++    assert_receive {:ipse, ^pid, {:done, :ok}}, 5_000
++    assert :ok = Session.cancel_draft(pid)
++    assert :ok = Session.prompt(pid, "ordinary")
++    assert_receive {:ipse, ^pid, {:done, :error}}, 5_000
++    refute_receive {:request, ^label, _, _, _}, 100
++    assert :ok = Session.close_confirmed(pid)
++    {:ok, events} = Journal.load(c.dir, id)
++    assert {:error, :draft_projection_unsafe} = Session.Saved.restore(events, id)
++  end
++
++  test "rebased draft stays absent from actual compaction and replay", c do
++    {pid, label} =
++      start(c, %{compact: true, context_bytes: 60_000, compact_threshold_bytes: 20_000})
++
++    id = Session.info(pid).id
++    assert :ok = Session.start_draft(pid, "compaction-secret-canary")
++    assert_receive {:request, ^label, _, _, _}, 5_000
++    assert_receive {:request, ^label, _, _, _}, 5_000
++    assert_receive {:ipse, ^pid, {:done, :ok}}, 5_000
++    assert :ok = Session.cancel_draft(pid)
++    assert :ok = Session.rebase_draft(pid)
++
++    for n <- 1..10 do
++      assert :ok = Session.prompt(pid, "history:#{n}")
++
++      collect = fn collect ->
++        receive do
++          {:request, ^label, _, _, messages} ->
++            refute inspect(messages) =~ "compaction-secret-canary"
++            refute inspect(messages) =~ "draft-only canary"
++            collect.(collect)
++
++          {:ipse, ^pid, {:done, :ok}} ->
++            :ok
++
++          {:ipse, ^pid, {:error, reason}} ->
++            flunk("compaction error: #{inspect(reason)}")
++
++          {:ipse, ^pid, {:done, :error}} ->
++            flunk("compaction failed")
++
++          _ ->
++            collect.(collect)
++        after
++          5_000 -> flunk("turn did not finish")
++        end
++      end
++
++      collect.(collect)
++    end
++
++    assert :ok = Session.close_confirmed(pid)
++    {:ok, events} = Journal.load(c.dir, id)
++    assert Enum.any?(events, &(&1["type"] == "context_compacted"))
++    assert {:ok, %{messages: messages}} = Session.Saved.restore(events, id)
++    refute inspect(messages) =~ "compaction-secret-canary"
++    refute inspect(messages) =~ "draft-only canary"
++
++    {resumed, resumed_label} =
++      start(c, %{compact: true, context_bytes: 60_000, compact_threshold_bytes: 20_000}, id)
++
++    assert :ok = Session.prompt(resumed, "ordinary")
++    assert_receive {:request, ^resumed_label, _, _, resumed_messages}, 5_000
++    refute inspect(resumed_messages) =~ "compaction-secret-canary"
++    refute inspect(resumed_messages) =~ "draft-only canary"
++  end
++end
