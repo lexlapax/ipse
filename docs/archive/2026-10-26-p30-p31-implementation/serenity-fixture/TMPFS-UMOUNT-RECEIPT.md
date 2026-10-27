@@ -35,3 +35,27 @@ mounts in other namespaces, or a crash-safe device recovery procedure.
 Sources: [umount(2)](https://man7.org/linux/man-pages/man2/umount.2.html),
 [Linux 7.2.11 mount implementation](https://raw.githubusercontent.com/gregkh/linux/v7.2.11/fs/namespace.c),
 [fsmount(2)](https://www.man7.org/linux/man-pages/man2/fsmount.2%40%40man-pages.html).
+
+A second independently reviewed variant retained an O_PATH descriptor to the
+`/tmp` parent and, after closing the busy mount-root FD, called non-lazy
+`umount2` via `/proc/self/fd/<parent>/<exact nonce leaf>`. It compiled from
+`tmpfs_umount_parentfd_probe.rs` (SHA-256
+`7942faa2217240598ce4dbd7c139b81ad8e43389a535ced2dd960d93c82abb85`) and
+`tmpfs_umount_parentfd_supervisor.exs` (SHA-256
+`6ffdfcce20e46a02e350198178a6866ba93a1bce19ac14cfe760c2f5130ff693`); the
+binary SHA-256 was
+`22d2b77223c4b87e5f687731c6a14ff205294e1e13e3f0776f4f0e2612260a76`.
+`make_parentfd_probe.exs` records the source-only transformation. The command
+was `ERL_FLAGS='+S 2:2' elixir
+/tmp/ipse-serenity-qualification-plan/fixture/tmpfs_umount_parentfd_supervisor.exs`.
+The merged stdout/stderr is `tmpfs-parentfd-run.log` (SHA-256
+`18d1774f0af564f631e4ca099673766bf39ea8e274cb67bb7bd8aadb4525effc`). The
+supervisor exited 0: mount-root FD unmount returned EBUSY, the retained-parent
+path unmount succeeded, and the original temporary directory was removed. A
+separate read-only check found the exact target absent and no matching host
+mount. No block devices were used.
+
+The parent FD anchors the parent directory, but does not prevent the leaf or
+mount from being replaced between verification and `umount2`. The reviewer
+explicitly retained that race and the namespace/cleanup limitations. This
+single tmpfs result does not qualify the Btrfs fault fixture.

@@ -1,0 +1,7 @@
+TARGET /tmp/ipse-umount-fd-bb3899164ebf6017 inode=110880 host_mount_namespace=4026531832
+IDENTITIES_VERIFIED child_pid=181791 mount_namespace=4026533650 user_namespace=4026533527
+DIRECTORY_REMOVED /tmp/ipse-umount-fd-bb3899164ebf6017
+{:result, 0,
+ ["PRIVATE_MOUNT namespace=4026533650 mount_id=460",
+  "retained-fd nonlazy umount errno=16",
+  "retained-parent-fd nonlazy cleanup: success"]}

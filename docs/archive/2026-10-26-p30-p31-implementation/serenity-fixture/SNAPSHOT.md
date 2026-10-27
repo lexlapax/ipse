@@ -98,3 +98,8 @@ block devices. Its retained mount-root FD non-lazy unmount returned EBUSY, and
 non-lazy cleanup succeeded after closing the FD. See
 [TMPFS-UMOUNT-RECEIPT.md](TMPFS-UMOUNT-RECEIPT.md) and the captured merged log;
 this is not Btrfs qualification.
+
+A separately reviewed follow-up tested non-lazy cleanup via a retained parent
+FD and exact leaf; it succeeded after the busy mount-root FD was closed. Its
+receipt, exact merged log and source are preserved. The leaf check-to-use race
+remains, and no Btrfs or block device test was performed.
