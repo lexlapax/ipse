@@ -59,6 +59,7 @@ resource/offline qualification. No daemon configuration or existing model was ch
 - [Native knowledge capture and precompiled artifact component](native-capture-component.md).
 - [Independent capture/SDK audit and anchored-retention repair](capture-sdk-audit.md).
 - [Protected collection SDK, source proofs and replay bindings](collection-sdk-component.md).
+- [Pure managed-reference lineage, projection contracts and verification](managed-reference-component.md).
 - [Native read ownership and staging-frame ordering](native-read-component.md).
 - [Admitted decision operation, incremental review and controls](decision-operation-audit.md).
 - [Optional document parser, bounded staging and package evidence](document-parsers.md).
