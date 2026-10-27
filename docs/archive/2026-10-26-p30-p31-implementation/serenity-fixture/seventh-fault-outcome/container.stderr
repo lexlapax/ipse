@@ -1,0 +1,16 @@
+RELEASE_DIAG file_metadata_start
+RELEASE_DIAG file_metadata_ok
+RELEASE_DIAG named_metadata_ok
+RELEASE_DIAG root_metadata_ok
+RELEASE_DIAG executable_metadata_ok
+RELEASE_DIAG post_switch_validation_ok
+RELEASE_DIAG gate_sent
+RELEASE_DIAG write_errno=0
+RELEASE_DIAG sync_errno=5
+RELEASE_DIAG peer_release_ok
+RELEASE_DIAG peer_finish_ok
+RELEASE_DIAG stage_finish kind=InvalidData errno=None
+RELEASE_DIAG stage_finish_failed
+DIAGNOSTIC_UNKNOWN: fault pending; inspect receipt
+loop owner outcome unknown: unexpected end of file
+Error: Os { code: 3, kind: Uncategorized, message: "No such process" }

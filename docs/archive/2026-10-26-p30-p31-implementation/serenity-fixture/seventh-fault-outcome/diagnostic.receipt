@@ -1,0 +1,13 @@
+0:23456b0d98b24adcb65d36e11a87fb83:pending:configure-loop
+1:23456b0d98b24adcb65d36e11a87fb83:confirmed:configure-loop
+2:23456b0d98b24adcb65d36e11a87fb83:pending:create-mapper
+3:23456b0d98b24adcb65d36e11a87fb83:confirmed:create-mapper
+4:23456b0d98b24adcb65d36e11a87fb83:pending:make-filesystem
+5:23456b0d98b24adcb65d36e11a87fb83:confirmed:make-filesystem
+6:23456b0d98b24adcb65d36e11a87fb83:pending:mount
+7:23456b0d98b24adcb65d36e11a87fb83:confirmed:mount
+8:23456b0d98b24adcb65d36e11a87fb83:pending:prepare-stage
+9:23456b0d98b24adcb65d36e11a87fb83:confirmed:prepare-stage
+10:23456b0d98b24adcb65d36e11a87fb83:pending:switch-error
+11:23456b0d98b24adcb65d36e11a87fb83:confirmed:switch-error
+12:23456b0d98b24adcb65d36e11a87fb83:pending:release-stage
