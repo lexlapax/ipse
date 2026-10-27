@@ -178,3 +178,9 @@ The unreviewed filter draft also denies credential and chroot/pivot changes
 after setting dumpable=0. The harmless child test observed getuid succeed and
 setuid-to-current-UID return EPERM. This does not establish isolation from
 privileged external actors or preexisting kernel registrations.
+
+The disabled borrowed-loop draft now retains the `/sys` FD, verifies sysfs
+magic, and traverses index checks through that FD. A harmless control rejects
+a temporary directory as sysfs. Current captured serial test outputs report
+66 controller and 6 owner tests passing. This is not a live loop test, and the
+source and namespace assumptions still require independent review.
