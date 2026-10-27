@@ -67,7 +67,7 @@ resource/offline qualification. No daemon configuration or existing model was ch
 - [Pure managed-reference lineage, projection contracts and verification](managed-reference-component.md).
 - [Pure managed policy recipes, deduplicated grants and activation data](managed-policy-component.md).
 - [Atomic managed publication and explicit version-5 receipt binding](managed-collection-component.md).
-- [Owner-task Collection read views and protected root revalidation](collection-read-view-component.md).
+- [Owner-task Collection read views and protected root revalidation](collection-read-view-component.md), with its [independent adversarial audit](collection-read-view-audit.md).
 - [Managed source clocks, metadata and independently closed findings](managed-normalizer-component.md).
 - [Registered inference admission and completion](inference-dispatch-component.md), with its [independent adversarial audit](inference-dispatch-audit.md).
 - [Explicit managed SDK publication, reserved metadata and replay boundary](managed-sdk-component.md).

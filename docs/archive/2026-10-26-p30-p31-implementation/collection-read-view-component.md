@@ -146,8 +146,10 @@ The parent reviewer separately read the new cache module and complete Collection
 diff, checking root/header/reference seals, exact caller/effect-owner markers,
 one-cache/global bounds, borrow/finish/expiry, native reads/quota/release,
 legacy/unmaterialized refusal and the explicit unrelated-corruption boundary.
-That static review found no concrete actionable defect. A fresh independent
-component audit and integrated recall/Session performance evidence remain
-separate from these author checks. The owner-task lifetime, missing-root
+That static review found no concrete actionable defect. A subsequent
+[independent frozen component audit](collection-read-view-audit.md) reran all
+19 focused tests and passed nine additional adversarial controls without an
+actionable finding. Integrated recall/Session performance evidence remains
+separate from these component checks. The owner-task lifetime, missing-root
 limitation and exact-root conflict behavior must be preserved or explicitly
 reviewed when adding that integration.
