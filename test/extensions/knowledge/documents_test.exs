@@ -3,7 +3,7 @@ defmodule Ipse.KnowledgeDocumentsTest do
   @root Path.expand("../../..", __DIR__)
 
   defp pure(body) do
-    files = ~w(documents/zip documents/docx documents/pdf documents)
+    files = ~w(documents/zip documents/docx documents/parser_stage documents/pdf documents)
     args = Enum.flat_map(files, &["-r", Path.join(@root, "extensions/knowledge/src/#{&1}.ex")])
 
     bootstrap = ~S'''
@@ -12,10 +12,25 @@ defmodule Ipse.KnowledgeDocumentsTest do
     word = "http://schemas.openxmlformats.org/wordprocessingml/2006/main"
     xml = fn body -> "<w:document xmlns:w=\"#{word}\"><w:body>#{body}</w:body></w:document>" end
     paragraph = fn text -> "<w:p><w:r><w:t>#{text}</w:t></w:r></w:p>" end
-    zip = fn entries ->
+    raw_zip = fn entries ->
       {:ok,{_,bytes}}=:zip.create(~c"development.docx",Enum.map(entries,fn {name,value}->{String.to_charlist(name),value} end),[:memory])
       bytes
     end
+    package=fn entries ->
+      names=Enum.map(entries,&elem(&1,0))
+      if "word/document.xml" in names do
+        relationships="http://schemas.openxmlformats.org/package/2006/relationships"
+        prefix="http://schemas.openxmlformats.org/officeDocument/2006/relationships/"
+        parts=Enum.filter(~w(styles footnotes endnotes comments), &("word/#{&1}.xml" in names))
+        entries=if "word/_rels/document.xml.rels" not in names and parts != [], do: entries++[{"word/_rels/document.xml.rels","<Relationships xmlns=\"#{relationships}\">"<>Enum.map_join(parts,fn kind -> "<Relationship Id=\"#{kind}\" Type=\"#{prefix}#{kind}\" Target=\"#{kind}.xml\"/>" end)<>"</Relationships>"}], else: entries
+        entries=if "_rels/.rels" not in names, do: entries++[{"_rels/.rels","<Relationships xmlns=\"#{relationships}\"><Relationship Id=\"main\" Type=\"#{prefix}officeDocument\" Target=\"word/document.xml\"/></Relationships>"}], else: entries
+        kinds=[{"word/document.xml","document.main"}|Enum.map(parts,&{"word/#{&1}.xml",&1})]
+        if "[Content_Types].xml" not in names, do: entries++[{"[Content_Types].xml","<Types xmlns=\"http://schemas.openxmlformats.org/package/2006/content-types\"><Default Extension=\"rels\" ContentType=\"application/vnd.openxmlformats-package.relationships+xml\"/><Default Extension=\"xml\" ContentType=\"application/xml\"/>"<>Enum.map_join(kinds,fn {path,kind} -> "<Override PartName=\"/#{path}\" ContentType=\"application/vnd.openxmlformats-officedocument.wordprocessingml.#{kind}+xml\"/>" end)<>"</Types>"}], else: entries
+      else
+        entries
+      end
+    end
+    zip=fn entries -> raw_zip.(package.(entries)) end
     doc = fn body -> zip.([{"word/document.xml",xml.(body)}]) end
     '''
 
@@ -69,9 +84,12 @@ defmodule Ipse.KnowledgeDocumentsTest do
     # Real OOXML moveFrom paragraphs are siblings, not nested in a paragraph.
     body=String.replace(body,"<w:moveFrom>"<>paragraph.("old")<>"</w:moveFrom>","<w:moveFrom><w:r><w:t>old</w:t></w:r></w:moveFrom>")
     table="<w:tbl><w:tr><w:tc>"<>paragraph.("left")<>"</w:tc><w:tc>"<>paragraph.("right &amp; true")<>"</w:tc></w:tr></w:tbl>"
-    {:ok,result}=D.extract(doc.(body<>table),"development.docx")
+    styles="<w:styles xmlns:w=\"#{word}\"><w:style w:type=\"paragraph\" w:styleId=\"Heading1\"/></w:styles>"
+    {:ok,result}=D.extract(zip.([{"word/document.xml",xml.(body<>table)},{"word/styles.xml",styles}]),"development.docx")
     assert result["status"]=="complete"
-    assert result["revision_policy"]=="final_visible_insertions_included_deletions_excluded"
+    assert result["warnings"]==[]
+    assert result["revision_policy"]=="insertions_included_deletions_excluded"
+    assert result["visibility_policy"]=="bounded_style_and_direct_hidden_excluded"
     [heading,revision,left,right]=result["segments"]
     assert heading["text"]=="Résumé 好" and heading["style"]=="Heading1"
     assert revision["text"]=="before inserted"
@@ -85,7 +103,7 @@ defmodule Ipse.KnowledgeDocumentsTest do
     entries=[{"word/document.xml",xml.(paragraph.("main"))},
       {"word/footnotes.xml","<w:footnotes xmlns:w=\"#{word}\"><w:footnote w:id=\"7\">#{paragraph.("footnote")}</w:footnote></w:footnotes>"},
       {"word/comments.xml","<w:comments xmlns:w=\"#{word}\"><w:comment w:id=\"4\">#{paragraph.("comment")}</w:comment></w:comments>"},
-      {"word/_rels/document.xml.rels","<Relationships><Relationship Target=\"https://invalid.example/private\" TargetMode=\"External\"/></Relationships>"},
+      {"word/_rels/document.xml.rels","<Relationships xmlns=\"http://schemas.openxmlformats.org/package/2006/relationships\"><Relationship Id=\"external\" Type=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/hyperlink\" Target=\"https://invalid.example/private\" TargetMode=\"External\"/><Relationship Id=\"notes\" Type=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/footnotes\" Target=\"footnotes.xml\"/><Relationship Id=\"comments\" Type=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/comments\" Target=\"comments.xml\"/></Relationships>"},
       {"word/header1.xml","omitted header"}]
     {:ok,result}=D.extract(zip.(entries),"a.docx")
     assert result["status"]=="partial"
@@ -104,8 +122,8 @@ defmodule Ipse.KnowledgeDocumentsTest do
     assert {:error,:text_limit}=D.extract(bytes,"a.docx",max_text_bytes: 1000)
     assert {:error,:zip_entry_limit}=D.extract(zip.([{"word/document.xml",xml.(paragraph.("ok"))},{"extra","x"}]),"a.docx",max_entries: 1)
     # Forge both advertised expanded sizes below the actual deflate expansion.
-    [{local,_}]=:binary.matches(bytes,<<80,75,3,4>>)
-    [{central,_}]=:binary.matches(bytes,<<80,75,1,2>>)
+    [{local,_}|_]=:binary.matches(bytes,<<80,75,3,4>>)
+    [{central,_}|_]=:binary.matches(bytes,<<80,75,1,2>>)
     replace=fn b,offset,value -> binary_part(b,0,offset)<>value<>binary_part(b,offset+4,byte_size(b)-offset-4) end
     forged=bytes|>replace.(local+22,<<100::little-32>>)|>replace.(central+24,<<100::little-32>>)
     assert {:error,:expansion_limit}=D.extract(forged,"a.docx",max_expanded_bytes: 1000)
@@ -138,7 +156,7 @@ defmodule Ipse.KnowledgeDocumentsTest do
       assert {:error,:xml_entities_unsupported}=D.extract(zip.([{"word/document.xml",declaration<>xml.(paragraph.("&attack;"))}]),"a.docx")
     end
     assert {:error,:malformed_xml}=D.extract(zip.([{"word/document.xml",xml.("<broken>")}]),"a.docx")
-    assert {:error,:xml_structure_limit}=D.extract(doc.(String.duplicate("<w:r>",70)<>String.duplicate("</w:r>",70)),"a.docx")
+    assert {:error,:xml_structure_limit}=D.extract(doc.(String.duplicate("<w:ins>",70)<>String.duplicate("</w:ins>",70)),"a.docx")
     assert {:error,:segment_limit}=D.extract(doc.(paragraph.("one")<>paragraph.("two")),"a.docx",max_segments: 1)
     assert {:error,:text_limit}=D.extract(doc.(paragraph.("hello")),"a.docx",max_text_bytes: 4)
     assert {:error,:invalid_word_namespace}=D.extract(zip.([{"word/document.xml","<document><p>hello</p></document>"}]),"a.docx")
@@ -148,7 +166,8 @@ defmodule Ipse.KnowledgeDocumentsTest do
   test "stored entries and strict OOXML namespaces extract without a deflate assumption" do
     pure(~S'''
     strict=String.replace(xml.(paragraph.("strict")),word,"http://purl.oclc.org/ooxml/wordprocessingml/main")
-    {:ok,{_,bytes}}=:zip.create(~c"stored.docx",[{~c"word/document.xml",strict}],[:memory,{:uncompress,:all}])
+    entries=package.([{"word/document.xml",strict}])|>Enum.map(fn {name,body}->{String.to_charlist(name),body} end)
+    {:ok,{_,bytes}}=:zip.create(~c"stored.docx",entries,[:memory,{:uncompress,:all}])
     assert {:ok,%{"segments"=>[%{"text"=>"strict"}]}}=D.extract(bytes,"a.docx")
     ''')
   end

@@ -2,7 +2,9 @@ defmodule IpseKnowledge.Documents do
   @moduledoc """
   Bounded extraction of already acquired document bytes. This module never opens
   document paths, follows relationships, runs content, or grants fetch authority.
-  DOCX uses the final visible revision (insertions included, deletions excluded).
+  DOCX includes insertions and excludes deletions and hidden runs using bounded
+  style inheritance and direct properties. Ambiguous visibility is refused;
+  unsupported rendering is marked as partial.
   Locators refer to this extraction version and the original binary hash.
   """
   alias IpseKnowledge.Documents.{Docx, Pdf}
@@ -22,7 +24,7 @@ defmodule IpseKnowledge.Documents do
   ]
 
   def limits, do: @limits
-  def version, do: "ipse-documents-v1"
+  def version, do: "ipse-documents-v2"
 
   @doc """
   Explicit experimental PDF selection. The host must admit the parser's absolute
@@ -76,11 +78,24 @@ defmodule IpseKnowledge.Documents do
 
     result =
       cond do
-        format in @text -> text(bytes, format, limits)
-        format == ".docx" -> Docx.extract(bytes, limits)
-        format == ".pdf" -> {:error, :pdf_experimental_unavailable}
-        format == ".doc" -> {:error, :legacy_word_unsupported}
-        true -> {:error, :unsupported_format}
+        format in @text ->
+          text(bytes, format, limits)
+
+        format == ".docx" and
+            String.starts_with?(bytes, <<0xD0, 0xCF, 0x11, 0xE0, 0xA1, 0xB1, 0x1A, 0xE1>>) ->
+          {:error, :compound_word_container_unsupported}
+
+        format == ".docx" ->
+          Docx.extract(bytes, limits)
+
+        format == ".pdf" ->
+          {:error, :pdf_experimental_unavailable}
+
+        format == ".doc" ->
+          {:error, :legacy_word_unsupported}
+
+        true ->
+          {:error, :unsupported_format}
       end
 
     case result do
