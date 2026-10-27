@@ -37,6 +37,11 @@ fn main() {
     let mut args: Vec<_> = std::env::args_os().skip(1).collect();
     let channel = args.first().is_some_and(|a| a == "--channel");
     if channel { args.remove(0); }
+    let knowledge = args.first().is_some_and(|a| a == "--knowledge" || a == "--knowledge-cancel" || a == "--knowledge-stale" || a == "--knowledge-cas");
+    let cancel_knowledge = args.first().is_some_and(|a| a == "--knowledge-cancel");
+    let stale_knowledge = args.first().is_some_and(|a| a == "--knowledge-stale");
+    let cas_knowledge = args.first().is_some_and(|a| a == "--knowledge-cas");
+    if knowledge { args.remove(0); }
     assert!(!args.is_empty());
     let mut child = Command::new(&args[0]).args(&args[1..])
         .stdin(Stdio::from(slave.try_clone().unwrap()))
@@ -46,6 +51,7 @@ fn main() {
     let deadline = Instant::now() + Duration::from_secs(60);
     let mut output = Vec::new();
     let mut number = 1;
+    let mut answered = Vec::new();
     let status = loop {
         if let Some(status) = child.try_wait().unwrap() {
             loop {
@@ -82,6 +88,37 @@ fn main() {
         } else if String::from_utf8_lossy(&output).contains(&format!("IPSE_FIXTURE_EMPTY_{number}> ")) {
             master.write_all(b"\n").unwrap();
             number += 1;
+        }
+        if knowledge {
+            let text = String::from_utf8_lossy(&output);
+            for (action, prefix) in [
+                ("folder", "Type one exact choice: folder "),
+                ("repository", "Type one exact choice: repository "),
+                ("enable", "Type enable "),
+                ("disable", "Type disable "),
+            ] {
+                for (index, _) in text.match_indices(prefix) {
+                    let tail = &text[index + prefix.len()..];
+                    let Some(code) = tail.get(..16) else { continue; };
+                    if !code.bytes().all(|b| b.is_ascii_hexdigit()) || !tail[16..].contains("> ") {
+                        continue;
+                    }
+                    let reply = format!("{action} {code}");
+                    if !answered.contains(&reply) {
+                        if cas_knowledge && action == "enable" {
+                            let root = std::path::Path::new(&args[args.len() - 2]);
+                            std::fs::write(root.join("native-review-ready"), b"ready").unwrap();
+                            if !root.join("consent-raced").is_file() { continue; }
+                        }
+                        let stale_reply = format!("enable {}", if code == "0000000000000000" { "1111111111111111" } else { "0000000000000000" });
+                        let line = if cancel_knowledge && action == "enable" { "yes" }
+                            else if stale_knowledge && action == "enable" { &stale_reply }
+                            else { &reply };
+                        master.write_all(format!("{line}\n").as_bytes()).unwrap();
+                        answered.push(reply);
+                    }
+                }
+            }
         }
         if channel {
             let root = std::path::Path::new(args.last().unwrap());

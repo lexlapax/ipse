@@ -114,5 +114,7 @@ reader contract; they explain the required ancillary state, refusal and
 cooperative concurrency limit. Root's standalone CLI training/guide remain with
 its separately verified checkpoint. No dependency, native/helper/shared build,
 PTY run, paid/live request, download, qualification corpus, full suite, installed
-release, OTP27 or macOS check belongs to this repair. Independent closure and
-whole-implementation acceptance remain separate.
+release, OTP27 or macOS check belongs to this repair. A later
+[independent closure](activation-writer-audit.md) verifies the exact repaired
+graph and retains both original exploits. Whole-implementation acceptance and
+the standalone CLI audit remain separate.

@@ -148,7 +148,9 @@ ipse run --cwd /path/to/scratch --yes \
   'Create greeting.txt containing hello and a newline, read it back, then use the shell builtin printf to print hello. Report both outputs.'
 ```
 
-Both commands use the saved provider/profile. Headless effects are denied without `--yes`.
+Both commands use the saved provider/profile. Headless ordinary mutations are
+denied without `--yes`. A separately reviewed [knowledge permission](knowledge-permissions.md)
+covers only its declared collection effects and can also apply to `run`.
 `--yes` permits mutations, shell commands, configured MCP calls, and enabled
 local delegation for the session. A required question fails in headless mode,
 including with `--yes`.

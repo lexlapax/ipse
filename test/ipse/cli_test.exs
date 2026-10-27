@@ -1134,7 +1134,10 @@ defmodule Ipse.CLITest do
       Ipse.CLITest.IOFixture.feed(cli.stdio, "A fresh operator task")
       {server, 1, request} = await_request(fixture)
       assert request["model"] == "test"
-      assert List.last(request["messages"])["content"] == "A fresh operator task"
+      assert [prompt, reference] = Enum.take(request["messages"], -2)
+      assert prompt == %{"role" => "user", "content" => "A fresh operator task"}
+      assert reference["role"] == "user"
+      assert String.starts_with?(reference["content"], "Current host reference selection.")
       assert Enum.any?(request["messages"], &(&1["content"] == record["message"]["content"]))
       Ipse.CLITest.HTTPFixture.reply(server, 1, Ipse.CLITest.HTTPFixture.write_call_body())
       await_text(cli.stderr, "Waiting for approval")

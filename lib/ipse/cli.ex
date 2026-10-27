@@ -129,6 +129,9 @@ defmodule Ipse.CLI do
   defp dispatch(["setup"], opts),
     do: Ipse.CLI.Setup.run(opts, home(), opts[:cwd] || default_cwd())
 
+  defp dispatch(["knowledge", command], opts),
+    do: Ipse.CLI.Knowledge.run(command, opts, home(), opts[:cwd] || default_cwd())
+
   defp dispatch(["budget"], opts) do
     if opts[:resume] do
       case Ipse.Usage.Budget.saved(state_dir(opts), opts[:resume]) do

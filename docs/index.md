@@ -22,6 +22,7 @@ quick start. Try the demo before configuring a model account.
 | Choose Grok API billing or prepare registered-client subscription access | [Grok configuration](operator/configuration.md#use-grok-through-xai) |
 | Connect tools from another service | [Configure MCP](operator/mcp.md) |
 | Remember an explicit project note | [Use memory](operator/memory.md) |
+| Enable native knowledge permission and inspect or revoke its next-session selection | [Manage knowledge permission](operator/knowledge-permissions.md) |
 | Retain source text and retrieve exact passages | [Use a corpus](operator/corpus.md) |
 | Record relationships with exact source quotations | [Use Graph](operator/graph.md) |
 | Investigate provided text or selected search/fetch tools | [Use the Research extension](operator/research.md) |

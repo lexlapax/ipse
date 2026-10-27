@@ -75,6 +75,10 @@ defmodule Ipse.CLI.Terminal do
   ipse config [options]            Show effective non-secret configuration
   ipse doctor [options] [--json]    Diagnose setup offline; --probe-provider opts into GET probes
   ipse setup [options]             Preview or confirm private provider/model defaults
+  ipse knowledge enable           Review and save project knowledge permission in a native terminal
+  ipse knowledge status [--json]   Inspect saved project knowledge permission
+  ipse knowledge permissions      Show the complete saved permission
+  ipse knowledge disable          Revoke permission through a fresh native review
   ipse extension import PATH       Copy a local inert extension artifact
   ipse extension inspect DIGEST    Verify an installed artifact without executing it
   ipse extension list              List inert built-in extension descriptors

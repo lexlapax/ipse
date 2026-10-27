@@ -10,9 +10,11 @@ application and an embeddable Session API. Start with the scripted demo, then
 choose a provider explicitly when you are ready to use a model.
 
 Optional Corpus, Graph and Research extensions retain cited sources and
-attributed relationships through separately configured packages. Current memory
-uses explicit note tools; guided enablement and automatic knowledge capture/recall
-are planned in [P31](docs/plan.md#p31-usable-knowledge-and-prompt-assistance).
+attributed relationships through separately configured packages. Memory provides
+explicit note tools. [Native knowledge permission](docs/operator/knowledge-permissions.md)
+selects the bundled literal-capture tool for the next new session; automatic
+capture, current recall and lifecycle management remain in
+[P31](docs/plan.md#p31-usable-knowledge-and-prompt-assistance).
 Explicit provider routes include ChatGPT subscription,
 OpenAI API, Ollama, Anthropic, Gemini, pinned OpenRouter, Grok and loopback
 compatible servers. Grok API inference remains unverified after HTTP 403;
@@ -71,7 +73,8 @@ Interactive approvals require the fresh `allow CODE` printed with that proposal;
 `n` denies it. For repeated work, [session permissions](docs/operator/usage.md#approve-a-small-task)
 offer native workspace edits and exact shell-call reuse. Inspect or revoke them
 with `/permissions` and `/permissions clear`. A question answer grants no action permission. Headless `run`
-denies mutations without `--yes`.
+denies ordinary mutations without `--yes`. Separately reviewed knowledge permission
+covers only its declared collection effects.
 
 Use the [user manual](docs/operator/index.md) for API or local providers, model
 profiles, commands and complete configuration examples. Selecting an API provider
@@ -87,6 +90,7 @@ providers or billing modes.
 | Connect external tools | [MCP](docs/operator/mcp.md) |
 | Select reviewed extensions | [Extensions](docs/operator/extensions.md) |
 | Store explicit notes with retention and suppression | [Memory](docs/operator/memory.md) |
+| Review native knowledge permission, inspect readiness and revoke it | [Knowledge permissions](docs/operator/knowledge-permissions.md) |
 | Retain sources and retrieve cited passages | [Corpus](docs/operator/corpus.md) |
 | Record attributed facts and traverse relationships | [Graph](docs/operator/graph.md) |
 | Investigate a question and inspect its evidence | [Research](docs/operator/research.md) |

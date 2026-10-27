@@ -258,12 +258,44 @@ mix test test/ipse/extension/consent_existing_test.exs test/ipse/extension/conse
 mix test test/ipse/config/activation_session_test.exs
 ```
 
-The second command creates a private packaged catalog and independently compiled
+The final command creates a private packaged catalog and independently compiled
 SDK worker in a child VM. It checks real fresh/resumed Session selection, exact
 route registration, revocation, child policy and reciprocal worktree admission.
 Its local provider is configured for route validation only; it makes no model
 request. Do not replace the private application directory with the checkout's
 `priv` path when extending this fixture.
+
+## Trace standalone native knowledge review
+
+The [operator permission procedure](../operator/knowledge-permissions.md) selects
+the shipped native bundle without changing provider/configuration bytes or
+creating a conversation. `CLI.Knowledge.prepare/4` builds review data from the
+actual installed `operator.json` through `Artifact.read_declared/4`. It checks
+the declared schemas/recipes, drafts the activation, prepares the actual Registry
+identity, derives actual Main routes with `SemanticRoutes.review/2`, then builds
+the exact settings-v2 policy with `SemanticConsent.prepare/3`. No worker/model is
+used to interpret the sidecar or choose authority.
+
+The terminal displays the complete escaped review plus a fresh challenge. The
+native v2 operator observation must bind both the exact displayed-byte SHA256 and
+original returned-text SHA256 before the exact `enable CODE` or `disable CODE`
+is accepted. Piped input, copied old codes, `--yes` and generic project trust
+cannot replace that observation. Project admission and artifact import can have
+already happened when a later review is cancelled; cancellation saves no grant.
+
+After confirmation, the host revalidates the exact ProjectIdentity, repeats
+preparation byte-for-byte and applies Consent CAS against the reviewed epoch.
+A concurrent policy change refuses instead of being overwritten. Successful
+selection affects the next new Session; saved Sessions keep their original
+activation and later effects still check current permission. Status uses
+`readiness/2`; permissions uses `current/2` so a changed route can refuse readiness
+while the original saved policy remains inspectable. Neither read joins or repairs.
+
+Run `mix test test/ipse/cli/knowledge_test.exs` in the coordinated serial native
+terminal test window. Follow its real native save/revoke, stale challenge,
+cancel/pipe, concurrent epoch and read-preservation controls. Keep these synthetic
+PTY checks separate from human terminal attestation, live model behavior and
+automatic capture/current-note recall acceptance.
 
 ## Separate authority from precedence
 

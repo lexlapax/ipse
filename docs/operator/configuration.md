@@ -616,8 +616,9 @@ provider routes. A narrower reviewed Main timeout may apply; an activation canno
 widen your configured timeout or define a new endpoint/profile. Fresh
 `--no-extensions` opts out. A new reciprocal Git worktree may share an active
 repository-wide selection after its registration and backlink are verified; a
-clone or folder cannot inherit it. This host boundary does not itself provide a
-setup command or establish that stored knowledge is current for model context.
+clone or folder cannot inherit it. Use [knowledge permission](knowledge-permissions.md)
+for standalone review and revocation of the bundled native notes selection.
+Selecting code alone does not establish that stored knowledge is current for model context.
 Activation status/readiness inspection preserves pending control and identity
 files, including when inspection refuses malformed state. A ready result is a
 current advisory check; later admission/effects recheck the protected grant.

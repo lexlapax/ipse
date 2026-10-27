@@ -197,6 +197,8 @@ or interrupted publication needs inspection before an explicit retry; known
 conflicts can consume conservative operation/byte allowances. The
 [developer contract](../developer/collection-sdk.md) describes the generic SDK;
 use a feature's documented operator setup before expecting this path to activate.
+The bundled native notes tool has a [standalone permission review](knowledge-permissions.md)
+that imports its actual artifact and selects it for the next new session.
 Raw collection reads and historical validity receipts prove no current note
 eligibility; every-dispatch revalidation and withdrawal remain separate work.
 
@@ -431,8 +433,10 @@ an existing pinned set. Committed results/context restore without callbacks;
 pending questions wait. Other interrupted work remains idle and unknown.
 
 Keep import/session lock files in place. Wait for active owners and remove only
-confirmed abandoned staging directories. There is no automatic repair or garbage
-collection. Workers inherit no provider credential environment, but trusted code
+confirmed abandoned artifact staging directories. Do not edit protected collection
+or consent JSON to clear a refusal. Internal transactions can reclaim validated
+staging; this never authorizes replay of an unknown effect. Knowledge status and
+permission inspection preserve staged files. Workers inherit no provider credential environment, but trusted code
 still has your filesystem/OS permissions. Independent VMs and SDK bounds are not
 an OS sandbox. Use the [developer manual](../developer/extensions.md) to author
 or investigate a contract.

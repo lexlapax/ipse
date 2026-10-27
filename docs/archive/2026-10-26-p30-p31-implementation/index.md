@@ -73,8 +73,12 @@ resource/offline qualification. No daemon configuration or existing model was ch
 - [Registered inference admission and completion](inference-dispatch-component.md), with its [independent adversarial audit](inference-dispatch-audit.md).
 - [Explicit managed SDK publication, reserved metadata and replay boundary](managed-sdk-component.md).
 - [Protected fresh/resumed activation, exact route overlays and reciprocal worktree admission](activation-overlay-component.md).
+- [Independent activation overlay audit and original pending-reclamation finding](activation-overlay-audit.md).
 - [Accepted inspection-reclamation finding, existing-only reader repair and frozen replay evidence](activation-readonly-repair.md).
+- [Independent reader repair audit and additional ancillary writer finding](activation-readonly-audit.md).
 - [Ancillary writer-lock noncreation repair and unchanged independent probe](activation-writer-repair.md).
+- [Independent writer repair closure, preserved exploits and fresh controls](activation-writer-audit.md).
+- [Standalone native knowledge review, actual PTY/headless controls and frozen CLI graph](native-knowledge-cli-component.md).
 - [Native read ownership and staging-frame ordering](native-read-component.md).
 - [Versioned optional native reads and exact missing-file refusal boundaries](native-optional-read-component.md).
 - [Buffered-frame transaction repair, original adversarial failures and source-bound closure checks](native-framing-repair.md).
