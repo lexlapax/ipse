@@ -49,6 +49,8 @@ resource/offline qualification. No daemon configuration or existing model was ch
 - [Independent frozen qualification inputs and private-answer provenance](independent-data.md).
 - [Incremental adversarial foundation audit and repairs](foundation-audit.md).
 - [Internal protected control ledger audit and repairs](control-audit.md).
+- [Control compaction, maintenance headroom and boundary repair](control-compaction.md).
+- [Actual-owner transactions and protected project identity](transaction-identity-component.md).
 - [Native operator-channel incremental audit and fixture repairs](operator-channel-audit.md).
 - [Session input witness audit and source-boundary repairs](session-input-audit.md).
 - [Versioned reference projection audit and replay repairs](reference-audit.md).

@@ -4,6 +4,9 @@ use std::os::unix::fs::{MetadataExt, OpenOptionsExt};
 use std::path::Path;
 use std::io::{Read, Write};
 use std::os::unix::io::AsRawFd;
+#[path = "ipse-storage-profile.rs"]
+mod allocation_profile;
+pub(crate) use allocation_profile::TransactionAllowanceError;
 
 extern "C" { fn geteuid() -> u32; fn flock(fd: i32, operation: i32) -> i32; }
 
@@ -11,7 +14,7 @@ const MAX_ENTRIES: u64 = 40_000;
 const MAX_DEPTH: usize = 4;
 
 #[derive(Default, Debug)]
-struct Usage { logical: u64, allocated: u64, entries: u64 }
+struct Usage { logical: u64, allocated: u64, entries: u64, directory_allocated: u64 }
 
 #[cfg(target_os = "linux")]
 fn flags(directory: bool) -> i32 { 0x20000 | 0x800 | if directory { 0x10000 } else { 0 } }
@@ -48,6 +51,7 @@ fn visit(path: &Path, uid: u32, depth: usize, usage: &mut Usage) -> Result<(), S
     let blocks = metadata.blocks().checked_mul(512).ok_or("storage allocation overflow")?;
     usage.allocated = usage.allocated.checked_add(blocks).ok_or("storage allocation overflow")?;
     if metadata.is_dir() {
+        usage.directory_allocated = usage.directory_allocated.checked_add(blocks).ok_or("storage allocation overflow")?;
         for entry in fs::read_dir(path).map_err(|_| "cannot enumerate storage allocation")? {
             let entry = entry.map_err(|_| "cannot enumerate storage allocation")?;
             visit(&entry.path(), uid, depth + 1, usage)?;
@@ -78,9 +82,33 @@ fn inspect(path: &Path) -> Result<Usage, String> {
 
 pub fn run(args: &[String]) -> Result<(), String> {
     if args.len() != 3 { return Err("storage allocation requires one directory".into()); }
-    let usage = inspect(Path::new(&args[2]))?;
-    println!("{} {} {}", usage.logical, usage.allocated, usage.entries);
+    let (logical, allocated, entries) = transaction_usage(Path::new(&args[2]))?;
+    println!("{logical} {allocated} {entries}");
     Ok(())
+}
+
+// The transaction owner retains the logical lock, directory identity and all
+// writer leases while using this shared bounded inventory implementation.
+pub(crate) fn transaction_usage(path: &Path) -> Result<(u64, u64, u64), String> {
+    let usage = inspect(path)?;
+    Ok((usage.logical, usage.allocated, usage.entries))
+}
+
+pub(crate) fn transaction_preflight(path: &Path, sizes: &[u64], ceiling: u64) -> Result<(), TransactionAllowanceError> {
+    if !(1..=64 * 1024 * 1024).contains(&ceiling) { return Err(TransactionAllowanceError::Unsafe); }
+    let uid = unsafe { geteuid() };
+    let (directory, before) = open(path, uid).map_err(|_| TransactionAllowanceError::Unsafe)?;
+    if !before.is_dir() { return Err(TransactionAllowanceError::Unsafe); }
+    let reserve = allocation_profile::reserve(&directory, sizes)?;
+    let usage = inspect(path).map_err(|_| TransactionAllowanceError::Unsafe)?;
+    // These finite profiles have no per-directory st_blocks allocation. A kernel
+    // or mount whose observations differ is quarantined, never approximated.
+    if usage.directory_allocated != 0 { return Err(TransactionAllowanceError::Unsupported); }
+    let after = fs::symlink_metadata(path).map_err(|_| TransactionAllowanceError::Unsafe)?;
+    if !same(&before, &after) { return Err(TransactionAllowanceError::Unsafe); }
+    if usage.allocated.checked_add(reserve).ok_or(TransactionAllowanceError::Unsafe)? > ceiling {
+        Err(TransactionAllowanceError::Capacity)
+    } else { Ok(()) }
 }
 
 fn write_path<R: Read>(path: &Path, expected: u64, input: &mut R) -> Result<File, String> {
@@ -320,6 +348,22 @@ mod tests {
         let next = writer_lease(&path).unwrap();
         assert_eq!(next.metadata().unwrap().ino(), inode);
         drop(next);
+        fs::remove_dir_all(path).unwrap();
+    }
+    #[test]
+    fn supported_preflight_reserves_before_creating_any_staging_file() {
+        let path = directory();
+        let before = inspect(&path).unwrap().allocated;
+        match transaction_preflight(&path, &[6144], before + 1) {
+            Err(TransactionAllowanceError::Unsupported) => (),
+            result => {
+                assert_eq!(result, Err(TransactionAllowanceError::Capacity));
+                assert!(transaction_preflight(&path, &[6144], before + 131_072).is_ok());
+                assert!(transaction_preflight(&path, &[], before.max(1)).is_ok());
+                assert_eq!(fs::read_dir(&path).unwrap().count(), 0);
+                assert_eq!(inspect(&path).unwrap().allocated, before);
+            }
+        }
         fs::remove_dir_all(path).unwrap();
     }
 }

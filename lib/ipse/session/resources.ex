@@ -303,6 +303,10 @@ defmodule Ipse.Session.Resources do
   end
 
   @effect_key {__MODULE__, :active}
+  @effect_owner_key {__MODULE__, :effect_owner}
+
+  @doc false
+  def file_effect_owner, do: Process.get(@effect_owner_key, self())
 
   def file_effect(fun, guard \\ Ipse.Session.Lock.current()) when is_function(fun, 0) do
     if Process.get(@effect_key) do
@@ -314,10 +318,11 @@ defmodule Ipse.Session.Resources do
 
   defp perform_file_effect(fun, guard) do
     owner = self()
-    {pid, ref} = spawn_monitor(fn -> execute_file_effect(owner, fun) end)
+    scope = current()
+    {pid, ref} = spawn_monitor(fn -> execute_file_effect(owner, scope, fun) end)
 
     try do
-      case current() do
+      case scope do
         nil -> :ok = Ipse.Session.Lock.track_in(guard, pid, :peer)
         scope -> :ok = GenServer.call(scope, {:track_effect, pid})
       end
@@ -344,12 +349,14 @@ defmodule Ipse.Session.Resources do
     end
   end
 
-  defp execute_file_effect(owner, fun) do
+  defp execute_file_effect(owner, scope, fun) do
     ref = Process.monitor(owner)
 
     receive do
       {:begin_file_effect, ^owner} ->
+        bind(scope)
         Process.put(@effect_key, true)
+        Process.put(@effect_owner_key, owner)
 
         result =
           try do

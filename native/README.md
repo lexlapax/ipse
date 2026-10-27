@@ -1,9 +1,15 @@
-# Shell supervisor
+# Native OS helper
 
 Build with `dev/build-native.sh` (Rust standard library only; Linux/macOS). Runner
 can also build it on demand for trusted execution in a source checkout when
 `rustc` is available; native mode requires a prebuilt helper outside the workspace. Package
-`priv/ipse-runner` with releases/escripts, or set `IPSE_RUNNER_PATH`.
+`priv/ipse-runner` with releases/escripts. `IPSE_RUNNER_PATH` selects a helper for
+ordinary trusted shell/stdio clients. Terminal observations require the bundled
+helper matching the host's compiled digest. Protected ledger transactions require
+that same identity for both child and stdio supervisor. The override selects
+neither protected path. Build
+native code before compiling the host. A changed helper refuses these protected
+operations until a matching host build is installed.
 
 Arguments are `CWD TIMEOUT_MS COMMAND`. Stdout is a binary frame stream: one type
 byte, a four-byte unsigned big-endian payload length, then that many payload
@@ -388,10 +394,11 @@ gate. `Ipse.Runner.sync_directory/1` enforces a two-second response deadline and
 resource cleanup. A failed or lost acknowledgment cannot establish whether an
 earlier caller-owned rename became durable.
 
-The protected consent ledger syncs a staged file, renames it under its retained
-control lock, then uses this operation before acknowledging policy or reservation
-publication. The host separately validates canonical ancestors and exact policy;
-this primitive grants no filesystem, extension or knowledge permission.
+This operation cannot fence an earlier caller-owned rename against the death of
+a separate lock helper. Protected ledgers use the transaction owner below for
+their final switch. `protected_sync_directory/1` uses the compile-bound bundled
+helper for initial directory creation; the generic selector remains available
+to other clients. Neither operation grants filesystem or knowledge permission.
 
 ## Inspect protected storage allocation
 
@@ -413,10 +420,11 @@ snapshot against other same-user programs deliberately changing the tree.
 `Ipse.Runner.storage_allocation/1` validates the bounded response under a
 five-second deadline. An unsupported platform, unsafe entry, changed identity,
 overflow, lost helper or invalid response returns unavailable; there is no
-estimated-allocation fallback. Collection publication writes and syncs its
-complete staged root pointer before inspection, then checks the 64-MiB envelope
-including an 18-MiB protected-control allowance before renaming that pointer.
-Admission, consent, project identity and domain retention remain Elixir policy.
+estimated-allocation fallback. This standalone inspection is an observation,
+not a reservation or a fence for a separate writer. Protected collections use
+`Transaction.allocation/2` and native preflight while the same native process
+holds all logical and writer leases. Admission, consent, divided storage budgets,
+project identity and domain retention remain Elixir policy.
 
 Run the dependency-free native controls with:
 
@@ -463,9 +471,162 @@ payload keeps the kernel lease until it exits; a writer becoming ready after
 owner death receives no payload and creates no pending file. Never unlink an
 unknown writer's file merely because its owner's logical lock was released.
 
-The focused Runner controls exercise maximum input against a stopped reader,
-resource cancellation, and owner death while stopped. They verify finite return,
-owned-process cleanup and reacquisition of the same retained kernel-lock inode.
+These independent writers cannot fence file allocation or publication against
+death of a different logical-lock helper. Knowledge ledgers therefore use the
+same-owner transaction interface below. The focused standalone Runner controls
+exercise maximum input against a stopped reader, resource cancellation and owner
+death while stopped; they verify finite return, owned-process cleanup and
+reacquisition of the retained kernel-lock inode.
+
+## Publish protected state through its lock owner
+
+`Ipse.Runner.Transaction` owns protected ledger IO. One native process retains
+up to three logical `.lock` descriptors and performs each file effect itself.
+If that process dies, it cannot later rename or write after releasing its locks.
+Keep the host lock order **ProjectIdentity → Consent → Collection**. The domain
+owners reject same-process reverse acquisition before starting a resource effect;
+the generic native protocol supplies no project, consent or retention policy.
+
+Call the interface inside `Session.Resources.file_effect/1`. Nested effects run
+inline, preserving the caller's capability stack. `acquire(path, cwd: workspace)`
+returns an opaque capability bound to the actual caller, controller, Port, depth
+and fresh generation. API calls from another worker, a changed generation, a stale
+capability or an operation on a parent while a child is held refuse. Releasing
+the child makes the retained parent usable again. JSON cannot supply a capability;
+a same-owner BEAM reference alias is still the same capability. This is a trusted
+core-BEAM API boundary: raw BEAM messages do not authenticate their sender, and
+capability/Port terms must never be passed to untrusted code in the same VM.
+
+The file-effect worker inherits its caller's cleanup scope and retains the
+original caller identity through inline nested effects. The IO controller
+registers a `:lock` resource, monitors both its immediate capability owner and
+that original caller, and handles scope cancellation. Keeping a completion worker
+alive for ordinary IO does not preserve protected publication after owner loss.
+It uses `Runner.open_protected_stdio/6`, whose
+supervisor and transaction child both use the compile-bound bundled helper.
+The existing anchored process-group protocol supplies cancellation and actual
+cleanup evidence. A root release requires its native acknowledgement, child
+`X` with exit zero and confirmed supervisor exit. Process death or `Port.info/1`
+alone is never a successful cleanup receipt.
+
+Use these operations while the exact top capability is held:
+
+| Host operation | Contract |
+| --- | --- |
+| `check(cap)` | Observe every retained logical parent/lock identity; discard read results after loss. It does not fence arbitrary Elixir callback IO. |
+| `quota(cap, mode, ceiling)` | Configure or narrow a per-lock staging ceiling, 1..64 MiB; mode is `:flat` or `:collection`. Mode changes and widening refuse. |
+| `preflight(cap, sizes)` | Check a full plan of at most 256 positive file sizes, each at most 8 MiB and at most 64 MiB total, before sending payload. |
+| `stage(cap, directory, entries)` | Exclusively create and sync 1..128 distinct pending files, at most 8 MiB total. The native process checks its configured quota before readiness, then retains all scope writer leases through final sync. |
+| `install(cap, directory, pending, immutable)` | Rename a pending file to a 64-lowercase-hex `.json` name without replacement; an existing target is a known refusal. Elixir verifies existing content/hash when needed. |
+| `switch(cap, pending, target)` | Sync and rename within the retained top lock parent, then sync that directory; target is exactly `index.json`, `control.json` or `root.json`. |
+| `reclaim(cap, directory, names)` | Reclaim at most 64 explicitly selected orphan names. Sync every retained orphan before unlink, sync the directory, and close all orphan FDs before acknowledging. |
+| `allocation(cap, mode)` | Return exact managed logical/allocated bytes and entry count under writer leases; mode defaults to `:collection`. |
+| `release(cap)` | Pop one lock in reverse order; a root release closes the transaction and proves native cleanup. |
+
+Directory selectors are exactly `"."`, `"objects"` and `"manifests"`; only the last
+two direct children are admitted. A flat budget refuses child namespaces.
+Every parent is opened component by component with no-follow directory flags,
+retained and revalidated. The final directory is owner-only `0700`. Lock and
+data files are effective-user-owned regular single-link files with exact `0600`
+permissions. Lock files are empty and never unlinked. Pending names are exactly
+`.pending-` plus 32 lowercase hexadecimal digits. No operation interprets JSON,
+computes content hashes or decides which records are eligible for deletion.
+
+Reclamation additionally acquires the selected retained `.writer.lock` in this
+same native process. Quota-protected collection staging retains writer leases
+for the root and both child directories through measurement, payload and sync;
+flat staging retains the root writer lease. Busy writers refuse before payload
+or deletion. Immutable installation uses Linux `renameat2(RENAME_NOREPLACE)` or
+macOS [`renameatx_np(RENAME_EXCL)`](https://raw.githubusercontent.com/apple-oss-distributions/xnu/main/bsd/sys/stdio.h).
+All logical parents are revalidated before commands and before success/refusal
+acknowledgements. This assumes protected host state and a trusted same-user
+installation; it is not containment of arbitrary code able to replace that state.
+
+### Read the closed transaction protocol
+
+The child entry is `--transaction-lock TIMEOUT_MS`, with an absolute lifetime of
+1..120,000 ms that never renews per command. Each command/response uses the usual
+one-byte tag and unsigned big-endian u32 payload length. The host sends at most
+one command at a time, without suspending a busy Port. Ordinary command payloads
+are at most 8,192 bytes. A staged data payload is at most 16,393 bytes: its nine
+control bytes plus 16 KiB of file data. Partial frames and responses have a
+five-second bound within the original lifetime. Pipes are nonblocking; input
+EOF/error takes precedence over queued requests. Filesystem syscalls still depend
+on the host kernel; unconfirmed process cleanup remains unknown.
+
+Every command starts with a monotonically increasing u64 sequence beginning at
+one and a u8 expected current depth. No sequence can be reused. Remaining fields
+are exact, with no optional trailing bytes:
+
+| Tag | Remaining command payload |
+| --- | --- |
+| `A` | Absolute UTF-8 `.lock` path, at most 4,096 bytes. |
+| `P`, `R` | Empty: check or release. |
+| `B` | u8 mode (`0` flat, `1` collection), u64 ceiling bytes. |
+| `F` | u16 count, then that many u32 file sizes. |
+| `M` | u8 allocation mode (`0` flat, `1` collection). |
+| `W` | u8 directory selector (`0` root, `1` objects, `2` manifests), u8 count, then 41-byte pending basename and u32 size per entry. |
+| `D` | Positive staged bytes, at most 16 KiB. Only data commands are allowed until the admitted batch is complete. |
+| `N` | u8 directory selector, 41-byte pending basename, 69-byte immutable basename. |
+| `S` | 41-byte pending basename followed by the allowlisted target. |
+| `Q` | u8 directory selector, u8 count, then u8 basename length and basename per orphan. |
+
+A typed success repeats the command tag, sequence and resulting depth. `M` adds
+three u64 values: logical bytes, allocated bytes, entry count. `W` acknowledges
+readiness before payload; each `D` acknowledges consumed bytes, with final file
+and directory sync complete before the last acknowledgement. The root `R`
+acknowledgement has depth zero. These inner frames are stdout bytes inside the
+outer stdio supervisor's `O` stream; outer `S`, `X` and cleanup are separate.
+
+A typed `E` adds one fixed numeric reason to sequence/current depth: busy, unsafe,
+invalid request, IO refusal, existing immutable target, capacity or unsupported
+filesystem (`1` through `7`). It establishes an unchanged logical stack and no
+publication, deletion or payload effect for that refused operation. A `U`
+frame is terminal uncertainty; all capabilities become unusable. Malformed raw
+framing/sequence can instead terminate with the ordinary bounded `E` diagnostic
+and nonzero child exit; the typed host treats that as unknown. Any possibly
+attempted rename/deletion, partial staged write, missing acknowledgement,
+backpressure or transport loss is unknown. The caller must inspect fresh durable
+state before an explicitly initiated later operation; no effect is replayed.
+
+### Admit allocated bytes before writing
+
+Native quota admission counts managed allocated-file bytes: checked
+`MetadataExt.blocks() * 512` for all live, pending and control files and directories.
+It does not claim to count unrelated volume journals or deferred allocator space.
+Inventory remains bounded to four levels and 40,000 entries. A configured stage
+requires its current observed allocation plus twice each planned file's length
+rounded up to the supported runtime allocation unit to fit before any payload.
+Elixir still supplies project ceilings, full plans and reserved control shares.
+
+`ipse-storage-profile.rs` currently admits only trusted upstream-compatible Linux
+64-bit kernel `7.2.10`/`7.2.10-*` with Btrfs sector units, or tmpfs page units with
+the retained FD's exact mount ID, an explicit `huge=never`/`huge=advise` mount
+policy and no forced global huge-page policy. Units must be powers of two from
+4,096 through 65,536 bytes; observed nonzero directory blocks refuse this finite
+profile. Unknown kernels, filesystems, mount metadata and quota backends refuse
+without estimating or falling back. macOS has no admitted quota profile yet.
+Kernel writeback for already admitted partial files must remain represented by
+the profile's allocated-file accounting after native-owner death. Qualification
+must identify the actual kernel, mount and first-failure evidence; these rules
+are not proof of every platform or of the complete annual workload.
+
+Build and run the focused no-model component checks:
+
+```sh
+./dev/build-native.sh
+mix compile --warnings-as-errors
+mix test test/ipse/runner/transaction_test.exs test/ipse/extension/project_identity_test.exs
+```
+
+The transaction fixtures compile an exact source-derived implementation under
+a private test module name, changing only child-helper selection; the supervisor
+stays protected. They exercise malformed frames, bounds, two-VM locking, resource
+loss, actual helper kills before/after publication and quota refusal before
+payload. Separate production poison controls verify the override cannot select
+the UID, directory-sync, transaction child or supervisor path. Admission journeys
+requiring a real allocation profile are distinct from a successful fail-closed
+refusal on an unqualified host.
 
 ## Observe one actual terminal display and input
 

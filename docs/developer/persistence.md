@@ -93,6 +93,14 @@ The lock guardian waits for writer, root/nested workers, scopes, registered
 resources, child guards, and filesystem completion owners before unlocking,
 including after an untrappable Session death.
 
+A file-effect worker inherits its caller's cleanup scope and remembers the
+original caller. Protected transactions monitor both that caller and their
+immediate capability owner. Losing either closes the actual native writer;
+cancelling the scope reaches that same controller. Keeping a completion worker
+alive to finish ordinary file IO must not keep its protected publication authority
+alive. These are separate obligations: ordinary file-server IO needs completion
+waiting, while protected publication uses the native transaction described below.
+
 Read the blocked-write fixture in `test/ipse/journal/writer_test.exs`. Its FIFO delays
 real IO while Session dies. A replacement session must remain locked until the
 reader drains and completion returns. A monitor `DOWN` for the original caller
@@ -159,8 +167,35 @@ escaping stays in the host. [Native protocol and PTY controls](../../native/READ
 explain the descriptor boundary. PTY fixtures are automated observations, not
 independent human evidence. Clients must own terminal reading and quiesce their
 other readers before calling it. The single-prompt helper intentionally discards
-queued future lines. The ordinary CLI and native-question answers have not adopted
-this channel yet; saved knowledge consent and card acceptance remain separate work.
+queued future lines.
+
+The interactive CLI uses the version-2 native channel. Its non-reading preflight
+selects it only for matching terminal input/output; explicitly nonterminal input
+uses the visibly unattended pipe reader. Other setup failures refuse. The native
+reader preserves bounded queued input, while each approval and question render
+requires its fresh displayed code. It retains a restoration guardian and worker
+through terminal cleanup. Closing either BEAM consumer or the whole VM exercises
+actual OS cleanup, not just task supervision. See the [operator procedure](../operator/usage.md#approve-a-small-task)
+and [native protocol](../../native/README.md#observe-one-actual-terminal-display-and-input).
+
+Session binds each channel to its subscribed client and a volatile generation.
+`stage_input/4` changes an observed prompt into a one-use host ticket before the
+client queues it. The queue permits 16 prompts and 1 MiB combined UTF-8 bytes;
+the ordinary observation still expires after five minutes. Submitting an accepted
+queued ticket must match its exact original bytes and channel binding. Explicit
+cancel, client death, channel replacement and close invalidate tickets. EOF while
+answering a question cancels that read and question, preserving only already
+accepted queued prompts; it cannot preserve an unfinished answer or grant approval.
+
+Question answers use an atomic version-2 `operator_answer` record containing the
+effective user message and its complete original-input receipt. Session validates
+the whole `answer CODE VALUE` line against the current question/render, preserves
+each original answer payload separately from choice normalization, and commits
+the complete bundle before continuation. Saved reconstruction checks ordered
+question bindings and observation uniqueness before exposing the ordinary message.
+Version-1 answers and ordinary user-role text retain unverified origin. An answer
+does not accept a knowledge proposal or grant action permission; those consumers
+still require their own semantic admission.
 
 ## Serialize protected consent before publication
 
@@ -175,10 +210,27 @@ an existing owner-only operator directory. The ledger checks canonical directory
 paths, ownership, regular single-link files and protection before taking the
 retained native lock. Policies bind exact artifact/source hashes, operation names,
 settings, expiry, headless selection and finite period limits. Policy replacement
-and revocation use an epoch CAS; neither discards earlier liabilities. A successful
-acknowledgment follows file sync, same-directory rename and parent-directory sync
-through `Runner.sync_directory/1`. It promises persistence under the filesystem's
-sync contract, not remote cancellation or physical-media failure immunity.
+and revocation use an epoch CAS; neither discards earlier liabilities.
+
+`Ipse.Runner.Transaction` makes one native process own both the retained locks and
+the actual protected writes. It stages bytes, syncs files, selects the new root
+with a same-directory rename, then syncs the directory before acknowledging.
+`IPSE_RUNNER_PATH` cannot replace its child or stdio supervisor: both use the
+bundled helper bound to the build digest. The host rechecks and releases before
+returning read data. A lost helper, upstream caller or scope invalidates further
+publication and leaves any interrupted effect unknown. No automatic retry can
+infer whether a root switch reached disk.
+
+Acquire locks in the order ProjectIdentity → Consent → Collection; a nested
+acquire shares the same native process. Domain entry guards reject reverse order
+before spawning a file-effect worker. Capabilities belong to their supported host
+API caller and lock-stack position. They are trusted-core BEAM terms: never pass
+their references or Port to untrusted same-VM code. They do not authenticate an
+adversarial raw BEAM message sender or fence arbitrary Elixir file IO. Follow the
+[native contract](../../native/README.md#publish-protected-state-through-its-lock-owner)
+and [transaction tests](../../test/ipse/runner/transaction_test.exs) before adding
+a protected writer. Sync promises follow the selected filesystem's contract;
+they do not establish remote cancellation or physical-media failure immunity.
 
 Trace `reserve` → `admit` → `settle` in the
 [consent tests](../../test/ipse/extension/consent_test.exs). Each reservation binds
@@ -203,16 +255,39 @@ revocation and unrelated known-unstarted cancellation remain usable. Explicit
 reconciliation cannot reduce observed amounts; its terminal record retains actual
 period charges. Malformed measurements never become a settled success.
 
-The internal format allows 128 outstanding operations, 16,384 retained operation
-IDs and an 8-MiB complete ledger. Exhaustion refuses rather than reclaiming unknown
-work or replay protection. This is a bounded control substrate, not sustainable
-notes storage, Git sharing or a finished saved-consent workflow. The
+The version-2 ledger keeps the 64 most recent terminal receipts in full. Older
+terminal rows retain their operation ID, sequence, epoch, request digest, original
+accounting timestamp, actual resource vector, terminal status and receipt digest.
+Duplicate inspection marks `receipt_compacted: true`; it cannot reconstruct the
+old receipt body or authorize another admission. Unknown work and unreconciled
+overruns always retain their complete rows. Period accounting includes compact
+rows using their original timestamps even after policy changes.
+
+The format allows 128 unresolved operations and 32,768 lifetime IDs. The reader
+accepts at most 8 MiB; new writes have a smaller byte ceiling with reserved space
+for recent receipts, pending settlement and policy maintenance. The ID ceiling
+can therefore be reached later than the byte ceiling. No ID is silently evicted
+or reset. Closed version-1 ledgers remain readable and upgrade only on a successful
+mutation. Inspection does not rewrite a file.
+
+Native staging reserves an 18-MiB allocated-file envelope for control state,
+including old and pending roots, before accepting payload bytes. Write admission
+requires a supported native filesystem profile; an unsupported profile refuses
+explicitly. Read-only inspection remains possible. This is managed allocated-file
+accounting, not a bound on volume-wide filesystem journal or allocator overhead.
+See [the selected profile](../../native/README.md#publish-protected-state-through-its-lock-owner)
+for its platform and kernel limits. The [compaction tests](../../test/ipse/extension/consent_compaction_test.exs)
+separate seeded large-format fixtures from actual repeated writes.
+
+Exhaustion refuses before dispatch rather than reclaiming liabilities or replay
+protection. This internal substrate is separate from sustainable notes storage,
+Git sharing and the saved-consent user workflow. The
 [plan](../plan.md#p31-usable-knowledge-and-prompt-assistance) owns those delivery
 gates. Exercise separate-VM contention, revocation and VM loss before integrating
 a consumer:
 
 ```sh
-mix test test/ipse/extension/consent_test.exs test/ipse/runner_test.exs
+mix test test/ipse/extension/consent_test.exs test/ipse/extension/consent_compaction_test.exs test/ipse/runner/transaction_test.exs
 ```
 
 ## Understand sealing and recovery bounds

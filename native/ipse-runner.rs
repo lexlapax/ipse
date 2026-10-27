@@ -37,6 +37,8 @@ mod ipse_file_copy;
 mod ipse_operator;
 #[path = "ipse-storage.rs"]
 mod ipse_storage;
+#[path = "ipse-transaction.rs"]
+mod ipse_transaction;
 use process_group::{signal_group, GroupGuard};
 
 extern "C" {
@@ -101,6 +103,7 @@ fn run() -> Result<(), String> {
         ipse_bound::scrub_ordinary();
     }
     if args.get(1).is_some_and(|arg| arg == "--copy-regular") { return ipse_file_copy::run(&args); }
+    if args.get(1).is_some_and(|arg| arg == "--transaction-lock") { return ipse_transaction::run(&args); }
     if args.get(1).is_some_and(|arg| arg == "--storage-allocation") { return ipse_storage::run(&args); }
     if args.get(1).is_some_and(|arg| arg == "--storage-write") { return ipse_storage::write(&args); }
     if args.get(1).is_some_and(|arg| arg == "--storage-write-many") { return ipse_storage::write_many(&args); }

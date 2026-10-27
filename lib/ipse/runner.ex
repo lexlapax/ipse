@@ -707,6 +707,7 @@ defmodule Ipse.Runner do
   def open_stdio(executable, args, cwd, selected_env \\ %{}, timeout_ms \\ 120_000, opts \\ []) do
     valid_text = &valid_text?/1
     listener = Keyword.get(opts, :owned_listener)
+    protected = Keyword.get(opts, :protected_supervisor, false)
 
     valid_args =
       is_list(args) and length(args) <= 256 and Enum.all?(args, valid_text) and
@@ -723,6 +724,9 @@ defmodule Ipse.Runner do
         end) <= 131_072
 
     cond do
+      not is_boolean(protected) ->
+        {:error, "protected_supervisor must be a boolean"}
+
       not valid_text.(executable) or executable == "" or byte_size(executable) > 4096 ->
         {:error, "invalid stdio executable"}
 
@@ -756,7 +760,7 @@ defmodule Ipse.Runner do
 
       true ->
         with {:ok, policy} <- Ipse.Tools.Sandbox.resolve(Keyword.get(opts, :sandbox, :off), cwd),
-             {:ok, helper} <- selected_helper(policy.profile, policy.cwd),
+             {:ok, helper} <- stdio_helper(policy.profile, policy.cwd, protected),
              {:ok, launch} <-
                stdio_launch_args(helper, policy, timeout_ms, executable, args, listener) do
           selected = Map.merge(%{"PATH" => "/usr/bin:/bin", "LANG" => "C.UTF-8"}, selected_env)
@@ -807,6 +811,28 @@ defmodule Ipse.Runner do
   rescue
     _ -> {:error, "could not open stdio server"}
   end
+
+  @doc false
+  def open_protected_stdio(
+        executable,
+        args,
+        cwd,
+        selected_env \\ %{},
+        timeout_ms \\ 120_000,
+        opts \\ []
+      ) do
+    open_stdio(
+      executable,
+      args,
+      cwd,
+      selected_env,
+      timeout_ms,
+      Keyword.put(opts, :protected_supervisor, true)
+    )
+  end
+
+  defp stdio_helper(_, cwd, true), do: protected_helper(cwd)
+  defp stdio_helper(profile, cwd, false), do: selected_helper(profile, cwd)
 
   @doc false
   def open_owned_stdio(kind, scope, executable, args, cwd, env, timeout, opts \\ [])

@@ -9,11 +9,21 @@ defmodule Ipse.Extension.Consent do
   instruction to dispatch or replay work.
   """
   alias Ipse.JSON
+  alias Ipse.Runner.Transaction
   import Bitwise, only: [band: 2]
   @bytes 8_388_608
-  @entries 16_384
+  @write_bytes 6 * 1024 * 1024 - 65_536
+  @legacy_entries 16_384
+  @entries 32_768
+  @recent 64
   @pending 128
+  @allocated_bytes 18 * 1024 * 1024
+  @lock_key {__MODULE__, :lock_held}
+  # Version-2 compact vectors persist this exact resource order.
   @resources ~w(operations model_calls input_bytes output_bytes download_bytes cost_nanos)
+  @max_actual_bytes byte_size(Jason.encode!(Map.new(@resources, &{&1, 9_007_199_254_740_991})))
+  @max_status_bytes byte_size(Jason.encode!("reconciled_overrun"))
+  @policy_bytes 32_768
   @error {:error, :consent_unavailable}
 
   def resources, do: @resources
@@ -77,9 +87,9 @@ defmodule Ipse.Extension.Consent do
   def reserve(root, project, request, now) do
     transaction(root, project, fn s ->
       with true <- request?(request) and uint?(now),
-           nil <- s["operations"][request["id"]],
+           nil <- existing(s, request["id"]),
            :ok <- eligible(s, request, now),
-           true <- map_size(s["operations"]) < @entries and pending(s) < @pending,
+           :ok <- capacity(s),
            true <- s["sequence"] < 9_007_199_254_740_991,
            true <- fits?(s, request["reserved"], now) do
         r =
@@ -130,7 +140,7 @@ defmodule Ipse.Extension.Consent do
           try do
             case fun.() do
               {:ok, actual, receipt} ->
-                finish(admitted, admitted["operations"][r["id"]], actual, receipt)
+                after_effect(finish(admitted, admitted["operations"][r["id"]], actual, receipt))
 
               _ ->
                 {:unknown, :publication_unconfirmed}
@@ -139,6 +149,7 @@ defmodule Ipse.Extension.Consent do
             _, _ -> {:unknown, :publication_unconfirmed}
           end
         else
+          {:error, _} = error -> error
           _ -> {:unknown, :consent_write_unconfirmed}
         end
       else
@@ -151,42 +162,48 @@ defmodule Ipse.Extension.Consent do
   def settle(root, project, ticket, outcome) do
     transaction(root, project, fn s ->
       with {:ok, r} <- lookup(s, ticket) do
-        case {r["status"], outcome} do
-          {"reserved", :unstarted} ->
-            finish(s, r, zero(), %{"unstarted" => true})
+        result =
+          case {r["status"], outcome} do
+            {"reserved", :unstarted} ->
+              finish(s, r, zero(), %{"unstarted" => true})
 
-          {status, {:known, actual}} when status in ~w(admitted publishing) ->
-            finish(s, r, actual, %{})
+            {status, {:known, actual}} when status in ~w(admitted publishing) ->
+              finish(s, r, actual, %{})
 
-          {status, :unknown} when status in ~w(admitted publishing unknown) ->
-            next = put_in(s["operations"][r["id"]]["status"], "unknown")
-            {:write, next, %{"status" => "unknown"}}
+            {status, :unknown} when status in ~w(admitted publishing unknown) ->
+              next = put_in(s["operations"][r["id"]]["status"], "unknown")
+              {:write, next, %{"status" => "unknown"}}
 
-          {"unknown", {:reconciled, actual}} ->
-            finish(s, r, actual, %{"reconciled" => true})
+            {"unknown", {:reconciled, actual}} ->
+              finish(s, r, actual, %{"reconciled" => true})
 
-          {"overrun", {:reconciled, actual}} ->
-            if vector?(actual) and within?(r["actual"], actual) do
-              r = %{
-                r
-                | "status" => "reconciled_overrun",
-                  "actual" => actual,
-                  "receipt" => %{"reconciled" => true}
-              }
+            {"overrun", {:reconciled, actual}} ->
+              if vector?(actual) and within?(r["actual"], actual) do
+                r = %{
+                  r
+                  | "status" => "reconciled_overrun",
+                    "actual" => actual,
+                    "receipt" => %{"reconciled" => true}
+                }
 
-              {:write, put_in(s["operations"][r["id"]], r), %{"status" => "reconciled_overrun"}}
-            else
+                {:write, put_in(s["operations"][r["id"]], r), %{"status" => "reconciled_overrun"}}
+              else
+                {:error, :consent_settlement_refused}
+              end
+
+            _ ->
               {:error, :consent_settlement_refused}
-            end
+          end
 
-          _ ->
-            {:error, :consent_settlement_refused}
-        end
+        if r["status"] == "reserved", do: result, else: after_effect(result)
       else
         _ -> {:error, :consent_settlement_refused}
       end
     end)
   end
+
+  defp after_effect({:write, next, value}), do: {:write_effect, next, value}
+  defp after_effect(other), do: other
 
   defp finish(s, r, actual, receipt) do
     cond do
@@ -256,6 +273,20 @@ defmodule Ipse.Extension.Consent do
         end
       end)
 
+    counts = List.to_tuple(Enum.map(@resources, &used[&1]))
+
+    counts =
+      Enum.reduce(s["compacted"], counts, fn
+        {_, [_, _, _, created, _, [a, b, c, d, e, f], _]}, {u, v, w, x, y, z}
+        when created >= start ->
+          {u + a, v + b, w + c, x + d, y + e, z + f}
+
+        _, counts ->
+          counts
+      end)
+
+    used = Map.new(Enum.zip(@resources, Tuple.to_list(counts)))
+
     not quarantined?(s) and
       within?(add(used, reserved), s["policy"]["limits"])
   end
@@ -265,6 +296,67 @@ defmodule Ipse.Extension.Consent do
   defp terminal?(r), do: r["status"] in ~w(settled reconciled_overrun)
   defp quarantined?(s), do: Enum.any?(s["operations"], fn {_, r} -> r["status"] == "overrun" end)
   defp pending(s), do: Enum.count(s["operations"], fn {_, r} -> not terminal?(r) end)
+
+  defp operation_count(s), do: map_size(s["operations"]) + map_size(s["compacted"])
+
+  defp capacity(s) do
+    if operation_count(s) < @entries and pending(s) < @pending,
+      do: :ok,
+      else: {:error, :consent_capacity}
+  end
+
+  defp existing(s, id) do
+    case s["operations"][id] do
+      nil ->
+        case s["compacted"][id] do
+          [sequence, epoch, request, created, status, actual, receipt] ->
+            %{
+              "id" => id,
+              "sequence" => sequence,
+              "epoch" => epoch,
+              "request_sha256" => request,
+              "created_at_ms" => created,
+              "status" => status,
+              "actual" => Map.new(Enum.zip(@resources, actual)),
+              "receipt_compacted" => true,
+              "receipt_sha256" => receipt
+            }
+
+          _ ->
+            nil
+        end
+
+      r ->
+        r
+    end
+  end
+
+  # Terminal receipt bytes are bounded independently of the durable deduplication
+  # and accounting rows. Unknown liabilities and unresolved overruns stay intact.
+  defp compact(s) do
+    terminal =
+      s["operations"]
+      |> Map.values()
+      |> Enum.filter(&terminal?/1)
+      |> Enum.sort_by(& &1["sequence"], :desc)
+      |> Enum.drop(@recent)
+
+    Enum.reduce(terminal, %{s | "version" => 2}, fn r, next ->
+      row = [
+        r["sequence"],
+        r["epoch"],
+        r["request_sha256"],
+        r["created_at_ms"],
+        r["status"],
+        Enum.map(@resources, &r["actual"][&1]),
+        JSON.digest([r["receipt"]])
+      ]
+
+      next
+      |> update_in(["operations"], &Map.delete(&1, r["id"]))
+      |> put_in(["compacted", r["id"]], row)
+    end)
+  end
 
   defp request?(r) do
     keys?(
@@ -281,44 +373,73 @@ defmodule Ipse.Extension.Consent do
   end
 
   defp transaction(root, project, fun) do
-    Ipse.Session.Resources.file_effect(fn -> locked(root, project, fun) end)
+    if Process.get(@lock_key) != nil or
+         Process.get({Ipse.Extension.Collection, :lock_held}) != nil,
+       do: @error,
+       else: Ipse.Session.Resources.file_effect(fn -> locked(root, project, fun) end)
   end
 
   defp locked(root, project, fun) do
     with true <- is_binary(root) and Path.type(root) == :absolute and JSON.sha256?(project),
-         {:ok, uid} <- Ipse.Runner.current_uid(),
+         {:ok, uid} <- Ipse.Runner.protected_current_uid(),
          :ok <- directory(Path.dirname(root), uid, false),
          :ok <- directory(root, uid, true),
          path = Path.join(root, project),
          :ok <- directory(path, uid, true),
          :ok <- safe_lock(Path.join(path, ".lock"), uid),
-         {:ok, lock} <- Ipse.Runner.lock(Path.join(path, ".lock")) do
-      try do
-        with {:ok, s} <- read(path, project, uid) do
-          case fun.(s) do
-            {:read, value} ->
-              {:ok, value}
+         {:ok, lock} <- Transaction.acquire(Path.join(path, ".lock")) do
+      Process.put(@lock_key, lock)
 
-            {:write, next, value} ->
-              with true <- valid_state?(next, project), :ok <- write(path, next) do
-                {:ok, value}
-              else
-                _ -> {:unknown, :consent_write_unconfirmed}
-              end
+      result =
+        try do
+          with :ok <- Transaction.check(lock),
+               :ok <- reclaim_pending(path, uid, lock),
+               {:ok, s} <- read(path, project, uid) do
+            case fun.(s) do
+              {:read, value} ->
+                with :ok <- Transaction.check(lock), do: {:ok, value}
 
-            {:write_unknown, next, reason} ->
-              with true <- valid_state?(next, project), :ok <- write(path, next) do
-                {:unknown, reason}
-              else
-                _ -> {:unknown, :consent_write_unconfirmed}
-              end
+              {:write, next, value} ->
+                with true <- valid_state?(next, project), :ok <- write(path, next) do
+                  {:ok, value}
+                else
+                  {:error, reason}
+                  when reason in [:consent_capacity, :consent_filesystem_unsupported] ->
+                    {:error, reason}
 
-            other ->
-              other
+                  _ ->
+                    {:unknown, :consent_write_unconfirmed}
+                end
+
+              {:write_effect, next, value} ->
+                with true <- valid_state?(next, project), :ok <- write(path, next) do
+                  {:ok, value}
+                else
+                  _ -> {:unknown, :consent_write_unconfirmed}
+                end
+
+              {:write_unknown, next, reason} ->
+                with true <- valid_state?(next, project), :ok <- write(path, next) do
+                  {:unknown, reason}
+                else
+                  _ -> {:unknown, :consent_write_unconfirmed}
+                end
+
+              other ->
+                other
+            end
           end
+        rescue
+          _ -> {:unknown, :consent_transaction_unconfirmed}
+        catch
+          _, _ -> {:unknown, :consent_transaction_unconfirmed}
+        after
+          Process.delete(@lock_key)
         end
-      after
-        Ipse.Runner.unlock(lock)
+
+      case Transaction.release(lock) do
+        :ok -> result
+        _ -> {:unknown, :consent_lock_unconfirmed}
       end
     else
       _ -> @error
@@ -333,7 +454,7 @@ defmodule Ipse.Extension.Consent do
         case File.mkdir(path) do
           :ok ->
             with :ok <- File.chmod(path, 0o700),
-                 :ok <- Ipse.Runner.sync_directory(Path.dirname(path)),
+                 :ok <- Ipse.Runner.protected_sync_directory(Path.dirname(path)),
                  do: directory(path, uid, false)
 
           {:error, :eexist} ->
@@ -363,7 +484,7 @@ defmodule Ipse.Extension.Consent do
   end
 
   defp safe_file?(s, uid),
-    do: s.type == :regular and s.uid == uid and s.links == 1 and band(s.mode, 0o077) == 0
+    do: s.type == :regular and s.uid == uid and s.links == 1 and band(s.mode, 0o7777) == 0o600
 
   defp read(path, project, uid) do
     file = Path.join(path, "control.json")
@@ -372,12 +493,13 @@ defmodule Ipse.Extension.Consent do
       {:error, :enoent} ->
         {:ok,
          %{
-           "version" => 1,
+           "version" => 2,
            "project" => project,
            "epoch" => 0,
            "sequence" => 0,
            "policy" => nil,
-           "operations" => %{}
+           "operations" => %{},
+           "compacted" => %{}
          }}
 
       {:ok, stat} ->
@@ -386,7 +508,7 @@ defmodule Ipse.Extension.Consent do
              true <- is_binary(bytes) and byte_size(bytes) <= @bytes,
              {:ok, s} <- JSON.decode_unique(bytes),
              true <- valid_state?(s, project),
-             do: {:ok, s},
+             do: {:ok, upgrade(s)},
              else: (_ -> @error)
 
       _ ->
@@ -395,50 +517,151 @@ defmodule Ipse.Extension.Consent do
   end
 
   defp write(path, s) do
-    temporary = Path.join(path, ".pending-" <> Ipse.Usage.id())
+    s = compact(s)
+    pending = ".pending-" <> Ipse.Usage.id()
+    lock = Process.get(@lock_key)
 
-    try do
-      with {:ok, bytes} <- Jason.encode(s),
-           true <- byte_size(bytes) <= @bytes,
-           {:ok, ^s} <- JSON.decode_unique(bytes),
-           :ok <- File.write(temporary, bytes, [:exclusive, :binary]),
-           :ok <- File.chmod(temporary, 0o600),
-           {:ok, f} <- :file.open(String.to_charlist(temporary), [:read, :write, :binary, :raw]) do
-        try do
-          with :ok <- :file.sync(f),
-               :ok <- File.rename(temporary, Path.join(path, "control.json")),
-               do: Ipse.Runner.sync_directory(path)
-        after
-          :file.close(f)
-        end
+    with true <- lock != nil and Path.basename(path) == s["project"],
+         {:ok, bytes} <- Jason.encode(s),
+         :ok <- maintenance_capacity(s, bytes),
+         {:ok, ^s} <- JSON.decode_unique(bytes),
+         :ok <- Transaction.quota(lock, :flat, @allocated_bytes),
+         :ok <- Transaction.preflight(lock, [byte_size(bytes)]),
+         {:ok, before} <- Transaction.allocation(lock, :flat),
+         true <- before.allocated + byte_size(bytes) <= @allocated_bytes do
+      with :ok <- Transaction.stage(lock, ".", [{pending, bytes}]),
+           {:ok, staged} <- Transaction.allocation(lock, :flat),
+           true <- staged.allocated <= @allocated_bytes,
+           :ok <- Transaction.switch(lock, pending, "control.json"),
+           {:ok, committed} <- Transaction.allocation(lock, :flat),
+           true <- committed.allocated <= @allocated_bytes do
+        :ok
       else
-        _ -> @error
+        _ -> {:unknown, :consent_write_unconfirmed}
       end
-    after
-      File.rm(temporary)
+    else
+      {:error, :transaction_capacity} -> {:error, :consent_capacity}
+      {:error, :transaction_filesystem_unsupported} -> {:error, :consent_filesystem_unsupported}
+      {:error, :consent_capacity} = error -> error
+      _ -> @error
     end
   end
 
+  defp maintenance_capacity(s, bytes) do
+    receipt_bytes =
+      Enum.reduce(s["operations"], 0, fn {_, r}, n ->
+        if terminal?(r), do: n + byte_size(Jason.encode!(r["receipt"])), else: n
+      end)
+
+    growth =
+      Enum.reduce(s["operations"], 0, fn {_, r}, n ->
+        if terminal?(r) do
+          n
+        else
+          n + @max_actual_bytes - byte_size(Jason.encode!(r["actual"])) +
+            @max_status_bytes - byte_size(Jason.encode!(r["status"]))
+        end
+      end)
+
+    # Reserve the maximum future representation, crediting fields already stored.
+    # Keeping the same additive margin during settlement would prevent a measured
+    # overrun or a policy replacement from consuming its own reserved headroom.
+    # Nonterminal null receipts remain in the base; only terminal bodies are
+    # replaced by the global maximum of 64 full recent receipts.
+    required =
+      byte_size(bytes) - receipt_bytes - byte_size(Jason.encode!(s["policy"])) +
+        @recent * 8192 + growth + @policy_bytes + 16 - byte_size(Integer.to_string(s["epoch"]))
+
+    if required <= @write_bytes, do: :ok, else: {:error, :consent_capacity}
+  end
+
+  defp reclaim_pending(path, uid, lock) do
+    with {:ok, names} <- File.ls(path),
+         true <- length(names) <= 131,
+         true <-
+           Enum.all?(names, &(&1 in ~w(.lock .writer.lock control.json) or pending_name?(&1))),
+         true <-
+           Enum.all?(names, fn name ->
+             case File.lstat(Path.join(path, name)) do
+               {:ok, stat} -> safe_file?(stat, uid) and stat.size <= @bytes
+               _ -> false
+             end
+           end) do
+      names
+      |> Enum.filter(&pending_name?/1)
+      |> Enum.sort()
+      |> Enum.chunk_every(64)
+      |> Enum.reduce_while(:ok, fn batch, :ok ->
+        case Transaction.reclaim(lock, ".", batch) do
+          :ok -> {:cont, :ok}
+          _ -> {:halt, @error}
+        end
+      end)
+    else
+      _ -> @error
+    end
+  end
+
+  defp pending_name?(name), do: Regex.match?(~r/\A\.pending-[a-f0-9]{32}\z/, name)
+
+  defp upgrade(%{"version" => 1} = s), do: s |> Map.put("compacted", %{}) |> Map.put("version", 2)
+  defp upgrade(s), do: s
+
   defp valid_state?(s, project) do
-    keys?(s, ~w(version project epoch sequence policy operations)) and s["version"] === 1 and
-      s["project"] == project and uint?(s["epoch"]) and uint?(s["sequence"]) and
-      (s["policy"] == nil or (valid_policy?(s["policy"]) and s["policy"]["project"] == project)) and
-      is_map(s["operations"]) and map_size(s["operations"]) <= @entries and pending(s) <= @pending and
-      s["sequence"] == map_size(s["operations"]) and
-      Enum.all?(s["operations"], fn {id, r} ->
-        keys?(
-          r,
-          ~w(id operation artifact_sha256 source_sha256 policy_sha256 request_sha256 source_generation reserved headless sequence epoch created_at_ms status actual receipt)
-        ) and
-          request?(Map.drop(r, ~w(sequence epoch created_at_ms status actual receipt))) and
-          id == r["id"] and
-          uint?(r["sequence"]) and r["sequence"] in 1..s["sequence"] and
-          uint?(r["epoch"]) and r["epoch"] in 1..s["epoch"] and uint?(r["created_at_ms"]) and
-          valid_settlement?(r)
-      end) and
-      s["sequence"] == length(Enum.uniq_by(Map.values(s["operations"]), & &1["sequence"]))
+    legacy = s["version"] === 1 and keys?(s, ~w(version project epoch sequence policy operations))
+
+    current =
+      s["version"] === 2 and
+        keys?(s, ~w(version project epoch sequence policy operations compacted))
+
+    (legacy or current) and valid_contents?(upgrade(s), project, legacy)
   rescue
     _ -> false
+  end
+
+  defp valid_contents?(s, project, legacy) do
+    compacted = s["compacted"]
+
+    s["project"] == project and uint?(s["epoch"]) and uint?(s["sequence"]) and
+      (s["policy"] == nil or (valid_policy?(s["policy"]) and s["policy"]["project"] == project)) and
+      is_map(s["operations"]) and is_map(compacted) and
+      operation_count(s) <= if(legacy, do: @legacy_entries, else: @entries) and
+      pending(s) <= @pending and s["sequence"] == operation_count(s) and
+      Enum.all?(compacted, fn {id, row} ->
+        valid_compact?(id, row, s) and not Map.has_key?(s["operations"], id)
+      end) and
+      Enum.all?(s["operations"], fn {id, r} ->
+        valid_operation?(id, r, s)
+      end) and
+      s["sequence"] ==
+        MapSet.size(
+          MapSet.new(
+            Enum.map(Map.values(s["operations"]), & &1["sequence"]) ++
+              Enum.map(Map.values(compacted), &hd/1)
+          )
+        )
+  end
+
+  defp valid_compact?(id, [sequence, epoch, request, created, status, actual, receipt], s) do
+    id?(id) and uint?(sequence) and sequence in 1..s["sequence"] and
+      uint?(epoch) and epoch in 1..s["epoch"] and JSON.sha256?(request) and uint?(created) and
+      status in ~w(settled reconciled_overrun) and is_list(actual) and
+      length(actual) == length(@resources) and Enum.all?(actual, &uint?/1) and
+      JSON.sha256?(receipt)
+  end
+
+  defp valid_compact?(_, _, _), do: false
+
+  defp valid_operation?(id, r, s) do
+    keys?(
+      r,
+      ~w(id operation artifact_sha256 source_sha256 policy_sha256 request_sha256 source_generation reserved headless sequence epoch created_at_ms status actual receipt)
+    ) and
+      request?(Map.drop(r, ~w(sequence epoch created_at_ms status actual receipt))) and
+      id == r["id"] and
+      uint?(r["sequence"]) and r["sequence"] in 1..s["sequence"] and
+      uint?(r["epoch"]) and r["epoch"] in 1..s["epoch"] and uint?(r["created_at_ms"]) and
+      valid_settlement?(r)
   end
 
   defp vector?(v), do: keys?(v, @resources) and Enum.all?(Map.values(v), &uint?/1)
