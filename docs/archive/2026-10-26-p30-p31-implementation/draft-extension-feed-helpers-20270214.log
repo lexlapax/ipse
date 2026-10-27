@@ -1,0 +1,8 @@
+Running ExUnit with seed: 20270214, max_cases: 1
+Excluding tags: [:test]
+Including tags: [location: {"test/ipse/extension/feeds_test.exs", 443}, location: {"test/ipse/extension/inference_dispatch_session_test.exs", 264}]
+
+..
+Finished in 3.7 seconds (0.00s async, 3.7s sync)
+
+Result: 2 passed, 28 excluded
