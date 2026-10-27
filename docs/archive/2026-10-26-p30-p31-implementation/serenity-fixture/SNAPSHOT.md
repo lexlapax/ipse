@@ -92,3 +92,9 @@ backend now refuses path-based unmount because the held-mount-to-unmount and
 namespace-wide absence guarantees are not established. Read-only workspace
 probing still succeeds; 59 private tests passed. Independent re-review and the
 live fixture remain pending.
+
+The separately reviewed user/mount-namespace tmpfs diagnostic ran twice without
+block devices. Its retained mount-root FD non-lazy unmount returned EBUSY, and
+non-lazy cleanup succeeded after closing the FD. See
+[TMPFS-UMOUNT-RECEIPT.md](TMPFS-UMOUNT-RECEIPT.md) and the captured merged log;
+this is not Btrfs qualification.
