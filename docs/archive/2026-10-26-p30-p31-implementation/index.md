@@ -55,6 +55,7 @@ resource/offline qualification. No daemon configuration or existing model was ch
 - [Session input witness audit and source-boundary repairs](session-input-audit.md).
 - [Versioned reference projection audit and replay repairs](reference-audit.md).
 - [Sustainable collection storage component and measurement provenance](storage-component.md).
+- [Actual 30/90-day primitive turnover and bounded annual continuation controls](storage-workload-endurance.md).
 - [Declarative collection publication constraints](collection-policy-component.md).
 - [Native knowledge capture and precompiled artifact component](native-capture-component.md).
 - [Inert operator-sidecar schemas and declared data inspection](operator-sidecar-component.md).

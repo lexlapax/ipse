@@ -1,0 +1,158 @@
+{
+  "publication_ms_p50": 279.985,
+  "active_timing_scope": "segment start through full boundary validation; final oracle commit measured separately; chronological wall includes commits and restart gaps",
+  "offline_actions_remaining": 0,
+  "floor_policy": "advance on existing-record replacement or deletion; pure additions preserve lineage",
+  "initial_publications": 16,
+  "actual_migration_calls": 0,
+  "chronological_wall_ms": 71816,
+  "retained_store": {
+    "project": "7641de2b464e967f50674e6983d004f343b8cf09a289c6a887120b9a464d9605",
+    "provenance": {
+      "atomic_lock_owner_fencing": "same native transaction owner; pending qualification",
+      "filesystem": {
+        "block_size": 4096,
+        "fragment_size": 4096,
+        "measurement": "Linux statfs reporting via stat; bounded selected mountinfo options",
+        "mount_options": [
+          "compress=zstd:3",
+          "discard=async",
+          "relatime",
+          "rw",
+          "space_cache=v2",
+          "ssd"
+        ],
+        "mount_type": "btrfs",
+        "type": "btrfs"
+      },
+      "kernel": "{7, 2, 10}",
+      "native_helper_sha256": "108c762ec23085df6aeaba58c8bdfb34d0a8cb4fa80a410584889a81a556ea29",
+      "sources": {
+        "dev/knowledge/storage_annual.exs": "6fd8d5a6cc5a48d1e78d28a29b029bb1c2b6aaf1e13d8f24c22143db1881c14c",
+        "dev/knowledge/storage_continuation.exs": "36d336534b28c42eda7d5fa3faeb7e3461ae312251e8a8dfbaad770d141d1d77",
+        "dev/knowledge/storage_workload.ex": "435c74b9123ba9be3f05b37bd84767cf1cb020980d6a101dcbe56e2b955aa774",
+        "dev/knowledge/storage_workload.exs": "ddf7a75948c2063af81e64b080353fab2b4c6510382a94910b28be0ae1327cd2",
+        "extensions/knowledge/src/notes.ex": "0e1ac1ee10edd78982fb8b2055b440f6dc5f93753301de0423a8db340026874c",
+        "lib/ipse/extension/collection.ex": "88695817f2460d9fbb8925ec0184d032c83520d525ce7292e463281fd3bb0f7a",
+        "lib/ipse/extension/collection/blocks.ex": "bfc88294d4b526f30deee5b9cc780aa736c9d431b931e5c56c2b8cda931f05d8",
+        "lib/ipse/extension/collection/encoding.ex": "f5aa47edec677061c106caf1e1122a3c1989075bb8a92ea836b08230e5d0e495",
+        "lib/ipse/extension/collection/migration.ex": "4081b5b30b722471b125e918b7532058b2adcbef67e80a5eca9ecb4031c6b7d2",
+        "lib/ipse/extension/collection/planning.ex": "56ba5ff29074f1adeb75535f8fa931d96e392b6f38042a036f80f109d981af67",
+        "native/ipse-storage-profile.rs": "46ccb439014ff3d2eadde512be7ec8f4f471d0aa4df0652914e6278013c9ce3b"
+      }
+    },
+    "root": "/home/lexlapax/projects/lexlapax/ipse/_build/storage-workloads/ipse-storage-annual-7158605dfffc3bbe2be73815529b2f88/collections"
+  },
+  "maximum_post_publication_vm_memory_bytes": 109101336,
+  "maximum_sampled_accounted_disk_bytes": 35760945,
+  "qualification_passed": false,
+  "driver_deadline_ms": 7200000,
+  "actual_commit_calls": 48,
+  "publication_ms_mean": 743.1410833333334,
+  "driver_elapsed_ms": 8749,
+  "burst_day": 90,
+  "segment": 2,
+  "oracle_directory": "/home/lexlapax/projects/lexlapax/ipse/_build/storage-workloads/ipse-storage-annual-7158605dfffc3bbe2be73815529b2f88/oracle/segment-2",
+  "progress": {
+    "cycle": 1,
+    "day": 1
+  },
+  "capture_pipeline_exercised": false,
+  "initial_note_count": 2000,
+  "boundary_descriptor": {
+    "data_bytes": 12324903,
+    "floor": 27,
+    "floor_anchor": "b968cd150bebbc8f06555ce720ec5746",
+    "floor_lineage_entries": 11,
+    "floor_lineage_sha256": "4e70afccf2e80943ae45ea6d735de07099ca7e65e8dc58d2e269517a59557fa4",
+    "generation": 48,
+    "operations": 48,
+    "operations_sha256": "0fe823ff3e0de1dc6581f3d84e19a6738cba2d0c546ee9f7a5bc8cf2140bd5e5",
+    "project": "7641de2b464e967f50674e6983d004f343b8cf09a289c6a887120b9a464d9605",
+    "records": 2009,
+    "records_sha256": "cadc6e1f64d8c9532ee2fbdd6efada5d81aa80ba39a005492b422cf19a94c1a5",
+    "version": 3
+  },
+  "continuation": {
+    "final_allocation": {
+      "allocated": 12288,
+      "logical": 8057,
+      "entries": 5
+    },
+    "path": "/home/lexlapax/projects/lexlapax/ipse/_build/storage-workloads/ipse-storage-annual-7158605dfffc3bbe2be73815529b2f88/oracle/segment-2/root.json",
+    "peak_allocation": {
+      "allocated": 16384,
+      "logical": 8573,
+      "entries": 6
+    },
+    "report_path": "/home/lexlapax/projects/lexlapax/ipse/_build/storage-workloads/ipse-storage-annual-7158605dfffc3bbe2be73815529b2f88/oracle/segment-2/e801dc3bea5d73030a319e6a5789d5e64275885beeed0d154e0ccf8ecebee640.json",
+    "report_sha256": "e801dc3bea5d73030a319e6a5789d5e64275885beeed0d154e0ccf8ecebee640",
+    "separate_oracle_quota_bytes": 8388608,
+    "serialized_bytes": 7867,
+    "sha256": "816bb22a30129ce408db488f0a0840b96a0644aa7416e994e97d87c4b07b2f2f"
+  },
+  "runtime_binding_sha256": "1ae1497bec81dd1a4c225d45d0fd810671f9a7c59a74d4d0d7671f678792fe2d",
+  "publication_samples": 48,
+  "persistent_initial": {
+    "current": 50,
+    "pins": 100,
+    "preferences": 50
+  },
+  "performance_qualified": false,
+  "nominal_turns_per_day": 40,
+  "oracle_quota_bytes_per_segment": 8388608,
+  "oracle_excluded_from_product_managed_usage": true,
+  "domain_recapture_protection_qualified": false,
+  "diagnostic_sampling": "daily status and selected get; every100cycles; full export/receipt verification at boundaries and resumes; native allocation every publication",
+  "call_attempts_by_operation": {
+    "commit": 48,
+    "export": 126,
+    "export.plan": 2,
+    "get": 3,
+    "status": 3
+  },
+  "actual_read_calls_including_startup_validation": 198,
+  "storage_publications_completed": true,
+  "source_fixture": "synthetic note evidence maps; no authenticated Sources artifact",
+  "live_calls": 0,
+  "corrections_per_day": 4,
+  "cycle_value_mode": "small_generic_one_key_receipt_churn",
+  "previous": {
+    "path": "/home/lexlapax/projects/lexlapax/ipse/_build/storage-workloads/ipse-storage-annual-7158605dfffc3bbe2be73815529b2f88/oracle/segment-1/root.json",
+    "report_sha256": "cfe2ca2ebd0e515b45f2a408e5bcf8866e12ef5fab495499b528caff3ea2b9fb",
+    "sha256": "02089945c0b18923877b5b77ee36115f402ebe03da5f733c178120fa0e04c535"
+  },
+  "delayed_temporal_first_update_day": 100,
+  "forgets_per_day": 2,
+  "checkpoints": {},
+  "offline_known_unstarted_actions": 0,
+  "required_migration_gate_passed": null,
+  "cumulative_active_before_oracle_commit_ms": 49069,
+  "peak_accounted_allocated_bytes": 40230912,
+  "migrations": [],
+  "full_applied_lineage_location": "protected oracle checkpoint; report retains its count/hash",
+  "oracle_commit_ms": 43,
+  "maximum_segments": 4,
+  "host_source_admission_exercised": false,
+  "publication_ms_p95": 1884.561,
+  "kind": "development_storage_annual_segment_v1",
+  "boundary_descriptor_sha256": "c8d7b083b099c64f1e2a02368a97b55b9afbbae36618bee33a84d0c1569b4cc5",
+  "options": {
+    "cycles": 1,
+    "days": 1,
+    "granularity": "individual",
+    "payload": "maximum",
+    "segment_publications": 1
+  },
+  "burst_multiplier": 2,
+  "expiry_lineage_overrides_persisted": false,
+  "turn_pipeline_exercised": false,
+  "concurrent_control_stress": true,
+  "publication_ms_max": 1908.121,
+  "startup_validation_calls_separate": {
+    "export": 63,
+    "export.plan": 1
+  },
+  "temporal_supersessions_per_day": 4,
+  "ordinary_per_day": 20
+}

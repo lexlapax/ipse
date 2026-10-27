@@ -1,0 +1,17 @@
+{
+  "automatic_retries": 0,
+  "calls": {
+    "export": 1
+  },
+  "elapsed_ms": 110,
+  "error": "no match of right hand side value:\n\n    {:conflict,\n     %{\n       \"floor\" => 27,\n       \"floor_anchor\" => \"015bd200dbaa1a076eb7d33c5528ce60\",\n       \"generation\" => 48,\n       \"project\" => \"7641de2b464e967f50674e6983d004f343b8cf09a289c6a887120b9a464d9605\",\n       \"version\" => 3\n     }}\n",
+  "kind": "development_storage_annual_failure",
+  "last_call": {
+    "expected_generation": null,
+    "operation": "export",
+    "operation_id": "1704204f5546b14390e1b2ed24b1eaec",
+    "request_sha256": "3a251965e8d0f36eef6c87da20c587a016a0f170160102a6c78168fa65a632e0"
+  },
+  "qualification_passed": false,
+  "retained_store": null
+}

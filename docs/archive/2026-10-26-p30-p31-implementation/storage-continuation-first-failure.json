@@ -1,0 +1,10 @@
+{
+  "automatic_retries": 0,
+  "calls": {},
+  "elapsed_ms": 16,
+  "error": "no match of right hand side value:\n\n    {:error, \"native sandbox workspace overlaps the active helper or application\"}\n",
+  "kind": "development_storage_annual_failure",
+  "last_call": null,
+  "qualification_passed": false,
+  "retained_store": null
+}

@@ -1,0 +1,46 @@
+{
+  "automatic_retries": 0,
+  "calls": {},
+  "elapsed_ms": 53,
+  "error": "no match of right hand side value:\n\n    {:error, :continuation_binding_or_progress}\n",
+  "kind": "development_storage_annual_failure",
+  "last_call": null,
+  "qualification_passed": false,
+  "retained_store": {
+    "project": "7641de2b464e967f50674e6983d004f343b8cf09a289c6a887120b9a464d9605",
+    "provenance": {
+      "atomic_lock_owner_fencing": "same native transaction owner; pending qualification",
+      "filesystem": {
+        "block_size": 4096,
+        "fragment_size": 4096,
+        "measurement": "Linux statfs reporting via stat; bounded selected mountinfo options",
+        "mount_options": [
+          "compress=zstd:3",
+          "discard=async",
+          "relatime",
+          "rw",
+          "space_cache=v2",
+          "ssd"
+        ],
+        "mount_type": "btrfs",
+        "type": "btrfs"
+      },
+      "kernel": "{7, 2, 10}",
+      "native_helper_sha256": "108c762ec23085df6aeaba58c8bdfb34d0a8cb4fa80a410584889a81a556ea29",
+      "sources": {
+        "dev/knowledge/storage_annual.exs": "0cd414daf4bf0f52a23b410dc57f2cb8950dff459d088a0c5bbe818f3bc7a3d8",
+        "dev/knowledge/storage_continuation.exs": "f0a7002d046e6f63e516a5e65e11139cba1060889ed5f1486fdd3b36a094bb7c",
+        "dev/knowledge/storage_workload.ex": "435c74b9123ba9be3f05b37bd84767cf1cb020980d6a101dcbe56e2b955aa774",
+        "dev/knowledge/storage_workload.exs": "ddf7a75948c2063af81e64b080353fab2b4c6510382a94910b28be0ae1327cd2",
+        "extensions/knowledge/src/notes.ex": "0e1ac1ee10edd78982fb8b2055b440f6dc5f93753301de0423a8db340026874c",
+        "lib/ipse/extension/collection.ex": "88695817f2460d9fbb8925ec0184d032c83520d525ce7292e463281fd3bb0f7a",
+        "lib/ipse/extension/collection/blocks.ex": "bfc88294d4b526f30deee5b9cc780aa736c9d431b931e5c56c2b8cda931f05d8",
+        "lib/ipse/extension/collection/encoding.ex": "f5aa47edec677061c106caf1e1122a3c1989075bb8a92ea836b08230e5d0e495",
+        "lib/ipse/extension/collection/migration.ex": "4081b5b30b722471b125e918b7532058b2adcbef67e80a5eca9ecb4031c6b7d2",
+        "lib/ipse/extension/collection/planning.ex": "56ba5ff29074f1adeb75535f8fa931d96e392b6f38042a036f80f109d981af67",
+        "native/ipse-storage-profile.rs": "46ccb439014ff3d2eadde512be7ec8f4f471d0aa4df0652914e6278013c9ce3b"
+      }
+    },
+    "root": "/home/lexlapax/projects/lexlapax/ipse/_build/storage-workloads/ipse-storage-annual-f2aebb09bb4f093dc4cc7c7407b75ffb/collections"
+  }
+}
