@@ -234,3 +234,12 @@ refuses. A receipt-driven mock sequencer stops on failed effects or missing
 identity evidence. The private suite passed 80 tests, including pipe protocol
 negative cases. This integration is under independent review, has no live
 launcher and performed no device operations.
+
+The private owner now pauses before device acquisition. A prototype supervisor
+checks a direct child's start time, executable inode, pipe identities and retained
+pidfd before releasing that pause. One harmless forked-child test exercises this
+local handshake and wrong-executable refusal; 81 controller and eight owner
+synthetic tests pass. The current check assumes one PID namespace and does not
+prove immutable binary ancestry, argument binding, cgroup containment or a
+complete guardian. It has no live launcher and remains subject to independent
+review. No device operation occurred.

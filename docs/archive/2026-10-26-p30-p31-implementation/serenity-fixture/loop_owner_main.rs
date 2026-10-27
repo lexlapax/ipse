@@ -16,6 +16,9 @@ fn run()->io::Result<()> {
  let minor:u32=args[1].parse().map_err(|_|io::ErrorKind::InvalidInput)?;let reference=&args[2];
  if reference.len()!=39||!reference.starts_with("ipse-q-")||!reference[7..].bytes().all(|b|b.is_ascii_digit()||(b'a'..=b'f').contains(&b)){return Err(io::ErrorKind::InvalidInput.into())}
  let expected_dev:u64=args[3].parse().map_err(|_|io::ErrorKind::InvalidInput)?;let expected_inode:u64=args[4].parse().map_err(|_|io::ErrorKind::InvalidInput)?;if expected_inode==0{return Err(io::ErrorKind::InvalidInput.into())}
+ // Pause before acquisition so the supervisor can attest this process and
+ // its pipe endpoints. EOF/timeout leaves before any device open.
+ report(b'H')?;command(b'A')?;
  // The fresh single-thread process has no inherited extra FDs. Mark it
  // non-dumpable and apply the initial filter before acquisition; strict
  // no-open confinement follows acquisition.
