@@ -117,3 +117,9 @@ its receipt, merged output and sources are preserved. This does not prove an
 arbitrary process root is the namespace root. The disabled Btrfs draft now
 checks full visible mount-ID ancestry, stacked-root propagation and a separately
 attested boundary; its private suite passed 62 tests. No Btrfs device was used.
+
+Following independent review, the disabled unmount draft now holds a typed root
+topology object with namespace and root FDs but no live constructor, and its
+local unmount receipt explicitly does not claim global mount or device cleanup.
+An independently verified namespace-root boundary and quiescence still do not
+exist. This draft has not performed a Btrfs unmount; its 62 private tests pass.

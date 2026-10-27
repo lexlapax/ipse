@@ -49,31 +49,37 @@ fn target(parent:&File)->io::Result<File>{let name=c"mount";let fd=unsafe{openat
 /// retained namespace, no privileged competitor, full cgroup quiescence and
 /// no escaped namespace or mount FDs. Dummy values are allowed only in tests.
 struct QuiescenceToken{_private:()}
-pub(super) struct Guard {parent:File,parent_dev:u64,parent_inode:u64,namespace_inode:u64,fsid:[u8;16],mount_id:u64,mapper:(u32,u32),namespace_root_boundary:u64,root_fd_id:u64,namespace_root:File}
+// No live constructor: the namespace-root boundary must be independently
+// attested while retaining both its namespace and process-root descriptors.
+struct RootTopology {namespace_pin:File,root_pin:File,namespace_inode:u64,root_fd_id:u64,boundary:u64}
+/// Records only successful non-lazy syscall and local path absence; it is not
+/// evidence of global mount, mapper, loop, or process cleanup.
+struct LocalUnmountReceipt{_private:()}
+pub(super) struct Guard {parent:File,parent_dev:u64,parent_inode:u64,fsid:[u8;16],mount_id:u64,mapper:(u32,u32),topology:RootTopology}
 impl Guard {
  fn verify(&self)->io::Result<File>{
   let p=fs::symlink_metadata("/work")?;let held=self.parent.metadata()?;
+  if self.topology.namespace_pin.metadata()?.ino()!=self.topology.namespace_inode{return Err(io::ErrorKind::PermissionDenied.into())}
   let current_root=OpenOptions::new().read(true).custom_flags(0x200000|0x10000|0x20000).open("/")?;
-  if super::btrfs_identity::mount_id(&self.namespace_root)?!=self.root_fd_id || super::btrfs_identity::mount_id(&current_root)?!=self.root_fd_id{return Err(io::ErrorKind::PermissionDenied.into())}
-  if (held.dev(),held.ino())!=(self.parent_dev,self.parent_inode)||(p.dev(),p.ino())!=(self.parent_dev,self.parent_inode)||fs::metadata("/proc/self/ns/mnt")?.ino()!=self.namespace_inode{return Err(io::ErrorKind::PermissionDenied.into())}
-  let m=parse_mounts(&mountinfo()?,self.namespace_root_boundary,self.root_fd_id)?.ok_or(io::ErrorKind::NotFound)?;if m.id!=self.mount_id{return Err(io::ErrorKind::PermissionDenied.into())}
+  if super::btrfs_identity::mount_id(&self.topology.root_pin)?!=self.topology.root_fd_id || super::btrfs_identity::mount_id(&current_root)?!=self.topology.root_fd_id{return Err(io::ErrorKind::PermissionDenied.into())}
+  if (held.dev(),held.ino())!=(self.parent_dev,self.parent_inode)||(p.dev(),p.ino())!=(self.parent_dev,self.parent_inode)||fs::metadata("/proc/self/ns/mnt")?.ino()!=self.topology.namespace_inode{return Err(io::ErrorKind::PermissionDenied.into())}
+  let m=parse_mounts(&mountinfo()?,self.topology.boundary,self.topology.root_fd_id)?.ok_or(io::ErrorKind::NotFound)?;if m.id!=self.mount_id{return Err(io::ErrorKind::PermissionDenied.into())}
   let f=target(&self.parent)?;let id=super::btrfs_identity::inspect(&f,Path::new("/sys"))?;
   if id.fsid!=self.fsid||id.mount_id!=self.mount_id||id.underlying!=self.mapper{return Err(io::ErrorKind::PermissionDenied.into())}Ok(f)
  }
- fn new(fsid:[u8;16],mount_id:u64,mapper:(u32,u32),namespace_inode:u64,namespace_root_boundary:u64,root_fd_id:u64)->io::Result<Self>{
-  if fsid==[0;16]||mount_id==0||namespace_inode==0{return Err(io::ErrorKind::InvalidInput.into())}
+ fn new(fsid:[u8;16],mount_id:u64,mapper:(u32,u32),topology:RootTopology)->io::Result<Self>{
+  if fsid==[0;16]||mount_id==0||topology.namespace_inode==0{return Err(io::ErrorKind::InvalidInput.into())}
   let parent=OpenOptions::new().read(true).custom_flags(0x200000|0x10000|0x20000).open("/work")?;let p=parent.metadata()?;
-  let namespace_root=OpenOptions::new().read(true).custom_flags(0x200000|0x10000|0x20000).open("/")?;if super::btrfs_identity::mount_id(&namespace_root)?!=root_fd_id{return Err(io::ErrorKind::PermissionDenied.into())}
-  let g=Self{parent,parent_dev:p.dev(),parent_inode:p.ino(),namespace_inode,fsid,mount_id,mapper,namespace_root_boundary,root_fd_id,namespace_root};drop(g.verify()?);Ok(g)
+  let g=Self{parent,parent_dev:p.dev(),parent_inode:p.ino(),topology,fsid,mount_id,mapper};drop(g.verify()?);Ok(g)
  }
  /// The caller must durably record exact unmount intent before invoking this.
  /// Failures are unknown, not permission to retry or proceed to mapper removal.
- fn unmount(self,_token:QuiescenceToken)->io::Result<()> {
+ fn unmount(self,_token:QuiescenceToken)->io::Result<LocalUnmountReceipt> {
   let mounted=self.verify()?;drop(mounted); // holding mount-root FD causes EBUSY
-  let parent=fs::symlink_metadata("/work")?;if (parent.dev(),parent.ino())!=(self.parent_dev,self.parent_inode)||fs::metadata("/proc/self/ns/mnt")?.ino()!=self.namespace_inode{return Err(io::ErrorKind::PermissionDenied.into())}
+  let parent=fs::symlink_metadata("/work")?;if (parent.dev(),parent.ino())!=(self.parent_dev,self.parent_inode)||fs::metadata("/proc/self/ns/mnt")?.ino()!=self.topology.namespace_inode{return Err(io::ErrorKind::PermissionDenied.into())}
   let path=CString::new(format!("/proc/self/fd/{}/mount",self.parent.as_raw_fd())).map_err(|_|io::ErrorKind::InvalidInput)?;
   if unsafe{umount2(path.as_ptr(),0)}!=0{return Err(io::Error::last_os_error())}
-  if parse_mounts(&mountinfo()?,self.namespace_root_boundary,self.root_fd_id)?.is_some(){return Err(io::ErrorKind::Other.into())}Ok(())
+  if parse_mounts(&mountinfo()?,self.topology.boundary,self.topology.root_fd_id)?.is_some(){return Err(io::ErrorKind::Other.into())}Ok(LocalUnmountReceipt{_private:()})
  }
 }
 #[cfg(test)]mod tests{use super::*;
