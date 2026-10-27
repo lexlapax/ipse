@@ -18,7 +18,7 @@ defmodule Ipse.Extension.CollectionManagedTest do
     do: %{
       "op" => "commit",
       "expected_generation" => generation,
-      "advance_floor" => false,
+      "advance_floor" => true,
       "changes" => [change("note.a", 0, %{"text" => "original"})]
     }
 
@@ -83,6 +83,11 @@ defmodule Ipse.Extension.CollectionManagedTest do
   end
 
   test "original CAS conflicts and reserved original keys refuse before normalization", c do
+    assert {:error, :invalid_managed_collection_request} =
+             run(c, Map.put(original(), "advance_floor", false), fn _, _ ->
+               flunk("unfloored managed publication entered normalizer")
+             end)
+
     assert {:conflict, %{"generation" => 0}} =
              run(c, original(1), fn _, _ -> flunk("stale entered normalizer") end)
 
@@ -101,7 +106,7 @@ defmodule Ipse.Extension.CollectionManagedTest do
     for damaged <- [
           put_in(normalized(request), ["changes", Access.at(0), "value", "text"], "changed"),
           Map.put(normalized(request), "expected_generation", 1),
-          Map.put(normalized(request), "advance_floor", true),
+          Map.put(normalized(request), "advance_floor", false),
           put_in(normalized(request), ["changes", Access.at(1), "key"], "other.a"),
           put_in(normalized(request), ["changes", Access.at(1), "value"], nil),
           request,

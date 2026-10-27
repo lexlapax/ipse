@@ -134,7 +134,7 @@ defmodule Ipse.Extension.CollectionMigrationTest do
     do: n |> Integer.to_string(16) |> String.downcase() |> String.pad_leading(32, "0")
 
   test "typed complete import preserves managed original-normalized binding receipts", c do
-    request = put(0, "note.one", 0, %{"text" => "original"})
+    request = put(0, "note.one", 0, %{"text" => "original"}, true)
 
     normalized =
       Map.update!(

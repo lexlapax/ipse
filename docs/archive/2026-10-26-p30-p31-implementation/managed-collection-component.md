@@ -5,6 +5,8 @@ implementation branch. The [persistence chapter](../../developer/persistence.md)
 owns its developer procedure; the [plan](../../plan.md) owns milestone acceptance.
 No worker SDK operation, domain normalization, recall or standalone activation is
 claimed complete by this record.
+The later [Normalizer increment](managed-normalizer-component.md) requires explicit
+floor advancement and replaces the optional-floor contract measured here.
 The [source/runtime inventory](managed-collection-sources.json) binds the private
 measured graph and focused test files.
 

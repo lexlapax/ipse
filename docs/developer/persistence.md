@@ -300,7 +300,10 @@ writer fencing and duplicate identity before entering the host normalizer under
 one Collection lock. The normalizer receives an exact root/manifest witness and a
 process-bound read closure, limited to 32 reads and invalid after return. It can
 retain the original changes exactly and add 1..16 nondeleted `host.validity.`
-records. The original generation and destructive-floor choice cannot change.
+records. The original request must explicitly select `advance_floor: true`; the
+host never changes that choice or the original generation. Advancing the import
+floor prevents an older complete backup from removing a newly admitted permanent
+source clock. A refused original request cannot enter the callback.
 The owning adapter must authenticate source proofs, derive semantic validity and
 reserve worst-case metadata charges before calling; this seam supplies none of
 those permissions and is not exposed to worker code.
@@ -315,10 +318,31 @@ Version 5 retains the existing record/data/block/native quota bounds, and older
 readers refuse it. The in-memory storage summary remains version 3. The ordinary
 SDK call and its receipt contract do not gain this operation implicitly.
 
+`Collection.Normalizer.normalize/3` supplies the current domain implementation of
+that callback. It checks the selected recipe, constraints and authenticated host
+proofs, then adds two packed host pages alongside one fresh public record. The
+source anchor keeps separate first-admission clocks for notes and pending proposals.
+Later publications can shorten a baseline deadline but cannot renew it, including
+after the public record is removed. Only a genuinely new authenticated occurrence
+starts another source clock. The current host clock determines admission; worker
+timestamps grant no validity. Pending proposals always have finite expiry and
+remain ineligible as current premises.
+
+Anchor, live metadata and normalization receipt format 2 record this guarantee.
+Experimental format-1 domain pages refuse adoption rather than gaining authority
+through a storage-format upgrade. Packed pages have closed shapes, bounded rows,
+contiguous page numbers and no duplicate identities; overflow refuses without
+eviction. Live pointers share Collection's record-key grammar. Ordinary and
+pending rows require finite deadlines. These checks establish publication metadata;
+current-read filtering, typed overrides and their operator workflows still need
+their owning adapters.
+
 Exercise successful paired publication, duplicate/refused normalization, expired
 read closures, actual native-owner loss and complete migration with
 `mix test test/ipse/extension/collection_managed_test.exs` and the collection
-block/migration suites. An internal host callback is trusted core code: do not
+block/migration suites. Run
+`mix test test/ipse/extension/collection_normalizer_test.exs` for source-clock,
+packed-page and old-backup controls. An internal host callback is trusted core code: do not
 load extension callbacks, run inference or hand its read closure to a worker.
 
 A measured overrun is saved as `overrun`, retaining actual usage and blocking

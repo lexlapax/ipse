@@ -64,6 +64,7 @@ resource/offline qualification. No daemon configuration or existing model was ch
 - [Pure managed-reference lineage, projection contracts and verification](managed-reference-component.md).
 - [Pure managed policy recipes, deduplicated grants and activation data](managed-policy-component.md).
 - [Atomic managed publication and explicit version-5 receipt binding](managed-collection-component.md).
+- [Managed source clocks, metadata and independently closed findings](managed-normalizer-component.md).
 - [Native read ownership and staging-frame ordering](native-read-component.md).
 - [Admitted decision operation, incremental review and controls](decision-operation-audit.md).
 - [Optional document parser, bounded staging and package evidence](document-parsers.md).

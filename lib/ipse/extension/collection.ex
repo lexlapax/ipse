@@ -77,6 +77,7 @@ defmodule Ipse.Extension.Collection do
       when is_function(normalizer, 2) do
     with false <- Process.get(@lock_key, false) != false,
          true <- valid_request?(original) and original["op"] == "commit",
+         true <- original["advance_floor"] === true,
          true <- length(original["changes"]) <= 8 and id?(operation_id),
          true <- JSON.sha256?(recipe_sha256),
          true <- Enum.all?(original["changes"], &(not managed_key?(&1["key"]))) do
