@@ -82,6 +82,185 @@ defmodule Ipse.Extension.ProjectIdentity do
     transaction(home, cwd, fn context, state -> resolve_locked(context, state, cwd) end)
   end
 
+  @doc """
+  Resolve only a previously admitted binding without creating control state or joining a worktree.
+
+  Absent state returns nil. Present state uses the retained native lock/read and
+  exact identity checks. An already admitted linked binding retains its bounded
+  native metadata-copy/cleanup validation; folder/primary and unadmitted probes
+  create no metadata snapshot. This is not project admission.
+  """
+  def existing(home, cwd) do
+    existing_read(home, cwd, nil)
+  end
+
+  @doc """
+  Join only a reciprocal worktree of an existing repository after a host authorization callback.
+
+  The callback receives the fully checked candidate view under the retained index
+  lock. Only `:ok` permits publication; `:deny` returns nil. This never admits a
+  new project or creates an identity root. Candidate metadata uses the bounded
+  native copy/cleanup path even when authorization subsequently denies the join.
+  The caller must recheck its protected grant after publication before effects.
+  """
+  def join_existing(home, cwd, authorize) when is_function(authorize, 1),
+    do: existing_read(home, cwd, authorize)
+
+  def join_existing(_, _, _), do: @error
+
+  defp existing_read(home, cwd, authorize) do
+    with :ok <- assert_order(),
+         true <-
+           path?(home) and Path.type(home) == :absolute and
+             path?(cwd) and Path.type(cwd) == :absolute,
+         {:ok, uid} <- Ipse.Runner.protected_current_uid() do
+      Ipse.Session.Resources.file_effect(fn -> existing_locked(home, cwd, uid, authorize) end)
+    else
+      _ -> @error
+    end
+  rescue
+    _ -> @error
+  end
+
+  defp existing_locked(home, cwd, uid, authorize) do
+    root = Path.join(home, "project-identities")
+    index = Path.join(root, "index.json")
+    lock_path = Path.join(root, ".lock")
+
+    with :ok <- existing_directory(root, uid),
+         :ok <- existing_directory(home, uid),
+         false <- overlap?(home, Path.expand(cwd)),
+         {:ok, index_stat} <- existing_index(index, uid),
+         {:ok, before_lock} <- File.lstat(lock_path),
+         true <- safe_file?(before_lock, uid) and before_lock.size == 0,
+         {:error, :enoent} <- File.lstat(Path.join(root, ".metadata-active")),
+         {:ok, lock} <- Transaction.acquire(lock_path, cwd: cwd) do
+      Process.put(@held, true)
+
+      released(lock, fn ->
+        with {:ok, after_lock} <- File.lstat(lock_path),
+             true <- retained_identity(before_lock) == retained_identity(after_lock),
+             :ok <- Transaction.quota(lock, :flat, 3 * 1024 * 1024),
+             {:ok, state} <- read(root, uid, lock),
+             {:ok, after_index} <- File.lstat(index),
+             true <- retained_identity(index_stat) == retained_identity(after_index),
+             {:ok, directory} <- directory(cwd, uid) do
+          context = %{root: root, uid: uid, cwd: cwd}
+
+          case existing_action(context, state, directory, authorize) do
+            {:ok, value} ->
+              with :ok <- lease(lock, :before), do: {:ok, value}
+
+            {:write, next, value, project, binding} ->
+              publish(context, next, value, project, binding, lock)
+
+            other ->
+              other
+          end
+        else
+          _ -> @error
+        end
+      end)
+    else
+      :absent -> {:ok, nil}
+      _ -> @error
+    end
+  end
+
+  defp existing_action(context, state, root, authorize) do
+    with {:ok, value} <- existing_binding(context, state, root) do
+      if is_nil(value) and is_function(authorize, 1),
+        do: authorized_join(context, state, root, authorize),
+        else: {:ok, value}
+    end
+  end
+
+  defp authorized_join(context, state, root, authorize) do
+    path = Path.join(root["path"], ".git")
+
+    case File.lstat(path) do
+      {:ok, %{type: :regular}} ->
+        with {:ok, text, _} <- metadata(context, path),
+             {:ok, admin} <- git_pointer(text, root["path"], "gitdir: ") do
+          known? =
+            Enum.any?(state["projects"], fn {_, p} ->
+              p["scope"] == "repository" and
+                Path.dirname(Path.dirname(admin)) == p["common"]["path"] and
+                Path.basename(Path.dirname(admin)) == "worktrees"
+            end)
+
+          if known? do
+            with {:write, _, value, _, _} = action <- join(context, state, root) do
+              case authorize.(value) do
+                :ok -> action
+                :deny -> {:ok, nil}
+                {:error, _} = error -> error
+                _ -> @error
+              end
+            end
+          else
+            {:ok, nil}
+          end
+        end
+
+      {:ok, %{type: :directory}} ->
+        {:ok, nil}
+
+      {:error, :enoent} ->
+        {:ok, nil}
+
+      _ ->
+        @error
+    end
+  end
+
+  defp existing_index(path, uid) do
+    case File.lstat(path) do
+      {:error, :enoent} ->
+        :absent
+
+      {:ok, stat} ->
+        if safe_file?(stat, uid) and stat.size <= @bytes, do: {:ok, stat}, else: @error
+
+      _ ->
+        @error
+    end
+  end
+
+  defp existing_binding(context, state, root) do
+    case state["bindings"][key(root["path"])] do
+      nil ->
+        {:ok, nil}
+
+      binding ->
+        project = state["projects"][binding["project_id"]]
+        with :ok <- revalidate(context, project, binding), do: {:ok, view(project, binding)}
+    end
+  end
+
+  defp existing_directory(path, uid) do
+    case File.lstat(path) do
+      {:error, :enoent} ->
+        :absent
+
+      {:ok, _} ->
+        case private_home(path, uid) do
+          {:ok, _} -> :ok
+          _ -> @error
+        end
+
+      _ ->
+        @error
+    end
+  end
+
+  defp retained_identity(stat),
+    do:
+      Map.take(
+        stat,
+        ~w(type major_device minor_device inode uid gid mode links size mtime ctime)a
+      )
+
   @doc "Revalidate the exact returned binding under the index lock before a short host callback."
   def with_binding(home, cwd, binding, fun) when is_function(fun, 1) do
     transaction(home, cwd, fn context, state ->
@@ -131,15 +310,7 @@ defmodule Ipse.Extension.ProjectIdentity do
               with :ok <- lease(lock, :before), do: {:ok, value}
 
             {:write, next, value, project, binding} ->
-              with :ok <- lease(lock, :before),
-                   :ok <- revalidate(context, project, binding),
-                   :ok <- write(root, next, lock) do
-                with :ok <- lease(lock, :after),
-                     :ok <- revalidate(context, project, binding),
-                     :ok <- lease(lock, :after),
-                     do: {:ok, value},
-                     else: (_ -> {:unknown, :project_identity_admission_unconfirmed})
-              end
+              publish(context, next, value, project, binding, lock)
 
             {:callback, callback} ->
               with :ok <- lease(lock, :before) do
@@ -175,6 +346,18 @@ defmodule Ipse.Extension.ProjectIdentity do
     end
   rescue
     _ -> @error
+  end
+
+  defp publish(context, next, value, project, binding, lock) do
+    with :ok <- lease(lock, :before),
+         :ok <- revalidate(context, project, binding),
+         :ok <- write(context.root, next, lock) do
+      with :ok <- lease(lock, :after),
+           :ok <- revalidate(context, project, binding),
+           :ok <- lease(lock, :after),
+           do: {:ok, value},
+           else: (_ -> {:unknown, :project_identity_admission_unconfirmed})
+    end
   end
 
   defp released(lock, fun) do

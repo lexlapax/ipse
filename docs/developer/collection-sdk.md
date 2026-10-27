@@ -269,10 +269,16 @@ the derived data and activation digest. Absence leaves the ordinary runtime
 unchanged; there is no clamp or default. A host applying it must retain the base
 configuration fingerprint and save the exact overlay for resume. No service/profile
 definitions or child grant can come from activation data.
-A host connecting the overlay must select current protected data only for a fresh
-Session and exact saved data on resume, while retaining the ordinary configuration
-fingerprint and current revocation gates. The pure derivation does not implement
-that Session selection step itself.
+[`Config.Activation`](../../lib/ipse/config/activation.ex) supplies the Session
+selection step: current protected data for a fresh Session, exact saved policy
+data on resume, unchanged ordinary fingerprint and current revocation gates.
+It verifies installed bytes/sidecar and current bundle membership for fresh
+selection, and derives service registrations only from actual base routes.
+Timeout overrides must narrow the base; children restore the base catalog,
+timeout and registry before their own admission. Follow the
+[configuration walkthrough](configuration.md#apply-a-protected-selection-without-changing-base-configuration)
+for noncreating status inspection, reciprocal worktree admission and failure
+fixtures. The pure `draft/3` and `derive/2` functions alone grant no authority.
 
 ## Keep approval and replay facts distinct
 

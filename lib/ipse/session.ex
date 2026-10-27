@@ -232,6 +232,7 @@ defmodule Ipse.Session do
     config = Keyword.fetch!(opts, :config)
     requested_cwd = Keyword.fetch!(opts, :cwd)
     home = Map.get(config, :home) || System.get_env("IPSE_HOME") || Path.expand("~/.ipse")
+    config = Map.put(config, :home, home)
     dir = Keyword.fetch!(opts, :state_dir) |> Path.expand()
     id = Keyword.get(opts, :id)
     owner_ref = if is_pid(opts[:owner]), do: Process.monitor(opts[:owner])
@@ -2871,11 +2872,13 @@ defmodule Ipse.Session do
     config = Ipse.MCP.fingerprint_version(config, 2)
     config = Map.put(config, :source_layout, Ipse.Session.SourceWindow.layout())
 
-    with {:ok, mode} <- Ipse.Extension.Mode.capture(config),
+    with {:ok, config} <- Ipse.Config.Activation.fresh(config, cwd),
+         {:ok, mode} <- Ipse.Extension.Mode.capture(config),
          config = apply_execution_mode(config, mode),
          selected_id = Ipse.Usage.id(),
          {:ok, semantic_admission} <-
            Ipse.Extension.SemanticAdmission.fresh(config, cwd, selected_id),
+         :ok <- Ipse.Config.Activation.admitted(config, semantic_admission),
          config = Map.put(config, :semantic_admission, semantic_admission),
          {:ok, id} <-
            Journal.create_with_id(
@@ -2925,8 +2928,10 @@ defmodule Ipse.Session do
          {:ok, mode} <- resume_execution_mode(saved_mode, config),
          config = apply_execution_mode(config, mode),
          {:ok, saved_admission} <- Saved.semantic_admission(events, id),
+         {:ok, config} <- Ipse.Config.Activation.resume(config, cwd, id, saved_admission),
          {:ok, semantic_admission} <-
            Ipse.Extension.SemanticAdmission.resume(config, cwd, id, saved_admission),
+         :ok <- Ipse.Config.Activation.admitted(config, semantic_admission),
          config = Map.put(config, :semantic_admission, semantic_admission),
          {:ok, old_cwd} <- Workspace.canonical_path(meta["cwd"]),
          true <-

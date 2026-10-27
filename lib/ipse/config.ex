@@ -214,6 +214,7 @@ defmodule Ipse.Config do
            %{effective | settings: settings, provenance: provenance}
            |> Map.put(:fingerprint, fingerprint)
            |> Map.put(:extensions, extensions)
+           |> Map.put(:extensions_disabled, opts[:extensions] === false)
            |> Map.put(:embedding_profiles, embedding_profiles)
            |> Map.put(:decision_profiles, decision_profiles)
            |> Map.put(:semantic_selections, semantic_selections)
@@ -272,6 +273,8 @@ defmodule Ipse.Config do
                operator_home: client.operator_home,
                configuration: manifest(effective),
                extensions: extensions,
+               base_extension_catalog: effective.extensions,
+               extensions_disabled: Map.get(effective, :extensions_disabled, false),
                embedding_profiles: effective.embedding_profiles,
                decision_profiles: effective.decision_profiles,
                semantic_selections: Map.get(effective, :semantic_selections, %{}),

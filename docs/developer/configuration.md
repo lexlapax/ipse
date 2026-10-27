@@ -11,6 +11,7 @@ it cannot select its own credential endpoint or authorize effects. The
 | --- | --- |
 | [`Config.resolve/4`](../../lib/ipse/config.ex) | Scoped JSON, selected profile, allowlisted environment, and explicit CLI become values/provenance/fingerprint, without credentials or execution |
 | `Config.runtime/2` | Values plus explicit client facts become admitted Session policy |
+| [`Config.Activation`](../../lib/ipse/config/activation.ex) | Apply an already reviewed protected selection after base fingerprinting, or reconstruct its exact saved selection |
 | [`Provider.Registry`](../../lib/ipse/provider/registry.ex) | Closed string/atom specs, credential sources, defaults, capabilities, usage extraction and operator labels/probes |
 | [`Config.Profiles`](../../lib/ipse/config/profiles.ex) | Validated text/embedding profiles and selected execution facts, without scheduling/fallback |
 | [`Config.Decisions`](../../lib/ipse/config/decisions.ex) | Operator-only advisory profiles, service/expected-model identity, nullable disclosures and child selection |
@@ -173,6 +174,72 @@ Raw configuration bodies enter neither model context nor journal metadata.
 Extend the precedence fixture in `test/ipse/config_test.exs` with both value and
 provenance assertions. Its integration suite checks drift refusal before work
 or permissible tail repair, beyond successful JSON decoding.
+
+## Apply a protected selection without changing base configuration
+
+Protected activation is a separate Session admission step. `Config.resolve/4`
+and `manifest/1` keep ordinary source bytes, provenance and fingerprint unchanged.
+`Config.runtime/2` privately retains the admitted base extension catalog; it does
+not rewrite a configuration file. Fresh `Session.open` then calls
+`Config.Activation.fresh/2`, before capturing its actual execution mode and semantic
+pin. A protected policy may select a reviewed installed artifact and narrower
+Main timeout. It cannot introduce provider endpoints or profile definitions.
+
+`Config.Activation.current/2` reads existing project identity and Consent state
+without selecting code. Absent identity/control state returns nil and creates no
+new roots. Present malformed state refuses. An already admitted linked worktree
+retains the bounded native metadata-copy/cleanup checks needed to preserve exact
+nanosecond witnesses; this transient IO is not a new identity admission. Existing
+primary and folder lookups do not need that metadata capture.
+
+A fresh reciprocal worktree can join an already admitted repository through
+`ProjectIdentity.join_existing/3`. Under the retained index lock, it checks the
+native metadata and backlink against that exact known repository before the host
+callback checks a current project-scoped activation, actual bundle and routes.
+Only then may the checked index publication occur. A clone, folder, unknown
+repository, revoked policy or worktree-only grant cannot authorize this join.
+Candidate inspection uses bounded transient native metadata snapshots, including
+when a join is refused; it does not admit a new project. After joining, fresh
+Session admission rechecks the current policy epoch/hash. Membership alone never
+permits an extension effect.
+
+Before a grant exists, `SemanticRoutes.review/2` derives review data from actual
+admitted Main/named-profile destinations. It reuses an exact operator service
+alias, or proposes `origin-` followed by the first 56 hexadecimal characters of
+the canonical origin's SHA256. The protected policy binds those full routes and
+service references. Applying the overlay requires exact equality with the actual
+base routes; a worker or policy JSON cannot supply a new endpoint. Registrations
+remain bounded by the ordinary eight-service limit.
+
+Fresh selection requires the current packaged bundle inventory digest, verified
+installed bytes, matching `operator.json`, actual Registry identity and exact
+capability ceiling. Resume instead reconstructs the artifact/options/selection
+from the saved version-2 semantic policy, even if the current policy was disabled
+or the packaged inventory upgraded. The exact installed saved artifact must still
+exist; startup never imports or rebuilds it. Historical metadata without activation
+stays unselected. Current Consent still gates every later effect, so retaining a
+saved catalog does not revive a revoked grant.
+
+An optional saved `main_timeout_ms` can only narrow the admitted base timeout;
+90 seconds against a 30-second base refuses instead of clamping or widening.
+Explicit `--no-extensions` keeps fresh sessions unselected and refuses removal of
+a saved activated catalog on resume. Children restore base entries, timeout and
+operator service registry before independent child filtering; the derived overlay
+is not inherited. Idle resume writes no new activation event or configuration.
+
+Run the configuration exercise above, then run:
+
+```sh
+mix test test/ipse/extension/semantic_routes_test.exs test/ipse/extension/project_identity_existing_test.exs
+mix test test/ipse/config/activation_session_test.exs
+```
+
+The second command creates a private packaged catalog and independently compiled
+SDK worker in a child VM. It checks real fresh/resumed Session selection, exact
+route registration, revocation, child policy and reciprocal worktree admission.
+Its local provider is configured for route validation only; it makes no model
+request. Do not replace the private application directory with the checkout's
+`priv` path when extending this fixture.
 
 ## Separate authority from precedence
 

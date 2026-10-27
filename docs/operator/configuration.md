@@ -609,9 +609,28 @@ for `observability`. Generic project trust grants none of these operator-only
 authorities. Inspection shows extension option digests, not their contents;
 the file itself remains a private configuration file, not a secret store.
 
+A separately reviewed protected activation can select an installed bundled
+extension for new sessions without editing these configuration files. The host
+requires the current packaged digest, installed artifact/sidecar and exact reviewed
+provider routes. A narrower reviewed Main timeout may apply; an activation cannot
+widen your configured timeout or define a new endpoint/profile. Fresh
+`--no-extensions` opts out. A new reciprocal Git worktree may share an active
+repository-wide selection after its registration and backlink are verified; a
+clone or folder cannot inherit it. This host boundary does not itself provide a
+setup command or establish that stored knowledge is current for model context.
+
 Settings stay fixed for a session. `/context refresh` reloads instructions and
 skills only. File/profile/role edits can refuse resume even if effective values
 look equivalent, because source digests and execution pins are checked too.
 Restore the original configuration for ordinary resume, or inspect the old
 session and export a reviewed handoff into a fresh one. Never edit a journal to
 make an incompatible route appear unchanged.
+
+Resume preserves the session's exact saved protected activation, including its
+artifact/options and reviewed timeout, rather than adopting today's enable/disable
+choice. The saved installed artifact must remain available. Disabling or revoking
+the current protected grant still blocks its later effects. Sessions saved without
+activation remain unselected after a later enable. Explicit removal of a saved
+activation with `--no-extensions` refuses resume; start a fresh session instead.
+Child sessions retain their independently allowed base extensions and do not
+inherit this derived activation or service registration.

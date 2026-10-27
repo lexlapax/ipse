@@ -104,6 +104,18 @@ modified. The initial non-escalated Mix attempt failed at its local TCP lock
 | `compile118-final.log` | Eleven affected/prerequisite modules, Elixir 1.18.5, empty diagnostics; host OTP 29 |
 | `format118-status-final.log` | Thirteen owned code/test files match Elixir 1.18.5 formatting |
 
+Subsequent command-target review found that the final 40-test command also named
+nonexistent `test/ipse/extension/actions_test.exs` and
+`test/ipse/extension/semantic_admission_test.exs`. Mix ignored those paths. The
+reported **40 actual passing cases remain valid**, including real legacy/managed
+Session action and protected-admission behavior, but no standalone suites at
+those two paths ran. A separate exact-file run then executed
+`mixed_actions_test.exs`, `semantic_consent_test.exs`,
+`semantic_consent_v2_test.exs` and `mode_test.exs`: **30 passed**, 0.6 seconds,
+seed 20261026, in the same private graph. Its log is
+`actual-policy-regressions.log`. Keep that later result separate from the original
+40 rather than inventing coverage for an ignored path.
+
 Final focused tests cover actual independent-worker publication, exact outer and
 inner replay bindings, normalization/version tampering, protected source proofs,
 one settlement, deliberate conflict, pre-entry and in-worker revocation,

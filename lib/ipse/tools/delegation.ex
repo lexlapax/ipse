@@ -191,6 +191,8 @@ defmodule Ipse.Tools.Delegation do
 
   @doc "Build child policy from host configuration without carrying conversation state."
   def child_config(config, origin) when is_map(config) do
+    config = Ipse.Config.Activation.child_base(config)
+
     child =
       config
       |> Map.drop([

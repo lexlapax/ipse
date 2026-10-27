@@ -39,6 +39,52 @@ defmodule Ipse.Extension.SemanticRoutes do
     _ -> @error
   end
 
+  @doc "Review actual routes and needed origin registrations before a policy exists; grants no authority."
+  def review(config, selections) do
+    with true <- is_map(config) and selectors?(selections),
+         base = Map.get(config, :inference_services, %{}),
+         :ok <- Semantics.validate_services(base),
+         {:ok, registry} <- review_registry(config, selections, base),
+         :ok <- Semantics.validate_services(registry),
+         {:ok, routes} <- resolve(Map.put(config, :inference_services, registry), selections) do
+      {:ok, %{routes: routes, registry: registry}}
+    else
+      _ -> @error
+    end
+  rescue
+    _ -> @error
+  end
+
+  defp review_registry(config, selections, base) do
+    Enum.reduce_while(selections, {:ok, base}, fn selected, {:ok, registry} ->
+      if config[:provider] == :demo and selected["operation"] == "main" do
+        {:cont, {:ok, registry}}
+      else
+        with {:ok, runtime} <- runtime(config, selected),
+             {:ok, _, destination} <- endpoint(runtime, selected["operation"]),
+             {:ok, registry} <- register_origin(registry, destination["origin"]) do
+          {:cont, {:ok, registry}}
+        else
+          _ -> {:halt, @error}
+        end
+      end
+    end)
+  end
+
+  defp register_origin(registry, origin) do
+    case service(registry, origin) do
+      {:ok, _} ->
+        {:ok, registry}
+
+      _ ->
+        id = "origin-" <> binary_part(Ipse.JSON.sha256(origin), 0, 56)
+
+        if Map.has_key?(registry, id),
+          do: @error,
+          else: {:ok, Map.put(registry, id, %{"version" => 1, "origins" => [origin]})}
+    end
+  end
+
   defp route(%{provider: :demo, model: model}, _services, %{"operation" => "main"} = selected) do
     {:ok,
      Map.merge(Map.take(selected, @labels), %{

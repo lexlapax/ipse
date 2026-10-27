@@ -71,6 +71,7 @@ resource/offline qualification. No daemon configuration or existing model was ch
 - [Managed source clocks, metadata and independently closed findings](managed-normalizer-component.md).
 - [Registered inference admission and completion](inference-dispatch-component.md), with its [independent adversarial audit](inference-dispatch-audit.md).
 - [Explicit managed SDK publication, reserved metadata and replay boundary](managed-sdk-component.md).
+- [Protected fresh/resumed activation, exact route overlays and reciprocal worktree admission](activation-overlay-component.md).
 - [Native read ownership and staging-frame ordering](native-read-component.md).
 - [Admitted decision operation, incremental review and controls](decision-operation-audit.md).
 - [Optional document parser, bounded staging and package evidence](document-parsers.md).

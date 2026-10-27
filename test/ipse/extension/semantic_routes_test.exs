@@ -84,6 +84,61 @@ defmodule Ipse.Extension.SemanticRoutesTest do
     assert {:ok, ^routes} = SemanticRoutes.resolve(config(), selectors)
   end
 
+  test "pre-grant route review reuses aliases or derives exact origin identities without endpoints from JSON" do
+    base = Map.put(config(), :inference_services, %{})
+    selected = [selector("main")]
+    assert {:ok, reviewed} = SemanticRoutes.review(base, selected)
+    origin = "http://127.0.0.1:11434"
+    id = "origin-" <> binary_part(Ipse.JSON.sha256(origin), 0, 56)
+    assert reviewed.registry == %{id => %{"version" => 1, "origins" => [origin]}}
+    assert [route] = reviewed.routes
+    assert route["service_id"] == id
+    assert route["endpoint"] == "http://127.0.0.1:11434/api/chat"
+    assert base.inference_services == %{}
+
+    assert {:ok, ^reviewed} =
+             SemanticRoutes.review(Map.put(base, :model, "current-main"), selected)
+
+    assert {:ok, aliased} = SemanticRoutes.review(config(), selected)
+    assert hd(aliased.routes)["service_id"] == "local"
+    assert aliased.registry == config().inference_services
+
+    assert {:error, _} =
+             SemanticRoutes.review(base, [
+               Map.put(hd(selected), "endpoint", "https://forged.invalid")
+             ])
+
+    collision =
+      Map.put(base, :inference_services, %{
+        id => %{"version" => 1, "origins" => ["https://elsewhere.invalid"]}
+      })
+
+    assert {:error, _} = SemanticRoutes.review(collision, selected)
+  end
+
+  test "pre-grant review respects closed registry capacity and real named profile selection" do
+    services =
+      Map.new(
+        1..8,
+        &{"service-#{&1}", %{"version" => 1, "origins" => ["https://service#{&1}.invalid"]}}
+      )
+
+    assert {:error, _} =
+             SemanticRoutes.review(Map.put(config(), :inference_services, services), [
+               selector("main")
+             ])
+
+    assert {:error, _} = SemanticRoutes.review(config(), [selector("model.complete", "missing")])
+
+    assert {:ok, reviewed} =
+             SemanticRoutes.review(config(), [
+               selector("main"),
+               selector("model.complete", "answer")
+             ])
+
+    assert Enum.all?(reviewed.routes, &(&1["service_id"] == "local"))
+  end
+
   test "unknown profile, changed current route and unadmitted service aliases fail closed" do
     for {config, selectors} <- [
           {config(), [selector("model.complete", "missing")]},
