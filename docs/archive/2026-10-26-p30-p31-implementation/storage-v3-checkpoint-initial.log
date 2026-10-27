@@ -33,7 +33,7 @@ Excluding tags: [:native_sandbox, :macos_sandbox, :macos_filesystem, :memory_sco
 
      where "x" is the timeout given as integer in milliseconds (defaults to 60_000).
 
-     code: 
+     code:
      stacktrace:
        (ipse 0.1.0) lib/ipse/session/resources.ex:336: Ipse.Session.Resources.perform_file_effect/2
        (ipse 0.1.0) lib/ipse/extension/collection.ex:56: Ipse.Extension.Collection.execute/4
