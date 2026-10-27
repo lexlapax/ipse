@@ -82,3 +82,28 @@ source and preliminary probe provenance. A later
 [partial-write diagnostic](kernel-7.2.11/partial-probe.md) observed stable counts
 after a completed or size-limit-failed write, but did not inject Btrfs I/O
 failure or interrupt a write system call.
+
+## P30 fixture recheck
+
+An independent isolated graph repeated ten P30-focused suites with seed
+20261226 and max-cases 2. The [output](p30b-recheck-2026-10-27.log) reports
+**53 passed**, exit 0, using local fixtures only. It covered decision types,
+wire transports, configuration, usage, Session and replay controls, and the
+pure Knowledge decision policy. The log SHA-256 is
+`62334bf68b8902f603b065b8ea8ebc4f9aec731bd060fba8d04c54565404ff01`.
+
+The run used `MIX_ENV=test`, `mix test --no-compile`, copied BEAM outputs from
+the reconstructed graph, and a private copy of the helper. It included the
+uncommitted egress prototype and did not independently establish source-to-BEAM
+identity for the complete graph. It was not the clean fixed-source P30B baseline,
+a live-engine qualification, a protected helper test, or a final egress test.
+The selected suites were `test/ipse/decision_test.exs`,
+`test/ipse/provider/decision_test.exs`,
+`test/ipse/provider/decision_transport_test.exs`,
+`test/ipse/config/decisions_test.exs`,
+`test/ipse/config/decision_loading_test.exs`,
+`test/ipse/usage/decision_test.exs`,
+`test/ipse/extension/decision_call_test.exs`,
+`test/ipse/extension/decision_capability_test.exs`,
+`test/ipse/extension/decision_session_test.exs`, and
+`test/extensions/knowledge/decision_policy_test.exs`.
