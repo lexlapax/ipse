@@ -15,6 +15,11 @@
 #[path = "diagnostic_receipt.rs"] mod diagnostic_receipt;
 #[path = "diagnostic_driver.rs"] mod diagnostic_driver;
 #[path = "held_loop_client.rs"] mod held_loop_client;
+#[path = "owner_launcher.rs"] mod owner_launcher;
+#[path = "owner_guardian.rs"] mod owner_guardian;
+#[path = "guardian_launcher.rs"] mod guardian_launcher;
+#[path = "diagnostic_fault.rs"] mod diagnostic_fault;
+#[path = "diagnostic_stage_channel.rs"] mod diagnostic_stage_channel;
 #[path = "recovery_guardian.rs"] mod recovery_guardian;
 #[path = "cgroup_witness.rs"] mod cgroup_witness;
 #[path = "btrfs_identity.rs"] mod btrfs_identity;
@@ -366,4 +371,10 @@ fn main() {
        assert!(gated_switch::switch(&mut b,&e,&mut p,10).is_err());assert!(!p.released);assert!(b.effects.is_empty());
       }
     }
+
+    impl super::diagnostic_fault::RecordedBackend for Mock {fn diagnostic_record(&mut self,_:super::diagnostic_receipt::Record)->Result<(),()>{Ok(())}}
+    struct FaultPeer{fail:bool,released:bool}
+    impl super::diagnostic_fault::Peer for FaultPeer {fn ready(&mut self)->Result<(),()>{Ok(())}fn authorize(&mut self,_:u32)->Result<(),()>{Ok(())}fn release(&mut self)->Result<String,()>{self.released=true;if self.fail{Err(())}else{Ok("REPORT W=5".into())}}fn finish(&mut self)->Result<(),()>{Ok(())}}
+    struct FaultStage;impl super::diagnostic_fault::Stage for FaultStage {fn start(&mut self)->Result<u32,()>{Ok(10)}fn finish(&mut self,_:&str)->Result<(),()>{Ok(())}}
+    #[test]fn diagnostic_fault_restores_only_after_complete_peer_report(){let e=expected();let mut b=Mock::new();let mut p=FaultPeer{fail:false,released:false};assert_eq!(super::diagnostic_fault::run(&mut b,&e,&mut p,&mut FaultStage),Ok("REPORT W=5".into()));assert!(p.released);assert_eq!(b.effects,vec![Action::Suspend,Action::LoadError,Action::Resume,Action::Suspend,Action::LoadLinear,Action::Resume]);let mut b=Mock::new();let mut p=FaultPeer{fail:true,released:false};assert!(super::diagnostic_fault::run(&mut b,&e,&mut p,&mut FaultStage).is_err());assert!(p.released);assert!(!b.effects.contains(&Action::LoadLinear));}
 }

@@ -10,6 +10,7 @@ pub(super) enum Status { Empty, BackingReady, LoopReady, MapperReady, Formatted,
 pub(super) trait Backend {
     /// Must be exclusive and durable; effect is never entered if this fails.
     fn pending(&mut self, step: Step) -> Result<(), ()>;
+    fn arm_owner(&mut self,expected:&Expected)->Result<(),()>;
     fn effect(&mut self, step: Step, expected: &Expected) -> Result<(), ()>;
     /// Observe the just-created open file and return its native filesystem
     /// device/inode. The real backend must tie this to the original create FD.
@@ -39,7 +40,7 @@ pub(super) fn provision<B: Backend>(b: &mut B, e: &mut Expected, state: Status) 
     };
     e.backing_major=major; e.backing_minor=minor; e.backing_inode=inode;
     if b.backing_matches(e) != Ok(true) || b.confirmed(Status::BackingReady).is_err() { return Status::Unknown; }
-    if b.loop_unassigned(e) != Ok(true) || b.backing_matches(e) != Ok(true) ||
+    if b.arm_owner(e).is_err() || b.loop_unassigned(e) != Ok(true) || b.backing_matches(e) != Ok(true) ||
        !effect(b,e,Step::Loop) { return Status::Unknown; }
     let loop_row = match b.loop_row() { Ok(row) => row, Err(_) => return Status::Unknown };
     if !loop_matches(e,&loop_row) || b.backing_matches(e) != Ok(true) || b.confirmed(Status::LoopReady).is_err() ||
@@ -75,6 +76,7 @@ pub(super) fn provision<B: Backend>(b: &mut B, e: &mut Expected, state: Status) 
     impl Mock { fn new() -> Self { Self {steps:vec![],pending:vec![],fail:None,loop_busy:false,
         dm_busy:false,backing:false,mounted:false,holder:false,wrong_table:false} } }
     impl Backend for Mock {
+        fn arm_owner(&mut self,_:&Expected)->Result<(),()>{Ok(())}
         fn pending(&mut self,s:Step)->Result<(),()>{self.pending.push(s);Ok(())}
         fn effect(&mut self,s:Step,_:&Expected)->Result<(),()>{
           self.steps.push(s);if self.fail==Some(s){return Err(())}

@@ -3,7 +3,7 @@
 use super::{Action, Backend, Expected, Observation, State};
 use std::fs::{self, File, OpenOptions};
 use std::io::{Read, Write};
-use std::os::unix::fs::{MetadataExt, OpenOptionsExt};
+use std::os::unix::fs::{MetadataExt, OpenOptionsExt,FileTypeExt};
 use std::os::unix::process::CommandExt;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
@@ -19,7 +19,7 @@ const WORK_COMMANDS: u64 = 96;
 /// fixture directory, staged tool image and device-cgroup configuration. Its
 /// constructor cannot itself establish those properties and is not called by
 /// the disabled main program.
-struct RealBackend {
+pub(super) struct RealBackend {
     work: PathBuf,
     mount: PathBuf,
     loop_node: PathBuf,
@@ -28,18 +28,27 @@ struct RealBackend {
     umount: PathBuf,
     mount_tool: PathBuf,
     mkfs: PathBuf,
+    blkid:PathBuf,
+    observed_fsuuid:Option<String>,
     sysroot: PathBuf,
     expected: Expected,
     deadline: Instant,
     next: u64,
     image: Option<File>,
     // Injected only by a future authenticated guardian; constructor refuses live setup.
-    loop_owner: Option<super::held_loop_client::Client>,
+    loop_owner: Option<super::owner_launcher::Owner>,
+    boundary:Option<super::owner_launcher::LaunchBoundary>,
+    arm_inputs:Option<ArmInputs>,
+    guarded_failure:Option<GuardedOwnerFailure>,
+    diagnostic:Option<super::diagnostic_receipt::Receipt>,
     command_limit: u64,
     cleanup_reserved: bool,
     fixture_fsid: Option<[u8;16]>,
     fixture_mount_id:Option<u64>, fixture_ns_inode:u64,
 }
+
+struct ArmInputs {boundary:super::owner_launcher::LaunchBoundary,ledger:File,owner_stderr:File,guardian_stderr:File}
+enum GuardedOwnerFailure {Owner(super::owner_launcher::LaunchFailure),Guardian(super::owner_launcher::PreparedOwner,super::guardian_launcher::Failure),Activate(super::owner_launcher::PreparedOwner,super::guardian_launcher::GuardianReady,std::io::Error),Install(super::owner_launcher::Owner)}
 
 impl RealBackend {
     /// Strict constructor for a *future* container harness. This has not been
@@ -65,12 +74,37 @@ impl RealBackend {
         Ok(Self { work, mount, loop_node:PathBuf::from(format!("/dev/loop{loop_minor}")),
             losetup:"/work/tools/bin/losetup".into(), dmsetup:"/work/tools/bin/dmsetup".into(),
             umount:"/work/tools/bin/umount".into(), mount_tool:"/work/tools/bin/mount".into(),
-            mkfs:"/work/tools/bin/mkfs.btrfs".into(), sysroot:"/sys".into(),
+            mkfs:"/work/tools/bin/mkfs.btrfs".into(),blkid:"/work/tools/bin/blkid".into(),observed_fsuuid:None, sysroot:"/sys".into(),
             expected:Expected { loop_major:7,loop_minor,backing_major:0,backing_minor:0,
                 backing_inode:0,loop_ref:name.clone(),dm_name:name,dm_uuid:format!("IPSE-Q-{nonce}"),
                 dm_major,dm_minor,sectors:1_048_576 },
-            deadline:Instant::now()+Duration::from_secs(seconds), next:0, image:None,loop_owner:None,
+            deadline:Instant::now()+Duration::from_secs(seconds), next:0, image:None,loop_owner:None,boundary:None,arm_inputs:None,guarded_failure:None,diagnostic:None,
             command_limit:WORK_COMMANDS, cleanup_reserved:false, fixture_fsid:None, fixture_mount_id:None, fixture_ns_inode:here })
+    }
+    /// The boundary has no live producer. Return every started process on
+    /// failure so the external supervisor can preserve unknown state.
+    fn start_guarded_owner(&mut self,boundary:&super::owner_launcher::LaunchBoundary,ledger:File,owner_stderr:File,guardian_stderr:File)->Result<(),GuardedOwnerFailure> {
+        let image=match self.image.as_ref().and_then(|f|f.metadata().ok()){Some(v)=>v,None=>return Err(GuardedOwnerFailure::Owner(super::owner_launcher::LaunchFailure{child:None,error:std::io::ErrorKind::InvalidInput.into()}))};
+        let nonce=match self.expected.loop_ref.strip_prefix("ipse-q-"){Some(v)=>v,None=>return Err(GuardedOwnerFailure::Owner(super::owner_launcher::LaunchFailure{child:None,error:std::io::ErrorKind::InvalidInput.into()}))};
+        let minor=match u32::try_from(self.expected.loop_minor){Ok(v)=>v,Err(_)=>return Err(GuardedOwnerFailure::Owner(super::owner_launcher::LaunchFailure{child:None,error:std::io::ErrorKind::InvalidInput.into()}))};
+        let setup=(||->std::io::Result<super::diagnostic_receipt::Receipt>{
+            if image.nlink()!=1||image.len()!=536_870_912{return Err(std::io::ErrorKind::InvalidInput.into())}
+            let node=std::fs::symlink_metadata(&self.loop_node)?;if !node.file_type().is_block_device()||Self::block_device_matches(&self.loop_node,self.expected.loop_major,self.expected.loop_minor)!=Ok(true){return Err(std::io::ErrorKind::InvalidInput.into())}
+            let mut boot=String::new();File::open("/proc/sys/kernel/random/boot_id")?.take(64).read_to_string(&mut boot)?;let boot=boot.trim_end_matches('\n').to_owned();
+            let mut receipt=super::diagnostic_receipt::Receipt::create(ledger.try_clone()?,nonce)?;
+            receipt.bind_initial(&super::diagnostic_receipt::InitialIdentity{nonce:nonce.into(),boot_id:boot,backing_dev:image.dev(),backing_inode:image.ino(),loop_minor:minor,loop_node_dev:node.dev(),loop_node_inode:node.ino()})?;Ok(receipt)
+        })();
+        self.diagnostic=Some(setup.map_err(|error|GuardedOwnerFailure::Owner(super::owner_launcher::LaunchFailure{child:None,error}))?);
+        let prepared=super::owner_launcher::launch(boundary,Path::new("/work/tools/bin/ipse-loop-owner"),minor,nonce,image.dev(),image.ino(),owner_stderr).map_err(GuardedOwnerFailure::Owner)?;
+        let guardian=match super::guardian_launcher::launch(boundary,ledger,prepared.pid(),nonce,guardian_stderr){Ok(v)=>v,Err(f)=>return Err(GuardedOwnerFailure::Guardian(prepared,f))};
+        let owner=match prepared.activate(guardian){Ok(v)=>v,Err((p,g,e))=>return Err(GuardedOwnerFailure::Activate(p,g,e))};
+        match self.install_owner(owner){Ok(())=>{self.boundary=Some(boundary.clone());Ok(())},Err((owner,_))=>Err(GuardedOwnerFailure::Install(owner))}
+    }
+    /// Called only after a guardian has launched and attested the exact owner.
+    fn install_owner(&mut self,owner:super::owner_launcher::Owner)->Result<(),(super::owner_launcher::Owner,())> {
+        let valid=(||->Result<bool,()> {let backing=self.image.as_ref().ok_or(())?.metadata().map_err(|_| ())?;Ok(self.loop_owner.is_none()&&owner.matches(u32::try_from(self.expected.loop_minor).map_err(|_| ())?,&self.expected.loop_ref,backing.dev(),backing.ino()))})();
+        if valid!=Ok(true){return Err((owner,()))}
+        self.loop_owner=Some(owner);Ok(())
     }
     /// Explicitly reserve a separately bounded cleanup window after a known
     /// restored state. Never invoke this automatically after an unknown effect.
@@ -83,6 +117,8 @@ impl RealBackend {
         Ok(())
     }
     fn capture(&mut self, binary: &Path, args: &[String]) -> Result<String, ()> {
+        if self.loop_owner.as_ref().is_some_and(|owner|!owner.guardian_live()){return Err(())}
+        if self.boundary.as_ref().is_some_and(|boundary|boundary.recheck().is_err()){return Err(())}
         if Instant::now() >= self.deadline || self.next >= self.command_limit || !binary.is_absolute() {
             return Err(());
         }
@@ -273,6 +309,8 @@ impl Backend for RealBackend {
     }
     fn observe_loop(&mut self) -> Result<String, ()> { self.loop_info() }
     fn effect(&mut self, action: Action, e: &Expected) -> Result<(), ()> {
+        if self.loop_owner.as_ref().is_some_and(|owner|!owner.guardian_live()){return Err(())}
+        if self.boundary.as_ref().is_some_and(|boundary|boundary.recheck().is_err()){return Err(())}
         self.fixed_name(e)?;
         let name = e.dm_name.clone();
         match action {
@@ -332,13 +370,32 @@ impl Backend for RealBackend {
 }
 
 impl super::provisioning::Backend for RealBackend {
+    fn arm_owner(&mut self,e:&Expected)->Result<(),()> {
+        self.expected=e.clone();
+        if self.loop_owner.is_some(){return Err(())}
+        let inputs=self.arm_inputs.take().ok_or(())?;
+        match self.start_guarded_owner(&inputs.boundary,inputs.ledger,inputs.owner_stderr,inputs.guardian_stderr) {Ok(())=>Ok(()),Err(failure)=>{self.guarded_failure=Some(failure);Err(())}}
+    }
     fn pending(&mut self, step: super::provisioning::Step) -> Result<(), ()> {
-        self.ledger(&format!("provision_pending={step:?}"))
+        use super::provisioning::Step;use super::diagnostic_receipt::{Effect,Record};
+        self.ledger(&format!("provision_pending={step:?}"))?;
+        let effect=match step {Step::Backing=>return Ok(()),Step::Loop=>Effect::ConfigureLoop,Step::Mapper=>Effect::CreateMapper,Step::Format=>Effect::MakeFilesystem,Step::Mount=>Effect::Mount};
+        self.diagnostic.as_mut().ok_or(())?.record(Record::Pending(effect)).map_err(|_| ())
     }
     fn confirmed(&mut self, state: super::provisioning::Status) -> Result<(), ()> {
-        self.ledger(&format!("provision_confirmed={state:?}"))
+        use super::provisioning::Status;use super::diagnostic_receipt::{Effect,Observation,Record};
+        let effect=match state {Status::BackingReady=>return self.ledger(&format!("provision_confirmed={state:?}")),Status::LoopReady=>Effect::ConfigureLoop,Status::MapperReady=>{let o=Observation::Mapper{major:u32::try_from(self.expected.dm_major).map_err(|_| ())?,minor:u32::try_from(self.expected.dm_minor).map_err(|_| ())?,uuid:self.expected.dm_uuid.clone()};self.diagnostic.as_mut().ok_or(())?.observe(o).map_err(|_| ())?;Effect::CreateMapper},Status::Formatted=>{
+          let dev=format!("/dev/mapper/{}",self.expected.dm_name);if Self::block_device_matches(Path::new(&dev),self.expected.dm_major,self.expected.dm_minor)!=Ok(true){return Err(())}
+          let tool=self.blkid.clone();let uuid=self.capture(&tool,&["-p".into(),"-s".into(),"UUID".into(),"-o".into(),"value".into(),dev.clone()])?.trim().to_owned();
+          if Self::block_device_matches(Path::new(&dev),self.expected.dm_major,self.expected.dm_minor)!=Ok(true){return Err(())}
+          self.diagnostic.as_mut().ok_or(())?.observe(Observation::Filesystem{uuid:uuid.clone()}).map_err(|_| ())?;self.observed_fsuuid=Some(uuid);Effect::MakeFilesystem},Status::Mounted=>{
+          let b=self.fixture_fsid.ok_or(())?;let uuid=format!("{:02x}{:02x}{:02x}{:02x}-{:02x}{:02x}-{:02x}{:02x}-{:02x}{:02x}-{:02x}{:02x}{:02x}{:02x}{:02x}{:02x}",b[0],b[1],b[2],b[3],b[4],b[5],b[6],b[7],b[8],b[9],b[10],b[11],b[12],b[13],b[14],b[15]);
+          if self.observed_fsuuid.as_ref()!=Some(&uuid){return Err(())}let o=Observation::Mount{namespace_inode:self.fixture_ns_inode,mount_id:self.fixture_mount_id.ok_or(())?};self.diagnostic.as_mut().ok_or(())?.observe(o).map_err(|_| ())?;Effect::Mount},_=>return Err(())};
+        self.diagnostic.as_mut().ok_or(())?.record(Record::Confirmed(effect)).map_err(|_| ())?;self.ledger(&format!("provision_confirmed={state:?}"))
     }
     fn effect(&mut self, step: super::provisioning::Step, e: &Expected) -> Result<(), ()> {
+        if self.loop_owner.as_ref().is_some_and(|owner|!owner.guardian_live()){return Err(())}
+        if self.boundary.as_ref().is_some_and(|boundary|boundary.recheck().is_err()){return Err(())}
         use super::provisioning::Step;
         self.fixed_name(e)?;
         let image_path = self.image_path()?;
@@ -438,8 +495,8 @@ impl super::provisioning::Backend for RealBackend {
             loop_ref:format!("ipse-q-{nonce}"),dm_name:format!("ipse-q-{nonce}"),dm_uuid:format!("IPSE-Q-{nonce}"),dm_major:253,dm_minor:11,sectors:1_048_576 };
         (RealBackend {work:path.clone(),mount:"/work/mount".into(),loop_node:"/dev/loop42".into(),
             losetup:"/usr/bin/losetup".into(),dmsetup:"/usr/bin/dmsetup".into(),umount:"/usr/bin/umount".into(),
-            mount_tool:"/usr/bin/mount".into(),mkfs:"/usr/bin/mkfs.btrfs".into(),sysroot:"/sys".into(),
-            expected,deadline:Instant::now()+Duration::from_secs(3),next:0,image:None,loop_owner:None,
+            mount_tool:"/usr/bin/mount".into(),mkfs:"/usr/bin/mkfs.btrfs".into(),blkid:"/usr/bin/blkid".into(),observed_fsuuid:None,sysroot:"/sys".into(),
+            expected,deadline:Instant::now()+Duration::from_secs(3),next:0,image:None,loop_owner:None,boundary:None,arm_inputs:None,guarded_failure:None,diagnostic:None,
             command_limit:WORK_COMMANDS,cleanup_reserved:false,fixture_fsid:None,fixture_mount_id:None,fixture_ns_inode:fs::metadata("/proc/self/ns/mnt").unwrap().ino()},path)
     }
     #[test] fn captured_output_and_exclusive_journal_are_bounded() {
@@ -574,4 +631,7 @@ impl super::IndexRemovalBackend for RealBackend {
             (Ok(_),_)|(_,Ok(_))=>Ok(false),_=>Err(())
         }
     }
+}
+impl super::diagnostic_fault::RecordedBackend for RealBackend {
+ fn diagnostic_record(&mut self,r:super::diagnostic_receipt::Record)->Result<(),()> {if self.loop_owner.as_ref().is_none_or(|owner|!owner.guardian_live()){return Err(())}if self.boundary.as_ref().is_none_or(|b|b.recheck().is_err()){return Err(())}self.diagnostic.as_mut().ok_or(())?.record(r).map_err(|_| ())}
 }

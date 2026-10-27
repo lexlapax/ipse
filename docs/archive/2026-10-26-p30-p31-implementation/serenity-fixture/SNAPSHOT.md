@@ -243,3 +243,15 @@ synthetic tests pass. The current check assumes one PID namespace and does not
 prove immutable binary ancestry, argument binding, cgroup containment or a
 complete guardian. It has no live launcher and remains subject to independent
 review. No device operation occurred.
+
+The disabled backend now sketches staged launch of the held-FD owner and a
+separate guardian, plus granular provisioning and fault receipts. A private
+no-device child-process test observed a guardian with the intended direct
+supervisor/owner lineage signal only its pinned owner after supervisor death;
+its receipt correctly calls the effect unknown. A private temporary-file
+variant of the fixed-path stage script completed an authenticated peer/Resources
+scope handshake (`SYNTHETIC_STAGE_SCOPE_OK`) after a first attempt exposed and
+fixed an incorrect worker PID. This used a test-instrumented helper and does
+not prove a Session journey, device behavior, crash cleanup or qualification.
+The actual privileged launcher, staged tool closure, cgroup boundaries, stage
+provenance and resulting device effects remain unverified and are not enabled.
