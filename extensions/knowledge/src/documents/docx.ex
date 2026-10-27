@@ -37,7 +37,9 @@ defmodule IpseKnowledge.Documents.Docx do
         {Map.put(data, name, xml), expanded + byte_size(xml)}
       end)
 
-    IpseKnowledge.Documents.Docx.Styles.relationships(authority["_rels/.rels"], names, :root)
+    root_relationships =
+      IpseKnowledge.Documents.Docx.Styles.relationships(authority["_rels/.rels"], names, :root)
+
     IpseKnowledge.Documents.Docx.Styles.content_types(authority["[Content_Types].xml"], names)
 
     selected =
@@ -47,7 +49,7 @@ defmodule IpseKnowledge.Documents.Docx do
     {relationships, relationship_bytes} =
       case Enum.find(entries, &(&1.name == "word/_rels/document.xml.rels")) do
         nil ->
-          {%{}, 0}
+          {%{parts: %{}, external?: false, unexamined?: false}, 0}
 
         entry ->
           xml = Zip.read(bytes, entry, limits.max_expanded_bytes - authority_bytes)
@@ -55,7 +57,8 @@ defmodule IpseKnowledge.Documents.Docx do
       end
 
     for name <- ["word/styles.xml" | tl(@parts)], name in names do
-      unless Map.has_key?(relationships, name), do: fail(:unsupported_docx_part_relationship)
+      unless Map.has_key?(relationships.parts, name),
+        do: fail(:unsupported_docx_part_relationship)
     end
 
     {styles, style_bytes} =
@@ -93,7 +96,33 @@ defmodule IpseKnowledge.Documents.Docx do
             name not in ["word/styles.xml" | @parts],
           do: %{"code" => "part_not_extracted", "part" => name}
 
-    warnings = Enum.uniq(warnings ++ omissions)
+    relationship_warnings =
+      Enum.flat_map(
+        [{"_rels/.rels", root_relationships}, {"word/_rels/document.xml.rels", relationships}],
+        fn {name, observation} ->
+          external =
+            if observation.external?,
+              do: [%{"code" => "external_relationship_not_followed", "part" => name}],
+              else: []
+
+          unexamined =
+            if observation.unexamined?,
+              do: [%{"code" => "internal_relationship_not_examined", "part" => name}],
+              else: []
+
+          external ++ unexamined
+        end
+      )
+
+    unexamined =
+      if Enum.any?(names, fn name ->
+           String.ends_with?(name, ".rels") and
+             name not in ["_rels/.rels", "word/_rels/document.xml.rels"]
+         end),
+         do: [%{"code" => "relationship_part_not_examined"}],
+         else: []
+
+    warnings = Enum.uniq(warnings ++ omissions ++ relationship_warnings ++ unexamined)
 
     {:ok,
      %{
@@ -495,6 +524,8 @@ defmodule IpseKnowledge.Documents.Docx.Styles do
       depth: 0,
       count: 0,
       parts: %{},
+      external?: false,
+      unexamined?: false,
       ids: MapSet.new(),
       names: names,
       mode: mode,
@@ -518,7 +549,7 @@ defmodule IpseKnowledge.Documents.Docx.Styles do
         if mode == :root and not Map.has_key?(result.parts, "word/document.xml"),
           do: fail(result.error)
 
-        result.parts
+        %{parts: result.parts, external?: result.external?, unexamined?: result.unexamined?}
 
       {:document_error, _, code, _, _} when is_atom(code) ->
         fail(code)
@@ -814,6 +845,15 @@ defmodule IpseKnowledge.Documents.Docx.Styles do
         do: fail(state.error)
 
       type = attribute.("Type")
+      mode = attribute.("TargetMode")
+      target = attribute.("Target")
+
+      unless is_binary(type) and type != "" and is_binary(target) and target != "" and
+               mode in [nil, "Internal", "External"] and
+               (mode == "External" or
+                  (not String.starts_with?(target, "//") and
+                     not Regex.match?(~r/\A[A-Za-z][A-Za-z0-9+.-]*:/, target))),
+             do: fail(state.error)
 
       if is_binary(type) and String.ends_with?(type, "/stylesWithEffects"),
         do: fail(state.error)
@@ -858,6 +898,8 @@ defmodule IpseKnowledge.Documents.Docx.Styles do
         | depth: 2,
           count: state.count + 1,
           parts: if(part, do: Map.put(state.parts, part, id), else: state.parts),
+          external?: state.external? or mode == "External",
+          unexamined?: state.unexamined? or (is_nil(part) and mode != "External"),
           ids: MapSet.put(state.ids, id)
       }
     end

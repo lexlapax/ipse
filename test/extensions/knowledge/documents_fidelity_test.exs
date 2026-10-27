@@ -55,7 +55,7 @@ defmodule Ipse.KnowledgeDocumentsFidelityTest do
       assert result["status"]=="complete" and result["warnings"]==[]
       assert result["revision_policy"]=="insertions_included_deletions_excluded"
       assert result["visibility_policy"]=="bounded_style_and_direct_hidden_excluded"
-      assert result["extraction_version"]=="ipse-documents-v2"
+      assert result["extraction_version"]=="ipse-documents-v3"
     end
     for value <- ["false","0","off"] do
       {:ok,result}=D.extract(doc.("<w:p><w:r><w:rPr><w:vanish w:val=\"#{value}\"/></w:rPr><w:t>visible</w:t></w:r></w:p>"),"a.docx")

@@ -24,7 +24,12 @@ defmodule IpseKnowledge.Documents do
   ]
 
   def limits, do: @limits
+  @doc "Legacy shared recipe version, retained for text, Markdown and PDF."
   def version, do: "ipse-documents-v2"
+
+  @doc "Return the immutable extraction recipe selected for a result format."
+  def version("docx"), do: "ipse-documents-v3"
+  def version(format) when format in ~w(text markdown pdf), do: version()
 
   @doc """
   Explicit experimental PDF selection. The host must admit the parser's absolute
@@ -111,7 +116,7 @@ defmodule IpseKnowledge.Documents do
     Map.merge(document, %{
       "original_sha256" => Base.encode16(:crypto.hash(:sha256, bytes), case: :lower),
       "original_bytes" => byte_size(bytes),
-      "extraction_version" => version()
+      "extraction_version" => version(document["format"])
     })
   end
 

@@ -20,6 +20,7 @@ Start with the [operator procedures](../operator/corpus.md) and
 | `store.ex`, `store/` | Root/page transactions and State/MCP adapters |
 | `evidence.ex` | Safe identities, chunks/citations, ranking/fusion/facts/traversal |
 | `adapters.ex` | Complete selected retrieval/embedding/text-helper interactions |
+| `documents.ex`, `documents/` | Bounded extraction of acquired bytes, DOCX package checks, and optional protected PDF parser staging |
 
 Entrypoints implement SDK callbacks directly. A compiled preset fixes capabilities;
 options cannot promote lexical State code into semantic or MCP authority. All
@@ -176,6 +177,46 @@ can take explicit lexical fallback; graph/transport/malformed-model failures can
 The fallback remains partial. `Evidence.query_scope/4` owns direct/combined consistency.
 Use `test/extensions/knowledge/query_completeness_test.exs` to compare matches,
 no-match, unpublished drafts, forgotten/expired/future sources, and depth-limited graphs.
+
+## Inspect bounded document extraction
+
+`Documents.extract/3` accepts already acquired bytes and a filename; it neither
+opens the source path nor authorizes a fetch. The result binds the original binary
+hash, an extraction recipe, and bounded text segments with format-specific
+locators. Text and Markdown use byte-exact line offsets. The DOCX reader checks
+package authority, bounds ZIP expansion and XML parsing, includes insertions, and
+excludes deletions and supported hidden runs. Unsupported content stays partial
+or refuses rather than claiming complete coverage.
+
+DOCX relationship targets are never fetched. A checked external relationship,
+an unexamined internal relationship, or an unexamined relationship part marks
+the result partial. Relationship warnings do not repeat targets or arbitrary
+unexamined relationship-part names. Malformed target modes and scheme or network-path targets
+without explicit external mode refuse. A normal document with relationships the
+reader does not interpret can therefore be partial even when its visible body is
+readable; inspect the result and original document before using it as evidence.
+
+Recipes are format-specific: `Documents.version("docx")` is
+`ipse-documents-v3`, while text, Markdown and PDF use `ipse-documents-v2`.
+The legacy `version/0` returns the v2 value; use `version/1` when binding an
+extraction to a source version. A prior DOCX v2 result is not automatically
+migrated or equivalent. Future indexing must explicitly rebuild or requalify it.
+The optional PDF backend requires a separately host-admitted protected parser;
+its installation does not activate PDF acquisition. The
+[parser contract](../../native/ipse-pdf/README.md) describes its lifetime and
+limits. These extraction modules do not by themselves provide an operator file
+ingestion workflow, current-source authorization or qualified retrieval.
+
+Exercise synthetic DOCX relationships, bounded XML and Unicode extraction from
+the repository root:
+
+```sh
+ERL_FLAGS='+S 2:2' elixir -e 'ExUnit.start(seed: 20270116); Code.require_file("test/extensions/knowledge/documents_test.exs"); Code.require_file("test/extensions/knowledge/documents_fidelity_test.exs")'
+```
+
+Expect 23 tests to pass; one opens a loopback listener to verify that an external
+relationship is not fetched. These fixture controls do not establish real Word
+fidelity, PDF quality, migration or end-to-end document retrieval.
 
 ## Keep source bytes distinct from semantic support
 

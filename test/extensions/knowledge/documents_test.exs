@@ -51,6 +51,10 @@ defmodule Ipse.KnowledgeDocumentsTest do
     assert result["format"]=="markdown"
     assert result["original_sha256"]==Base.encode16(:crypto.hash(:sha256,bytes),case: :lower)
     assert result["extraction_version"]==D.version()
+    assert D.version("markdown")=="ipse-documents-v2"
+    assert D.version("text")=="ipse-documents-v2"
+    assert D.version("pdf")=="ipse-documents-v2"
+    assert D.version("docx")=="ipse-documents-v3"
     assert Enum.map(result["segments"],& &1["text"])==["# Café\r","保持 exact",""]
     for segment <- result["segments"] do
       l=segment["locator"]
@@ -107,11 +111,57 @@ defmodule Ipse.KnowledgeDocumentsTest do
       {"word/header1.xml","omitted header"}]
     {:ok,result}=D.extract(zip.(entries),"a.docx")
     assert result["status"]=="partial"
-    assert result["warnings"]==[%{"code"=>"part_not_extracted","part"=>"word/header1.xml"}]
+    assert %{"code"=>"part_not_extracted","part"=>"word/header1.xml"} in result["warnings"]
+    assert %{"code"=>"external_relationship_not_followed","part"=>"word/_rels/document.xml.rels"} in result["warnings"]
     [main,footnote,comment]=result["segments"]
     assert main["text"]=="main"
     assert footnote["locator"]["part"]=="word/footnotes.xml" and footnote["locator"]["annotation_id"]=="7"
     assert comment["locator"]["part"]=="word/comments.xml" and comment["locator"]["annotation_id"]=="4"
+    ''')
+  end
+
+  test "external and unexamined package relationships cannot claim complete coverage" do
+    pure(~S'''
+    relns="http://schemas.openxmlformats.org/package/2006/relationships"
+    prefix="http://schemas.openxmlformats.org/officeDocument/2006/relationships/"
+    {:ok,listener}=:gen_tcp.listen(0,[:binary,active: false,ip: {127,0,0,1}])
+    {:ok,{_,port}}=:inet.sockname(listener)
+    external="<Relationships xmlns=\"#{relns}\"><Relationship Id=\"ext\" Type=\"#{prefix}hyperlink\" Target=\"http://127.0.0.1:#{port}/private?token=synthetic\" TargetMode=\"External\"/></Relationships>"
+    entries=[{"word/document.xml",xml.(paragraph.("visible"))},{"word/_rels/document.xml.rels",external}]
+    {:ok,result}=D.extract(zip.(entries),"external.docx")
+    assert result["status"]=="partial"
+    assert [%{"code"=>"external_relationship_not_followed","part"=>"word/_rels/document.xml.rels"}]=result["warnings"]
+    refute inspect(result["warnings"]) =~ "token=synthetic"
+    assert [%{"text"=>"visible"}]=result["segments"]
+
+    root="<Relationships xmlns=\"#{relns}\"><Relationship Id=\"main\" Type=\"#{prefix}officeDocument\" Target=\"word/document.xml\"/><Relationship Id=\"ext\" Type=\"#{prefix}hyperlink\" Target=\"https://invalid.example\" TargetMode=\"External\"/></Relationships>"
+    {:ok,result}=D.extract(zip.([{"word/document.xml",xml.(paragraph.("visible"))},{"_rels/.rels",root}]),"root.docx")
+    assert result["status"]=="partial"
+    assert %{"code"=>"external_relationship_not_followed","part"=>"_rels/.rels"} in result["warnings"]
+
+    invalid=String.replace(external,"TargetMode=\"External\"","TargetMode=\"Other\"")
+    assert {:error,:unsupported_docx_style_relationship}=D.extract(zip.([{"word/document.xml",xml.(paragraph.("visible"))},{"word/_rels/document.xml.rels",invalid}]),"invalid.docx")
+
+    for invalid <- [
+      String.replace(external," TargetMode=\"External\"", ""),
+      String.replace(external," TargetMode=\"External\"", " TargetMode=\"Internal\""),
+      String.replace(external,~r/ Type=\"[^\"]*\"/, ""),
+      String.replace(external,~r/ Target=\"[^\"]*\"/, "")
+    ] do
+      assert {:error,:unsupported_docx_style_relationship}=D.extract(zip.([{"word/document.xml",xml.(paragraph.("visible"))},{"word/_rels/document.xml.rels",invalid}]),"invalid.docx")
+    end
+
+    internal="<Relationships xmlns=\"#{relns}\"><Relationship Id=\"other\" Type=\"#{prefix}image\" Target=\"media/opaque.bin\"/></Relationships>"
+    {:ok,result}=D.extract(zip.([{"word/document.xml",xml.(paragraph.("visible"))},{"word/_rels/document.xml.rels",internal}]),"internal.docx")
+    assert result["status"]=="partial"
+    assert %{"code"=>"internal_relationship_not_examined","part"=>"word/_rels/document.xml.rels"} in result["warnings"]
+
+    {:ok,result}=D.extract(zip.([{"word/document.xml",xml.(paragraph.("visible"))},{"word/_rels/secret-token-synthetic.xml.rels",external}]),"unknown.docx")
+    assert result["status"]=="partial"
+    assert %{"code"=>"relationship_part_not_examined"} in result["warnings"]
+    refute inspect(result["warnings"]) =~ "secret-token-synthetic"
+    assert {:error,:timeout}=:gen_tcp.accept(listener,300)
+    :ok=:gen_tcp.close(listener)
     ''')
   end
 

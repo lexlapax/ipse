@@ -36,6 +36,7 @@ quick start. Try the demo before configuring a model account.
 | Add a domain tool without changing the host | [Build an extension](developer/extensions.md) |
 | Bind original source proofs and protected saved consent to local publication | [Study the collection SDK](developer/collection-sdk.md) |
 | Change source retrieval, graph or investigation behavior | [Study knowledge packages](developer/knowledge-extensions.md) |
+| Inspect bounded document extraction and coverage | [Study document extraction](developer/knowledge-extensions.md#inspect-bounded-document-extraction) |
 | Admit typed advisory effects and validate native results | [Study decisions](developer/decisions.md) |
 | Measure retrieval and cited answers without exposing labels | [Work through knowledge evaluation](developer/knowledge-evaluation.md) |
 | Change a durable record or recovery validator | [Study persistence](developer/persistence.md) |

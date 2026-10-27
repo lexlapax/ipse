@@ -100,6 +100,7 @@ the host contract your feature needs:
 | Request approved tools, MCP, text, native embeddings or typed advice | [Effects](extension-effects.md) |
 | Choose notifications, finite jobs, live feeds, or historical catch-up | [Events](extension-events.md) |
 | Change citations, retrieval, attributed facts, or native Research | [Knowledge algorithms](knowledge-extensions.md) |
+| Inspect bounded document-byte extraction and its coverage limits | [Document extraction](knowledge-extensions.md#inspect-bounded-document-extraction) |
 | Publish immutable pages/root CAS, suppress/migrate, or implement a remote store/gateway | [Knowledge storage](knowledge-storage.md) |
 
 New domain features should use documented extension APIs where they fit. Core
