@@ -1,0 +1,193 @@
+--- a/lib/ipse/session.ex
++++ b/lib/ipse/session.ex
+@@ -2872,12 +2872,14 @@
+     config = Ipse.MCP.fingerprint_version(config, 2)
+     config = Map.put(config, :source_layout, Ipse.Session.SourceWindow.layout())
+ 
+-    with {:ok, config} <- Ipse.Config.Activation.fresh(config, cwd),
++    with true <- Ipse.Session.ObservationReplay.valid_guard?(config),
++         {:ok, config} <- Ipse.Config.Activation.fresh(config, cwd),
+          {:ok, mode} <- Ipse.Extension.Mode.capture(config),
+          config = apply_execution_mode(config, mode),
+          selected_id = Ipse.Usage.id(),
+          {:ok, semantic_admission} <-
+            Ipse.Extension.SemanticAdmission.fresh(config, cwd, selected_id),
++         true <- Ipse.Session.ObservationReplay.guard_admitted?(config, semantic_admission),
+          :ok <- Ipse.Config.Activation.admitted(config, semantic_admission),
+          config = Map.put(config, :semantic_admission, semantic_admission),
+          {:ok, id} <-
+--- a/lib/ipse/session/observation_replay.ex
++++ b/lib/ipse/session/observation_replay.ex
+@@ -7,11 +7,16 @@
+   # Diagnostic-only selection in the disposable graph. Production must derive
+   # reviewed bundle identity from verified installed artifacts and policy.
+   def prototype_header(metadata, config) do
+-    if config[:private_observation_guard] == true do
++    if guard?(config) do
+       a = metadata["semantic_admission"]
+       pin = a["pin"]
+       true = SemanticAdmission.valid?(a, pin["session_id"]) and a["version"] === 2
+ 
++      true =
++        config[:private_observation_guard]["artifact_sha256"] === a["policy"]["artifact_sha256"]
++
++      true = config[:private_observation_guard]["identity_sha256"] === pin["identity_sha256"]
++
+       Map.put(metadata, "observation_lineage", %{
+         "version" => 1,
+         "artifact_sha256" => a["policy"]["artifact_sha256"],
+@@ -23,13 +28,22 @@
+     end
+   end
+ 
+-  def prototype_resume?(metadata, config),
+-    do:
+-      Map.has_key?(metadata, "observation_lineage") ==
+-        (config[:private_observation_guard] == true)
++  def prototype_resume?(metadata, config) do
++    case {Map.get(metadata, "observation_lineage"), config[:private_observation_guard]} do
++      {nil, nil} ->
++        true
++
++      {header, guard} when is_map(header) and is_map(guard) ->
++        guard?(config) and header["artifact_sha256"] === guard["artifact_sha256"] and
++          header["identity_sha256"] === guard["identity_sha256"]
++
++      _ ->
++        false
++    end
++  end
+ 
+   def prototype_block_read?(config, parent, request) do
+-    config[:private_observation_guard] == true and is_map(parent) and
++    guard?(config) and is_map(parent) and
+       JSON.digest([parent["identity"]]) ==
+         get_in(config, [:semantic_admission, "pin", "identity_sha256"]) and
+       CollectionCall.operation?(request) and not CollectionCall.mutating?(request)
+@@ -37,6 +51,34 @@
+     _ -> true
+   end
+ 
++  defp guard?(config) do
++    guard = config[:private_observation_guard]
++
++    is_map(guard) and Enum.sort(Map.keys(guard)) == ~w(artifact_sha256 identity_sha256) and
++      JSON.sha256?(guard["artifact_sha256"]) and JSON.sha256?(guard["identity_sha256"])
++  end
++
++  def valid_guard?(config), do: is_nil(config[:private_observation_guard]) or guard?(config)
++
++  def guard_admitted?(config, admission) do
++    case config[:private_observation_guard] do
++      nil ->
++        true
++
++      guard when is_map(guard) ->
++        guard?(config) and is_map(admission) and is_map(admission["pin"]) and
++          SemanticAdmission.valid?(admission, admission["pin"]["session_id"]) and
++          admission["version"] === 2 and
++          guard["artifact_sha256"] === get_in(admission, ["policy", "artifact_sha256"]) and
++          guard["identity_sha256"] === admission["pin"]["identity_sha256"]
++
++      _ ->
++        false
++    end
++  rescue
++    _ -> false
++  end
++
+   # Private fail-closed experiment. The real host must create this versioned
+   # header from a verified reviewed bundle, never from a worker or request.
+   # No result of this function grants permission to use observed values.
+--- a/test/ipse/extension/collection_call_session_test.exs
++++ b/test/ipse/extension/collection_call_session_test.exs
+@@ -382,10 +382,21 @@
+       execution_mode: :planning,
+       fixture_export: "inspect",
+       fixture_mode: "read",
+-      private_observation_guard: true
++      private_observation_guard: %{
++        "artifact_sha256" => hd(c.config.extensions).identity["artifact_sha256"],
++        "identity_sha256" => JSON.digest([hd(c.config.extensions).identity])
++      }
+     }
+ 
+     pid = start(c, config)
++
++    assert {:error, :extension_action_refused} =
++             GenServer.call(
++               pid,
++               {:extension_action_begin, make_ref(),
++                %{"op" => "collection.call", "request" => %{"op" => "snapshot"}}}
++             )
++
+     assert :ok = Session.prompt(pid, "Synthetic café observation")
+     assert_receive {:ipse, ^pid, {:done, :error}}, 15_000
+     id = Session.info(pid).id
+@@ -405,6 +416,66 @@
+ 
+     resumed = start(c, config, id)
+     assert :ok = Session.close_confirmed(resumed)
++
++    stripped_dir = Path.join(c.root, "stripped-header")
++    File.mkdir!(stripped_dir)
++    [first | rest] = events
++    stripped = [update_in(first, ["metadata"], &Map.delete(&1, "observation_lineage")) | rest]
++    file = Path.join(stripped_dir, id <> ".jsonl")
++    File.write!(file, Enum.map_join(stripped, "\n", &Jason.encode!/1) <> "\n")
++    File.chmod!(file, 0o600)
++
++    assert {:error, _} =
++             DynamicSupervisor.start_child(
++               Ipse.Sessions,
++               {Session,
++                [
++                  config: Map.merge(c.config, config),
++                  cwd: c.cwd,
++                  state_dir: stripped_dir,
++                  subscriber: self(),
++                  id: id
++                ]}
++             )
++
++    wrong = put_in(config, [:private_observation_guard, "artifact_sha256"], JSON.sha256("other"))
++
++    assert {:error, _} =
++             DynamicSupervisor.start_child(
++               Ipse.Sessions,
++               {Session,
++                [
++                  config: Map.merge(c.config, wrong),
++                  cwd: c.cwd,
++                  state_dir: c.dir,
++                  subscriber: self(),
++                  id: id
++                ]}
++             )
++
++    assert {:error, _} =
++             DynamicSupervisor.start_child(
++               Ipse.Sessions,
++               {Session,
++                [
++                  config: Map.merge(c.config, Map.put(config, :private_observation_guard, true)),
++                  cwd: c.cwd,
++                  state_dir: c.dir,
++                  subscriber: self()
++                ]}
++             )
++
++    assert {:error, _} =
++             DynamicSupervisor.start_child(
++               Ipse.Sessions,
++               {Session,
++                [
++                  config: Map.merge(c.config, wrong),
++                  cwd: c.cwd,
++                  state_dir: c.dir,
++                  subscriber: self()
++                ]}
++             )
+   end
+ 
+   test "versioned replay requires the exact observed action and still refuses use without live barrier",
