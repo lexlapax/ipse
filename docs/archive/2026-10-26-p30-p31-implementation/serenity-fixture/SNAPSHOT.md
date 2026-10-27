@@ -155,3 +155,9 @@ it observed EPERM for dup, F_DUPFD, restore-dumpability, socket, clone3 and
 unshare while F_GETFD remained usable. Its source and merged test output are
 preserved. It is not wired to a fixture, does not prove all external or kernel
 references absent, and must not be treated as a security or cleanup boundary.
+
+The unreviewed single-owner filter draft subsequently added file-backed mmap,
+legacy AIO, epoll control and new mount API restrictions. The synthetic child
+refused file-backed mmap with EPERM and could still create an anonymous mapping.
+Preexisting kernel registrations, other processes, same-UID visibility after
+changing dumpability, and complete reference cleanup remain unproved.
