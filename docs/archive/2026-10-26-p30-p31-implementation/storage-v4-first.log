@@ -1,0 +1,37 @@
+Running ExUnit with seed: 267086, max_cases: 1
+Excluding tags: [:native_sandbox, :macos_sandbox, :macos_filesystem, :memory_scope]
+
+....................................
+
+  1) test complete typed planning imports a near-full logical backup with all receipt IDs already known (Ipse.Extension.CollectionMigrationTest)
+     test/ipse/extension/collection_migration_test.exs:377
+     match (=) failed
+     code:  assert {:ok, opened} =
+              run(
+                c.target,
+                %{
+                  "op" => "import.open",
+                  "expected_generation" => 20950,
+                  "descriptor" => descriptor,
+                  "plan" => plan
+                },
+                id
+              )
+     left:  {:ok, opened}
+     right: {:failed,
+             %{
+               "code" => "collection_capacity",
+               "floor" => 0,
+               "floor_anchor" => nil,
+               "generation" => 20950,
+               "project" => "8cb723c7027e475badb934967eed9020161d7b9dfc490d934a8a54bd879b52c6",
+               "version" => 3
+             }}
+     stacktrace:
+       test/ipse/extension/collection_migration_test.exs:399: (test)
+
+............
+Finished in 70.1 seconds (70.1s async, 0.00s sync)
+
+Result: 48/49 passed
+Failed: 1 test

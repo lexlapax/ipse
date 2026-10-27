@@ -1,0 +1,82 @@
+Running ExUnit with seed: 781589, max_cases: 1
+Excluding tags: [:native_sandbox, :macos_sandbox, :macos_filesystem, :memory_scope]
+
+.
+
+  1) test a new unrelated claim cannot lend its override to old support; ordinary corrections keep their deadline (IpseKnowledge.NotesTest)
+     test/extensions/knowledge/notes_test.exs:79
+     match (=) failed
+     code:  assert {:error, :separate_lineage_overrides_required} =
+              N.supersede(old, replacement, 20 * @day, changed["override"])
+     left:  {:error, :separate_lineage_overrides_required}
+     right: {:ok,
+             %{
+               "current" => %{
+                 "category" => "ordinary",
+                 "created_at_ms" => 1728000000,
+                 "event_at_ms" => nil,
+                 "evidence" => %{
+                   "quote" => "Alex owns Acme",
+                   "source" => "event:1"
+                 },
+                 "expires_at_ms" => 8640000000,
+                 "id" => "dd1b3c312cf7d816130354452e9629ce39355b0c534129dd26a08cd9a4502ede",
+                 "lineage" => "6f9ab4906129b1e7f90d288e8447198d08607f963253d1bcb64a24ce76b6d0a9",
+                 "metadata_reserve" => "",
+                 "observed_at_ms" => 0,
+                 "previous_category" => nil,
+                 "reason" => "operator override",
+                 "superseded_at_ms" => nil,
+                 "text" => "Acme has owner Alex",
+                 "version" => 1
+               },
+               "history" => %{
+                 "category" => "history",
+                 "created_at_ms" => 0,
+                 "event_at_ms" => nil,
+                 "evidence" => %{
+                   "quote" => "Alex owns Acme",
+                   "source" => "event:1"
+                 },
+                 "expires_at_ms" => 33264000000,
+                 "id" => "dd1b3c312cf7d816130354452e9629ce39355b0c534129dd26a08cd9a4502ede",
+                 "lineage" => "b37bdd65515b69d880f58a674516735cb81843ae1f1d258c6121d9e2c10afaf5",
+                 "metadata_reserve" => "",
+                 "observed_at_ms" => 0,
+                 "previous_category" => "current",
+                 "reason" => "direct admitted observation",
+                 "superseded_at_ms" => 1728000000,
+                 "text" => "Acme has owner Alex",
+                 "version" => 1
+               }
+             }}
+     stacktrace:
+       test/extensions/knowledge/notes_test.exs:90: (test)
+
+.
+
+  2) test first temporal update after day 90 retains prior support for a further year (IpseKnowledge.NotesTest)
+     test/extensions/knowledge/notes_test.exs:35
+     Assertion with == failed
+     code:  assert changed["history"]["expires_at_ms"] == 465 * @day
+     left:  16416000000
+     right: 40176000000
+     stacktrace:
+       test/extensions/knowledge/notes_test.exs:49: (test)
+
+..
+
+  3) test same-lineage duration and session overrides bind current and historical derivatives without renewal (IpseKnowledge.NotesTest)
+     test/extensions/knowledge/notes_test.exs:52
+     Assertion with == failed
+     code:  assert result["history"]["expires_at_ms"] == 17 * @day
+     left:  33264000000
+     right: 1468800000
+     stacktrace:
+       test/extensions/knowledge/notes_test.exs:65: (test)
+
+.
+Finished in 0.2 seconds (0.2s async, 0.00s sync)
+
+Result: 5/8 passed
+Failed: 3 tests

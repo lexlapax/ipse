@@ -100,7 +100,11 @@ defmodule Ipse.Extension.Collection.Encoding do
   defp decode_local(rows, generation, 2) when is_map(rows) and is_integer(generation) do
     if valid_legacy?(rows) and generation in 0..@limit and map_size(rows) == generation and
          Enum.sort(Enum.map(rows, fn {_, receipt} -> receipt["generation"] end)) ==
-           sequence(generation), do: {:ok, rows}, else: :error
+           sequence(generation) do
+      {:ok, rows}
+    else
+      :error
+    end
   end
 
   defp decode_local(_, _, _), do: :error

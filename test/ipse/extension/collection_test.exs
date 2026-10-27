@@ -39,7 +39,7 @@ defmodule Ipse.Extension.CollectionTest do
     assert {:conflict, _} = run(c, commit(1, [change("a", 0, %{})]))
     assert {:ok, _} = run(c, commit(1, [change("a", 1, %{"text" => "replacement"})]))
     path = Path.join(c.root, c.project)
-    assert length(Path.wildcard(Path.join([path, "manifests", "*.json"]))) == 1
+    assert_only_reachable_manifests(path)
     assert length(Path.wildcard(Path.join([path, "objects", "*.json"]))) == 1
 
     assert {:ok, %{"record" => %{"revision" => 2, "value" => %{"text" => "replacement"}}}} =
@@ -54,11 +54,7 @@ defmodule Ipse.Extension.CollectionTest do
     pointer = Jason.decode!(File.read!(pointer_path))
     manifest_path = Path.join([directory, "manifests", pointer["manifest"] <> ".json"])
 
-    {:ok, decoded} =
-      manifest_path
-      |> File.read!()
-      |> Jason.decode!()
-      |> Ipse.Extension.Collection.Encoding.decode()
+    decoded = decode_manifest(manifest_path)
 
     bytes = Jason.encode!(decoded |> Map.put("version", 2) |> Map.delete("floor_anchor"))
     hash = Ipse.JSON.sha256(bytes)
@@ -81,7 +77,7 @@ defmodule Ipse.Extension.CollectionTest do
 
     assert Jason.decode!(File.read!(pointer_path))["version"] == 2
     assert {:ok, _} = run(c, commit(1, [change("b", 0, %{"text" => "new"})]))
-    assert Jason.decode!(File.read!(pointer_path))["version"] == 3
+    assert Jason.decode!(File.read!(pointer_path))["version"] == 4
 
     assert {:existing, %{"operation" => ^receipt}} =
              run(c, commit(2, [change("c", 0, %{})]), operation)
@@ -97,11 +93,7 @@ defmodule Ipse.Extension.CollectionTest do
     pointer = Jason.decode!(File.read!(pointer_path))
     manifest_path = Path.join([directory, "manifests", pointer["manifest"] <> ".json"])
 
-    {:ok, decoded} =
-      manifest_path
-      |> File.read!()
-      |> Jason.decode!()
-      |> Ipse.Extension.Collection.Encoding.decode()
+    decoded = decode_manifest(manifest_path)
 
     legacy = decoded |> Map.put("version", 2) |> Map.drop(~w(floor_anchor floor_lineage))
     bytes = Jason.encode!(legacy)
@@ -285,6 +277,32 @@ defmodule Ipse.Extension.CollectionTest do
              run(c, %{"op" => "get", "key" => "a"})
   end
 
+  test "an unreadable authoritative metadata block refuses before orphan reclamation or publication",
+       c do
+    assert {:ok, _} = run(c, commit(0, [change("retained", 0, %{"text" => "support"})]))
+    path = Path.join(c.root, c.project)
+    pointer = Path.join(path, "root.json") |> File.read!()
+    root = Jason.decode!(pointer)
+
+    wire =
+      Path.join([path, "manifests", root["manifest"] <> ".json"])
+      |> File.read!()
+      |> Jason.decode!()
+
+    block = Path.join([path, "manifests", hd(wire["operations"])["sha256"] <> ".json"])
+    orphan = Path.join([path, "manifests", Ipse.JSON.sha256("orphan") <> ".json"])
+    File.write!(orphan, "{}")
+    File.chmod!(orphan, 0o600)
+    File.chmod!(block, 0o644)
+    assert {:error, :collection_unavailable} = run(c, commit(1, [change("unpublished", 0, %{})]))
+    assert File.read!(Path.join(path, "root.json")) == pointer
+    assert File.exists?(orphan)
+    File.chmod!(block, 0o600)
+
+    assert {:ok, %{"record" => %{"value" => %{"text" => "support"}}}} =
+             run(c, %{"op" => "get", "key" => "retained"})
+  end
+
   test "record byte capacity warns and refuses a new observation without evicting existing records",
        c do
     value = %{"text" => String.duplicate("x", 6133)}
@@ -348,7 +366,7 @@ defmodule Ipse.Extension.CollectionTest do
     assert {:error, :collection_unavailable} = run(c, %{"op" => "get", "key" => "a"})
     pointer = Path.join(dir, "root.json")
     bytes = File.read!(pointer)
-    File.write!(pointer, String.replace(bytes, "\"version\":3", "\"version\":3,\"version\":3"))
+    File.write!(pointer, String.replace(bytes, "\"version\":4", "\"version\":4,\"version\":4"))
     assert {:error, :collection_unavailable} = run(c, %{"op" => "snapshot"})
   end
 
@@ -461,6 +479,35 @@ defmodule Ipse.Extension.CollectionTest do
   end
 
   defp await(_, _), do: flunk("storage process barrier timed out")
+
+  defp decode_manifest(path) do
+    stored = path |> File.read!() |> Jason.decode!()
+
+    assert {:ok, decoded, _} =
+             Ipse.Extension.Collection.Blocks.decode(stored, fn hash, _ ->
+               File.read(Path.join(Path.dirname(path), hash <> ".json"))
+             end)
+
+    decoded
+  end
+
+  defp assert_only_reachable_manifests(path) do
+    pointer = Path.join(path, "root.json") |> File.read!() |> Jason.decode!()
+    manifest = Path.join([path, "manifests", pointer["manifest"] <> ".json"])
+    stored = manifest |> File.read!() |> Jason.decode!()
+
+    assert {:ok, _, reachable} =
+             Ipse.Extension.Collection.Blocks.decode(stored, fn hash, _ ->
+               File.read(Path.join(Path.dirname(manifest), hash <> ".json"))
+             end)
+
+    actual =
+      Path.wildcard(Path.join([path, "manifests", "*.json"]))
+      |> Enum.map(&Path.basename(&1, ".json"))
+      |> MapSet.new()
+
+    assert actual == MapSet.put(reachable, pointer["manifest"])
+  end
 
   defp all_rows(c, generation, after_key, rows) do
     assert {:ok, page} =

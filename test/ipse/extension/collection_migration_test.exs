@@ -395,6 +395,26 @@ defmodule Ipse.Extension.CollectionMigrationTest do
 
     rows = Enum.map(plan["records"], fn [key, _, _] -> %{"key" => key, "value" => value} end)
     id = Ipse.Usage.id()
+    observer = "planned-upgrade-" <> Ipse.Usage.id()
+    owner = self()
+
+    :ok =
+      :telemetry.attach_many(
+        observer,
+        [
+          [:ipse, :extension, :collection, :import_planned],
+          [:ipse, :extension, :collection, :staged]
+        ],
+        fn event, measurements, _, _ ->
+          case List.last(event) do
+            :import_planned -> send(owner, {:import_trace, :plan, measurements.files})
+            :staged -> send(owner, {:import_trace, :stage, nil})
+          end
+        end,
+        nil
+      )
+
+    on_exit(fn -> :telemetry.detach(observer) end)
 
     assert {:ok, opened} =
              run(
@@ -407,6 +427,10 @@ defmodule Ipse.Extension.CollectionMigrationTest do
                },
                id
              )
+
+    assert_receive {:import_trace, kind, files}
+    assert kind == :plan and files in 1..256
+    assert_receive {:import_trace, :stage, nil}
 
     first = Enum.take(rows, 32)
     altered = List.update_at(first, 0, &put_in(&1, ["value", "text"], "substituted"))

@@ -44,6 +44,55 @@ defmodule IpseKnowledge.NotesTest do
     assert {:ok, pin} = N.new(attrs("pin"), 0)
     assert {:ok, pinned} = N.supersede(pin, replacement, 100 * @day)
     assert pinned["history"]["expires_at_ms"] == nil
+    assert {:ok, preference} = N.new(attrs("preference"), 0)
+    assert {:ok, changed} = N.supersede(preference, attrs("preference"), 100 * @day)
+    assert changed["history"]["expires_at_ms"] == 465 * @day
+  end
+
+  test "same-lineage duration and session overrides bind current and historical derivatives without renewal" do
+    assert {:ok, old} = N.new(attrs("current"), 0)
+
+    assert {:ok, changed} =
+             N.retention(
+               old,
+               %{"kind" => "duration", "duration_ms" => 7 * @day},
+               "operator choice",
+               10 * @day
+             )
+
+    assert {:ok, result} = N.supersede(old, attrs("current"), 20 * @day, changed["override"])
+    assert result["current"]["expires_at_ms"] == 17 * @day
+    assert result["history"]["expires_at_ms"] == 17 * @day
+    refute N.eligible?(result["history"], 20 * @day)
+
+    assert {:error, :lineage_override_required} =
+             N.supersede(changed["note"], attrs("current"), 20 * @day)
+
+    assert {:ok, forgotten} = N.forget(old, "operator forget", 11 * @day)
+
+    assert {:suppressed, override} =
+             N.supersede(old, attrs("current"), 1000 * @day, forgotten["override"])
+
+    assert override == forgotten["override"]
+  end
+
+  test "a new unrelated claim cannot lend its override to old support; ordinary corrections keep their deadline" do
+    assert {:ok, old} = N.new(attrs("current"), 0)
+
+    replacement =
+      Map.put(attrs("current"), "lineage", Ipse.JSON.sha256("unrelated admitted source"))
+
+    assert {:ok, other} = N.new(replacement, 0)
+
+    assert {:ok, changed} =
+             N.retention(other, %{"kind" => "ordinary"}, "new claim only", 10 * @day)
+
+    assert {:error, :separate_lineage_overrides_required} =
+             N.supersede(old, replacement, 20 * @day, changed["override"])
+
+    assert {:ok, ordinary} = N.new(attrs(), 0)
+    assert {:ok, corrected} = N.supersede(ordinary, attrs(), 20 * @day)
+    assert corrected["history"]["expires_at_ms"] == 90 * @day
   end
 
   test "one-step downgrade persists against paraphrases with the same admitted lineage" do

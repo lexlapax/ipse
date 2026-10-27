@@ -1,0 +1,59 @@
+{
+  "qualification_passed": false,
+  "runs": [
+    {
+      "archived_diagnostic": "storage-v4-first.log",
+      "archived_diagnostic_sha256": "078021c2124090920cf4ac14edf7b1e2b7ccca9e76671e085cf8b168b13cabb4",
+      "build": "/tmp/ipse-collection-v4-checkpoint-20261026-01",
+      "diagnostic_normalization": "trailing whitespace removed only",
+      "helper_sha256_at_run": "385f42879330838a8635af4689d5c9fd422c6f19beb9de72b710474ac08f216c",
+      "outcome": "48/49 passed; full native-size plan refused before staging",
+      "performance_qualified": false,
+      "run": "first_full",
+      "runtime_beam_sha256": {
+        "Ipse.Extension.Collection": "12b720b09aa92a433ad5196334f3c59d3f042f529d1fd04a540482e738921112",
+        "Ipse.Extension.Collection.Blocks": "7f94bbe4767c4b1ddeed98bed026c9a11ea17858ad7e86e46b486e431d4913d7",
+        "Ipse.Extension.Collection.Encoding": "acbeeb8dfa4114dc1212413cf1ad9148014641b94d43d385b4ececcd87ef25c9",
+        "Ipse.Extension.Collection.Migration": "cf075bd4c53ced60da26342a3ce2dd850824687cfe2c0c6def1c451615a48bd1",
+        "Ipse.Runner": "45f6de1b2ad3ef6e0dde731b79b57bc619b300f6619f56af7b834d71b5eef13d",
+        "Ipse.Runner.Transaction": "42e1c067744fbedf34909d75b3f028818214e153f5e136554e4529a0c2db8e18"
+      }
+    },
+    {
+      "archived_diagnostic": "storage-v4-plan-timeout.log",
+      "archived_diagnostic_sha256": "8417bd125ac5529346cb5784a5edc950fee521c3854d2e33ce97fe06f1085698",
+      "build": "/tmp/ipse-collection-v4-repair-20261026-01",
+      "diagnostic_normalization": "trailing whitespace removed only",
+      "helper_sha256_at_run": "385f42879330838a8635af4689d5c9fd422c6f19beb9de72b710474ac08f216c",
+      "outcome": "300-second whole-test timeout after bounded plan admission",
+      "performance_qualified": false,
+      "run": "first_plan_repair",
+      "runtime_beam_sha256": {
+        "Ipse.Extension.Collection": "7ac1b927da21cde1f64d5f7e9043c6125d8e1d6114e18d223f7111dcf8b6f8d6",
+        "Ipse.Extension.Collection.Blocks": "7cd1a7d744613fe37042ae8fadd5adef71f41957046d14a97e68bf0155a278b6",
+        "Ipse.Extension.Collection.Encoding": "acbeeb8dfa4114dc1212413cf1ad9148014641b94d43d385b4ececcd87ef25c9",
+        "Ipse.Extension.Collection.Migration": "cf075bd4c53ced60da26342a3ce2dd850824687cfe2c0c6def1c451615a48bd1",
+        "Ipse.Runner": "45f6de1b2ad3ef6e0dde731b79b57bc619b300f6619f56af7b834d71b5eef13d",
+        "Ipse.Runner.Transaction": "42e1c067744fbedf34909d75b3f028818214e153f5e136554e4529a0c2db8e18"
+      }
+    },
+    {
+      "archived_diagnostic": "storage-v4-marked-timeout.log",
+      "archived_diagnostic_sha256": "a9dfad065f35774350a2c2e8d07cdd3579ad3b323cfb2620916ce087cece40d7",
+      "build": "/tmp/ipse-collection-v4-marked-20261026-01",
+      "diagnostic_normalization": "trailing whitespace removed only",
+      "helper_sha256_at_run": "385f42879330838a8635af4689d5c9fd422c6f19beb9de72b710474ac08f216c",
+      "outcome": "300-second whole-test timeout after within-transaction mark reuse",
+      "performance_qualified": false,
+      "run": "gc_mark_reuse",
+      "runtime_beam_sha256": {
+        "Ipse.Extension.Collection": "b652ce6d6d7521f072fecda9d120ef5a9a5006d54fafe42f255a789649066418",
+        "Ipse.Extension.Collection.Blocks": "82e666af4feaa52ba6224453d8fdad34230320c294aef990537747988b2e3e86",
+        "Ipse.Extension.Collection.Encoding": "d5e000311a06755d4cdf0efddc77d2026df3b77af6044f693f2ed6439002c648",
+        "Ipse.Extension.Collection.Migration": "cf075bd4c53ced60da26342a3ce2dd850824687cfe2c0c6def1c451615a48bd1",
+        "Ipse.Runner": "45f6de1b2ad3ef6e0dde731b79b57bc619b300f6619f56af7b834d71b5eef13d",
+        "Ipse.Runner.Transaction": "42e1c067744fbedf34909d75b3f028818214e153f5e136554e4529a0c2db8e18"
+      }
+    }
+  ]
+}

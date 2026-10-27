@@ -7,7 +7,7 @@ defmodule Ipse.Extension.Collection do
   consent. Storage never calls back into consent or performs inference. Readers
   take the same retained OS lock as writers, so reclamation cannot race a read.
 
-  Values are content addressed; only the bounded manifest is rewritten. Successful
+  Values and bounded metadata blocks are content addressed. Successful
   operation IDs remain inspectable and cannot execute twice. Exhaustion refuses
   publication; the operation ledger is never silently reset. Export pages carry
   a floor advanced by destructive operations. Typed staged import fences ordinary
@@ -23,7 +23,7 @@ defmodule Ipse.Extension.Collection do
   """
   alias Ipse.JSON
   alias Ipse.Runner.Transaction
-  alias Ipse.Extension.Collection.{Encoding, Migration, Planning}
+  alias Ipse.Extension.Collection.{Blocks, Encoding, Migration, Planning}
   import Bitwise, only: [band: 2]
   @value_bytes 6 * 1024
   @data_bytes 24 * 1024 * 1024
@@ -35,6 +35,7 @@ defmodule Ipse.Extension.Collection do
   @records 8192
   @operations 32_768
   @lock_key {__MODULE__, :lock_held}
+  @path_key {__MODULE__, :directory}
   @error {:error, :collection_unavailable}
 
   def limits do
@@ -112,6 +113,7 @@ defmodule Ipse.Extension.Collection do
          :ok <- safe_lock(Path.join(path, ".lock"), uid),
          {:ok, cap} <- Transaction.acquire(Path.join(path, ".lock"), cwd: Path.dirname(root)) do
       Process.put(@lock_key, cap)
+      Process.put(@path_key, path)
 
       result =
         try do
@@ -136,6 +138,7 @@ defmodule Ipse.Extension.Collection do
           _, _ -> {:unknown, :collection_transaction_unconfirmed}
         after
           Process.delete(@lock_key)
+          Process.delete(@path_key)
         end
 
       checked = Transaction.check(cap)
@@ -393,8 +396,17 @@ defmodule Ipse.Extension.Collection do
   end
 
   defp publish(path, uid, old, next, manifest, values, receipt, request) do
-    bytes = Encoding.encode(next)
-    terminal = terminal_reserve(next)
+    case Blocks.encode(next) do
+      {:ok, bytes, blocks} ->
+        publish_encoded(path, uid, old, next, manifest, values, receipt, request, bytes, blocks)
+
+      _ ->
+        capacity(old)
+    end
+  end
+
+  defp publish_encoded(path, uid, old, next, manifest, values, receipt, request, bytes, blocks) do
+    terminal = terminal_reserve(next, blocks)
 
     cond do
       not valid_state?(next, next["project"]) or
@@ -404,15 +416,19 @@ defmodule Ipse.Extension.Collection do
 
       true ->
         hash = JSON.sha256(bytes)
-        pointer = Jason.encode!(Map.put(summary(next), "manifest", hash))
+
+        pointer =
+          Jason.encode!(summary(next) |> Map.put("version", 4) |> Map.put("manifest", hash))
 
         with :ok <- collect(path, uid, old, manifest),
              {:ok, planned} <- full_import_plan(path, uid, old, next, request),
              {:ok, pending} <- prepare_values(path, uid, values),
+             {:ok, pending_blocks} <- prepare_files(path, uid, blocks, "manifests", 64 * 1024),
              {:ok, disk} <- disk_bytes(path, uid),
              true <-
                disk + @control_bytes + byte_size(bytes) +
                  Enum.sum(Enum.map(pending, fn {_, _, v} -> byte_size(v) end)) +
+                 Enum.sum(Enum.map(pending_blocks, fn {_, _, v} -> byte_size(v) end)) +
                  byte_size(pointer) + Enum.sum(terminal) <= @total_bytes,
              :ok <-
                Transaction.preflight(
@@ -422,15 +438,19 @@ defmodule Ipse.Extension.Collection do
                    [
                      byte_size(bytes),
                      byte_size(pointer)
-                     | Enum.map(pending, fn {_, _, value} -> byte_size(value) end)
+                     | Enum.map(pending ++ pending_blocks, fn {_, _, value} ->
+                         byte_size(value)
+                       end)
                    ]
                ) do
           # Every failure after staging is an inspected unknown outcome. In
           # particular a failed final directory sync cannot justify replay.
           with :ok <- write_values(pending),
+               :ok <- write_files(pending_blocks, "manifests"),
                :ok <- immutable(Path.join(path, "manifests"), hash, bytes, uid),
-               :ok <- publish_pointer(path, uid, pointer, next) do
-            collect(path, uid, next, hash)
+               :ok <- publish_pointer(path, uid, pointer, next),
+               :ok <-
+                 collect(path, uid, next, %{hash: hash, blocks: MapSet.new(Map.keys(blocks))}) do
             {:ok, receipt}
           else
             _ -> {:unknown, :collection_publication_unconfirmed}
@@ -487,7 +507,11 @@ defmodule Ipse.Extension.Collection do
   end
 
   defp prepare_values(path, uid, values) do
-    dir = Path.join(path, "objects")
+    prepare_files(path, uid, values, "objects", @value_bytes)
+  end
+
+  defp prepare_files(path, uid, values, relative, limit) do
+    dir = Path.join(path, relative)
 
     Enum.reduce_while(values, {:ok, []}, fn {hash, bytes}, {:ok, pending} ->
       target = Path.join(dir, hash <> ".json")
@@ -497,7 +521,7 @@ defmodule Ipse.Extension.Collection do
           {:cont, {:ok, [{".pending-" <> Ipse.Usage.id(), target, bytes} | pending]}}
 
         {:ok, _} ->
-          case bounded_file(target, uid, @value_bytes) do
+          case bounded_file(target, uid, limit) do
             {:ok, ^bytes} -> {:cont, {:ok, pending}}
             _ -> {:halt, @error}
           end
@@ -508,22 +532,31 @@ defmodule Ipse.Extension.Collection do
     end)
   end
 
-  defp write_values([]), do: :ok
+  defp write_values(files), do: write_files(files, "objects")
+  defp write_files([], _), do: :ok
 
-  defp write_values(files) do
-    with :ok <-
-           Transaction.stage(
-             publication_cap(),
-             "objects",
-             Enum.map(files, fn {name, _, bytes} -> {name, bytes} end)
-           ) do
-      Enum.reduce_while(files, :ok, fn {name, target, _}, :ok ->
-        case Transaction.install(publication_cap(), "objects", name, Path.basename(target)) do
-          :ok -> {:cont, :ok}
-          error -> {:halt, error}
-        end
-      end)
-    end
+  defp write_files(files, relative) do
+    files
+    |> Enum.chunk_every(128)
+    |> Enum.reduce_while(:ok, fn chunk, :ok ->
+      with :ok <-
+             Transaction.stage(
+               publication_cap(),
+               relative,
+               Enum.map(chunk, fn {name, _, bytes} -> {name, bytes} end)
+             ),
+           :ok <-
+             Enum.reduce_while(chunk, :ok, fn {name, target, _}, :ok ->
+               case Transaction.install(publication_cap(), relative, name, Path.basename(target)) do
+                 :ok -> {:cont, :ok}
+                 error -> {:halt, error}
+               end
+             end) do
+        {:cont, :ok}
+      else
+        error -> {:halt, error}
+      end
+    end)
   end
 
   defp immutable(dir, hash, bytes, uid) do
@@ -575,7 +608,7 @@ defmodule Ipse.Extension.Collection do
              true <-
                (keys?(root, ~w(version project generation floor manifest)) or
                   keys?(root, ~w(version project generation floor floor_anchor manifest))) and
-                 root["version"] in [2, 3] and root["project"] == project and
+                 root["version"] in [2, 3, 4] and root["project"] == project and
                  uint?(root["generation"]) and uint?(root["floor"]) and
                  JSON.sha256?(root["manifest"]),
              {:ok, bytes} <-
@@ -587,15 +620,31 @@ defmodule Ipse.Extension.Collection do
              true <- JSON.sha256(bytes) == root["manifest"],
              {:ok, stored} <- JSON.decode_unique(bytes),
              true <- summary(stored) == Map.delete(root, "manifest"),
-             {:ok, s} <- Encoding.decode(stored),
+             {:ok, s, blocks} <- decode_manifest(stored, path, uid),
              true <- valid_state?(s, project) do
-          {:ok, s, root["manifest"]}
+          {:ok, s, %{hash: root["manifest"], blocks: blocks}}
         else
           _ -> @error
         end
 
       _ ->
         @error
+    end
+  end
+
+  defp decode_manifest(%{"version" => 4} = stored, path, uid) do
+    case Blocks.decode(stored, fn hash, bytes ->
+           bounded_file(Path.join([path, "manifests", hash <> ".json"]), uid, bytes)
+         end) do
+      {:ok, state, hashes} -> {:ok, state, hashes}
+      _ -> @error
+    end
+  end
+
+  defp decode_manifest(stored, _, _) do
+    case Encoding.decode(stored) do
+      {:ok, state} -> {:ok, state, MapSet.new()}
+      _ -> @error
     end
   end
 
@@ -721,7 +770,13 @@ defmodule Ipse.Extension.Collection do
            collect_dir(
              Path.join(path, "manifests"),
              uid,
-             MapSet.new([".writer.lock" | if(manifest, do: [manifest <> ".json"], else: [])])
+             if(manifest, do: manifest.blocks, else: MapSet.new())
+             |> Enum.map(&(&1 <> ".json"))
+             |> MapSet.new()
+             |> MapSet.put(".writer.lock")
+             |> then(fn live ->
+               if manifest, do: MapSet.put(live, manifest.hash <> ".json"), else: live
+             end)
            ),
          :ok <- collect_root_pending(path, uid),
          do: :ok
@@ -778,7 +833,7 @@ defmodule Ipse.Extension.Collection do
          {:ok, bytes} <- files_bytes(path, Enum.reject(top, &(&1 in ~w(objects manifests))), uid),
          {:ok, objects} <- File.ls(Path.join(path, "objects")),
          {:ok, manifests} <- File.ls(Path.join(path, "manifests")),
-         true <- length(objects) <= @records * 2 + 1024 and length(manifests) <= 1024,
+         true <- length(objects) <= @records * 2 + 1024 and length(manifests) <= 2048,
          {:ok, a} <- files_bytes(Path.join(path, "objects"), objects, uid),
          {:ok, b} <- files_bytes(Path.join(path, "manifests"), manifests, uid),
          true <- bytes + a + b + @control_bytes <= @total_bytes do
@@ -803,7 +858,11 @@ defmodule Ipse.Extension.Collection do
   defp bounded_file(path, uid, limit) do
     with {:ok, stat} <- File.lstat(path),
          true <- safe_file?(stat, uid) and stat.size <= limit,
-         {:ok, bytes} <- File.open(path, [:read, :binary], &IO.binread(&1, limit + 1)),
+         root when is_binary(root) <- Process.get(@path_key),
+         directory = Path.relative_to(Path.dirname(path), root),
+         true <- directory in [".", "objects", "manifests"],
+         {:ok, bytes} <-
+           Transaction.read(publication_cap(), directory, Path.basename(path), limit),
          true <- is_binary(bytes) and byte_size(bytes) <= limit do
       {:ok, bytes}
     else
@@ -868,9 +927,9 @@ defmodule Ipse.Extension.Collection do
     |> Enum.reduce(0, fn {_, record}, total -> total + record["bytes"] end)
   end
 
-  defp terminal_reserve(%{"migration" => nil}), do: []
+  defp terminal_reserve(%{"migration" => nil}, _), do: []
 
-  defp terminal_reserve(s) do
+  defp terminal_reserve(s, staged_blocks) do
     # A valid nonterminal import reserves an additional complete abort publication.
     # Aliases survive abort; its extra receipt cannot consume the final identity.
     known = Migration.known_operations(s)
@@ -903,7 +962,9 @@ defmodule Ipse.Extension.Collection do
         "operations" => Map.put(s["operations"], id, receipt)
     }
 
-    [byte_size(Encoding.encode(aborted)), 1024]
+    {:ok, bytes, aborted_blocks} = Blocks.encode(aborted)
+    new_blocks = Map.drop(aborted_blocks, Map.keys(staged_blocks))
+    [byte_size(bytes), 1024 | Enum.map(new_blocks, fn {_, bytes} -> byte_size(bytes) end)]
   end
 
   defp full_import_plan(path, uid, old, next, %{
@@ -915,16 +976,33 @@ defmodule Ipse.Extension.Collection do
          future = planned_generation(next, plan.records),
          true <- envelope_bytes(future) <= @data_bytes,
          {:ok, sizes} <- planned_object_sizes(path, uid, plan.records),
-         manifest_size = byte_size(Encoding.encode(future)),
+         {:ok, future_bytes, future_blocks} <- Blocks.encode(future),
+         {:ok, new_blocks} <- prepare_files(path, uid, future_blocks, "manifests", 64 * 1024),
+         block_sizes = Enum.map(new_blocks, fn {_, _, bytes} -> byte_size(bytes) end),
+         stable = Blocks.import_stable_hashes(next),
+         variable_sizes =
+           new_blocks
+           |> Enum.reject(fn {_, target, _} ->
+             MapSet.member?(stable, Path.basename(target, ".json"))
+           end)
+           |> Enum.map(fn {_, _, bytes} -> byte_size(bytes) end),
+         manifest_size = byte_size(future_bytes),
          true <- manifest_size <= @manifest_bytes,
-         terminal = terminal_reserve(future),
+         terminal = terminal_reserve(future, future_blocks),
          true <- Enum.all?(terminal, &(&1 <= @manifest_bytes)),
-         # Both the current and next complete generation may coexist at a late
-         # page. The terminal manifest remains additional reserved headroom.
-         sizes = [manifest_size, manifest_size, 1024 | terminal ++ sizes],
+         # Immutable metadata reachable at successful open needs one set. A late
+         # page can have both previous and next variable tails/staged indexes.
+         # Keep two sets of those, plus the independently publishable abort; the
+         # native two-times-rounded allowance still applies to every size here.
+         sizes = [
+           manifest_size,
+           manifest_size,
+           1024 | terminal ++ block_sizes ++ variable_sizes ++ sizes
+         ],
          true <- length(sizes) <= 256,
          {:ok, disk} <- disk_bytes(path, uid),
          true <- disk + @control_bytes + Enum.sum(sizes) <= @total_bytes,
+         :ok <- report_import_plan(sizes),
          :ok <- Transaction.preflight(publication_cap(), sizes) do
       {:ok, []}
     else
@@ -934,6 +1012,16 @@ defmodule Ipse.Extension.Collection do
   end
 
   defp full_import_plan(_, _, _, _, _), do: {:ok, []}
+
+  defp report_import_plan(sizes) do
+    :telemetry.execute(
+      [:ipse, :extension, :collection, :import_planned],
+      %{files: length(sizes), logical_bytes: Enum.sum(sizes)},
+      %{}
+    )
+
+    :ok
+  end
 
   defp planned_generation(state, records) do
     pages = div(map_size(records) + 31, 32)

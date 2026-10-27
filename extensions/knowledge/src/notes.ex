@@ -52,6 +52,23 @@ defmodule IpseKnowledge.Notes do
 
   @doc "Retain superseded temporal support for 365 days; pinned support stays pinned."
   def supersede(old, attrs, now, override \\ nil) do
+    cond do
+      not is_nil(override) and
+          (override["lineage"] != old["lineage"] or attrs["lineage"] != old["lineage"]) ->
+        {:error, :separate_lineage_overrides_required}
+
+      is_nil(override) and old["reason"] == "operator override" and
+          attrs["lineage"] == old["lineage"] ->
+        {:error, :lineage_override_required}
+
+      true ->
+        supersede_admitted(old, attrs, now, override)
+    end
+  rescue
+    _ -> {:error, :invalid_note}
+  end
+
+  defp supersede_admitted(old, attrs, now, override) do
     with true <- valid?(old) and is_nil(old["superseded_at_ms"]) and uint?(now),
          true <- now >= old["created_at_ms"] and attrs["id"] == old["id"],
          {:ok, replacement} <- new(attrs, now, override) do
@@ -59,7 +76,7 @@ defmodule IpseKnowledge.Notes do
         case old["category"] do
           "pin" -> nil
           "current" -> now + @history
-          "preference" -> now + @ordinary
+          "preference" -> now + @history
           _ -> old["expires_at_ms"]
         end
 
@@ -72,9 +89,16 @@ defmodule IpseKnowledge.Notes do
           "metadata_reserve" => ""
       }
 
-      if valid?(historical),
-        do: {:ok, %{"current" => replacement, "history" => historical}},
-        else: {:error, :invalid_note}
+      with true <- valid?(historical),
+           {:ok, historical} <-
+             if(is_nil(override),
+               do: {:ok, historical},
+               else: apply_override(historical, override)
+             ) do
+        {:ok, %{"current" => replacement, "history" => historical}}
+      else
+        _ -> {:error, :invalid_note}
+      end
     else
       {:suppressed, _} = suppressed -> suppressed
       _ -> {:error, :invalid_note}

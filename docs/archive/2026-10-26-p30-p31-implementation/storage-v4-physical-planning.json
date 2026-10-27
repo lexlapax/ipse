@@ -1,0 +1,137 @@
+{
+  "after": {
+    "accounted_allocated_bytes": 59248640,
+    "accounted_total_bytes": 50460883,
+    "allocated_bytes": 36179968,
+    "checkpoint": null,
+    "checkpoint_data_bytes": 0,
+    "checkpoint_records": 0,
+    "data_bytes": 25165824,
+    "disk_bytes": 27392211,
+    "envelope_data_bytes": 25165824,
+    "floor": 0,
+    "floor_anchor": null,
+    "generation": 21081,
+    "limits": {
+      "control_reserved_bytes": 23068672,
+      "data_bytes": 25165824,
+      "operations": 32768,
+      "records": 8192,
+      "total_bytes": 67108864,
+      "value_bytes": 6144
+    },
+    "migration": null,
+    "notice": "capacity_80_percent",
+    "operations": 21081,
+    "project": "55c025693a6b7f460266bfe0d7a56edea4e46fd5b589470888e530b14b2718d1",
+    "records": 4096,
+    "reserved_operation_slots": 0,
+    "staged_data_bytes": 0,
+    "staged_records": 0,
+    "version": 3
+  },
+  "all_original_receipts_preserved": true,
+  "before": {
+    "accounted_allocated_bytes": 59232256,
+    "accounted_total_bytes": 50443328,
+    "allocated_bytes": 36163584,
+    "checkpoint": null,
+    "checkpoint_data_bytes": 0,
+    "checkpoint_records": 0,
+    "data_bytes": 25165824,
+    "disk_bytes": 27374656,
+    "envelope_data_bytes": 25165824,
+    "floor": 0,
+    "floor_anchor": null,
+    "generation": 20950,
+    "limits": {
+      "control_reserved_bytes": 23068672,
+      "data_bytes": 25165824,
+      "operations": 32768,
+      "records": 8192,
+      "total_bytes": 67108864,
+      "value_bytes": 6144
+    },
+    "migration": null,
+    "notice": "capacity_80_percent",
+    "operations": 20950,
+    "project": "55c025693a6b7f460266bfe0d7a56edea4e46fd5b589470888e530b14b2718d1",
+    "records": 4096,
+    "reserved_operation_slots": 0,
+    "staged_data_bytes": 0,
+    "staged_records": 0,
+    "version": 3
+  },
+  "completed": {
+    "import_commit": {
+      "checkpoint_id": "7ddb5001d2fa8b019ed9fe75cfe94c35",
+      "floor": 0,
+      "generation": 21080,
+      "request_sha256": "4a663b1dab877e6772e41dfd857d69174280fc42a08729df8009fd7f5e6a356a"
+    },
+    "record_pages": 128,
+    "rollback": {
+      "floor": 0,
+      "generation": 21081,
+      "request_sha256": "e460b4508f009ff17d28fa8c77ef8ae5a67f0525e71c0197866b85d489ad9046"
+    }
+  },
+  "control_stress_overlap": true,
+  "descriptor": {
+    "data_bytes": 25165824,
+    "floor": 0,
+    "floor_anchor": null,
+    "floor_lineage": [],
+    "floor_lineage_sha256": "cf1cbb66a638b4860a516671fb74850e6ccf787fe6c4c8d29e9c04efe880bd05",
+    "generation": 20950,
+    "operations": 20950,
+    "operations_sha256": "0dff00bb705a7d5befcd68dc5d5152f8ad046c25f4d33273d01c9c13f42413b7",
+    "project": "55c025693a6b7f460266bfe0d7a56edea4e46fd5b589470888e530b14b2718d1",
+    "records": 4096,
+    "records_sha256": "ce8d8dfbd75dd8c08d8181742ea7b5b9be7ccd7fbe8e204539c8566cdf441f2e",
+    "version": 3
+  },
+  "distinct_values": 4096,
+  "filesystem": {
+    "block_size": 4096,
+    "fragment_size": 4096,
+    "mount_options": [
+      "rw",
+      "compress=zstd:3",
+      "ssd",
+      "discard=async",
+      "space_cache=v2"
+    ],
+    "type": "btrfs"
+  },
+  "fixture_manifest_bytes": 17426,
+  "fixture_manifest_sha256": "05adeb317be5d3b0ed7a9bf7be787ab1388224910ef36367d780d7028761f5a6",
+  "fixture_metadata_blocks": 128,
+  "import_open_result": "{:ok, %{\"floor\" => 0, \"generation\" => 20951, \"migration_id\" => \"d68440df897c45808536015a578aea51\", \"request_sha256\" => \"2ba62cf5e5d12821199cfc1dfdf4412edcf6f0b0d636d04a154d4363c6b5c839\"}}",
+  "individual_operations_performed": false,
+  "kernel": "{7, 2, 10}",
+  "kind": "independent_physical_planning_fixture",
+  "latency_qualified": false,
+  "native_helper_sha256": "108c762ec23085df6aeaba58c8bdfb34d0a8cb4fa80a410584889a81a556ea29",
+  "peak_accounted_allocated_bytes": 60284928,
+  "persistent_policy_exercised": false,
+  "plan_sha256": "8a8d8f9b0cc67470c01294a544898bb2c67d58427bb47e28d4c01724eaa200ee",
+  "qualification_passed": false,
+  "retained_store": {
+    "project": "55c025693a6b7f460266bfe0d7a56edea4e46fd5b589470888e530b14b2718d1",
+    "root": "/home/lexlapax/projects/lexlapax/ipse/_build/storage-workloads/blocks-probe-198277118e115daeef30fa6c93ce7135/collections"
+  },
+  "roundtrip_record_digest_preserved": true,
+  "sources": {
+    "dev/knowledge/storage_blocks_probe.exs": "4be32b29cef6d6190afcf4338b3088e5b9f2474f14c3a505432098a273f21610",
+    "lib/ipse/extension/collection.ex": "88695817f2460d9fbb8925ec0184d032c83520d525ce7292e463281fd3bb0f7a",
+    "lib/ipse/extension/collection/blocks.ex": "bfc88294d4b526f30deee5b9cc780aa736c9d431b931e5c56c2b8cda931f05d8",
+    "lib/ipse/extension/collection/encoding.ex": "f5aa47edec677061c106caf1e1122a3c1989075bb8a92ea836b08230e5d0e495",
+    "lib/ipse/extension/collection/migration.ex": "4081b5b30b722471b125e918b7532058b2adcbef67e80a5eca9ecb4031c6b7d2",
+    "lib/ipse/extension/collection/planning.ex": "56ba5ff29074f1adeb75535f8fa931d96e392b6f38042a036f80f109d981af67",
+    "native/ipse-storage-profile.rs": "46ccb439014ff3d2eadde512be7ec8f4f471d0aa4df0652914e6278013c9ce3b"
+  },
+  "storage_format": 4,
+  "synthetic_receipts": 20950,
+  "value_bytes": 6144
+}

@@ -1,0 +1,41 @@
+Running ExUnit with seed: 265596, max_cases: 1
+Excluding tags: [:test]
+Including tags: [location: {"test/ipse/extension/collection_migration_test.exs", 377}]
+
+
+19:03:05.397 [info] The function passed as a handler with ID "planned-upgrade-77e69e718df09ad8413e22860063f895" is a local function.
+This means that it is either an anonymous function or a capture of a function without a module specified. That may cause a performance penalty when calling that handler. For more details see the note in `telemetry:attach/4` documentation.
+
+https://hexdocs.pm/telemetry/telemetry.html#attach/4
+
+
+  1) test complete typed planning imports a near-full logical backup with all receipt IDs already known (Ipse.Extension.CollectionMigrationTest)
+     test/ipse/extension/collection_migration_test.exs:377
+     ** (ExUnit.TimeoutError) test timed out after 300000ms. You can change the timeout:
+
+       1. per test by setting "@tag timeout: x" (accepts :infinity)
+       2. per test module by setting "@moduletag timeout: x" (accepts :infinity)
+       3. globally via "ExUnit.start(timeout: x)" configuration
+       4. by running "mix test --timeout x" which sets timeout
+       5. or by running "mix test --trace" which sets timeout to infinity
+          (useful when using IEx.pry/0)
+
+     where "x" is the timeout given as integer in milliseconds (defaults to 60_000).
+
+     code: generation = pages(c.target, id, opened["generation"], rows)
+     stacktrace:
+       (ipse 0.1.0) lib/ipse/session/resources.ex:336: Ipse.Session.Resources.perform_file_effect/2
+       (ipse 0.1.0) lib/ipse/extension/collection.ex:56: Ipse.Extension.Collection.execute/4
+       test/ipse/extension/collection_migration_test.exs:110: anonymous fn/4 in Ipse.Extension.CollectionMigrationTest.pages/4
+       (elixir 1.20.4) lib/enum.ex:2622: Enum."-reduce/3-lists^foldl/2-0-"/3
+       test/ipse/extension/collection_migration_test.exs:99: Ipse.Extension.CollectionMigrationTest.pages/4
+       test/ipse/extension/collection_migration_test.exs:447: (test)
+       (ex_unit 1.20.4) lib/ex_unit/runner.ex:533: ExUnit.Runner.exec_test/2
+       (stdlib 8.1) timer.erl:599: :timer.tc/2
+       (ex_unit 1.20.4) lib/ex_unit/runner.ex:455: anonymous fn/6 in ExUnit.Runner.spawn_test_monitor/4
+
+
+Finished in 300.4 seconds (300.4s async, 0.00s sync)
+
+Result: 0/1 passed, 12 excluded
+Failed: 1 test
