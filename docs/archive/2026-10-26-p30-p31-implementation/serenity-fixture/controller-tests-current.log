@@ -1,5 +1,5 @@
 
-running 69 tests
+running 75 tests
 test barrier_framing::tests::accepts_every_fragment_boundary_after_gate ... ok
 test barrier_framing::tests::frames_before_gate_and_replayed_gate_are_refused ... ok
 test barrier_framing::tests::partial_wrong_order_trailing_and_oversize_fail_closed ... ok
@@ -15,6 +15,12 @@ test btrfs_identity::tests::abi_and_device_parser ... ok
 test cgroup_witness::tests::invalid_inputs_refuse_before_any_cgroup_access ... ok
 test cgroup_witness::tests::ordinary_directory_cannot_masquerade_as_retained_cgroup ... ok
 test cgroup_witness::tests::populated_parser_rejects_missing_duplicate_and_invalid ... ok
+test diagnostic_receipt::identity_tests::initial_binding_is_exclusive_and_must_precede_effects ... ok
+test diagnostic_receipt::observation_tests::mapper_confirmation_requires_unique_matching_observation ... ok
+test diagnostic_receipt::receipt_tests::records_only_legal_order_and_refuses_replaced_name ... ok
+test diagnostic_receipt::tests::confirmed_effects_do_not_imply_later_cleanup ... ok
+test diagnostic_receipt::tests::pending_effect_is_unknown_not_replay_permission ... ok
+test diagnostic_receipt::tests::rejects_torn_wrong_run_duplicate_and_skipped ... ok
 test existing_loop::tests::linux_abi_sizes_and_device_encoding ... ok
 test existing_loop::tests::local_alias_and_unrelated_reopen_are_rejected ... ok
 test existing_loop::tests::non_loop_ioctl_failure_is_not_treated_as_unbound ... ok
@@ -70,5 +76,5 @@ test tests::recovery_restores_only_exact_known_error_state_then_tears_down ... o
 test tests::uncertain_effects_stop_without_replay_or_compensating_action ... ok
 test tests::wrong_existing_or_extra_inactive_table_refuses ... ok
 
-test result: ok. 69 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.88s
+test result: ok. 75 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.85s
 

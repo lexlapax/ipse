@@ -212,3 +212,15 @@ the unexpected descriptor. The reviewer reiterated that local inventory cannot
 exclude external or kernel references and that errors may drop an AUTOCLEAR
 handle before reporting unknown. The fix passed the same eight synthetic tests;
 no live operations were performed.
+
+A later private prototype separates a limited live diagnostic from kernel
+qualification. Its granular synced receipt records intent and confirmation;
+exclusive initial, mapper, filesystem and mount identity files must precede
+the corresponding confirmations. Six synthetic tests check order, torn and
+replaced records, and invalid identities. A separate disposable regular-file
+experiment shows a pending record after SIGKILL and an ordinary file lock
+released after child reap. Neither observation proves device cleanup, crash
+recovery or reboot durability. The caller must independently establish that
+recorded identities are true, and the device backend remains disabled and is
+not wired to this receipt. The controller synthetic suite passed 75 tests.
+The receipt remains under independent review.
