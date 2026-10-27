@@ -80,7 +80,7 @@ resource/offline qualification. No daemon configuration or existing model was ch
 - [Managed source clocks, metadata and independently closed findings](managed-normalizer-component.md).
 - [Registered inference admission and completion](inference-dispatch-component.md), with its [independent adversarial audit](inference-dispatch-audit.md).
 - [Explicit managed SDK publication, reserved metadata and replay boundary](managed-sdk-component.md).
-- [Verified managed-publication input charges, unchanged reservations and retained uncertainty](managed-actual-accounting.md).
+- [Verified managed-publication input charges, unchanged reservations and retained uncertainty](managed-actual-accounting.md), with its [independent audit](managed-actual-accounting-audit.md).
 - [Protected fresh/resumed activation, exact route overlays and reciprocal worktree admission](activation-overlay-component.md).
 - [Independent activation overlay audit and original pending-reclamation finding](activation-overlay-audit.md).
 - [Accepted inspection-reclamation finding, existing-only reader repair and frozen replay evidence](activation-readonly-repair.md).
