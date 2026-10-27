@@ -300,8 +300,38 @@ When a trusted adapter must add host-owned validity metadata, use the explicit
 internal `Collection.execute_managed/6` boundary rather than rewriting a worker
 request under the ordinary SDK operation. It checks original generation/revisions,
 writer fencing and duplicate identity before entering the host normalizer under
-one Collection lock. The normalizer receives an exact root/manifest witness and a
-process-bound read closure, limited to 32 reads and invalid after return. It can
+one Collection lock. The normalizer receives a version-2 witness: its existing
+`root` summary and manifest/request/recipe/operation bindings remain unchanged,
+while `root_state`, `root_bytes` and `root_sha256` distinguish native-confirmed
+absence from the actual bounded bytes of a materialized root. Absent bytes and
+hashes are nil; a materialized empty collection retains its real hashes. Raw
+root bytes stay inside this trusted callback, outside SDK results and receipts.
+
+The process-bound read closure shares 32 observation units across two forms:
+
+| Callback call | Returned information | Units |
+| --- | --- | ---: |
+| `read.(key)` | One validated record value or nil | One, including a missing key |
+| `read.(%{"op" => "neighbors", "request" => descriptor})` | Four positional metadata references and the current root/manifest witness | Four, including nil positions |
+
+The neighbor descriptor and reference semantics are the same as
+[read-view selection](#read-several-collection-pages-under-one-validated-index).
+The ordered directory is built from the already validated current index under
+the retained native lock; it opens no read view and scans no object values.
+Selected values require separate charged binary reads. Neighbor selection
+supports wire roots 4 and 5, without adopting legacy roots 2 or 3; binary reads
+retain their existing legacy support. A neighbor reply's `witness.root` is the
+actual decoded wire pointer, whereas the callback's `root` remains the version-3
+summary. Neither establishes managed eligibility or authenticates a page body.
+
+Valid requests debit before lookup or native IO. Malformed closed requests
+refuse without debit, and foreign processes cannot spend the owner's allowance.
+Seven neighbor calls plus four binary reads consume exactly 32 units. An
+authorized over-budget attempt latches refusal: even if the callback ignores it,
+the entire publication refuses. This tightens the former per-read refusal
+contract. The closure expires on callback return and cannot be reused by a later
+invocation in the same worker. Final native checking and release still withhold
+the result after owner or scope loss. The callback can
 retain the original changes exactly and add 1..16 nondeleted `host.validity.`
 records. The original request must explicitly select `advance_floor: true`; the
 host never changes that choice or the original generation. Advancing the import
@@ -609,10 +639,10 @@ neighbor request checks all matching-prefix references. No persisted secondary
 index or whole-store value scan is introduced.
 
 `Collection.Directory` owns the pure selection and observation-cost rules. Its
-helpers grant no authority. The existing managed-publication callback still has
-its separate 32-read closure; it has **not** been wired to neighbor selection or
-the new observation counter. Sharing a cost helper is not permission to expand
-that callback, adopt metadata version 3 or expose another SDK operation.
+helpers grant no authority. The managed-publication callback uses the same
+selector and costs inside its separate 32-unit owner-bound closure, described
+[above](#serialize-protected-consent-before-publication). This does not adopt
+metadata version 3, change the current normalizer or expose another SDK operation.
 
 A changed root returns `collection_view_stale` and discards the view. An explicit
 reopen may then revalidate selected content, lineage and expiry at the new root;

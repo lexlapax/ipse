@@ -76,6 +76,7 @@ resource/offline qualification. No daemon configuration or existing model was ch
 - [Owner-task Collection read views and protected root revalidation](collection-read-view-component.md), with its [independent adversarial audit](collection-read-view-audit.md).
 - [Native-confirmed empty/present read-view v2 and complete Collection regression evidence](collection-empty-read-view-component.md), with its [independent audit](collection-empty-read-view-audit.md).
 - [Native-confirmed directory neighbors and shared observation limits](collection-neighbors-component.md), with its [independent adversarial audit](collection-neighbors-audit.md).
+- [Native root witnesses and owner-bound directory reads inside managed publication](managed-directory-closure-component.md).
 - [Managed source clocks, metadata and independently closed findings](managed-normalizer-component.md).
 - [Registered inference admission and completion](inference-dispatch-component.md), with its [independent adversarial audit](inference-dispatch-audit.md).
 - [Explicit managed SDK publication, reserved metadata and replay boundary](managed-sdk-component.md).

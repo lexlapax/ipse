@@ -533,34 +533,56 @@ defmodule Ipse.Extension.Collection do
   end
 
   defp normalize_managed(path, uid, s, manifest, original, id, recipe, normalizer) do
+    with {:ok, root} <- managed_root(s, manifest),
+         {:ok, directory} <- Directory.index(s["records"] |> Map.keys() |> Enum.sort()) do
+      normalize_managed(path, uid, s, manifest, original, id, recipe, normalizer, root, directory)
+    else
+      _ -> {:error, :managed_normalization_refused}
+    end
+  end
+
+  defp normalize_managed(
+         path,
+         uid,
+         s,
+         manifest,
+         original,
+         id,
+         recipe,
+         normalizer,
+         root,
+         directory
+       ) do
     key = {__MODULE__, :managed_read}
     owner = self()
     token = make_ref()
     cap = Process.get(@lock_key)
-    previous = Process.put(key, {token, 0})
+    previous = Process.put(key, {token, 0, :open})
 
     read = fn selected ->
       with true <- self() == owner and Process.get(@lock_key) === cap,
-           {^token, count} when count < 32 <- Process.get(key),
-           true <- key?(selected),
+           {:ok, cost} <- managed_read_cost(selected),
+           :ok <- debit_managed_read(key, token, cost),
            :ok <- Transaction.check(cap) do
-        Process.put(key, {token, count + 1})
-        read_record(path, uid, s, selected)
+        result = managed_read(path, uid, s, directory, root, selected)
+        if Transaction.check(cap) == :ok, do: result, else: {:error, :managed_read_refused}
       else
         _ -> {:error, :managed_read_refused}
       end
     end
 
-    witness = %{
-      "root" => summary(s),
-      "manifest_sha256" => if(manifest, do: manifest.hash),
-      "operation_id" => id,
-      "original_request_sha256" => JSON.digest([original]),
-      "recipe_sha256" => recipe
-    }
+    witness =
+      Map.merge(root, %{
+        "root" => summary(s),
+        "manifest_sha256" => if(manifest, do: manifest.hash),
+        "operation_id" => id,
+        "original_request_sha256" => JSON.digest([original]),
+        "recipe_sha256" => recipe
+      })
 
     try do
       with {:ok, normalized, normalization} <- normalizer.(witness, read),
+           {^token, _, :open} <- Process.get(key),
            true <- normalized_managed?(original, normalized),
            :ok <- JSON.validate_object(normalization),
            true <- byte_size(Jason.encode!(normalization)) <= 2048,
@@ -594,6 +616,96 @@ defmodule Ipse.Extension.Collection do
       if is_nil(previous), do: Process.delete(key), else: Process.put(key, previous)
     end
   end
+
+  defp managed_root(s, nil) do
+    with :absent <- Transaction.read_optional(publication_cap(), ".", "root.json", 1024),
+         true <- s === empty(s["project"]) do
+      {:ok,
+       %{"version" => 2, "root_state" => "absent", "root_bytes" => nil, "root_sha256" => nil}}
+    else
+      _ -> @error
+    end
+  end
+
+  defp managed_root(s, manifest) do
+    with {:ok, bytes} <- Transaction.read_optional(publication_cap(), ".", "root.json", 1024),
+         true <- is_binary(bytes) and byte_size(bytes) in 1..1024,
+         {:ok, pointer} <- JSON.decode_unique(bytes),
+         true <- pointer["version"] in [2, 3, 4, 5],
+         true <- pointer["manifest"] === manifest.hash,
+         true <-
+           pointer
+           |> Map.delete("manifest")
+           |> Map.put("version", 3)
+           |> Map.put_new("floor_anchor", nil) == summary(s) do
+      {:ok,
+       %{
+         "version" => 2,
+         "root_state" => "present",
+         "root_bytes" => bytes,
+         "root_sha256" => JSON.sha256(bytes)
+       }}
+    else
+      _ -> @error
+    end
+  end
+
+  defp managed_read_cost(selected) when is_binary(selected), do: Directory.cost(selected)
+
+  defp managed_read_cost(%{"op" => "neighbors"} = selected), do: Directory.cost(selected)
+  defp managed_read_cost(_), do: :error
+
+  defp debit_managed_read(key, token, cost) do
+    case Process.get(key) do
+      {^token, count, :open} when count + cost <= 32 ->
+        Process.put(key, {token, count + cost, :open})
+        :ok
+
+      {^token, count, :open} ->
+        Process.put(key, {token, count, :exceeded})
+        :error
+
+      _ ->
+        :error
+    end
+  end
+
+  defp managed_read(path, uid, s, _, _, key) when is_binary(key),
+    do: read_record(path, uid, s, key)
+
+  defp managed_read(_, _, s, directory, root, %{"op" => "neighbors", "request" => request} = r) do
+    with {:ok, pointer} <- managed_pointer(root),
+         true <- is_nil(pointer) or pointer["version"] in [4, 5],
+         {:ok, _, nil, neighbors} <- Directory.select(directory, r, root["root_state"]),
+         witness = %{
+           "version" => 2,
+           "root_state" => root["root_state"],
+           "root" => pointer,
+           "root_sha256" => root["root_sha256"],
+           "manifest_sha256" => if(pointer, do: pointer["manifest"])
+         },
+         result = %{
+           "version" => 1,
+           "summary" => summary(s),
+           "directory" => request,
+           "state" => neighbors["state"],
+           "neighbors" =>
+             Map.new(Map.delete(neighbors, "state"), fn {slot, key} ->
+               {slot, s["records"][key]}
+             end),
+           "witness" => witness
+         },
+         true <- byte_size(Jason.encode!(result)) <= 65_536 do
+      {:ok, result}
+    else
+      _ -> {:error, :managed_read_refused}
+    end
+  end
+
+  defp managed_pointer(%{"root_state" => "absent", "root_bytes" => nil}), do: {:ok, nil}
+
+  defp managed_pointer(%{"root_state" => "present", "root_bytes" => bytes}),
+    do: JSON.decode_unique(bytes)
 
   defp normalized_managed?(original, normalized) do
     with true <- valid_request?(normalized) and normalized["op"] == "commit",

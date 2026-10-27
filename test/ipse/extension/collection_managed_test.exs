@@ -123,7 +123,7 @@ defmodule Ipse.Extension.CollectionManagedTest do
     end
   end
 
-  test "read capability cannot cross process, outlive callback or exceed32 reads", c do
+  test "read capability cannot cross process and allows exactly32 reads", c do
     request = original()
 
     assert {:ok, _} =
@@ -131,9 +131,24 @@ defmodule Ipse.Extension.CollectionManagedTest do
                task = Task.async(fn -> get.("note.a") end)
                assert {:error, :managed_read_refused} = Task.await(task)
                for _ <- 1..32, do: assert({:ok, nil} = get.("note.a"))
-               assert {:error, :managed_read_refused} = get.("note.a")
                {:ok, normalized(request), %{}}
              end)
+  end
+
+  test "an ignored33rd read refusal prevents the entire managed publication", c do
+    request = original()
+
+    assert {:error, :managed_normalization_refused} =
+             run(c, request, fn _, get ->
+               for _ <- 1..32, do: assert({:ok, nil} = get.("note.a"))
+               assert {:error, :managed_read_refused} = get.("note.a")
+               assert {:error, :managed_read_refused} = get.("note.b")
+               {:ok, normalized(request), %{}}
+             end)
+
+    refute File.exists?(Path.join([c.root, c.project, "root.json"]))
+    assert {:ok, %{"record" => nil}} = read(c, "note.a")
+    assert {:ok, %{"record" => nil}} = read(c, "host.validity.a")
   end
 
   test "normalizer refusal, nonobject receipt and overlarge receipt publish nothing", c do
