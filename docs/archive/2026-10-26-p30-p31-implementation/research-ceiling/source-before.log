@@ -1,0 +1,8 @@
+Running ExUnit with seed: 20270117, max_cases: 1
+Excluding tags: [:test]
+Including tags: [location: {"test/ipse/tools/research_draft_probe_test.exs", 46}]
+
+.
+Finished in 0.2 seconds (0.00s async, 0.2s sync)
+
+Result: 1 passed

@@ -66,6 +66,8 @@ to inspect. Ambiguous old call IDs are omitted rather than incorrectly paired.
 `research_claim` links source IDs with supported, inference, conflict, or open
 labels. These are model assessments for you to check. The host validates recorded
 provenance and references, not the source's truth or completeness.
+When a Session has a read-only, planning, or draft execution ceiling, it can
+read the ledger but cannot add sources or claims, even with `--yes`.
 
 | Native ledger item | Bound |
 | --- | --- |

@@ -173,6 +173,13 @@ race-free filesystem confinement. Shell matching does no parsing, prefix inferen
 or safety classification. External/SDK effects and delegated approvals retain their
 own policy. Read-only denial takes precedence over any grant.
 
+Research source and claim tools also append durable ledger records, even though
+they do not use ordinary workspace-write approvals. Turn checks both the active
+and enclosing execution ceilings before starting them; a non-normal ceiling
+records a denied tool result instead. `research_ledger` remains a read. The
+focused `test/ipse/session/research_ceiling_test.exs` compares those refusals
+with normal-mode behavior and checks that denied calls never start.
+
 Prompt-based grant creation and revocation are journaled before changing authority;
 startup edit consent comes from the explicit client flag. Each native
 `tool_started` records `approval_source` alongside the existing approval decision.
@@ -188,7 +195,8 @@ Specific research, question, delegation, and sandbox implementations live in
 `lib/ipse/tools/`. `CLI` parses/starts/closes the application; `CLI.Terminal` handles
 subscriber display, input codes, queued tasks, and interactive decisions.
 A skill, question answer, or instruction file grants no mutation permission.
-Headless effects require explicit `--yes`.
+Headless workspace, shell, MCP and delegation effects require explicit `--yes`;
+native research ledger records follow the separate rules above.
 
 Known setup refusal can be `not_started`. Missing evidence after execution may
 have begun is `unknown`. A dead consumer is not proof the effect failed. That

@@ -788,6 +788,17 @@ defmodule Ipse.Session.Turn do
         {:error, reason} = validation
         tool_result(s, call, reason, "invalid_arguments", "not_decided")
 
+      name in ["research_source", "research_claim"] and
+          (execution_mode["ceiling"] != "normal" or
+             execution_mode["enclosing_ceiling"] != "normal") ->
+        tool_result(
+          s,
+          call,
+          "Denied: the current execution ceiling forbids changing research records.",
+          "denied",
+          "policy_denied"
+        )
+
       protected_outer?(s, name) ->
         {:ok, entry, descriptor} = Catalog.lookup(s.config, "invoke.tool", name)
         ref = make_ref()
