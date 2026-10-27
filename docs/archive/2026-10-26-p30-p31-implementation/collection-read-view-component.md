@@ -6,6 +6,11 @@ receipt, not managed-recall integration or P31 completion. The
 authority; the [plan](../../plan.md) owns milestone status. Current contributor
 instructions are in [persistence](../../developer/persistence.md#read-several-collection-pages-under-one-validated-index).
 
+The later [empty-view component](collection-empty-read-view-component.md)
+supersedes this checkpoint's unmaterialized-store refusal with an explicit
+version-2 native absence witness. Its verification is separate; the earlier
+present-only results and limits below remain historical.
+
 ## Supported boundary
 
 `Collection.open_view/2` fully validates an existing wire-root version 4 or 5

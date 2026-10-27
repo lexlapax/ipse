@@ -134,12 +134,27 @@ defmodule Ipse.Extension.CollectionReadViewTest do
     assert :ok = C.close_view(retained)
   end
 
-  test "unmaterialized stores refuse while an anchored materialized empty store works", c do
-    assert {:error, :collection_view_unmaterialized} = C.open_view(c.root, c.project)
+  test "unmaterialized and anchored materialized empty stores have distinct witnesses", c do
+    assert {:ok, empty} = C.open_view(c.root, c.project)
+    assert {:ok, absent} = get(empty, ["a"])
+
+    assert absent["witness"] == %{
+             "version" => 2,
+             "root_state" => "absent",
+             "root" => nil,
+             "root_sha256" => nil,
+             "manifest_sha256" => nil
+           }
+
+    assert absent["records"] == [nil]
+    assert :ok = C.close_view(empty)
     refute File.exists?(pointer(c))
     assert {:ok, _} = commit(c, 0, [change("a", 0, %{})])
     assert {:ok, _} = commit(c, 1, [change("a", 1, nil)], true)
     assert {:ok, view} = C.open_view(c.root, c.project)
+    assert {:ok, present} = get(view, ["a"])
+    assert present["witness"]["root_state"] == "present"
+    assert JSON.sha256?(present["witness"]["manifest_sha256"])
 
     assert {:ok, %{"records" => [nil], "summary" => %{"generation" => 2, "floor" => 2}}} =
              get(view, ["a"])

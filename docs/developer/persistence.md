@@ -212,10 +212,13 @@ still require their own semantic admission.
 ## Serialize protected consent before publication
 
 `Ipse.Extension.Consent` is an internal host ledger, separate from conversation
-history and extension-owned State. It is not exposed as an SDK operation or wired
-to CLI approval. Its caller must first establish operator origin, reviewed
-artifact identity, semantic scope, mode ceilings and a durable Session intent.
-Existing extension writes still use their ordinary separate approval gate.
+history and extension-owned State. The standalone
+[knowledge permission review](../operator/knowledge-permissions.md) saves a
+protected selection through this ledger. Its host caller establishes native
+operator origin, the exact reviewed artifact, semantic scope and mode ceilings.
+It is not an SDK operation. A later Session effect also needs its own durable
+intent and current protected admission; ordinary effects retain their separate
+approval gate.
 
 The caller supplies an admitted project digest and an absolute control root under
 an existing owner-only operator directory. The ledger checks canonical directory
@@ -397,8 +400,10 @@ between reads and creates no durable operation identity for a page.
 
 Each read runs in the current actual file-effect owner, in the existing lock
 order ProjectIdentity → Consent → Collection. It reacquires the Collection native
-owner, reads the current root through native `G`, and requires byte-for-byte
-equality with the admitted root. It reads only selected immutable objects through
+owner and reads the current root through the versioned native optional `H`
+operation. A materialized view requires byte-for-byte equality with its admitted
+root. An absent-root view requires another native-confirmed absence. It reads
+only selected immutable objects through
 that owner, checking their lengths, hashes and value shapes. Quota, post-read
 lease check and release must succeed before data returns. Losing the upstream
 task or cleanup scope fences the actual native owner even if a paused BEAM
@@ -418,6 +423,14 @@ File.mkdir!(scratch)
 File.chmod!(scratch, 0o700)
 root = Path.join(scratch, "collections")
 project = Ipse.JSON.sha256("synthetic-view-project")
+{:ok, initial} = Collection.open_view(root, project)
+try do
+  {:ok, empty} = Collection.view_read(initial, %{"op" => "get_many", "keys" => ["missing"]})
+  [nil] = empty["records"]
+  %{"version" => 2, "root_state" => "absent", "root" => nil, "root_sha256" => nil, "manifest_sha256" => nil} = empty["witness"]
+after
+  :ok = Collection.close_view(initial)
+end
 changes = for key <- ~w(a b c), do: %{"key" => key, "expected_revision" => 0, "value" => %{"text" => key}}
 request = %{"op" => "commit", "expected_generation" => 0, "advance_floor" => false, "changes" => changes}
 {:ok, _} = Collection.execute(root, project, request, Ipse.Usage.id())
@@ -426,6 +439,7 @@ try do
   {:ok, batch} = Collection.view_read(view, %{"op" => "get_many", "keys" => ["b", "missing"]})
   ["b", "missing"] = batch["keys"]
   [%{"value" => %{"text" => "b"}}, nil] = batch["records"]
+  "present" = batch["witness"]["root_state"]
   {:ok, page} = Collection.view_read(view, %{"op" => "scan", "after" => nil, "limit" => 2})
   "b" = page["next"]
 after
@@ -454,16 +468,30 @@ a fresh full open. Cooperative protected storage and trusted Core processes are
 the boundary, not containment of arbitrary same-user writers or hostile BEAM
 senders.
 
-Wire-root versions 4 and 5 are supported without implicit legacy adoption.
-An unmaterialized store returns `collection_view_unmaterialized`: the current
-native read protocol cannot distinguish a missing root from every other open
-failure, so it supplies no fabricated absence witness. A materialized empty
-collection does retain a real root/manifest witness. Views grant neither managed
+Wire-root versions 4 and 5 are supported without implicit legacy adoption. The
+private cache and returned result/witness use version 2. A native-confirmed absent
+root has `root_state: "absent"`, null root/root hash/manifest hash, an empty index
+and a zero-generation/floor summary. No synthetic digest stands in for a manifest.
+Every subsequent read reconfirms absence under the actual owner. The first
+publication invalidates that view. A materialized empty collection instead has
+`root_state: "present"` and its actual root/manifest witnesses. Disappearance of
+a previously selected root also makes its view stale; it cannot become an empty
+read in place.
+
+Unsafe roots, generic native errors, owner loss and unsupported helpers refuse;
+there is no required-read or host-stat fallback that converts them into absence.
+Opening can create the protected collection directories and retained locks, but
+does not publish a root or operation receipt. Views grant neither managed
 eligibility nor policy, source or Session authority. Their owning adapter must
 still check those facts and the active job at each dispatch. Cross-turn caching,
-managed recall and fresh-empty integration require their own reviewed integration.
-Run `mix test test/ipse/extension/collection_read_view_test.exs` for native-owner
-loss, separate-VM root changes, cache integrity, caller binding and finite limits.
+managed recall and dispatch withdrawal require their own reviewed integration.
+Run the read-view and empty-read-view suites for native-owner loss, separate-VM
+root changes, absent/present transitions, unsafe roots, cache integrity, caller
+binding and finite limits:
+
+```sh
+mix test test/ipse/extension/collection_read_view_test.exs test/ipse/extension/collection_empty_read_view_test.exs
+```
 
 ## Understand sealing and recovery bounds
 

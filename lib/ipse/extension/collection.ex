@@ -285,21 +285,53 @@ defmodule Ipse.Extension.Collection do
     _ -> @error
   end
 
-  defp load_for(path, project, uid, {:view_read, cache}) do
+  defp load_for(_path, project, _uid, {:view_read, cache}) do
+    selected = Transaction.read_optional(publication_cap(), ".", "root.json", 1024)
+
     with true <- cache["project"] === project,
-         {:ok, bytes} <- bounded_file(Path.join(path, "root.json"), uid, 1024),
-         true <- bytes === cache["root_bytes"] and JSON.sha256(bytes) === cache["root_sha256"] do
+         true <- selected_root?(selected, cache) do
       {:ok, Map.put(cache["summary"], "records", cache["records"]), nil}
     else
       _ -> {:error, :collection_view_stale}
     end
   end
 
+  defp load_for(path, project, uid, :view_open) do
+    case Transaction.read_optional(publication_cap(), ".", "root.json", 1024) do
+      :absent -> {:ok, empty(project), nil}
+      {:ok, bytes} -> load_pointer(path, project, uid, bytes)
+      _ -> @error
+    end
+  end
+
   defp load_for(path, project, uid, _), do: load(path, project, uid)
 
-  # The existing native G operation has no ENOENT discriminator. Refuse an
-  # unmaterialized store instead of turning a generic read error into absence.
-  defp view_cache(_, _, _, _, _, nil), do: {:error, :collection_view_unmaterialized}
+  defp selected_root?(:absent, %{"root_state" => "absent"}), do: true
+
+  defp selected_root?({:ok, bytes}, %{"root_state" => "present"} = cache),
+    do: bytes === cache["root_bytes"] and JSON.sha256(bytes) === cache["root_sha256"]
+
+  defp selected_root?(_, _), do: false
+
+  defp view_cache(root, _, project, _, state, nil) do
+    with :absent <- Transaction.read_optional(publication_cap(), ".", "root.json", 1024),
+         true <- state === empty(project) do
+      {:ok,
+       %{
+         "version" => 2,
+         "collection_root" => root,
+         "project" => project,
+         "root_state" => "absent",
+         "root_bytes" => nil,
+         "root_sha256" => nil,
+         "manifest_sha256" => nil,
+         "summary" => summary(state),
+         "records" => %{}
+       }}
+    else
+      _ -> @error
+    end
+  end
 
   defp view_cache(root, path, project, uid, state, manifest) do
     with {:ok, bytes} <- bounded_file(Path.join(path, "root.json"), uid, 1024),
@@ -309,9 +341,10 @@ defmodule Ipse.Extension.Collection do
          true <- pointer |> Map.delete("manifest") |> Map.put("version", 3) == summary(state) do
       {:ok,
        %{
-         "version" => 1,
+         "version" => 2,
          "collection_root" => root,
          "project" => project,
+         "root_state" => "present",
          "root_bytes" => bytes,
          "root_sha256" => JSON.sha256(bytes),
          "manifest_sha256" => manifest.hash,
@@ -332,12 +365,13 @@ defmodule Ipse.Extension.Collection do
     )
 
     with {:ok, records} <- read_records(path, uid, state, cache["selected"]),
-         {:ok, pointer} <- JSON.decode_unique(cache["root_bytes"]),
+         {:ok, pointer} <- view_pointer(cache),
          result = %{
-           "version" => 1,
+           "version" => 2,
            "summary" => cache["summary"],
            "witness" => %{
-             "version" => 1,
+             "version" => 2,
+             "root_state" => cache["root_state"],
              "root" => pointer,
              "root_sha256" => cache["root_sha256"],
              "manifest_sha256" => cache["manifest_sha256"]
@@ -353,6 +387,11 @@ defmodule Ipse.Extension.Collection do
       _ -> @error
     end
   end
+
+  defp view_pointer(%{"root_state" => "absent", "root_bytes" => nil}), do: {:ok, nil}
+
+  defp view_pointer(%{"root_state" => "present", "root_bytes" => bytes}),
+    do: JSON.decode_unique(bytes)
 
   defp apply_request(path, uid, s, _, %{"op" => "status"}, _) do
     status(path, uid, s)
@@ -874,48 +913,54 @@ defmodule Ipse.Extension.Collection do
   defp load(path, project, uid) do
     case File.lstat(Path.join(path, "root.json")) do
       {:error, :enoent} ->
-        {:ok,
-         %{
-           "version" => 3,
-           "project" => project,
-           "generation" => 0,
-           "floor" => 0,
-           "floor_anchor" => nil,
-           "floor_lineage" => [],
-           "records" => %{},
-           "operations" => %{},
-           "imported_operations" => %{},
-           "migration" => nil,
-           "checkpoint" => nil
-         }, nil}
+        {:ok, empty(project), nil}
 
       {:ok, _} ->
         with {:ok, bytes} <- bounded_file(Path.join(path, "root.json"), uid, 1024),
-             {:ok, root} <- JSON.decode_unique(bytes),
-             true <-
-               (keys?(root, ~w(version project generation floor manifest)) or
-                  keys?(root, ~w(version project generation floor floor_anchor manifest))) and
-                 root["version"] in [2, 3, 4, 5] and root["project"] == project and
-                 uint?(root["generation"]) and uint?(root["floor"]) and
-                 JSON.sha256?(root["manifest"]),
-             {:ok, bytes} <-
-               bounded_file(
-                 Path.join([path, "manifests", root["manifest"] <> ".json"]),
-                 uid,
-                 @manifest_bytes
-               ),
-             true <- JSON.sha256(bytes) == root["manifest"],
-             {:ok, stored} <- JSON.decode_unique(bytes),
-             true <- summary(stored) == Map.delete(root, "manifest"),
-             {:ok, s, blocks} <- decode_manifest(stored, path, uid),
-             true <- valid_state?(s, project) do
-          {:ok, s, %{hash: root["manifest"], blocks: blocks}}
-        else
-          _ -> @error
-        end
+             do: load_pointer(path, project, uid, bytes)
 
       _ ->
         @error
+    end
+  end
+
+  defp empty(project),
+    do: %{
+      "version" => 3,
+      "project" => project,
+      "generation" => 0,
+      "floor" => 0,
+      "floor_anchor" => nil,
+      "floor_lineage" => [],
+      "records" => %{},
+      "operations" => %{},
+      "imported_operations" => %{},
+      "migration" => nil,
+      "checkpoint" => nil
+    }
+
+  defp load_pointer(path, project, uid, bytes) do
+    with {:ok, root} <- JSON.decode_unique(bytes),
+         true <-
+           (keys?(root, ~w(version project generation floor manifest)) or
+              keys?(root, ~w(version project generation floor floor_anchor manifest))) and
+             root["version"] in [2, 3, 4, 5] and root["project"] == project and
+             uint?(root["generation"]) and uint?(root["floor"]) and
+             JSON.sha256?(root["manifest"]),
+         {:ok, bytes} <-
+           bounded_file(
+             Path.join([path, "manifests", root["manifest"] <> ".json"]),
+             uid,
+             @manifest_bytes
+           ),
+         true <- JSON.sha256(bytes) == root["manifest"],
+         {:ok, stored} <- JSON.decode_unique(bytes),
+         true <- summary(stored) == Map.delete(root, "manifest"),
+         {:ok, s, blocks} <- decode_manifest(stored, path, uid),
+         true <- valid_state?(s, project) do
+      {:ok, s, %{hash: root["manifest"], blocks: blocks}}
+    else
+      _ -> @error
     end
   end
 

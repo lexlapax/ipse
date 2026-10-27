@@ -4,7 +4,9 @@ defmodule Ipse.Extension.Collection.ReadView do
 
   A view grants no policy, source, Session or managed-record authority. It retains
   no file descriptor. Each selected read still runs through Collection's actual
-  native owner and exact current root check. The 4 MiB bound is encoded metadata;
+  native owner and exact current root check. Version 2 distinguishes a native
+  absent-root observation from a present root; absence has no fabricated hash
+  and must be reconfirmed on every read. The 4 MiB bound is encoded metadata;
   bounded maps, seals and process/heap overhead are additional. At most 16 caches,
   one per original task, live for 60 seconds and admit at most 512 reads each.
 
@@ -21,7 +23,7 @@ defmodule Ipse.Extension.Collection.ReadView do
   @lifetime 60_000
   @records 8192
   @error {:error, :collection_view_unavailable}
-  @cache_keys ~w(version collection_root project root_bytes root_sha256 manifest_sha256 summary records)
+  @cache_keys ~w(version collection_root project root_state root_bytes root_sha256 manifest_sha256 summary records)
   @summary_keys ~w(version project generation floor floor_anchor)
   @record_keys ~w(key revision sha256 bytes operation_id)
   @effect_owner {Resources, :effect_owner}
@@ -262,13 +264,10 @@ defmodule Ipse.Extension.Collection.ReadView do
   def valid_request?(_), do: false
 
   defp cache?(cache) do
-    keys?(cache, @cache_keys) and cache["version"] === 1 and
+    keys?(cache, @cache_keys) and cache["version"] === 2 and
       is_binary(cache["collection_root"]) and byte_size(cache["collection_root"]) <= 4096 and
       Path.type(cache["collection_root"]) == :absolute and
-      JSON.sha256?(cache["project"]) and is_binary(cache["root_bytes"]) and
-      byte_size(cache["root_bytes"]) <= 1024 and
-      JSON.sha256(cache["root_bytes"]) === cache["root_sha256"] and root_matches?(cache) and
-      JSON.sha256?(cache["manifest_sha256"]) and
+      JSON.sha256?(cache["project"]) and root_matches?(cache) and
       keys?(cache["summary"], @summary_keys) and cache["summary"]["version"] === 3 and
       cache["summary"]["project"] === cache["project"] and
       JSON.safe_uint?(cache["summary"]["generation"]) and
@@ -287,8 +286,23 @@ defmodule Ipse.Extension.Collection.ReadView do
     _ -> false
   end
 
-  defp root_matches?(cache) do
-    with {:ok, pointer} <- JSON.decode_unique(cache["root_bytes"]),
+  defp root_matches?(%{"root_state" => "absent"} = cache) do
+    is_nil(cache["root_bytes"]) and is_nil(cache["root_sha256"]) and
+      is_nil(cache["manifest_sha256"]) and cache["records"] === %{} and
+      cache["summary"] === %{
+        "version" => 3,
+        "project" => cache["project"],
+        "generation" => 0,
+        "floor" => 0,
+        "floor_anchor" => nil
+      }
+  end
+
+  defp root_matches?(%{"root_state" => "present"} = cache) do
+    with true <- is_binary(cache["root_bytes"]) and byte_size(cache["root_bytes"]) <= 1024,
+         true <- JSON.sha256(cache["root_bytes"]) === cache["root_sha256"],
+         true <- JSON.sha256?(cache["manifest_sha256"]),
+         {:ok, pointer} <- JSON.decode_unique(cache["root_bytes"]),
          true <- keys?(pointer, ~w(version project generation floor floor_anchor manifest)),
          true <- pointer["version"] in [4, 5],
          true <- pointer["manifest"] === cache["manifest_sha256"] do
@@ -297,6 +311,8 @@ defmodule Ipse.Extension.Collection.ReadView do
       _ -> false
     end
   end
+
+  defp root_matches?(_), do: false
 
   defp authorized?(state, caller) do
     Process.alive?(state.owner) and
