@@ -44,3 +44,13 @@ and independent review.
 The [kernel recovery record](kernel-profile-recovery.md) and
 [open audit](2026-10-27-open-audit.md) describe the current evidence and limits;
 the [plan](../../plan.md) owns milestone status.
+
+A [fixture review snapshot](serenity-tools/fixture-review-snapshot.tar.gz)
+preserves an unfinished, disabled controller, probes, proposed container
+harness and inventories in case temporary work is lost. Its SHA-256 is
+`aefde07b315405449ad2cb578c4c0dfd81516de31f6272cab717ca89d1692706`.
+It is historical review material, not an approved or runnable qualification:
+device identity races, tool immutability, process and mount cleanup, actual
+native-owner fault attribution and the live harness require further work and
+independent review. No block device, mapper, mount or injected fault has been
+created by this fixture.
