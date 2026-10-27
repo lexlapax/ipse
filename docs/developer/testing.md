@@ -307,7 +307,15 @@ prerequisites/placeholders/expected results/recovery. Docs-only changes need tho
 checks, without invented runtime regressions. Preserve substantial old manuals
 under the [archive policy](../archive/index.md#archive-policy).
 
-For packaging, runtime paths, worker launch, or helper changes:
+Packaging, runtime-path, worker-launch and helper changes need package verification.
+Standard packages include the optional PDF parser, which needs Rust/Cargo 1.88+;
+the ordinary PDF-free source build still needs Rust 1.85+. Use
+`IPSE_BUILD_PDF=0 ./dev/package.sh` only when deliberately verifying a parser-free
+bundle. Parser-enabled verification additionally follows the
+[native parser checks](../../native/ipse-pdf/README.md#build-and-installed-use),
+including its source/installed artifact proof. Keep parser resource-backend
+unavailability distinct from successful extraction, especially on macOS. Run the
+package baseline with the exact archive produced:
 
 ```sh
 ./dev/package.sh

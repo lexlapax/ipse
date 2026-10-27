@@ -70,14 +70,37 @@ and its own license/dependency inventory.
 | PlugCrypto | Hex 2.2.1, locked | Plug cryptographic helpers; fixes CVE-2026-105963 | Apache-2.0 |
 | Telemetry | Hex 1.4.2, locked; developer approved on 2026-10-15 | Erlang/BEAM events used by Finch/Plug; adds no outside runtime service | Apache-2.0 with upstream NOTICE |
 | Rust toolchain and standard library | Rust 1.85+; `dev/build-native.sh` invokes `rustc --edition=2021` | Build the OS helper; no third-party Cargo packages | MIT OR Apache-2.0 |
+| Optional PDF parser and Cargo closure | `lopdf` 0.46.0 without default features; Rust/Cargo 1.88+; exact 60-crate closure in [`Cargo.lock`](../../native/ipse-pdf/Cargo.lock) and the [expanded inventory](../../native/ipse-pdf/DEPENDENCIES.md) | Optional build/package/CI helper for bounded PDF bytes; installed runtime receives its executable/notices, with no Cargo or model download. Elixir retains acquisition, policy, orchestration and citations | `lopdf`: MIT; every transitive purpose/version/source/license and notice is recorded in the expanded inventory |
 | Ipse native helper | `native/ipse-runner.rs`, `native/ipse-process-group.rs`, `native/ipse-stdio.rs`, `native/ipse-linux-sandbox.rs`, `native/ipse-macos-sandbox.rs`, `native/ipse-measure.rs`, `native/ipse-sequence.rs`, `native/ipse-bound.rs`, `native/ipse-listener.rs`, `native/ipse-file-copy.rs`, `native/ipse-operator.rs`, `native/ipse-environment.rs`, `native/ipse-secrets.rs`, compiled as `priv/ipse-runner` | Runtime anchored process groups, advisory locks, protected-directory durability sync, matching-terminal display/input observations, bidirectional OS pipes, optional Linux user/mount/network/PID namespaces, private descriptor procfs, Landlock/seccomp and macOS signed App Sandbox worker policies; optional owned cgroup measurement, execution-bound serial stages, direct-child loopback-listener observations, retained-descriptor regular-file copies and selected child-environment forwarding; used by tests | Apache-2.0 (project source) |
 
-OTP libraries ship with OTP. The application starts `logger` and `ssl`;
+OTP libraries ship with OTP. The application starts `logger`, `ssl` and `xmerl`;
+the latter supplies bounded SAX XML parsing for DOCX and ships in bundled releases.
 authentication also uses crypto/public-key facilities. HTTP uses owned Finch
 pools without starting OTP's `inets` application. Req/Plug satisfy the SDK's
 compile-time references; Finch/Mint also serve bounded provider/authentication
 transport. Optional Bandit, Decimal and IDNA dependencies are not enabled. No MCP
 listener starts automatically. Ipse requires no Node, JavaScript or Python runtime.
+
+Ordinary source builds keep PDF off and retain the dependency-free OS helper's
+Rust 1.85 floor. `IPSE_BUILD_PDF=1 ./dev/build.sh` builds the separate parser;
+standard `./dev/package.sh` defaults to including it and therefore needs Rust
+1.88/Cargo. `IPSE_BUILD_PDF=0 ./dev/package.sh` creates a parser-free bundle and
+removes stale generated parser files before compilation. Parser availability
+does not enable PDF acquisition. Follow the [parser contract](../../native/ipse-pdf/README.md)
+for protected snapshots, finite slots and explicit backend-unavailable refusal.
+
+The developer-approved narrow Rust PDF exception is recorded in the
+[plan review](../archive/2026-10-26-p30-p31-plan-review/index.md). The
+[selection evaluation](../archive/2026-10-26-p30-p31-implementation/selection.md)
+records the concrete mismatch of the inspected maintained Elixir PDF package:
+its documented API generates PDFs rather than extracting their text. No BEAM
+parser was selected. The chosen optional Cargo graph contains
+Rust package implementations only: Rust decompression backends replace external
+compression libraries, and `libc` binds the existing host C library. Packaging
+copies all 60 upstream notice sets and refuses inventory drift. The retained
+alloc-stdlib license comes from its exact recorded source revision because its
+crate archive omits that notice. This exception adds no renderer, OCR service or
+transitive non-Rust implementation.
 
 The 2026-10-23 [PlugCrypto advisory](https://github.com/elixir-plug/plug/security/advisories/GHSA-ffw9-w85g-f2vh)
 affects versions before 2.2.1: wrong-typed cryptographic arguments can expose a

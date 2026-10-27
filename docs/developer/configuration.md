@@ -30,7 +30,8 @@ they do not become conversation providers in the Registry. Trace
 [the decision exercise](decisions.md#trace-a-request-through-the-session).
 `decision_profiles` are operator-only, and enabling `host.decision` pins their
 snapshot with usage metadata version 3. Sessions without that capability retain
-their previous metadata shape. Child profiles exist only when the child inherits
+their earlier usage version, and absent legacy decision snapshots compare as
+null during resume. Child profiles exist only when the child inherits
 an explicitly allowed decision artifact. The `TYPESAFE_API_KEY` lookup joins the
 shared secret scrub/denial inventory without becoming a text credential choice.
 Its ordered views preserve operator and rate-card presentation; callbacks validate

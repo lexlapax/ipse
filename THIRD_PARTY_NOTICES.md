@@ -16,8 +16,12 @@ Bundled releases copy every locked package's upstream LICENSE/COPYING/NOTICE
 files into `licenses/`, preserving package-specific copyrights and notices.
 For NimblePool 1.1.0, which ships that notice in README.md, the upstream README
 is retained alongside the Apache-2.0 license text.
-The Rust helper uses only the Rust standard library (MIT OR Apache-2.0); it has
-no third-party Cargo dependencies.
+The OS helper uses only the Rust standard library (MIT OR Apache-2.0); it has
+no third-party Cargo dependencies. Parser-enabled packages separately include
+the optional MIT-licensed lopdf 0.46.0 parser and its locked Rust dependencies.
+Their complete [inventory and selected license terms](native/ipse-pdf/DEPENDENCIES.md)
+accompany all 60 upstream notice directories in the package. The optional parser
+does not enable document acquisition by itself.
 
 Bundled releases include [Elixir](https://github.com/elixir-lang/elixir)
 (Copyright 2012 Plataformatec; copyright holders as listed upstream) and
