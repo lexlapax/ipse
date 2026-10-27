@@ -35,3 +35,20 @@ observations, but there is no traced error stack: this is a strong inference,
 not a proven exact failure site. There is no format, Btrfs mount or injected
 fault record. Do not replay pending operations or automatically remove the
 retained index, mapper, backing, stage or ledger.
+
+A separately reviewed [exact-UUID recovery](recover_exact_mapper.sh), SHA-256
+`994a820bd0a77cb1cb49068b9f30c4b4d8ad8e9f351b292c47b9952a168ef97a`, was
+executed by the coordinating agent. It used one nondeferred mapper removal with
+no force or retry after a synced sidecar intent. The command exited 0 and the
+mapper sysfs entry was not observed afterward. The exact recovery
+container was `c95c0520887985b8be0f88b18f7cfa6e7e437cbfdf7a82dfd20ea5e4dfcc5d22`.
+After exact ID, name, image, label and stopped exit-0 checks, the coordinating
+agent removed only that recovery container. The [captured recovery records](fault-actual-evidence/SOURCE-SHA256SUMS) retain
+that outcome and explicitly say backing release is unknown.
+
+Two independent read-only inspections then observed the loop index still at
+`25:601631`, no listed holders, and no loop binding attributes; the backing
+file remained `53:270861`, one link, 536870912 bytes and zero allocated blocks.
+These snapshots do not prove the kernel's final backing-file reference has been
+released. The backing, old diagnostic container, stage, ledger and loop index
+remain preserved. No index removal, backing deletion or fault injection occurred.

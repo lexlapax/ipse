@@ -1,0 +1,6 @@
+recovery=pending operation=nondeferred-remove uuid=IPSE-Q-63ebcfd6bc5a4167223662f0dae3539d name=ipse-q-63ebcfd6bc5a4167223662f0dae3539d mapper=252:4095 sysfs=25:660633
+loop=7:4095 sysfs=25:601631 backing=53:270861 size=536870912 autoclear=1
+active=0 1048576 linear 7:4095 0
+container_name=ipse-recovery-63ebcfd6bc5a4167223662f0dae3539d
+container_label=ipse.recovery.run:63ebcfd6bc5a4167223662f0dae3539d
+backing_and_loop_index=preserve
