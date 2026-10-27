@@ -35,6 +35,20 @@ the existing Session source snapshot is not an authoritative managed-root read.
 Registered and unregistered paths both need coverage. No Session integration or
 claim of protected inference egress follows from the prototype.
 
+A subsequent local diagnostic reproduced the connection-wait gap with a
+loopback TLS server: the gate accepted while a synthetic policy was enabled,
+the server paused before its TLS handshake, the test disabled that policy, and
+the server then received the previously admitted fixture body. The focused
+private-graph run reported **7 passed**, including this deliberate reproduction
+of the defect, using seed 20261225; its [output](kernel-7.2.11/egress-gate-tests.log)
+does not establish a security pass. It used Elixir 1.20.4/OTP 29 and the
+uncommitted prototype: gate source SHA-256
+`8f3db327dadc7fc9fdf4109c3048db89f3cd95d14a23bb5ce6e28bcf6a7a0d1d`,
+transport source `3e408c926489e059dd6e5e9f754be63a18a738c63506c997620d4ff14faca38f`,
+and test source `8197559debc553d788a8dd81254537c7effe2bf62946a61f3c41cccaa7053e1c`.
+The output SHA-256 is
+`1577310c04ec059519dea5533b82cf43fd117ac1f20ee449d5e3fe0386eff01b`.
+
 One possible maintained seam is Mint's public connect followed by a final check
 and request, but direct Mint use would need a declared dependency, bounded
 response and lifetime handling, equivalent TLS and proxy behavior, and failure,
@@ -64,4 +78,7 @@ unchanged and fail-closed. A private user/mount namespace can mount a disposable
 tmpfs here, but `/dev/loop-control` and `/dev/mapper/control` were absent in the
 checked environment. No Btrfs fault injection was attempted on the user's
 filesystem. See the [recovery record](kernel-profile-recovery.md) for the
-source and preliminary probe provenance.
+source and preliminary probe provenance. A later
+[partial-write diagnostic](kernel-7.2.11/partial-probe.md) observed stable counts
+after a completed or size-limit-failed write, but did not inject Btrfs I/O
+failure or interrupt a write system call.

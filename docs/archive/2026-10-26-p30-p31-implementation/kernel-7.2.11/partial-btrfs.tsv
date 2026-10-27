@@ -1,0 +1,50 @@
+case	pattern	requested	write	phase	len	blocks_bytes	links
+0	random	1	ok	before-kill	1	4096	1
+0	random	1	ok	after-kill	1	4096	1
+0	random	1	ok	after-10ms	1	4096	1
+0	random	1	ok	after-110ms	1	4096	1
+0	random	1	ok	after-1110ms	1	4096	1
+0	sync	ok
+0	random	1	ok	after-sync	1	4096	1
+1	random	4095	ok	before-kill	4095	4096	1
+1	random	4095	ok	after-kill	4095	4096	1
+1	random	4095	ok	after-10ms	4095	4096	1
+1	random	4095	ok	after-110ms	4095	4096	1
+1	random	4095	ok	after-1110ms	4095	4096	1
+1	sync	ok
+1	random	4095	ok	after-sync	4095	4096	1
+2	random	6144	ok	before-kill	6144	8192	1
+2	random	6144	ok	after-kill	6144	8192	1
+2	random	6144	ok	after-10ms	6144	8192	1
+2	random	6144	ok	after-110ms	6144	8192	1
+2	random	6144	ok	after-1110ms	6144	8192	1
+2	sync	ok
+2	random	6144	ok	after-sync	6144	8192	1
+3	random	65537	ok	before-kill	65537	69632	1
+3	random	65537	ok	after-kill	65537	69632	1
+3	random	65537	ok	after-10ms	65537	69632	1
+3	random	65537	ok	after-110ms	65537	69632	1
+3	random	65537	ok	after-1110ms	65537	69632	1
+3	sync	ok
+3	random	65537	ok	after-sync	65537	69632	1
+4	random	1048577	ok	before-kill	1048577	1052672	1
+4	random	1048577	ok	after-kill	1048577	1052672	1
+4	random	1048577	ok	after-10ms	1048577	1052672	1
+4	random	1048577	ok	after-110ms	1048577	1052672	1
+4	random	1048577	ok	after-1110ms	1048577	1052672	1
+4	sync	ok
+4	random	1048577	ok	after-sync	1048577	1052672	1
+5	zeros	1048577	ok	before-kill	1048577	1052672	1
+5	zeros	1048577	ok	after-kill	1048577	1052672	1
+5	zeros	1048577	ok	after-10ms	1048577	1052672	1
+5	zeros	1048577	ok	after-110ms	1048577	1052672	1
+5	zeros	1048577	ok	after-1110ms	1048577	1052672	1
+5	sync	ok
+5	zeros	1048577	ok	after-sync	1048577	1052672	1
+6	random	65537	error-27	before-kill	8192	8192	1
+6	random	65537	error-27	after-kill	8192	8192	1
+6	random	65537	error-27	after-10ms	8192	8192	1
+6	random	65537	error-27	after-110ms	8192	8192	1
+6	random	65537	error-27	after-1110ms	8192	8192	1
+6	sync	ok
+6	random	65537	error-27	after-sync	8192	8192	1
