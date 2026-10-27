@@ -393,6 +393,80 @@ control lock, then uses this operation before acknowledging policy or reservatio
 publication. The host separately validates canonical ancestors and exact policy;
 this primitive grants no filesystem, extension or knowledge permission.
 
+## Inspect protected storage allocation
+
+`ipse-runner --storage-allocation ABS_DIRECTORY` reports three unsigned decimal
+integers, separated by spaces: logical bytes, allocated bytes and entry count.
+Allocated bytes use the platform's `MetadataExt.blocks()` count multiplied by
+512 with checked arithmetic. Both byte counts include directory metadata, and
+the walk includes retained locks, staged files and pending root pointers. It does
+not assume a filesystem block size or treat a sparse file's length as allocation.
+
+The canonical absolute root and every entry must belong to the effective user
+and have owner-only permissions. Files must be regular and have one link;
+symlinks, devices, FIFOs and sockets refuse. Opens use no-follow and nonblocking
+flags, retain descriptors during inspection and recheck named device/inode
+identity. Traversal stops beyond four levels or 40,000 entries. The caller holds
+the storage lock while inspecting: this primitive does not provide a filesystem
+snapshot against other same-user programs deliberately changing the tree.
+
+`Ipse.Runner.storage_allocation/1` validates the bounded response under a
+five-second deadline. An unsupported platform, unsafe entry, changed identity,
+overflow, lost helper or invalid response returns unavailable; there is no
+estimated-allocation fallback. Collection publication writes and syncs its
+complete staged root pointer before inspection, then checks the 64-MiB envelope
+including an 18-MiB protected-control allowance before renaming that pointer.
+Admission, consent, project identity and domain retention remain Elixir policy.
+
+Run the dependency-free native controls with:
+
+```sh
+rustc --edition=2021 --test -D warnings native/ipse-storage.rs -o /tmp/ipse-storage-tests
+/tmp/ipse-storage-tests
+```
+
+## Write protected staging files
+
+`Ipse.Runner.protected_staging_write(absolute_pending_path, bytes)` creates and
+syncs one exclusive staging file of 1 byte through 8 MiB. Its basename must be
+`.pending-` followed by 32 lowercase hexadecimal digits. The batch form,
+`protected_staging_write_many(absolute_directory, [{pending_basename, bytes}])`,
+accepts at most 128 distinct files and 8 MiB of aggregate payload. Both require a
+canonical, owner-only parent directory. Creation uses exclusive, no-follow
+owner-only permissions from the first open; existing files are never repaired
+or replaced. The caller owns admission, operation receipts, rename publication
+and directory sync. A failure can leave private partial bytes and is not evidence
+that a higher-level operation may be replayed.
+
+The native `--storage-write PATH SIZE` and `--storage-write-many DIRECTORY COUNT`
+channels run inside the existing owned stdio process-group supervisor. The writer
+first acquires a retained `.writer.lock` in its parent and emits exactly `R` on
+stdout. Only then does Runner send payload through stdin, in non-suspending
+frames containing a big-endian u32 length and at most 16 KiB of bytes. Exactly
+one frame is outstanding: the writer emits `A` after consuming the complete
+frame before Runner sends another. This keeps the existing supervisor input
+queue bounded even when the writer stops. No pending file is created before the
+first positive payload read. The decoded batch stream repeats a 32-byte
+hexadecimal identifier, a big-endian u32
+payload length, and those payload bytes. File bytes never appear in argv or
+diagnostics. The exchange deadline starts before launch and is five seconds;
+the bounded native launch and confirmed stdio cleanup may add setup/cleanup
+time. Invalid frames, exceeded bounds, backpressure, cancellation and lost
+helpers refuse. Cleanup without terminal supervisor evidence returns an explicit
+`cleanup_unconfirmed` error.
+
+Storage owners must hold their logical lock, acquire the retained writer lease
+before reclaiming pending files or measuring allocation, and retain its inode.
+Release the writer lease before starting a new writer and reacquire it after
+confirmed exit. This also covers owner death: a writer that already received
+payload keeps the kernel lease until it exits; a writer becoming ready after
+owner death receives no payload and creates no pending file. Never unlink an
+unknown writer's file merely because its owner's logical lock was released.
+
+The focused Runner controls exercise maximum input against a stopped reader,
+resource cancellation, and owner death while stopped. They verify finite return,
+owned-process cleanup and reacquisition of the same retained kernel-lock inode.
+
 ## Observe one actual terminal display and input
 
 `--operator-input TIMEOUT_MS` is an internal single-prompt channel, not an approval

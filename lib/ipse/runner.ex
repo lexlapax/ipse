@@ -128,6 +128,277 @@ defmodule Ipse.Runner do
 
   def sync_directory(_), do: {:error, :directory_sync_unavailable}
 
+  @doc "Inspect bounded protected storage allocation, including directory and pending-file blocks."
+  def storage_allocation(path) when is_binary(path) do
+    with :ok <- launch_text(path),
+         true <- Path.type(path) == :absolute,
+         {:ok, helper} <- verified_helper(),
+         {:ok, port, ticket} <-
+           owned_port(:lock, helper, [
+             :binary,
+             :exit_status,
+             :use_stdio,
+             :hide,
+             args: ["--storage-allocation", path]
+           ]) do
+      try do
+        receive_allocation(port, ticket, System.monotonic_time(:millisecond) + 5_000, "")
+      after
+        result = if Port.info(port), do: close_process(port, true), else: :ok
+        Ipse.Session.Resources.closed(ticket, result)
+      end
+    else
+      _ -> {:error, :storage_allocation_unavailable}
+    end
+  rescue
+    _ -> {:error, :storage_allocation_unavailable}
+  end
+
+  def storage_allocation(_), do: {:error, :storage_allocation_unavailable}
+
+  @doc "Create and sync one private exclusive staging file; caller owns admission, cleanup and publication."
+  def protected_staging_write(path, bytes) when is_binary(path) and is_binary(bytes) do
+    with :ok <- launch_text(path),
+         true <- Path.type(path) == :absolute,
+         true <- byte_size(bytes) in 1..8_388_608,
+         true <- Regex.match?(~r/\A\.pending-[a-f0-9]{32}\z/, Path.basename(path)),
+         {:ok, helper} <- verified_helper() do
+      staging_exchange(
+        helper,
+        ["--storage-write", path, Integer.to_string(byte_size(bytes))],
+        Path.dirname(path),
+        bytes
+      )
+    else
+      _ -> {:error, :protected_staging_write_unavailable}
+    end
+  rescue
+    _ -> {:error, :protected_staging_write_unavailable}
+  end
+
+  def protected_staging_write(_, _), do: {:error, :protected_staging_write_unavailable}
+
+  @doc "Create and sync up to 128 private staging files with at most 8 MiB aggregate bytes."
+  def protected_staging_write_many(directory, files)
+      when is_binary(directory) and is_list(files) do
+    with :ok <- launch_text(directory),
+         true <- Path.type(directory) == :absolute,
+         true <- length(files) in 1..128,
+         true <-
+           Enum.all?(files, fn {name, bytes} ->
+             is_binary(name) and Regex.match?(~r/\A\.pending-[a-f0-9]{32}\z/, name) and
+               is_binary(bytes) and byte_size(bytes) in 1..8_388_608
+           end),
+         true <- Enum.sum(Enum.map(files, fn {_, bytes} -> byte_size(bytes) end)) <= 8_388_608,
+         true <- length(Enum.uniq_by(files, &elem(&1, 0))) == length(files),
+         {:ok, helper} <- verified_helper() do
+      payload =
+        Enum.map(files, fn {".pending-" <> id, bytes} ->
+          [id, <<byte_size(bytes)::unsigned-big-32>>, bytes]
+        end)
+
+      staging_exchange(
+        helper,
+        ["--storage-write-many", directory, Integer.to_string(length(files))],
+        directory,
+        IO.iodata_to_binary(payload)
+      )
+    else
+      _ -> {:error, :protected_staging_write_unavailable}
+    end
+  rescue
+    _ -> {:error, :protected_staging_write_unavailable}
+  end
+
+  def protected_staging_write_many(_, _), do: {:error, :protected_staging_write_unavailable}
+
+  defp staging_exchange(helper, args, directory, payload) do
+    deadline = System.monotonic_time(:millisecond) + 5_000
+
+    with {:ok, ticket} <- Ipse.Session.Resources.register(:lock) do
+      case open_stdio(helper, args, directory, %{}, 5_000, cleanup_ticket: ticket) do
+        {:ok, port} ->
+          result =
+            try do
+              with :ok <- staging_control(port, deadline, ticket, "", ?R),
+                   :ok <- staging_send(port, payload, deadline, ticket),
+                   :ok <- staging_receive(port, deadline, ticket, ""),
+                   do: :ok
+            rescue
+              _ -> {:error, :protected_staging_write_unavailable}
+            end
+
+          cleanup = staging_cleanup(port)
+          Ipse.Session.Resources.closed(ticket, cleanup)
+
+          if cleanup == :ok,
+            do: result,
+            else: {:error, {:cleanup_unconfirmed, :protected_staging_write_unavailable}}
+
+        {:error, {:cleanup_unconfirmed, _}} ->
+          Ipse.Session.Resources.closed(ticket, {:error, :cleanup_unconfirmed})
+          {:error, {:cleanup_unconfirmed, :protected_staging_write_unavailable}}
+
+        _ ->
+          Ipse.Session.Resources.closed(ticket, :ok)
+          {:error, :protected_staging_write_unavailable}
+      end
+    end
+  end
+
+  defp staging_cleanup(port) do
+    # Keep terminal evidence in this owner's mailbox. Transferring a port after
+    # it has emitted exit_status can strand that evidence in the old mailbox.
+    previous = Process.flag(:trap_exit, true)
+
+    try do
+      close_stdio(port)
+    after
+      Process.flag(:trap_exit, previous)
+    end
+  end
+
+  defp staging_control(port, _, _, <<?O, 1::unsigned-big-32, expected, rest::binary>>, expected) do
+    if rest != "", do: send(self(), {port, {:data, rest}})
+    :ok
+  end
+
+  defp staging_control(port, deadline, ticket, bytes, expected) when byte_size(bytes) < 6 do
+    receive do
+      {^port, {:data, data}} when byte_size(bytes) + byte_size(data) <= 4096 ->
+        staging_control(port, deadline, ticket, bytes <> data, expected)
+
+      {:ipse_cancel_resource, id} when ticket != nil and ticket.id == id ->
+        {:error, :protected_staging_write_unavailable}
+
+      {^port, {:exit_status, _}} = terminal ->
+        send(self(), terminal)
+        {:error, :protected_staging_write_unavailable}
+
+      {^port, _} ->
+        {:error, :protected_staging_write_unavailable}
+    after
+      max(deadline - System.monotonic_time(:millisecond), 0) ->
+        {:error, :protected_staging_write_unavailable}
+    end
+  end
+
+  defp staging_control(_, _, _, _, _), do: {:error, :protected_staging_write_unavailable}
+
+  defp staging_send(_, <<>>, _, _), do: :ok
+
+  defp staging_send(port, bytes, deadline, ticket) do
+    receive do
+      {:ipse_cancel_resource, id} when ticket != nil and ticket.id == id ->
+        {:error, :protected_staging_write_unavailable}
+    after
+      0 -> staging_send_chunk(port, bytes, deadline, ticket)
+    end
+  end
+
+  defp staging_send_chunk(port, bytes, deadline, ticket) do
+    remaining = deadline - System.monotonic_time(:millisecond)
+
+    if remaining <= 0 do
+      {:error, :protected_staging_write_unavailable}
+    else
+      size = min(byte_size(bytes), 16_384)
+      <<chunk::binary-size(^size), rest::binary>> = bytes
+
+      case send_stdio(port, <<size::unsigned-big-32, chunk::binary>>) do
+        :ok ->
+          with :ok <- staging_control(port, deadline, ticket, "", ?A),
+               do: staging_send(port, rest, deadline, ticket)
+
+        {:error, "stdio input is backpressured"} ->
+          receive do
+            {:ipse_cancel_resource, id} when ticket != nil and ticket.id == id ->
+              {:error, :protected_staging_write_unavailable}
+
+            {^port, {:exit_status, _}} = terminal ->
+              send(self(), terminal)
+              {:error, :protected_staging_write_unavailable}
+
+            {^port, _} ->
+              {:error, :protected_staging_write_unavailable}
+          after
+            min(remaining, 5) -> staging_send(port, bytes, deadline, ticket)
+          end
+
+        _ ->
+          {:error, :protected_staging_write_unavailable}
+      end
+    end
+  end
+
+  defp staging_receive(port, deadline, ticket, bytes) do
+    receive do
+      {^port, {:data, data}} when byte_size(bytes) + byte_size(data) <= 4096 ->
+        staging_receive(port, deadline, ticket, bytes <> data)
+
+      {^port, {:exit_status, 0}} ->
+        send(self(), {port, {:exit_status, 0}})
+        staging_result(bytes)
+
+      {^port, {:exit_status, _}} = terminal ->
+        send(self(), terminal)
+        {:error, :protected_staging_write_unavailable}
+
+      {:ipse_cancel_resource, id} when ticket != nil and ticket.id == id ->
+        {:error, :protected_staging_write_unavailable}
+
+      {^port, _} ->
+        {:error, :protected_staging_write_unavailable}
+    after
+      max(deadline - System.monotonic_time(:millisecond), 0) ->
+        {:error, :protected_staging_write_unavailable}
+    end
+  end
+
+  defp staging_result(<<?X, size::unsigned-big-32, body::binary-size(size)>>) when size <= 4096 do
+    case Ipse.JSON.decode_unique(body) do
+      {:ok, %{"exit_code" => 0, "timed_out" => false} = result} when map_size(result) == 2 -> :ok
+      _ -> {:error, :protected_staging_write_unavailable}
+    end
+  end
+
+  defp staging_result(_), do: {:error, :protected_staging_write_unavailable}
+
+  defp receive_allocation(port, ticket, deadline, bytes) do
+    receive do
+      {^port, {:data, data}} when byte_size(bytes) + byte_size(data) <= 128 ->
+        receive_allocation(port, ticket, deadline, bytes <> data)
+
+      {^port, {:exit_status, 0}} ->
+        case String.split(String.trim(bytes), " ") do
+          [logical, allocated, entries] ->
+            with {logical, ""} <- Integer.parse(logical),
+                 {allocated, ""} <- Integer.parse(allocated),
+                 {entries, ""} <- Integer.parse(entries),
+                 true <-
+                   Ipse.JSON.safe_uint?(logical) and Ipse.JSON.safe_uint?(allocated) and
+                     entries in 1..40_000 do
+              {:ok,
+               %{"logical_bytes" => logical, "allocated_bytes" => allocated, "entries" => entries}}
+            else
+              _ -> {:error, :storage_allocation_unavailable}
+            end
+
+          _ ->
+            {:error, :storage_allocation_unavailable}
+        end
+
+      {:ipse_cancel_resource, id} when ticket != nil and ticket.id == id ->
+        {:error, :storage_allocation_unavailable}
+
+      {^port, _} ->
+        {:error, :storage_allocation_unavailable}
+    after
+      max(deadline - System.monotonic_time(:millisecond), 0) ->
+        {:error, :storage_allocation_unavailable}
+    end
+  end
+
   @doc """
   Display an escaped prompt and read one line through matching inherited terminals.
 
