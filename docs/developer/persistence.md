@@ -148,8 +148,9 @@ Turn durably writes `input_received` version 1 before admitting the user message
 It preserves original bytes and their hash separately from the skill-expanded
 hash. Reconstruction validates source/turn/observation uniqueness and links the
 effective hash to the first following user message. A receipt interrupted before
-that message remains source evidence; a later receipt can replace that incomplete
-link, without replay. Ordinary `prompt/2` records unattended input. Old journals
+that message remains inspectable history, but cannot authorize a source read or
+capture until its matching effective user message is committed. A later receipt
+can replace that incomplete link, without replay. Ordinary `prompt/2` records unattended input. Old journals
 retain unverified origin. Private origin records have no public lifecycle-feed
 projection, so they use ordinary durable appends and preserve the existing source
 limits and serialization of lifecycle user-message events.
@@ -239,6 +240,19 @@ sequence and complete resource vector. Duplicate IDs return inspection data,
 never a new admission. Pending/unknown work retains liability across period
 boundaries. Cancellation releases only known-unstarted work. Reconciliation is
 an explicit trusted-host action, not a timer or automatic recovery retry.
+
+Local source paging must not consume a durable operation identity for every
+read. `with_policy/6` checks the pinned epoch, policy digest, expiry and absence
+of an unresolved overrun under the control lock. Its short trusted-host callback
+receives only the current epoch and policy, performs semantic/mode validation
+and bounded local storage reading, and returns `{:ok, value}` or a typed error.
+Data returns only after the native lease check and release. Revoked, expired,
+changed or quarantined policy cannot enter the callback. Session owns read, step
+and context-byte ceilings; period operation limits cover durable mutations and
+selected extra effects. This helper grants neither worker access nor authority
+to run inference, arbitrary file IO or network calls under the lock. Follow
+[the read controls](../../test/ipse/extension/consent_read_test.exs) when integrating
+a consumer.
 
 For storage, `publish/5` rechecks the epoch while holding control before the
 storage lock. It durably marks `publishing` before the short host callback runs.

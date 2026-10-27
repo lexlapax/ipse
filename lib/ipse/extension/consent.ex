@@ -49,6 +49,31 @@ defmodule Ipse.Extension.Consent do
 
   def snapshot(root, project), do: transaction(root, project, &{:read, &1})
 
+  @doc "Check a pinned policy under control, then perform one short host storage read without a period ID."
+  def with_policy(root, project, epoch, policy_sha256, now, fun) when is_function(fun, 1) do
+    if uint?(epoch) and JSON.sha256?(policy_sha256) and uint?(now) do
+      transaction(root, project, fn state ->
+        policy = state["policy"]
+
+        if state["epoch"] === epoch and is_map(policy) and
+             JSON.digest([policy]) == policy_sha256 and policy["expires_at_ms"] > now and
+             not quarantined?(state) do
+          case fun.(Map.take(state, ~w(epoch policy))) do
+            {:ok, value} -> {:read, value}
+            {:error, _} = error -> error
+            _ -> {:error, :consent_read_refused}
+          end
+        else
+          {:error, :consent_read_refused}
+        end
+      end)
+    else
+      {:error, :consent_read_refused}
+    end
+  end
+
+  def with_policy(_, _, _, _, _, _), do: {:error, :consent_read_refused}
+
   @doc "Save already reviewed policy with CAS. Existing reservations and liabilities survive changes."
   def replace(root, project, expected_epoch, policy, now) do
     transaction(root, project, fn s ->

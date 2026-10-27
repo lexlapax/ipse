@@ -99,3 +99,23 @@ No macOS quota profile is admitted. Unconditional successful-write tests need a
 qualified profile; explicit unsupported-profile refusal and excluded profile
 journeys must not be relabelled as cross-platform runtime passes. Platform
 portability and the complete individual-workload evidence remain open.
+
+## Read admission without operation-ID growth
+
+A subsequent internal `with_policy/6` API holds the current control policy through
+a short trusted local-read callback and checked native release. It validates
+epoch/digest/expiry/quarantine before entering the callback, gives it only epoch
+and policy, and creates no durable period operation. Semantic and mode checks
+still belong to the owning host adapter. A read callback cannot invoke inference
+or publish content. Standalone inspection remains a separate trusted-host path.
+
+Four actual protected-read tests pass, seed **527896**, in **0.7 seconds** at
+`/tmp/ipse-consent-read-focused-repaired.log`: forty consecutive reads leave the
+ledger unchanged with zero operation IDs; changed/revoked/expired/malformed pins
+never enter the callback; an unresolved overrun blocks consumer reads while
+inspection remains available; typed failures and nested control acquisition
+discard data and preserve policy. The initial run failed in fixture setup because
+`:file` is a reserved ExUnit context key; renaming it to `:control_file` repaired
+the harness. That failed run supplies no runtime evidence. Strict isolated module
+compilation passes. Session and domain adapters must still integrate this API;
+these tests do not establish source eligibility or a complete read-budget policy.
