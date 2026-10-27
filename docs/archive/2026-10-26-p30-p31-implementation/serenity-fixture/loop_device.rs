@@ -39,7 +39,7 @@ fn local_control() -> io::Result<std::fs::File> {
 /// Unreachable in current executable. A successful ioctl requires a separate
 /// durable created-record before any subsequent action; if interrupted earlier,
 /// do not assume ownership or remove the device automatically.
-struct OwnedLoop {minor:u64,node:PathBuf,control:std::fs::File,node_dev:u64,node_ino:u64}
+struct OwnedLoop {minor:u64,node:PathBuf,control:std::fs::File,sysfs:std::fs::File,node_dev:u64,node_ino:u64}
 /// The handle exists only after creation and exact node inspection succeeded.
 /// Losing it does not authorize recovery: durable provenance is still needed.
 
@@ -69,15 +69,35 @@ fn add(minor:u64) -> io::Result<OwnedLoop> {
     if !metadata.file_type().is_block_device() || metadata.rdev()!=number(7,minor) {
         return Err(io::Error::other("created loop node identity changed"));
     }
-    Ok(OwnedLoop{minor,node:path,control,node_dev:metadata.dev(),node_ino:metadata.ino()})
+    let sysfs=std::fs::File::open(format!("/sys/dev/block/7:{minor}"))?;
+    if !sysfs.metadata()?.is_dir(){return Err(io::Error::other("loop sysfs identity unavailable"))}
+    Ok(OwnedLoop{minor,node:path,control,sysfs,node_dev:metadata.dev(),node_ino:metadata.ino()})
 }
 /// Unreachable in current executable. The controller must prove successful
 /// detach, no holders, and exact original created-record before this ioctl.
+fn add_recorded(dir:&std::fs::File,run:&str,minor:u64)->io::Result<OwnedLoop>{
+ // Caller must fsync a pending create intent before entering this function.
+ // Any error after ioctl is unknown and must never trigger automatic removal.
+ let owned=add(minor)?;owned.record_created(dir,run)?;Ok(owned)
+}
+
 impl OwnedLoop {
+ fn record_created(&self,dir:&std::fs::File,run:&str)->io::Result<()> {
+  let node=fs::symlink_metadata(&self.node)?;let control=self.control.metadata()?;
+  if !node.file_type().is_block_device() || node.rdev()!=number(7,self.minor) ||
+    (node.dev(),node.ino())!=(self.node_dev,self.node_ino) || !control.file_type().is_char_device() || control.rdev()!=number(10,237) {return Err(io::Error::other("owned loop or control identity changed"))}
+  let sys=self.sysfs.metadata()?;let sys_named=fs::metadata(format!("/sys/dev/block/7:{}",self.minor))?;
+  if !sys.is_dir() || (sys.dev(),sys.ino())!=(sys_named.dev(),sys_named.ino()){return Err(io::Error::other("loop sysfs changed"))}
+  let boot=fs::read_to_string("/proc/sys/kernel/random/boot_id")?;if boot.len()>64 {return Err(io::Error::other("invalid boot id"))}
+  let record=super::loop_provenance::Provenance {run:run.to_owned(),index:self.minor as u32,node_dev:node.dev(),node_inode:node.ino(),control_dev:control.dev(),control_inode:control.ino(),sys_dev:sys.dev(),sys_inode:sys.ino(),boot_id:boot.trim().to_owned()};
+  super::loop_provenance::write_once(dir,&record)
+ }
  fn remove_unbound(self)->io::Result<()> {
   let named=fs::symlink_metadata(&self.node)?;
   if !named.file_type().is_block_device() || named.rdev()!=number(7,self.minor) ||
     (named.dev(),named.ino())!=(self.node_dev,self.node_ino) {return Err(io::Error::other("owned loop node changed"))}
+  let sys=self.sysfs.metadata()?;let current=fs::metadata(format!("/sys/dev/block/7:{}",self.minor))?;
+  if (sys.dev(),sys.ino())!=(current.dev(),current.ino()){return Err(io::Error::other("owned loop sysfs changed"))}
   let result=unsafe {ioctl(self.control.as_raw_fd(),LOOP_CTL_REMOVE,self.minor as c_ulong)};
   if result==0 {Ok(())} else if result<0 {Err(io::Error::last_os_error())} else {Err(io::Error::other("unexpected loop remove result"))}
  }

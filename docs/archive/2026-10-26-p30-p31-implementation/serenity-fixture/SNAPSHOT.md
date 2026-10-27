@@ -43,3 +43,11 @@ The latest draft includes an exclusive, fsynced loop-identity record tied to
 the run nonce, tested using synthetic values. It is not wired to live creation,
 does not prove post-crash ownership or authorize removal, and requires review.
 The private test suite passed 50 tests at this snapshot.
+
+Newer private checkpoint: the draft records the boot ID and retained sysfs
+identity with loop provenance, and includes a read-only retained cgroup-parent
+witness. Neither is independently reviewed or exercised on a created loop,
+mapper, cgroup slice or device. The cgroup draft does not establish workload
+migration restrictions, privilege drop, namespace equivalence or complete
+cleanup. The current private controller suite passed 53 tests. All live entry
+points and real backend quiescence checks remain disabled.

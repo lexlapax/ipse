@@ -27,3 +27,11 @@ running Arch binary parity, and not a verified live procedure. It still requires
 trusted host administrator and Docker daemon noninterference, exact allocated
 index provenance, maintained private mount/cgroup lifetime and fail-closed
 handling of any interrupted/EBUSY operation.
+
+The intended operational trust assumption is that Serenity's administrator,
+root-equivalent actors and Docker daemon are trusted and do not intentionally
+interfere with the uniquely owned fixture. This is not an assumption that
+unrelated processes hold no device file descriptors. The fixture must prove
+quiescence with host-visible cgroup/process evidence and use the kernel's
+nondeferred removal/open-count checks. Any inability to prove the state remains
+unknown and cannot authorize another actor's resource cleanup.

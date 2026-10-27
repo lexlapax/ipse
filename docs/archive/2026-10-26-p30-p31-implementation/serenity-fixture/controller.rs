@@ -11,6 +11,7 @@
 #[path = "barrier_peer.rs"] mod barrier_peer;
 #[path = "recovery_ledger.rs"] mod recovery_ledger;
 #[path = "recovery_guardian.rs"] mod recovery_guardian;
+#[path = "cgroup_witness.rs"] mod cgroup_witness;
 use guard::{Expected, Table, loop_matches, mapper_matches, table_matches};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
