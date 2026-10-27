@@ -15,7 +15,11 @@ defmodule Ipse.Extension.DecisionCall do
          request["version"] === 1 and profile_id?(request["profile"]) and
          is_integer(request["timeout_ms"]) and request["timeout_ms"] in 1000..120_000 and
          Ipse.Decision.validate_request(neutral(request)) == :ok and
-         Ipse.Extension.validate(request) == :ok, do: :ok, else: @error
+         Ipse.Extension.validate(request) == :ok do
+      :ok
+    else
+      @error
+    end
   rescue
     _ -> @error
   end

@@ -130,3 +130,33 @@ with the final run. This targeted result closes the reproduced path-pollution
 failure; it does not relabel the failed full run or qualify unimplemented P31
 workflows. Logs use the `/tmp/ipse-admitted-fixed-` and
 `/tmp/ipse-parser-path-cleanup-regression` prefixes.
+
+Separate commands subsequently passed the isolated demo, default PDF-enabled
+package build and installed `package` scenario at the same `ad67ea6` revision.
+The Linux x86_64/glibc-2.44 archive contains 48 manual documents with zero missing
+local targets. Installed checks used a utility-only PATH; the explicit lexical
+memory fixture used bundled Erlang and made zero model/encoder calls. A freshly
+built corpus artifact then passed all six independent document checks in both
+source and installed modes: Unicode, canonical DOCX revision authority, PDF
+default-off/explicit extraction, module closure and all dependency notices. The
+Linux PDF resource backend was actually available. These are synthetic format
+and packaging results, not real-document extraction quality or P31 integration.
+
+### Hosted formatter failures and equivalent source repair
+
+The [admitted-feature run](https://github.com/lexlapax/ipse/actions/runs/40424973555)
+and [parser-cleanup run](https://github.com/lexlapax/ipse/actions/runs/40427665470)
+built on Linux/macOS, then failed the Elixir 1.18 formatting gate. Both identified
+the same three files: `DocumentParser`, `Session.Reference` and
+`Extension.DecisionCall`. Tests and later hosted package/installed steps were
+skipped; neither run supplies platform behavior evidence.
+
+The repair separates two long boolean guards into equivalent successive checks
+and uses explicit multiline function/conditional bodies, retaining all guards
+and refusal behavior. All **18 focused tests** passed. Direct `elixirc
+--warnings-as-errors` compilation of the three changed modules passed with no
+warnings. The first focused harness used deprecated compiler-option APIs and
+printed harness deprecations; the separate direct compiler run is the strict
+receipt. Local formatting passes. Elixir 1.18/hosted confirmation remains a
+separate result until its repaired run completes. Raw receipts retain both
+completed CI failures and the local repair commands/results.

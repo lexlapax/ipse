@@ -95,7 +95,8 @@ defmodule Ipse.DocumentParser do
                  stat.uid == home_stat.uid and stat.type == :regular and stat.links == 1 and
                    stat.size == 0,
                {:ok, current_home} <- File.lstat(home),
-               true <- same_inode?(home_stat, current_home) and (current_home.mode &&& 0o077) == 0,
+               true <- same_inode?(home_stat, current_home),
+               true <- (current_home.mode &&& 0o077) == 0,
                {:ok, current} <- File.lstat(path),
                true <- same_inode?(stat, current),
                :ok <- File.chmod(path, 0o600),

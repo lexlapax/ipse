@@ -260,7 +260,8 @@ defmodule Ipse.Session.Reference do
              event,
              ~w(type version session_id turn_id epoch position source_generation policy_generation content_sha256 content)
            ),
-         true <- identity?(event, id) and id?(event["turn_id"]) and event["epoch"] === state.epoch,
+         true <- identity?(event, id),
+         true <- id?(event["turn_id"]) and event["epoch"] === state.epoch,
          true <- Ipse.JSON.safe_uint?(event["position"]) and event["policy_generation"] === 0,
          true <-
            is_binary(event["content"]) and byte_size(event["content"]) <= @text_limit and
@@ -365,7 +366,9 @@ defmodule Ipse.Session.Reference do
   def native_message(%{"role" => "tool"}, _), do: @error
 
   def native_message(%{"role" => "assistant", "tool_calls" => calls}, _)
-      when calls not in [nil, []], do: @error
+      when calls not in [nil, []] do
+    @error
+  end
 
   def native_message(message, pending) when is_map(message) do
     if MapSet.size(pending) == 0, do: {:ok, pending}, else: @error
