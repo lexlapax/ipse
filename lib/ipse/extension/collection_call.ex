@@ -21,6 +21,7 @@ defmodule Ipse.Extension.CollectionCall do
          inner when is_map(inner) <- request["request"],
          true <- Collection.valid_request?(inner),
          true <- inner["op"] in (@reads ++ ["commit"]),
+         true <- public_request?(inner),
          true <- inner["op"] != "scan" or inner["limit"] in 1..4,
          true <- inner["op"] != "commit" or length(inner["changes"]) <= 8,
          true <- inner["op"] != "commit" or floor_required?(inner),
@@ -34,6 +35,15 @@ defmodule Ipse.Extension.CollectionCall do
   rescue
     _ -> @error
   end
+
+  defp public_request?(%{"op" => "get", "key" => key}), do: not private_key?(key)
+  defp public_request?(%{"op" => "scan", "after" => key}), do: not private_key?(key)
+
+  defp public_request?(%{"op" => "commit", "changes" => changes}),
+    do: Enum.all?(changes, &(not private_key?(&1["key"])))
+
+  defp public_request?(_), do: true
+  defp private_key?(key), do: is_binary(key) and String.starts_with?(key, "host.validity.")
 
   defp floor_required?(inner) do
     inner["advance_floor"] or
@@ -292,20 +302,28 @@ defmodule Ipse.Extension.CollectionCall do
   end
 
   defp storage(context, intent) do
-    case Collection.execute(
+    operation = if intent["request"]["request"]["op"] == "scan", do: :scan_visible, else: :execute
+
+    case apply(Collection, operation, [
            SemanticAdmission.collection_root(context.config[:home]),
            intent["namespace"],
            intent["request"]["request"],
            intent["operation_id"]
-         ) do
+         ]) do
       {:ok, value} ->
-        if intent["request"]["request"]["op"] == "scan",
-          do: bound_scan(intent, value),
-          else:
+        case intent["request"]["request"]["op"] do
+          "scan" ->
+            bound_scan(intent, value)
+
+          "status" ->
+            bound_status(intent, value)
+
+          _ ->
             if(reply_fits?(intent, value),
               do: {:ok, value},
               else: failed("collection_result_limit")
             )
+        end
 
       {:conflict, value} ->
         {:conflict, value}
@@ -334,6 +352,24 @@ defmodule Ipse.Extension.CollectionCall do
   defp normalize({:error, _}), do: failed("collection_consent_denied")
   defp normalize(_), do: :unknown
   defp now, do: System.system_time(:millisecond)
+
+  @doc "Expose migration/checkpoint identities and control-metadata digests, never private plans or keys."
+  def bound_status(intent, value) do
+    projected =
+      Enum.reduce(~w(migration checkpoint), value, fn key, acc ->
+        case acc[key] do
+          nil ->
+            acc
+
+          metadata ->
+            Map.put(acc, key, %{"id" => metadata["id"], "sha256" => JSON.digest([metadata])})
+        end
+      end)
+
+    if reply_fits?(intent, projected),
+      do: {:ok, projected},
+      else: failed("collection_result_limit")
+  end
 
   @doc "Keep complete records and make byte refusal visible through the actual continuation."
   def bound_scan(intent, %{"records" => records} = value) do
@@ -462,6 +498,7 @@ defmodule Ipse.Extension.CollectionCall do
 
   defp record?(record, generation) do
     keys?(record, ~w(key revision sha256 bytes operation_id value)) and key?(record["key"]) and
+      not private_key?(record["key"]) and
       JSON.safe_uint?(record["revision"]) and record["revision"] > 0 and
       record["revision"] <= generation and
       id?(record["operation_id"]) and is_map(record["value"]) and

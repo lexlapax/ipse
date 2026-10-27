@@ -399,7 +399,8 @@ defmodule Ipse.Session.Invocation do
         else: Ipse.Extension.Mode.ordinary(captured_mode, mutation)
 
     protected =
-      Ipse.Extension.CollectionCall.operation?(request) and mutation and not read_outer and
+      (Ipse.Extension.CollectionCall.operation?(request) or
+         Ipse.Extension.ManagedCollectionCall.operation?(request)) and mutation and not read_outer and
         s.invocation.parent["version"] === 3 and
         get_in(s.invocation.parent, ["semantic_binding", "class"]) == "collection.publish" and
         Ipse.Extension.Mode.knowledge(captured_mode, "collection.publish") == :ok
@@ -502,7 +503,8 @@ defmodule Ipse.Session.Invocation do
         true ->
           s =
             if Ipse.Extension.SourceRead.operation?(request) or
-                 Ipse.Extension.CollectionCall.operation?(request),
+                 Ipse.Extension.CollectionCall.operation?(request) or
+                 Ipse.Extension.ManagedCollectionCall.operation?(request),
                do: Session.ensure_source_window(s),
                else: s
 
@@ -1130,6 +1132,9 @@ defmodule Ipse.Session.Invocation do
 
   defp extension_effect_binding(s, request) do
     cond do
+      Ipse.Extension.ManagedCollectionCall.operation?(request) ->
+        Ipse.Extension.ManagedCollectionCall.binding(s.config, s.invocation.parent, request)
+
       Ipse.Extension.CollectionCall.operation?(request) ->
         Ipse.Extension.CollectionCall.binding(s.config, s.invocation.parent["identity"], request)
 
@@ -1204,16 +1209,17 @@ defmodule Ipse.Session.Invocation do
     }
 
     context =
-      if Ipse.Extension.CollectionCall.operation?(intent["request"]),
-        do:
-          Map.merge(context, %{
-            config: s.config,
-            session_id: s.id,
-            parent: s.invocation.parent,
-            owner: self(),
-            job_ref: s.job_ref
-          }),
-        else: context
+      if Ipse.Extension.CollectionCall.operation?(intent["request"]) or
+           Ipse.Extension.ManagedCollectionCall.operation?(intent["request"]),
+         do:
+           Map.merge(context, %{
+             config: s.config,
+             session_id: s.id,
+             parent: s.invocation.parent,
+             owner: self(),
+             job_ref: s.job_ref
+           }),
+         else: context
 
     context =
       if s.extension_output_clock,

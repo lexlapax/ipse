@@ -1,6 +1,6 @@
 defmodule Ipse.Extension.Actions do
   @moduledoc "Typed finite host-call continuations with source-bound durable operation receipts."
-  alias Ipse.Extension.CollectionCall
+  alias Ipse.Extension.{CollectionCall, ManagedCollectionCall}
 
   @keys ~w(type version parent_invocation_id operation_id step identity_sha256 namespace context_sha256 service request request_sha256 approval)
   @types ~w(extension_action_intent extension_action_result)
@@ -127,8 +127,11 @@ defmodule Ipse.Extension.Actions do
       }
 
       event =
-        if version_two?(parent["identity"], request),
-          do: event |> Map.put("version", 2) |> Map.put("effect_binding", effect_binding),
+        if action_version(parent["identity"], request) > 1,
+          do:
+            event
+            |> Map.put("version", action_version(parent["identity"], request))
+            |> Map.put("effect_binding", effect_binding),
           else: event
 
       if valid_intent?(event, parent, cwd), do: {:ok, event}, else: @error
@@ -171,6 +174,8 @@ defmodule Ipse.Extension.Actions do
 
     keys?(event, intent_keys(event) ++ ~w(outcome outcome_sha256)) and
       event["type"] == "extension_action_result" and
+      event["version"] in [1, 2, 3] and
+      event["version"] === 3 == ManagedCollectionCall.operation?(event["request"]) and
       valid_approval?(event, event["request"]) and
       event["outcome_sha256"] == Ipse.JSON.digest([outcome]) and
       keys?(outcome, ~w(status value)) and
@@ -187,6 +192,8 @@ defmodule Ipse.Extension.Actions do
       (not Ipse.Extension.SourceRead.operation?(event["request"]) or
          Ipse.Extension.SourceRead.bound_outcome?(event)) and
       (not CollectionCall.operation?(event["request"]) or CollectionCall.bound_outcome?(event)) and
+      (not ManagedCollectionCall.operation?(event["request"]) or
+         ManagedCollectionCall.bound_outcome?(event)) and
       Ipse.Extension.validate(resume(event)) == :ok and bounded?(event)
   rescue
     _ -> false
@@ -197,7 +204,7 @@ defmodule Ipse.Extension.Actions do
          true <- event["type"] == "extension_action_intent",
          true <-
            event["version"] ===
-             if(version_two?(parent["identity"], event["request"]), do: 2, else: 1),
+             action_version(parent["identity"], event["request"]),
          true <- event["parent_invocation_id"] == parent["invocation_id"],
          true <-
            id?(event["operation_id"]) and is_integer(event["step"]) and
@@ -209,7 +216,12 @@ defmodule Ipse.Extension.Actions do
              parent["identity"]
            ),
          true <- event["request_sha256"] == Ipse.JSON.digest([request]),
-         true <- not CollectionCall.operation?(request) or parent["version"] === 3,
+         true <-
+           not (CollectionCall.operation?(request) or ManagedCollectionCall.operation?(request)) or
+             parent["version"] === 3,
+         true <-
+           not ManagedCollectionCall.operation?(request) or
+             event["effect_binding"]["outer_sha256"] == Ipse.JSON.digest([parent["descriptor"]]),
          true <-
            get_in(parent, ["semantic_binding", "class"]) != "collection.read" or
              not mutating?(request) or event["approval"] == "denied",
@@ -250,8 +262,9 @@ defmodule Ipse.Extension.Actions do
 
   defp valid_approval?(event, request) do
     if event["approval"] == "saved_consent" do
-      CollectionCall.operation?(request) and CollectionCall.mutating?(request) and
-        event["version"] === 2
+      (CollectionCall.operation?(request) and CollectionCall.mutating?(request) and
+         event["version"] === 2) or
+        (ManagedCollectionCall.operation?(request) and event["version"] === 3)
     else
       event["approval"] in if(mutating?(request),
         do: ~w(approved session_allow denied),
@@ -674,6 +687,17 @@ defmodule Ipse.Extension.Actions do
 
   defp effect_binding?(event, identity, metadata \\ nil) do
     cond do
+      ManagedCollectionCall.operation?(event["request"]) ->
+        ManagedCollectionCall.valid_binding?(
+          event["effect_binding"],
+          event["request"],
+          identity,
+          metadata
+        ) and
+          (event["approval"] != "saved_consent" or is_nil(metadata) or
+             Ipse.Extension.Mode.knowledge(metadata["execution_mode"], "collection.publish") ==
+               :ok)
+
       CollectionCall.operation?(event["request"]) ->
         CollectionCall.valid_binding?(
           event["effect_binding"],
@@ -721,7 +745,17 @@ defmodule Ipse.Extension.Actions do
         result_read?(request) or embedding?(request) or decision?(request) or
         CollectionCall.operation?(request)
 
-  defp intent_keys(%{"version" => 2}), do: @keys ++ ["effect_binding"]
+  defp action_version(identity, request) do
+    cond do
+      ManagedCollectionCall.operation?(request) -> 3
+      version_two?(identity, request) -> 2
+      true -> 1
+    end
+  end
+
+  defp intent_keys(%{"version" => version}) when version in [2, 3],
+    do: @keys ++ ["effect_binding"]
+
   defp intent_keys(_), do: @keys
 
   defp id?(id), do: is_binary(id) and Regex.match?(~r/\A[a-f0-9]{32}\z/, id)
@@ -748,6 +782,9 @@ defmodule Ipse.Extension.Actions do
 
   def validate_operation(%{"op" => "collection.call"} = request),
     do: CollectionCall.validate(request)
+
+  def validate_operation(%{"op" => "collection.managed"} = request),
+    do: ManagedCollectionCall.validate(request)
 
   def validate_operation(%{"op" => op} = request)
       when op in ~w(source.list source.read source.quote),
@@ -814,6 +851,9 @@ defmodule Ipse.Extension.Actions do
   def capability(%{"op" => "context.publish"}), do: "host.context"
   def capability(%{"op" => "collection.call"} = request), do: CollectionCall.capability(request)
 
+  def capability(%{"op" => "collection.managed"} = request),
+    do: ManagedCollectionCall.capability(request)
+
   def capability(%{"op" => op}) when op in ~w(source.list source.read source.quote),
     do: "host.sources"
 
@@ -837,6 +877,7 @@ defmodule Ipse.Extension.Actions do
   def mutating?(%{"op" => "decision.create"}), do: true
   def mutating?(%{"op" => "mcp.call"}), do: true
   def mutating?(%{"op" => "collection.call"} = request), do: CollectionCall.mutating?(request)
+  def mutating?(%{"op" => "collection.managed"}), do: true
   def mutating?(%{"op" => op}) when op in ~w(source.list source.read source.quote), do: false
   def mutating?(request), do: State.mutating?(request)
 
@@ -872,6 +913,15 @@ defmodule Ipse.Extension.Actions do
        else: @error
   end
 
+  defp action_namespace(identity, %{"op" => "collection.managed"} = request, _cwd, id, binding) do
+    if ManagedCollectionCall.valid_binding?(binding, request, identity) and
+         binding["pin"]["session_id"] == id do
+      {:ok, binding["namespace"]}
+    else
+      @error
+    end
+  end
+
   defp action_namespace(identity, request, cwd, id, _binding),
     do: namespace(identity, request, cwd, id)
 
@@ -904,6 +954,9 @@ defmodule Ipse.Extension.Actions do
 
   def valid_outcome?(%{"op" => "collection.call"} = request, status, value, id),
     do: CollectionCall.valid_outcome?(request, status, value, id)
+
+  def valid_outcome?(%{"op" => "collection.managed"} = request, status, value, id),
+    do: ManagedCollectionCall.valid_outcome?(request, status, value, id)
 
   def valid_outcome?(%{"op" => op} = request, status, value, id)
       when op in ~w(source.list source.read source.quote),

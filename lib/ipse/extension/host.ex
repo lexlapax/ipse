@@ -382,6 +382,9 @@ defmodule Ipse.Extension.Host do
   defp execute_action(context, intent, %{"op" => "collection.call"}),
     do: Ipse.Extension.CollectionCall.execute(context, intent)
 
+  defp execute_action(context, intent, %{"op" => "collection.managed"}),
+    do: Ipse.Extension.ManagedCollectionCall.execute(context, intent)
+
   defp execute_action(context, intent, %{"op" => "mcp.call"}),
     do: Ipse.Extension.MCPCall.execute(context, intent)
 

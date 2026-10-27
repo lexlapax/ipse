@@ -186,8 +186,10 @@ records and 12,000 encoded array bytes per page. Receipts can retain private dat
 [Memory](memory.md) provides a complete scoped-note workflow.
 
 Protected collection access is a separate host contract. Declaring
-`host.collection.read` or `host.collection.write` does not save permission, select
-a project, or activate an older Session. A selected reviewed export can use
+`host.collection.read`, `host.collection.write` or the separate
+`host.collection.managed` does not save permission, select a project, or activate
+an older Session. Managed publication requires its explicit capability and
+reviewed recipe; read/write grants do not imply it. A selected reviewed export can use
 `saved_consent` only with its exact protected policy, evidence and execution-mode
 ceilings. Every proposed batch is checked again at publication. This permission
 does not approve ordinary files, shell commands, MCP or other services. A conflict
@@ -195,6 +197,8 @@ or interrupted publication needs inspection before an explicit retry; known
 conflicts can consume conservative operation/byte allowances. The
 [developer contract](../developer/collection-sdk.md) describes the generic SDK;
 use a feature's documented operator setup before expecting this path to activate.
+Raw collection reads and historical validity receipts prove no current note
+eligibility; every-dispatch revalidation and withdrawal remain separate work.
 
 A question closes the worker before displaying `answer CODE VALUE`. Resume restores
 the pending question without executing it. Answering starts its saved continuation,

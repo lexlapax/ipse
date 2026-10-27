@@ -6,6 +6,34 @@ defmodule Ipse.Extension.ActivationTest do
   alias Ipse.Test.ManagedPolicy, as: F
   @base %{"instances" => [], "trust" => []}
 
+  test "pre-grant draft is data only and optional reviewed timeout is exact and hash bound" do
+    policy = F.policy()
+    activation = F.activation()
+    assert {:ok, original} = Activation.draft(policy["project"], activation, @base)
+    assert {:ok, ^original} = Activation.derive(policy, @base)
+    refute Map.has_key?(original, :main_timeout_ms)
+
+    for timeout <- [1000, 90_000, 100_000] do
+      reviewed = Map.put(activation, "main_timeout_ms", timeout)
+      assert {:ok, draft} = Activation.draft(policy["project"], reviewed, @base)
+      assert draft.main_timeout_ms == timeout
+      assert draft.activation_sha256 == Ipse.JSON.digest([reviewed])
+      refute draft.source == original.source
+
+      assert {:ok, ^draft} =
+               Activation.derive(put_in(policy, ["settings", "activation"], reviewed), @base)
+    end
+
+    for value <- [nil, 999, 100_001, 90_000.0, "90000"] do
+      refute Activation.valid?(Map.put(activation, "main_timeout_ms", value))
+    end
+
+    assert {:error, _} = Activation.draft("unknown", activation, @base)
+
+    assert {:error, _} =
+             Activation.draft(policy["project"], Map.put(activation, "timeout_ms", 90_000), @base)
+  end
+
   test "pure overlay adds exact operator data without preparing identity or mutating base configuration" do
     policy = F.policy()
     assert :ok = Activation.validate(F.activation())

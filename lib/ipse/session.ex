@@ -1129,7 +1129,9 @@ defmodule Ipse.Session do
       )
       when ref != nil do
     reply =
-      with true <- Ipse.Extension.CollectionCall.operation?(intent["request"]),
+      with true <-
+             Ipse.Extension.CollectionCall.operation?(intent["request"]) or
+               Ipse.Extension.ManagedCollectionCall.operation?(intent["request"]),
            true <- not s.invocation.interrupted,
            true <- Ipse.Extension.Registry.live?(s.invocation.parent["identity"]),
            true <- Ipse.Session.Resources.authorized_effect?(worker, caller),

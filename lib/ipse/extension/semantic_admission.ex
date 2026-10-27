@@ -294,7 +294,8 @@ defmodule Ipse.Extension.SemanticAdmission do
     effects =
       Enum.filter(
         policy["settings"]["effects"],
-        &(&1["outer_sha256"] == descriptor_sha256 and &1["inner_op"] == "collection.call")
+        &(&1["outer_sha256"] == descriptor_sha256 and
+            &1["inner_op"] in ~w(collection.call collection.managed))
       )
 
     publish = Enum.filter(effects, &(&1["class"] == "collection.publish"))
@@ -303,7 +304,7 @@ defmodule Ipse.Extension.SemanticAdmission do
       publish != [] and
           Enum.any?(
             publish,
-            &Ipse.Extension.CollectionPolicy.valid_constraints?(&1["constraints"])
+            &match?({:ok, _}, Ipse.Extension.SemanticConsent.constraints(policy["settings"], &1))
           ) ->
         {:ok, "collection.publish"}
 

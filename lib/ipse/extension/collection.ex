@@ -63,6 +63,21 @@ defmodule Ipse.Extension.Collection do
     _ -> @error
   end
 
+  @doc "Host SDK scan: exclude reserved validity keys before selecting any values, under one lock."
+  def scan_visible(root, project, request, operation_id) do
+    with false <- Process.get(@lock_key, false) != false,
+         true <- valid_request?(request) and request["op"] == "scan" and id?(operation_id),
+         true <- is_nil(request["after"]) or not managed_key?(request["after"]) do
+      Ipse.Session.Resources.file_effect(fn ->
+        locked(root, project, request, operation_id, :visible_scan)
+      end)
+    else
+      _ -> {:error, :invalid_collection_request}
+    end
+  rescue
+    _ -> @error
+  end
+
   @doc """
   Host-only atomic managed publication. This grants no policy or source authority.
 
@@ -151,9 +166,11 @@ defmodule Ipse.Extension.Collection do
                {:ok, state, manifest} <- load(path, project, uid),
                :ok <- Transaction.check(cap),
                :ok <- Transaction.quota(cap, :collection, @total_bytes - @control_bytes) do
-            if is_nil(managed),
-              do: apply_request(path, uid, state, manifest, request, operation_id),
-              else: apply_managed(path, uid, state, manifest, request, operation_id, managed)
+            case managed do
+              nil -> apply_request(path, uid, state, manifest, request, operation_id)
+              :visible_scan -> scan(path, uid, state, request, true)
+              _ -> apply_managed(path, uid, state, manifest, request, operation_id, managed)
+            end
           else
             {:error, :transaction_filesystem_unsupported} ->
               {:error, :collection_filesystem_unsupported}
@@ -200,27 +217,8 @@ defmodule Ipse.Extension.Collection do
          do: {:ok, Map.put(summary(s), "record", record)}
   end
 
-  defp apply_request(path, uid, s, _, %{"op" => "scan"} = r, _) do
-    if r["generation"] == s["generation"] do
-      keys =
-        s["records"]
-        |> Map.keys()
-        |> Enum.sort()
-        |> Enum.filter(&(is_nil(r["after"]) or &1 > r["after"]))
-
-      selected = Enum.take(keys, r["limit"])
-
-      with {:ok, records} <- read_records(path, uid, s, selected) do
-        {:ok,
-         Map.merge(summary(s), %{
-           "records" => records,
-           "next" => if(length(keys) > length(selected), do: List.last(selected))
-         })}
-      end
-    else
-      {:conflict, summary(s)}
-    end
-  end
+  defp apply_request(path, uid, s, _, %{"op" => "scan"} = r, _),
+    do: scan(path, uid, s, r, false)
 
   defp apply_request(path, uid, s, manifest, %{"op" => "export"} = r, id) do
     case apply_request(path, uid, s, manifest, %{r | "op" => "scan"}, id) do
@@ -1224,6 +1222,29 @@ defmodule Ipse.Extension.Collection do
           {:halt, @error}
       end
     end)
+  end
+
+  defp scan(path, uid, s, r, visible?) do
+    if r["generation"] == s["generation"] do
+      keys =
+        s["records"]
+        |> Map.keys()
+        |> Enum.sort()
+        |> Enum.reject(&(visible? and managed_key?(&1)))
+        |> Enum.filter(&(is_nil(r["after"]) or &1 > r["after"]))
+
+      selected = Enum.take(keys, r["limit"])
+
+      with {:ok, records} <- read_records(path, uid, s, selected) do
+        {:ok,
+         Map.merge(summary(s), %{
+           "records" => records,
+           "next" => if(length(keys) > length(selected), do: List.last(selected))
+         })}
+      end
+    else
+      {:conflict, summary(s)}
+    end
   end
 
   defp data_bytes(s), do: Enum.sum(Enum.map(s["records"], fn {_, r} -> r["bytes"] end))

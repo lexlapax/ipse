@@ -33,7 +33,9 @@ repeats that current check before worker startup.
 
 The worker requests source list/read/quote through its normal action chain and
 constructs a candidate value. [`CollectionCall`](../../lib/ipse/extension/collection_call.ex)
-validates its closed storage request. Session records the exact inner intent
+validates legacy storage requests;
+[`ManagedCollectionCall`](../../lib/ipse/extension/managed_collection_call.ex)
+validates explicit managed publications. Session records the exact inner intent
 before any reservation or storage effect. A private Session query rederives all
 quote proofs from the current writer-owned source window. JSON cannot select the
 project, namespace, policy, origin, operation label or constraints.
@@ -54,7 +56,9 @@ Collection. Slow IO runs in owned effect workers, never inside Session.
 ## Declare the narrow operations
 
 Declare and explicitly trust `host.actions` plus `host.collection.read` and/or
-`host.collection.write`. Source evidence additionally needs `host.sources`.
+`host.collection.write` for the legacy protocol. Explicit managed publication
+requires `host.collection.managed`; read/write grants do not imply that capability.
+Source evidence additionally needs `host.sources`.
 These declarations do not create a saved policy or activate an old Session.
 
 A read request is:
@@ -69,15 +73,22 @@ The closed inner read operations are `status`, `snapshot`, `get`, `inspect` and
 `scan` narrows the internal limit to 1..4. It keeps complete records and returns
 an actual last-key continuation when the complete action reply would exceed
 16 KiB. It never slices a value. Follow that returned key with the same generation;
-a conflict requires deliberate fresh inspection, not an automatic retry.
+a conflict requires deliberate fresh inspection, not an automatic retry. The host
+filters `host.validity.*` keys from validated metadata before selecting any values
+under that one native lock. Returned continuation keys name only actual public
+records, including an empty public view. Direct gets, scan-after keys and commits
+in that reserved namespace refuse at the SDK boundary. Internal operator
+`Collection.execute/4` remains a separate raw storage API.
 
-The complete `status` projection must fit too; oversized metadata returns the
-fixed `collection_result_limit` failure rather than truncated migration facts.
+`status` exposes fixed aggregate counts and opaque migration/checkpoint IDs plus
+digests of their complete control metadata. Import plans, retained keys and
+private continuation keys are not disclosed. The complete projected action reply
+must still fit; otherwise it returns the fixed `collection_result_limit` failure.
 Read actions use the explicit 512-read/two-minute bounds and consume no Consent
 period IDs. `host.actions.mixed` separates 512 reads from sixteen other actions;
 without it, the existing cumulative action-family limits still apply.
 
-A publication request has exactly these outer fields:
+A **legacy** publication request has exactly these outer fields:
 
 ```elixir
 %{
@@ -106,6 +117,67 @@ Every replacement (`expected_revision > 0`) or deletion requires explicit
 Fresh unique revision-zero inserts may use false. A collection's imported lineage
 floor can exceed its local generation; these are separate counters. Worker
 migration, import/export, rollback and maintenance operations are unavailable.
+
+## Publish with host-computed validity metadata
+
+Use `collection.managed` only with an explicit settings-v2 policy and the
+`host.collection.managed` capability. A callback submits:
+
+```elixir
+%{
+  "op" => "collection.managed",
+  "recipe_sha256" => reviewed_recipe_sha256,
+  "request" => %{
+    "op" => "commit",
+    "expected_generation" => generation,
+    "advance_floor" => true,
+    "changes" => [
+      %{"key" => actual_key, "expected_revision" => 0, "value" => candidate}
+    ]
+  },
+  "proofs" => [%{"handle" => evidence_handle, "quote" => exact_text}]
+}
+```
+
+The worker's recipe hash is a selection hint. The host resolves the current
+protected registry, authenticates every source, and requires exactly one matching
+mapping/recipe for the actual key, schema and origins. Missing or ambiguous
+matches refuse, including an apparently stronger recipe selected by the worker.
+The original request is hashed and journaled unchanged. The complete request still
+fits 8192 bytes and carries 1..8 proofs. Structural validation permits eight
+changes; the current trusted normalizer explicitly supports **one new record**
+only. Replacement, deletion, typed acceptance and operator retention journeys
+are not implemented by this adapter.
+
+`advance_floor: true` is mandatory even for a first insert. It fences older
+backups that lack retained source clocks. The host never rewrites a false value,
+its hash, or its approval. Legacy `collection.call` is not promoted into this
+protocol.
+
+Inside `Consent.publish`, current source proofs and reviewed constraints are
+checked again. `Collection.execute_managed/6` then checks the original generation,
+revision and operation ID under one native collection lock before invoking the
+trusted `Collection.Normalizer`. Its read closure is host-only and expires when
+the callback returns. The normalizer derives literal identity and exact quote
+support, or a proposal identity and finite pending deadline. It ignores worker
+clocks, preserves separate first-note and first-proposal anchors, and appends two
+bounded reserved sidecar changes atomically with the original unchanged change.
+Packed pages and the normalization receipt use version 2; older unreleased page
+versions refuse. Capacity refuses rather than evicting an anchor. Legacy raw
+override JSON cannot stand in for an unimplemented typed operator choice.
+
+The success value contains `version: 1`, `binding`, `normalization` and `receipt`.
+The binding hashes the original request, recipe and normalization receipt. The
+durable receipt hashes that binding and the explicitly normalized commit, and
+carries generation/floor. Storage wire version 5 preserves the managed binding;
+legacy receipts retain their original formats. Worker replies omit sidecar values
+and keep the complete action continuation within 16384 bytes.
+
+These are publication and historical-integrity facts. Raw collection reads and
+normalization metadata **do not establish current managed eligibility**. Live
+read-view validation, every-dispatch withdrawal, inherited assistant/summary taint
+and resume revalidation remain separate integration work. Do not expose a stored
+`current` label as a freshness guarantee.
 
 ## Build evidence with the public SDK
 
@@ -136,14 +208,14 @@ capture needs a separately validated original path receipt; printed or truncated
 arguments cannot supply one. A native answer such as `2` proves those original
 answer bytes, not an assistant premise selected by that answer.
 
-## Validate managed policy data before connecting an adapter
+## Review policy registries and activation data
 
 [`SemanticConsent`](../../lib/ipse/extension/semantic_consent.ex) keeps policy
 settings version 1 unchanged. Its version-2 data contract separates reusable
 constraints and validity recipes from exact effect mappings. This pure contract
 does not activate an artifact or make an existing `collection.call` a managed
-publication. An adapter must explicitly support the new operation and its own
-versioned binding; unsupported versions fail closed.
+publication. The managed adapter uses its distinct operation and versioned
+binding; unsupported versions fail closed.
 
 Version 2 adds three required fields: `constraints`, `recipes` and `activation`.
 The first two are registries keyed by each value's canonical
@@ -176,22 +248,27 @@ Operator retention extraction requires a separate typed host choice tied to its
 actual target and original observation; a numeric native answer supplies no
 implicit choice or acceptance.
 
-Keep the resulting candidate separate from host truth. A live managed adapter
-must compute first-admission and override deadlines under the same protected
-publication lock, retain anchors after pruning, authenticate sidecars and return
-their authoritative metadata separately from raw worker fields. It must prevent
-workers from writing or reading its reserved validity namespace through legacy
-operations. Extraction, a structural schema, or a stored `eligible` field cannot
-replace those checks or the every-dispatch eligibility barrier.
+Keep the resulting candidate separate from host truth. Publication's protected
+normalizer computes first-admission deadlines and retains anchors after pruning.
+Extraction, a structural schema, or a stored eligibility label cannot replace
+current source/lineage/expiry checks or the every-dispatch barrier.
 
 `activation` is explicitly null when absent. Otherwise
 [`Activation`](../../lib/ipse/extension/activation.ex) validates an exact reviewed
 bundle/artifact/sidecar selection, bounded options/capabilities and disclosed
-service references. `derive/2` returns only an operator overlay catalog and stable
-virtual source identity. It preserves the supplied base catalog and refuses
+service references. `draft/3` takes the verified project digest, proposed activation
+and base catalog before a grant exists. It returns only review data: an overlay
+catalog, stable virtual source and activation digest. Setup can prepare the actual
+Registry identity, then build the exact protected policy; no provisional grant or
+identity is needed. `derive/2` wraps that same data algorithm with strict saved
+policy/artifact/route matching. It preserves the supplied base catalog and refuses
 collisions. Registry still verifies the actual bundle, manifest, options,
 capability ceiling, host/runtime and generation before preparing an identity.
-No service/profile definitions or child grant can come from this activation data.
+An optional `main_timeout_ms` is an exact reviewed 1000..100000-ms override in
+the derived data and activation digest. Absence leaves the ordinary runtime
+unchanged; there is no clamp or default. A host applying it must retain the base
+configuration fingerprint and save the exact overlay for resume. No service/profile
+definitions or child grant can come from activation data.
 A host connecting the overlay must select current protected data only for a fresh
 Session and exact saved data on resume, while retaining the ordinary configuration
 fingerprint and current revocation gates. The pure derivation does not implement
@@ -209,7 +286,8 @@ delegation; a protected outer export cannot lend its grant to those operations.
 | Model-selected `tool_started` and typed tool lifecycle | Version 2, exact `semantic_binding` |
 | Outer invocation intent / inline result | Version 3, original closed outer binding |
 | Outer paged result | Version 4, retains the original version-3 binding |
-| Inner collection action | Version 2, exact `effect_binding` |
+| Legacy inner collection action | Version 2, exact `effect_binding` |
+| Managed inner action / result | Version 3, distinct managed `effect_binding` version 2 |
 
 The outer binding contains `kind: "semantic.outer"`, `version: 1`, host-derived
 `class`, namespace, pin, artifact SHA256 and descriptor SHA256. Replay derives that
@@ -217,13 +295,19 @@ same class from the hash-matched original policy, so changing all class fields
 together cannot downgrade an honestly mutating export. A read outer categorically
 denies every mutating inner action even under broad `--yes`. The inner binding contains
 `kind: "collection"`, `version: 1`, namespace, pin, inner operation and exact inner
-request digest. Saved validation matches the Session header pin, artifact,
+request digest. A managed binding instead has `kind: "collection.managed"`,
+version 2, namespace, pin, exact outer descriptor digest, inner commit digest and
+recipe digest. Saved validation matches the Session header pin, artifact,
 descriptor, parent source and chronological results. Old versions do not acquire
 the new approval tag. SDK-2 output retains its paged binding without downgrading
 to a legacy inline or saved result.
 
-The publication reserves one operation, encoded worker-request input bytes and
-16384 output bytes; model, download and money resources are zero. Known successful,
+Legacy publication reserves one operation, encoded worker-request input bytes and
+16384 output bytes. Managed publication additionally reserves two full 6144-byte
+sidecar values, their exact worst-case key/revision/change envelopes and comma
+overhead, plus 2048 normalization bytes before effects. Values use the same JSON
+escaping as storage; the boundary test exercises control bytes at the full limit.
+Model, download and money resources are zero. Known successful,
 conflicting or failed-no-effect callbacks settle conservatively inside
 `Consent.publish`, once. Unknown outcomes retain liability. Duplicate operation
 IDs are inspection facts and never new permission to execute. Cancellation or
@@ -243,6 +327,7 @@ From a built checkout:
 mix test test/ipse/extension/collection_call_test.exs test/ipse/extension/collection_policy_test.exs
 mix test test/ipse/extension/collection_call_session_test.exs test/ipse/extension/source_read_test.exs
 mix test test/ipse/session/resources_authority_test.exs test/ipse/extension/result_source_test.exs
+mix test test/ipse/extension/managed_collection_call_test.exs test/ipse/extension/managed_collection_call_session_test.exs
 mix test test/ipse/extension/managed_recipe_test.exs test/ipse/extension/semantic_consent_v2_test.exs test/ipse/extension/activation_test.exs
 ```
 
