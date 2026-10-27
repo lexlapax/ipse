@@ -1,0 +1,19 @@
+//! Disabled diagnostic composition. The live backend/launcher do not exist.
+//! On failure issue no follow-up effects; kernel automatic cleanup remains possible.
+use super::diagnostic_receipt::{Effect,Observation,Receipt,Record};
+use std::io;
+trait Backend {fn effect(&mut self,effect:Effect)->io::Result<Option<Observation>>;}
+fn run<B:Backend>(receipt:&mut Receipt,backend:&mut B)->io::Result<()> {
+ for e in [Effect::ConfigureLoop,Effect::CreateMapper,Effect::MakeFilesystem,Effect::Mount,Effect::PrepareStage,Effect::SwitchError,Effect::ReleaseStage,Effect::RestoreLinear,Effect::Unmount,Effect::RemoveMapper,Effect::AttemptCloseLoop] {
+  receipt.record(Record::Pending(e))?;
+  let observation=backend.effect(e)?;
+  if let Some(o)=observation {receipt.observe(o)?;}
+  receipt.record(Record::Confirmed(e))?;
+ }
+ Ok(())
+}
+#[cfg(test)]mod tests {use super::*;use super::super::diagnostic_receipt::{InitialIdentity,parse,Status};use std::fs::{self,OpenOptions};use std::os::unix::fs::{OpenOptionsExt,PermissionsExt};const N:&str="0123456789abcdef0123456789abcdef";
+ struct Stub {seen:Vec<Effect>,fail:Option<Effect>,omit:Option<Effect>}impl Backend for Stub {fn effect(&mut self,e:Effect)->io::Result<Option<Observation>>{self.seen.push(e);if self.fail==Some(e){return Err(io::ErrorKind::Other.into())}if self.omit==Some(e){return Ok(None)}Ok(match e {Effect::CreateMapper=>Some(Observation::Mapper{major:253,minor:2,uuid:format!("IPSE-Q-{N}")}),Effect::MakeFilesystem=>Some(Observation::Filesystem{uuid:"01234567-89ab-cdef-0123-456789abcdef".into()}),Effect::Mount=>Some(Observation::Mount{namespace_inode:2,mount_id:3}),_=>None})}}
+ #[test]fn every_effect_failure_stops_with_exact_pending_record(){for (index,fail) in [Effect::ConfigureLoop,Effect::CreateMapper,Effect::MakeFilesystem,Effect::Mount,Effect::PrepareStage,Effect::SwitchError,Effect::ReleaseStage,Effect::RestoreLinear,Effect::Unmount,Effect::RemoveMapper,Effect::AttemptCloseLoop].into_iter().enumerate(){let p=std::env::temp_dir().join(format!("ipse-diagnostic-driver-{}-{index}",std::process::id()));fs::create_dir(&p).unwrap();fs::set_permissions(&p,fs::Permissions::from_mode(0o700)).unwrap();let dir=OpenOptions::new().read(true).custom_flags(0x30000).open(&p).unwrap();let mut receipt=Receipt::create(dir,N).unwrap();receipt.bind_initial(&InitialIdentity{nonce:N.into(),boot_id:"01234567-89ab-cdef-0123-456789abcdef".into(),backing_dev:1,backing_inode:2,loop_minor:3,loop_node_dev:4,loop_node_inode:5}).unwrap();let mut b=Stub{seen:Vec::new(),fail:Some(fail),omit:None};assert!(run(&mut receipt,&mut b).is_err());assert_eq!(b.seen.last(),Some(&fail));assert_eq!(b.seen.len(),index+1);assert_eq!(parse(&fs::read(p.join("diagnostic.receipt")).unwrap(),N).unwrap(),Status::Pending(fail));drop(receipt);for e in fs::read_dir(&p).unwrap(){fs::remove_file(e.unwrap().path()).unwrap()}fs::remove_dir(p).unwrap();}}
+ #[test]fn successful_effect_without_required_identity_cannot_advance(){let p=std::env::temp_dir().join(format!("ipse-diagnostic-omit-{}",std::process::id()));fs::create_dir(&p).unwrap();fs::set_permissions(&p,fs::Permissions::from_mode(0o700)).unwrap();let dir=OpenOptions::new().read(true).custom_flags(0x30000).open(&p).unwrap();let mut r=Receipt::create(dir,N).unwrap();r.bind_initial(&InitialIdentity{nonce:N.into(),boot_id:"01234567-89ab-cdef-0123-456789abcdef".into(),backing_dev:1,backing_inode:2,loop_minor:3,loop_node_dev:4,loop_node_inode:5}).unwrap();let mut b=Stub{seen:Vec::new(),fail:None,omit:Some(Effect::CreateMapper)};assert!(run(&mut r,&mut b).is_err());assert_eq!(b.seen,vec![Effect::ConfigureLoop,Effect::CreateMapper]);assert_eq!(parse(&fs::read(p.join("diagnostic.receipt")).unwrap(),N).unwrap(),Status::Pending(Effect::CreateMapper));drop(r);for e in fs::read_dir(&p).unwrap(){fs::remove_file(e.unwrap().path()).unwrap()}fs::remove_dir(p).unwrap();}
+}
