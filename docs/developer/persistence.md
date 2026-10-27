@@ -293,6 +293,34 @@ callback again. Settlement retains its bounded receipt before Session records
 the result. The storage owner still needs its own durable operation binding to
 resolve an interrupted publication.
 
+When a trusted adapter must add host-owned validity metadata, use the explicit
+internal `Collection.execute_managed/6` boundary rather than rewriting a worker
+request under the ordinary SDK operation. It checks original generation/revisions,
+writer fencing and duplicate identity before entering the host normalizer under
+one Collection lock. The normalizer receives an exact root/manifest witness and a
+process-bound read closure, limited to 32 reads and invalid after return. It can
+retain the original changes exactly and add 1..16 nondeleted `host.validity.`
+records. The original generation and destructive-floor choice cannot change.
+The owning adapter must authenticate source proofs, derive semantic validity and
+reserve worst-case metadata charges before calling; this seam supplies none of
+those permissions and is not exposed to worker code.
+
+The resulting receipt keeps `request_sha256` bound to the normalized commit and
+adds `managed_binding_sha256`, a digest of the versioned original-request,
+reviewed-recipe and normalization-receipt hashes. The returned result supplies
+those fields and the bounded normalization object. Inspect/export/import retain
+the durable binding even after a response is lost. A managed binding selects
+explicit wire-root version 5; ordinary collections continue to emit version 4.
+Version 5 retains the existing record/data/block/native quota bounds, and older
+readers refuse it. The in-memory storage summary remains version 3. The ordinary
+SDK call and its receipt contract do not gain this operation implicitly.
+
+Exercise successful paired publication, duplicate/refused normalization, expired
+read closures, actual native-owner loss and complete migration with
+`mix test test/ipse/extension/collection_managed_test.exs` and the collection
+block/migration suites. An internal host callback is trusted core code: do not
+load extension callbacks, run inference or hand its read closure to a worker.
+
 A measured overrun is saved as `overrun`, retaining actual usage and blocking
 new reservations plus admission/publication of already-reserved work. Inspection,
 revocation and unrelated known-unstarted cancellation remain usable. Explicit

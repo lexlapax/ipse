@@ -133,6 +133,69 @@ defmodule Ipse.Extension.CollectionMigrationTest do
   defp fixture_id(n),
     do: n |> Integer.to_string(16) |> String.downcase() |> String.pad_leading(32, "0")
 
+  test "typed complete import preserves managed original-normalized binding receipts", c do
+    request = put(0, "note.one", 0, %{"text" => "original"})
+
+    normalized =
+      Map.update!(
+        request,
+        "changes",
+        &(&1 ++
+            [
+              %{
+                "key" => "host.validity.one",
+                "expected_revision" => 0,
+                "value" => %{"anchor" => 0}
+              }
+            ])
+      )
+
+    operation = Ipse.Usage.id()
+
+    assert {:ok, result} =
+             C.execute_managed(
+               c.source.root,
+               c.source.project,
+               request,
+               operation,
+               Ipse.JSON.sha256("recipe"),
+               fn _, _ -> {:ok, normalized, %{"version" => 1}} end
+             )
+
+    {descriptor, rows} = export(c.source, 1)
+    {migration, generation} = open(c.target, 0, descriptor)
+    generation = pages(c.target, migration, generation, rows)
+
+    assert {:ok, _} =
+             run(c.target, %{
+               "op" => "import.commit",
+               "expected_generation" => generation,
+               "migration_id" => migration
+             })
+
+    receipt = result["receipt"]
+
+    assert {:ok, %{"operation" => ^receipt}} =
+             run(c.target, %{"op" => "inspect", "operation_id" => operation})
+
+    assert {:existing, %{"operation" => ^receipt}} =
+             C.execute_managed(
+               c.target.root,
+               c.target.project,
+               request,
+               operation,
+               Ipse.JSON.sha256("recipe"),
+               fn _, _ -> flunk("imported operation cannot normalize again") end
+             )
+
+    assert {:ok, %{"record" => %{"value" => %{"anchor" => 0}}}} =
+             run(c.target, %{"op" => "get", "key" => "host.validity.one"})
+
+    assert Jason.decode!(File.read!(Path.join([c.target.root, c.target.project, "root.json"])))[
+             "version"
+           ] == 5
+  end
+
   # These synthetic receipts exercise byte/count boundaries without performing
   # tens of thousands of IO operations. They are not endurance measurements.
   defp install_fixture(c, generation, count, offset, prefix) do
@@ -397,6 +460,7 @@ defmodule Ipse.Extension.CollectionMigrationTest do
     id = Ipse.Usage.id()
     observer = "planned-upgrade-" <> Ipse.Usage.id()
     owner = self()
+    observed_directory = Path.join(c.target.root, c.target.project)
 
     :ok =
       :telemetry.attach_many(
@@ -406,9 +470,11 @@ defmodule Ipse.Extension.CollectionMigrationTest do
           [:ipse, :extension, :collection, :staged]
         ],
         fn event, measurements, _, _ ->
-          case List.last(event) do
-            :import_planned -> send(owner, {:import_trace, :plan, measurements.files})
-            :staged -> send(owner, {:import_trace, :stage, nil})
+          if Process.get({C, :directory}) == observed_directory do
+            case List.last(event) do
+              :import_planned -> send(owner, {:import_trace, :plan, measurements.files})
+              :staged -> send(owner, {:import_trace, :stage, nil})
+            end
           end
         end,
         nil

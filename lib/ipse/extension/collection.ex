@@ -63,6 +63,35 @@ defmodule Ipse.Extension.Collection do
     _ -> @error
   end
 
+  @doc """
+  Host-only atomic managed publication. This grants no policy or source authority.
+
+  The trusted normalizer runs under the collection lock after original CAS and
+  duplicate checks. Its bounded read closure is valid only in that process and
+  invocation. It returns `{:ok, normalized_commit, normalization_receipt}` or an
+  error. Original changes remain exact; additional writes belong exclusively to
+  `host.validity.`. The owning adapter must reserve metadata costs, authenticate
+  proofs and check consent before calling. No worker callback is accepted here.
+  """
+  def execute_managed(root, project, original, operation_id, recipe_sha256, normalizer)
+      when is_function(normalizer, 2) do
+    with false <- Process.get(@lock_key, false) != false,
+         true <- valid_request?(original) and original["op"] == "commit",
+         true <- length(original["changes"]) <= 8 and id?(operation_id),
+         true <- JSON.sha256?(recipe_sha256),
+         true <- Enum.all?(original["changes"], &(not managed_key?(&1["key"]))) do
+      Ipse.Session.Resources.file_effect(fn ->
+        locked(root, project, original, operation_id, {recipe_sha256, normalizer})
+      end)
+    else
+      _ -> {:error, :invalid_managed_collection_request}
+    end
+  rescue
+    _ -> @error
+  end
+
+  def execute_managed(_, _, _, _, _, _), do: {:error, :invalid_managed_collection_request}
+
   def valid_request?(%{"op" => op} = r) when op in ~w(status snapshot), do: keys?(r, ["op"])
   def valid_request?(%{"op" => "get"} = r), do: keys?(r, ~w(op key)) and key?(r["key"])
 
@@ -101,7 +130,7 @@ defmodule Ipse.Extension.Collection do
       byte_size(Jason.encode!(v)) <= @value_bytes
   end
 
-  defp locked(root, project, request, operation_id) do
+  defp locked(root, project, request, operation_id, managed \\ nil) do
     with true <- is_binary(root) and Path.type(root) == :absolute and JSON.sha256?(project),
          {:ok, uid} <- Ipse.Runner.protected_current_uid(),
          :ok <- directory(Path.dirname(root), uid, false),
@@ -121,7 +150,9 @@ defmodule Ipse.Extension.Collection do
                {:ok, state, manifest} <- load(path, project, uid),
                :ok <- Transaction.check(cap),
                :ok <- Transaction.quota(cap, :collection, @total_bytes - @control_bytes) do
-            apply_request(path, uid, state, manifest, request, operation_id)
+            if is_nil(managed),
+              do: apply_request(path, uid, state, manifest, request, operation_id),
+              else: apply_managed(path, uid, state, manifest, request, operation_id, managed)
           else
             {:error, :transaction_filesystem_unsupported} ->
               {:error, :collection_filesystem_unsupported}
@@ -233,6 +264,107 @@ defmodule Ipse.Extension.Collection do
   end
 
   defp apply_request(path, uid, s, manifest, r, id) do
+    apply_mutation(path, uid, s, manifest, r, id, %{})
+  end
+
+  defp apply_managed(path, uid, s, manifest, original, id, {recipe, normalizer}) do
+    cond do
+      operation = Migration.known_operations(s)[id] ->
+        {:existing, Map.put(summary(s), "operation", operation)}
+
+      original["expected_generation"] != s["generation"] or
+          Enum.any?(original["changes"], &(revision(s, &1["key"]) != &1["expected_revision"])) ->
+        {:conflict, summary(s)}
+
+      Migration.fenced?(s, "commit") ->
+        {:failed, Map.put(summary(s), "code", "collection_writer_fenced")}
+
+      true ->
+        normalize_managed(path, uid, s, manifest, original, id, recipe, normalizer)
+    end
+  end
+
+  defp normalize_managed(path, uid, s, manifest, original, id, recipe, normalizer) do
+    key = {__MODULE__, :managed_read}
+    owner = self()
+    token = make_ref()
+    cap = Process.get(@lock_key)
+    previous = Process.put(key, {token, 0})
+
+    read = fn selected ->
+      with true <- self() == owner and Process.get(@lock_key) === cap,
+           {^token, count} when count < 32 <- Process.get(key),
+           true <- key?(selected),
+           :ok <- Transaction.check(cap) do
+        Process.put(key, {token, count + 1})
+        read_record(path, uid, s, selected)
+      else
+        _ -> {:error, :managed_read_refused}
+      end
+    end
+
+    witness = %{
+      "root" => summary(s),
+      "manifest_sha256" => if(manifest, do: manifest.hash),
+      "operation_id" => id,
+      "original_request_sha256" => JSON.digest([original]),
+      "recipe_sha256" => recipe
+    }
+
+    try do
+      with {:ok, normalized, normalization} <- normalizer.(witness, read),
+           true <- normalized_managed?(original, normalized),
+           :ok <- JSON.validate_object(normalization),
+           true <- byte_size(Jason.encode!(normalization)) <= 2048,
+           :ok <- Transaction.check(cap) do
+        binding = %{
+          "version" => 1,
+          "original_request_sha256" => witness["original_request_sha256"],
+          "recipe_sha256" => recipe,
+          "normalization_sha256" => JSON.digest([normalization])
+        }
+
+        extra = %{"managed_binding_sha256" => JSON.digest([binding])}
+
+        case apply_mutation(path, uid, s, manifest, normalized, id, extra) do
+          {:ok, receipt} ->
+            {:ok,
+             %{
+               "version" => 1,
+               "binding" => binding,
+               "normalization" => normalization,
+               "receipt" => receipt
+             }}
+
+          other ->
+            other
+        end
+      else
+        _ -> {:error, :managed_normalization_refused}
+      end
+    after
+      if is_nil(previous), do: Process.delete(key), else: Process.put(key, previous)
+    end
+  end
+
+  defp normalized_managed?(original, normalized) do
+    with true <- valid_request?(normalized) and normalized["op"] == "commit",
+         true <- normalized["expected_generation"] === original["expected_generation"],
+         true <- normalized["advance_floor"] === original["advance_floor"],
+         true <- Enum.all?(original["changes"], &(&1 in normalized["changes"])),
+         extras = normalized["changes"] -- original["changes"],
+         true <- length(extras) in 1..16 do
+      Enum.all?(extras, &(managed_key?(&1["key"]) and not is_nil(&1["value"])))
+    else
+      _ -> false
+    end
+  rescue
+    _ -> false
+  end
+
+  defp managed_key?(key), do: is_binary(key) and String.starts_with?(key, "host.validity.")
+
+  defp apply_mutation(path, uid, s, manifest, r, id, extra_receipt) do
     known = Migration.known_operations(s)
 
     cond do
@@ -268,6 +400,7 @@ defmodule Ipse.Extension.Collection do
                 },
                 extra
               )
+              |> Map.merge(extra_receipt)
 
             next = %{
               next
@@ -418,7 +551,11 @@ defmodule Ipse.Extension.Collection do
         hash = JSON.sha256(bytes)
 
         pointer =
-          Jason.encode!(summary(next) |> Map.put("version", 4) |> Map.put("manifest", hash))
+          Jason.encode!(
+            summary(next)
+            |> Map.put("version", Blocks.version(next))
+            |> Map.put("manifest", hash)
+          )
 
         with :ok <- collect(path, uid, old, manifest),
              {:ok, planned} <- full_import_plan(path, uid, old, next, request),
@@ -608,7 +745,7 @@ defmodule Ipse.Extension.Collection do
              true <-
                (keys?(root, ~w(version project generation floor manifest)) or
                   keys?(root, ~w(version project generation floor floor_anchor manifest))) and
-                 root["version"] in [2, 3, 4] and root["project"] == project and
+                 root["version"] in [2, 3, 4, 5] and root["project"] == project and
                  uint?(root["generation"]) and uint?(root["floor"]) and
                  JSON.sha256?(root["manifest"]),
              {:ok, bytes} <-
@@ -632,7 +769,7 @@ defmodule Ipse.Extension.Collection do
     end
   end
 
-  defp decode_manifest(%{"version" => 4} = stored, path, uid) do
+  defp decode_manifest(%{"version" => version} = stored, path, uid) when version in [4, 5] do
     case Blocks.decode(stored, fn hash, bytes ->
            bounded_file(Path.join([path, "manifests", hash <> ".json"]), uid, bytes)
          end) do
@@ -670,14 +807,7 @@ defmodule Ipse.Extension.Collection do
       valid_records?(s["records"], s) and
       Migration.valid?(s, &valid_records?(&1, s)) and
       Enum.all?(s["operations"], fn {id, r} ->
-        id?(id) and
-          keys?(Map.drop(r, ~w(migration_id checkpoint_id)), ~w(generation floor request_sha256)) and
-          (not Map.has_key?(r, "migration_id") or id?(r["migration_id"])) and
-          (not Map.has_key?(r, "checkpoint_id") or is_nil(r["checkpoint_id"]) or
-             id?(r["checkpoint_id"])) and
-          uint?(r["generation"]) and r["generation"] in 1..s["generation"] and
-          uint?(r["floor"]) and
-          JSON.sha256?(r["request_sha256"])
+        id?(id) and Migration.receipt?(r) and r["generation"] in 1..s["generation"]
       end) and
       length(Enum.uniq_by(Map.values(s["operations"]), & &1["generation"])) == s["generation"] and
       envelope_bytes(s) <= @data_bytes

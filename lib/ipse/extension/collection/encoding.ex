@@ -18,6 +18,15 @@ defmodule Ipse.Extension.Collection.Encoding do
     with {:ok, local} <- decode_local(state["operations"], state["generation"], version),
          {:ok, imported} <- decode_imported(state["imported_operations"], version),
          {:ok, migration} <- decode_migration(state["migration"], version),
+         true <-
+           Enum.all?(
+             [local, imported, (migration || %{})["imported_operations"] || %{}],
+             fn rows ->
+               Enum.all?(rows, fn {_, receipt} ->
+                 not Map.has_key?(receipt, "managed_binding_sha256")
+               end)
+             end
+           ),
          true <- map_size(local) + map_size(imported) + staged_size(migration) <= @limit,
          true <-
            (Map.has_key?(state, "floor_anchor") and Map.has_key?(state, "floor_lineage")) or
@@ -65,9 +74,15 @@ defmodule Ipse.Extension.Collection.Encoding do
   end
 
   defp extras(receipt) do
-    case Map.take(receipt, ~w(migration_id checkpoint_id)) do
-      extra when map_size(extra) == 0 -> []
-      extra -> [extra]
+    case receipt do
+      %{"managed_binding_sha256" => hash} ->
+        [%{"managed_binding_sha256" => pack(hash)}]
+
+      _ ->
+        case Map.take(receipt, ~w(migration_id checkpoint_id)) do
+          extra when map_size(extra) == 0 -> []
+          extra -> [extra]
+        end
     end
   end
 
@@ -143,6 +158,10 @@ defmodule Ipse.Extension.Collection.Encoding do
   end
 
   defp extra([]), do: {:ok, %{}}
+
+  defp extra([%{"managed_binding_sha256" => value} = m]) when map_size(m) == 1 do
+    with {:ok, hash} <- unpack(value, 32), do: {:ok, %{"managed_binding_sha256" => hash}}
+  end
 
   defp extra([m]) when is_map(m) and map_size(m) in 1..2 do
     if Map.keys(m) -- ~w(migration_id checkpoint_id) == [], do: {:ok, m}, else: :error

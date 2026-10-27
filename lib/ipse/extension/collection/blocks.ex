@@ -37,7 +37,8 @@ defmodule Ipse.Extension.Collection.Blocks do
     _ -> {:error, :invalid_collection_blocks}
   end
 
-  def decode(%{"version" => 4} = wire, reader) when is_function(reader, 2) do
+  def decode(%{"version" => version} = wire, reader)
+      when version in [4, 5] and is_function(reader, 2) do
     refs = references(wire)
     true = length(refs) <= @block_count
     true = Enum.all?(refs, &reference?/1)
@@ -83,6 +84,14 @@ defmodule Ipse.Extension.Collection.Blocks do
 
   def decode(_, _), do: {:error, :invalid_collection_blocks}
 
+  def version(state) do
+    if Enum.any?(Migration.known_operations(state), fn {_, receipt} ->
+         Map.has_key?(receipt, "managed_binding_sha256")
+       end),
+       do: 5,
+       else: 4
+  end
+
   def hashes(state) do
     {:ok, _, blocks} = encode(state)
     Map.keys(blocks) |> MapSet.new()
@@ -115,7 +124,7 @@ defmodule Ipse.Extension.Collection.Blocks do
 
     wire = %{
       state
-      | "version" => 4,
+      | "version" => version(state),
         "operations" => local,
         "imported_operations" => imported,
         "records" => records,

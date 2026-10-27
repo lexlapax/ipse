@@ -474,15 +474,21 @@ defmodule Ipse.Extension.Collection.Migration do
   defp operation_step(digest, id, receipt), do: JSON.digest([digest, id, receipt])
 
   def receipt?(r) do
-    # The closed shape below is at most 241 JSON bytes, including both optional
-    # IDs and maximum safe integer counters. No repeated encoding is needed to
+    # The closed shape below is below 512 JSON bytes, including optional
+    # identities and maximum safe integer counters. No repeated encoding is needed to
     # establish the 512-byte receipt bound.
-    keys?(Map.drop(r, ~w(migration_id checkpoint_id)), ~w(generation floor request_sha256)) and
+    keys?(
+      Map.drop(r, ~w(migration_id checkpoint_id managed_binding_sha256)),
+      ~w(generation floor request_sha256)
+    ) and
       uint?(r["generation"]) and r["generation"] > 0 and uint?(r["floor"]) and
       JSON.sha256?(r["request_sha256"]) and
       (not Map.has_key?(r, "migration_id") or id?(r["migration_id"])) and
       (not Map.has_key?(r, "checkpoint_id") or is_nil(r["checkpoint_id"]) or
-         id?(r["checkpoint_id"]))
+         id?(r["checkpoint_id"])) and
+      (not Map.has_key?(r, "managed_binding_sha256") or
+         (JSON.sha256?(r["managed_binding_sha256"]) and
+            not Map.has_key?(r, "migration_id") and not Map.has_key?(r, "checkpoint_id")))
   rescue
     _ -> false
   end

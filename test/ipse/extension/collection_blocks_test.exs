@@ -52,6 +52,52 @@ defmodule Ipse.Extension.CollectionBlocksTest do
 
   defp decode(wire, blocks), do: Blocks.decode(wire, fn hash, _ -> Map.fetch(blocks, hash) end)
 
+  test "managed receipt hash requires explicit v5 root and remains canonical through blocks" do
+    original =
+      put_in(
+        state(1),
+        ["operations", id(1), "managed_binding_sha256"],
+        JSON.sha256("managed binding")
+      )
+
+    {wire, blocks} = encode(original)
+    assert wire["version"] == 5
+    assert {:ok, ^original, _} = decode(wire, blocks)
+    assert {:error, _} = decode(%{wire | "version" => 4}, blocks)
+    assert {:error, _} = original |> Encoding.encode() |> Jason.decode!() |> Encoding.decode()
+    assert Migration.receipt?(original["operations"][id(1)])
+    refute Migration.receipt?(Map.put(original["operations"][id(1)], "checkpoint_id", nil))
+
+    refute Migration.receipt?(
+             put_in(original, ["operations", id(1), "managed_binding_sha256"], "invalid")[
+               "operations"
+             ][id(1)]
+           )
+  end
+
+  test "annual managed receipt population retains every binding within existing block bounds" do
+    original = state(20_950, 1000, 4096)
+
+    original =
+      Enum.reduce(~w(operations imported_operations), original, fn field, state ->
+        Map.update!(state, field, fn rows ->
+          Map.new(rows, fn {id, receipt} ->
+            {id, Map.put(receipt, "managed_binding_sha256", JSON.sha256("managed " <> id))}
+          end)
+        end)
+      end)
+
+    {wire, blocks} = encode(original)
+    assert wire["version"] == 5
+    assert Enum.all?(blocks, fn {_, bytes} -> byte_size(bytes) <= 64 * 1024 end)
+    assert map_size(blocks) <= 1024
+    assert Enum.sum(Enum.map(blocks, fn {_, bytes} -> byte_size(bytes) end)) <= 9 * 1024 * 1024
+    assert {:ok, ^original, _} = decode(wire, blocks)
+
+    assert Migration.operation_digest(original["operations"]) ==
+             Migration.operation_digest(elem(decode(wire, blocks), 1)["operations"])
+  end
+
   test "annual receipts, record indexes and applied proofs reconstruct exactly and bind original export digests" do
     original = state(20_950, 1000, 4096)
     original = put_in(original, ["operations", id(2000), "checkpoint_id"], nil)
