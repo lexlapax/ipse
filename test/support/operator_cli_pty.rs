@@ -23,6 +23,13 @@ extern "C" {
     fn tcgetattr(fd: i32, value: *mut std::ffi::c_void) -> i32;
 }
 
+fn ready_for_exit(text: &str) -> bool {
+    text.contains("Finished.") && match (text.rfind("you> "), text.rfind("answer> ")) {
+        (Some(prompt), Some(answer)) => prompt > answer,
+        _ => false,
+    }
+}
+
 fn main() {
     #[cfg(target_os = "linux")]
     let flags = 0x100 | 0x80000;
@@ -135,7 +142,7 @@ fn main() {
             4 if codes.len() >= 4 && text.contains("Synthetic native literal answer") => {
                 master.write_all(format!("answer {} =/exit 雪 café  \n", codes[3]).as_bytes()).unwrap(); phase = 5;
             },
-            5 if text.contains("Finished.") && text.rsplit("Finished.").next().unwrap().contains("you> ") => {
+            5 if ready_for_exit(&text) => {
                 master.write_all(b"/exit\n").unwrap(); phase = 6;
             },
             _ => {},
@@ -157,4 +164,23 @@ fn main() {
     }
     if queued_eof { assert_eq!(phase, 5); assert!(status.success()); }
     std::process::exit(status.code().unwrap_or(1));
+}
+
+#[cfg(test)]
+mod tests {
+    use super::ready_for_exit;
+    #[test]
+    fn complete_then_active_prompt() { assert!(ready_for_exit("answer> done\nFinished.\nyou> ")); }
+    #[test]
+    fn active_prompt_then_complete() { assert!(ready_for_exit("answer> done\nyou> \nFinished.\n")); }
+    #[test]
+    fn historical_initial_prompt_is_not_current() { assert!(!ready_for_exit("you> task\nanswer> done\nFinished.\n")); }
+    #[test]
+    fn active_prompt_without_completion_is_not_ready() { assert!(!ready_for_exit("answer> done\nyou> ")); }
+    #[test]
+    fn completion_without_active_prompt_is_not_ready() { assert!(!ready_for_exit("answer> done\nFinished.\n")); }
+    #[test]
+    fn refreshed_answer_invalidates_earlier_prompt() { assert!(!ready_for_exit("answer> old\nyou> \nanswer> fresh\nFinished.\n")); }
+    #[test]
+    fn completion_and_prompt_without_question_are_not_this_phase() { assert!(!ready_for_exit("Finished.\nyou> ")); }
 }

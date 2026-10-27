@@ -160,4 +160,30 @@ defmodule Ipse.CLIOperatorInputTest do
     assert status == 0, output
     assert output =~ "OPERATOR_OWNER_DEATH_RESTORED"
   end
+
+  test "native CLI fixture exit readiness covers both prompt display orders" do
+    root = Path.join(System.tmp_dir!(), "ipse-operator-cli-readiness-" <> Ipse.Usage.id())
+    File.mkdir!(root)
+    File.chmod!(root, 0o700)
+    on_exit(fn -> File.rm_rf!(root) end)
+    driver = Path.join(root, "readiness-tests")
+
+    assert {_, 0} =
+             System.cmd(
+               "rustc",
+               [
+                 "--edition=2021",
+                 "-D",
+                 "warnings",
+                 "--test",
+                 "test/support/operator_cli_pty.rs",
+                 "-o",
+                 driver
+               ],
+               stderr_to_stdout: true
+             )
+
+    {output, status} = System.cmd(driver, [], stderr_to_stdout: true)
+    assert status == 0, output
+  end
 end

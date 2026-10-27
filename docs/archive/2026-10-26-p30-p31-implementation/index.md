@@ -95,6 +95,7 @@ resource/offline qualification. No daemon configuration or existing model was ch
 - [Fixed-revision source and platform verification receipts](verification.md).
 - [Question fixture repair, unchanged-runtime reproduction and exact replay refusals](questions-fixture-repair.md).
 - [Reference-aware fixture repair and preserved 44-failure baseline](reference-fixture-repair.md), with its [scoped independent review](reference-fixture-audit.md).
+- [Complete repeat with one preserved CLI timeout](reference-fixture-full-repeat.md), its [independently reproduced prompt-ordering defect and narrow fixture repair](cli-pty-fixture-audit.md).
 - [Nonpublishing interaction model](../../../dev/knowledge/interaction.exs) and
   [boundary tests](../../../test/dev/knowledge/interaction_test.exs).
 - [Finite main-route pilot](../../../dev/knowledge/pilot.exs),

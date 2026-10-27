@@ -80,6 +80,13 @@ Keep journal/native/cleanup assertions afterward. With after-turn jobs, wait for
 actual settlement rather than assuming that observation ends the turn.
 Observation watchdogs are not product latency guarantees.
 
+CLI prompt display can precede turn completion: busy-to-idle keeps an already
+active reader rather than redrawing its prompt. A PTY fixture should require
+completion and the current prompt after its last question display, allowing
+either display order. A historical initial prompt is insufficient. Keep exact
+native-answer/source, no-effect and confirmed-cleanup assertions afterward;
+raising a watchdog does not repair an ordering assumption.
+
 Fixture providers must distinguish an operator task from host context. A valid
 `Ipse.Session.Reference` message uses the user role and can follow a task or a
 completed tool group. When a fake chooses its next action from the latest task or
