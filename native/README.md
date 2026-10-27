@@ -520,6 +520,7 @@ Use these operations while the exact top capability is held:
 | --- | --- |
 | `check(cap)` | Observe every retained logical parent/lock identity; discard read results after loss. It does not fence arbitrary Elixir callback IO. |
 | `read(cap, directory, basename, maximum)` | Read at most 8 MiB from an allowlisted root or immutable file through the native lock owner. It opens, validates, reads and closes each data FD before replying; host assembly checks identical size/device/inode across bounded chunks. |
+| `read_optional(cap, directory, basename, maximum)` | Apply the same bounded read checks, returning `{:ok, bytes}` for a present file (including an empty file) or `:absent` only for a validated native missing basename. Final lease check/release remain mandatory before exposing a consumer result. |
 | `quota(cap, mode, ceiling)` | Configure or narrow a per-lock staging ceiling, 1..64 MiB; mode is `:flat` or `:collection`. Mode changes and widening refuse. |
 | `preflight(cap, sizes)` | Check a full plan of at most 256 positive file sizes, each at most 8 MiB and at most 64 MiB total, before sending payload. |
 | `stage(cap, directory, entries)` | Exclusively create and sync 1..128 distinct pending files, at most 8 MiB total. The native process checks its configured quota before readiness, then retains all scope writer leases through final sync. |
@@ -548,6 +549,24 @@ All logical parents are revalidated before commands and before success/refusal
 acknowledgements. This assumes protected host state and a trusted same-user
 installation; it is not containment of arbitrary code able to replace that state.
 
+Optional reads distinguish only the final allowlisted basename. The native owner
+opens it relative to the retained selected directory with `O_NOFOLLOW` and
+`O_NONBLOCK`; only that syscall's exact `ENOENT` may report absence. Missing or
+unsafe child directories, dangling/live symlinks, permissions, wrong ownership,
+hardlinks, nonregular files and other errors remain refusals. Selected directory
+and all logical parent/lock identities must still validate before the response;
+data and directory descriptors close before it. This follows the no-follow
+behavior documented by the [Linux open(2) manual](https://man7.org/linux/man-pages/man2/open.2.html)
+and [Apple open(2) manual](https://developer.apple.com/library/archive/documentation/System/Conceptual/ManPages_iPhoneOS/man2/open.2.html).
+
+`:absent` describes the lookup under this actual retained lock, not a durable
+permission, semantic eligibility or proof that a later lookup will also be
+missing. The caller must check/release the complete owning stack before returning
+its higher-level result. Optional reads perform no staging, rename or deletion;
+ordinary filesystem read-atime behavior still follows the selected filesystem.
+This operation does not itself change Collection views or grant first-empty
+managed recall.
+
 ### Read the closed transaction protocol
 
 The child entry is `--transaction-lock TIMEOUT_MS`, with an absolute lifetime of
@@ -569,6 +588,7 @@ are exact, with no optional trailing bytes:
 | `A` | Absolute UTF-8 `.lock` path, at most 4,096 bytes. |
 | `P`, `R` | Empty: check or release. |
 | `G` | u8 directory selector, u8 basename length, basename, u32 offset, u32 maximum total bytes (1..8 MiB). The basename is an allowlisted root target or immutable name. |
+| `H` | Version byte `1`, followed by the exact `G` payload. No other version or trailing bytes are accepted. |
 | `B` | u8 mode (`0` flat, `1` collection), u64 ceiling bytes. |
 | `F` | u16 count, then that many u32 file sizes. |
 | `M` | u8 allocation mode (`0` flat, `1` collection). |
@@ -585,7 +605,16 @@ inner response is at most 16,417 bytes. Each read closes both retained and named
 data descriptors before replying. The host requests successive chunks under the
 same lock, validates their identity, offsets and exact lengths, and returns no
 prefix after a failed or malformed chunk. JSON/schema/content hashes remain in
-Elixir. Native owner loss cannot leave an independent host data-file read alive
+Elixir. `H` adds version byte `1` and a disposition: `0` means absent with no
+remaining bytes; `1` precedes the same `G` size/offset/identity/data fields. An
+absent result is legal only for the first request at offset zero. Its complete
+inner response is at most 16,419 bytes. A later absent response, changed identity,
+unknown version/disposition, extra bytes or malformed/partial frame discards
+every prefix and invalidates the host capability. A helper without `H` support
+fails closed; the host never retries using `G` or infers absence from a generic
+IO error or host `lstat`.
+
+Native owner loss cannot leave an independent host data-file read alive
 while another owner unlinks that inode. This guarantee applies only to this API;
 `check/1` does not retrofit it onto arbitrary callback IO. `W` acknowledges
 readiness before payload; each `D` acknowledges consumed bytes, with final file
@@ -631,7 +660,7 @@ Build and run the focused no-model component checks:
 ```sh
 ./dev/build-native.sh
 mix compile --warnings-as-errors
-mix test test/ipse/runner/transaction_test.exs test/ipse/extension/project_identity_test.exs
+mix test test/ipse/runner/transaction_test.exs test/ipse/runner/transaction_optional_read_test.exs test/ipse/extension/project_identity_test.exs
 ```
 
 The transaction fixtures compile an exact source-derived implementation under
@@ -642,6 +671,15 @@ payload. Separate production poison controls verify the override cannot select
 the UID, directory-sync, transaction child or supervisor path. Admission journeys
 requiring a real allocation profile are distinct from a successful fail-closed
 refusal on an unqualified host.
+
+Optional-read controls distinguish absent from empty and exact 8-MiB data, refuse
+unsafe paths and closed-protocol violations, and exercise a stopped native owner
+through root replacement, upstream death, scope cancellation and absolute expiry.
+Linux descriptor checks include the positive retained-lock observation while
+checking that no selected data FD remains after either present or absent replies.
+Those procfs observations are not macOS descriptor evidence. The native unit
+checks also verify the file-UID predicate against a mismatched expected UID;
+they do not require privileged creation of another user's file.
 
 ## Observe one actual terminal display and input
 

@@ -56,9 +56,15 @@ mod unix {
     }
     fn c(text: &str) -> Result<CString, u8> { CString::new(text).map_err(|_| INVALID) }
     fn relative(parent: &File, name: &str, flags: i32) -> Result<File, u8> {
+        relative_optional(parent, name, flags, false)?.ok_or(IO)
+    }
+    fn relative_optional(parent: &File, name: &str, flags: i32, optional: bool) -> Result<Option<File>, u8> {
         let name = c(name)?;
         let fd = unsafe { openat(parent.as_raw_fd(), name.as_ptr(), flags | FLAGS, 0o600_u32) };
-        if fd < 0 { Err(IO) } else { Ok(unsafe { File::from_raw_fd(fd) }) }
+        if fd < 0 {
+            let error = io::Error::last_os_error().raw_os_error();
+            if optional && error == Some(2) { Ok(None) } else { Err(IO) }
+        } else { Ok(Some(unsafe { File::from_raw_fd(fd) })) }
     }
     // Each component is opened relative to its retained predecessor. Lexical
     // normalization never erases a symlink or an outward traversal.
@@ -133,7 +139,7 @@ mod unix {
     // The retained lock owner is also the only process that opens data files.
     // Every response follows closing all data FDs. A killed/blocked owner cannot
     // release its flock while a separate host IO process retains an unlinked FD.
-    fn read_chunk(held: &Held, bytes: &[u8], uid: u32) -> Result<Vec<u8>, u8> {
+    fn read_chunk(held: &Held, bytes: &[u8], uid: u32, optional: bool) -> Result<Option<Vec<u8>>, u8> {
         if bytes.len() < 10 { return Err(INVALID); }
         let selector = bytes[0]; let length = bytes[1] as usize;
         if bytes.len() != 10 + length { return Err(INVALID); }
@@ -143,7 +149,14 @@ mod unix {
         let maximum = u32::from_be_bytes(bytes[6 + length..10 + length].try_into().unwrap()) as u64;
         if maximum == 0 || maximum > MAX_FILE { return Err(INVALID); }
         let directory = child(held, selector, uid)?;
-        let mut file = relative(&directory, name, 0)?;
+        let mut file = match relative_optional(&directory, name, 0, optional)? {
+            Some(file) => file,
+            None => {
+                if offset != 0 || !directory_valid(held, &directory, selector, uid) { return Err(UNSAFE); }
+                drop(directory);
+                return Ok(None);
+            },
+        };
         let before = file.metadata().map_err(|_| IO)?;
         if !private_file(&before, uid) || before.len() > maximum || offset > before.len() { return Err(UNSAFE); }
         let size = (before.len() - offset).min(16_384) as usize;
@@ -163,7 +176,7 @@ mod unix {
         result.extend_from_slice(&before.ino().to_be_bytes());
         result.extend_from_slice(&content);
         drop(named); drop(file); drop(directory);
-        Ok(result)
+        Ok(Some(result))
     }
     fn writer(directory: &File, uid: u32) -> Result<File, u8> {
         let lock = relative(directory, ".writer.lock", 2 | CREATE)?;
@@ -461,13 +474,23 @@ mod unix {
                     }
                 }
                 b'P' if bytes.len() == 9 && !stack.is_empty() => answer!(b'P', seq, None),
-                b'G' if !stack.is_empty() => {
-                    match read_chunk(stack.last().unwrap(), &bytes[9..], uid) {
+                b'G' | b'H' if !stack.is_empty() => {
+                    let optional = kind == b'H';
+                    let data = if optional {
+                        if bytes.get(9) != Some(&1) { answer!(b'E', seq, Some(INVALID)); continue; }
+                        &bytes[10..]
+                    } else { &bytes[9..] };
+                    match read_chunk(stack.last().unwrap(), data, uid, optional) {
                         Ok(data) => {
                             if !stack.iter().all(|h| valid(h, uid)) { reply(b'U', seq, stack.len(), Some(UNSAFE))?; return Ok(()); }
                             let mut payload = seq.to_be_bytes().to_vec(); payload.push(stack.len() as u8);
-                            payload.extend_from_slice(&data);
-                            super::super::frame(b'G', &payload).map_err(|_| "transaction output unavailable")?;
+                            if optional { payload.extend_from_slice(&[1, u8::from(data.is_some())]); }
+                            match data {
+                                Some(data) => payload.extend_from_slice(&data),
+                                None if optional => {},
+                                None => return Err("transaction read unavailable".into()),
+                            }
+                            super::super::frame(kind, &payload).map_err(|_| "transaction output unavailable")?;
                         },
                         Err(code) => answer!(b'E', seq, Some(code)),
                     }
@@ -578,6 +601,91 @@ mod unix {
             }
         }
         Ok(())
+    }
+
+    #[cfg(test)]
+    mod tests {
+        use super::*;
+        use std::os::unix::fs::{DirBuilderExt, OpenOptionsExt};
+        use std::sync::atomic::{AtomicU64, Ordering};
+        static NEXT: AtomicU64 = AtomicU64::new(0);
+        struct Fixture { path: PathBuf, held: Option<Held>, uid: u32 }
+        impl Fixture {
+            fn new() -> Self {
+                let path = std::env::temp_dir().join(format!("ipse-optional-native-{}-{}", std::process::id(), NEXT.fetch_add(1, Ordering::Relaxed)));
+                std::fs::DirBuilder::new().mode(0o700).create(&path).unwrap();
+                let uid = unsafe { geteuid() };
+                let held = acquire(path.join(".lock").to_str().unwrap(), uid, &[]).unwrap();
+                Self { path, held: Some(held), uid }
+            }
+            fn held(&self) -> &Held { self.held.as_ref().unwrap() }
+            fn write(&self, name: &str, bytes: &[u8]) {
+                let mut file = std::fs::OpenOptions::new().write(true).create_new(true).mode(0o600).open(self.path.join(name)).unwrap();
+                file.write_all(bytes).unwrap();
+            }
+            fn request(name: &str, offset: u32, maximum: u32) -> Vec<u8> {
+                let mut bytes = vec![0, name.len() as u8]; bytes.extend_from_slice(name.as_bytes());
+                bytes.extend_from_slice(&offset.to_be_bytes()); bytes.extend_from_slice(&maximum.to_be_bytes()); bytes
+            }
+            fn read(&self, name: &str, offset: u32) -> Result<Option<Vec<u8>>,u8> {
+                read_chunk(self.held(), &Self::request(name, offset, 65_536), self.uid, true)
+            }
+        }
+        impl Drop for Fixture {
+            fn drop(&mut self) { self.held.take(); let _ = std::fs::remove_dir_all(&self.path); }
+        }
+        #[test]
+        fn optional_missing_is_distinct_from_empty_and_never_continues_a_prefix() {
+            let f = Fixture::new();
+            assert_eq!(f.read("root.json", 0), Ok(None));
+            assert_eq!(f.read("root.json", 1), Err(UNSAFE));
+            assert_eq!(read_chunk(f.held(), &Fixture::request("root.json",0,100), f.uid, false), Err(IO));
+            f.write("root.json", b"");
+            let bytes = f.read("root.json",0).unwrap().unwrap();
+            assert_eq!(bytes.len(), 24); assert_eq!(&bytes[..8], &[0;8]);
+            assert!(valid(f.held(),f.uid));
+        }
+        #[test]
+        fn optional_present_reuses_chunk_bounds_and_private_file_checks() {
+            let f = Fixture::new(); f.write("control.json", &vec![7;20_000]);
+            assert_eq!(f.read("control.json",0).unwrap().unwrap().len(), 24+16_384);
+            assert_eq!(f.read("control.json",16_384).unwrap().unwrap().len(), 24+3_616);
+            assert_eq!(read_chunk(f.held(), &Fixture::request("control.json",0,19_999),f.uid,true),Err(UNSAFE));
+            let metadata = std::fs::metadata(f.path.join("control.json")).unwrap();
+            assert!(!private_file(&metadata,f.uid.wrapping_add(1)));
+            std::fs::set_permissions(f.path.join("control.json"),std::os::unix::fs::PermissionsExt::from_mode(0o644)).unwrap();
+            assert_eq!(f.read("control.json",0),Err(UNSAFE));
+        }
+        #[test]
+        fn optional_links_directories_and_bad_names_are_not_absence() {
+            let f = Fixture::new();
+            std::os::unix::fs::symlink("absent-target",f.path.join("root.json")).unwrap();
+            assert_eq!(f.read("root.json",0),Err(IO));
+            std::fs::remove_file(f.path.join("root.json")).unwrap();
+            f.write("control.json",b"private");
+            std::fs::hard_link(f.path.join("control.json"),f.path.join("root.json")).unwrap();
+            assert_eq!(f.read("root.json",0),Err(UNSAFE));
+            std::fs::remove_file(f.path.join("root.json")).unwrap();
+            std::fs::DirBuilder::new().mode(0o700).create(f.path.join("root.json")).unwrap();
+            assert_eq!(f.read("root.json",0),Err(UNSAFE));
+            assert_eq!(f.read("../root.json",0),Err(INVALID));
+            let mut request = Fixture::request("root.json",0,100); request[0]=1;
+            assert_eq!(read_chunk(f.held(),&request,f.uid,true),Err(IO));
+        }
+        #[test]
+        fn optional_absence_requires_the_retained_named_root_and_child_identity() {
+            let f = Fixture::new();
+            std::fs::DirBuilder::new().mode(0o700).create(f.path.join("objects")).unwrap();
+            let mut request = Fixture::request(&format!("{}.json","a".repeat(64)),0,100); request[0]=1;
+            assert_eq!(read_chunk(f.held(),&request,f.uid,true),Ok(None));
+            std::fs::set_permissions(f.path.join("objects"),std::os::unix::fs::PermissionsExt::from_mode(0o755)).unwrap();
+            assert_eq!(read_chunk(f.held(),&request,f.uid,true),Err(UNSAFE));
+            std::fs::set_permissions(f.path.join("objects"),std::os::unix::fs::PermissionsExt::from_mode(0o700)).unwrap();
+            let moved = f.path.with_extension("moved"); std::fs::rename(&f.path,&moved).unwrap();
+            std::fs::DirBuilder::new().mode(0o700).create(&f.path).unwrap();
+            assert_eq!(f.read("root.json",0),Err(UNSAFE));
+            std::fs::remove_dir(&f.path).unwrap(); std::fs::rename(moved,&f.path).unwrap();
+        }
     }
 }
 
