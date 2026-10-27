@@ -1,0 +1,8 @@
+Running ExUnit with seed: 20270305, max_cases: 1
+Excluding tags: [:test]
+Including tags: [location: {"test/ipse/mcp/catalog_session_test.exs", 255}]
+
+.
+Finished in 5.7 seconds (0.00s async, 5.7s sync)
+
+Result: 1 passed, 6 excluded

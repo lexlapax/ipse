@@ -1,0 +1,13 @@
+# Private MCP revalidation recovery checkpoint
+
+Historical experimental evidence, 2026-10-27. This is a private prototype, not production behavior or milestone acceptance. It supersedes `draft-mcp-revalidate.md` and applies to commit `52652f825e7437ac32ac630092b69095d2049a3c`; current scope is in `docs/plan.md`.
+
+The earlier candidate left an interrupted discovery intent without an explicit result when the draft was cancelled. This candidate records `unknown` before cancellation, including after owner death and restart; replay refuses cancellation with an unsettled intent and blocks another discovery after an unknown or mismatched result. A crash between recording unknown and cancellation remains blocked until cancellation. Synthetic native-terminal Session cases exercise matching discovery, changed server metadata, correlated journal rewriting, active cancellation, and owner death followed by recovery and cancellation. Discovery uses the explicitly configured MCP server and sends no synthetic draft request or answer in the traced RPCs. It is nevertheless an external interaction and its authority and trust assumptions require review. No real MCP endpoint was contacted.
+
+The [patch](draft-mcp-revalidate-v2.patch) has SHA-256 `8e454f31ed0401d1b848a1df8e9ca1988ac84d379b92f093619bac32bb023879`; clean base `git apply --check` passed. After strict compile, the [focused log](draft-mcp-revalidate-v2-20270309.log), SHA-256 `7c69f5e69665a5c706c68d88ac03bedeff55560549ae6aa5e021d9036c638504`, records 112 passing tests:
+
+```sh
+MIX_ENV=test MIX_BUILD_PATH=../build TMPDIR=../tmp ERL_FLAGS='+S 2:2' mix test --no-compile test/ipse/session/draft_acceptance_test.exs test/ipse/session/draft_lineage_test.exs test/ipse/session/draft_native_test.exs test/ipse/session/draft_projection_test.exs test/ipse/session/draft_vertical_test.exs test/ipse/mcp/catalog_session_test.exs test/ipse/extension/session_test.exs test/ipse/extension/history_test.exs test/ipse/extension/subscriptions_test.exs test/ipse/extension/feeds_test.exs --seed 20270309 --max-cases 1
+```
+
+The snapshot awaits independent adversarial review and does not qualify live MCP, external discovery authorization, registered inference, a positive protected saved-consent journey, opaque non-ChatGPT continuation, the full baseline, or release documentation. Projected-history cutoffs and near-cap memory limits in `draft-history-dense.md` remain. A catalog server may itself be malicious; equality with its fresh response is not general server trust or authentication against an attacker who controls both server and local journal.
