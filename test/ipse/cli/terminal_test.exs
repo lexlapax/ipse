@@ -54,4 +54,44 @@ defmodule Ipse.CLITerminalTest do
     refute rendered =~ "\u{E0001}"
     assert rendered =~ "\\udb40\\udc01"
   end
+
+  test "complete worst-case native edit arguments fit the explicit display bound" do
+    text = String.duplicate(<<1>>, 1_048_576)
+    args = %{"path" => String.duplicate("p", 4096), "old" => text, "new" => text}
+
+    assert {:ok, display} =
+             Terminal.approval_display("edit", args, nil, "fresh", String.duplicate("c", 4096))
+
+    assert byte_size(display) > 12 * 1_048_576
+    assert byte_size(display) < 16 * 1_048_576
+    assert display =~ Jason.encode!(args, pretty: true)
+    assert display =~ "Type allow fresh"
+  end
+
+  test "exact escaped display limit is accepted and one further byte is refused whole" do
+    assert {:ok, empty} =
+             Terminal.approval_display("shell", %{"command" => ""}, nil, "fresh", "/tmp")
+
+    count = Ipse.Runner.Operator.display_limit() - byte_size(empty)
+
+    assert {:ok, display} =
+             Terminal.approval_display(
+               "shell",
+               %{"command" => String.duplicate("x", count)},
+               nil,
+               "fresh",
+               "/tmp"
+             )
+
+    assert byte_size(display) == Ipse.Runner.Operator.display_limit()
+
+    assert {:error, :display_too_large} =
+             Terminal.approval_display(
+               "shell",
+               %{"command" => String.duplicate("x", count + 1)},
+               nil,
+               "fresh",
+               "/tmp"
+             )
+  end
 end

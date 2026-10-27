@@ -34,7 +34,9 @@ fn main() {
     let name = unsafe { ptsname(fd) }; assert!(!name.is_null());
     let path = OsStr::from_bytes(unsafe { CStr::from_ptr(name) }.to_bytes());
     let slave = OpenOptions::new().read(true).write(true).custom_flags(flags).open(path).unwrap();
-    let args: Vec<_> = std::env::args_os().skip(1).collect();
+    let mut args: Vec<_> = std::env::args_os().skip(1).collect();
+    let channel = args.first().is_some_and(|a| a == "--channel");
+    if channel { args.remove(0); }
     assert!(!args.is_empty());
     let mut child = Command::new(&args[0]).args(&args[1..])
         .stdin(Stdio::from(slave.try_clone().unwrap()))
@@ -73,13 +75,21 @@ fn main() {
                 Err(e) => panic!("terminal read: {e}"),
             }
         }
-        let marker = format!("IPSE_FIXTURE_INPUT_{number}> ");
+        let marker = format!("IPSE_FIXTURE_INPUT_{number}> {}", if channel { "you> " } else { "" });
         if String::from_utf8_lossy(&output).contains(&marker) {
             master.write_all(format!("synthetic café 日本語 {number}\n").as_bytes()).unwrap();
             number += 1;
         } else if String::from_utf8_lossy(&output).contains(&format!("IPSE_FIXTURE_EMPTY_{number}> ")) {
             master.write_all(b"\n").unwrap();
             number += 1;
+        }
+        if channel {
+            let root = std::path::Path::new(args.last().unwrap());
+            for n in 1..=3 {
+                if String::from_utf8_lossy(&output).contains(&format!("IPSE_CHANNEL_WAIT_{n}> ")) {
+                    std::fs::write(root.join(format!("native-wait-{n}")), b"ready").unwrap();
+                }
+            }
         }
     };
     std::io::stdout().write_all(&output).unwrap();

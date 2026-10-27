@@ -101,4 +101,31 @@ defmodule Ipse.Session.InputTest do
     assert status == 0, output
     assert output =~ "SESSION_INPUT_CHECKS_PASSED"
   end
+
+  test "explicit native v2 preserves one MiB while v1 cannot claim the extended witness bound" do
+    text = String.duplicate("x", 1_048_576)
+
+    observation = %{
+      "version" => 2,
+      "event_id" => Ipse.Usage.id(),
+      "display_sha256" => Ipse.JSON.sha256("you> "),
+      "text_sha256" => Ipse.JSON.sha256(text),
+      "input_limit" => 1_048_576,
+      "display_limit" => 16_777_216
+    }
+
+    event = Input.received(Ipse.Usage.id(), Ipse.Usage.id(), text, text, observation)
+    assert event["version"] === 2
+    assert :ok = Input.validate_events([event])
+
+    for damaged <- [
+          Map.put(event, "version", 1),
+          put_in(event, ["observation", "version"], 1),
+          put_in(event, ["observation", "input_limit"], 1_048_577),
+          put_in(event, ["observation", "display_limit"], 16_777_217),
+          put_in(event, ["observation", "origin"], "interactive_operator")
+        ] do
+      assert {:error, :invalid_input_origin} = Input.validate_events([damaged])
+    end
+  end
 end

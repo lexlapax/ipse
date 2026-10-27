@@ -142,3 +142,77 @@ decision loading, artifact/capability/children, MCP configuration, existing
 profile/catalog/registry tests and decision accounting/bindings. Setup replacement
 retains the registry and its exact previous-file backup. No live model service,
 download, new dependency, package build or release was involved in this checkpoint.
+
+## P31 native input component checkpoint
+
+This dated component checkpoint does not complete P31. The integrating owner
+retains SourceIndex native-answer admission, knowledge consent/capture integration,
+whole-manual review, the combined baseline and independent adversarial audit.
+
+The CLI selects exactly one reader through a bounded, compile-bound native probe
+of matching actual terminal descriptors and protected channel-lock availability.
+Only an explicit nonterminal result selects the existing pipe reader. Helper
+identity/security failures, mismatched terminals and lock contention refuse;
+native input never switches to `IO.gets` later. Piped chat stays unattended.
+`--yes`, argv, interactive flags, copied codes and legacy role labels confer no
+native origin. Machine PTY automation can exercise the boundary; terminal
+observation does not establish that a human supplied the bytes.
+
+Protocol v1 retains its original 8-KiB limit and unchanged termios behavior.
+Explicit v2 supports an exact UTF-8 line up to 1 MiB and independently bounded
+escaped display up to 16 MiB. Valid edits have at most 1 MiB each of old/new
+content; worst-case JSON escaping expands that combined payload to about 12 MiB.
+The display allowance includes bounded paths and approval text. Exact-limit and
+limit+1 tests enforce whole-display acceptance/refusal. Unrepresentable full
+arguments are denied before approval/effect; no argument is truncated. Oversized
+or invalid input receives a visible whole-line refusal and produces no witness.
+
+V2 avoids canonical line truncation with a temporary noncanonical mode. A native
+guardian and reader in separate process groups retain independent original-state
+copies, peer-liveness pipes and the channel flock. Readiness binds both process
+IDs and nonce. The guardian reaps the reader, restores termios and flushes old
+input before its restoration receipt; that receipt retries for at most 500 ms
+under output backpressure. Reader-side restoration covers guardian loss with a
+distinct receipt that cannot substitute for confirmed cleanup. An independent
+Elixir controller is tracked by Session resources/lock ownership. Cancellation
+requests cooperative cleanup; missing restoration/exit receipts or an expired
+cleanup deadline report unknown cleanup. Retained native locks fence replacement
+while an old holder remains. Individual process faults are covered; simultaneous
+loss of both restorers and arbitrary same-user tampering are outside the guarantee.
+
+The locked Session binds input to its actual subscribed client, persistent reader,
+channel generation and closed purpose. Single-use prompt tickets preserve native
+provenance across the existing 16-entry/1-MiB queue. Cancellation and client/channel
+death invalidate them. The reader requests another display only after the client
+has processed its preceding line. Native questions use host-created question,
+call/arguments hashes, fresh render IDs/codes and the exact channel. The Session
+parses raw input itself. Atomic `operator_answer` v2 records contain the committed
+message and closed original-text/hash/observation receipt. Saved reconstruction
+requires the actual question checkpoint, exact message hash and unique source/
+observation IDs. V1 answers remain unverified; clarification never grants effects.
+Standalone review has not been added or given a registration bypass: Input still
+requires the actual held Session lock.
+
+Verification used Linux, Elixir 1.20.4/OTP 29 and synthetic fixtures only. Strict
+compilation and whitespace checks passed. The serial native suite passed 15 tests
+with one internal subprocess entry ignored; after the final receipt retry, all
+five v2 tests passed again. Those cover exact 1-MiB/Unicode input, limit+1 and
+malformed input, reader/guardian kills, stopped reader plus host loss, and exact
+termios restoration. Three actual CLI/channel fixtures cover stale/fresh codes,
+literal answers, queued tickets, cancellation, reader/Input-service death, Session
+close/death during reads, and abrupt VM death with independent restoration.
+Three pure answer/replay tests passed alongside them. Existing pipe/CLI and v1
+witness regressions passed. One new replay fixture initially lacked its required
+Session header; its repaired focused rerun passed. Display-boundary, malicious
+frame and missing-restoration deadline tests also passed.
+
+Logs are `/tmp/ipse-operator-native-final.log`,
+`/tmp/ipse-operator-v2-native-final.log`, `/tmp/ipse-operator-replay-cli-final.log`,
+`/tmp/ipse-operator-regression-tests.log` and `/tmp/ipse-operator-deadline-final.log`.
+CLI checks used helper SHA-256
+`7f39f8aa4d83f76c175f9f25e06d586b0e5a843982b44793d9fe10fc20127e7e`.
+The integrating owner must rebuild/rebind the final combined helper including the
+later receipt retry and independent storage changes. There were no live model
+services, paid calls, qualification inputs, downloads or new dependencies. Native
+changes use the existing Rust standard-library/OS FFI boundary. Elixir 1.18/OTP 27,
+macOS, human operation and the final combined build require their own verification.

@@ -164,7 +164,7 @@ defmodule Ipse.Session.Turn do
          tool_result(s, call, "Denied by user. Do not evade this denial.", "denied", "denied")}
   end
 
-  def answer(s, id, answers, question) do
+  def answer(s, id, answers, question, origin \\ nil) do
     case Questions.validate_answers(question.arguments, answers) do
       {:ok, answers} ->
         s = Session.enroll_feeds(s)
@@ -179,17 +179,46 @@ defmodule Ipse.Session.Turn do
             "result_recorded"
           )
 
-        Session.record(s, %{
+        event = %{
           "type" => "operator_answer",
           "version" => 1,
           "id" => id,
           "message" => message
-        })
+        }
+
+        event =
+          if origin do
+            {:ok, receipt} =
+              Ipse.Session.OperatorAnswer.receipt(
+                s.id,
+                question,
+                origin.client_id,
+                origin.pieces,
+                message
+              )
+
+            event |> Map.put("version", 2) |> Map.put("origin", receipt)
+          else
+            event
+          end
+
+        Session.record(s, event)
 
         s = Session.finish_wait(s, "answered")
 
         Session.notify(s, {:tool_result, "ask_operator", message["content"]})
-        next = %{s | messages: s.messages ++ [message], calls: [], question: nil, phase: :idle}
+
+        next = %{
+          s
+          | messages: s.messages ++ [message],
+            calls: [],
+            question: nil,
+            phase: :idle,
+            operator_render: nil,
+            operator_answers: %{},
+            operator_pieces: []
+        }
+
         {:reply, :ok, model(next)}
 
       error ->
@@ -1137,7 +1166,10 @@ defmodule Ipse.Session.Turn do
               calls: [call],
               phase: :question,
               task: nil,
-              job_ref: nil
+              job_ref: nil,
+              operator_render: nil,
+              operator_answers: %{},
+              operator_pieces: []
           }
         else
           message =

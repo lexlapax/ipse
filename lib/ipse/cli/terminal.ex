@@ -131,25 +131,11 @@ defmodule Ipse.CLI.Terminal do
   EOF finishes accepted work; errors and /cancel clear queued input.
   """
 
-  defp read_input(client) do
-    case IO.gets("you> ") do
-      :eof ->
-        send(client, {:input, :eof})
-
-      {:error, _} ->
-        send(client, {:input, :eof})
-
-      text ->
-        text = if String.valid?(text), do: String.trim(text), else: text
-        send(client, {:input, text})
-        read_input(client)
-    end
-  end
-
-  defp client_loop(s) do
+  defp client_loop(s, injected \\ nil) do
+    s = if injected == nil, do: refresh_reader(s), else: s
     pid = s.pid
 
-    if s.approval != nil and s.approval_redraw do
+    if s.approval != nil and s.approval_redraw and s.input_mode != :native do
       {name, args, context} = s.approval_display
 
       if context,
@@ -163,9 +149,67 @@ defmodule Ipse.CLI.Terminal do
     end
 
     s = %{s | approval_redraw: true}
-    {event, s} = next_client_event(s)
+    {event, s} = if injected == nil, do: next_client_event(s), else: {injected, s}
 
     case event do
+      {:native_input, generation, request, text, witness} ->
+        native_input(s, generation, request, text, witness)
+
+      {:observed_prompt, text, ticket} ->
+        cond do
+          s.cancelling ->
+            Ipse.Session.discard_input(s.pid, s.input_channel, ticket)
+
+            puts(
+              :stderr,
+              "Input received during cancellation was discarded. Send it again after cancellation finishes."
+            )
+
+            client_loop(s)
+
+          s.busy and length(s.queued) < 16 and
+              queued_bytes(s.queued) + byte_size(text) <= 1_048_576 ->
+            puts(:stderr, "Queued for the next turn. /cancel clears active and queued work.")
+            client_loop(%{s | queued: s.queued ++ [{text, ticket}]})
+
+          s.busy ->
+            Ipse.Session.discard_input(s.pid, s.input_channel, ticket)
+
+            puts(
+              :stderr,
+              "Input refused: queued tasks are limited to 16 entries and 1 MiB of UTF-8 text. Send it again after work finishes."
+            )
+
+            client_loop(s)
+
+          true ->
+            dispatch_prompt(s.pid, {text, ticket})
+            client_loop(%{s | busy: true})
+        end
+
+      {:input_mode, _} ->
+        client_loop(s)
+
+      {:input_notice, reason} ->
+        puts(
+          :stderr,
+          if(reason == :operator_input_too_large,
+            do: "Native input exceeds 1 MiB. The entire line was refused; send a smaller prompt.",
+            else: "Native input was not valid UTF-8. The entire line was refused; send it again."
+          )
+        )
+
+        client_loop(s)
+
+      {:input_failure, _reason} ->
+        puts(
+          :stderr,
+          "The verified operator channel stopped or its cleanup could not be confirmed. Active work is being cancelled; inspect the saved session before resuming."
+        )
+
+        Ipse.Session.cancel(s.pid)
+        1
+
       {:ipse, ^pid, event}
       when s.approval != nil and is_tuple(event) and elem(event, 0) in @deferred_display ->
         bytes = :erlang.external_size(event)
@@ -441,7 +485,7 @@ defmodule Ipse.CLI.Terminal do
 
       {:input, text} when s.busy ->
         if String.valid?(text) and length(s.queued) < 16 and
-             byte_size(text) + Enum.sum(Enum.map(s.queued, &byte_size/1)) <= 1_048_576 do
+             byte_size(text) + queued_bytes(s.queued) <= 1_048_576 do
           puts(:stderr, "Queued for the next turn. /cancel interrupts current work.")
           client_loop(%{s | queued: s.queued ++ [text]})
         else
@@ -523,14 +567,17 @@ defmodule Ipse.CLI.Terminal do
         else
           puts(:stderr, "Waiting for operator clarification (not action approval):")
           token = Base.encode16(:crypto.strong_rand_bytes(8), case: :lower)
-          puts(:stderr, question_prompt(hd(arguments["questions"]), token))
+
+          if s.input_mode != :native,
+            do: puts(:stderr, question_prompt(hd(arguments["questions"]), token))
 
           client_loop(%{
             s
             | busy: true,
               question: {id, arguments, arguments["questions"]},
               question_token: token,
-              question_answers: %{}
+              question_answers: %{},
+              native_render: nil
           })
         end
 
@@ -577,6 +624,8 @@ defmodule Ipse.CLI.Terminal do
             if status == :error, do: 1, else: 0
 
           status == :error ->
+            discard_queue(s)
+
             if s.queued != [],
               do:
                 puts(
@@ -653,8 +702,200 @@ defmodule Ipse.CLI.Terminal do
     end
   end
 
-  defp dispatch_prompt(pid, text) do
-    case Ipse.Session.prompt(pid, text) do
+  defp queued_bytes(queue),
+    do:
+      Enum.reduce(queue, 0, fn item, total ->
+        total +
+          byte_size(
+            case item do
+              {text, _} -> text
+              text -> text
+            end
+          )
+      end)
+
+  defp discard_queue(s) do
+    Enum.each(s.queued, fn
+      {_, ticket} -> Ipse.Session.discard_input(s.pid, s.input_channel, ticket)
+      _ -> :ok
+    end)
+  end
+
+  defp refresh_reader(%{input_mode: mode} = s) when mode != :native, do: s
+  defp refresh_reader(%{exit: true, reader_key: :closed} = s), do: s
+
+  defp refresh_reader(%{exit: true} = s) do
+    Ipse.Session.cancel_input_read(s.pid, s.input_channel)
+    %{s | reader_key: :closed, reader_generation: make_ref()}
+  end
+
+  defp refresh_reader(s) do
+    s =
+      if s.reader_key == nil and s.approval != nil,
+        do: %{s | approval_token: Base.encode16(:crypto.strong_rand_bytes(8), case: :lower)},
+        else: s
+
+    {s, key, request} = reader_request(s)
+
+    if key == s.reader_key do
+      s
+    else
+      :ok = Ipse.Session.cancel_input_read(s.pid, s.input_channel)
+      generation = make_ref()
+      send(s.reader, {:read, generation, request})
+      %{s | reader_key: key, reader_generation: generation}
+    end
+  end
+
+  defp reader_request(%{approval: approval} = s) when approval != nil do
+    {name, args, context} = s.approval_display
+
+    case approval_display(name, args, context, s.approval_token, s.cwd) do
+      {:ok, display} ->
+        {s, {:approval, approval, s.approval_token, display},
+         %{"kind" => "control", "display" => display}}
+
+      {:error, :display_too_large} ->
+        Ipse.Session.approve(s.pid, approval, false)
+
+        puts(
+          :stderr,
+          "Approval refused: complete escaped arguments exceed the 16 MiB terminal display limit. No effect was approved."
+        )
+
+        reader_request(%{s | approval: nil, approval_display: nil})
+    end
+  end
+
+  defp reader_request(%{question: {id, arguments, [item | _]}} = s) do
+    item_id = item["id"]
+
+    render =
+      case s.native_render do
+        %{"question_id" => ^id, "item_id" => ^item_id} = render -> {:ok, render}
+        :unverified -> {:error, :extension_question}
+        _ -> Ipse.Session.render_question(s.pid, s.input_channel, item["id"])
+      end
+
+    case render do
+      {:ok, render} ->
+        s = %{s | native_render: render}
+
+        {s, {:question, render["render_id"]},
+         %{"kind" => "question", "render_id" => render["render_id"]}}
+
+      {:error, :extension_question} ->
+        display = escape(question_prompt(item, s.question_token) <> "\nanswer> ")
+
+        {%{s | native_render: :unverified},
+         {:extension_question, id, item["id"], s.question_token, arguments},
+         %{"kind" => "control", "display" => display}}
+
+      _ ->
+        send(self(), {:input_failure, :invalid_operator_render})
+
+        {s, :invalid_question,
+         %{"kind" => "control", "display" => "Question channel unavailable.\n"}}
+    end
+  end
+
+  defp reader_request(s), do: {s, {:prompt, s.cancelling}, %{"kind" => "prompt"}}
+
+  @doc false
+  def approval_display(name, args, context, token, cwd) do
+    display =
+      if(context,
+        do: "External MCP target:\n" <> Jason.encode!(context, pretty: true) <> "\n",
+        else: ""
+      ) <>
+        "\nWaiting for approval: #{name}\nAllow #{name}?\n#{Jason.encode!(args, pretty: true)}\nType allow #{token} to allow once, n to deny." <>
+        permission_choice(name, token, cwd) <> "\napproval> "
+
+    display = escape(display)
+
+    if byte_size(display) <= Ipse.Runner.Operator.display_limit(),
+      do: {:ok, display},
+      else: {:error, :display_too_large}
+  end
+
+  defp native_input(s, generation, request, text, witness) do
+    normalized = if String.valid?(text), do: String.trim(text), else: text
+
+    cond do
+      generation != s.reader_generation ->
+        Ipse.Session.discard_input(s.pid, s.input_channel, witness)
+        client_loop(s)
+
+      normalized == "" or String.starts_with?(normalized, "/") ->
+        Ipse.Session.discard_input(s.pid, s.input_channel, witness)
+        next = %{s | reader_key: nil}
+        next = if request["kind"] == "question", do: %{next | native_render: nil}, else: next
+        client_loop(next, {:input, normalized})
+
+      request["kind"] == "question" ->
+        result =
+          Ipse.Session.answer_observed(
+            s.pid,
+            s.input_channel,
+            request["render_id"],
+            text,
+            witness
+          )
+
+        Ipse.Session.discard_input(s.pid, s.input_channel, witness)
+        s = %{s | reader_key: nil}
+
+        case result do
+          :ok ->
+            client_loop(%{
+              s
+              | question: nil,
+                native_render: nil,
+                question_answers: %{},
+                busy: true
+            })
+
+          {:ok, :more} ->
+            {id, args, [_ | rest]} = s.question
+            client_loop(%{s | question: {id, args, rest}, native_render: nil})
+
+          _ ->
+            puts(
+              :stderr,
+              "Invalid or stale answer. The question will be rendered with a fresh code."
+            )
+
+            client_loop(%{s | native_render: nil})
+        end
+
+      request["kind"] == "prompt" ->
+        case Ipse.Session.stage_input(s.pid, s.input_channel, text, witness) do
+          {:ok, ticket} ->
+            client_loop(%{s | reader_key: nil}, {:observed_prompt, text, ticket})
+
+          _ ->
+            puts(
+              :stderr,
+              "Observed input was not accepted. Send it again after the current display settles."
+            )
+
+            client_loop(%{s | reader_key: nil})
+        end
+
+      true ->
+        Ipse.Session.discard_input(s.pid, s.input_channel, witness)
+        client_loop(%{s | reader_key: nil}, {:input, normalized})
+    end
+  end
+
+  defp dispatch_prompt(pid, input) do
+    result =
+      case input do
+        {text, witness} -> Ipse.Session.prompt(pid, text, witness)
+        text -> Ipse.Session.prompt(pid, text)
+      end
+
+    case result do
       :ok ->
         :ok
 
@@ -728,10 +969,20 @@ defmodule Ipse.CLI.Terminal do
   def help, do: puts(String.replace(@help, "Ipse VERSION", "Ipse " <> Ipse.version()))
 
   def interact(pid, ref, interactive, prompt, cwd) do
-    client = self()
+    input = if interactive, do: Ipse.CLI.Input.start(pid), else: {:ok, nil, nil, :none}
+    interact_input(input, pid, ref, interactive, prompt, cwd)
+  end
 
-    reader = if interactive, do: spawn(fn -> read_input(client) end), else: nil
+  defp interact_input({:error, _}, _pid, _ref, _interactive, _prompt, _cwd) do
+    puts(
+      :stderr,
+      "Operator input is unavailable. The terminal channel could not be verified; no alternate reader was started."
+    )
 
+    1
+  end
+
+  defp interact_input({:ok, reader, channel, mode}, pid, ref, interactive, prompt, cwd) do
     if interactive,
       do: puts("Type a task, $review, or /help. Use /cancel while work is running.")
 
@@ -742,6 +993,12 @@ defmodule Ipse.CLI.Terminal do
         pid: pid,
         ref: ref,
         interactive: interactive,
+        reader: reader,
+        input_channel: channel,
+        input_mode: mode,
+        reader_key: nil,
+        reader_generation: nil,
+        native_render: nil,
         busy: prompt != nil,
         cancelling: false,
         approval: nil,

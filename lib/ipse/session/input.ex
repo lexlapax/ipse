@@ -29,6 +29,19 @@ defmodule Ipse.Session.Input do
   end
 
   @doc false
+  def stage(witness, text, binding),
+    do: GenServer.call(__MODULE__, {:stage, witness, text, binding})
+
+  @doc false
+  def submit(ticket, text, binding),
+    do: GenServer.call(__MODULE__, {:submit, ticket, text, binding})
+
+  @doc false
+  def discard(witness), do: GenServer.call(__MODULE__, {:discard, witness})
+  @doc false
+  def cancel_read, do: GenServer.call(__MODULE__, :cancel_read)
+
+  @doc false
   def invalidate do
     GenServer.call(__MODULE__, :invalidate)
   catch
@@ -43,7 +56,12 @@ defmodule Ipse.Session.Input do
     s =
       Enum.reduce(s.entries, s, fn {key, e}, acc ->
         if e.target == caller do
-          if e.from, do: GenServer.reply(e.from, {:error, :operator_input_unavailable})
+          reason =
+            if e.binding[:channel_id],
+              do: :operator_input_cancelled,
+              else: :operator_input_unavailable
+
+          if e.from, do: GenServer.reply(e.from, {:error, reason})
           remove(acc, key, e)
         else
           acc
@@ -51,6 +69,72 @@ defmodule Ipse.Session.Input do
       end)
 
     {:reply, :ok, s}
+  end
+
+  def handle_call(:cancel_read, {caller, _}, s) do
+    next =
+      Enum.reduce(s.entries, s, fn {key, e}, acc ->
+        if e.target == caller and Map.get(e, :kind) != :staged do
+          if e.from, do: GenServer.reply(e.from, {:error, :operator_input_cancelled})
+          remove(acc, key, e)
+        else
+          acc
+        end
+      end)
+
+    {:reply, :ok, next}
+  end
+
+  def handle_call({:discard, witness}, {caller, _}, s) do
+    case s.entries[witness] do
+      %{target: ^caller} = e -> {:reply, :ok, remove(s, witness, e)}
+      _ -> {:reply, {:error, :invalid_input_witness}, s}
+    end
+  end
+
+  def handle_call({:stage, witness, text, binding}, {caller, _}, s) do
+    case s.entries[witness] do
+      %{target: ^caller, task: nil, observation: observation} = e when is_map(observation) ->
+        staged =
+          Enum.filter(s.entries, fn {_, entry} ->
+            entry.target == caller and Map.get(entry, :kind) == :staged
+          end)
+
+        bytes =
+          Enum.reduce(staged, 0, fn {_, entry}, n -> n + byte_size(entry.observation["text"]) end)
+
+        if Map.get(e, :kind) != :staged and binding[:purpose] == "prompt" and
+             valid_witness?(e, text, binding) and length(staged) < 16 and
+             bytes + byte_size(text) <= 1_048_576 do
+          if e.timer, do: Process.cancel_timer(e.timer)
+          ticket = make_ref()
+          next = s |> update_in([:entries], &Map.delete(&1, witness))
+          next = put_in(next.entries[ticket], %{e | kind: :staged, timer: nil, expires: nil})
+          {:reply, {:ok, ticket}, next}
+        else
+          {:reply, {:error, :invalid_input_witness}, remove(s, witness, e)}
+        end
+
+      _ ->
+        {:reply, {:error, :invalid_input_witness}, s}
+    end
+  end
+
+  def handle_call({:submit, ticket, text, binding}, {caller, _}, s) do
+    case s.entries[ticket] do
+      %{target: ^caller, kind: :staged, observation: o} = e ->
+        valid =
+          e.binding == binding and is_binary(text) and o["text"] == text and
+            o["text_sha256"] == Ipse.JSON.sha256(text)
+
+        result =
+          if valid, do: {:ok, Map.delete(o, "text")}, else: {:error, :invalid_input_witness}
+
+        {:reply, result, remove(s, ticket, e)}
+
+      _ ->
+        {:reply, {:error, :invalid_input_witness}, s}
+    end
   end
 
   def handle_call({:start, binding, display, timeout, client, scope}, {target, _}, s) do
@@ -61,7 +145,9 @@ defmodule Ipse.Session.Input do
         {:reply, {:error, :operator_input_unavailable}, s}
 
       map_size(s.entries) >= @limit or
-          Enum.any?(s.entries, fn {_, e} -> e.target == target or e.task != nil end) ->
+          Enum.any?(s.entries, fn {_, e} ->
+            (e.target == target and Map.get(e, :kind) != :staged) or e.task != nil
+          end) ->
         {:reply, {:error, :operator_input_busy}, s}
 
       true ->
@@ -83,7 +169,11 @@ defmodule Ipse.Session.Input do
 
             Ipse.Session.Resources.await_ready(scope, input_owner)
             Ipse.Session.Resources.bind(scope)
-            result = Ipse.Runner.operator_input(display, timeout)
+
+            result =
+              if binding[:channel_id],
+                do: Ipse.Runner.operator_input(display, timeout, 2),
+                else: Ipse.Runner.operator_input(display, timeout)
 
             if Ipse.Session.Resources.close(scope) == :ok,
               do: result,
@@ -94,6 +184,7 @@ defmodule Ipse.Session.Input do
 
         entry = %{
           target: target,
+          kind: :observation,
           client: client,
           target_monitor: Process.monitor(target),
           client_monitor: Process.monitor(client),
@@ -136,12 +227,10 @@ defmodule Ipse.Session.Input do
 
   def handle_call({:consume, witness, text, binding}, {caller, _}, s) do
     case s.entries[witness] do
-      %{target: ^caller, observation: observation, expires: expires} = entry
+      %{target: ^caller, observation: observation} = entry
       when is_map(observation) ->
         valid =
-          entry.binding == binding and is_binary(text) and byte_size(text) <= 8192 and
-            observation["text_sha256"] == Ipse.JSON.sha256(text) and
-            observation["text"] == text and System.monotonic_time(:millisecond) < expires
+          Map.get(entry, :kind) != :staged and valid_witness?(entry, text, binding)
 
         result =
           if valid,
@@ -164,7 +253,8 @@ defmodule Ipse.Session.Input do
 
         case {entry.cancelled, result} do
           {false, {:ok, %{"text" => text, "display_sha256" => hash} = observation}}
-          when hash == entry.display_sha256 and byte_size(text) > 0 ->
+          when hash == entry.display_sha256 and
+                 (byte_size(text) > 0 or is_map_key(entry.binding, :channel_id)) ->
             timer = Process.send_after(self(), {:expire, key}, @lifetime)
 
             entry = %{
@@ -180,7 +270,25 @@ defmodule Ipse.Session.Input do
             {:noreply, put_in(s.entries[key], entry)}
 
           _ ->
-            if entry.from, do: GenServer.reply(entry.from, {:error, :operator_input_unavailable})
+            reason =
+              case result do
+                {:error, reason}
+                when reason in [
+                       :operator_nonterminal,
+                       :operator_input_cancelled,
+                       :operator_input_eof,
+                       :operator_cleanup_unconfirmed,
+                       :operator_input_too_large,
+                       :operator_input_invalid_utf8,
+                       :operator_input_interrupted
+                     ] ->
+                  reason
+
+                _ ->
+                  :operator_input_unavailable
+              end
+
+            if entry.from, do: GenServer.reply(entry.from, {:error, reason})
             {:noreply, remove(s, key, %{entry | task: nil})}
         end
 
@@ -246,12 +354,33 @@ defmodule Ipse.Session.Input do
 
   defp valid_request?(target, binding, display, timeout) do
     is_pid(target) and node(target) == node() and Process.alive?(target) and
-      is_map(binding) and Enum.sort(Map.keys(binding)) == [:cwd, :generation, :session_id] and
+      is_map(binding) and valid_binding?(binding) and
       is_binary(binding[:cwd]) and byte_size(binding.cwd) <= 4096 and
       valid_id?(binding[:session_id]) and valid_id?(binding[:generation]) and
-      is_binary(display) and String.valid?(display) and byte_size(display) in 1..8192 and
+      is_binary(display) and String.valid?(display) and
+      byte_size(display) in 1..if(binding[:channel_id], do: 16_777_216, else: 8192) and
       Ipse.CLI.Terminal.escape(display) == display and
       is_integer(timeout) and timeout in 1000..600_000
+  end
+
+  defp valid_binding?(binding) do
+    keys = Enum.sort(Map.keys(binding))
+
+    keys == [:cwd, :generation, :session_id] or
+      (keys == [:channel_id, :cwd, :generation, :purpose, :render_id, :session_id] and
+         valid_id?(binding.channel_id) and binding.purpose in ["prompt", "question", "control"] and
+         if(binding.purpose == "question",
+           do: valid_id?(binding.render_id),
+           else: binding.render_id == nil
+         ))
+  end
+
+  defp valid_witness?(entry, text, binding) do
+    entry.binding == binding and is_binary(text) and
+      byte_size(text) <= if(binding[:channel_id], do: 1_048_576, else: 8192) and
+      entry.observation["text_sha256"] == Ipse.JSON.sha256(text) and
+      entry.observation["text"] == text and is_integer(entry.expires) and
+      System.monotonic_time(:millisecond) < entry.expires
   end
 
   defp valid_id?(id), do: is_binary(id) and Regex.match?(~r/\A[0-9a-f]{32}\z/, id)
@@ -260,7 +389,7 @@ defmodule Ipse.Session.Input do
   def received(session, turn, original, effective, observation) do
     %{
       "type" => "input_received",
-      "version" => 1,
+      "version" => if(is_map(observation) and observation["version"] === 2, do: 2, else: 1),
       "session_id" => session,
       "turn_id" => turn,
       "source_id" => Ipse.Usage.id(),
@@ -315,24 +444,48 @@ defmodule Ipse.Session.Input do
       Enum.sort(
         ~w(type version session_id turn_id source_id text text_sha256 effective_sha256 origin observation)
       ) and
-      e["version"] === 1 and valid_id?(e["session_id"]) and
+      e["version"] in [1, 2] and valid_id?(e["session_id"]) and
       (id == nil or e["session_id"] == id) and valid_id?(e["source_id"]) and
       valid_id?(e["turn_id"]) and
       is_binary(e["text"]) and String.valid?(e["text"]) and byte_size(e["text"]) in 1..1_048_576 and
       e["text_sha256"] == Ipse.JSON.sha256(e["text"]) and valid_hash?(e["effective_sha256"]) and
       case {e["origin"], e["observation"]} do
         {"unattended_input", nil} ->
-          true
+          e["version"] === 1
 
         {"interactive_operator", o} when is_map(o) ->
-          Enum.sort(Map.keys(o)) == ~w(display_sha256 event_id text_sha256 version) and
-            o["version"] === 1 and valid_id?(o["event_id"]) and valid_hash?(o["display_sha256"]) and
-            o["text_sha256"] == e["text_sha256"] and byte_size(e["text"]) <= 8192
+          valid_observation?(o, e["text"], e["version"])
 
         _ ->
           false
       end
   end
+
+  @doc false
+  def valid_observation?(o, text, version) when is_map(o) and is_binary(text) do
+    common =
+      valid_id?(o["event_id"]) and valid_hash?(o["display_sha256"]) and
+        o["text_sha256"] == Ipse.JSON.sha256(text)
+
+    common and
+      case version do
+        1 ->
+          Enum.sort(Map.keys(o)) == ~w(display_sha256 event_id text_sha256 version) and
+            o["version"] === 1 and byte_size(text) <= 8192
+
+        2 ->
+          Enum.sort(Map.keys(o)) ==
+            ~w(display_limit display_sha256 event_id input_limit text_sha256 version) and
+            o["version"] === 2 and o["input_limit"] === 1_048_576 and
+            o["display_limit"] === 16_777_216 and
+            byte_size(text) <= 1_048_576
+
+        _ ->
+          false
+      end
+  end
+
+  def valid_observation?(_, _, _), do: false
 
   defp valid_hash?(hash), do: is_binary(hash) and Regex.match?(~r/\A[0-9a-f]{64}\z/, hash)
 end

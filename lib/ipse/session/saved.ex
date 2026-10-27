@@ -8,6 +8,7 @@ defmodule Ipse.Session.Saved do
   @doc "Rebuild pure resume facts after the owner has validated sources and reloaded its journal."
   def restore(events, id) do
     with :ok <- Ipse.Session.Input.validate_events(events, id),
+         :ok <- Ipse.Session.OperatorAnswer.validate_events(events, id),
          {:ok, reference} <- Ipse.Session.Reference.restore(events, id),
          {:ok, accounting} <- Ipse.Usage.restore(events, id),
          {:ok, extension_state} <- Actions.restore(events),
@@ -84,6 +85,7 @@ defmodule Ipse.Session.Saved do
 
   defp validate_context_events(events) do
     with :ok <- Ipse.Session.Input.validate_events(events),
+         :ok <- Ipse.Session.OperatorAnswer.validate_events(events),
          {:ok, _} <- Ipse.Session.Reference.restore(events),
          :ok <- Ipse.Journal.validate_limit_events(events),
          :ok <- validate_handoff_events(events),
@@ -396,7 +398,8 @@ defmodule Ipse.Session.Saved do
       if event["type"] == "operator_answer", do: "result_recorded", else: "not_started"
 
     valid =
-      event["version"] == 1 and event["id"] == question.id and is_map(message) and
+      (event["version"] === 1 or (event["type"] == "operator_answer" and event["version"] === 2)) and
+        event["id"] == question.id and is_map(message) and
         Map.delete(message, "content") ==
           Map.delete(Questions.tool_result(question.call, "", expected_status), "content")
 
@@ -405,7 +408,9 @@ defmodule Ipse.Session.Saved do
         {:ok,
          %{"answers" => answers, "notice" => "Clarification only; no action permission."} = result}
         when map_size(result) == 2 ->
-          match?({:ok, _}, Questions.validate_answers(question.arguments, answers))
+          match?({:ok, _}, Questions.validate_answers(question.arguments, answers)) and
+            (event["version"] === 1 or
+               Ipse.Session.OperatorAnswer.valid_receipt?(event["origin"], nil, question, message))
 
         _ ->
           false

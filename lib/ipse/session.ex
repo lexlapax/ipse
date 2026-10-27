@@ -79,6 +79,33 @@ defmodule Ipse.Session do
   def permissions(pid), do: GenServer.call(pid, :permissions)
   def clear_permissions(pid), do: GenServer.call(pid, :clear_permissions)
   def answer(pid, id, answers), do: GenServer.call(pid, {:answer, id, answers})
+  @doc false
+  def open_input_channel(pid, reader), do: GenServer.call(pid, {:open_input_channel, reader})
+  @doc false
+  def observe_channel(pid, channel, request, timeout \\ 120_000) do
+    with {:ok, lease} <- GenServer.call(pid, {:observe_channel, channel, request, timeout}) do
+      Ipse.Session.Input.await(lease, timeout)
+    end
+  end
+
+  @doc false
+  def cancel_input_read(pid, channel), do: GenServer.call(pid, {:cancel_input_read, channel})
+  @doc false
+  def stage_input(pid, channel, text, witness),
+    do: GenServer.call(pid, {:stage_input, channel, text, witness})
+
+  @doc false
+  def discard_input(pid, channel, witness),
+    do: GenServer.call(pid, {:discard_input, channel, witness})
+
+  @doc false
+  def render_question(pid, channel, item),
+    do: GenServer.call(pid, {:render_question, channel, item})
+
+  @doc false
+  def answer_observed(pid, channel, render, text, witness),
+    do: GenServer.call(pid, {:answer_observed, channel, render, text, witness})
+
   def cancel(pid), do: GenServer.call(pid, :cancel, 10_000)
   def materialize_result(pid, delivery), do: ResultSource.materialize_session(pid, delivery)
   def read_saved_result(pid, request), do: ResultSource.read_session(pid, request)
@@ -136,6 +163,32 @@ defmodule Ipse.Session do
 
   defp input_binding(s),
     do: %{session_id: s.id, cwd: s.cwd, generation: s.input_generation}
+
+  defp operator_binding(s, purpose, render),
+    do: %{
+      session_id: s.id,
+      cwd: s.cwd,
+      generation: s.operator_channel.generation,
+      channel_id: s.operator_channel.id,
+      purpose: purpose,
+      render_id: render
+    }
+
+  defp operator_request(s, %{"kind" => "question", "render_id" => id} = request)
+       when map_size(request) == 2 do
+    case s.operator_render do
+      %{"render_id" => ^id, "display" => display} -> {:ok, display, "question", id}
+      _ -> :error
+    end
+  end
+
+  defp operator_request(_s, %{"kind" => "prompt"} = request) when map_size(request) == 1,
+    do: {:ok, "you> ", "prompt", nil}
+
+  defp operator_request(_s, %{"kind" => "control", "display" => display} = request)
+       when map_size(request) == 2 and is_binary(display), do: {:ok, display, "control", nil}
+
+  defp operator_request(_, _), do: :error
 
   def diagnostics(pid), do: GenServer.call(pid, :diagnostics)
   def stop_observability(pid), do: GenServer.call(pid, :stop_observability)
@@ -248,6 +301,10 @@ defmodule Ipse.Session do
         task: nil,
         prompt_from: nil,
         input_generation: Ipse.Usage.id(),
+        operator_channel: nil,
+        operator_render: nil,
+        operator_answers: %{},
+        operator_pieces: [],
         reference: saved.reference,
         task_cleanup_failed: false,
         job_ref: nil,
@@ -1272,6 +1329,171 @@ defmodule Ipse.Session do
     {:reply, :ok, %{s | task: task, phase: :context_refresh, job_ref: nil}}
   end
 
+  def handle_call({:open_input_channel, reader}, {client, _}, %{subscriber: client} = s)
+      when is_pid(reader) and node(reader) == node() do
+    if Process.alive?(reader) do
+      :ok = Ipse.Session.Input.invalidate()
+
+      if s.operator_channel do
+        Process.demonitor(s.operator_channel.client_monitor, [:flush])
+        Process.demonitor(s.operator_channel.reader_monitor, [:flush])
+      end
+
+      channel = %{
+        id: Ipse.Usage.id(),
+        generation: Ipse.Usage.id(),
+        client: client,
+        reader: reader,
+        client_monitor: Process.monitor(client),
+        reader_monitor: Process.monitor(reader)
+      }
+
+      {:reply, {:ok, channel.id},
+       %{
+         s
+         | operator_channel: channel,
+           operator_render: nil,
+           operator_answers: %{},
+           operator_pieces: []
+       }}
+    else
+      {:reply, {:error, :operator_input_unavailable}, s}
+    end
+  end
+
+  def handle_call({:open_input_channel, _}, _, s),
+    do: {:reply, {:error, :operator_input_unavailable}, s}
+
+  def handle_call(
+        {:observe_channel, channel, request, timeout},
+        {reader, _},
+        %{operator_channel: %{id: channel, reader: reader}} = s
+      ) do
+    case operator_request(s, request) do
+      {:ok, display, purpose, render} ->
+        {:ok, scope} = Ipse.Session.Resources.start(self())
+        :ok = Ipse.Session.Lock.track(scope, :scope)
+
+        result =
+          Ipse.Session.Input.start(
+            operator_binding(s, purpose, render),
+            display,
+            timeout,
+            reader,
+            scope
+          )
+
+        if not match?({:ok, _}, result), do: Ipse.Session.Resources.stop_async(scope)
+        {:reply, result, s}
+
+      _ ->
+        {:reply, {:error, :operator_input_unavailable}, s}
+    end
+  end
+
+  def handle_call({:observe_channel, _, _, _}, _, s),
+    do: {:reply, {:error, :operator_input_unavailable}, s}
+
+  def handle_call(
+        {:cancel_input_read, channel},
+        {client, _},
+        %{operator_channel: %{id: channel, client: client}} = s
+      ) do
+    {:reply, Ipse.Session.Input.cancel_read(), s}
+  end
+
+  def handle_call({:cancel_input_read, _}, _, s),
+    do: {:reply, {:error, :operator_input_unavailable}, s}
+
+  def handle_call(
+        {:stage_input, channel, text, witness},
+        {client, _},
+        %{operator_channel: %{id: channel, client: client}} = s
+      ) do
+    {:reply, Ipse.Session.Input.stage(witness, text, operator_binding(s, "prompt", nil)), s}
+  end
+
+  def handle_call({:stage_input, _, _, _}, _, s),
+    do: {:reply, {:error, :invalid_input_witness}, s}
+
+  def handle_call(
+        {:discard_input, channel, witness},
+        {client, _},
+        %{operator_channel: %{id: channel, client: client}} = s
+      ) do
+    {:reply, Ipse.Session.Input.discard(witness), s}
+  end
+
+  def handle_call({:discard_input, _, _}, _, s), do: {:reply, {:error, :invalid_input_witness}, s}
+
+  def handle_call(
+        {:render_question, channel, item},
+        {client, _},
+        %{
+          operator_channel: %{id: channel, client: client},
+          phase: :question,
+          question: %{id: _} = question
+        } = s
+      )
+      when not is_map_key(question, :kind) do
+    expected = Enum.at(question.arguments["questions"], length(s.operator_pieces))
+
+    with true <- expected != nil and expected["id"] == item,
+         {:ok, render} <- Ipse.Session.OperatorAnswer.render(question, item, channel) do
+      :ok = Ipse.Session.Input.cancel_read()
+      {:reply, {:ok, render}, %{s | operator_render: render}}
+    else
+      _ -> {:reply, {:error, :no_pending_question}, s}
+    end
+  end
+
+  def handle_call(
+        {:render_question, channel, _},
+        {client, _},
+        %{
+          operator_channel: %{id: channel, client: client},
+          question: %{kind: :extension},
+          phase: :question
+        } = s
+      ),
+      do: {:reply, {:error, :extension_question}, s}
+
+  def handle_call({:render_question, _, _}, _, s), do: {:reply, {:error, :no_pending_question}, s}
+
+  def handle_call(
+        {:answer_observed, channel, render_id, text, witness},
+        {client, _},
+        %{
+          operator_channel: %{id: channel, client: client},
+          phase: :question,
+          question: question,
+          operator_render: %{"render_id" => render_id} = render
+        } = s
+      ) do
+    with {:ok, observation} <-
+           Ipse.Session.Input.consume(witness, text, operator_binding(s, "question", render_id)),
+         {:ok, answer, piece} <-
+           Ipse.Session.OperatorAnswer.parse(question, render, text, observation) do
+      answers = Map.put(s.operator_answers, render["item_id"], answer)
+      pieces = s.operator_pieces ++ [piece]
+      next = %{s | operator_render: nil, operator_answers: answers, operator_pieces: pieces}
+
+      if length(pieces) == length(question.arguments["questions"]) do
+        Ipse.Session.Turn.answer(next, question.id, answers, question, %{
+          client_id: channel,
+          pieces: pieces
+        })
+      else
+        {:reply, {:ok, :more}, next}
+      end
+    else
+      _ -> {:reply, {:error, :invalid_operator_answer_origin}, s}
+    end
+  end
+
+  def handle_call({:answer_observed, _, _, _, _}, _, s),
+    do: {:reply, {:error, :invalid_operator_answer_origin}, s}
+
   def handle_call({:observe_input, display, timeout}, {client, _}, %{phase: :idle} = s) do
     {:ok, scope} = Ipse.Session.Resources.start(self())
     :ok = Ipse.Session.Lock.track(scope, :scope)
@@ -1287,7 +1509,19 @@ defmodule Ipse.Session do
 
   def handle_call({:prompt, text, witness}, from, s)
       when is_binary(text) and byte_size(text) > 0 do
-    case Ipse.Session.Input.consume(witness, text, input_binding(s)) do
+    observed =
+      case s.operator_channel do
+        %{client: client} when elem(from, 0) == client ->
+          case Ipse.Session.Input.submit(witness, text, operator_binding(s, "prompt", nil)) do
+            {:ok, _} = result -> result
+            _ -> Ipse.Session.Input.consume(witness, text, input_binding(s))
+          end
+
+        _ ->
+          Ipse.Session.Input.consume(witness, text, input_binding(s))
+      end
+
+    case observed do
       {:ok, observation} ->
         Turn.prompt(%{s | input_generation: Ipse.Usage.id()}, text, from, observation)
 
@@ -1411,6 +1645,7 @@ defmodule Ipse.Session do
          feed_reason \\ "cancelled"
        ) do
     :ok = Ipse.Session.Input.invalidate()
+    s = %{s | operator_render: nil, operator_answers: %{}, operator_pieces: []}
     s = CurrentInvocation.release_output(s)
     s = finish_wait(s, wait_outcome)
     s = if s.task, do: measure_request(s, :cancelled), else: s
@@ -1860,6 +2095,22 @@ defmodule Ipse.Session do
       _ ->
         {:noreply, s}
     end
+  end
+
+  def handle_info({:DOWN, ref, :process, _pid, _}, %{operator_channel: channel} = s)
+      when is_map(channel) and (ref == channel.client_monitor or ref == channel.reader_monitor) do
+    :ok = Ipse.Session.Input.invalidate()
+    Process.demonitor(channel.client_monitor, [:flush])
+    Process.demonitor(channel.reader_monitor, [:flush])
+
+    {:noreply,
+     %{
+       s
+       | operator_channel: nil,
+         operator_render: nil,
+         operator_answers: %{},
+         operator_pieces: []
+     }}
   end
 
   def handle_info({:DOWN, ref, :process, pid, _}, s) do

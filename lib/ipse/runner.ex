@@ -29,6 +29,13 @@ defmodule Ipse.Runner do
          do: {:ok, helper}
   end
 
+  @doc false
+  def protected_helper(cwd) do
+    with {:ok, helper} <- verified_operator_helper(),
+         :ok <- Ipse.Tools.Sandbox.helper_boundary(cwd, helper),
+         do: {:ok, helper}
+  end
+
   defp verified_helper do
     with {:ok, helper} <- helper_path(false), do: verify_helper_path(helper)
   end
@@ -61,8 +68,13 @@ defmodule Ipse.Runner do
   end
 
   @doc "Read the current OS user from the verified host helper, without launching a shell."
-  def current_uid do
-    with {:ok, helper} <- verified_helper() do
+  def current_uid, do: read_uid(&verified_helper/0)
+
+  @doc false
+  def protected_current_uid, do: read_uid(&verified_operator_helper/0)
+
+  defp read_uid(select_helper) do
+    with {:ok, helper} <- select_helper.() do
       port =
         Port.open(
           {:spawn_executable, String.to_charlist(helper)},
@@ -101,10 +113,16 @@ defmodule Ipse.Runner do
   defp selected_helper(_profile, cwd), do: native_helper(cwd)
 
   @doc "Sync an existing owner-only directory after atomic publication; grants no write authority."
-  def sync_directory(path) when is_binary(path) do
+  def sync_directory(path), do: sync_selected_directory(path, &verified_helper/0)
+
+  @doc false
+  def protected_sync_directory(path),
+    do: sync_selected_directory(path, &verified_operator_helper/0)
+
+  defp sync_selected_directory(path, select_helper) when is_binary(path) do
     with :ok <- launch_text(path),
          true <- Path.type(path) == :absolute,
-         {:ok, helper} <- verified_helper(),
+         {:ok, helper} <- select_helper.(),
          {:ok, port, ticket} <-
            owned_port(:lock, helper, [
              :binary,
@@ -126,7 +144,7 @@ defmodule Ipse.Runner do
     _ -> {:error, :directory_sync_unavailable}
   end
 
-  def sync_directory(_), do: {:error, :directory_sync_unavailable}
+  defp sync_selected_directory(_, _), do: {:error, :directory_sync_unavailable}
 
   @doc "Inspect bounded protected storage allocation, including directory and pending-file blocks."
   def storage_allocation(path) when is_binary(path) do
@@ -455,6 +473,24 @@ defmodule Ipse.Runner do
     end
   rescue
     _ -> {:error, :operator_input_unavailable}
+  end
+
+  @doc false
+  def operator_channel do
+    with {:ok, helper} <- verified_operator_helper(), do: Ipse.Runner.Operator.probe(helper)
+  end
+
+  @doc false
+  def operator_input(prompt, timeout_ms, 2) do
+    with true <- is_binary(prompt) and String.valid?(prompt),
+         true <- byte_size(prompt) in 1..16_777_216,
+         true <- is_integer(timeout_ms) and timeout_ms in 1_000..600_000,
+         true <- Ipse.CLI.Terminal.escape(prompt) == prompt,
+         {:ok, helper} <- verified_operator_helper() do
+      Ipse.Runner.Operator.run(helper, prompt, timeout_ms)
+    else
+      _ -> {:error, :operator_input_unavailable}
+    end
   end
 
   defp receive_operator(port, ticket, buffer, state, deadline) do

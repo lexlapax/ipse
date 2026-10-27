@@ -310,8 +310,10 @@ defmodule Ipse.Session.Lifecycle do
   defp describe_metadata(%{"type" => "compaction_failed"}),
     do: result("context.compaction_failed", %{}, %{})
 
-  defp describe_metadata(%{"type" => type, "version" => 1})
-       when type in ~w(operator_question operator_answer operator_question_closed),
+  defp describe_metadata(%{"type" => type, "version" => version})
+       when (version === 1 and
+               type in ~w(operator_question operator_answer operator_question_closed)) or
+              (version === 2 and type == "operator_answer"),
        do:
          result(
            %{
