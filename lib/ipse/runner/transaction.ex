@@ -111,9 +111,12 @@ defmodule Ipse.Runner.Transaction do
   @doc "Check a bounded complete file plan before any staged payload is admitted."
   def preflight(cap, sizes) do
     if is_list(sizes) and length(sizes) <= 256 and
-         Enum.all?(sizes, &(is_integer(&1) and &1 in 1..@bytes)) and Enum.sum(sizes) <= 67_108_864,
-       do: operation(cap, {:preflight, sizes}),
-       else: {:error, :invalid_transaction_request}
+         Enum.all?(sizes, &(is_integer(&1) and &1 in 1..@bytes)) and
+         Enum.sum(sizes) <= 67_108_864 do
+      operation(cap, {:preflight, sizes})
+    else
+      {:error, :invalid_transaction_request}
+    end
   end
 
   defp operation(

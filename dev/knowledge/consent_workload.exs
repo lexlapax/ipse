@@ -244,9 +244,13 @@ defmodule Ipse.Development.ConsentWorkload do
           |> String.replace("\\040", " ")
           |> String.replace("\\134", "\\")
 
-        if parent == mount or String.starts_with?(parent, String.trim_trailing(mount, "/") <> "/"),
-          do: [{byte_size(mount), type, Enum.at(fields, 5) <> "," <> super_options}],
-          else: []
+        prefix = String.trim_trailing(mount, "/") <> "/"
+
+        if parent == mount or String.starts_with?(parent, prefix) do
+          [{byte_size(mount), type, Enum.at(fields, 5) <> "," <> super_options}]
+        else
+          []
+        end
       end)
       |> Enum.max_by(&elem(&1, 0))
 

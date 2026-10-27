@@ -56,7 +56,7 @@ defmodule Ipse.KnowledgeDocumentsParserStageTest do
   test "four admitted slots precede source IO and retained lock inodes survive cleanup" do
     pure(~S'''
     malformed=fn outcome -> assert outcome=={:error,:malformed_pdf} or
-      (:os.type()=={:unix,:darwin} and outcome=={:error,:pdf_resource_backend_unavailable}) end
+      (:os.type()=={:unix,:darwin} and outcome=={:error,:pdf_resource_backend_unavailable}), inspect(outcome) end
     malformed.(D.extract_pdf("bad",descriptor))
     assert active.()==[]
     lock=Path.join(descriptor.staging_root,"slot-0/lock"); inode=File.lstat!(lock).inode
@@ -71,7 +71,7 @@ defmodule Ipse.KnowledgeDocumentsParserStageTest do
     ''')
   end
 
-  @tag skip: not match?({:unix, :linux}, :os.type())
+  @tag skip: not File.regular?(@parser) or not match?({:unix, :linux}, :os.type())
   test "a paused pre-lease startup retains its slot on owner death and original path replacement never executes" do
     pure(~S'''
     for cancelled? <- [false,true] do

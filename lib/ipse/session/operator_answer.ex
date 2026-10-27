@@ -172,7 +172,8 @@ defmodule Ipse.Session.OperatorAnswer do
              piece,
              ~w(item_id render_id code input input_sha256 text text_sha256 observation)
            ),
-         true <- piece["item_id"] == item["id"] and id?(piece["render_id"]) and id?(piece["code"]),
+         true <- piece["item_id"] == item["id"],
+         true <- id?(piece["render_id"]) and id?(piece["code"]),
          true <- is_binary(piece["input"]) and is_binary(piece["text"]),
          true <- piece["input_sha256"] == JSON.sha256(piece["input"]),
          true <- piece["text_sha256"] == JSON.sha256(piece["text"]),

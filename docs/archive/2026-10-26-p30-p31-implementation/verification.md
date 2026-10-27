@@ -160,3 +160,68 @@ printed harness deprecations; the separate direct compiler run is the strict
 receipt. Local formatting passes. Elixir 1.18/hosted confirmation remains a
 separate result until its repaired run completes. Raw receipts retain both
 completed CI failures and the local repair commands/results.
+
+## Protected-owner checkpoint `3654025`
+
+A detached clean checkout at `3654025ae5ccfa66193f7a0a2e8eab5e999261f8`
+passed the ordinary parser-free build, local formatting and strict compilation.
+The full suite completed with seed **820167** in **1224.8 seconds**:
+**2008/2009 passed, 3 skipped, 36 excluded**. This is a failed full run. Its only
+failure was the parser-stage Linux test: a test-level `skip: false` overrode the
+module's missing-optional-parser skip, then attempted to read an absent parser.
+The separate expected journal-exhaustion/process-loss logs were not failures.
+Raw receipts use the `/tmp/ipse-protected-365-` prefix. Demo, package and installed
+checks were not chained after this failed test command and supply no receipt for
+this revision.
+
+The fixture repair combines the parser-presence and Linux predicates in the
+test-level tag. With an explicitly absent path, all **three tests skip**. With a
+valid owner-safe single-link copy of the already-built parser, all **three pass**
+in **3.1 seconds**, seed **366395**. An earlier attempted available-parser run
+selected Cargo's executable directly; that image has two hardlinks and correctly
+fails the parser identity check. That run passed two tests and failed one; it is
+retained as an invalid fixture selection, not a parser pass. The valid run copies
+the binary to match the installed parser's single-link identity contract. No
+identity rule was weakened. Logs are `/tmp/ipse-parser-stage-optional-absent.log`,
+`/tmp/ipse-parser-stage-optional-explicit-present.log`,
+`/tmp/ipse-parser-stage-explicit-present-diagnostic.log` and
+`/tmp/ipse-parser-stage-single-link-present.log`.
+
+### Hosted compatibility follow-up
+
+The [earlier formatter-repair run](https://github.com/lexlapax/ipse/actions/runs/40428360527)
+at `2a3ccb1` passed formatting and reached runtime tests. macOS failed the actual
+terminal input fixture. Ubuntu reported **1987 tests, 2 failures, 36 excluded**:
+the same terminal fixture and the 128-file protected staging case. This is failed
+platform evidence. The terminal cleanup receipt and staging failure require
+separate investigation; a subsequent formatting change does not close them.
+
+The [protected-owner run](https://github.com/lexlapax/ipse/actions/runs/40432630453)
+at `3654025` failed only the earlier formatting step on both platforms, identifying
+six files whose long expressions differ under Elixir 1.18. Runtime and packaging
+steps were skipped. Equivalent guards are now split into successive checks or
+explicit multiline blocks, and one long test frame is named before constructing
+its tuple. Two Session guard changes were included in `1c0531e`; the remaining
+mechanical source changes preserve the same validation and refusal behavior.
+Neither hosted failure supplies a Linux/macOS acceptance result for the new
+protected filesystem profile, which still has its explicitly limited platform
+scope.
+
+The five remaining mechanical formatter repairs pass **41 focused behavior
+tests** in **13.2 seconds**, seed **296224**. The initial harness, seed **183058**, lacked the override
+runtime's private native helper and failed 36 tests with admission unavailable;
+installing a copy of the unchanged pinned helper repaired the harness. This
+does not weaken helper identity. Direct compilation passes with warnings treated
+as errors; the clean command suppresses only expected module-name conflicts when
+compiling replacement modules against the complete frozen dependency runtime.
+Raw receipts are `/tmp/ipse-ci-compat-focused.log`,
+`/tmp/ipse-ci-compat-focused-repaired.log` and
+`/tmp/ipse-ci-compat-strict-clean.log`.
+
+The already available packaged Elixir **1.18.5** formatter was also exercised
+locally over all `.formatter.exs` inputs. The repaired five files and parser
+fixture match both Elixir 1.18.5 and the local 1.20 formatter. Six separately
+in-progress files still differ at that snapshot; this is not a whole-tree
+formatting pass. The first checker incorrectly appended a second newline to
+`Code.format_file!/1` output and reported every file; the corrected checker
+compares the complete returned bytes. Its logs preserve that harness failure.

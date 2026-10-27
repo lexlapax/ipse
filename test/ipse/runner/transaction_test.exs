@@ -373,12 +373,14 @@ defmodule Ipse.Runner.TransactionTest do
     path = lock(c.root)
     acquire = frame(?A, <<1::64, 0, path::binary>>)
 
+    invalid_name =
+      frame(?S, <<2::64, 1, :binary.copy("a", 40)::binary, 0xC2, 0xA2, "index.json">>)
+
     cases = [
       {<<?A, 8193::32>>, false},
       {frame(?A, <<2::64, 0, path::binary>>), false},
       {acquire <> frame(?P, <<1::64, 1>>), true},
-      {acquire <> frame(?S, <<2::64, 1, :binary.copy("a", 40)::binary, 0xC2, 0xA2, "index.json">>),
-       true}
+      {acquire <> invalid_name, true}
     ]
 
     for {bytes, _acquired} <- cases do

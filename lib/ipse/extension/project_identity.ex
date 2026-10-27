@@ -796,7 +796,8 @@ defmodule Ipse.Extension.ProjectIdentity.Metadata do
 
   defp decode(output, path, target, before, uid, limit) do
     with {:ok, receipt} <- JSON.decode_bounded(output, 2048),
-         true <- keys?(receipt, ~w(version bytes source destination)) and receipt["version"] === 1,
+         true <- keys?(receipt, ~w(version bytes source destination)),
+         true <- receipt["version"] === 1,
          source = receipt["source"],
          destination = receipt["destination"],
          true <- source?(source) and source?(destination) and matches?(source, before),
