@@ -93,6 +93,7 @@ resource/offline qualification. No daemon configuration or existing model was ch
 - [Pure decision planners, zero-call controls and independent public-SDK artifact closure](p30c-pure-policy.md), with [independent audit and the preserved test-count correction](p30c-pure-policy-audit.md).
 - [Optional document parser, bounded staging and package evidence](document-parsers.md).
 - [Fixed-revision source and platform verification receipts](verification.md).
+- [Question fixture repair, unchanged-runtime reproduction and exact replay refusals](questions-fixture-repair.md).
 - [Nonpublishing interaction model](../../../dev/knowledge/interaction.exs) and
   [boundary tests](../../../test/dev/knowledge/interaction_test.exs).
 - [Finite main-route pilot](../../../dev/knowledge/pilot.exs),

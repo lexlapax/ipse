@@ -2,11 +2,18 @@ defmodule Ipse.QuestionSessionTest do
   use ExUnit.Case, async: false
   alias Ipse.Session
   alias Ipse.Journal
+  @saved_id "0123456789abcdef0123456789abcdef"
 
   defmodule Fake do
     def complete(config, messages, tools, _emit) do
       send(config.test_pid, {:question_provider, self(), messages, tools})
-      turn = Enum.count(Enum.drop(messages, 2), &(&1["role"] == "user"))
+
+      turn =
+        messages
+        |> Enum.drop(2)
+        |> Enum.reject(&Session.Reference.reference?/1)
+        |> Enum.count(&(&1["role"] == "user"))
+
       id = config[:call_id] || "clarify-#{turn}"
       answered = Enum.any?(messages, &(&1["role"] == "tool" and &1["tool_call_id"] == id))
 
@@ -124,6 +131,41 @@ defmodule Ipse.QuestionSessionTest do
 
       result ->
         result
+    end
+  end
+
+  test "question fixture counts operator turns while retaining unverified user messages" do
+    header = [
+      %{"role" => "system", "content" => "fixture"},
+      %{"role" => "user", "content" => "header"}
+    ]
+
+    user = %{"role" => "user", "content" => "Ask"}
+    content = Session.Reference.content(%{"runtime" => %{}})
+
+    reference =
+      Session.Reference.message(%{
+        "version" => 1,
+        "session_id" => @saved_id,
+        "turn_id" => String.duplicate("b", 32),
+        "epoch" => 1,
+        "source_generation" => 1,
+        "policy_generation" => 0,
+        "content_sha256" => Ipse.JSON.sha256(content),
+        "content" => content
+      })
+
+    assert Session.Reference.reference?(reference)
+    invalid = put_in(reference, ["ipse_reference", "content_sha256"], String.duplicate("0", 64))
+    refute Session.Reference.reference?(invalid)
+
+    for {extra, expected} <- [
+          {[reference], "clarify-1"},
+          {[invalid], "clarify-2"},
+          {[user], "clarify-2"}
+        ] do
+      assert {:ok, %{"tool_calls" => [%{"id" => ^expected}]}, %{}} =
+               Fake.complete(%{test_pid: self()}, header ++ [user] ++ extra, [], fn _ -> :ok end)
     end
   end
 
@@ -298,18 +340,34 @@ defmodule Ipse.QuestionSessionTest do
     saved_id = Session.info(pid).id
     kill(pid)
     {:ok, events} = Journal.load(ctx.dir, saved_id)
+    assert {:ok, _} = Session.RuntimeLifecycle.restore(events, saved_id)
+    question = Enum.find(events, &(&1["type"] == "operator_question"))
+
+    wait =
+      Enum.find(events, fn event ->
+        event["type"] == "lifecycle_wait_started" and event["domain"] == "native_question"
+      end)
+
+    assert Journal.source_matches?(wait["subject_source"], question)
 
     corrupted =
       Enum.map(events, fn e ->
         if e["type"] == "operator_question", do: Map.put(e, "prefix_sha256", "bad"), else: e
       end)
 
-    File.write!(
-      Path.join(ctx.dir, saved_id <> ".jsonl"),
-      Enum.map_join(corrupted, "\n", &Jason.encode!/1) <> "\n"
-    )
+    changed_question = Enum.find(corrupted, &(&1["type"] == "operator_question"))
+    refute Journal.source_matches?(wait["subject_source"], changed_question)
 
-    assert {:error, :invalid_operator_question_checkpoint} = resume(ctx, %{}, saved_id)
+    assert {:error, :invalid_runtime_lifecycle} =
+             Session.RuntimeLifecycle.restore(corrupted, saved_id)
+
+    path = Path.join(ctx.dir, saved_id <> ".jsonl")
+    bytes = Enum.map_join(corrupted, "\n", &Jason.encode!/1) <> "\n"
+    File.write!(path, bytes)
+    flush_provider()
+    assert {:error, :invalid_runtime_lifecycle} = resume(ctx, %{}, saved_id)
+    assert File.read!(path) == bytes
+    refute_receive {:question_provider, _, _, _}, 50
   end
 
   test "monitored operator owner death preserves the pending question", ctx do
@@ -362,6 +420,7 @@ defmodule Ipse.QuestionSessionTest do
     assert Session.info(idle).phase == :idle
     :ok = Session.close(idle)
     {:ok, events} = Journal.load(ctx.dir, saved_id)
+    assert :ok = Session.RuntimeLifecycle.validate_sources(ctx.dir, saved_id, events)
 
     corrupted =
       Enum.map(events, fn e ->
@@ -379,12 +438,20 @@ defmodule Ipse.QuestionSessionTest do
         end
       end)
 
-    File.write!(
-      Path.join(ctx.dir, saved_id <> ".jsonl"),
-      Enum.map_join(corrupted, "\n", &Jason.encode!/1) <> "\n"
-    )
+    assert {:error, :invalid_operator_question_checkpoint} =
+             Session.Saved.restore(corrupted, saved_id)
 
-    assert {:error, :invalid_operator_question_checkpoint} = resume(ctx, %{}, saved_id)
+    path = Path.join(ctx.dir, saved_id <> ".jsonl")
+    bytes = Enum.map_join(corrupted, "\n", &Jason.encode!/1) <> "\n"
+    File.write!(path, bytes)
+
+    assert {:error, :invalid_runtime_lifecycle_source} =
+             Session.RuntimeLifecycle.validate_sources(ctx.dir, saved_id, corrupted)
+
+    flush_provider()
+    assert {:error, :invalid_runtime_lifecycle_source} = resume(ctx, %{}, saved_id)
+    assert File.read!(path) == bytes
+    refute_receive {:question_provider, _, _, _}, 50
   end
 
   test "saved question checkpoints use temporary normalized views and preserve error precedence" do
@@ -399,14 +466,17 @@ defmodule Ipse.QuestionSessionTest do
     pending = events ++ [checkpoint]
 
     assert {:ok, %{question: %{id: "q-one"}, messages: ^prefix}} =
-             Session.Saved.restore(pending, "test")
+             Session.Saved.restore(pending, @saved_id)
 
     assert {:ok, ^projected} = Session.Saved.context(pending)
 
     real = %{"role" => "tool", "tool_call_id" => "sibling", "content" => "actual sibling result"}
     answer = saved_answer_event(call)
     answered = pending ++ [%{"type" => "message", "message" => real}, answer]
-    assert {:ok, %{question: nil, messages: messages}} = Session.Saved.restore(answered, "test")
+
+    assert {:ok, %{question: nil, messages: messages}} =
+             Session.Saved.restore(answered, @saved_id)
+
     assert messages == [assistant, answer["message"], real]
 
     refute Enum.any?(
@@ -419,7 +489,7 @@ defmodule Ipse.QuestionSessionTest do
     assert {:ok, ^projected} = Session.Saved.context(bad_events)
 
     assert {:error, :invalid_operator_question_checkpoint} =
-             Session.Saved.restore(bad_events, "test")
+             Session.Saved.restore(bad_events, @saved_id)
 
     assert {:error, :invalid_compaction_checkpoint} =
              Session.Saved.restore(
@@ -427,7 +497,7 @@ defmodule Ipse.QuestionSessionTest do
                  [
                    %{"type" => "context_compacted", "version" => 1, "covered_messages" => 0}
                  ],
-               "test"
+               @saved_id
              )
 
     assert {:error, "Invalid recorded research source."} =
@@ -436,7 +506,7 @@ defmodule Ipse.QuestionSessionTest do
                  [
                    %{"type" => "research_source", "version" => 0}
                  ],
-               "test"
+               @saved_id
              )
 
     for invalid <- [
@@ -445,7 +515,7 @@ defmodule Ipse.QuestionSessionTest do
           pending ++ [Map.put(answer, "id", "foreign")]
         ] do
       assert {:error, :invalid_operator_question_checkpoint} =
-               Session.Saved.restore(invalid, "test")
+               Session.Saved.restore(invalid, @saved_id)
     end
   end
 
@@ -458,7 +528,7 @@ defmodule Ipse.QuestionSessionTest do
         {:reductions, before_count} = Process.info(self(), :reductions)
 
         assert {:ok, %{question: nil, messages: ^expected}} =
-                 Session.Saved.restore(events, "test")
+                 Session.Saved.restore(events, @saved_id)
 
         {:reductions, after_count} = Process.info(self(), :reductions)
         after_count - before_count
