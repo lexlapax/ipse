@@ -1,0 +1,13 @@
+# Private MCP discovery cleanup checkpoint
+
+Historical experimental evidence, 2026-10-27. This is a private prototype, not production behavior or milestone acceptance. It supersedes the fixture coverage in `draft-mcp-revalidate-v3.md`, keeps the same runtime implementation, and applies to commit `52652f825e7437ac32ac630092b69095d2049a3c`; current scope is in `docs/plan.md`.
+
+The synthetic server now records its PID after reaching the blocked revalidation RPC. The native-terminal fixture waits for that boundary and checks that `kill -0` fails for that PID after both active cancellation and abrupt Session-owner death before recovery. Unknown discovery outcome and no automatic retry remain checked. An independent fixture review confirmed this is stronger than testing phase alone but noted that a nonzero `kill -0` is not by itself proof of `ESRCH` (it can also mean `EPERM`), and PID reuse can cause a false failure. This checks one same-UID local synthetic process, not arbitrary descendant cleanup, a live server, or the authority to reconnect. Configured discovery is an externally observable interaction, and matching server data does not authenticate an attacker who controls both the server and local journal.
+
+The [patch](draft-mcp-revalidate-v4.patch), SHA-256 `08eaf9c11cb14fa41a917f141183d24de1afecdbbbfc47624364cf301e519c18`, passed clean base `git apply --check`. After strict compile, the [focused log](draft-mcp-revalidate-v4-20270314.log), SHA-256 `86bedf6213fa2d94f31e1521373aa2bd6b96dd441b200452777c1c6cf5ff5332`, records 112 passing tests:
+
+```sh
+MIX_ENV=test MIX_BUILD_PATH=../build TMPDIR=../tmp ERL_FLAGS='+S 2:2' mix test --no-compile test/ipse/session/draft_acceptance_test.exs test/ipse/session/draft_lineage_test.exs test/ipse/session/draft_native_test.exs test/ipse/session/draft_projection_test.exs test/ipse/session/draft_vertical_test.exs test/ipse/mcp/catalog_session_test.exs test/ipse/extension/session_test.exs test/ipse/extension/history_test.exs test/ipse/extension/subscriptions_test.exs test/ipse/extension/feeds_test.exs --seed 20270314 --max-cases 1
+```
+
+Independent V3 compile and seven focused synthetic MCP tests are recorded in `draft-mcp-revalidate-v3.md`; the V4 fixture was reviewed independently but its full suite was not independently rerun. No real MCP endpoint was contacted. Live qualification, registered inference, positive protected saved-consent flow, opaque non-ChatGPT continuation, full baseline and release documentation review remain open. Projected-history resource limits and measured synthetic peak memory in `draft-history-dense.md` still apply.
