@@ -1,0 +1,469 @@
+--- a/lib/ipse/session/resources.ex
++++ b/lib/ipse/session/resources.ex
+@@ -4,6 +4,10 @@
+   @key {__MODULE__, :scope}
+ 
+   def start(owner), do: GenServer.start(__MODULE__, owner)
++
++  def start_child(root, peer, reporter, token),
++    do: GenServer.start(__MODULE__, {:child, root, peer, reporter, token})
++
+   def bind(scope), do: Process.put(@key, scope)
+   def current, do: Process.get(@key)
+ 
+@@ -111,13 +115,55 @@
+   def stop_async(scope), do: GenServer.cast(scope, :stop)
+ 
+   @impl true
++  def handle_cast({:abandon_child, token, peer, reporter}, state) do
++    case state.child_tokens[token] do
++      %{peer: ^peer, reporter: ^reporter, child: nil} = entry ->
++        tokens =
++          if Process.alive?(peer),
++            do: Map.put(state.child_tokens, token, %{entry | cancelled: true}),
++            else: Map.delete(state.child_tokens, token)
++
++        {:noreply, %{state | child_tokens: tokens}}
++
++      _ ->
++        {:noreply, state}
++    end
++  end
++
+   def handle_cast(:stop, state) do
++    state = if state.child_report != nil, do: stop_child_owner(state), else: state
+     state = close_resources(state)
+     if is_pid(state.worker), do: Process.exit(state.worker, :kill)
++    report_child(state, if(state.failed, do: {:error, :cleanup_unconfirmed}, else: :ok))
+     {:stop, :normal, state}
+   end
+ 
+   @impl true
++  def init({:child, root, peer, reporter, token}) do
++    Process.flag(:trap_exit, true)
++
++    with {:ok, ticket, guard} <- GenServer.call(root, {:register_child, peer, reporter, token}) do
++      {:ok,
++       %{
++         owner: peer,
++         owner_ref: Process.monitor(peer),
++         worker: nil,
++         worker_ref: nil,
++         tasks: %{},
++         effects: %{},
++         lock_guard: guard,
++         resources: %{},
++         failed: false,
++         closed: false,
++         child_tokens: %{},
++         child_report: {ticket, reporter, token},
++         finish_permitted: false
++       }}
++    else
++      _ -> {:stop, :cleanup_scope_closed}
++    end
++  end
++
+   def init(owner) do
+     Process.flag(:trap_exit, true)
+ 
+@@ -132,7 +178,9 @@
+        lock_guard: Ipse.Session.Lock.for_owner(owner),
+        resources: %{},
+        failed: false,
+-       closed: false
++       closed: false,
++       child_tokens: %{},
++       child_report: nil
+      }}
+   end
+ 
+@@ -171,6 +219,95 @@
+     end
+   end
+ 
++  def handle_call({:track_child_effect, pid, token}, {caller, _}, %{closed: false} = state)
++      when is_pid(pid) and is_reference(token) and map_size(state.effects) < 32 and
++             map_size(state.child_tokens) < 32 do
++    if (caller in [state.owner, state.worker] or Map.has_key?(state.tasks, caller)) and
++         Process.alive?(pid) and Process.alive?(caller) and Process.alive?(state.owner) do
++      :ok = Ipse.Session.Lock.track_in(state.lock_guard, pid, :peer)
++      entry = %{peer: pid, reporter: caller, child: nil, cancelled: false}
++
++      {:reply, {:ok, state.owner},
++       %{
++         state
++         | effects: Map.put(state.effects, pid, Process.monitor(pid)),
++           child_tokens: Map.put(state.child_tokens, token, entry)
++       }}
++    else
++      {:reply, {:error, :cleanup_scope_closed}, state}
++    end
++  end
++
++  def handle_call({:register_child, peer, reporter, token}, {child, _}, %{closed: false} = state) do
++    case state.child_tokens[token] do
++      %{peer: ^peer, reporter: ^reporter, child: nil, cancelled: false} = entry ->
++        if Process.alive?(peer) and Process.alive?(reporter) and Process.alive?(state.owner) do
++          :ok = Ipse.Session.Lock.track_in(state.lock_guard, child, :peer)
++          id = make_ref()
++          resource = %{pid: child, kind: :child, monitor: Process.monitor(child)}
++          ticket = %{scope: self(), id: id}
++
++          {:reply, {:ok, ticket, state.lock_guard},
++           %{
++             state
++             | resources: Map.put(state.resources, id, resource),
++               child_tokens: Map.put(state.child_tokens, token, %{entry | child: child})
++           }}
++        else
++          {:reply, {:error, :cleanup_scope_closed}, state}
++        end
++
++      _ ->
++        {:reply, {:error, :cleanup_scope_closed}, state}
++    end
++  end
++
++  def handle_call({:track_child_guard, guard, token}, {peer, _}, %{closed: false} = state)
++      when is_pid(guard) do
++    case state.child_tokens[token] do
++      %{peer: ^peer, cancelled: false} when is_pid(state.owner) ->
++        if Process.alive?(state.owner) do
++          :ok = Ipse.Session.Lock.track_in(state.lock_guard, guard, :peer)
++          {:reply, :ok, %{state | effects: Map.put(state.effects, guard, Process.monitor(guard))}}
++        else
++          {:reply, {:error, :cleanup_scope_closed}, state}
++        end
++
++      _ ->
++        {:reply, {:error, :cleanup_scope_closed}, state}
++    end
++  end
++
++  def handle_call({:child_cancelled, token, peer}, {reporter, _}, state) do
++    case state.child_tokens[token] do
++      %{peer: ^peer, reporter: ^reporter} = entry ->
++        {:reply, if(is_pid(entry.child), do: {:registered, entry.child}, else: :absent),
++         %{state | child_tokens: Map.put(state.child_tokens, token, %{entry | cancelled: true})}}
++
++      _ ->
++        {:reply, :unconfirmed, state}
++    end
++  end
++
++  def handle_call({:forget_child, token, peer}, {reporter, _}, state) do
++    case state.child_tokens[token] do
++      %{peer: ^peer, reporter: ^reporter, cancelled: true} ->
++        {:reply, :ok, %{state | child_tokens: Map.delete(state.child_tokens, token)}}
++
++      _ ->
++        {:reply, {:error, :cleanup_scope_closed}, state}
++    end
++  end
++
++  def handle_call(
++        {:prepare_child_finish, token},
++        {owner, _},
++        %{owner: owner, child_report: {_, _, token}, finish_permitted: false, closed: false} =
++          state
++      ) do
++    {:reply, :ok, %{state | finish_permitted: true}}
++  end
++
+   def handle_call(
+         {:authorized_effect, worker, caller},
+         {owner, _},
+@@ -193,11 +330,19 @@
+ 
+   def handle_call(:active, _, state), do: {:reply, false, state}
+ 
+-  def handle_call(action, _, state) when action in [:close, :finish] do
++  def handle_call(action, {caller, _}, state) when action in [:close, :finish] do
++    state =
++      if state.child_report != nil and
++           (caller != state.owner or not state.finish_permitted),
++         do: stop_child_owner(state),
++         else: state
++
+     state = close_resources(state)
+     result = if state.failed, do: {:error, :cleanup_unconfirmed}, else: :ok
+ 
+-    if action == :close,
++    if action == :close or state.child_report != nil, do: report_child(state, result)
++
++    if action == :close or state.child_report != nil,
+       do: {:stop, :normal, result, state},
+       else: {:reply, result, %{state | closed: true}}
+   end
+@@ -225,6 +370,14 @@
+   def handle_info({:DOWN, ref, :process, _, _}, %{owner_ref: ref} = state) do
+     if is_pid(state.worker), do: Process.exit(state.worker, :kill)
+     state = close_resources(state)
++    report_child(state, if(state.failed, do: {:error, :cleanup_unconfirmed}, else: :ok))
++    {:stop, :normal, state}
++  end
++
++  def handle_info({:ipse_cancel_resource, id}, %{child_report: {%{id: id}, _, _}} = state) do
++    state = stop_child_owner(state)
++    state = close_resources(state)
++    report_child(state, if(state.failed, do: {:error, :cleanup_unconfirmed}, else: :ok))
+     {:stop, :normal, state}
+   end
+ 
+@@ -245,8 +398,15 @@
+ 
+       nil ->
+         tasks = Map.reject(state.tasks, fn {_, monitor} -> monitor == ref end)
++        dead = Enum.find_value(state.effects, fn {pid, monitor} -> if monitor == ref, do: pid end)
+         effects = Map.reject(state.effects, fn {_, monitor} -> monitor == ref end)
+-        {:noreply, %{state | tasks: tasks, effects: effects}}
++
++        tokens =
++          Map.reject(state.child_tokens, fn {_, entry} ->
++            entry.peer == dead and entry.cancelled and is_nil(entry.child)
++          end)
++
++        {:noreply, %{state | tasks: tasks, effects: effects, child_tokens: tokens}}
+     end
+   end
+ 
+@@ -351,9 +511,238 @@
+     end
+   end
+ 
++  defp report_child(%{child_report: {ticket, reporter, token}}, result) do
++    closed(ticket, result)
++    send(reporter, {:child_scope_finished, token, self(), result})
++  end
++
++  defp report_child(_, _), do: :ok
++
++  defp stop_child_owner(state) do
++    Process.exit(state.owner, :kill)
++
++    receive do
++      {:DOWN, ref, :process, owner, _} when ref == state.owner_ref and owner == state.owner ->
++        state
++    after
++      4_000 -> %{state | failed: true}
++    end
++  end
++
+   @effect_key {__MODULE__, :active}
+   @effect_owner_key {__MODULE__, :effect_owner}
+ 
++  def controlled_file_effect(fun, timeout) when is_function(fun, 0) and timeout in 1..120_000 do
++    root = current()
++    reporter = self()
++    upstream = file_effect_owner()
++    token = make_ref()
++    deadline = System.monotonic_time(:millisecond) + timeout
++
++    if is_pid(root) and active?(min(timeout, 5_000)) do
++      if hook = Process.get({__MODULE__, :private_diagnostic_hook}), do: hook.()
++
++      {peer, monitor} =
++        spawn_monitor(fn ->
++          peer_ref = Process.monitor(reporter)
++          root_ref = Process.monitor(root)
++
++          receive do
++            {:begin_controlled, ^reporter, session_owner} ->
++              Process.demonitor(peer_ref, [:flush])
++              Process.demonitor(root_ref, [:flush])
++              controlled_peer(root, reporter, session_owner, upstream, token, fun)
++
++            {:DOWN, ^peer_ref, :process, _, _} ->
++              :ok
++
++            {:DOWN, ^root_ref, :process, _, _} ->
++              :ok
++          end
++        end)
++
++      remaining = max(deadline - System.monotonic_time(:millisecond), 0)
++
++      tracked =
++        if remaining > 0 do
++          try do
++            GenServer.call(root, {:track_child_effect, peer, token}, min(remaining, 5_000))
++          catch
++            :exit, _ -> :unconfirmed
++          end
++        else
++          :unconfirmed
++        end
++
++      case tracked do
++        {:ok, session_owner} ->
++          send(peer, {:begin_controlled, reporter, session_owner})
++
++          controlled_wait(
++            root,
++            peer,
++            monitor,
++            token,
++            max(deadline - System.monotonic_time(:millisecond), 0)
++          )
++
++        _ ->
++          Process.exit(peer, :kill)
++          GenServer.cast(root, {:abandon_child, token, peer, reporter})
++
++          receive do
++            {:DOWN, ^monitor, :process, ^peer, _} -> :ok
++          after
++            4_000 -> :ok
++          end
++
++          {:unknown, :cleanup_unconfirmed}
++      end
++    else
++      {:error, :cleanup_scope_closed}
++    end
++  catch
++    :exit, _ -> {:unknown, :cleanup_unconfirmed}
++  end
++
++  defp controlled_peer(root, reporter, session_owner, upstream, token, fun) do
++    peer = self()
++
++    guard =
++      spawn_link(fn ->
++        parent_ref = Process.monitor(reporter)
++        session_ref = Process.monitor(session_owner)
++        root_ref = Process.monitor(root)
++        peer_ref = Process.monitor(peer)
++        send(peer, {:guard_ready, self()})
++        controlled_guard(peer, parent_ref, session_ref, root_ref, peer_ref, nil, nil)
++      end)
++
++    receive do
++      {:guard_ready, ^guard} -> :ok
++    end
++
++    :ok = GenServer.call(root, {:track_child_guard, guard, token})
++
++    case start_child(root, peer, reporter, token) do
++      {:ok, child} ->
++        Process.link(child)
++        send(guard, {:watch_child, peer, child})
++
++        receive do
++          {:child_watched, ^guard} -> :ok
++        end
++
++        bind(child)
++        Process.put(@effect_key, true)
++        Process.put(@effect_owner_key, upstream)
++
++        result =
++          try do
++            {:returned, fun.()}
++          catch
++            _, _ -> {:failed, :effect_failed}
++          end
++
++        :ok = GenServer.call(child, {:prepare_child_finish, token})
++        send(guard, {:finish_child, peer})
++
++        receive do
++          {:child_unwatched, ^guard} -> :ok
++        end
++
++        _ = close(child)
++        send(reporter, {:controlled_result, token, peer, result})
++
++      _ ->
++        send(reporter, {:controlled_result, token, peer, {:failed, :child_unavailable}})
++    end
++  end
++
++  defp controlled_guard(peer, parent_ref, session_ref, root_ref, peer_ref, child, child_ref) do
++    receive do
++      {:watch_child, ^peer, pid} when is_nil(child_ref) and is_pid(pid) ->
++        ref = Process.monitor(pid)
++        send(peer, {:child_watched, self()})
++        controlled_guard(peer, parent_ref, session_ref, root_ref, peer_ref, pid, ref)
++
++      {:finish_child, ^peer} when is_reference(child_ref) ->
++        if Process.alive?(child) do
++          Process.demonitor(child_ref, [:flush])
++          send(peer, {:child_unwatched, self()})
++          controlled_guard(peer, parent_ref, session_ref, root_ref, peer_ref, nil, nil)
++        else
++          Process.exit(peer, :kill)
++        end
++
++      {:DOWN, ^parent_ref, :process, _, _} ->
++        Process.exit(peer, :kill)
++
++      {:DOWN, ^session_ref, :process, _, _} ->
++        Process.exit(peer, :kill)
++
++      {:DOWN, ^root_ref, :process, _, _} ->
++        Process.exit(peer, :kill)
++
++      {:DOWN, ^peer_ref, :process, _, _} ->
++        :ok
++
++      {:DOWN, ref, :process, _, _} when ref == child_ref ->
++        Process.exit(peer, :kill)
++    end
++  end
++
++  defp controlled_wait(root, peer, monitor, token, timeout) do
++    result =
++      receive do
++        {:controlled_result, ^token, ^peer, value} -> value
++        {:DOWN, ^monitor, :process, ^peer, _} -> :down
++      after
++        timeout ->
++          Process.exit(peer, :kill)
++          :timeout
++      end
++
++    down =
++      if result == :down do
++        true
++      else
++        receive do
++          {:DOWN, ^monitor, :process, ^peer, _} -> true
++        after
++          4_000 -> false
++        end
++      end
++
++    status = GenServer.call(root, {:child_cancelled, token, peer}, 5_000)
++
++    cleanup =
++      case status do
++        :absent ->
++          :ok
++
++        {:registered, child} ->
++          receive do
++            {:child_scope_finished, ^token, ^child, result} -> result
++          after
++            4_000 -> {:error, :cleanup_unconfirmed}
++          end
++
++        _ ->
++          {:error, :cleanup_unconfirmed}
++      end
++
++    :ok = GenServer.call(root, {:forget_child, token, peer}, 5_000)
++
++    cond do
++      not down or cleanup != :ok -> {:unknown, :cleanup_unconfirmed}
++      match?({:returned, _}, result) -> {:ok, elem(result, 1)}
++      true -> {:unknown, :effect_interrupted}
++    end
++  catch
++    :exit, _ -> {:unknown, :cleanup_unconfirmed}
++  end
++
+   @doc false
+   def file_effect_owner, do: Process.get(@effect_owner_key, self())
+ 
