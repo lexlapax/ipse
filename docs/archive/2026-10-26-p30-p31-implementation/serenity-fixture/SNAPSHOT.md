@@ -173,3 +173,8 @@ The latest harmless filter test additionally verified that a loop-status ioctl
 reached `/dev/null` and returned ENOTTY after the filter, rather than being
 blocked by seccomp. This is syscall-routing evidence only. The standalone owner
 entry remains disabled and has not opened a loop device.
+
+The unreviewed filter draft also denies credential and chroot/pivot changes
+after setting dumpable=0. The harmless child test observed getuid succeed and
+setuid-to-current-UID return EPERM. This does not establish isolation from
+privileged external actors or preexisting kernel registrations.
