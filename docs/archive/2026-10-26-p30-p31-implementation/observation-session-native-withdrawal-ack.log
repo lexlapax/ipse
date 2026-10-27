@@ -1,0 +1,14 @@
+Running ExUnit with seed: 20270381, max_cases: 1
+Excluding tags: [:test]
+Including tags: [location: {"test/ipse/extension/collection_call_session_test.exs", 980}]
+
+[22m
+12:02:29.402 [info] The function passed as a handler with ID {Ipse.Extension.CollectionCallSessionTest, #Reference<0.2104252571.2479357953.226181>} is a local function.
+This means that it is either an anonymous function or a capture of a function without a module specified. That may cause a performance penalty when calling that handler. For more details see the note in `telemetry:attach/4` documentation.
+
+https://hexdocs.pm/telemetry/telemetry.html#attach/4[0m
+A protected read was interrupted. Its outcome is unknown and will not be replayed. Close this interrupted turn and withdraw its unread result. Operation 58cd3a00e540d139455b3cb712f8860f. Type withdraw 35392eba132ab592b4559b71c11a463a to confirm.withdraw 35392eba132ab592b4559b71c11a463a
+[32m.[0m
+Finished in 2.2 seconds (0.00s async, 2.2s sync)
+[32m
+Result: 1 passed, 25 excluded[0m
