@@ -66,6 +66,7 @@ resource/offline qualification. No daemon configuration or existing model was ch
 - [Pure managed policy recipes, deduplicated grants and activation data](managed-policy-component.md).
 - [Atomic managed publication and explicit version-5 receipt binding](managed-collection-component.md).
 - [Managed source clocks, metadata and independently closed findings](managed-normalizer-component.md).
+- [Registered inference admission and completion](inference-dispatch-component.md), with its [independent adversarial audit](inference-dispatch-audit.md).
 - [Explicit managed SDK publication, reserved metadata and replay boundary](managed-sdk-component.md).
 - [Native read ownership and staging-frame ordering](native-read-component.md).
 - [Admitted decision operation, incremental review and controls](decision-operation-audit.md).

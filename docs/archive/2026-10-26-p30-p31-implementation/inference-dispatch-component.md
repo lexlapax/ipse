@@ -1,8 +1,10 @@
 # Registered inference dispatch component
 
 Dated **2026-10-26**. This is an author implementation and verification receipt.
-Independent adversarial review of the new deferred gate, completion witness and
-actual dispatch integration is **pending**. The earlier independent
+The subsequent [independent adversarial audit](inference-dispatch-audit.md) passed
+seven fresh local-HTTP/Session probes against this frozen checkpoint and found no
+actionable defect within its stated scope. It preserves the exact source/runtime
+hashes, first harness failures and limits. The earlier independent
 [slot component review](service-slots-component.md) does not certify these new
 paths. The [frozen baseline](baseline.md), [coordination contract](contracts.md#consent-commit-order-and-process-coordination)
 and [plan](../../plan.md) remain authoritative. This checkpoint does not complete
@@ -205,11 +207,11 @@ not erase them:
 
 ## Source-bound audit handoff
 
-The new production source needs an independent adversarial audit, especially the
-before-admit/current-check/unstarted paths, the W→coordinator→slot callback relay,
-registered effect-caller RPC, deadline/cancellation intervals, completion witness,
-HTTP cleanup, raw usage and buffered publication. Use the frozen private `26`
-source/runtime for reproducibility, then compare later shared integrations.
+The linked subsequent independent audit exercises the before-admit/current-check/
+unstarted paths, relay, deadline/cancellation intervals, completion witness, actual
+HTTP cleanup, live usage, buffered publication and Session replay. Its seven probes
+have narrower coverage than the author's maintained suite. Use the frozen private
+`26` source/runtime for reproduction; later shared integrations still need review.
 
 The [complete source manifest](inference-dispatch-sources.sha256) binds all 124
 host/bundled sources, all eight owned tests and the protected helper from that
