@@ -30,6 +30,15 @@ defmodule Ipse.Extension.Collection.Directory do
       exact?(request, ~w(op after limit)) and (is_nil(cursor) or key?(cursor)) and
         is_integer(limit) and limit in 1..8
 
+  def read_request?(
+        %{"op" => "visible_scan", "after" => cursor, "limit" => limit, "generation" => generation} =
+          request
+      ),
+      do:
+        exact?(request, ~w(op after limit generation)) and Ipse.JSON.safe_uint?(generation) and
+          (is_nil(cursor) or (key?(cursor) and not String.starts_with?(cursor, "host.validity."))) and
+          is_integer(limit) and limit in 1..4
+
   def read_request?(_), do: false
 
   def neighbor_request?(
@@ -55,6 +64,9 @@ defmodule Ipse.Extension.Collection.Directory do
   def cost(%{"op" => "scan", "limit" => limit} = request),
     do: if(read_request?(request), do: {:ok, limit}, else: :error)
 
+  def cost(%{"op" => "visible_scan", "limit" => limit} = request),
+    do: if(read_request?(request), do: {:ok, limit}, else: :error)
+
   def cost(%{"op" => "neighbors", "request" => selected} = request),
     do:
       if(exact?(request, ~w(op request)) and neighbor_request?(selected),
@@ -74,6 +86,17 @@ defmodule Ipse.Extension.Collection.Directory do
         else: :gb_trees.iterator_from(cursor, index)
 
     keys = take(iterator, limit + 1, cursor)
+    selected = Enum.take(keys, limit)
+    {:ok, selected, if(length(keys) > limit, do: List.last(selected)), nil}
+  end
+
+  def select(index, %{"op" => "visible_scan", "after" => cursor, "limit" => limit}, _root) do
+    iterator =
+      if is_nil(cursor),
+        do: :gb_trees.iterator(index),
+        else: :gb_trees.iterator_from(cursor, index)
+
+    keys = take_visible(iterator, limit + 1, cursor)
     selected = Enum.take(keys, limit)
     {:ok, selected, if(length(keys) > limit, do: List.last(selected)), nil}
   end
@@ -150,6 +173,20 @@ defmodule Ipse.Extension.Collection.Directory do
 
       :none ->
         Enum.reverse(acc)
+    end
+  end
+
+  defp take_visible(_, 0, _), do: []
+
+  defp take_visible(iterator, count, cursor) do
+    case :gb_trees.next(iterator) do
+      {key, _, next} ->
+        if key === cursor or String.starts_with?(key, "host.validity."),
+          do: take_visible(next, count, cursor),
+          else: [key | take_visible(next, count - 1, cursor)]
+
+      :none ->
+        []
     end
   end
 

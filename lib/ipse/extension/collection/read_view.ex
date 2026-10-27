@@ -240,6 +240,10 @@ defmodule Ipse.Extension.Collection.ReadView do
         |> Map.put("selected", selected)
         |> Map.put("next", next)
         |> Map.put("neighbors", neighbors)
+        |> Map.put(
+          "expected_generation",
+          if(request["op"] == "visible_scan", do: request["generation"])
+        )
         |> Map.put("neighbor_request", if(neighbors, do: request["request"]))
 
       {:reply, {:ok, token, payload},

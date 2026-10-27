@@ -428,7 +428,8 @@ defmodule Ipse.Extension.Collection do
       %{}
     )
 
-    with {:ok, records} <- read_records(path, uid, state, cache["selected"]),
+    with :ok <- view_generation(state, cache),
+         {:ok, records} <- read_records(path, uid, state, cache["selected"]),
          {:ok, witness} <- view_witness(cache),
          result = %{
            "version" => 2,
@@ -442,8 +443,16 @@ defmodule Ipse.Extension.Collection do
       {:ok, result}
     else
       false -> {:error, :collection_view_reply_capacity}
+      {:error, :collection_view_stale} = error -> error
       _ -> @error
     end
+  end
+
+  defp view_generation(state, cache) do
+    if is_nil(cache["expected_generation"]) or
+         cache["expected_generation"] === state["generation"],
+       do: :ok,
+       else: {:error, :collection_view_stale}
   end
 
   defp view_neighbor_refs(cache) do

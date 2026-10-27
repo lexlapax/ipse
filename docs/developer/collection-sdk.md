@@ -181,6 +181,17 @@ read-view validation, every-dispatch withdrawal, inherited assistant/summary tai
 and resume revalidation remain separate integration work. Do not expose a stored
 `current` label as a freshness guarantee.
 
+The internal `Collection.ObservedRead` foundation can pair a `get`, `snapshot`,
+or bounded public `scan` result with the root witness from the same checked view.
+It is not connected to Session actions or managed eligibility. A scan checks its
+generation under the revalidated root lock before reading selected values and
+filters reserved keys before selection. It refuses a stale generation instead of
+returning the ordinary scan conflict. Legacy roots and over-capacity view indexes
+refuse; snapshot also needs its public probe record to be readable if present.
+Once the view closes, the witness is historical. A future use must establish
+current identity, consent, source eligibility, lineage and root at its own
+effect or send boundary; the witness grants no authority.
+
 ## Build evidence with the public SDK
 
 After a successful source read and exact quote, use:

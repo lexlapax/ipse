@@ -1,0 +1,22 @@
+Running ExUnit with seed: 20270310, max_cases: 1
+Excluding tags: [:native_sandbox, :macos_sandbox, :macos_filesystem, :memory_scope]
+
+..........................
+09:29:10.517 [info] The function passed as a handler with ID "read-view-expiry-0e3ae4dfa85874974eb124ece4d59f3e" is a local function.
+This means that it is either an anonymous function or a capture of a function without a module specified. That may cause a performance penalty when calling that handler. For more details see the note in `telemetry:attach/4` documentation.
+
+https://hexdocs.pm/telemetry/telemetry.html#attach/4
+.........
+09:29:11.325 [info] The function passed as a handler with ID "read-view-loss-e5cae44ae05bd0b8de226af22f66a49a" is a local function.
+This means that it is either an anonymous function or a capture of a function without a module specified. That may cause a performance penalty when calling that handler. For more details see the note in `telemetry:attach/4` documentation.
+
+https://hexdocs.pm/telemetry/telemetry.html#attach/4
+....
+09:29:14.232 [info] The function passed as a handler with ID "read-view-owner-loss-1c5fbb4f0cbac75c0851ce9747fbbf35" is a local function.
+This means that it is either an anonymous function or a capture of a function without a module specified. That may cause a performance penalty when calling that handler. For more details see the note in `telemetry:attach/4` documentation.
+
+https://hexdocs.pm/telemetry/telemetry.html#attach/4
+.
+Finished in 10.0 seconds (0.3s async, 9.6s sync)
+
+Result: 40 passed

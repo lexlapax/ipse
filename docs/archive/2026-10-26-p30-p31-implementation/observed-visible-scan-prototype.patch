@@ -1,0 +1,229 @@
+--- a/lib/ipse/extension/collection/directory.ex
++++ b/lib/ipse/extension/collection/directory.ex
+@@ -30,6 +30,12 @@
+       exact?(request, ~w(op after limit)) and (is_nil(cursor) or key?(cursor)) and
+         is_integer(limit) and limit in 1..8
+ 
++  def read_request?(%{"op" => "visible_scan", "after" => cursor, "limit" => limit} = request),
++    do:
++      exact?(request, ~w(op after limit)) and
++        (is_nil(cursor) or (key?(cursor) and not String.starts_with?(cursor, "host.validity."))) and
++        is_integer(limit) and limit in 1..4
++
+   def read_request?(_), do: false
+ 
+   def neighbor_request?(
+@@ -55,6 +61,9 @@
+   def cost(%{"op" => "scan", "limit" => limit} = request),
+     do: if(read_request?(request), do: {:ok, limit}, else: :error)
+ 
++  def cost(%{"op" => "visible_scan", "limit" => limit} = request),
++    do: if(read_request?(request), do: {:ok, limit}, else: :error)
++
+   def cost(%{"op" => "neighbors", "request" => selected} = request),
+     do:
+       if(exact?(request, ~w(op request)) and neighbor_request?(selected),
+@@ -78,6 +87,17 @@
+     {:ok, selected, if(length(keys) > limit, do: List.last(selected)), nil}
+   end
+ 
++  def select(index, %{"op" => "visible_scan", "after" => cursor, "limit" => limit}, _root) do
++    iterator =
++      if is_nil(cursor),
++        do: :gb_trees.iterator(index),
++        else: :gb_trees.iterator_from(cursor, index)
++
++    keys = take_visible(iterator, limit + 1, cursor)
++    selected = Enum.take(keys, limit)
++    {:ok, selected, if(length(keys) > limit, do: List.last(selected)), nil}
++  end
++
+   def select(index, %{"op" => "neighbors", "request" => request}, root_state) do
+     with true <- neighbor_request?(request),
+          {:ok, neighbors} <- neighbors(index, request, root_state) do
+@@ -153,6 +173,20 @@
+     end
+   end
+ 
++  defp take_visible(_, 0, _), do: []
++
++  defp take_visible(iterator, count, cursor) do
++    case :gb_trees.next(iterator) do
++      {key, _, next} ->
++        if key === cursor or String.starts_with?(key, "host.validity."),
++          do: take_visible(next, count, cursor),
++          else: [key | take_visible(next, count - 1, cursor)]
++
++      :none ->
++        []
++    end
++  end
++
+   defp take(_, 0, _), do: []
+ 
+   defp take(iterator, count, cursor) do
+--- a/lib/ipse/extension/collection/observed_read.ex
++++ b/lib/ipse/extension/collection/observed_read.ex
+@@ -8,13 +8,15 @@
+   those separately, bind the observation to a committed result, and recheck the
+   root before use. An observation is historical as soon as its view is closed.
+ 
+-  Successful `get` and `snapshot` results have the same public shape and value
+-  as generic Collection reads at the witnessed root. Their availability differs:
++  Successful `get`, `snapshot`, and visible `scan` results have the same public
++  shape and value as the corresponding Collection reads at the witnessed root.
++  Stale scan generations refuse instead of returning the generic conflict.
++  Their availability differs:
+   ReadView refuses legacy root versions 2 and 3 and indexes over its 4 MiB
+   encoded-cache bound. Snapshot also reads the public `ipse.observation` key to
+   obtain a same-view witness; an unreadable value there refuses observation even
+   when the generic metadata-only snapshot succeeds. It never returns that value.
+-  Other operations refuse, including scans that need to hide reserved metadata.
++  Other operations refuse. Scan excludes reserved metadata before reading values.
+   """
+   alias Ipse.{JSON, Extension.Collection}
+ 
+@@ -23,13 +25,13 @@
+ 
+   @doc false
+   def read(root, namespace, request) do
+-    with {:ok, key, kind} <- select(request),
++    with {:ok, read_request, kind} <- select(request),
+          {:ok, view} <- Collection.open_view(root, namespace) do
+       result =
+         try do
+           with {:ok, observation} <-
+-                 Collection.view_read(view, %{"op" => "get_many", "keys" => [key]}),
+-               {:ok, value} <- value(kind, observation, key) do
++                 Collection.view_read(view, read_request),
++               {:ok, value} <- value(kind, observation, request) do
+             {:ok,
+              %{
+                "version" => 1,
+@@ -61,28 +63,58 @@
+   end
+ 
+   defp select(%{"op" => "snapshot"} = request) do
+-    if Collection.valid_request?(request), do: {:ok, @snapshot_probe, :snapshot}, else: @error
++    if Collection.valid_request?(request),
++      do: {:ok, %{"op" => "get_many", "keys" => [@snapshot_probe]}, :snapshot},
++      else: @error
+   end
+ 
+   defp select(%{"op" => "get", "key" => key} = request) do
+     if Collection.valid_request?(request) and not String.starts_with?(key, "host.validity."),
+-      do: {:ok, key, :get},
++      do: {:ok, %{"op" => "get_many", "keys" => [key]}, :get},
+       else: @error
+   end
+ 
++  defp select(%{"op" => "scan", "after" => cursor, "limit" => limit} = request) do
++    if Collection.valid_request?(request) and limit in 1..4 and
++         (is_nil(cursor) or not String.starts_with?(cursor, "host.validity.")),
++       do: {:ok, %{"op" => "visible_scan", "after" => cursor, "limit" => limit}, :scan},
++       else: @error
++  end
++
+   defp select(_), do: @error
+ 
+   defp value(
+          kind,
+          %{"summary" => summary, "keys" => [key], "records" => [record], "witness" => witness},
+-         key
++         request
+        )
+-       when is_map(summary) and is_map(witness) do
++       when kind in [:snapshot, :get] and is_map(summary) and is_map(witness) do
+     case kind do
+-      :snapshot -> {:ok, summary}
+-      :get -> {:ok, Map.put(summary, "record", record)}
++      :snapshot ->
++        {:ok, summary}
++
++      :get ->
++        if(request["key"] == key, do: {:ok, Map.put(summary, "record", record)}, else: @error)
+     end
+   end
+ 
++  defp value(
++         :scan,
++         %{
++           "summary" => summary,
++           "keys" => keys,
++           "records" => records,
++           "next" => next,
++           "witness" => witness
++         },
++         request
++       )
++       when is_map(summary) and is_map(witness) and is_list(keys) and is_list(records) do
++    if summary["generation"] === request["generation"] and length(keys) == length(records) and
++         Enum.all?(keys, &(not String.starts_with?(&1, "host.validity."))),
++       do: {:ok, Map.merge(summary, %{"records" => records, "next" => next})},
++       else: @error
++  end
++
+   defp value(_, _, _), do: @error
+ end
+--- a/test/ipse/extension/collection_observed_read_test.exs
++++ b/test/ipse/extension/collection_observed_read_test.exs
+@@ -169,6 +169,20 @@
+ 
+     assert {:ok, result} = ObservedRead.read(c.root, c.namespace, %{"op" => "snapshot"})
+     refute Jason.encode!(result) =~ "secret"
++
++    assert {:ok, %{"record" => sidecar}} =
++             execute(c, %{"op" => "get", "key" => "host.validity.a"})
++
++    File.write!(
++      Path.join([c.root, c.namespace, "objects", sidecar["sha256"] <> ".json"]),
++      "corrupt"
++    )
++
++    scan = %{"op" => "scan", "after" => nil, "generation" => 1, "limit" => 4}
++    assert {:ok, expected} = Collection.scan_visible(c.root, c.namespace, scan, Usage.id())
++    assert {:ok, observed} = ObservedRead.read(c.root, c.namespace, scan)
++    assert observed["value"] === expected
++    refute Jason.encode!(observed) =~ "secret"
+   end
+ 
+   test "private keys and operations without an exact public translation fail closed", c do
+@@ -179,7 +193,8 @@
+           %{"op" => "snapshot", "extra" => true},
+           %{"op" => "status"},
+           %{"op" => "inspect", "operation_id" => Usage.id()},
+-          %{"op" => "scan", "after" => nil, "generation" => 0, "limit" => 4},
++          %{"op" => "scan", "after" => nil, "generation" => 0, "limit" => 5},
++          %{"op" => "scan", "after" => "host.validity.a", "generation" => 0, "limit" => 4},
+           %{"op" => "commit"}
+         ] do
+       assert {:error, :collection_observation_refused} =
+@@ -189,6 +204,28 @@
+     refute File.exists?(c.root)
+   end
+ 
++  test "visible scan matches pagination at the witnessed generation and refuses stale generations",
++       c do
++    assert {:ok, _} = commit(c, 0, "note.a", 0, %{"n" => 1})
++    assert {:ok, _} = commit(c, 1, "note.b", 0, %{"n" => 2})
++    assert {:ok, _} = commit(c, 2, "note.c", 0, %{"n" => 3})
++
++    for cursor <- [nil, "note.a", "note.b", "note.c"] do
++      request = %{"op" => "scan", "after" => cursor, "generation" => 3, "limit" => 1}
++      assert {:ok, expected} = Collection.scan_visible(c.root, c.namespace, request, Usage.id())
++      assert {:ok, observed} = ObservedRead.read(c.root, c.namespace, request)
++      assert observed["value"] === expected
++      assert observed["request_sha256"] == JSON.digest([request])
++      assert observed["result_sha256"] == JSON.digest([expected])
++    end
++
++    stale = %{"op" => "scan", "after" => nil, "generation" => 2, "limit" => 4}
++    assert {:conflict, _} = Collection.scan_visible(c.root, c.namespace, stale, Usage.id())
++
++    assert {:error, :collection_observation_refused} =
++             ObservedRead.read(c.root, c.namespace, stale)
++  end
++
+   test "a lost native view owner cannot publish an observation", c do
+     assert {:ok, _} = commit(c, 0, "note.one", 0, %{"text" => "synthetic"})
+     owner = self()

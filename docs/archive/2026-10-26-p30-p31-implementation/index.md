@@ -78,6 +78,7 @@ resource/offline qualification. No daemon configuration or existing model was ch
 - [Pure managed-reference lineage, projection contracts and verification](managed-reference-component.md).
 - [Explicit absent/present roots and record/absence subjects in pure managed dependencies v2](managed-reference-v2-component.md), with its [independent adversarial audit](managed-reference-v2-audit.md).
 - [Strict raw root observations in pure managed dependencies v3](managed-reference-v3-component.md); Session integration remains open.
+- [Same-view collection observation foundation and scoped independent evidence](same-view-observation-component.md); Session lineage and current authority remain open.
 - [Pure managed policy recipes, deduplicated grants and activation data](managed-policy-component.md).
 - [Atomic managed publication and explicit version-5 receipt binding](managed-collection-component.md).
 - [Owner-task Collection read views and protected root revalidation](collection-read-view-component.md), with its [independent adversarial audit](collection-read-view-audit.md).
