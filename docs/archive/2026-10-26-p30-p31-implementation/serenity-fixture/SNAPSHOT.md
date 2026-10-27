@@ -74,3 +74,12 @@ diagnostic; neither source nor binary qualifies the production helper. The
 private adapter also rejected a mismatched Port PID and reported the staged
 operation unknown. Runtime pinning, privileged container isolation and recovery
 remain open.
+
+A later private checkpoint adds disabled container-path channel/stage sources
+and a read-only Btrfs mount probe. Serenity's existing workspace demonstrated
+that a Btrfs mount's anonymous device number need not equal its backing block
+device. The draft now relates a held mount ID and Btrfs filesystem UUID to its
+single underlying device through sysfs; the read-only workspace probe matched
+the actual underlying device. This logic is unreviewed and has not been tested
+on the disposable mapper. The private suite passed 56 tests. No device or mount
+creation was performed.

@@ -276,18 +276,28 @@ impl Backend for RealBackend {
         let contents = fs::read_to_string("/proc/self/mountinfo").map_err(|_| ())?;
         if contents.len() > 1_048_576 { return Err(()); }
         let target = self.mount.to_str().ok_or(())?;
-        let mut found = 0;
+        let mut id = None;
         for line in contents.lines() {
             let (left,right) = line.split_once(" - ").ok_or(())?;
             let l: Vec<_> = left.split_ascii_whitespace().collect();
             let r: Vec<_> = right.split_ascii_whitespace().collect();
             if l.len() < 6 || r.len() < 3 { return Err(()); }
             if l[4] == target {
-                if l[2] != format!("{}:{}", e.dm_major,e.dm_minor) || r[0] != "btrfs" { return Err(()); }
-                found += 1;
+                if id.is_some() || r[0] != "btrfs" { return Err(()); }
+                id=Some(l[0].parse::<u64>().map_err(|_| ())?);
             }
         }
-        match found { 0 => Ok(false), 1 => Ok(true), _ => Err(()) }
+        let Some(expected_mount)=id else{return Ok(false)};
+        let named=fs::symlink_metadata(&self.mount).map_err(|_| ())?;
+        let held=File::open(&self.mount).map_err(|_| ())?;
+        let meta=held.metadata().map_err(|_| ())?;
+        if !meta.is_dir() || (named.dev(),named.ino())!=(meta.dev(),meta.ino()) {return Err(())}
+        let info=super::btrfs_identity::inspect(&held,&self.sysroot).map_err(|_| ())?;
+        let major=u32::try_from(e.dm_major).map_err(|_| ())?;let minor=u32::try_from(e.dm_minor).map_err(|_| ())?;
+        if info.mount_id!=expected_mount || info.underlying!=(major,minor) {return Err(())}
+        let after=fs::symlink_metadata(&self.mount).map_err(|_| ())?;
+        if (after.dev(),after.ino())!=(meta.dev(),meta.ino()) {return Err(())}
+        Ok(true)
     }
     fn mapper_absent(&mut self, e: &Expected) -> Result<bool, ()> {
         self.fixed_name(e)?;

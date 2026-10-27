@@ -12,6 +12,7 @@
 #[path = "recovery_ledger.rs"] mod recovery_ledger;
 #[path = "recovery_guardian.rs"] mod recovery_guardian;
 #[path = "cgroup_witness.rs"] mod cgroup_witness;
+#[path = "btrfs_identity.rs"] mod btrfs_identity;
 #[path = "peer_channel.rs"] mod peer_channel;
 use guard::{Expected, Table, loop_matches, mapper_matches, table_matches};
 
