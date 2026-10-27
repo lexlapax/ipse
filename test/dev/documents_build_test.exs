@@ -84,7 +84,8 @@ defmodule Ipse.Development.DocumentsBuildTest do
     manifest = JSON.decode!(File.read!(Path.join(output, "extension.json")))
     files = Map.new(manifest["files"], &{&1["path"], &1})
 
-    for name <- ~w(Documents Documents.Zip Documents.Docx Documents.Pdf Documents.ParserStage) do
+    for name <-
+          ~w(Documents Documents.Zip Documents.Docx Documents.Docx.Styles Documents.Pdf Documents.ParserStage) do
       relative = "ebin/Elixir.IpseKnowledge." <> name <> ".beam"
       bytes = File.read!(Path.join(output, relative))
       assert files[relative]["sha256"] == Ipse.JSON.sha256(bytes)
@@ -92,5 +93,67 @@ defmodule Ipse.Development.DocumentsBuildTest do
     end
 
     refute :code.is_loaded(IpseKnowledge.Documents)
+  end
+
+  test "Cargo diagnostics never become metadata JSON, including colored fresh-cache output", %{
+    root: root
+  } do
+    parser = Path.join(root, "native/ipse-pdf")
+    File.mkdir_p!(Path.join(parser, "notices"))
+    File.cp!("native/ipse-pdf/build.exs", Path.join(parser, "build.exs"))
+    File.cp!("LICENSE", Path.join(root, "LICENSE"))
+
+    for {name, bytes} <- [
+          {"dependency-inventory.json", JSON.encode!(%{"packages" => []})},
+          {"Cargo.lock", "synthetic fixture"},
+          {"Cargo.toml", "synthetic fixture"},
+          {"DEPENDENCIES.md", "synthetic fixture"}
+        ],
+        do: File.write!(Path.join(parser, name), bytes)
+
+    cargo = Path.join(root, "tools/cargo")
+
+    File.write!(cargo, """
+    #!/bin/sh
+    printf '\\033[31mSynthetic Cargo diagnostic\\033[0m\\n' >&2
+    case "$1" in
+      metadata) printf '%s' "$IPSE_FAKE_METADATA" ;;
+      build) mkdir -p "$CARGO_TARGET_DIR/release"; printf parser > "$CARGO_TARGET_DIR/release/ipse-pdf" ;;
+      *) exit 9 ;;
+    esac
+    """)
+
+    File.chmod!(cargo, 0o755)
+
+    args = [
+      Path.join(parser, "build.exs"),
+      "--output",
+      Path.join(root, "output/ipse-pdf"),
+      "--notices",
+      Path.join(root, "output/notices")
+    ]
+
+    env = [
+      {"PATH", Path.join(root, "tools") <> ":" <> System.get_env("PATH")},
+      {"CARGO_TERM_COLOR", "always"},
+      {"IPSE_FAKE_METADATA", JSON.encode!(%{"packages" => [%{"name" => "ipse-pdf"}]})}
+    ]
+
+    {log, status} =
+      System.cmd(System.find_executable("elixir"), args, env: env, stderr_to_stdout: true)
+
+    assert status == 0, log
+    assert log =~ "Synthetic Cargo diagnostic"
+    assert File.read!(Path.join(root, "output/ipse-pdf")) == "parser"
+    File.rm_rf!(Path.join(root, "output"))
+
+    {log, status} =
+      System.cmd(System.find_executable("elixir"), args,
+        env: List.keystore(env, "IPSE_FAKE_METADATA", 0, {"IPSE_FAKE_METADATA", "not JSON"}),
+        stderr_to_stdout: true
+      )
+
+    assert status != 0, log
+    refute File.exists?(Path.join(root, "output"))
   end
 end

@@ -34,8 +34,22 @@ defmodule Ipse.Development.Verification.Documents do
     xml =
       "<w:document xmlns:w=\"http://schemas.openxmlformats.org/wordprocessingml/2006/main\"><w:body><w:p><w:r><w:t>visible </w:t></w:r><w:del><w:r><w:delText>removed</w:delText></w:r></w:del><w:ins><w:r><w:t>inserted</w:t></w:r></w:ins></w:p></w:body></w:document>"
 
+    root_relationship =
+      "<Relationships xmlns=\"http://schemas.openxmlformats.org/package/2006/relationships\"><Relationship Id=\"main\" Type=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument\" Target=\"word/document.xml\"/></Relationships>"
+
+    content_types =
+      "<Types xmlns=\"http://schemas.openxmlformats.org/package/2006/content-types\"><Default Extension=\"rels\" ContentType=\"application/vnd.openxmlformats-package.relationships+xml\"/><Override PartName=\"/word/document.xml\" ContentType=\"application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml\"/></Types>"
+
     {:ok, {_, docx}} =
-      :zip.create(~c"development.docx", [{~c"word/document.xml", xml}], [:memory])
+      :zip.create(
+        ~c"development.docx",
+        [
+          {~c"word/document.xml", xml},
+          {~c"_rels/.rels", root_relationship},
+          {~c"[Content_Types].xml", content_types}
+        ],
+        [:memory]
+      )
 
     {:ok, %{"segments" => [%{"text" => "visible inserted"}]}} = extract.(docx, "development.docx")
     {:error, :pdf_experimental_unavailable} = extract.(pdf(), "fixture.pdf")

@@ -101,3 +101,37 @@ These checks ran against pending integration sources; they are not a published
 release or complete P31 acceptance. Temporary logs are under `/tmp/ipse-documents-*` and
 `/tmp/ipse-pdf-native-final.log`; these local logs are not portable evidence by
 themselves. The root integration receipt owns whole-repository acceptance.
+
+## Corrective authority and hosted-build follow-up
+
+Root independently reproduced an OPC authority defect: a package could declare
+`main.xml` as its main story while the extractor returned an orphan
+`word/document.xml` as complete. Commit `ecaa001` requires the canonical internal
+root relationship and Word content-type authority before extracting any text.
+Optional styles/annotations also need their canonical part relationships. Missing,
+alternate, external, conflicting or non-Word authority refuses; development
+fixtures now construct real OPC authority rather than treating missing files as
+complete. Bounded style inheritance excludes hidden runs or refuses ambiguity;
+visibility-bearing default character styles are conservatively unsupported.
+
+The DOCX author suite passed **22 tests**. Root separately reviewed body/style/
+relationship/content-type code and ran fresh canonical Unicode/hidden controls,
+three alternate/external target controls, missing-root and non-Word-type controls.
+They passed after repair. These are independently authored synthetic checks;
+real Word fidelity and held-out retrieval quality remain open. The rebuilt
+document artifact's source proof passed all six checks with the runtime toolchain
+absent and PDF resource enforcement available on this Linux host.
+
+The hosted `497a947` [run](https://github.com/lexlapax/ipse/actions/runs/40423458687)
+failed on both platforms during build: Cargo's fresh-cache diagnostics, including
+ANSI bytes, were merged into metadata JSON. The builder now captures stdout as
+the JSON channel and leaves stderr as diagnostics. It never strips a diagnostic
+prefix to accept malformed metadata. A fake-Cargo regression sends colored
+stderr alongside valid JSON and verifies success; invalid stdout still refuses
+before artifact creation. The four-test build suite passes after correcting an
+environment-list fixture error. Hosted rerun and the final fixed-source/package
+baseline remain separate evidence. Raw private logs include
+`/tmp/ipse-parser497-hosted-failure.log`,
+`/tmp/ipse-pdf-cargo-diagnostics-final-tests.log`,
+`/tmp/ipse-docx-root-authority-audit-final.log` and
+`/tmp/ipse-docx-root-source-proof.log`.

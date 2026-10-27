@@ -21,7 +21,7 @@ command = fn arguments ->
   {text, status} =
     System.cmd("cargo", arguments ++ ["--manifest-path", manifest],
       env: [{"CARGO_TARGET_DIR", target}],
-      stderr_to_stdout: true
+      stderr_to_stdout: false
     )
 
   unless status == 0, do: raise("PDF parser Cargo operation failed: " <> text)
