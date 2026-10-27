@@ -68,6 +68,7 @@ resource/offline qualification. No daemon configuration or existing model was ch
 - [Explicit Core-v3 normalization envelope and actual native controls](managed-v3-core-component.md), with its [independent envelope audit](managed-v3-core-audit.md).
 - [Restricted authenticated automatic NormalizerV3 and separately bound actual Collection integration](managed-normalizer-v3-component.md), with its [independent interpreter audit](managed-normalizer-v3-audit.md) and [exact results](managed-normalizer-v3-results.json).
 - [Frozen full baseline: 2,474 passed, retained stopped dev-BEAM predecessor and exact revision scope](full-baseline-checkpoint.md).
+- [Interrupted SDK verification and native-profile refusal after the host kernel changed to 7.2.11](kernel-profile-recovery.md).
 - [Declarative collection publication constraints](collection-policy-component.md).
 - [Native knowledge capture and precompiled artifact component](native-capture-component.md).
 - [Native artifact integration with managed recipes and actual PTY publication](native-managed-capture-component.md).
