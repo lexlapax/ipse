@@ -17,9 +17,11 @@ fn run()->io::Result<()> {
  if reference.len()!=39||!reference.starts_with("ipse-q-")||!reference[7..].bytes().all(|b|b.is_ascii_digit()||(b'a'..=b'f').contains(&b)){return Err(io::ErrorKind::InvalidInput.into())}
  let expected_dev:u64=args[3].parse().map_err(|_|io::ErrorKind::InvalidInput)?;let expected_inode:u64=args[4].parse().map_err(|_|io::ErrorKind::InvalidInput)?;if expected_inode==0{return Err(io::ErrorKind::InvalidInput.into())}
  // The fresh single-thread process has no inherited extra FDs. Mark it
- // non-dumpable before acquisition; strict confinement follows acquisition.
+ // non-dumpable and apply the initial filter before acquisition; strict
+ // no-open confinement follows acquisition.
  verify_initial_fds()?;
- loop_owner_filter::protect_initial()?;
+ verify_single_task()?;
+ loop_owner_filter::install()?;
  let loop_device=existing_loop::Existing::open_existing(minor)?;
  let parent=OpenOptions::new().read(true).custom_flags(0x10000|0x20000).open("/work/fixture")?;let pm=parent.metadata()?;let pn=fs::symlink_metadata("/work/fixture")?;
  if !pm.is_dir()||pm.uid()!=unsafe{geteuid()}||pm.mode()&0o777!=0o700||(pm.dev(),pm.ino())!=(pn.dev(),pn.ino()){return Err(io::ErrorKind::PermissionDenied.into())}
@@ -49,9 +51,15 @@ fn verify_initial_fds()->io::Result<()> {
   if n>2 {let path=fs::read_link(entry.path())?;if path.to_str()!=Some(expected.as_str()){return Err(io::ErrorKind::PermissionDenied.into())}scan_fd+=1;}
  }if scan_fd==1 {Ok(())}else{Err(io::ErrorKind::PermissionDenied.into())}
 }
+fn verify_single_task()->io::Result<()> {
+ let mut tasks=fs::read_dir("/proc/self/task")?;
+ let entry=tasks.next().ok_or(io::ErrorKind::InvalidData)??;
+ let id=entry.file_name().to_str().ok_or(io::ErrorKind::InvalidData)?.parse::<u32>().map_err(|_|io::ErrorKind::InvalidData)?;
+ if id!=std::process::id()||tasks.next().is_some(){return Err(io::ErrorKind::PermissionDenied.into())}Ok(())
+}
 fn verify_acquired_fds(owned:&[i32])->io::Result<()> {
  let mut expected=owned.to_vec();expected.sort_unstable();expected.dedup();
- if expected.len()!=owned.len()||expected.iter().any(|fd|*fd<=2||unsafe{fcntl(*fd,1)}&1!=1){return Err(io::ErrorKind::PermissionDenied.into())}
+ if expected.len()!=owned.len()||expected.iter().any(|fd|{let flags=unsafe{fcntl(*fd,1)};*fd<=2||flags<0||flags&1!=1}){return Err(io::ErrorKind::PermissionDenied.into())}
  let scan=format!("/proc/{}/fd",std::process::id());let mut found=Vec::new();let mut scan_count=0;
  for entry in fs::read_dir("/proc/self/fd")? {let entry=entry?;let name=entry.file_name();let n=name.to_str().ok_or(io::ErrorKind::InvalidData)?.parse::<i32>().map_err(|_|io::ErrorKind::InvalidData)?;
   if n>2 {if fs::read_link(entry.path())?.to_str()==Some(scan.as_str()){scan_count+=1}else{found.push(n)}}
@@ -66,10 +74,11 @@ fn main(){if let Err(e)=run(){eprintln!("loop owner outcome unknown: {e}");std::
   let pid=unsafe{fork()};assert!(pid>=0);if pid==0 {let mut fds=[0i32;2];if unsafe{pipe(fds.as_mut_ptr())}!=0{unsafe{_exit(1)}}
    if unsafe{dup2(fds[0],0)}!=0 || unsafe{dup2(fds[1],1)}!=1 || unsafe{dup2(fds[1],2)}!=2 {unsafe{_exit(2)}}
    for fd in 3..1024 {unsafe{close(fd);}}
-   let clean=verify_initial_fds().is_ok();let extra=File::open("/dev/null").unwrap();let refused=verify_initial_fds().is_err();
+   let clean=verify_initial_fds().is_ok()&&verify_single_task().is_ok();let extra=File::open("/dev/null").unwrap();let refused=verify_initial_fds().is_err();
    let exact=verify_acquired_fds(&[extra.as_raw_fd()]).is_ok();let duplicate=verify_acquired_fds(&[extra.as_raw_fd(),extra.as_raw_fd()]).is_err();
+   let cleared=unsafe{fcntl(extra.as_raw_fd(),2,0)}==0 && verify_acquired_fds(&[extra.as_raw_fd()]).is_err();
    let other=File::open("/dev/zero").unwrap();let unexpected=verify_acquired_fds(&[extra.as_raw_fd()]).is_err();drop(other);drop(extra);
-   unsafe{_exit(if clean&&refused&&exact&&duplicate&&unexpected{0}else{3})}
+   unsafe{_exit(if clean&&refused&&exact&&duplicate&&cleared&&unexpected{0}else{3})}
   }
   let mut status=0;assert_eq!(unsafe{waitpid(pid,&mut status,0)},pid);assert_eq!(status,0);
  }

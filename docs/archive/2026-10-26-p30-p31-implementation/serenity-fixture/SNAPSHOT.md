@@ -195,3 +195,11 @@ unknown lifecycle effects when an error drops an AUTOCLEAR descriptor. The later
 inventory and extra negative test have not yet been independently reviewed.
 Neither filter nor a successful close establishes device cleanup. No device
 operation was executed.
+
+A further unreviewed prototype first checks for one local task, then installs an
+acquisition filter that rejects duplication and new tasks before opening its
+resources. It can only add a stricter seccomp filter, which subsequently blocks
+ordinary open routes and all further prctl. A synthetic child tested this
+transition; eight owner and 69 controller tests passed. The check is a local
+snapshot, not proof against hidden kernel references, external actors, lifecycle
+races, or interrupted AUTOCLEAR. The live entry point remains disabled.

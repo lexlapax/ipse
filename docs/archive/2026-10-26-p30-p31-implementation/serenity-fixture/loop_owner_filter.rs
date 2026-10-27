@@ -24,9 +24,15 @@ fn install_mode(deny_open:bool)->io::Result<()> {
  v.extend([jump(0x15,9,0,4),stmt(0x20,48),jump(0x15,0xffffffff,1,0),stmt(0x06,0x00050001),stmt(0x06,0x7fff0000)]);
  // fcntl only F_GETFD: reject all duplication and FD-flag mutation.
  v.extend([jump(0x15,72,0,4),stmt(0x20,24),jump(0x15,1,1,0),stmt(0x06,0x00050001),stmt(0x06,0x7fff0000)]);
+ // The acquisition filter allows only an additional seccomp filter; this
+ // can tighten but cannot weaken the existing restrictions. The strict
+ // filter denies every subsequent prctl call.
+ if deny_open {v.extend([jump(0x15,157,0,1),stmt(0x06,0x00050001)]);} else {
+  v.extend([jump(0x15,157,0,6),stmt(0x20,16),jump(0x15,22,0,3),stmt(0x20,24),jump(0x15,2,0,1),stmt(0x06,0x7fff0000),stmt(0x06,0x00050001)]);
+ }
  // syscalls which could create another task, FD alias, socket transfer,
  // asynchronous kernel FD registration or a new security/namespace context.
- for nr in [32,33,41,46,47,53,56,57,58,59,101,105,106,113,114,116,117,119,122,123,126,135,155,157,161,165,166,206,207,208,209,210,233,272,292,298,299,304,307,308,317,321,322,323,333,425,426,427,428,429,430,431,432,433,435,436,438,442] {v.push(jump(0x15,nr,0,1));v.push(stmt(0x06,0x00050001));}
+ for nr in [32,33,41,46,47,53,56,57,58,59,101,105,106,113,114,116,117,119,122,123,126,135,155,161,165,166,206,207,208,209,210,233,272,292,298,299,304,307,308,317,321,322,323,333,425,426,427,428,429,430,431,432,433,435,436,438,442] {v.push(jump(0x15,nr,0,1));v.push(stmt(0x06,0x00050001));}
  if deny_open {for nr in [2,85,257,437] {v.push(jump(0x15,nr,0,1));v.push(stmt(0x06,0x00050001));}}
  v.push(stmt(0x06,0x7fff0000));let prog=Prog{len:u16::try_from(v.len()).map_err(|_|io::ErrorKind::InvalidData)?,filter:v.as_ptr()};
  if unsafe{prctl(22,2,&prog as *const Prog,0,0)}!=0{return Err(io::Error::last_os_error())}Ok(())
@@ -35,7 +41,7 @@ pub(crate) fn install()->io::Result<()> {protect_initial()?;install_mode(false)}
 // Requires all resources and a scan directory pre-opened and pinned. Not wired.
 pub(crate) fn install_strict()->io::Result<()> {install_mode(true)}
 #[cfg(test)]mod tests{use super::*;use std::os::fd::AsRawFd;unsafe extern "C"{fn ioctl(fd:i32,request:u64,...)->i32;fn fork()->i32;fn waitpid(pid:i32,status:*mut i32,opts:i32)->i32;fn syscall(n:i64,...)->i64;fn _exit(code:i32)->!;}
- #[test]fn isolated_child_refuses_dup_and_allows_getfd(){let pid=unsafe{fork()};assert!(pid>=0);if pid==0{let null=std::fs::File::open("/dev/null").unwrap();let result=protect_initial().and_then(|_|install_strict()).is_ok();let probe=unsafe{ioctl(null.as_raw_fd(),0x4c05u64)};let ierr=io::Error::last_os_error().raw_os_error();let duplicate=unsafe{syscall(32,0)};let derr=io::Error::last_os_error().raw_os_error();let got=unsafe{syscall(72,0,1)};let fdup=unsafe{syscall(72,0,0,0)};let ferr=io::Error::last_os_error().raw_os_error();let undump=unsafe{prctl(4,1,0,0,0)};let perr=io::Error::last_os_error().raw_os_error();let path=c"/dev/null";let opened=unsafe{syscall(257,-100,path.as_ptr(),0,0)};let oerr=io::Error::last_os_error().raw_os_error();let socket=unsafe{syscall(41,-1,-1,-1)};let serr=io::Error::last_os_error().raw_os_error();let clone3=unsafe{syscall(435,0,0)};let cerr=io::Error::last_os_error().raw_os_error();let unshare=unsafe{syscall(272,0)};let uerr=io::Error::last_os_error().raw_os_error();let uid=unsafe{syscall(102)};let setuid=unsafe{syscall(105,uid)};let seterr=io::Error::last_os_error().raw_os_error();let map=unsafe{syscall(9,0,4096,0,2,0,0)};let merr=io::Error::last_os_error().raw_os_error();let anon=unsafe{syscall(9,0,4096,3,0x22,-1,0)};if anon>=0{unsafe{syscall(11,anon,4096);}}let code=if result&&opened == -1&&oerr==Some(1)&&uid>=0&&setuid == -1&&seterr==Some(1)&&probe == -1&&ierr==Some(25)&&map == -1&&merr==Some(1)&&anon>=0&&duplicate == -1&&derr==Some(1)&&fdup == -1&&ferr==Some(1)&&undump == -1&&perr==Some(1)&&got>=0&&socket == -1&&serr==Some(1)&&clone3 == -1&&cerr==Some(1)&&unshare == -1&&uerr==Some(1) {0}else{1};unsafe{_exit(code)}}let mut status=0;assert_eq!(unsafe{waitpid(pid,&mut status,0)},pid);assert_eq!(status,0);}
+ #[test]fn isolated_child_refuses_dup_and_allows_getfd(){let pid=unsafe{fork()};assert!(pid>=0);if pid==0{let null=std::fs::File::open("/dev/null").unwrap();let result=install().and_then(|_|install_strict()).is_ok();let probe=unsafe{ioctl(null.as_raw_fd(),0x4c05u64)};let ierr=io::Error::last_os_error().raw_os_error();let duplicate=unsafe{syscall(32,0)};let derr=io::Error::last_os_error().raw_os_error();let got=unsafe{syscall(72,0,1)};let fdup=unsafe{syscall(72,0,0,0)};let ferr=io::Error::last_os_error().raw_os_error();let undump=unsafe{prctl(4,1,0,0,0)};let perr=io::Error::last_os_error().raw_os_error();let path=c"/dev/null";let opened=unsafe{syscall(257,-100,path.as_ptr(),0,0)};let oerr=io::Error::last_os_error().raw_os_error();let socket=unsafe{syscall(41,-1,-1,-1)};let serr=io::Error::last_os_error().raw_os_error();let clone3=unsafe{syscall(435,0,0)};let cerr=io::Error::last_os_error().raw_os_error();let unshare=unsafe{syscall(272,0)};let uerr=io::Error::last_os_error().raw_os_error();let uid=unsafe{syscall(102)};let setuid=unsafe{syscall(105,uid)};let seterr=io::Error::last_os_error().raw_os_error();let map=unsafe{syscall(9,0,4096,0,2,0,0)};let merr=io::Error::last_os_error().raw_os_error();let anon=unsafe{syscall(9,0,4096,3,0x22,-1,0)};if anon>=0{unsafe{syscall(11,anon,4096);}}let code=if result&&opened == -1&&oerr==Some(1)&&uid>=0&&setuid == -1&&seterr==Some(1)&&probe == -1&&ierr==Some(25)&&map == -1&&merr==Some(1)&&anon>=0&&duplicate == -1&&derr==Some(1)&&fdup == -1&&ferr==Some(1)&&undump == -1&&perr==Some(1)&&got>=0&&socket == -1&&serr==Some(1)&&clone3 == -1&&cerr==Some(1)&&unshare == -1&&uerr==Some(1) {0}else{1};unsafe{_exit(code)}}let mut status=0;assert_eq!(unsafe{waitpid(pid,&mut status,0)},pid);assert_eq!(status,0);}
 }
 #[cfg(test)]mod strict_open_tests {
  use super::*;use std::os::fd::AsRawFd;
@@ -46,11 +52,28 @@ pub(crate) fn install_strict()->io::Result<()> {install_mode(true)}
    let original=std::fs::File::open("/dev/null").unwrap();
    let reopen=std::ffi::CString::new(format!("/proc/self/fd/{}",original.as_raw_fd())).unwrap();
    let path=c"/dev/null";let how=OpenHow{flags:0,mode:0,resolve:0};
-   if protect_initial().and_then(|_|install_strict()).is_err(){unsafe{_exit(1)}}
-   let mut good=true;
+   if install().and_then(|_|install_strict()).is_err(){unsafe{_exit(1)}}
+   // Owner metadata checks must work without opening a new descriptor.
+   let mut good=original.metadata().is_ok() && std::fs::metadata(reopen.to_str().unwrap()).is_ok();
    let calls:[Box<dyn Fn()->i64>;5]=[Box::new(||unsafe{syscall(2,path.as_ptr(),0,0)}),Box::new(||unsafe{syscall(85,path.as_ptr(),0o600)}),Box::new(||unsafe{syscall(257,-100,path.as_ptr(),0,0)}),Box::new(||unsafe{syscall(437,-100,path.as_ptr(),&how as *const OpenHow,std::mem::size_of::<OpenHow>())}),Box::new(||unsafe{syscall(257,-100,reopen.as_ptr(),0,0)})];
    for call in calls {let result=call();good &= result == -1 && io::Error::last_os_error().raw_os_error()==Some(1);}
    unsafe{_exit(if good {0}else{2})}
+  }
+  let mut status=0;assert_eq!(unsafe{waitpid(pid,&mut status,0)},pid);assert_eq!(status,0);
+ }
+}
+#[cfg(test)]mod staged_filter_tests {
+ use super::*;
+ unsafe extern "C" {fn fork()->i32;fn waitpid(pid:i32,status:*mut i32,opts:i32)->i32;fn syscall(n:i64,...)->i64;fn close(fd:i32)->i32;fn _exit(code:i32)->!;}
+ #[test]fn acquisition_filter_allows_open_but_not_dup_or_new_tasks_and_can_tighten(){
+  let pid=unsafe{fork()};assert!(pid>=0);if pid==0 {
+   if install().is_err(){unsafe{_exit(1)}}
+   let path=c"/dev/null";let fd=unsafe{syscall(257,-100,path.as_ptr(),0,0)};
+   let dup=unsafe{syscall(32,fd)};let dup_err=io::Error::last_os_error().raw_os_error();
+   let clone=unsafe{syscall(435,0,0)};let clone_err=io::Error::last_os_error().raw_os_error();
+   let tightened=install_strict().is_ok();let again=install_strict().is_err();
+   if fd>=0{unsafe{close(fd as i32);}}
+   unsafe{_exit(if fd>=0&&dup == -1&&dup_err==Some(1)&&clone == -1&&clone_err==Some(1)&&tightened&&again {0}else{2})}
   }
   let mut status=0;assert_eq!(unsafe{waitpid(pid,&mut status,0)},pid);assert_eq!(status,0);
  }
