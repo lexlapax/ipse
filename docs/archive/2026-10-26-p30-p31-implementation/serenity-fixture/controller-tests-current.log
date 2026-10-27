@@ -1,5 +1,5 @@
 
-running 75 tests
+running 80 tests
 test barrier_framing::tests::accepts_every_fragment_boundary_after_gate ... ok
 test barrier_framing::tests::frames_before_gate_and_replayed_gate_are_refused ... ok
 test barrier_framing::tests::partial_wrong_order_trailing_and_oversize_fail_closed ... ok
@@ -15,6 +15,8 @@ test btrfs_identity::tests::abi_and_device_parser ... ok
 test cgroup_witness::tests::invalid_inputs_refuse_before_any_cgroup_access ... ok
 test cgroup_witness::tests::ordinary_directory_cannot_masquerade_as_retained_cgroup ... ok
 test cgroup_witness::tests::populated_parser_rejects_missing_duplicate_and_invalid ... ok
+test diagnostic_driver::tests::every_effect_failure_stops_with_exact_pending_record ... ok
+test diagnostic_driver::tests::successful_effect_without_required_identity_cannot_advance ... ok
 test diagnostic_receipt::identity_tests::initial_binding_is_exclusive_and_must_precede_effects ... ok
 test diagnostic_receipt::observation_tests::mapper_confirmation_requires_unique_matching_observation ... ok
 test diagnostic_receipt::receipt_tests::records_only_legal_order_and_refuses_replaced_name ... ok
@@ -32,6 +34,9 @@ test guard::tests::forged_or_mismatched_nonces_and_oversized_device_refuse ... o
 test guard::tests::mapper_rejects_wrong_uuid_device_names_opens_and_multiline ... ok
 test guard::tests::mock_fault_sequence_requires_confirmed_boundaries ... ok
 test guard::tests::mock_switch_emits_only_exact_name_and_bounded_error_table ... ok
+test held_loop_client::tests::config_and_close_require_exact_protocol ... ok
+test held_loop_client::tests::reversed_or_same_pipe_is_rejected ... ok
+test held_loop_client::tests::wrong_ack_and_disconnected_command_are_unknown ... ok
 test loop_device::tests::linux_dev_numbers_and_name_bounds ... ok
 test loop_owner_filter::staged_filter_tests::acquisition_filter_allows_open_but_not_dup_or_new_tasks_and_can_tighten ... ok
 test loop_owner_filter::strict_open_tests::strict_filter_refuses_all_open_routes_and_proc_fd_reopen ... ok
@@ -76,5 +81,5 @@ test tests::recovery_restores_only_exact_known_error_state_then_tears_down ... o
 test tests::uncertain_effects_stop_without_replay_or_compensating_action ... ok
 test tests::wrong_existing_or_extra_inactive_table_refuses ... ok
 
-test result: ok. 75 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.85s
+test result: ok. 80 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.84s
 

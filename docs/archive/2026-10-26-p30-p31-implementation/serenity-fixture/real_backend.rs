@@ -33,6 +33,8 @@ struct RealBackend {
     deadline: Instant,
     next: u64,
     image: Option<File>,
+    // Injected only by a future authenticated guardian; constructor refuses live setup.
+    loop_owner: Option<super::held_loop_client::Client>,
     command_limit: u64,
     cleanup_reserved: bool,
     fixture_fsid: Option<[u8;16]>,
@@ -67,7 +69,7 @@ impl RealBackend {
             expected:Expected { loop_major:7,loop_minor,backing_major:0,backing_minor:0,
                 backing_inode:0,loop_ref:name.clone(),dm_name:name,dm_uuid:format!("IPSE-Q-{nonce}"),
                 dm_major,dm_minor,sectors:1_048_576 },
-            deadline:Instant::now()+Duration::from_secs(seconds), next:0, image:None,
+            deadline:Instant::now()+Duration::from_secs(seconds), next:0, image:None,loop_owner:None,
             command_limit:WORK_COMMANDS, cleanup_reserved:false, fixture_fsid:None, fixture_mount_id:None, fixture_ns_inode:here })
     }
     /// Explicitly reserve a separately bounded cleanup window after a known
@@ -280,7 +282,7 @@ impl Backend for RealBackend {
             Action::Resume => { self.dm(&["resume".into(), name])?; }
             Action::Unmount => { return Err(()); } // Path-based umount cannot prove held mount identity.
             Action::RemoveMapper => { self.dm(&["remove".into(), name])?; }
-            Action::DetachLoop => { let tool = self.losetup.clone(); self.capture(&tool, &["--detach".into(), self.loop_node.to_str().ok_or(())?.to_owned()])?; }
+            Action::DetachLoop => { self.loop_owner.as_mut().ok_or(())?.rundown_close().map_err(|_| ())?; }
         }; Ok(())
     }
     fn fixture_mount(&mut self, e: &Expected) -> Result<bool, ()> {
@@ -317,12 +319,9 @@ impl Backend for RealBackend {
     }
     fn loop_absent(&mut self, e: &Expected) -> Result<bool, ()> {
         self.fixed_name(e)?;
-        // The list must succeed; absence of a node or failed command alone is
-        // never proof. A concurrently reused loop must be treated as unknown.
-        let tool = self.losetup.clone();
-        let output = self.capture(&tool, &["--list".into(),"--raw".into(),"--noheadings".into(),
-            "--output".into(),"MAJ:MIN".into()])?;
-        assigned_loop_absent(&output, (e.loop_major,e.loop_minor))
+        // An unbound status or missing losetup row does not establish final
+        // file-description release. The diagnostic must remain unknown.
+        Err(())
     }
     fn loop_has_no_holders(&mut self, e: &Expected) -> Result<bool, ()> {
         self.fixed_name(e)?;
@@ -356,10 +355,10 @@ impl super::provisioning::Backend for RealBackend {
             }
             Step::Loop => {
                 if !Self::block_device_matches(&self.loop_node,e.loop_major,e.loop_minor)? { return Err(()); }
-                let tool = self.losetup.clone();
-                self.capture(&tool, &["--offset".into(),"0".into(),"--sizelimit".into(),
-                    "536870912".into(),"--loop-ref".into(),e.loop_ref.clone(),
-                    self.loop_node.to_str().ok_or(())?.into(),image_path.to_str().ok_or(())?.into()])?;
+                // The held-FD owner performs LOOP_CONFIGURE atomically. A pipe
+                // alone does not authenticate its identity; the unimplemented
+                // guardian must install this client after attestation.
+                self.loop_owner.as_mut().ok_or(())?.configure().map_err(|_| ())?;
             }
             Step::Mapper => {
                 self.dm(&["create".into(),e.dm_name.clone(),"--uuid".into(),e.dm_uuid.clone(),
@@ -440,7 +439,7 @@ impl super::provisioning::Backend for RealBackend {
         (RealBackend {work:path.clone(),mount:"/work/mount".into(),loop_node:"/dev/loop42".into(),
             losetup:"/usr/bin/losetup".into(),dmsetup:"/usr/bin/dmsetup".into(),umount:"/usr/bin/umount".into(),
             mount_tool:"/usr/bin/mount".into(),mkfs:"/usr/bin/mkfs.btrfs".into(),sysroot:"/sys".into(),
-            expected,deadline:Instant::now()+Duration::from_secs(3),next:0,image:None,
+            expected,deadline:Instant::now()+Duration::from_secs(3),next:0,image:None,loop_owner:None,
             command_limit:WORK_COMMANDS,cleanup_reserved:false,fixture_fsid:None,fixture_mount_id:None,fixture_ns_inode:fs::metadata("/proc/self/ns/mnt").unwrap().ino()},path)
     }
     #[test] fn captured_output_and_exclusive_journal_are_bounded() {

@@ -224,3 +224,13 @@ recovery or reboot durability. The caller must independently establish that
 recorded identities are true, and the device backend remains disabled and is
 not wired to this receipt. The controller synthetic suite passed 75 tests.
 The receipt remains under independent review.
+
+The disabled backend's loop configuration and close paths now use a bounded,
+nonblocking pipe client for the proposed held-FD owner rather than path-based
+`losetup` mutations. Its constructor supplies no client: a future authenticated
+supervisor and exact identity proof are still necessary. An ordinary close
+attempt is not represented as a confirmed release, and real loop-absence proof
+refuses. A receipt-driven mock sequencer stops on failed effects or missing
+identity evidence. The private suite passed 80 tests, including pipe protocol
+negative cases. This integration is under independent review, has no live
+launcher and performed no device operations.

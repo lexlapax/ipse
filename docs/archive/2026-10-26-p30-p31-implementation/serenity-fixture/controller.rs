@@ -13,6 +13,8 @@
 #[path = "barrier_peer.rs"] mod barrier_peer;
 #[path = "recovery_ledger.rs"] mod recovery_ledger;
 #[path = "diagnostic_receipt.rs"] mod diagnostic_receipt;
+#[path = "diagnostic_driver.rs"] mod diagnostic_driver;
+#[path = "held_loop_client.rs"] mod held_loop_client;
 #[path = "recovery_guardian.rs"] mod recovery_guardian;
 #[path = "cgroup_witness.rs"] mod cgroup_witness;
 #[path = "btrfs_identity.rs"] mod btrfs_identity;
