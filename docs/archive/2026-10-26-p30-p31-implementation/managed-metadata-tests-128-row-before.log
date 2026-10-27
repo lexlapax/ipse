@@ -1,0 +1,20 @@
+Running ExUnit with seed: 281301, max_cases: 2
+
+...
+
+  1) test two full 64-row pages can rebalance a deletion without increasing leaf count (Ipse.Development.ManagedMetadataTest)
+     test/dev/managed_metadata_test.exs:291
+     ** (MatchError) no match of right hand side value:
+
+         {:error, :invalid_managed_leaf}
+
+     code: pages = remove(pages, :anchor_full, Enum.at(ids, 20), 3)
+     stacktrace:
+       test/dev/managed_metadata_test.exs:38: Ipse.Development.ManagedMetadataTest.remove/4
+       test/dev/managed_metadata_test.exs:309: (test)
+
+.......
+Finished in 8.4 seconds (0.3s on load, 8.0s async, 0.00s sync)
+
+Result: 10/11 passed
+Failed: 1 test

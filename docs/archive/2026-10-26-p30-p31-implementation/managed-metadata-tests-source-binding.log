@@ -1,0 +1,6 @@
+Running ExUnit with seed: 925207, max_cases: 2
+
+.......
+Finished in 0.6 seconds (0.2s on load, 0.3s async, 0.00s sync)
+
+Result: 7 passed

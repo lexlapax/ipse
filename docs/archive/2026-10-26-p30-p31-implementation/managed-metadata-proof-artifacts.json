@@ -1,0 +1,150 @@
+{
+  "otp": "29",
+  "elixir": "1.20.4",
+  "erts": "17.1",
+  "kind": "nonpublishing_managed_metadata_proof_artifacts",
+  "helper": {
+    "path": "/tmp/ipse-managed-storage-20261026-01/project/priv/ipse-runner",
+    "bytes": 786480,
+    "sha256": "108c762ec23085df6aeaba58c8bdfb34d0a8cb4fa80a410584889a81a556ea29"
+  },
+  "qualification_passed": false,
+  "actual_publications": 0,
+  "native_helper_calls": 0,
+  "model_calls": 0,
+  "source_files": [
+    {
+      "path": "dev/knowledge/managed_metadata.ex",
+      "bytes": 23261,
+      "sha256": "5867ea49e702eba55f56a4166be28ac5169d93585bc32f722600017317a33778"
+    },
+    {
+      "path": "dev/knowledge/managed_metadata_shapes.exs",
+      "bytes": 3313,
+      "sha256": "51c42c7cc6ab9f7f501b674f877d3e206ebd519a2c3af1aa82d5e2a3c2a72e92"
+    },
+    {
+      "path": "dev/knowledge/managed_metadata_proof.exs",
+      "bytes": 9532,
+      "sha256": "bb95aa1662b0fde15acd3c67547155884f20ebb5e236f18ae86e6c70ad50d0fd"
+    },
+    {
+      "path": "test/dev/managed_metadata_test.exs",
+      "bytes": 12965,
+      "sha256": "dcc54e508c2f90437c8eda5faa5350e6341a535638bbf75037f86f4c35bcc917"
+    },
+    {
+      "path": "dev/knowledge/storage_workload.ex",
+      "bytes": 34750,
+      "sha256": "435c74b9123ba9be3f05b37bd84767cf1cb020980d6a101dcbe56e2b955aa774"
+    },
+    {
+      "path": "extensions/knowledge/src/notes.ex",
+      "bytes": 9368,
+      "sha256": "0e1ac1ee10edd78982fb8b2055b440f6dc5f93753301de0423a8db340026874c"
+    }
+  ],
+  "compiled_prototype_beams": [
+    {
+      "path": "/tmp/ipse-managed-metadata-proof-20261026-01/ebin/Elixir.Ipse.Development.ManagedMetadata.Codec.beam",
+      "bytes": 37044,
+      "sha256": "b0ff9e00cd9f31e8d70dc6bd90d9963beb2bd0c9dac7bc85382025eeefcac9b1"
+    },
+    {
+      "path": "/tmp/ipse-managed-metadata-proof-20261026-01/ebin/Elixir.Ipse.Development.ManagedMetadata.Leaves.beam",
+      "bytes": 27724,
+      "sha256": "28ac149613de7d6763da6a7fd585285c468a2e14581f073d5abecc8a6323e421"
+    }
+  ],
+  "dependency_runtime_manifest": {
+    "path": "docs/archive/2026-10-26-p30-p31-implementation/managed-continuation-runtime.json",
+    "bytes": 114342,
+    "sha256": "7ed66f3331916e42e6c6f9efa527a5a028b606f3ae8d75b045918de27d1637b3"
+  },
+  "dependency_beams_rechecked": 560,
+  "dependency_sources_rechecked": 126,
+  "artifacts": [
+    {
+      "path": "docs/archive/2026-10-26-p30-p31-implementation/managed-metadata-calculation-initial-duration-control.json",
+      "bytes": 4840,
+      "sha256": "da060e5124fe47844ff44d03ef72141c1755a9d7d97c362622a9e26cf74e5f46"
+    },
+    {
+      "path": "docs/archive/2026-10-26-p30-p31-implementation/managed-metadata-calculation-final.json",
+      "bytes": 9062,
+      "sha256": "27eb6698022e7ac6a8c7680693c2dbf13cd4f8f322d872c0a357d77309510ded"
+    },
+    {
+      "path": "docs/archive/2026-10-26-p30-p31-implementation/managed-metadata-calculation.log",
+      "bytes": 4840,
+      "sha256": "da060e5124fe47844ff44d03ef72141c1755a9d7d97c362622a9e26cf74e5f46"
+    },
+    {
+      "path": "docs/archive/2026-10-26-p30-p31-implementation/managed-metadata-tests-first.log",
+      "bytes": 825,
+      "sha256": "36d1fa92bd6aebe68d70d009a4e2ae5fab16ed42f98afea9b600db8719c38161"
+    },
+    {
+      "path": "docs/archive/2026-10-26-p30-p31-implementation/managed-metadata-tests-repaired.log",
+      "bytes": 137,
+      "sha256": "811e3bb5e16ee7743662e9e314602433e65b72ab20c4707cdd021c1e29dfb915"
+    },
+    {
+      "path": "docs/archive/2026-10-26-p30-p31-implementation/managed-metadata-tests-source-binding.log",
+      "bytes": 137,
+      "sha256": "4030c247210f329b65b877a566b11454f4d63dd2d681b8be9de8d75b55a814aa"
+    },
+    {
+      "path": "docs/archive/2026-10-26-p30-p31-implementation/managed-metadata-tests-churn.log",
+      "bytes": 141,
+      "sha256": "5f6441ef4e526150d046dac6d2588cb4b6c82976be452d65d7cb02b57aa65ad9"
+    },
+    {
+      "path": "docs/archive/2026-10-26-p30-p31-implementation/managed-metadata-tests-128-row-before.log",
+      "bytes": 662,
+      "sha256": "152c140d851af51162a8980e42996e3a5baf376eb28470e8b282897766e4900b"
+    },
+    {
+      "path": "docs/archive/2026-10-26-p30-p31-implementation/managed-metadata-tests-128-row-after.log",
+      "bytes": 142,
+      "sha256": "9bf0900b80ac01704a55047e064ef91ba4c9cbbcf10fc5a3e4bcedebcf988ddd"
+    },
+    {
+      "path": "docs/archive/2026-10-26-p30-p31-implementation/managed-metadata-tests-final.log",
+      "bytes": 143,
+      "sha256": "664425659d2759cd858e23ed134f68d9865ad852c5fad5bd4225e5190ed3839c"
+    },
+    {
+      "path": "docs/archive/2026-10-26-p30-p31-implementation/managed-metadata-tests-final-occupancy.log",
+      "bytes": 143,
+      "sha256": "184a3cf6ee553e3307f0a6a69c8f166ae5aeb22e483298e5a0e56b01e255e56e"
+    },
+    {
+      "path": "docs/archive/2026-10-26-p30-p31-implementation/managed-metadata-docs.log",
+      "bytes": 80,
+      "sha256": "980d872a93ec1d3f700737d74ef28588d6692060b9ab834a55ffb2cf1e9d59fd"
+    },
+    {
+      "path": "docs/archive/2026-10-26-p30-p31-implementation/managed-metadata-compile-final.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "docs/archive/2026-10-26-p30-p31-implementation/managed-metadata-format-120.log",
+      "bytes": 192,
+      "sha256": "2ec3c93228e39dda624414f709b4ce8d129314c95cad60fdd8d2b81039e5d2b7"
+    },
+    {
+      "path": "docs/archive/2026-10-26-p30-p31-implementation/managed-metadata-format-118.log",
+      "bytes": 192,
+      "sha256": "2ec3c93228e39dda624414f709b4ce8d129314c95cad60fdd8d2b81039e5d2b7"
+    }
+  ],
+  "limits": {
+    "calculation_watchdog_ms": 30000,
+    "sampled_beam_bytes": 536870912,
+    "main_heap_words": 16000000,
+    "test_watchdog_ms": 60000
+  },
+  "disposition": "JSON proposal does not fit declared annual max-payload accounting; no product integration. Future native capsule is not authority."
+}

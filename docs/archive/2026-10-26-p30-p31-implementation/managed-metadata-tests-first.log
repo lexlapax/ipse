@@ -1,0 +1,21 @@
+Running ExUnit with seed: 493464, max_cases: 2
+
+......
+
+  1) test 33 same-prefix identities cross old fixed capacity without shard limits (Ipse.Development.ManagedMetadataTest)
+     test/dev/managed_metadata_test.exs:272
+     ** (MatchError) no match of right hand side value:
+
+         {:error, :invalid_managed_metadata}
+
+     code: Enum.reduce(Enum.with_index(ids, 1), %{}, fn {id, n}, p ->
+     stacktrace:
+       test/dev/managed_metadata_test.exs:277: anonymous fn/2 in Ipse.Development.ManagedMetadataTest."test 33 same-prefix identities cross old fixed capacity without shard limits"/1
+       (elixir 1.20.4) lib/enum.ex:2622: Enum."-reduce/3-lists^foldl/2-0-"/3
+       test/dev/managed_metadata_test.exs:276: (test)
+
+
+Finished in 0.8 seconds (0.3s on load, 0.5s async, 0.00s sync)
+
+Result: 6/7 passed
+Failed: 1 test

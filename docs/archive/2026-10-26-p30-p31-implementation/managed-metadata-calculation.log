@@ -1,0 +1,146 @@
+{
+  "scope": "Structural codec/occupancy bounds only; full evidence and proposed native-capsule maxima are separate, not substituted qualification.",
+  "kind": "nonpublishing_managed_metadata_proof",
+  "geometry": {
+    "anchor_full": {
+      "empty_page_bytes": 122,
+      "minimum_entry_weight": 69,
+      "maximum_entry_weight": 2099,
+      "minimum_trigger_weight": 4485,
+      "proved_split_leaf_weight_floor": 1193,
+      "maximum_single_entry_page_bytes": 2220
+    },
+    "anchor_candidate": {
+      "empty_page_bytes": 127,
+      "minimum_entry_weight": 69,
+      "maximum_entry_weight": 791,
+      "minimum_trigger_weight": 4485,
+      "proved_split_leaf_weight_floor": 1847,
+      "maximum_single_entry_page_bytes": 917
+    },
+    "live": {
+      "empty_page_bytes": 117,
+      "minimum_entry_weight": 245,
+      "maximum_entry_weight": 265,
+      "minimum_trigger_weight": 6029,
+      "proved_split_leaf_weight_floor": 2882,
+      "maximum_single_entry_page_bytes": 381
+    }
+  },
+  "cases": [
+    {
+      "population_model": "frozen_arithmetic",
+      "choice_model": "anchor_full",
+      "note_records": 3460,
+      "source_anchors": 20220,
+      "forget_choices": 2730,
+      "raw_record_bytes_at_6144": 21258240,
+      "metadata_member_bytes": 8189620,
+      "metadata_bytes_upper_including_leaf_headers": 8964124,
+      "record_slots_upper": 9875,
+      "byte_limit": 25165824,
+      "record_limit": 8192,
+      "exceeds_24mib_even_before_page_headers": true,
+      "unsupported_additional_costs": [
+        "automatic correction retirement markers",
+        "additional accepted proposals",
+        "management authenticator or retained authority-journal cost"
+      ]
+    },
+    {
+      "population_model": "frozen_arithmetic",
+      "choice_model": "anchor_candidate",
+      "note_records": 3460,
+      "source_anchors": 20220,
+      "forget_choices": 2730,
+      "raw_record_bytes_at_6144": 21258240,
+      "metadata_member_bytes": 4618780,
+      "metadata_bytes_upper_including_leaf_headers": 4908172,
+      "record_slots_upper": 5783,
+      "byte_limit": 25165824,
+      "record_limit": 8192,
+      "exceeds_24mib_even_before_page_headers": true,
+      "unsupported_additional_costs": [
+        "automatic correction retirement markers",
+        "additional accepted proposals",
+        "management authenticator or retained authority-journal cost"
+      ]
+    },
+    {
+      "population_model": "pure_existing_notes_model",
+      "choice_model": "anchor_full",
+      "note_records": 3642,
+      "source_anchors": 20220,
+      "forget_choices": 2730,
+      "raw_record_bytes_at_6144": 22376448,
+      "metadata_member_bytes": 8237850,
+      "metadata_bytes_upper_including_leaf_headers": 9014210,
+      "record_slots_upper": 10073,
+      "byte_limit": 25165824,
+      "record_limit": 8192,
+      "exceeds_24mib_even_before_page_headers": true,
+      "unsupported_additional_costs": [
+        "automatic correction retirement markers",
+        "additional accepted proposals",
+        "management authenticator or retained authority-journal cost"
+      ]
+    },
+    {
+      "population_model": "pure_existing_notes_model",
+      "choice_model": "anchor_candidate",
+      "note_records": 3642,
+      "source_anchors": 20220,
+      "forget_choices": 2730,
+      "raw_record_bytes_at_6144": 22376448,
+      "metadata_member_bytes": 4667010,
+      "metadata_bytes_upper_including_leaf_headers": 4958258,
+      "record_slots_upper": 5981,
+      "byte_limit": 25165824,
+      "record_limit": 8192,
+      "exceeds_24mib_even_before_page_headers": true,
+      "unsupported_additional_costs": [
+        "automatic correction retirement markers",
+        "additional accepted proposals",
+        "management authenticator or retained authority-journal cost"
+      ]
+    }
+  ],
+  "actual_publications": 0,
+  "native_calls": 0,
+  "model_calls": 0,
+  "qualification_passed": false,
+  "candidate_capsule_is_authority": false,
+  "mutation_count_without_bootstrap_or_expiry_maintenance": 20950,
+  "initial_records_require_separate_actual_publications": 2000,
+  "annual_pure_model": {
+    "persistent": {
+      "pin": 100,
+      "preference": 50,
+      "current": 50
+    },
+    "distinct_sources": 12220,
+    "peak_notes": 3642,
+    "days": 365,
+    "burst_multiplier": 1,
+    "pure_only": true,
+    "expiry_record_deletions": 7848,
+    "final_categories": {
+      "current:": 50,
+      "history:current": 1460,
+      "history:ordinary": 347,
+      "ordinary:": 1635,
+      "pin:": 100,
+      "preference:": 50
+    }
+  },
+  "row_bytes": {
+    "live_wire": 217,
+    "plain_anchor_wire": 62,
+    "full_evidence_anchor_wire": 2052,
+    "candidate_capsule_anchor_wire": 744,
+    "note_only_anchor_entry": 91,
+    "note_only_full_evidence_anchor_entry": 2081,
+    "note_only_candidate_capsule_anchor_entry": 773,
+    "live_entry": 265
+  }
+}

@@ -1,0 +1,4 @@
+formatted dev/knowledge/managed_metadata.ex
+formatted dev/knowledge/managed_metadata_shapes.exs
+formatted dev/knowledge/managed_metadata_proof.exs
+formatted test/dev/managed_metadata_test.exs
