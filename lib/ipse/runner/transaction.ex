@@ -94,6 +94,15 @@ defmodule Ipse.Runner.Transaction do
        else: {:error, :invalid_transaction_request}
   end
 
+  @doc "Read bounded protected bytes through the retained native owner; no host data-file FD survives its lock."
+  def read(cap, directory, name, maximum) do
+    if selector(directory) != nil and is_binary(name) and
+         (name in ~w(index.json control.json root.json) or immutable?(name)) and
+         is_integer(maximum) and maximum in 1..@bytes,
+       do: operation(cap, {:read, selector(directory), name, maximum}),
+       else: {:error, :invalid_transaction_request}
+  end
+
   def allocation(cap, mode \\ :collection)
 
   def allocation(cap, mode) when mode in [:flat, :collection],
@@ -325,6 +334,14 @@ defmodule Ipse.Runner.Transaction do
       end
     end
 
+    defp operate({:read, directory, name, maximum}, s) do
+      case read_chunks(s, directory, name, maximum, 0, nil, []) do
+        {:ok, bytes, s} -> {:reply, {:ok, bytes}, s}
+        {:error, code, s} -> {:reply, {:error, code}, s}
+        _ -> fail(s)
+      end
+    end
+
     defp operate(op, s) do
       {tag, payload} =
         case op do
@@ -377,6 +394,36 @@ defmodule Ipse.Runner.Transaction do
 
         _ ->
           fail(s)
+      end
+    end
+
+    defp read_chunks(s, directory, name, maximum, offset, identity, chunks) do
+      payload = <<directory, byte_size(name), name::binary, offset::32, maximum::32>>
+
+      case command(s, ?G, payload, length(s.caps)) do
+        {:ok, s, <<total::32, ^offset::32, device::64, inode::64, bytes::binary>>}
+        when total <= maximum and offset <= total ->
+          actual = {total, device, inode}
+
+          if (identity == nil or identity == actual) and
+               byte_size(bytes) == min(16_384, total - offset) do
+            chunks = [bytes | chunks]
+            next = offset + byte_size(bytes)
+
+            if next == total do
+              {:ok, chunks |> Enum.reverse() |> IO.iodata_to_binary(), s}
+            else
+              read_chunks(s, directory, name, maximum, next, actual, chunks)
+            end
+          else
+            :unknown
+          end
+
+        {:error, code, s} ->
+          {:error, code, s}
+
+        _ ->
+          :unknown
       end
     end
 
@@ -505,11 +552,12 @@ defmodule Ipse.Runner.Transaction do
 
     defp outer(s), do: {:ok, s}
 
-    defp inner(%{inner: bytes}) when byte_size(bytes) > 128, do: :unknown
+    defp inner(%{inner: bytes}) when byte_size(bytes) > 32_768, do: :unknown
 
     defp inner(%{inner: <<tag, size::32, bytes::binary>>} = s) do
       cond do
-        size > 64 or tag not in [?A, ?P, ?R, ?S, ?E, ?U, ?Q, ?N, ?W, ?D, ?M, ?B, ?F] ->
+        tag not in [?A, ?P, ?R, ?S, ?E, ?U, ?Q, ?N, ?W, ?D, ?M, ?B, ?F, ?G] or
+            size > if(tag == ?G, do: 16_417, else: 64) ->
           :unknown
 
         byte_size(bytes) < size ->

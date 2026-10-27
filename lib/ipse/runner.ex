@@ -238,9 +238,9 @@ defmodule Ipse.Runner do
         {:ok, port} ->
           result =
             try do
-              with :ok <- staging_control(port, deadline, ticket, "", ?R),
-                   :ok <- staging_send(port, payload, deadline, ticket),
-                   :ok <- staging_receive(port, deadline, ticket, ""),
+              with {:ok, buffer} <- staging_control(port, deadline, ticket, "", ?R),
+                   {:ok, buffer} <- staging_send(port, payload, deadline, ticket, buffer),
+                   :ok <- staging_receive(port, deadline, ticket, buffer),
                    do: :ok
             rescue
               _ -> {:error, :protected_staging_write_unavailable}
@@ -276,9 +276,8 @@ defmodule Ipse.Runner do
     end
   end
 
-  defp staging_control(port, _, _, <<?O, 1::unsigned-big-32, expected, rest::binary>>, expected) do
-    if rest != "", do: send(self(), {port, {:data, rest}})
-    :ok
+  defp staging_control(_, _, _, <<?O, 1::unsigned-big-32, expected, rest::binary>>, expected) do
+    {:ok, rest}
   end
 
   defp staging_control(port, deadline, ticket, bytes, expected) when byte_size(bytes) < 6 do
@@ -303,18 +302,18 @@ defmodule Ipse.Runner do
 
   defp staging_control(_, _, _, _, _), do: {:error, :protected_staging_write_unavailable}
 
-  defp staging_send(_, <<>>, _, _), do: :ok
+  defp staging_send(_, <<>>, _, _, buffer), do: {:ok, buffer}
 
-  defp staging_send(port, bytes, deadline, ticket) do
+  defp staging_send(port, bytes, deadline, ticket, buffer) do
     receive do
       {:ipse_cancel_resource, id} when ticket != nil and ticket.id == id ->
         {:error, :protected_staging_write_unavailable}
     after
-      0 -> staging_send_chunk(port, bytes, deadline, ticket)
+      0 -> staging_send_chunk(port, bytes, deadline, ticket, buffer)
     end
   end
 
-  defp staging_send_chunk(port, bytes, deadline, ticket) do
+  defp staging_send_chunk(port, bytes, deadline, ticket, buffer) do
     remaining = deadline - System.monotonic_time(:millisecond)
 
     if remaining <= 0 do
@@ -325,8 +324,8 @@ defmodule Ipse.Runner do
 
       case send_stdio(port, <<size::unsigned-big-32, chunk::binary>>) do
         :ok ->
-          with :ok <- staging_control(port, deadline, ticket, "", ?A),
-               do: staging_send(port, rest, deadline, ticket)
+          with {:ok, buffer} <- staging_control(port, deadline, ticket, buffer, ?A),
+               do: staging_send(port, rest, deadline, ticket, buffer)
 
         {:error, "stdio input is backpressured"} ->
           receive do
@@ -340,7 +339,7 @@ defmodule Ipse.Runner do
             {^port, _} ->
               {:error, :protected_staging_write_unavailable}
           after
-            min(remaining, 5) -> staging_send(port, bytes, deadline, ticket)
+            min(remaining, 5) -> staging_send(port, bytes, deadline, ticket, buffer)
           end
 
         _ ->

@@ -528,8 +528,10 @@ defmodule Ipse.Extension.Consent do
          }}
 
       {:ok, stat} ->
+        lock = Process.get(@lock_key)
+
         with true <- safe_file?(stat, uid) and stat.size <= @bytes,
-             {:ok, bytes} <- File.open(file, [:read, :binary], &IO.binread(&1, @bytes + 1)),
+             {:ok, bytes} <- Transaction.read(lock, ".", "control.json", @bytes),
              true <- is_binary(bytes) and byte_size(bytes) <= @bytes,
              {:ok, s} <- JSON.decode_unique(bytes),
              true <- valid_state?(s, project),

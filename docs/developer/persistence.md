@@ -227,7 +227,12 @@ suppression state inside the publication boundary. Its
 mixed origins, substituted evidence, open schemas and deletion refusal.
 
 `Ipse.Runner.Transaction` makes one native process own both the retained locks and
-the actual protected writes. It stages bytes, syncs files, selects the new root
+the actual protected data reads and writes. A bounded `read/4` opens, validates,
+reads and closes data files in that owner, returning chunks with a stable
+size/device/inode identity. Do not substitute ordinary `File.open/3` under a
+logical lease: after owner loss an independent IO process could retain an
+unlinked file while a new owner measures its apparent disk use. Hash and schema
+validation remain in Elixir. The native owner stages bytes, syncs files, selects the new root
 with a same-directory rename, then syncs the directory before acknowledging.
 `IPSE_RUNNER_PATH` cannot replace its child or stdio supervisor: both use the
 bundled helper bound to the build digest. The host rechecks and releases before

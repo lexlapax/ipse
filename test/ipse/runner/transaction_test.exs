@@ -39,8 +39,9 @@ defmodule Ipse.Runner.TransactionTest do
     fn frame(kind:u8,bytes:&[u8])->io::Result<()>{
       if kind==b'A'{std::fs::write(#{inspect(marker)},std::process::id().to_string())?;}
       if kind==b'S'{unsafe{kill(std::process::id() as i32,9);}}
+      let mut payload=bytes.to_vec(); if kind==b'G' && payload.len()>13 {payload[13]^=1;}
       let mut out=io::stdout().lock();out.write_all(&[kind])?;
-      out.write_all(&(bytes.len() as u32).to_be_bytes())?;out.write_all(bytes)?;out.flush()
+      out.write_all(&(payload.len() as u32).to_be_bytes())?;out.write_all(&payload)?;out.flush()
     }
     fn main(){std::fs::write(#{inspect(marker)},std::process::id().to_string()).unwrap();let args:Vec<_>=std::env::args().collect();
       if args.get(1).is_some_and(|s|s=="--transaction-lock"){
@@ -87,11 +88,13 @@ defmodule Ipse.Runner.TransactionTest do
     assert File.read!(Path.join(c.root, name)) == bytes
     assert :ok = T.switch(cap, name, "index.json")
     assert File.read!(Path.join(c.root, "index.json")) == bytes
+    assert {:ok, ^bytes} = T.read(cap, ".", "index.json", byte_size(bytes))
     assert :ok = T.stage(cap, "objects", [{pending(2), "object"}, {pending(3), "other"}])
     object = immutable(2)
     assert :ok = T.install(cap, "objects", pending(2), object)
     assert {:error, :transaction_exists} = T.install(cap, "objects", pending(3), object)
     assert File.read!(Path.join([c.root, "objects", object])) == "object"
+    assert {:ok, "object"} = T.read(cap, "objects", object, 6)
     assert :ok = T.reclaim(cap, "objects", [pending(3), object])
     refute File.exists?(Path.join([c.root, "objects", object]))
     assert {:ok, %{logical: logical, allocated: allocated, entries: entries}} = T.allocation(cap)
@@ -99,6 +102,71 @@ defmodule Ipse.Runner.TransactionTest do
     assert :ok = T.check(cap)
     assert :ok = T.release(cap)
     assert {:error, :invalid_transaction_capability} = T.check(cap)
+  end
+
+  test "native-owner reads exact eight MiB and refuses unsafe files without host data IO", c do
+    bytes = :binary.copy(<<0, 255, 206, 187>>, 2_097_152)
+    assert {:ok, cap} = T.acquire(lock(c.root))
+    assert :ok = T.stage(cap, ".", [{pending(201), bytes}])
+    assert :ok = T.switch(cap, pending(201), "control.json")
+    assert {:ok, ^bytes} = T.read(cap, ".", "control.json", 8_388_608)
+    assert {:error, :transaction_unsafe} = T.read(cap, ".", "control.json", 8_388_607)
+    assert {:error, :invalid_transaction_request} = T.read(cap, ".", "../control.json", 100)
+    assert {:error, :invalid_transaction_request} = T.read(cap, ".", "control.json", 8_388_609)
+    assert {:error, :invalid_transaction_request} = T.read(cap, ".", "control.json", 0)
+
+    name = immutable(202)
+    path = Path.join([c.root, "objects", name])
+    File.ln_s!(Path.join(c.root, "control.json"), path)
+    assert {:error, _} = T.read(cap, "objects", name, 8_388_608)
+    File.rm!(path)
+    File.ln!(Path.join(c.root, "control.json"), path)
+    assert {:error, :transaction_unsafe} = T.read(cap, "objects", name, 8_388_608)
+    File.rm!(path)
+    Ipse.Test.FileEffectProbe.fifo!(path)
+    assert {:error, :transaction_unsafe} = T.read(cap, "objects", name, 100)
+    File.rm!(path)
+    File.write!(path, "")
+    File.chmod!(path, 0o600)
+    assert {:ok, ""} = T.read(cap, "objects", name, 1)
+    File.chmod!(path, 0o644)
+    assert {:error, :transaction_unsafe} = T.read(cap, "objects", name, 1)
+    assert :ok = T.release(cap)
+  end
+
+  test "a malformed native read response returns no prefix and releases the owner", c do
+    File.write!(Path.join(c.root, "index.json"), "private bytes", [:exclusive])
+    File.chmod!(Path.join(c.root, "index.json"), 0o600)
+    System.put_env("IPSE_RUNNER_PATH", c.fault)
+    assert {:ok, cap} = T.acquire(lock(c.root))
+    assert {:unknown, :transaction_lost} = T.read(cap, ".", "index.json", 100)
+    System.put_env("IPSE_RUNNER_PATH", c.helper)
+    assert {:ok, fresh} = T.acquire(lock(c.root))
+    assert {:ok, "private bytes"} = T.read(fresh, ".", "index.json", 100)
+    assert :ok = T.release(fresh)
+  end
+
+  @tag skip: not match?({:unix, :linux}, :os.type())
+  test "a completed native read leaves no data-file descriptor in either the VM or lock owner",
+       c do
+    path = Path.join(c.root, "index.json")
+    File.write!(path, "completed native read", [:exclusive])
+    File.chmod!(path, 0o600)
+    assert {:ok, cap} = T.acquire(lock(c.root))
+    assert {:ok, "completed native read"} = T.read(cap, ".", "index.json", 100)
+    {:os_pid, supervisor} = Port.info(cap.port, :os_pid)
+    children = File.read!("/proc/#{supervisor}/task/#{supervisor}/children") |> String.split()
+    assert length(children) in 1..4
+
+    descriptors =
+      for pid <- [System.pid(), Integer.to_string(supervisor) | children],
+          name <- File.ls!("/proc/#{pid}/fd"),
+          do: File.read_link("/proc/#{pid}/fd/#{name}")
+
+    assert {:ok, lock(c.root)} in descriptors
+    refute {:ok, path} in descriptors
+
+    assert :ok = T.release(cap)
   end
 
   test "capability owner, generation, exact top and depth are enforced", c do

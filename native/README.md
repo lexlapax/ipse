@@ -463,6 +463,11 @@ time. Invalid frames, exceeded bounds, backpressure, cancellation and lost
 helpers refuse. Cleanup without terminal supervisor evidence returns an explicit
 `cleanup_unconfirmed` error.
 
+Runner carries unconsumed acknowledgement bytes directly into the next parser
+phase. It never requeues a coalesced final `A`/`X` buffer behind an already queued
+real process-exit receipt. A terminal frame still requires the actual OS exit and
+the existing closed success schema; buffered bytes alone do not prove cleanup.
+
 Storage owners must hold their logical lock, acquire the retained writer lease
 before reclaiming pending files or measuring allocation, and retain its inode.
 Release the writer lease before starting a new writer and reacquire it after
@@ -514,6 +519,7 @@ Use these operations while the exact top capability is held:
 | Host operation | Contract |
 | --- | --- |
 | `check(cap)` | Observe every retained logical parent/lock identity; discard read results after loss. It does not fence arbitrary Elixir callback IO. |
+| `read(cap, directory, basename, maximum)` | Read at most 8 MiB from an allowlisted root or immutable file through the native lock owner. It opens, validates, reads and closes each data FD before replying; host assembly checks identical size/device/inode across bounded chunks. |
 | `quota(cap, mode, ceiling)` | Configure or narrow a per-lock staging ceiling, 1..64 MiB; mode is `:flat` or `:collection`. Mode changes and widening refuse. |
 | `preflight(cap, sizes)` | Check a full plan of at most 256 positive file sizes, each at most 8 MiB and at most 64 MiB total, before sending payload. |
 | `stage(cap, directory, entries)` | Exclusively create and sync 1..128 distinct pending files, at most 8 MiB total. The native process checks its configured quota before readiness, then retains all scope writer leases through final sync. |
@@ -562,6 +568,7 @@ are exact, with no optional trailing bytes:
 | --- | --- |
 | `A` | Absolute UTF-8 `.lock` path, at most 4,096 bytes. |
 | `P`, `R` | Empty: check or release. |
+| `G` | u8 directory selector, u8 basename length, basename, u32 offset, u32 maximum total bytes (1..8 MiB). The basename is an allowlisted root target or immutable name. |
 | `B` | u8 mode (`0` flat, `1` collection), u64 ceiling bytes. |
 | `F` | u16 count, then that many u32 file sizes. |
 | `M` | u8 allocation mode (`0` flat, `1` collection). |
@@ -572,7 +579,15 @@ are exact, with no optional trailing bytes:
 | `Q` | u8 directory selector, u8 count, then u8 basename length and basename per orphan. |
 
 A typed success repeats the command tag, sequence and resulting depth. `M` adds
-three u64 values: logical bytes, allocated bytes, entry count. `W` acknowledges
+three u64 values: logical bytes, allocated bytes, entry count. `G` adds u32 total
+bytes, u32 offset, u64 device, u64 inode and up to 16 KiB of exact data. Its complete
+inner response is at most 16,417 bytes. Each read closes both retained and named
+data descriptors before replying. The host requests successive chunks under the
+same lock, validates their identity, offsets and exact lengths, and returns no
+prefix after a failed or malformed chunk. JSON/schema/content hashes remain in
+Elixir. Native owner loss cannot leave an independent host data-file read alive
+while another owner unlinks that inode. This guarantee applies only to this API;
+`check/1` does not retrofit it onto arbitrary callback IO. `W` acknowledges
 readiness before payload; each `D` acknowledges consumed bytes, with final file
 and directory sync complete before the last acknowledgement. The root `R`
 acknowledgement has depth zero. These inner frames are stdout bytes inside the

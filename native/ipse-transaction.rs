@@ -3,7 +3,7 @@
 mod unix {
     use std::ffi::CString;
     use std::fs::{File, Metadata};
-    use std::io::{self, Write};
+    use std::io::{self, Read, Seek, SeekFrom, Write};
     use std::os::unix::fs::MetadataExt;
     use std::os::unix::io::{AsRawFd, FromRawFd};
     use std::path::{Component, Path, PathBuf};
@@ -129,6 +129,41 @@ mod unix {
         };
         if !private_dir(&directory.metadata().map_err(|_| IO)?, uid) { return Err(UNSAFE); }
         Ok(directory)
+    }
+    // The retained lock owner is also the only process that opens data files.
+    // Every response follows closing all data FDs. A killed/blocked owner cannot
+    // release its flock while a separate host IO process retains an unlinked FD.
+    fn read_chunk(held: &Held, bytes: &[u8], uid: u32) -> Result<Vec<u8>, u8> {
+        if bytes.len() < 10 { return Err(INVALID); }
+        let selector = bytes[0]; let length = bytes[1] as usize;
+        if bytes.len() != 10 + length { return Err(INVALID); }
+        let name = std::str::from_utf8(&bytes[2..2 + length]).map_err(|_| INVALID)?;
+        if !target_name(name) && !immutable_name(name) { return Err(INVALID); }
+        let offset = u32::from_be_bytes(bytes[2 + length..6 + length].try_into().unwrap()) as u64;
+        let maximum = u32::from_be_bytes(bytes[6 + length..10 + length].try_into().unwrap()) as u64;
+        if maximum == 0 || maximum > MAX_FILE { return Err(INVALID); }
+        let directory = child(held, selector, uid)?;
+        let mut file = relative(&directory, name, 0)?;
+        let before = file.metadata().map_err(|_| IO)?;
+        if !private_file(&before, uid) || before.len() > maximum || offset > before.len() { return Err(UNSAFE); }
+        let size = (before.len() - offset).min(16_384) as usize;
+        let mut content = vec![0_u8; size];
+        file.seek(SeekFrom::Start(offset)).map_err(|_| IO)?;
+        file.read_exact(&mut content).map_err(|_| IO)?;
+        let after = file.metadata().map_err(|_| IO)?;
+        let named = relative(&directory, name, 0)?;
+        let named_id = named.metadata().map_err(|_| IO)?;
+        if !private_file(&after, uid) || !private_file(&named_id, uid) ||
+            !same(&before, &after) || !same(&after, &named_id) ||
+            before.len() != after.len() || before.len() != named_id.len() ||
+            !directory_valid(held, &directory, selector, uid) { return Err(UNSAFE); }
+        let mut result = (before.len() as u32).to_be_bytes().to_vec();
+        result.extend_from_slice(&(offset as u32).to_be_bytes());
+        result.extend_from_slice(&before.dev().to_be_bytes());
+        result.extend_from_slice(&before.ino().to_be_bytes());
+        result.extend_from_slice(&content);
+        drop(named); drop(file); drop(directory);
+        Ok(result)
     }
     fn writer(directory: &File, uid: u32) -> Result<File, u8> {
         let lock = relative(directory, ".writer.lock", 2 | CREATE)?;
@@ -426,6 +461,17 @@ mod unix {
                     }
                 }
                 b'P' if bytes.len() == 9 && !stack.is_empty() => answer!(b'P', seq, None),
+                b'G' if !stack.is_empty() => {
+                    match read_chunk(stack.last().unwrap(), &bytes[9..], uid) {
+                        Ok(data) => {
+                            if !stack.iter().all(|h| valid(h, uid)) { reply(b'U', seq, stack.len(), Some(UNSAFE))?; return Ok(()); }
+                            let mut payload = seq.to_be_bytes().to_vec(); payload.push(stack.len() as u8);
+                            payload.extend_from_slice(&data);
+                            super::super::frame(b'G', &payload).map_err(|_| "transaction output unavailable")?;
+                        },
+                        Err(code) => answer!(b'E', seq, Some(code)),
+                    }
+                }
                 b'R' if bytes.len() == 9 && !stack.is_empty() => {
                     stack.pop(); answer!(b'R', seq, None);
                     if stack.is_empty() { return Ok(()); }

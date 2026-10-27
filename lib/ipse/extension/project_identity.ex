@@ -125,7 +125,7 @@ defmodule Ipse.Extension.ProjectIdentity do
              {:error, :enoent} <- File.lstat(Path.join(root, ".metadata-active")),
              :ok <- reclaim_pending(root, lock),
              :ok <- Transaction.quota(lock, :flat, 4 * 1024 * 1024),
-             {:ok, state} <- read(root, uid) do
+             {:ok, state} <- read(root, uid, lock) do
           case fun.(context, state) do
             {:read, value} ->
               with :ok <- lease(lock, :before), do: {:ok, value}
@@ -562,7 +562,7 @@ defmodule Ipse.Extension.ProjectIdentity do
       stat.type == :regular and stat.uid == uid and stat.links == 1 and
         band(stat.mode, 0o7777) == 0o600
 
-  defp read(root, uid) do
+  defp read(root, uid, lock) do
     path = Path.join(root, "index.json")
 
     case File.lstat(path) do
@@ -571,7 +571,7 @@ defmodule Ipse.Extension.ProjectIdentity do
 
       {:ok, stat} ->
         with true <- safe_file?(stat, uid) and stat.size <= @bytes,
-             {:ok, bytes} <- File.open(path, [:read, :binary], &IO.binread(&1, @bytes + 1)),
+             {:ok, bytes} <- Transaction.read(lock, ".", "index.json", @bytes),
              {:ok, state} <- JSON.decode_bounded(bytes, @bytes),
              true <- valid_state?(state),
              do: {:ok, state},
