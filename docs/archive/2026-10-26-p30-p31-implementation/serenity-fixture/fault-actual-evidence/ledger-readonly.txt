@@ -1,0 +1,36 @@
+FILE /ledger/diagnostic.receipt
+0:63ebcfd6bc5a4167223662f0dae3539d:pending:configure-loop
+1:63ebcfd6bc5a4167223662f0dae3539d:confirmed:configure-loop
+2:63ebcfd6bc5a4167223662f0dae3539d:pending:create-mapper
+FILE /ledger/guardian.receipt
+armed 63ebcfd6bc5a4167223662f0dae3539d 8 1339946 10 1339949
+stop-pending supervisor-lost
+FILE /ledger/initial.identity
+v1 63ebcfd6bc5a4167223662f0dae3539d a74adfd4-4255-4b61-8da9-0da6583a5565 53 270861 4095 82 19
+FILE /ledger/private-node.receipt
+v1 63ebcfd6bc5a4167223662f0dae3539d pending index=4095 devdir_dev=82 devdir_inode=1 sysfs_dev=84 sysfs_inode=601631
+created node_dev=82 node_inode=19 rdev=15730687
+FILE /fixture/journal-002
+provision_pending=Backing expected=Expected { loop_major: 7, loop_minor: 4095, backing_major: 0, backing_minor: 0, backing_inode: 0, loop_ref: "ipse-q-63ebcfd6bc5a4167223662f0dae3539d", dm_name: "ipse-q-63ebcfd6bc5a4167223662f0dae3539d", dm_uuid: "IPSE-Q-63ebcfd6bc5a4167223662f0dae3539d", dm_major: 252, dm_minor: 4095, sectors: 1048576 }
+FILE /fixture/journal-003
+provision_confirmed=BackingReady expected=Expected { loop_major: 7, loop_minor: 4095, backing_major: 0, backing_minor: 53, backing_inode: 270861, loop_ref: "ipse-q-63ebcfd6bc5a4167223662f0dae3539d", dm_name: "ipse-q-63ebcfd6bc5a4167223662f0dae3539d", dm_uuid: "IPSE-Q-63ebcfd6bc5a4167223662f0dae3539d", dm_major: 252, dm_minor: 4095, sectors: 1048576 }
+FILE /fixture/journal-005
+provision_pending=Loop expected=Expected { loop_major: 7, loop_minor: 4095, backing_major: 0, backing_minor: 53, backing_inode: 270861, loop_ref: "ipse-q-63ebcfd6bc5a4167223662f0dae3539d", dm_name: "ipse-q-63ebcfd6bc5a4167223662f0dae3539d", dm_uuid: "IPSE-Q-63ebcfd6bc5a4167223662f0dae3539d", dm_major: 252, dm_minor: 4095, sectors: 1048576 }
+FILE /fixture/journal-007
+provision_confirmed=LoopReady expected=Expected { loop_major: 7, loop_minor: 4095, backing_major: 0, backing_minor: 53, backing_inode: 270861, loop_ref: "ipse-q-63ebcfd6bc5a4167223662f0dae3539d", dm_name: "ipse-q-63ebcfd6bc5a4167223662f0dae3539d", dm_uuid: "IPSE-Q-63ebcfd6bc5a4167223662f0dae3539d", dm_major: 252, dm_minor: 4095, sectors: 1048576 }
+FILE /fixture/journal-008
+provision_pending=Mapper expected=Expected { loop_major: 7, loop_minor: 4095, backing_major: 0, backing_minor: 53, backing_inode: 270861, loop_ref: "ipse-q-63ebcfd6bc5a4167223662f0dae3539d", dm_name: "ipse-q-63ebcfd6bc5a4167223662f0dae3539d", dm_uuid: "IPSE-Q-63ebcfd6bc5a4167223662f0dae3539d", dm_major: 252, dm_minor: 4095, sectors: 1048576 }
+FILE /fixture/command-001.output
+FILE /fixture/command-004.output
+FILE /fixture/command-006.output
+270861 0:53 7:4095 0 536870912 0 ipse-q-63ebcfd6bc5a4167223662f0dae3539d
+FILE /fixture/command-009.output
+FILE /fixture/command-010.output
+270861 0:53 7:4095 0 536870912 0 ipse-q-63ebcfd6bc5a4167223662f0dae3539d
+FILE /fixture/command-011.output
+ipse-q-63ebcfd6bc5a4167223662f0dae3539d|IPSE-Q-63ebcfd6bc5a4167223662f0dae3539d|252|4095|0
+FILE /fixture/command-012.output
+0 1048576 linear 7:4095 0
+FILE /fixture/command-013.output
+
+BACKING dev=53 inode=270861 uid=0 mode=600 links=1 size=536870912 blocks=0

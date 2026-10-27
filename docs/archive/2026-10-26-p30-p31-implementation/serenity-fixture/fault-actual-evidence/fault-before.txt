@@ -1,0 +1,4 @@
+nonce=63ebcfd6bc5a4167223662f0dae3539d kernel=7.2.11-arch1-1 loop=7:4095 dm=252:4095 host_mount_ns=4026531832 host_dev=7:1
+index_host_sysfs=25:601631 ledger=/home/lexlapax/projects/lexlapax/ipse/.serenity-module-receipt.6Fow8PKP/ledger ledger_id=29:13347407 stage=/tmp/ipse-fault-stage.hDULn7U2 stage_id=53:270135 original_uid=1000 bundle_sha256=f42800edac63b05a9e23997fec8ec1c9a9ec597241b4948074caf9fb217e2031
+control=/dev/mapper/control type=character special file major=a minor=ec uid=0 gid=0 mode=600 dev=7 inode=775
+host_loop_node=/dev/loop4095 type=block special file major=7 minor=fff uid=0 gid=994 mode=660 dev=7 inode=1539

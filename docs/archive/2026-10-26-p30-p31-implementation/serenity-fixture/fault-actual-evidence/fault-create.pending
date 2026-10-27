@@ -1,0 +1,4 @@
+stage_root_owned=confirmed
+container_create=pending
+container_name=ipse-fault-63ebcfd6bc5a4167223662f0dae3539d
+container_label=ipse.diagnostic.run:63ebcfd6bc5a4167223662f0dae3539d

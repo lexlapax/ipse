@@ -1,0 +1,1 @@
+caps=["CAP_MKNOD","CAP_SYS_ADMIN"] drop=["ALL"] devices=[{"PathOnHost":"/dev/mapper/control","PathInContainer":"/dev/mapper/control","CgroupPermissions":"rw"}] rules=["b 7:4095 rwm","b 252:4095 rwm"] security=["no-new-privileges=true"]
