@@ -8,22 +8,56 @@ defmodule IpseKnowledge.Profiles do
   def capabilities(package, preset) do
     extra =
       case {package, preset} do
-        {"corpus", "state-lexical"} -> @state
-        {"corpus", "state-dense"} -> @state ++ ~w(host.embedding host.results)
-        {"corpus", "state-rerank"} -> @state ++ ~w(host.model)
-        {"corpus", "state-semantic"} -> @state ++ ~w(host.embedding host.results host.model)
-        {"corpus", "mcp-lexical"} -> @mcp
-        {"corpus", "mcp-dense"} -> @mcp ++ ~w(host.embedding)
-        {"corpus", "mcp-rerank"} -> @mcp ++ ~w(host.model)
-        {"corpus", "mcp-semantic"} -> @mcp ++ ~w(host.embedding host.model)
-        {"research", "offline"} -> []
-        {"research", "mcp"} -> @mcp
-        {"research", "mcp-model"} -> @mcp ++ ~w(host.model)
-        {"graph", "state-explicit"} -> @state
-        {"graph", "state-model"} -> @state ++ ~w(host.model)
-        {"graph", "mcp-explicit"} -> @mcp
-        {"graph", "mcp-model"} -> @mcp ++ ~w(host.model)
-        _ -> :invalid
+        {"knowledge", "native"} ->
+          ~w(host.actions host.actions.mixed host.sources host.collection.read host.collection.write)
+
+        {"corpus", "state-lexical"} ->
+          @state
+
+        {"corpus", "state-dense"} ->
+          @state ++ ~w(host.embedding host.results)
+
+        {"corpus", "state-rerank"} ->
+          @state ++ ~w(host.model)
+
+        {"corpus", "state-semantic"} ->
+          @state ++ ~w(host.embedding host.results host.model)
+
+        {"corpus", "mcp-lexical"} ->
+          @mcp
+
+        {"corpus", "mcp-dense"} ->
+          @mcp ++ ~w(host.embedding)
+
+        {"corpus", "mcp-rerank"} ->
+          @mcp ++ ~w(host.model)
+
+        {"corpus", "mcp-semantic"} ->
+          @mcp ++ ~w(host.embedding host.model)
+
+        {"research", "offline"} ->
+          []
+
+        {"research", "mcp"} ->
+          @mcp
+
+        {"research", "mcp-model"} ->
+          @mcp ++ ~w(host.model)
+
+        {"graph", "state-explicit"} ->
+          @state
+
+        {"graph", "state-model"} ->
+          @state ++ ~w(host.model)
+
+        {"graph", "mcp-explicit"} ->
+          @mcp
+
+        {"graph", "mcp-model"} ->
+          @mcp ++ ~w(host.model)
+
+        _ ->
+          :invalid
       end
 
     if extra == :invalid,
@@ -76,6 +110,7 @@ defmodule IpseKnowledge.Profiles do
   defp compatible?(package, preset, o, caps) do
     allowed =
       case package do
+        "knowledge" -> []
         "corpus" -> ~w(stores retrieval embedding rerank)
         "research" -> ~w(search fetch retrieval rerank)
         "graph" -> ~w(stores extraction)
@@ -87,6 +122,9 @@ defmodule IpseKnowledge.Profiles do
 
     required =
       case package do
+        "knowledge" ->
+          true
+
         "corpus" ->
           map_size(o["stores"]) > 0 and map_size(o["retrieval"]) > 0
 

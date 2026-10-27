@@ -6,3 +6,4 @@ export IPSE_BUILD_COMMIT
 mix deps.get
 sh dev/build-native.sh
 mix compile --force --warnings-as-errors
+mix run --no-start dev/build-bundles.exs

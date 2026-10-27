@@ -1,8 +1,9 @@
-# Build cited retrieval and graph behavior
+# Build source-bound knowledge behavior
 
 Follow a retained source into a current citation, then change retrieval without
 bypassing source identity, approved inference, or recovery. Corpus, Graph, and
-Research are independent worker packages. They use the public SDK; they do not
+Research are independent worker packages. The native Knowledge capture package
+uses the protected collection SDK. These workers use the public SDK; they do not
 load domain code into the host or open their own files/sockets/executables.
 Start with the [operator procedures](../operator/corpus.md) and
 [artifact builder](../../extensions/knowledge/README.md).
@@ -11,6 +12,7 @@ Start with the [operator procedures](../operator/corpus.md) and
 
 | Source under `extensions/knowledge/src/` | Responsibility |
 | --- | --- |
+| `knowledge.ex`, `knowledge/records.ex`, `notes.ex` | Protected capture continuation, stable evidence and note retention |
 | `corpus.ex` | Source/query/index commands and final revalidation |
 | `graph.ex`, `research.ex` | Attributed extraction/traversal and captured-source investigations |
 | `profiles.ex` | Closed named algorithms and preset compatibility |
@@ -26,6 +28,62 @@ Corpus uses store/retrieval/embedding/rerank families; Graph uses stores/extract
 with empty retrieval registry; Research uses search/fetch/BM25/optional rerank.
 Reject unused/incompatible profiles before generating permissions. A syntactically
 valid dense/graph/hybrid/remote-query profile is still invalid for Research.
+
+## Follow protected capture from a Session source
+
+The `knowledge/native` preset exports `capture` as a tool and command. It accepts
+one text/category/reason/event-time tuple and an exact quote with an opaque Session
+source handle. All seven profile registries must be empty. This path uses the
+selected main model's tool calls; it performs no secondary inference.
+
+Follow `Knowledge.handle/3` through source read, exact quote, public SDK proof,
+saved lineage override, existing-record lookup and collection commit. The host
+reconstructs the proof independently at publication and checks the current
+protected permission. A worker's origin label or JSON proof grants no permission.
+The [collection SDK](collection-sdk.md) owns that admission boundary.
+
+`Knowledge.Records.capture/4` constructs a note only when its text equals the
+entire quoted span and the origin is native operator input, a native answer, or
+a literal typed tool outcome. Typed outcomes cannot become preferences. Other
+claims become attributed pending proposals, including an expanded interpretation
+of a short operator answer. Exact support still proves no entailment or truth.
+Ordinary notes expire after 90 days; current/preference notes retain their category.
+Pins require a separate explicit operator workflow.
+
+Lineage derives from source identity and span, independently of a model's text
+or category. A saved session-only override suppresses every classification and
+paraphrase of that evidence. An anchored expired override does not acquire a new
+deadline. An existing record returns its revision without replacement or TTL
+renewal. New proposals have a seven-day deadline and a retained queue ceiling of
+64 records/256 KiB. The capture path counts retained proposals, including expired
+ones; it neither silently deletes them nor renews them to make room.
+
+Saved override values wrap the pure retention policy with separate native operator
+evidence under `evidence.sources`, so they can satisfy constrained publication.
+`Records.saved_override/2` checks the complete wrapper and matching lineage before
+applying it. Bare policies, foreign lineages and weak-origin wrappers refuse.
+This format check does not establish operator acceptance; that remains the trusted
+management workflow's responsibility.
+
+To trace the actual boundary, run:
+
+```sh
+mix test test/extensions/knowledge/knowledge_records_test.exs
+mix test test/extensions/knowledge/knowledge_capture_test.exs
+mix test test/extensions/knowledge/knowledge_session_test.exs
+```
+
+The first two exercise pure records and worker continuations with synthetic proof
+inputs. The third builds/imports a separate SDK artifact, runs a synthetic main
+model through native `source_list` and capture, checks an actual protected pending
+publication and accounting, then validates saved context. It requires the reviewed
+native allocation profile. It performs no real model calls. Conflict, denied and
+unknown outcomes terminate rather than automatically retrying a mutation.
+
+This capture component does not provide standalone setup, proposal acceptance,
+automatic turn hooks, managed recall, correction or collection of expired data.
+Keep it in developer integration until those workflows and their qualification
+are complete. The explicit Memory procedures retain their existing scope.
 
 ## Verify independent selection before algorithm work
 

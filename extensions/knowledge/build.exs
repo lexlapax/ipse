@@ -29,10 +29,13 @@ try do
   entry_path = Path.join(temporary, package <> ".ex")
   File.write!(entry_path, transformed)
 
-  helpers =
-    for path <-
-          ~w(evidence store store/state store/mcp_cas adapters documents documents/zip documents/docx documents/parser_stage documents/pdf),
-        do: Path.join([__DIR__, "src", path <> ".ex"])
+  helper_paths =
+    if package == "knowledge",
+      do: ~w(notes knowledge/records),
+      else:
+        ~w(evidence store store/state store/mcp_cas adapters documents documents/zip documents/docx documents/parser_stage documents/pdf)
+
+  helpers = for path <- helper_paths, do: Path.join([__DIR__, "src", path <> ".ex"])
 
   result =
     Kernel.ParallelCompiler.compile_to_path(

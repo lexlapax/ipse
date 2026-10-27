@@ -5,6 +5,13 @@ or Graph for attributed facts and bounded traversal. Each package is a separate
 SDK-2 artifact. Importing one does not enable another. The existing working and
 persistent memory extensions keep their own selections.
 
+The `knowledge/native` preset is a protected-capture integration component. It
+builds independently with empty profile registries and uses Session source proofs
+and saved collection consent. Its standalone setup, review and automatic recall
+workflows are still under implementation; importing its artifact alone grants no
+saved permission. Follow the [capture training path](../../docs/developer/knowledge-extensions.md#follow-protected-capture-from-a-session-source)
+for its actual SDK Session test and current limits.
+
 Follow the complete user procedures for [Corpus](../../docs/operator/corpus.md),
 [Graph](../../docs/operator/graph.md) and
 [Research](../../docs/operator/research.md). The native main-agent
@@ -13,6 +20,13 @@ Follow the complete user procedures for [Corpus](../../docs/operator/corpus.md),
 The builders require Elixir 1.18 or later, OTP 27 or later, and Ipse's public SDK
 BEAM directory. Run these commands from the repository root after
 `./dev/build.sh`. They use no additional packages.
+
+Source and package builds also compile an inert `knowledge/native` artifact into
+`priv/extension-bundles/` with a digest-bound catalog. The runtime can inspect that
+catalog and explicitly import a selected artifact through `Extension.Bundles`;
+neither step starts a worker, grants capabilities or changes configuration.
+Installed users do not need a compiler for those packaged bytes. Guided knowledge
+setup and the remaining workflows are still being integrated.
 
 ## Build a lexical corpus
 

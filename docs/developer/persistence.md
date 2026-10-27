@@ -29,6 +29,17 @@ boundary or interrupted-history reconstruction. Legacy reconstruction retains it
 original ordering and layout. Follow the complete [context projection](workspace-context.md#admit-a-header-and-append-current-references)
 before changing either path.
 
+A fresh active semantic admission uses descriptor version 2. It retains the
+original reviewed policy, whose canonical digest must equal the Session pin's
+policy hash. The descriptor allows 64 KiB and 16 lexical levels; its policy and
+settings retain their own narrower bounds. Pure replay derives a protected outer
+invocation's read/publish class from that saved policy and its exact descriptor.
+It cannot accept a worker-supplied class or promote historical approval. A
+version-1 active admission remains reconstructible but cannot enter a new
+protected outer invocation. Current protected permission is checked separately
+before every live effect. See the [collection SDK](collection-sdk.md) for the
+receipt versions and the read-only outer's categorical mutation denial.
+
 The owner still controls recovery order: acquire the session lock, reload and
 validate the locked journal and its sources, repair only a permitted torn tail,
 reload, then reconstruct pure facts. Afterward, event/subscription question
@@ -219,7 +230,8 @@ reviewed closed JSON schema. A declared evidence field must contain a nonempty
 subset of the host-authenticated stable source receipts, and every source in the
 batch must have an allowed origin. This prevents a pending-proposal mapping from
 writing a durable-note key or borrowing one native source to upgrade unrelated
-input. Deletion requires its own reviewed flag and nonempty source proof. This
+input. Every replacement and deletion advances the destructive import floor;
+deletion also requires its own reviewed flag and nonempty source proof. This
 pure check neither authenticates proof-shaped JSON nor supplies consent: the
 owning adapter must resolve proofs and recheck current permission, source and
 suppression state inside the publication boundary. Its
@@ -366,8 +378,9 @@ their JSONL capacity from the declared byte count and the original final-receipt
 template. Written prefixes remain charged even when the invocation is abandoned.
 There is no rollback or automatic attempt to finish a partial producer.
 
-Only the final version-2 `extension_invocation_result` publishes the saved
-descriptor. A complete byte stream or a seal alone remains unreadable. Source
+Only the final paged `extension_invocation_result` publishes the saved
+descriptor: version 2 for ordinary invocations, version 4 with the exact protected
+outer binding for saved consent. A complete byte stream or a seal alone remains unreadable. Source
 records use plain reserved appends and are not offered as private content to
 observers or feeds. The bounded final descriptor can use
 `append_reserved_observed/3`; Session releases unused capacity before offering

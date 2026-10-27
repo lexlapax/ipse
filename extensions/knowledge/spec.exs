@@ -1,17 +1,24 @@
 defmodule IpseKnowledge.BuildSpec do
   @moduledoc false
   @presets %{
+    "knowledge" => ~w(native),
     "corpus" =>
       ~w(state-lexical state-dense state-rerank state-semantic mcp-lexical mcp-dense mcp-rerank mcp-semantic),
     "research" => ~w(offline mcp mcp-model),
     "graph" => ~w(state-explicit state-model mcp-explicit mcp-model)
   }
   @modules %{
+    "knowledge" => IpseKnowledge.Knowledge,
     "corpus" => IpseKnowledge.Corpus,
     "research" => IpseKnowledge.Research,
     "graph" => IpseKnowledge.Graph
   }
-  @defaults %{"corpus" => "state-lexical", "research" => "offline", "graph" => "state-explicit"}
+  @defaults %{
+    "knowledge" => "native",
+    "corpus" => "state-lexical",
+    "research" => "offline",
+    "graph" => "state-explicit"
+  }
   @families ~w(stores search fetch retrieval embedding rerank extraction)
 
   def selection!(package, preset) do

@@ -6,6 +6,8 @@
 /priv/ipse-runner
 /priv/ipse-pdf
 /priv/ipse-pdf-notices/
+/priv/extension-bundles/
+/priv/extension-bundles.building-*/
 /.ipse/
 *.ez
 *.tar.gz

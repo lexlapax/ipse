@@ -8,6 +8,7 @@ export IPSE_BUILD_PDF
 sh dev/build-native.sh
 MIX_ENV=prod mix deps.get
 MIX_ENV=prod mix compile --force --warnings-as-errors
+MIX_ENV=prod mix run --no-start dev/build-bundles.exs
 IPSE_VERSION=$(MIX_ENV=prod mix run --no-start -e 'IO.write(Mix.Project.config()[:version])')
 IPSE_RELEASE=${MIX_BUILD_PATH:-_build/prod}/rel/ipse
 # Recreate generated staging so an upgraded toolchain or removed application
