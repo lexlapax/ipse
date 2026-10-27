@@ -196,6 +196,32 @@ too. Already streamed text cannot be retracted; refused content has no saved
 quarantine/export contract. A new independent root starts a separate quota.
 Audio, arbitrary tools/MCP charges, and out-of-band trusted code are outside coverage.
 
+### Measure local managed publication separately
+
+Saved semantic consent uses a separate protected resource vector for local
+knowledge work. These bytes describe host JSON processing, not model tokens or a
+provider invoice. Follow [the Collection SDK](collection-sdk.md) for its approval,
+source and publication contract.
+
+Before a managed save, `ManagedCollectionCall.reservation/1` reserves one operation,
+the encoded worker request, both maximum sidecar values and their envelopes,
+2048 normalization bytes, and 16384 output bytes. The ceiling stays fixed before
+effects. On a proven successful save, the host measures encoded outer-request
+bytes plus normalized-commit growth plus encoded normalization-receipt bytes.
+The private, callback-local measurement must match that same successful Collection
+receipt and fit every reserved dimension before `Consent.publish` settles it.
+The operation and output charges remain conservative; other resource charges stay
+zero. Neither a worker-supplied cost nor a smaller partial measurement releases
+liability. Conflict and failed-no-effect results settle the full reservation;
+native loss, cancellation, uncertain publication or settlement retain it without
+an automatic refund or retry.
+
+The managed Session tests make two real protected saves under a period input
+ceiling that would reject their combined full reservations. They reconstruct the
+normalized commits from stored values and compare each exact debit. A separate
+native-owner-loss test interrupts after normalization but before the root switch
+and verifies that no measured refund or successful result escapes.
+
 ## Validate protected storage and recovery
 
 `BudgetStore` owns closed `reserved`, `refused`, `dispatch_intent`, `observed`, and

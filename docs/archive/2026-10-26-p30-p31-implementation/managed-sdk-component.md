@@ -1,5 +1,9 @@
 # Explicit managed collection SDK boundary
 
+The later [verified actual-input settlement repair](managed-actual-accounting.md)
+supersedes this checkpoint's conservative successful-settlement description.
+The dated implementation and original evidence below remain historical.
+
 Dated **2026-10-26**, following protected storage prerequisite `2712b25` and
 inference-dispatch checkpoint `5510ddb` on `codex/p30-p31`. This is a focused
 internal engineering checkpoint, not P31E acceptance, operator activation or

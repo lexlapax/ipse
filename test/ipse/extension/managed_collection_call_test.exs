@@ -53,6 +53,8 @@ defmodule Ipse.Extension.ManagedCollectionCallTest do
           Map.delete(r, "proofs"),
           Map.delete(r, "recipe_sha256"),
           Map.put(r, "origin", "interactive_operator"),
+          Map.put(r, "actual", %{"input_bytes" => 0}),
+          Map.put(r, "cost", 0),
           put_in(r, ["request", "advance_floor"], false),
           put_in(r, ["request", "changes", Access.at(0), "key"], "host.validity.live.000.0"),
           Map.put(r, "recipe_sha256", "unreviewed"),

@@ -836,7 +836,156 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
     assert commit["outcome"]["status"] == "conflict"
     {:ok, snapshot} = Consent.snapshot(c.control, c.binding["project_id"])
     assert snapshot["operations"][commit["operation_id"]]["status"] == "settled"
+
+    assert snapshot["operations"][commit["operation_id"]]["actual"] ==
+             Ipse.Extension.ManagedCollectionCall.reservation(commit["request"])
+
     assert map_size(snapshot["operations"]) == 2
+  end
+
+  test "successive protected saves settle measured input and release only verified unused input",
+       c do
+    {:ok, initial} = Consent.snapshot(c.control, c.binding["project_id"])
+    policy = put_in(initial["policy"], ["limits", "input_bytes"], 30_000)
+
+    assert {:ok, _} =
+             Consent.replace(
+               c.control,
+               c.binding["project_id"],
+               initial["epoch"],
+               policy,
+               System.system_time(:millisecond)
+             )
+
+    assert {:ok, selection} = Ipse.Config.Semantics.selection(policy)
+    c = put_in(c, [:config, :semantic_selections], selection)
+
+    saves =
+      for _ <- 1..2 do
+        before = collection_read(c, %{"op" => "snapshot"})
+
+        previous =
+          collection_read(c, %{
+            "op" => "scan",
+            "generation" => before["generation"],
+            "after" => nil,
+            "limit" => 32
+          })
+
+        revisions = Map.new(previous["records"], &{&1["key"], &1["revision"]})
+        pid = start(c)
+        assert :ok = Session.prompt(pid, "Synthetic café observation")
+        assert_receive {:ipse, ^pid, {:done, :ok}}, 15_000
+        {:ok, events} = Journal.load(c.dir, Session.info(pid).id)
+
+        [commit] =
+          Enum.filter(
+            events,
+            &(&1["type"] == "extension_action_result" and
+                get_in(&1, ["request", "op"]) == "collection.managed")
+          )
+
+        assert commit["outcome"]["status"] == "ok"
+        value = commit["outcome"]["value"]
+        normalization = value["normalization"]
+
+        extra =
+          for name <- ~w(anchor_key live_key) do
+            key = normalization[name]
+            stored = collection_read(c, %{"op" => "get", "key" => key})["record"]
+
+            %{
+              "key" => key,
+              "expected_revision" => Map.get(revisions, key, 0),
+              "value" => stored["value"]
+            }
+          end
+
+        normalized = Map.update!(commit["request"]["request"], "changes", &(&1 ++ extra))
+        assert value["receipt"]["request_sha256"] == JSON.digest([normalized])
+
+        expected =
+          byte_size(Jason.encode!(commit["request"])) + byte_size(Jason.encode!(normalized)) -
+            byte_size(Jason.encode!(commit["request"]["request"])) +
+            byte_size(Jason.encode!(normalization))
+
+        {:ok, control} = Consent.snapshot(c.control, c.binding["project_id"])
+        settled = control["operations"][commit["operation_id"]]
+        assert settled["status"] == "settled"
+        assert settled["actual"]["input_bytes"] == expected
+        reserved = Ipse.Extension.ManagedCollectionCall.reservation(commit["request"])
+        assert expected < reserved["input_bytes"]
+        assert Map.delete(settled["actual"], "input_bytes") == Map.delete(reserved, "input_bytes")
+        assert :ok = Session.close_confirmed(pid)
+        {expected, reserved["input_bytes"]}
+      end
+
+    [{first_actual, first_reserved}, {_, second_reserved}] = saves
+    assert first_actual + second_reserved <= 30_000
+    assert first_reserved + second_reserved > 30_000
+  end
+
+  test "native loss after normalization does not refund or publish a successful managed result",
+       c do
+    owner = self()
+    handler = {__MODULE__, make_ref()}
+
+    :ok =
+      :telemetry.attach(
+        handler,
+        [:ipse, :extension, :collection, :staged],
+        &__MODULE__.fence_native_publication/4,
+        owner
+      )
+
+    on_exit(fn -> :telemetry.detach(handler) end)
+    pid = start(c)
+    id = Session.info(pid).id
+    assert :ok = Session.prompt(pid, "Synthetic café observation")
+    assert_receive :native_publication_fenced, 10_000
+    assert_receive {:ipse, ^pid, {:done, :error}}, 15_000
+    {:ok, events} = Journal.load(c.dir, id)
+
+    [commit] =
+      Enum.filter(
+        events,
+        &(&1["type"] == "extension_action_result" and
+            get_in(&1, ["request", "op"]) == "collection.managed")
+      )
+
+    assert commit["outcome"]["status"] == "unknown"
+    {:ok, control} = Consent.snapshot(c.control, c.binding["project_id"])
+    operation = control["operations"][commit["operation_id"]]
+    assert operation["status"] in ~w(publishing unknown)
+    assert operation["actual"] == nil
+
+    assert operation["reserved"] ==
+             Ipse.Extension.ManagedCollectionCall.reservation(commit["request"])
+
+    assert collection_read(c, %{"op" => "snapshot"})["generation"] == 0
+  end
+
+  def fence_native_publication(_, _, _, owner) do
+    case Process.get({Ipse.Extension.Collection, :lock_held}) do
+      %{port: port} ->
+        send(owner, :native_publication_fenced)
+        Port.close(port)
+
+      _ ->
+        :ok
+    end
+  end
+
+  defp collection_read(c, request) do
+    assert {:ok, value} =
+             Ipse.Extension.Collection.execute(
+               SemanticAdmission.collection_root(c.home),
+               c.namespace,
+               request,
+               Ipse.Usage.id()
+             )
+
+    value
   end
 
   test "owner loss during protected publication retains liability and cannot publish after cleanup",

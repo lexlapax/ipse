@@ -218,7 +218,10 @@ defmodule Ipse.Extension.ManagedCollectionCall do
                       Enum.map(proofs, & &1["proof"])
                     ) do
                case storage(c, i, proofs, plan) do
-                 {status, value} when status in [:ok, :conflict, :failed] ->
+                 {:ok, value, actual} ->
+                   {:ok, actual, %{"status" => "ok", "value" => value}}
+
+                 {status, value} when status in [:conflict, :failed] ->
                    {:ok, reservation(i["request"]),
                     %{"status" => Atom.to_string(status), "value" => value}}
 
@@ -247,6 +250,10 @@ defmodule Ipse.Extension.ManagedCollectionCall do
   end
 
   defp storage(c, i, proofs, plan) do
+    accounting_scope(fn key, owner -> storage(c, i, proofs, plan, key, owner) end)
+  end
+
+  defp storage(c, i, proofs, plan, key, owner) do
     request = i["request"]
 
     case Collection.execute_managed(
@@ -256,22 +263,39 @@ defmodule Ipse.Extension.ManagedCollectionCall do
            i["operation_id"],
            request["recipe_sha256"],
            fn witness, read ->
-             Collection.Normalizer.normalize(witness, read, %{
-               request: request["request"],
-               recipe: plan.recipe,
-               constraints: plan.constraints,
-               verified_sources: Enum.map(proofs, & &1["proof"]),
-               policy_sha256: i["effect_binding"]["pin"]["policy_sha256"],
-               now_ms: now()
-             })
+             capture_accounting(
+               key,
+               owner,
+               {i["operation_id"], witness["operation_id"]},
+               request,
+               plan.reservation["reserved"],
+               fn ->
+                 Collection.Normalizer.normalize(witness, read, %{
+                   request: request["request"],
+                   recipe: plan.recipe,
+                   constraints: plan.constraints,
+                   verified_sources: Enum.map(proofs, & &1["proof"]),
+                   policy_sha256: i["effect_binding"]["pin"]["policy_sha256"],
+                   now_ms: now()
+                 })
+               end
+             )
            end
          ) do
       {:ok, value} ->
-        if valid_outcome?(request, "ok", value, i["operation_id"]) and
-             CollectionCall.reply_fits?(i, value) do
-          {:ok, value}
+        with true <- valid_outcome?(request, "ok", value, i["operation_id"]),
+             true <- CollectionCall.reply_fits?(i, value),
+             {:ok, actual} <-
+               captured_accounting(
+                 key,
+                 owner,
+                 i["operation_id"],
+                 value,
+                 plan.reservation["reserved"]
+               ) do
+          {:ok, value, actual}
         else
-          :unknown
+          _ -> :unknown
         end
 
       {:conflict, value} ->
@@ -294,6 +318,79 @@ defmodule Ipse.Extension.ManagedCollectionCall do
       _ ->
         :unknown
     end
+  end
+
+  # This slot exists only in the actual storage callback process. It never crosses
+  # the SDK boundary or supplies authority for an otherwise unproven outcome.
+  defp accounting_scope(fun) do
+    key = {__MODULE__, make_ref()}
+    prior = Process.get(key, :absent)
+
+    try do
+      fun.(key, self())
+    after
+      if prior == :absent, do: Process.delete(key), else: Process.put(key, prior)
+    end
+  end
+
+  defp capture_accounting(key, owner, {operation_id, witnessed_id}, request, reserved, fun) do
+    if self() == owner and Process.get(key, :absent) == :absent do
+      # Claim before inspecting the result so a second invocation cannot replace
+      # either a failed first callback or a successful measurement.
+      Process.put(key, :invalid)
+
+      with true <- is_binary(operation_id) and operation_id === witnessed_id,
+           {:ok, normalized, normalization} = result <- fun.(),
+           {:ok, actual} <- measured_accounting(request, normalized, normalization, reserved) do
+        Process.put(key, {owner, operation_id, JSON.digest([normalized]), normalization, actual})
+        result
+      else
+        {:error, _} = error -> error
+        _ -> {:error, :collection_accounting_invalid}
+      end
+    else
+      if self() == owner, do: Process.put(key, :invalid)
+      {:error, :collection_accounting_invalid}
+    end
+  end
+
+  defp measured_accounting(request, normalized, normalization, reserved) do
+    original_bytes = byte_size(Jason.encode!(request["request"]))
+    normalized_bytes = byte_size(Jason.encode!(normalized))
+    receipt_bytes = byte_size(Jason.encode!(normalization))
+    delta = normalized_bytes - original_bytes
+    input = byte_size(Jason.encode!(request)) + delta + receipt_bytes
+    actual = Map.put(reservation(request), "input_bytes", input)
+
+    if delta >= 0 and is_map(normalization) and receipt_bytes <= 2048 and
+         within_reservation?(actual, reserved) do
+      {:ok, actual}
+    else
+      {:error, :collection_accounting_invalid}
+    end
+  rescue
+    _ -> {:error, :collection_accounting_invalid}
+  end
+
+  defp captured_accounting(key, owner, operation_id, value, reserved) do
+    with true <- self() == owner,
+         {^owner, ^operation_id, digest, normalization, actual} <- Process.get(key),
+         true <- digest == value["receipt"]["request_sha256"],
+         true <- normalization === value["normalization"],
+         true <- JSON.digest([normalization]) == value["binding"]["normalization_sha256"],
+         true <- within_reservation?(actual, reserved) do
+      {:ok, actual}
+    else
+      _ -> {:error, :collection_accounting_invalid}
+    end
+  end
+
+  defp within_reservation?(actual, reserved) do
+    is_map(reserved) and Enum.sort(Map.keys(actual)) == Enum.sort(Map.keys(reserved)) and
+      Enum.all?(actual, fn {dimension, amount} ->
+        JSON.safe_uint?(amount) and JSON.safe_uint?(reserved[dimension]) and
+          amount <= reserved[dimension]
+      end)
   end
 
   def valid_outcome?(r, status, value, id) when status in ~w(unknown denied failed conflict),

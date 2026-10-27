@@ -322,9 +322,25 @@ Legacy publication reserves one operation, encoded worker-request input bytes an
 sidecar values, their exact worst-case key/revision/change envelopes and comma
 overhead, plus 2048 normalization bytes before effects. Values use the same JSON
 escaping as storage; the boundary test exercises control bytes at the full limit.
-Model, download and money resources are zero. Known successful,
-conflicting or failed-no-effect callbacks settle conservatively inside
-`Consent.publish`, once. Unknown outcomes retain liability. Duplicate operation
+Model, download and money resources are zero. A successful managed save settles
+its measured input inside `Consent.publish`, once:
+
+```text
+encoded outer request bytes
++ encoded normalized commit bytes - encoded original commit bytes
++ encoded normalization receipt bytes
+```
+
+All lengths use `Jason.encode!/1`, including escaping. The normalizer runs once in
+the actual storage callback process with its witness bound to the admitted
+operation ID. A private measurement must match that operation and the exact
+successful Collection receipt's normalized-request digest, normalization and
+binding before it can release unused input. Negative growth, malformed or
+over-reservation measurements refuse; SDK fields cannot supply costs. Every
+resource dimension must remain within the original reservation. Output stays at
+16384 bytes; conflicting and failed-no-effect callbacks retain their conservative
+reservation. Unknown storage, cleanup or settlement retains full liability even
+if normalization already measured a smaller input. Duplicate operation
 IDs are inspection facts and never new permission to execute. Cancellation or
 owner loss stops the current owned lane; a saved prefix never replays it.
 
@@ -343,6 +359,7 @@ mix test test/ipse/extension/collection_call_test.exs test/ipse/extension/collec
 mix test test/ipse/extension/collection_call_session_test.exs test/ipse/extension/source_read_test.exs
 mix test test/ipse/session/resources_authority_test.exs test/ipse/extension/result_source_test.exs
 mix test test/ipse/extension/managed_collection_call_test.exs test/ipse/extension/managed_collection_call_session_test.exs
+mix test test/ipse/extension/managed_collection_accounting_test.exs
 mix test test/ipse/extension/managed_recipe_test.exs test/ipse/extension/semantic_consent_v2_test.exs test/ipse/extension/activation_test.exs
 ```
 
@@ -350,6 +367,12 @@ The Session fixture compiles an independent SDK-2 artifact and uses a synthetic
 provider, temporary operator state and the actual bundled protected helper. Check
 headless capture, revoked preflight, ordinary-write denial, exact paged output,
 tampered replay, source revalidation, ambiguity and conservative conflict receipts.
+Two successive protected saves independently reconstruct their normalized commits
+and exact input charges under a finite period budget. A native-owner loss after
+normalization verifies that measured costs cannot turn uncertainty into a refund.
+Source-derived accounting fixtures separately exercise unreachable malformed
+measurements, callback repetition and foreign-process capture; they are not native
+publication evidence.
 Inspect an owner-loss case paused at its actual in-publication Session proof
 query; no late write or successful settlement may appear. The test uses OTP's
 system debug callback to pause that exact second commit-proof request after the
