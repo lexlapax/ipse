@@ -1,10 +1,13 @@
 Historical-only independent fixture diagnosis and private candidate evidence,
-finalized **2026-10-27**. Literal report preserved below; original SHA256:
+finalized **2026-10-27**. Report reproduced below; original SHA256:
 `01ee8628882490e310051c2b13508df9166961933223141a17eac11003801166`.
 Root subsequently reviewed and applied the exact two-file patch with SHA256
 `3ca24d102f673b77972cb311e256982fc0ba89d3332bb2635b6f2e7d1eaf691e`.
 The [repeat receipt](reference-fixture-full-repeat.md) preserves the failed full
 run and limits; the [plan](../../plan.md) owns acceptance status.
+The original report remains byte-exact in owner-only evidence. In this repository
+copy, its one code-block prompt line spells the trailing space as `\x20` so the
+significant prompt byte is visible and the Markdown has no trailing whitespace.
 
 # Independent CLI PTY timeout triage
 
@@ -18,7 +21,7 @@ This was reproduced with the unchanged driver and actual private runtime, indepe
 
 ```text
 Running…
-you> 
+you>\x20
 Finished.
 ```
 
