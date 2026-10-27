@@ -54,6 +54,45 @@ files also passed `mix format --check-formatted` in the private graph.
 | Pure test output | `2d58ef316166e7619f6994ea2461c7778fc1060d4dca13f4ef45b9d8557f3376` |
 | Strict compile output | `ca1b9db5e63797031532138c8bf0dee3265d319811b9d7f17ebc411651d80a28` |
 
+## Preliminary review of 7.2.11
+
+The official [Linux 7.2.10-to-7.2.11 incremental patch](https://cdn.kernel.org/pub/linux/kernel/v7.x/incr/patch-7.2.10-11.xz)
+was downloaded for read-only inspection. Its compressed SHA-256 was
+`84011db9c4683f6f4b0023252549e09a6bf5f8e9f5a1136c90a258ac7759d165`,
+matching the [published checksum list](https://cdn.kernel.org/pub/linux/kernel/v7.x/incr/sha256sums.asc).
+The checksum list's signature was not independently verified. The patch changes
+`fs/btrfs/inode.c`, `ioctl.c`, `scrub.c`, and `xattr.c`, and generic
+`fs/inode.c` cleanup; it does not directly patch `mm/shmem.c`, `fs/stat.c`,
+`mm/filemap.c` or `fs/iomap` files. This path-level inspection is not proof
+that indirect allocation, writeback, mount or inode-lifetime behavior is
+unchanged. The host reported Arch package `linux 7.2.11.arch1-1`; a kernel
+release string alone does not attest its source or configuration.
+
+A standalone [Rust probe](kernel-7.2.11/alloc-probe.rs), compiled with Rust
+1.99.1 and warnings denied, created new owner-only synthetic dense files on
+tmpfs and Btrfs. For each of eight lengths from one byte to 8 MiB, its own
+child wrote the complete file without requesting fsync, reported readiness while
+retaining the open file, and was killed. The parent measured `st_blocks` before the kill,
+immediately after, and at 10, 100 and 1000 ms, then removed the synthetic file.
+Both [tmpfs](kernel-7.2.11/tmpfs-probe.tsv) and
+[Btrfs](kernel-7.2.11/btrfs-probe.tsv) observed the same 4096-byte-rounded
+counts at each sample. The new empty directory on each mount reported zero
+blocks. The tested tmpfs mount used `huge=advise`, the selected global shmem
+policy was `advise`, and the Btrfs mount used `compress=zstd:3`.
+
+The probe source SHA-256 is
+`727c86bb663500ea9e292785a329e6039f00bf30007bc903db8f3e3be669ba3d`;
+both TSV outputs hash to
+`a9b4ebf4539fa72c7e957139032153c1d02d6766801c1fea5249e982d6eeffee`.
+This is one small diagnostic series, not a profile qualification: it kills
+after a completed write call, uses one pseudorandom data pattern, samples only
+for one second, and does not cover all partial writes, allocation failures,
+concurrent owners, reboots, filesystems or production transactions. It does not
+prove that allocated accounting remains complete for all interrupted dirty
+files. No native allowlist or Ipse publication path was changed. Independent
+source review, actual-owner fault tests and a separately reviewed profile change
+are still required before admitting this kernel.
+
 ## Open work
 
 The uncommitted SDK-v3 consumer and root-observation dependency remain under
