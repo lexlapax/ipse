@@ -110,3 +110,10 @@ nested mounts and shared or slave propagation before non-lazy unmount. There is
 no live quiescence-token constructor; namespace exclusion, escaped references,
 leaf replacement and global cleanup remain unresolved. It has not been run.
 The private suite passed 60 tests, including its mountinfo parser controls.
+
+A reviewed third tmpfs diagnostic observed the retained process-root FD's mount
+ID in the temporary mount's parent chain and successfully cleaned up afterward;
+its receipt, merged output and sources are preserved. This does not prove an
+arbitrary process root is the namespace root. The disabled Btrfs draft now
+checks full visible mount-ID ancestry, stacked-root propagation and a separately
+attested boundary; its private suite passed 62 tests. No Btrfs device was used.

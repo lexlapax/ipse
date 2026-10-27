@@ -59,3 +59,27 @@ The parent FD anchors the parent directory, but does not prevent the leaf or
 mount from being replaced between verification and `umount2`. The reviewer
 explicitly retained that race and the namespace/cleanup limitations. This
 single tmpfs result does not qualify the Btrfs fault fixture.
+
+A third independently reviewed variant retained an O_PATH descriptor to `/`,
+read its fdinfo mount ID and verified that the private tmpfs mount's observed
+parent chain reached it. It used `tmpfs_umount_rootfd_probe.rs` (SHA-256
+`b2d08d816c18cbc31b7dad44a0b7e506b4754720ca09641da115e8b1e978c40b`),
+`tmpfs_umount_rootfd_supervisor.exs` (SHA-256
+`ae8f151a20e90211d8ed9e1e1043ce1bb4acba5184f46e7b5e71d487526efc4d`) and a
+binary with SHA-256
+`6cc29a1268e7e1f80138793a9b0bfb7414987f184649f19f186507850cd33fb5`.
+`make_rootfd_probe.exs` records the source-only transformation. The command
+was `ERL_FLAGS='+S 2:2' elixir
+/tmp/ipse-serenity-qualification-plan/fixture/tmpfs_umount_rootfd_supervisor.exs`.
+The merged log `tmpfs-rootfd-run.log` (SHA-256
+`0bb5d36b9fd07c259d0e70e866bee6c70afefc0e51e0626c68f3ddbbe4bce4e1`)
+records exit 0, process-root mount ID 383 in temporary mount 460's parent
+chain, EBUSY for retained mount-root unmount, successful retained-parent path
+cleanup and removal of the original directory. A separate read-only check
+found the exact path absent and no matching host mount entry.
+
+This identifies the *process-visible* root in this controlled no-chroot test;
+it does not independently prove the true root of an arbitrary mount namespace
+after chroot or pivot, propagation state, global absence, or Btrfs cleanup.
+The experimental Btrfs guard requires a separately attested namespace-root
+boundary and remains disabled.

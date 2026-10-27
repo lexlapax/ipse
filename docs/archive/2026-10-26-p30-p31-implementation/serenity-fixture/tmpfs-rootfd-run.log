@@ -1,0 +1,8 @@
+TARGET /tmp/ipse-umount-fd-60cad73cec22488e inode=122545 host_mount_namespace=4026531832
+IDENTITIES_VERIFIED child_pid=193044 mount_namespace=4026533515 user_namespace=4026533459
+DIRECTORY_REMOVED /tmp/ipse-umount-fd-60cad73cec22488e
+{:result, 0,
+ ["ROOT_FD_MOUNT_ID 383 target_ancestry_contains_root=true",
+  "PRIVATE_MOUNT namespace=4026533515 mount_id=460",
+  "retained-fd nonlazy umount errno=16",
+  "retained-parent-fd nonlazy cleanup: success"]}
