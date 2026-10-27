@@ -1,0 +1,7 @@
+# Sixth Serenity retry index, 2026-10-27
+
+The coordinator ran the independently reviewed [index-only harness](sixth_index_harness.sh), SHA-256 `de216ce6179c444e82c6a22700aea9a06d1805df48b75a9c0ba5cfae2a21e9dc`, with nonce `2f2367d678aa40c3b8b8dc4bc34ac165`. It reported success and created loop index 4090, host sysfs `25:797870`, container sysfs `84:797870`. The copied program's identity and hash were checked in a root-owned read-only stage before execution. No backing binding, mapper creation, block I/O or index removal was part of this operation.
+
+Receipt parent `/home/lexlapax/projects/lexlapax/ipse/.serenity-sixth-receipt.xQpB587i` contains ledger `29:13363927` and index receipt `29:13364187`, SHA-256 `68b9886a22b40305d79bf7af589931c48deea9c3491c4dac74768ac216f938af`. The setup container `40d97de212a85d6d68bd75d2587718e1aac9807f49bdcda6a8b2a4d1bc3c2837` was independently inspected as exited 0; stage `/tmp/ipse-retry-index-stage.EFsKtfmj` `53:327706`, program `53:327707` were initially retained pending exact cleanup. Index and ledger remain; earlier retained resources were untouched.
+
+Host `/dev/loop4090` was observed as block `7:4090` device:inode `7:1622`; mapper `252:4090` was absent at that observation. This record derives from the coordinator's tool transcript and independent read-only inspection, not a raw output log. It is not evidence of Btrfs fault testing or kernel qualification.
