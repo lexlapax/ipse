@@ -92,6 +92,16 @@ refusal checks. The repaired conformance/result-reader/decision regression run
 passed 27 tests; the original full run remains a failed-run receipt, with final
 counts and later baseline evidence recorded separately.
 
+The same full run also exposed Gemini's signed-loop fixture treating the last
+content as a tool result, and the source lab treating the last message as real
+input/the second message as current recall. Gemini now checks the actual result
+followed by the labelled reference while preserving earlier contents, signatures,
+tools and system bytes. The lab selects real input and current reference by their
+roles/validated markers. Focused reruns passed **3 Gemini tests** and the complete
+**one-test source lab**. The fixed `221fa2d` suite finished with **1883/1888 passed,
+one skipped, 36 excluded** in 1057.7 seconds: exactly these five known fixture
+failures. Its chained demo/package/installed steps did not run after failure.
+
 Wire fixtures cover ChatGPT, OpenAI, Ollama, Anthropic, Gemini, OpenRouter,
 Grok API, Grok subscription and explicit compatible-local routes. They verify
 unchanged earlier serialized messages/tools, tail role, and signed Anthropic/Gemini

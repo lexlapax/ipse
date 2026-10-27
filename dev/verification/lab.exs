@@ -194,13 +194,15 @@ defmodule IpseLab.Proof do
 
       checked(
         "effective_input_distinct",
-        String.contains?(List.last(first_messages)["content"], "Effective-only annotation")
+        String.contains?(request_input(first_messages)["content"], "Effective-only annotation")
       )
 
       checked(
         "capture_does_not_change_admitted_request",
-        not String.contains?(hd(first_messages)["content"], "Known entities: Ada") and
-          not String.contains?(Enum.at(first_messages, 1)["content"], "Known entities: Ada")
+        not Enum.any?(
+          first_messages,
+          &String.contains?(&1["content"] || "", "Known entities: Ada")
+        )
       )
 
       first = command(pid, "export", %{})["value"]
@@ -238,8 +240,11 @@ defmodule IpseLab.Proof do
 
       checked(
         "awaited_recall",
-        Enum.at(second_messages, 1)["role"] == "user" and
-          String.contains?(Enum.at(second_messages, 1)["content"], "Known entities: Ada, OTP") and
+        request_reference(second_messages)["role"] == "user" and
+          String.contains?(
+            request_reference(second_messages)["content"],
+            "Known entities: Ada, OTP"
+          ) and
           not String.contains?(hd(second_messages)["content"], "Known entities: Ada, OTP")
       )
 
@@ -813,6 +818,17 @@ defmodule IpseLab.Proof do
     after
       1_000 -> raise "Extension lab model observation missing"
     end
+  end
+
+  defp request_input(messages) do
+    Enum.find(Enum.reverse(messages), fn message ->
+      message["role"] == "user" and not Ipse.Session.Reference.reference?(message)
+    end)
+  end
+
+  defp request_reference(messages) do
+    Enum.find(Enum.reverse(messages), &Ipse.Session.Reference.reference?/1) ||
+      Enum.at(messages, 1)
   end
 
   defp catchup(pid, cursor \\ 0, snapshot \\ nil, remaining \\ 8) do

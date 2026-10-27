@@ -103,7 +103,24 @@ defmodule Ipse.Config.GeminiIntegrationTest do
     {_, body} = second
     signed = Enum.find(body["contents"], &(&1["role"] == "model"))
     assert signed == %{"role" => "model", "parts" => parts}
-    assert Jason.encode!(List.last(body["contents"])) =~ "fixture-evidence"
+    [read_result, reference] = Enum.take(body["contents"], -2)
+    assert read_result["role"] == "user"
+
+    assert get_in(read_result, ["parts", Access.at(0), "functionResponse", "response", "content"]) =~
+             "fixture-evidence"
+
+    assert reference["role"] == "user"
+
+    assert get_in(reference, ["parts", Access.at(0), "text"]) =~
+             "Current host reference selection."
+
+    {_, original_body} = first
+
+    assert Enum.take(body["contents"], length(original_body["contents"])) ==
+             original_body["contents"]
+
+    assert body["tools"] == original_body["tools"]
+    assert body["systemInstruction"] == original_body["systemInstruction"]
     assert Session.info(pid).final == "done"
     diagnosis = Jason.encode!(Session.diagnostics(pid))
     refute diagnosis =~ "PRIVATE_GEMINI_THOUGHT"
