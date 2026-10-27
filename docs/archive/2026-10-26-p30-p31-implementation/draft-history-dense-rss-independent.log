@@ -1,0 +1,6 @@
+first records=65535 bytes=31510824 elapsed_ms=1800 status=ok
+cached=1 elapsed_us=535 status=ok
+cached=2 elapsed_us=583 status=ok
+cached=3 elapsed_us=524 status=ok
+dense_ranges=1024 lookups=8000 elapsed_us=31697 matches=0
+sampled_vm_rss_peak_kib=410820 interval_ms=10

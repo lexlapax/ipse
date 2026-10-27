@@ -1,0 +1,6 @@
+first records=65535 bytes=31510824 elapsed_ms=1809 status=ok
+cached=1 elapsed_us=732 status=ok
+cached=2 elapsed_us=679 status=ok
+cached=3 elapsed_us=642 status=ok
+dense_ranges=1024 lookups=8000 elapsed_us=32270 matches=0
+VmHWM:	  397916 kB
