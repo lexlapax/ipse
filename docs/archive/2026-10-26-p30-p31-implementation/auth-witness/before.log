@@ -1,0 +1,58 @@
+Running ExUnit with seed: 20261219, max_cases: 1
+Excluding tags: [:test]
+Including tags: [location: {"test/ipse/provider/completion_witness_test.exs", 179}]
+
+     warning: Ipse.Provider.CompletionWitness.during_auth/1 is undefined or private
+     │
+ 136 │                         CompletionWitness.during_auth(fn ->
+     │                                           ~
+     │
+     └─ test/ipse/provider/completion_witness_test.exs:136:43: Ipse.Provider.CompletionWitnessTest."test a completed authentication HTTP request neither witnesses nor invalidates the later inference"/1
+     └─ test/ipse/provider/completion_witness_test.exs:164:36: Ipse.Provider.CompletionWitnessTest."test authentication cannot forge a completion and its witness is restored after failure"/1
+
+
+
+  1) test the main request isolates actual credential refresh HTTP from inference completion (Ipse.Provider.CompletionWitnessTest)
+     test/ipse/provider/completion_witness_test.exs:179
+     match (=) failed
+     code:  assert {{:ok, %{"content" => "complete"}, _}, true} =
+              CompletionWitness.capture(witness_runtime, :text, base <> "/api/chat", fn ->
+                Ipse.Auth.with_auth_transport(transport, fn ->
+                  Ipse.Provider.request_complete(
+                    config,
+                    [%{"role" => "user", "content" => "fixture"}],
+                    [],
+                    fn _ -> :ok end
+                  )
+                end)
+              end)
+     left:  {{:ok, %{"content" => "complete"}, _}, true}
+     right: {{:ok,
+              %{
+                "content" => "complete",
+                "provider_data" => %{
+                  "message" => %{
+                    "content" => "complete",
+                    "role" => "assistant",
+                    "thinking" => "",
+                    "tool_calls" => []
+                  },
+                  "provider" => "ollama",
+                  "reported_model" => "fixture"
+                },
+                "role" => "assistant"
+              },
+              %{
+                "input_cached_tokens" => nil,
+                "input_tokens" => 1,
+                "output_tokens" => 1,
+                "provider_duration_ns" => nil
+              }}, false}
+     stacktrace:
+       test/ipse/provider/completion_witness_test.exs:241: (test)
+
+
+Finished in 0.1 seconds (0.00s async, 0.1s sync)
+
+Result: 0/1 passed, 6 excluded
+Failed: 1 test

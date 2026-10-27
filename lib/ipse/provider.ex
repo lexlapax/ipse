@@ -212,7 +212,7 @@ defmodule Ipse.Provider do
         credential when credential in [:chatgpt_auth, :xai_auth] ->
           auth = if credential == :chatgpt_auth, do: Ipse.Auth, else: Ipse.Auth.XAI
 
-          case auth.token(config.auth_dir) do
+          case Ipse.Provider.CompletionWitness.during_auth(fn -> auth.token(config.auth_dir) end) do
             {:ok, token} -> {:ok, Map.put(config, :api_key, token)}
             error -> error
           end

@@ -38,6 +38,25 @@ defmodule Ipse.Provider.CompletionWitness do
     end
   end
 
+  # Authentication may use the same owned HTTP client before inference starts.
+  # Its request is not the selected inference request and cannot witness it.
+  # Keep a sentinel so a nested capture cannot replace the original witness.
+  def during_auth(fun) when is_function(fun, 0) do
+    case Process.get(@key) do
+      %{owner: owner, started: false, invalid: false} = state when owner == self() ->
+        Process.put(@key, :authentication)
+
+        try do
+          fun.()
+        after
+          Process.put(@key, state)
+        end
+
+      _ ->
+        fun.()
+    end
+  end
+
   def http_started(target) do
     update(fn state ->
       if not state.started and state.target == target_hash(target),

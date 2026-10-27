@@ -1,0 +1,21 @@
+Running ExUnit with seed: 20261221, max_cases: 2
+Excluding tags: [:native_sandbox, :macos_sandbox, :macos_filesystem, :memory_scope]
+
+................................................................................................................................................................................................
+07:50:59.857 [notice] TLS :server: In state :wait_finished received CLIENT ALERT: Fatal - Bad Certificate
+
+
+07:50:59.856 [notice] TLS :client: In state :wait_cert_cr at ssl_handshake.erl:2312 generated CLIENT ALERT: Fatal - Bad Certificate
+ - {:bad_cert,
+ {:hostname_check_failed, {:requested, ~c"127.0.0.1"},
+  {:received, [dNSName: ~c"localhost"]}}}
+
+07:50:59.879 [notice] TLS :client: In state :wait_cert_cr at ssl_handshake.erl:2304 generated CLIENT ALERT: Fatal - Unknown CA
+
+
+07:50:59.879 [notice] TLS :server: In state :wait_finished received CLIENT ALERT: Fatal - Unknown CA
+
+...................................................................
+Finished in 8.4 seconds (0.5s async, 7.9s sync)
+
+Result: 259 passed

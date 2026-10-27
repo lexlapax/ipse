@@ -86,6 +86,7 @@ resource/offline qualification. No daemon configuration or existing model was ch
 - [Native root witnesses and owner-bound directory reads inside managed publication](managed-directory-closure-component.md).
 - [Managed source clocks, metadata and independently closed findings](managed-normalizer-component.md).
 - [Registered inference admission and completion](inference-dispatch-component.md), with its [independent adversarial audit](inference-dispatch-audit.md).
+- [Authentication HTTP isolation in the registered inference completion witness](auth-completion-witness.md).
 - [Explicit managed SDK publication, reserved metadata and replay boundary](managed-sdk-component.md).
 - [Verified managed-publication input charges, unchanged reservations and retained uncertainty](managed-actual-accounting.md), with its [independent audit](managed-actual-accounting-audit.md), later [Identity-finalization finding and independent closure](identity-finalization-finding.md), and [deferred-settlement ordering repair](managed-settlement-ordering-repair.md).
 - [Protected fresh/resumed activation, exact route overlays and reciprocal worktree admission](activation-overlay-component.md).

@@ -1,0 +1,29 @@
+Running ExUnit with seed: 20261219, max_cases: 1
+Excluding tags: [:test]
+Including tags: [location: {"test/ipse/provider/completion_witness_test.exs", 173}]
+
+     warning: Ipse.Provider.CompletionWitness.during_auth/1 is undefined or private
+     │
+ 136 │                         CompletionWitness.during_auth(fn ->
+     │                                           ~
+     │
+     └─ test/ipse/provider/completion_witness_test.exs:136:43: Ipse.Provider.CompletionWitnessTest."test a completed authentication HTTP request neither witnesses nor invalidates the later inference"/1
+     └─ test/ipse/provider/completion_witness_test.exs:164:36: Ipse.Provider.CompletionWitnessTest."test authentication cannot forge a completion and its witness is restored after failure"/1
+
+
+
+  1) test authentication cannot forge a completion and its witness is restored after failure (Ipse.Provider.CompletionWitnessTest)
+     test/ipse/provider/completion_witness_test.exs:157
+     Expected exception RuntimeError but got UndefinedFunctionError (function Ipse.Provider.CompletionWitness.during_auth/1 is undefined or private)
+     code: CompletionWitness.capture(runtime, :text, target, fn ->
+     stacktrace:
+       (ipse 0.1.0) Ipse.Provider.CompletionWitness.during_auth(#Function<20.120126154/0 in Ipse.Provider.CompletionWitnessTest."test authentication cannot forge a completion and its witness is restored after failure"/1>)
+       test/ipse/provider/completion_witness_test.exs:163: anonymous fn/0 in Ipse.Provider.CompletionWitnessTest."test authentication cannot forge a completion and its witness is restored after failure"/1
+       (ipse 0.1.0) lib/ipse/provider/completion_witness.ex:28: Ipse.Provider.CompletionWitness.capture/4
+       test/ipse/provider/completion_witness_test.exs:162: (test)
+
+
+Finished in 0.1 seconds (0.00s async, 0.1s sync)
+
+Result: 0/1 passed, 6 excluded
+Failed: 1 test

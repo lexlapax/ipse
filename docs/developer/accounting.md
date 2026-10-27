@@ -37,6 +37,15 @@ summary validation. Refused summaries can therefore retain completed paid work.
 A successful final response with missing counters does not borrow earlier partial
 counts to make its total complete.
 
+Registered inference also requires an owner-bound completion witness: the exact
+inference HTTP target must reach its terminal response, the provider must parse
+it, and the isolated client must close successfully. Credential refresh can use
+the same HTTP machinery before inference. `CompletionWitness.during_auth/1`
+temporarily excludes only that host authentication phase, then restores the
+original witness even on failure. A nested witness or another HTTP request after
+inference starts cannot use that phase to establish completion. This separation
+does not itself establish current managed-content freshness or revoke remote work.
+
 In `iex -S mix`, exercise cumulative replacement:
 
 ```elixir
