@@ -4,15 +4,18 @@
 #[path = "identity_guard.rs"] mod guard;
 #[path = "real_backend.rs"] mod real_backend;
 #[path = "provisioning.rs"] mod provisioning;
+#[path = "loop_device.rs"] mod loop_device;
+#[path = "loop_provenance.rs"] mod loop_provenance;
 #[path = "barrier_orchestration.rs"] mod barrier_orchestration;
 #[path = "barrier_framing.rs"] mod barrier_framing;
 #[path = "barrier_peer.rs"] mod barrier_peer;
 #[path = "recovery_ledger.rs"] mod recovery_ledger;
+#[path = "recovery_guardian.rs"] mod recovery_guardian;
 use guard::{Expected, Table, loop_matches, mapper_matches, table_matches};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum State { Ready, FaultPending, ErrorActive, RestorePending, LinearActive, UnmountPending,
-    Unmounted, RemovePending, MapperRemoved, DetachPending, Detached, Unknown }
+    Unmounted, RemovePending, MapperRemoved, DetachPending, Detached, IndexRemovePending, IndexRemoved, Unknown }
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum Action { Suspend, LoadError, Resume, LoadLinear, Unmount, RemoveMapper, DetachLoop }
 #[derive(Clone, Debug)]
@@ -60,6 +63,41 @@ fn cleanup<B: Backend>(b: &mut B, e: &Expected, state: State) -> State {
         return State::Unknown;
     }
     State::Detached
+}
+
+/// Exact recovery is only attempted after an independently verified quiescence
+/// boundary and a separately reserved recovery budget. Implementations must
+/// establish these facts from held live resources, not a caller-provided flag.
+trait RecoveryBackend: Backend {
+    fn verify_owned_quiescence(&mut self,e: &Expected)->Result<(),()>;
+    fn reserve_recovery_budget(&mut self)->Result<(),()>;
+}
+fn recover<B:RecoveryBackend>(b:&mut B,e:&Expected,recorded:State)->State {
+    if !matches!(recorded,State::ErrorActive|State::LinearActive) {return State::Unknown}
+    if b.verify_owned_quiescence(e).is_err() || b.reserve_recovery_budget().is_err() {return State::Unknown}
+    let observed=match b.observe(){Ok(v)=>v,Err(_)=>return State::Unknown};
+    let expected_table=if recorded==State::ErrorActive {Table::Error} else {Table::Linear};
+    if !checked(e,&observed,expected_table,None) || b.fixture_mount(e)!=Ok(true) {return State::Unknown}
+    let state=if recorded==State::ErrorActive {transition(b,e,recorded,Table::Linear)} else {recorded};
+    if state!=State::LinearActive {return State::Unknown}
+    cleanup(b,e,state)
+}
+
+/// A created loop index is not proven gone merely because its backing is detached.
+/// This final step may run only with exact durable creation provenance and an
+/// independently observed unbound index. LOOP_CTL_REMOVE itself is the atomic
+/// kernel no-openers check; no EBUSY or interrupted result can be treated as
+/// absence. No real implementation currently supplies these prerequisites.
+trait IndexRemovalBackend: Backend {
+    fn created_index_identity(&mut self,e: &Expected)->Result<bool,()>;
+    fn remove_created_index(&mut self,e: &Expected)->Result<(),()>;
+    fn index_absent(&mut self,e: &Expected)->Result<bool,()>;
+}
+fn finish_index<B:IndexRemovalBackend>(b: &mut B,e: &Expected,state:State)->State {
+ if state!=State::Detached || b.created_index_identity(e)!=Ok(true) || b.loop_absent(e)!=Ok(true) {return State::Unknown}
+ if b.journal(State::IndexRemovePending,None).is_err() || b.remove_created_index(e).is_err() {return State::Unknown}
+ if b.index_absent(e)!=Ok(true) || b.journal(State::IndexRemoved,None).is_err() {return State::Unknown}
+ State::IndexRemoved
 }
 
 fn checked(e: &Expected, o: &Observation, active: Table, inactive: Option<Table>) -> bool {
@@ -221,16 +259,16 @@ fn main() {
       }
       fn cleanup(&mut self)->Result<(),()>{
         self.state=cleanup(&mut self.devices,&self.e,self.state);
-        if self.state==State::Detached {Ok(())} else {Err(())}
+        if self.state==State::IndexRemoved {Ok(())} else {Err(())}
       }
       fn record(&mut self,_:barrier_orchestration::Phase)->Result<(),()>{Ok(())}
     }
-    #[test] fn composed_barrier_drives_verified_fault_restore_and_teardown() {
+    #[test] fn composed_barrier_refuses_clean_without_loop_index_removal() {
       use barrier_orchestration::{Event,Outcome,Phase};
       let mut c=Composed { devices:Mock::new(), e:expected(), state:State::Ready,
           events:[Event::Ready,Event::Write(5),Event::StageUnknown].into() };
       let result=barrier_orchestration::run(&mut c);
-      assert_eq!(result.phase,Phase::Clean); assert_eq!(result.outcome,Outcome::ExactWriteError(5));
+      assert_eq!(result.phase,Phase::Unknown); assert_eq!(result.outcome,Outcome::Unknown);
       assert_eq!(c.state,State::Detached);
       assert_eq!(c.devices.effects, vec![Action::Suspend,Action::LoadError,Action::Resume,
           Action::Suspend,Action::LoadLinear,Action::Resume,Action::Unmount,Action::RemoveMapper,Action::DetachLoop]);
@@ -243,5 +281,60 @@ fn main() {
       let result=barrier_orchestration::run(&mut c);
       assert_eq!(result.phase,Phase::Unknown); assert_eq!(result.outcome,Outcome::Unknown);
       assert!(c.devices.effects.is_empty()); assert_eq!(c.events.len(),2);
+    }
+    struct RecoveryMock {device:Mock, quiet:bool, budget:bool}
+    impl Backend for RecoveryMock {
+      fn journal(&mut self,s:State,a:Option<Action>)->Result<(),()>{self.device.journal(s,a)}
+      fn observe(&mut self)->Result<Observation,()>{self.device.observe()}
+      fn observe_loop(&mut self)->Result<String,()>{self.device.observe_loop()}
+      fn effect(&mut self,a:Action,e:&Expected)->Result<(),()>{self.device.effect(a,e)}
+      fn fixture_mount(&mut self,e:&Expected)->Result<bool,()>{self.device.fixture_mount(e)}
+      fn mapper_absent(&mut self,e:&Expected)->Result<bool,()>{self.device.mapper_absent(e)}
+      fn loop_absent(&mut self,e:&Expected)->Result<bool,()>{self.device.loop_absent(e)}
+      fn loop_has_no_holders(&mut self,e:&Expected)->Result<bool,()>{self.device.loop_has_no_holders(e)}
+    }
+    impl RecoveryBackend for RecoveryMock {
+      fn verify_owned_quiescence(&mut self,_:&Expected)->Result<(),()>{if self.quiet {Ok(())}else{Err(())}}
+      fn reserve_recovery_budget(&mut self)->Result<(),()>{if self.budget {Ok(())}else{Err(())}}
+    }
+    #[test]fn recovery_restores_only_exact_known_error_state_then_tears_down(){
+      let e=expected();let mut m=RecoveryMock{device:Mock::new(),quiet:true,budget:true};
+      m.device.obs.active="0 1048576 error".into();
+      assert_eq!(recover(&mut m,&e,State::ErrorActive),State::Detached);
+      assert_eq!(m.device.effects,vec![Action::Suspend,Action::LoadLinear,Action::Resume,Action::Unmount,Action::RemoveMapper,Action::DetachLoop]);
+    }
+    #[test]fn recovery_refuses_unknown_identity_or_unconfirmed_quiescence(){
+      let e=expected();for (state,quiet,budget) in [(State::Unknown,true,true),(State::ErrorActive,false,true),(State::ErrorActive,true,false)] {
+       let mut m=RecoveryMock{device:Mock::new(),quiet,budget};m.device.obs.active="0 1048576 error".into();
+       assert_eq!(recover(&mut m,&e,state),State::Unknown);assert!(m.device.effects.is_empty());
+      }
+      let mut m=RecoveryMock{device:Mock::new(),quiet:true,budget:true};m.device.obs.active="0 1048576 error".into();m.device.tamper_at=Some(1);
+      assert_eq!(recover(&mut m,&e,State::ErrorActive),State::Unknown);assert!(m.device.effects.is_empty());
+    }
+    struct IndexMock {device:Mock, owned:bool, present:bool, busy:bool, removes:u32}
+    impl Backend for IndexMock {
+      fn journal(&mut self,s:State,a:Option<Action>)->Result<(),()>{self.device.journal(s,a)}
+      fn observe(&mut self)->Result<Observation,()>{self.device.observe()}
+      fn observe_loop(&mut self)->Result<String,()>{self.device.observe_loop()}
+      fn effect(&mut self,a:Action,e:&Expected)->Result<(),()>{self.device.effect(a,e)}
+      fn fixture_mount(&mut self,e:&Expected)->Result<bool,()>{self.device.fixture_mount(e)}
+      fn mapper_absent(&mut self,e:&Expected)->Result<bool,()>{self.device.mapper_absent(e)}
+      fn loop_absent(&mut self,e:&Expected)->Result<bool,()>{self.device.loop_absent(e)}
+      fn loop_has_no_holders(&mut self,e:&Expected)->Result<bool,()>{self.device.loop_has_no_holders(e)}
+    }
+    impl IndexRemovalBackend for IndexMock {
+      fn created_index_identity(&mut self,_:&Expected)->Result<bool,()>{Ok(self.owned)}
+      fn remove_created_index(&mut self,_:&Expected)->Result<(),()>{self.removes+=1;if self.busy {Err(())}else{self.present=false;Ok(())}}
+      fn index_absent(&mut self,_:&Expected)->Result<bool,()>{Ok(!self.present)}
+    }
+    #[test]fn created_index_removal_requires_provenance_unbound_and_kernel_success(){
+      let e=expected();for (owned,busy,loop_exists) in [(false,false,false),(true,true,false),(true,false,true)] {
+        let mut m=IndexMock{device:Mock::new(),owned,present:true,busy,removes:0};m.device.loop_exists=loop_exists;
+        assert_eq!(finish_index(&mut m,&e,State::Detached),State::Unknown);
+        assert_eq!(m.removes,if owned && busy && !loop_exists {1}else{0});
+      }
+      let mut m=IndexMock{device:Mock::new(),owned:true,present:true,busy:false,removes:0};m.device.loop_exists=false;
+      assert_eq!(finish_index(&mut m,&e,State::Detached),State::IndexRemoved);assert_eq!(m.removes,1);
+      assert!(m.device.journal.contains(&(State::IndexRemovePending,None)));
     }
 }

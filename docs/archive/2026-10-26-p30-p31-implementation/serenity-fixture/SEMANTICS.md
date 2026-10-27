@@ -11,3 +11,19 @@ The kernel's [dm-flakey documentation](https://www.kernel.org/doc/html/latest/ad
 The 7.2.11 upstream `drivers/md/dm.c` source (local SHA-256 `42a3930036bbfdfd131cb2e75d45085a47f559b9abbedde2f5300d9a9a0f45db`, Git blob SHA-1 `eb9e32995b79c95a38816f0df8242e1c95ec15d2`) handles `DM_MAPIO_KILL` by completing the pending bio with `BLK_STS_IOERR`. This is a block-layer source observation, not proof that the actual native owner's particular syscall returned EIO.
 
 Upstream 7.2.11 `drivers/block/loop.c` (local SHA-256 `05b749e12a0f839a109c71965148f2100b8bd469b73d4e627d8bd08da944d1de`, Git blob SHA-1 `1faecef330092b199dcc81066e9164b0f76b15de`) implements `LOOP_CTL_ADD` using a specific requested loop index and returns an existence error if occupied; `LOOP_CTL_REMOVE` refuses bound devices or devices with open disk openers. `LOOP_CTL_GET_FREE` may itself allocate a new loop, so it is not read-only. The code also notes that a nonzero `max_part` changes main-device minor numbering. The draft loop adapter checks `max_part=0` before and after add; opening loop-control can itself autoload a host-global module, and any failure after add leaves an uncertain created device requiring guarded recovery. None of this proves safe host-global ownership or absence of unrelated actors.
+
+A later 7.2.11 source inspection identified a possible kernel-backed cleanup
+check that does not assume unrelated file descriptors are absent. `dm.c`
+`dm_lock_for_deletion` checks `dm_open_count` and refuses non-deferred removal
+when nonzero. `loop.c` `loop_control_remove` hides the exact loop index under
+`loop_ctl_mutex`, then checks `Lo_unbound` and `disk_openers == 0` under the
+loop mutex before removing it. By contrast `loop_clr_fd` sets autoclear and
+can return while another opener retains the device; detach/list absence is not
+itself proof of index removal. A successful nondeferred exact mapper removal,
+followed by successful `LOOP_CTL_REMOVE` on the exact independently recorded
+newly-created loop index, may supply stronger evidence against foreign open
+FDs. This is source reasoning, not yet independently reviewed, not proof of
+running Arch binary parity, and not a verified live procedure. It still requires
+trusted host administrator and Docker daemon noninterference, exact allocated
+index provenance, maintained private mount/cgroup lifetime and fail-closed
+handling of any interrupted/EBUSY operation.

@@ -19,3 +19,27 @@ device-mapper fault, or Btrfs mount was created by these artifacts.
 This historical snapshot supplements the current milestone status in
 [the plan](../../../plan.md) and the implementation records in its parent
 archive. Later changes may supersede the snapshot.
+
+A later snapshot addition includes a read-only pidfd observer prototype. A
+separately running synthetic observer reported an interrupted private test's
+pending ledger entry as unknown. The observer does not recover devices and has
+not received independent review. The current controller mock/synthetic suite
+passed 45 tests; no live-device test is implied.
+
+The review-only controller now also models recovery from an exactly recorded
+active error or linear table, after verified quiescence and a separate recovery
+budget. Its real backend refuses these prerequisites: the live quiescence
+proof, recovery budget and exact-resource guardian are not implemented. Two
+additional mock tests pass; the current total is 47.
+
+A subsequent source review added a final loop-index removal prototype and mock
+negative tests. The kernel may reject nondeferred mapper removal on openers and
+loop-index removal on openers or a bound backing file, but this observation has
+not been validated against the running Arch kernel. The real backend refuses to
+claim the loop index belongs to this fixture; it cannot safely reach removal.
+The private suite now has 49 passing tests, none involving a host block device.
+
+The latest draft includes an exclusive, fsynced loop-identity record tied to
+the run nonce, tested using synthetic values. It is not wired to live creation,
+does not prove post-crash ownership or authorize removal, and requires review.
+The private test suite passed 50 tests at this snapshot.

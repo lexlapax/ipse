@@ -14,7 +14,7 @@ fn legal(previous:Option<Entry>, next:Entry)->bool {matches!((previous,next),
  (Some(Entry::SetupDone),Entry::FaultPending)|(Some(Entry::FaultPending),Entry::FaultDone)|
  (Some(Entry::FaultDone),Entry::RestorePending)|(Some(Entry::RestorePending),Entry::RestoreDone)|
  (Some(Entry::RestoreDone),Entry::CleanupPending)|(Some(Entry::CleanupPending),Entry::CleanupDone))}
-fn parse_ledger(bytes:&[u8],expected:&str)->io::Result<Entry> {
+pub(super) fn parse_ledger(bytes:&[u8],expected:&str)->io::Result<Entry> {
  if bytes.is_empty() || bytes.len()>4096 || !bytes.ends_with(b"\n") {return Err(io::ErrorKind::InvalidData.into())}
  let text=std::str::from_utf8(bytes).map_err(|_|io::ErrorKind::InvalidData)?;let mut previous=None;let mut count=0usize;
  for line in text.lines() {let (number,rest)=line.split_once(':').ok_or(io::ErrorKind::InvalidData)?;let (run,kind)=rest.split_once(':').ok_or(io::ErrorKind::InvalidData)?;if run!=expected{return Err(io::ErrorKind::InvalidData.into())}

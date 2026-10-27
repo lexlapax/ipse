@@ -75,6 +75,8 @@ fn main()->io::Result<()> {
  let parent_first=proc_stat(expected_parent)?;let parent_raw=unsafe{syscall(434,expected_parent,0)};if parent_raw<0{return Err(io::Error::last_os_error())}let parent_pin=PidFd(parent_raw as i32);
  if !same_namespace(expected_parent,"pid")? || !same_namespace(expected_parent,"user")? || !same_namespace(expected_parent,"mnt")? || !live(&parent_pin)||proc_stat(expected_parent)?!=parent_first{return Err(io::ErrorKind::PermissionDenied.into())}
  let after=file.metadata()?;let named=fs::symlink_metadata(&pending)?;
+ let root_after=fs::symlink_metadata(root)?;let exe_after=fs::metadata(format!("/proc/{}/exe",c.pid))?;
+ if (root_after.dev(),root_after.ino())!=(root_open.dev(),root_open.ino()) || (exe_after.dev(),exe_after.ino())!=(executable.dev(),executable.ino()) {return Err(io::ErrorKind::PermissionDenied.into())}
  if !same_namespace(c.pid,"pid")? || !same_namespace(c.pid,"user")? || !same_namespace(c.pid,"mnt")? || !same_namespace(expected_parent,"pid")? || !same_namespace(expected_parent,"user")? || !same_namespace(expected_parent,"mnt")? || !live(&parent_pin) || proc_stat(expected_parent)?!=parent_first || !peer_owns_file(c.pid,&file)? || expected_parent<=0 || first.0!=expected_parent || !live(&pinned) || proc_stat(c.pid)?!=first ||
     (after.dev(),after.ino(),after.len(),after.nlink())!=(before.dev(),before.ino(),before.len(),1) ||
     (named.dev(),named.ino())!=(before.dev(),before.ino()) {return Err(io::ErrorKind::PermissionDenied.into())}

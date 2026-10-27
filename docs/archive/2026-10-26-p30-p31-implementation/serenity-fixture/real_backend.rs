@@ -528,3 +528,28 @@ impl super::provisioning::Backend for RealBackend {
         fs::remove_dir_all(path).unwrap();
     }
 }
+
+// Recovery must remain fail-closed until a retained cgroup boundary, complete
+// mount/holder evidence and independent owner/guardian are implemented.
+impl super::RecoveryBackend for RealBackend {
+    fn verify_owned_quiescence(&mut self,_:&super::Expected)->Result<(),()> {Err(())}
+    fn reserve_recovery_budget(&mut self)->Result<(),()> {Err(())}
+}
+
+// LOOP_CTL_REMOVE is implemented, but no live path can reach it until the
+// unique loop index's durable creation record is verified against held state.
+impl super::IndexRemovalBackend for RealBackend {
+    fn created_index_identity(&mut self,_:&super::Expected)->Result<bool,()> {Err(())}
+    fn remove_created_index(&mut self,e:&super::Expected)->Result<(),()> {
+        self.fixed_name(e)?;super::loop_device::remove(e.loop_minor).map_err(|_|())
+    }
+    fn index_absent(&mut self,e:&super::Expected)->Result<bool,()> {
+        self.fixed_name(e)?;
+        let block=self.sysroot.join(format!("block/loop{}",e.loop_minor));
+        let device=self.sysroot.join(format!("dev/block/{}:{}",e.loop_major,e.loop_minor));
+        match (fs::symlink_metadata(block),fs::symlink_metadata(device)) {
+            (Err(a),Err(b)) if a.kind()==std::io::ErrorKind::NotFound && b.kind()==std::io::ErrorKind::NotFound => Ok(true),
+            (Ok(_),_)|(_,Ok(_))=>Ok(false),_=>Err(())
+        }
+    }
+}
