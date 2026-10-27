@@ -66,3 +66,11 @@ that gate, with a fresh supervised temporary-file integration run and report
 parser tests. The adapter and listener remain tied to private `/tmp` paths;
 they cannot safely orchestrate the `/work` device fixture. They do not prove
 privileged process-tree or device cleanup. The private suite passed 55 tests.
+
+A subsequent private checkpoint includes a generated container-path listener
+source. It compiled and refused an invalid temporary-path invocation, but has
+not run in Docker or against a device. Its generator modifies a source-derived
+diagnostic; neither source nor binary qualifies the production helper. The
+private adapter also rejected a mismatched Port PID and reported the staged
+operation unknown. Runtime pinning, privileged container isolation and recovery
+remain open.
