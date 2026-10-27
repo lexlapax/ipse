@@ -1,0 +1,10 @@
+
+running 5 tests
+test existing_loop::tests::linux_abi_sizes_and_device_encoding ... ok
+test existing_loop::tests::local_alias_and_unrelated_reopen_are_rejected ... ok
+test existing_loop::tests::non_loop_ioctl_failure_is_not_treated_as_unbound ... ok
+test loop_owner_filter::tests::isolated_child_refuses_dup_and_allows_getfd ... ok
+test tests::inherited_extra_fd_is_refused_in_isolated_child ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+

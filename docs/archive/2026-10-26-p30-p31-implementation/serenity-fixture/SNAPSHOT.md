@@ -161,3 +161,10 @@ legacy AIO, epoll control and new mount API restrictions. The synthetic child
 refused file-backed mmap with EPERM and could still create an anonymous mapping.
 Preexisting kernel registrations, other processes, same-UID visibility after
 changing dumpability, and complete reference cleanup remain unproved.
+
+A later disabled single-process owner draft checks the inherited FD inventory
+before its unreviewed filter and contains bounded command handling plus exact
+backing inode checks. Its standalone synthetic tests passed, including an
+extra-FD refusal; the disabled executable exited 2 without opening a device.
+It has no accepted guardian, authenticated launch, cgroup or final-release
+proof and must not be enabled from this historical snapshot.

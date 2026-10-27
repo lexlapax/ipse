@@ -14,8 +14,8 @@ fn zero_info()->LoopInfo{unsafe{std::mem::zeroed()}}
 fn device(major:u64,minor:u64)->u64{((major&0xfff)<<8)|((major&0xffff_f000)<<32)|(minor&0xff)|((minor&0xffff_ff00)<<12)}
 // This is only evidence of the observed same-FD rundown transition. Kernel
 // build parity, complete scope cleanup and final backing release are separate.
-struct Rundown {owner:Existing}
-struct CloseAttempted {_private:()}
+pub(super) struct Rundown {owner:Existing}
+pub(super) struct CloseAttempted {_private:()}
 // Local FD scan only: it does not rule out other processes or kernel refs.
 fn no_local_aliases(file:&File)->io::Result<()> {
  let expected=file.metadata()?;let fd=file.as_raw_fd();let flags=unsafe{fcntl(fd,1)};if flags<0 || flags&1==0{return Err(io::ErrorKind::PermissionDenied.into())}
@@ -23,12 +23,12 @@ fn no_local_aliases(file:&File)->io::Result<()> {
   if (m.dev(),m.ino())==(expected.dev(),expected.ino()){seen+=1;if e.file_name().to_str().and_then(|s|s.parse::<i32>().ok())!=Some(fd){return Err(io::ErrorKind::PermissionDenied.into())}}
  }if seen==1{Ok(())}else{Err(io::ErrorKind::PermissionDenied.into())}
 }
-struct Existing {fd:File,sys:File,minor:u32,node_dev:u64,node_inode:u64,sys_dev:u64,sys_inode:u64}
+pub(super) struct Existing {fd:File,sys:File,minor:u32,node_dev:u64,node_inode:u64,sys_dev:u64,sys_inode:u64}
 impl Existing {
  /// Opens only an index already visible in sysfs; it never opens loop-control
  /// and never calls GET_FREE, LOOP_CTL_ADD or LOOP_CTL_REMOVE. Caller must
  /// already know that the loop module is loaded, else opening may autoload it.
- fn open_existing(minor:u32)->io::Result<Self>{
+ pub(super) fn open_existing(minor:u32)->io::Result<Self>{
   if minor>4095||!Path::new("/sys/module/loop").is_dir(){return Err(io::ErrorKind::PermissionDenied.into())}
   if fs::read_to_string("/sys/module/loop/parameters/max_part")?.trim()!="0"{return Err(io::ErrorKind::PermissionDenied.into())}
   let sys_file=File::open(format!("/sys/dev/block/7:{minor}"))?;let sys=sys_file.metadata()?;if !sys.is_dir(){return Err(io::ErrorKind::NotFound.into())}
@@ -42,7 +42,7 @@ impl Existing {
  fn status(&self)->io::Result<LoopInfo>{let mut info=zero_info();if unsafe{ioctl(self.fd.as_raw_fd(),GET_STATUS,&mut info)}<0{Err(io::Error::last_os_error())}else{Ok(info)}}
  /// Atomic kernel-side configure: a concurrent binder yields EBUSY. A failure
  /// after attempting ioctl is always uncertain until exact identity is checked.
- fn configure(&self,backing:&File,reference:&str)->io::Result<()> {
+ pub(super) fn configure(&self,backing:&File,reference:&str)->io::Result<()> {
   if reference.is_empty()||reference.len()>63||!reference.bytes().all(|b|b.is_ascii_alphanumeric()||b==b'-'){return Err(io::ErrorKind::InvalidInput.into())}
   let node=self.fd.metadata()?;let sys=self.sys.metadata()?;let sys_named=fs::metadata(format!("/sys/dev/block/7:{}",self.minor))?;let b=backing.metadata()?;
   if (sys.dev(),sys.ino())!=(self.sys_dev,self.sys_inode)||(sys_named.dev(),sys_named.ino())!=(self.sys_dev,self.sys_inode){return Err(io::ErrorKind::PermissionDenied.into())}
@@ -55,7 +55,7 @@ impl Existing {
  }
  /// Begin a source-derived single-opener protocol on the same held block FD.
  /// On failure the caller retains ownership for inspection; no retry occurs.
- fn begin_rundown(self,backing:&File,reference:&str)->Result<Rundown,(Self,io::Error)> {
+ pub(super) fn begin_rundown(self,backing:&File,reference:&str)->Result<Rundown,(Self,io::Error)> {
   let result=(||->io::Result<()> {
    let b=backing.metadata()?;let info=self.status()?;
    no_local_aliases(&self.fd)?;
@@ -71,7 +71,7 @@ impl Existing {
 impl Rundown {
  /// A successful close is not labeled backing-release proof until kernel
  /// release/task-work semantics and the live test are independently reviewed.
- fn close_attempt(self)->io::Result<CloseAttempted> {
+ pub(super) fn close_attempt(self)->io::Result<CloseAttempted> {
   let fd=self.owner.fd.into_raw_fd();if unsafe{close(fd)}!=0{return Err(io::Error::last_os_error())}Ok(CloseAttempted{_private:()})
  }
 }

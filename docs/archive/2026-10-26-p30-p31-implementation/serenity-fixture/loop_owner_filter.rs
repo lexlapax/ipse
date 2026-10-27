@@ -10,7 +10,7 @@ fn stmt(code:u16,k:u32)->Filter{Filter{code,jt:0,jf:0,k}}
 fn jump(code:u16,k:u32,jt:u8,jf:u8)->Filter{Filter{code,jt,jf,k}}
 /// Install only in a newly created, single-thread owner after independent FD
 /// inventory. No undo exists. Trusted host root can still interfere.
-fn install()->io::Result<()> {
+pub(super) fn install()->io::Result<()> {
  if !cfg!(all(target_os="linux",target_arch="x86_64")){return Err(io::ErrorKind::Unsupported.into())}
  // PR_SET_DUMPABLE=0 prevents ordinary same-UID ptrace/pidfd_getfd access.
  if unsafe{prctl(4,0,0,0,0)}!=0||unsafe{prctl(3,0,0,0,0)}!=0{return Err(io::Error::last_os_error())}
