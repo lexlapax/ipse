@@ -264,7 +264,8 @@ defmodule Ipse.Extension.Actions do
       identities: Map.new(Map.get(metadata, "extensions", []), &{&1["instance"], &1}),
       catalog: catalog,
       metadata: metadata,
-      effect_sources: %{}
+      effect_sources: %{},
+      inference_source: nil
     }
 
     Enum.reduce_while(events, {:ok, initial}, fn event, {:ok, state} ->
@@ -391,6 +392,7 @@ defmodule Ipse.Extension.Actions do
          %{
            state
            | action: event,
+             inference_source: nil,
              step: event["step"],
              seen: MapSet.put(state.seen, event["operation_id"]),
              contributions:
@@ -455,17 +457,36 @@ defmodule Ipse.Extension.Actions do
   end
 
   defp validate_event(%{"type" => type} = event, state, _)
-       when type in ~w(extension_model_request extension_embedding_request) do
+       when type in ~w(extension_model_request extension_embedding_request extension_decision_request) do
     if state.action != nil and inference?(state.action["request"]) and
-         type == "extension_embedding_request" == embedding?(state.action["request"]) and
+         type == inference_source_type(state.action["request"]) and
+         is_nil(state.inference_source) and
          event["operation_id"] == state.action["operation_id"] and
          event["parent_invocation_id"] == state.parent["invocation_id"] and
          event["admission"]["session_id"] == state.parent["payload"]["session_id"] and
          event["admission"]["turn_id"] == state.parent["payload"]["turn_id"] and
-         state.action["approval"] in ~w(approved session_allow) do
-      {:ok, state}
+         state.action["approval"] in ~w(approved session_allow) and
+         (not decision?(state.action["request"]) or
+            Ipse.Extension.DecisionCall.valid_source?(event, state.action, state.metadata)) do
+      {:ok, %{state | inference_source: event}}
     else
       @error
+    end
+  end
+
+  defp validate_event(%{"type" => "extension_decision_response"} = event, state, _) do
+    with true <- state.action != nil and decision?(state.action["request"]),
+         %{"type" => "extension_decision_request", "admission" => admission} <-
+           state.inference_source,
+         false <- Map.has_key?(state.effect_sources, state.action["operation_id"]),
+         true <- Ipse.Extension.DecisionCall.valid_response?(event, admission, state.action) do
+      {:ok,
+       %{
+         state
+         | effect_sources: Map.put(state.effect_sources, state.action["operation_id"], event)
+       }}
+    else
+      _ -> @error
     end
   end
 
@@ -603,6 +624,9 @@ defmodule Ipse.Extension.Actions do
         is_map(source) and Ipse.Extension.EmbeddingCall.bound_selection?(event) and
           outcome["value"]["result"] == Ipse.Extension.EffectResult.descriptor(source)
 
+      decision?(request) and outcome["status"] == "ok" ->
+        Ipse.Extension.DecisionCall.bound_response?(event, sources[event["operation_id"]])
+
       result_read?(request) ->
         with {:ok, source} <- effect_source(request, sources, results) do
           Ipse.Extension.EffectResult.bound_outcome?(source, request, outcome)
@@ -619,6 +643,13 @@ defmodule Ipse.Extension.Actions do
 
   defp effect_binding?(event, identity, metadata \\ nil) do
     cond do
+      decision?(event["request"]) ->
+        Ipse.Extension.DecisionCall.valid_binding?(
+          event["effect_binding"],
+          event["request"],
+          metadata
+        )
+
       embedding?(event["request"]) ->
         Ipse.Extension.EmbeddingCall.valid_binding?(
           event["effect_binding"],
@@ -645,7 +676,7 @@ defmodule Ipse.Extension.Actions do
   defp version_two?(identity, request),
     do:
       "host.actions.mixed" in identity["capabilities"] or mcp?(request) or
-        result_read?(request) or embedding?(request)
+        result_read?(request) or embedding?(request) or decision?(request)
 
   defp intent_keys(%{"version" => 2}), do: @keys ++ ["effect_binding"]
   defp intent_keys(_), do: @keys
@@ -656,6 +687,9 @@ defmodule Ipse.Extension.Actions do
 
   def validate_operation(%{"op" => "embedding.create"} = request),
     do: Ipse.Extension.EmbeddingCall.validate(request)
+
+  def validate_operation(%{"op" => "decision.create"} = request),
+    do: Ipse.Extension.DecisionCall.validate(request)
 
   def validate_operation(%{"op" => "mcp.call"} = request),
     do: Ipse.Extension.MCPCall.validate(request)
@@ -704,7 +738,17 @@ defmodule Ipse.Extension.Actions do
   def service?(request), do: is_map(request) and request["op"] == "service.call"
   def model?(request), do: Ipse.Extension.ModelCall.operation?(request)
   def embedding?(request), do: Ipse.Extension.EmbeddingCall.operation?(request)
-  def inference?(request), do: model?(request) or embedding?(request)
+  def decision?(request), do: Ipse.Extension.DecisionCall.operation?(request)
+  def inference?(request), do: model?(request) or embedding?(request) or decision?(request)
+
+  defp inference_source_type(request) do
+    cond do
+      model?(request) -> "extension_model_request"
+      embedding?(request) -> "extension_embedding_request"
+      decision?(request) -> "extension_decision_request"
+    end
+  end
+
   def mcp?(request), do: Ipse.Extension.MCPCall.operation?(request)
   def result_read?(request), do: Ipse.Extension.EffectResult.operation?(request)
   def history?(request), do: Ipse.Extension.History.operation?(request)
@@ -728,18 +772,21 @@ defmodule Ipse.Extension.Actions do
   def capability(%{"op" => "operator.question"}), do: "host.question"
   def capability(%{"op" => "model.complete"}), do: "host.model"
   def capability(%{"op" => "embedding.create"}), do: "host.embedding"
+  def capability(%{"op" => "decision.create"}), do: "host.decision"
   def capability(%{"op" => "mcp.call"}), do: "host.mcp"
   def capability(%{"op" => "effect.result.read"}), do: "host.results"
   def capability(request), do: State.capability(request)
   def mutating?(%{"op" => "tool.call", "name" => name}), do: Ipse.Tools.mutating?(name)
   def mutating?(%{"op" => "model.complete"}), do: true
   def mutating?(%{"op" => "embedding.create"}), do: true
+  def mutating?(%{"op" => "decision.create"}), do: true
   def mutating?(%{"op" => "mcp.call"}), do: true
   def mutating?(request), do: State.mutating?(request)
 
   def namespace(_identity, %{"op" => "operator.question"}, _cwd, _id), do: {:ok, nil}
   def namespace(_identity, %{"op" => "model.complete"}, _cwd, id), do: {:ok, id}
   def namespace(_identity, %{"op" => "embedding.create"}, _cwd, id), do: {:ok, id}
+  def namespace(_identity, %{"op" => "decision.create"}, _cwd, id), do: {:ok, id}
   def namespace(_identity, %{"op" => "mcp.call"}, _cwd, _id), do: {:ok, nil}
   def namespace(_identity, %{"op" => "effect.result.read"}, _cwd, id), do: {:ok, id}
   def namespace(_identity, %{"op" => "tool.call"}, _cwd, _id), do: {:ok, nil}
@@ -770,6 +817,9 @@ defmodule Ipse.Extension.Actions do
 
   def valid_outcome?(%{"op" => "embedding.create"} = request, status, value, id),
     do: Ipse.Extension.EmbeddingCall.valid_outcome?(request, status, value, id)
+
+  def valid_outcome?(%{"op" => "decision.create"} = request, status, value, id),
+    do: Ipse.Extension.DecisionCall.valid_outcome?(request, status, value, id)
 
   def valid_outcome?(%{"op" => "mcp.call"} = request, status, value, id),
     do: Ipse.Extension.MCPCall.valid_outcome?(request, status, value, id)

@@ -27,12 +27,13 @@ quick start. Try the demo before configuring a model account.
 | Investigate provided text or selected search/fetch tools | [Use the Research extension](operator/research.md) |
 | Gather sources with the main agent and export its ledger | [Run native research](operator/research.md) |
 | Configure explicit vector generation | [Use embeddings](operator/extensions.md) |
+| Approve typed advice from a selected service | [Use decisions](operator/extensions.md#request-typed-advice-explicitly) |
 | Inspect or recover interrupted work | [Recover a session](operator/recovery.md) |
 | Find why a command failed | [Troubleshoot](operator/recovery.md) |
 | Understand which process owns an operation | [Follow a turn](developer/architecture.md) |
 | Add a domain tool without changing the host | [Build an extension](developer/extensions.md) |
 | Change source retrieval, graph or investigation behavior | [Study knowledge packages](developer/knowledge-extensions.md) |
-| Validate typed advisory decision requests and native results | [Study decision contracts](developer/decisions.md) |
+| Admit typed advisory effects and validate native results | [Study decisions](developer/decisions.md) |
 | Measure retrieval and cited answers without exposing labels | [Work through knowledge evaluation](developer/knowledge-evaluation.md) |
 | Change a durable record or recovery validator | [Study persistence](developer/persistence.md) |
 | Prove a repair against source or an installed runtime | [Verify a change](developer/testing.md) |

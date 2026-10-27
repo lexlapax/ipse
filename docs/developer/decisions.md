@@ -1,10 +1,84 @@
 # Validate typed advisory decisions
 
-Use `Ipse.Decision` to validate a bounded advisory request and its complete result
-before a consumer considers advice. Use `Ipse.Provider.Decision` to translate the
-selected native text subset. These modules perform no IO, choose no account and
-grant no authority. Transport, saved permission, reservations and journal admission
-must be supplied by the operation's host owner before dispatch.
+Use `decision.create` for an explicitly approved advisory request. The owning
+Session pins an operator profile, journals intent and request admission, and
+dispatches bounded HTTP outside its GenServer. Advice grants no authority to
+publish, run a tool or change a route. Begin with the complete
+[operator procedure](../operator/extensions.md#request-typed-advice-explicitly),
+then trace the host sequence below before extending a consumer.
+
+## Trace a request through the Session
+
+Build `examples/decision.ex` with the `decision-calls` recipe in
+`dev/build-artifact.exs`. The separate artifact needs `invoke.command`,
+`host.actions` and `host.decision`; its command returns a host-call continuation.
+It cannot choose credentials or endpoints in its request:
+
+```json
+{"op":"decision.create","version":1,"profile":"advice","input":"The selected release requires a signed checklist.","questions":[{"id":"required","type":"predicate","instructions":"Does the input explicitly require a checklist?"}],"timeout_ms":30000}
+```
+
+`Extension.DecisionCall` validates the closed neutral request plus SDK bounds.
+The neutral library allows 16-KiB input, but the host SDK limits any string to
+8192 bytes and the complete escaped object to 16 KiB. An oversized request
+refuses without truncation. Deadlines are 1000..120000 milliseconds, narrowed by
+the selected profile and Session policy.
+
+`Config.Decisions` resolves at most eight operator-only profiles, snapshots their
+service/model/endpoint/subset/disclosure facts and derives one execution. These
+profiles are independent of text roles and embedding profiles. The selected
+expected model must match the response; OpenAI's admitted subset fixes both
+requested and expected model to `gpt-6-luna`. Missing disclosures remain null.
+`service_id` is an explicit operator identity, not proof of hosting or residency.
+
+Session and `Session.Invocation` bind request, identity, profile and destination
+before full-argument approval. Denial and an insufficient per-record journal
+ceiling send zero requests. The conservative 65536-byte capacity check reserves
+no aggregate journal space; later exhaustion can still interrupt publication.
+The ordinary shared Budget gate runs before HTTP. Decision endpoints supply no
+enforceable output-token cap, so a policy requiring one refuses without dispatch.
+Unknown work retains liability and never retries automatically.
+
+Follow this committed order through `Extension.Actions` and `Usage`:
+
+```text
+extension_action_intent → extension_decision_request → request_admitted
+→ request_usage_observed → extension_decision_response → request_finished
+→ extension_action_result
+```
+
+The optional usage observation appears only when counters are available.
+`Provider.Decision.Transport` uses the existing owned HTTP client, a 65536-byte
+response ceiling and duplicate-free bounded JSON parsing. It validates the whole
+native response before normalized advice becomes an inline SDK value. It sends
+only the approved input/questions. Parent history, main tools, credentials and
+opaque continuation never enter the worker. Hosted OpenAI and System One resolve
+their own fixed environment key inside the task; compatible System One requires
+explicit loopback and sends no credential. There is no route substitution.
+
+Usage metadata version 3 admits explicit `operation: "decision"` records while
+preserving text version 1 and embedding version 2. Request/source/response,
+normalized usage, completion and action result are cross-bound during replay.
+Successful advice requires the durable validated response and completed metering.
+Cancellation or owner death closes owned transport, leaves partial/unknown work
+and publishes no advice. Idle resume validates saved facts without HTTP. A
+delegated call needs its own parent-relayed approval, explicit child artifact grant
+and shared parent reservation; child MCP and recursive delegation remain denied.
+
+Run the protocol, configuration, accounting and actual loopback Session controls:
+
+```sh
+mix test test/ipse/decision_test.exs test/ipse/provider/decision_test.exs
+mix test test/ipse/provider/decision_transport_test.exs test/ipse/config/decisions_test.exs
+mix test test/ipse/usage/decision_test.exs test/ipse/extension/decision_call_test.exs
+mix test test/ipse/extension/decision_session_test.exs
+```
+
+These fixtures verify admission and wire behavior, including hosted wire subsets
+with synthetic keys. They establish no live account eligibility or consumer
+quality. Saved knowledge consent, zero-call applicability and qualified automatic
+consumers remain separate implementation/acceptance work in the
+[plan](../plan.md#p30-advisory-decision-engines).
 
 ## Build one request and inspect its wire form
 
@@ -88,4 +162,5 @@ Use the [finite experiment protocol](../archive/2026-10-26-p30-p31-implementatio
 before evaluating a consumer. Only qualified useful strategies become selectable;
 fit-in-context notes and absent candidates bypass decision calls. Consult the
 [plan](../plan.md#p30-advisory-decision-engines) for integrated operation and
-consumer delivery status rather than inferring availability from these pure APIs.
+consumer delivery status rather than inferring consumer quality from an admitted
+operation or structurally valid result.

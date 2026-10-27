@@ -38,7 +38,7 @@ are refused as busy; they are not queued for later execution.
 | Work interactively or run once, approve effects, inspect/revoke session permissions, delegate, resume | [Use a workspace](usage.md) |
 | Select profiles, use Gemini or Grok, pin an OpenRouter upstream, connect a local compatible server and resolve policy | [Configuration](configuration.md) |
 | Connect explicitly selected external tools/resources/prompts | [MCP](mcp.md) |
-| Review/import/select extensions, read complete results, generate vectors, try the lab | [Extensions](extensions.md) |
+| Review/import/select extensions, read complete results, generate vectors, request typed advice, try the lab | [Extensions](extensions.md) |
 | Retain explicit notes, update revisions, expire, forget, export/migrate | [Memory](memory.md) |
 | Store sources and retrieve cited passages | [Corpus](corpus.md) |
 | Extract attributed facts and follow relationships | [Graph](graph.md) |

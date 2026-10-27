@@ -13,7 +13,7 @@ No account or model service is needed.
 | Prompt reference or completed presentation | Transform |
 | Typed model tool or explicit local command | Invocation |
 | Typed value supplied to another selected extension | Bound service |
-| Approved state/file/MCP/text/embedding work | Host action continuation |
+| Approved state/file/MCP/text/embedding/decision work | Host action continuation |
 | Finite work before a request or after a turn | Event job |
 | Selected notifications or acknowledged live events | Notification/feed |
 | Visible provider text | Text consumer |
@@ -92,6 +92,7 @@ trusted compilation, not extension installation or selection.
 | `extension-lab` | Seven artifacts, including two Memory versions | 1 |
 | `model-calls` | Accounted text helper | 1 |
 | `embedding-actions` | Native vector helper | 1 |
+| `decision-calls` | Explicit typed advisory helper | 1 |
 | `mcp-actions` | Bound MCP helper | 1 |
 | `saved-results` | Complete document command | 2 |
 

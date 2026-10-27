@@ -13,6 +13,7 @@ Choose the host operation that owns the effect:
 | Selected external tool, resource or prompt | `mcp.call` | `host.mcp` | `Ipse.Extension.MCPCall` |
 | Text or schema-constrained inference | `model.complete` | `host.model` | `Ipse.Extension.ModelCall` |
 | Native vector generation | `embedding.create` | `host.embedding` | `Ipse.Extension.EmbeddingCall` |
+| Typed advisory inference | `decision.create` | `host.decision` | `Ipse.Extension.DecisionCall` |
 | Read a successful retained effect | `effect.result.read` | `host.results` | `Ipse.Extension.EffectResult` |
 
 Every operation also needs `host.actions` in the artifact and the operator trust
@@ -21,11 +22,16 @@ additional effect authority. Child use requires explicit delegation and
 `allow_children`; children cannot use MCP or delegate recursively.
 
 Read `examples/extension-lab/src/memory.ex`,
-`examples/mcp.ex`, `examples/model.ex`, and `examples/embedding.ex` beside their
+`examples/mcp.ex`, `examples/model.ex`, `examples/embedding.ex` and
+`examples/decision.ex` beside their
 proofs in `dev/verification/`. Each worker returns
 a typed proposal. The host supplies credentials and transport only after admission.
 Workers are trusted executable code with ordinary OS permissions; these APIs
 govern host-mediated effects and do not sandbox arbitrary worker code.
+For a typed predicate, choice or score, follow the complete
+[decision operation](decisions.md#trace-a-request-through-the-session). Its
+operator-only route, service identity, expected model, separate approval and
+version-three accounting stay distinct from text inference and vector generation.
 
 ## Follow the common action sequence
 
@@ -270,7 +276,7 @@ must support the choice. It remains visible in approval and saved execution
 facts. Input bounds remain independent of the main conversation's context limit;
 the service owns its model context window.
 
-`Ipse.Extension.Inference` owns shared text/embedding task, monitor, deadline
+`Ipse.Extension.Inference` owns shared text/embedding/decision task, monitor, deadline
 and usage forwarding. Worker death or cancellation closes its owned HTTP profile;
 remote work may already have happened. Text deltas do not enter the main stream.
 Keep text-specific validation in `ModelCall` when changing that coordinator.
@@ -439,9 +445,10 @@ Choose a regression that proves the boundary, including its refusal path:
 | Text wire/result | Keep a small answer with more than 64 KiB valid framing; refuse above 1 MiB wire. Reject oversized text while retaining completed usage | `test/ipse/extension/invocation_test.exs`, `test/ipse/extension/model_call_test.exs`, `test/ipse/extension/model_jobs_test.exs` |
 | Embedding identity | Change only a successful selection hash and recompute the superficial outcome hash; standalone Actions and Session must still refuse | `test/ipse/extension/embedding_call_session_test.exs`, `test/ipse/config/profiles_test.exs` |
 | Embedding capacity | Four 4096-coordinate vectors under a 65536-byte ceiling must dispatch zero requests; normal-ceiling and one-vector controls complete | `test/ipse/extension/embedding_result_test.exs`, `test/ipse/provider/embedding_test.exs` |
+| Typed advice | Deny before HTTP, tamper service/model/usage bindings, kill the actual owner, then resume without replay; require separate child approval and retained shared liability | `test/ipse/extension/decision_session_test.exs`, `test/ipse/usage/decision_test.exs` |
 | Settlement | Fail settlement after response; require known counters, no readable vectors and retained applicable liability | `test/ipse/usage/embedding_test.exs`, `test/ipse/usage/costs_test.exs` |
 
 Keep confirmed cleanup assertions. HTTP cleanup needs a local resource receipt
 after owner death, not merely a dead process. When changing shared inference,
-run both text and embedding controls. Choose retrieval models only after the
+run text, embedding and decision controls. Choose retrieval models only after the
 separate frozen-workload quality and resource evaluation.

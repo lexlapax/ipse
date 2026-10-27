@@ -49,6 +49,13 @@ Use the same builder/verifier pattern for these separate contracts:
 | `saved-results` | [saved_results.ex](saved_results.ex) | `saved-results` | One callback producing a complete document through bounded SDK transfer |
 | `extension-lab` | [lab sources](extension-lab/src/) | `lab` | Memory/lookup composition, questions, file workflow, and deliberate cleanup uncertainty |
 
+Build `decision-calls` from [decision.ex](decision.ex) with the same builder.
+Its explicit command is exercised by the loopback
+[Session tests](../test/ipse/extension/decision_session_test.exs) and
+[operator procedure](../docs/operator/extensions.md#request-typed-advice-explicitly).
+There is no `dev/verify.exs` decision scenario yet. Synthetic protocol checks
+establish no live API eligibility or useful automatic consumer.
+
 For example, replace `saved-results` in both commands with `embedding-actions`
 for the builder and `embedding` for verification. Embedding fixtures cover native
 widths 768 and 4096, all eight vectors, approvals/denials, budget exhaustion, and

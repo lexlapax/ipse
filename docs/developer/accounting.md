@@ -23,7 +23,10 @@ configuration before changing its implementation.
 Read `Usage.admission/4`, `observation/3`, `completion/4`, and `apply_event/2`.
 Session syncs `request_admitted` before dispatching owned main, summary, child,
 or approved extension work. Text uses version 1; embedding admissions use version
-2 with `operation: "embedding"`. Fresh 128-bit hex request/attempt/turn IDs bind
+2 with `operation: "embedding"`; decision admissions use version 3 with
+`operation: "decision"`, selected `service_id` and `expected_model`. A version-3
+Session can contain all three operations; earlier metadata cannot admit decision
+records. Fresh 128-bit hex request/attempt/turn IDs bind
 session, kind, provider/model, selected profile, billing mode, admission time, and
 optional explicit-endpoint digest. Records contain no prompts, raw URLs,
 credentials, or reasoning. Each request has one attempt, without automatic retry.
@@ -77,11 +80,15 @@ fixed issues/invalid counters. Unknown provider fields are discarded.
 | Ollama | Prompt/generated evaluation counts, optional cached prompt, nanosecond duration |
 | Demo | Inapplicable |
 | Embedding | Output tokens inapplicable/null; known input can explicitly derive total=input |
+| Decision | Inclusive input/output with nullable cache partitions; no invented non-read split or reasoning/cache counts |
 
 `Usage.valid_usage?/2` binds normalized shape to admitted operation. OpenAI
 embedding prompt/total must agree when both exist; Ollama uses prompt counts and
 nanosecond duration. Duration-only metering is partial. Text and embedding rows
-cannot substitute. Known text input/output may explicitly derive a missing total.
+cannot substitute. Decision usage stays version 3 and cannot borrow text or
+embedding rate rows. Own-session pages and frozen child pages preserve these
+operation tags and their earlier page versions. Known text/decision input/output
+may explicitly derive a missing total.
 Billing modes identify subscription/API/local/none, not prices or entitlement.
 
 ## Calculate a synthetic rate
@@ -115,7 +122,7 @@ SDK-safe-integer overflow do not produce an invented amount.
 Cards hold ID/revision, uppercase three-letter currency, publication date/source,
 and at most 32 rows within 16 KiB. Sources are unfetched `operator:` references
 or HTTPS URLs without userinfo/query. Matching uses exact route/billing/model,
-endpoint digest, admission date, input band, and v2 operation. Reported model takes
+endpoint digest, admission date, input band, and explicit operation in v2/v3. Reported model takes
 precedence over requested aliases. Null endpoint means absent explicit identity.
 Lower bounds are inclusive, upper bounds exclusive/open if null. Overlap refuses;
 unknown input cannot select a finite band.
@@ -135,7 +142,10 @@ extras leave totals incomplete.
 API estimates, subscription API-equivalent estimates, and local estimates are
 separate bases. Missing local rates do not imply free work. Version-2 cards require
 `operation: "text"` or `"embedding"`; embedding permits flat input and optional
-duration without output/cache/search/fetch dimensions. Preserve operation in
+duration without output/cache/search/fetch dimensions. Version-3 cards additionally
+admit `operation: "decision"` with flat/cache-split token rates; they require
+operation on every row and never repurpose a text price for advice. Unknown
+cache partitions remain unpriced under a split rate. Preserve operation in
 request projection. Estimates retain exact card identity, model identities,
 selected row/basis, units, components, and rounding. `amount_nanos` needs fully
 priced final completed usage; `known_amount_nanos` may retain a partial subtotal.
@@ -175,7 +185,10 @@ ledger. `Budget.request_config/1` must not turn text output reservations into
 embedding wire fields. Embedding captures genuine nonstreaming final metering
 before guarded writes. A failed write/settlement can retain counters but refuse
 readable vectors; resume then refuses unproven liability coverage. Text keeps
-write-before-forward ordering. Neither path interprets failure as zero.
+write-before-forward ordering. Decisions share bounded final-result capture and
+settlement while retaining applicable output liability. Since their endpoint
+subset has no enforceable output cap, `Budget.request_config/1` refuses an
+output-token policy before dispatch. No path interprets failure as zero.
 
 Final-only overdraw preserves counters/completion while refusing assistant/tool
 admission. Another concurrent request's overdraw can refuse this completed request

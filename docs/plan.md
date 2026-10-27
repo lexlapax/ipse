@@ -42,7 +42,7 @@ Qualified readiness retains its recorded human/live limits.
 | [P28: operator usability and release](#p28-operator-usability-and-release-readiness) | v0.1.0 published at `341e458` under qualified acceptance after semantic documentation remediation and exact asset inspection | Retain human/live qualifications; evaluate subsequent changes against their own scope |
 | [P29: provider registry, OpenRouter and Gemini](#p29-provider-registry-openrouter-and-gemini) | Original scope and repairs accepted for qualified readiness; added Grok routes pass automated checks | Preserve unverified Grok API/OAuth eligibility and Gemini foreign-history live acceptance |
 | [P31: usable knowledge and prompt assistance](#p31-usable-knowledge-and-prompt-assistance) | Implementation authorized; P31A in progress; runtime features unimplemented | Frozen baseline, interaction contracts and nonpublishing main-route pilot; then protected consent and sustainable notes |
-| [P30: decision engines](#p30-advisory-decision-engines) | P30A typed/protocol foundation in progress; no admitted operation or consumer yet | Complete frozen contracts/checks, then B; C–E integrate with P31B/E, without waiting for PDF/graph |
+| [P30: decision engines](#p30-advisory-decision-engines) | P30A/B typed/protocol and admitted-operation increments in progress; no qualified consumer | Verify full B baseline; C–E integrate with P31B/E, without waiting for PDF/graph |
 | [P32: voice and media](#p32-voice-and-realtime-media) | Deferred; unimplemented; formerly P31 | Select media contracts and device/service validation in a later increment |
 | [Apache-2.0 transition](#license-transition) | Complete at `7bb642b` | Preserve runtime, dependency and extension license boundaries |
 
@@ -821,7 +821,7 @@ any remaining registration or live-account limits explicitly.
 
 ## P30: advisory decision engines
 
-**Authorized; typed/protocol foundation in progress.** P31 is the active delivery
+**Authorized; typed/protocol and admitted-operation increments in progress.** P31 is the active delivery
 path. P30A/B can proceed independently; later
 P30 work consumes the first usable notes journey, not the entire P31 milestone.
 The [current design](knowledge-design.md#p30-interfaces-and-useful-consumers)
@@ -836,8 +836,8 @@ No local engine, SDK, new dependency or live account eligibility is established.
 
 | Package | Output and prerequisites |
 | --- | --- |
-| P30A | Versioned neutral text contract and pure OpenAI/System One wire subsets implemented; synthetic fixtures and finite experiment/benefit criteria prepared; fixed foundation baseline and incremental audit pass. No transport, host effect or qualified consumer is implied. [Developer contract](developer/decisions.md) |
-| P30B | Explicit profiles/adapters and owned `host.decision` effect with strict validation, usage, budgets, cancellation and no substitution; after A |
+| P30A | Versioned neutral text contract and pure OpenAI/System One wire subsets implemented; synthetic fixtures and finite experiment/benefit criteria prepared; fixed foundation baseline and incremental audit pass. [Developer contract](developer/decisions.md) |
+| P30B | In progress: operator-only profiles, bounded owned HTTP, `host.decision`, Session/replay bindings, v3 usage/prices and shared budgets implemented; focused synthetic controls cover zero-egress refusal, hosted/compatible wire, tampering, owner loss, inert resume and child approvals. Full fixed-source/package baseline remains pending; live account access unverified. No qualified consumer is implied |
 | P30C | Deterministic policy mappings and zero-call applicability/bypass over permitted alternatives; integrate saved consent after B and P31B |
 | P30D | Implement bounded experiments: notes selection beyond the context budget and candidate assessment in replay/shadow mode on real main-tool inputs; after C and P31E |
 | P30E | Evaluate frozen experiments against engine-free baselines and installed workflows; record useful, rejected/no-benefit and unverified dispositions plus separate live/model access; after D; document/graph routing is a later independently qualified addition |

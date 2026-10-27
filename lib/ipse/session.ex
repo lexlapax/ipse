@@ -22,6 +22,7 @@ defmodule Ipse.Session do
     Invocation,
     ModelCall,
     EmbeddingCall,
+    DecisionCall,
     Subscriptions,
     Feeds,
     FeedChannel,
@@ -171,6 +172,7 @@ defmodule Ipse.Session do
          :ok <- Ipse.Usage.configuration(config),
          :ok <- ModelCall.configuration(config),
          :ok <- Ipse.Config.Profiles.embedding_configuration(config),
+         :ok <- Ipse.Config.Decisions.configuration(config),
          :ok <- Ipse.Provider.validate_output_limit(config),
          :ok <- Ipse.Provider.Registry.validate_request(config),
          :ok <- provider_configuration(config),
@@ -1050,7 +1052,11 @@ defmodule Ipse.Session do
           phase: phase
         } = s
       )
-      when message in [:extension_model_begin, :extension_embedding_begin] and ref != nil and
+      when message in [
+             :extension_model_begin,
+             :extension_embedding_begin,
+             :extension_decision_begin
+           ] and ref != nil and
              phase in [:tool, :extension_command, :extension_service, :extension_events] do
     CurrentInvocation.begin_inference(s, message, intent)
   end
@@ -1061,6 +1067,9 @@ defmodule Ipse.Session do
   def handle_call({:extension_embedding_begin, _, _}, _, s),
     do: {:reply, {:error, :extension_embedding_refused}, s}
 
+  def handle_call({:extension_decision_begin, _, _}, _, s),
+    do: {:reply, {:error, :extension_decision_refused}, s}
+
   def handle_call(
         {message, ref, id, usage},
         {caller, _},
@@ -1070,7 +1079,11 @@ defmodule Ipse.Session do
           extension_model: %{admission: %{"request_id" => id} = admission}
         } = s
       )
-      when message in [:extension_model_usage, :extension_embedding_usage] and ref != nil do
+      when message in [
+             :extension_model_usage,
+             :extension_embedding_usage,
+             :extension_decision_usage
+           ] and ref != nil do
     CurrentInvocation.observe_inference(s, message, id, usage, admission)
   end
 
@@ -1079,6 +1092,9 @@ defmodule Ipse.Session do
 
   def handle_call({:extension_embedding_usage, _, _, _}, _, s),
     do: {:reply, {:error, :extension_embedding_refused}, s}
+
+  def handle_call({:extension_decision_usage, _, _, _}, _, s),
+    do: {:reply, {:error, :extension_decision_refused}, s}
 
   def handle_call(
         {:extension_model_finish, ref, intent, result, capture, reason},
@@ -1113,6 +1129,23 @@ defmodule Ipse.Session do
 
   def handle_call({:extension_embedding_finish, _, _, _, _, _}, _, s),
     do: {:reply, {:error, :extension_embedding_refused}, s}
+
+  def handle_call(
+        {:extension_decision_finish, ref, intent, result, capture, reason},
+        {caller, _},
+        %{
+          job_ref: ref,
+          task: %{pid: caller},
+          invocation: %{action: %{intent: intent}},
+          extension_model: %{admission: admission, started: started}
+        } = s
+      )
+      when ref != nil do
+    CurrentInvocation.finish_decision(s, intent, result, capture, reason, admission, started)
+  end
+
+  def handle_call({:extension_decision_finish, _, _, _, _, _}, _, s),
+    do: {:reply, {:error, :extension_decision_refused}, s}
 
   def handle_call(
         {:extension_action_commit, ref, event},
@@ -2077,7 +2110,9 @@ defmodule Ipse.Session do
   end
 
   defp inference_approval?(name, args),
-    do: ModelCall.delegated_approval?(name, args) or EmbeddingCall.delegated_approval?(name, args)
+    do:
+      ModelCall.delegated_approval?(name, args) or EmbeddingCall.delegated_approval?(name, args) or
+        DecisionCall.delegated_approval?(name, args)
 
   defp next_delegated_approval(%{approval: approval} = s) when approval != nil, do: s
   defp next_delegated_approval(%{delegation_queue: []} = s), do: s
@@ -2417,6 +2452,14 @@ defmodule Ipse.Session do
   @doc false
   def measure_request(s, _), do: s
 
+  defp usage_version(config) do
+    cond do
+      Ipse.Config.Decisions.enabled?(config) -> 3
+      Ipse.Config.Profiles.embeddings_enabled?(config) -> 2
+      true -> 1
+    end
+  end
+
   defp open(dir, nil, cwd, config) do
     config = Ipse.MCP.fingerprint_version(config, 2)
 
@@ -2426,9 +2469,9 @@ defmodule Ipse.Session do
              %{
                "cwd" => cwd,
                "reference_layout" => Ipse.Session.Reference.layout(),
-               "usage_version" =>
-                 if(Ipse.Config.Profiles.embeddings_enabled?(config), do: 2, else: 1),
+               "usage_version" => usage_version(config),
                "embedding_profiles" => Ipse.Config.Profiles.embedding_snapshot(config),
+               "decision_profiles" => Ipse.Config.Decisions.snapshot(config),
                "max_output_tokens" => config[:max_output_tokens],
                "model_profiles" => ModelCall.snapshot(config),
                "budget" => config[:budget],
@@ -2466,6 +2509,7 @@ defmodule Ipse.Session do
              meta["max_output_tokens"] === config[:max_output_tokens] and
              meta["model_profiles"] === ModelCall.snapshot(config) and
              meta["embedding_profiles"] === Ipse.Config.Profiles.embedding_snapshot(config) and
+             meta["decision_profiles"] === Ipse.Config.Decisions.snapshot(config) and
              meta["budget"] === config[:budget] and meta["budget_root"] === config[:budget_root] and
              Map.get(meta, "sandbox", "off") == to_string(Map.get(config, :sandbox, :off)) and
              Map.get(meta, "mcp_servers", []) == Ipse.MCP.fingerprints(config) and

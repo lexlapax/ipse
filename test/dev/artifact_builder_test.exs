@@ -7,7 +7,7 @@ defmodule Ipse.ArtifactBuilderTest do
     File.chmod!(root, 0o700)
 
     files =
-      ~w(LICENSE dev/build-artifact.exs examples/model.ex examples/mcp.ex examples/saved_results.ex examples/extension-lab/spec.exs) ++
+      ~w(LICENSE dev/build-artifact.exs examples/model.ex examples/decision.ex examples/mcp.ex examples/saved_results.ex examples/extension-lab/spec.exs) ++
         Enum.map(~w(memory lookup metadata observer tool_observer text_observer), fn kind ->
           "examples/extension-lab/src/#{kind}.ex"
         end)
@@ -78,6 +78,19 @@ defmodule Ipse.ArtifactBuilderTest do
     assert status != 0, log
     assert File.read_link(ctx.output) == {:ok, "absent-target"}
     assert Path.wildcard(ctx.output <> ".building-*") == []
+  end
+
+  test "typed advice example builds as a separately granted command", ctx do
+    {log, status} = build(ctx, "decision-calls")
+    assert status == 0, log
+    refute log =~ "warning:"
+
+    assert {:ok, manifest} =
+             Ipse.Extension.Artifact.decode(File.read!(Path.join(ctx.output, "extension.json")))
+
+    assert manifest["capabilities"] == ~w(invoke.command host.actions host.decision)
+    assert manifest["exports"]["commands"] |> Enum.map(& &1["id"]) == ["decide"]
+    assert :code.is_loaded(IpseDecisionExample.Create) == false
   end
 
   test "compilation warnings refuse publication and remove the owned stage", ctx do

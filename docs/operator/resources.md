@@ -62,7 +62,7 @@ ipse chat --config /private/path/budget.json --no-project-config --cwd /path/to/
 
 Configuration inspection makes no network call. During work, each covered request
 reserves against the root session's ledger before dispatch. Local children and
-accounted extension text/embedding calls share that ledger. Inspect used, reserved,
+accounted extension text/embedding/decision calls share that ledger. Inspect used, reserved,
 and uncertain dimensions with `ipse budget`; they are not an invoice guarantee.
 
 The budget is operator-only. A project cannot replace it, even when trusted.
@@ -246,6 +246,14 @@ merely by matching the model. Positive duration without a configured rate leaves
 the estimate partial. `api_estimate`, `api_equivalent`, and `local_estimate` are
 distinct bases. Subscription equivalence is not API spend. Use a three-uppercase-
 letter currency. Changing a pinned card requires a fresh session.
+
+Decision estimates require a version-3 card and explicit `operation: "decision"`
+rows. Version 3 also accepts explicitly tagged text and embedding rows; earlier
+cards cannot price decision usage. Keep an unknown cache partition unpriced
+unless the selected row's flat input rate covers it. Decision endpoints expose
+no enforceable output-token cap, so a shared policy with `max_output_tokens`
+refuses before dispatch even when the main text model supports that cap. Request,
+input and monetary reservations retain their ordinary conservative liability.
 
 ## Reserve configured money
 

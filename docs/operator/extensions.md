@@ -219,6 +219,92 @@ invocation. Default record capacity is 16 MiB; total limits remain separate.
 Unknown settlement prevents readable vector publication and retains liability.
 Version-2 [rate cards](resources.md#configure-a-rate-card) price embeddings separately.
 
+## Request typed advice explicitly
+
+An extension can request a predicate probability, a choice distribution or an
+ordered score from one configured decision service. This is an explicit effect;
+no automatic knowledge consumer is enabled by configuring a profile. The main
+conversation provider stays separate. A ChatGPT subscription does not authorize
+decision API billing.
+
+From a built checkout, review and build the small command example, then import it:
+
+```sh
+IPSE_DECISION_ARTIFACT=$(mktemp -d)/artifact
+elixir dev/build-artifact.exs decision-calls --sdk _build/dev/lib/ipse/ebin \
+  --output "$IPSE_DECISION_ARTIFACT"
+./bin/ipse extension import "$IPSE_DECISION_ARTIFACT"
+```
+
+Use the printed digest in both `DIGEST` positions in this complete private
+operator file. The OpenAI route requires eligible Decisions API access and
+`OPENAI_API_KEY` supplied privately through the environment. This example makes
+real API calls only after its separate approval:
+
+```json
+{
+  "version": 1,
+  "decision_profiles": {"advice": {
+    "operation":"decision","provider":"openai","model":"gpt-6-luna",
+    "expected_model":"gpt-6-luna","service_id":"openai-decisions",
+    "credential":"OPENAI_API_KEY","timeout_ms":30000
+  }},
+  "extension_trust": [{
+    "artifact":"DIGEST","capabilities":["invoke.command","host.actions","host.decision"],
+    "allow_project":false,"allow_children":false
+  }],
+  "extensions": [{"instance":"advice","artifact":"DIGEST","enabled":true,"options":{},"order":0,"lifetime":"persistent"}]
+}
+```
+
+Save it outside the workspace as `/private/path/decisions.json`, inspect it, then
+start the scripted main route in a scratch workspace:
+
+```sh
+ipse config --config /private/path/decisions.json --no-project-config
+ipse chat --provider demo --config /private/path/decisions.json \
+  --no-project-config --cwd /path/to/scratch
+```
+
+```text
+/ext ext__advice__decide {"request":{"op":"decision.create","version":1,"profile":"advice","input":"The selected release requires a signed checklist.","questions":[{"id":"required","type":"predicate","instructions":"Does the input explicitly require a checklist?"}],"timeout_ms":30000}}
+```
+
+Review the full input/questions, requested and expected model, service ID,
+billing mode, origin and destination digest before `allow CODE`. Success displays
+normalized advice and usage. A probability is advisory, not evidence of truth or
+permission to perform an action. The command's result does not automatically enter
+the main conversation. Denial makes no inference request.
+
+At most eight profiles are allowed, and only operator configuration can define
+them. `system_one` uses `TYPESAFE_API_KEY` and the hosted System One wire subset;
+select the actual model you can access. `system_one_compatible` requires an
+explicit loopback `base_url`, exact model and `credential: "none"`; protocol
+compatibility alone proves neither engine identity nor self-hostable Jev.
+No route is tried as a fallback. Hosted endpoints may be overridden only in
+operator configuration; the chosen endpoint receives that route's credential.
+
+Optional `pricing`, `processing_region`, `storage_region`, `cache_retention` and
+`account_controls` are bounded operator disclosure strings. Omitted values remain
+unknown; they do not acquire defaults or establish service guarantees. The
+operator-selected `service_id` identifies the route consistently across aliases.
+Resume keeps its saved profile facts and refuses a changed selection; start a new
+session to adopt a reviewed configuration change.
+
+Input and questions must fit the complete escaped 16-KiB SDK request, with no
+string over 8192 bytes. Timeouts are 1000..120000 ms and narrow to Session/profile
+limits. Unsupported question shapes, wrong returned models and malformed
+distributions fail without replacement advice. Shared request/input/money budgets
+apply; an output-token reservation refuses before HTTP because these endpoints
+provide no enforceable output cap. See [resource controls](resources.md).
+
+Cancellation closes local owned transport but cannot undo remote work. Interrupted
+calls keep partial/unknown liability and never replay on resume. Inspect the
+service before explicitly retrying. The API routes have synthetic protocol tests;
+live account access and useful automatic consumer quality require separate
+qualification. The [developer chapter](../developer/decisions.md) explains the
+wire subset and verification controls.
+
 ## Try the synthetic source lab
 
 From a built checkout with Elixir/OTP available:

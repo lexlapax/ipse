@@ -76,7 +76,7 @@ they must not acquire a host dependency merely to share a small predicate.
 | Snapshot instructions/skills and compact active context | [Workspace and context](workspace-context.md) |
 | Change journals, recovery, locks, or saved-result capacity | [Persistence](persistence.md) |
 | Restore canonical usage and reserve shared budget liability | [Accounting](accounting.md) |
-| Validate advisory decision types, native subsets and deterministic advice | [Typed decisions](decisions.md) |
+| Admit advisory effects, validate native subsets and account for advice | [Typed decisions](decisions.md) |
 | Launch local work, enforce supported OS policy, and confirm cleanup | [Sandbox](sandbox.md) |
 | Bind selected external tools through bounded transports | [MCP](mcp.md) |
 | Project durable/ephemeral sources into text or diagnostic delivery | [Lifecycle events](lifecycle-events.md) |
@@ -95,7 +95,7 @@ the host contract your feature needs:
 | --- | --- |
 | Export typed tools/commands/services and publish complete output | [Invocations](extension-invocations.md) |
 | Use CAS, stale-write deadlines, services, questions, and explicit Memory | [State and continuations](extension-state.md) |
-| Request approved tools, MCP, text inference, or native embeddings | [Effects](extension-effects.md) |
+| Request approved tools, MCP, text, native embeddings or typed advice | [Effects](extension-effects.md) |
 | Choose notifications, finite jobs, live feeds, or historical catch-up | [Events](extension-events.md) |
 | Change citations, retrieval, attributed facts, or native Research | [Knowledge algorithms](knowledge-extensions.md) |
 | Publish immutable pages/root CAS, suppress/migrate, or implement a remote store/gateway | [Knowledge storage](knowledge-storage.md) |

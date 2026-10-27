@@ -13,6 +13,7 @@ it cannot select its own credential endpoint or authorize effects. The
 | `Config.runtime/2` | Values plus explicit client facts become admitted Session policy |
 | [`Provider.Registry`](../../lib/ipse/provider/registry.ex) | Closed string/atom specs, credential sources, defaults, capabilities, usage extraction and operator labels/probes |
 | [`Config.Profiles`](../../lib/ipse/config/profiles.ex) | Validated text/embedding profiles and selected execution facts, without scheduling/fallback |
+| [`Config.Decisions`](../../lib/ipse/config/decisions.ex) | Operator-only advisory profiles, service/expected-model identity, nullable disclosures and child selection |
 | [`Provider`](../../lib/ipse/provider.ex) | Fresh credential resolution, output-cap validation/narrowing, and adapter dispatch in owned work |
 | [`Provider.Transport` and `Stream`](../../lib/ipse/provider/) | Bounded HTTP/error handling and incremental response assembly |
 | [`Session`](../../lib/ipse/session.ex) | Pin runtime identity and validate saved evidence before recovery/effects |
@@ -23,6 +24,15 @@ arbitrary JSON keys never create atoms. Then trace `Profiles.validate_profile/1`
 `validate_route/2`, and `child_config/3`, finishing at Provider's request functions.
 
 The registry owns provider differences rather than registering untrusted code.
+Decision-only providers are closed in `Config.Decisions` and their transport;
+they do not become conversation providers in the Registry. Trace
+`Decisions.resolve/1`, `snapshot/1` and `prepare/2` with
+[the decision exercise](decisions.md#trace-a-request-through-the-session).
+`decision_profiles` are operator-only, and enabling `host.decision` pins their
+snapshot with usage metadata version 3. Sessions without that capability retain
+their previous metadata shape. Child profiles exist only when the child inherits
+an explicitly allowed decision artifact. The `TYPESAFE_API_KEY` lookup joins the
+shared secret scrub/denial inventory without becoming a text credential choice.
 Its ordered views preserve operator and rate-card presentation; callbacks validate
 reasoning and extract counters using fixed native paths. Usage owns consistency,
 derivation and persisted validation. Adapters own wire shapes and opaque replay.

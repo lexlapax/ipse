@@ -1,5 +1,7 @@
 [recipe | arguments] = System.argv()
-true = recipe in ~w(embedding-actions model-calls mcp-actions saved-results extension-lab)
+
+true =
+  recipe in ~w(embedding-actions model-calls decision-calls mcp-actions saved-results extension-lab)
 
 {options, [], []} =
   OptionParser.parse(arguments,
@@ -190,6 +192,7 @@ defmodule Ipse.Development.ArtifactBuilder do
       case recipe do
         "embedding-actions" -> {"ipse-example/embedding-actions", "examples/embedding.ex"}
         "model-calls" -> {"ipse-example/model-complete", "examples/model.ex"}
+        "decision-calls" -> {"ipse-example/decision-create", "examples/decision.ex"}
         "mcp-actions" -> {"ipse-example/mcp-read", "examples/mcp.ex"}
         "saved-results" -> {"example/saved-results", "examples/saved_results.ex"}
       end

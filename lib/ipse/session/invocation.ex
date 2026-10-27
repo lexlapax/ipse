@@ -13,6 +13,7 @@ defmodule Ipse.Session.Invocation do
     Actions,
     ModelCall,
     EmbeddingCall,
+    DecisionCall,
     Subscriptions,
     Feeds,
     ResultSource
@@ -394,7 +395,7 @@ defmodule Ipse.Session.Invocation do
           proposed =
             if Ipse.Extension.Actions.inference?(request) do
               {:ok, runtime, execution} = prepare_inference(s.config, request)
-              {:ok, destination} = Ipse.Provider.destination(runtime)
+              {:ok, destination} = inference_destination(runtime, request)
               proposed |> Map.put("execution", execution) |> Map.put("destination", destination)
             else
               proposed
@@ -488,9 +489,10 @@ defmodule Ipse.Session.Invocation do
          true <- Ipse.Usage.capacity?(s.accounting),
          {:ok, config, execution} <- prepare_inference(s.config, intent["request"]),
          true <-
-           not EmbeddingCall.operation?(intent["request"]) or
+           not (EmbeddingCall.operation?(intent["request"]) or
+                  DecisionCall.operation?(intent["request"])) or
              (intent["effect_binding"]["execution"] === execution and
-                Ipse.Provider.destination(config) ==
+                inference_destination(config, intent["request"]) ==
                   {:ok, intent["effect_binding"]["destination"]}),
          :ok <- extension_effect_record_capacity(s, intent) do
       admission =
@@ -498,9 +500,11 @@ defmodule Ipse.Session.Invocation do
         |> Map.put("request_id", intent["operation_id"])
 
       source =
-        if message == :extension_embedding_begin,
-          do: EmbeddingCall.source(intent, admission, execution),
-          else: ModelCall.source(intent, admission, execution)
+        case message do
+          :extension_embedding_begin -> EmbeddingCall.source(intent, admission, execution)
+          :extension_decision_begin -> DecisionCall.source(intent, admission, execution)
+          :extension_model_begin -> ModelCall.source(intent, admission, execution)
+        end
 
       s = Session.account(s, source)
       s = Session.account(s, admission)
@@ -512,9 +516,11 @@ defmodule Ipse.Session.Invocation do
         {:reply, {:ok, config, admission}, s}
       else
         code =
-          if message == :extension_embedding_begin,
-            do: "embedding_request_failed",
-            else: "model_request_failed"
+          case message do
+            :extension_embedding_begin -> "embedding_request_failed"
+            :extension_decision_begin -> "decision_request_failed"
+            :extension_model_begin -> "model_request_failed"
+          end
 
         {:reply, {:failed, %{"code" => code}}, Session.measure_request(s, :expired)}
       end
@@ -541,8 +547,8 @@ defmodule Ipse.Session.Invocation do
           }
 
           event =
-            if Ipse.Usage.operation(admission) == "embedding",
-              do: Map.put(event, "operation", "embedding"),
+            if Ipse.Usage.operation(admission) in ["embedding", "decision"],
+              do: Map.put(event, "operation", Ipse.Usage.operation(admission)),
               else: event
 
           Session.account(s, event)
@@ -583,11 +589,22 @@ defmodule Ipse.Session.Invocation do
     {:reply, outcome, s}
   end
 
-  def finish_embedding(s, intent, result, capture, reason, admission, started) do
-    if EmbeddingCall.operation?(intent["request"]) and
-         Ipse.Usage.operation(admission) == "embedding" do
-      valid_capture = embedding_capture?(capture, intent)
-      s = if valid_capture, do: observe_embedding_capture(s, admission, capture.usage), else: s
+  def finish_embedding(s, intent, result, capture, reason, admission, started),
+    do:
+      finish_bounded_inference(s, intent, result, capture, reason, admission, started, :embedding)
+
+  def finish_decision(s, intent, result, capture, reason, admission, started),
+    do:
+      finish_bounded_inference(s, intent, result, capture, reason, admission, started, :decision)
+
+  defp finish_bounded_inference(s, intent, result, capture, reason, admission, started, kind) do
+    adapter = if kind == :embedding, do: EmbeddingCall, else: DecisionCall
+    operation = Atom.to_string(kind)
+
+    if adapter.operation?(intent["request"]) and
+         Ipse.Usage.operation(admission) == operation do
+      valid_capture = bounded_capture?(capture, intent, kind)
+      s = if valid_capture, do: observe_bound_capture(s, admission, capture.usage), else: s
       observed = s.accounting.requests[admission["request_id"]].observation
 
       completion =
@@ -604,7 +621,7 @@ defmodule Ipse.Session.Invocation do
              true <-
                payload === capture.value and
                  Ipse.Usage.observation(admission, raw, 1)["usage"] === capture.usage,
-             {:ok, source} <- EmbeddingCall.response(intent, admission, completion, payload),
+             {:ok, source} <- adapter.response(intent, admission, completion, payload),
              do: source
 
       {s, source} =
@@ -628,19 +645,19 @@ defmodule Ipse.Session.Invocation do
 
       outcome =
         cond do
-          reason in ~w(embedding_cancelled embedding_timeout) ->
+          reason in [operation <> "_cancelled", operation <> "_timeout"] ->
             {:failed, %{"code" => reason}}
 
           match?({:ok, _, _}, result) and is_nil(source) ->
-            {:failed, %{"code" => "embedding_response"}}
+            {:failed, %{"code" => operation <> "_response"}}
 
           true ->
-            EmbeddingCall.value_from_completion(intent, admission, completion, source)
+            adapter.value_from_completion(intent, admission, completion, source)
         end
 
       {:reply, outcome, s}
     else
-      {:reply, {:error, :extension_embedding_refused}, s}
+      {:reply, {:error, :extension_inference_refused}, s}
     end
   end
 
@@ -948,6 +965,9 @@ defmodule Ipse.Session.Invocation do
 
   defp extension_effect_binding(s, request) do
     cond do
+      DecisionCall.operation?(request) ->
+        DecisionCall.binding(s.config, request)
+
       EmbeddingCall.operation?(request) ->
         EmbeddingCall.binding(s.config, request)
 
@@ -1103,13 +1123,19 @@ defmodule Ipse.Session.Invocation do
   defp inference_begin?(:extension_embedding_begin, request),
     do: EmbeddingCall.operation?(request)
 
+  defp inference_begin?(:extension_decision_begin, request),
+    do: DecisionCall.operation?(request)
+
   defp inference_usage?(:extension_model_usage, admission),
     do: Ipse.Usage.operation(admission) == "text"
 
   defp inference_usage?(:extension_embedding_usage, admission),
     do: Ipse.Usage.operation(admission) == "embedding"
 
-  defp embedding_capture?(%{value: value, usage: usage}, intent) do
+  defp inference_usage?(:extension_decision_usage, admission),
+    do: Ipse.Usage.operation(admission) == "decision"
+
+  defp bounded_capture?(%{value: value, usage: usage}, intent, :embedding) do
     Ipse.Provider.Embedding.valid_result?(
       value,
       intent["effect_binding"]["execution"],
@@ -1118,9 +1144,18 @@ defmodule Ipse.Session.Invocation do
       Ipse.Usage.valid_usage?(usage, "embedding")
   end
 
-  defp embedding_capture?(_, _), do: false
+  defp bounded_capture?(%{value: value, usage: usage}, intent, :decision) do
+    Ipse.Provider.Decision.Transport.valid_result?(
+      value,
+      intent["effect_binding"]["execution"],
+      DecisionCall.neutral(intent["request"])
+    ) and
+      Ipse.Usage.valid_usage?(usage, "decision")
+  end
 
-  defp observe_embedding_capture(s, admission, usage) do
+  defp bounded_capture?(_, _, _), do: false
+
+  defp observe_bound_capture(s, admission, usage) do
     entry = s.accounting.requests[admission["request_id"]]
 
     cond do
@@ -1130,8 +1165,8 @@ defmodule Ipse.Session.Invocation do
       entry.sequence < 64 ->
         Session.account(s, %{
           "type" => "request_usage_observed",
-          "version" => 2,
-          "operation" => "embedding",
+          "version" => admission["version"],
+          "operation" => Ipse.Usage.operation(admission),
           "request_id" => admission["request_id"],
           "attempt_id" => admission["attempt_id"],
           "sequence" => entry.sequence + 1,
@@ -1139,14 +1174,22 @@ defmodule Ipse.Session.Invocation do
         })
 
       true ->
-        raise "Embedding observation allowance exhausted"
+        raise "Inference observation allowance exhausted"
     end
   end
 
   defp prepare_inference(config, %{"op" => "embedding.create"} = request),
     do: Ipse.Config.Profiles.prepare_embedding(config, request)
 
+  defp prepare_inference(config, %{"op" => "decision.create"} = request),
+    do: Ipse.Config.Decisions.prepare(config, request)
+
   defp prepare_inference(config, request), do: ModelCall.prepare(config, request)
+
+  defp inference_destination(config, %{"op" => "decision.create"}),
+    do: Ipse.Provider.Decision.Transport.destination(config)
+
+  defp inference_destination(config, _), do: Ipse.Provider.destination(config)
 
   defp extension_effect_record_capacity(_s, %{"approval" => "denied"}), do: :ok
 
@@ -1155,6 +1198,9 @@ defmodule Ipse.Session.Invocation do
 
     result =
       cond do
+        DecisionCall.operation?(request) ->
+          {:ok, %{max_record_bytes: 65_536}}
+
         EmbeddingCall.operation?(request) ->
           with {:ok, config, execution} <- prepare_inference(s.config, request) do
             admission =
