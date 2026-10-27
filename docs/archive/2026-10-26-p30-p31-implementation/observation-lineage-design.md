@@ -190,3 +190,152 @@ tree without Session wiring. A newly copied fixed-source graph strictly compiled
 Both graphs used the explicitly test-only kernel override, whose helper SHA-256
 is `05d5aa7f9f5c6453254b885b91a6a9dcd602e9077842ae4d05ed7e7bdd591d1a`.
 These results are not kernel qualification or current-authority evidence.
+
+## Private result-binding prototype
+
+An unwired [private receipt prototype](observation-receipt-private-prototype.exs)
+explores converting a trusted same-view read into a version-3
+`ManagedReference` dependency and binding it to an existing action result.
+The [diagnostic tests](observation-receipt-private-test.exs) use actual
+test-only storage, including a four-record visible scan that `CollectionCall`
+shortens to fit the continuation envelope. The dependency hashes the exact
+delivered page and adjusted continuation; the separate observation digest
+identifies the original full observation. Binding checks the pin, request,
+namespace and action-result shape. Structural replay checks do not themselves
+authenticate a receipt, establish current eligibility, or validate the enclosing
+action chronology.
+
+In particular, the observation contains a decoded root and its claimed raw
+digest, not the raw root bytes. A pure function receiving an arbitrary map cannot
+establish that those bytes were actually observed. The tests deliberately show
+that a substituted syntactically valid observation digest passes the structural
+replay check: durable journal provenance and authenticated owned-child delivery
+are required, and neither is implemented by the prototype. Its source SHA-256 is
+`f411b4d51f7a143ff26ca919ac3bb0eae06ba84ed3b0747c5055757226a54e04`,
+test SHA-256 is
+`816f6e7aa353695795b73fdd7a59362e91d629b9bf9e9396ee30636d532d757d`,
+and [private log](observation-receipt-private.log) SHA-256 is
+`cc4c353b757b8622cdfb5293980a7f0ecf65fa6f523b2d127b077646e07c4698`.
+The private graph passed 28 receipt and ManagedReference tests (seed 20270313)
+using the test-only 7.2.11 helper override. There is no live Session wiring or
+end-to-end replay evidence. Independent review reproduced the 28 passing tests
+on the same test-only override and confirmed the same provenance limitation;
+its [log](observation-receipt-independent.log) SHA-256 is
+`0a88ed14a5428a4adfe389cb3e11f98b3c666753a5df106da8e564381281fe94`.
+The reviewer requested action/receipt chronology and tamper/replay controls,
+including altered shortened continuations, before integration.
+
+The next private [admission prototype](observation-admission-private-prototype.exs)
+explores Session-owned one-use job/token matching, `Resources.authorized_effect?`
+and a real `Journal.Writer` capacity reservation for a begin/action-result/receipt
+triplet. It returns no observed value to the worker. Its
+[diagnostic tests](observation-admission-private-test.exs) exercise an actual
+owned file-effect observation and native journal, an unauthorized caller,
+token replay and missing/reordered/duplicated/altered triplets. Together with
+resource-authority and ManagedReference tests, 30 passed (seed 20270314) using
+the same test-only kernel override. The [log](observation-admission-private.log)
+SHA-256 is `db16dd98d1af831208fbb61398acce9e0fa05f002b4233dbd0d860c052235288`;
+the prototype and test hashes are respectively
+`9b372379bca71617465f8486732b5af06ceb977a4e4ec3957c9998d3015a4ce0` and
+`f4567fcd010b8aebbd3f51810b0628ca5ff17a30bbbadd299569e8223fff570a`.
+
+This is not an actual Session handler or complete replay protocol. It relies on
+the owner passing the actual `GenServer.from` caller, retaining the failed state,
+and independently authenticating the selected reviewed artifact, pinned policy
+and actual view owner. Its triplet replay must be made mandatory and correlated
+with the surrounding action chronology; omission of a whole triplet cannot be
+detected by its isolated verifier. It cannot provide worker or Session lineage
+propagation, current-root authority at later use, confinement, or rollback of
+already-dispatched effects. A failed append can leave a partial triplet and must
+remain unknown. Independent adversarial review is pending; no production
+component uses this prototype.
+
+The subsequent [v2 admission prototype](observation-admission-private-v2.exs)
+adds structural replay over a caller-supplied set of expected protected intents.
+It requires each expected intent to precede one contiguous begin/result/receipt
+triplet, rejects absent/duplicate/reordered or altered triplets and bounds the
+event and expected-intent counts. Its source SHA-256 is
+`8bcce46e24d62e87977b0fc6e999ae6eba8b33f9cdd4168859e65bb25347a5ba`,
+its [test](observation-admission-private-v2-test.exs) SHA-256 is
+`03fb983bf011fa2bcaaef74e22ffd2ca4d0df063b90ecb69f119434cca6cf960`,
+and its [30-test log](observation-admission-private-v2.log) SHA-256 is
+`c2221a553fbfee519aee2365bf830ca0ca191e448bdda852dd03575484e3bc5c`
+(seed 20270315, test-only kernel override). The Session must derive the complete
+expected-intent set from authenticated, versioned host records; a worker or
+receipt cannot select it. This isolated function does not enforce that premise
+or integrate `Actions.restore`. Its test uses an actual owned file-effect and
+Journal.Writer but directly invokes the Session-owned functions from a synthetic
+owner; it is not an end-to-end Session, reviewed Knowledge artifact, or
+production-kernel test. Independent review of v2 is pending.
+The owner also synchronously waits for three `Journal.Writer` appends; this
+diagnostic establishes ordering, not production Session responsiveness or
+cleanup under stalled durable IO. A production integration needs bounded
+coordination and verified owner-death behavior.
+
+A separate synthetic [GenServer owner diagnostic](observation-owner-private-test.exs)
+passes the actual `GenServer.from` caller to the admission function, obtains a
+same-view observation in a `Resources`-owned effect and appends through a real
+`Journal.Writer`. It returns only `not_exposed` to the effect; no observed value
+is released there. Five combined owner, receipt and authority tests passed (seed
+20270317) under the test-only kernel override. The test SHA-256 is
+`a2e51d88cbc44ed83edf729f559e871fd8cd93a0da3dd301f0ea00c6004e8b0c`,
+and [log](observation-owner-private.log) SHA-256 is
+`f1e15cf37777640be595fc95734c24047d4300a2e6855779bc7df553fb714bb3`.
+This test owner is not the production Session and does not validate reviewed
+Knowledge artifact selection, mandatory full replay or downstream propagation.
+
+## Private nonblocking and versioned replay experiment
+
+The private [Session prototype patch](observation-session-private.patch) has
+SHA-256 `3c0bd5be7d39fc7a5c951aacf70d3b969c7a3ce1523eb98e655b941d67144286`.
+Its owner-issued `:gen_server.send_request` to the existing owner-only writer
+does not wait inside a synthetic GenServer callback. With the writer deliberately
+suspended, that owner answered another call; when the request timed out, it
+returned unknown and exposed no value. The queued append nevertheless landed
+after the writer resumed. A structurally valid late envelope is not evidence
+that a Session accepted it: replay and lifecycle fencing must classify the
+result conservatively, including owner death and partial writes. The prototype
+has no production Session handler for the asynchronous writer path.
+
+A separate test-only Session flag records a versioned lineage header and blocks
+selected protected reads before worker delivery. Actual Session tests exercised
+that withholding and refused resuming with the test flag removed. A real legacy
+Session's journal was then copied in memory, marked with a simulated header and
+synthetic envelope, and tested for missing, duplicate, altered and reordered
+records. Even the structurally valid case refuses restoration because a live
+authority barrier is unavailable. The later same-root observation in that test
+was not the original Session read and proves no same-view provenance. The
+synthetic artifact and private flag do not prove selection of the shipped
+Knowledge worker. Removing an optional header together with its external test
+flag can resemble a legacy Session; production requires an independently
+authenticated, versioned activation/policy anchor and an explicit legacy rule.
+
+The combined [private test log](observation-session-private.log) has SHA-256
+`bb63a207ad9b19c7b6a9ca59858724204d332b7d54571b86860a3b0e2f761508`
+and reports 23 passing tests (seed 20270323) under the test-only kernel override.
+The test-only Session configuration and source have not been applied to the
+working tree. This is refusal-path and structural replay evidence only; it is
+not end-to-end protected lineage, current-authority, or production-kernel
+qualification. Independent adversarial review remains required.
+
+An additional explicit legacy control is preserved in the
+[v2 private patch](observation-session-private-v2.patch), SHA-256
+`efc3f2dc5691718f2ae8179e39ce36d326c631f61c721fcc6ad108476bbeb0b4`.
+It demonstrates that an unmarked legacy history still restores, so removing
+both an optional new header and the associated envelope can resemble legacy
+unless a separately trusted activation or policy version requires them. The
+[v2 log](observation-session-private-v2.log), SHA-256
+`1fe06f56eb971f2b53594f2246c380a3cf9876b16224dfe41ade8b50922d2348`,
+reports 23 passing tests (seed 20270324) with the same test-only kernel override.
+This control documents a blocker; it does not solve downgrade detection.
+
+The [v3 private patch](observation-session-private-v3.patch) adds a synthetic
+owner-death control while the actual writer is suspended, in addition to the
+late-append and responsiveness controls. It returned no usable worker result;
+the writer terminated and the journal remained inspectable. The patch SHA-256
+is `6e7f7ca13124669f0c7f45e95e88e35576bf0351dbd2769196eb9bfdf99c3367`.
+The [24-test log](observation-session-private-v3.log), seed 20270326, has
+SHA-256 `45f41d6d89430c65e9e3a637d674a5c681471b958b4cd0e8c4ead0dbaa3768c6`.
+The same test-only kernel override and synthetic-owner limits apply. Worker
+or remote effect fencing, Session journal recovery after a late write, and
+trusted version anchoring remain unproven.
