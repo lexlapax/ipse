@@ -1,0 +1,11 @@
+Running ExUnit with seed: 20270318, max_cases: 1
+Excluding tags: [:native_sandbox, :macos_sandbox, :macos_filesystem, :memory_scope]
+
+....................................................................
+11:56:08.539 [debug] MCP Client: transport closed: :closed
+
+11:56:08.540 [debug] MCP Client: transport closed: :closed
+..............................................
+Finished in 67.7 seconds (3.3s async, 64.4s sync)
+
+Result: 114 passed
