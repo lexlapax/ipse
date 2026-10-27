@@ -439,40 +439,58 @@ defmodule Ipse.Runner do
            ]) do
       nonce = :crypto.strong_rand_bytes(16)
 
-      try do
-        body = nonce <> prompt
-        true = Port.command(port, <<?D, byte_size(body)::unsigned-big-32, body::binary>>)
-        state = %{phase: :initial, text: nil, nonce: nonce}
+      {result, cleanup} =
+        case operator_read(port, ticket, prompt, nonce, timeout_ms) do
+          {:exited, result} ->
+            close_stdio_port(port)
+            {result, :ok}
 
-        case receive_operator(
-               port,
-               ticket,
-               <<>>,
-               state,
-               System.monotonic_time(:millisecond) + timeout_ms + 2_000
-             ) do
-          {:ok, text} ->
-            {:ok,
-             %{
-               "version" => 1,
-               "text" => text,
-               "event_id" => Base.encode16(nonce, case: :lower),
-               "display_sha256" => Ipse.JSON.sha256(prompt),
-               "text_sha256" => Ipse.JSON.sha256(text)
-             }}
-
-          error ->
-            error
+          {:pending, result} ->
+            {result, close_process(port, true)}
         end
-      after
-        result = if Port.info(port), do: close_process(port, true), else: :ok
-        Ipse.Session.Resources.closed(ticket, result)
+
+      Ipse.Session.Resources.closed(ticket, cleanup)
+
+      case result do
+        {:ok, text} ->
+          {:ok,
+           %{
+             "version" => 1,
+             "text" => text,
+             "event_id" => Base.encode16(nonce, case: :lower),
+             "display_sha256" => Ipse.JSON.sha256(prompt),
+             "text_sha256" => Ipse.JSON.sha256(text)
+           }}
+
+        error ->
+          error
       end
     else
       _ -> {:error, :operator_input_unavailable}
     end
   rescue
     _ -> {:error, :operator_input_unavailable}
+  end
+
+  defp operator_read(port, ticket, prompt, nonce, timeout_ms) do
+    body = nonce <> prompt
+    true = Port.command(port, <<?D, byte_size(body)::unsigned-big-32, body::binary>>)
+    state = %{phase: :initial, text: nil, nonce: nonce}
+
+    case receive_operator(
+           port,
+           ticket,
+           <<>>,
+           state,
+           System.monotonic_time(:millisecond) + timeout_ms + 2_000
+         ) do
+      {:exited, _} = result -> result
+      error -> {:pending, error}
+    end
+  rescue
+    _ -> {:pending, {:error, :operator_input_unavailable}}
+  catch
+    _, _ -> {:pending, {:error, :operator_input_unavailable}}
   end
 
   @doc false
@@ -510,10 +528,10 @@ defmodule Ipse.Runner do
             receive_operator(port, ticket, buffer <> data, state, deadline)
 
           {^port, {:exit_status, 0}} when buffer == <<>> and state.phase == :input ->
-            {:ok, state.text}
+            {:exited, {:ok, state.text}}
 
           {^port, {:exit_status, _}} ->
-            {:error, :operator_input_unavailable}
+            {:exited, {:error, :operator_input_unavailable}}
 
           {:ipse_cancel_resource, id} when ticket != nil and ticket.id == id ->
             {:error, :operator_input_cancelled}

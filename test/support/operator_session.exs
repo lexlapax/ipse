@@ -68,6 +68,7 @@ id = Ipse.Session.info(pid).id
 {:ok, events} = Ipse.Journal.load(Path.join(root, "state"), id)
 receipt = Enum.find(events, &(&1["type"] == "input_received"))
 assert receipt["origin"] == "interactive_operator"
+assert receipt["observation"]["version"] === 1
 assert receipt["text"] == text
 assert receipt["observation"]["text_sha256"] == Ipse.JSON.sha256(text)
 assert :ok = Ipse.Session.Input.validate_events(events, id)
@@ -305,6 +306,24 @@ assert Process.whereis(Ipse.Session.Input) == service
 assert :ok = Ipse.Session.prompt(resumed, text, witness)
 done.(resumed)
 assert :ok = Ipse.Session.close_confirmed(startup_target)
+
+:erlang.trace_pattern({Ipse.Session.Resources, :closed, 2}, true, [:local])
+:erlang.trace(:new, true, [:call, {:tracer, self()}])
+
+try do
+  {text, witness} = read.(resumed, 78)
+
+  assert_receive {:trace, worker, :call,
+                  {Ipse.Session.Resources, :closed, [%{scope: scope}, :ok]}},
+                 1000
+
+  assert is_pid(worker) and is_pid(scope)
+  assert :ok = Ipse.Session.prompt(resumed, text, witness)
+  done.(resumed)
+after
+  :erlang.trace(:new, false, [:call])
+  :erlang.trace_pattern({Ipse.Session.Resources, :closed, 2}, false, [:local])
+end
 
 skill = Path.join(root, ".agents/skills/sample/SKILL.md")
 File.mkdir_p!(Path.dirname(skill))

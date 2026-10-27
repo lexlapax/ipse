@@ -323,3 +323,48 @@ window/lifecycle rather than idle status. Final combined baseline, independent
 audit, Elixir 1.18/OTP 27, other platforms and live-account behavior remain outside
 this checkpoint. No paid/model calls, qualification corpus, new dependency or
 model-weight download was used.
+
+## Native v1 observed-exit cleanup repair
+
+Hosted Linux and macOS CI exposed a v1 input wrapper failure after terminal input
+had been displayed and echoed. The wrapper consumed the helper's actual
+`exit_status: 0`, then its `after` block consulted Port observability and could
+start a cleanup wait for that already-consumed receipt. This made a completed
+read unavailable to Session even though its native protocol had finished.
+
+The repaired private receive path carries an explicit observed-exit result. Only
+the actual Port exit-status message creates that result. The wrapper releases any
+remaining BEAM Port handle and forwards the observed termination receipt to its
+resource scope. Nonzero exit or an invalid protocol phase still supplies no input
+observation. Malformed frames, cancellation, deadline, or a raised/thrown
+`Port.command`/receive failure preserve bounded cooperative cancellation and
+actual exit cleanup. There is no successful cleanup inferred from `Port.info`,
+no fabricated second status and no native termios or helper change.
+
+Strict compilation passed in `/tmp/ipse-operator-v1-receipt-compile.log` using the
+isolated `/tmp/ipse-source-window-build-20261026` build. Four nonterminal identity,
+display and forgery controls passed in
+`/tmp/ipse-operator-v1-receipt-nonterminal.log`. The serial actual Input witness
+case and four v2 CLI fixtures passed five tests with two unrelated pure tests
+excluded in `/tmp/ipse-operator-v1-receipt-actual-pty-repaired.log`. The actual v1
+fixture retains its existing 77 observations, cancellation, changed text, expiry,
+queue limit, stale witness, client/owner/worker/Input-service death and failed
+attachment cases. It adds read 78 through the actual Session-created scope and
+traces its real successful `Resources.closed/2` receipt. It injects neither an exit
+status nor a lock-registration bypass. The native helper remained pinned to
+`385f42879330838a8635af4689d5c9fd422c6f19beb9de72b710474ac08f216c`.
+
+The first combined regression run is retained in
+`/tmp/ipse-operator-v1-receipt-actual-pty.log`: all original 77 native observations
+and four v2 CLI cases passed, but the added direct-scope fixture correctly failed
+the Session lock-registration rule. It was replaced with tracing of an actual
+Session-created read. The same run separately exposed an optional execution-mode
+metadata validation precedence regression in the existing pure Input test; its
+owning admission component is repairing that compatibility independently. These
+failures were not treated as native proof or hidden by broader assertions.
+
+The native operator manual was reviewed and reconciled across both versions,
+including the existing v2 probe, bounded single-reader lifecycle and restoration
+fault limits. Documentation checks passed in
+`/tmp/ipse-operator-v1-receipt-docs.log`. This is Linux synthetic PTY verification,
+not macOS, human operation, live-model or final combined CI qualification.

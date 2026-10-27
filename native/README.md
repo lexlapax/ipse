@@ -630,8 +630,8 @@ refusal on an unqualified host.
 
 ## Observe one actual terminal display and input
 
-`--operator-input TIMEOUT_MS` is an internal single-prompt channel, not an approval
-command. It requires matching actual terminal descriptors 0/1. OTP starts it with
+`--operator-input TIMEOUT_MS` is the version-1 internal single-prompt channel,
+not an approval command. It requires matching actual terminal descriptors 0/1. OTP starts it with
 `nouse_stdio`, reserving private pipes 3/4 for control. The helper does not acquire
 a controlling terminal; it opens a fresh nonblocking description of the verified
 terminal device with `NOCTTY` and rechecks device/inode identity. It never changes
@@ -672,6 +672,10 @@ Native display filtering rejects Cc controls except tab/LF. The host must also u
 `CLI.Terminal.escape/1` for its complete Unicode control/bidi/separator policy.
 `Runner.operator_input/2` enforces that escaped form and accepts an observation
 only after exact nonce-bound `Y` → `I` → normal exit, without trailing frames.
+The observed OS exit receipt also completes its resource cleanup. The wrapper
+does not wait for a second exit receipt or infer successful cleanup from whether
+the Port is still observable. Setup, malformed frames, deadline and cancellation
+paths still require the ordinary bounded cancellation/exit cleanup exchange.
 Initial descriptor failures use plain stderr, never binary frames on the human
 display. Missing/malformed/incomplete results supply no observation.
 
@@ -684,8 +688,37 @@ same trusted installed build as the host; it is not distribution authentication.
 An observation establishes real terminal IO, not a human identity or permission.
 PTY automation and another process with the same user's terminal access remain
 outside that claim. Session must still bind and consume a private witness against
-the exact pending version, origin and ceiling. CLI saved-consent/card integration
-is not implemented by this primitive.
+the exact pending version, origin and ceiling. This primitive does not authorize
+a saved-consent card or effect.
+
+The interactive CLI selects `--operator-input TIMEOUT_MS v2` through
+`Runner.Operator`. Its separate `v2-probe` mode writes no display, changes no
+terminal mode and reads no input. Only its explicit `nonterminal` response selects
+the unattended pipe reader; helper, identity, lock or protocol failure refuses.
+The actual v2 read repeats terminal and lock checks before any display or mode
+change. A probe result is neither input evidence nor permission.
+
+Version 2 accepts at most **1 MiB of original UTF-8 input** and **16 MiB of escaped
+display bytes**. Its finite display limit includes complete proposed arguments;
+an unrepresentable proposal refuses before effect, without truncation. Temporary
+noncanonical input avoids kernel canonical-line truncation and preserves queued
+prompt lines. The native reader owns input editing/echo; no competing `IO.gets`
+reader runs. The Session binds each observation to its actual client, current
+channel generation and purpose. Native approvals and question answers still need
+their exact current displayed code. EOF creates no answer observation.
+
+Before changing termios, the native guardian and reader each retain the original
+state, private peer-liveness pipes and the channel lock. They use separate process
+groups. Readiness binds both process IDs and the nonce. The guardian observes host
+loss, reaps the reader, restores termios and flushes old input before its distinct
+restoration receipt. The reader independently restores if its guardian disappears;
+that fallback receipt cannot substitute for confirmed guardian cleanup. The host
+requires the appropriate restoration protocol and actual helper exit, retains the
+cleanup scope, and requests cooperative cancellation before bounded fallback.
+Missing receipts report unknown cleanup and retained locks fence replacement.
+Individual process faults are covered; simultaneous loss of both restorers or
+arbitrary same-user interference cannot guarantee restoration. The version-1
+line-discipline invariant above remains separate.
 
 Run the actual PTY controls and Session-bound witness cases without a model or
 external terminal utility:
@@ -695,6 +728,7 @@ rustc --edition=2021 --test -D warnings native/ipse-operator.rs -o /tmp/ipse-ope
 /tmp/ipse-operator-tests
 mix test test/ipse/runner/operator_test.exs
 mix test test/ipse/session/input_test.exs
+mix test test/ipse/cli/operator_input_test.exs
 ```
 
 Tests use the existing host C library's POSIX PTY functions. Linux pipes are
