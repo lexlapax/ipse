@@ -18,8 +18,10 @@ defmodule Ipse.Extension.Collection.ReadView do
   """
   use GenServer
   alias Ipse.{JSON, Session.Resources}
+  alias Ipse.Extension.Collection.Directory
   @bytes 4_194_304
   @reads 512
+  @observations 512
   @lifetime 60_000
   @records 8192
   @error {:error, :collection_view_unavailable}
@@ -40,6 +42,7 @@ defmodule Ipse.Extension.Collection.ReadView do
       cache_bytes: @bytes,
       records: @records,
       reads: @reads,
+      observation_units: @observations,
       lifetime_ms: @lifetime,
       caches: 16,
       batch: 8,
@@ -132,9 +135,10 @@ defmodule Ipse.Extension.Collection.ReadView do
          cache: nil,
          header_seal: nil,
          entry_seals: nil,
-         keys: nil,
+         index: nil,
          keys_seal: nil,
          reads: 0,
+         observations: 0,
          busy: nil,
          slot: slot
        }}
@@ -164,6 +168,7 @@ defmodule Ipse.Extension.Collection.ReadView do
   defp operate({:install, cache}, _, %{cache: nil, busy: nil} = state) do
     with true <- cache?(cache),
          keys = cache["records"] |> Map.keys() |> Enum.sort(),
+         {:ok, index} <- Directory.index(keys),
          seals = Map.new(cache["records"], fn {key, ref} -> {key, JSON.digest([ref])} end),
          true <-
            byte_size(Jason.encode!(%{"cache" => cache, "keys" => keys, "seals" => seals})) <=
@@ -176,7 +181,7 @@ defmodule Ipse.Extension.Collection.ReadView do
          | cache: cache,
            header_seal: JSON.digest([header]),
            entry_seals: seals,
-           keys: keys,
+           index: index,
            keys_seal: JSON.digest([keys])
        }}
     else
@@ -186,41 +191,20 @@ defmodule Ipse.Extension.Collection.ReadView do
     _ -> {:stop, :normal, @error, state}
   end
 
-  defp operate({:borrow, request}, caller, %{busy: nil, cache: cache, reads: reads} = state)
-       when not is_nil(cache) and reads < @reads do
-    with true <- valid_request?(request),
-         true <- JSON.digest([Map.delete(cache, "records")]) === state.header_seal,
-         {:ok, selected, next} <- select(state, request),
-         true <-
-           Enum.all?(selected, fn key ->
-             case cache["records"][key] do
-               nil -> not Map.has_key?(state.entry_seals, key)
-               ref -> JSON.digest([ref]) === state.entry_seals[key]
-             end
-           end) do
-      token = make_ref()
+  defp operate({:borrow, request}, caller, %{busy: nil, cache: cache} = state)
+       when not is_nil(cache) do
+    case Directory.cost(request) do
+      {:ok, cost} when state.reads < @reads and state.observations + cost <= @observations ->
+        charged = %{state | reads: state.reads + 1, observations: state.observations + cost}
+        borrow_selected(request, caller, charged)
 
-      payload =
-        cache
-        |> Map.put("records", Map.take(cache["records"], selected))
-        |> Map.put("selected", selected)
-        |> Map.put("next", next)
+      {:ok, _} ->
+        {:stop, :normal, {:error, :collection_view_capacity}, state}
 
-      {:reply, {:ok, token, payload},
-       %{
-         state
-         | reads: reads + 1,
-           busy: %{caller: caller, token: token, monitor: Process.monitor(caller)}
-       }}
-    else
-      _ -> {:stop, :normal, {:error, :collection_view_corrupt}, state}
+      _ ->
+        {:reply, {:error, :invalid_collection_view_request}, state}
     end
-  rescue
-    _ -> {:stop, :normal, {:error, :collection_view_corrupt}, state}
   end
-
-  defp operate({:borrow, _}, _, %{reads: reads} = state) when reads >= @reads,
-    do: {:stop, :normal, {:error, :collection_view_capacity}, state}
 
   defp operate({:borrow, _}, _, state), do: {:reply, {:error, :collection_view_busy}, state}
 
@@ -239,29 +223,47 @@ defmodule Ipse.Extension.Collection.ReadView do
   defp operate(:close, _, state), do: {:stop, :normal, :ok, state}
   defp operate(_, _, state), do: {:reply, @error, state}
 
-  defp select(_state, %{"op" => "get_many", "keys" => keys}), do: {:ok, keys, nil}
+  defp borrow_selected(request, caller, %{cache: cache} = state) do
+    with true <- JSON.digest([Map.delete(cache, "records")]) === state.header_seal,
+         keys = Directory.keys(state.index),
+         true <- JSON.digest([keys]) === state.keys_seal,
+         true <- keys === Enum.sort(Map.keys(cache["records"])),
+         true <- matching_seals?(state, request),
+         {:ok, selected, next, neighbors} <-
+           Directory.select(state.index, request, cache["root_state"]),
+         true <- Enum.all?(selected, &entry_sealed?(state, &1)) do
+      token = make_ref()
 
-  defp select(state, %{"op" => "scan", "after" => after_key, "limit" => limit}) do
-    if JSON.digest([state.keys]) === state.keys_seal do
-      remaining = Enum.drop_while(state.keys, &(not is_nil(after_key) and &1 <= after_key))
-      selected = Enum.take(remaining, limit)
-      {:ok, selected, if(length(remaining) > length(selected), do: List.last(selected))}
+      payload =
+        cache
+        |> Map.put("records", Map.take(cache["records"], selected))
+        |> Map.put("selected", selected)
+        |> Map.put("next", next)
+        |> Map.put("neighbors", neighbors)
+        |> Map.put("neighbor_request", if(neighbors, do: request["request"]))
+
+      {:reply, {:ok, token, payload},
+       %{state | busy: %{caller: caller, token: token, monitor: Process.monitor(caller)}}}
     else
-      {:error, :collection_view_corrupt}
+      _ -> {:stop, :normal, {:error, :collection_view_corrupt}, state}
+    end
+  rescue
+    _ -> {:stop, :normal, {:error, :collection_view_corrupt}, state}
+  end
+
+  defp matching_seals?(state, %{"op" => "neighbors", "request" => %{"prefix" => prefix}}),
+    do: Enum.all?(Directory.matching(state.index, prefix), &entry_sealed?(state, &1))
+
+  defp matching_seals?(_, _), do: true
+
+  defp entry_sealed?(state, key) do
+    case state.cache["records"][key] do
+      nil -> not Map.has_key?(state.entry_seals, key)
+      ref -> JSON.digest([ref]) === state.entry_seals[key]
     end
   end
 
-  def valid_request?(%{"op" => "get_many", "keys" => keys} = request),
-    do:
-      keys?(request, ~w(op keys)) and is_list(keys) and length(keys) in 1..8 and
-        Enum.all?(keys, &key?/1) and length(Enum.uniq(keys)) == length(keys)
-
-  def valid_request?(%{"op" => "scan", "after" => after_key, "limit" => limit} = request),
-    do:
-      keys?(request, ~w(op after limit)) and (is_nil(after_key) or key?(after_key)) and
-        is_integer(limit) and limit in 1..8
-
-  def valid_request?(_), do: false
+  def valid_request?(request), do: Directory.read_request?(request)
 
   defp cache?(cache) do
     keys?(cache, @cache_keys) and cache["version"] === 2 and
@@ -361,8 +363,7 @@ defmodule Ipse.Extension.Collection.ReadView do
 
   defp keys?(map, expected), do: is_map(map) and Enum.sort(Map.keys(map)) == Enum.sort(expected)
 
-  defp key?(key),
-    do: is_binary(key) and Regex.match?(~r/\A[a-zA-Z0-9][a-zA-Z0-9_.-]{0,95}\z/, key)
+  defp key?(key), do: Directory.key?(key)
 
   defp id?(value), do: is_binary(value) and Regex.match?(~r/\A[0-9a-f]{32}\z/, value)
 

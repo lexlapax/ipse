@@ -23,7 +23,7 @@ defmodule Ipse.Extension.Collection do
   """
   alias Ipse.JSON
   alias Ipse.Runner.Transaction
-  alias Ipse.Extension.Collection.{Blocks, Encoding, Migration, Planning, ReadView}
+  alias Ipse.Extension.Collection.{Blocks, Directory, Encoding, Migration, Planning, ReadView}
   import Bitwise, only: [band: 2]
   @value_bytes 6 * 1024
   @data_bytes 24 * 1024 * 1024
@@ -109,6 +109,21 @@ defmodule Ipse.Extension.Collection do
     with false <- Process.get(@lock_key, false) != false,
          true <- ReadView.valid_request?(request),
          {:ok, token, cache} <- ReadView.borrow(view, request) do
+      read_view(view, token, cache)
+    else
+      {:error, _} = error -> error
+      _ -> {:error, :invalid_collection_view_request}
+    end
+  rescue
+    _ -> {:error, :collection_view_unavailable}
+  end
+
+  @doc "Select four neighboring metadata refs with no value IO after an exact native root recheck."
+  def view_neighbors(view, request) do
+    with false <- Process.get(@lock_key, false) != false,
+         true <- Directory.neighbor_request?(request),
+         {:ok, token, cache} <-
+           ReadView.borrow(view, %{"op" => "neighbors", "request" => request}) do
       read_view(view, token, cache)
     else
       {:error, _} = error -> error
@@ -244,11 +259,23 @@ defmodule Ipse.Extension.Collection do
                :ok <- Transaction.check(cap),
                :ok <- Transaction.quota(cap, :collection, @total_bytes - @control_bytes) do
             case managed do
-              nil -> apply_request(path, uid, state, manifest, request, operation_id)
-              :visible_scan -> scan(path, uid, state, request, true)
-              :view_open -> view_cache(root, path, project, uid, state, manifest)
-              {:view_read, cache} -> view_records(path, uid, state, cache)
-              _ -> apply_managed(path, uid, state, manifest, request, operation_id, managed)
+              nil ->
+                apply_request(path, uid, state, manifest, request, operation_id)
+
+              :visible_scan ->
+                scan(path, uid, state, request, true)
+
+              :view_open ->
+                view_cache(root, path, project, uid, state, manifest)
+
+              {:view_read, %{"neighbors" => neighbors} = cache} when is_map(neighbors) ->
+                view_neighbor_refs(cache)
+
+              {:view_read, cache} ->
+                view_records(path, uid, state, cache)
+
+              _ ->
+                apply_managed(path, uid, state, manifest, request, operation_id, managed)
             end
           else
             {:error, :transaction_filesystem_unsupported} ->
@@ -365,17 +392,11 @@ defmodule Ipse.Extension.Collection do
     )
 
     with {:ok, records} <- read_records(path, uid, state, cache["selected"]),
-         {:ok, pointer} <- view_pointer(cache),
+         {:ok, witness} <- view_witness(cache),
          result = %{
            "version" => 2,
            "summary" => cache["summary"],
-           "witness" => %{
-             "version" => 2,
-             "root_state" => cache["root_state"],
-             "root" => pointer,
-             "root_sha256" => cache["root_sha256"],
-             "manifest_sha256" => cache["manifest_sha256"]
-           },
+           "witness" => witness,
            "keys" => cache["selected"],
            "records" => records,
            "next" => cache["next"]
@@ -385,6 +406,44 @@ defmodule Ipse.Extension.Collection do
     else
       false -> {:error, :collection_view_reply_capacity}
       _ -> @error
+    end
+  end
+
+  defp view_neighbor_refs(cache) do
+    :telemetry.execute(
+      [:ipse, :extension, :collection, :view_neighbors],
+      %{refs: length(cache["selected"]), value_reads: 0},
+      %{}
+    )
+
+    with {:ok, witness} <- view_witness(cache),
+         neighbors = Map.delete(cache["neighbors"], "state"),
+         result = %{
+           "version" => 1,
+           "summary" => cache["summary"],
+           "witness" => witness,
+           "directory" => cache["neighbor_request"],
+           "state" => cache["neighbors"]["state"],
+           "neighbors" => Map.new(neighbors, fn {slot, key} -> {slot, cache["records"][key]} end)
+         },
+         true <- byte_size(Jason.encode!(result)) <= 65_536 do
+      {:ok, result}
+    else
+      false -> {:error, :collection_view_reply_capacity}
+      _ -> @error
+    end
+  end
+
+  defp view_witness(cache) do
+    with {:ok, pointer} <- view_pointer(cache) do
+      {:ok,
+       %{
+         "version" => 2,
+         "root_state" => cache["root_state"],
+         "root" => pointer,
+         "root_sha256" => cache["root_sha256"],
+         "manifest_sha256" => cache["manifest_sha256"]
+       }}
     end
   end
 

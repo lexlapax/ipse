@@ -74,6 +74,7 @@ defmodule Ipse.Extension.CollectionReadViewTest do
 
     assert files(c) == before
     assert :sys.get_state(view.server).reads == 3
+    assert :sys.get_state(view.server).observations == 7
     assert {:error, :collection_view_exists} = C.open_view(c.root, c.project)
     assert :ok = C.close_view(view)
     refute Process.alive?(view.server)
@@ -275,7 +276,7 @@ defmodule Ipse.Extension.CollectionReadViewTest do
     for mutate <- [
           fn s -> put_in(s, [:cache, "summary", "generation"], 2) end,
           fn s -> put_in(s, [:cache, "records", "a", "sha256"], JSON.sha256("forged")) end,
-          fn s -> %{s | keys: ["fabricated"]} end
+          fn s -> %{s | index: :gb_trees.empty()} end
         ] do
       view =
         if File.exists?(pointer(c)), do: elem(C.open_view(c.root, c.project), 1), else: seed(c)

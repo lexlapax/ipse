@@ -500,30 +500,50 @@ Collection/source authority has been integrated.
 
 ## Read several collection pages under one validated index
 
-An internal storage consumer can use `Collection.open_view/2`, `view_read/2` and
-`close_view/1` when it needs several batches from the same immutable root. Opening
-performs the ordinary full protected Collection validation, including the manifest
-blocks and receipt index. The metadata cache then retains the exact root bytes,
-manifest hash and current record references. It holds no file descriptor or lock
-between reads and creates no durable operation identity for a page.
+Use a Collection read view when one trusted host task needs several observations
+from the same immutable root. `Collection.open_view/2` performs the full protected
+validation once, including manifest blocks and the receipt index. Its private
+cache keeps exact root bytes, the manifest hash and current record references.
+It retains no descriptor or lock between calls and creates no durable operation
+identity for a read. Opening can create protected directories and retained locks;
+it does not publish a root or receipt.
 
-Each read runs in the current actual file-effect owner, in the existing lock
-order ProjectIdentity → Consent → Collection. It reacquires the Collection native
-owner and reads the current root through the versioned native optional `H`
-operation. A materialized view requires byte-for-byte equality with its admitted
-root. An absent-root view requires another native-confirmed absence. It reads
-only selected immutable objects through
-that owner, checking their lengths, hashes and value shapes. Quota, post-read
-lease check and release must succeed before data returns. Losing the upstream
-task or cleanup scope fences the actual native owner even if a paused BEAM
-completion worker survives. Closing the cache proves only cache invalidation;
-it does not establish that other in-flight IO has finished.
+Choose the operation according to the information needed:
 
-The following source exercise creates three synthetic records. Run it in
-`iex -S mix` after building native, on a filesystem supported by the selected
-[allocation profile](../../native/README.md#publish-protected-state-through-its-lock-owner).
-An unsupported filesystem refuses explicitly. This is a trusted host exercise,
-not an SDK permission grant:
+| Internal call | Returned information | Observation units |
+| --- | --- | ---: |
+| `view_read/2`, `get_many` | At most eight selected records, with validated values or nil entries | Requested key count |
+| `view_read/2`, `scan` | At most eight records after an exclusive cursor, with validated values | Requested limit, even on a short/empty page |
+| `view_neighbors/2` | Four positional metadata references, with no value reads | Four, even when positions are nil |
+
+Every call reacquires the actual Collection native owner in the established
+ProjectIdentity → Consent → Collection order. The native optional `H` read must
+confirm the exact cached root: byte-for-byte equality for a materialized root,
+or another kernel-confirmed absence for an absent root. Value reads then open
+only the selected immutable objects in that owner and validate their lengths,
+hashes and closed value shapes. A neighbor lookup reads no object or sidecar
+value. Quota, final lease check, release and cache completion must all succeed
+before either kind of result returns. Owner/scope loss fences the native owner
+even if a paused BEAM file-effect worker survives. Closing a cache invalidates its
+handle; it does not certify that other in-flight IO has finished.
+
+A neighbor request has exactly `version: 1`, an ASCII record-key `prefix` ending
+in a dot, `fence_bytes` of 32 or 33, and a lowercase hexadecimal `needle` of
+64 or 66 characters respectively. The complete prefix-plus-fence key must fit
+96 bytes. For a present root, the complete matching-prefix directory must contain
+its zero fence, and every matching key must have the exact canonical width.
+Malformed names outside the four returned positions also refuse. The lookup
+selects the greatest lower fence less than or equal to the needle and returns
+`predecessor`, `selected`, `successor` and `second_successor`; nil marks a genuine
+directory boundary. References retain their actual key, revision, content hash,
+byte length and operation ID. They contain no value and establish no source,
+format, range-content or managed-record authority. The eventual caller must
+validate its selected page contents, format/adoption rules and semantic policy.
+
+Run the following credential-free source exercise in `iex -S mix`, after building
+native and Mix on a supported [allocation profile](../../native/README.md#publish-protected-state-through-its-lock-owner).
+It creates synthetic generic records, not authenticated knowledge pages. An
+unsupported filesystem refuses explicitly:
 
 ```elixir
 alias Ipse.Extension.Collection
@@ -532,74 +552,94 @@ File.mkdir!(scratch)
 File.chmod!(scratch, 0o700)
 root = Path.join(scratch, "collections")
 project = Ipse.JSON.sha256("synthetic-view-project")
-{:ok, initial} = Collection.open_view(root, project)
+fence = fn n -> "demo.fence." <> String.pad_leading(String.downcase(Integer.to_string(n, 16)), 64, "0") end
+selection = %{"version" => 1, "prefix" => "demo.fence.", "fence_bytes" => 32, "needle" => String.duplicate("0", 63) <> "f"}
 try do
-  {:ok, empty} = Collection.view_read(initial, %{"op" => "get_many", "keys" => ["missing"]})
-  [nil] = empty["records"]
-  %{"version" => 2, "root_state" => "absent", "root" => nil, "root_sha256" => nil, "manifest_sha256" => nil} = empty["witness"]
+  {:ok, initial} = Collection.open_view(root, project)
+  try do
+    {:ok, empty} = Collection.view_neighbors(initial, selection)
+    "uninitialized" = empty["state"]
+    %{"version" => 2, "root_state" => "absent", "root" => nil, "root_sha256" => nil, "manifest_sha256" => nil} = empty["witness"]
+  after
+    :ok = Collection.close_view(initial)
+  end
+  changes = for n <- [0, 10, 20, 30], do: %{"key" => fence.(n), "expected_revision" => 0, "value" => %{"text" => "page #{n}"}}
+  commit = %{"op" => "commit", "expected_generation" => 0, "advance_floor" => false, "changes" => changes}
+  {:ok, _} = Collection.execute(root, project, commit, Ipse.Usage.id())
+  {:ok, view} = Collection.open_view(root, project)
+  try do
+    {:ok, nearby} = Collection.view_neighbors(view, selection)
+    "initialized" = nearby["state"]
+    "present" = nearby["witness"]["root_state"]
+    slots = ~w(predecessor selected successor second_successor)
+    true = Enum.map(slots, &nearby["neighbors"][&1]["key"]) == Enum.map([0, 10, 20, 30], fence)
+    false = Map.has_key?(nearby["neighbors"]["selected"], "value")
+    {:ok, batch} = Collection.view_read(view, %{"op" => "get_many", "keys" => [fence.(10)]})
+    [%{"value" => %{"text" => "page 10"}}] = batch["records"]
+    IO.puts("Neighbor refs and selected value share the checked root.")
+  after
+    :ok = Collection.close_view(view)
+  end
 after
-  :ok = Collection.close_view(initial)
-end
-changes = for key <- ~w(a b c), do: %{"key" => key, "expected_revision" => 0, "value" => %{"text" => key}}
-request = %{"op" => "commit", "expected_generation" => 0, "advance_floor" => false, "changes" => changes}
-{:ok, _} = Collection.execute(root, project, request, Ipse.Usage.id())
-{:ok, view} = Collection.open_view(root, project)
-try do
-  {:ok, batch} = Collection.view_read(view, %{"op" => "get_many", "keys" => ["b", "missing"]})
-  ["b", "missing"] = batch["keys"]
-  [%{"value" => %{"text" => "b"}}, nil] = batch["records"]
-  "present" = batch["witness"]["root_state"]
-  {:ok, page} = Collection.view_read(view, %{"op" => "scan", "after" => nil, "limit" => 2})
-  "b" = page["next"]
-after
-  :ok = Collection.close_view(view)
   File.rm_rf!(scratch)
 end
 ```
 
-One original task may hold one view; close it before opening another. Calls from
-its actual active file-effect worker retain that original ownership. A different
-task, a reconstructed JSON handle or a stale reference cannot reuse it. The
-cache admits at most 512 reads within 60 seconds of opening, with no renewal;
-each closed request selects at most eight unique keys or eight scan rows. Replies
-refuse above 64 KiB. At most 16 caches coexist. Each holds at most 8,192 references
-and 4 MiB of encoded metadata including keys and integrity seals; bounded Elixir
-map, binary and process overhead is additional. Capacity refuses rather than
-evicting entries or resetting counters.
+One original task may hold one view; close it before opening another. Its actual
+active file-effect worker shares that ownership. A different task, reconstructed
+JSON handle or stale reference cannot reuse it. The absolute lifetime is
+60 seconds, without renewal, with at most 512 calls **and** 512 observation units.
+The unit counter intentionally tightens the aggregate allowance for batches:
+64 full eight-key batches exhaust it, as do 128 neighbor lookups. A copied handle
+shares both counters. Valid requests debit units before lookup or native IO;
+short results and failed checks receive no refund. Capacity refuses instead of
+evicting metadata, restarting counters or silently reducing a request.
 
-A changed root returns `collection_view_stale` and discards the view. The consumer
-may explicitly reopen and revalidate selected record content, lineage and expiry
-against that new root; an unrelated capture does not itself mean every recalled
-record became invalid. Selected objects are rehashed on every read. Unrelated
-immutable objects and cached manifest blocks are not reread on every page, so
-same-root in-place corruption outside the selection can remain undetected until
-a fresh full open. Cooperative protected storage and trusted Core processes are
-the boundary, not containment of arbitrary same-user writers or hostile BEAM
-senders.
+At most 16 caches coexist. Each retains at most 8,192 references and 4 MiB of
+encoded metadata, including the canonical key directory and integrity seals;
+replies refuse above 64 KiB. The retained ordered directory uses the opaque
+[OTP `gb_trees` API](https://www.erlang.org/docs/27/apps/stdlib/gb_trees.html),
+including the reversed iterator available since OTP 27. It replaces the former
+retained key list. Tree/map nodes, binary storage, process heap and temporary
+installation/validation lists are additional memory. Component checks compare
+tree and list term sizes separately; this is not a process RSS or peak-memory
+guarantee. A tree lookup does not make the whole call
+logarithmic: integrity checks still examine up to 8,192 directory keys, and a
+neighbor request checks all matching-prefix references. No persisted secondary
+index or whole-store value scan is introduced.
 
-Wire-root versions 4 and 5 are supported without implicit legacy adoption. The
-private cache and returned result/witness use version 2. A native-confirmed absent
-root has `root_state: "absent"`, null root/root hash/manifest hash, an empty index
-and a zero-generation/floor summary. No synthetic digest stands in for a manifest.
-Every subsequent read reconfirms absence under the actual owner. The first
-publication invalidates that view. A materialized empty collection instead has
-`root_state: "present"` and its actual root/manifest witnesses. Disappearance of
-a previously selected root also makes its view stale; it cannot become an empty
-read in place.
+`Collection.Directory` owns the pure selection and observation-cost rules. Its
+helpers grant no authority. The existing managed-publication callback still has
+its separate 32-read closure; it has **not** been wired to neighbor selection or
+the new observation counter. Sharing a cost helper is not permission to expand
+that callback, adopt metadata version 3 or expose another SDK operation.
 
-Unsafe roots, generic native errors, owner loss and unsupported helpers refuse;
-there is no required-read or host-stat fallback that converts them into absence.
-Opening can create the protected collection directories and retained locks, but
-does not publish a root or operation receipt. Views grant neither managed
-eligibility nor policy, source or Session authority. Their owning adapter must
-still check those facts and the active job at each dispatch. Cross-turn caching,
-managed recall and dispatch withdrawal require their own reviewed integration.
-Run the read-view and empty-read-view suites for native-owner loss, separate-VM
-root changes, absent/present transitions, unsafe roots, cache integrity, caller
-binding and finite limits:
+A changed root returns `collection_view_stale` and discards the view. An explicit
+reopen may then revalidate selected content, lineage and expiry at the new root;
+an unrelated capture does not itself invalidate every recalled record. Value
+reads rehash their selected objects. Neighbor reads validate references only.
+Unrelated immutable objects and cached manifest blocks are not reread on every
+call, so same-root corruption outside a value selection can remain undetected
+until a full open. Trusted Core and cooperative protected storage remain the
+boundary, rather than containment of hostile BEAM or arbitrary same-user writers.
+
+Wire roots 4 and 5 are supported without implicit legacy adoption. Value results,
+cache and root witnesses use version 2; neighbor results use version 1 and contain
+that same version-2 witness. A native-confirmed absent root has no root or manifest
+hash and a zero-generation/floor summary. Its neighbor result is explicitly
+`uninitialized`, with four nil positions; it is no managed absence proof. A
+materialized empty collection instead retains its actual root/manifest witnesses
+and refuses neighbor selection if the required sentinel is missing. Neither root
+disappearance nor a generic native error can turn a present view into absent
+history. The first publication invalidates an absent view.
+
+Views grant no policy, source, Session or managed eligibility authority. Their
+owning adapter must check those facts and the active job at every dispatch.
+Cross-turn caching, managed recall, format adoption and withdrawal still require
+their reviewed integration. Exercise the pure selector and native view suites:
 
 ```sh
-mix test test/ipse/extension/collection_read_view_test.exs test/ipse/extension/collection_empty_read_view_test.exs
+mix test test/ipse/extension/collection_directory_test.exs test/ipse/extension/collection_neighbors_test.exs test/ipse/extension/collection_read_view_test.exs test/ipse/extension/collection_empty_read_view_test.exs
 ```
 
 ## Understand sealing and recovery bounds
