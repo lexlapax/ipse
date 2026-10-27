@@ -1,0 +1,411 @@
+Name            : acl
+Version         : 2.4.0-1
+Licenses        : LGPL-2.1-or-later AND GPL-2.0-or-later
+Name            : archlinux-keyring
+Version         : 20260909-1
+Licenses        : GPL-3.0-or-later
+Name            : attr
+Version         : 2.6.0-1
+Licenses        : LGPL-2.1-or-later AND GPL-2.0-or-later
+Name            : audit
+Version         : 4.2.1-1
+Licenses        : GPL-2.0-or-later  LGPL-2.0-or-later
+Name            : base
+Version         : 3-3
+Licenses        : GPL
+Name            : bash
+Version         : 5.3.20-1
+Licenses        : GPL-3.0-or-later
+Name            : binutils
+Version         : 2.47-4
+Licenses        : GPL-2.0-or-later  GPL-3.0-or-later  LGPL-2.0-or-later  LGPL-3.0-or-later  GFDL-1.3  FSFAP
+Name            : brotli
+Version         : 1.2.0-1
+Licenses        : MIT
+Name            : bzip2
+Version         : 1.0.8-6
+Licenses        : BSD
+Name            : ca-certificates
+Version         : 20240618-1
+Licenses        : GPL-2.0-or-later
+Name            : ca-certificates-mozilla
+Version         : 3.130-1
+Licenses        : MPL-2.0
+Name            : ca-certificates-utils
+Version         : 20240618-1
+Licenses        : GPL-2.0-or-later
+Name            : coreutils
+Version         : 9.12-2
+Licenses        : GPL-3.0-or-later  GFDL-1.3-or-later
+Name            : cryptsetup
+Version         : 2.8.8-1
+Licenses        : GPL-2.0-or-later
+Name            : curl
+Version         : 8.22.0-1
+Licenses        : curl
+Name            : dbus
+Version         : 1.16.2-1
+Licenses        : AFL-2.1 OR GPL-2.0-or-later
+Name            : dbus-broker
+Version         : 37-3
+Licenses        : Apache-2.0
+Name            : dbus-broker-units
+Version         : 37-3
+Licenses        : Apache-2.0
+Name            : dbus-units
+Version         : 37-3
+Licenses        : CC0-1.0
+Name            : device-mapper
+Version         : 2.03.42-1
+Licenses        : GPL-2.0-only  LGPL-2.1-only
+Name            : e2fsprogs
+Version         : 1.47.4-1
+Licenses        : GPL  LGPL  MIT
+Name            : expat
+Version         : 2.8.5-1
+Licenses        : MIT
+Name            : file
+Version         : 5.48-1
+Licenses        : BSD-2-Clause-Darwin
+Name            : filesystem
+Version         : 2025.10.12-1
+Licenses        : 0BSD
+Name            : findutils
+Version         : 4.11.0-1
+Licenses        : GPL-3.0-or-later
+Name            : gawk
+Version         : 5.4.1-1
+Licenses        : GPL-3.0-or-later
+Name            : gcc-libs
+Version         : 16.2.1+r23+gd564253eb6c8-1
+Licenses        : GPL-3.0-or-later WITH GCC-exception-3.1  GFDL-1.3-or-later
+Name            : gdbm
+Version         : 1.26-2
+Licenses        : GPL-3.0-or-later
+Name            : gettext
+Version         : 1.0-2
+Licenses        : GFDL-1.2-only  GPL-2.0-only  GPL-2.0-or-later  LGPL-2.0-only
+Name            : glib2
+Version         : 2.88.3-1
+Licenses        : LGPL-2.1-or-later
+Name            : glibc
+Version         : 2.44+r50+g1848099f063e-1
+Licenses        : GPL-2.0-or-later  LGPL-2.1-or-later
+Name            : gmp
+Version         : 6.3.0-3
+Licenses        : GPL-2.0-or-later  LGPL-3.0-or-later
+Name            : gnulib-l10n
+Version         : 20241231-1
+Licenses        : LGPL-2.0-or-later
+Name            : gnupg
+Version         : 2.4.9-3
+Licenses        : BSD-2-Clause  BSD-3-Clause  BSD-4-Clause  CC0-1.0  GPL-2.0-or-later  GPL-3.0-or-later  LGPL-2.1-or-later  LGPL-3.0-or-later OR GPL-2.0-or-later  MIT  Unicode-TOU
+Name            : gnutls
+Version         : 3.8.13-3
+Licenses        : GPL-3.0-or-later AND LGPL-2.1-or-later
+Name            : gpgme
+Version         : 2.2.0-1
+Licenses        : GPL-2.0-or-later  LGPL-2.0-or-later  LGPL-2.1-or-later  MIT
+Name            : grep
+Version         : 3.12-2
+Licenses        : GPL3
+Name            : gzip
+Version         : 1.15-1
+Licenses        : GPL-3.0-or-later
+Name            : hwdata
+Version         : 0.411-1
+Licenses        : GPL-2.0-or-later
+Name            : iana-etc
+Version         : 20260617-1
+Licenses        : custom:none
+Name            : icu
+Version         : 78.3-1
+Licenses        : LicenseRef-Unicode-3.0  BSD-2-Clause  BSD-3-Clause  NAIST-2003
+Name            : iproute2
+Version         : 7.2.0-1
+Licenses        : GPL-2.0-or-later
+Name            : iptables
+Version         : 1:1.8.13-1
+Licenses        : GPL-2.0-only
+Name            : iputils
+Version         : 20250605-1
+Licenses        : BSD-3-Clause  GPL-2.0-or-later
+Name            : jansson
+Version         : 2.15.1-1
+Licenses        : MIT
+Name            : json-c
+Version         : 0.19-1
+Licenses        : MIT
+Name            : kbd
+Version         : 2.10.0-1
+Licenses        : GPL-2.0-or-later
+Name            : keyutils
+Version         : 1.6.3-4
+Licenses        : GPL-2.0-or-later  LGPL-2.1-or-later
+Name            : kmod
+Version         : 34.2-1
+Licenses        : LGPL-2.1-or-later  GPL-2.0-or-later
+Name            : krb5
+Version         : 1.22.2-1
+Licenses        : custom
+Name            : leancrypto
+Version         : 1.9.1-1
+Licenses        : GPL-2.0-or-later  LicenseRef-BSDvariant  LicenseRef-leancrypto
+Name            : libarchive
+Version         : 3.8.9-1
+Licenses        : BSD-2-Clause  BSD-4-Clause-UC  Apache-2.0 OR CC0-1.0 OR OpenSSL
+Name            : libasan
+Version         : 16.2.1+r23+gd564253eb6c8-1
+Licenses        : GPL-3.0-or-later WITH GCC-exception-3.1  GFDL-1.3-or-later
+Name            : libassuan
+Version         : 3.0.0-1
+Licenses        : FSFULLR  GPL-2.0-or-later  LGPL-2.1-or-later
+Name            : libatomic
+Version         : 16.2.1+r23+gd564253eb6c8-1
+Licenses        : GPL-3.0-or-later WITH GCC-exception-3.1  GFDL-1.3-or-later
+Name            : libbpf
+Version         : 1.7.0-1
+Licenses        : LGPL-2.1-only OR BSD-2-Clause
+Name            : libcap
+Version         : 2.78-1
+Licenses        : BSD-3-Clause OR GPL-2.0-only
+Name            : libcap-ng
+Version         : 0.9.6-1
+Licenses        : GPL-2.0-or-later  LGPL-2.1-or-later
+Name            : libelf
+Version         : 0.196-1
+Licenses        : GPL-2.0-or-later OR LGPL-3.0-or-later
+Name            : libevent
+Version         : 2.1.13-2
+Licenses        : BSD-3-Clause-Modification
+Name            : libffi
+Version         : 3.8.0-1
+Licenses        : MIT
+Name            : libgcc
+Version         : 16.2.1+r23+gd564253eb6c8-1
+Licenses        : GPL-3.0-or-later WITH GCC-exception-3.1  GFDL-1.3-or-later
+Name            : libgcrypt
+Version         : 1.12.4-1
+Licenses        : BSD-3-Clause  BSD-3-Clause OR GPL-2.0-only  GPL-2.0-or-later  LGPL-2.0-or-later  LGPL-2.1-or-later  X11  LicenseRef-scancode-public-domain  LicenseRef-OCB1
+Name            : libgfortran
+Version         : 16.2.1+r23+gd564253eb6c8-1
+Licenses        : GPL-3.0-or-later WITH GCC-exception-3.1  GFDL-1.3-or-later
+Name            : libgomp
+Version         : 16.2.1+r23+gd564253eb6c8-1
+Licenses        : GPL-3.0-or-later WITH GCC-exception-3.1  GFDL-1.3-or-later
+Name            : libgpg-error
+Version         : 1.61-1
+Licenses        : LGPL-2.1-or-later  BSD-3-Clause OR LGPL-2.1-or-later  FSFULLR  GPL-2.0-or-later
+Name            : libhwasan
+Version         : 16.2.1+r23+gd564253eb6c8-1
+Licenses        : GPL-3.0-or-later WITH GCC-exception-3.1  GFDL-1.3-or-later
+Name            : libidn2
+Version         : 2.3.8-1
+Licenses        : GPL2  LGPL3
+Name            : libksba
+Version         : 1.8.1-1
+Licenses        : GPL-2.0-only  GPL-3.0-only  LGPL-3.0-only
+Name            : libldap
+Version         : 2.7.1-1
+Licenses        : custom
+Name            : liblsan
+Version         : 16.2.1+r23+gd564253eb6c8-1
+Licenses        : GPL-3.0-or-later WITH GCC-exception-3.1  GFDL-1.3-or-later
+Name            : libmakepkg-dropins
+Version         : 20-2
+Licenses        : GPL-2.0-or-later
+Name            : libmnl
+Version         : 1.0.5-2
+Licenses        : LGPL2.1
+Name            : libnetfilter_conntrack
+Version         : 1.1.1-1
+Licenses        : GPL-2.0-or-later
+Name            : libnfnetlink
+Version         : 1.0.2-2
+Licenses        : GPL
+Name            : libnftnl
+Version         : 1.3.2-1
+Licenses        : GPL-2.0-or-later
+Name            : libnghttp2
+Version         : 1.70.0-1
+Licenses        : MIT
+Name            : libnghttp3
+Version         : 1.18.0-1
+Licenses        : MIT
+Name            : libngtcp2
+Version         : 1.25.0-1
+Licenses        : MIT
+Name            : libnl
+Version         : 3.12.0-1
+Licenses        : LGPL-2.1-only
+Name            : libnsl
+Version         : 2.0.1-2
+Licenses        : LGPL-2.1-only
+Name            : libobjc
+Version         : 16.2.1+r23+gd564253eb6c8-1
+Licenses        : GPL-3.0-or-later WITH GCC-exception-3.1  GFDL-1.3-or-later
+Name            : libp11-kit
+Version         : 0.26.5-1
+Licenses        : BSD-3-Clause
+Name            : libpcap
+Version         : 1.11.0-1
+Licenses        : BSD-3-Clause
+Name            : libpsl
+Version         : 0.21.5-2
+Licenses        : MIT
+Name            : libquadmath
+Version         : 16.2.1+r23+gd564253eb6c8-1
+Licenses        : GPL-3.0-or-later WITH GCC-exception-3.1  GFDL-1.3-or-later
+Name            : libsasl
+Version         : 2.1.28-5
+Licenses        : BSD-3-Clause-Attribution
+Name            : libseccomp
+Version         : 2.6.0-1
+Licenses        : LGPL-2.1-only
+Name            : libsecret
+Version         : 0.21.8.2-1
+Licenses        : LGPL-2.1-or-later
+Name            : libssh2
+Version         : 1.11.1-7
+Licenses        : BSD-3-Clause
+Name            : libstdc++
+Version         : 16.2.1+r23+gd564253eb6c8-1
+Licenses        : GPL-3.0-or-later WITH GCC-exception-3.1  GFDL-1.3-or-later
+Name            : libsysprof-capture
+Version         : 50.0-6
+Licenses        : BSD-2-Clause-Patent
+Name            : libtasn1
+Version         : 4.21.0-1
+Licenses        : GPL-3.0-or-later  LGPL-2.1-or-later  GFDL-1.3-or-later
+Name            : libtirpc
+Version         : 1.3.8-1
+Licenses        : SISSL  BSD-3-Clause
+Name            : libtsan
+Version         : 16.2.1+r23+gd564253eb6c8-1
+Licenses        : GPL-3.0-or-later WITH GCC-exception-3.1  GFDL-1.3-or-later
+Name            : libubsan
+Version         : 16.2.1+r23+gd564253eb6c8-1
+Licenses        : GPL-3.0-or-later WITH GCC-exception-3.1  GFDL-1.3-or-later
+Name            : libunistring
+Version         : 1.4.2-1
+Licenses        : GPL-2.0-or-later  LGPL-3.0-or-later
+Name            : libusb
+Version         : 1.0.30-1
+Licenses        : LGPL-2.1-or-later
+Name            : libverto
+Version         : 0.3.2-6
+Licenses        : MIT
+Name            : libxcrypt
+Version         : 4.5.2-1
+Licenses        : LGPL
+Name            : libxml2
+Version         : 2.15.4-1
+Licenses        : MIT
+Name            : licenses
+Version         : 20240728-1
+Licenses        : LicenseRef-None
+Name            : linux-api-headers
+Version         : 7.2-1
+Licenses        : GPL-2.0-only
+Name            : lmdb
+Version         : 0.9.35-1
+Licenses        : custom:OpenLDAP
+Name            : lz4
+Version         : 1:1.10.0-2
+Licenses        : GPL-2.0-or-later
+Name            : mpfr
+Version         : 4.2.2-1
+Licenses        : GPL-3.0-or-later  LGPL-3.0-or-later
+Name            : ncurses
+Version         : 6.6-2
+Licenses        : MIT-open-group
+Name            : nettle
+Version         : 4.0-1
+Licenses        : LGPL-3.0-or-later OR GPL-2.0-or-later
+Name            : nftables
+Version         : 1:1.1.7-3
+Licenses        : GPL-2.0-only
+Name            : npth
+Version         : 1.8-1
+Licenses        : LGPL-2.1-or-later
+Name            : openssl
+Version         : 3.6.5-1
+Licenses        : Apache-2.0
+Name            : p11-kit
+Version         : 0.26.5-1
+Licenses        : BSD-3-Clause
+Name            : pacman
+Version         : 7.1.0.r9.g54d9411-2
+Licenses        : GPL-2.0-or-later
+Name            : pacman-mirrorlist
+Version         : 20260610-1
+Licenses        : GPL-2.0-or-later
+Name            : pam
+Version         : 1.7.3-1
+Licenses        : GPL-2.0-only
+Name            : pambase
+Version         : 20260616-1
+Licenses        : GPL-3.0-or-later
+Name            : pciutils
+Version         : 3.15.0-1
+Licenses        : GPL-2.0-only
+Name            : pcre2
+Version         : 10.49-1
+Licenses        : BSD-2-Clause  BSD-3-Clause WITH PCRE2-exception
+Name            : pinentry
+Version         : 1.3.3-1
+Licenses        : GPL
+Name            : popt
+Version         : 1.19-2
+Licenses        : custom
+Name            : procps-ng
+Version         : 4.0.7-1
+Licenses        : GPL  LGPL
+Name            : psmisc
+Version         : 23.7-2
+Licenses        : GPL
+Name            : readline
+Version         : 8.3.6-1
+Licenses        : GPL-3.0-or-later
+Name            : sed
+Version         : 4.10-2
+Licenses        : GPL-3.0-or-later
+Name            : shadow
+Version         : 4.20.0.arch1-1
+Licenses        : 0BSD  BSD-3-Clause
+Name            : sqlite
+Version         : 3.53.4-1
+Licenses        : LicenseRef-Sqlite
+Name            : systemd
+Version         : 262-1
+Licenses        : LGPL-2.1-or-later  CC0-1.0  GPL-2.0-or-later  MIT-0
+Name            : systemd-libs
+Version         : 262-1
+Licenses        : LGPL-2.1-or-later  CC0-1.0  GPL-2.0-or-later WITH Linux-syscall-note
+Name            : systemd-sysvcompat
+Version         : 262-1
+Licenses        : LGPL-2.1-or-later
+Name            : tar
+Version         : 1.35-5
+Licenses        : GPL-3.0-or-later
+Name            : tpm2-tss
+Version         : 4.2.0-2
+Licenses        : BSD-2-Clause
+Name            : tzdata
+Version         : 2026e-1
+Licenses        : LicenseRef-tz
+Name            : util-linux
+Version         : 2.42.4-1
+Licenses        : BSD-2-Clause  BSD-3-Clause  BSD-4-Clause-UC  GPL-2.0-only  GPL-2.0-or-later  GPL-3.0-or-later  ISC  LGPL-2.1-or-later  LicenseRef-PublicDomain
+Name            : util-linux-libs
+Version         : 2.42.4-1
+Licenses        : BSD-2-Clause  BSD-3-Clause  BSD-4-Clause-UC  GPL-2.0-only  GPL-2.0-or-later  GPL-3.0-or-later  ISC  LGPL-2.1-or-later  LicenseRef-PublicDomain
+Name            : xz
+Version         : 5.8.4-1
+Licenses        : GPL-2.0-or-later AND 0BSD AND LicenseRef-Public-Domain AND LGPL-2.1-or-later
+Name            : zlib
+Version         : 1:1.3.2-3
+Licenses        : Zlib
+Name            : zstd
+Version         : 1.5.7-3
+Licenses        : BSD-3-Clause  GPL-2.0-only

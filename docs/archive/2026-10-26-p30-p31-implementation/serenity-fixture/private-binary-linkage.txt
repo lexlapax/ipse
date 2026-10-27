@@ -1,0 +1,18 @@
+/tmp/ipse-serenity-qualification-plan/fixture/ipse-fault-controller
+fc480e1c4a8e35c2746c426ce9af440e0bd032cafa2fc65a8a569e5e4a5bb5a9  /tmp/ipse-serenity-qualification-plan/fixture/ipse-fault-controller
+      [Requesting program interpreter: /lib64/ld-linux-x86-64.so.2]
+ 0x0000000000000001 (NEEDED)             Shared library: [libgcc_s.so.1]
+ 0x0000000000000001 (NEEDED)             Shared library: [libc.so.6]
+ 0x0000000000000001 (NEEDED)             Shared library: [ld-linux-x86-64.so.2]
+/tmp/ipse-serenity-qualification-plan/fixture/io-sentinel
+ef86e2cd1404032f880dbc7bed22668fd75a0e0edcf722c7099512fa991d3526  /tmp/ipse-serenity-qualification-plan/fixture/io-sentinel
+      [Requesting program interpreter: /lib64/ld-linux-x86-64.so.2]
+ 0x0000000000000001 (NEEDED)             Shared library: [libgcc_s.so.1]
+ 0x0000000000000001 (NEEDED)             Shared library: [libc.so.6]
+ 0x0000000000000001 (NEEDED)             Shared library: [ld-linux-x86-64.so.2]
+/tmp/ipse-recovered-20261027/project/priv/ipse-runner
+d84d77d77dc2393b36d9353b6e6d215ec86dc5ba33fe9ad7c8f378130043f91b  /tmp/ipse-recovered-20261027/project/priv/ipse-runner
+      [Requesting program interpreter: /lib64/ld-linux-x86-64.so.2]
+ 0x0000000000000001 (NEEDED)             Shared library: [libgcc_s.so.1]
+ 0x0000000000000001 (NEEDED)             Shared library: [libc.so.6]
+ 0x0000000000000001 (NEEDED)             Shared library: [ld-linux-x86-64.so.2]

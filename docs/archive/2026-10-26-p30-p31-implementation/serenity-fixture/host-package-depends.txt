@@ -1,0 +1,39 @@
+Name            : btrfs-progs
+Version         : 7.3-1
+Depends On      : glibc  libgcrypt  lzo  systemd-libs  util-linux-libs  zlib  zstd
+Name            : util-linux
+Version         : 2.42.4-1
+Depends On      : util-linux-libs=2.42.4  coreutils  file  libmagic.so=1-64  glibc  libcap-ng  libgcc  libgcc_s.so=1-64  libxcrypt  libcrypt.so=2-64  ncurses  libncursesw.so=6-64  pam  readline  shadow  systemd-libs  libsystemd.so=0-64  libudev.so=1-64  zlib
+Name            : util-linux-libs
+Version         : 2.42.4-1
+Depends On      : glibc  sqlite
+Name            : device-mapper
+Version         : 2.03.43-2
+Depends On      : bash  glibc  libgcc  libgcc_s.so=1-64  systemd-libs  libudev.so=1-64
+Name            : docker
+Version         : 1:29.9.2-1
+Depends On      : glibc  iproute2  device-mapper  sqlite  systemd-libs  libseccomp  libtool  nftables  runc  containerd
+Name            : glibc
+Version         : 2.44+r50+g1848099f063e-1
+Depends On      : linux-api-headers>=4.10  tzdata  filesystem
+Name            : libgcc
+Version         : 16.2.1+r23+gd564253eb6c8-1
+Depends On      : glibc>=2.27
+Name            : libgcrypt
+Version         : 1.12.4-1
+Depends On      : libgpg-error  glibc
+Name            : libgpg-error
+Version         : 1.61-1
+Depends On      : glibc  sh
+Name            : lzo
+Version         : 2.10-5
+Depends On      : glibc
+Name            : systemd-libs
+Version         : 262.1-1
+Depends On      : glibc  libgcc  libgcc_s.so=1-64  libgcrypt  lz4  xz  zstd
+Name            : zlib
+Version         : 1:1.3.2-4
+Depends On      : glibc
+Name            : zstd
+Version         : 1.5.7-3
+Depends On      : glibc  libgcc  libstdc++  zlib  xz  lz4

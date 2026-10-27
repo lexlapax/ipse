@@ -1,0 +1,42 @@
+dmsetup.out
+calling init: /lib64/ld-linux-x86-64.so.2
+calling init: /stage/lib/libc.so.6
+calling init: /stage/lib/libgcc_s.so.1
+calling init: /stage/lib/libm.so.6
+calling init: /stage/lib/libudev.so.1
+calling init: /stage/lib/libdevmapper.so.1.02
+transferring control: /stage/bin/dmsetup
+losetup.out
+calling init: /lib64/ld-linux-x86-64.so.2
+calling init: /stage/lib/libc.so.6
+calling init: /stage/lib/libsmartcols.so.1
+transferring control: /stage/bin/losetup
+mkfs.btrfs.out
+calling init: /lib64/ld-linux-x86-64.so.2
+calling init: /stage/lib/libc.so.6
+calling init: /stage/lib/libgpg-error.so.0
+calling init: /stage/lib/libgcc_s.so.1
+calling init: /stage/lib/libzstd.so.1
+calling init: /stage/lib/liblzo2.so.2
+calling init: /stage/lib/libz.so.1
+calling init: /stage/lib/libgcrypt.so.20
+calling init: /stage/lib/libudev.so.1
+calling init: /stage/lib/libblkid.so.1
+calling init: /stage/lib/libuuid.so.1
+transferring control: /stage/bin/mkfs.btrfs
+mount.out
+calling init: /lib64/ld-linux-x86-64.so.2
+calling init: /stage/lib/libc.so.6
+calling init: /stage/lib/libgcc_s.so.1
+calling init: /stage/lib/libsystemd.so.0
+calling init: /stage/lib/libblkid.so.1
+calling init: /stage/lib/libmount.so.1
+transferring control: /stage/bin/mount
+umount.out
+calling init: /lib64/ld-linux-x86-64.so.2
+calling init: /stage/lib/libc.so.6
+calling init: /stage/lib/libgcc_s.so.1
+calling init: /stage/lib/libsystemd.so.0
+calling init: /stage/lib/libblkid.so.1
+calling init: /stage/lib/libmount.so.1
+transferring control: /stage/bin/umount

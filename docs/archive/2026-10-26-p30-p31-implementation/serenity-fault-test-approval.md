@@ -54,3 +54,8 @@ device identity races, tool immutability, process and mount cleanup, actual
 native-owner fault attribution and the live harness require further work and
 independent review. No block device, mapper, mount or injected fault has been
 created by this fixture.
+
+A later [text-source snapshot](serenity-fixture/SNAPSHOT.md) preserves the
+evolved private barrier, mock controller, scoped cancellation and recovery
+experiments with their hashes. It is likewise disabled and incomplete; its
+temporary-file controls do not constitute the requested Serenity Btrfs fault run.

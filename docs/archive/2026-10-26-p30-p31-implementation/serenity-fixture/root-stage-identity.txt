@@ -1,0 +1,5 @@
+53 57067 1000 1000 700 4 directory /tmp/ipse-serenity-root-stage.ApDy9s6A
+53 57069 0 0 555 2 directory /tmp/ipse-serenity-root-stage.ApDy9s6A/bin
+53 57075 0 0 555 2 directory /tmp/ipse-serenity-root-stage.ApDy9s6A/lib
+53 57072 0 0 555 1 regular file /tmp/ipse-serenity-root-stage.ApDy9s6A/bin/mkfs.btrfs
+53 57078 0 0 555 1 regular file /tmp/ipse-serenity-root-stage.ApDy9s6A/lib/libc.so.6

@@ -1,0 +1,66 @@
+requested=/lib64/ld-linux-x86-64.so.2
+f5e11cc62f8f2c24dff532982559f4303dba3b17e7450551372a88c8e7ea8757  /usr/lib/ld-linux-x86-64.so.2
+/usr/lib/ld-linux-x86-64.so.2 is owned by glibc 2.44+r50+g1848099f063e-1
+requested=/usr/bin/dmsetup
+f281c67e0b0abc05b57f09bdf091847442339d36fc3db3850e638389760c7718  /usr/bin/dmsetup
+/usr/bin/dmsetup is owned by device-mapper 2.03.43-2
+requested=/usr/bin/losetup
+fb76e9311a3c604aed8c263979d6ff4c2ee4ad8e868ad74944fea2af455e22e0  /usr/bin/losetup
+/usr/bin/losetup is owned by util-linux 2.42.4-1
+requested=/usr/bin/mkfs.btrfs
+592619ec49ec2a6e5fde0d3a487e2acd37a189bbf7128604c30fb78d3dc3ee36  /usr/bin/mkfs.btrfs
+/usr/bin/mkfs.btrfs is owned by btrfs-progs 7.3-1
+requested=/usr/bin/mount
+ca6c26aa2b11a8431481d39ee562bc07a88984f3294f34846d3257ec28ae9c91  /usr/bin/mount
+/usr/bin/mount is owned by util-linux 2.42.4-1
+requested=/usr/bin/umount
+b8f6dcb0b8b7a790a431c954beebcb3db5931d8db81b02e09baa1e92beeaafac  /usr/bin/umount
+/usr/bin/umount is owned by util-linux 2.42.4-1
+requested=/usr/lib/libblkid.so.1
+aeaf48e3e206ee795262b7d83be9ba37803f1ee1391bb1ac48359ace60a9d2dd  /usr/lib/libblkid.so.1.1.0
+/usr/lib/libblkid.so.1.1.0 is owned by util-linux-libs 2.42.4-1
+requested=/usr/lib/libc.so.6
+02c8c3d06180beee9c7d0392aa85736c7d19f274a81e7f8f0b3d9e28e0641524  /usr/lib/libc.so.6
+/usr/lib/libc.so.6 is owned by glibc 2.44+r50+g1848099f063e-1
+requested=/usr/lib/libdevmapper.so.1.02
+d43b3027160a7c599244f764623c02e09c621a416303ddc1981736dcb883bad4  /usr/lib/libdevmapper.so.1.02
+/usr/lib/libdevmapper.so.1.02 is owned by device-mapper 2.03.43-2
+requested=/usr/lib/libgcc_s.so.1
+e618cb9c90c2eb3a1dad1cfea5b6c1eebcf2e799ad805976f4ae47bdd61c716a  /usr/lib/libgcc_s.so.1
+/usr/lib/libgcc_s.so.1 is owned by libgcc 16.2.1+r23+gd564253eb6c8-1
+requested=/usr/lib/libgcrypt.so.20
+3b6d1189d37c612da66e5b2552c90188a50df6218dbe2525638a95ab51af1473  /usr/lib/libgcrypt.so.20.8.9
+/usr/lib/libgcrypt.so.20.8.9 is owned by libgcrypt 1.12.4-1
+requested=/usr/lib/libgpg-error.so.0
+6aae5cd42d86605daa4102a028e7df8f16f33b17c884a9e6649671676918c3a9  /usr/lib/libgpg-error.so.0.42.1
+/usr/lib/libgpg-error.so.0.42.1 is owned by libgpg-error 1.61-1
+requested=/usr/lib/liblzo2.so.2
+b314f7eabdd5d8adcf0498d5908f1454c5bbf5d719b3f67ba2bdc032fdb93773  /usr/lib/liblzo2.so.2.0.0
+/usr/lib/liblzo2.so.2.0.0 is owned by lzo 2.10-5
+requested=/usr/lib/libm.so.6
+965106704753eefe8c31ae7da6daba3ead3d18c52b19b5fcc41178bcc4aa999d  /usr/lib/libm.so.6
+/usr/lib/libm.so.6 is owned by glibc 2.44+r50+g1848099f063e-1
+requested=/usr/lib/libmount.so.1
+967882491416426236028ba5290b3c88ed9b108d69f3a272a317341146fb2c09  /usr/lib/libmount.so.1.1.0
+/usr/lib/libmount.so.1.1.0 is owned by util-linux-libs 2.42.4-1
+requested=/usr/lib/libsmartcols.so.1
+c4f12f977d6516743431f89bec5c8bdf6632aa1bd5277a5df0d87cf539963565  /usr/lib/libsmartcols.so.1.1.0
+/usr/lib/libsmartcols.so.1.1.0 is owned by util-linux-libs 2.42.4-1
+requested=/usr/lib/libsystemd.so.0
+1666c3ef4591827c32abb1f62d7556656c038cd2078b0a8ded73de9a33442802  /usr/lib/libsystemd.so.0.45.0
+/usr/lib/libsystemd.so.0.45.0 is owned by systemd-libs 262.1-1
+requested=/usr/lib/libudev.so.1
+dd636932094404444ce8319c89d6074936322f96a8f80e08e22f71c295a84d9d  /usr/lib/libudev.so.1.7.15
+/usr/lib/libudev.so.1.7.15 is owned by systemd-libs 262.1-1
+requested=/usr/lib/libuuid.so.1
+7881e0279d5ce79b0d8ace923e94df9b543bc8dd8152df0894358b862e1725be  /usr/lib/libuuid.so.1.3.0
+/usr/lib/libuuid.so.1.3.0 is owned by util-linux-libs 2.42.4-1
+requested=/usr/lib/libz.so.1
+6c78c5e58c3bb49a1cd151a95cdf1a17fe07a91a57a59e0279b984c533075ca9  /usr/lib/libz.so.1.3.2
+/usr/lib/libz.so.1.3.2 is owned by zlib 1:1.3.2-4
+requested=/usr/lib/libzstd.so.1
+f023d49e85fb22057bfdd21857263d2638b73356c06f3b342f678a75212379f8  /usr/lib/libzstd.so.1.5.7
+/usr/lib/libzstd.so.1.5.7 is owned by zstd 1.5.7-3
+requested=/usr/lib64/ld-linux-x86-64.so.2
+f5e11cc62f8f2c24dff532982559f4303dba3b17e7450551372a88c8e7ea8757  /usr/lib/ld-linux-x86-64.so.2
+/usr/lib/ld-linux-x86-64.so.2 is owned by glibc 2.44+r50+g1848099f063e-1

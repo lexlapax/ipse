@@ -1,0 +1,2 @@
+count=101 unresolved=[]
+pacman_deptest_status=0 unmet=""
