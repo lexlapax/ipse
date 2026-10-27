@@ -35,7 +35,7 @@ try do
 
   helper_paths =
     if package == "knowledge",
-      do: ~w(notes knowledge/records knowledge/contracts),
+      do: ~w(notes knowledge/records knowledge/contracts knowledge/decision_policy),
       else:
         ~w(evidence store store/state store/mcp_cas adapters documents documents/zip documents/docx documents/parser_stage documents/pdf)
 

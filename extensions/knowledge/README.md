@@ -7,9 +7,10 @@ persistent memory extensions keep their own selections.
 
 The `knowledge/native` preset is a protected-capture integration component. It
 builds independently with empty profile registries and uses Session source proofs
-and saved collection consent. Its standalone setup, review and automatic recall
-workflows are still under implementation; importing its artifact alone grants no
-saved permission. Follow the [capture training path](../../docs/developer/knowledge-extensions.md#follow-protected-capture-from-a-session-source)
+and saved collection consent. Use the [standalone permission review](../../docs/operator/knowledge-permissions.md)
+to select it for a new session; importing its artifact alone grants no saved
+permission. Automatic capture, managed recall and lifecycle management remain
+under implementation. Follow the [capture training path](../../docs/developer/knowledge-extensions.md#follow-protected-capture-from-a-session-source)
 for its actual SDK Session test and current limits.
 
 Follow the complete user procedures for [Corpus](../../docs/operator/corpus.md),
@@ -32,8 +33,10 @@ A host can read the reverified sidecar bytes without loading worker code. The
 schemas grant no source authority or operator acceptance; publication authenticates
 proofs and normalizes source clocks independently. Current-read eligibility
 remains a separate host check.
-Installed users do not need a compiler for those packaged bytes. Guided knowledge
-setup and the remaining workflows are still being integrated.
+Installed users do not need a compiler for those packaged bytes. The artifact
+also includes a pure development decision planner; it enables no production
+strategy or automatic engine call. The [decision exercise](../../docs/developer/decisions.md#exercise-a-consumer-without-contacting-an-engine)
+teaches its zero-call controls, public SDK closure and current integration limits.
 
 ## Build a lexical corpus
 

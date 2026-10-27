@@ -25,6 +25,17 @@ defmodule Ipse.Extension do
 
   def canonical_digest(_), do: {:error, :invalid_extension_value}
 
+  @doc "Validate neutral advisory request data; this grants no permission or semantic truth."
+  defdelegate validate_decision_request(request), to: Ipse.Decision, as: :validate_request
+
+  @doc "Validate complete neutral advice using the same contract as the host."
+  defdelegate validate_decision_result(request, result), to: Ipse.Decision, as: :validate_result
+
+  @doc "Select advice only among supplied alternatives; callers still own policy and authority checks."
+  defdelegate select_decision(request, result, question_id, alternatives, minimum_probability),
+    to: Ipse.Decision,
+    as: :select
+
   @doc "Build untrusted evidence JSON from public read/quote receipts; the host resolves it again before publication."
   def source_proof(page, quote, text) do
     with true <- is_map(page) and is_map(quote) and is_binary(text),

@@ -76,8 +76,9 @@ mix test test/ipse/extension/decision_session_test.exs
 
 These fixtures verify admission and wire behavior, including hosted wire subsets
 with synthetic keys. They establish no live account eligibility or consumer
-quality. Saved knowledge consent, zero-call applicability and qualified automatic
-consumers remain separate implementation/acceptance work in the
+quality. The pure consumer exercise below adds zero-call planning controls;
+saved decision-helper consent and qualified automatic consumers remain separate
+implementation/acceptance work in the
 [plan](../plan.md#p30-advisory-decision-engines).
 
 ## Build one request and inspect its wire form
@@ -149,6 +150,92 @@ permission and resources at the ordinary effect boundary. Required prerequisite
 questions must also be checked by that caller. No successful helper return runs
 an action.
 
+## Exercise a consumer without contacting an engine
+
+The separately built Knowledge artifact includes
+[`Knowledge.DecisionPolicy`](../../extensions/knowledge/src/knowledge/decision_policy.ex).
+It plans bounded request data and maps advice to permitted IDs. Capture does not
+call it automatically, and no production strategy is qualified. Neither a
+`qualification_sha256` value nor an `availability` label in supplied facts grants
+authority. Facts remain untrusted until a future host adapter verifies their
+actual producers, current eligibility and resource allocation.
+
+Run this complete fixture in `iex -S mix`:
+
+```elixir
+Code.require_file("extensions/knowledge/src/knowledge/decision_policy.ex")
+alias IpseKnowledge.Knowledge.DecisionPolicy, as: Policy
+policy = Policy.default("notes.assess")
+facts = %{
+  "version" => 1,
+  "availability" => "available",
+  "budget_available" => true,
+  "candidates" => [%{"id" => "candidate1", "input" => "Synthetic original candidate."}],
+  "alternatives" => ["keep_baseline", "defer_candidate"]
+}
+{:ok, production} = Policy.plan(policy, facts)
+nil = production.request
+experiment = Map.merge(policy, %{"strategy" => "decision", "profile" => "fixture"})
+{:ok, proposed} = Policy.plan(experiment, facts, :development_experiment)
+:ok = Ipse.Extension.validate_decision_request(
+  Map.take(proposed.request, ~w(version profile input questions)))
+```
+
+This only constructs data. Development mode is not an experiment grant or an
+egress operation; even the profile name is unresolved here. Sending that request
+still needs the ordinary host capability, actual operator profile, approval,
+journal, service and budget gates. Production planning always returns a zero-call
+path while the qualified catalogue is empty, including when JSON supplies a hash.
+
+Selection plans accept at most sixteen complete rendered candidates and eight
+packs, with at most four records per decision pack and an allocation no larger
+than 6144 bytes. Rendered chunks include labels, citations and separators;
+the planner adds no framing, and callers deduct any shared frame before supplying
+the actual allocation. Pack member IDs are normalized as sets, so permutations
+alone cannot manufacture multiple alternatives. Assessment accepts at most eight
+candidates. Profiles use the operator profile grammar: a letter followed by
+letters, digits, underscores or hyphens, at most 64 bytes; this pure exercise
+does not resolve or expand the operator's registry. Supplied facts prove no actual
+allocation: a future trusted host adapter must derive the owner's grant and check
+the complete rendered projection again. A complete eligible set fitting its actual allocation bypasses
+advice and retains every supplied eligible record. Unknown/incomplete coverage
+is not an empty set; declared fitting coverage without all rows also bypasses
+with an explicit gap. Zero allocation, no candidates, zero or one unique permitted
+alternative, and unavailable budgets produce no request. Pack byte counts use
+actual UTF-8 rendered bytes. Selection excerpts are explicitly marked partial;
+assessment input is never truncated.
+
+All source facts must fit the unchanged 16-KiB SDK object bound. Constructed input
+is at most 8192 bytes, its complete escaped request at most 16 KiB, and the timeout
+is 30000 ms. A private `Plan` retains bounded facts for deterministic reconstruction;
+its separate 32-KiB limit does not widen any public SDK envelope or grant a handle.
+Overflow refuses or selects the labelled zero-call baseline before request work.
+
+The mapper validates the whole neutral result first, then uses the public
+`Extension.select_decision/5` adapter with probability at least 0.8 and margin at
+least 0.2. The margin is redundant for a normalized selected probability of 0.8
+(the other choices total at most 0.2), but remains an explicit policy check.
+Native raw confidence stays independent. Refusal, ties, low probability and
+malformed results return labelled baseline behavior. Assessment can only retain
+the ordinary baseline or defer a proposed candidate for this batch; it cannot
+change its text, origin, category, TTL, evidence or permission.
+
+```sh
+mix test test/extensions/knowledge/decision_policy_test.exs test/ipse/decision_test.exs
+```
+
+The test also compiles the actual independent artifact against a minimal public
+SDK closure, then exercises it in another VM without `Ipse.Session` or
+`Ipse.Extension.Artifact` on the code path. `Extension` delegates neutral request,
+result and choice validation to the existing `Ipse.Decision` implementation;
+there is one validator. These pure delegates retain the neutral library bounds;
+sending a host action additionally requires `Extension.validate/1` and the narrower
+DecisionCall envelope checks. The planner applies both. The minimal closure is `lib/ipse/json.ex`,
+`lib/ipse/decision.ex` and `lib/ipse/extension.ex` (which also defines
+`ResultDocument` and `ResultPublication`), plus the existing Jason/JSONSchex/JSON
+Pointer dependencies. This verifies pure packaging and policy behavior, not live
+quality, protected decision-helper consent, managed recall or dispatch freshness.
+
 ## Extend the subset with a refusal control
 
 For a change exercise, alter one score label in the OpenAI fixture. Decoding must
@@ -160,7 +247,7 @@ confidence. They are synthetic protocol evidence, not live engine/model quality.
 
 Use the [finite experiment protocol](../archive/2026-10-26-p30-p31-implementation/qualification.md#p30-finite-experiment-declaration)
 before evaluating a consumer. Only qualified useful strategies become selectable;
-fit-in-context notes and absent candidates bypass decision calls. Consult the
+the pure planner does not qualify or dispatch one. Consult the
 [plan](../plan.md#p30-advisory-decision-engines) for integrated operation and
 consumer delivery status rather than inferring consumer quality from an admitted
 operation or structurally valid result.

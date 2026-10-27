@@ -115,6 +115,14 @@ warning/refusal, declaration drift, marker containment, and stable rebuilds.
 A package-owned builder, such as Knowledge's, must bind final bytes and every
 runtime dependency without claiming untested platforms.
 
+For pure advisory policy, call the public `Extension.validate_decision_request/1`,
+`validate_decision_result/2` and `select_decision/5` helpers. They delegate to the
+same `Ipse.Decision` implementation used by the host; they perform no IO and grant
+no permission or eligibility. Include that implementation in a minimal SDK build
+rather than assuming the whole host application is available. The
+[decision exercise](decisions.md#exercise-a-consumer-without-contacting-an-engine)
+checks the actual Knowledge artifact against this public dependency closure.
+
 ## Bind the manifest to immutable bytes
 
 [`Artifact.decode/1`](../../lib/ipse/extension/artifact.ex) reads duplicate-free

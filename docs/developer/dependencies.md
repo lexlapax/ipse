@@ -30,6 +30,14 @@ owns closed keyword/byte/depth bounds and disables remote loading. A second
 validator would need to preserve the same boundary and keep two definitions in
 sync. Extend the small adapter only after checking its existing supported subset.
 
+The public SDK's pure decision helpers reuse the existing project-owned
+`Ipse.Decision` implementation, rather than introducing a second validator or an
+external decision SDK. Minimal artifact compilation includes that module alongside
+`Ipse.Extension`/its result-document helpers and `Ipse.JSON`, using the Jason,
+JSONSchex and JSON Pointer packages inventoried below. Knowledge's pure planner
+adds no service, model, package or runtime dependency. Its packaging exercise is
+in [the decision chapter](decisions.md#exercise-a-consumer-without-contacting-an-engine).
+
 ## Make the adoption decision explicit
 
 For each dependency, record its purpose, runtime/build/test/CI scope, version or
