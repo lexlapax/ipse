@@ -29,9 +29,14 @@ defmodule Ipse.CLI.Knowledge do
          {:ok, config} <- runtime(opts, home, cwd) do
       result =
         case command do
-          value when value in ~w(enable setup) -> enable(config, cwd)
-          "disable" -> disable(config, cwd)
-          _ -> status(config, cwd, command, opts[:json] == true)
+          value when value in ~w(enable setup) ->
+            enable(config, cwd, fn -> runtime(opts, home, cwd) end)
+
+          "disable" ->
+            disable(config, cwd)
+
+          _ ->
+            status(config, cwd, command, opts[:json] == true)
         end
 
       case result do
@@ -115,7 +120,7 @@ defmodule Ipse.CLI.Knowledge do
     end
   end
 
-  defp enable(config, cwd) do
+  defp enable(config, cwd, refresh) do
     with {:ok, :native} <- Ipse.Runner.operator_channel(),
          :ok <- private_home(config.home),
          {:ok, binding} <- admit_project(config.home, cwd),
@@ -126,7 +131,8 @@ defmodule Ipse.CLI.Knowledge do
          :ok <- confirm("enable", review(binding, proposal.policy)),
          {:ok, _} <-
            ProjectIdentity.with_binding(config.home, cwd, binding, fn _ ->
-             with {:ok, repeated} <- prepare(config, binding, artifact.digest, now),
+             with {:ok, current} <- refresh_configuration(config, refresh),
+                  {:ok, repeated} <- prepare(current, binding, artifact.digest, now),
                   true <- repeated === proposal do
                Consent.replace(
                  SemanticAdmission.control_root(config.home),
@@ -136,6 +142,7 @@ defmodule Ipse.CLI.Knowledge do
                  System.system_time(:millisecond)
                )
              else
+               {:error, :knowledge_configuration_changed} = error -> error
                _ -> @error
              end
            end) do
@@ -148,6 +155,15 @@ defmodule Ipse.CLI.Knowledge do
       {:ok, :pipe} -> {:error, :knowledge_requires_native_terminal}
       {:error, _} = error -> error
       _ -> @error
+    end
+  end
+
+  defp refresh_configuration(original, refresh) do
+    with {:ok, current} <- refresh.(),
+         true <- current.configuration.fingerprint === original.configuration.fingerprint do
+      {:ok, current}
+    else
+      _ -> {:error, :knowledge_configuration_changed}
     end
   end
 
@@ -443,6 +459,9 @@ defmodule Ipse.CLI.Knowledge do
 
         :consent_conflict ->
           "Permission changed during review. Inspect knowledge permissions and begin a fresh review."
+
+        :knowledge_configuration_changed ->
+          "Saved configuration changed during review. Inspect the current configuration and begin a fresh review."
 
         value
         when value in [

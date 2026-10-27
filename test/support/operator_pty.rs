@@ -37,10 +37,11 @@ fn main() {
     let mut args: Vec<_> = std::env::args_os().skip(1).collect();
     let channel = args.first().is_some_and(|a| a == "--channel");
     if channel { args.remove(0); }
-    let knowledge = args.first().is_some_and(|a| a == "--knowledge" || a == "--knowledge-cancel" || a == "--knowledge-stale" || a == "--knowledge-cas");
+    let knowledge = args.first().is_some_and(|a| a == "--knowledge" || a == "--knowledge-cancel" || a == "--knowledge-stale" || a == "--knowledge-cas" || a == "--knowledge-config");
     let cancel_knowledge = args.first().is_some_and(|a| a == "--knowledge-cancel");
     let stale_knowledge = args.first().is_some_and(|a| a == "--knowledge-stale");
     let cas_knowledge = args.first().is_some_and(|a| a == "--knowledge-cas");
+    let config_knowledge = args.first().is_some_and(|a| a == "--knowledge-config");
     if knowledge { args.remove(0); }
     assert!(!args.is_empty());
     let mut child = Command::new(&args[0]).args(&args[1..])
@@ -105,7 +106,7 @@ fn main() {
                     }
                     let reply = format!("{action} {code}");
                     if !answered.contains(&reply) {
-                        if cas_knowledge && action == "enable" {
+                        if (cas_knowledge || config_knowledge) && action == "enable" {
                             let root = std::path::Path::new(&args[args.len() - 2]);
                             std::fs::write(root.join("native-review-ready"), b"ready").unwrap();
                             if !root.join("consent-raced").is_file() { continue; }

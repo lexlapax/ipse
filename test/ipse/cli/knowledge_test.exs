@@ -28,6 +28,13 @@ defmodule Ipse.CLI.KnowledgeTest do
     assert scenario("cas", "--knowledge-cas") =~ "KNOWLEDGE_NATIVE_REVIEW_CANCELLED"
   end
 
+  test "saved configuration changes during native review refuse instead of saving the old proposal" do
+    for field <- ~w(model timeout malformed format) do
+      assert scenario("config-" <> field, "--knowledge-config") =~
+               "KNOWLEDGE_NATIVE_REVIEW_CANCELLED"
+    end
+  end
+
   test "review data binds actual bundled recipes and routes without creating consent" do
     root = private_root()
     home = Path.join(root, "home")

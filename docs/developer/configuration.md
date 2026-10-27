@@ -283,9 +283,13 @@ is accepted. Piped input, copied old codes, `--yes` and generic project trust
 cannot replace that observation. Project admission and artifact import can have
 already happened when a later review is cancelled; cancellation saves no grant.
 
-After confirmation, the host revalidates the exact ProjectIdentity, repeats
-preparation byte-for-byte and applies Consent CAS against the reviewed epoch.
-A concurrent policy change refuses instead of being overwritten. Successful
+After confirmation, the host revalidates the exact ProjectIdentity and reloads
+configuration through the same original options, home and workspace. Its ordinary
+fingerprint, including source-file digests, must still match the reviewed snapshot;
+a malformed or changed source refuses even if effective settings would look
+equivalent. The host repeats preparation byte-for-byte with that current runtime,
+then applies Consent CAS against the reviewed epoch. A concurrent policy change
+refuses instead of being overwritten. Successful
 selection affects the next new Session; saved Sessions keep their original
 activation and later effects still check current permission. Status uses
 `readiness/2`; permissions uses `current/2` so a changed route can refuse readiness
@@ -293,7 +297,8 @@ while the original saved policy remains inspectable. Neither read joins or repai
 
 Run `mix test test/ipse/cli/knowledge_test.exs` in the coordinated serial native
 terminal test window. Follow its real native save/revoke, stale challenge,
-cancel/pipe, concurrent epoch and read-preservation controls. Keep these synthetic
+cancel/pipe, concurrent epoch, paused-review configuration changes and
+read-preservation controls. Keep these synthetic
 PTY checks separate from human terminal attestation, live model behavior and
 automatic capture/current-note recall acceptance.
 

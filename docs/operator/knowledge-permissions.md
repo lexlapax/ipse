@@ -99,6 +99,9 @@ and must pass the live permission check before another effect.
 
 If setup reports a consent conflict, inspect permissions and perform a fresh
 review. A concurrent permission change is never overwritten by the older review.
+Changing the saved configuration during review also refuses the save, even when
+the edited file would select equivalent settings. Inspect it and begin a fresh
+review so the displayed selection matches the configuration being admitted.
 If an outcome is unconfirmed, follow [recovery](recovery.md) before retrying; a
 missing confirmation is not proof that nothing changed. Unsafe private-directory
 permissions, a missing retained `.lock` or `.writer.lock`, or malformed protected

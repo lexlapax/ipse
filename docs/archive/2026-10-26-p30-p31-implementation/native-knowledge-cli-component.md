@@ -7,6 +7,11 @@ following activation writer repair `8d493127` and native framing repair
 [configuration training](../../developer/configuration.md#apply-a-protected-selection-without-changing-base-configuration)
 own current behavior. The [plan](../../plan.md) retains unfinished acceptance.
 
+A later [independent audit](native-knowledge-cli-audit.md) found a saved-config
+recheck defect. Its [repair](native-knowledge-cli-config-repair.md) and
+[independent closure](native-knowledge-cli-config-audit.md) supersede the pending
+audit disposition in this original checkpoint record.
+
 ## Behavior and authority boundary
 
 `knowledge enable` imports the actual bundled native notes artifact, admits the

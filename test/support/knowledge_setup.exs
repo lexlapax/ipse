@@ -43,7 +43,7 @@ if scenario == "pipe" do
 end
 
 race =
-  if scenario == "cas" do
+  if scenario == "cas" or String.starts_with?(scenario, "config-") do
     Task.async(fn ->
       deadline = System.monotonic_time(:millisecond) + 10_000
 
@@ -58,19 +58,49 @@ race =
       end
 
       wait.(wait)
-      {:ok, binding} = Ipse.Extension.ProjectIdentity.existing(home, cwd)
-      control = Ipse.Extension.SemanticAdmission.control_root(home)
-      {:ok, before} = Ipse.Extension.Consent.snapshot(control, binding["project_id"])
-      assert before["epoch"] == 0 and before["policy"] == nil
 
-      assert {:ok, %{"epoch" => 1}} =
-               Ipse.Extension.Consent.revoke(control, binding["project_id"], 0)
+      if scenario == "cas" do
+        {:ok, binding} = Ipse.Extension.ProjectIdentity.existing(home, cwd)
+        control = Ipse.Extension.SemanticAdmission.control_root(home)
+        {:ok, before} = Ipse.Extension.Consent.snapshot(control, binding["project_id"])
+        assert before["epoch"] == 0 and before["policy"] == nil
+
+        assert {:ok, %{"epoch" => 1}} =
+                 Ipse.Extension.Consent.revoke(control, binding["project_id"], 0)
+      else
+        changed =
+          case scenario do
+            "config-model" ->
+              Jason.encode!(%{
+                "version" => 1,
+                "settings" => %{"provider" => "demo", "model" => "changed"}
+              })
+
+            "config-timeout" ->
+              Jason.encode!(%{
+                "version" => 1,
+                "settings" => %{
+                  "provider" => "demo",
+                  "model" => "scripted",
+                  "timeout_ms" => 30_000
+                }
+              })
+
+            "config-malformed" ->
+              "{"
+
+            "config-format" ->
+              config_bytes <> "\n"
+          end
+
+        File.write!(config_path, changed)
+      end
 
       File.write!(Path.join(root, "consent-raced"), "done")
     end)
   end
 
-if scenario in ["cancel", "stale", "cas"] do
+if scenario in ["cancel", "stale", "cas"] or String.starts_with?(scenario, "config-") do
   assert command.("enable") == 1
   if race, do: Task.await(race, 1_000)
   {:ok, binding} = Ipse.Extension.ProjectIdentity.existing(home, cwd)
@@ -85,7 +115,13 @@ if scenario in ["cancel", "stale", "cas"] do
   assert snapshot["policy"] == nil
   assert snapshot["epoch"] == if(scenario == "cas", do: 1, else: 0)
   assert snapshot["operations"] == %{}
-  assert File.read!(config_path) == config_bytes
+
+  if String.starts_with?(scenario, "config-") do
+    refute File.read!(config_path) == config_bytes
+  else
+    assert File.read!(config_path) == config_bytes
+  end
+
   IO.puts("KNOWLEDGE_NATIVE_REVIEW_CANCELLED")
   System.halt(0)
 end

@@ -7,6 +7,10 @@ owns current protocol instructions; the [plan](../../plan.md) owns milestone
 status. This component supplies no managed recall, saved absence authority or
 Session integration.
 
+The later [independent closure](native-framing-audit.md) verifies this exact
+repaired facility graph. It retains the original failing driver and explains its
+diagnostic-only companion; it does not qualify future empty-view consumers.
+
 ## Independent finding and repaired boundary
 
 The independent review of `fe2383350fddc6259c349bc57fd85a28ed243b75` found P2:
