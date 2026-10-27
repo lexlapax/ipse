@@ -13,6 +13,7 @@ pub(super) trait Fixture {
     fn start_scoped_stage(&mut self) -> Result<(), ()>;
     fn next_event(&mut self) -> Result<Event, ()>;
     fn verify_pause(&mut self) -> Result<(), ()>; // exact owner, nonempty partial inode, live barrier
+    fn recheck_pause_deadline(&mut self) -> Result<(), ()>; // same peer, stage and monotonic timeout
     fn apply_error(&mut self) -> Result<(), ()>; // observed error table after checked transition
     fn release(&mut self) -> Result<(), ()>; // exact one-byte G to authenticated peer
     fn await_receipt(&mut self) -> Result<(), ()>; // scope/controller/helper cleanup proof
@@ -32,7 +33,9 @@ pub(super) fn run<B: Fixture>(b: &mut B) -> Result_ {
     step!(Phase::StagePending, b.start_scoped_stage(), Phase::Staging);
     if b.next_event() != Ok(Event::Ready) { return Result_ {phase: Phase::Unknown, outcome: Outcome::Unknown}; }
     step!(Phase::Staging, b.verify_pause(), Phase::Paused);
+    if b.recheck_pause_deadline().is_err() {return Result_ {phase:Phase::Unknown,outcome:Outcome::Unknown}}
     step!(Phase::FaultPending, b.apply_error(), Phase::Faulted);
+    if b.recheck_pause_deadline().is_err() {return Result_ {phase:Phase::Unknown,outcome:Outcome::Unknown}}
     step!(Phase::ReleasePending, b.release(), Phase::Released);
     // Every result requires exact protocol ordering; one native error prevents
     // later frames by construction. No response alone constitutes EIO.
@@ -57,14 +60,15 @@ pub(super) fn run<B: Fixture>(b: &mut B) -> Result_ {
 }
 #[cfg(test)] mod tests {
     use super::*; use std::collections::VecDeque;
-    struct Mock { events: VecDeque<Event>, calls: Vec<&'static str>, fail: Option<&'static str>, records: Vec<Phase>, fail_record: Option<Phase> }
-    impl Mock { fn new(events: &[Event]) -> Self {Self {events: events.iter().copied().collect(), calls: vec![], fail: None, records: vec![], fail_record: None}}
+    struct Mock { events: VecDeque<Event>, calls: Vec<&'static str>, fail: Option<&'static str>, records: Vec<Phase>, fail_record: Option<Phase>, deadline_calls:u32, fail_deadline_at:Option<u32> }
+    impl Mock { fn new(events: &[Event]) -> Self {Self {events: events.iter().copied().collect(), calls: vec![], fail: None, records: vec![], fail_record: None, deadline_calls:0, fail_deadline_at:None}}
       fn call(&mut self, name: &'static str) -> Result<(), ()> {self.calls.push(name); if self.fail == Some(name) {Err(())} else {Ok(())}} }
     impl Fixture for Mock {
       fn setup(&mut self)->Result<(),()>{self.call("setup")}
       fn start_scoped_stage(&mut self)->Result<(),()>{self.call("stage")}
       fn next_event(&mut self)->Result<Event,()>{self.calls.push("event"); self.events.pop_front().ok_or(())}
       fn verify_pause(&mut self)->Result<(),()>{self.call("verify")}
+      fn recheck_pause_deadline(&mut self)->Result<(),()>{self.deadline_calls+=1;self.call("deadline")?;if self.fail_deadline_at==Some(self.deadline_calls){Err(())}else{Ok(())}}
       fn apply_error(&mut self)->Result<(),()>{self.call("fault")}
       fn release(&mut self)->Result<(),()>{self.call("release")}
       fn await_receipt(&mut self)->Result<(),()>{self.call("receipt")}
@@ -107,5 +111,10 @@ pub(super) fn run<B: Fixture>(b: &mut B) -> Result_ {
         assert_eq!(run(&mut m).phase,Phase::Unknown); assert!(!m.calls.contains(&effect));
         assert_eq!(m.records.last(),Some(&pending));
       }
+    }
+    #[test]fn expired_or_changed_barrier_never_faults_or_releases(){
+      for n in [1,2] {let mut m=Mock::new(&[Event::Ready,Event::Write(5),Event::StageUnknown]);m.fail_deadline_at=Some(n);
+       assert_eq!(run(&mut m).phase,Phase::Unknown);assert!(!m.calls.contains(&"release"));
+       assert_eq!(m.calls.contains(&"fault"),n==2);}
     }
 }

@@ -51,3 +51,12 @@ mapper, cgroup slice or device. The cgroup draft does not establish workload
 migration restrictions, privilege drop, namespace equivalence or complete
 cleanup. The current private controller suite passed 53 tests. All live entry
 points and real backend quiescence checks remain disabled.
+
+Latest checkpoint adds a two-step diagnostic socket gate: after verifying the
+private helper and pending file, the listener waits for explicit release and
+rechecks identities, then parses complete W/S results. Temporary-file success
+and malformed-release refusal ran; no injected error or device test ran. The
+review-only orchestration also rechecks a bounded pause before fault and release.
+These components are not yet a reviewed privileged live backend. The independent
+cgroup migration and crash recovery requirements remain open; 54 private tests
+passed at this checkpoint.

@@ -39,12 +39,12 @@ fn peer_owns_file(pid:i32,file:&std::fs::File)->io::Result<bool> {
   if metadata.dev()==expected.dev() && metadata.ino()==expected.ino() {if mount_id(pid,fd)? != mount {return Ok(false)} count+=1;}
  } Ok(count==1)
 }
-fn parent_line()->io::Result<i32> {
+fn control_line()->io::Result<String> {
  let deadline=Instant::now()+Duration::from_secs(3);let mut bytes=Vec::new();
  loop {let left=deadline.saturating_duration_since(Instant::now());if left.is_zero(){return Err(io::ErrorKind::TimedOut.into())}
   let mut fd=PollFd{fd:0,events:1,revents:0};if unsafe{poll(&mut fd,1,left.as_millis().min(3000) as i32)}!=1 {return Err(io::ErrorKind::TimedOut.into())}
-  let mut byte=[0];if unsafe{read(0,byte.as_mut_ptr().cast(),1)}!=1 {return Err(io::ErrorKind::UnexpectedEof.into())}if byte[0]==b'\n'{break}if !byte[0].is_ascii_digit() || bytes.len()>=10{return Err(io::ErrorKind::InvalidData.into())}bytes.push(byte[0]);
- } std::str::from_utf8(&bytes).map_err(|_|io::ErrorKind::InvalidData)?.parse().map_err(|_|io::ErrorKind::InvalidData.into())
+  let mut byte=[0];if unsafe{read(0,byte.as_mut_ptr().cast(),1)}!=1 {return Err(io::ErrorKind::UnexpectedEof.into())}if byte[0]==b'\n'{break}if !(byte[0].is_ascii_digit() || byte[0]==b'G') || bytes.len()>=10{return Err(io::ErrorKind::InvalidData.into())}bytes.push(byte[0]);
+ } String::from_utf8(bytes).map_err(|_|io::ErrorKind::InvalidData.into())
 }
 fn main()->io::Result<()> {
  let args:Vec<_>=env::args().collect();if args.len()!=4{return Err(io::ErrorKind::InvalidInput.into())}
@@ -71,16 +71,24 @@ fn main()->io::Result<()> {
  let before=file.metadata()?;let named=fs::symlink_metadata(&pending)?;
  if !before.is_file() || before.uid()!=c.uid || before.nlink()!=1 || before.len()==0 || before.len()>=65536 || (before.dev(),before.ino())!=(named.dev(),named.ino()){return Err(io::ErrorKind::PermissionDenied.into())}
  println!("READY {} {} {} {} {}",c.pid,first.1,before.dev(),before.ino(),before.len());io::stdout().flush()?;
- let expected_parent=parent_line()?;
+ let expected_parent:i32=control_line()?.parse().map_err(|_|io::ErrorKind::InvalidData)?;
  let parent_first=proc_stat(expected_parent)?;let parent_raw=unsafe{syscall(434,expected_parent,0)};if parent_raw<0{return Err(io::Error::last_os_error())}let parent_pin=PidFd(parent_raw as i32);
  if !same_namespace(expected_parent,"pid")? || !same_namespace(expected_parent,"user")? || !same_namespace(expected_parent,"mnt")? || !live(&parent_pin)||proc_stat(expected_parent)?!=parent_first{return Err(io::ErrorKind::PermissionDenied.into())}
+ if first.0!=expected_parent || !peer_owns_file(c.pid,&file)? {return Err(io::ErrorKind::PermissionDenied.into())}
+ println!("VERIFIED");io::stdout().flush()?;if control_line()? != "G" {return Err(io::ErrorKind::PermissionDenied.into())}
  let after=file.metadata()?;let named=fs::symlink_metadata(&pending)?;
  let root_after=fs::symlink_metadata(root)?;let exe_after=fs::metadata(format!("/proc/{}/exe",c.pid))?;
  if (root_after.dev(),root_after.ino())!=(root_open.dev(),root_open.ino()) || (exe_after.dev(),exe_after.ino())!=(executable.dev(),executable.ino()) {return Err(io::ErrorKind::PermissionDenied.into())}
  if !same_namespace(c.pid,"pid")? || !same_namespace(c.pid,"user")? || !same_namespace(c.pid,"mnt")? || !same_namespace(expected_parent,"pid")? || !same_namespace(expected_parent,"user")? || !same_namespace(expected_parent,"mnt")? || !live(&parent_pin) || proc_stat(expected_parent)?!=parent_first || !peer_owns_file(c.pid,&file)? || expected_parent<=0 || first.0!=expected_parent || !live(&pinned) || proc_stat(c.pid)?!=first ||
     (after.dev(),after.ino(),after.len(),after.nlink())!=(before.dev(),before.ino(),before.len(),1) ||
     (named.dev(),named.ino())!=(before.dev(),before.ino()) {return Err(io::ErrorKind::PermissionDenied.into())}
- peer.write_all(b"G")?;let mut report=[0u8;10];peer.read_exact(&mut report)?;
- if report != *b"W\0\0\0\0S\0\0\0\0" {return Err(io::ErrorKind::InvalidData.into())}
- println!("REPORT W=0 S=0");io::stdout().flush()?;Ok(())
+ peer.write_all(b"G")?;
+ let mut write=[0u8;5];peer.read_exact(&mut write)?;if write[0]!=b'W'{return Err(io::ErrorKind::InvalidData.into())}
+ let w=i32::from_be_bytes(write[1..5].try_into().map_err(|_|io::ErrorKind::InvalidData)?);
+ if w<0 {return Err(io::ErrorKind::InvalidData.into())}
+ if w>0 {let mut trailing=[0];if peer.read(&mut trailing)?!=0{return Err(io::ErrorKind::InvalidData.into())}println!("REPORT W={w}");io::stdout().flush()?;return Ok(())}
+ let mut sync=[0u8;5];peer.read_exact(&mut sync)?;if sync[0]!=b'S'{return Err(io::ErrorKind::InvalidData.into())}
+ let s=i32::from_be_bytes(sync[1..5].try_into().map_err(|_|io::ErrorKind::InvalidData)?);
+ if s<0 {return Err(io::ErrorKind::InvalidData.into())}let mut trailing=[0];if peer.read(&mut trailing)?!=0{return Err(io::ErrorKind::InvalidData.into())}
+ println!("REPORT W=0 S={s}");io::stdout().flush()?;Ok(())
 }

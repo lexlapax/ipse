@@ -248,6 +248,7 @@ fn main() {
       fn start_scoped_stage(&mut self)->Result<(),()>{Ok(())}
       fn next_event(&mut self)->Result<barrier_orchestration::Event,()>{self.events.pop_front().ok_or(())}
       fn verify_pause(&mut self)->Result<(),()>{Ok(())}
+      fn recheck_pause_deadline(&mut self)->Result<(),()>{Ok(())}
       fn apply_error(&mut self)->Result<(),()>{
         self.state=transition(&mut self.devices,&self.e,self.state,Table::Error);
         if self.state==State::ErrorActive {Ok(())} else {Err(())}
