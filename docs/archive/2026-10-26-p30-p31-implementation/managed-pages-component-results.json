@@ -1,0 +1,121 @@
+{
+  "format_reserved_bytes": 6144,
+  "full_target_calendar_failure": {
+    "anchor_pages": 512,
+    "live_pages": 256,
+    "metadata_and_format_reserve": 3405952,
+    "headroom": -616576,
+    "conditional_arithmetic_fits": false
+  },
+  "body_auth": "actual DomainAuth controls; synthetic43-byte tags only in page calculations",
+  "performance_qualified": false,
+  "measurement_native_calls": 0,
+  "metadata_allowance": 2789376,
+  "freeze_entries": 4057,
+  "remaining": [
+    "actual C/SDK/Normalizer integration and first native-absence/Identity witness",
+    "native management permit consumption and retirement mint semantics",
+    "32-unit combined typed change closure and charged SDK reservation",
+    "versioned receipt/import/migration refusal and authenticity",
+    "actual physical quota and annual/endurance publishing",
+    "existing failed3724 old store unchanged"
+  ],
+  "preliminary_job_overlap": true,
+  "final_jobs_sequential": true,
+  "limits": {
+    "job_deadline_ms": 30000,
+    "sampled_beam_bytes": 536870912,
+    "worker_heap_words": 16000000
+  },
+  "measurement_jobs": 6,
+  "freeze_before_after_sha256": "546b442253e19ef11a428e0bb94ebfac127af1edd7c139dbec4c9ecd0edbf817",
+  "measurement_publications": 0,
+  "acceptance_passed": false,
+  "private_graph": "/tmp/ipse-managed-pages-component-20261027-02",
+  "scope": "host-private codec/local planner prerequisite; no product adoption",
+  "source": {
+    "dev/knowledge/managed_pages_measure.exs": {
+      "bytes": 7832,
+      "sha256": "1166685ed38f4059650e7ce0c061e1f69127d0f55a8cc09667647579ad8e6d4c"
+    },
+    "lib/ipse/extension/collection/managed_pages.ex": {
+      "bytes": 26755,
+      "sha256": "49342de0b48de4304ffec17169887dca54b934cea6a849fe11a739b23a17ebfd"
+    },
+    "lib/ipse/extension/collection/managed_pages/planner.ex": {
+      "bytes": 9836,
+      "sha256": "54c86cbf341d85f47f2278a7f91ef703b810d1018aa421a0595c164ae8314923"
+    },
+    "test/ipse/extension/collection_managed_pages_test.exs": {
+      "bytes": 24452,
+      "sha256": "9659c7ed9082964ae46548b98bf800eb09a0b51431737b28d4604c8d13664872"
+    }
+  },
+  "tests": {
+    "passed": 10,
+    "pure": 5,
+    "actual_identity_domain_auth": 5,
+    "actual_collection_publications": 0,
+    "collection_observations": "explicit trusted callback fixtures"
+  },
+  "catalog8_calendar": {
+    "anchor_pages": 512,
+    "live_pages": 256,
+    "metadata_and_format_reserve": 2696959,
+    "headroom": 92417,
+    "conditional_arithmetic_fits": true
+  },
+  "payload_total": 22376448,
+  "format_actual_value_bytes": 1018,
+  "population": {
+    "persistent": 200,
+    "year_live": 3642,
+    "anchors": 20220,
+    "session_choices": 2730,
+    "pins": 100,
+    "nominal_days": 365,
+    "nominal_cycles": 10000,
+    "actual_endurance_operations": 0,
+    "source_epoch_simulation": false
+  },
+  "version": 1,
+  "initial_combined_job": {
+    "cause": "unknown; no final report",
+    "output": "(EXIT from main process) killed",
+    "exit_code": 1,
+    "preserved": "first-measurement-failure",
+    "subsequent_design": "separate anchor/live jobs; framed canonical-row digest replaces whole-population JSON copy; unchanged guards"
+  },
+  "shared_safe": {
+    "anchor_pages": 512,
+    "live_pages": 256,
+    "metadata_and_format_reserve": 2735273,
+    "headroom": 54103,
+    "conditional_arithmetic_fits": true
+  },
+  "logical_total_limit": 25165824,
+  "harness_diagnostics": [
+    "initial strict harness expected [] rather than diagnostic map",
+    "private recompile initially reported module redefinition; standard ignore_module_conflict used",
+    "1.18 formatter harness initially appended an extra newline",
+    "1.18 strict harness initially expected [] rather than diagnostic map"
+  ],
+  "helper_sha256": "d84d77d77dc2393b36d9353b6e6d215ec86dc5ba33fe9ad7c8f378130043f91b",
+  "strict": {
+    "modules": 2,
+    "elixir_1185": true,
+    "elixir_1204": true,
+    "diagnostics": [],
+    "format_files": 4,
+    "elixir_118_exunit": false
+  },
+  "shared_calendar": {
+    "anchor_pages": 512,
+    "live_pages": 256,
+    "metadata_and_format_reserve": 2632872,
+    "headroom": 156504,
+    "conditional_arithmetic_fits": true
+  },
+  "payload_each": 6144,
+  "measurement_model_calls": 0
+}

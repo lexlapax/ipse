@@ -672,6 +672,62 @@ their reviewed integration. Exercise the pure selector and native view suites:
 mix test test/ipse/extension/collection_directory_test.exs test/ipse/extension/collection_neighbors_test.exs test/ipse/extension/collection_read_view_test.exs test/ipse/extension/collection_empty_read_view_test.exs
 ```
 
+## Prepare a local authenticated-page repair
+
+`Collection.ManagedPages` is the internal schema-3 codec for a separately selected
+managed-storage adapter. The current SDK normalizer still uses its schema-2
+metadata. Calling the codec does not select a new format, adopt an old store or
+grant publication authority. Its fixed descriptor names the page syntax,
+immutable geometry, authentication context and retirement encodings.
+
+Start with a pure roundtrip after building Mix:
+
+```elixir
+alias Ipse.Extension.Collection.ManagedPages, as: Pages
+lineage = Ipse.JSON.sha256("synthetic source")
+row = %{"clocks" => [0, nil, nil, nil], "choice" => nil, "retirement" => nil}
+{:ok, body} = Pages.pack(:anchor, Pages.zero(:anchor), %{lineage => row})
+{:ok, %{entries: %{^lineage => ^row}}} = Pages.unpack(:anchor, Pages.zero(:anchor), body)
+true = Pages.encoded_size(body) <= 6144
+```
+
+This parses closed bytes with a synthetic tag for sizing; it mints no tag or
+choice. Live rows retain lineage, value, recipe and historical-policy hashes.
+Both historical hashes are charged per row even when a page deduplicates their
+actual dictionary. Anchor/live virtual capacities are 4,544/4,542 bytes, with
+nonsingle minimum occupancy 2,104/2,180 and at most 128 decoded rows. Actual
+complete JSON values must still fit 6,144 bytes. Compression cannot bypass
+virtual-byte or row limits.
+
+Inside the actual checked managed callback, use `Pages.open/4` with the selected
+record and its actual neighbor observation. It verifies exact reference bytes,
+the DomainAuth tag, canonical body, range and old minimum occupancy. Verify the
+fixed format through `open_format/2` separately. `Planner.plan/4` accepts one or
+two unique semantic edits and that held read closure. It authenticates every
+selected/buddy page, performs bounded local splits/merges, and returns at most
+three changes per edit. It reads at most four old page values; each directory
+lookup still charges four of the callback's 32 shared observation units.
+
+After revalidating semantic permission, `Planner.seal_changes/3` binds the plan to
+the same root summary/state/hash/manifest. New seals use the publishing operation
+and old **global generation + 1**, including when an inherited page's revision
+is older. A removed page retains its exact positive old revision. A caller must
+reserve the combined metadata changes and bytes before publication; the existing
+two-sidecar SDK reserve cannot admit an arbitrary local repair.
+
+Shaped record/neighbor maps cannot establish actual Collection provenance.
+Native absence, Identity prepared/active state, current source/policy checks and
+final completion remain the calling adapter's responsibility. Parsing a
+`native_management` capsule never constructs a fresh review permit. Compact
+retirement addresses only the containing lineage's fixed literal
+`note.<lineage>` derivative. It cannot retire pending/history/paraphrase values
+or arbitrary prefixes. There is no unsigned-schema-2 reseal/import path.
+
+Run `mix test test/ipse/extension/collection_managed_pages_test.exs` for pure
+codec checks and actual Identity/DomainAuth controls. Their Collection
+observations are trusted fixtures; they perform no Collection publication.
+Use actual held-closure integration tests before making a current-storage claim.
+
 ## Understand sealing and recovery bounds
 
 | Resource | Host ceiling |
