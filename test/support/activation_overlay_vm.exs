@@ -516,6 +516,73 @@ defmodule Ipse.Test.ActivationOverlayVM do
     assert actual.extensions == []
     assert actual.semantic_admission["status"] == "off"
   end
+
+  test "status and readiness preserve both ledgers' pending bytes even on a malformed read", c do
+    g = grant(c)
+    identity = Path.join(c.home, "project-identities")
+    control = Path.join(g.control, g.binding["project_id"])
+
+    pending =
+      Enum.map([identity, control], fn directory ->
+        path = Path.join(directory, ".pending-" <> Ipse.Usage.id())
+        File.write!(path, "preserved pending state")
+        File.chmod!(path, 0o600)
+        path
+      end)
+
+    index = File.read!(Path.join(identity, "index.json"))
+    bytes = File.read!(Path.join(control, "control.json"))
+    assert {:ok, %{ready: true, binding: binding}} = Host.readiness(c.config, c.cwd)
+    assert binding == g.binding
+    assert {:ok, _} = Host.current(c.config, c.cwd)
+    for path <- pending, do: assert(File.read!(path) == "preserved pending state")
+    assert File.read!(Path.join(identity, "index.json")) == index
+    assert File.read!(Path.join(control, "control.json")) == bytes
+    File.write!(Path.join(control, "control.json"), "{}")
+    assert {:error, _} = Host.current(c.config, c.cwd)
+    assert {:error, _} = Host.readiness(c.config, c.cwd)
+    for path <- pending, do: assert(File.read!(path) == "preserved pending state")
+    assert File.read!(Path.join(control, "control.json")) == "{}"
+    assert File.read!(Path.join(identity, "index.json")) == index
+  end
+
+  test "readiness is advisory, never joins, and applies the actual base route and mode ceilings",
+       c do
+    {primary, linked} = worktree(c)
+    g = grant(primary)
+    assert {:ok, %{ready: false, binding: nil}} = Host.readiness(linked.config, linked.cwd)
+    assert {:ok, nil} = ProjectIdentity.existing(c.home, linked.cwd)
+    assert {:ok, %{ready: true}} = Host.readiness(c.config, c.cwd)
+
+    assert {:ok, %{ready: false}} =
+             Host.readiness(Map.put(c.config, :extensions_disabled, true), c.cwd)
+
+    assert {:ok, %{ready: false}} =
+             Host.readiness(Map.put(c.config, :parallel_child, true), c.cwd)
+
+    assert {:error, _} = Host.readiness(Map.put(c.config, :timeout_ms, 30_000), c.cwd)
+    assert {:error, _} = Host.readiness(Map.put(c.config, :model, "changed-model"), c.cwd)
+
+    wrong_identity =
+      put_in(g.policy, ["settings", "identity_sha256"], JSON.sha256("stale identity"))
+
+    assert SemanticConsent.policy?(wrong_identity)
+
+    assert {:ok, _} =
+             Consent.replace(
+               g.control,
+               g.binding["project_id"],
+               1,
+               wrong_identity,
+               System.system_time(:millisecond)
+             )
+
+    assert {:ok, %{snapshot: %{"policy" => ^wrong_identity}}} = Host.current(c.config, c.cwd)
+    assert {:error, _} = Host.readiness(c.config, c.cwd)
+    assert {:error, _} = Host.fresh(c.config, c.cwd)
+    revoke(g)
+    assert {:ok, %{ready: false}} = Host.readiness(c.config, c.cwd)
+  end
 end
 
 ExUnit.after_suite(fn %{failures: failures} ->

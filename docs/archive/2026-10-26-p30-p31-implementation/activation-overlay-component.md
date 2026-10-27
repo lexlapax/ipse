@@ -9,6 +9,12 @@ status. Current explanations belong to
 [the collection SDK](../../developer/collection-sdk.md#review-policy-registries-and-activation-data)
 and [operator configuration](../../operator/configuration.md#add-optional-behavior-or-recover-a-changed-configuration).
 
+Follow-up independent review confirmed that this checkpoint's `current/2` entered
+ordinary recovery and reclaimed pending files during inspection. The
+[nonrepairing-reader repair](activation-readonly-repair.md) supersedes that claim
+with explicit existing-only readers and frozen reproduction evidence. The source
+bindings and original author outcomes below remain unchanged historical facts.
+
 ## Boundary and reviewed exceptions
 
 `Config.Activation` applies an already protected settings-v2 activation only

@@ -87,10 +87,57 @@ defmodule Ipse.Config.Activation do
       if is_nil(binding) do
         {:ok, %{binding: nil, snapshot: nil}}
       else
-        ProjectIdentity.with_binding(config[:home], cwd, binding, fn _ ->
+        ProjectIdentity.with_existing_binding(config[:home], cwd, binding, fn _ ->
           with {:ok, snapshot} <- existing_snapshot(config[:home], binding["project_id"]),
                do: {:ok, %{binding: binding, snapshot: snapshot}}
         end)
+      end
+    end
+  rescue
+    _ -> @error
+  end
+
+  @doc """
+  Check current nonjoining activation readiness without preparing effect authority or repairing state.
+
+  The result is instantaneous advisory data. Every Session admission/effect must
+  perform its own current checks; this is neither a grant nor an absence witness.
+  """
+  def readiness(config, cwd) do
+    config = restore_base(config)
+
+    with {:ok, %{binding: binding, snapshot: snapshot} = current} <- current(config, cwd) do
+      policy = if is_map(snapshot), do: snapshot["policy"]
+
+      cond do
+        is_nil(binding) or child?(config) or config[:extensions_disabled] === true ->
+          {:ok, Map.put(current, :ready, false)}
+
+        is_nil(policy) ->
+          {:ok, Map.put(current, :ready, false)}
+
+        not SemanticConsent.policy?(policy) ->
+          @error
+
+        is_nil(get_in(policy, ["settings", "activation"])) or
+          policy["expires_at_ms"] <= System.system_time(:millisecond) or
+            not scope_matches?(policy, binding) ->
+          {:ok, Map.put(current, :ready, false)}
+
+        true ->
+          ProjectIdentity.with_existing_binding(config[:home], cwd, binding, fn _ ->
+            Consent.with_existing_policy(
+              SemanticAdmission.control_root(config[:home]),
+              binding["project_id"],
+              snapshot["epoch"],
+              JSON.digest([policy]),
+              System.system_time(:millisecond),
+              fn _ ->
+                with {:ok, _} <- apply_overlay(config, policy, :fresh),
+                     do: {:ok, Map.put(current, :ready, true)}
+              end
+            )
+          end)
       end
     end
   rescue
@@ -198,6 +245,9 @@ defmodule Ipse.Config.Activation do
          {:ok, overlay} <- Activation.derive(policy, config[:base_extension_catalog]),
          true <- Enum.sort(artifact.manifest["capabilities"]) == a["capabilities"],
          {:ok, entries} <- Registry.prepare(overlay.catalog, config[:home]),
+         entry when is_map(entry) <-
+           Enum.find(entries, &(&1.identity["instance"] == a["instance"])),
+         true <- JSON.digest([entry.identity]) == policy["settings"]["identity_sha256"],
          true <-
            Enum.reject(entries, &(&1.identity["instance"] == a["instance"])) ===
              Map.get(config, :extensions, []),
@@ -256,50 +306,7 @@ defmodule Ipse.Config.Activation do
   end
 
   defp existing_snapshot(home, project) do
-    root = SemanticAdmission.control_root(home)
-    directory = Path.join(root, project)
-    uid = File.lstat!(home).uid
-
-    with :ok <- present_directory(root, uid),
-         :ok <- present_directory(directory, uid),
-         {:ok, _} <- present_file(Path.join(directory, "control.json"), uid),
-         {:ok, %{size: 0} = retained} <- present_file(Path.join(directory, ".lock"), uid, false),
-         {:ok, snapshot} <- Consent.snapshot(root, project),
-         {:ok, after_lock} <- File.lstat(Path.join(directory, ".lock")),
-         true <-
-           Map.take(retained, ~w(major_device inode uid mode links size)a) ==
-             Map.take(after_lock, ~w(major_device inode uid mode links size)a) do
-      {:ok, snapshot}
-    else
-      :absent -> {:ok, nil}
-      _ -> @error
-    end
-  end
-
-  defp present_directory(path, uid) do
-    case File.lstat(path) do
-      {:error, :enoent} ->
-        :absent
-
-      {:ok, %{type: :directory, uid: ^uid, mode: mode}} ->
-        if Bitwise.band(mode, 0o077) == 0, do: :ok, else: @error
-
-      _ ->
-        @error
-    end
-  end
-
-  defp present_file(path, uid, absent? \\ true) do
-    case File.lstat(path) do
-      {:error, :enoent} when absent? ->
-        :absent
-
-      {:ok, %{type: :regular, uid: ^uid, links: 1, mode: mode} = stat} ->
-        if Bitwise.band(mode, 0o7777) == 0o600, do: {:ok, stat}, else: @error
-
-      _ ->
-        @error
-    end
+    Consent.existing_snapshot(SemanticAdmission.control_root(home), project)
   end
 
   defp scope_matches?(policy, binding) do

@@ -115,6 +115,52 @@ defmodule Ipse.Extension.ProjectIdentityExistingTest do
     assert {:ok, ^linked} = Identity.existing(c.home, c.linked)
   end
 
+  test "existing-bound callback preserves pending data and refuses stale identity; ordinary recovery reclaims",
+       c do
+    assert {:ok, binding} = Identity.admit(c.home, c.primary, :repository)
+    root = Path.join(c.home, "project-identities")
+    pending = Path.join(root, ".pending-" <> Ipse.Usage.id())
+    File.write!(pending, "retained pending data")
+    File.chmod!(pending, 0o600)
+    before = inventory(c.home)
+
+    assert {:ok, ^binding} =
+             Identity.with_existing_binding(c.home, c.primary, binding, &{:ok, &1})
+
+    assert inventory(c.home) == before
+
+    assert {:error, :stale_project_identity} =
+             Identity.with_existing_binding(
+               c.home,
+               c.primary,
+               Map.put(binding, "scope", "folder"),
+               fn _ ->
+                 flunk("forged binding")
+               end
+             )
+
+    assert inventory(c.home) == before
+    assert {:ok, ^binding} = Identity.with_binding(c.home, c.primary, binding, &{:ok, &1})
+    refute File.exists?(pending)
+  end
+
+  test "an existing-bound advisory result cannot escape after native owner loss", c do
+    assert {:ok, binding} = Identity.admit(c.home, c.primary, :repository)
+    before = inventory(c.home)
+
+    assert {:unknown, _} =
+             Identity.with_existing_binding(c.home, c.primary, binding, fn _ ->
+               controller = Process.get({Ipse.Runner.Transaction, :controller})
+               ref = Process.monitor(controller)
+               {:os_pid, pid} = :erlang.port_info(:sys.get_state(controller).port, :os_pid)
+               assert {_, 0} = System.cmd("kill", ["-KILL", Integer.to_string(pid)])
+               assert_receive {:DOWN, ^ref, :process, ^controller, _}, 5_000
+               {:ok, :must_not_escape}
+             end)
+
+    assert inventory(c.home) == before
+  end
+
   test "ordinary roots and a foreign clone never call authorization or gain membership", c do
     assert {:ok, _} = Identity.admit(c.home, c.primary, :repository)
     folder = Path.join(c.root, "folder")

@@ -49,6 +49,40 @@ defmodule Ipse.Extension.Consent do
 
   def snapshot(root, project), do: transaction(root, project, &{:read, &1})
 
+  @doc "Read only an existing protected ledger, without creation, repair or pending-file reclamation. Absence grants no authority."
+  def existing_snapshot(root, project), do: existing_transaction(root, project, &{:ok, &1})
+
+  @doc "Check an existing exact policy for an advisory read-only host callback, without mutation recovery."
+  def with_existing_policy(root, project, epoch, policy_sha256, now, fun)
+      when is_function(fun, 1) do
+    if uint?(epoch) and JSON.sha256?(policy_sha256) and uint?(now) do
+      existing_transaction(root, project, fn state ->
+        if is_map(state) and policy_matches?(state, epoch, policy_sha256, now),
+          do: existing_callback(fun, Map.take(state, ~w(epoch policy))),
+          else: {:error, :consent_read_refused}
+      end)
+    else
+      {:error, :consent_read_refused}
+    end
+  end
+
+  def with_existing_policy(_, _, _, _, _, _), do: {:error, :consent_read_refused}
+
+  defp policy_matches?(state, epoch, sha, now) do
+    policy = state["policy"]
+
+    state["epoch"] === epoch and is_map(policy) and JSON.digest([policy]) == sha and
+      policy["expires_at_ms"] > now and not quarantined?(state)
+  end
+
+  defp existing_callback(fun, value) do
+    case fun.(value) do
+      {:ok, _} = result -> result
+      {:error, _} = result -> result
+      _ -> {:error, :consent_read_refused}
+    end
+  end
+
   @doc "Check a pinned policy under control, then perform one short host storage read without a period ID."
   def with_policy(root, project, epoch, policy_sha256, now, fun) when is_function(fun, 1) do
     if uint?(epoch) and JSON.sha256?(policy_sha256) and uint?(now) do
@@ -404,6 +438,89 @@ defmodule Ipse.Extension.Consent do
        else: Ipse.Session.Resources.file_effect(fn -> locked(root, project, fun) end)
   end
 
+  defp existing_transaction(root, project, fun) do
+    if Process.get(@lock_key) != nil or
+         Process.get({Ipse.Extension.Collection, :lock_held}) != nil,
+       do: @error,
+       else: Ipse.Session.Resources.file_effect(fn -> existing_locked(root, project, fun) end)
+  end
+
+  defp existing_locked(root, project, fun) do
+    with true <- is_binary(root) and Path.type(root) == :absolute and JSON.sha256?(project),
+         {:ok, uid} <- Ipse.Runner.protected_current_uid(),
+         :ok <- existing_directory(root, uid),
+         :ok <- directory(Path.dirname(root), uid, false),
+         path = Path.join(root, project),
+         :ok <- existing_directory(path, uid),
+         {:ok, control} <- existing_file(Path.join(path, "control.json"), uid, true),
+         {:ok, %{size: 0} = retained} <- existing_file(Path.join(path, ".lock"), uid, false),
+         {:ok, lock} <- Transaction.acquire(Path.join(path, ".lock")) do
+      Process.put(@lock_key, lock)
+
+      result =
+        try do
+          with :ok <- Transaction.check(lock),
+               :ok <- retained_file(Path.join(path, ".lock"), retained),
+               :ok <- Transaction.quota(lock, :flat, @allocated_bytes),
+               {:ok, _} <- pending_names(path, uid),
+               {:ok, state} <- read_present(path, project, uid, control),
+               :ok <- retained_file(Path.join(path, "control.json"), control),
+               {:ok, _} = result <- existing_callback(fun, state),
+               :ok <- retained_file(Path.join(path, ".lock"), retained),
+               :ok <- retained_file(Path.join(path, "control.json"), control),
+               :ok <- Transaction.check(lock) do
+            result
+          end
+        rescue
+          _ -> {:unknown, :consent_transaction_unconfirmed}
+        catch
+          _, _ -> {:unknown, :consent_transaction_unconfirmed}
+        after
+          Process.delete(@lock_key)
+        end
+
+      case Transaction.release(lock) do
+        :ok -> result
+        _ -> {:unknown, :consent_lock_unconfirmed}
+      end
+    else
+      :absent -> existing_callback(fun, nil)
+      _ -> @error
+    end
+  rescue
+    _ -> @error
+  end
+
+  defp existing_directory(path, uid) do
+    case File.lstat(path) do
+      {:error, :enoent} -> :absent
+      {:ok, _} -> directory(path, uid, false)
+      _ -> @error
+    end
+  end
+
+  defp existing_file(path, uid, absent?) do
+    case File.lstat(path) do
+      {:error, :enoent} when absent? ->
+        :absent
+
+      {:ok, stat} ->
+        if safe_file?(stat, uid) and stat.size <= @bytes, do: {:ok, stat}, else: @error
+
+      _ ->
+        @error
+    end
+  end
+
+  defp retained_file(path, expected) do
+    fields = ~w(type major_device minor_device inode uid gid mode links size mtime ctime)a
+
+    with {:ok, actual} <- File.lstat(path),
+         true <- Map.take(actual, fields) === Map.take(expected, fields),
+         do: :ok,
+         else: (_ -> @error)
+  end
+
   defp locked(root, project, fun) do
     with true <- is_binary(root) and Path.type(root) == :absolute and JSON.sha256?(project),
          {:ok, uid} <- Ipse.Runner.protected_current_uid(),
@@ -528,19 +645,23 @@ defmodule Ipse.Extension.Consent do
          }}
 
       {:ok, stat} ->
-        lock = Process.get(@lock_key)
-
-        with true <- safe_file?(stat, uid) and stat.size <= @bytes,
-             {:ok, bytes} <- Transaction.read(lock, ".", "control.json", @bytes),
-             true <- is_binary(bytes) and byte_size(bytes) <= @bytes,
-             {:ok, s} <- JSON.decode_unique(bytes),
-             true <- valid_state?(s, project),
-             do: {:ok, upgrade(s)},
-             else: (_ -> @error)
+        read_present(path, project, uid, stat)
 
       _ ->
         @error
     end
+  end
+
+  defp read_present(_path, project, uid, stat) do
+    lock = Process.get(@lock_key)
+
+    with true <- safe_file?(stat, uid) and stat.size <= @bytes,
+         {:ok, bytes} <- Transaction.read(lock, ".", "control.json", @bytes),
+         true <- is_binary(bytes) and byte_size(bytes) <= @bytes,
+         {:ok, s} <- JSON.decode_unique(bytes),
+         true <- valid_state?(s, project),
+         do: {:ok, upgrade(s)},
+         else: (_ -> @error)
   end
 
   defp write(path, s) do
@@ -603,6 +724,21 @@ defmodule Ipse.Extension.Consent do
   end
 
   defp reclaim_pending(path, uid, lock) do
+    with {:ok, names} <- pending_names(path, uid) do
+      names
+      |> Enum.filter(&pending_name?/1)
+      |> Enum.sort()
+      |> Enum.chunk_every(64)
+      |> Enum.reduce_while(:ok, fn batch, :ok ->
+        case Transaction.reclaim(lock, ".", batch) do
+          :ok -> {:cont, :ok}
+          _ -> {:halt, @error}
+        end
+      end)
+    end
+  end
+
+  defp pending_names(path, uid) do
     with {:ok, names} <- File.ls(path),
          true <- length(names) <= 131,
          true <-
@@ -614,16 +750,7 @@ defmodule Ipse.Extension.Consent do
                _ -> false
              end
            end) do
-      names
-      |> Enum.filter(&pending_name?/1)
-      |> Enum.sort()
-      |> Enum.chunk_every(64)
-      |> Enum.reduce_while(:ok, fn batch, :ok ->
-        case Transaction.reclaim(lock, ".", batch) do
-          :ok -> {:cont, :ok}
-          _ -> {:halt, @error}
-        end
-      end)
+      {:ok, names}
     else
       _ -> @error
     end

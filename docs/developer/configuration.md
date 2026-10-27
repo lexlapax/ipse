@@ -187,10 +187,27 @@ Main timeout. It cannot introduce provider endpoints or profile definitions.
 
 `Config.Activation.current/2` reads existing project identity and Consent state
 without selecting code. Absent identity/control state returns nil and creates no
-new roots. Present malformed state refuses. An already admitted linked worktree
+new roots. It uses `ProjectIdentity.with_existing_binding/4` and
+`Consent.existing_snapshot/2`: retained native locked reads that neither join nor
+reclaim pending files, even when selected control bytes are malformed. Ordinary
+mutation/recovery owners keep their separate `with_binding`/`snapshot` paths and
+intentional reclamation. A read cannot enter those paths merely to validate a
+binding. Present malformed state refuses. An already admitted linked worktree
 retains the bounded native metadata-copy/cleanup checks needed to preserve exact
 nanosecond witnesses; this transient IO is not a new identity admission. Existing
 primary and folder lookups do not need that metadata capture.
+
+Use `Config.Activation.readiness/2` for an advisory status preview, rather than
+calling fresh admission. Its result adds `ready: true | false` to the same
+`binding`/`snapshot` data. It never joins or returns a prepared runtime. A true
+result requires the exact current policy under `Consent.with_existing_policy/6`,
+all ordinary overlay artifact/sidecar/route/base/timeout checks and a nonquarantined
+ledger. The actual prepared Registry identity digest must equal the protected
+policy's saved identity digest. Child/explicitly disabled, absent, expired and
+out-of-scope activation is
+not ready; selected invalid bytes or changed routes refuse. This is an
+instantaneous review result, not a reusable permission or Collection absence
+witness. Admission and every effect still perform their own live checks.
 
 A fresh reciprocal worktree can join an already admitted repository through
 `ProjectIdentity.join_existing/3`. Under the retained index lock, it checks the
@@ -231,6 +248,7 @@ Run the configuration exercise above, then run:
 
 ```sh
 mix test test/ipse/extension/semantic_routes_test.exs test/ipse/extension/project_identity_existing_test.exs
+mix test test/ipse/extension/consent_existing_test.exs test/ipse/extension/consent_test.exs
 mix test test/ipse/config/activation_session_test.exs
 ```
 

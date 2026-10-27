@@ -618,6 +618,9 @@ widen your configured timeout or define a new endpoint/profile. Fresh
 repository-wide selection after its registration and backlink are verified; a
 clone or folder cannot inherit it. This host boundary does not itself provide a
 setup command or establish that stored knowledge is current for model context.
+Activation status/readiness inspection preserves pending control and identity
+files, including when inspection refuses malformed state. A ready result is a
+current advisory check; later admission/effects recheck the protected grant.
 
 Settings stay fixed for a session. `/context refresh` reloads instructions and
 skills only. File/profile/role edits can refuse resume even if effective values

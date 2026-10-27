@@ -278,7 +278,12 @@ Timeout overrides must narrow the base; children restore the base catalog,
 timeout and registry before their own admission. Follow the
 [configuration walkthrough](configuration.md#apply-a-protected-selection-without-changing-base-configuration)
 for noncreating status inspection, reciprocal worktree admission and failure
-fixtures. The pure `draft/3` and `derive/2` functions alone grant no authority.
+fixtures. `current/2` reads only existing retained state; `readiness/2` additionally
+checks the actual overlay under the exact current policy without joining,
+reclaiming pending files or returning a prepared runtime. Its advisory result is
+not an effect ticket or Collection absence witness. Ordinary intentional mutation
+recovery remains separate. The pure `draft/3` and `derive/2` functions alone grant
+no authority.
 
 ## Keep approval and replay facts distinct
 

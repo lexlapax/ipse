@@ -94,6 +94,12 @@ defmodule Ipse.Extension.ProjectIdentity do
     existing_read(home, cwd, nil)
   end
 
+  @doc "Revalidate an existing exact binding for a short read-only host callback without join, repair or reclaim."
+  def with_existing_binding(home, cwd, binding, fun) when is_map(binding) and is_function(fun, 1),
+    do: existing_read(home, cwd, {:inspect, binding, fun})
+
+  def with_existing_binding(_, _, _, _), do: @error
+
   @doc """
   Join only a reciprocal worktree of an existing repository after a host authorization callback.
 
@@ -154,6 +160,12 @@ defmodule Ipse.Extension.ProjectIdentity do
             {:write, next, value, project, binding} ->
               publish(context, next, value, project, binding, lock)
 
+            {:callback, callback} ->
+              with :ok <- lease(lock, :before) do
+                result = callback.()
+                with :ok <- lease(lock, :after), do: result
+              end
+
             other ->
               other
           end
@@ -169,9 +181,18 @@ defmodule Ipse.Extension.ProjectIdentity do
 
   defp existing_action(context, state, root, authorize) do
     with {:ok, value} <- existing_binding(context, state, root) do
-      if is_nil(value) and is_function(authorize, 1),
-        do: authorized_join(context, state, root, authorize),
-        else: {:ok, value}
+      case authorize do
+        {:inspect, expected, fun} ->
+          if not is_nil(value) and value === expected,
+            do: {:callback, fn -> fun.(value) end},
+            else: {:error, :stale_project_identity}
+
+        fun when is_function(fun, 1) and is_nil(value) ->
+          authorized_join(context, state, root, fun)
+
+        _ ->
+          {:ok, value}
+      end
     end
   end
 

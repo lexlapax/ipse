@@ -1,0 +1,21 @@
+%{
+  result: :ok,
+  scenario: :identity_pending,
+  pending_before: true,
+  pending_after: true,
+  logical_bytes_unchanged: true
+}
+%{
+  result: :ok,
+  scenario: :valid_control_pending,
+  pending_before: true,
+  pending_after: true,
+  logical_bytes_unchanged: true
+}
+%{
+  result: :error,
+  scenario: :malformed_control_pending,
+  pending_before: true,
+  pending_after: true,
+  logical_bytes_unchanged: true
+}

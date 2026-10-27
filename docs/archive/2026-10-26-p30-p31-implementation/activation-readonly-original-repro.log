@@ -1,0 +1,14 @@
+%{
+  result: :ok,
+  scenario: :identity_pending,
+  pending_before: true,
+  pending_after: true,
+  logical_bytes_unchanged: true
+}
+** (MatchError) no match of right hand side value:
+
+    true
+
+    /tmp/ipse-activation-nonrepair-20261026-02/nonrepair-current-repro.exs:22: anonymous fn/2 in :elixir_compiler_3.__FILE__/1
+    (elixir 1.20.4) lib/enum.ex:1725: Enum."-map/2-lists^map/1-1-"/2
+    /tmp/ipse-activation-nonrepair-20261026-02/nonrepair-current-repro.exs:6: (file)
