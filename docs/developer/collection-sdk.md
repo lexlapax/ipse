@@ -136,6 +136,67 @@ capture needs a separately validated original path receipt; printed or truncated
 arguments cannot supply one. A native answer such as `2` proves those original
 answer bytes, not an assistant premise selected by that answer.
 
+## Validate managed policy data before connecting an adapter
+
+[`SemanticConsent`](../../lib/ipse/extension/semantic_consent.ex) keeps policy
+settings version 1 unchanged. Its version-2 data contract separates reusable
+constraints and validity recipes from exact effect mappings. This pure contract
+does not activate an artifact or make an existing `collection.call` a managed
+publication. An adapter must explicitly support the new operation and its own
+versioned binding; unsupported versions fail closed.
+
+Version 2 adds three required fields: `constraints`, `recipes` and `activation`.
+The first two are registries keyed by each value's canonical
+`Ipse.JSON.digest([value])`. Each permits at most eight entries. Publication
+mappings refer to `constraints_sha256` and `recipe_sha256` and declare the distinct
+`collection.managed` inner operation. Read mappings keep `collection.call` and
+provide a sorted unique `managed_read` list of one to eight recipe hashes.
+Each returned record needs exactly one matching reviewed recipe. Helpers
+`constraints/2`, `recipe/2` and `managed_recipes/2` resolve these data references;
+they grant no permission. Missing, aliased, unused, conflicting or mixed-version
+references refuse. The original four mapping identity fields still determine the
+exact effect; a worker cannot add its own constraint or recipe fields.
+
+All settings, including registries and activation, still fit **16 KiB/depth
+twelve**. The whole policy remains independently bounded at 32 KiB and its saved
+admission descriptor at 64 KiB. Registry deduplication shares identical reviewed
+constraints instead of widening ordinary SDK objects. A setup adapter must report
+capacity refusal rather than remove fields to make a policy fit.
+
+[`ManagedRecipe`](../../lib/ipse/extension/managed_recipe.ex) validates finite
+JSON-field selectors and reviewed class/age/origin rules. Its `extract/4` accepts
+only exact members of the host-authenticated source set; proof-shaped JSON alone
+does not meet this prerequisite. `source_identity/1` hashes the original source
+identity fields using the fixed `source.identity.v1` projection. A literal record
+uses that lineage in its key and must reproduce the authenticated quote exactly.
+Typed tool outcomes support only the ordinary class. A proposal's identity also
+hashes its exact text, stays ineligible for current context, and permits at most
+seven days. Neither extraction path trusts worker creation/expiry clocks.
+Operator retention extraction requires a separate typed host choice tied to its
+actual target and original observation; a numeric native answer supplies no
+implicit choice or acceptance.
+
+Keep the resulting candidate separate from host truth. A live managed adapter
+must compute first-admission and override deadlines under the same protected
+publication lock, retain anchors after pruning, authenticate sidecars and return
+their authoritative metadata separately from raw worker fields. It must prevent
+workers from writing or reading its reserved validity namespace through legacy
+operations. Extraction, a structural schema, or a stored `eligible` field cannot
+replace those checks or the every-dispatch eligibility barrier.
+
+`activation` is explicitly null when absent. Otherwise
+[`Activation`](../../lib/ipse/extension/activation.ex) validates an exact reviewed
+bundle/artifact/sidecar selection, bounded options/capabilities and disclosed
+service references. `derive/2` returns only an operator overlay catalog and stable
+virtual source identity. It preserves the supplied base catalog and refuses
+collisions. Registry still verifies the actual bundle, manifest, options,
+capability ceiling, host/runtime and generation before preparing an identity.
+No service/profile definitions or child grant can come from this activation data.
+A host connecting the overlay must select current protected data only for a fresh
+Session and exact saved data on resume, while retaining the ordinary configuration
+fingerprint and current revocation gates. The pure derivation does not implement
+that Session selection step itself.
+
 ## Keep approval and replay facts distinct
 
 Saved semantic permission uses the explicit `saved_consent` tag. Ordinary
@@ -182,6 +243,7 @@ From a built checkout:
 mix test test/ipse/extension/collection_call_test.exs test/ipse/extension/collection_policy_test.exs
 mix test test/ipse/extension/collection_call_session_test.exs test/ipse/extension/source_read_test.exs
 mix test test/ipse/session/resources_authority_test.exs test/ipse/extension/result_source_test.exs
+mix test test/ipse/extension/managed_recipe_test.exs test/ipse/extension/semantic_consent_v2_test.exs test/ipse/extension/activation_test.exs
 ```
 
 The Session fixture compiles an independent SDK-2 artifact and uses a synthetic
@@ -196,3 +258,7 @@ durable publishing receipt, rather than relying on a fleeting lock-busy interval
 Then run the existing invocation, source and lifecycle regressions. These tests
 prove protocol and ownership behavior on the tested filesystem/platform, not
 human identity, model quality, domain eligibility or installed-user acceptance.
+The pure managed-policy tests use the actual native capture schemas, exact source
+identity/proposal hashes, unchanged JSON limits and explicit v2 pin/effect
+validation. They also require nil historical activation to stay absent and reject
+service-reference substitution, child widening and base-catalog collisions.

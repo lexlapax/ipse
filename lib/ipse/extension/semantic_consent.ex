@@ -19,6 +19,7 @@ defmodule Ipse.Extension.SemanticConsent do
   alias Ipse.{JSON, Extension.Consent, Extension.Mode}
   @error {:error, :semantic_consent_denied}
   @settings ~w(version domain instance identity_sha256 namespace scope sources storage retention routes effects)
+  @v2 ~w(constraints recipes activation)
   @selection ~w(domain namespace scope sources storage retention routes effects limits period_ms expires_at_ms headless)
   @pin ~w(version session_id project_id worktree_id binding_sha256 epoch policy_sha256 identity_sha256 namespace routes_sha256 source_sha256)
   @context ~w(session_id binding identity namespace routes mode source_generation)
@@ -28,12 +29,13 @@ defmodule Ipse.Extension.SemanticConsent do
 
   @doc "Build the exact policy shown by an operator setup UI; does not save or grant it."
   def prepare(binding, identity, selection) do
-    with true <- binding?(binding) and identity?(identity) and keys?(selection, @selection),
+    with true <- binding?(binding) and identity?(identity),
+         {:ok, version, settings_keys} <- selection_shape(selection),
          settings =
            selection
-           |> Map.take(@settings)
+           |> Map.take(settings_keys)
            |> Map.merge(%{
-             "version" => 1,
+             "version" => version,
              "instance" => identity["instance"],
              "identity_sha256" => JSON.digest([identity])
            }),
@@ -162,19 +164,22 @@ defmodule Ipse.Extension.SemanticConsent do
       namespace(policy["project"], policy["settings"]["storage"]["collection"]) ===
         {:ok, policy["settings"]["namespace"]} and
       policy["source_sha256"] == JSON.digest([policy["settings"]["sources"]]) and
-      policy["operations"] ==
-        policy["settings"]["effects"] |> Enum.map(& &1["operation"]) |> Enum.uniq() |> Enum.sort()
+      policy["operations"] == operations(policy["settings"]["effects"]) and
+      activation_matches?(policy)
   rescue
     _ -> false
   end
 
+  defp operations(effects),
+    do: effects |> Enum.map(& &1["operation"]) |> Enum.uniq() |> Enum.sort()
+
   def settings?(settings) do
-    keys?(settings, @settings) and settings["version"] === 1 and
+    is_map(settings) and settings_shape?(settings) and
       id?(settings["domain"]) and id?(settings["instance"]) and
       JSON.sha256?(settings["identity_sha256"]) and JSON.sha256?(settings["namespace"]) and
       scope?(settings["scope"]) and sources?(settings["sources"]) and
       storage?(settings["storage"]) and retention?(settings["retention"]) and
-      routes?(settings["routes"]) and mappings?(settings["effects"]) and
+      routes?(settings["routes"]) and settings_mappings?(settings) and
       Enum.all?(settings["effects"], fn e ->
         e["class"] in ~w(collection.read collection.publish) or
           Enum.any?(settings["routes"], &(&1["operation"] == e["class"]))
@@ -182,6 +187,169 @@ defmodule Ipse.Extension.SemanticConsent do
   rescue
     _ -> false
   end
+
+  @doc "Resolve an already reviewed mapping's constraint; resolution itself grants no permission."
+  def constraints(%{"version" => 1}, %{"constraints" => constraints}) do
+    if Ipse.Extension.CollectionPolicy.valid_constraints?(constraints),
+      do: {:ok, constraints},
+      else: @error
+  end
+
+  def constraints(%{"version" => 2} = settings, mapping) when is_map(mapping),
+    do:
+      registry_value(
+        settings["constraints"],
+        mapping["constraints_sha256"],
+        &Ipse.Extension.CollectionPolicy.valid_constraints?/1
+      )
+
+  def constraints(_, _), do: @error
+
+  @doc "Resolve the exact managed publication recipe from the pinned settings registry."
+  def recipe(%{"version" => 2} = settings, mapping) when is_map(mapping),
+    do:
+      registry_value(
+        settings["recipes"],
+        mapping["recipe_sha256"],
+        &Ipse.Extension.ManagedRecipe.valid?/1
+      )
+
+  def recipe(_, _), do: @error
+
+  @doc "Resolve every reviewed read recipe; a returned record must select exactly one in the host."
+  def managed_recipes(%{"version" => 2} = settings, mapping) do
+    refs = mapping["managed_read"]
+
+    if refs?(refs) do
+      Enum.reduce_while(refs, {:ok, []}, fn ref, {:ok, acc} ->
+        case registry_value(settings["recipes"], ref, &Ipse.Extension.ManagedRecipe.valid?/1) do
+          {:ok, recipe} -> {:cont, {:ok, acc ++ [recipe]}}
+          _ -> {:halt, @error}
+        end
+      end)
+    else
+      @error
+    end
+  rescue
+    _ -> @error
+  end
+
+  def managed_recipes(_, _), do: @error
+
+  defp selection_shape(selection) do
+    cond do
+      keys?(selection, @selection) ->
+        {:ok, 1, @settings}
+
+      keys?(selection, ["version" | @selection ++ @v2]) and selection["version"] === 2 ->
+        {:ok, 2, @settings ++ @v2}
+
+      true ->
+        @error
+    end
+  end
+
+  defp settings_shape?(%{"version" => 1} = settings), do: keys?(settings, @settings)
+  defp settings_shape?(%{"version" => 2} = settings), do: keys?(settings, @settings ++ @v2)
+  defp settings_shape?(_), do: false
+
+  defp settings_mappings?(%{"version" => 1} = settings), do: mappings?(settings["effects"])
+
+  defp settings_mappings?(%{"version" => 2} = settings) do
+    constraints = settings["constraints"]
+    recipes = settings["recipes"]
+    effects = settings["effects"]
+
+    registry?(constraints, &Ipse.Extension.CollectionPolicy.valid_constraints?/1) and
+      registry?(recipes, &Ipse.Extension.ManagedRecipe.valid?/1) and
+      (is_nil(settings["activation"]) or Ipse.Extension.Activation.valid?(settings["activation"])) and
+      mappings_ordered?(effects) and Enum.all?(effects, &mapping_v2?(&1, settings)) and
+      Enum.all?(recipes, fn {_, recipe} ->
+        case registry_value(
+               constraints,
+               recipe["constraints_sha256"],
+               &Ipse.Extension.CollectionPolicy.valid_constraints?/1
+             ) do
+          {:ok, constraint} ->
+            constraint["key_prefix"] == recipe["key_prefix"] and
+              constraint["evidence_path"] == recipe["evidence_path"] and
+              Enum.all?(recipe["rules"], fn rule ->
+                Enum.all?(rule["origins"], &(&1 in constraint["source_categories"]))
+              end)
+
+          _ ->
+            false
+        end
+      end) and registries_referenced?(settings)
+  end
+
+  defp mapping_v2?(mapping, settings) do
+    base_mapping?(Map.take(mapping, @mapping)) and
+      case mapping["class"] do
+        "collection.publish" ->
+          with true <- keys?(mapping, @mapping ++ ~w(constraints_sha256 recipe_sha256)),
+               true <- mapping["inner_op"] == "collection.managed",
+               {:ok, constraint} <- constraints(settings, mapping),
+               {:ok, recipe} <- recipe(settings, mapping) do
+            recipe["constraints_sha256"] == JSON.digest([constraint])
+          else
+            _ -> false
+          end
+
+        "collection.read" ->
+          keys?(mapping, ["managed_read" | @mapping]) and mapping["inner_op"] == "collection.call" and
+            match?({:ok, [_ | _]}, managed_recipes(settings, mapping))
+
+        _ ->
+          keys?(mapping, @mapping)
+      end
+  end
+
+  defp registries_referenced?(settings) do
+    recipes =
+      Enum.flat_map(settings["effects"], fn mapping ->
+        case mapping["class"] do
+          "collection.publish" -> [mapping["recipe_sha256"]]
+          "collection.read" -> mapping["managed_read"]
+          _ -> []
+        end
+      end)
+
+    constraints =
+      Enum.map(settings["recipes"], fn {_, recipe} -> recipe["constraints_sha256"] end)
+
+    Enum.sort(Enum.uniq(recipes)) == Enum.sort(Map.keys(settings["recipes"])) and
+      Enum.sort(Enum.uniq(constraints)) == Enum.sort(Map.keys(settings["constraints"]))
+  end
+
+  defp registry?(registry, validator) do
+    is_map(registry) and map_size(registry) <= 8 and
+      Enum.all?(registry, fn {key, value} ->
+        JSON.sha256?(key) and validator.(value) and key == JSON.digest([value])
+      end)
+  end
+
+  defp registry_value(registry, key, validator) do
+    if is_map(registry) and JSON.sha256?(key) and Map.has_key?(registry, key) and
+         validator.(registry[key]) and JSON.digest([registry[key]]) == key,
+       do: {:ok, registry[key]},
+       else: @error
+  rescue
+    _ -> @error
+  end
+
+  defp refs?(refs),
+    do:
+      is_list(refs) and length(refs) in 1..8 and refs == Enum.sort(Enum.uniq(refs)) and
+        Enum.all?(refs, &JSON.sha256?/1)
+
+  defp activation_matches?(
+         %{"settings" => %{"version" => 2, "activation" => activation}} = policy
+       )
+       when is_map(activation),
+       do: Ipse.Extension.Activation.matches_policy?(activation, policy)
+
+  defp activation_matches?(_), do: true
 
   def pin?(pin) do
     keys?(pin, @pin) and pin["version"] === 1 and uuid?(pin["session_id"]) and
@@ -214,7 +382,7 @@ defmodule Ipse.Extension.SemanticConsent do
   end
 
   defp effect?(e) do
-    keys?(e, @effect) and uuid?(e["id"]) and mapping?(Map.take(e, @mapping)) and
+    keys?(e, @effect) and uuid?(e["id"]) and base_mapping?(Map.take(e, @mapping)) and
       JSON.sha256?(e["request_sha256"]) and JSON.safe_uint?(e["source_generation"]) and
       evidence_rows?(e["sources"]) and
       if(e["class"] == "collection.read", do: e["sources"] === [], else: e["sources"] != []) and
@@ -300,8 +468,11 @@ defmodule Ipse.Extension.SemanticConsent do
         )
 
   defp mappings?(es),
+    do: mappings_ordered?(es) and Enum.all?(es, &mapping?/1)
+
+  defp mappings_ordered?(es),
     do:
-      is_list(es) and length(es) in 1..16 and Enum.all?(es, &mapping?/1) and
+      is_list(es) and length(es) in 1..16 and Enum.all?(es, &is_map/1) and
         length(Enum.uniq_by(es, &Map.take(&1, @mapping))) == length(es) and
         Enum.sort_by(es, &{&1["operation"], &1["class"], &1["outer_sha256"], &1["inner_op"]}) ===
           es
@@ -311,10 +482,14 @@ defmodule Ipse.Extension.SemanticConsent do
       (keys?(e, @mapping) or
          (keys?(e, ["constraints" | @mapping]) and e["class"] == "collection.publish" and
             Ipse.Extension.CollectionPolicy.valid_constraints?(e["constraints"]))) and
-        id?(e["operation"]) and e["class"] in Mode.classes() and
+        base_mapping?(Map.take(e, @mapping)) and e["inner_op"] != "collection.managed"
+
+  defp base_mapping?(e),
+    do:
+      keys?(e, @mapping) and id?(e["operation"]) and e["class"] in Mode.classes() and
         JSON.sha256?(e["outer_sha256"]) and
         ((e["class"] in ~w(collection.read collection.publish) and
-            e["inner_op"] == "collection.call") or
+            e["inner_op"] in ~w(collection.call collection.managed)) or
            (e["class"] in ~w(model.complete embedding.create decision.create) and
               e["inner_op"] == e["class"]))
 
