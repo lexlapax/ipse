@@ -172,7 +172,7 @@ defmodule Ipse.Extension.Host do
   defp execute_export(entry, intent, stage, payload, owner, job_ref, prior_actions) do
     entry =
       if Enum.any?(
-           ~w(host.usage.scan host.state.scan host.results host.sources host.actions.mixed),
+           ~w(host.usage.scan host.state.scan host.results host.sources host.collection.read host.actions.mixed),
            &(&1 in entry.identity["capabilities"])
          ) do
         Map.put(entry, :read_deadline, System.monotonic_time(:millisecond) + 120_000)
@@ -180,7 +180,8 @@ defmodule Ipse.Extension.Host do
         entry
       end
 
-    with {:ok, worker} <-
+    with :ok <- outer_current(entry, intent),
+         {:ok, worker} <-
            Worker.start(
              owner: self(),
              store: entry.store,
@@ -287,6 +288,24 @@ defmodule Ipse.Extension.Host do
       {:unknown,
        "Extension outcome unknown after refusal, failure or interruption. Inspect its receipt before retrying; no callback was replayed."}
 
+  defp outer_current(entry, %{"version" => 3} = intent) do
+    with {:ok, binding} <-
+           Ipse.Extension.SemanticAdmission.outer(
+             entry.host_config,
+             entry.host_cwd,
+             intent["payload"]["session_id"],
+             intent["identity"],
+             intent["descriptor"]
+           ),
+         true <- binding === intent["semantic_binding"] do
+      :ok
+    else
+      _ -> {:error, :semantic_outer_denied}
+    end
+  end
+
+  defp outer_current(_, _), do: :ok
+
   defp continue(worker, %{"kind" => "host_call"} = response, entry, owner, job_ref, actions) do
     with {:ok, request} <- Actions.proposal(response, entry.identity),
          true <- Actions.allowed?(entry.identity, request, actions),
@@ -359,6 +378,9 @@ defmodule Ipse.Extension.Host do
 
   defp execute_action(context, intent, %{"op" => "decision.create"}),
     do: Ipse.Extension.DecisionCall.execute(context, intent)
+
+  defp execute_action(context, intent, %{"op" => "collection.call"}),
+    do: Ipse.Extension.CollectionCall.execute(context, intent)
 
   defp execute_action(context, intent, %{"op" => "mcp.call"}),
     do: Ipse.Extension.MCPCall.execute(context, intent)

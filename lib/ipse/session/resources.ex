@@ -68,6 +68,18 @@ defmodule Ipse.Session.Resources do
     end
   end
 
+  @doc false
+  def authorized_effect?(worker, caller) when is_pid(worker) and is_pid(caller) do
+    case Registry.lookup(Ipse.Registry, {__MODULE__, worker}) do
+      [{scope, _}] -> GenServer.call(scope, {:authorized_effect, worker, caller})
+      _ -> false
+    end
+  catch
+    :exit, _ -> false
+  end
+
+  def authorized_effect?(_, _), do: false
+
   def close(scope) do
     GenServer.call(scope, :close, 5_000)
   catch
@@ -143,6 +155,18 @@ defmodule Ipse.Session.Resources do
       {:reply, {:error, :cleanup_scope_closed}, state}
     end
   end
+
+  def handle_call(
+        {:authorized_effect, worker, caller},
+        {owner, _},
+        %{owner: owner, worker: worker, closed: false} = state
+      ) do
+    {:reply,
+     Process.alive?(owner) and Process.alive?(worker) and Process.alive?(caller) and
+       (caller == worker or Map.has_key?(state.effects, caller)), state}
+  end
+
+  def handle_call({:authorized_effect, _, _}, _, state), do: {:reply, false, state}
 
   def handle_call(action, _, state) when action in [:close, :finish] do
     state = close_resources(state)

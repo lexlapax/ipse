@@ -256,7 +256,7 @@ defmodule Ipse.Session.SourceIndex do
            intent["session_id"] == index.session_id and outcome["session_id"] == index.session_id,
          true <-
            Enum.all?(
-             ~w(epoch_id tool_id turn_id request_id approval),
+             ~w(version epoch_id tool_id turn_id request_id approval semantic_binding),
              &(intent[&1] == outcome[&1])
            ),
          true <- Journal.source_matches?(outcome["tool_source"], intent),
@@ -545,6 +545,39 @@ defmodule Ipse.Session.SourceIndex do
   end
 
   def quote(_, _), do: @error
+
+  @doc "Host-only original-source proof; file/external content needs a separate validated path receipt."
+  def resolve_proof(%__MODULE__{} = index, request) do
+    with {:ok, quote} <- __MODULE__.quote(index, request),
+         item when is_map(item) <- index.entries[quote["occurrence_id"]],
+         true <-
+           item.kind in ~w(input.original input.operator_answer answer.original tool.outcome) do
+      {:ok,
+       %{
+         "version" => 1,
+         "window_id" => index.window_id,
+         "generation" => index.generation,
+         "policy_generation" => index.policy_generation,
+         "proof" =>
+           quote
+           |> Map.take(
+             ~w(occurrence_id version_id origin coverage start_byte end_byte quote_sha256 content_sha256)
+           )
+           |> Map.merge(%{
+             "version" => 1,
+             "session_id" => index.session_id,
+             "kind" => item.kind,
+             "path" => nil,
+             "quote" => request["quote"],
+             "receipt_sha256" => item.provenance["receipt_sha256"]
+           })
+       }}
+    else
+      _ -> @error
+    end
+  end
+
+  def resolve_proof(_, _), do: @error
 
   @doc "Replay-only structural proof. Historical MACs never authorize a current read."
   def validate_saved_read(index, operation, request, value, historical_window) do

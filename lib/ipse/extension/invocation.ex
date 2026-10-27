@@ -13,6 +13,13 @@ defmodule Ipse.Extension.Invocation do
   def count(events), do: Enum.count(events, &(&1["type"] == "extension_invocation_intent"))
   def validate_intent(event), do: if(valid_intent?(event), do: :ok, else: @error)
 
+  def validate_intent(event, metadata),
+    do:
+      if(valid_intent?(event) and valid_semantic_metadata?(event, metadata),
+        do: :ok,
+        else: @error
+      )
+
   def intent(
         identity,
         descriptor,
@@ -21,7 +28,8 @@ defmodule Ipse.Extension.Invocation do
         turn_id,
         parent_call_id,
         parent_request_id,
-        approval
+        approval,
+        semantic_binding \\ nil
       ) do
     id = Ipse.Usage.id()
 
@@ -34,7 +42,7 @@ defmodule Ipse.Extension.Invocation do
       "arguments" => arguments
     }
 
-    %{
+    event = %{
       "type" => "extension_invocation_intent",
       "version" => 1,
       "invocation_id" => id,
@@ -46,6 +54,10 @@ defmodule Ipse.Extension.Invocation do
       "parent_request_id" => parent_request_id,
       "approval" => approval
     }
+
+    if approval == "saved_consent",
+      do: event |> Map.put("version", 3) |> Map.put("semantic_binding", semantic_binding),
+      else: event
   end
 
   def build_result(intent, response, actions \\ []) do
@@ -84,7 +96,7 @@ defmodule Ipse.Extension.Invocation do
            intent
            |> Map.merge(%{
              "type" => "extension_invocation_result",
-             "version" => 2,
+             "version" => if(intent["version"] === 3, do: 4, else: 2),
              "delivery" => delivery,
              "elapsed_ms" => elapsed_ms,
              "action_count" => length(actions),
@@ -143,8 +155,11 @@ defmodule Ipse.Extension.Invocation do
 
   def source_call_valid?(_, _, _, _), do: false
 
-  def delivery(%{"version" => 2, "delivery" => delivery}), do: %{"delivery" => delivery}
-  def delivery(%{"version" => 1, "value" => value}), do: %{"value" => value}
+  def delivery(%{"version" => version, "delivery" => delivery}) when version in [2, 4],
+    do: %{"delivery" => delivery}
+
+  def delivery(%{"version" => version, "value" => value}) when version in [1, 3],
+    do: %{"value" => value}
 
   def validate_events(events) do
     with [%{"metadata" => metadata} | _] <- events,
@@ -164,6 +179,7 @@ defmodule Ipse.Extension.Invocation do
         session_id: nil,
         delivery: nil,
         requests: %{},
+        metadata: metadata,
         sources: sources
       }
 
@@ -218,7 +234,7 @@ defmodule Ipse.Extension.Invocation do
          identities,
          catalog
        ) do
-    with true <- valid_intent?(event),
+    with true <- valid_intent?(event) and valid_semantic_metadata?(event, state.metadata),
          true <- is_nil(state.active) and not Map.has_key?(state.intents, event["invocation_id"]),
          true <- map_size(state.intents) < @limit,
          true <- identities[event["identity"]["instance"]] == event["identity"],
@@ -251,7 +267,7 @@ defmodule Ipse.Extension.Invocation do
     id = event["invocation_id"]
 
     with true <-
-           if(event["version"] === 2,
+           if(event["version"] in [2, 4],
              do: valid_saved_result?(event) and ResultSource.published?(state.sources, event),
              else: valid_result?(event)
            ),
@@ -331,6 +347,10 @@ defmodule Ipse.Extension.Invocation do
          true <-
            started["name"] == event["descriptor"]["name"] and
              started["approval"] == event["approval"],
+         true <-
+           event["version"] !== 3 or
+             (started["version"] === 2 and
+                started["semantic_binding"] === event["semantic_binding"]),
          {:ok, args} <- Ipse.JSON.decode_bounded(get_in(call, ["function", "arguments"])),
          true <-
            source_call_valid?(
@@ -367,7 +387,8 @@ defmodule Ipse.Extension.Invocation do
     identity = event["identity"]
 
     Enum.sort(Map.keys(event)) == Enum.sort(intent_keys(event)) and
-      event["type"] == "extension_invocation_intent" and event["version"] === 1 and
+      event["type"] == "extension_invocation_intent" and
+      event["version"] === if(event["approval"] == "saved_consent", do: 3, else: 1) and
       Registry.valid_identity?(identity) and id?(event["invocation_id"]) and
       Catalog.validate_snapshot(%{"version" => 1, "entries" => [descriptor]}) == :ok and
       descriptor["stage"] in identity["capabilities"] and
@@ -382,7 +403,8 @@ defmodule Ipse.Extension.Invocation do
       Enum.all?(~w(session_id turn_id), &id?(payload[&1])) and payload["id"] == descriptor["id"] and
       Catalog.validate_call(descriptor, payload["arguments"]) == :ok and
       event["payload_sha256"] == Ipse.JSON.digest([payload]) and
-      valid_parent?(event) and byte_size(Jason.encode!(event)) <= 65_536
+      valid_parent?(event) and valid_semantic_binding?(event) and
+      byte_size(Jason.encode!(event)) <= 65_536
   rescue
     _ -> false
   end
@@ -391,7 +413,10 @@ defmodule Ipse.Extension.Invocation do
     not Map.has_key?(event, "event_trigger") and
       Ipse.Tools.valid_call_id?(event["parent_call_id"]) and
       id?(event["parent_request_id"]) and
-      event["approval"] in ~w(approved session_allow)
+      event["approval"] in if(event["version"] === 3,
+        do: ["saved_consent"],
+        else: ~w(approved session_allow)
+      )
   end
 
   defp valid_parent?(%{"descriptor" => %{"stage" => "event.job"}} = event) do
@@ -407,12 +432,36 @@ defmodule Ipse.Extension.Invocation do
     do:
       is_nil(event["parent_call_id"]) and is_nil(event["parent_request_id"]) and
         not Map.has_key?(event, "event_trigger") and
-        event["approval"] == "operator_request"
+        event["approval"] ==
+          if(event["version"] === 3, do: "saved_consent", else: "operator_request")
+
+  defp valid_semantic_binding?(%{"version" => 3} = event) do
+    Ipse.Extension.SemanticAdmission.valid_outer_binding?(
+      event["semantic_binding"],
+      event["identity"],
+      event["descriptor"],
+      event["payload"]["session_id"]
+    )
+  end
+
+  defp valid_semantic_binding?(_), do: true
+
+  defp valid_semantic_metadata?(%{"version" => 3} = event, metadata) do
+    Ipse.Extension.SemanticAdmission.valid_outer_binding?(
+      event["semantic_binding"],
+      event["identity"],
+      event["descriptor"],
+      event["payload"]["session_id"],
+      metadata
+    )
+  end
+
+  defp valid_semantic_metadata?(_, _), do: true
 
   defp valid_result?(event) do
     with true <- Enum.sort(Map.keys(event)) == Enum.sort(intent_keys(event) ++ @result_keys),
          true <- event["type"] == "extension_invocation_result",
-         true <- event["version"] === 1,
+         true <- event["version"] in [1, 3],
          true <- valid_intent?(result_intent(event)),
          true <-
            is_integer(event["action_count"]) and
@@ -441,7 +490,7 @@ defmodule Ipse.Extension.Invocation do
 
   defp valid_saved_result?(event) do
     with true <- Enum.sort(Map.keys(event)) == Enum.sort(intent_keys(event) ++ @saved_keys),
-         true <- event["type"] == "extension_invocation_result" and event["version"] === 2,
+         true <- event["type"] == "extension_invocation_result" and event["version"] in [2, 4],
          true <- valid_intent?(result_intent(event)),
          true <- event["identity"]["sdk"] === 2,
          true <- "invoke.result.pages" in event["identity"]["capabilities"],
@@ -470,10 +519,13 @@ defmodule Ipse.Extension.Invocation do
       event
       |> Map.drop(@result_keys ++ @saved_keys)
       |> Map.put("type", "extension_invocation_intent")
-      |> Map.put("version", 1)
+      |> Map.put("version", if(event["version"] in [3, 4], do: 3, else: 1))
 
   defp intent_keys(event),
-    do: @intent_keys ++ if(Map.has_key?(event, "event_trigger"), do: ["event_trigger"], else: [])
+    do:
+      @intent_keys ++
+        if(Map.has_key?(event, "event_trigger"), do: ["event_trigger"], else: []) ++
+        if(event["version"] in [3, 4], do: ["semantic_binding"], else: [])
 
   defp find_call(%{"tool_calls" => calls}, id) when is_list(calls) do
     Enum.find(calls, &(&1["id"] == id))

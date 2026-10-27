@@ -6,6 +6,77 @@ defmodule Ipse.Extension.ResultSourceTest do
 
   @schema %{"type" => "object", "additionalProperties" => true}
 
+  test "protected inline and paged results retain their original closed binding without downgrade" do
+    original = intent()
+    hash = Ipse.JSON.sha256("synthetic")
+
+    pin =
+      Map.new(
+        ~w(project_id worktree_id binding_sha256 policy_sha256 namespace routes_sha256 source_sha256),
+        &{&1, hash}
+      )
+      |> Map.merge(%{
+        "version" => 1,
+        "session_id" => original["payload"]["session_id"],
+        "epoch" => 1,
+        "identity_sha256" => Ipse.JSON.digest([original["identity"]])
+      })
+
+    binding = %{
+      "class" => "collection.publish",
+      "version" => 1,
+      "kind" => "semantic.outer",
+      "namespace" => hash,
+      "artifact_sha256" => original["identity"]["artifact_sha256"],
+      "descriptor_sha256" => Ipse.JSON.digest([original["descriptor"]]),
+      "pin" => pin
+    }
+
+    protected =
+      original
+      |> Map.merge(%{
+        "version" => 3,
+        "approval" => "saved_consent",
+        "semantic_binding" => binding
+      })
+
+    assert :ok = Invocation.validate_intent(protected)
+    assert {:error, _} = Invocation.validate_intent(Map.put(protected, "version", 1))
+    assert {:error, _} = Invocation.validate_intent(protected, %{})
+
+    assert {:ok, inline} =
+             Invocation.build_result(protected, %{
+               "api_version" => 1,
+               "kind" => "result",
+               "value" => %{}
+             })
+
+    assert inline["version"] == 3
+    assert Invocation.result_intent(inline) == protected
+    {^protected, begin, chunks, source} = drain(Jason.encode!(%{"exact" => "bytes"}), protected)
+    assert {:ok, proof, sealed} = ResultSource.seal(source, 20)
+
+    assert {:ok, paged} =
+             Invocation.build_saved_result(protected, ResultSource.descriptor(sealed), [], 21)
+
+    assert paged["version"] == 4
+    assert paged["semantic_binding"] == binding
+    assert Invocation.result_intent(paged) == protected
+    prefix = [protected, begin] ++ chunks ++ [proof.event]
+    assert {:ok, index} = ResultSource.restore(prefix)
+    refute ResultSource.published?(index, paged)
+    assert {:ok, index} = ResultSource.restore(prefix ++ [paged])
+    assert ResultSource.published?(index, paged)
+
+    for invalid <- [
+          Map.put(paged, "version", 2),
+          Map.delete(paged, "semantic_binding"),
+          put_in(paged, ["semantic_binding", "pin", "epoch"], 2)
+        ] do
+      assert {:error, _} = ResultSource.restore(prefix ++ [invalid])
+    end
+  end
+
   test "binds output identity to the original intent, total bytes and exact digest" do
     intent = intent()
     bytes = Jason.encode!(%{"quote" => "a complete quotation"})

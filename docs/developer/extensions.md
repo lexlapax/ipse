@@ -19,6 +19,7 @@ No account or model service is needed.
 | Visible provider text | Text consumer |
 | Canonical counters or configured estimates | Accounting reads |
 | Exact own-Session evidence and host-computed quote offsets | [Source reads](session-sources.md#grant-an-extension-source-access-explicitly) |
+| Evidence-bound local publication under protected saved permission | [Collection SDK](collection-sdk.md) |
 | Optional diagnostic metadata | Observability sink |
 
 A read-only consumer cannot return an action request. An observer cannot enforce
@@ -286,7 +287,8 @@ named prompt/tool/command/service cases; eight scripted assistant replies or exp
 answers; and validated options for selected instances. Cases have 100..60000-ms
 timeouts, default 15000, and optional 1..60000-ms cancellation. Missing answers
 stop at question, without recommendations submitted on the user's behalf.
-Model tools/later mutations remain denied without explicit `--yes`.
+Model tools/later mutations in these fixtures remain denied without explicit
+`--yes`; fixtures do not construct a protected semantic grant.
 
 Cases share scratch home/workspace, with fresh Session IDs for state sequences.
 `{{workspace}}`/`{{home}}` substitute values, not keys, without shell/environment
@@ -345,6 +347,7 @@ Inspect actual input/native/presentation values, receipts/effects, and cleanup.
 Include refusal, owner death, cancellation, expiry, and inert resume for relevant
 changes. [Typed invocations](extension-invocations.md), [state](extension-state.md),
 [effects](extension-effects.md), [events](extension-events.md), and
-[accounting](accounting.md) teach the next contracts. [Testing](testing.md) owns
+[protected collections](collection-sdk.md) teach the next contracts.
+[Accounting](accounting.md) and [Testing](testing.md) own
 installed-runtime and final handoff procedures. Synthetic conformance establishes
 neither real model quality, billing accuracy, every crash schedule, nor OS confinement.

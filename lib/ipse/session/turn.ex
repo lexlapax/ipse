@@ -133,7 +133,14 @@ defmodule Ipse.Session.Turn do
   end
 
   def approve(s, choice, call, args) when choice in [:session_edits, :session_command] do
-    case Ipse.Session.Permissions.grant(s, get_in(call, ["function", "name"]), args, choice) do
+    {:ok, mode} = Ipse.Extension.Mode.capture(s.config)
+
+    result =
+      if Ipse.Extension.Mode.ordinary(mode, true) == :deny,
+        do: {:error, :execution_mode_denied},
+        else: Ipse.Session.Permissions.grant(s, get_in(call, ["function", "name"]), args, choice)
+
+    case result do
       {:ok, permissions, source} ->
         Session.record(s, %{
           "type" => "approval_grant",
@@ -151,6 +158,9 @@ defmodule Ipse.Session.Turn do
   end
 
   def approve(s, allowed, call, args) do
+    {:ok, mode} = Ipse.Extension.Mode.capture(s.config)
+    allowed = allowed == true and Ipse.Extension.Mode.ordinary(mode, true) != :deny
+
     s =
       Session.finish_wait(
         %{s | approval: nil},
@@ -680,7 +690,7 @@ defmodule Ipse.Session.Turn do
 
   defp dispatch_tool(s, call, args) do
     name = get_in(call, ["function", "name"])
-    mode = Map.get(s.config, :approval, :ask)
+    {:ok, execution_mode} = Ipse.Extension.Mode.capture(s.config)
     external = Ipse.MCP.external?(name)
 
     validation =
@@ -726,6 +736,8 @@ defmodule Ipse.Session.Turn do
       Tools.mutating?(name) or external or Catalog.external?(name) or
         name in ["delegate", "delegate_parallel"]
 
+    mode = Ipse.Extension.Mode.ordinary(execution_mode, requires_approval)
+
     grant_source = Ipse.Session.Permissions.source(s, name, args)
 
     cond do
@@ -735,6 +747,26 @@ defmodule Ipse.Session.Turn do
       validation != :ok ->
         {:error, reason} = validation
         tool_result(s, call, reason, "invalid_arguments", "not_decided")
+
+      protected_outer?(s, name) ->
+        {:ok, entry, descriptor} = Catalog.lookup(s.config, "invoke.tool", name)
+        ref = make_ref()
+
+        task =
+          Session.owned_task(fn ->
+            result =
+              Ipse.Extension.SemanticAdmission.outer(
+                s.config,
+                s.cwd,
+                s.id,
+                entry.identity,
+                descriptor
+              )
+
+            {call, args, result}
+          end)
+
+        %{s | phase: :semantic_outer, task: task, job_ref: ref}
 
       requires_approval and mode == :deny ->
         tool_result(
@@ -770,7 +802,49 @@ defmodule Ipse.Session.Turn do
     end
   end
 
-  defp launch_tool(s, call, args, decision) do
+  def semantic_outer_completed(s, {call, args, {:ok, binding}}) do
+    name = get_in(call, ["function", "name"])
+
+    with true <- hd(s.calls) === call,
+         {:ok, entry, descriptor} <- Catalog.lookup(s.config, "invoke.tool", name),
+         true <-
+           Ipse.Extension.SemanticAdmission.valid_outer_binding?(
+             binding,
+             entry.identity,
+             descriptor,
+             s.id
+           ) do
+      {:noreply, launch_tool(s, call, args, "saved_consent", binding)}
+    else
+      _ -> semantic_outer_completed(s, {call, args, :refused})
+    end
+  end
+
+  def semantic_outer_completed(s, {call, _args, _}) do
+    {:noreply,
+     tool_result(
+       s,
+       call,
+       "Saved semantic permission is unavailable or expired; no extension callback executed.",
+       "denied",
+       "policy_denied"
+     )}
+  end
+
+  def semantic_outer_completed(s, _),
+    do: {:noreply, fail(s, "Semantic admission failed; no extension callback executed.")}
+
+  defp protected_outer?(s, name) do
+    descriptor = s.config[:semantic_admission]
+
+    is_map(descriptor) and descriptor["pin"] != nil and
+      case Catalog.lookup(s.config, "invoke.tool", name) do
+        {:ok, entry, _} -> entry.identity["instance"] == descriptor["instance"]
+        _ -> false
+      end
+  end
+
+  defp launch_tool(s, call, args, decision, binding \\ nil) do
     name = get_in(call, ["function", "name"])
     external = Ipse.MCP.tool(s.mcp_tools, name)
 
@@ -787,6 +861,11 @@ defmodule Ipse.Session.Turn do
       "mcp" => if(external, do: Ipse.MCP.manifest(external)),
       "sandbox_requested" => to_string(Map.get(s.config, :sandbox, :off))
     }
+
+    event =
+      if decision == "saved_consent",
+        do: event |> Map.put("version", 2) |> Map.put("semantic_binding", binding),
+        else: event
 
     s =
       if Ipse.Session.ToolLifecycle.recording?(s.tool_lifecycle) do
@@ -870,7 +949,15 @@ defmodule Ipse.Session.Turn do
         true -> s.delegations
       end
 
-    %{s | phase: :tool, task: task, job_ref: job_ref, tool_decision: decision, delegations: count}
+    %{
+      s
+      | phase: :tool,
+        task: task,
+        job_ref: job_ref,
+        tool_decision: decision,
+        delegations: count,
+        invocation: %CurrentInvocation{semantic_binding: binding}
+    }
   end
 
   @doc false

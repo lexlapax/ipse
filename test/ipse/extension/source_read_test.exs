@@ -162,4 +162,30 @@ defmodule Ipse.Extension.SourceReadTest do
                original.window_id
              )
   end
+
+  test "stable evidence agrees with independently resolved host proof and refuses mixed receipts" do
+    {index, _, _, _} = index(Ipse.Usage.id(), "Exact café 雪 evidence")
+    {:ok, list} = SourceIndex.list(index, %{"limit" => 1})
+    handle = hd(list["sources"])["read_handle"]
+    {:ok, page} = SourceIndex.read(index, %{"handle" => handle})
+    request = %{"handle" => page["handle"], "quote" => "café 雪"}
+    {:ok, quote} = SourceIndex.quote(index, request)
+    {:ok, resolved} = SourceIndex.resolve_proof(index, request)
+    assert {:ok, proof} = SourceRead.stable_proof(page, quote, "café 雪")
+    assert proof == resolved["proof"]
+    assert map_size(proof) == 14
+    assert {:error, _} = SourceRead.stable_proof(page, quote, "café")
+
+    assert {:error, _} =
+             SourceRead.stable_proof(
+               Map.put(page, "occurrence_id", Ipse.Usage.id()),
+               quote,
+               "café 雪"
+             )
+
+    assert {:error, _} =
+             SourceRead.stable_proof(Map.put(page, "kind", "tool.content"), quote, "café 雪")
+
+    assert {:error, _} = SourceRead.stable_proof(page, Map.put(quote, "start_byte", 0), "café 雪")
+  end
 end

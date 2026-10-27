@@ -18,7 +18,9 @@ defmodule Ipse.CLIOperatorInputTest do
                  "test/support/operator_cli_pty.rs",
                  "-o",
                  driver
-               ], stderr_to_stdout: true)
+               ],
+               stderr_to_stdout: true
+             )
 
     paths =
       :code.get_path()

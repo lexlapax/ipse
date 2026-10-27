@@ -138,6 +138,7 @@ defmodule Ipse.Journal.Writer do
       case query do
         :snapshot -> {:ok, Ipse.Session.SourceWindow.snapshot(window)}
         :effective_source -> {:ok, window.effective_source}
+        {:proof, request} -> Ipse.Session.SourceIndex.resolve_proof(window.index, request)
         {operation, request} -> Ipse.Session.SourceWindow.execute(window, operation, request)
         _ -> {:error, :source_index_refused}
       end

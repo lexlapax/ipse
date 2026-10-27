@@ -10,7 +10,7 @@ defmodule Ipse.Session.Lifecycle do
          {:ok, reference, data} <- data(source, view, private_view, text, metrics),
          envelope = %{
            "version" => 1,
-           "data_version" => 1,
+           "data_version" => if(record["approval"] == "saved_consent", do: 2, else: 1),
            "event_id" => source["event_id"],
            "type" => type,
            "source" => reference,
@@ -136,7 +136,7 @@ defmodule Ipse.Session.Lifecycle do
 
     Enum.sort(Map.keys(event)) ==
       ~w(correlations data data_version event_id origin source type version view) and
-      event["version"] === 1 and event["data_version"] === 1 and event["origin"] == "host" and
+      event["version"] === 1 and valid_data_version?(event) and event["origin"] == "host" and
       event["view"] == "metadata" and
       Ipse.Journal.valid_source_metadata?(reference) and
       event["event_id"] == reference["event_id"] and
@@ -168,7 +168,8 @@ defmodule Ipse.Session.Lifecycle do
           finality in ~w(final partial)
 
         {key, outcome} when key in ~w(outcome status approval) ->
-          outcome in ~w(ok error result_recorded completed failed cancelled interrupted expired unknown denied conflict answered not_started acknowledged approved session_allow not_decided not_required)
+          outcome in ~w(ok error result_recorded completed failed cancelled interrupted expired unknown denied conflict answered not_started acknowledged approved session_allow not_decided not_required) or
+            (key == "approval" and outcome == "saved_consent" and event["data_version"] === 2)
 
         _ ->
           false
@@ -194,6 +195,12 @@ defmodule Ipse.Session.Lifecycle do
 
   @error {:error, :invalid_lifecycle_event}
   @approval ~w(approved session_allow denied not_decided not_required)
+  defp valid_data_version?(event) do
+    event["data_version"] === 1 or
+      (event["data_version"] === 2 and
+         event["type"] in ~w(tool.started tool.intent_committed tool.outcome_recorded extension.invocation_admitted extension.invocation_recorded extension.action_admitted extension.action_recorded))
+  end
+
   @extensions %{
     "extension_invocation_intent" => {"extension.invocation_admitted", ~w(invocation_id)},
     "extension_invocation_result" => {"extension.invocation_recorded", ~w(invocation_id)},
@@ -278,6 +285,16 @@ defmodule Ipse.Session.Lifecycle do
         "outcome" => ~w(completed failed cancelled)
       })
 
+  defp describe_metadata(%{"type" => "tool_started", "version" => 2} = record) do
+    if record["approval"] == "saved_consent" and
+         Ipse.Extension.SemanticAdmission.valid_outer_receipt?(
+           record["semantic_binding"],
+           record["semantic_binding"]["pin"]["session_id"]
+         ),
+       do: fields("tool.started", record, [], [], [], %{"approval" => ["saved_consent"]}),
+       else: @error
+  end
+
   defp describe_metadata(%{"type" => "tool_started"} = record),
     do: fields("tool.started", record, [], [], [], %{"approval" => @approval})
 
@@ -353,10 +370,14 @@ defmodule Ipse.Session.Lifecycle do
        when is_map_key(@extensions, type) and
               (version === 1 or
                  (version === 2 and
-                    type in ~w(extension_action_intent extension_action_result extension_invocation_result))) do
+                    type in ~w(extension_action_intent extension_action_result extension_invocation_result)) or
+                 (version === 3 and
+                    type in ~w(extension_invocation_intent extension_invocation_result)) or
+                 (version === 4 and type == "extension_invocation_result")) do
     {event, ids} = @extensions[type]
 
-    with {:ok, _, _, _, _, correlations} <- fields(event, record, [], ids),
+    with true <- valid_extension_projection?(record),
+         {:ok, _, _, _, _, correlations} <- fields(event, record, [], ids),
          {:ok, data} <- extension_data(type, record),
          {:ok, correlations} <- trigger(record, correlations) do
       result(event, data, correlations)
@@ -366,6 +387,21 @@ defmodule Ipse.Session.Lifecycle do
   end
 
   defp describe_metadata(_), do: {:error, :unsupported_lifecycle_record}
+
+  defp valid_extension_projection?(%{"version" => version} = record) when version in [3, 4] do
+    record["approval"] == "saved_consent" and
+      Ipse.Extension.Invocation.validate_intent(Ipse.Extension.Invocation.result_intent(record)) ==
+        :ok
+  end
+
+  defp valid_extension_projection?(%{"approval" => "saved_consent"} = record),
+    do:
+      record["version"] === 2 and get_in(record, ["request", "op"]) == "collection.call" and
+        Ipse.Extension.CollectionCall.validate(record["request"]) == :ok and
+        Ipse.Extension.SemanticConsent.pin?(get_in(record, ["effect_binding", "pin"])) and
+        get_in(record, ["effect_binding", "pin", "identity_sha256"]) == record["identity_sha256"]
+
+  defp valid_extension_projection?(_), do: true
 
   defp extension_data("extension_event_result", record),
     do: enum_data(record, %{"outcome" => ~w(acknowledged completed failed unknown not_started)})

@@ -378,8 +378,16 @@ defmodule Ipse.Extension.InvocationTest do
     {:ok, events} = Journal.load(ctx.dir, id)
     {:ok, expected} = Session.restore_context(events)
     :ok = Session.close(pid)
-    reduced = Enum.reject(events, &(get_in(&1, ["message", "ipse_extension_result"]) != nil))
-    assert {:ok, ^expected} = Session.restore_context(reduced)
+
+    missing_middle =
+      Enum.reject(events, &(get_in(&1, ["message", "ipse_extension_result"]) != nil))
+
+    assert {:error, :invalid_tool_lifecycle} = Session.restore_context(missing_middle)
+    result_index = Enum.find_index(events, &(&1["type"] == "extension_invocation_result"))
+    reduced = Enum.take(events, result_index + 1)
+    assert List.last(expected)["content"] == "finished"
+    expected_prefix = Enum.drop(expected, -1)
+    assert {:ok, ^expected_prefix} = Session.restore_context(reduced)
     path = Path.join(ctx.dir, id <> ".jsonl")
     File.write!(path, Enum.map_join(reduced, "\n", &Jason.encode!/1) <> "\n")
     loads = File.read!(ctx.marker)

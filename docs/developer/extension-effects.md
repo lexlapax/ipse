@@ -16,6 +16,7 @@ Choose the host operation that owns the effect:
 | Typed advisory inference | `decision.create` | `host.decision` | `Ipse.Extension.DecisionCall` |
 | Read a successful retained effect | `effect.result.read` | `host.results` | `Ipse.Extension.EffectResult` |
 | Read admitted current-Session evidence | `source.list`, `source.read`, `source.quote` | `host.sources` | `Ipse.Extension.SourceRead` |
+| Read or publish a protected local collection | `collection.call` | `host.collection.read` / `host.collection.write` | `Ipse.Extension.CollectionCall` |
 
 Every operation also needs `host.actions` in the artifact and the operator trust
 ceiling. An installed package, command invocation or answered question grants no
@@ -46,9 +47,12 @@ outer SDK object:
 `Host` validates the closed request and asks the owning Session to admit it.
 Session checks the current invocation, grants, activation lease and operation
 limits. For an effect requiring approval, it shows the complete proposed request
-and its bound execution facts. Headless execution refuses without `--yes`.
+and its bound execution facts. Ordinary headless execution refuses without `--yes`.
 Approving an enclosing model tool or answering a question cannot approve this
-separate effect.
+separate effect. [Protected collection work](collection-sdk.md) uses an explicit
+`saved_consent` path tied to current reviewed policy, source proofs and mode
+ceilings. That narrow path never applies to ordinary file, shell, MCP, service or
+inference actions.
 
 Session syncs the intent before dispatch. Slow work runs in an owned task outside
 the GenServer. Session syncs its result before continuing the worker. Deadline,
@@ -73,7 +77,7 @@ Explicit
 calls, 528 total, under each operation's own grants. Denials count. Questions,
 publications, services and inference are other calls. The read set is state
 get/list/scan, history read, usage read/children/child-read, effect-result read and
-source list/read/quote.
+source list/read/quote and collection status/snapshot/get/inspect/scan.
 Host, Session and recovery each derive these counters from the committed chain.
 
 ## Reuse file and shell ownership

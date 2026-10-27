@@ -88,8 +88,10 @@ Follow [Memory setup](memory.md) first. Commands and standalone services run whi
 idle and return separately from the assistant answer. A command result does not
 automatically enter model context. Model-visible tools use names such as
 `ext__INSTANCE__ID` and ordinary full-argument approval. Invoking a command or
-approving its tool does not approve later writes or inference. Headless effects
-require the broad `--yes` setting. Invalid arguments refuse before initialization.
+approving its tool does not approve later writes or inference. Ordinary headless
+effects require the broad `--yes` setting. A reviewed protected collection policy
+has a separate narrow saved-consent path; its exact Session pin and current policy
+must still pass every publication check. Invalid arguments refuse before initialization.
 
 Most results are schema-checked inline values. SDK-2 tools/commands declaring
 `invoke.result.pages` may return `saved.result`, with `output_id`, `byte_count`,
@@ -182,6 +184,17 @@ values permit 8 KiB. Deletion preserves revision identity against stale writes.
 `host.state.scan` allows at most 512 read steps within two minutes, with sixteen
 records and 12,000 encoded array bytes per page. Receipts can retain private data.
 [Memory](memory.md) provides a complete scoped-note workflow.
+
+Protected collection access is a separate host contract. Declaring
+`host.collection.read` or `host.collection.write` does not save permission, select
+a project, or activate an older Session. A selected reviewed export can use
+`saved_consent` only with its exact protected policy, evidence and execution-mode
+ceilings. Every proposed batch is checked again at publication. This permission
+does not approve ordinary files, shell commands, MCP or other services. A conflict
+or interrupted publication needs inspection before an explicit retry; known
+conflicts can consume conservative operation/byte allowances. The
+[developer contract](../developer/collection-sdk.md) describes the generic SDK;
+use a feature's documented operator setup before expecting this path to activate.
 
 A question closes the worker before displaying `answer CODE VALUE`. Resume restores
 the pending question without executing it. Answering starts its saved continuation,

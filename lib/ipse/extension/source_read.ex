@@ -40,6 +40,8 @@ defmodule Ipse.Extension.SourceRead do
         {operation, Map.delete(request, "op")}
       )
 
+  def stable_proof(page, quote, text), do: Ipse.Extension.source_proof(page, quote, text)
+
   def execute(context, _intent), do: outcome(context.source_read)
 
   def outcome({:ok, value}), do: {:ok, value}

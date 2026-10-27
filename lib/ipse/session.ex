@@ -1123,6 +1123,38 @@ defmodule Ipse.Session do
     do: {:reply, {:error, :extension_action_refused}, s}
 
   def handle_call(
+        {:extension_collection_sources, ref, intent},
+        {caller, _},
+        %{job_ref: ref, task: %{pid: worker}, invocation: %{action: %{intent: intent}}} = s
+      )
+      when ref != nil do
+    reply =
+      with true <- Ipse.Extension.CollectionCall.operation?(intent["request"]),
+           true <- not s.invocation.interrupted,
+           true <- Ipse.Extension.Registry.live?(s.invocation.parent["identity"]),
+           true <- Ipse.Session.Resources.authorized_effect?(worker, caller),
+           {:ok, window} <- Writer.source_query(s.journal_writer, :snapshot),
+           {:ok, context} <-
+             Ipse.Extension.SemanticAdmission.context(s.config, s.id, window["generation"]) do
+        proofs =
+          Enum.map(Map.get(intent["request"], "proofs", []), fn request ->
+            Writer.source_query(s.journal_writer, {:proof, request})
+          end)
+
+        if Enum.all?(proofs, &match?({:ok, _}, &1)),
+          do: {:ok, context, Enum.map(proofs, fn {:ok, proof} -> proof end)},
+          else: {:error, :collection_source_refused}
+      else
+        _ -> {:error, :collection_source_refused}
+      end
+
+    {:reply, reply, s}
+  end
+
+  def handle_call({:extension_collection_sources, _, _}, _, s),
+    do: {:reply, {:error, :collection_source_refused}, s}
+
+  def handle_call(
         {:extension_effect_source, ref, intent, kind, data},
         {caller, _},
         %{
@@ -1961,6 +1993,12 @@ defmodule Ipse.Session do
 
         notify(s, {:done, :error})
         {:stop, :normal, close_epoch(next, "cleanup_failure", false)}
+
+      {:semantic_outer, {:extension_command_outer, request, result}} ->
+        CurrentInvocation.command_outer(s, request, result)
+
+      {:semantic_outer, result} ->
+        Turn.semantic_outer_completed(s, result)
 
       {invocation_phase, {:extension_question, action}}
       when invocation_phase in [:tool, :extension_command, :extension_service, :extension_events] ->

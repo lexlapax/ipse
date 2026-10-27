@@ -56,6 +56,7 @@ resource/offline qualification. No daemon configuration or existing model was ch
 - [Versioned reference projection audit and replay repairs](reference-audit.md).
 - [Sustainable collection storage component and measurement provenance](storage-component.md).
 - [Declarative collection publication constraints](collection-policy-component.md).
+- [Protected collection SDK, source proofs and replay bindings](collection-sdk-component.md).
 - [Native read ownership and staging-frame ordering](native-read-component.md).
 - [Admitted decision operation, incremental review and controls](decision-operation-audit.md).
 - [Optional document parser, bounded staging and package evidence](document-parsers.md).

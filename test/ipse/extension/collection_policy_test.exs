@@ -125,6 +125,13 @@ defmodule Ipse.Extension.CollectionPolicyTest do
              Policy.check(request([absent]), constraints(), [proof()])
   end
 
+  test "a schema-valid replacement requires an explicit advancing floor" do
+    replacement = %{change() | "expected_revision" => 1}
+    r = %{request([replacement]) | "expected_generation" => 1}
+    assert {:error, :collection_policy_refused} = Policy.check(r, constraints(), [proof()])
+    assert :ok = Policy.check(%{r | "advance_floor" => true}, constraints(), [proof()])
+  end
+
   test "review cannot admit open schemas, unknown constraints or malformed field paths" do
     c = constraints()
     refute Policy.valid_constraints?(Map.put(c, "worker_override", true))

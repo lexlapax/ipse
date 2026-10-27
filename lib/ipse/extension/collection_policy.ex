@@ -30,6 +30,7 @@ defmodule Ipse.Extension.CollectionPolicy do
     with true <- valid_constraints?(constraints),
          true <- Ipse.Extension.Collection.valid_request?(request),
          true <- request["op"] == "commit",
+         true <- floor_preserved?(request),
          true <- proofs?(verified_proofs, constraints["source_categories"]),
          true <- Enum.all?(request["changes"], &change?(&1, constraints, verified_proofs)) do
       :ok
@@ -38,6 +39,13 @@ defmodule Ipse.Extension.CollectionPolicy do
     end
   rescue
     _ -> @error
+  end
+
+  defp floor_preserved?(request) do
+    request["advance_floor"] === true or
+      Enum.all?(request["changes"], fn change ->
+        change["expected_revision"] === 0 and change["value"] != nil
+      end)
   end
 
   defp change?(change, constraints, proofs) do

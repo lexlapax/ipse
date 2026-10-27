@@ -27,6 +27,7 @@ defmodule Ipse.Session.Invocation do
             step: 0,
             effect_sources: %{},
             results: [],
+            semantic_binding: nil,
             interrupted: false
 
   @type t :: %__MODULE__{
@@ -61,12 +62,32 @@ defmodule Ipse.Session.Invocation do
       s = Session.enroll_feeds(s)
       owner = self()
       job_ref = make_ref()
+      request = %{stage: stage, name: name, arguments: arguments}
+      admission = s.config[:semantic_admission]
+
+      protected =
+        kind == :command and is_map(admission) and admission["pin"] != nil and
+          admission["instance"] == entry.identity["instance"]
 
       task =
-        Session.owned_task(fn -> Host.invoke_export(stage, name, arguments, owner, job_ref) end)
+        Session.owned_task(fn ->
+          if protected,
+            do:
+              {:extension_command_outer, request,
+               Ipse.Extension.SemanticAdmission.outer(
+                 s.config,
+                 s.cwd,
+                 s.id,
+                 entry.identity,
+                 descriptor
+               )},
+            else: Host.invoke_export(stage, name, arguments, owner, job_ref)
+        end)
 
-      request = %{stage: stage, name: name, arguments: arguments}
-      phase = if kind == :command, do: :extension_command, else: :extension_service
+      phase =
+        if protected,
+          do: :semantic_outer,
+          else: if(kind == :command, do: :extension_command, else: :extension_service)
 
       {:reply, :ok,
        %{
@@ -80,6 +101,45 @@ defmodule Ipse.Session.Invocation do
       _ -> {:reply, {:error, :invalid_extension_call}, s}
     end
   end
+
+  def command_outer(s, request, {:ok, binding}) do
+    with true <- s.invocation.request === request,
+         {:ok, entry, descriptor} <- Catalog.lookup(s.config, request.stage, request.name),
+         true <-
+           Ipse.Extension.SemanticAdmission.valid_outer_binding?(
+             binding,
+             entry.identity,
+             descriptor,
+             s.id
+           ) do
+      owner = self()
+      ref = make_ref()
+
+      task =
+        Session.owned_task(fn ->
+          Host.invoke_export(request.stage, request.name, request.arguments, owner, ref)
+        end)
+
+      {:noreply,
+       %{
+         s
+         | task: task,
+           job_ref: ref,
+           phase: :extension_command,
+           invocation: %{s.invocation | semantic_binding: binding}
+       }}
+    else
+      _ -> command_outer(s, request, :refused)
+    end
+  end
+
+  def command_outer(s, _, _),
+    do:
+      {:noreply,
+       Turn.fail(
+         s,
+         "Saved semantic permission is unavailable or expired; no extension callback executed."
+       )}
 
   def begin(s, ref, stage, name, arguments, phase) do
     origin =
@@ -96,7 +156,9 @@ defmodule Ipse.Session.Invocation do
         end
       else
         if s.invocation.request == %{stage: stage, name: name, arguments: arguments},
-          do: {:ok, nil, nil, "operator_request"},
+          do:
+            {:ok, nil, nil,
+             if(s.invocation.semantic_binding, do: "saved_consent", else: "operator_request")},
           else: :error
       end
 
@@ -114,9 +176,11 @@ defmodule Ipse.Session.Invocation do
              s.turn_id,
              parent_call,
              parent_request,
-             approval
+             approval,
+             s.invocation.semantic_binding
            ),
          :ok <- Invocation.validate_intent(intent) do
+      entry = Map.merge(entry, %{host_config: s.config, host_cwd: s.cwd})
       {clock, entry} = output_clock(entry, descriptor["stage"], ref)
       Session.record(s, intent)
 
@@ -323,13 +387,31 @@ defmodule Ipse.Session.Invocation do
   end
 
   def begin_action(s, request, from, phase) do
-    mode = Map.get(s.config, :approval, :ask)
     mutation = Ipse.Extension.Actions.mutating?(request)
+    {:ok, captured_mode} = Ipse.Extension.Mode.capture(s.config)
+
+    read_outer =
+      get_in(s.invocation.parent || %{}, ["semantic_binding", "class"]) == "collection.read"
+
+    mode =
+      if read_outer and mutation,
+        do: :deny,
+        else: Ipse.Extension.Mode.ordinary(captured_mode, mutation)
+
+    protected =
+      Ipse.Extension.CollectionCall.operation?(request) and mutation and not read_outer and
+        s.invocation.parent["version"] === 3 and
+        get_in(s.invocation.parent, ["semantic_binding", "class"]) == "collection.publish" and
+        Ipse.Extension.Mode.knowledge(captured_mode, "collection.publish") == :ok
 
     approval =
-      if mutation,
-        do: if(mode == :deny, do: "denied", else: "session_allow"),
-        else: "not_required"
+      if protected,
+        do: "saved_consent",
+        else:
+          if(mutation,
+            do: if(mode == :deny, do: "denied", else: "session_allow"),
+            else: "not_required"
+          )
 
     with parent when is_map(parent) <- s.invocation.parent,
          true <- output_timely?(s),
@@ -375,7 +457,7 @@ defmodule Ipse.Session.Invocation do
                }
            }}
 
-        mutation and mode == :ask ->
+        mutation and mode == :ask and not protected ->
           approval_ref = make_ref()
 
           s =
@@ -419,9 +501,10 @@ defmodule Ipse.Session.Invocation do
 
         true ->
           s =
-            if Ipse.Extension.SourceRead.operation?(request),
-              do: Session.ensure_source_window(s),
-              else: s
+            if Ipse.Extension.SourceRead.operation?(request) or
+                 Ipse.Extension.CollectionCall.operation?(request),
+               do: Session.ensure_source_window(s),
+               else: s
 
           {s, source} =
             cond do
@@ -730,6 +813,16 @@ defmodule Ipse.Session.Invocation do
     intent =
       Map.put(action.intent, "approval", if(allowed == true, do: "approved", else: "denied"))
 
+    {:ok, mode} = Ipse.Extension.Mode.capture(s.config)
+
+    allowed =
+      allowed == true and
+        not (get_in(s.invocation.parent, ["semantic_binding", "class"]) == "collection.read" and
+               Actions.mutating?(intent["request"])) and
+        Ipse.Extension.Mode.ordinary(mode, Actions.mutating?(intent["request"])) != :deny
+
+    intent = Map.put(intent, "approval", if(allowed, do: "approved", else: "denied"))
+
     if output_timely?(s) and Ipse.Extension.Registry.live?(s.invocation.parent["identity"]) do
       s = Session.record_extension_action(s, intent)
       s = Session.finish_wait(s, if(allowed == true, do: "approved", else: "denied"))
@@ -780,6 +873,7 @@ defmodule Ipse.Session.Invocation do
       Session.record(s, result)
       Session.record(s, Actions.continuation(question.parent, result))
       s = Session.finish_wait(s, "answered")
+      entry = Map.merge(entry, %{host_config: s.config, host_cwd: s.cwd})
       owner = self()
       job_ref = make_ref()
 
@@ -968,6 +1062,7 @@ defmodule Ipse.Session.Invocation do
 
   defp extension_mcp_target(s, request) do
     with parent when is_map(parent) <- s.invocation.parent,
+         true <- get_in(parent, ["semantic_binding", "class"]) != "collection.read",
          true <- not s.invocation.interrupted,
          true <- Ipse.Extension.Registry.live?(parent["identity"]),
          {:ok, ^request} <-
@@ -984,6 +1079,9 @@ defmodule Ipse.Session.Invocation do
 
   defp extension_effect_binding(s, request) do
     cond do
+      Ipse.Extension.CollectionCall.operation?(request) ->
+        Ipse.Extension.CollectionCall.binding(s.config, s.invocation.parent["identity"], request)
+
       DecisionCall.operation?(request) ->
         DecisionCall.binding(s.config, request)
 
@@ -1053,6 +1151,18 @@ defmodule Ipse.Session.Invocation do
       identity: s.invocation.parent["identity"],
       actions: s.invocation.results
     }
+
+    context =
+      if Ipse.Extension.CollectionCall.operation?(intent["request"]),
+        do:
+          Map.merge(context, %{
+            config: s.config,
+            session_id: s.id,
+            parent: s.invocation.parent,
+            owner: self(),
+            job_ref: s.job_ref
+          }),
+        else: context
 
     context =
       if s.extension_output_clock,

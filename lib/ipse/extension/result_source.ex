@@ -326,7 +326,9 @@ defmodule Ipse.Extension.ResultSource do
   @doc "Validate final saved-result closure; origin and ordered action authority remain separate."
   def commit(%__MODULE__{phase: :sealed} = source, event) do
     with true <- is_map(event),
-         true <- event["type"] == "extension_invocation_result" and event["version"] === 2,
+         true <-
+           event["type"] == "extension_invocation_result" and
+             event["version"] === if(source.intent["version"] === 3, do: 4, else: 2),
          true <-
            Enum.sort(Map.keys(event)) == Enum.sort(Map.keys(source.intent) ++ @final_fields),
          original = Invocation.result_intent(event),
@@ -567,7 +569,11 @@ defmodule Ipse.Extension.ResultSource do
     end
   end
 
-  defp restore_event(%{"type" => "extension_invocation_result", "version" => 2} = event, state) do
+  defp restore_event(
+         %{"type" => "extension_invocation_result", "version" => version} = event,
+         state
+       )
+       when version in [2, 4] do
     with {:ok, source} <-
            active_source(state, %{
              "invocation_id" => event["invocation_id"],

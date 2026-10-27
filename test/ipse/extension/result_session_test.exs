@@ -13,7 +13,11 @@ defmodule Ipse.Extension.ResultSessionTest do
 
       cond do
         config[:reader_only] == true and tool_messages == [] ->
-          request = messages |> Enum.filter(&(&1["role"] == "user")) |> List.last()
+          request =
+            messages
+            |> Enum.filter(&(&1["role"] == "user" and not Map.has_key?(&1, "ipse_reference")))
+            |> List.last()
+
           call("read", "saved_result_read", Jason.decode!(request["content"]))
 
         published && published["ipse_extension_result"] && is_nil(read) ->

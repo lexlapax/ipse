@@ -33,6 +33,16 @@ defmodule Ipse.Journal.SourceWindowTest do
 
     assert {:ok, after_append} = Writer.source_query(writer, :snapshot)
     assert after_append["count"] == 1
+    assert {:ok, page} = Writer.source_query(writer, {"source.list", %{"limit" => 1}})
+    [row] = page["sources"]
+    proof_request = %{"handle" => row["read_handle"], "quote" => "original"}
+    assert {:ok, proof} = Writer.source_query(writer, {:proof, proof_request})
+    assert proof["generation"] == after_append["generation"]
+    assert proof["proof"]["origin"] == "unattended_input"
+
+    assert {:error, _} =
+             Task.async(fn -> Writer.source_query(writer, {:proof, proof_request}) end)
+             |> Task.await()
 
     assert {:error, _} =
              Task.async(fn -> Writer.source_query(writer, {"source.list", %{"limit" => 1}}) end)

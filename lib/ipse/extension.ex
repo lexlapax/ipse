@@ -14,6 +14,70 @@ defmodule Ipse.Extension do
       _ -> {:error, :invalid_extension_value}
     end
   end
+
+  @doc "Build untrusted evidence JSON from public read/quote receipts; the host resolves it again before publication."
+  def source_proof(page, quote, text) do
+    with true <- is_map(page) and is_map(quote) and is_binary(text),
+         true <- String.valid?(text) and byte_size(text) in 1..8192,
+         true <- source_page?(page),
+         true <- source_quote?(quote),
+         true <-
+           page["kind"] in ~w(input.original input.operator_answer answer.original tool.outcome),
+         true <-
+           Enum.all?(
+             ~w(occurrence_id version_id chunk_id origin coverage content_sha256),
+             &(page[&1] === quote[&1])
+           ),
+         true <- Ipse.JSON.sha256(text) == quote["quote_sha256"],
+         start = quote["start_byte"] - page["offset"],
+         bytes = quote["end_byte"] - quote["start_byte"],
+         true <-
+           start >= 0 and bytes == byte_size(text) and start + bytes <= byte_size(page["text"]),
+         true <- binary_part(page["text"], start, bytes) == text,
+         receipt when is_binary(receipt) <- page["provenance"]["receipt_sha256"],
+         true <- Ipse.JSON.sha256?(receipt) do
+      {:ok,
+       quote
+       |> Map.take(
+         ~w(occurrence_id version_id origin coverage start_byte end_byte quote_sha256 content_sha256)
+       )
+       |> Map.merge(%{
+         "version" => 1,
+         "session_id" => page["window"]["session_id"],
+         "kind" => page["kind"],
+         "path" => nil,
+         "quote" => text,
+         "receipt_sha256" => receipt
+       })}
+    else
+      _ -> {:error, :source_index_refused}
+    end
+  rescue
+    _ -> {:error, :source_index_refused}
+  end
+
+  defp source_page?(page) do
+    validate(page) == :ok and page["version"] === 1 and
+      Enum.sort(Map.keys(page)) ==
+        ~w(chunk_id complete content_sha256 coverage handle kind next occurrence_id offset origin original_bytes provenance reason text version version_id window) and
+      is_map(page["window"]) and page["window"]["version"] === 1 and
+      is_binary(page["window"]["session_id"]) and
+      Regex.match?(~r/\A[0-9a-f]{32}\z/, page["window"]["session_id"]) and
+      Ipse.JSON.safe_uint?(page["offset"]) and is_binary(page["text"]) and
+      String.valid?(page["text"]) and page["coverage"] in ~w(available partial) and
+      Ipse.JSON.sha256?(page["content_sha256"])
+  end
+
+  defp source_quote?(quote) do
+    validate(quote) == :ok and
+      Enum.sort(Map.keys(quote)) ==
+        ~w(chunk_id content_sha256 coverage end_byte occurrence_id origin quote_sha256 start_byte version_id) and
+      Enum.all?(~w(chunk_id occurrence_id version_id), fn key ->
+        is_binary(quote[key]) and Regex.match?(~r/\A[0-9a-f]{32}\z/, quote[key])
+      end) and Ipse.JSON.safe_uint?(quote["start_byte"]) and
+      Ipse.JSON.safe_uint?(quote["end_byte"]) and quote["end_byte"] > quote["start_byte"] and
+      Ipse.JSON.sha256?(quote["content_sha256"]) and Ipse.JSON.sha256?(quote["quote_sha256"])
+  end
 end
 
 defmodule Ipse.Extension.ResultPublication do

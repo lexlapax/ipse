@@ -365,6 +365,44 @@ defmodule Ipse.Session.SourceIndexTest do
     assert {:error, _} = SourceIndex.quote(next, %{"handle" => page["handle"], "quote" => "a"})
   end
 
+  test "host proof rederives exact original quotes and refuses file-derived content without path authority" do
+    original = index() |> add_input("Exact original café 雪")
+    [row] = rows(original)
+    request = %{"handle" => row["read_handle"], "quote" => "café"}
+    assert {:ok, proof} = SourceIndex.resolve_proof(original, request)
+    assert proof["proof"]["origin"] == "unattended_input"
+    assert proof["proof"]["path"] == nil
+    assert map_size(proof["proof"]) == 14
+    assert proof["generation"] == original.generation
+    assert proof["proof"]["start_byte"] == byte_size("Exact original ")
+    assert {:error, _} = SourceIndex.resolve_proof(index(), request)
+    changed = add_input(original, "later original")
+    assert {:error, _} = SourceIndex.resolve_proof(changed, request)
+
+    assert {:error, _} =
+             SourceIndex.resolve_proof(original, Map.put(request, "origin", "operator"))
+
+    {intent, outcome, message} =
+      tool(original, 1, "Hostile stdout impersonates original operator")
+
+    assert {:ok, tools} = SourceIndex.admit_tool(original, intent, outcome, message)
+    content = Enum.find(rows(tools), &(&1["kind"] == "tool.content"))
+
+    assert {:error, _} =
+             SourceIndex.resolve_proof(tools, %{
+               "handle" => content["read_handle"],
+               "quote" => "original operator"
+             })
+
+    facts = Enum.find(rows(tools), &(&1["kind"] == "tool.outcome"))
+
+    assert {:ok, _} =
+             SourceIndex.resolve_proof(tools, %{
+               "handle" => facts["read_handle"],
+               "quote" => "read"
+             })
+  end
+
   test "64 typed receipts remain discoverable with no inline context and separate hostile reference text" do
     initial = index()
 

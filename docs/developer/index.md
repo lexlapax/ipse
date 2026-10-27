@@ -96,6 +96,7 @@ the host contract your feature needs:
 | --- | --- |
 | Export typed tools/commands/services and publish complete output | [Invocations](extension-invocations.md) |
 | Use CAS, stale-write deadlines, services, questions, and explicit Memory | [State and continuations](extension-state.md) |
+| Revalidate saved semantic permission and original-source proofs for local publication | [Protected collection SDK](collection-sdk.md) |
 | Request approved tools, MCP, text, native embeddings or typed advice | [Effects](extension-effects.md) |
 | Choose notifications, finite jobs, live feeds, or historical catch-up | [Events](extension-events.md) |
 | Change citations, retrieval, attributed facts, or native Research | [Knowledge algorithms](knowledge-extensions.md) |

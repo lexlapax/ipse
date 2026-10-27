@@ -5,7 +5,9 @@ already admitted in its own conversation. It provides bounded discovery, evidenc
 pages and host-computed quote offsets without placing every source in the prompt.
 It does not authorize capture, note publication, service egress or any other effect.
 Knowledge eligibility, consent, exclusions and managed retraction have separate
-owners and must be checked by their eventual consumers.
+owners. The [protected collection adapter](collection-sdk.md) rederives original
+source proofs and current permission before publication; source reading alone
+cannot establish those conditions.
 
 Read [workspace context](workspace-context.md) first for frozen headers, native
 tool groups and compaction. [Persistence](persistence.md) owns journal integrity,
@@ -174,6 +176,27 @@ framing. This replay-only structural operation cannot authorize a live read.
 Future occurrences/generations and mixed historical windows refuse. This is
 consistency checking of a protected journal, not a cryptographically signed
 transcript resistant to coherent rewriting by arbitrary same-user code.
+
+## Construct a candidate proof without granting authority
+
+An independent worker can call the public SDK helper after a successful read and
+quote:
+
+```elixir
+{:ok, proof} = Ipse.Extension.source_proof(evidence, quote, "café")
+14 = map_size(proof)
+```
+
+This continues the synthetic example above. The helper checks exact page/quote
+identity, bytes, offsets and hashes; it returns stable evidence JSON, not a token
+granting an effect. Protected publication independently rederives each proof from
+the current writer window. Original input, native operator answers, visible
+assistant answers and typed tool-outcome metadata currently qualify for this
+generic proof step. Source stdout, file/external content, decision advice and
+legacy text refuse capture proof resolution even when public reading succeeds.
+File capture requires an original validated path receipt, not a path inferred
+from output prose. See [the collection workflow](collection-sdk.md#build-evidence-with-the-public-sdk)
+for its closed proof and request shapes.
 
 ## Verify a changed source boundary
 

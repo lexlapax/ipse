@@ -116,8 +116,12 @@ SDK-1 contracts and protocol/API version 1 remain unchanged.
 | `Extension.ResultView` | Construct bounded structured views of authorized historical output |
 
 Model tools need ordinary full-argument approval unless session-wide effects are
-explicitly enabled. Only literal boolean `true` authorizes. Headless/child policies
-still apply. Provider call IDs are valid opaque UTF-8, 1..256 bytes, unique within
+explicitly enabled. Only literal boolean `true` authorizes that approval path.
+A selected protected collection export has a separate
+[saved-consent admission](collection-sdk.md#follow-one-capture-across-its-owners):
+current policy permits worker entry, while every inner effect remains separately
+gated. Mode ceilings and headless/child policies still apply. Provider call IDs
+are valid opaque UTF-8, 1..256 bytes, unique within
 the response. Invalid batches execute no first apparently valid call.
 
 Session syncs `extension_invocation_intent` before worker startup. Host rechecks
@@ -148,7 +152,8 @@ Before begin, Session reserves journal capacity. Host submits begin/fragment/sea
 requests through the owning Session, without getting a writer handle or choosing
 a journal path. Lease checks precede every append. Host verifies the complete
 document/schema and confirms worker cleanup. Only the final version-2 invocation
-result publishes the saved descriptor. A complete source/seal alone does not.
+result, or version 4 retaining its original protected version-3 binding, publishes
+the saved descriptor. A complete source/seal alone does not.
 Elapsed checks guard admission, not realtime completion of filesystem sync.
 A committed final receipt remains committed after a later timer fires.
 
@@ -223,6 +228,15 @@ Invocation validates closed records, exact identity/argument digest, approval,
 parent provenance, tool receipts, and ordered actions. ResultSource restoration
 validates every source before permitted tail repair, deriving quota/read indexes
 without executable initialization.
+
+Protected outer intents and inline results use version 3; protected paged finals
+use version 4. Their closed semantic binding must match the original Session pin,
+artifact and exact descriptor. Model-selected starts additionally require the
+matching version-2 tool receipt. Tool and command exports may share a qualified
+name, so restoration selects the exact stage as well as name. Legacy versions
+cannot acquire `saved_consent`, and a valid historical protected receipt never
+authorizes current execution. The [collection contract](collection-sdk.md)
+owns the approval and policy binding details.
 
 An interrupted begin/fragment prefix remains unreadable, even if it contains all
 declared bytes of invalid JSON or a schema-invalid value. Seal requires a complete

@@ -19,6 +19,92 @@ defmodule Ipse.Extension.SemanticAdmission do
   def control_root(home), do: Path.join(home, "knowledge-control")
   def collection_root(home), do: Path.join(home, "knowledge-collections")
 
+  @doc "Check a reviewed outer publication export outside Session before entering its worker."
+  def outer(config, cwd, session_id, identity, descriptor) do
+    with {:ok, context} <- context(config, session_id, 0),
+         true <- config[:semantic_admission]["version"] === 2,
+         true <- context["identity"] === identity,
+         true <- descriptor["stage"] in ~w(invoke.tool invoke.command),
+         true <- descriptor["instance"] == identity["instance"],
+         true <- Ipse.Extension.Registry.live?(identity),
+         admission = config[:semantic_admission],
+         pin = admission["pin"] do
+      base = %{
+        "kind" => "semantic.outer",
+        "version" => 1,
+        "namespace" => pin["namespace"],
+        "pin" => pin,
+        "artifact_sha256" => identity["artifact_sha256"],
+        "descriptor_sha256" => Ipse.JSON.digest([descriptor])
+      }
+
+      ProjectIdentity.with_binding(config[:home], cwd, admission["binding"], fn _ ->
+        Consent.with_policy(
+          control_root(config[:home]),
+          pin["project_id"],
+          pin["epoch"],
+          pin["policy_sha256"],
+          System.system_time(:millisecond),
+          fn snapshot ->
+            policy = snapshot["policy"]
+
+            with true <- SemanticConsent.policy?(policy),
+                 true <- not context["mode"]["headless"] or policy["headless"],
+                 {:ok, class} <- outer_class(policy, base["descriptor_sha256"]),
+                 :ok <- Mode.knowledge(context["mode"], class) do
+              {:ok, Map.put(base, "class", class)}
+            else
+              _ -> {:error, :semantic_outer_denied}
+            end
+          end
+        )
+      end)
+    else
+      _ -> {:error, :semantic_outer_denied}
+    end
+  rescue
+    _ -> {:error, :semantic_outer_denied}
+  end
+
+  @doc "Structural replay binding only; this never substitutes for the current protected outer check."
+  def valid_outer_receipt?(binding, session_id) do
+    is_map(binding) and
+      Enum.sort(Map.keys(binding)) ==
+        ~w(artifact_sha256 class descriptor_sha256 kind namespace pin version) and
+      binding["kind"] == "semantic.outer" and binding["version"] === 1 and
+      binding["class"] in ~w(collection.read collection.publish) and
+      SemanticConsent.pin?(binding["pin"]) and binding["pin"]["session_id"] == session_id and
+      binding["namespace"] == binding["pin"]["namespace"] and
+      Ipse.JSON.sha256?(binding["artifact_sha256"]) and
+      Ipse.JSON.sha256?(binding["descriptor_sha256"])
+  rescue
+    _ -> false
+  end
+
+  def valid_outer_binding?(binding, identity, descriptor, session_id, metadata \\ nil) do
+    pin = if is_map(binding), do: binding["pin"]
+
+    valid_outer_receipt?(binding, session_id) and
+      pin["identity_sha256"] == Ipse.JSON.digest([identity]) and
+      binding["artifact_sha256"] == identity["artifact_sha256"] and
+      binding["descriptor_sha256"] == Ipse.JSON.digest([descriptor]) and
+      descriptor["instance"] == identity["instance"] and
+      descriptor["stage"] in ~w(invoke.tool invoke.command) and
+      binding["namespace"] == pin["namespace"] and
+      (is_nil(metadata) or
+         (valid?(metadata["semantic_admission"], session_id) and
+            metadata["semantic_admission"]["version"] === 2 and
+            metadata["semantic_admission"]["pin"] === pin and
+            metadata["semantic_admission"]["instance"] == identity["instance"] and
+            metadata["semantic_admission"]["policy"]["artifact_sha256"] ==
+              identity["artifact_sha256"] and
+            outer_class(metadata["semantic_admission"]["policy"], binding["descriptor_sha256"]) ===
+              {:ok, binding["class"]} and
+            Mode.knowledge(metadata["execution_mode"], binding["class"]) == :ok))
+  rescue
+    _ -> false
+  end
+
   @doc "Build only new-Session authority from protected state and actual admitted routes."
   def fresh(config, cwd, session_id) do
     selections = Map.get(config, :semantic_selections, %{})
@@ -73,12 +159,13 @@ defmodule Ipse.Extension.SemanticAdmission do
                      System.system_time(:millisecond)
                    ) do
               descriptor = %{
-                "version" => 1,
+                "version" => 2,
                 "binding" => binding,
                 "instance" => instance,
                 "pin" => pin,
                 "selectors" => selectors,
-                "status" => "active"
+                "status" => "active",
+                "policy" => policy
               }
 
               if valid?(descriptor, id), do: {:ok, descriptor}, else: @error
@@ -157,8 +244,8 @@ defmodule Ipse.Extension.SemanticAdmission do
 
   def valid?(descriptor, session_id) do
     (is_nil(session_id) or session_id?(session_id)) and
-      is_map(descriptor) and Enum.sort(Map.keys(descriptor)) == Enum.sort(@keys) and
-      descriptor["version"] === 1 and descriptor["status"] in @statuses and bounded?(descriptor) and
+      is_map(descriptor) and admission_keys?(descriptor) and
+      descriptor["status"] in @statuses and bounded?(descriptor) and
       if is_nil(descriptor["pin"]) do
         is_nil(descriptor["binding"]) and is_nil(descriptor["instance"]) and
           descriptor["selectors"] === [] and descriptor["status"] != "active"
@@ -166,6 +253,7 @@ defmodule Ipse.Extension.SemanticAdmission do
         pin = descriptor["pin"]
 
         SemanticConsent.pin?(pin) and (is_nil(session_id) or pin["session_id"] == session_id) and
+          original_policy?(descriptor) and
           SemanticConsent.binding?(descriptor["binding"]) and
           pin["project_id"] == descriptor["binding"]["project_id"] and
           pin["worktree_id"] == descriptor["binding"]["worktree_id"] and
@@ -176,6 +264,60 @@ defmodule Ipse.Extension.SemanticAdmission do
       end
   rescue
     _ -> false
+  end
+
+  defp admission_keys?(%{"version" => 1} = d), do: Enum.sort(Map.keys(d)) == Enum.sort(@keys)
+
+  defp admission_keys?(%{"version" => 2} = d),
+    do: Enum.sort(Map.keys(d)) == Enum.sort(["policy" | @keys]) and is_map(d["pin"])
+
+  defp admission_keys?(_), do: false
+
+  defp original_policy?(%{"version" => 1}), do: true
+
+  defp original_policy?(d) do
+    p = d["policy"]
+    pin = d["pin"]
+
+    SemanticConsent.policy?(p) and Ipse.JSON.digest([p]) == pin["policy_sha256"] and
+      p["project"] == pin["project_id"] and p["source_sha256"] == pin["source_sha256"] and
+      p["settings"]["identity_sha256"] == pin["identity_sha256"] and
+      p["settings"]["namespace"] == pin["namespace"] and
+      p["settings"]["instance"] == d["instance"] and
+      SemanticRoutes.selectors(p["settings"]["routes"]) === {:ok, d["selectors"]} and
+      (p["settings"]["scope"]["kind"] == "project" or
+         p["settings"]["scope"]["worktree_id"] == pin["worktree_id"]) and
+      Ipse.JSON.digest([p["settings"]["routes"]]) == pin["routes_sha256"]
+  end
+
+  def outer_class(policy, descriptor_sha256) do
+    effects =
+      Enum.filter(
+        policy["settings"]["effects"],
+        &(&1["outer_sha256"] == descriptor_sha256 and &1["inner_op"] == "collection.call")
+      )
+
+    publish = Enum.filter(effects, &(&1["class"] == "collection.publish"))
+
+    cond do
+      publish != [] and
+          Enum.any?(
+            publish,
+            &Ipse.Extension.CollectionPolicy.valid_constraints?(&1["constraints"])
+          ) ->
+        {:ok, "collection.publish"}
+
+      publish != [] ->
+        {:error, :semantic_outer_denied}
+
+      Enum.any?(effects, &(&1["class"] == "collection.read")) ->
+        {:ok, "collection.read"}
+
+      true ->
+        {:error, :semantic_outer_denied}
+    end
+  rescue
+    _ -> {:error, :semantic_outer_denied}
   end
 
   defp context_for(config, binding, instance, selectors, namespace, id, generation) do
@@ -218,6 +360,7 @@ defmodule Ipse.Extension.SemanticAdmission do
 
   defp bounded?(value) do
     bytes = Jason.encode!(value)
-    byte_size(bytes) <= 32_768 and Ipse.JSON.decode_unique(bytes, 12) === {:ok, value}
+    {max_bytes, depth} = if value["version"] === 2, do: {65_536, 16}, else: {32_768, 12}
+    byte_size(bytes) <= max_bytes and Ipse.JSON.decode_unique(bytes, depth) === {:ok, value}
   end
 end

@@ -148,6 +148,8 @@ defmodule Ipse.Session.ToolLifecycle do
             "input_sha256" => digest(data)
           }
 
+          record = protected_record(record, intent)
+
           true = valid?(record)
           {%{ctx | count: ctx.count + 1}, [record]}
         else
@@ -193,6 +195,8 @@ defmodule Ipse.Session.ToolLifecycle do
       "result_sha256" => digest(data)
     }
 
+    record = protected_record(record, start)
+
     true = valid?(record)
     {%{ctx | active: nil, count: ctx.count + 1}, [record]}
   end
@@ -217,27 +221,27 @@ defmodule Ipse.Session.ToolLifecycle do
 
   defp valid_record?(%{"type" => "lifecycle_tool_intent"} = e),
     do:
-      keys?(e, @input) and common?(e) and
+      receipt_keys?(e, @input) and common?(e) and
         id?(e["epoch_id"]) and id?(e["tool_id"]) and id?(e["turn_id"]) and id?(e["request_id"]) and
         refs?(e, ~w(proposal_source intent_source)) and
         e["proposal_source"]["byte_offset"] < e["intent_source"]["byte_offset"] and
         Ipse.JSON.safe_uint?(e["call_index"]) and
-        e["approval"] in ~w(approved session_allow not_required) and
+        approval?(e) and
         view?(e, "input")
 
   defp valid_record?(%{"type" => "lifecycle_tool_outcome"} = e),
     do:
-      keys?(e, @output) and common?(e) and
+      receipt_keys?(e, @output) and common?(e) and
         id?(e["epoch_id"]) and id?(e["tool_id"]) and id?(e["turn_id"]) and id?(e["request_id"]) and
         refs?(e, ~w(tool_source result_source)) and
         e["tool_source"]["byte_offset"] < e["result_source"]["byte_offset"] and
         e["status"] in ~w(result_recorded error unknown) and
-        e["approval"] in ~w(approved session_allow not_required) and
+        approval?(e) and
         (e["duration_ms"] == nil or Ipse.JSON.safe_uint?(e["duration_ms"])) and view?(e, "result")
 
   defp valid_record?(%{"type" => "lifecycle_tool_recording_stopped"} = e),
     do:
-      keys?(e, ~w(type version session_id epoch_id reason)) and common?(e) and
+      keys?(e, ~w(type version session_id epoch_id reason)) and common?(e) and e["version"] === 1 and
         (e["epoch_id"] == nil or id?(e["epoch_id"])) and
         e["reason"] in ~w(limit source_unavailable epoch_unavailable binding_unavailable)
 
@@ -294,7 +298,8 @@ defmodule Ipse.Session.ToolLifecycle do
       position: 0,
       tools: %{},
       count: 0,
-      stopped: false
+      stopped: false,
+      metadata: %{}
     }
 
     Enum.reduce_while(events, {:ok, initial}, fn e, {:ok, s} ->
@@ -328,8 +333,20 @@ defmodule Ipse.Session.ToolLifecycle do
   defp step(%{"type" => "message", "message" => %{"role" => "tool"}} = e, s),
     do: {:ok, %{s | result: e, position: s.position + 1}}
 
-  defp step(%{"type" => "tool_started"} = e, s),
-    do: {:ok, %{s | started: %{record: e, index: s.position}}}
+  defp step(%{"type" => "session", "metadata" => metadata}, s),
+    do: {:ok, %{s | metadata: metadata}}
+
+  defp step(%{"type" => "tool_started"} = e, s) do
+    if e["version"] === 2 or e["approval"] == "saved_consent" or
+         Map.has_key?(e, "semantic_binding") do
+      if e["version"] === 2 and e["approval"] == "saved_consent" and
+           e["approval_source"] == "saved_consent" and protected_started?(e, s),
+         do: {:ok, %{s | started: %{record: e, index: s.position}}},
+         else: @error
+    else
+      {:ok, %{s | started: %{record: e, index: s.position}}}
+    end
+  end
 
   defp step(_, s), do: {:ok, s}
 
@@ -350,6 +367,7 @@ defmodule Ipse.Session.ToolLifecycle do
            s.started.record["call_id"] == call["id"] and
              s.started.record["name"] == call["function"]["name"] and
              s.started.record["approval"] == e["approval"],
+         true <- protected_pair?(e, s.started.record),
          true <- matches_view?(e, "input", input(call)),
          {:ok, arguments} <- Jason.decode(call["function"]["arguments"]),
          true <- s.started.record["arguments"] in [nil, arguments] do
@@ -361,6 +379,7 @@ defmodule Ipse.Session.ToolLifecycle do
 
   defp apply_record(%{"type" => "lifecycle_tool_outcome"} = e, s) do
     with %{record: start, call: call, ended: false} = tool <- s.tools[e["tool_id"]],
+         true <- e["version"] === start["version"] and protected_pair?(e, start),
          true <-
            s.count < @limit and s.epoch == e["epoch_id"] and
              s.request["request_id"] == e["request_id"] and
@@ -474,6 +493,68 @@ defmodule Ipse.Session.ToolLifecycle do
   defp bytes(data), do: byte_size(Jason.encode!(data))
   defp digest(data), do: Ipse.JSON.digest([data])
   defp keys?(e, keys), do: is_map(e) and Enum.sort(Map.keys(e)) == Enum.sort(keys)
-  defp common?(e), do: e["version"] === 1 and id?(e["session_id"])
+  defp common?(e), do: e["version"] in [1, 2] and id?(e["session_id"])
+
+  defp protected_record(record, %{"approval" => "saved_consent"} = source),
+    do: record |> Map.put("version", 2) |> Map.put("semantic_binding", source["semantic_binding"])
+
+  defp protected_record(record, _), do: record
+
+  defp receipt_keys?(e, keys),
+    do: keys?(e, keys ++ if(e["version"] === 2, do: ["semantic_binding"], else: []))
+
+  defp approval?(%{"version" => 2} = e),
+    do:
+      e["approval"] == "saved_consent" and
+        Ipse.Extension.SemanticAdmission.valid_outer_receipt?(
+          e["semantic_binding"],
+          e["session_id"]
+        )
+
+  defp approval?(e),
+    do: e["version"] === 1 and e["approval"] in ~w(approved session_allow not_required)
+
+  defp protected_pair?(%{"version" => 2} = e, other),
+    do: other["version"] === 2 and other["semantic_binding"] === e["semantic_binding"]
+
+  defp protected_pair?(_, other), do: other["approval"] != "saved_consent"
+
+  defp protected_started?(event, state) do
+    metadata = state.metadata
+
+    descriptor =
+      Enum.find(
+        metadata["extension_catalog"]["entries"] || [],
+        &(&1["name"] == event["name"] and &1["stage"] == "invoke.tool")
+      )
+
+    identity =
+      Enum.find(metadata["extensions"] || [], &(&1["instance"] == descriptor["instance"]))
+
+    session = state.session || state.request["session_id"]
+
+    keys?(
+      event,
+      ~w(type version call_id name approval approval_source arguments mcp sandbox_requested semantic_binding)
+    ) and
+      is_nil(event["mcp"]) and
+      Ipse.Extension.Invocation.source_call_valid?(
+        state.assistant["message"],
+        event["call_id"],
+        event["name"],
+        event["arguments"]
+      ) and
+      Ipse.Extension.Catalog.validate_call(descriptor, event["arguments"]) == :ok and
+      Ipse.Extension.SemanticAdmission.valid_outer_binding?(
+        event["semantic_binding"],
+        identity,
+        descriptor,
+        session,
+        metadata
+      )
+  rescue
+    _ -> false
+  end
+
   defp id?(v), do: is_binary(v) and Regex.match?(~r/\A[0-9a-f]{32}\z/, v)
 end
