@@ -118,6 +118,15 @@ requirements. The locked patch release removes the vulnerable version from new
 builds rather than relying on that current lack of reachability. Recheck this
 boundary before adding a Plug server or cryptographic caller.
 
+## Evaluation-only packages
+
+These packages are temporary investigation inputs, not runtime, ordinary-test,
+CI or release dependencies. Adopting one requires a separate reviewed change.
+
+| Dependency | Exact source and scope | License |
+| --- | --- | --- |
+| Msgpax | Hex `msgpax` 2.4.0, tarball SHA256 `ca933891b0e7075701a17507c61642bf6e0407bb244040d5d0a58597a06369d2`; inner Hex checksum `4647575c87cb0c43b93266438242c21f71f196cafa268f45f91498541148c15d`. Selected within the authorized implementation/package-evaluation scope and the repository's Elixir dependency policy for an isolated 2026-10-27 pure metadata-codec comparison. The package was fetched with existing `Ipse.HTTP` bounded verified HTTPS; source/license were inspected before compiling its library in a private temporary HOME/build. Optional Plug and development ExDoc were not fetched or compiled. No Mix declaration or lockfile changes. See the [evaluation record](../archive/2026-10-26-p30-p31-implementation/managed-adaptive-metadata-proof.md) for schema-array byte comparisons, source/BEAM bindings, acquisition diagnostics, upstream compiler warnings and limits. | ISC; exact package `LICENSE` retained with the evaluation artifacts. [Upstream](https://github.com/lexmag/msgpax), [versioned API](https://msgpax.hexdocs.pm/2.4.0/Msgpax.html) |
+
 ## Host and build inventory
 
 | Dependency | Scope and reason | Source/license notes |
