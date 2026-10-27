@@ -1,0 +1,13 @@
+0:2f2367d678aa40c3b8b8dc4bc34ac165:pending:configure-loop
+1:2f2367d678aa40c3b8b8dc4bc34ac165:confirmed:configure-loop
+2:2f2367d678aa40c3b8b8dc4bc34ac165:pending:create-mapper
+3:2f2367d678aa40c3b8b8dc4bc34ac165:confirmed:create-mapper
+4:2f2367d678aa40c3b8b8dc4bc34ac165:pending:make-filesystem
+5:2f2367d678aa40c3b8b8dc4bc34ac165:confirmed:make-filesystem
+6:2f2367d678aa40c3b8b8dc4bc34ac165:pending:mount
+7:2f2367d678aa40c3b8b8dc4bc34ac165:confirmed:mount
+8:2f2367d678aa40c3b8b8dc4bc34ac165:pending:prepare-stage
+9:2f2367d678aa40c3b8b8dc4bc34ac165:confirmed:prepare-stage
+10:2f2367d678aa40c3b8b8dc4bc34ac165:pending:switch-error
+11:2f2367d678aa40c3b8b8dc4bc34ac165:confirmed:switch-error
+12:2f2367d678aa40c3b8b8dc4bc34ac165:pending:release-stage
