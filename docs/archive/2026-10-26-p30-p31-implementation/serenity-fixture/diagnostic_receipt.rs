@@ -1,12 +1,12 @@
 //! Private diagnostic receipt model. Disabled: no host-device operations.
 //! A journaled intent is not evidence that an effect did or did not happen.
 use std::io;
-#[derive(Clone,Copy,Debug,PartialEq,Eq)]pub(crate) enum Effect {ConfigureLoop,CreateMapper,MakeFilesystem,Mount,SwitchError,ReleaseStage,RestoreLinear,Unmount,RemoveMapper,AttemptCloseLoop}
+#[derive(Clone,Copy,Debug,PartialEq,Eq)]pub(crate) enum Effect {ConfigureLoop,CreateMapper,MakeFilesystem,Mount,PrepareStage,SwitchError,ReleaseStage,RestoreLinear,Unmount,RemoveMapper,AttemptCloseLoop}
 #[derive(Clone,Copy,Debug,PartialEq,Eq)]pub(crate) enum Record {Pending(Effect),Confirmed(Effect)}
 #[derive(Debug,PartialEq,Eq)]pub(crate) enum Status {Ready,Pending(Effect),Confirmed(Effect)}
-fn ordinal(e:Effect)->usize {match e {Effect::ConfigureLoop=>0,Effect::CreateMapper=>1,Effect::MakeFilesystem=>2,Effect::Mount=>3,Effect::SwitchError=>4,Effect::ReleaseStage=>5,Effect::RestoreLinear=>6,Effect::Unmount=>7,Effect::RemoveMapper=>8,Effect::AttemptCloseLoop=>9}}
-fn name(e:Effect)->&'static str {match e {Effect::ConfigureLoop=>"configure-loop",Effect::CreateMapper=>"create-mapper",Effect::MakeFilesystem=>"make-filesystem",Effect::Mount=>"mount",Effect::SwitchError=>"switch-error",Effect::ReleaseStage=>"release-stage",Effect::RestoreLinear=>"restore-linear",Effect::Unmount=>"unmount",Effect::RemoveMapper=>"remove-mapper",Effect::AttemptCloseLoop=>"attempt-close-loop"}}
-fn effect(s:&str)->Option<Effect> {[Effect::ConfigureLoop,Effect::CreateMapper,Effect::MakeFilesystem,Effect::Mount,Effect::SwitchError,Effect::ReleaseStage,Effect::RestoreLinear,Effect::Unmount,Effect::RemoveMapper,Effect::AttemptCloseLoop].into_iter().find(|e|name(*e)==s)}
+fn ordinal(e:Effect)->usize {match e {Effect::ConfigureLoop=>0,Effect::CreateMapper=>1,Effect::MakeFilesystem=>2,Effect::Mount=>3,Effect::PrepareStage=>4,Effect::SwitchError=>5,Effect::ReleaseStage=>6,Effect::RestoreLinear=>7,Effect::Unmount=>8,Effect::RemoveMapper=>9,Effect::AttemptCloseLoop=>10}}
+fn name(e:Effect)->&'static str {match e {Effect::ConfigureLoop=>"configure-loop",Effect::CreateMapper=>"create-mapper",Effect::MakeFilesystem=>"make-filesystem",Effect::Mount=>"mount",Effect::PrepareStage=>"prepare-stage",Effect::SwitchError=>"switch-error",Effect::ReleaseStage=>"release-stage",Effect::RestoreLinear=>"restore-linear",Effect::Unmount=>"unmount",Effect::RemoveMapper=>"remove-mapper",Effect::AttemptCloseLoop=>"attempt-close-loop"}}
+fn effect(s:&str)->Option<Effect> {[Effect::ConfigureLoop,Effect::CreateMapper,Effect::MakeFilesystem,Effect::Mount,Effect::PrepareStage,Effect::SwitchError,Effect::ReleaseStage,Effect::RestoreLinear,Effect::Unmount,Effect::RemoveMapper,Effect::AttemptCloseLoop].into_iter().find(|e|name(*e)==s)}
 pub(crate) fn parse(bytes:&[u8],nonce:&str)->io::Result<Status>{
  if nonce.len()!=32||!nonce.bytes().all(|b|b.is_ascii_digit()||(b'a'..=b'f').contains(&b))||bytes.len()>4096||(!bytes.is_empty()&&!bytes.ends_with(b"\n")){return Err(io::ErrorKind::InvalidData.into())}
  let text=std::str::from_utf8(bytes).map_err(|_|io::ErrorKind::InvalidData)?;let mut next=0;let mut pending=None;let mut last=None;

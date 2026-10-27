@@ -30,13 +30,14 @@ impl Client {
 }
 fn live(fd:&File)->io::Result<()> {let mut p=PollFd{fd:fd.as_raw_fd(),events:1,revents:0};match unsafe{poll(&mut p,1,0)} {0=>Ok(()),_=>Err(io::ErrorKind::NotFound.into())}}
 fn stat(pid:u32)->io::Result<(u32,u64)> {let s=std::fs::read_to_string(format!("/proc/{pid}/stat"))?;let end=s.rfind(')').ok_or(io::ErrorKind::InvalidData)?;let f:Vec<_>=s[end+1..].split_whitespace().collect();let parent=f.get(1).ok_or(io::ErrorKind::InvalidData)?.parse().map_err(|_|io::ErrorKind::InvalidData)?;let start=f.get(19).ok_or(io::ErrorKind::InvalidData)?.parse().map_err(|_|io::ErrorKind::InvalidData)?;Ok((parent,start))}
+fn cgroup(pid:u32)->io::Result<String>{let path=if pid==0{"/proc/self/cgroup".into()}else{format!("/proc/{pid}/cgroup")};let mut s=String::new();File::open(path)?.take(4097).read_to_string(&mut s)?;if s.len()>4096||!s.starts_with("0::/")||s.lines().count()!=1{return Err(io::ErrorKind::InvalidData.into())}Ok(s)}
 /// Same-PID-namespace snapshot only. The caller must independently protect the
 /// binary and parent ancestry, and hold a guardian/process containment boundary.
 pub(super) fn attest(pid:u32,executable:&File,command:&File,reply:&File)->io::Result<VerifiedOwner> {
- if pid==0{return Err(io::ErrorKind::InvalidInput.into())}let before=stat(pid)?;if before.0!=std::process::id()||before.1==0{return Err(io::ErrorKind::PermissionDenied.into())}
+ if pid==0{return Err(io::ErrorKind::InvalidInput.into())}let group=cgroup(0)?;if cgroup(pid)?!=group{return Err(io::ErrorKind::PermissionDenied.into())}let before=stat(pid)?;if before.0!=std::process::id()||before.1==0{return Err(io::ErrorKind::PermissionDenied.into())}
  let raw=unsafe{syscall(434,pid,0)};if raw<0{return Err(io::Error::last_os_error())}let pin=unsafe{File::from_raw_fd(raw as i32)};live(&pin)?;
  for (path,held) in [(format!("/proc/{pid}/exe"),executable),(format!("/proc/{pid}/fd/0"),command),(format!("/proc/{pid}/fd/1"),reply)] {let a=held.metadata()?;let b=std::fs::metadata(path)?;if (a.dev(),a.ino())!=(b.dev(),b.ino()){return Err(io::ErrorKind::PermissionDenied.into())}}
- if stat(pid)?!=before{return Err(io::ErrorKind::NotFound.into())}live(&pin)?;let c=command.metadata()?;let r=reply.metadata()?;Ok(VerifiedOwner{pidfd:pin,command:(c.dev(),c.ino()),reply:(r.dev(),r.ino())})
+ if stat(pid)?!=before||cgroup(pid)?!=group||cgroup(0)?!=group{return Err(io::ErrorKind::NotFound.into())}live(&pin)?;let c=command.metadata()?;let r=reply.metadata()?;Ok(VerifiedOwner{pidfd:pin,command:(c.dev(),c.ino()),reply:(r.dev(),r.ino())})
 }
 #[cfg(test)]mod tests {use super::*;use std::os::fd::FromRawFd;use std::thread;unsafe extern "C"{fn pipe(p:*mut i32)->i32;}
  fn pair()->(File,File){let mut p=[0;2];assert_eq!(unsafe{pipe(p.as_mut_ptr())},0);unsafe{(File::from_raw_fd(p[0]),File::from_raw_fd(p[1]))}}

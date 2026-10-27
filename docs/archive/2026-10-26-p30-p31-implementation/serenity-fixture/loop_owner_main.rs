@@ -5,17 +5,18 @@
 #[path="existing_loop.rs"]mod existing_loop;
 #[path="loop_owner_filter.rs"]mod loop_owner_filter;
 use std::fs::{self,File,OpenOptions};use std::io::{self,Write};use std::os::unix::fs::{MetadataExt,OpenOptionsExt,FileTypeExt};use std::os::fd::{AsRawFd,FromRawFd};
-const ENABLED:bool=false;
+const ENABLED:bool=cfg!(ipse_live_reviewed);
 #[repr(C)]struct PollFd{fd:i32,events:i16,revents:i16}
 unsafe extern "C"{fn poll(fd:*mut PollFd,n:usize,timeout:i32)->i32;fn read(fd:i32,buf:*mut std::ffi::c_void,n:usize)->isize;fn openat(fd:i32,path:*const i8,flags:i32,...)->i32;fn geteuid()->u32;fn fcntl(fd:i32,cmd:i32,...)->i32;}
 fn run()->io::Result<()> {
  // Only an exact, narrowly scoped owner process can enter. This draft lacks
  // the attested launch/guardian, so the entrypoint remains disabled.
  if !ENABLED{return Err(io::Error::new(io::ErrorKind::PermissionDenied,"private loop owner disabled"))}
- let args:Vec<_>=std::env::args().collect();if args.len()!=5{return Err(io::ErrorKind::InvalidInput.into())}
+ let args:Vec<_>=std::env::args().collect();if args.len()!=9{return Err(io::ErrorKind::InvalidInput.into())}
  let minor:u32=args[1].parse().map_err(|_|io::ErrorKind::InvalidInput)?;let reference=&args[2];
  if reference.len()!=39||!reference.starts_with("ipse-q-")||!reference[7..].bytes().all(|b|b.is_ascii_digit()||(b'a'..=b'f').contains(&b)){return Err(io::ErrorKind::InvalidInput.into())}
  let expected_dev:u64=args[3].parse().map_err(|_|io::ErrorKind::InvalidInput)?;let expected_inode:u64=args[4].parse().map_err(|_|io::ErrorKind::InvalidInput)?;if expected_inode==0{return Err(io::ErrorKind::InvalidInput.into())}
+ let root_dev:u64=args[5].parse().map_err(|_|io::ErrorKind::InvalidInput)?;let root_inode:u64=args[6].parse().map_err(|_|io::ErrorKind::InvalidInput)?;let index_dev:u64=args[7].parse().map_err(|_|io::ErrorKind::InvalidInput)?;let index_inode:u64=args[8].parse().map_err(|_|io::ErrorKind::InvalidInput)?;if root_inode==0||index_inode==0{return Err(io::ErrorKind::InvalidInput.into())}
  // Pause before acquisition so the supervisor can attest this process and
  // its pipe endpoints. EOF/timeout leaves before any device open.
  report(b'H')?;command(b'A')?;
@@ -26,6 +27,7 @@ fn run()->io::Result<()> {
  verify_single_task()?;
  loop_owner_filter::install()?;
  let loop_device=existing_loop::Existing::open_existing(minor)?;
+ if loop_device.sysfs_identity()? != (root_dev,root_inode,index_dev,index_inode){return Err(io::ErrorKind::PermissionDenied.into())}
  let parent=OpenOptions::new().read(true).custom_flags(0x10000|0x20000).open("/work/fixture")?;let pm=parent.metadata()?;let pn=fs::symlink_metadata("/work/fixture")?;
  if !pm.is_dir()||pm.uid()!=unsafe{geteuid()}||pm.mode()&0o777!=0o700||(pm.dev(),pm.ino())!=(pn.dev(),pn.ino()){return Err(io::ErrorKind::PermissionDenied.into())}
  let name=c"backing.img";let raw=unsafe{openat(parent.as_raw_fd(),name.as_ptr(),0x2|0x20000|0x80000)};if raw<0{return Err(io::Error::last_os_error())}let backing=unsafe{File::from_raw_fd(raw)};

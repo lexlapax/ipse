@@ -1,7 +1,7 @@
 //! Experimental bounded child guardian. Disabled until protected launch,
 //! exact resource/ledger identity and cgroup integration are independently
 //! established. This only signals the pinned owner, never device objects.
-use std::fs::File;use std::io::{self,Write};use std::os::fd::{AsRawFd,FromRawFd};use std::os::unix::fs::MetadataExt;
+use std::fs::File;use std::io::{self,Read,Write};use std::os::fd::{AsRawFd,FromRawFd};use std::os::unix::fs::MetadataExt;
 #[repr(C)]struct PollFd{fd:i32,events:i16,revents:i16}
 unsafe extern "C"{fn syscall(n:i64,...)->i64;fn poll(p:*mut PollFd,n:usize,t:i32)->i32;fn openat(dir:i32,p:*const i8,flags:i32,...)->i32;fn geteuid()->u32;}
 #[derive(Debug,PartialEq,Eq)]pub(super) enum Outcome{OwnerExited,SupervisorLostOwnerSignalled,DeadlineOwnerSignalled}
@@ -9,12 +9,13 @@ pub(super) fn pidfd(pid:u32)->io::Result<File>{if pid==0{return Err(io::ErrorKin
 pub(super) fn live(f:&File)->io::Result<()> {let mut p=PollFd{fd:f.as_raw_fd(),events:1,revents:0};match unsafe{poll(&mut p,1,0)}{0=>Ok(()),_=>Err(io::ErrorKind::NotFound.into())}}
 pub(super) fn identity(pid:u32)->io::Result<(u32,u64)>{let s=std::fs::read_to_string(format!("/proc/{pid}/stat"))?;let end=s.rfind(')').ok_or(io::ErrorKind::InvalidData)?;let f:Vec<_>=s[end+1..].split_whitespace().collect();let p=f.get(1).ok_or(io::ErrorKind::InvalidData)?.parse().map_err(|_|io::ErrorKind::InvalidData)?;let t=f.get(19).ok_or(io::ErrorKind::InvalidData)?.parse().map_err(|_|io::ErrorKind::InvalidData)?;Ok((p,t))}
 fn start(pid:u32)->io::Result<u64>{Ok(identity(pid)?.1)}
+fn cgroup(pid:u32)->io::Result<String>{let path=if pid==0{"/proc/self/cgroup".into()}else{format!("/proc/{pid}/cgroup")};let mut s=String::new();File::open(path)?.take(4097).read_to_string(&mut s)?;if s.len()>4096||!s.starts_with("0::/")||s.lines().count()!=1{return Err(io::ErrorKind::InvalidData.into())}Ok(s)}
 /// Each pidfd is pinned and revalidated by start time. The independently
 /// authenticated launcher must prove these are the intended supervisor/owner.
 pub(super) fn watch(directory:&File,nonce:&str,supervisor:u32,supervisor_start:u64,owner:u32,owner_start:u64,timeout_ms:i32)->io::Result<Outcome>{
  if nonce.len()!=32||!nonce.bytes().all(|b|b.is_ascii_digit()||(b'a'..=b'f').contains(&b))||supervisor==owner||!(1..=30_000).contains(&timeout_ms){return Err(io::ErrorKind::InvalidInput.into())}
  let dm=directory.metadata()?;if !dm.is_dir()||dm.uid()!=unsafe{geteuid()}||dm.mode()&0o777!=0o700{return Err(io::ErrorKind::PermissionDenied.into())}
- let own=identity(std::process::id())?;let observed_owner=identity(owner)?;if own.0!=supervisor||observed_owner.0!=supervisor||start(supervisor)?!=supervisor_start||observed_owner.1!=owner_start{return Err(io::ErrorKind::NotFound.into())}let supervisor_fd=pidfd(supervisor)?;let owner_fd=pidfd(owner)?;live(&supervisor_fd)?;live(&owner_fd)?;if identity(std::process::id())?!=own||identity(owner)?!=observed_owner||start(supervisor)?!=supervisor_start{return Err(io::ErrorKind::NotFound.into())}
+ let group=cgroup(0)?;if cgroup(supervisor)?!=group||cgroup(owner)?!=group{return Err(io::ErrorKind::PermissionDenied.into())}let own=identity(std::process::id())?;let observed_owner=identity(owner)?;if own.0!=supervisor||observed_owner.0!=supervisor||start(supervisor)?!=supervisor_start||observed_owner.1!=owner_start{return Err(io::ErrorKind::NotFound.into())}let supervisor_fd=pidfd(supervisor)?;let owner_fd=pidfd(owner)?;live(&supervisor_fd)?;live(&owner_fd)?;if identity(std::process::id())?!=own||identity(owner)?!=observed_owner||start(supervisor)?!=supervisor_start||cgroup(0)?!=group||cgroup(supervisor)?!=group||cgroup(owner)?!=group{return Err(io::ErrorKind::NotFound.into())}
  let filename=c"guardian.receipt";let raw=unsafe{openat(directory.as_raw_fd(),filename.as_ptr(),0x40|0x80|1|0x20000|0x80000,0o600)};if raw<0{return Err(io::Error::last_os_error())}let mut log=unsafe{File::from_raw_fd(raw)};let m=log.metadata()?;if !m.is_file()||m.uid()!=dm.uid()||m.nlink()!=1{return Err(io::ErrorKind::PermissionDenied.into())}
  writeln!(log,"armed {nonce} {supervisor} {supervisor_start} {owner} {owner_start}")?;log.sync_all()?;directory.sync_all()?;let mut output=std::io::stdout().lock();output.write_all(b"ARMED\n")?;output.flush()?;drop(output);
  let mut fds=[PollFd{fd:supervisor_fd.as_raw_fd(),events:1,revents:0},PollFd{fd:owner_fd.as_raw_fd(),events:1,revents:0}];let result=unsafe{poll(fds.as_mut_ptr(),2,timeout_ms)};if result<0{return Err(io::Error::last_os_error())}

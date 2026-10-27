@@ -1,0 +1,5 @@
+v1 63ebcfd6bc5a4167223662f0dae3539d loop_before=false dm_before=false
+pending loop node=82 inode=11 rdev=2797
+opened loop module=true
+pending dm node=82 inode=13 rdev=2796
+opened dm module=true

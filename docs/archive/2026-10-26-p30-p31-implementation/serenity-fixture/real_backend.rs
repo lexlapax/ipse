@@ -56,7 +56,7 @@ impl RealBackend {
     /// `host_mount_namespace_inode` from the host before creating the container,
     /// pin and independently attest every staged tool/library, establish device
     /// cgroup restrictions and validate the actual host's kernel/profile.
-    fn new(nonce: &str, loop_minor: u64, dm_major: u64, dm_minor: u64,
+    pub(super) fn new(nonce: &str, loop_minor: u64, dm_major: u64, dm_minor: u64,
            host_mount_namespace_inode: u64, seconds: u64) -> Result<Self, ()> {
         if nonce.len()!=32 || !nonce.bytes().all(|b| b.is_ascii_hexdigit() && !b.is_ascii_uppercase()) ||
             loop_minor>4095 || dm_major==0 || dm_major==7 || dm_minor>65535 ||
@@ -81,21 +81,27 @@ impl RealBackend {
             deadline:Instant::now()+Duration::from_secs(seconds), next:0, image:None,loop_owner:None,boundary:None,arm_inputs:None,guarded_failure:None,diagnostic:None,
             command_limit:WORK_COMMANDS, cleanup_reserved:false, fixture_fsid:None, fixture_mount_id:None, fixture_ns_inode:here })
     }
-    /// The boundary has no live producer. Return every started process on
+    pub(super) fn set_arm_inputs(&mut self,boundary:super::owner_launcher::LaunchBoundary,ledger:File,owner_stderr:File,guardian_stderr:File)->Result<(),()> {
+      if self.arm_inputs.is_some()||self.loop_owner.is_some()||boundary.recheck().is_err(){return Err(())}
+      self.arm_inputs=Some(ArmInputs{boundary,ledger,owner_stderr,guardian_stderr});Ok(())
+    }
+    pub(super) fn record_diagnostic(&mut self,r:super::diagnostic_receipt::Record)->Result<(),()> {super::diagnostic_fault::RecordedBackend::diagnostic_record(self,r)}
+    /// Return every started process on
     /// failure so the external supervisor can preserve unknown state.
     fn start_guarded_owner(&mut self,boundary:&super::owner_launcher::LaunchBoundary,ledger:File,owner_stderr:File,guardian_stderr:File)->Result<(),GuardedOwnerFailure> {
         let image=match self.image.as_ref().and_then(|f|f.metadata().ok()){Some(v)=>v,None=>return Err(GuardedOwnerFailure::Owner(super::owner_launcher::LaunchFailure{child:None,error:std::io::ErrorKind::InvalidInput.into()}))};
         let nonce=match self.expected.loop_ref.strip_prefix("ipse-q-"){Some(v)=>v,None=>return Err(GuardedOwnerFailure::Owner(super::owner_launcher::LaunchFailure{child:None,error:std::io::ErrorKind::InvalidInput.into()}))};
         let minor=match u32::try_from(self.expected.loop_minor){Ok(v)=>v,Err(_)=>return Err(GuardedOwnerFailure::Owner(super::owner_launcher::LaunchFailure{child:None,error:std::io::ErrorKind::InvalidInput.into()}))};
-        let setup=(||->std::io::Result<super::diagnostic_receipt::Receipt>{
+        let setup=(||->std::io::Result<(super::diagnostic_receipt::Receipt,super::index_receipt::Index)>{
             if image.nlink()!=1||image.len()!=536_870_912{return Err(std::io::ErrorKind::InvalidInput.into())}
             let node=std::fs::symlink_metadata(&self.loop_node)?;if !node.file_type().is_block_device()||Self::block_device_matches(&self.loop_node,self.expected.loop_major,self.expected.loop_minor)!=Ok(true){return Err(std::io::ErrorKind::InvalidInput.into())}
             let mut boot=String::new();File::open("/proc/sys/kernel/random/boot_id")?.take(64).read_to_string(&mut boot)?;let boot=boot.trim_end_matches('\n').to_owned();
+            let index=super::index_receipt::read(&ledger,nonce,&boot,minor)?;
             let mut receipt=super::diagnostic_receipt::Receipt::create(ledger.try_clone()?,nonce)?;
-            receipt.bind_initial(&super::diagnostic_receipt::InitialIdentity{nonce:nonce.into(),boot_id:boot,backing_dev:image.dev(),backing_inode:image.ino(),loop_minor:minor,loop_node_dev:node.dev(),loop_node_inode:node.ino()})?;Ok(receipt)
+            receipt.bind_initial(&super::diagnostic_receipt::InitialIdentity{nonce:nonce.into(),boot_id:boot,backing_dev:image.dev(),backing_inode:image.ino(),loop_minor:minor,loop_node_dev:node.dev(),loop_node_inode:node.ino()})?;Ok((receipt,index))
         })();
-        self.diagnostic=Some(setup.map_err(|error|GuardedOwnerFailure::Owner(super::owner_launcher::LaunchFailure{child:None,error}))?);
-        let prepared=super::owner_launcher::launch(boundary,Path::new("/work/tools/bin/ipse-loop-owner"),minor,nonce,image.dev(),image.ino(),owner_stderr).map_err(GuardedOwnerFailure::Owner)?;
+        let (receipt,index)=setup.map_err(|error|GuardedOwnerFailure::Owner(super::owner_launcher::LaunchFailure{child:None,error}))?;self.diagnostic=Some(receipt);
+        let prepared=super::owner_launcher::launch(boundary,Path::new("/work/tools/bin/ipse-loop-owner"),index,nonce,image.dev(),image.ino(),owner_stderr).map_err(GuardedOwnerFailure::Owner)?;
         let guardian=match super::guardian_launcher::launch(boundary,ledger,prepared.pid(),nonce,guardian_stderr){Ok(v)=>v,Err(f)=>return Err(GuardedOwnerFailure::Guardian(prepared,f))};
         let owner=match prepared.activate(guardian){Ok(v)=>v,Err((p,g,e))=>return Err(GuardedOwnerFailure::Activate(p,g,e))};
         match self.install_owner(owner){Ok(())=>{self.boundary=Some(boundary.clone());Ok(())},Err((owner,_))=>Err(GuardedOwnerFailure::Install(owner))}
@@ -455,7 +461,9 @@ impl super::provisioning::Backend for RealBackend {
            held.ino()==e.backing_inode && device_numbers(held.dev())==(e.backing_major,e.backing_minor))
     }
     fn loop_unassigned(&mut self, e: &Expected) -> Result<bool, ()> {
-        super::Backend::loop_absent(self,e)
+        // Selection hint only. The held owner still requires same-FD ENXIO
+        // and atomic LOOP_CONFIGURE; this never proves final release.
+        self.fixed_name(e)?;let tool=self.losetup.clone();let output=self.capture(&tool,&["--list".into(),"--raw".into(),"--noheadings".into(),"--output".into(),"MAJ:MIN".into()])?;assigned_loop_absent(&output,(e.loop_major,e.loop_minor))
     }
     fn mapper_unassigned(&mut self, e: &Expected) -> Result<bool, ()> {
         super::Backend::mapper_absent(self,e)

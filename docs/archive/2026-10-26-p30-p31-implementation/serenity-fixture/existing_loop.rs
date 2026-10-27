@@ -45,6 +45,7 @@ impl Existing {
   Ok(Self{fd,sysroot,sys:sys_file,minor,node_dev:held.dev(),node_inode:held.ino(),sys_dev:sys.dev(),sys_inode:sys.ino()})
  }
  fn status(&self)->io::Result<LoopInfo>{let mut info=zero_info();if unsafe{ioctl(self.fd.as_raw_fd(),GET_STATUS,&mut info)}<0{Err(io::Error::last_os_error())}else{Ok(info)}}
+ pub(super) fn sysfs_identity(&self)->io::Result<(u64,u64,u64,u64)> {let root=self.sysroot.metadata()?;let node=self.sys.metadata()?;Ok((root.dev(),root.ino(),node.dev(),node.ino()))}
  pub(super) fn fd_numbers(&self)->[i32;3] {[self.fd.as_raw_fd(),self.sysroot.as_raw_fd(),self.sys.as_raw_fd()]}
  pub(super) fn lock_down(self)->Result<StrictExisting,(Self,io::Error)> {
   if let Err(e)=no_local_aliases(&self.fd) {return Err((self,e))}

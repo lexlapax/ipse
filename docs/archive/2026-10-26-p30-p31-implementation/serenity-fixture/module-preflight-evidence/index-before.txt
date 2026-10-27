@@ -1,0 +1,4 @@
+nonce=63ebcfd6bc5a4167223662f0dae3539d kernel=7.2.11-arch1-1 index=4095 host_mount_ns=4026531832
+ledger=/home/lexlapax/projects/lexlapax/ipse/.serenity-module-receipt.6Fow8PKP/ledger ledger_id=29:13347407 stage=/tmp/ipse-index-stage.ROL1IT29 stage_id=53:246335 program_id=53:246336:0:700 program_sha256=ff64c2a44ec7893363f51d93e7ee4eeeeed77d6f27ae7299fee52baa6993aa2d original_uid=1000
+control=/dev/loop-control type=character special file major=a minor=ed uid=0 gid=994 mode=660 dev=7 inode=768
+index_before=absent max_part=0

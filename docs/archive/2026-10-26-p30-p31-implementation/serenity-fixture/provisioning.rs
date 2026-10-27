@@ -72,11 +72,11 @@ pub(super) fn provision<B: Backend>(b: &mut B, e: &mut Expected, state: Status) 
       loop_ref:format!("ipse-q-{n}"),dm_name:format!("ipse-q-{n}"),dm_uuid:format!("IPSE-Q-{n}"),
       dm_major:253,dm_minor:11,sectors:1_048_576 } }
     struct Mock { steps: Vec<Step>, pending: Vec<Step>, fail: Option<Step>, loop_busy: bool,
-        dm_busy: bool, backing: bool, mounted: bool, holder: bool, wrong_table: bool }
+        dm_busy: bool, backing: bool, mounted: bool, holder: bool, wrong_table: bool, arm_fail:bool }
     impl Mock { fn new() -> Self { Self {steps:vec![],pending:vec![],fail:None,loop_busy:false,
-        dm_busy:false,backing:false,mounted:false,holder:false,wrong_table:false} } }
+        dm_busy:false,backing:false,mounted:false,holder:false,wrong_table:false,arm_fail:false} } }
     impl Backend for Mock {
-        fn arm_owner(&mut self,_:&Expected)->Result<(),()>{Ok(())}
+        fn arm_owner(&mut self,_:&Expected)->Result<(),()>{if self.arm_fail{Err(())}else{Ok(())}}
         fn pending(&mut self,s:Step)->Result<(),()>{self.pending.push(s);Ok(())}
         fn effect(&mut self,s:Step,_:&Expected)->Result<(),()>{
           self.steps.push(s);if self.fail==Some(s){return Err(())}
@@ -96,6 +96,7 @@ pub(super) fn provision<B: Backend>(b: &mut B, e: &mut Expected, state: Status) 
         fn mounted(&mut self,_:&Expected)->Result<bool,()>{Ok(self.mounted)}
         fn confirmed(&mut self,_:Status)->Result<(),()>{Ok(())}
     }
+    #[test] fn missing_guardian_stops_before_loop_configuration() {let mut b=Mock::new();b.arm_fail=true;assert_eq!(provision(&mut b,&mut expected(),Status::Empty),Status::Unknown);assert_eq!(b.steps,vec![Step::Backing]);assert!(!b.loop_busy);}
     #[test] fn every_real_effect_is_preceded_by_an_exact_pending_step() {
         let mut b=Mock::new(); assert_eq!(provision(&mut b,&mut expected(),Status::Empty),Status::Mounted);
         assert_eq!(b.steps,vec![Step::Backing,Step::Loop,Step::Mapper,Step::Format,Step::Mount]);

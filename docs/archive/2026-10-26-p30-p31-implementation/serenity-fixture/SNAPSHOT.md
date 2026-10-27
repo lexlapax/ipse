@@ -262,3 +262,10 @@ and fault path. A no-device Docker test exercised the Rust stage adapter with a
 bound Resources scope and an instrumented helper; a wrong executable was also
 refused before staging. See `STAGE-CONTAINER-RECEIPT.md` for provenance and
 limits. The privileged live entry, mapper fault and cleanup are not qualified.
+
+The approved control-open preflight loaded host loop and dm_mod modules and
+retained its workspace ledger; it created no loop index or block-device binding.
+Its exact evidence and the separate no-device runtime-mount preflight are in
+`MODULE-PREFLIGHT-RECEIPT.md`. The coordinating agent subsequently created one new loop index, 4095, and
+retained it with its exact synced receipt; no backing has been bound. Binding
+that recorded identity to the held-FD owner remains under review.

@@ -1,0 +1,5 @@
+nonce=63ebcfd6bc5a4167223662f0dae3539d kernel=7.2.11-arch1-1
+control=/dev/loop-control type=character special file major=a minor=ed uid=0 gid=994 mode=660 dev=7 inode=768
+control=/dev/mapper/control type=character special file major=a minor=ec uid=0 gid=0 mode=600 dev=7 inode=775
+module_before=loop:absent
+module_before=dm_mod:absent
