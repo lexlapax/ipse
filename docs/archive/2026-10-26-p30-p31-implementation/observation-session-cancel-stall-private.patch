@@ -1,0 +1,811 @@
+--- a/lib/ipse/session.ex
++++ b/lib/ipse/session.ex
+@@ -1154,6 +1154,99 @@
+     {:reply, reply, s}
+   end
+ 
++  # Private non-delivering probe: only the current tracked host effect can
++  # submit the exact active action and current source snapshot. This does not
++  # persist a receipt or grant a later-use barrier.
++  def handle_call(
++        {:private_observation_attest, ref, intent, current, observation},
++        from = {caller, _},
++        %{job_ref: ref, task: %{pid: worker}, invocation: %{action: %{intent: intent}}} = s
++      )
++      when ref != nil do
++    prepared =
++      with true <- s.phase in [:tool, :extension_command, :extension_service, :extension_events],
++           true <- not s.invocation.interrupted and CurrentInvocation.output_timely?(s),
++           false <- Map.get(s.invocation.action, :private_observation_attested, false),
++           true <- is_nil(Map.get(s, :private_observation_pending)),
++           true <- Ipse.Extension.Registry.live?(s.invocation.parent["identity"]),
++           true <- Ipse.Session.Resources.authorized_effect?(worker, caller),
++           true <-
++             Ipse.Session.ObservationReplay.probe?(
++               s.config,
++               s.invocation.parent,
++               intent["request"]
++             ),
++           {:ok, window} <- Writer.source_query(s.journal_writer, :snapshot),
++           {:ok, ^current} <-
++             Ipse.Extension.SemanticAdmission.context(s.config, s.id, window["generation"]),
++           {:ok, prepared} <-
++             Ipse.Session.ObservationReceipt.prepare(
++               intent,
++               s.invocation.parent["identity"],
++               observation
++             ),
++           {:ok, result} <-
++             Ipse.Extension.Actions.result(intent, %{"status" => "ok", "value" => prepared.value}),
++           {:ok, _receipt} <-
++             Ipse.Session.ObservationReceipt.bind(
++               intent,
++               s.invocation.parent["identity"],
++               observation,
++               result
++             ),
++           true <- CurrentInvocation.output_timely?(s) and Process.alive?(caller),
++           {:ok, admission, token} <-
++             Ipse.Session.ObservationAdmission.start(
++               ref,
++               worker,
++               intent,
++               s.invocation.parent["identity"],
++               s.config[:private_observation_guard]["artifact_sha256"],
++               s.journal_writer
++             ),
++           {:ok, pending} <-
++             Ipse.Session.ObservationAsync.begin(
++               admission,
++               caller,
++               ref,
++               token,
++               observation,
++               Map.get(s.config, :private_observation_timeout_ms, 4_000)
++             ) do
++        {:ok, pending}
++      else
++        _ -> {:error, :observation_refused}
++      end
++
++    case prepared do
++      {:ok, pending} ->
++        :telemetry.execute([:ipse, :private_observation, :attested], %{count: 1}, %{})
++
++        next = %{
++          s
++          | invocation: %{
++              s.invocation
++              | action: Map.put(s.invocation.action, :private_observation_attested, true)
++            }
++        }
++
++        {:noreply,
++         Map.put(next, :private_observation_pending, %{
++           async: pending,
++           from: from,
++           job: ref,
++           intent: intent,
++           current: current
++         })}
++
++      error ->
++        {:reply, error, s}
++    end
++  end
++
++  def handle_call({:private_observation_attest, _, _, _, _}, _, s),
++    do: {:reply, {:error, :observation_refused}, s}
++
+   def handle_call(
+         {:inference_dispatch_intent, ref, phase, admission, expected, facts},
+         {caller, _},
+@@ -1320,7 +1413,9 @@
+       )
+       when ref != nil and
+              phase in [:tool, :extension_command, :extension_service, :extension_events] do
+-    CurrentInvocation.commit_action(s, event, intent)
++    if Map.get(s.invocation.action, :private_observation_attested, false),
++      do: {:reply, {:error, :observation_live_barrier_unavailable}, s},
++      else: CurrentInvocation.commit_action(s, event, intent)
+   end
+ 
+   def handle_call({:extension_action_commit, _, _}, _, s),
+@@ -1919,6 +2014,18 @@
+   @impl true
+ 
+   def handle_info(
++        {[:alias | request], _} = message,
++        %{private_observation_pending: %{async: %{request: request}}} = s
++      ),
++      do: private_observation_response(s, message)
++
++  def handle_info(
++        {:observation_deadline, job, nonce} = message,
++        %{private_observation_pending: %{async: %{nonce: nonce}, job: job}} = s
++      ),
++      do: private_observation_response(s, message)
++
++  def handle_info(
+         {:extension_output_deadline, ref},
+         %{job_ref: ref, extension_output_clock: clock} = s
+       )
+@@ -2423,6 +2530,39 @@
+ 
+   def handle_info(_, s), do: {:noreply, s}
+ 
++  defp private_observation_response(s, message) do
++    pending = s.private_observation_pending
++
++    active =
++      s.job_ref === pending.job and is_map(s.invocation) and
++        is_map(s.invocation.action) and s.invocation.action.intent === pending.intent and
++        not s.invocation.interrupted and CurrentInvocation.output_timely?(s) and
++        Process.alive?(pending.async.caller) and Process.alive?(pending.async.admission.worker)
++
++    if active do
++      case Ipse.Session.ObservationAsync.handle(pending.async, message) do
++        {:pending, next} ->
++          if pending.async.phase != :append and next.phase == :append,
++            do: :telemetry.execute([:ipse, :private_observation, :queued], %{count: 1}, %{})
++
++          {:noreply, Map.put(s, :private_observation_pending, %{pending | async: next})}
++
++        {:finished, status, _} ->
++          reply =
++            if status == :recorded_not_exposed,
++              do: {:ok, :recorded_not_exposed},
++              else: {:error, :observation_unknown}
++
++          GenServer.reply(pending.from, reply)
++          {:noreply, Map.put(s, :private_observation_pending, nil)}
++      end
++    else
++      Process.cancel_timer(pending.async.timer)
++      GenServer.reply(pending.from, {:error, :observation_unknown})
++      {:noreply, Map.put(s, :private_observation_pending, nil)}
++    end
++  end
++
+   @impl true
+ 
+   def terminate(_reason, s) do
+@@ -2872,12 +3012,14 @@
+     config = Ipse.MCP.fingerprint_version(config, 2)
+     config = Map.put(config, :source_layout, Ipse.Session.SourceWindow.layout())
+ 
+-    with {:ok, config} <- Ipse.Config.Activation.fresh(config, cwd),
++    with true <- Ipse.Session.ObservationReplay.valid_guard?(config),
++         {:ok, config} <- Ipse.Config.Activation.fresh(config, cwd),
+          {:ok, mode} <- Ipse.Extension.Mode.capture(config),
+          config = apply_execution_mode(config, mode),
+          selected_id = Ipse.Usage.id(),
+          {:ok, semantic_admission} <-
+            Ipse.Extension.SemanticAdmission.fresh(config, cwd, selected_id),
++         true <- Ipse.Session.ObservationReplay.guard_admitted?(config, semantic_admission),
+          :ok <- Ipse.Config.Activation.admitted(config, semantic_admission),
+          config = Map.put(config, :semantic_admission, semantic_admission),
+          {:ok, id} <-
+--- a/lib/ipse/session/observation_replay.ex
++++ b/lib/ipse/session/observation_replay.ex
+@@ -7,11 +7,16 @@
+   # Diagnostic-only selection in the disposable graph. Production must derive
+   # reviewed bundle identity from verified installed artifacts and policy.
+   def prototype_header(metadata, config) do
+-    if config[:private_observation_guard] == true do
++    if guard?(config) do
+       a = metadata["semantic_admission"]
+       pin = a["pin"]
+       true = SemanticAdmission.valid?(a, pin["session_id"]) and a["version"] === 2
+ 
++      true =
++        config[:private_observation_guard]["artifact_sha256"] === a["policy"]["artifact_sha256"]
++
++      true = config[:private_observation_guard]["identity_sha256"] === pin["identity_sha256"]
++
+       Map.put(metadata, "observation_lineage", %{
+         "version" => 1,
+         "artifact_sha256" => a["policy"]["artifact_sha256"],
+@@ -23,20 +28,77 @@
+     end
+   end
+ 
+-  def prototype_resume?(metadata, config),
+-    do:
+-      Map.has_key?(metadata, "observation_lineage") ==
+-        (config[:private_observation_guard] == true)
++  def prototype_resume?(metadata, config) do
++    valid_guard?(config) and
++      case {Map.get(metadata, "observation_lineage"), config[:private_observation_guard]} do
++        {nil, nil} ->
++          true
++
++        {header, guard} when is_map(header) and is_map(guard) ->
++          guard?(config) and header["artifact_sha256"] === guard["artifact_sha256"] and
++            header["identity_sha256"] === guard["identity_sha256"]
++
++        _ ->
++          false
++      end
++  end
+ 
+   def prototype_block_read?(config, parent, request) do
+-    config[:private_observation_guard] == true and is_map(parent) and
++    guard?(config) and is_map(parent) and
+       JSON.digest([parent["identity"]]) ==
+         get_in(config, [:semantic_admission, "pin", "identity_sha256"]) and
+-      CollectionCall.operation?(request) and not CollectionCall.mutating?(request)
++      CollectionCall.operation?(request) and not CollectionCall.mutating?(request) and
++      not probe?(config, parent, request)
+   rescue
+     _ -> true
+   end
+ 
++  # Private, non-delivering experiment. It never authorizes the worker to use
++  # an observation; the checked host effect may only request owner attestation.
++  def probe?(config, parent, request) do
++    config[:private_observation_probe] === true and guard?(config) and is_map(parent) and
++      JSON.digest([parent["identity"]]) === config[:private_observation_guard]["identity_sha256"] and
++      CollectionCall.operation?(request) and not CollectionCall.mutating?(request) and
++      get_in(request, ["request", "op"]) in ~w(get snapshot)
++  rescue
++    _ -> false
++  end
++
++  defp guard?(config) do
++    guard = config[:private_observation_guard]
++
++    is_map(guard) and Enum.sort(Map.keys(guard)) == ~w(artifact_sha256 identity_sha256) and
++      JSON.sha256?(guard["artifact_sha256"]) and JSON.sha256?(guard["identity_sha256"])
++  end
++
++  def valid_guard?(config) do
++    valid_guard = is_nil(config[:private_observation_guard]) or guard?(config)
++    probe = config[:private_observation_probe]
++    timeout = Map.get(config, :private_observation_timeout_ms, 4_000)
++
++    valid_guard and probe in [nil, false, true] and
++      (probe != true or guard?(config)) and is_integer(timeout) and timeout in 1..4_000
++  end
++
++  def guard_admitted?(config, admission) do
++    case config[:private_observation_guard] do
++      nil ->
++        true
++
++      guard when is_map(guard) ->
++        guard?(config) and is_map(admission) and is_map(admission["pin"]) and
++          SemanticAdmission.valid?(admission, admission["pin"]["session_id"]) and
++          admission["version"] === 2 and
++          guard["artifact_sha256"] === get_in(admission, ["policy", "artifact_sha256"]) and
++          guard["identity_sha256"] === admission["pin"]["identity_sha256"]
++
++      _ ->
++        false
++    end
++  rescue
++    _ -> false
++  end
++
+   # Private fail-closed experiment. The real host must create this versioned
+   # header from a verified reviewed bundle, never from a worker or request.
+   # No result of this function grants permission to use observed values.
+--- a/lib/ipse/session/observation_async.ex
++++ b/lib/ipse/session/observation_async.ex
+@@ -118,6 +118,7 @@
+            "receipt" => receipt
+          },
+          true <- System.monotonic_time(:millisecond) < state.deadline do
++      :telemetry.execute([:ipse, :private_observation, :before_append], %{count: 1}, %{})
+       request = :gen_server.send_request(state.admission.writer, {:append, :plain, envelope})
+       {:pending, %{state | phase: :append, request: request, observation: nil, submitted: true}}
+     else
+--- a/lib/ipse/extension/collection_call.ex
++++ b/lib/ipse/extension/collection_call.ex
+@@ -238,12 +238,60 @@
+       pin["policy_sha256"],
+       now(),
+       fn _ ->
+-        with {:ok, ^current, []} <- current_sources(context, intent),
+-             do: storage(context, intent)
++        with {:ok, ^current, []} <- current_sources(context, intent) do
++          if Ipse.Session.ObservationReplay.probe?(
++               context.config,
++               context.parent,
++               intent["request"]
++             ) do
++            private_attest_probe(context, intent, current)
++          else
++            storage(context, intent)
++          end
++        end
+       end
+     )
+   end
+ 
++  # Only for the private experiment: do not return the observation or receipt
++  # to the worker. Missing durable publication and later-use fencing mean that
++  # successful attestation still has an unknown outcome.
++  defp private_attest_probe(context, intent, current) do
++    with {:ok, observation} <-
++           Collection.ObservedRead.read(
++             SemanticAdmission.collection_root(context.config[:home]),
++             intent["namespace"],
++             intent["request"]["request"]
++           ),
++         {:ok, :recorded_not_exposed} <-
++           GenServer.call(
++             context.owner,
++             {:private_observation_attest, context.job_ref, intent, current, observation},
++             5_000
++           ),
++         :ok <- private_before_recheck(),
++         {:ok, confirmed} <-
++           Collection.ObservedRead.read(
++             SemanticAdmission.collection_root(context.config[:home]),
++             intent["namespace"],
++             intent["request"]["request"]
++           ),
++         true <- confirmed === observation,
++         {:ok, ^current, []} <- current_sources(context, intent) do
++      :telemetry.execute([:ipse, :private_observation, :root_rechecked], %{count: 1}, %{})
++      :unknown
++    else
++      _ -> :unknown
++    end
++  catch
++    :exit, _ -> :unknown
++  end
++
++  defp private_before_recheck do
++    :telemetry.execute([:ipse, :private_observation, :before_recheck], %{count: 1}, %{})
++    :ok
++  end
++
+   defp publish(context, intent, current, proofs, plan) do
+     alias Ipse.Extension.Consent
+     pin = intent["effect_binding"]["pin"]
+--- a/test/ipse/extension/collection_call_session_test.exs
++++ b/test/ipse/extension/collection_call_session_test.exs
+@@ -382,10 +382,21 @@
+       execution_mode: :planning,
+       fixture_export: "inspect",
+       fixture_mode: "read",
+-      private_observation_guard: true
++      private_observation_guard: %{
++        "artifact_sha256" => hd(c.config.extensions).identity["artifact_sha256"],
++        "identity_sha256" => JSON.digest([hd(c.config.extensions).identity])
++      }
+     }
+ 
+     pid = start(c, config)
++
++    assert {:error, :extension_action_refused} =
++             GenServer.call(
++               pid,
++               {:extension_action_begin, make_ref(),
++                %{"op" => "collection.call", "request" => %{"op" => "snapshot"}}}
++             )
++
+     assert :ok = Session.prompt(pid, "Synthetic café observation")
+     assert_receive {:ipse, ^pid, {:done, :error}}, 15_000
+     id = Session.info(pid).id
+@@ -405,6 +416,78 @@
+ 
+     resumed = start(c, config, id)
+     assert :ok = Session.close_confirmed(resumed)
++
++    stripped_dir = Path.join(c.root, "stripped-header")
++    File.mkdir!(stripped_dir)
++    [first | rest] = events
++    stripped = [update_in(first, ["metadata"], &Map.delete(&1, "observation_lineage")) | rest]
++    file = Path.join(stripped_dir, id <> ".jsonl")
++    File.write!(file, Enum.map_join(stripped, "\n", &Jason.encode!/1) <> "\n")
++    File.chmod!(file, 0o600)
++
++    assert {:error, _} =
++             DynamicSupervisor.start_child(
++               Ipse.Sessions,
++               {Session,
++                [
++                  config: Map.merge(c.config, config),
++                  cwd: c.cwd,
++                  state_dir: stripped_dir,
++                  subscriber: self(),
++                  id: id
++                ]}
++             )
++
++    wrong = put_in(config, [:private_observation_guard, "artifact_sha256"], JSON.sha256("other"))
++
++    assert {:error, _} =
++             DynamicSupervisor.start_child(
++               Ipse.Sessions,
++               {Session,
++                [
++                  config: Map.merge(c.config, wrong),
++                  cwd: c.cwd,
++                  state_dir: c.dir,
++                  subscriber: self(),
++                  id: id
++                ]}
++             )
++
++    assert {:error, _} =
++             DynamicSupervisor.start_child(
++               Ipse.Sessions,
++               {Session,
++                [
++                  config: Map.merge(c.config, Map.put(config, :private_observation_guard, true)),
++                  cwd: c.cwd,
++                  state_dir: c.dir,
++                  subscriber: self()
++                ]}
++             )
++
++    assert {:error, _} =
++             DynamicSupervisor.start_child(
++               Ipse.Sessions,
++               {Session,
++                [
++                  config: Map.put(c.config, :private_observation_probe, true),
++                  cwd: c.cwd,
++                  state_dir: c.dir,
++                  subscriber: self()
++                ]}
++             )
++
++    assert {:error, _} =
++             DynamicSupervisor.start_child(
++               Ipse.Sessions,
++               {Session,
++                [
++                  config: Map.merge(c.config, wrong),
++                  cwd: c.cwd,
++                  state_dir: c.dir,
++                  subscriber: self()
++                ]}
++             )
+   end
+ 
+   test "versioned replay requires the exact observed action and still refuses use without live barrier",
+@@ -506,6 +589,339 @@
+     assert :ok = Session.close_confirmed(pid)
+   end
+ 
++  test "private same-view probe binds the live Session action without delivering its result", c do
++    owner = self()
++    handler = {__MODULE__, make_ref()}
++
++    :ok =
++      :telemetry.attach_many(
++        handler,
++        [
++          [:ipse, :private_observation, :attested],
++          [:ipse, :private_observation, :root_rechecked]
++        ],
++        fn event, _, _, pid -> send(pid, {:private_event, List.last(event)}) end,
++        owner
++      )
++
++    try do
++      identity = hd(c.config.extensions).identity
++
++      config = %{
++        execution_mode: :planning,
++        fixture_export: "inspect",
++        fixture_mode: "read",
++        private_observation_probe: true,
++        private_observation_guard: %{
++          "artifact_sha256" => identity["artifact_sha256"],
++          "identity_sha256" => JSON.digest([identity])
++        }
++      }
++
++      pid = start(c, config)
++
++      assert {:error, :observation_refused} =
++               GenServer.call(pid, {:private_observation_attest, make_ref(), %{}, %{}, %{}})
++
++      assert :ok = Session.prompt(pid, "Synthetic café observation")
++      assert_receive {:private_event, :attested}, 15_000
++      assert_receive {:private_event, :root_rechecked}, 15_000
++      assert_receive {:ipse, ^pid, {:done, _}}, 15_000
++      trace = File.read!(c.trace)
++      assert trace =~ "entered\n"
++      refute trace =~ "generation"
++      refute trace =~ "floor_anchor"
++      assert {:ok, events} = Journal.load(c.dir, Session.info(pid).id)
++      assert Enum.count(events, &(&1["type"] == "collection_observation_transaction")) == 1
++
++      assert {:error, :observation_live_barrier_unavailable} =
++               Ipse.Session.ObservationReplay.check(events, Session.info(pid).id)
++
++      assert {:error, :observation_refused} =
++               GenServer.call(pid, {:private_observation_attest, make_ref(), %{}, %{}, %{}})
++    after
++      :telemetry.detach(handler)
++    end
++  end
++
++  test "a late queued Session observation remains private and blocks replay", c do
++    identity = hd(c.config.extensions).identity
++
++    config = %{
++      execution_mode: :planning,
++      fixture_export: "inspect",
++      fixture_mode: "read",
++      private_observation_probe: true,
++      private_observation_timeout_ms: 300,
++      private_observation_guard: %{
++        "artifact_sha256" => identity["artifact_sha256"],
++        "identity_sha256" => JSON.digest([identity])
++      }
++    }
++
++    pid = start(c, config)
++    writer = :sys.get_state(pid).journal_writer
++    owner = self()
++    handler = {__MODULE__, make_ref()}
++
++    :ok =
++      :telemetry.attach(
++        handler,
++        [:ipse, :private_observation, :before_append],
++        fn _, _, _, {test, writer} ->
++          :ok = :sys.suspend(writer)
++          send(test, :private_writer_suspended)
++        end,
++        {owner, writer}
++      )
++
++    try do
++      assert :ok = Session.prompt(pid, "Synthetic café observation")
++      assert_receive :private_writer_suspended, 15_000
++      assert is_binary(Session.info(pid).id)
++      refute_receive {:ipse, ^pid, {:done, _}}, 500
++    after
++      :ok = :sys.resume(writer)
++      :telemetry.detach(handler)
++    end
++
++    assert_receive {:ipse, ^pid, {:done, _}}, 15_000
++    {:ok, events} = Journal.load(c.dir, Session.info(pid).id)
++    assert Enum.count(events, &(&1["type"] == "collection_observation_transaction")) == 1
++    assert {:error, _} = Ipse.Session.ObservationReplay.check(events, Session.info(pid).id)
++    refute File.read!(c.trace) =~ "floor_anchor"
++  end
++
++  test "a changed collection root after receipt persistence is not revalidated or exposed", c do
++    identity = hd(c.config.extensions).identity
++
++    config = %{
++      execution_mode: :planning,
++      fixture_export: "inspect",
++      fixture_mode: "read",
++      private_observation_probe: true,
++      private_observation_guard: %{
++        "artifact_sha256" => identity["artifact_sha256"],
++        "identity_sha256" => JSON.digest([identity])
++      }
++    }
++
++    pid = start(c, config)
++    handler = {__MODULE__, make_ref()}
++
++    :ok =
++      :telemetry.attach_many(
++        handler,
++        [
++          [:ipse, :private_observation, :before_recheck],
++          [:ipse, :private_observation, :root_rechecked]
++        ],
++        fn event, _, _, test ->
++          if List.last(event) == :before_recheck do
++            send(test, {:before_recheck, self()})
++
++            receive do
++              :resume_private_recheck -> :ok
++            after
++              10_000 -> :ok
++            end
++          else
++            send(test, :root_rechecked)
++          end
++        end,
++        self()
++      )
++
++    try do
++      assert :ok = Session.prompt(pid, "Synthetic café observation")
++      assert_receive {:before_recheck, effect}, 15_000
++
++      # Knowing the live job reference and exact active intent is not enough
++      # for another process to commit or attest the worker's action.
++      active = :sys.get_state(pid)
++      job = active.job_ref
++      intent = active.invocation.action.intent
++
++      assert {:error, :extension_action_refused} =
++               GenServer.call(pid, {:extension_action_commit, job, %{}})
++
++      assert {:error, :observation_refused} =
++               GenServer.call(pid, {:private_observation_attest, job, intent, %{}, %{}})
++
++      request = %{
++        "op" => "commit",
++        "expected_generation" => 0,
++        "advance_floor" => false,
++        "changes" => [
++          %{
++            "key" => "note.audit",
++            "expected_revision" => 0,
++            "value" => %{"text" => "synthetic concurrent mutation"}
++          }
++        ]
++      }
++
++      assert {:ok, _} =
++               Ipse.Extension.Collection.execute(
++                 SemanticAdmission.collection_root(c.home),
++                 c.namespace,
++                 request,
++                 Ipse.Usage.id()
++               )
++
++      send(effect, :resume_private_recheck)
++      assert_receive {:ipse, ^pid, {:done, _}}, 15_000
++
++      assert {:error, :extension_action_refused} =
++               GenServer.call(pid, {:extension_action_commit, job, %{}})
++
++      refute_receive :root_rechecked, 100
++      refute File.read!(c.trace) =~ "floor_anchor"
++    after
++      :telemetry.detach(handler)
++    end
++  end
++
++  test "Session owner death during a queued observation cannot expose its value", c do
++    identity = hd(c.config.extensions).identity
++
++    config = %{
++      execution_mode: :planning,
++      fixture_export: "inspect",
++      fixture_mode: "read",
++      private_observation_probe: true,
++      private_observation_guard: %{
++        "artifact_sha256" => identity["artifact_sha256"],
++        "identity_sha256" => JSON.digest([identity])
++      }
++    }
++
++    pid = start(c, config)
++    id = Session.info(pid).id
++    writer = :sys.get_state(pid).journal_writer
++    owner_ref = Process.monitor(pid)
++    writer_ref = Process.monitor(writer)
++    handler = {__MODULE__, make_ref()}
++
++    :ok =
++      :telemetry.attach(
++        handler,
++        [:ipse, :private_observation, :before_append],
++        fn _, _, _, {test, writer} ->
++          :ok = :sys.suspend(writer)
++          send(test, :private_writer_suspended)
++        end,
++        {self(), writer}
++      )
++
++    try do
++      assert :ok = Session.prompt(pid, "Synthetic café observation")
++      assert_receive :private_writer_suspended, 15_000
++      Process.exit(pid, :kill)
++      assert_receive {:DOWN, ^owner_ref, :process, ^pid, :killed}, 5_000
++    after
++      if Process.alive?(writer), do: :sys.resume(writer)
++      :telemetry.detach(handler)
++    end
++
++    assert_receive {:DOWN, ^writer_ref, :process, ^writer, _}, 5_000
++    {:ok, events} = Journal.load(c.dir, id)
++    assert Enum.count(events, &(&1["type"] == "collection_observation_transaction")) in 0..1
++    refute File.read!(c.trace) =~ "floor_anchor"
++  end
++
++  test "diagnostic: cancellation does not finish while the real writer is suspended", c do
++    identity = hd(c.config.extensions).identity
++
++    config = %{
++      execution_mode: :planning,
++      fixture_export: "inspect",
++      fixture_mode: "read",
++      private_observation_probe: true,
++      private_observation_guard: %{
++        "artifact_sha256" => identity["artifact_sha256"],
++        "identity_sha256" => JSON.digest([identity])
++      }
++    }
++
++    pid = start(c, config)
++    writer = :sys.get_state(pid).journal_writer
++    handler = {__MODULE__, make_ref()}
++
++    :ok =
++      :telemetry.attach(
++        handler,
++        [:ipse, :private_observation, :before_append],
++        fn _, _, _, {test, writer} ->
++          :ok = :sys.suspend(writer)
++          send(test, :writer_stalled_for_cancel)
++        end,
++        {self(), writer}
++      )
++
++    try do
++      assert :ok = Session.prompt(pid, "Synthetic café observation")
++      assert_receive :writer_stalled_for_cancel, 15_000
++      cancel = Task.async(fn -> Session.cancel(pid) end)
++      assert Task.yield(cancel, 200) == nil
++      :ok = :sys.resume(writer)
++      assert Task.await(cancel, 15_000) in [:ok, {:error, :cleanup_unconfirmed}]
++    after
++      if Process.alive?(writer), do: :sys.resume(writer)
++      :telemetry.detach(handler)
++    end
++  end
++
++  test "cancellation while a recorded observation awaits recheck cannot deliver it", c do
++    identity = hd(c.config.extensions).identity
++
++    config = %{
++      execution_mode: :planning,
++      fixture_export: "inspect",
++      fixture_mode: "read",
++      private_observation_probe: true,
++      private_observation_guard: %{
++        "artifact_sha256" => identity["artifact_sha256"],
++        "identity_sha256" => JSON.digest([identity])
++      }
++    }
++
++    pid = start(c, config)
++    id = Session.info(pid).id
++    handler = {__MODULE__, make_ref()}
++
++    :ok =
++      :telemetry.attach(
++        handler,
++        [:ipse, :private_observation, :before_recheck],
++        fn _, _, _, test ->
++          send(test, {:cancel_recheck, self()})
++
++          receive do
++            :release_cancel_recheck -> :ok
++          after
++            10_000 -> :ok
++          end
++        end,
++        self()
++      )
++
++    try do
++      assert :ok = Session.prompt(pid, "Synthetic café observation")
++      assert_receive {:cancel_recheck, effect}, 15_000
++      cancel = Task.async(fn -> Session.cancel(pid) end)
++      Process.sleep(100)
++      send(effect, :release_cancel_recheck)
++      assert Task.await(cancel, 15_000) in [:ok, {:error, :cleanup_unconfirmed}]
++      {:ok, events} = Journal.load(c.dir, id)
++      assert Enum.any?(events, &(&1["type"] == "collection_observation_transaction"))
++      assert {:error, _} = Ipse.Session.ObservationReplay.check(events, id)
++      refute File.read!(c.trace) =~ "floor_anchor"
++    after
++      :telemetry.detach(handler)
++    end
++  end
++
+   test "headless protected capture journals exact outer and inner bindings and settles once", c do
+     pid = start(c)
+     assert :sys.get_state(pid).config.semantic_admission["status"] == "active"

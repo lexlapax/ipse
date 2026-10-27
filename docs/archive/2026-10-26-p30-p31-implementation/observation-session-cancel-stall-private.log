@@ -1,0 +1,13 @@
+Running ExUnit with seed: 20270350, max_cases: 1
+Excluding tags: [:test]
+Including tags: [location: {"test/ipse/extension/collection_call_session_test.exs", 833}]
+
+
+10:28:33.934 [info] The function passed as a handler with ID {Ipse.Extension.CollectionCallSessionTest, #Reference<0.488626588.1659895809.138083>} is a local function.
+This means that it is either an anonymous function or a capture of a function without a module specified. That may cause a performance penalty when calling that handler. For more details see the note in `telemetry:attach/4` documentation.
+
+https://hexdocs.pm/telemetry/telemetry.html#attach/4
+.
+Finished in 6.4 seconds (0.00s async, 6.4s sync)
+
+Result: 1 passed, 21 excluded
