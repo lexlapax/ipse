@@ -86,6 +86,18 @@ defmodule Ipse.Session.ManagedReference do
     _ -> false
   end
 
+  def dependency?(%{"version" => 3} = d) do
+    keys?(d, @dependency_v2_keys) and
+      Enum.all?(~w(project_id namespace pin_sha256), &JSON.sha256?(d[&1])) and
+      uint?(d["policy_generation"]) and collection_v2?(d["collection"], d["namespace"]) and
+      keys?(d["subject"], ~w(kind request_sha256 result_sha256)) and
+      d["subject"]["kind"] == "root_observation" and
+      Enum.all?(~w(request_sha256 result_sha256), &JSON.sha256?(d["subject"][&1])) and
+      fits?(d, @dependency_bytes)
+  rescue
+    _ -> false
+  end
+
   def dependency?(_), do: false
 
   @doc "Canonical union with explicit refusal at the active-plan bound; never evicts lineage."
@@ -418,6 +430,9 @@ defmodule Ipse.Session.ManagedReference do
 
   defp current?(_, %{"current" => nil}, _), do: true
   defp current?(_, _, _), do: false
+
+  defp same_subject?(%{"version" => 3} = old, current, _),
+    do: old["subject"] === current["subject"] and old["collection"] === current["collection"]
 
   defp same_subject?(%{"version" => 1} = old, current, now),
     do:

@@ -144,6 +144,80 @@ defmodule Ipse.Session.ManagedReferenceTest do
         do: refute(Managed.dependency?(bad))
   end
 
+  test "root observations retain raw selection taint and cannot refresh across any changed root" do
+    d =
+      record_v2()
+      |> Map.put("version", 3)
+      |> Map.put("subject", %{
+        "kind" => "root_observation",
+        "request_sha256" => sha("scan selection"),
+        "result_sha256" => sha("partial nonempty result")
+      })
+
+    assert Managed.dependency?(d)
+    {_, _, plan} = admitted(user("derived from raw collection status"), [d])
+    assert {:ok, _, _, _} = Managed.project(plan, [verdict(d)], binding())
+
+    for changed <- [
+          put_in(d, ["collection", "generation"], 11),
+          put_in(d, ["collection", "root_sha256"], sha("changed root")),
+          put_in(d, ["collection", "manifest_sha256"], sha("changed manifest")),
+          put_in(d, ["subject", "request_sha256"], sha("other selection")),
+          put_in(d, ["subject", "result_sha256"], sha("other result"))
+        ] do
+      assert @error == Managed.project(plan, [verdict(d, "eligible", changed)], binding())
+    end
+
+    assert {:ok, _, [withdrawn], _} =
+             Managed.project(plan, [verdict(d, "root_changed")], binding())
+
+    refute withdrawn["content"] =~ "derived from raw collection status"
+
+    for changed <- [
+          Map.put(d, "version", 2),
+          put_in(d, ["subject", "kind"], "absence"),
+          put_in(d, ["subject", "result_sha256"], nil)
+        ] do
+      refute Managed.dependency?(changed)
+    end
+
+    absent = Map.put(d, "collection", absence_v2()["collection"])
+    assert Managed.dependency?(absent)
+    {_, _, absent_plan} = admitted(user("root was actually absent"), [absent])
+    assert @error == Managed.project(absent_plan, [verdict(absent, "eligible", d)], binding())
+  end
+
+  test "root observations survive inheritance and replay but require a fresh check" do
+    root =
+      record_v2()
+      |> Map.put("version", 3)
+      |> Map.put("subject", %{
+        "kind" => "root_observation",
+        "request_sha256" => sha("status request"),
+        "result_sha256" => sha("nonempty status")
+      })
+
+    record = record_v2()
+    message = user("Summary derived from both observations")
+    {event, state, plan} = admitted(message, [root, record])
+    assert {:ok, inherited} = Managed.inherit(state, [event["occurrence_id"]], [])
+    assert inherited == ordered([root, record])
+    assert {:ok, checkpoint} = Managed.checkpoint(plan, 1)
+    assert checkpoint["dependencies"] == inherited
+
+    assert {:ok, projection, [withdrawn], next} =
+             Managed.project(plan, [verdict(record), verdict(root, "root_changed")], binding())
+
+    refute withdrawn["content"] =~ "Summary derived"
+
+    assert {:ok, %{state: ^next, messages: [^withdrawn], live_pending: true}} =
+             Managed.replay(state, [message], projection, binding())
+
+    assert @error == Managed.inherit(next, [event["occurrence_id"]], [])
+    tampered = put_in(projection, ["verdicts", Access.at(0), "current"], root)
+    assert @error == Managed.replay(state, [message], tampered, binding())
+  end
+
   test "root-only absent and empty reads retain taint; imported floors may exceed local generation" do
     root = dependency() |> Map.put("record", nil)
 

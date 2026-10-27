@@ -156,8 +156,17 @@ binds `root_state`: `absent` requires generation/floor zero and null root/manife
 digests; `present` requires both real digests, including for a materialized empty
 store. Imported destructive floors may exceed local generation.
 
-The pure projector accepts a newer receipt for the same subject only after the
-host has proved that subject unchanged. Root/floor regression, substitution of
+For raw status, snapshot, partial scan or search output, a version-3 root
+observation instead binds the host's exact request and committed result hashes.
+It does not invent record validity or claim that a filtered result proves the
+whole collection empty. Its eligibility requires the identical collection root,
+manifest, generation and floor; any root change needs a new actual observation.
+An arbitrary worker-supplied observation is not evidence of that read. Session
+still needs to create and inherit these dependencies from its actual committed
+reads before any consumer can rely on them.
+
+For version-2 subjects, the pure projector accepts a newer receipt for the same
+subject only after the host has proved that subject unchanged. Root/floor regression, substitution of
 another key, and a different root at the same generation refuse. Replay verifies
 recorded transformations and leaves live eligibility pending. Version-1 receipts
 remain compatible with their historical contract; do not reinterpret their null
