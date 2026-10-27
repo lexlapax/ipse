@@ -1,0 +1,17 @@
+//! Read-only binding of a successfully recorded created loop index. A pending,
+//! torn, mismatched or replaced receipt is unknown and never authorizes reuse.
+use std::fs::File;use std::io::{self,Read};use std::os::fd::{AsRawFd,FromRawFd};use std::os::unix::fs::MetadataExt;
+unsafe extern "C"{fn openat(d:i32,p:*const i8,f:i32,...)->i32;fn geteuid()->u32;}
+#[derive(Debug,PartialEq,Eq)]pub(super) struct Index {pub(super) minor:u32,pub(super) root_dev:u64,pub(super) root_inode:u64,pub(super) sysfs_dev:u64,pub(super) sysfs_inode:u64}
+pub(super) fn read(dir:&File,nonce:&str,boot:&str,minor:u32)->io::Result<Index>{
+ if nonce.len()!=32||!nonce.bytes().all(|b|b.is_ascii_digit()||(b'a'..=b'f').contains(&b))||boot.len()!=36||minor>4095{return Err(io::ErrorKind::InvalidInput.into())}
+ let d=dir.metadata()?;if !d.is_dir()||d.uid()!=unsafe{geteuid()}||d.mode()&0o777!=0o700{return Err(io::ErrorKind::PermissionDenied.into())}let name=c"index-add.receipt";let raw=unsafe{openat(dir.as_raw_fd(),name.as_ptr(),0x20000|0x80000)};if raw<0{return Err(io::Error::last_os_error())}let file=unsafe{File::from_raw_fd(raw)};let m=file.metadata()?;if !m.is_file()||m.uid()!=d.uid()||m.nlink()!=1||m.len()>1024{return Err(io::ErrorKind::PermissionDenied.into())}let mut s=String::new();file.take(1025).read_to_string(&mut s)?;parse(&s,nonce,boot,minor)
+}
+fn parse(s:&str,nonce:&str,boot:&str,minor:u32)->io::Result<Index>{
+ if s.len()>1024||!s.ends_with('\n'){return Err(io::ErrorKind::InvalidData.into())}let lines:Vec<_>=s.lines().collect();if lines.len()!=2{return Err(io::ErrorKind::InvalidData.into())}let before:Vec<_>=lines[0].split(' ').collect();let after:Vec<_>=lines[1].split(' ').collect();if before.len()!=9||after.len()!=5||before[0]!="v1"||before[1]!=nonce||before[2]!=format!("boot={boot}")||before[3]!=format!("index={minor}")||before[4]!="pending=true"||after[0]!="created"||after[1]!=format!("index={minor}")||after[4]!="retained=true"{return Err(io::ErrorKind::InvalidData.into())}
+ let number=|s:&str,p:&str|->io::Result<u64>{let v=s.strip_prefix(p).ok_or(io::ErrorKind::InvalidData)?;let n:u64=v.parse().map_err(|_|io::ErrorKind::InvalidData)?;if v!=n.to_string(){return Err(io::ErrorKind::InvalidData.into())}Ok(n)};
+ let root_dev=number(before[5],"sysfs_dev=")?;let root_inode=number(before[6],"sysfs_inode=")?;let _control_dev=number(before[7],"control_dev=")?;let control_inode=number(before[8],"control_inode=")?;let sysfs_dev=number(after[2],"sysfs_dev=")?;let sysfs_inode=number(after[3],"sysfs_inode=")?;if root_inode==0||control_inode==0||sysfs_inode==0{return Err(io::ErrorKind::InvalidData.into())}Ok(Index{minor,root_dev,root_inode,sysfs_dev,sysfs_inode})
+}
+#[cfg(test)]mod tests {use super::*;const N:&str="0123456789abcdef0123456789abcdef";const B:&str="01234567-89ab-cdef-0123-456789abcdef";
+ #[test]fn accepts_only_exact_completed_record(){let good=format!("v1 {N} boot={B} index=42 pending=true sysfs_dev=5 sysfs_inode=6 control_dev=7 control_inode=8\ncreated index=42 sysfs_dev=9 sysfs_inode=10 retained=true\n");assert_eq!(parse(&good,N,B,42).unwrap(),Index{minor:42,root_dev:5,root_inode:6,sysfs_dev:9,sysfs_inode:10});for bad in [good.trim_end().to_owned(),good.replace("created index=42","created index=43"),good.replace("pending=true","pending=false"),good.replace("sysfs_inode=10","sysfs_inode=0"),good.replace("sysfs_dev=9","sysfs_dev=09")] {assert!(parse(&bad,N,B,42).is_err())}}
+}
