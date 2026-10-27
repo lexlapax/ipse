@@ -56,6 +56,7 @@ resource/offline qualification. No daemon configuration or existing model was ch
 - [Versioned reference projection audit and replay repairs](reference-audit.md).
 - [Sustainable collection storage component and measurement provenance](storage-component.md).
 - [Actual 30/90-day primitive turnover and bounded annual continuation controls](storage-workload-endurance.md).
+- [Annual storage segment 1: incomplete, unknown termination cause and retained read-only evidence](storage-annual-s1-incomplete.md).
 - [Declarative collection publication constraints](collection-policy-component.md).
 - [Native knowledge capture and precompiled artifact component](native-capture-component.md).
 - [Inert operator-sidecar schemas and declared data inspection](operator-sidecar-component.md).

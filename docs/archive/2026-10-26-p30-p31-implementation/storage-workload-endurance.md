@@ -4,7 +4,11 @@ Dated investigation, **2026-10-26**. This is development-authored synthetic
 Collection/Notes fixture evidence, following the [v4 block checkpoint](storage-v4-blocks.md).
 It does **not** complete P31C1a, E, default enablement, domain capture, or release
 acceptance. The [current plan](../../plan.md) and [qualification protocol](qualification.md)
-remain authoritative. The annual run is pending at this checkpoint.
+remain authoritative. The annual run was pending at the original checkpoint.
+The later [segment-1 outcome](storage-annual-s1-incomplete.md) is **incomplete,
+with termination cause unknown** and no eligible continuation. The original
+30/90-day results and continuation-control evidence below retain their scope;
+they do not establish annual acceptance.
 
 ## Separate the storage fixture from a conversation
 

@@ -1,0 +1,46 @@
+{
+  "scope": "ordinary-v4 primitive and Notes policy fixture; not domain admission or Session turns",
+  "root": {
+    "floor": 1732,
+    "floor_anchor": "ba9884f583676d78ece658cb2707ce50",
+    "generation": 1752,
+    "manifest": "715fb9a17523d978afdf7f9099fac26d897ff53937ce91ca74a20b04693da4c0",
+    "project": "7641de2b464e967f50674e6983d004f343b8cf09a289c6a887120b9a464d9605",
+    "version": 4
+  },
+  "kind": "development_storage_annual_unclean_read_only_inspection",
+  "inspected_at_utc": "2026-10-27T04:30:08.921096Z",
+  "qualification_passed": false,
+  "outcome": "incomplete",
+  "termination_cause": "unknown",
+  "diagnostic_is_continuation": false,
+  "product_api_calls": 0,
+  "writes_or_retries": 0,
+  "root_sha256": "e278cf80e52f04c47cd2e49ae4eef196e8eada5fd538858f14ce8d4182535944",
+  "root_unchanged_across_read": true,
+  "canonical_block_decode_passed": true,
+  "referenced_metadata_blocks": 41,
+  "actual_records_with_verified_object_hashes": 2450,
+  "valid_receipts": 1752,
+  "day56_cycle0_model_equal": true,
+  "offline_queue_count": 0,
+  "migration": null,
+  "checkpoint": null,
+  "directory_counts": {
+    "manifests": {
+      "count": 43,
+      "pending": []
+    },
+    "objects": {
+      "count": 2451,
+      "pending": []
+    }
+  },
+  "oracle_directory_names": [
+    ".lock",
+    ".pending-59dad04d6166cc23a01441be04affe73",
+    ".writer.lock"
+  ],
+  "runtime_binding_sha256": "1ae1497bec81dd1a4c225d45d0fd810671f9a7c59a74d4d0d7671f678792fe2d",
+  "native_helper_sha256": "108c762ec23085df6aeaba58c8bdfb34d0a8cb4fa80a410584889a81a556ea29"
+}

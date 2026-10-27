@@ -1,0 +1,53 @@
+{
+  "execution_session": 14201,
+  "files": [
+    {
+      "archive": "storage-annual-s1-partial.json",
+      "bytes": 185,
+      "sha256": "df67eb0c75e14b89dbe56671df3878ce2a0ce97a85d3143b10547c019155f8b2",
+      "source": "/tmp/ipse-storage-annual-s1-20261026-01.json.partial.json",
+      "source_mtime_unix": 1793074386
+    },
+    {
+      "archive": "storage-annual-s1-location.json",
+      "bytes": 2121,
+      "sha256": "a696681b1443e3466a9baf853a8ef65bb189e46aca7d0447adcb1166de9a7c13",
+      "source": "/tmp/ipse-storage-annual-s1-20261026-01.json.location.json",
+      "source_mtime_unix": 1793073802
+    },
+    {
+      "archive": "storage-annual-s1.log",
+      "bytes": 206,
+      "sha256": "9ac5ea061f081b220b93977aba49fbc8b716609bc701ffd4406470278bf24e6d",
+      "source": "/tmp/ipse-storage-annual-s1-20261026-01.log",
+      "source_mtime_unix": 1793074114
+    },
+    {
+      "archive": "storage-annual-s1-inspect.exs",
+      "bytes": 3636,
+      "sha256": "3e885857dba147b4ba3bbd980517226e3a2e61ef983cebfeeef156db33da871f"
+    },
+    {
+      "archive": "storage-annual-s1-inspection.json",
+      "bytes": 1561,
+      "sha256": "7efd251696eb927b0117d7c4af72df0ed998984731f6b016edb3d421db5c5301"
+    },
+    {
+      "archive": "storage-annual-s1-incomplete.md",
+      "bytes": 5908,
+      "sha256": "09be04b232bd258d16efbb217b8f2e804fd239ae0bbf852a05ea40e8f2d31057"
+    }
+  ],
+  "immutable_runtime_binding": "1ae1497bec81dd1a4c225d45d0fd810671f9a7c59a74d4d0d7671f678792fe2d",
+  "kind": "development_storage_annual_incomplete_artifact_manifest",
+  "observed_absent": [
+    "/tmp/ipse-storage-annual-s1-20261026-01.json",
+    "/tmp/ipse-storage-annual-s1-20261026-01.json.failure.json",
+    "/tmp/ipse-storage-annual-s1-20261026-01.json.resource-failure.json"
+  ],
+  "outcome": "incomplete",
+  "qualification_passed": false,
+  "recorded_at_utc": "2026-10-27T04:30:54.955749Z",
+  "source_commit": "52b67d3",
+  "termination_cause": "unknown"
+}
