@@ -149,3 +149,9 @@ records an exact upstream 7.2.11 close/fput source trace. Its 65 tests passed
 serially. The local scan does not exclude foreign or in-flight references, and
 the single-owner protocol still lacks a reviewed live implementation and
 cleanup proof. No loop device was opened.
+
+An unreviewed Linux/x86-64 seccomp experiment ran only in a synthetic child:
+it observed EPERM for dup, F_DUPFD, restore-dumpability, socket, clone3 and
+unshare while F_GETFD remained usable. Its source and merged test output are
+preserved. It is not wired to a fixture, does not prove all external or kernel
+references absent, and must not be treated as a security or cleanup boundary.
