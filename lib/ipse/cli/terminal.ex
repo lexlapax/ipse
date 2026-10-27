@@ -54,7 +54,7 @@ defmodule Ipse.CLI.Terminal do
   defp hex(value, width),
     do: value |> Integer.to_string(16) |> String.downcase() |> String.pad_leading(width, "0")
 
-  @deferred_display ~w(status compacted context_refreshed subagent text presentation extension_result tool_output tool tool_result skill)a
+  @deferred_display ~w(status draft_ready compacted context_refreshed subagent text presentation extension_result tool_output tool tool_result skill)a
 
   @help """
   Ipse VERSION — a general-purpose local AI agent
@@ -131,6 +131,8 @@ defmodule Ipse.CLI.Terminal do
   Native enforcement fails closed when unavailable; approvals remain required.
   --accept-edits                       Allow native workspace file edits in interactive chat
   Chat commands: /help /skills /session /info /diagnostics /permissions /permissions clear /observability off /events off /context /context refresh /ext [NAME JSON] /result JSON /cancel /exit.
+  /enhance [TEXT]                      Draft a request in this conversation before submitting it
+  /enhance show|replace|replace multi|accept [ID]|cancel  Review and manage the draft
   Invoke skills with $name.
   EOF finishes accepted work; errors and /cancel clear queued input.
   """
@@ -161,6 +163,49 @@ defmodule Ipse.CLI.Terminal do
 
       {:observed_prompt, text, ticket} ->
         cond do
+          match?({:lines, _, _, _}, s.draft_action) and not s.busy ->
+            {:lines, id, revision, lines} = s.draft_action
+
+            if length(lines) < 16 and
+                 Enum.reduce(lines, byte_size(text), fn {line, _}, n ->
+                   n + byte_size(line) + 1
+                 end) <= 32_768 do
+              client_loop(%{s | draft_action: {:lines, id, revision, lines ++ [{text, ticket}]}})
+            else
+              Ipse.Session.discard_input(s.pid, s.input_channel, ticket)
+              puts(:stderr, "Replacement is limited to 16 lines and 32 KiB; use /end or /cancel.")
+              client_loop(s)
+            end
+
+          s.draft_action == :start and not s.busy ->
+            result = Ipse.Session.start_draft_observed(s.pid, s.input_channel, text, ticket)
+            if result != :ok, do: puts(:stderr, "Draft could not be started.")
+            client_loop(%{s | draft_action: nil, busy: result == :ok})
+
+          match?({:replace, _, _}, s.draft_action) and not s.busy ->
+            {:replace, id, revision} = s.draft_action
+
+            result =
+              Ipse.Session.replace_draft_observed(
+                s.pid,
+                s.input_channel,
+                id,
+                revision,
+                text,
+                ticket
+              )
+
+            if result == :ok,
+              do: puts("Draft replaced; review it before accepting."),
+              else: puts(:stderr, "Draft replacement was refused.")
+
+            client_loop(%{s | draft_action: nil})
+
+          inline_enhancement?(String.trim(text)) and not s.busy ->
+            result = Ipse.Session.start_draft_observed(s.pid, s.input_channel, text, ticket)
+            if result != :ok, do: puts(:stderr, "Draft could not be started; inspect /session.")
+            client_loop(%{s | busy: result == :ok})
+
           s.cancelling ->
             Ipse.Session.discard_input(s.pid, s.input_channel, ticket)
 
@@ -245,6 +290,20 @@ defmodule Ipse.CLI.Terminal do
         Ipse.Session.cancel(s.pid)
         0
 
+      {:input, "/cancel"} when s.draft_action != nil and not s.busy ->
+        case s.draft_action do
+          {:lines, _, _, lines} ->
+            Enum.each(lines, fn {_, ticket} ->
+              Ipse.Session.discard_input(s.pid, s.input_channel, ticket)
+            end)
+
+          _ ->
+            :ok
+        end
+
+        puts("Draft input cancelled.")
+        client_loop(%{s | draft_action: nil})
+
       {:input, "/cancel"} ->
         cond do
           s.cancelling ->
@@ -265,12 +324,87 @@ defmodule Ipse.CLI.Terminal do
             })
 
           true ->
-            puts(:stderr, "No active work to cancel.")
-            client_loop(s)
+            case Ipse.Session.cancel_draft(s.pid) do
+              :ok -> puts("Draft cancelled.")
+              _ -> puts(:stderr, "No active work to cancel.")
+            end
+
+            client_loop(%{s | draft_accept_render: nil})
         end
 
       {:input, "/help"} ->
         help()
+        client_loop(s)
+
+      {:input, "/enhance"} when s.input_mode == :native and not s.busy ->
+        puts("Enter the request to draft on the next line.")
+        client_loop(%{s | draft_action: :start})
+
+      {:input, "/enhance show"} when s.input_mode == :native and not s.busy ->
+        case Ipse.Session.draft(s.pid) do
+          {:ok, %{id: id, revision: revision, proposal: proposal}} when is_binary(proposal) ->
+            puts("Draft #{id} (revision #{revision})\nProposed request:\n" <> proposal)
+
+          _ ->
+            puts(:stderr, "No completed draft is available.")
+        end
+
+        client_loop(s)
+
+      {:input, "/enhance replace"} when s.input_mode == :native and not s.busy ->
+        case Ipse.Session.draft(s.pid) do
+          {:ok, %{id: id, revision: revision, status: :completed}} ->
+            puts("Enter the replacement request on the next line.")
+            client_loop(%{s | draft_action: {:replace, id, revision}})
+
+          _ ->
+            puts(:stderr, "No completed draft is available.")
+            client_loop(s)
+        end
+
+      {:input, "/enhance replace multi"} when s.input_mode == :native and not s.busy ->
+        case Ipse.Session.draft(s.pid) do
+          {:ok, %{id: id, revision: revision, status: :completed}} ->
+            puts("Enter up to 16 lines; use /end to save or /cancel to discard.")
+            client_loop(%{s | draft_action: {:lines, id, revision, []}})
+
+          _ ->
+            puts(:stderr, "No completed draft is available.")
+            client_loop(s)
+        end
+
+      {:input, "/end"} when is_tuple(s.draft_action) and elem(s.draft_action, 0) == :lines ->
+        {:lines, id, revision, lines} = s.draft_action
+
+        case Ipse.Session.replace_draft_lines_observed(
+               s.pid,
+               s.input_channel,
+               id,
+               revision,
+               lines
+             ) do
+          :ok -> puts("Draft replaced; review it before accepting.")
+          _ -> puts(:stderr, "Draft replacement was refused.")
+        end
+
+        client_loop(%{s | draft_action: nil})
+
+      {:input, "/enhance accept"} when s.input_mode == :native and not s.busy ->
+        render_enhancement(s, nil)
+
+      {:input, "/enhance accept " <> id} when s.input_mode == :native and not s.busy ->
+        render_enhancement(s, id)
+
+      {:input, "/enhance cancel"} when not s.busy ->
+        case Ipse.Session.cancel_draft(s.pid) do
+          :ok -> puts("Draft cancelled.")
+          _ -> puts(:stderr, "No draft can be cancelled.")
+        end
+
+        client_loop(%{s | draft_action: nil, draft_accept_render: nil})
+
+      {:input, "/enhance" <> _} ->
+        puts(:stderr, "Draft commands require an idle native terminal.")
         client_loop(s)
 
       {:input, "/permissions"} ->
@@ -527,6 +661,15 @@ defmodule Ipse.CLI.Terminal do
         unless s.cancelling, do: puts(:stderr, "Running…")
         client_loop(s)
 
+      {:ipse, ^pid, {:draft_ready, id, revision}} ->
+        unless s.cancelling do
+          puts(
+            "Draft #{id} (revision #{revision}) ready. Use /enhance show, /enhance replace, /enhance accept #{id}, or /enhance cancel."
+          )
+        end
+
+        client_loop(s)
+
       {:ipse, ^pid, {:subagent, id, status}} ->
         unless s.cancelling, do: puts(:stderr, "Subagent #{id}: #{status}")
         client_loop(s)
@@ -776,6 +919,9 @@ defmodule Ipse.CLI.Terminal do
     end
   end
 
+  defp reader_request(%{draft_accept_render: render} = s) when is_binary(render),
+    do: {s, {:draft, render}, %{"kind" => "draft", "render_id" => render}}
+
   defp reader_request(%{question: {id, arguments, [item | _]}} = s) do
     item_id = item["id"]
 
@@ -835,7 +981,21 @@ defmodule Ipse.CLI.Terminal do
         Ipse.Session.discard_input(s.pid, s.input_channel, witness)
         client_loop(s)
 
-      normalized == "" or String.starts_with?(normalized, "/") ->
+      match?({:lines, _, _, _}, s.draft_action) and request["kind"] == "prompt" and
+          normalized not in ["/end", "/cancel"] ->
+        case Ipse.Session.stage_input(s.pid, s.input_channel, text, witness) do
+          {:ok, ticket} ->
+            client_loop(%{s | reader_key: nil}, {:observed_prompt, text, ticket})
+
+          _ ->
+            puts(:stderr, "Line was not accepted.")
+            client_loop(%{s | reader_key: nil})
+        end
+
+      normalized == "" or
+          (String.starts_with?(normalized, "/") and
+             not (request["kind"] == "prompt" and not s.busy and
+                      inline_enhancement?(normalized))) ->
         Ipse.Session.discard_input(s.pid, s.input_channel, witness)
         next = %{s | reader_key: nil}
         next = if request["kind"] == "question", do: %{next | native_render: nil}, else: next
@@ -877,6 +1037,19 @@ defmodule Ipse.CLI.Terminal do
             client_loop(%{s | native_render: nil})
         end
 
+      request["kind"] == "draft" ->
+        result =
+          Ipse.Session.accept_draft_observed(
+            s.pid,
+            s.input_channel,
+            request["render_id"],
+            text,
+            witness
+          )
+
+        if result != :ok, do: puts(:stderr, "Draft acceptance was refused; review it again.")
+        client_loop(%{s | reader_key: nil, draft_accept_render: nil, busy: result == :ok})
+
       request["kind"] == "prompt" ->
         case Ipse.Session.stage_input(s.pid, s.input_channel, text, witness) do
           {:ok, ticket} ->
@@ -894,6 +1067,26 @@ defmodule Ipse.CLI.Terminal do
       true ->
         Ipse.Session.discard_input(s.pid, s.input_channel, witness)
         client_loop(%{s | reader_key: nil}, {:input, normalized})
+    end
+  end
+
+  defp inline_enhancement?("/enhance " <> text) do
+    text = String.trim(text)
+    first = text |> String.split(~r/\s+/, parts: 2) |> hd()
+    text != "" and first not in ~w(show replace accept cancel)
+  end
+
+  defp inline_enhancement?(_), do: false
+
+  defp render_enhancement(s, expected_id) do
+    with {:ok, %{id: id, revision: revision, status: :completed}} <- Ipse.Session.draft(s.pid),
+         true <- expected_id == nil or expected_id == id,
+         {:ok, render} <- Ipse.Session.render_draft(s.pid, s.input_channel, id, revision) do
+      client_loop(%{s | draft_accept_render: render["render_id"]})
+    else
+      _ ->
+        puts(:stderr, "Draft cannot be accepted; use /enhance show to review its current ID.")
+        client_loop(s)
     end
   end
 
@@ -1008,6 +1201,8 @@ defmodule Ipse.CLI.Terminal do
         reader_key: nil,
         reader_generation: nil,
         native_render: nil,
+        draft_action: nil,
+        draft_accept_render: nil,
         busy: prompt != nil,
         cancelling: false,
         approval: nil,

@@ -11,6 +11,10 @@ defmodule Ipse.Session.Saved do
          {:ok, _admission} <- semantic_admission(events, id),
          :ok <- Ipse.Session.Input.validate_events(events, id),
          :ok <- Ipse.Session.OperatorAnswer.validate_events(events, id),
+         :ok <- Ipse.Session.DraftAcceptance.validate_observation_uniqueness(events),
+         {:ok, draft} <- Ipse.Session.Draft.restore(events, id),
+         {:ok, draft_mcp} <- Ipse.Session.DraftMCP.restore(events, id),
+         {:ok, draft_lineages} <- Ipse.Session.DraftLineage.restore(events, id),
          {:ok, reference} <- Ipse.Session.Reference.restore(events, id),
          {:ok, accounting} <- Ipse.Usage.restore(events, id),
          :ok <- Ipse.Session.InferenceDispatch.validate_events(events),
@@ -18,6 +22,13 @@ defmodule Ipse.Session.Saved do
          {:ok, result_sources} <- ResultSource.restore(events),
          :ok <- validate_context_events(events),
          {:ok, messages, native} <- project(events, :validate),
+         {:ok, visible_messages} <-
+           Ipse.Session.Draft.project(
+             draft,
+             messages,
+             Ipse.Session.Reference.occurrences(events),
+             draft_native_policy(events)
+           ),
          {:ok, _research} <- Ipse.Tools.Research.restore(events),
          {:ok, question, messages} <- finish_question(native, messages),
          {:ok, question, messages} <- restore_extension_question(events, messages, question),
@@ -29,11 +40,19 @@ defmodule Ipse.Session.Saved do
          result_sources: result_sources,
          messages: messages,
          question: question,
-         historical_model: historical_model(events),
+         historical_model: safe_historical_model(events, draft, visible_messages),
          last_request_id: request_field(events, "request_id"),
          turn_id: request_field(events, "turn_id"),
          reference: reference,
-         source_window: source_window
+         source_window: source_window,
+         draft: draft,
+         draft_mcp_snapshot: draft_mcp.snapshot,
+         draft_mcp_interrupted: draft_mcp.interrupted,
+         draft_mcp_pending: draft_mcp.pending,
+         draft_mcp_attempts: draft_mcp.attempts,
+         draft_mcp_definitions: if(draft_mcp.snapshot, do: draft_mcp.snapshot["definitions"]),
+         draft_lineages: draft_lineages,
+         draft_history_restricted: Enum.any?(events, &(&1["type"] == "draft_started"))
        }}
     end
   end
@@ -109,6 +128,29 @@ defmodule Ipse.Session.Saved do
     end
   end
 
+  defp safe_historical_model(_events, %{status: status} = draft, _)
+       when status in [:pending, :completed, :accepted],
+       do: draft.prior_reported_model || draft.prior_historical_model
+
+  defp safe_historical_model(events, _, visible) do
+    if Enum.any?(events, &(&1["type"] == "draft_started")) do
+      visible
+      |> Enum.reverse()
+      |> Enum.find_value(fn message ->
+        if message["role"] == "assistant", do: {:found, reported_model(message)}
+      end)
+      |> case do
+        {:found, model} -> model
+        nil -> nil
+      end
+    else
+      historical_model(events)
+    end
+  end
+
+  defp draft_native_policy([%{"metadata" => %{"provider" => "chatgpt"}} | _]), do: :chatgpt
+  defp draft_native_policy(_), do: :none
+
   def context(events) do
     with :ok <- validate_context_events(events),
          {:ok, messages, _} <- project(events, :ignore) do
@@ -119,6 +161,9 @@ defmodule Ipse.Session.Saved do
   defp validate_context_events(events) do
     with :ok <- Ipse.Session.Input.validate_events(events),
          :ok <- Ipse.Session.OperatorAnswer.validate_events(events),
+         :ok <- Ipse.Session.DraftAcceptance.validate_observation_uniqueness(events),
+         {:ok, _} <- Ipse.Session.Draft.restore(events, nil),
+         {:ok, _} <- Ipse.Session.DraftLineage.restore(events, nil),
          :ok <- validate_context_metadata(events),
          {:ok, _} <- Ipse.Session.Reference.restore(events),
          :ok <- Ipse.Journal.validate_limit_events(events),
@@ -150,33 +195,88 @@ defmodule Ipse.Session.Saved do
   defp validate_context_metadata(_), do: :ok
 
   defp project(events, question_mode) do
+    occurrences = Ipse.Session.Reference.occurrences(events)
+    policy = draft_native_policy(events)
+
     versioned =
       match?(
         [%{"metadata" => %{"reference_layout" => "turn_reference_v1"}} | _],
         events
       )
 
-    Enum.reduce_while(events, {:ok, [], {:ok, nil}, MapSet.new()}, fn event,
-                                                                      {:ok, messages, native,
-                                                                       pending} ->
+    Enum.reduce_while(events, {:ok, [], {:ok, nil}, MapSet.new(), nil}, fn event,
+                                                                           {:ok, messages, native,
+                                                                            pending, draft} ->
       native =
         if question_mode == :validate,
           do: question_step(event, native, messages, versioned),
           else: native
 
-      case project_step(event, messages, versioned, pending) do
-        {:ok, messages, pending} -> {:cont, {:ok, messages, native, pending}}
+      with {:ok, next_draft} <- Ipse.Session.Draft.advance(draft, event, nil),
+           {:ok, messages, pending} <-
+             draft_project_step(event, messages, versioned, pending, draft, occurrences, policy) do
+        {:cont, {:ok, messages, native, pending, next_draft}}
+      else
         error -> {:halt, error}
       end
     end)
     |> case do
-      {:ok, messages, native, _} ->
+      {:ok, messages, native, _, _} ->
         {:ok, restore_messages(Enum.reverse(messages), versioned), native}
 
       error ->
         error
     end
   end
+
+  defp draft_project_step(
+         %{"type" => "draft_started"} = event,
+         reversed,
+         versioned,
+         pending,
+         draft,
+         occurrences,
+         policy
+       ) do
+    messages = restore_messages(Enum.reverse(reversed), versioned)
+
+    with {:ok, visible} <- Ipse.Session.Draft.project(draft, messages, occurrences, policy),
+         models = Ipse.Session.DraftNative.visible_models(visible),
+         true <-
+           Enum.all?(
+             [event["prior_reported_model"], event["prior_historical_model"]],
+             &(is_nil(&1) or MapSet.member?(models, &1))
+           ) do
+      project_step(event, reversed, versioned, pending)
+    else
+      _ -> {:error, :draft_projection_unsafe}
+    end
+  end
+
+  defp draft_project_step(
+         %{"type" => "draft_rebased"} = event,
+         reversed,
+         versioned,
+         pending,
+         draft,
+         occurrences,
+         policy
+       ) do
+    messages = restore_messages(Enum.reverse(reversed), versioned)
+
+    with true <- MapSet.size(pending) == 0,
+         {:ok, expected, projected} <-
+           Ipse.Session.Draft.rebased(draft, messages, occurrences, policy),
+         true <- event === expected,
+         {:ok, pending} <- Ipse.Session.Reference.native_order(projected) do
+      {:ok, Enum.reverse(projected), pending}
+    else
+      _ -> {:error, :draft_projection_unsafe}
+    end
+  end
+
+  defp draft_project_step(event, messages, versioned, pending, _, _, _),
+    do: project_step(event, messages, versioned, pending)
 
   defp project_step(event, messages, false, pending) do
     with {:ok, messages} <- context_step(event, messages, false), do: {:ok, messages, pending}

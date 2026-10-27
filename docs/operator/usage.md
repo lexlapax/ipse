@@ -136,6 +136,61 @@ or ID, comma-separated choices, or free text as requested. Recommendations are
 not submitted automatically. To submit literal slash-command text, use the
 `=` escape, for example `answer CODE =/exit`. Answering a question approves no action.
 
+## Refine a request before submitting it
+
+This experimental development-source feature needs interactive chat and a
+verified native terminal. Ask the current assistant for a clearer request:
+
+```text
+/enhance Create a small task tracker with editable due dates and local storage.
+```
+
+This uses the conversation's selected provider, model, billing and budget. Wait
+for the draft to finish. Drafting permits bounded native reads and questions;
+workspace writes, shell, delegation, external tool calls and extension callbacks
+are denied even when ordinary session permissions allow them. The ordered tool
+catalog remains present. Configured MCP discovery can still start its configured
+command or contact its endpoint; no draft text is sent in discovery requests.
+
+Review the proposal, then choose an action:
+
+| Command | Result |
+| --- | --- |
+| `/enhance show` | Show the draft ID, revision and exact proposed request |
+| `/enhance replace` | Read a replacement from the next terminal line |
+| `/enhance replace multi` | Collect up to sixteen lines; `/end` saves them and `/cancel` discards the replacement |
+| `/enhance accept ID` | Render that draft and a fresh `accept CODE` confirmation |
+| `/enhance cancel` | Abandon the draft before returning to ordinary input |
+
+Replace `ID` with the displayed draft ID. `/enhance accept` also selects the
+current completed draft. Acceptance submits exactly the displayed proposal as a
+new ordinary turn. Its file, shell and service effects still require their normal
+permissions. A pre-existing planning or read-only ceiling remains in force.
+Bare `yes`, a stale ID/code, a different terminal, or piped input cannot accept it.
+`/cancel` stops pending request/replacement entry; at an acceptance display it
+abandons the draft. `/enhance cancel` abandons the current draft explicitly.
+To enter text beginning with a command word such as `show`, enter `/enhance`
+alone, then supply the request on the next line.
+
+Keep the request and accepted proposal within 32 KiB. Drafting allows at most
+three model requests and three question rounds, narrowed by existing limits;
+response bytes are capped at 64 KiB. These bounds do not add an output-token cap
+to a route that does not support one or establish that remote work stopped.
+At most sixteen accepted drafts can retain provenance in one Session. The active
+projection also bounds unrebased draft intervals to sixteen; use an explicit fresh
+session when this capacity or required compaction prevents another draft.
+Explicit `$skill` expansion is unavailable in this workflow; use an ordinary
+request when you need to invoke a skill.
+
+Cancelled draft text and clarification answers remain in the private journal,
+but are withheld from later model input and eligible Session sources. Accepted
+text is admitted as fresh intent with links to its original input, answers and
+read evidence. Unsupported provider continuation, required compaction, or active
+extension delivery can refuse drafting or later continuation. Use the explicit
+[draft recovery procedure](recovery.md#recover-a-request-draft); no alternate
+provider or fresh conversation is selected automatically. Knowledge retrieval,
+document-based clarification and live model quality remain unqualified.
+
 ## Run once or keep chatting
 
 Interactive chat uses individual approvals or your explicit session grants.

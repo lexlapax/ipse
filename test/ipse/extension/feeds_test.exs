@@ -100,13 +100,15 @@ defmodule Ipse.Extension.FeedsTest do
           []
         end
 
-      {:ok,
-       %{
-         "role" => "assistant",
-         "content" => "private answer",
-         "tool_calls" => calls,
-         "provider_data" => %{"native" => "private native continuation"}
-       }, %{}}
+      message = %{
+        "role" => "assistant",
+        "content" => "private answer",
+        "tool_calls" => calls,
+        "provider_data" => %{"native" => "private native continuation"}
+      }
+
+      {:ok, if(config[:omit_native], do: Map.delete(message, "provider_data"), else: message),
+       %{}}
     end
   end
 
@@ -437,6 +439,24 @@ defmodule Ipse.Extension.FeedsTest do
   defp settled(pid), do: Enum.all?(status(pid)["feeds"], &(&1["ready"] and &1["pending"] == 0))
   defp done(pid), do: assert_receive({:ipse, ^pid, {:done, :ok}}, 10_000)
   defp alive?(pid), do: elem(System.cmd("kill", ["-0", pid], stderr_to_stdout: true), 1) == 0
+
+  test "draft suppresses feed enrollment and refuses a later draft while a feed is live", c do
+    {:ok, pid} = start(c, Map.put(config(c, :normal), :omit_native, true))
+    assert :ok = Session.start_draft(pid, "withdrawn-feed-canary")
+    assert_receive {:feed_model, _, _}, 10_000
+    done(pid)
+    refute File.exists?(c.trace)
+    assert status(pid)["enrolled"] == false
+    assert :ok = Session.cancel_draft(pid)
+    assert :ok = Session.prompt(pid, "ordinary request")
+    assert_receive {:feed_model, _, messages}, 10_000
+    refute inspect(messages) =~ "withdrawn-feed-canary"
+    done(pid)
+    eventually(fn -> settled(pid) end)
+    assert {:error, :draft_unavailable} = Session.start_draft(pid, "second-feed-canary")
+    refute inspect(trace(c)) =~ "withdrawn-feed-canary"
+    refute inspect(trace(c)) =~ "second-feed-canary"
+  end
 
   test "private input provenance near the source bound does not stop unrelated feeds", c do
     config = config(c, :normal, gate: true) |> Map.put(:context_bytes, 4_000_000)

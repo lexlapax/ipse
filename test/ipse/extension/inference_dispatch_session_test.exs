@@ -6,11 +6,20 @@ defmodule Ipse.Extension.InferenceDispatchSessionTest do
   alias Ipse.Extension.{Artifact, Config, Registry}
   alias Ipse.Test.ProviderFixture
 
+  defmodule DraftModel do
+    def complete(config, messages, _, _) do
+      send(config.test_pid, {:draft_fixture_model, messages})
+      {:ok, %{"role" => "assistant", "content" => "synthetic proposal"}, %{}}
+    end
+  end
+
   setup_all do
     root = Path.join(System.tmp_dir!(), "ipse-sdk-dispatch-fixture-" <> Usage.id())
     File.mkdir_p!(Path.join(root, "ebin"))
     module = "Independent.InferenceDispatchFixture#{System.unique_integer([:positive])}"
-    caps = ~w(invoke.command host.actions host.model host.embedding host.decision)
+
+    caps =
+      ~w(invoke.command host.actions host.model host.embedding host.decision host.history host.history.tool.result host.history.prompt.expanded)
 
     command = %{
       "id" => "infer",
@@ -250,6 +259,189 @@ defmodule Ipse.Extension.InferenceDispatchSessionTest do
 
     {:ok, selected} = Ipse.Config.Semantics.selection(policy)
     {Map.put(config, :semantic_selections, selected), root, binding}
+  end
+
+  test "accepted draft lineage binds actual unregistered extension model, embedding and decision helpers",
+       c do
+    text =
+      Jason.encode!(%{
+        "model" => "fixture",
+        "message" => %{"role" => "assistant", "content" => "fixture result"},
+        "done" => true
+      }) <> "\n"
+
+    embedding =
+      Jason.encode!(%{
+        "model" => "fixture",
+        "embeddings" => [[1.0, 0.5]],
+        "prompt_eval_count" => 1
+      })
+
+    decision =
+      Jason.encode!(%{
+        "model" => "fixture",
+        "answers" => %{"relevant" => %{"type" => "noul", "noul" => 0.8}},
+        "usage" => %{"input_tokens" => 1, "output_tokens" => 1}
+      })
+
+    {base, server} = ProviderFixture.sequence([text, embedding, decision])
+    on_exit(fn -> if Process.alive?(server.pid), do: Process.exit(server.pid, :kill) end)
+
+    config =
+      config(c, base)
+      |> Map.delete(:inference_services)
+      |> Map.merge(%{provider_module: DraftModel, test_pid: self()})
+
+    {:ok, pid} =
+      DynamicSupervisor.start_child(
+        Ipse.Sessions,
+        {Session, config: config, cwd: c.cwd, state_dir: c.sessions, subscriber: self()}
+      )
+
+    id = Session.info(pid).id
+    assert :ok = Session.start_draft(pid, "private helper draft")
+    assert_receive {:draft_fixture_model, _}, 5_000
+    assert_receive {:ipse, ^pid, {:done, :ok}}, 5_000
+    {:ok, %{id: draft_id, revision: 1}} = Session.draft(pid)
+    assert :ok = Session.replace_draft(pid, draft_id, 1, "accepted request")
+    assert :ok = Session.close_confirmed(pid)
+    {:ok, events} = Ipse.Journal.load(c.sessions, id)
+    {:ok, draft} = Ipse.Session.Draft.restore(events, id)
+    {:ok, render} = Ipse.Session.DraftAcceptance.render(draft, Usage.id())
+    text_input = "accept " <> render["code"]
+
+    observation = %{
+      "version" => 2,
+      "event_id" => Usage.id(),
+      "display_limit" => 16_777_216,
+      "input_limit" => 1_048_576,
+      "display_sha256" => Ipse.JSON.sha256(render["display"]),
+      "text_sha256" => Ipse.JSON.sha256(text_input)
+    }
+
+    {:ok, receipt} = Ipse.Session.DraftAcceptance.receipt(draft, render, text_input, observation)
+    assert :ok = Ipse.Journal.append(c.sessions, id, Ipse.Session.Draft.accepted(draft, receipt))
+
+    {:ok, resumed} =
+      DynamicSupervisor.start_child(
+        Ipse.Sessions,
+        {Session, config: config, cwd: c.cwd, state_dir: c.sessions, id: id, subscriber: self()}
+      )
+
+    on_exit(fn -> if Process.alive?(resumed), do: Session.close_confirmed(resumed) end)
+    assert :ok = Session.consume_draft(resumed, draft_id, 2)
+    assert_receive {:draft_fixture_model, input}, 5_000
+    refute inspect(input) =~ "private helper draft"
+    assert_receive {:ipse, ^resumed, {:done, :ok}}, 5_000
+
+    request = %{
+      "op" => "model.complete",
+      "version" => 1,
+      "profile" => "answer",
+      "instruction" => "Return synthetic text",
+      "input" => "Public fixture",
+      "max_output_bytes" => 1024,
+      "timeout_ms" => 3000
+    }
+
+    assert :ok =
+             Session.invoke_export(resumed, :command, "ext__probe__infer", %{"request" => request})
+
+    assert_receive {:ipse, ^resumed, {:done, :ok}}, 10_000
+
+    embedding_request = %{
+      "op" => "embedding.create",
+      "version" => 1,
+      "profile" => "search",
+      "inputs" => ["Public fixture"],
+      "timeout_ms" => 3000
+    }
+
+    assert :ok =
+             Session.invoke_export(resumed, :command, "ext__probe__infer", %{
+               "request" => embedding_request
+             })
+
+    assert_receive {:ipse, ^resumed, {:done, :ok}}, 10_000
+
+    decision_request = %{
+      "op" => "decision.create",
+      "version" => 1,
+      "profile" => "advice",
+      "input" => "Public fixture",
+      "timeout_ms" => 3000,
+      "questions" => [
+        %{"id" => "relevant", "type" => "predicate", "instructions" => "Synthetic fixture"}
+      ]
+    }
+
+    assert :ok =
+             Session.invoke_export(resumed, :command, "ext__probe__infer", %{
+               "request" => decision_request
+             })
+
+    assert_receive {:ipse, ^resumed, {:done, :ok}}, 10_000
+    assert [{http, _}, {http2, _}, {http3, _}] = Task.await(server)
+    assert http =~ "POST /api/chat" and http2 =~ "POST /api/embed" and http3 =~ "POST /systemone"
+
+    {:ok, source_page} = Ipse.Journal.source_page(c.sessions, id, 0, 64)
+    draft_start = Enum.find(source_page.records, &(&1.record["type"] == "draft_started"))
+
+    history_request = %{
+      "op" => "history.read",
+      "view" => "prompt.expanded",
+      "cursor" => draft_start.source["byte_offset"],
+      "snapshot" => nil,
+      "limit" => 8
+    }
+
+    assert :ok =
+             Session.invoke_export(resumed, :command, "ext__probe__infer", %{
+               "request" => history_request
+             })
+
+    assert_receive {:ipse, ^resumed, {:done, :ok}}, 10_000
+    assert :ok = Session.close_confirmed(resumed)
+    {:ok, events} = Ipse.Journal.load(c.sessions, id)
+
+    history =
+      Enum.find(
+        events,
+        &(&1["type"] == "extension_action_result" and
+            get_in(&1, ["request", "op"]) == "history.read")
+      )
+
+    assert history["outcome"]["status"] == "ok"
+    assert Enum.any?(history["outcome"]["value"]["records"], &(&1["reason"] == "draft_withheld"))
+    refute inspect(history) =~ "private helper draft"
+    assert :ok = Ipse.Extension.Subscriptions.validate_sources(c.sessions, id, events)
+
+    assert Enum.any?(
+             events,
+             &(&1["type"] == "draft_extension_intent" and
+                 &1["target_type"] == "extension_action_intent")
+           )
+
+    assert Enum.any?(
+             events,
+             &(&1["type"] == "draft_extension_intent" and &1["target_type"] == "request_admitted")
+           )
+
+    for type <-
+          ~w(extension_invocation_intent extension_action_intent extension_model_request extension_embedding_request extension_decision_request) do
+      assert Enum.any?(
+               events,
+               &(&1["type"] == "draft_extension_intent" and &1["target_type"] == type)
+             )
+    end
+
+    assert Enum.any?(
+             events,
+             &(&1["type"] == "extension_action_intent" and
+                 get_in(&1, ["request", "op"]) == "history.read")
+           )
+
+    assert {:ok, _} = Session.Saved.restore(events, id)
   end
 
   test "actual independent SDK text, embedding and decision share the registered endpoint and publish only settled results",

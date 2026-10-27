@@ -204,6 +204,13 @@ classification governs whether another attempt could repeat a real action.
 
 ## Suspend for a question
 
+To follow a request that is being refined before execution, use the
+[draft intent path](workspace-context.md#withdraw-draft-intent-before-ordinary-work).
+It runs in the same Session under a temporary ceiling, binds native question
+answers to the accepted revision, and withholds abandoned draft material before
+ordinary model, source or extension use. The question protocol below remains
+separate from action permission.
+
 Read [`Questions`](../../lib/ipse/tools/questions.ex) and the
 [pure question cases](../../test/ipse/tools/questions_test.exs). This is a complete
 single-choice request:

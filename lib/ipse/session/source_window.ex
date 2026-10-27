@@ -10,6 +10,7 @@ defmodule Ipse.Session.SourceWindow do
     :index,
     :effective_source,
     :historical_window,
+    :draft_id,
     admitted: false,
     pending: %{},
     pending_bytes: 0,
@@ -109,6 +110,17 @@ defmodule Ipse.Session.SourceWindow do
     {:ok, index} = SourceIndex.coverage(next.index, next.coverage)
     %{next | index: index}
   end
+
+  defp do_advance(%{draft_id: nil} = w, %{"type" => "draft_started", "draft_id" => id}, _),
+    do: %{w | draft_id: id}
+
+  defp do_advance(%{draft_id: id} = w, %{"type" => "draft_cancelled", "draft_id" => id}, _)
+       when not is_nil(id), do: %{w | draft_id: nil}
+
+  defp do_advance(%{draft_id: id} = w, %{"type" => "draft_consumed", "draft_id" => id}, _)
+       when not is_nil(id), do: %{w | draft_id: nil}
+
+  defp do_advance(%{draft_id: id} = w, _event, _) when not is_nil(id), do: w
 
   defp do_advance(w, %{"type" => "input_received"} = event, _), do: store(w, :input, event)
 

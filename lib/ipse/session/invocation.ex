@@ -1257,7 +1257,12 @@ defmodule Ipse.Session.Invocation do
 
     context =
       if Ipse.Extension.Actions.history?(intent["request"]),
-        do: Map.merge(context, %{history_dir: s.dir, history_session: s.id}),
+        do:
+          Map.merge(context, %{
+            history_dir: s.dir,
+            history_session: s.id,
+            history_project_drafts: s.draft_history_restricted
+          }),
         else: context
 
     context =

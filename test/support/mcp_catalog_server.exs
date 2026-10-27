@@ -28,6 +28,9 @@ end
 loop = fn loop, changed ->
   case IO.read(:stdio, :line) do
     line when is_binary(line) ->
+      if File.exists?("trace-discovery"),
+        do: log.(%{"event" => "rpc_observed", "payload" => line})
+
       case Jason.decode(line) do
         {:ok, %{"id" => id, "method" => "initialize"}} ->
           capabilities =
@@ -61,6 +64,11 @@ loop = fn loop, changed ->
           drift_now = scenario == "metadata_drift" and File.exists?("catalog-force-drift")
 
           log.(%{"event" => "list_resources", "cursor" => params["cursor"]})
+
+          if scenario == "revalidation_hold" and File.exists?("hold-discovery") do
+            File.write!("revalidation-held.pid", System.pid())
+            Process.sleep(:infinity)
+          end
 
           result =
             if params["cursor"] == nil,

@@ -8,6 +8,15 @@ defmodule Ipse.Session.Reference do
 
   def layout, do: @layout
 
+  # Call only after restore has validated the complete journal; live occurrences
+  # are added only by the host as their envelopes are committed.
+  def occurrences(events) do
+    events
+    |> Enum.filter(&(&1["type"] == "reference_envelope"))
+    |> Enum.map(&Ipse.JSON.digest([message(&1)]))
+    |> MapSet.new()
+  end
+
   def restore(events, id \\ nil) do
     id =
       id ||

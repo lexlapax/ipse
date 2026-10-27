@@ -86,6 +86,7 @@ providers or billing modes.
 | Task | Guide |
 | --- | --- |
 | Work with approvals, skills and workspace instructions | [Terminal usage](docs/operator/usage.md) |
+| Refine and explicitly submit a request in the current conversation (experimental source feature) | [Request drafting](docs/operator/usage.md#refine-a-request-before-submitting-it) |
 | Configure providers, profiles and project policy | [Configuration](docs/operator/configuration.md) |
 | Connect external tools | [MCP](docs/operator/mcp.md) |
 | Select reviewed extensions | [Extensions](docs/operator/extensions.md) |

@@ -57,7 +57,10 @@ defmodule Ipse.Extension.History do
   end
 
   @doc "Only the owned host task supplies the directory, identity and fresh boundary."
-  def execute(context, intent) do
+  def execute(context, intent), do: elem(execute_cached(context, intent, nil), 0)
+
+  @doc false
+  def execute_cached(context, intent, cache) do
     request = intent["request"]
     snapshot = request["snapshot"] || context[:history_snapshot]
 
@@ -74,13 +77,14 @@ defmodule Ipse.Extension.History do
              1
            ),
          true <- Map.take(source, @source_keys) == Map.take(snapshot, @source_keys),
-         true <- anchor?(anchor, snapshot, Ipse.JSON.digest([context.identity])) do
-      read_page(context, request, snapshot)
+         true <- anchor?(anchor, snapshot, Ipse.JSON.digest([context.identity])),
+         {:ok, withheld, next_cache} <- withheld(context, snapshot, cache) do
+      {read_page(context, request, snapshot, withheld), next_cache}
     else
-      _ -> failed("history_snapshot")
+      _ -> {failed("history_snapshot"), nil}
     end
   rescue
-    _ -> failed("history_source")
+    _ -> {failed("history_source"), nil}
   end
 
   defp anchor?(record, snapshot, identity_sha256) do
@@ -93,7 +97,27 @@ defmodule Ipse.Extension.History do
       validate(record["request"]) == :ok
   end
 
-  defp read_page(context, request, snapshot) do
+  defp withheld(%{history_project_drafts: true} = context, snapshot, cache) do
+    key = {context.history_dir, context.history_session, context.identity, snapshot}
+
+    case cache do
+      {^key, ranges} when is_list(ranges) ->
+        {:ok, ranges, cache}
+
+      _ ->
+        with {:ok, ranges} <-
+               Ipse.Session.DraftHistory.withheld(
+                 context.history_dir,
+                 context.history_session,
+                 snapshot["byte_offset"]
+               ),
+             do: {:ok, ranges, {key, ranges}}
+    end
+  end
+
+  defp withheld(_, _, _), do: {:ok, [], nil}
+
+  defp read_page(context, request, snapshot, withheld) do
     upper = snapshot["byte_offset"]
     cursor = request["cursor"]
 
@@ -107,13 +131,13 @@ defmodule Ipse.Extension.History do
              request["limit"],
              upper
            ) do
-        {:ok, page} -> {:ok, collect(page, request, snapshot)}
+        {:ok, page} -> {:ok, collect(page, request, snapshot, withheld)}
         _ -> failed("history_source")
       end
     end
   end
 
-  defp collect(page, request, snapshot) do
+  defp collect(page, request, snapshot, withheld) do
     offsets =
       Enum.map(Enum.drop(page.records, 1), & &1.source["byte_offset"]) ++
         [page.next || snapshot["byte_offset"]]
@@ -123,7 +147,7 @@ defmodule Ipse.Extension.History do
     Enum.zip(page.records, offsets)
     |> Enum.reduce_while(initial, fn {%{source: source, record: record}, next}, value ->
       next = if next == snapshot["byte_offset"], do: nil, else: next
-      row = project(source, record, request["view"])
+      row = project(source, record, request["view"], withheld)
       candidate = page(snapshot, request["cursor"], next, value["records"] ++ [row])
 
       cond do
@@ -173,6 +197,12 @@ defmodule Ipse.Extension.History do
     end
   end
 
+  defp project(source, record, view, withheld) do
+    if Ipse.Session.DraftHistory.withheld?(withheld, source["byte_offset"]),
+      do: gap(source, "draft_withheld"),
+      else: project(source, record, view)
+  end
+
   defp gap(source, reason) do
     {:ok, reference} = Journal.source_metadata(source)
     %{"kind" => "gap", "source" => reference, "reason" => reason}
@@ -220,12 +250,14 @@ defmodule Ipse.Extension.History do
 
   @doc "Resolve cached source/anchor references without repeating a history operation or changing its saved page."
   def validate_sources(directory, session, events) do
+    has_drafts = Enum.any?(events, &(&1["type"] == "draft_started"))
+
     events
     |> Enum.filter(
       &(operation?(&1["request"]) and &1["type"] == "extension_action_result" and
           &1["outcome"]["status"] == "ok")
     )
-    |> Enum.reduce_while({:ok, MapSet.new()}, fn event, {:ok, seen} ->
+    |> Enum.reduce_while({:ok, MapSet.new(), %{}}, fn event, {:ok, seen, policies} ->
       value = event["outcome"]["value"]
       snapshot = value["snapshot"]
       anchor_key = {:anchor, snapshot, event["identity_sha256"]}
@@ -241,21 +273,32 @@ defmodule Ipse.Extension.History do
                  _ -> false
                end
              end),
-           {:ok, seen} <- verify_rows(directory, session, value, event["request"]["view"], seen) do
-        {:cont, {:ok, seen}}
+           {:ok, withheld} <-
+             history_policy(policies, has_drafts, directory, session, snapshot["byte_offset"]),
+           {:ok, seen} <-
+             verify_rows(directory, session, value, event["request"]["view"], seen, withheld) do
+        {:cont, {:ok, seen, Map.put(policies, snapshot["byte_offset"], withheld)}}
       else
         _ -> {:halt, {:error, :invalid_extension_history_source}}
       end
     end)
     |> case do
-      {:ok, _} -> :ok
+      {:ok, _, _} -> :ok
       error -> error
     end
   rescue
     _ -> {:error, :invalid_extension_history_source}
   end
 
-  defp verify_rows(directory, session, value, view, seen) do
+  defp history_policy(policies, drafts, directory, session, offset) do
+    case Map.fetch(policies, offset) do
+      {:ok, value} -> {:ok, value}
+      :error when drafts -> Ipse.Session.DraftHistory.withheld(directory, session, offset)
+      :error -> {:ok, []}
+    end
+  end
+
+  defp verify_rows(directory, session, value, view, seen, withheld) do
     Enum.with_index(value["records"])
     |> Enum.reduce_while({:ok, seen}, fn {row, index}, {:ok, seen} ->
       budget = row["kind"] == "gap" and row["reason"] == "page_budget"
@@ -267,7 +310,7 @@ defmodule Ipse.Extension.History do
           else: value["next"] || value["snapshot"]["byte_offset"]
 
       key =
-        {:row, view, Ipse.JSON.digest([row]), finish,
+        {:row, view, Ipse.JSON.digest([row]), finish, withheld,
          if(budget, do: {value["snapshot"], value["cursor"], index})}
 
       result =
@@ -284,7 +327,7 @@ defmodule Ipse.Extension.History do
                  ),
                true <- Map.take(actual, @source_keys) == Map.take(source, @source_keys),
                true <- (next || value["snapshot"]["byte_offset"]) == finish do
-            expected = project(actual, record, view)
+            expected = project(actual, record, view, withheld)
 
             row == expected or
               (budget and index == 0 and source["byte_offset"] == value["cursor"] and
@@ -362,7 +405,7 @@ defmodule Ipse.Extension.History do
   defp row?(%{"kind" => "gap", "reason" => reason} = row, _),
     do:
       keys?(row, ~w(kind source reason)) and Journal.valid_source_metadata?(row["source"]) and
-        reason in ~w(unsupported_record view_unavailable page_budget)
+        reason in ~w(unsupported_record view_unavailable page_budget draft_withheld)
 
   defp row?(%{"kind" => "skipped", "reason" => "other_view"} = row, view),
     do:

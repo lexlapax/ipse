@@ -18,6 +18,39 @@ defmodule Ipse.Extension.SessionTest do
     end
   end
 
+  defmodule DraftPlainModel do
+    def complete(config, messages, tools, _) do
+      send(config.test_pid, {:draft_extension_input, messages, tools})
+      {:ok, %{"role" => "assistant", "content" => "proposal"}, %{}}
+    end
+  end
+
+  defmodule DraftExtensionToolModel do
+    def complete(config, messages, tools, _) do
+      send(config.test_pid, {:draft_extension_input, messages, tools})
+
+      if Enum.any?(messages, &(&1["role"] == "tool")) do
+        {:ok, %{"role" => "assistant", "content" => "proposal"}, %{}}
+      else
+        {:ok,
+         %{
+           "role" => "assistant",
+           "content" => "",
+           "tool_calls" => [
+             %{
+               "id" => "draft-extension-call",
+               "type" => "function",
+               "function" => %{
+                 "name" => "ext__memory__recall",
+                 "arguments" => Jason.encode!(%{"query" => "private draft canary"})
+               }
+             }
+           ]
+         }, %{}}
+      end
+    end
+  end
+
   defmodule ToolModel do
     def complete(config, messages, tools, emit) do
       if Enum.any?(messages, &(&1["role"] == "tool")) do
@@ -218,6 +251,178 @@ defmodule Ipse.Extension.SessionTest do
       Ipse.Sessions,
       {Session, [config: config, cwd: c.root, state_dir: c.dir, subscriber: self(), id: id]}
     )
+  end
+
+  test "draft keeps catalog but does not invoke extension prompt transforms", c do
+    config =
+      configured(c, [annotation("draft-hook", "extension-only-marker")])
+      |> Map.merge(%{provider: :demo, provider_module: DraftPlainModel})
+
+    {:ok, pid} = start(c, config)
+    on_exit(fn -> if Process.alive?(pid), do: Session.close(pid) end)
+    assert :ok = Session.start_draft(pid, "draft private canary")
+    assert_receive {:draft_extension_input, messages, tools}, 5_000
+    refute inspect(messages) =~ "extension-only-marker"
+    assert is_list(tools)
+    assert_receive {:ipse, ^pid, {:done, :ok}}, 5_000
+    {:ok, events} = Journal.load(c.dir, Session.info(pid).id)
+
+    refute Enum.any?(
+             events,
+             &(&1["type"] in ["extension_prompt_received", "extension_invocation_intent"])
+           )
+
+    assert :ok = Session.cancel_draft(pid)
+  end
+
+  test "draft retains extension tool definitions but denies callback execution", c do
+    memory =
+      instance(
+        "memory",
+        "builtin:working-memory:1",
+        %{"scope" => "session", "retention_seconds" => 60},
+        1
+      )
+
+    config =
+      configured(c, [memory])
+      |> Map.merge(%{provider: :demo, provider_module: DraftExtensionToolModel, approval: :allow})
+
+    {:ok, pid} = start(c, config)
+    on_exit(fn -> if Process.alive?(pid), do: Session.close(pid) end)
+    assert :ok = Session.start_draft(pid, "draft private canary")
+    assert_receive {:draft_extension_input, _, tools}, 5_000
+    assert Enum.any?(tools, &(get_in(&1, ["function", "name"]) == "ext__memory__recall"))
+    assert_receive {:draft_extension_input, _, ^tools}, 5_000
+    assert_receive {:ipse, ^pid, {:done, :ok}}, 5_000
+    {:ok, events} = Journal.load(c.dir, Session.info(pid).id)
+    refute Enum.any?(events, &(&1["type"] == "extension_invocation_intent"))
+
+    assert Enum.any?(
+             events,
+             &(get_in(&1, ["message", "tool_call_id"]) == "draft-extension-call" and
+                 get_in(&1, ["message", "ipse_tool_outcome", "status"]) == "denied")
+           )
+
+    assert :ok = Session.cancel_draft(pid)
+  end
+
+  test "draft denies the extension before the saved-consent routing branch", c do
+    memory =
+      instance(
+        "memory",
+        "builtin:working-memory:1",
+        %{"scope" => "session", "retention_seconds" => 60},
+        1
+      )
+
+    config =
+      configured(c, [memory])
+      |> Map.merge(%{provider: :demo, provider_module: DraftExtensionToolModel, approval: :allow})
+
+    {:ok, pid} = start(c, config)
+    on_exit(fn -> if Process.alive?(pid), do: Session.close(pid) end)
+
+    # This synthetic state is not a valid protected consent: it makes the
+    # protected-routing predicate true so the test exercises branch ordering.
+    :sys.replace_state(pid, fn s ->
+      put_in(s, [:config, :semantic_admission], %{"pin" => %{}, "instance" => "memory"})
+    end)
+
+    assert :ok = Session.start_draft(pid, "draft private canary")
+    assert_receive {:draft_extension_input, _, _}, 5_000
+    assert_receive {:draft_extension_input, _, _}, 5_000
+    assert_receive {:ipse, ^pid, {:done, :ok}}, 5_000
+    {:ok, events} = Journal.load(c.dir, Session.info(pid).id)
+    refute Enum.any?(events, &(&1["type"] == "extension_invocation_intent"))
+
+    assert Enum.any?(
+             events,
+             &(get_in(&1, ["message", "tool_call_id"]) == "draft-extension-call" and
+                 get_in(&1, ["message", "ipse_tool_outcome", "status"]) == "denied")
+           )
+
+    assert :ok = Session.cancel_draft(pid)
+  end
+
+  test "accepted draft lineage binds subsequent real extension invocation and actions", c do
+    memory =
+      instance(
+        "memory",
+        "builtin:working-memory:1",
+        %{"scope" => "session", "retention_seconds" => 60},
+        1
+      )
+
+    config =
+      configured(c, [memory])
+      |> Map.merge(%{provider: :demo, provider_module: DraftExtensionToolModel, approval: :allow})
+
+    {:ok, pid} = start(c, config)
+    id = Session.info(pid).id
+    assert :ok = Session.start_draft(pid, "private source draft")
+    assert_receive {:draft_extension_input, _, _}, 5_000
+    assert_receive {:draft_extension_input, _, _}, 5_000
+    assert_receive {:ipse, ^pid, {:done, :ok}}, 5_000
+    {:ok, %{id: draft_id, revision: revision}} = Session.draft(pid)
+    assert :ok = Session.replace_draft(pid, draft_id, revision, "accepted request")
+    assert :ok = Session.close_confirmed(pid)
+    {:ok, events} = Journal.load(c.dir, id)
+    {:ok, draft} = Ipse.Session.Draft.restore(events, id)
+    {:ok, render} = Ipse.Session.DraftAcceptance.render(draft, Ipse.Usage.id())
+    text = "accept " <> render["code"]
+
+    observation = %{
+      "version" => 2,
+      "event_id" => Ipse.Usage.id(),
+      "display_limit" => 16_777_216,
+      "input_limit" => 1_048_576,
+      "display_sha256" => Ipse.JSON.sha256(render["display"]),
+      "text_sha256" => Ipse.JSON.sha256(text)
+    }
+
+    {:ok, receipt} = Ipse.Session.DraftAcceptance.receipt(draft, render, text, observation)
+    assert :ok = Journal.append(c.dir, id, Ipse.Session.Draft.accepted(draft, receipt))
+    {:ok, resumed} = start(c, config, id)
+    on_exit(fn -> if Process.alive?(resumed), do: Session.close(resumed) end)
+    assert :ok = Session.consume_draft(resumed, draft_id, revision + 1)
+    assert_receive {:draft_extension_input, messages, _}, 5_000
+    refute inspect(messages) =~ "private source draft"
+    assert_receive {:ipse, ^resumed, {:done, status}}, 10_000
+    assert status in [:ok, :error]
+    assert :ok = Session.close_confirmed(resumed)
+    {:ok, events} = Journal.load(c.dir, id)
+    assert Enum.any?(events, &(&1["type"] == "extension_invocation_intent"))
+    assert Enum.any?(events, &(&1["type"] == "extension_action_intent"))
+
+    assert Enum.any?(
+             events,
+             &(&1["type"] == "extension_action_result" and
+                 &1["outcome"]["status"] in ["ok", "error", "unknown"])
+           )
+
+    assert Enum.any?(
+             events,
+             &(&1["type"] == "draft_extension_intent" and
+                 &1["target_type"] == "extension_invocation_intent")
+           )
+
+    assert Enum.any?(
+             events,
+             &(&1["type"] == "draft_extension_intent" and
+                 &1["target_type"] == "extension_action_intent")
+           )
+
+    assert {:ok, _} = Session.Saved.restore(events, id)
+
+    without =
+      Enum.reject(
+        events,
+        &(&1["type"] == "draft_extension_intent" and
+            &1["target_type"] == "extension_action_intent")
+      )
+
+    assert {:error, _} = Session.Saved.restore(without, id)
   end
 
   test "prompt annotations cannot close their own untrusted frame", c do

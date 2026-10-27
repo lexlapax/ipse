@@ -18,6 +18,11 @@ defmodule Ipse.Extension.HistoryTest do
     end
   end
 
+  defmodule DraftPlainModel do
+    def complete(_, _, _, _),
+      do: {:ok, %{"role" => "assistant", "content" => "synthetic proposal"}, %{}}
+  end
+
   setup_all do
     root = Path.join(System.tmp_dir!(), "ipse-history-artifact-#{Ipse.Usage.id()}")
     File.mkdir_p!(Path.join(root, "ebin"))
@@ -501,6 +506,150 @@ defmodule Ipse.Extension.HistoryTest do
                | "request" =>
                    request("metadata", first["snapshot"]["byte_offset"] + 1, first["snapshot"])
              })
+  end
+
+  test "history cache reuses only the same validated snapshot and still checks the anchor", c do
+    {context, _id} = journal(c)
+    {context, intent} = capture(context, request("metadata", 0, nil))
+    context = Map.put(context, :history_project_drafts, true)
+    {{:ok, first}, cache} = History.execute_cached(context, intent, nil)
+    assert is_tuple(cache)
+    assert {{:ok, ^first}, ^cache} = History.execute_cached(context, intent, cache)
+    invalid = Map.put(context.history_snapshot, "event_id", String.duplicate("0", 32))
+
+    assert {{:failed, %{"code" => "history_snapshot"}}, nil} =
+             History.execute_cached(%{context | history_snapshot: invalid}, intent, cache)
+  end
+
+  test "draft history projection enforces its exact record and byte bounds", c do
+    {_context, id} = journal(c)
+    path = Path.join(c.dir, id <> ".jsonl")
+    File.write!(path, List.duplicate("{}\n", 65_535), [:append])
+    assert {:ok, []} = Ipse.Session.DraftHistory.withheld(c.dir, id, File.stat!(path).size)
+    File.write!(path, "{}\n", [:append])
+
+    assert {:error, :draft_history_capacity} =
+             Ipse.Session.DraftHistory.withheld(c.dir, id, File.stat!(path).size)
+
+    assert {:error, :invalid_draft_history} =
+             Ipse.Session.DraftHistory.withheld(c.dir, id, 33_554_433)
+
+    ranges = Enum.map(1..1024, &{&1, &1})
+    assert {:ok, ^ranges} = Ipse.Session.DraftHistory.bounded_ranges(ranges, nil)
+
+    assert {:error, :draft_history_capacity} =
+             Ipse.Session.DraftHistory.bounded_ranges([{0, 0} | ranges], nil)
+  end
+
+  test "cancelled draft history stays withheld across actual SDK catch-up and restart", c do
+    cfg = Map.put(config(c), :provider_module, DraftPlainModel)
+    {:ok, pid} = start(c, cfg)
+    id = Session.info(pid).id
+
+    assert :ok =
+             Session.invoke_export(pid, :command, "ext__reader__catchup", %{
+               "view" => "prompt.expanded",
+               "mode" => "read"
+             })
+
+    done(pid)
+    assert :ok = Session.start_draft(pid, "private-history-canary")
+    done(pid)
+    assert :ok = Session.cancel_draft(pid)
+    assert :ok = Session.prompt(pid, "ordinary after draft")
+    done(pid)
+    assert :ok = Session.start_draft(pid, "second-private-history-canary")
+    done(pid)
+    assert :ok = Session.cancel_draft(pid)
+    assert :ok = Session.prompt(pid, "ordinary after second draft")
+    done(pid)
+
+    assert :ok =
+             Session.invoke_export(pid, :command, "ext__reader__catchup", %{
+               "view" => "prompt.expanded",
+               "mode" => "read"
+             })
+
+    done(pid)
+    assert :ok = Session.close_confirmed(pid)
+    {:ok, events} = Journal.load(c.dir, id)
+    {:ok, page} = Journal.source_page(c.dir, id, 0, 64)
+
+    anchor =
+      Enum.find(
+        page.records,
+        &(&1.record["type"] == "extension_action_intent" and
+            get_in(&1.record, ["request", "op"]) == "history.read")
+      )
+
+    assert {:ok, _} = Ipse.Session.DraftHistory.withheld(c.dir, id, anchor.source["byte_offset"])
+    assert :ok = History.validate_sources(c.dir, id, events)
+    assert :ok = Subscriptions.validate_sources(c.dir, id, events)
+    assert {:ok, _} = Ipse.Session.DraftLineage.restore(events, id)
+    assert :ok = Ipse.Extension.Subscriptions.validate_events(events)
+    assert {:ok, _} = Ipse.Extension.Actions.restore(events)
+    assert {:ok, _} = Session.Saved.restore(events, id)
+    assert {:ok, _} = Session.restore_context(events)
+
+    results =
+      Enum.filter(
+        events,
+        &(&1["type"] == "extension_action_result" and
+            get_in(&1, ["request", "op"]) == "history.read")
+      )
+
+    assert Enum.any?(results, fn event ->
+             Enum.any?(
+               get_in(event, ["outcome", "value", "records"]) || [],
+               &(&1["reason"] == "draft_withheld")
+             )
+           end)
+
+    refute inspect(results) =~ "private-history-canary"
+    refute inspect(results) =~ "second-private-history-canary"
+
+    target =
+      Enum.find(results, fn event ->
+        Enum.any?(
+          get_in(event, ["outcome", "value", "records"]) || [],
+          &(&1["reason"] == "draft_withheld")
+        )
+      end)
+
+    altered =
+      update_in(target["outcome"]["value"]["records"], fn rows ->
+        Enum.map(rows, fn row ->
+          if row["reason"] == "draft_withheld",
+            do: %{"kind" => "skipped", "source" => row["source"], "reason" => "other_view"},
+            else: row
+        end)
+      end)
+
+    {:ok, forged} =
+      Ipse.Extension.Actions.result(
+        Ipse.Extension.Actions.result_intent(target),
+        altered["outcome"]
+      )
+
+    forged_events = Enum.map(events, fn event -> if event == target, do: forged, else: event end)
+
+    assert {:error, :invalid_extension_history_source} =
+             History.validate_sources(c.dir, id, forged_events)
+
+    {:ok, resumed} = start(c, cfg, id)
+
+    assert :ok =
+             Session.invoke_export(resumed, :command, "ext__reader__catchup", %{
+               "view" => "prompt.expanded",
+               "mode" => "read"
+             })
+
+    done(resumed)
+    assert :ok = Session.close_confirmed(resumed)
+    {:ok, events} = Journal.load(c.dir, id)
+    assert :ok = History.validate_sources(c.dir, id, events)
+    refute File.read!(c.trace) =~ "private-history-canary"
+    refute File.read!(c.trace) =~ "second-private-history-canary"
   end
 
   test "real SDK catch-up preserves the range and keeps later storage under full approval", c do

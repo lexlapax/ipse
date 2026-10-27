@@ -257,7 +257,8 @@ defmodule Ipse.Extension.Subscriptions do
   end
 
   def validate_events([%{"metadata" => metadata} | _] = events) do
-    with {:ok, declarations, identities} <- metadata(metadata) do
+    with {:ok, declarations, identities} <- metadata(metadata),
+         {:ok, _} <- Ipse.Session.Draft.restore(events, nil) do
       initial = %{
         received: nil,
         marker: nil,
@@ -277,7 +278,8 @@ defmodule Ipse.Extension.Subscriptions do
         presentation: nil,
         answer: nil,
         assistant_request: nil,
-        previous: nil
+        previous: nil,
+        draft_turn: nil
       }
 
       Enum.reduce_while(events, {:ok, initial}, fn event, {:ok, state} ->
@@ -431,7 +433,7 @@ defmodule Ipse.Extension.Subscriptions do
   end
 
   defp reduce(%{"type" => "lifecycle_prompt_received"} = event, s, declarations, _) do
-    if declarations != [] and valid_received?(event) and
+    if s.draft_turn == nil and declarations != [] and valid_received?(event) and
          not MapSet.member?(s.turns, event["turn_id"]) do
       {:ok,
        %{
@@ -546,7 +548,8 @@ defmodule Ipse.Extension.Subscriptions do
              ~w(type version delivery_id identity declaration source turn_id payload_sha256)
            ),
          true <-
-           event["version"] === 1 and id?(event["delivery_id"]) and s.active == nil and
+           s.draft_turn == nil and event["version"] === 1 and id?(event["delivery_id"]) and
+             s.active == nil and
              s.marker != nil and not s.unsafe,
          true <- Invocation.event_schedule(declaration) == "after_turn" == s.settling,
          true <- identities[identity["instance"]] == identity,
@@ -615,7 +618,7 @@ defmodule Ipse.Extension.Subscriptions do
   end
 
   defp reduce(%{"type" => "request_admitted", "kind" => "model"} = event, s, declarations, _) do
-    if declarations == [] or
+    if declarations == [] or (s.draft_turn != nil and s.draft_turn == event["turn_id"]) or
          (s.marker != nil and s.marker["turn_id"] == event["turn_id"] and
             s.session == event["session_id"] and s.active == nil and not s.unsafe and
             not s.settling and
@@ -641,6 +644,13 @@ defmodule Ipse.Extension.Subscriptions do
       @error
     end
   end
+
+  defp reduce(%{"type" => "draft_started", "turn_id" => turn}, s, _, _),
+    do: {:ok, %{s | draft_turn: turn}}
+
+  defp reduce(%{"type" => type}, s, _, _)
+       when type in ["draft_completed", "draft_cancelled", "draft_consumed"],
+       do: {:ok, %{s | draft_turn: nil}}
 
   defp reduce(%{"type" => "request_finished", "request_id" => id}, %{request: id} = s, _, _),
     do: {:ok, %{s | request: nil}}

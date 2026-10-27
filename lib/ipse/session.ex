@@ -59,6 +59,59 @@ defmodule Ipse.Session do
     do: %{id: make_ref(), start: {__MODULE__, :start_link, [opts]}, restart: :temporary}
 
   def prompt(pid, text), do: GenServer.call(pid, {:prompt, text})
+  @doc false
+  def start_draft(pid, text), do: GenServer.call(pid, {:start_draft, text})
+  @doc false
+  def start_draft_observed(pid, channel, text, ticket),
+    do: GenServer.call(pid, {:start_draft_observed, channel, text, ticket})
+
+  @doc false
+  def cancel_draft(pid), do: GenServer.call(pid, :cancel_draft, 10_000)
+  @doc false
+  def rebase_draft(pid), do: GenServer.call(pid, :rebase_draft, 10_000)
+
+  @doc false
+  def rebase_for_extensions(%{draft: nil} = s), do: {:ok, s}
+
+  def rebase_for_extensions(s) do
+    with {:ok, event, projected} <-
+           Ipse.Session.Draft.rebased(
+             s.draft,
+             s.messages,
+             s.reference_occurrences,
+             Ipse.Session.DraftNative.policy(s.config)
+           ) do
+      record(s, event)
+      {:ok, %{s | draft: nil, messages: projected}}
+    end
+  end
+
+  @doc false
+  def draft(pid), do: GenServer.call(pid, :draft)
+  @doc false
+  def render_draft(pid, channel, id, revision),
+    do: GenServer.call(pid, {:render_draft, channel, id, revision})
+
+  @doc false
+  def accept_draft_observed(pid, channel, render_id, text, witness),
+    do: GenServer.call(pid, {:accept_draft_observed, channel, render_id, text, witness})
+
+  @doc false
+  def replace_draft(pid, id, revision, text),
+    do: GenServer.call(pid, {:replace_draft, id, revision, text})
+
+  @doc false
+  def replace_draft_observed(pid, channel, id, revision, text, ticket),
+    do: GenServer.call(pid, {:replace_draft_observed, channel, id, revision, text, ticket})
+
+  @doc false
+  def replace_draft_lines_observed(pid, channel, id, revision, lines),
+    do: GenServer.call(pid, {:replace_draft_lines_observed, channel, id, revision, lines})
+
+  @doc false
+  def accept_draft(pid, id, revision), do: GenServer.call(pid, {:accept_draft, id, revision})
+  @doc false
+  def consume_draft(pid, id, revision), do: GenServer.call(pid, {:consume_draft, id, revision})
   @doc "Submit exact observed text with a volatile, single-use input witness."
   def prompt(pid, text, witness), do: GenServer.call(pid, {:prompt, text, witness})
 
@@ -197,6 +250,14 @@ defmodule Ipse.Session do
     end
   end
 
+  defp operator_request(s, %{"kind" => "draft", "render_id" => id} = request)
+       when map_size(request) == 2 do
+    case s.draft_render do
+      %{"render_id" => ^id, "display" => display} -> {:ok, display, "draft", id}
+      _ -> :error
+    end
+  end
+
   defp operator_request(_s, %{"kind" => "prompt"} = request) when map_size(request) == 1,
     do: {:ok, "you> ", "prompt", nil}
 
@@ -267,6 +328,7 @@ defmodule Ipse.Session do
          :ok <- Journal.repair_tail(dir, id, config[:journal]),
          {:ok, events} <- Journal.load(dir, id, config[:journal]),
          {:ok, saved} <- Saved.restore(events, id),
+         {saved, config} <- restore_draft_mode(saved, config),
          {:ok, source_window} <-
            Ipse.Session.SourceWindow.attach_effective_source(saved.source_window, dir, id),
          %{
@@ -316,6 +378,9 @@ defmodule Ipse.Session do
             else: ["Skill catalog changed; use /context refresh to adopt current discovery."]
           ),
         messages: messages,
+        draft: saved.draft,
+        draft_lineages: saved.draft_lineages,
+        draft_history_restricted: saved.draft_history_restricted,
         extension_contributions: extension_state.contributions,
         compaction: nil,
         tool_decision:
@@ -328,9 +393,11 @@ defmodule Ipse.Session do
         input_generation: Ipse.Usage.id(),
         operator_channel: nil,
         operator_render: nil,
+        draft_render: nil,
         operator_answers: %{},
         operator_pieces: [],
         reference: saved.reference,
+        reference_occurrences: Ipse.Session.Reference.occurrences(events),
         task_cleanup_failed: false,
         job_ref: nil,
         phase: if(question, do: :question, else: :idle),
@@ -389,6 +456,14 @@ defmodule Ipse.Session do
         extension_invocations: Invocation.count(events),
         mcp_tools: [],
         mcp_ready: false,
+        mcp_discovered: false,
+        draft_mcp_definitions: saved.draft_mcp_definitions,
+        draft_mcp_snapshot: saved.draft_mcp_snapshot,
+        draft_mcp_interrupted: saved.draft_mcp_interrupted,
+        draft_mcp_pending: saved.draft_mcp_pending,
+        draft_mcp_attempts: saved.draft_mcp_attempts,
+        draft_mcp_revalidation: nil,
+        draft_mcp_initial: false,
         mcp_resources: %{},
         delegation_resources: %{},
         delegation_workers: MapSet.new(),
@@ -792,6 +867,7 @@ defmodule Ipse.Session do
       |> Map.put(:extensions, Ipse.Extension.Registry.manifests(s.config))
       |> Map.put(:accounting, Ipse.Usage.snapshot(s.accounting))
       |> Map.put(:extension_result, s.extension_result)
+      |> Map.put(:draft, if(s.draft, do: Map.take(s.draft, [:id, :revision, :status])))
       |> Map.put(:question, if(s.question, do: Map.take(s.question, [:id, :arguments])))
 
     {:reply, info, s}
@@ -982,6 +1058,24 @@ defmodule Ipse.Session do
     do: {:reply, {:error, :extension_text_refused}, s}
 
   def handle_call(:exports, _, s), do: {:reply, s.extension_catalog, s}
+
+  def handle_call({:invoke_export, _, _, _}, _, %{draft: %{status: status}} = s)
+      when status in [:pending, :completed, :accepted],
+      do: {:reply, {:error, :draft_recovery_required}, s}
+
+  def handle_call(
+        {:invoke_export, _, _, _},
+        _,
+        %{draft: %{status: :cancelled, notice: false}} = s
+      ),
+      do: {:reply, {:error, :draft_recovery_required}, s}
+
+  def handle_call(
+        {:invoke_export, _, _, _},
+        _,
+        %{draft: %{status: :consumed, accepted_message: false}} = s
+      ),
+      do: {:reply, {:error, :draft_recovery_required}, s}
 
   def handle_call({:invoke_export, kind, name, arguments}, _, %{phase: :idle} = s)
       when kind in [:command, :service] do
@@ -1456,6 +1550,7 @@ defmodule Ipse.Session do
          s
          | operator_channel: channel,
            operator_render: nil,
+           draft_render: nil,
            operator_answers: %{},
            operator_pieces: []
        }}
@@ -1607,6 +1702,292 @@ defmodule Ipse.Session do
 
   def handle_call({:observe_input, _, _}, _from, s), do: {:reply, {:error, :busy}, s}
 
+  def handle_call({:start_draft, text}, _from, %{phase: :idle} = s)
+      when is_binary(text) and byte_size(text) in 1..32_768,
+      do: start_draft_work(s, text, nil)
+
+  def handle_call({:start_draft, _}, _, s), do: {:reply, {:error, :draft_unavailable}, s}
+
+  def handle_call(
+        {:start_draft_observed, channel, text, ticket},
+        {client, _},
+        %{phase: :idle, operator_channel: %{id: channel, client: client}} = s
+      )
+      when is_binary(text) and byte_size(text) in 1..32_768 do
+    case Ipse.Session.Input.submit(ticket, text, operator_binding(s, "prompt", nil)) do
+      {:ok, observation} -> start_draft_work(s, text, observation)
+      _ -> {:reply, {:error, :invalid_input_witness}, s}
+    end
+  end
+
+  def handle_call(
+        {:start_draft_observed, channel, _, ticket},
+        {client, _},
+        %{operator_channel: %{id: channel, client: client}} = s
+      ) do
+    Ipse.Session.Input.discard(ticket)
+    {:reply, {:error, :invalid_input_witness}, s}
+  end
+
+  def handle_call({:start_draft_observed, _, _, _}, _, s),
+    do: {:reply, {:error, :invalid_input_witness}, s}
+
+  def handle_call(:rebase_draft, _, %{phase: :idle, draft: draft} = s) when is_map(draft) do
+    case Ipse.Session.Draft.rebased(
+           draft,
+           s.messages,
+           s.reference_occurrences,
+           Ipse.Session.DraftNative.policy(s.config)
+         ) do
+      {:ok, event, projected} ->
+        record(s, event)
+        {:reply, :ok, %{s | draft: nil, messages: projected}}
+
+      error ->
+        {:reply, error, s}
+    end
+  end
+
+  def handle_call(:rebase_draft, _, s), do: {:reply, {:error, :draft_unavailable}, s}
+
+  def handle_call(:draft, _, %{draft: draft} = s) when is_map(draft),
+    do: {:reply, {:ok, Map.take(draft, [:id, :revision, :status, :proposal])}, s}
+
+  def handle_call(:draft, _, s), do: {:reply, {:error, :draft_unavailable}, s}
+
+  def handle_call(
+        {:render_draft, channel, id, revision},
+        {client, _},
+        %{
+          phase: :idle,
+          operator_channel: %{id: channel, client: client},
+          draft: %{id: id, revision: revision, status: :completed} = draft
+        } = s
+      ) do
+    with true <- length(s.draft_lineages) < Ipse.Session.DraftLineage.limit(),
+         true <-
+           Ipse.Session.Draft.withdrawable?(
+             draft,
+             s.messages,
+             s.reference_occurrences,
+             Ipse.Session.DraftNative.policy(s.config)
+           ),
+         {:ok, render} <- Ipse.Session.DraftAcceptance.render(draft, channel) do
+      :ok = Ipse.Session.Input.cancel_read()
+      {:reply, {:ok, Map.take(render, ["render_id"])}, %{s | draft_render: render}}
+    else
+      _ -> {:reply, {:error, :draft_projection_unsafe}, s}
+    end
+  end
+
+  def handle_call({:render_draft, _, _, _}, _, s), do: {:reply, {:error, :stale_draft}, s}
+
+  def handle_call(
+        {:accept_draft_observed, channel, render_id, text, witness},
+        {client, _},
+        %{
+          phase: :idle,
+          operator_channel: %{id: channel, client: client},
+          draft: %{status: :completed} = draft,
+          draft_render: %{"render_id" => render_id} = render
+        } = s
+      ) do
+    with true <- length(s.draft_lineages) < Ipse.Session.DraftLineage.limit(),
+         true <-
+           Ipse.Session.Draft.withdrawable?(
+             draft,
+             s.messages,
+             s.reference_occurrences,
+             Ipse.Session.DraftNative.policy(s.config)
+           ),
+         true <- Workspace.explicit_skills(draft.proposal, s.skills) == [],
+         {:ok, observation} <-
+           Ipse.Session.Input.consume(witness, text, operator_binding(s, "draft", render_id)),
+         {:ok, receipt} <- Ipse.Session.DraftAcceptance.receipt(draft, render, text, observation) do
+      accepted = Ipse.Session.Draft.accepted(draft, receipt)
+      record(s, accepted)
+
+      consume_accepted(%{
+        s
+        | draft: Map.merge(draft, %{status: :accepted, accepted_event: accepted}),
+          draft_render: nil
+      })
+    else
+      _ ->
+        Ipse.Session.Input.discard(witness)
+        {:reply, {:error, :invalid_draft_acceptance}, %{s | draft_render: nil}}
+    end
+  end
+
+  def handle_call(
+        {:accept_draft_observed, channel, _, _, witness},
+        {client, _},
+        %{operator_channel: %{id: channel, client: client}} = s
+      ) do
+    Ipse.Session.Input.discard(witness)
+    {:reply, {:error, :invalid_draft_acceptance}, s}
+  end
+
+  def handle_call({:accept_draft_observed, _, _, _, _}, _, s),
+    do: {:reply, {:error, :invalid_draft_acceptance}, s}
+
+  def handle_call(
+        {:replace_draft, id, revision, text},
+        _,
+        %{phase: :idle, draft: %{id: id, revision: revision, status: :completed} = draft} = s
+      )
+      when revision < 100 do
+    if Ipse.Session.Draft.text?(text) do
+      :ok = Ipse.Session.Input.cancel_read()
+      record(s, Ipse.Session.Draft.replaced(draft, text))
+
+      {:reply, :ok,
+       %{s | draft: %{draft | revision: revision + 1, proposal: text}, draft_render: nil}}
+    else
+      {:reply, {:error, :invalid_draft_text}, s}
+    end
+  end
+
+  def handle_call({:replace_draft, _, _, _}, _, s), do: {:reply, {:error, :stale_draft}, s}
+
+  def handle_call(
+        {:replace_draft_observed, channel, id, revision, text, ticket},
+        {client, _},
+        %{
+          phase: :idle,
+          operator_channel: %{id: channel, client: client},
+          draft: %{id: id, revision: revision, status: :completed} = draft
+        } = s
+      )
+      when revision < 100 do
+    with true <- Ipse.Session.Draft.text?(text),
+         {:ok, observation} <-
+           Ipse.Session.Input.submit(ticket, text, operator_binding(s, "prompt", nil)) do
+      :ok = Ipse.Session.Input.cancel_read()
+      record(s, Ipse.Session.Draft.replaced(draft, text, observation))
+
+      {:reply, :ok,
+       %{s | draft: %{draft | revision: revision + 1, proposal: text}, draft_render: nil}}
+    else
+      _ ->
+        Ipse.Session.Input.discard(ticket)
+        {:reply, {:error, :invalid_input_witness}, s}
+    end
+  end
+
+  def handle_call(
+        {:replace_draft_observed, channel, _, _, _, ticket},
+        {client, _},
+        %{operator_channel: %{id: channel, client: client}} = s
+      ) do
+    Ipse.Session.Input.discard(ticket)
+    {:reply, {:error, :invalid_input_witness}, s}
+  end
+
+  def handle_call({:replace_draft_observed, _, _, _, _, _}, _, s),
+    do: {:reply, {:error, :invalid_input_witness}, s}
+
+  def handle_call(
+        {:replace_draft_lines_observed, channel, id, revision, lines},
+        {client, _},
+        %{
+          phase: :idle,
+          operator_channel: %{id: channel, client: client},
+          draft: %{id: id, revision: revision, status: :completed} = draft
+        } = s
+      )
+      when revision < 100 and is_list(lines) and length(lines) in 1..16 do
+    with true <-
+           Enum.all?(lines, fn
+             {line, _ticket} ->
+               is_binary(line) and String.valid?(line) and
+                 not String.contains?(line, ["\n", "\r"])
+
+             _ ->
+               false
+           end),
+         text = Enum.map_join(lines, "\n", &elem(&1, 0)),
+         true <- Ipse.Session.Draft.text?(text),
+         {:ok, pieces} <- consume_draft_lines(s, lines) do
+      :ok = Ipse.Session.Input.cancel_read()
+      record(s, Ipse.Session.Draft.replaced_lines(draft, text, pieces))
+
+      {:reply, :ok,
+       %{s | draft: %{draft | revision: revision + 1, proposal: text}, draft_render: nil}}
+    else
+      _ ->
+        Enum.each(lines, fn
+          {_text, ticket} -> Ipse.Session.Input.discard(ticket)
+          _ -> :ok
+        end)
+
+        {:reply, {:error, :invalid_input_witness}, s}
+    end
+  end
+
+  def handle_call(
+        {:replace_draft_lines_observed, channel, _, _, lines},
+        {client, _},
+        %{operator_channel: %{id: channel, client: client}} = s
+      )
+      when is_list(lines) do
+    Enum.each(lines, fn
+      {_text, ticket} -> Ipse.Session.Input.discard(ticket)
+      _ -> :ok
+    end)
+
+    {:reply, {:error, :invalid_input_witness}, s}
+  end
+
+  def handle_call({:replace_draft_lines_observed, _, _, _, _}, _, s),
+    do: {:reply, {:error, :invalid_input_witness}, s}
+
+  def handle_call({:accept_draft, _, _}, _, s),
+    do: {:reply, {:error, :native_draft_acceptance_required}, s}
+
+  def handle_call(
+        {:consume_draft, id, revision},
+        _,
+        %{phase: :idle, draft: %{id: id, revision: revision, status: :accepted} = draft} = s
+      ) do
+    if length(s.draft_lineages) < Ipse.Session.DraftLineage.limit() and
+         Ipse.Session.Draft.withdrawable?(
+           draft,
+           s.messages,
+           s.reference_occurrences,
+           Ipse.Session.DraftNative.policy(s.config)
+         ) and
+         Workspace.explicit_skills(draft.proposal, s.skills) == [],
+       do: consume_accepted(s),
+       else: {:reply, {:error, :draft_projection_unsafe}, s}
+  end
+
+  def handle_call({:consume_draft, _, _}, _, s), do: {:reply, {:error, :stale_draft}, s}
+
+  def handle_call({:prompt, _, _}, _, %{draft: %{status: status}} = s)
+      when status in [:pending, :completed, :accepted],
+      do: {:reply, {:error, :draft_recovery_required}, s}
+
+  def handle_call({:prompt, _}, _, %{draft: %{status: status}} = s)
+      when status in [:pending, :completed, :accepted],
+      do: {:reply, {:error, :draft_recovery_required}, s}
+
+  def handle_call({:prompt, _, _}, _, %{draft: %{status: :cancelled, notice: false}} = s),
+    do: {:reply, {:error, :draft_recovery_required}, s}
+
+  def handle_call({:prompt, _}, _, %{draft: %{status: :cancelled, notice: false}} = s),
+    do: {:reply, {:error, :draft_recovery_required}, s}
+
+  def handle_call(
+        {:prompt, _, _},
+        _,
+        %{draft: %{status: :consumed, accepted_message: false}} = s
+      ),
+      do: {:reply, {:error, :draft_recovery_required}, s}
+
+  def handle_call({:prompt, _}, _, %{draft: %{status: :consumed, accepted_message: false}} = s),
+    do: {:reply, {:error, :draft_recovery_required}, s}
+
   def handle_call({:prompt, _, _}, _from, %{phase: phase} = s) when phase != :idle,
     do: {:reply, {:error, :busy}, s}
 
@@ -1695,6 +2076,9 @@ defmodule Ipse.Session do
 
   def handle_call({:approve, _, _}, _from, s), do: {:reply, {:error, :no_pending_approval}, s}
 
+  def handle_call({:answer, _, _}, _from, %{draft: %{status: :pending}} = s),
+    do: {:reply, {:error, :native_draft_answer_required}, s}
+
   def handle_call(
         {:answer, id, answers},
         _from,
@@ -1749,6 +2133,23 @@ defmodule Ipse.Session do
   def handle_call({:model_sources, _, _, _}, _, s),
     do: {:reply, {:error, :source_index_refused}, s}
 
+  def handle_call(
+        :cancel_draft,
+        _from,
+        %{phase: :idle, draft: %{status: :cancelled, notice: false} = draft} = s
+      ) do
+    next = Turn.append_message(s, %{"role" => "user", "content" => Ipse.Session.Draft.notice()})
+    {:reply, :ok, %{next | draft: %{draft | notice: true}}}
+  end
+
+  def handle_call(:cancel_draft, _from, %{draft: %{status: status}} = s)
+      when status in [:pending, :completed, :accepted], do: cancel_draft_work(s)
+
+  def handle_call(:cancel_draft, _from, s), do: {:reply, {:error, :no_active_draft}, s}
+
+  def handle_call(:cancel, _from, %{draft: %{status: status}} = s)
+      when status in [:pending, :completed, :accepted], do: cancel_draft_work(s)
+
   def handle_call(:cancel, _from, s), do: cancel_work(s, false)
 
   def handle_call(:close, _from, s) do
@@ -1757,6 +2158,137 @@ defmodule Ipse.Session do
     cleanup = cleanup ++ observer_cleanup
     result = if Enum.all?(cleanup, &(&1 == :ok)), do: :ok, else: {:error, :cleanup_unconfirmed}
     {:stop, :normal, result, close_epoch(next, "close", result == :ok)}
+  end
+
+  defp start_draft_work(s, text, observation) do
+    with true <-
+           String.valid?(text) and next_draft_available?(s.draft) and
+             draft_mcp_ready?(s) and
+             draft_extension_quiet?(s) and
+             Workspace.explicit_skills(text, s.skills) == [],
+         {:ok, mcp_snapshot} <- draft_mcp_snapshot(s),
+         {:ok, visible} <-
+           Ipse.Session.Draft.project(
+             s.draft,
+             s.messages,
+             s.reference_occurrences,
+             Ipse.Session.DraftNative.policy(s.config)
+           ) do
+      models = Ipse.Session.DraftNative.visible_models(visible)
+      prior_reported = if MapSet.member?(models, s.reported_model), do: s.reported_model
+      prior_historical = if MapSet.member?(models, s.historical_model), do: s.historical_model
+      :ok = Ipse.Session.Input.invalidate()
+      id = Ipse.Usage.id()
+      turn = Ipse.Usage.id()
+      effective = Ipse.Session.Draft.effective(text)
+
+      event =
+        Ipse.Session.Draft.started(
+          s.id,
+          turn,
+          id,
+          text,
+          effective,
+          s.messages,
+          prior_reported,
+          prior_historical
+        )
+        |> then(fn event ->
+          if mcp_snapshot, do: Map.put(event, "mcp_snapshot", mcp_snapshot), else: event
+        end)
+
+      record(s, event)
+
+      draft = %{
+        id: id,
+        session_id: s.id,
+        turn_id: turn,
+        status: :pending,
+        prior_config: s.config,
+        prior_reported_model: prior_reported,
+        prior_historical_model: prior_historical,
+        revision: 1,
+        proposal: nil,
+        accepted_input: false,
+        accepted_message: false,
+        input_source_id: nil,
+        question_ids: [],
+        answer_source_ids: [],
+        tool_success_count: 0,
+        tool_evidence: [],
+        accepted_event: nil,
+        prefix_count: length(s.messages),
+        prefix_sha256: Ipse.JSON.digest(s.messages),
+        history: if(s.draft, do: s.draft.history ++ [Map.delete(s.draft, :history)], else: [])
+      }
+
+      config = Ipse.Session.Draft.draft_config(s.config)
+
+      Turn.draft_prompt(
+        %{
+          s
+          | draft: draft,
+            draft_mcp_definitions: if(mcp_snapshot, do: mcp_snapshot["definitions"]),
+            draft_mcp_snapshot: mcp_snapshot,
+            draft_mcp_interrupted: false,
+            draft_mcp_pending: nil,
+            draft_mcp_attempts: 0,
+            draft_mcp_initial: Map.get(s.config, :mcp_servers, []) != [] and not s.mcp_discovered,
+            draft_history_restricted: true,
+            config: config,
+            input_generation: Ipse.Usage.id()
+        },
+        text,
+        observation
+      )
+    else
+      _ -> {:reply, {:error, :draft_unavailable}, s}
+    end
+  end
+
+  defp consume_draft_lines(s, lines) do
+    Enum.reduce_while(lines, {:ok, []}, fn {text, ticket}, {:ok, pieces} ->
+      case Ipse.Session.Input.submit(ticket, text, operator_binding(s, "prompt", nil)) do
+        {:ok, observation} ->
+          {:cont, {:ok, pieces ++ [%{"text" => text, "observation" => observation}]}}
+
+        _ ->
+          {:halt, {:error, :invalid_input_witness}}
+      end
+    end)
+  end
+
+  defp consume_accepted(s) do
+    draft = s.draft
+    turn = Ipse.Usage.id()
+    event = Ipse.Session.Draft.consumed(draft, turn, s.messages)
+    record(s, event)
+    lineage = Ipse.Session.DraftLineage.entry(draft.accepted_event, turn)
+
+    draft =
+      Map.merge(draft, %{
+        status: :consumed,
+        accepted_turn: turn,
+        accepted_input: false,
+        accepted_message: false,
+        end_count: event["end_count"],
+        segment_sha256: event["segment_sha256"]
+      })
+
+    config = Map.get(draft, :prior_config, s.config)
+
+    Turn.accepted_prompt(
+      %{
+        s
+        | draft: draft,
+          draft_lineages: s.draft_lineages ++ [lineage],
+          config: config,
+          reported_model: draft.prior_reported_model,
+          historical_model: draft.prior_historical_model,
+          input_generation: Ipse.Usage.id()
+      },
+      draft.proposal
+    )
   end
 
   defp cancel_work(s, keep_queued) do
@@ -1776,6 +2308,46 @@ defmodule Ipse.Session do
     else
       notify(s, {:done, :cancelled})
       {:reply, :ok, next}
+    end
+  end
+
+  defp cancel_draft_work(s) do
+    :ok = Ipse.Session.Input.invalidate()
+    s = %{s | draft_render: nil}
+    active = s.phase != :idle
+    {cleanup, next} = if active, do: stop_work(s, true, "cancelled"), else: {[], s}
+
+    if Enum.all?(cleanup, &(&1 == :ok)) do
+      next = Turn.settle_mcp_revalidation(next)
+      event = Ipse.Session.Draft.cancelled(next.draft, next.messages)
+      record(next, event)
+
+      next =
+        Turn.append_message(next, %{"role" => "user", "content" => Ipse.Session.Draft.notice()})
+
+      config = Map.get(next.draft, :prior_config, next.config)
+
+      draft =
+        Map.merge(next.draft, %{
+          status: :cancelled,
+          notice: true,
+          end_count: event["end_count"],
+          segment_sha256: event["segment_sha256"]
+        })
+
+      next = %{
+        next
+        | config: config,
+          draft: draft,
+          reported_model: draft.prior_reported_model,
+          historical_model: draft.prior_historical_model
+      }
+
+      if active, do: notify(s, {:done, :cancelled})
+      {:reply, :ok, next}
+    else
+      {:stop, :normal, {:error, :cleanup_unconfirmed},
+       close_epoch(next, "cleanup_failure", false)}
     end
   end
 
@@ -2079,7 +2651,7 @@ defmodule Ipse.Session do
         Turn.mcp_discovered(s, tools)
 
       {:mcp_discovery, {:error, error}} ->
-        {:noreply, Turn.fail(s, error)}
+        {:noreply, Turn.fail(Turn.mcp_revalidation_failed(s, error), error)}
 
       {:tool, {:unknown, error}} ->
         {:noreply, Turn.fail(s, error)}
@@ -2264,6 +2836,7 @@ defmodule Ipse.Session do
      %{
        s
        | operator_channel: nil,
+         draft_render: nil,
          operator_render: nil,
          operator_answers: %{},
          operator_pieces: []
@@ -2666,6 +3239,8 @@ defmodule Ipse.Session do
 
   @doc false
   def optional_source(s, event) do
+    record_extension_lineage(s, event)
+
     case Writer.append_observed(s.journal_writer, event) do
       {:ok, source} ->
         offer_record(s, source, event)
@@ -2678,6 +3253,8 @@ defmodule Ipse.Session do
 
   @doc false
   def record(s, event) do
+    record_extension_lineage(s, event)
+
     result =
       if event["type"] not in ~w(input_received reference_admitted reference_refresh reference_epoch reference_envelope) and
            ((s.observation != nil and s.observation.policy["mode"] != "off") or
@@ -2694,6 +3271,8 @@ defmodule Ipse.Session do
 
   @doc false
   def record_source(s, event) do
+    record_extension_lineage(s, event)
+
     case Writer.append_with_source(s.journal_writer, event) do
       {:ok, source} ->
         offer_record(s, source, event)
@@ -2701,6 +3280,18 @@ defmodule Ipse.Session do
 
       {:error, reason} ->
         journal_failed(s, reason)
+    end
+  end
+
+  defp record_extension_lineage(s, event) do
+    if s.draft_lineages != [] and Ipse.Session.DraftLineage.extension_target?(event) do
+      marker =
+        Ipse.Session.DraftLineage.extension_intent(s.id, s.turn_id, event, s.draft_lineages)
+
+      case Writer.append(s.journal_writer, marker) do
+        :ok -> :ok
+        {:error, reason} -> journal_failed(s, reason)
+      end
     end
   end
 
@@ -2725,15 +3316,23 @@ defmodule Ipse.Session do
   def offer_record(s, source, event) do
     if s.observation, do: Ipse.Observability.offer(s.observation, source, event)
 
-    Feeds.offer(s.feeds, source, event, fn intent ->
-      case Writer.append(s.journal_writer, intent) do
-        :ok -> :ok
-        {:error, reason} -> journal_failed(s, reason)
-      end
-    end)
+    if not match?(%{status: :pending}, s.draft) do
+      Feeds.offer(s.feeds, source, event, fn intent ->
+        record_extension_lineage(s, intent)
+
+        case Writer.append(s.journal_writer, intent) do
+          :ok -> :ok
+          {:error, reason} -> journal_failed(s, reason)
+        end
+      end)
+    end
+
+    :ok
   end
 
   @doc false
+  def enroll_feeds(%{draft: %{status: :pending}} = s), do: s
+
   def enroll_feeds(s) do
     feeds = Feeds.enroll(s.feeds, s.config, self(), &record_source(s, &1))
 
@@ -3137,6 +3736,52 @@ defmodule Ipse.Session do
         "request_id" => s.last_request_id,
         "subject_source" => source
       })
+
+  defp next_draft_available?(nil), do: true
+  defp next_draft_available?(%{status: :cancelled, notice: true, history: h}), do: length(h) < 15
+
+  defp next_draft_available?(%{status: :consumed, accepted_message: true, history: h}),
+    do: length(h) < 15
+
+  defp next_draft_available?(_), do: false
+
+  defp restore_draft_mode(%{draft: %{status: :pending} = draft} = saved, config),
+    do:
+      {%{saved | draft: Map.put(draft, :prior_config, config)},
+       Ipse.Session.Draft.draft_config(config)}
+
+  defp restore_draft_mode(saved, config), do: {saved, config}
+
+  defp draft_mcp_ready?(s),
+    do: Map.get(s.config, :mcp_servers, []) == [] or s.reference != nil
+
+  defp draft_mcp_snapshot(s) do
+    if Map.get(s.config, :mcp_servers, []) == [] or not s.mcp_discovered do
+      {:ok, nil}
+    else
+      snapshot = Ipse.Session.DraftMCP.event(s.id, s.mcp_tools, Turn.draft_base_definitions(s))
+      manifests = s.mcp_tools |> Ipse.MCP.manifests() |> Jason.encode!() |> Jason.decode!()
+
+      if Ipse.Session.DraftMCP.valid?(snapshot, s.id, manifests, s.reference.catalog),
+        do: {:ok, snapshot},
+        else: {:error, :invalid_draft_mcp_catalog}
+    end
+  end
+
+  defp draft_extension_quiet?(s) do
+    not Feeds.active?(s.feeds) and not s.extension_text_cleanup_failed and
+      Enum.all?(s.feeds.resources, fn {_, resource} ->
+        not is_pid(resource.pid) or not Process.alive?(resource.pid)
+      end) and
+      not Enum.any?(
+        Ipse.Extension.TextResources.entries(s.config),
+        &(&1.identity["text_required"] == true)
+      ) and
+      Enum.all?(s.extension_text, fn {_, resource} ->
+        Map.get(resource, :closed, false) or not is_pid(resource.pid) or
+          not Process.alive?(resource.pid)
+      end)
+  end
 
   defp question_available(nil, _), do: :ok
 

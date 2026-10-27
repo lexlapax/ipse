@@ -90,6 +90,8 @@ resource/offline qualification. No daemon configuration or existing model was ch
 - [Authentication HTTP isolation in the registered inference completion witness](auth-completion-witness.md).
 - [Unused controlled owned-effect foundation, scoped verification and open integration limits](owned-effect-component.md).
 - [Private draft-mode prototype checkpoint and open acceptance gaps](p31i-private-draft-checkpoint.md).
+- [Main-Session `/enhance` integration, terminal repairs and current verification limits](enhance-integration.md).
+- [Model-switch continuation, active full suite and unresolved installed proof](handoff-20261027-enhance.md).
 - [Explicit managed SDK publication, reserved metadata and replay boundary](managed-sdk-component.md).
 - [Verified managed-publication input charges, unchanged reservations and retained uncertainty](managed-actual-accounting.md), with its [independent audit](managed-actual-accounting-audit.md), later [Identity-finalization finding and independent closure](identity-finalization-finding.md), and [deferred-settlement ordering repair](managed-settlement-ordering-repair.md).
 - [Protected fresh/resumed activation, exact route overlays and reciprocal worktree admission](activation-overlay-component.md).

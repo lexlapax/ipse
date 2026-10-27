@@ -368,8 +368,9 @@ defmodule Ipse.Session.Input do
 
     keys == [:cwd, :generation, :session_id] or
       (keys == [:channel_id, :cwd, :generation, :purpose, :render_id, :session_id] and
-         valid_id?(binding.channel_id) and binding.purpose in ["prompt", "question", "control"] and
-         if(binding.purpose == "question",
+         valid_id?(binding.channel_id) and
+         binding.purpose in ["prompt", "question", "control", "draft"] and
+         if(binding.purpose in ["question", "draft"],
            do: valid_id?(binding.render_id),
            else: binding.render_id == nil
          ))

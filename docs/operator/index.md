@@ -36,6 +36,7 @@ are refused as busy; they are not queued for later execution.
 | Install from source and prepare Linux native policy | [Arch Linux setup](arch-linux.md) |
 | Preview, save or replace a private first-run provider choice | [Guided setup](configuration.md#choose-and-save-a-provider) |
 | Work interactively or run once, approve effects, inspect/revoke session permissions, delegate, resume | [Use a workspace](usage.md) |
+| Draft, edit and explicitly submit a clearer request in the current conversation | [Refine a request](usage.md#refine-a-request-before-submitting-it) |
 | Select profiles, use Gemini or Grok, pin an OpenRouter upstream, connect a local compatible server and resolve policy | [Configuration](configuration.md) |
 | Connect explicitly selected external tools/resources/prompts | [MCP](mcp.md) |
 | Review/import/select extensions, inspect exact Session sources and complete results, generate vectors, request typed advice, try the lab | [Extensions](extensions.md) |

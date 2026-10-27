@@ -121,6 +121,36 @@ Validated ordinary resume may repair a torn final journal record while holding
 the lock. Read-only diagnosis does not. Corrupt committed records/checkpoints
 refuse recovery. Preserve originals for investigation.
 
+## Recover a request draft
+
+Resume the original Session with its original configuration. Idle resume makes
+no inference request and never accepts or executes an unfinished proposal:
+
+```sh
+ipse chat --resume SESSION_ID --state-dir /private/path/sessions
+```
+
+Use `/enhance show` to inspect a completed proposal. `/enhance accept ID` renders
+a fresh confirmation bound to its current revision and terminal. A pending
+question is answered through its freshly rendered `answer CODE VALUE`. A failed
+or interrupted draft can remain incomplete; `/enhance cancel` records its
+abandonment before ordinary input is permitted. Cancellation can also complete a
+saved abandonment whose separate host notice was interrupted. It does not
+repeat the old inference or any uncertain external setup.
+
+A changed or interrupted MCP catalog revalidation stops draft continuation.
+Preserve the refusal and cancel explicitly; discovery success alone is not proof
+that the original catalog was pinned before the interruption. Configured server
+setup may already have run. Inspect its processes/service records before another
+attempt if cleanup is unconfirmed.
+
+If provider continuation cannot be safely separated from the draft, subsequent
+dispatch or resume refuses. Keep the original journal and use the explicit
+[fresh-session handoff](#continue-in-a-fresh-session) with a newly written task
+that omits abandoned requirements. Drafts also refuse required compaction until
+their verified projection can be rebased. Original private records are retained;
+withholding their active projection is not erasure.
+
 ## Respect active ownership
 
 One owner holds the journal lock. Close/cancel it normally. The visible Session

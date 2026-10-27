@@ -416,11 +416,21 @@ defmodule Ipse.Extension.Host do
   end
 
   defp execute_action(context, intent, %{"op" => "history.read"}) do
-    task = Ipse.Session.Resources.async(fn -> Ipse.Extension.History.execute(context, intent) end)
+    key = {__MODULE__, :history_policy}
+    cached = Process.get(key)
+
+    task =
+      Ipse.Session.Resources.async(fn ->
+        Ipse.Extension.History.execute_cached(context, intent, cached)
+      end)
 
     case Task.yield(task, 5000) || Task.shutdown(task, :brutal_kill) do
-      {:ok, result} -> result
-      _ -> {:failed, %{"code" => "history_timeout"}}
+      {:ok, {result, cache}} ->
+        Process.put(key, cache)
+        result
+
+      _ ->
+        {:failed, %{"code" => "history_timeout"}}
     end
   end
 

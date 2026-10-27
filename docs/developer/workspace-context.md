@@ -132,6 +132,56 @@ boundary, split a group, or hide an orphan result. References count toward conte
 bytes and summaries but never become pinned operator requests. The admission
 records are private journal records, without lifecycle-feed source projection.
 
+## Withdraw draft intent before ordinary work
+
+The terminal's `/enhance` path uses the same Session and ordinary main route.
+`Session.Draft` owns bounded draft/revision transitions and exact interval
+projection; `DraftAcceptance` binds the proposed text to a freshly rendered
+native-terminal observation. The complete `/enhance TEXT` line remains the
+original witnessed input; the host removes its command prefix only when building
+the effective drafting instruction. Replay recomputes that transformation.
+
+Trace `start_draft_observed`, `Turn.draft_prompt`, and `consume_accepted` together.
+Draft configuration narrows the active execution ceiling while retaining the
+enclosing ceiling and ordered tools. Dispatch denies mutations and external
+callbacks; approval flags cannot widen it. Acceptance journals the exact revision
+and provenance before submitting its proposal as a new ordinary turn. Cancellation
+journals an exact message-interval digest and then a neutral host notice. A crash
+between those writes blocks ordinary work until explicit cancellation completes
+the notice; no inference is replayed.
+
+`Draft.project` validates the original prefix, segment, reference occurrences and
+native tool grouping before withholding the interval from later dispatch.
+`Saved` repeats those checks chronologically and validates rebasing before
+compaction. The original journal remains intact. Only the stateless ChatGPT
+Responses subset has a native continuation isolation validator here; unsupported
+opaque continuation refuses projection instead of dropping selected fields.
+`DraftHistory` produces bounded withheld ranges for extension history reads, and
+`SourceWindow` excludes draft material from eligible evidence. Pending drafts
+cannot be exposed through an ordinary history page.
+
+`DraftLineage` conservatively retains accepted input, answer and read-evidence
+links across later turns, compaction and extension requests. These links establish
+intent provenance, not current knowledge eligibility or effect permission.
+`DraftMCP` pins first-use discovery to the admitted tool catalog and requires
+fresh matching discovery when a pending draft question resumes. Setup intent
+precedes starting a configured server; an interrupted result is never replayed.
+Drafts invoke no MCP tools even though their declarations stay present.
+
+Practice the complete transitions with synthetic providers and a native PTY:
+
+```sh
+mix test test/ipse/session/draft_vertical_test.exs test/ipse/session/draft_projection_test.exs
+mix test test/ipse/session/draft_acceptance_test.exs test/ipse/session/draft_native_test.exs
+mix test test/ipse/session/draft_lineage_test.exs test/ipse/mcp/catalog_session_test.exs
+```
+
+Check zero file effects under existing grants, stale acceptance, exact original
+command bytes, question provenance, canary absence after cancellation, changed
+MCP catalogs, owner loss, truncated boundaries and inert resume. A PTY proves
+the operator channel protocol, not that a person used it. These tests establish
+neither live provider quality nor protected knowledge retrieval.
+
 ## Page admitted evidence without inline context
 
 Use [Session sources](session-sources.md) to follow the committed source projection,

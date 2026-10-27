@@ -38,6 +38,24 @@ defmodule Ipse.Session.Turn do
     end
   end
 
+  @doc false
+  def draft_prompt(s, text, observation \\ nil) do
+    effective = Ipse.Session.Draft.effective(text)
+
+    with :ok <- prompt_text(text), :ok <- prompt_text(effective) do
+      commit_prompt(s, text, {:ok, effective, []}, observation)
+    else
+      error -> {:reply, error, s}
+    end
+  end
+
+  @doc false
+  def accepted_prompt(s, text) do
+    with :ok <- prompt_text(text),
+         do: commit_prompt(s, text, {:ok, text, []}, nil),
+         else: (error -> {:reply, error, s})
+  end
+
   def prompt_prepared(s, {:error, error}) when is_binary(error) do
     GenServer.reply(s.prompt_from, {:error, :skill_preflight_failed})
     {:noreply, fail(%{s | prompt_from: nil}, error)}
@@ -52,7 +70,12 @@ defmodule Ipse.Session.Turn do
   end
 
   defp commit_prompt(s, original, prepared, observation) do
-    turn = Ipse.Usage.id()
+    turn =
+      case Map.get(s, :draft) do
+        %{status: :pending} = draft -> draft.turn_id
+        %{status: :consumed, accepted_message: false} = draft -> draft.accepted_turn
+        _ -> Ipse.Usage.id()
+      end
 
     case prepared do
       {:error, error} when error in [:invalid_prompt, :prompt_too_large] ->
@@ -66,7 +89,9 @@ defmodule Ipse.Session.Turn do
          )}
 
       {:ok, text, names} ->
-        if Subscriptions.declarations(s.config) == [] or
+        drafting = match?(%{status: :pending}, s.draft)
+
+        if drafting or Subscriptions.declarations(s.config) == [] or
              match?(
                {:ok, _},
                Ipse.Journal.source(s.id, 0, Subscriptions.received(turn, original))
@@ -75,6 +100,15 @@ defmodule Ipse.Session.Turn do
 
           input = Ipse.Session.Input.received(s.id, turn, original, text, observation)
           Session.record(s, input)
+
+          s =
+            case Map.get(s, :draft) do
+              %{status: :pending} = draft ->
+                %{s | draft: %{draft | input_source_id: input["source_id"]}}
+
+              _ ->
+                s
+            end
 
           s = %{
             s
@@ -92,12 +126,12 @@ defmodule Ipse.Session.Turn do
           s = Session.persist_skills(s, s.skills)
 
           s =
-            if Subscriptions.declarations(s.config) != [] do
+            if not drafting and Subscriptions.declarations(s.config) != [] do
               event = Subscriptions.received(s.turn_id, original)
               source = Session.record_source(s, event)
               %{s | event_received: %{source: source, record: event}}
             else
-              if Host.enabled?(s.config, "transform.prompt"),
+              if not drafting and Host.enabled?(s.config, "transform.prompt"),
                 do:
                   Session.record(s, %{
                     "type" => "extension_prompt_received",
@@ -111,19 +145,46 @@ defmodule Ipse.Session.Turn do
 
           s = append_message(s, %{"role" => "user", "content" => text})
 
+          s =
+            case Map.get(s, :draft) do
+              %{status: :consumed, accepted_message: false} = draft ->
+                %{
+                  s
+                  | draft:
+                      Map.merge(draft, %{
+                        accepted_input: true,
+                        accepted_message: true,
+                        accepted_effective: Ipse.JSON.sha256(text)
+                      })
+                }
+
+              _ ->
+                s
+            end
+
           s = %{
             s
             | steps: 0,
               final: "",
-              mcp_ready: false,
+              mcp_ready: drafting and s.mcp_discovered,
               delegations: 0,
               tool_budget: Tools.empty_call_budget()
           }
 
           next =
-            if Host.enabled?(s.config, "transform.prompt"),
-              do: launch_extensions(s, :extension_prompt),
-              else: model(s)
+            if not drafting and Map.get(s.config, :extensions, []) != [] do
+              case Session.rebase_for_extensions(s) do
+                {:ok, safe} ->
+                  if Host.enabled?(safe.config, "transform.prompt"),
+                    do: launch_extensions(safe, :extension_prompt),
+                    else: model(safe)
+
+                _ ->
+                  fail(s, "Draft history cannot be safely withdrawn before extension callbacks.")
+              end
+            else
+              model(s)
+            end
 
           {:reply, :ok, next}
         else
@@ -174,7 +235,12 @@ defmodule Ipse.Session.Turn do
          tool_result(s, call, "Denied by user. Do not evade this denial.", "denied", "denied")}
   end
 
-  def answer(s, id, answers, question, origin \\ nil) do
+  def answer(s, id, answers, question, origin \\ nil)
+
+  def answer(%{draft: %{status: :pending}} = s, _, _, _, nil),
+    do: {:reply, {:error, :native_draft_answer_required}, s}
+
+  def answer(s, id, answers, question, origin) do
     case Questions.validate_answers(question.arguments, answers) do
       {:ok, answers} ->
         s = Session.enroll_feeds(s)
@@ -214,6 +280,21 @@ defmodule Ipse.Session.Turn do
 
         Session.record(s, event)
 
+        s =
+          case s.draft do
+            %{status: :pending} = draft ->
+              %{
+                s
+                | draft: %{
+                    draft
+                    | answer_source_ids: draft.answer_source_ids ++ [event["origin"]["source_id"]]
+                  }
+              }
+
+            _ ->
+              s
+          end
+
         s = Session.finish_wait(s, "answered")
 
         Session.notify(s, {:tool_result, "ask_operator", message["content"]})
@@ -247,6 +328,64 @@ defmodule Ipse.Session.Turn do
           s.event_turn != s.turn_id ->
         start_event_notifications(s)
 
+      servers != [] and not s.mcp_ready and match?(%{status: :pending}, s.draft) ->
+        if s.draft_mcp_initial and s.draft_mcp_snapshot == nil and not s.draft_mcp_interrupted do
+          intent = %{
+            "type" => "draft_mcp_setup_intent",
+            "version" => 1,
+            "session_id" => s.id,
+            "draft_id" => s.draft.id,
+            "turn_id" => s.draft.turn_id,
+            "revalidation_id" => Ipse.Usage.id()
+          }
+
+          Session.record(s, intent)
+          resource = %{owner: self(), job_ref: make_ref()}
+          task = Session.owned_task(fn -> Ipse.MCP.discover(servers, s.cwd, resource) end)
+          Session.notify(s, {:status, :discovering_mcp})
+
+          %{
+            s
+            | task: task,
+              phase: :mcp_discovery,
+              job_ref: resource.job_ref,
+              draft_mcp_revalidation: intent,
+              draft_mcp_attempts: 1
+          }
+        else
+          if s.draft_mcp_interrupted or s.draft_mcp_attempts >= 16 or
+               not is_map(s.draft_mcp_snapshot) or s.reference == nil do
+            fail(
+              s,
+              "Draft MCP catalog cannot be independently verified after resume; cancel and start a fresh draft after catalog discovery."
+            )
+          else
+            intent = %{
+              "type" => "draft_mcp_revalidation_intent",
+              "version" => 1,
+              "session_id" => s.id,
+              "draft_id" => s.draft.id,
+              "turn_id" => s.draft.turn_id,
+              "revalidation_id" => Ipse.Usage.id(),
+              "snapshot_sha256" => Ipse.JSON.digest([s.draft_mcp_snapshot])
+            }
+
+            Session.record(s, intent)
+            resource = %{owner: self(), job_ref: make_ref()}
+            task = Session.owned_task(fn -> Ipse.MCP.discover(servers, s.cwd, resource) end)
+            Session.notify(s, {:status, :discovering_mcp})
+
+            %{
+              s
+              | task: task,
+                phase: :mcp_discovery,
+                job_ref: resource.job_ref,
+                draft_mcp_revalidation: intent,
+                draft_mcp_attempts: s.draft_mcp_attempts + 1
+            }
+          end
+        end
+
       servers != [] and not s.mcp_ready ->
         resource = %{owner: self(), job_ref: make_ref()}
         task = Session.owned_task(fn -> Ipse.MCP.discover(servers, s.cwd, resource) end)
@@ -262,13 +401,23 @@ defmodule Ipse.Session.Turn do
       not Ipse.Usage.capacity?(s.accounting) ->
         fail(s, "The session request-accounting limit was reached; start a fresh session.")
 
-      s.extension_text_turn != s.turn_id and Ipse.Extension.TextResources.entries(s.config) != [] ->
+      not match?(%{status: :pending}, s.draft) and s.extension_text_turn != s.turn_id and
+          Ipse.Extension.TextResources.entries(s.config) != [] ->
         start_extension_text(s)
 
       true ->
         case prepare_reference(s) do
           {:ok, prepared} ->
-            model_context(prepared)
+            case pin_initial_mcp(prepared) do
+              {:ok, pinned} ->
+                model_context(pinned)
+
+              _ ->
+                fail(
+                  prepared,
+                  "Draft MCP catalog could not be pinned; no model request dispatched."
+                )
+            end
 
           {:error, _} ->
             fail(
@@ -282,9 +431,24 @@ defmodule Ipse.Session.Turn do
   defp model_context(s) do
     system = Ipse.Session.Context.header(s)
 
-    case Ipse.Session.Context.prepare_compaction(s.messages, s.config, system) do
+    case Ipse.Session.Draft.project(
+           Map.get(s, :draft),
+           s.messages,
+           s.reference_occurrences,
+           Ipse.Session.DraftNative.policy(s.config)
+         ) do
+      {:ok, messages} -> model_context(s, system, messages)
+      _ -> fail(s, "Draft history cannot be safely withdrawn; start a fresh session.")
+    end
+  end
+
+  defp model_context(s, system, messages) do
+    case Ipse.Session.Context.prepare_compaction(messages, s.config, system) do
       :skip ->
-        launch_model(s, system ++ s.messages)
+        launch_model(s, system ++ messages)
+
+      {:ok, _plan} when not is_nil(s.draft) ->
+        fail(s, "Draft context requires compaction; start a fresh session before drafting.")
 
       {:ok, plan} ->
         config = Ipse.Session.Context.summary_config(s.config)
@@ -297,6 +461,9 @@ defmodule Ipse.Session.Turn do
           [],
           :compaction
         )
+
+      {:tool_results, _, _} when not is_nil(s.draft) ->
+        fail(s, "Draft context requires compaction; start a fresh session before drafting.")
 
       {:tool_results, messages, event} ->
         Session.record(s, event)
@@ -312,7 +479,7 @@ defmodule Ipse.Session.Turn do
 
   defp prepare_reference(s) do
     tools =
-      definitions(s.config, s.extension_result_sources, true) ++ Ipse.MCP.definitions(s.mcp_tools)
+      definitions(s.config, s.extension_result_sources, true) ++ mcp_definitions(s)
 
     with {:ok, events, reference, appended} <-
            Ipse.Session.Reference.prepare(
@@ -324,7 +491,19 @@ defmodule Ipse.Session.Turn do
              s.messages
            ) do
       Enum.each(events, &Session.record(s, &1))
-      {:ok, %{s | reference: reference, messages: s.messages ++ appended}}
+
+      occurrences =
+        Enum.reduce(appended, s.reference_occurrences, fn message, acc ->
+          MapSet.put(acc, Ipse.JSON.digest([message]))
+        end)
+
+      {:ok,
+       %{
+         s
+         | reference: reference,
+           messages: s.messages ++ appended,
+           reference_occurrences: occurrences
+       }}
     end
   end
 
@@ -344,7 +523,7 @@ defmodule Ipse.Session.Turn do
       s.config,
       messages,
       definitions(s.config, s.extension_result_sources, s.reference != nil) ++
-        Ipse.MCP.definitions(s.mcp_tools),
+        mcp_definitions(s),
       :model
     )
   end
@@ -460,6 +639,20 @@ defmodule Ipse.Session.Turn do
   defp launch_request(s, config, messages, tools, phase) do
     s = Session.admit_request(s, config, Atom.to_string(phase))
 
+    if s.draft_lineages != [] do
+      Session.record(
+        s,
+        Ipse.Session.DraftLineage.inference_intent(
+          s.id,
+          s.turn_id,
+          s.active_request["request_id"],
+          Atom.to_string(phase),
+          messages,
+          s.draft_lineages
+        )
+      )
+    end
+
     dispatch =
       case Ipse.InferenceDispatch.selection(s.config, config, "main", nil) do
         {:ok, :unregistered} ->
@@ -563,9 +756,17 @@ defmodule Ipse.Session.Turn do
   @doc false
   def dispatch_view(%{phase: :model, active_request: admission} = s, "model")
       when not is_nil(admission) do
-    {:ok, s.config, Session.Context.header(s) ++ s.messages,
-     definitions(s.config, s.extension_result_sources, s.reference != nil) ++
-       Ipse.MCP.definitions(s.mcp_tools), admission}
+    with {:ok, messages} <-
+           Ipse.Session.Draft.project(
+             Map.get(s, :draft),
+             s.messages,
+             s.reference_occurrences,
+             Ipse.Session.DraftNative.policy(s.config)
+           ) do
+      {:ok, s.config, Session.Context.header(s) ++ messages,
+       definitions(s.config, s.extension_result_sources, s.reference != nil) ++
+         mcp_definitions(s), admission}
+    end
   end
 
   def dispatch_view(%{phase: :compaction, active_request: admission} = s, "compaction")
@@ -784,6 +985,15 @@ defmodule Ipse.Session.Turn do
       name == "ask_operator" ->
         start_question(s, call, args)
 
+      match?(%{status: :pending}, s.draft) and (external or Catalog.external?(name)) ->
+        tool_result(
+          s,
+          call,
+          "Denied: draft mode does not invoke external tools or extension callbacks.",
+          "denied",
+          "policy_denied"
+        )
+
       validation != :ok ->
         {:error, reason} = validation
         tool_result(s, call, reason, "invalid_arguments", "not_decided")
@@ -898,6 +1108,13 @@ defmodule Ipse.Session.Turn do
   defp launch_tool(s, call, args, decision, binding \\ nil) do
     name = get_in(call, ["function", "name"])
     external = Ipse.MCP.tool(s.mcp_tools, name)
+
+    if s.draft_lineages != [],
+      do:
+        Session.record(
+          s,
+          Ipse.Session.DraftLineage.intent(s.id, s.turn_id, call, s.draft_lineages)
+        )
 
     event = %{
       "type" => "tool_started",
@@ -1112,6 +1329,7 @@ defmodule Ipse.Session.Turn do
   @doc false
   def finish(s, status) do
     s = CurrentInvocation.release_output(s)
+    s = finish_draft(s, status)
     after_plans = Subscriptions.declarations(s.config, "after_turn")
     s = record_source_answer(s, status, after_plans)
 
@@ -1183,7 +1401,11 @@ defmodule Ipse.Session.Turn do
   defp record_source_answer(s, status, after_plans) do
     assistant = List.last(s.messages)
 
-    if Ipse.Session.SourceWindow.enabled?(s.config) and status == :ok and
+    if not match?(
+         %{status: draft_status} when draft_status in [:pending, :completed, :accepted],
+         Map.get(s, :draft)
+       ) and Ipse.Session.SourceWindow.enabled?(s.config) and
+         status == :ok and
          not Enum.any?(after_plans, &(&1.declaration["event"] == "answer.committed")) and
          is_map(assistant) and assistant["role"] == "assistant" and
          assistant["tool_calls"] in [nil, []] and is_binary(assistant["content"]) do
@@ -1209,6 +1431,27 @@ defmodule Ipse.Session.Turn do
 
     s
   end
+
+  defp finish_draft(%{draft: %{status: :pending} = draft} = s, :ok) do
+    assistant = List.last(s.messages)
+
+    if is_map(assistant) and assistant["role"] == "assistant" and
+         Ipse.Session.Draft.text?(assistant["content"]) and
+         assistant["tool_calls"] in [nil, []] do
+      Session.record(s, Ipse.Session.Draft.completed(draft, assistant))
+
+      Session.notify(
+        s,
+        {:draft_ready, draft.id, draft.revision}
+      )
+
+      %{s | draft: Map.merge(draft, %{status: :completed, proposal: assistant["content"]})}
+    else
+      s
+    end
+  end
+
+  defp finish_draft(s, _), do: s
 
   @doc false
   def continue_event_plan(s, delivery) do
@@ -1264,13 +1507,22 @@ defmodule Ipse.Session.Turn do
   end
 
   defp append_tool_message(s, message, started) do
-    if started and Ipse.Session.ToolLifecycle.active?(s.tool_lifecycle) do
-      event = %{"type" => "message", "message" => message}
-      source = Session.optional_source(s, event)
-      s = tool_records(s, Ipse.Session.ToolLifecycle.finish(s.tool_lifecycle, source, event))
-      %{s | messages: s.messages ++ [message]}
-    else
-      append_message(s, message)
+    next =
+      if started and Ipse.Session.ToolLifecycle.active?(s.tool_lifecycle) do
+        event = %{"type" => "message", "message" => message}
+        source = Session.optional_source(s, event)
+        s = tool_records(s, Ipse.Session.ToolLifecycle.finish(s.tool_lifecycle, source, event))
+        %{s | messages: s.messages ++ [message]}
+      else
+        append_message(s, message)
+      end
+
+    case {next.draft, get_in(message, ["ipse_tool_outcome", "status"])} do
+      {%{status: :pending} = draft, "result_recorded"} ->
+        %{next | draft: %{draft | tool_success_count: draft.tool_success_count + 1}}
+
+      _ ->
+        next
     end
   end
 
@@ -1278,6 +1530,21 @@ defmodule Ipse.Session.Turn do
   def tool_records(s, {context, records}) do
     Enum.reduce(records, %{s | tool_lifecycle: context}, fn event, state ->
       source = Session.record_source(state, event)
+
+      state =
+        case {state.draft, event} do
+          {%{status: :pending, turn_id: turn} = draft,
+           %{
+             "type" => "lifecycle_tool_outcome",
+             "turn_id" => turn,
+             "status" => "result_recorded",
+             "result_source" => evidence
+           }} ->
+            %{state | draft: %{draft | tool_evidence: draft.tool_evidence ++ [evidence]}}
+
+          _ ->
+            state
+        end
 
       if event["type"] == "lifecycle_tool_intent" do
         %{
@@ -1308,7 +1575,7 @@ defmodule Ipse.Session.Turn do
   defp start_question(s, call, arguments) do
     case Questions.validate(arguments) do
       {:ok, arguments} ->
-        if Questions.enabled?(s.config) do
+        if Questions.enabled?(s.config) and draft_question_available?(s, call["id"]) do
           # Other proposed calls are settled without execution so the answer can change the plan.
           next =
             settle_calls(
@@ -1328,6 +1595,16 @@ defmodule Ipse.Session.Turn do
           }
 
           source = Session.record_wait_subject(next, event)
+
+          next =
+            case next.draft do
+              %{status: :pending} = draft ->
+                %{next | draft: %{draft | question_ids: draft.question_ids ++ [call["id"]]}}
+
+              _ ->
+                next
+            end
+
           Session.checkpoint_event_question(next, %{id: call["id"]})
           if source, do: Session.offer_record(next, source, event)
           next = Session.question_wait(next, %{id: call["id"]}, source)
@@ -1366,6 +1643,14 @@ defmodule Ipse.Session.Turn do
     end
   end
 
+  defp draft_question_available?(%{draft: %{status: :pending} = draft}, id),
+    do:
+      is_binary(id) and byte_size(id) in 1..128 and id not in draft.question_ids and
+        length(draft.question_ids) < 3 and
+        length(draft.question_ids) == length(draft.answer_source_ids)
+
+  defp draft_question_available?(_, _), do: true
+
   @doc false
   def close_question(%{question: nil} = s), do: s
 
@@ -1403,14 +1688,125 @@ defmodule Ipse.Session.Turn do
 
   @doc false
   def mcp_discovered(s, tools) do
-    Session.record(s, %{
-      "type" => "mcp_catalog",
-      "version" => 1,
-      "tools" => Ipse.MCP.manifests(tools)
-    })
+    if get_in(s, [:draft_mcp_revalidation, "type"]) == "draft_mcp_setup_intent" do
+      Session.record(s, %{
+        "type" => "mcp_catalog",
+        "version" => 1,
+        "tools" => Ipse.MCP.manifests(tools)
+      })
 
-    {:noreply, model(%{s | mcp_tools: tools, mcp_ready: true})}
+      record_mcp_revalidation(s, "observed")
+
+      {:noreply,
+       model(%{
+         s
+         | mcp_tools: tools,
+           mcp_ready: true,
+           mcp_discovered: true,
+           draft_mcp_revalidation: nil
+       })}
+    else
+      if s.draft_mcp_revalidation do
+        snapshot = s.draft_mcp_snapshot
+        manifests = tools |> Ipse.MCP.manifests() |> Jason.encode!() |> Jason.decode!()
+
+        matches =
+          Ipse.MCP.definitions(tools) == snapshot["definitions"] and
+            Ipse.JSON.digest(manifests) == snapshot["manifests_sha256"] and
+            draft_base_definitions(s) == snapshot["base_definitions"]
+
+        result = if matches, do: "matched", else: "mismatch"
+        record_mcp_revalidation(s, result)
+
+        if matches do
+          {:noreply,
+           model(%{
+             s
+             | mcp_tools: tools,
+               mcp_ready: true,
+               mcp_discovered: true,
+               draft_mcp_revalidation: nil
+           })}
+        else
+          {:noreply,
+           fail(
+             %{s | draft_mcp_revalidation: nil, draft_mcp_interrupted: true},
+             "Draft MCP catalog changed; no model request dispatched."
+           )}
+        end
+      else
+        Session.record(s, %{
+          "type" => "mcp_catalog",
+          "version" => 1,
+          "tools" => Ipse.MCP.manifests(tools)
+        })
+
+        {:noreply, model(%{s | mcp_tools: tools, mcp_ready: true, mcp_discovered: true})}
+      end
+    end
   end
+
+  def mcp_revalidation_failed(%{draft_mcp_revalidation: nil} = s, _), do: s
+
+  def mcp_revalidation_failed(s, _error) do
+    record_mcp_revalidation(s, "unknown")
+    %{s | draft_mcp_revalidation: nil, draft_mcp_interrupted: true}
+  end
+
+  def settle_mcp_revalidation(s) do
+    pending = s.draft_mcp_revalidation || s.draft_mcp_pending
+
+    if pending do
+      s = %{s | draft_mcp_revalidation: pending}
+      record_mcp_revalidation(s, "unknown")
+      %{s | draft_mcp_revalidation: nil, draft_mcp_pending: nil, draft_mcp_interrupted: false}
+    else
+      s
+    end
+  end
+
+  defp record_mcp_revalidation(s, result) do
+    Session.record(s, %{
+      "type" =>
+        if(s.draft_mcp_revalidation["type"] == "draft_mcp_setup_intent",
+          do: "draft_mcp_setup_result",
+          else: "draft_mcp_revalidation_result"
+        ),
+      "version" => 1,
+      "session_id" => s.id,
+      "revalidation_id" => s.draft_mcp_revalidation["revalidation_id"],
+      "result" => result
+    })
+  end
+
+  defp pin_initial_mcp(%{draft_mcp_initial: true} = s) do
+    snapshot = Ipse.Session.DraftMCP.event(s.id, s.mcp_tools, draft_base_definitions(s))
+    manifests = s.mcp_tools |> Ipse.MCP.manifests() |> Jason.encode!() |> Jason.decode!()
+
+    if s.reference != nil and
+         Ipse.Session.DraftMCP.valid?(snapshot, s.id, manifests, s.reference.catalog) do
+      Session.record(s, %{
+        "type" => "draft_mcp_snapshot",
+        "version" => 1,
+        "session_id" => s.id,
+        "draft_id" => s.draft.id,
+        "turn_id" => s.draft.turn_id,
+        "snapshot" => snapshot
+      })
+
+      {:ok,
+       %{
+         s
+         | draft_mcp_initial: false,
+           draft_mcp_snapshot: snapshot,
+           draft_mcp_definitions: snapshot["definitions"]
+       }}
+    else
+      {:error, :invalid_draft_mcp_catalog}
+    end
+  end
+
+  defp pin_initial_mcp(s), do: {:ok, s}
 
   @doc false
   def context_checked(s, snapshot, drift) do
@@ -1529,7 +1925,8 @@ defmodule Ipse.Session.Turn do
       calls != [] ->
         {:noreply, next_tool(s)}
 
-      Host.enabled?(s.config, "transform.presentation") ->
+      not match?(%{status: :pending}, s.draft) and
+          Host.enabled?(s.config, "transform.presentation") ->
         {:noreply, launch_extensions(s, :extension_presentation)}
 
       true ->
@@ -1610,4 +2007,12 @@ defmodule Ipse.Session.Turn do
       Enum.any?(sources, fn {_, source} ->
         source.intent["descriptor"]["stage"] == "invoke.tool"
       end)
+
+  defp mcp_definitions(%{draft: %{status: :pending}, draft_mcp_definitions: definitions})
+       when is_list(definitions), do: definitions
+
+  defp mcp_definitions(s), do: Ipse.MCP.definitions(s.mcp_tools)
+
+  @doc false
+  def draft_base_definitions(s), do: definitions(s.config, s.extension_result_sources, true)
 end
