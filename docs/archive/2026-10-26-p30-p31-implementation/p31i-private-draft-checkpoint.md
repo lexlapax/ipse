@@ -76,3 +76,21 @@ Opaque provider continuation and checkpoint material still refuse projection.
 The rebase prototype is private and provisional, lacks operator attestation and
 UI integration, and requires independent adversarial review. It does not close
 P31I or establish live route quality or cross-crash native fencing.
+
+The later [private terminal prototype](p31i-private-draft-terminal.patch),
+SHA-256 `6435f1840a4e27a47d07eb998b00899fd260a531204ed857d9f94425a79b7410`,
+is against `52652f8`. Its [test log](p31i-private-draft-terminal.log), SHA-256
+`29f1caf79f05df90c74c55059fdc6fecd5b1fbfb04cc166330443f0f385fea46`,
+records 72 focused passes with seed 20270129. Synthetic native PTY journeys cover
+the private Terminal and Session paths for original input, single-line
+replacement, rendered-code acceptance, and rejection of a forged witness.
+Unwitnessed acceptance and version-1 acceptance replay are refused. This is not
+evidence of a human tester, a live provider, or release readiness.
+
+The private prototype still lacks multiline editing, draft questions and their
+evidence lineage, complete source/effect coverage, and final independent audit.
+Reference occurrence membership relies on the trusted Session and validated
+journal, rather than proving occurrence chronology by itself. Opaque provider
+continuation can make subsequent dispatch and resume fail closed, requiring an
+explicit fresh-session recovery. The prototype has not been added to the shared
+runtime or current operator manual.
