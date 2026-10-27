@@ -132,6 +132,16 @@ with the control reservation it was 53,096,448 bytes. Peak VM memory was
 Elixir 1.20.4 / OTP 29, four schedulers. These are development-machine results,
 not reference-hardware latency acceptance.
 
+Subsequent filesystem inventory established that all three earlier runs used
+`System.tmp_dir!/0` on **tmpfs**, with `huge=advise`; their allocated-byte
+observations are tmpfs results and their latency is not NVMe evidence. The
+workspace resides on NVMe-backed Btrfs with `compress=zstd:3`; both filesystems
+report 4096-byte units. A reported unit alone establishes no universal allocation
+upper bound. Current reruns must record the actual selected filesystem/options
+and use varied synthetic maximum-size payloads so compressible padding does not
+hide storage growth. Same-owner staging and a preflight bound for old plus staged
+allocation remain required before claiming the 64-MiB envelope.
+
 Crash injection found a prior OTP staging open/chmod interval that could leave
 an unsafe 0644 pending file after SIGKILL. GC correctly refused it rather than
 repairing unsafe metadata. Native exclusive 0600 staging replaces that path.

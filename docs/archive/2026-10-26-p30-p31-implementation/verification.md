@@ -104,3 +104,29 @@ Raw logs, including first failures, are retained owner-only outside Git under
 `/home/lexlapax/.codex/visualizations/2026/10/26/01a17a12-c7bb-76e2-af9e-95f589cc6f94/p31-verification/`,
 with a SHA-256 manifest. Their names bind the described checkpoints; they are not
 evidence for future source changes or milestone completion.
+
+## Admitted sources, decisions and parser `ad67ea6`
+
+A clean isolated clone at `ad67ea6269bc9ee3e7bfa8e003fda9df5d56855d`
+passed the PDF-enabled build, local formatting, strict compilation, CI-policy
+and documentation checks. The full suite ran with seed **564097** and finished
+in **1098.4 seconds**: **1935/1938 passed, 36 excluded**. All three failures were
+sealed child-VM boot checks: two measured model-service fixtures and the exact
+ERTS path/argument fixture. This is a failed full run. Its chained demo/package
+steps did not execute and supply no pass.
+
+The new parser registry fixtures compiled a temporary `ebin`, then removed its
+directory without removing the VM code path that compilation installed. A later
+child boot correctly refused the missing entry in its exact captured path list.
+Cleanup now removes only that fixture path before deleting its directory and
+asserts the path is absent. The strict sealed-path boot rules remain unchanged.
+
+A separate same-VM regression first ran all **four parser registry tests**, then
+all **17 measured-launch/model-service tests**, retaining the original seed.
+All **21 passed** after cleanup. The first regression script itself exited with
+an incorrect expected count of 16 although all 17 second-stage tests had passed;
+its corrected count rerun exited zero. The raw failed harness is preserved along
+with the final run. This targeted result closes the reproduced path-pollution
+failure; it does not relabel the failed full run or qualify unimplemented P31
+workflows. Logs use the `/tmp/ipse-admitted-fixed-` and
+`/tmp/ipse-parser-path-cleanup-regression` prefixes.

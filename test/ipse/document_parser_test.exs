@@ -45,6 +45,8 @@ defmodule Ipse.DocumentParserTest do
     on_exit(fn ->
       :code.purge(DocumentRegistryFixture)
       :code.delete(DocumentRegistryFixture)
+      Code.delete_path(Path.join(root, "ebin"))
+      refute String.to_charlist(Path.join(root, "ebin")) in :code.get_path()
       File.rm_rf!(root)
     end)
 
