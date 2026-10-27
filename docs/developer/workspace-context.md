@@ -140,6 +140,34 @@ and saved reconstruction. Source reads work without inline source text. Compacti
 changes effective context without replacing the admitted original source bytes.
 Source attribution grants neither truth nor execution authority.
 
+For changes to managed knowledge projections, start with the pure
+[`Session.ManagedReference`](../../lib/ipse/session/managed_reference.ex) contract.
+It checks normalized host receipts, complete dependency unions, exact historical
+projection and replay. Session does not yet install this contract as a live
+freshness barrier. A valid receipt-shaped map grants neither permission nor
+current eligibility; the eventual protected reader must establish those facts.
+
+Version-2 dependencies distinguish a record from an absence selector. A record
+has its exact key/revision/value digest and host-derived validity. An absence
+names either one exact missing key or a genuinely empty collection. It has no
+invented note lineage, source version or expiry. A filtered or truncated scan
+cannot claim that the collection is empty. The collection receipt separately
+binds `root_state`: `absent` requires generation/floor zero and null root/manifest
+digests; `present` requires both real digests, including for a materialized empty
+store. Imported destructive floors may exceed local generation.
+
+The pure projector accepts a newer receipt for the same subject only after the
+host has proved that subject unchanged. Root/floor regression, substitution of
+another key, and a different root at the same generation refuse. Replay verifies
+recorded transformations and leaves live eligibility pending. Version-1 receipts
+remain compatible with their historical contract; do not reinterpret their null
+record as a version-2 absence or invent a manifest for an absent root. Practice
+these boundaries before connecting a reader or dispatch adapter:
+
+```sh
+mix test test/ipse/session/managed_reference_test.exs
+```
+
 ## Plan a reduction at the model boundary
 
 Follow `Context.prepare_compaction/3`, `finish_compaction/4`, and

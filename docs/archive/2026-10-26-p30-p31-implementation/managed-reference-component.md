@@ -7,6 +7,8 @@ claim. The [frozen contract](contracts.md), [baseline](baseline.md) and
 [current plan](../../plan.md) own scope. Current context behavior remains in
 [the developer manual](../../developer/workspace-context.md); source admission
 is explained in [Session sources](../../developer/session-sources.md).
+The later [explicit absence contract](managed-reference-v2-component.md) adds
+dependency version 2 without reinterpreting this historical version-1 encoding.
 
 ## Authorized boundary
 

@@ -68,6 +68,7 @@ resource/offline qualification. No daemon configuration or existing model was ch
 - [Independent capture/SDK audit and anchored-retention repair](capture-sdk-audit.md).
 - [Protected collection SDK, source proofs and replay bindings](collection-sdk-component.md).
 - [Pure managed-reference lineage, projection contracts and verification](managed-reference-component.md).
+- [Explicit absent/present roots and record/absence subjects in pure managed dependencies v2](managed-reference-v2-component.md), with its [independent adversarial audit](managed-reference-v2-audit.md).
 - [Pure managed policy recipes, deduplicated grants and activation data](managed-policy-component.md).
 - [Atomic managed publication and explicit version-5 receipt binding](managed-collection-component.md).
 - [Owner-task Collection read views and protected root revalidation](collection-read-view-component.md), with its [independent adversarial audit](collection-read-view-audit.md).

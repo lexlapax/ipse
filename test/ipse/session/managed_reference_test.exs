@@ -42,6 +42,42 @@ defmodule Ipse.Session.ManagedReferenceTest do
   defp producer(kind, n \\ 0),
     do: %{"kind" => kind, "id" => "producer.#{n}", "parent_id" => nil}
 
+  defp record_v2 do
+    old = dependency()
+
+    old
+    |> Map.drop(~w(record validity))
+    |> Map.put("version", 2)
+    |> Map.put("subject", %{
+      "kind" => "record",
+      "record" => old["record"],
+      "validity" => old["validity"]
+    })
+    |> update_in(
+      ["collection"],
+      &Map.merge(&1, %{
+        "root_state" => "present",
+        "root_sha256" => sha("actual-root-bytes")
+      })
+    )
+  end
+
+  defp absence_v2(selector \\ %{"kind" => "record", "key" => "record.0"}) do
+    record_v2()
+    |> Map.put("subject", %{"kind" => "absence", "selector" => selector})
+    |> update_in(
+      ["collection"],
+      &Map.merge(&1, %{
+        "root_state" => "absent",
+        "generation" => 0,
+        "floor" => 0,
+        "floor_anchor" => nil,
+        "root_sha256" => nil,
+        "manifest_sha256" => nil
+      })
+    )
+  end
+
   defp binding(changes \\ %{}) do
     Map.merge(
       %{
@@ -125,6 +161,131 @@ defmodule Ipse.Session.ManagedReferenceTest do
              Managed.project(plan, [verdict(root, "root_changed")], binding())
 
     refute withdrawn["content"] =~ "record absent"
+  end
+
+  test "v2 absence identifies the actual selector without invented validity or root hashes" do
+    absent = absence_v2()
+    empty = absence_v2(%{"kind" => "collection"})
+    assert Managed.dependency?(absent)
+    assert Managed.dependency?(empty)
+    assert Managed.dependency?(record_v2())
+
+    for d <- [absent, empty, record_v2()],
+        key <- Map.keys(d),
+        do: refute(Managed.dependency?(Map.delete(d, key)))
+
+    for bad <- [
+          Map.put(absent, "validity", dependency()["validity"]),
+          Map.put(absent, "record", nil),
+          put_in(absent, ["collection", "root_sha256"], sha("invented")),
+          put_in(absent, ["collection", "manifest_sha256"], sha("invented")),
+          put_in(absent, ["collection", "generation"], 1),
+          put_in(absent, ["collection", "floor"], 1),
+          put_in(absent, ["collection", "root_state"], "present"),
+          put_in(absent, ["subject", "selector", "key"], "../root.json"),
+          put_in(empty, ["subject", "selector", "limit"], 4),
+          put_in(empty, ["subject", "selector", "kind"], "scan"),
+          put_in(empty, ["subject", "selector", "kind"], "filtered_empty"),
+          Map.put(absent, "subject", record_v2()["subject"]),
+          put_in(record_v2(), ["subject", "record"], nil),
+          put_in(record_v2(), ["subject", "kind"], "absence"),
+          put_in(record_v2(), ["collection", "root_sha256"], nil),
+          put_in(record_v2(), ["version"], 1)
+        ],
+        do: refute(Managed.dependency?(bad))
+  end
+
+  test "v2 absent read survives replay and withdraws its whole occurrence on first publication" do
+    d = absence_v2()
+    message = user("No matching record exists")
+    {event, state, plan} = admitted(message, [d])
+    {:ok, empty} = Managed.new(@session)
+    assert {:ok, ^state} = Managed.replay_admission(empty, event, [message])
+
+    assert {:ok, _, [withdrawn], _} =
+             Managed.project(plan, [verdict(d, "root_changed")], binding())
+
+    refute withdrawn["content"] =~ "No matching record"
+    assert {:ok, nil_event, [^message], ^state} = Managed.project(plan, [verdict(d)], binding())
+    assert nil_event != nil
+
+    present =
+      d
+      |> Map.put("collection", record_v2()["collection"])
+
+    assert Managed.dependency?(present)
+
+    assert {:ok, projected, [^message], next} =
+             Managed.project(plan, [verdict(d, "eligible", present)], binding())
+
+    assert {:ok, %{state: ^next, messages: [^message], live_pending: true}} =
+             Managed.replay(state, [message], projected, binding())
+
+    assert Map.values(next.dependencies) == [present]
+
+    for substituted <- [
+          record_v2(),
+          Map.put(present, "subject", absence_v2(%{"kind" => "collection"})["subject"]),
+          put_in(present, ["subject", "selector", "key"], "other.record"),
+          put_in(present, ["collection", "generation"], 0),
+          Map.put(dependency(), "record", nil)
+        ],
+        do:
+          assert(
+            @error == Managed.project(plan, [verdict(d, "eligible", substituted)], binding())
+          )
+  end
+
+  test "v2 present record refresh preserves subject provenance and exclusive expiry" do
+    d = record_v2()
+    {_, _, plan} = admitted(user(), [d])
+
+    current =
+      d
+      |> put_in(["collection", "generation"], 11)
+      |> put_in(["collection", "root_sha256"], sha("new root"))
+      |> put_in(["collection", "manifest_sha256"], sha("new manifest"))
+
+    assert {:ok, _, _, _} = Managed.project(plan, [verdict(d, "eligible", current)], binding())
+
+    for substituted <- [
+          put_in(current, ["subject", "record", "value_sha256"], sha("changed")),
+          put_in(current, ["subject", "validity", "lineage"], sha("changed")),
+          put_in(current, ["subject", "validity", "recipe_sha256"], sha("changed")),
+          put_in(current, ["subject", "validity", "source_versions"], []),
+          put_in(current, ["subject", "validity", "status"], "suppressed"),
+          put_in(current, ["subject", "validity", "valid_until_ms"], 1000),
+          put_in(current, ["collection", "generation"], 10),
+          dependency()
+        ],
+        do:
+          assert(
+            @error == Managed.project(plan, [verdict(d, "eligible", substituted)], binding())
+          )
+  end
+
+  test "v2 materialized empty and imported floors retain exact native root identity" do
+    d = absence_v2(%{"kind" => "collection"}) |> Map.put("collection", record_v2()["collection"])
+
+    d =
+      d |> put_in(["collection", "floor"], 20) |> put_in(["collection", "floor_anchor"], @request)
+
+    assert Managed.dependency?(d)
+    {_, _, plan} = admitted(user("Collection is empty"), [d])
+    assert {:ok, _, _, _} = Managed.project(plan, [verdict(d)], binding())
+
+    for key <- ~w(root_sha256 manifest_sha256),
+        do:
+          assert(
+            @error ==
+              Managed.project(
+                plan,
+                [verdict(d, "eligible", put_in(d, ["collection", key], sha("changed")))],
+                binding()
+              )
+          )
+
+    refute Managed.dependency?(put_in(d, ["collection", "floor_anchor"], nil))
   end
 
   test "admission binds original message, producer, position, Session and exact dependency union" do

@@ -1,0 +1,54 @@
+{
+  "before_after_identical": true,
+  "before_manifest_sha256": "3041102f188fa49f8925ed78d8d9e0d25b4c100fb79087c955774cf42920dabc",
+  "compatibility": {
+    "diagnostics": [],
+    "elixir": "1.18.5",
+    "modules": 3,
+    "otp": "29"
+  },
+  "compatibility_first_failure": "harness appended an extra formatter newline; unchanged source passes corrected harness",
+  "durable_directory": "p31-verification/managed-reference-v2",
+  "durable_manifest_sha256": "30973325fc958253e552f9462cb00d5d758dc6b87e0571cab457b26671abbd42",
+  "durable_payload_files": 1117,
+  "full_suite": false,
+  "graph": "/tmp/ipse-managed-reference-v2-20261026-01",
+  "graph_regular_inputs": 1104,
+  "human_evidence": false,
+  "independent_audit": {
+    "baseline_passed": 24,
+    "files_manifest_sha256": "3e4b7b21cd4c32481bb767e0ce0217fbfcf71a0b5a909509f665df06d26e503c",
+    "finding": null,
+    "first_harness_result": "11/12; incomplete tool tail correctly refused; matching result added for intended unsafe withdrawal check",
+    "fresh_passed": 12,
+    "payload_files": 1166,
+    "report_sha256": "7b8017b033edb26f4384369473dd0454c258ef08d61a9083e0cd137a5d792249"
+  },
+  "installed_package": false,
+  "live_model_calls": 0,
+  "macos_evidence": false,
+  "native_exercised": false,
+  "qualification": false,
+  "scope": "pure managed-reference dependency v2; no runtime integration",
+  "session_integration": false,
+  "source": {
+    "lib/ipse/session/managed_reference.ex": "6d853a23140da82362ffcce1cb8f31e01eeeca6824d7fee40678ed3293328b3c",
+    "test/ipse/session/managed_reference_test.exs": "fb06eff5f797c8bef411bb0f96f180b73a5cccdce391504758f0cbf176b59def"
+  },
+  "strict_compile_files": 128,
+  "tests": [
+    {
+      "log": "tests-first.log",
+      "passed": 24,
+      "seconds": 11.3,
+      "seed": 20261107
+    },
+    {
+      "log": "tests-broad-final.log",
+      "passed": 81,
+      "seconds": 11.9,
+      "seed": 20261108
+    }
+  ],
+  "version": 1
+}

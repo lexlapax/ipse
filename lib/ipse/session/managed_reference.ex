@@ -37,7 +37,9 @@ defmodule Ipse.Session.ManagedReference do
   @occurrences 1024
   @event_bytes 12_582_912
   @dependency_keys ~w(version project_id namespace pin_sha256 policy_generation collection record validity)
+  @dependency_v2_keys ~w(version project_id namespace pin_sha256 policy_generation collection subject)
   @collection_keys ~w(project generation floor floor_anchor manifest_sha256)
+  @collection_v2_keys ~w(project generation floor floor_anchor root_state root_sha256 manifest_sha256)
   @validity_keys ~w(recipe_sha256 lineage source_versions valid_until_ms status dependencies)
   @record_keys ~w(key revision value_sha256)
   @producer_keys ~w(kind id parent_id)
@@ -65,7 +67,7 @@ defmodule Ipse.Session.ManagedReference do
   end
 
   @doc "Validate an already normalized host dependency; this grants no freshness or permission."
-  def dependency?(d) do
+  def dependency?(%{"version" => 1} = d) do
     keys?(d, @dependency_keys) and d["version"] === 1 and
       Enum.all?(~w(project_id namespace pin_sha256), &JSON.sha256?(d[&1])) and
       uint?(d["policy_generation"]) and collection?(d["collection"], d["namespace"]) and
@@ -74,6 +76,17 @@ defmodule Ipse.Session.ManagedReference do
   rescue
     _ -> false
   end
+
+  def dependency?(%{"version" => 2} = d) do
+    keys?(d, @dependency_v2_keys) and
+      Enum.all?(~w(project_id namespace pin_sha256), &JSON.sha256?(d[&1])) and
+      uint?(d["policy_generation"]) and collection_v2?(d["collection"], d["namespace"]) and
+      subject?(d["subject"], d["collection"]["root_state"]) and fits?(d, @dependency_bytes)
+  rescue
+    _ -> false
+  end
+
+  def dependency?(_), do: false
 
   @doc "Canonical union with explicit refusal at the active-plan bound; never evicts lineage."
   def union(groups) when is_list(groups) and length(groups) <= @dependencies do
@@ -394,22 +407,38 @@ defmodule Ipse.Session.ManagedReference do
 
   defp current?(old, %{"status" => "eligible", "current" => current}, now) do
     dependency?(current) and
-      Map.take(old, ~w(project_id namespace pin_sha256 policy_generation record)) ===
-        Map.take(current, ~w(project_id namespace pin_sha256 policy_generation record)) and
-      old["validity"]["recipe_sha256"] == current["validity"]["recipe_sha256"] and
-      old["validity"]["lineage"] == current["validity"]["lineage"] and
-      old["validity"]["source_versions"] == current["validity"]["source_versions"] and
+      Map.take(old, ~w(version project_id namespace pin_sha256 policy_generation)) ===
+        Map.take(current, ~w(version project_id namespace pin_sha256 policy_generation)) and
+      same_subject?(old, current, now) and
       current["collection"]["generation"] >= old["collection"]["generation"] and
       current["collection"]["floor"] >= old["collection"]["floor"] and
       (current["collection"]["generation"] > old["collection"]["generation"] or
-         current["collection"] === old["collection"]) and
-      current["validity"]["status"] == "eligible" and
-      (is_nil(current["validity"]["valid_until_ms"]) or
-         current["validity"]["valid_until_ms"] > now)
+         current["collection"] === old["collection"])
   end
 
   defp current?(_, %{"current" => nil}, _), do: true
   defp current?(_, _, _), do: false
+
+  defp same_subject?(%{"version" => 1} = old, current, now),
+    do:
+      old["record"] === current["record"] and
+        same_validity?(old["validity"], current["validity"], now)
+
+  defp same_subject?(%{"subject" => %{"kind" => "record"} = old}, current, now),
+    do:
+      current["subject"]["kind"] == "record" and
+        old["record"] === current["subject"]["record"] and
+        same_validity?(old["validity"], current["subject"]["validity"], now)
+
+  defp same_subject?(%{"subject" => %{"kind" => "absence"} = old}, current, _),
+    do: old === current["subject"]
+
+  defp same_validity?(old, current, now),
+    do:
+      Map.take(old, ~w(recipe_sha256 lineage source_versions)) ===
+        Map.take(current, ~w(recipe_sha256 lineage source_versions)) and
+        current["status"] == "eligible" and
+        (is_nil(current["valid_until_ms"]) or current["valid_until_ms"] > now)
 
   defp binding?(b, session) do
     keys?(b, @binding_keys) and b["version"] === 1 and b["session_id"] == session and
@@ -425,6 +454,42 @@ defmodule Ipse.Session.ManagedReference do
       ((c["floor"] === 0 and is_nil(c["floor_anchor"])) or
          (c["floor"] > 0 and id?(c["floor_anchor"])))
   end
+
+  defp collection_v2?(c, namespace) do
+    keys?(c, @collection_v2_keys) and c["project"] == namespace and
+      uint?(c["generation"]) and uint?(c["floor"]) and
+      ((c["floor"] === 0 and is_nil(c["floor_anchor"])) or
+         (c["floor"] > 0 and id?(c["floor_anchor"]))) and
+      case c["root_state"] do
+        "absent" ->
+          c["generation"] === 0 and c["floor"] === 0 and is_nil(c["root_sha256"]) and
+            is_nil(c["manifest_sha256"])
+
+        "present" ->
+          JSON.sha256?(c["root_sha256"]) and JSON.sha256?(c["manifest_sha256"])
+
+        _ ->
+          false
+      end
+  end
+
+  defp subject?(%{"kind" => "record"} = subject, "present"),
+    do:
+      keys?(subject, ~w(kind record validity)) and record?(subject["record"]) and
+        validity?(subject["validity"])
+
+  defp subject?(%{"kind" => "absence"} = subject, _),
+    do: keys?(subject, ~w(kind selector)) and selector?(subject["selector"])
+
+  defp subject?(_, _), do: false
+
+  defp selector?(%{"kind" => "record"} = selector),
+    do: keys?(selector, ~w(kind key)) and key?(selector["key"])
+
+  defp selector?(%{"kind" => "collection"} = selector),
+    do: keys?(selector, ~w(kind))
+
+  defp selector?(_), do: false
 
   defp validity?(v) do
     keys?(v, @validity_keys) and JSON.sha256?(v["recipe_sha256"]) and JSON.sha256?(v["lineage"]) and
