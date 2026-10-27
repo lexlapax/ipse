@@ -1,0 +1,7 @@
+# Fourth Serenity retry index, 2026-10-27
+
+The coordinator ran the independently reviewed [index-only harness](fourth_index_harness.sh), SHA-256 `51992bbac407a03a6c4c5acc241704c39e5f01dbf864c9b1d6ead10fbf178d1e`, using nonce `b6604d025851487eb54a4c466921eac7`. It exited 0 and created loop index 4092, host sysfs `25:743914`, container sysfs `84:743914`. The copied program's identity and SHA-256 were checked in a root-owned read-only stage before execution. No backing binding, mapper creation, block I/O or index removal was part of this operation.
+
+The fresh receipt parent is `/home/lexlapax/projects/lexlapax/ipse/.serenity-fourth-receipt.qptTv5Im`, ledger `29:13358061`; index receipt `29:13358322` SHA-256 `d3876f88fa671de079c8725ed0174647b09b1ea34380736a2a890de19f9a7f08`. The stopped setup container was `256df4732f3c2bd84680836dddac8d518f8f66796dc798b24d6efed683689aa0`, stage `/tmp/ipse-retry-index-stage.GYXLwhi5` `53:311003`, program `53:311004`. The coordinator removed only that exact container and stage after ID, name, image, label, stopped-state, inode and program-hash checks. Index 4092 and ledger remain. Earlier diagnostic containers, stages, backings, ledgers and indices were not touched.
+
+Host `/dev/loop4092` was observed as block `7:4092`, device:inode `7:1593`; mapper `252:4092` was absent at that observation. This record is derived from the coordinator's tool transcript and read-only inspection, not a raw output log. It is not evidence of a Btrfs fault test or kernel qualification.
