@@ -838,7 +838,7 @@ No local engine, SDK, new dependency or live account eligibility is established.
 | --- | --- |
 | P30A | Versioned neutral text contract and pure OpenAI/System One wire subsets implemented; synthetic fixtures and finite experiment/benefit criteria prepared; fixed foundation baseline and incremental audit pass. [Developer contract](developer/decisions.md) |
 | P30B | In progress: operator-only profiles, bounded owned HTTP, `host.decision`, Session/replay bindings, v3 usage/prices and shared budgets implemented; focused synthetic controls cover zero-egress refusal, hosted/compatible wire, tampering, owner loss, inert resume and child approvals. Full fixed-source/package baseline remains pending; live account access unverified. No qualified consumer is implied |
-| P30C | Deterministic policy mappings and zero-call applicability/bypass over permitted alternatives; integrate saved consent after B and P31B |
+| P30C | In progress: [pure Knowledge planners and zero-call controls](archive/2026-10-26-p30-p31-implementation/p30c-pure-policy.md) have an [independent pure-scope audit and reporting correction](archive/2026-10-26-p30-p31-implementation/p30c-pure-policy-audit.md); protected helper integration and qualified consumer selection remain open after B and P31B |
 | P30D | Implement bounded experiments: notes selection beyond the context budget and candidate assessment in replay/shadow mode on real main-tool inputs; after C and P31E |
 | P30E | Evaluate frozen experiments against engine-free baselines and installed workflows; record useful, rejected/no-benefit and unverified dispositions plus separate live/model access; after D; document/graph routing is a later independently qualified addition |
 

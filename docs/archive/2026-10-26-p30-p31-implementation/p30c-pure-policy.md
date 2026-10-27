@@ -1,7 +1,8 @@
 # P30C pure consumer policy component
 
 Date: 2026-10-27 (implementation began 2026-10-26). Author verification of a bounded implementation increment;
-independent review and integrated P30C/D/E acceptance remain open. Current usage
+the [independent pure-component audit](p30c-pure-policy-audit.md) found a reporting
+miscount corrected below. Integrated P30C/D/E acceptance remains open. Current usage
 and the runnable exercise belong to the [developer decision chapter](../../developer/decisions.md#exercise-a-consumer-without-contacting-an-engine).
 The [plan](../../plan.md#p30-advisory-decision-engines) remains authoritative for
 milestone status. This record establishes no engine quality or live access.
@@ -81,11 +82,39 @@ minimal SDK, temporary homes and compiler outputs are private. Primary builds,
 | Check | Actual outcome |
 | --- | --- |
 | Full fresh private application compile |128 source files, warnings-as-errors passed on Elixir 1.20.4/OTP 29 |
-| Final sealed focused compatibility command |55 passed, seed752530,6.0s; preceding exact-source run5.9s |
-| New policy cases within that command |12 cases, including a real separate artifact/minimal-SDK child |
+| Final sealed focused compatibility command |55 passed, seed 752530, 6.0 s; preceding exact-source run5.9s |
+| New policy cases within that command |11 cases, including a real separate artifact/minimal-SDK child; original receipt overstated this as 12 |
 | Actual Elixir 1.18.5 formatting |4 owning source/test files,0 differences; host OTP 29 |
 | Actual Elixir 1.18.5 strict minimal SDK plus Knowledge artifact |3 SDK source files, actual Knowledge helpers/artifact build, all 3 delegates and planner/mapper exercised; host Session/Artifact modules unavailable |
 | Current formatter / whitespace |4 files and `git diff --check` passed |
+
+### Reporting correction after independent review
+
+The original component receipt and runtime JSON claimed **12 new policy cases**.
+That claim was wrong: the unchanged test source
+`e616ce0d1069312cfb33660363730ab2f459ad787a2fc7ab6305397465105480`
+declares **11**, independently counted through its parsed Elixir AST and executed
+as 11/11 by the auditor. A fresh author AST-only count confirms 11. This correction
+changes the row above and `checks.new_policy_tests` to 11; the original author
+combined 55 total remains the observed result and was not rerun for this repair.
+No production or test source changed.
+
+Root accepted the reporting finding before correction. The
+[frozen literal report](p30c-pure-policy-audit-report.md) preserves the finding,
+independent 11/11 baseline, fresh 12/12 adversarial controls, corrected 2/2
+supplemental controls and actual minimal-SDK/artifact child. Those are separate
+populations, not additions to the author 55. The supplemental first 1/2 result and
+its corrected harness assumption remain retained; they are not a production defect.
+
+Original receipt SHA256:
+`1e5fe7969a871f4a11d0e87dae8b479d5481c8d286e5d990ff30f4939f3a578c`.
+Original runtime JSON SHA256:
+`cfacdbbd91f8556025a41148690c4cfe50fac6beb17d361febd0b687140f0ae5`.
+Both original bytes remain in Git commit
+`3b5a64391b1bc4f5bed39c5f2faf79dcee0c7f2b` and in the independent durable evidence
+as `owner-component-receipt.md`/`owner-runtime-receipt.json`. They were not
+overwritten. [Audit provenance](p30c-pure-policy-audit.md#frozen-evidence-and-reproduction)
+binds the report, full manifest and correction control.
 
 Final focused command (run with the private MIX_BUILD_PATH):
 

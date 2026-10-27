@@ -89,7 +89,7 @@ resource/offline qualification. No daemon configuration or existing model was ch
 - [Buffered-frame transaction repair, original adversarial failures and source-bound closure checks](native-framing-repair.md).
 - [Independent native framing closure and preserved diagnostic-only companion](native-framing-audit.md).
 - [Admitted decision operation, incremental review and controls](decision-operation-audit.md).
-- [Pure decision planners, zero-call controls and independent public-SDK artifact closure](p30c-pure-policy.md).
+- [Pure decision planners, zero-call controls and independent public-SDK artifact closure](p30c-pure-policy.md), with [independent audit and the preserved test-count correction](p30c-pure-policy-audit.md).
 - [Optional document parser, bounded staging and package evidence](document-parsers.md).
 - [Fixed-revision source and platform verification receipts](verification.md).
 - [Nonpublishing interaction model](../../../dev/knowledge/interaction.exs) and
