@@ -1,0 +1,76 @@
+{
+  "capture_pauses": 0,
+  "checkpoints": {
+    "30": {
+      "accounted_total_bytes": 10289163,
+      "data_bytes": 1230264,
+      "disk_bytes": 1900555,
+      "floor": 46,
+      "generation": 46,
+      "limits": {
+        "control_reserved_bytes": 8388608,
+        "data_bytes": 25165824,
+        "operations": 32768,
+        "records": 8192,
+        "total_bytes": 67108864,
+        "value_bytes": 6144
+      },
+      "notice": null,
+      "operations": 46,
+      "project": "7641de2b464e967f50674e6983d004f343b8cf09a289c6a887120b9a464d9605",
+      "records": 2242,
+      "version": 1
+    }
+  },
+  "corrections_per_day": 4,
+  "cycles": 0,
+  "days": 30,
+  "final": {
+    "accounted_total_bytes": 10289163,
+    "data_bytes": 1230264,
+    "disk_bytes": 1900555,
+    "floor": 46,
+    "generation": 46,
+    "limits": {
+      "control_reserved_bytes": 8388608,
+      "data_bytes": 25165824,
+      "operations": 32768,
+      "records": 8192,
+      "total_bytes": 67108864,
+      "value_bytes": 6144
+    },
+    "notice": null,
+    "operations": 46,
+    "project": "7641de2b464e967f50674e6983d004f343b8cf09a289c6a887120b9a464d9605",
+    "records": 2242,
+    "version": 1
+  },
+  "forgets_per_day": 2,
+  "kind": "development_authored_storage_workload_v1",
+  "limits": "Fixtures exercise storage and pure retention; semantic quality, active Session integration, actual power loss and reference hardware remain separate gates. Disk sampling includes an 8MiB control reservation; prepublication admission independently bounds old+staged generations.",
+  "live_calls": 0,
+  "offline_days": 0,
+  "ordinary_per_day": 20,
+  "payload": "representative",
+  "peak_accounted_disk_bytes": 10289163,
+  "peak_vm_memory_bytes": 88253232,
+  "persistent_initial": {
+    "current": 50,
+    "pins": 100,
+    "preferences": 50
+  },
+  "publication_ms_max": 97.927,
+  "publication_ms_p50": 65.371,
+  "publication_ms_p95": 78.338,
+  "publication_samples": 46,
+  "runtime": {
+    "cpu": "model name\t: 12th Gen Intel(R) Core(TM) i7-12700K",
+    "elixir": "1.20.4",
+    "memory": "MemTotal:       49048748 kB",
+    "otp": "29",
+    "schedulers": 20,
+    "system": "{:unix, :linux}"
+  },
+  "temporal_supersessions_per_day": 4,
+  "turns_per_day": 40
+}

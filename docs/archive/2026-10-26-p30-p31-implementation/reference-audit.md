@@ -108,9 +108,48 @@ unchanged earlier serialized messages/tools, tail role, and signed Anthropic/Gem
 continuation. They contact no service and establish no model/account eligibility,
 cache-hit rate, latency improvement or semantic quality.
 
-This increment does not complete C0 or E: source-index/evidence paging, managed
-lineage retraction, semantic consent/modes and capture/recall remain required.
+This reference increment did not complete C0 or E. The subsequent internal source
+projection below implements bounded paging; Session/tool wiring, managed lineage
+retraction, semantic consent/modes and capture/recall remain required.
 The existing generic policy generation is zero. Malformed proposals rejected
 before an admitted replacement intent are not a durable replacement; the final
 managed-publisher lifecycle still needs its freshness/coverage qualification.
 Full automatic knowledge enablement and sustainable storage are not implied.
+
+## Internal committed-source index checkpoint
+
+Commit `0536dc0` adds `Session.SourceIndex`, without exposing it to workers or
+integrating it into Session state. It accepts specific already-validated committed
+receipt shapes, not arbitrary origin/text maps. Successful final action results
+gate private MCP/embedding and decision sources; interrupted, failed or missing
+publications refuse. Typed host outcomes remain separate from attributed external
+text and advisory decisions. Original visible answers exclude reasoning and
+presentation. Input requires its matching committed effective user message and
+retains the original input bytes. Legacy user occurrences remain unverified.
+
+Authenticated list/read tokens bind Session, ephemeral source window, source and
+policy generations, occurrence/version and byte offset. Listing fits 4,096 encoded
+bytes with at most 32 rows; reads fit 8,192 encoded bytes including metadata and
+escaping. Immutable UTF-8 chunks carry host-derived IDs. Exact quote matching
+rejects overlapping/repeated occurrences and matches outside the referenced
+window. Redaction removes readable bytes and changes the source version. The
+finite component limits are 1,024 occurrences, 8 MiB aggregate text and 1 MiB per
+source; exhaustion refuses without eviction. Eligibility, coverage windows and
+durable reconstruction remain host integration responsibilities.
+
+The author's final focused run passed **15 tests** with strict compilation.
+Root independently read the implementation and ran a fresh synthetic probe on
+2026-10-27 UTC. It reconstructed escaped Unicode across **14** bounded windows,
+checked exact Unicode byte offsets, and refused changed effective-message pairs,
+forged/stale handles, an out-of-window unique quote, redacted content and an
+overlapping `aba` quotation in `ababa`. The same probe executed the developer
+manual's complete worked example. It used `mix run --no-compile -r
+lib/ipse/session/source_index.ex` because the primary development build predated
+the new module; that temporary late load emitted an Inspect-consolidation warning.
+The probe is behavioral evidence, not a new strict-compilation receipt.
+Raw synthetic probe/log are retained in the private verification artifacts;
+no held-out qualification input, model, credential or terminal was used.
+
+Native clarification-answer admission awaits the atomic origin-bound answer
+record being implemented separately. These checks do not establish public source
+tools, automatic eligibility, managed retraction or semantic knowledge quality.

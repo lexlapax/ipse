@@ -52,6 +52,7 @@ resource/offline qualification. No daemon configuration or existing model was ch
 - [Native operator-channel incremental audit and fixture repairs](operator-channel-audit.md).
 - [Session input witness audit and source-boundary repairs](session-input-audit.md).
 - [Versioned reference projection audit and replay repairs](reference-audit.md).
+- [Sustainable collection storage component and measurement provenance](storage-component.md).
 - [Admitted decision operation, incremental review and controls](decision-operation-audit.md).
 - [Optional document parser, bounded staging and package evidence](document-parsers.md).
 - [Fixed-revision source and platform verification receipts](verification.md).

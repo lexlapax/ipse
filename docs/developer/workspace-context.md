@@ -132,6 +132,72 @@ boundary, split a group, or hide an orphan result. References count toward conte
 bytes and summaries but never become pinned operator requests. The admission
 records are private journal records, without lifecycle-feed source projection.
 
+## Page admitted evidence without inline context
+
+[`Session.SourceIndex`](../../lib/ipse/session/source_index.ex) is an internal
+read-only projection for host-validated committed records. It performs no IO and
+is not yet wired to Session tools. A caller must validate the journal/owning
+receipt first, then use its specific admission function; a generic text/origin
+map is deliberately absent. No source path or role label establishes authority.
+
+| Admitted source | Indexed meaning |
+| --- | --- |
+| `input_received` paired with its committed effective user message | Immutable original input and its actual verified/unattended origin; an orphan receipt refuses |
+| Admitted original visible answer | Assistant proposal; presentation and hidden reasoning are excluded; unavailable original bytes remain unavailable |
+| Typed tool intent/outcome and matching committed tool message | Separate host status facts and attributed read/shell/MCP text; output prose never becomes a host assertion |
+| Successful committed MCP/embedding action plus its bound private source | Attributed external text or typed vector metadata; a private source before successful publication grants no read |
+| Successful committed decision action, response and completed canonical metering | Separate typed operation facts and advisory model content; interrupted response/settlement refuses |
+| Host-validated legacy user occurrence | Explicitly unverified legacy origin |
+
+Run a synthetic input exercise in `iex -S mix`; it opens no conversation or
+terminal and therefore records unattended input:
+
+```elixir
+alias Ipse.Session.{Input, SourceIndex}
+session = Ipse.Usage.id()
+text = "Exact visible text"
+receipt = Input.received(session, Ipse.Usage.id(), text, text, nil)
+message = %{"type" => "message", "message" => %{"role" => "user", "content" => text}}
+{:ok, index} = SourceIndex.new(session)
+{:ok, index} = SourceIndex.admit_input(index, receipt, message)
+{:ok, page} = SourceIndex.list(index, %{"limit" => 32})
+[row] = page["sources"]
+{:ok, evidence} = SourceIndex.read(index, %{"handle" => row["read_handle"]})
+"Exact visible text" = evidence["text"]
+{:ok, quote} = SourceIndex.quote(index, %{"handle" => row["read_handle"], "quote" => "visible"})
+6 = quote["start_byte"]
+13 = quote["end_byte"]
+```
+
+Each occurrence/version/chunk ID is host-derived. Authenticated opaque cursors
+bind Session, source window, source/policy generation, kind, version and offset.
+A new receipt or policy generation invalidates old handles; a forged or another
+Session's token refuses. List requests allow 1..32 entries within 4096 encoded
+bytes, and may return fewer rows to fit. Evidence windows fit 8192 encoded bytes,
+including metadata and JSON escaping, without splitting UTF-8. Follow the actual
+returned continuation; neither limit promises that all requested rows fit.
+
+Quote matching uses exact immutable UTF-8 bytes and returns host-computed absolute
+offsets. It must be globally unique, including overlapping occurrences, and lie
+wholly inside the referenced evidence window. Normalized, repeated, unavailable
+or redacted text cannot produce accepted quote offsets. This establishes source
+support, not entailment or truth.
+
+The component admits at most 1024 occurrences, 8 MiB of text in total and 1 MiB
+per source. Exhaustion refuses without eviction. It consumes no inline reference
+budget. The host still owns window coverage, eligibility, exclusions, current
+policy checks and durable source reconstruction. `revalidate/2` fences tokens;
+it does not apply domain policy. `redact/3` removes readable bytes and changes the
+version. Native operator-answer admission, public tool wiring and managed lineage
+retraction remain separate integration work.
+
+For a change exercise, pair one receipt with changed effective text and require
+refusal. Then index 64 typed tool receipts with zero inline contribution, page
+all facts/references and verify each encoded bound. Remove a successful action
+result while retaining its private source: no readable evidence may result.
+Run `mix test test/ipse/session/source_index_test.exs` alongside the receipt owner's
+replay tests before extending the whitelist.
+
 ## Plan a reduction at the model boundary
 
 Follow `Context.prepare_compaction/3`, `finish_compaction/4`, and
