@@ -381,3 +381,8 @@ separate work. Live provider classification, daemon quiescence, operator recover
 source/installed parity and supported-platform qualification also remain open.
 This component receipt establishes no remote concurrency guarantee or complete
 P30/P31 milestone acceptance.
+
+A later [registered dispatch component receipt](inference-dispatch-component.md)
+records actual Session/provider wiring and new deferred-gate/completion boundaries.
+Its author checks do not extend the independent source-bound closure above; that
+new component requires its own independent audit.

@@ -3,7 +3,11 @@ defmodule Ipse.Provider.Demo do
 
   def complete(_config, messages, _tools, emit) do
     turn =
-      messages |> Enum.reverse() |> Enum.take_while(&(&1["role"] != "user")) |> Enum.reverse()
+      messages
+      |> Enum.reject(&Ipse.Session.Reference.reference?/1)
+      |> Enum.reverse()
+      |> Enum.take_while(&(&1["role"] != "user"))
+      |> Enum.reverse()
 
     results = Enum.filter(turn, &(&1["role"] == "tool"))
 

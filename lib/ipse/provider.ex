@@ -21,8 +21,15 @@ defmodule Ipse.Provider do
                ),
              :ok <- validate_output_limit(config) do
           case apply(adapter, :complete, [config, messages, tools, emit]) do
-            {:error, message} when is_binary(message) -> error(message, config)
-            result -> result
+            {:error, message} when is_binary(message) ->
+              error(message, config)
+
+            {:ok, _, _} = result ->
+              Ipse.Provider.CompletionWitness.native_complete(config, :text)
+              result
+
+            result ->
+              result
           end
         end
       rescue

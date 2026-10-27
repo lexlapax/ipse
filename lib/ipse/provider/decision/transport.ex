@@ -60,7 +60,14 @@ defmodule Ipse.Provider.Decision.Transport do
          wire = Finch.build(:post, endpoint(config), headers, Jason.encode!(body)),
          {:ok, status, bytes} <- Ipse.HTTP.bounded_request(wire, @limit, timeout),
          true <- status in 200..299 do
-      parse(config, request, bytes)
+      case parse(config, request, bytes) do
+        {:ok, _, _} = result ->
+          Ipse.Provider.CompletionWitness.native_complete(config, :decision)
+          result
+
+        result ->
+          result
+      end
     else
       _ -> @error
     end

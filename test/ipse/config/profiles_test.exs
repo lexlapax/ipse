@@ -194,6 +194,38 @@ defmodule Ipse.Config.ProfilesTest do
                )
     end
 
+    test "named child profiles retain operator service coordination and every inherited ceiling" do
+      registry = %{"local" => %{"version" => 1, "origins" => ["http://127.0.0.1:11434"]}}
+      selection = %{"fixture" => %{"enabled" => false}}
+
+      for ceiling <- [:normal, :draft, :planning, :read_only], approval <- [:allow, :deny] do
+        parent = %{
+          provider: :demo,
+          model: "parent",
+          profiles: profiles(),
+          roles: %{},
+          inference_services: registry,
+          semantic_selections: selection,
+          semantic_admission: %{"pin" => "must not copy"},
+          approval: approval,
+          approval_origin: :explicit,
+          headless: true,
+          execution_mode: ceiling,
+          knowledge_ceiling: :disabled
+        }
+
+        assert {:ok, child} = Profiles.child_config(parent, %{}, %{"profile" => "local"})
+        assert child.inference_services === registry
+        assert child.semantic_selections === selection
+        assert child.approval == if(approval == :deny, do: :deny, else: :ask)
+        assert child.approval_origin == "explicit" and child.headless
+        assert child.execution_mode == Atom.to_string(ceiling)
+        assert child.enclosing_mode == Atom.to_string(ceiling)
+        assert child.knowledge_ceiling == "disabled"
+        refute Map.has_key?(child, :semantic_admission)
+      end
+    end
+
     test "child profile isolates credentials and parent payloads while preserving host policy" do
       config = %{
         provider: :chatgpt,

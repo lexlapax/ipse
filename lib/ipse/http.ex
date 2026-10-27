@@ -26,6 +26,8 @@ defmodule Ipse.HTTP do
       [transport_opts: [timeout: min(timeout, 10_000)]] ++ finch_options(uri)
 
     deadline = System.monotonic_time(:millisecond) + timeout
+    target = request_url(request)
+    Ipse.Provider.CompletionWitness.http_started(target)
 
     with_finch(
       fn finch ->
@@ -52,6 +54,7 @@ defmodule Ipse.HTTP do
 
         case result do
           {:ok, %{error: nil} = acc} ->
+            Ipse.Provider.CompletionWitness.http_complete(target, acc.status)
             {:ok, acc.status, acc.body |> Enum.reverse() |> IO.iodata_to_binary()}
 
           {:ok, %{error: error}} ->
@@ -128,7 +131,7 @@ defmodule Ipse.HTTP do
 
   def finch_guardian(owner) do
     case Registry.lookup(Ipse.Registry, {__MODULE__, :finch_borrower, owner}) do
-      [{guardian, _}] -> guardian
+      [{guardian, _}] -> if Process.alive?(guardian), do: guardian
       [] -> nil
     end
   end
@@ -150,15 +153,18 @@ defmodule Ipse.HTTP do
   defp borrow(fun, guardian, monitor, reference) do
     receive do
       {^reference, {:ok, profile}} ->
+        Ipse.Provider.CompletionWitness.borrowed(reference)
+
         try do
           fun.(profile)
         after
           send(guardian, {reference, :finished})
-          await_exit(guardian, monitor)
+          cleanup = await_cleanup(guardian, monitor, reference)
+          Ipse.Provider.CompletionWitness.cleaned(reference, cleanup)
         end
 
       {^reference, {:error, _} = error} ->
-        await_exit(guardian, monitor)
+        await_cleanup(guardian, monitor, reference)
         error
 
       {:DOWN, ^monitor, :process, ^guardian, _} ->
@@ -182,10 +188,32 @@ defmodule Ipse.HTTP do
           end
 
         Ipse.Session.Resources.closed(ticket, result)
+        send(owner, {reference, :cleanup, result})
 
       _ ->
         send(owner, {reference, {:error, "HTTP cleanup scope is closed."}})
     end
+  end
+
+  defp await_cleanup(guardian, monitor, reference) do
+    receive do
+      {^reference, :cleanup, result} ->
+        await_exit(guardian, monitor)
+        result
+
+      {:DOWN, ^monitor, :process, ^guardian, _} ->
+        {:error, :cleanup_unconfirmed}
+    end
+  end
+
+  defp request_url(request) do
+    URI.to_string(%URI{
+      scheme: to_string(request.scheme),
+      host: request.host,
+      port: request.port,
+      path: request.path,
+      query: request.query
+    })
   end
 
   defp run_profile(owner, reference, conn_opts, lease_owner_monitor, owner_monitor, ticket) do

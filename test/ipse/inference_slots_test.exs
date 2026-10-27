@@ -136,6 +136,125 @@ defmodule Ipse.InferenceSlotsTest do
     {task, holder}
   end
 
+  test "deferred validation refuses before a durable admitted marker or callback", c do
+    checked(c, fn ->
+      parent = self()
+      opts = Keyword.put(c.opts, :before_admit, fn _ -> {:error, :source_changed} end)
+
+      assert {:error, {:service_gate_refused, :source_changed}} =
+               InferenceSlots.run(c.config, selector(), meta(), opts, fn _ ->
+                 send(parent, :unexpected_dispatch)
+                 {:settled, nil}
+               end)
+
+      refute_received :unexpected_dispatch
+      assert {:ok, state} = InferenceSlots.status(c.config, cwd: c.cwd)
+      assert state["queue"] == [] and state["services"]["local"]["active"] == nil
+      assert state["recent"] == []
+    end)
+  end
+
+  test "a deferred gate cannot extend the original queue deadline", c do
+    checked(c, fn ->
+      parent = self()
+
+      opts =
+        c.opts
+        |> Keyword.put(:wait_ms, 100)
+        |> Keyword.put(:before_admit, fn _ ->
+          send(parent, {:gate_waiting, self()})
+          receive do: (:continue_gate -> {:ok, nil})
+        end)
+
+      assert {:ok, handle} =
+               InferenceSlots.start(c.config, selector(), meta(), opts, fn _ ->
+                 send(parent, :unexpected_dispatch)
+                 {:settled, nil}
+               end)
+
+      assert_receive {:gate_waiting, gate}, 1000
+      monitor = Process.monitor(gate)
+      assert {:error, _} = InferenceSlots.await(handle)
+      assert_receive {:DOWN, ^monitor, :process, ^gate, _}, 1000
+      refute_received :unexpected_dispatch
+      assert {:ok, state} = InferenceSlots.status(c.config, cwd: c.cwd)
+      assert state["services"]["local"]["active"] == nil
+    end)
+  end
+
+  test "only the actual admitted callback can check its private native lease", c do
+    checked(c, fn ->
+      assert {:error, :service_callback_unavailable} = InferenceSlots.current_check()
+
+      opts =
+        Keyword.put(c.opts, :before_admit, fn _ ->
+          assert {:error, :service_callback_unavailable} = InferenceSlots.current_check()
+          {:ok, %{checked: true}}
+        end)
+
+      assert {:ok, :checked} =
+               InferenceSlots.run(c.config, selector(), meta(), opts, fn facts ->
+                 assert facts[:prepared] == %{checked: true}
+                 assert :ok = InferenceSlots.current_check()
+
+                 assert {:error, :service_callback_unavailable} =
+                          Task.await(Task.async(fn -> InferenceSlots.current_check() end))
+
+                 {:settled, :checked}
+               end)
+
+      assert {:error, :service_callback_unavailable} = InferenceSlots.current_check()
+    end)
+  end
+
+  test "foreground arrival during a deferred gate is rechecked before admitted publication", c do
+    checked(c, fn ->
+      parent = self()
+
+      opts =
+        Keyword.put(c.opts, :before_admit, fn _ ->
+          send(parent, {:background_gate, self()})
+          receive do: (:continue_gate -> {:ok, nil})
+        end)
+
+      background =
+        Task.async(fn ->
+          InferenceSlots.run(
+            c.config,
+            selector(),
+            meta("background"),
+            opts,
+            blocked(parent, :background)
+          )
+        end)
+
+      assert_receive {:background_gate, gate}, 5000
+
+      foreground =
+        Task.async(fn ->
+          InferenceSlots.run(c.config, selector(), meta(), c.opts, blocked(parent, :foreground))
+        end)
+
+      eventually(fn ->
+        case InferenceSlots.status(c.config, cwd: c.cwd) do
+          {:ok, state} -> length(state["queue"]) == 2
+          _ -> false
+        end
+      end)
+
+      send(gate, :continue_gate)
+      assert_receive {:entered, :foreground, worker, _, _}, 5000
+      refute_received {:entered, :background, _, _, _}
+      send(worker, :finish_fixture)
+      assert {:ok, :foreground} = Task.await(foreground)
+      assert_receive {:background_gate, gate}, 5000
+      send(gate, :continue_gate)
+      assert_receive {:entered, :background, worker, _, _}, 5000
+      send(worker, :finish_fixture)
+      assert {:ok, :background} = Task.await(background)
+    end)
+  end
+
   test "known-unstarted ledger contention waits without quarantining a settled callback", c do
     checked(c, fn ->
       assert {:ok, context} = Store.context(c.home, c.cwd)

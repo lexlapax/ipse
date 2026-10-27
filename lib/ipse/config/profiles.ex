@@ -268,6 +268,13 @@ defmodule Ipse.Config.Profiles do
             :decision_profiles,
             :model_auth_dir,
             :approval,
+            :approval_origin,
+            :headless,
+            :execution_mode,
+            :enclosing_mode,
+            :knowledge_ceiling,
+            :inference_services,
+            :semantic_selections,
             :delegation_origin
           ])
 

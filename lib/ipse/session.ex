@@ -1151,6 +1151,31 @@ defmodule Ipse.Session do
     {:reply, reply, s}
   end
 
+  def handle_call(
+        {:inference_dispatch_intent, ref, phase, admission, expected, facts},
+        {caller, _},
+        %{job_ref: ref} = s
+      )
+      when ref != nil do
+    Ipse.Session.InferenceDispatch.commit(s, caller, phase, admission, expected, facts)
+  end
+
+  def handle_call({:inference_dispatch_intent, _, _, _, _, _}, _, s),
+    do: {:reply, {:error, :inference_dispatch_refused}, s}
+
+  def handle_call(
+        {:inference_service_status, ref, {event, _} = status},
+        {caller, _},
+        %{job_ref: ref, task: %{pid: caller}} = s
+      )
+      when ref != nil and event in [:inference_service_status, :inference_service_timing] do
+    notify(s, status)
+    {:reply, :ok, s}
+  end
+
+  def handle_call({:inference_service_status, _, _}, _, s),
+    do: {:reply, {:error, :inference_dispatch_refused}, s}
+
   def handle_call({:extension_collection_sources, _, _}, _, s),
     do: {:reply, {:error, :collection_source_refused}, s}
 

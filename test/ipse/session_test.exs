@@ -29,7 +29,10 @@ defmodule Ipse.SessionTest do
           Process.sleep(:infinity)
 
         :write ->
-          if List.last(messages)["role"] == "tool" do
+          if messages
+             |> Enum.reject(&Ipse.Session.Reference.reference?/1)
+             |> List.last()
+             |> Map.get("role") == "tool" do
             {:ok, %{"role" => "assistant", "content" => "Done"}, %{}}
           else
             {:ok,

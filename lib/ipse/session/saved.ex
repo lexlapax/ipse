@@ -13,6 +13,7 @@ defmodule Ipse.Session.Saved do
          :ok <- Ipse.Session.OperatorAnswer.validate_events(events, id),
          {:ok, reference} <- Ipse.Session.Reference.restore(events, id),
          {:ok, accounting} <- Ipse.Usage.restore(events, id),
+         :ok <- Ipse.Session.InferenceDispatch.validate_events(events),
          {:ok, extension_state} <- Actions.restore(events),
          {:ok, result_sources} <- ResultSource.restore(events),
          :ok <- validate_context_events(events),
@@ -129,6 +130,7 @@ defmodule Ipse.Session.Saved do
          :ok <- Ipse.Observability.validate_events(events),
          {:ok, _} <- Feeds.validate(events),
          {:ok, _} <- Ipse.Usage.restore(events),
+         :ok <- Ipse.Session.InferenceDispatch.validate_events(events),
          :ok <- Projection.validate_events(events) do
       :ok
     end

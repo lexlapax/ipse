@@ -6,8 +6,8 @@ defmodule Ipse.InferenceSlots do
   aliases and API paths. This schedules Ipse dispatches, not arbitrary daemon
   clients. A retained admitted marker survives timeout, owner/native death and
   local socket cleanup. Acquiring its now-free OS lock never proves remote
-  quiescence; only a trusted known-terminal callback or exact operator
-  reconciliation can clear it. This module authenticates neither callback
+  quiescence; only a trusted known-terminal callback, a proven unstarted callback,
+  or exact operator reconciliation can clear it. This module authenticates neither callback
   classification nor operator interaction. The owning provider/UI must do that.
 
   `run/5` releases the native lease before returning: tools, project consent and
@@ -34,6 +34,7 @@ defmodule Ipse.InferenceSlots do
   alias Ipse.Extension.SemanticRoutes
   @held {__MODULE__, :active}
   @handles {__MODULE__, :handles}
+  @callback_lease {__MODULE__, :callback}
   @error {:error, :invalid_service_slot_request}
   @meta ~w(session_id project_id request_sha256 priority)
   @selectors ~w(operation profile processing_region storage_region cache_retention account_controls)
@@ -172,6 +173,14 @@ defmodule Ipse.InferenceSlots do
 
   def cancel(_), do: @error
 
+  @doc false
+  def current_check do
+    case Process.get(@callback_lease) do
+      %Transaction.Capability{owner: owner} = cap when owner == self() -> Transaction.check(cap)
+      _ -> {:error, :service_callback_unavailable}
+    end
+  end
+
   @doc "Bounded protected facts; admitted work is conservatively reported as unresolved."
   def status(config, opts) do
     with :ok <- assert_order(), {:ok, context} <- Store.context(config[:home], opts[:cwd]) do
@@ -272,7 +281,7 @@ defmodule Ipse.InferenceSlots do
                guard
              ) do
           {:ok, {true, slot}} ->
-            case Store.acquire_service(context, slot, meta["dispatch_timeout_ms"] + 10_000) do
+            case Store.acquire_service(context, slot, meta["dispatch_timeout_ms"] + 20_000) do
               {:ok, cap} ->
                 admitted(context, cap, route, meta, opts, fun, owner, ref, id, deadline)
 
@@ -323,24 +332,27 @@ defmodule Ipse.InferenceSlots do
       permit(owner, opts[:upstream], nil, deadline, if(phase == :acquire, do: cap))
     end
 
-    result =
+    initial =
       Store.transaction(
         context,
-        fn state ->
-          cond do
-            not Ledger.eligible?(state, id, wall()) ->
-              {:read, :not_eligible}
-
-            is_map(get_in(state, ["services", route["service_id"], "active"])) ->
-              {:read,
-               {:unresolved, get_in(state, ["services", route["service_id"], "active", "id"])}}
-
-            true ->
-              Ledger.admit(state, id, wall())
-          end
-        end,
+        &admission_state(&1, route, id, false),
         guard
       )
+
+    {result, prepared} =
+      case initial do
+        {:ok, :eligible} ->
+          case before_admit(opts, route, owner, ref, id, deadline) do
+            {:ok, prepared} ->
+              {Store.transaction(context, &admission_state(&1, route, id, true), guard), prepared}
+
+            {:error, reason} ->
+              {{:error, {:service_gate_refused, reason}}, nil}
+          end
+
+        result ->
+          {result, nil}
+      end
 
     case result do
       {:ok, :not_eligible} ->
@@ -383,7 +395,18 @@ defmodule Ipse.InferenceSlots do
               "service_id" => route["service_id"]
             })
 
-            invoke(context, cap, route, fun, id, owner, opts[:upstream], ref, dispatch_deadline)
+            invoke(
+              context,
+              cap,
+              route,
+              fun,
+              id,
+              owner,
+              opts[:upstream],
+              ref,
+              dispatch_deadline,
+              prepared
+            )
           end
 
         send(owner, {ref, :releasing})
@@ -393,14 +416,82 @@ defmodule Ipse.InferenceSlots do
       {:error, reason} when reason in [:service_cancelled, :service_wait_timeout] ->
         release(cap, cancel_waiting(context, id, reason, cleanup))
 
+      {:error, {:service_gate_refused, _} = reason} ->
+        release(cap, cancel_waiting(context, id, reason, cleanup))
+
       _ ->
         release(cap, unknown(route, id))
     end
   end
 
-  defp invoke(context, cap, route, fun, id, owner, upstream, ref, deadline) do
-    case fun.(%{"reservation_id" => id, "route" => route}) do
-      {:settled, value} ->
+  defp admission_state(state, route, id, commit?) do
+    cond do
+      not Ledger.eligible?(state, id, wall()) ->
+        {:read, :not_eligible}
+
+      is_map(get_in(state, ["services", route["service_id"], "active"])) ->
+        {:read, {:unresolved, get_in(state, ["services", route["service_id"], "active", "id"])}}
+
+      commit? ->
+        Ledger.admit(state, id, wall())
+
+      true ->
+        {:read, :eligible}
+    end
+  end
+
+  defp before_admit(opts, route, owner, ref, id, deadline) do
+    if is_function(opts[:before_admit], 1) do
+      gate_deadline = min(deadline, mono() + 5_000)
+
+      task =
+        Resources.async(fn ->
+          Process.put(@held, true)
+          :ok = Resources.bind_effect_owner(opts[:upstream])
+          opts[:before_admit].(%{"reservation_id" => id, "route" => route})
+        end)
+
+      try do
+        receive do
+          {monitor, {:ok, prepared}} when monitor == task.ref ->
+            Process.demonitor(task.ref, [:flush])
+
+            if Process.alive?(owner) and mono() < gate_deadline,
+              do: {:ok, prepared},
+              else: {:error, :service_wait_timeout}
+
+          {monitor, {:error, _} = error} when monitor == task.ref ->
+            Process.demonitor(task.ref, [:flush])
+            error
+
+          {monitor, _} when monitor == task.ref ->
+            Process.demonitor(task.ref, [:flush])
+            {:error, :invalid_service_gate}
+
+          {:DOWN, monitor, :process, _, _} when monitor == task.ref ->
+            {:error, :service_gate_unavailable}
+
+          {:cancel_service_slot, ^ref, reason}
+          when reason in [:service_cancelled, :service_wait_timeout] ->
+            {:error, reason}
+        after
+          max(gate_deadline - mono(), 0) -> {:error, :service_gate_timeout}
+        end
+      after
+        Task.shutdown(task, :brutal_kill)
+      end
+    else
+      {:ok, nil}
+    end
+  end
+
+  defp invoke(context, cap, route, fun, id, owner, upstream, ref, deadline, prepared) do
+    Process.put(@callback_lease, cap)
+    argument = %{"reservation_id" => id, "route" => route}
+    argument = if is_nil(prepared), do: argument, else: Map.put(argument, :prepared, prepared)
+
+    case fun.(argument) do
+      {classification, value} when classification in [:settled, :unstarted] ->
         guard = fn phase ->
           permit(owner, upstream, ref, deadline, if(phase == :acquire, do: cap))
         end
@@ -410,7 +501,9 @@ defmodule Ipse.InferenceSlots do
                Store.transaction(
                  context,
                  fn state ->
-                   Ledger.settle(state, route["service_id"], id, wall())
+                   if classification == :settled,
+                     do: Ledger.settle(state, route["service_id"], id, wall()),
+                     else: Ledger.cancel_unstarted(state, route["service_id"], id, wall())
                  end,
                  guard
                ),
@@ -424,6 +517,8 @@ defmodule Ipse.InferenceSlots do
     _ -> unknown(route, id)
   catch
     _, _ -> unknown(route, id)
+  after
+    Process.delete(@callback_lease)
   end
 
   defp cancel_waiting(context, id, reason, guard) do
@@ -684,11 +779,12 @@ defmodule Ipse.InferenceSlots do
   defp valid_options?(opts),
     do:
       Keyword.keyword?(opts) and
-        Keyword.keys(opts) -- [:cwd, :wait_ms, :dispatch_timeout_ms, :notify] == [] and
+        Keyword.keys(opts) -- [:cwd, :wait_ms, :dispatch_timeout_ms, :notify, :before_admit] == [] and
         length(Keyword.keys(opts)) == length(Enum.uniq(Keyword.keys(opts))) and
         is_integer(opts[:wait_ms]) and opts[:wait_ms] in 1..60_000 and
         is_integer(opts[:dispatch_timeout_ms]) and opts[:dispatch_timeout_ms] in 1..100_000 and
-        (is_nil(opts[:notify]) or is_pid(opts[:notify]))
+        (is_nil(opts[:notify]) or is_pid(opts[:notify])) and
+        (is_nil(opts[:before_admit]) or is_function(opts[:before_admit], 1))
 
   defp keys?(map, keys), do: is_map(map) and Enum.sort(Map.keys(map)) == Enum.sort(keys)
   defp mono, do: System.monotonic_time(:millisecond)

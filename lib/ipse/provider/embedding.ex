@@ -72,7 +72,14 @@ defmodule Ipse.Provider.Embedding do
          request = Finch.build(:post, endpoint(config), headers, Jason.encode!(body)),
          {:ok, status, bytes} <- Ipse.HTTP.bounded_request(request, @body_limit, timeout),
          true <- status in 200..299 do
-      parse(config.provider, bytes, config, inputs)
+      case parse(config.provider, bytes, config, inputs) do
+        {:ok, _, _} = result ->
+          Ipse.Provider.CompletionWitness.native_complete(config, :embedding)
+          result
+
+        result ->
+          result
+      end
     else
       _ -> @error
     end

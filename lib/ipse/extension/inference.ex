@@ -795,35 +795,49 @@ defmodule Ipse.Extension.Inference do
 
   def execute(context, intent, kind, perform) when kind in [:text, :embedding, :decision] do
     case GenServer.call(context.owner, {begin_message(kind), context.job_ref, intent}, :infinity) do
-      {:ok, config, admission} -> run(context, intent, kind, perform, config, admission)
-      {:failed, _} = failure -> failure
-      _ -> {:failed, %{"code" => code(kind, :limit)}}
+      {:ok, config, admission} ->
+        run(context, intent, kind, perform, config, admission, nil)
+
+      {:ok, config, admission, dispatch} ->
+        run(context, intent, kind, perform, config, admission, dispatch)
+
+      {:failed, _} = failure ->
+        failure
+
+      _ ->
+        {:failed, %{"code" => code(kind, :limit)}}
     end
   end
 
-  defp run(context, intent, kind, perform, config, admission) do
+  defp run(context, intent, kind, perform, config, admission, dispatch) do
     coordinator = self()
+    upstream = Ipse.Session.Resources.file_effect_owner()
     tag = make_ref()
     monitor = Process.monitor(context.worker)
 
     task =
       Ipse.Session.Resources.async(fn ->
+        :ok = Ipse.Session.Resources.bind_effect_owner(upstream)
+
         emit = fn
           {:provider_usage, raw} ->
             usage = Ipse.Usage.observation(admission, raw, 1)["usage"]
             send(coordinator, {tag, :usage, usage})
 
+          {event, status} when event in [:inference_service_status, :inference_service_timing] ->
+            send(coordinator, {tag, :service_status, {event, status}})
+
           _ ->
             :ok
         end
 
-        Ipse.Usage.Budget.run(config, admission, emit, fn selected, guarded_emit ->
+        execute = fn selected, guarded_emit, _prepared ->
           result = perform.(selected, intent["request"], guarded_emit)
 
           case result do
             {:ok, value, raw} ->
               capture = %{value: value, usage: Ipse.Usage.observation(admission, raw, 1)["usage"]}
-              send(coordinator, {tag, :response, capture})
+              if is_nil(dispatch), do: send(coordinator, {tag, :response, capture})
               if kind in [:embedding, :decision], do: guarded_emit.({:provider_usage, raw})
 
             _ ->
@@ -831,10 +845,55 @@ defmodule Ipse.Extension.Inference do
           end
 
           result
-        end)
+        end
+
+        if is_nil(dispatch) do
+          Ipse.Usage.Budget.run(config, admission, emit, fn selected, guarded ->
+            execute.(selected, guarded, nil)
+          end)
+        else
+          gate = fn facts ->
+            nonce = make_ref()
+            send(coordinator, {tag, :dispatch_gate, self(), nonce, dispatch, facts})
+
+            receive do
+              {^tag, ^nonce, result} -> result
+            after
+              5_000 -> {:error, :inference_dispatch_refused}
+            end
+          end
+
+          result =
+            Ipse.InferenceDispatch.run(
+              dispatch.config,
+              config,
+              intent["request"]["op"],
+              intent["request"]["profile"],
+              dispatch,
+              emit,
+              gate,
+              execute
+            )
+
+          case result do
+            {:ok, value, raw} ->
+              send(
+                coordinator,
+                {tag, :response,
+                 %{value: value, usage: Ipse.Usage.observation(admission, raw, 1)["usage"]}}
+              )
+
+            _ ->
+              :ok
+          end
+
+          result
+        end
       end)
 
-    deadline = System.monotonic_time(:millisecond) + config.timeout_ms
+    deadline =
+      System.monotonic_time(:millisecond) + config.timeout_ms +
+        if(is_nil(dispatch), do: 0, else: 80_000)
 
     try do
       {result, capture, reason} = await(task, tag, monitor, context, intent, kind, deadline, nil)
@@ -865,6 +924,22 @@ defmodule Ipse.Extension.Inference do
 
         {^tag, :response, response} ->
           await(task, tag, monitor, context, intent, kind, deadline, response)
+
+        {^tag, :service_status, event} ->
+          GenServer.call(
+            context.owner,
+            {:inference_service_status, context.job_ref, event},
+            5_000
+          )
+
+          await(task, tag, monitor, context, intent, kind, deadline, capture)
+
+        {^tag, :dispatch_gate, worker, nonce, dispatch, facts} when worker == task.pid ->
+          result =
+            Ipse.Session.InferenceDispatch.gate(context.owner, context.job_ref, dispatch, facts)
+
+          send(worker, {tag, nonce, result})
+          await(task, tag, monitor, context, intent, kind, deadline, capture)
 
         {ref, result} when ref == task.ref ->
           Process.demonitor(ref, [:flush])

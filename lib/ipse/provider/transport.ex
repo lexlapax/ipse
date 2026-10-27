@@ -19,6 +19,7 @@ defmodule Ipse.Provider.Transport do
         {:error, "Invalid provider URL."}
 
       true ->
+        Ipse.Provider.CompletionWitness.http_started(url)
         timeout = config[:timeout_ms] || 120_000
         proxy = Ipse.HTTP.finch_options(uri)
         options = [transport_opts: [timeout: min(timeout, 30_000)]] ++ proxy
@@ -61,8 +62,10 @@ defmodule Ipse.Provider.Transport do
             case result do
               {:ok, %{error: nil, status: status} = final} when status in 200..299 ->
                 with :ok <-
-                       Ipse.Provider.Stream.check_deadline(%{stream_deadline: final.deadline}),
-                     do: {:ok, final.state}
+                       Ipse.Provider.Stream.check_deadline(%{stream_deadline: final.deadline}) do
+                  Ipse.Provider.CompletionWitness.http_complete(url, status)
+                  {:ok, final.state}
+                end
 
               {:ok, %{error: nil} = final} ->
                 http_error(

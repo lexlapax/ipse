@@ -460,6 +460,22 @@ defmodule Ipse.Session.Turn do
   defp launch_request(s, config, messages, tools, phase) do
     s = Session.admit_request(s, config, Atom.to_string(phase))
 
+    dispatch =
+      case Ipse.InferenceDispatch.selection(s.config, config, "main", nil) do
+        {:ok, :unregistered} ->
+          %{admission: s.active_request, cwd: s.cwd}
+
+        _ ->
+          Session.InferenceDispatch.prepare(
+            s,
+            config,
+            messages,
+            tools,
+            Atom.to_string(phase),
+            s.active_request
+          )
+      end
+
     if phase == :model and map_size(s.extension_contributions) > 0,
       do:
         Session.record(
@@ -492,12 +508,21 @@ defmodule Ipse.Session.Turn do
 
             try do
               result =
-                Ipse.Usage.Budget.run(config, s.active_request, emit, fn admitted, emit ->
-                  if required and (not ready or not text_ready?(stream, request_id)),
-                    do: raise(Ipse.Session.TextStream.RequiredFailure)
+                Ipse.InferenceDispatch.run(
+                  s.config,
+                  config,
+                  "main",
+                  nil,
+                  dispatch,
+                  emit,
+                  fn facts -> Session.InferenceDispatch.gate(owner, job_ref, dispatch, facts) end,
+                  fn admitted, emit, _prepared ->
+                    if required and (not ready or not text_ready?(stream, request_id)),
+                      do: raise(Ipse.Session.TextStream.RequiredFailure)
 
-                  request(admitted, messages, tools, emit)
-                end)
+                    request(admitted, messages, tools, emit)
+                  end
+                )
 
               outcome = if match?({:ok, _, _}, result), do: "completed", else: "failed"
               delivery = finish_text(stream, request_id, outcome)
@@ -534,6 +559,21 @@ defmodule Ipse.Session.Turn do
         s
     end
   end
+
+  @doc false
+  def dispatch_view(%{phase: :model, active_request: admission} = s, "model")
+      when not is_nil(admission) do
+    {:ok, s.config, Session.Context.header(s) ++ s.messages,
+     definitions(s.config, s.extension_result_sources, s.reference != nil) ++
+       Ipse.MCP.definitions(s.mcp_tools), admission}
+  end
+
+  def dispatch_view(%{phase: :compaction, active_request: admission} = s, "compaction")
+      when not is_nil(admission) do
+    {:ok, Session.Context.summary_config(s.config), s.compaction.summary_messages, [], admission}
+  end
+
+  def dispatch_view(_, _), do: {:error, :inference_dispatch_refused}
 
   defp begin_text(nil, _, _), do: {:ok, false}
 

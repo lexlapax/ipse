@@ -122,7 +122,8 @@ defmodule Ipse.Usage do
     metadata = (List.first(events) || %{})["metadata"] || %{}
     version = metadata["usage_version"]
 
-    if version in [nil, 1, 2, 3] do
+    if version in [nil, 1, 2, 3] and
+         Ipse.Session.InferenceDispatch.validate_events(events) == :ok do
       Enum.reduce_while(
         events,
         {:ok,
@@ -401,6 +402,15 @@ defmodule Ipse.Usage do
 
   def apply_event(ledger, %{"type" => "context_compacted"} = event),
     do: bind(ledger, event, "compaction")
+
+  def apply_event(ledger, %{"type" => "inference_dispatch_intent"} = event) do
+    request = ledger.requests[event["request_id"]]
+
+    if request != nil and request.completion == nil and
+         Ipse.Session.InferenceDispatch.valid_intent?(event, request.admission),
+       do: {:ok, ledger},
+       else: {:error, :invalid_usage_journal}
+  end
 
   def apply_event(ledger, event) do
     if Map.has_key?(event, "attempt_id"),

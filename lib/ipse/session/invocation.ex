@@ -602,7 +602,28 @@ defmodule Ipse.Session.Invocation do
       s = %{s | extension_model: active, steps: s.steps + 1}
 
       if output_timely?(s) do
-        {:reply, {:ok, config, admission}, s}
+        phase = intent["request"]["op"]
+
+        reply =
+          case Ipse.InferenceDispatch.selection(
+                 s.config,
+                 config,
+                 phase,
+                 intent["request"]["profile"]
+               ) do
+            {:ok, :unregistered} ->
+              {:ok, config, admission}
+
+            _ ->
+              {:ok, ^config, input, tools, ^admission} = dispatch_view(s, phase)
+
+              dispatch =
+                Session.InferenceDispatch.prepare(s, config, input, tools, phase, admission)
+
+              {:ok, config, admission, dispatch}
+          end
+
+        {:reply, reply, s}
       else
         code =
           case message do
@@ -617,6 +638,36 @@ defmodule Ipse.Session.Invocation do
       _ -> {:reply, {:error, :extension_model_refused}, s}
     end
   end
+
+  @doc false
+  def dispatch_view(
+        %{invocation: %{action: %{intent: intent}}, extension_model: %{admission: admission}} = s,
+        phase
+      ) do
+    request = intent["request"]
+
+    with true <- request["op"] == phase,
+         true <- intent["approval"] in ~w(approved session_allow),
+         true <- output_timely?(s),
+         true <- Ipse.Extension.Registry.live?(s.invocation.parent["identity"]),
+         {:ok, runtime, execution} <- prepare_inference(s.config, request),
+         true <-
+           not (EmbeddingCall.operation?(request) or DecisionCall.operation?(request)) or
+             (intent["effect_binding"]["execution"] === execution and
+                inference_destination(runtime, request) ==
+                  {:ok, intent["effect_binding"]["destination"]}) do
+      input =
+        if phase == "model.complete",
+          do: Ipse.Session.Context.helper_messages(request["instruction"], request["input"]),
+          else: request
+
+      {:ok, runtime, input, [], admission}
+    else
+      _ -> {:error, :inference_dispatch_refused}
+    end
+  end
+
+  def dispatch_view(_, _), do: {:error, :inference_dispatch_refused}
 
   def observe_inference(s, message, id, usage, admission) do
     entry = s.accounting.requests[id]
