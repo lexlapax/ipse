@@ -10,6 +10,12 @@ Use a private Ipse home and an existing workspace. These commands use that saved
 provider; provider/model overrides and `--yes` are refused during knowledge setup.
 They require no separate embedding account or download.
 
+Protected writes also require the current native
+[allocation profile](../../native/README.md#publish-protected-state-through-its-lock-owner):
+64-bit Linux kernel `7.2.10` or `7.2.10-*`, with supported Btrfs or explicitly
+qualified tmpfs mount settings. Other kernels/filesystems and macOS currently
+refuse write admission. Installation alone does not establish this prerequisite.
+
 ## Review the project and exact permission
 
 Run from a terminal with matching native input and display:
@@ -38,6 +44,11 @@ have seven days and never become current merely because they quote a source.
 Current facts and preferences can persist. The full review is authoritative for
 the selected rules. It authorizes no secondary model calls or downloads. Main
 conversation requests retain their ordinary route and resource accounting.
+The reviewed native selection bounds each Main request to the smaller of your
+configured timeout and 90 seconds. Requests on its registered route buffer
+assistant text until the response passes completion checks, so text can appear
+after upstream generation finishes. Review the displayed route and effective
+timeout before enabling; setup does not enlarge a shorter configured timeout.
 
 The saved permission covers both chat and headless `run`. Covered collection
 effects do not ask for repeat approval, while workspace writes, shell commands,
@@ -102,7 +113,7 @@ review. A concurrent permission change is never overwritten by the older review.
 Changing the saved configuration during review also refuses the save, even when
 the edited file would select equivalent settings. Inspect it and begin a fresh
 review so the displayed selection matches the configuration being admitted.
-If an outcome is unconfirmed, follow [recovery](recovery.md) before retrying; a
+If an outcome is unconfirmed, follow [protected knowledge recovery](recovery.md#inspect-unconfirmed-protected-knowledge) before retrying; a
 missing confirmation is not proof that nothing changed. Unsafe private-directory
 permissions, a missing retained `.lock` or `.writer.lock`, or malformed protected
 data refuse rather than being repaired by status. Preserve the original state

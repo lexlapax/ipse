@@ -55,6 +55,33 @@ owned tasks and ordinary process groups. Detached descendants can remain.
 Cleanup acknowledgment, process exit, and successful work are separate facts.
 Resolve unconfirmed cleanup before overlapping another attempt.
 
+## Inspect unconfirmed protected knowledge
+
+Keep the original Ipse home, protected control/identity/collection files and
+Session journal. A lost confirmation can leave a saved grant, a durable note,
+pending liability or a prepared first-use domain. It does not prove absence.
+After the original owner has stopped and cleanup is confirmed, inspect locally:
+
+```sh
+ipse knowledge status --cwd /path/to/project --json
+ipse knowledge permissions --cwd /path/to/project
+ipse diagnose --resume SESSION_ID --state-dir /private/path/sessions
+```
+
+Use the original home/configuration and Session ID. Status and permissions start
+no inference or worker; they can refuse when protected state is unavailable or
+malformed. Preserve that refusal. The diagnosis command reads saved history and
+does not reconcile Collection or accounting state.
+
+Do not enable again merely to recover a missing confirmation, delete retained
+locks or domain keys, reset the collection, edit a ledger, or replay the old
+capture. The operator CLI has no automatic prepared-domain or unknown-operation
+reconciliation command. Request developer-assisted inspection of the exact
+operation and actual storage root before deciding on another attempt. Keep
+private files local; report sanitized codes and operation IDs instead of their
+contents. [Knowledge permissions](knowledge-permissions.md) explains known
+configuration conflicts that can be resolved with a fresh review.
+
 ## Resume compatible work
 
 ```sh

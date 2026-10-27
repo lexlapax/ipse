@@ -1,0 +1,297 @@
+{
+  "artifact": "/home/lexlapax/.codex/visualizations/2026/10/26/01a17a12-c7bb-76e2-af9e-95f589cc6f94/p31-verification/normalizer-v3-component",
+  "source": {
+    "lib/ipse/extension/collection/normalizer_v3.ex": {
+      "bytes": 10723,
+      "sha256": "d350e477e59783af8153239a19c57014de5d04941cfc0f75084d13d6d4461184"
+    },
+    "test/ipse/extension/collection_normalizer_v3_test.exs": {
+      "bytes": 23837,
+      "sha256": "8d4bafe3543a9461840149112e409f6908b82b9d54a21cccbe0e065c98aa1c23"
+    }
+  },
+  "files_manifest_sha256": "e96d6500994e651d62114bdd36ee2647146614637d900255cb679a447ba2b715",
+  "supported": [
+    "one fresh fixed note literal",
+    "one fresh fixed pending proposal",
+    "actual catalog prepared/native absence first format",
+    "active exact descriptor/MAC",
+    "separate clocks with clipped deadlines/no renewal",
+    "exact ordered metadata receipt"
+  ],
+  "freeze_entries": 4060,
+  "exunit_version": "1.20.4",
+  "receipt_version": 3,
+  "directory_fsync_claimed": false,
+  "pty_calls": 0,
+  "independent_interpreter_audit": {
+    "actual_collection_publications": 0,
+    "collection_observations": "trusted synthetic fixtures",
+    "exunit_version": "1.20.4",
+    "first_run": {
+      "failure": "outer expected expired reason; actual first-use unknown mapping; no product change",
+      "passed": 26,
+      "preserved": true,
+      "total": 27
+    },
+    "fresh_tests": 10,
+    "independently_qualifies_later_actual_controls": false,
+    "otp": "29",
+    "passed": 29,
+    "preservation": {
+      "admitted_rows_unchanged": true,
+      "admitted_runtime_rows": 2346,
+      "copied_regular_files": 2539,
+      "directories_mode": "0700",
+      "files_mode": "0600",
+      "files_sha256": "3c5cb9bfddfecd5a341dd4d2f2008a3dec61c9fea03ebac2d39752e5602fb769",
+      "fsync": "files+everydirectory, thenreceipt+root",
+      "native_helper_sha256": "d84d77d77dc2393b36d9353b6e6d215ec86dc5ba33fe9ad7c8f378130043f91b",
+      "owner_uid": 1000,
+      "provenance_sha256": "be46fc1fdb50a3250384a8df036bca123b79c88f1257372df31b630804bcc22d",
+      "report_sha256": "ea00f50923fdfb72344f98c30b00e52ed5de9aac20b69d1031ea3bc519d38012",
+      "source_runtime_manifest_sha256": "26e8026a258f2ca2fec3d610480070228516aa1066aeb56f4f990c81b692bfc3",
+      "verified_source_destination_bytes_and_hashes": true,
+      "version": 1
+    },
+    "unchanged_normalizer_tests": 9,
+    "unchanged_pages_tests": 10
+  },
+  "strict_versions": [
+    "1.18.5",
+    "1.20.4"
+  ],
+  "charged_read_limit": 32,
+  "receipt_limit": 2048,
+  "actual_collection_author_integration": {
+    "actual_controls": [
+      "checked one-view native absence before Identity prepare",
+      "first publication three metadata extras, checked current-root MAC/inverse after success before Identity activation",
+      "active literal/preference/proposal follow-ons preserve historical format revision and bind new pages to actual global generation",
+      "27 actual publications cross live leaf split; no synthetic metadata seed",
+      "actual CAS conflict and dedup never call normalizer",
+      "active catalog refuses other native-absent store reset",
+      "actual present missing format/unsigned V2 refuses adoption",
+      "actual native owner loss after C commit: Identity unknown/prepared, durable C operation observed, kernel Identity lock reacquired, no automatic retry/reconciliation"
+    ],
+    "artifact": {
+      "alias_policy": "recorded targets only; never followed/recreated",
+      "directory_fsync_claim": false,
+      "entries": 4771,
+      "files_manifest_sha256": "a8926e7e4aed45936b0916ff544555183cd94b9a8b890a73b579bb30393dcbc8",
+      "owner_only": true,
+      "path": "/home/lexlapax/.codex/visualizations/2026/10/26/01a17a12-c7bb-76e2-af9e-95f589cc6f94/p31-verification/normalizer-v3-actual-integration",
+      "stores": 30
+    },
+    "first_failure": {
+      "graph": "/tmp/ipse-normalizer-v3-actual-20261027-01",
+      "outcome": "14/15; author fixture queried inspect result receipt instead of operation; actual unknown/prepared and durable generation assertions had passed",
+      "preserved_log": "working-copy/artifacts/first-tests-failure.log",
+      "preserved_test": "working-copy/artifacts/first-integration-test-failure.exs"
+    },
+    "freeze_before_after_equal": true,
+    "freeze_entries": 4068,
+    "freeze_sha256": "1e64ee79f9aa85623abffdfb37c805026109981b0489f2a2dbe07fc31fcf515b",
+    "frozen_graph": "/tmp/ipse-normalizer-v3-actual-20261027-04",
+    "harness_failures": [
+      "Final runner initially required an absent unapproved-overlay test filename; retained log; no tests executed by failed harness",
+      "Runtime-binding accessor first refused cwd overlapping helper/application; retained source/log; no helper was executed by accessor"
+    ],
+    "logs": [
+      {
+        "path": "final-tests.log",
+        "sha256": "61c6e5ea3ee996f752dfa1b99c68e6aeed58913e1da9272686dd72c45e4b5ac1"
+      },
+      {
+        "path": "first-final-tests.log",
+        "sha256": "2818b1460e493628d0717c16ebf81a739ae63b82afc4704805de9e7aae937d6e"
+      },
+      {
+        "path": "first-tests-failure.log",
+        "sha256": "157a6bbb9108b96a44badacea0f4a84601aa394ef6a2d875e90dec92d59ee43e"
+      },
+      {
+        "path": "tests-repaired.log",
+        "sha256": "ee8dac785ae980a4c01f28782dc0cbc4c08c7880e69a87840d81e3fd490d1074"
+      },
+      {
+        "path": "stronger-receipt-tests.log",
+        "sha256": "ff89c0155c8308f38677abb9be9c1c0af6580112b12132374356b83f49cab813"
+      },
+      {
+        "path": "final-tests-harness-missing-file.log",
+        "sha256": "6cd5776aaf5bdb7ea2fdb781e5c885a4b6d1cc41541e7a2f4e0420e54bb16b1f"
+      },
+      {
+        "path": "format118.log",
+        "sha256": "4ad48b974776e1c409ba1d72e7c3a4632e9ab9bdb3b58a22ecda9946e54fb2bd"
+      },
+      {
+        "path": "runtime-binding-cwd-refusal.log",
+        "sha256": "7da52b936a3950bafc62ba4593e8efd75595a3a88e2bc29a539aad81faf856a0"
+      }
+    ],
+    "read_units": {
+      "active_observed": 23,
+      "actual_merge_exercised": false,
+      "initialization": 19,
+      "observed_upper_assertion": 24
+    },
+    "remaining": [
+      "Actual five-sidecar merge/24-read path remains prior trusted-C fixture only",
+      "Root SDK3/Consent settlement/consumer integration separately owned",
+      "No 2k/4k/year or lifecycle/native-management authority coverage",
+      "ExUnit executed on Elixir 1.20.4/OTP29; actual 1.18.5 format check only"
+    ],
+    "result": {
+      "max_cases": 1,
+      "new_actual_integration_tests": 6,
+      "passed": 15,
+      "prior_fixture_tests": 9,
+      "seconds": 3.2,
+      "seed": 238566
+    },
+    "root_collection_sha256": "5b02c6dd265f9bcaf7d0201f4953d73bd106ba7dc2b8af4864e4ea75757a6fa7",
+    "root_graph": "/tmp/ipse-managed-v3-core-20261027-01",
+    "runtime": {
+      "elixir": "1.20.4",
+      "freeze_sha256": "1e64ee79f9aa85623abffdfb37c805026109981b0489f2a2dbe07fc31fcf515b",
+      "helper": "/tmp/ipse-normalizer-v3-actual-20261027-04/project/priv/ipse-runner",
+      "helper_sha256": "d84d77d77dc2393b36d9353b6e6d215ec86dc5ba33fe9ad7c8f378130043f91b",
+      "modules": [
+        {
+          "beam": "/tmp/ipse-normalizer-v3-actual-20261027-04/build/lib/ipse/ebin/Elixir.Ipse.Extension.Collection.beam",
+          "beam_sha256": "02cc1a0f0949532c95194447298016b4a06d06aaab221d4052a4e248c2bf624f",
+          "compile_source": "/tmp/ipse-managed-v3-core-20261027-01/project/lib/ipse/extension/collection.ex",
+          "frozen_source": "/tmp/ipse-normalizer-v3-actual-20261027-04/project/lib/ipse/extension/collection.ex",
+          "module": "Ipse.Extension.Collection",
+          "source_sha256": "5b02c6dd265f9bcaf7d0201f4953d73bd106ba7dc2b8af4864e4ea75757a6fa7"
+        },
+        {
+          "beam": "/tmp/ipse-normalizer-v3-actual-20261027-04/build/lib/ipse/ebin/Elixir.Ipse.Extension.Collection.ReadView.beam",
+          "beam_sha256": "2436f1440c9208dba4c33fae9d28e56c1a6455bc9596758d24bde95933525a59",
+          "compile_source": "/tmp/ipse-managed-v3-core-20261027-01/project/lib/ipse/extension/collection/read_view.ex",
+          "frozen_source": "/tmp/ipse-normalizer-v3-actual-20261027-04/project/lib/ipse/extension/collection/read_view.ex",
+          "module": "Ipse.Extension.Collection.ReadView",
+          "source_sha256": "54e6b40ae9f3a0742a257a3666fa8e4a1aacb95bc1c261b9cc1e5ce85656c598"
+        },
+        {
+          "beam": "/tmp/ipse-normalizer-v3-actual-20261027-04/build/lib/ipse/ebin/Elixir.Ipse.Extension.Collection.Directory.beam",
+          "beam_sha256": "58add52a36772b2a902020af3a50734e43887ec8d4857d35490316aaec7286e9",
+          "compile_source": "/tmp/ipse-managed-v3-core-20261027-01/project/lib/ipse/extension/collection/directory.ex",
+          "frozen_source": "/tmp/ipse-normalizer-v3-actual-20261027-04/project/lib/ipse/extension/collection/directory.ex",
+          "module": "Ipse.Extension.Collection.Directory",
+          "source_sha256": "1aea077f1727e893766e783c0a6e747492f9975dcb9bd54700d92c772d2a2a13"
+        },
+        {
+          "beam": "/tmp/ipse-normalizer-v3-actual-20261027-04/build/lib/ipse/ebin/Elixir.Ipse.Extension.ProjectIdentity.beam",
+          "beam_sha256": "5bee7813c0ad6a3ba63a76de185301eb7f9bf16be14223f324aee96f0fc6c1c9",
+          "compile_source": "/tmp/ipse-managed-v3-core-20261027-01/project/lib/ipse/extension/project_identity.ex",
+          "frozen_source": "/tmp/ipse-normalizer-v3-actual-20261027-04/project/lib/ipse/extension/project_identity.ex",
+          "module": "Ipse.Extension.ProjectIdentity",
+          "source_sha256": "66ebd609d78da960646a1894cff25e505ed3ea3acf0a63e8f40669369854da15"
+        },
+        {
+          "beam": "/tmp/ipse-normalizer-v3-actual-20261027-04/build/lib/ipse/ebin/Elixir.Ipse.Extension.ProjectIdentity.DomainAuth.beam",
+          "beam_sha256": "d850b89397619ccf9a6fbfe572387eef9e68fcbb7f7877a9a57986232c59e198",
+          "compile_source": "/tmp/ipse-managed-v3-core-20261027-01/project/lib/ipse/extension/project_identity/domain_auth.ex",
+          "frozen_source": "/tmp/ipse-normalizer-v3-actual-20261027-04/project/lib/ipse/extension/project_identity/domain_auth.ex",
+          "module": "Ipse.Extension.ProjectIdentity.DomainAuth",
+          "source_sha256": "50dbb61771a95995a9869f7fbbb2861c42cd0318ceaecc49cd92e781c225ac20"
+        },
+        {
+          "beam": "/tmp/ipse-normalizer-v3-actual-20261027-04/build/lib/ipse/ebin/Elixir.Ipse.Runner.beam",
+          "beam_sha256": "944e987bc78caf6589f374a16902d6b72d00213154b8c28a05291447471d9887",
+          "compile_source": "/tmp/ipse-managed-v3-core-20261027-01/project/lib/ipse/runner.ex",
+          "frozen_source": "/tmp/ipse-normalizer-v3-actual-20261027-04/project/lib/ipse/runner.ex",
+          "module": "Ipse.Runner",
+          "source_sha256": "92dfa544afe579cdd05dd55bb0c22c9ff60ed3836191f498c87c681542f41585"
+        },
+        {
+          "beam": "/tmp/ipse-normalizer-v3-actual-20261027-04/build/lib/ipse/ebin/Elixir.Ipse.Runner.Transaction.beam",
+          "beam_sha256": "4c243718003343a6755cbe7403049f6c5202eed585f24e9218027b06cd376b41",
+          "compile_source": "/tmp/ipse-managed-v3-core-20261027-01/project/lib/ipse/runner/transaction.ex",
+          "frozen_source": "/tmp/ipse-normalizer-v3-actual-20261027-04/project/lib/ipse/runner/transaction.ex",
+          "module": "Ipse.Runner.Transaction",
+          "source_sha256": "8c769af647054df7d5cf3d468ed3dfd4666d3130d84d9855e6b77195272ea3ef"
+        },
+        {
+          "beam": "/tmp/ipse-normalizer-v3-actual-20261027-04/build/lib/ipse/ebin/Elixir.Ipse.Extension.Collection.ManagedPages.beam",
+          "beam_sha256": "ceb27e5197e8e3a7c80b1f6ad11b333b2c9db91a8141d6ef54c036c701290295",
+          "compile_source": "/tmp/ipse-managed-v3-core-20261027-01/project/lib/ipse/extension/collection/managed_pages.ex",
+          "frozen_source": "/tmp/ipse-normalizer-v3-actual-20261027-04/project/lib/ipse/extension/collection/managed_pages.ex",
+          "module": "Ipse.Extension.Collection.ManagedPages",
+          "source_sha256": "49342de0b48de4304ffec17169887dca54b934cea6a849fe11a739b23a17ebfd"
+        },
+        {
+          "beam": "/tmp/ipse-normalizer-v3-actual-20261027-04/build/lib/ipse/ebin/Elixir.Ipse.Extension.Collection.ManagedPages.Planner.beam",
+          "beam_sha256": "3cabf250c016dec13abe389805b275847ff93aa49bc0eb99f69b461b713b3d86",
+          "compile_source": "/tmp/ipse-managed-v3-core-20261027-01/project/lib/ipse/extension/collection/managed_pages/planner.ex",
+          "frozen_source": "/tmp/ipse-normalizer-v3-actual-20261027-04/project/lib/ipse/extension/collection/managed_pages/planner.ex",
+          "module": "Ipse.Extension.Collection.ManagedPages.Planner",
+          "source_sha256": "54c86cbf341d85f47f2278a7f91ef703b810d1018aa421a0595c164ae8314923"
+        },
+        {
+          "beam": "/tmp/ipse-normalizer-v3-actual-20261027-04/build/lib/ipse/ebin/Elixir.Ipse.Extension.Collection.NormalizerV3.beam",
+          "beam_sha256": "29412cc1e1a86bfb4cd2deb97d1401d5d7c4aa67f3cf78cfb45059e4cac80c37",
+          "compile_source": "/tmp/ipse-normalizer-v3-actual-20261027-01/project/lib/ipse/extension/collection/normalizer_v3.ex",
+          "frozen_source": "/tmp/ipse-normalizer-v3-actual-20261027-04/project/lib/ipse/extension/collection/normalizer_v3.ex",
+          "module": "Ipse.Extension.Collection.NormalizerV3",
+          "source_sha256": "d350e477e59783af8153239a19c57014de5d04941cfc0f75084d13d6d4461184"
+        }
+      ],
+      "otp": "29",
+      "test_sha256": "2c805e58e59e3ddf2291cb7634a8803bf6232710303c1bac795f6a464bc513c1"
+    },
+    "runtime_bindings_sha256": "5ebcf3b38b37345158b02eb6b57adbaa9e2f55fb8475f4480ec20d324bb9f90e",
+    "scope": "Author integration controls: actual Collection + Identity + DomainAuth + NormalizerV3; explicit trusted source/recipe fixtures; no SessionSource or native operator-origin claim; no milestone/capacity/year qualification"
+  },
+  "acceptance_passed": false,
+  "preserved_entries": 4070,
+  "nonnull_limit": 4,
+  "gold_reads": 0,
+  "scope": "host-private automatic NormalizerV3 prerequisite; original trusted-C fixture graph plus separately frozen actual C/Identity author integration; SDK consumer integration remains open",
+  "model_calls": 0,
+  "harness_diagnostic": "first1.18 verifier parsed files=~w as match operator; fixed verifier spacing only; original preserved",
+  "preservation_native_calls": 0,
+  "helper_sha256": "d84d77d77dc2393b36d9353b6e6d215ec86dc5ba33fe9ad7c8f378130043f91b",
+  "private_graph": "/tmp/ipse-normalizer-v3-component-20261027-03",
+  "freeze_before_after_sha256": "d75c1b8feea8c723105a46a55b2ec5ebf4c78964826a30024b359b5cfa0f20c9",
+  "strict_module_count": 1,
+  "unsupported": [
+    "stored typed choice/retirement",
+    "V2 metadata adoption/reseal",
+    "existing public replacement/deletion",
+    "worker authority",
+    "import/migration",
+    "SDK consumer integration",
+    "annual/physical quota acceptance"
+  ],
+  "version": 1,
+  "format_files": 2,
+  "delete_limit": 1,
+  "compile_diagnostics": [],
+  "original_fixture_graph_unchanged": true,
+  "measured_fixture_read_units": {
+    "anchor_redistribution_plus_live_split": 24,
+    "first_initialization": 19,
+    "retained_live_refusal": 13
+  },
+  "tests": {
+    "actual_collection_publications": 0,
+    "actual_identity_domain_auth": true,
+    "collection_observations": "explicit trusted callbacks",
+    "combined_passed": 19,
+    "normalizer_v3": 9,
+    "unchanged_pages": 10
+  },
+  "actual_max_case": {
+    "anchor_old_weight": 2104,
+    "anchor_shrink_bytes": 2,
+    "deleted_expected_revision": 1,
+    "deletions": 1,
+    "nonnull": 4,
+    "sidecars": 5
+  },
+  "sidecar_limit": 5
+}

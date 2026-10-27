@@ -4,6 +4,9 @@ Ipse's optional memory extensions store notes that you explicitly ask them to
 remember. Recall uses local word overlap and returns source excerpts. There is
 no automatic conversation capture, extraction model, embedding service, or
 database installation. Ordinary conversations work without these extensions.
+These built-in State stores use their own configuration and ordinary effect
+approvals. A [native knowledge grant](knowledge-permissions.md) covers its
+separate Collection tool; it does not enable or authorize these Memory bindings.
 
 ## Choose where a note belongs
 

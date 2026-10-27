@@ -287,18 +287,40 @@ to run inference, arbitrary file IO or network calls under the lock. Follow
 [the read controls](../../test/ipse/extension/consent_read_test.exs) when integrating
 a consumer.
 
-For storage, `publish/5` rechecks the epoch while holding control before the
-storage lock. It durably marks `publishing` before the short host callback runs.
-The callback must revalidate source/suppression and perform bounded storage IO;
-it must never wait for inference, invoke extension code or take locks in reverse
-order. A lost callback or failed receipt remains unknown and cannot enter that
-callback again. Settlement retains its bounded receipt before Session records
-the result. The storage owner still needs its own durable operation binding to
-resolve an interrupted publication.
+For a managed publication enclosed by Identity, use `publish_deferred/5`. It
+rechecks the epoch while holding control before storage, and durably marks
+`publishing` before the short host callback runs. The callback revalidates
+source/suppression and performs bounded storage IO; it must never wait for
+inference, invoke extension code or take locks in reverse order. Its successful
+packet is provisional host data: Consent retains the full pending reservation
+with null actual/receipt until outer Identity checks and native release succeed.
+Only then call `settle/4` with `{:known, packet["actual"], packet["receipt"]}`,
+the exact original ticket and the host-checked measurement. Finalization accounts
+for admitted work; it grants no new dispatch permission. Session receives a
+successful result only after confirmed settlement.
 
-When a trusted adapter must add host-owned validity metadata, use the explicit
-internal `Collection.execute_managed/6` boundary rather than rewriting a worker
-request under the ordinary SDK operation. It checks original generation/revisions,
+Loss before final measured settlement leaves pending liability, including when
+Collection already committed but Identity completion failed. A final settlement
+write, acknowledgement or release can instead be uncertain after known actual
+usage became durable. Inspect the operation rather than assuming that every such
+failure retains the full reservation. Neither outcome permits automatic refund,
+callback replay or another publication. The standalone `publish/5` API remains
+for callers whose authority is complete at that boundary; it settles within its
+own transaction and cannot substitute for deferred outer-Identity completion.
+The storage owner still needs its durable operation binding to resolve an
+interrupted publication. Follow [managed accounting](accounting.md#reserve-before-dispatch-and-settle-before-admission)
+for reservation and measured-settlement checks.
+
+When a trusted adapter must add host-owned validity metadata, select an explicit
+internal boundary rather than rewriting a worker request under the ordinary SDK
+operation:
+
+| Host API | Normalization envelope | Metadata changes beyond the original |
+| --- | --- | --- |
+| `Collection.execute_managed/6` | Version 2, used by the current SDK | 1..16 nondeleted `host.validity.` records |
+| `Collection.execute_managed_v3/6` | Version 3, host-private | At most five changes, four nonnull values and one deletion |
+
+Both check original generation/revisions,
 writer fencing and duplicate identity before entering the host normalizer under
 one Collection lock. The normalizer receives a version-2 witness: its existing
 `root` summary and manifest/request/recipe/operation bindings remain unchanged,
@@ -332,8 +354,8 @@ the entire publication refuses. This tightens the former per-read refusal
 contract. The closure expires on callback return and cannot be reused by a later
 invocation in the same worker. Final native checking and release still withhold
 the result after owner or scope loss. The callback can
-retain the original changes exactly and add 1..16 nondeleted `host.validity.`
-records. The original request must explicitly select `advance_floor: true`; the
+retain the original changes exactly and add only its selected envelope's metadata.
+The original request must explicitly select `advance_floor: true`; the
 host never changes that choice or the original generation. Advancing the import
 floor prevents an older complete backup from removing a newly admitted permanent
 source clock. A refused original request cannot enter the callback.
@@ -351,8 +373,8 @@ Version 5 retains the existing record/data/block/native quota bounds, and older
 readers refuse it. The in-memory storage summary remains version 3. The ordinary
 SDK call and its receipt contract do not gain this operation implicitly.
 
-`Collection.Normalizer.normalize/3` supplies the current domain implementation of
-that callback. It checks the selected recipe, constraints and authenticated host
+`Collection.Normalizer.normalize/3` supplies the schema-2 implementation used by
+the current SDK callback. It checks the selected recipe, constraints and authenticated host
 proofs, then adds two packed host pages alongside one fresh public record. The
 source anchor keeps separate first-admission clocks for notes and pending proposals.
 Later publications can shorten a baseline deadline but cannot renew it, including
@@ -371,7 +393,61 @@ consistent publication metadata. An unsigned format-2 page or imported receipt
 is not an authenticated source attestation. Do not treat an imported clock or an
 unchanged sibling row as trusted merely because a later operation rewrites its
 page. Current-read filtering, authenticated inherited metadata, typed overrides
-and their operator workflows still need their owning adapters.
+and their operator workflows still need their owning adapters. For the explicit
+authenticated schema-3 interpreter, follow
+[automatic publication](knowledge-storage.md#publish-one-fresh-record-with-authenticated-metadata).
+
+### Exercise the explicit Core v3 envelope
+
+Core v3 permits anchor keys `host.validity.a.` plus 64 lowercase hex digits,
+and live keys `host.validity.l.` plus kind `00`, `01` or `02` and 64 lowercase
+hex digits. A delete needs its exact positive retained revision. Format cannot
+be rewritten or deleted. Native-confirmed absence requires exactly three new
+nonnull revision-zero records: format, anchor zero fence and live zero fence.
+A materialized root must already contain format; missing format refuses rather
+than adopting a legacy store. Every metadata CAS runs under the same native owner
+as the unchanged public change. The normalization object must fit 2048
+bytes and carry integer `version: 3`.
+
+Run this isolated Core exercise in `iex -S mix` after building on a supported
+allocation profile. Its callback deliberately supplies synthetic metadata; it
+tests the storage envelope and mints no authenticated knowledge authority:
+
+```elixir
+alias Ipse.Extension.Collection
+scratch = Path.join(System.tmp_dir!(), "ipse-managed-v3-exercise-" <> Ipse.Usage.id())
+File.mkdir!(scratch)
+File.chmod!(scratch, 0o700)
+project = Ipse.JSON.sha256("synthetic Core v3 exercise")
+change = fn key, value -> %{"key" => key, "expected_revision" => 0, "value" => value} end
+original = %{"op" => "commit", "expected_generation" => 0, "advance_floor" => true,
+  "changes" => [change.("note.example", %{"text" => "exact original"})]}
+extras = Enum.map(["host.validity.format", "host.validity.a." <> String.duplicate("0", 64),
+  "host.validity.l." <> String.duplicate("0", 66)], &change.(&1, %{"synthetic" => true}))
+id = Ipse.Usage.id()
+recipe = Ipse.JSON.sha256("synthetic recipe")
+try do
+  {:ok, result} = Collection.execute_managed_v3(scratch <> "/collections", project,
+    original, id, recipe, fn witness, _read ->
+      "absent" = witness["root_state"]
+      {:ok, Map.update!(original, "changes", &(&1 ++ extras)), %{"version" => 3}}
+    end)
+  1 = result["receipt"]["generation"]
+  true = result["receipt"]["managed_binding_sha256"] == Ipse.JSON.digest([result["binding"]])
+  {:existing, _} = Collection.execute_managed_v3(scratch <> "/collections", project,
+    original, id, recipe, fn _, _ -> raise "duplicate callback must not run" end)
+after
+  File.rm_rf!(scratch)
+end
+```
+
+Core authenticates neither the callback's source assertions nor its metadata
+MACs. The adapter supplies those checks. Use
+`mix test test/ipse/extension/collection_managed_v3_test.exs` to exercise four
+writes plus one retained-revision deletion, unchanged roots on refusal and the
+32-unit exhausted latch. The actual authenticated path is exercised separately
+by `collection_normalizer_v3_integration_test.exs`, described in the knowledge
+storage guide. Neither test selects a new SDK operation.
 
 Exercise successful paired publication, duplicate/refused normalization, expired
 read closures, actual native-owner loss and complete migration with
@@ -455,13 +531,16 @@ volatile first-use signer. The trusted adapter must distinguish actual native
 absence from a materialized empty root and authenticate its first Collection
 completion witness. Once child locks release, Identity writes the active entry
 and checks/releases before returning success. Later publications do not rewrite
-the Identity index. The current component validates callback bindings, not the
-actual Collection witness: that adapter integration remains unimplemented.
+the Identity index. Identity validates callback bindings; its trusted adapter
+must establish the actual Collection witness. The
+[NormalizerV3 integration exercise](knowledge-storage.md#exercise-actual-collection-and-domain-authentication)
+demonstrates that check with actual Collection reads and publications. The
+current SDK's version-2 path does not select this authenticated adapter.
 
 An interrupted first use remains prepared. A matching durable root may be checked
 by an explicit reconciliation callback; absence is not permission to reset the
 entry or replay the effect. An active namespace whose store disappears must not
-be treated as fresh empty history. The eventual adapter must perform that root
+be treated as fresh empty history. The owning adapter must perform that root
 check; the crypto helper does not inspect Collection. A new namespace is distinct
 from a project that already has a master for another namespace.
 
@@ -525,8 +604,9 @@ end
 Follow the [domain-auth tests](../../test/ipse/extension/project_domain_auth_test.exs)
 for prepared/active transitions, explicit reconciliation, native loss after both
 index switches, owner/scope cancellation and separate-VM contention. Their root
-witnesses are deliberately trusted callback fixtures, not evidence that current
-Collection/source authority has been integrated.
+witnesses are deliberately trusted callback fixtures. Use the separate actual
+Collection integration exercise for its storage-root checks; neither fixture
+establishes Session-source or end-user management authority.
 
 ## Read several collection pages under one validated index
 
@@ -674,8 +754,8 @@ mix test test/ipse/extension/collection_directory_test.exs test/ipse/extension/c
 
 ## Prepare a local authenticated-page repair
 
-`Collection.ManagedPages` is the internal schema-3 codec for a separately selected
-managed-storage adapter. The current SDK normalizer still uses its schema-2
+`Collection.ManagedPages` is the internal schema-3 codec used by the host-private
+NormalizerV3. The current SDK normalizer still uses its schema-2
 metadata. Calling the codec does not select a new format, adopt an old store or
 grant publication authority. Its fixed descriptor names the page syntax,
 immutable geometry, authentication context and retirement encodings.
@@ -726,7 +806,8 @@ or arbitrary prefixes. There is no unsigned-schema-2 reseal/import path.
 Run `mix test test/ipse/extension/collection_managed_pages_test.exs` for pure
 codec checks and actual Identity/DomainAuth controls. Their Collection
 observations are trusted fixtures; they perform no Collection publication.
-Use actual held-closure integration tests before making a current-storage claim.
+Follow the [automatic publication exercise](knowledge-storage.md#publish-one-fresh-record-with-authenticated-metadata)
+for actual held-closure tests and the remaining adapter limits.
 
 ## Understand sealing and recovery bounds
 

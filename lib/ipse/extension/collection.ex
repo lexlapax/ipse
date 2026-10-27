@@ -181,7 +181,46 @@ defmodule Ipse.Extension.Collection do
   proofs and check consent before calling. No worker callback is accepted here.
   """
   def execute_managed(root, project, original, operation_id, recipe_sha256, normalizer)
-      when is_function(normalizer, 2) do
+      when is_function(normalizer, 2),
+      do:
+        execute_managed_version(
+          root,
+          project,
+          original,
+          operation_id,
+          recipe_sha256,
+          normalizer,
+          2
+        )
+
+  def execute_managed(_, _, _, _, _, _), do: {:error, :invalid_managed_collection_request}
+
+  @doc "Host-only v3 metadata publication: bounded authenticated-page replacements and one retained-revision deletion."
+  def execute_managed_v3(root, project, original, operation_id, recipe_sha256, normalizer)
+      when is_function(normalizer, 2),
+      do:
+        execute_managed_version(
+          root,
+          project,
+          original,
+          operation_id,
+          recipe_sha256,
+          normalizer,
+          3
+        )
+
+  def execute_managed_v3(_, _, _, _, _, _), do: {:error, :invalid_managed_collection_request}
+
+  defp execute_managed_version(
+         root,
+         project,
+         original,
+         operation_id,
+         recipe_sha256,
+         normalizer,
+         version
+       )
+       when is_function(normalizer, 2) do
     with false <- Process.get(@lock_key, false) != false,
          true <- valid_request?(original) and original["op"] == "commit",
          true <- original["advance_floor"] === true,
@@ -189,7 +228,7 @@ defmodule Ipse.Extension.Collection do
          true <- JSON.sha256?(recipe_sha256),
          true <- Enum.all?(original["changes"], &(not managed_key?(&1["key"]))) do
       Ipse.Session.Resources.file_effect(fn ->
-        locked(root, project, original, operation_id, {recipe_sha256, normalizer})
+        locked(root, project, original, operation_id, {recipe_sha256, normalizer, version})
       end)
     else
       _ -> {:error, :invalid_managed_collection_request}
@@ -197,8 +236,6 @@ defmodule Ipse.Extension.Collection do
   rescue
     _ -> @error
   end
-
-  def execute_managed(_, _, _, _, _, _), do: {:error, :invalid_managed_collection_request}
 
   def valid_request?(%{"op" => op} = r) when op in ~w(status snapshot), do: keys?(r, ["op"])
   def valid_request?(%{"op" => "get"} = r), do: keys?(r, ~w(op key)) and key?(r["key"])
@@ -515,7 +552,7 @@ defmodule Ipse.Extension.Collection do
     apply_mutation(path, uid, s, manifest, r, id, %{})
   end
 
-  defp apply_managed(path, uid, s, manifest, original, id, {recipe, normalizer}) do
+  defp apply_managed(path, uid, s, manifest, original, id, {recipe, normalizer, version}) do
     cond do
       operation = Migration.known_operations(s)[id] ->
         {:existing, Map.put(summary(s), "operation", operation)}
@@ -528,14 +565,26 @@ defmodule Ipse.Extension.Collection do
         {:failed, Map.put(summary(s), "code", "collection_writer_fenced")}
 
       true ->
-        normalize_managed(path, uid, s, manifest, original, id, recipe, normalizer)
+        normalize_managed(path, uid, s, manifest, original, id, recipe, normalizer, version)
     end
   end
 
-  defp normalize_managed(path, uid, s, manifest, original, id, recipe, normalizer) do
+  defp normalize_managed(path, uid, s, manifest, original, id, recipe, normalizer, version) do
     with {:ok, root} <- managed_root(s, manifest),
          {:ok, directory} <- Directory.index(s["records"] |> Map.keys() |> Enum.sort()) do
-      normalize_managed(path, uid, s, manifest, original, id, recipe, normalizer, root, directory)
+      normalize_managed(
+        path,
+        uid,
+        s,
+        manifest,
+        original,
+        id,
+        recipe,
+        normalizer,
+        root,
+        directory,
+        version
+      )
     else
       _ -> {:error, :managed_normalization_refused}
     end
@@ -551,7 +600,8 @@ defmodule Ipse.Extension.Collection do
          recipe,
          normalizer,
          root,
-         directory
+         directory,
+         version
        ) do
     key = {__MODULE__, :managed_read}
     owner = self()
@@ -583,7 +633,8 @@ defmodule Ipse.Extension.Collection do
     try do
       with {:ok, normalized, normalization} <- normalizer.(witness, read),
            {^token, _, :open} <- Process.get(key),
-           true <- normalized_managed?(original, normalized),
+           true <- normalized_managed?(original, normalized, s, root, version),
+           true <- version == 2 or (is_map(normalization) and normalization["version"] === 3),
            :ok <- JSON.validate_object(normalization),
            true <- byte_size(Jason.encode!(normalization)) <= 2048,
            :ok <- Transaction.check(cap) do
@@ -706,6 +757,58 @@ defmodule Ipse.Extension.Collection do
 
   defp managed_pointer(%{"root_state" => "present", "root_bytes" => bytes}),
     do: JSON.decode_unique(bytes)
+
+  defp normalized_managed?(original, normalized, _, _, 2),
+    do: normalized_managed?(original, normalized)
+
+  defp normalized_managed?(original, normalized, state, root, 3) do
+    with true <- valid_request?(normalized) and normalized["op"] == "commit",
+         true <- normalized["expected_generation"] === original["expected_generation"],
+         true <- normalized["advance_floor"] === original["advance_floor"],
+         true <- Enum.all?(original["changes"], &(&1 in normalized["changes"])),
+         extras = normalized["changes"] -- original["changes"],
+         true <- length(extras) in 1..5,
+         {deleted, written} = Enum.split_with(extras, &is_nil(&1["value"])),
+         true <- length(deleted) <= 1 and length(written) <= 4,
+         true <- Enum.all?(extras, &v3_metadata_key?(&1["key"])),
+         true <-
+           Enum.all?(deleted, fn change ->
+             change["key"] != "host.validity.format" and change["expected_revision"] > 0 and
+               revision(state, change["key"]) === change["expected_revision"]
+           end) do
+      case root["root_state"] do
+        "absent" ->
+          deleted == [] and
+            Enum.sort(Enum.map(extras, & &1["key"])) ==
+              [
+                "host.validity.a." <> String.duplicate("0", 64),
+                "host.validity.format",
+                "host.validity.l." <> String.duplicate("0", 66)
+              ] and Enum.all?(extras, &(&1["expected_revision"] === 0))
+
+        "present" ->
+          Map.has_key?(state["records"], "host.validity.format") and
+            Enum.all?(extras, &(&1["key"] != "host.validity.format"))
+
+        _ ->
+          false
+      end
+    else
+      _ -> false
+    end
+  rescue
+    _ -> false
+  end
+
+  defp v3_metadata_key?("host.validity.format"), do: true
+
+  defp v3_metadata_key?("host.validity.a." <> fence),
+    do: JSON.sha256?(fence)
+
+  defp v3_metadata_key?("host.validity.l." <> fence),
+    do: Regex.match?(~r/\A0[0-2][0-9a-f]{64}\z/, fence)
+
+  defp v3_metadata_key?(_), do: false
 
   defp normalized_managed?(original, normalized) do
     with true <- valid_request?(normalized) and normalized["op"] == "commit",

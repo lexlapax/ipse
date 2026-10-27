@@ -1,16 +1,133 @@
 # Publish retained sources through bounded transactions
 
-Work through source drafts, immutable pages, root CAS, suppression, and remote
-contracts. Store chooses currently selected evidence; it never treats a successfully
-written orphan page as published content. Start with
+Choose the owner before changing retained storage. The host-private schema-3
+components prepare an authenticated Collection path; the committed SDK consumer
+still selects schema 2. The existing Corpus/Graph/Research
+source stores below use explicit State or remote CAS contracts. Neither path
+treats a successfully written orphan page as published content. Start with
 [retrieval training](knowledge-extensions.md) and the
 [operator source workflow](../operator/corpus.md).
 
-Read `extensions/knowledge/src/store.ex`, its `store/state.ex` and `store/mcp_cas.ex`
+For source stores, read `extensions/knowledge/src/store.ex`, its `store/state.ex` and `store/mcp_cas.ex`
 adapters, then entrypoint source/projection continuations. The adapters propose
 approved host calls rather than opening storage or network connections themselves.
 Generic State knows opaque values/revisions, without enforcing domain root counts
-or inspecting note/source fields.
+or inspecting note/source fields. The operator's
+[explicit Memory workflow](../operator/memory.md) retains that State contract;
+[native knowledge permission](../operator/knowledge-permissions.md) does not
+implicitly migrate its records or enable schema-3 recall.
+
+## Publish one fresh record with authenticated metadata
+
+Start with `Collection.NormalizerV3`, `Collection.ManagedPages` and its local
+`Planner`. NormalizerV3 prepares an unchanged public insert plus authenticated
+sidecars; `Collection.execute_managed_v3/6` performs the atomic storage commit.
+These are internal host components. The current managed SDK still selects
+`Collection.execute_managed/6` and its version-2 Normalizer. Selecting a version
+in worker JSON cannot switch the SDK path or supply a domain capability.
+
+The owning adapter must authenticate original sources and current protected
+permission before entering Identity → Consent → Collection. Pass the actual
+Identity callback's scoped `domain_cap` and `catalog`, and the actual held
+Collection `witness`/`read` closure. A matching shaped map proves none of that
+provenance. NormalizerV3's exact options are `request`, `recipe`, `constraints`,
+`verified_sources`, `policy_sha256`, `now_ms`, `domain_cap` and `catalog`.
+It verifies the recipe/constraint/request bindings and authenticated evidence
+members, then checks format and selected page MACs before interpreting old rows.
+
+Only one fresh revision-zero public record is supported: a literal at
+`note.<lineage>` or a proposal at `pending.<proposalidentity>`. The original
+commit must explicitly advance the destructive import floor. Literal categories
+are ordinary, preference or current; a proposal remains `never_current` even
+when its text quotes a native source. Existing public values or retained live
+identities refuse. No replacement, typed correction, pin, forget, retention
+change or stored choice/retirement is admitted by this automatic interpreter.
+
+First use needs native-confirmed absence and the matching prepared Identity
+catalog. The caller checks actual absence in one ReadView and closes it before
+Identity prepares the domain. Inside the publication, Collection checks absence
+again under its actual native owner. Initialization emits format plus the anchor
+and live zero-fence pages. An active catalog requires the exact authenticated
+format already present. An existing root with missing format, unsigned V2 pages
+or a disappeared active store refuses. No implicit adoption, reseal, reset or
+import path exists.
+
+Keep final Identity activation separate from a successful inner Collection call.
+Before returning a first-publication witness, the host opens one new actual
+ReadView, checks current root and receipt generation/operation/revisions/value
+hashes, verifies format and changed page MACs, and closes it successfully. The
+witness binds that actual root hash and the catalog fence. Native-owner loss
+after Collection committed can leave durable data with Identity still prepared
+and an unknown outer outcome. Inspect it; never replay or infer activation from
+the inner success alone.
+
+### Preserve clocks and bound each local repair
+
+The anchor retains separate literal and proposal first-admission/baseline clocks.
+Later policy can shorten a deadline; recapture, reading or a persistent category
+cannot renew it. Admission at or after the retained deadline refuses. Null
+deadline is supported only where the reviewed recipe permits persistence.
+Worker clock fields do not establish host time or authority.
+
+Live rows preserve all four exact hashes: lineage, current value, historical
+recipe and historical publication policy. They also retain first/deadline and
+category/eligibility. Historical policy need not equal today's checked policy.
+Pages authenticate their actual Collection key, operation ID, revision and raw
+body through the private Identity domain key. A new page binds old **global
+generation + 1**, even when the inherited page has an older revision. Every
+selected nonsingle leaf is checked for its immutable minimum occupancy and range
+before a local repair. Parsing a management capsule mints no review authority.
+
+Every lookup uses the actual shared closure. A neighbor request costs four units
+including nil positions; a selected value costs another. NormalizerV3 needs at
+most 24 of the closure's 32 units without a cache bypass. The combined anchor and
+live plans permit at most five metadata changes: four nonnull values and one
+deletion with its exact positive old revision. Format is never rewritten or
+deleted. Every complete wrapped value remains at most 6144 bytes; the closed
+normalization receipt is at most 2048 bytes and lists the exact extra changes in
+publication order, including canonical value hashes and null only for deletion.
+The current SDK's two-sidecar reserve does not admit an arbitrary v3 plan.
+
+### Exercise actual Collection and domain authentication
+
+After building the bundled helper and matching Mix graph on a supported native
+allocation profile, run the complete author integration controls:
+
+```sh
+mix test test/ipse/extension/collection_normalizer_v3_integration_test.exs --max-cases 1
+```
+
+This file loads nine earlier trusted-Collection fixture controls and runs six
+additional actual Collection/Identity/DomainAuth controls. Sources and recipes
+are explicit trusted synthetic fixtures, not SessionSource or human-origin
+attestations. The actual path calls the same internal seam an adapter uses:
+
+```elixir
+Collection.execute_managed_v3(root, namespace, options.request, operation_id,
+  Ipse.JSON.digest([options.recipe]), fn witness, read ->
+    Ipse.Extension.Collection.NormalizerV3.normalize(witness, read,
+      Map.merge(options, %{domain_cap: cap, catalog: catalog}))
+  end)
+```
+
+Here `cap` and `catalog` come only from the current
+`ProjectIdentity.with_domain_publication/6` callback; the runnable test supplies
+the complete admission and post-publication verification around this excerpt.
+Follow its `publish/4` and `verify_publication/5` helpers when implementing an
+adapter. Check that initialization has three extras, follow-on publication
+preserves the original format revision, new page revisions use actual global
+generation, and live hashes/clocks invert exactly. The 27-publication series
+crosses a live split using actual writes, without seeded metadata. CAS conflict
+and duplicate IDs cannot enter the callback. Owner-loss tests preserve prepared
+Identity and durable Collection state without automatic retry.
+
+The separate `collection_normalizer_v3_test.exs` reproduces the maximum
+shrink/redistribution plus live split with 24 reads and five changes, using actual
+Identity tags but trusted Collection observations. The actual small series uses
+19/23 units and does not exercise that merge. These controls establish neither
+current-note recall nor sustainable 2,000-note/annual capacity. Source expiry,
+withdrawal, lifecycle management, SDK reservation/dispatch and migration retain
+their own integration and qualification requirements.
 
 ## Claim a draft before writing immutable pages
 
