@@ -53,6 +53,7 @@ resource/offline qualification. No daemon configuration or existing model was ch
 - [Actual-owner transactions and protected project identity](transaction-identity-component.md).
 - [Private project-domain keys, namespace preparation and bounded page authenticators](project-domain-auth-component.md), with its [independent public-API and native adversarial audit](project-domain-auth-audit.md).
 - [Native operator-channel incremental audit and fixture repairs](operator-channel-audit.md).
+- [Fresh native review, one-use host permits and repaired deadline/owner races](native-review-component.md), with its [independent audit and source-bound closure](native-review-audit.md).
 - [Session input witness audit and source-boundary repairs](session-input-audit.md).
 - [Versioned reference projection audit and replay repairs](reference-audit.md).
 - [Sustainable collection storage component and measurement provenance](storage-component.md).

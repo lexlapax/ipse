@@ -8,6 +8,21 @@ defmodule Ipse.Session.Resources do
   def current, do: Process.get(@key)
 
   @doc false
+  def active?(timeout \\ 5_000)
+
+  def active?(timeout) when is_integer(timeout) and timeout in 1..5_000 do
+    case current() do
+      nil -> true
+      scope when is_pid(scope) -> GenServer.call(scope, :active, timeout) === true
+      _ -> false
+    end
+  catch
+    :exit, _ -> false
+  end
+
+  def active?(_), do: false
+
+  @doc false
   def await_ready(scope, owner) do
     owner_ref = Process.monitor(owner)
     scope_ref = Process.monitor(scope)
@@ -167,6 +182,16 @@ defmodule Ipse.Session.Resources do
   end
 
   def handle_call({:authorized_effect, _, _}, _, state), do: {:reply, false, state}
+
+  def handle_call(:active, {caller, _}, %{closed: false} = state) do
+    admitted =
+      caller in [state.owner, state.worker] or Map.has_key?(state.tasks, caller) or
+        Map.has_key?(state.effects, caller)
+
+    {:reply, admitted and Process.alive?(state.owner), state}
+  end
+
+  def handle_call(:active, _, state), do: {:reply, false, state}
 
   def handle_call(action, _, state) when action in [:close, :finish] do
     state = close_resources(state)

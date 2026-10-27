@@ -37,6 +37,10 @@ fn main() {
     let mut args: Vec<_> = std::env::args_os().skip(1).collect();
     let channel = args.first().is_some_and(|a| a == "--channel");
     if channel { args.remove(0); }
+    let review = args.first().is_some_and(|a| a == "--review" || a == "--review-cancel" || a == "--review-stale");
+    let cancel_review = args.first().is_some_and(|a| a == "--review-cancel");
+    let stale_review = args.first().is_some_and(|a| a == "--review-stale");
+    if review { args.remove(0); }
     let knowledge = args.first().is_some_and(|a| a == "--knowledge" || a == "--knowledge-cancel" || a == "--knowledge-stale" || a == "--knowledge-cas" || a == "--knowledge-config");
     let cancel_knowledge = args.first().is_some_and(|a| a == "--knowledge-cancel");
     let stale_knowledge = args.first().is_some_and(|a| a == "--knowledge-stale");
@@ -89,6 +93,26 @@ fn main() {
         } else if String::from_utf8_lossy(&output).contains(&format!("IPSE_FIXTURE_EMPTY_{number}> ")) {
             master.write_all(b"\n").unwrap();
             number += 1;
+        }
+        if review {
+            let text = String::from_utf8_lossy(&output);
+            for command in ["pin", "ordinary", "forget", "duration", "accept"] {
+                let prefix = format!("\nType {command} ");
+                for (index, _) in text.match_indices(&prefix) {
+                    let tail = &text[index + prefix.len()..];
+                    let Some(code) = tail.get(..16) else { continue; };
+                    if !code.bytes().all(|b| b.is_ascii_hexdigit()) || !tail[16..].starts_with(" to confirm,") || !tail[16..].contains("> ") {
+                        continue;
+                    }
+                    let reply = format!("{command} {code}");
+                    if !answered.contains(&reply) {
+                        let wrong = format!("{command} {}", if code == "0000000000000000" { "1111111111111111" } else { "0000000000000000" });
+                        let line = if cancel_review { "yes" } else if stale_review { &wrong } else { &reply };
+                        master.write_all(format!("{line}\n").as_bytes()).unwrap();
+                        answered.push(reply);
+                    }
+                }
+            }
         }
         if knowledge {
             let text = String::from_utf8_lossy(&output);

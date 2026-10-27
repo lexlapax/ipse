@@ -47,6 +47,62 @@ the typed outcome attests only the host-observed status, approval and timing.
 Neither establishes the truth of output prose. A terminal event also does not
 establish that a human supplied the bytes: automated PTYs exercise the same channel.
 
+## Bind a new terminal choice to revalidated facts
+
+A saved quote describes past input. A new effect-specific choice needs a fresh
+review of the complete proposed facts. The internal
+[`Runner.Review`](../../lib/ipse/runner/review.ex) primitive supplies that native
+observation and a one-use permit. It has no worker/SDK endpoint and does not
+implement a knowledge-management command or grant ordinary effect permission.
+The eventual typed storage adapter must establish current target and policy
+authority separately.
+
+The trusted caller first reads its target, policy and proposed change, then
+releases all locks before terminal IO. `with_review/3` displays the complete
+JSON facts with escaped controls and an independent eight-byte random challenge.
+It requires exactly `command SPACE lowercase_challenge`, without trimming, and
+the actual native-v2 restoration/exit receipt, event ID and input/display hashes.
+EOF, cancellation, a mismatched challenge or bare yes enters no callback.
+
+The callback receives an opaque same-process permit. Reacquire the effect's
+Identity/Consent/Collection locks and rederive the complete current facts before
+calling `consume/3`. Its first actual-owner attempt spends the permit, including
+when the facts changed; no silent rebase is permitted. A foreign process or
+forged reference cannot spend the genuine owner's permit. The permit expires
+30 seconds after the native input returns, without renewal, and disappears on callback exit.
+Its resource scope, upstream owner and deadline must remain live through final
+callback completion. The remaining lease bounds each blocking resource query;
+deadline and owner checks repeat after that query returns. After consumption,
+only `:ok` or `{:ok, value}` is a successful callback result. Errors, other return
+values, exceptions or loss remain unconfirmed; inspect effects before any fresh
+review, without replay.
+An explicit callback error before consumption grants nothing.
+
+Facts retain the existing JSON limits: 16 KiB total, eight KiB per string,
+twelve levels and 128 members per collection. The complete escaped display has
+a separate 64-KiB ceiling. Oversized input refuses rather than truncating the
+review. The returned host-private `native_review` receipt commits the observed
+command, event, display, input, challenge, time and fact digest. It is neither a
+SourceIndex proof nor a stored retention choice. Parsing or replaying its JSON
+cannot construct a permit, establish current eligibility or certify human identity.
+Trusted Core/cooperative storage remains the boundary.
+
+This synthetic developer exercise observes a terminal choice and writes no effect:
+
+```elixir
+facts = %{"target" => "synthetic example", "choice" => "pin", "reason" => "Exercise only"}
+Ipse.Runner.Review.with_review("pin", facts, fn permit ->
+  # A real adapter revalidates its target and permission under their locks here.
+  {:ok, receipt} = Ipse.Runner.Review.consume(permit, "pin", facts)
+  {:ok, Map.take(receipt, ~w(kind command facts_sha256))}
+end)
+```
+
+Use `review_test.exs` for the clearly labeled simulated-IO state machine and
+real resource-scope controls; `review_native_test.exs` exercises actual native
+PTY receipts separately. A Session effect must still journal its intent before
+execution. Standalone review does not manufacture a conversation or source entry.
+
 ## Read through a real synthetic Session
 
 Run this fixture in `iex -S mix` from a built checkout. The provider override is a
