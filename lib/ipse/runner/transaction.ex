@@ -469,8 +469,9 @@ defmodule Ipse.Runner.Transaction do
       frame = <<tag, byte_size(body)::32, body::binary>>
       s = %{s | seq: seq}
 
-      if owners_alive?(s) and now() < s.deadline and Ipse.Runner.send_stdio(s.port, frame) == :ok do
-        case await_reply(s, min(s.deadline, now() + 5_000)) do
+      if idle_framing?(s) and owners_alive?(s) and now() < s.deadline and
+           Ipse.Runner.send_stdio(s.port, frame) == :ok do
+        case await_reply(s, min(s.deadline, now() + 5_000), {tag, seq, expected_depth}) do
           {:ok, kind, <<^seq::64, depth, rest::binary>>, s} ->
             cond do
               kind == tag and depth == expected_depth ->
@@ -500,25 +501,65 @@ defmodule Ipse.Runner.Transaction do
     defp reason(6), do: :transaction_capacity
     defp reason(7), do: :transaction_filesystem_unsupported
 
-    defp await_reply(%{replies: [{kind, bytes} | tail]} = s, _) do
-      if owners_alive?(s), do: {:ok, kind, bytes, %{s | replies: tail}}, else: :unknown
+    defp idle_framing?(s),
+      do: s.inner == <<>> and s.outer == <<>> and s.replies == [] and not s.finished
+
+    defp root_release_reply?(?R, <<seq::64, 0>>, {?R, seq, 0}), do: true
+    defp root_release_reply?(_, _, _), do: false
+
+    defp terminal_prefix?(<<?X, size::32, bytes::binary>>),
+      do: size <= 128 and byte_size(bytes) < size
+
+    defp terminal_prefix?(<<?X, _::binary>> = bytes), do: byte_size(bytes) < 5
+    defp terminal_prefix?(_), do: false
+
+    defp await_reply(%{replies: [{kind, bytes}]} = s, deadline, expected) do
+      release? = root_release_reply?(kind, bytes, expected)
+
+      cond do
+        not owners_alive?(s) or now() >= deadline or s.inner != <<>> ->
+          :unknown
+
+        s.outer != <<>> ->
+          if release? and not s.finished and terminal_prefix?(s.outer),
+            do: receive_reply(s, deadline, expected),
+            else: :unknown
+
+        s.finished and not release? ->
+          :unknown
+
+        true ->
+          {:ok, kind, bytes, %{s | replies: []}}
+      end
     end
 
-    defp await_reply(s, deadline) do
+    defp await_reply(%{replies: [], finished: false} = s, deadline, expected),
+      do: receive_reply(s, deadline, expected)
+
+    defp await_reply(_, _, _), do: :unknown
+
+    defp receive_reply(s, deadline, expected) do
       case receive_data(s, deadline) do
-        {:ok, s} -> await_reply(s, deadline)
+        {:ok, s} -> await_reply(s, deadline, expected)
         _ -> :unknown
       end
     end
 
-    defp await_finished(%{finished: true} = s, _), do: {:ok, s}
+    defp await_finished(%{finished: true, inner: <<>>, outer: <<>>, replies: []} = s, deadline),
+      do: if(owners_alive?(s) and now() < deadline, do: {:ok, s}, else: :unknown)
 
-    defp await_finished(s, deadline) do
-      case receive_data(s, deadline) do
-        {:ok, s} -> await_finished(s, deadline)
-        _ -> :unknown
+    defp await_finished(%{finished: false, inner: <<>>, replies: []} = s, deadline) do
+      if s.outer == <<>> or terminal_prefix?(s.outer) do
+        case receive_data(s, deadline) do
+          {:ok, s} -> await_finished(s, deadline)
+          _ -> :unknown
+        end
+      else
+        :unknown
       end
     end
+
+    defp await_finished(_, _), do: :unknown
 
     defp receive_data(s, deadline) do
       port = s.port
@@ -538,6 +579,7 @@ defmodule Ipse.Runner.Transaction do
       end
     end
 
+    defp outer(%{finished: true, outer: bytes}) when bytes != <<>>, do: :unknown
     defp outer(%{outer: bytes}) when byte_size(bytes) > 131_072, do: :unknown
 
     defp outer(%{outer: <<tag, size::32, bytes::binary>>} = s) do

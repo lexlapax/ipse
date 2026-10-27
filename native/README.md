@@ -622,6 +622,18 @@ and directory sync complete before the last acknowledgement. The root `R`
 acknowledgement has depth zero. These inner frames are stdout bytes inside the
 outer stdio supervisor's `O` stream; outer `S`, `X` and cleanup are separate.
 
+Before sending another command, the controller requires empty inner/outer buffers,
+no queued reply and no observed terminal frame. It returns only a single
+correlated acknowledgement with no already-buffered partial or extra frame.
+An already observed terminal frame cannot acknowledge a nonterminal command.
+The sole completion exception is an exact root `R` acknowledgement with an
+already-buffered prefix of the supervisor's `X` frame: the controller finishes
+that frame under the original deadline before returning the acknowledgement.
+It does not wait for hypothetical future bytes after an otherwise clean reply.
+Confirmed release also requires empty buffers and replies, with no bytes after
+`X`. These checks reject known framing damage; callers still perform their final
+lease check and release before exposing consumer results.
+
 A typed `E` adds one fixed numeric reason to sequence/current depth: busy, unsafe,
 invalid request, IO refusal, existing immutable target, capacity or unsupported
 filesystem (`1` through `7`). It establishes an unchanged logical stack and no
@@ -660,7 +672,7 @@ Build and run the focused no-model component checks:
 ```sh
 ./dev/build-native.sh
 mix compile --warnings-as-errors
-mix test test/ipse/runner/transaction_test.exs test/ipse/runner/transaction_optional_read_test.exs test/ipse/extension/project_identity_test.exs
+mix test test/ipse/runner/transaction_test.exs test/ipse/runner/transaction_optional_read_test.exs test/ipse/runner/transaction_framing_test.exs test/ipse/extension/project_identity_test.exs
 ```
 
 The transaction fixtures compile an exact source-derived implementation under

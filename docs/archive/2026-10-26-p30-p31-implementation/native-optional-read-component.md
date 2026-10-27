@@ -7,6 +7,12 @@ and wire instructions are in the [native manual](../../../native/README.md#publi
 The existing [read-view component](collection-read-view-component.md) deliberately
 continues to refuse unmaterialized roots in this checkpoint.
 
+Historical checkpoint: a later independent review found that an otherwise valid
+reply followed by a buffered partial frame could return before the caller's final
+check rejected the capability. The [framing repair receipt](native-framing-repair.md)
+preserves that finding, the original failures and the subsequent author checks.
+The claims below describe the original component and its original verification.
+
 ## Exact boundary
 
 `Transaction.read_optional/4` returns `{:ok, bytes}` for a present protected file,
