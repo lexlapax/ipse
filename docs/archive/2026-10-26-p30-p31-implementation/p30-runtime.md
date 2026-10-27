@@ -216,3 +216,24 @@ later receipt retry and independent storage changes. There were no live model
 services, paid calls, qualification inputs, downloads or new dependencies. Native
 changes use the existing Rust standard-library/OS FFI boundary. Elixir 1.18/OTP 27,
 macOS, human operation and the final combined build require their own verification.
+
+### Queued prompts at native question EOF
+
+The follow-up `Session.question_eof/2` is restricted to the registered subscribed
+client, its current input channel and an actual pending question. It closes the
+question with normal cancellation cleanup, clears question renderings and answer
+pieces, and calls `Input.cancel_read/0` so only prompt tickets already staged by
+the host survive. The CLI uses this path both when EOF arrives at a question and
+when accepted queued work asks a later question after EOF. It starts no further
+reader and creates no new observation. Explicit cancellation, close, reader/client
+death and channel replacement continue to invalidate the queue.
+
+A nonterminal Session regression passed with synthetic host-state observations;
+that fixture tests ownership and queue transitions, not native attestation. It
+checks wrong-client/channel refusal, repeated EOF questions, exact admitted queued
+text, invalidation of unstaged observations, clearing of question codes/pieces,
+and ordinary cancellation of remaining tickets. Strict compilation and all ten
+focused EOF, answer-replay and terminal-rendering tests passed. Receipts are
+`/tmp/ipse-operator-eof-test.log`, `/tmp/ipse-operator-eof-regression.log` and
+`/tmp/ipse-operator-eof-compile.log`. Actual CLI EOF/PTY verification remains pending
+the next coordinated native-test window and is not claimed by this checkpoint.

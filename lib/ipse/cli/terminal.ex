@@ -228,7 +228,7 @@ defmodule Ipse.CLI.Terminal do
         client_loop(%{next | approval_redraw: false})
 
       {:input, :eof} ->
-        if s.question, do: Ipse.Session.cancel(s.pid)
+        if s.question, do: question_eof(s)
 
         if s.busy do
           if s.approval, do: Ipse.Session.approve(s.pid, s.approval, false)
@@ -562,7 +562,7 @@ defmodule Ipse.CLI.Terminal do
 
       {:ipse, ^pid, {:question, id, arguments}} ->
         if s.exit do
-          Ipse.Session.cancel(s.pid)
+          question_eof(s)
           client_loop(%{s | question: nil, question_answers: %{}})
         else
           puts(:stderr, "Waiting for operator clarification (not action approval):")
@@ -713,6 +713,11 @@ defmodule Ipse.CLI.Terminal do
             end
           )
       end)
+
+  defp question_eof(%{input_mode: :native} = s),
+    do: Ipse.Session.question_eof(s.pid, s.input_channel)
+
+  defp question_eof(s), do: Ipse.Session.cancel(s.pid)
 
   defp discard_queue(s) do
     Enum.each(s.queued, fn

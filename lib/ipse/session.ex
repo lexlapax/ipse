@@ -106,6 +106,9 @@ defmodule Ipse.Session do
   def answer_observed(pid, channel, render, text, witness),
     do: GenServer.call(pid, {:answer_observed, channel, render, text, witness})
 
+  @doc false
+  def question_eof(pid, channel), do: GenServer.call(pid, {:question_eof, channel}, 10_000)
+
   def cancel(pid), do: GenServer.call(pid, :cancel, 10_000)
   def materialize_result(pid, delivery), do: ResultSource.materialize_session(pid, delivery)
   def read_saved_result(pid, request), do: ResultSource.read_session(pid, request)
@@ -1610,8 +1613,28 @@ defmodule Ipse.Session do
 
   def handle_call({:answer, _, _}, _from, s), do: {:reply, {:error, :no_pending_question}, s}
 
-  def handle_call(:cancel, _from, s) do
-    {cleanup, next} = stop_work(s)
+  def handle_call(
+        {:question_eof, channel},
+        {client, _},
+        %{operator_channel: %{id: channel, client: client}, phase: :question, question: question} =
+          s
+      )
+      when is_map(question), do: cancel_work(s, true)
+
+  def handle_call({:question_eof, _}, _, s), do: {:reply, {:error, :no_pending_question}, s}
+
+  def handle_call(:cancel, _from, s), do: cancel_work(s, false)
+
+  def handle_call(:close, _from, s) do
+    {cleanup, next} = stop_work(s, s.phase != :idle, "cancelled", "session_close")
+    observer_cleanup = Ipse.Observability.close(s.observation, &record(s, &1))
+    cleanup = cleanup ++ observer_cleanup
+    result = if Enum.all?(cleanup, &(&1 == :ok)), do: :ok, else: {:error, :cleanup_unconfirmed}
+    {:stop, :normal, result, close_epoch(next, "close", result == :ok)}
+  end
+
+  defp cancel_work(s, keep_queued) do
+    {cleanup, next} = stop_work(s, true, "cancelled", "cancelled", keep_queued)
 
     if Enum.any?(cleanup, &(&1 != :ok)) do
       notify(
@@ -1630,21 +1653,16 @@ defmodule Ipse.Session do
     end
   end
 
-  def handle_call(:close, _from, s) do
-    {cleanup, next} = stop_work(s, s.phase != :idle, "cancelled", "session_close")
-    observer_cleanup = Ipse.Observability.close(s.observation, &record(s, &1))
-    cleanup = cleanup ++ observer_cleanup
-    result = if Enum.all?(cleanup, &(&1 == :ok)), do: :ok, else: {:error, :cleanup_unconfirmed}
-    {:stop, :normal, result, close_epoch(next, "close", result == :ok)}
-  end
-
   defp stop_work(
          s,
-         record_cancel \\ true,
-         wait_outcome \\ "cancelled",
-         feed_reason \\ "cancelled"
+         record_cancel,
+         wait_outcome,
+         feed_reason \\ "cancelled",
+         keep_queued \\ false
        ) do
-    :ok = Ipse.Session.Input.invalidate()
+    :ok =
+      if keep_queued, do: Ipse.Session.Input.cancel_read(), else: Ipse.Session.Input.invalidate()
+
     s = %{s | operator_render: nil, operator_answers: %{}, operator_pieces: []}
     s = CurrentInvocation.release_output(s)
     s = finish_wait(s, wait_outcome)
