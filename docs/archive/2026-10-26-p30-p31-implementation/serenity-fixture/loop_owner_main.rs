@@ -77,8 +77,9 @@ fn main(){if let Err(e)=run(){eprintln!("loop owner outcome unknown: {e}");std::
    let clean=verify_initial_fds().is_ok()&&verify_single_task().is_ok();let extra=File::open("/dev/null").unwrap();let refused=verify_initial_fds().is_err();
    let exact=verify_acquired_fds(&[extra.as_raw_fd()]).is_ok();let duplicate=verify_acquired_fds(&[extra.as_raw_fd(),extra.as_raw_fd()]).is_err();
    let cleared=unsafe{fcntl(extra.as_raw_fd(),2,0)}==0 && verify_acquired_fds(&[extra.as_raw_fd()]).is_err();
+   let restored=unsafe{fcntl(extra.as_raw_fd(),2,1)}==0 && verify_acquired_fds(&[extra.as_raw_fd()]).is_ok();
    let other=File::open("/dev/zero").unwrap();let unexpected=verify_acquired_fds(&[extra.as_raw_fd()]).is_err();drop(other);drop(extra);
-   unsafe{_exit(if clean&&refused&&exact&&duplicate&&cleared&&unexpected{0}else{3})}
+   unsafe{_exit(if clean&&refused&&exact&&duplicate&&cleared&&restored&&unexpected{0}else{3})}
   }
   let mut status=0;assert_eq!(unsafe{waitpid(pid,&mut status,0)},pid);assert_eq!(status,0);
  }

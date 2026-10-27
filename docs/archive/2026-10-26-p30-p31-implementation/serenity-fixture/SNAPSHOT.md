@@ -203,3 +203,12 @@ ordinary open routes and all further prctl. A synthetic child tested this
 transition; eight owner and 69 controller tests passed. The check is a local
 snapshot, not proof against hidden kernel references, external actors, lifecycle
 races, or interrupted AUTOCLEAR. The live entry point remains disabled.
+
+An independent review reproduced the staged prototype's eight harmless tests
+and found the seccomp branch offsets consistent. It identified that an
+unexpected-descriptor negative test was masked by an earlier CLOEXEC failure;
+the test now restores CLOEXEC and checks the clean baseline before introducing
+the unexpected descriptor. The reviewer reiterated that local inventory cannot
+exclude external or kernel references and that errors may drop an AUTOCLEAR
+handle before reporting unknown. The fix passed the same eight synthetic tests;
+no live operations were performed.
