@@ -213,6 +213,19 @@ retained native lock. Policies bind exact artifact/source hashes, operation name
 settings, expiry, headless selection and finite period limits. Policy replacement
 and revocation use an epoch CAS; neither discards earlier liabilities.
 
+A generic collection mutation also needs a constrained publication mapping.
+`Ipse.Extension.CollectionPolicy` checks every key prefix and value against its
+reviewed closed JSON schema. A declared evidence field must contain a nonempty
+subset of the host-authenticated stable source receipts, and every source in the
+batch must have an allowed origin. This prevents a pending-proposal mapping from
+writing a durable-note key or borrowing one native source to upgrade unrelated
+input. Deletion requires its own reviewed flag and nonempty source proof. This
+pure check neither authenticates proof-shaped JSON nor supplies consent: the
+owning adapter must resolve proofs and recheck current permission, source and
+suppression state inside the publication boundary. Its
+[behavior tests](../../test/ipse/extension/collection_policy_test.exs) exercise
+mixed origins, substituted evidence, open schemas and deletion refusal.
+
 `Ipse.Runner.Transaction` makes one native process own both the retained locks and
 the actual protected writes. It stages bytes, syncs files, selects the new root
 with a same-directory rename, then syncs the directory before acknowledging.
