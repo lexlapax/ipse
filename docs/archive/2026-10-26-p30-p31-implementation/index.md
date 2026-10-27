@@ -57,6 +57,7 @@ resource/offline qualification. No daemon configuration or existing model was ch
 - [Sustainable collection storage component and measurement provenance](storage-component.md).
 - [Declarative collection publication constraints](collection-policy-component.md).
 - [Native knowledge capture and precompiled artifact component](native-capture-component.md).
+- [Inert operator-sidecar schemas and declared data inspection](operator-sidecar-component.md).
 - [Independent capture/SDK audit and anchored-retention repair](capture-sdk-audit.md).
 - [Protected collection SDK, source proofs and replay bindings](collection-sdk-component.md).
 - [Pure managed-reference lineage, projection contracts and verification](managed-reference-component.md).

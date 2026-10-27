@@ -25,6 +25,10 @@ Source and package builds also compile an inert `knowledge/native` artifact into
 `priv/extension-bundles/` with a digest-bound catalog. The runtime can inspect that
 catalog and explicitly import a selected artifact through `Extension.Bundles`;
 neither step starts a worker, grants capabilities or changes configuration.
+The native artifact includes a manifest-declared `operator.json` with structural
+publication schemas. A host can read its reverified bytes without loading worker
+code. The schemas grant no source authority, operator acceptance or retention
+eligibility; those remain separate trusted host checks.
 Installed users do not need a compiler for those packaged bytes. Guided knowledge
 setup and the remaining workflows are still being integrated.
 

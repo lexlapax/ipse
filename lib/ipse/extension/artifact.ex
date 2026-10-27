@@ -199,6 +199,25 @@ defmodule Ipse.Extension.Artifact do
 
   def lookup(_, _), do: @invalid
 
+  @doc "Read one bounded manifest-declared data file from a reverified inert artifact. No code is loaded."
+  def read_declared(root, digest, name, limit)
+      when is_binary(name) and is_integer(limit) and limit in 0..65_536 do
+    with true <- safe_path?(name),
+         {:ok, artifact} <- lookup(root, digest),
+         file when is_map(file) <- Enum.find(artifact.manifest["files"], &(&1["path"] == name)),
+         true <- file["bytes"] <= limit,
+         {:ok, bytes} <- read_regular(artifact.path, name, file["bytes"]),
+         true <- byte_size(bytes) == file["bytes"] and Schema.sha256(bytes) == file["sha256"] do
+      {:ok, bytes}
+    else
+      _ -> @invalid
+    end
+  rescue
+    _ -> @invalid
+  end
+
+  def read_declared(_, _, _, _), do: @invalid
+
   defp lock_path_valid(path) do
     case File.lstat(path) do
       {:error, :enoent} -> :ok

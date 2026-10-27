@@ -31,7 +31,7 @@ try do
 
   helper_paths =
     if package == "knowledge",
-      do: ~w(notes knowledge/records),
+      do: ~w(notes knowledge/records knowledge/contracts),
       else:
         ~w(evidence store store/state store/mcp_cas adapters documents documents/zip documents/docx documents/parser_stage documents/pdf)
 
@@ -56,14 +56,26 @@ try do
   File.rm!(entry_path)
   File.cp!(Path.expand("../../LICENSE", __DIR__), Path.join(temporary, "LICENSE"))
 
+  sidecars =
+    if package == "knowledge" do
+      operator = apply(IpseKnowledge.Knowledge.Contracts, :operator, [])
+      bytes = IO.iodata_to_binary(JSON.encode!(operator))
+      true = byte_size(bytes) <= 65_536
+      File.write!(Path.join(temporary, "operator.json"), bytes)
+      ["operator.json"]
+    else
+      []
+    end
+
   files =
-    [
-      "LICENSE"
-      | Enum.map(
-          Path.wildcard(Path.join(temporary, "ebin/*.beam")),
-          &Path.relative_to(&1, temporary)
-        )
-    ]
+    (sidecars ++
+       [
+         "LICENSE"
+         | Enum.map(
+             Path.wildcard(Path.join(temporary, "ebin/*.beam")),
+             &Path.relative_to(&1, temporary)
+           )
+       ])
     |> Enum.sort()
 
   manifest = %{

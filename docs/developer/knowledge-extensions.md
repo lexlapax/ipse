@@ -13,6 +13,7 @@ Start with the [operator procedures](../operator/corpus.md) and
 | Source under `extensions/knowledge/src/` | Responsibility |
 | --- | --- |
 | `knowledge.ex`, `knowledge/records.ex`, `notes.ex` | Protected capture continuation, stable evidence and note retention |
+| `knowledge/contracts.ex` | Inert operator-sidecar publication schemas; no authority or executable setup |
 | `corpus.ex` | Source/query/index commands and final revalidation |
 | `graph.ex`, `research.ex` | Attributed extraction/traversal and captured-source investigations |
 | `profiles.ex` | Closed named algorithms and preset compatibility |
@@ -65,10 +66,27 @@ applying it. Bare policies, foreign lineages and weak-origin wrappers refuse.
 This format check does not establish operator acceptance; that remains the trusted
 management workflow's responsibility.
 
+The native builder also declares `operator.json` in the artifact's hashed file
+inventory. `Knowledge.Contracts.operator/0` supplies closed structural constraints
+for notes, pending proposals and each of the four retention choices. A capture
+schema excludes pin/history categories. Separate retention schemas prevent an
+ordinary choice from carrying a duration or silently becoming a pin. These use
+the existing supported JSON Schema subset and introduce no schema evaluator.
+They do not authenticate origin, recompute lineage, establish operator acceptance
+or enforce cross-field expiry relationships. Those checks must remain in the
+trusted publication/eligibility path before standalone activation is available.
+
+An operator adapter can inspect this data with
+`Artifact.read_declared(store, digest, "operator.json", 65_536)`. This revalidates
+the installed artifact and then rechecks the selected file's declared size and
+digest. It loads no extension code and grants no permission. The sidecar is data
+from a selected artifact, not an instruction to execute code or enable a feature.
+
 To trace the actual boundary, run:
 
 ```sh
 mix test test/extensions/knowledge/knowledge_records_test.exs
+mix test test/extensions/knowledge/knowledge_contracts_test.exs
 mix test test/extensions/knowledge/knowledge_capture_test.exs
 mix test test/extensions/knowledge/knowledge_session_test.exs
 ```

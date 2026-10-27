@@ -8,10 +8,11 @@ defmodule Ipse.Extension.BundlesTest do
     File.mkdir_p!(Path.join(path, "ebin"))
     on_exit(fn -> File.rm_rf!(root) end)
     File.write!(Path.join(path, "LICENSE"), "Apache-2.0 synthetic inert fixture")
+    File.write!(Path.join(path, "operator.json"), ~s({"version":1}))
     File.write!(Path.join(path, "ebin/Elixir.BundledFixture.beam"), "inert fixture bytes")
 
     files =
-      for name <- ["LICENSE", "ebin/Elixir.BundledFixture.beam"] do
+      for name <- ["LICENSE", "operator.json", "ebin/Elixir.BundledFixture.beam"] do
         bytes = File.read!(Path.join(path, name))
         %{"path" => name, "bytes" => byte_size(bytes), "sha256" => Ipse.JSON.sha256(bytes)}
       end
@@ -125,5 +126,45 @@ defmodule Ipse.Extension.BundlesTest do
     File.rename!(Path.join(c.path, "extension.json"), Path.join(c.path, "other.json"))
     File.ln_s!("other.json", Path.join(c.path, "extension.json"))
     assert {:error, :extension_bundle_unavailable} = Bundles.inventory(c.root)
+  end
+
+  test "declared data inspection rechecks payload and manifest binding without loading code", c do
+    alias Ipse.Extension.Artifact
+    home = Path.join(c.root, "home")
+    assert {:ok, artifact} = Bundles.install(c.root, "fixture", home)
+    root = Path.join(home, "extensions/artifacts")
+
+    assert {:ok, ~s({"version":1})} =
+             Artifact.read_declared(root, artifact.digest, "operator.json", 64)
+
+    refute :code.is_loaded(BundledFixture)
+
+    for {name, limit} <- [
+          {"operator.json", 1},
+          {"extension.json", 64},
+          {"../LICENSE", 64},
+          {"missing", 64}
+        ] do
+      assert {:error, :invalid_extension_artifact} =
+               Artifact.read_declared(root, artifact.digest, name, limit)
+    end
+
+    assert {:error, :invalid_extension_artifact} =
+             Artifact.read_declared(root, artifact.digest, "operator.json", 65_537)
+
+    File.write!(Path.join(artifact.path, "operator.json"), ~s({"version":2}))
+
+    assert {:error, :invalid_extension_artifact} =
+             Artifact.read_declared(root, artifact.digest, "operator.json", 64)
+
+    File.write!(Path.join(artifact.path, "operator.json"), ~s({"version":1}))
+
+    File.write!(
+      Path.join(artifact.path, "ebin/Elixir.BundledFixture.beam"),
+      "changed unrelated declared file"
+    )
+
+    assert {:error, :invalid_extension_artifact} =
+             Artifact.read_declared(root, artifact.digest, "operator.json", 64)
   end
 end
