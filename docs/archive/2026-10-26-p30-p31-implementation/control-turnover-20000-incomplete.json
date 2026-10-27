@@ -1,0 +1,54 @@
+{
+  "actual_individual_reservations": 20000,
+  "actual_model_calls": 0,
+  "annual_target": 20950,
+  "completed": 20000,
+  "control_file_bytes": 4339474,
+  "control_turnover_passed": false,
+  "kind": "development_authored_control_turnover_v1",
+  "limits": "Control-only development workload; no notes, Session, native input, semantic quality, independent-human or platform qualification. All IDs use actual individual writes; resource counters are synthetic.",
+  "operation_ms_max": 2944,
+  "operation_ms_p50": 492,
+  "operation_ms_p95": 947,
+  "provenance": {
+    "elixir": "1.20.4",
+    "filesystem": {
+      "selected_mount_options": [
+        "rw",
+        "compress=zstd:3"
+      ],
+      "type": "btrfs"
+    },
+    "filesystem_parent": "/home/lexlapax/projects/lexlapax/ipse/.ipse/control-qualification-2826/ipse-consent-workload-3a42a536ccebff60865169932e0ada68",
+    "kernel": "7.2.10-arch1-1",
+    "loaded_beam_sha256": {
+      "Elixir.Ipse.Extension.Consent": "f7a70f46de8dac55c5339e46d1a501dd0b6a51d410a09647714de27df8bc78d7",
+      "Elixir.Ipse.Runner.Transaction": "a0c6abf5c1907ae14023088156039d6ea1e7ad33ec243e4e5c8f67e357d4e569",
+      "Elixir.Ipse.Session.Resources": "7bc52e49dd04b6685380ba4e8f199d6b7ac811463979ff59aa98b7d369f8cb40"
+    },
+    "native_sha256": "385f42879330838a8635af4689d5c9fd422c6f19beb9de72b710474ac08f216c",
+    "otp": "29",
+    "source_sha256": {
+      "dev/knowledge/consent_workload.exs": "ba4fc9c9cc926c31a81295912504ac51c342fd44580246bf2f5d4812327475d6",
+      "lib/ipse/extension/consent.ex": "dc4c49add42a9c34959ffeff72023c041c7cb2424e1c18e0850616f30c2dfee4",
+      "lib/ipse/runner/transaction.ex": "997d1cd726a8145d979ad7e074de346deaf7b3a7d33c6b50b565045078beb0bd",
+      "lib/ipse/session/resources.ex": "d84c52cf88e0f6ffe1df560bbb573dbcf2bff68d24d960e57eedf4973bb5d458"
+    }
+  },
+  "qualification_passed": false,
+  "reconciled_overruns": 20,
+  "requested": 20950,
+  "retained_compact": 19936,
+  "retained_full": 64,
+  "retained_store": "/home/lexlapax/projects/lexlapax/ipse/.ipse/control-qualification-2826/ipse-consent-workload-3a42a536ccebff60865169932e0ada68",
+  "seeded_receipts": 0,
+  "simulated_resource_charges": {
+    "cost_nanos": 0,
+    "download_bytes": 0,
+    "input_bytes": 0,
+    "model_calls": 19822,
+    "operations": 19802,
+    "output_bytes": 0
+  },
+  "zero_charge_settlements": 198
+}

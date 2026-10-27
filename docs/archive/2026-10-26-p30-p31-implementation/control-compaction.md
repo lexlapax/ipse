@@ -95,6 +95,21 @@ inspection succeeded. Its `control_turnover_passed` remains false because it did
 not reach the 20,950-operation target. Timing is diagnostic under concurrent
 development, not a reference-hardware latency qualification.
 
+The subsequent actual 20,950-reservation attempt ended with exit status 1 and
+`EXIT ... killed` after its last **20,000**-reservation checkpoint. Its
+[retained measured checkpoint](control-turnover-20000-incomplete.json) records
+20,000 individual reservations, 64 full and 19,936 compact receipts, 198
+zero-charge cancellations and 20 reconciled overruns. Actual model calls remain
+zero; resource counters are synthetic. Both pass flags are false. The interrupted
+store remains available and is not resumed or reset. This is incomplete evidence,
+not a successful annual control qualification or a proven capacity failure.
+The run used the earlier frozen helper `385f4287...`, whose complete digest and
+loaded source/BEAM hashes are recorded in the receipt; it does not qualify the
+later native ownership changes. The diagnostic log and checkpoint are preserved
+with the Normalizer audit diagnostics under the private verification artifact's
+`managed-normalizer/manifest.json` (digest
+`2ad5f5177c5e6a5aef187c6dd84c674302cf181ef2709c94ef68150ca4121ad1`).
+
 No macOS quota profile is admitted. Unconditional successful-write tests need a
 qualified profile; explicit unsupported-profile refusal and excluded profile
 journeys must not be relabelled as cross-platform runtime passes. Platform
