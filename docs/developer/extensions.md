@@ -18,6 +18,7 @@ No account or model service is needed.
 | Selected notifications or acknowledged live events | Notification/feed |
 | Visible provider text | Text consumer |
 | Canonical counters or configured estimates | Accounting reads |
+| Exact own-Session evidence and host-computed quote offsets | [Source reads](session-sources.md#grant-an-extension-source-access-explicitly) |
 | Optional diagnostic metadata | Observability sink |
 
 A read-only consumer cannot return an action request. An observer cannot enforce

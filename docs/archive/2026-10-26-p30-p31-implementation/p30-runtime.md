@@ -237,3 +237,89 @@ focused EOF, answer-replay and terminal-rendering tests passed. Receipts are
 `/tmp/ipse-operator-eof-test.log`, `/tmp/ipse-operator-eof-regression.log` and
 `/tmp/ipse-operator-eof-compile.log`. Actual CLI EOF/PTY verification remains pending
 the next coordinated native-test window and is not claimed by this checkpoint.
+
+## Session source-window integration checkpoint
+
+This section supersedes the earlier statement that CLI EOF verification was
+pending. It records synthetic implementation checks on 2026-10-26, not P31
+qualification or a milestone completion claim. The current contracts are taught
+in [Session sources](../../developer/session-sources.md) and the operator's
+[evidence task](../../operator/extensions.md#ask-for-exact-session-evidence).
+
+The Session-owned Journal writer now retains a bounded source projection and
+advances it only after a successful append. Full Saved validation precedes
+projection reconstruction and permitted tail repair. The projection admits
+matching original-input records, paired native question/answer receipts, admitted
+visible answers and explicitly typed published tool/effect results. It keeps
+host-observed outcome facts separate from attributed, untrusted content. Private
+effect sources or decision responses before successful publication grant no read.
+Neither source admission nor an origin label grants execution authority or managed
+knowledge eligibility.
+
+Fresh sessions pin the source catalog. Native tools and explicitly granted
+`host.sources` extension actions expose list/read/quote through the existing owner,
+worker lease, intent/result and cancellation boundaries. List pages include at
+most 32 entries/4096 rendered JSON bytes; evidence pages include at most 8192
+rendered bytes. SourceIndex retains 1024 occurrences/8 MiB and at most 1 MiB per
+source; pending pairs separately retain at most 128 entries/4 MiB. Closed coverage
+counters report omitted/unavailable/legacy projections and invalidate old tokens
+when their meaning changes. Visible original answers retain the existing 8-KiB
+Lifecycle limit; larger answers have unavailable text, size and hash. The separate
+1-MiB original-input bound is preserved, including when a journal source wrapper
+cannot fit a rendered source-page envelope.
+
+Read handles authenticate the current volatile Session/window/generation/policy
+and selected version/offset. Resume reconstructs stable occurrence/version IDs
+with a new secret and rejects old handles. A durable window receipt precedes
+actual token-producing work; idle resume remains byte-identical. Saved read
+results recompute against the chronological source prefix and admitted historical
+window. Only historical window/MAC framing is normalized for this replay-only
+proof; future/mixed claims and changed source/result bytes refuse. This is
+consistency validation within the existing protected-journal trust boundary, not
+a signed transcript resistant to coherent same-user rewriting. The full journal
+is not retained in Session or the writer cache.
+
+Verification used Linux, Elixir 1.20.4/OTP 29, existing dependencies and freshly
+authored synthetic inputs. The final isolated build path was
+`/tmp/ipse-source-window-build-20261026`; no other agent's build tree was mutated.
+Strict compile passed in `/tmp/ipse-source-window-final2-compile.log`. The final
+focused source/read/writer suite and selected successful decision, embedding and
+MCP publication fixtures passed 33 tests with 48 unrelated cases excluded in
+`/tmp/ipse-source-window-final-focused.log`. The fixtures cover 64 actual native
+tool receipts without optional inline source text, independently built SDK workers,
+caller leases, cancellation, capacity, exact Unicode/repeated quote behavior,
+failed append, stale handles, source-result tampering, and changed answer facts
+rejected before torn-tail repair. Existing complete decision/embedding/MCP local
+protocol suites also passed 53 tests in
+`/tmp/ipse-source-window-effect-regression.log`. The final existing reference,
+wire/replay, runtime lifecycle and extension-history regression run passed all
+53 tests in `/tmp/ipse-source-window-final-reference-regression.log`. The source
+manual's complete synthetic example executed successfully in
+`/tmp/ipse-source-window-manual-example.log`; the final documentation checker
+validated 483 Markdown files/4388 local links with zero errors in
+`/tmp/ipse-source-window-docs-final.log`.
+
+Four serial actual CLI/PTY fixtures passed in
+`/tmp/ipse-source-window-actual-pty.log`. They include exact whitespace-preserving
+native prompt and answer source reads, queued prompts at question EOF, no invented
+answer receipt after EOF, and restored terminal attributes. The helper was pinned
+to SHA-256 `385f42879330838a8635af4689d5c9fd422c6f19beb9de72b710474ac08f216c`;
+the compile log and inventories are
+`/tmp/ipse-source-window-pty-checkpoint-compile.log`,
+`/tmp/ipse-source-window-pty-beams.sha256` and
+`/tmp/ipse-source-window-pty-helper.sha256`. This automated PTY evidence establishes
+channel behavior, not human attribution. No production native helper rebuild was
+performed for source integration.
+
+Earlier focused runs exposed an optional-state boolean error, eager source-window
+admission on idle resume, an existing synthetic provider's last-message assumption,
+and an SDK fixture compilation path omission. Each was repaired with a focused
+passing rerun; failure logs remain under `/tmp/ipse-source-window-integration.log`,
+`/tmp/ipse-source-window-existing-regression.log` and
+`/tmp/ipse-source-window-sdk-session.log`.
+The SDK fixture now compiles against the existing dependency path, the provider
+fixture skips only closed labelled host references, and actual work admits the
+window/lifecycle rather than idle status. Final combined baseline, independent
+audit, Elixir 1.18/OTP 27, other platforms and live-account behavior remain outside
+this checkpoint. No paid/model calls, qualification corpus, new dependency or
+model-weight download was used.

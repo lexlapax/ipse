@@ -37,7 +37,9 @@ fn main() {
     let slave = OpenOptions::new().read(true).write(true).custom_flags(flags).open(path).unwrap();
     let mut args: Vec<_> = std::env::args_os().skip(1).collect();
     let kill_owner = args.first().is_some_and(|a| a == "--kill-owner");
-    if kill_owner { args.remove(0); }
+    let queued_eof = args.first().is_some_and(|a| a == "--queued-eof");
+    if kill_owner || queued_eof { args.remove(0); }
+    let root = std::path::PathBuf::from(args.last().unwrap());
     let check_terminal = slave.try_clone().unwrap();
     let mut original = [0_usize; 64];
     use std::os::fd::AsRawFd;
@@ -87,6 +89,28 @@ fn main() {
             if phase == 0 && text.contains("you> ") { child.kill().unwrap(); phase = 1; }
             continue;
         }
+        if queued_eof {
+            let queued = text.matches("Queued for the next turn.").count();
+            match phase {
+                0 if text.contains("you> ") => {
+                    master.write_all("first café original\n".as_bytes()).unwrap(); phase = 1;
+                },
+                1 if text.matches("you> ").count() >= 2 => {
+                    master.write_all("queued 雪 one\n".as_bytes()).unwrap(); phase = 2;
+                },
+                2 if queued >= 1 && text.rsplit("Queued for the next turn.").next().unwrap().contains("you> ") => {
+                    master.write_all("queued café two\n".as_bytes()).unwrap(); phase = 3;
+                },
+                3 if queued >= 2 => {
+                    std::fs::write(root.join("release-model"), b"release").unwrap(); phase = 4;
+                },
+                4 if text.contains("Type answer ") && text.contains("answer> ") => {
+                    master.write_all(&[4]).unwrap(); phase = 5;
+                },
+                _ => {},
+            }
+            continue;
+        }
         for part in text.split("Type answer ").skip(1) {
             if part.len() >= 32 && part.as_bytes()[..32].iter().all(u8::is_ascii_hexdigit) &&
                 part[32..].starts_with(" followed by your answer.") && part.contains("answer> ") {
@@ -131,5 +155,6 @@ fn main() {
         println!("OPERATOR_OWNER_DEATH_RESTORED");
         std::process::exit(0);
     }
+    if queued_eof { assert_eq!(phase, 5); assert!(status.success()); }
     std::process::exit(status.code().unwrap_or(1));
 }

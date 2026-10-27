@@ -18,6 +18,13 @@ defmodule Ipse.Session.RuntimeLifecycle do
           &("lifecycle.record" in &1.identity["capabilities"])
         )
 
+    open_restored(saved, session, resumed, enabled)
+  end
+
+  @doc false
+  def open_source(saved, session, resumed), do: open_restored(saved, session, resumed, true)
+
+  defp open_restored(saved, session, resumed, enabled) do
     if enabled and not saved.stopped do
       ctx = %{session: session, epoch: saved.epoch, active: false, wait: nil, count: saved.count}
 

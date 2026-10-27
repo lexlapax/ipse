@@ -7,7 +7,8 @@ defmodule Ipse.Session.Saved do
 
   @doc "Rebuild pure resume facts after the owner has validated sources and reloaded its journal."
   def restore(events, id) do
-    with :ok <- Ipse.Session.Input.validate_events(events, id),
+    with {:ok, _mode} <- execution_mode(events),
+         :ok <- Ipse.Session.Input.validate_events(events, id),
          :ok <- Ipse.Session.OperatorAnswer.validate_events(events, id),
          {:ok, reference} <- Ipse.Session.Reference.restore(events, id),
          {:ok, accounting} <- Ipse.Usage.restore(events, id),
@@ -17,7 +18,8 @@ defmodule Ipse.Session.Saved do
          {:ok, messages, native} <- project(events, :validate),
          {:ok, _research} <- Ipse.Tools.Research.restore(events),
          {:ok, question, messages} <- finish_question(native, messages),
-         {:ok, question, messages} <- restore_extension_question(events, messages, question) do
+         {:ok, question, messages} <- restore_extension_question(events, messages, question),
+         {:ok, source_window} <- Ipse.Session.SourceWindow.restore(events, id) do
       {:ok,
        %{
          accounting: accounting,
@@ -28,10 +30,24 @@ defmodule Ipse.Session.Saved do
          historical_model: historical_model(events),
          last_request_id: request_field(events, "request_id"),
          turn_id: request_field(events, "turn_id"),
-         reference: reference
+         reference: reference,
+         source_window: source_window
        }}
     end
   end
+
+  @doc false
+  def execution_mode([%{"metadata" => metadata} | _]) when is_map(metadata) do
+    if Map.has_key?(metadata, "execution_mode") do
+      if Ipse.Extension.Mode.valid?(metadata["execution_mode"]),
+        do: {:ok, metadata["execution_mode"]},
+        else: {:error, :invalid_saved_execution_mode}
+    else
+      {:ok, nil}
+    end
+  end
+
+  def execution_mode(_), do: {:error, :invalid_saved_execution_mode}
 
   defp reported_model(%{"provider_data" => data}) when is_map(data),
     do: Ipse.Provider.model_name(data["reported_model"])
@@ -84,7 +100,8 @@ defmodule Ipse.Session.Saved do
   end
 
   defp validate_context_events(events) do
-    with :ok <- Ipse.Session.Input.validate_events(events),
+    with {:ok, _mode} <- execution_mode(events),
+         :ok <- Ipse.Session.Input.validate_events(events),
          :ok <- Ipse.Session.OperatorAnswer.validate_events(events),
          {:ok, _} <- Ipse.Session.Reference.restore(events),
          :ok <- Ipse.Journal.validate_limit_events(events),

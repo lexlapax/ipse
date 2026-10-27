@@ -121,6 +121,19 @@ defmodule Ipse.Extension.EmbeddingCallSessionTest do
       assert source["inference"]["usage"] == completion["usage"]
       assert source["inference"]["attempt_id"] == admission["attempt_id"]
 
+      assert {:ok, source_page} = Session.sources(pid, "source.list", %{"limit" => 32})
+      assert [facts] = source_page["sources"]
+      assert facts["kind"] == "effect.outcome"
+      assert facts["origin"] == "typed_host_outcome"
+
+      assert {:ok, evidence} =
+               Session.sources(pid, "source.read", %{"handle" => facts["read_handle"]})
+
+      projected = Jason.decode!(evidence["text"])
+      assert projected["dimensions"] == dimensions
+      assert projected["vector_count"] == count
+      refute Map.has_key?(projected, "vectors")
+
       refute Enum.any?(
                ev,
                &(&1["type"] == "extension_model_response" or

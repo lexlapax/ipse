@@ -23,6 +23,13 @@ defmodule Ipse.Journal.Writer do
   def append_observed(writer, event), do: call(writer, {:append, :observed, event})
   def append_with_source(writer, event), do: call(writer, {:append, :source, event})
 
+  @doc false
+  def install_source_window(writer, window), do: call(writer, {:source_window_install, window})
+  @doc false
+  def source_query(writer, request), do: call(writer, {:source_query, request})
+  @doc false
+  def ensure_source_window(writer), do: call(writer, :source_window_ensure)
+
   @doc "Reserves JSONL bytes, including newlines, and events while retaining quota-marker headroom."
   def reserve(writer, capacity), do: call(writer, {:reserve, capacity})
 
@@ -89,7 +96,8 @@ defmodule Ipse.Journal.Writer do
         reservations: %{},
         reserved_bytes: 0,
         reserved_events: 0,
-        identity: identity(stat)
+        identity: identity(stat),
+        source_window: nil
       }
 
       case validate_open(state) do
@@ -110,6 +118,44 @@ defmodule Ipse.Journal.Writer do
   end
 
   @impl true
+  def handle_call(
+        {:source_window_install, %Ipse.Session.SourceWindow{} = window},
+        {owner, _},
+        %{owner: owner, source_window: nil, id: id} = state
+      ) do
+    if window.index.session_id == id,
+      do: {:reply, :ok, %{state | source_window: window}},
+      else: {:reply, {:error, :source_index_refused}, state}
+  end
+
+  def handle_call(
+        {:source_query, query},
+        {owner, _},
+        %{owner: owner, source_window: window} = state
+      )
+      when not is_nil(window) do
+    result =
+      case query do
+        :snapshot -> {:ok, Ipse.Session.SourceWindow.snapshot(window)}
+        :effective_source -> {:ok, window.effective_source}
+        {operation, request} -> Ipse.Session.SourceWindow.execute(window, operation, request)
+        _ -> {:error, :source_index_refused}
+      end
+
+    {:reply, result, state}
+  end
+
+  def handle_call(
+        :source_window_ensure,
+        {owner, _},
+        %{owner: owner, source_window: window} = state
+      )
+      when not is_nil(window) do
+    if window.historical_window == window.index.window_id,
+      do: {:reply, :ok, state},
+      else: append_record(state, :plain, Ipse.Session.SourceWindow.opened(window))
+  end
+
   def handle_call({:append, _, _}, {owner, _}, %{owner: owner, sealed: true} = state),
     do: {:reply, {:error, :journal_limit_reached}, state}
 
@@ -187,7 +233,12 @@ defmodule Ipse.Journal.Writer do
         with :ok <- unchanged(state),
              :ok <- append_line(state, line) do
           {:reply, result,
-           %{state | offset: state.offset + byte_size(line), count: state.count + 1}}
+           %{
+             state
+             | offset: state.offset + byte_size(line),
+               count: state.count + 1,
+               source_window: source_advance(state, event)
+           }}
         else
           _ -> {:stop, :normal, {:error, :journal_write_unconfirmed}, state}
         end
@@ -217,7 +268,8 @@ defmodule Ipse.Journal.Writer do
                  count: state.count + 1,
                  reservations: Map.put(state.reservations, token, remaining),
                  reserved_bytes: state.reserved_bytes - byte_size(line),
-                 reserved_events: state.reserved_events - 1
+                 reserved_events: state.reserved_events - 1,
+                 source_window: source_advance(state, event)
              }}
           else
             _ -> {:stop, :normal, {:error, :journal_write_unconfirmed}, state}
@@ -238,6 +290,18 @@ defmodule Ipse.Journal.Writer do
     state.offset + state.reserved_bytes + bytes + Journal.reserve_bytes() <=
       state.limits["max_bytes"] and
       state.count + state.reserved_events + events + 1 <= state.limits["max_events"]
+  end
+
+  defp source_advance(%{source_window: nil}, _), do: nil
+
+  defp source_advance(state, event) do
+    source =
+      case Journal.source(state.id, state.offset, event) do
+        {:ok, source} -> source
+        _ -> nil
+      end
+
+    Ipse.Session.SourceWindow.advance(state.source_window, event, source)
   end
 
   @impl true

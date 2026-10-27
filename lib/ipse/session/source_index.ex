@@ -9,7 +9,7 @@ defmodule Ipse.Session.SourceIndex do
   No function reads a path, repairs a journal, or runs an effect.
   """
   alias Ipse.{JSON, Journal}
-  alias Ipse.Session.{Input, Lifecycle, ToolLifecycle}
+  alias Ipse.Session.{Input, Lifecycle, ToolLifecycle, OperatorAnswer}
   alias Ipse.Extension.{EffectResult, DecisionCall, Actions}
   @derive {Inspect, only: [:session_id, :window_id, :generation, :policy_generation, :bytes]}
   defstruct [
@@ -19,6 +19,7 @@ defmodule Ipse.Session.SourceIndex do
     policy_generation: 1,
     generation: 0,
     bytes: 0,
+    coverage: %{},
     entries: %{},
     order: []
   ]
@@ -46,14 +47,35 @@ defmodule Ipse.Session.SourceIndex do
   end
 
   def snapshot(%__MODULE__{} = index),
-    do: %{
-      "version" => 1,
-      "session_id" => index.session_id,
-      "window_id" => index.window_id,
-      "generation" => index.generation,
-      "policy_generation" => index.policy_generation,
-      "count" => length(index.order)
-    }
+    do:
+      %{
+        "version" => 1,
+        "session_id" => index.session_id,
+        "window_id" => index.window_id,
+        "generation" => index.generation,
+        "policy_generation" => index.policy_generation,
+        "count" => length(index.order)
+      }
+      |> Map.put("coverage", index.coverage)
+
+  @doc "Host-only coverage accounting; changed coverage fences every previous token."
+  def coverage(%__MODULE__{} = index, counters) do
+    if keys?(
+         counters,
+         ~w(observed indexed unavailable capacity_refused legacy_unverified pending_gaps refused)
+       ) and
+         Enum.all?(counters, fn {_, value} -> JSON.safe_uint?(value) end) and
+         counters["indexed"] == length(index.order) and
+         counters["observed"] >= counters["indexed"] do
+      {:ok,
+       if(counters == index.coverage,
+         do: index,
+         else: %{index | coverage: counters, generation: index.generation + 1}
+       )}
+    else
+      @error
+    end
+  end
 
   @doc "Admit original input only with its matching committed effective user message."
   def admit_input(
@@ -87,6 +109,70 @@ defmodule Ipse.Session.SourceIndex do
   end
 
   def admit_input(_, _, _), do: @error
+
+  @doc "Pair an already admitted question checkpoint with its committed atomic native answer."
+  def admit_operator_answer(
+        %__MODULE__{} = index,
+        %{"type" => "operator_answer", "version" => 2} = answer,
+        %{"type" => "operator_question", "version" => 1} = checkpoint
+      ) do
+    with call when is_map(call) <- checkpoint["call"],
+         true <- checkpoint["id"] == call["id"] and Ipse.Tools.valid_call_id?(call["id"]),
+         true <- get_in(call, ["function", "name"]) == "ask_operator",
+         {:ok, arguments} <- JSON.decode_unique(get_in(call, ["function", "arguments"])),
+         {:ok, ^arguments} <- Ipse.Tools.Questions.validate(checkpoint["arguments"]),
+         :ok <- OperatorAnswer.validate_events([checkpoint, answer], index.session_id) do
+      origin = answer["origin"]
+
+      Enum.zip(arguments["questions"], origin["pieces"])
+      |> Enum.with_index()
+      |> Enum.flat_map(fn {{question, piece}, ordinal} ->
+        identity = [origin["source_id"], ordinal]
+
+        provenance = %{
+          "question_id" => checkpoint["id"],
+          "question_sha256" => origin["question_sha256"],
+          "item_id" => piece["item_id"],
+          "render_id" => piece["render_id"],
+          "input_sha256" => piece["input_sha256"],
+          "receipt_sha256" => JSON.digest([answer])
+        }
+
+        rendered =
+          entry(
+            index,
+            identity,
+            "operator.question",
+            "assistant_proposal",
+            Jason.encode!(question),
+            "available",
+            nil,
+            provenance
+          )
+
+        original =
+          entry(
+            index,
+            identity,
+            "input.operator_answer",
+            "native_operator_answer",
+            piece["text"],
+            "available",
+            nil,
+            Map.put(provenance, "question_occurrence_id", rendered.occurrence_id)
+          )
+
+        [rendered, original]
+      end)
+      |> then(&append(index, &1))
+    else
+      _ -> @error
+    end
+  rescue
+    _ -> @error
+  end
+
+  def admit_operator_answer(_, _, _), do: @error
 
   @doc "Only an admitted original visible answer is indexed; presentation and reasoning are excluded."
   def admit_answer(index, answer, assistant \\ nil)
@@ -460,6 +546,102 @@ defmodule Ipse.Session.SourceIndex do
 
   def quote(_, _), do: @error
 
+  @doc "Replay-only structural proof. Historical MACs never authorize a current read."
+  def validate_saved_read(index, operation, request, value, historical_window) do
+    with true <- id?(historical_window),
+         {:ok, rebound} <- saved_request(index, operation, request, historical_window),
+         {:ok, expected} <-
+           (case operation do
+              "source.list" -> list(index, rebound)
+              "source.read" -> read(index, rebound)
+              "source.quote" -> __MODULE__.quote(index, rebound)
+              _ -> @error
+            end),
+         {:ok, normalized} <- saved_page(index, value, historical_window),
+         true <- normalized == expected do
+      :ok
+    else
+      _ -> @error
+    end
+  rescue
+    _ -> @error
+  end
+
+  defp saved_request(index, operation, request, window) do
+    key = if operation == "source.list", do: "cursor", else: "handle"
+
+    case request[key] do
+      nil when operation == "source.list" ->
+        {:ok, request}
+
+      token ->
+        with {:ok, current} <- saved_token(index, token, window),
+             do: {:ok, Map.put(request, key, current)}
+    end
+  end
+
+  defp saved_page(index, value, window) when is_map(value) do
+    Enum.reduce_while(value, {:ok, %{}}, fn {key, item}, {:ok, acc} ->
+      result =
+        cond do
+          key == "window" and is_map(item) ->
+            if item["window_id"] == window,
+              do: {:ok, Map.put(item, "window_id", index.window_id)},
+              else: @error
+
+          key in ~w(next handle read_handle) and is_binary(item) ->
+            saved_token(index, item, window)
+
+          key == "sources" and is_list(item) ->
+            Enum.reduce_while(item, {:ok, []}, fn row, {:ok, rows} ->
+              case saved_page(index, row, window) do
+                {:ok, normalized} -> {:cont, {:ok, rows ++ [normalized]}}
+                _ -> {:halt, @error}
+              end
+            end)
+
+          true ->
+            {:ok, item}
+        end
+
+      case result do
+        {:ok, normalized} -> {:cont, {:ok, Map.put(acc, key, normalized)}}
+        _ -> {:halt, @error}
+      end
+    end)
+  end
+
+  defp saved_page(_, _, _), do: @error
+
+  defp saved_token(index, encoded, window) do
+    with true <- is_binary(encoded) and byte_size(encoded) <= 2048,
+         [body, signature] <- String.split(encoded, "."),
+         {:ok, bytes} <- Base.url_decode64(body, padding: false),
+         {:ok, mac} <- Base.url_decode64(signature, padding: false),
+         true <- byte_size(bytes) <= 1024 and byte_size(mac) == 32,
+         true <-
+           Base.url_encode64(bytes, padding: false) == body and
+             Base.url_encode64(mac, padding: false) == signature,
+         {:ok, value} <- JSON.decode_unique(bytes),
+         true <-
+           keys?(value, @token_keys) and value["version"] === 1 and value["window"] == window,
+         true <-
+           value["session"] == index.session_id and value["generation"] === index.generation and
+             value["policy"] === index.policy_generation,
+         true <- JSON.safe_uint?(value["offset"]),
+         true <- value["kind"] in ~w(list read),
+         item = index.entries[value["occurrence"]],
+         true <-
+           if(value["kind"] == "list",
+             do: value["occurrence"] == nil and value["source_version"] == nil,
+             else: is_map(item) and item.version_id == value["source_version"]
+           ) do
+      {:ok, token(index, value["kind"], item, value["offset"])}
+    else
+      _ -> @error
+    end
+  end
+
   defp assistant_matches?(_, nil), do: true
 
   defp assistant_matches?(answer, %{
@@ -517,22 +699,26 @@ defmodule Ipse.Session.SourceIndex do
   defp append(index, entries) do
     bytes = Enum.sum(Enum.map(entries, &if(is_binary(&1.text), do: byte_size(&1.text), else: 0)))
 
-    if length(index.order) + length(entries) <= @entries and index.bytes + bytes <= @total_bytes and
-         Enum.all?(
-           entries,
-           &(id?(&1.occurrence_id) and (is_nil(&1.text) or text?(&1.text)) and
-               not Map.has_key?(index.entries, &1.occurrence_id))
-         ) do
-      {:ok,
-       %{
-         index
-         | generation: index.generation + 1,
-           bytes: index.bytes + bytes,
-           entries: Enum.reduce(entries, index.entries, &Map.put(&2, &1.occurrence_id, &1)),
-           order: index.order ++ Enum.map(entries, & &1.occurrence_id)
-       }}
-    else
-      @error
+    cond do
+      length(index.order) + length(entries) > @entries or index.bytes + bytes > @total_bytes ->
+        {:error, :source_index_capacity}
+
+      Enum.all?(
+        entries,
+        &(id?(&1.occurrence_id) and (is_nil(&1.text) or text?(&1.text)) and
+              not Map.has_key?(index.entries, &1.occurrence_id))
+      ) ->
+        {:ok,
+         %{
+           index
+           | generation: index.generation + 1,
+             bytes: index.bytes + bytes,
+             entries: Enum.reduce(entries, index.entries, &Map.put(&2, &1.occurrence_id, &1)),
+             order: index.order ++ Enum.map(entries, & &1.occurrence_id)
+         }}
+
+      true ->
+        @error
     end
   end
 

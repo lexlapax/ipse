@@ -16,6 +16,7 @@ defmodule Ipse.Extension.Actions do
       "host.usage.scan" in identity["capabilities"] -> @read_limit
       "host.state.scan" in identity["capabilities"] -> 512
       "host.results" in identity["capabilities"] -> 512
+      "host.sources" in identity["capabilities"] -> 512
       true -> @limit
     end
   end
@@ -26,6 +27,9 @@ defmodule Ipse.Extension.Actions do
         528
 
       result_read?(request) and "host.results" in identity["capabilities"] ->
+        512
+
+      Ipse.Extension.SourceRead.operation?(request) and "host.sources" in identity["capabilities"] ->
         512
 
       usage?(request) and "host.usage.scan" in identity["capabilities"] ->
@@ -58,7 +62,7 @@ defmodule Ipse.Extension.Actions do
 
   defp read?(%{"op" => op}),
     do:
-      op in ~w(state.get state.list state.scan history.read usage.read usage.children usage.child.read effect.result.read)
+      op in ~w(state.get state.list state.scan history.read usage.read usage.children usage.child.read effect.result.read source.list source.read source.quote)
 
   defp read?(_), do: false
 
@@ -170,6 +174,8 @@ defmodule Ipse.Extension.Actions do
         event["service"]
       ) and
       (not history?(event["request"]) or Ipse.Extension.History.bound_outcome?(event)) and
+      (not Ipse.Extension.SourceRead.operation?(event["request"]) or
+         Ipse.Extension.SourceRead.bound_outcome?(event)) and
       Ipse.Extension.validate(resume(event)) == :ok and bounded?(event)
   rescue
     _ -> false
@@ -703,6 +709,10 @@ defmodule Ipse.Extension.Actions do
   def validate_operation(%{"op" => "history.read"} = request),
     do: Ipse.Extension.History.validate(request)
 
+  def validate_operation(%{"op" => op} = request)
+      when op in ~w(source.list source.read source.quote),
+      do: Ipse.Extension.SourceRead.validate(request)
+
   def validate_operation(%{"op" => "usage.read"} = request),
     do: Ipse.Extension.UsageRead.validate(request)
 
@@ -762,6 +772,10 @@ defmodule Ipse.Extension.Actions do
     do: Ipse.Extension.History.capability(request)
 
   def capability(%{"op" => "context.publish"}), do: "host.context"
+
+  def capability(%{"op" => op}) when op in ~w(source.list source.read source.quote),
+    do: "host.sources"
+
   def capability(%{"op" => "usage.read"}), do: "host.usage"
 
   def capability(%{"op" => op}) when op in ~w(usage.children usage.child.read),
@@ -781,6 +795,7 @@ defmodule Ipse.Extension.Actions do
   def mutating?(%{"op" => "embedding.create"}), do: true
   def mutating?(%{"op" => "decision.create"}), do: true
   def mutating?(%{"op" => "mcp.call"}), do: true
+  def mutating?(%{"op" => op}) when op in ~w(source.list source.read source.quote), do: false
   def mutating?(request), do: State.mutating?(request)
 
   def namespace(_identity, %{"op" => "operator.question"}, _cwd, _id), do: {:ok, nil}
@@ -793,6 +808,10 @@ defmodule Ipse.Extension.Actions do
   def namespace(_identity, %{"op" => "service.call"}, _cwd, _id), do: {:ok, nil}
   def namespace(_identity, %{"op" => "context.publish"}, _cwd, _id), do: {:ok, nil}
   def namespace(_identity, %{"op" => "history.read"}, _cwd, id), do: {:ok, id}
+
+  def namespace(_identity, %{"op" => op}, _cwd, id)
+      when op in ~w(source.list source.read source.quote), do: {:ok, id}
+
   def namespace(_identity, %{"op" => "usage.read"}, _cwd, id), do: {:ok, id}
 
   def namespace(_identity, %{"op" => op}, _cwd, id)
@@ -829,6 +848,10 @@ defmodule Ipse.Extension.Actions do
 
   def valid_outcome?(%{"op" => "history.read"} = request, status, value, id),
     do: Ipse.Extension.History.valid_outcome?(request, status, value, id)
+
+  def valid_outcome?(%{"op" => op} = request, status, value, id)
+      when op in ~w(source.list source.read source.quote),
+      do: Ipse.Extension.SourceRead.valid_outcome?(request, status, value, id)
 
   def valid_outcome?(%{"op" => "usage.read"} = request, status, value, id),
     do: Ipse.Extension.UsageRead.valid_outcome?(request, status, value, id)

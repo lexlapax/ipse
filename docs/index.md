@@ -29,6 +29,7 @@ quick start. Try the demo before configuring a model account.
 | Configure explicit vector generation | [Use embeddings](operator/extensions.md) |
 | Approve typed advice from a selected service | [Use decisions](operator/extensions.md#request-typed-advice-explicitly) |
 | Inspect or recover interrupted work | [Recover a session](operator/recovery.md) |
+| Ask for exact evidence from the current conversation | [Read admitted sources](operator/extensions.md#ask-for-exact-session-evidence) |
 | Find why a command failed | [Troubleshoot](operator/recovery.md) |
 | Understand which process owns an operation | [Follow a turn](developer/architecture.md) |
 | Add a domain tool without changing the host | [Build an extension](developer/extensions.md) |

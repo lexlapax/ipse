@@ -194,6 +194,138 @@ defmodule Ipse.Session.SourceIndexTest do
              )
   end
 
+  test "atomic native answers retain original payloads and separate model-authored questions" do
+    alias Ipse.Session.OperatorAnswer
+    alias Ipse.Tools.Questions
+    index = index()
+
+    arguments = %{
+      "questions" => [
+        %{
+          "id" => "color",
+          "kind" => "single",
+          "prompt" => "Select a color",
+          "options" => [
+            %{"id" => "red", "label" => "Red"},
+            %{"id" => "blue", "label" => "Blue"}
+          ]
+        },
+        %{"id" => "text", "kind" => "text", "prompt" => "Literal text"}
+      ]
+    }
+
+    call = %{
+      "id" => "question-source",
+      "type" => "function",
+      "function" => %{
+        "name" => "ask_operator",
+        "arguments" => Jason.encode!(arguments)
+      }
+    }
+
+    question = %{id: call["id"], call: call, arguments: arguments}
+    client = Usage.id()
+
+    {answers, pieces} =
+      Enum.map_reduce([{"color", "2"}, {"text", "=/exit 雪  "}], [], fn {item, text}, pieces ->
+        {:ok, render} = OperatorAnswer.render(question, item, client)
+        input = "answer #{render["code"]} #{text}"
+
+        observation = %{
+          "version" => 2,
+          "event_id" => Usage.id(),
+          "display_sha256" => JSON.sha256(render["display"]),
+          "text_sha256" => JSON.sha256(input),
+          "input_limit" => 1_048_576,
+          "display_limit" => 16_777_216
+        }
+
+        {:ok, value, piece} = OperatorAnswer.parse(question, render, input, observation)
+        {{item, value}, pieces ++ [piece]}
+      end)
+
+    message =
+      Questions.tool_result(
+        call,
+        Jason.encode!(%{
+          "answers" => Map.new(answers),
+          "notice" => "Clarification only; no action permission."
+        }),
+        "result_recorded"
+      )
+
+    {:ok, origin} = OperatorAnswer.receipt(index.session_id, question, client, pieces, message)
+
+    answer = %{
+      "type" => "operator_answer",
+      "version" => 2,
+      "id" => question.id,
+      "message" => message,
+      "origin" => origin
+    }
+
+    checkpoint = %{
+      "type" => "operator_question",
+      "version" => 1,
+      "id" => question.id,
+      "call" => call,
+      "arguments" => arguments
+    }
+
+    assert {:ok, admitted} = SourceIndex.admit_operator_answer(index, answer, checkpoint)
+    all = rows(admitted)
+    assert length(all) == 4
+    original = Enum.filter(all, &(&1["kind"] == "input.operator_answer"))
+    questions = Enum.filter(all, &(&1["kind"] == "operator.question"))
+    assert Enum.all?(original, &(&1["origin"] == "native_operator_answer"))
+    assert Enum.all?(questions, &(&1["origin"] == "assistant_proposal"))
+
+    evidence =
+      Enum.map(original, fn row ->
+        assert {:ok, page} = SourceIndex.read(admitted, %{"handle" => row["read_handle"]})
+
+        assert page["provenance"]["question_occurrence_id"] in Enum.map(
+                 questions,
+                 & &1["occurrence_id"]
+               )
+
+        refute String.starts_with?(page["text"], "answer ")
+        page
+      end)
+
+    assert Enum.map(evidence, & &1["text"]) == ["2", "=/exit 雪  "]
+
+    assert {:ok, %{"start_byte" => 0, "end_byte" => 1}} =
+             SourceIndex.quote(
+               admitted,
+               %{"handle" => hd(original)["read_handle"], "quote" => "2"}
+             )
+
+    assert {:error, _} =
+             SourceIndex.quote(
+               admitted,
+               %{"handle" => hd(original)["read_handle"], "quote" => "Blue"}
+             )
+
+    assert {:error, _} = SourceIndex.admit_operator_answer(admitted, answer, checkpoint)
+    assert {:error, _} = SourceIndex.admit_operator_answer(index(), answer, checkpoint)
+    assert {:error, _} = SourceIndex.admit_operator_answer(index, origin, checkpoint)
+    assert {:error, _} = SourceIndex.admit_operator_answer(index, answer, nil)
+
+    assert {:error, _} =
+             SourceIndex.admit_operator_answer(index, %{answer | "version" => 1}, checkpoint)
+
+    assert {:error, _} =
+             SourceIndex.admit_operator_answer(index, answer, %{checkpoint | "id" => "changed"})
+
+    assert {:error, _} =
+             SourceIndex.admit_operator_answer(
+               index,
+               put_in(answer, ["message", "content"], "forged"),
+               checkpoint
+             )
+  end
+
   test "visible answers exclude native reasoning and unavailable lifecycle views stay unavailable" do
     index = index()
     turn = Usage.id()

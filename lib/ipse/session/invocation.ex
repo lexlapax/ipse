@@ -418,6 +418,11 @@ defmodule Ipse.Session.Invocation do
            }}
 
         true ->
+          s =
+            if Ipse.Extension.SourceRead.operation?(request),
+              do: Session.ensure_source_window(s),
+              else: s
+
           {s, source} =
             cond do
               (Ipse.Extension.Actions.history?(request) or
@@ -448,7 +453,8 @@ defmodule Ipse.Session.Invocation do
                  | action: %{
                      intent: intent,
                      usage_read: context[:usage_read],
-                     child_usage: context[:child_usage]
+                     child_usage: context[:child_usage],
+                     source_read: context[:source_read]
                    },
                    step: s.invocation.step + 1
                },
@@ -663,6 +669,19 @@ defmodule Ipse.Session.Invocation do
 
   def commit_action(s, event, intent) do
     with true <- Actions.result_intent(event) == intent and Actions.valid_result?(event),
+         true <-
+           Ipse.Extension.SourceRead.bound_prepared?(
+             intent["request"],
+             event,
+             Map.get(s.invocation.action, :source_read)
+           ),
+         true <-
+           not Ipse.Extension.SourceRead.operation?(intent["request"]) or
+             Ipse.Extension.SourceRead.bound_prepared?(
+               intent["request"],
+               event,
+               Ipse.Extension.SourceRead.prepare(s, intent["request"]["op"], intent["request"])
+             ),
          true <-
            Actions.bound_effect?(event, s.invocation.effect_sources, s.invocation.results),
          true <- Ipse.Extension.Registry.live?(s.invocation.parent["identity"]),
@@ -1072,6 +1091,16 @@ defmodule Ipse.Session.Invocation do
     context =
       if Ipse.Extension.Actions.history?(intent["request"]),
         do: Map.merge(context, %{history_dir: s.dir, history_session: s.id}),
+        else: context
+
+    context =
+      if Ipse.Extension.SourceRead.operation?(intent["request"]),
+        do:
+          Map.put(
+            context,
+            :source_read,
+            Ipse.Extension.SourceRead.prepare(s, intent["request"]["op"], intent["request"])
+          ),
         else: context
 
     context =

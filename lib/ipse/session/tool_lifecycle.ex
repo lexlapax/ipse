@@ -11,10 +11,11 @@ defmodule Ipse.Session.ToolLifecycle do
 
   def enabled?(config),
     do:
-      Enum.any?(
-        Map.get(config, :extensions, []),
-        &("lifecycle.tools" in &1.identity["capabilities"])
-      )
+      Ipse.Session.SourceWindow.enabled?(config) or
+        Enum.any?(
+          Map.get(config, :extensions, []),
+          &("lifecycle.tools" in &1.identity["capabilities"])
+        )
 
   def open(config, events, session, runtime, directory, question) do
     if enabled?(config) do
@@ -64,6 +65,22 @@ defmodule Ipse.Session.ToolLifecycle do
   def recording?(_), do: false
   def active?(%{recording: true, active: active}), do: active != nil
   def active?(_), do: false
+
+  @doc false
+  def open_source(saved, session, runtime) do
+    ctx = %{
+      session: session,
+      epoch: if(runtime, do: runtime.epoch),
+      count: saved.count,
+      recording: not saved.stopped,
+      proposal: nil,
+      active: nil
+    }
+
+    if ctx.recording and not match?(%{active: true}, runtime),
+      do: stop(ctx, "epoch_unavailable"),
+      else: {ctx, []}
+  end
 
   def snapshot(nil),
     do: %{"enabled" => false, "recording" => false, "recorded_facts" => 0, "active_tool" => false}

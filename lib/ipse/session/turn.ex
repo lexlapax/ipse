@@ -228,6 +228,7 @@ defmodule Ipse.Session.Turn do
 
   @doc false
   def model(s) do
+    s = Session.ensure_source_tracking(s)
     s = Session.persist_skills(s, s.skills)
     servers = Map.get(s.config, :mcp_servers, [])
 
@@ -835,6 +836,9 @@ defmodule Ipse.Session.Turn do
             name == "saved_result_read" ->
               ResultSource.read_model(owner, job_ref, args)
 
+            name in ~w(source_list source_read source_quote) ->
+              Ipse.Extension.SourceRead.read_model(owner, job_ref, name, args)
+
             name in ["delegate", "delegate_parallel"] ->
               Ipse.Tools.Delegation.run(
                 name,
@@ -971,6 +975,7 @@ defmodule Ipse.Session.Turn do
   def finish(s, status) do
     s = CurrentInvocation.release_output(s)
     after_plans = Subscriptions.declarations(s.config, "after_turn")
+    s = record_source_answer(s, status, after_plans)
 
     if status == :ok and s.event_received != nil and s.event_turn == s.turn_id and
          not s.event_after_started and after_plans != [] do
@@ -1035,6 +1040,36 @@ defmodule Ipse.Session.Turn do
           tool_decision: "not_decided"
       }
     end
+  end
+
+  defp record_source_answer(s, status, after_plans) do
+    assistant = List.last(s.messages)
+
+    if Ipse.Session.SourceWindow.enabled?(s.config) and status == :ok and
+         not Enum.any?(after_plans, &(&1.declaration["event"] == "answer.committed")) and
+         is_map(assistant) and assistant["role"] == "assistant" and
+         assistant["tool_calls"] in [nil, []] and is_binary(assistant["content"]) do
+      case Ipse.Journal.Writer.source_query(s.journal_writer, :effective_source) do
+        {:ok, source} when is_map(source) ->
+          Session.record_source(s, %{
+            "type" => "source_answer_committed",
+            "version" => 1,
+            "answer" =>
+              Ipse.Session.Lifecycle.answer(
+                s.turn_id,
+                s.last_request_id,
+                assistant,
+                s.final,
+                source
+              )
+          })
+
+        _ ->
+          :ok
+      end
+    end
+
+    s
   end
 
   @doc false
@@ -1391,6 +1426,10 @@ defmodule Ipse.Session.Turn do
     Tools.definitions(Map.get(config, :sandbox, :off)) ++
       if(versioned or model_saved_results?(result_sources),
         do: [ResultSource.reader_definition()],
+        else: []
+      ) ++
+      if(Ipse.Session.SourceWindow.enabled?(config),
+        do: Ipse.Extension.SourceRead.definitions(),
         else: []
       ) ++
       Catalog.definitions(config) ++

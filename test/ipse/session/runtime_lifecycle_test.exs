@@ -11,7 +11,10 @@ defmodule Ipse.LifecycleRuntimeTest do
 
       if config[:scenario] == :blocked_model, do: Process.sleep(:infinity)
 
-      if List.last(messages)["role"] == "tool" do
+      if messages
+         |> Enum.reject(&Ipse.Session.Reference.reference?/1)
+         |> List.last()
+         |> Map.get("role") == "tool" do
         {:ok, %{"role" => "assistant", "content" => "done"}, %{}}
       else
         {name, arguments} =

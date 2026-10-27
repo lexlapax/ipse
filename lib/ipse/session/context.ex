@@ -43,11 +43,27 @@ defmodule Ipse.Session.Context do
   @doc false
   def publishers(s) do
     %{
-      "runtime" => runtime_snapshot(s.config, s.reported_model, s.historical_model),
+      "runtime" => source_runtime(s),
       "skills" => Ipse.Workspace.skill_catalog(s.skills),
       "workspace" => workspace_instructions(s.context_snapshot),
       "extensions" => Ipse.Extension.Context.render(s.extension_contributions)
     }
+  end
+
+  defp source_runtime(s) do
+    runtime = runtime_snapshot(s.config, s.reported_model, s.historical_model)
+
+    if Ipse.Session.SourceWindow.enabled?(s.config) do
+      sources = Ipse.Session.source_snapshot(s)
+
+      reserved =
+        Ipse.Extension.Context.rendered_bytes(s.extension_contributions, "turn_reference_v1")
+
+      extra = byte_size(Jason.encode!(%{"sources" => sources})) + 1
+      if reserved + extra <= 16_384, do: Map.put(runtime, "sources", sources), else: runtime
+    else
+      runtime
+    end
   end
 
   defp delegation_instructions(config) do

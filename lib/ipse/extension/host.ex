@@ -172,7 +172,7 @@ defmodule Ipse.Extension.Host do
   defp execute_export(entry, intent, stage, payload, owner, job_ref, prior_actions) do
     entry =
       if Enum.any?(
-           ~w(host.usage.scan host.state.scan host.results host.actions.mixed),
+           ~w(host.usage.scan host.state.scan host.results host.sources host.actions.mixed),
            &(&1 in entry.identity["capabilities"])
          ) do
         Map.put(entry, :read_deadline, System.monotonic_time(:millisecond) + 120_000)
@@ -398,6 +398,10 @@ defmodule Ipse.Extension.Host do
       _ -> {:failed, %{"code" => "history_timeout"}}
     end
   end
+
+  defp execute_action(context, intent, %{"op" => op})
+       when op in ~w(source.list source.read source.quote),
+       do: Ipse.Extension.SourceRead.execute(context, intent)
 
   defp execute_action(context, intent, request),
     do: State.execute(context.root, intent["namespace"], request, intent["operation_id"])

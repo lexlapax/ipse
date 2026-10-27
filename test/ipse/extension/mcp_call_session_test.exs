@@ -445,6 +445,15 @@ defmodule Ipse.Extension.MCPCallSessionTest do
       value = Session.info(pid).extension_result["value"]
       assert value["bytes"] == byte_size(Fixture.text())
       assert value["sha256"] == Base.encode16(:crypto.hash(:sha256, Fixture.text()), case: :lower)
+
+      assert {:ok, source_page} = Session.sources(pid, "source.list", %{"limit" => 32})
+
+      assert Enum.sort(Enum.map(source_page["sources"], & &1["kind"])) ==
+               ~w(effect.content effect.outcome)
+
+      content = Enum.find(source_page["sources"], &(&1["kind"] == "effect.content"))
+      assert content["origin"] == "attributed_reference"
+      assert source_text(pid, content["read_handle"]) == Fixture.text()
       id = Session.info(pid).id
       assert :ok = Session.close_confirmed(pid)
       path = Path.join(ctx.dir, id <> ".jsonl")
@@ -456,6 +465,12 @@ defmodule Ipse.Extension.MCPCallSessionTest do
       assert Fixture.calls(ctx.root) == 1 and Fixture.discoveries(ctx.root) == discoveries
       refute_receive :unexpected_mcp_model_call
     end
+  end
+
+  defp source_text(pid, handle) do
+    assert {:ok, page} = Session.sources(pid, "source.read", %{"handle" => handle})
+    assert byte_size(Jason.encode!(page)) <= 8192
+    page["text"] <> if(page["next"], do: source_text(pid, page["next"]), else: "")
   end
 
   for transport <- [:stdio, :http], kind <- [:resource, :prompt] do

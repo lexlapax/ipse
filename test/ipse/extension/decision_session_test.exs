@@ -337,6 +337,18 @@ defmodule Ipse.Extension.DecisionSessionTest do
              %{"id" => "relevant", "type" => "predicate", "probability" => 0.8}
            ]
 
+    assert {:ok, page} = Session.sources(pid, "source.list", %{"limit" => 32})
+
+    assert Enum.sort(Enum.map(page["sources"], & &1["kind"])) ==
+             ~w(decision.advice effect.outcome)
+
+    advice = Enum.find(page["sources"], &(&1["kind"] == "decision.advice"))
+
+    assert {:ok, evidence} =
+             Session.sources(pid, "source.read", %{"handle" => advice["read_handle"]})
+
+    assert Jason.decode!(evidence["text"]) == outcome["value"]["result"]
+
     for type <-
           ~w(extension_decision_request extension_decision_response request_admitted request_finished extension_action_result) do
       original = Enum.find(ev, &(&1["type"] == type))

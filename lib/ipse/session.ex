@@ -109,6 +109,18 @@ defmodule Ipse.Session do
   @doc false
   def question_eof(pid, channel), do: GenServer.call(pid, {:question_eof, channel}, 10_000)
 
+  @doc "Read only this subscribed client's admitted source window; tokens grant no authority."
+  def sources(pid, operation, request),
+    do: GenServer.call(pid, {:session_sources, operation, request})
+
+  @doc false
+  def source_snapshot(s) do
+    case Writer.source_query(s.journal_writer, :snapshot) do
+      {:ok, snapshot} -> snapshot
+      _ -> %{"version" => 1, "available" => false}
+    end
+  end
+
   def cancel(pid), do: GenServer.call(pid, :cancel, 10_000)
   def materialize_result(pid, delivery), do: ResultSource.materialize_session(pid, delivery)
   def read_saved_result(pid, request), do: ResultSource.read_session(pid, request)
@@ -189,7 +201,9 @@ defmodule Ipse.Session do
     do: {:ok, "you> ", "prompt", nil}
 
   defp operator_request(_s, %{"kind" => "control", "display" => display} = request)
-       when map_size(request) == 2 and is_binary(display), do: {:ok, display, "control", nil}
+       when map_size(request) == 2 and is_binary(display) do
+    {:ok, display, "control", nil}
+  end
 
   defp operator_request(_, _), do: :error
 
@@ -246,10 +260,14 @@ defmodule Ipse.Session do
          :ok <- Ipse.Observability.validate_events(locked_events, id),
          :ok <- Ipse.Extension.TextResources.validate_events(locked_events, id),
          :ok <- Subscriptions.validate_sources(dir, id, locked_events),
+         {:ok, _validated_prefix} <- Saved.restore(locked_events, id),
+         :ok <- Ipse.Session.SourceWindow.validate_sources(dir, id, locked_events),
          :ok <- Ipse.Usage.Budget.validate_sources(config, id, locked_events),
          :ok <- Journal.repair_tail(dir, id, config[:journal]),
          {:ok, events} <- Journal.load(dir, id, config[:journal]),
          {:ok, saved} <- Saved.restore(events, id),
+         {:ok, source_window} <-
+           Ipse.Session.SourceWindow.attach_effective_source(saved.source_window, dir, id),
          %{
            accounting: accounting,
            extension_state: extension_state,
@@ -270,7 +288,10 @@ defmodule Ipse.Session do
              skill_discovery_options(config)
            ),
          {:ok, skills, skills_saved} <- Workspace.restore_skills(events, discovered),
+         {:ok, source_runtime} <- Ipse.Session.RuntimeLifecycle.restore(events, id),
+         {:ok, source_tools} <- Ipse.Session.ToolLifecycle.restore(events, id),
          {:ok, writer} <- Writer.start(dir, id, self(), config[:journal]) do
+      :ok = Writer.install_source_window(writer, source_window)
       :ok = Ipse.Session.Lock.track(writer, :writer)
 
       state = %{
@@ -379,6 +400,9 @@ defmodule Ipse.Session do
         observation: nil,
         lifecycle: nil,
         tool_lifecycle: nil,
+        source_runtime_summary: Map.take(source_runtime, [:epoch, :count, :closed, :stopped]),
+        source_tool_summary: Map.take(source_tools, [:count, :stopped]),
+        source_resumed: opts[:id] != nil,
         feeds: Feeds.new(events, id)
       }
 
@@ -423,7 +447,14 @@ defmodule Ipse.Session do
       state =
         Turn.tool_records(
           state,
-          Ipse.Session.ToolLifecycle.open(config, events, id, state.lifecycle, dir, question)
+          Ipse.Session.ToolLifecycle.open(
+            Map.put(config, :source_layout, nil),
+            events,
+            id,
+            state.lifecycle,
+            dir,
+            question
+          )
         )
 
       state =
@@ -1619,9 +1650,35 @@ defmodule Ipse.Session do
         %{operator_channel: %{id: channel, client: client}, phase: :question, question: question} =
           s
       )
-      when is_map(question), do: cancel_work(s, true)
+      when is_map(question) do
+    cancel_work(s, true)
+  end
 
   def handle_call({:question_eof, _}, _, s), do: {:reply, {:error, :no_pending_question}, s}
+
+  def handle_call({:session_sources, operation, request}, {client, _}, %{subscriber: client} = s) do
+    {:reply, source_query(s, operation, request), s}
+  end
+
+  def handle_call({:session_sources, _, _}, _, s),
+    do: {:reply, {:error, :source_index_refused}, s}
+
+  def handle_call(
+        {:model_sources, ref, operation, request},
+        {worker, _},
+        %{task: %{pid: worker}, job_ref: ref, phase: :tool} = s
+      ) do
+    call = List.first(s.calls)
+
+    if Ipse.Session.SourceWindow.enabled?(s.config) and
+         get_in(call, ["function", "name"]) == Ipse.Extension.SourceRead.tool_name(operation) and
+         Ipse.JSON.decode_unique(get_in(call, ["function", "arguments"])) == {:ok, request},
+       do: {:reply, source_query(s, operation, request), s},
+       else: {:reply, {:error, :source_index_refused}, s}
+  end
+
+  def handle_call({:model_sources, _, _, _}, _, s),
+    do: {:reply, {:error, :source_index_refused}, s}
 
   def handle_call(:cancel, _from, s), do: cancel_work(s, false)
 
@@ -1651,6 +1708,13 @@ defmodule Ipse.Session do
       notify(s, {:done, :cancelled})
       {:reply, :ok, next}
     end
+  end
+
+  defp source_query(s, operation, request) do
+    if is_map(request) and
+         Ipse.Extension.SourceRead.validate(Map.put(request, "op", operation)) == :ok,
+       do: Writer.source_query(s.journal_writer, {operation, request}),
+       else: {:error, :source_index_refused}
   end
 
   defp stop_work(
@@ -2731,13 +2795,18 @@ defmodule Ipse.Session do
 
   defp open(dir, nil, cwd, config) do
     config = Ipse.MCP.fingerprint_version(config, 2)
+    config = Map.put(config, :source_layout, Ipse.Session.SourceWindow.layout())
 
-    with {:ok, id} <-
+    with {:ok, mode} <- Ipse.Extension.Mode.capture(config),
+         config = apply_execution_mode(config, mode),
+         {:ok, id} <-
            Journal.create(
              dir,
              %{
                "cwd" => cwd,
                "reference_layout" => Ipse.Session.Reference.layout(),
+               "source_layout" => Ipse.Session.SourceWindow.layout(),
+               "execution_mode" => mode,
                "usage_version" => usage_version(config),
                "embedding_profiles" => Ipse.Config.Profiles.embedding_snapshot(config),
                "decision_profiles" => Ipse.Config.Decisions.snapshot(config),
@@ -2770,6 +2839,11 @@ defmodule Ipse.Session do
          :ok <- Ipse.Journal.writable_events(events),
          {:ok, version} <- Ipse.MCP.Config.journal_fingerprint_version(meta),
          config = Ipse.MCP.fingerprint_version(config, version),
+         true <- meta["source_layout"] in [nil, Ipse.Session.SourceWindow.layout()],
+         config = Map.put(config, :source_layout, meta["source_layout"]),
+         {:ok, saved_mode} <- Saved.execution_mode(events),
+         {:ok, mode} <- resume_execution_mode(saved_mode, config),
+         config = apply_execution_mode(config, mode),
          {:ok, old_cwd} <- Workspace.canonical_path(meta["cwd"]),
          true <-
            old_cwd == cwd and meta["provider"] == to_string(config.provider) and
@@ -2803,6 +2877,20 @@ defmodule Ipse.Session do
       {:error, reason} -> {:error, reason}
       _ -> {:error, :invalid_session}
     end
+  end
+
+  defp resume_execution_mode(nil, config), do: Ipse.Extension.Mode.capture(config)
+  defp resume_execution_mode(saved, config), do: Ipse.Extension.Mode.inherit(saved, config)
+
+  defp apply_execution_mode(config, mode) do
+    Map.merge(config, %{
+      approval: String.to_existing_atom(mode["approval"]),
+      approval_origin: mode["approval_origin"],
+      headless: mode["headless"],
+      execution_mode: mode["ceiling"],
+      enclosing_mode: mode["enclosing_ceiling"],
+      knowledge_ceiling: mode["knowledge"]
+    })
   end
 
   defp extension_catalog(config) do
@@ -2871,6 +2959,48 @@ defmodule Ipse.Session do
   defp lifecycle_records(s, {context, records}) do
     Enum.each(records, &record(s, &1))
     %{s | lifecycle: context}
+  end
+
+  @doc false
+  def ensure_source_window(s) do
+    if Ipse.Session.SourceWindow.enabled?(s.config) do
+      case Writer.ensure_source_window(s.journal_writer) do
+        :ok -> :ok
+        {:error, reason} -> journal_failed(s, reason)
+      end
+    end
+
+    s
+  end
+
+  @doc false
+  def ensure_source_tracking(s) do
+    if Ipse.Session.SourceWindow.enabled?(s.config) do
+      s = ensure_source_window(s)
+
+      s =
+        if s.lifecycle == nil,
+          do:
+            lifecycle_records(
+              s,
+              Ipse.Session.RuntimeLifecycle.open_source(
+                s.source_runtime_summary,
+                s.id,
+                s.source_resumed
+              )
+            ),
+          else: s
+
+      if s.tool_lifecycle == nil,
+        do:
+          Turn.tool_records(
+            s,
+            Ipse.Session.ToolLifecycle.open_source(s.source_tool_summary, s.id, s.lifecycle)
+          ),
+        else: s
+    else
+      s
+    end
   end
 
   @doc false

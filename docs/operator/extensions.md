@@ -132,6 +132,48 @@ Eligible SDK-2 calls share a two-minute deadline from original admission, includ
 startup, approvals, effects, transfer, validation, and cleanup. Pages do not reset it.
 Services, jobs, transforms, and recovered question continuations remain inline.
 
+## Ask for exact Session evidence
+
+In a fresh chat, the model can use `source_list`, `source_read` and `source_quote`
+to inspect admitted evidence from that conversation. No optional extension is
+needed. After a real answer or tool result, ask for an exact source check:
+
+```text
+List this conversation's admitted sources. Read the original input and the relevant
+tool evidence, quote the exact supporting words, and report missing coverage.
+```
+
+Expect occurrence/version IDs, origin and explicit coverage. Original prompts
+retain their exact bytes; verified native question answers remain distinct from
+assistant suggestions and unattended input. Tool outcome facts are separate from
+untrusted output text. Origin records who or what supplied the bytes; it does not
+prove truth or grant action permission. Reading a source does not save a note,
+enable automatic knowledge capture or contact another service.
+
+Each index page fits 4096 rendered bytes and up to 32 rows; each evidence page
+fits 8192 rendered bytes. More pages may be needed. A quote must match uniquely
+and exactly, including whitespace and Unicode. If it is ambiguous, include more
+supporting words. `unavailable`, legacy/unverified and capacity gaps are explicit;
+the model must not invent missing source text. A completed index page means its
+indexed window is exhausted, not that every historical event has readable text.
+Visible original answers over 8 KiB are unavailable under the retained answer-view
+bound. Original inputs keep their independent 1-MiB limit.
+
+The source window retains up to 1024 occurrences/8 MiB and refuses further capacity
+without evicting earlier sources. A changed window or resumed Session rejects old
+handles; request a fresh list. Read operations count toward normal turn/context
+limits. Reducing inline context does not make admitted sources unreadable.
+Older saved sessions keep their original tool catalog and may lack these tools;
+start a fresh Session to use the new catalog.
+
+A reviewed extension can receive the separate `host.sources` grant, together with
+`host.actions`, to read private admitted sources from its current Session. Grant
+only capabilities declared by its actual manifest; an existing `host.results`,
+history or state grant does not imply this access. It grants no child or unrelated
+Session transcript access. Extension readers have a finite 512-read/two-minute
+bound and ordinary cancellation. [The developer protocol](../developer/session-sources.md)
+explains exact requests and recovery checks.
+
 ## Approve state, workflow, and model work
 
 A state read grant does not allow writes. Each put/delete requires approval and
@@ -330,8 +372,10 @@ cycles refuse startup. Services return inline typed values, without nested effec
 questions, or saved output. No dependency is installed implicitly.
 
 `host.context` replaces one instance's current reference set. Empty clears it.
-There are eight items per set and 16 KiB globally rendered context. Refusal keeps
-the previous set. Children/fresh sessions inherit none. Attributed receipt-backed
+There are eight items per set and 16 KiB globally rendered context. In current
+versioned sessions, a refused replacement invalidates that instance's previous
+selection; historical reference messages remain intact. Legacy sessions retain
+their earlier replacement behavior. Children/fresh sessions inherit none. Attributed receipt-backed
 text proves recorded bytes, not truth or freshness; clearing it erases no prior
 model transfer or journal.
 

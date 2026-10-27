@@ -15,6 +15,7 @@ Choose the host operation that owns the effect:
 | Native vector generation | `embedding.create` | `host.embedding` | `Ipse.Extension.EmbeddingCall` |
 | Typed advisory inference | `decision.create` | `host.decision` | `Ipse.Extension.DecisionCall` |
 | Read a successful retained effect | `effect.result.read` | `host.results` | `Ipse.Extension.EffectResult` |
+| Read admitted current-Session evidence | `source.list`, `source.read`, `source.quote` | `host.sources` | `Ipse.Extension.SourceRead` |
 
 Every operation also needs `host.actions` in the artifact and the operator trust
 ceiling. An installed package, command invocation or answered question grants no
@@ -58,13 +59,21 @@ An interrupted intent remains unknown. Recovery validates bindings and action
 ordering before repairing a torn journal tail; idle resume restores committed
 values without dispatch. Never add automatic replay to resolve an unknown result.
 
+For original input, native answers, visible proposals and published typed tool
+receipts, follow [Session source reads](session-sources.md). Their explicit grant
+is separate from `host.results` and history views. Reading evidence neither
+approves an effect nor establishes knowledge eligibility.
+
 Ordinary invocations permit 16 host calls. `host.results` permits same-invocation
 `effect.result.read` calls through step 512, with a two-minute admission deadline;
-it does not extend other read families or permit a later effect. Explicit
+it does not extend other read families or permit a later effect. `host.sources`
+separately permits source reads through step 512 under the same two-minute bound.
+Explicit
 `host.actions.mixed` permits up to 512 reads and 16 other
 calls, 528 total, under each operation's own grants. Denials count. Questions,
 publications, services and inference are other calls. The read set is state
-get/list/scan, history read, usage read/children/child-read and effect-result read.
+get/list/scan, history read, usage read/children/child-read, effect-result read and
+source list/read/quote.
 Host, Session and recovery each derive these counters from the committed chain.
 
 ## Reuse file and shell ownership
