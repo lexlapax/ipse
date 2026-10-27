@@ -1,0 +1,42 @@
+Running ExUnit with seed: 20270370, max_cases: 1
+Excluding tags: [:native_sandbox, :macos_sandbox, :macos_filesystem, :memory_scope]
+
+.............
+10:46:28.389 [info] The function passed as a handler with ID {Ipse.Extension.CollectionCallSessionTest, #Reference<0.1342065825.1126432769.109097>} is a local function.
+This means that it is either an anonymous function or a capture of a function without a module specified. That may cause a performance penalty when calling that handler. For more details see the note in `telemetry:attach/4` documentation.
+
+https://hexdocs.pm/telemetry/telemetry.html#attach/4
+..
+10:46:29.079 [info] The function passed as a handler with ID {Ipse.Extension.CollectionCallSessionTest, #Reference<0.1342065825.1126432769.130345>} is a local function.
+This means that it is either an anonymous function or a capture of a function without a module specified. That may cause a performance penalty when calling that handler. For more details see the note in `telemetry:attach/4` documentation.
+
+https://hexdocs.pm/telemetry/telemetry.html#attach/4
+.
+10:46:34.344 [info] The function passed as a handler with ID {Ipse.Extension.CollectionCallSessionTest, #Reference<0.1342065825.1126432769.136497>} is a local function.
+This means that it is either an anonymous function or a capture of a function without a module specified. That may cause a performance penalty when calling that handler. For more details see the note in `telemetry:attach/4` documentation.
+
+https://hexdocs.pm/telemetry/telemetry.html#attach/4
+.
+10:46:34.834 [info] The function passed as a handler with ID {Ipse.Extension.CollectionCallSessionTest, #Reference<0.1342065825.1126432769.152863>} is a local function.
+This means that it is either an anonymous function or a capture of a function without a module specified. That may cause a performance penalty when calling that handler. For more details see the note in `telemetry:attach/4` documentation.
+
+https://hexdocs.pm/telemetry/telemetry.html#attach/4
+.
+10:46:35.317 [info] The function passed as a handler with ID {Ipse.Extension.CollectionCallSessionTest, #Reference<0.1342065825.1126432769.161924>} is a local function.
+This means that it is either an anonymous function or a capture of a function without a module specified. That may cause a performance penalty when calling that handler. For more details see the note in `telemetry:attach/4` documentation.
+
+https://hexdocs.pm/telemetry/telemetry.html#attach/4
+.
+10:46:36.049 [info] The function passed as a handler with ID {Ipse.Extension.CollectionCallSessionTest, #Reference<0.1342065825.1126432769.168446>} is a local function.
+This means that it is either an anonymous function or a capture of a function without a module specified. That may cause a performance penalty when calling that handler. For more details see the note in `telemetry:attach/4` documentation.
+
+https://hexdocs.pm/telemetry/telemetry.html#attach/4
+..
+10:46:36.865 [info] The function passed as a handler with ID {Ipse.Extension.CollectionCallSessionTest, #Reference<0.1342065825.1126432769.181505>} is a local function.
+This means that it is either an anonymous function or a capture of a function without a module specified. That may cause a performance penalty when calling that handler. For more details see the note in `telemetry:attach/4` documentation.
+
+https://hexdocs.pm/telemetry/telemetry.html#attach/4
+..........
+Finished in 20.2 seconds (0.00s async, 20.2s sync)
+
+Result: 31 passed
