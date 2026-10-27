@@ -1,0 +1,23 @@
+Compiling 13 files (.ex)
+Running ExUnit with seed: 20270124, max_cases: 1
+Excluding tags: [:test]
+Including tags: [location: {"test/ipse/session/draft_vertical_test.exs", 358}]
+
+
+
+  1) test multiple cancelled drafts stay withdrawn during later drafts and replay (Ipse.Session.DraftVerticalTest)
+     test/ipse/session/draft_vertical_test.exs:358
+     ** (MatchError) no match of right hand side value:
+
+         {:error, :draft_projection_unsafe}
+
+     code: {resumed, resumed_label} = start(c, %{}, id)
+     stacktrace:
+       test/ipse/session/draft_vertical_test.exs:80: Ipse.Session.DraftVerticalTest.start/3
+       test/ipse/session/draft_vertical_test.exs:372: (test)
+
+
+Finished in 0.4 seconds (0.00s async, 0.4s sync)
+
+Result: 0/1 passed, 5 excluded
+Failed: 1 test

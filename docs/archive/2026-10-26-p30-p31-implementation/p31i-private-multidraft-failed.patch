@@ -1,0 +1,199 @@
+diff --git a/lib/ipse/session.ex b/lib/ipse/session.ex
+index d35b63f..d5cb1be 100644
+--- a/lib/ipse/session.ex
++++ b/lib/ipse/session.ex
+@@ -1641,9 +1641,10 @@ defmodule Ipse.Session do
+ 
+   def handle_call({:observe_input, _, _}, _from, s), do: {:reply, {:error, :busy}, s}
+ 
+-  def handle_call({:start_draft, text}, _from, %{phase: :idle, draft: nil} = s)
++  def handle_call({:start_draft, text}, _from, %{phase: :idle} = s)
+       when is_binary(text) and byte_size(text) in 1..32_768 do
+-    if String.valid?(text) and draft_environment_available(%{}, s.config) == :ok and
++    if String.valid?(text) and next_draft_available?(s.draft) and
++         draft_environment_available(%{}, s.config) == :ok and
+          Workspace.explicit_skills(text, s.skills) == [] do
+       :ok = Ipse.Session.Input.invalidate()
+       id = Ipse.Usage.id()
+@@ -1663,7 +1664,8 @@ defmodule Ipse.Session do
+         accepted_input: false,
+         accepted_message: false,
+         prefix_count: length(s.messages),
+-        prefix_sha256: Ipse.JSON.digest(s.messages)
++        prefix_sha256: Ipse.JSON.digest(s.messages),
++        history: if(s.draft, do: s.draft.history ++ [Map.delete(s.draft, :history)], else: [])
+       }
+ 
+       config = Ipse.Session.Draft.draft_config(s.config)
+@@ -3355,6 +3357,14 @@ defmodule Ipse.Session do
+         "subject_source" => source
+       })
+ 
++  defp next_draft_available?(nil), do: true
++  defp next_draft_available?(%{status: :cancelled, notice: true, history: h}), do: length(h) < 15
++
++  defp next_draft_available?(%{status: :consumed, accepted_message: true, history: h}),
++    do: length(h) < 15
++
++  defp next_draft_available?(_), do: false
++
+   defp draft_environment_available(nil, _), do: :ok
+ 
+   defp draft_environment_available(_, config) do
+diff --git a/lib/ipse/session/draft.ex b/lib/ipse/session/draft.ex
+index fa9519c..56a9225 100644
+--- a/lib/ipse/session/draft.ex
++++ b/lib/ipse/session/draft.ex
+@@ -131,31 +131,66 @@ defmodule Ipse.Session.Draft do
+   # notice are independently checked against the journaled boundaries.
+   def project(nil, messages) when is_list(messages), do: {:ok, messages}
+ 
+-  def project(%{status: status}, messages)
+-      when status in [:pending, :completed, :accepted] and is_list(messages), do: {:ok, messages}
++  def project(%{history: history} = draft, messages)
++      when is_list(history) and is_list(messages) do
++    drafts = history ++ [Map.delete(draft, :history)]
++
++    with true <- length(drafts) <= 16,
++         true <- Enum.all?(drafts, &match?({:ok, _}, project_one(&1, messages))),
++         intervals <- Enum.filter(drafts, &withdrawn?/1),
++         true <- disjoint_intervals?(intervals),
++         projected <-
++           Enum.reduce(Enum.sort_by(intervals, & &1.prefix_count, :desc), messages, fn d, acc ->
++             Enum.take(acc, d.prefix_count) ++ Enum.drop(acc, d.end_count)
++           end),
++         true <- Ipse.Session.Reference.safe_tail?(projected) do
++      {:ok, projected}
++    else
++      _ -> {:error, :draft_projection_unsafe}
++    end
++  rescue
++    _ -> {:error, :draft_projection_unsafe}
++  end
++
++  def project(draft, messages), do: project_one(draft, messages)
+ 
+-  def project(%{status: :cancelled, notice: true} = d, messages) when is_list(messages),
++  defp withdrawn?(%{status: :cancelled, notice: true}), do: true
++  defp withdrawn?(%{status: :consumed, accepted_message: true}), do: true
++  defp withdrawn?(_), do: false
++
++  defp disjoint_intervals?(intervals) do
++    intervals
++    |> Enum.sort_by(& &1.prefix_count)
++    |> Enum.chunk_every(2, 1, :discard)
++    |> Enum.all?(fn [a, b] -> a.end_count <= b.prefix_count end)
++  end
++
++  defp project_one(%{status: status}, messages)
++       when status in [:pending, :completed, :accepted] and is_list(messages), do: {:ok, messages}
++
++  defp project_one(%{status: :cancelled, notice: true} = d, messages) when is_list(messages),
+     do: withdraw(d, messages, :cancelled)
+ 
+-  def project(%{status: :cancelled, notice: false} = d, messages) when is_list(messages) do
++  defp project_one(%{status: :cancelled, notice: false} = d, messages) when is_list(messages) do
+     case withdraw(d, messages, :incomplete) do
+       {:ok, _} -> {:ok, messages}
+       error -> error
+     end
+   end
+ 
+-  def project(%{status: :consumed, accepted_message: true} = d, messages) when is_list(messages),
+-    do: withdraw(d, messages, :accepted)
++  defp project_one(%{status: :consumed, accepted_message: true} = d, messages)
++       when is_list(messages),
++       do: withdraw(d, messages, :accepted)
+ 
+-  def project(%{status: :consumed, accepted_message: false} = d, messages)
+-      when is_list(messages) do
++  defp project_one(%{status: :consumed, accepted_message: false} = d, messages)
++       when is_list(messages) do
+     case withdraw(d, messages, :incomplete) do
+       {:ok, _} -> {:ok, messages}
+       error -> error
+     end
+   end
+ 
+-  def project(_, _), do: {:error, :draft_projection_unsafe}
++  defp project_one(_, _), do: {:error, :draft_projection_unsafe}
+ 
+   defp withdraw(d, messages, kind) do
+     start = d.prefix_count
+@@ -233,7 +268,8 @@ defmodule Ipse.Session.Draft do
+          accepted_turn: nil,
+          accepted_input: false,
+          accepted_message: false,
+-         accepted_effective: nil
++         accepted_effective: nil,
++         history: []
+        }}
+     else
+       @error
+@@ -245,6 +281,17 @@ defmodule Ipse.Session.Draft do
+        do: @error
+ 
+   defp step(nil, _, _), do: {:ok, nil}
++
++  defp step(%{status: :cancelled, notice: true} = d, %{"type" => "draft_started"} = e, session),
++    do: next_draft(d, e, session)
++
++  defp step(
++         %{status: :consumed, accepted_message: true} = d,
++         %{"type" => "draft_started"} = e,
++         session
++       ),
++       do: next_draft(d, e, session)
++
+   defp step(_, %{"type" => "draft_started"}, _), do: @error
+ 
+   defp step(%{status: :pending, input: false} = d, %{"type" => "input_received"} = e, _) do
+@@ -386,6 +433,16 @@ defmodule Ipse.Session.Draft do
+ 
+   defp step(d, %{"type" => "input_received"}, _) when is_map(d), do: @error
+   defp step(d, _, _), do: {:ok, d}
++
++  defp next_draft(d, event, session) do
++    history = d.history ++ [Map.delete(d, :history)]
++
++    with true <- length(history) < 16,
++         {:ok, next} <- step(nil, event, session),
++         do: {:ok, %{next | history: history}},
++         else: (_ -> @error)
++  end
++
+   defp id?(v), do: is_binary(v) and Regex.match?(~r/\A[0-9a-f]{32}\z/, v)
+   defp keys?(v, keys), do: Enum.sort(Map.keys(v)) == Enum.sort(keys)
+ end
+diff --git a/test/ipse/session/draft_vertical_test.exs b/test/ipse/session/draft_vertical_test.exs
+index 95a66c4..5f41197 100644
+--- a/test/ipse/session/draft_vertical_test.exs
++++ b/test/ipse/session/draft_vertical_test.exs
+@@ -354,4 +354,27 @@ defmodule Ipse.Session.DraftVerticalTest do
+     assert_receive {:ipse, ^pid, {:done, :ok}}, 5_000
+     refute File.exists?(Path.join(c.root, "forbidden"))
+   end
++
++  test "multiple cancelled drafts stay withdrawn during later drafts and replay", c do
++    {pid, label} = start(c)
++    id = Session.info(pid).id
++
++    for {text, prior} <- [{"first private requirement", nil}, {"second private requirement", "first private requirement"}] do
++      assert :ok = Session.start_draft(pid, text)
++      assert_receive {:request, ^label, _, _, first}, 5_000
++      if prior, do: refute(inspect(first) =~ prior)
++      assert_receive {:request, ^label, _, _, _}, 5_000
++      assert_receive {:ipse, ^pid, {:done, :ok}}, 5_000
++      assert :ok = Session.cancel_draft(pid)
++    end
++
++    assert :ok = Session.close_confirmed(pid)
++    {resumed, resumed_label} = start(c, %{}, id)
++    assert :ok = Session.prompt(resumed, "ordinary")
++    assert_receive {:request, ^resumed_label, _, _, messages}, 5_000
++    refute inspect(messages) =~ "first private requirement"
++    refute inspect(messages) =~ "second private requirement"
++    refute inspect(messages) =~ "draft-only canary"
++    assert_receive {:ipse, ^resumed, {:done, :ok}}, 5_000
++  end
+ end

@@ -1,0 +1,33 @@
+diff --git a/lib/ipse/session/draft.ex b/lib/ipse/session/draft.ex
+index fa9519c..f872ff5 100644
+--- a/lib/ipse/session/draft.ex
++++ b/lib/ipse/session/draft.ex
+@@ -163,7 +163,10 @@ defmodule Ipse.Session.Draft do
+ 
+     with true <-
+            is_integer(start) and is_integer(finish) and start >= 0 and finish >= start and
+-             (finish < length(messages) or (kind == :incomplete and finish == length(messages))),
++             if(kind == :incomplete,
++               do: finish == length(messages),
++               else: finish < length(messages)
++             ),
+          prefix = Enum.take(messages, start),
+          segment = Enum.slice(messages, start, finish - start),
+          true <-
+diff --git a/test/ipse/session/draft_projection_test.exs b/test/ipse/session/draft_projection_test.exs
+index bdc5175..2841bc8 100644
+--- a/test/ipse/session/draft_projection_test.exs
++++ b/test/ipse/session/draft_projection_test.exs
+@@ -66,6 +66,12 @@ defmodule Ipse.Session.DraftProjectionTest do
+     segment_only = Enum.take(messages, incomplete.end_count)
+     assert {:ok, ^segment_only} = Draft.project(incomplete, segment_only)
+ 
++    assert {:error, :draft_projection_unsafe} =
++             Draft.project(
++               incomplete,
++               segment_only ++ [%{"role" => "user", "content" => "unexpected"}]
++             )
++
+     assert {:error, :draft_projection_unsafe} =
+              Draft.project(
+                %{incomplete | segment_sha256: String.duplicate("0", 64)},

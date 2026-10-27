@@ -1,0 +1,92 @@
+diff --git a/lib/ipse/session.ex b/lib/ipse/session.ex
+index 661c4b5..d35b63f 100644
+--- a/lib/ipse/session.ex
++++ b/lib/ipse/session.ex
+@@ -1003,6 +1003,13 @@ defmodule Ipse.Session do
+       when status in [:pending, :completed, :accepted],
+       do: {:reply, {:error, :draft_recovery_required}, s}
+ 
++  def handle_call(
++        {:invoke_export, _, _, _},
++        _,
++        %{draft: %{status: :cancelled, notice: false}} = s
++      ),
++      do: {:reply, {:error, :draft_recovery_required}, s}
++
+   def handle_call(
+         {:invoke_export, _, _, _},
+         _,
+@@ -1730,6 +1737,12 @@ defmodule Ipse.Session do
+       when status in [:pending, :completed, :accepted],
+       do: {:reply, {:error, :draft_recovery_required}, s}
+ 
++  def handle_call({:prompt, _, _}, _, %{draft: %{status: :cancelled, notice: false}} = s),
++    do: {:reply, {:error, :draft_recovery_required}, s}
++
++  def handle_call({:prompt, _}, _, %{draft: %{status: :cancelled, notice: false}} = s),
++    do: {:reply, {:error, :draft_recovery_required}, s}
++
+   def handle_call(
+         {:prompt, _, _},
+         _,
+@@ -1882,6 +1895,15 @@ defmodule Ipse.Session do
+   def handle_call({:model_sources, _, _, _}, _, s),
+     do: {:reply, {:error, :source_index_refused}, s}
+ 
++  def handle_call(
++        :cancel_draft,
++        _from,
++        %{phase: :idle, draft: %{status: :cancelled, notice: false} = draft} = s
++      ) do
++    next = Turn.append_message(s, %{"role" => "user", "content" => Ipse.Session.Draft.notice()})
++    {:reply, :ok, %{next | draft: %{draft | notice: true}}}
++  end
++
+   def handle_call(:cancel_draft, _from, %{draft: %{status: status}} = s)
+       when status in [:pending, :completed, :accepted], do: cancel_draft_work(s)
+ 
+diff --git a/lib/ipse/session/draft.ex b/lib/ipse/session/draft.ex
+index 7732e35..fa9519c 100644
+--- a/lib/ipse/session/draft.ex
++++ b/lib/ipse/session/draft.ex
+@@ -137,6 +137,13 @@ defmodule Ipse.Session.Draft do
+   def project(%{status: :cancelled, notice: true} = d, messages) when is_list(messages),
+     do: withdraw(d, messages, :cancelled)
+ 
++  def project(%{status: :cancelled, notice: false} = d, messages) when is_list(messages) do
++    case withdraw(d, messages, :incomplete) do
++      {:ok, _} -> {:ok, messages}
++      error -> error
++    end
++  end
++
+   def project(%{status: :consumed, accepted_message: true} = d, messages) when is_list(messages),
+     do: withdraw(d, messages, :accepted)
+ 
+diff --git a/test/ipse/session/draft_vertical_test.exs b/test/ipse/session/draft_vertical_test.exs
+index 587dafe..95a66c4 100644
+--- a/test/ipse/session/draft_vertical_test.exs
++++ b/test/ipse/session/draft_vertical_test.exs
+@@ -122,6 +122,22 @@ defmodule Ipse.Session.DraftVerticalTest do
+     assert Enum.any?(events, &(&1["type"] == "draft_cancelled"))
+     assert {:ok, _} = Session.restore_context(events)
+ 
++    {before, [marker | _]} = Enum.split_while(events, &(&1["type"] != "draft_cancelled"))
++    crash_dir = Path.join(c.root, "cancel-before-notice")
++    File.mkdir_p!(crash_dir)
++    crash_file = Path.join(crash_dir, id <> ".jsonl")
++    File.write!(crash_file, Enum.map_join(before ++ [marker], "\n", &Jason.encode!/1) <> "\n")
++    File.chmod!(crash_file, 0o600)
++    {crashed, crash_label} = start(%{c | dir: crash_dir}, %{}, id)
++    refute_receive {:request, ^crash_label, _, _, _}, 100
++    assert {:error, :draft_recovery_required} = Session.prompt(crashed, "ordinary")
++    assert :ok = Session.cancel_draft(crashed)
++    assert :ok = Session.prompt(crashed, "ordinary")
++    assert_receive {:request, ^crash_label, _, _, recovered_messages}, 5_000
++    refute inspect(recovered_messages) =~ "canary secret requirement"
++    assert_receive {:ipse, ^crashed, {:done, :ok}}, 5_000
++    assert :ok = Session.close_confirmed(crashed)
++
+     for {type, field, value} <- [
+           {"draft_started", "revision", 2},
+           {"draft_started", "input_sha256", String.duplicate("0", 64)},
