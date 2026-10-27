@@ -255,3 +255,10 @@ fixed an incorrect worker PID. This used a test-instrumented helper and does
 not prove a Session journey, device behavior, crash cleanup or qualification.
 The actual privileged launcher, staged tool closure, cgroup boundaries, stage
 provenance and resulting device effects remain unverified and are not enabled.
+
+The current draft has a pre-acquisition BEAM pidfd/executable/pipe gate and an
+independent guardian startup barrier, plus a limited real-backend provisioning
+and fault path. A no-device Docker test exercised the Rust stage adapter with a
+bound Resources scope and an instrumented helper; a wrong executable was also
+refused before staging. See `STAGE-CONTAINER-RECEIPT.md` for provenance and
+limits. The privileged live entry, mapper fault and cleanup are not qualified.

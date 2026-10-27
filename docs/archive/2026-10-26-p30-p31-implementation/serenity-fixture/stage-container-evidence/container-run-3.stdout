@@ -1,0 +1,25 @@
+MAP_BEAM /etc/ld.so.cache
+MAP_BEAM /usr/lib/erlang/erts-17.1/bin/beam.smp
+MAP_BEAM /usr/lib/erlang/lib/crypto-5.10/priv/lib/crypto.so
+MAP_BEAM /usr/lib/erlang/lib/crypto-5.10/priv/lib/crypto_callback.so
+MAP_BEAM /usr/lib/ld-linux-x86-64.so.2
+MAP_BEAM /usr/lib/libbrotlicommon.so.1.2.0
+MAP_BEAM /usr/lib/libbrotlidec.so.1.2.0
+MAP_BEAM /usr/lib/libbrotlienc.so.1.2.0
+MAP_BEAM /usr/lib/libc.so.6
+MAP_BEAM /usr/lib/libcrypto.so.3
+MAP_BEAM /usr/lib/libgcc_s.so.1
+MAP_BEAM /usr/lib/libm.so.6
+MAP_BEAM /usr/lib/libncursesw.so.6.6
+MAP_BEAM /usr/lib/libsctp.so.1
+MAP_BEAM /usr/lib/libstdc++.so.6.0.36
+MAP_BEAM /usr/lib/libz.so.1.3.2
+MAP_BEAM /usr/lib/libzstd.so.1.5.7
+MAP_BEAM /usr/lib/locale/C.utf8/LC_CTYPE
+MAP_BEAM /usr/lib/ossl-modules/legacy.so
+MAP_HELPER /etc/ld.so.cache
+MAP_HELPER /tmp/ipse-stage-gate-review/build/lib/ipse/priv/ipse-runner
+MAP_HELPER /usr/lib/ld-linux-x86-64.so.2
+MAP_HELPER /usr/lib/libc.so.6
+MAP_HELPER /usr/lib/libgcc_s.so.1
+SYNTHETIC_STAGE_SCOPE_OK

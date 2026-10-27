@@ -3,6 +3,9 @@
 alias Ipse.Runner.Transaction, as: Transaction
 alias Ipse.Session.Resources
 root = "/work/mount/transaction"
+# The launcher must attest this BEAM process before any file effect.
+IO.puts("STAGE_ARMED")
+if IO.read(:line) != "AUTH\n", do: raise("stage authorization unknown")
 parent = self()
 owner = spawn(fn ->
   {:ok, scope} = Resources.start(self())

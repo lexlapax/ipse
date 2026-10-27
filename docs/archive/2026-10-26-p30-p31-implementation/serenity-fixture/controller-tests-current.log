@@ -88,5 +88,5 @@ test tests::recovery_restores_only_exact_known_error_state_then_tears_down ... o
 test tests::uncertain_effects_stop_without_replay_or_compensating_action ... ok
 test tests::wrong_existing_or_extra_inactive_table_refuses ... ok
 
-test result: ok. 86 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 0.87s
+test result: ok. 86 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 0.92s
 

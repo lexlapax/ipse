@@ -5,6 +5,10 @@ use std::fs::File;use std::io::{self,Read,Write};use std::os::fd::{AsRawFd,FromR
 unsafe extern "C"{fn poll(p:*mut PollFd,n:usize,t:i32)->i32;fn fcntl(fd:i32,cmd:i32,...)->i32;fn syscall(n:i64,...)->i64;}
 pub(super) struct Client {command:File,reply:File,active:bool,pidfd:Option<File>}
 pub(super) struct VerifiedOwner {pidfd:File,command:(u64,u64),reply:(u64,u64)}
+impl VerifiedOwner {
+ pub(super) fn verify_pipes(&self,command:&File,reply:&File)->io::Result<()> {live(&self.pidfd)?;let c=command.metadata()?;let r=reply.metadata()?;if (c.dev(),c.ino())!=self.command||(r.dev(),r.ino())!=self.reply{return Err(io::ErrorKind::PermissionDenied.into())}Ok(())}
+ pub(super) fn into_pidfd(self)->File {self.pidfd}
+}
 impl Client {
  /// Only a future independently authenticated supervisor may supply pipes.
  /// Supplying two pipes alone does not prove which process owns the other ends.
