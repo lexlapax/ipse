@@ -9,7 +9,7 @@ defmodule IpseKnowledge.Profiles do
     extra =
       case {package, preset} do
         {"knowledge", "native"} ->
-          ~w(host.actions host.actions.mixed host.sources host.collection.read host.collection.write)
+          ~w(host.actions host.actions.mixed host.sources host.collection.read host.collection.managed)
 
         {"corpus", "state-lexical"} ->
           @state

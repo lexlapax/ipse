@@ -160,6 +160,21 @@ defmodule Ipse.JSON do
 
   def validate_object(_), do: {:error, @argument_error}
 
+  @doc "Validate a canonical digest's ordered inputs using the SDK bounds, with each member at root depth."
+  def checked_digest(values) when is_list(values) do
+    with :ok <- json_value(values, 0),
+         {:ok, encoded} <- encode(values),
+         true <- byte_size(encoded) <= @argument_limit do
+      {:ok, digest(values)}
+    else
+      _ -> {:error, :invalid_json}
+    end
+  rescue
+    _ -> {:error, :invalid_json}
+  end
+
+  def checked_digest(_), do: {:error, :invalid_json}
+
   defp compile(schema) do
     # No loader is supplied: external references cannot trigger network or file access.
     # The admitted draft-07 keywords have identical validation semantics in our

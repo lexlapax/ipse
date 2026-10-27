@@ -13,7 +13,7 @@ Start with the [operator procedures](../operator/corpus.md) and
 | Source under `extensions/knowledge/src/` | Responsibility |
 | --- | --- |
 | `knowledge.ex`, `knowledge/records.ex`, `notes.ex` | Protected capture continuation, stable evidence and note retention |
-| `knowledge/contracts.ex` | Inert operator-sidecar publication schemas; no authority or executable setup |
+| `knowledge/contracts.ex` | Inert operator-sidecar publication schemas and managed recipes; no authority or executable setup |
 | `corpus.ex` | Source/query/index commands and final revalidation |
 | `graph.ex`, `research.ex` | Attributed extraction/traversal and captured-source investigations |
 | `profiles.ex` | Closed named algorithms and preset compatibility |
@@ -38,9 +38,12 @@ source handle. All seven profile registries must be empty. This path uses the
 selected main model's tool calls; it performs no secondary inference.
 
 Follow `Knowledge.handle/3` through source read, exact quote, public SDK proof,
-saved lineage override, existing-record lookup and collection commit. The host
+saved lineage override, existing-record lookup and explicit managed collection commit. The host
 reconstructs the proof independently at publication and checks the current
-protected permission. A worker's origin label or JSON proof grants no permission.
+protected permission. The artifact declares `host.collection.managed` separately
+from read access and carries the exact sidecar recipe digest. Its original commit
+explicitly advances the import floor. Read/write grants do not imply this capability.
+A worker's origin label or JSON proof grants no permission.
 The [collection SDK](collection-sdk.md) owns that admission boundary.
 
 `Knowledge.Records.capture/4` constructs a note only when its text equals the
@@ -52,9 +55,11 @@ Ordinary notes expire after 90 days; current/preference notes retain their categ
 Pins require a separate explicit operator workflow.
 
 Lineage derives from source identity and span, independently of a model's text
-or category. A saved session-only override suppresses every classification and
-paraphrase of that evidence. An anchored expired override does not acquire a new
-deadline. An existing record returns its revision without replacement or TTL
+or category. The pure Records retention model can apply a saved session-only
+override to every classification and paraphrase of that evidence; it cannot renew
+an anchored expired override. The current managed host refuses legacy override
+adoption until a typed operator workflow supplies that authority. An existing
+public record returns its revision without replacement or TTL
 renewal. New proposals have a seven-day deadline and a retained queue ceiling of
 64 records/256 KiB. The capture path counts retained proposals, including expired
 ones; it neither silently deletes them nor renews them to make room.
@@ -68,13 +73,19 @@ management workflow's responsibility.
 
 The native builder also declares `operator.json` in the artifact's hashed file
 inventory. `Knowledge.Contracts.operator/0` supplies closed structural constraints
-for notes, pending proposals and each of the four retention choices. A capture
+for notes, pending proposals and each of the four retention choices, plus reviewed
+literal/proposal recipe data referencing the exact constraint digests. The builder
+uses the public `Ipse.Extension.canonical_digest/1` helper rather than a private
+host encoder. A capture
 schema excludes pin/history categories. Separate retention schemas prevent an
 ordinary choice from carrying a duration or silently becoming a pin. These use
 the existing supported JSON Schema subset and introduce no schema evaluator.
-They do not authenticate origin, recompute lineage, establish operator acceptance
-or enforce cross-field expiry relationships. Those checks must remain in the
-trusted publication/eligibility path before standalone activation is available.
+They do not authenticate origin or establish operator acceptance. The managed
+publication adapter authenticates the source and the host Normalizer independently
+checks lineage, category and source clocks under the Collection lock. Its version-2
+packed anchor/live pages preserve deadlines after public-record pruning and reject
+experimental version-1 metadata. Managed recall must still apply these witnesses
+at every dispatch before standalone activation is ready.
 
 An operator adapter can inspect this data with
 `Artifact.read_declared(store, digest, "operator.json", 65_536)`. This revalidates
@@ -91,8 +102,9 @@ mix test test/extensions/knowledge/knowledge_capture_test.exs
 mix test test/extensions/knowledge/knowledge_session_test.exs
 ```
 
-The first two exercise pure records and worker continuations with synthetic proof
-inputs. The third builds/imports a separate SDK artifact, runs a synthetic main
+The first two exercise pure records and declarative contracts with synthetic
+proof inputs. The third checks worker continuations in a separate VM. The fourth
+builds/imports a separate SDK artifact, runs a synthetic main
 model through native `source_list` and capture, checks an actual protected pending
 publication and accounting, then validates saved context. It requires the reviewed
 native allocation profile. It performs no real model calls. Conflict, denied and

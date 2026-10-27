@@ -2,6 +2,7 @@ defmodule IpseKnowledge.Knowledge do
   @behaviour Ipse.Extension
   alias IpseKnowledge.Profiles
   alias IpseKnowledge.Knowledge.Records
+  alias IpseKnowledge.Knowledge.Contracts
   @preset "native"
 
   def describe do
@@ -207,12 +208,16 @@ defmodule IpseKnowledge.Knowledge do
   defp advance(_, _, state), do: refused(state, :invalid_host_response)
 
   defp commit(generation, state) do
+    kind = if String.starts_with?(state.ctx.key, "pending."), do: "pending", else: "note"
+    {:ok, recipe_sha256} = Ipse.Extension.canonical_digest([Contracts.recipe(kind)])
+
     request = %{
-      "op" => "collection.call",
+      "op" => "collection.managed",
+      "recipe_sha256" => recipe_sha256,
       "request" => %{
         "op" => "commit",
         "expected_generation" => generation,
-        "advance_floor" => false,
+        "advance_floor" => true,
         "changes" => [
           %{"key" => state.ctx.key, "expected_revision" => 0, "value" => state.ctx.value}
         ]

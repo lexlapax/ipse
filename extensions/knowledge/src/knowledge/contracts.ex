@@ -11,23 +11,64 @@ defmodule IpseKnowledge.Knowledge.Contracts do
   @safe 9_007_199_254_740_991
 
   def operator do
+    publication = %{
+      "note" => constraints("note.", note_schema(), strong_origins()),
+      "pending" => constraints("pending.", proposal_schema(), all_origins()),
+      "retention" =>
+        Map.new(~w(pin ordinary session duration), fn kind ->
+          {kind,
+           constraints(
+             "override.",
+             override_schema(kind),
+             Enum.sort(~w(interactive_operator native_operator_answer))
+           )}
+        end)
+    }
+
     %{
       "version" => 1,
       "domain" => "knowledge",
       "preset" => "native",
-      "publication" => %{
-        "note" => constraints("note.", note_schema(), strong_origins()),
-        "pending" => constraints("pending.", proposal_schema(), all_origins()),
-        "retention" =>
-          Map.new(~w(pin ordinary session duration), fn kind ->
-            {kind,
-             constraints(
-               "override.",
-               override_schema(kind),
-               Enum.sort(~w(interactive_operator native_operator_answer))
-             )}
-          end)
-      }
+      "publication" => publication,
+      "recipes" => Map.new(~w(note pending), &{&1, managed_recipe(&1, publication[&1])})
+    }
+  end
+
+  def recipe(kind) when kind in ~w(note pending), do: operator()["recipes"][kind]
+
+  defp managed_recipe(kind, constraint) do
+    {:ok, constraints_sha256} = Ipse.Extension.canonical_digest([constraint])
+
+    rules =
+      Enum.map(~w(current ordinary preference), fn category ->
+        age =
+          cond do
+            kind == "pending" -> 7 * 86_400_000
+            category == "ordinary" -> 90 * 86_400_000
+            true -> nil
+          end
+
+        origins =
+          cond do
+            kind == "pending" -> all_origins()
+            category == "ordinary" -> strong_origins()
+            true -> Enum.sort(~w(interactive_operator native_operator_answer))
+          end
+
+        %{"category" => category, "max_age_ms" => age, "origins" => origins}
+      end)
+
+    %{
+      "version" => 1,
+      "kind" => if(kind == "note", do: "literal_source", else: "proposal"),
+      "key_prefix" => constraint["key_prefix"],
+      "constraints_sha256" => constraints_sha256,
+      "evidence_path" => ["evidence", "sources"],
+      "lineage_path" => ["lineage"],
+      "text_path" => ["text"],
+      "category_path" => [if(kind == "note", do: "category", else: "assigned_category")],
+      "rules" => rules,
+      "override_prefix" => "override."
     }
   end
 

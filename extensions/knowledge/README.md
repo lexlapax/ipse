@@ -26,9 +26,12 @@ Source and package builds also compile an inert `knowledge/native` artifact into
 catalog and explicitly import a selected artifact through `Extension.Bundles`;
 neither step starts a worker, grants capabilities or changes configuration.
 The native artifact includes a manifest-declared `operator.json` with structural
-publication schemas. A host can read its reverified bytes without loading worker
-code. The schemas grant no source authority, operator acceptance or retention
-eligibility; those remain separate trusted host checks.
+publication schemas and exact managed recipes. Capture requests the separate
+`host.collection.managed` operation and explicitly advances the import floor.
+A host can read the reverified sidecar bytes without loading worker code. The
+schemas grant no source authority or operator acceptance; publication authenticates
+proofs and normalizes source clocks independently. Current-read eligibility
+remains a separate host check.
 Installed users do not need a compiler for those packaged bytes. Guided knowledge
 setup and the remaining workflows are still being integrated.
 

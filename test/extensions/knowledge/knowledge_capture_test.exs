@@ -3,7 +3,7 @@ defmodule IpseKnowledge.KnowledgeCaptureTest do
 
   @suite ~S"""
   ExUnit.start(autorun: false)
-  for path <- ~w(profiles notes knowledge/records knowledge),
+  for path <- ~w(profiles notes knowledge/records knowledge/contracts knowledge),
     do: Code.require_file(Path.join("extensions/knowledge/src", path <> ".ex"))
 
   defmodule IpseKnowledge.KnowledgeCaptureSuite do
@@ -88,7 +88,10 @@ defmodule IpseKnowledge.KnowledgeCaptureTest do
 
     {commit, state} = request(respond(state, %{"record" => nil, "generation" => 7}))
     assert commit["request"]["expected_generation"] == 7
-    assert commit["request"]["advance_floor"] == false
+    assert commit["op"] == "collection.managed"
+    assert commit["request"]["advance_floor"] == true
+    assert {:ok, commit["recipe_sha256"]} ==
+             Ipse.Extension.canonical_digest([IpseKnowledge.Knowledge.Contracts.recipe("note")])
     [change] = commit["request"]["changes"]
     assert change["expected_revision"] == 0
 
@@ -146,6 +149,9 @@ defmodule IpseKnowledge.KnowledgeCaptureTest do
       request(respond(state, %{"record" => nil, "generation" => 5}))
 
     {commit, _} = request(respond(state, %{"records" => [], "next" => nil}))
+    assert commit["op"] == "collection.managed"
+    assert {:ok, commit["recipe_sha256"]} ==
+             Ipse.Extension.canonical_digest([IpseKnowledge.Knowledge.Contracts.recipe("pending")])
     [change] = commit["request"]["changes"]
     assert change["value"]["kind"] == "proposal"
     assert change["value"]["state"] == "pending"

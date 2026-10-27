@@ -1,5 +1,6 @@
 defmodule IpseKnowledge.KnowledgeSessionTest do
   use ExUnit.Case, async: false
+  @native_fixture_child "--ipse-native-capture-child" in System.argv()
 
   alias Ipse.Extension.{
     Artifact,
@@ -25,12 +26,17 @@ defmodule IpseKnowledge.KnowledgeSessionTest do
           list = Jason.decode!(result["content"])
           source = Enum.find(list["sources"], &(&1["kind"] == "input.original"))
 
+          input =
+            Enum.find(Enum.reverse(messages), fn message ->
+              message["role"] == "user" and not Ipse.Session.Reference.reference?(message)
+            end)["content"]
+
           tool("capture", "ext__knowledge__capture", %{
-            "text" => "Acme has owner Alex",
+            "text" => input,
             "category" => "ordinary",
             "reason" => "selected observation",
             "event_at_ms" => nil,
-            "source" => %{"handle" => source["read_handle"], "quote" => "Acme has owner Alex"}
+            "source" => %{"handle" => source["read_handle"], "quote" => input}
           })
 
         _ ->
@@ -59,7 +65,61 @@ defmodule IpseKnowledge.KnowledgeSessionTest do
          }, %{}}
   end
 
+  @tag :capture_parent_case
   test "built native bundle captures an unattended source only as a protected pending proposal" do
+    capture(false)
+  end
+
+  if @native_fixture_child do
+    test "actual PTY input becomes a protected literal note without ordinary approval" do
+      capture(true)
+    end
+  else
+    test "actual PTY input exercises the separately built native capture artifact" do
+      root = Path.join(System.tmp_dir!(), "ipse-knowledge-native-pty-" <> Ipse.Usage.id())
+      File.mkdir!(root)
+      File.chmod!(root, 0o700)
+      on_exit(fn -> File.rm_rf!(root) end)
+      driver = Path.join(root, "pty")
+
+      assert {_, 0} =
+               System.cmd(
+                 "rustc",
+                 [
+                   "--edition=2021",
+                   "-D",
+                   "warnings",
+                   "test/support/operator_pty.rs",
+                   "-o",
+                   driver
+                 ],
+                 stderr_to_stdout: true
+               )
+
+      paths =
+        :code.get_path()
+        |> Enum.map(&List.to_string/1)
+        |> Enum.reject(&(&1 == "."))
+        |> Enum.map(&Path.expand/1)
+        |> Enum.reverse()
+        |> Enum.flat_map(&["-pa", &1])
+
+      program =
+        "ExUnit.start(exclude: [:capture_parent_case]); {:ok, _} = Application.ensure_all_started(:ipse); System.argv([\"--ipse-native-capture-child\"]); Code.require_file(#{inspect(Path.expand(__ENV__.file))})"
+
+      {output, status} =
+        System.cmd(
+          driver,
+          [System.find_executable("elixir"), "--erl", "+S 2:2"] ++ paths ++ ["-e", program],
+          stderr_to_stdout: true
+        )
+
+      assert status == 0, output
+      assert output =~ "1 passed"
+    end
+  end
+
+  defp capture(native?) do
     root = Path.join(System.tmp_dir!(), "ipse-native-knowledge-session-" <> Ipse.Usage.id())
     home = Path.join(root, "home")
     cwd = Path.join(root, "project")
@@ -133,19 +193,29 @@ defmodule IpseKnowledge.KnowledgeSessionTest do
       extensions: entries
     }
 
+    config =
+      if native?,
+        do: Map.merge(config, %{approval: :ask, approval_origin: :interactive, headless: false}),
+        else: config
+
     {:ok, binding} = ProjectIdentity.admit(home, cwd, :folder)
     {:ok, namespace} = SemanticConsent.namespace(binding["project_id"], "knowledge")
     {:ok, catalog} = Catalog.snapshot(config)
-    sample = proposal_sample()
 
-    constraints = %{
-      "version" => 1,
-      "key_prefix" => "pending.",
-      "allow_delete" => false,
-      "source_categories" => ["unattended_input"],
-      "evidence_path" => ["evidence", "sources"],
-      "value_schema" => schema(sample)
-    }
+    {:ok, sidecar_bytes} =
+      Artifact.read_declared(
+        Path.join(home, "extensions/artifacts"),
+        artifact.digest,
+        "operator.json",
+        65_536
+      )
+
+    {:ok, sidecar} = JSON.decode_unique(sidecar_bytes)
+    kind = if native?, do: "note", else: "pending"
+    constraints = sidecar["publication"][kind]
+    recipe = sidecar["recipes"][kind]
+    constraints_sha = JSON.digest([constraints])
+    recipe_sha = JSON.digest([recipe])
 
     effects =
       Enum.flat_map(catalog["entries"], fn descriptor ->
@@ -153,27 +223,36 @@ defmodule IpseKnowledge.KnowledgeSessionTest do
 
         [
           %{
-            "operation" => "notes.propose",
+            "operation" => if(native?, do: "notes.capture", else: "notes.propose"),
             "class" => "collection.publish",
             "outer_sha256" => hash,
-            "inner_op" => "collection.call",
-            "constraints" => constraints
+            "inner_op" => "collection.managed",
+            "constraints_sha256" => constraints_sha,
+            "recipe_sha256" => recipe_sha
           },
           %{
             "operation" => "notes.recall",
             "class" => "collection.read",
             "outer_sha256" => hash,
-            "inner_op" => "collection.call"
+            "inner_op" => "collection.call",
+            "managed_read" => [recipe_sha]
           }
         ]
       end)
       |> Enum.sort_by(&{&1["operation"], &1["class"], &1["outer_sha256"], &1["inner_op"]})
 
     selection = %{
+      "version" => 2,
+      "constraints" => %{constraints_sha => constraints},
+      "recipes" => %{recipe_sha => recipe},
+      "activation" => nil,
       "domain" => "knowledge",
       "namespace" => namespace,
       "scope" => %{"kind" => "project", "worktree_id" => nil},
-      "sources" => %{"categories" => ["unattended_input"], "exclusions" => []},
+      "sources" => %{
+        "categories" => [if(native?, do: "interactive_operator", else: "unattended_input")],
+        "exclusions" => []
+      },
       "storage" => %{"kind" => "local_collection", "collection" => "knowledge"},
       "retention" => %{"automatic" => 90, "manual" => 3650},
       "routes" => [
@@ -227,7 +306,15 @@ defmodule IpseKnowledge.KnowledgeSessionTest do
       )
 
     on_exit(fn -> if Process.alive?(pid), do: Session.close(pid) end)
-    assert :ok = Session.prompt(pid, "Acme has owner Alex")
+
+    if native? do
+      {:ok, text, witness} = Session.observe_input(pid, "IPSE_FIXTURE_INPUT_1> ", 5000)
+      assert text == "synthetic café 日本語 1"
+      assert :ok = Session.prompt(pid, text, witness)
+    else
+      assert :ok = Session.prompt(pid, "Acme has owner Alex")
+    end
+
     assert_receive {:ipse, ^pid, {:done, :ok}}, 30000
     {:ok, events} = Journal.load(dir, Session.info(pid).id)
 
@@ -241,63 +328,38 @@ defmodule IpseKnowledge.KnowledgeSessionTest do
     assert commit
     assert commit["outcome"]["status"] == "ok"
     assert commit["approval"] == "saved_consent"
+    assert commit["version"] == 3
+    assert commit["effect_binding"]["kind"] == "collection.managed"
+    assert commit["effect_binding"]["version"] == 2
+    assert commit["request"]["recipe_sha256"] == recipe_sha
+    assert commit["request"]["request"]["advance_floor"] == true
+    normalization = commit["outcome"]["value"]["normalization"]
+    assert normalization["version"] == 2
+    assert normalization["eligibility"] == if(native?, do: "current", else: "never_current")
+    assert is_integer(normalization["valid_until_ms"])
     [change] = commit["request"]["request"]["changes"]
-    assert String.starts_with?(change["key"], "pending.")
-    assert change["value"]["state"] == "pending"
-    assert hd(change["value"]["evidence"]["sources"])["origin"] == "unattended_input"
+    assert String.starts_with?(change["key"], kind <> ".")
+
+    if native?,
+      do: assert(change["value"]["category"] == "ordinary"),
+      else: assert(change["value"]["state"] == "pending")
+
+    assert hd(change["value"]["evidence"]["sources"])["origin"] ==
+             if(native?, do: "interactive_operator", else: "unattended_input")
+
     assert {:ok, _} = Session.restore_context(events)
     {:ok, after_save} = Consent.snapshot(control, binding["project_id"])
     assert map_size(after_save["operations"]) == 1
-  end
 
-  defp schema(v) when is_map(v),
-    do: %{
-      "type" => "object",
-      "additionalProperties" => false,
-      "required" => Enum.sort(Map.keys(v)),
-      "properties" => Map.new(v, fn {key, value} -> {key, schema(value)} end)
-    }
+    {:ok, stored} =
+      Ipse.Extension.Collection.execute(
+        SemanticAdmission.collection_root(home),
+        namespace,
+        %{"op" => "status"},
+        Ipse.Usage.id()
+      )
 
-  defp schema([v]),
-    do: %{"type" => "array", "minItems" => 1, "maxItems" => 1, "items" => schema(v)}
-
-  defp schema(nil), do: %{"type" => "null"}
-  defp schema(v) when is_integer(v), do: %{"type" => "integer"}
-  defp schema(v) when is_binary(v), do: %{"type" => "string"}
-
-  defp proposal_sample do
-    text = "Acme has owner Alex"
-
-    proof = %{
-      "version" => 1,
-      "session_id" => String.duplicate("1", 32),
-      "occurrence_id" => String.duplicate("2", 32),
-      "version_id" => String.duplicate("3", 32),
-      "kind" => "input.original",
-      "origin" => "unattended_input",
-      "coverage" => "available",
-      "path" => nil,
-      "start_byte" => 0,
-      "end_byte" => byte_size(text),
-      "quote" => text,
-      "quote_sha256" => JSON.sha256(text),
-      "content_sha256" => JSON.sha256(text),
-      "receipt_sha256" => JSON.sha256("synthetic fixture")
-    }
-
-    %{
-      "version" => 1,
-      "kind" => "proposal",
-      "id" => String.duplicate("4", 64),
-      "lineage" => String.duplicate("5", 64),
-      "state" => "pending",
-      "text" => text,
-      "assigned_category" => "ordinary",
-      "reason" => "selected observation",
-      "event_at_ms" => nil,
-      "created_at_ms" => 0,
-      "expires_at_ms" => 604_800_000,
-      "evidence" => %{"sources" => [proof]}
-    }
+    assert stored["generation"] == 1 and stored["floor"] == 1
+    assert stored["records"] == 3
   end
 end

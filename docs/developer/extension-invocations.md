@@ -75,6 +75,20 @@ An inline callback fragment returns public JSON and private state:
 Only `value` is validated against the original domain schema. Action-like data
 inside it executes nothing; use the host-call protocol for effects.
 
+For a declared policy reference, use the public SDK's canonical digest helper
+instead of depending on host-private encoders:
+
+```elixir
+{:ok, digest} = Ipse.Extension.canonical_digest([%{"rule" => "literal"}])
+true = byte_size(digest) == 64
+```
+
+The ordered list uses the SDK's JSON value, string, collection and byte bounds,
+with each member at root depth. Object key insertion order does not affect the
+digest; list order does. Private runtime terms and over-bound JSON return
+`invalid_extension_value`. A matching digest
+identifies reviewed data and grants no permission or source authenticity.
+
 To publish a larger complete tool/command value, declare SDK 2 and
 `invoke.result.pages` in both manifest and description, with the normal invocation
 capability. In `iex -S mix`, compare aggregate validation to ordinary wire validation:

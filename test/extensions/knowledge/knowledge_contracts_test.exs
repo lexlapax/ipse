@@ -33,6 +33,12 @@ defmodule IpseKnowledge.Knowledge.ContractsTest do
     assert byte_size(Jason.encode!(sidecar)) <= 65_536
     p = sidecar["publication"]
 
+    for {kind, recipe} <- sidecar["recipes"] do
+      assert Ipse.Extension.ManagedRecipe.valid?(recipe)
+      assert recipe["constraints_sha256"] == Ipse.JSON.digest([p[kind]])
+      assert recipe["key_prefix"] == p[kind]["key_prefix"]
+    end
+
     for constraint <- [p["note"], p["pending"] | Map.values(p["retention"])] do
       assert Ipse.Extension.CollectionPolicy.valid_constraints?(constraint)
       assert constraint["allow_delete"] == false

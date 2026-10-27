@@ -15,6 +15,16 @@ defmodule Ipse.Extension do
     end
   end
 
+  @doc "Hash an ordered list of bounded SDK JSON values using the host's canonical JSON encoding."
+  def canonical_digest(values) when is_list(values) do
+    case Ipse.JSON.checked_digest(values) do
+      {:ok, digest} -> {:ok, digest}
+      _ -> {:error, :invalid_extension_value}
+    end
+  end
+
+  def canonical_digest(_), do: {:error, :invalid_extension_value}
+
   @doc "Build untrusted evidence JSON from public read/quote receipts; the host resolves it again before publication."
   def source_proof(page, quote, text) do
     with true <- is_map(page) and is_map(quote) and is_binary(text),

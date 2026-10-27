@@ -16,6 +16,10 @@ output = Path.expand(Keyword.fetch!(opts, :output))
 true = File.regular?(Path.join(sdk, "Elixir.Ipse.Extension.beam"))
 false = File.exists?(output)
 Code.prepend_path(sdk)
+
+for dependency <- ~w(jason jsonschex ex_json_pointer),
+    do: Code.prepend_path(Path.expand("../../#{dependency}/ebin", sdk))
+
 File.mkdir_p!(Path.dirname(output))
 temporary = output <> ".building-" <> Base.encode16(:crypto.strong_rand_bytes(8), case: :lower)
 File.mkdir_p!(Path.join(temporary, "ebin"))
