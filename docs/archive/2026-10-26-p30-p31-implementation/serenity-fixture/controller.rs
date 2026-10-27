@@ -13,6 +13,7 @@
 #[path = "recovery_guardian.rs"] mod recovery_guardian;
 #[path = "cgroup_witness.rs"] mod cgroup_witness;
 #[path = "btrfs_identity.rs"] mod btrfs_identity;
+#[path = "private_unmount.rs"] mod private_unmount;
 #[path = "peer_channel.rs"] mod peer_channel;
 #[path = "peer_channel_container.rs"] mod peer_channel_container;
 #[path = "gated_switch.rs"] mod gated_switch;

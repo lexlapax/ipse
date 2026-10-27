@@ -103,3 +103,10 @@ A separately reviewed follow-up tested non-lazy cleanup via a retained parent
 FD and exact leaf; it succeeded after the busy mount-root FD was closed. Its
 receipt, exact merged log and source are preserved. The leaf check-to-use race
 remains, and no Btrfs or block device test was performed.
+
+A disabled namespace-local Btrfs unmount prototype now checks a retained parent
+FD, recorded FSID/mount ID/mapper/namespace and rejects visible aliases,
+nested mounts and shared or slave propagation before non-lazy unmount. There is
+no live quiescence-token constructor; namespace exclusion, escaped references,
+leaf replacement and global cleanup remain unresolved. It has not been run.
+The private suite passed 60 tests, including its mountinfo parser controls.
