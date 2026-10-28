@@ -51,6 +51,7 @@ resource/offline qualification. No daemon configuration or existing model was ch
 - [Internal protected control ledger audit and repairs](control-audit.md).
 - [Control compaction, maintenance headroom and boundary repair](control-compaction.md).
 - [Actual-owner transactions and protected project identity](transaction-identity-component.md).
+- [Serialized migration retry and owned staging inventory recovery](sol-recovery.md).
 - [Private project-domain keys, namespace preparation and bounded page authenticators](project-domain-auth-component.md), with its [independent public-API and native adversarial audit](project-domain-auth-audit.md).
 - [Native operator-channel incremental audit and fixture repairs](operator-channel-audit.md).
 - [Fresh native review, one-use host permits and repaired deadline/owner races](native-review-component.md), with its [independent audit and source-bound closure](native-review-audit.md).

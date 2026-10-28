@@ -1,0 +1,23 @@
+Resolving Hex dependencies...
+Resolution completed in 0.023s
+Unchanged:
+  elixir_uuid 1.2.1
+  ex_json_pointer 0.8.0
+  finch 0.24.0
+  hpax 1.1.0
+  jsonschex 0.10.0
+  mcp_elixir_sdk 1.1.0
+  mime 2.0.7
+  mint 1.11.0
+  nimble_options 1.1.1
+  nimble_pool 1.1.0
+  plug 1.20.3
+  plug_crypto 2.2.1
+  req 0.7.5
+  telemetry 1.4.2
+[33mA new Hex version is available (2.5.1 < 2.6.0), please update with `mix local.hex`[0m
+All dependencies have been fetched
+Compiling 141 files (.ex)
+Generated ipse app
+Built knowledge/native. Import, trust and enable it explicitly.
+Built inert extension bundle catalog; artifacts remain disabled until operator setup.

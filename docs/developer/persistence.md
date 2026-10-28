@@ -499,6 +499,12 @@ mutation. Inspection does not rewrite a file.
 
 Native staging reserves an 18-MiB allocated-file envelope for control state,
 including old and pending roots, before accepting payload bytes. Write admission
+uses an inventory under the same native owner's logical and writer leases.
+That inventory syncs retained pending staging files before re-reading their
+allocation, so an interrupted stage is not admitted on an unsettled block count.
+A sync error refuses the inventory and preserves the file; it never justifies
+replaying the interrupted operation. Standalone allocation inspection remains a
+read-only observation without this settling step. Write admission
 requires a supported native filesystem profile; an unsupported profile refuses
 explicitly. Read-only inspection remains possible. This is managed allocated-file
 accounting, not a bound on volume-wide filesystem journal or allocator overhead.

@@ -73,6 +73,12 @@ no inference or worker; they can refuse when protected state is unavailable or
 malformed. Preserve that refusal. The diagnosis command reads saved history and
 does not reconcile Collection or accounting state.
 
+An interrupted write can also leave a private staging file. A later protected
+write checks and synchronizes retained stages before admitting more storage;
+if synchronization fails, admission refuses and keeps those files. Status is
+not a staging-reclamation command. Preserve the original state and investigate
+the storage error rather than removing stages to make a retry fit.
+
 Do not enable again merely to recover a missing confirmation, delete retained
 locks or domain keys, reset the collection, edit a ledger, or replay the old
 capture. The operator CLI has no automatic prepared-domain or unknown-operation

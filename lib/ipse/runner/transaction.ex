@@ -112,6 +112,7 @@ defmodule Ipse.Runner.Transaction do
        else: {:error, :invalid_transaction_request}
   end
 
+  @doc "Sync retained staging files and measure under this owner's writer leases; a failed sync refuses."
   def allocation(cap, mode \\ :collection)
 
   def allocation(cap, mode) when mode in [:flat, :collection],

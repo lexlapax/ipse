@@ -42,11 +42,23 @@ fn open(path: &Path, uid: u32) -> Result<(File, Metadata), String> {
     Ok((file, metadata))
 }
 
-fn visit(path: &Path, uid: u32, depth: usize, usage: &mut Usage) -> Result<(), String> {
+fn visit(path: &Path, uid: u32, depth: usize, usage: &mut Usage, settle_pending: bool) -> Result<(), String> {
     if depth > MAX_DEPTH { return Err("storage allocation depth limit".into()); }
-    let (_retained, metadata) = open(path, uid)?;
+    let (retained, mut metadata) = open(path, uid)?;
     usage.entries = usage.entries.checked_add(1).ok_or("storage allocation overflow")?;
     if usage.entries > MAX_ENTRIES { return Err("storage allocation entry limit".into()); }
+    if settle_pending && metadata.is_file() && path.file_name().and_then(|v| v.to_str())
+        .is_some_and(|name| name.starts_with(".pending-")) {
+        // An earlier owner may have died before its staged file was synced.
+        // The caller retains every writer lease, so no new writes can race
+        // this flush. Refuse the inventory if completion cannot be confirmed.
+        retained.sync_all().map_err(|_| "storage allocation staging sync unavailable")?;
+        let settled = retained.metadata().map_err(|_| "storage allocation unavailable")?;
+        if !same(&metadata, &settled) || !protected(&settled, uid) || metadata.len() != settled.len() {
+            return Err("changed storage allocation identity".into());
+        }
+        metadata = settled;
+    }
     usage.logical = usage.logical.checked_add(metadata.len()).ok_or("storage allocation overflow")?;
     let blocks = metadata.blocks().checked_mul(512).ok_or("storage allocation overflow")?;
     usage.allocated = usage.allocated.checked_add(blocks).ok_or("storage allocation overflow")?;
@@ -54,7 +66,7 @@ fn visit(path: &Path, uid: u32, depth: usize, usage: &mut Usage) -> Result<(), S
         usage.directory_allocated = usage.directory_allocated.checked_add(blocks).ok_or("storage allocation overflow")?;
         for entry in fs::read_dir(path).map_err(|_| "cannot enumerate storage allocation")? {
             let entry = entry.map_err(|_| "cannot enumerate storage allocation")?;
-            visit(&entry.path(), uid, depth + 1, usage)?;
+            visit(&entry.path(), uid, depth + 1, usage, settle_pending)?;
         }
     }
     let after = fs::symlink_metadata(path).map_err(|_| "changed storage allocation identity")?;
@@ -65,6 +77,10 @@ fn visit(path: &Path, uid: u32, depth: usize, usage: &mut Usage) -> Result<(), S
 }
 
 fn inspect(path: &Path) -> Result<Usage, String> {
+    inspect_mode(path, false)
+}
+
+fn inspect_mode(path: &Path, settle_pending: bool) -> Result<Usage, String> {
     #[cfg(not(any(target_os = "linux", target_os = "macos")))]
     return Err("storage allocation requires Linux or macOS".into());
     if !path.is_absolute() || fs::canonicalize(path).map_err(|_| "storage allocation unavailable")?.as_os_str() != path.as_os_str() {
@@ -74,7 +90,7 @@ fn inspect(path: &Path) -> Result<Usage, String> {
     let (_retained, metadata) = open(path, uid)?;
     if !metadata.is_dir() { return Err("storage allocation requires a directory".into()); }
     let mut usage = Usage::default();
-    visit(path, uid, 0, &mut usage)?;
+    visit(path, uid, 0, &mut usage, settle_pending)?;
     let after = fs::symlink_metadata(path).map_err(|_| "changed storage allocation root")?;
     if !same(&metadata, &after) { return Err("changed storage allocation root".into()); }
     Ok(usage)
@@ -82,15 +98,15 @@ fn inspect(path: &Path) -> Result<Usage, String> {
 
 pub fn run(args: &[String]) -> Result<(), String> {
     if args.len() != 3 { return Err("storage allocation requires one directory".into()); }
-    let (logical, allocated, entries) = transaction_usage(Path::new(&args[2]))?;
-    println!("{logical} {allocated} {entries}");
+    let usage = inspect(Path::new(&args[2]))?;
+    println!("{} {} {}", usage.logical, usage.allocated, usage.entries);
     Ok(())
 }
 
 // The transaction owner retains the logical lock, directory identity and all
 // writer leases while using this shared bounded inventory implementation.
 pub(crate) fn transaction_usage(path: &Path) -> Result<(u64, u64, u64), String> {
-    let usage = inspect(path)?;
+    let usage = inspect_mode(path, true)?;
     Ok((usage.logical, usage.allocated, usage.entries))
 }
 
@@ -100,7 +116,7 @@ pub(crate) fn transaction_preflight(path: &Path, sizes: &[u64], ceiling: u64) ->
     let (directory, before) = open(path, uid).map_err(|_| TransactionAllowanceError::Unsafe)?;
     if !before.is_dir() { return Err(TransactionAllowanceError::Unsafe); }
     let reserve = allocation_profile::reserve(&directory, sizes)?;
-    let usage = inspect(path).map_err(|_| TransactionAllowanceError::Unsafe)?;
+    let usage = inspect_mode(path, true).map_err(|_| TransactionAllowanceError::Unsafe)?;
     // These finite profiles have no per-directory st_blocks allocation. A kernel
     // or mount whose observations differ is quarantined, never approximated.
     if usage.directory_allocated != 0 { return Err(TransactionAllowanceError::Unsupported); }
@@ -335,6 +351,22 @@ mod tests {
         let empty = path.join(".pending-33333333333333333333333333333333");
         assert!(write_path(&empty, 1, &mut &b""[..]).is_err());
         assert!(!empty.exists());
+        fs::remove_dir_all(path).unwrap();
+    }
+
+    #[test]
+    fn owned_inventory_retains_interrupted_stage_and_reports_its_settled_allocation() {
+        let path = directory();
+        let pending = path.join(".pending-11111111111111111111111111111111");
+        assert!(write_path(&pending, 4, &mut &b"x"[..]).is_err());
+        let before = fs::metadata(&pending).unwrap();
+        let (logical, allocated, entries) = transaction_usage(&path).unwrap();
+        let after = fs::metadata(&pending).unwrap();
+        assert!(same(&before, &after));
+        assert_eq!(fs::read(&pending).unwrap(), b"x");
+        assert_eq!(entries, 2);
+        assert_eq!(logical, fs::metadata(&path).unwrap().len() + 1);
+        assert_eq!(allocated, (fs::metadata(&path).unwrap().blocks() + after.blocks()) * 512);
         fs::remove_dir_all(path).unwrap();
     }
 

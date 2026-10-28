@@ -1,0 +1,383 @@
+warning: the following files do not match any of the configured `:test_load_filters` / `:test_ignore_filters`:
+
+test/support/activation_overlay_vm.exs
+test/support/cli_fixture.ex
+test/support/docx_artifact_probe.exs
+test/support/draft_cli_pty.exs
+test/support/draft_mcp_resume_pty.exs
+test/support/draft_operator_pty.exs
+test/support/frozen_model_selection.exs
+test/support/historical_answer_observation.exs
+test/support/knowledge_setup.exs
+test/support/managed_policy.exs
+test/support/native_review.exs
+test/support/operator_channel.exs
+test/support/operator_cli.exs
+test/support/operator_eof.exs
+test/support/operator_session.exs
+test/support/planning_cli_pty.exs
+test/support/provider_conformance.ex
+test/support/provider_fixture.ex
+test/support/provider_registry_fixture.ex
+test/support/stdio_probe.exs
+test/support/transaction_fixture.exs
+
+This might indicate a typo in a test file name (for example, using "foo_tests.exs" instead of "foo_test.exs").
+
+See the configuration for `:test_pattern` under `mix help test` for more information.
+
+Running ExUnit with seed: 46691, max_cases: 2
+Excluding tags: [:native_sandbox, :macos_sandbox, :macos_filesystem, :memory_scope]
+
+.........................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................semantic admission IO profile: active branch verified
+...
+12:28:07.191 [info] The function passed as a handler with ID "planned-upgrade-f7f9ee06fcc3b9029c4613f92a9a7307" is a local function.
+This means that it is either an anonymous function or a capture of a function without a module specified. That may cause a performance penalty when calling that handler. For more details see the note in `telemetry:attach/4` documentation.
+
+https://hexdocs.pm/telemetry/telemetry.html#attach/4
+.........................................................................................................................................................
+12:34:22.127 [notice] TLS :client: In state :wait_cert_cr at ssl_handshake.erl:2312 generated CLIENT ALERT: Fatal - Bad Certificate
+ - {:bad_cert,
+ {:hostname_check_failed, {:requested, ~c"127.0.0.1"},
+  {:received, [dNSName: ~c"localhost"]}}}
+
+12:34:22.127 [notice] TLS :server: In state :wait_finished received CLIENT ALERT: Fatal - Bad Certificate
+
+......................................................................................................................................................................................
+12:37:58.056 [debug] MCP Client: transport closed: :invalid_http_transport
+
+12:37:58.058 [debug] MCP Client: transport closed: :invalid_http_transport
+
+12:37:58.062 [debug] MCP Client: transport closed: :invalid_http_transport
+
+12:37:58.066 [debug] MCP Client: transport closed: :invalid_http_transport
+
+12:37:58.070 [debug] MCP Client: transport closed: :invalid_http_transport
+
+12:37:58.073 [debug] MCP Client: transport closed: :invalid_http_transport
+
+12:37:58.076 [debug] MCP Client: transport closed: :invalid_http_transport
+
+12:37:58.079 [debug] MCP Client: transport closed: :invalid_http_transport
+
+12:37:58.085 [debug] MCP Client: transport closed: :invalid_http_transport
+
+12:37:58.094 [debug] MCP Client: transport closed: :invalid_http_transport
+...
+12:37:58.368 [notice] TLS :client: In state :wait_cert_cr at ssl_handshake.erl:2312 generated CLIENT ALERT: Fatal - Bad Certificate
+ - {:bad_cert,
+ {:hostname_check_failed, {:requested, ~c"127.0.0.1"},
+  {:received, [dNSName: ~c"localhost"]}}}
+
+12:37:58.368 [notice] TLS :server: In state :wait_finished received CLIENT ALERT: Fatal - Bad Certificate
+
+
+12:37:58.368 [debug] MCP Client: transport closed: :invalid_http_transport
+.
+12:37:58.437 [notice] TLS :client: In state :wait_cert_cr at ssl_handshake.erl:2304 generated CLIENT ALERT: Fatal - Unknown CA
+
+
+12:37:58.437 [debug] MCP Client: transport closed: :invalid_http_transport
+
+12:37:58.437 [notice] TLS :server: In state :wait_finished received CLIENT ALERT: Fatal - Unknown CA
+
+....
+12:37:58.679 [debug] MCP Client: transport closed: :invalid_http_transport
+...............
+12:38:00.124 [info] The function passed as a handler with ID "read-view-expiry-96ceaf2d56bcad42715081301b57bcdd" is a local function.
+This means that it is either an anonymous function or a capture of a function without a module specified. That may cause a performance penalty when calling that handler. For more details see the note in `telemetry:attach/4` documentation.
+
+https://hexdocs.pm/telemetry/telemetry.html#attach/4
+...
+12:38:00.482 [info] The function passed as a handler with ID "read-view-owner-loss-1cc3273194a0662fdef50afc59177155" is a local function.
+This means that it is either an anonymous function or a capture of a function without a module specified. That may cause a performance penalty when calling that handler. For more details see the note in `telemetry:attach/4` documentation.
+
+https://hexdocs.pm/telemetry/telemetry.html#attach/4
+..........
+12:38:02.797 [info] The function passed as a handler with ID "read-view-loss-41728e75097e92dff7bacf4e4149f9d7" is a local function.
+This means that it is either an anonymous function or a capture of a function without a module specified. That may cause a performance penalty when calling that handler. For more details see the note in `telemetry:attach/4` documentation.
+
+https://hexdocs.pm/telemetry/telemetry.html#attach/4
+................................................................................................................................................
+12:39:03.230 [info] The function passed as a handler with ID "empty-view-native-loss-4c684cbd433a98e16ed284236cc013f1" is a local function.
+This means that it is either an anonymous function or a capture of a function without a module specified. That may cause a performance penalty when calling that handler. For more details see the note in `telemetry:attach/4` documentation.
+
+https://hexdocs.pm/telemetry/telemetry.html#attach/4
+.......................
+12:39:17.009 [debug] MCP Client: transport closed: :invalid_http_transport
+..........
+12:39:22.457 [debug] MCP Client: transport closed: :closed
+..........................................................................................
+12:40:32.756 [info] The function passed as a handler with ID "neighbors-3dea8105d77ff6dec88a6a421a838d49" is a local function.
+This means that it is either an anonymous function or a capture of a function without a module specified. That may cause a performance penalty when calling that handler. For more details see the note in `telemetry:attach/4` documentation.
+
+https://hexdocs.pm/telemetry/telemetry.html#attach/4
+..
+12:40:35.238 [info] The function passed as a handler with ID "neighbors-3a07b76077ccbf1dd6b332ca6d110356" is a local function.
+This means that it is either an anonymous function or a capture of a function without a module specified. That may cause a performance penalty when calling that handler. For more details see the note in `telemetry:attach/4` documentation.
+
+https://hexdocs.pm/telemetry/telemetry.html#attach/4
+..
+12:40:35.602 [info] The function passed as a handler with ID "neighbors-6b1dfd7886e6f1b157d5b7214aefee98" is a local function.
+This means that it is either an anonymous function or a capture of a function without a module specified. That may cause a performance penalty when calling that handler. For more details see the note in `telemetry:attach/4` documentation.
+
+https://hexdocs.pm/telemetry/telemetry.html#attach/4
+..
+12:40:36.109 [info] The function passed as a handler with ID "neighbors-206b8bacd31fa6067a4bd27d198696d3" is a local function.
+This means that it is either an anonymous function or a capture of a function without a module specified. That may cause a performance penalty when calling that handler. For more details see the note in `telemetry:attach/4` documentation.
+
+https://hexdocs.pm/telemetry/telemetry.html#attach/4
+...
+12:40:36.681 [info] The function passed as a handler with ID "neighbors-72155266c06ea797a5807f934afea2d0" is a local function.
+This means that it is either an anonymous function or a capture of a function without a module specified. That may cause a performance penalty when calling that handler. For more details see the note in `telemetry:attach/4` documentation.
+
+https://hexdocs.pm/telemetry/telemetry.html#attach/4
+......
+12:40:37.073 [error] GenServer #PID<0.45504.0> terminating
+** (stop) :redacted
+    (ipse 0.1.0) lib/ipse/session.ex:3525: Ipse.Session.journal_failed/2
+    (ipse 0.1.0) lib/ipse/session/turn.ex:1626: Ipse.Session.Turn.append_tool_message/3
+    (ipse 0.1.0) lib/ipse/session/turn.ex:1384: Ipse.Session.Turn.accept_tool_result/3
+    (ipse 0.1.0) lib/ipse/session/turn.ex:2070: Ipse.Session.Turn.tool_completed/3
+    (stdlib 8.1) gen_server.erl:2434: :gen_server.try_handle_info/3
+    (stdlib 8.1) gen_server.erl:2420: :gen_server.handle_msg/3
+    (stdlib 8.1) proc_lib.erl:333: :proc_lib.init_p_do_apply/3
+Last message: :redacted
+State: %{id: "75d7081ecae6f39cdce1e0f690876d71", phase: :tool}
+........
+12:41:09.211 [error] GenServer #PID<0.45613.0> terminating
+** (stop) :redacted
+    (ipse 0.1.0) lib/ipse/session.ex:3525: Ipse.Session.journal_failed/2
+    (ipse 0.1.0) lib/ipse/session/turn.ex:288: Ipse.Session.Turn.answer/5
+    (stdlib 8.1) gen_server.erl:2470: :gen_server.try_handle_call/4
+    (stdlib 8.1) gen_server.erl:2499: :gen_server.handle_msg/3
+    (stdlib 8.1) proc_lib.erl:333: :proc_lib.init_p_do_apply/3
+Last message (from #PID<0.45612.0>): :redacted
+State: %{id: "cb1750cef32df579f01b4943e998a82f", phase: :question}
+Client #PID<0.45612.0> is alive
+
+    (stdlib 8.1) gen.erl:262: :gen.do_call/4
+    (elixir 1.20.4) lib/gen_server.ex:1180: GenServer.call/3
+    test/ipse/journal_test.exs:300: Ipse.JournalTest."test journal limits a pending native question remains readable after quota sealing"/1
+    (ex_unit 1.20.4) lib/ex_unit/runner.ex:533: ExUnit.Runner.exec_test/2
+    (stdlib 8.1) timer.erl:599: :timer.tc/2
+    (ex_unit 1.20.4) lib/ex_unit/runner.ex:455: anonymous fn/6 in ExUnit.Runner.spawn_test_monitor/4
+..
+12:41:09.253 [error] GenServer #PID<0.45653.0> terminating
+** (stop) :redacted
+    (ipse 0.1.0) lib/ipse/session.ex:3525: Ipse.Session.journal_failed/2
+    (ipse 0.1.0) lib/ipse/session/turn.ex:1608: Ipse.Session.Turn.append_message/2
+    (ipse 0.1.0) lib/ipse/session/turn.ex:2001: Ipse.Session.Turn.model_completed/3
+    (stdlib 8.1) gen_server.erl:2434: :gen_server.try_handle_info/3
+    (stdlib 8.1) gen_server.erl:2420: :gen_server.handle_msg/3
+    (stdlib 8.1) proc_lib.erl:333: :proc_lib.init_p_do_apply/3
+Last message: :redacted
+State: %{id: "5d0a096f01d4405d9ca2c29abee2804a", phase: :model}
+......................................Budget fixture: shared parallel admission, refusal, default-off and inert resume passed.
+........................................................................
+12:41:59.285 [error] GenServer :"ipse_http_1.SupervisorRegistry" terminating
+** (stop) killed
+Last message: {:EXIT, #PID<0.52293.0>, :killed}
+State: {:state, {:local, :"ipse_http_1.SupervisorRegistry"}, :one_for_all, {[:"Elixir.ipse_http_1.SupervisorRegistry.PIDPartition0"], %{:"Elixir.ipse_http_1.SupervisorRegistry.PIDPartition0" => {:child, #PID<0.52297.0>, :"Elixir.ipse_http_1.SupervisorRegistry.PIDPartition0", {Registry.Partition, :start_link, [:"Elixir.ipse_http_1.SupervisorRegistry.PIDPartition0", {:unique, :"ipse_http_1.SupervisorRegistry", 0, 1, :"Elixir.ipse_http_1.SupervisorRegistry.KeyPartition0", :"Elixir.ipse_http_1.SupervisorRegistry.PIDPartition0", [], false}]}, :permanent, false, 5000, :worker, [Registry.Partition]}}}, :undefined, 3, 5, [], 0, 0, :never, 1000, false, #Reference<0.3182190928.4053532674.154085>, Registry.Supervisor, {:unique, :"ipse_http_1.SupervisorRegistry", 1, [], [{-1, {:unique, 1, nil, nil, []}}, {-2, {:unique, 1, nil}}], false}}
+
+12:41:59.285 [error] GenServer :ipse_http_1 terminating
+** (stop) killed
+Last message: {:EXIT, #PID<0.52293.0>, :killed}
+State: {:state, {:local, :ipse_http_1}, :one_for_one, {[:"Elixir.ipse_http_1.PIDPartition0"], %{:"Elixir.ipse_http_1.PIDPartition0" => {:child, #PID<0.52295.0>, :"Elixir.ipse_http_1.PIDPartition0", {Registry.Partition, :start_link, [:"Elixir.ipse_http_1.PIDPartition0", {{:duplicate, :pid}, :ipse_http_1, 0, 1, :"Elixir.ipse_http_1.KeyPartition0", :"Elixir.ipse_http_1.PIDPartition0", [], false}]}, :permanent, false, 5000, :worker, [Registry.Partition]}}}, :undefined, 3, 5, [], 0, 0, :never, 1000, false, #Reference<0.3182190928.4053532674.154076>, Registry.Supervisor, {{:duplicate, :pid}, :ipse_http_1, 1, [], [{-1, {{:duplicate, :pid}, 1, nil, nil, []}}, {-2, {{:duplicate, :pid}, 1, nil}}, {:config, %{pools: %{}, registry_name: :ipse_http_1, registry_listeners: [], supervisor_registry_name: :"ipse_http_1.SupervisorRegistry", supervisor_name: :"ipse_http_1.PoolSupervisor", default_pool_config: %{count: 1, size: 1, mod: Finch.HTTP1.Pool, pool_max_idle_time: :infinity, conn_opts: [client_settings: [enable_push: false], protocols: [:http1], transport_opts: [keepalive: true, nodelay: true, timeout: 30000], ssl_key_log_file_device: nil, max_header_list_size: 16384], conn_max_idle_time: :infinity, start_pool_metrics?: false, wait_for_server_settings?: false, ping_interval: :infinity, max_connection_age: :infinity, max_connection_age_jitter: 0}}}], false}}
+
+12:41:59.285 [error] GenServer #PID<0.52301.0> terminating
+** (ArgumentError) errors were found at the given arguments:
+
+  * 1st argument: the table identifier does not refer to an existing ETS table
+
+    (stdlib 8.1) :ets.internal_select_delete(#Reference<0.3182190928.4053663746.154079>, [{{{:http, "127.0.0.1", 55101, :default}, {#PID<0.52301.0>, :_}}, [], [true]}])
+    (stdlib 8.1) ets.erl:1852: :ets.select_delete/2
+    (stdlib 8.1) ets.erl:2762: :ets.match_delete/2
+    (elixir 1.20.4) lib/registry.ex:1026: Registry.unregister/2
+    (finch 0.24.0) lib/finch/pool.ex:148: Finch.Pool.cleanup/3
+    (nimble_pool 1.1.0) lib/nimble_pool.ex:738: NimblePool.terminate/2
+    (stdlib 8.1) gen_server.erl:2482: :gen_server.try_terminate/3
+    (stdlib 8.1) gen_server.erl:2733: :gen_server.terminate/9
+    (stdlib 8.1) proc_lib.erl:333: :proc_lib.init_p_do_apply/3
+Last message: {:EXIT, #PID<0.52300.0>, :shutdown}
+State: %{async: %{}, monitors: %{}, state: %Finch.HTTP1.Pool.State{registry: :ipse_http_1, pool: %Finch.Pool{scheme: :http, host: "127.0.0.1", port: 55101, tag: :default}, pool_idx: 1, metric_ref: nil, opts: %{count: 1, size: 1, mod: Finch.HTTP1.Pool, pool_max_idle_time: :infinity, conn_opts: [transport_opts: [keepalive: true, nodelay: true, timeout: 30000], client_settings: [enable_push: false], protocols: [:http1], ssl_key_log_file_device: nil, max_header_list_size: 16384], conn_max_idle_time: :infinity, start_pool_metrics?: false, wait_for_server_settings?: false, ping_interval: :infinity, max_connection_age: :infinity, max_connection_age_jitter: 0}, activity_info: nil}, queue: {[], []}, worker: Finch.HTTP1.Pool, requests: %{}, resources: {[], []}, worker_idle_timeout: nil, lazy: 1, max_idle_pings: -1}
+
+12:41:59.289 [error] GenServer :"ipse_http_1.PoolSupervisor" terminating
+** (stop) killed
+Last message: {:EXIT, #PID<0.52293.0>, :killed}
+State: %DynamicSupervisor{args: {:ok, %{intensity: 3, period: 5, strategy: :one_for_one, max_children: :infinity, extra_arguments: []}}, extra_arguments: [], mod: Supervisor.Default, name: {:local, :"ipse_http_1.PoolSupervisor"}, strategy: :one_for_one, max_children: :infinity, max_restarts: 3, max_seconds: 5, children: %{#PID<0.52300.0> => {{Finch.Pool.Supervisor, :start_link, [{{:via, Registry, {:"ipse_http_1.SupervisorRegistry", {:http, "127.0.0.1", 55101, :default}, {Finch.HTTP1.Pool, 1, %{count: 1, size: 1, mod: Finch.HTTP1.Pool, pool_max_idle_time: :infinity, conn_opts: [transport_opts: [keepalive: true, nodelay: true, timeout: 30000], client_settings: [enable_push: false], protocols: [:http1], ssl_key_log_file_device: nil, max_header_list_size: 16384], conn_max_idle_time: :infinity, start_pool_metrics?: false, wait_for_server_settings?: false, ping_interval: :infinity, max_connection_age: :infinity, max_connection_age_jitter: 0}}}}, {:ipse_http_1, %Finch.Pool{scheme: :http, host: "127.0.0.1", port: 55101, tag: :default}, %{count: 1, size: 1, mod: Finch.HTTP1.Pool, pool_max_idle_time: :infinity, conn_opts: [transport_opts: [keepalive: true, nodelay: true, timeout: 30000], client_settings: [enable_push: false], protocols: [:http1], ssl_key_log_file_device: nil, max_header_list_size: 16384], conn_max_idle_time: :infinity, start_pool_metrics?: false, wait_for_server_settings?: false, ping_interval: :infinity, max_connection_age: :infinity, max_connection_age_jitter: 0}, false}}]}, :transient, :infinity, :supervisor, [Finch.Pool.Supervisor]}}, restarts: []}
+....
+12:41:59.412 [error] GenServer :"ipse_http_1.PoolSupervisor" terminating
+** (stop) killed
+Last message: {:EXIT, #PID<0.52524.0>, :killed}
+State: %DynamicSupervisor{args: {:ok, %{intensity: 3, period: 5, strategy: :one_for_one, max_children: :infinity, extra_arguments: []}}, extra_arguments: [], mod: Supervisor.Default, name: {:local, :"ipse_http_1.PoolSupervisor"}, strategy: :one_for_one, max_children: :infinity, max_restarts: 3, max_seconds: 5, children: %{}, restarts: []}
+
+12:41:59.412 [error] GenServer :"ipse_http_1.SupervisorRegistry" terminating
+** (stop) killed
+Last message: {:EXIT, #PID<0.52524.0>, :killed}
+State: {:state, {:local, :"ipse_http_1.SupervisorRegistry"}, :one_for_all, {[:"Elixir.ipse_http_1.SupervisorRegistry.PIDPartition0"], %{:"Elixir.ipse_http_1.SupervisorRegistry.PIDPartition0" => {:child, #PID<0.52528.0>, :"Elixir.ipse_http_1.SupervisorRegistry.PIDPartition0", {Registry.Partition, :start_link, [:"Elixir.ipse_http_1.SupervisorRegistry.PIDPartition0", {:unique, :"ipse_http_1.SupervisorRegistry", 0, 1, :"Elixir.ipse_http_1.SupervisorRegistry.KeyPartition0", :"Elixir.ipse_http_1.SupervisorRegistry.PIDPartition0", [], false}]}, :permanent, false, 5000, :worker, [Registry.Partition]}}}, :undefined, 3, 5, [], 0, 0, :never, 1000, false, #Reference<0.3182190928.4111466497.78736>, Registry.Supervisor, {:unique, :"ipse_http_1.SupervisorRegistry", 1, [], [{-1, {:unique, 1, nil, nil, []}}, {-2, {:unique, 1, nil}}], false}}
+
+12:41:59.513 [error] GenServer :ipse_http_1 terminating
+** (stop) killed
+Last message: {:EXIT, #PID<0.52524.0>, :killed}
+State: {:state, {:local, :ipse_http_1}, :one_for_one, {[:"Elixir.ipse_http_1.PIDPartition0"], %{:"Elixir.ipse_http_1.PIDPartition0" => {:child, #PID<0.52526.0>, :"Elixir.ipse_http_1.PIDPartition0", {Registry.Partition, :start_link, [:"Elixir.ipse_http_1.PIDPartition0", {{:duplicate, :pid}, :ipse_http_1, 0, 1, :"Elixir.ipse_http_1.KeyPartition0", :"Elixir.ipse_http_1.PIDPartition0", [], false}]}, :permanent, false, 5000, :worker, [Registry.Partition]}}}, :undefined, 3, 5, [], 0, 0, :never, 1000, false, #Reference<0.3182190928.4111466497.78727>, Registry.Supervisor, {{:duplicate, :pid}, :ipse_http_1, 1, [], [{-1, {{:duplicate, :pid}, 1, nil, nil, []}}, {-2, {{:duplicate, :pid}, 1, nil}}, {:config, %{pools: %{}, registry_name: :ipse_http_1, registry_listeners: [], supervisor_registry_name: :"ipse_http_1.SupervisorRegistry", supervisor_name: :"ipse_http_1.PoolSupervisor", default_pool_config: %{count: 1, size: 1, mod: Finch.HTTP1.Pool, pool_max_idle_time: :infinity, conn_opts: [client_settings: [enable_push: false], protocols: [:http1], transport_opts: [keepalive: true, nodelay: true, timeout: 5000], ssl_key_log_file_device: nil, max_header_list_size: 16384], conn_max_idle_time: :infinity, start_pool_metrics?: false, wait_for_server_settings?: false, ping_interval: :infinity, max_connection_age: :infinity, max_connection_age_jitter: 0}}}], false}}
+.....................................................................................................................................Fixture answer
+.....................Ipse · ollama/test
+Session: df6234eed7a906ad18323dcd06713b46
+Workspace: /var/tmp/ipse-sol-full-Ys6LOZAJ/tmp/ipse-headless-question-67939
+Shell policy requested: off.
+Requested policy is not proof of activation; inspect each command result.
+Trusted local execution uses the user's filesystem and network permissions without an OS sandbox. Shell execution removes the common provider-token variables; other inherited environment and accessible files may remain available.
+Approval is set to allow (--yes); execution ceilings still apply.
+Running…
+← ask_operator: Operator clarification unavailable in headless or child sessions. Provide the missing information in the task; no default answer was selected.
+
+Error: This task requires operator input; use interactive chat or supply the missing information. See docs/operator/recovery.md#diagnose-startup-and-service-errors.
+
+Finished with an error.
+.........
+...............................................................................................................................................................................................................................................................
+12:47:58.440 [error] GenServer #PID<0.67550.0> terminating
+** (stop) :redacted
+    (ipse 0.1.0) lib/ipse/session.ex:3529: Ipse.Session.journal_failed/2
+    (ipse 0.1.0) lib/ipse/session/turn.ex:1626: Ipse.Session.Turn.append_tool_message/3
+    (ipse 0.1.0) lib/ipse/session/turn.ex:1384: Ipse.Session.Turn.accept_tool_result/3
+    (ipse 0.1.0) lib/ipse/session/turn.ex:2070: Ipse.Session.Turn.tool_completed/3
+    (stdlib 8.1) gen_server.erl:2434: :gen_server.try_handle_info/3
+    (stdlib 8.1) gen_server.erl:2420: :gen_server.handle_msg/3
+    (stdlib 8.1) proc_lib.erl:333: :proc_lib.init_p_do_apply/3
+Last message: :redacted
+State: %{id: "25a3c1e523e87bc3c6a8b1cacf267593", phase: :tool}
+....
+12:47:58.796 [error] GenServer #PID<0.67659.0> terminating
+** (stop) :redacted
+Last message: :redacted
+State: %{id: "918ee65b8359867d641d91c536110d1e", phase: :model}
+..
+12:48:03.845 [error] GenServer #PID<0.67691.0> terminating
+** (stop) :redacted
+    (ipse 0.1.0) lib/ipse/session.ex:3529: Ipse.Session.journal_failed/2
+    (ipse 0.1.0) lib/ipse/session.ex:3604: Ipse.Session.account/2
+    (ipse 0.1.0) lib/ipse/session.ex:2781: Ipse.Session.handle_info/2
+    (stdlib 8.1) gen_server.erl:2434: :gen_server.try_handle_info/3
+    (stdlib 8.1) gen_server.erl:2420: :gen_server.handle_msg/3
+    (stdlib 8.1) proc_lib.erl:333: :proc_lib.init_p_do_apply/3
+Last message: :redacted
+State: %{id: "6742d195a243c5b6e9a62b8dc7806f4b", phase: :model}
+....................................................................................................................................................................................
+12:55:28.424 [debug] MCP Client: transport closed: :closed
+.........
+12:55:36.139 [debug] MCP Client: transport closed: :closed
+..
+12:55:36.742 [debug] MCP Client: transport closed: :closed
+.........................................................
+12:56:00.312 [error] GenServer #PID<0.132370.0> terminating
+** (stop) :redacted
+    (ipse 0.1.0) lib/ipse/session.ex:3525: Ipse.Session.journal_failed/2
+    (ipse 0.1.0) lib/ipse/session/invocation.ex:926: Ipse.Session.Invocation.answer/3
+    (stdlib 8.1) gen_server.erl:2470: :gen_server.try_handle_call/4
+    (stdlib 8.1) gen_server.erl:2499: :gen_server.handle_msg/3
+    (stdlib 8.1) proc_lib.erl:333: :proc_lib.init_p_do_apply/3
+Last message (from #PID<0.132361.0>): :redacted
+State: %{id: "ddccf4a4f6b81a28c3885b4598abc9c5", phase: :question}
+Client #PID<0.132361.0> is alive
+
+    (stdlib 8.1) gen.erl:262: :gen.do_call/4
+    (elixir 1.20.4) lib/gen_server.ex:1180: GenServer.call/3
+    test/ipse/extension/invocation_test.exs:2034: Ipse.Extension.InvocationTest."test journal exhaustion preserves a pending extension question for diagnosis and handoff"/1
+    (ex_unit 1.20.4) lib/ex_unit/runner.ex:533: ExUnit.Runner.exec_test/2
+    (stdlib 8.1) timer.erl:599: :timer.tc/2
+    (ex_unit 1.20.4) lib/ex_unit/runner.ex:455: anonymous fn/6 in ExUnit.Runner.spawn_test_monitor/4
+..................................................................................................................
+12:56:57.790 [debug] MCP Client: transport closed: :closed
+......
+12:57:00.006 [debug] MCP Client: transport closed: :invalid_transport
+
+12:57:00.278 [debug] MCP Client: transport closed: :invalid_transport
+..
+12:57:01.770 [debug] MCP Client: transport closed: :invalid_transport
+...................................
+12:57:02.585 [notice] TLS :client: In state :wait_cert_cr at ssl_handshake.erl:2312 generated CLIENT ALERT: Fatal - Bad Certificate
+ - {:bad_cert,
+ {:hostname_check_failed, {:requested, ~c"127.0.0.1"},
+  {:received, [dNSName: ~c"localhost"]}}}
+
+12:57:02.585 [notice] TLS :server: In state :wait_finished received CLIENT ALERT: Fatal - Bad Certificate
+
+
+12:57:02.597 [notice] TLS :client: In state :wait_cert_cr at ssl_handshake.erl:2304 generated CLIENT ALERT: Fatal - Unknown CA
+
+
+12:57:02.597 [notice] TLS :server: In state :wait_finished received CLIENT ALERT: Fatal - Unknown CA
+
+...............................................................................Cost report fixture: configured pages, own-session/child summaries and inert resume passed.
+...........................................................................................................................
+12:57:46.142 [debug] MCP Client: transport closed: :invalid_http_transport
+.
+12:57:46.143 [debug] MCP Client: transport closed: :invalid_http_transport
+.........................................................
+12:58:04.038 [error] GenServer #PID<0.147540.0> terminating
+** (stop) :redacted
+    (ipse 0.1.0) lib/ipse/session.ex:3525: Ipse.Session.journal_failed/2
+    (ipse 0.1.0) lib/ipse/session.ex:1724: Ipse.Session.handle_call/3
+    (stdlib 8.1) gen_server.erl:2470: :gen_server.try_handle_call/4
+    (stdlib 8.1) gen_server.erl:2499: :gen_server.handle_msg/3
+    (stdlib 8.1) proc_lib.erl:333: :proc_lib.init_p_do_apply/3
+Last message (from #PID<0.147539.0>): :redacted
+State: %{id: "551cfe378e0ad5cdc124d2855d3a5dc6", phase: :idle}
+Client #PID<0.147539.0> is alive
+
+    (stdlib 8.1) gen.erl:262: :gen.do_call/4
+    (elixir 1.20.4) lib/gen_server.ex:1180: GenServer.call/3
+    test/ipse/session/question_eof_test.exs:271: Ipse.Session.QuestionEOFTest."test journal exhaustion after a planning checkpoint preserves the restriction without an entry"/1
+    (ex_unit 1.20.4) lib/ex_unit/runner.ex:533: ExUnit.Runner.exec_test/2
+    (stdlib 8.1) timer.erl:599: :timer.tc/2
+    (ex_unit 1.20.4) lib/ex_unit/runner.ex:455: anonymous fn/6 in ExUnit.Runner.spawn_test_monitor/4
+......
+12:58:04.266 [error] GenServer #PID<0.147779.0> terminating
+** (stop) :redacted
+    (ipse 0.1.0) lib/ipse/session.ex:3525: Ipse.Session.journal_failed/2
+    (ipse 0.1.0) lib/ipse/session.ex:4055: Ipse.Session.record_planning_epoch/2
+    (ipse 0.1.0) lib/ipse/session.ex:1722: Ipse.Session.handle_call/3
+    (stdlib 8.1) gen_server.erl:2470: :gen_server.try_handle_call/4
+    (stdlib 8.1) gen_server.erl:2499: :gen_server.handle_msg/3
+    (stdlib 8.1) proc_lib.erl:333: :proc_lib.init_p_do_apply/3
+Last message (from #PID<0.147764.0>): :redacted
+State: %{id: "051f7e9ebcb4f21d3e317c036b1e66d4", phase: :idle}
+Client #PID<0.147764.0> is alive
+
+    (stdlib 8.1) gen.erl:262: :gen.do_call/4
+    (elixir 1.20.4) lib/gen_server.ex:1180: GenServer.call/3
+    test/ipse/session/question_eof_test.exs:750: anonymous fn/3 in Ipse.Session.QuestionEOFTest."test journal exhaustion between a planning transition and its declared-read epoch preserves a valid sealed prefix"/1
+    (elixir 1.20.4) lib/enum.ex:1725: Enum."-map/2-lists^map/1-1-"/2
+    test/ipse/session/question_eof_test.exs:725: Ipse.Session.QuestionEOFTest."test journal exhaustion between a planning transition and its declared-read epoch preserves a valid sealed prefix"/1
+    (ex_unit 1.20.4) lib/ex_unit/runner.ex:533: ExUnit.Runner.exec_test/2
+    (stdlib 8.1) timer.erl:599: :timer.tc/2
+    (ex_unit 1.20.4) lib/ex_unit/runner.ex:455: anonymous fn/6 in ExUnit.Runner.spawn_test_monitor/4
+
+12:58:04.295 [error] GenServer #PID<0.147796.0> terminating
+** (stop) :redacted
+    (ipse 0.1.0) lib/ipse/session.ex:3525: Ipse.Session.journal_failed/2
+    (ipse 0.1.0) lib/ipse/session.ex:4055: Ipse.Session.record_planning_epoch/2
+    (ipse 0.1.0) lib/ipse/session.ex:1769: Ipse.Session.handle_call/3
+    (stdlib 8.1) gen_server.erl:2470: :gen_server.try_handle_call/4
+    (stdlib 8.1) gen_server.erl:2499: :gen_server.handle_msg/3
+    (stdlib 8.1) proc_lib.erl:333: :proc_lib.init_p_do_apply/3
+Last message (from #PID<0.147764.0>): :redacted
+State: %{id: "0f7e6065411c0094cf9f5e4771a1fc4f", phase: :idle}
+Client #PID<0.147764.0> is alive
+
+    (stdlib 8.1) gen.erl:262: :gen.do_call/4
+    (elixir 1.20.4) lib/gen_server.ex:1180: GenServer.call/3
+    test/ipse/session/question_eof_test.exs:751: anonymous fn/3 in Ipse.Session.QuestionEOFTest."test journal exhaustion between a planning transition and its declared-read epoch preserves a valid sealed prefix"/1
+    (elixir 1.20.4) lib/enum.ex:1725: Enum."-map/2-lists^map/1-1-"/2
+    (elixir 1.20.4) lib/enum.ex:1725: Enum."-map/2-lists^map/1-1-"/2
+    test/ipse/session/question_eof_test.exs:725: Ipse.Session.QuestionEOFTest."test journal exhaustion between a planning transition and its declared-read epoch preserves a valid sealed prefix"/1
+    (ex_unit 1.20.4) lib/ex_unit/runner.ex:533: ExUnit.Runner.exec_test/2
+    (stdlib 8.1) timer.erl:599: :timer.tc/2
+    (ex_unit 1.20.4) lib/ex_unit/runner.ex:455: anonymous fn/6 in ExUnit.Runner.spawn_test_monitor/4
+..................................................................................................
+.....................................................................
+Finished in 2027.8 seconds (395.9s async, 1631.9s sync)
+
+Result: 2883 passed, 36 excluded

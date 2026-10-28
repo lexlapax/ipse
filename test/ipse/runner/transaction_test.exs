@@ -55,8 +55,96 @@ defmodule Ipse.Runner.TransactionTest do
                stderr_to_stdout: true
              )
 
+    partial_source = Path.join(base, "partial-transaction.rs")
+    transaction_source = File.read!(Path.join(@root, "native/ipse-transaction.rs"))
+    insertion = "stage.written += count; stage.remaining -= count; bytes = &bytes[count..];"
+    assert length(String.split(transaction_source, insertion)) == 2
+
+    File.write!(
+      partial_source,
+      String.replace(
+        transaction_source,
+        insertion,
+        insertion <>
+          " if stage.remaining > 0 { unsafe extern \"C\" { fn kill(pid:i32, signal:i32)->i32; } unsafe { kill(std::process::id() as i32, 9); } }"
+      )
+    )
+
+    partial_wrapper = Path.join(base, "partial.rs")
+
+    File.write!(
+      partial_wrapper,
+      File.read!(source)
+      |> String.replace(Path.join(@root, "native/ipse-transaction.rs"), partial_source)
+      |> String.replace(
+        "let args:Vec<_>=std::env::args().collect();",
+        "let args:Vec<_>=std::env::args().collect(); if args.get(1).is_some_and(|s|s==\"--partial-stat\"){use std::os::unix::fs::MetadataExt; let m=std::fs::metadata(&args[2]).unwrap();println!(\"{}\",m.blocks());return;}"
+      )
+    )
+
+    partial = Path.join(base, "partial")
+
+    assert {_, 0} =
+             System.cmd(
+               "rustc",
+               ["--edition=2021", "-A", "dead_code", partial_wrapper, "-o", partial],
+               stderr_to_stdout: true
+             )
+
+    allocation_source = Path.join(base, "allocation-storage.rs")
+
+    File.write!(
+      allocation_source,
+      File.read!(Path.join(@root, "native/ipse-storage.rs"))
+      |> String.replace(
+        "\"ipse-storage-profile.rs\"",
+        inspect(Path.join(@root, "native/ipse-storage-profile.rs"))
+      )
+      |> String.replace(
+        ".sync_all()",
+        ".sync_all().and_then(|_| Err::<(), _>(std::io::Error::from_raw_os_error(5)))"
+      )
+      # This fixture's zero file/directory allowance isolates refusal on a sync
+      # error when the real filesystem profile is unavailable. It qualifies no profile.
+      |> String.replace(
+        "allocation_profile::reserve(&directory, sizes)?",
+        "{ let _ = (&directory, sizes); 0_u64 }"
+      )
+      |> String.replace(
+        "if usage.directory_allocated != 0",
+        "if false && usage.directory_allocated != 0"
+      )
+    )
+
+    allocation_wrapper = Path.join(base, "allocation.rs")
+    allocation_fault = Path.join(base, "allocation-fault")
+
+    File.write!(
+      allocation_wrapper,
+      File.read!(source)
+      |> String.replace(Path.join(@root, "native/ipse-storage.rs"), allocation_source)
+      |> String.replace(
+        "if args.get(1).is_some_and(|s|s==\"--transaction-lock\"){",
+        "if args.get(1).is_some_and(|s|s==\"--storage-allocation\"){if ipse_storage::run(&args).is_err(){std::process::exit(1);}}else if args.get(1).is_some_and(|s|s==\"--transaction-lock\"){"
+      )
+    )
+
+    assert {_, 0} =
+             System.cmd(
+               "rustc",
+               ["--edition=2021", "-A", "dead_code", allocation_wrapper, "-o", allocation_fault],
+               stderr_to_stdout: true
+             )
+
     on_exit(fn -> File.rm_rf!(base) end)
-    %{helper: helper, fault: fault, marker: marker}
+
+    %{
+      helper: helper,
+      fault: fault,
+      partial: partial,
+      allocation_fault: allocation_fault,
+      marker: marker
+    }
   end
 
   setup c do
@@ -241,6 +329,63 @@ defmodule Ipse.Runner.TransactionTest do
     assert {:unknown, _} = T.switch(cap, pending(1), "index.json")
     refute File.exists?(Path.join(c.root, "index.json"))
     assert File.read!(Path.join(c.root, pending(1))) == "candidate"
+  end
+
+  if :os.type() == {:unix, :linux} do
+    test "quota inventory refuses a retained staging file when synchronization fails", c do
+      System.put_env("IPSE_RUNNER_PATH", c.allocation_fault)
+      assert {:ok, cap} = T.acquire(lock(c.root))
+      assert {:ok, _} = T.allocation(cap)
+      assert :ok = T.quota(cap, :collection, 64 * 1024 * 1024)
+
+      path = Path.join([c.root, "objects", pending(18)])
+      File.write!(path, "interrupted candidate", [:exclusive])
+      File.chmod!(path, 0o600)
+
+      assert {observation, 0} = System.cmd(c.allocation_fault, ["--storage-allocation", c.root])
+      assert observation =~ ~r/\A[0-9]+ [0-9]+ [0-9]+\n\z/
+      assert {:error, :transaction_unsafe} = T.preflight(cap, [64])
+      assert {:error, :transaction_unsafe} = T.stage(cap, "objects", [{pending(19), "new"}])
+      refute File.exists?(Path.join([c.root, "objects", pending(19)]))
+      assert {:error, :transaction_io} = T.allocation(cap)
+      assert File.read!(path) == "interrupted candidate"
+      assert :ok = T.check(cap)
+      assert :ok = T.release(cap)
+
+      System.put_env("IPSE_RUNNER_PATH", c.helper)
+      assert {:ok, next} = T.acquire(lock(c.root))
+      assert {:ok, _} = T.allocation(next)
+      assert :ok = T.reclaim(next, "objects", [pending(18)])
+      assert :ok = T.release(next)
+    end
+
+    test "native owner death during a staged write leaves an accounted partial file", c do
+      assert {:ok, before_cap} = T.acquire(lock(c.root))
+      assert {:ok, before} = T.allocation(before_cap)
+      assert :ok = T.release(before_cap)
+
+      System.put_env("IPSE_RUNNER_PATH", c.partial)
+      assert {:ok, cap} = T.acquire(lock(c.root))
+      bytes = :crypto.strong_rand_bytes(1024 * 1024)
+      assert {:unknown, _} = T.stage(cap, ".", [{pending(17), bytes}])
+
+      path = Path.join(c.root, pending(17))
+      partial = File.read!(path)
+      assert byte_size(partial) in 1..(byte_size(bytes) - 1)
+      assert partial == binary_part(bytes, 0, byte_size(partial))
+      refute File.exists?(Path.join(c.root, "root.json"))
+      assert {blocks, 0} = System.cmd(c.partial, ["--partial-stat", path])
+      blocks = blocks |> String.trim() |> String.to_integer()
+      assert blocks > 0
+
+      System.put_env("IPSE_RUNNER_PATH", c.helper)
+      assert {:ok, next} = T.acquire(lock(c.root))
+      assert {:ok, after_allocation} = T.allocation(next)
+      assert after_allocation.logical - before.logical >= byte_size(partial)
+      assert after_allocation.allocated - before.allocated >= blocks * 512
+      assert :ok = T.reclaim(next, ".", [pending(17)])
+      assert :ok = T.release(next)
+    end
   end
 
   test "actual helper kill after rename and before ACK is unknown with inspectable publication",

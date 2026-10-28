@@ -1,0 +1,13 @@
+
+running 9 tests
+test allocation_profile::tests::forced_huge_unknown_mounts_and_unreviewed_kernels_refuse ... ok
+test allocation_profile::tests::lengths_are_rounded_with_runtime_unit_and_checked_before_allocation ... ok
+test tests::includes_directory_and_file_blocks ... ok
+test tests::owned_inventory_retains_interrupted_stage_and_reports_its_settled_allocation ... ok
+test tests::rejects_excessive_depth ... ok
+test tests::rejects_links_modes_and_noncanonical_roots ... ok
+test tests::staging_is_exclusive_private_bounded_and_retains_partial_unknown_bytes ... ok
+test tests::supported_preflight_reserves_before_creating_any_staging_file ... ok
+test tests::writer_lease_retains_inode_and_excludes_another_open ... ok
+
+test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s

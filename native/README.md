@@ -423,7 +423,11 @@ overflow, lost helper or invalid response returns unavailable; there is no
 estimated-allocation fallback. This standalone inspection is an observation,
 not a reservation or a fence for a separate writer. Protected collections use
 `Transaction.allocation/2` and native preflight while the same native process
-holds all logical and writer leases. Admission, consent, divided storage budgets,
+holds all logical and writer leases. Those owned inventories first sync each
+retained `.pending-` file and re-read its metadata. A previous owner may have died
+before staging completed; a failed sync refuses the inventory and quota
+admission while retaining the file for inspection. The standalone observation
+does not perform these syncs. Admission, consent, divided storage budgets,
 project identity and domain retention remain Elixir policy.
 
 Run the dependency-free native controls with:
@@ -527,7 +531,7 @@ Use these operations while the exact top capability is held:
 | `install(cap, directory, pending, immutable)` | Rename a pending file to a 64-lowercase-hex `.json` name without replacement; an existing target is a known refusal. Elixir verifies existing content/hash when needed. |
 | `switch(cap, pending, target)` | Sync and rename within the retained top lock parent, then sync that directory; target is exactly `index.json`, `control.json` or `root.json`. |
 | `reclaim(cap, directory, names)` | Reclaim at most 64 explicitly selected orphan names. Sync every retained orphan before unlink, sync the directory, and close all orphan FDs before acknowledging. |
-| `allocation(cap, mode)` | Return exact managed logical/allocated bytes and entry count under writer leases; mode defaults to `:collection`. |
+| `allocation(cap, mode)` | Sync retained staging files, then return managed logical/allocated bytes and entry count under writer leases; a sync error refuses. Mode defaults to `:collection`. |
 | `release(cap)` | Pop one lock in reverse order; a root release closes the transaction and proves native cleanup. |
 
 Directory selectors are exactly `"."`, `"objects"` and `"manifests"`; only the last
@@ -654,6 +658,10 @@ Inventory remains bounded to four levels and 40,000 entries. A configured stage
 requires its current observed allocation plus twice each planned file's length
 rounded up to the supported runtime allocation unit to fit before any payload.
 Elixir still supplies project ceilings, full plans and reserved control shares.
+Owned inventories settle retained pending files under all scope writer leases
+before counting their blocks. A failed sync refuses allocation measurement or
+preflight, retaining the file. A sync can persist bytes admitted by an earlier
+owner; refusal never proves that an interrupted stage had no effect.
 
 `ipse-storage-profile.rs` currently admits only trusted upstream-compatible Linux
 64-bit kernel `7.2.10`/`7.2.10-*` with Btrfs sector units, or tmpfs page units with
@@ -675,9 +683,12 @@ mix compile --warnings-as-errors
 mix test test/ipse/runner/transaction_test.exs test/ipse/runner/transaction_optional_read_test.exs test/ipse/runner/transaction_framing_test.exs test/ipse/extension/project_identity_test.exs
 ```
 
-The transaction fixtures compile an exact source-derived implementation under
-a private test module name, changing only child-helper selection; the supervisor
-stays protected. They exercise malformed frames, bounds, two-VM locking, resource
+The transaction fixtures compile source-derived implementations under private
+test module names. The ordinary fixture changes only child-helper selection;
+fault variants deliberately alter native responses or IO results. The retained
+stage sync-error control also supplies a synthetic zero file/directory allowance
+to isolate refusal before new payload, without qualifying a filesystem profile.
+The supervisor stays protected. They exercise malformed frames, bounds, two-VM locking, resource
 loss, actual helper kills before/after publication and quota refusal before
 payload. Separate production poison controls verify the override cannot select
 the UID, directory-sync, transaction child or supervisor path. Admission journeys

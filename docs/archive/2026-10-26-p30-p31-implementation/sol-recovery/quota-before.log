@@ -1,0 +1,21 @@
+Compiling 154 files (.ex)
+Running ExUnit with seed: 46689, max_cases: 1
+Excluding tags: [:test]
+Including tags: [location: {"test/ipse/runner/transaction_test.exs", 335}]
+
+
+
+  1) test quota inventory refuses a retained staging file when synchronization fails (Ipse.Runner.TransactionTest)
+     test/ipse/runner/transaction_test.exs:335
+     match (=) failed
+     code:  assert {:error, :transaction_unsafe} = T.preflight(cap, ~c"@")
+     left:  {:error, :transaction_unsafe}
+     right: :ok
+     stacktrace:
+       test/ipse/runner/transaction_test.exs:347: (test)
+
+
+Finished in 2.0 seconds (0.00s async, 2.0s sync)
+
+Result: 0/1 passed, 21 excluded
+Failed: 1 test
