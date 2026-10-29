@@ -205,9 +205,18 @@ defmodule Ipse.DocsCheck do
   end
 
   defp archive_errors do
+    {listed, 0} =
+      System.cmd("git", [
+        "ls-files",
+        "--cached",
+        "--others",
+        "--",
+        "docs/archive/2026-10-18-before-manual-rewrite/manifest.json",
+        "docs/archive/**/manual-provenance.json"
+      ])
+
     manifests =
-      Path.wildcard("docs/archive/2026-10-18-before-manual-rewrite/manifest.json") ++
-        Path.wildcard("docs/archive/**/manual-provenance.json")
+      listed |> String.split("\n", trim: true) |> Enum.uniq() |> Enum.filter(&File.regular?/1)
 
     for manifest <- manifests,
         item <- :json.decode(File.read!(manifest))["files"],
