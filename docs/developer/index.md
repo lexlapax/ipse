@@ -140,6 +140,11 @@ establish no real terminal, model-quality or installed-user result. Follow the
 source owners named in the contracts for integrated changes, retaining old-session
 reconstruction and explicit provider/billing selection.
 
+To inspect main-model capture proposals on exposed synthetic inputs, use the
+[capture pilot](capture-pilot.md). Its optional private audit retains exact
+source/candidate pairs for semantic review, while public progress stays numerical.
+It does not replace the frozen comparison or protected Session qualification.
+
 ## Finish a reviewable change
 
 Choose observable acceptance and meaningful regressions. Review affected manuals

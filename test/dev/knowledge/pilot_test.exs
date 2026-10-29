@@ -204,4 +204,183 @@ defmodule Ipse.Development.Knowledge.PilotTest do
       assert {:error, :pilot_configuration_refused, [], 0} = Pilot.run(config, request)
     end
   end
+
+  test "optional audit retains exact synthetic candidates without widening public progress" do
+    candidate_text = "PRIVATE_SYNTHETIC_CANDIDATE"
+    request = audit_request(candidate_text)
+    owner = self()
+
+    audit = fn event ->
+      send(owner, {:candidate_audit, event})
+      :ok
+    end
+
+    assert {:ok, records, 120} =
+             Pilot.run(%{provider: :chatgpt}, request, fn _ -> :ok end, audit)
+
+    refute inspect(records) =~ candidate_text
+    assert_receive {:candidate_audit, first}
+    assert first["session"] == 1 and first["request"] == 1
+    assert first["source"] == hd(Pilot.cases())
+    assert [%{"text" => ^candidate_text} = item] = first["candidates"]
+    assert item["quote"] == first["source"]["text"]
+    assert first["published"] == 0
+    refute inspect(first) =~ "UNRELATED_ASSISTANT_CONTENT"
+
+    rest =
+      for _ <- 1..59,
+          do:
+            (
+              assert_receive {:candidate_audit, event}
+              event
+            )
+
+    assert length(rest) == 59
+    refute_receive {:candidate_audit, _}
+  end
+
+  test "audit failure stops after the observed request without continuation or replay" do
+    for audit <- [
+          fn _ -> {:error, :disk_full} end,
+          fn _ -> raise "synthetic audit failure" end,
+          fn _ -> throw(:audit_stopped) end
+        ] do
+      assert {:error, :pilot_audit_failed, [record], 1} =
+               Pilot.run(
+                 %{provider: :chatgpt},
+                 audit_request("candidate"),
+                 fn _ -> :ok end,
+                 audit
+               )
+
+      assert record.request == 1 and not record.continuation
+    end
+
+    never = fn _, _, _, _ -> flunk("invalid audit must refuse before dispatch") end
+
+    assert {:error, :pilot_configuration_refused, [], 0} =
+             Pilot.run(%{provider: :chatgpt}, never, fn _ -> :ok end, :invalid)
+  end
+
+  test "audit records omissions but never retains a source-invalid candidate" do
+    owner = self()
+    empty = fn _, _, _, _ -> {:ok, %{"role" => "assistant", "content" => "done"}, %{}} end
+
+    audit = fn event ->
+      send(owner, {:empty_audit, event})
+      :ok
+    end
+
+    assert {:ok, _, 60} = Pilot.run(%{provider: :chatgpt}, empty, fn _ -> :ok end, audit)
+
+    for _ <- 1..60 do
+      assert_receive {:empty_audit, %{"candidates" => []}}
+    end
+
+    valid = audit_request("candidate")
+
+    invalid = fn config, messages, tools, emit ->
+      {:ok, assistant, usage} = valid.(config, messages, tools, emit)
+      [call] = assistant["tool_calls"]
+      args = JSON.decode!(call["function"]["arguments"])
+      args = put_in(args, ["items", Access.at(0), "source_id"], "unrelated-source")
+      call = put_in(call, ["function", "arguments"], JSON.encode!(args))
+      {:ok, %{assistant | "tool_calls" => [call]}, usage}
+    end
+
+    assert {:error, :pilot_call_contract_refused, [_], 1} =
+             Pilot.run(%{provider: :chatgpt}, invalid, fn _ -> :ok end, fn _ ->
+               flunk("invalid candidate must not reach the audit sink")
+             end)
+  end
+
+  test "rejected model category values cannot escape through public progress" do
+    marker = "PRIVATE_SYNTHETIC_INVALID_CATEGORY"
+    valid = audit_request("candidate")
+    owner = self()
+
+    for category <- [marker, %{"text" => marker}] do
+      invalid = fn config, messages, tools, emit ->
+        {:ok, assistant, usage} = valid.(config, messages, tools, emit)
+        [call] = assistant["tool_calls"]
+        args = JSON.decode!(call["function"]["arguments"])
+        args = put_in(args, ["items", Access.at(0), "category"], category)
+        call = put_in(call, ["function", "arguments"], JSON.encode!(args))
+        {:ok, %{assistant | "tool_calls" => [call]}, usage}
+      end
+
+      assert {:error, :pilot_call_contract_refused, [record], 1} =
+               Pilot.run(%{provider: :chatgpt}, invalid, fn row ->
+                 send(owner, {:progress, row})
+               end)
+
+      assert_receive {:progress, ^record}
+      assert [%{valid_source: false, category: nil}] = record.proposals
+      refute inspect(record) =~ marker
+    end
+  end
+
+  test "audit files use a new private directory and reject overwrite and oversized records" do
+    directory = Path.join(System.tmp_dir!(), "ipse-pilot-audit-" <> Ipse.Usage.id())
+    on_exit(fn -> File.rm_rf!(directory) end)
+    assert {:ok, nil} = Pilot.open_audit(nil)
+    assert {:ok, file} = Pilot.open_audit(directory)
+
+    try do
+      path = Path.join(directory, "candidates.jsonl")
+      assert Bitwise.band(File.stat!(directory).mode, 0o777) == 0o700
+      assert Bitwise.band(File.stat!(path).mode, 0o777) == 0o600
+      assert {:error, :pilot_audit_unavailable} = Pilot.open_audit(directory)
+      assert :ok = Pilot.write_audit(file, %{"kind" => "synthetic", "published" => 0})
+      before = File.read!(path)
+
+      assert Jason.decode!(String.trim_trailing(before)) == %{
+               "kind" => "synthetic",
+               "published" => 0
+             }
+
+      assert {:error, :pilot_audit_failed} =
+               Pilot.write_audit(file, %{"text" => String.duplicate("x", 65_537)})
+
+      assert File.read!(path) == before
+    after
+      File.close(file)
+    end
+  end
+
+  defp audit_request(text) do
+    fn _, messages, _, _ ->
+      if List.last(messages)["role"] == "tool" do
+        {:ok, %{"role" => "assistant", "content" => "done"}, %{}}
+      else
+        source = JSON.decode!(List.last(messages)["content"])
+
+        {:ok,
+         %{
+           "role" => "assistant",
+           "content" => "UNRELATED_ASSISTANT_CONTENT",
+           "tool_calls" => [
+             %{
+               "id" => "audit-capture",
+               "type" => "function",
+               "function" => %{
+                 "name" => "knowledge_capture",
+                 "arguments" =>
+                   JSON.encode!(%{
+                     "items" => [
+                       %{
+                         "source_id" => source["source_id"],
+                         "quote" => source["text"],
+                         "text" => text,
+                         "category" => "automatic"
+                       }
+                     ]
+                   })
+               }
+             }
+           ]
+         }, %{}}
+      end
+    end
+  end
 end

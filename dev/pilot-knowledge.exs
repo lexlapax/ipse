@@ -15,7 +15,11 @@ with "chatgpt" <- System.get_env("IPSE_KNOWLEDGE_PILOT_CONFIRM"),
          base_url: nil,
          operator_questions: false,
          approval: :deny
-       }) do
+       }),
+     {:ok, audit_file} <-
+       Ipse.Development.Knowledge.Pilot.open_audit(
+         System.get_env("IPSE_KNOWLEDGE_PILOT_AUDIT_DIR")
+       ) do
   IO.puts(
     JSON.encode!(%{
       event: "pilot_plan",
@@ -25,16 +29,22 @@ with "chatgpt" <- System.get_env("IPSE_KNOWLEDGE_PILOT_CONFIRM"),
       sessions: 3,
       turns_per_session: 20,
       published: 0,
+      private_candidate_audit: not is_nil(audit_file),
       data: "synthetic exposed development tasks; not held-out quality evidence"
     })
   )
 
   result =
-    Ipse.Development.Knowledge.Pilot.run(
-      config,
-      &Ipse.Provider.request_complete/4,
-      &IO.puts(JSON.encode!(&1))
-    )
+    try do
+      Ipse.Development.Knowledge.Pilot.run(
+        config,
+        &Ipse.Provider.request_complete/4,
+        &IO.puts(JSON.encode!(&1)),
+        if(audit_file, do: &Ipse.Development.Knowledge.Pilot.write_audit(audit_file, &1))
+      )
+    after
+      if audit_file, do: File.close(audit_file)
+    end
 
   case result do
     {:ok, _, count} ->
@@ -50,7 +60,7 @@ with "chatgpt" <- System.get_env("IPSE_KNOWLEDGE_PILOT_CONFIRM"),
 else
   _ ->
     IO.puts(
-      "Pilot refused: explicitly confirm chatgpt; retain configured ChatGPT route without extensions or shared budgets."
+      "Pilot refused: explicitly confirm chatgpt; retain configured ChatGPT route without extensions or shared budgets; any audit directory must be new and writable."
     )
 
     System.halt(1)

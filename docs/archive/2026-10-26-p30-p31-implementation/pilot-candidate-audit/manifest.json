@@ -1,0 +1,59 @@
+{
+  "contributor_manual": {
+    "byte_count": 4921,
+    "sha256": "936493aa1166f204dee217b74a2f1e30feee8710724005e99c9680d8b650cd17"
+  },
+  "date": "2026-10-29",
+  "files": {
+    "ipse-docs-followup-46997.log": {
+      "byte_count": 756,
+      "sha256": "171454fcefc9d3b636d40e250f0e6f1ed2452f0d91c7a36ae7966ba837b1eb2a"
+    },
+    "ipse-pilot-audit-46992.log": {
+      "byte_count": 226,
+      "sha256": "aa7e22916774f45df691e3b9992e8d1efb1b6d8da9cef81e26e2aa1bca72c1b1"
+    },
+    "ipse-pilot-audit-46993.log": {
+      "byte_count": 227,
+      "sha256": "529d299e64db8485d09998579fd3eab7068da2623c557ed4c28605c570eae87d"
+    },
+    "ipse-pilot-audit-46994.log": {
+      "byte_count": 228,
+      "sha256": "ff57a51cf6ea46dfba8b5b7ba32491cf1175ea554c2d78cc685c25d3cf4c724b"
+    },
+    "ipse-pilot-cli-refusal-46995.log": {
+      "byte_count": 159,
+      "sha256": "a8b7c135979675ac4719f970fef9adbe0d02266d40e250b53db036cd2078119d"
+    },
+    "source/dev/knowledge/pilot.exs": {
+      "byte_count": 12965,
+      "sha256": "6a5ca081dbc48b0c177e0348b2d1bf87bf12ee0d9f65ef9fd3444fbc7b4ec404"
+    },
+    "source/dev/pilot-knowledge.exs": {
+      "byte_count": 2066,
+      "sha256": "7e2246772b9c4dbed36c44b05e6f873451e4faefdae707241f36b74c794c4fdb"
+    },
+    "source/test/dev/knowledge/pilot_test.exs": {
+      "byte_count": 13384,
+      "sha256": "3b839c22bead5226ecbb24290902550e7985130d35195af0984a78b490145f86"
+    }
+  },
+  "focused_test_seed": 46994,
+  "focused_tests_passed": 14,
+  "host_modules": {
+    "ipse/ebin/Elixir.Ipse.JSON.beam": {
+      "byte_count": 33280,
+      "sha256": "a6f36c1d8c6a811d0420b320ac7cb67661670842268777c4ddd188d614bf841b"
+    },
+    "ipse/ebin/Elixir.Ipse.Provider.beam": {
+      "byte_count": 33300,
+      "sha256": "5d0867f61b3053bc6d4474fc4bc2c8271d46c648485e07c30ae14d3851b3c4fa"
+    },
+    "ipse/ebin/Elixir.Ipse.Tools.beam": {
+      "byte_count": 47044,
+      "sha256": "3c34a4fea07672511f26223141158215d60ee112cd050c957ecc98921c5f6dce"
+    }
+  },
+  "runtime": "/home/lexlapax/projects/lexlapax/ipse/_build/literal-v4-ab-current2-sol-20261029/lib",
+  "scope": "Optional synthetic capture audit and public progress category repair; no actual provider or aggregate qualification"
+}

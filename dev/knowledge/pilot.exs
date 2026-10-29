@@ -65,9 +65,48 @@ defmodule Ipse.Development.Knowledge.Pilot do
 
   def tool, do: @tools
 
-  def run(config, request, report \\ fn _ -> :ok end) do
+  @doc "Open an optional new private directory for synthetic candidate audit data."
+  def open_audit(nil), do: {:ok, nil}
+
+  def open_audit(directory) when is_binary(directory) and directory != "" do
+    with :ok <- File.mkdir(directory),
+         :ok <- File.chmod(directory, 0o700),
+         path = Path.join(directory, "candidates.jsonl"),
+         {:ok, file} <- File.open(path, [:write, :binary, :exclusive]) do
+      case File.chmod(path, 0o600) do
+        :ok ->
+          {:ok, file}
+
+        _ ->
+          File.close(file)
+          {:error, :pilot_audit_unavailable}
+      end
+    else
+      _ -> {:error, :pilot_audit_unavailable}
+    end
+  end
+
+  def open_audit(_), do: {:error, :pilot_audit_unavailable}
+
+  @doc "Append and sync one bounded synthetic audit record before another request."
+  def write_audit(file, event) do
+    bytes = IO.iodata_to_binary(JSON.encode!(event))
+
+    with true <- byte_size(bytes) <= 65_536,
+         :ok <- IO.binwrite(file, bytes <> "\n"),
+         :ok <- :file.sync(file) do
+      :ok
+    else
+      _ -> {:error, :pilot_audit_failed}
+    end
+  rescue
+    _ -> {:error, :pilot_audit_failed}
+  end
+
+  def run(config, request, report \\ fn _ -> :ok end, audit \\ nil) do
     with true <- config[:provider] in [:chatgpt, :ollama],
          true <- is_nil(config[:budget]),
+         true <- is_nil(audit) or is_function(audit, 1),
          :ok <- Ipse.Provider.validate_output_limit(config),
          {:ok, timeout} <- narrow(config[:timeout_ms], 60_000),
          {:ok, response_bytes} <- narrow(config[:max_response_bytes], 131_072) do
@@ -76,7 +115,7 @@ defmodule Ipse.Development.Knowledge.Pilot do
       Enum.reduce_while(1..3, {:ok, [], 0}, fn session, {:ok, records, count} ->
         initial = [%{"role" => "system", "content" => instruction()}]
 
-        case session(config, request, report, session, initial, records, count) do
+        case session(config, request, report, audit, session, initial, records, count) do
           {:ok, records, count} -> {:cont, {:ok, records, count}}
           error -> {:halt, error}
         end
@@ -86,13 +125,13 @@ defmodule Ipse.Development.Knowledge.Pilot do
     end
   end
 
-  defp session(config, request, report, session, initial, records, count) do
+  defp session(config, request, report, audit, session, initial, records, count) do
     Enum.reduce_while(cases(), {:ok, initial, records, count}, fn source,
                                                                   {:ok, messages, records, count} ->
       content = JSON.encode!(%{"source_id" => source["id"], "text" => source["text"]})
       messages = messages ++ [%{"role" => "user", "content" => content}]
 
-      case turn(config, request, report, session, source, messages, records, count) do
+      case turn(config, request, report, audit, session, source, messages, records, count) do
         {:ok, messages, records, count} -> {:cont, {:ok, messages, records, count}}
         error -> {:halt, error}
       end
@@ -103,10 +142,10 @@ defmodule Ipse.Development.Knowledge.Pilot do
     end
   end
 
-  defp turn(config, request, report, session, source, messages, records, count) do
+  defp turn(config, request, report, audit, session, source, messages, records, count) do
     with {:ok, assistant, record} <- perform(config, request, messages, count) do
       calls = tool_calls(assistant)
-      {disposition, items} = proposals(calls, source)
+      {disposition, items, candidates} = proposals(calls, source)
 
       record =
         Map.merge(record, %{
@@ -127,6 +166,9 @@ defmodule Ipse.Development.Knowledge.Pilot do
       cond do
         disposition != :ok ->
           {:error, :pilot_call_contract_refused, records, count}
+
+        audit_candidates(audit, session, count, source, candidates) != :ok ->
+          {:error, :pilot_audit_failed, records, count}
 
         calls == [] ->
           {:ok, messages, records, count}
@@ -210,7 +252,7 @@ defmodule Ipse.Development.Knowledge.Pilot do
     end
   end
 
-  defp proposals([], _), do: {:ok, []}
+  defp proposals([], _), do: {:ok, [], []}
 
   defp proposals([call], source) when is_map(call) do
     with true <- Enum.sort(Map.keys(call)) == ~w(function id type),
@@ -233,19 +275,50 @@ defmodule Ipse.Development.Knowledge.Pilot do
 
           %{
             valid_source: valid,
-            category: if(is_map(item), do: item["category"]),
+            category:
+              if(is_map(item) and item["category"] in ~w(automatic persistent temporal),
+                do: item["category"]
+              ),
             payload_bytes: byte_size(JSON.encode!(item))
           }
         end)
 
-      {if(Enum.all?(rows, & &1.valid_source), do: :ok, else: :invalid_source), rows}
+      if Enum.all?(rows, & &1.valid_source),
+        do: {:ok, rows, items},
+        else: {:invalid_source, rows, []}
     else
-      _ -> {:invalid_call, [%{valid_source: false, reason: "invalid_capture_call"}]}
+      _ -> {:invalid_call, [%{valid_source: false, reason: "invalid_capture_call"}], []}
     end
   end
 
   defp proposals(_, _),
-    do: {:invalid_call, [%{valid_source: false, reason: "invalid_capture_batch"}]}
+    do: {:invalid_call, [%{valid_source: false, reason: "invalid_capture_batch"}], []}
+
+  # Retention is opt-in and separate from public numerical progress. Only the
+  # validated synthetic source and candidate fields reach this callback.
+  defp audit_candidates(nil, _, _, _, _), do: :ok
+
+  defp audit_candidates(audit, session, count, source, candidates) do
+    event = %{
+      "version" => 1,
+      "kind" => "synthetic_capture_audit",
+      "session" => session,
+      "request" => count,
+      "source" => source,
+      "candidates" => candidates,
+      "published" => 0,
+      "qualification" => "exposed development inputs; independent semantic labels absent"
+    }
+
+    case audit.(event) do
+      :ok -> :ok
+      _ -> {:error, :audit_write_failed}
+    end
+  rescue
+    _ -> {:error, :audit_write_failed}
+  catch
+    _, _ -> {:error, :audit_write_failed}
+  end
 
   defp tool_calls(assistant) do
     case Map.get(assistant, "tool_calls", []) do

@@ -40,6 +40,7 @@ quick start. Try the demo before configuring a model account.
 | Inspect bounded document extraction and coverage | [Study document extraction](developer/knowledge-extensions.md#inspect-bounded-document-extraction) |
 | Admit typed advisory effects and validate native results | [Study decisions](developer/decisions.md) |
 | Measure retrieval and cited answers without exposing labels | [Work through knowledge evaluation](developer/knowledge-evaluation.md) |
+| Inspect synthetic capture proposals with private source/candidate audit data | [Run the capture pilot](developer/capture-pilot.md) |
 | Change a durable record or recovery validator | [Study persistence](developer/persistence.md) |
 | Prove a repair against source or an installed runtime | [Verify a change](developer/testing.md) |
 
