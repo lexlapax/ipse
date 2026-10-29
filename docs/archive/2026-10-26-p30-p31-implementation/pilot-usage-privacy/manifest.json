@@ -1,0 +1,104 @@
+{
+  "conservative_call_charge": 120,
+  "contributor_manual": {
+    "byte_count": 5131,
+    "sha256": "c77101c11dfc8657bb77281a3055c3eac9af20240f977c771d3f72a31fc30537"
+  },
+  "date": "2026-10-29",
+  "files": {
+    "development-labels.json": {
+      "byte_count": 27222,
+      "sha256": "38b3572220334a96cf3f9e40c323521b83b1f9c05094d22adae43a7a3d3c2abc"
+    },
+    "ipse-check-pilot-labels-47018.exs": {
+      "byte_count": 1691,
+      "sha256": "62183ceffcb96ce6d5598f627a0515b42ac52f92de20fe5bc6050252e71ac21b"
+    },
+    "ipse-check-pilot-labels-47018.log": {
+      "byte_count": 89,
+      "sha256": "d3108bb80040e5ef486590430b2ef4e9168aa49bde0888e20eb7a8d313799366"
+    },
+    "ipse-check-sanitized-pilot-47015.exs": {
+      "byte_count": 1444,
+      "sha256": "e3b5ec918815ca3c30a55c99cdf076ba222a995a962d51eee078cb420acc1966"
+    },
+    "ipse-partial-pilot-inspection-47009.log": {
+      "byte_count": 603,
+      "sha256": "6ec7efca76ff23a9f1dd1f3713382ee455fb2094fa59596d05d5e9c993a8ba9c"
+    },
+    "ipse-pilot-usage-redaction-47008.log": {
+      "byte_count": 229,
+      "sha256": "0123dd7447eeb174178904b1925a2ff8e1c91b529cbff1d4a3341c077f95b8b1"
+    },
+    "ipse-preserve-partial-pilot-47016.log": {
+      "byte_count": 293,
+      "sha256": "0f12940d0b0419eb883151943424c613ffd4f375cb8d325b0e0a46d383053b5f"
+    },
+    "ipse-preserve-partial-pilot-47017.log": {
+      "byte_count": 103,
+      "sha256": "ab44cb62adb2b551757e8005de7a55ec51c282ba63617786013221da7e4b17b3"
+    },
+    "ipse-sanitized-pilot-check-47015.log": {
+      "byte_count": 92,
+      "sha256": "20ce1458a56195da02f88372597c139d34754a7c6569fe1814c7d7e0a7598df7"
+    },
+    "ipse-usage-followup-docs-47019.log": {
+      "byte_count": 879,
+      "sha256": "9d350679a41b02eeec34d02867a4c607011b6ba618507df1bfc7d78322ac5c05"
+    },
+    "ipse-usage-privacy-docs-47021.log": {
+      "byte_count": 756,
+      "sha256": "2ebe3e54fa27d400bbae94e1a4c2434c6e3f2b843d5684d4c2c13917aa62b73b"
+    },
+    "sanitized-partial-receipt.json": {
+      "byte_count": 97720,
+      "sha256": "2ac23c8782666a04c850c7bf3c0ea4578368a3528425b64ed233c95b028ae6e7"
+    },
+    "source/dev/knowledge/pilot.exs": {
+      "byte_count": 13004,
+      "sha256": "70a5644a4de0ef80beadbc2b694072de7cfa920e9a5a4e91ff560c36fc7a71f1"
+    },
+    "source/test/dev/knowledge/pilot_test.exs": {
+      "byte_count": 14708,
+      "sha256": "f6d8eb31d0dc35c4a6edda2791c77b869b2ef09e326a92f03a9aed125d3969bb"
+    }
+  },
+  "focused_tests_passed": 15,
+  "live_run_completed": false,
+  "modules": {
+    "Elixir.Ipse.Auth.beam": {
+      "byte_count": 62116,
+      "sha256": "bcdb9cbf9ab9bcab00a4c22409990384140753a790afe7cf2062b6d7ce0c1a70"
+    },
+    "Elixir.Ipse.Config.beam": {
+      "byte_count": 51500,
+      "sha256": "83de01c49af108d768cdab4eae94692223c92f1893068b48e1189bf6bd8ee555"
+    },
+    "Elixir.Ipse.JSON.beam": {
+      "byte_count": 33280,
+      "sha256": "a6f36c1d8c6a811d0420b320ac7cb67661670842268777c4ddd188d614bf841b"
+    },
+    "Elixir.Ipse.Provider.OpenAI.beam": {
+      "byte_count": 24056,
+      "sha256": "2a8e1acc0c96f932541c99bffffa4cba0cfd0aca70bcc7b291154c107b47e0e7"
+    },
+    "Elixir.Ipse.Provider.beam": {
+      "byte_count": 33300,
+      "sha256": "5d0867f61b3053bc6d4474fc4bc2c8271d46c648485e07c30ae14d3851b3c4fa"
+    },
+    "Elixir.Ipse.Usage.beam": {
+      "byte_count": 95084,
+      "sha256": "056457f890d18cd08724f0a57a489ee2a104fffeee846ea87e1ac0a9cbae0606"
+    }
+  },
+  "observed_responses": 96,
+  "previous_manifest": {
+    "byte_count": 2217,
+    "sha256": "ce3c84d95c245affd5d9a54bb0e3ede9970c330672c318340f794cdc8da5fb2b"
+  },
+  "private_evidence_directory": "_build/capture-candidate-audit-20261029-47000",
+  "private_raw_data_committed": false,
+  "runtime": "/home/lexlapax/projects/lexlapax/ipse/_build/literal-v4-ab-current2-sol-20261029/lib/ipse/ebin",
+  "scope": "Content-free normalized pilot usage, incomplete live-run numerical evidence and private-data-bound agent labels; no quality acceptance",
+  "seed": 47008
+}

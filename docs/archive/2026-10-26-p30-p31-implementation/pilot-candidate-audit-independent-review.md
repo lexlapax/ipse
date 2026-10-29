@@ -6,6 +6,14 @@ This scoped review covers the optional candidate-audit callback in
 [contributor procedure](../../developer/capture-pilot.md). It does not qualify
 actual model behavior, protected Session capture or held-out quality.
 
+**Later correction:** this initial review missed the raw provider `usage`
+passthrough. Its claim below that default output contains only numerical and
+fixed validation fields was too broad: provider usage can include attribution
+content. The [additive usage review](pilot-usage-privacy-independent-review.md)
+records that gap, the normalized-counter repair and independent synthetic
+verification. The category finding and its repair remain valid historical
+evidence; this earlier review does not qualify the unrepaired usage path.
+
 The review found a default-output leak in rejected candidates. Proposal progress
 copied the raw model-supplied category even when validation rejected that category.
 With audit disabled, a synthetic marker in that field appeared in both the

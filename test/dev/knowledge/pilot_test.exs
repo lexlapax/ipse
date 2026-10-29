@@ -320,6 +320,41 @@ defmodule Ipse.Development.Knowledge.PilotTest do
     end
   end
 
+  test "provider usage attribution and invalid counters cannot expose content in progress" do
+    marker = "PRIVATE_SYNTHETIC_PROVIDER_ATTRIBUTION"
+    owner = self()
+
+    for raw <- [
+          %{
+            "input_tokens" => 5,
+            "output_tokens" => 2,
+            "total_tokens" => 7,
+            "attribution" => %{"items" => %{"synthetic-id" => %{"content" => [marker]}}}
+          },
+          %{"input_tokens" => marker, "output_tokens" => 2},
+          marker
+        ] do
+      request = fn _, _, _, _ -> {:ok, %{"role" => "assistant", "content" => "done"}, raw} end
+      report = fn row -> send(owner, {:usage_progress, row}) end
+      assert {:ok, records, 60} = Pilot.run(%{provider: :chatgpt}, request, report)
+      refute inspect(records) =~ marker
+
+      for record <- records do
+        assert_receive {:usage_progress, ^record}
+        assert Ipse.Usage.valid_usage?(record.usage)
+        refute Map.has_key?(record.usage, "attribution")
+      end
+
+      if is_map(raw) and is_integer(raw["input_tokens"]) do
+        assert hd(records).usage["counts"]["input_tokens"] == 5
+        assert hd(records).usage["counts"]["output_tokens"] == 2
+        assert hd(records).usage["counts"]["total_tokens"] == 7
+      else
+        assert hd(records).usage["quality"] == "invalid"
+      end
+    end
+  end
+
   test "audit files use a new private directory and reject overwrite and oversized records" do
     directory = Path.join(System.tmp_dir!(), "ipse-pilot-audit-" <> Ipse.Usage.id())
     on_exit(fn -> File.rm_rf!(directory) end)

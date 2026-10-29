@@ -66,3 +66,8 @@ checked 754 Markdown files and 6,327 local links with zero errors. It reported
 permission warnings for retained private ledger directories; their permissions
 were not changed. The new contributor chapter and audience entry points were
 reviewed as whole documents. Scoped formatting and repository diff checks passed.
+
+The later [usage-privacy correction](pilot-usage-privacy.md) supersedes the broad
+content-free progress claim for raw provider usage: that field could contain
+attribution content and is now normalized. This record and its source/manifest
+identify the original `163901b` cohort; the later correction preserves them.

@@ -1,0 +1,3516 @@
+{
+  "audited_turns": 57,
+  "authorized_run_maximum": 120,
+  "completed_response_records": 96,
+  "conservative_call_charge": 120,
+  "conservative_remaining": 74,
+  "conservative_total": 226,
+  "exact_attempted_calls": null,
+  "final_result_receipt_present": false,
+  "held_out_quality": false,
+  "kind": "post_exit_partial_pilot_inspection",
+  "last_completed_request": 96,
+  "last_completed_session": 3,
+  "last_completed_source": "pilot-17",
+  "matching_process_observed_after_exit": false,
+  "observed_exec_exit_code": 0,
+  "prior_recorded_calls": 106,
+  "progress": [
+    {
+      "class": "decision",
+      "continuation": false,
+      "disposition": "ok",
+      "elapsed_us": 8129385,
+      "input_bytes": 675,
+      "output_bytes": 847,
+      "proposals": [
+        {
+          "category": "persistent",
+          "payload_bytes": 170,
+          "valid_source": true
+        }
+      ],
+      "published": 0,
+      "request": 1,
+      "session": 1,
+      "source": "pilot-1",
+      "tool_bytes": 568,
+      "ttft_us": null,
+      "usage": {
+        "counts": {
+          "input_cache_write_1h_tokens": null,
+          "input_cache_write_5m_tokens": null,
+          "input_cache_write_tokens": 0,
+          "input_cached_tokens": 0,
+          "input_tokens": 289,
+          "input_uncached_tokens": null,
+          "output_reasoning_tokens": 0,
+          "output_tokens": 55,
+          "provider_duration_ns": null,
+          "provider_web_fetch_requests": null,
+          "provider_web_search_requests": null,
+          "total_tokens": 344
+        },
+        "derived_fields": [],
+        "issues": [],
+        "quality": "totals_known",
+        "version": 1
+      }
+    },
+    {
+      "continuation": true,
+      "elapsed_us": 2728159,
+      "input_bytes": 1700,
+      "output_bytes": 523,
+      "published": 0,
+      "request": 2,
+      "session": 1,
+      "source": "pilot-1",
+      "tool_bytes": 568,
+      "ttft_us": 1855020,
+      "usage": {
+        "counts": {
+          "input_cache_write_1h_tokens": null,
+          "input_cache_write_5m_tokens": null,
+          "input_cache_write_tokens": 0,
+          "input_cached_tokens": 0,
+          "input_tokens": 376,
+          "input_uncached_tokens": null,
+          "output_reasoning_tokens": 0,
+          "output_tokens": 23,
+          "provider_duration_ns": null,
+          "provider_web_fetch_requests": null,
+          "provider_web_search_requests": null,
+          "total_tokens": 399
+        },
+        "derived_fields": [],
+        "issues": [],
+        "quality": "totals_known",
+        "version": 1
+      }
+    },
+    {
+      "class": "preference",
+      "continuation": false,
+      "disposition": "ok",
+      "elapsed_us": 4633879,
+      "input_bytes": 2354,
+      "output_bytes": 901,
+      "proposals": [
+        {
+          "category": "persistent",
+          "payload_bytes": 197,
+          "valid_source": true
+        }
+      ],
+      "published": 0,
+      "request": 3,
+      "session": 1,
+      "source": "pilot-2",
+      "tool_bytes": 568,
+      "ttft_us": null,
+      "usage": {
+        "counts": {
+          "input_cache_write_1h_tokens": null,
+          "input_cache_write_5m_tokens": null,
+          "input_cache_write_tokens": 0,
+          "input_cached_tokens": 0,
+          "input_tokens": 427,
+          "input_uncached_tokens": null,
+          "output_reasoning_tokens": 0,
+          "output_tokens": 59,
+          "provider_duration_ns": null,
+          "provider_web_fetch_requests": null,
+          "provider_web_search_requests": null,
+          "total_tokens": 486
+        },
+        "derived_fields": [],
+        "issues": [],
+        "quality": "totals_known",
+        "version": 1
+      }
+    },
+    {
+      "continuation": true,
+      "elapsed_us": 3081946,
+      "input_bytes": 3433,
+      "output_bytes": 549,
+      "published": 0,
+      "request": 4,
+      "session": 1,
+      "source": "pilot-2",
+      "tool_bytes": 568,
+      "ttft_us": 2702369,
+      "usage": {
+        "counts": {
+          "input_cache_write_1h_tokens": null,
+          "input_cache_write_5m_tokens": null,
+          "input_cache_write_tokens": 0,
+          "input_cached_tokens": 0,
+          "input_tokens": 518,
+          "input_uncached_tokens": null,
+          "output_reasoning_tokens": 0,
+          "output_tokens": 25,
+          "provider_duration_ns": null,
+          "provider_web_fetch_requests": null,
+          "provider_web_search_requests": null,
+          "total_tokens": 543
+        },
+        "derived_fields": [],
+        "issues": [],
+        "quality": "totals_known",
+        "version": 1
+      }
+    },
+    {
+      "class": "empty",
+      "continuation": false,
+      "disposition": "ok",
+      "elapsed_us": 3507588,
+      "input_bytes": 4099,
+      "output_bytes": 353,
+      "proposals": [],
+      "published": 0,
+      "request": 5,
+      "session": 1,
+      "source": "pilot-3",
+      "tool_bytes": 568,
+      "ttft_us": 3247131,
+      "usage": {
+        "counts": {
+          "input_cache_write_1h_tokens": null,
+          "input_cache_write_5m_tokens": null,
+          "input_cache_write_tokens": 0,
+          "input_cached_tokens": 0,
+          "input_tokens": 573,
+          "input_uncached_tokens": null,
+          "output_reasoning_tokens": 0,
+          "output_tokens": 12,
+          "provider_duration_ns": null,
+          "provider_web_fetch_requests": null,
+          "provider_web_search_requests": null,
+          "total_tokens": 585
+        },
+        "derived_fields": [],
+        "issues": [],
+        "quality": "totals_known",
+        "version": 1
+      }
+    },
+    {
+      "class": "fact",
+      "continuation": false,
+      "disposition": "ok",
+      "elapsed_us": 3386757,
+      "input_bytes": 4569,
+      "output_bytes": 817,
+      "proposals": [
+        {
+          "category": "persistent",
+          "payload_bytes": 155,
+          "valid_source": true
+        }
+      ],
+      "published": 0,
+      "request": 6,
+      "session": 1,
+      "source": "pilot-4",
+      "tool_bytes": 568,
+      "ttft_us": null,
+      "usage": {
+        "counts": {
+          "input_cache_write_1h_tokens": null,
+          "input_cache_write_5m_tokens": null,
+          "input_cache_write_tokens": 0,
+          "input_cached_tokens": 0,
+          "input_tokens": 612,
+          "input_uncached_tokens": null,
+          "output_reasoning_tokens": 0,
+          "output_tokens": 55,
+          "provider_duration_ns": null,
+          "provider_web_fetch_requests": null,
+          "provider_web_search_requests": null,
+          "total_tokens": 667
+        },
+        "derived_fields": [],
+        "issues": [],
+        "quality": "totals_known",
+        "version": 1
+      }
+    },
+    {
+      "continuation": true,
+      "elapsed_us": 3819874,
+      "input_bytes": 5564,
+      "output_bytes": 509,
+      "published": 0,
+      "request": 7,
+      "session": 1,
+      "source": "pilot-4",
+      "tool_bytes": 568,
+      "ttft_us": 3400200,
+      "usage": {
+        "counts": {
+          "input_cache_write_1h_tokens": null,
+          "input_cache_write_5m_tokens": null,
+          "input_cache_write_tokens": 0,
+          "input_cached_tokens": 0,
+          "input_tokens": 699,
+          "input_uncached_tokens": null,
+          "output_reasoning_tokens": 0,
+          "output_tokens": 23,
+          "provider_duration_ns": null,
+          "provider_web_fetch_requests": null,
+          "provider_web_search_requests": null,
+          "total_tokens": 722
+        },
+        "derived_fields": [],
+        "issues": [],
+        "quality": "totals_known",
+        "version": 1
+      }
+    },
+    {
+      "class": "temporal",
+      "continuation": false,
+      "disposition": "ok",
+      "elapsed_us": 4902041,
+      "input_bytes": 6194,
+      "output_bytes": 839,
+      "proposals": [
+        {
+          "category": "temporal",
+          "payload_bytes": 166,
+          "valid_source": true
+        }
+      ],
+      "published": 0,
+      "request": 8,
+      "session": 1,
+      "source": "pilot-5",
+      "tool_bytes": 568,
+      "ttft_us": null,
+      "usage": {
+        "counts": {
+          "input_cache_write_1h_tokens": null,
+          "input_cache_write_5m_tokens": null,
+          "input_cache_write_tokens": 0,
+          "input_cached_tokens": 0,
+          "input_tokens": 751,
+          "input_uncached_tokens": null,
+          "output_reasoning_tokens": 0,
+          "output_tokens": 60,
+          "provider_duration_ns": null,
+          "provider_web_fetch_requests": null,
+          "provider_web_search_requests": null,
+          "total_tokens": 811
+        },
+        "derived_fields": [],
+        "issues": [],
+        "quality": "totals_known",
+        "version": 1
+      }
+    },
+    {
+      "continuation": true,
+      "elapsed_us": 4858056,
+      "input_bytes": 7211,
+      "output_bytes": 523,
+      "published": 0,
+      "request": 9,
+      "session": 1,
+      "source": "pilot-5",
+      "tool_bytes": 568,
+      "ttft_us": 4430883,
+      "usage": {
+        "counts": {
+          "input_cache_write_1h_tokens": null,
+          "input_cache_write_5m_tokens": null,
+          "input_cache_write_tokens": 0,
+          "input_cached_tokens": 0,
+          "input_tokens": 843,
+          "input_uncached_tokens": null,
+          "output_reasoning_tokens": 0,
+          "output_tokens": 25,
+          "provider_duration_ns": null,
+          "provider_web_fetch_requests": null,
+          "provider_web_search_requests": null,
+          "total_tokens": 868
+        },
+        "derived_fields": [],
+        "issues": [],
+        "quality": "totals_known",
+        "version": 1
+      }
+    },
+    {
+      "class": "task_local",
+      "continuation": false,
+      "disposition": "ok",
+      "elapsed_us": 3236383,
+      "input_bytes": 7847,
+      "output_bytes": 395,
+      "proposals": [],
+      "published": 0,
+      "request": 10,
+      "session": 1,
+      "source": "pilot-6",
+      "tool_bytes": 568,
+      "ttft_us": 2733009,
+      "usage": {
+        "counts": {
+          "input_cache_write_1h_tokens": null,
+          "input_cache_write_5m_tokens": null,
+          "input_cache_write_tokens": 0,
+          "input_cached_tokens": 0,
+          "input_tokens": 895,
+          "input_uncached_tokens": null,
+          "output_reasoning_tokens": 0,
+          "output_tokens": 12,
+          "provider_duration_ns": null,
+          "provider_web_fetch_requests": null,
+          "provider_web_search_requests": null,
+          "total_tokens": 907
+        },
+        "derived_fields": [],
+        "issues": [],
+        "quality": "totals_known",
+        "version": 1
+      }
+    },
+    {
+      "class": "correction",
+      "continuation": false,
+      "disposition": "ok",
+      "elapsed_us": 3304163,
+      "input_bytes": 8375,
+      "output_bytes": 951,
+      "proposals": [
+        {
+          "category": "persistent",
+          "payload_bytes": 222,
+          "valid_source": true
+        }
+      ],
+      "published": 0,
+      "request": 11,
+      "session": 1,
+      "source": "pilot-7",
+      "tool_bytes": 568,
+      "ttft_us": null,
+      "usage": {
+        "counts": {
+          "input_cache_write_1h_tokens": null,
+          "input_cache_write_5m_tokens": null,
+          "input_cache_write_tokens": 0,
+          "input_cached_tokens": 0,
+          "input_tokens": 937,
+          "input_uncached_tokens": null,
+          "output_reasoning_tokens": 0,
+          "output_tokens": 68,
+          "provider_duration_ns": null,
+          "provider_web_fetch_requests": null,
+          "provider_web_search_requests": null,
+          "total_tokens": 1005
+        },
+        "derived_fields": [],
+        "issues": [],
+        "quality": "totals_known",
+        "version": 1
+      }
+    },
+    {
+      "continuation": true,
+      "elapsed_us": 3745287,
+      "input_bytes": 9504,
+      "output_bytes": 549,
+      "published": 0,
+      "request": 12,
+      "session": 1,
+      "source": "pilot-7",
+      "tool_bytes": 568,
+      "ttft_us": 3178228,
+      "usage": {
+        "counts": {
+          "input_cache_write_1h_tokens": null,
+          "input_cache_write_5m_tokens": null,
+          "input_cache_write_tokens": 0,
+          "input_cached_tokens": 0,
+          "input_tokens": 1037,
+          "input_uncached_tokens": null,
+          "output_reasoning_tokens": 0,
+          "output_tokens": 26,
+          "provider_duration_ns": null,
+          "provider_web_fetch_requests": null,
+          "provider_web_search_requests": null,
+          "total_tokens": 1063
+        },
+        "derived_fields": [],
+        "issues": [],
+        "quality": "totals_known",
+        "version": 1
+      }
+    },
+    {
+      "class": "quoted",
+      "continuation": false,
+      "disposition": "ok",
+      "elapsed_us": 3219209,
+      "input_bytes": 10199,
+      "output_bytes": 567,
+      "proposals": [],
+      "published": 0,
+      "request": 13,
+      "session": 1,
+      "source": "pilot-8",
+      "tool_bytes": 568,
+      "ttft_us": 2588727,
+      "usage": {
+        "counts": {
+          "input_cache_write_1h_tokens": null,
+          "input_cache_write_5m_tokens": null,
+          "input_cache_write_tokens": 0,
+          "input_cached_tokens": 0,
+          "input_tokens": 1096,
+          "input_uncached_tokens": null,
+          "output_reasoning_tokens": 0,
+          "output_tokens": 26,
+          "provider_duration_ns": null,
+          "provider_web_fetch_requests": null,
+          "provider_web_search_requests": null,
+          "total_tokens": 1122
+        },
+        "derived_fields": [],
+        "issues": [],
+        "quality": "totals_known",
+        "version": 1
+      }
+    },
+    {
+      "class": "pin",
+      "continuation": false,
+      "disposition": "ok",
+      "elapsed_us": 3741298,
+      "input_bytes": 10895,
+      "output_bytes": 847,
+      "proposals": [
+        {
+          "category": "persistent",
+          "payload_bytes": 170,
+          "valid_source": true
+        }
+      ],
+      "published": 0,
+      "request": 14,
+      "session": 1,
+      "source": "pilot-9",
+      "tool_bytes": 568,
+      "ttft_us": null,
+      "usage": {
+        "counts": {
+          "input_cache_write_1h_tokens": null,
+          "input_cache_write_5m_tokens": null,
+          "input_cache_write_tokens": 0,
+          "input_cached_tokens": 0,
+          "input_tokens": 1149,
+          "input_uncached_tokens": null,
+          "output_reasoning_tokens": 0,
+          "output_tokens": 53,
+          "provider_duration_ns": null,
+          "provider_web_fetch_requests": null,
+          "provider_web_search_requests": null,
+          "total_tokens": 1202
+        },
+        "derived_fields": [],
+        "issues": [],
+        "quality": "totals_known",
+        "version": 1
+      }
+    },
+    {
+      "continuation": true,
+      "elapsed_us": 3427843,
+      "input_bytes": 11920,
+      "output_bytes": 511,
+      "published": 0,
+      "request": 15,
+      "session": 1,
+      "source": "pilot-9",
+      "tool_bytes": 568,
+      "ttft_us": 3164827,
+      "usage": {
+        "counts": {
+          "input_cache_write_1h_tokens": null,
+          "input_cache_write_5m_tokens": null,
+          "input_cache_write_tokens": 0,
+          "input_cached_tokens": 0,
+          "input_tokens": 1234,
+          "input_uncached_tokens": null,
+          "output_reasoning_tokens": 0,
+          "output_tokens": 21,
+          "provider_duration_ns": null,
+          "provider_web_fetch_requests": null,
+          "provider_web_search_requests": null,
+          "total_tokens": 1255
+        },
+        "derived_fields": [],
+        "issues": [],
+        "quality": "totals_known",
+        "version": 1
+      }
+    },
+    {
+      "class": "empty",
+      "continuation": false,
+      "disposition": "ok",
+      "elapsed_us": 3155507,
+      "input_bytes": 12532,
+      "output_bytes": 417,
+      "proposals": [],
+      "published": 0,
+      "request": 16,
+      "session": 1,
+      "source": "pilot-10",
+      "tool_bytes": 568,
+      "ttft_us": 2693725,
+      "usage": {
+        "counts": {
+          "input_cache_write_1h_tokens": null,
+          "input_cache_write_5m_tokens": null,
+          "input_cache_write_tokens": 0,
+          "input_cached_tokens": 0,
+          "input_tokens": 1279,
+          "input_uncached_tokens": null,
+          "output_reasoning_tokens": 0,
+          "output_tokens": 14,
+          "provider_duration_ns": null,
+          "provider_web_fetch_requests": null,
+          "provider_web_search_requests": null,
+          "total_tokens": 1293
+        },
+        "derived_fields": [],
+        "issues": [],
+        "quality": "totals_known",
+        "version": 1
+      }
+    },
+    {
+      "class": "decision",
+      "continuation": false,
+      "disposition": "ok",
+      "elapsed_us": 9304676,
+      "input_bytes": 13075,
+      "output_bytes": 879,
+      "proposals": [
+        {
+          "category": "persistent",
+          "payload_bytes": 186,
+          "valid_source": true
+        }
+      ],
+      "published": 0,
+      "request": 17,
+      "session": 1,
+      "source": "pilot-11",
+      "tool_bytes": 568,
+      "ttft_us": null,
+      "usage": {
+        "counts": {
+          "input_cache_write_1h_tokens": null,
+          "input_cache_write_5m_tokens": null,
+          "input_cache_write_tokens": 0,
+          "input_cached_tokens": 0,
+          "input_tokens": 1320,
+          "input_uncached_tokens": null,
+          "output_reasoning_tokens": 0,
+          "output_tokens": 56,
+          "provider_duration_ns": null,
+          "provider_web_fetch_requests": null,
+          "provider_web_search_requests": null,
+          "total_tokens": 1376
+        },
+        "derived_fields": [],
+        "issues": [],
+        "quality": "totals_known",
+        "version": 1
+      }
+    },
+    {
+      "continuation": true,
+      "elapsed_us": 4355970,
+      "input_bytes": 14132,
+      "output_bytes": 517,
+      "published": 0,
+      "request": 18,
+      "session": 1,
+      "source": "pilot-11",
+      "tool_bytes": 568,
+      "ttft_us": 2918126,
+      "usage": {
+        "counts": {
+          "input_cache_write_1h_tokens": null,
+          "input_cache_write_5m_tokens": null,
+          "input_cache_write_tokens": 0,
+          "input_cached_tokens": 0,
+          "input_tokens": 1408,
+          "input_uncached_tokens": null,
+          "output_reasoning_tokens": 0,
+          "output_tokens": 21,
+          "provider_duration_ns": null,
+          "provider_web_fetch_requests": null,
+          "provider_web_search_requests": null,
+          "total_tokens": 1429
+        },
+        "derived_fields": [],
+        "issues": [],
+        "quality": "totals_known",
+        "version": 1
+      }
+    },
+    {
+      "class": "fact",
+      "continuation": false,
+      "disposition": "ok",
+      "elapsed_us": 3681285,
+      "input_bytes": 14768,
+      "output_bytes": 823,
+      "proposals": [
+        {
+          "category": "persistent",
+          "payload_bytes": 158,
+          "valid_source": true
+        }
+      ],
+      "published": 0,
+      "request": 19,
+      "session": 1,
+      "source": "pilot-12",
+      "tool_bytes": 568,
+      "ttft_us": null,
+      "usage": {
+        "counts": {
+          "input_cache_write_1h_tokens": null,
+          "input_cache_write_5m_tokens": null,
+          "input_cache_write_tokens": 0,
+          "input_cached_tokens": 0,
+          "input_tokens": 1455,
+          "input_uncached_tokens": null,
+          "output_reasoning_tokens": 0,
+          "output_tokens": 54,
+          "provider_duration_ns": null,
+          "provider_web_fetch_requests": null,
+          "provider_web_search_requests": null,
+          "total_tokens": 1509
+        },
+        "derived_fields": [],
+        "issues": [],
+        "quality": "totals_known",
+        "version": 1
+      }
+    },
+    {
+      "continuation": true,
+      "elapsed_us": 3288731,
+      "input_bytes": 15769,
+      "output_bytes": 511,
+      "published": 0,
+      "request": 20,
+      "session": 1,
+      "source": "pilot-12",
+      "tool_bytes": 568,
+      "ttft_us": 2951314,
+      "usage": {
+        "counts": {
+          "input_cache_write_1h_tokens": null,
+          "input_cache_write_5m_tokens": null,
+          "input_cache_write_tokens": 0,
+          "input_cached_tokens": 0,
+          "input_tokens": 1541,
+          "input_uncached_tokens": null,
+          "output_reasoning_tokens": 0,
+          "output_tokens": 23,
+          "provider_duration_ns": null,
+          "provider_web_fetch_requests": null,
+          "provider_web_search_requests": null,
+          "total_tokens": 1564
+        },
+        "derived_fields": [],
+        "issues": [],
+        "quality": "totals_known",
+        "version": 1
+      }
+    },
+    {
+      "class": "duplicate",
+      "continuation": false,
+      "disposition": "ok",
+      "elapsed_us": 2717666,
+      "input_bytes": 16403,
+      "output_bytes": 849,
+      "proposals": [
+        {
+          "category": "persistent",
+          "payload_bytes": 171,
+          "valid_source": true
+        }
+      ],
+      "published": 0,
+      "request": 21,
+      "session": 1,
+      "source": "pilot-13",
+      "tool_bytes": 568,
+      "ttft_us": null,
+      "usage": {
+        "counts": {
+          "input_cache_write_1h_tokens": null,
+          "input_cache_write_5m_tokens": null,
+          "input_cache_write_tokens": 0,
+          "input_cached_tokens": 0,
+          "input_tokens": 1591,
+          "input_uncached_tokens": null,
+          "output_reasoning_tokens": 0,
+          "output_tokens": 55,
+          "provider_duration_ns": null,
+          "provider_web_fetch_requests": null,
+          "provider_web_search_requests": null,
+          "total_tokens": 1646
+        },
+        "derived_fields": [],
+        "issues": [],
+        "quality": "totals_known",
+        "version": 1
+      }
+    },
+    {
+      "continuation": true,
+      "elapsed_us": 3498247,
+      "input_bytes": 17430,
+      "output_bytes": 523,
+      "published": 0,
+      "request": 22,
+      "session": 1,
+      "source": "pilot-13",
+      "tool_bytes": 568,
+      "ttft_us": 3177177,
+      "usage": {
+        "counts": {
+          "input_cache_write_1h_tokens": null,
+          "input_cache_write_5m_tokens": null,
+          "input_cache_write_tokens": 0,
+          "input_cached_tokens": 0,
+          "input_tokens": 1678,
+          "input_uncached_tokens": null,
+          "output_reasoning_tokens": 0,
+          "output_tokens": 23,
+          "provider_duration_ns": null,
+          "provider_web_fetch_requests": null,
+          "provider_web_search_requests": null,
+          "total_tokens": 1701
+        },
+        "derived_fields": [],
+        "issues": [],
+        "quality": "totals_known",
+        "version": 1
+      }
+    },
+    {
+      "class": "temporal",
+      "continuation": false,
+      "disposition": "ok",
+      "elapsed_us": 3622330,
+      "input_bytes": 18090,
+      "output_bytes": 909,
+      "proposals": [
+        {
+          "category": "temporal",
+          "payload_bytes": 201,
+          "valid_source": true
+        }
+      ],
+      "published": 0,
+      "request": 23,
+      "session": 1,
+      "source": "pilot-14",
+      "tool_bytes": 568,
+      "ttft_us": null,
+      "usage": {
+        "counts": {
+          "input_cache_write_1h_tokens": null,
+          "input_cache_write_5m_tokens": null,
+          "input_cache_write_tokens": 0,
+          "input_cached_tokens": 0,
+          "input_tokens": 1732,
+          "input_uncached_tokens": null,
+          "output_reasoning_tokens": 0,
+          "output_tokens": 65,
+          "provider_duration_ns": null,
+          "provider_web_fetch_requests": null,
+          "provider_web_search_requests": null,
+          "total_tokens": 1797
+        },
+        "derived_fields": [],
+        "issues": [],
+        "quality": "totals_known",
+        "version": 1
+      }
+    },
+    {
+      "continuation": true,
+      "elapsed_us": 3761491,
+      "input_bytes": 19177,
+      "output_bytes": 543,
+      "published": 0,
+      "request": 24,
+      "session": 1,
+      "source": "pilot-14",
+      "tool_bytes": 568,
+      "ttft_us": 3414362,
+      "usage": {
+        "counts": {
+          "input_cache_write_1h_tokens": null,
+          "input_cache_write_5m_tokens": null,
+          "input_cache_write_tokens": 0,
+          "input_cached_tokens": 0,
+          "input_tokens": 1829,
+          "input_uncached_tokens": null,
+          "output_reasoning_tokens": 0,
+          "output_tokens": 26,
+          "provider_duration_ns": null,
+          "provider_web_fetch_requests": null,
+          "provider_web_search_requests": null,
+          "total_tokens": 1855
+        },
+        "derived_fields": [],
+        "issues": [],
+        "quality": "totals_known",
+        "version": 1
+      }
+    },
+    {
+      "class": "uncertain",
+      "continuation": false,
+      "disposition": "ok",
+      "elapsed_us": 5078093,
+      "input_bytes": 19857,
+      "output_bytes": 2888,
+      "proposals": [
+        {
+          "category": "temporal",
+          "payload_bytes": 201,
+          "valid_source": true
+        }
+      ],
+      "published": 0,
+      "request": 25,
+      "session": 1,
+      "source": "pilot-15",
+      "tool_bytes": 568,
+      "ttft_us": null,
+      "usage": {
+        "counts": {
+          "input_cache_write_1h_tokens": null,
+          "input_cache_write_5m_tokens": null,
+          "input_cache_write_tokens": 0,
+          "input_cached_tokens": 0,
+          "input_tokens": 1886,
+          "input_uncached_tokens": null,
+          "output_reasoning_tokens": 17,
+          "output_tokens": 83,
+          "provider_duration_ns": null,
+          "provider_web_fetch_requests": null,
+          "provider_web_search_requests": null,
+          "total_tokens": 1969
+        },
+        "derived_fields": [],
+        "issues": [],
+        "quality": "totals_known",
+        "version": 1
+      }
+    },
+    {
+      "continuation": true,
+      "elapsed_us": 3821608,
+      "input_bytes": 22923,
+      "output_bytes": 525,
+      "published": 0,
+      "request": 26,
+      "session": 1,
+      "source": "pilot-15",
+      "tool_bytes": 568,
+      "ttft_us": 3048204,
+      "usage": {
+        "counts": {
+          "input_cache_write_1h_tokens": null,
+          "input_cache_write_5m_tokens": null,
+          "input_cache_write_tokens": 0,
+          "input_cached_tokens": 1280,
+          "input_tokens": 2001,
+          "input_uncached_tokens": null,
+          "output_reasoning_tokens": 0,
+          "output_tokens": 23,
+          "provider_duration_ns": null,
+          "provider_web_fetch_requests": null,
+          "provider_web_search_requests": null,
+          "total_tokens": 2024
+        },
+        "derived_fields": [],
+        "issues": [],
+        "quality": "totals_known",
+        "version": 1
+      }
+    },
+    {
+      "class": "preference",
+      "continuation": false,
+      "disposition": "ok",
+      "elapsed_us": 3365673,
+      "input_bytes": 23592,
+      "output_bytes": 943,
+      "proposals": [
+        {
+          "category": "persistent",
+          "payload_bytes": 218,
+          "valid_source": true
+        }
+      ],
+      "published": 0,
+      "request": 27,
+      "session": 1,
+      "source": "pilot-16",
+      "tool_bytes": 568,
+      "ttft_us": null,
+      "usage": {
+        "counts": {
+          "input_cache_write_1h_tokens": null,
+          "input_cache_write_5m_tokens": null,
+          "input_cache_write_tokens": 0,
+          "input_cached_tokens": 0,
+          "input_tokens": 2051,
+          "input_uncached_tokens": null,
+          "output_reasoning_tokens": 0,
+          "output_tokens": 57,
+          "provider_duration_ns": null,
+          "provider_web_fetch_requests": null,
+          "provider_web_search_requests": null,
+          "total_tokens": 2108
+        },
+        "derived_fields": [],
+        "issues": [],
+        "quality": "totals_known",
+        "version": 1
+      }
+    },
+    {
+      "continuation": true,
+      "elapsed_us": 3016114,
+      "input_bytes": 24713,
+      "output_bytes": 569,
+      "published": 0,
+      "request": 28,
+      "session": 1,
+      "source": "pilot-16",
+      "tool_bytes": 568,
+      "ttft_us": 2419684,
+      "usage": {
+        "counts": {
+          "input_cache_write_1h_tokens": null,
+          "input_cache_write_5m_tokens": null,
+          "input_cache_write_tokens": 0,
+          "input_cached_tokens": 0,
+          "input_tokens": 2140,
+          "input_uncached_tokens": null,
+          "output_reasoning_tokens": 0,
+          "output_tokens": 25,
+          "provider_duration_ns": null,
+          "provider_web_fetch_requests": null,
+          "provider_web_search_requests": null,
+          "total_tokens": 2165
+        },
+        "derived_fields": [],
+        "issues": [],
+        "quality": "totals_known",
+        "version": 1
+      }
+    },
+    {
+      "class": "empty",
+      "continuation": false,
+      "disposition": "ok",
+      "elapsed_us": 5754751,
+      "input_bytes": 25402,
+      "output_bytes": 919,
+      "proposals": [],
+      "published": 0,
+      "request": 29,
+      "session": 1,
+      "source": "pilot-17",
+      "tool_bytes": 568,
+      "ttft_us": 3156585,
+      "usage": {
+        "counts": {
+          "input_cache_write_1h_tokens": null,
+          "input_cache_write_5m_tokens": null,
+          "input_cache_write_tokens": 0,
+          "input_cached_tokens": 0,
+          "input_tokens": 2192,
+          "input_uncached_tokens": null,
+          "output_reasoning_tokens": 0,
+          "output_tokens": 76,
+          "provider_duration_ns": null,
+          "provider_web_fetch_requests": null,
+          "provider_web_search_requests": null,
+          "total_tokens": 2268
+        },
+        "derived_fields": [],
+        "issues": [],
+        "quality": "totals_known",
+        "version": 1
+      }
+    },
+    {
+      "class": "conflict",
+      "continuation": false,
+      "disposition": "ok",
+      "elapsed_us": 3259009,
+      "input_bytes": 26468,
+      "output_bytes": 541,
+      "proposals": [],
+      "published": 0,
+      "request": 30,
+      "session": 1,
+      "source": "pilot-18",
+      "tool_bytes": 568,
+      "ttft_us": 2572757,
+      "usage": {
+        "counts": {
+          "input_cache_write_1h_tokens": null,
+          "input_cache_write_5m_tokens": null,
+          "input_cache_write_tokens": 0,
+          "input_cached_tokens": 0,
+          "input_tokens": 2302,
+          "input_uncached_tokens": null,
+          "output_reasoning_tokens": 0,
+          "output_tokens": 26,
+          "provider_duration_ns": null,
+          "provider_web_fetch_requests": null,
+          "provider_web_search_requests": null,
+          "total_tokens": 2328
+        },
+        "derived_fields": [],
+        "issues": [],
+        "quality": "totals_known",
+        "version": 1
+      }
+    },
+    {
+      "class": "fact",
+      "continuation": false,
+      "disposition": "ok",
+      "elapsed_us": 3298953,
+      "input_bytes": 27138,
+      "output_bytes": 865,
+      "proposals": [
+        {
+          "category": "persistent",
+          "payload_bytes": 179,
+          "valid_source": true
+        }
+      ],
+      "published": 0,
+      "request": 31,
+      "session": 1,
+      "source": "pilot-19",
+      "tool_bytes": 568,
+      "ttft_us": null,
+      "usage": {
+        "counts": {
+          "input_cache_write_1h_tokens": null,
+          "input_cache_write_5m_tokens": null,
+          "input_cache_write_tokens": 0,
+          "input_cached_tokens": 0,
+          "input_tokens": 2358,
+          "input_uncached_tokens": null,
+          "output_reasoning_tokens": 0,
+          "output_tokens": 61,
+          "provider_duration_ns": null,
+          "provider_web_fetch_requests": null,
+          "provider_web_search_requests": null,
+          "total_tokens": 2419
+        },
+        "derived_fields": [],
+        "issues": [],
+        "quality": "totals_known",
+        "version": 1
+      }
+    },
+    {
+      "continuation": true,
+      "elapsed_us": 4705591,
+      "input_bytes": 28181,
+      "output_bytes": 533,
+      "published": 0,
+      "request": 32,
+      "session": 1,
+      "source": "pilot-19",
+      "tool_bytes": 568,
+      "ttft_us": 3794452,
+      "usage": {
+        "counts": {
+          "input_cache_write_1h_tokens": null,
+          "input_cache_write_5m_tokens": null,
+          "input_cache_write_tokens": 0,
+          "input_cached_tokens": 0,
+          "input_tokens": 2451,
+          "input_uncached_tokens": null,
+          "output_reasoning_tokens": 0,
+          "output_tokens": 25,
+          "provider_duration_ns": null,
+          "provider_web_fetch_requests": null,
+          "provider_web_search_requests": null,
+          "total_tokens": 2476
+        },
+        "derived_fields": [],
+        "issues": [],
+        "quality": "totals_known",
+        "version": 1
+      }
+    },
+    {
+      "class": "duration",
+      "continuation": false,
+      "disposition": "ok",
+      "elapsed_us": 3090013,
+      "input_bytes": 28852,
+      "output_bytes": 977,
+      "proposals": [
+        {
+          "category": "temporal",
+          "payload_bytes": 235,
+          "valid_source": true
+        }
+      ],
+      "published": 0,
+      "request": 33,
+      "session": 1,
+      "source": "pilot-20",
+      "tool_bytes": 568,
+      "ttft_us": null,
+      "usage": {
+        "counts": {
+          "input_cache_write_1h_tokens": null,
+          "input_cache_write_5m_tokens": null,
+          "input_cache_write_tokens": 0,
+          "input_cached_tokens": 0,
+          "input_tokens": 2505,
+          "input_uncached_tokens": null,
+          "output_reasoning_tokens": 0,
+          "output_tokens": 69,
+          "provider_duration_ns": null,
+          "provider_web_fetch_requests": null,
+          "provider_web_search_requests": null,
+          "total_tokens": 2574
+        },
+        "derived_fields": [],
+        "issues": [],
+        "quality": "totals_known",
+        "version": 1
+      }
+    },
+    {
+      "continuation": true,
+      "elapsed_us": 3377921,
+      "input_bytes": 30007,
+      "output_bytes": 597,
+      "published": 0,
+      "request": 34,
+      "session": 1,
+      "source": "pilot-20",
+      "tool_bytes": 568,
+      "ttft_us": 2639375,
+      "usage": {
+        "counts": {
+          "input_cache_write_1h_tokens": null,
+          "input_cache_write_5m_tokens": null,
+          "input_cache_write_tokens": 0,
+          "input_cached_tokens": 0,
+          "input_tokens": 2606,
+          "input_uncached_tokens": null,
+          "output_reasoning_tokens": 0,
+          "output_tokens": 31,
+          "provider_duration_ns": null,
+          "provider_web_fetch_requests": null,
+          "provider_web_search_requests": null,
+          "total_tokens": 2637
+        },
+        "derived_fields": [],
+        "issues": [],
+        "quality": "totals_known",
+        "version": 1
+      }
+    },
+    {
+      "class": "decision",
+      "continuation": false,
+      "disposition": "ok",
+      "elapsed_us": 2975697,
+      "input_bytes": 675,
+      "output_bytes": 845,
+      "proposals": [
+        {
+          "category": "persistent",
+          "payload_bytes": 169,
+          "valid_source": true
+        }
+      ],
+      "published": 0,
+      "request": 35,
+      "session": 2,
+      "source": "pilot-1",
+      "tool_bytes": 568,
+      "ttft_us": null,
+      "usage": {
+        "counts": {
+          "input_cache_write_1h_tokens": null,
+          "input_cache_write_5m_tokens": null,
+          "input_cache_write_tokens": 0,
+          "input_cached_tokens": 0,
+          "input_tokens": 289,
+          "input_uncached_tokens": null,
+          "output_reasoning_tokens": 0,
+          "output_tokens": 55,
+          "provider_duration_ns": null,
+          "provider_web_fetch_requests": null,
+          "provider_web_search_requests": null,
+          "total_tokens": 344
+        },
+        "derived_fields": [],
+        "issues": [],
+        "quality": "totals_known",
+        "version": 1
+      }
+    },
+    {
+      "continuation": true,
+      "elapsed_us": 3382962,
+      "input_bytes": 1698,
+      "output_bytes": 493,
+      "published": 0,
+      "request": 36,
+      "session": 2,
+      "source": "pilot-1",
+      "tool_bytes": 568,
+      "ttft_us": 2779121,
+      "usage": {
+        "counts": {
+          "input_cache_write_1h_tokens": null,
+          "input_cache_write_5m_tokens": null,
+          "input_cache_write_tokens": 0,
+          "input_cached_tokens": 0,
+          "input_tokens": 376,
+          "input_uncached_tokens": null,
+          "output_reasoning_tokens": 0,
+          "output_tokens": 20,
+          "provider_duration_ns": null,
+          "provider_web_fetch_requests": null,
+          "provider_web_search_requests": null,
+          "total_tokens": 396
+        },
+        "derived_fields": [],
+        "issues": [],
+        "quality": "totals_known",
+        "version": 1
+      }
+    },
+    {
+      "class": "preference",
+      "continuation": false,
+      "disposition": "ok",
+      "elapsed_us": 3067047,
+      "input_bytes": 2322,
+      "output_bytes": 901,
+      "proposals": [
+        {
+          "category": "persistent",
+          "payload_bytes": 197,
+          "valid_source": true
+        }
+      ],
+      "published": 0,
+      "request": 37,
+      "session": 2,
+      "source": "pilot-2",
+      "tool_bytes": 568,
+      "ttft_us": null,
+      "usage": {
+        "counts": {
+          "input_cache_write_1h_tokens": null,
+          "input_cache_write_5m_tokens": null,
+          "input_cache_write_tokens": 0,
+          "input_cached_tokens": 0,
+          "input_tokens": 424,
+          "input_uncached_tokens": null,
+          "output_reasoning_tokens": 0,
+          "output_tokens": 59,
+          "provider_duration_ns": null,
+          "provider_web_fetch_requests": null,
+          "provider_web_search_requests": null,
+          "total_tokens": 483
+        },
+        "derived_fields": [],
+        "issues": [],
+        "quality": "totals_known",
+        "version": 1
+      }
+    },
+    {
+      "continuation": true,
+      "elapsed_us": 3531256,
+      "input_bytes": 3401,
+      "output_bytes": 507,
+      "published": 0,
+      "request": 38,
+      "session": 2,
+      "source": "pilot-2",
+      "tool_bytes": 568,
+      "ttft_us": 3208689,
+      "usage": {
+        "counts": {
+          "input_cache_write_1h_tokens": null,
+          "input_cache_write_5m_tokens": null,
+          "input_cache_write_tokens": 0,
+          "input_cached_tokens": 0,
+          "input_tokens": 515,
+          "input_uncached_tokens": null,
+          "output_reasoning_tokens": 0,
+          "output_tokens": 20,
+          "provider_duration_ns": null,
+          "provider_web_fetch_requests": null,
+          "provider_web_search_requests": null,
+          "total_tokens": 535
+        },
+        "derived_fields": [],
+        "issues": [],
+        "quality": "totals_known",
+        "version": 1
+      }
+    },
+    {
+      "class": "empty",
+      "continuation": false,
+      "disposition": "ok",
+      "elapsed_us": 3555998,
+      "input_bytes": 4025,
+      "output_bytes": 353,
+      "proposals": [],
+      "published": 0,
+      "request": 39,
+      "session": 2,
+      "source": "pilot-3",
+      "tool_bytes": 568,
+      "ttft_us": 3331900,
+      "usage": {
+        "counts": {
+          "input_cache_write_1h_tokens": null,
+          "input_cache_write_5m_tokens": null,
+          "input_cache_write_tokens": 0,
+          "input_cached_tokens": 0,
+          "input_tokens": 565,
+          "input_uncached_tokens": null,
+          "output_reasoning_tokens": 0,
+          "output_tokens": 12,
+          "provider_duration_ns": null,
+          "provider_web_fetch_requests": null,
+          "provider_web_search_requests": null,
+          "total_tokens": 577
+        },
+        "derived_fields": [],
+        "issues": [],
+        "quality": "totals_known",
+        "version": 1
+      }
+    },
+    {
+      "class": "fact",
+      "continuation": false,
+      "disposition": "ok",
+      "elapsed_us": 4124749,
+      "input_bytes": 4495,
+      "output_bytes": 817,
+      "proposals": [
+        {
+          "category": "persistent",
+          "payload_bytes": 155,
+          "valid_source": true
+        }
+      ],
+      "published": 0,
+      "request": 40,
+      "session": 2,
+      "source": "pilot-4",
+      "tool_bytes": 568,
+      "ttft_us": null,
+      "usage": {
+        "counts": {
+          "input_cache_write_1h_tokens": null,
+          "input_cache_write_5m_tokens": null,
+          "input_cache_write_tokens": 0,
+          "input_cached_tokens": 0,
+          "input_tokens": 604,
+          "input_uncached_tokens": null,
+          "output_reasoning_tokens": 0,
+          "output_tokens": 55,
+          "provider_duration_ns": null,
+          "provider_web_fetch_requests": null,
+          "provider_web_search_requests": null,
+          "total_tokens": 659
+        },
+        "derived_fields": [],
+        "issues": [],
+        "quality": "totals_known",
+        "version": 1
+      }
+    },
+    {
+      "continuation": true,
+      "elapsed_us": 3315885,
+      "input_bytes": 5490,
+      "output_bytes": 487,
+      "published": 0,
+      "request": 41,
+      "session": 2,
+      "source": "pilot-4",
+      "tool_bytes": 568,
+      "ttft_us": 2776945,
+      "usage": {
+        "counts": {
+          "input_cache_write_1h_tokens": null,
+          "input_cache_write_5m_tokens": null,
+          "input_cache_write_tokens": 0,
+          "input_cached_tokens": 0,
+          "input_tokens": 691,
+          "input_uncached_tokens": null,
+          "output_reasoning_tokens": 0,
+          "output_tokens": 21,
+          "provider_duration_ns": null,
+          "provider_web_fetch_requests": null,
+          "provider_web_search_requests": null,
+          "total_tokens": 712
+        },
+        "derived_fields": [],
+        "issues": [],
+        "quality": "totals_known",
+        "version": 1
+      }
+    },
+    {
+      "class": "temporal",
+      "continuation": false,
+      "disposition": "ok",
+      "elapsed_us": 3653006,
+      "input_bytes": 6098,
+      "output_bytes": 839,
+      "proposals": [
+        {
+          "category": "temporal",
+          "payload_bytes": 166,
+          "valid_source": true
+        }
+      ],
+      "published": 0,
+      "request": 42,
+      "session": 2,
+      "source": "pilot-5",
+      "tool_bytes": 568,
+      "ttft_us": null,
+      "usage": {
+        "counts": {
+          "input_cache_write_1h_tokens": null,
+          "input_cache_write_5m_tokens": null,
+          "input_cache_write_tokens": 0,
+          "input_cached_tokens": 0,
+          "input_tokens": 741,
+          "input_uncached_tokens": null,
+          "output_reasoning_tokens": 0,
+          "output_tokens": 60,
+          "provider_duration_ns": null,
+          "provider_web_fetch_requests": null,
+          "provider_web_search_requests": null,
+          "total_tokens": 801
+        },
+        "derived_fields": [],
+        "issues": [],
+        "quality": "totals_known",
+        "version": 1
+      }
+    },
+    {
+      "continuation": true,
+      "elapsed_us": 4516059,
+      "input_bytes": 7115,
+      "output_bytes": 553,
+      "published": 0,
+      "request": 43,
+      "session": 2,
+      "source": "pilot-5",
+      "tool_bytes": 568,
+      "ttft_us": 3632618,
+      "usage": {
+        "counts": {
+          "input_cache_write_1h_tokens": null,
+          "input_cache_write_5m_tokens": null,
+          "input_cache_write_tokens": 0,
+          "input_cached_tokens": 0,
+          "input_tokens": 833,
+          "input_uncached_tokens": null,
+          "output_reasoning_tokens": 0,
+          "output_tokens": 27,
+          "provider_duration_ns": null,
+          "provider_web_fetch_requests": null,
+          "provider_web_search_requests": null,
+          "total_tokens": 860
+        },
+        "derived_fields": [],
+        "issues": [],
+        "quality": "totals_known",
+        "version": 1
+      }
+    },
+    {
+      "class": "task_local",
+      "continuation": false,
+      "disposition": "ok",
+      "elapsed_us": 5143148,
+      "input_bytes": 7781,
+      "output_bytes": 395,
+      "proposals": [],
+      "published": 0,
+      "request": 44,
+      "session": 2,
+      "source": "pilot-6",
+      "tool_bytes": 568,
+      "ttft_us": 4664610,
+      "usage": {
+        "counts": {
+          "input_cache_write_1h_tokens": null,
+          "input_cache_write_5m_tokens": null,
+          "input_cache_write_tokens": 0,
+          "input_cached_tokens": 0,
+          "input_tokens": 887,
+          "input_uncached_tokens": null,
+          "output_reasoning_tokens": 0,
+          "output_tokens": 12,
+          "provider_duration_ns": null,
+          "provider_web_fetch_requests": null,
+          "provider_web_search_requests": null,
+          "total_tokens": 899
+        },
+        "derived_fields": [],
+        "issues": [],
+        "quality": "totals_known",
+        "version": 1
+      }
+    },
+    {
+      "class": "correction",
+      "continuation": false,
+      "disposition": "ok",
+      "elapsed_us": 3548305,
+      "input_bytes": 8309,
+      "output_bytes": 955,
+      "proposals": [
+        {
+          "category": "persistent",
+          "payload_bytes": 224,
+          "valid_source": true
+        }
+      ],
+      "published": 0,
+      "request": 45,
+      "session": 2,
+      "source": "pilot-7",
+      "tool_bytes": 568,
+      "ttft_us": null,
+      "usage": {
+        "counts": {
+          "input_cache_write_1h_tokens": null,
+          "input_cache_write_5m_tokens": null,
+          "input_cache_write_tokens": 0,
+          "input_cached_tokens": 0,
+          "input_tokens": 929,
+          "input_uncached_tokens": null,
+          "output_reasoning_tokens": 0,
+          "output_tokens": 69,
+          "provider_duration_ns": null,
+          "provider_web_fetch_requests": null,
+          "provider_web_search_requests": null,
+          "total_tokens": 998
+        },
+        "derived_fields": [],
+        "issues": [],
+        "quality": "totals_known",
+        "version": 1
+      }
+    },
+    {
+      "continuation": true,
+      "elapsed_us": 3820161,
+      "input_bytes": 9442,
+      "output_bytes": 569,
+      "published": 0,
+      "request": 46,
+      "session": 2,
+      "source": "pilot-7",
+      "tool_bytes": 568,
+      "ttft_us": 2960740,
+      "usage": {
+        "counts": {
+          "input_cache_write_1h_tokens": null,
+          "input_cache_write_5m_tokens": null,
+          "input_cache_write_tokens": 0,
+          "input_cached_tokens": 0,
+          "input_tokens": 1030,
+          "input_uncached_tokens": null,
+          "output_reasoning_tokens": 0,
+          "output_tokens": 29,
+          "provider_duration_ns": null,
+          "provider_web_fetch_requests": null,
+          "provider_web_search_requests": null,
+          "total_tokens": 1059
+        },
+        "derived_fields": [],
+        "issues": [],
+        "quality": "totals_known",
+        "version": 1
+      }
+    },
+    {
+      "class": "quoted",
+      "continuation": false,
+      "disposition": "ok",
+      "elapsed_us": 3610111,
+      "input_bytes": 10157,
+      "output_bytes": 509,
+      "proposals": [],
+      "published": 0,
+      "request": 47,
+      "session": 2,
+      "source": "pilot-8",
+      "tool_bytes": 568,
+      "ttft_us": 2913533,
+      "usage": {
+        "counts": {
+          "input_cache_write_1h_tokens": null,
+          "input_cache_write_5m_tokens": null,
+          "input_cache_write_tokens": 0,
+          "input_cached_tokens": 0,
+          "input_tokens": 1092,
+          "input_uncached_tokens": null,
+          "output_reasoning_tokens": 0,
+          "output_tokens": 22,
+          "provider_duration_ns": null,
+          "provider_web_fetch_requests": null,
+          "provider_web_search_requests": null,
+          "total_tokens": 1114
+        },
+        "derived_fields": [],
+        "issues": [],
+        "quality": "totals_known",
+        "version": 1
+      }
+    },
+    {
+      "class": "pin",
+      "continuation": false,
+      "disposition": "ok",
+      "elapsed_us": 3862801,
+      "input_bytes": 10795,
+      "output_bytes": 847,
+      "proposals": [
+        {
+          "category": "persistent",
+          "payload_bytes": 170,
+          "valid_source": true
+        }
+      ],
+      "published": 0,
+      "request": 48,
+      "session": 2,
+      "source": "pilot-9",
+      "tool_bytes": 568,
+      "ttft_us": null,
+      "usage": {
+        "counts": {
+          "input_cache_write_1h_tokens": null,
+          "input_cache_write_5m_tokens": null,
+          "input_cache_write_tokens": 0,
+          "input_cached_tokens": 0,
+          "input_tokens": 1141,
+          "input_uncached_tokens": null,
+          "output_reasoning_tokens": 0,
+          "output_tokens": 53,
+          "provider_duration_ns": null,
+          "provider_web_fetch_requests": null,
+          "provider_web_search_requests": null,
+          "total_tokens": 1194
+        },
+        "derived_fields": [],
+        "issues": [],
+        "quality": "totals_known",
+        "version": 1
+      }
+    },
+    {
+      "continuation": true,
+      "elapsed_us": 2856203,
+      "input_bytes": 11820,
+      "output_bytes": 485,
+      "published": 0,
+      "request": 49,
+      "session": 2,
+      "source": "pilot-9",
+      "tool_bytes": 568,
+      "ttft_us": 2504435,
+      "usage": {
+        "counts": {
+          "input_cache_write_1h_tokens": null,
+          "input_cache_write_5m_tokens": null,
+          "input_cache_write_tokens": 0,
+          "input_cached_tokens": 0,
+          "input_tokens": 1226,
+          "input_uncached_tokens": null,
+          "output_reasoning_tokens": 0,
+          "output_tokens": 18,
+          "provider_duration_ns": null,
+          "provider_web_fetch_requests": null,
+          "provider_web_search_requests": null,
+          "total_tokens": 1244
+        },
+        "derived_fields": [],
+        "issues": [],
+        "quality": "totals_known",
+        "version": 1
+      }
+    },
+    {
+      "class": "empty",
+      "continuation": false,
+      "disposition": "ok",
+      "elapsed_us": 2639118,
+      "input_bytes": 12406,
+      "output_bytes": 425,
+      "proposals": [],
+      "published": 0,
+      "request": 50,
+      "session": 2,
+      "source": "pilot-10",
+      "tool_bytes": 568,
+      "ttft_us": 2331544,
+      "usage": {
+        "counts": {
+          "input_cache_write_1h_tokens": null,
+          "input_cache_write_5m_tokens": null,
+          "input_cache_write_tokens": 0,
+          "input_cached_tokens": 0,
+          "input_tokens": 1268,
+          "input_uncached_tokens": null,
+          "output_reasoning_tokens": 0,
+          "output_tokens": 14,
+          "provider_duration_ns": null,
+          "provider_web_fetch_requests": null,
+          "provider_web_search_requests": null,
+          "total_tokens": 1282
+        },
+        "derived_fields": [],
+        "issues": [],
+        "quality": "totals_known",
+        "version": 1
+      }
+    },
+    {
+      "class": "decision",
+      "continuation": false,
+      "disposition": "ok",
+      "elapsed_us": 3656997,
+      "input_bytes": 12957,
+      "output_bytes": 879,
+      "proposals": [
+        {
+          "category": "persistent",
+          "payload_bytes": 186,
+          "valid_source": true
+        }
+      ],
+      "published": 0,
+      "request": 51,
+      "session": 2,
+      "source": "pilot-11",
+      "tool_bytes": 568,
+      "ttft_us": null,
+      "usage": {
+        "counts": {
+          "input_cache_write_1h_tokens": null,
+          "input_cache_write_5m_tokens": null,
+          "input_cache_write_tokens": 0,
+          "input_cached_tokens": 0,
+          "input_tokens": 1309,
+          "input_uncached_tokens": null,
+          "output_reasoning_tokens": 0,
+          "output_tokens": 56,
+          "provider_duration_ns": null,
+          "provider_web_fetch_requests": null,
+          "provider_web_search_requests": null,
+          "total_tokens": 1365
+        },
+        "derived_fields": [],
+        "issues": [],
+        "quality": "totals_known",
+        "version": 1
+      }
+    },
+    {
+      "continuation": true,
+      "elapsed_us": 3375252,
+      "input_bytes": 14014,
+      "output_bytes": 513,
+      "published": 0,
+      "request": 52,
+      "session": 2,
+      "source": "pilot-11",
+      "tool_bytes": 568,
+      "ttft_us": 3098866,
+      "usage": {
+        "counts": {
+          "input_cache_write_1h_tokens": null,
+          "input_cache_write_5m_tokens": null,
+          "input_cache_write_tokens": 0,
+          "input_cached_tokens": 0,
+          "input_tokens": 1397,
+          "input_uncached_tokens": null,
+          "output_reasoning_tokens": 0,
+          "output_tokens": 20,
+          "provider_duration_ns": null,
+          "provider_web_fetch_requests": null,
+          "provider_web_search_requests": null,
+          "total_tokens": 1417
+        },
+        "derived_fields": [],
+        "issues": [],
+        "quality": "totals_known",
+        "version": 1
+      }
+    },
+    {
+      "class": "fact",
+      "continuation": false,
+      "disposition": "ok",
+      "elapsed_us": 2736502,
+      "input_bytes": 14646,
+      "output_bytes": 823,
+      "proposals": [
+        {
+          "category": "persistent",
+          "payload_bytes": 158,
+          "valid_source": true
+        }
+      ],
+      "published": 0,
+      "request": 53,
+      "session": 2,
+      "source": "pilot-12",
+      "tool_bytes": 568,
+      "ttft_us": null,
+      "usage": {
+        "counts": {
+          "input_cache_write_1h_tokens": null,
+          "input_cache_write_5m_tokens": null,
+          "input_cache_write_tokens": 0,
+          "input_cached_tokens": 0,
+          "input_tokens": 1443,
+          "input_uncached_tokens": null,
+          "output_reasoning_tokens": 0,
+          "output_tokens": 54,
+          "provider_duration_ns": null,
+          "provider_web_fetch_requests": null,
+          "provider_web_search_requests": null,
+          "total_tokens": 1497
+        },
+        "derived_fields": [],
+        "issues": [],
+        "quality": "totals_known",
+        "version": 1
+      }
+    },
+    {
+      "continuation": true,
+      "elapsed_us": 4547477,
+      "input_bytes": 15647,
+      "output_bytes": 489,
+      "published": 0,
+      "request": 54,
+      "session": 2,
+      "source": "pilot-12",
+      "tool_bytes": 568,
+      "ttft_us": 4155792,
+      "usage": {
+        "counts": {
+          "input_cache_write_1h_tokens": null,
+          "input_cache_write_5m_tokens": null,
+          "input_cache_write_tokens": 0,
+          "input_cached_tokens": 0,
+          "input_tokens": 1529,
+          "input_uncached_tokens": null,
+          "output_reasoning_tokens": 0,
+          "output_tokens": 21,
+          "provider_duration_ns": null,
+          "provider_web_fetch_requests": null,
+          "provider_web_search_requests": null,
+          "total_tokens": 1550
+        },
+        "derived_fields": [],
+        "issues": [],
+        "quality": "totals_known",
+        "version": 1
+      }
+    },
+    {
+      "class": "duplicate",
+      "continuation": false,
+      "disposition": "ok",
+      "elapsed_us": 5127427,
+      "input_bytes": 16259,
+      "output_bytes": 847,
+      "proposals": [
+        {
+          "category": "persistent",
+          "payload_bytes": 170,
+          "valid_source": true
+        }
+      ],
+      "published": 0,
+      "request": 55,
+      "session": 2,
+      "source": "pilot-13",
+      "tool_bytes": 568,
+      "ttft_us": null,
+      "usage": {
+        "counts": {
+          "input_cache_write_1h_tokens": null,
+          "input_cache_write_5m_tokens": null,
+          "input_cache_write_tokens": 0,
+          "input_cached_tokens": 0,
+          "input_tokens": 1577,
+          "input_uncached_tokens": null,
+          "output_reasoning_tokens": 0,
+          "output_tokens": 55,
+          "provider_duration_ns": null,
+          "provider_web_fetch_requests": null,
+          "provider_web_search_requests": null,
+          "total_tokens": 1632
+        },
+        "derived_fields": [],
+        "issues": [],
+        "quality": "totals_known",
+        "version": 1
+      }
+    },
+    {
+      "continuation": true,
+      "elapsed_us": 5391866,
+      "input_bytes": 17284,
+      "output_bytes": 493,
+      "published": 0,
+      "request": 56,
+      "session": 2,
+      "source": "pilot-13",
+      "tool_bytes": 568,
+      "ttft_us": 5039373,
+      "usage": {
+        "counts": {
+          "input_cache_write_1h_tokens": null,
+          "input_cache_write_5m_tokens": null,
+          "input_cache_write_tokens": 0,
+          "input_cached_tokens": 0,
+          "input_tokens": 1664,
+          "input_uncached_tokens": null,
+          "output_reasoning_tokens": 0,
+          "output_tokens": 20,
+          "provider_duration_ns": null,
+          "provider_web_fetch_requests": null,
+          "provider_web_search_requests": null,
+          "total_tokens": 1684
+        },
+        "derived_fields": [],
+        "issues": [],
+        "quality": "totals_known",
+        "version": 1
+      }
+    },
+    {
+      "class": "temporal",
+      "continuation": false,
+      "disposition": "ok",
+      "elapsed_us": 3937435,
+      "input_bytes": 17914,
+      "output_bytes": 909,
+      "proposals": [
+        {
+          "category": "temporal",
+          "payload_bytes": 201,
+          "valid_source": true
+        }
+      ],
+      "published": 0,
+      "request": 57,
+      "session": 2,
+      "source": "pilot-14",
+      "tool_bytes": 568,
+      "ttft_us": null,
+      "usage": {
+        "counts": {
+          "input_cache_write_1h_tokens": null,
+          "input_cache_write_5m_tokens": null,
+          "input_cache_write_tokens": 0,
+          "input_cached_tokens": 0,
+          "input_tokens": 1715,
+          "input_uncached_tokens": null,
+          "output_reasoning_tokens": 0,
+          "output_tokens": 65,
+          "provider_duration_ns": null,
+          "provider_web_fetch_requests": null,
+          "provider_web_search_requests": null,
+          "total_tokens": 1780
+        },
+        "derived_fields": [],
+        "issues": [],
+        "quality": "totals_known",
+        "version": 1
+      }
+    },
+    {
+      "continuation": true,
+      "elapsed_us": 3517590,
+      "input_bytes": 19001,
+      "output_bytes": 563,
+      "published": 0,
+      "request": 58,
+      "session": 2,
+      "source": "pilot-14",
+      "tool_bytes": 568,
+      "ttft_us": 3208285,
+      "usage": {
+        "counts": {
+          "input_cache_write_1h_tokens": null,
+          "input_cache_write_5m_tokens": null,
+          "input_cache_write_tokens": 0,
+          "input_cached_tokens": 0,
+          "input_tokens": 1812,
+          "input_uncached_tokens": null,
+          "output_reasoning_tokens": 0,
+          "output_tokens": 27,
+          "provider_duration_ns": null,
+          "provider_web_fetch_requests": null,
+          "provider_web_search_requests": null,
+          "total_tokens": 1839
+        },
+        "derived_fields": [],
+        "issues": [],
+        "quality": "totals_known",
+        "version": 1
+      }
+    },
+    {
+      "class": "uncertain",
+      "continuation": false,
+      "disposition": "ok",
+      "elapsed_us": 8038168,
+      "input_bytes": 19701,
+      "output_bytes": 2814,
+      "proposals": [
+        {
+          "category": "temporal",
+          "payload_bytes": 174,
+          "valid_source": true
+        }
+      ],
+      "published": 0,
+      "request": 59,
+      "session": 2,
+      "source": "pilot-15",
+      "tool_bytes": 568,
+      "ttft_us": null,
+      "usage": {
+        "counts": {
+          "input_cache_write_1h_tokens": null,
+          "input_cache_write_5m_tokens": null,
+          "input_cache_write_tokens": 0,
+          "input_cached_tokens": 0,
+          "input_tokens": 1870,
+          "input_uncached_tokens": null,
+          "output_reasoning_tokens": 16,
+          "output_tokens": 76,
+          "provider_duration_ns": null,
+          "provider_web_fetch_requests": null,
+          "provider_web_search_requests": null,
+          "total_tokens": 1946
+        },
+        "derived_fields": [],
+        "issues": [],
+        "quality": "totals_known",
+        "version": 1
+      }
+    },
+    {
+      "continuation": true,
+      "elapsed_us": 3248657,
+      "input_bytes": 22693,
+      "output_bytes": 513,
+      "published": 0,
+      "request": 60,
+      "session": 2,
+      "source": "pilot-15",
+      "tool_bytes": 568,
+      "ttft_us": 2891078,
+      "usage": {
+        "counts": {
+          "input_cache_write_1h_tokens": null,
+          "input_cache_write_5m_tokens": null,
+          "input_cache_write_tokens": 0,
+          "input_cached_tokens": 1664,
+          "input_tokens": 1978,
+          "input_uncached_tokens": null,
+          "output_reasoning_tokens": 0,
+          "output_tokens": 21,
+          "provider_duration_ns": null,
+          "provider_web_fetch_requests": null,
+          "provider_web_search_requests": null,
+          "total_tokens": 1999
+        },
+        "derived_fields": [],
+        "issues": [],
+        "quality": "totals_known",
+        "version": 1
+      }
+    },
+    {
+      "class": "preference",
+      "continuation": false,
+      "disposition": "ok",
+      "elapsed_us": 3536885,
+      "input_bytes": 23350,
+      "output_bytes": 943,
+      "proposals": [
+        {
+          "category": "persistent",
+          "payload_bytes": 218,
+          "valid_source": true
+        }
+      ],
+      "published": 0,
+      "request": 61,
+      "session": 2,
+      "source": "pilot-16",
+      "tool_bytes": 568,
+      "ttft_us": null,
+      "usage": {
+        "counts": {
+          "input_cache_write_1h_tokens": null,
+          "input_cache_write_5m_tokens": null,
+          "input_cache_write_tokens": 0,
+          "input_cached_tokens": 1152,
+          "input_tokens": 2026,
+          "input_uncached_tokens": null,
+          "output_reasoning_tokens": 0,
+          "output_tokens": 57,
+          "provider_duration_ns": null,
+          "provider_web_fetch_requests": null,
+          "provider_web_search_requests": null,
+          "total_tokens": 2083
+        },
+        "derived_fields": [],
+        "issues": [],
+        "quality": "totals_known",
+        "version": 1
+      }
+    },
+    {
+      "continuation": true,
+      "elapsed_us": 4580763,
+      "input_bytes": 24471,
+      "output_bytes": 505,
+      "published": 0,
+      "request": 62,
+      "session": 2,
+      "source": "pilot-16",
+      "tool_bytes": 568,
+      "ttft_us": 4263470,
+      "usage": {
+        "counts": {
+          "input_cache_write_1h_tokens": null,
+          "input_cache_write_5m_tokens": null,
+          "input_cache_write_tokens": 0,
+          "input_cached_tokens": 0,
+          "input_tokens": 2115,
+          "input_uncached_tokens": null,
+          "output_reasoning_tokens": 0,
+          "output_tokens": 18,
+          "provider_duration_ns": null,
+          "provider_web_fetch_requests": null,
+          "provider_web_search_requests": null,
+          "total_tokens": 2133
+        },
+        "derived_fields": [],
+        "issues": [],
+        "quality": "totals_known",
+        "version": 1
+      }
+    },
+    {
+      "class": "empty",
+      "continuation": false,
+      "disposition": "ok",
+      "elapsed_us": 5921962,
+      "input_bytes": 25096,
+      "output_bytes": 995,
+      "proposals": [],
+      "published": 0,
+      "request": 63,
+      "session": 2,
+      "source": "pilot-17",
+      "tool_bytes": 568,
+      "ttft_us": 3514534,
+      "usage": {
+        "counts": {
+          "input_cache_write_1h_tokens": null,
+          "input_cache_write_5m_tokens": null,
+          "input_cache_write_tokens": 0,
+          "input_cached_tokens": 0,
+          "input_tokens": 2160,
+          "input_uncached_tokens": null,
+          "output_reasoning_tokens": 0,
+          "output_tokens": 87,
+          "provider_duration_ns": null,
+          "provider_web_fetch_requests": null,
+          "provider_web_search_requests": null,
+          "total_tokens": 2247
+        },
+        "derived_fields": [],
+        "issues": [],
+        "quality": "totals_known",
+        "version": 1
+      }
+    },
+    {
+      "class": "conflict",
+      "continuation": false,
+      "disposition": "ok",
+      "elapsed_us": 4302343,
+      "input_bytes": 26238,
+      "output_bytes": 539,
+      "proposals": [],
+      "published": 0,
+      "request": 64,
+      "session": 2,
+      "source": "pilot-18",
+      "tool_bytes": 568,
+      "ttft_us": 3580300,
+      "usage": {
+        "counts": {
+          "input_cache_write_1h_tokens": null,
+          "input_cache_write_5m_tokens": null,
+          "input_cache_write_tokens": 0,
+          "input_cached_tokens": 0,
+          "input_tokens": 2281,
+          "input_uncached_tokens": null,
+          "output_reasoning_tokens": 0,
+          "output_tokens": 26,
+          "provider_duration_ns": null,
+          "provider_web_fetch_requests": null,
+          "provider_web_search_requests": null,
+          "total_tokens": 2307
+        },
+        "derived_fields": [],
+        "issues": [],
+        "quality": "totals_known",
+        "version": 1
+      }
+    },
+    {
+      "class": "fact",
+      "continuation": false,
+      "disposition": "ok",
+      "elapsed_us": 3357151,
+      "input_bytes": 26906,
+      "output_bytes": 865,
+      "proposals": [
+        {
+          "category": "persistent",
+          "payload_bytes": 179,
+          "valid_source": true
+        }
+      ],
+      "published": 0,
+      "request": 65,
+      "session": 2,
+      "source": "pilot-19",
+      "tool_bytes": 568,
+      "ttft_us": null,
+      "usage": {
+        "counts": {
+          "input_cache_write_1h_tokens": null,
+          "input_cache_write_5m_tokens": null,
+          "input_cache_write_tokens": 0,
+          "input_cached_tokens": 0,
+          "input_tokens": 2337,
+          "input_uncached_tokens": null,
+          "output_reasoning_tokens": 0,
+          "output_tokens": 61,
+          "provider_duration_ns": null,
+          "provider_web_fetch_requests": null,
+          "provider_web_search_requests": null,
+          "total_tokens": 2398
+        },
+        "derived_fields": [],
+        "issues": [],
+        "quality": "totals_known",
+        "version": 1
+      }
+    },
+    {
+      "continuation": true,
+      "elapsed_us": 3051229,
+      "input_bytes": 27949,
+      "output_bytes": 519,
+      "published": 0,
+      "request": 66,
+      "session": 2,
+      "source": "pilot-19",
+      "tool_bytes": 568,
+      "ttft_us": 2591483,
+      "usage": {
+        "counts": {
+          "input_cache_write_1h_tokens": null,
+          "input_cache_write_5m_tokens": null,
+          "input_cache_write_tokens": 0,
+          "input_cached_tokens": 2176,
+          "input_tokens": 2430,
+          "input_uncached_tokens": null,
+          "output_reasoning_tokens": 0,
+          "output_tokens": 23,
+          "provider_duration_ns": null,
+          "provider_web_fetch_requests": null,
+          "provider_web_search_requests": null,
+          "total_tokens": 2453
+        },
+        "derived_fields": [],
+        "issues": [],
+        "quality": "totals_known",
+        "version": 1
+      }
+    },
+    {
+      "class": "duration",
+      "continuation": false,
+      "disposition": "ok",
+      "elapsed_us": 3945113,
+      "input_bytes": 28606,
+      "output_bytes": 953,
+      "proposals": [
+        {
+          "category": "temporal",
+          "payload_bytes": 223,
+          "valid_source": true
+        }
+      ],
+      "published": 0,
+      "request": 67,
+      "session": 2,
+      "source": "pilot-20",
+      "tool_bytes": 568,
+      "ttft_us": null,
+      "usage": {
+        "counts": {
+          "input_cache_write_1h_tokens": null,
+          "input_cache_write_5m_tokens": null,
+          "input_cache_write_tokens": 0,
+          "input_cached_tokens": 0,
+          "input_tokens": 2482,
+          "input_uncached_tokens": null,
+          "output_reasoning_tokens": 0,
+          "output_tokens": 66,
+          "provider_duration_ns": null,
+          "provider_web_fetch_requests": null,
+          "provider_web_search_requests": null,
+          "total_tokens": 2548
+        },
+        "derived_fields": [],
+        "issues": [],
+        "quality": "totals_known",
+        "version": 1
+      }
+    },
+    {
+      "continuation": true,
+      "elapsed_us": 4225342,
+      "input_bytes": 29737,
+      "output_bytes": 623,
+      "published": 0,
+      "request": 68,
+      "session": 2,
+      "source": "pilot-20",
+      "tool_bytes": 568,
+      "ttft_us": 3734165,
+      "usage": {
+        "counts": {
+          "input_cache_write_1h_tokens": null,
+          "input_cache_write_5m_tokens": null,
+          "input_cache_write_tokens": 0,
+          "input_cached_tokens": 0,
+          "input_tokens": 2580,
+          "input_uncached_tokens": null,
+          "output_reasoning_tokens": 0,
+          "output_tokens": 31,
+          "provider_duration_ns": null,
+          "provider_web_fetch_requests": null,
+          "provider_web_search_requests": null,
+          "total_tokens": 2611
+        },
+        "derived_fields": [],
+        "issues": [],
+        "quality": "totals_known",
+        "version": 1
+      }
+    },
+    {
+      "class": "decision",
+      "continuation": false,
+      "disposition": "ok",
+      "elapsed_us": 3518224,
+      "input_bytes": 675,
+      "output_bytes": 847,
+      "proposals": [
+        {
+          "category": "persistent",
+          "payload_bytes": 170,
+          "valid_source": true
+        }
+      ],
+      "published": 0,
+      "request": 69,
+      "session": 3,
+      "source": "pilot-1",
+      "tool_bytes": 568,
+      "ttft_us": null,
+      "usage": {
+        "counts": {
+          "input_cache_write_1h_tokens": null,
+          "input_cache_write_5m_tokens": null,
+          "input_cache_write_tokens": 0,
+          "input_cached_tokens": 0,
+          "input_tokens": 289,
+          "input_uncached_tokens": null,
+          "output_reasoning_tokens": 0,
+          "output_tokens": 55,
+          "provider_duration_ns": null,
+          "provider_web_fetch_requests": null,
+          "provider_web_search_requests": null,
+          "total_tokens": 344
+        },
+        "derived_fields": [],
+        "issues": [],
+        "quality": "totals_known",
+        "version": 1
+      }
+    },
+    {
+      "continuation": true,
+      "elapsed_us": 4807933,
+      "input_bytes": 1700,
+      "output_bytes": 523,
+      "published": 0,
+      "request": 70,
+      "session": 3,
+      "source": "pilot-1",
+      "tool_bytes": 568,
+      "ttft_us": 4432659,
+      "usage": {
+        "counts": {
+          "input_cache_write_1h_tokens": null,
+          "input_cache_write_5m_tokens": null,
+          "input_cache_write_tokens": 0,
+          "input_cached_tokens": 0,
+          "input_tokens": 376,
+          "input_uncached_tokens": null,
+          "output_reasoning_tokens": 0,
+          "output_tokens": 23,
+          "provider_duration_ns": null,
+          "provider_web_fetch_requests": null,
+          "provider_web_search_requests": null,
+          "total_tokens": 399
+        },
+        "derived_fields": [],
+        "issues": [],
+        "quality": "totals_known",
+        "version": 1
+      }
+    },
+    {
+      "class": "preference",
+      "continuation": false,
+      "disposition": "ok",
+      "elapsed_us": 3765497,
+      "input_bytes": 2354,
+      "output_bytes": 901,
+      "proposals": [
+        {
+          "category": "persistent",
+          "payload_bytes": 197,
+          "valid_source": true
+        }
+      ],
+      "published": 0,
+      "request": 71,
+      "session": 3,
+      "source": "pilot-2",
+      "tool_bytes": 568,
+      "ttft_us": null,
+      "usage": {
+        "counts": {
+          "input_cache_write_1h_tokens": null,
+          "input_cache_write_5m_tokens": null,
+          "input_cache_write_tokens": 0,
+          "input_cached_tokens": 0,
+          "input_tokens": 427,
+          "input_uncached_tokens": null,
+          "output_reasoning_tokens": 0,
+          "output_tokens": 59,
+          "provider_duration_ns": null,
+          "provider_web_fetch_requests": null,
+          "provider_web_search_requests": null,
+          "total_tokens": 486
+        },
+        "derived_fields": [],
+        "issues": [],
+        "quality": "totals_known",
+        "version": 1
+      }
+    },
+    {
+      "continuation": true,
+      "elapsed_us": 3411537,
+      "input_bytes": 3433,
+      "output_bytes": 549,
+      "published": 0,
+      "request": 72,
+      "session": 3,
+      "source": "pilot-2",
+      "tool_bytes": 568,
+      "ttft_us": 3041927,
+      "usage": {
+        "counts": {
+          "input_cache_write_1h_tokens": null,
+          "input_cache_write_5m_tokens": null,
+          "input_cache_write_tokens": 0,
+          "input_cached_tokens": 0,
+          "input_tokens": 518,
+          "input_uncached_tokens": null,
+          "output_reasoning_tokens": 0,
+          "output_tokens": 24,
+          "provider_duration_ns": null,
+          "provider_web_fetch_requests": null,
+          "provider_web_search_requests": null,
+          "total_tokens": 542
+        },
+        "derived_fields": [],
+        "issues": [],
+        "quality": "totals_known",
+        "version": 1
+      }
+    },
+    {
+      "class": "empty",
+      "continuation": false,
+      "disposition": "ok",
+      "elapsed_us": 3423969,
+      "input_bytes": 4099,
+      "output_bytes": 353,
+      "proposals": [],
+      "published": 0,
+      "request": 73,
+      "session": 3,
+      "source": "pilot-3",
+      "tool_bytes": 568,
+      "ttft_us": 3233519,
+      "usage": {
+        "counts": {
+          "input_cache_write_1h_tokens": null,
+          "input_cache_write_5m_tokens": null,
+          "input_cache_write_tokens": 0,
+          "input_cached_tokens": 0,
+          "input_tokens": 572,
+          "input_uncached_tokens": null,
+          "output_reasoning_tokens": 0,
+          "output_tokens": 12,
+          "provider_duration_ns": null,
+          "provider_web_fetch_requests": null,
+          "provider_web_search_requests": null,
+          "total_tokens": 584
+        },
+        "derived_fields": [],
+        "issues": [],
+        "quality": "totals_known",
+        "version": 1
+      }
+    },
+    {
+      "class": "fact",
+      "continuation": false,
+      "disposition": "ok",
+      "elapsed_us": 4472870,
+      "input_bytes": 4569,
+      "output_bytes": 817,
+      "proposals": [
+        {
+          "category": "persistent",
+          "payload_bytes": 155,
+          "valid_source": true
+        }
+      ],
+      "published": 0,
+      "request": 74,
+      "session": 3,
+      "source": "pilot-4",
+      "tool_bytes": 568,
+      "ttft_us": null,
+      "usage": {
+        "counts": {
+          "input_cache_write_1h_tokens": null,
+          "input_cache_write_5m_tokens": null,
+          "input_cache_write_tokens": 0,
+          "input_cached_tokens": 0,
+          "input_tokens": 611,
+          "input_uncached_tokens": null,
+          "output_reasoning_tokens": 0,
+          "output_tokens": 55,
+          "provider_duration_ns": null,
+          "provider_web_fetch_requests": null,
+          "provider_web_search_requests": null,
+          "total_tokens": 666
+        },
+        "derived_fields": [],
+        "issues": [],
+        "quality": "totals_known",
+        "version": 1
+      }
+    },
+    {
+      "continuation": true,
+      "elapsed_us": 3438919,
+      "input_bytes": 5564,
+      "output_bytes": 509,
+      "published": 0,
+      "request": 75,
+      "session": 3,
+      "source": "pilot-4",
+      "tool_bytes": 568,
+      "ttft_us": 3083454,
+      "usage": {
+        "counts": {
+          "input_cache_write_1h_tokens": null,
+          "input_cache_write_5m_tokens": null,
+          "input_cache_write_tokens": 0,
+          "input_cached_tokens": 0,
+          "input_tokens": 698,
+          "input_uncached_tokens": null,
+          "output_reasoning_tokens": 0,
+          "output_tokens": 23,
+          "provider_duration_ns": null,
+          "provider_web_fetch_requests": null,
+          "provider_web_search_requests": null,
+          "total_tokens": 721
+        },
+        "derived_fields": [],
+        "issues": [],
+        "quality": "totals_known",
+        "version": 1
+      }
+    },
+    {
+      "class": "temporal",
+      "continuation": false,
+      "disposition": "ok",
+      "elapsed_us": 4438371,
+      "input_bytes": 6194,
+      "output_bytes": 839,
+      "proposals": [
+        {
+          "category": "temporal",
+          "payload_bytes": 166,
+          "valid_source": true
+        }
+      ],
+      "published": 0,
+      "request": 76,
+      "session": 3,
+      "source": "pilot-5",
+      "tool_bytes": 568,
+      "ttft_us": null,
+      "usage": {
+        "counts": {
+          "input_cache_write_1h_tokens": null,
+          "input_cache_write_5m_tokens": null,
+          "input_cache_write_tokens": 0,
+          "input_cached_tokens": 0,
+          "input_tokens": 750,
+          "input_uncached_tokens": null,
+          "output_reasoning_tokens": 0,
+          "output_tokens": 60,
+          "provider_duration_ns": null,
+          "provider_web_fetch_requests": null,
+          "provider_web_search_requests": null,
+          "total_tokens": 810
+        },
+        "derived_fields": [],
+        "issues": [],
+        "quality": "totals_known",
+        "version": 1
+      }
+    },
+    {
+      "continuation": true,
+      "elapsed_us": 3382940,
+      "input_bytes": 7211,
+      "output_bytes": 523,
+      "published": 0,
+      "request": 77,
+      "session": 3,
+      "source": "pilot-5",
+      "tool_bytes": 568,
+      "ttft_us": 2983784,
+      "usage": {
+        "counts": {
+          "input_cache_write_1h_tokens": null,
+          "input_cache_write_5m_tokens": null,
+          "input_cache_write_tokens": 0,
+          "input_cached_tokens": 0,
+          "input_tokens": 842,
+          "input_uncached_tokens": null,
+          "output_reasoning_tokens": 0,
+          "output_tokens": 25,
+          "provider_duration_ns": null,
+          "provider_web_fetch_requests": null,
+          "provider_web_search_requests": null,
+          "total_tokens": 867
+        },
+        "derived_fields": [],
+        "issues": [],
+        "quality": "totals_known",
+        "version": 1
+      }
+    },
+    {
+      "class": "task_local",
+      "continuation": false,
+      "disposition": "ok",
+      "elapsed_us": 3272124,
+      "input_bytes": 7847,
+      "output_bytes": 419,
+      "proposals": [],
+      "published": 0,
+      "request": 78,
+      "session": 3,
+      "source": "pilot-6",
+      "tool_bytes": 568,
+      "ttft_us": 2785094,
+      "usage": {
+        "counts": {
+          "input_cache_write_1h_tokens": null,
+          "input_cache_write_5m_tokens": null,
+          "input_cache_write_tokens": 0,
+          "input_cached_tokens": 0,
+          "input_tokens": 894,
+          "input_uncached_tokens": null,
+          "output_reasoning_tokens": 0,
+          "output_tokens": 15,
+          "provider_duration_ns": null,
+          "provider_web_fetch_requests": null,
+          "provider_web_search_requests": null,
+          "total_tokens": 909
+        },
+        "derived_fields": [],
+        "issues": [],
+        "quality": "totals_known",
+        "version": 1
+      }
+    },
+    {
+      "class": "correction",
+      "continuation": false,
+      "disposition": "ok",
+      "elapsed_us": 4563068,
+      "input_bytes": 8399,
+      "output_bytes": 955,
+      "proposals": [
+        {
+          "category": "persistent",
+          "payload_bytes": 224,
+          "valid_source": true
+        }
+      ],
+      "published": 0,
+      "request": 79,
+      "session": 3,
+      "source": "pilot-7",
+      "tool_bytes": 568,
+      "ttft_us": null,
+      "usage": {
+        "counts": {
+          "input_cache_write_1h_tokens": null,
+          "input_cache_write_5m_tokens": null,
+          "input_cache_write_tokens": 0,
+          "input_cached_tokens": 0,
+          "input_tokens": 939,
+          "input_uncached_tokens": null,
+          "output_reasoning_tokens": 0,
+          "output_tokens": 69,
+          "provider_duration_ns": null,
+          "provider_web_fetch_requests": null,
+          "provider_web_search_requests": null,
+          "total_tokens": 1008
+        },
+        "derived_fields": [],
+        "issues": [],
+        "quality": "totals_known",
+        "version": 1
+      }
+    },
+    {
+      "continuation": true,
+      "elapsed_us": 4554379,
+      "input_bytes": 9532,
+      "output_bytes": 549,
+      "published": 0,
+      "request": 80,
+      "session": 3,
+      "source": "pilot-7",
+      "tool_bytes": 568,
+      "ttft_us": 4005481,
+      "usage": {
+        "counts": {
+          "input_cache_write_1h_tokens": null,
+          "input_cache_write_5m_tokens": null,
+          "input_cache_write_tokens": 0,
+          "input_cached_tokens": 0,
+          "input_tokens": 1040,
+          "input_uncached_tokens": null,
+          "output_reasoning_tokens": 0,
+          "output_tokens": 26,
+          "provider_duration_ns": null,
+          "provider_web_fetch_requests": null,
+          "provider_web_search_requests": null,
+          "total_tokens": 1066
+        },
+        "derived_fields": [],
+        "issues": [],
+        "quality": "totals_known",
+        "version": 1
+      }
+    },
+    {
+      "class": "quoted",
+      "continuation": false,
+      "disposition": "ok",
+      "elapsed_us": 3667436,
+      "input_bytes": 10227,
+      "output_bytes": 533,
+      "proposals": [],
+      "published": 0,
+      "request": 81,
+      "session": 3,
+      "source": "pilot-8",
+      "tool_bytes": 568,
+      "ttft_us": 3130355,
+      "usage": {
+        "counts": {
+          "input_cache_write_1h_tokens": null,
+          "input_cache_write_5m_tokens": null,
+          "input_cache_write_tokens": 0,
+          "input_cached_tokens": 0,
+          "input_tokens": 1099,
+          "input_uncached_tokens": null,
+          "output_reasoning_tokens": 0,
+          "output_tokens": 24,
+          "provider_duration_ns": null,
+          "provider_web_fetch_requests": null,
+          "provider_web_search_requests": null,
+          "total_tokens": 1123
+        },
+        "derived_fields": [],
+        "issues": [],
+        "quality": "totals_known",
+        "version": 1
+      }
+    },
+    {
+      "class": "pin",
+      "continuation": false,
+      "disposition": "ok",
+      "elapsed_us": 3816820,
+      "input_bytes": 10889,
+      "output_bytes": 847,
+      "proposals": [
+        {
+          "category": "persistent",
+          "payload_bytes": 170,
+          "valid_source": true
+        }
+      ],
+      "published": 0,
+      "request": 82,
+      "session": 3,
+      "source": "pilot-9",
+      "tool_bytes": 568,
+      "ttft_us": null,
+      "usage": {
+        "counts": {
+          "input_cache_write_1h_tokens": null,
+          "input_cache_write_5m_tokens": null,
+          "input_cache_write_tokens": 0,
+          "input_cached_tokens": 0,
+          "input_tokens": 1150,
+          "input_uncached_tokens": null,
+          "output_reasoning_tokens": 0,
+          "output_tokens": 53,
+          "provider_duration_ns": null,
+          "provider_web_fetch_requests": null,
+          "provider_web_search_requests": null,
+          "total_tokens": 1203
+        },
+        "derived_fields": [],
+        "issues": [],
+        "quality": "totals_known",
+        "version": 1
+      }
+    },
+    {
+      "continuation": true,
+      "elapsed_us": 3616265,
+      "input_bytes": 11914,
+      "output_bytes": 511,
+      "published": 0,
+      "request": 83,
+      "session": 3,
+      "source": "pilot-9",
+      "tool_bytes": 568,
+      "ttft_us": 3262061,
+      "usage": {
+        "counts": {
+          "input_cache_write_1h_tokens": null,
+          "input_cache_write_5m_tokens": null,
+          "input_cache_write_tokens": 0,
+          "input_cached_tokens": 0,
+          "input_tokens": 1235,
+          "input_uncached_tokens": null,
+          "output_reasoning_tokens": 0,
+          "output_tokens": 21,
+          "provider_duration_ns": null,
+          "provider_web_fetch_requests": null,
+          "provider_web_search_requests": null,
+          "total_tokens": 1256
+        },
+        "derived_fields": [],
+        "issues": [],
+        "quality": "totals_known",
+        "version": 1
+      }
+    },
+    {
+      "class": "empty",
+      "continuation": false,
+      "disposition": "ok",
+      "elapsed_us": 3228380,
+      "input_bytes": 12526,
+      "output_bytes": 407,
+      "proposals": [],
+      "published": 0,
+      "request": 84,
+      "session": 3,
+      "source": "pilot-10",
+      "tool_bytes": 568,
+      "ttft_us": 2741226,
+      "usage": {
+        "counts": {
+          "input_cache_write_1h_tokens": null,
+          "input_cache_write_5m_tokens": null,
+          "input_cache_write_tokens": 0,
+          "input_cached_tokens": 0,
+          "input_tokens": 1280,
+          "input_uncached_tokens": null,
+          "output_reasoning_tokens": 0,
+          "output_tokens": 12,
+          "provider_duration_ns": null,
+          "provider_web_fetch_requests": null,
+          "provider_web_search_requests": null,
+          "total_tokens": 1292
+        },
+        "derived_fields": [],
+        "issues": [],
+        "quality": "totals_known",
+        "version": 1
+      }
+    },
+    {
+      "class": "decision",
+      "continuation": false,
+      "disposition": "ok",
+      "elapsed_us": 6728511,
+      "input_bytes": 13059,
+      "output_bytes": 879,
+      "proposals": [
+        {
+          "category": "persistent",
+          "payload_bytes": 186,
+          "valid_source": true
+        }
+      ],
+      "published": 0,
+      "request": 85,
+      "session": 3,
+      "source": "pilot-11",
+      "tool_bytes": 568,
+      "ttft_us": null,
+      "usage": {
+        "counts": {
+          "input_cache_write_1h_tokens": null,
+          "input_cache_write_5m_tokens": null,
+          "input_cache_write_tokens": 0,
+          "input_cached_tokens": 0,
+          "input_tokens": 1319,
+          "input_uncached_tokens": null,
+          "output_reasoning_tokens": 0,
+          "output_tokens": 56,
+          "provider_duration_ns": null,
+          "provider_web_fetch_requests": null,
+          "provider_web_search_requests": null,
+          "total_tokens": 1375
+        },
+        "derived_fields": [],
+        "issues": [],
+        "quality": "totals_known",
+        "version": 1
+      }
+    },
+    {
+      "continuation": true,
+      "elapsed_us": 3490820,
+      "input_bytes": 14116,
+      "output_bytes": 517,
+      "published": 0,
+      "request": 86,
+      "session": 3,
+      "source": "pilot-11",
+      "tool_bytes": 568,
+      "ttft_us": 2841007,
+      "usage": {
+        "counts": {
+          "input_cache_write_1h_tokens": null,
+          "input_cache_write_5m_tokens": null,
+          "input_cache_write_tokens": 0,
+          "input_cached_tokens": 0,
+          "input_tokens": 1407,
+          "input_uncached_tokens": null,
+          "output_reasoning_tokens": 0,
+          "output_tokens": 21,
+          "provider_duration_ns": null,
+          "provider_web_fetch_requests": null,
+          "provider_web_search_requests": null,
+          "total_tokens": 1428
+        },
+        "derived_fields": [],
+        "issues": [],
+        "quality": "totals_known",
+        "version": 1
+      }
+    },
+    {
+      "class": "fact",
+      "continuation": false,
+      "disposition": "ok",
+      "elapsed_us": 3924014,
+      "input_bytes": 14752,
+      "output_bytes": 823,
+      "proposals": [
+        {
+          "category": "persistent",
+          "payload_bytes": 158,
+          "valid_source": true
+        }
+      ],
+      "published": 0,
+      "request": 87,
+      "session": 3,
+      "source": "pilot-12",
+      "tool_bytes": 568,
+      "ttft_us": null,
+      "usage": {
+        "counts": {
+          "input_cache_write_1h_tokens": null,
+          "input_cache_write_5m_tokens": null,
+          "input_cache_write_tokens": 0,
+          "input_cached_tokens": 0,
+          "input_tokens": 1454,
+          "input_uncached_tokens": null,
+          "output_reasoning_tokens": 0,
+          "output_tokens": 54,
+          "provider_duration_ns": null,
+          "provider_web_fetch_requests": null,
+          "provider_web_search_requests": null,
+          "total_tokens": 1508
+        },
+        "derived_fields": [],
+        "issues": [],
+        "quality": "totals_known",
+        "version": 1
+      }
+    },
+    {
+      "continuation": true,
+      "elapsed_us": 3350348,
+      "input_bytes": 15753,
+      "output_bytes": 511,
+      "published": 0,
+      "request": 88,
+      "session": 3,
+      "source": "pilot-12",
+      "tool_bytes": 568,
+      "ttft_us": 3052714,
+      "usage": {
+        "counts": {
+          "input_cache_write_1h_tokens": null,
+          "input_cache_write_5m_tokens": null,
+          "input_cache_write_tokens": 0,
+          "input_cached_tokens": 0,
+          "input_tokens": 1540,
+          "input_uncached_tokens": null,
+          "output_reasoning_tokens": 0,
+          "output_tokens": 23,
+          "provider_duration_ns": null,
+          "provider_web_fetch_requests": null,
+          "provider_web_search_requests": null,
+          "total_tokens": 1563
+        },
+        "derived_fields": [],
+        "issues": [],
+        "quality": "totals_known",
+        "version": 1
+      }
+    },
+    {
+      "class": "duplicate",
+      "continuation": false,
+      "disposition": "ok",
+      "elapsed_us": 5324890,
+      "input_bytes": 16387,
+      "output_bytes": 2828,
+      "proposals": [
+        {
+          "category": "persistent",
+          "payload_bytes": 171,
+          "valid_source": true
+        }
+      ],
+      "published": 0,
+      "request": 89,
+      "session": 3,
+      "source": "pilot-13",
+      "tool_bytes": 568,
+      "ttft_us": null,
+      "usage": {
+        "counts": {
+          "input_cache_write_1h_tokens": null,
+          "input_cache_write_5m_tokens": null,
+          "input_cache_write_tokens": 0,
+          "input_cached_tokens": 0,
+          "input_tokens": 1590,
+          "input_uncached_tokens": null,
+          "output_reasoning_tokens": 19,
+          "output_tokens": 76,
+          "provider_duration_ns": null,
+          "provider_web_fetch_requests": null,
+          "provider_web_search_requests": null,
+          "total_tokens": 1666
+        },
+        "derived_fields": [],
+        "issues": [],
+        "quality": "totals_known",
+        "version": 1
+      }
+    },
+    {
+      "continuation": true,
+      "elapsed_us": 3339028,
+      "input_bytes": 19393,
+      "output_bytes": 581,
+      "published": 0,
+      "request": 90,
+      "session": 3,
+      "source": "pilot-13",
+      "tool_bytes": 568,
+      "ttft_us": 2649266,
+      "usage": {
+        "counts": {
+          "input_cache_write_1h_tokens": null,
+          "input_cache_write_5m_tokens": null,
+          "input_cache_write_tokens": 0,
+          "input_cached_tokens": 0,
+          "input_tokens": 1698,
+          "input_uncached_tokens": null,
+          "output_reasoning_tokens": 0,
+          "output_tokens": 28,
+          "provider_duration_ns": null,
+          "provider_web_fetch_requests": null,
+          "provider_web_search_requests": null,
+          "total_tokens": 1726
+        },
+        "derived_fields": [],
+        "issues": [],
+        "quality": "totals_known",
+        "version": 1
+      }
+    },
+    {
+      "class": "temporal",
+      "continuation": false,
+      "disposition": "ok",
+      "elapsed_us": 3487080,
+      "input_bytes": 20111,
+      "output_bytes": 915,
+      "proposals": [
+        {
+          "category": "temporal",
+          "payload_bytes": 204,
+          "valid_source": true
+        }
+      ],
+      "published": 0,
+      "request": 91,
+      "session": 3,
+      "source": "pilot-14",
+      "tool_bytes": 568,
+      "ttft_us": null,
+      "usage": {
+        "counts": {
+          "input_cache_write_1h_tokens": null,
+          "input_cache_write_5m_tokens": null,
+          "input_cache_write_tokens": 0,
+          "input_cached_tokens": 0,
+          "input_tokens": 1757,
+          "input_uncached_tokens": null,
+          "output_reasoning_tokens": 0,
+          "output_tokens": 66,
+          "provider_duration_ns": null,
+          "provider_web_fetch_requests": null,
+          "provider_web_search_requests": null,
+          "total_tokens": 1823
+        },
+        "derived_fields": [],
+        "issues": [],
+        "quality": "totals_known",
+        "version": 1
+      }
+    },
+    {
+      "continuation": true,
+      "elapsed_us": 4423337,
+      "input_bytes": 21204,
+      "output_bytes": 543,
+      "published": 0,
+      "request": 92,
+      "session": 3,
+      "source": "pilot-14",
+      "tool_bytes": 568,
+      "ttft_us": 4138863,
+      "usage": {
+        "counts": {
+          "input_cache_write_1h_tokens": null,
+          "input_cache_write_5m_tokens": null,
+          "input_cache_write_tokens": 0,
+          "input_cached_tokens": 0,
+          "input_tokens": 1855,
+          "input_uncached_tokens": null,
+          "output_reasoning_tokens": 0,
+          "output_tokens": 26,
+          "provider_duration_ns": null,
+          "provider_web_fetch_requests": null,
+          "provider_web_search_requests": null,
+          "total_tokens": 1881
+        },
+        "derived_fields": [],
+        "issues": [],
+        "quality": "totals_known",
+        "version": 1
+      }
+    },
+    {
+      "class": "uncertain",
+      "continuation": false,
+      "disposition": "ok",
+      "elapsed_us": 3331146,
+      "input_bytes": 21884,
+      "output_bytes": 451,
+      "proposals": [],
+      "published": 0,
+      "request": 93,
+      "session": 3,
+      "source": "pilot-15",
+      "tool_bytes": 568,
+      "ttft_us": 2466186,
+      "usage": {
+        "counts": {
+          "input_cache_write_1h_tokens": null,
+          "input_cache_write_5m_tokens": null,
+          "input_cache_write_tokens": 0,
+          "input_cached_tokens": 1152,
+          "input_tokens": 1912,
+          "input_uncached_tokens": null,
+          "output_reasoning_tokens": 0,
+          "output_tokens": 16,
+          "provider_duration_ns": null,
+          "provider_web_fetch_requests": null,
+          "provider_web_search_requests": null,
+          "total_tokens": 1928
+        },
+        "derived_fields": [],
+        "issues": [],
+        "quality": "totals_known",
+        "version": 1
+      }
+    },
+    {
+      "class": "preference",
+      "continuation": false,
+      "disposition": "ok",
+      "elapsed_us": 3591932,
+      "input_bytes": 22479,
+      "output_bytes": 943,
+      "proposals": [
+        {
+          "category": "persistent",
+          "payload_bytes": 218,
+          "valid_source": true
+        }
+      ],
+      "published": 0,
+      "request": 94,
+      "session": 3,
+      "source": "pilot-16",
+      "tool_bytes": 568,
+      "ttft_us": null,
+      "usage": {
+        "counts": {
+          "input_cache_write_1h_tokens": null,
+          "input_cache_write_5m_tokens": null,
+          "input_cache_write_tokens": 0,
+          "input_cached_tokens": 0,
+          "input_tokens": 1955,
+          "input_uncached_tokens": null,
+          "output_reasoning_tokens": 0,
+          "output_tokens": 57,
+          "provider_duration_ns": null,
+          "provider_web_fetch_requests": null,
+          "provider_web_search_requests": null,
+          "total_tokens": 2012
+        },
+        "derived_fields": [],
+        "issues": [],
+        "quality": "totals_known",
+        "version": 1
+      }
+    },
+    {
+      "continuation": true,
+      "elapsed_us": 3415469,
+      "input_bytes": 23600,
+      "output_bytes": 565,
+      "published": 0,
+      "request": 95,
+      "session": 3,
+      "source": "pilot-16",
+      "tool_bytes": 568,
+      "ttft_us": 2963823,
+      "usage": {
+        "counts": {
+          "input_cache_write_1h_tokens": null,
+          "input_cache_write_5m_tokens": null,
+          "input_cache_write_tokens": 0,
+          "input_cached_tokens": 0,
+          "input_tokens": 2044,
+          "input_uncached_tokens": null,
+          "output_reasoning_tokens": 0,
+          "output_tokens": 23,
+          "provider_duration_ns": null,
+          "provider_web_fetch_requests": null,
+          "provider_web_search_requests": null,
+          "total_tokens": 2067
+        },
+        "derived_fields": [],
+        "issues": [],
+        "quality": "totals_known",
+        "version": 1
+      }
+    },
+    {
+      "class": "empty",
+      "continuation": false,
+      "disposition": "ok",
+      "elapsed_us": 12065610,
+      "input_bytes": 24285,
+      "output_bytes": 873,
+      "proposals": [],
+      "published": 0,
+      "request": 96,
+      "session": 3,
+      "source": "pilot-17",
+      "tool_bytes": 568,
+      "ttft_us": 9237409,
+      "usage": {
+        "counts": {
+          "input_cache_write_1h_tokens": null,
+          "input_cache_write_5m_tokens": null,
+          "input_cache_write_tokens": 0,
+          "input_cached_tokens": 0,
+          "input_tokens": 2094,
+          "input_uncached_tokens": null,
+          "output_reasoning_tokens": 0,
+          "output_tokens": 74,
+          "provider_duration_ns": null,
+          "provider_web_fetch_requests": null,
+          "provider_web_search_requests": null,
+          "total_tokens": 2168
+        },
+        "derived_fields": [],
+        "issues": [],
+        "quality": "totals_known",
+        "version": 1
+      }
+    }
+  ],
+  "proposals": 39,
+  "published": 0,
+  "raw_files": {
+    "audit": {
+      "byte_count": 23938,
+      "sha256": "dd7ffd768fa71a2802a8ad3dfce233408d3331f82215902aba163540b76d56a7"
+    },
+    "metadata": {
+      "byte_count": 604,
+      "sha256": "3f2765a63d8e4967cbbc89d75545e24a465c5136fd062e03a2570bf72773ceca"
+    },
+    "progress": {
+      "byte_count": 743469,
+      "sha256": "d0f55d53ac880de3e3c04b030f2efd9243eaf0f00dda47e2503f98034b5de14a"
+    }
+  },
+  "restarted_or_retried": false,
+  "status": "incomplete_unknown_termination",
+  "version": 1
+}

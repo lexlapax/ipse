@@ -1,0 +1,1192 @@
+{
+  "aggregate_counts": {
+    "candidate_reason_codes": {
+      "correction": 6,
+      "duplicate": 3,
+      "entailed": 39,
+      "judgement_uncertain": 2,
+      "preference": 6,
+      "temporal_update": 8,
+      "uncertain_commitment": 2,
+      "useful_project_fact": 20
+    },
+    "candidates": 39,
+    "category_appropriate": {
+      "false": 0,
+      "null": 0,
+      "true": 39
+    },
+    "duplicate_of_prior_same_session": {
+      "false": 36,
+      "true": 3
+    },
+    "intake_relation": {
+      "duplicate": 3,
+      "new": 28,
+      "replacement": 6,
+      "uncertain": 2
+    },
+    "omitted_opportunity": {
+      "durable": 0,
+      "none": 17,
+      "temporal": 0,
+      "uncertain": 1
+    },
+    "omitted_rows": 18,
+    "opportunity": {
+      "durable": 26,
+      "none": 20,
+      "temporal": 8,
+      "uncertain": 3
+    },
+    "row_reason_codes": {
+      "appropriate_omission": 17,
+      "correction": 6,
+      "duplicate": 3,
+      "ephemeral_task": 12,
+      "judgement_uncertain": 3,
+      "preference": 6,
+      "quoted_instruction": 3,
+      "temporal_update": 8,
+      "third_party_unverified": 2,
+      "uncertain_commitment": 3,
+      "useful_project_fact": 20
+    },
+    "rows": 57,
+    "source_entailment": {
+      "overclaim": 0,
+      "supported": 39,
+      "uncertain": 0
+    },
+    "useful": {
+      "false": 3,
+      "null": 2,
+      "true": 34
+    }
+  },
+  "candidate_index_base": 0,
+  "input_sha256": "ad0b7fc7a111386551896c95eab0f375236ba588d9cadb2619ca400e893468c8",
+  "limitations": [
+    "exposed_development_data",
+    "partial_run",
+    "agent_judgement",
+    "no_heldout",
+    "no_human"
+  ],
+  "private_labels_sha256": "a81a4df2599ca08865394fffff93fc8a28edaa03649161456caf00abaaf4d83a",
+  "rows": [
+    {
+      "candidates": [
+        {
+          "category_appropriate": true,
+          "duplicate_of_prior_same_session": false,
+          "index": 0,
+          "intake_relation": "new",
+          "reason_codes": [
+            "entailed",
+            "useful_project_fact"
+          ],
+          "source_entailment": "supported",
+          "useful": true
+        }
+      ],
+      "id": "s1-r1",
+      "opportunity": "durable",
+      "reason_codes": [
+        "useful_project_fact"
+      ],
+      "sequence": 1,
+      "session": 1
+    },
+    {
+      "candidates": [
+        {
+          "category_appropriate": true,
+          "duplicate_of_prior_same_session": false,
+          "index": 0,
+          "intake_relation": "new",
+          "reason_codes": [
+            "entailed",
+            "preference"
+          ],
+          "source_entailment": "supported",
+          "useful": true
+        }
+      ],
+      "id": "s1-r3",
+      "opportunity": "durable",
+      "reason_codes": [
+        "preference"
+      ],
+      "sequence": 3,
+      "session": 1
+    },
+    {
+      "candidates": [],
+      "id": "s1-r5",
+      "opportunity": "none",
+      "reason_codes": [
+        "ephemeral_task",
+        "appropriate_omission"
+      ],
+      "sequence": 5,
+      "session": 1
+    },
+    {
+      "candidates": [
+        {
+          "category_appropriate": true,
+          "duplicate_of_prior_same_session": false,
+          "index": 0,
+          "intake_relation": "new",
+          "reason_codes": [
+            "entailed",
+            "useful_project_fact"
+          ],
+          "source_entailment": "supported",
+          "useful": true
+        }
+      ],
+      "id": "s1-r6",
+      "opportunity": "durable",
+      "reason_codes": [
+        "useful_project_fact"
+      ],
+      "sequence": 6,
+      "session": 1
+    },
+    {
+      "candidates": [
+        {
+          "category_appropriate": true,
+          "duplicate_of_prior_same_session": false,
+          "index": 0,
+          "intake_relation": "new",
+          "reason_codes": [
+            "entailed",
+            "temporal_update"
+          ],
+          "source_entailment": "supported",
+          "useful": true
+        }
+      ],
+      "id": "s1-r8",
+      "opportunity": "temporal",
+      "reason_codes": [
+        "temporal_update"
+      ],
+      "sequence": 8,
+      "session": 1
+    },
+    {
+      "candidates": [],
+      "id": "s1-r10",
+      "opportunity": "none",
+      "reason_codes": [
+        "ephemeral_task",
+        "appropriate_omission"
+      ],
+      "sequence": 10,
+      "session": 1
+    },
+    {
+      "candidates": [
+        {
+          "category_appropriate": true,
+          "duplicate_of_prior_same_session": false,
+          "index": 0,
+          "intake_relation": "replacement",
+          "reason_codes": [
+            "entailed",
+            "correction",
+            "useful_project_fact"
+          ],
+          "source_entailment": "supported",
+          "useful": true
+        }
+      ],
+      "id": "s1-r11",
+      "opportunity": "durable",
+      "reason_codes": [
+        "correction",
+        "useful_project_fact"
+      ],
+      "sequence": 11,
+      "session": 1
+    },
+    {
+      "candidates": [],
+      "id": "s1-r13",
+      "opportunity": "none",
+      "reason_codes": [
+        "quoted_instruction",
+        "appropriate_omission"
+      ],
+      "sequence": 13,
+      "session": 1
+    },
+    {
+      "candidates": [
+        {
+          "category_appropriate": true,
+          "duplicate_of_prior_same_session": false,
+          "index": 0,
+          "intake_relation": "new",
+          "reason_codes": [
+            "entailed",
+            "useful_project_fact"
+          ],
+          "source_entailment": "supported",
+          "useful": true
+        }
+      ],
+      "id": "s1-r14",
+      "opportunity": "durable",
+      "reason_codes": [
+        "useful_project_fact"
+      ],
+      "sequence": 14,
+      "session": 1
+    },
+    {
+      "candidates": [],
+      "id": "s1-r16",
+      "opportunity": "none",
+      "reason_codes": [
+        "ephemeral_task",
+        "appropriate_omission"
+      ],
+      "sequence": 16,
+      "session": 1
+    },
+    {
+      "candidates": [
+        {
+          "category_appropriate": true,
+          "duplicate_of_prior_same_session": false,
+          "index": 0,
+          "intake_relation": "new",
+          "reason_codes": [
+            "entailed",
+            "useful_project_fact"
+          ],
+          "source_entailment": "supported",
+          "useful": true
+        }
+      ],
+      "id": "s1-r17",
+      "opportunity": "durable",
+      "reason_codes": [
+        "useful_project_fact"
+      ],
+      "sequence": 17,
+      "session": 1
+    },
+    {
+      "candidates": [
+        {
+          "category_appropriate": true,
+          "duplicate_of_prior_same_session": false,
+          "index": 0,
+          "intake_relation": "new",
+          "reason_codes": [
+            "entailed",
+            "useful_project_fact"
+          ],
+          "source_entailment": "supported",
+          "useful": true
+        }
+      ],
+      "id": "s1-r19",
+      "opportunity": "durable",
+      "reason_codes": [
+        "useful_project_fact"
+      ],
+      "sequence": 19,
+      "session": 1
+    },
+    {
+      "candidates": [
+        {
+          "category_appropriate": true,
+          "duplicate_of_prior_same_session": true,
+          "index": 0,
+          "intake_relation": "duplicate",
+          "reason_codes": [
+            "entailed",
+            "duplicate"
+          ],
+          "source_entailment": "supported",
+          "useful": false
+        }
+      ],
+      "id": "s1-r21",
+      "opportunity": "none",
+      "reason_codes": [
+        "duplicate"
+      ],
+      "sequence": 21,
+      "session": 1
+    },
+    {
+      "candidates": [
+        {
+          "category_appropriate": true,
+          "duplicate_of_prior_same_session": false,
+          "index": 0,
+          "intake_relation": "replacement",
+          "reason_codes": [
+            "entailed",
+            "temporal_update",
+            "correction"
+          ],
+          "source_entailment": "supported",
+          "useful": true
+        }
+      ],
+      "id": "s1-r23",
+      "opportunity": "temporal",
+      "reason_codes": [
+        "temporal_update",
+        "correction"
+      ],
+      "sequence": 23,
+      "session": 1
+    },
+    {
+      "candidates": [
+        {
+          "category_appropriate": true,
+          "duplicate_of_prior_same_session": false,
+          "index": 0,
+          "intake_relation": "uncertain",
+          "reason_codes": [
+            "entailed",
+            "uncertain_commitment",
+            "judgement_uncertain"
+          ],
+          "source_entailment": "supported",
+          "useful": null
+        }
+      ],
+      "id": "s1-r25",
+      "opportunity": "uncertain",
+      "reason_codes": [
+        "uncertain_commitment",
+        "judgement_uncertain"
+      ],
+      "sequence": 25,
+      "session": 1
+    },
+    {
+      "candidates": [
+        {
+          "category_appropriate": true,
+          "duplicate_of_prior_same_session": false,
+          "index": 0,
+          "intake_relation": "new",
+          "reason_codes": [
+            "entailed",
+            "preference"
+          ],
+          "source_entailment": "supported",
+          "useful": true
+        }
+      ],
+      "id": "s1-r27",
+      "opportunity": "durable",
+      "reason_codes": [
+        "preference"
+      ],
+      "sequence": 27,
+      "session": 1
+    },
+    {
+      "candidates": [],
+      "id": "s1-r29",
+      "opportunity": "none",
+      "reason_codes": [
+        "ephemeral_task",
+        "appropriate_omission"
+      ],
+      "sequence": 29,
+      "session": 1
+    },
+    {
+      "candidates": [],
+      "id": "s1-r30",
+      "opportunity": "none",
+      "reason_codes": [
+        "third_party_unverified",
+        "appropriate_omission"
+      ],
+      "sequence": 30,
+      "session": 1
+    },
+    {
+      "candidates": [
+        {
+          "category_appropriate": true,
+          "duplicate_of_prior_same_session": false,
+          "index": 0,
+          "intake_relation": "new",
+          "reason_codes": [
+            "entailed",
+            "useful_project_fact"
+          ],
+          "source_entailment": "supported",
+          "useful": true
+        }
+      ],
+      "id": "s1-r31",
+      "opportunity": "durable",
+      "reason_codes": [
+        "useful_project_fact"
+      ],
+      "sequence": 31,
+      "session": 1
+    },
+    {
+      "candidates": [
+        {
+          "category_appropriate": true,
+          "duplicate_of_prior_same_session": false,
+          "index": 0,
+          "intake_relation": "new",
+          "reason_codes": [
+            "entailed",
+            "temporal_update"
+          ],
+          "source_entailment": "supported",
+          "useful": true
+        }
+      ],
+      "id": "s1-r33",
+      "opportunity": "temporal",
+      "reason_codes": [
+        "temporal_update"
+      ],
+      "sequence": 33,
+      "session": 1
+    },
+    {
+      "candidates": [
+        {
+          "category_appropriate": true,
+          "duplicate_of_prior_same_session": false,
+          "index": 0,
+          "intake_relation": "new",
+          "reason_codes": [
+            "entailed",
+            "useful_project_fact"
+          ],
+          "source_entailment": "supported",
+          "useful": true
+        }
+      ],
+      "id": "s2-r35",
+      "opportunity": "durable",
+      "reason_codes": [
+        "useful_project_fact"
+      ],
+      "sequence": 35,
+      "session": 2
+    },
+    {
+      "candidates": [
+        {
+          "category_appropriate": true,
+          "duplicate_of_prior_same_session": false,
+          "index": 0,
+          "intake_relation": "new",
+          "reason_codes": [
+            "entailed",
+            "preference"
+          ],
+          "source_entailment": "supported",
+          "useful": true
+        }
+      ],
+      "id": "s2-r37",
+      "opportunity": "durable",
+      "reason_codes": [
+        "preference"
+      ],
+      "sequence": 37,
+      "session": 2
+    },
+    {
+      "candidates": [],
+      "id": "s2-r39",
+      "opportunity": "none",
+      "reason_codes": [
+        "ephemeral_task",
+        "appropriate_omission"
+      ],
+      "sequence": 39,
+      "session": 2
+    },
+    {
+      "candidates": [
+        {
+          "category_appropriate": true,
+          "duplicate_of_prior_same_session": false,
+          "index": 0,
+          "intake_relation": "new",
+          "reason_codes": [
+            "entailed",
+            "useful_project_fact"
+          ],
+          "source_entailment": "supported",
+          "useful": true
+        }
+      ],
+      "id": "s2-r40",
+      "opportunity": "durable",
+      "reason_codes": [
+        "useful_project_fact"
+      ],
+      "sequence": 40,
+      "session": 2
+    },
+    {
+      "candidates": [
+        {
+          "category_appropriate": true,
+          "duplicate_of_prior_same_session": false,
+          "index": 0,
+          "intake_relation": "new",
+          "reason_codes": [
+            "entailed",
+            "temporal_update"
+          ],
+          "source_entailment": "supported",
+          "useful": true
+        }
+      ],
+      "id": "s2-r42",
+      "opportunity": "temporal",
+      "reason_codes": [
+        "temporal_update"
+      ],
+      "sequence": 42,
+      "session": 2
+    },
+    {
+      "candidates": [],
+      "id": "s2-r44",
+      "opportunity": "none",
+      "reason_codes": [
+        "ephemeral_task",
+        "appropriate_omission"
+      ],
+      "sequence": 44,
+      "session": 2
+    },
+    {
+      "candidates": [
+        {
+          "category_appropriate": true,
+          "duplicate_of_prior_same_session": false,
+          "index": 0,
+          "intake_relation": "replacement",
+          "reason_codes": [
+            "entailed",
+            "correction",
+            "useful_project_fact"
+          ],
+          "source_entailment": "supported",
+          "useful": true
+        }
+      ],
+      "id": "s2-r45",
+      "opportunity": "durable",
+      "reason_codes": [
+        "correction",
+        "useful_project_fact"
+      ],
+      "sequence": 45,
+      "session": 2
+    },
+    {
+      "candidates": [],
+      "id": "s2-r47",
+      "opportunity": "none",
+      "reason_codes": [
+        "quoted_instruction",
+        "appropriate_omission"
+      ],
+      "sequence": 47,
+      "session": 2
+    },
+    {
+      "candidates": [
+        {
+          "category_appropriate": true,
+          "duplicate_of_prior_same_session": false,
+          "index": 0,
+          "intake_relation": "new",
+          "reason_codes": [
+            "entailed",
+            "useful_project_fact"
+          ],
+          "source_entailment": "supported",
+          "useful": true
+        }
+      ],
+      "id": "s2-r48",
+      "opportunity": "durable",
+      "reason_codes": [
+        "useful_project_fact"
+      ],
+      "sequence": 48,
+      "session": 2
+    },
+    {
+      "candidates": [],
+      "id": "s2-r50",
+      "opportunity": "none",
+      "reason_codes": [
+        "ephemeral_task",
+        "appropriate_omission"
+      ],
+      "sequence": 50,
+      "session": 2
+    },
+    {
+      "candidates": [
+        {
+          "category_appropriate": true,
+          "duplicate_of_prior_same_session": false,
+          "index": 0,
+          "intake_relation": "new",
+          "reason_codes": [
+            "entailed",
+            "useful_project_fact"
+          ],
+          "source_entailment": "supported",
+          "useful": true
+        }
+      ],
+      "id": "s2-r51",
+      "opportunity": "durable",
+      "reason_codes": [
+        "useful_project_fact"
+      ],
+      "sequence": 51,
+      "session": 2
+    },
+    {
+      "candidates": [
+        {
+          "category_appropriate": true,
+          "duplicate_of_prior_same_session": false,
+          "index": 0,
+          "intake_relation": "new",
+          "reason_codes": [
+            "entailed",
+            "useful_project_fact"
+          ],
+          "source_entailment": "supported",
+          "useful": true
+        }
+      ],
+      "id": "s2-r53",
+      "opportunity": "durable",
+      "reason_codes": [
+        "useful_project_fact"
+      ],
+      "sequence": 53,
+      "session": 2
+    },
+    {
+      "candidates": [
+        {
+          "category_appropriate": true,
+          "duplicate_of_prior_same_session": true,
+          "index": 0,
+          "intake_relation": "duplicate",
+          "reason_codes": [
+            "entailed",
+            "duplicate"
+          ],
+          "source_entailment": "supported",
+          "useful": false
+        }
+      ],
+      "id": "s2-r55",
+      "opportunity": "none",
+      "reason_codes": [
+        "duplicate"
+      ],
+      "sequence": 55,
+      "session": 2
+    },
+    {
+      "candidates": [
+        {
+          "category_appropriate": true,
+          "duplicate_of_prior_same_session": false,
+          "index": 0,
+          "intake_relation": "replacement",
+          "reason_codes": [
+            "entailed",
+            "temporal_update",
+            "correction"
+          ],
+          "source_entailment": "supported",
+          "useful": true
+        }
+      ],
+      "id": "s2-r57",
+      "opportunity": "temporal",
+      "reason_codes": [
+        "temporal_update",
+        "correction"
+      ],
+      "sequence": 57,
+      "session": 2
+    },
+    {
+      "candidates": [
+        {
+          "category_appropriate": true,
+          "duplicate_of_prior_same_session": false,
+          "index": 0,
+          "intake_relation": "uncertain",
+          "reason_codes": [
+            "entailed",
+            "uncertain_commitment",
+            "judgement_uncertain"
+          ],
+          "source_entailment": "supported",
+          "useful": null
+        }
+      ],
+      "id": "s2-r59",
+      "opportunity": "uncertain",
+      "reason_codes": [
+        "uncertain_commitment",
+        "judgement_uncertain"
+      ],
+      "sequence": 59,
+      "session": 2
+    },
+    {
+      "candidates": [
+        {
+          "category_appropriate": true,
+          "duplicate_of_prior_same_session": false,
+          "index": 0,
+          "intake_relation": "new",
+          "reason_codes": [
+            "entailed",
+            "preference"
+          ],
+          "source_entailment": "supported",
+          "useful": true
+        }
+      ],
+      "id": "s2-r61",
+      "opportunity": "durable",
+      "reason_codes": [
+        "preference"
+      ],
+      "sequence": 61,
+      "session": 2
+    },
+    {
+      "candidates": [],
+      "id": "s2-r63",
+      "opportunity": "none",
+      "reason_codes": [
+        "ephemeral_task",
+        "appropriate_omission"
+      ],
+      "sequence": 63,
+      "session": 2
+    },
+    {
+      "candidates": [],
+      "id": "s2-r64",
+      "opportunity": "none",
+      "reason_codes": [
+        "third_party_unverified",
+        "appropriate_omission"
+      ],
+      "sequence": 64,
+      "session": 2
+    },
+    {
+      "candidates": [
+        {
+          "category_appropriate": true,
+          "duplicate_of_prior_same_session": false,
+          "index": 0,
+          "intake_relation": "new",
+          "reason_codes": [
+            "entailed",
+            "useful_project_fact"
+          ],
+          "source_entailment": "supported",
+          "useful": true
+        }
+      ],
+      "id": "s2-r65",
+      "opportunity": "durable",
+      "reason_codes": [
+        "useful_project_fact"
+      ],
+      "sequence": 65,
+      "session": 2
+    },
+    {
+      "candidates": [
+        {
+          "category_appropriate": true,
+          "duplicate_of_prior_same_session": false,
+          "index": 0,
+          "intake_relation": "new",
+          "reason_codes": [
+            "entailed",
+            "temporal_update"
+          ],
+          "source_entailment": "supported",
+          "useful": true
+        }
+      ],
+      "id": "s2-r67",
+      "opportunity": "temporal",
+      "reason_codes": [
+        "temporal_update"
+      ],
+      "sequence": 67,
+      "session": 2
+    },
+    {
+      "candidates": [
+        {
+          "category_appropriate": true,
+          "duplicate_of_prior_same_session": false,
+          "index": 0,
+          "intake_relation": "new",
+          "reason_codes": [
+            "entailed",
+            "useful_project_fact"
+          ],
+          "source_entailment": "supported",
+          "useful": true
+        }
+      ],
+      "id": "s3-r69",
+      "opportunity": "durable",
+      "reason_codes": [
+        "useful_project_fact"
+      ],
+      "sequence": 69,
+      "session": 3
+    },
+    {
+      "candidates": [
+        {
+          "category_appropriate": true,
+          "duplicate_of_prior_same_session": false,
+          "index": 0,
+          "intake_relation": "new",
+          "reason_codes": [
+            "entailed",
+            "preference"
+          ],
+          "source_entailment": "supported",
+          "useful": true
+        }
+      ],
+      "id": "s3-r71",
+      "opportunity": "durable",
+      "reason_codes": [
+        "preference"
+      ],
+      "sequence": 71,
+      "session": 3
+    },
+    {
+      "candidates": [],
+      "id": "s3-r73",
+      "opportunity": "none",
+      "reason_codes": [
+        "ephemeral_task",
+        "appropriate_omission"
+      ],
+      "sequence": 73,
+      "session": 3
+    },
+    {
+      "candidates": [
+        {
+          "category_appropriate": true,
+          "duplicate_of_prior_same_session": false,
+          "index": 0,
+          "intake_relation": "new",
+          "reason_codes": [
+            "entailed",
+            "useful_project_fact"
+          ],
+          "source_entailment": "supported",
+          "useful": true
+        }
+      ],
+      "id": "s3-r74",
+      "opportunity": "durable",
+      "reason_codes": [
+        "useful_project_fact"
+      ],
+      "sequence": 74,
+      "session": 3
+    },
+    {
+      "candidates": [
+        {
+          "category_appropriate": true,
+          "duplicate_of_prior_same_session": false,
+          "index": 0,
+          "intake_relation": "new",
+          "reason_codes": [
+            "entailed",
+            "temporal_update"
+          ],
+          "source_entailment": "supported",
+          "useful": true
+        }
+      ],
+      "id": "s3-r76",
+      "opportunity": "temporal",
+      "reason_codes": [
+        "temporal_update"
+      ],
+      "sequence": 76,
+      "session": 3
+    },
+    {
+      "candidates": [],
+      "id": "s3-r78",
+      "opportunity": "none",
+      "reason_codes": [
+        "ephemeral_task",
+        "appropriate_omission"
+      ],
+      "sequence": 78,
+      "session": 3
+    },
+    {
+      "candidates": [
+        {
+          "category_appropriate": true,
+          "duplicate_of_prior_same_session": false,
+          "index": 0,
+          "intake_relation": "replacement",
+          "reason_codes": [
+            "entailed",
+            "correction",
+            "useful_project_fact"
+          ],
+          "source_entailment": "supported",
+          "useful": true
+        }
+      ],
+      "id": "s3-r79",
+      "opportunity": "durable",
+      "reason_codes": [
+        "correction",
+        "useful_project_fact"
+      ],
+      "sequence": 79,
+      "session": 3
+    },
+    {
+      "candidates": [],
+      "id": "s3-r81",
+      "opportunity": "none",
+      "reason_codes": [
+        "quoted_instruction",
+        "appropriate_omission"
+      ],
+      "sequence": 81,
+      "session": 3
+    },
+    {
+      "candidates": [
+        {
+          "category_appropriate": true,
+          "duplicate_of_prior_same_session": false,
+          "index": 0,
+          "intake_relation": "new",
+          "reason_codes": [
+            "entailed",
+            "useful_project_fact"
+          ],
+          "source_entailment": "supported",
+          "useful": true
+        }
+      ],
+      "id": "s3-r82",
+      "opportunity": "durable",
+      "reason_codes": [
+        "useful_project_fact"
+      ],
+      "sequence": 82,
+      "session": 3
+    },
+    {
+      "candidates": [],
+      "id": "s3-r84",
+      "opportunity": "none",
+      "reason_codes": [
+        "ephemeral_task",
+        "appropriate_omission"
+      ],
+      "sequence": 84,
+      "session": 3
+    },
+    {
+      "candidates": [
+        {
+          "category_appropriate": true,
+          "duplicate_of_prior_same_session": false,
+          "index": 0,
+          "intake_relation": "new",
+          "reason_codes": [
+            "entailed",
+            "useful_project_fact"
+          ],
+          "source_entailment": "supported",
+          "useful": true
+        }
+      ],
+      "id": "s3-r85",
+      "opportunity": "durable",
+      "reason_codes": [
+        "useful_project_fact"
+      ],
+      "sequence": 85,
+      "session": 3
+    },
+    {
+      "candidates": [
+        {
+          "category_appropriate": true,
+          "duplicate_of_prior_same_session": false,
+          "index": 0,
+          "intake_relation": "new",
+          "reason_codes": [
+            "entailed",
+            "useful_project_fact"
+          ],
+          "source_entailment": "supported",
+          "useful": true
+        }
+      ],
+      "id": "s3-r87",
+      "opportunity": "durable",
+      "reason_codes": [
+        "useful_project_fact"
+      ],
+      "sequence": 87,
+      "session": 3
+    },
+    {
+      "candidates": [
+        {
+          "category_appropriate": true,
+          "duplicate_of_prior_same_session": true,
+          "index": 0,
+          "intake_relation": "duplicate",
+          "reason_codes": [
+            "entailed",
+            "duplicate"
+          ],
+          "source_entailment": "supported",
+          "useful": false
+        }
+      ],
+      "id": "s3-r89",
+      "opportunity": "none",
+      "reason_codes": [
+        "duplicate"
+      ],
+      "sequence": 89,
+      "session": 3
+    },
+    {
+      "candidates": [
+        {
+          "category_appropriate": true,
+          "duplicate_of_prior_same_session": false,
+          "index": 0,
+          "intake_relation": "replacement",
+          "reason_codes": [
+            "entailed",
+            "temporal_update",
+            "correction"
+          ],
+          "source_entailment": "supported",
+          "useful": true
+        }
+      ],
+      "id": "s3-r91",
+      "opportunity": "temporal",
+      "reason_codes": [
+        "temporal_update",
+        "correction"
+      ],
+      "sequence": 91,
+      "session": 3
+    },
+    {
+      "candidates": [],
+      "id": "s3-r93",
+      "opportunity": "uncertain",
+      "reason_codes": [
+        "uncertain_commitment",
+        "judgement_uncertain"
+      ],
+      "sequence": 93,
+      "session": 3
+    },
+    {
+      "candidates": [
+        {
+          "category_appropriate": true,
+          "duplicate_of_prior_same_session": false,
+          "index": 0,
+          "intake_relation": "new",
+          "reason_codes": [
+            "entailed",
+            "preference"
+          ],
+          "source_entailment": "supported",
+          "useful": true
+        }
+      ],
+      "id": "s3-r94",
+      "opportunity": "durable",
+      "reason_codes": [
+        "preference"
+      ],
+      "sequence": 94,
+      "session": 3
+    },
+    {
+      "candidates": [],
+      "id": "s3-r96",
+      "opportunity": "none",
+      "reason_codes": [
+        "ephemeral_task",
+        "appropriate_omission"
+      ],
+      "sequence": 96,
+      "session": 3
+    }
+  ],
+  "scope": "One independent agent's development judgments over partial exposed synthetic candidates; no held-out, human or protected capture qualification",
+  "version": 1
+}

@@ -39,6 +39,9 @@ accounting and audit failures. They do not qualify model behavior.
 Public progress contains numerical request metrics and proposal validation
 summaries. It omits candidate text, source quotations and assistant prose. This
 default cannot support an independent entailment or usefulness judgment later.
+Its `usage` field uses Ipse's normalized counter record, including explicit
+unknown/invalid counter quality. Raw provider usage is excluded because it can
+contain attribution content as well as token counters.
 
 To retain inspectable inputs, supply a new audit directory explicitly. Start with
 an already configured and authenticated Ipse ChatGPT profile without extensions;

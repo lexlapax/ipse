@@ -243,7 +243,7 @@ defmodule Ipse.Development.Knowledge.Pilot do
              input_bytes: byte_size(JSON.encode!(messages)),
              tool_bytes: byte_size(JSON.encode!(@tools)),
              output_bytes: byte_size(JSON.encode!(assistant)),
-             usage: usage
+             usage: Ipse.Usage.normalize(config.provider, usage)
            }}
 
         _ ->
