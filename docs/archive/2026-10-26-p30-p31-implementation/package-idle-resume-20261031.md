@@ -104,3 +104,32 @@ this does not establish real Word fidelity or full installed knowledge behavior.
 Logs use `/tmp/ipse-package-267b3e6-*.log`,
 `/tmp/ipse-documents-267b3e6-*.log` and
 `/tmp/ipse-current-legacy-sdk-session-20261031.log`.
+
+## Passing final package
+
+The clean build at `e25d235d1c400e14fd0cbbbed7ca07e51a672443` passed the complete
+generic installed-package command above. Its archive SHA256 is
+`468860ca983c81379c5205d0b30121ccc1a6559d0d3fd19902b9ca061bd6bf15`.
+The [machine receipt](installed-package-20261031.json) retains the source identity,
+archive and independent artifact hashes, all five final reports and full-log
+hashes. The package checkout remained tracked-clean after building.
+
+Both independent artifacts then passed against this final runtime: seven
+decision checks in each of source/installed modes, and six document checks in
+each mode. Artifact inventories were unchanged. The generic package proof also
+passed offline setup/doctor, permissions, upgrade/refusal/recovery, launcher and
+workspace selection, shell uncertainty/output bounds, the synthetic explicit
+memory workload, handoff, extension/usage/budget demos, MCP, serial/parallel
+delegation and helper cleanup/locks. Runtime PATH excluded the system development
+toolchain; every proof used a private home and precompiled harness.
+
+These are local Linux synthetic checks, not hosted macOS, native-policy support
+for other kernels, real Word fidelity, live engines, semantic model quality,
+full installed knowledge behavior or a passing whole-source baseline. No release
+was published. Earlier archive failures above remain failures.
+
+A separate read-only Ollama inventory made no inference request or download.
+The selected loopback server now reports `0.40.13`, rather than the provisioning
+record's `0.40.5`; the primary Qwen embedding and 4B answer tags retain their full
+recorded weight digests. This is current availability, not qualification of the
+updated server, offline execution or protected local preset.

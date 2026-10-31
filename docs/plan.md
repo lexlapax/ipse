@@ -838,11 +838,15 @@ The [2026-10-31 local follow-up](archive/2026-10-26-p30-p31-implementation/curre
 has current typed/Session regressions and protected shadow controls over eight
 native-reviewed notes from two original Sessions. It does not qualify a
 production consumer or replace the failed whole-source baseline.
+The later [exact Linux package proof](archive/2026-10-26-p30-p31-implementation/package-idle-resume-20261031.md#passing-final-package)
+passes generic installed checks and the independent synthetic decision/document
+artifacts; full-source, consumer-quality and installed knowledge qualification
+remain open.
 
 | Package | Output and prerequisites |
 | --- | --- |
 | P30A | Versioned neutral text contract and pure OpenAI/System One wire subsets implemented; synthetic fixtures and finite experiment/benefit criteria prepared; fixed foundation baseline and incremental audit pass. [Developer contract](developer/decisions.md) |
-| P30B | In progress: operator-only profiles, bounded owned HTTP, `host.decision`, Session/replay bindings, v3 usage/prices and shared budgets implemented; [current-source synthetic controls](archive/2026-10-26-p30-p31-implementation/p30-current-decision-followup.md) cover zero-egress refusal, hosted/compatible wire, tampering, owner loss, inert resume and child approvals. A separately built decision artifact passed synthetic source and installed-runtime checks; full fixed-source/package baseline remains pending, and live account access is unverified. No qualified consumer is implied |
+| P30B | In progress: operator-only profiles, bounded owned HTTP, `host.decision`, Session/replay bindings, v3 usage/prices and shared budgets implemented; [current-source synthetic controls](archive/2026-10-26-p30-p31-implementation/p30-current-decision-followup.md) cover zero-egress refusal, hosted/compatible wire, tampering, owner loss, inert resume and child approvals. A separately built decision artifact and the exact generic Linux package pass synthetic installed checks; the full-source baseline still fails, and live account access is unverified. No qualified consumer is implied |
 | P30C | In progress: [pure Knowledge planners and zero-call controls](archive/2026-10-26-p30-p31-implementation/p30c-pure-policy.md) have an [independent pure-scope audit and reporting correction](archive/2026-10-26-p30-p31-implementation/p30c-pure-policy-audit.md). A later [coverage-gap repair](archive/2026-10-26-p30-p31-implementation/p30c-coverage-followup.md) has a [separate pure-scope review and adversarial grid](archive/2026-10-26-p30-p31-implementation/p30c-coverage-independent-audit.md). A [synthetic planner-to-Session fixture](archive/2026-10-26-p30-p31-implementation/p30-current-decision-followup.md#synthetic-planner-to-session-shadow-control) covers approval and advice mapping; protected helper integration and qualified consumer selection remain open after B and P31B |
 | P30D | Implement bounded experiments: notes selection beyond the context budget and candidate assessment in replay/shadow mode on real main-tool inputs; after C and P31E |
 | P30E | Evaluate frozen experiments against engine-free baselines and installed workflows; record useful, rejected/no-benefit and unverified dispositions plus separate live/model access; after D; document/graph routing is a later independently qualified addition |
