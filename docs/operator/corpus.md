@@ -219,8 +219,11 @@ watch this file or automatically refresh it.
 
 Word tables may use nonhidden named styles. A table style with hidden-text
 properties or an unresolved or ambiguous reference refuses extraction; numbered
-list properties also remain unsupported. The current DOCX recipe is
-`ipse-documents-v12`. Reacquire and explicitly replace an older source when you
+list properties also remain unsupported. A document with both `styles.xml` and
+`stylesWithEffects.xml` is readable only when their checked style graphs agree.
+Different style types, inheritance, defaults or hidden-text settings refuse;
+unsupported effect namespaces also refuse. The current DOCX recipe is
+`ipse-documents-v13`. Reacquire and explicitly replace an older source when you
 need the newer recipe; existing extractions are not silently rebuilt.
 
 For replacement, inspect the source and use its current revision with the next

@@ -52,6 +52,48 @@ defmodule Ipse.Development.Verification.Documents do
       )
 
     {:ok, %{"segments" => [%{"text" => "visible inserted"}]}} = extract.(docx, "development.docx")
+
+    styles =
+      "<w:styles xmlns:w=\"http://schemas.openxmlformats.org/wordprocessingml/2006/main\"><w:style w:type=\"paragraph\" w:default=\"1\" w:styleId=\"Normal\"/></w:styles>"
+
+    style_links =
+      "<Relationships xmlns=\"http://schemas.openxmlformats.org/package/2006/relationships\"><Relationship Id=\"s\" Type=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles\" Target=\"styles.xml\"/><Relationship Id=\"e\" Type=\"http://schemas.microsoft.com/office/2007/relationships/stylesWithEffects\" Target=\"stylesWithEffects.xml\"/></Relationships>"
+
+    style_types =
+      String.replace(
+        content_types,
+        "</Types>",
+        "<Override PartName=\"/word/styles.xml\" ContentType=\"application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml\"/><Override PartName=\"/word/stylesWithEffects.xml\" ContentType=\"application/vnd.ms-word.stylesWithEffects+xml\"/></Types>"
+      )
+
+    styled_document = fn alternate ->
+      {:ok, {_, bytes}} =
+        :zip.create(
+          ~c"styles.docx",
+          [
+            {~c"word/document.xml", xml},
+            {~c"_rels/.rels", root_relationship},
+            {~c"[Content_Types].xml", style_types},
+            {~c"word/_rels/document.xml.rels", style_links},
+            {~c"word/styles.xml", styles},
+            {~c"word/stylesWithEffects.xml", alternate}
+          ],
+          [:memory]
+        )
+
+      bytes
+    end
+
+    {:ok,
+     %{
+       "extraction_version" => "ipse-documents-v13",
+       "status" => "complete",
+       "segments" => [%{"text" => "visible inserted"}]
+     }} = extract.(styled_document.(styles), "styles.docx")
+
+    {:error, :unsupported_docx_style_visibility} =
+      extract.(styled_document.(String.replace(styles, "Normal", "Other")), "mismatch.docx")
+
     {:error, :pdf_experimental_unavailable} = extract.(pdf(), "fixture.pdf")
     {:error, :legacy_word_unsupported} = extract.("legacy fixture", "fixture.doc")
 
@@ -88,7 +130,7 @@ defmodule Ipse.Development.Verification.Documents do
       "pdf_resource_backend" => backend,
       "checks" =>
         Map.new(
-          ~w(artifact_modules text_unicode docx_revision pdf_default_off pdf_explicit_extraction dependency_notices),
+          ~w(artifact_modules text_unicode docx_revision docx_matching_style_effects pdf_default_off pdf_explicit_extraction dependency_notices),
           &{&1, true}
         )
     }

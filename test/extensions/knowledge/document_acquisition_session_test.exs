@@ -457,71 +457,94 @@ defmodule Ipse.KnowledgeDocumentAcquisitionSessionTest do
     assert :ok = Session.close_confirmed(resumed)
   end
 
-  @tag :docx_table_style_session
-  test "workspace acquisition preserves a named table style through its versioned citation", c do
-    run = open(c)
-    word = "http://schemas.openxmlformats.org/wordprocessingml/2006/main"
-    relations = "http://schemas.openxmlformats.org/package/2006/relationships"
-    prefix = "http://schemas.openxmlformats.org/officeDocument/2006/relationships/"
-    text = "Vega café migration requires an audit."
+  for effects? <- [false, true] do
+    @tag :docx_table_style_session
+    @tag docx_effects: effects?
+    test "workspace acquisition preserves a named table style through its versioned citation (effects #{effects?})",
+         c do
+      effects? = c.docx_effects
+      run = open(c)
+      word = "http://schemas.openxmlformats.org/wordprocessingml/2006/main"
+      relations = "http://schemas.openxmlformats.org/package/2006/relationships"
+      prefix = "http://schemas.openxmlformats.org/officeDocument/2006/relationships/"
+      text = "Vega café migration requires an audit."
 
-    body =
-      "<w:tbl><w:tblPr><w:tblStyle w:val=\"grid\"/></w:tblPr><w:tr><w:tc><w:p><w:r><w:t>" <>
-        text <> "</w:t></w:r></w:p></w:tc></w:tr></w:tbl>"
+      styles =
+        "<w:styles xmlns:w=\"#{word}\"><w:style w:type=\"table\" w:styleId=\"grid\"/></w:styles>"
 
-    {:ok, entries} = :zip.extract(document_body(body, []), [:memory])
+      effects_type =
+        if effects?,
+          do:
+            "<Override PartName=\"/word/stylesWithEffects.xml\" ContentType=\"application/vnd.ms-word.stylesWithEffects+xml\"/>",
+          else: ""
 
-    entries =
-      Enum.map(entries, fn
-        {~c"[Content_Types].xml", types} ->
-          {~c"[Content_Types].xml",
-           String.replace(
-             types,
-             "</Types>",
-             "<Override PartName=\"/word/styles.xml\" ContentType=\"application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml\"/></Types>"
-           )}
+      effects_link =
+        if effects?,
+          do:
+            "<Relationship Id=\"effects\" Type=\"http://schemas.microsoft.com/office/2007/relationships/stylesWithEffects\" Target=\"stylesWithEffects.xml\"/>",
+          else: ""
 
-        entry ->
-          entry
-      end)
+      effects_part = if effects?, do: [{~c"word/stylesWithEffects.xml", styles}], else: []
 
-    {:ok, {_, bytes}} =
-      :zip.create(
-        ~c"styled.docx",
-        entries ++
-          [
-            {~c"word/_rels/document.xml.rels",
-             "<Relationships xmlns=\"#{relations}\"><Relationship Id=\"style\" Type=\"#{prefix}styles\" Target=\"styles.xml\"/></Relationships>"},
-            {~c"word/styles.xml",
-             "<w:styles xmlns:w=\"#{word}\"><w:style w:type=\"table\" w:styleId=\"grid\"/></w:styles>"}
-          ],
-        [:memory]
-      )
+      body =
+        "<w:tbl><w:tblPr><w:tblStyle w:val=\"grid\"/></w:tblPr><w:tr><w:tc><w:p><w:r><w:t>" <>
+          text <> "</w:t></w:r></w:p></w:tc></w:tr></w:tbl>"
 
-    File.write!(Path.join(run.cwd, "source.docx"), bytes)
-    assert invoke(run, "source", args())["status"] == "ok"
-    result = query(run, "Vega café")
-    assert result["status"] == "ok", inspect(result)
-    [hit] = result["evidence"]
-    citation = hit["citation"]
-    assert citation["quote"] == text
-    assert citation["document"]["original_sha256"] == JSON.sha256(bytes)
-    assert citation["document"]["extraction_version"] == "ipse-documents-v12"
+      {:ok, entries} = :zip.extract(document_body(body, []), [:memory])
 
-    assert citation["document"]["locator"] == %{
-             "kind" => "table_cell",
-             "part" => "word/document.xml",
-             "paragraph" => 1,
-             "table" => 1,
-             "row" => 1,
-             "cell" => 1
-           }
+      entries =
+        Enum.map(entries, fn
+          {~c"[Content_Types].xml", types} ->
+            {~c"[Content_Types].xml",
+             String.replace(
+               types,
+               "</Types>",
+               "<Override PartName=\"/word/styles.xml\" ContentType=\"application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml\"/>" <>
+                 effects_type <> "</Types>"
+             )}
 
-    id = Session.info(run.pid).id
-    assert {:ok, events} = Journal.load(run.dir, id)
-    refute Enum.any?(events, &(&1["type"] == "request_admitted"))
-    assert {:ok, _} = Session.Saved.restore(events, id)
-    assert :ok = Session.close_confirmed(run.pid)
+          entry ->
+            entry
+        end)
+
+      {:ok, {_, bytes}} =
+        :zip.create(
+          ~c"styled.docx",
+          entries ++
+            [
+              {~c"word/_rels/document.xml.rels",
+               "<Relationships xmlns=\"#{relations}\"><Relationship Id=\"style\" Type=\"#{prefix}styles\" Target=\"styles.xml\"/>" <>
+                 effects_link <> "</Relationships>"},
+              {~c"word/styles.xml", styles}
+            ] ++ effects_part,
+          [:memory]
+        )
+
+      File.write!(Path.join(run.cwd, "source.docx"), bytes)
+      assert invoke(run, "source", args())["status"] == "ok"
+      result = query(run, "Vega café")
+      assert result["status"] == "ok", inspect(result)
+      [hit] = result["evidence"]
+      citation = hit["citation"]
+      assert citation["quote"] == text
+      assert citation["document"]["original_sha256"] == JSON.sha256(bytes)
+      assert citation["document"]["extraction_version"] == "ipse-documents-v13"
+
+      assert citation["document"]["locator"] == %{
+               "kind" => "table_cell",
+               "part" => "word/document.xml",
+               "paragraph" => 1,
+               "table" => 1,
+               "row" => 1,
+               "cell" => 1
+             }
+
+      id = Session.info(run.pid).id
+      assert {:ok, events} = Journal.load(run.dir, id)
+      refute Enum.any?(events, &(&1["type"] == "request_admitted"))
+      assert {:ok, _} = Session.Saved.restore(events, id)
+      assert :ok = Session.close_confirmed(run.pid)
+    end
   end
 
   test "legacy lexical preset never acquires files or silently receives tools capability", c do

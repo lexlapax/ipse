@@ -94,7 +94,7 @@ defmodule Ipse.KnowledgeDocumentsFidelityTest do
       assert result["status"]=="complete" and result["warnings"]==[]
       assert result["revision_policy"]=="insertions_included_deletions_excluded"
       assert result["visibility_policy"]=="bounded_style_and_direct_hidden_excluded"
-      assert result["extraction_version"]=="ipse-documents-v12"
+      assert result["extraction_version"]=="ipse-documents-v13"
     end
     for value <- ["false","0","off"] do
       {:ok,result}=D.extract(doc.("<w:p><w:r><w:rPr><w:vanish w:val=\"#{value}\"/></w:rPr><w:t>visible</w:t></w:r></w:p>"),"a.docx")
@@ -258,7 +258,7 @@ defmodule Ipse.KnowledgeDocumentsFidelityTest do
     assert Map.take(first["locator"],~w(kind table row cell))==%{"kind"=>"table_cell","table"=>1,"row"=>1,"cell"=>1}
     assert Map.take(second["locator"],~w(kind table row cell))==%{"kind"=>"table_cell","table"=>2,"row"=>1,"cell"=>1}
     assert result["status"]=="complete" and result["warnings"]==[]
-    assert result["extraction_version"]=="ipse-documents-v12"
+    assert result["extraction_version"]=="ipse-documents-v13"
     ''')
   end
 
@@ -350,6 +350,24 @@ defmodule Ipse.KnowledgeDocumentsFidelityTest do
     ''')
   end
 
+  @tag :docx_matching_effects
+  test "matching primary and effects style graphs preserve visible text and exclude hidden runs" do
+    pure(~S'''
+    styles="<w:styles xmlns:w=\"#{word}\"><w:style w:type=\"character\" w:styleId=\"hidden\"><w:rPr><w:vanish/></w:rPr></w:style></w:styles>"
+    effects=String.replace(styles,"<w:rPr>","<w:name w:val=\"Different presentation name\"/><w:rPr>")
+    main=xml.("<w:p>"<>run.("visible λ")<>"<w:r><w:rPr><w:rStyle w:val=\"hidden\"/></w:rPr><w:t>hidden literal</w:t></w:r></w:p>")
+    rels="<Relationships xmlns=\"http://schemas.openxmlformats.org/package/2006/relationships\"><Relationship Id=\"s\" Type=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles\" Target=\"styles.xml\"/><Relationship Id=\"e\" Type=\"http://schemas.microsoft.com/office/2007/relationships/stylesWithEffects\" Target=\"stylesWithEffects.xml\"/></Relationships>"
+    entries=package.([{"word/document.xml",main},{"word/styles.xml",styles},{"word/stylesWithEffects.xml",effects},{"word/_rels/document.xml.rels",rels}])
+    entries=Enum.map(entries,fn
+      {"[Content_Types].xml",types} -> {"[Content_Types].xml",String.replace(types,"</Types>","<Override PartName=\"/word/stylesWithEffects.xml\" ContentType=\"application/vnd.ms-word.stylesWithEffects+xml\"/></Types>")}
+      entry -> entry
+    end)
+    {:ok,result}=D.extract(raw_zip.(entries),"effects.docx")
+    assert [%{"text"=>"visible λ","locator"=>%{"kind"=>"paragraph","part"=>"word/document.xml","paragraph"=>1}}]=result["segments"]
+    assert result["status"]=="complete" and result["warnings"]==[]
+    ''')
+  end
+
   test "alternate, missing and external style relationships refuse before publishing body text" do
     pure(~S'''
     styles="<w:styles xmlns:w=\"#{word}\"><w:style w:type=\"paragraph\" w:styleId=\"a\"><w:rPr><w:vanish/></w:rPr></w:style></w:styles>"
@@ -373,6 +391,56 @@ defmodule Ipse.KnowledgeDocumentsFidelityTest do
     end
     effects="<Relationship Id=\"e\" Type=\"http://schemas.microsoft.com/office/2007/relationships/stylesWithEffects\" Target=\"stylesWithEffects.xml\"/>"
     assert {:error,:unsupported_docx_style_relationship}=D.extract(zip.([{"word/document.xml",main},{"word/styles.xml",styles},{"word/_rels/document.xml.rels",rels.(effects)}]),"styles.docx")
+    ''')
+  end
+
+  @tag :docx_matching_effects
+  test "effects styles require exact authority and matching bounded visibility graphs" do
+    pure(~S'''
+    styles="<w:styles xmlns:w=\"#{word}\"><w:style w:type=\"paragraph\" w:default=\"1\" w:styleId=\"a\"><w:rPr><w:vanish w:val=\"false\"/></w:rPr></w:style></w:styles>"
+    main=xml.("<w:p>"<>run.("do not disclose on ambiguity")<>"</w:p>")
+    primary="<Relationship Id=\"s\" Type=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles\" Target=\"styles.xml\"/>"
+    effect="<Relationship Id=\"e\" Type=\"http://schemas.microsoft.com/office/2007/relationships/stylesWithEffects\" Target=\"stylesWithEffects.xml\"/>"
+    rels=fn links -> "<Relationships xmlns=\"http://schemas.openxmlformats.org/package/2006/relationships\">#{links}</Relationships>" end
+    make=fn alternate,links,extras ->
+      entries=package.([{"word/document.xml",main},{"word/styles.xml",styles},{"word/stylesWithEffects.xml",alternate},{"word/_rels/document.xml.rels",rels.(links)}])
+      Enum.map(entries,fn
+        {"[Content_Types].xml",types} -> {"[Content_Types].xml",String.replace(types,"</Types>","<Override PartName=\"/word/stylesWithEffects.xml\" ContentType=\"application/vnd.ms-word.stylesWithEffects+xml\"/></Types>")}
+        entry -> entry
+      end) |> extras.() |> raw_zip.()
+    end
+    unchanged=fn entries -> entries end
+    for alternate <- [
+      String.replace(styles,"w:val=\"false\"","w:val=\"true\""),
+      String.replace(styles," w:default=\"1\"",""),
+      String.replace(styles,"w:type=\"paragraph\"","w:type=\"character\""),
+      String.replace(styles,"w:styleId=\"a\"","w:styleId=\"b\""),
+      String.replace(styles,"</w:styles>","<w:style w:type=\"paragraph\" w:styleId=\"b\"/></w:styles>"),
+      String.replace(styles,"</w:style>","<w:link w:val=\"a\"/></w:style>")
+    ] do
+      assert {:error,:unsupported_docx_style_visibility}=D.extract(make.(alternate,primary<>effect,unchanged),"mismatch.docx")
+    end
+    for invalid <- [
+      String.replace(effect,"stylesWithEffects.xml","alternate.xml"),
+      String.replace(effect," Target="," TargetMode=\"External\" Target="),
+      String.replace(effect,"schemas.microsoft.com/office/2007","invalid.example"),
+      effect<>String.replace(effect,"Id=\"e\"","Id=\"duplicate\"")
+    ] do
+      assert {:error,:unsupported_docx_style_relationship}=D.extract(make.(styles,primary<>invalid,unchanged),"relationship.docx")
+    end
+    assert {:error,:unsupported_docx_part_relationship}=D.extract(make.(styles,primary,unchanged),"unlinked.docx")
+    assert {:error,:unsupported_docx_style_relationship}=D.extract(make.(styles,primary<>effect,fn entries -> Enum.reject(entries,&(elem(&1,0)=="word/stylesWithEffects.xml")) end),"missing.docx")
+    assert {:error,:unsupported_docx_style_visibility}=D.extract(make.(styles,effect,fn entries -> Enum.reject(entries,&(elem(&1,0)=="word/styles.xml")) end),"effects-only.docx")
+    assert {:error,:unsupported_docx_content_types}=D.extract(make.(styles,primary<>effect,fn entries -> Enum.map(entries,fn {name,bytes}->{name,String.replace(bytes,"application/vnd.ms-word.stylesWithEffects+xml","application/xml")} end) end),"content-type.docx")
+    assert {:error,:xml_entities_unsupported}=D.extract(make.("<!DOCTYPE styles [<!ENTITY x 'no'>]>"<>styles,primary<>effect,unchanged),"entity.docx")
+    assert {:error,:unsupported_docx_style_visibility}=D.extract(make.(String.replace(styles,"<w:rPr>","<w:rPr><x:effect xmlns:x=\"urn:unsupported\"/>"),primary<>effect,unchanged),"unknown-effects.docx")
+    good=make.(styles,primary<>effect,unchanged)
+    {:ok,result}=D.extract(good,"effects.docx")
+    assert [%{"text"=>"do not disclose on ambiguity"}]=result["segments"]
+    {:ok,parts}=:zip.extract(good,[:memory])
+    expanded=Enum.sum(Enum.map(parts,fn {_,bytes}->byte_size(bytes) end))
+    assert {:ok,_}=D.extract(good,"effects.docx",max_expanded_bytes: expanded)
+    assert {:error,:expansion_limit}=D.extract(good,"effects.docx",max_expanded_bytes: expanded-1)
     ''')
   end
 

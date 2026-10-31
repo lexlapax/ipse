@@ -440,8 +440,16 @@ without explicit external mode refuse. A normal document with relationships the
 reader does not interpret can therefore be partial even when its visible body is
 readable; inspect the result and original document before using it as evidence.
 
+The reader admits the exact internal `stylesWithEffects` relationship and content
+type only with both style parts present. It parses each through the same bounded
+style parser and requires identical type, inheritance, default and hidden-state
+graphs before reading body text. Presentation properties omitted by that parser
+may differ. An ambiguous graph, unsupported namespace, missing part or substituted
+relationship still refuses; this does not implement general Word text effects.
+Both parts count toward the aggregate expanded-byte bound.
+
 Recipes are format-specific: `Documents.version("docx")` is
-`ipse-documents-v12`, while text, Markdown and PDF use `ipse-documents-v2`.
+`ipse-documents-v13`, while text, Markdown and PDF use `ipse-documents-v2`.
 The legacy `version/0` returns the v2 value; use `version/1` when binding an
 extraction to a source version. Earlier DOCX results are not automatically
 migrated or equivalent. Future indexing must explicitly rebuild or requalify them.

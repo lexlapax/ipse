@@ -333,7 +333,7 @@ defmodule Ipse.Development.Verification.Scenarios do
 
   def validate!(%{name: "documents"}, report, "default") do
     true = report["synthetic"] and report["live_inference"] == false
-    checks!(report, 6)
+    checks!(report, 7)
   end
 
   def validate!(%{name: "model"}, report, selection) do

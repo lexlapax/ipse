@@ -4,6 +4,7 @@ defmodule IpseKnowledge.Documents.Docx do
   @word ~c"http://schemas.openxmlformats.org/wordprocessingml/2006/main"
   @strict ~c"http://purl.oclc.org/ooxml/wordprocessingml/main"
   @parts ~w(word/document.xml word/footnotes.xml word/endnotes.xml word/comments.xml)
+  @style_parts ~w(word/styles.xml word/stylesWithEffects.xml)
   @property_containers ~w(pPr rPr tblPr trPr tcPr sectPr tblGrid)
   @structural ~w(document body hdr ftr footnotes endnotes comments footnote endnote comment p pPr r rPr t delText tbl tblPr tblGrid gridCol tr trPr tc tcPr ins moveTo del moveFrom hyperlink bookmarkStart bookmarkEnd commentRangeStart commentRangeEnd commentReference footnoteReference endnoteReference proofErr permStart permEnd sectPr lastRenderedPageBreak pStyle rStyle)
 
@@ -58,26 +59,36 @@ defmodule IpseKnowledge.Documents.Docx do
           {IpseKnowledge.Documents.Docx.Styles.relationships(xml, names), byte_size(xml)}
       end
 
-    for name <- ["word/styles.xml" | tl(@parts)], name in names do
+    for name <- @style_parts ++ tl(@parts), name in names do
       unless Map.has_key?(relationships.parts, name),
         do: fail(:unsupported_docx_part_relationship)
     end
 
-    {styles, style_bytes} =
-      case Enum.find(entries, &(&1.name == "word/styles.xml")) do
-        nil ->
-          {IpseKnowledge.Documents.Docx.Styles.empty(), 0}
+    {style_graphs, style_bytes} =
+      Enum.reduce(@style_parts, {%{}, 0}, fn name, {graphs, expanded} ->
+        case Enum.find(entries, &(&1.name == name)) do
+          nil ->
+            {graphs, expanded}
 
-        entry ->
-          xml =
-            Zip.read(
-              bytes,
-              entry,
-              limits.max_expanded_bytes - authority_bytes - relationship_bytes
-            )
+          entry ->
+            xml =
+              Zip.read(
+                bytes,
+                entry,
+                limits.max_expanded_bytes - authority_bytes - relationship_bytes - expanded
+              )
 
-          {IpseKnowledge.Documents.Docx.Styles.parse(xml), byte_size(xml)}
-      end
+            {Map.put(graphs, name, IpseKnowledge.Documents.Docx.Styles.parse(xml)),
+             expanded + byte_size(xml)}
+        end
+      end)
+
+    if Map.has_key?(style_graphs, "word/stylesWithEffects.xml") and
+         (not Map.has_key?(style_graphs, "word/styles.xml") or
+            style_graphs["word/styles.xml"] != style_graphs["word/stylesWithEffects.xml"]),
+       do: fail(:unsupported_docx_style_visibility)
+
+    styles = Map.get(style_graphs, "word/styles.xml", IpseKnowledge.Documents.Docx.Styles.empty())
 
     {segments, warnings, expanded, text, refs, references, ranges, ranges_unsafe} =
       Enum.reduce(
@@ -147,7 +158,7 @@ defmodule IpseKnowledge.Documents.Docx do
     omissions =
       for name <- names,
           String.starts_with?(name, "word/") and String.ends_with?(name, ".xml") and
-            name not in ["word/styles.xml" | @parts] and
+            name not in (@style_parts ++ @parts) and
             name not in Enum.map(section_parts, &elem(&1, 1)),
           do: %{"code" => "part_not_extracted", "part" => name}
 
@@ -834,6 +845,11 @@ defmodule IpseKnowledge.Documents.Docx.Styles do
              do: fail(:unsupported_docx_content_types)
         end)
 
+        if "word/stylesWithEffects.xml" in names and
+             types["/word/stylesWithEffects.xml"] !=
+               "application/vnd.ms-word.stylesWithEffects+xml",
+           do: fail(:unsupported_docx_content_types)
+
         types
 
       {:document_error, _, code, _, _} when is_atom(code) ->
@@ -1195,32 +1211,39 @@ defmodule IpseKnowledge.Documents.Docx.Styles do
                      not Regex.match?(~r/\A[A-Za-z][A-Za-z0-9+.-]*:/, target))),
              do: fail(state.error)
 
-      if is_binary(type) and String.ends_with?(type, "/stylesWithEffects"),
-        do: fail(state.error)
+      effects = "http://schemas.microsoft.com/office/2007/relationships/stylesWithEffects"
+
+      if String.ends_with?(type, "/stylesWithEffects") and
+           (type != effects or state.mode != :document),
+         do: fail(state.error)
 
       part =
-        Enum.find_value(
-          [
-            "http://schemas.openxmlformats.org/officeDocument/2006/relationships/",
-            "http://purl.oclc.org/ooxml/officeDocument/relationships/"
-          ],
-          fn prefix ->
-            if is_binary(type) and String.starts_with?(type, prefix) do
-              kind = String.replace_prefix(type, prefix, "")
+        if type == effects do
+          "word/stylesWithEffects.xml"
+        else
+          Enum.find_value(
+            [
+              "http://schemas.openxmlformats.org/officeDocument/2006/relationships/",
+              "http://purl.oclc.org/ooxml/officeDocument/relationships/"
+            ],
+            fn prefix ->
+              if String.starts_with?(type, prefix) do
+                kind = String.replace_prefix(type, prefix, "")
 
-              case {state.mode, kind} do
-                {:root, "officeDocument"} ->
-                  "word/document.xml"
+                case {state.mode, kind} do
+                  {:root, "officeDocument"} ->
+                    "word/document.xml"
 
-                {:document, kind} when kind in ~w(styles footnotes endnotes comments) ->
-                  "word/#{kind}.xml"
+                  {:document, kind} when kind in ~w(styles footnotes endnotes comments) ->
+                    "word/#{kind}.xml"
 
-                _ ->
-                  nil
+                  _ ->
+                    nil
+                end
               end
             end
-          end
-        )
+          )
+        end
 
       if part do
         targets =

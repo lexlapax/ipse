@@ -27,7 +27,7 @@ make = fn body ->
 end
 
 run = fn text -> "<w:r><w:t>#{text}</w:t></w:r>" end
-"ipse-documents-v12" = D.version("docx")
+"ipse-documents-v13" = D.version("docx")
 
 {:error, :unsupported_docx_text_structure} =
   D.extract(
@@ -43,7 +43,7 @@ run = fn text -> "<w:r><w:t>#{text}</w:t></w:r>" end
 
 {:ok,
  %{
-   "extraction_version" => "ipse-documents-v12",
+   "extraction_version" => "ipse-documents-v13",
    "segments" => [%{"text" => "visible"}],
    "status" => "complete"
  }} = D.extract(make.("<w:p>" <> run.("visible") <> "</w:p>"), "test.docx")
@@ -156,5 +156,37 @@ hidden_table_styles =
 
 {:error, :unsupported_docx_style_visibility} =
   D.extract(make_table.(hidden_table_styles), "hidden-table.docx")
+
+make_effects_table = fn alternate ->
+  effects_link =
+    "<Relationship Id=\"effects\" Type=\"http://schemas.microsoft.com/office/2007/relationships/stylesWithEffects\" Target=\"stylesWithEffects.xml\"/>"
+
+  effects_type =
+    "<Override PartName=\"/word/stylesWithEffects.xml\" ContentType=\"application/vnd.ms-word.stylesWithEffects+xml\"/>"
+
+  {:ok, {_, bytes}} =
+    :zip.create(
+      ~c"effects-table.docx",
+      [
+        {~c"_rels/.rels", root},
+        {~c"[Content_Types].xml",
+         String.replace(table_types, "</Types>", effects_type <> "</Types>")},
+        {~c"word/document.xml", table_document},
+        {~c"word/_rels/document.xml.rels",
+         String.replace(table_links, "</Relationships>", effects_link <> "</Relationships>")},
+        {~c"word/styles.xml", table_styles},
+        {~c"word/stylesWithEffects.xml", alternate}
+      ],
+      [:memory]
+    )
+
+  bytes
+end
+
+{:ok, %{"status" => "complete", "segments" => [%{"text" => "café 雪", "locator" => ^cell}]}} =
+  D.extract(make_effects_table.(table_styles), "effects-table.docx")
+
+{:error, :unsupported_docx_style_visibility} =
+  D.extract(make_effects_table.(String.replace(table_styles, "grid", "other")), "mismatch.docx")
 
 IO.puts("ARTIFACT_DOCX_PROBE_PASSED #{:code.which(D)}")
