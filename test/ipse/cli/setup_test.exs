@@ -59,7 +59,8 @@ defmodule Ipse.CLI.SetupTest do
     capture_io(fn -> assert Ipse.CLI.run(args(c, ["--write"])) == 0 end)
     assert Bitwise.band(File.stat!(c.home).mode, 0o777) == 0o700
     assert Bitwise.band(File.stat!(c.path).mode, 0o777) == 0o600
-    assert File.ls!(c.home) == ["config.json"]
+    assert Enum.sort(File.ls!(c.home)) == ["config.json", "config.json.lock"]
+    assert Bitwise.band(File.stat!(c.path <> ".lock").mode, 0o777) == 0o600
     {:ok, effective} = Ipse.Config.resolve(c.cwd, c.home, [project_config: false], %{})
     assert effective.settings["provider"] == "demo"
     assert effective.provenance["provider"] == c.path
@@ -165,7 +166,7 @@ defmodule Ipse.CLI.SetupTest do
 
     for command <- ["run", "chat", "doctor"] do
       assert capture_io(:stderr, fn -> assert Ipse.CLI.run([command, "--write"]) == 1 end) =~
-               "--write and --replace require ipse setup"
+               "--write and --replace require setup or documents setup/disable"
     end
 
     refute File.exists?(c.home)

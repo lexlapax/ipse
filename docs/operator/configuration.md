@@ -58,6 +58,10 @@ non-interactive save. The target is `--config PATH`, then `IPSE_CONFIG`, then
 `IPSE_HOME/config.json`. New directories are mode `0700` and the file is `0600`;
 existing parent directory permissions are retained. Setup refuses symlink targets
 and invalid or oversized existing files. It never changes project configuration.
+Saving retains `CONFIG.lock` beside the target and releases its OS lock afterward.
+Concurrent Ipse setup writers refuse rather than overwriting a reviewed selection;
+keep the lock file in place. [Document setup](corpus.md#set-up-packaged-word-support)
+uses the same private writer but requires a fresh native confirmation.
 
 An existing target requires `--replace`. The preview preserves unrelated settings,
 profiles, roles, extension selections and trust. Saving first retains the exact

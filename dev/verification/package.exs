@@ -131,7 +131,8 @@ defmodule Ipse.Development.Verification.Package do
     0o700 = Bitwise.band(File.stat!(operator).mode, 0o777)
     path = Path.join(operator, "config.json")
     0o600 = Bitwise.band(File.stat!(path).mode, 0o777)
-    ["config.json"] = File.ls!(operator)
+    ["config.json", "config.json.lock"] = Enum.sort(File.ls!(operator))
+    0o600 = Bitwise.band(File.stat!(path <> ".lock").mode, 0o777)
 
     config =
       run!(

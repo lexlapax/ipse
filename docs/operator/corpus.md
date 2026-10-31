@@ -6,9 +6,85 @@ provided sources or selected search/fetch services for one invocation. Select
 each package independently. The [memory extensions](memory.md) keep their own
 working and persistent note stores.
 
-Start with a lexical Corpus in a scratch workspace. This example needs no model
-service, embedding model or MCP server. It builds from the source checkout. If
-you already have a reviewed compatible artifact, start at import instead.
+Start with packaged lexical document support in a scratch workspace. It needs
+no embedding model, MCP server or secondary model service. The conversation
+keeps your chosen provider; direct extension commands can use the credential-free
+demo provider. Source-build procedures below cover other independently selected
+Corpus configurations.
+
+## Set up packaged Word support
+
+Use an installed `ipse` or `./ipse` in an extracted release. In a built source
+checkout, substitute `./bin/ipse`. Preview a small project-scoped State store:
+
+```sh
+ipse documents setup --profile state --cwd /path/to/workspace
+ipse documents setup --profile state --cwd /path/to/workspace --write
+ipse config --no-project-config --cwd /path/to/workspace
+ipse chat --provider demo --no-project-config --cwd /path/to/workspace
+```
+
+Replace the workspace path with an existing directory. The preview creates no
+home, artifact or identity. `--write` requires a native terminal and a fresh
+`enable CODE` review of the exact artifact, options and trust grant. Piped input,
+bare `yes` and `--yes` cannot authorize it. Saving imports the selected shipped
+artifact without executing it and adds the `documents` instance to your private
+operator configuration. No source toolchain, manual artifact build or JSON edit
+is needed. The instance starts in the next new session using that configuration;
+its store is separately scoped to each workspace. Running sessions keep their
+pinned selection; ordinary resume requires the original configuration bytes.
+Setup neither changes the conversation route nor enrolls notes
+capture. Retrieved excerpts can reach the selected conversation provider.
+
+Put a supported small `.docx` named `source.docx` in the workspace. In chat, issue
+one command at a time, finish each approval and wait for `Finished.`:
+
+```text
+/ext ext__documents__source {"store":"notes","action":"read_document","args":{"source_id":"workspace:source","generation":1,"expected_revision":0,"title":"Workspace Word document","path":"source.docx","expected_sha256":null,"uri":"workspace:source.docx","observed_at_ms":1700000000000,"event_at_ms":null,"expires_at_ms":null}}
+/ext ext__documents__query {"store":"notes","retrieval":"words","rerank":null,"query":"words from your document","top_k":5,"as_of_ms":null}
+```
+
+Use words present in your document. If acquisition returns `draft`, copy its
+complete continuation command and finish it before querying. Inspect the returned
+quotation, original-file hash, locator, status and coverage. The
+[acquisition limits](#acquire-a-small-word-document-from-the-workspace) apply to
+both packaged profiles. State retains the small-store ceilings described below.
+
+For experimental native Collection storage, explicitly choose project identity
+scope in the same home:
+
+```sh
+ipse documents setup --profile collection --scope folder --cwd /path/to/workspace
+ipse documents setup --profile collection --scope folder --cwd /path/to/workspace --write
+```
+
+Use `--scope repository` at a canonical primary Git root to select repository
+identity instead. There is no automatic folder fallback. Native review includes
+admission/revalidation of that exact root; failed admission leaves configuration
+unchanged, although an inert imported artifact can remain. Collection operations
+also require a supported protected-storage profile. After ingesting sources,
+[build the lexical index](#query-a-document-collection) before an ordinary query.
+This explicit profile does not promise full-capacity, migration or Word fidelity
+qualification.
+
+If `documents` already exists, preview with `--replace` to review its replacement.
+Setup preserves other instances, profiles and trust. It refuses an incompatible
+existing trust grant for the same artifact. Both setup and disable support
+`--config PATH`; otherwise they use `IPSE_CONFIG`, then `IPSE_HOME/config.json`.
+Saving retains a private timestamped backup of an existing file. A concurrent
+setup writer or changed file refuses; inspect the configuration and preview again.
+Old trust entries and stored data remain after replacement.
+
+Exit chat, then preview and review disabling the instance for new sessions:
+
+```sh
+ipse documents disable
+ipse documents disable --write
+```
+
+Disabling retains stored sources and trust. It does not revoke a running
+session's pinned authority or delete earlier results. Re-enabling requires a new
+setup review with `--replace`.
 
 ## Build and select a corpus
 
@@ -246,11 +322,11 @@ management procedure. The remote equivalent is the explicitly selected
 ## Query a document Collection
 
 The experimental `collection-documents` preset uses a fixed project document
-Collection instead of State. It needs a project identity **already admitted in
-the selected home**, a matching native helper and an available protected-storage
-profile. Its ordinary append, seal and consuming commit routes have focused
-native/Session controls. A complete installed Corpus ingestion, full-profile
-build/rebuild and Word fidelity journey are not yet qualified.
+Collection instead of State. Use the packaged setup above to review its project
+identity and selection together, or supply an identity **already admitted in the
+selected home** for the manual artifact procedure below. It requires a matching
+native helper and available protected-storage profile. Full-profile capacity,
+build/rebuild peaks and Word fidelity remain unqualified.
 
 For an existing admitted project, save these options as
 `$IPSE_CORPUS_ARTIFACTS/collection-options.json`:
@@ -299,10 +375,23 @@ IPSE_HOME="$IPSE_CORPUS_COLLECTION_HOME" ./bin/ipse chat --provider demo \
 ```
 
 Import/inspection and this configuration do not perform project admission. A
-missing or changed binding refuses; use the operator's existing admission
-procedure rather than inventing a binding or granting capture to make a read work.
-For existing selected sources/indexes, use the earlier ordinary `source` inspect
-and `query` commands. An explicit `query_selected` takes `store`, `retrieval`,
+missing or changed binding refuses; use explicit document setup with the desired
+scope rather than granting notes capture to make a document read work.
+
+After acquiring sources, explicitly build the namespace lexical index:
+
+```text
+/ext ext__corpus__lexical_index {"store":"notes","action":"begin","continuation":null}
+```
+
+For the packaged instance, use `ext__documents__lexical_index`. A `draft` result
+returns its complete next command; copy that command unchanged, finish approvals
+and continue until `ok`. Then use the ordinary `query` command. A missing index
+returns `lexical_namespace_index_unavailable`; a changed catalog makes the index
+stale and requires an explicit rebuild. Index construction uses storage writes,
+with separate ordinary approvals, and calls no model.
+
+An explicit `query_selected` takes `store`, `retrieval`,
 `query`, `top_k`, `as_of_ms` and one to eight exact `source_ids`; it omits `rerank`.
 Inspect citations, `status`, `coverage.complete`, `namespace_complete` and gaps.
 A changed catalog or stale index refuses instead of answering from a mixed snapshot.

@@ -5,6 +5,12 @@ Bundled features and independently built artifacts use the same selection and
 grant rules. Imported code has your OS permissions. Review its source and
 manifest before trusting it.
 
+For shipped Word support, follow [document setup](corpus.md#set-up-packaged-word-support).
+It reviews a packaged artifact and writes an ordinary operator selection without
+a manual build or JSON edit. Shipped artifacts remain inert until selected.
+Document workspace/storage actions retain their approvals, independently of the
+separate [notes permission](knowledge-permissions.md).
+
 ## Try a bundled transform
 
 Save this complete operator file as `/private/path/extensions.json`:

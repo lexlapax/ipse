@@ -138,7 +138,8 @@ main profile is reused only when its requested fields agree. Name collisions and
 route changes refuse without modifying old profiles, roles or backup bytes.
 
 `CLI.Setup` owns prompts, exact preview and explicit write consent. It preserves
-unowned fields, compares the current file before mutation, and creates an exclusive
+unowned fields, holds the shared retained `CONFIG.lock` OS lock, compares the
+current file before mutation, and creates an exclusive
 timestamped backup on replacement. `PrivateFile.write_atomic/3` creates missing
 directories privately, writes an exclusive mode-0600 temporary file, syncs it and
 publishes by rename. Exclusive backup publication uses a hard link instead of

@@ -41,6 +41,7 @@ defmodule Ipse.CLI do
           project_config: :boolean,
           timeout_ms: :integer,
           profile: :string,
+          scope: :string,
           policy: :string,
           after: :string,
           days: :integer,
@@ -99,8 +100,15 @@ defmodule Ipse.CLI do
            "--handoff requires fresh interactive chat; cannot combine with --resume or another command mode."}
         )
 
-      Enum.any?([:write, :replace], &Keyword.has_key?(opts, &1)) and rest != ["setup"] ->
-        report({:error, "--write and --replace require ipse setup; no task was started."})
+      Enum.any?([:write, :replace], &Keyword.has_key?(opts, &1)) and
+          rest not in [["setup"], ["documents", "setup"], ["documents", "disable"]] ->
+        report(
+          {:error,
+           "--write and --replace require setup or documents setup/disable; no task was started."}
+        )
+
+      Keyword.has_key?(opts, :scope) and rest != ["documents", "setup"] ->
+        report({:error, "--scope requires documents setup; no task was started."})
 
       Enum.any?([:upstream, :data_collection], &Keyword.has_key?(opts, &1)) and rest != ["setup"] ->
         report(
@@ -149,6 +157,9 @@ defmodule Ipse.CLI do
 
   defp dispatch(["setup"], opts),
     do: Ipse.CLI.Setup.run(opts, home(), opts[:cwd] || default_cwd())
+
+  defp dispatch(["documents", command], opts),
+    do: Ipse.CLI.Documents.run(command, opts, home(), opts[:cwd] || default_cwd())
 
   defp dispatch(["knowledge", command], opts),
     do: Ipse.CLI.Knowledge.run(command, opts, home(), opts[:cwd] || default_cwd())

@@ -378,7 +378,8 @@ defmodule Ipse.CLI.Setup do
     end
   end
 
-  defp read_existing(path) do
+  @doc false
+  def read_existing(path) do
     case File.lstat(path) do
       {:error, :enoent} ->
         {:ok, %{bytes: nil, document: %{"version" => 1}}}
@@ -407,7 +408,8 @@ defmodule Ipse.CLI.Setup do
     end
   end
 
-  defp validate(document) do
+  @doc false
+  def validate(document) do
     with :ok <- Ipse.JSON.validate_arguments(Ipse.Config.schema(), document),
          :ok <-
            Ipse.Config.Profiles.validate(document["profiles"] || %{}, document["roles"] || %{}),
@@ -428,12 +430,32 @@ defmodule Ipse.CLI.Setup do
           "The existing main role selects a different provider/model profile. Setup preserves profiles and roles; edit the operator file explicitly instead of replacing this route silently."}
   end
 
-  defp write_configuration(path, bytes, original) do
+  @doc false
+  def write_configuration(path, bytes, original, before_write \\ fn -> :ok end) do
+    lock_path = path <> ".lock"
+
+    with result when result == :ok or result == {:error, :eexist} <-
+           Ipse.PrivateFile.write_atomic(lock_path, "", replace: false),
+         {:ok, lock} <- Ipse.Runner.lock(lock_path) do
+      try do
+        write_locked(path, bytes, original, before_write)
+      after
+        Ipse.Runner.unlock(lock)
+      end
+    else
+      _ -> {:error, "Configuration is locked or unavailable; preview setup again before saving."}
+    end
+  end
+
+  defp write_locked(path, bytes, original, before_write) do
     with {:ok, current} <- read_existing(path),
          true <-
            current.bytes == original.bytes ||
              {:error,
               "Configuration changed during setup; inspect ipse config and preview again before writing."},
+         :ok <- before_write.(),
+         {:ok, current} <- read_existing(path),
+         true <- current.bytes == original.bytes,
          :ok <- backup(path, original.bytes),
          :ok <- Ipse.PrivateFile.write_atomic(path, bytes, replace: not is_nil(original.bytes)) do
       :ok

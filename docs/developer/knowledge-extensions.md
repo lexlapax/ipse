@@ -31,6 +31,40 @@ with empty retrieval registry; Research uses search/fetch/BM25/optional rerank.
 Reject unused/incompatible profiles before generating permissions. A syntactically
 valid dense/graph/hybrid/remote-query profile is still invalid for Research.
 
+### Follow packaged document selection
+
+`dev/build-bundles.exs` builds the two lexical document presets alongside native
+notes and writes their existing inert bundle catalog. `Bundles.inventory/0`
+checks manifest identities without loading code. `CLI.Documents` constructs the
+ordinary `documents` instance, exact manifest capability ceiling and project
+State or document Collection binding. `Config.preview/5` validates proposed bytes
+through normal resolution; no temporary operator file or artifact import is
+needed for preview. This selection uses no semantic-notes activation overlay.
+
+On `documents setup --write`, a fresh native `enable CODE` receipt binds the
+complete escaped selection. The shared `CLI.Setup.write_configuration/4` writer
+holds a retained OS lock at `CONFIG.lock`, rereads exact original bytes, imports
+the digest-pinned bundle and optionally admits the explicitly chosen folder or
+repository identity, then rereads before backup and private atomic publication.
+Provider setup uses the same lock. Retain its inode after unlock. A failed save
+can leave an inert artifact or explicitly admitted identity; it grants no saved
+extension selection. The lock coordinates Ipse setup writers, not arbitrary
+editors or hostile directory replacement.
+
+`documents disable` reviews the selected identity and option digest, then saves
+`enabled: false`. It retains trust/data and changes only subsequent new sessions;
+it is not live revocation of a pinned worker. Replacement preserves old trust
+entries and refuses an incompatible ceiling for an already trusted digest.
+Keep unrelated options and provider profiles out of setup's rendered review.
+
+Run `mix test test/ipse/cli/documents_test.exs test/ipse/cli/setup_test.exs
+test/ipse/extension/bundles_test.exs` as one command. The synthetic native journey
+uses the shipped artifacts, ordinary mutation approvals, acquisition, exact
+citations, Saved reconstruction and close/resume. Collection additionally needs
+explicit `lexical_index` build before namespace query; successful ingestion alone
+does not create that index. These controls establish source-runtime behavior;
+rendered Word fidelity and full-profile capacity require separate qualification.
+
 ## Follow protected capture from a Session source
 
 Trace one reviewed statement from the terminal into a stored note, then into

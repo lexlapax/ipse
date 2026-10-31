@@ -145,6 +145,7 @@ resource/offline qualification. No daemon configuration or existing model was ch
 - [Authenticated history observation and expired-history reclamation controls](../2026-10-28-managed-history/index.md), without a worker-use or Session authority grant.
 - [Actual 4,000-publication available-host capacity and complete retained receipt reconciliation](capacity-available-host.md).
 - [Supplied Word bytes through extraction, CAS storage and typed citations](word-source-bridge.md).
+- [Packaged lexical document setup and source-runtime native journeys](documents-setup-20261031.md).
 - [Opt-in native workspace Word acquisition and actual Session controls](word-workspace-acquisition.md).
 - [Hash-bound paged acquisition and explicit staged Word text](word-staged-acquisition.md).
 - [Paged Word locator manifests and authenticated selective hydration](word-locator-manifest.md).
