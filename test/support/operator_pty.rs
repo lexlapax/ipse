@@ -117,7 +117,7 @@ fn main() {
         }
         if review || assertion {
             let text = String::from_utf8_lossy(&output);
-            for command in ["pin", "ordinary", "forget", "duration", "accept", "correct", "supersede"] {
+            for command in ["pin", "ordinary", "forget", "duration", "accept", "correct", "supersede", "reconcile"] {
                 let prefix = format!("\nType {command} ");
                 for (index, _) in text.match_indices(&prefix) {
                     let tail = &text[index + prefix.len()..];
@@ -147,6 +147,9 @@ fn main() {
                         }
                         if guarded_review {
                             let root = std::path::Path::new(&args[args.len() - 2]);
+                            if command == "reconcile" {
+                                std::fs::write(root.join("reconciliation-review-ready"), b"ready").unwrap();
+                            }
                             if !root.join("guard-review-ready").is_file() { continue; }
                         }
                         let assertion_case = args.last().unwrap().to_string_lossy();

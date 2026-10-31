@@ -39,6 +39,7 @@ are refused as busy; they are not queued for later execution.
 | Draft, edit and explicitly submit a clearer request in the current conversation | [Refine a request](usage.md#refine-a-request-before-submitting-it) |
 | Select profiles, use Gemini or Grok, pin an OpenRouter upstream, connect a local compatible server and resolve policy | [Configuration](configuration.md) |
 | Inspect an installed Ollama model's digest and reported loaded context | [Local model inspection](configuration.md#inspect-an-installed-ollama-model) |
+| Share inference capacity across projects and reconcile an unresolved reservation | [Service registration](configuration.md#serialize-a-shared-inference-service) and [recovery](recovery.md#reconcile-an-unresolved-inference-reservation) |
 | Connect explicitly selected external tools/resources/prompts | [MCP](mcp.md) |
 | Review/import/select extensions, inspect exact Session sources and complete results, generate vectors, request typed advice, try the lab | [Extensions](extensions.md) |
 | Retain explicit notes, update revisions, expire, forget, export/migrate | [Memory](memory.md) |

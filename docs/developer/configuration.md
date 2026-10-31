@@ -370,6 +370,49 @@ This preserves saved equality. Request execution narrows again; v1/v2 requests
 retain their 120000 ceiling. Exercise these distinctions in
 `test/ipse/extension/model_call_test.exs` before changing a projection.
 
+## Trace registered-service admission and reconciliation
+
+`Config.Semantics` validates explicit `inference_services` origin groups.
+`InferenceDispatch.selection/4` matches the actual provider destination to one
+registered service; `InferenceSlots` schedules matching main/compaction, helper,
+embedding, decision and child calls across projects/models. The original owned
+inference task still makes the final source/policy decision. The coordinator and
+slot callback do not inherit that authority. Effective deadlines above 100000 ms
+refuse before dispatch, rather than silently changing configuration.
+
+An admitted marker survives timeout, owner loss and local HTTP cleanup. A free
+OS lock cannot prove remote completion. Known-terminal settlement depends on the
+actual provider completion witness; calling a native adapter outside the normal
+Provider wrapper cannot manufacture that witness. `InferenceSlots` deliberately
+trusts its core callback classification and operator UI, not arbitrary serialized
+receipts or worker assertions.
+
+Follow `CLI.Inference.run/4` for the manual recovery path. It reads no conversation
+configuration, starts no Session and sends no inference. Native exact input binds
+the displayed operator home, workspace, service aliases, active metadata and
+expected ledger revision. The CLI hashes that actual observation into the
+existing `shared_service_reconciled` receipt, then calls `InferenceSlots.reconcile/6`
+once. The API independently takes the service lease and checks exact reservation
+and global revision under the protected ledger transaction. A changed queue or
+reservation therefore refuses even after input. No daemon stop or remote
+quiescence proof is inferred from the operator's receipt. Unknown publication is
+reported without retry; the operator inspects active/recent state afterward.
+
+An absent service tree returns the pure empty ledger without creating a home.
+Existing state uses the same protected Store checks and housekeeping as internal
+status; it is not a promise of zero physical filesystem writes. Symlink roots
+refuse. A service ID's persisted origin binding cannot be changed through the CLI.
+The new entrypoint adds neither a native protocol nor an SDK operation.
+
+Run `mix test test/ipse/cli/inference_test.exs test/ipse/inference_slots_test.exs
+test/ipse/inference_slots/ledger_test.exs` as one command. The CLI's synthetic PTY
+controls cover exact native confirmation, cancellation, stale input, piped input,
+concurrent revision and unchanged retained lock inodes. Underlying slot controls
+exercise actual callback ownership, cancellation/unknown blocking, independent
+OS processes and service identity. Keep unsupported-filesystem refusals distinct
+from a supported native run. The operator procedure belongs to
+[recovery](../operator/recovery.md#reconcile-an-unresolved-inference-reservation).
+
 ## Inspect local model metadata before selecting a route
 
 For local model inspection, trace `CLI.Models.inspect/1` into

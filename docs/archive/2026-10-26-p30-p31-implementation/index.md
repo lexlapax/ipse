@@ -150,6 +150,7 @@ nor resource/offline qualification. No daemon configuration or existing model wa
 - [Supplied Word bytes through extraction, CAS storage and typed citations](word-source-bridge.md).
 - [Packaged lexical document setup and source-runtime native journeys](documents-setup-20261031.md).
 - [Read-only local model identity and reported-context inspection](local-model-inspection-20261031.md).
+- [Native operator inference reconciliation](inference-reconciliation-cli-20261031.md).
 - [Explicit domain embedding-query formatting](query-prefix-20261031.md).
 - [Extracted-package document setup, cited retrieval, resume/disable and refusal controls](documents-setup-installed-20261031.md).
 - [Opt-in native workspace Word acquisition and actual Session controls](word-workspace-acquisition.md).

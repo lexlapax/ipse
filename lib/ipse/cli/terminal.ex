@@ -69,6 +69,9 @@ defmodule Ipse.CLI.Terminal do
   ipse logout --provider xai_oauth  Remove Grok subscription sign-in
   ipse chat [options]              Interactive conversation
   ipse run [options] "task"         Run one task
+  ipse inference status --json      Inspect protected inference reservations
+  ipse inference reconcile SERVICE_ID RESERVATION_ID REVISION
+                                    Review one exact unresolved reservation
   ipse demo                        Scripted demo in a temporary directory
   ipse sessions [--json]           List saved sessions
   ipse skills [--cwd PATH]         List available skills

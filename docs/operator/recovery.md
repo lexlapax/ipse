@@ -49,7 +49,7 @@ timeout, incomplete output, or worker failure can mean `unknown`.
 | Shell work | Inspect changed files and still-running processes |
 | Remote MCP | Check service-side records; a closed local connection does not stop remote work |
 | Delegation | Inspect child results, approvals, changes, and reported cleanup |
-| Model request | Keep recorded usage/liability, including failed or incomplete responses |
+| Model request | Keep recorded usage/liability; inspect any [registered service reservation](#reconcile-an-unresolved-inference-reservation) before overlapping work |
 
 Do not repeat a producer merely to recover a lost display. Cancellation stops
 owned tasks and ordinary process groups. Detached descendants can remain.
@@ -109,7 +109,7 @@ relocate them or treat volatile tmpfs as a durable migration fix.
 
 Do not enable again merely to recover a missing confirmation, delete retained
 locks or domain keys, reset the collection, edit a ledger, or replay the old
-capture. The operator CLI has no automatic prepared-domain or unknown-operation
+capture. The knowledge CLI has no automatic prepared-domain or unknown-operation
 reconciliation command. Request developer-assisted inspection of the exact
 operation and actual storage root before deciding on another attempt. Keep
 private files local; report sanitized codes and operation IDs instead of their
@@ -156,6 +156,53 @@ append and repair paths refuse their native-only layout. An unsafe management
 directory or older helper refuses rather than falling back to those paths.
 Preserve a header-only journal as an incomplete startup record, not a successful
 action. Read-only operation inspection remains available and does not repair it.
+
+## Reconcile an unresolved inference reservation
+
+Use this procedure when an explicitly registered inference service remains
+blocked after an interrupted request. Keep the original `IPSE_HOME`; service
+state is operator-scoped across projects. These commands need no conversation,
+model request or valid conversation configuration:
+
+```sh
+ipse inference status --json --cwd /absolute/path/to/workspace
+```
+
+The report includes the current `revision`, each service's registered `origins`
+and `active` reservation, queued requests and recent outcomes. An `active` entry
+is unresolved; elapsed time or a free local OS lock does not establish that its
+remote work finished. A fresh home reports an empty state without creating it.
+Existing protected state uses the runtime's ordinary lock/layout/cleanup checks;
+inspection can maintain those private filesystem entries without changing the
+ledger's admission records. Preserve malformed or unsupported state for diagnosis.
+
+Stop or independently reconcile work at every origin and with every client using
+that service. For a daemon you own, use its normal administrative procedure and
+verify its work has stopped. Ipse does not stop it for you. An Ollama `/api/ps`
+snapshot shows loaded models, not whether an earlier request is still running.
+If you cannot establish quiescence, leave the reservation blocked.
+
+After that check, copy `SERVICE_ID`, its active reservation's `id`, and the
+top-level ledger `revision` from a fresh status report:
+
+```sh
+ipse inference reconcile SERVICE_ID RESERVATION_ID REVISION \
+  --cwd /absolute/path/to/workspace
+```
+
+The native terminal displays the exact home/workspace, service origins,
+reservation metadata and expected revision. Type its fresh `reconcile CODE`
+only for that complete proposal; any other response cancels. Piped input,
+`--yes` and stale challenges cannot confirm it. The runtime also requires the
+service lease to be free and the exact ledger revision/reservation unchanged.
+A concurrent ledger change refuses; inspect the new state and reassess it.
+
+Success records an operator reconciliation receipt, clears that active marker
+and retains lock files. It replays no request and grants no new project or
+knowledge permission. Inspect status again before continuing ordinary work.
+If the outcome is unknown, preserve the first result and inspect the current
+active/recent records; do not replay the command automatically. Recent outcomes
+are bounded to32 entries and are not a complete request-history archive.
 
 ## Resume compatible work
 

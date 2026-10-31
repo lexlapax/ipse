@@ -544,6 +544,59 @@ whose invocation contract supports the requested duration, such as the SDK-1
 answer helper. On timeout, inspect the retained outcome and accounting before
 starting new work. The remote request may have happened; Ipse does not replay it.
 
+## Serialize a shared inference service
+
+Register a service when main, helper and embedding requests share the same daemon
+or capacity limit. The registry schedules Ipse requests across projects/models;
+other daemon clients remain outside it. This experimental path requires a
+filesystem supported by Ipse's protected-storage profile for the operator home.
+An unsupported profile refuses dispatch. Inspect the [native installation limits](arch-linux.md)
+before selecting it; changing shell sandbox settings does not enable storage.
+
+For an already installed model and running local Ollama service, save this
+complete operator configuration in a private file:
+
+```json
+{
+  "version": 1,
+  "settings": {
+    "provider": "ollama", "model": "qwen3.5:4b",
+    "timeout_ms": 100000, "max_output_tokens": 512
+  },
+  "inference_services": {
+    "local": {
+      "version": 1,
+      "origins": ["http://127.0.0.1:11434", "http://localhost:11434"]
+    }
+  }
+}
+```
+
+List both origins only when they identify the same service you operate. Registry
+entries do not select a provider/model or prove local/offline execution. Inspect
+the [installed model and loaded context](#inspect-an-installed-ollama-model) and
+configure sufficient server context before long tasks. The timeout/output fields
+do not increase that context. Keep the service ID and complete origin list stable:
+the protected ledger refuses reusing an ID with changed aliases or overlapping
+services. Up to eight services can be registered.
+
+Replace the path below with that saved file, validate it, then start a fresh chat:
+
+```sh
+ipse config --config /private/path/local.json --no-project-config
+ipse chat --config /private/path/local.json --no-project-config
+```
+
+Matching main, compaction, helper, embedding, decision and child requests use the
+same service slot. A request's effective timeout must be at most 100000 ms;
+an unsupported larger timeout refuses instead of being shortened. Waiting is
+bounded. No slot stays held while an action awaits approval or publishes storage.
+Cancellation or a broken connection can leave remote work unresolved. The slot
+then remains blocked even after its local process exits. Use the
+[reconciliation procedure](recovery.md#reconcile-an-unresolved-inference-reservation)
+after independently checking the service; never delete its ledger or locks to
+make a new request start.
+
 ## Review project settings before trusting them
 
 Run `ipse doctor --cwd /path/to/project --json` to list discovered configuration
