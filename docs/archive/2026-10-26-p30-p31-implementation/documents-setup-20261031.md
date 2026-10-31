@@ -72,3 +72,10 @@ Full capacity, rebuild peaks, migration, rendered real-Word fidelity and retriev
 quality remain separate. No model calls, model downloads or account access ran.
 The full original goal remains active, including lifecycle/quality qualification,
 the complete regression pass, adversarial audit and reviewer handoff.
+
+## Additive installed follow-up
+
+The subsequent [installed receipt](documents-setup-installed-20261031.md) qualifies
+the six bounded synthetic journeys against the exact package built from
+`ad2b25e`. It replaces the extracted-package prerequisite above only within that
+scope; it does not close the other acceptance gaps.

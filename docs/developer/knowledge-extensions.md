@@ -57,13 +57,36 @@ it is not live revocation of a pinned worker. Replacement preserves old trust
 entries and refuses an incompatible ceiling for an already trusted digest.
 Keep unrelated options and provider profiles out of setup's rendered review.
 
-Run `mix test test/ipse/cli/documents_test.exs test/ipse/cli/setup_test.exs
-test/ipse/extension/bundles_test.exs` as one command. The synthetic native journey
+Run the source controls together:
+
+```sh
+mix test test/ipse/cli/documents_test.exs test/ipse/cli/setup_test.exs test/ipse/extension/bundles_test.exs
+```
+
+The synthetic native journey
 uses the shipped artifacts, ordinary mutation approvals, acquisition, exact
 citations, Saved reconstruction and close/resume. Collection additionally needs
 explicit `lexical_index` build before namespace query; successful ingestion alone
 does not create that index. These controls establish source-runtime behavior;
 rendered Word fidelity and full-profile capacity require separate qualification.
+
+For the exact archive from a reviewed checkout, repeat the same fixture using
+the packaged runtime and its three inert bundles:
+
+```sh
+IPSE_DOCUMENT_PROOF_PARENT=$(mktemp -d)
+elixir dev/verification/documents_setup_installed.exs "$IPSE_ARCHIVE" "$IPSE_DOCUMENT_PROOF_PARENT/run"
+```
+
+Set `IPSE_ARCHIVE` to that archive first and retain its adjacent checksum. Run
+from a development environment with Elixir/OTP, Rust and `tar`; the verifier
+copies the existing precompiled ExUnit library and compiles the synthetic PTY
+before launch. Runtime PATH has utilities and the package's own ERTS tools,
+including its bundled `erlc`, without system Elixir/Mix/Rust/Cargo. It checks actual
+CLI setup, ordinary action approvals, Saved/close/resume, disable, four refusal
+cases, exact bundled code origin and unchanged extracted files. Private fixture
+logs and a structured report stay under the new output directory. Run terminal
+suites sequentially within a bounded job; synthetic input proves no human use.
 
 ## Follow protected capture from a Session source
 
