@@ -1,0 +1,46 @@
+{
+  "artifact_bytes": 3324173934,
+  "assurance": "cooperative_service_metadata_not_request_attestation",
+  "base_url_sha256": "b26993598dffd1f14aed97def57ef67f753518a9b773d8a12033c82b4fa545ca",
+  "declared_capabilities": [
+    "completion",
+    "vision",
+    "tools",
+    "thinking"
+  ],
+  "declared_details": {
+    "families": [
+      "qwen35"
+    ],
+    "family": "qwen35",
+    "format": "gguf",
+    "parameter_size": "4.2B",
+    "quantization_level": "Q4_K_M"
+  },
+  "declared_license": "apache-2.0",
+  "declared_limits": {
+    "details": {},
+    "model_info": {
+      "qwen35.context_length": 262144,
+      "qwen35.embedding_length": 2560
+    }
+  },
+  "effective_context": "unverified_not_loaded",
+  "inference_calls": 0,
+  "kind": "ollama_model_inspection",
+  "license_claim_sha256": "4b77b33be70c243e93630753368638e28bb66e77935606b15aba3614339c3ee0",
+  "license_sha256": "50cbab8a892c5f2993b8c7351a99182507472def3b1374558308605d99b86b32",
+  "loaded": null,
+  "local_execution": "not_attested",
+  "manifest_sha256": "d8b0f5e9760cd1682034f292d7ef72ec46f432149be0df7574bf2d6e92e38c04",
+  "metadata_requests": 6,
+  "metadata_sha256": "c2ed7207a7cd47d14d7f7ddd1ab7a9e013ba0b94e95e11ab9c582f91c545cbe2",
+  "model": "qwen3.5:4b",
+  "observed_at_ms": 1793482220363,
+  "origin": "http://127.0.0.1:11434",
+  "parameters_sha256": "c7f3a462076d3f09e9378c7a143c5a83f7a7b9807e838014ee34a71f29e1c254",
+  "runtime_version": "0.40.13",
+  "scan_started_at_ms": 1793482220313,
+  "template_sha256": "b507b9c2f6ca642bffcd06665ea7c91f235fd32daeefdf875a0f938db05fb315",
+  "version": 1
+}

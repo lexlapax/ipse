@@ -88,7 +88,7 @@ neither approval authorizes package installation or image downloads.
 | JSONSchex | Hex `jsonschex` 0.10.0, pinned in `mix.exs` and `mix.lock` | JSON Schema Draft 2020-12 validation behind Ipse's bounded keyword allowlist; no remote loader | MIT |
 | ex_json_pointer | Hex 0.8.0, transitive JSONSchex dependency, locked in `mix.lock` | JSON Pointer handling inside schema compilation | MIT |
 | Req and Plug | Hex `req` 0.7.5, `plug` 1.20.3, pinned in `mix.exs` and `mix.lock` | The SDK 1.1.0 advertises optional HTTP dependencies but unconditionally references their modules; required for successful compilation on Elixir 1.20. Ipse also reuses Req for bounded opt-in HTTP MCP; no HTTP server is enabled | Apache-2.0 |
-| Finch | Hex 0.24.0, locked | All-status bounded inference/authentication streaming and Req/MCP HTTP pools; private HTTP/1 request pools with owned teardown | MIT |
+| Finch | Hex 0.24.0, locked | All-status bounded inference/authentication streaming, explicit local-model metadata inspection and Req/MCP HTTP pools; private HTTP/1 request pools with owned teardown | MIT |
 | Mint | Hex 1.11.0, direct, locked | Finch transport and an experimental unwired HTTP/1 inference primitive, with default certificate/hostname verification and a header bound | Apache-2.0 |
 | HPAX | Hex 1.1.0, locked | Mint HTTP/2 compression support | Apache-2.0 |
 | MIME | Hex 2.0.7, locked | Req/Plug MIME utilities | Apache-2.0 |

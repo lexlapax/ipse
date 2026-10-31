@@ -75,6 +75,7 @@ defmodule Ipse.CLI.Terminal do
   ipse config [options]            Show effective non-secret configuration
   ipse doctor [options] [--json]    Diagnose setup offline; --probe-provider opts into GET probes
   ipse setup [options]             Preview or confirm private provider/model defaults
+  ipse model inspect --provider ollama --model NAME --base-url URL [--json]
   ipse documents setup --profile state [--write]  Review packaged lexical Word support
   ipse documents setup --profile collection --scope folder|repository [--write]
   ipse documents disable [--write]  Review disabling documents for new sessions

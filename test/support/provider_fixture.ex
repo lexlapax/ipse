@@ -26,7 +26,7 @@ defmodule Ipse.Test.ProviderFixture do
               for <<byte <- body>>, do: :ok = :gen_tcp.send(socket, <<byte>>)
             end
 
-            {headers, Jason.decode!(payload)}
+            {headers, decode_payload(payload)}
           after
             :gen_tcp.close(socket)
           end
@@ -41,8 +41,13 @@ defmodule Ipse.Test.ProviderFixture do
   def request(socket, buffer) do
     case :binary.split(buffer, "\r\n\r\n") do
       [headers, body] ->
-        [_, size] = Regex.run(~r/content-length:\s*(\d+)/i, headers)
-        {headers, rest(socket, body, String.to_integer(size))}
+        size =
+          case Regex.run(~r/content-length:\s*(\d+)/i, headers) do
+            [_, size] -> String.to_integer(size)
+            nil -> 0
+          end
+
+        {headers, rest(socket, body, size)}
 
       [_] ->
         {:ok, chunk} = :gen_tcp.recv(socket, 0, 5000)
@@ -72,7 +77,7 @@ defmodule Ipse.Test.ProviderFixture do
                     body
                 )
 
-              {headers, Jason.decode!(payload)}
+              {headers, decode_payload(payload)}
             after
               :gen_tcp.close(socket)
             end
@@ -84,6 +89,9 @@ defmodule Ipse.Test.ProviderFixture do
 
     {"http://127.0.0.1:#{port}", task}
   end
+
+  defp decode_payload(""), do: nil
+  defp decode_payload(bytes), do: Jason.decode!(bytes)
 
   defp rest(_, body, size) when byte_size(body) >= size, do: body
 

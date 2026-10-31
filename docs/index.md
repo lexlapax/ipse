@@ -20,6 +20,7 @@ quick start. Try the demo before configuring a model account.
 | Start a conversation, approve changes and manage session permissions | [Use the terminal](operator/usage.md) |
 | Refine and explicitly accept a request before executing it | [Draft a request](operator/usage.md#refine-a-request-before-submitting-it) |
 | Set an endpoint, profile or project policy | [Configure Ipse](operator/configuration.md) |
+| Inspect a selected local model's manifest and reported context | [Model inspection](operator/configuration.md#inspect-an-installed-ollama-model) |
 | Choose Grok API billing or prepare registered-client subscription access | [Grok configuration](operator/configuration.md#use-grok-through-xai) |
 | Connect tools from another service | [Configure MCP](operator/mcp.md) |
 | Remember an explicit project note | [Use memory](operator/memory.md) |

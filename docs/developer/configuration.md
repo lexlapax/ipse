@@ -370,6 +370,33 @@ This preserves saved equality. Request execution narrows again; v1/v2 requests
 retain their 120000 ceiling. Exercise these distinctions in
 `test/ipse/extension/model_call_test.exs` before changing a projection.
 
+## Inspect local model metadata before selecting a route
+
+For local model inspection, trace `CLI.Models.inspect/1` into
+`Provider.Ollama.Models.read/3`. It takes an explicit loopback endpoint and exact
+model, independently of conversation configuration. Existing bounded HTTP,
+duplicate-safe JSON decoding and schema validation handle six metadata requests;
+no provider inference, service registration or activation runs. The reader checks
+the selected complete tag row and runtime version before and after `show`/`ps`.
+An ambiguous alias, changed identity or mismatched resident digest refuses without
+retry. Context absent from the loaded-model response remains unverified.
+
+Schemas bound each response to 1 MiB, inventories to 256 rows and capabilities to
+32 labels. Architecture-specific context/dimension keys use the returned validated
+architecture name; this small native-format check avoids maintaining a second
+JSON parser or hardcoding every model family. Metadata and optional raw fields
+are hashed, while displayed diagnostic labels reuse `Transport.safe/2`.
+Declared limits and hashes establish neither per-request weight identity nor
+permission to execute a model. Keep inspection outside an active inference
+completion observation; metadata HTTP cannot witness inference completion.
+
+Run `mix test test/ipse/provider/ollama_models_test.exs
+test/ipse/cli/models_test.exs test/ipse/provider_test.exs
+test/ipse/provider/conformance_test.exs` as one command. The synthetic endpoint
+checks exact read-only request paths, changed tag/runtime, resident mismatch,
+duplicate/ambiguous metadata and bounded refusal. The CLI control preserves a
+separate malformed conversation configuration and creates no operator home.
+
 ## Preserve reasoning and destination facts
 
 Reasoning effort is separate from model identity. Exact `gpt-6.1-sol`

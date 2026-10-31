@@ -549,7 +549,7 @@ cat > "$IPSE_CORPUS_ARTIFACTS/producer-inference.json" <<'JSON'
       "operation": "embedding", "provider": "ollama",
       "model": "REPLACE_WITH_INSTALLED_1024_MODEL", "credential": "none",
       "base_url": "http://127.0.0.1:11434", "dimensions": 1024,
-      "dimension_mode": "native", "timeout_ms": 120000
+      "dimension_mode": "native", "timeout_ms": 100000
     }
   },
   "inference_services": {"local": {"version": 1, "origins": ["http://127.0.0.1:11434"]}},
@@ -576,6 +576,9 @@ Every embedding request from a v2 instance requires an authenticated source guar
 use a separate ordinary v1 instance for query embeddings that have no producer
 claim. The host's normal configuration validation checks the supplied service
 registry; the generator does not discover or select a service for you.
+The registered service also requires each effective request timeout to be at
+most 100000 milliseconds. The example selects that limit explicitly; a longer
+profile refuses before provider dispatch rather than being silently shortened.
 
 Import and validate with the existing admitted home/workspace:
 

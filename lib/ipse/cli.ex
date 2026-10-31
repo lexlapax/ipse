@@ -158,6 +158,8 @@ defmodule Ipse.CLI do
   defp dispatch(["setup"], opts),
     do: Ipse.CLI.Setup.run(opts, home(), opts[:cwd] || default_cwd())
 
+  defp dispatch(["model", "inspect"], opts), do: Ipse.CLI.Models.inspect(opts)
+
   defp dispatch(["documents", command], opts),
     do: Ipse.CLI.Documents.run(command, opts, home(), opts[:cwd] || default_cwd())
 

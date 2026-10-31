@@ -213,6 +213,39 @@ upstream decides support. Compatible local profiles omit reasoning controls.
 Gemini accepts `low`, `medium` and `high`; `none` omits its thinking control.
 The selected model decides which thinking levels it supports.
 
+### Inspect an installed Ollama model
+
+With your chosen local Ollama service already running, inspect an exact installed
+model name before configuring a knowledge route:
+
+```sh
+ipse model inspect --provider ollama --model qwen3-embedding:0.6b-q8_0 --base-url http://127.0.0.1:11434 --json
+ipse model inspect --provider ollama --model qwen3.5:4b --base-url http://127.0.0.1:11434
+```
+
+Replace the names and endpoint with your selected local service. Inspection is
+independent of conversation settings and requires its own explicit loopback URL.
+It reads [installed model identities](https://docs.ollama.com/api/tags),
+[model details](https://docs.ollama.com/api-reference/show-model-details) and
+[loaded-model context](https://docs.ollama.com/api/ps). The scan checks the runtime
+version and selected tag again before returning. A changed, ambiguous or missing
+model refuses; inspect the service's model inventory and review a new scan.
+
+Expect the full manifest digest, artifact bytes, declared capabilities/limits,
+metadata hashes and current loaded context when reported. An unloaded model has
+`effective_context: "unverified_not_loaded"`; its advertised maximum does not
+establish an active context. Metadata remains a cooperative service claim,
+without attesting request weights or offline execution. Missing license bytes
+remain unknown; a declared license label is not independent license verification.
+Unsafe diagnostic labels are withheld while their metadata remains hash-bound.
+
+The default scan budget is ten seconds; `--timeout-ms` accepts 1000..30000.
+Each response permits 1 MiB and the model inventory at most 256 entries. A refusal
+does not retry or change a tag. Cleanup may outlast the budget; a late result
+refuses. Inspection requests no inference, download,
+activation or configuration write. Provisioning and local-only qualification
+remain separate from this metadata check.
+
 ### Use Grok through xAI
 
 Choose the billing route explicitly. `xai` uses an API key and xAI team API
