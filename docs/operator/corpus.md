@@ -217,6 +217,12 @@ features can leave the result partial. A citation records an acquired snapshot;
 it does not assert that the workspace file is still unchanged. Ipse does not
 watch this file or automatically refresh it.
 
+Word tables may use nonhidden named styles. A table style with hidden-text
+properties or an unresolved or ambiguous reference refuses extraction; numbered
+list properties also remain unsupported. The current DOCX recipe is
+`ipse-documents-v12`. Reacquire and explicitly replace an older source when you
+need the newer recipe; existing extractions are not silently rebuilt.
+
 For replacement, inspect the source and use its current revision with the next
 generation. Supply the new file's concrete SHA-256 as `expected_sha256`; only an
 initial generation-one/revision-zero acquisition permits `null`. The native
@@ -416,9 +422,10 @@ preset.
 Use a separate source-bound `collection-dense` instance for this experimental
 page producer. It requires an already admitted project, current stored
 sources, an explicit 1,024-dimensional embedding profile and a registered inference
-service. It does not yet complete facts, group headers or a selected
-generation. The existing `collection-documents` preset keeps its supplied-generation
-procedures and grants.
+service. A vector-page call prepares the vectors; use the explicit-fact,
+group-append and finalization procedures below to assemble and select a
+generation. It does not call an extraction model. The existing
+`collection-documents` preset keeps its supplied-generation procedures and grants.
 
 For an already installed local embedding model, replace
 `REPLACE_WITH_INSTALLED_1024_MODEL` below with its exact model name. This example

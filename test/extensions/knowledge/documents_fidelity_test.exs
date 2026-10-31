@@ -94,7 +94,7 @@ defmodule Ipse.KnowledgeDocumentsFidelityTest do
       assert result["status"]=="complete" and result["warnings"]==[]
       assert result["revision_policy"]=="insertions_included_deletions_excluded"
       assert result["visibility_policy"]=="bounded_style_and_direct_hidden_excluded"
-      assert result["extraction_version"]=="ipse-documents-v11"
+      assert result["extraction_version"]=="ipse-documents-v12"
     end
     for value <- ["false","0","off"] do
       {:ok,result}=D.extract(doc.("<w:p><w:r><w:rPr><w:vanish w:val=\"#{value}\"/></w:rPr><w:t>visible</w:t></w:r></w:p>"),"a.docx")
@@ -243,6 +243,49 @@ defmodule Ipse.KnowledgeDocumentsFidelityTest do
     styles=style.("paragraph","normal","<w:name w:val=\"Normal\"/><w:pPr><w:spacing w:after=\"100\"/></w:pPr><w:rPr><w:rFonts w:ascii=\"Arial\"/></w:rPr>")
     {:ok,result}=extract.(styles,"<w:p><w:pPr><w:pStyle w:val=\"normal\"/></w:pPr>"<>run.("ordinary")<>"</w:p>")
     assert result["status"]=="complete" and result["warnings"]==[]
+    ''')
+  end
+
+  @tag :docx_table_style
+  test "nonhidden table styles retain visible Unicode cells and independent table locators" do
+    pure(~S'''
+    styles="<w:styles xmlns:w=\"#{word}\"><w:style w:type=\"table\" w:styleId=\"base\"/><w:style w:type=\"table\" w:styleId=\"grid\"><w:basedOn w:val=\"base\"/><w:tblPr><w:shd w:fill=\"eeeeee\"/></w:tblPr></w:style></w:styles>"
+    table=fn text -> "<w:tbl><w:tblPr><w:tblStyle w:val=\"grid\"/></w:tblPr><w:tr><w:tc><w:p>"<>run.(text)<>"<w:r><w:rPr><w:vanish/></w:rPr><w:t>hidden cell text</w:t></w:r></w:p></w:tc></w:tr></w:tbl>" end
+    body="<w:p>"<>run.("before")<>"</w:p>"<>table.("café α")<>"<w:p>"<>run.("between")<>"</w:p>"<>table.("雪")
+    {:ok,result}=D.extract(zip.([{"word/styles.xml",styles},{"word/document.xml",xml.(body)}]),"styled-tables.docx")
+    assert Enum.map(result["segments"],& &1["text"])==["before","café α","between","雪"]
+    [_,first,_,second]=result["segments"]
+    assert Map.take(first["locator"],~w(kind table row cell))==%{"kind"=>"table_cell","table"=>1,"row"=>1,"cell"=>1}
+    assert Map.take(second["locator"],~w(kind table row cell))==%{"kind"=>"table_cell","table"=>2,"row"=>1,"cell"=>1}
+    assert result["status"]=="complete" and result["warnings"]==[]
+    assert result["extraction_version"]=="ipse-documents-v12"
+    ''')
+  end
+
+  @tag :docx_table_style
+  test "table styles cannot bypass hidden inheritance or ambiguous reference placement" do
+    pure(~S'''
+    style=fn type,id,body -> "<w:style w:type=\"#{type}\" w:styleId=\"#{id}\">#{body}</w:style>" end
+    row="<w:tr><w:tc><w:p>"<>run.("never published on refusal")<>"</w:p></w:tc></w:tr>"
+    reference="<w:tblStyle w:val=\"grid\"/>"
+    properties="<w:tblPr>#{reference}</w:tblPr>"
+    extract=fn styles,body -> D.extract(zip.([{"word/styles.xml","<w:styles xmlns:w=\"#{word}\">#{styles}</w:styles>"},{"word/document.xml",xml.(body)}]),"styles.docx") end
+    for styles <- [
+      style.("table","grid","<w:rPr><w:vanish/></w:rPr>"),
+      style.("table","grid","<w:tblStylePr w:type=\"firstRow\"><w:rPr><w:vanish/></w:rPr></w:tblStylePr>"),
+      style.("table","grid","<w:basedOn w:val=\"hidden\"/>")<>style.("table","hidden","<w:rPr><w:vanish/></w:rPr>"),
+      style.("paragraph","grid",""),
+      style.("table","different","")
+    ] do
+      assert {:error,:unsupported_docx_style_visibility}=extract.(styles,"<w:tbl>"<>properties<>row<>"</w:tbl>")
+    end
+    for body <- [
+      "<w:tbl>"<>row<>properties<>"</w:tbl>",
+      "<w:tbl><w:tblPr>"<>reference<>reference<>"</w:tblPr>"<>row<>"</w:tbl>",
+      "<w:p><w:pPr>"<>reference<>"</w:pPr>"<>run.("wrong owner")<>"</w:p>"
+    ] do
+      assert {:error,:unsupported_docx_style_visibility}=extract.(style.("table","grid",""),body)
+    end
     ''')
   end
 

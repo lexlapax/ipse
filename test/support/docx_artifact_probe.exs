@@ -27,7 +27,7 @@ make = fn body ->
 end
 
 run = fn text -> "<w:r><w:t>#{text}</w:t></w:r>" end
-"ipse-documents-v11" = D.version("docx")
+"ipse-documents-v12" = D.version("docx")
 
 {:error, :unsupported_docx_text_structure} =
   D.extract(
@@ -43,7 +43,7 @@ run = fn text -> "<w:r><w:t>#{text}</w:t></w:r>" end
 
 {:ok,
  %{
-   "extraction_version" => "ipse-documents-v11",
+   "extraction_version" => "ipse-documents-v12",
    "segments" => [%{"text" => "visible"}],
    "status" => "complete"
  }} = D.extract(make.("<w:p>" <> run.("visible") <> "</w:p>"), "test.docx")
@@ -117,5 +117,44 @@ comment_links = String.replace(links, "footnotes", "comments")
 
 %{"part" => "word/document.xml", "paragraph" => 1, "start_byte" => 2, "end_byte" => 6} =
   range_locator["reference_range"]
+
+table_document =
+  "<w:document xmlns:w=\"#{word}\"><w:body><w:tbl><w:tblPr><w:tblStyle w:val=\"grid\"/></w:tblPr>" <>
+    "<w:tr><w:tc><w:p>" <> run.("café 雪") <> "</w:p></w:tc></w:tr></w:tbl></w:body></w:document>"
+
+table_styles =
+  "<w:styles xmlns:w=\"#{word}\"><w:style w:type=\"table\" w:styleId=\"base\"/>" <>
+    "<w:style w:type=\"table\" w:styleId=\"grid\"><w:basedOn w:val=\"base\"/></w:style></w:styles>"
+
+table_links = String.replace(links, "footnotes", "styles")
+table_types = String.replace(note_types, "footnotes", "styles")
+
+make_table = fn styles ->
+  {:ok, {_, bytes}} =
+    :zip.create(
+      ~c"table.docx",
+      [
+        {~c"_rels/.rels", root},
+        {~c"[Content_Types].xml", table_types},
+        {~c"word/document.xml", table_document},
+        {~c"word/_rels/document.xml.rels", table_links},
+        {~c"word/styles.xml", styles}
+      ],
+      [:memory]
+    )
+
+  bytes
+end
+
+{:ok, %{"status" => "complete", "segments" => [%{"text" => "café 雪", "locator" => cell}]}} =
+  D.extract(make_table.(table_styles), "table.docx")
+
+%{"kind" => "table_cell", "table" => 1, "row" => 1, "cell" => 1} = cell
+
+hidden_table_styles =
+  String.replace(table_styles, "<w:basedOn", "<w:rPr><w:vanish/></w:rPr><w:basedOn")
+
+{:error, :unsupported_docx_style_visibility} =
+  D.extract(make_table.(hidden_table_styles), "hidden-table.docx")
 
 IO.puts("ARTIFACT_DOCX_PROBE_PASSED #{:code.which(D)}")

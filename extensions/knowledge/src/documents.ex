@@ -28,7 +28,7 @@ defmodule IpseKnowledge.Documents do
   def version, do: "ipse-documents-v2"
 
   @doc "Return the immutable extraction recipe selected for a result format."
-  def version("docx"), do: "ipse-documents-v11"
+  def version("docx"), do: "ipse-documents-v12"
   def version(format) when format in ~w(text markdown pdf), do: version()
 
   @doc "Project an extracted DOCX into the bounded explicit source-put contract."

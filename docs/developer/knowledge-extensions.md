@@ -69,9 +69,10 @@ classification and proof-shaped JSON supply no source authority.
 
 Ordinary notes have a 90-day host ceiling; current statements and preferences
 follow the reviewed category rule. Pending proposals have seven days and a
-retained ceiling of 64 records/256 KiB, including expired rows. The worker and
-v3 normalizer independently check that ceiling under their respective read and
-publication boundaries. Neither silently removes proposals to make room.
+retained ceiling of 64 records/256 KiB, including expired rows. The v3 normalizer
+checks the held Collection summary through `PendingCapacity.check/3` before
+publication. The worker does not load other proposal values to count the queue.
+Neither silently removes proposals to make room.
 Recorded endorsement establishes the user's statement, not external truth or
 permission for another effect.
 
@@ -401,6 +402,15 @@ package authority, bounds ZIP expansion and XML parsing, includes insertions, an
 excludes deletions and supported hidden runs. Unsupported content stays partial
 or refuses rather than claiming complete coverage.
 
+A table's direct `tblPr/tblStyle` reference uses the same bounded style graph
+as paragraph and character references, with an exact table-style type check.
+Only table graphs without hidden-text properties are supported. The parser
+rejects hidden conditional table properties, unknown or wrong-type references,
+duplicate references and references after row content. Each table tracks its
+own selection, while its cell locators retain their original table/row/cell
+identity. Numbering properties and ambiguous visibility remain outside the
+supported subset.
+
 Referenced headers and footers are extracted once per part and their locators
 identify the region. The result remains partial: it does not resolve section
 inheritance, page layout, or which pages display the text. Only bounded internal
@@ -431,7 +441,7 @@ reader does not interpret can therefore be partial even when its visible body is
 readable; inspect the result and original document before using it as evidence.
 
 Recipes are format-specific: `Documents.version("docx")` is
-`ipse-documents-v11`, while text, Markdown and PDF use `ipse-documents-v2`.
+`ipse-documents-v12`, while text, Markdown and PDF use `ipse-documents-v2`.
 The legacy `version/0` returns the v2 value; use `version/1` when binding an
 extraction to a source version. Earlier DOCX results are not automatically
 migrated or equivalent. Future indexing must explicitly rebuild or requalify them.

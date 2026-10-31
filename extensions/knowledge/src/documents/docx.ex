@@ -347,11 +347,24 @@ defmodule IpseKnowledge.Documents.Docx do
 
       element == "tbl" ->
         index = state.table_count + 1
-        %{state | table_count: index, tables: [%{table: index, row: 0, cell: 0} | state.tables]}
+
+        table = %{table: index, row: 0, cell: 0, style_seen: false, content_started: false}
+        %{state | table_count: index, tables: [table | state.tables]}
+
+      element == "tblStyle" ->
+        case {state.stack, state.tables} do
+          {["tblStyle", "tblPr", "tbl" | _], [table | rest]}
+          when not table.style_seen and not table.content_started ->
+            IpseKnowledge.Documents.Docx.Styles.check(state.styles, attr(attrs, "val"), "table")
+            %{state | tables: [%{table | style_seen: true} | rest]}
+
+          _ ->
+            fail(:unsupported_docx_style_visibility)
+        end
 
       element == "tr" and state.tables != [] ->
         [table | rest] = state.tables
-        %{state | tables: [%{table | row: table.row + 1, cell: 0} | rest]}
+        %{state | tables: [%{table | row: table.row + 1, cell: 0, content_started: true} | rest]}
 
       element == "tc" and state.tables != [] ->
         [table | rest] = state.tables
@@ -387,7 +400,7 @@ defmodule IpseKnowledge.Documents.Docx do
             fail(:unsupported_docx_style_visibility)
         end
 
-      element in ~w(tblStyle numPr) ->
+      element == "numPr" ->
         fail(:unsupported_docx_style_visibility)
 
       element in ~w(tab br cr) ->
