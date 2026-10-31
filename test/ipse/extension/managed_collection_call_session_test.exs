@@ -814,7 +814,7 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
                             c[:managed_decision_literal] -> "decision_literal"
                             c[:managed_decision] -> "decision_helper"
                             c[:managed_helper] -> "helper"
-                            c[:capture_write] -> "capture"
+                            c[:capture_write] -> c[:registered_capture_mode] || "capture"
                             c[:postjournal_expiry] -> "read_hold"
                             true -> "read"
                           end
@@ -898,6 +898,9 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
 
         responses =
           cond do
+            c[:registered_capture_no_continuation] ->
+              Enum.take(responses, 1)
+
             c[:registered_competing] ->
               barrier =
                 hd(responses)
@@ -6142,6 +6145,11 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
     assert denied["approval"] == "denied" and denied["outcome"]["status"] == "denied"
   end
 
+  @tag metadata_version: 3,
+       registered_main: true,
+       capture_write: true,
+       registered_capture: true,
+       registered_capture_mode: "paged"
   test "SDK2 protected output retains version4 and the same original binding", c do
     pid = start(c, %{fixture_mode: "paged"})
     assert :ok = Session.prompt(pid, "Synthetic café observation")
@@ -6151,8 +6159,19 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
     result = Enum.find(events, &(&1["type"] == "extension_invocation_result"))
     assert result["version"] == 4
     assert result["semantic_binding"] == intent["semantic_binding"]
+
+    publication =
+      Enum.find(events, fn event ->
+        event["type"] == "extension_action_result" and
+          get_in(event, ["request", "op"]) == "collection.managed"
+      end)
+
+    assert publication["outcome"]["status"] == "ok"
+    assert publication["effect_binding"]["metadata_version"] == 3
     assert :ok = Ipse.Extension.Invocation.validate_events(events)
     assert {:ok, _} = Session.restore_context(events)
+    assert [_, {_, continuation}] = Task.await(c.provider_server, 5000)
+    assert Enum.any?(continuation["messages"], &(&1["role"] == "tool"))
   end
 
   test "a selected operator command uses its own protected outer receipt", c do
@@ -6172,13 +6191,19 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
     refute File.exists?(Path.join(c.cwd, "forbidden"))
   end
 
+  @tag metadata_version: 3,
+       registered_main: true,
+       capture_write: true,
+       registered_capture: true,
+       registered_capture_no_continuation: true,
+       registered_capture_mode: "hold"
   test "revocation after worker entry is rechecked before collection reservation", c do
     pid = start(c, %{fixture_mode: "hold"})
     assert :ok = Session.prompt(pid, "Synthetic café observation")
     await_marker(c.trace, "held\n", 300)
     {:ok, snapshot} = Consent.snapshot(c.control, c.binding["project_id"])
     {:ok, _} = Consent.revoke(c.control, c.binding["project_id"], snapshot["epoch"])
-    assert_receive {:ipse, ^pid, {:done, :ok}}, 10_000
+    assert_receive {:ipse, ^pid, {:done, :error}}, 10_000
     {:ok, events} = Journal.load(c.dir, Session.info(pid).id)
 
     commit =
@@ -6195,6 +6220,10 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
 
     {:ok, snapshot} = Consent.snapshot(c.control, c.binding["project_id"])
     assert snapshot["operations"] == %{}
+    assert Enum.count(events, &(&1["type"] == "inference_dispatch_intent")) == 1
+    assert :ok = Ipse.Extension.Actions.validate_events(events)
+    assert {:ok, _} = Session.restore_context(events)
+    assert [_] = Task.await(c.provider_server, 5000)
   end
 
   test "interrupted protected outer remains unknown and never replays on resume", c do
@@ -6219,6 +6248,10 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
     assert :ok = Session.close_confirmed(resumed)
   end
 
+  @tag metadata_version: 3,
+       registered_main: true,
+       capture_write: true,
+       registered_capture: true
   test "ambiguous reviewed publication mappings refuse rather than choosing a stronger operation",
        c do
     {:ok, snapshot} = Consent.snapshot(c.control, c.binding["project_id"])
@@ -6275,6 +6308,7 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
 
     {:ok, snapshot} = Consent.snapshot(c.control, c.binding["project_id"])
     assert snapshot["operations"] == %{}
+    assert [_, _] = Task.await(c.provider_server, 5000)
   end
 
   test "a known conflict is recorded and conservatively settled once without retry", c do

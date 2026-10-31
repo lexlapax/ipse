@@ -131,6 +131,16 @@ and settled accounting; the service slot is released before either extension
 waits at the barrier. Excluded cases have not run. This exercises protocol and
 ownership, without real model inference or semantic-quality evidence.
 
+Use the supported single-new-record V3 publication shape when a fixture is
+testing current capture rather than the deliberately closed legacy API. The
+`registered_capture` cases in the same file cover a successful paged SDK result,
+revocation during worker entry and ambiguous publication mappings. The paged
+case must prove a successful publication as well as the original result binding
+and saved reconstruction. After revocation the turn ends with an error because
+the registered route refuses another model dispatch; require the denied commit,
+empty reservation ledger and exactly one dispatch intent. Waiting for a fake
+second HTTP response would hide that correct refusal behind a fixture timeout.
+
 Capture the journal after `Session.close_confirmed/1` returns. On idle resume,
 require those bytes as an exact prefix. With the current release-receipt layout,
 the only suffix before closing the resumed Session is one complete ownership
