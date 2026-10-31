@@ -118,6 +118,11 @@ no receipt layout remain byte-for-byte unchanged. Confirmed close then appends
 its release intent. Validate that intent against the same owner and the native
 signed-release claim separately from the resume assertion. Neither ownership nor
 release records permit replaying effects or changing prior conversation records.
+Closing an active lifecycle epoch first records an unsigned closure with
+`cleanup_confirmed: false`; that record cannot predict the later native release.
+Require its digest in the current release intent and check the signed-release
+claim after confirmed close instead of expecting the closure itself to assert
+completed cleanup. The parallel-delegation demo exercises this sequence.
 When intentionally corrupting a journal, establish the
 original source binding first and assert the earliest actual refusal: a modified
 record or shifted byte offset can invalidate lifecycle sources before the

@@ -210,9 +210,6 @@ defmodule Ipse.DelegationDemo do
     :crypto.strong_rand_bytes(10) |> Base.url_encode64(padding: false)
   end
 
-  @moduledoc false
-  alias Ipse.Session
-
   @args %{
     "tasks" => [
       %{"task" => "Inspect first synthetic task", "context" => "First"},
@@ -292,28 +289,52 @@ defmodule Ipse.DelegationDemo do
       "approved" = intent["approval"]
       "delegate_parallel" = intent["name"]
       true = intent["arguments"] == @args
-      :ok = Session.close(pid)
+      path = Path.join(opts[:state_dir], id <> ".jsonl")
+      before_close = File.read!(path)
+      :ok = Session.close_confirmed(pid)
       {:ok, closed_events} = Ipse.Journal.load(opts[:state_dir], id)
-      [closure] = Enum.drop(closed_events, length(events))
+      [closure, release] = Enum.drop(closed_events, length(events))
       true = Enum.take(closed_events, length(events)) == events
       "lifecycle_epoch_closed" = closure["type"]
       "close" = closure["closure"]
-      true = closure["cleanup_confirmed"]
+      false = closure["cleanup_confirmed"]
+      {:ok, ^release} = Ipse.Session.ReleaseReceipt.current_intent(closed_events, id)
+      true = release["epoch_id"] == closure["epoch_id"]
+      true = release["closure_sha256"] == Ipse.JSON.digest([closure])
+      :signed_release_claim = Ipse.Session.ReleaseReceipt.inspect_current(opts[:state_dir], id)
+      closed_bytes = File.read!(path)
+      true = String.starts_with?(closed_bytes, before_close)
 
       {:ok, resumed} =
         DynamicSupervisor.start_child(Ipse.Sessions, {Session, Keyword.put(opts, :id, id)})
 
       try do
         :idle = Session.info(resumed).phase
-        {:ok, ^closed_events} = Ipse.Journal.load(opts[:state_dir], id)
+        {:ok, resumed_events} = Ipse.Journal.load(opts[:state_dir], id)
+        true = Enum.take(resumed_events, length(closed_events)) == closed_events
+        [owner] = Enum.drop(resumed_events, length(closed_events))
+        true = Ipse.Session.ReleaseReceipt.valid_owner_marker?(owner, id)
+        after_resume = File.read!(path)
+        true = String.starts_with?(after_resume, closed_bytes)
+
+        suffix =
+          binary_part(
+            after_resume,
+            byte_size(closed_bytes),
+            byte_size(after_resume) - byte_size(closed_bytes)
+          )
+
+        [owner_line] = String.split(suffix, "\n", trim: true)
+        ^owner = Jason.decode!(owner_line)
+        true = suffix == owner_line <> "\n"
       after
-        Session.close(resumed)
+        Session.close_confirmed(resumed)
       end
 
       IO.puts("Parallel local delegation and idle resume passed without a model service.")
       :ok
     after
-      if Process.alive?(pid), do: Session.close(pid)
+      if Process.alive?(pid), do: Session.close_confirmed(pid)
       File.rm_rf!(root)
     end
   end

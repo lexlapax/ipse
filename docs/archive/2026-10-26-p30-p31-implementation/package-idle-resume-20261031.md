@@ -68,3 +68,39 @@ of a development toolchain on runtime PATH. Logs are retained at
 `/tmp/ipse-decision-bc23dd5-source.log` and
 `/tmp/ipse-decision-bc23dd5-installed.log`. This is neither generic package
 acceptance nor live engine or consumer-quality qualification.
+
+## Replacement archive and active-epoch follow-up
+
+The clean committed-source build at
+`267b3e6f799f659a28d200167a1ff844e60fd92a` produced the same supported basename
+with SHA256
+`81e4e52b0e7bd4ea155515fd2b9c242364f3919a0ccfd364868b63cd61d6d794`.
+Its generic installed proof passed the repaired upgrade, handoff and extension
+checks, and the explicit-memory workload (100 records/100 queries, six Sessions,
+two projects, no model calls). It then failed the parallel-delegation demo's
+obsolete single-closure assumption. This is still a failed generic package proof.
+
+The recorded active-epoch suffix was the lifecycle closure plus release intent;
+the closure correctly says `cleanup_confirmed: false`, since its append precedes
+the actual native release. The demo now requires confirmed close, exactly those
+two records, unchanged preceding records/bytes, the closure's epoch and digest in
+the validated current intent, and the native signed-release claim. Idle resume
+requires exactly one valid owner marker, preserving the exact closed prefix.
+The separate actual child-result/approval assertions remain intact. A source
+run of this parallel demo passed without a model service. The redundant module
+attribute/alias that emitted a warning was removed. Inspection covered journal
+suffix assertions across all shipped demo scripts before another package build.
+Existing delegation, child-accounting and signed-release regression files passed
+**22 checks in 4.3 seconds**. No runtime protocol or source gate changed.
+
+Separately, the complete legacy Collection SDK Session file passed **15 checks
+in 14.3 seconds**, seed 685894, after the earlier admission restoration.
+A fresh independent Corpus artifact passed all **six** document-parser checks
+in both source and installed modes against the exact `267b3e6` archive, including
+the available native PDF resource backend and all dependency notices. Both
+reports retain unchanged inventories, private homes, precompiled harnesses and
+no system development toolchain on runtime PATH. Inputs remain synthetic;
+this does not establish real Word fidelity or full installed knowledge behavior.
+Logs use `/tmp/ipse-package-267b3e6-*.log`,
+`/tmp/ipse-documents-267b3e6-*.log` and
+`/tmp/ipse-current-legacy-sdk-session-20261031.log`.
