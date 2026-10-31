@@ -22,8 +22,9 @@ The builders require Elixir 1.18 or later, OTP 27 or later, and Ipse's public SD
 BEAM directory. Run these commands from the repository root after
 `./dev/build.sh`. They use no additional packages.
 
-Source and package builds also compile an inert `knowledge/native` artifact into
-`priv/extension-bundles/` with a digest-bound catalog. The runtime can inspect that
+Source and package builds also compile inert native Knowledge and lexical
+State/Collection document artifacts into `priv/extension-bundles/` with a
+digest-bound catalog. The runtime can inspect that
 catalog and explicitly import a selected artifact through `Extension.Bundles`;
 neither step starts a worker, grants capabilities or changes configuration.
 The native artifact includes a manifest-declared `operator.json` with structural
@@ -81,6 +82,9 @@ declarations; an SDK-1 artifact needs a new build rather than an options change.
 | Package | Presets | Additional work |
 | --- | --- | --- |
 | Corpus | `state-lexical`, `mcp-lexical` | BM25 retrieval without model calls |
+| Corpus | `state-documents`, `mcp-documents` | Explicit workspace document acquisition and lexical retrieval |
+| Corpus | `collection-documents` | Native document Collection, lexical query and supplied shared-projection inspection |
+| Corpus | `collection-dense` | Guarded vector producer and selected-source cosine/hybrid query with an explicit encoder |
 | Corpus | `state-dense`, `mcp-dense` | Explicit embeddings and cosine retrieval |
 | Corpus | `state-rerank`, `mcp-rerank` | Lexical retrieval with a selected text reranker |
 | Corpus | `state-semantic`, `mcp-semantic` | Embeddings and optional text reranking |
@@ -113,7 +117,8 @@ admission. A draft reserves no slots for later appends: competing writes can mak
 an append refuse, while inspection and abort remain available within the ceiling.
 
 For inference presets, supply `--inference-config FILE`. The file accepts only
-`profiles`, `embedding_profiles` and an optional shared `budget`. It must contain
+`profiles`, `embedding_profiles`, an optional explicit `inference_services`
+registry and an optional shared `budget`. It must contain
 every host profile referenced by the package's embedding, extraction and rerank
 registries, with an explicit provider and model. The generator preserves those
 registries in its output. It never reads the ordinary home configuration or
@@ -121,6 +126,9 @@ chooses a provider. Follow the [embedding manual](../../docs/operator/extensions
 and [profile manual](../../docs/operator/configuration.md#reuse-a-named-model-profile) to define those routes.
 Run `ipse config --config FILE --no-project-config --extension INSTANCE` to
 validate the complete generated configuration before starting a session.
+Collection query consumers and source-bound producers retain separate binding
+requirements; follow the [selected-vector procedure](../../docs/operator/corpus.md#query-selected-shared-vectors)
+for exact configuration, selectors and current experimental limits.
 
 ## Verify independent artifacts
 

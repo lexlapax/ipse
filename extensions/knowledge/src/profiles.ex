@@ -169,8 +169,20 @@ defmodule IpseKnowledge.Profiles do
       package != "research" or Enum.all?(o["retrieval"], fn {_, p} -> p["kind"] == "bm25" end)
 
     collection_retrieval =
-      preset not in ~w(collection-documents collection-dense) or
-        Enum.all?(o["retrieval"], fn {_, p} -> p["kind"] == "bm25" end)
+      case preset do
+        "collection-documents" ->
+          Enum.all?(o["retrieval"], fn {_, p} -> p["kind"] == "bm25" end)
+
+        "collection-dense" ->
+          Enum.all?(o["retrieval"], fn {_, p} ->
+            p["kind"] in ~w(bm25 dense) or
+              (p["kind"] == "hybrid" and is_nil(p["graph"]) and
+                 p["missing_embedding"] == "refuse")
+          end)
+
+        _ ->
+          true
+      end
 
     empty_unused and all_stores and required and authority and offline and retrieval and
       collection_retrieval

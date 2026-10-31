@@ -357,6 +357,56 @@ The fallback remains partial. `Evidence.query_scope/4` owns direct/combined cons
 Use `test/extensions/knowledge/query_completeness_test.exs` to compare matches,
 no-match, unpublished drafts, forgotten/expired/future sources, and depth-limited graphs.
 
+### Rank explicitly selected Collection vectors
+
+The `collection-dense` preset also admits dense and graph-free hybrid retrieval
+with `missing_embedding: "refuse"`.
+Its `query_selected` requires the original six selected-source fields plus exact
+`vector_selection` and `fact_selection` objects. BM25 retains its original shape.
+The ordinary Collection namespace `query` remains lexical; selected coverage must
+never be described as a namespace search.
+
+Follow `Corpus.collection_query/2` into the existing
+`Collection.Selected` reader. It hydrates complete raw bundles and vector/fact
+groups under one native Collection generation, checks all source bindings and
+rechecks the catalog before returning its private snapshot. The snapshot retains
+that native generation for a later fence. Corpus then uses the existing
+`Adapters.embedding_profile` read to compare the actual configured selection
+digest before proposing inference. The `embedding.create` request independently
+pins the same digest; no source passage is sent by this query operation.
+
+The query uses the same prefix formatting, typed vector reconstruction,
+`dense_candidates`, cosine ranking and graph-free hybrid fusion as State Corpus.
+Only the query gets a prefix. Every stored vector must retain its chunk-input
+digest and full profile/model/selection/dimensions/encoding identity. Supplied
+projection validation establishes structure and attribution, not a model receipt.
+After inference, a fresh catalog read must retain the captured native generation
+and catalog hash. This also catches intervening projection/root changes that did
+not replace the raw catalog body. For current-time queries, recheck source expiry
+using the time after that read. A mismatch returns no evidence or claims.
+
+Coverage preserves selected-only scope, the stored-provenance limitation and
+later-use-authority false. It counts the one query inference separately from
+Collection, profile and vector-result reads. This is a coherent snapshot checked before return,
+not authority for later egress or a promise to revoke an already returned result.
+The existing source-bound producer binding still requires a producer claim for
+every embedding request; query consumers use the ordinary v1 binding in a
+separate reviewed configuration. Do not remove that host check to reuse a
+producer instance for unclaimed query text.
+
+Run the actual public-artifact/native Session controls:
+
+```sh
+mix test test/extensions/knowledge/collection_adapter_session_test.exs --only public_semantic_selected
+```
+
+The fixtures supply their generation privately, then use the actual registered
+Ollama adapter for synthetic query embeddings. They check cosine ordering that
+differs from lexical order, Unicode prefix bytes, Word citation/partial coverage,
+Collection change during approval, actual wall-clock expiry and an unselected
+encoder recipe with no dispatch. Action and Saved validation remain in the
+journey. They qualify no live model quality or complete producer workload.
+
 ## Follow acquired document bytes into cited storage
 
 `Corpus.source` offers two explicit document paths. `put_document` accepts a

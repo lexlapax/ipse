@@ -21,7 +21,9 @@ data =
             Map.merge(Map.delete(selection, "encoding"), %{
               "chunk_id" => chunk["chunk_id"],
               "input_sha256" => sha,
-              "values" => List.duplicate(1.0, selection["dimensions"])
+              "values" =>
+                get_in(input, ["vector_values", source["source_id"]]) ||
+                  List.duplicate(1.0, selection["dimensions"])
             })
           )
 

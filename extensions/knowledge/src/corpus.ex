@@ -455,24 +455,67 @@ defmodule IpseKnowledge.Corpus do
 
   defp collection_query(args, state) do
     with true <- state.resolved["preset"] in ~w(collection-documents collection-dense),
-         true <- exact?(args, ~w(store retrieval query top_k as_of_ms source_ids)),
-         {:ok, profile} <- Profiles.lookup(state.resolved, "stores", args["store"]),
-         {:ok, %{"kind" => "bm25"}} <-
-           Profiles.lookup(state.resolved, "retrieval", args["retrieval"]),
+         true <- is_map(args),
+         {:ok, %{"kind" => "collection"} = profile} <-
+           Profiles.lookup(state.resolved, "stores", args["store"]),
+         {:ok, retrieval} <- Profiles.lookup(state.resolved, "retrieval", args["retrieval"]),
+         true <- collection_query_shape?(args, retrieval, state.resolved),
          true <- text?(args["query"], 1024) and args["top_k"] in 1..10,
          at = args["as_of_ms"] || System.system_time(:millisecond),
          true <- Evidence.safe_uint?(at) do
-      advance(
-        CollectionStore.start(profile, :selected, %{
-          "source_ids" => args["source_ids"],
-          "as_of_ms" => at
-        }),
-        %{state | phase: :collection_query, ctx: %{args: args, as_of_ms: at}}
-      )
+      if retrieval["kind"] == "bm25" do
+        advance(
+          CollectionStore.start(profile, :selected, %{
+            "source_ids" => args["source_ids"],
+            "as_of_ms" => at
+          }),
+          %{state | phase: :collection_query, ctx: %{args: args, as_of_ms: at}}
+        )
+      else
+        advance(
+          CollectionStore.start(
+            profile,
+            :generation_selected,
+            Map.take(args, ~w(source_ids vector_selection fact_selection))
+            |> Map.put("as_of_ms", at)
+          ),
+          %{
+            state
+            | phase: :collection_semantic_snapshot,
+              ctx: %{args: args, as_of_ms: at, retrieval: retrieval, store_profile: profile}
+          }
+        )
+      end
     else
       _ -> finish(state, refused(:invalid_collection_query))
     end
   end
+
+  defp collection_query_shape?(args, %{"kind" => "bm25"}, _),
+    do: exact?(args, ~w(store retrieval query top_k as_of_ms source_ids))
+
+  defp collection_query_shape?(args, %{"kind" => kind} = retrieval, resolved)
+       when kind in ~w(dense hybrid) do
+    with true <- resolved["preset"] == "collection-dense",
+         true <-
+           exact?(
+             args,
+             ~w(store retrieval query top_k as_of_ms source_ids vector_selection fact_selection)
+           ),
+         {:ok, embedding} <- Profiles.lookup(resolved, "embedding", retrieval["embedding"]),
+         true <-
+           is_map(args["vector_selection"]) and
+             embedding["profile"] === args["vector_selection"]["profile"],
+         true <-
+           kind != "hybrid" or
+             (is_nil(retrieval["graph"]) and retrieval["missing_embedding"] == "refuse") do
+      true
+    else
+      _ -> false
+    end
+  end
+
+  defp collection_query_shape?(_, _, _), do: false
 
   defp collection_job(args, state) do
     with true <- state.resolved["preset"] in ~w(collection-documents collection-dense),
@@ -888,11 +931,22 @@ defmodule IpseKnowledge.Corpus do
   end
 
   defp advance({:call, request, cont}, state) do
+    state =
+      if state.phase == :collection_semantic_embed do
+        count = Map.get(state.ctx, :embedding_result_reads, 0)
+        added = if request["op"] == "effect.result.read", do: 1, else: 0
+        %{state | ctx: Map.put(state.ctx, :embedding_result_reads, count + added)}
+      else
+        state
+      end
+
     pending =
       if state.phase in [
            :collection_source,
            :collection_query,
            :collection_projection,
+           :collection_semantic_snapshot,
+           :collection_semantic_revalidate,
            :collection_job,
            :collection_index,
            :collection_namespace,
@@ -911,7 +965,13 @@ defmodule IpseKnowledge.Corpus do
         :collection
       else
         if String.starts_with?(Atom.to_string(state.phase), "index_embed") or
-             state.phase in [:query_refs, :query_embed, :query_rerank] do
+             state.phase in [
+               :query_refs,
+               :query_embed,
+               :query_rerank,
+               :collection_semantic_profile,
+               :collection_semantic_embed
+             ] do
           :adapter
         else
           :store
@@ -1383,6 +1443,113 @@ defmodule IpseKnowledge.Corpus do
     end
   end
 
+  defp advance({:done, {:ok, selected}}, %{phase: :collection_semantic_snapshot} = state) do
+    snapshot = %{
+      "sources" => Enum.map(selected["selected"], & &1["source"]),
+      "projections" =>
+        Map.new(
+          selected["selected"],
+          &{&1["source"]["source_key"], Map.take(&1, ~w(vectors facts))}
+        )
+    }
+
+    advance(
+      Adapters.start(state.resolved, :embedding_profile, %{
+        "profile" => state.ctx.retrieval["embedding"]
+      }),
+      %{
+        state
+        | phase: :collection_semantic_profile,
+          ctx: state.ctx |> Map.put(:snapshot, snapshot) |> Map.put(:selected_snapshot, selected)
+      }
+    )
+  end
+
+  defp advance({:done, {:ok, configured}}, %{phase: :collection_semantic_profile} = state) do
+    selection = state.ctx.args["vector_selection"]
+
+    if configured["selection_sha256"] === selection["selection_sha256"] and
+         configured["profile"]["id"] === selection["profile"] do
+      query = state.ctx.args["query"]
+
+      advance(
+        Adapters.start(state.resolved, :embed, %{
+          "profile" => state.ctx.retrieval["embedding"],
+          "expected_selection_sha256" => selection["selection_sha256"],
+          "inputs" => [
+            %{
+              "chunk_id" => Evidence.sha256("query:" <> query),
+              "text" => Map.get(state.ctx.retrieval, "query_prefix", "") <> query
+            }
+          ]
+        }),
+        %{state | phase: :collection_semantic_embed}
+      )
+    else
+      finish(state, refused(:incompatible_query_embedding))
+    end
+  end
+
+  defp advance({:done, {:ok, embedding}}, %{phase: :collection_semantic_embed} = state) do
+    vector = hd(embedding["vectors"])
+    ctx = Map.put(state.ctx, :query_vector, vector)
+    state = %{state | ctx: ctx}
+
+    with true <-
+           Map.take(vector, ~w(selection_sha256 profile model dimensions encoding)) ===
+             ctx.args["vector_selection"],
+         {:ok, rank} <- semantic_rank(state) do
+      advance(
+        CollectionStore.start(ctx.store_profile, :value_read, %{
+          "key" => "catalog." <> ctx.store_profile["partition"]
+        }),
+        %{state | phase: :collection_semantic_revalidate, ctx: Map.put(ctx, :rank, rank)}
+      )
+    else
+      {:error, code} -> finish(state, refused(code))
+      _ -> finish(state, refused(:incompatible_query_embedding))
+    end
+  end
+
+  defp advance({:done, {:ok, checked}}, %{phase: :collection_semantic_revalidate} = state) do
+    ctx = state.ctx
+    selected = ctx.selected_snapshot
+    at = ctx.args["as_of_ms"] || System.system_time(:millisecond)
+
+    if checked["native_generation"] === selected["native_generation"] and
+         checked["record"]["sha256"] === selected["catalog_sha256"] and
+         Enum.all?(ctx.snapshot["sources"], &Evidence.current?(&1, at)) do
+      rank = Evidence.query_scope(ctx.rank, ctx.snapshot["sources"], [], at)
+
+      coverage =
+        selected["coverage"]
+        |> Map.merge(rank["coverage"])
+        |> Map.merge(%{
+          "scope" => "explicit_selected_sources",
+          "generation" => selected["generation"],
+          "catalog_sha256" => selected["catalog_sha256"],
+          "as_of_ms" => at,
+          "revalidated" => true,
+          "query_embedding_calls" => 1,
+          "effects_used" => 1,
+          "embedding_profile_reads" => 1,
+          "embedding_result_reads" => ctx.embedding_result_reads,
+          "reads_used" =>
+            selected["coverage"]["reads_used"] + checked["coverage"]["reads_used"] +
+              ctx.embedding_result_reads + 1
+        })
+
+      {:ok, claims} = Evidence.classify(rank["evidence"], [], ctx.args["query"])
+
+      finish(
+        state,
+        output(rank["status"], rank["evidence"], claims, rank["gaps"], coverage, nil)
+      )
+    else
+      finish(state, output("conflict", [], [], [%{"code" => "snapshot_changed"}], %{}, nil))
+    end
+  end
+
   defp advance({:done, {:ok, value}}, %{phase: :source} = state) do
     continuation =
       if value["status"] == "draft" and Map.has_key?(state.ctx, :document_path) do
@@ -1635,6 +1802,14 @@ defmodule IpseKnowledge.Corpus do
   end
 
   defp rank_semantic(state) do
+    case semantic_rank(state) do
+      {:ok, result} -> maybe_rerank(%{state | ctx: Map.put(state.ctx, :rank, result)})
+      {:error, code} -> finish(state, refused(code))
+      _ -> finish(state, refused(:invalid_evidence))
+    end
+  end
+
+  defp semantic_rank(state) do
     snap = state.ctx.snapshot
     args = state.ctx.args
 
@@ -1648,13 +1823,39 @@ defmodule IpseKnowledge.Corpus do
         do: Evidence.rank_cosine(candidates, state.ctx.query_vector, args["top_k"]),
         else: {:error, :missing_embedding}
 
-    ranked =
-      case {state.ctx.retrieval["kind"], dense} do
-        {"dense", {:ok, result}} when missing == 0 ->
-          {:ok, result}
+    case {state.ctx.retrieval["kind"], dense} do
+      {"dense", {:ok, result}} when missing == 0 ->
+        {:ok, result}
 
-        {"hybrid", {:ok, result}} ->
-          with {:ok, lexical} <-
+      {"hybrid", {:ok, result}} ->
+        with {:ok, lexical} <-
+               Evidence.rank_lexical(
+                 snap["sources"],
+                 args["query"],
+                 args["top_k"],
+                 state.ctx.as_of_ms
+               ),
+             {:ok, graph} <- hybrid_graph(state),
+             {:ok, fused} <-
+               fuse_ranks(
+                 [{"lexical", lexical}, {"dense", result}, {"graph", graph}],
+                 args["top_k"]
+               ) do
+          {:ok,
+           if(missing == 0,
+             do: fused,
+             else:
+               Map.update!(
+                 fused,
+                 "gaps",
+                 &[%{"code" => "missing_embedding", "count" => missing} | &1]
+               )
+           )}
+        end
+
+      {"hybrid", {:error, :missing_embedding}} ->
+        if state.ctx.retrieval["missing_embedding"] == "lexical_with_gap" do
+          with {:ok, result} <-
                  Evidence.rank_lexical(
                    snap["sources"],
                    args["query"],
@@ -1663,53 +1864,20 @@ defmodule IpseKnowledge.Corpus do
                  ),
                {:ok, graph} <- hybrid_graph(state),
                {:ok, fused} <-
-                 fuse_ranks(
-                   [{"lexical", lexical}, {"dense", result}, {"graph", graph}],
-                   args["top_k"]
-                 ) do
+                 fuse_ranks([{"lexical", result}, {"graph", graph}], args["top_k"]) do
             {:ok,
-             if(missing == 0,
-               do: fused,
-               else:
-                 Map.update!(
-                   fused,
-                   "gaps",
-                   &[%{"code" => "missing_embedding", "count" => missing} | &1]
-                 )
+             Map.update!(
+               fused,
+               "gaps",
+               &[%{"code" => "missing_embedding", "count" => missing} | &1]
              )}
           end
+        else
+          {:error, :missing_embedding}
+        end
 
-        {"hybrid", {:error, :missing_embedding}} ->
-          if state.ctx.retrieval["missing_embedding"] == "lexical_with_gap" do
-            with {:ok, result} <-
-                   Evidence.rank_lexical(
-                     snap["sources"],
-                     args["query"],
-                     args["top_k"],
-                     state.ctx.as_of_ms
-                   ),
-                 {:ok, graph} <- hybrid_graph(state),
-                 {:ok, fused} <-
-                   fuse_ranks([{"lexical", result}, {"graph", graph}], args["top_k"]) do
-              {:ok,
-               Map.update!(
-                 fused,
-                 "gaps",
-                 &[%{"code" => "missing_embedding", "count" => missing} | &1]
-               )}
-            end
-          else
-            {:error, :missing_embedding}
-          end
-
-        _ ->
-          dense
-      end
-
-    case ranked do
-      {:ok, result} -> maybe_rerank(%{state | ctx: Map.put(state.ctx, :rank, result)})
-      {:error, code} -> finish(state, refused(code))
-      _ -> finish(state, refused(:invalid_evidence))
+      _ ->
+        dense
     end
   end
 
@@ -2027,6 +2195,18 @@ defmodule IpseKnowledge.Corpus do
               "items" => string(256)
             }))
         )
+
+      schema =
+        if @preset == "collection-dense" do
+          Map.update!(schema, "properties", fn properties ->
+            Map.merge(properties, %{
+              "vector_selection" => %{"type" => "object"},
+              "fact_selection" => %{"type" => "object"}
+            })
+          end)
+        else
+          schema
+        end
 
       [
         entry("query_selected", "Read cited evidence from explicit source IDs", schema),

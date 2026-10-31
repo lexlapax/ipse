@@ -395,6 +395,9 @@ An explicit `query_selected` takes `store`, `retrieval`,
 `query`, `top_k`, `as_of_ms` and one to eight exact `source_ids`; it omits `rerank`.
 Inspect citations, `status`, `coverage.complete`, `namespace_complete` and gaps.
 A changed catalog or stale index refuses instead of answering from a mixed snapshot.
+The lexical preset accepts BM25. For selected shared vectors, use the separate
+[semantic query procedure](#query-selected-shared-vectors); ordinary namespace
+`query` remains lexical.
 
 Each exact ordinary stage mutation checks the earlier of its original one-hour
 expiry and any trusted inherited deadline after synced staging, immediately
@@ -749,6 +752,94 @@ also used a synthetic endpoint and an initially empty selected root.
 The [public-entry adoption review](../archive/2026-10-26-p30-p31-implementation/shared-producer-public-adoption-independent-review.md)
 separately checks the canonical build and exact delegation/configuration; it does
 not relabel the private artifact's native execution as a canonical-artifact run.
+
+### Query selected shared vectors
+
+After a shared generation has been selected, a `collection-dense` reader can
+rank one to eight explicitly selected source IDs by cosine similarity or combine
+that ranking with BM25. It requires the exact selected vector/fact identities,
+the same encoder selection and an already available registered inference service.
+These experimental queries return cited evidence; they do not search the whole
+namespace, extract facts or generate an answer.
+
+Close the producer Session. Use the current `corpus-producer` artifact and
+`producer-inference.json` from the preceding procedure, but create a separate
+reader configuration with the ordinary v1 Collection binding. Its query text has
+no producer claim; the v2 `shared_producer_v1` binding requires that claim for
+every embedding request. Keep the same admitted home, workspace and logical
+document binding so the reader can inspect the existing store.
+
+Save these complete options as `$IPSE_CORPUS_ARTIFACTS/collection-query-options.json`:
+
+```json
+{
+  "version": 1,
+  "stores": {"notes": {"kind": "collection", "scope": "project", "partition": "notes"}},
+  "search": {}, "fetch": {},
+  "retrieval": {
+    "words": {"kind": "bm25", "version": 1},
+    "similar": {"kind": "dense", "version": 1, "embedding": "vectors"},
+    "blend": {
+      "kind": "hybrid", "version": 1, "lexical": "words", "embedding": "vectors",
+      "graph": null, "rrf_k": 60, "missing_embedding": "refuse"
+    }
+  },
+  "embedding": {"vectors": {"kind": "embedding", "profile": "encoder"}},
+  "rerank": {}, "extraction": {}
+}
+```
+
+Generate, inspect and select the reader without changing the existing producer
+configuration. Deliberately omit `--collection-source-use` for this reader:
+
+```sh
+elixir extensions/knowledge/config.exs \
+  --artifact "$IPSE_CORPUS_ARTIFACTS/corpus-producer" \
+  --package corpus --preset collection-dense --instance corpus \
+  --options "$IPSE_CORPUS_ARTIFACTS/collection-query-options.json" \
+  --inference-config "$IPSE_CORPUS_ARTIFACTS/producer-inference.json" \
+  --output "$IPSE_CORPUS_ARTIFACTS/operator-collection-query.json"
+IPSE_HOME="$IPSE_CORPUS_COLLECTION_HOME" ./bin/ipse config \
+  --config "$IPSE_CORPUS_ARTIFACTS/operator-collection-query.json" --no-project-config \
+  --extension corpus
+IPSE_HOME="$IPSE_CORPUS_COLLECTION_HOME" ./bin/ipse chat --provider demo \
+  --config "$IPSE_CORPUS_ARTIFACTS/operator-collection-query.json" --no-project-config \
+  --extension corpus --cwd "$IPSE_CORPUS_COLLECTION_WORKSPACE"
+```
+
+Replace the selectors below with the complete JSON objects used for the selected
+generation, and choose IDs that actually belong to it:
+
+```text
+/ext ext__corpus__query_selected {"store":"notes","retrieval":"similar","query":"Source supports review","source_ids":["provided:example"],"vector_selection":<vector-selection>,"fact_selection":<fact-selection>,"as_of_ms":null,"top_k":5}
+```
+
+Review the exact query-embedding approval and wait for the completed result.
+Choose `retrieval: "blend"` in a separate command for lexical/cosine fusion.
+An explicit [query prefix](#choose-an-embedding-query-format) also works on these
+retrieval profiles; original query bytes still drive excerpts and lexical ranking.
+Graph components and reranking are unavailable on this selected Collection path.
+Hybrid requires `missing_embedding: "refuse"`; incomplete shared groups cannot
+be treated as a successful lexical fallback.
+
+The reader authenticates the complete selected groups and raw sources before
+inference, checks the configured encoder digest without inference, and pins that
+digest on the approved request. It checks the returned model/dimensions/encoding
+and source-vector bindings, then checks the Collection again before returning.
+A changed Collection yields `conflict` with no evidence or claims. With
+`as_of_ms: null`, expiry during approval/inference also withholds all results.
+An explicit time filters the currently retained versions as described above.
+
+Read `selection_complete`, `namespace_complete`, `revalidated`,
+`query_embedding_calls`, read/effect counts and partial-document gaps together.
+Complete coverage applies only to those selected sources; namespace coverage
+remains false. Stored supplied vectors still report
+`model_receipt_provenance: false`: successful query inference does not prove how
+the stored vectors were produced. Hydration retains its 512-read limit, with
+bounded profile/result/final-validation reads afterward. A wide selection can
+refuse without partial evidence. No returned result grants later-use authority,
+and an uncertain inference is never retried automatically. Full namespace dense
+retrieval, real-model quality and full producer/capacity qualification remain open.
 
 ## Read a complete retrieval result
 

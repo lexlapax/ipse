@@ -89,6 +89,27 @@ defmodule Ipse.KnowledgeProfilesTest do
     ''')
   end
 
+  test "Collection semantic retrieval stays within the explicit embedding preset" do
+    pure(~S'''
+    base=put_in(lexical,["stores","notes","kind"],"collection")
+    assert {:ok,_}=P.validate("corpus","collection-documents",base)
+    selected=base
+      |> put_in(["embedding","encoder"],%{"kind"=>"embedding","profile"=>"reviewed"})
+      |> put_in(["retrieval","similar"],%{"kind"=>"dense","version"=>1,"embedding"=>"encoder"})
+    assert {:ok,_}=P.validate("corpus","collection-dense",selected)
+    assert {:error,:profile_authority_mismatch}=P.validate("corpus","collection-documents",selected)
+    hybrid=%{"kind"=>"hybrid","version"=>1,"lexical"=>"words","embedding"=>"encoder","graph"=>nil,"rrf_k"=>60,"missing_embedding"=>"refuse"}
+    selected=put_in(selected,["retrieval","combined"],hybrid)
+    assert {:ok,_}=P.validate("corpus","collection-dense",selected)
+    assert {:error,:profile_authority_mismatch}=P.validate("corpus","collection-dense",put_in(selected,["retrieval","combined","missing_embedding"],"lexical_with_gap"))
+    graph=%{"kind"=>"graph","version"=>1,"lexical"=>"words","depth"=>1,"max_nodes"=>16,"max_edges"=>32}
+    graph_options=put_in(selected,["retrieval","links"],graph)
+    assert {:error,:profile_authority_mismatch}=P.validate("corpus","collection-dense",graph_options)
+    graph_options=put_in(graph_options,["retrieval","combined","graph"],"links")
+    assert {:error,:profile_authority_mismatch}=P.validate("corpus","collection-dense",graph_options)
+    ''')
+  end
+
   test "partitions and exact profile variants cannot be supplied through raw commands or modules" do
     pure(~S'''
     assert {:error,:invalid_profile}=P.validate("corpus","state-lexical",update_in(lexical,["stores","notes"],&Map.delete(&1,"partition")))

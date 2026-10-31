@@ -140,6 +140,7 @@ defmodule IpseKnowledge.Store.Collection.Selected do
      {:ok,
       %{
         "selected" => s.selected,
+        "native_generation" => s.native_generation,
         "generation" => s.root["generation"],
         "catalog_sha256" => s.root["catalog_sha256"],
         "floor" => s.root["floor"],

@@ -1,3 +1,5 @@
+Code.require_file("../../support/provider_fixture.ex", __DIR__)
+
 defmodule Ipse.KnowledgeCollectionAdapterSessionTest do
   use ExUnit.Case, async: false
   alias Ipse.{Session, Journal, JSON, Usage}
@@ -125,9 +127,10 @@ defmodule Ipse.KnowledgeCollectionAdapterSessionTest do
         sdk = Path.dirname(List.to_string(:code.which(Ipse.Extension)))
 
         preset =
-          if c[:public_guarded_finalization] || c[:public_guarded_finalization_stale],
-            do: "collection-dense",
-            else: "collection-documents"
+          if c[:public_guarded_finalization] || c[:public_guarded_finalization_stale] ||
+               c[:public_semantic_selected],
+             do: "collection-dense",
+             else: "collection-documents"
 
         {build, 0} =
           System.cmd(
@@ -179,6 +182,29 @@ defmodule Ipse.KnowledgeCollectionAdapterSessionTest do
           "extraction" => %{}
         },
         else: %{}
+
+    options =
+      if c[:public_semantic_selected] do
+        options
+        |> put_in(["retrieval", "similar"], %{
+          "kind" => "dense",
+          "version" => 1,
+          "embedding" => "vectors",
+          "query_prefix" => "Instruct: Retrieve passages.\nQuery: "
+        })
+        |> put_in(["retrieval", "hybrid"], %{
+          "kind" => "hybrid",
+          "version" => 1,
+          "embedding" => "vectors",
+          "lexical" => "words",
+          "graph" => nil,
+          "missing_embedding" => "refuse",
+          "rrf_k" => 60
+        })
+        |> put_in(["embedding", "vectors"], %{"kind" => "embedding", "profile" => "encoder"})
+      else
+        options
+      end
 
     binding = %{
       "version" => 1,
@@ -240,6 +266,51 @@ defmodule Ipse.KnowledgeCollectionAdapterSessionTest do
       compact: false
     }
 
+    {config, semantic_server, semantic_selection} =
+      if c[:public_semantic_selected] do
+        response = Jason.encode!(%{"model" => "fixture-model", "embeddings" => [[1.0, 0.0]]})
+
+        {base, server} =
+          Ipse.Test.ProviderFixture.sequence(
+            List.duplicate(response, c[:semantic_query_calls] || 2),
+            30_000
+          )
+
+        on_exit(fn -> if Process.alive?(server.pid), do: Process.exit(server.pid, :kill) end)
+
+        config =
+          Map.merge(config, %{
+            inference_services: %{"local" => %{"version" => 1, "origins" => [base]}},
+            embedding_profiles: %{
+              "encoder" => %{
+                "operation" => "embedding",
+                "provider" => "ollama",
+                "model" => "fixture-model",
+                "dimensions" => 2,
+                "dimension_mode" => "native",
+                "base_url" => base,
+                "timeout_ms" => 5000
+              }
+            }
+          })
+
+        scope = %{"embedding_profiles" => Ipse.Config.Profiles.embedding_snapshot(config)}
+        request = %{"op" => "embedding.profile", "version" => 1, "profile" => "encoder"}
+        {:ok, selected} = Ipse.Extension.EmbeddingCall.profile_binding(scope, request)
+
+        selection = %{
+          "selection_sha256" => selected["selection_sha256"],
+          "profile" => "encoder",
+          "model" => "fixture-model",
+          "dimensions" => 2,
+          "encoding" => "float32le"
+        }
+
+        {config, server, selection}
+      else
+        {config, nil, nil}
+      end
+
     opts = [config: config, cwd: cwd, state_dir: Path.join(home, "sessions"), subscriber: self()]
     assert {:ok, pid} = DynamicSupervisor.start_child(Ipse.Sessions, {Session, opts})
     on_exit(fn -> if Process.alive?(pid), do: Session.close_confirmed(pid) end)
@@ -248,6 +319,8 @@ defmodule Ipse.KnowledgeCollectionAdapterSessionTest do
       pid: pid,
       id: Session.info(pid).id,
       opts: opts,
+      semantic_server: semantic_server,
+      semantic_selection: semantic_selection,
       home: home,
       dir: opts[:state_dir],
       fixture_root: root
@@ -261,6 +334,11 @@ defmodule Ipse.KnowledgeCollectionAdapterSessionTest do
 
   defp wait(c) do
     receive do
+      {:ipse, pid, {:approval, ref, "extension:embedding.create", proposed}} when pid == c.pid ->
+        if hook = c[:embedding_approval_hook], do: hook.(proposed)
+        assert :ok = Session.approve(pid, ref, true)
+        wait(c)
+
       {:ipse, pid, {:approval, ref, "extension:collection.store", proposed}} when pid == c.pid ->
         assert :ok = Ipse.Extension.CollectionStore.validate(proposed["request"])
 
@@ -1122,6 +1200,204 @@ defmodule Ipse.KnowledgeCollectionAdapterSessionTest do
           "typed_word_citations" => Enum.count(result["evidence"], &is_map(&1["document"]))
         })
     )
+  end
+
+  @tag :public_shared_selected
+  @tag :public_semantic_selected
+  @tag timeout: 120_000
+  test "selected Collection dense and hybrid queries bind the encoder and preserve raw Word citations",
+       c do
+    word = partial_word_source(c)
+
+    sources =
+      seed_index_sources(c, [
+        {"fixture:vega", "Vega 雪 mission launches in winter.", nil},
+        {"fixture:orbit", "The Vega orbital mission has a separate payload.", nil},
+        word
+      ])
+
+    facts = %{"kind" => "explicit", "profile" => nil, "version" => 1}
+
+    seed =
+      Map.put(c, :semantic_vectors, %{
+        "fixture:vega" => [0.0, 1.0],
+        "fixture:orbit" => [1.0, 0.0],
+        word["source_id"] => [-1.0, 0.0]
+      })
+
+    seed_shared_generation(seed, sources, c.semantic_selection, facts)
+    before = native_status(c)
+
+    args = %{
+      "store" => "local",
+      "source_ids" => Enum.map(sources, & &1["source_id"]),
+      "retrieval" => "similar",
+      "query" => "Vega 雪",
+      "vector_selection" => c.semantic_selection,
+      "fact_selection" => facts,
+      "as_of_ms" => 20,
+      "top_k" => 10
+    }
+
+    for retrieval <- ~w(similar hybrid) do
+      result = invoke(c, "query_selected", %{args | "retrieval" => retrieval})
+      assert result["status"] == "partial", inspect(result)
+      assert result["evidence"] != []
+
+      assert [%{"label" => "open", "uncertainty" => "semantic_support_unassessed"}] =
+               result["claims"]
+
+      assert Enum.any?(result["evidence"], &is_map(get_in(&1, ["citation", "document"])))
+      assert Enum.any?(result["gaps"], &(&1["code"] == "partial_document"))
+      assert result["coverage"]["selection_complete"]
+      refute result["coverage"]["namespace_complete"]
+      refute result["coverage"]["later_use_authority"]
+      refute result["coverage"]["model_receipt_provenance"]
+      assert result["coverage"]["revalidated"]
+      assert result["coverage"]["query_embedding_calls"] == 1
+      assert result["coverage"]["effects_used"] == 1
+      assert result["coverage"]["embedding_result_reads"] == 1
+      assert result["coverage"]["scope"] == "explicit_selected_sources"
+
+      if retrieval == "similar" do
+        assert hd(result["evidence"])["citation"]["source_id"] == "fixture:orbit"
+        assert hd(result["evidence"])["method"] == "cosine"
+        assert hd(result["evidence"])["score"] == 1.0
+      end
+
+      assert native_status(c) == before
+    end
+
+    assert [first, second] = Task.await(c.semantic_server, 5000)
+    assert elem(first, 1)["input"] == ["Instruct: Retrieve passages.\nQuery: Vega 雪"]
+    assert elem(second, 1)["input"] == ["Vega 雪"]
+    assert elem(first, 1)["model"] == "fixture-model"
+
+    changed = put_in(args, ["vector_selection", "profile"], "different-encoder")
+    assert invoke(c, "query_selected", changed)["status"] == "refused"
+    changed = put_in(args, ["vector_selection", "model"], "different-model")
+    assert invoke(c, "query_selected", changed)["status"] == "refused"
+
+    assert invoke(c, "query_selected", Map.delete(args, "vector_selection"))["status"] ==
+             "refused"
+
+    assert native_status(c) == before
+    {:ok, events} = Journal.load(c.dir, c.id)
+    assert Enum.count(events, &(&1["type"] == "inference_dispatch_intent")) == 2
+    assert :ok = Actions.validate_events(events)
+    assert {:ok, _} = Session.restore_context(events)
+  end
+
+  @tag :public_shared_selected
+  @tag :public_semantic_selected
+  @tag semantic_query_calls: 1
+  @tag timeout: 120_000
+  test "selected semantic query withholds all evidence after Collection changes during embedding approval",
+       c do
+    sources = seed_index_sources(c, [{"fixture:query-race", "Vega 雪 mission.", nil}])
+    facts = %{"kind" => "explicit", "profile" => nil, "version" => 1}
+    seed_shared_generation(c, sources, c.semantic_selection, facts)
+
+    hook = fn proposed ->
+      assert proposed["request"]["expected_selection_sha256"] ==
+               c.semantic_selection["selection_sha256"]
+
+      catalog = physical(c, "catalog.notes")
+      root = body(physical(c, "generation.notes"))
+      replace(c, [{"generation.notes", packed(Map.update!(root, "generation", &(&1 + 1)))}])
+      assert physical(c, "catalog.notes") == catalog
+    end
+
+    result =
+      invoke(Map.put(c, :embedding_approval_hook, hook), "query_selected", %{
+        "store" => "local",
+        "source_ids" => ["fixture:query-race"],
+        "retrieval" => "similar",
+        "query" => "Vega 雪",
+        "vector_selection" => c.semantic_selection,
+        "fact_selection" => facts,
+        "as_of_ms" => 20,
+        "top_k" => 1
+      })
+
+    assert result["status"] == "conflict", inspect(result)
+    assert result["evidence"] == [] and result["claims"] == []
+    assert result["gaps"] == [%{"code" => "snapshot_changed"}]
+    assert [_] = Task.await(c.semantic_server, 5000)
+    {:ok, events} = Journal.load(c.dir, c.id)
+    assert :ok = Actions.validate_events(events)
+    assert {:ok, _} = Session.restore_context(events)
+  end
+
+  @tag :public_shared_selected
+  @tag :public_semantic_selected
+  @tag semantic_query_calls: 1
+  @tag timeout: 120_000
+  test "a source expiring during query approval cannot release selected semantic evidence", c do
+    expires = System.system_time(:millisecond) + 8_000
+    sources = seed_index_sources(c, [{"fixture:query-expiry", "Vega 雪 mission.", expires}])
+    facts = %{"kind" => "explicit", "profile" => nil, "version" => 1}
+    seed_shared_generation(c, sources, c.semantic_selection, facts)
+    before = native_status(c)
+
+    hook = fn _ ->
+      remaining = expires - System.system_time(:millisecond)
+      assert remaining > 0
+      Process.sleep(remaining + 1)
+      assert System.system_time(:millisecond) >= expires
+    end
+
+    result =
+      invoke(Map.put(c, :embedding_approval_hook, hook), "query_selected", %{
+        "store" => "local",
+        "source_ids" => ["fixture:query-expiry"],
+        "retrieval" => "similar",
+        "query" => "Vega 雪",
+        "vector_selection" => c.semantic_selection,
+        "fact_selection" => facts,
+        "as_of_ms" => nil,
+        "top_k" => 1
+      })
+
+    assert result["status"] == "conflict", inspect(result)
+    assert result["evidence"] == [] and result["claims"] == []
+    assert result["gaps"] == [%{"code" => "snapshot_changed"}]
+    assert native_status(c) == before
+    assert [_] = Task.await(c.semantic_server, 5000)
+  end
+
+  @tag :public_shared_selected
+  @tag :public_semantic_selected
+  @tag semantic_query_calls: 0
+  @tag timeout: 120_000
+  test "a supplied projection cannot use an unselected encoder recipe for query inference", c do
+    sources = seed_index_sources(c, [{"fixture:wrong-query-recipe", "Vega mission.", nil}])
+    facts = %{"kind" => "explicit", "profile" => nil, "version" => 1}
+    stale = Map.put(c.semantic_selection, "selection_sha256", JSON.sha256("unselected recipe"))
+    seed_shared_generation(c, sources, stale, facts)
+    before = native_status(c)
+
+    result =
+      invoke(c, "query_selected", %{
+        "store" => "local",
+        "source_ids" => ["fixture:wrong-query-recipe"],
+        "retrieval" => "similar",
+        "query" => "Vega mission",
+        "vector_selection" => stale,
+        "fact_selection" => facts,
+        "as_of_ms" => 20,
+        "top_k" => 1
+      })
+
+    assert result["status"] == "refused", inspect(result)
+    assert result["evidence"] == [] and result["claims"] == []
+    assert [] = Task.await(c.semantic_server, 5000)
+    assert native_status(c) == before
+    {:ok, events} = Journal.load(c.dir, c.id)
+    refute Enum.any?(events, &(&1["type"] == "inference_dispatch_intent"))
+    refute Enum.any?(events, &(&1["type"] == "extension_embedding_request"))
+    assert :ok = Actions.validate_events(events)
+    assert {:ok, _} = Session.restore_context(events)
   end
 
   @tag :shared_projection_preview
@@ -3727,6 +4003,7 @@ defmodule Ipse.KnowledgeCollectionAdapterSessionTest do
 
     input = %{
       "selection" => selection,
+      "vector_values" => c[:semantic_vectors] || %{},
       "finalization" => finalization,
       "paged_finalization" => c[:paged_finalization] == true,
       "extraction" => extraction,
