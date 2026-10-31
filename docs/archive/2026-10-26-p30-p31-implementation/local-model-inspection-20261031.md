@@ -68,10 +68,44 @@ retained as `/tmp/ipse-model-inspection-tests-20261031.log`; subsequent focused
 runs remain separate. The real observations are read-only service claims,
 not independent model or offline qualification.
 
+## Installed package verification
+
+A clean checkout at `dd0ceb93587753e4a9d1e98f12048941994ed6dc` built the standard
+PDF-enabled Linux archive, with52 bundled documents and no missing targets:
+
+```text
+ipse-0.1.0-linux-x86_64-glibc-2.44.tar.gz
+SHA256 08523e3bbe45f8866d1fee31206afcb6c9fdb236645eae1049236952d99699a3
+```
+
+The generic installed-package verifier passed all controls, including private
+setup, doctor, demo, helpers/locks, MCP/delegation/extensions, historical results
+and the synthetic explicit-Memory workload. Its final report records unchanged
+release inventories and no system development toolchain on runtime PATH. Log:
+`/tmp/ipse-model-inspection-package-verify-20261031.log`, SHA256
+`754abb08f6e85ab0e40efb5f640ec4860ee9b824696d2f06e1e9867f850389b2`.
+
+A separate actual packaged CLI control inspected the selected primary embedding
+model and refused a nonloopback URL. The [structured receipt](local-model-inspection-installed-20261031.json)
+records the exact build/archive, selected manifest, six metadata requests and zero
+inference calls. The release files and separate malformed conversation
+configuration remained unchanged; no operator home was created. Runtime PATH
+contained utility symlinks and bundled ERTS tools, without system Elixir, Mix,
+Rust or Cargo. This control uses a cooperative live local service, not a model
+request attestation or offline proof. Both primary models remained unloaded.
+
+The executed harness and output remain respectively at
+`/tmp/ipse-model-inspection-installed-proof-20261031.exs` and
+`/tmp/ipse-model-inspection-installed-proof-20261031`; report SHA256
+`3daf55b552ef0db893212a50f6bff821c69a6868c1272508ebde0a30e21c64c2`.
+No model acquisition, inference, service reconfiguration or release publication
+was performed. This additive record does not replace the first focused failures
+or turn installed metadata inspection into full D1 acceptance.
+
 ## Scope and remaining work
 
 This work was isolated while the main checkout's full suite ran against frozen
 `c7cb484`. It does not change or upgrade that suite's source claim. Main-checkout
-integration, installed verification, protected model/job identity binding,
+integration, protected model/job identity binding,
 task-specific embedding formatting, explicit optional provisioning/recovery,
 local-only egress proof and the remaining original goal stay open.
