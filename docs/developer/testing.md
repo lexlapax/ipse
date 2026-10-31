@@ -110,11 +110,15 @@ content and safe tool tail separately; retain ordinary user messages and malform
 reference markers. This fixture selection grants no production authority and must
 not remove host context from the real provider request.
 
-Compare an idle resume with the journal captured after `Session.close/1` completes.
-Close may append its lifecycle epoch receipt. Assert that the prior records remain
-an exact prefix and inspect that specific close receipt before comparing the
-resumed journal byte-for-byte or record-for-record. A close append is separate
-from an effect replay. When intentionally corrupting a journal, establish the
+Capture the journal after `Session.close_confirmed/1` returns. On idle resume,
+require those bytes as an exact prefix. With the current release-receipt layout,
+the only suffix before closing the resumed Session is one complete ownership
+record validated by `ReleaseReceipt.valid_owner_marker?/2`; legacy journals with
+no receipt layout remain byte-for-byte unchanged. Confirmed close then appends
+its release intent. Validate that intent against the same owner and the native
+signed-release claim separately from the resume assertion. Neither ownership nor
+release records permit replaying effects or changing prior conversation records.
+When intentionally corrupting a journal, establish the
 original source binding first and assert the earliest actual refusal: a modified
 record or shifted byte offset can invalidate lifecycle sources before the
 domain-specific checkpoint validator runs. Keep a separate pure validator control
@@ -431,6 +435,10 @@ control copies the release and recompiles a test copy of the public identity
 module, changing a real inventoried host BEAM. An extension-free saved session must
 resume; one with selected extensions must refuse without journal mutation, and
 still resume with the previous release. The original archive/host stay unchanged.
+Successful idle resume preserves the exact prior journal bytes and adds only the
+validated ownership record and confirmed-close release intent. The verifier checks
+the current intent and native signed-release claim, while a denied resume permits
+no suffix.
 
 For a local distribution, prepare the exact bundled toolchain's notices in
 `IPSE_NOTICES_DIR` before packaging. Hosted CI/release jobs obtain the official

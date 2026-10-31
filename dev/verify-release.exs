@@ -207,7 +207,7 @@ try do
     )
 
   %{phase: :idle, id: fresh_id} = Ipse.Session.info(fresh)
-  :ok = Ipse.Session.close(fresh)
+  :ok = Ipse.Session.close_confirmed(fresh)
   path = Path.join(handoff_dir, fresh_id <> ".jsonl")
   saved = File.read!(path)
   {:ok, events} = Ipse.Journal.load(handoff_dir, fresh_id)
@@ -220,14 +220,19 @@ try do
     DynamicSupervisor.start_child(Ipse.Sessions, {Ipse.Session, handoff_opts ++ [id: fresh_id]})
 
   %{phase: :idle} = Ipse.Session.info(resumed)
-  :ok = Ipse.Session.close(resumed)
-  ^saved = File.read!(path)
+  after_resume = File.read!(path)
+  true = String.starts_with?(after_resume, saved)
+  suffix = binary_part(after_resume, byte_size(saved), byte_size(after_resume) - byte_size(saved))
+  [owner_line] = String.split(suffix, "\n", trim: true)
+  true = suffix == owner_line <> "\n"
+  true = Ipse.Session.ReleaseReceipt.valid_owner_marker?(Jason.decode!(owner_line), fresh_id)
+  :ok = Ipse.Session.close_confirmed(resumed)
 
   {:error, :invalid_handoff} =
     Ipse.Session.Saved.prepare_handoff(Jason.encode!(Map.put(handoff, "approval", "allow")))
 
   IO.puts(
-    "Bundled fresh handoff import and unchanged idle resume passed without inference/replay."
+    "Bundled fresh handoff import and preserved-prefix idle resume passed without inference/replay."
   )
 
   Code.require_file(Path.join(Application.app_dir(:ipse, "priv"), "demo/extensions.exs"))

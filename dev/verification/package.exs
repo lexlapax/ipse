@@ -309,9 +309,9 @@ defmodule Ipse.Development.Verification.Package do
         ids = for selected <- [false, true] do
           {:ok, pid} = start.(selected, nil)
           id = Ipse.Session.info(pid).id
-          :ok = Ipse.Session.close(pid)
+          :ok = Ipse.Session.close_confirmed(pid)
           {:ok, resumed} = start.(selected, id)
-          :ok = Ipse.Session.close(resumed)
+          :ok = Ipse.Session.close_confirmed(resumed)
           id
         end
         File.write!(#{inspect(ids)}, Jason.encode!(ids))
@@ -323,6 +323,10 @@ defmodule Ipse.Development.Verification.Package do
       for id <- :json.decode(File.read!(ids)),
           into: %{},
           do: {id, File.read!(Path.join(state, id <> ".jsonl"))}
+
+    prefixes = Path.join(root, "upgrade-journal-prefixes.json")
+    File.write!(prefixes, :json.encode(frozen), [:exclusive])
+    File.chmod!(prefixes, 0o600)
 
     # Recompile only a test copy of the public identity module. The production
     # archive and source remain untouched; this changes a real inventoried host BEAM.
@@ -347,7 +351,7 @@ defmodule Ipse.Development.Verification.Package do
         [plain, selected] = Jason.decode!(File.read!(#{inspect(ids)}))
         {:ok, resumed} = start.(false, plain)
         %{phase: :idle} = Ipse.Session.info(resumed)
-        :ok = Ipse.Session.close(resumed)
+        :ok = Ipse.Session.close_confirmed(resumed)
         {:error, :resume_configuration_mismatch} = start.(true, selected)
         true = String.contains?(Ipse.CLI.Errors.format(:resume_configuration_mismatch), "handoff")
         """
@@ -359,11 +363,34 @@ defmodule Ipse.Development.Verification.Package do
         """
         [_, selected] = Jason.decode!(File.read!(#{inspect(ids)}))
         {:ok, resumed} = start.(true, selected)
-        :ok = Ipse.Session.close(resumed)
+        :ok = Ipse.Session.close_confirmed(resumed)
+        for {id, before} <- Jason.decode!(File.read!(#{inspect(prefixes)})) do
+          after_resume = File.read!(Path.join(#{inspect(state)}, id <> ".jsonl"))
+          true = String.starts_with?(after_resume, before)
+          suffix = binary_part(after_resume, byte_size(before), byte_size(after_resume) - byte_size(before))
+          [header | _] = String.split(before, "\n", trim: true)
+          metadata = Jason.decode!(header)["metadata"]
+          if is_nil(metadata["release_receipt_layout"]) do
+            "" = suffix
+          else
+            true = metadata["release_receipt_layout"] == Ipse.Session.ReleaseReceipt.layout()
+            [owner_line, intent_line] = String.split(suffix, "\n", trim: true)
+            true = suffix == owner_line <> "\n" <> intent_line <> "\n"
+            owner = Jason.decode!(owner_line)
+            intent = Jason.decode!(intent_line)
+            true = Ipse.Session.ReleaseReceipt.valid_owner_marker?(owner, id)
+            true = Ipse.Session.ReleaseReceipt.valid_intent?(intent)
+            true = intent["owner_id"] == owner["owner_id"]
+            nil = intent["epoch_id"]
+            nil = intent["closure_sha256"]
+            {:ok, events} = Ipse.Journal.load(#{inspect(state)}, id)
+            {:ok, ^intent} = Ipse.Session.ReleaseReceipt.current_intent(events, id)
+            :signed_release_claim = Ipse.Session.ReleaseReceipt.inspect_current(#{inspect(state)}, id)
+          end
+        end
         """
 
     run!(launcher, ["eval", old], release, env, "previous release resume recovery")
-    for {id, bytes} <- frozen, do: ^bytes = File.read!(Path.join(state, id <> ".jsonl"))
 
     IO.puts(
       "PASS: a changed host resumes an extension-free session, refuses selected extensions without mutation, and the previous build still resumes them."
@@ -681,7 +708,7 @@ defmodule Ipse.Development.Verification.Package do
 
     unless String.contains?(
              output,
-             "Bundled fresh handoff import and unchanged idle resume passed"
+             "Bundled fresh handoff import and preserved-prefix idle resume passed"
            ),
            do: raise("release handoff import verification did not print its completion marker")
 
@@ -696,7 +723,7 @@ defmodule Ipse.Development.Verification.Package do
 
     unless String.contains?(
              output,
-             "Extension prompt/presentation and unchanged idle resume fixture passed"
+             "Extension prompt/presentation and preserved-prefix idle resume fixture passed"
            ),
            do: raise("release extension verification did not print its completion marker")
 

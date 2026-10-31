@@ -130,7 +130,7 @@ defmodule Ipse.ExtensionDemo do
       projections = Enum.filter(events, &(&1["type"] == "extension_transform_result"))
       2 = length(projections)
       false = String.contains?(Jason.encode!(projections), "synthetic-private-native")
-      :ok = Ipse.Session.close(session)
+      :ok = Ipse.Session.close_confirmed(session)
       path = Path.join(opts[:state_dir], info.id <> ".jsonl")
       bytes = File.read!(path)
       lifecycle = lifecycle_views(opts[:state_dir], info.id)
@@ -141,9 +141,17 @@ defmodule Ipse.ExtensionDemo do
       :idle = Ipse.Session.info(resumed).phase
       ^accounting = Ipse.Session.info(resumed).accounting
       "<answer>fixture answer</answer>" = Ipse.Session.info(resumed).final
-      ^bytes = File.read!(path)
+      after_resume = File.read!(path)
+      true = String.starts_with?(after_resume, bytes)
+
+      suffix =
+        binary_part(after_resume, byte_size(bytes), byte_size(after_resume) - byte_size(bytes))
+
+      [owner_line] = String.split(suffix, "\n", trim: true)
+      true = suffix == owner_line <> "\n"
+      true = Ipse.Session.ReleaseReceipt.valid_owner_marker?(Jason.decode!(owner_line), info.id)
       ^lifecycle = lifecycle_views(opts[:state_dir], info.id)
-      :ok = Ipse.Session.close(resumed)
+      :ok = Ipse.Session.close_confirmed(resumed)
 
       local_trace(root, config)
       conformance(catalog, config.home)
@@ -154,7 +162,7 @@ defmodule Ipse.ExtensionDemo do
       tool_views()
 
       IO.puts(
-        "Extension prompt/presentation and unchanged idle resume fixture passed without inference. Local diagnostic sink fixture passed without network inference."
+        "Extension prompt/presentation and preserved-prefix idle resume fixture passed without inference. Local diagnostic sink fixture passed without network inference."
       )
 
       :ok
