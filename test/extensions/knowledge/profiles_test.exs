@@ -69,6 +69,26 @@ defmodule Ipse.KnowledgeProfilesTest do
     ''')
   end
 
+  test "dense and hybrid query prefixes are explicit bounded retrieval options" do
+    pure(~S'''
+    dense=%{"kind"=>"dense","version"=>1,"embedding"=>"encoder"}
+    hybrid=%{"kind"=>"hybrid","version"=>1,"lexical"=>"words","embedding"=>"encoder","graph"=>nil,"rrf_k"=>60,"missing_embedding"=>"refuse"}
+    base=put_in(lexical,["embedding","encoder"],%{"kind"=>"embedding","profile"=>"reviewed"})
+    for profile<-[dense,hybrid] do
+      selected=put_in(base,["retrieval","semantic"],profile)
+      assert {:ok,_}=P.validate("corpus","state-dense",selected)
+      for prefix<-["Instruct: Retrieve relevant passages.\nQuery:",String.duplicate("a",1024),"雪"] do
+        assert {:ok,_}=P.validate("corpus","state-dense",put_in(selected,["retrieval","semantic","query_prefix"],prefix))
+      end
+      for prefix<-[nil,"",true,42,String.duplicate("a",1025),String.duplicate("雪",342),"bad"<><<0>>] do
+        assert {:error,:invalid_profile}=P.validate("corpus","state-dense",put_in(selected,["retrieval","semantic","query_prefix"],prefix))
+      end
+    end
+    assert {:error,:invalid_profile}=P.validate("corpus","state-dense",put_in(base,["retrieval","words","query_prefix"],"not applicable"))
+    assert {:error,:invalid_profile}=P.validate("corpus","state-dense",put_in(base,["embedding","encoder","query_prefix"],"wrong owner"))
+    ''')
+  end
+
   test "partitions and exact profile variants cannot be supplied through raw commands or modules" do
     pure(~S'''
     assert {:error,:invalid_profile}=P.validate("corpus","state-lexical",update_in(lexical,["stores","notes"],&Map.delete(&1,"partition")))

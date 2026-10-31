@@ -217,7 +217,9 @@ defmodule IpseKnowledge.Profiles do
     do: exact?(p, ~w(kind version)) and p["version"] == 1
 
   defp profile?("retrieval", %{"kind" => "dense"} = p),
-    do: exact?(p, ~w(kind version embedding)) and p["version"] == 1 and name?(p["embedding"])
+    do:
+      query_contract?(p, ~w(kind version embedding)) and p["version"] == 1 and
+        name?(p["embedding"])
 
   defp profile?("retrieval", %{"kind" => "graph"} = p),
     do:
@@ -227,7 +229,7 @@ defmodule IpseKnowledge.Profiles do
 
   defp profile?("retrieval", %{"kind" => "hybrid"} = p),
     do:
-      exact?(p, ~w(kind version lexical embedding graph rrf_k missing_embedding)) and
+      query_contract?(p, ~w(kind version lexical embedding graph rrf_k missing_embedding)) and
         p["version"] == 1 and name?(p["lexical"]) and name?(p["embedding"]) and
         (is_nil(p["graph"]) or name?(p["graph"])) and p["rrf_k"] == 60 and
         p["missing_embedding"] in ~w(refuse lexical_with_gap)
@@ -255,6 +257,13 @@ defmodule IpseKnowledge.Profiles do
     do: model_contract?(p, ~w(kind profile version)) and p["version"] == 1 and name?(p["profile"])
 
   defp profile?(_, _), do: false
+
+  defp query_contract?(p, keys) do
+    exact?(p, keys) or
+      (exact?(p, keys ++ ["query_prefix"]) and is_binary(p["query_prefix"]) and
+         byte_size(p["query_prefix"]) in 1..1024 and String.valid?(p["query_prefix"]) and
+         not String.contains?(p["query_prefix"], <<0>>))
+  end
 
   defp model_contract?(p, keys),
     do:

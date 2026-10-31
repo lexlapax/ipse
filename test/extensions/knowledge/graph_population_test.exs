@@ -105,6 +105,30 @@ defmodule Ipse.KnowledgeGraphPopulationTest do
     use ExUnit.Case,async: false
     alias PopulationDriver,as: D
     alias IpseKnowledge.Evidence,as: E
+    test "explicit query prefixes change only embedding query bytes on dense and hybrid routes" do
+      alias IpseKnowledge.Corpus
+      for route<-~w(dense hybrid),prefix<-[nil,"Instruct: Retrieve relevant passages.\nQuery:"] do
+        {graph,corpus,db}=D.initial()
+        dense=%{"kind"=>"dense","version"=>1,"embedding"=>"native"}
+        options=put_in(corpus.resolved["options"],["retrieval","dense"],dense)
+        options=if prefix,do: put_in(options,["retrieval",route,"query_prefix"],prefix),else: options
+        {:ok,corpus}=Corpus.init(options)
+        refute Map.has_key?(corpus,:invalid)
+        {_,db,source,chunk}=D.source(graph,db,"prefix")
+        {corpus,db}=D.index(corpus,db,source,chunk)
+        assert Enum.filter(db.requests,&(&1["op"]=="embedding.create"))|>Enum.map(& &1["inputs"])==[["A"]]
+        records=db.records
+        args=%{"store"=>"notes","retrieval"=>route,"rerank"=>nil,"query"=>"A","top_k"=>1,"as_of_ms"=>10}
+        {result,_,after_query}=D.invoke(Corpus,corpus,db,"query",args)
+        assert result["status"]=="ok",inspect(result)
+        assert after_query.records==records
+        [query_request,index_request]=Enum.filter(after_query.requests,&(&1["op"]=="embedding.create"))
+        assert index_request["inputs"]==["A"]
+        assert query_request["inputs"]==[(prefix||"")<>"A"]
+        assert hd(result["evidence"])["citation"]["quote"]=="A"
+      end
+    end
+
     @tag timeout: 120000
     test "public Graph and Corpus query261 facts including expired data and remote contradictions" do
       {graph,corpus,db}=D.initial()

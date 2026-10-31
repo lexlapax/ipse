@@ -30,6 +30,21 @@ defmodule IpseKnowledge.EmbeddingArtifactTest do
   refute Evidence.vector_input_matches_chunk?(Map.put(vector, "input_sha256", Evidence.sha256("other")), input)
   wrong = Map.put(page, "input_sha256", Evidence.sha256("other"))
   assert {:done, {:error, :invalid_embedding_result, %{}}} = Adapters.resume(reading, %{"status" => "ok", "value" => wrong})
+  options = Map.new(~w(stores search fetch retrieval embedding rerank extraction), &{&1, %{}})
+    |> Map.put("version", 1)
+    |> put_in(["stores", "notes"], %{"kind" => "state", "scope" => "project", "partition" => "notes"})
+    |> put_in(["retrieval", "dense"], %{"kind" => "dense", "version" => 1, "embedding" => "local",
+      "query_prefix" => "Instruct: Retrieve passages.\nQuery:"})
+    |> put_in(["embedding", "local"], %{"kind" => "embedding", "profile" => "host"})
+  {:ok, corpus} = IpseKnowledge.Corpus.init(options)
+  args = %{"store" => "notes", "retrieval" => "dense", "rerank" => nil, "query" => "snow 雪", "top_k" => 1, "as_of_ms" => 1}
+  assert {:ok, %{"request" => %{"op" => "state.scan"}}, corpus} =
+    IpseKnowledge.Corpus.handle("invoke.command", %{"id" => "query", "arguments" => args}, corpus)
+  expected = "Instruct: Retrieve passages.\nQuery:snow 雪"
+  assert {:ok, %{"request" => %{"op" => "embedding.create", "inputs" => [^expected]}}, corpus} =
+    IpseKnowledge.Corpus.handle("host.actions", %{"outcome" => %{"status" => "ok",
+      "value" => %{"generation" => 0, "records" => [], "next" => nil}}}, corpus)
+  assert corpus.ctx.args["query"] == "snow 雪"
   IO.puts("CORPUS_ARTIFACT_INPUT_BINDING_OK")
   """
 

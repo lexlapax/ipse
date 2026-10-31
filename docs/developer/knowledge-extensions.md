@@ -732,6 +732,27 @@ valid current vectors with equal selection hash, host profile, reported model,
 width, and encoding. Legacy v1 vectors remain readable but never compare densely.
 Changed/legacy selection yields missing-embedding refusal or explicitly partial fallback.
 
+Query formatting belongs to the domain retrieval profile. `Profiles` accepts an
+optional `query_prefix` only on dense/hybrid entries, with 1..1024 valid UTF-8
+bytes and no NUL. `Corpus.rank_query/2` concatenates it with the already bounded
+original query before calling the existing embedding adapter. The resulting
+input remains within the adapter's 4096-byte per-input bound. The host receives
+the ordinary `embedding.create` request; no SDK or native protocol was added.
+The complete dispatched string supplies the canonical input digest checked on
+every vector page. The original query remains in the query context for lexical
+ranking, reranking and source quotations. Indexing sends unchanged source chunks,
+so stored document-vector compatibility is unchanged. The host selection digest
+identifies the embedding configuration; it does not additionally identify this
+domain query format or attest weights. Preserve the package/options hash and
+exact dispatched input when freezing an evaluation recipe.
+
+To exercise this boundary, run the profile, graph-population and built-artifact
+controls. The public Corpus driver indexes the same source and queries it through
+dense/hybrid entries with and without the prefix. It verifies raw passage input,
+exact query bytes, original citation and unchanged stored records. The profile
+grid refuses empty, oversized, NUL and wrong-owner prefixes. These synthetic
+controls establish the request transformation, not a semantic quality benefit.
+
 For the opt-in `collection-dense` producer, Corpus `generation_produce` action
 `selection` reads configured public metadata through `embedding.profile`, without
 inference or a Usage charge. It returns `configured_profile`, `selection_sha256`

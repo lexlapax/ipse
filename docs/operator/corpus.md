@@ -963,6 +963,38 @@ An older-format vector draft can be inspected and aborted with this same command
 It cannot be resumed into a new-format index. Abort it explicitly, then review
 a separate `next` command and its new embedding request.
 
+### Choose an embedding query format
+
+Dense and hybrid retrieval entries can include an explicit `query_prefix` of
+1..1024 UTF-8 bytes. Set it in the options file before generating configuration
+and start a fresh chat with that reviewed configuration. Without this field,
+queries use their original bytes. A lexical or remote-query entry does not accept
+it. Collection namespace queries still support lexical retrieval only.
+
+For example, when deliberately selecting a Qwen3 embedding profile, its
+[model card](https://huggingface.co/Qwen/Qwen3-Embedding-0.6B) describes an instruction
+followed by the query. The `similar` entry can use this complete profile object:
+
+```json
+{
+  "kind": "dense", "version": 1, "embedding": "vectors",
+  "query_prefix": "Instruct: Retrieve relevant passages that answer the query.\nQuery:"
+}
+```
+
+Select the actual model and dimensions in `encoder` separately; this field does
+not select or download a model. To use the same format for `blend`, add that
+field to its existing hybrid entry as well. Ipse concatenates the prefix and
+query exactly once, without adding whitespace or shortening either value. The
+embedding approval shows those complete dispatched bytes. Indexing still sends
+the original passage; lexical matching, reranking and displayed citations still
+use the original query/source. Changing only this query format needs no source
+reindex because it does not change document-vector inputs. Freeze the chosen
+format with the options/artifact before evaluating retrieval quality. The dated
+reference comparison does not qualify a newly selected model or query format.
+
+### Query and optionally rerank
+
 Compare dense and hybrid retrieval on the same source:
 
 ```text

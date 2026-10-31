@@ -1590,7 +1590,10 @@ defmodule IpseKnowledge.Corpus do
           Adapters.start(state.resolved, :embed, %{
             "profile" => embedding,
             "inputs" => [
-              %{"chunk_id" => Evidence.sha256("query:" <> args["query"]), "text" => args["query"]}
+              %{
+                "chunk_id" => Evidence.sha256("query:" <> args["query"]),
+                "text" => Map.get(profile, "query_prefix", "") <> args["query"]
+              }
             ]
           }),
           %{state | phase: :query_embed}
