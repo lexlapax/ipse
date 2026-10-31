@@ -226,6 +226,21 @@ defmodule Ipse.KnowledgeDocumentAcquisitionSessionTest do
     })
   end
 
+  defp assert_retained_workspace_source(run, path, original, words) do
+    replacement = File.read!(path)
+    result = query(run, words)
+    assert result["status"] == "refused"
+    assert result["evidence"] == [] and result["claims"] == []
+    assert result["gaps"] == [%{"code" => "document_source_changed_or_unavailable"}]
+
+    try do
+      File.write!(path, original)
+      assert query(run, words)["evidence"] != []
+    after
+      File.write!(path, replacement)
+    end
+  end
+
   defp finish_staging(run, opened) do
     Enum.reduce_while(1..40, opened, fn _, current ->
       next = continue(run, current["continuation"])
@@ -341,18 +356,25 @@ defmodule Ipse.KnowledgeDocumentAcquisitionSessionTest do
         flunk("document command failed: #{inspect(status)}")
 
       {:ipse, pid, {:error, reason}} when pid == c.pid ->
-        {:ok, events} = Journal.load(c.dir, Session.info(pid).id)
+        if c[:expected_host_refusal] do
+          assert_receive {:ipse, ^pid, {:done, :error}}, 5000
+          {:host_refused, reason}
+        else
+          {:ok, events} = Journal.load(c.dir, Session.info(pid).id)
 
-        actions =
-          for event <- events,
-              event["type"] in ~w(extension_action_intent extension_action_result),
-              do:
-                {event["type"], get_in(event, ["request", "op"]),
-                 get_in(event, ["request", "name"]), event["approval"],
-                 get_in(event, ["outcome", "status"]),
-                 get_in(event, ["outcome", "value", "reason"])}
+          actions =
+            for event <- events,
+                event["type"] in ~w(extension_action_intent extension_action_result),
+                do:
+                  {event["type"], get_in(event, ["request", "op"]),
+                   get_in(event, ["request", "name"]), event["approval"],
+                   get_in(event, ["outcome", "status"]),
+                   get_in(event, ["outcome", "value", "reason"])}
 
-        flunk("document command error: #{inspect(reason)} #{inspect(actions)}")
+          flunk(
+            "document command error: #{inspect(reason)} #{inspect(Enum.take(actions, -6), limit: :infinity)}"
+          )
+        end
 
       {:ipse, pid, _} when pid == c.pid ->
         wait(c, deadline)
@@ -386,6 +408,7 @@ defmodule Ipse.KnowledgeDocumentAcquisitionSessionTest do
     end)
   end
 
+  @tag :workspace_current_query
   test "opt-in workspace acquisition journals exact reads before writes and returns a bound citation",
        c do
     run = open(c)
@@ -422,15 +445,30 @@ defmodule Ipse.KnowledgeDocumentAcquisitionSessionTest do
         &(&1["type"] == "extension_action_result" and get_in(&1, ["request", "name"]) == "read")
       )
 
-    assert length(reads) == 2
-    [first, second] = reads
+    assert length(reads) == 3
+    [first, second, current] = reads
     assert first["approval"] == "not_required"
     assert second["request"]["arguments"]["expected_sha256"] == JSON.sha256(bytes)
     assert second["operation_id"] == acquisition["operation_id"]
+    assert current["request"]["arguments"]["expected_sha256"] == JSON.sha256(bytes)
+    assert current["request"]["arguments"]["max_bytes"] == 1
+    assert [%{"operation_id" => current_id}] = result["coverage"]["workspace_file_checks"]
+    assert current_id == current["operation_id"]
+    assert result["coverage"]["workspace_invocation_effects"] == 1
+
+    query_reads =
+      Enum.count(events, fn event ->
+        event["type"] == "extension_action_result" and
+          event["parent_invocation_id"] == current["parent_invocation_id"] and
+          get_in(event, ["request", "op"]) in ~w(state.get state.list state.scan)
+      end)
+
+    assert query_reads > 0
+    assert result["coverage"]["workspace_invocation_reads"] == query_reads
 
     read_positions =
       Enum.with_index(events)
-      |> Enum.filter(fn {event, _} -> event in reads end)
+      |> Enum.filter(fn {event, _} -> event in [first, second] end)
       |> Enum.map(&elem(&1, 1))
 
     write_position =
@@ -440,6 +478,7 @@ defmodule Ipse.KnowledgeDocumentAcquisitionSessionTest do
       )
 
     assert Enum.max(read_positions) < write_position
+    assert Enum.find_index(events, &(&1 === current)) > write_position
     refute Enum.any?(events, &(&1["type"] == "request_admitted"))
     assert {:ok, _} = Session.Saved.restore(events, id)
     assert :ok = Session.close_confirmed(run.pid)
@@ -455,6 +494,158 @@ defmodule Ipse.KnowledgeDocumentAcquisitionSessionTest do
 
     assert_idle_resume_journal(journal, before_bytes, id)
     assert :ok = Session.close_confirmed(resumed)
+  end
+
+  for preset <- ~w(state-documents collection-documents) do
+    @tag :workspace_current_query
+    @tag current_query_preset: preset
+    test "#{preset} withholds changed, renamed, deleted and redirected workspace documents", c do
+      run = open(c, c.current_query_preset)
+      original = document("Vega migration requires an audit.")
+      path = Path.join(run.cwd, "source.docx")
+      moved = Path.join(run.cwd, "moved.docx")
+      File.write!(path, original)
+      saved = invoke(run, "source", args())
+
+      saved =
+        Enum.reduce_while(1..40, saved, fn _, result ->
+          if result["status"] == "draft",
+            do: {:cont, continue(run, result["continuation"])},
+            else: {:halt, result}
+        end)
+
+      assert saved["status"] == "ok"
+
+      query_current = fn selected ->
+        if c.current_query_preset == "collection-documents" do
+          invoke(selected, "query_selected", %{
+            "store" => "notes",
+            "retrieval" => "words",
+            "query" => "Vega migration",
+            "top_k" => 1,
+            "as_of_ms" => 20,
+            "source_ids" => ["workspace:source"]
+          })
+        else
+          query(selected, "Vega migration")
+        end
+      end
+
+      assert query_current.(run)["status"] == "ok"
+
+      for change <- [:replace, :rename, :delete, :redirect] do
+        case change do
+          :replace ->
+            File.write!(path, document("Vega migration no longer uses this source."))
+
+          :rename ->
+            File.rename!(path, moved)
+
+          :delete ->
+            File.rm!(path)
+
+          :redirect ->
+            File.rename!(path, moved)
+            File.ln_s!("moved.docx", path)
+        end
+
+        if change == :redirect do
+          assert {:host_refused, message} =
+                   query_current.(Map.put(run, :expected_host_refusal, true))
+
+          assert message =~ "unknown after refusal"
+          assert {:ok, events} = Journal.load(run.dir, Session.info(run.pid).id)
+          parent = Enum.find(Enum.reverse(events), &(&1["type"] == "extension_invocation_intent"))
+
+          calls =
+            Enum.filter(
+              events,
+              &(&1["type"] == "extension_action_intent" and
+                  &1["invocation_id"] == parent["invocation_id"])
+            )
+
+          refute Enum.any?(calls, &(get_in(&1, ["request", "name"]) == "read"))
+
+          refute Enum.any?(
+                   events,
+                   &(&1["type"] == "extension_invocation_result" and
+                       &1["invocation_id"] == parent["invocation_id"])
+                 )
+        else
+          result = query_current.(run)
+          assert result["status"] == "refused", inspect({change, result})
+          assert result["evidence"] == [] and result["claims"] == []
+          assert result["gaps"] == [%{"code" => "document_source_changed_or_unavailable"}]
+        end
+
+        case change do
+          :rename ->
+            File.rename!(moved, path)
+
+          :redirect ->
+            File.rm!(path)
+            File.rename!(moved, path)
+
+          _ ->
+            File.write!(path, original)
+        end
+      end
+
+      restored = query_current.(run)
+      assert restored["status"] == "ok"
+
+      assert hd(restored["evidence"])["citation"]["document"]["original_sha256"] ==
+               JSON.sha256(original)
+
+      id = Session.info(run.pid).id
+      assert :ok = Session.close_confirmed(run.pid)
+      assert {:ok, events} = Journal.load(run.dir, id)
+      assert {:ok, _} = Session.Saved.restore(events, id)
+      refute Enum.any?(events, &(&1["type"] == "request_admitted"))
+
+      File.rm!(path)
+
+      assert {:ok, resumed} =
+               DynamicSupervisor.start_child(
+                 Ipse.Sessions,
+                 {Session, Keyword.put(run.opts, :id, id)}
+               )
+
+      assert query_current.(%{run | pid: resumed})["status"] == "refused"
+      assert :ok = Session.close_confirmed(resumed)
+    end
+  end
+
+  @tag :workspace_current_query
+  test "a source revision changed during the workspace check withholds the query", c do
+    run = open(c)
+    File.write!(Path.join(run.cwd, "source.docx"), document("Vega migration requires an audit."))
+    assert invoke(run, "source", args())["status"] == "ok"
+    {_, _, state} = stored_state(run)
+    root = Enum.find(Map.values(state["records"]), &(get_in(&1, ["value", "kind"]) == "root"))
+
+    callback = fn
+      0,
+      {:in,
+       {:"$gen_call", _,
+        {:extension_action_begin, _, %{"name" => "read", "arguments" => %{"max_bytes" => 1}}}}},
+      _ ->
+        change_record(run, root["key"], root["value"])
+        1
+
+      count, _, _ ->
+        count
+    end
+
+    assert :ok = :sys.install(run.pid, {callback, 0})
+    result = query(run, "Vega migration")
+    assert result["status"] == "conflict"
+    assert result["evidence"] == [] and result["claims"] == []
+    assert result["gaps"] == [%{"code" => "snapshot_changed"}]
+    assert query(run, "Vega migration")["status"] == "ok"
+    assert {:ok, events} = Journal.load(run.dir, Session.info(run.pid).id)
+    assert {:ok, _} = Session.Saved.restore(events, Session.info(run.pid).id)
+    refute Enum.any?(events, &(&1["type"] == "request_admitted"))
   end
 
   @tag :public_many_block_document
@@ -706,7 +897,8 @@ defmodule Ipse.KnowledgeDocumentAcquisitionSessionTest do
        c do
     run = open(c)
     path = Path.join(run.cwd, "source.docx")
-    File.write!(path, document("Legacy selection remains current."))
+    legacy = document("Legacy selection remains current.")
+    File.write!(path, legacy)
     assert invoke(run, "source", args())["status"] == "ok"
 
     inspected =
@@ -729,10 +921,10 @@ defmodule Ipse.KnowledgeDocumentAcquisitionSessionTest do
     opened = invoke(run, "source", command)
     assert opened["status"] == "draft", inspect({opened, acquisition_trace(run)})
     first = opened["continuation"]
-    assert query(run, "Legacy")["evidence"] != []
+    assert_retained_workspace_source(run, path, legacy, "Legacy")
     File.write!(path, document("changed between stages"))
     assert continue(run, first)["status"] == "refused"
-    assert query(run, "Legacy")["evidence"] != []
+    assert_retained_workspace_source(run, path, legacy, "Legacy")
     File.write!(path, bytes)
 
     finished =
@@ -741,7 +933,7 @@ defmodule Ipse.KnowledgeDocumentAcquisitionSessionTest do
 
         case next["status"] do
           "draft" ->
-            assert query(run, "Legacy")["evidence"] != []
+            assert_retained_workspace_source(run, path, legacy, "Legacy")
             {:cont, next}
 
           "ok" ->
@@ -822,7 +1014,8 @@ defmodule Ipse.KnowledgeDocumentAcquisitionSessionTest do
        c do
     run = open(c)
     path = Path.join(run.cwd, "source.docx")
-    File.write!(path, document("Legacy metadata selection remains current."))
+    legacy = document("Legacy metadata selection remains current.")
+    File.write!(path, legacy)
     assert invoke(run, "source", args())["status"] == "ok"
 
     old =
@@ -848,7 +1041,7 @@ defmodule Ipse.KnowledgeDocumentAcquisitionSessionTest do
     assert first["status"] == "draft", inspect(first)
     assert first["continuation"]["arguments"]["args"]["offset"] == 0
     assert first["continuation"]["arguments"]["args"]["metadata_offset"] > 0
-    assert query(run, "Legacy metadata")["evidence"] != []
+    assert_retained_workspace_source(run, path, legacy, "Legacy metadata")
     tampered = put_in(first, ["continuation", "arguments", "args", "metadata_offset"], 0)
     assert continue(run, tampered["continuation"])["status"] == "refused"
     wrong_text_offset = put_in(first, ["continuation", "arguments", "args", "offset"], 1)

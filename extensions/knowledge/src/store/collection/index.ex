@@ -457,7 +457,12 @@ defmodule IpseKnowledge.Store.Collection.Index do
         |> Map.put("catalog_generation", s.index_root["catalog_generation"])
         |> Map.put("catalog_floor", s.index_root["floor"])
 
-      {:done, {:ok, Map.put(rank, "coverage", coverage)}}
+      {:done,
+       {:ok,
+        rank
+        |> Map.put("coverage", coverage)
+        |> Map.put("native_generation", value["native_generation"])
+        |> Map.put("selected_sources", s.selected_sources)}}
     else
       _ -> error(:lexical_selection_changed)
     end

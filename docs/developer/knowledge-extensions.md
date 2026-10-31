@@ -499,9 +499,39 @@ Rows must be ordered and are reconstructed exactly from the stored block map;
 changed coordinates, offsets or column labels refuse. Evidence revalidates the typed receipt,
 canonical envelope and source spans. An ordinary text `put` cannot smuggle in
 a document receipt. Partial extraction remains partial in query gaps and
-coverage. Replacement and suppression use ordinary source management; the
-current implementation does not watch source files or invalidate an acquired
-snapshot merely because its path changes later.
+coverage. Replacement and suppression use ordinary source management.
+
+Follow `Corpus.check_document_use/3` before query publication. It collects acquired
+originals from returned evidence and each claim's complete citation basis, deduplicates
+path/hash/byte-count references and checks the compiled `host.tools` capability.
+Packed v3 and compact v4 receipts retain the acquisition identity. Provided-byte
+receipts have no workspace acquisition and trigger no fetch. For an acquired
+original, the existing native binary read hashes the complete bounded file and
+returns one byte plus its complete-file metadata. Corpus checks the exact envelope,
+host operation ID, path, hash, count and page position. A failure publishes neither
+evidence nor claims. Capability absence refuses rather than widening authority.
+
+The continuation then revalidates State/MCP source tokens or the captured Collection
+native generation and source eligibility. A revision changed during the file check
+therefore withholds the result even when the file bytes still match. Query coverage
+retains original acquisition provenance separately from `workspace_file_checks`,
+`workspace_store_revalidation`, `workspace_invocation_effects` and
+`workspace_invocation_reads`.
+Corpus counts its emitted calls across adapters so added checks share the existing
+16-effect/512-read allowance; the host independently enforces that ceiling. Native
+workspace reads count as effects in this allowance even though they require no
+mutation approval. The private classifier covers only operations Corpus emits and
+reuses `Collection.read_request?/1`; it adds no generic host-call protocol.
+
+The same guard runs before legacy document embedding, rerank input and vector commit.
+Model-only presets lack `host.tools`, so an acquired document cannot use those
+routes. The shared Collection producer retains its separate source-claim protocol;
+this guard does not establish workspace-file checks for its embedding batches.
+There is no watcher, automatic rename detection, reindex or deletion. Checks cover
+returned evidence/claims, not a namespace-wide filesystem snapshot, and hold no file
+lock through subsequent consumers. Earlier journals/results remain historical.
+The native host can refuse a symlink at tool-context admission before any read intent;
+the parent then remains conservatively unknown and is never replayed.
 
 Run the worker and actual Session paths together:
 
@@ -513,8 +543,10 @@ mix test test/extensions/knowledge/document_ingestion_test.exs \
 ```
 
 These controls cover stored paragraph/table citations, replacement/forget,
-forged metadata, changed-file refusal before writes, exact read operation
-binding and owner-loss/inert-resume behavior. They use synthetic Word packages
+forged metadata, changed-file refusal before writes and query return, exact read
+operation binding, revision change during a query check, and owner-loss/inert-resume
+behavior. State and Collection controls replace, rename, delete and redirect the
+original after acquisition, then explicitly restore it. They use synthetic Word packages
 and local State/CAS fixtures. They do not establish real Word fidelity,
 larger-document storage, installed qualification or retrieval quality. The
 [operator procedure](../operator/corpus.md#acquire-a-small-word-document-from-the-workspace)

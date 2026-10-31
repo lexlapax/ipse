@@ -52,11 +52,17 @@ defmodule IpseKnowledge.Corpus do
     end
   end
 
-  def handle("invoke.command", payload, state), do: invoke(payload, state)
-  def handle("invoke.tool", payload, state), do: invoke(payload, state)
+  def handle("invoke.command", payload, state),
+    do: invoke(payload, Map.delete(state, :document_budget))
+
+  def handle("invoke.tool", payload, state),
+    do: invoke(payload, Map.delete(state, :document_budget))
 
   def handle("host.actions", payload, %{phase: phase} = state)
       when phase in [:document_read, :document_check], do: document_read(payload, state)
+
+  def handle("host.actions", payload, %{phase: :document_use_check} = state),
+    do: document_use_checked(payload, state)
 
   def handle(
         "host.actions",
@@ -947,6 +953,7 @@ defmodule IpseKnowledge.Corpus do
            :collection_projection,
            :collection_semantic_snapshot,
            :collection_semantic_revalidate,
+           :document_use_collection,
            :collection_job,
            :collection_index,
            :collection_namespace,
@@ -1372,7 +1379,13 @@ defmodule IpseKnowledge.Corpus do
       })
 
     finish(
-      state,
+      %{
+        state
+        | ctx:
+            state.ctx
+            |> Map.put(:document_generation, snapshot["native_generation"])
+            |> Map.put(:document_sources, Enum.map(selected, & &1["source"]))
+      },
       output(
         if(complete, do: "ok", else: "partial"),
         Enum.flat_map(claims, & &1["citations"]),
@@ -1407,7 +1420,13 @@ defmodule IpseKnowledge.Corpus do
   defp advance({:done, {:ok, rank}}, %{phase: :collection_namespace} = state),
     do:
       finish(
-        state,
+        %{
+          state
+          | ctx:
+              state.ctx
+              |> Map.put(:document_generation, rank["native_generation"])
+              |> Map.put(:document_sources, rank["selected_sources"])
+        },
         output(
           rank["status"],
           rank["evidence"],
@@ -1435,7 +1454,13 @@ defmodule IpseKnowledge.Corpus do
         |> Map.put("catalog_generation", snapshot["catalog_generation"])
 
       finish(
-        state,
+        %{
+          state
+          | ctx:
+              state.ctx
+              |> Map.put(:document_generation, snapshot["native_generation"])
+              |> Map.put(:document_sources, snapshot["sources"])
+        },
         output(rank["status"], rank["evidence"], rank["claims"], rank["gaps"], coverage, nil)
       )
     else
@@ -1542,11 +1567,44 @@ defmodule IpseKnowledge.Corpus do
       {:ok, claims} = Evidence.classify(rank["evidence"], [], ctx.args["query"])
 
       finish(
-        state,
+        %{
+          state
+          | ctx:
+              state.ctx
+              |> Map.put(:document_generation, selected["native_generation"])
+              |> Map.put(:document_sources, ctx.snapshot["sources"])
+        },
         output(rank["status"], rank["evidence"], claims, rank["gaps"], coverage, nil)
       )
     else
       finish(state, output("conflict", [], [], [%{"code" => "snapshot_changed"}], %{}, nil))
+    end
+  end
+
+  defp advance({:done, {:ok, checked}}, %{phase: phase} = state)
+       when phase in [:document_use_collection, :document_use_store] do
+    valid =
+      if phase == :document_use_collection,
+        do: checked["native_generation"] === state.ctx.document_generation,
+        else: checked["valid"] === true
+
+    sources =
+      Map.get(state.ctx, :document_sources) || get_in(state.ctx, [:snapshot, "sources"]) || []
+
+    at = state.ctx.args["as_of_ms"] || System.system_time(:millisecond)
+
+    if valid and Enum.all?(sources, &Evidence.current?(&1, at)) do
+      value =
+        update_in(state.ctx.document_use_result, ["coverage"], fn coverage ->
+          Map.put(coverage, "workspace_store_revalidation", checked["coverage"])
+        end)
+
+      publish_result(state, value)
+    else
+      publish_result(
+        state,
+        output("conflict", [], [], [%{"code" => "snapshot_changed"}], %{}, nil)
+      )
     end
   end
 
@@ -1708,12 +1766,10 @@ defmodule IpseKnowledge.Corpus do
       inputs = Enum.map(opened["chunks"], &Map.take(&1, ~w(chunk_id text)))
       ctx = Map.put(state.ctx, :opened, opened)
 
-      advance(
-        Adapters.start(state.resolved, :embed, %{
-          "profile" => state.ctx.args["embedding"],
-          "inputs" => inputs
-        }),
-        %{state | phase: :index_embed, ctx: ctx}
+      check_document_use(
+        %{state | ctx: Map.put(ctx, :index_inputs, inputs)},
+        %{"evidence" => [opened["source"]], "claims" => []},
+        :index_embed
       )
     else
       _ -> finish(state, refused(:effect_budget))
@@ -1721,11 +1777,10 @@ defmodule IpseKnowledge.Corpus do
   end
 
   defp advance({:done, {:ok, embedded}}, %{phase: :index_embed} = state) do
-    args = %{"draft" => state.ctx.opened["draft"], "vectors" => embedded["vectors"]}
-
-    advance(
-      Store.start(state.ctx.args["store"], state.ctx.store_profile, :projection_commit, args),
-      %{state | phase: :index_commit}
+    check_document_use(
+      %{state | ctx: Map.put(state.ctx, :index_vectors, embedded["vectors"])},
+      %{"evidence" => [state.ctx.opened["source"]], "claims" => []},
+      :index_commit
     )
   end
 
@@ -1906,15 +1961,7 @@ defmodule IpseKnowledge.Corpus do
       revalidate(state)
     else
       candidates = Enum.take(state.ctx.rank["evidence"], 16)
-
-      advance(
-        Adapters.start(state.resolved, :rerank, %{
-          "profile" => state.ctx.args["rerank"],
-          "query" => state.ctx.args["query"],
-          "candidates" => candidates
-        }),
-        %{state | phase: :query_rerank}
-      )
+      check_document_use(state, %{"evidence" => candidates, "claims" => []}, :rerank)
     end
   end
 
@@ -2345,15 +2392,239 @@ defmodule IpseKnowledge.Corpus do
   defp string(max), do: %{"type" => "string", "minLength" => 1, "maxLength" => max}
   defp integer(min, max), do: %{"type" => "integer", "minimum" => min, "maximum" => max}
 
-  defp call(request, state),
-    do: {:ok, %{"api_version" => 1, "kind" => "host_call", "request" => request}, state}
+  defp call(request, state) do
+    budget = Map.get(state, :document_budget, %{effects: 0, reads: 0, guarded: false})
+
+    read =
+      request["op"] in ~w(state.get state.list state.scan effect.result.read embedding.profile) or
+        (request["op"] == "collection.store" and CollectionStore.read_request?(request))
+
+    budget =
+      if read,
+        do: %{budget | reads: budget.reads + 1},
+        else: %{budget | effects: budget.effects + 1}
+
+    if budget.guarded and (budget.effects > 16 or budget.reads > 512) do
+      publish_result(state, refused(:document_current_check_limit))
+    else
+      {:ok, %{"api_version" => 1, "kind" => "host_call", "request" => request},
+       Map.put(state, :document_budget, budget)}
+    end
+  end
 
   defp job_result(%{ctx: %{args: %{"response" => "compact_v1"}}}, value),
     do: IpseKnowledge.Store.Collection.Job.compact_result(value)
 
   defp job_result(_, value), do: value
 
-  defp finish(state, value) do
+  defp finish(state, value), do: check_document_use(state, value, :publish)
+
+  defp check_document_use(state, value, action) do
+    citations =
+      Enum.map(value["evidence"] || [], fn item ->
+        if is_map(item), do: Map.get(item, "citation", item), else: %{}
+      end) ++
+        Enum.flat_map(value["claims"] || [], fn claim ->
+          (claim["basis"] || []) ++ (claim["citations"] || [])
+        end)
+
+    refs = citations |> Enum.map(&document_use_ref/1) |> Enum.reject(&is_nil/1) |> Enum.uniq()
+    caps = Profiles.capabilities("corpus", get_in(state, [:resolved, "preset"]))
+    budget = Map.get(state, :document_budget, %{effects: 0, reads: 0, guarded: false})
+
+    cond do
+      refs == [] ->
+        document_use_complete(action, state, value, [])
+
+      :invalid in refs ->
+        publish_result(state, refused(:invalid_document_current_source))
+
+      not is_list(caps) or "host.tools" not in caps ->
+        publish_result(state, refused(:document_current_check_unavailable))
+
+      budget.effects + length(refs) > 16 or budget.reads > 512 ->
+        publish_result(state, refused(:document_current_check_limit))
+
+      true ->
+        guard = %{remaining: refs, checked: [], action: action, value: value}
+
+        next_document_use(
+          state
+          |> Map.put(:document_budget, %{budget | guarded: true})
+          |> Map.put(:ctx, Map.put(state.ctx || %{}, :document_use, guard))
+        )
+    end
+  end
+
+  defp document_use_ref(citation) do
+    stored = get_in(citation, ["origin", "receipt"])
+
+    receipt =
+      if is_map(stored) and stored["version"] == 4,
+        do: stored,
+        else: Evidence.document_receipt(%{"origin" => %{"receipt" => stored}})
+
+    case receipt do
+      %{"acquisition" => %{"kind" => "workspace.read", "path" => path}} ->
+        if workspace_path?(path) and Evidence.sha256?(receipt["original_sha256"]) and
+             is_integer(receipt["original_bytes"]) and receipt["original_bytes"] in 1..32768 do
+          Map.take(receipt, ~w(original_sha256 original_bytes)) |> Map.put("path", path)
+        else
+          :invalid
+        end
+
+      %{"acquisition" => acquisition} when not is_nil(acquisition) ->
+        :invalid
+
+      _ ->
+        nil
+    end
+  end
+
+  defp next_document_use(%{ctx: %{document_use: %{remaining: [ref | tail]} = guard}} = state) do
+    request = document_request(ref["path"], ref["original_sha256"])
+    request = put_in(request, ["arguments", "max_bytes"], 1)
+    guard = Map.merge(guard, %{remaining: tail, current: ref})
+    call(request, %{state | phase: :document_use_check, ctx: %{state.ctx | document_use: guard}})
+  end
+
+  defp next_document_use(%{ctx: %{document_use: %{remaining: []} = guard}} = state) do
+    document_use_complete(
+      guard.action,
+      %{state | ctx: Map.delete(state.ctx, :document_use)},
+      guard.value,
+      Enum.reverse(guard.checked)
+    )
+  end
+
+  defp document_use_checked(
+         %{
+           "operation_id" => operation,
+           "outcome" => %{"status" => "ok", "value" => %{"text" => text}}
+         },
+         state
+       ) do
+    ref = state.ctx.document_use.current
+
+    with true <- is_binary(operation) and Regex.match?(~r/\A[0-9a-f]{32}\z/, operation),
+         true <- text?(text, 8192),
+         value when is_map(value) <- JSON.decode!(text),
+         true <-
+           exact?(value, ~w(version encoding path byte_count sha256 data offset page_sha256 next)),
+         true <- value["version"] === 2 and value["encoding"] == "base64",
+         true <- value["path"] === ref["path"] and value["sha256"] === ref["original_sha256"],
+         true <- value["byte_count"] === ref["original_bytes"] and value["offset"] === 0,
+         {:ok, bytes} <- Base.decode64(value["data"]),
+         true <- byte_size(bytes) == 1 and value["page_sha256"] == Evidence.sha256(bytes),
+         true <- value["next"] === if(ref["original_bytes"] > 1, do: 1, else: nil) do
+      checked = Map.put(ref, "operation_id", operation)
+      guard = state.ctx.document_use
+      guard = %{guard | checked: [checked | guard.checked]}
+      next_document_use(%{state | ctx: %{state.ctx | document_use: guard}})
+    else
+      _ -> publish_result(state, refused(:document_source_changed_or_unavailable))
+    end
+  rescue
+    _ -> publish_result(state, refused(:document_source_changed_or_unavailable))
+  end
+
+  defp document_use_checked(_, state),
+    do: publish_result(state, refused(:document_source_changed_or_unavailable))
+
+  defp document_use_complete(:publish, state, value, checks) do
+    value =
+      if checks == [],
+        do: value,
+        else:
+          Map.update!(value, "coverage", fn coverage ->
+            Map.merge(coverage, %{
+              "workspace_file_check_scope" => "returned_evidence_and_claims",
+              "workspace_file_checks" => checks,
+              "workspace_file_check_effects" => length(checks)
+            })
+          end)
+
+    cond do
+      checks == [] ->
+        publish_result(state, value)
+
+      is_integer(state.ctx[:document_generation]) ->
+        {:ok, profile} = Profiles.lookup(state.resolved, "stores", state.ctx.args["store"])
+
+        advance(
+          CollectionStore.start(profile, :value_read, %{
+            "key" => "catalog." <> profile["partition"]
+          }),
+          %{
+            state
+            | phase: :document_use_collection,
+              ctx: Map.put(state.ctx, :document_use_result, value)
+          }
+        )
+
+      is_list(get_in(state.ctx, [:snapshot, "tokens"])) ->
+        advance(
+          Store.start(state.ctx.args["store"], state.ctx.store_profile, :revalidate, %{
+            "tokens" => state.ctx.snapshot["tokens"]
+          }),
+          %{
+            state
+            | phase: :document_use_store,
+              ctx: Map.put(state.ctx, :document_use_result, value)
+          }
+        )
+
+      true ->
+        publish_result(state, value)
+    end
+  end
+
+  defp document_use_complete(:rerank, state, _, _) do
+    advance(
+      Adapters.start(state.resolved, :rerank, %{
+        "profile" => state.ctx.args["rerank"],
+        "query" => state.ctx.args["query"],
+        "candidates" => Enum.take(state.ctx.rank["evidence"], 16)
+      }),
+      %{state | phase: :query_rerank}
+    )
+  end
+
+  defp document_use_complete(:index_embed, state, _, _) do
+    advance(
+      Adapters.start(state.resolved, :embed, %{
+        "profile" => state.ctx.args["embedding"],
+        "inputs" => state.ctx.index_inputs
+      }),
+      %{state | phase: :index_embed}
+    )
+  end
+
+  defp document_use_complete(:index_commit, state, _, _) do
+    advance(
+      Store.start(state.ctx.args["store"], state.ctx.store_profile, :projection_commit, %{
+        "draft" => state.ctx.opened["draft"],
+        "vectors" => state.ctx.index_vectors
+      }),
+      %{state | phase: :index_commit}
+    )
+  end
+
+  defp publish_result(state, value) do
+    value =
+      if get_in(value, ["coverage", "workspace_file_checks"]) do
+        budget = state.document_budget
+
+        update_in(value, ["coverage"], fn coverage ->
+          Map.merge(coverage, %{
+            "workspace_invocation_effects" => budget.effects,
+            "workspace_invocation_reads" => budget.reads
+          })
+        end)
+      else
+        value
+      end
+
     {:ok, reply} =
       case Ipse.Extension.ResultPublication.prepare(value) do
         {:ok, _} = prepared ->

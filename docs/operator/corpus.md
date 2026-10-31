@@ -260,7 +260,9 @@ complete next `arguments`. Copy those arguments unchanged into a new
 continuation. It stages locator metadata first in slices of at most 1,024 bytes,
 then text in parts of at most 4,096 UTF-8 bytes, before publishing the complete draft.
 Do not edit returned metadata/text offsets. A replacement keeps the earlier source selected until that
-final publication. Do not query the draft as if it were published.
+final publication. Do not query the draft as if it were published. When a replacement
+file already differs from the selected original, queries withhold that original's
+evidence while staging; retaining its stored generation does not make its file current.
 
 A draft has a finite expiry. State-backed draft writes retain that expiry through
 approval and synced staging; if it elapses before the final locked publication
@@ -289,9 +291,32 @@ or metadata bounds refuse. No model service is required.
 A hit's document citation binds the original binary hash, extraction recipe and
 paragraph or table-cell locator alongside the exact text offsets. Inspect
 `status`, `coverage.complete` and `gaps`: unsupported relationships or document
-features can leave the result partial. A citation records an acquired snapshot;
-it does not assert that the workspace file is still unchanged. Ipse does not
-watch this file or automatically refresh it.
+features can leave the result partial. Before returning acquired-file evidence or
+claims, Corpus checks the original relative path, complete-file hash and byte
+count through the native read tool, then checks the stored generation again.
+This applies to ordinary, selected-source and shared-projection queries. Coverage
+records the read operation IDs in `workspace_file_checks`; the original acquisition
+receipt stays unchanged. The check concerns the returned evidence and claims,
+not every file in the store.
+
+A changed, renamed or deleted original returns
+`document_source_changed_or_unavailable` with no evidence or claims. Restore the
+original bytes at the original path, or explicitly acquire the replacement as a
+new generation. A redirected symlink can be refused by the host before the read
+starts, leaving the enclosing invocation unknown; inspect it before new explicit
+work. Resume never repeats that invocation. A store change during the check
+returns `conflict`.
+
+Ipse does not watch files, find their new locations or automatically refresh or
+delete stored sources. These bounded checks do not lock files through later use
+or retract earlier historical results. Supplied-byte `put_document` sources remain
+recorded snapshots; their filename and URI are never fetched. A preset without
+`host.tools` refuses acquired-file evidence with `document_current_check_unavailable`
+instead of gaining workspace access. Legacy indexing and reranking check acquired
+sources before their model calls and vector publication; their model-only presets
+cannot perform those checks. The shared Collection producer has its separate
+stored-source admission described below; these query checks do not qualify its
+workspace-file freshness.
 
 Short paragraphs and table cells can share a stored chunk while retaining their
 original locations. A quotation covering several blocks has an ordered

@@ -45,6 +45,35 @@ defmodule IpseKnowledge.EmbeddingArtifactTest do
     IpseKnowledge.Corpus.handle("host.actions", %{"outcome" => %{"status" => "ok",
       "value" => %{"generation" => 0, "records" => [], "next" => nil}}}, corpus)
   assert corpus.ctx.args["query"] == "snow 雪"
+  text = "snow 雪"
+  receipt = %{"kind" => "document_extraction", "version" => 2, "format" => "docx",
+    "original_sha256" => Evidence.sha256("synthetic original"), "original_bytes" => 18,
+    "extraction_version" => "ipse-documents-v14", "status" => "complete", "warnings" => [],
+    "segments" => [%{"start_byte" => 0, "end_byte" => byte_size(text), "text_sha256" => Evidence.sha256(text),
+      "locator" => %{"kind" => "paragraph", "part" => "word/document.xml", "paragraph" => 1}}],
+    "acquisition" => %{"kind" => "workspace.read", "path" => "source.docx", "operation_id" => String.duplicate("2",32)}}
+  {:ok, source} = Evidence.source(%{"source_id" => "workspace:source", "partition" => "notes",
+    "generation" => 1, "title" => "Fixture", "text" => text, "uri" => "workspace:source.docx",
+    "observed_at_ms" => 0, "event_at_ms" => nil, "expires_at_ms" => nil,
+    "origin" => %{"kind" => "provided", "store_profile" => "notes", "partition_or_scope" => "notes",
+      "receipt" => Evidence.document_storage_receipt!(receipt), "historical" => false}})
+  assert Evidence.valid_source?(source)
+  {:ok, initial} = IpseKnowledge.Corpus.init(options)
+  state = %{initial | phase: :index_embed, pending: :adapter, cont: reading,
+    ctx: %{args: %{"store" => "notes"}, store_profile: options["stores"]["notes"],
+      opened: %{"source" => source, "draft" => %{}}}}
+  assert {:ok, %{"kind" => "result", "value" => %{"status" => "refused", "gaps" =>
+    [%{"code" => "document_current_check_unavailable"}]}}, _} =
+    IpseKnowledge.Corpus.handle("host.actions", %{"outcome" => %{"status" => "ok", "value" => page}}, state)
+  {:ok, [chunk]} = Evidence.chunks(source)
+  stored = Map.put(vector, "chunk_id", chunk["chunk_id"])
+  state = %{initial | phase: :query_embed, pending: :adapter, cont: reading,
+    ctx: %{args: %{"query" => text, "top_k" => 1, "rerank" => "judge"}, as_of_ms: 1,
+      retrieval: %{"kind" => "dense"}, snapshot: %{"sources" => [source],
+        "projections" => %{source["source_key"] => %{"vectors" => [stored], "facts" => []}}}}}
+  assert {:ok, %{"kind" => "result", "value" => %{"status" => "refused", "gaps" =>
+    [%{"code" => "document_current_check_unavailable"}]}}, _} =
+    IpseKnowledge.Corpus.handle("host.actions", %{"outcome" => %{"status" => "ok", "value" => page}}, state)
   IO.puts("CORPUS_ARTIFACT_INPUT_BINDING_OK")
   """
 

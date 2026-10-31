@@ -93,6 +93,12 @@ declarations; an SDK-1 artifact needs a new build rather than an options change.
 | Graph | `state-explicit`, `mcp-explicit` | Explicit attributed facts |
 | Graph | `state-model`, `mcp-model` | Optional selected text extraction |
 
+Corpus checks acquired workspace documents again before returning their evidence
+and claims. Presets without `host.tools` refuse those acquired sources rather than
+adding file access. Supplied-byte documents remain snapshots. Follow the
+[Word procedure](../../docs/operator/corpus.md#acquire-a-small-word-document-from-the-workspace)
+for changed-file recovery and the separate producer limits.
+
 Every options file contains version 1 and all seven registries, including empty
 registries. The supplied files cover lexical Corpus, offline Research and
 explicit Graph. Profile validation rejects unused authority, unknown variants,
