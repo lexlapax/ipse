@@ -53,6 +53,7 @@ nor resource/offline qualification. No daemon configuration or existing model wa
 
 - [Installed idle-resume verifier repair](package-idle-resume-20261031.md) preserves the exact failed archive, native ownership/release assertions and source checks; a replacement archive still requires installed verification.
 - [Full-source regression result](full-suite-20261031.md) retains the unchanged-source run's 71 failures and complete top-level failure extract; selected later controls do not replace this failed baseline.
+- [Completed c7cb484 default baseline](full-suite-c7cb484-20261031.md): 3518 passed,58 failed, with unchanged1057-file source; later isolated increments remain outside its scope.
 - [Current local follow-up](current-local-followup-20261031.md) records the integrated build/demo, 99 focused regressions, 79 P30 checks and fresh current-runtime two-source decision controls, with an exact runtime/test manifest.
 - [Bounded DOCX table styles](docx-table-style-20261031.md) records the reproduced nonhidden-style refusal, reuse of the existing style graph, recipe v12 and source/separate-artifact refusal controls; full Word fidelity remains open.
 - [Matching alternate DOCX style graphs](docx-matching-effects-20261031.md) records original public Word fixtures, recipe v13's exact graph agreement, native acquisition and separate source/installed artifact checks; differing graphs still refuse and rendered-Word fidelity remains open.
