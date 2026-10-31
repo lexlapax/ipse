@@ -91,3 +91,27 @@ controls use `/tmp/ipse-paragraph-packing-*20261031.log`. No model inference or
 release publication occurred. Full Word fidelity, richer locator geometries,
 large-scale capacity, quality/installed-user journeys and the failed whole-source
 baseline remain open under the original goal.
+
+## Committed package and delivery boundary
+
+The clean source increment `fd693755f1c80a0babb13b0765a21c80c122943d` built the
+standard package successfully. Archive SHA256 is
+`d874d88ac339b36d1b93fe007e1c650f105d43dc994750ba5ee3f4f55621b994`.
+Its generic installed-package proof passed, as did all eight document checks
+with the same separately built Corpus artifact. Existing shared Evidence and
+producer-progression controls also passed **53 tests in 207.9 seconds**; nested
+single-case child reports are not substituted for that final aggregate.
+The [exact receipt](installed-package-v14-20261031.json) preserves reports,
+hashes and the observed domain inventory.
+
+Archive inspection found one bundled notes artifact, entrypoint
+`IpseKnowledge.Knowledge`, with nine files. It contains neither Documents nor
+Evidence modules. **The Word artifact remains external to the package**;
+these installed checks use its separately built manifest. Earlier commentary
+about a bundled Word catalog was inaccurate. Source/build identity and successful
+external-artifact loading do not prove ordinary installed Word activation.
+P31D1 must still deliver the Corpus/parser artifact and an explicit operator
+setup path without manual builds. `dev/build-bundles.exs` currently builds only
+the notes package; the existing inert `Bundles.inventory/install` API already
+supports multiple entries without granting trust or activation. That is the
+next delivery work, separate from correction's pending display-contract choice.

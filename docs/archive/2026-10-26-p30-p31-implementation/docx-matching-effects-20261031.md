@@ -103,3 +103,12 @@ reports, artifact/whole-log hashes and clean committed-source identity.
 All inventories remained unchanged, with private homes and no system development
 toolchain on runtime PATH. No model inference, release publication or broader
 knowledge/Word-quality acceptance is implied.
+
+### Bundle-inventory correction
+
+Later [archive inspection](word-block-packing-20261031.md#committed-package-and-delivery-boundary)
+showed that the packaged catalog contains the notes artifact, without Corpus,
+Documents or Evidence. The statement above about a v13 bundled catalog does not
+establish bundled Word support and was too broad. Its Word proof used an external
+independently built artifact; actual installed Word delivery remains P31D1 work.
+The original archive, source identity and passing reports are unchanged.
