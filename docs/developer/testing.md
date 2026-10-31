@@ -438,6 +438,12 @@ reordered findings refuse verification, as do unexplained skips and unexpected
 warnings; only the documented experimental native-policy warning is admitted on
 macOS. CLI checks have declared utilities
 without Erlang/development commands; the precompiled harness adds bundled Erlang.
+The package proof also runs `inference status --json` with malformed conversation
+configuration and an absent operator home. It requires the exact empty report,
+unchanged configuration and no home creation, then checks unsupported flags and
+an absent-reservation reconciliation. These offline CLI checks do not establish
+native confirmation or actual remote-service quiescence; those require separate
+terminal and service controls.
 The hosted matrix allows 60 minutes for the whole build, test, package and
 independent-proof sequence. This finite orchestration budget is separate from
 individual assertions and product deadlines. Record an outer job cancellation

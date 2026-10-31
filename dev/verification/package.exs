@@ -165,6 +165,57 @@ defmodule Ipse.Development.Verification.Package do
     )
   end
 
+  defp verify_inference!(wrapper, release, env, root) do
+    home = Path.join(root, "inference-inspection-home")
+    config = Path.join(root, "inference-malformed-config.json")
+    config_bytes = "malformed synthetic configuration; inspection must ignore it"
+    File.write!(config, config_bytes)
+
+    env =
+      env
+      |> List.keystore("IPSE_HOME", 0, {"IPSE_HOME", home})
+      |> List.keystore("IPSE_CONFIG", 0, {"IPSE_CONFIG", config})
+
+    report =
+      run!(wrapper, ["inference", "status", "--json"], release, env, "inference status")
+      |> :json.decode()
+
+    true =
+      report == %{
+        "version" => 1,
+        "revision" => 0,
+        "services" => %{},
+        "queue" => [],
+        "recent" => [],
+        "active_meaning" => "unresolved_until_known_terminal_or_operator_reconciliation"
+      }
+
+    false = File.exists?(home)
+    reservation = String.duplicate("a", 32)
+
+    for args <- [
+          ["status", "--yes"],
+          ["reconcile", "local", reservation, "0", "--yes"],
+          ["reconcile", "local", reservation, "00"],
+          ["reconcile", "local", reservation, "0"]
+        ] do
+      {output, 1} =
+        System.cmd(wrapper, ["inference" | args],
+          cd: release,
+          env: env,
+          stderr_to_stdout: true
+        )
+
+      false = String.contains?(output, config_bytes)
+      false = File.exists?(home)
+      ^config_bytes = File.read!(config)
+    end
+
+    IO.puts(
+      "PASS: toolchain-free inference status ignores conversation config, creates no home, and refuses unsupported or absent reconciliation."
+    )
+  end
+
   defp verify_xai!(wrapper, release, env, root) do
     home = Path.join(root, "grok-home")
     workspace = Path.join(root, "grok-workspace")
@@ -553,6 +604,7 @@ defmodule Ipse.Development.Verification.Package do
 
     verify_doctor!(wrapper, release, env, home, default_workspace, version)
     verify_setup!(wrapper, release, env, root)
+    verify_inference!(wrapper, release, env, root)
     verify_xai!(wrapper, release, env, root)
     verify_permissions!(otp_launcher, release, env, root)
     verify_upgrade!(otp_launcher, release, env, root)
