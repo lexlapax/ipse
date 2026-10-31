@@ -136,7 +136,7 @@ lexical State authority. Existing `state-lexical` artifacts cannot acquire files
 The current acquisition limit is **32,768 original file bytes**, read in
 hash-bound pages of at most 4096 bytes. Larger originals refuse rather than
 losing content. Extracted text is bounded separately at 64 KiB and 32 chunks.
-Typed locator metadata is bounded at 16 KiB, 32 segments and 32 warnings; its
+Typed locator metadata is bounded at 16 KiB, 32 stored groups and 32 warnings; its
 paging and the store's total capacity can refuse earlier. Nothing trims text or
 warnings to fit.
 
@@ -217,13 +217,20 @@ features can leave the result partial. A citation records an acquired snapshot;
 it does not assert that the workspace file is still unchanged. Ipse does not
 watch this file or automatically refresh it.
 
+Short paragraphs and table cells can share a stored chunk while retaining their
+original locations. A quotation covering several blocks has an ordered
+`document.spans` list, with its columns identified by `span_fields`; a quotation
+inside one block keeps the ordinary `document.locator`. Both forms preserve exact
+quotation offsets and table coordinates. The same text, metadata and chunk limits
+still apply, so complex or larger documents may refuse rather than lose locators.
+
 Word tables may use nonhidden named styles. A table style with hidden-text
 properties or an unresolved or ambiguous reference refuses extraction; numbered
 list properties also remain unsupported. A document with both `styles.xml` and
 `stylesWithEffects.xml` is readable only when their checked style graphs agree.
 Different style types, inheritance, defaults or hidden-text settings refuse;
 unsupported effect namespaces also refuse. The current DOCX recipe is
-`ipse-documents-v13`. Reacquire and explicitly replace an older source when you
+`ipse-documents-v14`. Reacquire and explicitly replace an older source when you
 need the newer recipe; existing extractions are not silently rebuilt.
 
 For replacement, inspect the source and use its current revision with the next

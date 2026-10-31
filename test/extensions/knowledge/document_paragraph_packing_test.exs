@@ -1,0 +1,86 @@
+defmodule Ipse.KnowledgeDocumentParagraphPackingTest do
+  use ExUnit.Case, async: false
+
+  test "many short Unicode paragraphs keep exact locators within bounded chunks and manifests" do
+    root = Path.expand("../../..", __DIR__)
+
+    files =
+      ~w(evidence documents/zip documents/docx documents/parser_stage documents/pdf documents)
+
+    paths =
+      :code.get_path() |> Enum.reject(&(&1 == ~c".")) |> Enum.flat_map(&["-pa", to_string(&1)])
+
+    script = ~S'''
+    import ExUnit.Assertions
+    alias IpseKnowledge.{Documents, Evidence}
+    segments = for i <- 0..328 do
+      locator = %{"kind" => "paragraph", "part" => "word/document.xml", "paragraph" => i * 2 + 1}
+      locator = if i >= 17, do: Map.merge(locator, %{"kind" => "table_cell", "table" => 1, "row" => i + 1, "cell" => 2}), else: locator
+      %{"text" => "Line #{i} café 好", "locator" => locator}
+    end
+    document = %{"format" => "docx", "segments" => segments,
+      "extraction_version" => Documents.version("docx"), "original_sha256" => Evidence.sha256("original"),
+      "original_bytes" => 16079, "status" => "complete", "warnings" => []}
+    {:ok, payload} = Documents.source_payload(document, 65536)
+    assert payload["text"] == Enum.map_join(segments, "\n", & &1["text"])
+    assert length(payload["document"]["segments"]) <= 32
+    assert byte_size(IO.iodata_to_binary(JSON.encode!(payload["document"]))) <= 16384
+    assert Evidence.valid_document?(payload["document"], payload["text"])
+    receipt = Evidence.document_storage_receipt!(payload["document"])
+    assert receipt["version"] == 4
+    attrs = %{"source_id" => "packing:unicode", "partition" => "notes", "generation" => 1,
+      "title" => "Paragraph packing", "text" => payload["text"], "document" => payload["document"],
+      "uri" => "provided:source.docx", "observed_at_ms" => 10, "event_at_ms" => nil, "expires_at_ms" => nil,
+      "origin" => %{"kind" => "provided", "store_profile" => "notes", "partition_or_scope" => "notes",
+        "receipt" => receipt, "historical" => false}}
+    {:ok, source} = Evidence.source(attrs)
+    {:ok, chunks} = Evidence.chunks(source)
+    assert length(chunks) <= 32 and length(chunks) < length(segments)
+    assert Enum.all?(chunks, &(byte_size(&1["text"]) <= 2048))
+    quote = Enum.at(segments, 128)["text"]
+    {start, count} = :binary.match(payload["text"], quote)
+    chunk = Enum.find(chunks, &(start >= &1["start_byte"] and start + count <= &1["end_byte"]))
+    {:ok, citation} = Evidence.citation(source, chunk, start, start + count)
+    assert citation["quote"] == quote
+    assert citation["document"]["locator"]["paragraph"] == 257
+    assert citation["document"]["locator"]["kind"] == "table_cell"
+    assert citation["document"]["locator"]["row"] == 129
+    assert citation["document"]["locator"]["cell"] == 2
+    assert citation["document"]["start_byte"] == 0
+    assert Evidence.valid_span?(source, citation)
+    refute Evidence.valid_span?(source, put_in(citation, ["document", "locator", "paragraph"], 256))
+    first = hd(chunks)
+    {:ok, crossing} = Evidence.citation(source, first, 0, 80)
+    assert crossing["document"]["version"] == 2
+    assert length(crossing["document"]["spans"]) > 1
+    assert Evidence.valid_span?(source, crossing)
+    refute Evidence.valid_span?(source, put_in(crossing, ["document", "spans", Access.at(0), Access.at(0)], 2))
+    {mixed_start, _} = :binary.match(payload["text"], Enum.at(segments, 16)["text"])
+    {:ok, mixed} = Evidence.citation(source, first, mixed_start, mixed_start + 80)
+    assert Enum.any?(mixed["document"]["spans"], &(length(&1) == 5))
+    assert Enum.any?(mixed["document"]["spans"], &(length(&1) == 8))
+    assert Evidence.valid_span?(source, mixed)
+    refute Evidence.valid_span?(source, update_in(mixed, ["document", "spans"], fn rows -> Enum.map(rows, fn row -> if length(row) == 8, do: List.replace_at(row, 6, 999), else: row end) end))
+    bad = put_in(payload, ["document", "segments", Access.at(0), "locator", "blocks", Access.at(0), Access.at(1)], 1)
+    refute Evidence.valid_document?(bad["document"], bad["text"])
+    shifted = update_in(payload["document"], ["segments", Access.at(0), "locator", "blocks"], fn [a,b|rest] ->
+      [List.update_at(a,1,&(&1+1)),List.update_at(b,1,&(&1-1))|rest] end)
+    refute Evidence.valid_document?(shifted, payload["text"])
+    refute Evidence.valid_document?(put_in(payload["document"], ["extraction_version"], "ipse-documents-v13"), payload["text"])
+    IO.puts("PARAGRAPH_PACKING_PASS")
+    '''
+
+    {output, status} =
+      System.cmd(
+        System.find_executable("elixir"),
+        paths ++
+          Enum.flat_map(files, &["-r", Path.join(root, "extensions/knowledge/src/#{&1}.ex")]) ++
+          ["-e", script],
+        stderr_to_stdout: true
+      )
+
+    assert status == 0, output
+    refute output =~ "warning:"
+    assert output =~ "PARAGRAPH_PACKING_PASS"
+  end
+end

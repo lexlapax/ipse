@@ -457,6 +457,152 @@ defmodule Ipse.KnowledgeDocumentAcquisitionSessionTest do
     assert :ok = Session.close_confirmed(resumed)
   end
 
+  @tag :public_many_block_document
+  @tag skip:
+         if(is_nil(System.get_env("IPSE_PUBLIC_WORD_FIXTURE")),
+           do: "requires frozen public Word fixture",
+           else: false
+         )
+  test "the original public many-cell Word file acquires and returns source-exact citations", c do
+    bytes = File.read!(System.fetch_env!("IPSE_PUBLIC_WORD_FIXTURE"))
+
+    assert JSON.sha256(bytes) ==
+             "e9efad0ad358200a8e1e0fe4c072d2496177c3698e7e4a3da406141ddfb40c2d"
+
+    run = open(c)
+    source_path = Path.join(run.cwd, "source.docx")
+    File.write!(source_path, bytes)
+
+    expression = """
+    {:ok, d} = IpseKnowledge.Documents.extract(File.read!(#{inspect(source_path)}), "source.docx")
+    {:ok, p} = IpseKnowledge.Documents.source_payload(d, 65536)
+    largest = Enum.max_by(d["segments"], &byte_size(&1["text"]))
+    {query, _} = IpseKnowledge.Evidence.utf8_prefix(largest["text"], 256)
+    IO.puts(JSON.encode!(%{"query" => query, "text" => p["text"], "blocks" => length(d["segments"])}))
+    """
+
+    {output, 0} =
+      System.cmd(
+        System.find_executable("elixir"),
+        ["-pa", Path.join(c.artifacts["state-documents"], "ebin"), "-e", expression],
+        stderr_to_stdout: true
+      )
+
+    expected = Jason.decode!(output)
+    assert expected["blocks"] == 329
+    opened = invoke(run, "source", args())
+    assert opened["status"] == "draft"
+    assert finish_staging(run, opened)["status"] == "ok"
+    result = query(run, expected["query"])
+    assert result["status"] == "partial"
+    [hit] = result["evidence"]
+    citation = hit["citation"]
+    assert citation["document"]["original_sha256"] == JSON.sha256(bytes)
+    assert citation["document"]["extraction_version"] == "ipse-documents-v14"
+
+    assert citation["quote"] ==
+             binary_part(
+               expected["text"],
+               citation["start_byte"],
+               citation["end_byte"] - citation["start_byte"]
+             )
+
+    assert Enum.any?(result["gaps"], &(&1["code"] == "partial_document"))
+    id = Session.info(run.pid).id
+    assert {:ok, events} = Journal.load(run.dir, id)
+    refute Enum.any?(events, &(&1["type"] == "request_admitted"))
+    assert {:ok, _} = Session.Saved.restore(events, id)
+    assert :ok = Session.close_confirmed(run.pid)
+  end
+
+  for preset <- ~w(state-documents collection-documents) do
+    @tag :many_paragraph_document
+    @tag packing_preset: preset
+    test "many short blocks acquire through bounded stages and retain original citation positions (#{preset})",
+         c do
+      run = open(c, c.packing_preset)
+
+      texts =
+        for i <- 1..329, do: "Line #{i} café 好" <> if(i == 329, do: " orbitalneedle", else: "")
+
+      paragraph = fn text -> "<w:p><w:r><w:t>#{text}</w:t></w:r></w:p>" end
+      body = Enum.take(texts, 17) |> Enum.map_join(paragraph)
+
+      body =
+        body <>
+          "<w:tbl>" <>
+          (texts
+           |> Enum.drop(17)
+           |> Enum.map_join(fn text -> "<w:tr><w:tc>" <> paragraph.(text) <> "</w:tc></w:tr>" end)) <>
+          "</w:tbl>"
+
+      bytes = document_body(body, [{:compress, []}])
+      File.write!(Path.join(run.cwd, "source.docx"), bytes)
+      opened = invoke(run, "source", args())
+      assert opened["status"] == "draft", inspect(opened)
+      id = Session.info(run.pid).id
+      {:ok, before_change} = Journal.load(run.dir, id)
+      File.write!(Path.join(run.cwd, "source.docx"), document("changed during grouped staging"))
+      assert continue(run, opened["continuation"])["status"] == "refused"
+      {:ok, after_change} = Journal.load(run.dir, id)
+
+      refute Enum.any?(Enum.drop(after_change, length(before_change)), fn event ->
+               event["type"] == "extension_action_intent" and
+                 get_in(event, ["request", "op"]) in ~w(state.put state.delete collection.store)
+             end)
+
+      File.write!(Path.join(run.cwd, "source.docx"), bytes)
+      final = finish_staging(run, opened)
+      assert final["status"] == "ok", inspect(final)
+
+      query_blocks = fn selected ->
+        if c.packing_preset == "collection-documents" do
+          invoke(selected, "query_selected", %{
+            "store" => "notes",
+            "retrieval" => "words",
+            "query" => "orbitalneedle",
+            "top_k" => 1,
+            "as_of_ms" => 20,
+            "source_ids" => ["workspace:source"]
+          })
+        else
+          query(selected, "orbitalneedle")
+        end
+      end
+
+      result = query_blocks.(run)
+      assert result["status"] == "ok", inspect(result)
+      [hit] = result["evidence"]
+      citation = hit["citation"]
+      assert citation["quote"] =~ "orbitalneedle"
+      assert citation["document"]["original_sha256"] == JSON.sha256(bytes)
+      assert citation["document"]["extraction_version"] == "ipse-documents-v14"
+
+      if citation["document"]["version"] == 2 do
+        assert Enum.any?(citation["document"]["spans"], fn
+                 [329, _, _, _, _, 1, 312, 1] -> true
+                 _ -> false
+               end)
+      else
+        assert citation["document"]["locator"]["paragraph"] == 329
+        assert citation["document"]["locator"]["table"] == 1
+        assert citation["document"]["locator"]["row"] == 312
+        assert citation["document"]["locator"]["cell"] == 1
+      end
+
+      assert {:ok, events} = Journal.load(run.dir, id)
+      refute Enum.any?(events, &(&1["type"] == "request_admitted"))
+      assert {:ok, _} = Session.Saved.restore(events, id)
+      assert :ok = Session.close_confirmed(run.pid)
+
+      {:ok, resumed} =
+        DynamicSupervisor.start_child(Ipse.Sessions, {Session, Keyword.put(run.opts, :id, id)})
+
+      assert query_blocks.(%{run | pid: resumed})["evidence"] == result["evidence"]
+      assert :ok = Session.close_confirmed(resumed)
+    end
+  end
+
   for effects? <- [false, true] do
     @tag :docx_table_style_session
     @tag docx_effects: effects?
@@ -528,7 +674,7 @@ defmodule Ipse.KnowledgeDocumentAcquisitionSessionTest do
       citation = hit["citation"]
       assert citation["quote"] == text
       assert citation["document"]["original_sha256"] == JSON.sha256(bytes)
-      assert citation["document"]["extraction_version"] == "ipse-documents-v13"
+      assert citation["document"]["extraction_version"] == "ipse-documents-v14"
 
       assert citation["document"]["locator"] == %{
                "kind" => "table_cell",

@@ -42,6 +42,49 @@ defmodule Ipse.Development.VerificationTest do
            )
   end
 
+  test "document verification requires every named safety and packing check" do
+    spec = Scenarios.fetch!("documents")
+
+    checks =
+      Map.new(
+        ~w(artifact_modules text_unicode docx_revision docx_matching_style_effects docx_block_packing pdf_default_off pdf_explicit_extraction dependency_notices),
+        &{&1, true}
+      )
+
+    report = %{"checks" => checks, "synthetic" => true, "live_inference" => false}
+    assert :ok = Scenarios.validate!(spec, report, "default")
+
+    for key <- Map.keys(checks) do
+      assert catch_error(
+               Scenarios.validate!(spec, put_in(report, ["checks", key], false), "default")
+             )
+
+      assert catch_error(
+               Scenarios.validate!(
+                 spec,
+                 update_in(report, ["checks"], &Map.delete(&1, key)),
+                 "default"
+               )
+             )
+
+      assert catch_error(
+               Scenarios.validate!(
+                 spec,
+                 update_in(
+                   report,
+                   ["checks"],
+                   &(Map.delete(&1, key) |> Map.put("unrelated", true))
+                 ),
+                 "default"
+               )
+             )
+    end
+
+    assert catch_error(
+             Scenarios.validate!(spec, Map.put(report, "live_inference", true), "default")
+           )
+  end
+
   test "installed diagnosis rejects unexpected warnings for bare and configured routes" do
     validate = &Ipse.Development.Verification.Package.validate_doctor!/2
 

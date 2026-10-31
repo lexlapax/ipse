@@ -333,7 +333,13 @@ defmodule Ipse.Development.Verification.Scenarios do
 
   def validate!(%{name: "documents"}, report, "default") do
     true = report["synthetic"] and report["live_inference"] == false
-    checks!(report, 7)
+
+    all_true!(
+      report["checks"],
+      ~w(artifact_modules text_unicode docx_revision docx_matching_style_effects docx_block_packing pdf_default_off pdf_explicit_extraction dependency_notices)
+    )
+
+    checks!(report, 8)
   end
 
   def validate!(%{name: "model"}, report, selection) do

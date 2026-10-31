@@ -28,55 +28,65 @@ defmodule IpseKnowledge.Documents do
   def version, do: "ipse-documents-v2"
 
   @doc "Return the immutable extraction recipe selected for a result format."
-  def version("docx"), do: "ipse-documents-v13"
+  def version("docx"), do: "ipse-documents-v14"
   def version(format) when format in ~w(text markdown pdf), do: version()
 
   @doc "Project an extracted DOCX into the bounded explicit source-put contract."
   def source_payload(document), do: source_payload(document, 8192)
   def source_payload(document, maximum), do: source_payload(document, maximum, 1)
 
-  @doc "Build a complete source using explicit legacy or Collection chunking, without crossing segments."
+  @doc "Build a bounded source, packing short paragraph runs with exact original byte maps."
   def source_payload(%{"format" => "docx", "segments" => segments} = document, maximum, chunking)
       when maximum in [8192, 65_536] and
              chunking in [1, 2] and
-             is_list(segments) and length(segments) in 1..32 do
-    {parts, spans, _offset} =
-      Enum.reduce(segments, {[], [], 0}, fn segment, {parts, spans, offset} ->
-        text = segment["text"]
-        start = offset + if(parts == [], do: 0, else: 1)
-
-        span = %{
-          "start_byte" => start,
-          "end_byte" => start + byte_size(text),
-          "text_sha256" => digest(text),
-          "locator" => segment["locator"]
-        }
-
-        {parts ++ [text], spans ++ [span], start + byte_size(text)}
-      end)
-
-    text = Enum.join(parts, "\n")
-
-    receipt = %{
-      "kind" => "document_extraction",
-      "version" => 1,
-      "format" => "docx",
-      "original_sha256" => document["original_sha256"],
-      "original_bytes" => document["original_bytes"],
-      "extraction_version" => document["extraction_version"],
-      "status" => document["status"],
-      "warnings" => document["warnings"],
-      "segments" => spans
-    }
-
+             is_list(segments) and length(segments) in 1..10_000 do
     chunk_bytes = if chunking == 2, do: 4096, else: 2048
-    chunks = Enum.sum(Enum.map(parts, &source_chunk_count(&1, chunk_bytes)))
 
-    if text != "" and byte_size(text) <= maximum and chunks <= 32 and
-         byte_size(IO.iodata_to_binary(JSON.encode!(receipt))) <= 16_384 do
-      {:ok, %{"text" => text, "document" => receipt}}
-    else
+    segments =
+      if length(segments) > 32 and document["extraction_version"] == version("docx"),
+        do: pack_blocks(segments, chunk_bytes),
+        else: segments
+
+    if length(segments) > 32 do
       {:error, :document_source_limit}
+    else
+      {parts, spans, _offset} =
+        Enum.reduce(segments, {[], [], 0}, fn segment, {parts, spans, offset} ->
+          text = segment["text"]
+          start = offset + if(parts == [], do: 0, else: 1)
+
+          span = %{
+            "start_byte" => start,
+            "end_byte" => start + byte_size(text),
+            "text_sha256" => digest(text),
+            "locator" => segment["locator"]
+          }
+
+          {parts ++ [text], spans ++ [span], start + byte_size(text)}
+        end)
+
+      text = Enum.join(parts, "\n")
+
+      receipt = %{
+        "kind" => "document_extraction",
+        "version" => 1,
+        "format" => "docx",
+        "original_sha256" => document["original_sha256"],
+        "original_bytes" => document["original_bytes"],
+        "extraction_version" => document["extraction_version"],
+        "status" => document["status"],
+        "warnings" => document["warnings"],
+        "segments" => spans
+      }
+
+      chunks = Enum.sum(Enum.map(parts, &source_chunk_count(&1, chunk_bytes)))
+
+      if text != "" and byte_size(text) <= maximum and length(segments) <= 32 and chunks <= 32 and
+           byte_size(IO.iodata_to_binary(JSON.encode!(receipt))) <= 16_384 do
+        {:ok, %{"text" => text, "document" => receipt}}
+      else
+        {:error, :document_source_limit}
+      end
     end
   rescue
     _ -> {:error, :invalid_document_extraction}
@@ -84,6 +94,78 @@ defmodule IpseKnowledge.Documents do
 
   def source_payload(%{"format" => "docx"}, _, _), do: {:error, :document_source_limit}
   def source_payload(_, _, _), do: {:error, :document_format_unsupported}
+
+  defp pack_blocks(segments, maximum) do
+    {groups, pending} =
+      Enum.reduce(segments, {[], nil}, fn segment, {groups, pending} ->
+        locator = segment["locator"]
+
+        plain =
+          is_map(locator) and
+            ((Enum.sort(Map.keys(locator)) == ~w(kind paragraph part) and
+                locator["kind"] == "paragraph") or
+               (Enum.sort(Map.keys(locator)) == ~w(cell kind paragraph part row table) and
+                  locator["kind"] == "table_cell"))
+
+        row =
+          [locator["paragraph"], byte_size(segment["text"])] ++
+            if(locator["kind"] == "table_cell",
+              do: Enum.map(~w(table row cell), &locator[&1]),
+              else: []
+            )
+
+        fits =
+          plain and pending != nil and pending.part == locator["part"] and
+            locator["paragraph"] > pending.last and length(pending.rows) < 64 and
+            pending.bytes + 1 + byte_size(segment["text"]) <= maximum
+
+        if fits do
+          {groups,
+           %{
+             pending
+             | texts: [segment["text"] | pending.texts],
+               rows: [row | pending.rows],
+               bytes: pending.bytes + 1 + byte_size(segment["text"]),
+               last: locator["paragraph"]
+           }}
+        else
+          groups = flush_blocks(groups, pending)
+
+          if plain do
+            {groups,
+             %{
+               part: locator["part"],
+               last: locator["paragraph"],
+               rows: [row],
+               texts: [segment["text"]],
+               bytes: byte_size(segment["text"]),
+               original: segment
+             }}
+          else
+            {[segment | groups], nil}
+          end
+        end
+      end)
+
+    flush_blocks(groups, pending) |> Enum.reverse()
+  end
+
+  defp flush_blocks(groups, nil), do: groups
+  defp flush_blocks(groups, %{rows: [_], original: original}), do: [original | groups]
+
+  defp flush_blocks(groups, pending) do
+    [
+      %{
+        "text" => pending.texts |> Enum.reverse() |> Enum.join("\n"),
+        "locator" => %{
+          "kind" => "block_group",
+          "part" => pending.part,
+          "blocks" => Enum.reverse(pending.rows)
+        }
+      }
+      | groups
+    ]
+  end
 
   defp source_chunk_count(text, maximum) do
     Stream.unfold(text, fn

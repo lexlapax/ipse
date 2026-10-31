@@ -326,7 +326,7 @@ write plan. Worker code never opens paths or enlarges SDK/result envelopes.
 `Documents.source_payload/1` converts the extraction into source text and typed
 segment metadata. Supplied `put_document` keeps its 8192-byte extracted-text
 bound. Workspace acquisition supports up to 65536 extracted UTF-8 bytes,
-32 segments/chunks and 16384 canonical metadata bytes with at most 32 warnings.
+32 stored segment groups, 32 chunks and 16384 canonical metadata bytes with at most 32 warnings.
 It does not trim text, warnings or locators to fit. Metadata at most 2,048 bytes
 keeps the packed receipt version 3: canonical document JSON and its digest wrap
 the supplied-byte version 1 or acquired-byte version 2 receipt. The latter binds
@@ -334,6 +334,19 @@ the actual host acquisition operation and relative path. Larger metadata uses
 compact receipt version 4, retaining exact manifest hash/byte count, segment and
 warning counts, origin and one immutable manifest-head reference. Storage paging
 does not change the extraction recipe.
+
+For recipe v14, an extraction with more than 32 blocks can pack adjacent plain
+paragraphs and table cells from one part into groups. Each group contains at most
+64 original blocks and fits the selected chunk-byte bound. Its `block_group`
+locator stores compact rows `[paragraph, text_bytes]` or
+`[paragraph, text_bytes, table, row, cell]`. Original paragraph numbers may have
+gaps; they must increase within the group. Other locator fields, such as annotation
+anchors or header regions, prevent grouping. The complete text keeps the same
+newline joins as an unpacked extraction. Evidence checks row widths, coordinates,
+summed byte counts, UTF-8 boundaries, separators and the complete group hash.
+Groups remain subject to the existing metadata and chunk ceilings; packing does
+not truncate an extraction or increase storage/action allowances. Older recipes
+retain their existing block boundaries and are never repacked on read.
 
 Follow larger manifests through `document_content` JSON slices of at most 1,024 bytes
 and `document` progress records. At most 16 slices/32 records fit the bound. Each
@@ -367,9 +380,16 @@ preserving the selected source, then reclaims unreferenced pages. MCP uses the
 client deadline gate; this does not claim a remote server publication fence.
 
 Follow normal Store CAS publication, hydration and `Evidence.citation/4`. A
-version-2 public citation binds original binary SHA-256, extraction version,
-format-specific locator and segment-local byte range, in addition to source
-generation and literal quotation. Evidence revalidates the typed receipt,
+document citation binds original binary SHA-256, extraction version and exact
+locations alongside source generation and literal quotation. Its outer version
+is 2 for legacy sources and 3 for Collection sources. Inside `document`, version 1
+retains the original single locator and local byte range. A quotation crossing
+packed blocks uses version 2, one `part` and compact `spans` rows. `span_fields`
+names their columns: paragraph, local start/end, quotation start/end, then optional
+table/row/cell coordinates. Ordinary paragraph rows have five values and table
+rows eight. Quotation offsets retain the newline gaps between original blocks.
+Rows must be ordered and are reconstructed exactly from the stored block map;
+changed coordinates, offsets or column labels refuse. Evidence revalidates the typed receipt,
 canonical envelope and source spans. An ordinary text `put` cannot smuggle in
 a document receipt. Partial extraction remains partial in query gaps and
 coverage. Replacement and suppression use ordinary source management; the
@@ -381,6 +401,7 @@ Run the worker and actual Session paths together:
 ```sh
 mix test test/extensions/knowledge/document_ingestion_test.exs \
   test/extensions/knowledge/document_acquisition_session_test.exs \
+  test/extensions/knowledge/document_paragraph_packing_test.exs \
   test/ipse/extension/tool_action_binary_test.exs
 ```
 
@@ -391,6 +412,18 @@ and local State/CAS fixtures. They do not establish real Word fidelity,
 larger-document storage, installed qualification or retrieval quality. The
 [operator procedure](../operator/corpus.md#acquire-a-small-word-document-from-the-workspace)
 shows explicit artifact selection and a complete command.
+
+The `many_paragraph_document` controls cover mixed paragraphs/cells through both
+native storage profiles, source change during staging and cited retrieval after
+resume. The optional original-file control requires the exact public fixture
+identified in the [packing record](../archive/2026-10-26-p30-p31-implementation/word-block-packing-20261031.md):
+
+```sh
+IPSE_PUBLIC_WORD_FIXTURE=/absolute/path/Comment001.docx mix test test/extensions/knowledge/document_acquisition_session_test.exs --only public_many_block_document
+```
+
+It refuses a different file hash, uses no inference and checks source-offset
+integrity against a separate parser process. It does not compare Word rendering.
 
 ### Inspect the extraction boundary
 
@@ -449,7 +482,7 @@ relationship still refuses; this does not implement general Word text effects.
 Both parts count toward the aggregate expanded-byte bound.
 
 Recipes are format-specific: `Documents.version("docx")` is
-`ipse-documents-v13`, while text, Markdown and PDF use `ipse-documents-v2`.
+`ipse-documents-v14`, while text, Markdown and PDF use `ipse-documents-v2`.
 The legacy `version/0` returns the v2 value; use `version/1` when binding an
 extraction to a source version. Earlier DOCX results are not automatically
 migrated or equivalent. Future indexing must explicitly rebuild or requalify them.
@@ -480,7 +513,8 @@ objects. Use Elixir `JSON.encode!/decode!`, not raw Erlang encoding: binary sizi
 and `nil`→null semantics matter to persisted IDs. Sources allow 64 KiB UTF-8,
 with at most 32 chunks. Legacy sources keep their 2048-byte recipe; explicit
 Collection Source3 uses the versioned 4096-byte recipe. Document chunks remain
-inside their typed segments, so separator bytes need not belong to a chunk.
+inside their typed segments. V14 groups may contain several original blocks and
+their newline joins; separators between groups need not belong to a chunk.
 Citations bind generation/content/chunk,
 absolute byte range, literal quote/hash, URI, times, and origin. Quote bounds are
 1024 UTF-8 bytes. None proves entailment, authenticity, or freshness.

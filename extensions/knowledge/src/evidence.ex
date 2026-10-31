@@ -12,6 +12,7 @@ defmodule IpseKnowledge.Evidence do
   @max_claim_context 256
   @safe 9_007_199_254_740_991
   @collection_chunking %{"version" => 2, "max_bytes" => 4096}
+  @document_span_fields ~w(paragraph start_byte end_byte quote_start_byte quote_end_byte table row cell)
 
   def safe_integer_max, do: @safe
   def safe_uint?(value), do: is_integer(value) and value in 0..@safe
@@ -1586,7 +1587,11 @@ defmodule IpseKnowledge.Evidence do
         exact?(segment, ~w(start_byte end_byte text_sha256 locator)) and
           safe_uint?(segment["start_byte"]) and safe_positive?(segment["end_byte"]) and
           segment["end_byte"] > segment["start_byte"] and segment["end_byte"] <= 65_536 and
-          sha256?(segment["text_sha256"]) and locator?(segment["locator"])
+          sha256?(segment["text_sha256"]) and
+          segment_locator?(segment["locator"], receipt["extraction_version"]) and
+          (segment["locator"]["kind"] != "block_group" or
+             block_group_bytes(segment["locator"]) ==
+               segment["end_byte"] - segment["start_byte"])
       end)
   rescue
     _ -> false
@@ -1608,7 +1613,9 @@ defmodule IpseKnowledge.Evidence do
 
       if exact?(segment, ~w(start_byte end_byte text_sha256 locator)) and
            safe_uint?(start) and safe_positive?(finish) and finish > start and
-           start == offset and finish <= byte_size(text) and locator?(segment["locator"]) and
+           start == offset and finish <= byte_size(text) and
+           segment_locator?(segment["locator"], "ipse-documents-v14") and
+           block_group_text?(segment["locator"], binary_part(text, start, finish - start)) and
            sha256?(segment["text_sha256"]) and
            sha256(binary_part(text, start, finish - start)) == segment["text_sha256"] and
            String.valid?(binary_part(text, start, finish - start)) do
@@ -1645,6 +1652,54 @@ defmodule IpseKnowledge.Evidence do
       (not Map.has_key?(locator, "reference_range") or
          reference_locator?(locator["reference_range"], ~w(start_byte end_byte)))
   end
+
+  defp segment_locator?(%{"kind" => "block_group"} = locator, recipe) do
+    exact?(locator, ~w(kind part blocks)) and recipe == "ipse-documents-v14" and
+      is_list(locator["blocks"]) and length(locator["blocks"]) in 2..64 and
+      Enum.reduce_while(locator["blocks"], 0, fn
+        [paragraph, bytes | _] = row, prior
+        when is_integer(paragraph) and paragraph > prior and
+               is_integer(bytes) and bytes in 1..4096 ->
+          if locator?(block_locator(locator["part"], row)),
+            do: {:cont, paragraph},
+            else: {:halt, false}
+
+        _, _ ->
+          {:halt, false}
+      end) != false
+  end
+
+  defp segment_locator?(locator, _), do: locator?(locator)
+
+  defp block_group_bytes(locator),
+    do: Enum.sum(Enum.map(locator["blocks"], &Enum.at(&1, 1))) + length(locator["blocks"]) - 1
+
+  defp block_group_text?(%{"kind" => "block_group"} = locator, text) do
+    Enum.reduce_while(locator["blocks"], {0, length(locator["blocks"])}, fn [_, bytes | _],
+                                                                            {offset, left} ->
+      if offset + bytes <= byte_size(text) and String.valid?(binary_part(text, offset, bytes)) and
+           (left == 1 or binary_part(text, offset + bytes, 1) == "\n"),
+         do: {:cont, {offset + bytes + if(left > 1, do: 1, else: 0), left - 1}},
+         else: {:halt, false}
+    end) == {byte_size(text), 0}
+  end
+
+  defp block_group_text?(_, _), do: true
+
+  defp block_locator(part, [paragraph, _]),
+    do: %{"kind" => "paragraph", "part" => part, "paragraph" => paragraph}
+
+  defp block_locator(part, [paragraph, _, table, row, cell]),
+    do: %{
+      "kind" => "table_cell",
+      "part" => part,
+      "paragraph" => paragraph,
+      "table" => table,
+      "row" => row,
+      "cell" => cell
+    }
+
+  defp block_locator(_, _), do: nil
 
   defp reference_locator?(locator, offsets) do
     is_map(locator) and Enum.all?(offsets, &safe_uint?(locator[&1])) and
@@ -1698,6 +1753,9 @@ defmodule IpseKnowledge.Evidence do
                receipt["segments"],
                &(start >= &1["start_byte"] and finish <= &1["end_byte"])
              ) do
+          [%{"locator" => %{"kind" => "block_group"}} = segment] ->
+            grouped_document_location(receipt, segment, start, finish)
+
           [segment] ->
             %{
               "version" => 1,
@@ -1719,15 +1777,99 @@ defmodule IpseKnowledge.Evidence do
   end
 
   defp document_location?(location) do
-    exact?(
-      location,
-      ~w(version original_sha256 extraction_version status locator start_byte end_byte)
-    ) and
-      location["version"] == 1 and sha256?(location["original_sha256"]) and
-      identifier?(location["extraction_version"], 128) and
-      location["status"] in ~w(complete partial) and
-      locator?(location["locator"]) and safe_uint?(location["start_byte"]) and
-      safe_positive?(location["end_byte"]) and location["end_byte"] > location["start_byte"]
+    if location["version"] == 2 do
+      exact?(
+        location,
+        ~w(version original_sha256 extraction_version status part spans span_fields)
+      ) and
+        location["span_fields"] === @document_span_fields and
+        sha256?(location["original_sha256"]) and
+        location["extraction_version"] == "ipse-documents-v14" and
+        location["status"] in ~w(complete partial) and is_list(location["spans"]) and
+        length(location["spans"]) in 1..64 and ordered_group_spans?(location["spans"]) and
+        Enum.all?(location["spans"], fn
+          [paragraph, start, finish, quote_start, quote_finish | coordinates] ->
+            locator?(block_locator(location["part"], [paragraph, 0 | coordinates])) and
+              safe_uint?(start) and safe_uint?(quote_start) and safe_positive?(finish) and
+              safe_positive?(quote_finish) and finish > start and quote_finish > quote_start and
+              finish - start == quote_finish - quote_start
+
+          _ ->
+            false
+        end)
+    else
+      exact?(
+        location,
+        ~w(version original_sha256 extraction_version status locator start_byte end_byte)
+      ) and
+        location["version"] == 1 and sha256?(location["original_sha256"]) and
+        identifier?(location["extraction_version"], 128) and
+        location["status"] in ~w(complete partial) and
+        locator?(location["locator"]) and safe_uint?(location["start_byte"]) and
+        safe_positive?(location["end_byte"]) and location["end_byte"] > location["start_byte"]
+    end
+  end
+
+  defp ordered_group_spans?(spans) do
+    Enum.reduce_while(spans, {0, nil}, fn
+      [paragraph, _, _, start, finish | _], {prior_paragraph, prior_end}
+      when is_integer(paragraph) and paragraph > prior_paragraph and is_integer(start) and
+             is_integer(finish) ->
+        if if(is_nil(prior_end), do: start in 0..1, else: start == prior_end + 1),
+          do: {:cont, {paragraph, finish}},
+          else: {:halt, false}
+
+      _, _ ->
+        {:halt, false}
+    end) != false
+  end
+
+  defp grouped_document_location(receipt, segment, start, finish) do
+    {spans, _} =
+      Enum.reduce(segment["locator"]["blocks"], {[], segment["start_byte"]}, fn [
+                                                                                  paragraph,
+                                                                                  bytes
+                                                                                  | coordinates
+                                                                                ],
+                                                                                {spans, offset} ->
+        left = max(start, offset)
+        right = min(finish, offset + bytes)
+
+        next =
+          if left < right,
+            do: [
+              [paragraph, left - offset, right - offset, left - start, right - start] ++
+                coordinates
+              | spans
+            ],
+            else: spans
+
+        {next, offset + bytes + 1}
+      end)
+
+    common = Map.take(receipt, ~w(original_sha256 extraction_version status))
+
+    case Enum.reverse(spans) do
+      [[paragraph, left, right, 0, quote_finish | coordinates]]
+      when quote_finish == finish - start ->
+        Map.merge(common, %{
+          "version" => 1,
+          "locator" => block_locator(segment["locator"]["part"], [paragraph, 0 | coordinates]),
+          "start_byte" => left,
+          "end_byte" => right
+        })
+
+      [] ->
+        nil
+
+      rows ->
+        Map.merge(common, %{
+          "version" => 2,
+          "part" => segment["locator"]["part"],
+          "spans" => rows,
+          "span_fields" => @document_span_fields
+        })
+    end
   end
 
   defp document_citation?(source, citation) do

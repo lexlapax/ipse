@@ -12,6 +12,7 @@ defmodule Ipse.Development.Verification.Documents do
     end
 
     modules = [
+      IpseKnowledge.Evidence,
       IpseKnowledge.Documents,
       IpseKnowledge.Documents.Zip,
       IpseKnowledge.Documents.Docx,
@@ -86,13 +87,72 @@ defmodule Ipse.Development.Verification.Documents do
 
     {:ok,
      %{
-       "extraction_version" => "ipse-documents-v13",
+       "extraction_version" => "ipse-documents-v14",
        "status" => "complete",
        "segments" => [%{"text" => "visible inserted"}]
      }} = extract.(styled_document.(styles), "styles.docx")
 
     {:error, :unsupported_docx_style_visibility} =
       extract.(styled_document.(String.replace(styles, "Normal", "Other")), "mismatch.docx")
+
+    evidence = IpseKnowledge.Evidence
+
+    many_xml =
+      String.replace(xml, "<w:p>", "<w:tbl><w:tr><w:tc><w:p>")
+      |> String.replace("</w:p>", "</w:p></w:tc></w:tr></w:tbl>")
+
+    [prefix, body] = String.split(many_xml, "<w:body>")
+    [cell, suffix] = String.split(body, "</w:body>")
+
+    {:ok, {_, many_bytes}} =
+      :zip.create(
+        ~c"many.docx",
+        [
+          {~c"word/document.xml",
+           prefix <> "<w:body>" <> String.duplicate(cell, 329) <> "</w:body>" <> suffix},
+          {~c"_rels/.rels", root_relationship},
+          {~c"[Content_Types].xml", content_types}
+        ],
+        [:memory]
+      )
+
+    {:ok, many} = extract.(many_bytes, "many.docx")
+    329 = length(many["segments"])
+    {:ok, payload} = apply(IpseKnowledge.Documents, :source_payload, [many, 65536, 2])
+    true = length(payload["document"]["segments"]) <= 32
+    receipt = apply(evidence, :document_storage_receipt!, [payload["document"]])
+
+    {:ok, source} =
+      apply(evidence, :collection_source, [
+        %{
+          "source_id" => "provided:many",
+          "partition" => "notes",
+          "generation" => 1,
+          "title" => "Many-cell control",
+          "text" => payload["text"],
+          "document" => payload["document"],
+          "uri" => "provided:many.docx",
+          "observed_at_ms" => 10,
+          "event_at_ms" => nil,
+          "expires_at_ms" => nil,
+          "origin" => %{
+            "kind" => "provided",
+            "store_profile" => "notes",
+            "partition_or_scope" => "notes",
+            "receipt" => receipt,
+            "historical" => false
+          }
+        }
+      ])
+
+    {:ok, [first | _] = chunks} = apply(evidence, :chunks, [source])
+    true = length(chunks) <= 32
+    {:ok, cited} = apply(evidence, :citation, [source, first, 0, 80])
+    2 = cited["document"]["version"]
+    true = apply(evidence, :valid_span?, [source, cited])
+
+    false =
+      apply(evidence, :valid_span?, [source, put_in(cited, ["document", "span_fields"], [])])
 
     {:error, :pdf_experimental_unavailable} = extract.(pdf(), "fixture.pdf")
     {:error, :legacy_word_unsupported} = extract.("legacy fixture", "fixture.doc")
@@ -130,7 +190,7 @@ defmodule Ipse.Development.Verification.Documents do
       "pdf_resource_backend" => backend,
       "checks" =>
         Map.new(
-          ~w(artifact_modules text_unicode docx_revision docx_matching_style_effects pdf_default_off pdf_explicit_extraction dependency_notices),
+          ~w(artifact_modules text_unicode docx_revision docx_matching_style_effects docx_block_packing pdf_default_off pdf_explicit_extraction dependency_notices),
           &{&1, true}
         )
     }

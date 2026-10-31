@@ -67,3 +67,7 @@ positive and source-change/interruption controls on this geometry, then qualify
 the independently built installed artifact. Style differences and actual Word
 rendering remain separate unresolved fidelity work. The full P30/P31 goal remains
 active; this investigation changes the next implementation target, not its scope.
+
+The later [v14 block-packing increment](word-block-packing-20261031.md) identifies
+the fixture's mixed paragraph/table geometry and resolves its bounded acquisition
+path. The original refusal and format/quality limitations above remain historical.
