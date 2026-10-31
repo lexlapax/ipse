@@ -1,0 +1,11 @@
+SESSION_CONTROL_WIRING_MANIFEST_OK: %{
+  artifacts: [{"nonsocket", 3}, {"socket", 3}],
+  manifest_entries: 25,
+  source_files: 8,
+  runtime_files: [{"production", 697}, {"instrumented", 697}],
+  graph_delta: ["./ipse/ebin/Elixir.Ipse.Extension.Host.beam"],
+  exact_test_rendezvous: true,
+  helper_unchanged: true,
+  lock_journal_writer_inherited: true,
+  alias_repair_preserved: true
+}

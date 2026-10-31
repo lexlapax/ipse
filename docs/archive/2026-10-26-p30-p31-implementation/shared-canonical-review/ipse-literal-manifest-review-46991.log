@@ -1,0 +1,3 @@
+LITERAL_MANIFEST_REVIEW_OK artifacts=26
+INVENTORY_FIELDS: ["final_consumer_journal", "final_consumer_session", "graphs",
+ "guarded_imports", "original_source_restored_byte_exact", "overlay_sha256"]

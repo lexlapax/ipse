@@ -1,0 +1,50 @@
+Production source relation compiled with empty diagnostics
+Focused test source compiled with empty diagnostics
+Running ExUnit with seed: 20261029, max_cases: 4
+
+
+
+  1) test authenticates the actual private producer seed, all four exact batches and original modeled operation (Ipse.Extension.CollectionDocumentSourceUseTest)
+     test/ipse/extension/collection_document_source_use_test.exs:90
+     Expected truthy, got false
+     code: assert facts.batch_count === 4 and facts.reads === 8
+     stacktrace:
+       test/ipse/extension/collection_document_source_use_test.exs:98: (test)
+
+
+
+  2) test rejects stale anchors, changed source transport and mismatched prepared inputs (Ipse.Extension.CollectionDocumentSourceUseTest)
+     test/ipse/extension/collection_document_source_use_test.exs:109
+     match (=) failed
+     code:  assert {:error, :document_source_use_refused} = authenticate(candidate)
+     left:  {:error, :document_source_use_refused}
+     right: {:ok,
+             %{
+               sources: [
+                 %{
+                   "expires_at_ms" => nil,
+                   "historical" => false,
+                   "observed_at_ms" => 10
+                 }
+               ],
+               reads: 7,
+               logical_bytes: 49902,
+               bundle_bytes: 44524,
+               claim_key: "genproducer.notes",
+               claim_revision: 1014,
+               claim_sha256: "15852af62ce20cc55fd44f21ed57aae5857d4fe0ddca8741b03b31683bd500db",
+               claim_operation_id: "00000000000000000000000000000076",
+               batch_index: 0,
+               batch_count: 4,
+               selection_sha256: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+             }}
+     stacktrace:
+       test/ipse/extension/collection_document_source_use_test.exs:119: anonymous fn/4 in Ipse.Extension.CollectionDocumentSourceUseTest."test rejects stale anchors, changed source transport and mismatched prepared inputs"/1
+       (elixir 1.20.4) lib/enum.ex:2622: Enum."-reduce/3-lists^foldl/2-0-"/3
+       test/ipse/extension/collection_document_source_use_test.exs:112: (test)
+
+...
+Finished in 0.06 seconds (0.06s async, 0.00s sync)
+
+Result: 3/5 passed
+Failed: 2 tests

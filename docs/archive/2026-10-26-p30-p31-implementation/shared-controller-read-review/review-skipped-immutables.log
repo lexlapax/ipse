@@ -1,0 +1,11 @@
+SKIPPED_IMMUTABLES_COUNTEREXAMPLE: %{
+  ordinary_first_target: "gensrc.notes.ef31050f74b996f4b160bbdb9e9ba374900b213c38b3f6832ca5e39009485253",
+  edited_token_first_target: "genjob.notes",
+  required_immutable_values: 5,
+  required_immutable_values_present: 0,
+  required_immutable_values_read: 0,
+  proposed_job_cursor: 8,
+  proposed_job_summary_count: 1,
+  native_operations: 0,
+  protected_publication_demonstrated: false
+}

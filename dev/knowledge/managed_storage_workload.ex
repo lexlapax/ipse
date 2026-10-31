@@ -1,4 +1,4 @@
-for name <- ~w(notes.ex knowledge/records.ex knowledge/contracts.ex) do
+for name <- ~w(notes.ex knowledge/contracts.ex knowledge/records.ex) do
   Code.require_file(Path.expand("../../extensions/knowledge/src/" <> name, __DIR__))
 end
 
@@ -110,6 +110,7 @@ defmodule Ipse.Development.ManagedStorageWorkload do
 
   def options(fixture, generation, now \\ @now) do
     contracts = Contracts.operator()
+    kind = if String.starts_with?(fixture.key, "pending."), do: "pending", else: "note"
 
     %{
       request: %{
@@ -118,8 +119,8 @@ defmodule Ipse.Development.ManagedStorageWorkload do
         "advance_floor" => true,
         "changes" => [%{"key" => fixture.key, "expected_revision" => 0, "value" => fixture.value}]
       },
-      recipe: contracts["recipes"]["note"],
-      constraints: contracts["publication"]["note"],
+      recipe: contracts["recipes"][kind],
+      constraints: contracts["publication"][kind],
       verified_sources: [fixture.proof],
       policy_sha256: JSON.sha256("synthetic managed workload reviewed policy fixture"),
       now_ms: now
@@ -334,6 +335,7 @@ defmodule Ipse.Development.ManagedStorageWorkload do
           String.starts_with?(key, "host.validity.anchor.") -> "anchor"
           String.starts_with?(key, "host.validity.live.") -> "live"
           String.starts_with?(key, "note.") -> "note"
+          String.starts_with?(key, "pending.") -> "pending"
         end
 
       Map.update(totals, class, %{"records" => 1, "bytes" => record["bytes"]}, fn t ->
@@ -431,6 +433,8 @@ defmodule Ipse.Development.ManagedStorageWorkload do
       last_call: Process.get({__MODULE__, :last_call}),
       refusal: Process.get({__MODULE__, :refusal}),
       fixture_mode: Process.get({__MODULE__, :mode}),
+      publication_kind:
+        if(Process.get({__MODULE__, :mode}) == "operator", do: "pending", else: "note"),
       synthetic_operator_observation: Process.get({__MODULE__, :mode}) == "operator",
       synthetic_tool_outcome: Process.get({__MODULE__, :mode}) == "typed_outcome",
       actual_tool_execution: false,

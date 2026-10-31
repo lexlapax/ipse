@@ -1,0 +1,47 @@
+{
+  "scope": "Conservative managed host/approval display refusal; six focused actual Session controls, not C0 acceptance.",
+  "date": "2026-10-29",
+  "files": {
+    "logs/ipse-managed-host-display-46851.log": {
+      "bytes": 2063,
+      "sha256": "1011641a4f51b060925a84c3159e384357ef72250679bda1ddd56ea1f1893875"
+    },
+    "logs/ipse-managed-host-display-46852.log": {
+      "bytes": 205,
+      "sha256": "26dd6d9d53b23581286c8263b1ce40f851ec5baa53e71e3a9b7d32729eb92780"
+    },
+    "logs/ipse-managed-host-display-compile-46850.log": {
+      "bytes": 54,
+      "sha256": "a221061ed8ed7cb0eaa5a6aae871fdb333d2f42bc8f3abc98f748e7b4df693a7"
+    },
+    "runtime.json": {
+      "bytes": 34337,
+      "sha256": "1b447de901c6cdcac66216ca997afa925f77207a54c7a8f12eac5fed3d99b3bf"
+    },
+    "source/_build/compile-managed-host-display.exs": {
+      "bytes": 1031,
+      "sha256": "4a7e144809af41bc78fa00d575b6d38331e2e62e529fc6e237a5d59646829289"
+    },
+    "source/_build/run-managed-host-display.exs": {
+      "bytes": 560,
+      "sha256": "84253cd55dc64febf8a7b8e5e28c0cb12fcb19bf296091ef376d9779a4cbcb5f"
+    },
+    "source/lib/ipse/session/invocation.ex": {
+      "bytes": 60924,
+      "sha256": "939219fa6a7a2d8bea76f1ea57c26301798de47051e9f644ea83747bae65c68a"
+    },
+    "source/lib/ipse/session/managed_tool_use.ex": {
+      "bytes": 45585,
+      "sha256": "8d1b7d4b3e3e3ef582b22940a0e95f519828213fc929760c2f3c0d07db7134b6"
+    },
+    "source/lib/ipse/session/turn.ex": {
+      "bytes": 71653,
+      "sha256": "b679599587c8f1a4f14640e6f9ed61861a51108ae623e847d03e1c9a505f2dc8"
+    },
+    "source/test/ipse/extension/managed_collection_call_session_test.exs": {
+      "bytes": 159402,
+      "sha256": "37c11b2fe08241dc8dcb9504901f85a0a447cfe54ad462816077b2ffce7d9bf3"
+    }
+  },
+  "historical_only": true
+}

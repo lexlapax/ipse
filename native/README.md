@@ -382,6 +382,93 @@ Ownership follows the helper process, so an Elixir Port owner's death releases
 the lock automatically. Lock files must **never be deleted**: preserving the
 inode prevents concurrent owners from locking different files at the same path.
 
+The Linux-only `--lock-export-v1` is an experimental private native mode for a
+32-hex-digit Session/source lock filename under a protected private parent. It
+does not replace `--lock` and has no active Session caller. Its sequenced `X`
+request uses the descriptor-export fields described below; `R` releases, and the
+existing empty `C` cancellation frame closes the helper. After any successful
+export, `R` reports an unconfirmed release and `C` reports an error rather than
+claiming that the recipient closed its copy. EOF closes only the helper's copy.
+It does not authorize terminal display or worker delivery.
+
+`--lease-collect-v1` is a Linux-only, inert experimental collector with no
+Session caller and no display or worker-output operation. One `I` frame supplies
+a big-endian u64 timeout in milliseconds (1..30,000), a u8 lease count (1..131),
+and one 68-byte descriptor-export request per expected helper. Here the PID is
+the exporting helper PID. The process checks a live pidfd, matching executable
+inode and Unix peer PID/UID before sending the supplied secret, then verifies the
+received lock identity and retains it. It refuses duplicate identities. `L`
+with the count observes collection only. A one-byte `C` request closes the
+collector's own copies and a `C` frame reports their close; it does not prove
+that other holders closed or that the original owner remains alive. EOF, a bad
+command, or expiry closes the collector's copies without a close confirmation.
+Filesystem validation is not proven bounded by the socket deadline. Collector
+response writes use nonblocking, control-aware IO with the collection deadline.
+At 131 leases the collector retains 131 pidfds, 131 peer sockets and
+131 transferred FDs, in addition to stdio and any inherited or transient FDs:
+at least 396 descriptors with only standard IO. An insufficient process limit
+refuses collection and releases the collector's received copies; it can leave
+an exporter outcome unknown. The trusted future host must select fresh, unique,
+operation-bound secrets and exact helper processes: the collector rejects zero
+secrets but does not generate or verify their freshness or the helper's mode.
+There is no operation-bound admission, owner-death write fence or
+authenticated final-holder completion, so no protected use is authorized.
+
+The private `--owner-control-send-v2` and `--owner-control-observe-v2`
+experiment adds an operation-bound peer notice and final exchange after the
+existing authenticated descriptor transfer. The sender reports `N` with the
+operation, role and declared wall expiry, and then `F` with operation and role;
+wrong operations,
+out-of-order messages and repeated notices refuse.
+The original v1 modes retain their EOF-only contract. A notice proves only that
+the authenticated peer sent those bytes: it does not establish the peer's mode,
+terminal delivery, lease settlement, consent, or current authority by itself.
+The private `--owner-control-send-review-v3 MILLISECONDS` keeps a five-second
+setup limit and a finite 5,000–120,000 ms total helper lifetime. It reports no
+display or consent notice. Its host must enforce the independently selected
+absolute review deadline and owner binding; a live control alone grants no
+authority. The separate `--owner-control-send-review-notice-v4 MILLISECONDS`
+combines that lifetime with the v2 peer-notice exchange. Its notice still proves
+only receipt of bytes from the authenticated peer; no Session review or protected
+delivery uses this experimental mode.
+The private `v12-synthetic-source-group-notice-input` terminal combines the
+grouped source-lease input protocol with that notice exchange. It accepts only
+its fixed synthetic review text. PTY fixtures exercise confirmation and loss of
+the Session control during input; they do not supply protected facts or prove
+Session writer-thaw integration.
+The separate `v13-session-review-group-input` accepts bounded text supplied in
+its initial manifest; it does not authenticate the origin of those bytes on its
+own. The private synthetic Session path selects and sends its fixed text before
+transferring the Session control and checks the manifest shape. Do not use v13
+for protected facts without independently binding the Session's chosen content,
+source owners and authority to the exact terminal operation.
+The separate `v9-synthetic-notice-display` terminal mode accepts only the fixed
+synthetic marker and sends its notice after its lease-close handshakes. This
+fixture mode does not deliver protected content. A private synthetic Session
+bridge starts that fixed-mode helper itself and consumes its bound `N` and `F`
+frames before allowing closure and thaw. This is a test path, not an admitted
+protected-output or approval-display path. Those paths still need operation,
+content, source and authority binding and independent loss qualification.
+The `v10-synthetic-accepted-notice-display` fixture extends that exchange to
+six lease owners and a different fixed marker. Its test callback can supply an
+earlier accepted-reference cutoff; the Session does not authenticate that cutoff
+against protected provenance, and this mode cannot display protected content.
+The synthetic Session checks that the authenticated notice carries the exact
+wall deadline it selected, then checks that and the monotonic deadline when
+processing notices and completing close. A controlled stopped-helper probe
+showed that the native sender alone can emit `F` after wall expiry. An isolated
+test-hook Session control stops its synthetic recipient at that boundary and
+checks that expiry poisons the share before the helper resumes. These checks do
+not establish physical completion within a deadline or qualify protected content.
+The Session also refuses to spawn this synthetic helper if its selected wall or
+monotonic deadline has already elapsed.
+
+The ordinary helper refuses `--lease-output-v1`. A separately compiled developer
+experiment exists only to exercise a candidate pipe protocol; it has no Session
+or worker caller. Its control-poll/write race was demonstrated after owner loss,
+so it is not an admitted native output fence. See the dated
+[investigation](../docs/archive/2026-10-29-native-shared-lease/output-experiment.md).
+
 ## Sync a protected publication directory
 
 `ipse-runner --sync-directory ABS_PATH` opens an existing directory without
@@ -591,6 +678,12 @@ are exact, with no optional trailing bytes:
 | --- | --- |
 | `A` | Absolute UTF-8 `.lock` path, at most 4,096 bytes. |
 | `P`, `R` | Empty: check or release. |
+| `X` | Linux-only experimental descriptor export: u8 retained stack index followed by the export fields below. No current host feature calls it. |
+| `Z` | Linux-only retained-source import: 16-byte operation ID and 68-byte expected source owner and descriptor identity. Up to 129 imports can be held, including one journal lease. |
+| `z` | Close the most recently imported retained source using its 16-byte operation ID. |
+| `O`, `o` | Linux-only writer-control import (16-byte operation and 68-byte owner identity) and close (empty). |
+| `c`, `d` | Linux-only additional Session-control import (16-byte operation and 68-byte owner identity) and close (empty). The writer control must already be held; close imported sources and the Session control before closing the writer control. |
+| `j` | Empty: check the existing exact two-source acceptance guard. It refuses an additional Session control. |
 | `G` | u8 directory selector, u8 basename length, basename, u32 offset, u32 maximum total bytes (1..8 MiB). The basename is an allowlisted root target or immutable name. |
 | `H` | Version byte `1`, followed by the exact `G` payload. No other version or trailing bytes are accepted. |
 | `B` | u8 mode (`0` flat, `1` collection), u64 ceiling bytes. |
@@ -600,7 +693,29 @@ are exact, with no optional trailing bytes:
 | `D` | Positive staged bytes, at most 16 KiB. Only data commands are allowed until the admitted batch is complete. |
 | `N` | u8 directory selector, 41-byte pending basename, 69-byte immutable basename. |
 | `S` | 41-byte pending basename followed by the allowlisted target. |
+| `T` | u64 wall deadline, 41-byte pending basename and `root.json`; checks retained source and control owners at the final switch decision. |
 | `Q` | u8 directory selector, u8 count, then u8 basename length and basename per orphan. |
+
+The second control slot is an experimental native boundary, not an active
+Session publication adapter. The trusted host must still bind the control to
+the actual Session, writer, reviewed facts and current source set before use.
+
+An `X` export selects a still-held lock in the same checked stack; it does not
+open a caller-supplied lock path. Its exact 68-byte export fields are recipient
+PID (u32), abstract Unix-socket name (16 bytes), separate secret (32 bytes), and
+expected lock device and inode (two u64), all integers big-endian. The helper
+requires matching current-user `SO_PEERCRED`, PID, secret, device, inode, owner,
+mode and retained-path checks, and transfers one descriptor with `SCM_RIGHTS`.
+It waits for one-byte `A` from that recipient. Failure after sending the FD is
+unconfirmed, even if the helper exits: the recipient may retain the lock. No
+success or acknowledgment authorizes an output; a future trusted sink must await
+separate owner-fenced admission after all leases have arrived. The intended
+recipient must be a pinned native process trusted not to call `LOCK_UN` on the
+shared open description. PID/UID and secret checks do not themselves establish
+that executable identity. This protocol is Linux-only, is not connected to the
+BEAM or worker API, and remains subject to independent review. The
+[development record](../docs/archive/2026-10-29-native-shared-lease/index.md)
+describes the tested limits.
 
 A typed success repeats the command tag, sequence and resulting depth. `M` adds
 three u64 values: logical bytes, allocated bytes, entry count. `G` adds u32 total
@@ -617,6 +732,14 @@ unknown version/disposition, extra bytes or malformed/partial frame discards
 every prefix and invalidates the host capability. A helper without `H` support
 fails closed; the host never retries using `G` or infers absence from a generic
 IO error or host `lstat`.
+
+For `X`, success also returns the selected u8 stack index. A duplicate export of
+the same slot refuses. Once any slot was exported, this prototype allows only
+`P` and additional exports of distinct retained slots; a release or other command
+returns unconfirmed and ends the helper. This conservative rule also prevents
+separately releasing an unexported top slot. There is no authenticated recipient
+completion/last-close protocol yet, so an `X` acknowledgment cannot restore normal
+release semantics.
 
 Native owner loss cannot leave an independent host data-file read alive
 while another owner unlinks that inode. This guarantee applies only to this API;
@@ -663,13 +786,21 @@ before counting their blocks. A failed sync refuses allocation measurement or
 preflight, retaining the file. A sync can persist bytes admitted by an earlier
 owner; refusal never proves that an interrupted stage had no effect.
 
-`ipse-storage-profile.rs` currently admits only trusted upstream-compatible Linux
-64-bit kernel `7.2.10`/`7.2.10-*` with Btrfs sector units, or tmpfs page units with
-the retained FD's exact mount ID, an explicit `huge=never`/`huge=advise` mount
-policy and no forced global huge-page policy. Units must be powers of two from
-4,096 through 65,536 bytes; observed nonzero directory blocks refuse this finite
-profile. Unknown kernels, filesystems, mount metadata and quota backends refuse
-without estimating or falling back. macOS has no admitted quota profile yet.
+`ipse-storage-profile.rs` admits two finite Linux profiles. The existing 64-bit
+`7.2.10`/`7.2.10-*` profile permits reviewed Btrfs sector units or tmpfs page
+units with the retained FD's exact mount ID, an explicit
+`huge=never`/`huge=advise` mount policy and no forced global huge-page policy.
+Its units remain powers of two from 4,096 through 65,536 bytes.
+
+The added exact `7.2.11-arch1-1` x86_64 profile permits **tmpfs only**, with
+4096-byte page/block/fragment agreement, selected global shmem policy `advise`
+and a uniquely resolved actual-directory mount carrying exactly one
+`huge=advise` option. It does not admit Btrfs, another suffix or architecture,
+or another huge-page/unit combination. Both profiles refuse observed nonzero
+directory blocks. Unknown kernels, filesystems, mount metadata and quota
+backends refuse without estimating or falling back. macOS has no admitted
+quota profile yet. Tmpfs qualification establishes process-restart behavior,
+not persistence across reboot/unmount or power-loss durability.
 Kernel writeback for already admitted partial files must remain represented by
 the profile's allocated-file accounting after native-owner death. Qualification
 must identify the actual kernel, mount and first-failure evidence; these rules
@@ -680,7 +811,7 @@ Build and run the focused no-model component checks:
 ```sh
 ./dev/build-native.sh
 mix compile --warnings-as-errors
-mix test test/ipse/runner/transaction_test.exs test/ipse/runner/transaction_optional_read_test.exs test/ipse/runner/transaction_framing_test.exs test/ipse/extension/project_identity_test.exs
+mix test test/ipse/runner/transaction_test.exs test/ipse/runner/transaction_optional_read_test.exs test/ipse/runner/transaction_framing_test.exs test/ipse/runner/storage_profile_test.exs test/ipse/extension/project_identity_test.exs
 ```
 
 The transaction fixtures compile source-derived implementations under private

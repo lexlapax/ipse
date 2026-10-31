@@ -7,10 +7,18 @@ defmodule Ipse.Session.Saved do
 
   @doc "Rebuild pure resume facts after the owner has validated sources and reloaded its journal."
   def restore(events, id) do
-    with {:ok, _mode} <- execution_mode(events),
+    with {:ok, _origin} <-
+           Ipse.Journal.SourceOrigin.recorded((List.first(events) || %{})["metadata"], id),
+         :ok <- validate_release_receipts(events, id),
+         {:ok, _mode} <- execution_mode(events, id),
          {:ok, _admission} <- semantic_admission(events, id),
          :ok <- Ipse.Session.Input.validate_events(events, id),
+         :ok <- Ipse.Session.OperatorAssertion.validate_events(events, id),
+         :ok <- Ipse.Session.PlanningTransition.validate_events(events, id),
          :ok <- Ipse.Session.OperatorAnswer.validate_events(events, id),
+         {:ok, pending_acceptance_unknown} <-
+           Ipse.Session.PendingAcceptance.unknown_effects(events, id),
+         :ok <- Ipse.Session.PlanningMCP.validate_events(events, id),
          :ok <- Ipse.Session.DraftAcceptance.validate_observation_uniqueness(events),
          {:ok, draft} <- Ipse.Session.Draft.restore(events, id),
          {:ok, draft_mcp} <- Ipse.Session.DraftMCP.restore(events, id),
@@ -21,25 +29,49 @@ defmodule Ipse.Session.Saved do
          {:ok, extension_state} <- Actions.restore(events),
          {:ok, result_sources} <- ResultSource.restore(events),
          :ok <- validate_context_events(events),
-         {:ok, messages, native} <- project(events, :validate),
+         {:ok, projected_messages, native, managed_lineage} <-
+           project_with_lineage(events, :validate, id),
          {:ok, visible_messages} <-
            Ipse.Session.Draft.project(
              draft,
-             messages,
+             projected_messages,
              Ipse.Session.Reference.occurrences(events),
              draft_native_policy(events)
            ),
          {:ok, _research} <- Ipse.Tools.Research.restore(events),
-         {:ok, question, messages} <- finish_question(native, messages),
+         {:ok, question, messages} <- finish_question(native, projected_messages),
          {:ok, question, messages} <- restore_extension_question(events, messages, question),
+         {:ok, managed_lineage} <-
+           Ipse.Session.ManagedLineage.advance(
+             managed_lineage,
+             %{"type" => "managed_resume_question", "session_id" => id},
+             projected_messages,
+             messages
+           ),
          {:ok, source_window} <- Ipse.Session.SourceWindow.restore(events, id) do
+      {question, managed_lineage, question_recovery} =
+        recover_question(question, managed_lineage, extension_state)
+
       {:ok,
        %{
          accounting: accounting,
          extension_state: extension_state,
+         managed_reads: %{
+           outputs: extension_state.managed_outputs,
+           invocations:
+             if(extension_state.parent,
+               do: %{
+                 extension_state.parent["invocation_id"] => extension_state.managed_dependencies
+               },
+               else: %{}
+             )
+         },
+         managed_lineage: managed_lineage,
          result_sources: result_sources,
          messages: messages,
          question: question,
+         question_recovery: question_recovery,
+         pending_acceptance_unknown: pending_acceptance_unknown,
          historical_model: safe_historical_model(events, draft, visible_messages),
          last_request_id: request_field(events, "request_id"),
          turn_id: request_field(events, "turn_id"),
@@ -57,18 +89,61 @@ defmodule Ipse.Session.Saved do
     end
   end
 
-  @doc false
-  def execution_mode([%{"metadata" => metadata} | _]) when is_map(metadata) do
-    if Map.has_key?(metadata, "execution_mode") do
-      if Ipse.Extension.Mode.valid?(metadata["execution_mode"]),
-        do: {:ok, metadata["execution_mode"]},
-        else: {:error, :invalid_saved_execution_mode}
-    else
-      {:ok, nil}
+  defp validate_release_receipts(events, id) do
+    case get_in(List.first(events) || %{}, ["metadata", "release_receipt_layout"]) do
+      nil ->
+        :ok
+
+      layout ->
+        with true <- layout == Ipse.Session.ReleaseReceipt.layout(),
+             {:ok, _} <- Ipse.Session.ReleaseReceipt.intents(events, id) do
+          :ok
+        else
+          _ -> {:error, :invalid_release_receipt}
+        end
     end
   end
 
-  def execution_mode(_), do: {:error, :invalid_saved_execution_mode}
+  @doc false
+  def recover_question(nil, lineage, _), do: {nil, lineage, nil}
+
+  def recover_question(question, lineage, extension_state) do
+    dependencies =
+      case question do
+        %{kind: :extension, parent: %{"invocation_id" => id} = parent} ->
+          with false <- lineage.unavailable,
+               %{parent: ^parent} <- Map.get(lineage.invocations, id),
+               true <- extension_state.parent === parent,
+               {:ok, inherited} <-
+                 Ipse.Session.ManagedLineage.invocation_dependencies(lineage, id) do
+            Ipse.Session.ManagedReference.union([inherited, extension_state.managed_dependencies])
+          else
+            _ -> {:error, :managed_lineage_unavailable}
+          end
+
+        %{call: %{"id" => id}} ->
+          Ipse.Session.ManagedLineage.tool_dependencies(lineage, id)
+
+        _ ->
+          {:error, :managed_lineage_unavailable}
+      end
+
+    if dependencies == {:ok, []} do
+      {question, lineage, nil}
+    else
+      {nil, %{lineage | unavailable: true}, :managed_question_withheld}
+    end
+  end
+
+  @doc false
+  def execution_mode(events, id \\ nil)
+
+  def execution_mode(events, id) do
+    case Ipse.Session.PlanningTransition.reconstruct(events, id) do
+      {:ok, mode, _entry} -> {:ok, mode}
+      error -> error
+    end
+  end
 
   @doc false
   def semantic_admission(events, id \\ nil)
@@ -161,6 +236,7 @@ defmodule Ipse.Session.Saved do
   defp validate_context_events(events) do
     with :ok <- Ipse.Session.Input.validate_events(events),
          :ok <- Ipse.Session.OperatorAnswer.validate_events(events),
+         :ok <- Ipse.Session.PlanningMCP.validate_events(events, nil),
          :ok <- Ipse.Session.DraftAcceptance.validate_observation_uniqueness(events),
          {:ok, _} <- Ipse.Session.Draft.restore(events, nil),
          {:ok, _} <- Ipse.Session.DraftLineage.restore(events, nil),
@@ -195,6 +271,17 @@ defmodule Ipse.Session.Saved do
   defp validate_context_metadata(_), do: :ok
 
   defp project(events, question_mode) do
+    id =
+      get_in(List.first(events) || %{}, ["metadata", "source_origin", "session_id"]) ||
+        Enum.find_value(events, & &1["session_id"]) || String.duplicate("0", 32)
+
+    case project_with_lineage(events, question_mode, id) do
+      {:ok, messages, native, _lineage} -> {:ok, messages, native}
+      error -> error
+    end
+  end
+
+  defp project_with_lineage(events, question_mode, id) do
     occurrences = Ipse.Session.Reference.occurrences(events)
     policy = draft_native_policy(events)
 
@@ -204,28 +291,206 @@ defmodule Ipse.Session.Saved do
         events
       )
 
-    Enum.reduce_while(events, {:ok, [], {:ok, nil}, MapSet.new(), nil}, fn event,
-                                                                           {:ok, messages, native,
-                                                                            pending, draft} ->
-      native =
-        if question_mode == :validate,
-          do: question_step(event, native, messages, versioned),
-          else: native
+    {:ok, lineage} = Ipse.Session.ManagedLineage.new(id)
+    {:ok, source_window} = Ipse.Session.SourceWindow.restore(Enum.take(events, 1), id)
 
-      with {:ok, next_draft} <- Ipse.Session.Draft.advance(draft, event, nil),
-           {:ok, messages, pending} <-
-             draft_project_step(event, messages, versioned, pending, draft, occurrences, policy) do
-        {:cont, {:ok, messages, native, pending, next_draft}}
-      else
-        error -> {:halt, error}
+    Enum.reduce_while(
+      events,
+      {:ok, [], {:ok, nil}, MapSet.new(), nil, lineage, source_window},
+      fn event, {:ok, messages, native, pending, draft, lineage, source_window} ->
+        native =
+          if question_mode == :validate,
+            do: question_step(event, native, messages, versioned),
+            else: native
+
+        before = Enum.reverse(messages)
+
+        if event["type"] == "managed_preflight_result" do
+          case Ipse.Session.ManagedLineage.replay_projection(lineage, event, before) do
+            {:ok, projected, next_lineage} ->
+              case advance_source_window(source_window, event) do
+                {:ok, next_window} ->
+                  {:cont,
+                   {:ok, Enum.reverse(projected), native, pending, draft, next_lineage,
+                    next_window}}
+
+                error ->
+                  {:halt, error}
+              end
+
+            _ ->
+              {:halt, {:error, :managed_lineage_unavailable}}
+          end
+        else
+          with {:ok, lineage} <- prepare_source_result_replay(lineage, source_window, event),
+               {:ok, next_draft} <- Ipse.Session.Draft.advance(draft, event, nil),
+               {:ok, messages, pending} <-
+                 staged_output_step(
+                   lineage,
+                   event,
+                   messages,
+                   versioned,
+                   pending,
+                   draft,
+                   occurrences,
+                   policy
+                 ),
+               {:ok, lineage} <-
+                 Ipse.Session.ManagedLineage.advance(
+                   lineage,
+                   event,
+                   before,
+                   Enum.reverse(messages)
+                 ),
+               {:ok, next_window} <- advance_source_window(source_window, event) do
+            {:cont, {:ok, messages, native, pending, next_draft, lineage, next_window}}
+          else
+            error -> {:halt, error}
+          end
+        end
       end
-    end)
+    )
     |> case do
-      {:ok, messages, native, _, _} ->
-        {:ok, restore_messages(Enum.reverse(messages), versioned), native}
+      {:ok, messages, native, _, _, lineage, _} ->
+        before =
+          Enum.reverse(messages)
+          |> Ipse.Session.ManagedOutput.withhold_pending(lineage)
+          |> Ipse.Session.ManagedToolUse.withhold_result(lineage)
+
+        restored = restore_messages(before, versioned)
+
+        with {:ok, lineage} <-
+               Ipse.Session.ManagedLineage.advance(
+                 lineage,
+                 %{"type" => "managed_recovery", "session_id" => id},
+                 before,
+                 restored
+               ) do
+          {:ok, restored, native, lineage}
+        end
 
       error ->
         error
+    end
+  end
+
+  defp prepare_source_result_replay(
+         lineage,
+         window,
+         %{"type" => "managed_source_lookup_prepared", "version" => 1} = event
+       ) do
+    with %{call: call} <- lineage.call_bindings[event["call_id"]],
+         {:ok, args} <- Ipse.JSON.decode_unique(get_in(call, ["function", "arguments"])),
+         {:ok, rows} <-
+           Ipse.Session.SourceWindow.tool_query_provenances(
+             window,
+             event["call_id"],
+             event["operation"],
+             args,
+             :replay
+           ),
+         true <- event["selection_sha256"] === Ipse.JSON.digest([rows]),
+         {:ok, next, dependencies} <-
+           Ipse.Session.ManagedLineage.add_selected_source_dependencies(
+             lineage,
+             event["call_id"],
+             rows
+           ),
+         true <- event["dependencies_sha256"] === Ipse.JSON.digest(dependencies),
+         true <-
+           dependencies == [] or
+             Ipse.Session.ManagedToolUse.root_only?(
+               %{managed_lineage: next, config: %{semantic_admission: next.admission}},
+               dependencies
+             ) do
+      {:ok, next}
+    else
+      _ -> {:error, :managed_lineage_unavailable}
+    end
+  end
+
+  defp prepare_source_result_replay(
+         lineage,
+         window,
+         %{"type" => "managed_tool_result_observed", "version" => 2} = event
+       ) do
+    with %{call: call} <- lineage.call_bindings[event["call_id"]],
+         true <- get_in(call, ["function", "name"]) in ~w(source_list source_read source_quote),
+         message when is_map(message) <- event["message"],
+         {:ok, rows} <-
+           if(get_in(message, ["ipse_tool_outcome", "status"]) == "result_recorded",
+             do:
+               Ipse.Session.SourceWindow.tool_result_provenances(
+                 window,
+                 event["call_id"],
+                 message
+               ),
+             else: {:ok, []}
+           ),
+         true <- event["source_selection_sha256"] == Ipse.JSON.digest([rows]),
+         true <-
+           get_in(message, ["ipse_tool_outcome", "status"]) != "result_recorded" or
+             get_in(lineage.source_lookups, [event["call_id"], "selection_sha256"]) ===
+               event["source_selection_sha256"],
+         {:ok, next, dependencies} <-
+           Ipse.Session.ManagedLineage.add_selected_source_dependencies(
+             lineage,
+             event["call_id"],
+             rows
+           ),
+         true <-
+           Ipse.Session.ManagedToolUse.root_only?(
+             %{managed_lineage: next, config: %{semantic_admission: next.admission}},
+             dependencies
+           ) do
+      {:ok, next}
+    else
+      _ -> {:error, :managed_lineage_unavailable}
+    end
+  end
+
+  defp prepare_source_result_replay(lineage, _, _), do: {:ok, lineage}
+
+  defp advance_source_window(window, event) do
+    {:ok, Ipse.Session.SourceWindow.advance(window, event)}
+  rescue
+    _ -> {:error, :invalid_source_window}
+  end
+
+  defp staged_output_step(
+         lineage,
+         event,
+         messages,
+         versioned,
+         pending,
+         draft,
+         occurrences,
+         policy
+       ) do
+    cond do
+      event["type"] in ~w(managed_output_release_cleanup managed_tool_result_cleanup) and
+          event["status"] == "unknown" ->
+        projected =
+          messages
+          |> Enum.reverse()
+          |> Ipse.Session.ManagedOutput.withhold_pending(lineage)
+          |> Ipse.Session.ManagedToolUse.withhold_result(lineage)
+          |> Enum.reverse()
+
+        {:ok, projected, pending}
+
+      Ipse.Session.ManagedLineage.staging_output?(lineage, event) ->
+        {:ok, messages, pending}
+
+      Ipse.Session.ManagedLineage.released_output_message?(lineage, event) or
+          Ipse.Session.ManagedLineage.released_tool_message?(lineage, event) ->
+        projected = [event["message"] | messages]
+
+        with {:ok, pending} <- projected_order(projected, messages, pending),
+             do: {:ok, projected, pending}
+
+      true ->
+        draft_project_step(event, messages, versioned, pending, draft, occurrences, policy)
     end
   end
 
@@ -655,10 +920,11 @@ defmodule Ipse.Session.Saved do
 
   @doc "An import is allowed only at the beginning of a fresh journal, exactly once."
   def validate_handoff_events(events) do
-    case Enum.split_while(events, &(&1["type"] in ["session", "workspace_context_snapshot"])) do
-      {_prefix, [%{"type" => "handoff_imported"} = record | rest]} ->
+    case Enum.split_while(events, &handoff_prefix?/1) do
+      {prefix, [%{"type" => "handoff_imported"} = record | rest]} ->
         with {:ok, expected} <- prepare_handoff(record["artifact"]),
              true <- expected == record,
+             true <- Enum.count(prefix, &(&1["type"] == "session_release_owner_started")) <= 1,
              false <- Enum.any?(rest, &(&1["type"] == "handoff_imported")) do
           :ok
         else
@@ -671,6 +937,12 @@ defmodule Ipse.Session.Saved do
           else: :ok
     end
   end
+
+  defp handoff_prefix?(%{"type" => "session_release_owner_started"} = event),
+    do: Ipse.Session.ReleaseReceipt.valid_owner_marker?(event, event["session_id"])
+
+  defp handoff_prefix?(event),
+    do: event["type"] in ["session", "workspace_context_snapshot"]
 
   def handoff_notice(bytes) do
     {:ok, record} = prepare_handoff(bytes)
@@ -757,6 +1029,13 @@ defmodule Ipse.Session.Saved do
        %{
          "version" => 1,
          "accounting" => Ipse.Usage.snapshot(accounting),
+         "release_claim" =>
+           if(
+             get_in(hd(events), ["metadata", "release_receipt_layout"]) ==
+               Ipse.Session.ReleaseReceipt.layout(),
+             do: to_string(Ipse.Session.ReleaseReceipt.inspect_current(Path.expand(dir), id)),
+             else: "unknown"
+           ),
          "journal_limit" => Ipse.Journal.limit_summary(events),
          "event_deliveries" => Ipse.Extension.Subscriptions.summary(events),
          "event_feeds" => Ipse.Extension.Feeds.summary(events),

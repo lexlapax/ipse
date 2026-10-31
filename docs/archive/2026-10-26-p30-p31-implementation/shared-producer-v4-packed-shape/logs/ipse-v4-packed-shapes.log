@@ -1,0 +1,8 @@
+Running ExUnit with seed: 92946, max_cases: 4
+Excluding tags: [:test]
+Including tags: [v4_packed_fact_pages: true, v4_anchor_reserve: true]
+
+..
+Finished in 4.7 seconds (4.2s on load, 0.00s async, 0.5s sync)
+
+Result: 2 passed, 11 excluded

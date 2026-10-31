@@ -21,6 +21,39 @@ defmodule Ipse.Session.SourceIndexTest do
     next
   end
 
+  test "source versions bind the recorded journal origin without exposing its location" do
+    id = Usage.id()
+    assert {:ok, legacy} = SourceIndex.new(id)
+    {receipt, message} = input(legacy, "Synthetic original statement")
+    a = JSON.sha256("original descriptor and directory")
+    b = JSON.sha256("different descriptor or directory")
+
+    [legacy, first, same, other] =
+      for origin <- [nil, a, a, b] do
+        assert {:ok, empty} = SourceIndex.new(id, 1, origin)
+        assert {:ok, populated} = SourceIndex.admit_input(empty, receipt, message)
+        populated
+      end
+
+    [old, initial, repeated, changed] = Enum.map([legacy, first, same, other], &hd(rows(&1)))
+
+    assert Enum.uniq(Enum.map([old, initial, repeated, changed], & &1["occurrence_id"]))
+           |> length() == 1
+
+    assert initial["version_id"] == repeated["version_id"]
+    assert initial["version_id"] != changed["version_id"]
+    assert initial["version_id"] != old["version_id"]
+
+    request = %{"handle" => initial["read_handle"], "quote" => "Synthetic original statement"}
+    assert {:ok, %{"proof" => proof}} = SourceIndex.resolve_proof(first, request)
+    assert {:ok, _} = SourceIndex.revalidate_stored(same, proof)
+    assert {:error, :source_index_refused} = SourceIndex.revalidate_stored(other, proof)
+    assert {:error, :source_index_refused} = SourceIndex.revalidate_stored(legacy, proof)
+    refute Map.has_key?(proof, "source_origin")
+    assert proof["path"] == nil
+    assert {:error, :source_index_refused} = SourceIndex.new(id, 1, "invalid")
+  end
+
   defp rows(index, cursor \\ nil, acc \\ []) do
     assert {:ok, page} = SourceIndex.list(index, %{"cursor" => cursor, "limit" => 32})
     assert byte_size(Jason.encode!(page)) <= 4096
@@ -582,6 +615,87 @@ defmodule Ipse.Session.SourceIndexTest do
              })
 
     assert redacted.bytes == 0
+  end
+
+  test "stored source proofs revalidate only against the current exact Session occurrence" do
+    source = add_input(index(), "original café text")
+    [row] = rows(source)
+
+    assert {:ok, resolved} =
+             SourceIndex.resolve_proof(source, %{
+               "handle" => row["read_handle"],
+               "quote" => "café"
+             })
+
+    proof = resolved["proof"]
+    assert {:ok, ^resolved} = SourceIndex.revalidate_stored(source, proof)
+
+    for changed <- [
+          Map.put(proof, "session_id", Usage.id()),
+          Map.put(proof, "occurrence_id", Usage.id()),
+          Map.put(proof, "version_id", Usage.id()),
+          Map.put(proof, "origin", "interactive_operator"),
+          Map.put(proof, "coverage", "partial"),
+          Map.put(proof, "start_byte", 0),
+          Map.put(proof, "end_byte", 1),
+          Map.put(proof, "quote_sha256", JSON.sha256("other")),
+          Map.put(proof, "content_sha256", JSON.sha256("other")),
+          Map.put(proof, "receipt_sha256", JSON.sha256("other")),
+          Map.put(proof, "path", "private"),
+          Map.put(proof, "extra", true)
+        ],
+        do:
+          assert({:error, :source_index_refused} = SourceIndex.revalidate_stored(source, changed))
+
+    assert {:ok, updated_policy} = SourceIndex.revalidate(source, 2)
+    assert {:ok, checked} = SourceIndex.revalidate_stored(updated_policy, proof)
+    assert checked["policy_generation"] == 2 and checked["proof"] == proof
+    assert {:ok, redacted} = SourceIndex.redact(updated_policy, row["occurrence_id"], 3)
+    assert {:error, :source_index_refused} = SourceIndex.revalidate_stored(redacted, proof)
+
+    ambiguous = add_input(index(), "unique same same")
+    [ambiguous_row] = rows(ambiguous)
+
+    assert {:ok, unique} =
+             SourceIndex.resolve_proof(ambiguous, %{
+               "handle" => ambiguous_row["read_handle"],
+               "quote" => "unique"
+             })
+
+    repeated =
+      unique["proof"]
+      |> Map.merge(%{
+        "quote" => "same",
+        "quote_sha256" => JSON.sha256("same"),
+        "start_byte" => 7,
+        "end_byte" => 11
+      })
+
+    assert {:error, :source_index_refused} = SourceIndex.revalidate_stored(ambiguous, repeated)
+  end
+
+  test "a copied source history cannot establish which Session window is current" do
+    first = index()
+    {receipt, message} = input(first, "Synthetic retained source")
+    assert {:ok, original} = SourceIndex.admit_input(first, receipt, message)
+    [row] = rows(original)
+
+    assert {:ok, resolved} =
+             SourceIndex.resolve_proof(original, %{
+               "handle" => row["read_handle"],
+               "quote" => "Synthetic retained source"
+             })
+
+    assert {:ok, replay} = SourceIndex.new(first.session_id)
+    assert {:ok, copied} = SourceIndex.admit_input(replay, receipt, message)
+    assert {:ok, current} = SourceIndex.redact(original, row["occurrence_id"], 2)
+
+    assert {:error, :source_index_refused} =
+             SourceIndex.revalidate_stored(current, resolved["proof"])
+
+    assert {:ok, matched} = SourceIndex.revalidate_stored(copied, resolved["proof"])
+    assert matched["proof"] == resolved["proof"]
+    refute matched["window_id"] == resolved["window_id"]
   end
 
   test "legacy role user never gains operator origin and missing legacy content is explicit" do

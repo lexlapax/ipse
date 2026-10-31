@@ -1,0 +1,7 @@
+{"edited_metadata_positions":2,"final_checks":5,"immutable_units":5,"native_operations":0,"pinned_commit_generation":500,"protected_publication_demonstrated":false}
+Running ExUnit with seed: 578448, max_cases: 4
+
+
+Finished in 4.0 seconds (4.0s on load, 0.00s async, 0.00s sync)
+
+Result: 0 tests

@@ -1,0 +1,29 @@
+Running ExUnit with seed: 46839, max_cases: 1
+Excluding tags: [:test]
+Including tags: [:inline_collection_session, :inline_collection_unknown]
+
+
+
+  1) test owner loss after inline native publication retains unknown intent and cannot replay (Ipse.KnowledgeCollectionAdapterSessionTest)
+     test/extensions/knowledge/collection_adapter_session_test.exs:249
+     index ended before native publication: :error
+     code: approve_until_namespace_publication(c)
+     stacktrace:
+       test/extensions/knowledge/collection_adapter_session_test.exs:278: (test)
+
+
+
+  2) test negotiated inline source publication and namespace build retain bounded operation accounting (Ipse.KnowledgeCollectionAdapterSessionTest)
+     test/extensions/knowledge/collection_adapter_session_test.exs:212
+     {"Extension outcome unknown after refusal, failure or interruption. Inspect its receipt before retrying; no callback was replayed.", [{"snapshot", "unknown"}]}
+     code: for id <- ["fixture:inline-one", "fixture:inline-two"] do
+     stacktrace:
+       test/extensions/knowledge/collection_adapter_session_test.exs:217: anonymous fn/3 in Ipse.KnowledgeCollectionAdapterSessionTest."test negotiated inline source publication and namespace build retain bounded operation accounting"/1
+       (elixir 1.20.4) lib/enum.ex:2622: Enum."-reduce/3-lists^foldl/2-0-"/3
+       test/extensions/knowledge/collection_adapter_session_test.exs:214: (test)
+
+
+Finished in 2.5 seconds (0.00s async, 2.5s sync)
+
+Result: 0/2 passed, 14 excluded
+Failed: 2 tests

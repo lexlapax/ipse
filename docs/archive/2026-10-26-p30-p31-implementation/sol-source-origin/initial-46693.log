@@ -1,0 +1,99 @@
+Running ExUnit with seed: 46693, max_cases: 1
+Excluding tags: [:native_sandbox, :macos_sandbox, :macos_filesystem, :memory_scope]
+
+...........................................
+13:04:19.129 [error] GenServer #PID<0.2083.0> terminating
+** (stop) :redacted
+Last message: :redacted
+State: %{id: "e63a3eb202cb60d482ff3c26ca76dfd6", phase: :model}
+........
+13:04:24.711 [error] GenServer #PID<0.2233.0> terminating
+** (stop) :redacted
+    (ipse 0.1.0) lib/ipse/session.ex:3532: Ipse.Session.journal_failed/2
+    (ipse 0.1.0) lib/ipse/session.ex:3607: Ipse.Session.account/2
+    (ipse 0.1.0) lib/ipse/session.ex:2784: Ipse.Session.handle_info/2
+    (stdlib 8.1) gen_server.erl:2434: :gen_server.try_handle_info/3
+    (stdlib 8.1) gen_server.erl:2420: :gen_server.handle_msg/3
+    (stdlib 8.1) proc_lib.erl:333: :proc_lib.init_p_do_apply/3
+Last message: :redacted
+State: %{id: "7073b5d368772d78bebc1e4cd7258d84", phase: :model}
+.
+13:04:29.817 [error] GenServer #PID<0.2258.0> terminating
+** (stop) :redacted
+    (ipse 0.1.0) lib/ipse/session.ex:3532: Ipse.Session.journal_failed/2
+    (ipse 0.1.0) lib/ipse/session/turn.ex:1626: Ipse.Session.Turn.append_tool_message/3
+    (ipse 0.1.0) lib/ipse/session/turn.ex:1384: Ipse.Session.Turn.accept_tool_result/3
+    (ipse 0.1.0) lib/ipse/session/turn.ex:2070: Ipse.Session.Turn.tool_completed/3
+    (stdlib 8.1) gen_server.erl:2434: :gen_server.try_handle_info/3
+    (stdlib 8.1) gen_server.erl:2420: :gen_server.handle_msg/3
+    (stdlib 8.1) proc_lib.erl:333: :proc_lib.init_p_do_apply/3
+Last message: :redacted
+State: %{id: "7c82f6710186ea983ccd3d10c2973656", phase: :tool}
+....
+13:04:29.938 [error] GenServer #PID<0.2335.0> terminating
+** (stop) :redacted
+    (ipse 0.1.0) lib/ipse/session.ex:3528: Ipse.Session.journal_failed/2
+    (ipse 0.1.0) lib/ipse/session/turn.ex:1608: Ipse.Session.Turn.append_message/2
+    (ipse 0.1.0) lib/ipse/session/turn.ex:2001: Ipse.Session.Turn.model_completed/3
+    (stdlib 8.1) gen_server.erl:2434: :gen_server.try_handle_info/3
+    (stdlib 8.1) gen_server.erl:2420: :gen_server.handle_msg/3
+    (stdlib 8.1) proc_lib.erl:333: :proc_lib.init_p_do_apply/3
+Last message: :redacted
+State: %{id: "52d1162f6e6a9cb97622f4ef4dc2b11f", phase: :model}
+........
+13:05:02.107 [error] GenServer #PID<0.2428.0> terminating
+** (stop) :redacted
+    (ipse 0.1.0) lib/ipse/session.ex:3528: Ipse.Session.journal_failed/2
+    (ipse 0.1.0) lib/ipse/session/turn.ex:288: Ipse.Session.Turn.answer/5
+    (stdlib 8.1) gen_server.erl:2470: :gen_server.try_handle_call/4
+    (stdlib 8.1) gen_server.erl:2499: :gen_server.handle_msg/3
+    (stdlib 8.1) proc_lib.erl:333: :proc_lib.init_p_do_apply/3
+Last message (from #PID<0.2427.0>): :redacted
+State: %{id: "e8aa5e903136e2678d08c42e181f6431", phase: :question}
+Client #PID<0.2427.0> is alive
+
+    (stdlib 8.1) gen.erl:262: :gen.do_call/4
+    (elixir 1.20.4) lib/gen_server.ex:1180: GenServer.call/3
+    test/ipse/journal_test.exs:300: Ipse.JournalTest."test journal limits a pending native question remains readable after quota sealing"/1
+    (ex_unit 1.20.4) lib/ex_unit/runner.ex:533: ExUnit.Runner.exec_test/2
+    (stdlib 8.1) timer.erl:599: :timer.tc/2
+    (ex_unit 1.20.4) lib/ex_unit/runner.ex:455: anonymous fn/6 in ExUnit.Runner.spawn_test_monitor/4
+.
+13:05:02.171 [error] GenServer #PID<0.2459.0> terminating
+** (stop) :redacted
+    (ipse 0.1.0) lib/ipse/session.ex:3528: Ipse.Session.journal_failed/2
+    (ipse 0.1.0) lib/ipse/session/turn.ex:1626: Ipse.Session.Turn.append_tool_message/3
+    (ipse 0.1.0) lib/ipse/session/turn.ex:1384: Ipse.Session.Turn.accept_tool_result/3
+    (ipse 0.1.0) lib/ipse/session/turn.ex:2070: Ipse.Session.Turn.tool_completed/3
+    (stdlib 8.1) gen_server.erl:2434: :gen_server.try_handle_info/3
+    (stdlib 8.1) gen_server.erl:2420: :gen_server.handle_msg/3
+    (stdlib 8.1) proc_lib.erl:333: :proc_lib.init_p_do_apply/3
+Last message: :redacted
+State: %{id: "35e4c0ce9801e88ead93a2e900f474a1", phase: :tool}
+......
+
+  1) test legacy journal origin cannot publish managed metadata V2 (Ipse.Extension.ManagedCollectionCallSessionTest)
+     test/ipse/extension/managed_collection_call_session_test.exs:1038
+     match (=) failed
+     code:  assert [_] = commits
+     left:  [_]
+     right: []
+     stacktrace:
+       test/ipse/extension/managed_collection_call_session_test.exs:1069: (test)
+
+
+
+  2) test legacy journal origin cannot publish managed metadata V3 (Ipse.Extension.ManagedCollectionCallSessionTest)
+     test/ipse/extension/managed_collection_call_session_test.exs:1038
+     match (=) failed
+     code:  assert [_] = commits
+     left:  [_]
+     right: []
+     stacktrace:
+       test/ipse/extension/managed_collection_call_session_test.exs:1069: (test)
+
+......................
+Finished in 110.9 seconds (1.1s async, 109.8s sync)
+
+Result: 93/95 passed
+Failed: 2 tests

@@ -1,0 +1,29 @@
+  @doc "Acquire a persistent advisory lock. Its Port must remain owned by the session."
+  def lock(path), do: acquire_lock(path, :lock)
+
+  @doc false
+  # Reserved for StoredSources after the original journal and lock are checked.
+  def lock_source(path), do: acquire_lock(path, :source_lock)
+
+  defp acquire_lock(path, kind) when is_binary(path) do
+    with :ok <- launch_text(path),
+         {:ok, helper} <- helper_path(),
+         {:ok, port, ticket} <-
+           owned_port(kind, helper, [
+             :binary,
+             :exit_status,
+             :use_stdio,
+             :hide,
+             args: ["--lock", Path.expand(path)]
+           ]) do
+      Process.put({__MODULE__, port}, ticket)
+      result = receive_lock(port, <<>>, System.monotonic_time(:millisecond) + 5_000, ticket)
+      if match?({:error, _}, result), do: unlock(port)
+      result
+    end
+  rescue
+    error -> {:error, Exception.message(error)}
+  end
+
+  defp acquire_lock(_, _), do: {:error, "lock path must be a string"}
+

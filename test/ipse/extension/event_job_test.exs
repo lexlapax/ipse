@@ -1,5 +1,6 @@
 defmodule Ipse.Extension.EventJobTest do
   use ExUnit.Case, async: false
+  import Ipse.Test.ResumeAssertions
   alias Ipse.{Session, Journal}
   alias Ipse.Extension.{Catalog, Config, Registry, Artifact, Subscriptions, Actions}
 
@@ -654,7 +655,7 @@ defmodule Ipse.Extension.EventJobTest do
     {:ok, resumed} = start(c, config, id)
     assert Session.info(resumed).phase == :idle
     assert File.read!(c.trace) == trace
-    assert File.read!(Path.join(c.dir, id <> ".jsonl")) == bytes
+    assert_idle_resume_journal(Path.join(c.dir, id <> ".jsonl"), bytes, id)
     assert length(puts(events(c, resumed))) == 1
     refute_receive {:job_model, _}, 100
     :ok = Session.close(resumed)

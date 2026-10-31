@@ -1,0 +1,18 @@
+Running ExUnit with seed: 46915, max_cases: 1
+Excluding tags: [:test]
+Including tags: [:shared_directory_preview]
+
+
+
+  1) test actual Session binds directory lookup to captured catalog pages and refuses stale or forged bindings (Ipse.KnowledgeCollectionAdapterSessionTest)
+     test/extensions/knowledge/collection_adapter_session_test.exs:289
+     %{"frame" => "{IpseTest.CollectionAdapter, :drive, 2, [file: ~c\"test/support/collection_adapter_fixture.exs\", line: 417]}", "message" => "no match of right hand side value:\n\n    {:ok,\n     [\n       %{\n         \"facts\" => [\n           %{\n             \"citations\" => [\n               %{\n                 \"chunk_id\" => \"ba1e38ca893c442d3b8dbb8289e0bf4e3bb2d34c890e8b282bfc71649e4418e7\",\n                 \"content_sha256\" => \"299486d0e48160f89b8f6bcf19eb770e3f8c76639dda26f08341e782fa4bad23\",\n                 \"end_byte\" => 32,\n                 \"event_at_ms\" => nil,\n                 \"generation\" => 1,\n                 \"observed_at_ms\" => 10,\n          ", "status" => "fixture_exception"}
+     code: assert preview["status"] == "preview", inspect(preview)
+     stacktrace:
+       test/extensions/knowledge/collection_adapter_session_test.exs:303: (test)
+
+
+Finished in 9.1 seconds (0.9s on load, 0.00s async, 8.1s sync)
+
+Result: 0/1 passed, 30 excluded
+Failed: 1 test

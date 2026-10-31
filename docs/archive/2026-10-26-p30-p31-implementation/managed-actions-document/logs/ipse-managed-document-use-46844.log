@@ -1,0 +1,94 @@
+     warning: incompatible types given to Keyword.get/2:
+
+         Keyword.get(values, {Ipse.Extension.ProjectIdentity, :retained_binding})
+
+     given types:
+
+         (
+           dynamic(empty_list() or non_empty_list(term(), term())),
+           -{Ipse.Extension.ProjectIdentity, :retained_binding}-
+         )
+
+     but expected one of:
+
+         empty_list() or non_empty_list(term(), term()), atom()
+
+     where "values" was given the types:
+
+         # type: dynamic()
+         # from: test/ipse/extension/managed_collection_call_session_test.exs:738:22
+         values = elem(Process.info(peer, :dictionary), 1)
+
+         # type: dynamic(empty_list() or non_empty_list(term(), term()))
+         # from: test/ipse/extension/managed_collection_call_session_test.exs:739:30
+         Keyword.get(values, {Ipse.Extension.ProjectIdentity, :retained_binding})
+
+     type warning found at:
+     │
+ 739 │               held = Keyword.get(values, {Ipse.Extension.ProjectIdentity, :retained_binding})
+     │                              ~
+     │
+     └─ test/ipse/extension/managed_collection_call_session_test.exs:739:30: Ipse.Extension.ManagedCollectionCallSessionTest."test managed document publication reuses the held binding and enforces current at native switch"/1
+
+     warning: incompatible types given to Keyword.get/2:
+
+         Keyword.get(values, {Ipse.Extension.ProjectIdentity, :retained_binding})
+
+     given types:
+
+         (
+           dynamic(empty_list() or non_empty_list(term(), term())),
+           -{Ipse.Extension.ProjectIdentity, :retained_binding}-
+         )
+
+     but expected one of:
+
+         empty_list() or non_empty_list(term(), term()), atom()
+
+     where "values" was given the types:
+
+         # type: dynamic()
+         # from: test/ipse/extension/managed_collection_call_session_test.exs:738:22
+         values = elem(Process.info(peer, :dictionary), 1)
+
+         # type: dynamic(empty_list() or non_empty_list(term(), term()))
+         # from: test/ipse/extension/managed_collection_call_session_test.exs:739:30
+         Keyword.get(values, {Ipse.Extension.ProjectIdentity, :retained_binding})
+
+     type warning found at:
+     │
+ 739 │               held = Keyword.get(values, {Ipse.Extension.ProjectIdentity, :retained_binding})
+     │                              ~
+     │
+     └─ test/ipse/extension/managed_collection_call_session_test.exs:739:30: Ipse.Extension.ManagedCollectionCallSessionTest."test managed document publication reuses the held binding and enforces staged_deadline at native switch"/1
+
+Running ExUnit with seed: 46844, max_cases: 8
+Excluding tags: [:test]
+Including tags: [nested_document_use: :current]
+
+
+05:39:20.795 [error] Process #PID<0.275.0> raised an exception
+** (FunctionClauseError) no function clause matching in Keyword.get/3
+    (elixir 1.20.4) lib/keyword.ex:408: Keyword.get([{{Ipse.Extension.ProjectIdentity, :lock_held}, true}, {{Ipse.Session.Resources, :scope}, #PID<0.256.0>}, {{Ipse.Session.Resources, :active}, true}, {{Ipse.Extension.ProjectIdentity, :retained_binding}, %{owner: #PID<0.277.0>, state: %{"bindings" => %{"3ae2a82897fdf9c313edcb59e714ccc1cab58db9717ecaeb0adc85024c906658" => %{"admin" => nil, "metadata" => [], "project_id" => "3a6e19ae6100b4532dbb7ed4b1eb3f92d428f2d3366516413cb327f5731da151", "registration" => nil, "role" => "folder", "root" => %{"device" => "53", "inode" => "935927", "mode" => 16877, "path" => "/tmp/ipse-collection-sdk-39305c5c9260f86de99dced56be2b922/project", "uid" => 1000}, "worktree_id" => "f7415190d58403ba6c248a11db5714434b26789374ae6154fbcf740105025598"}}, "projects" => %{"3a6e19ae6100b4532dbb7ed4b1eb3f92d428f2d3366516413cb327f5731da151" => %{"common" => nil, "id" => "3a6e19ae6100b4532dbb7ed4b1eb3f92d428f2d3366516413cb327f5731da151", "primary" => %{"device" => "53", "inode" => "935927", "mode" => 16877, "path" => "/tmp/ipse-collection-sdk-39305c5c9260f86de99dced56be2b922/project", "uid" => 1000}, "scope" => "folder"}}, "revision" => 1, "version" => 1}, context: %{root: "/tmp/ipse-collection-sdk-39305c5c9260f86de99dced56be2b922/home/project-identities", lock: #Transaction.Capability<private>, cwd: "/tmp/ipse-collection-sdk-39305c5c9260f86de99dced56be2b922/project", uid: 1000}, binding: %{"binding_sha256" => "b805fcd19b6b3359967143d7aea552270f5f41c033b3c3845680d4413e103b8f", "common_directory" => nil, "primary_root" => "/tmp/ipse-collection-sdk-39305c5c9260f86de99dced56be2b922/project", "project_id" => "3a6e19ae6100b4532dbb7ed4b1eb3f92d428f2d3366516413cb327f5731da151", "root" => "/tmp/ipse-collection-sdk-39305c5c9260f86de99dced56be2b922/project", "scope" => "folder", "version" => 1, "worktree_id" => "f7415190d58403ba6c248a11db5714434b26789374ae6154fbcf740105025598"}}}, {{Ipse.Session.Resources, :effect_owner}, #PID<0.257.0>}, {{Ipse.Runner.Transaction, :controller}, #PID<0.280.0>}, {{Ipse.Extension.Consent, :lock_held}, #Transaction.Capability<private>}], {Ipse.Extension.ProjectIdentity, :retained_binding}, nil)
+    test/ipse/extension/managed_collection_call_session_test.exs:739: anonymous fn/2 in Ipse.Extension.ManagedCollectionCallSessionTest."test managed document publication reuses the held binding and enforces current at native switch"/1
+
+
+  1) test managed document publication reuses the held binding and enforces current at native switch (Ipse.Extension.ManagedCollectionCallSessionTest)
+     test/ipse/extension/managed_collection_call_session_test.exs:719
+     Assertion with == failed
+     code:  assert result["outcome"]["status"] ==
+              if :current == :current do
+                "ok"
+              else
+                "unknown"
+              end
+     left:  "failed"
+     right: "ok"
+     stacktrace:
+       test/ipse/extension/managed_collection_call_session_test.exs:818: (test)
+
+
+Finished in 1.1 seconds (0.00s async, 1.1s sync)
+
+Result: 0/1 passed, 77 excluded
+Failed: 1 test

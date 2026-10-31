@@ -1,0 +1,20 @@
+Running ExUnit with seed: 46853, max_cases: 1
+Excluding tags: [:test]
+Including tags: [:fused_value_session, :inline_collection_fallback, :collection_legacy_consumer]
+
+..
+
+  1) test actual SDK packets fall back to one part and resume a known bounded partial write (Ipse.KnowledgeCollectionAdapterSessionTest)
+     test/extensions/knowledge/collection_adapter_session_test.exs:234
+     Assertion with == failed
+     code:  assert native_status(c)["operations"] == 5
+     left:  4
+     right: 5
+     stacktrace:
+       test/extensions/knowledge/collection_adapter_session_test.exs:250: (test)
+
+
+Finished in 25.3 seconds (0.00s async, 25.3s sync)
+
+Result: 2/3 passed, 24 excluded
+Failed: 1 test

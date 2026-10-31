@@ -1,0 +1,23 @@
+** (ExUnit.AssertionError) 
+
+Expected truthy, got false
+code: assert CollectionStore.valid_outcome?(request, "ok", wrapped, id)
+arguments:
+
+         # 1
+         %{"op" => "collection.store", "request" => %{"op" => "snapshot"}, "scope" => "project"}
+
+         # 2
+         "ok"
+
+         # 3
+         %{"operation_id" => "00000000000000000000000000000001", "request_sha256" => "3247d650f8ae314e04395ba80631e1ad438c4a09698d53589d47fca53240d3fb", "result" => %{"document_store" => %{"inline_bytes" => 8192, "version" => 2, "write_parts" => 2}, "floor" => -1000, "floor_anchor" => nil, "generation" => 0, "project" => "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "version" => 3}, "version" => 1}
+
+         # 4
+         "00000000000000000000000000000001"
+
+
+    dev/knowledge/collection_recipe_model.ex:127: Ipse.CollectionRecipeModel.host/2
+    _build/shared-producer-guard-session-20261029/diagnose-journal.exs:40: anonymous fn/2 in :elixir_compiler_0.__FILE__/1
+    (elixir 1.20.4) lib/enum.ex:2622: Enum."-reduce/3-lists^foldl/2-0-"/3
+    _build/shared-producer-guard-session-20261029/diagnose-journal.exs:36: (file)

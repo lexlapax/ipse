@@ -55,6 +55,52 @@ defmodule Ipse.Extension.CollectionReadViewTest do
   defp pointer(c), do: Path.join([c.root, c.project, "root.json"])
   defp directory(c), do: Path.join(c.root, c.project)
 
+  test "snapshot borrows sealed metadata without a value and consumes its read budget", c do
+    manifest = JSON.sha256("synthetic manifest")
+
+    pointer = %{
+      "version" => 5,
+      "project" => c.project,
+      "generation" => 1,
+      "floor" => 0,
+      "floor_anchor" => nil,
+      "manifest" => manifest
+    }
+
+    bytes = Jason.encode!(pointer)
+
+    cache = %{
+      "version" => 2,
+      "collection_root" => c.root,
+      "project" => c.project,
+      "root_state" => "present",
+      "root_bytes" => bytes,
+      "root_sha256" => JSON.sha256(bytes),
+      "manifest_sha256" => manifest,
+      "summary" => pointer |> Map.delete("manifest") |> Map.put("version", 3),
+      "records" => %{
+        "ipse.observation" => %{
+          "key" => "ipse.observation",
+          "revision" => 1,
+          "sha256" => JSON.sha256("unread value"),
+          "bytes" => 2,
+          "operation_id" => String.duplicate("a", 32)
+        }
+      }
+    }
+
+    assert {:ok, view} = ReadView.begin()
+    assert :ok = ReadView.install(view, cache)
+    assert {:ok, token, borrowed} = ReadView.borrow(view, %{"op" => "snapshot"})
+    assert borrowed["selected"] == [] and borrowed["records"] == %{}
+    assert borrowed["root_sha256"] == JSON.sha256(bytes)
+    assert :sys.get_state(view.server).reads == 1
+    assert :sys.get_state(view.server).observations == 1
+    assert {:error, :collection_view_busy} = ReadView.borrow(view, %{"op" => "snapshot"})
+    assert :ok = ReadView.finish(view, token, :ok)
+    assert :ok = ReadView.close(view)
+  end
+
   test "root-bound batches and cursor pages read in caller order without durable operations", c do
     view = seed(c)
     before = files(c)
@@ -194,6 +240,16 @@ defmodule Ipse.Extension.CollectionReadViewTest do
 
     assert {:ok, %{"record" => %{"value" => %{"text" => "alpha"}}}} =
              C.execute(c.root, c.project, %{"op" => "get", "key" => "a"}, Ipse.Usage.id())
+  end
+
+  test "metadata-only snapshot refuses a root changed after view creation", c do
+    view = seed(c)
+
+    assert {:ok, %{"keys" => [], "records" => [], "witness" => %{"root_state" => "present"}}} =
+             C.view_read(view, %{"op" => "snapshot"})
+
+    assert {:ok, _} = commit(c, 1, [change("d", 0, %{"value" => 2})])
+    assert {:error, :collection_view_stale} = C.view_read(view, %{"op" => "snapshot"})
   end
 
   test "root replacement makes the entire view stale and explicit reopen observes it", c do

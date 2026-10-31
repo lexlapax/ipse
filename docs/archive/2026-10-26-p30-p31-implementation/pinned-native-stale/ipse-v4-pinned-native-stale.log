@@ -1,0 +1,29 @@
+Running ExUnit with seed: 96687, max_cases: 4
+Excluding tags: [:test]
+Including tags: [pinned_native_stale: true]
+
+
+
+  1) test pinned anchor and multipart reads refuse an intervening native commit (Ipse.CollectionPinnedNativeTest)
+     test/extensions/knowledge/collection_pinned_native_test.exs:10
+     match (=) failed
+     code:  assert {:ok, :verified} =
+              Collection.with_document_read(root, namespace, fn witness, read ->
+                assert witness["generation"] == 3
+
+                assert {:ok, %{"value" => %{"text" => text}, "revision" => 1}} =
+                         DocumentStage.read_value(read, key)
+
+                assert byte_size(text) == 7000
+                {:ok, :verified}
+              end)
+     left:  {:ok, :verified}
+     right: {:unknown, :collection_transaction_unconfirmed}
+     stacktrace:
+       test/extensions/knowledge/collection_pinned_native_test.exs:95: (test)
+
+
+Finished in 3.8 seconds (3.6s on load, 0.00s async, 0.2s sync)
+
+Result: 0/1 passed
+Failed: 1 test

@@ -1,0 +1,122 @@
+{
+  "project/priv/demo/conformance.json": {
+    "bytes": 287,
+    "sha256": "325a31abdb2d5c111f8fff1fe22663a0bdc576c4b818a820257cb3c98643f5af"
+  },
+  "project/priv/demo/extensions.exs": {
+    "bytes": 20881,
+    "sha256": "5cde301951bea7547a2393e429cc7acdd6ff4a031bf6efe6ad207b10adef70ea"
+  },
+  "project/priv/demo/mcp-http.exs": {
+    "bytes": 3956,
+    "sha256": "11af87e2e7cff788a05ef4c3acf6f1a78ac9603abafc332a6e08ecdb03babad5"
+  },
+  "project/priv/demo/mcp-notes.exs": {
+    "bytes": 2657,
+    "sha256": "2f9a480972e907e9feb3834522e1bbb0840dea1a2b06128418f690eccf5530b5"
+  },
+  "project/priv/demo/operator.json": {
+    "bytes": 386,
+    "sha256": "43422ca71f28f6840ec639b022f67f7bfe9c925eb579302f7189077c3d5ccf74"
+  },
+  "project/priv/demo/self-development.exs": {
+    "bytes": 3016,
+    "sha256": "7c54bdcd5a90baea3d6b3efae792e3efc59f1bfa51c7faa36e680ab57b602025"
+  },
+  "project/priv/demo/subagents.exs": {
+    "bytes": 11252,
+    "sha256": "cd26b385dc6ad30124e644b083d73ca0cb4db66875437ccecedf8338034aed1b"
+  },
+  "project/priv/demo/usage.exs": {
+    "bytes": 11652,
+    "sha256": "a486f8e6cc32edee6163564cd01bd35a221dc3c983e451f7b19041a37dca7f8e"
+  },
+  "project/priv/extension-bundles/catalog.json": {
+    "bytes": 197,
+    "sha256": "680d3b7ccd9ab5e3c94df5b123a9dfa9f5f00e7145ab64e285741cb8cc9ae600"
+  },
+  "project/priv/extension-bundles/knowledge/LICENSE": {
+    "bytes": 11391,
+    "sha256": "a4b4034ccfb966fafe103ca64dd85157e35edb90742a070cf5575184c673bb98"
+  },
+  "project/priv/extension-bundles/knowledge/ebin/Elixir.IpseKnowledge.Knowledge.Contracts.beam": {
+    "bytes": 12440,
+    "sha256": "88613f331171ce5cd8c543303eaa231d77c298722733b3ecdc193430906b1f02"
+  },
+  "project/priv/extension-bundles/knowledge/ebin/Elixir.IpseKnowledge.Knowledge.DecisionPolicy.Plan.beam": {
+    "bytes": 4356,
+    "sha256": "758b5a61d350f29dd31471d0be906e965cf624f279b90f6b00b5ce1a538907df"
+  },
+  "project/priv/extension-bundles/knowledge/ebin/Elixir.IpseKnowledge.Knowledge.DecisionPolicy.beam": {
+    "bytes": 45304,
+    "sha256": "5e500c93d9963fe684880795523ecc1c7c0ecaf7224f76170a0adad74694db01"
+  },
+  "project/priv/extension-bundles/knowledge/ebin/Elixir.IpseKnowledge.Knowledge.Records.beam": {
+    "bytes": 23696,
+    "sha256": "5e80367c4dc101185e6b720d9c6d183d5d03e94e60dbd86f7182f75eb6dde04e"
+  },
+  "project/priv/extension-bundles/knowledge/ebin/Elixir.IpseKnowledge.Knowledge.beam": {
+    "bytes": 23692,
+    "sha256": "ea6b95e0f5c0e6df48f4825a4dbc98bfe898889f1d53bec20aa1da977cef0e3b"
+  },
+  "project/priv/extension-bundles/knowledge/ebin/Elixir.IpseKnowledge.Notes.beam": {
+    "bytes": 34828,
+    "sha256": "03d270d043e3b65774865ca65bba0cb7b1382a217ef287fc7191a8da04014e03"
+  },
+  "project/priv/extension-bundles/knowledge/ebin/Elixir.IpseKnowledge.Profiles.beam": {
+    "bytes": 31456,
+    "sha256": "1e3e63bd3d6af507cc9735ed3f4fe346d8d9ae7889a862b42bd440cc01751c62"
+  },
+  "project/priv/extension-bundles/knowledge/extension.json": {
+    "bytes": 3743,
+    "sha256": "42f4fb454e9dad8ef0a55d6448b65911f2ed8daef44dbdc01fb37e6ac91cdd77"
+  },
+  "project/priv/extension-bundles/knowledge/operator.json": {
+    "bytes": 16771,
+    "sha256": "6add073e340583f2debc3a59475298ccb2359bc1aab7f77b65f704fbb9553549"
+  },
+  "project/priv/extensions/LICENSE": {
+    "bytes": 11391,
+    "sha256": "a4b4034ccfb966fafe103ca64dd85157e35edb90742a070cf5575184c673bb98"
+  },
+  "project/priv/ipse-pdf": {
+    "bytes": 1991664,
+    "sha256": "85cde09bd8783ef99427bcd07f5708b33b9e46138e58288d2790eed1544b6556"
+  },
+  "project/priv/ipse-runner": {
+    "bytes": 791040,
+    "sha256": "113df584e83b7749a11a72509092cb9c2b32d6fdc3fcf91b0181335f5f8c2550"
+  },
+  "project/priv/skills/project-orientation/SKILL.md": {
+    "bytes": 2435,
+    "sha256": "87788a544de9fe9ce3157cc81b0eaf312f6ca46644d11372f02aa87a154132a6"
+  },
+  "project/priv/skills/project-orientation/references/git-assessment.md": {
+    "bytes": 2294,
+    "sha256": "d05efa16e1c7a68ffb2ff8cd4c60a0fb211140216b088bddd589ca6b27d0a33f"
+  },
+  "project/priv/skills/research/SKILL.md": {
+    "bytes": 2948,
+    "sha256": "02af7ee5c5871d8e38f0a364373a83997ed07eb281564e69dce4e7919d603ec0"
+  },
+  "project/priv/skills/review/SKILL.md": {
+    "bytes": 531,
+    "sha256": "881df29cc993d5bb3ca3055131d772c92d2eba17f9ab31433b2e57df3dd2eea5"
+  },
+  "project/priv/skills/review/references/checklist.md": {
+    "bytes": 685,
+    "sha256": "a81541d44d0072e7f6f74dff18964af0bdcec54f65afff27cab89adccae732b4"
+  },
+  "project/priv/skills/self-development/SKILL.md": {
+    "bytes": 2718,
+    "sha256": "45689f5c72ee0dbf9b3eb34b9320b6afa5f68f676d958b7027f10e0d77ae488a"
+  },
+  "project/priv/skills/self-development/references/evidence-checklist.md": {
+    "bytes": 1670,
+    "sha256": "9d65be281e022b6175b53d01af6bcfff19d46f45972c77ecd88dd61a40a23793"
+  },
+  "project/priv/skills/self-development/references/review-request.md": {
+    "bytes": 1031,
+    "sha256": "bd1b2185c4941ca17306cdc7d6e312a8a9a43a9524501532d83fc1f239a41c44"
+  }
+}

@@ -1,0 +1,285 @@
+     warning: Ipse.Extension.Collection.ManagedRetention.expired_metadata?/4 is undefined or private
+     │
+ 152 │            ManagedRetention.expired_metadata?(
+     │                             ~
+     │
+     └─ lib/ipse/session/managed_lifecycle.ex:152:29: Ipse.Session.ManagedLifecycle.prepare_expiry/3
+
+     warning: Ipse.Extension.Collection.ManagedRetention.eligible_history_metadata?/2 is undefined or private. Did you mean:
+
+         * eligible_metadata?/4
+
+     │
+ 227 │          true <- ManagedRetention.eligible_history_metadata?(metadata, now),
+     │                                   ~
+     │
+     └─ lib/ipse/extension/collection/observed_read.ex:227:35: Ipse.Extension.Collection.ObservedRead.history_dependency/6
+
+     warning: Ipse.Extension.Collection.ManagedRetention.history_metadata/4 is undefined or private. Did you mean:
+
+         * history_gap?/2
+
+     │
+ 203 │             do: ManagedRetention.history_metadata(candidate, record["sha256"], anchor, live),
+     │                                  ~
+     │
+     └─ lib/ipse/extension/collection/normalizer_v3.ex:203:34: Ipse.Extension.Collection.NormalizerV3.expire_kind/4
+
+     warning: Ipse.Extension.Collection.ManagedRetention.expired_history_metadata?/2 is undefined or private
+     │
+ 191 │          true <- ManagedRetention.expired_history_metadata?(managed["metadata"], now),
+     │                                   ~
+     │
+     └─ lib/ipse/session/managed_lifecycle.ex:191:35: Ipse.Session.ManagedLifecycle.prepare_history_expiry/3
+
+     warning: Ipse.Extension.Collection.ManagedRetention.expired_history_metadata?/2 is undefined or private
+     │
+ 208 │             do: ManagedRetention.expired_history_metadata?(metadata, now),
+     │                                  ~
+     │
+     └─ lib/ipse/extension/collection/normalizer_v3.ex:208:34: Ipse.Extension.Collection.NormalizerV3.expire_kind/4
+
+     warning: Ipse.Extension.Collection.ManagedRetention.history_rule/2 is undefined or private. Did you mean:
+
+         * history_gap?/2
+
+     │
+ 250 │            ManagedRetention.history_rule(prepared["facts"]["metadata"], mode),
+     │                             ~
+     │
+     └─ lib/ipse/session/managed_lifecycle.ex:250:29: Ipse.Session.ManagedLifecycle.prepare_supersession/5
+
+     warning: Ipse.Extension.Collection.ManagedRetention.history_metadata/4 is undefined or private. Did you mean:
+
+         * history_gap?/2
+
+     │
+ 525 │            ManagedRetention.history_metadata(candidate, record["sha256"], anchor, live),
+     │                             ~
+     │
+     └─ lib/ipse/extension/collection/observed_read.ex:525:29: Ipse.Extension.Collection.ObservedRead.managed_history_view/5
+
+     warning: Ipse.Extension.Collection.ManagedRetention.history_deadline/3 is undefined or private. Did you mean:
+
+         * history_gap?/2
+
+     │
+ 251 │          {:ok, _} <- ManagedRetention.history_deadline(prepared["facts"]["metadata"], mode, now),
+     │                                       ~
+     │
+     └─ lib/ipse/session/managed_lifecycle.ex:251:39: Ipse.Session.ManagedLifecycle.prepare_supersession/5
+
+     warning: Ipse.Extension.Collection.ManagedRetention.expired_metadata?/4 is undefined or private
+     │
+ 209 │             else: ManagedRetention.expired_metadata?(candidate, record["sha256"], metadata, now)
+     │                                    ~
+     │
+     └─ lib/ipse/extension/collection/normalizer_v3.ex:209:36: Ipse.Extension.Collection.NormalizerV3.expire_kind/4
+
+     warning: Ipse.Extension.Collection.ManagedPages.compact_choice/2 is undefined or private
+     │
+ 221 │             {:ok, commitment} = ManagedPages.compact_choice(lineage, anchor["choice"])
+     │                                              ~
+     │
+     └─ lib/ipse/extension/collection/normalizer_v3.ex:221:46: Ipse.Extension.Collection.NormalizerV3.expire_kind/4
+
+     warning: Ipse.Extension.Collection.ManagedRetention.history_deadline/3 is undefined or private. Did you mean:
+
+         * history_gap?/2
+
+     │
+ 416 │         {:ok, _} = ManagedRetention.history_deadline(metadata, facts["mode"], now)
+     │                                     ~
+     │
+     └─ lib/ipse/extension/collection/normalizer_v3.ex:416:37: Ipse.Extension.Collection.NormalizerV3.supersede/3
+     └─ lib/ipse/extension/collection/normalizer_v3.ex:425:52: Ipse.Extension.Collection.NormalizerV3.supersede/3
+
+     warning: Ipse.Extension.Collection.ManagedRetention.history_rule/2 is undefined or private. Did you mean:
+
+         * history_gap?/2
+
+     │
+ 541 │     true = facts["history_rule"] === ManagedRetention.history_rule(metadata, facts["mode"])
+     │                                                       ~
+     │
+     └─ lib/ipse/extension/collection/normalizer_v3.ex:541:55: Ipse.Extension.Collection.NormalizerV3.supersession_facts!/9
+
+{:ok,
+ [Ipse.CLI.Knowledge.Management, Ipse.Extension.Collection.NormalizerV3,
+  Ipse.Extension.Collection.ObservedRead, Ipse.Extension.Consent, Ipse.Journal,
+  Ipse.Journal.Writer, Ipse.Session.ManagedLifecycle],
+ %{
+   compile_warnings: [],
+   runtime_warnings: [
+     %{
+       message: "Ipse.Extension.Collection.ManagedRetention.history_metadata/4 is undefined or private. Did you mean:\n\n    * history_gap?/2\n",
+       position: {203, 34},
+       file: "/home/lexlapax/projects/lexlapax/ipse/lib/ipse/extension/collection/normalizer_v3.ex",
+       group: true,
+       stacktrace: [
+         {Ipse.Extension.Collection.NormalizerV3, :expire_kind, 4,
+          [
+            file: ~c"lib/ipse/extension/collection/normalizer_v3.ex",
+            line: 203,
+            column: 34
+          ]}
+       ],
+       source: "/home/lexlapax/projects/lexlapax/ipse/lib/ipse/extension/collection/normalizer_v3.ex",
+       span: nil,
+       severity: :warning
+     },
+     %{
+       message: "Ipse.Extension.Collection.ManagedRetention.expired_history_metadata?/2 is undefined or private",
+       position: {208, 34},
+       file: "/home/lexlapax/projects/lexlapax/ipse/lib/ipse/extension/collection/normalizer_v3.ex",
+       group: true,
+       stacktrace: [
+         {Ipse.Extension.Collection.NormalizerV3, :expire_kind, 4,
+          [
+            file: ~c"lib/ipse/extension/collection/normalizer_v3.ex",
+            line: 208,
+            column: 34
+          ]}
+       ],
+       source: "/home/lexlapax/projects/lexlapax/ipse/lib/ipse/extension/collection/normalizer_v3.ex",
+       span: nil,
+       severity: :warning
+     },
+     %{
+       message: "Ipse.Extension.Collection.ManagedRetention.expired_metadata?/4 is undefined or private",
+       position: {209, 36},
+       file: "/home/lexlapax/projects/lexlapax/ipse/lib/ipse/extension/collection/normalizer_v3.ex",
+       group: true,
+       stacktrace: [
+         {Ipse.Extension.Collection.NormalizerV3, :expire_kind, 4,
+          [
+            file: ~c"lib/ipse/extension/collection/normalizer_v3.ex",
+            line: 209,
+            column: 36
+          ]}
+       ],
+       source: "/home/lexlapax/projects/lexlapax/ipse/lib/ipse/extension/collection/normalizer_v3.ex",
+       span: nil,
+       severity: :warning
+     },
+     %{
+       message: "Ipse.Extension.Collection.ManagedPages.compact_choice/2 is undefined or private",
+       position: {221, 46},
+       file: "/home/lexlapax/projects/lexlapax/ipse/lib/ipse/extension/collection/normalizer_v3.ex",
+       group: true,
+       stacktrace: [
+         {Ipse.Extension.Collection.NormalizerV3, :expire_kind, 4,
+          [
+            file: ~c"lib/ipse/extension/collection/normalizer_v3.ex",
+            line: 221,
+            column: 46
+          ]}
+       ],
+       source: "/home/lexlapax/projects/lexlapax/ipse/lib/ipse/extension/collection/normalizer_v3.ex",
+       span: nil,
+       severity: :warning
+     },
+     %{
+       message: "Ipse.Extension.Collection.ManagedRetention.history_deadline/3 is undefined or private. Did you mean:\n\n    * history_gap?/2\n",
+       position: {416, 37},
+       file: "/home/lexlapax/projects/lexlapax/ipse/lib/ipse/extension/collection/normalizer_v3.ex",
+       group: true,
+       stacktrace: [
+         {Ipse.Extension.Collection.NormalizerV3, :supersede, 3,
+          [
+            file: ~c"lib/ipse/extension/collection/normalizer_v3.ex",
+            line: 416,
+            column: 37
+          ]}
+       ],
+       source: "/home/lexlapax/projects/lexlapax/ipse/lib/ipse/extension/collection/normalizer_v3.ex",
+       span: nil,
+       severity: :warning
+     },
+     %{
+       message: "Ipse.Extension.Collection.ManagedRetention.history_deadline/3 is undefined or private. Did you mean:\n\n    * history_gap?/2\n",
+       position: {425, 52},
+       file: "/home/lexlapax/projects/lexlapax/ipse/lib/ipse/extension/collection/normalizer_v3.ex",
+       group: true,
+       stacktrace: [
+         {Ipse.Extension.Collection.NormalizerV3, :supersede, 3,
+          [
+            file: ~c"lib/ipse/extension/collection/normalizer_v3.ex",
+            line: 425,
+            column: 52
+          ]}
+       ],
+       source: "/home/lexlapax/projects/lexlapax/ipse/lib/ipse/extension/collection/normalizer_v3.ex",
+       span: nil,
+       severity: :warning
+     },
+     %{
+       message: "Ipse.Extension.Collection.ManagedRetention.history_rule/2 is undefined or private. Did you mean:\n\n    * history_gap?/2\n",
+       position: {541, 55},
+       file: "/home/lexlapax/projects/lexlapax/ipse/lib/ipse/extension/collection/normalizer_v3.ex",
+       group: true,
+       stacktrace: [
+         {Ipse.Extension.Collection.NormalizerV3, :supersession_facts!, 9,
+          [
+            file: ~c"lib/ipse/extension/collection/normalizer_v3.ex",
+            line: 541,
+            column: 55
+          ]}
+       ],
+       source: "/home/lexlapax/projects/lexlapax/ipse/lib/ipse/extension/collection/normalizer_v3.ex",
+       span: nil,
+       severity: :warning
+     },
+     %{
+       message: "Ipse.Extension.Collection.ManagedRetention.expired_metadata?/4 is undefined or private",
+       position: {152, 29},
+       file: "/home/lexlapax/projects/lexlapax/ipse/lib/ipse/session/managed_lifecycle.ex",
+       group: true,
+       stacktrace: [
+         {Ipse.Session.ManagedLifecycle, :prepare_expiry, 3,
+          [
+            file: ~c"lib/ipse/session/managed_lifecycle.ex",
+            line: 152,
+            column: 29
+          ]}
+       ],
+       source: "/home/lexlapax/projects/lexlapax/ipse/lib/ipse/session/managed_lifecycle.ex",
+       span: nil,
+       severity: :warning
+     },
+     %{
+       message: "Ipse.Extension.Collection.ManagedRetention.expired_history_metadata?/2 is undefined or private",
+       position: {191, 35},
+       file: "/home/lexlapax/projects/lexlapax/ipse/lib/ipse/session/managed_lifecycle.ex",
+       group: true,
+       stacktrace: [
+         {Ipse.Session.ManagedLifecycle, :prepare_history_expiry, 3,
+          [
+            file: ~c"lib/ipse/session/managed_lifecycle.ex",
+            line: 191,
+            column: 35
+          ]}
+       ],
+       source: "/home/lexlapax/projects/lexlapax/ipse/lib/ipse/session/managed_lifecycle.ex",
+       span: nil,
+       severity: :warning
+     },
+     %{
+       message: "Ipse.Extension.Collection.ManagedRetention.history_rule/2 is undefined or private. Did you mean:\n\n    * history_gap?/2\n",
+       position: {250, 29},
+       file: "/home/lexlapax/projects/lexlapax/ipse/lib/ipse/session/managed_lifecycle.ex",
+       group: true,
+       stacktrace: [
+         {Ipse.Session.ManagedLifecycle, :prepare_supersession, 5,
+          [
+            file: ~c"lib/ipse/session/managed_lifecycle.ex",
+            line: 250,
+            column: 29
+          ]}
+       ],
+       source: "/home/lexlapax/projects/lexlapax/ipse/lib/ipse/session/managed_lifecycle.ex",
+       ...
+     },
+     ...
+   ]
+ }}

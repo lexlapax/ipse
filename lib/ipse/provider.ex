@@ -43,7 +43,8 @@ defmodule Ipse.Provider do
     end
   end
 
-  defp response_contract(config) do
+  @doc false
+  def response_contract(config) do
     if not Map.has_key?(config, :extension_response_schema) or
          (Registry.supports?(config[:provider], :structured_output?) and
             is_map(config[:extension_response_schema]) and
@@ -164,7 +165,7 @@ defmodule Ipse.Provider do
     if @test_endpoints and is_binary(base) do
       uri = URI.parse(base)
 
-      uri.scheme == "http" and uri.host in ["127.0.0.1", "localhost", "::1"] and
+      uri.scheme in ["http", "https"] and uri.host in ["127.0.0.1", "localhost", "::1"] and
         is_nil(uri.userinfo) and is_nil(uri.fragment)
     else
       false

@@ -1,5 +1,6 @@
 defmodule Ipse.Extension.ModelJobsTest do
   use ExUnit.Case, async: false
+  import Ipse.Test.ResumeAssertions
   alias Ipse.Session
   alias Ipse.Journal
   alias Ipse.Usage
@@ -274,7 +275,7 @@ defmodule Ipse.Extension.ModelJobsTest do
     before = File.read!(Path.join(context.dir, id <> ".jsonl"))
     resumed = start(context, config, id)
     assert Session.info(resumed).phase == :idle
-    assert File.read!(Path.join(context.dir, id <> ".jsonl")) == before
+    assert_idle_resume_journal(Path.join(context.dir, id <> ".jsonl"), before, id)
     refute_receive {:helper_http, _, _}, 20
   end
 

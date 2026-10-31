@@ -1,0 +1,51 @@
+{
+  "purpose": "Frozen prior Source1/2 consumer compatibility only; never production implementation",
+  "sources": {
+    "documents.ex": {
+      "byte_count": 9033,
+      "sha256": "3e70e11aeeeda0d0b5b2832b6b593fdb9e2c3e24f87c52a01e9a4aecba45c102",
+      "source": "_build/document-store-adapter-20261028/sources/extensions/knowledge/src/documents.ex"
+    },
+    "documents/docx.ex": {
+      "byte_count": 43883,
+      "sha256": "f900c49dfade84f216404e1e10fdbd2c8a5bf880f392587719d5aa014c999dc2",
+      "source": "_build/document-store-adapter-20261028/sources/extensions/knowledge/src/documents/docx.ex"
+    },
+    "documents/parser_stage.ex": {
+      "byte_count": 14146,
+      "sha256": "aa88af1ad4c483c03dc98ed32ee643aac3d354f59535b7bb03af831d9215c502",
+      "source": "_build/document-store-adapter-20261028/sources/extensions/knowledge/src/documents/parser_stage.ex"
+    },
+    "documents/pdf.ex": {
+      "byte_count": 2864,
+      "sha256": "bf82ecc76b8cd80c9c14cca7a9704dadb47937991d357e0258ab5fbc6165bfb6",
+      "source": "_build/document-store-adapter-20261028/sources/extensions/knowledge/src/documents/pdf.ex"
+    },
+    "documents/zip.ex": {
+      "byte_count": 4401,
+      "sha256": "84ab06cca60b80e4fe9122fdc2b48512247217f0987f0cc2ee186d9d29bf7a61",
+      "source": "_build/document-store-adapter-20261028/sources/extensions/knowledge/src/documents/zip.ex"
+    },
+    "evidence.ex": {
+      "byte_count": 59669,
+      "sha256": "6a648c91cfae15323dae5e253594f5e9c0ac612ef5ae3359b0c40e52c3c51ad2",
+      "source": "_build/namespace-lexical-20261028/sources/extensions/knowledge/src/evidence.ex"
+    },
+    "fixture.exs": {
+      "byte_count": 9279,
+      "sha256": "310de91a06236bd9d18fc96bd5492f22b57c4e52c506bc1f2bc3655944a437d7",
+      "source": "_build/namespace-lexical-20261028/sources/test/support/collection_adapter_fixture.exs"
+    },
+    "store/collection.ex": {
+      "byte_count": 49885,
+      "sha256": "b67c97d19bb288df44af3bc1203b7701abcf5d53fb3002b1b092275b2fe59e70",
+      "source": "_build/namespace-lexical-20261028/sources/extensions/knowledge/src/store/collection.ex"
+    },
+    "store/collection/index.ex": {
+      "byte_count": 37012,
+      "sha256": "8bed3d4a3fb64f376b480358a8f95f222c3f037294f656134495c1899e6ab4e2",
+      "source": "_build/namespace-lexical-20261028/sources/extensions/knowledge/src/store/collection/index.ex"
+    }
+  },
+  "version": 1
+}

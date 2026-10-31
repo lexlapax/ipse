@@ -1,0 +1,145 @@
+    warning: redefining module Ipse.Runner.Transaction (current version loaded from _build/inline-document-store-20261029/_build/test/lib/ipse/ebin/Elixir.Ipse.Runner.Transaction.beam)
+    │
+  1 │ defmodule Ipse.Runner.Transaction do
+    │ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    │
+    └─ lib/ipse/runner/transaction.ex:1: Ipse.Runner.Transaction (module)
+
+    warning: redefining module Ipse.Runner (current version loaded from _build/inline-document-store-20261029/_build/test/lib/ipse/ebin/Elixir.Ipse.Runner.beam)
+    │
+  1 │ defmodule Ipse.Runner do
+    │ ~~~~~~~~~~~~~~~~~~~~~~~~
+    │
+    └─ _build/inline-document-store-20261029/project/lib/ipse/runner.ex:1: Ipse.Runner (module)
+
+    warning: redefining module Ipse.Runner.Transaction.Capability (current version loaded from _build/inline-document-store-20261029/_build/test/lib/ipse/ebin/Elixir.Ipse.Runner.Transaction.Capability.beam)
+    │
+ 33 │   defmodule Capability do
+    │   ~~~~~~~~~~~~~~~~~~~~~~~
+    │
+    └─ lib/ipse/runner/transaction.ex:33: Ipse.Runner.Transaction.Capability (module)
+
+    warning: redefining module Inspect.Ipse.Runner.Transaction.Capability (current version loaded from _build/inline-document-store-20261029/_build/test/lib/ipse/ebin/Elixir.Inspect.Ipse.Runner.Transaction.Capability.beam)
+    │
+ 38 │     defimpl Inspect do
+    │     ~~~~~~~~~~~~~~~~~~
+    │
+    └─ lib/ipse/runner/transaction.ex:38: Inspect.Ipse.Runner.Transaction.Capability (module)
+
+     warning: redefining module Ipse.Runner.Transaction.Controller (current version loaded from _build/inline-document-store-20261029/_build/test/lib/ipse/ebin/Elixir.Ipse.Runner.Transaction.Controller.beam)
+     │
+ 223 │   defmodule Controller do
+     │   ~~~~~~~~~~~~~~~~~~~~~~~
+     │
+     └─ lib/ipse/runner/transaction.ex:223: Ipse.Runner.Transaction.Controller (module)
+
+    warning: redefining module Ipse.Extension.Collection (current version loaded from _build/inline-document-store-20261029/_build/test/lib/ipse/ebin/Elixir.Ipse.Extension.Collection.beam)
+    │
+  1 │ defmodule Ipse.Extension.Collection do
+    │ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    │
+    └─ lib/ipse/extension/collection.ex:1: Ipse.Extension.Collection (module)
+
+    warning: redefining module Ipse.Extension.Collection.DocumentStage (current version loaded from _build/inline-document-store-20261029/_build/test/lib/ipse/ebin/Elixir.Ipse.Extension.Collection.DocumentStage.beam)
+    │
+  1 │ defmodule Ipse.Extension.Collection.DocumentStage do
+    │ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    │
+    └─ lib/ipse/extension/collection/document_stage.ex:1: Ipse.Extension.Collection.DocumentStage (module)
+
+{:ok,
+ [Inspect.Ipse.Runner.Transaction.Capability, Ipse.Extension.Collection,
+  Ipse.Extension.Collection.DocumentStage, Ipse.Runner, Ipse.Runner.Transaction,
+  Ipse.Runner.Transaction.Capability, Ipse.Runner.Transaction.Controller],
+ %{
+   compile_warnings: [
+     %{
+       message: "redefining module Ipse.Runner.Transaction (current version loaded from _build/inline-document-store-20261029/_build/test/lib/ipse/ebin/Elixir.Ipse.Runner.Transaction.beam)",
+       position: 1,
+       file: "/home/lexlapax/projects/lexlapax/ipse/lib/ipse/runner/transaction.ex",
+       stacktrace: [
+         {Ipse.Runner.Transaction, :__MODULE__, 0,
+          [file: "lib/ipse/runner/transaction.ex", line: 1]}
+       ],
+       source: "/home/lexlapax/projects/lexlapax/ipse/lib/ipse/runner/transaction.ex",
+       span: nil,
+       severity: :warning
+     },
+     %{
+       message: "redefining module Ipse.Runner (current version loaded from _build/inline-document-store-20261029/_build/test/lib/ipse/ebin/Elixir.Ipse.Runner.beam)",
+       position: 1,
+       file: "/home/lexlapax/projects/lexlapax/ipse/_build/inline-document-store-20261029/project/lib/ipse/runner.ex",
+       stacktrace: [
+         {Ipse.Runner, :__MODULE__, 0,
+          [
+            file: "_build/inline-document-store-20261029/project/lib/ipse/runner.ex",
+            line: 1
+          ]}
+       ],
+       source: "/home/lexlapax/projects/lexlapax/ipse/_build/inline-document-store-20261029/project/lib/ipse/runner.ex",
+       span: nil,
+       severity: :warning
+     },
+     %{
+       message: "redefining module Ipse.Runner.Transaction.Capability (current version loaded from _build/inline-document-store-20261029/_build/test/lib/ipse/ebin/Elixir.Ipse.Runner.Transaction.Capability.beam)",
+       position: 33,
+       file: "/home/lexlapax/projects/lexlapax/ipse/lib/ipse/runner/transaction.ex",
+       stacktrace: [
+         {Ipse.Runner.Transaction.Capability, :__MODULE__, 0,
+          [file: "lib/ipse/runner/transaction.ex", line: 33]}
+       ],
+       source: "/home/lexlapax/projects/lexlapax/ipse/lib/ipse/runner/transaction.ex",
+       span: nil,
+       severity: :warning
+     },
+     %{
+       message: "redefining module Inspect.Ipse.Runner.Transaction.Capability (current version loaded from _build/inline-document-store-20261029/_build/test/lib/ipse/ebin/Elixir.Inspect.Ipse.Runner.Transaction.Capability.beam)",
+       position: 38,
+       file: "/home/lexlapax/projects/lexlapax/ipse/lib/ipse/runner/transaction.ex",
+       stacktrace: [
+         {Inspect.Ipse.Runner.Transaction.Capability, :__MODULE__, 0,
+          [file: "lib/ipse/runner/transaction.ex", line: 38]}
+       ],
+       source: "/home/lexlapax/projects/lexlapax/ipse/lib/ipse/runner/transaction.ex",
+       span: nil,
+       severity: :warning
+     },
+     %{
+       message: "redefining module Ipse.Runner.Transaction.Controller (current version loaded from _build/inline-document-store-20261029/_build/test/lib/ipse/ebin/Elixir.Ipse.Runner.Transaction.Controller.beam)",
+       position: 223,
+       file: "/home/lexlapax/projects/lexlapax/ipse/lib/ipse/runner/transaction.ex",
+       stacktrace: [
+         {Ipse.Runner.Transaction.Controller, :__MODULE__, 0,
+          [file: "lib/ipse/runner/transaction.ex", line: 223]}
+       ],
+       source: "/home/lexlapax/projects/lexlapax/ipse/lib/ipse/runner/transaction.ex",
+       span: nil,
+       severity: :warning
+     },
+     %{
+       message: "redefining module Ipse.Extension.Collection (current version loaded from _build/inline-document-store-20261029/_build/test/lib/ipse/ebin/Elixir.Ipse.Extension.Collection.beam)",
+       position: 1,
+       file: "/home/lexlapax/projects/lexlapax/ipse/lib/ipse/extension/collection.ex",
+       stacktrace: [
+         {Ipse.Extension.Collection, :__MODULE__, 0,
+          [file: "lib/ipse/extension/collection.ex", line: 1]}
+       ],
+       source: "/home/lexlapax/projects/lexlapax/ipse/lib/ipse/extension/collection.ex",
+       span: nil,
+       severity: :warning
+     },
+     %{
+       message: "redefining module Ipse.Extension.Collection.DocumentStage (current version loaded from _build/inline-document-store-20261029/_build/test/lib/ipse/ebin/Elixir.Ipse.Extension.Collection.DocumentStage.beam)",
+       position: 1,
+       file: "/home/lexlapax/projects/lexlapax/ipse/lib/ipse/extension/collection/document_stage.ex",
+       stacktrace: [
+         {Ipse.Extension.Collection.DocumentStage, :__MODULE__, 0,
+          [file: "lib/ipse/extension/collection/document_stage.ex", line: 1]}
+       ],
+       source: "/home/lexlapax/projects/lexlapax/ipse/lib/ipse/extension/collection/document_stage.ex",
+       span: nil,
+       severity: :warning
+     }
+   ],
+   runtime_warnings: []
+ }}

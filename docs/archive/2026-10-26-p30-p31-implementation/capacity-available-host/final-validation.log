@@ -1,0 +1,13 @@
+ACTUAL_4000_PUBLICATIONS_AND_NATIVE_RECEIPTS_VERIFIED
+%{
+  "actual_native_receipts_checked" => 4000,
+  "actual_publications" => 4000,
+  "max_accounted_publication_peak_bytes" => 42651648,
+  "publication_readback_ms" => %{
+    "maximum" => 2656.566,
+    "p50" => 585.215,
+    "p95" => 974.755,
+    "sum" => 2372253.7119999975
+  },
+  "root_sha256" => "fc992d56a59cdf1ff7a12ef12e988f41113574f9ada6cc09dc8d5e0bfe863b9a"
+}

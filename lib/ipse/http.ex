@@ -19,7 +19,48 @@ defmodule Ipse.HTTP do
 
   @doc false
   def bounded_request(request, limit, timeout \\ 15_000)
+
+  def bounded_request(request, limit, timeout),
+    do: bounded_request(request, limit, timeout, nil)
+
+  def bounded_request(request, limit, timeout, inference_kind)
       when is_integer(limit) and limit in 1..8_388_608 and is_integer(timeout) and timeout > 0 do
+    if inference_kind != nil and Ipse.Provider.EgressGate.owned?(),
+      do: owned_bounded_request(request, limit, timeout, inference_kind),
+      else: finch_bounded_request(request, limit, timeout, inference_kind)
+  end
+
+  defp owned_bounded_request(request, limit, timeout, kind) do
+    target = request_url(request)
+    body = IO.iodata_to_binary(request.body)
+    initial = %{status: nil, body: [], bytes: 0, error: nil}
+
+    result =
+      Ipse.Provider.MintTransport.stream_witnessed(
+        target,
+        request.headers,
+        body,
+        timeout,
+        limit,
+        initial,
+        fn
+          {:status, _, status}, acc -> bounded_event({:status, status}, acc, limit)
+          {:headers, _, headers}, acc -> bounded_event({:headers, headers}, acc, limit)
+          {:data, _, bytes}, acc -> bounded_event({:data, bytes}, acc, limit)
+        end,
+        fn send -> Ipse.Provider.EgressGate.send(kind, target, body, send) end
+      )
+
+    case result do
+      {:ok, %{error: nil} = acc} ->
+        {:ok, acc.status, acc.body |> Enum.reverse() |> IO.iodata_to_binary()}
+
+      _ ->
+        {:error, :inference_egress_refused}
+    end
+  end
+
+  defp finch_bounded_request(request, limit, timeout, inference_kind) do
     uri = %URI{scheme: to_string(request.scheme), host: request.host, port: request.port}
 
     options =
@@ -34,23 +75,32 @@ defmodule Ipse.HTTP do
         initial = %{status: nil, body: [], bytes: 0, error: nil}
 
         result =
-          Finch.stream_while(
-            request,
-            finch,
-            initial,
-            fn event, acc ->
-              cond do
-                System.monotonic_time(:millisecond) >= deadline ->
-                  {:halt, %{acc | error: :timeout}}
+          if is_nil(inference_kind) or
+               Ipse.Provider.EgressGate.before_dispatch(
+                 inference_kind,
+                 target,
+                 IO.iodata_to_binary(request.body)
+               ) == :ok do
+            Finch.stream_while(
+              request,
+              finch,
+              initial,
+              fn event, acc ->
+                cond do
+                  System.monotonic_time(:millisecond) >= deadline ->
+                    {:halt, %{acc | error: :timeout}}
 
-                true ->
-                  bounded_event(event, acc, limit)
-              end
-            end,
-            receive_timeout: timeout,
-            request_timeout: timeout,
-            pool_timeout: min(timeout, 2000)
-          )
+                  true ->
+                    bounded_event(event, acc, limit)
+                end
+              end,
+              receive_timeout: timeout,
+              request_timeout: timeout,
+              pool_timeout: min(timeout, 2000)
+            )
+          else
+            {:error, :inference_egress_refused}
+          end
 
         case result do
           {:ok, %{error: nil} = acc} ->
@@ -59,6 +109,9 @@ defmodule Ipse.HTTP do
 
           {:ok, %{error: error}} ->
             {:error, error}
+
+          {:error, :inference_egress_refused} ->
+            {:error, :inference_egress_refused}
 
           _ ->
             {:error, :connection_failed}

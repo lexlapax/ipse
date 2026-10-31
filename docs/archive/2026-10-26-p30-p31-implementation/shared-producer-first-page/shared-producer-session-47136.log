@@ -1,0 +1,27 @@
+    warning: unused alias JSON
+    │
+  3 │   alias Ipse.{JSON, Journal, Session, Usage}
+    │   ~
+    │
+    └─ test/extensions/knowledge/shared_producer_session_test.exs:3:3
+
+Running ExUnit with seed: 643601, max_cases: 8
+Excluding tags: [:native_sandbox, :macos_sandbox, :macos_filesystem, :memory_scope]
+
+
+
+  1) test public source and shared first page use actual registered inference receipts and full approvals (Ipse.SharedProducerSessionTest)
+     test/extensions/knowledge/shared_producer_session_test.exs:11
+     ** (MatchError) no match of right hand side value:
+
+         {:error, :eperm}
+
+     code: {:ok, listener} = :gen_tcp.listen(0, [:binary, active: false, ip: {127, 0, 0, 1}])
+     stacktrace:
+       test/extensions/knowledge/shared_producer_session_test.exs:19: (test)
+
+
+Finished in 0.3 seconds (0.3s on load, 0.00s async, 0.00s sync)
+
+Result: 0/1 passed
+Failed: 1 test

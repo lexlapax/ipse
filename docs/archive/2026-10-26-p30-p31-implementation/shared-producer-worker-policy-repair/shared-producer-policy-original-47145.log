@@ -1,0 +1,67 @@
+Running ExUnit with seed: 138154, max_cases: 4
+Excluding tags: [:test]
+Including tags: [worker_policy: true]
+
+%{
+  outcome: {:done,
+   {:ok,
+    %{
+      "continuation" => nil,
+      "coverage" => %{
+        "effects_used" => 12,
+        "group_complete" => false,
+        "model_receipt_provenance" => false,
+        "reads_used" => 69,
+        "recipe" => "ipse.evidence.shared_producer.first_page.v1",
+        "retry_available" => false,
+        "selected_changed" => false,
+        "validated_inference_receipt_flow" => true
+      },
+      "page" => %{
+        "byte_count" => 45064,
+        "key" => "genvec.notes.c28eae1b21f08b4ff5f1c19a786513fc42a8c2eb00b7a69049d3dcf2e79958bf",
+        "sha256" => "c28eae1b21f08b4ff5f1c19a786513fc42a8c2eb00b7a69049d3dcf2e79958bf"
+      },
+      "status" => "page_ready"
+    }}},
+  inference_calls: 4,
+  source_policy_case: [expires_at_ms: 1793313812144]
+}
+
+
+  1) test expired historical and future-observed sources refuse before claim and inference (Ipse.SharedProducerTest)
+     test/support/shared_producer_fixture.exs:384
+     match (match?) failed
+     code:  assert match?({:done, {:error, :shared_producer_ineligible, _}}, outcome)
+     left:  {:done, {:error, :shared_producer_ineligible, _}}
+     right: {:done,
+             {:ok,
+              %{
+                "continuation" => nil,
+                "coverage" => %{
+                  "effects_used" => 12,
+                  "group_complete" => false,
+                  "model_receipt_provenance" => false,
+                  "reads_used" => 69,
+                  "recipe" => "ipse.evidence.shared_producer.first_page.v1",
+                  "retry_available" => false,
+                  "selected_changed" => false,
+                  "validated_inference_receipt_flow" => true
+                },
+                "page" => %{
+                  "byte_count" => 45064,
+                  "key" => "genvec.notes.c28eae1b21f08b4ff5f1c19a786513fc42a8c2eb00b7a69049d3dcf2e79958bf",
+                  "sha256" => "c28eae1b21f08b4ff5f1c19a786513fc42a8c2eb00b7a69049d3dcf2e79958bf"
+                },
+                "status" => "page_ready"
+              }}}
+     stacktrace:
+       test/support/shared_producer_fixture.exs:391: anonymous fn/1 in Ipse.SharedProducerTest."test expired historical and future-observed sources refuse before claim and inference"/1
+       (elixir 1.20.4) lib/enum.ex:1725: Enum."-map/2-lists^map/1-1-"/2
+       test/support/shared_producer_fixture.exs:387: (test)
+
+
+Finished in 0.5 seconds (0.3s on load, 0.00s async, 0.1s sync)
+
+Result: 0/1 passed, 5 excluded
+Failed: 1 test

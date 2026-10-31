@@ -1,0 +1,100 @@
+{
+  "compiled_feature_beams": {
+    "Elixir.IpseKnowledge.Documents.Docx.Styles.beam": {
+      "byte_count": 45604,
+      "sha256": "423001f1e0dbfb323a5e6fa2c0ddb17a4b9321ad56604e4e826f172c60fbdf01"
+    },
+    "Elixir.IpseKnowledge.Documents.Docx.beam": {
+      "byte_count": 64940,
+      "sha256": "41856b49adc47ab14fde156197fd6f5246b8cc5bc5d9f36659296f1c8542361d"
+    },
+    "Elixir.IpseKnowledge.Documents.ParserStage.beam": {
+      "byte_count": 30832,
+      "sha256": "7d14517e03606e92f8b7013e2258ead2bbbdaec5300a09e6bda928b18ef360ef"
+    },
+    "Elixir.IpseKnowledge.Documents.Pdf.beam": {
+      "byte_count": 7960,
+      "sha256": "59f803bac764905f99133695bd83700cec947f7566747bf42f693160124ffebd"
+    },
+    "Elixir.IpseKnowledge.Documents.Zip.beam": {
+      "byte_count": 11784,
+      "sha256": "ffffd079b38369e347909b14cfcfd6fca1fbfe220605a7d288d562c3a2a3125c"
+    },
+    "Elixir.IpseKnowledge.Documents.beam": {
+      "byte_count": 24180,
+      "sha256": "16b485bba5b7f9dd33fd990c4ddac144be3e8cbe3646971de525078564547fc4"
+    },
+    "Elixir.IpseKnowledge.Evidence.beam": {
+      "byte_count": 167804,
+      "sha256": "8b257074bbce484965c8ecf5d0363adc77a3bd8aefc38de9d0aac0286bd2ad6c"
+    },
+    "Elixir.IpseKnowledge.Store.Collection.Directory.beam": {
+      "byte_count": 46984,
+      "sha256": "2a4c27159bda37cfc0191da228be2784963d5c7583cfc33d767c5065846ce1cc"
+    },
+    "Elixir.IpseKnowledge.Store.Collection.Generation.beam": {
+      "byte_count": 37148,
+      "sha256": "3d03fedef34f8048e61a3b7e7aeb3ddbe01d7b57a41d0f0ba0b6691391d4f461"
+    },
+    "Elixir.IpseKnowledge.Store.Collection.Index.beam": {
+      "byte_count": 104484,
+      "sha256": "f15151f1a31c0fb2975a57d673cbf042afa452c0fdb11b5e0339e1383e4a6c47"
+    },
+    "Elixir.IpseKnowledge.Store.Collection.Job.beam": {
+      "byte_count": 49220,
+      "sha256": "54321d3090c919a68e0c01c5ded58991d40e74c24eb2600111a79be7ade6cd67"
+    },
+    "Elixir.IpseKnowledge.Store.Collection.Projection.beam": {
+      "byte_count": 66968,
+      "sha256": "2fb9c3ad2b5b097ecd54543f917345e34947740bd9b815bce435397b78b1fb07"
+    },
+    "Elixir.IpseKnowledge.Store.Collection.Selected.beam": {
+      "byte_count": 21732,
+      "sha256": "090043eb257db6657e098cf466a95108ce4a07eb04f9009d64c5f51445ce5b93"
+    },
+    "Elixir.IpseKnowledge.Store.Collection.beam": {
+      "byte_count": 141348,
+      "sha256": "6d07c2517ddebc16725fdc648104d514e14da7761468df3aa54cb179cf6a3976"
+    }
+  },
+  "compiled_feature_path": "/home/lexlapax/projects/lexlapax/ipse/_build/shared-projection-codec-20261029/tested-job-prerequisite-repair-beams",
+  "created_at": "2026-10-29T17:19:03.500664Z",
+  "fixture_factory": "test/support/collection_directory.exs",
+  "fixture_factory_sha256": "63fb03a3c467caf69886b246c05e04df66a26de33c38c329d10ea6745cb88f55",
+  "logs": {
+    "job-prerequisite-repair-46942.log": {
+      "byte_count": 410,
+      "sha256": "a2b26d4ff39e720c0df820d5cd1b66945a8d48259f1edb977e9905d4ed68ed64"
+    }
+  },
+  "model_calls": 0,
+  "native_operations": 0,
+  "previous_manifest": "docs/archive/2026-10-26-p30-p31-implementation/shared-generation-controller-read/manifest.json",
+  "previous_manifest_sha256": "e24c54dba3017d8d278715e984660b0d0d9dc9bd6db306baa637196572df733a",
+  "qualification": "pure private append checkpoint prerequisites and pinned commit protocol only; no authority escalation/public exploit or native protected publication demonstrated; streaming/final selection/GC/migration/full profile remain open",
+  "review_counterexample": "docs/archive/2026-10-26-p30-p31-implementation/shared-controller-read-review/review-skipped-immutables.exs",
+  "review_counterexample_log": "docs/archive/2026-10-26-p30-p31-implementation/shared-controller-read-review/review-skipped-immutables.log",
+  "review_counterexample_log_sha256": "22fc6238225fcb15398062636885d8e6659d1c6d0cbd5c01c420d8904950667f",
+  "review_counterexample_sha256": "e6a1b13f2c3381f9005051348306720b335b73f0effb3be8225de585b1206958",
+  "source_snapshot": "/home/lexlapax/projects/lexlapax/ipse/_build/shared-projection-codec-20261029/frozen-job-prerequisite-repair-sources",
+  "sources": {
+    "extensions/knowledge/src/store/collection.ex": {
+      "byte_count": 59502,
+      "sha256": "2811dc2be11955495b43e853371385f3148d3052485bac5ae5fc4969174ff599"
+    },
+    "extensions/knowledge/src/store/collection/job.ex": {
+      "byte_count": 18596,
+      "sha256": "5a5bcaf3627b88ad807cc85bb8baf1cad0ece3441f1c9a75bc7092b2fbe8e2e8"
+    },
+    "test/extensions/knowledge/collection_directory_test.exs": {
+      "byte_count": 2568,
+      "sha256": "7dbb92e7b0b279a61d5bc6a44eaa509af40a4c4ddc38640b73a8ee958d1bc9e2"
+    },
+    "test/support/generation_job_prerequisites.exs": {
+      "byte_count": 6922,
+      "sha256": "59ec0fdcb6f273efffc65a8baef8eeee8a96ccf0f88ee93f5b2efaebc77eb024"
+    }
+  },
+  "strict_gates_unchanged": true,
+  "version": 1
+}

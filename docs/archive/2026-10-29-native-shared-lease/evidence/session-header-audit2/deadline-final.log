@@ -1,0 +1,14 @@
+Running ExUnit with seed: 254867, max_cases: 8
+Excluding tags: [:native_sandbox, :macos_sandbox, :macos_filesystem, :memory_scope]
+
+.Failed to write log message to stdout, trying stderr
+
+07:56:52.845 [error] Writer crashed (:epipe)
+** (ErlangError) Erlang error: :terminated
+    (elixir 1.20.4) lib/io.ex:308: IO.binwrite/2
+    dev/fixtures/session_header_slow_peer.exs:16: anonymous fn/3 in :elixir_compiler_0.__FILE__/1
+    dev/fixtures/session_header_slow_peer.exs:29: (file)
+.
+Finished in 1.2 seconds (0.09s on load, 0.00s async, 1.1s sync)
+
+Result: 2 passed

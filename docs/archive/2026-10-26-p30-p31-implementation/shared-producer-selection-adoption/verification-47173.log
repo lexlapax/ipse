@@ -1,0 +1,26 @@
+{
+  "status": "all exact rows verified",
+  "source": 12,
+  "manifest_sha256": "df7c466ab04b233f7939a112487a9e46c8645c93955bb038502c97760803030f",
+  "checked_rows": 785,
+  "logs": 15,
+  "reports": 6,
+  "artifact_files": 78,
+  "runtime_regular": 668,
+  "symlinks": [
+    {
+      "mode": 41471,
+      "path": "_build/document-held-read-sol-20261029/_build/dev/lib/ipse/priv",
+      "target": "../../../../priv",
+      "type": "symlink",
+      "uid": 1000
+    },
+    {
+      "mode": 41471,
+      "path": "_build/document-held-read-sol-20261029/_build/dev/lib/telemetry/src",
+      "target": "../../../../deps/telemetry/src",
+      "type": "symlink",
+      "uid": 1000
+    }
+  ]
+}

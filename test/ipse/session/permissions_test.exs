@@ -269,4 +269,33 @@ defmodule Ipse.Session.PermissionsTest do
 
     assert {:error, _} = Permissions.grant(full, "shell", args, :session_command)
   end
+
+  test "restricted modes neither issue nor apply session mutation grants" do
+    config = %{approval: :ask}
+    args = %{"command" => "printf safe"}
+    normal = %{config: config, cwd: "/workspace", permissions: Permissions.new(config)}
+    {:ok, grants, _} = Permissions.grant(normal, "shell", args, :session_command)
+
+    {:ok, grants, _} =
+      Permissions.grant(%{normal | permissions: grants}, "write", %{}, :session_edits)
+
+    for restricted <- [
+          %{execution_mode: :planning},
+          %{execution_mode: :draft},
+          %{execution_mode: :read_only},
+          %{enclosing_mode: :planning},
+          %{enclosing_mode: :read_only},
+          %{execution_mode: :unknown}
+        ] do
+      state = %{normal | config: Map.merge(config, restricted), permissions: grants}
+      refute Permissions.source(state, "write", %{})
+      refute Permissions.source(state, "shell", args)
+      assert {:error, :grant_unavailable} = Permissions.grant(state, "write", %{}, :session_edits)
+
+      assert {:error, :grant_unavailable} =
+               Permissions.grant(state, "shell", args, :session_command)
+    end
+
+    assert Permissions.source(%{normal | permissions: grants}, "shell", args) == "exact_command"
+  end
 end

@@ -7,9 +7,11 @@ defmodule Ipse.Extension.Collection.Normalizer do
   rechecked, but this module attests neither its caller nor operator acceptance.
   Automatic publication supports one new literal or pending value. Correction,
   typed acceptance and operator override creation require separate host journeys.
+  Proposals under `pending.` use the bounded Collection summary under the same
+  lock; this does not constrain other prefixes or unmanaged publication paths.
   """
   alias Ipse.{JSON, Extension.CollectionPolicy, Extension.ManagedRecipe}
-  alias Ipse.Extension.Collection.Migration
+  alias Ipse.Extension.Collection.{Migration, PendingCapacity}
   @options ~w(request recipe constraints verified_sources policy_sha256 now_ms)a
   @prefix "host.validity."
   @source_fields ~w(session_id occurrence_id version_id kind origin content_sha256 receipt_sha256)
@@ -41,6 +43,7 @@ defmodule Ipse.Extension.Collection.Normalizer do
          :ok <- CollectionPolicy.check(request, constraints, sources),
          {:ok, candidate} <-
            ManagedRecipe.extract(recipe, change["key"], change["value"], sources),
+         :ok <- PendingCapacity.check(candidate, change["value"], read),
          {:ok, nil} <- read.(recipe["override_prefix"] <> candidate["lineage"]),
          {:ok, anchor_bucket} <- bucket(read, :anchor, candidate["lineage"]),
          {:ok, row} <- anchor_row(anchor_bucket, candidate["lineage"]),
@@ -280,7 +283,7 @@ defmodule Ipse.Extension.Collection.Normalizer do
       Enum.all?(value["sources"], &source?/1) and
       (value["eligibility"] != "current" or
          Enum.all?(value["sources"], fn source ->
-           source["origin"] in ~w(interactive_operator native_operator_answer typed_host_outcome) and
+           source["origin"] in ~w(interactive_operator native_operator_answer native_operator_assertion typed_host_outcome) and
              (source["origin"] != "typed_host_outcome" or value["category"] == "ordinary")
          end))
   rescue
@@ -293,18 +296,30 @@ defmodule Ipse.Extension.Collection.Normalizer do
         is_binary(source[key]) and Regex.match?(~r/\A[0-9a-f]{32}\z/, source[key])
       end) and
       Enum.all?(~w(content_sha256 receipt_sha256), &JSON.sha256?(source[&1])) and
-      source["kind"] in ~w(input.original input.operator_answer answer.original tool.outcome) and
-      source["origin"] in ~w(interactive_operator native_operator_answer typed_host_outcome unattended_input assistant_proposal) and
+      source["kind"] in ~w(input.original input.operator_answer answer.original tool.outcome input.assertion.ordinary input.assertion.preference input.assertion.current) and
+      source["origin"] in ~w(interactive_operator native_operator_answer native_operator_assertion typed_host_outcome unattended_input assistant_proposal) and
       source_kind?(source)
   end
 
   defp source_kind?(%{"origin" => origin, "kind" => kind}) do
     case origin do
-      "interactive_operator" -> kind == "input.original"
-      "unattended_input" -> kind == "input.original"
-      "native_operator_answer" -> kind == "input.operator_answer"
-      "assistant_proposal" -> kind == "answer.original"
-      "typed_host_outcome" -> kind == "tool.outcome"
+      "interactive_operator" ->
+        kind == "input.original"
+
+      "unattended_input" ->
+        kind == "input.original"
+
+      "native_operator_answer" ->
+        kind == "input.operator_answer"
+
+      "native_operator_assertion" ->
+        kind in ~w(input.assertion.ordinary input.assertion.preference input.assertion.current)
+
+      "assistant_proposal" ->
+        kind == "answer.original"
+
+      "typed_host_outcome" ->
+        kind == "tool.outcome"
     end
   end
 

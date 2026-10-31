@@ -245,6 +245,18 @@ defmodule IpseKnowledge.Store do
     }
 
   defp io(state, operation, args, stage) do
+    args =
+      if state.profile["kind"] == "state" and operation in [:put_immutable_many, :cas_root] do
+        draft =
+          get_in(state, [:expected, "value", "draft"]) || get_in(args, ["next_root", "draft"])
+
+        if is_map(draft) and state.operation not in [:abort, :projection_abort, :collect],
+          do: Map.put(args, "write_before_ms", draft["expires_at_ms"]),
+          else: args
+      else
+        args
+      end
+
     bridge(adapter(state.profile).start(state.profile, operation, args), %{state | stage: stage})
   end
 
@@ -253,9 +265,13 @@ defmodule IpseKnowledge.Store do
     effects = state.effects + if(read, do: 0, else: 1)
     reads = state.reads + if(read, do: 1, else: 0)
 
-    if effects <= 16 and reads <= 512 and effects + reads <= 528,
-      do: {:call, request, %{state | io: continuation, effects: effects, reads: reads}},
-      else: error(:effect_limit)
+    if not read and not draft_action_live?(state),
+      do: error(:stale_draft),
+      else:
+        if(effects <= 16 and reads <= 512 and effects + reads <= 528,
+          do: {:call, request, %{state | io: continuation, effects: effects, reads: reads}},
+          else: error(:effect_limit)
+        )
   end
 
   defp bridge({:done, {:ok, value}}, state), do: advance(state, value)
@@ -387,7 +403,7 @@ defmodule IpseKnowledge.Store do
          true <- root["draft"] != nil and root["draft"]["id"] == token["draft_id"],
          true <-
            state.operation == :projection_abort or
-             (current_vector_contract?(root["draft"], "kind") and
+             (draft_live?(root["draft"]) and current_vector_contract?(root["draft"], "kind") and
                 Map.get(root["draft"], "vector_version") === Map.get(token, "vector_version")) do
       state = Map.put(state, :expected, record)
 
@@ -445,6 +461,17 @@ defmodule IpseKnowledge.Store do
           "record_slots_recovered" => 0
         }}}
 
+  defp advance(%{stage: :expired_collected}, _),
+    do:
+      {:done,
+       {:ok,
+        %{
+          "status" => "collected",
+          "count" => 0,
+          "record_slots_recovered" => 0,
+          "expired_drafts_released" => 1
+        }}}
+
   defp start_selected(%{profile: %{"kind" => "mcp_cas"}} = state) do
     cache = %{"records" => %{}, "generation" => state.args["store_generation"], "bytes" => 0}
     state = Map.merge(state, %{cache: cache, selected_refs: %{}, selected_checked: MapSet.new()})
@@ -485,6 +512,7 @@ defmodule IpseKnowledge.Store do
              root = row["value"]
 
              with {:ok, refs} <- add_selected_refs(refs, [root["content_ref"]], root, "progress"),
+                  {:ok, refs} <- add_selected_refs(refs, document_refs(root), root, "document"),
                   {:ok, refs} <- add_selected_refs(refs, root["chunks_ref"], root, "chunks") do
                {:cont, {:ok, refs}}
              else
@@ -509,10 +537,10 @@ defmodule IpseKnowledge.Store do
       Enum.all?(refs, fn ref ->
         Enum.all?(~w(source_id source_key generation content_sha256), &(root[&1] == ref[&1]))
       end) and
-      case Evidence.source(root |> Map.take(@source_fields) |> Map.put("text", "")) do
-        {:ok, source} -> Evidence.current?(source, state.args["as_of_ms"])
-        _ -> false
-      end
+      Evidence.current_metadata?(
+        root |> Map.take(@source_fields) |> Map.put("text", ""),
+        state.args["as_of_ms"]
+      )
   rescue
     _ -> false
   end
@@ -582,21 +610,30 @@ defmodule IpseKnowledge.Store do
     end
   end
 
-  defp selected_children(refs, %{"page_kind" => "progress", "body" => body} = page) do
+  defp selected_children(refs, %{"page_kind" => kind, "body" => body} = page)
+       when kind in ~w(progress document) do
     with true <-
            keys?(body, ~w(previous offset next_offset pieces)) and
              Evidence.safe_uint?(body["offset"]) and
              Evidence.safe_uint?(body["next_offset"]) and body["offset"] <= body["next_offset"] and
-             body["next_offset"] <= 65_536 and
-             is_list(body["pieces"]) and length(body["pieces"]) <= 16,
+             body["next_offset"] <= if(kind == "document", do: 16_384, else: 65_536) and
+             is_list(body["pieces"]) and
+             length(body["pieces"]) <= if(kind == "document", do: 1, else: 16),
+         true <- kind != "document" or length(body["pieces"]) == 1,
          {:ok, refs} <-
            add_selected_refs(
              refs,
              if(body["previous"] == nil, do: [], else: [body["previous"]]),
              page,
-             "progress"
+             kind
            ),
-         {:ok, refs} <- add_selected_refs(refs, body["pieces"], page, "content") do
+         {:ok, refs} <-
+           add_selected_refs(
+             refs,
+             body["pieces"],
+             page,
+             if(kind == "document", do: "document_content", else: "content")
+           ) do
       {:ok, refs}
     else
       _ -> {:error, :selected_page_corrupt}
@@ -604,12 +641,13 @@ defmodule IpseKnowledge.Store do
   end
 
   defp selected_children(refs, %{"page_kind" => kind, "body" => body})
-       when kind in ~w(content chunks) do
+       when kind in ~w(content document_content chunks) do
     valid =
-      if kind == "content",
+      if kind in ~w(content document_content),
         do: keys?(body, ["text"]) and is_binary(body["text"]) and String.valid?(body["text"]),
         else: keys?(body, ["chunks"]) and is_list(body["chunks"]) and length(body["chunks"]) <= 32
 
+    valid = valid and (kind != "document_content" or byte_size(body["text"]) in 1..1024)
     if valid, do: {:ok, refs}, else: {:error, :selected_page_corrupt}
   end
 
@@ -817,16 +855,17 @@ defmodule IpseKnowledge.Store do
            |> Map.take(@source_fields)
            |> Map.merge(%{"partition" => state.profile["partition"], "origin" => origin}),
          {:ok, source} <-
-           Evidence.source(
-             Map.put(attrs, "text", if(operation == :put, do: args["text"], else: ""))
-           ),
+           source_for_write(attrs, operation, args),
          true <-
            operation != :open or
              (Evidence.safe_uint?(args["byte_count"]) and args["byte_count"] <= 65_536 and
-                Evidence.sha256?(args["content_sha256"])),
+                Evidence.sha256?(args["content_sha256"]) and
+                (not Map.has_key?(args, "document") or
+                   (byte_size(args["document_text"]) == args["byte_count"] and
+                      Evidence.sha256(args["document_text"]) == args["content_sha256"]))),
          target =
            source
-           |> Map.drop(~w(text version source_key))
+           |> Map.drop(~w(text version source_key document))
            |> Map.merge(%{
              "byte_count" =>
                if(operation == :put, do: byte_size(source["text"]), else: args["byte_count"]),
@@ -834,6 +873,8 @@ defmodule IpseKnowledge.Store do
                if(operation == :put, do: source["content_sha256"], else: args["content_sha256"])
            }),
          draft = source_draft(record, target),
+         {:ok, _manifest_pages, _manifest_head} <-
+           document_pages(document_attrs(source, args), draft["id"]),
          claimed =
            if(record, do: Map.put(record["value"], "draft", draft), else: staging(source, draft)),
          true <- fits?(claimed),
@@ -850,7 +891,8 @@ defmodule IpseKnowledge.Store do
                  if(record, do: 0, else: 1)
                ),
              :ok <- effect_plan(state, page_effects(state.profile, plan.pages) + 2, 0) do
-          desired = active_root(source, plan.progress, plan.chunks, %{}, nil)
+          desired =
+            active_root(manifest_ref(source, plan.document), plan.progress, plan.chunks, %{}, nil)
 
           cas(
             Map.merge(state, %{pages: plan.pages, desired: desired}),
@@ -873,54 +915,21 @@ defmodule IpseKnowledge.Store do
 
   defp perform(%{operation: :append} = state) do
     with {:ok, record, draft} <- source_draft_current(state),
-         true <- draft["next_offset"] == state.args["offset"],
-         next = state.args["offset"] + byte_size(state.args["text"]),
-         true <- next <= draft["target"]["byte_count"],
-         {:ok, pages} <-
-           text_pages(
-             state.profile["partition"],
-             record["value"]["source_key"],
-             draft["target"]["generation"],
-             draft["id"],
-             state.args["text"],
-             "content",
-             state.args["offset"]
-           ),
-         progress =
-           page(
-             state.profile["partition"],
-             record["value"]["source_key"],
-             draft["target"]["generation"],
-             draft["id"],
-             "progress",
-             state.args["offset"],
-             %{
-               "previous" => draft["progress"],
-               "offset" => state.args["offset"],
-               "next_offset" => next,
-               "pieces" => Enum.map(pages, &reference/1)
-             }
-           ),
-         all = pages ++ [progress],
-         {:ok, publication_records} <- append_publication_records(state, record, draft, next),
-         :ok <- capacity(state, length(all) + publication_records, 0),
-         :ok <- effect_plan(state, page_effects(state.profile, all) + 1, 0),
-         desired =
-           put_in(record["value"], ["draft"], %{
-             draft
-             | "progress" => reference(progress),
-               "next_offset" => next
-           }),
-         true <- fits?(desired) do
-      stage_pages(Map.merge(state, %{pages: all, expected: record, desired: desired}))
+         :ok <- document_draft_binding(state, draft),
+         true <- draft["next_offset"] == state.args["offset"] do
+      if manifest_pending?(draft),
+        do: append_manifest(state, record, draft),
+        else: append_text(state, record, draft)
     else
       false -> error(:invalid_append)
-      error -> error_result(error)
+      other -> error_result(other)
     end
   end
 
   defp perform(%{operation: :publish} = state) do
     with {:ok, record, draft} <- source_draft_current(state),
+         :ok <- document_draft_binding(state, draft),
+         true <- not manifest_pending?(draft),
          true <- draft["next_offset"] == draft["target"]["byte_count"],
          {:ok, text, _} <-
            load_progress(
@@ -934,6 +943,8 @@ defmodule IpseKnowledge.Store do
            byte_size(text) == draft["target"]["byte_count"] and
              Evidence.sha256(text) == draft["target"]["content_sha256"],
          attrs = draft["target"] |> Map.take(@source_fields) |> Map.put("text", text),
+         attrs = manifest_ref(attrs, draft["document_progress"]),
+         {:ok, attrs} <- hydrate_document(state, attrs, draft["target"]["generation"]),
          {:ok, source} <- Evidence.source(attrs),
          {:ok, chunk_pages} <- chunk_pages(source, draft["id"]),
          :ok <- capacity(state, length(chunk_pages), 0),
@@ -949,7 +960,7 @@ defmodule IpseKnowledge.Store do
   end
 
   defp perform(%{operation: :abort} = state) do
-    with {:ok, record, _} <- draft_current(state),
+    with {:ok, record, _} <- draft_current(state, true),
          do: cas(state, record, Map.put(record["value"], "draft", nil), :committed),
          else: (error -> error_result(error))
   end
@@ -985,6 +996,22 @@ defmodule IpseKnowledge.Store do
   end
 
   defp perform(%{operation: :collect} = state) do
+    expired =
+      Enum.find(roots(state), fn record ->
+        draft = record["value"]["draft"]
+        is_map(draft) and not draft_live?(draft)
+      end)
+
+    if expired,
+      do: cas(state, expired, Map.put(expired["value"], "draft", nil), :expired_collected),
+      else: collect_pages(state)
+  end
+
+  defp perform(%{operation: :export} = state), do: export_source(state)
+  defp perform(%{operation: :import} = state), do: import_source(state)
+  defp perform(%{operation: :projection_abort} = state), do: perform_public_abort(state)
+
+  defp collect_pages(state) do
     roots = roots(state)
 
     protected =
@@ -1038,9 +1065,170 @@ defmodule IpseKnowledge.Store do
     end
   end
 
-  defp perform(%{operation: :export} = state), do: export_source(state)
-  defp perform(%{operation: :import} = state), do: import_source(state)
-  defp perform(%{operation: :projection_abort} = state), do: perform_public_abort(state)
+  defp append_text(state, record, draft) do
+    with next = state.args["offset"] + byte_size(state.args["text"]),
+         true <- next <= draft["target"]["byte_count"],
+         {:ok, pages} <-
+           text_pages(
+             state.profile["partition"],
+             record["value"]["source_key"],
+             draft["target"]["generation"],
+             draft["id"],
+             state.args["text"],
+             "content",
+             state.args["offset"]
+           ),
+         progress =
+           page(
+             state.profile["partition"],
+             record["value"]["source_key"],
+             draft["target"]["generation"],
+             draft["id"],
+             "progress",
+             state.args["offset"],
+             %{
+               "previous" => draft["progress"],
+               "offset" => state.args["offset"],
+               "next_offset" => next,
+               "pieces" => Enum.map(pages, &reference/1)
+             }
+           ),
+         all = pages ++ [progress],
+         {:ok, publication_records} <- append_publication_records(state, record, draft, next),
+         :ok <- capacity(state, length(all) + publication_records, 0),
+         :ok <- effect_plan(state, page_effects(state.profile, all) + 1, 0),
+         desired =
+           put_in(record["value"], ["draft"], %{
+             draft
+             | "progress" => reference(progress),
+               "next_offset" => next
+           }),
+         true <- fits?(desired) do
+      stage_pages(Map.merge(state, %{pages: all, expected: record, desired: desired}))
+    else
+      false -> error(:invalid_append)
+      error -> error_result(error)
+    end
+  end
+
+  defp source_for_write(attrs, :put, args),
+    do: Evidence.source(attrs |> Map.put("text", args["text"]) |> document_attrs(args))
+
+  defp source_for_write(attrs, :open, _) do
+    attrs = Map.put(attrs, "text", "")
+
+    if Evidence.source_metadata?(attrs) do
+      {:ok,
+       Map.merge(attrs, %{
+         "version" => 1,
+         "source_key" => Evidence.sha256(attrs["source_id"]),
+         "content_sha256" => Evidence.sha256("")
+       })}
+    else
+      {:error, :invalid_source}
+    end
+  end
+
+  defp document_draft_binding(state, draft) do
+    target = draft["target"]
+
+    case get_in(target, ["origin", "receipt"]) do
+      %{"kind" => "document_extraction"} ->
+        actual = Evidence.document_receipt(%{"origin" => %{"receipt" => state.args["document"]}})
+
+        expected =
+          case get_in(target, ["origin", "receipt"]) do
+            %{"version" => 4} = descriptor ->
+              case Evidence.document_manifest(descriptor, actual) do
+                {:ok, body} -> body
+                _ -> nil
+              end
+
+            _ ->
+              Evidence.document_receipt(target)
+          end
+
+        if is_map(actual) and is_map(expected) and
+             Map.drop(actual, ["acquisition"]) === Map.drop(expected, ["acquisition"]) and
+             get_in(actual, ["acquisition", "path"]) === get_in(expected, ["acquisition", "path"]) and
+             Evidence.valid_document?(state.args["document"], state.args["document_text"]) and
+             Evidence.sha256(state.args["document_text"]) == target["content_sha256"] and
+             byte_size(state.args["document_text"]) == target["byte_count"] and
+             (not Map.has_key?(draft, "document_next_offset") or
+                draft["document_next_offset"] === state.args["metadata_offset"]) and
+             (state.operation != :append or
+                state.args["text"] ==
+                  binary_part(
+                    state.args["document_text"],
+                    state.args["offset"],
+                    byte_size(state.args["text"])
+                  )) do
+          :ok
+        else
+          {:error, :document_draft_mismatch}
+        end
+
+      _ ->
+        if Map.has_key?(state.args, "document"), do: {:error, :document_draft_mismatch}, else: :ok
+    end
+  end
+
+  defp document_attrs(attrs, args) do
+    if get_in(attrs, ["origin", "receipt", "version"]) == 4,
+      do: Map.put(attrs, "document", args["document"]),
+      else: attrs
+  end
+
+  defp manifest_ref(source, ref) do
+    if get_in(source, ["origin", "receipt", "version"]) == 4,
+      do: put_in(source, ["origin", "receipt", "manifest_ref"], ref),
+      else: source
+  end
+
+  defp manifest_pending?(draft),
+    do:
+      Map.has_key?(draft, "document_next_offset") and
+        draft["document_next_offset"] <
+          get_in(draft, ["target", "origin", "receipt", "manifest_bytes"])
+
+  defp append_manifest(state, record, draft) do
+    with {:ok, body} <-
+           Evidence.document_manifest(
+             get_in(draft, ["target", "origin", "receipt"]),
+             state.args["document"]
+           ),
+         bytes = json(body),
+         offset = draft["document_next_offset"],
+         text =
+           utf8_prefix(
+             binary_part(bytes, offset, byte_size(bytes) - offset),
+             min(1024, byte_size(bytes) - offset)
+           ),
+         {:ok, pages, head} <-
+           manifest_piece(
+             record["value"],
+             draft["target"]["generation"],
+             draft["id"],
+             text,
+             offset,
+             draft["document_progress"]
+           ),
+         true <- length(pages) == 2,
+         :ok <- capacity(state, length(pages), 0),
+         :ok <- effect_plan(state, page_effects(state.profile, pages) + 1, 0),
+         desired =
+           put_in(record["value"], ["draft"], %{
+             draft
+             | "document_progress" => head,
+               "document_next_offset" => offset + byte_size(text)
+           }),
+         true <- fits?(desired) do
+      stage_pages(Map.merge(state, %{pages: pages, expected: record, desired: desired}))
+    else
+      false -> error(:document_manifest_bounds)
+      other -> error_result(other)
+    end
+  end
 
   defp append_publication_records(state, record, draft, next) do
     if next == draft["target"]["byte_count"] do
@@ -1057,12 +1245,28 @@ defmodule IpseKnowledge.Store do
                draft["target"]
                |> Map.take(@source_fields)
                |> Map.put("text", previous <> state.args["text"])
+               |> document_attrs(%{
+                 "document" => normalized_document(draft, state.args["document"])
+               })
              ),
            {:ok, pages} <- chunk_pages(source, draft["id"]) do
         {:ok, length(pages)}
       end
     else
       {:ok, 0}
+    end
+  end
+
+  defp normalized_document(draft, document) do
+    case get_in(draft, ["target", "origin", "receipt"]) do
+      %{"version" => 4} = descriptor ->
+        case Evidence.document_manifest(descriptor, document) do
+          {:ok, body} -> body
+          _ -> nil
+        end
+
+      _ ->
+        document
     end
   end
 
@@ -1227,7 +1431,7 @@ defmodule IpseKnowledge.Store do
          {:ok, chunks} <- Evidence.chunks(source),
          true <-
            Enum.all?(vectors, fn vector ->
-             Enum.any?(chunks, &(&1["chunk_id"] == vector["chunk_id"]))
+             Enum.any?(chunks, &Evidence.vector_input_matches_chunk?(vector, &1))
            end) do
       :ok
     else
@@ -1330,7 +1534,8 @@ defmodule IpseKnowledge.Store do
   end
 
   defp source_plan(source, draft, previous, offset) do
-    with {:ok, pages} <-
+    with {:ok, document_pages, document_head} <- document_pages(source, draft["id"]),
+         {:ok, pages} <-
            text_pages(
              source["partition"],
              source["source_key"],
@@ -1359,12 +1564,80 @@ defmodule IpseKnowledge.Store do
          {:ok, chunks} <- chunk_pages(source, draft["id"]) do
       {:ok,
        %{
-         pages: pages ++ [progress] ++ chunks,
+         pages: document_pages ++ pages ++ [progress] ++ chunks,
          progress: reference(progress),
+         document: document_head,
          chunks: Enum.map(chunks, &reference/1)
        }}
     else
       _ -> {:error, :source_bounds}
+    end
+  end
+
+  defp document_refs(root) do
+    case get_in(root, ["origin", "receipt"]) do
+      %{"version" => 4, "manifest_ref" => ref} -> [ref]
+      _ -> []
+    end
+  end
+
+  defp document_pages(source, draft) do
+    if get_in(source, ["origin", "receipt", "version"]) == 4,
+      do: document_pages(source, draft, json(source["document"]), 0, nil, []),
+      else: {:ok, [], nil}
+  end
+
+  defp document_pages(_, _, "", _, head, pages), do: {:ok, pages, head}
+
+  defp document_pages(source, draft, bytes, offset, previous, pages) do
+    text = utf8_prefix(bytes, min(1024, byte_size(bytes)))
+
+    with {:ok, next, head} <-
+           manifest_piece(source, source["generation"], draft, text, offset, previous),
+         true <- length(next) == 2 and length(pages) + length(next) <= 32 do
+      document_pages(
+        source,
+        draft,
+        binary_part(bytes, byte_size(text), byte_size(bytes) - byte_size(text)),
+        offset + byte_size(text),
+        head,
+        pages ++ next
+      )
+    else
+      _ -> {:error, :document_manifest_bounds}
+    end
+  end
+
+  defp manifest_piece(source, generation, draft, text, offset, previous) do
+    with {:ok, pages} <-
+           text_pages(
+             source["partition"],
+             source["source_key"],
+             generation,
+             draft,
+             text,
+             "document_content",
+             offset
+           ),
+         progress =
+           page(
+             source["partition"],
+             source["source_key"],
+             generation,
+             draft,
+             "document",
+             offset,
+             %{
+               "previous" => previous,
+               "offset" => offset,
+               "next_offset" => offset + byte_size(text),
+               "pieces" => Enum.map(pages, &reference/1)
+             }
+           ),
+         true <- fits?(progress["value"]) do
+      {:ok, pages ++ [progress], reference(progress)}
+    else
+      _ -> {:error, :document_manifest_bounds}
     end
   end
 
@@ -1558,6 +1831,7 @@ defmodule IpseKnowledge.Store do
            ),
          true <- Evidence.sha256(text) == root["content_sha256"],
          attrs = root |> Map.take(@source_fields) |> Map.put("text", text),
+         {:ok, attrs} <- hydrate_document(state, attrs, root["generation"]),
          {:ok, source} <- Evidence.source(attrs),
          {:ok, chunks} <- Evidence.chunks(source),
          {:ok, stored_chunks} <- load_chunk_pages(state, root),
@@ -1568,25 +1842,37 @@ defmodule IpseKnowledge.Store do
     end
   end
 
-  defp load_progress(_state, _source, _generation, nil, _seen), do: {:ok, "", 0}
-
   defp load_progress(state, source, generation, ref, seen) do
+    load_stream(state, source, generation, ref, seen, "progress", "content", 65_536, nil)
+  end
+
+  defp load_stream(_, _, _, nil, _, _, _, _, _), do: {:ok, "", 0}
+
+  defp load_stream(state, source, generation, ref, seen, kind, content, maximum, draft) do
     with false <- MapSet.member?(seen, ref["key"]),
-         true <- MapSet.size(seen) < 128,
-         {:ok, progress} <- load_page(state, ref, source, generation, "progress"),
+         true <- MapSet.size(seen) < if(kind == "document", do: 16, else: 128),
+         {:ok, progress} <- load_page(state, ref, source, generation, kind),
+         true <- is_nil(draft) or progress["draft_id"] === draft,
          body = progress["body"],
          true <-
            keys?(body, ~w(previous offset next_offset pieces)) and
              Evidence.safe_uint?(body["offset"]) and
              Evidence.safe_uint?(body["next_offset"]) and
-             is_list(body["pieces"]) and length(body["pieces"]) <= 16,
+             is_list(body["pieces"]) and
+             length(body["pieces"]) <= if(kind == "document", do: 1, else: 16),
+         true <- kind != "document" or length(body["pieces"]) == 1,
+         true <- progress["ordinal"] === body["offset"],
          {:ok, before, prior_offset} <-
-           load_progress(
+           load_stream(
              state,
              source,
              generation,
              body["previous"],
-             MapSet.put(seen, ref["key"])
+             MapSet.put(seen, ref["key"]),
+             kind,
+             content,
+             maximum,
+             progress["draft_id"]
            ),
          true <- body["offset"] == prior_offset,
          {:ok, pieces} <-
@@ -1595,24 +1881,61 @@ defmodule IpseKnowledge.Store do
              body["pieces"],
              source,
              generation,
-             "content",
-             progress["draft_id"]
+             content,
+             progress["draft_id"],
+             body["offset"]
            ),
          text = before <> pieces,
-         true <- body["next_offset"] == byte_size(text) and byte_size(text) <= 65_536 do
+         true <- body["next_offset"] == byte_size(text) and byte_size(text) <= maximum do
       {:ok, text, byte_size(text)}
     else
       _ -> {:error, :source_corrupt}
     end
   end
 
-  defp load_text_parts(state, refs, source, generation, kind, draft) do
+  defp hydrate_document(state, attrs, generation) do
+    case get_in(attrs, ["origin", "receipt"]) do
+      %{"version" => 4} = descriptor ->
+        with true <- Evidence.document_reference?(descriptor) and ref?(descriptor["manifest_ref"]),
+             {:ok, bytes, _} <-
+               load_stream(
+                 state,
+                 Evidence.sha256(attrs["source_id"]),
+                 generation,
+                 descriptor["manifest_ref"],
+                 MapSet.new(),
+                 "document",
+                 "document_content",
+                 16_384,
+                 nil
+               ),
+             true <-
+               byte_size(bytes) == descriptor["manifest_bytes"] and
+                 Evidence.sha256(bytes) == descriptor["manifest_sha256"],
+             body when is_map(body) <- JSON.decode!(bytes),
+             true <- json(body) == bytes,
+             {:ok, ^body} <- Evidence.document_manifest(descriptor, body) do
+          {:ok, Map.put(attrs, "document", body)}
+        else
+          _ -> {:error, :document_manifest_corrupt}
+        end
+
+      _ ->
+        {:ok, attrs}
+    end
+  rescue
+    _ -> {:error, :document_manifest_corrupt}
+  end
+
+  defp load_text_parts(state, refs, source, generation, kind, draft, offset \\ nil) do
     Enum.reduce_while(refs, {:ok, ""}, fn ref, {:ok, text} ->
       with {:ok, page} <- load_page(state, ref, source, generation, kind),
            true <- page["draft_id"] == draft,
+           true <- is_nil(offset) or page["ordinal"] === offset + byte_size(text),
            true <-
              keys?(page["body"], ["text"]) and is_binary(page["body"]["text"]) and
-               String.valid?(page["body"]["text"]) do
+               String.valid?(page["body"]["text"]),
+           true <- kind != "document_content" or byte_size(page["body"]["text"]) in 1..1024 do
         {:cont, {:ok, text <> page["body"]["text"]}}
       else
         _ -> {:halt, {:error, :page_corrupt}}
@@ -1918,7 +2241,8 @@ defmodule IpseKnowledge.Store do
             do: Map.put(metadata, "text", envelope["text"]),
             else: metadata
 
-        if Evidence.valid_source?(source) and envelope["cursor"] === 0 and envelope["next"] == nil and
+        if Evidence.valid_source?(source) and source["version"] === 1 and envelope["cursor"] === 0 and
+             envelope["next"] == nil and
              envelope["byte_count"] == byte_size(source["text"]) and
              envelope["text"] == source["text"] and byte_size(source["text"]) <= 8192 do
           args =
@@ -1965,19 +2289,32 @@ defmodule IpseKnowledge.Store do
     end
   end
 
-  defp draft_current(state) do
+  defp draft_current(state, allow_expired \\ false) do
     record = find_root(state, state.args["source_id"])
 
     if record != nil and record["revision"] == state.args["expected_revision"] and
          record["value"]["state"] != "suppressed" and
          record["value"]["draft"] != nil and
-         record["value"]["draft"]["id"] == state.args["draft_id"],
+         record["value"]["draft"]["id"] == state.args["draft_id"] and
+         (allow_expired or draft_live?(record["value"]["draft"])),
        do: {:ok, record, record["value"]["draft"]},
        else: {:error, :stale_draft}
   end
 
+  defp draft_live?(draft),
+    do:
+      is_map(draft) and Evidence.safe_uint?(draft["expires_at_ms"]) and
+        System.system_time(:millisecond) < draft["expires_at_ms"]
+
+  defp draft_action_live?(state) do
+    draft = get_in(state, [:expected, "value", "draft"])
+
+    state.operation not in [:put, :append, :publish, :projection_commit] or
+      is_nil(draft) or draft_live?(draft)
+  end
+
   defp source_draft(record, target) do
-    %{
+    draft = %{
       "id" => random_id(),
       "kind" => "source",
       "source_generation" => if(record, do: record["value"]["generation"]),
@@ -1990,6 +2327,10 @@ defmodule IpseKnowledge.Store do
       "chunk_ids" => [],
       "expires_at_ms" => System.system_time(:millisecond) + 3_600_000
     }
+
+    if get_in(target, ["origin", "receipt", "version"]) == 4,
+      do: Map.merge(draft, %{"document_progress" => nil, "document_next_offset" => 0}),
+      else: draft
   end
 
   defp projection_draft(root, args) do
@@ -2061,11 +2402,18 @@ defmodule IpseKnowledge.Store do
   defp origin(state, args) do
     imported = args["historical_import"]
 
+    receipt =
+      cond do
+        imported -> %{"original_origin" => imported}
+        args["document"] -> Evidence.document_storage_receipt!(args["document"])
+        true -> nil
+      end
+
     %{
       "kind" => if(imported, do: "import", else: "provided"),
       "store_profile" => state.name,
       "partition_or_scope" => state.profile["partition"],
-      "receipt" => if(imported, do: %{"original_origin" => imported}),
+      "receipt" => receipt,
       "historical" => imported != nil
     }
   end
@@ -2262,7 +2610,7 @@ defmodule IpseKnowledge.Store do
 
     keys?(root, @root_fields) and root["format"] === 1 and root["kind"] == "root" and
       root["partition"] == partition and root["state"] in ~w(active staging) and
-      match?({:ok, _}, Evidence.source(attrs)) and
+      Evidence.source_metadata?(attrs) and
       root["source_key"] == Evidence.sha256(root["source_id"]) and
       Evidence.sha256?(root["content_sha256"]) and is_list(root["chunks_ref"]) and
       length(root["chunks_ref"]) <= 32 and
@@ -2275,7 +2623,10 @@ defmodule IpseKnowledge.Store do
       end) and
       (root["draft"] == nil or valid_draft?(root["draft"], root)) and
       if(root["state"] == "active",
-        do: ref?(root["content_ref"]),
+        do:
+          ref?(root["content_ref"]) and
+            (get_in(root, ["origin", "receipt", "version"]) != 4 or
+               ref?(get_in(root, ["origin", "receipt", "manifest_ref"]))),
         else: root["content_ref"] == nil
       ) and fits?(root)
   rescue
@@ -2289,6 +2640,11 @@ defmodule IpseKnowledge.Store do
     fields =
       if draft["kind"] == "vectors" and Map.has_key?(draft, "vector_version"),
         do: ["vector_version" | fields],
+        else: fields
+
+    fields =
+      if get_in(draft, ["target", "origin", "receipt", "version"]) == 4,
+        do: fields ++ ~w(document_progress document_next_offset),
         else: fields
 
     keys?(draft, fields) and
@@ -2327,10 +2683,20 @@ defmodule IpseKnowledge.Store do
     target = draft["target"]
 
     keys?(target, (@source_fields -- ["text"]) ++ ~w(content_sha256 byte_count)) and
-      match?({:ok, _}, Evidence.source(target |> Map.take(@source_fields) |> Map.put("text", ""))) and
+      Evidence.source_metadata?(target |> Map.take(@source_fields) |> Map.put("text", "")) and
       target["source_id"] == root["source_id"] and target["partition"] == root["partition"] and
       Evidence.sha256?(target["content_sha256"]) and Evidence.safe_uint?(target["byte_count"]) and
       target["byte_count"] <= 65_536 and
+      (get_in(target, ["origin", "receipt", "version"]) != 4 or
+         (is_nil(get_in(target, ["origin", "receipt", "manifest_ref"])) and
+            Evidence.safe_uint?(draft["document_next_offset"]) and
+            draft["document_next_offset"] <=
+              get_in(target, ["origin", "receipt", "manifest_bytes"]) and
+            if(draft["document_next_offset"] == 0,
+              do: is_nil(draft["document_progress"]),
+              else: ref?(draft["document_progress"])
+            ) and
+            (draft["next_offset"] == 0 or not manifest_pending?(draft)))) and
       draft["next_offset"] <= target["byte_count"] and draft["profile"] == nil and
       draft["chunk_ids"] == [] and
       draft["plan_sha256"] == Evidence.id("source-plan", [ordered(target)]) and
@@ -2353,7 +2719,7 @@ defmodule IpseKnowledge.Store do
       value["format"] === 1 and value["kind"] == "page" and value["partition"] == partition and
       Evidence.sha256?(value["source_key"]) and Evidence.safe_positive?(value["generation"]) and
       id?(value["draft_id"]) and
-      value["page_kind"] in ~w(content progress chunks vector facts projection) and
+      value["page_kind"] in ~w(content progress document document_content chunks vector facts projection) and
       Evidence.safe_uint?(value["ordinal"]) and
       is_map(value["body"]) and
       value["body_sha256"] ==
@@ -2442,11 +2808,18 @@ defmodule IpseKnowledge.Store do
         "revision" => record["revision"],
         "draft_id" => draft["id"],
         "next_offset" => draft["next_offset"],
-        "continuation" => %{
-          "draft_id" => draft["id"],
-          "expected_revision" => record["revision"],
-          "offset" => draft["next_offset"]
-        }
+        "continuation" =>
+          Map.merge(
+            %{
+              "draft_id" => draft["id"],
+              "expected_revision" => record["revision"],
+              "offset" => draft["next_offset"]
+            },
+            if(Map.has_key?(draft, "document_next_offset"),
+              do: %{"metadata_offset" => draft["document_next_offset"]},
+              else: %{}
+            )
+          )
       }}}
   end
 
@@ -2456,7 +2829,7 @@ defmodule IpseKnowledge.Store do
     do:
       Map.take(
         draft,
-        ~w(id kind source_generation content_sha256 next_offset chunk_ids expires_at_ms vector_version)
+        ~w(id kind source_generation content_sha256 next_offset document_next_offset chunk_ids expires_at_ms vector_version)
       )
 
   defp put_record(cache, record, generation),
@@ -2535,7 +2908,10 @@ defmodule IpseKnowledge.Store do
         Evidence.sha256?(ref["sha256"])
 
   defp fits?(value),
-    do: is_map(value) and byte_size(json(value)) <= 6000 and Ipse.Extension.validate(value) == :ok
+    do:
+      is_map(value) and byte_size(json(value)) <= 6000 and
+        Ipse.Extension.validate(%{"result" => %{"outcome" => %{"record" => %{"value" => value}}}}) ==
+          :ok
 
   defp keys?(value, fields), do: is_map(value) and Enum.sort(Map.keys(value)) == Enum.sort(fields)
   defp id?(value), do: is_binary(value) and Regex.match?(~r/\A[0-9a-f]{32}\z/, value)
@@ -2607,12 +2983,29 @@ defmodule IpseKnowledge.Store do
 
     optional =
       case operation do
-        action when action in [:put, :open] -> ~w(historical_import)
-        :forget -> ~w(suppressed_at_ms)
-        :projection_open -> ~w(max_items facts)
-        :projection_commit -> ~w(vectors facts)
-        :revalidate -> ~w(effects_used reads_used)
-        _ -> []
+        :put ->
+          ~w(historical_import document effects_used)
+
+        :open ->
+          ~w(historical_import document document_text effects_used)
+
+        action when action in [:append, :publish] ->
+          ~w(document document_text effects_used metadata_offset)
+
+        :forget ->
+          ~w(suppressed_at_ms)
+
+        :projection_open ->
+          ~w(max_items facts)
+
+        :projection_commit ->
+          ~w(vectors facts)
+
+        :revalidate ->
+          ~w(effects_used reads_used)
+
+        _ ->
+          []
       end
 
     valid =
@@ -2638,6 +3031,15 @@ defmodule IpseKnowledge.Store do
         (not Map.has_key?(args, "historical_import") or
            (is_map(args["historical_import"]) and
               byte_size(json(args["historical_import"])) <= 2048)) and
+        (not Map.has_key?(args, "document") or
+           (not Map.has_key?(args, "historical_import") and
+              Evidence.valid_document?(args["document"], args["document_text"] || args["text"]))) and
+        (not Map.has_key?(args, "document_text") or Map.has_key?(args, "document")) and
+        (not Map.has_key?(args, "metadata_offset") or
+           (Map.has_key?(args, "document") and Evidence.safe_uint?(args["metadata_offset"]) and
+              args["metadata_offset"] <= 16_384)) and
+        (not Map.has_key?(args, "effects_used") or
+           (Evidence.safe_uint?(args["effects_used"]) and args["effects_used"] <= 16)) and
         (operation != :projection_open or
            (args["projection_kind"] in ~w(vectors facts) and is_map(args["profile"]) and
               is_list(args["chunks"]) and length(args["chunks"]) in 1..2 and

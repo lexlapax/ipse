@@ -1,0 +1,19 @@
+Running ExUnit with seed: 46913, max_cases: 1
+Excluding tags: [:test]
+Including tags: [:shared_directory_preview]
+
+NAMESPACE_TEST_ARTIFACT 66737cd26aef6cbf7098588d552d8741661785466ea9cbfdfdbe1e3a95b9696a
+
+
+  1) test actual Session binds directory lookup to captured catalog pages and refuses stale or forged bindings (Ipse.KnowledgeCollectionAdapterSessionTest)
+     test/extensions/knowledge/collection_adapter_session_test.exs:289
+     {"Extension outcome unknown after refusal, failure or interruption. Inspect its receipt before retrying; no callback was replayed.", [{"snapshot", "ok"}, {"value.stat", "ok"}, {"value.read", "ok"}, {"value.stat", "ok"}, {"value.read", "ok"}, {"value.stat", "ok"}, {"value.read", "ok"}, {"value.stat", "ok"}, {"value.read", "ok"}, {"value.stat", "ok"}, {"value.read", "ok"}, {"value.stat", "ok"}, {"value.read", "ok"}, {"value.stat", "ok"}, {"value.read", "ok"}, {"value.stat", "ok"}, {"value.read", "ok"}, {"value.stat", "ok"}, {"value.read", "ok"}, {"value.stat", "ok"}, {"value.read", "ok"}, {"value.stat", "ok"}, {"value.read", "ok"}, {"value.stat", "ok"}, {"value.read", "ok"}, {"value.stat", "ok"}, {"value.read", "ok"}, {"value.stat", "ok"}, {"value.read", "ok"}, {"value.stat", "ok"}, {"value.read", "ok"}, {"value.stat", "ok"}, {"value.read", "ok"}, {"value.stat", "ok"}, {"value.read", "ok"}, {"value.stat", "ok"}, {"value.read", "ok"}, {"value.stat", "ok"}, {"value.read", "ok"}, {"value.stat", "ok"}, {"value.read", "ok"}, {"value.stat", "ok"}, {"value.read", "ok"}, {"value.stat", "ok"}, {"value.read", "ok"}, {"value.stat", "ok"}, {"value.read", "ok"}, {"value.stat", "ok"}, {"value.read", "ok"}, {"value.stat", "ok"}, {"value.read", "ok"}, {"value.stat", "ok"}]}
+     code: invoke(c, "vectors", %{
+     stacktrace:
+       test/extensions/knowledge/collection_adapter_session_test.exs:296: (test)
+
+
+Finished in 8.4 seconds (1.0s on load, 0.00s async, 7.4s sync)
+
+Result: 0/1 passed, 30 excluded
+Failed: 1 test

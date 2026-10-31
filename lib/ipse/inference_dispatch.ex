@@ -176,7 +176,18 @@ defmodule Ipse.InferenceDispatch do
                                                                                         guarded ->
                       with :ok <- InferenceSlots.current_check() do
                         Process.put(buffer_key, %{Process.get(buffer_key) | entered: true})
-                        execute.(admitted, guarded, facts[:prepared])
+
+                        managed_execute(
+                          context,
+                          admitted,
+                          kind(operation),
+                          target,
+                          timeout,
+                          fn -> execute.(admitted, guarded, facts[:prepared]) end,
+                          caller,
+                          ref,
+                          buffer_key
+                        )
                       end
                     end)
                   end)
@@ -228,15 +239,29 @@ defmodule Ipse.InferenceDispatch do
         end)
 
       try do
-        await(task, ref, route, final_gate, emit, deadline, nil)
+        await(task, ref, route, final_gate, emit, deadline, nil, context)
       after
         Task.shutdown(task, :brutal_kill)
       end
     end
   end
 
-  defp await(task, ref, route, gate, emit, deadline, original) do
+  defp await(task, ref, route, gate, emit, deadline, original, context) do
     receive do
+      {^ref, :native_peer, peer, nonce} when is_pid(peer) and is_reference(nonce) ->
+        accepted =
+          managed?(context) and is_nil(context[:native_peer]) and node(peer) == node() and
+            Process.alive?(peer) and mono() < deadline
+
+        result =
+          if accepted,
+            do: GenServer.call(Resources.current(), {:track_effect, peer}, 5_000),
+            else: {:error, :inference_dispatch_refused}
+
+        send(peer, {ref, nonce, result})
+        context = if result == :ok, do: Map.put(context, :native_peer, peer), else: context
+        await(task, ref, route, gate, emit, deadline, original, context)
+
       {^ref, :gate, worker, challenge, facts} ->
         response =
           if facts["route"] == route and mono() < deadline,
@@ -244,16 +269,40 @@ defmodule Ipse.InferenceDispatch do
             else: {:error, :inference_route_changed}
 
         send(worker, {ref, challenge, response})
-        await(task, ref, route, gate, emit, deadline, original)
+        await(task, ref, route, gate, emit, deadline, original, context)
+
+      {^ref, :document_wire, worker, challenge, facts} ->
+        response =
+          if context[:document_source] != nil and mono() < deadline,
+            do: Ipse.Session.DocumentEmbedding.before_dispatch(context, facts),
+            else: {:error, :document_source_use_refused}
+
+        send(worker, {ref, challenge, response})
+        await(task, ref, route, gate, emit, deadline, original, context)
 
       {:inference_slot, _, status} ->
         emit.({:inference_service_status, Map.put(status, "service_id", route["service_id"])})
-        await(task, ref, route, gate, emit, deadline, original)
+        await(task, ref, route, gate, emit, deadline, original, context)
 
       {monitor, {:dispatch_result, {:ok, result}, _, chunks}} when monitor == task.ref ->
         Process.demonitor(task.ref, [:flush])
-        if match?({:ok, _, _}, result), do: Enum.each(chunks, &emit.({:text, &1}))
-        result
+
+        if managed?(context) and match?({:ok, _, _}, result) do
+          released =
+            Ipse.Session.InferenceDispatch.release(context, result, fn ->
+              Enum.each(chunks, &emit.({:text, &1}))
+              result
+            end)
+
+          if released == result,
+            do: result,
+            else:
+              {:error,
+               "Managed sources or permissions changed before publication; generated output was withheld."}
+        else
+          if match?({:ok, _, _}, result), do: Enum.each(chunks, &emit.({:text, &1}))
+          result
+        end
 
       {monitor, {:dispatch_result, {:error, reason}, _, _}} when monitor == task.ref ->
         Process.demonitor(task.ref, [:flush])
@@ -267,6 +316,112 @@ defmodule Ipse.InferenceDispatch do
         unknown(route, original)
     after
       max(deadline - mono(), 0) -> unknown(route, original)
+    end
+  end
+
+  defp managed?(context), do: match?(%{managed: %{dependencies: [_ | _]}}, context)
+
+  defp managed_execute(context, runtime, kind, target, timeout, fun, caller, ref, buffer_key) do
+    cond do
+      context[:document_source] != nil ->
+        if managed?(context) do
+          {:error, "Combined document and managed-note inference is unavailable."}
+        else
+          wire = context.wire
+          deadline = mono() + timeout
+
+          deadline =
+            if context.document_source.deadline_ms,
+              do: min(deadline, context.document_source.deadline_ms),
+              else: deadline
+
+          expected = %{
+            kind: wire["kind"],
+            target_sha256: wire["target_sha256"],
+            body_sha256: wire["body_sha256"],
+            deadline_ms: deadline,
+            upstream: context.owner
+          }
+
+          {result, status} =
+            Ipse.Provider.EgressGate.capture(
+              expected,
+              fn facts ->
+                challenge = make_ref()
+                monitor = Process.monitor(caller)
+                send(caller, {ref, :document_wire, self(), challenge, facts})
+
+                try do
+                  receive do
+                    {^ref, ^challenge, response} -> response
+                    {:DOWN, ^monitor, :process, ^caller, _} -> {:error, :dispatch_owner_lost}
+                  after
+                    5_000 -> {:error, :document_source_use_refused}
+                  end
+                after
+                  Process.demonitor(monitor, [:flush])
+                end
+              end,
+              fun
+            )
+
+          if status == :authorized,
+            do: result,
+            else: {:error, "Document source admission refused before dispatch."}
+        end
+
+      managed?(context) ->
+        wire = context.wire
+
+        expected = %{
+          kind: wire["kind"],
+          target_sha256: wire["target_sha256"],
+          body_sha256: wire["body_sha256"],
+          deadline_ms: System.monotonic_time(:millisecond) + timeout,
+          upstream: context.owner
+        }
+
+        initial_buffer = Process.get(buffer_key)
+
+        completed =
+          Ipse.Provider.MintOwned.execute(runtime, kind, target, timeout, fn ->
+            nonce = make_ref()
+            send(caller, {ref, :native_peer, self(), nonce})
+
+            receive do
+              {^ref, ^nonce, :ok} -> :ok
+            after
+              5_000 -> raise "Managed transport ownership registration was refused."
+            end
+
+            Process.put(buffer_key, initial_buffer)
+
+            {result, status} =
+              Ipse.Provider.EgressGate.capture_owned(
+                expected,
+                fn facts, send -> Ipse.Session.InferenceDispatch.send(context, facts, send) end,
+                fun
+              )
+
+            result =
+              if status == :authorized,
+                do: result,
+                else: {:error, "Managed inference was refused before its body was sent."}
+
+            {:managed_native_result, result, Process.get(buffer_key)}
+          end)
+
+        case completed do
+          {:managed_native_result, result, buffer} ->
+            Process.put(buffer_key, buffer)
+            result
+
+          other ->
+            other
+        end
+
+      true ->
+        fun.()
     end
   end
 
@@ -300,9 +455,13 @@ defmodule Ipse.InferenceDispatch do
         _ -> ""
       end
 
-    {:error,
-     "Inference service #{route["service_id"]} has an unknown outcome. Inspect and reconcile its exact reservation before continuing; no request was replayed." <>
-       detail}
+    message =
+      "Inference service #{route["service_id"]} has an unknown outcome. Inspect and reconcile its exact reservation before continuing; no request was replayed." <>
+        detail
+
+    if original == {:error, :invalid_decision_response},
+      do: {:error, {:invalid_decision_response, message}},
+      else: {:error, message}
   end
 
   defp destination(runtime, operation) do

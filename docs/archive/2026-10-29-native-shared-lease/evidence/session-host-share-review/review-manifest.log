@@ -1,0 +1,10 @@
+SESSION_HOST_SHARE_MANIFEST_OK: %{
+  manifest_entries: 25,
+  source_files: 7,
+  runtime_files: [{"production", 697}, {"instrumented", 697}],
+  graph_delta: ["./ipse/ebin/Elixir.Ipse.Extension.Host.beam"],
+  exact_instrumentation: true,
+  helper_matches: true,
+  alias_repair_preserved: true,
+  artifact_files: [{"standard", 3}, {"sockets", 3}]
+}

@@ -1,0 +1,18 @@
+{:ok,
+ %{
+   "floor" => 2,
+   "floor_anchor" => "5eb9a08e9052710c17e847e349713e1e",
+   "generation" => 2,
+   "project" => "c6abf2a62f03a1ff496dff22f66c0ca0696b0487bada556c4e8f25ecbc6cefab",
+   "version" => 3
+ }}
+{:ok,
+ %{
+   "floor" => 2,
+   "floor_anchor" => "5eb9a08e9052710c17e847e349713e1e",
+   "generation" => 2,
+   "next" => nil,
+   "project" => "c6abf2a62f03a1ff496dff22f66c0ca0696b0487bada556c4e8f25ecbc6cefab",
+   "records" => [],
+   "version" => 3
+ }}

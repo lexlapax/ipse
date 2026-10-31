@@ -1,0 +1,22 @@
+Running ExUnit with seed: 802053, max_cases: 8
+Excluding tags: [:test]
+Including tags: [line: 33]
+
+
+
+  1) test owner loss interrupts a backpressured guarded display before later bytes (Ipse.Runner.ReviewGuardedNativeTest)
+     test/ipse/runner/review_guarded_native_test.exs:33
+     ** (RuntimeError) guarded control port remained open after owner loss
+         test/support/guarded_review.exs:187: anonymous fn/3 in :elixir_compiler_0.__FILE__/1
+         test/support/guarded_review.exs:191: (file)
+
+     code: output = scenario(c.driver, "backpressure", "--guard-backpressure")
+     stacktrace:
+       test/ipse/runner/review_guarded_native_test.exs:62: Ipse.Runner.ReviewGuardedNativeTest.scenario/3
+       test/ipse/runner/review_guarded_native_test.exs:34: (test)
+
+
+Finished in 1.1 seconds (0.05s on load, 0.00s async, 1.1s sync)
+
+Result: 0/1 passed, 2 excluded
+Failed: 1 test

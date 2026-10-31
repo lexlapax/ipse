@@ -1,6 +1,7 @@
 defmodule Ipse.ConfigSessionTest do
   use ExUnit.Case, async: false
   import ExUnit.CaptureIO
+  import Ipse.Test.ResumeAssertions
 
   setup do
     root =
@@ -199,6 +200,7 @@ defmodule Ipse.ConfigSessionTest do
     assert :ok = Ipse.Session.close(pid)
     path = Path.join(opts[:state_dir], id <> ".jsonl")
     {:ok, events} = Ipse.Journal.load(opts[:state_dir], id)
+    before_resume = File.read!(path)
     assert hd(events)["metadata"]["max_output_tokens"] == 32
 
     assert {:ok, resumed} =
@@ -208,7 +210,7 @@ defmodule Ipse.ConfigSessionTest do
              )
 
     assert Ipse.Session.info(resumed).phase == :idle
-    assert {:ok, ^events} = Ipse.Journal.load(opts[:state_dir], id)
+    assert_idle_resume_journal(path, before_resume, id)
     assert :ok = Ipse.Session.close(resumed)
     File.write!(path, "{torn", [:append])
     before = File.read!(path)
@@ -282,7 +284,7 @@ defmodule Ipse.ConfigSessionTest do
                {Ipse.Session, Keyword.put(opts, :id, id)}
              )
 
-    assert File.read!(path) == bytes
+    assert_idle_resume_journal(path, bytes, id)
     assert :ok = Ipse.Session.close(resumed)
   end
 
@@ -416,6 +418,8 @@ defmodule Ipse.ConfigSessionTest do
     id = Ipse.Session.info(pid).id
     assert :ok = Ipse.Session.close(pid)
     {:ok, before_events} = Ipse.Journal.load(opts[:state_dir], id)
+    path = Path.join(opts[:state_dir], id <> ".jsonl")
+    before_resume = File.read!(path)
 
     assert get_in(hd(before_events), ["metadata", "configuration", "fingerprint"]) ==
              effective.fingerprint
@@ -427,8 +431,9 @@ defmodule Ipse.ConfigSessionTest do
              )
 
     assert Ipse.Session.info(resumed).phase == :idle
-    assert {:ok, ^before_events} = Ipse.Journal.load(opts[:state_dir], id)
+    assert_idle_resume_journal(path, before_resume, id)
     assert :ok = Ipse.Session.close(resumed)
+    {:ok, after_resume_events} = Ipse.Journal.load(opts[:state_dir], id)
     put(c, %{provider: "demo", model: "scripted", timeout_ms: 5000})
     assert {:ok, changed} = Ipse.Config.resolve(c.cwd, c.home, [], %{})
 
@@ -440,7 +445,7 @@ defmodule Ipse.ConfigSessionTest do
     assert {:error, :resume_configuration_mismatch} =
              DynamicSupervisor.start_child(Ipse.Sessions, {Ipse.Session, changed_opts})
 
-    assert {:ok, ^before_events} = Ipse.Journal.load(opts[:state_dir], id)
+    assert {:ok, ^after_resume_events} = Ipse.Journal.load(opts[:state_dir], id)
     refute_receive {:ipse, _, {:tool, _, _}}, 50
   end
 end

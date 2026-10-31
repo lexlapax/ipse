@@ -1,0 +1,9 @@
+Running ExUnit with seed: 47213, max_cases: 8
+Excluding tags: [:test]
+Including tags: [document_guard_positive: true]
+
+DOCUMENT_GUARD_POSITIVE {"unchanged_selection":true,"batches":4,"store_approvals":8,"body_requests":4}
+.
+Finished in 33.6 seconds (0.2s on load, 0.00s async, 33.4s sync)
+
+Result: 1 passed, 1 excluded

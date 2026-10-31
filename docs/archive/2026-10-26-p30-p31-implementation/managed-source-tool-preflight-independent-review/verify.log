@@ -1,0 +1,7 @@
+runtime-positive-v3.sha256: 668 exact runtime hashes; retained BEAMs/helper exact
+runtime-final.sha256: 668 exact runtime hashes; retained BEAMs/helper exact
+47 manifest rows verified; exactly two positive→final runtime changes
+Both ten-source tar cohorts verified; exactly ManagedLineage/ManagedToolUse source changes
+model: 2 selections/results agree; exact settled receipt and generation-1 floor; final turn error/stale refusal retained
+quote: 3 selections/results agree; exact settled receipt and generation-1 floor; final turn error/stale refusal retained
+Ordinary journal retains one prepared source call and complete nonempty source result

@@ -9,7 +9,7 @@ defmodule Ipse.Extension.CollectionPolicy do
   """
   alias Ipse.JSON
   @keys ~w(version key_prefix value_schema evidence_path source_categories allow_delete)
-  @origins ~w(interactive_operator native_operator_answer unattended_input assistant_proposal typed_host_outcome attributed_reference legacy_unverified)
+  @origins ~w(interactive_operator native_operator_answer native_operator_assertion unattended_input assistant_proposal typed_host_outcome attributed_reference legacy_unverified)
   @error {:error, :collection_policy_refused}
 
   def valid_constraints?(c) do

@@ -1,0 +1,1 @@
+coverage-grid: %{requests: 8, rejected: 432, accepted: 2160}

@@ -261,8 +261,17 @@ defmodule Ipse.Extension.InferenceDispatchSessionTest do
     {Map.put(config, :semantic_selections, selected), root, binding}
   end
 
+  @tag :witnessed_draft_inference
   test "accepted draft lineage binds actual unregistered extension model, embedding and decision helpers",
        c do
+    if System.get_env("IPSE_WITNESSED_DRAFT_CHILD") == "1" do
+      witnessed_draft_inference(c)
+    else
+      Ipse.Test.WitnessedDraft.run(c.base, "test/support/draft_inference_entry.exs")
+    end
+  end
+
+  defp witnessed_draft_inference(c) do
     text =
       Jason.encode!(%{
         "model" => "fixture",
@@ -304,32 +313,9 @@ defmodule Ipse.Extension.InferenceDispatchSessionTest do
     assert_receive {:ipse, ^pid, {:done, :ok}}, 5_000
     {:ok, %{id: draft_id, revision: 1}} = Session.draft(pid)
     assert :ok = Session.replace_draft(pid, draft_id, 1, "accepted request")
-    assert :ok = Session.close_confirmed(pid)
-    {:ok, events} = Ipse.Journal.load(c.sessions, id)
-    {:ok, draft} = Ipse.Session.Draft.restore(events, id)
-    {:ok, render} = Ipse.Session.DraftAcceptance.render(draft, Usage.id())
-    text_input = "accept " <> render["code"]
-
-    observation = %{
-      "version" => 2,
-      "event_id" => Usage.id(),
-      "display_limit" => 16_777_216,
-      "input_limit" => 1_048_576,
-      "display_sha256" => Ipse.JSON.sha256(render["display"]),
-      "text_sha256" => Ipse.JSON.sha256(text_input)
-    }
-
-    {:ok, receipt} = Ipse.Session.DraftAcceptance.receipt(draft, render, text_input, observation)
-    assert :ok = Ipse.Journal.append(c.sessions, id, Ipse.Session.Draft.accepted(draft, receipt))
-
-    {:ok, resumed} =
-      DynamicSupervisor.start_child(
-        Ipse.Sessions,
-        {Session, config: config, cwd: c.cwd, state_dir: c.sessions, id: id, subscriber: self()}
-      )
-
+    assert :ok = Ipse.Test.WitnessedDraft.accept(pid, draft_id, 2)
+    resumed = pid
     on_exit(fn -> if Process.alive?(resumed), do: Session.close_confirmed(resumed) end)
-    assert :ok = Session.consume_draft(resumed, draft_id, 2)
     assert_receive {:draft_fixture_model, input}, 5_000
     refute inspect(input) =~ "private helper draft"
     assert_receive {:ipse, ^resumed, {:done, :ok}}, 5_000

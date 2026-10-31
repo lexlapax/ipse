@@ -1,0 +1,39 @@
+# Independent native journal ownership repair review
+
+Dated 2026-10-29. Scoped review of the frozen [native-owned journal repair](native-journal-owner.md), replacing the negative ownership and whole-journal-size findings in the earlier [fresh/resume review](release-receipt-integration-independent-review.md). The original failing evidence remains historical. This review does not complete P30/P31 or qualify managed output, strict publication deadlines, packaging, or another platform. The [plan](../../plan.md) remains authoritative.
+
+## Disposition and provenance
+
+No new concrete implementation defect was found in this scope. The repaired path closes the reproduced startup-loss race by moving mutation into the actual flock owner, rather than adding another BEAM liveness check. The separate whole-journal predicate fixes the previously identified 16 MiB publication mismatch.
+
+The frozen [manifest](evidence/native-journal-owner/manifest.sha256) and all four runtime inventories verified successfully. Each inventory contains 696 files. All 36 files extracted from its source archive matched current source byte for byte at review time. These are copied, incrementally compiled cohorts, not a clean-checkout or complete current-tree build. The ordinary helper in the reviewed standard v7 graph has SHA-256 `dcdfec17f10ae5c59d87f508ff291a72fc732f416be81558c00f9a359aa6b003`.
+
+The passing controls were inspected, not rerun: five ordinary fencing tests with three hook tests skipped, three separately selected hook controls, six selected fresh/resume controls, two actual release-race controls, and the old-helper refusal. The retained failed intermediate logs remain distinct from those final passing receipts.
+
+## Original counterexample reexecuted
+
+The original independent startup-loss probe was run once with its Session source input changed to the frozen repaired source, against `_build/session-native-journal-v7-sol-20261029/lib`. Its only injected behavior remains a rendezvous immediately after `verify_resume_lock`, before the owner marker. It creates and cleanly closes a genuine Session, pauses resume, kills its actual native helper, waits for observed helper loss, acquires the real flock with an independent contender, and continues startup.
+
+The [new receipt](evidence/native-journal-owner-review/startup-loss-47030.log) records one owner marker before and after continuation, no journal change while the contender holds the lock, refused startup, and continued contender ownership. The process exited zero. No service calls or production source edits occurred. The probe and exact injected source are retained under a separate [review manifest](evidence/native-journal-owner-review/manifest.sha256); the compiled Session replacement existed only in the probe VM, not as a saved BEAM. Reproduction uses the archived source at the probe's indicated extraction path, or the retained injected source directly. The synthetic temporary workspace remains identified by the receipt.
+
+## Mutation, protocol and authority boundaries
+
+For `header_v1`/`resume_v1`, Writer admission, reservations, ordinary records and quota sealing all converge on `Lock.journal_append`. The guard admits only its tracked Writer. Repair is admitted only from the owner. Writer's checks and file descriptor provide source validation; its legacy append syscall path is not used for these modes. Direct inactive append, legacy Writer open and unfenced tail repair refuse a header with the release layout. The ordinary create entry point also refuses that layout, preserving the locked-header entry point.
+
+Native Q/W/E stages a declared bounded line, never writes on Q or W, requires complete staging and exactly one final newline, and validates expected source device/inode/size, UID, single link, mode, retained directory and named/retained lock identity. E writes and fsyncs in the same process retaining the flock, then checks final identity/size before acknowledging. T applies a bounded truncate or final newline and fsyncs under that same ownership. File handles and staged memory are scoped to the request or helper lifetime. Killing the helper releases the flock only with its process; killing Session cannot leave a separate BEAM file writer running after that lock has passed to a contender. The hook tests specifically retain exclusion after write and before sync while Session dies.
+
+The native bytes are deliberately opaque: JSON schema, event meaning, quota policy, approvals and effect ordering remain in Elixir. The source-lock helper cannot export a lease when header mode is enabled. These internal calls do not grant shell, MCP, extension, delegation or publication authority. They are cooperative runtime boundaries, not isolation from arbitrary same-user filesystem rewriting or hostile code already executing inside the BEAM.
+
+A malformed, incomplete, late or missing acknowledgment yields an unconfirmed append/repair. Writer stops after an append failure; startup refuses failed repair/marker admission. No such result advances the Writer's offsets or authorizes the corresponding downstream effect. Session stops its Writer before lock release. A native write may already have happened when its reply is lost; the implementation does not retry it automatically. An outstanding syscall can delay cleanup while the native owner continues holding the flock. This is ownership preservation, not proof of a fixed cleanup deadline.
+
+## Header anchors, recovery and bounds
+
+The fresh header receives the retained lock device/inode before its native publication. Resume opens the existing lock without creation and matches that anchor, any prior intent identity, source origin and saved header before owner-marker mutation. The tested crash-before-first-intent case can therefore resume without inventing a historical intent. The saved header remains unchanged and the previous active lifecycle epoch is not relabeled closed. An older opted-in header with neither anchor nor intent refuses active resume; one with a prior identity must match it. Unmarked legacy headers retain their older paths and acquire no native-journal guarantee. An old helper refusing the framed command has no legacy fallback for the protected path.
+
+The whole-journal metadata predicate now admits 134,217,728 bytes, while a transferred header or appended line remains at most 16,777,217 bytes including newline. Elixir's normalized ceilings agree with these constants. The inspected large-journal test appends two 8.5 MB records, exceeds the former whole-journal limit, and confirms a real signed release claim. It does not exercise the exact 128 MiB boundary. Quota sealing uses the same native append path. A complete unterminated record gains one newline only when policy permits; a bounded invalid tail is truncated to the validated complete offset. Header and source-transfer limits were not widened.
+
+## Remaining limits
+
+The focused evidence does not exhaust disk-full, short-write, every ACK-loss placement, scheduler stress, or repeated descriptor-leak cases. Source inspection supports conservative unknown outcomes and same-owner exclusion at those mutation boundaries; it does not establish an exhaustive fault-injection result. New Q/W/E/T frames are bounded internal operations and do not independently authenticate JSON policy. Legacy journals and non-Linux behavior remain outside this guarantee. No previous unknown cleanup is converted into a clean historical epoch, and a lost release-publication response remains unknown even if a sidecar later exists.
+
+The required whole-manual editorial reconciliation, global documentation check, coherent build and eventual commits belong to the parent integration task. This review added only its scoped archive and evidence; it did not rerun aggregate checks or claim milestone acceptance.

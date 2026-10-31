@@ -90,6 +90,51 @@ defmodule IpseKnowledge.Knowledge.DecisionPolicyTest do
     end
   end
 
+  test "encoded source facts respect the published size bound in both modes" do
+    for {consumer, base, field} <- [
+          {"notes.select", selection(), "rendered"},
+          {"notes.assess", assessment(), "input"}
+        ] do
+      rows = Enum.map(~w(a b c), &%{"id" => &1, field => String.duplicate("x", 5300)})
+      facts = Map.put(base, "candidates", rows)
+
+      facts =
+        if consumer == "notes.select",
+          do: Map.merge(facts, %{"eligible_count" => 3, "eligible_rendered_bytes" => 15_900}),
+          else: facts
+
+      extra = P.limits()["facts_bytes"] - byte_size(JSON.encode!(facts))
+      assert extra > 0 and extra < 844
+
+      facts =
+        update_in(
+          facts,
+          ["candidates", Access.at(0), field],
+          &(&1 <> String.duplicate("x", extra))
+        )
+
+      facts =
+        if consumer == "notes.select",
+          do: Map.put(facts, "eligible_rendered_bytes", 15_900 + extra),
+          else: facts
+
+      assert byte_size(JSON.encode!(facts)) == P.limits()["facts_bytes"]
+      oversized = update_in(facts, ["candidates", Access.at(0), field], &(&1 <> "x"))
+
+      oversized =
+        if consumer == "notes.select",
+          do: Map.update!(oversized, "eligible_rendered_bytes", &(&1 + 1)),
+          else: oversized
+
+      assert byte_size(JSON.encode!(oversized)) == P.limits()["facts_bytes"] + 1
+
+      for mode <- [:production, :development_experiment] do
+        assert {:ok, _} = P.plan(policy(consumer), facts, mode)
+        assert {:error, :invalid_decision_policy} = P.plan(policy(consumer), oversized, mode)
+      end
+    end
+  end
+
   test "each applicability bypass has no request or usable unsolicited advice" do
     unknown =
       selection()
@@ -152,16 +197,97 @@ defmodule IpseKnowledge.Knowledge.DecisionPolicyTest do
     partial_pool =
       Map.merge(f, %{
         "eligible_count" => 2000,
-        "eligible_rendered_bytes" => 2000,
+        "eligible_rendered_bytes" => 3000,
         "allocation_bytes" => 6144
       })
 
     assert plan(partial_pool).request == nil
     assert plan(partial_pool).reason == "fit_coverage_unavailable"
+
+    assert {:ok, %{"action" => nil, "receipt" => %{"reason" => "fit_coverage_unavailable"}}} =
+             partial_pool |> plan() |> P.apply(nil)
+
+    for {facts, reason} <- [
+          {Map.put(f, "availability", "unknown"), "eligibility_unknown"},
+          {Map.put(f, "availability", "unavailable"), "eligibility_unavailable"},
+          {Map.put(f, "coverage", "partial"), "coverage_incomplete"},
+          {partial_pool, "fit_coverage_unavailable"}
+        ],
+        {selected_policy, mode} <- [
+          {policy(), :development_experiment},
+          {policy(), :production},
+          {P.default("notes.select"), :production}
+        ] do
+      assert {:ok, unavailable} = P.plan(selected_policy, facts, mode)
+      assert unavailable.request == nil and unavailable.baseline == nil
+      assert unavailable.reason == reason
+
+      assert {:ok, %{"action" => nil, "receipt" => %{"reason" => ^reason}}} =
+               P.apply(unavailable, nil)
+
+      forged = %{unavailable | baseline: %{"pack" => "first", "members" => ["a"]}}
+      assert {:error, :invalid_decision_policy} = P.apply(forged, nil)
+    end
+
     assert plan(Map.put(f, "coverage", "partial")).reason == "coverage_incomplete"
 
     assert {:error, _} =
              P.plan(policy(), Map.put(f, "eligible_rendered_bytes", 349), :development_experiment)
+  end
+
+  test "unavailable candidate assessment yields no action in either mode" do
+    for availability <- ~w(unknown unavailable),
+        mode <- [:production, :development_experiment] do
+      facts = Map.put(assessment(), "availability", availability)
+      assert {:ok, planned} = P.plan(policy("notes.assess"), facts, mode)
+      assert planned.baseline == nil and planned.request == nil
+      assert planned.reason == "eligibility_" <> availability
+      assert {:ok, %{"action" => nil}} = P.apply(planned, nil)
+    end
+  end
+
+  test "missing candidates or packs do not assert that a nonempty eligible set is empty" do
+    no_candidates =
+      Map.merge(selection(), %{"candidates" => [], "alternatives" => [], "baseline_id" => nil})
+
+    no_packs = Map.merge(selection(), %{"alternatives" => [], "baseline_id" => nil})
+
+    for facts <- [no_candidates, no_packs],
+        mode <- [:production, :development_experiment] do
+      assert {:ok, planned} = P.plan(policy(), facts, mode)
+      assert planned.request == nil
+      assert {:ok, %{"action" => nil}} = P.apply(planned, nil)
+    end
+
+    zero = Map.put(no_packs, "allocation_bytes", 0)
+    assert {:ok, planned} = P.plan(policy(), zero, :development_experiment)
+    assert {:ok, %{"action" => %{"pack" => nil, "members" => []}}} = P.apply(planned, nil)
+
+    fitting =
+      Map.merge(no_packs, %{
+        "allocation_bytes" => 210,
+        "eligible_count" => 3,
+        "eligible_rendered_bytes" => 210
+      })
+
+    assert {:ok, planned} = P.plan(policy(), fitting, :development_experiment)
+    assert {:ok, %{"action" => %{"members" => ~w(a b c)}}} = P.apply(planned, nil)
+  end
+
+  test "complete aggregate metadata accounts for the minimum bytes of omitted records" do
+    facts = Map.merge(selection(), %{"eligible_count" => 4, "eligible_rendered_bytes" => 210})
+
+    assert {:error, :invalid_decision_policy} =
+             P.plan(policy(), facts, :development_experiment)
+
+    assert {:ok, planned} =
+             P.plan(
+               policy(),
+               Map.put(facts, "eligible_rendered_bytes", 211),
+               :development_experiment
+             )
+
+    assert planned.request != nil
   end
 
   test "pack filtering uses actual UTF8 rendered bytes and deterministic duplicate identity" do
@@ -205,6 +331,104 @@ defmodule IpseKnowledge.Knowledge.DecisionPolicyTest do
              P.plan(Map.put(policy(), "profile", "1bad"), selection(), :development_experiment)
 
     assert plan().request["profile"] == "advice"
+  end
+
+  test "version 2 selection filters complete measured projections rather than raw text sums" do
+    facts =
+      selection()
+      |> Map.merge(%{
+        "version" => 2,
+        "source_binding_sha256" => String.duplicate("a", 64),
+        "eligible_count" => 3,
+        "eligible_rendered_bytes" => nil,
+        "alternatives" => [
+          %{"id" => "first", "members" => ["a"], "rendered_bytes" => 99},
+          %{"id" => "second", "members" => ["a", "b"], "rendered_bytes" => 100},
+          %{"id" => "large", "members" => ["c"], "rendered_bytes" => 101}
+        ]
+      })
+
+    assert {:ok, p} = P.plan(policy(), facts, :development_experiment)
+    assert p.request != nil
+    assert Enum.map(p.mapping, & &1["id"]) == ~w(first second)
+
+    assert {:ok, %{"action" => %{"pack" => "second", "members" => ~w(a b)}}} =
+             P.apply(p, result(p, "second"))
+
+    assert {:ok, fits} =
+             P.plan(
+               policy(),
+               Map.put(facts, "eligible_rendered_bytes", 100),
+               :development_experiment
+             )
+
+    assert fits.reason == "complete_set_fits" and is_nil(fits.request)
+    assert {:ok, %{"action" => %{"members" => ~w(a b c)}}} = P.apply(fits, nil)
+
+    assert {:ok, incomplete} =
+             P.plan(policy(), Map.put(facts, "coverage", "partial"), :development_experiment)
+
+    assert incomplete.reason == "coverage_incomplete" and incomplete.baseline == nil
+
+    duplicates = put_in(facts, ["alternatives", Access.at(2), "members"], ["a"])
+
+    assert {:error, :invalid_decision_policy} =
+             P.plan(policy(), duplicates, :development_experiment)
+
+    assert {:error, :invalid_decision_policy} =
+             P.apply(%{p | facts: duplicates}, result(p, "second"))
+
+    assert {:ok, production} = P.plan(policy(), facts, :production)
+    assert production.reason == "no_qualified_strategy" and is_nil(production.request)
+
+    assert {:ok, _} =
+             P.plan(policy(), Map.put(facts, "allocation_bytes", 8192), :development_experiment)
+
+    assert {:error, :invalid_decision_policy} =
+             P.plan(policy(), Map.put(facts, "allocation_bytes", 8193), :development_experiment)
+
+    assert {:error, :invalid_decision_policy} =
+             P.plan(
+               policy(),
+               Map.put(selection(), "allocation_bytes", 8192),
+               :development_experiment
+             )
+  end
+
+  test "a fitting complete set bypasses decisions even without a baseline pack" do
+    version1 =
+      selection()
+      |> Map.merge(%{
+        "allocation_bytes" => 210,
+        "eligible_count" => 3,
+        "eligible_rendered_bytes" => 210,
+        "baseline_id" => nil
+      })
+
+    version2 =
+      version1
+      |> Map.put("version", 2)
+      |> Map.put("source_binding_sha256", String.duplicate("a", 64))
+      |> Map.update!("alternatives", fn alternatives ->
+        Enum.map(alternatives, &Map.put(&1, "rendered_bytes", 150))
+      end)
+
+    for facts <- [version1, version2] do
+      assert {:ok, plan} = P.plan(policy(), facts, :development_experiment)
+      assert plan.reason == "complete_set_fits" and is_nil(plan.request)
+      assert {:ok, %{"action" => %{"members" => ~w(a b c)}}} = P.apply(plan, nil)
+
+      for {field, value, reason} <- [
+            {"availability", "unavailable", "eligibility_unavailable"},
+            {"coverage", "partial", "coverage_incomplete"}
+          ] do
+        assert {:ok, withheld} =
+                 P.plan(policy(), Map.put(facts, field, value), :development_experiment)
+
+        assert withheld.reason == reason and withheld.baseline == nil and withheld.request == nil
+        assert {:ok, %{"action" => nil}} = P.apply(withheld, nil)
+      end
+    end
   end
 
   test "selection request marks bounded UTF8 excerpts, and mapping returns only permitted IDs" do
@@ -356,6 +580,19 @@ defmodule IpseKnowledge.Knowledge.DecisionPolicyTest do
     File.mkdir_p!(sdk)
     on_exit(fn -> File.rm_rf!(root) end)
 
+    # The public SDK delegates context sizing to the host framing modules.
+    # Include those actual beams in the isolated SDK and exercise the call in
+    # the separate VM, so this check catches a missing runtime closure.
+    for module <- [
+          Ipse.Extension.Context,
+          Ipse.Extension.Catalog,
+          Ipse.Extension.History,
+          Ipse.Session.Reference
+        ] do
+      beam = module |> :code.which() |> List.to_string()
+      File.cp!(beam, Path.join(sdk, Path.basename(beam)))
+    end
+
     dependencies =
       for dep <- ~w(jason jsonschex ex_json_pointer)a do
         target = Path.join([root, "lib", Atom.to_string(dep), "ebin"])
@@ -364,7 +601,7 @@ defmodule IpseKnowledge.Knowledge.DecisionPolicyTest do
         target
       end
 
-    args = Enum.flat_map(dependencies, &["-pa", &1])
+    args = Enum.flat_map([sdk | dependencies], &["-pa", &1])
 
     code =
       "case Kernel.ParallelCompiler.compile_to_path(~w(lib/ipse/json.ex lib/ipse/decision.ex lib/ipse/extension.ex), #{inspect(sdk)}, return_diagnostics: true) do {:ok,_,%{compile_warnings: [], runtime_warnings: []}} -> :ok; {:ok,_,[]} -> :ok; bad -> raise inspect(bad) end"
@@ -396,7 +633,9 @@ defmodule IpseKnowledge.Knowledge.DecisionPolicyTest do
     assert status == 0, output
     manifest = JSON.decode!(File.read!(Path.join(artifact, "extension.json")))
     refute "host.decision" in manifest["capabilities"]
-    assert Enum.map(manifest["exports"]["tools"], & &1["id"]) == ["capture"]
+
+    assert Enum.map(manifest["exports"]["tools"], & &1["id"]) ==
+             ~w(capture index read search)
 
     assert File.regular?(
              Path.join(artifact, "ebin/Elixir.IpseKnowledge.Knowledge.DecisionPolicy.beam")
@@ -404,10 +643,22 @@ defmodule IpseKnowledge.Knowledge.DecisionPolicyTest do
 
     code =
       "import ExUnit.Assertions\nfalse=Code.ensure_loaded?(Ipse.Session)\nfalse=Code.ensure_loaded?(Ipse.Extension.Artifact)\n" <>
+        "assert is_integer(Ipse.Extension.context_rendered_bytes([%{\"id\"=>\"x\",\"text\"=>\"note\",\"priority\"=>0,\"source\"=>%{\"kind\"=>\"assertion\"}}],\"knowledge\"))\n" <>
         "p=#{inspect(policy())}\nf=#{inspect(selection())}\n" <>
         "assert {:ok, plan}=IpseKnowledge.Knowledge.DecisionPolicy.plan(p,f,:development_experiment)\nassert plan.request != nil\nassert Ipse.Extension.validate_decision_request(Map.take(plan.request,~w(version profile input questions)))==:ok\n" <>
         "r=#{inspect(result(plan()))}\nneutral=Map.take(plan.request,~w(version profile input questions))\nassert Ipse.Extension.validate_decision_result(neutral,r)==:ok\nassert {:ok,\"first\"}=Ipse.Extension.select_decision(neutral,r,\"pack\",~w(first second),0.8)\nassert {:ok,%{\"action\"=>%{\"pack\"=>\"first\"}}}=IpseKnowledge.Knowledge.DecisionPolicy.apply(plan,r)\n" <>
-        "assert {:ok,none}=IpseKnowledge.Knowledge.DecisionPolicy.plan(p,f)\nassert none.request==nil\nIO.puts(\"minimal-public-sdk-decision-policy-ok\")"
+        "assert {:ok,none}=IpseKnowledge.Knowledge.DecisionPolicy.plan(p,f)\nassert none.request==nil\n" <>
+        "gap=Map.merge(f,%{\"eligible_rendered_bytes\"=>2207,\"allocation_bytes\"=>6144})\n" <>
+        "for mode <- [:production,:development_experiment] do\n" <>
+        "  assert {:ok,missing}=IpseKnowledge.Knowledge.DecisionPolicy.plan(p,gap,mode)\n" <>
+        "  assert missing.reason==\"fit_coverage_unavailable\" and missing.request==nil\n" <>
+        "  assert {:ok,%{\"action\"=>nil}}=IpseKnowledge.Knowledge.DecisionPolicy.apply(missing,nil)\n" <>
+        "  absent=Map.merge(f,%{\"alternatives\"=>[],\"baseline_id\"=>nil})\n" <>
+        "  assert {:ok,no_pack}=IpseKnowledge.Knowledge.DecisionPolicy.plan(p,absent,mode)\n" <>
+        "  assert {:ok,%{\"action\"=>nil}}=IpseKnowledge.Knowledge.DecisionPolicy.apply(no_pack,nil)\n" <>
+        "  impossible=Map.merge(f,%{\"eligible_count\"=>4,\"eligible_rendered_bytes\"=>210})\n" <>
+        "  assert {:error,:invalid_decision_policy}=IpseKnowledge.Knowledge.DecisionPolicy.plan(p,impossible,mode)\n" <>
+        "end\nIO.puts(\"minimal-public-sdk-decision-policy-ok\")"
 
     {output, status} =
       System.cmd(

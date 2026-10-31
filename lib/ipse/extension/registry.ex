@@ -111,6 +111,23 @@ defmodule Ipse.Extension.Config do
             }
           }
         },
+        "collection_bindings" => %{
+          "type" => "array",
+          "maxItems" => 8,
+          "items" => %{
+            "type" => "object",
+            "additionalProperties" => false,
+            "required" => ~w(version instance id scope profile),
+            "properties" => %{
+              "version" => %{"type" => "integer", "enum" => [1, 2]},
+              "instance" => @identifier,
+              "id" => %{"type" => "string", "enum" => ["documents"]},
+              "scope" => %{"type" => "string", "enum" => ["project"]},
+              "profile" => %{"type" => "string", "enum" => ["document_graph_v1"]},
+              "source_use" => %{"type" => "string", "enum" => ["shared_producer_v1"]}
+            }
+          }
+        },
         "service_bindings" => %{
           "type" => "array",
           "maxItems" => 64,
@@ -183,6 +200,10 @@ defmodule Ipse.Extension.Config do
              not Enum.any?(
                Map.get(ceiling, "mcp_bindings", []),
                &(&1["instance"] == instance["instance"])
+             ) and
+             not Enum.any?(
+               Map.get(ceiling, "collection_bindings", []),
+               &(&1["instance"] == instance["instance"])
              ))
     end
   end
@@ -198,6 +219,7 @@ defmodule Ipse.Extension.Config do
       (trust["text_required"] != true or "stream.text" in trust["capabilities"]) and
       valid_state_bindings?(Map.get(trust, "state_bindings", [])) and
       Ipse.Extension.MCPCall.trust_bindings?(Map.get(trust, "mcp_bindings", [])) and
+      Ipse.Extension.CollectionStore.trust_bindings?(Map.get(trust, "collection_bindings", [])) and
       Ipse.Extension.Services.validate_bindings(Map.get(trust, "service_bindings", [])) and
       Enum.all?(trust["capabilities"], &Regex.match?(~r/\A[a-z][a-z0-9_.-]{0,127}\z/, &1)) and
       (not Map.has_key?(trust, "expires_at") or is_integer(trust["expires_at"]))
@@ -414,6 +436,18 @@ defmodule Ipse.Extension.Registry do
           if mcp_bindings == [],
             do: identity,
             else: Map.put(identity, "mcp_bindings", mcp_bindings)
+
+        collection_binding =
+          Enum.find(
+            Map.get(ceiling, "collection_bindings", []),
+            &(&1["instance"] == instance["instance"])
+          )
+
+        identity =
+          if collection_binding,
+            do:
+              Map.put(identity, "collection_binding", Map.delete(collection_binding, "instance")),
+            else: identity
 
         {:cont,
          {:ok,
@@ -639,7 +673,7 @@ defmodule Ipse.Extension.Registry do
   defp earliest(left, right), do: min(left, right)
 
   @identity_keys ~w(instance artifact artifact_sha256 options_sha256 exports_sha256 requires_sha256 subscriptions_sha256 services scope source_sha256 sdk protocol capabilities order lifetime expires_at runtime host_sha256 generation allow_children)
-  @identity_optional ~w(text_required state_binding mcp_bindings)
+  @identity_optional ~w(text_required state_binding mcp_bindings collection_binding)
 
   def valid_identity?(identity) when is_map(identity) do
     Enum.sort(Map.keys(Map.drop(identity, @identity_optional))) == Enum.sort(@identity_keys) and
@@ -651,6 +685,9 @@ defmodule Ipse.Extension.Registry do
       (not Map.has_key?(identity, "mcp_bindings") or
          (identity["scope"] == "operator" and "host.mcp" in identity["capabilities"] and
             Ipse.Extension.MCPCall.public_bindings?(identity["mcp_bindings"]))) and
+      (not Map.has_key?(identity, "collection_binding") or
+         (identity["scope"] == "operator" and "host.collection.store" in identity["capabilities"] and
+            Ipse.Extension.CollectionStore.operator_binding?(identity["collection_binding"]))) and
       Ipse.Extension.validate(identity) == :ok and
       is_binary(identity["instance"]) and
       Regex.match?(~r/\A[a-z][a-z0-9_-]{0,63}\z/, identity["instance"]) and
@@ -670,6 +707,8 @@ defmodule Ipse.Extension.Registry do
       is_list(identity["capabilities"]) and
       ("host.state.bound" not in identity["capabilities"] or
          Map.has_key?(identity, "state_binding")) and
+      ("host.collection.store" not in identity["capabilities"] or
+         Map.has_key?(identity, "collection_binding")) and
       Enum.all?(identity["capabilities"], &(&1 in Ipse.Extension.Catalog.capabilities())) and
       length(identity["capabilities"]) == length(Enum.uniq(identity["capabilities"])) and
       is_integer(identity["order"]) and identity["order"] in 0..1000 and

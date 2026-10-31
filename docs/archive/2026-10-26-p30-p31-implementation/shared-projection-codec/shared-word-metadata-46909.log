@@ -1,0 +1,9 @@
+Running ExUnit with seed: 46909, max_cases: 1
+Excluding tags: [:test]
+Including tags: [:shared_projection_preview]
+
+SHARED_READONLY_PREVIEW {"coverage":{"cache_scope":"source_bundle_preparation","effects_used":0,"evidence_readable":false,"namespace_complete":false,"population_qualified":false,"reads_used":74,"selection_complete":true},"document_citations":20,"document_warnings":1,"entities":40,"fact_pages":1,"facts":160,"header_bytes":3956,"leaf_values":14,"maximum_value_bytes":45073,"partial_sources":1,"population_qualified":false,"publication_attempted":false,"source_pages":1,"sources":8,"status":"preview","vector_pages":12,"vectors":94}
+.
+Finished in 11.4 seconds (0.9s on load, 0.00s async, 10.4s sync)
+
+Result: 1 passed, 29 excluded

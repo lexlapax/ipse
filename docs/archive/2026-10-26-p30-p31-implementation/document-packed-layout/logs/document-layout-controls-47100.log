@@ -1,0 +1,24 @@
+Running ExUnit with seed: 47100, max_cases: 1
+Excluding tags: [:test]
+Including tags: [:document_layout_protocol, :document_layout_native]
+
+DOCUMENT_LAYOUT_PROTOCOL {"result_bytes":1702,"worker_request_bytes":2093,"mutation":false}
+.
+
+  1) test layout authenticates original physical parts independently of logical read slices (Ipse.Extension.Collection.DocumentStageTest)
+     test/ipse/extension/collection_document_stage_test.exs:107
+     match (=) failed
+     code:  assert {:ok, result} = call(c, %{"op" => "value.layout", "key" => key})
+     left:  {:ok, result}
+     right: {:error, :document_store_refused}
+     stacktrace:
+       test/ipse/extension/collection_document_stage_test.exs:156: anonymous fn/3 in Ipse.Extension.Collection.DocumentStageTest."test layout authenticates original physical parts independently of logical read slices"/1
+       (elixir 1.20.4) lib/enum.ex:1725: Enum."-map/2-lists^map/1-1-"/2
+       (elixir 1.20.4) lib/enum.ex:1725: Enum."-map/2-lists^map/1-1-"/2
+       test/ipse/extension/collection_document_stage_test.exs:155: (test)
+
+
+Finished in 1.0 seconds (0.6s on load, 0.00s async, 0.3s sync)
+
+Result: 1/2 passed, 12 excluded
+Failed: 1 test

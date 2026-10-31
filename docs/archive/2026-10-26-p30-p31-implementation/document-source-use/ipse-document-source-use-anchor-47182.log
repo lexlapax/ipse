@@ -1,0 +1,9 @@
+Corrected referenced-anchor test compiled with empty diagnostics; production bytes unchanged
+Running ExUnit with seed: 20261029, max_cases: 4
+Excluding tags: [:test]
+Including tags: [:source_relation_anchors]
+
+.
+Finished in 0.03 seconds (0.03s async, 0.00s sync)
+
+Result: 1 passed, 4 excluded

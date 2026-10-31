@@ -1,0 +1,192 @@
+{
+  "ancestor": {
+    "bytes": 1910,
+    "path": "docs/archive/2026-10-26-p30-p31-implementation/remember-intake/manifest.sha256",
+    "sha256": "f5267871f7f2f2dae9a1f31f09bea8b56d1a1a8774d915ef5fcc8d9ab7e0a66e",
+    "type": "regular"
+  },
+  "graphs": [
+    {
+      "files": 709,
+      "graph": "_build/remember-intake-sol-20261029",
+      "inventory": {
+        "bytes": 176321,
+        "path": "docs/archive/2026-10-26-p30-p31-implementation/notes-publication-admission/remember-intake-sol-20261029.json",
+        "sha256": "90674b473493d395dee8f2755ebc0e9f899153f310d975318625402fa94f88a3",
+        "type": "regular"
+      }
+    },
+    {
+      "files": 709,
+      "graph": "_build/notes-publication-admission-sol-20261029",
+      "inventory": {
+        "bytes": 184829,
+        "path": "docs/archive/2026-10-26-p30-p31-implementation/notes-publication-admission/notes-publication-admission-sol-20261029.json",
+        "sha256": "ad244dd1705f5e6b68b40e0facd4c5c2686c27470828e1860e6903a3f1b7a679",
+        "type": "regular"
+      }
+    }
+  ],
+  "retained": [
+    {
+      "bytes": 3354,
+      "path": "docs/archive/2026-10-26-p30-p31-implementation/notes-publication-admission/ipse-freeze-notes-admission-47174.exs",
+      "sha256": "8daa20e37c73cd33760c8e773281d5f8e60af236dc6e22efa37ce430c3a99a83",
+      "type": "regular"
+    },
+    {
+      "bytes": 825,
+      "path": "docs/archive/2026-10-26-p30-p31-implementation/notes-publication-admission/ipse-notes-admission-compile-47167.exs",
+      "sha256": "5a3706280eaaca8810378318e806f613a86fb16c4b9db65f89d4af62582a42f1",
+      "type": "regular"
+    },
+    {
+      "bytes": 194,
+      "path": "docs/archive/2026-10-26-p30-p31-implementation/notes-publication-admission/ipse-notes-admission-compile-47167.log",
+      "sha256": "089d4a0214f38e2d0bc79b722bee3cce752bacc65eb711f2ab42798f9c1b1beb",
+      "type": "regular"
+    },
+    {
+      "bytes": 9193,
+      "path": "docs/archive/2026-10-26-p30-p31-implementation/notes-publication-admission/ipse-notes-admission-initial-shape-47168.exs",
+      "sha256": "098d5182ee5c1edf2ad26c0889dd4b774291b52a849f994dbd193d80f549a976",
+      "type": "regular"
+    },
+    {
+      "bytes": 6896,
+      "path": "docs/archive/2026-10-26-p30-p31-implementation/notes-publication-admission/ipse-notes-admission-initial-test-47168.exs",
+      "sha256": "c9f9471e29dd8a62eb23d9bc2e11fa4f131ef7df1d582a00efbf87e67f8159dd",
+      "type": "regular"
+    },
+    {
+      "bytes": 490,
+      "path": "docs/archive/2026-10-26-p30-p31-implementation/notes-publication-admission/ipse-notes-admission-test-47168.exs",
+      "sha256": "dd25f4f7e08b804b687f5f021ec72d1245bb35789870c10da731d8a3aea3e433",
+      "type": "regular"
+    },
+    {
+      "bytes": 2959,
+      "path": "docs/archive/2026-10-26-p30-p31-implementation/notes-publication-admission/ipse-notes-admission-test-47168.log",
+      "sha256": "566a03a120b714eb67d2f5509190214ba9ade59772c8253384c6c565d876869d",
+      "type": "regular"
+    },
+    {
+      "bytes": 637,
+      "path": "docs/archive/2026-10-26-p30-p31-implementation/notes-publication-admission/ipse-notes-admission-test-compile-47169.exs",
+      "sha256": "702b02dccef284720a9a2bd5e6bd905d2e841f82959a9385c0ae088246ac80b8",
+      "type": "regular"
+    },
+    {
+      "bytes": 1203,
+      "path": "docs/archive/2026-10-26-p30-p31-implementation/notes-publication-admission/ipse-notes-admission-test-compile-47169.log",
+      "sha256": "0f7ee8f726a410d8d32cff509c18de7d42b822c17560052ca931b6ddade0df4d",
+      "type": "regular"
+    },
+    {
+      "bytes": 637,
+      "path": "docs/archive/2026-10-26-p30-p31-implementation/notes-publication-admission/ipse-notes-admission-test-compile-47170.exs",
+      "sha256": "702b02dccef284720a9a2bd5e6bd905d2e841f82959a9385c0ae088246ac80b8",
+      "type": "regular"
+    },
+    {
+      "bytes": 296,
+      "path": "docs/archive/2026-10-26-p30-p31-implementation/notes-publication-admission/ipse-notes-admission-test-compile-47170.log",
+      "sha256": "2f07f60902e5b45633b259c0d3dbad1a467d57ad4c1875eb5abd2d569bf481e7",
+      "type": "regular"
+    },
+    {
+      "bytes": 6998,
+      "path": "docs/archive/2026-10-26-p30-p31-implementation/notes-publication-admission/ipse-notes-admission-unused-alias-47169.exs",
+      "sha256": "3b09d03d5e6a3b53626ff3d574f1b3ae9d29a17879661c8724ed78e52482c90b",
+      "type": "regular"
+    }
+  ],
+  "scope": "notes-publication-admission",
+  "sources": [
+    {
+      "bytes": 78384,
+      "path": "docs/archive/2026-10-26-p30-p31-implementation/notes-publication-admission/lib__ipse__extension__collection.ex.txt",
+      "sha256": "8115f10d5c251261bf2aaa2e2aa4e6202934724c113850d1f41803e6fd622a56",
+      "source": "lib/ipse/extension/collection.ex",
+      "type": "regular"
+    },
+    {
+      "bytes": 32093,
+      "path": "docs/archive/2026-10-26-p30-p31-implementation/notes-publication-admission/lib__ipse__extension__managed_collection_call.ex.txt",
+      "sha256": "d8fd728e2beecbaba51cf2a3e7cf6f8a7fb6f3758b8acb0a03577c9801e4bb5b",
+      "source": "lib/ipse/extension/managed_collection_call.ex",
+      "type": "regular"
+    },
+    {
+      "bytes": 62457,
+      "path": "docs/archive/2026-10-26-p30-p31-implementation/notes-publication-admission/lib__ipse__session__invocation.ex.txt",
+      "sha256": "5731b150a41f085256639955003bb0514ed1cff81d05390fd3b2d979264c5599",
+      "source": "lib/ipse/session/invocation.ex",
+      "type": "regular"
+    },
+    {
+      "bytes": 29168,
+      "path": "docs/archive/2026-10-26-p30-p31-implementation/notes-publication-admission/lib__ipse__extension__collection__document_stage.ex.txt",
+      "sha256": "c5db55b3c3f95fb2dd097cdbdd02b769b6043633ce7bcaafff3f0788e9e12652",
+      "source": "lib/ipse/extension/collection/document_stage.ex",
+      "type": "regular"
+    },
+    {
+      "bytes": 6990,
+      "path": "docs/archive/2026-10-26-p30-p31-implementation/notes-publication-admission/test__ipse__extension__notes_publication_admission_test.exs.txt",
+      "sha256": "f40ca14281e1584a4d2c93eb63d97085f6d21e76dd9ec9102e0cfe87414c5f34",
+      "source": "test/ipse/extension/notes_publication_admission_test.exs",
+      "type": "regular"
+    },
+    {
+      "bytes": 9297,
+      "path": "docs/archive/2026-10-26-p30-p31-implementation/notes-publication-admission/test__ipse__extension__managed_collection_call_test.exs.txt",
+      "sha256": "f34bf5595a3946deaea6acf8eefeeabce2265e5237a70d10f313327bf2f8bf17",
+      "source": "test/ipse/extension/managed_collection_call_test.exs",
+      "type": "regular"
+    },
+    {
+      "bytes": 59836,
+      "path": "docs/archive/2026-10-26-p30-p31-implementation/notes-publication-admission/test__ipse__extension__collection_normalizer_v3_integration_test.exs.txt",
+      "sha256": "b4433a1eb50b3663888d21c77d07ffe44611a101b8c7a28b7b76a53250487449",
+      "source": "test/ipse/extension/collection_normalizer_v3_integration_test.exs",
+      "type": "regular"
+    },
+    {
+      "bytes": 28939,
+      "path": "docs/archive/2026-10-26-p30-p31-implementation/notes-publication-admission/test__ipse__extension__collection_normalizer_v3_test.exs.txt",
+      "sha256": "1ac16b58b28016ace2ae264937ee37e31063ddb69d2248735fc89b7a92757767",
+      "source": "test/ipse/extension/collection_normalizer_v3_test.exs",
+      "type": "regular"
+    },
+    {
+      "bytes": 6506,
+      "path": "docs/archive/2026-10-26-p30-p31-implementation/notes-publication-admission/test__support__managed_policy.exs.txt",
+      "sha256": "d3e1c92b5b092ddf807df0d86230f20450bfec20fd92b3b8be7f40fe34f55e67",
+      "source": "test/support/managed_policy.exs",
+      "type": "regular"
+    },
+    {
+      "bytes": 11402,
+      "path": "docs/archive/2026-10-26-p30-p31-implementation/notes-publication-admission/extensions__knowledge__src__notes.ex.txt",
+      "sha256": "a0474155b87c6b1b1bd53d6e51e6f5cb045a52eee0e0fa80ba2e613f36e9802b",
+      "source": "extensions/knowledge/src/notes.ex",
+      "type": "regular"
+    },
+    {
+      "bytes": 6290,
+      "path": "docs/archive/2026-10-26-p30-p31-implementation/notes-publication-admission/extensions__knowledge__src__knowledge__contracts.ex.txt",
+      "sha256": "d60694a680de3e869fe3939527fa75aaa75d44ad10115c5d5c7df61822b8474c",
+      "source": "extensions/knowledge/src/knowledge/contracts.ex",
+      "type": "regular"
+    },
+    {
+      "bytes": 10013,
+      "path": "docs/archive/2026-10-26-p30-p31-implementation/notes-publication-admission/extensions__knowledge__src__knowledge__records.ex.txt",
+      "sha256": "90c27e59d3700e4467580c212af92b100f9788fb38a332a80676416160a7d551",
+      "source": "extensions/knowledge/src/knowledge/records.ex",
+      "type": "regular"
+    }
+  ],
+  "version": 1
+}

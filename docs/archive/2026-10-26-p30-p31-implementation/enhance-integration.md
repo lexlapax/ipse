@@ -117,13 +117,64 @@ passed. No complete installed pass is claimed. The fixture consumes events until
 `done: :ok` and does not preserve a prior `done: :error` cause; diagnose the actual
 request/event path before changing its five-second watchdog or expectations.
 The failure is unresolved, not attributed to a product or fixture defect by this
-record. Its log remains `installed-package.log` in the private root.
+record. Its log remains `installed-package.log` in the private root. A later
+[handoff](handoff-20261027-terra.md#installed-package) identifies the fixture
+cause and records a repaired candidate; subsequent installed-package checks in
+that handoff passed on later candidates. None establishes current-tree package
+qualification.
 
 The [model-switch handoff](handoff-20261027-enhance.md) preserves the active full
 test session and next checks. The developer chose to keep work in this agent;
 no subagents were used for the integration or its author review.
 
 ## Remaining qualification
+
+On 2026-10-30 the local enhancement replay fixture was updated for native-owned
+journals. Its synthetic acceptance is appended by the active Session's writer;
+its interrupted-history controls retain the original journal inode rather than
+resuming a copied source. All 17 tests in `draft_vertical_test.exs` passed on
+the current worktree. The fixture still does not establish a native terminal
+acceptance witness or live-provider carryover.
+
+A later current-worktree control also passed the projected cancellation, resumed
+and accepted-draft inputs through the actual ChatGPT Responses request builder
+(seed 495118). The synthetic native draft text, encrypted reasoning and reported
+model canaries were absent from the resulting request bodies, while the new
+ordinary intent remained present. The model response was a fixture; this is not
+an HTTP transport or live-provider carryover test. A subsequent loopback control
+uses the actual Responses adapter and streaming transport with fixture credentials
+and synthetic responses. It checks the complete serialized requests after draft
+cancellation and Session resume, including absence of draft text, native IDs and
+encrypted reasoning and retention of the later ordinary response (seed 671236;
+18 draft Session tests passed). The loopback test was then extended to a
+synthetically witnessed accepted replacement and subsequent resume (seed 696454):
+the accepted text and later ordinary continuation remain present, while the
+original draft and its native IDs and encrypted reasoning are absent. This
+remains a local fixture, not a live service or actual terminal-witness transport
+qualification. An initial assertion used truncated `inspect` output; the rerun
+checks complete JSON instead.
+
+The remaining draft Session canary checks were also changed from bounded
+`inspect` output to complete JSON encoding. All 19 draft Session tests passed
+on the dirty worktree. The terminal fixture's equivalent checks were updated
+as well; its separate PTY rerun remains pending while the isolated full suite
+owns the native test schedule. These checks do not establish model quality or
+live-provider behavior.
+
+The native terminal acceptance fixture was subsequently connected to the real
+Responses adapter and a local streaming server. It exercised interactive draft
+entry, replacement, stale-ID refusal and witnessed acceptance; the captured
+accepted request retained the replacement and excluded draft text, response,
+native IDs and encrypted reasoning (seed 781868; nine acceptance tests passed).
+The server uses fixture credentials and responses; this does not establish live
+provider behavior, resumed terminal transport, or model quality. The first
+attempt lost the test task's completion message to the terminal input loop; a
+separate fixture process now records the complete captured request bodies.
+The same terminal-witnessed acceptance now also has a programmatically resumed
+Session and a third local Responses request (seed 978751). The accepted native
+response remains in the resumed request, and the withdrawn draft canaries remain
+absent. The resume prompt itself was not entered through the terminal, and live
+provider behavior remains unverified.
 
 Protected storage still refuses the actual `7.2.11-arch1-1` host; the production
 allowlist is unchanged. No test-only kernel override is selected for this

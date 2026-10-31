@@ -1,0 +1,6 @@
+Code.require_file("test/test_helper.exs")
+ExUnit.configure(exclude: [:test], include: [:pinned_native_stale])
+{:ok, _} = Application.ensure_all_started(:ipse)
+Code.require_file("extensions/knowledge/src/evidence.ex")
+Code.require_file("extensions/knowledge/src/store/collection.ex")
+Code.require_file("test/extensions/knowledge/collection_pinned_native_test.exs")

@@ -1,0 +1,2 @@
+OLD_PRESET_CAPABILITIES_UNCHANGED ["host.actions", "host.actions.mixed", "host.state.bound", "host.state.read", "host.state.scan", "host.state.write", "host.tools", "invoke.command", "invoke.result.pages", "invoke.tool"]
+PACKED_ADAPTER_LISTED_IN_ARTIFACT

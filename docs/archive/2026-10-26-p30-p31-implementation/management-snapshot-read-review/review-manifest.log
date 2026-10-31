@@ -1,0 +1,10 @@
+MANAGEMENT_SNAPSHOT_MANIFEST_OK: %{
+  cohorts: [
+    {"management-snapshot-read-v2",
+     %{sources: 2, manifest_entries: 6, runtime_files: 670}},
+    {"management-snapshot-read",
+     %{sources: 3, manifest_entries: 7, runtime_files: 670}}
+  ],
+  changed_from_journal_v3: ["Elixir.Ipse.Extension.Consent.beam"],
+  helper_unchanged: true
+}

@@ -2,6 +2,7 @@ Code.require_file("../../support/stdio_probe.exs", __DIR__)
 
 defmodule Ipse.Extension.FeedsTest do
   use ExUnit.Case, async: false
+  import Ipse.Test.ResumeAssertions
   alias Ipse.{Session, Journal}
   alias Ipse.Extension.{Feeds, Subscriptions, Artifact, Registry, Config}
 
@@ -851,7 +852,7 @@ defmodule Ipse.Extension.FeedsTest do
     {:ok, resumed} = start(c, cfg, id)
     assert status(resumed)["enrolled"] == false
     assert File.read!(c.trace) == old
-    assert File.read!(Path.join(c.dir, id <> ".jsonl")) == bytes
+    assert_idle_resume_journal(Path.join(c.dir, id <> ".jsonl"), bytes, id)
     :ok = Session.prompt(resumed, "third private prompt")
     done(resumed)
     eventually(fn -> settled(resumed) end)
@@ -1014,7 +1015,14 @@ defmodule Ipse.Extension.FeedsTest do
     {:ok, resumed} = resume(c, cfg, id)
     assert_receive {:ipse, ^resumed, {:question, ^question, _}}, 3_000
     assert File.read!(c.trace) == old
-    assert File.read!(Path.join(c.dir, id <> ".jsonl")) == bytes
+    after_resume = File.read!(Path.join(c.dir, id <> ".jsonl"))
+    assert String.starts_with?(after_resume, bytes)
+
+    suffix =
+      binary_part(after_resume, byte_size(bytes), byte_size(after_resume) - byte_size(bytes))
+
+    [marker] = String.split(suffix, "\n", trim: true) |> Enum.map(&Jason.decode!/1)
+    assert Ipse.Session.ReleaseReceipt.valid_owner_marker?(marker, id)
     assert {:error, :invalid_answer} = Session.answer(resumed, question, %{})
     assert status(resumed)["enrolled"] == false
     :ok = Session.answer(resumed, question, %{"choice" => "explicit private answer"})
@@ -1026,6 +1034,26 @@ defmodule Ipse.Extension.FeedsTest do
     :ok = Session.close(resumed)
     assert {:ok, _} = Session.restore_context(rows(c, id))
     assert :ok = Subscriptions.validate_sources(c.dir, id, rows(c, id))
+  end
+
+  test "missing pending-question checkpoint refuses before journal repair", c do
+    cfg = config(c, :question, scenario: :question)
+    {:ok, pid} = start(c, cfg)
+    id = Session.info(pid).id
+    :ok = Session.prompt(pid, "private prompt")
+    assert_receive {:ipse, ^pid, {:question, _, _}}, 3_000
+    eventually(fn -> settled(pid) end)
+    ref = Process.monitor(pid)
+    Process.exit(pid, :kill)
+    assert_receive {:DOWN, ^ref, :process, ^pid, :killed}, 2_000
+    events = rows(c, id)
+    assert Enum.any?(events, &(&1["type"] == "lifecycle_question_sources"))
+    corrupted = Enum.reject(events, &(&1["type"] == "lifecycle_question_sources"))
+    path = Path.join(c.dir, id <> ".jsonl")
+    contents = Enum.map_join(corrupted, "", &(Jason.encode!(&1) <> "\n")) <> "{partial"
+    File.write!(path, contents)
+    assert {:error, :invalid_lifecycle_question_checkpoint} = resume(c, cfg, id)
+    assert File.read!(path) == contents
   end
 
   test "cancellation interrupts a blocked feed independently of inference and preserves unknown deliveries",

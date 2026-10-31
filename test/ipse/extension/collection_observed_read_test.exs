@@ -4,6 +4,7 @@ defmodule Ipse.Extension.CollectionObservedReadTest do
   alias Ipse.{JSON, Usage}
   alias Ipse.Extension.Collection
   alias Ipse.Extension.Collection.{ObservedRead, ReadView}
+  alias Ipse.Session.ManagedReference
 
   setup do
     parent = Path.join(System.tmp_dir!(), "ipse-observed-read-" <> Usage.id())
@@ -33,6 +34,19 @@ defmodule Ipse.Extension.CollectionObservedReadTest do
   end
 
   defp execute(c, request), do: Collection.execute(c.root, c.namespace, request, Usage.id())
+
+  defp pin(c) do
+    Map.new(
+      ~w(project_id worktree_id binding_sha256 policy_sha256 identity_sha256 routes_sha256 source_sha256),
+      &{&1, JSON.sha256(&1)}
+    )
+    |> Map.merge(%{
+      "version" => 1,
+      "session_id" => String.duplicate("a", 32),
+      "epoch" => 4,
+      "namespace" => c.namespace
+    })
+  end
 
   defp commit(c, generation, key, revision, value) do
     execute(c, %{
@@ -66,6 +80,10 @@ defmodule Ipse.Extension.CollectionObservedReadTest do
 
   test "absent and materialized empty roots produce distinct observations", c do
     request = %{"op" => "get", "key" => "missing"}
+
+    assert {:ok, %{"witness" => %{"root_state" => "absent", "root" => nil}}} =
+             ObservedRead.read(c.root, c.namespace, %{"op" => "snapshot"})
+
     assert {:ok, absent} = ObservedRead.read(c.root, c.namespace, request)
     assert absent["value"]["record"] == nil
     assert absent["witness"]["root_state"] == "absent"
@@ -88,6 +106,150 @@ defmodule Ipse.Extension.CollectionObservedReadTest do
     assert first["value"]["record"] == second["value"]["record"]
     assert first["witness"]["root_sha256"] != second["witness"]["root_sha256"]
     assert first["result_sha256"] != second["result_sha256"]
+  end
+
+  test "internal record-only observations preserve exact record bytes across unrelated writes",
+       c do
+    request = %{"op" => "get_record", "key" => "note.one"}
+    get = %{"op" => "get", "key" => "note.one"}
+    assert {:ok, absent} = ObservedRead.read(c.root, c.namespace, request)
+    assert absent["value"] == %{"record" => nil}
+    assert absent["witness"]["root_state"] == "absent"
+
+    assert {:ok, absence_dependency} =
+             ObservedRead.record_dependency(request, absent, pin(c), nil)
+
+    assert ManagedReference.dependency?(absence_dependency)
+
+    assert {:error, :collection_observation_refused} =
+             ObservedRead.record_dependency(request, absent, pin(c), %{})
+
+    assert {:ok, _} = commit(c, 0, "note.one", 0, %{"text" => "synthetic"})
+    assert {:ok, first} = ObservedRead.read(c.root, c.namespace, request)
+    assert {:ok, generic} = execute(c, get)
+    assert first["value"] == %{"record" => generic["record"]}
+    assert Map.keys(first["value"]) == ["record"]
+    assert first["request_sha256"] == JSON.digest([request])
+    assert first["request_sha256"] != JSON.digest([get])
+    assert first["result_sha256"] == JSON.digest([first["value"]])
+
+    assert {:ok, _} = commit(c, 1, "note.two", 0, %{"text" => "other"})
+    assert {:ok, second} = ObservedRead.read(c.root, c.namespace, request)
+    assert second["value"] == first["value"]
+    assert second["result_sha256"] == first["result_sha256"]
+    refute second["witness"]["root_sha256"] == first["witness"]["root_sha256"]
+
+    assert {:ok, _} = commit(c, 2, "note.one", 1, %{"text" => "changed"})
+    assert {:ok, changed} = ObservedRead.read(c.root, c.namespace, request)
+    refute changed["result_sha256"] == first["result_sha256"]
+    assert {:ok, _} = commit(c, 3, "note.one", 3, nil)
+    assert {:ok, deleted} = ObservedRead.read(c.root, c.namespace, request)
+    assert deleted["value"] == %{"record" => nil}
+    assert deleted["witness"]["root_state"] == "present"
+  end
+
+  test "record-only observed values can bind a fresh-root projection in the pure host model", c do
+    assert {:ok, _} = commit(c, 0, "note.one", 0, %{"text" => "synthetic"})
+    request = %{"op" => "get_record", "key" => "note.one"}
+    assert {:ok, first} = ObservedRead.read(c.root, c.namespace, request)
+    assert {:ok, _} = commit(c, 1, "note.two", 0, %{"text" => "other"})
+    assert {:ok, second} = ObservedRead.read(c.root, c.namespace, request)
+
+    validity = %{
+      "recipe_sha256" => JSON.sha256("synthetic recipe"),
+      "lineage" => JSON.sha256("synthetic lineage"),
+      "source_versions" => [],
+      "valid_until_ms" => 2000,
+      "status" => "eligible",
+      "dependencies" => []
+    }
+
+    session = String.duplicate("a", 32)
+    pin = pin(c)
+
+    dependency = fn observation ->
+      {:ok, dependency} = ObservedRead.record_dependency(request, observation, pin, validity)
+      dependency
+    end
+
+    old = dependency.(first)
+    current = dependency.(second)
+    assert ManagedReference.dependency?(old) and ManagedReference.dependency?(current)
+    message = %{"role" => "user", "content" => "Derived from selected record"}
+    {:ok, state} = ManagedReference.new(session)
+    producer = %{"kind" => "reference", "id" => "synthetic", "parent_id" => nil}
+    {:ok, _, state} = ManagedReference.admit(state, producer, 0, message, [old])
+    {:ok, plan} = ManagedReference.plan(state, [message])
+
+    verdict = %{
+      "dependency_sha256" => JSON.digest([old]),
+      "status" => "eligible",
+      "current" => current
+    }
+
+    binding = %{
+      "version" => 1,
+      "session_id" => session,
+      "turn_id" => String.duplicate("b", 32),
+      "request_id" => String.duplicate("c", 32),
+      "phase" => "model",
+      "route_sha256" => JSON.sha256("route"),
+      "tools_sha256" => JSON.sha256("tools"),
+      "source_generation" => 1,
+      "policy_generation" => 4,
+      "checked_at_ms" => 1000,
+      "deadline_ms" => 1500
+    }
+
+    assert {:ok, _, [^message], _} = ManagedReference.project(plan, [verdict], binding)
+
+    assert {:ok, _} = commit(c, 2, "note.one", 1, %{"text" => "changed"})
+    assert {:ok, changed} = ObservedRead.read(c.root, c.namespace, request)
+
+    assert {:error, :managed_reference_refused} =
+             ManagedReference.project(
+               plan,
+               [%{verdict | "current" => dependency.(changed)}],
+               binding
+             )
+
+    tampered = put_in(first, ["value", "record", "value", "text"], "forged")
+    tampered = Map.put(tampered, "result_sha256", JSON.digest([tampered["value"]]))
+    oversized = put_in(first, ["value", "record", "value", "text"], String.duplicate("x", 20_000))
+    oversized = Map.put(oversized, "result_sha256", JSON.digest([oversized["value"]]))
+
+    for invalid <- [
+          tampered,
+          oversized,
+          Map.put(first, "request_sha256", JSON.sha256("wrong request")),
+          put_in(first, ["witness", "root", "project"], JSON.sha256("other namespace")),
+          put_in(first, ["witness", "root_sha256"], JSON.sha256("wrong root bytes")),
+          Map.put(first, "result_sha256", JSON.sha256("wrong result"))
+        ] do
+      assert {:error, :collection_observation_refused} =
+               ObservedRead.record_dependency(request, invalid, pin, validity)
+    end
+  end
+
+  test "record binding refuses a readable noncanonical root witness", c do
+    assert {:ok, _} = commit(c, 0, "note.one", 0, %{"text" => "synthetic"})
+    path = Path.join([c.root, c.namespace, "root.json"])
+    root = Jason.decode!(File.read!(path))
+    File.write!(path, Jason.encode!(root, pretty: true))
+    request = %{"op" => "get_record", "key" => "note.one"}
+    assert {:ok, observation} = ObservedRead.read(c.root, c.namespace, request)
+
+    validity = %{
+      "recipe_sha256" => JSON.sha256("recipe"),
+      "lineage" => JSON.sha256("lineage"),
+      "source_versions" => [],
+      "valid_until_ms" => nil,
+      "status" => "eligible",
+      "dependencies" => []
+    }
+
+    assert {:error, :collection_observation_refused} =
+             ObservedRead.record_dependency(request, observation, pin(c), validity)
   end
 
   test "legacy v3 roots refuse observation while generic get remains available", c do
@@ -120,7 +282,7 @@ defmodule Ipse.Extension.CollectionObservedReadTest do
              ObservedRead.read(c.root, c.namespace, request)
   end
 
-  test "snapshot refuses an unreadable probe value even when generic snapshot succeeds", c do
+  test "snapshot does not read an unrelated corrupt value", c do
     assert {:ok, _} = commit(c, 0, "ipse.observation", 0, %{"text" => "synthetic"})
 
     assert {:ok, %{"record" => record}} =
@@ -128,10 +290,13 @@ defmodule Ipse.Extension.CollectionObservedReadTest do
 
     object = Path.join([c.root, c.namespace, "objects", record["sha256"] <> ".json"])
     File.write!(object, "corrupt")
-    assert {:ok, %{"generation" => 1}} = execute(c, %{"op" => "snapshot"})
+    assert {:ok, %{"generation" => 1} = expected} = execute(c, %{"op" => "snapshot"})
+
+    assert {:ok, %{"value" => ^expected, "witness" => %{"root_state" => "present"}}} =
+             ObservedRead.read(c.root, c.namespace, %{"op" => "snapshot"})
 
     assert {:error, :collection_observation_refused} =
-             ObservedRead.read(c.root, c.namespace, %{"op" => "snapshot"})
+             ObservedRead.read(c.root, c.namespace, %{"op" => "get", "key" => "ipse.observation"})
   end
 
   test "a stored reserved sidecar is never returned by an observation", c do
@@ -189,6 +354,8 @@ defmodule Ipse.Extension.CollectionObservedReadTest do
     for request <- [
           %{"op" => "get", "key" => "host.validity.format"},
           %{"op" => "get", "key" => "host.validity.a"},
+          %{"op" => "get_record", "key" => "host.validity.a"},
+          %{"op" => "get_record", "key" => "missing", "extra" => true},
           %{"op" => "get", "key" => "missing", "extra" => true},
           %{"op" => "snapshot", "extra" => true},
           %{"op" => "status"},
@@ -303,6 +470,51 @@ defmodule Ipse.Extension.CollectionObservedReadTest do
 
       assert_receive {:fenced, true}
       assert [] == Registry.lookup(Ipse.Registry, {ReadView, self()})
+    after
+      :telemetry.detach(handler)
+    end
+  end
+
+  test "a lost native view owner cannot publish a record-only observation", c do
+    assert {:ok, _} = commit(c, 0, "note.one", 0, %{"text" => "synthetic"})
+    handler = {__MODULE__, make_ref()}
+
+    :ok =
+      :telemetry.attach(
+        handler,
+        [:ipse, :extension, :collection, :view_read],
+        &__MODULE__.fence/4,
+        self()
+      )
+
+    try do
+      assert {:error, :collection_observation_refused} =
+               ObservedRead.read(c.root, c.namespace, %{"op" => "get_record", "key" => "note.one"})
+
+      assert_receive {:fenced, true}
+      assert [] == Registry.lookup(Ipse.Registry, {ReadView, self()})
+    after
+      :telemetry.detach(handler)
+    end
+  end
+
+  test "a lost native owner cannot publish a metadata-only snapshot", c do
+    assert {:ok, _} = commit(c, 0, "note.one", 0, %{"text" => "synthetic"})
+    handler = {__MODULE__, make_ref()}
+
+    :ok =
+      :telemetry.attach(
+        handler,
+        [:ipse, :extension, :collection, :view_read],
+        &__MODULE__.fence/4,
+        self()
+      )
+
+    try do
+      assert {:error, :collection_observation_refused} =
+               ObservedRead.read(c.root, c.namespace, %{"op" => "snapshot"})
+
+      assert_receive {:fenced, true}
     after
       :telemetry.detach(handler)
     end

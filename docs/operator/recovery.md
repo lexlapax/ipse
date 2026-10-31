@@ -28,6 +28,7 @@ work and do not make an incompatible or damaged journal safe to rewrite:
 | Saved session is malformed or incomplete | Preserve the file and use `ipse diagnose --resume SESSION_ID` with its original state directory |
 | Saved journal is malformed or unreadable | Preserve the original; check directory access and request developer-assisted inspection if diagnosis also refuses |
 | Saved journal is incomplete | Inspect with diagnosis before deciding whether ordinary locked resume can repair a torn final record |
+| Saved journal does not match its original location or file identity | Preserve the copy/replacement; use the original file and state directory, or a reviewed fresh-session handoff |
 
 Diagnosis reports phase, unknown calls, context bytes, accounting, recent request
 durations, and journal-limit receipts. Its context scope excludes live system
@@ -57,6 +58,27 @@ Resolve unconfirmed cleanup before overlapping another attempt.
 
 ## Inspect unconfirmed protected knowledge
 
+Managed-derived document mutations remain unavailable until their required
+ownership boundaries are qualified. `--yes`, renewing consent, changing the
+timeout or moving to tmpfs cannot bypass runtime gates. The current development
+source has narrow reviewed capture, forgetting and retention paths on supported
+Linux protected-storage profiles. Forgetting and retention require their own
+native interactive review; see the [protected knowledge procedures](knowledge-permissions.md).
+Existing read/inspection and elapsed-policy reclamation have separate rules.
+
+Generic State's `write_before_ms` and ordinary fixed-profile document staging
+use a final locked decision after synced staging: expiry before that decision
+refuses selection; an already admitted native replacement may finish later.
+They do not implement a physical completion deadline. State returns its typed
+elapsed receipt; document failures after staging remain conservatively unknown.
+Any lost completion may have changed storage. Preserve drafts; do not strip
+deadlines or switch stores to retry. See [document Collection recovery](corpus.md#query-a-document-collection) and
+[explicit Memory](memory.md#remember-and-inspect-a-note) for its target-expiry rule.
+
+A new explicit gate refusal starts no protected publication. Earlier uncertain
+attempts, including attempts made before this gate, still need inspection below.
+The gate does not prove that an old operation left storage unchanged.
+
 Keep the original Ipse home, protected control/identity/collection files and
 Session journal. A lost confirmation can leave a saved grant, a durable note,
 pending liability or a prepared first-use domain. It does not prove absence.
@@ -79,6 +101,12 @@ if synchronization fails, admission refuses and keeps those files. Status is
 not a staging-reclamation command. Preserve the original state and investigate
 the storage error rather than removing stages to make a retry fit.
 
+An unsupported storage profile is a separate refusal. Check every protected
+location against [the native storage requirements](arch-linux.md#check-protected-storage-admission).
+Exact `7.2.11-arch1-1` qualifies only the checked tmpfs combination; a default
+Btrfs home still refuses on that kernel. Do not delete protected files, silently
+relocate them or treat volatile tmpfs as a durable migration fix.
+
 Do not enable again merely to recover a missing confirmation, delete retained
 locks or domain keys, reset the collection, edit a ledger, or replay the old
 capture. The operator CLI has no automatic prepared-domain or unknown-operation
@@ -87,6 +115,47 @@ operation and actual storage root before deciding on another attempt. Keep
 private files local; report sanitized codes and operation IDs instead of their
 contents. [Knowledge permissions](knowledge-permissions.md) explains known
 configuration conflicts that can be resolved with a fresh review.
+
+Standalone knowledge management prints a separate journal ID before the
+forget review and effect. Preserve that ID and `$IPSE_HOME/knowledge-management`
+with the protected state, then inspect it using the original workspace and
+configuration:
+
+```sh
+ipse knowledge operation MANAGEMENT_JOURNAL_ID --cwd /path/to/project
+```
+
+This read-only command reports the historical journal status and current
+protected-control operation status. It does not replay, settle, reconcile or
+check current note eligibility. A `publishing`, unconfirmed or missing result
+requires inspection of the actual storage outcome before another action. An
+already admitted forget can finish after review expiry or owner loss; a lost
+reply does not prove whether the target remains. Even if inspection finds a
+settled operation, an earlier unconfirmed close remains a separate outcome.
+For an acceptance journal, `journal_status` describes the recorded acceptance
+effect: `committed`, `refused`, `not_started`, or `unknown`. A missing result
+after intent, or an incomplete journal tail, reports `unknown`. The command
+does not check whether an accepted note is currently present or eligible, and
+its receipt alone does not establish a current storage state. For public
+single-card review, `control_status` reports the correlated protected consent
+operation; older private acceptance fixtures may report `unavailable`. A
+still-running owner can append after this snapshot.
+
+Public proposal review prints a separate `Knowledge reservation` ID before its
+management journal is created. If interruption occurred before that journal,
+use the reservation ID with the same `knowledge operation ID` command. It
+reports the protected resource status with `journal_status: "unavailable"`.
+An admitted or unknown reservation remains a liability; inspection neither
+settles it nor authorizes retry. Recent records include reserved and actual
+resource vectors; compacted settled records retain actual usage and receipt
+commitments. Preserve both IDs and the existing journals for diagnosis.
+The management review journal can retain the forgotten target's text; removing
+the selected note is not erasure of its original or review journals.
+New management journals require their matching native lock/header owner; legacy
+append and repair paths refuse their native-only layout. An unsafe management
+directory or older helper refuses rather than falling back to those paths.
+Preserve a header-only journal as an incomplete startup record, not a successful
+action. Read-only operation inspection remains available and does not repair it.
 
 ## Resume compatible work
 
@@ -127,6 +196,14 @@ Validated ordinary resume may repair a torn final journal record while holding
 the lock. Read-only diagnosis does not. Corrupt committed records/checkpoints
 refuse recovery. Preserve originals for investigation.
 
+New sessions bind their journal to its original canonical directory and file
+identity. A copied, moved or replaced file can remain readable for inspection,
+but cannot resume as the original live source. Use the original file in its
+original directory, or the [fresh-session handoff](#continue-in-a-fresh-session)
+procedure. Recreating a file at the same pathname does not restore its identity.
+Older journals remain usable as conversation history; resume does not upgrade
+them into protected publication sources.
+
 ## Recover a request draft
 
 Resume the original Session with its original configuration. Idle resume makes
@@ -163,6 +240,38 @@ One owner holds the journal lock. Close/cancel it normally. The visible Session
 can disappear before storage or tracked work settles, and an approved effect
 may still complete. Never delete lock files, truncate records, or open another
 writer to force resume. Persistent lock files preserve inode identity.
+
+Linux fresh startup requires a matching rebuilt native helper and filesystem
+support for no-replace rename and directory fsync. Unsupported or failed steps
+refuse startup without an unsafe fallback. An interrupted fresh startup can
+leave a `.pending-header-...` file.
+It is not a saved Session; preserve it for inspection and do not try to resume or
+replay it. If the journal was published before confirmation was lost, inspect
+the original state and resume it explicitly only after the lock is free. On other
+platforms, do not attempt a second writer for a newly visible journal while its
+first startup is incomplete; a header alone does not confirm lock acquisition.
+
+`header_unconfirmed` means publication may have happened; do not automatically
+retry startup. Preserve pending files and any published journal and inspect the
+original state before choosing explicit resume after the lock is free. A
+successful close can conservatively retain `cleanup_confirmed=false` in its
+lifecycle record. For a fresh Linux Session, and for a resumed Session with a
+recorded lock identity, diagnosis may report
+`"release_claim": "signed_release_claim"` after checking a separate signed
+record under the Session lock. This is a claim about the original owner's
+observed release; it does not rewrite the lifecycle record or prove that a lost
+close or publication reply was received. A missing or unverifiable claim, an
+active owner, a later resume that has not closed, or a legacy release can report
+`"unknown"`.
+Preserve the journal, lock and private sidecars when investigating an unknown
+close; inspect the actual effect before retrying work.
+
+New Linux journals retain the original lock identity in the header. Resume
+requires the existing lock file to match that identity or an earlier release
+intent. An older journal with the release-claim layout but neither identity
+refuses resume; preserve it for developer-assisted inspection rather than
+creating a replacement lock. Older journals without that layout keep their
+legacy behavior.
 
 "Saved session already has an owner" means this attempt started no work. Close
 the existing owner normally before retrying. A journal resource-limit refusal

@@ -1,0 +1,262 @@
+Running ExUnit with seed: 443106, max_cases: 4
+Excluding tags: [:test]
+Including tags: [v4_selected_reuse: true]
+
+
+
+  1) test selected prior group authorizes reuse only for a page actually in that group (Ipse.ProducerProgressTest)
+     test/extensions/knowledge/producer_progress_test.exs:381
+     ** (MatchError) no match of right hand side value:
+
+         {{:done, {:error, :shared_producer_changed, %{}}},
+          %{
+            calls: 2,
+            requests: [
+              %{
+                "op" => "collection.store",
+                "request" => %{"op" => "snapshot"},
+                "scope" => "project"
+              },
+              %{
+                "op" => "collection.store",
+                "request" => %{
+                  "generation" => 1050,
+                  "key" => "catalog.notes",
+                  "op" => "value.stat"
+                },
+                "scope" => "project"
+              },
+              %{
+                "op" => "collection.store",
+                "request" => %{
+                  "generation" => 1050,
+                  "key" => "catalog.notes",
+                  "offset" => 0,
+                  "op" => "value.read"
+                },
+                "scope" => "project"
+              },
+              %{
+                "op" => "collection.store",
+                "request" => %{"op" => "snapshot"},
+                "scope" => "project"
+              },
+              %{
+                "op" => "collection.store",
+                "request" => %{
+                  "generation" => 1050,
+                  "key" => "generation.notes",
+                  "op" => "value.stat"
+                },
+                "scope" => "project"
+              },
+              %{
+                "op" => "collection.store",
+                "request" => %{
+                  "generation" => 1050,
+                  "key" => "generation.notes",
+                  "offset" => 0,
+                  "op" => "value.read"
+                },
+                "scope" => "project"
+              },
+              %{
+                "op" => "collection.store",
+                "request" => %{"op" => "snapshot"},
+                "scope" => "project"
+              },
+              %{
+                "op" => "collection.store",
+                "request" => %{
+                  "generation" => 1050,
+                  "key" => "genjob.notes",
+                  "op" => "value.stat"
+                },
+                "scope" => "project"
+              },
+              %{
+                "op" => "collection.store",
+                "request" => %{
+                  "generation" => 1050,
+                  "key" => "genjob.notes",
+                  "offset" => 0,
+                  "op" => "value.read"
+                },
+                "scope" => "project"
+              },
+              %{
+                "op" => "collection.store",
+                "request" => %{"op" => "snapshot"},
+                "scope" => "project"
+              },
+              %{
+                "op" => "collection.store",
+                "request" => %{
+                  "generation" => 1050,
+                  "key" => "genproducer4.notes.0",
+                  "op" => "value.stat"
+                },
+                "scope" => "project"
+              },
+              %{
+                "op" => "collection.store",
+                "request" => %{
+                  "generation" => 1050,
+                  "key" => "genproducer4.notes.0",
+                  "offset" => 0,
+                  "op" => "value.read"
+                },
+                "scope" => "project"
+              },
+              %{
+                "op" => "collection.store",
+                "request" => %{"op" => "snapshot"},
+                "scope" => "project"
+              },
+              %{
+                "op" => "collection.store",
+                "request" => %{
+                  "generation" => 1050,
+                  "key" => "catalog.notes.0",
+                  "op" => "value.stat"
+                },
+                "scope" => "project"
+              },
+              %{
+                "op" => "collection.store",
+                "request" => %{
+                  "generation" => 1050,
+                  "key" => "catalog.notes.0",
+                  "offset" => 0,
+                  "op" => "value.read"
+                },
+                "scope" => "project"
+              },
+              %{
+                "op" => "collection.store",
+                "request" => %{"op" => "snapshot"},
+                "scope" => "project"
+              },
+              %{
+                "op" => "collection.store",
+                "request" => %{
+                  "generation" => 1050,
+                  "key" => "catalog.notes",
+                  "op" => "value.stat"
+                },
+                "scope" => "project"
+              },
+              %{
+                "op" => "collection.store",
+                "request" => %{
+                  "generation" => 1050,
+                  "key" => "catalog.notes",
+                  "offset" => 0,
+                  "op" => "value.read"
+                },
+                "scope" => "project"
+              },
+              %{
+                "op" => "collection.store",
+                "request" => %{
+                  "generation" => 1050,
+                  "key" => "source.notes.e49d57fa19a82eaf23ff6a7e1236f367ac3858d0d5ad66e7c97027f1926a8142",
+                  "op" => "value.stat"
+                },
+                "scope" => "project"
+              },
+              %{
+                "op" => "collection.store",
+                "request" => %{
+                  "generation" => 1050,
+                  "key" => "source.notes.e49d57fa19a82eaf23ff6a7e1236f367ac3858d0d5ad66e7c97027f1926a8142",
+                  "offset" => 0,
+                  "op" => "value.read"
+                },
+                "scope" => "project"
+              },
+              %{
+                "op" => "collection.store",
+                "request" => %{
+                  "generation" => 1050,
+                  "key" => "catalog.notes.0",
+                  "op" => "value.stat"
+                },
+                "scope" => "project"
+              },
+              %{
+                "op" => "collection.store",
+                "request" => %{
+                  "generation" => 1050,
+                  "key" => "catalog.notes.0",
+                  "offset" => 0,
+                  "op" => "value.read"
+                },
+                "scope" => "project"
+              },
+              %{
+                "op" => "collection.store",
+                "request" => %{
+                  "generation" => 1050,
+                  "key" => "data.notes.93403c8504494de4b30bc78f0b15220d3a704804867ae9309a6e06049e78cba6",
+                  "op" => "value.stat"
+                },
+                "scope" => "project"
+              },
+              %{
+                "op" => "collection.store",
+                "request" => %{
+                  "generation" => 1050,
+                  "key" => "data.notes.93403c8504494de4b30bc78f0b15220d3a704804867ae9309a6e06049e78cba6",
+                  "offset" => 0,
+                  "op" => "value.read"
+                },
+                "scope" => "project"
+              },
+              %{
+                "op" => "collection.store",
+                "request" => %{
+                  "generation" => 1050,
+                  "key" => "catalog.notes",
+                  "op" => "value.stat"
+                },
+                "scope" => "project"
+              },
+              %{
+                "op" => "collection.store",
+                "request" => %{"op" => "snapshot"},
+                "scope" => "project"
+              },
+              %{
+                "op" => "collection.store",
+                "request" => %{
+                  "generation" => 1050,
+                  "key" => "source.notes.e49d57fa19a82eaf23ff6a7e1236f367ac3858d0d5ad66e7c97027f1926a8142",
+                  "op" => "value.stat"
+                },
+                "scope" => "project"
+              },
+              %{
+                "op" => "collection.store",
+                "request" => %{
+                  "generation" => 1050,
+                  "key" => "source.notes.e49d57fa19a82eaf23ff6a7e1236f367ac3858d0d5ad66e7c97027f1926a8142",
+                  "offset" => 0,
+                  "op" => "value.read"
+                },
+                ...
+              },
+              ...
+            ],
+            ...
+          }}
+
+     code: {{:done, {:ok, ready}}, accepted} =
+     stacktrace:
+       test/extensions/knowledge/producer_progress_test.exs:416: (test)
+
+
+Finished in 4.1 seconds (4.0s on load, 0.00s async, 0.1s sync)
+
+Result: 0/1 passed, 5 excluded
+Failed: 1 test

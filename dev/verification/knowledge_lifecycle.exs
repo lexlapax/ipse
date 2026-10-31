@@ -170,6 +170,55 @@ defmodule IpseKnowledgeExample.LifecycleProof do
     end
   end
 
+  # The old artifact is a deliberately altered synthetic fixture. It stores a
+  # self-consistent vector with the wrong input digest, then the current artifact
+  # uses the same isolated State binding in a fresh Session.
+  def historical_input(old_artifact, current_artifact) do
+    {:ok, _} = Application.ensure_all_started(:ipse)
+    root = Path.join(System.tmp_dir!(), "ipse-embedding-history-" <> Usage.id())
+    File.mkdir!(root)
+    Process.put(:lifecycle_owned_sessions, [])
+    http = http_start(:selection_a)
+
+    try do
+      old_config = configuration(old_artifact, "corpus", root, http.base, 15_000, true)
+      old = start(old_config, "corpus", root)
+      chunk = prepare(old)
+      %{"status" => "ok"} = invoke(old, "index", projection_args("corpus", chunk))
+      assert_request("corpus", dispatched(http).body)
+      %{"status" => "ok", "evidence" => [_]} = selection_query(old, "dense")
+      ["Release"] = dispatched(http).body["input"]
+      :ok = Session.close_confirmed(old.pid)
+
+      config = configuration(current_artifact, "corpus", root, http.base, 15_000, true)
+      current = start(config, "corpus", root)
+      %{"status" => "refused", "evidence" => []} = selection_query(current, "dense")
+      ["Release"] = dispatched(http).body["input"]
+
+      %{"status" => "partial", "gaps" => gaps, "evidence" => [_]} =
+        selection_query(current, "fallback")
+
+      true = Enum.any?(gaps, &(&1["code"] == "missing_embedding"))
+      ["Release"] = dispatched(http).body["input"]
+      %{"status" => "ok"} = invoke(current, "index", projection_args("corpus", chunk))
+      assert_request("corpus", dispatched(http).body)
+      %{"status" => "ok", "evidence" => [_]} = selection_query(current, "dense")
+      ["Release"] = dispatched(http).body["input"]
+      :ok = Session.close_confirmed(current.pid)
+      no_dispatch(http)
+      false = :code.is_loaded(IpseKnowledge.Corpus)
+      false = :code.is_loaded(IpseKnowledge.Store)
+      %{"fixture_provider_requests" => 6, "cleanup" => "confirmed"}
+    after
+      for pid <- Process.delete(:lifecycle_owned_sessions) || [],
+          Process.alive?(pid),
+          do: :ok = Session.close_confirmed(pid)
+
+      :ok = http_stop(http)
+      File.rm_rf!(root)
+    end
+  end
+
   defp selection_query(session, retrieval),
     do:
       invoke(session, "query", %{

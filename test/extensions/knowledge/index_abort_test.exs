@@ -124,6 +124,20 @@ defmodule Ipse.KnowledgeIndexAbortTest do
     paths =
       ~w(evidence.ex profiles.ex adapters.ex store/state.ex store/mcp_cas.ex store.ex corpus.ex)
 
+    modules = [
+      IpseKnowledge.Corpus,
+      IpseKnowledge.Store,
+      IpseKnowledge.Store.State,
+      IpseKnowledge.Store.MCPCAS,
+      IpseKnowledge.Evidence,
+      IpseKnowledge.Profiles,
+      IpseKnowledge.Adapters
+    ]
+
+    # Other tests can intentionally load domain fixtures in this VM. Verify
+    # this child invocation does not alter the parent's loaded module state.
+    loaded_before = Map.new(modules, &{&1, :code.is_loaded(&1)})
+
     args =
       Enum.flat_map(:code.get_path(), &["-pa", List.to_string(&1)]) ++
         Enum.flat_map(paths, &["-r", Path.join(@root, "extensions/knowledge/src/" <> &1)]) ++
@@ -143,16 +157,6 @@ defmodule Ipse.KnowledgeIndexAbortTest do
 
     assert status == 0, output
 
-    for module <- [
-          IpseKnowledge.Corpus,
-          IpseKnowledge.Store,
-          IpseKnowledge.Store.State,
-          IpseKnowledge.Store.MCPCAS,
-          IpseKnowledge.Evidence,
-          IpseKnowledge.Profiles,
-          IpseKnowledge.Adapters
-        ] do
-      refute Code.ensure_loaded?(module)
-    end
+    assert Map.new(modules, &{&1, :code.is_loaded(&1)}) == loaded_before
   end
 end

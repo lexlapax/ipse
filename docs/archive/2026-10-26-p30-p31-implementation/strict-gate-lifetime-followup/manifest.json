@@ -1,0 +1,203 @@
+{
+  "scope": "Actual reviewed-forget permit expiry and State check-to-rename probes, failclosed lifetime containment, explicit executable provenance and current-behavior manuals.",
+  "date": "2026-10-29",
+  "files": {
+    "source/lib/ipse/cli/knowledge.ex": {
+      "bytes": 23517,
+      "sha256": "d5bd74a08346c4f6a8857b97f2e01aa19cc2a7877d5cc0705f89fb778827a7fc"
+    },
+    "source/test/ipse/extension/managed_collection_call_session_test.exs": {
+      "bytes": 190219,
+      "sha256": "bade5bfaf66febe0ff79f329659dfd1ce3ea43c66c9e9bf03cbb17b8a810603e"
+    },
+    "source/_build/run-forget-permit-probe.exs": {
+      "bytes": 746,
+      "sha256": "bf2c4aa15a3c0824e8ebfd5f32abd500032a765589e537b60e39ebd4c2e89db4"
+    },
+    "source/docs/developer/extension-state.md.txt": {
+      "bytes": 21585,
+      "sha256": "b1d94bcff83fc7247e8754d0e5b1f7f1a40f5da81f6ce37a0bd16e5a8d0e7b4c"
+    },
+    "source/test/ipse/extension/state_deadline_gate_test.exs": {
+      "bytes": 3365,
+      "sha256": "e030eed8a6acaf913ac287004733ed67078acb024cbdc85e7f24970a4e07ee5c"
+    },
+    "source/lib/ipse/cli/errors.ex": {
+      "bytes": 7004,
+      "sha256": "e1a79cfe9fe1c539cdf6ffbc9e721d3d8a685d1427ef01914bd4b781245e49da"
+    },
+    "logs/ipse-lifetime-docs-final-46905.log": {
+      "bytes": 756,
+      "sha256": "cd9e4248f223ed59eeb86ec874eda2448a42833145a36ee05d96afa516469c13"
+    },
+    "source/lib/ipse/session/invocation.ex": {
+      "bytes": 61920,
+      "sha256": "457e6094a01e59050b3601b955480f422f11c8b089b1f237f03210542060836d"
+    },
+    "source/docs/operator/knowledge-permissions.md.txt": {
+      "bytes": 13748,
+      "sha256": "73b215d00f040d8207a62981c9fd095744199218334b530945924d77da9b00d8"
+    },
+    "logs/ipse-state-deadline-probe-46893.log": {
+      "bytes": 2783,
+      "sha256": "d0bfbc2a41f8082991130164abeb9a027ab8c0200c319d4204d98750184d4e69"
+    },
+    "source/docs/developer/session-sources.md.txt": {
+      "bytes": 20790,
+      "sha256": "eb1769703e4810d276794c194ef3b9e2d2560300b95d891126082c40b8dc1698"
+    },
+    "diagnostic/transaction-deadline-interposition.bin": {
+      "bytes": 641952,
+      "sha256": "3430ccc9e7cac23dab8b3b7fd7c01c9cbe642445a9ab3e3e67e25a8c6bb09ce5"
+    },
+    "source/lib/ipse/cli/knowledge/management.ex": {
+      "bytes": 18427,
+      "sha256": "d7505e0fbdd0ab9abb0160652ad5ae0d1cebe41e1ef7f5823522c02e75616625"
+    },
+    "logs/ipse-state-lifetime-session-46898.log": {
+      "bytes": 198,
+      "sha256": "f106c974bde942a4570d7247c7a3e2e92e36fe1410f6986aa40af4b9b372c6f3"
+    },
+    "logs/ipse-forget-permit-probe-46890.log": {
+      "bytes": 439,
+      "sha256": "efe11adf15e6f861513ff85f4eb5153d14e00fb73920460680122bab3e9d623a"
+    },
+    "logs/ipse-lifetime-docs-46903.log": {
+      "bytes": 756,
+      "sha256": "d9621bf4c60fa0598a219b9bd6472bcf459e6803019f0611ca3dd1f0309d23bb"
+    },
+    "source/test/support/managed_literal_forget.exs": {
+      "bytes": 12714,
+      "sha256": "febd5f974a491ce48cbbc2cec436134e95dead86f275f1601e4aa697f8be41b6"
+    },
+    "logs/ipse-forget-permit-gate-46900.log": {
+      "bytes": 5157,
+      "sha256": "29c54256ed267f65a3c83e96a99a4fe75bac01fcfc4d32b1ab1af6895a351ae1"
+    },
+    "logs/ipse-strict-lifetime-compile-46896.log": {
+      "bytes": 2805,
+      "sha256": "12d9db646d8f227d32c08a93d4e34d6a9e1be031f56fcdd2095127891c8aef09"
+    },
+    "source/lib/ipse/extension/state.ex": {
+      "bytes": 18592,
+      "sha256": "83890a40a829f9f0fa96754d5a3eccc08bca7375154a71e199339950a44876c4"
+    },
+    "logs/ipse-lifetime-document-overlay-46904.log": {
+      "bytes": 225,
+      "sha256": "80f7c27e97d2c4045f13a6a628ed2a832c41319cd4ccf7ac2d5c55d43572bd89"
+    },
+    "logs/ipse-state-deadline-probe-46891.log": {
+      "bytes": 1482,
+      "sha256": "e79da83ab6b1a8145368b56bb4d022da17e69b9291b5d6251dff610c53a92c12"
+    },
+    "source/docs/developer/collection-sdk.md.txt": {
+      "bytes": 40991,
+      "sha256": "8752fd11ed70a93013ddaf42e03ca1276c94786d95095aea7bf348311d2e29c0"
+    },
+    "source/_build/compile-strict-lifetime-followup.exs": {
+      "bytes": 1144,
+      "sha256": "04420a5cb40fb8d833dc07294925c16f5b5b5d23e6f1982f821c01d73543b9fd"
+    },
+    "logs/ipse-forget-permit-readback-46895.log": {
+      "bytes": 462,
+      "sha256": "5fc4ac9ae80c64aaa1c1bb86e1add8cd4463771ff0faadf236e8660349de3018"
+    },
+    "source/docs/operator/corpus.md.txt": {
+      "bytes": 42488,
+      "sha256": "753d0d415884c2e6f186294b5b6fac5e2058b5ddcbb18531f2fadaee35b9b5bf"
+    },
+    "source/dev/fixtures/transaction_deadline_interposition.rs": {
+      "bytes": 7065,
+      "sha256": "4b6f6c41b97060de617568f87578193f5da901bf97d8e2edc7c9e65841550751"
+    },
+    "source/_build/run-state-lifetime-session.exs": {
+      "bytes": 504,
+      "sha256": "0066cf4f0aaac4728c6a631421baeb48b8133f4c6ee698c4a8886cb144917f65"
+    },
+    "source/test/ipse/extension/collection_deadline_gate_test.exs": {
+      "bytes": 4356,
+      "sha256": "5b876220f9435cdfcbda70b711c93779d7117423c116161c3334826c55e04b6d"
+    },
+    "diagnostic/vulnerable-Elixir.Ipse.Extension.Collection.beam": {
+      "bytes": 133936,
+      "sha256": "b26549afa77b3fffb16a4438a2ac1d92302e65ab9b15766a551f20fea07e371f"
+    },
+    "diagnostic/vulnerable-Elixir.Ipse.Runner.Review.beam": {
+      "bytes": 16768,
+      "sha256": "6510673117fd8657032b7265cadd31d9e7d1f1242aa694da7138930dbecc4ded"
+    },
+    "diagnostic/vulnerable-Elixir.Ipse.Extension.State.beam": {
+      "bytes": 41788,
+      "sha256": "38344831d421f3d4e79fe049b707f3fa4189bc20f7f58c3f04c76674f50ba76e"
+    },
+    "logs/ipse-strict-lifetime-final-compile-46902.log": {
+      "bytes": 54,
+      "sha256": "3d8fdd21c08ef3a9910b25b6b97b04aca4893a9caf1c94020b55dba6363d9b81"
+    },
+    "source/docs/operator/recovery.md.txt": {
+      "bytes": 25508,
+      "sha256": "78ebe26782841ffba55ad10cf07da60db1e72884e21d934593b9244177acf6ad"
+    },
+    "logs/ipse-ptrace-provenance-46901.log": {
+      "bytes": 493,
+      "sha256": "948aa83c2f1f5d8a74a79e3f5513178b49fc838aa3da42db9ee4efae24c3d0b8"
+    },
+    "source/docs/operator/memory.md.txt": {
+      "bytes": 13688,
+      "sha256": "6136d85a56eea2deb969bdc754a9df3375b13599bbf140ce545a8f5f3ffd598d"
+    },
+    "logs/ipse-strict-lifetime-compile-46897.log": {
+      "bytes": 54,
+      "sha256": "4f412b6503b0fc0eea30381ba62fc66470dd0cb900672c88e92edc3c20a3403d"
+    },
+    "runtime.json": {
+      "bytes": 33976,
+      "sha256": "bf9f8a36aadae25e8641d4de8db5ba64a6ac150247a3c17e699cbed454726697"
+    },
+    "diagnostic/matched-ipse-runner.bin": {
+      "bytes": 2629632,
+      "sha256": "a51c2d34654e21b0418b31bbe5ec2423d117230a3a8f3687803d5c1438d1c12e"
+    },
+    "source/lib/ipse/cli/terminal.ex": {
+      "bytes": 49845,
+      "sha256": "65ba683ea6bafceb9102e16fff037e305b2e2696d168f1d61d10f34cc6f0228f"
+    },
+    "source/docs/operator/usage.md.txt": {
+      "bytes": 23170,
+      "sha256": "5cd43f393006e601d37b0b4f213892605c9f50dd023cfdc5c1aa0baac435ecf3"
+    },
+    "source/_build/run-forget-permit-gate.exs": {
+      "bytes": 748,
+      "sha256": "ae40fae9d497402be21bb576dd673ea509cda5e1602049871acb54b18885bd99"
+    },
+    "logs/ipse-forget-permit-probe-46892.log": {
+      "bytes": 5884,
+      "sha256": "722a14efe52d14531960551fa9681cfdb30959f6ce9d7a71868a9ca3e52d4161"
+    },
+    "logs/ipse-state-deadline-probe-46894.log": {
+      "bytes": 364,
+      "sha256": "a388caedc3be5f21b4bc48f299feebb7e0a17f38a77c0344f6dce8486bafd9a7"
+    },
+    "logs/ipse-lifetime-core-cli-gates-46899.log": {
+      "bytes": 227,
+      "sha256": "008b1665c32591c8c4f3aed28ac2e72355ff1ab549db18c56cb253b457f32881"
+    },
+    "source/docs/developer/knowledge-extensions.md.txt": {
+      "bytes": 42300,
+      "sha256": "df12074f39bb1a096f37647aa0ed6c46c2c33a0dc5382b6316f866f31708b2de"
+    },
+    "source/_build/update-lifetime-manuals.exs": {
+      "bytes": 10432,
+      "sha256": "c383c45241a330329dbb15662bfe2d485f616cc9abcbe3080e04f07eaea6d8ec"
+    },
+    "source/_build/run-forget-permit-probe-46892.exs": {
+      "bytes": 746,
+      "sha256": "4b1bad5bbca8cbc3bd70651622a4cafd8f62d12e31ad815bf2e9020469f9c5c4"
+    },
+    "source/lib/ipse/extension/collection.ex": {
+      "bytes": 69243,
+      "sha256": "8886d3da25fe96e110fbea569013bb1979572ffc0286339a6c15d89259c26bc6"
+    }
+  },
+  "historical_only": true
+}

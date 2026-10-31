@@ -1,0 +1,8 @@
+Running ExUnit with seed: 46867, max_cases: 8
+Excluding tags: [:test]
+Including tags: [managed_audit_pure: true]
+
+...
+Finished in 0.01 seconds (0.01s async, 0.00s sync)
+
+Result: 3 passed, 20 excluded

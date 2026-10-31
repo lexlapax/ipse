@@ -86,7 +86,13 @@ defmodule Ipse.Extension.SourceRead do
     op = Enum.find(@ops, &(tool_name(&1) == name))
 
     with :ok <- validate(Map.put(args, "op", op)),
-         {:ok, value} <- GenServer.call(session, {:model_sources, job_ref, op, args}, 5000) do
+         :ok <- GenServer.call(session, {:prepare_model_source, job_ref, op, args}, 5000),
+         {:ok, value} <-
+           Ipse.Session.ManagedToolUse.with_effect(
+             %{owner: session, job_ref: job_ref},
+             Ipse.Session.ManagedToolUse.native_binding(name, args),
+             fn _ -> GenServer.call(session, {:model_sources, job_ref, op, args}, 5000) end
+           ) do
       {:ok, Jason.encode!(value)}
     else
       _ -> {:error, "Source read refused; list the current Session source window again."}
@@ -170,7 +176,7 @@ defmodule Ipse.Extension.SourceRead do
       is_map(value["provenance"]) and next?(value) and
       Enum.all?(
         Map.keys(value["provenance"]),
-        &(&1 in ~w(turn_id request_id receipt_sha256 question_id question_sha256 item_id render_id input_sha256 question_occurrence_id tool_id operation_id))
+        &(&1 in ~w(turn_id request_id receipt_sha256 question_id question_sha256 item_id render_id input_sha256 question_occurrence_id tool_id operation_id assertion_id category))
       ) and
       Enum.all?(value["provenance"], fn {_, v} -> is_binary(v) and byte_size(v) <= 128 end)
   end
@@ -195,8 +201,8 @@ defmodule Ipse.Extension.SourceRead do
 
   defp source?(value),
     do:
-      value["kind"] in ~w(input.original input.legacy input.operator_answer operator.question answer.original tool.outcome tool.content effect.outcome effect.content decision.advice) and
-        value["origin"] in ~w(interactive_operator unattended_input native_operator_answer assistant_proposal typed_host_outcome attributed_reference legacy_unverified) and
+      value["kind"] in ~w(input.original input.legacy input.operator_answer operator.question answer.original tool.outcome tool.content effect.outcome effect.content decision.advice input.assertion.ordinary input.assertion.preference input.assertion.current) and
+        value["origin"] in ~w(interactive_operator unattended_input native_operator_answer native_operator_assertion assistant_proposal typed_host_outcome attributed_reference legacy_unverified) and
         value["coverage"] in ~w(available partial unavailable) and
         (value["reason"] == nil or
            value["reason"] in ~w(content_unavailable unverified_origin tool_output_only external_text_only redacted))

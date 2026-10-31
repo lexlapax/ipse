@@ -142,6 +142,14 @@ defmodule Ipse.Extension.ConsentTest do
     assert {:ok, t} = C.reserve(c.root, c.project, r, 1)
     assert {:ok, _} = C.admit(c.root, c.project, t, 1)
     assert {:ok, %{"epoch" => 2, "in_flight" => 1}} = C.revoke(c.root, c.project, 1)
+    control_path = Path.join([c.root, c.project, "control.json"])
+    before_inspection = File.read!(control_path)
+
+    assert {:ok, %{"status" => "admitted", "reserved" => reserved}} =
+             C.operation(c.root, c.project, r["id"])
+
+    assert reserved === r["reserved"]
+    assert File.read!(control_path) === before_inspection
     refute File.exists?(Path.join(c.parent, "effect"))
 
     assert {:error, :consent_publication_refused} =

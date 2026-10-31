@@ -1,0 +1,324 @@
+     warning: Ipse.Extension.Collection.ObservedRead.managed_history/6 is undefined or private. Did you mean:
+
+         * managed_proposal/6
+
+     │
+ 222 │                  ObservedRead.managed_history(
+     │                               ~
+     │
+     └─ lib/ipse/cli/knowledge/management.ex:222:31: Ipse.CLI.Knowledge.Management.journaled_forget/11
+
+     warning: the following pattern will never match:
+
+         :ok <- Ipse.Extension.Collection.publication_deadline_admission(plan.publish_before_ms)
+
+     because the right-hand side has type:
+
+         dynamic({:error, :collection_deadline_fence_unavailable})
+
+     where "plan" was given the type:
+
+         # type: dynamic(%{..., publish_before_ms: term()})
+         # from: lib/ipse/extension/managed_collection_call.ex:405:28
+         Ipse.Extension.Collection.publication_deadline_admission(plan.publish_before_ms)
+
+     type warning found at:
+     │
+ 405 │     with :ok <- Collection.publication_deadline_admission(plan.publish_before_ms),
+     │     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+     │
+     └─ lib/ipse/extension/managed_collection_call.ex:405: Ipse.Extension.ManagedCollectionCall.publish/5
+
+     warning: the following pattern will never match:
+
+         :ok <- Ipse.Extension.Collection.publication_deadline_admission(plan.publish_before_ms)
+
+     because the right-hand side has type:
+
+         dynamic({:error, :collection_deadline_fence_unavailable})
+
+     where "plan" was given the type:
+
+         # type: dynamic(%{..., publish_before_ms: term()})
+         # from: lib/ipse/extension/collection_call.ex:459:28
+         Ipse.Extension.Collection.publication_deadline_admission(plan.publish_before_ms)
+
+     type warning found at:
+     │
+ 459 │     with :ok <- Collection.publication_deadline_admission(plan.publish_before_ms),
+     │     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+     │
+     └─ lib/ipse/extension/collection_call.ex:459: Ipse.Extension.CollectionCall.publish/5
+
+     warning: Ipse.Session.ManagedLifecycle.prepare_history_expiry/3 is undefined or private. Did you mean:
+
+         * prepare/3
+
+     │
+ 288 │     do: ManagedLifecycle.prepare_history_expiry(context, managed, now)
+     │                          ~
+     │
+     └─ lib/ipse/cli/knowledge/management.ex:288:26: Ipse.CLI.Knowledge.Management.prepare/4
+
+     warning: Ipse.Session.ManagedLifecycle.prepare_expiry/3 is undefined or private. Did you mean:
+
+         * prepare/3
+
+     │
+ 291 │     do: ManagedLifecycle.prepare_expiry(context, managed, now)
+     │                          ~
+     │
+     └─ lib/ipse/cli/knowledge/management.ex:291:26: Ipse.CLI.Knowledge.Management.prepare/4
+
+     warning: Ipse.Extension.Consent.expire_deferred/7 is undefined or private
+     │
+ 375 │           Consent.expire_deferred(
+     │                   ~
+     │
+     └─ lib/ipse/cli/knowledge/management.ex:375:19: Ipse.CLI.Knowledge.Management.publish/7
+
+     warning: Ipse.Extension.Collection.NormalizerV3.expire/3 is undefined or private
+     │
+ 481 │   defp normalizer("managed_literal_expiry"), do: &NormalizerV3.expire/3
+     │                                                                ~
+     │
+     └─ lib/ipse/cli/knowledge/management.ex:481:64: Ipse.CLI.Knowledge.Management.normalizer/1
+
+     warning: Ipse.Extension.Collection.NormalizerV3.expire_history/3 is undefined or private
+     │
+ 482 │   defp normalizer("managed_literal_history_expiry"), do: &NormalizerV3.expire_history/3
+     │                                                                        ~
+     │
+     └─ lib/ipse/cli/knowledge/management.ex:482:72: Ipse.CLI.Knowledge.Management.normalizer/1
+
+      warning: the following pattern will never match:
+
+          :ok <-
+            Ipse.Extension.Collection.publication_deadline_admission(
+              s.config.semantic_admission["policy"]["expires_at_ms"]
+            )
+
+      because the right-hand side has type:
+
+          dynamic({:error, :collection_deadline_fence_unavailable})
+
+      where "s" was given the types:
+
+          # type: dynamic(%{..., operator_channel: %{..., client: term(), id: term()}, phase: :idle})
+          # from: lib/ipse/session.ex:2394:75
+          %{phase: :idle, operator_channel: %{id: channel, client: client}} = s
+
+          # type: dynamic(%{..., draft: term(), operator_channel: %{..., client: term(), id: term()}, phase: :idle})
+          # from: lib/ipse/session.ex:2396:18
+          planning_entry_quiet?(s)
+
+          # type: dynamic(%{
+            ...,
+            config: term(),
+            draft: term(),
+            operator_channel: %{..., client: term(), id: term()},
+            phase: :idle
+          })
+          # from: lib/ipse/session.ex:2400:63
+          Ipse.Session.OperatorAssertion.selection(s.config)
+
+          # type: dynamic(%{
+            ...,
+            config: %{
+              ...,
+              semantic_admission:
+                %{..., __struct__: atom()} or nil or empty_list() or non_empty_list(term(), term()) or
+                  non_struct_map()
+            },
+            draft: term(),
+            operator_channel: %{..., client: term(), id: term()},
+            phase: :idle
+          })
+          # from: lib/ipse/session.ex:2403:41
+          s.config.semantic_admission["policy"]
+
+      type warning found at:
+      │
+ 2401 │          :ok <-
+      │          ~~~~~~
+      │
+      └─ lib/ipse/session.ex:2401: Ipse.Session.handle_call/3
+
+{:ok,
+ [Inspect.Ipse.Runner.Transaction.Capability, Ipse.CLI.Errors,
+  Ipse.CLI.Knowledge, Ipse.CLI.Knowledge.Management, Ipse.CLI.Terminal,
+  Ipse.Extension.Collection, Ipse.Extension.CollectionCall,
+  Ipse.Extension.ManagedCollectionCall, Ipse.Runner.Transaction,
+  Ipse.Runner.Transaction.Capability, Ipse.Runner.Transaction.Controller,
+  Ipse.Session, Ipse.Session.Invocation],
+ %{
+   compile_warnings: [],
+   runtime_warnings: [
+     %{
+       message: "the following pattern will never match:\n\n    :ok <-\n      Ipse.Extension.Collection.publication_deadline_admission(\n        s.config.semantic_admission[\"policy\"][\"expires_at_ms\"]\n      )\n\nbecause the right-hand side has type:\n\n    dynamic({:error, :collection_deadline_fence_unavailable})\n\nwhere \"s\" was given the types:\n\n    # type: dynamic(%{..., operator_channel: %{..., client: term(), id: term()}, phase: :idle})\n    # from: lib/ipse/session.ex:2394:75\n    %{phase: :idle, operator_channel: %{id: channel, client: client}} = s\n\n    # type: dynamic(%{..., draft: term(), operator_channel: %{..., client: term(), id: term()}, phase: :idle})\n    # from: lib/ipse/session.ex:2396:18\n    planning_entry_quiet?(s)\n\n    # type: dynamic(%{\n      ...,\n      config: term(),\n      draft: term(),\n      operator_channel: %{..., client: term(), id: term()},\n      phase: :idle\n    })\n    # from: lib/ipse/session.ex:2400:63\n    Ipse.Session.OperatorAssertion.selection(s.config)\n\n    # type: dynamic(%{\n      ...,\n      config: %{\n        ...,\n        semantic_admission:\n          %{..., __struct__: atom()} or nil or empty_list() or non_empty_list(term(), term()) or\n            non_struct_map()\n      },\n      draft: term(),\n      operator_channel: %{..., client: term(), id: term()},\n      phase: :idle\n    })\n    # from: lib/ipse/session.ex:2403:41\n    s.config.semantic_admission[\"policy\"]\n",
+       position: 2401,
+       file: "/home/lexlapax/projects/lexlapax/ipse/lib/ipse/session.ex",
+       stacktrace: [
+         {Ipse.Session, :handle_call, 3,
+          [file: ~c"lib/ipse/session.ex", line: 2401]}
+       ],
+       source: "/home/lexlapax/projects/lexlapax/ipse/lib/ipse/session.ex",
+       span: nil,
+       severity: :warning,
+       details: %{
+         typing_traces: [
+           %{
+             name: :s,
+             type: :variable,
+             context: nil,
+             traces: [
+               %{
+                 meta: [line: 2394, column: 75],
+                 file: "/home/lexlapax/projects/lexlapax/ipse/lib/ipse/session.ex",
+                 formatted_type: "dynamic(%{..., operator_channel: %{..., client: term(), id: term()}, phase: :idle})",
+                 formatted_expr: "%{phase: :idle, operator_channel: %{id: channel, client: client}} = s",
+                 formatted_hints: []
+               },
+               %{
+                 meta: [line: 2396, column: 18],
+                 file: "/home/lexlapax/projects/lexlapax/ipse/lib/ipse/session.ex",
+                 formatted_type: "dynamic(%{..., draft: term(), operator_channel: %{..., client: term(), id: term()}, phase: :idle})",
+                 formatted_expr: "planning_entry_quiet?(s)",
+                 formatted_hints: []
+               },
+               %{
+                 meta: [line: 2400, column: 63],
+                 file: "/home/lexlapax/projects/lexlapax/ipse/lib/ipse/session.ex",
+                 formatted_type: "dynamic(%{\n  ...,\n  config: term(),\n  draft: term(),\n  operator_channel: %{..., client: term(), id: term()},\n  phase: :idle\n})",
+                 formatted_expr: "Ipse.Session.OperatorAssertion.selection(s.config)",
+                 formatted_hints: []
+               },
+               %{
+                 meta: [from_brackets: true, line: 2403, column: 41],
+                 file: "/home/lexlapax/projects/lexlapax/ipse/lib/ipse/session.ex",
+                 formatted_type: "dynamic(%{\n  ...,\n  config: %{\n    ...,\n    semantic_admission:\n      %{..., __struct__: atom()} or nil or empty_list() or non_empty_list(term(), term()) or\n        non_struct_map()\n  },\n  draft: term(),\n  operator_channel: %{..., client: term(), id: term()},\n  phase: :idle\n})",
+                 formatted_expr: "s.config.semantic_admission[\"policy\"]",
+                 formatted_hints: []
+               }
+             ]
+           }
+         ]
+       }
+     },
+     %{
+       message: "Ipse.Extension.Collection.ObservedRead.managed_history/6 is undefined or private. Did you mean:\n\n    * managed_proposal/6\n",
+       position: {222, 31},
+       file: "/home/lexlapax/projects/lexlapax/ipse/lib/ipse/cli/knowledge/management.ex",
+       group: true,
+       stacktrace: [
+         {Ipse.CLI.Knowledge.Management, :journaled_forget, 11,
+          [
+            file: ~c"lib/ipse/cli/knowledge/management.ex",
+            line: 222,
+            column: 31
+          ]}
+       ],
+       source: "/home/lexlapax/projects/lexlapax/ipse/lib/ipse/cli/knowledge/management.ex",
+       span: nil,
+       severity: :warning
+     },
+     %{
+       message: "Ipse.Session.ManagedLifecycle.prepare_history_expiry/3 is undefined or private. Did you mean:\n\n    * prepare/3\n",
+       position: {288, 26},
+       file: "/home/lexlapax/projects/lexlapax/ipse/lib/ipse/cli/knowledge/management.ex",
+       group: true,
+       stacktrace: [
+         {Ipse.CLI.Knowledge.Management, :prepare, 4,
+          [
+            file: ~c"lib/ipse/cli/knowledge/management.ex",
+            line: 288,
+            column: 26
+          ]}
+       ],
+       source: "/home/lexlapax/projects/lexlapax/ipse/lib/ipse/cli/knowledge/management.ex",
+       span: nil,
+       severity: :warning
+     },
+     %{
+       message: "Ipse.Session.ManagedLifecycle.prepare_expiry/3 is undefined or private. Did you mean:\n\n    * prepare/3\n",
+       position: {291, 26},
+       file: "/home/lexlapax/projects/lexlapax/ipse/lib/ipse/cli/knowledge/management.ex",
+       group: true,
+       stacktrace: [
+         {Ipse.CLI.Knowledge.Management, :prepare, 4,
+          [
+            file: ~c"lib/ipse/cli/knowledge/management.ex",
+            line: 291,
+            column: 26
+          ]}
+       ],
+       source: "/home/lexlapax/projects/lexlapax/ipse/lib/ipse/cli/knowledge/management.ex",
+       span: nil,
+       severity: :warning
+     },
+     %{
+       message: "Ipse.Extension.Consent.expire_deferred/7 is undefined or private",
+       position: {375, 19},
+       file: "/home/lexlapax/projects/lexlapax/ipse/lib/ipse/cli/knowledge/management.ex",
+       group: true,
+       stacktrace: [
+         {Ipse.CLI.Knowledge.Management, :publish, 7,
+          [
+            file: ~c"lib/ipse/cli/knowledge/management.ex",
+            line: 375,
+            column: 19
+          ]}
+       ],
+       source: "/home/lexlapax/projects/lexlapax/ipse/lib/ipse/cli/knowledge/management.ex",
+       span: nil,
+       severity: :warning
+     },
+     %{
+       message: "Ipse.Extension.Collection.NormalizerV3.expire/3 is undefined or private",
+       position: {481, 64},
+       file: "/home/lexlapax/projects/lexlapax/ipse/lib/ipse/cli/knowledge/management.ex",
+       group: true,
+       stacktrace: [
+         {Ipse.CLI.Knowledge.Management, :normalizer, 1,
+          [
+            file: ~c"lib/ipse/cli/knowledge/management.ex",
+            no_parens: true,
+            line: 481,
+            column: 64
+          ]}
+       ],
+       source: "/home/lexlapax/projects/lexlapax/ipse/lib/ipse/cli/knowledge/management.ex",
+       span: nil,
+       severity: :warning
+     },
+     %{
+       message: "Ipse.Extension.Collection.NormalizerV3.expire_history/3 is undefined or private",
+       position: {482, 72},
+       file: "/home/lexlapax/projects/lexlapax/ipse/lib/ipse/cli/knowledge/management.ex",
+       group: true,
+       stacktrace: [
+         {Ipse.CLI.Knowledge.Management, :normalizer, 1,
+          [
+            file: ~c"lib/ipse/cli/knowledge/management.ex",
+            no_parens: true,
+            line: 482,
+            column: 72
+          ]}
+       ],
+       source: "/home/lexlapax/projects/lexlapax/ipse/lib/ipse/cli/knowledge/management.ex",
+       span: nil,
+       severity: :warning
+     },
+     %{
+       message: "the following pattern will never match:\n\n    :ok <- Ipse.Extension.Collection.publication_deadline_admission(plan.publish_before_ms)\n\nbecause the right-hand side has type:\n\n    dynamic({:error, :collection_deadline_fence_unavailable})\n\nwhere \"plan\" was given the type:\n\n    # type: dynamic(%{..., publish_before_ms: term()})\n    # from: lib/ipse/extension/collection_call.ex:459:28\n    Ipse.Extension.Collection.publication_deadline_admission(plan.publish_before_ms)\n",
+       position: 459,
+       file: "/home/lexlapax/projects/lexlapax/ipse/lib/ipse/extension/collection_call.ex",
+       stacktrace: [
+         {Ipse.Extension.CollectionCall, :publish, 5,
+          [file: ~c"lib/ipse/extension/collection_call.ex", ...]}
+       ],
+       ...
+     },
+     ...
+   ]
+ }}

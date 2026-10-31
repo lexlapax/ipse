@@ -1,0 +1,17 @@
+Running ExUnit with seed: 660862, max_cases: 8
+Excluding tags: [:native_sandbox, :macos_sandbox, :macos_filesystem, :memory_scope]
+
+
+
+  1) test public source and shared first page use actual registered inference receipts and full approvals (Ipse.SharedProducerSessionTest)
+     test/extensions/knowledge/shared_producer_session_test.exs:11
+     Expected truthy, got false
+     code: assert receipt["operation_id"] == source["operation_id"] and receipt["source_sha256"] == source["sha256"]
+     stacktrace:
+       test/extensions/knowledge/shared_producer_session_test.exs:218: (test)
+
+
+Finished in 9.7 seconds (0.1s on load, 0.00s async, 9.6s sync)
+
+Result: 0/1 passed
+Failed: 1 test

@@ -1,0 +1,28 @@
+{
+  "bindings": {
+    "docs/archive/2026-10-26-p30-p31-implementation/shared-directory-v2-design.md": "22dff7b5d85f020daab29dec271a574c2420e85b545c7acc7efbd2b86798014b",
+    "docs/archive/2026-10-26-p30-p31-implementation/shared-finalization-native/manifest.json": "3aca9d4bffb7cc7385587e48e54e4f37680e7d45f53ecbc1558419b25cfa0876",
+    "docs/archive/2026-10-26-p30-p31-implementation/shared-metadata-geometry/manifest.json": "3334a9f145f5b407d5f0e440356048129bf190ec4f5a8d617843ac3a9d49812a",
+    "extensions/knowledge/src/store/collection.ex": "2811dc2be11955495b43e853371385f3148d3052485bac5ae5fc4969174ff599",
+    "test/support/metadata_transport_geometry.exs": "3669bfb63391e202c55b62399b52d8cd48b08f74dd38d4d50ad5edf03ede606c"
+  },
+  "created_at": "2026-10-29T18:24:38.088629Z",
+  "model_calls": 0,
+  "native_operations": 0,
+  "proposal_only": true,
+  "records": {
+    "_build/shared-finalization-native-20261029/measure-v2-metadata.exs": {
+      "byte_count": 5730,
+      "sha256": "e0449c9ced67b9832a653f04f5217273bf732fd1d0644b571abd8b529385e973"
+    },
+    "_build/shared-finalization-native-20261029/proposed-v2-metadata-size-47064.log": {
+      "byte_count": 136,
+      "sha256": "dadece458c34f72a9312d63d2a768736b4d8ff90cf65bce93e7f55c2f1d9a90d"
+    },
+    "_build/shared-finalization-native-20261029/proposed-v2-metadata-size-47065.log": {
+      "byte_count": 721,
+      "sha256": "3770dd92c19ea39b9257b1b32f7f3a1bbc55beb3a9e6abdf0b367d573aff6464"
+    }
+  },
+  "version": 1
+}

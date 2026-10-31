@@ -34,6 +34,63 @@ defmodule Ipse.MCP.SessionTest do
     end
   end
 
+  defmodule PlanningModel do
+    def complete(config, messages, tools, _emit) do
+      send(config.test_pid, {:planning_model_input, messages, tools})
+      last = messages |> Enum.reject(&Ipse.Session.Reference.reference?/1) |> List.last()
+
+      if last["role"] == "tool" do
+        {:ok, %{"role" => "assistant", "content" => "Clarified request"}, %{}}
+      else
+        calls = [
+          %{
+            "id" => "planning-lookup",
+            "type" => "function",
+            "function" => %{"name" => "mcp__notes__lookup", "arguments" => ~s({"query":"public"})}
+          }
+        ]
+
+        calls =
+          if config[:planning_mutation_probe] do
+            calls ++
+              [
+                %{
+                  "id" => "planning-write",
+                  "type" => "function",
+                  "function" => %{
+                    "name" => "write",
+                    "arguments" => ~s({"path":"forbidden.txt","content":"forbidden"})
+                  }
+                }
+              ]
+          else
+            calls
+          end
+
+        {:ok,
+         %{
+           "role" => "assistant",
+           "content" => "",
+           "tool_calls" => calls
+         }, %{}}
+      end
+    end
+  end
+
+  defmodule PendingDraftPlanningModel do
+    def complete(config, messages, tools, emit) do
+      if Enum.any?(
+           messages,
+           &(is_binary(&1["content"]) and &1["content"] =~ "Draft a clearer version")
+         ) do
+        send(config.test_pid, :pending_draft_model)
+        receive do: (:never -> :ok)
+      else
+        PlanningModel.complete(config, messages, tools, emit)
+      end
+    end
+  end
+
   setup do
     root = Path.join(System.tmp_dir!(), "ipse-mcp-session-#{System.unique_integer([:positive])}")
     File.mkdir_p!(root)
@@ -69,6 +126,771 @@ defmodule Ipse.MCP.SessionTest do
     assert Enum.at(events, intent)["arguments"] == args
     assert Enum.at(events, intent)["mcp"]["server_id"] == "notes"
     assert Enum.at(events, intent)["approval"] == "approved"
+  end
+
+  test "a matching operator planning declaration does not yet permit a draft MCP call", ctx do
+    initial = session(ctx)
+    [server] = :sys.get_state(initial).config.mcp_servers
+    assert :ok = Ipse.Session.close_confirmed(initial)
+    assert {:ok, [tool]} = Ipse.MCP.discover([server], ctx.root)
+
+    reads = %{
+      tool.tool_id => %{
+        "version" => 1,
+        "server_id" => server.id,
+        "tool" => tool.name,
+        "endpoint_sha256" => server.fingerprint,
+        "descriptor_sha256" => Ipse.JSON.sha256("unreviewed descriptor")
+      }
+    }
+
+    refute Ipse.MCP.Planning.declared?(tool, reads)
+    pid = session(ctx, approval: :allow, servers: [server], planning_mcp_reads: reads)
+    assert :ok = Ipse.Session.start_draft(pid, "private draft")
+    assert_receive {:ipse, ^pid, {:done, :ok}}, 10_000
+    refute File.exists?(Path.join(ctx.root, "note.txt"))
+    refute File.exists?(Path.join(ctx.root, "calls.log"))
+    {:ok, events} = Ipse.Journal.load(ctx.dir, Ipse.Session.info(pid).id)
+    assert hd(events)["metadata"]["planning_mcp_protocol"] === 1
+
+    assert [%{"startup" => "fresh"} = first_epoch] =
+             Enum.filter(events, &(&1["type"] == "planning_mcp_epoch"))
+
+    assert Enum.find_index(events, &(&1 == first_epoch)) <
+             Enum.find_index(events, &(&1["type"] == "draft_started"))
+
+    assert Enum.any?(
+             events,
+             &(get_in(&1, ["message", "ipse_tool_outcome", "status"]) == "denied")
+           )
+
+    refute Enum.any?(events, &(&1["type"] == "tool_started" and &1["name"] == tool.tool_id))
+
+    draft_start = Enum.find_index(events, &(&1["type"] == "draft_started"))
+    forged = %{"type" => "tool_started", "name" => tool.tool_id, "mcp" => %{}}
+
+    assert {:error, :invalid_planning_mcp_history} =
+             Ipse.Session.Saved.restore(
+               List.insert_at(events, draft_start + 1, forged),
+               Ipse.Session.info(pid).id
+             )
+
+    id = Ipse.Session.info(pid).id
+    config = :sys.get_state(pid).config |> Map.put(:approval, :ask)
+    assert :ok = Ipse.Session.close_confirmed(pid)
+
+    opts =
+      {Ipse.Session,
+       config: config, cwd: ctx.root, state_dir: ctx.dir, id: id, subscriber: self()}
+
+    assert {:ok, resumed} = DynamicSupervisor.start_child(Ipse.Sessions, opts)
+    {:ok, resumed_mode} = Ipse.Extension.Mode.capture(:sys.get_state(resumed).config)
+    assert resumed_mode["approval"] == "ask"
+    assert :ok = Ipse.Session.close_confirmed(resumed)
+    {:ok, resumed_events} = Ipse.Journal.load(ctx.dir, id)
+
+    assert [^first_epoch, second_epoch] =
+             Enum.filter(resumed_events, &(&1["type"] == "planning_mcp_epoch"))
+
+    assert second_epoch["startup"] == "resume"
+    assert second_epoch["previous_epoch_id"] == first_epoch["epoch_id"]
+    assert second_epoch["execution_mode"] == resumed_mode
+    without_epochs = Enum.reject(resumed_events, &(&1["type"] == "planning_mcp_epoch"))
+
+    assert {:error, :invalid_planning_mcp_history} =
+             Ipse.Session.Saved.restore(without_epochs, id)
+
+    without_protocol =
+      List.update_at(
+        resumed_events,
+        0,
+        &update_in(&1, ["metadata"], fn metadata ->
+          Map.delete(metadata, "planning_mcp_protocol")
+        end)
+      )
+
+    assert {:error, :invalid_planning_mcp_history} =
+             Ipse.Session.Saved.restore(without_protocol, id)
+
+    journal = Path.join(ctx.dir, id <> ".jsonl")
+    [header | rest] = File.read!(journal) |> String.split("\n", trim: true)
+    header = Jason.decode!(header)
+
+    header =
+      update_in(header, ["metadata", "configuration"], &Map.delete(&1, "planning_mcp_reads"))
+
+    File.write!(journal, Enum.join([Jason.encode!(header) | rest], "\n") <> "\n")
+
+    assert {:error, :resume_configuration_mismatch} =
+             DynamicSupervisor.start_child(Ipse.Sessions, opts)
+  end
+
+  test "an explicitly approved, declared planning read is journaled and preserved as draft evidence",
+       ctx do
+    {server, tool, reads} = planning_fixture(ctx)
+
+    assert Ipse.MCP.Planning.declared?(tool, reads)
+
+    pid =
+      session(ctx,
+        scenario: "planning_read",
+        tools: ["lookup"],
+        provider_module: PlanningModel,
+        servers: [server],
+        planning_mcp_reads: reads
+      )
+
+    assert :ok = Ipse.Session.start_draft(pid, "clarify a public request")
+
+    assert_receive {:ipse, ^pid, {:approval, ref, "mcp__notes__lookup", %{"query" => "public"}}},
+                   10_000
+
+    refute File.exists?(Path.join(ctx.root, "calls.log"))
+    assert :ok = Ipse.Session.approve(pid, ref, true)
+    assert_receive {:ipse, ^pid, {:done, :ok}}, 10_000
+    assert File.read!(Path.join(ctx.root, "calls.log")) == "lookup\n"
+    state = :sys.get_state(pid)
+    assert state.draft.status == :completed
+    {:ok, events} = Ipse.Journal.load(ctx.dir, Ipse.Session.info(pid).id)
+
+    assert length(state.draft.tool_evidence) == 1
+    [source] = state.draft.tool_evidence
+
+    assert {:ok, %{records: [%{source: ^source, record: result}]}} =
+             Ipse.Journal.source_page(
+               ctx.dir,
+               Ipse.Session.info(pid).id,
+               source["byte_offset"],
+               1
+             )
+
+    assert get_in(result, ["message", "content"]) =~ "Synthetic lookup result"
+
+    marker = Enum.find_index(events, &(&1["type"] == "planning_mcp_read_intent"))
+
+    start =
+      Enum.find_index(events, &(&1["type"] == "tool_started" and &1["name"] == tool.tool_id))
+
+    assert is_integer(marker) and marker + 1 == start
+    assert {:ok, _} = Ipse.Session.Saved.restore(events, Ipse.Session.info(pid).id)
+
+    {before, after_start} = Enum.split(events, start + 1)
+    duplicate = [Enum.at(events, marker), Enum.at(events, start)]
+
+    assert {:error, _} =
+             Ipse.Session.Saved.restore(
+               before ++ duplicate ++ after_start,
+               Ipse.Session.info(pid).id
+             )
+  end
+
+  test "denial and a changed descriptor never dispatch the declared planning read", ctx do
+    {server, _tool, reads} = planning_fixture(ctx)
+
+    options = [
+      scenario: "planning_read",
+      tools: ["lookup"],
+      provider_module: PlanningModel,
+      servers: [server],
+      planning_mcp_reads: reads
+    ]
+
+    denied = session(ctx, options)
+    assert :ok = Ipse.Session.start_draft(denied, "clarify")
+    assert_receive {:ipse, ^denied, {:approval, ref, "mcp__notes__lookup", _}}, 10_000
+    assert :ok = Ipse.Session.approve(denied, ref, false)
+    assert_receive {:ipse, ^denied, {:done, :ok}}, 10_000
+    refute File.exists?(Path.join(ctx.root, "calls.log"))
+    assert :ok = Ipse.Session.close_confirmed(denied)
+
+    changed = session(ctx, options)
+    assert :ok = Ipse.Session.start_draft(changed, "clarify")
+    assert_receive {:ipse, ^changed, {:approval, ref, "mcp__notes__lookup", _}}, 10_000
+    File.write!(Path.join(ctx.root, "change-schema"), "changed")
+    assert :ok = Ipse.Session.approve(changed, ref, true)
+    assert_receive {:ipse, ^changed, {:done, :ok}}, 10_000
+    refute File.exists?(Path.join(ctx.root, "calls.log"))
+    {:ok, events} = Ipse.Journal.load(ctx.dir, Ipse.Session.info(changed).id)
+    assert Enum.any?(events, &(&1["type"] == "planning_mcp_read_intent"))
+    assert {:ok, _} = Ipse.Session.Saved.restore(events, Ipse.Session.info(changed).id)
+  end
+
+  test "a declared read refuses when draft evidence capacity is exhausted during approval", ctx do
+    {server, _tool, reads} = planning_fixture(ctx)
+
+    pid =
+      session(ctx,
+        scenario: "planning_read",
+        tools: ["lookup"],
+        provider_module: PlanningModel,
+        servers: [server],
+        planning_mcp_reads: reads
+      )
+
+    assert :ok = Ipse.Session.start_draft(pid, "clarify")
+    assert_receive {:ipse, ^pid, {:approval, ref, "mcp__notes__lookup", _}}, 10_000
+
+    :sys.replace_state(pid, fn state ->
+      put_in(state, [:tool_lifecycle, :count], Ipse.Session.ToolLifecycle.limit() - 1)
+    end)
+
+    assert :ok = Ipse.Session.approve(pid, ref, true)
+    assert_receive {:ipse, ^pid, {:done, :ok}}, 10_000
+    refute File.exists?(Path.join(ctx.root, "calls.log"))
+  end
+
+  test "a declared draft read does not dispatch when its committed start has no source", ctx do
+    {server, _tool, reads} = planning_fixture(ctx)
+
+    pid =
+      session(ctx,
+        scenario: "planning_read",
+        tools: ["lookup"],
+        provider_module: PlanningModel,
+        servers: [server],
+        planning_mcp_reads: reads
+      )
+
+    assert :ok = Ipse.Session.start_draft(pid, "clarify")
+    assert_receive {:ipse, ^pid, {:approval, ref, "mcp__notes__lookup", _}}, 10_000
+
+    # Force an otherwise writable start record past the source-reference bound.
+    :sys.replace_state(pid, fn state ->
+      put_in(
+        state,
+        [:config, :sandbox],
+        String.duplicate("x", Ipse.Journal.source_record_bytes())
+      )
+    end)
+
+    assert :ok = Ipse.Session.approve(pid, ref, true)
+    assert_receive {:ipse, ^pid, {:done, :ok}}, 10_000
+    refute File.exists?(Path.join(ctx.root, "calls.log"))
+
+    id = Ipse.Session.info(pid).id
+    {:ok, events} = Ipse.Journal.load(ctx.dir, id)
+
+    assert Enum.any?(
+             events,
+             &(&1["type"] == "lifecycle_tool_recording_stopped" and
+                 &1["reason"] == "source_unavailable")
+           )
+
+    assert Enum.any?(events, &(get_in(&1, ["message", "ipse_tool_outcome", "status"]) == "error"))
+    assert {:ok, _} = Ipse.Session.Saved.restore(events, id)
+  end
+
+  test "a declaration changed while approval is pending refuses before dispatch", ctx do
+    {server, tool, reads} = planning_fixture(ctx)
+
+    pid =
+      session(ctx,
+        scenario: "planning_read",
+        tools: ["lookup"],
+        provider_module: PlanningModel,
+        servers: [server],
+        planning_mcp_reads: reads
+      )
+
+    assert :ok = Ipse.Session.start_draft(pid, "clarify")
+    assert_receive {:ipse, ^pid, {:approval, ref, "mcp__notes__lookup", _}}, 10_000
+
+    :sys.replace_state(pid, fn state ->
+      put_in(
+        state,
+        [:config, :planning_mcp_reads, tool.tool_id, "descriptor_sha256"],
+        Ipse.JSON.sha256("revoked")
+      )
+    end)
+
+    assert :ok = Ipse.Session.approve(pid, ref, true)
+    assert_receive {:ipse, ^pid, {:done, :ok}}, 10_000
+    refute File.exists?(Path.join(ctx.root, "calls.log"))
+  end
+
+  test "read-only and explicit denial ceilings refuse declared planning reads", ctx do
+    {server, _tool, reads} = planning_fixture(ctx)
+
+    for policy <- [[approval: :allow, execution_mode: :read_only], [approval: :deny]] do
+      options =
+        [
+          scenario: "planning_read",
+          tools: ["lookup"],
+          provider_module: PlanningModel,
+          servers: [server],
+          planning_mcp_reads: reads
+        ] ++ policy
+
+      pid = session(ctx, options)
+      assert :ok = Ipse.Session.start_draft(pid, "clarify")
+      assert_receive {:ipse, ^pid, {:done, :ok}}, 10_000
+      refute_receive {:ipse, ^pid, {:approval, _, "mcp__notes__lookup", _}}, 100
+      refute File.exists?(Path.join(ctx.root, "calls.log"))
+      assert :ok = Ipse.Session.close_confirmed(pid)
+    end
+  end
+
+  test "ordinary MCP calls after a resumed draft cancellation restore successfully", ctx do
+    {server, _tool, reads} = planning_fixture(ctx)
+
+    options = [
+      scenario: "planning_read",
+      tools: ["lookup"],
+      provider_module: PendingDraftPlanningModel,
+      servers: [server],
+      planning_mcp_reads: reads,
+      approval: :allow
+    ]
+
+    initial = session(ctx, options)
+    id = Ipse.Session.info(initial).id
+    assert :ok = Ipse.Session.start_draft(initial, "draft before interruption")
+    assert_receive :pending_draft_model, 10_000
+    monitor = Process.monitor(initial)
+    Process.exit(initial, :kill)
+    assert_receive {:DOWN, ^monitor, :process, ^initial, _}, 10_000
+
+    resumed = session(ctx, options, id)
+    assert :ok = Ipse.Session.cancel_draft(resumed)
+    assert :ok = Ipse.Session.prompt(resumed, "ordinary lookup")
+    assert_receive {:ipse, ^resumed, {:done, :ok}}, 10_000
+    assert File.read!(Path.join(ctx.root, "calls.log")) == "lookup\n"
+    {:ok, events} = Ipse.Journal.load(ctx.dir, id)
+    assert {:ok, _} = Ipse.Session.Saved.restore(events, id)
+  end
+
+  test "draft cancellation retains a planning ceiling selected on resume", ctx do
+    {server, _tool, reads} = planning_fixture(ctx)
+
+    options = [
+      scenario: "planning_read",
+      tools: ["lookup"],
+      provider_module: PendingDraftPlanningModel,
+      servers: [server],
+      planning_mcp_reads: reads,
+      approval: :allow
+    ]
+
+    initial = session(ctx, options)
+    id = Ipse.Session.info(initial).id
+    assert :ok = Ipse.Session.start_draft(initial, "draft before interruption")
+    assert_receive :pending_draft_model, 10_000
+    monitor = Process.monitor(initial)
+    Process.exit(initial, :kill)
+    assert_receive {:DOWN, ^monitor, :process, ^initial, _}, 10_000
+
+    resume_options =
+      options |> Keyword.put(:execution_mode, :planning) |> Keyword.put(:planning_cli_start, true)
+
+    resumed = session(ctx, resume_options, id)
+    assert :ok = Ipse.Session.cancel_draft(resumed)
+    assert Ipse.Session.info(resumed).execution_mode["ceiling"] == "planning"
+    assert :ok = Ipse.Session.prompt(resumed, "planning lookup")
+    assert_receive {:ipse, ^resumed, {:done, :ok}}, 10_000
+    assert File.read!(Path.join(ctx.root, "calls.log")) == "lookup\n"
+    {:ok, events} = Ipse.Journal.load(ctx.dir, id)
+
+    assert Enum.any?(
+             events,
+             &(&1["type"] == "planning_mcp_read_intent" and is_nil(&1["draft_id"]))
+           )
+
+    assert Enum.any?(events, &(&1["type"] == "planning_start_selected"))
+    assert is_map(:sys.get_state(resumed).planning_entry)
+
+    assert {:ok, _} = Ipse.Session.Saved.restore(events, id)
+  end
+
+  test "a planning ceiling selected on resume remains bound to later MCP epochs", ctx do
+    {server, _tool, reads} = planning_fixture(ctx)
+
+    base = [
+      scenario: "planning_read",
+      tools: ["lookup"],
+      provider_module: PlanningModel,
+      servers: [server],
+      planning_mcp_reads: reads,
+      approval: :allow
+    ]
+
+    initial = session(ctx, base)
+    id = Ipse.Session.info(initial).id
+    assert :ok = Ipse.Session.close_confirmed(initial)
+
+    planning = session(ctx, Keyword.put(base, :execution_mode, :planning), id)
+    assert Ipse.Session.info(planning).execution_mode["ceiling"] == "planning"
+    assert :ok = Ipse.Session.close_confirmed(planning)
+
+    resumed = session(ctx, base, id)
+    assert Ipse.Session.info(resumed).execution_mode["ceiling"] == "planning"
+    assert :ok = Ipse.Session.prompt(resumed, "look up public information")
+    assert_receive {:ipse, ^resumed, {:done, :ok}}, 10_000
+    assert File.read!(Path.join(ctx.root, "calls.log")) == "lookup\n"
+    {:ok, events} = Ipse.Journal.load(ctx.dir, id)
+    assert {:ok, _} = Ipse.Session.Saved.restore(events, id)
+    assert Enum.any?(events, &(&1["type"] == "planning_mcp_read_intent"))
+
+    checkpoint =
+      Enum.find(
+        events,
+        &(&1["type"] == "execution_mode_resumed" and &1["mode"]["ceiling"] == "planning")
+      )
+
+    tampered =
+      Enum.map(events, fn event ->
+        if event == checkpoint, do: put_in(event, ["mode", "approval"], "ask"), else: event
+      end)
+
+    assert {:error, :invalid_planning_mcp_history} =
+             Ipse.Session.PlanningMCP.validate_events(tampered, id)
+  end
+
+  test "explicitly enabled approval permits a declared read in planning mode without replay",
+       ctx do
+    {server, tool, reads} = planning_fixture(ctx)
+
+    pid =
+      session(ctx,
+        scenario: "planning_read",
+        tools: ["lookup"],
+        provider_module: PlanningModel,
+        servers: [server],
+        planning_mcp_reads: reads,
+        execution_mode: :planning,
+        approval: :allow
+      )
+
+    assert :ok = Ipse.Session.prompt(pid, "plan a public request")
+    assert_receive {:ipse, ^pid, {:done, :ok}}, 10_000
+    assert File.read!(Path.join(ctx.root, "calls.log")) == "lookup\n"
+    id = Ipse.Session.info(pid).id
+    config = :sys.get_state(pid).config
+    {:ok, events} = Ipse.Journal.load(ctx.dir, id)
+
+    assert Enum.any?(
+             events,
+             &(&1["type"] == "planning_mcp_read_intent" and &1["draft_id"] == nil)
+           )
+
+    assert Enum.any?(
+             events,
+             &(&1["type"] == "tool_started" and &1["name"] == tool.tool_id and
+                 &1["approval"] == "session_allow")
+           )
+
+    assert {:ok, _} = Ipse.Session.Saved.restore(events, id)
+    assert :ok = Ipse.Session.close_confirmed(pid)
+
+    assert {:ok, resumed} =
+             DynamicSupervisor.start_child(
+               Ipse.Sessions,
+               {Ipse.Session,
+                config: config, cwd: ctx.root, state_dir: ctx.dir, id: id, subscriber: self()}
+             )
+
+    assert File.read!(Path.join(ctx.root, "calls.log")) == "lookup\n"
+    assert :ok = Ipse.Session.close_confirmed(resumed)
+  end
+
+  test "a dispatched read with an unsourceable result cannot be accepted or replayed", ctx do
+    {server, _tool, reads} = planning_fixture(ctx, "planning_read_controlled")
+
+    pid =
+      session(ctx,
+        scenario: "planning_read_controlled",
+        tools: ["lookup"],
+        provider_module: PlanningModel,
+        servers: [server],
+        planning_mcp_reads: reads,
+        approval: :allow
+      )
+
+    assert :ok = Ipse.Session.start_draft(pid, "clarify")
+    await_file(Path.join(ctx.root, "planning-read-ready"))
+    assert File.read!(Path.join(ctx.root, "calls.log")) == "lookup\n"
+
+    # An atom serializes to the same JSON string but cannot be used as a
+    # source-bound in-memory record. This injects the outcome-source failure.
+    :sys.replace_state(pid, &%{&1 | tool_decision: :session_allow})
+    File.write!(Path.join(ctx.root, "planning-read-release"), "release")
+    assert_receive {:ipse, ^pid, {:done, :ok}}, 10_000
+
+    state = :sys.get_state(pid)
+    assert state.draft.tool_success_count == 1
+    assert state.draft.tool_evidence == []
+    assert {:ok, channel} = Ipse.Session.open_input_channel(pid, self())
+
+    assert {:error, :draft_projection_unsafe} =
+             Ipse.Session.render_draft(pid, channel, state.draft.id, state.draft.revision)
+
+    id = Ipse.Session.info(pid).id
+    config = state.config
+    {:ok, events} = Ipse.Journal.load(ctx.dir, id)
+
+    assert Enum.any?(
+             events,
+             &(&1["type"] == "lifecycle_tool_recording_stopped" and
+                 &1["reason"] == "source_unavailable")
+           )
+
+    assert {:ok, _} = Ipse.Session.Saved.restore(events, id)
+    assert :ok = Ipse.Session.close_confirmed(pid)
+
+    assert {:ok, resumed} =
+             DynamicSupervisor.start_child(
+               Ipse.Sessions,
+               {Ipse.Session,
+                config: config, cwd: ctx.root, state_dir: ctx.dir, id: id, subscriber: self()}
+             )
+
+    assert File.read!(Path.join(ctx.root, "calls.log")) == "lookup\n"
+    assert {:ok, channel} = Ipse.Session.open_input_channel(resumed, self())
+    resumed_draft = :sys.get_state(resumed).draft
+
+    assert {:error, :draft_projection_unsafe} =
+             Ipse.Session.render_draft(resumed, channel, resumed_draft.id, resumed_draft.revision)
+
+    assert :ok = Ipse.Session.close_confirmed(resumed)
+  end
+
+  test "owner death during a declared planning read is unknown and never replays it", ctx do
+    {server, _tool, reads} = planning_fixture(ctx, "planning_read_hang")
+
+    pid =
+      session(ctx,
+        scenario: "planning_read_hang",
+        tools: ["lookup"],
+        provider_module: PlanningModel,
+        servers: [server],
+        planning_mcp_reads: reads,
+        approval: :allow
+      )
+
+    assert :ok = Ipse.Session.start_draft(pid, "clarify")
+    assert_receive {:ipse, ^pid, {:tool, "mcp__notes__lookup", _}}, 10_000
+    await_file(Path.join(ctx.root, "hang-ready"))
+    assert File.read!(Path.join(ctx.root, "calls.log")) == "lookup\n"
+    id = Ipse.Session.info(pid).id
+    config = :sys.get_state(pid).config
+    [transport] = :sys.get_state(pid).mcp_resources |> Map.keys()
+    ref = Process.monitor(transport)
+    Process.exit(pid, :kill)
+    assert_receive {:DOWN, ^ref, :process, ^transport, _}, 10_000
+
+    assert {:ok, resumed} =
+             DynamicSupervisor.start_child(
+               Ipse.Sessions,
+               {Ipse.Session,
+                config: config, cwd: ctx.root, state_dir: ctx.dir, id: id, subscriber: self()}
+             )
+
+    assert Ipse.Session.info(resumed).phase == :idle
+    assert File.read!(Path.join(ctx.root, "calls.log")) == "lookup\n"
+
+    assert Enum.any?(
+             :sys.get_state(resumed).messages,
+             &(get_in(&1, ["ipse_tool_outcome", "status"]) == "unknown")
+           )
+
+    assert :ok = Ipse.Session.close_confirmed(resumed)
+  end
+
+  test "a planning read does not widen workspace mutation authority", ctx do
+    {server, _tool, reads} = planning_fixture(ctx)
+
+    pid =
+      session(ctx,
+        scenario: "planning_read",
+        tools: ["lookup"],
+        provider_module: PlanningModel,
+        servers: [server],
+        planning_mcp_reads: reads,
+        execution_mode: :planning,
+        approval: :allow,
+        planning_mutation_probe: true
+      )
+
+    assert :ok = Ipse.Session.prompt(pid, "plan a public request")
+    assert_receive {:ipse, ^pid, {:done, :ok}}, 10_000
+    assert File.read!(Path.join(ctx.root, "calls.log")) == "lookup\n"
+    refute File.exists?(Path.join(ctx.root, "forbidden.txt"))
+    {:ok, events} = Ipse.Journal.load(ctx.dir, Ipse.Session.info(pid).id)
+
+    assert Enum.any?(
+             events,
+             &(get_in(&1, ["message", "tool_call_id"]) == "planning-write" and
+                 get_in(&1, ["message", "ipse_tool_outcome", "status"]) == "denied")
+           )
+
+    refute Enum.any?(events, &(&1["type"] == "tool_started" and &1["name"] == "write"))
+  end
+
+  test "operator configuration resolves into an approved planning read", ctx do
+    {_server, _tool, reads} = planning_fixture(ctx)
+    operator_path = Path.join(ctx.root, "operator.json")
+
+    File.write!(
+      operator_path,
+      Jason.encode!(%{
+        "version" => 1,
+        "settings" => %{"provider" => "demo", "model" => "fixture"},
+        "planning_mcp_reads" => reads
+      })
+    )
+
+    home = Path.join(ctx.root, "home")
+
+    assert {:ok, effective} =
+             Ipse.Config.resolve(
+               ctx.root,
+               home,
+               [config: operator_path, project_config: false],
+               %{}
+             )
+
+    client = %{
+      base_url: nil,
+      home: home,
+      auth_dir: nil,
+      operator_home: nil,
+      workspace: ctx.root,
+      mcp_config: Path.join(ctx.root, "mcp.json"),
+      operator_questions: false,
+      approval: :ask
+    }
+
+    assert {:ok, runtime} = Ipse.Config.runtime(effective, client)
+    runtime = Map.merge(runtime, %{provider_module: PlanningModel, test_pid: self()})
+
+    assert {:ok, pid} =
+             DynamicSupervisor.start_child(
+               Ipse.Sessions,
+               {Ipse.Session,
+                config: runtime, cwd: ctx.root, state_dir: ctx.dir, subscriber: self()}
+             )
+
+    on_exit(fn ->
+      if Process.alive?(pid), do: DynamicSupervisor.terminate_child(Ipse.Sessions, pid)
+    end)
+
+    assert :ok = Ipse.Session.start_draft(pid, "clarify")
+    assert_receive {:ipse, ^pid, {:approval, ref, "mcp__notes__lookup", _}}, 10_000
+    assert :ok = Ipse.Session.approve(pid, ref, true)
+    assert_receive {:ipse, ^pid, {:done, :ok}}, 10_000
+    assert File.read!(Path.join(ctx.root, "calls.log")) == "lookup\n"
+    {:ok, events} = Ipse.Journal.load(ctx.dir, Ipse.Session.info(pid).id)
+    assert {:ok, _} = Ipse.Session.Saved.restore(events, Ipse.Session.info(pid).id)
+  end
+
+  test "an operator planning declaration does not approve an ordinary MCP call", ctx do
+    initial = session(ctx)
+    [server] = :sys.get_state(initial).config.mcp_servers
+    assert :ok = Ipse.Session.close_confirmed(initial)
+    assert {:ok, [tool]} = Ipse.MCP.discover([server], ctx.root)
+
+    reads = %{
+      tool.tool_id => %{
+        "version" => 1,
+        "server_id" => server.id,
+        "tool" => tool.name,
+        "endpoint_sha256" => server.fingerprint,
+        "descriptor_sha256" => tool.digest
+      }
+    }
+
+    pid = session(ctx, servers: [server], planning_mcp_reads: reads)
+    assert :ok = Ipse.Session.prompt(pid, "write")
+    assert_receive {:ipse, ^pid, {:approval, ref, "mcp__notes__write_note", _}}, 5_000
+    refute File.exists?(Path.join(ctx.root, "calls.log"))
+    assert :ok = Ipse.Session.approve(pid, ref, false)
+    assert_receive {:ipse, ^pid, {:done, :ok}}, 5_000
+    refute File.exists?(Path.join(ctx.root, "note.txt"))
+    refute File.exists?(Path.join(ctx.root, "calls.log"))
+
+    assert :ok = Ipse.Session.prompt(pid, "write")
+    assert_receive {:ipse, ^pid, {:approval, approved, "mcp__notes__write_note", _}}, 5_000
+    assert :ok = Ipse.Session.approve(pid, approved, true)
+    assert_receive {:ipse, ^pid, {:done, :ok}}, 5_000
+    assert File.read!(Path.join(ctx.root, "note.txt")) == "approved fixture 1"
+    {:ok, events} = Ipse.Journal.load(ctx.dir, Ipse.Session.info(pid).id)
+    assert {:ok, _} = Ipse.Session.Saved.restore(events, Ipse.Session.info(pid).id)
+    marker = Enum.find_index(events, &(&1["type"] == "mcp_epoch_intent"))
+
+    start =
+      Enum.find_index(events, &(&1["type"] == "tool_started" and &1["name"] == tool.tool_id))
+
+    assert is_integer(marker) and marker + 1 == start
+
+    assert {:ok, interrupted} =
+             Ipse.Session.Saved.restore(Enum.take(events, marker + 1), Ipse.Session.info(pid).id)
+
+    assert Enum.any?(interrupted.messages, fn message ->
+             message["tool_call_id"] == "external-1" and
+               get_in(message, ["ipse_tool_outcome", "status"]) == "unknown"
+           end)
+
+    assert {:error, :invalid_planning_mcp_history} =
+             Ipse.Session.Saved.restore(List.delete_at(events, marker), Ipse.Session.info(pid).id)
+
+    altered_epoch =
+      List.update_at(events, marker, &Map.put(&1, "epoch_id", String.duplicate("f", 32)))
+
+    assert {:error, :invalid_planning_mcp_history} =
+             Ipse.Session.Saved.restore(altered_epoch, Ipse.Session.info(pid).id)
+
+    altered_start =
+      List.update_at(events, start, &put_in(&1, ["arguments", "content"], "changed"))
+
+    assert {:error, :invalid_planning_mcp_history} =
+             Ipse.Session.Saved.restore(altered_start, Ipse.Session.info(pid).id)
+
+    checkpoint = Enum.find_index(events, &(&1["type"] == "planning_mcp_epoch"))
+
+    assert {:error, :invalid_planning_mcp_history} =
+             Ipse.Session.Saved.restore(
+               List.delete_at(events, checkpoint),
+               Ipse.Session.info(pid).id
+             )
+
+    id = Ipse.Session.info(pid).id
+    config = :sys.get_state(pid).config
+    before = File.read!(Path.join(ctx.root, "calls.log"))
+    assert :ok = Ipse.Session.close_confirmed(pid)
+
+    path = Path.join(ctx.dir, id <> ".jsonl")
+    original = File.read!(path)
+    on_exit(fn -> File.write!(path, original) end)
+    prefix = events |> Enum.take(marker + 1) |> Enum.map_join("\n", &Jason.encode!/1)
+    File.write!(path, prefix <> "\n")
+
+    assert {:ok, recovered} =
+             DynamicSupervisor.start_child(
+               Ipse.Sessions,
+               {Ipse.Session,
+                config: config, cwd: ctx.root, state_dir: ctx.dir, id: id, subscriber: self()}
+             )
+
+    assert File.read!(Path.join(ctx.root, "calls.log")) == before
+    assert :ok = Ipse.Session.close_confirmed(recovered)
+    {:ok, recovered_events} = Ipse.Journal.load(ctx.dir, id)
+
+    assert Enum.any?(
+             Enum.drop(recovered_events, marker + 1),
+             &(&1["type"] == "planning_mcp_epoch")
+           )
+
+    assert {:ok, _} = Ipse.Session.Saved.restore(recovered_events, id)
+    File.write!(path, original)
+
+    assert {:ok, resumed} =
+             DynamicSupervisor.start_child(
+               Ipse.Sessions,
+               {Ipse.Session,
+                config: config, cwd: ctx.root, state_dir: ctx.dir, id: id, subscriber: self()}
+             )
+
+    assert File.read!(Path.join(ctx.root, "calls.log")) == before
+    assert :ok = Ipse.Session.close_confirmed(resumed)
   end
 
   test "pre-spawn MCP refusal leaves a recorded Session usable", ctx do
@@ -245,7 +1067,12 @@ defmodule Ipse.MCP.SessionTest do
     assert :ok = Ipse.Session.close_confirmed(pid)
     {:ok, events} = Ipse.Journal.load(ctx.dir, id)
     assert {:ok, _} = Ipse.Session.restore_context(events)
-    assert List.last(events)["cleanup_confirmed"] == true
+
+    closure = Enum.find(Enum.reverse(events), &(&1["type"] == "lifecycle_epoch_closed"))
+    assert closure["closure"] == "close"
+    assert closure["cleanup_confirmed"] == false
+    assert Enum.any?(events, &(&1["type"] == "session_release_intent"))
+
     assert File.read!(Path.join(ctx.root, "calls.log")) == "write_note\n"
   end
 
@@ -263,8 +1090,9 @@ defmodule Ipse.MCP.SessionTest do
     assert {:error, :cleanup_unconfirmed} = Ipse.Session.close_confirmed(pid)
     {:ok, events} = Ipse.Journal.load(ctx.dir, id)
     assert {:ok, _} = Ipse.Session.restore_context(events)
-    assert List.last(events)["closure"] == "cleanup_failure"
-    refute List.last(events)["cleanup_confirmed"]
+    closure = Enum.find(Enum.reverse(events), &(&1["type"] == "lifecycle_epoch_closed"))
+    assert closure["closure"] == "cleanup_failure"
+    refute closure["cleanup_confirmed"]
   end
 
   test "abrupt stdio supervisor loss cannot become confirmed Session cleanup", ctx do
@@ -282,9 +1110,9 @@ defmodule Ipse.MCP.SessionTest do
     assert {:error, :cleanup_unconfirmed} = Ipse.Session.close_confirmed(pid)
     assert {:ok, events} = Ipse.Journal.load(ctx.dir, id)
     assert {:ok, _} = Ipse.Session.restore_context(events)
-    assert List.last(events)["type"] == "lifecycle_epoch_closed"
-    assert List.last(events)["closure"] == "cleanup_failure"
-    refute List.last(events)["cleanup_confirmed"]
+    closure = Enum.find(Enum.reverse(events), &(&1["type"] == "lifecycle_epoch_closed"))
+    assert closure["closure"] == "cleanup_failure"
+    refute closure["cleanup_confirmed"]
     refute File.exists?(Path.join(ctx.root, "note.txt"))
   end
 
@@ -318,6 +1146,9 @@ defmodule Ipse.MCP.SessionTest do
 
     legacy_metadata =
       metadata
+      |> Map.drop(
+        ~w(native_journal_layout release_receipt_layout session_lock_identity source_origin source_origin_layout)
+      )
       |> Map.delete("mcp_fingerprint_version")
       |> Map.put("mcp_servers", Ipse.MCP.fingerprints(legacy))
 
@@ -395,11 +1226,18 @@ defmodule Ipse.MCP.SessionTest do
 
     metadata =
       header["metadata"]
+      |> Map.drop(
+        ~w(native_journal_layout release_receipt_layout session_lock_identity source_origin source_origin_layout)
+      )
       |> Map.delete("mcp_fingerprint_version")
       |> Map.put("mcp_servers", hashes)
 
     assert {:ok, id} = Ipse.Journal.create(ctx.dir, metadata)
-    for event <- initial, do: assert(:ok = Ipse.Journal.append(ctx.dir, id, event))
+
+    for event <- initial,
+        event["type"] != "session_release_owner_started",
+        do: assert(:ok = Ipse.Journal.append(ctx.dir, id, event))
+
     path = Path.join(ctx.dir, id <> ".jsonl")
     before = File.read!(path)
     resumed = session(ctx, [servers: servers], id)
@@ -501,6 +1339,27 @@ defmodule Ipse.MCP.SessionTest do
     refute File.exists?(Path.join(ctx.root, "note.txt"))
   end
 
+  defp planning_fixture(ctx, scenario \\ "planning_read") do
+    initial =
+      session(ctx, scenario: scenario, tools: ["lookup"], provider_module: PlanningModel)
+
+    [server] = :sys.get_state(initial).config.mcp_servers
+    assert :ok = Ipse.Session.close_confirmed(initial)
+    assert {:ok, [tool]} = Ipse.MCP.discover([server], ctx.root)
+
+    reads = %{
+      tool.tool_id => %{
+        "version" => 1,
+        "server_id" => server.id,
+        "tool" => tool.name,
+        "endpoint_sha256" => server.fingerprint,
+        "descriptor_sha256" => tool.digest
+      }
+    }
+
+    {server, tool, reads}
+  end
+
   defp session(ctx, opts \\ [], id \\ nil) do
     scenario = Keyword.get(opts, :scenario, "normal")
 
@@ -517,7 +1376,7 @@ defmodule Ipse.MCP.SessionTest do
             Path.expand("../../support/mcp_server.exs", __DIR__),
             scenario
           ],
-          "tools" => ["write_note"],
+          "tools" => Keyword.get(opts, :tools, ["write_note"]),
           "env" =>
             Map.merge(
               %{"PATH" => Path.join(to_string(:code.root_dir()), "bin") <> ":/usr/bin:/bin"},
@@ -531,14 +1390,22 @@ defmodule Ipse.MCP.SessionTest do
     config_path = Path.join(ctx.root, "mcp.json")
     File.write!(config_path, Jason.encode!(document))
     {:ok, servers} = Ipse.MCP.Config.load(config_path)
+    reads = Keyword.get(opts, :planning_mcp_reads, %{})
+
+    configuration =
+      if reads == %{},
+        do: nil,
+        else: %{fingerprint: Ipse.JSON.digest([reads]), planning_mcp_reads: reads, sources: []}
 
     config = %{
       provider: :demo,
       model: "test",
-      provider_module: Model,
+      provider_module: Keyword.get(opts, :provider_module, Model),
       test_pid: self(),
       home: Path.join(ctx.root, "home"),
       approval: Keyword.get(opts, :approval, :ask),
+      execution_mode: Keyword.get(opts, :execution_mode, :normal),
+      planning_cli_start: Keyword.get(opts, :planning_cli_start, false),
       observability:
         Map.put(
           Ipse.Observability.defaults(),
@@ -547,7 +1414,10 @@ defmodule Ipse.MCP.SessionTest do
         ),
       call_count: Keyword.get(opts, :call_count, 1),
       model_gate: Keyword.get(opts, :model_gate),
-      mcp_servers: Keyword.get(opts, :servers, servers)
+      planning_mutation_probe: Keyword.get(opts, :planning_mutation_probe, false),
+      mcp_servers: Keyword.get(opts, :servers, servers),
+      planning_mcp_reads: reads,
+      configuration: configuration
     }
 
     {:ok, pid} =

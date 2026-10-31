@@ -1,0 +1,8 @@
+Compiling 12 files (.ex)
+Running ExUnit with seed: 46714, max_cases: 1
+Excluding tags: [:native_sandbox, :macos_sandbox, :macos_filesystem, :memory_scope]
+
+......................
+Finished in 13.7 seconds (0.2s async, 13.5s sync)
+
+Result: 22 passed

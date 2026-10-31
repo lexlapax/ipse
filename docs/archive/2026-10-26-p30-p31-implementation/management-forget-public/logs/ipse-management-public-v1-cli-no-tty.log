@@ -1,0 +1,4 @@
+Use knowledge forget NOTE_KEY from a native terminal with the saved configuration; provider overrides, --yes and --json are unsupported.
+No successful forget is confirmed: {:error, :knowledge_management_refused}. Inspect the management journal and protected operation before retrying; unknown effects never replay.
+
+MANAGEMENT_PUBLIC_NO_TTY_REFUSED

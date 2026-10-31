@@ -254,7 +254,10 @@ defmodule Ipse.Extension.DecisionCall do
           case completion["outcome"] do
             "completed" -> outcome["value"]["code"] == "decision_response"
             "cancelled" -> outcome["value"]["code"] in ~w(decision_cancelled decision_timeout)
-            _ -> outcome["value"]["code"] == "decision_request_failed"
+            # A failed partial completion has no retained response body. Either
+            # failure code is non-authoritative diagnostic data on replay; it
+            # cannot establish advice or a final accounting settlement.
+            _ -> outcome["value"]["code"] in ~w(decision_request_failed decision_response)
           end
 
       _ ->

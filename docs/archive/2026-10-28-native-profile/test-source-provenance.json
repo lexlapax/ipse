@@ -1,0 +1,5 @@
+{
+  "initial_storage_profile_test_sha256": "6022bd2e3041bfe65ede97c0243862f20914cc3cbc31b97cd6975e68dc17c0d9",
+  "initial_transaction_test_sha256": "966b3f45466cb724a2f942da2c1115badc38a85dd01135422a43cb5d54ccff0e",
+  "reconstruction": "Exact initial sources reconstructed by reversing only the two documented fixture repairs; final snapshots remain separate."
+}

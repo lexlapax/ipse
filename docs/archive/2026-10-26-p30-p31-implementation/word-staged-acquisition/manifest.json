@@ -1,0 +1,93 @@
+{
+  "files": [
+    {
+      "bytes": 21839,
+      "path": "lib/ipse/tools.ex",
+      "sha256": "82dab4cb9524d90659f89c5ee5f48d06e5c8981036803de5c864dd70cc41c246"
+    },
+    {
+      "bytes": 19106,
+      "path": "lib/ipse/extension/external_calls.ex",
+      "sha256": "ed9fd38780b85dad8e09d03854860f7247687585e56f120b4e1aacc86081ec77"
+    },
+    {
+      "bytes": 37286,
+      "path": "extensions/knowledge/src/corpus.ex",
+      "sha256": "dcb54eb8cf15915b6c1723b4d760f46bb1d652dba11e20c2d31097140653e6b1"
+    },
+    {
+      "bytes": 9031,
+      "path": "extensions/knowledge/src/documents.ex",
+      "sha256": "acc21dadc8b3cddf4248952e4d6b33144328e77c5317b4cb21123bc6b6081540"
+    },
+    {
+      "bytes": 48131,
+      "path": "extensions/knowledge/src/evidence.ex",
+      "sha256": "e4416b312fed130c92414f46aed1222dd4c16d1b819f2a88f6f3974146508037"
+    },
+    {
+      "bytes": 97835,
+      "path": "extensions/knowledge/src/store.ex",
+      "sha256": "d1787b27b5d3191f2af6d6a28ce8911e6240eadf51dc5853aa445b63d361dbfa"
+    },
+    {
+      "bytes": 8189,
+      "path": "test/ipse/tools_test.exs",
+      "sha256": "b4ce576168890bf9db54f6443b218a25486684d93adf48a8a96c5c2c6022c67d"
+    },
+    {
+      "bytes": 1627,
+      "path": "test/ipse/extension/tool_action_binary_test.exs",
+      "sha256": "817d91a2a817ee75ad0b761a50c241350bae2aaf4c169ee2aa7198f4399cb4d5"
+    },
+    {
+      "bytes": 19608,
+      "path": "test/extensions/knowledge/document_acquisition_session_test.exs",
+      "sha256": "1da0dcff1c5e8d9014da83df89a9fed55a0309ba12239f8a7d92c5ec193573ff"
+    },
+    {
+      "bytes": 14255,
+      "path": "test/extensions/knowledge/document_ingestion_test.exs",
+      "sha256": "8026357160ed92e379737ff4e920a0359c4c7a5523ee8610d2a3e61ab447fbab"
+    },
+    {
+      "bytes": 7589,
+      "path": "docs/archive/2026-10-26-p30-p31-implementation/word-staged-acquisition.md",
+      "sha256": "1afe3b3326c5e4595a30ae7475f51c3e4bb3ae3a289a93282910ae9dd9c897ec"
+    },
+    {
+      "bytes": 192,
+      "path": "docs/archive/2026-10-26-p30-p31-implementation/word-staged-acquisition/cas-46771.log",
+      "sha256": "4b9e8da68c3637ae89af1af31e2f34d3ce8bc496494dc13528836501a6d59918"
+    },
+    {
+      "bytes": 67,
+      "path": "docs/archive/2026-10-26-p30-p31-implementation/word-staged-acquisition/compile-46773.log",
+      "sha256": "69126962faaf36923256eada9646c84c0363b8944636c3e88e6a58a19158396d"
+    },
+    {
+      "bytes": 780,
+      "path": "docs/archive/2026-10-26-p30-p31-implementation/word-staged-acquisition/ingestion-46770.log",
+      "sha256": "bee22acbbda78a62e5febeb3533227f6df032b1880fae329521593c5f4dc3a83"
+    },
+    {
+      "bytes": 129,
+      "path": "docs/archive/2026-10-26-p30-p31-implementation/word-staged-acquisition/native-46773.log",
+      "sha256": "2d9595e560d4142c6b6f7a69005d1111b161b2b7858c2333dd735755746672f7"
+    },
+    {
+      "bytes": 181,
+      "path": "docs/archive/2026-10-26-p30-p31-implementation/word-staged-acquisition/plain-stage-46772.log",
+      "sha256": "2f0160af0680346d5d217709080baf675297550f72402a78802edc6a50897547"
+    },
+    {
+      "bytes": 15826,
+      "path": "docs/archive/2026-10-26-p30-p31-implementation/word-staged-acquisition/section-46769.log",
+      "sha256": "c1eb6e34a1737eef653e68288f2940c5af7b8390e2bc0744f92a43f8a151ba01"
+    }
+  ],
+  "full_word_qualified": false,
+  "kind": "bounded_staged_word_section",
+  "production_admitted": false,
+  "version": 1
+}

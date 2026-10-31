@@ -1,0 +1,9 @@
+Running ExUnit with seed: 46830, max_cases: 1
+Excluding tags: [:test]
+Including tags: [:namespace_groups]
+
+NAMESPACE_GROUP_BUDGET {"after":{"allocated_bytes":167936,"floor":36,"generation":36,"operations":36,"records":35},"before":{"allocated_bytes":143360,"floor":1,"generation":1,"operations":1,"records":29},"query":{"as_of_ms":20,"catalog_floor":0,"catalog_generation":9,"chunks":8,"complete":true,"effects_used":0,"eligible_sources":8,"exclusions":[{"code":"stale_source","source_id":"fixture:group-8"}],"hydrated_sources":3,"index_generation":1,"indexed_chunks":9,"indexed_sources":9,"method":"bm25","namespace_complete":true,"population_qualified":false,"reads_used":35,"sources":8}}
+.
+Finished in 30.5 seconds (0.00s async, 30.5s sync)
+
+Result: 1 passed, 8 excluded

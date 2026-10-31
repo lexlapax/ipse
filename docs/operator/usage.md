@@ -135,6 +135,44 @@ A question uses a different prefix, `answer CODE VALUE`. Choose an option number
 or ID, comma-separated choices, or free text as requested. Recommendations are
 not submitted automatically. To submit literal slash-command text, use the
 `=` escape, for example `answer CODE =/exit`. Answering a question approves no action.
+If a batch repeats the same prompt, question kind and ordered option labels and
+descriptions, Ipse asks the model to revise it before showing a question. It also
+returns a previously answered matching question to the model within the same
+visible turn, even if IDs or a recommendation changed. It does not detect
+reworded questions or search across earlier turns.
+
+## Plan before acting
+
+To start a conversation with the planning ceiling, use:
+
+```sh
+ipse chat --provider demo --planning
+```
+
+In an existing interactive chat with a verified native terminal, enter `/plan`
+at an idle prompt to apply the ceiling to that session. The command is refused
+while work or cleanup remains active, and pending queued input is discarded on
+entry; submit any still-wanted input again. Finish or cancel an active draft
+before changing modes. `/plan` does not start or submit a model turn.
+To leave a locally selected ceiling entered with `/plan` or a recorded
+`--planning` flag, enter `/plan exit` at an idle native prompt. The transition
+preserves enclosing restrictions and approval settings; it discards queued input
+and does not save plan decisions. An inherited ceiling or a legacy selection
+without recorded local provenance cannot be exited this way.
+
+Planning allows local reads and questions while denying workspace writes, shell,
+delegation and knowledge publication. An operator-declared planning MCP read
+may run with its ordinary approval; see [MCP planning reads](mcp.md#review-a-tool-for-request-refinement).
+`--yes` does not override the ceiling. `--planning` also works with `run`, and
+cannot be combined with `--accept-edits`. The ceiling remains in force when the
+session is resumed, even if the flag is omitted. This experimental interface
+does not yet save deferred plan decisions; start a new ordinary session when an
+inherited or ambiguous ceiling cannot be exited and review its context.
+For a session resumed with an earlier development build that did not record a
+later planning selection, pass `--planning` again: the saved history cannot
+establish that earlier selection. A changed resume policy is saved in a newer
+checkpoint format; an older build that cannot read it refuses the session. Keep
+the current runner available if you need to resume that history.
 
 ## Refine a request before submitting it
 
@@ -146,17 +184,25 @@ verified native terminal. Ask the current assistant for a clearer request:
 ```
 
 This uses the conversation's selected provider, model, billing and budget. Wait
-for the draft to finish. Drafting permits bounded native reads and questions;
-workspace writes, shell, delegation, external tool calls and extension callbacks
-are denied even when ordinary session permissions allow them. The ordered tool
-catalog remains present. Configured MCP discovery can still start its configured
-command or contact its endpoint; no draft text is sent in discovery requests.
+for the draft to finish. Drafting permits bounded native reads and questions.
+The drafting instruction asks the model to check relevant available context
+before asking about unanswered material choices, and to state low-impact
+assumptions. Review the proposal and any unanswered requirements yourself;
+the model may still miss information or ask unnecessary questions.
+A specifically declared planning-read MCP tool can also run with ordinary MCP
+approval; see [review and declare a planning read](mcp.md#review-a-tool-for-request-refinement).
+Workspace writes, shell, delegation, undeclared external calls and extension
+callbacks are denied even when ordinary session permissions allow them. The
+ordered tool catalog remains present. Configured MCP discovery can still start
+its configured command or contact its endpoint; no draft text is sent in
+discovery requests.
 
 Review the proposal, then choose an action:
 
 | Command | Result |
 | --- | --- |
 | `/enhance show` | Show the draft ID, revision and exact proposed request |
+| `/enhance replace TEXT` | Replace the proposal with the text on the command line |
 | `/enhance replace` | Read a replacement from the next terminal line |
 | `/enhance replace multi` | Collect up to sixteen lines; `/end` saves them and `/cancel` discards the replacement |
 | `/enhance accept ID` | Render that draft and a fresh `accept CODE` confirmation |
@@ -171,11 +217,16 @@ Bare `yes`, a stale ID/code, a different terminal, or piped input cannot accept 
 abandons the draft. `/enhance cancel` abandons the current draft explicitly.
 To enter text beginning with a command word such as `show`, enter `/enhance`
 alone, then supply the request on the next line.
+Inline replacement removes surrounding whitespace. To use the literal text
+`multi` as a replacement, enter `/enhance replace` and then `multi` on the next
+line; the inline form selects multiline entry.
 
 Keep the request and accepted proposal within 32 KiB. Drafting allows at most
 three model requests and three question rounds, narrowed by existing limits;
 response bytes are capped at 64 KiB. These bounds do not add an output-token cap
 to a route that does not support one or establish that remote work stopped.
+If clarification cannot continue within the draft's question bounds, cancel the
+draft and include the missing information in a new request.
 At most sixteen accepted drafts can retain provenance in one Session. The active
 projection also bounds unrebased draft intervals to sixteen; use an explicit fresh
 session when this capacity or required compaction prevents another draft.
@@ -205,7 +256,12 @@ ipse run --cwd /path/to/scratch --yes \
 
 Both commands use the saved provider/profile. Headless ordinary mutations are
 denied without `--yes`. A separately reviewed [knowledge permission](knowledge-permissions.md)
-covers only its declared collection effects and can also apply to `run`.
+records only its declared collection scope for `run`. Protected collection
+capture currently refuses because its publication boundary is unavailable;
+`--yes` cannot restore it. Existing read/inspection routes remain separate.
+To forget an existing native note, use the separate interactive
+[`knowledge forget` review](knowledge-permissions.md#forget-a-selected-native-note)
+on a supported Linux protected-storage profile; it is not a headless `run` effect.
 `--yes` permits mutations, shell commands, configured MCP calls, and enabled
 local delegation for the session. A required question fails in headless mode,
 including with `--yes`.

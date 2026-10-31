@@ -4,6 +4,7 @@ defmodule Ipse.ToolRecoveryTest do
   alias Ipse.Session
   alias Ipse.Runner
   alias Ipse.Tools
+  import Ipse.Test.ResumeAssertions
 
   defmodule Model do
     def complete(config, messages, _tools, _emit) do
@@ -95,7 +96,7 @@ defmodule Ipse.ToolRecoveryTest do
     before = File.read!(path)
     resumed = start(c, [shell], :allow, id)
     assert Session.info(resumed).phase == :idle
-    assert File.read!(path) == before
+    assert_idle_resume_journal(path, before, id)
     assert File.read!(Path.join(c.root, "effect")) == "operator edit"
   end
 

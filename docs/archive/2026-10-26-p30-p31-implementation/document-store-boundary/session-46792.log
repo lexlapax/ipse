@@ -1,0 +1,24 @@
+Running ExUnit with seed: 46792, max_cases: 1
+
+..
+18:03:47.284 [info] The function passed as a handler with ID "document-store-unknown-cf8fada1a0d3b3e63c402c1601ea6f0c" is a local function.
+This means that it is either an anonymous function or a capture of a function without a module specified. That may cause a performance penalty when calling that handler. For more details see the note in `telemetry:attach/4` documentation.
+
+https://hexdocs.pm/telemetry/telemetry.html#attach/4
+
+
+  1) test native publication uncertainty reaches the actual journal as unknown and resume does not replay (Ipse.Extension.CollectionStoreSessionTest)
+     test/ipse/extension/collection_store_session_test.exs:174
+     ** (exit) exited in: GenServer.call(#PID<0.460.0>, :info, 5000)
+         ** (EXIT) normal
+     code: {_, _} = wait(run, 0, true)
+     stacktrace:
+       (elixir 1.20.4) lib/gen_server.ex:1183: GenServer.call/3
+       test/ipse/extension/collection_store_session_test.exs:131: Ipse.Extension.CollectionStoreSessionTest.wait/3
+       test/ipse/extension/collection_store_session_test.exs:189: (test)
+
+
+Finished in 4.8 seconds (0.00s async, 4.8s sync)
+
+Result: 2/3 passed
+Failed: 1 test

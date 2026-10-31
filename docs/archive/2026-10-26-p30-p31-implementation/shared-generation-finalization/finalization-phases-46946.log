@@ -1,0 +1,25 @@
+Running ExUnit with seed: 46946, max_cases: 1
+Excluding tags: [:test]
+Including tags: [:generation_finalization, :generation_job_prerequisites]
+
+GENERATION_JOB_PREREQUISITES {"edited_metadata_positions":3,"final_checks":10,"immutable_units":5,"native_operations":0,"pinned_commit_generation":500,"protected_publication_demonstrated":false}
+.
+
+  1) test durable reduction phases retain the old root until a pinned three-stage selection (Ipse.KnowledgeCollectionDirectoryTest)
+     test/extensions/knowledge/collection_directory_test.exs:34
+     Expected false or nil, got true
+     code: refute File.exists?(path)
+     arguments:
+
+         # 1
+         "/home/lexlapax/projects/lexlapax/ipse/_build/shared-projection-codec-20261029/tested-finalization-phases-beams"
+
+     stacktrace:
+       test/extensions/knowledge/collection_directory_test.exs:61: Ipse.KnowledgeCollectionDirectoryTest.run_fixture/1
+       test/extensions/knowledge/collection_directory_test.exs:35: (test)
+
+
+Finished in 2.6 seconds (0.06s on load, 0.00s async, 2.6s sync)
+
+Result: 1/2 passed, 2 excluded
+Failed: 1 test

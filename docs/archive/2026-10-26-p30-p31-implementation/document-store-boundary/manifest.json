@@ -1,0 +1,439 @@
+{
+  "created_at": "2026-10-29T01:16:38.076593Z",
+  "fixed_limits": {
+    "body_bytes": 61440,
+    "document_data_bytes": 167772160,
+    "document_native_bytes": 201326592,
+    "notes_reserved_bytes": 67108864,
+    "part_bytes": 6144,
+    "sdk_object_bytes": 16384,
+    "sdk_string_bytes": 8192,
+    "stage_expiry_ms": 3600000,
+    "stage_slots": 16,
+    "total_bytes": 268435456
+  },
+  "graph": "/tmp/document-store-host-20261028",
+  "host": "Linux 7.2.11-arch1-1",
+  "logs": {
+    "cohort-46801.log": {
+      "byte_count": 255,
+      "sha256": "fe741be3837c06beb1d288f173958a6493ddefd78cdc1f9cf2e4946fe4a2b241"
+    },
+    "cohort-46802.log": {
+      "byte_count": 553,
+      "sha256": "0c1bb94c1d7668781966538d962b1f4a7d4dcb551c56bbaa8558869fe355da25"
+    },
+    "compile-current-cohort.log": {
+      "byte_count": 346,
+      "sha256": "f1de8e326a23ef215c694487cfd24b6d972565b5509d104a4d3431e10091d1bd"
+    },
+    "compile-current-cohort2.log": {
+      "byte_count": 29,
+      "sha256": "cb9739c55723ebd0b9a6b2d1993c98438dec1f3e07696887a73b278c8b34a455"
+    },
+    "compile-sdk.log": {
+      "byte_count": 1485,
+      "sha256": "5f99aa9523e14db27872da713c3032248661b203e95932d4a2c808c82cab2feb"
+    },
+    "compile-sdk2.log": {
+      "byte_count": 294,
+      "sha256": "206b3d872192820385995b6a10ca7fb95b18cc471cf5bc07f55439e34339bba1"
+    },
+    "expiry-46789.log": {
+      "byte_count": 1009,
+      "sha256": "7333f2c7fd4461143ae7a862da64dc5c819b3d4373b2c0cde482a7c77e24e054"
+    },
+    "expiry-46790.log": {
+      "byte_count": 185,
+      "sha256": "bd5b11084be0ef7567d69734f0e01a9e7efc46e22a6b207cf8423492c58324cb"
+    },
+    "expiry-46795.log": {
+      "byte_count": 211,
+      "sha256": "36113f3582aebcf6bd58be48ec9691f34b45cc0c80fdb323a03330853f695d39"
+    },
+    "history-46796.log": {
+      "byte_count": 2632,
+      "sha256": "ce08430a4c0a04453f89a487a0b87c9226006384b896d6a797ee4decda6b5162"
+    },
+    "history-46797.log": {
+      "byte_count": 2632,
+      "sha256": "fa4d209b58a60fdda9beafb5fa0007a3d89c5bad0407e455603109591b868315"
+    },
+    "history-46798.log": {
+      "byte_count": 204,
+      "sha256": "d78504db9dc76c812577422a9ddba7aa4a40c75c435ec19c81be3349a8780a9a"
+    },
+    "native-ceiling.log": {
+      "byte_count": 224,
+      "sha256": "cec91b9a3df33964606907d98ce2e9701fbce81c0f8fb7ebe01696d88b83a290"
+    },
+    "profile-46782.log": {
+      "byte_count": 120,
+      "sha256": "1b8ed0472dd58e42b2994b37a937b7db924a76799b0cbd4e3e8e8b5f4df95608"
+    },
+    "session-46785.log": {
+      "byte_count": 1472,
+      "sha256": "0cd8cc0180519c08e8abe433af53075df5b4521a456fb87051d6ea9b283fab1a"
+    },
+    "session-46786.log": {
+      "byte_count": 2016,
+      "sha256": "1a500a5b7595c35382cb8f97237d9992b9e3d156ad4cb956c7ad4bf677bee037"
+    },
+    "session-46787.log": {
+      "byte_count": 23194,
+      "sha256": "b284752aae2192ea9ba6d5d87950ab1ed238e9e21fdcd642f41c7ded42e3841e"
+    },
+    "session-46788.log": {
+      "byte_count": 117,
+      "sha256": "d079df196e39059fbc09c2e0a51e88b802627ea7a7bcd9080bbfe42dbcec4202"
+    },
+    "session-46792.log": {
+      "byte_count": 1187,
+      "sha256": "ce1ce9e5c38eb7c1d14317cb604883754e1f88ffcc1f26ee88bdc041df4c4dba"
+    },
+    "session-46793.log": {
+      "byte_count": 552,
+      "sha256": "a9e5181d6782dcc824017fb392602c474909fa851ba925c07fbf7103e9a17b01"
+    },
+    "stage-46783.log": {
+      "byte_count": 35419,
+      "sha256": "55dfc22707fcb517532acb42093785dd17b98b564505b1e6135865ef2df9654f"
+    },
+    "stage-46784.log": {
+      "byte_count": 118,
+      "sha256": "9c827798a4a52c96dab28a4498b8dad06dde7cdb143cb9c9de9a973870118705"
+    },
+    "stage-46791.log": {
+      "byte_count": 119,
+      "sha256": "ae54b21e49cd988e7b3983b0535386c6f9cba83eddbda43b7520f7bbea3ed49e"
+    },
+    "stage-session-46794.log": {
+      "byte_count": 557,
+      "sha256": "94562e2cb24890f39a16d372d16b574c683c72fd15f44396207ade0a9a63a515"
+    }
+  },
+  "native_helper_sha256": "e400f1d2642eaac1c2064a7baf148e5f75f60cde7d45a0ec3291494eedceb0b3",
+  "private_runner_source_sha256": "92dfa544afe579cdd05dd55bb0c22c9ff60ed3836191f498c87c681542f41585",
+  "qualification": "synthetic available-host component evidence; full profile remains open",
+  "section": "document-store-boundary",
+  "source_snapshot": "_build/document-store-boundary-20261028/sources",
+  "sources": {
+    "extensions/knowledge/src/store.ex": {
+      "byte_count": 109398,
+      "sha256": "89a8e63485c781868f6d3cb13d83b5cd5553c6d2ffa6ba305fb961d929d397be"
+    },
+    "extensions/knowledge/src/store/state.ex": {
+      "byte_count": 8088,
+      "sha256": "0ddbb831e6d98c3e1073886bd5015284bbb06a7b8be354f5bbcb7668795c2a2e"
+    },
+    "lib/ipse/extension/actions.ex": {
+      "byte_count": 44039,
+      "sha256": "58e358504c809448fcc8d1e4995ab5c9f2a3fb8d1852e5eac5b67de78d0193ea"
+    },
+    "lib/ipse/extension/catalog.ex": {
+      "byte_count": 21281,
+      "sha256": "550de966198d6bd7329ec15258390f3aa8721f63c0a1e5ce6ed68ab0a0935541"
+    },
+    "lib/ipse/extension/collection.ex": {
+      "byte_count": 64085,
+      "sha256": "009730fff8d9682f8f482c587447fe044f1d09e10fc7525ba2bf943898ed3054"
+    },
+    "lib/ipse/extension/collection/document_stage.ex": {
+      "byte_count": 14274,
+      "sha256": "3ad64699e76fd058b36805251e2c470cdf0087f95de8fbb24dafeedfddbe8e8d"
+    },
+    "lib/ipse/extension/collection/profile.ex": {
+      "byte_count": 3148,
+      "sha256": "203bd8d3d6df724c518491cf1198bff13d0a809ae17d845f1bffee99aeaba96b"
+    },
+    "lib/ipse/extension/collection/read_view.ex": {
+      "byte_count": 14096,
+      "sha256": "f63011c9fc567934095310c7c9ae9f6a6c6216181f082cf32383dd3aaa85ba62"
+    },
+    "lib/ipse/extension/collection_store.ex": {
+      "byte_count": 9639,
+      "sha256": "9e481f1f8ed772b6bc0b0ed0a145c04e0be3d7da85261445c8fce4c09fbec3eb"
+    },
+    "lib/ipse/extension/host.ex": {
+      "byte_count": 21638,
+      "sha256": "e9aa4f371878b092d6546306c7f9c36363ce293b22ed411457d25dfa189661d2"
+    },
+    "lib/ipse/extension/registry.ex": {
+      "byte_count": 28213,
+      "sha256": "c8cfca9829deb19bce18f8d8be99f86c009f97706ab776a48c3ceca4900e3e11"
+    },
+    "lib/ipse/extension/state.ex": {
+      "byte_count": 18042,
+      "sha256": "4902532044f6fcbc190dd06eb1541da7880e72b5b1eda332e10aa70864a9c2fe"
+    },
+    "lib/ipse/runner/transaction.ex": {
+      "byte_count": 22549,
+      "sha256": "5eed90f92f62adb513c98264ea52944e1cf685fb3d95c7cfa69b79ecaea6665c"
+    },
+    "lib/ipse/session.ex": {
+      "byte_count": 167561,
+      "sha256": "4aac6a979ed6441f7c32d9ffa7957aa248ba014cfd25223a530587e330bb294b"
+    },
+    "lib/ipse/session/invocation.ex": {
+      "byte_count": 58976,
+      "sha256": "103b58951720237c94346809cccc76c5f02580666b517de225e90af60f7ca99f"
+    },
+    "lib/ipse/session/managed_output.ex": {
+      "byte_count": 18315,
+      "sha256": "53c45aff480e467ea2d686fae13829ef629fafea1993f0fd5124fbbe898f27dd"
+    },
+    "native/ipse-storage.rs": {
+      "byte_count": 21677,
+      "sha256": "fce4f0cce325a93fa0fdfce7b91e0cc683957960c8293b64bd2affa00b2fabb7"
+    },
+    "native/ipse-transaction.rs": {
+      "byte_count": 42409,
+      "sha256": "bf37997755f253326f1df68f42d89ea94f0cee612c2602562d5b8434c9f7dbac"
+    },
+    "test/extensions/knowledge/document_acquisition_session_test.exs": {
+      "byte_count": 29848,
+      "sha256": "469c775fe6c784b876852508568b516712183f9ea4c2d9e0ad9a60f7719ee4e1"
+    },
+    "test/extensions/knowledge/store_test.exs": {
+      "byte_count": 89353,
+      "sha256": "4ba87b3be755e599cc5db7344e522e4f230dbd40b578413c63cd2ec08afab1a9"
+    },
+    "test/ipse/extension/collection_document_profile_test.exs": {
+      "byte_count": 4209,
+      "sha256": "3563920da3f0d6612dbed32d5da4d6e0deb72fa679682e70821e9064c95a36c6"
+    },
+    "test/ipse/extension/collection_document_stage_test.exs": {
+      "byte_count": 9583,
+      "sha256": "ab6d8ff08098b147b538982a44d28688fb419f4fa5cc5b8472e4d5e7fb4ffac9"
+    },
+    "test/ipse/extension/collection_profile_test.exs": {
+      "byte_count": 1747,
+      "sha256": "5f940abecc4fc587f124f20627e59a7ea1b83cb2bb4dbec61ed3b52fa3017079"
+    },
+    "test/ipse/extension/collection_store_session_test.exs": {
+      "byte_count": 15053,
+      "sha256": "ddba171ba8252260ae4b8b92470692850cdd5af65637dc27ea03507b2aa955db"
+    },
+    "test/ipse/extension/registry_test.exs": {
+      "byte_count": 8763,
+      "sha256": "e640a023a4524546b34107553ec6f78de068d77e6a65ebe30063c06936777326"
+    }
+  },
+  "target_not_yet_qualified": {
+    "assertions": 20000,
+    "chunks": 10000,
+    "entities": 5000,
+    "extracted_bytes": 20971520,
+    "sources": 1000
+  },
+  "tested_beams": {
+    "Elixir.Ipse.CLI.Terminal.beam": "98659b99f018017e670fd38412d5fd30d449e55533f47db5f46ffd435b55421b",
+    "Elixir.Ipse.Extension.Bundles.beam": "ea17e668b3d3a14287e5f6b9cbd5f4b64394eac65d9f3fee5ab13e5f10a3e3c3",
+    "Elixir.Ipse.Extension.Invocation.beam": "a9a442a85e870ec14ac366c394d5442b09a4a0b5752480cc330255395c2f14ab",
+    "Elixir.Ipse.Extension.History.beam": "6b3228899a86ccd4f6fa37c57948a7e1f9326a11c1b16299ab9b5eb8a7af35d5",
+    "Elixir.Ipse.CLI.Knowledge.Management.beam": "e881054b4f01e8e4cf52bc51a4aed3404a98409d71e2aeecac6e02d92f440aec",
+    "Elixir.Ipse.Extension.Services.beam": "5f0954c2d5e40238dfd3c9d20d45f5cc399e06e242716ea91930e532b42af5dd",
+    "Elixir.Inspect.Ipse.Session.SourceIndex.beam": "9e83ddd8413cc64a2ff367b51028423d55b87c3a4a9b4fbb3475d0993ee7bfdc",
+    "Elixir.Ipse.JSON.beam": "9ca740d88a1ad241a98b93fabaa46929d20c49e9c4ed6803f854cc5c3811832a",
+    "Elixir.Ipse.Extension.ManagedRead.beam": "3ec88273c6232200175ce7928bb517ffc4733a40793e5a52d2f87cdd9f17b15e",
+    "Elixir.Ipse.Extension.Config.beam": "b382245d6f78f178be418b493048acf6afa20fe24a89ecff13b6d15d83efd129",
+    "Elixir.Ipse.Extension.TextResources.beam": "2c1339e04d7e5fbe01e01bb50dc8e8153c7d7f387936bdf3c4f334d2c3a97007",
+    "Elixir.Ipse.Session.InferenceDispatch.beam": "1fbbd1f662538b811ed87e24b86e0d224a4899192e5b0515738645804ab76a61",
+    "Elixir.Ipse.Provider.beam": "127fd8198e9eb7034349263b02d78052263be5ccd02517172ebdf97fb60a146e",
+    "Elixir.Ipse.Runner.Review.beam": "a714125f3c34326244b489daee79633fd812ffd31607c7a7b49245043442c934",
+    "Elixir.Ipse.Extension.Activation.beam": "de118ec6279a11a5d722e24cfcdcf88cace0884542ce8d1be34e10352ff5b50d",
+    "Elixir.Ipse.Extension.Collection.ManagedPages.Planner.beam": "08e0d1bcc6efab32aafb70054795149b91d229e9e3302e289e3cd9bb003d275e",
+    "Elixir.Ipse.Runner.Transaction.Capability.beam": "84f137c9a557fbd63035af688cc99a476545d07a335d22db336ade20e5252378",
+    "Elixir.Ipse.CLI.Errors.beam": "732403e2b3199e182f719e526ff802e608f639d45445f5c7ee2b60d63d9ab097",
+    "Elixir.Ipse.Extension.TextConsumer.beam": "229a8dd4de740fb01ae1db3a3cfc7e8b8c3fc5fc76e5ba3c9eb049cadf8fb525",
+    "Elixir.Ipse.MCP.Planning.beam": "af4928181e98ed3be40ec28ce796b7da0a38b3790d8c8b07a0f61b773c63e6f5",
+    "Elixir.Ipse.Journal.SourceOrigin.beam": "3f7e2103c7ebc39d7bf810cff2125a76c81395c119932c7c6d807145f75b84e1",
+    "Elixir.Ipse.Decision.beam": "f78a5f80e2049768c0f4a187329599bd3eabd16e5f3119bfc2334f86c6cfd9e9",
+    "Elixir.Ipse.CLI.Setup.beam": "8e0dddf2b180188157b70ee891d87c79d7a11bcb6bad44f055dc28d3a1bf77ab",
+    "Elixir.Ipse.Builtins.PromptAnnotation.beam": "8d8a4a31d0f2d79cfdb927cfcfc66476c08e07c04cbcb9d328901129226f7c59",
+    "Elixir.Ipse.Workspace.beam": "bfa73f0aed3c842b35e4633380f8654191b8521e82613f2c91f64b811f315b19",
+    "Elixir.Ipse.Extension.Collection.NormalizerV3.beam": "8e2b21f1a99d65fcf70fc5d0a4286bc0da9b22d62a2a111f64c33e3e4f9df00c",
+    "Elixir.Ipse.Extension.Conformance.Model.beam": "fa5448f159396d90e0eebf6057c0be48156d6fb4e174b9a403ffd3f9a68c0f97",
+    "Elixir.Inspect.Ipse.Session.SourceWindow.beam": "90c43fd0a18c7903d4d3043edbdb6da53db7a595f380f27b6b5d2bf30a12d5d9",
+    "Elixir.Ipse.Provider.Gemini.beam": "c3e25b1f3fb4abfbbbc0b68daf611217ddd9a8fea5930e750a4543920e6d5e32",
+    "Elixir.Ipse.Extension.Catalog.beam": "e43a48e29bca016cc2f3b3181b515698ad6e1e229394a6c248733c310d472441",
+    "Elixir.Ipse.Extension.ModelCall.beam": "0be95bb675578506c08a44e6447163e6f4831e8a1aed73352a23a906d751e0ab",
+    "Elixir.Ipse.Session.DraftMCP.beam": "dae3e1dcd69cc20f37e9e57ea5245ce31f51489dc34f28c0cdbd49e7fa629e7e",
+    "Elixir.Inspect.Ipse.InferenceSlots.Handle.beam": "d6c72a4f38f32befbe8f3d4ee87bfcd9be84004168b2586b892726704680a07f",
+    "Elixir.Ipse.Extension.Conformance.beam": "231483037cba57fbc7d2258602666ece4ee18d0e1dce479e9b4a579175cbe710",
+    "Elixir.Ipse.PrivateFile.beam": "acdf1b588d177bc1ed1bcc5b4cb6685616c221ce85406712d8eeb72e4d896f90",
+    "Elixir.Ipse.Session.RuntimeLifecycle.beam": "65628e19f24e6725876a8c42aa2895d17883c32ef9f969e9856f8d1fda512908",
+    "Elixir.Ipse.Provider.CompletionWitness.beam": "f7872fa392f436074ca9457087c95f99efe9fb1eed8bd48c7b606f10cc5bc9b5",
+    "Elixir.Ipse.Extension.ResultPublication.Output.beam": "588fada9c128b0cae3a2a5531595aaa9c3ba01d89c099811d4e74a39b89633f7",
+    "Elixir.Ipse.Provider.Spec.beam": "0508194ad09659a8067b7d947e2d8d725641791bb1d01acad2e399ea79068438",
+    "Elixir.Ipse.Session.Invocation.beam": "b6450220d255403a2a7b913d53f3f85e30ab6ff53b64df8a26be9d460a2e48a9",
+    "Elixir.Ipse.Extension.Host.beam": "709d39e0e1eb20262faee75286ec6ecd64edd2bbf8e2985fc17d2d78b2f20b3a",
+    "Elixir.Ipse.Extension.ResultSource.Sealed.beam": "429679a7e84a71a3863505201eb23251bad067a74236b8a3c99f9a718128590d",
+    "Elixir.Ipse.Extension.CollectionPolicy.beam": "77d8216c5a011445e6a393cb44234a544de6624067002c86d2ab60320dec3587",
+    "Elixir.Ipse.Session.OperatorAnswer.beam": "6f485efd0613b390f5abb17b682a7d6e50650d5798f9c566bc791f9cef2a3a93",
+    "Elixir.Ipse.Extension.ResultView.beam": "654c59ce09fa360040062e93f684ee5317c9b85f162b5135ba37f27ec6976c60",
+    "Elixir.Ipse.Session.ManagedLineage.beam": "b213bbeb6d803fc97d1ed969ee875f04145c101df0da343087271e6099bbc9f5",
+    "Elixir.Ipse.MCP.beam": "2ef2765a0b81c02bfa1c0fae4d68f7fd7c3e6fc227e58fc3510ebaf1785fd0e6",
+    "Elixir.Ipse.Extension.Collection.Profile.beam": "e28e9c1c1c6ddec2374acd4b15af10b59ceab2acfcf4c7248379e2cec78a43c1",
+    "Elixir.Ipse.HTTP.beam": "97cd202743c0dcc17e401b502511224504ecad2d706353aa1fb15be77e1526bd",
+    "Elixir.Ipse.Extension.Mode.beam": "fdce4e604a561952f0e6a70bba2f03dfc1779456515b84878c22086d8049bda7",
+    "Elixir.Ipse.Builtins.AnswerFormat.beam": "b03eacf124a8737591b22719baa1df28af9293b60ccb9e92eb82e1ae3b252bb0",
+    "Elixir.Ipse.Extension.Collection.DocumentStage.beam": "a43019f6ce99aec7dac0ef4846ce062d404c41f3a8084404490f232c2496ea1b",
+    "Elixir.Ipse.Runner.Transaction.Controller.beam": "cd73e2514b7d7264a17f157f3d6868dc8793485d2e176561ce01fb0c24dfb2df",
+    "Elixir.Ipse.Session.Lifecycle.beam": "2a4fb399bbff601231aab12b90be98ad60179960f39c4ab863113a45d29bb37d",
+    "Elixir.Ipse.CLI.Knowledge.beam": "1bce79060b34e3b2f3cd4011364cd5d78a5b85e4bbc8edc0579c0e6c375d837f",
+    "Elixir.Ipse.Observability.Trace.beam": "00ad7b6abd940d070651654775c7ea1397bdd7fc77dfd3baecce2d0a4f782e88",
+    "Elixir.Ipse.Provider.MintTransport.beam": "db7e7b9ef33181e3315ffb2154701d2d790f1e224631591b538f6aecbd58a2ba",
+    "Elixir.Ipse.Provider.ChatCompletions.beam": "8ce4a84ebe91c6fba119413250823654656354aed98d9c54b99e359236cf3af7",
+    "Elixir.Ipse.Extension.Collection.ReadView.beam": "ea9aa56311106ed6b0fc268deaabc58506f7dc7008040d2051d7d7dba031acc5",
+    "Elixir.Ipse.Provider.MintText.beam": "a86e0a87f391b449181b206f5b89e5d815b06dfb1b443fd071440df6231a6059",
+    "Elixir.Ipse.Extension.CollectionCall.beam": "ec9e7c5938eb31ca6249d0d1333622fdcf37a3023e4e7b7418f1fa6bfdcf8965",
+    "Elixir.Ipse.Session.TextStream.RequiredFailure.beam": "403df838377616fcf89cf06a57af5d66d2db2ca9fdcc9a4ee8bb0b49d1f48580",
+    "Elixir.Ipse.Extension.Inference.beam": "db190b5d2af611c712417866e10c319f992f84fd07fe162c800e59a765f79a77",
+    "Elixir.Ipse.InferenceDispatch.beam": "59f34f1b4d64fa9e727f41b7ce80a16955e1dae0a73f4ef406c1aa1536425632",
+    "Elixir.Ipse.Extension.UsageRead.beam": "00fb01d0ce4e07a1ab6e30b09eeb22a5e7ffb86b2d85d77829545d5a67a578f0",
+    "Elixir.Ipse.Usage.BudgetStore.beam": "4132aad46878315b9c60ce1cdaa837615e9a6cae7d07becfcb16b9cabb251afb",
+    "Elixir.Ipse.Tools.Delegation.beam": "2d7e6885f80f01ce8cd93ae1dfe17e3788544c2331fafe54fdef3c4e2d8cb775",
+    "Elixir.Ipse.Session.ManagedReference.Plan.beam": "16d8d38d88675bb1a3f73b9e3dd3fc96ad707c22dc52abd9babab79b328b832c",
+    "Elixir.Ipse.Config.Profiles.beam": "aae3598b022fcc5e204911faff03ba6bd80587208bd9f0ba55b24fee30ce2488",
+    "Elixir.Ipse.Extension.ToolAction.beam": "356b11f7b36d95569420cb1225addb5d056038085fd8008fde647f649951e511",
+    "Elixir.Ipse.Tools.Research.beam": "c803991fd1da2cc1f1e91d13c5fa6248f762b3c7900253702e7d13786a4d28af",
+    "Elixir.Ipse.Session.Turn.beam": "8cbfc634bb154c5cde7e85a75716453199ba507246504183a3641ad18b9fd1a7",
+    "Elixir.Ipse.MCP.HTTPTransport.beam": "f1ca885b934491e916be30d1c276d4b7eb90d88753f9bfdbb82a4fb161324eb1",
+    "Elixir.Ipse.Extension.Collection.ManagedRetention.beam": "578bb5a952e92b5ff368a6668758c8ea590c0396ce99a06cc777afa379321c18",
+    "Elixir.Ipse.Extension.Subscriptions.beam": "17e6b090683bfae46935abf3febf8c57ec318387f17b8df8c2be0721246b7b13",
+    "Elixir.Ipse.Extension.Collection.ManagedPages.beam": "778511c7c6f0e862037bd054d49fb721e125bc9846df7d8a0a1dbac1569bca5c",
+    "Elixir.Ipse.Session.SourceIndex.beam": "6f36549c969bc0c4e0ef12ab9cceae786d57aecfc9333f1b3f8e1bea53c22fd8",
+    "Elixir.Ipse.Extension.Actions.beam": "fa7161a2e482bf82fd33057832968a9e325d33b9ccf4b44a47accc21c44da6ea",
+    "Elixir.Ipse.Provider.Ollama.beam": "ca639fe1d83c4b47ea998ca27104e7a990f552e6f10f4fec53d522e64942fd89",
+    "Elixir.Ipse.Tools.Questions.beam": "720d5e04defeecb31e7603b6dffaf27517069c50d90a9ce21e2d5d5f2928474d",
+    "Elixir.Ipse.Provider.Registry.beam": "a4255dbac8b3c0469fae581f24a5079306e5ebc0b27f479f6ea5bedcb0aeb30d",
+    "Elixir.Ipse.Extension.Collection.ObservedRead.beam": "a111fc9750055b1b2f1fbd5e7336ad6eb4079e7367b5689046628f153dcdd5fb",
+    "Elixir.Ipse.Provider.MintDecision.beam": "6266cba47689ff8453cc2b02bd93d4f9b7c18b14f43ea8b07d7efb115f1422ba",
+    "Elixir.Ipse.Extension.ManagedCollectionCall.beam": "28d58a563daf1f7a6d2ed1b226e5038b56367cc7be637ff55fa86873c56679e9",
+    "Elixir.Ipse.Provider.Demo.beam": "c1a537e8ce0783690595100fa77dc6108adbc32dcdcc72933e45e5a54fea03e5",
+    "Elixir.Ipse.Extension.State.beam": "54a08c3e1fba0281ecffbb6308f0fac10976c925c0c6605733d01db1f594bfc5",
+    "Elixir.Ipse.Extension.Worker.beam": "0a48009c71b716677ddb914599ec1c7156227345a58fb15ffd2e2643bd150bbf",
+    "Elixir.Ipse.Session.Input.beam": "ee7189c2ee5882c56e31b65e0b780436d9ad1825e670c15672d69a7c91302e57",
+    "Elixir.Ipse.beam": "8bae8b324282bf41514905fa82c8b9de882c709335232912223d8f1756adef85",
+    "Elixir.Ipse.CLI.Input.beam": "06afcfbb11df0b15c0733cebe06df96da8b11c328d66736fb528c50edbf951e2",
+    "Elixir.Ipse.Extension.Collection.Directory.beam": "ac5e2e74919e9b1c2ea2c3dc08875a2a9b570abe05e3a836a6003ff33b426c75",
+    "Elixir.Ipse.Session.Saved.beam": "9d9d22a806a381fcc27ddbea68c4ba8a4f478a2d94dcb80a07d0b64812f92b40",
+    "Elixir.Ipse.Session.PlanningMCP.beam": "f3bfc3908059061b4ad92da651bca7cdc6fcec832cb22875b2fc02c14926dd1e",
+    "Elixir.Ipse.Application.beam": "9fbce41d0cae8241dc76f09a4c525f6f455ee17f6d396c7d519c0d98cd29465d",
+    "Elixir.Ipse.Provider.Stream.LineState.beam": "0c932a8741240d00829df568ecb57624b16de3bfd0eeba39e5697c3745e886f5",
+    "Elixir.Ipse.Builtins.CostReport.beam": "ef996e5da1aaec58c6623dc0c4bcd059b612748861ffc9dd5bf9b5b0b885dd60",
+    "Elixir.Ipse.Extension.ResultSource.Index.beam": "77d3bc59e6aaf13e5f329a804edfcc3ac7e57638bcc242859a62588c88a9a1dd",
+    "Elixir.Ipse.Provider.Transport.beam": "eb8707a81c4c8b541346e4a72b66b3fb4dd6f82ed28d30d8ea998ac7c9c18fd5",
+    "Elixir.Ipse.InferenceSlots.beam": "1c721a42499b12a94199a8fadf8361a701ac60015124678d179372dfa9f544be",
+    "Elixir.Ipse.Builtins.CostTree.beam": "89b9b61eac990339e861ab06568ebcf829ee41604fe0626b9b5c6f2d0add00a1",
+    "Elixir.Ipse.Session.Permissions.beam": "0e622e19e5d6ccfcf7e56ddbb9965aec3029ee3a3fdca22e23e7c8a5331b5b33",
+    "Elixir.Ipse.Extension.Projection.beam": "951a5de3b172ae10f64d82e130e66896134a173093f98e4053758c2b78c0eb7d",
+    "Elixir.Ipse.Extension.Context.beam": "ea0e04cac58035292bcda753c3403c7a2df89c813097bb3ca6ffc578c588eca2",
+    "Elixir.Ipse.Tools.beam": "2ae7ea45fb3aa590a3216c3efa7711e95fd11a7d3ea4ccc02ea2fa9035bf3436",
+    "Elixir.Ipse.Usage.Costs.beam": "129e6ca2cf93f3f7a7eef7ed05528c2ee3d114c99895760bf302c916b20c5899",
+    "Elixir.Ipse.CLI.beam": "41fdaf16a31fd261c028d6db06fdf4c53e1a47c972a0cb39eab7250fb0d52898",
+    "Elixir.Ipse.Extension.ProjectIdentity.beam": "fb411ce846fdf90e84a46f15d41da96f7dd591761209ae31a59fefde38ac3539",
+    "Elixir.Ipse.Session.ManagedReference.beam": "76805e7b42fb4cacd21f28aa4294d65d94e75103d6a8656c9ba28eb2aa27a057",
+    "Elixir.Ipse.Runner.Transaction.beam": "5cf3bc5ab12f5c09e3a25edb54a9e06bbb9f0c17bd40f59a8960dfb5890e02a6",
+    "Elixir.Ipse.Session.DraftHistory.beam": "335ef5d31caea358438009645ff3316d6b5c7aade88cfa12fc7a0b2f318bf6b7",
+    "Elixir.Ipse.Provider.MintBuffered.beam": "8882a1ecf4e5447b1f77385dcc49d6c280b1f87f1ff44ca7fddf2f6a34b32226",
+    "Elixir.Ipse.Extension.Artifact.beam": "aef7fc0b61332fb86135ee7b4edceb2c38a1a4f077f20efa91531ec87868f48a",
+    "Elixir.Ipse.InferenceSlots.Handle.beam": "84ac7e67c12a537a5cc8e3fd8b6d4e7d18f7d0c8c4e066a6caad402f7ea4ea9e",
+    "Elixir.Ipse.Session.Lock.beam": "cad100b683fe6d222f5471a2fc7fb801503a356b404764a3e905bcad2c26157e",
+    "Elixir.Inspect.Ipse.Extension.ProjectIdentity.DomainAuth.Capability.beam": "99cbd6a6d38a604f15c859b8d5638b274b7b53402ee278d479910250b1b11b2e",
+    "Elixir.Ipse.Extension.Registry.beam": "c9a5ecc4864d518a588f6201a584d9afd8532456fcb7828598db5b223c1ad917",
+    "Elixir.Ipse.Extension.SemanticConsent.beam": "fcdbe040cbfa980a34b8d068c0f7973be2b0f1c893c61cac22684f3ff993c562",
+    "Elixir.Ipse.Extension.Collection.Migration.beam": "949e7736987b2e3801a578b60fb110e96b9e4dd811b5a8fee9da96bed758560e",
+    "Elixir.Ipse.Extension.MCPCall.beam": "69c9ae2b6ac5bad9c5da08e55e6111421e70fa352f48b6f95c70ca76d27d4130",
+    "Elixir.Ipse.Builtins.CostSummary.beam": "7346d1436b26897242dd7ea200d111868f6b9b24c62311013423f966cf684e8d",
+    "Elixir.Ipse.Extension.ResultDocument.beam": "c9bc7e16b7610b53b30d542212e3a8c33a9cf74a8d9e5560a5df26450c6db849",
+    "Elixir.Ipse.Extension.ProjectIdentity.Metadata.beam": "bb473dd1ca4c64e44c021dd9722edd10f70e44e55472e233ed56b1e82db31c82",
+    "Elixir.Ipse.Journal.Writer.beam": "49134804cb3de17e29ff8b4821816b50dc3251cb91e9fd7de538543c477afe4b",
+    "Elixir.Ipse.Extension.FeedChannel.beam": "7be55c4887c9a6a71ec6c3c2e4c8831e87cc8e129cd80afee2a3cc8516017ddb",
+    "Elixir.Ipse.InferenceSlots.Ledger.beam": "14fd54f4d27be88a0a89f6e8549e0cd409601618bd3630b193dfe69c1542d257",
+    "Elixir.Ipse.Provider.Stream.EventState.beam": "f16d7a6e22eef45831ff68c75cf76432089d48d6acd64b926a05e56f9bf7e30d",
+    "Elixir.Ipse.Session.DraftLineage.beam": "e15308f3efdaaace04ea182813dc6dc556b547ccf4d7d9e0d3fa7bf915040d2b",
+    "Elixir.Ipse.Extension.Feeds.beam": "34eeb1bda5603b92e48ecef716a77f26428a5afc4e8afa3667786f00b150a204",
+    "Elixir.Ipse.Builtins.WorkingMemory.beam": "a43149e8c44260f78bb3f566b31a5e130d9aeded08f020263022f772e5d04687",
+    "Elixir.Inspect.Ipse.Runner.Transaction.Capability.beam": "108bd890020c939e29f30eb3db4b138849ffe6e9f850de1d0436ba3c884f11f1",
+    "Elixir.Ipse.Extension.Collection.Planning.beam": "2d00673aabb1caf187c5186fbb2c04f8acd5da0262e33afaaefdac8fe8d80d30",
+    "Elixir.Inspect.Ipse.Runner.Review.Permit.beam": "6860dfa9d963df396f7214e86b0d1405477fd883ae0fef4597d4311c943f8ef6",
+    "Elixir.Ipse.Session.StoredSources.beam": "87bab38df9ba58cdecb4fd89edbbddf5226119d5560e10aaac0d6e13c94df7be",
+    "Elixir.Ipse.MCP.Config.beam": "410204e08fc8415f2c30ff29fd929f0a5ce188ad2a5e6a16c0a85eea2101381f",
+    "Elixir.Ipse.Runner.beam": "f6183380408794f6dfb332b9c33393d50fcc3aa0745b2ab38ba0baf5d86a7172",
+    "Elixir.Ipse.Journal.beam": "cba5a3225c199033b5af69cf995b0f7e7cbb7c85a7e7bf647d94d9b9e9272717",
+    "Elixir.Ipse.Extension.SemanticRoutes.beam": "53b6185210e08440bff8d6e3425c0402985501cb7c21198e7b5a75e21b1a6e89",
+    "Elixir.Ipse.Builtins.Memory.beam": "dc8901313cbcd5221ea0d0d67bfbfd49189ea84735684ca2eb0f06c882cd8d74",
+    "Elixir.Ipse.Config.Semantics.beam": "b8c2b55e1c5a61898b72e53fdbed0147491c30e648a364fca565d161bd3852e8",
+    "Elixir.Ipse.Provider.MintOwned.beam": "63616b895af45b3cbc9ba5eaf6a2aa428b2404fcbdda546c12afa6c1f2ca81ba",
+    "Elixir.Ipse.Auth.XAI.beam": "a3ac2c8d367363ba1bf1f24f951145788d0eafe06fe636ff381afe300f6ec376",
+    "Elixir.Ipse.Extension.SourceRead.beam": "53d7541e9e0dde7a5852206c09f4682c9232145f025483cab03af4973cc79e94",
+    "Elixir.Ipse.Builtins.Memory.Records.beam": "2b2926c4464366c90d5df49ea20aeac66724706745a7aab52ccc805defe2b6a5",
+    "Elixir.Ipse.Provider.Decision.Transport.beam": "cd4a0e2eee4cbbdf6c62edfa1d43946a1361c05388ae586e5c3695b03f70f67f",
+    "Elixir.Ipse.Provider.InferenceFacts.beam": "24ecdda6c1222a3977e1617d286178b9ff94ed7b65c3b40803166e80543fa15a",
+    "Elixir.Ipse.Extension.EffectResult.beam": "001cc20cfe32bc2f92a4b5b503fbdddedc150d682cbef519ad45ac9ecdc435af",
+    "Elixir.Ipse.Auth.beam": "fc47142adf639b80bd83fa15b7b05d1bc22ef91414fd57da375aa02470143534",
+    "Elixir.Ipse.Extension.Collection.Blocks.beam": "c072b959a305a439ec600b28d95ef309b0d68ae86c83977ecbe1fe3912c6820a",
+    "Elixir.Ipse.Extension.SemanticAdmission.beam": "a480f1f0b6ddc80a5dfcb8bfc4381c918d240a5f7ed2cf6711fc396a3d79afe1",
+    "Elixir.Ipse.Usage.beam": "35d39aa23922ba631c31170138cd6535e2a351b9c4c011b05fb406025a4097c1",
+    "Elixir.Ipse.Provider.MintEmbedding.beam": "d73b8803994fab6ddcfd11882e5630c0ed93e081c711bd4ed2452d1db5ec10fa",
+    "Elixir.Ipse.Builtins.LocalTrace.beam": "71aa764d1302e0932090d517185ad3746028a146a96490084e0ffb80b0c9510f",
+    "Elixir.Ipse.Session.ToolLifecycle.beam": "5463aaf07c9b1ab8412d75731d206befb7b9ea7e756191f8b5df550fbf8790a4",
+    "Elixir.Ipse.DocumentParser.beam": "e3ddb7e50a94be55903b957c6e7f4ef018df291ba5dfc51f2a46ee987ff6c829",
+    "Elixir.Inspect.Ipse.Extension.Collection.ReadView.beam": "2d71343836efb5c65f070cb726e6c29edc7e6d4c3244dc146092b3c18684833a",
+    "Elixir.Ipse.MCP.StdioTransport.beam": "13d9b544aad3f9b124ecbd16ccd6591d8b179348afa08a8e76e04dd8767d23e6",
+    "Elixir.Ipse.Extension.ProjectIdentity.DomainAuth.Capability.beam": "a8e8531dae1fe1dbcb19ae07d965006cb6680c8ae4f6435727fd16888237b571",
+    "Elixir.Ipse.Extension.ResultSource.beam": "57b088885f91ef8d004d14d6b9c287d8f2d31165fe7cb73b37beaf9509831667",
+    "Elixir.Ipse.Extension.beam": "438ca589410c41038502cdd0134f3a4dd90d95ede1275a9c645314cd94d06b19",
+    "Elixir.Ipse.Session.TextStream.beam": "685f71404eafc35906183954357752c747a4c6d52ebca606d0a86dd4e435f40d",
+    "Elixir.Ipse.Provider.EgressGate.beam": "311275930ad265d467ca89d340d6144426efc34cf50e6bad2a47e970b79b10b6",
+    "Elixir.Ipse.Extension.Consent.beam": "d1b13f5435d09de2f5ed94e5ce00e8eb9c754f74a598eba4edc24829ee28d876",
+    "Elixir.Ipse.Session.ManagedOutput.beam": "bee078597ac33d54f07839b74015cd4a1dc24248084c2cfd5884dd0d12f76c3f",
+    "Elixir.Ipse.Session.Context.beam": "c4b3f5afae23d3b2c0c29c5a2a907f51a70cc0728d7dbf13a71376bfad73b93e",
+    "Elixir.Ipse.Extension.ManagedRecipe.beam": "c154c24ce16e297b084dff24c28b04eb5647a8229a2ee2450abb1163f5e3884f",
+    "Elixir.Ipse.Extension.Collection.Encoding.beam": "36eb4570358834eb7dddffd58c463d32934a6125018b8344a6522a72568be81e",
+    "Elixir.Ipse.Session.OperatorAssertion.beam": "ba2b1e990ed285af5cdff940430988b11a4bface8e0b7a90b76a8e04813c6cf7",
+    "Elixir.Ipse.Runner.Operator.beam": "f2a3d27f95549ad6dc77939d308b6c9a48d1fd0721c0b775aded2643fc3ce81c",
+    "Elixir.Ipse.Session.Resources.beam": "75a41666d1a04c159637e6cb049dcff922c946980db192435d02fc56197c4b4f",
+    "Elixir.Ipse.InferenceSlots.Store.beam": "efcf88dbdea5f0f43ceed39dd33ea341c7c74d45b8910a2eab69f4ff7ed7ff6e",
+    "Elixir.Ipse.Session.DraftAcceptance.beam": "b3d595a334588f294f0d7eb709f46837350ac8eb177e7686bdd40468253d391b",
+    "Elixir.Ipse.Observability.beam": "2c1e1ea5bae4b08f699e3b6698fbc34d7ce23d11fe5de89d6cb17ef3edc58b51",
+    "Elixir.Ipse.Provider.Embedding.beam": "71de81726a35c2c0e462684e5251bd4995cac270ecd4589a3c5fe0e65b78dc80",
+    "Elixir.Ipse.Extension.Collection.beam": "cf6fb0246872e8ea6a7c288892c28236c4cbeb6d3574e67c3b0b258fd4e70f89",
+    "Elixir.Ipse.Extension.DecisionCall.beam": "ed667e3c1951b501cf70c3bfe666d27171c51167341c9fef0ca10ab9739aff66",
+    "Elixir.Ipse.Config.beam": "75dcbccd95f364aab77c611080f1fe1e1f69b49c3d7bbe144267b654237e6474",
+    "Elixir.Ipse.Config.Activation.beam": "8daeaea4f6b6eb4f860c8d00a4adc3e3238b6d7d6ef5676de7b53541c0e015d0",
+    "Elixir.Ipse.Config.Decisions.beam": "28273ecbc80b95740cdd7ea533fd3ca712e6722fe8112212dc3567a83c9118f0",
+    "Elixir.Ipse.Session.PlanningTransition.beam": "b34a91f2a839b18fb6560d82671d8f75d08b67de88e7721df7d386986ab6974e",
+    "Elixir.Ipse.Session.Reference.beam": "4c6120741d838a4f9787eb57b06fdb1593a6f545556738e55bb09c0811abe482",
+    "Elixir.Ipse.Runner.Review.Permit.beam": "73e586063541810f410cbd4efea5a9e61e8e7691f55d026cf55d78d7714b5728",
+    "Elixir.Ipse.Session.ManagedReads.beam": "f5493bf3498c734039463d470b73a67f0a183b933ab339396c88a49a7ea3f94f",
+    "Elixir.Ipse.CLI.Doctor.beam": "bdba5be722abe007e786d20cd20cb7e7bd1afcce4abb18f49eeaad50621bc325",
+    "Elixir.Ipse.Session.InferenceWire.beam": "9bd39316817d854c4941ea387c203c895891b050fb03433d39281eb3f6e0de2a",
+    "Elixir.Ipse.Observability.Channel.beam": "d024ed4433a36e2410c475028000405ce8eddc421763be4248456b65d60b5f6e",
+    "Elixir.Ipse.Session.ManagedLifecycle.beam": "f4564784441cb8773f01b8cfde06f603de4b38475fc739111b78672dbb7af76e",
+    "Elixir.Ipse.Extension.ChildUsage.beam": "b5f8301009f29ae51a09cfa8d94720d0bdc57cda3a80228028c219efefd8d021",
+    "Elixir.Ipse.Session.ManagedReference.State.beam": "22689851d8538a30231a00082473671b595352ae98e371df08227c1c7b011e77",
+    "Elixir.Ipse.Extension.ProjectIdentity.DomainAuth.beam": "427f9ef5619df71e4e1cf19ffcb24c011f1b9b20f2d206375c76c70af153d776",
+    "Elixir.Ipse.Session.SourceWindow.beam": "8982368b1906d50df65859fef6879ef5d6882d7bc75b3ecfd8987681cdf011c7",
+    "Elixir.Ipse.Provider.Anthropic.beam": "67f2cf25c6b821f1d94c7220965861621b96e923ac86e691a7eabba839492716",
+    "Elixir.Ipse.Tools.MacOSSandbox.beam": "9629909dce14101f5c879d86fcd79e18df5765e6376296570aad14e1107e094c",
+    "Elixir.Ipse.Session.ManagedUse.beam": "f2cbcc93e82e29c18f832849daeef4d23404aa4c34700b2b0d1cd6d942c2cc9c",
+    "Elixir.Ipse.Extension.ResultPublication.beam": "220acc9604a781acdf094f9fad0355453bea5f2ccefc535be4a11dfb3836a3fa",
+    "Elixir.Ipse.Provider.Stream.beam": "08e6196fa5a04238c1916f7edcf93315fc35edcdba3267959d77353460fd69e9",
+    "Elixir.Ipse.Extension.CollectionStore.beam": "839ebd6598ab62ab6c48e77f1f3e31f0d1360a6a61683251acb884e684a636c5",
+    "Elixir.Ipse.Extension.Collection.PendingCapacity.beam": "24c3796db7966cbf78782e46c843803195c5725996b1498895c33f2f7d3ce880",
+    "Elixir.Ipse.Provider.OpenAI.beam": "6b573c159d6c1421fda877d025d93624d9bbf79104b6c14c6e9faa725b4dbebd",
+    "Elixir.Ipse.Extension.Bootstrap.beam": "64b8b478f556822267be1af6536eaa59a875b8756cb0049c15a3de63677f359b",
+    "Elixir.Ipse.Session.beam": "b7608c8a4f4de2f0eca45795943af231c0c5209677b25028c32615c389df7081",
+    "Elixir.Ipse.Provider.Decision.beam": "63b97f191be3319f5b26d738530769a933d31ac10ba4745589a58661913afdb0",
+    "Elixir.Ipse.Usage.Budget.beam": "d30b35b4356e61930fecf7f685701846d63ce522a357337943912304b3bd96f7",
+    "Elixir.Ipse.Extension.EmbeddingCall.beam": "52e5930b5793f1cedf967c85c448b321893473ccc061989baafcdd54b96326a0",
+    "Elixir.Ipse.Session.Draft.beam": "62f80123e440edd52864ff6b99f1a4067eb284f4fe64dc98d8221bc0b895050b",
+    "Elixir.Ipse.Extension.Collection.Normalizer.beam": "5b4962bd408933e00f43e9974245aebdc15fbdefa1fcf397b729849090b31bd8",
+    "Elixir.Ipse.Session.DraftNative.beam": "76c2552ef7d8b8151bb9c9ed4140acb028c20ca8781e2f681743faaa80a50629",
+    "Elixir.Ipse.Tools.Sandbox.beam": "6e66a58b1e3b92d6e081a451075b2a27b4f398bd0f044fdae9cbfc10e56c6425"
+  },
+  "version": 1
+}

@@ -1,0 +1,8 @@
+Running ExUnit with seed: 46884, max_cases: 8
+Excluding tags: [:test]
+Including tags: [gate_compatibility: true]
+
+.
+Finished in 0.08 seconds (0.00s async, 0.08s sync)
+
+Result: 1 passed, 1 excluded

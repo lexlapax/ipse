@@ -1,0 +1,48 @@
+Running ExUnit with seed: 46920, max_cases: 40
+Excluding tags: [:test]
+Including tags: [literal_v4_ab: true]
+
+LITERAL_V4_AB_REAL_READ=true inherited_union=true
+
+
+  1) test upgraded literal v4 A cannot be discarded while candidate cites independent current B (Ipse.Extension.ManagedCollectionCallSessionTest)
+     test/ipse/extension/managed_collection_call_session_test.exs:1451
+     Assertion failed, no matching message after 15000ms
+     The following variables were pinned:
+       consumer = #PID<0.250.0>
+       module = Ipse.Session.ManagedToolUse
+     Showing 7 of 7 messages in the mailbox
+     code: assert_receive {:trace, ^consumer, :return_from, {^module, :publication_prerequisites?, 3}, false}
+     mailbox:
+       pattern: {:trace, ^consumer, :return_from, {^module, :publication_prerequisites?, 3}, false}
+       value:   {:ipse, #PID<0.250.0>, {:status, "Thinking"}}
+
+       pattern: {:trace, ^consumer, :return_from, {^module, :publication_prerequisites?, 3}, false}
+       value:   {:ipse, #PID<0.250.0>, {:usage, %{}}}
+
+       pattern: {:trace, ^consumer, :return_from, {^module, :publication_prerequisites?, 3}, false}
+       value:   {:ipse, #PID<0.250.0>,
+                 {:tool, "ext__capture__capture",
+                  %{"mode" => "capture_ab_literal"}}}
+
+       pattern: {:trace, ^consumer, :return_from, {^module, :publication_prerequisites?, 3}, false}
+       value:   {:ipse, #PID<0.250.0>,
+                 {:tool_result, "ext__capture__capture",
+                  "{\"current_eligibility\":\"not_established\",\"outcomes\":[{\"action_sha256\":\"5751598c335adcede3b4e687616145fef27f7f8d92ae1be9b7c7948f3f137929\",\"category\":\"ordinary\",\"generation\":2,\"normalization_sha256\":\"d381794b6e593a84b4c592f48a3bb24b916b94dc63759a0614b0edf5101cdc65\",\"operation_id\":\"00a03f7ffbf5be19a77887c3c269d352\",\"receipt_sha256\":\"a37a964e7e97398e28cbf3bd3b714efcfdd146ebc83ca6858c9f7164b2b109eb\",\"record_key\":\"pending.fc686ad5f1ed9c84a86c98a29758fa9bd41002630da8fd48e777e30d4586b564\"}],\"status\":\"historical_write_outcome\"}"}}
+
+       pattern: {:trace, ^consumer, :return_from, {^module, :publication_prerequisites?, 3}, false}
+       value:   {:ipse, #PID<0.250.0>, {:status, "Thinking"}}
+
+       pattern: {:trace, ^consumer, :return_from, {^module, :publication_prerequisites?, 3}, false}
+       value:   {:ipse, #PID<0.250.0>, {:usage, %{}}}
+
+       pattern: {:trace, ^consumer, :return_from, {^module, :publication_prerequisites?, 3}, false}
+       value:   {:ipse, #PID<0.250.0>, {:done, :ok}}
+     stacktrace:
+       test/ipse/extension/managed_collection_call_session_test.exs:1499: (test)
+
+
+Finished in 16.8 seconds (0.00s async, 16.8s sync)
+
+Result: 0/1 passed, 109 excluded
+Failed: 1 test

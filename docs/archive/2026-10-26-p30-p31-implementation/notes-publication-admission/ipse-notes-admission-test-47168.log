@@ -1,0 +1,71 @@
+    warning: unused alias JSON
+    │
+  5 │   alias Ipse.{JSON, Usage}
+    │   ~
+    │
+    └─ test/ipse/extension/notes_publication_admission_test.exs:5:3
+
+     warning: comparison between distinct types found:
+
+         shorter == :normalization
+
+     given types:
+
+         :policy == :normalization
+
+     where "shorter" was given the type:
+
+         # type: :policy
+         # from: test/ipse/extension/notes_publication_admission_test.exs:139:15
+         shorter = :policy
+
+     While Elixir can compare across all types, you are comparing across types which are always disjoint, and the result is either always true or always false
+
+     type warning found at:
+     │
+ 145 │         if shorter == :normalization do
+     │                    ~
+     │
+     └─ test/ipse/extension/notes_publication_admission_test.exs:145:20: Ipse.Extension.NotesPublicationAdmissionTest."test policy deadline is the actual native minimum after synced staging"/1
+
+     warning: comparison between distinct types found:
+
+         shorter == :policy
+
+     given types:
+
+         :normalization == :policy
+
+     where "shorter" was given the type:
+
+         # type: :normalization
+         # from: test/ipse/extension/notes_publication_admission_test.exs:139:15
+         shorter = :normalization
+
+     While Elixir can compare across all types, you are comparing across types which are always disjoint, and the result is either always true or always false
+
+     type warning found at:
+     │
+ 155 │       policy = if shorter == :policy, do: deadline, else: now + 60_000
+     │                           ~
+     │
+     └─ test/ipse/extension/notes_publication_admission_test.exs:155:27: Ipse.Extension.NotesPublicationAdmissionTest."test normalization deadline is the actual native minimum after synced staging"/1
+
+Running ExUnit with seed: 20261029, max_cases: 4
+Excluding tags: [:test]
+Including tags: [:notes_admission]
+
+...
+16:32:15.023 [info] The function passed as a handler with ID {Ipse.Extension.NotesPublicationAdmissionTest, #Reference<0.2563389814.1357119489.73428>} is a local function.
+This means that it is either an anonymous function or a capture of a function without a module specified. That may cause a performance penalty when calling that handler. For more details see the note in `telemetry:attach/4` documentation.
+
+https://hexdocs.pm/telemetry/telemetry.html#attach/4
+..
+16:32:17.195 [info] The function passed as a handler with ID {Ipse.Extension.NotesPublicationAdmissionTest, #Reference<0.2563389814.1357119489.79166>} is a local function.
+This means that it is either an anonymous function or a capture of a function without a module specified. That may cause a performance penalty when calling that handler. For more details see the note in `telemetry:attach/4` documentation.
+
+https://hexdocs.pm/telemetry/telemetry.html#attach/4
+.
+Finished in 4.3 seconds (0.01s async, 4.3s sync)
+
+Result: 6 passed, 43 excluded

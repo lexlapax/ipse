@@ -1,0 +1,17 @@
+Running ExUnit with seed: 47193, max_cases: 8
+Excluding tags: [:native_sandbox, :macos_sandbox, :macos_filesystem, :memory_scope]
+
+Running ExUnit with seed: 347520, max_cases: 4
+Excluding tags: [:test]
+Including tags: [guard_flow: true]
+
+%{guarded_batches: 4, unknown_batches: 1, max_frame: 8609}
+.
+Finished in 4.4 seconds (4.1s on load, 0.00s async, 0.3s sync)
+
+Result: 1 passed, 21 excluded
+
+.
+Finished in 4.7 seconds (0.05s on load, 0.00s async, 4.6s sync)
+
+Result: 1 passed

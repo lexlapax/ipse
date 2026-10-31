@@ -33,88 +33,209 @@ valid dense/graph/hybrid/remote-query profile is still invalid for Research.
 
 ## Follow protected capture from a Session source
 
-The `knowledge/native` preset exports `capture` as a tool and command. It accepts
-one text/category/reason/event-time tuple and an exact quote with an opaque Session
-source handle. All seven profile registries must be empty. This path uses the
-selected main model's tool calls; it performs no secondary inference.
+Trace one reviewed statement from the terminal into a stored note, then into
+the next conversation. The `knowledge/native` preset exports `capture` as a
+tool and command, with no secondary inference and all seven profile registries
+empty. Its argument contains text, category, reason, event time and an exact
+quote selected through an opaque Session source handle. Operator procedures
+belong to [Knowledge management](../operator/knowledge-permissions.md).
 
-Follow `Knowledge.handle/3` through source read, exact quote, public SDK proof,
-saved lineage override, existing-record lookup and explicit managed collection commit. The host
-reconstructs the proof independently at publication and checks the current
-protected permission. The artifact declares `host.collection.managed` separately
-from read access and carries the exact sidecar recipe digest. Its original commit
-explicitly advances the import floor. Read/write grants do not imply this capability.
-A worker's origin label or JSON proof grants no permission.
-The [collection SDK](collection-sdk.md) owns that admission boundary.
+### Establish what the source supports
 
-`Knowledge.Records.capture/4` constructs a note only when its text equals the
-entire quoted span and the origin is native operator input, a native answer, or
-a literal typed tool outcome. Typed outcomes cannot become preferences. Other
-claims become attributed pending proposals, including an expanded interpretation
-of a short operator answer. Exact support still proves no entailment or truth.
-Ordinary notes expire after 90 days; current/preference notes retain their category.
-Pins require a separate explicit operator workflow.
+Start with `/remember preference Prefer concise answers.` in an idle Session.
+`Session.prepare_assertion/4` binds a rendering to the native client/channel,
+complete statement, category and project/artifact/policy scope. The one-use
+input witness and `OperatorAssertion.receipt/3` record the actual native
+confirmation. Session syncs it before invoking capture. SourceIndex exposes
+the resulting `input.assertion.preference` occurrence through an ordinary
+read handle; supplying JSON cannot create this origin.
 
-Lineage derives from source identity and span, independently of a model's text
-or category. The pure Records retention model can apply a saved session-only
-override to every classification and paraphrase of that evidence; it cannot renew
-an anchored expired override. The current managed host refuses legacy override
-adoption until a typed operator workflow supplies that authority. An existing
-public record returns its revision without replacement or TTL
-renewal. New proposals have a seven-day deadline and a retained queue ceiling of
-64 records/256 KiB. The capture path counts retained proposals, including expired
-ones; it neither silently deletes them nor renews them to make room.
+Follow `Knowledge.handle/3` through source read, exact quote, the public SDK
+proof helper, saved lineage override, existing-record lookup and managed
+Collection commit. The host independently reconstructs the original proof and
+checks the current protected permission. The worker needs the distinct
+`host.collection.managed` capability and exact sidecar recipe digest; ordinary
+read/write grants supply neither. The [Collection SDK](collection-sdk.md)
+owns this admission boundary.
 
-Saved override values wrap the pure retention policy with separate native operator
-evidence under `evidence.sources`, so they can satisfy constrained publication.
-`Records.saved_override/2` checks the complete wrapper and matching lineage before
-applying it. Bare policies, foreign lineages and weak-origin wrappers refuse.
-This format check does not establish operator acceptance; that remains the trusted
-management workflow's responsibility.
+`Records.capture/4` creates a literal note only for a complete, available source
+whose exact text, zero start offset and source/quote hashes agree. A reviewed
+operator statement additionally needs a category-specific
+`native_operator_assertion` occurrence. A typed host outcome supports only
+`ordinary`. Plain messages, native question answers, selected fragments and
+other attributed claims become pending proposals. A whole interactive message
+can still quote somebody else. The host recipe repeats these checks; worker
+classification and proof-shaped JSON supply no source authority.
 
-The native builder also declares `operator.json` in the artifact's hashed file
-inventory. `Knowledge.Contracts.operator/0` supplies closed structural constraints
-for notes, pending proposals and each of the four retention choices, plus reviewed
-literal/proposal recipe data referencing the exact constraint digests. The builder
-uses the public `Ipse.Extension.canonical_digest/1` helper rather than a private
-host encoder. A capture
-schema excludes pin/history categories. Separate retention schemas prevent an
-ordinary choice from carrying a duration or silently becoming a pin. These use
-the existing supported JSON Schema subset and introduce no schema evaluator.
-They do not authenticate origin or establish operator acceptance. The managed
-publication adapter authenticates the source and the host Normalizer independently
-checks lineage, category and source clocks under the Collection lock. Its version-2
-packed anchor/live pages preserve deadlines after public-record pruning and reject
-experimental version-1 metadata. Managed recall must still apply these witnesses
-at every dispatch before standalone activation is ready.
+Ordinary notes have a 90-day host ceiling; current statements and preferences
+follow the reviewed category rule. Pending proposals have seven days and a
+retained ceiling of 64 records/256 KiB, including expired rows. The worker and
+v3 normalizer independently check that ceiling under their respective read and
+publication boundaries. Neither silently removes proposals to make room.
+Recorded endorsement establishes the user's statement, not external truth or
+permission for another effect.
 
-An operator adapter can inspect this data with
-`Artifact.read_declared(store, digest, "operator.json", 65_536)`. This revalidates
-the installed artifact and then rechecks the selected file's declared size and
-digest. It loads no extension code and grants no permission. The sidecar is data
-from a selected artifact, not an instruction to execute code or enable a feature.
+### Admit one bounded publication
 
-To trace the actual boundary, run:
+The capture action retains its complete inherited-plus-own dependency union.
+Its CAS prerequisites must be an authentic current-parent snapshot/nil-get or
+an exact positive host cache entry derived from a committed observation/result
+pair. Cached classification permits closed snapshots, explicit nil-gets and
+an initial empty metadata-only index. Values, scans, mixed roots, unmatched
+receipts and missing classifications refuse. Every member must bind one complete
+root, project, pin, policy and expected generation.
+
+After source resolution, the host repeats current source, recipe and Consent
+checks under the final publication owners. The native owner narrows the policy
+deadline by the original lineage deadline after synced staging. Its final locked
+decision is the admission point; an admitted switch may finish physically later.
+An uncertain return remains unknown and is never replayed. This narrow new-v3
+route does not enable replacement or supersession.
+
+Before each model-selected source lookup, the host privately resolves every
+selected occurrence and its complete provenance union, including an initially
+empty call. It repeats that relation at result admission and Saved reconstruction.
+Subscriber starts omit source arguments; previews use a fixed status-only message.
+Authenticated content retains its full lineage in the journal/model continuation.
+After a confirmed own capture, the host can preserve its exact prior root-only
+union as explicitly historical using the adjacent own receipt and freshly checked
+successor root. Original dependencies/messages remain unchanged. Record contents,
+mixed roots and unknown or intervening writes receive no such projection.
+
+Lineage derives from source identity and span independently of model text or
+retention classification. Pure `Notes` retention helpers retain anchored clocks:
+reading or recapturing the same evidence cannot renew an expired lifetime. A
+new choice cannot predate creation/supersession or revive an expired note.
+Same-lineage correction cannot extend a finite deadline or promote persistence
+without a separately authenticated override; different-lineage evidence needs
+its own source check. These pure calculations grant no live permission.
+
+`Records.saved_override/2` validates a complete wrapper with separate native
+operator evidence under `evidence.sources`. Bare policies, foreign lineages and
+weak-origin wrappers refuse. When the internal override marker is also a possible
+user reason, `:absent` is only a host assertion requiring a fresh protected absence
+check. The host authenticates the exact prior choice before applying a change.
+Public forgetting and session-only retention use their reducing management route;
+pin/automatic/duration use a separate guarded effect. Correction and supersession
+remain unavailable.
+
+### Confirm a pending decision
+
+`Records.pending_projection/2` parses a closed, bounded `pending.<id>` value and
+its lineage/text identity. It labels stored timestamps as worker claims. Schema
+version 1 is distinct from a Collection revision, and parsing authenticates no
+source freshness or acceptance.
+
+Without a key, `knowledge review` lists bounded historical metadata under the
+admitted project/domain and retained management snapshot. It reads no proposal
+values and works after revocation. A key/revision/hash/size or partial-coverage
+claim supplies no signed eligibility.
+
+For `knowledge review PENDING_KEY`, `Management.review/4` requires a matching
+native channel and unrestricted interactive mode. It reserves and admits a
+bounded `notes.capture` operation through the existing Consent ledger. The
+reservation's epoch/policy must match the displayed and published facts; a
+resource reservation alone grants no source or effect authority.
+
+Trace `Management.begin_acceptance_review/7` through the signed retained target,
+`PendingAcceptance.prepare/4` and
+`ManagementTerminal.begin_historical_accept_review/5`. Identity, active Consent,
+Collection and management-journal owners cover the complete historical display.
+The original source need not be available for this display. The native receipt
+also binds the proposed category retention rule and policy expiry derived from
+the held installed selection. Target owners release before waiting for input.
+
+After exact native `accept CODE`, publication acquires and verifies the original
+source, reacquires current target owners and reproduces the same facts before
+consuming the one-use Review permit. Revision, physical value hash, signed
+deadline, text, project/client and policy must agree. The event and immutable
+link preserve the original proof. Acceptance records a user decision without
+promoting its premises to established truth or granting other effects. Source
+loss or changed consent refuses publication even after historical display.
+
+After checked owner cleanup, the public caller settles measured event/request
+input and receipt output. Known pre-publication refusals settle zero; uncertainty
+retains liability. Preserve both printed IDs. `Consent.operation/3` and
+`knowledge operation ID` inspect recent/compacted resource records without
+settlement or replay, including a reservation created before any journal.
+An acceptance journal additionally correlates the native event with its ledger
+entry. This path currently supports one selected card; complete batch/reject/
+correct workflows remain open.
+
+### Revalidate recall before use
+
+Automatic recall considers at most 32 current notes without another model.
+It compares each read's key, revision, value hash, byte count and Collection
+generation with the metadata index. Index traversal rejects repeated keys/tokens,
+an empty page with a continuation and inconsistent counts. A final first-page
+check must reproduce the same generation/count. Failed traversal or changed
+generation discards the pass and reports unavailable coverage with an unknown
+candidate count. Missing individual reads, omitted notes or remaining pages
+produce partial coverage. Starting a search from a later cursor also remains
+partial, and a query without lexical terms refuses before indexing.
+
+Accepted decisions use a distinct version-6 dependency. `ManagedRead` discovers
+their immutable link, retains the original committed management journal outside
+Identity/Consent, obtains the original Session source, then reproduces the
+protected read. Signed anchor/live rows, actual event, note and link must agree
+before a value reaches the worker. A direct link or an accepted record without
+its selected recipe refuses. `Records.accepted_projection/2` checks only that
+delivered structure; it does not authenticate acceptance.
+
+Mixed/accepted context uses `note_parts_v2` with fields `key`, `revision`,
+`read_operation_id`, `claim_kind`, `offset_bytes`, `total_bytes` and `text`.
+Claim kind is `accepted_decision` or `literal_claim`; offsets refer to unchanged
+UTF-8 bytes. Literal-only context retains v1. Recall measures the complete
+rendered envelope, including index and coverage framing, using the public SDK
+and the host's shared framing functions. If even framing does not fit, it clears
+the turn-local contribution and reports partial coverage.
+
+`ManagedReads` binds the exact result to its receipt. `ManagedUse` obtains
+historical preflight verdicts, then independently reacquires original journal/
+source ownership and current policy around actual result release or inference.
+The registered provider route is required. The Collection callback returns a
+two-element result tuple so its native owner can confirm cleanup before the
+adapter expands the result for its caller. Neither replay nor a preflight verdict
+establishes current authority. See [Session sources](session-sources.md) for
+source ownership and [Collection reads](collection-sdk.md#revalidate-reads-and-downstream-use)
+for the generic host boundary.
+
+### Verify the complete boundary
+
+The builder includes inert `operator.json` in the artifact's hashed inventory.
+`Knowledge.Contracts.operator/0` supplies closed note/proposal/retention schemas
+and reviewed recipe digests using the public canonical-digest helper. Read it
+with `Artifact.read_declared(store, digest, "operator.json", 65_536)` to revalidate
+the installed bytes without loading extension code. Sidecar data grants no
+execution or activation authority. Capture excludes pin/history categories;
+separate retention schemas prevent an ordinary choice from carrying a duration.
+The normalizer independently checks source, lineage, category and clocks. Packed
+signed anchor/live pages retain deadlines after public-record pruning and refuse
+experimental v1 metadata.
+
+From a built checkout, run the focused contracts:
 
 ```sh
-mix test test/extensions/knowledge/knowledge_records_test.exs
-mix test test/extensions/knowledge/knowledge_contracts_test.exs
-mix test test/extensions/knowledge/knowledge_capture_test.exs
-mix test test/extensions/knowledge/knowledge_session_test.exs
+mix test test/extensions/knowledge/knowledge_records_test.exs test/extensions/knowledge/knowledge_contracts_test.exs
+mix test test/extensions/knowledge/knowledge_capture_test.exs test/extensions/knowledge/knowledge_recall_test.exs
+mix test test/ipse/session/managed_reads_test.exs test/ipse/session/managed_use_test.exs
+mix test test/ipse/cli/management_review_public_test.exs
 ```
 
-The first two exercise pure records and declarative contracts with synthetic
-proof inputs. The third checks worker continuations in a separate VM. The fourth
-builds/imports a separate SDK artifact, runs a synthetic main
-model through native `source_list` and capture, checks an actual protected pending
-publication and accounting, then validates saved context. It requires the reviewed
-native allocation profile. It performs no real model calls. Conflict, denied and
-unknown outcomes terminate rather than automatically retrying a mutation.
+Pure records/projections use synthetic proof inputs; worker continuations execute
+in a separate VM. Actual source/publication controls are separate from those
+consistency checks. The opt-in `genuine_pending_public_review` case exercises
+synthetic Session capture through actual CLI/native review, cancellation, finite
+allowance, duplicate/expiry/revocation refusal and owner-loss inspection.
+`genuine_pending_accepted_recall` adds a registered loopback provider request,
+missing-source and altered-acceptance-event controls, Saved reconstruction and
+confirmed close. The [public CLI record](../archive/2026-10-26-p30-p31-implementation/pending-review-cli-20261031.md)
+and [recall record](../archive/2026-10-26-p30-p31-implementation/accepted-recall-20261031.md)
+describe fresh-artifact isolation and exact limits. Run terminal suites
+sequentially. These fixtures qualify no real model quality, installed journey,
+complete lifecycle or untested provider continuation. Milestone status belongs
+to [the plan](../plan.md).
 
-This capture component does not provide standalone setup, proposal acceptance,
-automatic turn hooks, managed recall, correction or collection of expired data.
-Keep it in developer integration until those workflows and their qualification
-are complete. The explicit Memory procedures retain their existing scope.
 
 ## Verify independent selection before algorithm work
 
@@ -178,7 +299,99 @@ The fallback remains partial. `Evidence.query_scope/4` owns direct/combined cons
 Use `test/extensions/knowledge/query_completeness_test.exs` to compare matches,
 no-match, unpublished drafts, forgotten/expired/future sources, and depth-limited graphs.
 
-## Inspect bounded document extraction
+## Follow acquired document bytes into cited storage
+
+`Corpus.source` offers two explicit document paths. `put_document` accepts a
+filename and canonical `bytes_base64` with the ordinary source identity,
+generation, expected revision and times. It extracts supplied bytes; it opens no
+file. `read_document` accepts a workspace-relative `.docx` path and
+`expected_sha256` instead. The compiled `state-documents`, `mcp-documents` and
+document Collection presets explicitly declare native `host.tools` authority
+for that path; options cannot upgrade an existing lexical artifact.
+
+Trace `Corpus.acquire_document/4` through a native `tool.call` to `read` with
+explicit `encoding: "base64"`, a 4096-byte page bound, `byte_offset: 0`, a
+32768-byte complete-file bound and an optional expected hash.
+The host checks the complete binary envelope, path, count, hash and current
+workspace/resource scope. Initial generation-one/revision-zero acquisition may
+omit the expected hash with explicit `null`; refresh requires a concrete hash.
+Later pages require that hash. Corpus validates exact offsets, page hashes,
+complete byte count and the reconstructed complete-file hash. After extraction,
+it requests another native page-zero read pinned to that hash; the host again
+hashes the whole bounded file. Only a matching result reaches Store. Every
+acquisition call counts against the existing action allowance before a State/MCP
+write plan. Worker code never opens paths or enlarges SDK/result envelopes.
+
+`Documents.source_payload/1` converts the extraction into source text and typed
+segment metadata. Supplied `put_document` keeps its 8192-byte extracted-text
+bound. Workspace acquisition supports up to 65536 extracted UTF-8 bytes,
+32 segments/chunks and 16384 canonical metadata bytes with at most 32 warnings.
+It does not trim text, warnings or locators to fit. Metadata at most 2,048 bytes
+keeps the packed receipt version 3: canonical document JSON and its digest wrap
+the supplied-byte version 1 or acquired-byte version 2 receipt. The latter binds
+the actual host acquisition operation and relative path. Larger metadata uses
+compact receipt version 4, retaining exact manifest hash/byte count, segment and
+warning counts, origin and one immutable manifest-head reference. Storage paging
+does not change the extraction recipe.
+
+Follow larger manifests through `document_content` JSON slices of at most 1,024 bytes
+and `document` progress records. At most 16 slices/32 records fit the bound. Each
+immutable page binds partition, source, generation, draft, kind, ordinal and hash.
+Hydration validates exact offsets, previous links, canonical bytes and complete
+typed segments/warnings against the full source text. A missing, reordered,
+revised or forged page refuses; a compact header alone is not readable evidence.
+Selected Source version 2 holds the privately hydrated document plus compact
+origin; Source version 1 remains readable. State/MCP replies carry bounded
+individual records, preserving SDK strings/depth and result limits. Single-envelope
+import refuses Source version 2 until paged migration is implemented.
+
+Larger workspace text or metadata opens the existing source draft.
+`continue_document` reacquires the hash-pinned original and exact typed extraction,
+rechecks draft/revision/text offset and metadata offset, then stages one metadata
+slice before text, appends one UTF-8-safe 4,096-byte part, or publishes the complete
+staged source. Ordinary `append` and
+`publish` cannot substitute content into a document draft. The selected earlier
+source remains intact until final CAS publication. An interrupted stage never
+replays on resume. Draft expiry is threaded through the shared Store IO adapter
+as `write_before_ms` for each proposed staged/root write. State and ordinary
+fixed-profile document writes stage and sync first, then the native owner checks
+the inherited deadline immediately before selecting the pointer. The original
+contract permits a pre-expiry decision to finish physically later; it does not
+make clock sampling and rename atomic. Notes capture uses its own narrowly
+admitted v3 scope; reviewed forgetting has its separate one-use contract.
+Managed document mutations and supersession retain their gates; standalone
+native-note retention uses its separate reviewed route. Never
+drop a domain deadline to retry a draft. Explicit collection first clears an expired draft claim while
+preserving the selected source, then reclaims unreferenced pages. MCP uses the
+client deadline gate; this does not claim a remote server publication fence.
+
+Follow normal Store CAS publication, hydration and `Evidence.citation/4`. A
+version-2 public citation binds original binary SHA-256, extraction version,
+format-specific locator and segment-local byte range, in addition to source
+generation and literal quotation. Evidence revalidates the typed receipt,
+canonical envelope and source spans. An ordinary text `put` cannot smuggle in
+a document receipt. Partial extraction remains partial in query gaps and
+coverage. Replacement and suppression use ordinary source management; the
+current implementation does not watch source files or invalidate an acquired
+snapshot merely because its path changes later.
+
+Run the worker and actual Session paths together:
+
+```sh
+mix test test/extensions/knowledge/document_ingestion_test.exs \
+  test/extensions/knowledge/document_acquisition_session_test.exs \
+  test/ipse/extension/tool_action_binary_test.exs
+```
+
+These controls cover stored paragraph/table citations, replacement/forget,
+forged metadata, changed-file refusal before writes, exact read operation
+binding and owner-loss/inert-resume behavior. They use synthetic Word packages
+and local State/CAS fixtures. They do not establish real Word fidelity,
+larger-document storage, installed qualification or retrieval quality. The
+[operator procedure](../operator/corpus.md#acquire-a-small-word-document-from-the-workspace)
+shows explicit artifact selection and a complete command.
+
+### Inspect the extraction boundary
 
 `Documents.extract/3` accepts already acquired bytes and a filename; it neither
 opens the source path nor authorizes a fetch. The result binds the original binary
@@ -187,6 +400,27 @@ locators. Text and Markdown use byte-exact line offsets. The DOCX reader checks
 package authority, bounds ZIP expansion and XML parsing, includes insertions, and
 excludes deletions and supported hidden runs. Unsupported content stays partial
 or refuses rather than claiming complete coverage.
+
+Referenced headers and footers are extracted once per part and their locators
+identify the region. The result remains partial: it does not resolve section
+inheritance, page layout, or which pages display the text. Only bounded internal
+relationships with matching content types are admitted; unreferenced parts are
+not extracted.
+
+Footnote, endnote and comment paragraphs carry their annotation ID. The parser
+requires distinct numeric IDs within each part and refuses paragraphs outside
+an annotation. A uniquely matched visible reference in the main body supplies a
+`reference_site` paragraph locator and UTF-8 byte offset; it is a point, not a
+comment range. A unique pair of direct paragraph comment-range markers before
+the matching reference also identifies a nonempty span of visible extracted
+text in that same emitted paragraph or table cell, with UTF-8 byte offsets.
+Hidden or unexamined range markers in the main story conservatively suppress
+range links. Multiple visible references leave an annotation unlinked;
+duplicate range markers prevent a range. Unreferenced annotations and
+references in paragraphs with no extracted text have no site.
+Other document stories and ranges spanning paragraphs remain unresolved, so
+annotation parts and references mark coverage partial. An annotation's text
+alone does not establish where it applies in the document.
 
 DOCX relationship targets are never fetched. A checked external relationship,
 an unexamined internal relationship, or an unexamined relationship part marks
@@ -197,15 +431,17 @@ reader does not interpret can therefore be partial even when its visible body is
 readable; inspect the result and original document before using it as evidence.
 
 Recipes are format-specific: `Documents.version("docx")` is
-`ipse-documents-v3`, while text, Markdown and PDF use `ipse-documents-v2`.
+`ipse-documents-v11`, while text, Markdown and PDF use `ipse-documents-v2`.
 The legacy `version/0` returns the v2 value; use `version/1` when binding an
-extraction to a source version. A prior DOCX v2 result is not automatically
-migrated or equivalent. Future indexing must explicitly rebuild or requalify it.
+extraction to a source version. Earlier DOCX results are not automatically
+migrated or equivalent. Future indexing must explicitly rebuild or requalify them.
 The optional PDF backend requires a separately host-admitted protected parser;
 its installation does not activate PDF acquisition. The
 [parser contract](../../native/ipse-pdf/README.md) describes its lifetime and
-limits. These extraction modules do not by themselves provide an operator file
-ingestion workflow, current-source authorization or qualified retrieval.
+limits. The Corpus paths above provide bounded ingestion and cited retrieval.
+Extraction alone supplies neither current-source authorization nor retrieval
+quality qualification. Larger originals, full document capacity and paged-source
+migration require separate storage work.
 
 Exercise synthetic DOCX relationships, bounded XML and Unicode extraction from
 the repository root:
@@ -214,18 +450,29 @@ the repository root:
 ERL_FLAGS='+S 2:2' elixir -e 'ExUnit.start(seed: 20270116); Code.require_file("test/extensions/knowledge/documents_test.exs"); Code.require_file("test/extensions/knowledge/documents_fidelity_test.exs")'
 ```
 
-Expect 23 tests to pass; one opens a loopback listener to verify that an external
-relationship is not fetched. These fixture controls do not establish real Word
-fidelity, PDF quality, migration or end-to-end document retrieval.
+One fixture opens a loopback listener to verify that an external relationship
+is not fetched. These parser controls do not establish real Word fidelity,
+PDF quality or migration; the separate Session controls exercise the bounded
+ingestion path.
 
 ## Keep source bytes distinct from semantic support
 
 Raw SHA-256 identifies text/vector bytes; ordered tagged JSON arrays identify domain
 objects. Use Elixir `JSON.encode!/decode!`, not raw Erlang encoding: binary sizing
 and `nil`→null semantics matter to persisted IDs. Sources allow 64 KiB UTF-8,
-with up to 32 contiguous 2048-byte chunks. Citations bind generation/content/chunk,
+with at most 32 chunks. Legacy sources keep their 2048-byte recipe; explicit
+Collection Source3 uses the versioned 4096-byte recipe. Document chunks remain
+inside their typed segments, so separator bytes need not belong to a chunk.
+Citations bind generation/content/chunk,
 absolute byte range, literal quote/hash, URI, times, and origin. Quote bounds are
 1024 UTF-8 bytes. None proves entailment, authenticity, or freshness.
+Compact fact-page reconstruction uses `Evidence.citations/2` to validate one
+source and chunk list for up to 256 spans. Each reconstructed citation still
+checks its own range, quote, chunk and document locator, and the fact projection
+must repack to the exact original pages. A malformed member refuses the batch.
+The graph adapter similarly batches source-span validation after checking every
+fact's shape; an empty explicit fact list remains valid for a valid source.
+Those checks establish attribution to source bytes, not the truth of a relation.
 
 BM25 uses k1=1.2 and b=0.75. Token offsets retain original half-open byte ranges
 through normalization, including case mappings that produce multiple normalized
@@ -344,6 +591,19 @@ invalid proposal refuses the whole response. Derive absolute byte spans and vali
 them. Store revalidates chunks/live draft at commit. Do not apply query-time expiry
 during publication and silently discard future/past validity intervals.
 
+The private adapter also accepts explicit byte windows within canonical chunks,
+up to 2048 bytes per window, for the larger Collection chunk recipe. Windows
+must be valid UTF-8 and retain the original chunk identity. Quote uniqueness is
+checked across the entire chunk, and citations use absolute source offsets. A
+window result reports incomplete source coverage; quotes spanning windows may
+be missed. No public Collection producer currently uses these windows, and the
+adapter's input check does not replace current-source authorization at dispatch.
+`Adapters.extraction_windows/3` plans overlapping windows for one canonical
+chunk using a conservative encoded-input budget. Its reported guaranteed quote
+length reflects the smallest window and overlap, capped at 1024 bytes; escaped
+input can reduce that guarantee. A caller must still track each window's result,
+source eligibility and completion before claiming any aggregate coverage.
+
 For a chunk at byte 2048 containing `Éclair does not require β.`, this proposal
 preserves both multibyte characters and derives the absolute range:
 
@@ -363,16 +623,70 @@ valid current vectors with equal selection hash, host profile, reported model,
 width, and encoding. Legacy v1 vectors remain readable but never compare densely.
 Changed/legacy selection yields missing-embedding refusal or explicitly partial fallback.
 
+For the opt-in `collection-dense` producer, Corpus `generation_produce` action
+`selection` reads configured public metadata through `embedding.profile`, without
+inference or a Usage charge. It returns `configured_profile`, `selection_sha256`
+and `reported_model: nil`; configuration is not an observed provider model.
+Keep its returned selection hash
+on a v2 `embedding.create` request as `expected_selection_sha256` when the work
+must use that same configuration. The host refuses a changed selection before
+approval/intent; the result must still match the reported profile/model, complete
+inputs and vectors. Read [the effect contract](extension-effects.md#generate-and-reconstruct-embeddings)
+for the closed shapes and saved snapshot binding. Neither bootstrap nor selection
+pinning revalidates a captured source's eligibility or supplies authority for
+stale-source egress. Version-1 public `page` delegates to the bounded v3 producer: a confirmed
+pending claim binds exact authenticated source byte ranges, raw/canonical hashes
+and captured job/catalog/root before inference. Each batch supplies `source_guard`
+and its expected selection. `DocumentSourceUse` authenticates retained logical
+records under the native read closure; live `DocumentEmbedding` admission binds
+the claim's actual committing operation to this invocation, known prior batches,
+trusted host time and the final one-use egress decision after approval. The short
+lock does not recall bytes already admitted before a later change.
+
+Select operator collection binding v2 with `source_use: shared_producer_v1`
+explicitly; every embedding from that identity requires a guard. The configuration
+generator's `--collection-source-use shared_producer_v1` is restricted to
+`corpus/collection-dense`; old calls retain binding v1. Explicit inference service
+metadata passes through the same generator into normal host validation. There is
+no route discovery or fallback. An unsupported v1 instance can retain an inert
+pending claim and refuse guarded inference without egress. `inspect` is read-only;
+pending/unknown and legacy v2 claims cannot be replayed or adopted by another Session.
+
+Version 2 uses v4 claims and ready slots for successive pages of at most eight
+1,024-dimensional rows. A known ready result exposes a complete public command
+for the next cursor; the next invocation authenticates the current source and
+commits its own claim. A null continuation only means that the captured group's
+vector pages are ready. Explicit facts and guarded group selection have separate
+commands; complete production and capacity qualification remain open.
+The [two-page synthetic Session](../archive/2026-10-26-p30-p31-implementation/shared-producer-v4-public-session.md)
+exercises the public continuation against an initially empty selected root. The
+[guarded Session](../archive/2026-10-26-p30-p31-implementation/shared-producer-guard-session.md)
+and [finite-TTL](../archive/2026-10-26-p30-p31-implementation/shared-producer-finite-guard-session.md)
+controls exercise the private artifact's exact production delegation using a
+synthetic loopback endpoint. Canonical artifact adoption is a separate build/
+protocol check accepted in the
+[public adoption review](../archive/2026-10-26-p30-p31-implementation/shared-producer-public-adoption-independent-review.md).
+Executed receipt validation remains distinct from independently
+authenticated historical model provenance; its flag stays false.
+
 Validate entire projection-chain homogeneity before deduplicating chunk IDs: a newer
 duplicate cannot hide an incompatible older row. Compatible batches append. Explicit
 reindex with a changed selection/model or legacy vector replaces that head's chain
 with `previous: null`, preserving other heads, source, facts, and suppression. Detached pages
-need explicit collection. New drafts/tokens/plans bind vector_version2. Older drafts
+need explicit collection. New drafts/tokens/plans bind vector_version 2. Older drafts
 remain inspectable/exactly abortable, without promotion or a fresh next step while active.
 
-Bind result indices to approved inputs and stable opaque host hashes across pages.
-Raw local hashes alone authenticate no returned vector. Check descriptor identity,
-offsets/dimensions, canonical Base64, float32 encoding, and full vector digest.
+Bind each result index to the SDK's canonical digest of the exact dispatched input,
+and require that digest on every page. Raw text hashes alone are different from
+the host's canonical input digest and authenticate no returned vector. This
+adapter check does not by itself reauthenticate previously stored vectors or prove which
+model weights the provider used. Store checks each new vector against the source
+chunk before publishing a projection; a mismatch refuses the entire commit. At
+dense query time, Corpus compares each stored
+vector's input digest with the current raw source chunk; a mismatch follows the
+configured missing-embedding policy and requires reindexing. The stored row is
+not deleted. Check descriptor identity, offsets/dimensions,
+canonical Base64, float32 encoding, and full vector digest.
 All finite float32 values including signed maxima are valid; NaN/infinity refuse.
 Do not shorten vectors. Two 4096-wide vectors require 12 coordinate pages, manifest,
 final CAS, claim, and embedding call: 16 effects. State admits one/two selected chunks;

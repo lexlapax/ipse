@@ -1,0 +1,244 @@
+Running ExUnit with seed: 47056, max_cases: 1
+Excluding tags: [:test]
+Including tags: [:public_generation_finalization_stale, :public_generation_finalization_unknown]
+
+NAMESPACE_TEST_ARTIFACT cc21575f3c2b8f44660e487546134ca4e6bf222de7e9b7fc98fb7c8b17601c77
+PUBLIC_SHARED_FINALIZATION_STALE {"model_calls":0,"selected_unchanged":true}
+.
+
+  1) test owner loss after native final selection retains unknown intent and never replays (Ipse.KnowledgeCollectionAdapterSessionTest)
+     test/extensions/knowledge/collection_adapter_session_test.exs:445
+     match (=) failed
+     The following variables were pinned:
+       events = [%{"created_at" => "2026-10-29T17:53:31.109102Z", "metadata" => %{"execution_mode" => %{"approval" => "ask", "approval_origin" => "interactive", "ceiling" => "normal", "enclosing_ceiling" => "normal", "headless" => false, "knowledge" => "available", "version" => 1}, "extension_catalog" => %{"entries" => [%{"arguments_schema" => %{"additionalProperties" => false, "properties" => %{"action" => %{"enum" => ["abort", "append", "collect", "continue_collection_document", "continue_collection_source", "continue_document", "export", "forget", "import", "inspect", "open", "publish", "put", "put_document", "read_document"], "type" => "string"}, "args" => %{"additionalProperties" => false, "properties" => %{"byte_count" => %{"maximum" => 65536, "minimum" => 1, "type" => "integer"}, "bytes_base64" => %{"maxLength" => 8192, "minLength" => 1, "type" => "string"}, "collection_state" => %{"type" => "object"}, "content_sha256" => %{"maxLength" => 64, "minLength" => 1, "type" => "string"}, "cursor" => %{"type" => ["integer", "null"]}, "draft_id" => %{"maxLength" => 64, "minLength" => 1, "type" => "string"}, "event_at_ms" => %{"maximum" => 9007199254740991, "minimum" => 0, "type" => ["integer", "null"]}, "expected_revision" => %{"maximum" => 1000000000, "minimum" => 0, "type" => "integer"}, "expected_sha256" => %{"maxLength" => 64, "minLength" => 64, "type" => ["string", "null"]}, "expires_at_ms" => %{"maximum" => 9007199254740991, "minimum" => 0, "type" => ["integer", "null"]}, "export" => %{"type" => "object"}, "filename" => %{"maxLength" => 256, "minLength" => 1, "type" => "string"}, "generation" => %{"maximum" => 1000000000, "minimum" => 1, "type" => "integer"}, "historical_import" => %{"type" => "object"}, "input_action" => %{"enum" => ["put", "put_document"], "type" => "string"}, "input_args" => %{"type" => "object"}, "limit" => %{"maximum" => 12, "minimum" => 1, "type" => "integer"}, "metadata_offset" => %{"maximum" => 16384, "minimum" => 0, "type" => "integer"}, "observed_at_ms" => %{"maximum" => 9000000000000, "minimum" => 0, "type" => "integer"}, "offset" => %{"maximum" => 65536, "minimum" => 0, "type" => "integer"}, "opening_acquisition" => %{"type" => "object"}, "path" => %{"maxLength" => 1024, "minLength" => 1, "type" => "string"}, "source_id" => %{"maxLength" => 256, "minLength" => 1, "type" => "string"}, "text" => %{"maxLength" => 8192, "minLength" => 1, "type" => "string"}, "title" => %{"maxLength" => 128, "minLength" => 1, "type" => "string"}, "uri" => %{"maxLength" => 512, "minLength" => 1, "type" => "string"}}, "type" => "object"}, "store" => %{"maxLength" => 64, "minLength" => 1, "type" => "string"}}, "required" => ["store", "action", "args"], "type" => "object"}, "description" => "Explicit source lifecycle", "id" => "source", "instance" => "documents", "name" => "ext__documents__source", "result_schema" => %{"type" => "object"}, "stage" => "invoke.command"}, %{"arguments_schema" => %{"additionalProperties" => false, "properties" => %{"as_of_ms" => %{"maximum" => 9007199254740991, "minimum" => 0, "type" => ["integer", "null"]}, "query" => %{"maxLength" => 1024, "minLength" => 1, "type" => "string"}, "rerank" => %{"type" => ["string", "null"]}, "retrieval" => %{"maxLength" => 64, "minLength" => 1, "type" => "string"}, "store" => %{"maxLength" => 64, "minLength" => 1, "type" => "string"}, "top_k" => %{"maximum" => 10, "minimum" => 1, "type" => "integer"}}, "required" => ["store", "retrieval", "rerank", "query", "top_k", "as_of_ms"], "type" => "object"}, "description" => "Read current cited evidence", "id" => "query", "instance" => "documents", "name" => "ext__documents__query", "result_schema" => %{"type" => "object"}, ...}, ...], ...}, ...}, ...}, ...]
+     code:  assert {:ok, ^events} = Journal.load(c.dir, c.id)
+     left:  {:ok, ^events}
+     right: {:ok,
+             [
+               %{
+                 "created_at" => "2026-10-29T17:53:31.109102Z",
+                 "metadata" => %{
+                   "execution_mode" => %{
+                     "approval" => "ask",
+                     "approval_origin" => "interactive",
+                     "ceiling" => "normal",
+                     "enclosing_ceiling" => "normal",
+                     "headless" => false,
+                     "knowledge" => "available",
+                     "version" => 1
+                   },
+                   "extension_catalog" => %{
+                     "entries" => [
+                       %{
+                         "arguments_schema" => %{
+                           "additionalProperties" => false,
+                           "properties" => %{
+                             "action" => %{
+                               "enum" => ["abort", "append",
+                                "collect",
+                                "continue_collection_document",
+                                "continue_collection_source",
+                                "continue_document", "export",
+                                "forget", "import", "inspect",
+                                "open", "publish", "put",
+                                "put_document", "read_document"],
+                               "type" => "string"
+                             },
+                             "args" => %{
+                               "additionalProperties" => false,
+                               "properties" => %{
+                                 "byte_count" => %{
+                                   "maximum" => 65536,
+                                   "minimum" => 1,
+                                   "type" => "integer"
+                                 },
+                                 "bytes_base64" => %{
+                                   "maxLength" => 8192,
+                                   "minLength" => 1,
+                                   "type" => "string"
+                                 },
+                                 "collection_state" => %{
+                                   "type" => "object"
+                                 },
+                                 "content_sha256" => %{
+                                   "maxLength" => 64,
+                                   "minLength" => 1,
+                                   "type" => "string"
+                                 },
+                                 "cursor" => %{
+                                   "type" => ["integer", "null"]
+                                 },
+                                 "draft_id" => %{
+                                   "maxLength" => 64,
+                                   "minLength" => 1,
+                                   "type" => "string"
+                                 },
+                                 "event_at_ms" => %{
+                                   "maximum" => 9007199254740991,
+                                   "minimum" => 0,
+                                   "type" => ["integer", "null"]
+                                 },
+                                 "expected_revision" => %{
+                                   "maximum" => 1000000000,
+                                   "minimum" => 0,
+                                   "type" => "integer"
+                                 },
+                                 "expected_sha256" => %{
+                                   "maxLength" => 64,
+                                   "minLength" => 64,
+                                   "type" => ["string", "null"]
+                                 },
+                                 "expires_at_ms" => %{
+                                   "maximum" => 9007199254740991,
+                                   "minimum" => 0,
+                                   "type" => ["integer", "null"]
+                                 },
+                                 "export" => %{"type" => "object"},
+                                 "filename" => %{
+                                   "maxLength" => 256,
+                                   "minLength" => 1,
+                                   "type" => "string"
+                                 },
+                                 "generation" => %{
+                                   "maximum" => 1000000000,
+                                   "minimum" => 1,
+                                   "type" => "integer"
+                                 },
+                                 "historical_import" => %{
+                                   "type" => "object"
+                                 },
+                                 "input_action" => %{
+                                   "enum" => ["put", "put_document"],
+                                   "type" => "string"
+                                 },
+                                 "input_args" => %{
+                                   "type" => "object"
+                                 },
+                                 "limit" => %{
+                                   "maximum" => 12,
+                                   "minimum" => 1,
+                                   "type" => "integer"
+                                 },
+                                 "metadata_offset" => %{
+                                   "maximum" => 16384,
+                                   "minimum" => 0,
+                                   "type" => "integer"
+                                 },
+                                 "observed_at_ms" => %{
+                                   "maximum" => 9000000000000,
+                                   "minimum" => 0,
+                                   "type" => "integer"
+                                 },
+                                 "offset" => %{
+                                   "maximum" => 65536,
+                                   "minimum" => 0,
+                                   "type" => "integer"
+                                 },
+                                 "opening_acquisition" => %{
+                                   "type" => "object"
+                                 },
+                                 "path" => %{
+                                   "maxLength" => 1024,
+                                   "minLength" => 1,
+                                   "type" => "string"
+                                 },
+                                 "source_id" => %{
+                                   "maxLength" => 256,
+                                   "minLength" => 1,
+                                   "type" => "string"
+                                 },
+                                 "text" => %{
+                                   "maxLength" => 8192,
+                                   "minLength" => 1,
+                                   "type" => "string"
+                                 },
+                                 "title" => %{
+                                   "maxLength" => 128,
+                                   "minLength" => 1,
+                                   "type" => "string"
+                                 },
+                                 "uri" => %{
+                                   "maxLength" => 512,
+                                   "minLength" => 1,
+                                   "type" => "string"
+                                 }
+                               },
+                               "type" => "object"
+                             },
+                             "store" => %{
+                               "maxLength" => 64,
+                               "minLength" => 1,
+                               "type" => "string"
+                             }
+                           },
+                           "required" => ["store", "action", "args"],
+                           "type" => "object"
+                         },
+                         "description" => "Explicit source lifecycle",
+                         "id" => "source",
+                         "instance" => "documents",
+                         "name" => "ext__documents__source",
+                         "result_schema" => %{"type" => "object"},
+                         "stage" => "invoke.command"
+                       },
+                       %{
+                         "arguments_schema" => %{
+                           "additionalProperties" => false,
+                           "properties" => %{
+                             "as_of_ms" => %{
+                               "maximum" => 9007199254740991,
+                               "minimum" => 0,
+                               "type" => ["integer", "null"]
+                             },
+                             "query" => %{
+                               "maxLength" => 1024,
+                               "minLength" => 1,
+                               "type" => "string"
+                             },
+                             "rerank" => %{
+                               "type" => ["string", "null"]
+                             },
+                             "retrieval" => %{
+                               "maxLength" => 64,
+                               "minLength" => 1,
+                               "type" => "string"
+                             },
+                             "store" => %{
+                               "maxLength" => 64,
+                               "minLength" => 1,
+                               "type" => "string"
+                             },
+                             "top_k" => %{
+                               "maximum" => 10,
+                               "minimum" => 1,
+                               "type" => "integer"
+                             }
+                           },
+                           "required" => ["store", "retrieval",
+                            "rerank", "query", "top_k", "as_of_ms"],
+                           "type" => "object"
+                         },
+                         "description" => "Read current cited evidence",
+                         "id" => "query",
+                         "instance" => "documents",
+                         "name" => "ext__documents__query",
+                         ...
+                       },
+                       ...
+                     ],
+                     ...
+                   },
+                   ...
+                 },
+                 ...
+               },
+               ...
+             ]}
+     stacktrace:
+       test/extensions/knowledge/collection_adapter_session_test.exs:504: (test)
+
+
+Finished in 73.9 seconds (1.1s on load, 0.00s async, 72.8s sync)
+
+Result: 1/2 passed, 34 excluded
+Failed: 1 test

@@ -467,6 +467,88 @@ defmodule Ipse.Extension.EmbeddingResultTest do
     end
   end
 
+  test "read-only profile bootstrap binds the requested frozen public snapshot" do
+    f = fixture(768, 1)
+    request = %{"op" => "embedding.profile", "version" => 1, "profile" => "vectors"}
+    assert {:ok, binding} = EmbeddingCall.profile_binding(f.scope, request)
+    value = EmbeddingCall.profile_value(binding)
+    assert value["profile"] === f.scope["embedding_profiles"]["vectors"]
+    assert {:ok, value["selection_sha256"]} == EmbeddingCall.selection_sha256(f.intent)
+    assert EmbeddingCall.valid_profile_binding?(binding, request, f.scope)
+    assert EmbeddingCall.valid_profile_outcome?(request, "ok", value)
+    assert Ipse.Extension.Actions.validate_operation(request) == :ok
+    assert Ipse.Extension.Actions.capability(request) == "host.embedding"
+    refute Ipse.Extension.Actions.mutating?(request)
+    refute Ipse.Extension.Actions.inference?(request)
+    refute EmbeddingCall.operation?(request)
+
+    for changed <- [Map.put(request, "version", 1.0), Map.put(request, "inputs", ["x"])] do
+      assert {:error, _} = EmbeddingCall.validate_profile(changed)
+    end
+
+    for scope <- [
+          %{},
+          %{"embedding_profiles" => nil},
+          put_in(f.scope, ["embedding_profiles", "vectors", "model"], "changed")
+        ] do
+      refute EmbeddingCall.valid_profile_binding?(binding, request, scope)
+    end
+
+    assert {:error, _} =
+             EmbeddingCall.profile_binding(f.scope, %{request | "profile" => "missing"})
+
+    refute EmbeddingCall.valid_profile_outcome?(
+             request,
+             "ok",
+             Map.put(value, "kind", "embedding_profile")
+           )
+
+    refute EmbeddingCall.valid_profile_outcome?(
+             request,
+             "ok",
+             Map.put(value, "selection_sha256", digest("wrong"))
+           )
+  end
+
+  test "optional v2 selection pin is checked before binding and against result selection" do
+    f = fixture(768, 1, 2)
+    assert {:ok, selection} = EmbeddingCall.selection_sha256(f.intent)
+    request = Map.put(f.request, "expected_selection_sha256", selection)
+    binding = f.intent["effect_binding"]
+    assert EmbeddingCall.validate(request) == :ok
+    assert {:ok, ^binding} = EmbeddingCall.binding(f.config, request)
+    assert EmbeddingCall.valid_binding?(binding, request, f.scope)
+
+    for invalid <- [
+          Map.put(request, "version", 1),
+          Map.put(request, "expected_selection_sha256", nil),
+          Map.put(request, "expected_selection_sha256", "bad"),
+          Map.put(request, "extra", true)
+        ] do
+      assert {:error, _} = EmbeddingCall.validate(invalid)
+    end
+
+    mismatched = Map.put(request, "expected_selection_sha256", digest("other selection"))
+    assert EmbeddingCall.validate(mismatched) == :ok
+    assert {:error, _} = EmbeddingCall.binding(f.config, mismatched)
+    refute EmbeddingCall.valid_binding?(binding, mismatched)
+    refute EmbeddingCall.valid_binding?(binding, mismatched, f.scope)
+
+    for config <- [
+          put_in(f.config, [:embedding_profiles, "vectors", "model"], "changed"),
+          put_in(f.config, [:embedding_profiles, "vectors", "dimensions"], 1024),
+          put_in(f.config, [:embedding_profiles, "vectors", "base_url"], "http://127.0.0.1:9999")
+        ] do
+      assert {:error, _} = EmbeddingCall.binding(config, request)
+    end
+
+    assert {:ok, value} =
+             EmbeddingCall.value_from_completion(f.intent, f.admission, f.completion, f.source)
+
+    assert EmbeddingCall.valid_outcome?(request, "ok", value, f.intent["operation_id"])
+    refute EmbeddingCall.valid_outcome?(mismatched, "ok", value, f.intent["operation_id"])
+  end
+
   defp pages(source, index, offset, acc) do
     request = read_request(source, index, offset, 768)
     {:ok, page} = EffectResult.read(source, request)
@@ -545,6 +627,7 @@ defmodule Ipse.Extension.EmbeddingResultTest do
     {:ok, source} = EmbeddingCall.response(intent, admission, completion, payload)
 
     %{
+      config: config,
       request: request,
       scope: scope,
       execution: execution,

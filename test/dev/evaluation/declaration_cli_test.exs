@@ -8,6 +8,172 @@ defmodule Ipse.KnowledgeEvaluationDeclarationCLITest do
   use ExUnit.Case, async: false
   alias Ipse.Development.Evaluation.Contract
 
+  @tag timeout: 120_000
+  test "declaration captures a wide source and reports the file limit before creating output" do
+    root = Path.join(System.tmp_dir!(), "ipse-evaluation-source-limit-" <> Ipse.Usage.id())
+    repository = Path.join(root, "repository")
+    artifact = Path.join(root, "artifact")
+    File.mkdir_p!(repository)
+    on_exit(fn -> File.rm_rf!(root) end)
+
+    source = Path.expand("../../..", __DIR__)
+
+    {files, 0} =
+      System.cmd("git", ["ls-files", "--cached", "--others", "--exclude-standard", "-z"],
+        cd: source
+      )
+
+    for relative <- String.split(files, <<0>>, trim: true),
+        not String.starts_with?(relative, "docs/archive/"),
+        File.regular?(Path.join(source, relative)) do
+      target = Path.join(repository, relative)
+      File.mkdir_p!(Path.dirname(target))
+      File.cp!(Path.join(source, relative), target)
+    end
+
+    base_count =
+      files
+      |> String.split(<<0>>, trim: true)
+      |> Enum.count(fn relative ->
+        not String.starts_with?(relative, "docs/archive/") and
+          File.regular?(Path.join(source, relative))
+      end)
+
+    name = fn n -> "source-" <> String.duplicate("x", 48) <> "-#{n}" end
+    for n <- 1..8193, do: File.write!(Path.join(repository, name.(n)), "")
+    git!(repository, ["init", "-q"])
+    git!(repository, ["add", "."])
+
+    git!(repository, [
+      "-c",
+      "user.name=Fixture",
+      "-c",
+      "user.email=fixture@example.test",
+      "-c",
+      "commit.gpgsign=false",
+      "commit",
+      "-qm",
+      "synthetic source"
+    ])
+
+    inert_artifact!(artifact)
+
+    spec =
+      JSON.decode!(File.read!("dev/evaluation/benchmark-spec.json"))
+      |> Map.put("blind_seed", String.duplicate("b", 64))
+      |> Map.update!("artifacts", &Map.new(&1, fn {id, _} -> {id, artifact} end))
+
+    assert {:ok, plan} = Contract.build(spec)
+    plan_path = Path.join(root, "plan.json")
+    private!(plan_path, JSON.encode!(plan))
+    first = Path.join(root, "wide-experiment.json")
+
+    assert {0, %{"status" => "ok", "result" => %{"sha256" => digest}}} =
+             cli(repository, ["--phase", "declare", "--plan", plan_path, "--output", first])
+
+    bytes = File.read!(first)
+    assert byte_size(bytes) > 1_048_576
+    assert Ipse.JSON.sha256(bytes) == digest
+    assert {:ok, experiment} = Ipse.JSON.decode_unique(bytes)
+    assert length(experiment["source"]["files"]) == 8193 + base_count
+
+    resolution = %{
+      "artifacts" => plan["artifacts"],
+      "model_origin" => "http://127.0.0.1:47631",
+      "search_port" => 47632,
+      "reports" => Path.join(root, "reports"),
+      "data_manifest" => Path.join(root, "unopened-data/manifest.json"),
+      "model_service" =>
+        FrozenModelSelection.configuration(plan["models"], root, "http://127.0.0.1:47631")
+    }
+
+    assert {:ok, _} = Ipse.Development.Evaluation.Freeze.resolve_plan(bytes, resolution)
+
+    assert {:ok, seal} =
+             Ipse.Development.Evaluation.Freeze.create_v2(
+               repository,
+               bytes,
+               resolution,
+               Path.join(root, "frozen")
+             )
+
+    assert File.stat!(seal["path"]).size > 1_048_576
+    assert {:ok, _} = Ipse.Development.Evaluation.Freeze.verify(seal["path"], seal["sha256"])
+    changed = Path.join(repository, name.(8193))
+    File.write!(changed, "changed")
+
+    assert {:error, :dirty_source} =
+             Ipse.Development.Evaluation.Freeze.verify(seal["path"], seal["sha256"])
+
+    File.write!(changed, "")
+
+    resolution_path = Path.join(root, "wide-resolution.json")
+    private!(resolution_path, JSON.encode!(resolution))
+
+    assert {0, %{"status" => "ok", "result" => cli_seal}} =
+             cli(repository, [
+               "--phase",
+               "freeze-measured",
+               "--experiment",
+               first,
+               "--experiment-sha256",
+               digest,
+               "--resolution",
+               resolution_path,
+               "--output",
+               Path.join(root, "frozen-cli"),
+               "--sdk",
+               Application.app_dir(:ipse, "ebin"),
+               "--repository",
+               repository
+             ])
+
+    assert File.stat!(cli_seal["path"]).size > 1_048_576
+
+    # The CLI verifies inside its captured runtime. The parent is a different
+    # runtime and must not claim that its local BEAM inventory matches.
+    assert {:error, :runtime_changed} =
+             Ipse.Development.Evaluation.Freeze.verify(cli_seal["path"], cli_seal["sha256"])
+
+    assert {1, %{"status" => "failed", "reason" => %{"code" => "measured_entry_required"}}} =
+             plain_cli(repository, [
+               "--phase",
+               "predict",
+               "--freeze",
+               cli_seal["path"],
+               "--freeze-sha256",
+               cli_seal["sha256"],
+               "--data-manifest",
+               resolution["data_manifest"],
+               "--output",
+               Path.join(root, "predictions")
+             ])
+
+    refute File.exists?(Path.join(root, "predictions"))
+
+    for n <- 8194..(16_385 - base_count), do: File.write!(Path.join(repository, name.(n)), "")
+    git!(repository, ["add", "."])
+
+    git!(repository, [
+      "-c",
+      "user.name=Fixture",
+      "-c",
+      "user.email=fixture@example.test",
+      "-c",
+      "commit.gpgsign=false",
+      "commit",
+      "-qm",
+      "over limit"
+    ])
+
+    output = Path.join(root, "experiment.json")
+
+    assert {1, %{"status" => "failed", "reason" => %{"code" => "source_file_limit"}}} =
+             cli(repository, ["--phase", "declare", "--plan", plan_path, "--output", output])
+
+    refute File.exists?(output)
+  end
+
   for layout <- [:current, :separate_cli] do
     @layout layout
     @tag timeout: 120_000
@@ -23,7 +189,10 @@ defmodule Ipse.KnowledgeEvaluationDeclarationCLITest do
           cd: source
         )
 
+      # The synthetic evaluator repository needs executable sources, not the
+      # potentially much larger historical evidence archive.
       for relative <- String.split(files, <<0>>, trim: true),
+          not String.starts_with?(relative, "docs/archive/"),
           File.regular?(Path.join(source, relative)) do
         target = Path.join(repository, relative)
         File.mkdir_p!(Path.dirname(target))
@@ -58,6 +227,14 @@ defmodule Ipse.KnowledgeEvaluationDeclarationCLITest do
       assert {:ok, plan} = Contract.build(spec)
       plan_path = Path.join(root, "plan.json")
       private!(plan_path, JSON.encode!(plan))
+
+      assert {:ok, _} =
+               Ipse.Development.Evaluation.Freeze.declare(
+                 repository,
+                 File.read!(plan_path),
+                 plan["artifacts"]
+               )
+
       experiment = Path.join(root, "experiment.json")
 
       assert {0, %{"status" => "ok", "result" => declared}} =

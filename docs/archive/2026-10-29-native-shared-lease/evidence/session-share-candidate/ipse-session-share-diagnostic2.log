@@ -1,0 +1,35 @@
+Running ExUnit with seed: 305475, max_cases: 8
+Excluding tags: [:test]
+Including tags: [line: 85]
+
+DIAGNOSTIC: {:session_share_frame, 66,
+ <<66, 0, 0, 0, 29, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 53, 0, 0, 0,
+   0, 0, 18, 233, 7, 0, 0, 3, 232>>}
+DIAGNOSTIC: {:session_share_frame, 72, <<72, 0, 0, 0, 9, 0, 0, 0, 0, 0, 0, 0, 2, 1>>}
+DIAGNOSTIC: {:session_share_frame, 68, <<68, 0, 0, 0, 9, 0, 0, 0, 0, 0, 0, 0, 3, 1>>}
+DIAGNOSTIC: {:session_share_frame, 70, <<70, 0, 0, 0, 9, 0, 0, 0, 0, 0, 0, 0, 4, 1>>}
+DIAGNOSTIC: {:session_share_frame, 81, <<81, 0, 0, 0, 5, 114, 101, 97, 100, 121>>}
+DIAGNOSTIC: {:session_share_frame, 87, <<87, 0, 0, 0, 6, 115, 116, 97, 103, 101, 100>>}
+DIAGNOSTIC: {:session_share_frame, 69, <<69, 0, 0, 0, 6, 115, 121, 110, 99, 101, 100>>}
+DIAGNOSTIC: {:session_share_frame, 89,
+ <<89, 0, 0, 0, 33, 0, 0, 0, 0, 0, 0, 0, 5, 1, 0, 0, 0, 0, 0, 0, 0, 1, 61, 210,
+   35, 56, 123, 153, 52, 254, 114, 115, 41, 24, 252, 18, 154, 2>>}
+EXPORT_RESULT: :ok
+COLLECTOR_MESSAGE: {#Port<0.4>,
+ {:data,
+  <<76, 0, 0, 0, 17, 61, 210, 35, 56, 123, 153, 52, 254, 114, 115, 41, 24, 252,
+    18, 154, 2, 1>>}}
+
+
+  1) test original header owner stays locked through recipient close, then writer thaws (Ipse.Session.ShareBarrierTest)
+     /tmp/ipse-session-share-fixture-diagnostic.exs:85
+     collector response timed out
+     code: assert receive_frame(collector, ?L) == <<operation::binary, 1>>
+     stacktrace:
+       /tmp/ipse-session-share-fixture-diagnostic.exs:120: (test)
+
+
+Finished in 8.1 seconds (0.1s on load, 0.00s async, 8.0s sync)
+
+Result: 0/1 passed, 1 excluded
+Failed: 1 test

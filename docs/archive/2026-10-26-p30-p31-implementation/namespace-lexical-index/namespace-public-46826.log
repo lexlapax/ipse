@@ -1,0 +1,9 @@
+     error: undefined variable "id"
+     │
+ 266 │       args = if id == "fixture:beta", do: Map.put(args, "expires_at_ms", 15), else: args
+     │                 ^^
+     │
+     └─ test/extensions/knowledge/collection_adapter_session_test.exs:266:17: Ipse.KnowledgeCollectionAdapterSessionTest."test catalog crosses its first page and selective hydration reads only requested sources"/1
+
+** (CompileError) test/extensions/knowledge/collection_adapter_session_test.exs: cannot compile module Ipse.KnowledgeCollectionAdapterSessionTest (errors have been logged)
+

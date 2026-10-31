@@ -1,0 +1,17 @@
+error[E0382]: use of moved value: `owner_write`
+    --> dev/fixtures/transaction_lease_export.rs:1220:22
+     |
+1120 |         let (owner_read, owner_write) = test_pipe()?;
+     |                          ----------- move occurs because `owner_write` has type `File`, which does not implement the `Copy` trait
+...
+1203 |             drop(owner_write);
+     |                  ----------- value moved here
+...
+1220 |                 drop(owner_write);
+     |                      ^^^^^^^^^^^ value used here after move
+     |
+     = note: you can use `File::try_clone` to duplicate a `File` instance
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0382`.

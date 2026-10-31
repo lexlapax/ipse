@@ -1,0 +1,110 @@
+{
+  "date": "2026-10-29",
+  "files": {
+    "logs/ipse-literal-ab-seed-46915.log": {
+      "bytes": 24870,
+      "sha256": "b10b6e252aff4d2c6f8a83a6e10d9b27880699f60d432ad3d4479718775d0c2a"
+    },
+    "logs/ipse-literal-v4-ab-current-46916.log": {
+      "bytes": 913,
+      "sha256": "dd811ac027f68baf8e4f40f04e1979c53043a93f279c900d1f3835629253fd05"
+    },
+    "logs/ipse-literal-v4-ab-current-46917.log": {
+      "bytes": 624,
+      "sha256": "e11b6f6b80f93116877c4b4adc13576d231bc611c21dae6a709ce689fcfed6ef"
+    },
+    "logs/ipse-literal-v4-ab-current-46918.log": {
+      "bytes": 624,
+      "sha256": "f6f862a001a4310d47bff0ef735a8f6dad6511d8796925a927dde8b4d824db48"
+    },
+    "logs/ipse-literal-v4-ab-current-46919.log": {
+      "bytes": 1676,
+      "sha256": "5a19cc408d2980a9bf9771cf85f123e7514cbed94cfd8c92a0fac7b52b5c7892"
+    },
+    "logs/ipse-literal-v4-ab-current-46920.log": {
+      "bytes": 2735,
+      "sha256": "caf54dc0968c70120d9b10897ed5610d6bd2b2c56366effbda1006372bb4f039"
+    },
+    "logs/ipse-literal-v4-ab-current-46921.log": {
+      "bytes": 376,
+      "sha256": "3d8e66e139278cc40463710b5ee71837942f44557e45cf08cd8deed8ee2bbe9c"
+    },
+    "logs/ipse-literal-v4-ab-source-verify-46922.log": {
+      "bytes": 184,
+      "sha256": "bdf47970c331ad4f9dfb1ddc86d31ba3b4b77f487a0d52621f9787d628570e43"
+    },
+    "runtime.json": {
+      "bytes": 108251,
+      "sha256": "06c3992de5dfd204d98bcce03e13ef3f785c87c16e47f5c2a391a6079879f6b4"
+    },
+    "source/_build/check-literal-ab-cohort.exs": {
+      "bytes": 537,
+      "sha256": "caae3b8be076098b038f7a76aec3fb1b610493167bba24fe62bcc6d614f93ca8"
+    },
+    "source/_build/freeze-literal-v4-ab-46921.exs": {
+      "bytes": 5359,
+      "sha256": "9b3579a2fd12216bf124b0d993d8ee0612a84127dcb09126c1ab96e4cccc46b9"
+    },
+    "source/_build/run-literal-ab-seed-46915.exs": {
+      "bytes": 658,
+      "sha256": "7a10335d5ebc40208c2070b44120fda9193d9f31def8903f8bb729c16f02ec76"
+    },
+    "source/_build/run-literal-v4-ab-current-46920.exs": {
+      "bytes": 708,
+      "sha256": "a6c5784ab080cf8a76e386dcef6c85141333aa82190272e1bbd6276e6e3209df"
+    },
+    "source/_build/run-literal-v4-ab-current2.exs": {
+      "bytes": 1325,
+      "sha256": "4ea11fd11c02c52f09e2e65f15c70454ffe5cfa81546a0dc52a9ad340e443b1a"
+    },
+    "source/lib/ipse/session/invocation.ex": {
+      "bytes": 61920,
+      "sha256": "457e6094a01e59050b3601b955480f422f11c8b089b1f237f03210542060836d"
+    },
+    "source/lib/ipse/session/managed_tool_use.ex": {
+      "bytes": 47326,
+      "sha256": "c4be52beb759d64192fa7037e488fca0c1cdebc43c1526d4a8aff9064091664e"
+    },
+    "source/test/ipse/extension/managed_collection_call_session_test.exs": {
+      "bytes": 197028,
+      "sha256": "e2645fcb485617cef7a74da88c53027587938fb47586c8e8373f3052d8ca67c3"
+    },
+    "source/test/support/managed_literal_ab_seed.exs": {
+      "bytes": 4708,
+      "sha256": "b1c08146478e0e0a12492b2d95393e00be756e967aa6d44c343273f80855ef27"
+    },
+    "source/test/support/operator_pty.rs": {
+      "bytes": 15386,
+      "sha256": "45c053d2148eb89294db18a718c9db23c8fe17625123663af62bdef61014cc13"
+    },
+    "synthetic/consumer-219dec9ca7a90ae4db79ea710c2316a0.jsonl": {
+      "bytes": 46366,
+      "sha256": "14ebfc344f97e0133517d9fe660b06e69f36435c6c68aa3a2b431c6ab6bad7c3"
+    },
+    "synthetic/consumer-7e64729d4d7201bddf51e6099daed042.jsonl": {
+      "bytes": 53892,
+      "sha256": "97e178b79548aee94432d3ee456a92edaa7bd02befe29e506167049d9e27a3a8"
+    },
+    "synthetic/consumer-95e49c456e4b8e0628a2d270c0640b38.jsonl": {
+      "bytes": 72548,
+      "sha256": "2bbb0ebb06c5334e3ba4a227e5c99a2042c27f3aa0428bc543e9b5228e624b33"
+    },
+    "synthetic/consumer-d130a5423663dc4e613e7af9b550ffbb.jsonl": {
+      "bytes": 46437,
+      "sha256": "ec13cd8ac9e7e68e15fb96c1bef9b3760b083d152754b9b35a52e5609adb996f"
+    },
+    "synthetic/final-worker-trace.jsonl": {
+      "bytes": 4302,
+      "sha256": "12247d1dbb2c8007a4dbb7ca76916015ac6a967ca83bf2aa47f1a975d9e8e822"
+    },
+    "synthetic/literal-ab-seed.json": {
+      "bytes": 11700,
+      "sha256": "b62b6f22c14c16f4b62c2f26cee0eb31559852c38f51d89e869bd6a86e5b973b"
+    },
+    "synthetic/source-A.jsonl": {
+      "bytes": 58278,
+      "sha256": "1bf35b8c32eb190a989f3b5f9bd18ec0ae04edff27d1444710988c0eef0c7bb4"
+    }
+  },
+  "scope": "Genuine historical literal seed and corrected current-gate consumer source-union refusal; local retained graphs, not aggregate or publication qualification."
+}

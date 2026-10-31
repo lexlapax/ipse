@@ -1,0 +1,8 @@
+FINALIZATION_MANIFEST_OK: %{
+  sources: 12,
+  logs: 6,
+  cohorts: 6,
+  cohort_files: 101,
+  public_artifact_files: 24,
+  prerequisite_manifest: true
+}

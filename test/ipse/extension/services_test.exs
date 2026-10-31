@@ -1,5 +1,6 @@
 defmodule Ipse.Extension.ServicesTest do
   use ExUnit.Case, async: false
+  import Ipse.Test.ResumeAssertions
   alias Ipse.{Session, Journal}
   alias Ipse.Extension.{Services, Catalog, Config, Registry, Artifact}
 
@@ -387,7 +388,7 @@ defmodule Ipse.Extension.ServicesTest do
     assert Session.info(resumed).extension_result == info.extension_result
     refute File.exists?(ctx.caller_marker)
     refute File.exists?(ctx.target_marker)
-    assert File.read!(path) == before
+    assert_idle_resume_journal(path, before, info.id)
   end
 
   test "value-service replies cannot escalate into host actions", ctx do

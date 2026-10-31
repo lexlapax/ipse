@@ -1,0 +1,15 @@
+     warning: IpseKnowledge.Knowledge.Contracts.proposal_schema/0 is undefined (module IpseKnowledge.Knowledge.Contracts is not available or is yet to be defined)
+     │
+ 155 │              IpseKnowledge.Knowledge.Contracts.proposal_schema(),
+     │                                                ~
+     │
+     └─ extensions/knowledge/src/knowledge/records.ex:155:48: IpseKnowledge.Knowledge.Records.pending_projection/2
+
+Running ExUnit with seed: 20261029, max_cases: 40
+Excluding tags: [:test]
+Including tags: [:held_target_read]
+
+..
+Finished in 0.5 seconds (0.00s async, 0.5s sync)
+
+Result: 2 passed, 35 excluded

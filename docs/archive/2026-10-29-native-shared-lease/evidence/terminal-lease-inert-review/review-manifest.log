@@ -1,0 +1,8 @@
+TERMINAL_LEASE_INERT_MANIFEST_OK: %{
+  manifest_entries: 32,
+  source_files: 34,
+  runtime_files: 697,
+  helper_matches: true,
+  inherited_owner_control_session_graph: true,
+  final_fixture_and_operator_binaries_pinned: true
+}

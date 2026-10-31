@@ -25,6 +25,11 @@ defmodule Ipse.Development.Evaluation.Freeze do
   alias Ipse.Development.Evaluation.Contract
 
   @max_measured_lifetime_ms 15 * 86_400_000
+  @source_file_limit 16_384
+  @snapshot_bytes 4_194_304
+
+  @doc false
+  def snapshot_bytes, do: @snapshot_bytes
 
   @completion_policy %{
     "completion_policy" => "bounded_natural_drain_v1",
@@ -181,7 +186,7 @@ defmodule Ipse.Development.Evaluation.Freeze do
       }
 
       bytes = JSON.encode!(manifest) <> "\n"
-      require!(byte_size(bytes) <= 1_048_576, :manifest_limit)
+      require!(byte_size(bytes) <= @snapshot_bytes, :manifest_limit)
       path = Path.join(output, "manifest.json")
       write_private(path, bytes)
       digest = Ipse.JSON.sha256(bytes)
@@ -239,7 +244,7 @@ defmodule Ipse.Development.Evaluation.Freeze do
       }
 
       bytes = JSON.encode!(manifest) <> "\n"
-      require!(byte_size(bytes) <= 1_048_576, :manifest_limit)
+      require!(byte_size(bytes) <= @snapshot_bytes, :manifest_limit)
       path = Path.join(output, "manifest.json")
       write_private(path, bytes)
       digest = Ipse.JSON.sha256(bytes)
@@ -251,9 +256,9 @@ defmodule Ipse.Development.Evaluation.Freeze do
   def verify(path, expected_sha256) do
     protect(fn ->
       require!(Ipse.JSON.sha256?(expected_sha256), :invalid_manifest_hash)
-      bytes = read_bounded!(path, 1_048_576)
+      bytes = read_bounded!(path, @snapshot_bytes)
       require!(Ipse.JSON.sha256(bytes) == expected_sha256, :manifest_changed)
-      {:ok, manifest} = Ipse.JSON.decode_bounded(bytes, 1_048_576)
+      {:ok, manifest} = decode_snapshot(bytes)
       require!(is_map(manifest), :invalid_manifest)
       root = Path.dirname(Path.expand(path))
 
@@ -324,7 +329,7 @@ defmodule Ipse.Development.Evaluation.Freeze do
       :registry_changed
     )
 
-    experiment_bytes = read_bounded!(Path.join(root, "experiment.json"), 1_048_576)
+    experiment_bytes = read_bounded!(Path.join(root, "experiment.json"), @snapshot_bytes)
 
     require!(
       Ipse.JSON.sha256(experiment_bytes) == manifest["experiment_sha256"],
@@ -411,7 +416,7 @@ defmodule Ipse.Development.Evaluation.Freeze do
   end
 
   defp decode_experiment!(bytes) do
-    {:ok, experiment} = Ipse.JSON.decode_bounded(bytes, 1_048_576)
+    {:ok, experiment} = decode_snapshot(bytes)
 
     require!(
       exact?(experiment, ~w(version kind source plan artifacts policy)) and
@@ -440,7 +445,7 @@ defmodule Ipse.Development.Evaluation.Freeze do
 
     require!(
       exact?(source, ~w(commit tree files)) and is_list(source["files"]) and
-        length(source["files"]) in 1..4096,
+        length(source["files"]) in 1..@source_file_limit,
       :invalid_experiment
     )
 
@@ -669,7 +674,7 @@ defmodule Ipse.Development.Evaluation.Freeze do
     commit = git!(root, ["rev-parse", "HEAD"]) |> String.trim()
     tree = git!(root, ["rev-parse", "HEAD^{tree}"]) |> String.trim()
     paths = git!(root, ["ls-files", "-z", "--cached"]) |> String.split(<<0>>, trim: true)
-    require!(paths != [] and length(paths) <= 4096, :source_file_limit)
+    require!(paths != [] and length(paths) <= @source_file_limit, :source_file_limit)
 
     files =
       paths
@@ -787,6 +792,11 @@ defmodule Ipse.Development.Evaluation.Freeze do
       _ -> fail!(:invalid_plan)
     end
   end
+
+  defp decode_snapshot(bytes) when is_binary(bytes) and byte_size(bytes) <= @snapshot_bytes,
+    do: Ipse.JSON.decode_unique(bytes)
+
+  defp decode_snapshot(_), do: {:error, :invalid_json}
 
   defp git!(root, arguments) do
     case System.cmd("git", ["--no-optional-locks", "-C", root | arguments],

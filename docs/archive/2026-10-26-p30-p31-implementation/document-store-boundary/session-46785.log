@@ -1,0 +1,27 @@
+Running ExUnit with seed: 46785, max_cases: 1
+
+
+
+  1) test ordinary denial never initializes document storage and no identity is silently admitted (Ipse.Extension.CollectionStoreSessionTest)
+     test/ipse/extension/collection_store_session_test.exs:158
+     document store error: "Extension outcome unknown after refusal, failure or interruption. Inspect its receipt before retrying; no callback was replayed."
+     code: for opts <- [[approval: :deny], [admit: false]] do
+     stacktrace:
+       test/ipse/extension/collection_store_session_test.exs:162: anonymous fn/3 in Ipse.Extension.CollectionStoreSessionTest."test ordinary denial never initializes document storage and no identity is silently admitted"/1
+       (elixir 1.20.4) lib/enum.ex:2622: Enum."-reduce/3-lists^foldl/2-0-"/3
+       test/ipse/extension/collection_store_session_test.exs:159: (test)
+
+
+
+  2) test actual Session transports every bounded part, asks full mutation arguments and reconstructs exact large value (Ipse.Extension.CollectionStoreSessionTest)
+     test/ipse/extension/collection_store_session_test.exs:137
+     document store error: "Extension outcome unknown after refusal, failure or interruption. Inspect its receipt before retrying; no callback was replayed."
+     code: {result, approvals} = wait(run)
+     stacktrace:
+       test/ipse/extension/collection_store_session_test.exs:140: (test)
+
+
+Finished in 1.9 seconds (0.00s async, 1.9s sync)
+
+Result: 0/2 passed
+Failed: 2 tests

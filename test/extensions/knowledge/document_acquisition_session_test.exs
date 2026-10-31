@@ -1,0 +1,1352 @@
+defmodule Ipse.KnowledgeDocumentAcquisitionSessionTest do
+  use ExUnit.Case, async: false
+  alias Ipse.{Session, Journal, JSON}
+  alias Ipse.Extension.{Artifact, Config, Registry, State}
+  import Ipse.Test.ResumeAssertions
+
+  defmodule NoModel do
+    def complete(_, _, _, _), do: raise("document acquisition attempted inference")
+  end
+
+  setup_all do
+    root = Path.join(System.tmp_dir!(), "ipse-document-acquisition-" <> Ipse.Usage.id())
+    File.mkdir!(root)
+    File.chmod!(root, 0o700)
+
+    artifacts =
+      for preset <- ~w(state-documents state-lexical collection-documents), into: %{} do
+        path = Path.join(root, preset)
+
+        assert {output, 0} =
+                 System.cmd(
+                   System.find_executable("elixir"),
+                   [
+                     "extensions/knowledge/build.exs",
+                     "--sdk",
+                     Application.app_dir(:ipse, "ebin"),
+                     "--output",
+                     path,
+                     "--package",
+                     "corpus",
+                     "--preset",
+                     preset
+                   ],
+                   stderr_to_stdout: true
+                 )
+
+        refute output =~ "warning:"
+        {preset, path}
+      end
+
+    on_exit(fn -> File.rm_rf!(root) end)
+    %{root: root, artifacts: artifacts}
+  end
+
+  defp open(c, preset \\ "state-documents") do
+    {cwd, home} =
+      if preset == "collection-documents" do
+        native = System.get_env("IPSE_DOCUMENT_NATIVE_TMPDIR") || System.tmp_dir!()
+        base = Path.join(native, "ipse-public-collection-" <> Ipse.Usage.id())
+        File.mkdir!(base)
+        on_exit(fn -> File.rm_rf!(base) end)
+        {Path.join(base, "workspace"), Path.join(base, "home")}
+      else
+        cwd = Path.join(c.root, Ipse.Usage.id())
+        {cwd, Path.join(cwd, "home")}
+      end
+
+    File.mkdir_p!(cwd)
+    File.mkdir_p!(home)
+    File.chmod!(home, 0o700)
+
+    {:ok, artifact} =
+      Artifact.import(c.artifacts[preset], Path.join(home, "extensions/artifacts"))
+
+    options_file =
+      if preset == "collection-documents",
+        do: "corpus-collection.json",
+        else: "corpus-lexical.json"
+
+    options = Jason.decode!(File.read!("extensions/knowledge/options/" <> options_file))
+
+    source = %{
+      scope: "operator",
+      path: Path.join(home, "fixture.json"),
+      data: %{
+        "extensions" => [
+          %{
+            "instance" => "corpus",
+            "artifact" => artifact.digest,
+            "enabled" => true,
+            "options" => options,
+            "order" => 0,
+            "lifetime" => "session"
+          }
+        ],
+        "extension_trust" => [
+          %{
+            "artifact" => artifact.digest,
+            "capabilities" => artifact.manifest["capabilities"],
+            "allow_project" => false,
+            "allow_children" => false,
+            "state_bindings" => [
+              %{
+                "version" => 1,
+                "instance" => "corpus",
+                "id" => "knowledge",
+                "scopes" => ["project"]
+              }
+            ]
+          }
+        ]
+      }
+    }
+
+    source =
+      if preset == "collection-documents" do
+        update_in(source.data["extension_trust"], fn [trust] ->
+          [
+            trust
+            |> Map.delete("state_bindings")
+            |> Map.put("collection_bindings", [
+              %{
+                "version" => 1,
+                "instance" => "corpus",
+                "id" => "documents",
+                "scope" => "project",
+                "profile" => "document_graph_v1"
+              }
+            ])
+          ]
+        end)
+      else
+        source
+      end
+
+    {:ok, selected} = Config.resolve([source], [])
+    {:ok, entries} = Registry.prepare(selected, home)
+
+    if preset == "collection-documents",
+      do: assert({:ok, _} = Ipse.Extension.ProjectIdentity.admit(home, cwd, :folder))
+
+    config = %{
+      provider: :demo,
+      model: "synthetic",
+      provider_module: NoModel,
+      home: home,
+      extensions: entries,
+      approval: :ask,
+      approval_origin: :interactive,
+      headless: false,
+      compact: false
+    }
+
+    opts = [config: config, cwd: cwd, state_dir: Path.join(home, "sessions"), subscriber: self()]
+    assert {:ok, pid} = DynamicSupervisor.start_child(Ipse.Sessions, {Session, opts})
+    on_exit(fn -> if Process.alive?(pid), do: Session.close_confirmed(pid) end)
+    %{pid: pid, cwd: cwd, dir: opts[:state_dir], opts: opts, artifact: artifact}
+  end
+
+  defp document(text, options \\ []) do
+    document_body("<w:p><w:r><w:t>#{text}</w:t></w:r></w:p>", options)
+  end
+
+  defp document_body(body, options) do
+    word = "http://schemas.openxmlformats.org/wordprocessingml/2006/main"
+    rel = "http://schemas.openxmlformats.org/package/2006/relationships"
+
+    root =
+      "<Relationships xmlns=\"#{rel}\"><Relationship Id=\"main\" Type=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument\" Target=\"word/document.xml\"/></Relationships>"
+
+    types =
+      "<Types xmlns=\"http://schemas.openxmlformats.org/package/2006/content-types\"><Default Extension=\"rels\" ContentType=\"application/vnd.openxmlformats-package.relationships+xml\"/><Override PartName=\"/word/document.xml\" ContentType=\"application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml\"/></Types>"
+
+    {:ok, {_, bytes}} =
+      :zip.create(
+        ~c"source.docx",
+        [
+          {~c"_rels/.rels", root},
+          {~c"[Content_Types].xml", types},
+          {~c"word/document.xml",
+           "<w:document xmlns:w=\"#{word}\"><w:body>#{body}</w:body></w:document>"}
+        ],
+        [:memory] ++ options
+      )
+
+    bytes
+  end
+
+  defp many_locations do
+    paragraph = fn text -> "<w:p><w:r><w:t>#{text}</w:t></w:r></w:p>" end
+
+    paragraphs =
+      Enum.map_join(
+        1..20,
+        &paragraph.(
+          "Paragraph #{&1} carries ordinary document context and exact Unicode résumé evidence."
+        )
+      )
+
+    table =
+      "<w:tbl>" <>
+        Enum.map_join(1..2, fn row ->
+          "<w:tr>" <>
+            Enum.map_join(1..2, fn cell ->
+              "<w:tc>" <>
+                paragraph.(
+                  if row == 2 and cell == 2,
+                    do: "Nebula table evidence stays exactly located.",
+                    else: "Table row #{row} cell #{cell} context."
+                ) <> "</w:tc>"
+            end) <> "</w:tr>"
+        end) <> "</w:tbl>"
+
+    document_body(paragraphs <> table <> "<w:p><w:r><w:sym w:char=\"F0FC\"/></w:r></w:p>", [
+      {:compress, []}
+    ])
+  end
+
+  defp larger_document do
+    text =
+      Enum.map_join(1..700, " ", &"entry#{&1} résumé") <> " Vega staging preserves every byte."
+
+    {document(text, [{:compress, []}]), text}
+  end
+
+  defp continue(run, %{"id" => id, "arguments" => arguments}), do: invoke(run, id, arguments)
+
+  defp query(run, words) do
+    invoke(run, "query", %{
+      "store" => "notes",
+      "retrieval" => "words",
+      "rerank" => nil,
+      "query" => words,
+      "top_k" => 1,
+      "as_of_ms" => 20
+    })
+  end
+
+  defp finish_staging(run, opened) do
+    Enum.reduce_while(1..40, opened, fn _, current ->
+      next = continue(run, current["continuation"])
+
+      case next["status"] do
+        "draft" -> {:cont, next}
+        "ok" -> {:halt, next}
+        _ -> flunk("metadata staging refused: #{inspect({next, acquisition_trace(run)})}")
+      end
+    end)
+  end
+
+  defp stored_state(run) do
+    [path] = Path.wildcard(Path.join(run.opts[:config][:home], "extension-state-v1/*/state.json"))
+
+    {Path.dirname(Path.dirname(path)), Path.basename(Path.dirname(path)),
+     Jason.decode!(File.read!(path))}
+  end
+
+  defp change_record(run, key, value) do
+    {root, namespace, state} = stored_state(run)
+    row = state["records"][key]
+
+    request = %{
+      "op" => if(value, do: "state.put", else: "state.delete"),
+      "scope" => "project",
+      "key" => key,
+      "expected_revision" => if(row, do: row["revision"], else: 0)
+    }
+
+    request = if value, do: Map.put(request, "value", value), else: request
+    assert {:ok, _} = State.execute(root, namespace, request, Ipse.Usage.id())
+  end
+
+  defp restore_fixture_state(run, state) do
+    {root, namespace, _} = stored_state(run)
+
+    File.write!(Path.join([root, namespace, "state.json"]), Jason.encode!(state), [:binary, :sync])
+  end
+
+  defp ordered(map) when is_map(map),
+    do: ["map", Enum.map(Enum.sort(map), fn {key, value} -> [key, ordered(value)] end)]
+
+  defp ordered(list) when is_list(list), do: ["list", Enum.map(list, &ordered/1)]
+  defp ordered(value), do: value
+
+  defp changed_page(value, body) do
+    sha = JSON.digest(["ipse-knowledge", 1, "page-body", [value["page_kind"], ordered(body)]])
+    value = Map.merge(value, %{"body" => body, "body_sha256" => sha})
+
+    key =
+      JSON.digest([
+        "ipse-knowledge",
+        1,
+        "page",
+        Enum.map(
+          ~w(partition source_key generation draft_id page_kind ordinal body_sha256),
+          &value[&1]
+        )
+      ])
+
+    {key, value,
+     %{
+       "key" => key,
+       "sha256" => JSON.digest(["ipse-knowledge", 1, "page-record", [ordered(value)]])
+     }}
+  end
+
+  defp args do
+    %{
+      "store" => "notes",
+      "action" => "read_document",
+      "args" => %{
+        "source_id" => "workspace:source",
+        "generation" => 1,
+        "expected_revision" => 0,
+        "title" => "Workspace Word source",
+        "path" => "source.docx",
+        "expected_sha256" => nil,
+        "uri" => "workspace:source.docx",
+        "observed_at_ms" => 10,
+        "event_at_ms" => nil,
+        "expires_at_ms" => nil
+      }
+    }
+  end
+
+  defp invoke(c, id, arguments) do
+    assert :ok = Session.invoke_export(c.pid, :command, "ext__corpus__" <> id, arguments)
+    wait(c, System.monotonic_time(:millisecond) + 20_000)
+  end
+
+  defp wait(c, deadline) do
+    receive do
+      {:ipse, pid, {:approval, ref, "extension:state.put", proposed}} when pid == c.pid ->
+        assert proposed["artifact_sha256"] == c.artifact.digest
+        assert proposed["request"]["scope"] == "project"
+        assert :ok = State.validate(proposed["request"])
+        assert :ok = Session.approve(pid, ref, true)
+        wait(c, deadline)
+
+      {:ipse, pid, {:approval, ref, "extension:collection.store", proposed}} when pid == c.pid ->
+        assert proposed["artifact_sha256"] == c.artifact.digest
+        assert :ok = Ipse.Extension.CollectionStore.validate(proposed["request"])
+        assert :ok = Session.approve(pid, ref, true)
+        wait(c, deadline)
+
+      {:ipse, pid, {:done, :ok}} when pid == c.pid ->
+        assert %{"value" => value} = Session.info(pid).extension_result
+        value
+
+      {:ipse, pid, {:done, status}} when pid == c.pid ->
+        flunk("document command failed: #{inspect(status)}")
+
+      {:ipse, pid, {:error, reason}} when pid == c.pid ->
+        {:ok, events} = Journal.load(c.dir, Session.info(pid).id)
+
+        actions =
+          for event <- events,
+              event["type"] in ~w(extension_action_intent extension_action_result),
+              do:
+                {event["type"], get_in(event, ["request", "op"]),
+                 get_in(event, ["request", "name"]), event["approval"],
+                 get_in(event, ["outcome", "status"]),
+                 get_in(event, ["outcome", "value", "reason"])}
+
+        flunk("document command error: #{inspect(reason)} #{inspect(actions)}")
+
+      {:ipse, pid, _} when pid == c.pid ->
+        wait(c, deadline)
+    after
+      max(deadline - System.monotonic_time(:millisecond), 0) ->
+        flunk("document command timed out")
+    end
+  end
+
+  defp await_staged_collection(run, result) do
+    Enum.reduce_while(1..40, result, fn _, current ->
+      assert current["status"] == "draft", inspect(current)
+
+      if match?(
+           [_ | _],
+           get_in(current, ["continuation", "arguments", "args", "collection_state", "stages"])
+         ) do
+        {:halt, current}
+      else
+        {:cont, continue(run, current["continuation"])}
+      end
+    end)
+    |> then(fn current ->
+      assert match?(
+               [_ | _],
+               get_in(current, ["continuation", "arguments", "args", "collection_state", "stages"])
+             ),
+             inspect(current)
+
+      current
+    end)
+  end
+
+  test "opt-in workspace acquisition journals exact reads before writes and returns a bound citation",
+       c do
+    run = open(c)
+    bytes = document("Vega migration requires an audit.")
+    File.write!(Path.join(run.cwd, "source.docx"), bytes)
+    assert invoke(run, "source", args())["status"] == "ok"
+
+    result =
+      invoke(run, "query", %{
+        "store" => "notes",
+        "retrieval" => "words",
+        "rerank" => nil,
+        "query" => "Vega migration",
+        "top_k" => 1,
+        "as_of_ms" => 20
+      })
+
+    assert result["status"] == "ok", inspect(result)
+    [hit] = result["evidence"]
+    citation = hit["citation"]
+    assert citation["quote"] == "Vega migration requires an audit."
+    assert citation["document"]["original_sha256"] == JSON.sha256(bytes)
+    assert citation["origin"]["receipt"]["version"] == 3
+    metadata = Jason.decode!(citation["origin"]["receipt"]["document"])
+    assert metadata["version"] == 2
+    acquisition = metadata["acquisition"]
+    assert acquisition["path"] == "source.docx"
+    id = Session.info(run.pid).id
+    assert {:ok, events} = Journal.load(run.dir, id)
+
+    reads =
+      Enum.filter(
+        events,
+        &(&1["type"] == "extension_action_result" and get_in(&1, ["request", "name"]) == "read")
+      )
+
+    assert length(reads) == 2
+    [first, second] = reads
+    assert first["approval"] == "not_required"
+    assert second["request"]["arguments"]["expected_sha256"] == JSON.sha256(bytes)
+    assert second["operation_id"] == acquisition["operation_id"]
+
+    read_positions =
+      Enum.with_index(events)
+      |> Enum.filter(fn {event, _} -> event in reads end)
+      |> Enum.map(&elem(&1, 1))
+
+    write_position =
+      Enum.find_index(
+        events,
+        &(&1["type"] == "extension_action_intent" and get_in(&1, ["request", "op"]) == "state.put")
+      )
+
+    assert Enum.max(read_positions) < write_position
+    refute Enum.any?(events, &(&1["type"] == "request_admitted"))
+    assert {:ok, _} = Session.Saved.restore(events, id)
+    assert :ok = Session.close_confirmed(run.pid)
+    assert {:ok, _before} = Journal.load(run.dir, id)
+    journal = Path.join(run.dir, id <> ".jsonl")
+    before_bytes = File.read!(journal)
+
+    assert {:ok, resumed} =
+             DynamicSupervisor.start_child(
+               Ipse.Sessions,
+               {Session, Keyword.put(run.opts, :id, id)}
+             )
+
+    assert_idle_resume_journal(journal, before_bytes, id)
+    assert :ok = Session.close_confirmed(resumed)
+  end
+
+  test "legacy lexical preset never acquires files or silently receives tools capability", c do
+    run = open(c, "state-lexical")
+    refute "host.tools" in run.artifact.manifest["capabilities"]
+    File.write!(Path.join(run.cwd, "source.docx"), document("not acquired"))
+    assert invoke(run, "source", args())["status"] == "refused"
+    assert {:ok, events} = Journal.load(run.dir, Session.info(run.pid).id)
+    refute Enum.any?(events, &(&1["type"] == "extension_action_intent"))
+  end
+
+  test "paged Word acquisition stages complete larger text and selects it only at final publication",
+       c do
+    run = open(c)
+    path = Path.join(run.cwd, "source.docx")
+    File.write!(path, document("Legacy selection remains current."))
+    assert invoke(run, "source", args())["status"] == "ok"
+
+    inspected =
+      invoke(run, "source", %{
+        "store" => "notes",
+        "action" => "inspect",
+        "args" => %{"source_id" => "workspace:source"}
+      })
+
+    {bytes, text} = larger_document()
+    assert byte_size(bytes) > 4096 and byte_size(text) > 8192
+    File.write!(path, bytes)
+
+    command =
+      args()
+      |> put_in(["args", "generation"], 2)
+      |> put_in(["args", "expected_revision"], inspected["coverage"]["revision"])
+      |> put_in(["args", "expected_sha256"], JSON.sha256(bytes))
+
+    opened = invoke(run, "source", command)
+    assert opened["status"] == "draft", inspect({opened, acquisition_trace(run)})
+    first = opened["continuation"]
+    assert query(run, "Legacy")["evidence"] != []
+    File.write!(path, document("changed between stages"))
+    assert continue(run, first)["status"] == "refused"
+    assert query(run, "Legacy")["evidence"] != []
+    File.write!(path, bytes)
+
+    finished =
+      Enum.reduce_while(1..20, opened, fn _, result ->
+        next = continue(run, result["continuation"])
+
+        case next["status"] do
+          "draft" ->
+            assert query(run, "Legacy")["evidence"] != []
+            {:cont, next}
+
+          "ok" ->
+            {:halt, next}
+
+          _ ->
+            flunk("staged Word continuation refused: #{inspect(next)}")
+        end
+      end)
+
+    assert finished["status"] == "ok"
+    result = query(run, "Vega staging")
+    assert result["status"] == "ok", inspect(result)
+    [hit] = result["evidence"]
+    citation = hit["citation"]
+    assert citation["quote"] =~ "Vega staging preserves every byte."
+    assert citation["generation"] == 2
+    assert citation["document"]["original_sha256"] == JSON.sha256(bytes)
+    assert citation["document"]["locator"]["paragraph"] == 1
+
+    assert binary_part(
+             text,
+             citation["start_byte"],
+             citation["end_byte"] - citation["start_byte"]
+           ) == citation["quote"]
+
+    assert query(run, "Legacy")["evidence"] == []
+    assert continue(run, first)["status"] == "refused"
+    {:ok, events} = Journal.load(run.dir, Session.info(run.pid).id)
+
+    reads =
+      Enum.filter(
+        events,
+        &(&1["type"] == "extension_action_result" and get_in(&1, ["request", "name"]) == "read")
+      )
+
+    assert Enum.any?(reads, &(get_in(&1, ["request", "arguments", "byte_offset"]) == 4096))
+
+    for event <- reads do
+      value = event["outcome"]["value"]
+
+      if event["outcome"]["status"] == "ok" do
+        assert byte_size(value["text"]) <= 8192
+        assert :ok = Ipse.Extension.validate(value)
+      end
+    end
+
+    assert {:ok, _} = Session.Saved.restore(events, Session.info(run.pid).id)
+  end
+
+  test "changing a larger Word file between pages refuses before draft writes", c do
+    run = open(c)
+    {bytes, _} = larger_document()
+    path = Path.join(run.cwd, "source.docx")
+    File.write!(path, bytes)
+
+    callback = fn
+      count,
+      {:in,
+       {:"$gen_call", _,
+        {:extension_action_begin, _, %{"name" => "read", "arguments" => arguments}}}},
+      _ ->
+        if arguments["byte_offset"] == 4096, do: File.write!(path, document("changed"))
+        count + 1
+
+      count, _, _ ->
+        count
+    end
+
+    assert :ok = :sys.install(run.pid, {callback, 0})
+    assert invoke(run, "source", args())["status"] == "refused"
+    {:ok, events} = Journal.load(run.dir, Session.info(run.pid).id)
+    refute Enum.any?(events, &(get_in(&1, ["request", "op"]) == "state.put"))
+  end
+
+  @tag :locator_manifest
+  test "paged typed locator manifests hydrate across actual host results and reject corruption",
+       c do
+    run = open(c)
+    path = Path.join(run.cwd, "source.docx")
+    File.write!(path, document("Legacy metadata selection remains current."))
+    assert invoke(run, "source", args())["status"] == "ok"
+
+    old =
+      invoke(run, "source", %{
+        "store" => "notes",
+        "action" => "inspect",
+        "args" => %{"source_id" => "workspace:source"}
+      })
+
+    bytes = many_locations()
+    File.write!(path, bytes)
+
+    command =
+      args()
+      |> put_in(["args", "generation"], 2)
+      |> put_in(["args", "expected_revision"], old["coverage"]["revision"])
+      |> put_in(["args", "expected_sha256"], JSON.sha256(bytes))
+
+    opened = invoke(run, "source", command)
+    assert opened["status"] == "draft", inspect({opened, acquisition_trace(run)})
+    assert opened["continuation"]["arguments"]["args"]["metadata_offset"] == 0
+    first = continue(run, opened["continuation"])
+    assert first["status"] == "draft", inspect(first)
+    assert first["continuation"]["arguments"]["args"]["offset"] == 0
+    assert first["continuation"]["arguments"]["args"]["metadata_offset"] > 0
+    assert query(run, "Legacy metadata")["evidence"] != []
+    tampered = put_in(first, ["continuation", "arguments", "args", "metadata_offset"], 0)
+    assert continue(run, tampered["continuation"])["status"] == "refused"
+    wrong_text_offset = put_in(first, ["continuation", "arguments", "args", "offset"], 1)
+    assert continue(run, wrong_text_offset["continuation"])["status"] == "refused"
+    assert finish_staging(run, first)["status"] == "ok"
+    result = query(run, "Nebula table")
+    assert result["status"] == "partial", inspect(result)
+    refute result["coverage"]["complete"]
+    [hit] = result["evidence"]
+    citation = hit["citation"]
+    assert citation["quote"] == "Nebula table evidence stays exactly located."
+
+    assert citation["document"]["locator"] == %{
+             "kind" => "table_cell",
+             "part" => "word/document.xml",
+             "paragraph" => 24,
+             "table" => 1,
+             "row" => 2,
+             "cell" => 2
+           }
+
+    assert citation["document"]["start_byte"] == 0
+    descriptor = citation["origin"]["receipt"]
+    assert descriptor["version"] == 4 and descriptor["manifest_bytes"] > 2048
+    assert descriptor["segment_count"] == 24 and descriptor["warning_count"] > 0
+    assert Enum.any?(result["gaps"], &(&1["code"] == "partial_document" and &1["warnings"] != []))
+    refute Map.has_key?(descriptor, "segments")
+    {_, _, state} = stored_state(run)
+    records = Map.values(state["records"])
+
+    progress =
+      Enum.filter(records, &(get_in(&1, ["value", "page_kind"]) == "document"))
+      |> Enum.sort_by(&get_in(&1, ["value", "ordinal"]))
+
+    contents = Enum.filter(records, &(get_in(&1, ["value", "page_kind"]) == "document_content"))
+    assert length(progress) > 2 and length(contents) > 2
+    root = Enum.find(records, &(get_in(&1, ["value", "kind"]) == "root"))
+    page = hd(contents)
+    change_record(run, page["key"], nil)
+    missing = query(run, "Nebula table")
+    assert missing["status"] == "refused"
+    assert Enum.any?(missing["gaps"], &(&1["code"] == "source_corrupt"))
+    restore_fixture_state(run, state)
+    assert query(run, "Nebula table")["evidence"] != []
+
+    change_record(
+      run,
+      page["key"],
+      put_in(page["value"], ["body", "text"], "forged locator metadata")
+    )
+
+    assert query(run, "Nebula table")["status"] == "refused"
+    restore_fixture_state(run, state)
+    [a, b | rest] = Enum.map(progress, &get_in(&1, ["value", "body", "pieces"]))
+    pieces = [b, a | rest]
+
+    head =
+      Enum.zip(progress, pieces)
+      |> Enum.reduce(nil, fn {row, pieces}, previous ->
+        body = row["value"]["body"] |> Map.put("previous", previous) |> Map.put("pieces", pieces)
+        {key, value, ref} = changed_page(row["value"], body)
+        change_record(run, key, value)
+        ref
+      end)
+
+    changed_root = put_in(root["value"], ["origin", "receipt", "manifest_ref"], head)
+    change_record(run, root["key"], changed_root)
+    reordered = query(run, "Nebula table")
+    assert reordered["status"] == "refused"
+    assert Enum.any?(reordered["gaps"], &(&1["code"] == "source_corrupt"))
+    restore_fixture_state(run, state)
+
+    hidden_warning =
+      root["value"]
+      |> put_in(["origin", "receipt", "status"], "complete")
+      |> put_in(["origin", "receipt", "warning_count"], 0)
+
+    change_record(run, root["key"], hidden_warning)
+    assert query(run, "Nebula table")["status"] == "refused"
+    restore_fixture_state(run, state)
+    assert query(run, "Nebula table")["status"] == "partial"
+    {:ok, events} = Journal.load(run.dir, Session.info(run.pid).id)
+
+    for event <- events,
+        event["type"] == "extension_action_result",
+        event["outcome"]["status"] == "ok" do
+      assert :ok = Ipse.Extension.validate(event["outcome"]["value"])
+    end
+
+    assert {:ok, _} = Session.Saved.restore(events, Session.info(run.pid).id)
+  end
+
+  @tag :public_collection_document
+  @tag :public_collection_refusal
+  @tag :namespace_public
+  test "public Collection preset authenticates paused Word storage and returns typed selected citation",
+       c do
+    run = open(c, "collection-documents")
+    paragraph = fn text -> "<w:p><w:r><w:t>#{text}</w:t></w:r></w:p>" end
+
+    body =
+      Enum.map_join(1..32, fn n ->
+        paragraph.(
+          "Paragraph #{n}: " <>
+            String.duplicate("context ", 220) <>
+            if(n == 32, do: "Altair collection keeps every locator.", else: "stable evidence.")
+        )
+      end) <> "<w:p><w:r><w:sym w:char=\"F0FC\"/></w:r></w:p>"
+
+    bytes = document_body(body, [])
+    assert byte_size(bytes) in 1..32_768
+    File.write!(Path.join(run.cwd, "source.docx"), bytes)
+    opened = run |> invoke("source", args()) |> then(&await_staged_collection(run, &1))
+    checkpoint = opened["continuation"]["arguments"]["args"]["collection_state"]
+    assert checkpoint["version"] == 3
+    assert [_ | _] = checkpoint["stages"]
+    assert opened["continuation"]["arguments"]["args"]["expected_sha256"] == JSON.sha256(bytes)
+    original = opened["continuation"]["arguments"]["args"]["opening_acquisition"]
+
+    {:ok, before_refusal} = Journal.load(run.dir, Session.info(run.pid).id)
+
+    forged =
+      update_in(
+        opened["continuation"],
+        ["arguments", "args", "collection_state", "stages"],
+        fn [stage | rest] -> [Map.put(stage, "epoch", String.duplicate("0", 32)) | rest] end
+      )
+
+    assert continue(run, forged)["status"] == "refused"
+
+    changed = document("The workspace document changed after a known storage prefix.")
+    File.write!(Path.join(run.cwd, "source.docx"), changed)
+    assert continue(run, opened["continuation"])["status"] == "refused"
+    File.write!(Path.join(run.cwd, "source.docx"), bytes)
+
+    forged_origin =
+      put_in(
+        opened["continuation"],
+        ["arguments", "args", "opening_acquisition", "operation_id"],
+        String.duplicate("0", 32)
+      )
+
+    assert continue(run, forged_origin)["status"] == "refused"
+    {:ok, after_refusal} = Journal.load(run.dir, Session.info(run.pid).id)
+
+    new_events = Enum.drop(after_refusal, length(before_refusal))
+
+    refute Enum.any?(new_events, fn event ->
+             event["type"] == "extension_action_intent" and
+               Ipse.Extension.CollectionStore.mutating?(event["request"])
+           end)
+
+    finished =
+      Enum.reduce_while(1..40, opened, fn _, result ->
+        case result["status"] do
+          "draft" -> {:cont, continue(run, result["continuation"])}
+          _ -> {:halt, result}
+        end
+      end)
+
+    assert finished["status"] == "ok", inspect(finished)
+
+    result =
+      invoke(run, "query_selected", %{
+        "store" => "notes",
+        "retrieval" => "words",
+        "query" => "Altair collection",
+        "top_k" => 1,
+        "as_of_ms" => 20,
+        "source_ids" => ["workspace:source"]
+      })
+
+    assert result["status"] == "partial", inspect(result)
+    [hit] = result["evidence"]
+    assert hit["citation"]["document"]["locator"]["paragraph"] == 32
+    assert hit["citation"]["document"]["original_sha256"] == JSON.sha256(bytes)
+    assert hit["citation"]["origin"]["receipt"]["acquisition"] == original
+    assert Enum.any?(result["gaps"], &(&1["code"] == "partial_document"))
+    refute result["coverage"]["namespace_complete"]
+    assert query(run, "Altair")["status"] == "refused"
+
+    indexing =
+      invoke(run, "lexical_index", %{
+        "store" => "notes",
+        "action" => "begin",
+        "continuation" => nil
+      })
+
+    indexed =
+      Enum.reduce_while(1..80, indexing, fn _, current ->
+        if current["status"] == "draft",
+          do: {:cont, continue(run, current["continuation"])},
+          else: {:halt, current}
+      end)
+
+    assert indexed["status"] == "ok", inspect(indexed)
+    namespace = query(run, "Altair collection")
+    assert namespace["status"] == "partial", inspect(namespace)
+    assert namespace["coverage"]["namespace_complete"]
+    assert namespace["coverage"]["index_generation"] == 1
+    assert hd(namespace["evidence"])["citation"]["document"]["locator"]["paragraph"] == 32
+    assert hd(namespace["evidence"])["citation"]["origin"]["receipt"]["acquisition"] == original
+    {:ok, events} = Journal.load(run.dir, Session.info(run.pid).id)
+    actions = Enum.filter(events, &(&1["type"] == "extension_action_result"))
+
+    for {_id, group} <- Enum.group_by(actions, & &1["parent_invocation_id"]) do
+      others =
+        Enum.count(group, fn e ->
+          get_in(e, ["request", "op"]) == "tool.call" or
+            Ipse.Extension.CollectionStore.mutating?(e["request"])
+        end)
+
+      assert others <= 16
+    end
+
+    assert Enum.any?(actions, &(get_in(&1, ["request", "request", "op"]) == "stage.inspect"))
+    assert Enum.all?(actions, &Ipse.Extension.Actions.valid_result?/1)
+    assert {:ok, _} = Session.Saved.restore(events, Session.info(run.pid).id)
+  end
+
+  @tag :public_collection_document
+  test "public Collection provided source continues without extra authority and old presets keep grants",
+       c do
+    run = open(c, "collection-documents")
+
+    input = %{
+      "source_id" => "provided:plain",
+      "generation" => 1,
+      "expected_revision" => 0,
+      "title" => "Provided source",
+      "text" => "Lyra source stays explicit.",
+      "uri" => "provided:plain",
+      "observed_at_ms" => 10,
+      "event_at_ms" => nil,
+      "expires_at_ms" => nil
+    }
+
+    opened = invoke(run, "source", %{"store" => "notes", "action" => "put", "args" => input})
+
+    finished =
+      Enum.reduce_while(1..20, opened, fn _, result ->
+        if result["status"] == "draft",
+          do: {:cont, continue(run, result["continuation"])},
+          else: {:halt, result}
+      end)
+
+    assert finished["status"] == "ok", inspect(finished)
+
+    result =
+      invoke(run, "query_selected", %{
+        "store" => "notes",
+        "retrieval" => "words",
+        "query" => "Lyra",
+        "top_k" => 1,
+        "as_of_ms" => 20,
+        "source_ids" => ["provided:plain"]
+      })
+
+    assert result["status"] == "ok"
+    assert hd(result["evidence"])["citation"]["quote"] == input["text"]
+    old = Jason.decode!(File.read!(Path.join(c.artifacts["state-documents"], "extension.json")))
+    refute "host.collection.store" in old["capabilities"]
+    refute Enum.any?(old["exports"]["commands"], &(&1["id"] == "query_selected"))
+  end
+
+  @tag :public_collection_grant
+  test "generated collection preset requires its explicit operator binding and preserves old grants",
+       c do
+    modules = [IpseKnowledge.Profiles, IpseKnowledge.BuildSpec]
+    loaded_before = Enum.map(modules, &:code.is_loaded/1)
+
+    expression = """
+    [manifest] = System.argv()
+    options = JSON.decode!(File.read!("extensions/knowledge/options/corpus-collection.json"))
+    bytes = File.read!(manifest)
+    args = [bytes, "corpus", "collection-documents", "corpus", options, nil, %{}]
+    config = apply(IpseKnowledge.BuildSpec, :operator, args)
+    refused = try do
+      apply(IpseKnowledge.BuildSpec, :operator, List.replace_at(args, 5, "knowledge"))
+      false
+    rescue
+      ArgumentError -> true
+    end
+    IO.puts(JSON.encode!(%{"config" => config, "state_binding_refused" => refused}))
+    """
+
+    {output, status} =
+      System.cmd(
+        System.find_executable("elixir"),
+        [
+          "--erl",
+          "+S 2:2",
+          "-r",
+          "extensions/knowledge/src/profiles.ex",
+          "-r",
+          "extensions/knowledge/spec.exs",
+          "-e",
+          expression,
+          Path.join(c.artifacts["collection-documents"], "extension.json")
+        ],
+        stderr_to_stdout: true
+      )
+
+    assert status == 0, output
+    assert %{"config" => config, "state_binding_refused" => true} = Jason.decode!(output)
+    assert Enum.map(modules, &:code.is_loaded/1) == loaded_before
+
+    [trust] = config["extension_trust"]
+
+    assert trust["collection_bindings"] == [
+             %{
+               "version" => 1,
+               "instance" => "corpus",
+               "id" => "documents",
+               "scope" => "project",
+               "profile" => "document_graph_v1"
+             }
+           ]
+
+    assert trust["state_bindings"] == []
+    assert "host.collection.store" in trust["capabilities"]
+    assert "host.tools" in trust["capabilities"]
+    refute "host.inference" in trust["capabilities"]
+
+    for preset <- ~w(state-documents state-lexical) do
+      manifest = Jason.decode!(File.read!(Path.join(c.artifacts[preset], "extension.json")))
+      refute "host.collection.store" in manifest["capabilities"]
+    end
+  end
+
+  @tag :collection_chunking_public
+  test "public Collection Word uses explicit paragraph-local recipe2 through namespace citations",
+       c do
+    run = open(c, "collection-documents")
+
+    body =
+      Enum.map_join(1..10, fn n ->
+        head =
+          if n == 10, do: "Altair capacity evidence.", else: "Paragraph #{n} stable evidence."
+
+        remaining = 2097 - byte_size(head) - 1
+
+        text =
+          head <>
+            " " <>
+            String.duplicate("context ", div(remaining, 8)) <>
+            String.duplicate("z", rem(remaining, 8))
+
+        "<w:p><w:r><w:t>#{text}</w:t></w:r></w:p>"
+      end)
+
+    bytes = document_body(body, [{:compress, []}])
+    assert byte_size(bytes) > 4096 and byte_size(bytes) <= 32768
+    File.write!(Path.join(run.cwd, "source.docx"), bytes)
+    opened = invoke(run, "source", args())
+
+    stored =
+      Enum.reduce_while(1..40, opened, fn _, current ->
+        if current["status"] == "draft",
+          do: {:cont, continue(run, current["continuation"])},
+          else: {:halt, current}
+      end)
+
+    assert stored["status"] == "ok", inspect(stored)
+
+    opened =
+      invoke(run, "lexical_index", %{
+        "store" => "notes",
+        "action" => "begin",
+        "continuation" => nil
+      })
+
+    indexed =
+      Enum.reduce_while(1..40, opened, fn _, current ->
+        if current["status"] == "draft",
+          do: {:cont, continue(run, current["continuation"])},
+          else: {:halt, current}
+      end)
+
+    assert indexed["status"] == "ok", inspect(indexed)
+    result = query(run, "Altair capacity")
+    assert result["status"] == "ok", inspect(result)
+    assert result["coverage"]["indexed_chunks"] == 10
+    [hit] = result["evidence"]
+    assert hit["citation"]["version"] == 3
+    assert hit["citation"]["chunking"] == %{"version" => 2, "max_bytes" => 4096}
+    assert hit["citation"]["document"]["locator"]["paragraph"] == 10
+    assert hit["citation"]["document"]["original_sha256"] == JSON.sha256(bytes)
+  end
+
+  @tag :public_collection_unknown
+  test "public Collection continuation owner loss retains an unknown fused write without replay",
+       c do
+    run = open(c, "collection-documents")
+    {bytes, _} = larger_document()
+    File.write!(Path.join(run.cwd, "source.docx"), bytes)
+    opened = invoke(run, "source", args())
+    assert opened["status"] == "draft"
+    id = Session.info(run.pid).id
+    guard = :sys.get_state(run.pid).lock_guard
+    guard_ref = Process.monitor(guard)
+    owner = self()
+
+    callback = fn
+      0,
+      {:in,
+       {:"$gen_call", _,
+        {:extension_action_commit, _,
+         %{
+           "request" => %{"op" => "collection.store", "request" => %{"op" => "value.write_parts"}}
+         }}}},
+      _ ->
+        send(owner, :public_collection_append_before_commit)
+        receive do: (:release_public_collection_append -> :ok)
+        1
+
+      count, _, _ ->
+        count
+    end
+
+    assert :ok = :sys.install(run.pid, {callback, 0})
+
+    assert :ok =
+             Session.invoke_export(
+               run.pid,
+               :command,
+               "ext__corpus__source",
+               opened["continuation"]["arguments"]
+             )
+
+    approve_until_collection_append(run)
+    monitor = Process.monitor(run.pid)
+    Process.exit(run.pid, :kill)
+    assert_receive {:DOWN, ^monitor, :process, _, :killed}, 5000
+    assert_receive {:DOWN, ^guard_ref, :process, ^guard, _}, 5000
+    assert {:ok, before} = Journal.load(run.dir, id)
+    [last | _] = Enum.reverse(before)
+    assert last["type"] == "extension_action_intent"
+    assert get_in(last, ["request", "request", "op"]) == "value.write_parts"
+    retained = retained_files(run.opts[:config][:home])
+    journal = Path.join(run.dir, id <> ".jsonl")
+    before_bytes = File.read!(journal)
+
+    assert {:ok, resumed} =
+             DynamicSupervisor.start_child(
+               Ipse.Sessions,
+               {Session, Keyword.put(run.opts, :id, id)}
+             )
+
+    assert_idle_resume_journal(journal, before_bytes, id)
+    assert :ok = Session.close_confirmed(resumed)
+
+    assert_retained_after_close(run, id, retained, journal)
+  end
+
+  defp approve_until_collection_append(run) do
+    receive do
+      :public_collection_append_before_commit ->
+        :ok
+
+      {:ipse, pid, {:approval, ref, "extension:collection.store", _}} when pid == run.pid ->
+        assert :ok = Session.approve(pid, ref, true)
+        approve_until_collection_append(run)
+
+      {:ipse, pid, {:done, :ok}} when pid == run.pid ->
+        assert %{"value" => result} = Session.info(pid).extension_result
+        assert result["status"] == "draft", inspect(result)
+
+        assert :ok =
+                 Session.invoke_export(
+                   pid,
+                   :command,
+                   "ext__corpus__source",
+                   result["continuation"]["arguments"]
+                 )
+
+        approve_until_collection_append(run)
+
+      {:ipse, pid, {:done, status}} when pid == run.pid ->
+        flunk("continuation ended before fused write: #{inspect(status)}")
+
+      {:ipse, pid, _} when pid == run.pid ->
+        approve_until_collection_append(run)
+    after
+      10_000 -> flunk("continuation did not reach a Collection append")
+    end
+  end
+
+  @tag :queued_document_expiry
+  test "State refuses a document stage held in approval beyond its stored deadline", c do
+    run = open(c)
+    {bytes, _} = larger_document()
+    File.write!(Path.join(run.cwd, "source.docx"), bytes)
+    opened = invoke(run, "source", args())
+    assert opened["status"] == "draft"
+    {_, _, state} = stored_state(run)
+
+    {key, row} =
+      Enum.find(state["records"], fn {_, row} -> get_in(row, ["value", "kind"]) == "root" end)
+
+    expiry = System.system_time(:millisecond) + 2000
+
+    assert {:ok, _} =
+             change_record(run, key, put_in(row["value"], ["draft", "expires_at_ms"], expiry))
+
+    {_, _, before} = stored_state(run)
+
+    next =
+      put_in(
+        opened["continuation"],
+        ["arguments", "args", "expected_revision"],
+        before["records"][key]["revision"]
+      )
+
+    assert :ok =
+             Session.invoke_export(run.pid, :command, "ext__corpus__source", next["arguments"])
+
+    receive do
+      {:ipse, pid, {:approval, ref, "extension:state.put", proposed}} when pid == run.pid ->
+        assert proposed["request"]["write_before_ms"] == expiry
+        Process.sleep(max(expiry - System.system_time(:millisecond), 0) + 5)
+        assert :ok = Session.approve(pid, ref, true)
+    after
+      5000 -> flunk("conditioned stage did not reach approval")
+    end
+
+    result = wait(run, System.monotonic_time(:millisecond) + 10_000)
+    assert result["status"] == "refused"
+    {_, _, after_refusal} = stored_state(run)
+    assert after_refusal === before
+    id = Session.info(run.pid).id
+    {:ok, events} = Journal.load(run.dir, id)
+
+    [failed] =
+      Enum.filter(events, &(get_in(&1, ["outcome", "value", "code"]) == "write_deadline_elapsed"))
+
+    assert get_in(failed, ["outcome", "status"]) == "failed"
+    assert get_in(failed, ["outcome", "value", "checked_at_ms"]) >= expiry
+    assert {:ok, _} = Session.Saved.restore(events, id)
+  end
+
+  test "owner loss after a staged append leaves its effect unknown and resume does not replay",
+       c do
+    for bytes <- [elem(larger_document(), 0), many_locations()] do
+      run = open(c)
+      File.write!(Path.join(run.cwd, "source.docx"), bytes)
+      opened = invoke(run, "source", args())
+      assert opened["status"] == "draft", inspect({opened, acquisition_trace(run)})
+      id = Session.info(run.pid).id
+      guard = :sys.get_state(run.pid).lock_guard
+      guard_ref = Process.monitor(guard)
+      owner = self()
+
+      callback = fn
+        0,
+        {:in,
+         {:"$gen_call", _, {:extension_action_commit, _, %{"request" => %{"op" => "state.put"}}}}},
+        _ ->
+          send(owner, :append_before_commit)
+          receive do: (:release_staged_append_test -> :ok)
+          1
+
+        count, _, _ ->
+          count
+      end
+
+      assert :ok = :sys.install(run.pid, {callback, 0})
+      next = opened["continuation"]
+
+      assert :ok =
+               Session.invoke_export(run.pid, :command, "ext__corpus__source", next["arguments"])
+
+      approve_until_append(run)
+      monitor = Process.monitor(run.pid)
+      Process.exit(run.pid, :kill)
+      assert_receive {:DOWN, ^monitor, :process, _, :killed}, 5000
+      assert_receive {:DOWN, ^guard_ref, :process, ^guard, _}, 5000
+      assert {:ok, before} = Journal.load(run.dir, id)
+      writes = Enum.filter(before, &(get_in(&1, ["request", "op"]) == "state.put"))
+      assert List.last(writes)["type"] == "extension_action_intent"
+      retained = retained_files(run.opts[:config][:home])
+      journal = Path.join(run.dir, id <> ".jsonl")
+      before_bytes = File.read!(journal)
+
+      assert {:ok, resumed} =
+               DynamicSupervisor.start_child(
+                 Ipse.Sessions,
+                 {Session, Keyword.put(run.opts, :id, id)}
+               )
+
+      assert_idle_resume_journal(journal, before_bytes, id)
+      assert :ok = Session.close_confirmed(resumed)
+
+      assert_retained_after_close(run, id, retained, journal)
+    end
+  end
+
+  defp assert_retained_after_close(run, id, retained, journal) do
+    assert {:ok, %{"release_claim" => "signed_release_claim"}} =
+             Session.Saved.inspect_saved(run.dir, id)
+
+    assert {:ok, closed_events} = Journal.load(run.dir, id)
+
+    assert %{"type" => "session_release_intent", "operation_id" => operation} =
+             List.last(closed_events)
+
+    release = Path.join(run.dir, ".release-" <> id <> "-" <> operation)
+    refute Map.has_key?(retained, release)
+    after_close = retained_files(run.opts[:config][:home])
+    assert Map.has_key?(after_close, release)
+    assert Map.drop(after_close, [journal, release]) == Map.delete(retained, journal)
+  end
+
+  defp retained_files(home) do
+    Path.wildcard(Path.join(home, "**/*"), match_dot: true)
+    |> Enum.filter(&File.regular?/1)
+    |> Map.new(&{&1, JSON.sha256(File.read!(&1))})
+  end
+
+  defp acquisition_trace(run) do
+    {:ok, events} = Journal.load(run.dir, Session.info(run.pid).id)
+
+    for event <- events,
+        event["type"] == "extension_action_result",
+        do:
+          {get_in(event, ["request", "op"]),
+           get_in(event, ["request", "arguments", "byte_offset"]),
+           get_in(event, ["outcome", "status"]), get_in(event, ["outcome", "value", "reason"])}
+  end
+
+  defp approve_until_append(run) do
+    receive do
+      {:ipse, pid, {:approval, ref, "extension:state.put", proposed}} when pid == run.pid ->
+        assert :ok = State.validate(proposed["request"])
+        assert :ok = Session.approve(pid, ref, true)
+        approve_until_append(run)
+
+      :append_before_commit ->
+        :ok
+
+      {:ipse, pid, _} when pid == run.pid ->
+        approve_until_append(run)
+    after
+      15_000 -> flunk("staged append did not reach its actual write")
+    end
+  end
+
+  test "a changed file at the final acquisition refuses before any source write", c do
+    run = open(c)
+    File.write!(Path.join(run.cwd, "source.docx"), document("original content"))
+    path = Path.join(run.cwd, "source.docx")
+    changed = document("changed content")
+
+    callback = fn
+      count,
+      {:in,
+       {:"$gen_call", _, {:extension_action_begin, _, %{"op" => "tool.call", "name" => "read"}}}},
+      _ ->
+        if count == 1, do: File.write!(path, changed)
+        count + 1
+
+      count, _, _ ->
+        count
+    end
+
+    assert :ok = :sys.install(run.pid, {callback, 0})
+    assert invoke(run, "source", args())["status"] == "refused"
+    assert {:ok, events} = Journal.load(run.dir, Session.info(run.pid).id)
+
+    refute Enum.any?(
+             events,
+             &(&1["type"] == "extension_action_intent" and
+                 get_in(&1, ["request", "op"]) == "state.put")
+           )
+
+    assert Enum.any?(
+             events,
+             &(&1["type"] == "extension_action_result" and
+                 get_in(&1, ["outcome", "status"]) == "failed")
+           )
+  end
+
+  test "owner loss after actual binary read leaves an unknown prefix and resume performs no read or write",
+       c do
+    run = open(c)
+    File.write!(Path.join(run.cwd, "source.docx"), document("interrupted source"))
+    id = Session.info(run.pid).id
+    guard = :sys.get_state(run.pid).lock_guard
+    guard_ref = Process.monitor(guard)
+    owner = self()
+
+    callback = fn
+      0,
+      {:in,
+       {:"$gen_call", _,
+        {:extension_action_commit, _,
+         %{"request" => %{"op" => "tool.call", "name" => "read"}} = event}}},
+      _ ->
+        send(owner, {:acquired_before_commit, event})
+        receive do: (:release_acquisition_test -> :ok)
+        1
+
+      count, _, _ ->
+        count
+    end
+
+    assert :ok = :sys.install(run.pid, {callback, 0})
+    assert :ok = Session.invoke_export(run.pid, :command, "ext__corpus__source", args())
+    assert_receive {:acquired_before_commit, event}, 10_000
+    assert event["outcome"]["status"] == "ok"
+    monitor = Process.monitor(run.pid)
+    Process.exit(run.pid, :kill)
+    assert_receive {:DOWN, ^monitor, :process, _, :killed}, 5000
+    assert_receive {:DOWN, ^guard_ref, :process, ^guard, _}, 5000
+    assert {:ok, before} = Journal.load(run.dir, id)
+
+    assert Enum.count(
+             before,
+             &(get_in(&1, ["request", "name"]) == "read" and
+                 &1["type"] == "extension_action_intent")
+           ) == 1
+
+    refute Enum.any?(before, &(&1["type"] == "extension_action_result"))
+    journal = Path.join(run.dir, id <> ".jsonl")
+    before_bytes = File.read!(journal)
+    File.write!(Path.join(run.cwd, "source.docx"), document("changed after owner loss"))
+
+    assert {:ok, resumed} =
+             DynamicSupervisor.start_child(
+               Ipse.Sessions,
+               {Session, Keyword.put(run.opts, :id, id)}
+             )
+
+    assert_idle_resume_journal(journal, before_bytes, id)
+    assert :ok = Session.close_confirmed(resumed)
+  end
+end

@@ -1,0 +1,47 @@
+warning: :warnings_as_errors is deprecated as part of Code.get_compiler_option/1
+  (elixir 1.20.4) lib/code.ex:1716: Code.get_compiler_option/1
+  (elixir 1.20.4) lib/code.ex:1691: anonymous fn/2 in Code.compiler_options/1
+  (elixir 1.20.4) lib/enum.ex:2622: Enum."-reduce/3-lists^foldl/2-0-"/3
+  (elixir 1.20.4) lib/code.ex:1690: Code.compiler_options/1
+  /tmp/ipse-collection-held-read-compile-47101.exs:5: (file)
+  (elixir 1.20.4) src/elixir_compiler.erl:102: :elixir_compiler.dispatch/4
+
+warning: :warnings_as_errors is deprecated as part of Code.put_compiler_option/2, instead you must pass it as a --warnings-as-errors flag. If you need to set it as a default in a mix task, you can also set it under aliases: [compile: "compile --warnings-as-errors"]
+  (elixir 1.20.4) lib/code.ex:1900: Code.put_compiler_option/2
+  (elixir 1.20.4) lib/code.ex:1692: anonymous fn/2 in Code.compiler_options/1
+  (elixir 1.20.4) lib/enum.ex:2622: Enum."-reduce/3-lists^foldl/2-0-"/3
+  (elixir 1.20.4) lib/code.ex:1690: Code.compiler_options/1
+  /tmp/ipse-collection-held-read-compile-47101.exs:5: (file)
+  (elixir 1.20.4) src/elixir_compiler.erl:102: :elixir_compiler.dispatch/4
+
+     error: undefined variable "cap"
+     │
+ 965 │          :ok <- Transaction.check(cap) do
+     │                                   ^^^
+     │
+     └─ lib/ipse/extension/collection.ex:965:35: Ipse.Extension.Collection.normalize_managed/12
+
+
+== Compilation error in file lib/ipse/extension/collection.ex ==
+** (CompileError) lib/ipse/extension/collection.ex: cannot compile module Ipse.Extension.Collection (errors have been logged)
+
+warning: you must pass return_diagnostics: true when invoking Kernel.ParallelCompiler functions
+  (elixir 1.20.4) lib/kernel/parallel_compiler.ex:327: Kernel.ParallelCompiler.spawn_workers/3
+  /tmp/ipse-collection-held-read-compile-47101.exs:6: (file)
+  (elixir 1.20.4) src/elixir_compiler.erl:102: :elixir_compiler.dispatch/4
+  (elixir 1.20.4) src/elixir_compiler.erl:76: :elixir_compiler.compile/4
+  (elixir 1.20.4) src/elixir_compiler.erl:42: :elixir_compiler.optimize_defmodule/2
+  (elixir 1.20.4) src/elixir_lexical.erl:18: :elixir_lexical.run/3
+
+** (MatchError) no match of right hand side value:
+
+    {:error,
+     [
+       {"/home/lexlapax/projects/lexlapax/ipse/lib/ipse/extension/collection.ex",
+        {965, 35}, "undefined variable \"cap\""},
+       {"/home/lexlapax/projects/lexlapax/ipse/lib/ipse/extension/collection.ex", 0,
+        "** (CompileError) lib/ipse/extension/collection.ex: cannot compile module Ipse.Extension.Collection (errors have been logged)\n\n"}
+     ], []}
+
+    /tmp/ipse-collection-held-read-compile-47101.exs:6: (file)
+    (elixir 1.20.4) lib/code.ex:1639: Code.require_file/2

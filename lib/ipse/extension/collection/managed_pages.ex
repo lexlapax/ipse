@@ -179,6 +179,11 @@ defmodule Ipse.Extension.Collection.ManagedPages do
         {_, nil} ->
           <<0>>
 
+        {:anchor,
+         %{"version" => 1, "kind" => "native_management_commitment", "sha256" => sha} = value}
+        when map_size(value) == 3 ->
+          <<3>> <> raw(sha, 32)
+
         {:anchor, value} ->
           <<2>> <> capsule_encode(key, value)
       end
@@ -247,6 +252,12 @@ defmodule Ipse.Extension.Collection.ManagedPages do
 
         {:anchor, 2} ->
           capsule_decode(key, rest)
+
+        {:anchor, 3} ->
+          <<hash::binary-size(32), remaining::binary>> = rest
+
+          {%{"version" => 1, "kind" => "native_management_commitment", "sha256" => hex(hash)},
+           remaining}
       end
 
     {retirement, rest} = take_retirement(rest)
@@ -678,7 +689,11 @@ defmodule Ipse.Extension.Collection.ManagedPages do
     first = number(first)
     deadline = number(deadline)
     true = uint?(first) and (is_nil(deadline) or (uint?(deadline) and deadline >= first))
-    true = category in 0..4 and eligibility in 0..2
+    true = category in 0..4 and eligibility in 0..3
+
+    true =
+      eligibility != 3 or (String.starts_with?(live_key(identity), "note.") and category in 0..2)
+
     true = (category != 0 and eligibility != 1) or not is_nil(deadline)
     true
   end
@@ -715,6 +730,25 @@ defmodule Ipse.Extension.Collection.ManagedPages do
   end
 
   @capsule ~w(version kind event_id display_sha256 challenge target_key target_value_sha256 lineage observed_at_ms policy reason input_sha256)
+
+  @doc "Create a versioned commitment to the exact valid native-management capsule."
+  def compact_choice(lineage, capsule) do
+    checked(fn ->
+      _ = capsule_encode(lineage, capsule)
+
+      %{
+        "version" => 1,
+        "kind" => "native_management_commitment",
+        "sha256" => JSON.digest([capsule])
+      }
+    end)
+  end
+
+  @doc "Check a retained capsule against an authenticated compact commitment."
+  def compact_choice?(lineage, commitment, capsule) do
+    compact_choice(lineage, capsule) == {:ok, commitment}
+  end
+
   defp capsule_encode(lineage, value) do
     true =
       keys?(value, @capsule) and value["version"] === 2 and value["kind"] == "native_management"

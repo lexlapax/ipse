@@ -1,0 +1,70 @@
+Running ExUnit with seed: 46893, max_cases: 8
+Excluding tags: [:test]
+Including tags: [state_deadline_probe: true]
+
+
+07:27:37.851 [error] handle_Info({:state_rename_release, #Reference<0.1745459226.3688890369.219459>}, _)
+
+
+  1) test diagnostic interposes the actual file-server rename after the State clock check (Ipse.Extension.StateDeadlineGateTest)
+     test/ipse/extension/state_deadline_gate_test.exs:13
+     Assertion failed, no matching message after 3000ms
+     Showing 10 of 27 messages in the mailbox
+     code: assert_receive {:state_rename_held, server, checked}
+     mailbox:
+       pattern: {:state_rename_held, server, checked}
+       value:   {:state_file_server_debug,
+                 "{:out, {:error, :enoent}, {...}, ...}"}
+
+       pattern: {:state_rename_held, server, checked}
+       value:   {:state_file_server_debug,
+                 "{:in, {:\"$gen_call\", {#PID<0.187.0>, ...}, ...}}"}
+
+       pattern: {:state_rename_held, server, checked}
+       value:   {:state_file_server_debug,
+                 "{:out, {:ok, #PID<0.188.0>}, {...}, ...}"}
+
+       pattern: {:state_rename_held, server, checked}
+       value:   {:state_file_server_debug,
+                 "{:in, {:EXIT, #PID<0.188.0>, :normal}}"}
+
+       pattern: {:state_rename_held, server, checked}
+       value:   {:state_file_server_debug, "{:noreply, :undefined}"}
+
+       pattern: {:state_rename_held, server, checked}
+       value:   {:state_file_server_debug,
+                 "{:in, {:\"$gen_call\", {#PID<0.187.0>, ...}, ...}}"}
+
+       pattern: {:state_rename_held, server, checked}
+       value:   {:state_file_server_debug,
+                 "{:out, :ok, {#PID<0.187.0>, #Reference<0.1745459226.3688890369.219539>}, ...}"}
+
+       pattern: {:state_rename_held, server, checked}
+       value:   {:state_file_server_debug,
+                 "{:in, {:\"$gen_call\", {#PID<0.187.0>, ...}, ...}}"}
+
+       pattern: {:state_rename_held, server, checked}
+       value:   {#Reference<0.0.23683.1745459226.3688955905.219473>,
+                 {:ok,
+                  %{
+                    "generation" => 1,
+                    "record" => %{
+                      "deleted" => false,
+                      "key" => "derived",
+                      "operation_id" => "9e0288c31ad558c1126e4cdc45752c39",
+                      "revision" => 1,
+                      "value" => %{"text" => "synthetic"}
+                    }
+                  }}}
+
+       pattern: {:state_rename_held, server, checked}
+       value:   {:DOWN, #Reference<0.0.23683.1745459226.3688955905.219473>,
+                 :process, #PID<0.186.0>, :normal}
+     stacktrace:
+       test/ipse/extension/state_deadline_gate_test.exs:37: (test)
+
+
+Finished in 3.0 seconds (0.00s async, 3.0s sync)
+
+Result: 0/1 passed
+Failed: 1 test

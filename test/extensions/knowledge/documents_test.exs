@@ -54,7 +54,7 @@ defmodule Ipse.KnowledgeDocumentsTest do
     assert D.version("markdown")=="ipse-documents-v2"
     assert D.version("text")=="ipse-documents-v2"
     assert D.version("pdf")=="ipse-documents-v2"
-    assert D.version("docx")=="ipse-documents-v3"
+    assert D.version("docx")=="ipse-documents-v11"
     assert Enum.map(result["segments"],& &1["text"])==["# Café\r","保持 exact",""]
     for segment <- result["segments"] do
       l=segment["locator"]
@@ -117,6 +117,44 @@ defmodule Ipse.KnowledgeDocumentsTest do
     assert main["text"]=="main"
     assert footnote["locator"]["part"]=="word/footnotes.xml" and footnote["locator"]["annotation_id"]=="7"
     assert comment["locator"]["part"]=="word/comments.xml" and comment["locator"]["annotation_id"]=="4"
+    ''')
+  end
+
+  test "referenced headers and footers are labelled while layout and orphan parts remain partial" do
+    pure(~S'''
+    relns="http://schemas.openxmlformats.org/package/2006/relationships"
+    rel="http://schemas.openxmlformats.org/officeDocument/2006/relationships"
+    body="<w:p><w:r><w:t>body</w:t></w:r></w:p><w:sectPr><w:headerReference w:type=\"default\" r:id=\"h1\"/><w:footerReference w:type=\"first\" r:id=\"f1\"/></w:sectPr>"
+    main="<w:document xmlns:w=\"#{word}\" xmlns:r=\"#{rel}\"><w:body>#{body}</w:body></w:document>"
+    relations="<Relationships xmlns=\"#{relns}\"><Relationship Id=\"h1\" Type=\"#{rel}/header\" Target=\"header1.xml\"/><Relationship Id=\"f1\" Type=\"#{rel}/footer\" Target=\"footer1.xml\"/></Relationships>"
+    types="<Types xmlns=\"http://schemas.openxmlformats.org/package/2006/content-types\"><Default Extension=\"rels\" ContentType=\"application/vnd.openxmlformats-package.relationships+xml\"/><Override PartName=\"/word/document.xml\" ContentType=\"application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml\"/><Override PartName=\"/word/header1.xml\" ContentType=\"application/vnd.openxmlformats-officedocument.wordprocessingml.header+xml\"/><Override PartName=\"/word/footer1.xml\" ContentType=\"application/vnd.openxmlformats-officedocument.wordprocessingml.footer+xml\"/></Types>"
+    header="<w:hdr xmlns:w=\"#{word}\"><w:p><w:r><w:t>heading</w:t></w:r><w:r><w:rPr><w:vanish/></w:rPr><w:t>hidden</w:t></w:r></w:p></w:hdr>"
+    footer="<w:ftr xmlns:w=\"#{word}\">#{paragraph.("footer")}</w:ftr>"
+    entries=[{"word/document.xml",main},{"word/_rels/document.xml.rels",relations},{"[Content_Types].xml",types},{"word/header1.xml",header},{"word/footer1.xml",footer},{"word/orphan.xml","not parsed"}]
+    {:ok,result}=D.extract(zip.(entries),"headers.docx")
+    assert result["status"]=="partial"
+    assert result["extraction_version"]=="ipse-documents-v11"
+    assert Enum.map(result["segments"],& &1["text"])==["body","heading","footer"]
+    assert Enum.map(result["segments"],& &1["locator"]["region"])==[nil,"header","footer"]
+    assert %{"code"=>"header_footer_layout_unresolved","part"=>"word/document.xml"} in result["warnings"]
+    assert %{"code"=>"part_not_extracted","part"=>"word/orphan.xml"} in result["warnings"]
+    assert {:error,:unsupported_docx_part_relationship}=
+      D.extract(zip.(List.keyreplace(entries,"word/document.xml",0,{"word/document.xml",String.replace(main,"r:id=\"h1\"","r:id=\"missing\"")})),"bad.docx")
+    replace=fn path, value -> zip.(List.keyreplace(entries,path,0,{path,value})) end
+    assert {:error,:unsupported_docx_part_relationship}=D.extract(replace.("word/document.xml",String.replace(main,"r:id=\"h1\"","r:id=\"f1\"")),"wrong-kind.docx")
+    assert {:error,:unsupported_docx_part_relationship}=D.extract(replace.("word/_rels/document.xml.rels",String.replace(relations,"header1.xml","../header1.xml")),"traversal.docx")
+    assert {:error,:unsupported_docx_part_relationship}=D.extract(replace.("word/_rels/document.xml.rels",String.replace(relations,"Target=\"header1.xml\"","Target=\"https://invalid.example\" TargetMode=\"External\"")),"external.docx")
+    assert {:error,:unsupported_docx_content_types}=D.extract(replace.("[Content_Types].xml",String.replace(types,"wordprocessingml.header+xml","wordprocessingml.footer+xml")),"mime.docx")
+    assert {:error,:text_limit}=D.extract(zip.(entries),"bounded.docx",max_text_bytes: 10)
+    repeated=String.replace(main,"<w:footerReference", "<w:headerReference w:type=\"even\" r:id=\"h1\"/><w:footerReference")
+    {:ok,repeated_result}=D.extract(replace.("word/document.xml",repeated),"repeated.docx")
+    assert Enum.map(repeated_result["segments"],& &1["text"])==["body","heading","footer"]
+    duplicate_id=String.replace(main,"xmlns:r=\"#{rel}\"", "xmlns:r=\"#{rel}\" xmlns:s=\"http://purl.oclc.org/ooxml/officeDocument/relationships\"") |> String.replace("r:id=\"h1\"", "r:id=\"h1\" s:id=\"h1\"")
+    assert {:error,:unsupported_docx_part_relationship}=D.extract(replace.("word/document.xml",duplicate_id),"duplicate-id.docx")
+    strict_rel="http://purl.oclc.org/ooxml/officeDocument/relationships"
+    strict_entries=entries |> List.keyreplace("word/document.xml",0,{"word/document.xml",String.replace(main,rel,strict_rel)}) |> List.keyreplace("word/_rels/document.xml.rels",0,{"word/_rels/document.xml.rels",String.replace(relations,rel,strict_rel)})
+    {:ok,strict_result}=D.extract(zip.(strict_entries),"strict.docx")
+    assert Enum.map(strict_result["segments"],& &1["text"])==["body","heading","footer"]
     ''')
   end
 

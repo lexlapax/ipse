@@ -1,0 +1,66 @@
+Running ExUnit with seed: 46797, max_cases: 1
+Excluding tags: [:test]
+Including tags: [:historical_collection_identity]
+
+
+
+  1) test legacy identities retain their original shape and digest during inert historical replay (Ipse.Extension.RegistryTest)
+     test/ipse/extension/registry_test.exs:60
+     Expected false or nil, got true
+     code: refute Registry.valid_entries?(%{extensions: [%{entry | identity: retained}]})
+     arguments:
+
+         # 1
+         %{
+           extensions: [
+             %{
+               exports: %{
+                 "commands" => [],
+                 "services" => [],
+                 "tools" => [],
+                 "version" => 1
+               },
+               options: %{"text" => "note"},
+               store: "/fixture/home/extensions/artifacts",
+               bindings: [],
+               requires: %{"services" => [], "version" => 1},
+               identity: %{
+                 "allow_children" => false,
+                 "artifact" => "builtin:prompt-annotation:1",
+                 "artifact_sha256" => "717af56494e5656f782c960dc1aa5d15885c13fb9a6030cd7a5de6d8e8b34e41",
+                 "capabilities" => ["transform.prompt"],
+                 "expires_at" => nil,
+                 "exports_sha256" => "ad258a8858726839d8712cd4e72378e4776726512dcddd88619350301b68dfa5",
+                 "generation" => 1,
+                 "host_sha256" => "581ede02e1cacc4abfcf6dfaeeef7cc51d0101f5793743a326a646f035632fbb",
+                 "instance" => "annotation",
+                 "lifetime" => "persistent",
+                 "options_sha256" => "65df5b89377aec83a3108b929d0ce252a6dccb15fd8fb6775c6b6b1aa36addc9",
+                 "order" => 1,
+                 "protocol" => 1,
+                 "requires_sha256" => "1104e0e297e593f73d794834a318fd9f6b129c080e1089b1c7a444ab1585af7d",
+                 "runtime" => %{
+                   "architecture" => "x86_64-pc-linux-gnu",
+                   "elixir" => "1.20.4",
+                   "erts" => "17.1",
+                   "otp" => "29"
+                 },
+                 "scope" => "operator",
+                 "sdk" => 1,
+                 "services" => [],
+                 "source_sha256" => "17ae2a779a3a6a39a3c82186af31cb1a1bd16c1826c3a54707a8aded49bf610c",
+                 "subscriptions_sha256" => "cf1cbb66a638b4860a516671fb74850e6ccf787fe6c4c8d29e9c04efe880bd05"
+               },
+               subscriptions: []
+             }
+           ]
+         }
+
+     stacktrace:
+       test/ipse/extension/registry_test.exs:68: (test)
+
+
+Finished in 0.04 seconds (0.04s async, 0.00s sync)
+
+Result: 0/1 passed, 6 excluded
+Failed: 1 test

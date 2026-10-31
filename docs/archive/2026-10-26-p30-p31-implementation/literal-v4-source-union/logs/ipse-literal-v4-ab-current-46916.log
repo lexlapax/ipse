@@ -1,0 +1,21 @@
+Running ExUnit with seed: 46916, max_cases: 40
+Excluding tags: [:test]
+Including tags: [literal_v4_ab: true]
+
+
+
+  1) test upgraded literal v4 A cannot be discarded while candidate cites independent current B (Ipse.Extension.ManagedCollectionCallSessionTest)
+     test/ipse/extension/managed_collection_call_session_test.exs:1441
+     match (=) failed
+     code:  assert {:ok, policy} = SemanticConsent.prepare(binding, entry.identity, selection)
+     left:  {:ok, policy}
+     right: {:error, :invalid_semantic_selection}
+     stacktrace:
+       test/ipse/extension/managed_collection_call_session_test.exs:878: Ipse.Extension.ManagedCollectionCallSessionTest.__ex_unit_setup_0/1
+       test/ipse/extension/managed_collection_call_session_test.exs:4: Ipse.Extension.ManagedCollectionCallSessionTest.__ex_unit__/2
+
+
+Finished in 1.0 seconds (0.00s async, 1.0s sync)
+
+Result: 0/1 passed, 109 excluded
+Failed: 1 test

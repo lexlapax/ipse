@@ -115,6 +115,7 @@ defmodule Ipse.Extension.ConsentCompactionTest do
     assert inspection["actual"] == first["reserved"]
     assert inspection["receipt_sha256"] == JSON.digest([%{"item" => first["id"]}])
     assert inspection["request_sha256"] == first["request_sha256"]
+    assert {:ok, ^inspection} = C.operation(c.root, c.project, first["id"])
     assert {:error, :consent_admission_refused} = C.admit(c.root, c.project, ticket, 2_001)
     assert {:error, :consent_settlement_refused} = C.settle(c.root, c.project, ticket, :unknown)
 

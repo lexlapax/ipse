@@ -1,0 +1,8 @@
+Running ExUnit with seed: 46803, max_cases: 1
+Excluding tags: [:test]
+Including tags: [:retention_deadline_fence]
+
+..
+Finished in 12.5 seconds (0.00s async, 12.5s sync)
+
+Result: 2 passed, 1 excluded

@@ -1,0 +1,6 @@
+** (MatchError) no match of right hand side value:
+
+    false
+
+    docs/archive/2026-10-26-p30-p31-implementation/shared-finalization-native-review/review-manifest.exs:26: anonymous fn/4 in :elixir_compiler_0.__FILE__/1
+    docs/archive/2026-10-26-p30-p31-implementation/shared-finalization-native-review/review-manifest.exs:28: (file)

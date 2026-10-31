@@ -1,0 +1,41 @@
+      warning: Ipse.Extension.Context.available?/1 is undefined or private
+      │
+ 1037 │     do: validate_operation(request) == :ok and Ipse.Extension.Context.available?(value)
+      │                                                                       ~
+      │
+      └─ lib/ipse/extension/actions.ex:1037:71: Ipse.Extension.Actions.valid_outcome?/4
+
+     warning: Ipse.Extension.Context.available/3 is undefined or private
+     │
+ 435 │        Ipse.Extension.Context.available(
+     │                               ~
+     │
+     └─ lib/ipse/extension/host.ex:435:31: Ipse.Extension.Host.execute_action/3
+
+      warning: Ipse.Extension.Invocation.prepare_event/8 is undefined or private. Did you mean:
+
+          * prepare_event/7
+
+      │
+ 1075 │                  Invocation.prepare_event(
+      │                             ~
+      │
+      └─ lib/ipse/session.ex:1075:29: Ipse.Session.handle_call/3
+
+{:ok,
+ [Ipse.Extension.Actions, Ipse.Extension.Catalog, Ipse.Extension.Config,
+  Ipse.Extension.Host, Ipse.Extension.Registry, Ipse.Extension.Services,
+  Ipse.Session, Ipse.Session.Invocation],
+ %{
+   compile_warnings: [],
+   runtime_warnings: [
+     %{
+       message: "Ipse.Extension.Invocation.prepare_event/8 is undefined or private. Did you mean:\n\n    * prepare_event/7\n",
+       position: {1075, 29},
+       file: "/home/lexlapax/projects/lexlapax/ipse/lib/ipse/session.ex",
+       group: true,
+       ...
+     },
+     ...
+   ]
+ }}

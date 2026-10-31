@@ -1,0 +1,7 @@
+** (MatchError) no match of right hand side value:
+
+    false
+
+    dev/knowledge/collection_compact_ledger_report.exs:26: anonymous fn/2 in :elixir_compiler_0.__FILE__/1
+    (elixir 1.20.4) lib/enum.ex:2622: Enum."-reduce/3-lists^foldl/2-0-"/3
+    dev/knowledge/collection_compact_ledger_report.exs:22: (file)

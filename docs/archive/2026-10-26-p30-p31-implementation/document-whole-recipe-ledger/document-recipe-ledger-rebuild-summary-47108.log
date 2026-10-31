@@ -1,0 +1,27 @@
+%{
+  "action_events" => 303854,
+  "effects" => 9618,
+  "invocations" => 2782,
+  "max_frame_bytes" => 13559,
+  "minimum_action_journal_bytes" => 608504983,
+  "reads" => 142309
+}
+%{
+  "coverage" => %{
+    "effects_used" => 9,
+    "finalization_available" => true,
+    "model_receipt_provenance" => false,
+    "reads_used" => 381,
+    "selected_changed" => true
+  },
+  "status" => "selected"
+}
+%{
+  "active_stages" => 0,
+  "allocation_4096_lower_bound" => 175738880,
+  "body_bytes" => 155207382,
+  "generation" => 29258,
+  "packed_bytes" => 157965754,
+  "records" => 6910
+}
+"{:done, {:ok, %{\"catalog_floor\" => 0, \"catalog_generation\" => 1000, \"coverage\" => %{\"effects_used\" => 4, \"index_complete\" => true, \"method\" => \"bm25\", \"namespace_complete\" => false, \"population_qualified\" => false, \"reads_used\" => 34}, \"index_generation\" => 2, \"status\" => \"indexed\"}}}"

@@ -1,0 +1,9 @@
+Running ExUnit with seed: 46936, max_cases: 1
+Excluding tags: [:test]
+Including tags: [:public_generation_job_gate]
+
+NAMESPACE_TEST_ARTIFACT 48f4fc8535de6bc281aee8bea8aae98e6c97569486ae461199fd102509b7dbbc
+.
+Finished in 10.9 seconds (1.0s on load, 0.00s async, 9.8s sync)
+
+Result: 1 passed, 32 excluded

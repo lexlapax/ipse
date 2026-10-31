@@ -2,6 +2,7 @@ Code.require_file("../../support/provider_fixture.ex", __DIR__)
 
 defmodule Ipse.Config.GeminiIntegrationTest do
   use ExUnit.Case, async: false
+  import Ipse.Test.ResumeAssertions
   alias Ipse.Test.ProviderFixture, as: Fixture
   alias Ipse.{Session, Journal}
 
@@ -143,7 +144,7 @@ defmodule Ipse.Config.GeminiIntegrationTest do
     assert before =~ "PRIVATE_GEMINI_SIGNATURE"
     resumed = start(c, config, id)
     assert Session.info(resumed).phase == :idle
-    assert File.read!(path) == before
+    assert_idle_resume_journal(path, before, id)
     assert :ok = Session.close(resumed)
     File.write!(path, "{\"type\"", [:append])
     torn = File.read!(path)

@@ -1,0 +1,42 @@
+Running ExUnit with seed: 46826, max_cases: 8
+Excluding tags: [:test, :native_sandbox, :macos_sandbox, :macos_filesystem, :memory_scope]
+Including tags: [:managed_shell]
+
+.
+
+  1) test managed shell waiting on approval refuses root_change before native spawn (Ipse.Extension.ManagedCollectionCallSessionTest)
+     test/ipse/extension/managed_collection_call_session_test.exs:1928
+     ** (exit) exited in: GenServer.call(#PID<0.535.0>, :info, 5000)
+         ** (EXIT) normal
+     code: assert {:ok, events} = Journal.load(c.dir, Session.info(pid).id)
+     stacktrace:
+       (elixir 1.20.4) lib/gen_server.ex:1183: GenServer.call/3
+       test/ipse/extension/managed_collection_call_session_test.exs:1972: (test)
+
+
+
+  2) test managed shell waiting on approval refuses revoke before native spawn (Ipse.Extension.ManagedCollectionCallSessionTest)
+     test/ipse/extension/managed_collection_call_session_test.exs:1928
+     ** (exit) exited in: GenServer.call(#PID<0.722.0>, :info, 5000)
+         ** (EXIT) normal
+     code: assert {:ok, events} = Journal.load(c.dir, Session.info(pid).id)
+     stacktrace:
+       (elixir 1.20.4) lib/gen_server.ex:1183: GenServer.call/3
+       test/ipse/extension/managed_collection_call_session_test.exs:1972: (test)
+
+...
+
+  3) test managed shell waiting on approval refuses expiry before native spawn (Ipse.Extension.ManagedCollectionCallSessionTest)
+     test/ipse/extension/managed_collection_call_session_test.exs:1928
+     ** (exit) exited in: GenServer.call(#PID<0.1441.0>, :info, 5000)
+         ** (EXIT) normal
+     code: assert {:ok, events} = Journal.load(c.dir, Session.info(pid).id)
+     stacktrace:
+       (elixir 1.20.4) lib/gen_server.ex:1183: GenServer.call/3
+       test/ipse/extension/managed_collection_call_session_test.exs:1972: (test)
+
+
+Finished in 26.0 seconds (0.00s async, 26.0s sync)
+
+Result: 4/7 passed, 67 excluded
+Failed: 3 tests

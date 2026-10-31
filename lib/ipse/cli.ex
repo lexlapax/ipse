@@ -23,6 +23,7 @@ defmodule Ipse.CLI do
           resume: :string,
           handoff: :string,
           yes: :boolean,
+          planning: :boolean,
           accept_edits: :boolean,
           base_url: :string,
           upstream: :string,
@@ -40,6 +41,9 @@ defmodule Ipse.CLI do
           project_config: :boolean,
           timeout_ms: :integer,
           profile: :string,
+          policy: :string,
+          after: :string,
+          days: :integer,
           extension: :keep,
           extensions: :boolean,
           observability: :string,
@@ -66,6 +70,16 @@ defmodule Ipse.CLI do
           {:error,
            "Unknown or invalid options. Run ipse --help to review supported options; no task was started."}
         )
+
+      Enum.any?([:policy, :days], &Keyword.has_key?(opts, &1)) and
+          not match?(["knowledge", "retention", _], rest) ->
+        report(
+          {:error,
+           "--policy and --days require knowledge retention NOTE_KEY; no action was started."}
+        )
+
+      Keyword.has_key?(opts, :after) and rest != ["knowledge", "review"] ->
+        report({:error, "--after requires knowledge review; no action was started."})
 
       Keyword.has_key?(opts, :probe_provider) and rest != ["doctor"] ->
         report({:error, "--probe-provider requires ipse doctor; no provider request was sent."})
@@ -96,6 +110,13 @@ defmodule Ipse.CLI do
 
       opts[:accept_edits] == true and (rest not in [[], ["chat"]] or opts[:yes] == true) ->
         report({:error, "--accept-edits requires interactive chat without --yes."})
+
+      opts[:planning] == true and
+          (opts[:demo] == true or (rest not in [[], ["chat"]] and not match?(["run" | _], rest))) ->
+        report({:error, "--planning requires chat or run; no task was started."})
+
+      opts[:planning] == true and opts[:accept_edits] == true ->
+        report({:error, "--planning cannot be combined with --accept-edits."})
 
       opts[:help] ->
         Terminal.help()
@@ -131,6 +152,9 @@ defmodule Ipse.CLI do
 
   defp dispatch(["knowledge", command], opts),
     do: Ipse.CLI.Knowledge.run(command, opts, home(), opts[:cwd] || default_cwd())
+
+  defp dispatch(["knowledge", command, key], opts),
+    do: Ipse.CLI.Knowledge.run_target(command, key, opts, home(), opts[:cwd] || default_cwd())
 
   defp dispatch(["budget"], opts) do
     if opts[:resume] do
@@ -436,26 +460,44 @@ defmodule Ipse.CLI do
         Terminal.puts(:stderr, Jason.encode!(Ipse.MCP.Config.manifest(server), pretty: true))
       end
 
-      if config.approval == :allow,
+      if info.execution_mode["ceiling"] != "normal" or
+           info.execution_mode["enclosing_ceiling"] != "normal",
+         do:
+           Terminal.puts(
+             :stderr,
+             "Execution ceiling: #{info.execution_mode["ceiling"]}; enclosing ceiling: #{info.execution_mode["enclosing_ceiling"]}. Restricted effects remain denied."
+           )
+
+      if info.execution_mode["approval"] == "allow",
         do:
           Terminal.puts(
             :stderr,
-            "Mutations, shell, configured MCP, and enabled delegation are allowed for this session (--yes)."
+            "Approval is set to allow (--yes); execution ceilings still apply."
           )
 
-      if config[:accept_edits],
-        do:
-          Terminal.puts(
-            :stderr,
-            "Native workspace file edits allowed for this session (--accept-edits). Shell, children and external tools still ask. Use /permissions to inspect or clear grants."
-          )
+      if config[:accept_edits] and info.execution_mode["ceiling"] == "normal" and
+           info.execution_mode["enclosing_ceiling"] == "normal",
+         do:
+           Terminal.puts(
+             :stderr,
+             "Native workspace file edits allowed for this session (--accept-edits). Shell, children and external tools still ask. Use /permissions to inspect or clear grants."
+           )
+
+      if config[:accept_edits] and
+           (info.execution_mode["ceiling"] != "normal" or
+              info.execution_mode["enclosing_ceiling"] != "normal"),
+         do:
+           Terminal.puts(
+             :stderr,
+             "The saved execution ceiling disables --accept-edits for this session."
+           )
 
       if handoff_opts != [],
         do: Terminal.puts(:stderr, Ipse.Session.Saved.handoff_notice(handoff_opts[:handoff]))
 
       result = Terminal.interact(pid, ref, interactive, prompt, info.cwd)
 
-      cleanup = if Process.alive?(pid), do: Ipse.Session.close(pid), else: :ok
+      cleanup = Ipse.Session.close_confirmed(pid)
       Process.demonitor(ref, [:flush])
 
       if cleanup == :ok do
@@ -491,7 +533,9 @@ defmodule Ipse.CLI do
       approval: if(opts[:yes], do: :allow, else: if(interactive, do: :ask, else: :deny)),
       approval_origin:
         if(opts[:yes], do: :yes, else: if(interactive, do: :interactive, else: :default_headless)),
-      headless: not interactive
+      headless: not interactive,
+      execution_mode: if(opts[:planning], do: :planning, else: :normal),
+      planning_cli_start: opts[:planning] == true
     }
 
     with {:ok, effective} <- Ipse.Config.resolve(workspace, home, opts),

@@ -1,0 +1,1 @@
+{"embedding":{"vectors":{"kind":"embedding","profile":"encoder"}},"extraction":{},"fetch":{},"rerank":{},"retrieval":{"words":{"kind":"bm25","version":1}},"search":{},"stores":{"notes":{"kind":"collection","partition":"notes","scope":"project"}},"version":1}

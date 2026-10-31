@@ -1,0 +1,8 @@
+
+running 3 tests
+test ipse_storage::allocation_profile::tests::lengths_are_rounded_with_runtime_unit_and_checked_before_allocation ... ok
+test ipse_storage::allocation_profile::tests::forced_huge_unknown_mounts_and_unreviewed_kernels_refuse ... ok
+test ipse_storage::allocation_profile::tests::exact_new_kernel_admits_only_qualified_tmpfs_features ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 67 filtered out; finished in 0.00s
+

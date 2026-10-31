@@ -1,0 +1,8 @@
+Running ExUnit with seed: 116485, max_cases: 8
+Excluding tags: [:test]
+Including tags: [extension_discovery_unknown: true]
+
+.
+Finished in 3.6 seconds (0.5s on load, 0.00s async, 3.0s sync)
+
+Result: 1 passed, 15 excluded

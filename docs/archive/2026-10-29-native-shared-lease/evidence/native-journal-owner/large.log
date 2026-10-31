@@ -1,0 +1,33 @@
+Running ExUnit with seed: 419874, max_cases: 8
+Excluding tags: [:native_sandbox, :macos_sandbox, :macos_filesystem, :memory_scope]
+
+
+
+  1) test large admitted records and a journal above 16 MiB close with a real release claim (Ipse.Session.NativeJournalFencingTest)
+     test/ipse/session/native_journal_fencing_test.exs:26
+     Assertion failed, no matching message after 10000ms
+     The following variables were pinned:
+       n = 1
+     Showing 3 of 3 messages in the mailbox
+     code: assert_receive {:large_append, ^n, :ok}
+     mailbox:
+       pattern: {:large_append, ^n, :ok}
+       value:   {:large_append, 1, {:error, :journal_write_unconfirmed}}
+
+       pattern: {:large_append, ^n, :ok}
+       value:   {:ipse, #PID<0.187.0>,
+                 {:error,
+                  "Session lock helper exited; stopping to protect the journal."}}
+
+       pattern: {:large_append, ^n, :ok}
+       value:   {:ipse, #PID<0.187.0>, {:done, :error}}
+     stacktrace:
+       test/ipse/session/native_journal_fencing_test.exs:50: anonymous fn/5 in Ipse.Session.NativeJournalFencingTest."test large admitted records and a journal above 16 MiB close with a real release claim"/1
+       (elixir 1.20.4) lib/enum.ex:4659: Enum.reduce/3
+       test/ipse/session/native_journal_fencing_test.exs:33: (test)
+
+
+Finished in 10.2 seconds (0.09s on load, 0.00s async, 10.1s sync)
+
+Result: 0/1 passed
+Failed: 1 test

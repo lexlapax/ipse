@@ -5,6 +5,7 @@ defmodule Ipse.Extension.InvocationTest do
   use ExUnit.Case, async: false
   alias Ipse.{Session, Journal}
   alias Ipse.Extension.{Catalog, Config, Registry, Artifact, Invocation}
+  import Ipse.Test.ResumeAssertions
 
   defmodule Model do
     def complete(config, messages, tools, _emit) do
@@ -350,7 +351,7 @@ defmodule Ipse.Extension.InvocationTest do
     resumed = start(ctx, info.id)
     assert Session.info(resumed).extension_result == info.extension_result
     assert File.read!(ctx.marker) == loads
-    assert File.read!(Path.join(ctx.dir, info.id <> ".jsonl")) == bytes
+    assert_idle_resume_journal(Path.join(ctx.dir, info.id <> ".jsonl"), bytes, info.id)
   end
 
   test "wrong result schemas stop work with an unknown receipt instead of retry", ctx do
@@ -611,7 +612,7 @@ defmodule Ipse.Extension.InvocationTest do
     calls = File.read!(ctx.called)
     resumed = start(%{ctx | config: config}, id)
     assert Session.info(resumed).phase == :idle
-    assert File.read!(Path.join(ctx.dir, id <> ".jsonl")) == bytes
+    assert_idle_resume_journal(Path.join(ctx.dir, id <> ".jsonl"), bytes, id)
     assert File.read!(ctx.called) == calls
     refute_receive {:model_http, _, _}, 20
   end
@@ -715,7 +716,7 @@ defmodule Ipse.Extension.InvocationTest do
     calls = File.read!(ctx.called)
     resumed = start(%{ctx | config: config}, id)
     assert Session.info(resumed).phase == :idle
-    assert File.read!(Path.join(ctx.dir, id <> ".jsonl")) == bytes
+    assert_idle_resume_journal(Path.join(ctx.dir, id <> ".jsonl"), bytes, id)
     assert File.read!(ctx.called) == calls
   end
 
@@ -864,7 +865,7 @@ defmodule Ipse.Extension.InvocationTest do
     calls = File.read!(ctx.called)
     resumed = start(%{ctx | config: config}, id)
     assert Session.info(resumed).phase == :idle
-    assert File.read!(Path.join(ctx.dir, id <> ".jsonl")) == bytes
+    assert_idle_resume_journal(Path.join(ctx.dir, id <> ".jsonl"), bytes, id)
     assert File.read!(ctx.called) == calls
   end
 
@@ -1045,7 +1046,7 @@ defmodule Ipse.Extension.InvocationTest do
       bytes = File.read!(Path.join(ctx.dir, id <> ".jsonl"))
       resumed = start(%{ctx | config: config}, id)
       assert Session.info(resumed).accounting["request_count"] == 1
-      assert File.read!(Path.join(ctx.dir, id <> ".jsonl")) == bytes
+      assert_idle_resume_journal(Path.join(ctx.dir, id <> ".jsonl"), bytes, id)
       refute_receive {:model_http, _, _}, 20
       :ok = Session.close(resumed)
     end
@@ -1444,7 +1445,7 @@ defmodule Ipse.Extension.InvocationTest do
     resumed = start(%{ctx | config: config}, id)
     assert Session.info(resumed).phase == :idle
     assert Session.info(resumed).accounting["unknown_outcome_count"] == 1
-    assert File.read!(path) == bytes
+    assert_idle_resume_journal(path, bytes, id)
     assert File.read!(ctx.called) == calls
   end
 
@@ -1732,7 +1733,7 @@ defmodule Ipse.Extension.InvocationTest do
     resumed = start(ctx, info.id)
     assert Session.info(resumed).extension_result == info.extension_result
     assert File.read!(ctx.called) == called
-    assert File.read!(path) == before
+    assert_idle_resume_journal(path, before, info.id)
   end
 
   test "denied host state proposals never create business records", ctx do
@@ -1916,7 +1917,7 @@ defmodule Ipse.Extension.InvocationTest do
     resumed = start(ctx, info.id)
     assert Session.info(resumed).phase == :idle
     assert File.read!(ctx.called) == calls
-    assert File.read!(path) == before
+    assert_idle_resume_journal(path, before, info.id)
     assert File.read!(file) == "{broken"
   end
 
@@ -2003,7 +2004,7 @@ defmodule Ipse.Extension.InvocationTest do
     before = File.read!(path)
     resumed = start(ctx, session_id)
     assert_receive {:ipse, ^resumed, {:question, ^id, _}}, 2000
-    assert File.read!(path) == before
+    assert_idle_resume_journal(path, before, session_id)
     assert File.read!(ctx.called) == calls
     :ok = Session.answer(resumed, id, answers())
     assert_receive {:ipse, ^resumed, {:done, :ok}}, 20_000
@@ -2406,6 +2407,35 @@ defmodule Ipse.Extension.InvocationTest do
     refute Enum.any?(events, &(&1["type"] in ~w(extension_question extension_action_intent)))
   end
 
+  test "resume without operator input refuses a pending question before journal repair", ctx do
+    pid = start(ctx)
+    :ok = host_command(pid, question_request())
+    assert_receive {:ipse, ^pid, {:question, _, _}}, 3000
+    id = Session.info(pid).id
+    calls = File.read!(ctx.called)
+    monitor = Process.monitor(pid)
+    Process.exit(pid, :kill)
+    assert_receive {:DOWN, ^monitor, :process, ^pid, :killed}, 1000
+    path = Path.join(ctx.dir, id <> ".jsonl")
+    File.write!(path, "{partial", [:append])
+    before = File.read!(path)
+    config = Map.put(ctx.config, :operator_questions, false)
+
+    assert {:error, :operator_input_unavailable} =
+             DynamicSupervisor.start_child(
+               Ipse.Sessions,
+               {Session,
+                config: config, cwd: ctx.root, state_dir: ctx.dir, subscriber: self(), id: id}
+             )
+
+    assert File.read!(path) == before
+    resumed = start(ctx, id)
+    assert_receive {:ipse, ^resumed, {:question, question_id, _}}, 3000
+    assert File.read!(ctx.called) == calls
+    assert :ok = Session.answer(resumed, question_id, answers())
+    assert_receive {:ipse, ^resumed, {:done, :ok}}, 10_000
+  end
+
   test "question and continuation corruption refuse resume before tail repair", ctx do
     pid = start(ctx)
     :ok = host_command(pid, question_request())
@@ -2469,7 +2499,7 @@ defmodule Ipse.Extension.InvocationTest do
     assert Session.info(resumed).question == nil
     refute File.exists?(ctx.marker)
     assert File.read!(ctx.called) == calls
-    assert File.read!(path) == bytes
+    assert_idle_resume_journal(path, bytes, id)
   end
 
   test "an answer exceeding its checkpoint envelope is rejected without recording or truncation",
@@ -2636,27 +2666,19 @@ defmodule Ipse.Extension.InvocationTest do
   test "workflow close cannot confirm cleanup while its nested shell supervisor is stopped",
        ctx do
     pid = start(%{ctx | config: Map.put(ctx.config, :approval, :allow)})
-    command = "printf '%s' $$ > nested-shell-pid; sleep 120 & wait"
+
+    command =
+      "printf '%s' $$ > nested-shell-pid; printf '%s' $PPID > nested-helper-pid; sleep 120 & wait"
+
     :ok = host_command(pid, tool_request("shell", %{"command" => command}, 30_000))
     shell = await_pid(Path.join(ctx.root, "nested-shell-pid"))
-    coordinator = :sys.get_state(pid).task.pid
-    {:links, links} = Process.info(coordinator, :links)
-
-    [port] =
-      for child <- links,
-          is_pid(child),
-          {:links, child_links} <- [Process.info(child, :links)],
-          port <- child_links,
-          is_port(port),
-          do: port
-
-    {:os_pid, helper} = Port.info(port, :os_pid)
-    assert {_, 0} = System.cmd("kill", ["-STOP", Integer.to_string(helper)])
+    helper = await_pid(Path.join(ctx.root, "nested-helper-pid"))
+    assert {_, 0} = System.cmd("kill", ["-STOP", helper])
 
     try do
       assert {:error, :cleanup_unconfirmed} = Session.close_confirmed(pid)
     after
-      System.cmd("kill", ["-KILL", Integer.to_string(helper)], stderr_to_stdout: true)
+      System.cmd("kill", ["-KILL", helper], stderr_to_stdout: true)
     end
 
     await_exit(shell, ctx.root)

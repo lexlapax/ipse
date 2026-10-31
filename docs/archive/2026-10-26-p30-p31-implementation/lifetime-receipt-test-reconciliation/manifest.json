@@ -1,0 +1,51 @@
+{
+  "scope": "Reconcile current State deadline refusal with historical receipt validation; actionable fresh-header recovery mapping.",
+  "date": "2026-10-29",
+  "files": {
+    "logs/ipse-lifetime-receipt-docs-46908.log": {
+      "bytes": 756,
+      "sha256": "534e7e8390bb213f4e59fc7914a72ac95679df9e5b200fe96725602ccbb48bad"
+    },
+    "logs/ipse-lifetime-receipt-docs-final-46910.log": {
+      "bytes": 756,
+      "sha256": "0a93562aba16fbe415c613a4675a2ae674c5f9faf42baabeb120dee1dfcd89db"
+    },
+    "logs/ipse-lifetime-receipt-followup-46906.log": {
+      "bytes": 456,
+      "sha256": "6d16867b64cf292d3d92f3d7f92a5707457dbd3a4f2f9ab759541f083d871a11"
+    },
+    "logs/ipse-lifetime-receipt-followup-46907.log": {
+      "bytes": 238,
+      "sha256": "f749977824095fb888c7660ebaf5a3b1a341449ab20a9a86f70cf603d534334c"
+    },
+    "runtime.json": {
+      "bytes": 33653,
+      "sha256": "2f43a9daeae5c4170593960c2c2290285aaae8d489357cd14a882de6fb4dfd46"
+    },
+    "source/_build/run-lifetime-receipt-followup.exs": {
+      "bytes": 1108,
+      "sha256": "77154245b304f15fa860a2c5688fe5e7ba63fbafe159e3223724577d7cf51096"
+    },
+    "source/docs/operator/recovery.md.txt": {
+      "bytes": 26197,
+      "sha256": "1640d24c04aa3c32660ffb8340c7eb1e02e3591ec17c3c698a44eec37ae6b800"
+    },
+    "source/lib/ipse/cli/errors.ex": {
+      "bytes": 7308,
+      "sha256": "4211424624c049049a6db6d39497c32188ed655539e8525b7d0ec7ee3084bc7b"
+    },
+    "source/lib/ipse/extension/state.ex": {
+      "bytes": 18592,
+      "sha256": "83890a40a829f9f0fa96754d5a3eccc08bca7375154a71e199339950a44876c4"
+    },
+    "source/test/ipse/cli/errors_test.exs": {
+      "bytes": 13938,
+      "sha256": "89d3980b21aec358b25509231dd9a442a8dfabd3bf52303975a59c4afd40a7f0"
+    },
+    "source/test/ipse/extension/state_test.exs": {
+      "bytes": 22636,
+      "sha256": "e3430bc915f75a4c1d0f0cc4ed84d19066609395c43a2a8221f5974cb0604e49"
+    }
+  },
+  "historical_only": true
+}

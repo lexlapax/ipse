@@ -90,6 +90,37 @@ defmodule Ipse.SemanticLoadingTest do
              Config.resolve(c.project, c.home, [trust_project_config: true], %{})
   end
 
+  test "planning MCP declarations are operator-only and remain inert data", c do
+    reads = %{
+      "mcp__notes__lookup" => %{
+        "version" => 1,
+        "server_id" => "notes",
+        "tool" => "lookup",
+        "endpoint_sha256" => Ipse.JSON.sha256("endpoint"),
+        "descriptor_sha256" => Ipse.JSON.sha256("descriptor")
+      }
+    }
+
+    assert {:ok, empty} = Config.resolve(c.project, c.home, [], %{})
+    File.write!(c.path, Jason.encode!(%{"version" => 1, "planning_mcp_reads" => reads}))
+    assert {:ok, selected} = Config.resolve(c.project, c.home, [], %{})
+    assert selected.planning_mcp_reads == reads
+    assert selected.fingerprint != empty.fingerprint
+    assert Config.manifest(selected).planning_mcp_reads == reads
+    assert {:ok, runtime} = Config.runtime(selected, client(c))
+    assert runtime.planning_mcp_reads == reads and runtime.mcp_servers == []
+
+    project_path = Path.join(c.project, ".ipse/config.json")
+    File.mkdir_p!(Path.dirname(project_path))
+
+    for value <- [reads, %{}] do
+      File.write!(project_path, Jason.encode!(%{"version" => 1, "planning_mcp_reads" => value}))
+
+      assert {:error, :planning_mcp_reads_operator_only} =
+               Config.resolve(c.project, c.home, [trust_project_config: true], %{})
+    end
+  end
+
   test "runtime preserves default headless reason independently from broad yes", c do
     assert {:ok, effective} = Config.resolve(c.project, c.home, [], %{})
 

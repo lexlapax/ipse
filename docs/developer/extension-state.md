@@ -90,28 +90,44 @@ conflict proves a mismatch. Failed receipts cannot name their own operation as
 the previous successful writer. See the same-process and separate-process fixtures
 in `test/ipse/extension/state_test.exs`.
 
-## Reject an expired prepared write
+## Bind a prepared write to its target's expiry
 
-A put can also carry absolute Unix milliseconds `write_before_ms`:
+A put may add `write_before_ms`, an absolute Unix-millisecond integer from zero
+through 2^53−1. Derive it from the condition that must remain live, such as an
+existing note's expiry; do not substitute the replacement's later expiry.
+Approval still displays the complete request and grants only that exact write.
 
-```json
-{"op":"state.put","scope":"project","key":"note","expected_revision":3,"write_before_ms":1700000001000,"value":{"text":"replacement"}}
-```
+After approval, State reads and validates the namespace while its native
+Transaction owner holds the persistent lock. Record revision CAS comes first,
+then optional namespace generation CAS, then the initial expiry check and quota
+checks. Matching CAS with an elapsed deadline returns `write_deadline_elapsed`,
+the actual check time, unchanged generation and value-free previous record.
+CAS conflict takes precedence even when the supplied deadline is zero.
 
-Use a justified deadline from observed domain state. State treats the value as
-opaque JSON; it reads no note-specific fields. Zero through 2^53−1 is accepted,
-explicit null is not. Omitting the field preserves ordinary puts. Revision/generation
-conflicts take precedence over expiry.
+For a live request, Elixir encodes the complete replacement and the same native
+lock owner stages and syncs it. Immediately before replacing `state.json`, that
+owner validates its retained target and lock identities and samples its own
+wall clock. At or after the deadline it refuses without replacing active state;
+the elapsed receipt carries that native sample. Before the deadline it admits
+the fixed one-use replacement, renames and syncs while retaining the lock.
+The final locked decision is the linearization point. Scheduling may let an
+already admitted syscall finish later; this is not a physical completion deadline
+or a claim that the note remains eligible when its reply arrives. Later recall
+and inspection check their own current expiry.
 
-State samples its clock under the lock and after syncing staged output immediately
-before rename. At/after deadline it removes that output and returns known
-`write_deadline_elapsed`, leaving value/revision/generation/last writer unchanged.
-The failed value contains exactly code, `checked_at_ms`, generation, and unchanged
-value-free record summary. Request key/revision and any conditioned generation must
-match; recorded checked time meets the deadline. Recovery validates recorded time,
-not today's clock. Interrupted IO without a receipt remains unknown. This decision
-boundary is neither a realtime syscall guarantee nor protection against wall-clock
-rollback. Never drop the condition for an automatic retry.
+Every result waits for acknowledged native release, including reads, conflicts,
+quota refusals and known elapsed refusals. Lost or malformed completion, a
+possible effect followed by sync failure, or unconfirmed cleanup stays unknown.
+Inspect the saved operation ID and current record before proposing further work;
+neither timeout nor inspection authorizes an automatic retry. Historical
+`state_deadline_fence_unavailable` receipts remain valid for reconstruction but
+do not describe current supported execution. Managed State/service calls retain
+their separate current-source denial; this generic deadline grants no authority.
+
+Study `state_native_owner_test.exs`, `state_owner_loss_test.exs` and the native
+owner controls with the public State deadline tests. The separately tagged old
+file-server diagnostic requires its retained historical implementation; it is
+not a current backend test.
 
 ## Page and bind storage deliberately
 
@@ -139,14 +155,25 @@ choose no paths. Operator scope spans projects, project scope binds the workspac
 and session scope adds durable Session ID.
 
 State lives privately under `IPSE_HOME/extension-state-v1/NAMESPACE/state.json`,
-with 256 records including tombstones and a 1-MiB file. Native persistent-inode
-locks protect CAS; synced temporary files and same-directory rename publish changes.
-Corrupt/duplicate-key/oversized/symlinked/permissive storage refuses without repair.
-Orphan pending files are inert. Capacity refusal is known `extension_state_quota`
-with unchanged generation/value-free summary and previous writer, after matching
-revision/generation. Unconfirmed IO remains unknown. A filesystem completion owner
-retains the native lock through validation/sync/rename after caller cancellation;
-Session quiescence can wait. Cancellation does not undo an admitted rename.
+with 256 records including tombstones and a 1-MiB file. The actual native lock
+owner performs bounded reads, staging, sync and every put/delete replacement;
+there is no file-server mutation fallback. Namespace directories must be private;
+data files must be owned private regular single-link files. An owner-private
+read-only file can be read and replaced. Corrupt, duplicate-key, oversized,
+symlinked or unsafe storage refuses without repair, as does an older helper that
+lacks the native State protocol.
+
+Only admitted mutating calls reclaim abandoned private `.state-pending-` stages
+under that lock, with fixed count/byte limits. Reads preserve them, unrelated
+names are left alone, and unsafe entries in the reserved namespace refuse the
+mutation. Cleanup cannot establish whether an earlier interrupted operation
+changed active state. Capacity refusal is known `extension_state_quota`, with
+unchanged generation/value-free summary and previous writer after matching CAS.
+Native owner loss cannot leave a detached file-server replacement behind, but
+an already admitted native syscall may finish before its lock is released.
+Cancellation does not undo it; blocked storage can delay quiescence. Stop old
+runtimes and their in-flight writers before upgrading this backend: a surviving
+old unfenced writer is outside the new owner's fencing guarantee.
 
 ## Suspend without keeping a worker alive
 
@@ -283,9 +310,11 @@ Remember reads actual storage revision/logical source generation and proposes a
 separately approved put. Generations version one literal assertion; updates must
 strictly increase them. Conflicts do not retry. After reading an active target,
 remember and active import carry the TARGET's expiry as `write_before_ms`, never
-the replacement's later expiry. Delayed approval after expiry becomes domain
-`source_expired` without another write. Inspect the real renewal/delayed-approval/
-resume controls before changing that translation.
+the replacement's later expiry. Approval crossing that target expiry refuses the
+renewal; a live target can be updated through the final locked decision described
+above. Keep the target condition through approval, staging and native commit.
+Fresh backup import preserves its original expiry, including expired hidden
+records; it does not manufacture a live target to renew.
 
 Version-2 active notes bind literal source/digest, positive generation,
 `task_card`/`project_fact` kind, title/text/provenance, creation≤update<expiry, and up to eight

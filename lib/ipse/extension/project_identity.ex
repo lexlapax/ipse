@@ -32,6 +32,7 @@ defmodule Ipse.Extension.ProjectIdentity do
   @projects 256
   @bindings 1024
   @held {__MODULE__, :lock_held}
+  @retained_binding {__MODULE__, :retained_binding}
   @error {:error, :project_identity_unavailable}
 
   @doc "Reject same-process reentry or identity acquisition below a project lock."
@@ -100,6 +101,32 @@ defmodule Ipse.Extension.ProjectIdentity do
     do: existing_read(home, cwd, {:inspect, binding, fun})
 
   def with_existing_binding(_, _, _, _), do: @error
+
+  @doc "Internal reuse of the exact native existing-binding lease held by this same host callback."
+  def with_held_binding(home, cwd, binding, fun) when is_function(fun, 1) do
+    with %{owner: owner, context: context, state: state, binding: ^binding} <-
+           Process.get(@retained_binding),
+         true <- owner == self() and home == Path.dirname(context.root) and cwd == context.cwd,
+         :ok <- retained_lease(context.lock, :before),
+         {:ok, root} <- directory(cwd, context.uid),
+         {:ok, ^binding} <- existing_binding(context, state, root) do
+      result = fun.(binding)
+
+      with :ok <- retained_lease(context.lock, :after),
+           {:ok, root} <- directory(cwd, context.uid),
+           {:ok, ^binding} <- existing_binding(context, state, root) do
+        result
+      else
+        _ -> {:unknown, :project_identity_use_unconfirmed}
+      end
+    else
+      _ -> @error
+    end
+  rescue
+    _ -> {:unknown, :project_identity_use_unconfirmed}
+  end
+
+  def with_held_binding(_, _, _, _), do: @error
 
   @doc "Internal existing-key verifier callback. Never initializes, joins, repairs or exposes private index data."
   def with_existing_domain_auth(home, cwd, binding, scope, fun) when is_function(fun, 2) do
@@ -326,7 +353,9 @@ defmodule Ipse.Extension.ProjectIdentity do
             with {:ok, record, entry} <- DomainAuth.select(state, value["project_id"], scope) do
               {:callback,
                fn ->
-                 DomainAuth.with_auth(record, entry, value["project_id"], scope, :verify, fun)
+                 retain_binding(context, state, value, fn ->
+                   DomainAuth.with_auth(record, entry, value["project_id"], scope, :verify, fun)
+                 end)
                end}
             end
           else
@@ -335,7 +364,8 @@ defmodule Ipse.Extension.ProjectIdentity do
 
         {:inspect, expected, fun} ->
           if not is_nil(value) and value === expected,
-            do: {:callback, fn -> fun.(value) end},
+            do:
+              {:callback, fn -> retain_binding(context, state, value, fn -> fun.(value) end) end},
             else: {:error, :stale_project_identity}
 
         fun when is_function(fun, 1) and is_nil(value) ->
@@ -344,6 +374,25 @@ defmodule Ipse.Extension.ProjectIdentity do
         _ ->
           {:ok, value}
       end
+    end
+  end
+
+  defp retain_binding(context, state, binding, fun) do
+    before = Process.get(@retained_binding)
+
+    Process.put(@retained_binding, %{
+      owner: self(),
+      context: context,
+      state: state,
+      binding: binding
+    })
+
+    try do
+      fun.()
+    after
+      if is_nil(before),
+        do: Process.delete(@retained_binding),
+        else: Process.put(@retained_binding, before)
     end
   end
 
@@ -438,7 +487,7 @@ defmodule Ipse.Extension.ProjectIdentity do
     transaction(home, cwd, fn context, state ->
       with {:read, actual} <- resolve_locked(context, state, cwd),
            true <- actual === binding do
-        {:callback, fn -> fun.(actual) end}
+        {:callback, fn -> retain_binding(context, state, actual, fn -> fun.(actual) end) end}
       else
         _ -> {:error, :stale_project_identity}
       end
@@ -973,6 +1022,16 @@ defmodule Ipse.Extension.ProjectIdentity do
 
   defp lease(cap, phase) do
     if Transaction.check(cap) == :ok,
+      do: :ok,
+      else:
+        if(phase == :after,
+          do: {:unknown, :project_identity_lock_lost},
+          else: {:error, :project_identity_lock_lost}
+        )
+  end
+
+  defp retained_lease(cap, phase) do
+    if Transaction.check_retained(cap) == :ok,
       do: :ok,
       else:
         if(phase == :after,

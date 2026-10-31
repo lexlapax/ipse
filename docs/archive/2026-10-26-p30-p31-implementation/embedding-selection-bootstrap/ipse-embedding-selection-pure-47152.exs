@@ -1,0 +1,5 @@
+Path.wildcard("_build/embedding-selection-sol-20261029/lib/*/ebin") |> Enum.each(&Code.prepend_path/1)
+ExUnit.start(autorun: false, seed: 20261029)
+Code.require_file("test/ipse/extension/embedding_result_test.exs")
+result = ExUnit.run()
+System.halt(if result.failures == 0, do: 0, else: 1)

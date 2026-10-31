@@ -1,0 +1,71 @@
+{
+  "input": "/home/lexlapax/projects/lexlapax/ipse/_build/document-recipe-ledger-20261029/private-full-47083",
+  "version": 1,
+  "kind": "document_recipe_ledger_reduction",
+  "sections": {
+    "lexical": {
+      "events": 80658,
+      "reads": 39946,
+      "effects": 383,
+      "invocations": 252,
+      "action_journal_lower_bytes": 128740168
+    },
+    "shared_append": {
+      "events": 90838,
+      "reads": 37540,
+      "effects": 7879,
+      "invocations": 1875,
+      "action_journal_lower_bytes": 220511148
+    },
+    "shared_begin": {
+      "events": 46,
+      "reads": 20,
+      "effects": 3,
+      "invocations": 1,
+      "action_journal_lower_bytes": 60097
+    },
+    "shared_finalize": {
+      "events": 104036,
+      "reads": 49643,
+      "effects": 2375,
+      "invocations": 654,
+      "action_journal_lower_bytes": 161950045
+    },
+    "source": {
+      "events": 128084,
+      "reads": 56042,
+      "effects": 8000,
+      "invocations": 6000,
+      "action_journal_lower_bytes": 152240453
+    }
+  },
+  "input_trace_sha256": "f80a54265ecb75a5418f8e495e258bf09ac94c00d3ffd2b725d285a48c1aad4f",
+  "total_action_ids": 201831,
+  "modeled_native_mutation_ids": 18640,
+  "model_seed_generation": 1000,
+  "missing_seed_history": "synthetic generation1000 is not a native manifest; no corresponding baseline IDs/receipts were supplied or counted. Lifetime admission must add actual Known(target).",
+  "native_ids_sha256": "943fcbd90e050ef41196ce35fcaaeca4030ae63be86a9212ab99ac03dbca457c",
+  "action_events_lower_bound": 403662,
+  "action_journal_bytes_lower_bound": 663501911,
+  "first_single_session_event_refusal": {
+    "item": 786,
+    "section": "source",
+    "sequence": 4717,
+    "stage_count": 0
+  },
+  "first_single_session_byte_refusal": {
+    "item": 899,
+    "section": "source",
+    "sequence": 5399,
+    "stage_count": 3
+  },
+  "public_record_count": 5277,
+  "fresh_migration_optimistic_operation_minimum": 29194,
+  "fresh_migration_minimum_assumptions": "imports every known unique native operation identity; each existing public value costs at least one prepare and one accept; excludes larger multipart values, plans, operation pages, epoch open, progress, checkpoint, recovery, close and terminal cleanup",
+  "native_lifetime_ceiling": 32768,
+  "public_plus_private_lifetime_key_ceiling": 8192,
+  "mutation_admission": "not authorized; maintenance and physical-layout export/import are not implemented",
+  "actual_native_operations": 0,
+  "actual_session_journal_measured": false,
+  "serialized_record_note": "JSON pair lower bounds are sufficient refusal evidence; full actual Session journal bytes/events remain unmeasured"
+}

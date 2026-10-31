@@ -1,0 +1,7 @@
+
+running 2 tests
+test ipse_operator::tests::guarded_display_with_elapsed_deadline_emits_no_terminal_bytes ... ok
+test ipse_operator::tests::guarded_review_waits_for_release_before_reading_input ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 74 filtered out; finished in 0.18s
+

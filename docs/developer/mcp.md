@@ -56,6 +56,18 @@ Extensions use the separate [MCP host-call contract](extension-effects.md#bind-a
 Their action intent replaces the model tool's `tool_started` record; routing,
 descriptor rediscovery, transport ownership and unknown-outcome rules are shared.
 
+Preserve uncertainty during discovery itself. `MCP.discover/3` stops its server
+reduction on `{:unknown, message}` without downgrading the tag. The extension
+adapter `MCPCall.discover/5` returns sanitized `{:unknown, %{}}` for its bounded
+unknown result; malformed input still returns a validation error before network
+dispatch. Host stops context setup before admitting the requested tool action.
+Initialization can already have reached the server, so this is not proof of
+remote cancellation. A managed discovery intent without its matching bound
+result remains incomplete on reconstruction; idle resume must not reconnect.
+The focused `extension_discovery_unknown` case in `test/ipse/mcp/http_test.exs`
+interrupts an actual HTTP transport and checks both the returned tag and the
+absence of a tool call, alongside validation and healthy-discovery controls.
+
 Follow this in `test/ipse/mcp/session_test.exs`, then read the catalog Session fixture
 for a selected resource. Both should reach the same approval/intent boundary.
 Resource text and prompt messages remain data, with returned roles preserved;
@@ -159,11 +171,15 @@ OAuth discovery, registration, negotiation, and refresh are unsupported.
 
 `Ipse.HTTP` supplies selected proxy options without origin-header credential
 leaks. Loopback bypasses ambient proxies; a chosen proxy failure does not fall
-back to direct egress. Each request uses a private one-connection HTTP/1 Finch pool
-owned by an `Ipse.HTTP` guardian. IO runs outside the transport GenServer; the
-guardian lease remains through cancellation and pool cleanup. Closure attempts a
-bounded authenticated DELETE for an assigned session, without claiming remote
-work stopped.
+back to direct egress. Ordinary requests use a private one-connection HTTP/1
+Finch pool owned by an `Ipse.HTTP` guardian. Managed POST requests instead use the
+owned `MintTransport` socket path inside a controlled cleanup scope, binding the
+exact discovery/start/send request to the Session's current-use admission before
+egress. Neither path runs IO inside the transport GenServer. The ordinary
+guardian remains through cancellation and pool cleanup; the managed path must
+confirm its owned socket boundary. Closure attempts a bounded authenticated
+DELETE for an assigned session, without claiming remote work stopped. A missing
+cleanup receipt stays unknown even if the socket later appears closed.
 
 The HTTP transport monitors the SDK owner and registers with the task cleanup
 scope. It starts without a process link because owner-exit system termination

@@ -1,0 +1,817 @@
+Compiling 1 file (.ex)
+Running ExUnit with seed: 161435, max_cases: 40
+Excluding tags: [:test, :native_sandbox, :macos_sandbox, :macos_filesystem, :memory_scope]
+Including tags: [assertion_scenario: "save_forget"]
+
+
+
+  1) test actual native CLI statement review: save_forget (Ipse.Session.OperatorAssertionIntegrationTest)
+     test/ipse/session/operator_assertion_integration_test.exs:25
+     Choose the knowledge identity for /tmp/ipse-assertion-e44e59dfeb85b1266249b62f76996c0b/work.
+     Repository shares only with reciprocally verified worktrees; folder means only this canonical folder.
+     Type one exact choice: folder 40c7e7f408ce38ae
+     > folder 40c7e7f408ce38ae
+     Enable native notes for /tmp/ipse-assertion-e44e59dfeb85b1266249b62f76996c0b/work (folder).
+     This selection takes effect in the next new session, including headless run.
+     Literal notes require a separate native statement/category review or a typed host outcome; other inputs remain pending.
+     Ordinary notes: 90 days; pending proposals: 7 days. Current/preferences may persist.
+     No secondary model calls are authorized. Ordinary tool approvals remain separate.
+     Exact permission, route, retention, artifact and daily limits:
+     {
+       "artifact_sha256": "42f4fb454e9dad8ef0a55d6448b65911f2ed8daef44dbdc01fb37e6ac91cdd77",
+       "expires_at_ms": 1824767131186,
+       "headless": true,
+       "limits": {
+         "cost_nanos": 0,
+         "download_bytes": 0,
+         "input_bytes": 2097152,
+         "model_calls": 0,
+         "operations": 100,
+         "output_bytes": 4194304
+       },
+       "operations": [
+         "notes.capture",
+         "notes.propose",
+         "notes.recall"
+       ],
+       "period_ms": 86400000,
+       "project": "9a1566887b4d174f8b5d3b09acce93ec5fda4f124e3e60e5421d39ccafd04c10",
+       "settings": {
+         "activation": {
+           "allow_children": false,
+           "artifact": "42f4fb454e9dad8ef0a55d6448b65911f2ed8daef44dbdc01fb37e6ac91cdd77",
+           "artifact_sha256": "42f4fb454e9dad8ef0a55d6448b65911f2ed8daef44dbdc01fb37e6ac91cdd77",
+           "capabilities": [
+             "host.actions",
+             "host.actions.mixed",
+             "host.collection.managed",
+             "host.collection.read",
+             "host.sources",
+             "invoke.command",
+             "invoke.result.pages",
+             "invoke.tool"
+           ],
+           "instance": "knowledge",
+           "kind": "reviewed.bundle",
+           "lifetime": "session",
+           "main_timeout_ms": 90000,
+           "options": {
+             "embedding": {},
+             "extraction": {},
+             "fetch": {},
+             "rerank": {},
+             "retrieval": {},
+             "search": {},
+             "stores": {},
+             "version": 1
+           },
+           "order": 100,
+           "service_refs": [
+             {
+               "operation": "main",
+               "profile": null,
+               "service_id": "demo"
+             }
+           ],
+           "sidecar_sha256": "6add073e340583f2debc3a59475298ccb2359bc1aab7f77b65f704fbb9553549",
+           "version": 1
+         },
+         "constraints": {
+           "78b6d7943b3430f0225a3ee45cc4cffc27de14ddd97c39f8e38c9f8fb85ca68e": {
+             "allow_delete": false,
+             "evidence_path": [
+               "evidence",
+               "sources"
+             ],
+             "key_prefix": "pending.",
+             "source_categories": [
+               "assistant_proposal",
+               "interactive_operator",
+               "native_operator_answer",
+               "native_operator_assertion",
+               "typed_host_outcome",
+               "unattended_input"
+             ],
+             "value_schema": {
+               "additionalProperties": false,
+               "properties": {
+                 "assigned_category": {
+                   "enum": [
+                     "ordinary",
+                     "preference",
+                     "current"
+                   ],
+                   "type": "string"
+                 },
+                 "created_at_ms": {
+                   "maximum": 9007199254740991,
+                   "minimum": 0,
+                   "type": "integer"
+                 },
+                 "event_at_ms": {
+                   "maximum": 9007199254740991,
+                   "minimum": 0,
+                   "type": [
+                     "integer",
+                     "null"
+                   ]
+                 },
+                 "evidence": {
+                   "additionalProperties": false,
+                   "properties": {
+                     "sources": {
+                       "items": {
+                         "additionalProperties": false,
+                         "properties": {
+                           "content_sha256": {
+                             "maxLength": 64,
+                             "minLength": 64,
+                             "type": "string"
+                           },
+                           "coverage": {
+                             "enum": [
+                               "available",
+                               "partial"
+                             ],
+                             "type": "string"
+                           },
+                           "end_byte": {
+                             "maximum": 9007199254740991,
+                             "minimum": 0,
+                             "type": "integer"
+                           },
+                           "kind": {
+                             "enum": [
+                               "input.original",
+                               "input.operator_answer",
+                               "answer.original",
+                               "tool.outcome",
+                               "input.assertion.ordinary",
+                               "input.assertion.preference",
+                               "input.assertion.current"
+                             ],
+                             "type": "string"
+                           },
+                           "occurrence_id": {
+                             "maxLength": 32,
+                             "minLength": 32,
+                             "type": "string"
+                           },
+                           "origin": {
+                             "enum": [
+                               "assistant_proposal",
+                               "interactive_operator",
+                               "native_operator_answer",
+                               "native_operator_assertion",
+                               "typed_host_outcome",
+                               "unattended_input"
+                             ],
+                             "type": "string"
+                           },
+                           "path": {
+                             "type": "null"
+                           },
+                           "quote": {
+                             "maxLength": 1024,
+                             "minLength": 1,
+                             "type": "string"
+                           },
+                           "quote_sha256": {
+                             "maxLength": 64,
+                             "minLength": 64,
+                             "type": "string"
+                           },
+                           "receipt_sha256": {
+                             "maxLength": 64,
+                             "minLength": 64,
+                             "type": "string"
+                           },
+                           "session_id": {
+                             "maxLength": 32,
+                             "minLength": 32,
+                             "type": "string"
+                           },
+                           "start_byte": {
+                             "maximum": 9007199254740991,
+                             "minimum": 0,
+                             "type": "integer"
+                           },
+                           "version": {
+                             "enum": [
+                               1
+                             ],
+                             "type": "integer"
+                           },
+                           "version_id": {
+                             "maxLength": 32,
+                             "minLength": 32,
+                             "type": "string"
+                           }
+                         },
+                         "required": [
+                           "content_sha256",
+                           "coverage",
+                           "end_byte",
+                           "kind",
+                           "occurrence_id",
+                           "origin",
+                           "path",
+                           "quote",
+                           "quote_sha256",
+                           "receipt_sha256",
+                           "session_id",
+                           "start_byte",
+                           "version",
+                           "version_id"
+                         ],
+                         "type": "object"
+                       },
+                       "maxItems": 1,
+                       "minItems": 1,
+                       "type": "array"
+                     }
+                   },
+                   "required": [
+                     "sources"
+                   ],
+                   "type": "object"
+                 },
+                 "expires_at_ms": {
+                   "maximum": 9007199254740991,
+                   "minimum": 0,
+                   "type": "integer"
+                 },
+                 "id": {
+                   "maxLength": 64,
+                   "minLength": 64,
+                   "type": "string"
+                 },
+                 "kind": {
+                   "enum": [
+                     "proposal"
+                   ],
+                   "type": "string"
+                 },
+                 "lineage": {
+                   "maxLength": 64,
+                   "minLength": 64,
+                   "type": "string"
+                 },
+                 "reason": {
+                   "maxLength": 256,
+                   "minLength": 1,
+                   "type": "string"
+                 },
+                 "state": {
+                   "enum": [
+                     "pending"
+                   ],
+                   "type": "string"
+                 },
+                 "text": {
+                   "maxLength": 2048,
+                   "minLength": 1,
+                   "type": "string"
+                 },
+                 "version": {
+                   "enum": [
+                     1
+                   ],
+                   "type": "integer"
+                 }
+               },
+               "required": [
+                 "assigned_category",
+                 "created_at_ms",
+                 "event_at_ms",
+                 "evidence",
+                 "expires_at_ms",
+                 "id",
+                 "kind",
+                 "lineage",
+                 "reason",
+                 "state",
+                 "text",
+                 "version"
+               ],
+               "type": "object"
+             },
+             "version": 1
+           },
+           "d709745ab18405dff572c41053eda5cbe12c350ebbabdcd0d52ea1e80962368a": {
+             "allow_delete": false,
+             "evidence_path": [
+               "evidence",
+               "sources"
+             ],
+             "key_prefix": "note.",
+             "source_categories": [
+               "native_operator_assertion",
+               "typed_host_outcome"
+             ],
+             "value_schema": {
+               "additionalProperties": false,
+               "properties": {
+                 "category": {
+                   "enum": [
+                     "ordinary",
+                     "preference",
+                     "current"
+                   ],
+                   "type": "string"
+                 },
+                 "created_at_ms": {
+                   "maximum": 9007199254740991,
+                   "minimum": 0,
+                   "type": "integer"
+                 },
+                 "event_at_ms": {
+                   "maximum": 9007199254740991,
+                   "minimum": 0,
+                   "type": [
+                     "integer",
+                     "null"
+                   ]
+                 },
+                 "evidence": {
+                   "additionalProperties": false,
+                   "properties": {
+                     "sources": {
+                       "items": {
+                         "additionalProperties": false,
+                         "properties": {
+                           "content_sha256": {
+                             "maxLength": 64,
+                             "minLength": 64,
+                             "type": "string"
+                           },
+                           "coverage": {
+                             "enum": [
+                               "available",
+                               "partial"
+                             ],
+                             "type": "string"
+                           },
+                           "end_byte": {
+                             "maximum": 9007199254740991,
+                             "minimum": 0,
+                             "type": "integer"
+                           },
+                           "kind": {
+                             "enum": [
+                               "input.original",
+                               "input.operator_answer",
+                               "answer.original",
+                               "tool.outcome",
+                               "input.assertion.ordinary",
+                               "input.assertion.preference",
+                               "input.assertion.current"
+                             ],
+                             "type": "string"
+                           },
+                           "occurrence_id": {
+                             "maxLength": 32,
+                             "minLength": 32,
+                             "type": "string"
+                           },
+                           "origin": {
+                             "enum": [
+                               "assistant_proposal",
+                               "interactive_operator",
+                               "native_operator_answer",
+                               "native_operator_assertion",
+                               "typed_host_outcome",
+                               "unattended_input"
+                             ],
+                             "type": "string"
+                           },
+                           "path": {
+                             "type": "null"
+                           },
+                           "quote": {
+                             "maxLength": 1024,
+                             "minLength": 1,
+                             "type": "string"
+                           },
+                           "quote_sha256": {
+                             "maxLength": 64,
+                             "minLength": 64,
+                             "type": "string"
+                           },
+                           "receipt_sha256": {
+                             "maxLength": 64,
+                             "minLength": 64,
+                             "type": "string"
+                           },
+                           "session_id": {
+                             "maxLength": 32,
+                             "minLength": 32,
+                             "type": "string"
+                           },
+                           "start_byte": {
+                             "maximum": 9007199254740991,
+                             "minimum": 0,
+                             "type": "integer"
+                           },
+                           "version": {
+                             "enum": [
+                               1
+                             ],
+                             "type": "integer"
+                           },
+                           "version_id": {
+                             "maxLength": 32,
+                             "minLength": 32,
+                             "type": "string"
+                           }
+                         },
+                         "required": [
+                           "content_sha256",
+                           "coverage",
+                           "end_byte",
+                           "kind",
+                           "occurrence_id",
+                           "origin",
+                           "path",
+                           "quote",
+                           "quote_sha256",
+                           "receipt_sha256",
+                           "session_id",
+                           "start_byte",
+                           "version",
+                           "version_id"
+                         ],
+                         "type": "object"
+                       },
+                       "maxItems": 1,
+                       "minItems": 1,
+                       "type": "array"
+                     }
+                   },
+                   "required": [
+                     "sources"
+                   ],
+                   "type": "object"
+                 },
+                 "expires_at_ms": {
+                   "maximum": 9007199254740991,
+                   "minimum": 0,
+                   "type": [
+                     "integer",
+                     "null"
+                   ]
+                 },
+                 "id": {
+                   "maxLength": 64,
+                   "minLength": 64,
+                   "type": "string"
+                 },
+                 "lineage": {
+                   "maxLength": 64,
+                   "minLength": 64,
+                   "type": "string"
+                 },
+                 "metadata_reserve": {
+                   "enum": [
+                     "",
+                     "0000000000000000000000000000000000000000000000000000000000000000"
+                   ],
+                   "type": "string"
+                 },
+                 "observed_at_ms": {
+                   "maximum": 9007199254740991,
+                   "minimum": 0,
+                   "type": "integer"
+                 },
+                 "previous_category": {
+                   "type": "null"
+                 },
+                 "reason": {
+                   "maxLength": 256,
+                   "minLength": 1,
+                   "type": "string"
+                 },
+                 "superseded_at_ms": {
+                   "type": "null"
+                 },
+                 "text": {
+                   "maxLength": 2048,
+                   "minLength": 1,
+                   "type": "string"
+                 },
+                 "version": {
+                   "enum": [
+                     1
+                   ],
+                   "type": "integer"
+                 }
+               },
+               "required": [
+                 "category",
+                 "created_at_ms",
+                 "event_at_ms",
+                 "evidence",
+                 "expires_at_ms",
+                 "id",
+                 "lineage",
+                 "metadata_reserve",
+                 "observed_at_ms",
+                 "previous_category",
+                 "reason",
+                 "superseded_at_ms",
+                 "text",
+                 "version"
+               ],
+               "type": "object"
+             },
+             "version": 1
+           }
+         },
+         "domain": "knowledge",
+         "effects": [
+           {
+             "class": "collection.publish",
+             "constraints_sha256": "d709745ab18405dff572c41053eda5cbe12c350ebbabdcd0d52ea1e80962368a",
+             "inner_op": "collection.managed",
+             "operation": "notes.capture",
+             "outer_sha256": "cf9f0a54e5190bc3b41039899bcd6c0eee9ffa2367dfa15b2d8b1e55ffd16e53",
+             "recipe_sha256": "818634825cb494606d25195a6601971a17542ed2caa22f28d1e18b1971b18cf7"
+           },
+           {
+             "class": "collection.publish",
+             "constraints_sha256": "d709745ab18405dff572c41053eda5cbe12c350ebbabdcd0d52ea1e80962368a",
+             "inner_op": "collection.managed",
+             "operation": "notes.capture",
+             "outer_sha256": "f5a509bff213a11a6b58186e73da0ba7e08017d4a89c4b959e683f9f6433e91a",
+             "recipe_sha256": "818634825cb494606d25195a6601971a17542ed2caa22f28d1e18b1971b18cf7"
+           },
+           {
+             "class": "collection.publish",
+             "constraints_sha256": "78b6d7943b3430f0225a3ee45cc4cffc27de14ddd97c39f8e38c9f8fb85ca68e",
+             "inner_op": "collection.managed",
+             "operation": "notes.propose",
+             "outer_sha256": "cf9f0a54e5190bc3b41039899bcd6c0eee9ffa2367dfa15b2d8b1e55ffd16e53",
+             "recipe_sha256": "d2622a1dd0ede7863d677e7ba76ef22f29509f5fc19fb72096c1b5ff70e7505d"
+           },
+           {
+             "class": "collection.publish",
+             "constraints_sha256": "78b6d7943b3430f0225a3ee45cc4cffc27de14ddd97c39f8e38c9f8fb85ca68e",
+             "inner_op": "collection.managed",
+             "operation": "notes.propose",
+             "outer_sha256": "f5a509bff213a11a6b58186e73da0ba7e08017d4a89c4b959e683f9f6433e91a",
+             "recipe_sha256": "d2622a1dd0ede7863d677e7ba76ef22f29509f5fc19fb72096c1b5ff70e7505d"
+           },
+           {
+             "class": "collection.read",
+             "inner_op": "collection.call",
+             "managed_read": [
+               "818634825cb494606d25195a6601971a17542ed2caa22f28d1e18b1971b18cf7",
+               "d2622a1dd0ede7863d677e7ba76ef22f29509f5fc19fb72096c1b5ff70e7505d"
+             ],
+             "operation": "notes.recall",
+             "outer_sha256": "cf9f0a54e5190bc3b41039899bcd6c0eee9ffa2367dfa15b2d8b1e55ffd16e53"
+           },
+           {
+             "class": "collection.read",
+             "inner_op": "collection.call",
+             "managed_read": [
+               "818634825cb494606d25195a6601971a17542ed2caa22f28d1e18b1971b18cf7",
+               "d2622a1dd0ede7863d677e7ba76ef22f29509f5fc19fb72096c1b5ff70e7505d"
+             ],
+             "operation": "notes.recall",
+             "outer_sha256": "f5a509bff213a11a6b58186e73da0ba7e08017d4a89c4b959e683f9f6433e91a"
+           }
+         ],
+         "identity_sha256": "84de488953e84f16c77414308208f25a7eada7c4a89b34cca118554dfd093909",
+         "instance": "knowledge",
+         "namespace": "fb66b6390651249bd167fa39602b57d696da3e9b98a385cabf7ec44b0205c6ac",
+         "recipes": {
+           "818634825cb494606d25195a6601971a17542ed2caa22f28d1e18b1971b18cf7": {
+             "category_path": [
+               "category"
+             ],
+             "constraints_sha256": "d709745ab18405dff572c41053eda5cbe12c350ebbabdcd0d52ea1e80962368a",
+             "evidence_path": [
+               "evidence",
+               "sources"
+             ],
+             "key_prefix": "note.",
+             "kind": "literal_source",
+             "lineage_path": [
+               "lineage"
+             ],
+             "override_prefix": "override.",
+             "rules": [
+               {
+                 "category": "current",
+                 "max_age_ms": null,
+                 "origins": [
+                   "native_operator_assertion"
+                 ]
+               },
+               {
+                 "category": "ordinary",
+                 "max_age_ms": 7776000000,
+                 "origins": [
+                   "native_operator_assertion",
+                   "typed_host_outcome"
+                 ]
+               },
+               {
+                 "category": "preference",
+                 "max_age_ms": null,
+                 "origins": [
+                   "native_operator_assertion"
+                 ]
+               }
+             ],
+             "text_path": [
+               "text"
+             ],
+             "version": 1
+           },
+           "d2622a1dd0ede7863d677e7ba76ef22f29509f5fc19fb72096c1b5ff70e7505d": {
+             "category_path": [
+               "assigned_category"
+             ],
+             "constraints_sha256": "78b6d7943b3430f0225a3ee45cc4cffc27de14ddd97c39f8e38c9f8fb85ca68e",
+             "evidence_path": [
+               "evidence",
+               "sources"
+             ],
+             "key_prefix": "pending.",
+             "kind": "proposal",
+             "lineage_path": [
+               "lineage"
+             ],
+             "override_prefix": "override.",
+             "rules": [
+               {
+                 "category": "current",
+                 "max_age_ms": 604800000,
+                 "origins": [
+                   "assistant_proposal",
+                   "interactive_operator",
+                   "native_operator_answer",
+                   "native_operator_assertion",
+                   "typed_host_outcome",
+                   "unattended_input"
+                 ]
+               },
+               {
+                 "category": "ordinary",
+                 "max_age_ms": 604800000,
+                 "origins": [
+                   "assistant_proposal",
+                   "interactive_operator",
+                   "native_operator_answer",
+                   "native_operator_assertion",
+                   "typed_host_outcome",
+                   "unattended_input"
+                 ]
+               },
+               {
+                 "category": "preference",
+                 "max_age_ms": 604800000,
+                 "origins": [
+                   "assistant_proposal",
+                   "interactive_operator",
+                   "native_operator_answer",
+                   "native_operator_assertion",
+                   "typed_host_outcome",
+                   "unattended_input"
+                 ]
+               }
+             ],
+             "text_path": [
+               "text"
+             ],
+             "version": 1
+           }
+         },
+         "retention": {
+           "automatic": 90,
+           "manual": 3650
+         },
+         "routes": [
+           {
+             "account_controls": null,
+             "billing_mode": "none",
+             "cache_retention": null,
+             "endpoint": "demo://local",
+             "model": "scripted",
+             "operation": "main",
+             "processing_region": null,
+             "profile": null,
+             "provider": "demo",
+             "service_id": "demo",
+             "storage_region": null
+           }
+         ],
+         "scope": {
+           "kind": "project",
+           "worktree_id": null
+         },
+         "sources": {
+           "categories": [
+             "assistant_proposal",
+             "interactive_operator",
+             "native_operator_answer",
+             "native_operator_assertion",
+             "typed_host_outcome",
+             "unattended_input"
+           ],
+           "exclusions": []
+         },
+         "storage": {
+           "collection": "knowledge",
+           "kind": "local_collection"
+         },
+         "version": 2
+       },
+       "source_sha256": "098be7eda6b0f8e8efb36093fb7cc6cdde8bb55bc60f9e43567576c0d88fdd77",
+       "version": 1
+     }
+     Type enable ffae8fe101034cfd to confirm this exact review, or anything else to cancel.
+     > enable ffae8fe101034cfd
+     Saved knowledge permission. Start a new chat or run to adopt this selection.
+     IPSE_ASSERTION_CLI_READY
+     Type a task, $review, or /help. Use /cancel while work is running.
+     you> /remember ordinary Synthetic ordinary statement
+     Remember this exact statement as your own ordinary note?
+     Statement: "Synthetic ordinary statement"
+     Retention: at most 90 days.
+     Workspace: "/tmp/ipse-assertion-e44e59dfeb85b1266249b62f76996c0b/work"
+     Project: 9a1566887b4d174f8b5d3b09acce93ec5fda4f124e3e60e5421d39ccafd04c10
+     Collection: fb66b6390651249bd167fa39602b57d696da3e9b98a385cabf7ec44b0205c6ac
+     Artifact: 42f4fb454e9dad8ef0a55d6448b65911f2ed8daef44dbdc01fb37e6ac91cdd77
+     Permission: 3ca1c5541a5b72dbecf3cb3df9866a42b82f97cf922c59c7c70c95938fa8323e
+     This confirms the statement and category; other effects keep their own approvals.
+     Type remember f9c9a79886f61f918f2408596dc940f7 to confirm. Anything else cancels.
+     remember> remember f9c9a79886f61f918f2408596dc940f7
+     you> 
+     Extension ext__knowledge__capture: {"category":"ordinary","key":"note.582bcd92d9bf36cdc13bb72bd9ddb1ab2ff53cb15aea5d53d42824176be293f4","receipt":{"binding":{"normalization_sha256":"bdc7102493619d6be23fd503b3294b6da52e80ba353e8418f0039f7aa8274e55","original_request_sha256":"d33754211d3c497f96759be14c0c2b6abc786c813b0193eee537632b15e3cb8f","recipe_sha256":"818634825cb494606d25195a6601971a17542ed2caa22f28d1e18b1971b18cf7","version":1},"normalization":{"category":"ordinary","eligibility":"current","first_admitted_ms":1793231131926,"format_value_sha256":"fc8182b66dd536b8da499c822f336e9811c8ba54cf503a69485c75acc0e92b00","lineage":"582bcd92d9bf36cdc13bb72bd9ddb1ab2ff53cb15aea5d53d42824176be293f4","metadata_changes":[{"expected_revision":0,"key":"host.validity.format","value_sha256":"fc8182b66dd536b8da499c822f336e9811c8ba54cf503a69485c75acc0e92b00"},{"expected_revision":0,"key":"host.validity.a.0000000000000000000000000000000000000000000000000000000000000000","value_sha256":"00dcefaebcf8c19eff2bebcde4f58734b411a1da8a90166d2024902c351584eb"},{"expected_revision":0,"key":"host.validity.l.000000000000000000000000000000000000000000000000000000000000000000","value_sha256":"39a27360a4fd8f340a9437e954b6e59883ff96fbea247194ed3ff2eb05a2f343"}],"record_key":"note.582bcd92d9bf36cdc13bb72bd9ddb1ab2ff53cb15aea5d53d42824176be293f4","valid_until_ms":1801007131926,"version":3},"receipt":{"floor":1,"generation":1,"managed_binding_sha256":"de8dc10a41b2a290f3a9ffc5b6a08b4f85270b4cbf5d5bc54aff6b761c014ac4","request_sha256":"0c9df982058dd9afbfe7287f72a37cd16ba9d646179f731b31ab36050e1aad42"},"version":1},"status":"saved"}
+
+     Finished.
+     /remember preference My synthetic preference is compact output
+     Remember this exact statement as your own preference note?
+     Statement: "My synthetic preference is compact output"
+     Retention: until changed, forgotten or no longer eligible.
+     Workspace: "/tmp/ipse-assertion-e44e59dfeb85b1266249b62f76996c0b/work"
+     Project: 9a1566887b4d174f8b5d3b09acce93ec5fda4f124e3e60e5421d39ccafd04c10
+     Collection: fb66b6390651249bd167fa39602b57d696da3e9b98a385cabf7ec44b0205c6ac
+     Artifact: 42f4fb454e9dad8ef0a55d6448b65911f2ed8daef44dbdc01fb37e6ac91cdd77
+     Permission: 3ca1c5541a5b72dbecf3cb3df9866a42b82f97cf922c59c7c70c95938fa8323e
+     This confirms the statement and category; other effects keep their own approvals.
+     Type remember f9837b588105322f14dabdd06d2a4dac to confirm. Anything else cancels.
+     remember> remember f9837b588105322f14dabdd06d2a4dac
+     you> 
+     Extension ext__knowledge__capture: {"category":"preference","key":"note.e1aa215f93333a3531a52b18a39a7bccf4bffc3dc7f311e6b3a09b18ddd8c154","receipt":{"binding":{"normalization_sha256":"ea69381f82f967fb7aa0c6b95fc0d3bdea77f83fcac0b4832f2569c609e762c2","original_request_sha256":"a640fb0ee98152ec1ffe9310631a60015b3efd995757deae4ad00969977b0987","recipe_sha256":"818634825cb494606d25195a6601971a17542ed2caa22f28d1e18b1971b18cf7","version":1},"normalization":{"category":"preference","eligibility":"current","first_admitted_ms":1793231132599,"format_value_sha256":"fc8182b66dd536b8da499c822f336e9811c8ba54cf503a69485c75acc0e92b00","lineage":"e1aa215f93333a3531a52b18a39a7bccf4bffc3dc7f311e6b3a09b18ddd8c154","metadata_changes":[{"expected_revision":1,"key":"host.validity.a.0000000000000000000000000000000000000000000000000000000000000000","value_sha256":"aeb6660532570e779341288726f64d23cb5159c4bd8a93b2e73b82bcdbc46357"},{"expected_revision":1,"key":"host.validity.l.000000000000000000000000000000000000000000000000000000000000000000","value_sha256":"784ac96741b6a438afd6d43d496691a0f7921bb12f09ec5f0b5b90e81a0653fe"}],"record_key":"note.e1aa215f93333a3531a52b18a39a7bccf4bffc3dc7f311e6b3a09b18ddd8c154","valid_until_ms":null,"version":3},"receipt":{"floor":2,"generation":2,"managed_binding_sha256":"3d89ef62ee4b6e4c52ee164b425c95dc1b67c5f4f1a75e56c2b0cb0778271d01","request_sha256":"af94901482ad2f20ee01ec77b21263419bb59de64ba0362f1095a7858d32a80e"},"version":1},"status":"saved"}
+
+     Finished.
+     /remember current My synthetic timezone is UTC
+     Remember this exact statement as your own current note?
+     Statement: "My synthetic timezone is UTC"
+     Retention: until changed, forgotten or no longer eligible.
+     Workspace: "/tmp/ipse-assertion-e44e59dfeb85b1266249b62f76996c0b/work"
+     Project: 9a1566887b4d174f8b5d3b09acce93ec5fda4f124e3e60e5421d39ccafd04c10
+     Collection: fb66b6390651249bd167fa39602b57d696da3e9b98a385cabf7ec44b0205c6ac
+     Artifact: 42f4fb454e9dad8ef0a55d6448b65911f2ed8daef44dbdc01fb37e6ac91cdd77
+     Permission: 3ca1c5541a5b72dbecf3cb3df9866a42b82f97cf922c59c7c70c95938fa8323e
+     This confirms the statement and category; other effects keep their own approvals.
+     Type remember 64274f3f94660591060faab8410d55c4 to confirm. Anything else cancels.
+     remember> remember 64274f3f94660591060faab8410d55c4
+     you> 
+     Extension ext__knowledge__capture: {"category":"current","key":"note.728052fab3a8b373fbfb8b760d3d414201c63b28a92ed94900d904601e7a4d33","receipt":{"binding":{"normalization_sha256":"cb23f1013cbcaeb98cc029e3a05e349b1171dc39d3f23685be6e6f6baae952fe","original_request_sha256":"7a711ae91f353e3c81faede8427597d0009f01aa3cf808b898d631585f8a1300","recipe_sha256":"818634825cb494606d25195a6601971a17542ed2caa22f28d1e18b1971b18cf7","version":1},"normalization":{"category":"current","eligibility":"current","first_admitted_ms":1793231133125,"format_value_sha256":"fc8182b66dd536b8da499c822f336e9811c8ba54cf503a69485c75acc0e92b00","lineage":"728052fab3a8b373fbfb8b760d3d414201c63b28a92ed94900d904601e7a4d33","metadata_changes":[{"expected_revision":2,"key":"host.validity.a.0000000000000000000000000000000000000000000000000000000000000000","value_sha256":"c646508af98a5ef6367e4ff5f621addacb674db613eb2aca62ceed4417920879"},{"expected_revision":2,"key":"host.validity.l.000000000000000000000000000000000000000000000000000000000000000000","value_sha256":"30256744178a81bab74b2c00692bc6d4f2ca90a0f7a6a76ec4921e58861a9bdb"}],"record_key":"note.728052fab3a8b373fbfb8b760d3d414201c63b28a92ed94900d904601e7a4d33","valid_until_ms":null,"version":3},"receipt":{"floor":3,"generation":3,"managed_binding_sha256":"31b5138da9f8ec98f2c7f22a6e6301069f03de20036cb4f6ab54f2625d7b9e06","request_sha256":"90d9868778817786aca27e60abbe935c8ae515aad92237fdc03efa56d2f36e3f"},"version":1},"status":"saved"}
+
+     Finished.
+     /exit
+     ASSERTION_JOURNAL_TYPES {"cancelled":1,"extension_action_intent":15,"extension_action_result":15,"extension_invocation_intent":3,"extension_invocation_result":3,"managed_read_observed":6,"operator_assertion":3,"session":1,"skill_catalog_snapshot":1,"source_window_opened":1,"turn_finished":3,"workspace_context_snapshot":1}
+     ASSERTION_OUTCOMES [{"type":"extension_invocation_intent"},{"type":"extension_action_intent"},{"outcome":{"status":"ok","value":{"chunk_id":"5f6109f5a482f5bfe83f5118f661252e","complete":true,"content_sha256":"975ba9b29c0d1f8fa9c1b5f0849c103cafb1f51767b441b94de16fdefd6c091a","coverage":"available","handle":"eyJnZW5lcmF0aW9uIjozLCJraW5kIjoicmVhZCIsIm9jY3VycmVuY2UiOiJiNzlmMzE2M2QyOGUzODJhNDZhMzkwYmY1ODdiZWNhZiIsIm9mZnNldCI6MCwicG9saWN5IjoxLCJzZXNzaW9uIjoiZDY5MDBmMWZiYTI1NThlOWY2ZDZjZTU3ZjQ3ZTNkZDUiLCJzb3VyY2VfdmVyc2lvbiI6ImFkNWZlNDgwYjlmMDY4NmMyMjNiYWI5Y2FhMDRlZmQ3IiwidmVyc2lvbiI6MSwid2luZG93IjoiZTcyZjE2ZDc4NTM2YTBlZDdhOGE0OTkzMzA2NDY2ODUifQ.ODF9vQ9Z3Pf-O2IxRtCnoAiwoRTJYR0QOsbFNEk83uI","kind":"input.assertion.ordinary","next":null,"occurrence_id":"b79f3163d28e382a46a390bf587becaf","offset":0,"origin":"native_operator_assertion","original_bytes":28,"provenance":{"assertion_id":"883626cfb154b34e14351487b24c33ce","category":"ordinary","receipt_sha256":"a1bcda14e56f4565167e7b2ae38555c46bb3e23926b65ce162e25f789e19ebf2"},"reason":null,"text":"Synthetic ordinary statement","version":1,"version_id":"ad5fe480b9f0686c223bab9caa04efd7","window":{"count":1,"coverage":{"capacity_refused":0,"indexed":1,"legacy_unverified":0,"observed":1,"pending_gaps":0,"refused":0,"unavailable":0},"generation":3,"policy_generation":1,"session_id":"d6900f1fba2558e9f6d6ce57f47e3dd5","version":1,"window_id":"e72f16d78536a0ed7a8a499330646685"}}},"type":"extension_action_result"},{"type":"extension_action_intent"},{"outcome":{"status":"ok","value":{"chunk_id":"5f6109f5a482f5bfe83f5118f661252e","content_sha256":"975ba9b29c0d1f8fa9c1b5f0849c103cafb1f51767b441b94de16fdefd6c091a","coverage":"available","end_byte":28,"occurrence_id":"b79f3163d28e382a46a390bf587becaf","origin":"native_operator_assertion","quote_sha256":"975ba9b29c0d1f8fa9c1b5f0849c103cafb1f51767b441b94de16fdefd6c091a","start_byte":0,"version_id":"ad5fe480b9f0686c223bab9caa04efd7"}},"type":"extension_action_result"},{"type":"extension_action_intent"},{"outcome":{"status":"ok","value":{"floor":0,"floor_anchor":null,"generation":0,"project":"fb66b6390651249bd167fa39602b57d696da3e9b98a385cabf7ec44b0205c6ac","record":null,"version":3}},"type":"extension_action_result"},{"type":"extension_action_intent"},{"outcome":{"status":"ok","value":{"floor":0,"floor_anchor":null,"generation":0,"project":"fb66b6390651249bd167fa39602b57d696da3e9b98a385cabf7ec44b0205c6ac","record":null,"version":3}},"type":"extension_action_result"},{"type":"extension_action_intent"},{"outcome":{"status":"ok","value":{"binding":{"normalization_sha256":"bdc7102493619d6be23fd503b3294b6da52e80ba353e8418f0039f7aa8274e55","original_request_sha256":"d33754211d3c497f96759be14c0c2b6abc786c813b0193eee537632b15e3cb8f","recipe_sha256":"818634825cb494606d25195a6601971a17542ed2caa22f28d1e18b1971b18cf7","version":1},"normalization":{"category":"ordinary","eligibility":"current","first_admitted_ms":1793231131926,"format_value_sha256":"fc8182b66dd536b8da499c822f336e9811c8ba54cf503a69485c75acc0e92b00","lineage":"582bcd92d9bf36cdc13bb72bd9ddb1ab2ff53cb15aea5d53d42824176be293f4","metadata_changes":[{"expected_revision":0,"key":"host.validity.format","value_sha256":"fc8182b66dd536b8da499c822f336e9811c8ba54cf503a69485c75acc0e92b00"},{"expected_revision":0,"key":"host.validity.a.0000000000000000000000000000000000000000000000000000000000000000","value_sha256":"00dcefaebcf8c19eff2bebcde4f58734b411a1da8a90166d2024902c351584eb"},{"expected_revision":0,"key":"host.validity.l.000000000000000000000000000000000000000000000000000000000000000000","value_sha256":"39a27360a4fd8f340a9437e954b6e59883ff96fbea247194ed3ff2eb05a2f343"}],"record_key":"note.582bcd92d9bf36cdc13bb72bd9ddb1ab2ff53cb15aea5d53d42824176be293f4","valid_until_ms":1801007131926,"version":3},"receipt":{"floor":1,"generation":1,"managed_binding_sha256":"de8dc10a41b2a290f3a9ffc5b6a08b4f85270b4cbf5d5bc54aff6b761c014ac4","request_sha256":"0c9df982058dd9afbfe7287f72a37cd16ba9d646179f731b31ab36050e1aad42"},"version":1}},"type":"extension_action_result"},{"type":"extension_invocation_result"},{"type":"extension_invocation_intent"},{"type":"extension_action_intent"},{"outcome":{"status":"ok","value":{"chunk_id":"7fc69fa3dc4cce75b929f22a9f2f171b","complete":true,"content_sha256":"cdbbf4bb65d165439eb20baf11ca2789bbe7ba31b9c566bd74abb2d61dfdc3fd","coverage":"available","handle":"eyJnZW5lcmF0aW9uIjo1LCJraW5kIjoicmVhZCIsIm9jY3VycmVuY2UiOiIwODdlZGNiMGM1ODUyNjE1NTgyNTg5YzdmNTFiZWQ1YiIsIm9mZnNldCI6MCwicG9saWN5IjoxLCJzZXNzaW9uIjoiZDY5MDBmMWZiYTI1NThlOWY2ZDZjZTU3ZjQ3ZTNkZDUiLCJzb3VyY2VfdmVyc2lvbiI6IjRiMDc1OTBjMTgxYjBjNjBiNWU0OTNiZmUxZjhkYTk3IiwidmVyc2lvbiI6MSwid2luZG93IjoiZTcyZjE2ZDc4NTM2YTBlZDdhOGE0OTkzMzA2NDY2ODUifQ.tPo5LYXb2qLhrzqCo0iqbZ48k0ItO1hGoYkjb3Nztgc","kind":"input.assertion.preference","next":null,"occurrence_id":"087edcb0c5852615582589c7f51bed5b","offset":0,"origin":"native_operator_assertion","original_bytes":41,"provenance":{"assertion_id":"7262cb5a8c69d8fa397b75a2a4a79e2f","category":"preference","receipt_sha256":"a57ba2f1526d233be65348996dd74e22139779c4e6c687e21310d7e9731f422a"},"reason":null,"text":"My synthetic preference is compact output","version":1,"version_id":"4b07590c181b0c60b5e493bfe1f8da97","window":{"count":2,"coverage":{"capacity_refused":0,"indexed":2,"legacy_unverified":0,"observed":2,"pending_gaps":0,"refused":0,"unavailable":0},"generation":5,"policy_generation":1,"session_id":"d6900f1fba2558e9f6d6ce57f47e3dd5","version":1,"window_id":"e72f16d78536a0ed7a8a499330646685"}}},"type":"extension_action_result"},{"type":"extension_action_intent"},{"outcome":{"status":"ok","value":{"chunk_id":"7fc69fa3dc4cce75b929f22a9f2f171b","content_sha256":"cdbbf4bb65d165439eb20baf11ca2789bbe7ba31b9c566bd74abb2d61dfdc3fd","coverage":"available","end_byte":41,"occurrence_id":"087edcb0c5852615582589c7f51bed5b","origin":"native_operator_assertion","quote_sha256":"cdbbf4bb65d165439eb20baf11ca2789bbe7ba31b9c566bd74abb2d61dfdc3fd","start_byte":0,"version_id":"4b07590c181b0c60b5e493bfe1f8da97"}},"type":"extension_action_result"},{"type":"extension_action_intent"},{"outcome":{"status":"ok","value":{"floor":1,"floor_anchor":"f296f2872a19ad773c77f98f08e89113","generation":1,"project":"fb66b6390651249bd167fa39602b57d696da3e9b98a385cabf7ec44b0205c6ac","record":null,"version":3}},"type":"extension_action_result"},{"type":"extension_action_intent"},{"outcome":{"status":"ok","value":{"floor":1,"floor_anchor":"f296f2872a19ad773c77f98f08e89113","generation":1,"project":"fb66b6390651249bd167fa39602b57d696da3e9b98a385cabf7ec44b0205c6ac","record":null,"version":3}},"type":"extension_action_result"},{"type":"extension_action_intent"},{"outcome":{"status":"ok","value":{"binding":{"normalization_sha256":"ea69381f82f967fb7aa0c6b95fc0d3bdea77f83fcac0b4832f2569c609e762c2","original_request_sha256":"a640fb0ee98152ec1ffe9310631a60015b3efd995757deae4ad00969977b0987","recipe_sha256":"818634825cb494606d25195a6601971a17542ed2caa22f28d1e18b1971b18cf7","version":1},"normalization":{"category":"preference","eligibility":"current","first_admitted_ms":1793231132599,"format_value_sha256":"fc8182b66dd536b8da499c822f336e9811c8ba54cf503a69485c75acc0e92b00","lineage":"e1aa215f93333a3531a52b18a39a7bccf4bffc3dc7f311e6b3a09b18ddd8c154","metadata_changes":[{"expected_revision":1,"key":"host.validity.a.0000000000000000000000000000000000000000000000000000000000000000","value_sha256":"aeb6660532570e779341288726f64d23cb5159c4bd8a93b2e73b82bcdbc46357"},{"expected_revision":1,"key":"host.validity.l.000000000000000000000000000000000000000000000000000000000000000000","value_sha256":"784ac96741b6a438afd6d43d496691a0f7921bb12f09ec5f0b5b90e81a0653fe"}],"record_key":"note.e1aa215f93333a3531a52b18a39a7bccf4bffc3dc7f311e6b3a09b18ddd8c154","valid_until_ms":null,"version":3},"receipt":{"floor":2,"generation":2,"managed_binding_sha256":"3d89ef62ee4b6e4c52ee164b425c95dc1b67c5f4f1a75e56c2b0cb0778271d01","request_sha256":"af94901482ad2f20ee01ec77b21263419bb59de64ba0362f1095a7858d32a80e"},"version":1}},"type":"extension_action_result"},{"type":"extension_invocation_result"},{"type":"extension_invocation_intent"},{"type":"extension_action_intent"},{"outcome":{"status":"ok","value":{"chunk_id":"27f8f63d41e740967ebf80252770ccf5","complete":true,"content_sha256":"383568a19bb4d3d8dff4b2029fca427f575080b3360b93d9bbc25c413f049c2c","coverage":"available","handle":"eyJnZW5lcmF0aW9uIjo3LCJraW5kIjoicmVhZCIsIm9jY3VycmVuY2UiOiIzMGVmOTMwZmRiN2RmNTUwYzlhYTNlZGZiZGU5NmE2MiIsIm9mZnNldCI6MCwicG9saWN5IjoxLCJzZXNzaW9uIjoiZDY5MDBmMWZiYTI1NThlOWY2ZDZjZTU3ZjQ3ZTNkZDUiLCJzb3VyY2VfdmVyc2lvbiI6ImY1NWIwMDNmN2M0ZTEyNTE4NmI4MzZkZDlhZjUzYjZiIiwidmVyc2lvbiI6MSwid2luZG93IjoiZTcyZjE2ZDc4NTM2YTBlZDdhOGE0OTkzMzA2NDY2ODUifQ.pipWr2XadCXj9DSFRfhGoGBznj-0um6nJP8UUG2E5_4","kind":"input.assertion.current","next":null,"occurrence_id":"30ef930fdb7df550c9aa3edfbde96a62","offset":0,"origin":"native_operator_assertion","original_bytes":28,"provenance":{"assertion_id":"aaaebeda3f0cebea8a5e8bf9f0a55330","category":"current","receipt_sha256":"7884c9e98bc32dc2ec8490763b9f01fa731bde894e192f14f4610c407e97f3db"},"reason":null,"text":"My synthetic timezone is UTC","version":1,"version_id":"f55b003f7c4e125186b836dd9af53b6b","window":{"count":3,"coverage":{"capacity_refused":0,"indexed":3,"legacy_unverified":0,"observed":3,"pending_gaps":0,"refused":0,"unavailable":0},"generation":7,"policy_generation":1,"session_id":"d6900f1fba2558e9f6d6ce57f47e3dd5","version":1,"window_id":"e72f16d78536a0ed7a8a499330646685"}}},"type":"extension_action_result"},{"type":"extension_action_intent"},{"outcome":{"status":"ok","value":{"chunk_id":"27f8f63d41e740967ebf80252770ccf5","content_sha256":"383568a19bb4d3d8dff4b2029fca427f575080b3360b93d9bbc25c413f049c2c","coverage":"available","end_byte":28,"occurrence_id":"30ef930fdb7df550c9aa3edfbde96a62","origin":"native_operator_assertion","quote_sha256":"383568a19bb4d3d8dff4b2029fca427f575080b3360b93d9bbc25c413f049c2c","start_byte":0,"version_id":"f55b003f7c4e125186b836dd9af53b6b"}},"type":"extension_action_result"},{"type":"extension_action_intent"},{"outcome":{"status":"ok","value":{"floor":2,"floor_anchor":"4f9b5922cbb11254730342017571f426","generation":2,"project":"fb66b6390651249bd167fa39602b57d696da3e9b98a385cabf7ec44b0205c6ac","record":null,"version":3}},"type":"extension_action_result"},{"type":"extension_action_intent"},{"outcome":{"status":"ok","value":{"floor":2,"floor_anchor":"4f9b5922cbb11254730342017571f426","generation":2,"project":"fb66b6390651249bd167fa39602b57d696da3e9b98a385cabf7ec44b0205c6ac","record":null,"version":3}},"type":"extension_action_result"},{"type":"extension_action_intent"},{"outcome":{"status":"ok","value":{"binding":{"normalization_sha256":"cb23f1013cbcaeb98cc029e3a05e349b1171dc39d3f23685be6e6f6baae952fe","original_request_sha256":"7a711ae91f353e3c81faede8427597d0009f01aa3cf808b898d631585f8a1300","recipe_sha256":"818634825cb494606d25195a6601971a17542ed2caa22f28d1e18b1971b18cf7","version":1},"normalization":{"category":"current","eligibility":"current","first_admitted_ms":1793231133125,"format_value_sha256":"fc8182b66dd536b8da499c822f336e9811c8ba54cf503a69485c75acc0e92b00","lineage":"728052fab3a8b373fbfb8b760d3d414201c63b28a92ed94900d904601e7a4d33","metadata_changes":[{"expected_revision":2,"key":"host.validity.a.0000000000000000000000000000000000000000000000000000000000000000","value_sha256":"c646508af98a5ef6367e4ff5f621addacb674db613eb2aca62ceed4417920879"},{"expected_revision":2,"key":"host.validity.l.000000000000000000000000000000000000000000000000000000000000000000","value_sha256":"30256744178a81bab74b2c00692bc6d4f2ca90a0f7a6a76ec4921e58861a9bdb"}],"record_key":"note.728052fab3a8b373fbfb8b760d3d414201c63b28a92ed94900d904601e7a4d33","valid_until_ms":null,"version":3},"receipt":{"floor":3,"generation":3,"managed_binding_sha256":"31b5138da9f8ec98f2c7f22a6e6301069f03de20036cb4f6ab54f2625d7b9e06","request_sha256":"90d9868778817786aca27e60abbe935c8ae515aad92237fdc03efa56d2f36e3f"},"version":1}},"type":"extension_action_result"},{"type":"extension_invocation_result"}]
+     Revoke knowledge permission for /tmp/ipse-assertion-e44e59dfeb85b1266249b62f76996c0b/work.
+     Project 9a1566887b4d174f8b5d3b09acce93ec5fda4f124e3e60e5421d39ccafd04c10; epoch 1.
+     Later effects will be denied. Already admitted work may have started. Stored records remain available for management.
+     
+     Type disable 392765df47adc584 to confirm this exact review, or anything else to cancel.
+     > disable 392765df47adc584
+     Knowledge permission revoked. New sessions use the ordinary catalog.
+     No successful forget is confirmed: {:error, :knowledge_management_refused}. Inspect the management journal and protected operation before retrying; unknown effects never replay.
+     ** (ExUnit.AssertionError) 
+     
+     Assertion with == failed
+     code:  assert Ipse.CLI.run(["knowledge", "forget", key] ++ arguments) == 0
+     left:  1
+     right: 0
+     
+         (ex_unit 1.20.4) lib/ex_unit/assertions.ex:460: ExUnit.Assertions.assert/2
+         test/support/operator_assertion.exs:601: (file)
+
+     code: assert status == 0, output
+     stacktrace:
+       test/ipse/session/operator_assertion_integration_test.exs:48: (test)
+
+
+Finished in 11.5 seconds (0.04s async, 11.5s sync)
+
+Result: 0/1 passed, 6 excluded
+Failed: 1 test

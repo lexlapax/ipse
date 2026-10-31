@@ -197,9 +197,16 @@ defmodule Ipse.Session.Turn do
     {:ok, mode} = Ipse.Extension.Mode.capture(s.config)
 
     result =
-      if Ipse.Extension.Mode.ordinary(mode, true) == :deny,
-        do: {:error, :execution_mode_denied},
-        else: Ipse.Session.Permissions.grant(s, get_in(call, ["function", "name"]), args, choice)
+      cond do
+        Ipse.Session.ManagedToolUse.managed_call?(s.managed_lineage, call["id"]) ->
+          {:error, :managed_argument_display_unavailable}
+
+        Ipse.Extension.Mode.ordinary(mode, true) == :deny ->
+          {:error, :execution_mode_denied}
+
+        true ->
+          Ipse.Session.Permissions.grant(s, get_in(call, ["function", "name"]), args, choice)
+      end
 
     case result do
       {:ok, permissions, source} ->
@@ -220,7 +227,15 @@ defmodule Ipse.Session.Turn do
 
   def approve(s, allowed, call, args) do
     {:ok, mode} = Ipse.Extension.Mode.capture(s.config)
-    allowed = allowed == true and Ipse.Extension.Mode.ordinary(mode, true) != :deny
+    name = get_in(call, ["function", "name"])
+
+    permitted =
+      if restricted_mcp?(s, name, mode),
+        do: planning_mcp_mode(s, name, args, mode) in [:ask, :allow],
+        else: Ipse.Extension.Mode.ordinary(mode, true) != :deny
+
+    managed = Ipse.Session.ManagedToolUse.managed_call?(s.managed_lineage, call["id"])
+    allowed = allowed == true and permitted and not managed
 
     s =
       Session.finish_wait(
@@ -232,7 +247,17 @@ defmodule Ipse.Session.Turn do
       do: {:reply, :ok, launch_tool(s, call, args, "approved")},
       else:
         {:reply, :ok,
-         tool_result(s, call, "Denied by user. Do not evade this denial.", "denied", "denied")}
+         tool_result(
+           s,
+           call,
+           if(managed,
+             do:
+               "Managed approval arguments cannot be displayed under current source ownership; no tool was started.",
+             else: "Denied by user. Do not evade this denial."
+           ),
+           "denied",
+           "denied"
+         )}
   end
 
   def answer(s, id, answers, question, origin \\ nil)
@@ -298,6 +323,8 @@ defmodule Ipse.Session.Turn do
         s = Session.finish_wait(s, "answered")
 
         Session.notify(s, {:tool_result, "ask_operator", message["content"]})
+
+        s = Session.managed_event(s, event, s.messages ++ [message])
 
         next = %{
           s
@@ -467,6 +494,7 @@ defmodule Ipse.Session.Turn do
 
       {:tool_results, messages, event} ->
         Session.record(s, event)
+        s = Session.managed_event(s, event, messages)
         Session.notify(s, {:compacted, event["before_bytes"], event["after_bytes"]})
         model(reference_compacted(%{s | messages: messages}))
 
@@ -490,7 +518,21 @@ defmodule Ipse.Session.Turn do
              tools,
              s.messages
            ) do
-      Enum.each(events, &Session.record(s, &1))
+      s =
+        Enum.reduce(events, s, fn event, current ->
+          Session.record(current, event)
+
+          messages =
+            if event["type"] == "reference_envelope" do
+              {:ok, projected} = Ipse.Session.Reference.project(current.messages, event)
+              projected
+            else
+              current.messages
+            end
+
+          current = Session.managed_event(current, event, messages)
+          %{current | messages: messages}
+        end)
 
       occurrences =
         Enum.reduce(appended, s.reference_occurrences, fn message, acc ->
@@ -501,7 +543,7 @@ defmodule Ipse.Session.Turn do
        %{
          s
          | reference: reference,
-           messages: s.messages ++ appended,
+           messages: s.messages,
            reference_occurrences: occurrences
        }}
     end
@@ -554,7 +596,15 @@ defmodule Ipse.Session.Turn do
       if plans == [] do
         model(s)
       else
-        task = Session.owned_task(fn -> Host.notify_events(plans, owner, ref) end)
+        task =
+          Session.owned_task(fn ->
+            Host.notify_events(plans, owner, ref, %{
+              config: s.config,
+              cwd: s.cwd,
+              session_id: s.id
+            })
+          end)
+
         %{s | task: task, job_ref: ref, phase: :extension_events}
       end
     else
@@ -637,7 +687,24 @@ defmodule Ipse.Session.Turn do
   end
 
   defp launch_request(s, config, messages, tools, phase) do
+    with {:ok, _} <- Session.managed_dependencies(s, Atom.to_string(phase)),
+         true <-
+           Ipse.InferenceDispatch.selection(s.config, config, "main", nil) != {:ok, :unregistered} or
+             Session.managed_empty?(s) do
+      launch_admitted_request(s, config, messages, tools, phase)
+    else
+      _ ->
+        fail(
+          s,
+          "Managed history cannot be safely reused on this route. Inspect retained history and start a fresh session; no inference was dispatched."
+        )
+    end
+  end
+
+  defp launch_admitted_request(s, config, messages, tools, phase) do
+    s = %{s | managed_result_seal: nil}
     s = Session.admit_request(s, config, Atom.to_string(phase))
+    s = Session.managed_event(s, s.active_request)
 
     if s.draft_lineages != [] do
       Session.record(
@@ -678,6 +745,7 @@ defmodule Ipse.Session.Turn do
 
     owner = self()
     job_ref = make_ref()
+
     request_id = s.active_request["request_id"]
     stream = if phase == :model, do: s.text_stream
 
@@ -701,21 +769,33 @@ defmodule Ipse.Session.Turn do
 
             try do
               result =
-                Ipse.InferenceDispatch.run(
-                  s.config,
-                  config,
-                  "main",
-                  nil,
-                  dispatch,
-                  emit,
-                  fn facts -> Session.InferenceDispatch.gate(owner, job_ref, dispatch, facts) end,
-                  fn admitted, emit, _prepared ->
-                    if required and (not ready or not text_ready?(stream, request_id)),
-                      do: raise(Ipse.Session.TextStream.RequiredFailure)
+                with {:ok, {config, messages, tools, dispatch}} <-
+                       if(Map.has_key?(dispatch, :expected),
+                         do: Session.managed_preflight(owner, job_ref, Atom.to_string(phase)),
+                         else: {:ok, {config, messages, tools, dispatch}}
+                       ) do
+                  Ipse.InferenceDispatch.run(
+                    s.config,
+                    config,
+                    "main",
+                    nil,
+                    dispatch,
+                    emit,
+                    fn facts ->
+                      Session.InferenceDispatch.gate(owner, job_ref, dispatch, facts)
+                    end,
+                    fn admitted, emit, _prepared ->
+                      if required and (not ready or not text_ready?(stream, request_id)),
+                        do: raise(Ipse.Session.TextStream.RequiredFailure)
 
-                    request(admitted, messages, tools, emit)
-                  end
-                )
+                      request(admitted, messages, tools, emit)
+                    end
+                  )
+                else
+                  _ ->
+                    {:error,
+                     "Managed historical content cannot be safely reused. Inspect retained history or start a fresh session; no inference was dispatched."}
+                end
 
               outcome = if match?({:ok, _, _}, result), do: "completed", else: "failed"
               delivery = finish_text(stream, request_id, outcome)
@@ -821,7 +901,7 @@ defmodule Ipse.Session.Turn do
            s.config
          ) do
       {:ok, messages, checkpoint, stats} ->
-        Session.record(s, %{
+        event = %{
           "type" => "context_compacted",
           "request_id" => s.last_request_id,
           "version" => 1,
@@ -830,7 +910,10 @@ defmodule Ipse.Session.Turn do
           "checkpoint" => checkpoint,
           "before_bytes" => stats.before_bytes,
           "after_bytes" => stats.after_bytes
-        })
+        }
+
+        Session.record(s, event)
+        s = Session.managed_event(s, event, messages)
 
         Session.notify(s, {:compacted, stats.before_bytes, stats.after_bytes})
         Session.notify(s, {:usage, usage})
@@ -852,13 +935,16 @@ defmodule Ipse.Session.Turn do
 
   @doc false
   def compaction_failed(s, reason, stage) do
-    Session.record(s, %{
+    event = %{
       "type" => "compaction_failed",
       "stage" => stage,
       "reason" => reason,
       "diagnostics" =>
         Ipse.Session.Context.measure(s.messages, s.config, Ipse.Session.Context.header(s))
-    })
+    }
+
+    Session.record(s, event)
+    s = Session.managed_event(s, event)
 
     fail(
       s,
@@ -977,19 +1063,34 @@ defmodule Ipse.Session.Turn do
       Tools.mutating?(name) or external or Catalog.external?(name) or
         name in ["delegate", "delegate_parallel"]
 
-    mode = Ipse.Extension.Mode.ordinary(execution_mode, requires_approval)
+    mode =
+      if external and restricted_mcp?(s, name, execution_mode),
+        do: planning_mcp_mode(s, name, args, execution_mode),
+        else: Ipse.Extension.Mode.ordinary(execution_mode, requires_approval)
 
     grant_source = Ipse.Session.Permissions.source(s, name, args)
+    managed = Ipse.Session.ManagedToolUse.managed_call?(s.managed_lineage, call["id"])
 
     cond do
-      name == "ask_operator" ->
-        start_question(s, call, args)
-
-      match?(%{status: :pending}, s.draft) and (external or Catalog.external?(name)) ->
+      managed and Ipse.Session.ManagedToolUse.host_operation_unqualified?(name) and
+          not Ipse.Session.ManagedToolUse.root_only_source_call?(s, call) ->
         tool_result(
           s,
           call,
-          "Denied: draft mode does not invoke external tools or extension callbacks.",
+          "Managed tool inputs cannot be released to this host operation; no operation was started.",
+          "denied",
+          "policy_denied"
+        )
+
+      name == "ask_operator" ->
+        start_question(s, call, args)
+
+      match?(%{status: :pending}, s.draft) and
+          (Catalog.external?(name) or (external and mode == :deny)) ->
+        tool_result(
+          s,
+          call,
+          "Denied: the current draft policy does not admit this external tool.",
           "denied",
           "policy_denied"
         )
@@ -1039,23 +1140,33 @@ defmodule Ipse.Session.Turn do
         )
 
       requires_approval and mode == :ask and is_nil(grant_source) ->
-        ref = make_ref()
-
-        s =
-          Session.begin_wait(s, "tool", %{
-            "turn_id" => s.turn_id,
-            "request_id" => s.last_request_id
-          })
-
-        if external do
-          Session.notify(
+        if managed do
+          tool_result(
             s,
-            {:mcp_approval_context, Ipse.MCP.manifest(Ipse.MCP.tool(s.mcp_tools, name))}
+            call,
+            "Managed approval arguments cannot be displayed under current source ownership; no tool was started.",
+            "denied",
+            "policy_denied"
           )
-        end
+        else
+          ref = make_ref()
 
-        Session.notify(s, {:approval, ref, name, args})
-        %{s | phase: :approval, approval: {ref, call, args}}
+          s =
+            Session.begin_wait(s, "tool", %{
+              "turn_id" => s.turn_id,
+              "request_id" => s.last_request_id
+            })
+
+          if external do
+            Session.notify(
+              s,
+              {:mcp_approval_context, Ipse.MCP.manifest(Ipse.MCP.tool(s.mcp_tools, name))}
+            )
+          end
+
+          Session.notify(s, {:approval, ref, name, args})
+          %{s | phase: :approval, approval: {ref, call, args}}
+        end
 
       true ->
         decision = if requires_approval, do: "session_allow", else: "not_required"
@@ -1105,9 +1216,66 @@ defmodule Ipse.Session.Turn do
       end
   end
 
+  defp restricted_mcp?(s, name, mode) do
+    Ipse.MCP.external?(name) and
+      (match?(%{status: :pending}, s.draft) or mode["ceiling"] != "normal" or
+         mode["enclosing_ceiling"] != "normal")
+  end
+
+  defp planning_mcp_mode(s, name, args, mode) do
+    tool = Ipse.MCP.tool(s.mcp_tools, name)
+    draft = match?(%{status: :pending}, s.draft)
+
+    if Ipse.Extension.Mode.planning_read(mode) in [:ask, :allow] and
+         is_nil(s.config[:delegation_origin]) and is_binary(Map.get(s, :planning_mcp_epoch_id)) and
+         s.mcp_ready and :ok == Ipse.MCP.Planning.runtime_configuration(s.config) and
+         Ipse.MCP.Planning.declared?(tool, Map.get(s.config, :planning_mcp_reads, %{})) and
+         :ok == Ipse.MCP.validate_call(tool, args) and
+         (not draft or planning_draft_ready?(s)) do
+      Ipse.Extension.Mode.planning_read(mode)
+    else
+      :deny
+    end
+  rescue
+    _ -> :deny
+  end
+
+  defp planning_draft_ready?(s) do
+    manifests = s.mcp_tools |> Ipse.MCP.manifests() |> Jason.encode!() |> Jason.decode!()
+
+    Ipse.Session.SourceWindow.enabled?(s.config) and
+      Ipse.Session.ToolLifecycle.ready_for_start?(
+        s.tool_lifecycle,
+        List.first(s.calls),
+        length(s.calls)
+      ) and
+      get_in(s.tool_lifecycle, [:proposal, :turn]) === s.turn_id and
+      not s.draft_mcp_interrupted and is_map(s.reference) and
+      Ipse.Session.DraftMCP.valid?(s.draft_mcp_snapshot, s.id, manifests, s.reference.catalog)
+  end
+
   defp launch_tool(s, call, args, decision, binding \\ nil) do
     name = get_in(call, ["function", "name"])
     external = Ipse.MCP.tool(s.mcp_tools, name)
+
+    {:ok, mode} = Ipse.Extension.Mode.capture(s.config)
+
+    if not is_nil(external) and restricted_mcp?(s, name, mode) and
+         planning_mcp_mode(s, name, args, mode) == :deny do
+      tool_result(
+        s,
+        call,
+        "Denied: the declared planning read is no longer admitted.",
+        "denied",
+        "policy_denied"
+      )
+    else
+      launch_admitted_tool(s, call, args, decision, binding, external, mode)
+    end
+  end
+
+  defp launch_admitted_tool(s, call, args, decision, binding, external, mode) do
+    name = get_in(call, ["function", "name"])
 
     if s.draft_lineages != [],
       do:
@@ -1126,7 +1294,10 @@ defmodule Ipse.Session.Turn do
         if(external || Catalog.external?(name) || name in ["delegate", "delegate_parallel"],
           do: args
         ),
-      "mcp" => if(external, do: Ipse.MCP.manifest(external)),
+      "mcp" =>
+        if(external,
+          do: external |> Ipse.MCP.manifest() |> Jason.encode!() |> Jason.decode!()
+        ),
       "sandbox_requested" => to_string(Map.get(s.config, :sandbox, :off))
     }
 
@@ -1134,6 +1305,32 @@ defmodule Ipse.Session.Turn do
       if decision == "saved_consent",
         do: event |> Map.put("version", 2) |> Map.put("semantic_binding", binding),
         else: event
+
+    if external && Map.get(s, :planning_mcp_epoch_id) do
+      marker =
+        if restricted_mcp?(s, name, mode) do
+          declaration = s.config[:planning_mcp_reads][name]
+          draft_id = if match?(%{status: :pending}, s.draft), do: s.draft.id
+
+          Ipse.Session.PlanningMCP.intent(
+            s.id,
+            s.turn_id,
+            draft_id,
+            s.planning_mcp_epoch_id,
+            event,
+            declaration
+          )
+        else
+          Ipse.Session.PlanningMCP.ordinary_intent(
+            s.id,
+            s.turn_id,
+            s.planning_mcp_epoch_id,
+            event
+          )
+        end
+
+      Session.record(s, marker)
+    end
 
     s =
       if Ipse.Session.ToolLifecycle.recording?(s.tool_lifecycle) do
@@ -1148,9 +1345,36 @@ defmodule Ipse.Session.Turn do
         s
       end
 
-    Session.notify(s, {:tool, name, args})
+    s = Session.managed_event(s, event)
+
+    if external && restricted_mcp?(s, name, mode) &&
+         match?(%{status: :pending}, s.draft) &&
+         not Ipse.Session.ToolLifecycle.active?(s.tool_lifecycle) do
+      tool_result(
+        s,
+        call,
+        "The declared planning read was not dispatched: its committed start could not be bound to draft evidence.",
+        "error",
+        decision
+      )
+    else
+      start_admitted_tool(s, call, args, decision, binding, external, name)
+    end
+  end
+
+  defp start_admitted_tool(s, call, args, decision, binding, external, name) do
     owner = self()
     job_ref = make_ref()
+
+    managed =
+      case Ipse.Session.ManagedLineage.tool_dependencies(s.managed_lineage, call["id"]) do
+        {:ok, []} -> false
+        _ -> true
+      end
+
+    source_tool = name in ~w(source_list source_read source_quote)
+    managed_context = if managed or source_tool, do: %{owner: owner, job_ref: job_ref}
+    Session.notify(s, {:tool, name, if(managed or source_tool, do: %{}, else: args)})
 
     context = %{
       cwd: s.cwd,
@@ -1158,53 +1382,87 @@ defmodule Ipse.Session.Turn do
       sandbox: Map.get(s.config, :sandbox, :off),
       parallel_child: Map.get(s.config, :parallel_child, false),
       workspace_edit_grant: Ipse.Session.Permissions.source(s, name, args) == "workspace_edits",
-      emit: fn event -> send(owner, {:progress, job_ref, event}) end
+      emit:
+        if(managed or source_tool,
+          do: fn _ -> :ok end,
+          else: fn event -> send(owner, {:progress, job_ref, event}) end
+        ),
+      managed_tool: managed_context
     }
 
     task =
       Session.owned_task(
         fn ->
-          cond do
-            Catalog.external?(name) ->
-              Host.invoke_export("invoke.tool", name, args, owner, job_ref)
+          result =
+            cond do
+              Catalog.external?(name) ->
+                Host.invoke_export("invoke.tool", name, args, owner, job_ref)
 
-            external ->
-              Ipse.MCP.call(external, args, s.cwd, %{owner: owner, job_ref: job_ref})
-
-            name == "load_skill" ->
-              Workspace.load_skill(s.skills, args["name"] || "")
-
-            name == "load_skill_resource" ->
-              Workspace.load_skill_resource(s.skills, args["name"], args["path"])
-
-            name in ["research_source", "research_claim", "research_ledger"] ->
-              Ipse.Tools.Research.call(s.dir, s.id, name, args)
-
-            name == "saved_result_read" ->
-              ResultSource.read_model(owner, job_ref, args)
-
-            name in ~w(source_list source_read source_quote) ->
-              Ipse.Extension.SourceRead.read_model(owner, job_ref, name, args)
-
-            name in ["delegate", "delegate_parallel"] ->
-              Ipse.Tools.Delegation.run(
-                name,
-                %{
+              external ->
+                Ipse.MCP.call(external, args, s.cwd, %{
                   owner: owner,
                   job_ref: job_ref,
-                  id: s.id,
-                  request_id: s.last_request_id,
-                  dir: s.dir,
-                  cwd: s.cwd,
-                  config: s.config,
-                  context_snapshot: s.context_snapshot,
-                  call_id: call["id"]
-                },
-                args
-              )
+                  managed_tool: managed_context
+                })
 
-            true ->
-              Tools.execute(name, args, context)
+              name == "load_skill" ->
+                Workspace.load_skill(s.skills, args["name"] || "")
+
+              name == "load_skill_resource" ->
+                Workspace.load_skill_resource(s.skills, args["name"], args["path"])
+
+              name in ["research_source", "research_claim", "research_ledger"] ->
+                Ipse.Tools.Research.call(s.dir, s.id, name, args)
+
+              name == "saved_result_read" ->
+                ResultSource.read_model(owner, job_ref, args)
+
+              name in ~w(source_list source_read source_quote) ->
+                Ipse.Extension.SourceRead.read_model(owner, job_ref, name, args)
+
+              name in ["delegate", "delegate_parallel"] ->
+                if managed do
+                  {:error,
+                   "Managed delegation is unavailable until its owned child-start boundary is admitted; no child was started."}
+                else
+                  Ipse.Tools.Delegation.run(
+                    name,
+                    %{
+                      owner: owner,
+                      job_ref: job_ref,
+                      id: s.id,
+                      request_id: s.last_request_id,
+                      dir: s.dir,
+                      cwd: s.cwd,
+                      config: s.config,
+                      context_snapshot: s.context_snapshot,
+                      call_id: call["id"]
+                    },
+                    args
+                  )
+                end
+
+              true ->
+                Tools.execute(name, args, context)
+            end
+
+          if (managed or source_tool) and not Catalog.external?(name) do
+            result =
+              case result do
+                {:error, :managed_tool_inputs_unavailable} ->
+                  {:error, "Managed tool inputs are unavailable; its effect was not admitted."}
+
+                {status, text} when is_binary(text) ->
+                  {status, text}
+
+                _ ->
+                  {:unknown,
+                   "Managed tool returned an unsupported result; inspect its original receipts."}
+              end
+
+            Ipse.Session.ManagedToolUse.release_result(managed_context, result)
+          else
+            result
           end
         end,
         :unknown
@@ -1224,12 +1482,19 @@ defmodule Ipse.Session.Turn do
         job_ref: job_ref,
         tool_decision: decision,
         delegations: count,
-        invocation: %CurrentInvocation{semantic_binding: binding}
+        invocation: %CurrentInvocation{semantic_binding: binding},
+        managed_tool_effect: nil,
+        managed_tool_result: nil
     }
   end
 
   @doc false
   def tool_result(s, call, text, status, approval) do
+    accept_tool_result(s, call, tool_message(call, text, status, approval))
+  end
+
+  @doc false
+  def tool_message(call, text, status, approval) do
     name = get_in(call, ["function", "name"])
 
     provenance =
@@ -1263,14 +1528,40 @@ defmodule Ipse.Session.Turn do
     message =
       if provenance, do: Map.put(message, "ipse_external_result", provenance), else: message
 
-    accept_tool_result(s, call, message)
+    message
   end
 
   @doc false
   def accept_tool_result(s, call, message) do
+    next_tool(commit_tool_result(s, call, message))
+  end
+
+  @doc false
+  def commit_tool_result(s, call, message) do
+    preview = tool_preview(s, call, message)
     s = append_tool_message(s, message, true)
-    Session.notify(s, {:tool_result, get_in(call, ["function", "name"]), message["content"]})
-    next_tool(%{s | calls: tl(s.calls), tool_decision: "not_decided"})
+    Session.notify(s, {:tool_result, get_in(call, ["function", "name"]), preview})
+    %{s | calls: tl(s.calls), tool_decision: "not_decided"}
+  end
+
+  @doc false
+  def commit_tool_result(s, call, message, deadline) do
+    preview = tool_preview(s, call, message)
+    s = append_tool_message(s, message, true)
+    s = %{s | calls: tl(s.calls), tool_decision: "not_decided"}
+
+    if System.system_time(:millisecond) < deadline do
+      Session.notify(s, {:tool_result, get_in(call, ["function", "name"]), preview})
+      {:ok, s}
+    else
+      {:error, s}
+    end
+  end
+
+  defp tool_preview(_s, call, message) do
+    if get_in(call, ["function", "name"]) in ~w(source_list source_read source_quote),
+      do: "Source tool result withheld from terminal preview.",
+      else: message["content"]
   end
 
   @doc false
@@ -1295,7 +1586,10 @@ defmodule Ipse.Session.Turn do
     s.calls
     |> Enum.with_index()
     |> Enum.reduce(s, fn {call, index}, state ->
-      started = index == 0 and s.phase in [:tool, :delegated_approval, :extension_approval]
+      started =
+        index == 0 and s.phase in [:tool, :delegated_approval, :extension_approval] and
+          s.tool_decision != "not_decided"
+
       approval = if started, do: s.tool_decision, else: "not_decided"
       status = if started, do: "unknown", else: "not_started"
       outcome = if started, do: text, else: "Not executed: work stopped before this call started."
@@ -1316,6 +1610,7 @@ defmodule Ipse.Session.Turn do
 
   @doc false
   def fail(s, error) do
+    s = Ipse.Session.ManagedToolUse.interrupted(s)
     s = CurrentInvocation.release_output(s)
     s = Session.finish_wait(s, "interrupted")
     s = Session.settle_children(s, "worker_failed")
@@ -1362,7 +1657,15 @@ defmodule Ipse.Session.Turn do
 
       owner = self()
       ref = make_ref()
-      task = Session.owned_task(fn -> Host.notify_events(after_plans, owner, ref) end)
+
+      task =
+        Session.owned_task(fn ->
+          Host.notify_events(after_plans, owner, ref, %{
+            config: s.config,
+            cwd: s.cwd,
+            session_id: s.id
+          })
+        end)
 
       %{
         s
@@ -1474,7 +1777,16 @@ defmodule Ipse.Session.Turn do
       else
         owner = self()
         ref = make_ref()
-        task = Session.owned_task(fn -> Host.notify_events(remaining, owner, ref) end)
+
+        task =
+          Session.owned_task(fn ->
+            Host.notify_events(remaining, owner, ref, %{
+              config: s.config,
+              cwd: s.cwd,
+              session_id: s.id
+            })
+          end)
+
         %{s | task: task, job_ref: ref, phase: :extension_events}
       end
     end
@@ -1503,7 +1815,9 @@ defmodule Ipse.Session.Turn do
         s
       end
 
-    %{s | messages: s.messages ++ [message]}
+    next_messages = s.messages ++ [message]
+    s = Session.managed_event(s, event, next_messages)
+    %{s | messages: next_messages}
   end
 
   defp append_tool_message(s, message, started) do
@@ -1512,7 +1826,9 @@ defmodule Ipse.Session.Turn do
         event = %{"type" => "message", "message" => message}
         source = Session.optional_source(s, event)
         s = tool_records(s, Ipse.Session.ToolLifecycle.finish(s.tool_lifecycle, source, event))
-        %{s | messages: s.messages ++ [message]}
+        next_messages = s.messages ++ [message]
+        s = Session.managed_event(s, event, next_messages)
+        %{s | messages: next_messages}
       else
         append_message(s, message)
       end
@@ -1573,73 +1889,93 @@ defmodule Ipse.Session.Turn do
   def reported_model(_), do: nil
 
   defp start_question(s, call, arguments) do
-    case Questions.validate(arguments) do
+    case Questions.validate_new(arguments) do
       {:ok, arguments} ->
-        if Questions.enabled?(s.config) and draft_question_available?(s, call["id"]) do
-          # Other proposed calls are settled without execution so the answer can change the plan.
-          next =
-            settle_calls(
-              %{s | calls: tl(s.calls), phase: :idle},
-              "Not started while clarification is required."
-            )
-
-          event = %{
-            "type" => "operator_question",
-            "version" => 1,
-            "id" => call["id"],
-            "call" => call,
-            "arguments" => arguments,
-            "steps" => s.steps,
-            "covered_messages" => length(next.messages),
-            "prefix_sha256" => Ipse.JSON.digest(next.messages)
-          }
-
-          source = Session.record_wait_subject(next, event)
-
-          next =
-            case next.draft do
-              %{status: :pending} = draft ->
-                %{next | draft: %{draft | question_ids: draft.question_ids ++ [call["id"]]}}
-
-              _ ->
-                next
-            end
-
-          Session.checkpoint_event_question(next, %{id: call["id"]})
-          if source, do: Session.offer_record(next, source, event)
-          next = Session.question_wait(next, %{id: call["id"]}, source)
-          Session.notify(next, {:question, call["id"], arguments})
-
-          %{
-            next
-            | question: %{id: call["id"], call: call, arguments: arguments, steps: s.steps},
-              calls: [call],
-              phase: :question,
-              task: nil,
-              job_ref: nil,
-              operator_render: nil,
-              operator_answers: %{},
-              operator_pieces: []
-          }
-        else
-          message =
-            Questions.tool_result(
-              call,
-              "Operator clarification unavailable in headless or child sessions. Provide the missing information in the task; no default answer was selected.",
-              "error"
-            )
-
-          next = append_message(s, message)
-          Session.notify(next, {:tool_result, "ask_operator", message["content"]})
-
-          fail(
-            %{next | calls: tl(s.calls)},
-            "This task requires operator input; use interactive chat or supply the missing information."
+        if Questions.repeated_answer?(s.messages, arguments) do
+          tool_result(
+            s,
+            call,
+            "This question was already answered in the current turn. Use the recorded answer.",
+            "invalid_arguments",
+            "not_required"
           )
+        else
+          start_available_question(s, call, arguments)
         end
 
       {:error, reason} ->
         tool_result(s, call, reason, "invalid_arguments", "not_required")
+    end
+  end
+
+  defp start_available_question(s, call, arguments) do
+    if Questions.enabled?(s.config) and draft_question_available?(s, call["id"]) do
+      # Other proposed calls are settled without execution so the answer can change the plan.
+      next =
+        settle_calls(
+          %{s | calls: tl(s.calls), phase: :idle},
+          "Not started while clarification is required."
+        )
+
+      event = %{
+        "type" => "operator_question",
+        "version" => 1,
+        "id" => call["id"],
+        "call" => call,
+        "arguments" => arguments,
+        "steps" => s.steps,
+        "covered_messages" => length(next.messages),
+        "prefix_sha256" => Ipse.JSON.digest(next.messages)
+      }
+
+      source = Session.record_wait_subject(next, event)
+
+      next =
+        case next.draft do
+          %{status: :pending} = draft ->
+            %{next | draft: %{draft | question_ids: draft.question_ids ++ [call["id"]]}}
+
+          _ ->
+            next
+        end
+
+      Session.checkpoint_event_question(next, %{id: call["id"]})
+      if source, do: Session.offer_record(next, source, event)
+      next = Session.question_wait(next, %{id: call["id"]}, source)
+      Session.notify(next, {:question, call["id"], arguments})
+
+      %{
+        next
+        | question: %{id: call["id"], call: call, arguments: arguments, steps: s.steps},
+          calls: [call],
+          phase: :question,
+          task: nil,
+          job_ref: nil,
+          operator_render: nil,
+          operator_answers: %{},
+          operator_pieces: []
+      }
+    else
+      {detail, error} =
+        if Questions.enabled?(s.config) do
+          {"This draft cannot accept another clarification question: its question limit was reached, the call ID is invalid or reused, or a previous answer is still pending. No default answer was selected.",
+           "Draft clarification cannot continue; cancel the draft and provide the missing information in a new request."}
+        else
+          {"Operator clarification unavailable in headless or child sessions. Provide the missing information in the task; no default answer was selected.",
+           "This task requires operator input; use interactive chat or supply the missing information."}
+        end
+
+      message =
+        Questions.tool_result(
+          call,
+          detail,
+          "error"
+        )
+
+      next = append_message(s, message)
+      Session.notify(next, {:tool_result, "ask_operator", message["content"]})
+
+      fail(%{next | calls: tl(s.calls)}, error)
     end
   end
 
@@ -1676,12 +2012,15 @@ defmodule Ipse.Session.Turn do
         "not_started"
       )
 
-    Session.record(s, %{
+    event = %{
       "type" => "operator_question_closed",
       "version" => 1,
       "id" => s.question.id,
       "message" => message
-    })
+    }
+
+    Session.record(s, event)
+    s = Session.managed_event(s, event, s.messages ++ [message])
 
     %{s | question: nil, calls: [], messages: s.messages ++ [message]}
   end

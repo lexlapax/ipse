@@ -81,6 +81,47 @@ defmodule Ipse.Extension.ManagedRecipeTest do
              )
   end
 
+  test "literal publication refuses a source fragment or partial coverage" do
+    proof = F.proof()
+
+    sources = [
+      %{
+        proof
+        | "start_byte" => 12,
+          "end_byte" => 12 + byte_size(proof["quote"]),
+          "content_sha256" => F.hash("not a direct assertion: " <> proof["quote"])
+      },
+      %{proof | "content_sha256" => F.hash(proof["quote"] <> " was quoted from a report")},
+      %{proof | "coverage" => "partial"}
+    ]
+
+    for source <- sources do
+      {:ok, lineage} = Recipe.source_identity(source)
+
+      assert {:error, :managed_recipe_refused} =
+               Recipe.extract(recipe("literal_source"), "note." <> lineage, value(source), [
+                 source
+               ])
+    end
+  end
+
+  test "whole interactive messages remain proposals without explicit statement/category review" do
+    for text <- ["Exact assertion", "A third party reports: Exact assertion"] do
+      proof = F.proof("interactive_operator", text)
+      {:ok, lineage} = Recipe.source_identity(proof)
+
+      assert {:error, :managed_recipe_refused} =
+               Recipe.extract(recipe("literal_source"), "note." <> lineage, value(proof), [proof])
+
+      {:ok, id} = Recipe.proposal_identity(lineage, text)
+
+      assert {:ok, %{"eligibility" => "never_current"}} =
+               Recipe.extract(recipe("proposal"), "pending." <> id, value(proof, "proposal"), [
+                 proof
+               ])
+    end
+  end
+
   test "one unrelated strong proof cannot authenticate another selected receipt" do
     proof = F.proof()
     other = F.proof("native_operator_answer", "different answer")
@@ -133,6 +174,23 @@ defmodule Ipse.Extension.ManagedRecipeTest do
     r = recipe("proposal")
     refute Recipe.valid?(put_in(r, ["rules", Access.at(0), "max_age_ms"], nil))
     refute Recipe.valid?(put_in(r, ["rules", Access.at(0), "max_age_ms"], 604_800_001))
+  end
+
+  test "native question answers cannot publish a literal without a question-bound receipt" do
+    for text <- ["yes", "blue", "Acme has owner Alex"] do
+      proof = F.proof("native_operator_answer", text)
+      {:ok, lineage} = Recipe.source_identity(proof)
+
+      assert {:error, :managed_recipe_refused} =
+               Recipe.extract(recipe("literal_source"), "note." <> lineage, value(proof), [proof])
+
+      {:ok, id} = Recipe.proposal_identity(lineage, text)
+
+      assert {:ok, %{"eligibility" => "never_current"}} =
+               Recipe.extract(recipe("proposal"), "pending." <> id, value(proof, "proposal"), [
+                 proof
+               ])
+    end
   end
 
   test "typed outcomes only support ordinary class and native answers never infer operator choices" do

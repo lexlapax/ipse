@@ -1,0 +1,2 @@
+RETAINED_CLOSE_MANIFEST_OK: %{cohort: "retained-close", entries: 12}
+RETAINED_CLOSE_MANIFEST_OK: %{cohort: "retained-close-v4", entries: 4}

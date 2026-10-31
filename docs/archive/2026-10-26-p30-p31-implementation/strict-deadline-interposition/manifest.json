@@ -1,0 +1,159 @@
+{
+  "scope": "Actual unmodified native helper check-to-rename interposition and failclosed strict Collection publication gate; not complete architecture.",
+  "date": "2026-10-29",
+  "files": {
+    "source/lib/ipse/cli/knowledge.ex": {
+      "bytes": 23079,
+      "sha256": "afb9c7560821c754de276799f459d84fdd615c282c9d2bacff5b528a2238cc6d"
+    },
+    "source/test/ipse/extension/managed_collection_call_session_test.exs": {
+      "bytes": 188505,
+      "sha256": "365822ec3c2c96b04203007d20a80aa252156a04ae7423b966d3a8fb0345a25f"
+    },
+    "source/lib/ipse/cli/errors.ex": {
+      "bytes": 6321,
+      "sha256": "88e42fadc3cc4c808c7c656ca8b155fff20cf02497252beaf2fb85bbd418a052"
+    },
+    "source/lib/ipse/session/invocation.ex": {
+      "bytes": 61670,
+      "sha256": "b54eb647a702ee9e169f921d3dbce2ccdc5c739cd7b7b191dce7405d5a3f0c24"
+    },
+    "source/docs/operator/knowledge-permissions.md.txt": {
+      "bytes": 15525,
+      "sha256": "8a5c53658023632b5929df05056a960b3b8983d22b0f9346b901c52a162eecc8"
+    },
+    "source/docs/developer/session-sources.md.txt": {
+      "bytes": 20399,
+      "sha256": "402eaa08a931c45800a25a15a403d881d2989868fda91523b7e9a9c4ae4a355d"
+    },
+    "source/_build/run-strict-deadline-gate.exs": {
+      "bytes": 501,
+      "sha256": "5b92969f2af1f5602d8a3ba5cf003be4134b698e68805041b1aa4721592c6d5f"
+    },
+    "source/lib/ipse/cli/knowledge/management.ex": {
+      "bytes": 18273,
+      "sha256": "ae3683b805e28794da5b6e877811814cd94b4b0c7fe1e387e812b876fa4107f4"
+    },
+    "logs/ipse-strict-deadline-gate-compile-46879.log": {
+      "bytes": 14596,
+      "sha256": "a3966bed3789624ce3bdb9fab599fa25a2e915fbe7ad8539bdda9b3c45e0b705"
+    },
+    "logs/ipse-native-deadline-interposition-46878.log": {
+      "bytes": 132,
+      "sha256": "206cd7f67bdfc83cd76ca00dfafdc6a52c80d0227929cf987cf1ba5af94e47ba"
+    },
+    "source/_build/compile-strict-deadline-gate.exs": {
+      "bytes": 1836,
+      "sha256": "42e11bdb202cf254ed06e61f8d3780d3d29ca2b677f3d2afce0b2dcf2d34c612"
+    },
+    "source/lib/ipse/runner/transaction.ex": {
+      "bytes": 23648,
+      "sha256": "e886ae8e4ac2b874e1e666c4f62bc09baf85e1c3ac0b82bd54ad256fa299582d"
+    },
+    "logs/ipse-strict-deadline-gate-compile-46880.log": {
+      "bytes": 9321,
+      "sha256": "2fa81304cd3892d6a4fc3c97a5c994d2757b7e1ec919b9416454919240c22daa"
+    },
+    "source/docs/developer/collection-sdk.md.txt": {
+      "bytes": 40712,
+      "sha256": "12e307fcb7d451581f6e22c253874298fe8e15bd90519bfe5e175d9ec649375e"
+    },
+    "logs/ipse-strict-deadline-core-gate-46884.log": {
+      "bytes": 197,
+      "sha256": "7c0c0ed9bdf87d8a2f7986edca1d4ba60374a08b6755f1997af25d34b7bc0df5"
+    },
+    "source/lib/ipse/extension/collection_call.ex": {
+      "bytes": 28444,
+      "sha256": "1b9d2b9b0c7a23c32682cfdc0bc21e97908f799c56682cfbef9e4542c675a4d2"
+    },
+    "source/_build/update-strict-deadline-manuals.exs": {
+      "bytes": 11693,
+      "sha256": "641e8af4e7d6c23e7b273c7dcf27e2e83314eae909e8f3999f7b2f237e3f4d51"
+    },
+    "source/docs/operator/corpus.md.txt": {
+      "bytes": 42209,
+      "sha256": "944dcd6167e1c104bd06da756abaf3e5c5f4e2c2562bf03d095a8da7c8f1b73e"
+    },
+    "source/dev/fixtures/transaction_deadline_interposition.rs": {
+      "bytes": 7065,
+      "sha256": "4b6f6c41b97060de617568f87578193f5da901bf97d8e2edc7c9e65841550751"
+    },
+    "source/test/ipse/extension/collection_deadline_gate_test.exs": {
+      "bytes": 3349,
+      "sha256": "c005fd353f179e0ef7022f7fcde7ea0f07aa0a6d18dafd4207e695599e906bbe"
+    },
+    "logs/ipse-strict-deadline-docs-46888.log": {
+      "bytes": 756,
+      "sha256": "4c9fa1068336e07404fd7c046cc4485b062cae27968eb3b2ee087d68b446a6c3"
+    },
+    "source/lib/ipse/extension/managed_collection_call.ex": {
+      "bytes": 31589,
+      "sha256": "7302f6eb555e84e53aa2cd02ee696d47f07155bc8a0609fb962fb88a3ce1b79e"
+    },
+    "source/docs/operator/recovery.md.txt": {
+      "bytes": 24870,
+      "sha256": "7086b8d082cb2813b59a015c80a7636a0d2b0d0572dc4c6ae47fcf8815acd7b4"
+    },
+    "logs/ipse-strict-deadline-docs-46885.log": {
+      "bytes": 3101,
+      "sha256": "673d8386c5e24c80f806e66b52f91fb8d35d3d70236ec43daf32f11cba28b741"
+    },
+    "logs/ipse-strict-deadline-help-compile-46887.log": {
+      "bytes": 36,
+      "sha256": "57328d6e9d54cfe0fa5910e00bf6372ee98e51a2d95381d71da75f7f546f0a16"
+    },
+    "source/lib/ipse/session/saved.ex": {
+      "bytes": 35665,
+      "sha256": "eabe6061df30928654f5f1ac9be9a27efad961018f99121abe7e718baf57e8bd"
+    },
+    "logs/ipse-strict-deadline-cli-gate-46886.log": {
+      "bytes": 187,
+      "sha256": "7c38f5114bcc4910f2cdae97a6e05770c3d3e2899fa7e26651f94bbeba967b16"
+    },
+    "logs/ipse-strict-deadline-gate-compile-46881.log": {
+      "bytes": 55,
+      "sha256": "167a18c33c24c6d3ec75fd44560cdb6e758281572c7196647044d3b0d5b5d9cc"
+    },
+    "source/lib/ipse/session.ex": {
+      "bytes": 184422,
+      "sha256": "d31b809feabb6797ecc5679a05edc54f7515e9643ab1824aaab3ef1df42399be"
+    },
+    "runtime.json": {
+      "bytes": 33999,
+      "sha256": "d41e30ee3b495aa11fc4fcd5fbbeb4e4ac1e2dbb346f2c14fb8fee7c9bfefebf"
+    },
+    "logs/ipse-native-deadline-interposition-46877.log": {
+      "bytes": 69,
+      "sha256": "0a5d63f7c6ea08c9d95c3f5cfb8aed3bef8efe5bc130fcc27bbddbf1cf930e84"
+    },
+    "source/lib/ipse/cli/terminal.ex": {
+      "bytes": 49858,
+      "sha256": "e29442ead3ed7fe039b98d10127c5c7f8c15b7ee9ee53c112408efba2ba5d70a"
+    },
+    "source/docs/operator/usage.md.txt": {
+      "bytes": 23170,
+      "sha256": "5cd43f393006e601d37b0b4f213892605c9f50dd023cfdc5c1aa0baac435ecf3"
+    },
+    "logs/ipse-strict-deadline-core-gate-46883.log": {
+      "bytes": 740,
+      "sha256": "e41dd3f5754b5cef82d95b2ceef8490550e653d3320e6ba6670497902f967177"
+    },
+    "source/docs/developer/knowledge-extensions.md.txt": {
+      "bytes": 42102,
+      "sha256": "e25d34e5e8829821277aea41fa9a69a622890ad3d1f6c77c1149db625d6e9307"
+    },
+    "logs/ipse-strict-deadline-session-gate-46882.log": {
+      "bytes": 200,
+      "sha256": "035b1c1d076a442e025e558f3cc20625f9a40ca50f3c0dce8f5d180a19a797e2"
+    },
+    "source/lib/ipse/extension/collection.ex": {
+      "bytes": 69309,
+      "sha256": "38daddfdec1b4c458e8a156e2db92ab00b5bbdb8ff729adec6efccc147af9850"
+    },
+    "logs/ipse-strict-deadline-docs-final-46889.log": {
+      "bytes": 756,
+      "sha256": "47d6256d28eefce75083679dc9a239cd05e54e33de7488d6e2d4403e0a12698c"
+    }
+  },
+  "historical_only": true
+}

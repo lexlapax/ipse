@@ -32,7 +32,10 @@ defmodule IpseKnowledge.Notes do
           "metadata_reserve" => @metadata_reserve
         })
 
-      with true <- valid?(note) do
+      with true <- valid?(note),
+           true <-
+             is_nil(override) or not valid_override?(override) or
+               override["lineage"] != note["lineage"] or override["updated_at_ms"] <= now do
         if is_nil(override), do: {:ok, note}, else: apply_override(note, override)
       else
         _ -> {:error, :invalid_note}
@@ -47,12 +50,17 @@ defmodule IpseKnowledge.Notes do
   @doc "A read is eligibility only and never changes observed time or expiry."
   def eligible?(note, now) do
     valid?(note) and uint?(now) and
+      now >= note["created_at_ms"] and
+      (is_nil(note["superseded_at_ms"]) or now >= note["superseded_at_ms"]) and
       (is_nil(note["expires_at_ms"]) or now < note["expires_at_ms"])
   end
 
   @doc "Retain superseded temporal support for 365 days; pinned support stays pinned."
   def supersede(old, attrs, now, override \\ nil) do
     cond do
+      override === :absent ->
+        supersede_admitted(old, attrs, now, nil)
+
       not is_nil(override) and
           (override["lineage"] != old["lineage"] or attrs["lineage"] != old["lineage"]) ->
         {:error, :separate_lineage_overrides_required}
@@ -71,7 +79,8 @@ defmodule IpseKnowledge.Notes do
   defp supersede_admitted(old, attrs, now, override) do
     with true <- valid?(old) and is_nil(old["superseded_at_ms"]) and uint?(now),
          true <- now >= old["created_at_ms"] and attrs["id"] == old["id"],
-         {:ok, replacement} <- new(attrs, now, override) do
+         {:ok, replacement} <- new(attrs, now, override),
+         {:ok, replacement} <- constrain_replacement(old, replacement, now, override) do
       expires =
         case old["category"] do
           "pin" -> nil
@@ -107,8 +116,32 @@ defmodule IpseKnowledge.Notes do
     _ -> {:error, :invalid_note}
   end
 
-  @doc "One-step operator policy changes bind the claim/evidence lineage, including session-only."
-  def retention(note, policy, reason, now) do
+  defp constrain_replacement(old, replacement, now, nil) do
+    if old["lineage"] == replacement["lineage"] and is_integer(old["expires_at_ms"]) do
+      if old["expires_at_ms"] > now and is_integer(replacement["expires_at_ms"]) do
+        {:ok,
+         Map.put(
+           replacement,
+           "expires_at_ms",
+           min(old["expires_at_ms"], replacement["expires_at_ms"])
+         )}
+      else
+        {:error, :invalid_note}
+      end
+    else
+      {:ok, replacement}
+    end
+  end
+
+  defp constrain_replacement(_, replacement, _, _), do: {:ok, replacement}
+
+  @doc """
+  Model an operator policy change, including session-only suppression.
+
+  `:absent` means the caller has checked that no prior override exists. Neither
+  this marker nor a prior override authenticates protected state or permission.
+  """
+  def retention(note, policy, reason, now, prior_override \\ nil) do
     override = %{
       "version" => 1,
       "lineage" => note["lineage"],
@@ -118,13 +151,18 @@ defmodule IpseKnowledge.Notes do
     }
 
     with true <- valid?(note) and valid_override?(override),
+         true <- now >= note["created_at_ms"],
+         true <- is_nil(note["superseded_at_ms"]) or now >= note["superseded_at_ms"],
+         true <- prior_override_matches?(note, prior_override, now),
+         true <- policy["kind"] == "session" or eligible?(note, now),
          result when elem(result, 0) in [:ok, :suppressed] <- apply_override(note, override) do
       {:ok,
        %{
          "note" => if(elem(result, 0) == :ok, do: elem(result, 1)),
          "override" => override,
          "advance_floor" => true,
-         "historical_gap" => note["category"] == "history" and policy["kind"] != "pin",
+         "historical_gap" =>
+           note["category"] in ~w(pin preference current history) and policy["kind"] != "pin",
          "shared_evidence" => "retain while another authorized dependent requires it"
        }}
     else
@@ -135,7 +173,16 @@ defmodule IpseKnowledge.Notes do
   end
 
   @doc "Forgetting retains only bounded lineage suppression; callers remove selected dependents."
-  def forget(note, reason, now), do: retention(note, %{"kind" => "session"}, reason, now)
+  def forget(note, reason, now, prior_override \\ nil),
+    do: retention(note, %{"kind" => "session"}, reason, now, prior_override)
+
+  defp prior_override_matches?(note, nil, _), do: note["reason"] != "operator override"
+  defp prior_override_matches?(_, :absent, _), do: true
+
+  defp prior_override_matches?(note, prior, now) do
+    valid_override?(prior) and prior["updated_at_ms"] <= now and
+      note["reason"] == "operator override" and apply_override(note, prior) === {:ok, note}
+  end
 
   def apply_override(note, override) do
     with true <- valid?(note) and valid_override?(override),
@@ -208,6 +255,7 @@ defmodule IpseKnowledge.Notes do
       note["evidence"] != %{} and note["category"] in @categories and
       text?(note["reason"], 256) and uint?(note["created_at_ms"]) and
       uint?(note["observed_at_ms"]) and nullable_uint?(note["event_at_ms"]) and
+      note["observed_at_ms"] <= note["created_at_ms"] and
       nullable_uint?(note["expires_at_ms"]) and nullable_uint?(note["superseded_at_ms"]) and
       note["metadata_reserve"] in [@metadata_reserve, ""] and
       history?(note) and
@@ -236,7 +284,8 @@ defmodule IpseKnowledge.Notes do
 
   defp history?(%{"category" => "history"} = n),
     do:
-      is_integer(n["superseded_at_ms"]) and n["previous_category"] in (@categories -- ["history"])
+      is_integer(n["superseded_at_ms"]) and n["superseded_at_ms"] >= n["created_at_ms"] and
+        n["previous_category"] in (@categories -- ["history"])
 
   defp history?(n), do: is_nil(n["superseded_at_ms"]) and is_nil(n["previous_category"])
   defp nullable_uint?(x), do: is_nil(x) or uint?(x)

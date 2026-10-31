@@ -171,10 +171,11 @@ defmodule Ipse.UsageDemo do
         start(Map.delete(cfg, :max_output_tokens), root, dir, id)
 
       ^before = File.read!(path)
+      {:ok, before_events} = Ipse.Journal.load(dir, id)
       {:ok, resumed} = start(cfg, root, dir, id)
       :idle = Session.info(resumed).phase
-      ^before = File.read!(path)
-      :ok = Session.close(resumed)
+      :ok = assert_inert_resume(dir, id, before_events)
+      :ok = Session.close_confirmed(resumed)
 
       summary_config = config(home, true, card(), :summary)
       {:ok, summary} = start(summary_config, root, dir)
@@ -200,12 +201,11 @@ defmodule Ipse.UsageDemo do
       summary_id = Session.info(summary).id
       :ok = Session.close(summary)
       {:ok, _} = Ipse.Session.Saved.inspect_saved(dir, summary_id)
-      summary_path = Path.join(dir, summary_id <> ".jsonl")
-      summary_bytes = File.read!(summary_path)
+      {:ok, summary_events} = Ipse.Journal.load(dir, summary_id)
       {:ok, summary_resumed} = start(summary_config, root, dir, summary_id)
       ^summarized = Session.info(summary_resumed).extension_result["value"]
-      ^summary_bytes = File.read!(summary_path)
-      :ok = Session.close(summary_resumed)
+      :ok = assert_inert_resume(dir, summary_id, summary_events)
+      :ok = Session.close_confirmed(summary_resumed)
 
       tree_config =
         config(home, true, card(), :tree)
@@ -236,12 +236,11 @@ defmodule Ipse.UsageDemo do
       tree_id = Session.info(tree).id
       :ok = Session.close(tree)
       {:ok, _} = Ipse.Session.Saved.inspect_saved(dir, tree_id)
-      tree_path = Path.join(dir, tree_id <> ".jsonl")
-      tree_bytes = File.read!(tree_path)
+      {:ok, tree_events} = Ipse.Journal.load(dir, tree_id)
       {:ok, tree_resumed} = start(tree_config, root, dir, tree_id)
       ^tree_value = Session.info(tree_resumed).extension_result["value"]
-      ^tree_bytes = File.read!(tree_path)
-      :ok = Session.close(tree_resumed)
+      :ok = assert_inert_resume(dir, tree_id, tree_events)
+      :ok = Session.close_confirmed(tree_resumed)
 
       IO.puts(
         "Cost report fixture: configured pages, own-session/child summaries and inert resume passed."
@@ -255,6 +254,19 @@ defmodule Ipse.UsageDemo do
 
       File.rm_rf!(root)
     end
+  end
+
+  defp assert_inert_resume(dir, id, before) do
+    {:ok, after_events} = Ipse.Journal.load(dir, id)
+    ^before = Enum.take(after_events, length(before))
+
+    true =
+      Enum.all?(
+        Enum.drop(after_events, length(before)),
+        &(&1["type"] in ~w(session_release_owner_started execution_mode_resumed lifecycle_epoch_started))
+      )
+
+    :ok
   end
 
   defp start(config, cwd, dir, id \\ nil) do
@@ -337,7 +349,18 @@ defmodule Ipse.UsageDemo do
       original_ledger = File.read!(ledger)
       {:ok, resumed} = start(config, root, dir, id)
       :idle = Session.info(resumed).phase
-      ^original_journal = File.read!(journal)
+      resumed_journal = File.read!(journal)
+      true = String.starts_with?(resumed_journal, original_journal)
+
+      suffix =
+        binary_part(
+          resumed_journal,
+          byte_size(original_journal),
+          byte_size(resumed_journal) - byte_size(original_journal)
+        )
+
+      [marker] = String.split(suffix, "\n", trim: true) |> Enum.map(&Jason.decode!/1)
+      true = Ipse.Session.ReleaseReceipt.valid_owner_marker?(marker, id)
       ^original_ledger = File.read!(ledger)
       3 = Agent.get(counter, & &1)
       :ok = Session.close(resumed)

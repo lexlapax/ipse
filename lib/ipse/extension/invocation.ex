@@ -55,9 +55,10 @@ defmodule Ipse.Extension.Invocation do
       "approval" => approval
     }
 
-    if approval == "saved_consent",
-      do: event |> Map.put("version", 3) |> Map.put("semantic_binding", semantic_binding),
-      else: event
+    if approval == "saved_consent" or
+         (descriptor["stage"] == "event.job" and not is_nil(semantic_binding)),
+       do: event |> Map.put("version", 3) |> Map.put("semantic_binding", semantic_binding),
+       else: event
   end
 
   def build_result(intent, response, actions \\ []) do
@@ -128,15 +129,10 @@ defmodule Ipse.Extension.Invocation do
   end
 
   def latest_display(events) do
-    Enum.reverse(events)
-    |> Enum.find_value(fn
-      %{"type" => "extension_invocation_result", "descriptor" => %{"stage" => stage}} = event
-      when stage in ~w(invoke.command invoke.service) ->
-        Map.merge(%{"name" => event["descriptor"]["name"], "stage" => stage}, delivery(event))
-
-      _ ->
-        nil
-    end)
+    case Ipse.Extension.Actions.restore(events) do
+      {:ok, state} -> state.last_display
+      _ -> nil
+    end
   end
 
   def source_call_valid?(%{"tool_calls" => calls}, id, name, arguments)
@@ -175,6 +171,7 @@ defmodule Ipse.Extension.Invocation do
         parent_request: nil,
         started: %{},
         bound: MapSet.new(),
+        admitted_releases: MapSet.new(),
         claimed_calls: MapSet.new(),
         session_id: nil,
         delivery: nil,
@@ -268,7 +265,7 @@ defmodule Ipse.Extension.Invocation do
 
     with true <-
            if(event["version"] in [2, 4],
-             do: valid_saved_result?(event) and ResultSource.published?(state.sources, event),
+             do: valid_saved_result?(event) and ResultSource.recorded?(state.sources, event),
              else: valid_result?(event)
            ),
          true <- state.active == id and not Map.has_key?(state.results, id),
@@ -282,6 +279,15 @@ defmodule Ipse.Extension.Invocation do
   defp validate_event(%{"type" => type} = event, state, _, _)
        when type in ~w(extension_output_begin extension_output_chunk extension_output_seal) do
     if state.active == event["invocation_id"], do: {:ok, state}, else: @error
+  end
+
+  defp validate_event(%{"type" => "managed_output_release_result"} = event, state, _, _) do
+    id = event["release_id"]
+
+    if ResultSource.released?(state.sources, event) and
+         not MapSet.member?(state.admitted_releases, id),
+       do: {:ok, %{state | admitted_releases: MapSet.put(state.admitted_releases, id)}},
+       else: @error
   end
 
   defp validate_event(
@@ -302,10 +308,27 @@ defmodule Ipse.Extension.Invocation do
       nil ->
         call = find_call(state.assistant, message["tool_call_id"])
 
-        if call != nil and Catalog.external?(get_in(call, ["function", "name"])) and
-             get_in(message, ["ipse_tool_outcome", "status"]) == "result_recorded",
-           do: @error,
-           else: {:ok, state}
+        projected =
+          Enum.find(state.results, fn {id, raw} ->
+            raw["descriptor"]["stage"] == "invoke.tool" and
+              raw["parent_request_id"] == state.parent_request and
+              raw["parent_call_id"] == message["tool_call_id"] and
+              not MapSet.member?(state.bound, id) and
+              ResultSource.released_message?(state.sources, raw, message, state.admitted_releases)
+          end)
+
+        cond do
+          projected != nil ->
+            {id, _} = projected
+            {:ok, %{state | bound: MapSet.put(state.bound, id)}}
+
+          call != nil and Catalog.external?(get_in(call, ["function", "name"])) and
+              get_in(message, ["ipse_tool_outcome", "status"]) == "result_recorded" ->
+            @error
+
+          true ->
+            {:ok, state}
+        end
 
       _ ->
         @error
@@ -388,7 +411,13 @@ defmodule Ipse.Extension.Invocation do
 
     Enum.sort(Map.keys(event)) == Enum.sort(intent_keys(event)) and
       event["type"] == "extension_invocation_intent" and
-      event["version"] === if(event["approval"] == "saved_consent", do: 3, else: 1) and
+      event["version"] ===
+        if(
+          event["approval"] == "saved_consent" or
+            (descriptor["stage"] == "event.job" and not is_nil(event["semantic_binding"])),
+          do: 3,
+          else: 1
+        ) and
       Registry.valid_identity?(identity) and id?(event["invocation_id"]) and
       Catalog.validate_snapshot(%{"version" => 1, "entries" => [descriptor]}) == :ok and
       descriptor["stage"] in identity["capabilities"] and
@@ -545,7 +574,16 @@ defmodule Ipse.Extension.Invocation do
         else: "failed"
       )
 
-  def prepare_event(config, entry, delivery, payload, facts, session, turn) do
+  def prepare_event(
+        config,
+        entry,
+        delivery,
+        payload,
+        facts,
+        session,
+        turn,
+        semantic_binding \\ nil
+      ) do
     name = "ext__" <> entry.identity["instance"] <> "__" <> delivery["declaration"]["handler"]
 
     with true <- payload != nil,
@@ -577,7 +615,8 @@ defmodule Ipse.Extension.Invocation do
              turn,
              nil,
              nil,
-             "event_trigger"
+             "event_trigger",
+             semantic_binding
            ),
          public_payload = Map.put(parent["payload"], "trigger", public_event_trigger(trigger)),
          parent =

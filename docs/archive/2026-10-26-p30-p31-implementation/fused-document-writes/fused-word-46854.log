@@ -1,0 +1,9 @@
+Running ExUnit with seed: 46854, max_cases: 1
+Excluding tags: [:test]
+Including tags: [:fused_word_session]
+
+FUSED_WORD_BUDGET {"fused_writes":21,"maximum_frame_bytes":14827,"native":{"allocated_bytes":294912,"floor":25,"generation":25,"operations":25,"records":9}}
+.
+Finished in 17.7 seconds (0.00s async, 17.7s sync)
+
+Result: 1 passed, 27 excluded

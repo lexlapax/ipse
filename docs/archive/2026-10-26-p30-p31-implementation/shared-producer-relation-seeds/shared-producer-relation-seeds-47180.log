@@ -1,0 +1,32 @@
+Running ExUnit with seed: 47180, max_cases: 8
+Excluding tags: [:native_sandbox, :macos_sandbox, :macos_filesystem, :memory_scope]
+
+Running ExUnit with seed: 86740, max_cases: 4
+Excluding tags: [:test]
+Including tags: [host_relation_seeds: true]
+
+%{
+  records: 7,
+  generation: 1011,
+  inference_calls: 0,
+  host_seed: "/home/lexlapax/projects/lexlapax/ipse/_build/shared-producer-relation-seeds-20261029/pending-v3-segmented-document.exs",
+  claim_operation_id: "0000000000000000000000000000006B",
+  active_stages: 0
+}
+.%{
+  records: 10,
+  generation: 1017,
+  inference_calls: 0,
+  host_seed: "/home/lexlapax/projects/lexlapax/ipse/_build/shared-producer-relation-seeds-20261029/pending-v3-reverse-order.exs",
+  claim_operation_id: "000000000000000000000000000000B2",
+  active_stages: 0
+}
+.
+Finished in 4.1 seconds (4.0s on load, 0.00s async, 0.07s sync)
+
+Result: 2 passed, 17 excluded
+
+.
+Finished in 4.3 seconds (0.04s on load, 0.00s async, 4.3s sync)
+
+Result: 1 passed

@@ -1,0 +1,22 @@
+Running ExUnit with seed: 159373, max_cases: 4
+Excluding tags: [:native_sandbox, :macos_sandbox, :macos_filesystem, :memory_scope]
+
+Running ExUnit with seed: 697014, max_cases: 4
+
+....%{
+  effects: 12,
+  page_bytes: 45064,
+  producer_reads: 69,
+  inference_calls: 4,
+  max_host_frame: 12759,
+  ready_bytes: 4354
+}
+.
+Finished in 1.1 seconds (0.3s on load, 0.00s async, 0.8s sync)
+
+Result: 5 passed
+
+.
+Finished in 4.4 seconds (0.04s on load, 0.00s async, 4.4s sync)
+
+Result: 1 passed

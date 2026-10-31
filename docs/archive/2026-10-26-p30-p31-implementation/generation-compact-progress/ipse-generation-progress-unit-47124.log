@@ -1,0 +1,7 @@
+Running ExUnit with seed: 20261029, max_cases: 40
+
+.GENERATION_PROGRESS_MAX {"compact_bytes":4211,"full_bytes":38010,"model_calls":0}
+..
+Finished in 0.05 seconds (0.05s async, 0.00s sync)
+
+Result: 3 passed

@@ -1,0 +1,58 @@
+     error: misplaced operator ->
+
+     This typically means invalid syntax or a macro is not available in scope
+     │
+ 142 │         "planning_mcp_read_intent" -> valid_pair?(state, pending, start, session)
+     │                                    ^
+     │
+     └─ lib/ipse/session/planning_mcp.ex:142:36: Ipse.Session.PlanningMCP.step/3
+
+
+== Compilation error in file lib/ipse/session/planning_mcp.ex ==
+** (CompileError) lib/ipse/session/planning_mcp.ex: cannot compile module Ipse.Session.PlanningMCP (errors have been logged)
+
+{:error,
+ [
+   %{
+     message: "misplaced operator ->\n\nThis typically means invalid syntax or a macro is not available in scope",
+     position: {142, 36},
+     file: "/home/lexlapax/projects/lexlapax/ipse/lib/ipse/session/planning_mcp.ex",
+     stacktrace: [
+       {Ipse.Session.PlanningMCP, :step, 3,
+        [file: "lib/ipse/session/planning_mcp.ex", column: 36, line: 142]}
+     ],
+     source: "/home/lexlapax/projects/lexlapax/ipse/lib/ipse/session/planning_mcp.ex",
+     span: nil,
+     severity: :error
+   },
+   %{
+     message: "** (CompileError) lib/ipse/session/planning_mcp.ex: cannot compile module Ipse.Session.PlanningMCP (errors have been logged)\n\n",
+     position: 0,
+     file: "/home/lexlapax/projects/lexlapax/ipse/lib/ipse/session/planning_mcp.ex",
+     stacktrace: [
+       {:elixir_expand, :expand_arg, 3,
+        [file: ~c"src/elixir_expand.erl", line: 730]},
+       {:elixir_expand, :expand_list, 5,
+        [file: ~c"src/elixir_expand.erl", line: 662]},
+       {:elixir_expand, :expand, 3,
+        [file: ~c"src/elixir_expand.erl", line: 564]},
+       {:elixir_expand, :expand_arg, 3,
+        [file: ~c"src/elixir_expand.erl", line: 730]},
+       {:elixir_expand, :mapfold, 5,
+        [file: ~c"src/elixir_expand.erl", line: 746]},
+       {:elixir_expand, :expand_args, 3,
+        [file: ~c"src/elixir_expand.erl", line: 739]},
+       {:elixir_expand, :expand, 3,
+        [file: ~c"src/elixir_expand.erl", line: 556]}
+     ],
+     source: "/home/lexlapax/projects/lexlapax/ipse/lib/ipse/session/planning_mcp.ex",
+     span: nil,
+     severity: :error,
+     details: {:error,
+      %CompileError{
+        file: "/home/lexlapax/projects/lexlapax/ipse/lib/ipse/session/planning_mcp.ex",
+        line: 0,
+        description: "cannot compile module Ipse.Session.PlanningMCP (errors have been logged)"
+      }}
+   }
+ ], %{compile_warnings: [], runtime_warnings: []}}

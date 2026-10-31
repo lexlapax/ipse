@@ -1,0 +1,16 @@
+MANAGEMENT_SHARE_CONTROLS_MANIFEST_OK: %{
+  manifest_entries: 40,
+  frozen_source_files: 39,
+  runtime_files_and_retained_beams: [
+    {"management-controls-sol-20261029", 697, 8},
+    {"management-share-candidate-v2-sol-20261029", 697, 8},
+    {"management-share-candidate-old-sol-20261029", 697, 8}
+  ],
+  earlier_to_current_delta: ["./ipse/ebin/Elixir.Ipse.CLI.Knowledge.Management.beam",
+   "./ipse/ebin/Elixir.Ipse.Runner.beam",
+   "./ipse/ebin/Elixir.Ipse.Session.Resources.beam"],
+  old_helper_delta: ["./ipse/ebin/Elixir.Ipse.Runner.beam",
+   "./ipse/priv/ipse-runner"],
+  native_helper_unchanged_from_bridge: true,
+  journal_writer_sources_unchanged_from_bridge: true
+}

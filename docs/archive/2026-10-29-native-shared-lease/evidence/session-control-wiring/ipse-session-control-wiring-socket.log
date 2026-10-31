@@ -1,0 +1,8 @@
+Running ExUnit with seed: 123658, max_cases: 8
+Excluding tags: [:test]
+Including tags: [controlled_both_transfer: true]
+
+.
+Finished in 1.2 seconds (0.5s on load, 0.00s async, 0.7s sync)
+
+Result: 1 passed, 9 excluded

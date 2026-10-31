@@ -1,0 +1,10 @@
+Running ExUnit with seed: 46938, max_cases: 1
+Excluding tags: [:test]
+Including tags: [:public_shared_hydration]
+
+NAMESPACE_TEST_ARTIFACT 59836024240918da2c4ce4151ecbe66d7fd6da30433ab0406174f3b8f9a18401
+SHARED_SELECTED_PUBLIC {"effects":0,"facts":2,"reads":93,"sources":2,"typed_word_citations":1,"vectors":34}
+.
+Finished in 31.5 seconds (1.1s on load, 0.00s async, 30.4s sync)
+
+Result: 1 passed, 32 excluded

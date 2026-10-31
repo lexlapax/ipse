@@ -1,0 +1,7 @@
+PENDING_PROJECTION_MANIFEST_OK: %{
+  manifest_sha256: "5a8fb333b709ab3e88bc455ab86497cbe7ddb5b352f736eec84a8bf1d7fd5bdd",
+  manifest_entries: 10,
+  source_snapshots: 4,
+  runtime_files: 705,
+  inherited_manifest: "afa3cb876e4ee6ccf9af21f8fd17331af1900272f79b0e92841327c3f586f7e0"
+}

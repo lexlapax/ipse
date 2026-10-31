@@ -1,0 +1,15 @@
+f1565abe1e16296870379f56c250e8c4a12783c1a195507f7a8ae57abd84d3d3  ./beams/Elixir.Ipse.CLI.Errors.beam
+2e3c37ac4e5a002151b2c0c45524856145decafca36cd21cdccedfcc6299c4fd  ./beams/Elixir.Ipse.CLI.Knowledge.Management.beam
+5e97419765be81fc6bf19bab8911835eb1ce60ee908f60b488eba726d80987f3  ./beams/Elixir.Ipse.CLI.Knowledge.beam
+864a36fcea055da2e7004a0aeecf49bc08e5a978a4b4a6512c118aa41a31bbd4  ./beams/Elixir.Ipse.CLI.beam
+50dbb38f948618271c4d36e6886ca314a81c70454bdd13996851feaad6d31d08  ./instrumentation/management-cleanup-unknown-instrumented.beam
+8bea45f8056c3619f7cca415bd32c9255f855f384586f9c5e526507b4cab54d3  ./instrumentation/management-cleanup-unknown-instrumented.ex
+e691076ecb68bb8397aa3e6f2453d6b0b1b153f307db241bba27b211103bfa0f  ./journals/cli-close-unknown.jsonl
+dd46ed7dc3faf56949831bbe4a31d454e83266ded4e0082d08f9279e1bd7f8be  ./journals/cli-success.jsonl
+ebcda9af3ff65e6df272964eeb45127053d2c6aae62ae9b79ce5264f5083a61f  ./logs/ipse-management-public-v1-cli-close-unknown.log
+b7417af57b923f8267f5e8612e399a5e80add0c5f85b68cc2082806541c59e23  ./logs/ipse-management-public-v1-cli-no-tty.log
+b4ad6a469dd1b4c178a25a9aee130de22223f32ee37e095f72f21445dddd9e2e  ./logs/ipse-management-public-v1-cli-success.log
+8b3e71a5f73bc522091d7e16bc88c63e5d03a181805640cb3f7ac5eacc64d30c  ./logs/public-mode-test-console.txt
+b7a98d5cb3f8c05edd671b1dca0ab9b30e1f6d770cc605df49c2afd61b63e75f  ./operator-pty
+caf4240d8659f75c76dff3f6090f3454315f0c0afbdaee572b0c0d2db9f2d1d2  ./runtime.sha256
+dd7c6ddb1b48eda66e8fef289ae5379939f2bacb616347ae8ff4437d70e15e91  ./source.tar

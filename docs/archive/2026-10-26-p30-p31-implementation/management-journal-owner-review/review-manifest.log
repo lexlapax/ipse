@@ -1,0 +1,12 @@
+MANAGEMENT_OWNER_MANIFEST_OK: %{
+  manifest_entries: 25,
+  source_files: 34,
+  runtimes: [
+    {"standard", 670,
+     "a64c58bb32864d217501f750c0e5fa25abf4562bfda53fab6c4f2573115f4995"},
+    {"hook", 670,
+     "8364609713fe022d1d469f846ddc49970c851bde7aac98629c02a088130d3806"},
+    {"old", 670,
+     "a51c2d34654e21b0418b31bbe5ec2423d117230a3a8f3687803d5c1438d1c12e"}
+  ]
+}

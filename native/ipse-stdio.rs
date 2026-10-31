@@ -1,6 +1,7 @@
 //! Bidirectional pipes and process-group lifetime for directly executed servers.
 use super::{frame, signal_group, GroupGuard};
 use std::io::{self, Read, Write};
+use std::os::unix::io::AsRawFd;
 #[cfg(target_os = "linux")]
 use std::os::unix::process::CommandExt;
 use std::os::unix::process::ExitStatusExt;
@@ -8,7 +9,7 @@ use std::process::{Command, Stdio};
 use std::sync::atomic::{AtomicBool, AtomicU8, Ordering};
 use std::sync::{mpsc, Arc};
 use std::thread;
-use std::time::{Duration, Instant};
+use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 const CHUNK: usize = 8192;
 const INPUT_CHUNKS: usize = 128;
@@ -101,22 +102,78 @@ fn output_reader<R: Read + Send + 'static>(
     });
 }
 
-fn input_reader() -> (
-    mpsc::Receiver<Vec<u8>>,
+enum InputFrame {
+    Plain(Vec<u8>),
+    Start(u64),
+    Managed { deadline: u64, nonce: [u8; 16], bytes: Vec<u8>, pending: Arc<AtomicBool> },
+}
+
+// 0 means no bytes were written; 1 means the complete frame was written;
+// 2 means a partial write or cleanup failure leaves the outcome unknown.
+fn managed_write<W: Write + AsRawFd>(output: &mut W, bytes: &[u8], deadline: u64, cancelled: &AtomicBool) -> u8 {
+    #[repr(C)] struct PollFd { fd: i32, events: i16, revents: i16 }
+    #[cfg(target_os = "macos")] type Nfds = u32;
+    #[cfg(not(target_os = "macos"))] type Nfds = usize;
+    extern "C" {
+        fn fcntl(fd: i32, cmd: i32, ...) -> i32;
+        fn poll(fds: *mut PollFd, count: Nfds, timeout: i32) -> i32;
+    }
+    #[cfg(target_os = "linux")] const NONBLOCK: i32 = 0x800;
+    #[cfg(not(target_os = "linux"))] const NONBLOCK: i32 = 0x4;
+    let fd = output.as_raw_fd();
+    let flags = unsafe { fcntl(fd, 3) };
+    if flags < 0 || unsafe { fcntl(fd, 4, flags | NONBLOCK) } < 0 { return 0; }
+    let mut offset = 0;
+    let result = loop {
+        let now = match SystemTime::now().duration_since(UNIX_EPOCH) {
+            Ok(now) => now.as_millis(),
+            Err(_) => break if offset == 0 { 0 } else { 2 },
+        };
+        if cancelled.load(Ordering::SeqCst) || now >= u128::from(deadline) {
+            break if offset == 0 { 0 } else { 2 };
+        }
+        match output.write(&bytes[offset..]) {
+            Ok(0) => break if offset == 0 { 0 } else { 2 },
+            Ok(count) => {
+                offset += count;
+                if offset == bytes.len() { break 1; }
+            },
+            Err(error) if error.kind() == io::ErrorKind::Interrupted => (),
+            Err(error) if error.kind() == io::ErrorKind::WouldBlock => {
+                let wait = (u128::from(deadline) - now).min(25) as i32;
+                let mut p = PollFd { fd, events: 4, revents: 0 };
+                let ready = unsafe { poll(&mut p, 1, wait) };
+                if ready < 0 && io::Error::last_os_error().kind() != io::ErrorKind::Interrupted {
+                    break if offset == 0 { 0 } else { 2 };
+                }
+                if ready > 0 && p.revents & (8 | 16 | 32) != 0 {
+                    break if offset == 0 { 0 } else { 2 };
+                }
+            },
+            Err(_) => break if offset == 0 { 0 } else { 2 },
+        }
+    };
+    if unsafe { fcntl(fd, 4, flags) } < 0 { 2 } else { result }
+}
+
+fn input_reader(admitted: bool) -> (
+    mpsc::Receiver<InputFrame>,
     Arc<AtomicU8>,
     Arc<AtomicBool>,
     Arc<std::sync::Mutex<Option<i32>>>,
 ) {
     let failure = Arc::new(AtomicU8::new(0));
-    let (input_tx, input_rx) = mpsc::sync_channel::<Vec<u8>>(INPUT_CHUNKS);
+    let (input_tx, input_rx) = mpsc::sync_channel::<InputFrame>(INPUT_CHUNKS);
     let input_failure = failure.clone();
     let cancelled = Arc::new(AtomicBool::new(false));
     let slot = Arc::new(std::sync::Mutex::new(None::<i32>));
     let reader_slot = slot.clone();
     let reader_cancelled = cancelled.clone();
+    let managed_pending = Arc::new(AtomicBool::new(false));
     thread::spawn(move || {
         let mut owner = io::stdin();
         let mut bytes = [0u8; CHUNK];
+        let mut awaiting_start = admitted;
         'frames: loop {
             let mut header = [0u8; 5];
             match owner.read(&mut header[..1]) {
@@ -147,6 +204,67 @@ fn input_reader() -> (
                 signal_group(&reader_slot);
                 break;
             }
+            if header[0] == b'G' {
+                if !awaiting_start || remaining != 8 {
+                    input_failure.store(2, Ordering::Release);
+                    reader_cancelled.store(true, Ordering::SeqCst);
+                    signal_group(&reader_slot);
+                    break;
+                }
+                let mut grant = [0u8; 8];
+                if owner.read_exact(&mut grant).is_err() {
+                    input_failure.store(2, Ordering::Release);
+                    reader_cancelled.store(true, Ordering::SeqCst);
+                    signal_group(&reader_slot);
+                    break;
+                }
+                awaiting_start = false;
+                if input_tx.try_send(InputFrame::Start(u64::from_be_bytes(grant))).is_err() {
+                    input_failure.store(1, Ordering::Release);
+                    reader_cancelled.store(true, Ordering::SeqCst);
+                    signal_group(&reader_slot);
+                    break;
+                }
+                continue;
+            }
+            if awaiting_start {
+                input_failure.store(2, Ordering::Release);
+                reader_cancelled.store(true, Ordering::SeqCst);
+                signal_group(&reader_slot);
+                break;
+            }
+            if header[0] == b'D' {
+                if !(25..=32_792).contains(&remaining) ||
+                    managed_pending.compare_exchange(false, true, Ordering::AcqRel, Ordering::Acquire).is_err() {
+                    input_failure.store(2, Ordering::Release);
+                    reader_cancelled.store(true, Ordering::SeqCst);
+                    signal_group(&reader_slot);
+                    break;
+                }
+                let mut payload = vec![0u8; remaining];
+                if owner.read_exact(&mut payload).is_err() {
+                    input_failure.store(2, Ordering::Release);
+                    reader_cancelled.store(true, Ordering::SeqCst);
+                    signal_group(&reader_slot);
+                    break;
+                }
+                let deadline = u64::from_be_bytes(payload[..8].try_into().unwrap());
+                if deadline == 0 || deadline > 9_007_199_254_740_991 {
+                    input_failure.store(2, Ordering::Release);
+                    reader_cancelled.store(true, Ordering::SeqCst);
+                    signal_group(&reader_slot);
+                    break;
+                }
+                let nonce = payload[8..24].try_into().unwrap();
+                let message = InputFrame::Managed { deadline, nonce, bytes: payload[24..].to_vec(), pending: managed_pending.clone() };
+                if input_tx.try_send(message).is_err() {
+                    input_failure.store(1, Ordering::Release);
+                    reader_cancelled.store(true, Ordering::SeqCst);
+                    signal_group(&reader_slot);
+                    break;
+                }
+                continue;
+            }
             if header[0] != b'I' || remaining > 1_048_576 {
                 input_failure.store(2, Ordering::Release);
                 reader_cancelled.store(true, Ordering::SeqCst);
@@ -161,7 +279,7 @@ fn input_reader() -> (
                     signal_group(&reader_slot);
                     break 'frames;
                 }
-                match input_tx.try_send(bytes[..count].to_vec()) {
+                match input_tx.try_send(InputFrame::Plain(bytes[..count].to_vec())) {
                     Ok(()) => (),
                     Err(mpsc::TrySendError::Full(_)) => {
                         input_failure.store(1, Ordering::Release);
@@ -191,6 +309,9 @@ pub fn run(args: &[String]) -> Result<(), String> {
         return Err("stdio timeout must be between 1 and 86400000 ms".into());
     }
     let listener_mode = args[1] == "--stdio-listener";
+    let admitted = args[1] == "--admitted-stdio";
+    #[cfg(target_os = "macos")]
+    if admitted { return Err("managed stdio startup is unavailable on this platform".into()); }
     if args.len() > (if listener_mode { 263 } else { 261 }) || args.iter().map(String::len).sum::<usize>() > 131072 {
         return Err("stdio launch arguments exceed limit".into());
     }
@@ -201,7 +322,7 @@ pub fn run(args: &[String]) -> Result<(), String> {
         Some(listener::Listener::new(listener::port(&args[4])?)?)
     } else { None };
     let selected = launch_environment()?;
-    let (input_rx, failure, cancelled, slot) = input_reader();
+    let (input_rx, failure, cancelled, slot) = input_reader(admitted);
     let sandboxed = !listener_mode && args[4] == "--sandbox";
     let mut executable = if listener_mode { 6 } else { 4 };
     if sandboxed {
@@ -270,13 +391,36 @@ pub fn run(args: &[String]) -> Result<(), String> {
         .stderr(Stdio::piped());
     let cleanup = GroupGuard::start(slot.clone()).map_err(|_| "cannot start process-group owner")?;
     cleanup.attach(command);
+    let start_deadline = if admitted {
+        frame(b'R', &[]).map_err(|_| "stdio startup readiness unavailable")?;
+        let deadline = match input_rx.recv_timeout(Duration::from_secs(5)) {
+            Ok(InputFrame::Start(deadline)) => deadline,
+            _ => return Err("stdio startup grant unavailable".into()),
+        };
+        if deadline == 0 || deadline > 9_007_199_254_740_991 || cancelled.load(Ordering::SeqCst) ||
+            SystemTime::now().duration_since(UNIX_EPOCH).map_err(|_| "stdio clock unavailable")?.as_millis() >= u128::from(deadline) {
+            return Err("stdio startup deadline elapsed".into());
+        }
+        Some(deadline)
+    } else { None };
     #[cfg(target_os = "linux")]
     let child_sandbox = sandbox.clone();
+    #[cfg(not(target_os = "linux"))]
+    let _ = start_deadline;
+    #[cfg(target_os = "linux")]
+    let child_cancelled = cancelled.clone();
     #[cfg(target_os = "linux")]
     unsafe {
         command.pre_exec(move || {
             if let Some(policy) = &child_sandbox {
                 policy.apply()?;
+            }
+            if let Some(deadline) = start_deadline {
+                let now = SystemTime::now().duration_since(UNIX_EPOCH)
+                    .map_err(|_| io::Error::new(io::ErrorKind::Other, "stdio clock unavailable"))?.as_millis();
+                if child_cancelled.load(Ordering::SeqCst) || now >= u128::from(deadline) {
+                    return Err(io::Error::new(io::ErrorKind::TimedOut, "stdio startup deadline elapsed"));
+                }
             }
             Ok(())
         });
@@ -287,6 +431,7 @@ pub fn run(args: &[String]) -> Result<(), String> {
     }
     let mut child = command.spawn().map_err(|_| "cannot start stdio server")?;
     drop(child_slot);
+    if admitted { frame(b'A', &[]).map_err(|_| "stdio startup acknowledgement unavailable")?; }
     let finished = Arc::new(AtomicBool::new(false));
     let timed_out = Arc::new(AtomicBool::new(false));
     let watchdog_finished = finished.clone();
@@ -320,6 +465,7 @@ pub fn run(args: &[String]) -> Result<(), String> {
     let mut child_input = child.stdin.take().ok_or("stdio server input unavailable")?;
     let write_failure = failure.clone();
     let input_group = slot.clone();
+    let input_cancelled = cancelled.clone();
     thread::spawn(move || {
         #[cfg(target_os = "macos")]
         if child_input.write_all(&input_prefix).is_err() {
@@ -327,11 +473,32 @@ pub fn run(args: &[String]) -> Result<(), String> {
             signal_group(&input_group);
             return;
         }
-        for bytes in input_rx {
-            if child_input.write_all(&bytes).is_err() {
-                let _ = write_failure.compare_exchange(0, 2, Ordering::AcqRel, Ordering::Acquire);
-                signal_group(&input_group);
-                break;
+        for input in input_rx {
+            match input {
+                InputFrame::Plain(bytes) => {
+                    if child_input.write_all(&bytes).is_err() {
+                        let _ = write_failure.compare_exchange(0, 2, Ordering::AcqRel, Ordering::Acquire);
+                        signal_group(&input_group);
+                        break;
+                    }
+                },
+                InputFrame::Start(_) => {
+                    let _ = write_failure.compare_exchange(0, 2, Ordering::AcqRel, Ordering::Acquire);
+                    signal_group(&input_group);
+                    break;
+                },
+                InputFrame::Managed { deadline, nonce, bytes, pending } => {
+                    let status = managed_write(&mut child_input, &bytes, deadline, &input_cancelled);
+                    let mut receipt = nonce.to_vec();
+                    receipt.push(status);
+                    pending.store(false, Ordering::Release);
+                    if status == 2 { signal_group(&input_group); }
+                    if frame(b'A', &receipt).is_err() || status == 2 {
+                        let _ = write_failure.compare_exchange(0, 2, Ordering::AcqRel, Ordering::Acquire);
+                        signal_group(&input_group);
+                        break;
+                    }
+                },
             }
         }
     });
@@ -435,4 +602,56 @@ pub fn run(args: &[String]) -> Result<(), String> {
     frame(b'X', result.as_bytes()).map_err(|_| "stdio output delivery failed")?;
     finished.store(true, Ordering::Release);
     Ok(())
+}
+
+#[cfg(test)]
+mod managed_tests {
+    use super::*;
+    use std::os::unix::net::UnixStream;
+
+    fn now_ms() -> u64 {
+        SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_millis() as u64
+    }
+
+    #[test]
+    fn managed_pipe_rejects_elapsed_and_confirms_complete_live_write() {
+        let (mut writer, mut reader) = UnixStream::pair().unwrap();
+        let cancelled = AtomicBool::new(false);
+        assert_eq!(managed_write(&mut writer, b"private", now_ms(), &cancelled), 0);
+        reader.set_nonblocking(true).unwrap();
+        let mut result = [0u8; 7];
+        assert_eq!(reader.read(&mut result).unwrap_err().kind(), io::ErrorKind::WouldBlock);
+        reader.set_nonblocking(false).unwrap();
+        assert_eq!(managed_write(&mut writer, b"private", now_ms() + 2000, &cancelled), 1);
+        reader.read_exact(&mut result).unwrap();
+        assert_eq!(&result, b"private");
+    }
+
+    #[cfg(target_os = "linux")]
+    #[test]
+    fn managed_pipe_times_out_after_partial_write_as_unknown() {
+        use std::fs::File;
+        use std::os::unix::io::FromRawFd;
+        extern "C" { fn pipe(fds: *mut i32) -> i32; fn fcntl(fd: i32, cmd: i32, ...) -> i32; }
+        let mut fds = [0i32; 2];
+        assert_eq!(unsafe { pipe(fds.as_mut_ptr()) }, 0);
+        let mut reader = unsafe { File::from_raw_fd(fds[0]) };
+        let mut writer = unsafe { File::from_raw_fd(fds[1]) };
+        let flags = unsafe { fcntl(fds[1], 3) };
+        assert!(flags >= 0);
+        assert_eq!(unsafe { fcntl(fds[1], 4, flags | 0x800) }, 0);
+        let chunk = [b'x'; 4096];
+        loop {
+            match writer.write(&chunk) {
+                Ok(n) => assert!(n > 0),
+                Err(error) if error.kind() == io::ErrorKind::WouldBlock => break,
+                Err(error) => panic!("pipe setup failed: {error}"),
+            }
+        }
+        let mut drained = [0u8; 4096];
+        reader.read_exact(&mut drained).unwrap();
+        assert_eq!(unsafe { fcntl(fds[1], 4, flags) }, 0);
+        let status = managed_write(&mut writer, &[b'y'; 32_768], now_ms() + 500, &AtomicBool::new(false));
+        assert_eq!(status, 2);
+    }
 }

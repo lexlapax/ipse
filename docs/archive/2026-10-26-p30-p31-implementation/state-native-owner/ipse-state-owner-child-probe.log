@@ -1,0 +1,11 @@
+{:ok,
+ %{
+   "generation" => 0,
+   "record" => %{
+     "deleted" => true,
+     "key" => "note",
+     "operation_id" => nil,
+     "revision" => 0,
+     "value" => nil
+   }
+ }}

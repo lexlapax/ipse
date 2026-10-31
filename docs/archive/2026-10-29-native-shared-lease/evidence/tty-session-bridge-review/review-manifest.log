@@ -1,0 +1,14 @@
+TTY_SESSION_BRIDGE_MANIFEST_OK: %{
+  positive_delta: ["./ipse/ebin/Elixir.Ipse.Extension.Host.beam"],
+  manifest_entries: 64,
+  source_files: 44,
+  runtime_files_and_retained_beams: [
+    {"tty-session-bridge-v2-sol-20261029", 698, 8},
+    {"tty-session-bridge-final-probe-sol-20261029", 698, 8},
+    {"tty-session-bridge-loss-sol-20261029", 698, 8}
+  ],
+  cancellation_delta: ["./ipse/ebin/Elixir.Ipse.Runner.LeasedTerminal.beam"],
+  helper_sha256: "0a4b29229626ed00cdf34308b496af82f3656f1b22d736d8be5464fa0f66e7ef",
+  inherited_journal_writer: true,
+  artifact_archive_claimed: false
+}

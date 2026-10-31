@@ -1,0 +1,20 @@
+** (SyntaxError) invalid syntax found on lib/ipse/extension/inference.ex:559:95:
+     error: unexpected expression after keyword list. Keyword lists must always come as the last argument. Therefore, this is not allowed:
+
+         function_call(1, some: :option, 2)
+
+     Instead, wrap the keyword in brackets:
+
+         function_call(1, [some: :option], 2)
+
+     Syntax error after: ','
+     │
+ 559 │            else: binding |> Map.put("version", 2) |> Map.put("source_binding", source_binding),
+     │                                                                                               ^
+     │
+     └─ lib/ipse/extension/inference.ex:559:95
+    (elixir 1.20.4) lib/code.ex:1123: Code.format_string!/2
+    (elixir 1.20.4) lib/code.ex:1139: Code.format_file!/2
+    /tmp/ipse-document-embedding-sdk-47191.exs:8: anonymous fn/1 in :elixir_compiler_0.__FILE__/1
+    (elixir 1.20.4) lib/enum.ex:983: Enum."-each/2-lists^foreach/1-0-"/2
+    /tmp/ipse-document-embedding-sdk-47191.exs:7: (file)

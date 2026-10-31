@@ -18,6 +18,9 @@ defmodule Ipse.Provider.Transport do
       uri.scheme not in ["http", "https"] or is_nil(uri.host) or uri.userinfo ->
         {:error, "Invalid provider URL."}
 
+      Ipse.Provider.EgressGate.owned?() ->
+        owned_stream(url, headers, payload, config, state, consume, limit)
+
       true ->
         Ipse.Provider.CompletionWitness.http_started(url)
         timeout = config[:timeout_ms] || 120_000
@@ -40,24 +43,32 @@ defmodule Ipse.Provider.Transport do
               deadline: deadline
             }
 
+            body = Jason.encode!(payload)
+
             request =
               Finch.build(
                 :post,
                 url,
                 [{"content-type", "application/json"}, {"accept-encoding", "identity"} | headers],
-                Jason.encode!(payload)
+                body
               )
 
             result =
-              Finch.stream_while(
-                request,
-                finch,
-                acc,
-                fn event, acc -> receive_event(event, acc, limit, consume) end,
-                pool_timeout: min(timeout, 2000),
-                receive_timeout: timeout,
-                request_timeout: timeout
-              )
+              case Ipse.Provider.EgressGate.before_dispatch("text", url, body) do
+                :ok ->
+                  Finch.stream_while(
+                    request,
+                    finch,
+                    acc,
+                    fn event, acc -> receive_event(event, acc, limit, consume) end,
+                    pool_timeout: min(timeout, 2000),
+                    receive_timeout: timeout,
+                    request_timeout: timeout
+                  )
+
+                _ ->
+                  {:error, :inference_egress_refused}
+              end
 
             case result do
               {:ok, %{error: nil, status: status} = final} when status in 200..299 ->
@@ -83,10 +94,64 @@ defmodule Ipse.Provider.Transport do
 
               {:error, _, _} ->
                 {:error, "Provider connection failed or timed out."}
+
+              {:error, :inference_egress_refused} ->
+                {:error, "Inference dispatch validation changed; no provider request was sent."}
             end
           end,
           options
         )
+    end
+  end
+
+  defp owned_stream(url, headers, payload, config, state, consume, limit) do
+    timeout = config[:timeout_ms] || 120_000
+    deadline = System.monotonic_time(:millisecond) + timeout
+    state = if is_map(state), do: Map.put(state, :stream_deadline, deadline), else: state
+
+    acc = %{
+      state: state,
+      status: nil,
+      headers: [],
+      bytes: 0,
+      chunks: 0,
+      body: "",
+      error: nil,
+      deadline: deadline
+    }
+
+    body = Jason.encode!(payload)
+    headers = [{"content-type", "application/json"}, {"accept-encoding", "identity"} | headers]
+
+    result =
+      Ipse.Provider.MintTransport.stream_witnessed(
+        url,
+        headers,
+        body,
+        timeout,
+        limit,
+        acc,
+        fn
+          {:status, _, status}, acc -> receive_event({:status, status}, acc, limit, consume)
+          {:headers, _, headers}, acc -> receive_event({:headers, headers}, acc, limit, consume)
+          {:data, _, bytes}, acc -> receive_event({:data, bytes}, acc, limit, consume)
+        end,
+        fn send -> Ipse.Provider.EgressGate.send("text", url, body, send) end
+      )
+
+    case result do
+      {:ok, %{error: nil, status: status} = final} when status in 200..299 ->
+        with :ok <- Ipse.Provider.Stream.check_deadline(%{stream_deadline: final.deadline}),
+             do: {:ok, final.state}
+
+      {:ok, %{error: nil} = final} ->
+        http_error(final.status, final.body, final.headers, config[:provider])
+
+      {:ok, %{error: error}} ->
+        error
+
+      _ ->
+        {:error, "Managed inference transport was refused or its outcome is unknown."}
     end
   end
 

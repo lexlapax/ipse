@@ -1,0 +1,13 @@
+Running ExUnit with seed: 46849, max_cases: 8
+Excluding tags: [:test]
+Including tags: [nested_document_use: :staged_deadline]
+
+
+05:46:16.288 [info] The function passed as a handler with ID "managed-document-switch-3e16624f7fb5d19709414c83220a4b7f" is a local function.
+This means that it is either an anonymous function or a capture of a function without a module specified. That may cause a performance penalty when calling that handler. For more details see the note in `telemetry:attach/4` documentation.
+
+https://hexdocs.pm/telemetry/telemetry.html#attach/4
+.
+Finished in 6.1 seconds (0.00s async, 6.1s sync)
+
+Result: 1 passed, 77 excluded

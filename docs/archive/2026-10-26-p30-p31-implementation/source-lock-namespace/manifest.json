@@ -1,0 +1,106 @@
+{
+  "scope": "protected helper substitution, interrupted effect cleanup, and legacy managed namespace worker boundary; not P31C0 completion",
+  "date": "2026-10-28",
+  "files": {
+    "effect-interruption-compile.log": {
+      "bytes": 25,
+      "sha256": "b87eb2eb29fd2b343666cd02cde21e4b6c692aff0eb3cd2d61334fe88c350ce9"
+    },
+    "effect-stages-interruption-46821.log": {
+      "bytes": 298,
+      "sha256": "79bd886ae1f59af1a49b2e75d266e7b35558b7f05637411b145f97b0c05da324"
+    },
+    "pinned-lease-compile.log": {
+      "bytes": 25,
+      "sha256": "9ef6b07ce985b2f322f9bf76bc1f755dd88c1e7a59a7a037553028ce7138fd17"
+    },
+    "protected-lease-46822.log": {
+      "bytes": 204,
+      "sha256": "ebfdbf1a059d57400488dc7a616973c1277803d7e954bf6c76f8743848232043"
+    },
+    "runtime.json": {
+      "bytes": 33197,
+      "sha256": "21a0b82891f927bbf8a2062c21e631a37d0723a84241d89f4ae440ccdd0e1431"
+    },
+    "source/lib/ipse/extension/actions.ex": {
+      "bytes": 45341,
+      "sha256": "83ac69e2907e88d39f49f7eb6e2f3ed4a78bba78a0252a2d3c5b3063af8ff5a8"
+    },
+    "source/lib/ipse/extension/collection.ex": {
+      "bytes": 67954,
+      "sha256": "5813ea28fb0bc0524ad0819c03f235691a47e2bfcb884342b9a2c84bedc6531b"
+    },
+    "source/lib/ipse/extension/collection_call.ex": {
+      "bytes": 27761,
+      "sha256": "6f9fde32b3fddeded314c3a12d2cd7375e96a24491ad83d39970f458bc87df4f"
+    },
+    "source/lib/ipse/runner.ex": {
+      "bytes": 53386,
+      "sha256": "37040d15b8252a035ddb25e0c3403c6aecfbd509fca70759beb4abce8ac6f8aa"
+    },
+    "source/lib/ipse/session.ex": {
+      "bytes": 170494,
+      "sha256": "017f08171251d66fc4e8ab3d0e38217c1cfc770d8c4013d7b8ad7ae11d8aeea0"
+    },
+    "source/lib/ipse/session/lock.ex": {
+      "bytes": 4299,
+      "sha256": "4c962c9d05226a7765ccf18db8e45a4817efdcedf92e241394ddb308006bc52a"
+    },
+    "source/lib/ipse/session/managed_lineage.ex": {
+      "bytes": 34199,
+      "sha256": "308cfa5fa418d917b1016884714883e5a15e4df50c4c81847fc45b863b6708bd"
+    },
+    "source/lib/ipse/session/managed_tool_use.ex": {
+      "bytes": 27408,
+      "sha256": "f7a232a1c22297bddd37c400eee3232250b32c144d391f9827851f4c522733c2"
+    },
+    "source/lib/ipse/session/resources.ex": {
+      "bytes": 26683,
+      "sha256": "76c4a92ed67e545bdc68c9a2149560842369afb923d95b675754e68c5619fa84"
+    },
+    "source/lib/ipse/session/saved.ex": {
+      "bytes": 34417,
+      "sha256": "63579e751486a3daff6fedb172b9d5f54b0a30835da1aa47f7271010c09b1817"
+    },
+    "source/lib/ipse/session/stored_sources.ex": {
+      "bytes": 9391,
+      "sha256": "93a913ec0ddc13f7a73f5c172be75ca04194bb8c984ac1f8dba1d21c5e048770"
+    },
+    "source/lib/ipse/session/turn.ex": {
+      "bytes": 70412,
+      "sha256": "091ce0d7a7bb5003b01d9f2970ed20fc5fd99975344999cbcb061cf79531c261"
+    },
+    "source/test/ipse/extension/collection_unmanaged_test.exs": {
+      "bytes": 1909,
+      "sha256": "937afbf3962b9a23592f999b3731228bfcec444466542b01a6db7633bc08e53b"
+    },
+    "source/test/ipse/extension/managed_collection_call_session_test.exs": {
+      "bytes": 136330,
+      "sha256": "0e9457acda152bd5100a57418ffd5d47e55a333d3203837d12e9db776aba3cb5"
+    },
+    "source/test/ipse/runner/protected_lease_test.exs": {
+      "bytes": 2446,
+      "sha256": "e48d0db8999f72b60b0225a68418d0e1a3839729a221bcaeb954c0f5ef2d9762"
+    },
+    "source/test/support/managed_mcp_http.exs": {
+      "bytes": 4317,
+      "sha256": "1c1353b8a7146eb3cb5bea651248bb09b21c5588edb98c5e35413a69456a2452"
+    },
+    "unmanaged-namespace-46823.log": {
+      "bytes": 963,
+      "sha256": "3aa98e7aba0e5a32d8f91cec2f87955c964f4f5fdd6dfb47da412501a9bcb3f2"
+    },
+    "unmanaged-namespace-46824.log": {
+      "bytes": 1838,
+      "sha256": "400f80f2f58fa1f81f4bbfcf33e7dec5fb5fd43dbe2419e0ca48dae6b00a3833"
+    },
+    "unmanaged-namespace-compile.log": {
+      "bytes": 25,
+      "sha256": "9ef6b07ce985b2f322f9bf76bc1f755dd88c1e7a59a7a037553028ce7138fd17"
+    },
+    "unmanaged-namespace-session-46825.log": {
+      "bytes": 333,
+      "sha256": "249da29103fb3307fec37b3f201004edee34251da1927b99ae5fc2b26e77c853"
+    }
+  }
+}

@@ -1,0 +1,10 @@
+got D
+sent C
+session settled
+start slot 1
+slot settled 1
+start slot 2
+slot settled 2
+start slot 3
+slot settled 3
+got final C

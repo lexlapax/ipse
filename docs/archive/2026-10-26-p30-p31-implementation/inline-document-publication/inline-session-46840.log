@@ -1,0 +1,9 @@
+Running ExUnit with seed: 46840, max_cases: 1
+Excluding tags: [:test]
+Including tags: [:inline_collection_session, :inline_collection_unknown, :inline_collection_fallback]
+
+INLINE_NATIVE_BUDGET {"after_index":{"allocated_bytes":69632,"floor":19,"generation":19,"operations":19,"records":12},"before_index":{"allocated_bytes":53248,"floor":12,"generation":12,"operations":12,"records":8}}
+...
+Finished in 41.0 seconds (0.00s async, 41.0s sync)
+
+Result: 3 passed, 14 excluded

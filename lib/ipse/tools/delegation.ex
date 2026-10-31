@@ -211,6 +211,7 @@ defmodule Ipse.Tools.Delegation do
         :semantic_context,
         :semantic_contexts,
         :semantic_admission,
+        :planning_cli_start,
         :extensions
       ])
       |> Map.put(:subagents, false)

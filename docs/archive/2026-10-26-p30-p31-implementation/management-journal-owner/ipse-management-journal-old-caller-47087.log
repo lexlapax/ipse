@@ -1,0 +1,8 @@
+Running ExUnit with seed: 571470, max_cases: 8
+Excluding tags: [:test]
+Including tags: [management_journal_old: true]
+
+.
+Finished in 0.6 seconds (0.07s on load, 0.00s async, 0.5s sync)
+
+Result: 1 passed, 1 excluded

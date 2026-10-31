@@ -1,6 +1,7 @@
 defmodule Ipse.Extension.State do
   @moduledoc "Bounded scoped JSON state with cross-process CAS and retained deletion revisions."
   alias Ipse.Extension.Registry
+  alias Ipse.Runner.Transaction
   import Bitwise, only: [band: 2]
   @error {:error, :extension_state_unavailable}
   @bytes 1_048_576
@@ -88,13 +89,27 @@ defmodule Ipse.Extension.State do
          :ok <- directory(path),
          lock_path = Path.join(path, ".lock"),
          :ok <- safe_lock(lock_path),
-         {:ok, lock} <- Ipse.Runner.lock(lock_path) do
-      try do
-        with {:ok, state} <- read(path, namespace) do
-          apply_operation(path, state, request, operation_id)
+         {:ok, lock} <- Transaction.acquire(lock_path, cwd: path) do
+      result =
+        try do
+          with :ok <- Transaction.state_begin(lock, mutating?(request)),
+               {:ok, state} <- read(lock, namespace) do
+            apply_operation(lock, state, request, operation_id)
+          end
+        rescue
+          _ -> @error
         end
-      after
-        Ipse.Runner.unlock(lock)
+
+      case Transaction.release(lock) do
+        :ok ->
+          case result do
+            {:unknown, _} -> {:unknown, %{}}
+            {:error, _} -> @error
+            _ -> result
+          end
+
+        _ ->
+          {:unknown, %{}}
       end
     else
       _ -> @error
@@ -230,34 +245,24 @@ defmodule Ipse.Extension.State do
     })
   end
 
-  defp read(path, namespace) do
-    file = Path.join(path, "state.json")
-
-    case File.lstat(file) do
-      {:error, :enoent} ->
+  defp read(lock, namespace) do
+    case Transaction.state_read(lock) do
+      :absent ->
         {:ok, %{"version" => 1, "namespace" => namespace, "generation" => 0, "records" => %{}}}
 
-      {:ok, %{type: :regular, size: size, mode: mode}} when size <= @bytes ->
-        with true <- band(mode, 0o077) == 0,
-             {:ok, bytes} <- bounded_read(file),
-             {:ok, state} <- Ipse.JSON.decode_bounded(bytes, @bytes),
+      {:ok, bytes} ->
+        with {:ok, state} <- Ipse.JSON.decode_bounded(bytes, @bytes),
              true <- valid_state?(state, namespace) do
           {:ok, state}
         else
           _ -> @error
         end
 
+      {:unknown, _} = unknown ->
+        unknown
+
       _ ->
         @error
-    end
-  end
-
-  defp bounded_read(path) do
-    with {:ok, bytes} <- File.open(path, [:read, :binary], &IO.binread(&1, @bytes + 1)),
-         true <- is_binary(bytes) and byte_size(bytes) <= @bytes do
-      {:ok, bytes}
-    else
-      _ -> @error
     end
   end
 
@@ -307,23 +312,18 @@ defmodule Ipse.Extension.State do
          "record" => Map.drop(old, ["value"])
        }}
 
-  defp write(path, state, request) do
+  defp write(lock, state, request) do
     with {:ok, bytes} <- Jason.encode(state),
          true <- byte_size(bytes) <= @bytes do
-      temporary = Path.join(path, ".pending-" <> Ipse.Usage.id())
+      temporary = ".state-pending-" <> Ipse.Usage.id()
 
-      try do
-        with :ok <- File.write(temporary, bytes, [:exclusive, :binary, :sync]),
-             :ok <- File.chmod(temporary, 0o600),
-             :ok <- check_write_deadline(request),
-             :ok <- File.rename(temporary, Path.join(path, "state.json")) do
-          :ok
-        else
-          {:elapsed, _} = elapsed -> elapsed
-          _ -> @error
-        end
-      after
-        File.rm(temporary)
+      with :ok <- Transaction.state_stage(lock, temporary, bytes),
+           :ok <- Transaction.state_commit(lock, request["write_before_ms"]) do
+        :ok
+      else
+        {:elapsed, _} = elapsed -> elapsed
+        {:unknown, _} = unknown -> unknown
+        _ -> @error
       end
     else
       _ -> {:error, :extension_state_quota}
@@ -385,6 +385,15 @@ defmodule Ipse.Extension.State do
   end
 
   defp outcome?(_, status, value, _) when status in ~w(denied unknown), do: value == %{}
+
+  defp outcome?(
+         %{"op" => "state.put", "write_before_ms" => _} = request,
+         "failed",
+         %{"code" => "state_deadline_fence_unavailable"} = value,
+         _
+       ) do
+    validate(request) == :ok and map_size(value) == 1
+  end
 
   defp outcome?(%{"op" => op} = request, "ok", value, _)
        when op in ~w(state.list state.scan) do

@@ -1,0 +1,94 @@
+{
+  "scope": "47180 two new seed controls only,seventeenexcluded; authentic private pending models before first inference; no native/provider authority; modeled operation IDs preserve uppercase format; frozen fixture consumers are deterministic, generating new production job IDs/epochs is intentionally random",
+  "version": 1,
+  "ancestors": [
+    {
+      "path": "docs/archive/2026-10-26-p30-p31-implementation/shared-producer-host-seed/manifest.json",
+      "bytes": 3167,
+      "sha256": "31fb0ef27e4532ac383575a9ffb3218f95f698d9763c5fdc8d2f2c180facfbd2"
+    },
+    {
+      "path": "docs/archive/2026-10-26-p30-p31-implementation/shared-producer-range-claim/manifest.json",
+      "bytes": 187820,
+      "sha256": "c464ec617ef4d403f47582068de49f749185263d0a95361ef6ddb5acd84d5d12"
+    }
+  ],
+  "source": [
+    {
+      "path": "docs/archive/2026-10-26-p30-p31-implementation/shared-producer-relation-seeds/source/test/support/shared_producer_fixture.exs",
+      "bytes": 36715,
+      "sha256": "b12689bbdfc5b019b966da3f5aa2d5a086839de3b53910f7221551550cc97646",
+      "original": "test/support/shared_producer_fixture.exs"
+    },
+    {
+      "path": "docs/archive/2026-10-26-p30-p31-implementation/shared-producer-relation-seeds/source/test/extensions/knowledge/shared_producer_test.exs",
+      "bytes": 2453,
+      "sha256": "e127cbae3677a1f29f8a0ba26185d7f889f0ab24d84b2624eac674c57cb501d3",
+      "original": "test/extensions/knowledge/shared_producer_test.exs"
+    },
+    {
+      "path": "docs/archive/2026-10-26-p30-p31-implementation/shared-producer-relation-seeds/source/extensions/knowledge/src/store/collection/producer.ex",
+      "bytes": 23072,
+      "sha256": "f73bad96ffba74702900f3a8b6a597b47d49c1a04eae98fc3316ee57fc7ccde9",
+      "original": "extensions/knowledge/src/store/collection/producer.ex"
+    },
+    {
+      "path": "docs/archive/2026-10-26-p30-p31-implementation/shared-producer-relation-seeds/source/extensions/knowledge/src/evidence.ex",
+      "bytes": 62631,
+      "sha256": "e816e0b3cb74cc3d0dd13fd5af9cae4bb3ba5d946a96e9fe9074151532d020ef",
+      "original": "extensions/knowledge/src/evidence.ex"
+    },
+    {
+      "path": "docs/archive/2026-10-26-p30-p31-implementation/shared-producer-relation-seeds/source/extensions/knowledge/src/documents.ex",
+      "bytes": 9822,
+      "sha256": "431cd30d278b59040eb7e01a7f1785ccb35652d49d8cdda0ccb555c7a4f2675b",
+      "original": "extensions/knowledge/src/documents.ex"
+    },
+    {
+      "path": "docs/archive/2026-10-26-p30-p31-implementation/shared-producer-relation-seeds/source/extensions/knowledge/src/documents/docx.ex",
+      "bytes": 43883,
+      "sha256": "f900c49dfade84f216404e1e10fdbd2c8a5bf880f392587719d5aa014c999dc2",
+      "original": "extensions/knowledge/src/documents/docx.ex"
+    },
+    {
+      "path": "docs/archive/2026-10-26-p30-p31-implementation/shared-producer-relation-seeds/source/extensions/knowledge/src/documents/zip.ex",
+      "bytes": 4401,
+      "sha256": "84ab06cca60b80e4fe9122fdc2b48512247217f0987f0cc2ee186d9d29bf7a61",
+      "original": "extensions/knowledge/src/documents/zip.ex"
+    },
+    {
+      "path": "docs/archive/2026-10-26-p30-p31-implementation/shared-producer-relation-seeds/source/dev/knowledge/collection_recipe_model.ex",
+      "bytes": 10877,
+      "sha256": "94cc2f7de8827f55f353edb436a1f7c4dd621f57cd5552319b5919d4fc3758b6",
+      "original": "dev/knowledge/collection_recipe_model.ex"
+    },
+    {
+      "path": "docs/archive/2026-10-26-p30-p31-implementation/shared-producer-relation-seeds/freeze.exs",
+      "bytes": 2363,
+      "sha256": "ec89da7b693433101e5a21cafb26b898bc7167a8af6750012dc92d5f67535772",
+      "original": "_build/shared-producer-relation-seeds-20261029/freeze.exs"
+    }
+  ],
+  "kind": "private_pending_model_reverse_catalog_and_extracted_docx_seeds",
+  "files": [
+    {
+      "path": "docs/archive/2026-10-26-p30-p31-implementation/shared-producer-relation-seeds/pending-v3-reverse-order.exs",
+      "bytes": 16797,
+      "sha256": "0289994d2ece24a99afbc17fa0d9cc8a69df9ab9d8625f09979afa0b5f5d5302",
+      "original": "_build/shared-producer-relation-seeds-20261029/pending-v3-reverse-order.exs"
+    },
+    {
+      "path": "docs/archive/2026-10-26-p30-p31-implementation/shared-producer-relation-seeds/pending-v3-segmented-document.exs",
+      "bytes": 16154,
+      "sha256": "fad8749fbdaf063442d5e1765101051c78b18dfd95a5cd87fd52e25963503910",
+      "original": "_build/shared-producer-relation-seeds-20261029/pending-v3-segmented-document.exs"
+    },
+    {
+      "path": "docs/archive/2026-10-26-p30-p31-implementation/shared-producer-relation-seeds/shared-producer-relation-seeds-47180.log",
+      "bytes": 971,
+      "sha256": "c9e32502716af1dfaeb5795bcb2a673a4a6431aaac300ae9d964c3b8f724ea6d",
+      "original": "_build/shared-producer-relation-seeds-47180.log"
+    }
+  ],
+  "domain_source_unchanged": true
+}

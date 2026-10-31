@@ -1,0 +1,8 @@
+Review the complete proposed facts below. This confirmation applies only to this exact review.
+{
+  "reason": "fixture",
+  "target": "SYNTHETIC_GUARDED_REVIEW"
+}
+Type correct 2f3c986e4af0bc6a to confirm, or anything else to cancel.
+> correct 2f3c986e4af0bc6a
+GUARDED_REVIEW_VALID_PASSED

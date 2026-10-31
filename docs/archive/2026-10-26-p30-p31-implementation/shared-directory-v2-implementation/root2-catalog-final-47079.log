@@ -1,0 +1,9 @@
+Running ExUnit with seed: 47079, max_cases: 1
+Excluding tags: [:test]
+Including tags: [:generation_paged_catalog]
+
+GENERATION_PAGED_CATALOG {"catalog_pages":63,"effects":6,"groups":125,"manifest_pages":8,"model_calls":0,"native_operations":0,"negative_effects":0,"reads":85,"sources":1000}
+.
+Finished in 3.4 seconds (0.08s on load, 0.00s async, 3.3s sync)
+
+Result: 1 passed, 8 excluded

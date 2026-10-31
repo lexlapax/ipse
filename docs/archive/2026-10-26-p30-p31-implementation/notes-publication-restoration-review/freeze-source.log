@@ -1,0 +1,6 @@
+NOTES_RESTORATION_SOURCE_SNAPSHOT: %{
+  source_files: 28,
+  source_only: true,
+  manifest_sha256: "b2e04f3726606c80d8c344913f6b268ca07e486993010fc65f10449a39a5e5f9",
+  runtime_or_test_execution: false
+}

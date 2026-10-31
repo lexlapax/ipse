@@ -72,4 +72,79 @@ defmodule Ipse.KnowledgeLifecycleProofTest do
 
     assert selection["idle_resume_replays"] == 0 and selection["cleanup"] == "confirmed"
   end
+
+  test "a current Session treats an older mismatched input as missing and can reindex" do
+    root = Path.join(System.tmp_dir!(), "ipse-historical-embedding-" <> Ipse.Usage.id())
+    old_source = Path.join(root, "source/extensions/knowledge")
+    File.mkdir_p!(Path.dirname(old_source))
+    File.cp_r!("extensions/knowledge", old_source)
+    File.cp!("LICENSE", Path.join(root, "source/LICENSE"))
+    on_exit(fn -> File.rm_rf!(root) end)
+
+    replace_once = fn path, from, to ->
+      bytes = File.read!(path)
+      assert length(:binary.matches(bytes, from)) == 1
+      File.write!(path, String.replace(bytes, from, to, global: false))
+    end
+
+    adapter = Path.join(old_source, "src/adapters.ex")
+    store = Path.join(old_source, "src/store.ex")
+    corpus = Path.join(old_source, "src/corpus.ex")
+
+    replace_once.(
+      adapter,
+      "         {:ok, expected_input} <- Ipse.Extension.canonical_digest([input[\"text\"]]),\n" <>
+        "         true <- page[\"input_sha256\"] === expected_input,\n",
+      ""
+    )
+
+    replace_once.(
+      adapter,
+      "\"input_sha256\" => page[\"input_sha256\"]",
+      "\"input_sha256\" => Evidence.sha256(\"synthetic historical mismatch\")"
+    )
+
+    replace_once.(
+      store,
+      "Enum.any?(chunks, &Evidence.vector_input_matches_chunk?(vector, &1))",
+      "Enum.any?(chunks, &(&1[\"chunk_id\"] == vector[\"chunk_id\"]))"
+    )
+
+    replace_once.(
+      corpus,
+      " and\n                Evidence.vector_input_matches_chunk?(v, chunk)",
+      ""
+    )
+
+    sdk = Application.app_dir(:ipse, "ebin")
+    old_artifact = Path.join(root, "old-artifact")
+    current_artifact = Path.join(root, "current-artifact")
+
+    for {builder, artifact} <- [
+          {Path.join(old_source, "build.exs"), old_artifact},
+          {"extensions/knowledge/build.exs", current_artifact}
+        ] do
+      {output, status} =
+        System.cmd(
+          System.find_executable("elixir"),
+          [
+            builder,
+            "--sdk",
+            sdk,
+            "--output",
+            artifact,
+            "--package",
+            "corpus",
+            "--preset",
+            "state-dense"
+          ],
+          stderr_to_stdout: true
+        )
+
+      assert status == 0, output
+    end
+
+    assert %{"fixture_provider_requests" => 6, "cleanup" => "confirmed"} =
+             IpseKnowledgeExample.LifecycleProof.historical_input(old_artifact, current_artifact)
+  end
 end

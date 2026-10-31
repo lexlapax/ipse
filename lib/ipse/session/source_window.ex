@@ -31,15 +31,16 @@ defmodule Ipse.Session.SourceWindow do
 
   @doc "Resolve source references only after full Saved validation, before any permitted tail repair."
   def validate_sources(directory, session, events) do
-    Enum.reduce_while(events, :ok, fn
-      %{"type" => "source_answer_committed", "answer" => %{"effective_source" => source}}, :ok ->
-        case Ipse.Journal.source_page(directory, session, source["byte_offset"], 1) do
-          {:ok, %{records: [%{source: actual}]}} when actual == source -> {:cont, :ok}
-          _ -> {:halt, {:error, :invalid_source_window}}
-        end
+    sources =
+      for %{"type" => "source_answer_committed", "answer" => %{"effective_source" => source}} <-
+            events,
+          do: source
 
-      _, :ok ->
-        {:cont, :ok}
+    Enum.reduce_while(Enum.uniq(sources), :ok, fn source, :ok ->
+      case Ipse.Journal.source_page(directory, session, source["byte_offset"], 1) do
+        {:ok, %{records: [%{source: actual}]}} when actual == source -> {:cont, :ok}
+        _ -> {:halt, {:error, :invalid_source_window}}
+      end
     end)
   end
 
@@ -72,7 +73,8 @@ defmodule Ipse.Session.SourceWindow do
     metadata = (List.first(events) || %{})["metadata"] || %{}
     true = metadata["source_layout"] in [nil, @layout]
 
-    with {:ok, index} <- SourceIndex.new(session) do
+    with {:ok, origin} <- Ipse.Journal.SourceOrigin.recorded(metadata, session),
+         {:ok, index} <- SourceIndex.new(session, 1, if(origin, do: JSON.digest([origin]))) do
       window = %__MODULE__{
         index: index,
         admitted: metadata["source_layout"] == @layout,
@@ -101,6 +103,56 @@ defmodule Ipse.Session.SourceWindow do
     end
   end
 
+  @doc false
+  def tool_result_provenances(%__MODULE__{} = w, call_id, message) do
+    with %{"op" => operation} = request <- w.pending[{:source_call, call_id}],
+         true <- get_in(message, ["tool_call_id"]) === call_id,
+         true <- get_in(message, ["ipse_tool_outcome", "status"]) === "result_recorded",
+         {:ok, value} <- JSON.decode_bounded(message["content"], 8192) do
+      SourceIndex.saved_read_provenances(
+        w.index,
+        operation,
+        Map.delete(request, "op"),
+        value,
+        w.historical_window
+      )
+    else
+      _ -> {:error, :invalid_source_window}
+    end
+  rescue
+    _ -> {:error, :invalid_source_window}
+  end
+
+  @doc false
+  def tool_query_provenances(%__MODULE__{} = w, call_id, operation, args, mode) do
+    with %{"op" => ^operation} = request <- w.pending[{:source_call, call_id}],
+         true <- Map.delete(request, "op") === args,
+         :ok <- Ipse.Extension.SourceRead.validate(request) do
+      case mode do
+        :live ->
+          with {:ok, value} <- execute(w, operation, args),
+               do:
+                 SourceIndex.saved_read_provenances(
+                   w.index,
+                   operation,
+                   args,
+                   value,
+                   w.historical_window
+                 )
+
+        :replay ->
+          SourceIndex.saved_query_provenances(w.index, operation, args, w.historical_window)
+
+        _ ->
+          {:error, :invalid_source_window}
+      end
+    else
+      _ -> {:error, :invalid_source_window}
+    end
+  rescue
+    _ -> {:error, :invalid_source_window}
+  end
+
   @doc "Advance after append confirmation, never from a worker-provided source or origin."
   def advance(w, event, source \\ nil)
   def advance(nil, _, _), do: nil
@@ -123,6 +175,9 @@ defmodule Ipse.Session.SourceWindow do
   defp do_advance(%{draft_id: id} = w, _event, _) when not is_nil(id), do: w
 
   defp do_advance(w, %{"type" => "input_received"} = event, _), do: store(w, :input, event)
+
+  defp do_advance(w, %{"type" => "operator_assertion"} = event, _),
+    do: admit(w, SourceIndex.admit_assertion(w.index, event))
 
   defp do_advance(w, %{"type" => "source_window_opened"} = event, _) do
     true = Enum.sort(Map.keys(event)) == ~w(policy_generation session_id type version window_id)

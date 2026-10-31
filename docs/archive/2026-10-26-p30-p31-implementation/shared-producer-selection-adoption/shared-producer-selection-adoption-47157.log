@@ -1,0 +1,28 @@
+Running ExUnit with seed: 832183, max_cases: 4
+Excluding tags: [:native_sandbox, :macos_sandbox, :macos_filesystem, :memory_scope]
+
+
+
+  1) test bounded shared producer receipt flow and unknown controls in an isolated worker (Ipse.SharedProducerFixtureTest)
+     test/extensions/knowledge/shared_producer_test.exs:4
+          error: misplaced operator ->
+
+          This typically means invalid syntax or a macro is not available in scope
+          │
+      584 │       {:ok, _} -> inference.()
+          │                ^
+          │
+          └─ test/support/shared_producer_fixture.exs:584:16: Ipse.SharedProducerTest."test mismatched pin refuses before the closed host inference continuation"/1
+
+     ** (CompileError) test/support/shared_producer_fixture.exs: cannot compile module Ipse.SharedProducerTest (errors have been logged)
+
+
+     code: assert status == 0, output
+     stacktrace:
+       test/extensions/knowledge/shared_producer_test.exs:24: (test)
+
+
+Finished in 3.8 seconds (0.04s on load, 0.00s async, 3.8s sync)
+
+Result: 0/1 passed
+Failed: 1 test

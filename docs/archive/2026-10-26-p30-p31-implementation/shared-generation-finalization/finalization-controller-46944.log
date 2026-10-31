@@ -1,0 +1,23 @@
+Running ExUnit with seed: 46944, max_cases: 1
+Excluding tags: [:test]
+Including tags: [:generation_finalization]
+
+
+
+  1) test durable reduction phases retain the old root until a pinned three-stage selection (Ipse.KnowledgeCollectionDirectoryTest)
+     test/extensions/knowledge/collection_directory_test.exs:34
+     ** (MatchError) no match of right hand side value:
+
+         {"** (TokenMissingError) token missing on test/support/generation_finalization.exs:99:349:\n    error: missing terminator: end\n    hint: it looks like the \"fn\" on line 20 does not have a matching \"end\"\n    │\n 20 │ load = fn load, current, stored, loaded, reads ->\n    │        └ unclosed delimiter\n ...\n 99 │ IO.write(Jason.encode!(%{\"phases\" => phases, \"selection_stages\" => 3, \"canonical_equal\" => final.root === canonical.root, \"max_reduction_reads\" => max_reads, \"max_job_bytes\" => max_bytes, \"selection_reads\" => length(reads), \"initial_selection_reads\" => length(first_reads), \"native_operations\" => 0, \"protected_publication_demonstrated\" => false}))\n    │                                                                                                                                                                                                                                                                                                                                                             └ missing closing delimiter (expected \"end\")\n    │\n    └─ test/support/generation_finalization.exs:99:349\n    (elixir 1.20.4) lib/code.ex:1639: Code.require_file/2\n    (stdlib 8.1) erl_eval.erl:1048: :erl_eval.do_apply/7\n",
+          1}
+
+     code: result = run_fixture("test/support/generation_finalization.exs")
+     stacktrace:
+       test/extensions/knowledge/collection_directory_test.exs:74: Ipse.KnowledgeCollectionDirectoryTest.run_fixture/1
+       test/extensions/knowledge/collection_directory_test.exs:35: (test)
+
+
+Finished in 2.3 seconds (0.07s on load, 0.00s async, 2.3s sync)
+
+Result: 0/1 passed, 3 excluded
+Failed: 1 test

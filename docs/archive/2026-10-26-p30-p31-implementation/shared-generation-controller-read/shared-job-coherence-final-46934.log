@@ -1,0 +1,9 @@
+Running ExUnit with seed: 46934, max_cases: 1
+Excluding tags: [:test]
+Including tags: [:shared_directory_codec]
+
+SHARED_DIRECTORY_CODEC {"directory_root_bytes":2082,"entities":272,"entity_pages":5,"groups":17,"manifest_pages":2,"native_operations":0,"publication_attempted":false,"selected_headers":2,"sources":136}
+.
+Finished in 2.6 seconds (0.05s on load, 0.00s async, 2.6s sync)
+
+Result: 1 passed

@@ -1,0 +1,4 @@
+36 archive rows, 1697 parent and 1727 candidate runtime rows verified; zero changed/deleted Host BEAMs
+30 added artifact/build-source files; only replaced parent file is catalog; 9 knowledge build inputs verified
+166 events, exact213879B original journal; one input/four source preflights/one root0→1 transition/known action+receipt/final turn ok
+Journal SHA256 a234cccb203af36456f9d41eb758dbe4ec26fa45a245266cf09e527a71191476; operation 337ae07516d8acc4c752e0e70888c403

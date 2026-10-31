@@ -1,0 +1,10 @@
+Running ExUnit with seed: 46840, max_cases: 8
+Excluding tags: [:test]
+Including tags: [nested_discovery: true]
+
+.
+23:46:40.910 [debug] MCP Client: transport closed: :managed_input_unconfirmed
+.
+Finished in 3.1 seconds (0.00s async, 3.1s sync)
+
+Result: 2 passed, 74 excluded

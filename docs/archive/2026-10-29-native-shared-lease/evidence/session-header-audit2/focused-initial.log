@@ -1,0 +1,34 @@
+Running ExUnit with seed: 894379, max_cases: 8
+Excluding tags: [:native_sandbox, :macos_sandbox, :macos_filesystem, :memory_scope]
+
+..Failed to write log message to stdout, trying stderr
+
+07:55:32.132 [error] Writer crashed (:epipe)
+** (ErlangError) Erlang error: :terminated
+    (elixir 1.20.4) lib/io.ex:308: IO.binwrite/2
+    dev/fixtures/session_header_slow_peer.exs:13: anonymous fn/3 in :elixir_compiler_0.__FILE__/1
+    dev/fixtures/session_header_slow_peer.exs:25: (file)
+Failed to write log message to stdout, trying stderr
+
+07:55:33.117 [error] Writer crashed (:epipe)
+** (ErlangError) Erlang error: :terminated
+    (elixir 1.20.4) lib/io.ex:308: IO.binwrite/2
+    dev/fixtures/session_header_slow_peer.exs:13: anonymous fn/3 in :elixir_compiler_0.__FILE__/1
+    dev/fixtures/session_header_slow_peer.exs:25: (file)
+
+
+  1) test close reports unknown when the actual lock helper dies before its release reply (Ipse.Session.NativeHeaderSessionTest)
+     test/ipse/session/native_header_session_test.exs:75
+     Assertion failed, no matching message after 5000ms
+     The following variables were pinned:
+       writer_ref = #Reference<0.2275830943.2619342850.145607>
+     The process mailbox is empty.
+     code: assert_receive {:DOWN, ^writer_ref, :process, _, _}
+     stacktrace:
+       test/ipse/session/native_header_session_test.exs:92: (test)
+
+...*****.
+Finished in 7.0 seconds (0.3s on load, 0.00s async, 6.6s sync)
+
+Result: 6/7 passed, 5 skipped
+Failed: 1 test

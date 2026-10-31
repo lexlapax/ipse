@@ -1,0 +1,17 @@
+{
+  "scope": "Standalone explicit expired-literal reclamation, actual Session provenance and protected ledger/Core; final full-source/package/endurance acceptance remains open",
+  "graph": "/home/lexlapax/projects/lexlapax/ipse/_build/expiry-management-sol-20261028",
+  "source": "source/",
+  "helper_sha256": "113df584e83b7749a11a72509092cb9c2b32d6fdc3fcf91b0181335f5f8c2550",
+  "base_manifest": {
+    "bytes": 5814,
+    "sha256": "dd2b18b21e83d9065bd6474e89f4b66e06825a446d0ae5eda1278b4de828d080"
+  },
+  "native_result": {
+    "seconds": 14.4,
+    "seed": 48333,
+    "passed": 1,
+    "excluded": 9
+  },
+  "clock": "Actual system/native confirmation time; actual two-second delay; no virtual clock"
+}

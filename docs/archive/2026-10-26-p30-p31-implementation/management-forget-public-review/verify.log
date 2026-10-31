@@ -1,0 +1,23 @@
+MANAGEMENT_FORGET_PUBLIC_REVIEW_OK: %{
+  manifests: [
+    {"management-forget-public", 15},
+    {"management-forget-qualification", 20}
+  ],
+  journals: [
+    {"cli-close-unknown.jsonl", 1, ["settled"]},
+    {"cli-success.jsonl", 1, ["settled"]},
+    {"forget-recipe-change.jsonl", 1, ["refused"]},
+    {"forget-root-change.jsonl", 1, ["unconfirmed"]},
+    {"forget-staged-owner-loss.jsonl", 1, ["unconfirmed"]},
+    {"forget-target-change.jsonl", 1, ["unconfirmed"]}
+  ],
+  public_sources: 7,
+  qualification_fixtures: 2,
+  regular_runtime_files: [698, 698, 708, 698],
+  public_delta: ["./ipse/ebin/Elixir.Ipse.CLI.Knowledge.Management.beam",
+   "./ipse/ebin/Elixir.Ipse.CLI.Knowledge.beam",
+   "./ipse/ebin/Elixir.Ipse.CLI.beam"],
+  recipe_added_files: 10,
+  alternate_artifact_files: 10,
+  repeated_tests: 0
+}

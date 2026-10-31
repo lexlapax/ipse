@@ -1,0 +1,9 @@
+Running ExUnit with seed: 689120, max_cases: 4
+Excluding tags: [:test]
+Including tags: [public_entry: true, guard_adapter: true, guard_flow: true]
+
+..%{guarded_batches: 4, unknown_batches: 1, max_frame: 8609}
+..
+Finished in 5.3 seconds (4.6s on load, 0.00s async, 0.7s sync)
+
+Result: 4 passed, 18 excluded

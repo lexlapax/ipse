@@ -3,7 +3,7 @@ defmodule IpseKnowledge.BuildSpec do
   @presets %{
     "knowledge" => ~w(native),
     "corpus" =>
-      ~w(state-lexical state-dense state-rerank state-semantic mcp-lexical mcp-dense mcp-rerank mcp-semantic),
+      ~w(state-lexical state-documents state-dense state-rerank state-semantic mcp-lexical mcp-documents mcp-dense mcp-rerank mcp-semantic collection-documents collection-dense),
     "research" => ~w(offline mcp mcp-model),
     "graph" => ~w(state-explicit state-model mcp-explicit mcp-model)
   }
@@ -57,11 +57,24 @@ defmodule IpseKnowledge.BuildSpec do
         options,
         state_id,
         bindings,
-        inference \\ %{}
+        inference \\ %{},
+        collection_source_use \\ nil
       ) do
     module = selection!(package, preset)
     manifest = JSON.decode!(manifest_bytes)
     caps = IpseKnowledge.Profiles.capabilities(package, preset)
+
+    unless collection_source_use == nil or
+             (collection_source_use == "shared_producer_v1" and package == "corpus" and
+                preset == "collection-dense" and
+                Enum.any?(options["stores"] || %{}, fn {_, store} ->
+                  store["kind"] == "collection"
+                end)),
+           do:
+             raise(
+               ArgumentError,
+               "Collection source use requires explicit shared_producer_v1 on corpus collection-dense."
+             )
 
     unless manifest["sdk"] === 2 and manifest["id"] == "ipse-knowledge/" <> package and
              manifest["entrypoint"] ==
@@ -90,14 +103,17 @@ defmodule IpseKnowledge.BuildSpec do
     end
 
     unless is_map(inference) and
-             Enum.all?(Map.keys(inference), &(&1 in ~w(profiles embedding_profiles budget))) and
-             Enum.all?(~w(profiles embedding_profiles), fn family ->
+             Enum.all?(
+               Map.keys(inference),
+               &(&1 in ~w(profiles embedding_profiles inference_services budget))
+             ) and
+             Enum.all?(~w(profiles embedding_profiles inference_services), fn family ->
                is_map(Map.get(inference, family, %{}))
              end),
            do:
              raise(
                ArgumentError,
-               "Inference input accepts only explicit profiles, embedding_profiles and budget."
+               "Inference input accepts only explicit profiles, embedding_profiles, inference_services and budget."
              )
 
     references =
@@ -167,6 +183,28 @@ defmodule IpseKnowledge.BuildSpec do
           %{"instance" => instance, "alias" => name, "tool" => tool}
         end)
     }
+
+    trust =
+      if Enum.any?(options["stores"], fn {_, store} -> store["kind"] == "collection" end),
+        do:
+          Map.put(trust, "collection_bindings", [
+            %{
+              "version" => 1,
+              "instance" => instance,
+              "id" => "documents",
+              "scope" => "project",
+              "profile" => "document_graph_v1"
+            }
+            |> then(fn binding ->
+              if collection_source_use == nil,
+                do: binding,
+                else:
+                  binding
+                  |> Map.put("version", 2)
+                  |> Map.put("source_use", collection_source_use)
+            end)
+          ]),
+        else: trust
 
     config = %{
       "version" => 1,

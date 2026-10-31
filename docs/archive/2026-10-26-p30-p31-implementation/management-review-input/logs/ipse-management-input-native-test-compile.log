@@ -1,0 +1,181 @@
+error: struct `RetainedInput` is never constructed
+   --> native/ipse-operator.rs:571:27
+    |
+571 |         pub(crate) struct RetainedInput(Original);
+    |                           ^^^^^^^^^^^^^
+    |
+    = note: `-D dead-code` implied by `-D warnings`
+    = help: to override `-D warnings` add `#[expect(dead_code)]` or `#[allow(dead_code)]`
+
+error: associated items `capture`, `restore`, and `read` are never used
+   --> native/ipse-operator.rs:575:27
+    |
+574 |         impl RetainedInput {
+    |         ------------------ associated items in this implementation
+575 |             pub(crate) fn capture(tty: &File) -> std::result::Result<Self, String> {
+    |                           ^^^^^^^
+...
+578 |             pub(crate) fn restore(&self, tty: &File) -> std::result::Result<(), String> {
+    |                           ^^^^^^^
+...
+583 |             pub(crate) fn read(&self, control: &File, guardian: &File, tty: &mut File,
+    |                           ^^^^
+
+error: function `collect` is never used
+   --> native/ipse-owner-control.rs:112:15
+    |
+112 | pub(crate) fn collect(
+    |               ^^^^^^^
+
+error: struct `Poll` is never constructed
+  --> native/ipse-terminal-lease.rs:13:8
+   |
+13 | struct Poll {
+   |        ^^^^
+
+error: struct `Timespec` is never constructed
+  --> native/ipse-terminal-lease.rs:19:8
+   |
+19 | struct Timespec {
+   |        ^^^^^^^^
+
+error: constant `INPUT` is never used
+  --> native/ipse-terminal-lease.rs:34:7
+   |
+34 | const INPUT: i16 = 1;
+   |       ^^^^^
+
+error: constant `OUTPUT` is never used
+  --> native/ipse-terminal-lease.rs:35:7
+   |
+35 | const OUTPUT: i16 = 4;
+   |       ^^^^^^
+
+error: constant `BAD` is never used
+  --> native/ipse-terminal-lease.rs:36:7
+   |
+36 | const BAD: i16 = 8 | 16 | 32;
+   |       ^^^
+
+error: function `err` is never used
+  --> native/ipse-terminal-lease.rs:37:4
+   |
+37 | fn err() -> String {
+   |    ^^^
+
+error: function `wall_current` is never used
+  --> native/ipse-terminal-lease.rs:41:4
+   |
+41 | fn wall_current(expiry: u64) -> bool {
+   |    ^^^^^^^^^^^^
+
+error: function `monotonic_ms` is never used
+  --> native/ipse-terminal-lease.rs:49:4
+   |
+49 | fn monotonic_ms(round_up: bool) -> Result<u64, String> {
+   |    ^^^^^^^^^^^^
+
+error: function `wait_reader_command` is never used
+  --> native/ipse-terminal-lease.rs:69:4
+   |
+69 | fn wait_reader_command(
+   |    ^^^^^^^^^^^^^^^^^^^
+
+error: function `synthetic_write` is never used
+   --> native/ipse-terminal-lease.rs:114:4
+    |
+114 | fn synthetic_write(
+    |    ^^^^^^^^^^^^^^^
+
+error: struct `ChildGuard` is never constructed
+   --> native/ipse-terminal-lease.rs:181:8
+    |
+181 | struct ChildGuard(i32);
+    |        ^^^^^^^^^^
+
+error: function `frame` is never used
+   --> native/ipse-terminal-lease.rs:202:4
+    |
+202 | fn frame(
+    |    ^^^^^
+
+error: function `display_frame` is never used
+   --> native/ipse-terminal-lease.rs:253:4
+    |
+253 | fn display_frame(
+    |    ^^^^^^^^^^^^^
+
+error: function `read_command` is never used
+   --> native/ipse-terminal-lease.rs:295:4
+    |
+295 | fn read_command(
+    |    ^^^^^^^^^^^^
+
+error: function `send_peer` is never used
+   --> native/ipse-terminal-lease.rs:354:4
+    |
+354 | fn send_peer(
+    |    ^^^^^^^^^
+
+error: function `read_peer` is never used
+   --> native/ipse-terminal-lease.rs:381:4
+    |
+381 | fn read_peer(
+    |    ^^^^^^^^^
+
+error: struct `InputRestore` is never constructed
+   --> native/ipse-terminal-lease.rs:409:8
+    |
+409 | struct InputRestore {
+    |        ^^^^^^^^^^^^
+
+error: function `retained_input` is never used
+   --> native/ipse-terminal-lease.rs:422:4
+    |
+422 | fn retained_input(
+    |    ^^^^^^^^^^^^^^
+
+error: function `run` is never used
+   --> native/ipse-terminal-lease.rs:547:15
+    |
+547 | pub(crate) fn run(
+    |               ^^^
+
+error: function `poll` is never used
+  --> native/ipse-terminal-lease.rs:24:8
+   |
+24 |     fn poll(fds: *mut Poll, count: usize, timeout: i32) -> i32;
+   |        ^^^^
+
+error: function `pipe2` is never used
+  --> native/ipse-terminal-lease.rs:25:8
+   |
+25 |     fn pipe2(fds: *mut i32, flags: i32) -> i32;
+   |        ^^^^^
+
+error: function `fork` is never used
+  --> native/ipse-terminal-lease.rs:26:8
+   |
+26 |     fn fork() -> i32;
+   |        ^^^^
+
+error: function `kill` is never used
+  --> native/ipse-terminal-lease.rs:27:8
+   |
+27 |     fn kill(pid: i32, signal: i32) -> i32;
+   |        ^^^^
+
+error: function `waitpid` is never used
+  --> native/ipse-terminal-lease.rs:28:8
+   |
+28 |     fn waitpid(pid: i32, status: *mut i32, options: i32) -> i32;
+   |        ^^^^^^^
+
+error: function `clock_gettime` is never used
+  --> native/ipse-terminal-lease.rs:30:8
+   |
+30 |     fn clock_gettime(clock: i32, time: *mut Timespec) -> i32;
+   |        ^^^^^^^^^^^^^
+
+error: aborting due to 28 previous errors
+

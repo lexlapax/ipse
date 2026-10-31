@@ -1,0 +1,29 @@
+Running ExUnit with seed: 46852, max_cases: 1
+Excluding tags: [:test]
+Including tags: [:fused_value_session, :fused_value_unknown]
+
+NAMESPACE_TEST_ARTIFACT b2023adfe798f90c86e11e68aec5158094752f3a7b47b92a68d863d6d60aae42
+.
+
+  1) test actual SDK packets fall back to one part and resume a known bounded partial write (Ipse.KnowledgeCollectionAdapterSessionTest)
+     test/extensions/knowledge/collection_adapter_session_test.exs:234
+     ** (Protocol.UndefinedError) protocol Enumerable not implemented for Integer
+
+     Got value:
+
+         2
+
+     code: header = body(physical(c, "host.stage.#{active["slot"]}.header"))
+     stacktrace:
+       (elixir 1.20.4) lib/enum.ex:5: Enumerable.impl_for!/1
+       (elixir 1.20.4) lib/enum.ex:184: Enumerable.reduce/3
+       (elixir 1.20.4) lib/enum.ex:4667: Enum.map/2
+       (elixir 1.20.4) lib/enum.ex:1684: Enum.join/2
+       test/extensions/knowledge/collection_adapter_session_test.exs:2161: Ipse.KnowledgeCollectionAdapterSessionTest.body/1
+       test/extensions/knowledge/collection_adapter_session_test.exs:242: (test)
+
+
+Finished in 4.6 seconds (0.00s async, 4.6s sync)
+
+Result: 1/2 passed, 25 excluded
+Failed: 1 test

@@ -1,0 +1,9 @@
+Running ExUnit with seed: 20261029, max_cases: 40
+Excluding tags: [:test]
+Including tags: [:document_inline_native_v4]
+
+Retained native inline-v4 fixture: /tmp/ipse-inline-v4-a92d7c3d203c6e897d2eca3c07a32728
+.
+Finished in 0.3 seconds (0.3s async, 0.00s sync)
+
+Result: 1 passed, 9 excluded

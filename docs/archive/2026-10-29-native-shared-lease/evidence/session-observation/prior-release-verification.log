@@ -1,0 +1,11 @@
+docs/archive/2026-10-29-native-shared-lease/evidence/session-release/source.tar: OK
+_build/session-export-release-sol-20261029/priv/ipse-runner: OK
+_build/session-export-release-sol-20261029/lib/ipse/ebin/Elixir.Ipse.Runner.beam: OK
+_build/session-export-release-sol-20261029/lib/ipse/ebin/Elixir.Ipse.Session.Lock.beam: OK
+docs/archive/2026-10-29-native-shared-lease/evidence/session-release/runtime.sha256: OK
+docs/archive/2026-10-29-native-shared-lease/evidence/session-release/compile.log: OK
+docs/archive/2026-10-29-native-shared-lease/evidence/session-release/prior-manifest-verification.log: OK
+docs/archive/2026-10-29-native-shared-lease/evidence/session-release/prior-runtime-verification.log: OK
+docs/archive/2026-10-29-native-shared-lease/evidence/session-release/release-frame-controls.log: OK
+docs/archive/2026-10-29-native-shared-lease/evidence/session-release/release-test-fragmented.log: OK
+docs/archive/2026-10-29-native-shared-lease/evidence/session-release/release-test-v2.log: OK

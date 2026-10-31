@@ -1,0 +1,21 @@
+Running ExUnit with seed: 995323, max_cases: 4
+Excluding tags: [:test]
+Including tags: [document_guard_v4_pages: true]
+
+
+
+  1) test actual public v4 continuation produces two guarded pages (Ipse.SharedProducerGuardSessionTest)
+     test/extensions/knowledge/shared_producer_guard_session_test.exs:409
+     document producer error: "Extension outcome unknown after refusal, failure or interruption. Inspect its receipt before retrying; no callback was replayed."
+     code: {args, _} = prepare(c, :v4)
+     stacktrace:
+       test/extensions/knowledge/shared_producer_guard_session_test.exs:260: anonymous fn/6 in Ipse.SharedProducerGuardSessionTest.prepare/2
+       (elixir 1.20.4) lib/enum.ex:4659: Enum.reduce/3
+       test/extensions/knowledge/shared_producer_guard_session_test.exs:232: Ipse.SharedProducerGuardSessionTest.prepare/2
+       test/extensions/knowledge/shared_producer_guard_session_test.exs:411: (test)
+
+
+Finished in 0.7 seconds (0.3s on load, 0.00s async, 0.4s sync)
+
+Result: 0/1 passed, 3 excluded
+Failed: 1 test

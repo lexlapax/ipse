@@ -1,0 +1,65 @@
+    warning: variable "config" is unused (if the variable is not meant to be used, prefix it with an underscore)
+    │
+ 32 │   def retain(config, cwd, key, policy) do
+    │              ~~~~~~
+    │
+    └─ lib/ipse/cli/knowledge/management.ex:32:14: Ipse.CLI.Knowledge.Management.retain/4
+
+    warning: variable "cwd" is unused (if the variable is not meant to be used, prefix it with an underscore)
+    │
+ 32 │   def retain(config, cwd, key, policy) do
+    │                      ~~~
+    │
+    └─ lib/ipse/cli/knowledge/management.ex:32:22: Ipse.CLI.Knowledge.Management.retain/4
+
+    warning: variable "key" is unused (if the variable is not meant to be used, prefix it with an underscore)
+    │
+ 32 │   def retain(config, cwd, key, policy) do
+    │                           ~~~
+    │
+    └─ lib/ipse/cli/knowledge/management.ex:32:27: Ipse.CLI.Knowledge.Management.retain/4
+
+{:ok,
+ [Ipse.CLI.Errors, Ipse.CLI.Knowledge, Ipse.CLI.Knowledge.Management,
+  Ipse.Extension.Collection, Ipse.Extension.State, Ipse.Session.Invocation],
+ %{
+   compile_warnings: [
+     %{
+       message: "variable \"config\" is unused (if the variable is not meant to be used, prefix it with an underscore)",
+       position: {32, 14},
+       file: "/home/lexlapax/projects/lexlapax/ipse/lib/ipse/cli/knowledge/management.ex",
+       stacktrace: [
+         {Ipse.CLI.Knowledge.Management, :retain, 4,
+          [file: "lib/ipse/cli/knowledge/management.ex", column: 14, line: 32]}
+       ],
+       source: "/home/lexlapax/projects/lexlapax/ipse/lib/ipse/cli/knowledge/management.ex",
+       span: {32, 20},
+       severity: :warning
+     },
+     %{
+       message: "variable \"cwd\" is unused (if the variable is not meant to be used, prefix it with an underscore)",
+       position: {32, 22},
+       file: "/home/lexlapax/projects/lexlapax/ipse/lib/ipse/cli/knowledge/management.ex",
+       stacktrace: [
+         {Ipse.CLI.Knowledge.Management, :retain, 4,
+          [file: "lib/ipse/cli/knowledge/management.ex", column: 22, line: 32]}
+       ],
+       source: "/home/lexlapax/projects/lexlapax/ipse/lib/ipse/cli/knowledge/management.ex",
+       span: {32, 25},
+       severity: :warning
+     },
+     %{
+       message: "variable \"key\" is unused (if the variable is not meant to be used, prefix it with an underscore)",
+       position: {32, 27},
+       file: "/home/lexlapax/projects/lexlapax/ipse/lib/ipse/cli/knowledge/management.ex",
+       stacktrace: [
+         {Ipse.CLI.Knowledge.Management, :retain, 4,
+          [file: "lib/ipse/cli/knowledge/management.ex", column: 27, line: 32]}
+       ],
+       source: "/home/lexlapax/projects/lexlapax/ipse/lib/ipse/cli/knowledge/management.ex",
+       span: {32, 30},
+       severity: :warning
+     }
+   ],
+   runtime_warnings: []
+ }}

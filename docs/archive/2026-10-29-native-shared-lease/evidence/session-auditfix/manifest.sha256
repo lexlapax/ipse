@@ -1,0 +1,17 @@
+da5e9b634ae5b2535d7bea1df4e9e2d00aa390d0f3198babda077f244e0aa64a  lib/ipse/session.ex
+61d03da7438a7df252b1a1a9530679ae4ba47ea2fd8db0a57264b32e8e7b8293  test/ipse/session/export_session_start_test.exs
+cec1f854e3770bbe7d704c3d8a8f1365e15b9a53d0100dc7d17ac1ddedd9c930  dev/verification/session_export_genuine_unavailable.exs
+40ad8bac6b2579502580dcef31adeffed850c8fcba758a59720fda7c8c22583f  _build/session-export-auditfix-sol-20261029/lib/ipse/priv/ipse-runner
+a51c2d34654e21b0418b31bbe5ec2423d117230a3a8f3687803d5c1438d1c12e  _build/session-export-auditfix-legacy-sol-20261029/lib/ipse/priv/ipse-runner
+6226e7d9d3d6408ef3d555510fcf94ec635babd0e6c748b6b861c1bad0a42bd8  docs/archive/2026-10-29-native-shared-lease/evidence/session-auditfix/compile-legacy.log
+6226e7d9d3d6408ef3d555510fcf94ec635babd0e6c748b6b861c1bad0a42bd8  docs/archive/2026-10-29-native-shared-lease/evidence/session-auditfix/compile.log
+26dcbc382493ac41016956f12ec2a5bec8cd817ea19e7f84d9a5dd62158a2b95  docs/archive/2026-10-29-native-shared-lease/evidence/session-auditfix/new-controls.log
+a820849bf3fb4b458887d5bd8da68981ec1b03e98f8bcfb057e478b4ed864872  docs/archive/2026-10-29-native-shared-lease/evidence/session-auditfix/prior-manifest-check.log
+1500804343a49665f4abe7b4d58184eb0e44a68effe76e01f4b5e01d00505b7f  docs/archive/2026-10-29-native-shared-lease/evidence/session-auditfix/recipient-controls.log
+56b6db59d2767471604eac74af1e890d576f265583d59ea0f20eb60e07f912a1  docs/archive/2026-10-29-native-shared-lease/evidence/session-auditfix/session-tests-final.log
+5b7fad5c748632df9f26a1c746465d7e96238335b396c192d60462c9dcf298d7  docs/archive/2026-10-29-native-shared-lease/evidence/session-auditfix/session-tests.log
+2272115714077f9f2125872f36151d74791cc66ed1db2cab6cfa6ad3fd705be0  docs/archive/2026-10-29-native-shared-lease/evidence/session-auditfix/unavailable-final.log
+2272115714077f9f2125872f36151d74791cc66ed1db2cab6cfa6ad3fd705be0  docs/archive/2026-10-29-native-shared-lease/evidence/session-auditfix/unavailable.log
+8722abf3f5401aac895076f30d08a23c582cf518f8f5a805c69b19c4753b6980  docs/archive/2026-10-29-native-shared-lease/evidence/session-auditfix/source.tar
+a828bcc6f0bd79f40381b0d26e3bdc7649c9c94f857d0bd64db85e1810d290c6  docs/archive/2026-10-29-native-shared-lease/evidence/session-auditfix/runtime.sha256
+cad32bca60398b5ef798ad5aaf57853e77ff4e66d587e8ade972cbedce5db6da  docs/archive/2026-10-29-native-shared-lease/evidence/session-auditfix/runtime-legacy.sha256

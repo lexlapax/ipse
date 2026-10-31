@@ -1,0 +1,28 @@
+Running ExUnit with seed: 837700, max_cases: 8
+Excluding tags: [:test]
+Including tags: [share_timeout: true]
+
+
+12:02:49.983 [error] GenServer #PID<0.187.0> terminating
+** (stop) :redacted
+    (elixir 1.20.4) lib/task.ex:1345: Task.shutdown/2
+    (ipse 0.1.0) lib/ipse/session.ex:4212: Ipse.Session.terminate/2
+    (stdlib 8.1) gen_server.erl:2482: :gen_server.try_terminate/3
+    (stdlib 8.1) gen_server.erl:2733: :gen_server.terminate/9
+    (stdlib 8.1) gen_server.erl:2513: :gen_server.handle_msg/3
+    (stdlib 8.1) proc_lib.erl:333: :proc_lib.init_p_do_apply/3
+Last message (from #PID<0.186.0>): :redacted
+State: %{id: "b90405958ba12c64754709d5c08d02ee", phase: :extension_command}
+Client #PID<0.186.0> is alive
+
+    (stdlib 8.1) gen.erl:262: :gen.do_call/4
+    (elixir 1.20.4) lib/gen_server.ex:1180: GenServer.call/3
+    (ipse 0.1.0) lib/ipse/session.ex:501: Ipse.Session.close/2
+    test/ipse/session/share_operation_barrier_test.exs:99: Ipse.Session.ShareOperationBarrierTest."test the setup timer quarantines a stalled Writer without waiting for it"/1
+    (ex_unit 1.20.4) lib/ex_unit/runner.ex:533: ExUnit.Runner.exec_test/2
+    (stdlib 8.1) timer.erl:599: :timer.tc/2
+    (ex_unit 1.20.4) lib/ex_unit/runner.ex:455: anonymous fn/6 in ExUnit.Runner.spawn_test_monitor/4
+.
+Finished in 5.3 seconds (0.1s on load, 0.00s async, 5.1s sync)
+
+Result: 1 passed, 3 excluded

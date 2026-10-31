@@ -1,0 +1,48 @@
+
+== Compilation error in file lib/ipse/extension/consent.ex ==
+** (UndefinedFunctionError) function Jason.encode!/1 is undefined (module Jason is not available). Make sure the module name is correct and has been specified in full (or that an alias has been defined)
+    Jason.encode!(%{"cost_nanos" => 9007199254740991, "download_bytes" => 9007199254740991, "input_bytes" => 9007199254740991, "model_calls" => 9007199254740991, "operations" => 9007199254740991, "output_bytes" => 9007199254740991})
+    lib/ipse/extension/consent.ex:24: (module)
+** (MatchError) no match of right hand side value:
+
+    {:error,
+     [
+       %{
+         message: "** (UndefinedFunctionError) function Jason.encode!/1 is undefined (module Jason is not available). Make sure the module name is correct and has been specified in full (or that an alias has been defined)\n    Jason.encode!(%{\"cost_nanos\" => 9007199254740991, \"download_bytes\" => 9007199254740991, \"input_bytes\" => 9007199254740991, \"model_calls\" => 9007199254740991, \"operations\" => 9007199254740991, \"output_bytes\" => 9007199254740991})\n    lib/ipse/extension/consent.ex:24: (module)\n",
+         position: 24,
+         file: "/home/lexlapax/projects/lexlapax/ipse/lib/ipse/extension/consent.ex",
+         stacktrace: [
+           {Jason, :encode!,
+            [
+              %{
+                "cost_nanos" => 9007199254740991,
+                "download_bytes" => 9007199254740991,
+                "input_bytes" => 9007199254740991,
+                "model_calls" => 9007199254740991,
+                "operations" => 9007199254740991,
+                "output_bytes" => 9007199254740991
+              }
+            ], []},
+           {:elixir_compiler_9, :__MODULE__, 1,
+            [file: ~c"lib/ipse/extension/consent.ex", line: 24]},
+           {:elixir_compiler, :dispatch, 4,
+            [file: ~c"src/elixir_compiler.erl", line: 102]},
+           {:elixir_compiler, :compile, 4,
+            [file: ~c"src/elixir_compiler.erl", line: 76]},
+           {:elixir_module, :eval_form, 7,
+            [file: ~c"src/elixir_module.erl", line: 491]},
+           {:elixir_module, :compile, 7,
+            [file: ~c"src/elixir_module.erl", line: 164]},
+           {:elixir_compiler, :optimize_defmodule, 2,
+            [file: ~c"src/elixir_compiler.erl", line: 41]},
+           {:elixir_lexical, :run, 3, [file: ~c"src/elixir_lexical.erl", line: 18]}
+         ],
+         source: "/home/lexlapax/projects/lexlapax/ipse/lib/ipse/extension/consent.ex",
+         span: nil,
+         severity: :error,
+         details: {:error, :undef}
+       }
+     ], %{compile_warnings: [], runtime_warnings: []}}
+
+    (stdlib 8.1) erl_eval.erl:796: :erl_eval.expr/6
+    (elixir 1.20.4) lib/code.ex:649: Code.validated_eval_string/4

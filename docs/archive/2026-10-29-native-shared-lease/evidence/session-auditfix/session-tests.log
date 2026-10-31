@@ -1,0 +1,30 @@
+Running ExUnit with seed: 552682, max_cases: 8
+Excluding tags: [:native_sandbox, :macos_sandbox, :macos_filesystem, :memory_scope]
+
+Operation not permitted (os error 1)
+
+
+  1) test real Session owner death stops its Writer while the exported recipient retains exclusion (Ipse.Session.ExportSessionStartTest)
+     test/ipse/session/export_session_start_test.exs:87
+     recipient output timed out
+     code: recipient = export_to_recipient(c.fixture, state.lock_guard, state.lock, path)
+     stacktrace:
+       test/ipse/session/export_session_start_test.exs:228: Ipse.Session.ExportSessionStartTest.export_to_recipient/4
+       test/ipse/session/export_session_start_test.exs:91: (test)
+
+...
+
+  2) test real Session reports unconfirmed close while an exported recipient holds its lock (Ipse.Session.ExportSessionStartTest)
+     test/ipse/session/export_session_start_test.exs:60
+     recipient output timed out
+     code: recipient = export_to_recipient(c.fixture, state.lock_guard, state.lock, path)
+     stacktrace:
+       test/ipse/session/export_session_start_test.exs:228: Ipse.Session.ExportSessionStartTest.export_to_recipient/4
+       test/ipse/session/export_session_start_test.exs:63: (test)
+
+Operation not permitted (os error 1)
+.
+Finished in 12.2 seconds (0.2s on load, 0.00s async, 12.0s sync)
+
+Result: 4/6 passed
+Failed: 2 tests

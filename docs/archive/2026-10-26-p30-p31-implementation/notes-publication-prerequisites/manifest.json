@@ -1,0 +1,87 @@
+{
+  "ancestor": {
+    "bytes": 8667,
+    "path": "docs/archive/2026-10-26-p30-p31-implementation/notes-publication-admission/manifest.json",
+    "sha256": "af4274dbf884df9c4912d564ad0307559f526e58fa3dcc3b78f9844546b7ed59",
+    "type": "regular"
+  },
+  "graphs": [
+    {
+      "files": 709,
+      "graph": "_build/notes-publication-admission-sol-20261029",
+      "inventory": {
+        "bytes": 184829,
+        "path": "docs/archive/2026-10-26-p30-p31-implementation/notes-publication-prerequisites/notes-publication-admission-sol-20261029.json",
+        "sha256": "ad244dd1705f5e6b68b40e0facd4c5c2686c27470828e1860e6903a3f1b7a679",
+        "type": "regular"
+      }
+    },
+    {
+      "files": 709,
+      "graph": "_build/notes-absence-publication-sol-20261029",
+      "inventory": {
+        "bytes": 183411,
+        "path": "docs/archive/2026-10-26-p30-p31-implementation/notes-publication-prerequisites/notes-absence-publication-sol-20261029.json",
+        "sha256": "eca79a7f9a9e7f03123422599eac809c0adeccff6b2b2a0c63c1b3b4eb8e9056",
+        "type": "regular"
+      }
+    }
+  ],
+  "retained": [
+    {
+      "bytes": 3354,
+      "path": "docs/archive/2026-10-26-p30-p31-implementation/notes-publication-prerequisites/ipse-freeze-notes-admission-47174.exs",
+      "sha256": "8daa20e37c73cd33760c8e773281d5f8e60af236dc6e22efa37ce430c3a99a83",
+      "type": "regular"
+    },
+    {
+      "bytes": 731,
+      "path": "docs/archive/2026-10-26-p30-p31-implementation/notes-publication-prerequisites/ipse-notes-absence-compile-47171.exs",
+      "sha256": "579983d278b7a552a2e7738f0ea3ca0639e0091ce4c017a56479813dfbb4c30a",
+      "type": "regular"
+    },
+    {
+      "bytes": 68,
+      "path": "docs/archive/2026-10-26-p30-p31-implementation/notes-publication-prerequisites/ipse-notes-absence-compile-47171.log",
+      "sha256": "5928b982921fca939cb9f67e8b0945cb98d76f611181debf226705c7d6bf4eee",
+      "type": "regular"
+    },
+    {
+      "bytes": 410,
+      "path": "docs/archive/2026-10-26-p30-p31-implementation/notes-publication-prerequisites/ipse-notes-absence-test-47172.exs",
+      "sha256": "d15bf0f577ba5f32777e569f906d3cd4b23c307a1a850b8408ffe4a7ca2733d5",
+      "type": "regular"
+    },
+    {
+      "bytes": 204,
+      "path": "docs/archive/2026-10-26-p30-p31-implementation/notes-publication-prerequisites/ipse-notes-absence-test-47172.log",
+      "sha256": "39b6106400f9ba109a31fb7be65086a1b517247cc4c475ac25b6aabf77bcdfe6",
+      "type": "regular"
+    }
+  ],
+  "scope": "notes-publication-prerequisites",
+  "sources": [
+    {
+      "bytes": 9862,
+      "path": "docs/archive/2026-10-26-p30-p31-implementation/notes-publication-prerequisites/lib__ipse__session__managed_reads.ex.txt",
+      "sha256": "89f6c6ec82fcf371ef7f6a69f8b90d55cd41e10786cae5c17057aaa10aded04c",
+      "source": "lib/ipse/session/managed_reads.ex",
+      "type": "regular"
+    },
+    {
+      "bytes": 46742,
+      "path": "docs/archive/2026-10-26-p30-p31-implementation/notes-publication-prerequisites/lib__ipse__session__managed_tool_use.ex.txt",
+      "sha256": "48b6185e29f7c361da73eb2803065f37120bf22beec31202adf1cad27c9a75dc",
+      "source": "lib/ipse/session/managed_tool_use.ex",
+      "type": "regular"
+    },
+    {
+      "bytes": 29324,
+      "path": "docs/archive/2026-10-26-p30-p31-implementation/notes-publication-prerequisites/test__ipse__session__managed_tool_use_test.exs.txt",
+      "sha256": "57da300e34ee798de5c848da979e542b7de36e1b35dee3317748a6025f1617a5",
+      "source": "test/ipse/session/managed_tool_use_test.exs",
+      "type": "regular"
+    }
+  ],
+  "version": 1
+}

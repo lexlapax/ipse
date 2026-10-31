@@ -1,0 +1,22 @@
+** (EXIT from #PID<0.94.0>) an exception was raised:
+    ** (KeyError) key :subscriber not found in:
+
+    [
+      config: %{
+        home: "/tmp/ipse-shutdown-contender-302d53ec2c49b292055b672926c8a0b7",
+        fixture_owner: #PID<0.94.0>,
+        provider: :demo,
+        provider_module: HeaderShutdownFixture,
+        model: "fixture",
+        approval: :deny
+      },
+      cwd: "/tmp/ipse-shutdown-contender-302d53ec2c49b292055b672926c8a0b7",
+      state_dir: "/tmp/ipse-shutdown-contender-302d53ec2c49b292055b672926c8a0b7/state"
+    ]
+
+        (elixir 1.20.4) lib/keyword.ex:618: Keyword.fetch!/2
+        (ipse 0.1.0) lib/ipse/session.ex:698: Ipse.Session.init_session/2
+        (stdlib 8.1) gen_server.erl:2276: :gen_server.init_it/2
+        (stdlib 8.1) gen_server.erl:2236: :gen_server.init_it/6
+        (stdlib 8.1) proc_lib.erl:333: :proc_lib.init_p_do_apply/3
+

@@ -1,0 +1,55 @@
+Running ExUnit with seed: 20264, max_cases: 8
+Excluding tags: [:test]
+Including tags: [line: 76, line: 96]
+
+
+
+  1) test inactive and legacy write entry points cannot mutate a protected journal (Ipse.Session.NativeJournalFencingTest)
+     test/ipse/session/native_journal_fencing_test.exs:76
+     ** (EXIT from #PID<0.186.0>) an exception was raised:
+         ** (KeyError) key :header not found in:
+
+         %{
+           count: 1,
+           events: [],
+           bytes: 1549,
+           tail: :none,
+           last_quota: nil,
+           complete_offset: 1549
+         }
+
+             (ipse 0.1.0) lib/ipse/journal.ex:163: Ipse.Journal.repair_tail_fenced/4
+             (ipse 0.1.0) lib/ipse/session.ex:4858: Ipse.Session.start_release_owner/5
+             (ipse 0.1.0) lib/ipse/session.ex:642: Ipse.Session.init_session/2
+             (stdlib 8.1) gen_server.erl:2276: :gen_server.init_it/2
+             (stdlib 8.1) gen_server.erl:2236: :gen_server.init_it/6
+             (stdlib 8.1) proc_lib.erl:333: :proc_lib.init_p_do_apply/3
+
+
+
+  2) test a complete unterminated final record is repaired by the native lock owner (Ipse.Session.NativeJournalFencingTest)
+     test/ipse/session/native_journal_fencing_test.exs:96
+     ** (EXIT from #PID<0.192.0>) an exception was raised:
+         ** (KeyError) key :header not found in:
+
+         %{
+           count: 1,
+           events: [],
+           bytes: 1549,
+           tail: :none,
+           last_quota: nil,
+           complete_offset: 1549
+         }
+
+             (ipse 0.1.0) lib/ipse/journal.ex:163: Ipse.Journal.repair_tail_fenced/4
+             (ipse 0.1.0) lib/ipse/session.ex:4858: Ipse.Session.start_release_owner/5
+             (ipse 0.1.0) lib/ipse/session.ex:642: Ipse.Session.init_session/2
+             (stdlib 8.1) gen_server.erl:2276: :gen_server.init_it/2
+             (stdlib 8.1) gen_server.erl:2236: :gen_server.init_it/6
+             (stdlib 8.1) proc_lib.erl:333: :proc_lib.init_p_do_apply/3
+
+
+Finished in 0.3 seconds (0.2s on load, 0.00s async, 0.1s sync)
+
+Result: 0/2 passed, 4 excluded
+Failed: 2 tests

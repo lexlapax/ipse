@@ -1,7 +1,7 @@
 for {module, file} <- [
       {IpseKnowledge.Notes, "notes.ex"},
-      {IpseKnowledge.Knowledge.Records, "knowledge/records.ex"},
-      {IpseKnowledge.Knowledge.Contracts, "knowledge/contracts.ex"}
+      {IpseKnowledge.Knowledge.Contracts, "knowledge/contracts.ex"},
+      {IpseKnowledge.Knowledge.Records, "knowledge/records.ex"}
     ] do
   unless Code.ensure_loaded?(module),
     do: Code.require_file(Path.expand("../../../extensions/knowledge/src/" <> file, __DIR__))
@@ -17,7 +17,9 @@ defmodule Ipse.Test.NormalizerV3Fixture do
   def hash(value), do: JSON.sha256(to_string(value))
   def namespace, do: hash("normalizer-v3")
 
-  def proof do
+  # Trusted-function fixture for an already authenticated category review;
+  # actual terminal origin belongs to the Session integration controls.
+  def proof(category \\ "ordinary") do
     quote = "Acme has owner Alex"
 
     %{
@@ -25,8 +27,8 @@ defmodule Ipse.Test.NormalizerV3Fixture do
       "session_id" => String.duplicate("1", 32),
       "occurrence_id" => String.duplicate("2", 32),
       "version_id" => String.duplicate("3", 32),
-      "kind" => "input.original",
-      "origin" => "interactive_operator",
+      "kind" => "input.assertion." <> category,
+      "origin" => "native_operator_assertion",
       "coverage" => "available",
       "path" => nil,
       "start_byte" => 0,
@@ -39,7 +41,7 @@ defmodule Ipse.Test.NormalizerV3Fixture do
   end
 
   def options(kind \\ "literal_source", category \\ "ordinary", now \\ 0) do
-    source = proof()
+    source = proof(category)
     text = if kind == "proposal", do: "Acme may appoint Alex", else: source["quote"]
 
     {:ok, key, value} =
@@ -123,32 +125,40 @@ defmodule Ipse.Test.NormalizerV3Fixture do
       Process.put(:v3_read_units, n)
       if n > 32, do: raise("actual fixture read budget exceeded")
 
-      if is_binary(request) do
-        {:ok, records[request]}
-      else
-        {:ok, _, nil, slots} = Directory.select(tree, request, witness["root_state"])
-        pointer = if witness["root_bytes"], do: Jason.decode!(witness["root_bytes"])
+      cond do
+        is_binary(request) ->
+          {:ok, records[request]}
 
-        refs =
-          Map.new(Map.delete(slots, "state"), fn {slot, key} ->
-            {slot, records[key] && Map.delete(records[key], "value")}
-          end)
+        request == %{"op" => "pending_summary"} ->
+          keys = Directory.pending_keys(tree)
 
-        {:ok,
-         %{
-           "version" => 1,
-           "summary" => witness["root"],
-           "directory" => request["request"],
-           "state" => slots["state"],
-           "neighbors" => refs,
-           "witness" => %{
-             "version" => 2,
-             "root_state" => witness["root_state"],
-             "root" => pointer,
-             "root_sha256" => witness["root_sha256"],
-             "manifest_sha256" => witness["manifest_sha256"]
-           }
-         }}
+          {:ok,
+           %{"count" => length(keys), "bytes" => Enum.sum(Enum.map(keys, &records[&1]["bytes"]))}}
+
+        true ->
+          {:ok, _, nil, slots} = Directory.select(tree, request, witness["root_state"])
+          pointer = if witness["root_bytes"], do: Jason.decode!(witness["root_bytes"])
+
+          refs =
+            Map.new(Map.delete(slots, "state"), fn {slot, key} ->
+              {slot, records[key] && Map.delete(records[key], "value")}
+            end)
+
+          {:ok,
+           %{
+             "version" => 1,
+             "summary" => witness["root"],
+             "directory" => request["request"],
+             "state" => slots["state"],
+             "neighbors" => refs,
+             "witness" => %{
+               "version" => 2,
+               "root_state" => witness["root_state"],
+               "root" => pointer,
+               "root_sha256" => witness["root_sha256"],
+               "manifest_sha256" => witness["manifest_sha256"]
+             }
+           }}
       end
     end
   end
@@ -618,6 +628,131 @@ defmodule Ipse.Extension.CollectionNormalizerV3Test do
                       end)
 
                assert byte_size(Migration.encode(receipt)) <= 2048
+               {:ok, :checked}
+             end)
+  end
+
+  test "pending publication enforces same-root retained count and byte limits", c do
+    opts = F.options("proposal")
+
+    assert {:ok, old} =
+             first(c, fn cap, _ -> F.seed(cap, F.witness(opts, 0, c.scope.operation_id), %{}) end)
+
+    assert {:ok, :checked} =
+             active(c, fn cap, catalog, operation ->
+               populate = fn count, bytes ->
+                 Enum.reduce(1..count, old, fn n, acc ->
+                   key = "pending." <> F.id(n)
+
+                   Map.put(
+                     acc,
+                     key,
+                     F.record(key, %{"text" => String.duplicate("x", bytes)}, 1, operation)
+                   )
+                 end)
+               end
+
+               witness = F.witness(opts, 1, operation)
+               assert @refused == normalize(cap, catalog, opts, witness, populate.(64, 1))
+               assert @refused == normalize(cap, catalog, opts, witness, populate.(63, 4200))
+               assert {:ok, _, _} = normalize(cap, catalog, opts, witness, populate.(63, 1))
+               assert Process.get(:v3_read_units) <= 32
+               {:ok, :checked}
+             end)
+  end
+
+  test "proposal repair and pending summary fit the 32-unit callback budget", c do
+    opts = F.options("proposal", "ordinary", @day)
+    {:ok, lineage} = Ipse.Extension.ManagedRecipe.source_identity(F.proof())
+    number = String.to_integer(lineage, 16)
+    id = fn n -> Integer.to_string(n, 16) |> String.downcase() |> String.pad_leading(64, "0") end
+
+    left = Map.new(1..49, fn n -> {id.(number - n), F.anchor()} end)
+    left = Map.put(left, lineage, F.anchor([0, 0, 0, Bitwise.bsl(1, 49)]))
+    assert ManagedPages.weight(:anchor, left) == ManagedPages.profile(:anchor).floor
+    right = Map.new(1..100, fn n -> {id.(number + n), F.anchor()} end)
+
+    live =
+      Map.new(1..25, fn n ->
+        key = ManagedPages.live_identity("note." <> F.id(n))
+
+        {key,
+         [
+           packed(F.hash("lineage#{n}")),
+           packed(F.hash("value#{n}")),
+           packed(F.hash("recipe")),
+           packed(F.hash("policy")),
+           "0",
+           Integer.to_string(90 * @day, 36) |> String.downcase(),
+           0,
+           0
+         ]}
+      end)
+
+    assert {:ok, old} =
+             first(c, fn cap, _ ->
+               F.seed(
+                 cap,
+                 F.witness(opts, 0, c.scope.operation_id),
+                 %{},
+                 %{},
+                 [{ManagedPages.zero(:anchor), left}, {id.(number + 1), right}],
+                 [{ManagedPages.zero(:live), live}]
+               )
+             end)
+
+    assert {:ok, :checked} =
+             active(c, fn cap, catalog, operation ->
+               assert {:ok, normalized, _} =
+                        normalize(cap, catalog, opts, F.witness(opts, 1, operation), old)
+
+               assert Process.get(:v3_read_units) == 32
+               assert Enum.count(tl(normalized["changes"]), &is_nil(&1["value"])) == 1
+               {:ok, :checked}
+             end)
+  end
+
+  test "pending byte ceiling admits the exact boundary and refuses one byte above", c do
+    opts = F.options("proposal")
+
+    assert {:ok, old} =
+             first(c, fn cap, _ -> F.seed(cap, F.witness(opts, 0, c.scope.operation_id), %{}) end)
+
+    assert {:ok, :checked} =
+             active(c, fn cap, catalog, operation ->
+               size = byte_size(Migration.encode(hd(opts.request["changes"])["value"]))
+               remainder = 262_144 - size - 43 * 6000
+               overhead = byte_size(Migration.encode(%{"text" => ""}))
+               assert remainder in (overhead + 1)..6000
+
+               row = fn n, bytes ->
+                 key = "pending." <> F.id(n)
+
+                 {key,
+                  F.record(
+                    key,
+                    %{"text" => String.duplicate("x", bytes - overhead)},
+                    1,
+                    operation
+                  )}
+               end
+
+               records =
+                 Enum.reduce(1..43, old, fn n, acc ->
+                   {key, value} = row.(n, 6000)
+                   Map.put(acc, key, value)
+                 end)
+
+               {last_key, exact} = row.(44, remainder)
+               {_, excess} = row.(44, remainder + 1)
+               witness = F.witness(opts, 1, operation)
+
+               assert @refused ==
+                        normalize(cap, catalog, opts, witness, Map.put(records, last_key, excess))
+
+               assert {:ok, _, _} =
+                        normalize(cap, catalog, opts, witness, Map.put(records, last_key, exact))
+
                {:ok, :checked}
              end)
   end

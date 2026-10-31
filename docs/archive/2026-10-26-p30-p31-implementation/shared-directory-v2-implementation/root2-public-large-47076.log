@@ -1,0 +1,10 @@
+Running ExUnit with seed: 47076, max_cases: 1
+Excluding tags: [:test]
+Including tags: [:public_paged_large_inspection]
+
+NAMESPACE_TEST_ARTIFACT fca07d55dcd17afe2a6dbe8ae96719699511e7f81d5edf09bf6b2807c22f219c
+PUBLIC_JOB3_PAGES {"bytes":40801,"entity_refs":157,"model_calls":0,"native_unchanged":true}
+.
+Finished in 15.0 seconds (1.2s on load, 0.00s async, 13.8s sync)
+
+Result: 1 passed, 39 excluded

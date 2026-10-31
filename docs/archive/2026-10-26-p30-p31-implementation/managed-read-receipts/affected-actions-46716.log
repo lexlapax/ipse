@@ -1,0 +1,25 @@
+Running ExUnit with seed: 46716, max_cases: 1
+Excluding tags: [:native_sandbox, :macos_sandbox, :macos_filesystem, :memory_scope]
+
+.....................................................
+15:05:52.755 [error] GenServer #PID<0.4046.0> terminating
+** (stop) :redacted
+    (ipse 0.1.0) lib/ipse/session.ex:3700: Ipse.Session.journal_failed/2
+    (ipse 0.1.0) lib/ipse/session/invocation.ex:942: Ipse.Session.Invocation.answer/3
+    (stdlib 8.1) gen_server.erl:2470: :gen_server.try_handle_call/4
+    (stdlib 8.1) gen_server.erl:2499: :gen_server.handle_msg/3
+    (stdlib 8.1) proc_lib.erl:333: :proc_lib.init_p_do_apply/3
+Last message (from #PID<0.4037.0>): :redacted
+State: %{id: "63128bc681908b30841a9ed03d0585cd", phase: :question}
+Client #PID<0.4037.0> is alive
+
+    (stdlib 8.1) gen.erl:262: :gen.do_call/4
+    (elixir 1.20.4) lib/gen_server.ex:1180: GenServer.call/3
+    test/ipse/extension/invocation_test.exs:2034: Ipse.Extension.InvocationTest."test journal exhaustion preserves a pending extension question for diagnosis and handoff"/1
+    (ex_unit 1.20.4) lib/ex_unit/runner.ex:533: ExUnit.Runner.exec_test/2
+    (stdlib 8.1) timer.erl:599: :timer.tc/2
+    (ex_unit 1.20.4) lib/ex_unit/runner.ex:455: anonymous fn/6 in ExUnit.Runner.spawn_test_monitor/4
+...............................
+Finished in 38.3 seconds (1.7s async, 36.6s sync)
+
+Result: 84 passed

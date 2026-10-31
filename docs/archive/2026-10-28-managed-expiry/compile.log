@@ -1,0 +1,4 @@
+{:ok,
+ [Ipse.Extension.Collection.ManagedRetention,
+  Ipse.Extension.Collection.NormalizerV3, Ipse.Session.ManagedLifecycle],
+ %{compile_warnings: [], runtime_warnings: []}}

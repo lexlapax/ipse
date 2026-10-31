@@ -1,0 +1,13 @@
+ROOT2_IMPLEMENTATION_MANIFEST_OK: %{
+  sources: 32,
+  ancestors: 6,
+  helper: "7e1913446865a16cdfb7c96ca0285dc9e117a018c36c7b1940ba249a72ffd067",
+  logs: 14,
+  runtime_files: 669,
+  feature_cohorts: 12,
+  feature_files: 204,
+  artifact_inventories: 7,
+  artifact_files: 160,
+  runtime_unchanged_from_native_finalization: true,
+  client_writer_unchanged: true
+}

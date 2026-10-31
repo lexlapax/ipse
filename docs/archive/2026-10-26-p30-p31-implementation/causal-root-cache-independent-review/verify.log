@@ -1,0 +1,3 @@
+17 frozen entries and 668 runtime hashes verified; exactly three named BEAM changes
+Retained 81-event direct-client journal: one known headless managed result; write/shell denied; no model source-tool call
+Retained native/Consent readback: settled exact receipt; generation-1 floor anchor; typed host-outcome proof; 4801/16384 bytes, zero effect model calls

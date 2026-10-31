@@ -1,0 +1,20 @@
+base = Path.expand("_build/strict-lifetime-followup-sol-20261029/lib")
+target = Path.expand("_build/lifetime-receipt-followup-sol-20261029/lib")
+File.mkdir_p!(Path.dirname(target))
+unless File.dir?(target), do: File.cp_r!(base, target)
+Code.prepend_paths(Path.wildcard(Path.join(target, "*/ebin")))
+Code.compiler_options(ignore_module_conflict: true)
+module = Ipse.CLI.Errors
+:code.purge(module)
+:code.delete(module)
+case Kernel.ParallelCompiler.compile_to_path(["lib/ipse/cli/errors.ex"], Path.join(target, "ipse/ebin"), warnings_as_errors: true, return_diagnostics: true) do
+  {:ok, _, %{compile_warnings: [], runtime_warnings: []}} -> IO.puts("strict Errors compile passed")
+  other -> IO.inspect(other); System.halt(1)
+end
+{:ok, _} = Application.ensure_all_started(:ipse)
+Code.require_file("test/test_helper.exs")
+ExUnit.configure(autorun: false, exclude: [:test], include: [lifetime_receipt_followup: true], seed: 46906)
+Code.require_file("test/ipse/extension/state_test.exs")
+Code.require_file("test/ipse/cli/errors_test.exs")
+result = ExUnit.run()
+System.halt(if result.failures == 0, do: 0, else: 2)

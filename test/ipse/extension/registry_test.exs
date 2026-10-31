@@ -56,6 +56,41 @@ defmodule Ipse.Extension.RegistryTest do
     assert length(Registry.builtins()) == 8
   end
 
+  @tag :historical_collection_identity
+  test "legacy identities retain their original shape and digest during inert historical replay" do
+    assert {:ok, [entry]} = Registry.prepare(catalog(), "/fixture/home")
+    refute Map.has_key?(entry.identity, "collection_binding")
+    legacy = Map.put(entry.identity, "host_sha256", Ipse.JSON.sha256("retained earlier host"))
+    encoded = Jason.encode!(legacy)
+    digest = Ipse.JSON.digest([legacy])
+    retained = Jason.decode!(encoded)
+    assert Registry.valid_identity?(retained)
+    assert {:error, _} = Registry.revalidate(%{extensions: [%{entry | identity: retained}]})
+    messages = [%{"role" => "user", "content" => "retained input"}]
+
+    intent =
+      Ipse.Extension.Projection.intent(retained, "transform.prompt", "retained input", messages)
+
+    assert {:ok, result} =
+             Ipse.Extension.Projection.build(intent, "retained input", %{
+               "append" => "retained note"
+             })
+
+    events = [
+      %{"type" => "session", "metadata" => %{"extensions" => [retained]}},
+      %{"type" => "message", "message" => hd(messages)},
+      intent,
+      result
+    ]
+
+    assert :ok = Ipse.Extension.Projection.validate_events(events)
+    assert {:ok, _} = Ipse.Extension.Projection.apply(messages, result)
+    assert Jason.encode!(retained) == encoded
+    assert Ipse.JSON.digest([retained]) == digest
+    refute Map.has_key?(retained, "collection_binding")
+    refute Registry.valid_identity?(Map.put(retained, "collection_binding", nil))
+  end
+
   test "each built-in binds every packaged file exactly once" do
     for %{"artifact" => reference} <- Registry.builtins() do
       assert {:ok, artifact} = Registry.lookup(nil, reference)

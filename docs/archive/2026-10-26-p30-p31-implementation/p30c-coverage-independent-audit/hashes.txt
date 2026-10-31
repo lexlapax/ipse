@@ -1,0 +1,9 @@
+e7cdc0e7971cd62b2df796fe4c844e44883d967b81173bd658e66e90414ee41e  extensions/knowledge/src/knowledge/decision_policy.ex
+1adebc26112d0c293bee1267de1fdfb854114347d9e82119717798b8cca9e94b  test/extensions/knowledge/decision_policy_test.exs
+680d3d95a1082a50f18cf1ceffe850edd2f0c9443d9d3fff5a542392e8f6b123  lib/ipse/decision.ex
+e4498b80487c170c65b77f7932e0b4a18bff5e379e1e063dda66e74323a57d3e  lib/ipse/extension.ex
+82457e1fd1c52cfd44aac98c84aee4ac4a9e3af5ed5d41bd5ccf1dffac5210ec  _build/managed-mcp-current-20261028/lib/ipse/ebin/Elixir.Ipse.Decision.beam
+fa1f7b85751728f0d5ab6855b87633522d178ec1c40a3befa794616240343fe2  _build/managed-mcp-current-20261028/lib/ipse/ebin/Elixir.Ipse.Extension.beam
+c8c7a3a1df6e48267a76203e8b5e8a198c84223e15770da02c08adee8abb84d2  docs/archive/2026-10-26-p30-p31-implementation/p30c-coverage-independent-audit/ipse-p30-pure-audit-20261028-r2.log
+a3bab2458539aa692541702773e797051a7678c679cf9149df09d9f2b8c7bfe6  docs/archive/2026-10-26-p30-p31-implementation/p30c-coverage-independent-audit/ipse-p30-pure-audit-20261028.exs
+258fa0f127cb16ec8775537ddd4122e91857e426c517fd89fdf039434807b6c9  docs/archive/2026-10-26-p30-p31-implementation/p30c-coverage-independent-audit/ipse-p30-pure-audit-20261028.log

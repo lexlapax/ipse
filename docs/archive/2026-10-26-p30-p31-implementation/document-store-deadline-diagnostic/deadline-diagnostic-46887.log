@@ -1,0 +1,21 @@
+Running ExUnit with seed: 46887, max_cases: 1
+Excluding tags: [:test]
+Including tags: [:document_deadline_scope, :document_deadline_diagnostic]
+
+
+
+  1) test inherited trusted deadlines cannot be cleared or extended and the scope restores exactly (Ipse.Extension.Collection.DocumentStageTest)
+     test/ipse/extension/collection_document_stage_test.exs:250
+     Assertion failed, no matching message after 1000ms
+     The following variables were pinned:
+       inherited = 1793284259820
+     The process mailbox is empty.
+     code: assert_receive {:deadline_seen, ^inherited}
+     stacktrace:
+       test/ipse/extension/collection_document_stage_test.exs:265: (test)
+
+.
+Finished in 3.9 seconds (0.00s async, 3.9s sync)
+
+Result: 1/2 passed, 39 excluded
+Failed: 1 test

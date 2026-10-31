@@ -1,0 +1,19 @@
+
+== Compilation error in file _build/document-embedding-admission-sol-20261029/lib/ipse/auth.ex ==
+** (ArgumentError) errors were found at the given arguments:
+
+  * 1st argument: the table identifier does not refer to an existing ETS table
+
+    (stdlib 8.1) :ets.lookup(Mix.State, :env)
+    lib/mix/state.ex:30: Mix.State.get/2
+    _build/document-embedding-admission-sol-20261029/lib/ipse/auth.ex:606: (module)
+Current complete host source snapshot compile: {:error,
+ [
+   %{
+     message: "** (ArgumentError) errors were found at the given arguments:\n\n  * 1st argument: the table identifier does not refer to an existing ETS table\n\n    (stdlib 8.1) :ets.lookup(Mix.State, :env)\n    lib/mix/state.ex:30: Mix.State.get/2\n    _build/document-embedding-admission-sol-20261029/lib/ipse/auth.ex:606: (module)\n",
+     position: 0,
+     file: "/home/lexlapax/projects/lexlapax/ipse/_build/document-embedding-admission-sol-20261029/lib/ipse/auth.ex",
+     stacktrace: [{...}, ...],
+     ...
+   }
+ ], ...}

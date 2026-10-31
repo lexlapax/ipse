@@ -11,6 +11,7 @@ defmodule IpseKnowledge.Evidence do
   @max_query_fact_rows @max_store_records * @max_facts_per_manifest
   @max_claim_context 256
   @safe 9_007_199_254_740_991
+  @collection_chunking %{"version" => 2, "max_bytes" => 4096}
 
   def safe_integer_max, do: @safe
   def safe_uint?(value), do: is_integer(value) and value in 0..@safe
@@ -25,10 +26,10 @@ defmodule IpseKnowledge.Evidence do
     do: sha256(IO.iodata_to_binary(JSON.encode!(["ipse-knowledge", 1, tag, parts])))
 
   def source(attrs) do
-    if exact?(attrs, @attrs) do
+    if exact?(attrs, @attrs) or exact?(attrs, @attrs ++ ["document"]) do
       source =
         Map.merge(attrs, %{
-          "version" => 1,
+          "version" => if(Map.has_key?(attrs, "document"), do: 2, else: 1),
           "source_key" => sha256(attrs["source_id"] || ""),
           "content_sha256" => sha256(attrs["text"] || "")
         })
@@ -41,8 +42,66 @@ defmodule IpseKnowledge.Evidence do
     _ -> {:error, :invalid_source}
   end
 
-  def valid_source?(s) do
-    exact?(s, @source) and s["version"] == 1 and identifier?(s["source_id"], 256) and
+  @doc "Explicit Collection source format; legacy source creation and reads keep recipe one."
+  def collection_source(input) do
+    attrs =
+      if valid_source?(input),
+        do: Map.drop(input, ~w(version source_key content_sha256 chunking)),
+        else: input
+
+    with true <- exact?(attrs, @attrs) or exact?(attrs, @attrs ++ ["document"]),
+         source =
+           Map.merge(attrs, %{
+             "version" => 3,
+             "chunking" => @collection_chunking,
+             "source_key" => sha256(attrs["source_id"] || ""),
+             "content_sha256" => sha256(attrs["text"] || "")
+           }),
+         true <- valid_source?(source) do
+      {:ok, source}
+    else
+      _ -> {:error, :invalid_source}
+    end
+  rescue
+    _ -> {:error, :invalid_source}
+  end
+
+  def collection_chunking, do: @collection_chunking
+
+  def valid_source?(s), do: source_shape?(s) and document_source?(s)
+
+  @doc "Validate metadata before loading content; this establishes no readable source."
+  def source_metadata?(attrs) do
+    source =
+      Map.merge(attrs, %{
+        "version" => 1,
+        "source_key" => sha256(attrs["source_id"] || ""),
+        "content_sha256" => sha256(attrs["text"] || "")
+      })
+
+    exact?(attrs, @attrs) and source_shape?(source) and
+      case get_in(source, ["origin", "receipt"]) do
+        %{"kind" => "document_extraction", "version" => 4} = receipt ->
+          document_reference?(receipt)
+
+        %{"kind" => "document_extraction"} = receipt ->
+          document_metadata?(receipt)
+
+        _ ->
+          true
+      end
+  rescue
+    _ -> false
+  end
+
+  defp source_shape?(s) do
+    is_map(s) and
+      ((exact?(s, @source) and s["version"] == 1) or
+         (exact?(s, @source ++ ["document"]) and s["version"] == 2 and is_map(s["document"])) or
+         (s["version"] == 3 and chunking?(s["chunking"]) and
+            (exact?(s, @source ++ ["chunking"]) or
+               (exact?(s, @source ++ ~w(chunking document)) and is_map(s["document"]))))) and
+      identifier?(s["source_id"], 256) and
       partition?(s["partition"]) and positive?(s["generation"]) and text?(s["title"], 128) and
       text?(s["uri"], 512) and text?(s["text"], 65_536) and timestamp?(s["observed_at_ms"]) and
       optional_time?(s["event_at_ms"]) and optional_time?(s["expires_at_ms"]) and
@@ -50,9 +109,19 @@ defmodule IpseKnowledge.Evidence do
       s["content_sha256"] == sha256(s["text"])
   end
 
+  @doc false
+  def current_fact?(fact, now),
+    do: valid_fact?(fact) and safe_uint?(now) and fact_current?(fact, now)
+
   def current?(s, now),
+    do: valid_source?(s) and current_times?(s, now)
+
+  @doc "Check metadata time selection only; load and validate content before producing evidence."
+  def current_metadata?(attrs, now), do: source_metadata?(attrs) and current_times?(attrs, now)
+
+  defp current_times?(s, now),
     do:
-      valid_source?(s) and timestamp?(now) and s["observed_at_ms"] <= now and
+      timestamp?(now) and s["observed_at_ms"] <= now and
         (is_nil(s["expires_at_ms"]) or s["expires_at_ms"] > now) and not s["origin"]["historical"]
 
   def query_scope(rank, sources, store_gaps, now) do
@@ -61,7 +130,18 @@ defmodule IpseKnowledge.Evidence do
       |> Enum.reject(&current?(&1, now))
       |> Enum.map(&%{"code" => "stale_source", "source_id" => &1["source_id"]})
 
-    gaps = Enum.uniq(rank["gaps"] ++ store_gaps ++ source_exclusions)
+    document_gaps =
+      for source <- sources,
+          receipt = document_receipt(source),
+          is_map(receipt) and receipt["kind"] == "document_extraction" and
+            receipt["status"] == "partial",
+          do: %{
+            "code" => "partial_document",
+            "source_id" => source["source_id"],
+            "warnings" => receipt["warnings"]
+          }
+
+    gaps = Enum.uniq(rank["gaps"] ++ store_gaps ++ source_exclusions ++ document_gaps)
 
     {exclusions, failures} =
       Enum.split_with(gaps, &(&1["code"] in ~w(suppressed stale_source excluded_fact)))
@@ -86,12 +166,12 @@ defmodule IpseKnowledge.Evidence do
   def chunks(source) do
     if valid_source?(source) do
       chunks =
-        split_utf8(source["text"], 2048, 0, [])
+        chunk_spans(source)
         |> Enum.map(fn {start, text} ->
           finish = start + byte_size(text)
 
           %{
-            "version" => 1,
+            "version" => chunk_version(source),
             "source_key" => source["source_key"],
             "generation" => source["generation"],
             "content_sha256" => source["content_sha256"],
@@ -108,8 +188,163 @@ defmodule IpseKnowledge.Evidence do
     end
   end
 
+  @doc "Exact reusable lexical recipe; changing token selection requires a new recipe."
+  def lexical_recipe, do: "ipse.evidence.word_tokens.v1"
+
+  @doc false
+  def lexical_query_terms(query) do
+    if text?(query, 1024), do: {:ok, tokens(query) |> Enum.uniq()}, else: {:error, :invalid_query}
+  end
+
+  @doc "Lossless sorted term frequencies and chunk lengths for a validated source."
+  def lexical_run(source) do
+    with {:ok, chunks} <- chunks(source) do
+      documents = Enum.map(chunks, fn chunk -> {chunk, tokens(chunk["text"])} end)
+
+      terms =
+        documents
+        |> Enum.with_index()
+        |> Enum.reduce(%{}, fn {{_chunk, tokens}, ordinal}, acc ->
+          Enum.reduce(Enum.frequencies(tokens), acc, fn {term, count}, acc ->
+            Map.update(acc, term, [[ordinal, count]], &(&1 ++ [[ordinal, count]]))
+          end)
+        end)
+        |> Enum.sort_by(&elem(&1, 0))
+        |> Enum.map(fn {term, postings} -> [term, postings] end)
+
+      run = %{
+        "version" => if(source["version"] == 3, do: 2, else: 1),
+        "recipe" => lexical_recipe(),
+        "source_key" => source["source_key"],
+        "generation" => source["generation"],
+        "content_sha256" => source["content_sha256"],
+        "selection" => %{
+          "observed_at_ms" => source["observed_at_ms"],
+          "expires_at_ms" => source["expires_at_ms"],
+          "historical" => source["origin"]["historical"]
+        },
+        "chunks" =>
+          Enum.map(documents, fn {chunk, tokens} ->
+            [chunk["chunk_id"], chunk["start_byte"], chunk["end_byte"], length(tokens)]
+          end),
+        "terms" => terms
+      }
+
+      {:ok,
+       if(source["version"] == 3, do: Map.put(run, "chunking", source["chunking"]), else: run)}
+    end
+  end
+
+  @doc "Validate a complete lexical run's order, counts, recipe and local references."
+  def valid_lexical_run?(run) do
+    with true <-
+           (exact?(
+              run,
+              ~w(version recipe source_key generation content_sha256 selection chunks terms)
+            ) and run["version"] === 1) or
+             (exact?(
+                run,
+                ~w(version recipe source_key generation content_sha256 selection chunks terms chunking)
+              ) and
+                run["version"] === 2 and chunking?(run["chunking"])),
+         true <- run["recipe"] == lexical_recipe(),
+         true <- sha256?(run["source_key"]) and sha256?(run["content_sha256"]),
+         true <- safe_positive?(run["generation"]),
+         true <- exact?(run["selection"], ~w(observed_at_ms expires_at_ms historical)),
+         true <- timestamp?(run["selection"]["observed_at_ms"]),
+         true <- optional_time?(run["selection"]["expires_at_ms"]),
+         true <- is_boolean(run["selection"]["historical"]),
+         chunks when is_list(chunks) <- run["chunks"],
+         true <- length(chunks) in 1..32,
+         true <- Enum.all?(chunks, &lexical_chunk?/1),
+         true <- length(Enum.uniq_by(chunks, &hd/1)) == length(chunks),
+         true <- lexical_chunk_order?(chunks),
+         true <-
+           Enum.all?(chunks, fn [id, start, finish, _] ->
+             id == chunk_id(run, start, finish)
+           end),
+         terms when is_list(terms) <- run["terms"],
+         true <- Enum.all?(terms, &lexical_term?(&1, length(chunks))),
+         true <- terms == Enum.sort_by(Enum.uniq_by(terms, &hd/1), &hd/1) do
+      actual =
+        Enum.reduce(terms, %{}, fn [_, postings], counts ->
+          Enum.reduce(postings, counts, fn [ordinal, frequency], counts ->
+            Map.update(counts, ordinal, frequency, &(&1 + frequency))
+          end)
+        end)
+
+      Enum.with_index(chunks)
+      |> Enum.all?(fn {[_, _, _, length], ordinal} -> Map.get(actual, ordinal, 0) == length end)
+    else
+      _ -> false
+    end
+  rescue
+    _ -> false
+  end
+
+  defp lexical_chunk?([id, start, finish, count]),
+    do:
+      sha256?(id) and safe_uint?(start) and safe_positive?(finish) and start < finish and
+        finish <= 65_536 and safe_uint?(count) and count <= 65_536
+
+  defp lexical_chunk?(_), do: false
+
+  defp lexical_chunk_order?([_]), do: true
+
+  defp lexical_chunk_order?([[_, _, finish, _], [_, start, _, _] = next | rest]),
+    do: finish <= start and lexical_chunk_order?([next | rest])
+
+  defp lexical_term?([term, postings], chunks) do
+    is_binary(term) and term != "" and tokens(term) == [term] and is_list(postings) and
+      postings != [] and
+      Enum.all?(postings, fn
+        [ordinal, frequency] ->
+          is_integer(ordinal) and ordinal in 0..(chunks - 1) and
+            safe_positive?(frequency) and frequency <= 65_536
+
+        _ ->
+          false
+      end) and postings == Enum.sort_by(Enum.uniq_by(postings, &hd/1), &hd/1)
+  end
+
+  defp lexical_term?(_, _), do: false
+
   def citation(source, chunk, start, finish) do
-    if valid_source?(source) and exact?(chunk, @chunk) and is_integer(start) and
+    case citations(source, [{chunk, start, finish}]) do
+      {:ok, [citation]} -> {:ok, citation}
+      _ -> {:error, :invalid_span}
+    end
+  end
+
+  @doc false
+  def citations(source, spans) when is_list(spans) and length(spans) in 1..256 do
+    with true <- valid_source?(source),
+         {:ok, chunks} <- chunks(source) do
+      Enum.reduce_while(spans, {:ok, []}, fn
+        {chunk, start, finish}, {:ok, acc} ->
+          case citation_with_chunks(source, chunk, start, finish, chunks) do
+            {:ok, citation} -> {:cont, {:ok, [citation | acc]}}
+            _ -> {:halt, {:error, :invalid_span}}
+          end
+
+        _, _ ->
+          {:halt, {:error, :invalid_span}}
+      end)
+      |> case do
+        {:ok, citations} -> {:ok, Enum.reverse(citations)}
+        error -> error
+      end
+    else
+      _ -> {:error, :invalid_span}
+    end
+  rescue
+    _ -> {:error, :invalid_span}
+  end
+
+  def citations(_, _), do: {:error, :invalid_span}
+
+  defp citation_with_chunks(source, chunk, start, finish, chunks) do
+    if exact?(chunk, @chunk) and is_integer(start) and
          is_integer(finish) and start >= chunk["start_byte"] and finish <= chunk["end_byte"] and
          finish > start and finish - start <= 1024 do
       quote = binary_part(source["text"], start, finish - start)
@@ -128,7 +363,18 @@ defmodule IpseKnowledge.Evidence do
           "quote_sha256" => sha256(quote)
         })
 
-      if valid_span?(source, c), do: {:ok, c}, else: {:error, :invalid_span}
+      c =
+        case document_location(source, start, finish) do
+          nil -> c
+          location -> c |> Map.put("version", 2) |> Map.put("document", location)
+        end
+
+      c =
+        if source["version"] == 3,
+          do: c |> Map.put("version", 3) |> Map.put("chunking", source["chunking"]),
+          else: c
+
+      if valid_span_with_chunks?(source, c, chunks), do: {:ok, c}, else: {:error, :invalid_span}
     else
       {:error, :invalid_span}
     end
@@ -137,15 +383,36 @@ defmodule IpseKnowledge.Evidence do
   end
 
   def valid_span?(s, c) do
-    with true <- valid_source?(s) and citation_shape?(c),
+    valid_spans?(s, [c])
+  end
+
+  @doc false
+  def valid_spans?(s, citations) do
+    with true <- valid_source?(s) and is_list(citations),
+         {:ok, chunks} <- chunks(s) do
+      Enum.all?(citations, &valid_span_with_chunks?(s, &1, chunks))
+    else
+      _ -> false
+    end
+  rescue
+    _ -> false
+  end
+
+  defp valid_span_with_chunks?(s, c, chunks) do
+    with true <- citation_shape?(c),
+         true <-
+           if(s["version"] == 3,
+             do: c["version"] == 3 and c["chunking"] === s["chunking"],
+             else: c["version"] in [1, 2]
+           ),
          true <-
            Enum.all?(
              ~w(source_id source_key generation content_sha256 uri observed_at_ms event_at_ms origin),
              &(s[&1] == c[&1])
            ),
-         {:ok, chunks} <- chunks(s),
          chunk when is_map(chunk) <- Enum.find(chunks, &(&1["chunk_id"] == c["chunk_id"])),
          true <- c["start_byte"] >= chunk["start_byte"] and c["end_byte"] <= chunk["end_byte"],
+         true <- document_citation?(s, c),
          quote <- binary_part(s["text"], c["start_byte"], c["end_byte"] - c["start_byte"]),
          true <- quote == c["quote"] and String.valid?(binary_part(s["text"], 0, c["start_byte"])) do
       true
@@ -228,6 +495,21 @@ defmodule IpseKnowledge.Evidence do
       Enum.all?(~w(selection_sha256 profile model dimensions encoding), &(a[&1] === b[&1]))
   end
 
+  @doc "Check a stored vector's input digest against the current raw source chunk."
+  def vector_input_matches_chunk?(vector, chunk) when is_map(vector) and is_map(chunk) do
+    with true <- vector["chunk_id"] === chunk["chunk_id"],
+         true <- is_binary(chunk["text"]),
+         {:ok, digest} <- Ipse.Extension.canonical_digest([chunk["text"]]) do
+      vector["input_sha256"] === digest
+    else
+      _ -> false
+    end
+  rescue
+    _ -> false
+  end
+
+  def vector_input_matches_chunk?(_, _), do: false
+
   def rank_lexical(sources, query, top_k, now) do
     with :ok <- inputs(sources, top_k, now), true <- text?(query, 1024) do
       active = Enum.filter(sources, &current?(&1, now))
@@ -270,6 +552,72 @@ defmodule IpseKnowledge.Evidence do
       false -> {:error, :invalid_query}
       other -> other
     end
+  end
+
+  @doc "Validate final hydrated chunks against exact index frequencies and global BM25 statistics."
+  def rank_indexed(sources, rows, query, stats, top_k, now) do
+    with :ok <- inputs(sources, top_k, now),
+         {:ok, terms} <- lexical_query_terms(query),
+         true <- is_list(rows) and length(rows) <= top_k,
+         true <- exact?(stats, ~w(chunks tokens dfs)),
+         true <- safe_uint?(stats["chunks"]) and stats["chunks"] <= 10_000,
+         true <- safe_uint?(stats["tokens"]) and is_map(stats["dfs"]),
+         true <- Enum.sort(Map.keys(stats["dfs"])) == Enum.sort(terms),
+         true <-
+           Enum.all?(stats["dfs"], fn {_, df} -> safe_uint?(df) and df <= stats["chunks"] end),
+         true <- length(Enum.uniq_by(rows, &{hd(&1.summary), &1.chunk})) == length(rows) do
+      n = stats["chunks"]
+      avg = if n == 0, do: 1.0, else: max(stats["tokens"] / n, 1.0)
+      by_key = Map.new(sources, &{&1["source_key"], &1})
+
+      Enum.reduce_while(rows, {:ok, []}, fn row, {:ok, candidates} ->
+        with source when is_map(source) <- by_key[hd(row.summary)],
+             true <-
+               current?(source, now) and source["generation"] == Enum.at(row.summary, 2) and
+                 source["content_sha256"] == Enum.at(row.summary, 3),
+             {:ok, chunks} <- chunks(source),
+             chunk when is_map(chunk) <- Enum.at(chunks, row.chunk),
+             tokens = tokens(chunk["text"]),
+             true <- length(tokens) == row.length,
+             counts = Enum.frequencies(tokens),
+             actual = Map.new(terms, &{&1, Map.get(counts, &1, 0)}),
+             true <- actual === row.terms do
+          score =
+            Enum.reduce(terms, 0.0, fn term, total ->
+              tf = actual[term]
+              df = stats["dfs"][term]
+
+              total +
+                :math.log(1.0 + (n - df + 0.5) / (df + 0.5)) * tf * 2.2 /
+                  (tf + 1.2 * (0.25 + 0.75 * row.length / avg))
+            end)
+
+          if finite?(score) and score == row.score,
+            do: {:cont, {:ok, candidates ++ [candidate(source, chunk, score, "bm25", query)]}},
+            else: {:halt, {:error, :invalid_index_selection}}
+        else
+          _ -> {:halt, {:error, :invalid_index_selection}}
+        end
+      end)
+      |> case do
+        {:ok, candidates} ->
+          {:ok,
+           result(order(candidates), [], [], %{
+             "as_of_ms" => now,
+             "chunks" => n,
+             "sources" => length(sources),
+             "method" => "bm25",
+             "complete" => true
+           })}
+
+        error ->
+          error
+      end
+    else
+      _ -> {:error, :invalid_index_selection}
+    end
+  rescue
+    _ -> {:error, :invalid_index_selection}
   end
 
   def rank_remote(sources, refs, query, top_k, now) do
@@ -989,7 +1337,19 @@ defmodule IpseKnowledge.Evidence do
   end
 
   defp chunk_id(s, start, finish),
-    do: id("chunk", [s["source_key"], s["generation"], s["content_sha256"], 1, start, finish])
+    do:
+      id("chunk", [
+        s["source_key"],
+        s["generation"],
+        s["content_sha256"],
+        chunk_version(s),
+        start,
+        finish
+      ])
+
+  defp chunking?(value), do: value === @collection_chunking
+  defp chunk_version(source), do: if(chunking?(Map.get(source, "chunking")), do: 2, else: 1)
+  defp chunk_bytes(source), do: if(chunk_version(source) == 2, do: 4096, else: 2048)
 
   defp split_utf8("", _, _, acc), do: Enum.reverse(acc)
 
@@ -1028,7 +1388,13 @@ defmodule IpseKnowledge.Evidence do
 
   defp citation_shape?(c),
     do:
-      exact?(c, @citation) and c["version"] == 1 and identifier?(c["source_id"], 256) and
+      ((exact?(c, @citation) and c["version"] == 1) or
+         (exact?(c, @citation ++ ["document"]) and c["version"] == 2 and
+            document_location?(c["document"])) or
+         ((exact?(c, @citation ++ ["chunking"]) or
+             (exact?(c, @citation ++ ~w(chunking document)) and document_location?(c["document"]))) and
+            c["version"] == 3 and chunking?(c["chunking"]))) and
+        identifier?(c["source_id"], 256) and
         sha256?(c["source_key"]) and positive?(c["generation"]) and sha256?(c["content_sha256"]) and
         sha256?(c["chunk_id"]) and is_integer(c["start_byte"]) and c["start_byte"] >= 0 and
         is_integer(c["end_byte"]) and c["end_byte"] > c["start_byte"] and text?(c["quote"], 1024) and
@@ -1036,6 +1402,344 @@ defmodule IpseKnowledge.Evidence do
         sha256(c["quote"]) == c["quote_sha256"] and text?(c["uri"], 512) and
         timestamp?(c["observed_at_ms"]) and optional_time?(c["event_at_ms"]) and
         origin?(c["origin"])
+
+  @doc "Validate the bounded typed extraction receipt against the complete provided text."
+  def valid_document?(receipt, text), do: valid_document?(receipt, text, nil)
+
+  def valid_document?(receipt, text, chunking) do
+    metadata = document_body(receipt)
+
+    (is_nil(chunking) or chunking?(chunking)) and document_metadata?(metadata) and is_binary(text) and
+      String.valid?(text) and
+      byte_size(text) in 1..65_536 and
+      List.last(metadata["segments"])["end_byte"] == byte_size(text) and
+      document_segments?(metadata["segments"], text) and
+      length(
+        chunk_spans(%{
+          "text" => text,
+          "origin" => %{"receipt" => receipt},
+          "chunking" => chunking
+        })
+      ) <= 32
+  rescue
+    _ -> false
+  end
+
+  @doc "Pack typed document metadata without widening the State transport depth."
+  def document_storage_receipt!(receipt) do
+    if receipt["version"] in [1, 2] and document_metadata?(receipt) do
+      bytes = IO.iodata_to_binary(JSON.encode!(receipt))
+
+      packed =
+        if byte_size(bytes) <= 2048 do
+          %{
+            "kind" => "document_extraction",
+            "version" => 3,
+            "document" => bytes,
+            "sha256" => sha256(bytes)
+          }
+        else
+          receipt
+          |> Map.take(
+            ~w(kind format original_sha256 original_bytes extraction_version status acquisition)
+          )
+          |> Map.merge(%{
+            "version" => 4,
+            "manifest_sha256" => sha256(bytes),
+            "manifest_bytes" => byte_size(bytes),
+            "segment_count" => length(receipt["segments"]),
+            "warning_count" => length(receipt["warnings"]),
+            "manifest_ref" => nil
+          })
+        end
+
+      if json_bounded?(packed, 3072),
+        do: packed,
+        else: raise(ArgumentError, "document metadata exceeds its storage envelope")
+    else
+      raise ArgumentError, "invalid document metadata"
+    end
+  end
+
+  @doc "Read typed metadata only; its receipt supplies no acquisition or current-use authority."
+  def document_receipt(source) do
+    case get_in(source, ["origin", "receipt"]) do
+      %{"version" => 4} = reference ->
+        case document_manifest(reference, source["document"]) do
+          {:ok, body} -> body
+          _ -> nil
+        end
+
+      receipt ->
+        document_body(receipt)
+    end
+  end
+
+  @doc "Validate a complete privately assembled manifest against its compact storage descriptor."
+  def document_manifest(reference, body) do
+    with true <- document_reference?(reference) and document_metadata?(body),
+         true <-
+           Map.take(
+             reference,
+             ~w(kind format original_sha256 original_bytes extraction_version status)
+           ) ===
+             Map.take(
+               body,
+               ~w(kind format original_sha256 original_bytes extraction_version status)
+             ),
+         true <-
+           get_in(reference, ["acquisition", "path"]) === get_in(body, ["acquisition", "path"]),
+         body =
+           if(reference["acquisition"],
+             do: Map.put(body, "acquisition", reference["acquisition"]),
+             else: body
+           ),
+         bytes = IO.iodata_to_binary(JSON.encode!(body)),
+         true <-
+           byte_size(bytes) == reference["manifest_bytes"] and
+             sha256(bytes) == reference["manifest_sha256"],
+         true <-
+           length(body["segments"]) == reference["segment_count"] and
+             length(body["warnings"]) == reference["warning_count"] do
+      {:ok, body}
+    else
+      _ -> {:error, :invalid_document_manifest}
+    end
+  rescue
+    _ -> {:error, :invalid_document_manifest}
+  end
+
+  @doc "Validate only a compact descriptor. Its digest is not a readable extraction manifest."
+  def document_reference?(reference) do
+    fields =
+      ~w(kind version format original_sha256 original_bytes extraction_version status manifest_sha256 manifest_bytes segment_count warning_count manifest_ref)
+
+    fields =
+      if Map.has_key?(reference, "acquisition"), do: fields ++ ["acquisition"], else: fields
+
+    exact?(reference, fields) and reference["kind"] == "document_extraction" and
+      reference["version"] === 4 and
+      reference["format"] == "docx" and sha256?(reference["original_sha256"]) and
+      safe_positive?(reference["original_bytes"]) and reference["original_bytes"] <= 16_777_216 and
+      identifier?(reference["extraction_version"], 128) and
+      Regex.match?(~r/\Aipse-documents-v[1-9][0-9]{0,5}\z/, reference["extraction_version"]) and
+      reference["status"] in ~w(complete partial) and
+      reference["manifest_bytes"] in 2049..16_384 and sha256?(reference["manifest_sha256"]) and
+      reference["segment_count"] in 1..32 and reference["warning_count"] in 0..32 and
+      reference["status"] == "complete" == (reference["warning_count"] == 0) and
+      (not Map.has_key?(reference, "acquisition") or
+         document_acquisition?(reference["acquisition"])) and
+      (is_nil(reference["manifest_ref"]) or
+         (exact?(reference["manifest_ref"], ~w(key sha256)) and
+            Enum.all?(~w(key sha256), &sha256?(reference["manifest_ref"][&1])))) and
+      json_bounded?(reference, 3072)
+  rescue
+    _ -> false
+  end
+
+  defp document_body(%{"kind" => "document_extraction", "version" => 3} = receipt) do
+    with true <-
+           exact?(receipt, ~w(kind version document sha256)) and json_bounded?(receipt, 3072),
+         bytes when is_binary(bytes) <- receipt["document"],
+         true <- byte_size(bytes) <= 2048 and receipt["sha256"] == sha256(bytes),
+         body when is_map(body) <- JSON.decode!(bytes),
+         true <- body["version"] in [1, 2] and body["kind"] == "document_extraction",
+         true <- IO.iodata_to_binary(JSON.encode!(body)) == bytes do
+      body
+    else
+      _ -> nil
+    end
+  rescue
+    _ -> nil
+  end
+
+  defp document_body(%{"kind" => "document_extraction", "version" => version} = receipt)
+       when version in [1, 2], do: receipt
+
+  defp document_body(_), do: nil
+
+  defp document_metadata?(%{"version" => 3} = receipt),
+    do: document_metadata?(document_body(receipt))
+
+  defp document_metadata?(receipt) do
+    fields =
+      ~w(kind version format original_sha256 original_bytes extraction_version status warnings segments)
+
+    fields = if receipt["version"] == 2, do: fields ++ ["acquisition"], else: fields
+
+    exact?(
+      receipt,
+      fields
+    ) and
+      receipt["kind"] == "document_extraction" and receipt["version"] in [1, 2] and
+      (receipt["version"] != 2 or document_acquisition?(receipt["acquisition"])) and
+      receipt["format"] == "docx" and
+      sha256?(receipt["original_sha256"]) and safe_positive?(receipt["original_bytes"]) and
+      receipt["original_bytes"] <= 16_777_216 and identifier?(receipt["extraction_version"], 128) and
+      Regex.match?(~r/\Aipse-documents-v[1-9][0-9]{0,5}\z/, receipt["extraction_version"]) and
+      receipt["status"] in ~w(complete partial) and is_list(receipt["warnings"]) and
+      length(receipt["warnings"]) <= 32 and Enum.all?(receipt["warnings"], &is_map/1) and
+      receipt["status"] == "complete" == (receipt["warnings"] == []) and
+      is_list(receipt["segments"]) and length(receipt["segments"]) in 1..32 and
+      json_bounded?(receipt, 16_384) and
+      Enum.all?(receipt["segments"], fn segment ->
+        exact?(segment, ~w(start_byte end_byte text_sha256 locator)) and
+          safe_uint?(segment["start_byte"]) and safe_positive?(segment["end_byte"]) and
+          segment["end_byte"] > segment["start_byte"] and segment["end_byte"] <= 65_536 and
+          sha256?(segment["text_sha256"]) and locator?(segment["locator"])
+      end)
+  rescue
+    _ -> false
+  end
+
+  defp document_acquisition?(acquisition) do
+    exact?(acquisition, ~w(kind path operation_id)) and acquisition["kind"] == "workspace.read" and
+      identifier?(acquisition["path"], 1024) and Path.type(acquisition["path"]) == :relative and
+      not String.contains?(acquisition["path"], "\\") and
+      Enum.all?(String.split(acquisition["path"], "/"), &(&1 not in ["", ".", ".."])) and
+      is_binary(acquisition["operation_id"]) and
+      Regex.match?(~r/\A[0-9a-f]{32}\z/, acquisition["operation_id"])
+  end
+
+  defp document_segments?(segments, text) do
+    Enum.reduce_while(segments, {:ok, 0}, fn segment, {:ok, offset} ->
+      start = segment["start_byte"]
+      finish = segment["end_byte"]
+
+      if exact?(segment, ~w(start_byte end_byte text_sha256 locator)) and
+           safe_uint?(start) and safe_positive?(finish) and finish > start and
+           start == offset and finish <= byte_size(text) and locator?(segment["locator"]) and
+           sha256?(segment["text_sha256"]) and
+           sha256(binary_part(text, start, finish - start)) == segment["text_sha256"] and
+           String.valid?(binary_part(text, start, finish - start)) do
+        cond do
+          finish == byte_size(text) -> {:cont, {:ok, finish}}
+          binary_part(text, finish, 1) == "\n" -> {:cont, {:ok, finish + 1}}
+          true -> {:halt, :invalid}
+        end
+      else
+        {:halt, :invalid}
+      end
+    end) == {:ok, byte_size(text)}
+  end
+
+  defp locator?(locator) do
+    required = ~w(kind part paragraph)
+    optional = ~w(table row cell region annotation_id reference_site reference_range)
+
+    is_map(locator) and exact?(Map.drop(locator, optional), required) and
+      locator["kind"] in ~w(paragraph table_cell) and identifier?(locator["part"], 256) and
+      String.starts_with?(locator["part"], "word/") and
+      not String.contains?(locator["part"], ["..", "\\"]) and
+      safe_positive?(locator["paragraph"]) and
+      (locator["kind"] != "table_cell" or
+         Enum.all?(~w(table row cell), &safe_positive?(locator[&1]))) and
+      Enum.all?(
+        ~w(table row cell),
+        &(not Map.has_key?(locator, &1) or safe_positive?(locator[&1]))
+      ) and
+      (not Map.has_key?(locator, "region") or locator["region"] in ~w(header footer)) and
+      (not Map.has_key?(locator, "annotation_id") or identifier?(locator["annotation_id"], 64)) and
+      (not Map.has_key?(locator, "reference_site") or
+         reference_locator?(locator["reference_site"], ~w(byte_offset))) and
+      (not Map.has_key?(locator, "reference_range") or
+         reference_locator?(locator["reference_range"], ~w(start_byte end_byte)))
+  end
+
+  defp reference_locator?(locator, offsets) do
+    is_map(locator) and Enum.all?(offsets, &safe_uint?(locator[&1])) and
+      locator?(Map.drop(locator, offsets)) and
+      (offsets != ~w(start_byte end_byte) or locator["end_byte"] > locator["start_byte"])
+  end
+
+  defp document_source?(source) do
+    case get_in(source, ["origin", "receipt"]) do
+      %{"kind" => "document_extraction", "version" => 4} = reference ->
+        with true <- source["version"] in [2, 3],
+             {:ok, body} <- document_manifest(reference, source["document"]),
+             true <- body === source["document"],
+             do: valid_document?(body, source["text"], Map.get(source, "chunking")),
+             else: (_ -> false)
+
+      %{"kind" => "document_extraction"} = receipt ->
+        source["version"] in [1, 3] and not Map.has_key?(source, "document") and
+          valid_document?(receipt, source["text"], Map.get(source, "chunking"))
+
+      _ ->
+        source["version"] in [1, 3] and not Map.has_key?(source, "document")
+    end
+  end
+
+  defp chunk_spans(source) do
+    case document_receipt(source) do
+      %{"kind" => "document_extraction", "segments" => segments} ->
+        Enum.flat_map(segments, fn segment ->
+          split_utf8(
+            binary_part(
+              source["text"],
+              segment["start_byte"],
+              segment["end_byte"] - segment["start_byte"]
+            ),
+            chunk_bytes(source),
+            segment["start_byte"],
+            []
+          )
+        end)
+
+      _ ->
+        split_utf8(source["text"], chunk_bytes(source), 0, [])
+    end
+  end
+
+  defp document_location(source, start, finish) do
+    case document_receipt(source) do
+      %{"kind" => "document_extraction"} = receipt ->
+        case Enum.filter(
+               receipt["segments"],
+               &(start >= &1["start_byte"] and finish <= &1["end_byte"])
+             ) do
+          [segment] ->
+            %{
+              "version" => 1,
+              "original_sha256" => receipt["original_sha256"],
+              "extraction_version" => receipt["extraction_version"],
+              "status" => receipt["status"],
+              "locator" => segment["locator"],
+              "start_byte" => start - segment["start_byte"],
+              "end_byte" => finish - segment["start_byte"]
+            }
+
+          _ ->
+            nil
+        end
+
+      _ ->
+        nil
+    end
+  end
+
+  defp document_location?(location) do
+    exact?(
+      location,
+      ~w(version original_sha256 extraction_version status locator start_byte end_byte)
+    ) and
+      location["version"] == 1 and sha256?(location["original_sha256"]) and
+      identifier?(location["extraction_version"], 128) and
+      location["status"] in ~w(complete partial) and
+      locator?(location["locator"]) and safe_uint?(location["start_byte"]) and
+      safe_positive?(location["end_byte"]) and location["end_byte"] > location["start_byte"]
+  end
+
+  defp document_citation?(source, citation) do
+    case document_location(source, citation["start_byte"], citation["end_byte"]) do
+      nil ->
+        citation["version"] in [1, 3] and not Map.has_key?(citation, "document") and
+          not match?(%{"kind" => "document_extraction"}, get_in(source, ["origin", "receipt"]))
+
+      location ->
+        citation["version"] in [2, 3] and citation["document"] === location
+    end
+  end
 
   defp origin?(o),
     do:

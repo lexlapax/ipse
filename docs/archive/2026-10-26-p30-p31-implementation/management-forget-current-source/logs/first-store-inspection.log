@@ -1,0 +1,12 @@
+%{
+  domain_entries: [
+    %{
+      "fence_id" => "1b9c7a393242d48c7f69330e5d0ce505",
+      "first_operation_id" => "2ec3bc592634b172b4f37262696cb190",
+      "format" => "managed-metadata-v3",
+      "state" => "prepared"
+    }
+  ],
+  collection_root_count: 0,
+  management_journal_count: 0
+}

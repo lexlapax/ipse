@@ -1,0 +1,38 @@
+Running ExUnit with seed: 46872, max_cases: 8
+Excluding tags: [:test]
+Including tags: [ordinary_publication_deadline: true]
+
+
+06:43:24.822 [info] The function passed as a handler with ID "ordinary-publication-deadline-3db33ef6fa0ed5ce43ff871ac5a20232" is a local function.
+This means that it is either an anonymous function or a capture of a function without a module specified. That may cause a performance penalty when calling that handler. For more details see the note in `telemetry:attach/4` documentation.
+
+https://hexdocs.pm/telemetry/telemetry.html#attach/4
+.
+06:43:25.529 [info] The function passed as a handler with ID "ordinary-publication-deadline-8dd235ed4f43a42d5aae5958a78c39f5" is a local function.
+This means that it is either an anonymous function or a capture of a function without a module specified. That may cause a performance penalty when calling that handler. For more details see the note in `telemetry:attach/4` documentation.
+
+https://hexdocs.pm/telemetry/telemetry.html#attach/4
+.
+06:43:29.640 [info] The function passed as a handler with ID "ordinary-publication-deadline-7df457dd79f561dd41e9189ed9bbae53" is a local function.
+This means that it is either an anonymous function or a capture of a function without a module specified. That may cause a performance penalty when calling that handler. For more details see the note in `telemetry:attach/4` documentation.
+
+https://hexdocs.pm/telemetry/telemetry.html#attach/4
+.
+06:43:30.380 [info] The function passed as a handler with ID "ordinary-publication-deadline-d771787b04abaf02f334fd27b0ddf042" is a local function.
+This means that it is either an anonymous function or a capture of a function without a module specified. That may cause a performance penalty when calling that handler. For more details see the note in `telemetry:attach/4` documentation.
+
+https://hexdocs.pm/telemetry/telemetry.html#attach/4
+.
+06:43:34.488 [info] The function passed as a handler with ID "ordinary-publication-deadline-820a033de99dbb7f84500043bd937743" is a local function.
+This means that it is either an anonymous function or a capture of a function without a module specified. That may cause a performance penalty when calling that handler. For more details see the note in `telemetry:attach/4` documentation.
+
+https://hexdocs.pm/telemetry/telemetry.html#attach/4
+.
+06:43:38.662 [info] The function passed as a handler with ID "ordinary-publication-deadline-49aa3d1bc673e9af3cb70308d748c5e5" is a local function.
+This means that it is either an anonymous function or a capture of a function without a module specified. That may cause a performance penalty when calling that handler. For more details see the note in `telemetry:attach/4` documentation.
+
+https://hexdocs.pm/telemetry/telemetry.html#attach/4
+.
+Finished in 19.1 seconds (0.00s async, 19.1s sync)
+
+Result: 6 passed, 100 excluded

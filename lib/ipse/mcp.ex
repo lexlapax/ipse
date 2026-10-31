@@ -34,8 +34,8 @@ defmodule Ipse.MCP do
         {:error, _} = error ->
           {:halt, error}
 
-        {:unknown, message} ->
-          {:halt, {:error, message}}
+        {:unknown, _} = unknown ->
+          {:halt, unknown}
       end
     end)
   end
@@ -71,6 +71,15 @@ defmodule Ipse.MCP do
 
   def call(descriptor, args, cwd, resource \\ nil) do
     with :ok <- Schema.validate_arguments(descriptor.input_schema, args) do
+      resource =
+        case resource do
+          %{managed_tool: managed} when is_map(managed) ->
+            Map.put(resource, :managed_descriptor, descriptor)
+
+          _ ->
+            resource
+        end
+
       connection(descriptor.server, cwd, resource, fn client ->
         tools = catalog(client, descriptor.server)
         current = Enum.find(tools, &(&1.tool_id == descriptor.tool_id))
@@ -144,6 +153,145 @@ defmodule Ipse.MCP do
     end
   end
 
+  @doc "Consistency of an exact outgoing SDK request; current authority belongs to its Session owner."
+  def managed_request?(%{input_schema: schema} = descriptor, args, message) do
+    with :ok <- Schema.validate_arguments(schema, args),
+         :ok <- validate_call(descriptor, args) do
+      descriptor
+      |> manifest()
+      |> Jason.encode!()
+      |> Jason.decode!()
+      |> managed_request?(args, message)
+    else
+      _ -> false
+    end
+  rescue
+    _ -> false
+  end
+
+  # Historical manifests retain the actual public name and target. This checks
+  # their relationship to the recorded arguments only; JSON is not a capability.
+  def managed_request?(%{"schema_version" => 1} = descriptor, args, message)
+      when is_map(args) and is_map(message) do
+    kind = Map.get(descriptor, "kind", "tool")
+    fields = ~w(schema_version tool_id server_id name origin descriptor_sha256 risk)
+    fields = if kind == "tool", do: fields, else: fields ++ ~w(kind source)
+    target = if kind == "tool", do: descriptor["name"], else: descriptor["source"]
+
+    with true <- Enum.sort(Map.keys(descriptor)) == Enum.sort(fields),
+         true <- kind in ~w(tool resource prompt),
+         true <- is_binary(target) and String.valid?(target) and byte_size(target) in 1..2048,
+         true <- descriptor["name"] == target,
+         true <- Schema.sha256?(descriptor["descriptor_sha256"]),
+         true <- descriptor["risk"] == "external_requires_approval",
+         true <- Enum.sort(Map.keys(message)) == ~w(id jsonrpc method params),
+         true <- message["jsonrpc"] == "2.0" and rpc_id?(message["id"]),
+         {:ok, method, params} <- managed_rpc(kind, target, args),
+         true <- message["method"] == method and message["params"] === params,
+         :ok <- Schema.validate_object(message),
+         true <- byte_size(Jason.encode!(message)) <= 32_768 do
+      true
+    else
+      _ -> false
+    end
+  rescue
+    _ -> false
+  end
+
+  def managed_request?(_, _, _), do: false
+
+  @doc false
+  def managed_discovery_request?(%{"server" => public, "initialize_params" => initial}, message)
+      when is_map(public) and is_map(initial) and is_map(message) do
+    with true <- discovery_initialize_params?(initial),
+         true <- Schema.validate_object(message) == :ok,
+         true <- byte_size(Jason.encode!(message)) <= 32_768,
+         true <- message["jsonrpc"] == "2.0" do
+      case message do
+        %{"method" => "initialize", "id" => id, "params" => params} ->
+          Enum.sort(Map.keys(message)) == ~w(id jsonrpc method params) and rpc_id?(id) and
+            params === initial
+
+        %{"method" => "notifications/initialized"} ->
+          Enum.sort(Map.keys(message)) == ~w(jsonrpc method)
+
+        %{"method" => method, "id" => id, "params" => params}
+        when method in ~w(tools/list resources/list prompts/list) ->
+          key = method |> String.split("/") |> hd()
+
+          Enum.sort(Map.keys(message)) == ~w(id jsonrpc method params) and rpc_id?(id) and
+            is_list(public[key]) and public[key] != [] and discovery_cursor?(params)
+
+        _ ->
+          false
+      end
+    else
+      _ -> false
+    end
+  rescue
+    _ -> false
+  end
+
+  def managed_discovery_request?(_, _), do: false
+
+  def managed_discovery_initialize_params do
+    MCP.Protocol.Messages.Initialize.Params.to_map(%MCP.Protocol.Messages.Initialize.Params{
+      protocol_version: MCP.Protocol.protocol_version(),
+      capabilities: %MCP.Protocol.Capabilities.ClientCapabilities{},
+      client_info: %MCP.Protocol.Types.Implementation{
+        name: "ipse",
+        version: to_string(Application.spec(:ipse, :vsn))
+      }
+    })
+  end
+
+  defp discovery_initialize_params?(params) do
+    case params do
+      %{
+        "protocolVersion" => "2025-11-25",
+        "capabilities" => %{},
+        "clientInfo" => %{"name" => "ipse", "version" => version} = client
+      } ->
+        Enum.sort(Map.keys(params)) == ~w(capabilities clientInfo protocolVersion) and
+          map_size(params["capabilities"]) == 0 and
+          Enum.sort(Map.keys(client)) == ~w(name version) and
+          is_binary(version) and byte_size(version) in 1..128 and
+          Regex.match?(~r/\A[A-Za-z0-9][A-Za-z0-9._+\-]*\z/, version)
+
+      _ ->
+        false
+    end
+  end
+
+  defp discovery_cursor?(params) when is_map(params) do
+    case Map.to_list(params) do
+      [] ->
+        true
+
+      [{"cursor", cursor}] ->
+        is_binary(cursor) and String.valid?(cursor) and byte_size(cursor) in 1..1024
+
+      _ ->
+        false
+    end
+  end
+
+  defp discovery_cursor?(_), do: false
+
+  defp managed_rpc("resource", target, args) when map_size(args) == 0,
+    do: {:ok, "resources/read", %{"uri" => target}}
+
+  defp managed_rpc(kind, target, args) when kind in ~w(tool prompt) do
+    params =
+      if args == %{}, do: %{"name" => target}, else: %{"name" => target, "arguments" => args}
+
+    {:ok, if(kind == "tool", do: "tools/call", else: "prompts/get"), params}
+  end
+
+  defp managed_rpc(_, _, _), do: :error
+  defp rpc_id?(id) when is_integer(id), do: Schema.safe_uint?(id)
+  defp rpc_id?(id), do: is_binary(id) and String.valid?(id) and byte_size(id) in 1..128
+
   defp connection(server, cwd, resource, fun) do
     caller = self()
 
@@ -175,6 +323,8 @@ defmodule Ipse.MCP do
   end
 
   defp linked_connection(server, cwd, resource, fun) do
+    possible_effect = :atomics.new(1, [])
+
     transport_module =
       if Map.get(server, :transport) == :http, do: Ipse.MCP.HTTPTransport, else: StdioTransport
 
@@ -185,7 +335,8 @@ defmodule Ipse.MCP do
          cwd: cwd,
          resource: resource,
          cleanup_owner: self(),
-         cleanup_scope: Ipse.Session.Resources.current()},
+         cleanup_scope: Ipse.Session.Resources.current(),
+         possible_effect: possible_effect},
       client_info: %{name: "ipse", version: to_string(Application.spec(:ipse, :vsn))},
       request_timeout: server.timeout_ms,
       request_handlers: %{"ping" => fn _ -> {:ok, %{}} end},
@@ -195,17 +346,18 @@ defmodule Ipse.MCP do
     case MCP.Client.start_link(opts) do
       {:ok, client} ->
         transport = MCP.Client.transport(client)
+        watch_transport(client, transport, self())
 
         result =
           try do
-            case MCP.Client.connect(client, server.timeout_ms) do
-              {:ok, %{protocol_version: "2025-11-25", server_capabilities: capabilities}} ->
-                if configured_capabilities?(capabilities, server),
-                  do: fun.(client),
-                  else: {:error, "MCP server lacks a configured capability."}
-
-              _ ->
-                {:error, "MCP initialization failed or the pinned protocol is unavailable."}
+            with :ok <- track_managed_transport(resource, transport),
+                 {:ok, %{protocol_version: "2025-11-25", server_capabilities: capabilities}} <-
+                   MCP.Client.connect(client, server.timeout_ms) do
+              if configured_capabilities?(capabilities, server),
+                do: fun.(client),
+                else: {:error, "MCP server lacks a configured capability."}
+            else
+              _ -> {:error, "MCP initialization failed or the pinned protocol is unavailable."}
             end
           rescue
             _ -> {:error, "MCP discovery or initialization returned invalid data."}
@@ -229,12 +381,45 @@ defmodule Ipse.MCP do
             0 -> cleanup
           end
 
-        if cleanup == :ok, do: result, else: unknown()
+        cond do
+          cleanup != :ok -> unknown()
+          :atomics.get(possible_effect, 1) == 1 and match?({:error, _}, result) -> unknown()
+          true -> result
+        end
 
       _ ->
         {:error, "Could not launch the configured MCP server."}
     end
   end
+
+  # The SDK handles transport-close notifications but does not monitor an
+  # unlinked HTTP transport. Wake pending calls if that process dies abruptly.
+  defp watch_transport(client, transport, owner) do
+    spawn(fn ->
+      client_ref = Process.monitor(client)
+      transport_ref = Process.monitor(transport)
+      owner_ref = Process.monitor(owner)
+
+      receive do
+        {:DOWN, ^transport_ref, :process, ^transport, reason} when reason != :normal ->
+          send(client, {:mcp_transport_closed, :transport_lost})
+
+        {:DOWN, ref, :process, _, _} when ref in [client_ref, transport_ref, owner_ref] ->
+          :ok
+      end
+    end)
+  end
+
+  defp track_managed_transport(%{managed_tool: managed}, transport) when is_map(managed) do
+    case Ipse.Session.Resources.current() do
+      scope when is_pid(scope) -> GenServer.call(scope, {:track_task, transport})
+      _ -> {:error, :cleanup_scope_closed}
+    end
+  catch
+    :exit, _ -> {:error, :cleanup_scope_closed}
+  end
+
+  defp track_managed_transport(_, _), do: :ok
 
   defp configured_capabilities?(capabilities, server) do
     Enum.all?([{:tools, :tools}, {:resources, :resources}, {:prompts, :prompts}], fn {key,

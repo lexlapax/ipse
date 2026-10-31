@@ -1,0 +1,333 @@
+{
+  "version": 1,
+  "kind": "completed_private_recipe_cost_reduction",
+  "model_seed_generation": 1000,
+  "actual_native_mutations": 0,
+  "complete_production_recipe": false,
+  "initial_migration": {
+    "records": 5277,
+    "exact_client_prepare_mutations": 11168,
+    "individual_accept_total": 35085,
+    "proposed_eight_accept_total": 30468,
+    "proposed_native_page_total": 19300,
+    "native_page_headroom_before_omissions": 13468,
+    "omitted": "actual Known(target)/incoming union and missing seed history, epoch/plan/adopt/progress/abort/commit/close/checkpoint/reclaim IDs and receipts; native-page API is not implemented"
+  },
+  "rebuild_migration": {
+    "records": 6910,
+    "exact_client_prepare_mutations": 16684,
+    "individual_accept_total": 51852,
+    "proposed_eight_accept_total": 45806,
+    "proposed_native_page_total": 29122,
+    "native_page_headroom_before_omissions": 3646,
+    "omitted": "actual Known(target)/incoming union and missing seed history, epoch/plan/adopt/progress/abort/commit/close/checkpoint/reclaim IDs and receipts; native-page API is not implemented"
+  },
+  "actual_client_part_layout_comparison": [
+    {
+      "records": 5277,
+      "changed_part_layouts": 0,
+      "cost_histogram": [
+        {
+          "values": 2510,
+          "parts": 1,
+          "mutations": 1
+        },
+        {
+          "values": 380,
+          "parts": 2,
+          "mutations": 1
+        },
+        {
+          "values": 1,
+          "parts": 3,
+          "mutations": 2
+        },
+        {
+          "values": 133,
+          "parts": 4,
+          "mutations": 2
+        },
+        {
+          "values": 1001,
+          "parts": 5,
+          "mutations": 3
+        },
+        {
+          "values": 1,
+          "parts": 6,
+          "mutations": 3
+        },
+        {
+          "values": 1,
+          "parts": 7,
+          "mutations": 4
+        },
+        {
+          "values": 1250,
+          "parts": 8,
+          "mutations": 4
+        }
+      ]
+    },
+    {
+      "records": 6910,
+      "changed_part_layouts": 0,
+      "cost_histogram": [
+        {
+          "values": 2635,
+          "parts": 1,
+          "mutations": 1
+        },
+        {
+          "values": 505,
+          "parts": 2,
+          "mutations": 1
+        },
+        {
+          "values": 2,
+          "parts": 3,
+          "mutations": 2
+        },
+        {
+          "values": 265,
+          "parts": 4,
+          "mutations": 2
+        },
+        {
+          "values": 1001,
+          "parts": 5,
+          "mutations": 3
+        },
+        {
+          "values": 1,
+          "parts": 6,
+          "mutations": 3
+        },
+        {
+          "values": 1,
+          "parts": 7,
+          "mutations": 4
+        },
+        {
+          "values": 2500,
+          "parts": 8,
+          "mutations": 4
+        }
+      ]
+    }
+  ],
+  "initial_families": {
+    "catalog": {
+      "records": 64,
+      "logical_bytes": 174493,
+      "packed_bytes": 193124
+    },
+    "data": {
+      "records": 2000,
+      "logical_bytes": 28230772,
+      "packed_bytes": 29363772
+    },
+    "genent": {
+      "records": 157,
+      "logical_bytes": 537760,
+      "packed_bytes": 582565
+    },
+    "generation": {
+      "records": 1,
+      "logical_bytes": 30908,
+      "packed_bytes": 32800
+    },
+    "genfact": {
+      "records": 125,
+      "logical_bytes": 2715375,
+      "packed_bytes": 2867125
+    },
+    "gengrp": {
+      "records": 125,
+      "logical_bytes": 450110,
+      "packed_bytes": 494610
+    },
+    "genjob": {
+      "records": 1,
+      "logical_bytes": 37788,
+      "packed_bytes": 40241
+    },
+    "genman": {
+      "records": 8,
+      "logical_bytes": 164099,
+      "packed_bytes": 171440
+    },
+    "genrun": {
+      "records": 157,
+      "logical_bytes": 537947,
+      "packed_bytes": 582752
+    },
+    "genruns": {
+      "records": 8,
+      "logical_bytes": 29661,
+      "packed_bytes": 32511
+    },
+    "gensrc": {
+      "records": 125,
+      "logical_bytes": 1223890,
+      "packed_bytes": 1334515
+    },
+    "gensum": {
+      "records": 125,
+      "logical_bytes": 1264000,
+      "packed_bytes": 1349250
+    },
+    "genvec": {
+      "records": 1250,
+      "logical_bytes": 56330000,
+      "packed_bytes": 56620000
+    },
+    "lexical": {
+      "records": 1,
+      "logical_bytes": 22921,
+      "packed_bytes": 24355
+    },
+    "lexjob": {
+      "records": 1,
+      "logical_bytes": 29539,
+      "packed_bytes": 31506
+    },
+    "lexp": {
+      "records": 4,
+      "logical_bytes": 31215,
+      "packed_bytes": 31941
+    },
+    "lexr": {
+      "records": 125,
+      "logical_bytes": 1349361,
+      "packed_bytes": 1379861
+    },
+    "source": {
+      "records": 1000,
+      "logical_bytes": 883890,
+      "packed_bytes": 1090890
+    }
+  },
+  "rebuild_families": {
+    "catalog": {
+      "records": 64,
+      "logical_bytes": 174493,
+      "packed_bytes": 193124
+    },
+    "data": {
+      "records": 2000,
+      "logical_bytes": 28230772,
+      "packed_bytes": 29363772
+    },
+    "genent": {
+      "records": 157,
+      "logical_bytes": 537760,
+      "packed_bytes": 582565
+    },
+    "generation": {
+      "records": 1,
+      "logical_bytes": 30908,
+      "packed_bytes": 32800
+    },
+    "genfact": {
+      "records": 250,
+      "logical_bytes": 5670750,
+      "packed_bytes": 5974250
+    },
+    "gengrp": {
+      "records": 250,
+      "logical_bytes": 900220,
+      "packed_bytes": 989220
+    },
+    "genjob": {
+      "records": 1,
+      "logical_bytes": 37854,
+      "packed_bytes": 40309
+    },
+    "genman": {
+      "records": 16,
+      "logical_bytes": 328198,
+      "packed_bytes": 342880
+    },
+    "genrun": {
+      "records": 157,
+      "logical_bytes": 537947,
+      "packed_bytes": 582752
+    },
+    "genruns": {
+      "records": 8,
+      "logical_bytes": 29661,
+      "packed_bytes": 32511
+    },
+    "gensrc": {
+      "records": 125,
+      "logical_bytes": 1223890,
+      "packed_bytes": 1334515
+    },
+    "gensum": {
+      "records": 250,
+      "logical_bytes": 2528000,
+      "packed_bytes": 2698500
+    },
+    "genvec": {
+      "records": 2500,
+      "logical_bytes": 112660000,
+      "packed_bytes": 113240000
+    },
+    "lexical": {
+      "records": 1,
+      "logical_bytes": 22921,
+      "packed_bytes": 24355
+    },
+    "lexjob": {
+      "records": 1,
+      "logical_bytes": 29542,
+      "packed_bytes": 31509
+    },
+    "lexp": {
+      "records": 4,
+      "logical_bytes": 31215,
+      "packed_bytes": 31941
+    },
+    "lexr": {
+      "records": 125,
+      "logical_bytes": 1349361,
+      "packed_bytes": 1379861
+    },
+    "source": {
+      "records": 1000,
+      "logical_bytes": 883890,
+      "packed_bytes": 1090890
+    }
+  },
+  "maximum_public_records_at_observed_invocation_boundary": 6910,
+  "maximum_active_stages_at_observed_invocation_boundary": 3,
+  "conservative_public_plus_all_sixteen_maximal_stage_slots": 7102,
+  "key_bound_scope": "live record-map slots only; 12 per maximal document stage (10 parts/header/ready), excludes unimplemented maintenance control keys; inner-action/orphan/metadata/native allocation peaks not modeled",
+  "legacy_full_public_finalization": {
+    "scope": "actual frozen ResultPublication encoder, excludes the extra checkpoint inspection; not Session bytes or current optional compact output",
+    "replies": 654,
+    "kinds": {
+      "inline": 334,
+      "sdk2_paged": 320
+    },
+    "document_bytes": 10719368,
+    "output_events": 3344,
+    "result_source_slots": 320,
+    "maximum_document_bytes": 39764,
+    "source_limit_minimum_sessions": 5
+  },
+  "operation_history": {
+    "scope": "synthetic unique wrapper operation IDs/request digests, not native commit receipts; an empty map at generation1000 has no supplied corresponding native history",
+    "limit": 32768,
+    "modeled_unique_mutations": 28258,
+    "ordered_ids_digest": "4c5137b3f542fd0e6b676b639a91f3c3d9b9acbe7a22a981ab3ceb8a3304e489",
+    "initial_plus_rebuild_headroom_before_missing_baseline": 4510
+  },
+  "journal": {
+    "modeled_action_events": 707516,
+    "modeled_request_outcome_pair_bytes": 1272006894,
+    "generation_independent_raw_action_events": 128084,
+    "lower_bound_scope": "model request/outcome pairs at synthetic generation1000; excludes Session metadata, invocation inputs, approvals, result pages/messages/header and missing public producer"
+  }
+}

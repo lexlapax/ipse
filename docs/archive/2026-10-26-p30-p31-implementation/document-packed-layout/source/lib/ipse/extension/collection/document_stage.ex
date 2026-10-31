@@ -1,0 +1,786 @@
+defmodule Ipse.Extension.Collection.DocumentStage do
+  @moduledoc """
+  Bounded inbound values for the fixed document profile.
+
+  This internal adapter supplies no authority. Its caller must have journaled
+  the exact request and revalidated the operator/project binding. Fixed stage
+  slots are reusable; epochs and the opening owner fence stale continuations.
+  Every mutation uses one ordinary Collection CAS, including stage consumption.
+  No callback retries a conflict or an interrupted mutation.
+  """
+  alias Ipse.{JSON, Usage}
+  alias Ipse.Extension.{Collection, ResultDocument}
+  alias Ipse.Extension.Collection.{Directory, Profile}
+  @body_bytes 60 * 1024
+  @part_bytes 6144
+  @parts 10
+  @inline_bytes 8192
+  @publish_deadline_key {__MODULE__, :publish_before_ms}
+  @slots 16
+  @ttl_ms 3_600_000
+  @error {:error, :document_store_refused}
+
+  def limits,
+    do: %{
+      body_bytes: @body_bytes,
+      part_bytes: @part_bytes,
+      inline_bytes: @inline_bytes,
+      slots: @slots,
+      parts: @parts
+    }
+
+  def request?(r) when is_map(r) do
+    shape =
+      case r["op"] do
+        "value.write_parts" ->
+          exact?(
+            r,
+            ~w(op slot epoch key expected_revision byte_count sha256 offset data publish generation)
+          ) and
+            public_key?(r["key"]) and JSON.safe_uint?(r["expected_revision"]) and
+            is_integer(r["byte_count"]) and r["byte_count"] in 2..@body_bytes and
+            JSON.sha256?(r["sha256"]) and JSON.safe_uint?(r["offset"]) and
+            is_boolean(r["publish"]) and is_list(r["data"]) and length(r["data"]) in 1..2 and
+            Enum.all?(
+              r["data"],
+              &(is_binary(&1) and String.valid?(&1) and byte_size(&1) in 1..@part_bytes)
+            ) and
+            r["offset"] + Enum.sum(Enum.map(r["data"], &byte_size/1)) <= r["byte_count"]
+
+        op when op in ~w(value.put_inline value.prepare_inline) ->
+          fields = ~w(op key expected_revision byte_count sha256 data generation)
+          fields = if op == "value.prepare_inline", do: fields ++ ~w(slot epoch), else: fields
+
+          exact?(r, fields) and public_key?(r["key"]) and JSON.safe_uint?(r["expected_revision"]) and
+            is_binary(r["data"]) and String.valid?(r["data"]) and
+            byte_size(r["data"]) in 2..@inline_bytes and
+            is_integer(r["byte_count"]) and r["byte_count"] === byte_size(r["data"]) and
+            JSON.sha256?(r["sha256"]) and
+            JSON.sha256(r["data"]) == r["sha256"] and
+            match?({:ok, _}, ResultDocument.decode(r["data"], %{"type" => "object"}))
+
+        "value.open" ->
+          exact?(r, ~w(op slot epoch key expected_revision byte_count sha256 generation)) and
+            public_key?(r["key"]) and JSON.safe_uint?(r["expected_revision"]) and
+            is_integer(r["byte_count"]) and r["byte_count"] in 2..@body_bytes and
+            JSON.sha256?(r["sha256"])
+
+        "value.append" ->
+          exact?(r, ~w(op slot epoch offset data generation)) and
+            JSON.safe_uint?(r["offset"]) and is_binary(r["data"]) and
+            String.valid?(r["data"]) and byte_size(r["data"]) in 1..@part_bytes
+
+        op when op in ~w(value.seal value.abort value.reclaim stage.inspect) ->
+          exact?(r, ~w(op slot epoch generation))
+
+        "commit" ->
+          exact?(r, ~w(op stages generation)) and is_list(r["stages"]) and
+            length(r["stages"]) in 1..8 and
+            Enum.all?(r["stages"], &(exact?(&1, ~w(slot epoch)) and stage_ref?(&1))) and
+            length(Enum.uniq_by(r["stages"], & &1["slot"])) == length(r["stages"])
+
+        "value.read" ->
+          exact?(r, ~w(op key offset generation)) and public_key?(r["key"]) and
+            JSON.safe_uint?(r["offset"])
+
+        op when op in ~w(value.stat value.layout) ->
+          exact?(r, ~w(op key generation)) and public_key?(r["key"])
+
+        "value.index" ->
+          Directory.document_index_request?(r)
+
+        op when op in ~w(snapshot stage.list) ->
+          exact?(r, ~w(op))
+
+        _ ->
+          false
+      end
+
+    shape and (r["op"] in ~w(snapshot stage.list) or JSON.safe_uint?(r["generation"])) and
+      (r["op"] in ~w(commit value.put_inline value.read value.stat value.layout value.index snapshot stage.list) or
+         stage_ref?(r)) and
+      Ipse.Extension.validate(r) == :ok
+  rescue
+    _ -> false
+  end
+
+  def request?(_), do: false
+
+  def mutating?(r),
+    do:
+      r["op"] not in ~w(value.read value.stat value.layout value.index stage.inspect snapshot stage.list)
+
+  @doc "The owner is supplied by the trusted host, never by the worker request."
+  def owner?(owner),
+    do:
+      exact?(owner, ~w(project_id session_id identity_sha256 invocation_id)) and
+        JSON.sha256?(owner["project_id"]) and JSON.sha256?(owner["identity_sha256"]) and
+        id?(owner["session_id"]) and id?(owner["invocation_id"])
+
+  def execute(root, namespace, request, operation_id, owner),
+    do: execute(root, namespace, request, operation_id, owner, [])
+
+  @doc "Trusted host deadline only; never accepts deadline or authority fields in worker JSON."
+  def execute(root, namespace, request, operation_id, owner, opts) do
+    previous = Process.get(@publish_deadline_key)
+
+    with true <-
+           is_list(opts) and Keyword.keyword?(opts) and
+             Keyword.keys(opts) in [[], [:publish_before_ms]],
+         deadline = Keyword.get(opts, :publish_before_ms),
+         true <- is_nil(deadline) or (JSON.safe_uint?(deadline) and deadline > 0),
+         true <- is_nil(previous) or (JSON.safe_uint?(previous) and previous > 0),
+         deadline =
+           (case {previous, deadline} do
+              {nil, value} -> value
+              {value, nil} -> value
+              {a, b} -> min(a, b)
+            end),
+         true <- is_nil(deadline) or System.system_time(:millisecond) < deadline do
+      Process.put(@publish_deadline_key, deadline)
+
+      try do
+        execute_current(root, namespace, request, operation_id, owner)
+      after
+        if is_nil(previous),
+          do: Process.delete(@publish_deadline_key),
+          else: Process.put(@publish_deadline_key, previous)
+      end
+    else
+      _ -> @error
+    end
+  rescue
+    _ -> @error
+  end
+
+  defp execute_current(root, namespace, request, operation_id, owner) do
+    with true <- request?(request) and owner?(owner) and id?(operation_id),
+         {:ok, snapshot} <- read(root, namespace, %{"op" => "snapshot"}),
+         true <-
+           request["op"] in ~w(snapshot stage.list) or
+             request["generation"] == snapshot["generation"] do
+      dispatch(root, namespace, request, operation_id, owner, snapshot)
+    else
+      _ -> @error
+    end
+  rescue
+    _ -> @error
+  end
+
+  defp dispatch(_, _, %{"op" => "snapshot"}, _, _, snapshot),
+    do:
+      {:ok,
+       Map.put(snapshot, "document_store", %{
+         "version" => 2,
+         "inline_bytes" => @inline_bytes,
+         "write_parts" => 2
+       })}
+
+  defp dispatch(root, ns, %{"op" => "value.index"} = r, _, _, _),
+    do: Collection.document_index(root, ns, r)
+
+  defp dispatch(root, ns, %{"op" => "value.write_parts"} = r, id, owner, s) do
+    with {:ok, h} <- writing_header(root, ns, r, owner, s),
+         {:ok, old} <- record(root, ns, r["key"], s),
+         true <- revision(old) == r["expected_revision"],
+         true <- h["value"]["parts"] + length(r["data"]) <= @parts,
+         {:ok, previous, rows} <- writing_parts(root, ns, r, h["value"], s),
+         {:ok, nil} <- record(root, ns, ready(r), s),
+         n = h["value"]["parts"],
+         true <-
+           Enum.all?(n..(n + length(r["data"]) - 1), fn i ->
+             record(root, ns, part(r, i), s) == {:ok, nil}
+           end),
+         offset = r["offset"] + Enum.sum(Enum.map(r["data"], &byte_size/1)),
+         header =
+           h["value"] |> Map.put("offset", offset) |> Map.put("parts", n + length(r["data"])) do
+      if offset == r["byte_count"] do
+        finish_write(root, ns, r, id, s, h, header, previous ++ r["data"], rows)
+      else
+        {changes, _} =
+          Enum.map_reduce(Enum.with_index(r["data"], n), r["offset"], fn {data, i}, at ->
+            {change(part(r, i), 0, %{"epoch" => r["epoch"], "offset" => at, "data" => data}),
+             at + byte_size(data)}
+          end)
+
+        commit(
+          root,
+          ns,
+          s,
+          id,
+          [change(header(r), h["revision"], header) | changes],
+          header["expires_at_ms"]
+        )
+        |> write_receipt(r, header, "open")
+      end
+    else
+      _ -> @error
+    end
+  end
+
+  defp dispatch(root, ns, %{"op" => "value.put_inline"} = r, id, _owner, s) do
+    with {:ok, old} <- record(root, ns, r["key"], s),
+         true <- revision(old) == r["expected_revision"],
+         {:ok, packed} <- inline_packed(r) do
+      commit(root, ns, s, id, [change(r["key"], revision(old), packed)])
+      |> inline_receipt(r, nil)
+    else
+      _ -> @error
+    end
+  end
+
+  defp dispatch(root, ns, %{"op" => "value.prepare_inline"} = r, id, owner, s) do
+    with {:ok, nil} <- record(root, ns, header(r), s),
+         {:ok, nil} <- record(root, ns, ready(r), s),
+         {:ok, packed} <- inline_packed(r),
+         expiry = System.system_time(:millisecond) + @ttl_ms,
+         header =
+           Map.merge(Map.take(r, ~w(epoch key expected_revision byte_count sha256)), %{
+             "version" => 1,
+             "owner" => owner,
+             "offset" => r["byte_count"],
+             "parts" => 0,
+             "state" => "sealed",
+             "expires_at_ms" => expiry
+           }) do
+      commit(
+        root,
+        ns,
+        s,
+        id,
+        [change(header_key(r["slot"]), 0, header), change(ready(r), 0, packed)],
+        expiry
+      )
+      |> inline_receipt(r, Map.put(Map.drop(header, ["owner", "parts"]), "slot", r["slot"]))
+    else
+      _ -> @error
+    end
+  end
+
+  defp dispatch(root, ns, %{"op" => "stage.list"}, _, _, s) do
+    Enum.reduce_while(0..(@slots - 1), {:ok, []}, fn slot, {:ok, rows} ->
+      case record(root, ns, header_key(slot), s) do
+        {:ok, nil} ->
+          {:cont, {:ok, rows}}
+
+        {:ok, row} ->
+          {:cont,
+           {:ok,
+            rows ++
+              [
+                Map.put(
+                  Map.take(
+                    row["value"],
+                    ~w(epoch state byte_count offset expires_at_ms)
+                  ),
+                  "slot",
+                  slot
+                )
+              ]}}
+
+        _ ->
+          {:halt, @error}
+      end
+    end)
+    |> case do
+      {:ok, rows} -> {:ok, Map.put(s, "stages", rows)}
+      _ -> @error
+    end
+  end
+
+  defp dispatch(root, ns, %{"op" => "value.open"} = r, id, owner, s) do
+    with {:ok, nil} <- record(root, ns, header(r), s),
+         {:ok, nil} <- record(root, ns, ready(r), s),
+         header =
+           Map.merge(Map.take(r, ~w(epoch key expected_revision byte_count sha256)), %{
+             "version" => 1,
+             "owner" => owner,
+             "offset" => 0,
+             "parts" => 0,
+             "state" => "open",
+             "expires_at_ms" => System.system_time(:millisecond) + @ttl_ms
+           }) do
+      commit(root, ns, s, id, [change(header_key(r["slot"]), 0, header)], header["expires_at_ms"])
+    else
+      _ -> @error
+    end
+  end
+
+  defp dispatch(root, ns, %{"op" => "value.append"} = r, id, owner, s) do
+    with {:ok, h} <- stage(root, ns, r, owner, s),
+         true <- not Map.has_key?(h["value"], "write_publish"),
+         true <- h["value"]["state"] == "open" and h["value"]["offset"] == r["offset"],
+         n = h["value"]["parts"],
+         true <- n < @parts,
+         next = r["offset"] + byte_size(r["data"]),
+         true <- next <= h["value"]["byte_count"],
+         {:ok, nil} <- record(root, ns, part(r, n), s),
+         value = h["value"] |> Map.put("offset", next) |> Map.put("parts", n + 1) do
+      commit(
+        root,
+        ns,
+        s,
+        id,
+        [
+          change(header(r), h["revision"], value),
+          change(part(r, n), 0, %{
+            "epoch" => r["epoch"],
+            "offset" => r["offset"],
+            "data" => r["data"]
+          })
+        ],
+        h["value"]["expires_at_ms"]
+      )
+    else
+      _ -> @error
+    end
+  end
+
+  defp dispatch(root, ns, %{"op" => "value.seal"} = r, id, owner, s) do
+    with {:ok, h} <- stage(root, ns, r, owner, s),
+         true <- not Map.has_key?(h["value"], "write_publish"),
+         true <- h["value"]["state"] == "open",
+         {:ok, parts, records} <- parts(root, ns, r, h["value"], s),
+         body = IO.iodata_to_binary(parts),
+         true <-
+           byte_size(body) == h["value"]["byte_count"] and
+             JSON.sha256(body) == h["value"]["sha256"],
+         {:ok, _decoded} <- ResultDocument.decode(body, %{"type" => "object"}),
+         {:ok, nil} <- record(root, ns, ready(r), s),
+         packed = %{
+           "version" => 1,
+           "kind" => "document_value",
+           "sha256" => JSON.sha256(body),
+           "byte_count" => byte_size(body),
+           "parts" => parts
+         },
+         true <- byte_size(Jason.encode!(packed)) <= 65_536,
+         changes =
+           [
+             change(header(r), h["revision"], Map.put(h["value"], "state", "sealed")),
+             change(ready(r), 0, packed)
+           ] ++ Enum.map(records, &change(&1["key"], &1["revision"], nil)) do
+      commit(root, ns, s, id, changes, h["value"]["expires_at_ms"])
+    else
+      _ -> @error
+    end
+  end
+
+  defp dispatch(root, ns, %{"op" => "commit"} = r, id, owner, s) do
+    Enum.reduce_while(r["stages"], {:ok, [], [], nil}, fn ref, {:ok, changes, keys, expiry} ->
+      with {:ok, h} <- stage(root, ns, ref, owner, s),
+           true <- h["value"]["state"] == "sealed",
+           {:ok, ready} when is_map(ready) <- record(root, ns, ready(ref), s),
+           true <- packed?(ready["value"]) and ready["value"]["sha256"] == h["value"]["sha256"],
+           key = h["value"]["key"],
+           true <- key not in keys,
+           {:ok, old} <- record(root, ns, key, s),
+           true <- revision(old) == h["value"]["expected_revision"] do
+        {:cont,
+         {:ok,
+          changes ++
+            [
+              change(key, revision(old), ready["value"]),
+              change(header(ref), h["revision"], nil),
+              change(ready(ref), ready["revision"], nil)
+            ], [key | keys],
+          if(is_nil(expiry),
+            do: h["value"]["expires_at_ms"],
+            else: min(expiry, h["value"]["expires_at_ms"])
+          )}}
+      else
+        _ -> {:halt, @error}
+      end
+    end)
+    |> case do
+      {:ok, changes, _, expiry} -> commit(root, ns, s, id, changes, expiry)
+      _ -> @error
+    end
+  end
+
+  defp dispatch(root, ns, %{"op" => op} = r, id, owner, s)
+       when op in ~w(value.abort value.reclaim) do
+    with {:ok, h} <- stage(root, ns, r, owner, s),
+         {:ok, ready} <- record(root, ns, ready(r), s),
+         {:ok, rows} <- part_records(root, ns, r, h["value"], s) do
+      changes =
+        [change(header(r), h["revision"], nil)] ++
+          if(ready, do: [change(ready(r), ready["revision"], nil)], else: []) ++
+          Enum.map(rows, &change(&1["key"], &1["revision"], nil))
+
+      commit(root, ns, s, id, changes)
+    else
+      _ -> @error
+    end
+  end
+
+  defp dispatch(root, ns, %{"op" => "value.read"} = r, _, _, s) do
+    with {:ok, row} when is_map(row) <- record(root, ns, r["key"], s),
+         true <- packed?(row["value"]),
+         bytes = IO.iodata_to_binary(row["value"]["parts"]),
+         true <- r["offset"] <= byte_size(bytes),
+         tail = binary_part(bytes, r["offset"], byte_size(bytes) - r["offset"]),
+         true <- String.valid?(tail),
+         data = slice(tail, @part_bytes),
+         next = r["offset"] + byte_size(data),
+         value = Map.merge(s, Map.take(row["value"], ~w(sha256 byte_count))) do
+      {:ok,
+       Map.merge(value, %{
+         "key" => r["key"],
+         "revision" => row["revision"],
+         "offset" => r["offset"],
+         "data" => data,
+         "next" => if(next < byte_size(bytes), do: next)
+       })}
+    else
+      _ -> @error
+    end
+  end
+
+  defp dispatch(root, ns, %{"op" => "value.stat"} = r, _, _, s) do
+    with {:ok, row} <- record(root, ns, r["key"], s),
+         true <- is_nil(row) or packed?(row["value"]) do
+      descriptor =
+        if row,
+          do:
+            Map.merge(Map.take(row["value"], ~w(byte_count sha256)), %{
+              "revision" => row["revision"]
+            }),
+          else: nil
+
+      {:ok, Map.merge(s, %{"key" => r["key"], "record" => descriptor})}
+    else
+      _ -> @error
+    end
+  end
+
+  defp dispatch(root, ns, %{"op" => "value.layout"} = r, _, _, s) do
+    with {:ok, row} <- record(root, ns, r["key"], s),
+         true <- is_nil(row) or packed?(row["value"]),
+         true <-
+           is_nil(row) or
+             match?(
+               {:ok, _},
+               ResultDocument.decode(IO.iodata_to_binary(row["value"]["parts"]), %{
+                 "type" => "object"
+               })
+             ) do
+      layout =
+        if row do
+          {parts, _} =
+            Enum.map_reduce(row["value"]["parts"], 0, fn bytes, offset ->
+              {%{
+                 "offset" => offset,
+                 "byte_count" => byte_size(bytes),
+                 "sha256" => JSON.sha256(bytes)
+               }, offset + byte_size(bytes)}
+            end)
+
+          Map.merge(Map.take(row["value"], ~w(sha256 byte_count)), %{
+            "version" => 1,
+            "recipe" => "document_packed_layout_v1",
+            "revision" => row["revision"],
+            "record_sha256" => row["sha256"],
+            "record_bytes" => row["bytes"],
+            "parts" => parts
+          })
+        end
+
+      value = Map.merge(s, %{"key" => r["key"], "layout" => layout})
+      if byte_size(Jason.encode!(value)) <= 4096, do: {:ok, value}, else: @error
+    else
+      _ -> @error
+    end
+  end
+
+  defp dispatch(root, ns, %{"op" => "stage.inspect"} = r, _, owner, s) do
+    with {:ok, row} <- stage(root, ns, r, owner, s) do
+      fields =
+        Map.take(
+          row["value"],
+          ~w(epoch key expected_revision byte_count sha256 state offset expires_at_ms write_publish)
+        )
+
+      {:ok, Map.put(s, "stage", Map.put(fields, "slot", r["slot"]))}
+    else
+      _ -> @error
+    end
+  end
+
+  defp writing_header(root, ns, r, owner, s) do
+    if r["offset"] == 0 do
+      with {:ok, nil} <- record(root, ns, header(r), s) do
+        {:ok,
+         %{
+           "revision" => 0,
+           "value" =>
+             Map.merge(Map.take(r, ~w(epoch key expected_revision byte_count sha256)), %{
+               "version" => 1,
+               "owner" => owner,
+               "offset" => 0,
+               "parts" => 0,
+               "state" => "open",
+               "write_publish" => r["publish"],
+               "expires_at_ms" => System.system_time(:millisecond) + @ttl_ms
+             })
+         }}
+      else
+        _ -> @error
+      end
+    else
+      with {:ok, h} <- stage(root, ns, r, owner, s),
+           true <- h["value"]["state"] == "open" and h["value"]["offset"] == r["offset"],
+           true <- h["value"]["write_publish"] === r["publish"],
+           true <-
+             Map.take(h["value"], ~w(epoch key expected_revision byte_count sha256)) ===
+               Map.take(r, ~w(epoch key expected_revision byte_count sha256)) do
+        {:ok, h}
+      else
+        _ -> @error
+      end
+    end
+  end
+
+  defp writing_parts(_, _, _, %{"parts" => 0, "offset" => 0}, _), do: {:ok, [], []}
+
+  defp writing_parts(root, ns, r, header, s),
+    do: parts(root, ns, r, Map.put(header, "byte_count", header["offset"]), s)
+
+  defp finish_write(root, ns, r, id, s, h, header_value, bodies, rows) do
+    bytes = IO.iodata_to_binary(bodies)
+
+    packed = %{
+      "version" => 1,
+      "kind" => "document_value",
+      "sha256" => r["sha256"],
+      "byte_count" => r["byte_count"],
+      "parts" => bodies
+    }
+
+    with true <- byte_size(bytes) == r["byte_count"] and JSON.sha256(bytes) == r["sha256"],
+         {:ok, _} <- ResultDocument.decode(bytes, %{"type" => "object"}),
+         true <- packed?(packed) and byte_size(Jason.encode!(packed)) <= 65_536 do
+      removals = Enum.map(rows, &change(&1["key"], &1["revision"], nil))
+
+      if r["publish"] do
+        with {:ok, old} <- record(root, ns, r["key"], s),
+             true <- revision(old) == r["expected_revision"] do
+          changes =
+            [change(r["key"], revision(old), packed)] ++
+              removals ++
+              if(h["revision"] == 0, do: [], else: [change(header(r), h["revision"], nil)])
+
+          commit(root, ns, s, id, changes, header_value["expires_at_ms"])
+          |> write_receipt(r, header_value, "published")
+        else
+          _ -> @error
+        end
+      else
+        sealed = header_value |> Map.put("parts", 0) |> Map.put("state", "sealed")
+
+        changes =
+          [change(header(r), h["revision"], sealed), change(ready(r), 0, packed)] ++ removals
+
+        commit(root, ns, s, id, changes, header_value["expires_at_ms"])
+        |> write_receipt(r, sealed, "sealed")
+      end
+    else
+      _ -> @error
+    end
+  end
+
+  defp write_receipt({:ok, result}, r, header, state) when is_map(result) do
+    write =
+      Map.take(header, ~w(epoch key expected_revision byte_count sha256 offset expires_at_ms))
+      |> Map.merge(%{
+        "slot" => r["slot"],
+        "state" => state,
+        "publish" => r["publish"],
+        "revision" => if(state == "published", do: result["generation"], else: 0)
+      })
+
+    {:ok, Map.put(result, "write", write)}
+  end
+
+  defp write_receipt({:ok, _}, _, _, _), do: {:unknown, :document_write_unconfirmed}
+  defp write_receipt(other, _, _, _), do: other
+
+  defp stage(root, ns, r, owner, s) do
+    with {:ok, h} when is_map(h) <- record(root, ns, header(r), s),
+         true <- h["value"]["version"] === 1 and h["value"]["epoch"] == r["epoch"],
+         opening when is_map(opening) <- h["value"]["owner"],
+         true <- owner?(opening),
+         true <- opening["project_id"] == owner["project_id"],
+         expiry = h["value"]["expires_at_ms"],
+         true <- JSON.safe_uint?(expiry),
+         true <-
+           if(r["op"] == "value.reclaim",
+             do: expiry <= System.system_time(:millisecond),
+             else:
+               Map.delete(opening, "invocation_id") === Map.delete(owner, "invocation_id") and
+                 (r["op"] == "value.abort" or System.system_time(:millisecond) < expiry)
+           ) do
+      {:ok, h}
+    else
+      _ -> @error
+    end
+  end
+
+  defp parts(root, ns, r, h, s) do
+    with true <- h["parts"] in 1..@parts and h["offset"] == h["byte_count"],
+         {:ok, rows} <- part_records(root, ns, r, h, s) do
+      Enum.reduce_while(rows, {:ok, [], 0}, fn row, {:ok, bodies, offset} ->
+        value = row["value"]
+
+        if exact?(value, ~w(epoch offset data)) and value["epoch"] == r["epoch"] and
+             value["offset"] == offset and is_binary(value["data"]) and
+             byte_size(value["data"]) in 1..@part_bytes,
+           do: {:cont, {:ok, bodies ++ [value["data"]], offset + byte_size(value["data"])}},
+           else: {:halt, @error}
+      end)
+      |> case do
+        {:ok, bodies, offset} ->
+          if(offset == h["byte_count"], do: {:ok, bodies, rows}, else: @error)
+
+        _ ->
+          @error
+      end
+    else
+      _ -> @error
+    end
+  end
+
+  defp part_records(root, ns, r, h, s) do
+    count = if h["state"] == "sealed", do: 0, else: h["parts"]
+
+    if is_integer(count) and count in 0..@parts do
+      indices = if count == 0, do: [], else: Enum.to_list(0..(count - 1))
+
+      Enum.reduce_while(indices, {:ok, []}, fn n, {:ok, rows} ->
+        case record(root, ns, part(r, n), s) do
+          {:ok, row} when is_map(row) -> {:cont, {:ok, rows ++ [row]}}
+          _ -> {:halt, @error}
+        end
+      end)
+    else
+      @error
+    end
+  end
+
+  defp packed?(v) do
+    exact?(v, ~w(version kind sha256 byte_count parts)) and v["version"] === 1 and
+      v["kind"] == "document_value" and JSON.sha256?(v["sha256"]) and
+      is_integer(v["byte_count"]) and v["byte_count"] in 2..@body_bytes and
+      is_list(v["parts"]) and length(v["parts"]) in 1..@parts and
+      Enum.all?(v["parts"], &(is_binary(&1) and byte_size(&1) in 1..@part_bytes)) and
+      byte_size(IO.iodata_to_binary(v["parts"])) == v["byte_count"] and
+      JSON.sha256(IO.iodata_to_binary(v["parts"])) == v["sha256"]
+  end
+
+  defp inline_packed(r) do
+    with {:ok, _} <- ResultDocument.decode(r["data"], %{"type" => "object"}) do
+      parts =
+        Stream.unfold(r["data"], fn
+          "" ->
+            nil
+
+          bytes ->
+            part = slice(bytes, @part_bytes)
+            {part, binary_part(bytes, byte_size(part), byte_size(bytes) - byte_size(part))}
+        end)
+        |> Enum.to_list()
+
+      value = %{
+        "version" => 1,
+        "kind" => "document_value",
+        "sha256" => r["sha256"],
+        "byte_count" => r["byte_count"],
+        "parts" => parts
+      }
+
+      if packed?(value) and byte_size(Jason.encode!(value)) <= 65_536,
+        do: {:ok, value},
+        else: @error
+    else
+      _ -> @error
+    end
+  end
+
+  defp inline_receipt({:ok, result}, r, nil) when is_map(result),
+    do:
+      {:ok,
+       Map.merge(result, %{
+         "key" => r["key"],
+         "record" => %{
+           "sha256" => r["sha256"],
+           "byte_count" => r["byte_count"],
+           "revision" => result["generation"]
+         }
+       })}
+
+  defp inline_receipt({:ok, result}, _r, stage) when is_map(result),
+    do: {:ok, Map.put(result, "stage", stage)}
+
+  defp inline_receipt({:ok, _}, _, _), do: {:unknown, :inline_publication_unconfirmed}
+  defp inline_receipt(other, _, _), do: other
+
+  defp record(root, ns, key, s) do
+    with {:ok, value} <- read(root, ns, %{"op" => "get", "key" => key}),
+         true <- value["generation"] == s["generation"] do
+      {:ok, value["record"]}
+    else
+      _ -> @error
+    end
+  end
+
+  defp read(root, ns, request),
+    do: Collection.execute_profile(root, ns, request, Usage.id(), Profile.documents())
+
+  defp commit(root, ns, s, id, changes, expiry \\ nil) when length(changes) <= 32 do
+    deadlines = Enum.reject([expiry, Process.get(@publish_deadline_key)], &is_nil/1)
+    deadline = if deadlines == [], do: nil, else: Enum.min(deadlines)
+
+    if is_nil(deadline) or System.system_time(:millisecond) < deadline do
+      request = %{
+        "op" => "commit",
+        "expected_generation" => s["generation"],
+        "advance_floor" =>
+          Enum.any?(changes, &(is_nil(&1["value"]) or &1["expected_revision"] > 0)),
+        "changes" => changes
+      }
+
+      if is_nil(deadline),
+        do: Collection.execute_profile(root, ns, request, id, Profile.documents()),
+        else:
+          Collection.execute_profile_before(root, ns, request, id, Profile.documents(), deadline)
+    else
+      @error
+    end
+  end
+
+  defp slice(bytes, count) do
+    candidate = binary_part(bytes, 0, min(byte_size(bytes), count))
+
+    if String.valid?(candidate) and byte_size(Jason.encode!(candidate)) <= 8192,
+      do: candidate,
+      else: slice(bytes, count - 1)
+  end
+
+  defp revision(nil), do: 0
+  defp revision(row), do: row["revision"]
+
+  defp change(key, revision, value),
+    do: %{"key" => key, "expected_revision" => revision, "value" => value}
+
+  defp header(r), do: header_key(r["slot"])
+  defp header_key(slot), do: "host.stage.#{slot}.header"
+  defp ready(r), do: "host.stage.#{r["slot"]}.ready"
+  defp part(r, n), do: "host.stage.#{r["slot"]}.part.#{n}"
+  defp public_key?(key), do: Directory.key?(key) and not String.starts_with?(key, "host.")
+
+  defp stage_ref?(r),
+    do: is_integer(r["slot"]) and r["slot"] in 0..(@slots - 1) and id?(r["epoch"])
+
+  defp id?(id), do: is_binary(id) and Regex.match?(~r/\A[0-9a-f]{32}\z/, id)
+  defp exact?(m, keys), do: is_map(m) and Enum.sort(Map.keys(m)) == Enum.sort(keys)
+end

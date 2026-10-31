@@ -1,0 +1,20 @@
+Running ExUnit with seed: 292350, max_cases: 8
+Excluding tags: [:test]
+Including tags: [extension_discovery_unknown: true]
+
+
+
+  1) test extension discovery retains transport uncertainty without a tool call (Ipse.MCP.HTTPTest)
+     test/ipse/mcp/http_test.exs:197
+     match (=) failed
+     code:  assert {:unknown, %{}} = Task.await(task, 5000)
+     left:  {:unknown, %{}}
+     right: {:error, :invalid_extension_mcp_call}
+     stacktrace:
+       test/ipse/mcp/http_test.exs:234: (test)
+
+
+Finished in 3.5 seconds (0.5s on load, 0.00s async, 3.0s sync)
+
+Result: 0/1 passed, 15 excluded
+Failed: 1 test

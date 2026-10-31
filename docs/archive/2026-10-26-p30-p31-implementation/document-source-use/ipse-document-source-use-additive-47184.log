@@ -1,0 +1,37 @@
+Additive compatibility and native source-relation tests compile with empty diagnostics
+Running ExUnit with seed: 20261029, max_cases: 4
+Excluding tags: [:test]
+Including tags: [:source_relation_additive]
+
+..
+
+  1) test actual retained native reads preserve the real claim commit and refuse escaped reuse (Ipse.Extension.CollectionDocumentSourceUseNativeTest)
+     test/ipse/extension/collection_document_source_use_test.exs:288
+     match (=) failed
+     code:  assert {:ok, read} =
+              Collection.with_document_read(root, namespace, fn witness, read ->
+                assert witness["generation"] === 2
+
+                assert {:ok, facts} =
+                         DocumentSourceUse.authenticate(
+                           read,
+                           guard,
+                           seed["inputs"],
+                           seed["selection"]
+                         )
+
+                assert facts.claim_operation_id === claim_operation
+                assert facts.claim_revision === 2 and facts.reads === 7
+                assert DocumentSourceUse.current?(facts, System.system_time(:millisecond))
+                {:ok, read}
+              end)
+     left:  {:ok, read}
+     right: {:unknown, :collection_transaction_unconfirmed}
+     stacktrace:
+       test/ipse/extension/collection_document_source_use_test.exs:350: (test)
+
+
+Finished in 0.1 seconds (0.02s async, 0.09s sync)
+
+Result: 2/3 passed, 5 excluded
+Failed: 1 test

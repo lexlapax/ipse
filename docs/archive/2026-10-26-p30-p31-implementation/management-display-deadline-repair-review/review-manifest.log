@@ -1,0 +1,10 @@
+MANAGEMENT_DISPLAY_DEADLINE_REPAIR_OK: %{
+  manifest_entries: 36,
+  frozen_sources: 44,
+  physical_runtime_files: 698,
+  retained_beams: 10,
+  runtime_delta: ["./ipse/ebin/Elixir.Ipse.CLI.Knowledge.Management.beam",
+   "./ipse/ebin/Elixir.Ipse.Runner.beam", "./ipse/priv/ipse-runner"],
+  final_late_return_source_exact: true,
+  production_test_markers_absent: true
+}

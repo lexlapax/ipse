@@ -16,6 +16,7 @@ defmodule Ipse.Session.SourceIndex do
     :session_id,
     :window_id,
     :secret,
+    :origin_sha256,
     policy_generation: 1,
     generation: 0,
     bytes: 0,
@@ -33,17 +34,19 @@ defmodule Ipse.Session.SourceIndex do
   @token_keys ~w(version session window generation policy kind occurrence source_version offset)
   @tool_names ~w(read write edit shell)
 
-  def new(session, policy_generation \\ 1) do
-    if id?(session) and positive?(policy_generation),
-      do:
-        {:ok,
-         %__MODULE__{
-           session_id: session,
-           window_id: Ipse.Usage.id(),
-           secret: :crypto.strong_rand_bytes(32),
-           policy_generation: policy_generation
-         }},
-      else: @error
+  def new(session, policy_generation \\ 1, origin_sha256 \\ nil) do
+    if id?(session) and positive?(policy_generation) and
+         (is_nil(origin_sha256) or JSON.sha256?(origin_sha256)),
+       do:
+         {:ok,
+          %__MODULE__{
+            session_id: session,
+            window_id: Ipse.Usage.id(),
+            secret: :crypto.strong_rand_bytes(32),
+            origin_sha256: origin_sha256,
+            policy_generation: policy_generation
+          }},
+       else: @error
   end
 
   def snapshot(%__MODULE__{} = index),
@@ -173,6 +176,48 @@ defmodule Ipse.Session.SourceIndex do
   end
 
   def admit_operator_answer(_, _, _), do: @error
+
+  @doc "Admit only a committed native statement/category review validated by its owning Session."
+  def admit_assertion(%__MODULE__{} = index, event) do
+    if Ipse.Session.OperatorAssertion.valid_event?(event, index.session_id) do
+      append(index, [
+        entry(
+          index,
+          event["id"],
+          Ipse.Session.OperatorAssertion.kind(event["category"]),
+          "native_operator_assertion",
+          event["text"],
+          "available",
+          nil,
+          %{
+            "assertion_id" => event["id"],
+            "category" => event["category"],
+            "receipt_sha256" => JSON.digest([event])
+          }
+        )
+      ])
+    else
+      @error
+    end
+  end
+
+  def admit_assertion(_, _), do: @error
+
+  @doc false
+  def assertion_request(%__MODULE__{} = index, id) do
+    case Enum.find_value(index.entries, fn {_, item} ->
+           if item.provenance["assertion_id"] == id, do: item
+         end) do
+      %{origin: "native_operator_assertion", coverage: "available", text: text} = item
+      when is_binary(text) ->
+        {:ok, %{"handle" => token(index, "read", item, 0), "quote" => text}}
+
+      _ ->
+        @error
+    end
+  end
+
+  def assertion_request(_, _), do: @error
 
   @doc "Only an admitted original visible answer is indexed; presentation and reasoning are excluded."
   def admit_answer(index, answer, assistant \\ nil)
@@ -551,7 +596,7 @@ defmodule Ipse.Session.SourceIndex do
     with {:ok, quote} <- __MODULE__.quote(index, request),
          item when is_map(item) <- index.entries[quote["occurrence_id"]],
          true <-
-           item.kind in ~w(input.original input.operator_answer answer.original tool.outcome) do
+           proof_kind?(item.kind) do
       {:ok,
        %{
          "version" => 1,
@@ -579,6 +624,60 @@ defmodule Ipse.Session.SourceIndex do
 
   def resolve_proof(_, _), do: @error
 
+  @doc "Revalidate a stored exact proof against this Session's current source window."
+  def revalidate_stored(%__MODULE__{} = index, proof) do
+    with true <-
+           keys?(
+             proof,
+             ~w(version session_id occurrence_id version_id kind origin coverage path start_byte end_byte quote quote_sha256 content_sha256 receipt_sha256)
+           ),
+         :ok <- JSON.validate_object(proof),
+         true <- proof["version"] === 1 and proof["session_id"] === index.session_id,
+         item when is_map(item) <- index.entries[proof["occurrence_id"]],
+         true <-
+           proof_kind?(item.kind),
+         true <- is_binary(item.text) and item.coverage != "unavailable",
+         quote when is_binary(quote) <- proof["quote"],
+         true <- String.valid?(quote) and byte_size(quote) in 1..8192,
+         {:ok, {offset, size}} <- unique_match(item.text, quote),
+         expected = %{
+           "version" => 1,
+           "session_id" => index.session_id,
+           "occurrence_id" => item.occurrence_id,
+           "version_id" => item.version_id,
+           "kind" => item.kind,
+           "origin" => item.origin,
+           "coverage" => item.coverage,
+           "path" => nil,
+           "start_byte" => offset,
+           "end_byte" => offset + size,
+           "quote" => quote,
+           "quote_sha256" => JSON.sha256(quote),
+           "content_sha256" => item.content_sha256,
+           "receipt_sha256" => item.provenance["receipt_sha256"]
+         },
+         true <- proof === expected and JSON.sha256?(expected["receipt_sha256"]) do
+      {:ok,
+       %{
+         "version" => 1,
+         "window_id" => index.window_id,
+         "generation" => index.generation,
+         "policy_generation" => index.policy_generation,
+         "proof" => expected
+       }}
+    else
+      _ -> @error
+    end
+  rescue
+    _ -> @error
+  end
+
+  def revalidate_stored(_, _), do: @error
+
+  defp proof_kind?(kind),
+    do:
+      kind in ~w(input.original input.operator_answer answer.original tool.outcome input.assertion.ordinary input.assertion.preference input.assertion.current)
+
   @doc "Replay-only structural proof. Historical MACs never authorize a current read."
   def validate_saved_read(index, operation, request, value, historical_window) do
     with true <- id?(historical_window),
@@ -599,6 +698,66 @@ defmodule Ipse.Session.SourceIndex do
   rescue
     _ -> @error
   end
+
+  @doc false
+  def saved_read_provenances(index, operation, request, value, historical_window) do
+    with :ok <- validate_saved_read(index, operation, request, value, historical_window),
+         {:ok, rows} <- selected_provenances(index, operation, value),
+         do: {:ok, rows}
+  rescue
+    _ -> @error
+  end
+
+  @doc false
+  def saved_query_provenances(index, operation, request, historical_window) do
+    with true <- id?(historical_window),
+         {:ok, rebound} <- saved_request(index, operation, request, historical_window),
+         {:ok, value} <- source_query(index, operation, rebound),
+         {:ok, rows} <- selected_provenances(index, operation, value),
+         do: {:ok, rows}
+  rescue
+    _ -> @error
+  end
+
+  defp source_query(index, "source.list", request), do: list(index, request)
+  defp source_query(index, "source.read", request), do: read(index, request)
+  defp source_query(index, "source.quote", request), do: __MODULE__.quote(index, request)
+  defp source_query(_, _, _), do: @error
+
+  defp selected_provenances(index, operation, value) do
+    with {:ok, selected} <- selected_occurrences(operation, value) do
+      Enum.reduce_while(selected, {:ok, []}, fn {occurrence, version}, {:ok, rows} ->
+        case index.entries[occurrence] do
+          %{occurrence_id: ^occurrence, version_id: ^version} = item ->
+            row = %{
+              "occurrence_id" => occurrence,
+              "version_id" => version,
+              "kind" => item.kind,
+              "origin" => item.origin,
+              "provenance" => item.provenance
+            }
+
+            {:cont, {:ok, rows ++ [row]}}
+
+          _ ->
+            {:halt, @error}
+        end
+      end)
+    else
+      _ -> @error
+    end
+  rescue
+    _ -> @error
+  end
+
+  defp selected_occurrences("source.list", %{"sources" => rows}) when is_list(rows),
+    do: {:ok, Enum.map(rows, &{&1["occurrence_id"], &1["version_id"]})}
+
+  defp selected_occurrences(operation, value)
+       when operation in ~w(source.read source.quote) and is_map(value),
+       do: {:ok, [{value["occurrence_id"], value["version_id"]}]}
+
+  defp selected_occurrences(_, _), do: @error
 
   defp saved_request(index, operation, request, window) do
     key = if operation == "source.list", do: "cursor", else: "handle"
@@ -701,6 +860,7 @@ defmodule Ipse.Session.SourceIndex do
     %{
       occurrence_id: occurrence,
       version_id: nil,
+      origin_sha256: index.origin_sha256,
       kind: kind,
       origin: origin,
       text: text,
@@ -713,21 +873,26 @@ defmodule Ipse.Session.SourceIndex do
     |> version()
   end
 
-  defp version(item),
-    do: %{
-      item
-      | version_id:
-          identifier([
-            "ipse.source.version",
-            item.occurrence_id,
-            item.content_sha256,
-            item.original_bytes,
-            item.origin,
-            item.provenance,
-            item.coverage,
-            item.reason
-          ])
-    }
+  defp version(item) do
+    historical =
+      identifier([
+        "ipse.source.version",
+        item.occurrence_id,
+        item.content_sha256,
+        item.original_bytes,
+        item.origin,
+        item.provenance,
+        item.coverage,
+        item.reason
+      ])
+
+    version =
+      if is_nil(item.origin_sha256),
+        do: historical,
+        else: identifier(["ipse.source.version.origin.v1", item.origin_sha256, historical])
+
+    %{item | version_id: version}
+  end
 
   defp append(index, entries) do
     bytes = Enum.sum(Enum.map(entries, &if(is_binary(&1.text), do: byte_size(&1.text), else: 0)))

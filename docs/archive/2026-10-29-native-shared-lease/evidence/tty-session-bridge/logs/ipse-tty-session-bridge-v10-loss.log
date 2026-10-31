@@ -1,0 +1,28 @@
+Running ExUnit with seed: 751320, max_cases: 8
+Excluding tags: [:test]
+Including tags: [controlled_tty_loss: true]
+
+
+
+  1) test actual Session cancellation leaves stopped native writer holding all leases (Ipse.Session.ShareHostJobTest)
+     [1m[30mtest/ipse/session/share_host_job_test.exs:847[0m
+     [31mExpected truthy, got false[0m
+     [36mcode: [0massert process_gone?(pid, 150)
+     [36marguments:[0m
+
+         # 1
+         3169971
+
+         # 2
+         150
+
+     [36mstacktrace:[0m
+       test/ipse/session/share_host_job_test.exs:887: anonymous fn/2 in Ipse.Session.ShareHostJobTest."test actual Session cancellation leaves stopped native writer holding all leases"/1
+       (elixir 1.20.4) lib/enum.ex:2622: Enum."-reduce/3-lists^foldl/2-0-"/3
+       test/ipse/session/share_host_job_test.exs:886: (test)
+
+
+Finished in 3.6 seconds (0.8s on load, 0.00s async, 2.7s sync)
+
+Result: 0/1 passed, 17 excluded
+[31mFailed: 1 test[0m

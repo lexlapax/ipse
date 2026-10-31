@@ -1,0 +1,8 @@
+Running ExUnit with seed: 20261029, max_cases: 4
+Excluding tags: [:test]
+Including tags: [:publication_prerequisite]
+
+...
+Finished in 0.01 seconds (0.01s async, 0.00s sync)
+
+Result: 3 passed, 10 excluded

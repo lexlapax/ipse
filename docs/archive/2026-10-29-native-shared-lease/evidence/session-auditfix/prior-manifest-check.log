@@ -1,0 +1,15 @@
+docs/archive/2026-10-29-native-shared-lease/evidence/session-genuine/source.tar: OK
+_build/session-export-genuine-sol-20261029/priv/ipse-runner: OK
+_build/session-export-genuine-legacy-sol-20261029/priv/ipse-runner: OK
+docs/archive/2026-10-29-native-shared-lease/evidence/session-genuine/runtime.sha256: OK
+docs/archive/2026-10-29-native-shared-lease/evidence/session-genuine/runtime-legacy.sha256: OK
+docs/archive/2026-10-29-native-shared-lease/evidence/session-genuine/coherent-compile.log: OK
+docs/archive/2026-10-29-native-shared-lease/evidence/session-genuine/compile-initial.log: OK
+docs/archive/2026-10-29-native-shared-lease/evidence/session-genuine/compile-provisional.log: OK
+docs/archive/2026-10-29-native-shared-lease/evidence/session-genuine/legacy-compile.log: OK
+docs/archive/2026-10-29-native-shared-lease/evidence/session-genuine/legacy-resume-final.log: OK
+docs/archive/2026-10-29-native-shared-lease/evidence/session-genuine/legacy-unavailable.log: OK
+docs/archive/2026-10-29-native-shared-lease/evidence/session-genuine/resume-provisional-v2.log: OK
+docs/archive/2026-10-29-native-shared-lease/evidence/session-genuine/resume-provisional.log: OK
+docs/archive/2026-10-29-native-shared-lease/evidence/session-genuine/session-test-final.log: OK
+docs/archive/2026-10-29-native-shared-lease/evidence/session-genuine/session-test-provisional.log: OK

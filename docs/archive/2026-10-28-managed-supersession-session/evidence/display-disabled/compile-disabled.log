@@ -1,0 +1,114 @@
+    warning: Ipse.Extension.MCPCall.public_server?/1 is undefined or private
+    │
+ 87 │       Ipse.Extension.MCPCall.public_server?(server) and
+    │                              ~
+    │
+    └─ lib/ipse/session/managed_tool_use.ex:87:30: Ipse.Session.ManagedToolUse.valid_discovery_intent?/3
+
+    warning: Ipse.MCP.managed_discovery_request?/2 is undefined or private. Did you mean:
+
+        * managed_request?/3
+
+    │
+ 92 │       Ipse.MCP.managed_discovery_request?(
+    │                ~
+    │
+    └─ lib/ipse/session/managed_tool_use.ex:92:16: Ipse.Session.ManagedToolUse.valid_discovery_intent?/3
+    └─ lib/ipse/session/managed_tool_use.ex:253:20: Ipse.Session.ManagedToolUse.discovery_target?/2
+
+     warning: Ipse.MCP.managed_discovery_initialize_params/0 is undefined or private
+     │
+ 113 │         params = Ipse.MCP.managed_discovery_initialize_params()
+     │                           ~
+     │
+     └─ lib/ipse/session/managed_tool_use.ex:113:27: Ipse.Session.ManagedToolUse.begin_discovery/4
+     └─ lib/ipse/session/managed_tool_use.ex:1101:47: Ipse.Session.ManagedToolUse.target?/3
+
+{:ok,
+ [Inspect.Ipse.Runner.Review.Permit, Ipse.CLI.Terminal, Ipse.Extension.Actions,
+  Ipse.Extension.Host, Ipse.Extension.ManagedCollectionCall, Ipse.Runner.Review,
+  Ipse.Runner.Review.Permit, Ipse.Session, Ipse.Session.Invocation,
+  Ipse.Session.ManagedLineage, Ipse.Session.ManagedSupersession,
+  Ipse.Session.ManagedToolUse, Ipse.Session.OperatorAssertion],
+ %{
+   compile_warnings: [],
+   runtime_warnings: [
+     %{
+       message: "Ipse.Extension.MCPCall.public_server?/1 is undefined or private",
+       position: {87, 30},
+       file: "/home/lexlapax/projects/lexlapax/ipse/lib/ipse/session/managed_tool_use.ex",
+       group: true,
+       stacktrace: [
+         {Ipse.Session.ManagedToolUse, :valid_discovery_intent?, 3,
+          [file: ~c"lib/ipse/session/managed_tool_use.ex", line: 87, column: 30]}
+       ],
+       source: "/home/lexlapax/projects/lexlapax/ipse/lib/ipse/session/managed_tool_use.ex",
+       span: nil,
+       severity: :warning
+     },
+     %{
+       message: "Ipse.MCP.managed_discovery_request?/2 is undefined or private. Did you mean:\n\n    * managed_request?/3\n",
+       position: {92, 16},
+       file: "/home/lexlapax/projects/lexlapax/ipse/lib/ipse/session/managed_tool_use.ex",
+       group: true,
+       stacktrace: [
+         {Ipse.Session.ManagedToolUse, :valid_discovery_intent?, 3,
+          [file: ~c"lib/ipse/session/managed_tool_use.ex", line: 92, column: 16]}
+       ],
+       source: "/home/lexlapax/projects/lexlapax/ipse/lib/ipse/session/managed_tool_use.ex",
+       span: nil,
+       severity: :warning
+     },
+     %{
+       message: "Ipse.MCP.managed_discovery_request?/2 is undefined or private. Did you mean:\n\n    * managed_request?/3\n",
+       position: {253, 20},
+       file: "/home/lexlapax/projects/lexlapax/ipse/lib/ipse/session/managed_tool_use.ex",
+       group: true,
+       stacktrace: [
+         {Ipse.Session.ManagedToolUse, :discovery_target?, 2,
+          [
+            file: ~c"lib/ipse/session/managed_tool_use.ex",
+            line: 253,
+            column: 20
+          ]}
+       ],
+       source: "/home/lexlapax/projects/lexlapax/ipse/lib/ipse/session/managed_tool_use.ex",
+       span: nil,
+       severity: :warning
+     },
+     %{
+       message: "Ipse.MCP.managed_discovery_initialize_params/0 is undefined or private",
+       position: {113, 27},
+       file: "/home/lexlapax/projects/lexlapax/ipse/lib/ipse/session/managed_tool_use.ex",
+       group: true,
+       stacktrace: [
+         {Ipse.Session.ManagedToolUse, :begin_discovery, 4,
+          [
+            file: ~c"lib/ipse/session/managed_tool_use.ex",
+            line: 113,
+            column: 27
+          ]}
+       ],
+       source: "/home/lexlapax/projects/lexlapax/ipse/lib/ipse/session/managed_tool_use.ex",
+       span: nil,
+       severity: :warning
+     },
+     %{
+       message: "Ipse.MCP.managed_discovery_initialize_params/0 is undefined or private",
+       position: {1101, 47},
+       file: "/home/lexlapax/projects/lexlapax/ipse/lib/ipse/session/managed_tool_use.ex",
+       group: true,
+       stacktrace: [
+         {Ipse.Session.ManagedToolUse, :target?, 3,
+          [
+            file: ~c"lib/ipse/session/managed_tool_use.ex",
+            line: 1101,
+            column: 47
+          ]}
+       ],
+       source: "/home/lexlapax/projects/lexlapax/ipse/lib/ipse/session/managed_tool_use.ex",
+       span: nil,
+       severity: :warning
+     }
+   ]
+ }}

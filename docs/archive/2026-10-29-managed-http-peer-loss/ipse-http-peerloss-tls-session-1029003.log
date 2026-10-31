@@ -1,0 +1,8 @@
+Running ExUnit with seed: 931762, max_cases: 8
+Excluding tags: [:test]
+Including tags: [managed_mcp_tls_loss: :session]
+
+.
+Finished in 7.4 seconds (4.6s on load, 0.00s async, 2.7s sync)
+
+Result: 1 passed, 112 excluded

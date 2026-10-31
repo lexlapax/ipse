@@ -1,0 +1,11 @@
+--- native/ipse-storage-profile.rs	2026-10-26 17:47:28.079691967 -0700
++++ _build/capacity-sol-20261028-02/project/native/ipse-storage-profile.rs	2026-10-28 14:56:19.396667904 -0700
+@@ -23,7 +23,7 @@
+ fn supported_kernel(release: &str) -> bool {
+     // This finite profile is tied to the inspected upstream 7.2.10 implementation.
+     // A broader kernel or platform contract needs independent review/qualification.
+-    release.trim() == "7.2.10" || release.trim().starts_with("7.2.10-")
++    release.trim() == "7.2.10" || release.trim().starts_with("7.2.10-") || release.trim() == "7.2.11-arch1-1"
+ }
+ 
+ fn allowance(unit: u64, lengths: &[u64]) -> Result<u64, TransactionAllowanceError> {

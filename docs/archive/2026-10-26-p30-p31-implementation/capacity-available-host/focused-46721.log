@@ -1,0 +1,23 @@
+Running ExUnit with seed: 46721, max_cases: 1
+Excluding tags: [:native_sandbox, :macos_sandbox, :macos_filesystem, :memory_scope]
+
+...............................................
+
+  1) test historical signed native answers and fragments are refused after recipe guards change (Ipse.Extension.CollectionNormalizerV3IntegrationTest)
+     test/ipse/extension/collection_normalizer_v3_integration_test.exs:115
+     ** (MatchError) no match of right hand side value:
+
+         {:error, :collection_observation_refused}
+
+         test/support/historical_answer_observation.exs:155: (file)
+         (elixir 1.20.4) lib/code.ex:1639: Code.require_file/2
+
+     code: assert status == 0, output
+     stacktrace:
+       test/ipse/extension/collection_normalizer_v3_integration_test.exs:131: (test)
+
+........
+Finished in 19.4 seconds (7.1s async, 12.2s sync)
+
+Result: 55/56 passed
+Failed: 1 test

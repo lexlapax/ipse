@@ -1,0 +1,8 @@
+Running ExUnit with seed: 821376, max_cases: 8
+Excluding tags: [:test]
+Including tags: [line: 41, line: 62, line: 116, line: 468, line: 486, line: 543, line: 595]
+
+.......
+Finished in 1.3 seconds (0.4s on load, 0.00s async, 0.9s sync)
+
+Result: 7 passed, 5 excluded

@@ -1,0 +1,8 @@
+Running ExUnit with seed: 921440, max_cases: 4
+Excluding tags: [:test]
+Including tags: [document_guard_v4_pages: true]
+
+.
+Finished in 53.4 seconds (0.3s on load, 0.00s async, 53.1s sync)
+
+Result: 1 passed, 3 excluded

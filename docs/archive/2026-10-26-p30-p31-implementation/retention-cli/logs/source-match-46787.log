@@ -1,0 +1,9 @@
+warning: you must pass return_diagnostics: true when invoking Kernel.ParallelCompiler functions
+  (elixir 1.20.4) lib/kernel/parallel_compiler.ex:327: Kernel.ParallelCompiler.spawn_workers/3
+  (elixir 1.20.4) src/elixir.erl:382: :elixir.eval_external_handler/3
+  (stdlib 8.1) erl_eval.erl:1048: :erl_eval.do_apply/7
+  (stdlib 8.1) erl_eval.erl:792: :erl_eval.expr/6
+  (stdlib 8.1) erl_eval.erl:276: :erl_eval.exprs/6
+  (elixir 1.20.4) src/elixir.erl:365: :elixir.erl_eval/3
+
+Exact executable module digests matched for 5 current root modules

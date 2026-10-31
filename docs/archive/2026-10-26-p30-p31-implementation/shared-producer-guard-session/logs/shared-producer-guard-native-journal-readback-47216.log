@@ -1,0 +1,44 @@
+{
+  "reports": [
+    {
+      "native": {
+        "status": "ready",
+        "revision": 35,
+        "final_operation_id": "1ad1382b9171d775f860cd38e76f1d29",
+        "page_sha256": "c8dad1feefacf0adbe529fc60de1cd8720238dd02c3ebe674d8555fa48936c40",
+        "page_bytes": 45064,
+        "exact_fixture_vectors": true
+      },
+      "events": 963,
+      "kind": "positive",
+      "journal_bytes": 3057740,
+      "journal_sha256": "876535ce2ca3adb89c20f736125b04f07b0f72daf52f01150ad3b54daf2aaa81",
+      "original_journal_exact": true,
+      "guard_actions": 4,
+      "claim_operation_id": "cc3450a3bd75f24a287314464414a183",
+      "claim_revision": 29,
+      "own_prepare_commit": true,
+      "selected_root_still_absent": true,
+      "actual_read_only_inspection": true
+    },
+    {
+      "native": {
+        "status": "pending",
+        "revision": 29,
+        "operation_id": "1facf73990d16e5a729c1aa026b2de79"
+      },
+      "events": 767,
+      "kind": "expiry",
+      "journal_bytes": 2457817,
+      "journal_sha256": "85655310a32c26c2b98ecba75f2767795617e8e57a75bb996a346bedaaafc5c9",
+      "original_journal_exact": true,
+      "guard_actions": 1,
+      "claim_operation_id": "1facf73990d16e5a729c1aa026b2de79",
+      "claim_revision": 29,
+      "own_prepare_commit": true,
+      "selected_root_still_absent": true,
+      "actual_read_only_inspection": true
+    }
+  ],
+  "mutation_or_model_replay": false
+}

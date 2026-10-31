@@ -1,0 +1,32 @@
+From the repository root, with a fresh private temporary root per invocation:
+
+rustc --edition=2021 -D warnings -O native/ipse-runner.rs -o /tmp/ipse-management-facts-v4-helper
+rustc --edition=2021 -D warnings -O --cfg ipse_terminal_display_test_hook native/ipse-runner.rs -o /tmp/ipse-management-facts-v4-hook-helper
+rustc --edition=2021 -D warnings -O dev/fixtures/terminal_lease_probe.rs -o /tmp/ipse-management-facts-v4-native-fixture
+rustc --edition=2021 -D warnings -A unused_mut -O --cfg ipse_terminal_display_test_hook NEGATIVE_SOURCE/native/ipse-runner.rs -o /tmp/ipse-management-clock-negative-helper
+rustc --edition=2021 -D warnings -O test/support/operator_pty.rs -o /tmp/ipse-tty-session-bridge-driver
+
+For each native mode below, use a fresh empty private directory:
+/tmp/ipse-management-facts-v4-native-fixture PRIVATE_ROOT /tmp/ipse-management-facts-v4-helper display-management-large
+/tmp/ipse-management-facts-v4-native-fixture PRIVATE_ROOT /tmp/ipse-management-facts-v4-helper display-management-mono-expired
+/tmp/ipse-management-facts-v4-native-fixture PRIVATE_ROOT /tmp/ipse-management-facts-v4-hook-helper display-management-mono-ready
+/tmp/ipse-management-facts-v4-native-fixture PRIVATE_ROOT /tmp/ipse-management-clock-negative-helper display-management-mono-ready
+
+The final graph copied _build/management-facts-v2-sol-20261029/lib, replaced its own private helper and compiled current Runner (from a source root containing that exact helper) plus ManagementTerminal. The previous graph copied management-controls, then compiled current Transaction, Review, Resources, ManagementTerminal and Management; the label-only graph recompiled Review and ManagementTerminal. The hook graph copied final and recompiled only Runner against its hook helper.
+
+ERL_FLAGS='+S 4' ERL_LIBS="$PWD/_build/management-facts-v4-sol-20261029/lib" \
+  elixir -r test/test_helper.exs -e '{:ok, _} = Application.ensure_all_started(:ipse); ExUnit.configure(exclude: [:test], include: [management_facts_positive: true, management_facts_stale: true]); Code.require_file("test/ipse/cli/management_full_facts_test.exs")'
+
+For each loss mode below, use a fresh private root and the matching hook graph:
+IPSE_TEST_TTY_PREWRITE_STOP=1 ERL_FLAGS='+S 4' ERL_LIBS="$PWD/_build/management-facts-v4-loss-sol-20261029/lib" \
+  /tmp/ipse-tty-session-bridge-driver elixir test/support/management_full_facts.exs PRIVATE_ROOT loss
+IPSE_TEST_TTY_PREWRITE_STOP=1 ERL_FLAGS='+S 4' ERL_LIBS="$PWD/_build/management-facts-v4-loss-sol-20261029/lib" \
+  /tmp/ipse-tty-session-bridge-driver elixir test/support/management_full_facts.exs PRIVATE_ROOT journal-loss
+IPSE_TEST_TTY_PREWRITE_STOP=1 ERL_FLAGS='+S 4' ERL_LIBS="$PWD/_build/management-facts-v4-loss-sol-20261029/lib" \
+  /tmp/ipse-tty-session-bridge-driver elixir test/support/management_full_facts.exs PRIVATE_ROOT cli-loss
+ERL_FLAGS='+S 4' ERL_LIBS="$PWD/_build/management-facts-v4-sol-20261029/lib" \
+  /tmp/ipse-tty-session-bridge-driver elixir test/support/management_full_facts.exs PRIVATE_ROOT closure-loss
+
+The separate facts/digest verification reads the captured synthetic positive PTY log:
+ERL_FLAGS='+S 4' ERL_LIBS="$PWD/_build/management-facts-v4-sol-20261029/lib" \
+  elixir test/support/management_full_facts_verify.exs CAPTURED_LOG large

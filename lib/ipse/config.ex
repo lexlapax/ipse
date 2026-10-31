@@ -114,6 +114,7 @@ defmodule Ipse.Config do
            {:ok, decision_profiles} <- Ipse.Config.Decisions.resolve(loaded),
            {:ok, semantic_selections} <- Ipse.Config.Semantics.resolve(loaded),
            {:ok, inference_services} <- Ipse.Config.Semantics.resolve_services(loaded),
+           {:ok, planning_mcp_reads} <- Ipse.MCP.Planning.resolve(loaded),
            {:ok, budget} <- Ipse.Usage.Budget.resolve_policy(loaded),
            {:ok, journal} <- Ipse.Journal.resolve_limits(loaded),
            {:ok, observation} <- Ipse.Observability.resolve(loaded, opts, environment),
@@ -208,6 +209,11 @@ defmodule Ipse.Config do
               do: identity,
               else: Map.put(identity, "inference_services", inference_services)
 
+          identity =
+            if planning_mcp_reads == %{},
+              do: identity,
+              else: Map.put(identity, "planning_mcp_reads", planning_mcp_reads)
+
           fingerprint = Ipse.JSON.digest([identity])
 
           {:ok,
@@ -219,6 +225,7 @@ defmodule Ipse.Config do
            |> Map.put(:decision_profiles, decision_profiles)
            |> Map.put(:semantic_selections, semantic_selections)
            |> Map.put(:inference_services, inference_services)
+           |> Map.put(:planning_mcp_reads, planning_mcp_reads)
            |> Map.put(:budget, budget)
            |> Map.put(:journal, journal)
            |> Map.put(:observability, observation)
@@ -279,6 +286,7 @@ defmodule Ipse.Config do
                decision_profiles: effective.decision_profiles,
                semantic_selections: Map.get(effective, :semantic_selections, %{}),
                inference_services: Map.get(effective, :inference_services, %{}),
+               planning_mcp_reads: Map.get(effective, :planning_mcp_reads, %{}),
                observability: effective.observability.policy,
                timeout_ms: settings["timeout_ms"],
                max_output_tokens: settings["max_output_tokens"],
@@ -298,6 +306,7 @@ defmodule Ipse.Config do
                approval_origin: mode["approval_origin"],
                headless: mode["headless"],
                execution_mode: mode["ceiling"],
+               planning_cli_start: Map.get(client, :planning_cli_start, false),
                enclosing_mode: mode["enclosing_ceiling"],
                knowledge_ceiling: mode["knowledge"]
              },
@@ -346,6 +355,12 @@ defmodule Ipse.Config do
           else: %{inference_services: effective.inference_services}
         )
       )
+      |> Map.merge(
+        if(Map.get(effective, :planning_mcp_reads, %{}) == %{},
+          do: %{},
+          else: %{planning_mcp_reads: effective.planning_mcp_reads}
+        )
+      )
 
   def legacy_compatible?(effective), do: effective.sources == []
 
@@ -382,6 +397,7 @@ defmodule Ipse.Config do
             "decision_profiles" => %{"type" => "object"},
             "semantic_selections" => Ipse.Config.Semantics.schema(),
             "inference_services" => Ipse.Config.Semantics.schema(),
+            "planning_mcp_reads" => Ipse.MCP.Planning.schema(),
             "roles" => %{"type" => "object"},
             "observability" => Ipse.Observability.schema(),
             "budget" => Ipse.Usage.Budget.schema(),
@@ -487,6 +503,7 @@ defmodule Ipse.Config do
          :ok <- Ipse.Config.Decisions.validate(data["decision_profiles"] || %{}),
          :ok <- Ipse.Config.Semantics.validate(data["semantic_selections"] || %{}),
          :ok <- Ipse.Config.Semantics.validate_services(data["inference_services"] || %{}),
+         :ok <- Ipse.MCP.Planning.validate(data["planning_mcp_reads"] || %{}),
          :ok <- Ipse.Extension.Config.validate(data),
          :ok <- validate_settings(data["settings"] || %{}) do
       {:ok,

@@ -1,0 +1,1571 @@
+Running ExUnit with seed: 87280, max_cases: 4
+Excluding tags: [:test]
+Including tags: [supersession_scenario: "shared"]
+
+
+
+  1) test genuine Session supersession: shared (Ipse.Session.ManagedSupersessionSessionTest)
+     test/ipse/session/managed_supersession_session_test.exs:8
+     Choose the knowledge identity for /tmp/ipse-supersession-session-39720543d1d012ff06e61d7609c99897/work.
+     Repository shares only with reciprocally verified worktrees; folder means only this canonical folder.
+     Type one exact choice: folder f5c294afc86b0b0f
+     > folder f5c294afc86b0b0f
+     Enable native notes for /tmp/ipse-supersession-session-39720543d1d012ff06e61d7609c99897/work (folder).
+     This selection takes effect in the next new session, including headless run.
+     Literal notes require a separate native statement/category review or a typed host outcome; other inputs remain pending.
+     Ordinary notes: 90 days; pending proposals: 7 days. Current/preferences may persist.
+     No secondary model calls are authorized. Ordinary tool approvals remain separate.
+     Exact permission, route, retention, artifact and daily limits:
+     {
+       "artifact_sha256": "26c3e913d377f1d3f2f67eab7666770506f6517e5bf7a82eb9e8c36c43d95b2b",
+       "expires_at_ms": 1824788284528,
+       "headless": true,
+       "limits": {
+         "cost_nanos": 0,
+         "download_bytes": 0,
+         "input_bytes": 2097152,
+         "model_calls": 0,
+         "operations": 100,
+         "output_bytes": 4194304
+       },
+       "operations": [
+         "notes.capture",
+         "notes.propose",
+         "notes.recall"
+       ],
+       "period_ms": 86400000,
+       "project": "a9d914c7b2de9ddb46e93e880462a10deace21748a086a64de4ecace61530590",
+       "settings": {
+         "activation": {
+           "allow_children": false,
+           "artifact": "26c3e913d377f1d3f2f67eab7666770506f6517e5bf7a82eb9e8c36c43d95b2b",
+           "artifact_sha256": "26c3e913d377f1d3f2f67eab7666770506f6517e5bf7a82eb9e8c36c43d95b2b",
+           "capabilities": [
+             "event.job",
+             "host.actions",
+             "host.actions.mixed",
+             "host.collection.managed",
+             "host.collection.read",
+             "host.context",
+             "host.sources",
+             "invoke.command",
+             "invoke.result.pages",
+             "invoke.tool"
+           ],
+           "instance": "knowledge",
+           "kind": "reviewed.bundle",
+           "lifetime": "session",
+           "main_timeout_ms": 90000,
+           "options": {
+             "embedding": {},
+             "extraction": {},
+             "fetch": {},
+             "rerank": {},
+             "retrieval": {},
+             "search": {},
+             "stores": {},
+             "version": 1
+           },
+           "order": 100,
+           "service_refs": [
+             {
+               "operation": "main",
+               "profile": null,
+               "service_id": "demo"
+             }
+           ],
+           "sidecar_sha256": "6add073e340583f2debc3a59475298ccb2359bc1aab7f77b65f704fbb9553549",
+           "version": 1
+         },
+         "constraints": {
+           "78b6d7943b3430f0225a3ee45cc4cffc27de14ddd97c39f8e38c9f8fb85ca68e": {
+             "allow_delete": false,
+             "evidence_path": [
+               "evidence",
+               "sources"
+             ],
+             "key_prefix": "pending.",
+             "source_categories": [
+               "assistant_proposal",
+               "interactive_operator",
+               "native_operator_answer",
+               "native_operator_assertion",
+               "typed_host_outcome",
+               "unattended_input"
+             ],
+             "value_schema": {
+               "additionalProperties": false,
+               "properties": {
+                 "assigned_category": {
+                   "enum": [
+                     "ordinary",
+                     "preference",
+                     "current"
+                   ],
+                   "type": "string"
+                 },
+                 "created_at_ms": {
+                   "maximum": 9007199254740991,
+                   "minimum": 0,
+                   "type": "integer"
+                 },
+                 "event_at_ms": {
+                   "maximum": 9007199254740991,
+                   "minimum": 0,
+                   "type": [
+                     "integer",
+                     "null"
+                   ]
+                 },
+                 "evidence": {
+                   "additionalProperties": false,
+                   "properties": {
+                     "sources": {
+                       "items": {
+                         "additionalProperties": false,
+                         "properties": {
+                           "content_sha256": {
+                             "maxLength": 64,
+                             "minLength": 64,
+                             "type": "string"
+                           },
+                           "coverage": {
+                             "enum": [
+                               "available",
+                               "partial"
+                             ],
+                             "type": "string"
+                           },
+                           "end_byte": {
+                             "maximum": 9007199254740991,
+                             "minimum": 0,
+                             "type": "integer"
+                           },
+                           "kind": {
+                             "enum": [
+                               "input.original",
+                               "input.operator_answer",
+                               "answer.original",
+                               "tool.outcome",
+                               "input.assertion.ordinary",
+                               "input.assertion.preference",
+                               "input.assertion.current"
+                             ],
+                             "type": "string"
+                           },
+                           "occurrence_id": {
+                             "maxLength": 32,
+                             "minLength": 32,
+                             "type": "string"
+                           },
+                           "origin": {
+                             "enum": [
+                               "assistant_proposal",
+                               "interactive_operator",
+                               "native_operator_answer",
+                               "native_operator_assertion",
+                               "typed_host_outcome",
+                               "unattended_input"
+                             ],
+                             "type": "string"
+                           },
+                           "path": {
+                             "type": "null"
+                           },
+                           "quote": {
+                             "maxLength": 1024,
+                             "minLength": 1,
+                             "type": "string"
+                           },
+                           "quote_sha256": {
+                             "maxLength": 64,
+                             "minLength": 64,
+                             "type": "string"
+                           },
+                           "receipt_sha256": {
+                             "maxLength": 64,
+                             "minLength": 64,
+                             "type": "string"
+                           },
+                           "session_id": {
+                             "maxLength": 32,
+                             "minLength": 32,
+                             "type": "string"
+                           },
+                           "start_byte": {
+                             "maximum": 9007199254740991,
+                             "minimum": 0,
+                             "type": "integer"
+                           },
+                           "version": {
+                             "enum": [
+                               1
+                             ],
+                             "type": "integer"
+                           },
+                           "version_id": {
+                             "maxLength": 32,
+                             "minLength": 32,
+                             "type": "string"
+                           }
+                         },
+                         "required": [
+                           "content_sha256",
+                           "coverage",
+                           "end_byte",
+                           "kind",
+                           "occurrence_id",
+                           "origin",
+                           "path",
+                           "quote",
+                           "quote_sha256",
+                           "receipt_sha256",
+                           "session_id",
+                           "start_byte",
+                           "version",
+                           "version_id"
+                         ],
+                         "type": "object"
+                       },
+                       "maxItems": 1,
+                       "minItems": 1,
+                       "type": "array"
+                     }
+                   },
+                   "required": [
+                     "sources"
+                   ],
+                   "type": "object"
+                 },
+                 "expires_at_ms": {
+                   "maximum": 9007199254740991,
+                   "minimum": 0,
+                   "type": "integer"
+                 },
+                 "id": {
+                   "maxLength": 64,
+                   "minLength": 64,
+                   "type": "string"
+                 },
+                 "kind": {
+                   "enum": [
+                     "proposal"
+                   ],
+                   "type": "string"
+                 },
+                 "lineage": {
+                   "maxLength": 64,
+                   "minLength": 64,
+                   "type": "string"
+                 },
+                 "reason": {
+                   "maxLength": 256,
+                   "minLength": 1,
+                   "type": "string"
+                 },
+                 "state": {
+                   "enum": [
+                     "pending"
+                   ],
+                   "type": "string"
+                 },
+                 "text": {
+                   "maxLength": 2048,
+                   "minLength": 1,
+                   "type": "string"
+                 },
+                 "version": {
+                   "enum": [
+                     1
+                   ],
+                   "type": "integer"
+                 }
+               },
+               "required": [
+                 "assigned_category",
+                 "created_at_ms",
+                 "event_at_ms",
+                 "evidence",
+                 "expires_at_ms",
+                 "id",
+                 "kind",
+                 "lineage",
+                 "reason",
+                 "state",
+                 "text",
+                 "version"
+               ],
+               "type": "object"
+             },
+             "version": 1
+           },
+           "d709745ab18405dff572c41053eda5cbe12c350ebbabdcd0d52ea1e80962368a": {
+             "allow_delete": false,
+             "evidence_path": [
+               "evidence",
+               "sources"
+             ],
+             "key_prefix": "note.",
+             "source_categories": [
+               "native_operator_assertion",
+               "typed_host_outcome"
+             ],
+             "value_schema": {
+               "additionalProperties": false,
+               "properties": {
+                 "category": {
+                   "enum": [
+                     "ordinary",
+                     "preference",
+                     "current"
+                   ],
+                   "type": "string"
+                 },
+                 "created_at_ms": {
+                   "maximum": 9007199254740991,
+                   "minimum": 0,
+                   "type": "integer"
+                 },
+                 "event_at_ms": {
+                   "maximum": 9007199254740991,
+                   "minimum": 0,
+                   "type": [
+                     "integer",
+                     "null"
+                   ]
+                 },
+                 "evidence": {
+                   "additionalProperties": false,
+                   "properties": {
+                     "sources": {
+                       "items": {
+                         "additionalProperties": false,
+                         "properties": {
+                           "content_sha256": {
+                             "maxLength": 64,
+                             "minLength": 64,
+                             "type": "string"
+                           },
+                           "coverage": {
+                             "enum": [
+                               "available",
+                               "partial"
+                             ],
+                             "type": "string"
+                           },
+                           "end_byte": {
+                             "maximum": 9007199254740991,
+                             "minimum": 0,
+                             "type": "integer"
+                           },
+                           "kind": {
+                             "enum": [
+                               "input.original",
+                               "input.operator_answer",
+                               "answer.original",
+                               "tool.outcome",
+                               "input.assertion.ordinary",
+                               "input.assertion.preference",
+                               "input.assertion.current"
+                             ],
+                             "type": "string"
+                           },
+                           "occurrence_id": {
+                             "maxLength": 32,
+                             "minLength": 32,
+                             "type": "string"
+                           },
+                           "origin": {
+                             "enum": [
+                               "assistant_proposal",
+                               "interactive_operator",
+                               "native_operator_answer",
+                               "native_operator_assertion",
+                               "typed_host_outcome",
+                               "unattended_input"
+                             ],
+                             "type": "string"
+                           },
+                           "path": {
+                             "type": "null"
+                           },
+                           "quote": {
+                             "maxLength": 1024,
+                             "minLength": 1,
+                             "type": "string"
+                           },
+                           "quote_sha256": {
+                             "maxLength": 64,
+                             "minLength": 64,
+                             "type": "string"
+                           },
+                           "receipt_sha256": {
+                             "maxLength": 64,
+                             "minLength": 64,
+                             "type": "string"
+                           },
+                           "session_id": {
+                             "maxLength": 32,
+                             "minLength": 32,
+                             "type": "string"
+                           },
+                           "start_byte": {
+                             "maximum": 9007199254740991,
+                             "minimum": 0,
+                             "type": "integer"
+                           },
+                           "version": {
+                             "enum": [
+                               1
+                             ],
+                             "type": "integer"
+                           },
+                           "version_id": {
+                             "maxLength": 32,
+                             "minLength": 32,
+                             "type": "string"
+                           }
+                         },
+                         "required": [
+                           "content_sha256",
+                           "coverage",
+                           "end_byte",
+                           "kind",
+                           "occurrence_id",
+                           "origin",
+                           "path",
+                           "quote",
+                           "quote_sha256",
+                           "receipt_sha256",
+                           "session_id",
+                           "start_byte",
+                           "version",
+                           "version_id"
+                         ],
+                         "type": "object"
+                       },
+                       "maxItems": 1,
+                       "minItems": 1,
+                       "type": "array"
+                     }
+                   },
+                   "required": [
+                     "sources"
+                   ],
+                   "type": "object"
+                 },
+                 "expires_at_ms": {
+                   "maximum": 9007199254740991,
+                   "minimum": 0,
+                   "type": [
+                     "integer",
+                     "null"
+                   ]
+                 },
+                 "id": {
+                   "maxLength": 64,
+                   "minLength": 64,
+                   "type": "string"
+                 },
+                 "lineage": {
+                   "maxLength": 64,
+                   "minLength": 64,
+                   "type": "string"
+                 },
+                 "metadata_reserve": {
+                   "enum": [
+                     "",
+                     "0000000000000000000000000000000000000000000000000000000000000000"
+                   ],
+                   "type": "string"
+                 },
+                 "observed_at_ms": {
+                   "maximum": 9007199254740991,
+                   "minimum": 0,
+                   "type": "integer"
+                 },
+                 "previous_category": {
+                   "type": "null"
+                 },
+                 "reason": {
+                   "maxLength": 256,
+                   "minLength": 1,
+                   "type": "string"
+                 },
+                 "superseded_at_ms": {
+                   "type": "null"
+                 },
+                 "text": {
+                   "maxLength": 2048,
+                   "minLength": 1,
+                   "type": "string"
+                 },
+                 "version": {
+                   "enum": [
+                     1
+                   ],
+                   "type": "integer"
+                 }
+               },
+               "required": [
+                 "category",
+                 "created_at_ms",
+                 "event_at_ms",
+                 "evidence",
+                 "expires_at_ms",
+                 "id",
+                 "lineage",
+                 "metadata_reserve",
+                 "observed_at_ms",
+                 "previous_category",
+                 "reason",
+                 "superseded_at_ms",
+                 "text",
+                 "version"
+               ],
+               "type": "object"
+             },
+             "version": 1
+           }
+         },
+         "domain": "knowledge",
+         "effects": [
+           {
+             "class": "collection.publish",
+             "constraints_sha256": "d709745ab18405dff572c41053eda5cbe12c350ebbabdcd0d52ea1e80962368a",
+             "inner_op": "collection.managed",
+             "operation": "notes.capture",
+             "outer_sha256": "cf9f0a54e5190bc3b41039899bcd6c0eee9ffa2367dfa15b2d8b1e55ffd16e53",
+             "recipe_sha256": "818634825cb494606d25195a6601971a17542ed2caa22f28d1e18b1971b18cf7"
+           },
+           {
+             "class": "collection.publish",
+             "constraints_sha256": "d709745ab18405dff572c41053eda5cbe12c350ebbabdcd0d52ea1e80962368a",
+             "inner_op": "collection.managed",
+             "operation": "notes.capture",
+             "outer_sha256": "f5a509bff213a11a6b58186e73da0ba7e08017d4a89c4b959e683f9f6433e91a",
+             "recipe_sha256": "818634825cb494606d25195a6601971a17542ed2caa22f28d1e18b1971b18cf7"
+           },
+           {
+             "class": "collection.publish",
+             "constraints_sha256": "78b6d7943b3430f0225a3ee45cc4cffc27de14ddd97c39f8e38c9f8fb85ca68e",
+             "inner_op": "collection.managed",
+             "operation": "notes.propose",
+             "outer_sha256": "cf9f0a54e5190bc3b41039899bcd6c0eee9ffa2367dfa15b2d8b1e55ffd16e53",
+             "recipe_sha256": "d2622a1dd0ede7863d677e7ba76ef22f29509f5fc19fb72096c1b5ff70e7505d"
+           },
+           {
+             "class": "collection.publish",
+             "constraints_sha256": "78b6d7943b3430f0225a3ee45cc4cffc27de14ddd97c39f8e38c9f8fb85ca68e",
+             "inner_op": "collection.managed",
+             "operation": "notes.propose",
+             "outer_sha256": "f5a509bff213a11a6b58186e73da0ba7e08017d4a89c4b959e683f9f6433e91a",
+             "recipe_sha256": "d2622a1dd0ede7863d677e7ba76ef22f29509f5fc19fb72096c1b5ff70e7505d"
+           },
+           {
+             "class": "collection.read",
+             "inner_op": "collection.call",
+             "managed_read": [
+               "818634825cb494606d25195a6601971a17542ed2caa22f28d1e18b1971b18cf7",
+               "d2622a1dd0ede7863d677e7ba76ef22f29509f5fc19fb72096c1b5ff70e7505d"
+             ],
+             "operation": "notes.recall",
+             "outer_sha256": "5853488b301eebd88d26683849d9a4aee30db0ce9aa68a93d6f8a1736ff9b694"
+           },
+           {
+             "class": "collection.read",
+             "inner_op": "collection.call",
+             "managed_read": [
+               "818634825cb494606d25195a6601971a17542ed2caa22f28d1e18b1971b18cf7",
+               "d2622a1dd0ede7863d677e7ba76ef22f29509f5fc19fb72096c1b5ff70e7505d"
+             ],
+             "operation": "notes.recall",
+             "outer_sha256": "bb98a46f483a56058075dccd8fef4654b50bb290c717ee218f4bacb021039697"
+           },
+           {
+             "class": "collection.read",
+             "inner_op": "collection.call",
+             "managed_read": [
+               "818634825cb494606d25195a6601971a17542ed2caa22f28d1e18b1971b18cf7",
+               "d2622a1dd0ede7863d677e7ba76ef22f29509f5fc19fb72096c1b5ff70e7505d"
+             ],
+             "operation": "notes.recall",
+             "outer_sha256": "cf9f0a54e5190bc3b41039899bcd6c0eee9ffa2367dfa15b2d8b1e55ffd16e53"
+           },
+           {
+             "class": "collection.read",
+             "inner_op": "collection.call",
+             "managed_read": [
+               "818634825cb494606d25195a6601971a17542ed2caa22f28d1e18b1971b18cf7",
+               "d2622a1dd0ede7863d677e7ba76ef22f29509f5fc19fb72096c1b5ff70e7505d"
+             ],
+             "operation": "notes.recall",
+             "outer_sha256": "ed389dd91a2ffacc289b2d9193e3c26bff237c46793a7becc1e0cf5f0559c413"
+           },
+           {
+             "class": "collection.read",
+             "inner_op": "collection.call",
+             "managed_read": [
+               "818634825cb494606d25195a6601971a17542ed2caa22f28d1e18b1971b18cf7",
+               "d2622a1dd0ede7863d677e7ba76ef22f29509f5fc19fb72096c1b5ff70e7505d"
+             ],
+             "operation": "notes.recall",
+             "outer_sha256": "f548bb5ce92246f7c3913b4156d07a9790bcfb858c8f1f7520ab195fe32d70cf"
+           },
+           {
+             "class": "collection.read",
+             "inner_op": "collection.call",
+             "managed_read": [
+               "818634825cb494606d25195a6601971a17542ed2caa22f28d1e18b1971b18cf7",
+               "d2622a1dd0ede7863d677e7ba76ef22f29509f5fc19fb72096c1b5ff70e7505d"
+             ],
+             "operation": "notes.recall",
+             "outer_sha256": "f5a509bff213a11a6b58186e73da0ba7e08017d4a89c4b959e683f9f6433e91a"
+           }
+         ],
+         "identity_sha256": "fe1ff093e9f0a91eccd96aa5b2e8fdf6f570fc9eacfab54a138620bd4021b055",
+         "instance": "knowledge",
+         "namespace": "e81ccef8206380f9024990290879c2e3b0a22a11f03acde63aa1c2869a42ec04",
+         "recipes": {
+           "818634825cb494606d25195a6601971a17542ed2caa22f28d1e18b1971b18cf7": {
+             "category_path": [
+               "category"
+             ],
+             "constraints_sha256": "d709745ab18405dff572c41053eda5cbe12c350ebbabdcd0d52ea1e80962368a",
+             "evidence_path": [
+               "evidence",
+               "sources"
+             ],
+             "key_prefix": "note.",
+             "kind": "literal_source",
+             "lineage_path": [
+               "lineage"
+             ],
+             "override_prefix": "override.",
+             "rules": [
+               {
+                 "category": "current",
+                 "max_age_ms": null,
+                 "origins": [
+                   "native_operator_assertion"
+                 ]
+               },
+               {
+                 "category": "ordinary",
+                 "max_age_ms": 7776000000,
+                 "origins": [
+                   "native_operator_assertion",
+                   "typed_host_outcome"
+                 ]
+               },
+               {
+                 "category": "preference",
+                 "max_age_ms": null,
+                 "origins": [
+                   "native_operator_assertion"
+                 ]
+               }
+             ],
+             "text_path": [
+               "text"
+             ],
+             "version": 1
+           },
+           "d2622a1dd0ede7863d677e7ba76ef22f29509f5fc19fb72096c1b5ff70e7505d": {
+             "category_path": [
+               "assigned_category"
+             ],
+             "constraints_sha256": "78b6d7943b3430f0225a3ee45cc4cffc27de14ddd97c39f8e38c9f8fb85ca68e",
+             "evidence_path": [
+               "evidence",
+               "sources"
+             ],
+             "key_prefix": "pending.",
+             "kind": "proposal",
+             "lineage_path": [
+               "lineage"
+             ],
+             "override_prefix": "override.",
+             "rules": [
+               {
+                 "category": "current",
+                 "max_age_ms": 604800000,
+                 "origins": [
+                   "assistant_proposal",
+                   "interactive_operator",
+                   "native_operator_answer",
+                   "native_operator_assertion",
+                   "typed_host_outcome",
+                   "unattended_input"
+                 ]
+               },
+               {
+                 "category": "ordinary",
+                 "max_age_ms": 604800000,
+                 "origins": [
+                   "assistant_proposal",
+                   "interactive_operator",
+                   "native_operator_answer",
+                   "native_operator_assertion",
+                   "typed_host_outcome",
+                   "unattended_input"
+                 ]
+               },
+               {
+                 "category": "preference",
+                 "max_age_ms": 604800000,
+                 "origins": [
+                   "assistant_proposal",
+                   "interactive_operator",
+                   "native_operator_answer",
+                   "native_operator_assertion",
+                   "typed_host_outcome",
+                   "unattended_input"
+                 ]
+               }
+             ],
+             "text_path": [
+               "text"
+             ],
+             "version": 1
+           }
+         },
+         "retention": {
+           "automatic": 90,
+           "manual": 3650
+         },
+         "routes": [
+           {
+             "account_controls": null,
+             "billing_mode": "none",
+             "cache_retention": null,
+             "endpoint": "demo://local",
+             "model": "scripted",
+             "operation": "main",
+             "processing_region": null,
+             "profile": null,
+             "provider": "demo",
+             "service_id": "demo",
+             "storage_region": null
+           }
+         ],
+         "scope": {
+           "kind": "project",
+           "worktree_id": null
+         },
+         "sources": {
+           "categories": [
+             "assistant_proposal",
+             "interactive_operator",
+             "native_operator_answer",
+             "native_operator_assertion",
+             "typed_host_outcome",
+             "unattended_input"
+           ],
+           "exclusions": []
+         },
+         "storage": {
+           "collection": "knowledge",
+           "kind": "local_collection"
+         },
+         "version": 2
+       },
+       "source_sha256": "098be7eda6b0f8e8efb36093fb7cc6cdde8bb55bc60f9e43567576c0d88fdd77",
+       "version": 1
+     }
+     Type enable 30114ac54fe93376 to confirm this exact review, or anything else to cancel.
+     > enable 30114ac54fe93376
+     Saved knowledge permission. Start a new chat or run to adopt this selection.
+     IPSE_SUPERSESSION_READ_1> you> /remember ordinary My fixture ordinary value
+     Remember this exact statement as your own ordinary note?
+     Statement: "My fixture ordinary value"
+     Retention: at most 90 days.
+     Workspace: "/tmp/ipse-supersession-session-39720543d1d012ff06e61d7609c99897/work"
+     Project: a9d914c7b2de9ddb46e93e880462a10deace21748a086a64de4ecace61530590
+     Collection: e81ccef8206380f9024990290879c2e3b0a22a11f03acde63aa1c2869a42ec04
+     Artifact: 26c3e913d377f1d3f2f67eab7666770506f6517e5bf7a82eb9e8c36c43d95b2b
+     Permission: 4a4090376111311a678a0eb840e1b6f1b42a59c18e63a447959fb3d16a82721b
+     This confirms the statement and category; other effects keep their own approvals.
+     Type remember 4e672c43f63717495259b38cec2bfaf1 to confirm. Anything else cancels.
+     remember> remember 4e672c43f63717495259b38cec2bfaf1
+     IPSE_SUPERSESSION_READ_2> you> /remember current My fixture timezone is UTC
+     Remember this exact statement as your own current note?
+     Statement: "My fixture timezone is UTC"
+     Retention: until changed, forgotten or no longer eligible.
+     Workspace: "/tmp/ipse-supersession-session-39720543d1d012ff06e61d7609c99897/work"
+     Project: a9d914c7b2de9ddb46e93e880462a10deace21748a086a64de4ecace61530590
+     Collection: e81ccef8206380f9024990290879c2e3b0a22a11f03acde63aa1c2869a42ec04
+     Artifact: 26c3e913d377f1d3f2f67eab7666770506f6517e5bf7a82eb9e8c36c43d95b2b
+     Permission: 4a4090376111311a678a0eb840e1b6f1b42a59c18e63a447959fb3d16a82721b
+     This confirms the statement and category; other effects keep their own approvals.
+     Type remember f42eb2379fe63bc5ff1ab19a2a08740b to confirm. Anything else cancels.
+     remember> remember f42eb2379fe63bc5ff1ab19a2a08740b
+     IPSE_SUPERSESSION_READ_3> you> /remember ordinary A separate claim to forget
+     Remember this exact statement as your own ordinary note?
+     Statement: "A separate claim to forget"
+     Retention: at most 90 days.
+     Workspace: "/tmp/ipse-supersession-session-39720543d1d012ff06e61d7609c99897/work"
+     Project: a9d914c7b2de9ddb46e93e880462a10deace21748a086a64de4ecace61530590
+     Collection: e81ccef8206380f9024990290879c2e3b0a22a11f03acde63aa1c2869a42ec04
+     Artifact: 26c3e913d377f1d3f2f67eab7666770506f6517e5bf7a82eb9e8c36c43d95b2b
+     Permission: 4a4090376111311a678a0eb840e1b6f1b42a59c18e63a447959fb3d16a82721b
+     This confirms the statement and category; other effects keep their own approvals.
+     Type remember 5139a9af50b86bc4d53bbfdfd016e599 to confirm. Anything else cancels.
+     remember> remember 5139a9af50b86bc4d53bbfdfd016e599
+     Management journal: 4216c92d144a015fa55f956e023c76c0
+     Review the complete proposed facts below. This confirmation applies only to this exact review.
+     {
+       "action_sha256": "6c72d665e3850c8ba3e5fbec42afd3cb41f261381ec8e75efe7b34ad7a640a99",
+       "collection": {
+         "manifest_sha256": "81399a9ccd57c420d0cbea22ab708b3ce4ce7890190404cd11add7b18f171062",
+         "root": {
+           "floor": 3,
+           "floor_anchor": "a5909214a78a884930cbaf6bcd778734",
+           "generation": 3,
+           "project": "e81ccef8206380f9024990290879c2e3b0a22a11f03acde63aa1c2869a42ec04",
+           "version": 3
+         },
+         "root_sha256": "aeb87f60977a7cb0a889d515a157f9f7320c7207a2e8dd9333dad96450ae5147",
+         "root_state": "present"
+       },
+       "context": {
+         "binding_sha256": "800982838571c20fad26f87d92f3ee48abf664bd159b6d97fd84e55bfe52bdb7",
+         "client_id": "f32a556251b6994dd16201b5fb2a9a31",
+         "job_id": "094b969ee7f51e438bd88b1c2b2c1346",
+         "management_epoch": 1,
+         "management_sha256": "6c655702763792a78d23ba5157a6459356a8f766676622d76597834e9ff45b47",
+         "namespace": "e81ccef8206380f9024990290879c2e3b0a22a11f03acde63aa1c2869a42ec04",
+         "original_pin": null,
+         "project_id": "a9d914c7b2de9ddb46e93e880462a10deace21748a086a64de4ecace61530590",
+         "recipe": {
+           "category_path": [
+             "category"
+           ],
+           "constraints_sha256": "d709745ab18405dff572c41053eda5cbe12c350ebbabdcd0d52ea1e80962368a",
+           "evidence_path": [
+             "evidence",
+             "sources"
+           ],
+           "key_prefix": "note.",
+           "kind": "literal_source",
+           "lineage_path": [
+             "lineage"
+           ],
+           "override_prefix": "override.",
+           "rules": [
+             {
+               "category": "current",
+               "max_age_ms": null,
+               "origins": [
+                 "native_operator_assertion"
+               ]
+             },
+             {
+               "category": "ordinary",
+               "max_age_ms": 7776000000,
+               "origins": [
+                 "native_operator_assertion",
+                 "typed_host_outcome"
+               ]
+             },
+             {
+               "category": "preference",
+               "max_age_ms": null,
+               "origins": [
+                 "native_operator_assertion"
+               ]
+             }
+           ],
+           "text_path": [
+             "text"
+           ],
+           "version": 1
+         },
+         "session_id": "4216c92d144a015fa55f956e023c76c0"
+       },
+       "historical_gap": false,
+       "historical_gap_notice": null,
+       "kind": "managed_literal_retention",
+       "metadata": {
+         "category": "ordinary",
+         "first_admitted_ms": 1793252285546,
+         "lineage": "6cb7b845557e39c208bb109b6b5628c548daec78557093e5e97cdcc2bf5d19a8",
+         "policy_sha256": "4a4090376111311a678a0eb840e1b6f1b42a59c18e63a447959fb3d16a82721b",
+         "recipe_sha256": "818634825cb494606d25195a6601971a17542ed2caa22f28d1e18b1971b18cf7",
+         "valid_until_ms": 1801028285546
+       },
+       "new_deadline_rule": {
+         "basis": "native_confirmation_time",
+         "duration_ms": 15000
+       },
+       "old_deadline_ms": 1801028285546,
+       "operation_id": "0024544a447ae6772ba4c90789414a09",
+       "policy": {
+         "duration_ms": 15000,
+         "kind": "duration"
+       },
+       "reason": "Operator requested this selected retention choice",
+       "request_sha256": "2c0d2f3e51166d35377a28d9016f12981c4fac6d6cdb0d50fbcceb241c3bbcee",
+       "scope": "selected literal derivative; original journal, management review journal and shared evidence remain",
+       "target": {
+         "bytes": 1129,
+         "key": "note.6cb7b845557e39c208bb109b6b5628c548daec78557093e5e97cdcc2bf5d19a8",
+         "operation_id": "de5249779c74ae51bf76712327ff8174",
+         "revision": 1,
+         "sha256": "1c49434f2cd42d4476090b73fa119fda20bb07e83a4c9a64124f80925c9b0471",
+         "value": {
+           "category": "ordinary",
+           "created_at_ms": 1793252285259,
+           "event_at_ms": null,
+           "evidence": {
+             "sources": [
+               {
+                 "content_sha256": "aa238c7ea8382ace1944e69a6a1c264ad882ff6078729597b3e4b52007ac190d",
+                 "coverage": "available",
+                 "end_byte": 25,
+                 "kind": "input.assertion.ordinary",
+                 "occurrence_id": "b1b8a3767060e3cbf58419c744f83a60",
+                 "origin": "native_operator_assertion",
+                 "path": null,
+                 "quote": "My fixture ordinary value",
+                 "quote_sha256": "aa238c7ea8382ace1944e69a6a1c264ad882ff6078729597b3e4b52007ac190d",
+                 "receipt_sha256": "a4075b2d2da35a36298b5b6941e22e5570a734c454e96945c32a64667b78e246",
+                 "session_id": "8979a439897517e8369efe40e07d449d",
+                 "start_byte": 0,
+                 "version": 1,
+                 "version_id": "499ce9c02b6742d07b598477e96cd325"
+               }
+             ]
+           },
+           "expires_at_ms": 1801028285259,
+           "id": "6cb7b845557e39c208bb109b6b5628c548daec78557093e5e97cdcc2bf5d19a8",
+           "lineage": "6cb7b845557e39c208bb109b6b5628c548daec78557093e5e97cdcc2bf5d19a8",
+           "metadata_reserve": "0000000000000000000000000000000000000000000000000000000000000000",
+           "observed_at_ms": 1793252285259,
+           "previous_category": null,
+           "reason": "Native operator statement and category review.",
+           "superseded_at_ms": null,
+           "text": "My fixture ordinary value",
+           "version": 1
+         }
+       },
+       "version": 1
+     }
+     Type duration 9be4e81b709c39bd to confirm, or anything else to cancel.
+     > duration 9be4e81b709c39bd
+     IPSE_SUPERSESSION_READ_4> you> /correct note.6cb7b845557e39c208bb109b6b5628c548daec78557093e5e97cdcc2bf5d19a8 My corrected ordinary value
+     Remember this exact statement as your own ordinary note?
+     Statement: "My corrected ordinary value"
+     Retention: at most 90 days.
+     Workspace: "/tmp/ipse-supersession-session-39720543d1d012ff06e61d7609c99897/work"
+     Project: a9d914c7b2de9ddb46e93e880462a10deace21748a086a64de4ecace61530590
+     Collection: e81ccef8206380f9024990290879c2e3b0a22a11f03acde63aa1c2869a42ec04
+     Artifact: 26c3e913d377f1d3f2f67eab7666770506f6517e5bf7a82eb9e8c36c43d95b2b
+     Permission: 4a4090376111311a678a0eb840e1b6f1b42a59c18e63a447959fb3d16a82721b
+     This confirms the statement and category; other effects keep their own approvals.
+     Type remember c5a135417a5abb9177b1b6e7565fda4e to confirm. Anything else cancels.
+     remember> remember c5a135417a5abb9177b1b6e7565fda4e
+     Review the complete proposed facts below. This confirmation applies only to this exact review.
+     {
+       "action_sha256": "b1b293cb80e3789ed02861d1f475c57534ad7196f5014bafd7f90986c0541003",
+       "checked_at_ms": 1793252288050,
+       "collection": {
+         "manifest_sha256": "77b9ea01d36de72d808feb886490295240316cfdd59a82b978800c6c6d2d18b5",
+         "root": {
+           "floor": 4,
+           "floor_anchor": "0024544a447ae6772ba4c90789414a09",
+           "generation": 4,
+           "project": "e81ccef8206380f9024990290879c2e3b0a22a11f03acde63aa1c2869a42ec04",
+           "version": 3
+         },
+         "root_sha256": "8f44ed570effddf4f05d5b2df4e8bab88f7104a290f36d2f3826e3c28561a0bb",
+         "root_state": "present"
+       },
+       "context": {
+         "binding_sha256": "800982838571c20fad26f87d92f3ee48abf664bd159b6d97fd84e55bfe52bdb7",
+         "client_id": "9fbdbc8d5819c5197e58459167c346f8",
+         "job_id": "abab3f296abaf2ac330437386b6048db",
+         "management_epoch": 1,
+         "management_sha256": "6c655702763792a78d23ba5157a6459356a8f766676622d76597834e9ff45b47",
+         "namespace": "e81ccef8206380f9024990290879c2e3b0a22a11f03acde63aa1c2869a42ec04",
+         "original_pin": {
+           "binding_sha256": "800982838571c20fad26f87d92f3ee48abf664bd159b6d97fd84e55bfe52bdb7",
+           "epoch": 1,
+           "identity_sha256": "fe1ff093e9f0a91eccd96aa5b2e8fdf6f570fc9eacfab54a138620bd4021b055",
+           "namespace": "e81ccef8206380f9024990290879c2e3b0a22a11f03acde63aa1c2869a42ec04",
+           "policy_sha256": "4a4090376111311a678a0eb840e1b6f1b42a59c18e63a447959fb3d16a82721b",
+           "project_id": "a9d914c7b2de9ddb46e93e880462a10deace21748a086a64de4ecace61530590",
+           "routes_sha256": "0d55114f77d605e25cf7d7ce2d506488a3525da0f0550f8121b190fb430a2cab",
+           "session_id": "8979a439897517e8369efe40e07d449d",
+           "source_sha256": "098be7eda6b0f8e8efb36093fb7cc6cdde8bb55bc60f9e43567576c0d88fdd77",
+           "version": 1,
+           "worktree_id": "57a14d61cc883285626d6efe12d607792dc55caf732ccddf5315a7f83219cddb"
+         },
+         "project_id": "a9d914c7b2de9ddb46e93e880462a10deace21748a086a64de4ecace61530590",
+         "recipe": {
+           "category_path": [
+             "category"
+           ],
+           "constraints_sha256": "d709745ab18405dff572c41053eda5cbe12c350ebbabdcd0d52ea1e80962368a",
+           "evidence_path": [
+             "evidence",
+             "sources"
+           ],
+           "key_prefix": "note.",
+           "kind": "literal_source",
+           "lineage_path": [
+             "lineage"
+           ],
+           "override_prefix": "override.",
+           "rules": [
+             {
+               "category": "current",
+               "max_age_ms": null,
+               "origins": [
+                 "native_operator_assertion"
+               ]
+             },
+             {
+               "category": "ordinary",
+               "max_age_ms": 7776000000,
+               "origins": [
+                 "native_operator_assertion",
+                 "typed_host_outcome"
+               ]
+             },
+             {
+               "category": "preference",
+               "max_age_ms": null,
+               "origins": [
+                 "native_operator_assertion"
+               ]
+             }
+           ],
+           "text_path": [
+             "text"
+           ],
+           "version": 1
+         },
+         "session_id": "8979a439897517e8369efe40e07d449d"
+       },
+       "history_rule": {
+         "at_ms": 1793252302279,
+         "basis": "existing_deadline"
+       },
+       "kind": "managed_literal_supersession",
+       "metadata": {
+         "category": "ordinary",
+         "choice": {
+           "challenge": "9be4e81b709c39bd",
+           "display_sha256": "33140b172f822b806fdba59718f357671dafe55131325f1cf76732a91962f10c",
+           "event_id": "cb604bd06476f0f730feb19c2aa8296c",
+           "input_sha256": "32e2433793afefb7367be6be81c1fbda59d8a31f9c63f86e1afaa84bacd2608d",
+           "kind": "native_management",
+           "lineage": "6cb7b845557e39c208bb109b6b5628c548daec78557093e5e97cdcc2bf5d19a8",
+           "observed_at_ms": 1793252287279,
+           "policy": {
+             "duration_ms": 15000,
+             "kind": "duration"
+           },
+           "reason": "Operator requested this selected retention choice",
+           "target_key": "note.6cb7b845557e39c208bb109b6b5628c548daec78557093e5e97cdcc2bf5d19a8",
+           "target_value_sha256": "1c49434f2cd42d4476090b73fa119fda20bb07e83a4c9a64124f80925c9b0471",
+           "version": 2
+         },
+         "first_admitted_ms": 1793252285546,
+         "lineage": "6cb7b845557e39c208bb109b6b5628c548daec78557093e5e97cdcc2bf5d19a8",
+         "policy_sha256": "4a4090376111311a678a0eb840e1b6f1b42a59c18e63a447959fb3d16a82721b",
+         "recipe_sha256": "818634825cb494606d25195a6601971a17542ed2caa22f28d1e18b1971b18cf7",
+         "valid_until_ms": 1793252302279
+       },
+       "mode": "ordinary",
+       "new_policy_sha256": "4a4090376111311a678a0eb840e1b6f1b42a59c18e63a447959fb3d16a82721b",
+       "new_source_sha256": "615e78d7c70e64fa484d205df21a2d61ef1c777c7ab4bf13af7612bfc171f447",
+       "operation_id": "608162cfd467462113d972ac283ffe6e",
+       "reason": "Operator reviewed the exact source and successor relation",
+       "replacement": {
+         "key": "note.371b01c29e88599d4e94c848bc0303f2417681248237b2b6d1250cf4277a756a",
+         "value": {
+           "category": "ordinary",
+           "created_at_ms": 1793252287725,
+           "event_at_ms": null,
+           "evidence": {
+             "sources": [
+               {
+                 "content_sha256": "d79dafca91d165a5e46388b2b71c3774d1b00c507fef566b91ab43c0e037265b",
+                 "coverage": "available",
+                 "end_byte": 27,
+                 "kind": "input.assertion.ordinary",
+                 "occurrence_id": "d0d4fd530b6050feca31640bfc55f2c2",
+                 "origin": "native_operator_assertion",
+                 "path": null,
+                 "quote": "My corrected ordinary value",
+                 "quote_sha256": "d79dafca91d165a5e46388b2b71c3774d1b00c507fef566b91ab43c0e037265b",
+                 "receipt_sha256": "39fc59423e205ca89ea29549c80f782504bf367129160cd7dd9669f99151a0aa",
+                 "session_id": "8979a439897517e8369efe40e07d449d",
+                 "start_byte": 0,
+                 "version": 1,
+                 "version_id": "ae33bdebdcacb2cf73f266c70f97f87a"
+               }
+             ]
+           },
+           "expires_at_ms": 1801028287725,
+           "id": "371b01c29e88599d4e94c848bc0303f2417681248237b2b6d1250cf4277a756a",
+           "lineage": "371b01c29e88599d4e94c848bc0303f2417681248237b2b6d1250cf4277a756a",
+           "metadata_reserve": "0000000000000000000000000000000000000000000000000000000000000000",
+           "observed_at_ms": 1793252287725,
+           "previous_category": null,
+           "reason": "Native operator statement and category review.",
+           "superseded_at_ms": null,
+           "text": "My corrected ordinary value",
+           "version": 1
+         }
+       },
+       "request_sha256": "f9412c5a4d0b376e0a8821ef07c05f4f735edd6e6e3c025c267f5ee396a1b027",
+       "scope": "atomic literal successor and noncurrent signed history; original journal and shared evidence remain",
+       "target": {
+         "bytes": 1129,
+         "key": "note.6cb7b845557e39c208bb109b6b5628c548daec78557093e5e97cdcc2bf5d19a8",
+         "operation_id": "0024544a447ae6772ba4c90789414a09",
+         "revision": 4,
+         "sha256": "1c49434f2cd42d4476090b73fa119fda20bb07e83a4c9a64124f80925c9b0471",
+         "value": {
+           "category": "ordinary",
+           "created_at_ms": 1793252285259,
+           "event_at_ms": null,
+           "evidence": {
+             "sources": [
+               {
+                 "content_sha256": "aa238c7ea8382ace1944e69a6a1c264ad882ff6078729597b3e4b52007ac190d",
+                 "coverage": "available",
+                 "end_byte": 25,
+                 "kind": "input.assertion.ordinary",
+                 "occurrence_id": "b1b8a3767060e3cbf58419c744f83a60",
+                 "origin": "native_operator_assertion",
+                 "path": null,
+                 "quote": "My fixture ordinary value",
+                 "quote_sha256": "aa238c7ea8382ace1944e69a6a1c264ad882ff6078729597b3e4b52007ac190d",
+                 "receipt_sha256": "a4075b2d2da35a36298b5b6941e22e5570a734c454e96945c32a64667b78e246",
+                 "session_id": "8979a439897517e8369efe40e07d449d",
+                 "start_byte": 0,
+                 "version": 1,
+                 "version_id": "499ce9c02b6742d07b598477e96cd325"
+               }
+             ]
+           },
+           "expires_at_ms": 1801028285259,
+           "id": "6cb7b845557e39c208bb109b6b5628c548daec78557093e5e97cdcc2bf5d19a8",
+           "lineage": "6cb7b845557e39c208bb109b6b5628c548daec78557093e5e97cdcc2bf5d19a8",
+           "metadata_reserve": "0000000000000000000000000000000000000000000000000000000000000000",
+           "observed_at_ms": 1793252285259,
+           "previous_category": null,
+           "reason": "Native operator statement and category review.",
+           "superseded_at_ms": null,
+           "text": "My fixture ordinary value",
+           "version": 1
+         }
+       },
+       "version": 1
+     }
+     Type correct 55ee2fc9ca7a1f37 to confirm, or anything else to cancel.
+     > correct 55ee2fc9ca7a1f37
+     IPSE_SUPERSESSION_READ_5> you> /supersede note.0bcc3ee58f7a01f096a1eb3d695d3e8124f464ff0397945c1cb04c57d87a943c My fixture timezone is Europe/Berlin
+     Remember this exact statement as your own current note?
+     Statement: "My fixture timezone is Europe/Berlin"
+     Retention: until changed, forgotten or no longer eligible.
+     Workspace: "/tmp/ipse-supersession-session-39720543d1d012ff06e61d7609c99897/work"
+     Project: a9d914c7b2de9ddb46e93e880462a10deace21748a086a64de4ecace61530590
+     Collection: e81ccef8206380f9024990290879c2e3b0a22a11f03acde63aa1c2869a42ec04
+     Artifact: 26c3e913d377f1d3f2f67eab7666770506f6517e5bf7a82eb9e8c36c43d95b2b
+     Permission: 4a4090376111311a678a0eb840e1b6f1b42a59c18e63a447959fb3d16a82721b
+     This confirms the statement and category; other effects keep their own approvals.
+     Type remember 2ab67d19a21aa84fd4fb737dd61e0c74 to confirm. Anything else cancels.
+     remember> remember 2ab67d19a21aa84fd4fb737dd61e0c74
+     Review the complete proposed facts below. This confirmation applies only to this exact review.
+     {
+       "action_sha256": "74c6f66461d729e0c2ff59786e02b4309de8c28291ee821bb185a1696531bebf",
+       "checked_at_ms": 1793252289070,
+       "collection": {
+         "manifest_sha256": "e1a28a70476c59ccf44e6e3e18b2b197c5b18025ef5acf84f0bcb95dff831695",
+         "root": {
+           "floor": 5,
+           "floor_anchor": "608162cfd467462113d972ac283ffe6e",
+           "generation": 5,
+           "project": "e81ccef8206380f9024990290879c2e3b0a22a11f03acde63aa1c2869a42ec04",
+           "version": 3
+         },
+         "root_sha256": "ac93bf9e8065ad3a42b1f73fff023c11e6aafea43a3d14c8d8ef9be7fb4be09d",
+         "root_state": "present"
+       },
+       "context": {
+         "binding_sha256": "800982838571c20fad26f87d92f3ee48abf664bd159b6d97fd84e55bfe52bdb7",
+         "client_id": "5a35b06f8d2ff14cdcb37c6f8715a96a",
+         "job_id": "d1801e3ccc6d422733a25952dff7f5b9",
+         "management_epoch": 1,
+         "management_sha256": "6c655702763792a78d23ba5157a6459356a8f766676622d76597834e9ff45b47",
+         "namespace": "e81ccef8206380f9024990290879c2e3b0a22a11f03acde63aa1c2869a42ec04",
+         "original_pin": {
+           "binding_sha256": "800982838571c20fad26f87d92f3ee48abf664bd159b6d97fd84e55bfe52bdb7",
+           "epoch": 1,
+           "identity_sha256": "fe1ff093e9f0a91eccd96aa5b2e8fdf6f570fc9eacfab54a138620bd4021b055",
+           "namespace": "e81ccef8206380f9024990290879c2e3b0a22a11f03acde63aa1c2869a42ec04",
+           "policy_sha256": "4a4090376111311a678a0eb840e1b6f1b42a59c18e63a447959fb3d16a82721b",
+           "project_id": "a9d914c7b2de9ddb46e93e880462a10deace21748a086a64de4ecace61530590",
+           "routes_sha256": "0d55114f77d605e25cf7d7ce2d506488a3525da0f0550f8121b190fb430a2cab",
+           "session_id": "8979a439897517e8369efe40e07d449d",
+           "source_sha256": "098be7eda6b0f8e8efb36093fb7cc6cdde8bb55bc60f9e43567576c0d88fdd77",
+           "version": 1,
+           "worktree_id": "57a14d61cc883285626d6efe12d607792dc55caf732ccddf5315a7f83219cddb"
+         },
+         "project_id": "a9d914c7b2de9ddb46e93e880462a10deace21748a086a64de4ecace61530590",
+         "recipe": {
+           "category_path": [
+             "category"
+           ],
+           "constraints_sha256": "d709745ab18405dff572c41053eda5cbe12c350ebbabdcd0d52ea1e80962368a",
+           "evidence_path": [
+             "evidence",
+             "sources"
+           ],
+           "key_prefix": "note.",
+           "kind": "literal_source",
+           "lineage_path": [
+             "lineage"
+           ],
+           "override_prefix": "override.",
+           "rules": [
+             {
+               "category": "current",
+               "max_age_ms": null,
+               "origins": [
+                 "native_operator_assertion"
+               ]
+             },
+             {
+               "category": "ordinary",
+               "max_age_ms": 7776000000,
+               "origins": [
+                 "native_operator_assertion",
+                 "typed_host_outcome"
+               ]
+             },
+             {
+               "category": "preference",
+               "max_age_ms": null,
+               "origins": [
+                 "native_operator_assertion"
+               ]
+             }
+           ],
+           "text_path": [
+             "text"
+           ],
+           "version": 1
+         },
+         "session_id": "8979a439897517e8369efe40e07d449d"
+       },
+       "history_rule": {
+         "basis": "native_confirmation_time",
+         "duration_ms": 31536000000
+       },
+       "kind": "managed_literal_supersession",
+       "metadata": {
+         "category": "current",
+         "first_admitted_ms": 1793252286186,
+         "lineage": "0bcc3ee58f7a01f096a1eb3d695d3e8124f464ff0397945c1cb04c57d87a943c",
+         "policy_sha256": "4a4090376111311a678a0eb840e1b6f1b42a59c18e63a447959fb3d16a82721b",
+         "recipe_sha256": "818634825cb494606d25195a6601971a17542ed2caa22f28d1e18b1971b18cf7",
+         "valid_until_ms": null
+       },
+       "mode": "temporal",
+       "new_policy_sha256": "4a4090376111311a678a0eb840e1b6f1b42a59c18e63a447959fb3d16a82721b",
+       "new_source_sha256": "74fa9f62533bfacfcc7c8ae41b87673dc5cac119d6b334d0ee33cbad157de2f0",
+       "operation_id": "5de0702e9aab3bc1579fa5724e6c1956",
+       "reason": "Operator reviewed the exact source and successor relation",
+       "replacement": {
+         "key": "note.8ec67667f7b996c3ca82468f806cd8700cd126645982cfc35ebbdcbe4da87a9f",
+         "value": {
+           "category": "current",
+           "created_at_ms": 1793252288650,
+           "event_at_ms": null,
+           "evidence": {
+             "sources": [
+               {
+                 "content_sha256": "ff61a3fba591a5d86c24ea9308635f9d8e47724306b68f414d47feb869012b13",
+                 "coverage": "available",
+                 "end_byte": 36,
+                 "kind": "input.assertion.current",
+                 "occurrence_id": "42c543c13a48cecb08596d57f2b0f5ff",
+                 "origin": "native_operator_assertion",
+                 "path": null,
+                 "quote": "My fixture timezone is Europe/Berlin",
+                 "quote_sha256": "ff61a3fba591a5d86c24ea9308635f9d8e47724306b68f414d47feb869012b13",
+                 "receipt_sha256": "65e3d76413fb821c393149e40b042de2b9b18932587eb0348005f3955d48796f",
+                 "session_id": "8979a439897517e8369efe40e07d449d",
+                 "start_byte": 0,
+                 "version": 1,
+                 "version_id": "b8a101b7ad254fc229e72f3259a284da"
+               }
+             ]
+           },
+           "expires_at_ms": null,
+           "id": "8ec67667f7b996c3ca82468f806cd8700cd126645982cfc35ebbdcbe4da87a9f",
+           "lineage": "8ec67667f7b996c3ca82468f806cd8700cd126645982cfc35ebbdcbe4da87a9f",
+           "metadata_reserve": "0000000000000000000000000000000000000000000000000000000000000000",
+           "observed_at_ms": 1793252288650,
+           "previous_category": null,
+           "reason": "Native operator statement and category review.",
+           "superseded_at_ms": null,
+           "text": "My fixture timezone is Europe/Berlin",
+           "version": 1
+         }
+       },
+       "request_sha256": "22d5339967557a5e526f917957c1c4769d48dde3fa9204a1f6e6d50923faf9d2",
+       "scope": "atomic literal successor and noncurrent signed history; original journal and shared evidence remain",
+       "target": {
+         "bytes": 1120,
+         "key": "note.0bcc3ee58f7a01f096a1eb3d695d3e8124f464ff0397945c1cb04c57d87a943c",
+         "operation_id": "ae97b2918f362534181773ab39cd8392",
+         "revision": 2,
+         "sha256": "26eff9f57a041182502cf386bb28c7f759f1942b15496c4c123287bc74778c69",
+         "value": {
+           "category": "current",
+           "created_at_ms": 1793252285911,
+           "event_at_ms": null,
+           "evidence": {
+             "sources": [
+               {
+                 "content_sha256": "aae70a06f7a28b19c80e7814ac316e9518d7a975e58d6d323b9855fb9f1eece6",
+                 "coverage": "available",
+                 "end_byte": 26,
+                 "kind": "input.assertion.current",
+                 "occurrence_id": "a9619976499cfd219b8d51c5249972b2",
+                 "origin": "native_operator_assertion",
+                 "path": null,
+                 "quote": "My fixture timezone is UTC",
+                 "quote_sha256": "aae70a06f7a28b19c80e7814ac316e9518d7a975e58d6d323b9855fb9f1eece6",
+                 "receipt_sha256": "07893951c4c3fdde9be17a269e7c8a3054e3ee7d2d8ce762b629f25c297ed2df",
+                 "session_id": "8979a439897517e8369efe40e07d449d",
+                 "start_byte": 0,
+                 "version": 1,
+                 "version_id": "f625d7992c80f6417b3bfb7d30d1a1b3"
+               }
+             ]
+           },
+           "expires_at_ms": null,
+           "id": "0bcc3ee58f7a01f096a1eb3d695d3e8124f464ff0397945c1cb04c57d87a943c",
+           "lineage": "0bcc3ee58f7a01f096a1eb3d695d3e8124f464ff0397945c1cb04c57d87a943c",
+           "metadata_reserve": "0000000000000000000000000000000000000000000000000000000000000000",
+           "observed_at_ms": 1793252285911,
+           "previous_category": null,
+           "reason": "Native operator statement and category review.",
+           "superseded_at_ms": null,
+           "text": "My fixture timezone is UTC",
+           "version": 1
+         }
+       },
+       "version": 1
+     }
+     Type supersede 16bbbe305a0313c3 to confirm, or anything else to cancel.
+     > supersede 16bbbe305a0313c3
+     [22m
+     22:38:22.340 [info] The function passed as a handler with ID "compaction-interrupt-f71ef17e149c765b2d9b11d0e12d2dee" is a local function.
+     This means that it is either an anonymous function or a capture of a function without a module specified. That may cause a performance penalty when calling that handler. For more details see the note in `telemetry:attach/4` documentation.
+     
+     https://hexdocs.pm/telemetry/telemetry.html#attach/4[0m
+     Management journal: 35070f7bc40530d4c357e5947eac5148
+     Reclaiming the selected expired signed policy:
+     {
+       "action_sha256": "1e56f54fe5742f1402be4ba00db4d92e0126ff08ea47c9c3d9a50b24b456c4c2",
+       "checked_at_ms": 1793252302465,
+       "collection": {
+         "manifest_sha256": "674d9b3f9cc27fa4b63f5b4bd985b5a8d04e62e0cccec0564e9d66058bd1a7b5",
+         "root": {
+           "floor": 6,
+           "floor_anchor": "5de0702e9aab3bc1579fa5724e6c1956",
+           "generation": 6,
+           "project": "e81ccef8206380f9024990290879c2e3b0a22a11f03acde63aa1c2869a42ec04",
+           "version": 3
+         },
+         "root_sha256": "5a79452fce476ded15ef919713df6b09a9683349f0df690ce81b69d0456748bf",
+         "root_state": "present"
+       },
+       "context": {
+         "binding_sha256": "800982838571c20fad26f87d92f3ee48abf664bd159b6d97fd84e55bfe52bdb7",
+         "client_id": "b2dee756da319ace35acd732b3f776ac",
+         "job_id": "db7c34810ebe0dea5439a082a1452757",
+         "management_epoch": 1,
+         "management_sha256": "6c655702763792a78d23ba5157a6459356a8f766676622d76597834e9ff45b47",
+         "namespace": "e81ccef8206380f9024990290879c2e3b0a22a11f03acde63aa1c2869a42ec04",
+         "original_pin": null,
+         "project_id": "a9d914c7b2de9ddb46e93e880462a10deace21748a086a64de4ecace61530590",
+         "recipe": {
+           "category_path": [
+             "category"
+           ],
+           "constraints_sha256": "d709745ab18405dff572c41053eda5cbe12c350ebbabdcd0d52ea1e80962368a",
+           "evidence_path": [
+             "evidence",
+             "sources"
+           ],
+           "key_prefix": "note.",
+           "kind": "literal_source",
+           "lineage_path": [
+             "lineage"
+           ],
+           "override_prefix": "override.",
+           "rules": [
+             {
+               "category": "current",
+               "max_age_ms": null,
+               "origins": [
+                 "native_operator_assertion"
+               ]
+             },
+             {
+               "category": "ordinary",
+               "max_age_ms": 7776000000,
+               "origins": [
+                 "native_operator_assertion",
+                 "typed_host_outcome"
+               ]
+             },
+             {
+               "category": "preference",
+               "max_age_ms": null,
+               "origins": [
+                 "native_operator_assertion"
+               ]
+             }
+           ],
+           "text_path": [
+             "text"
+           ],
+           "version": 1
+         },
+         "session_id": "35070f7bc40530d4c357e5947eac5148"
+       },
+       "expired_at_ms": 1793252302279,
+       "kind": "managed_literal_history_expiry",
+       "metadata": {
+         "category": "history",
+         "choice": {
+           "challenge": "9be4e81b709c39bd",
+           "display_sha256": "33140b172f822b806fdba59718f357671dafe55131325f1cf76732a91962f10c",
+           "event_id": "cb604bd06476f0f730feb19c2aa8296c",
+           "input_sha256": "32e2433793afefb7367be6be81c1fbda59d8a31f9c63f86e1afaa84bacd2608d",
+           "kind": "native_management",
+           "lineage": "6cb7b845557e39c208bb109b6b5628c548daec78557093e5e97cdcc2bf5d19a8",
+           "observed_at_ms": 1793252287279,
+           "policy": {
+             "duration_ms": 15000,
+             "kind": "duration"
+           },
+           "reason": "Operator requested this selected retention choice",
+           "target_key": "note.6cb7b845557e39c208bb109b6b5628c548daec78557093e5e97cdcc2bf5d19a8",
+           "target_value_sha256": "1c49434f2cd42d4476090b73fa119fda20bb07e83a4c9a64124f80925c9b0471",
+           "version": 2
+         },
+         "first_admitted_ms": 1793252285546,
+         "lineage": "6cb7b845557e39c208bb109b6b5628c548daec78557093e5e97cdcc2bf5d19a8",
+         "policy_sha256": "4a4090376111311a678a0eb840e1b6f1b42a59c18e63a447959fb3d16a82721b",
+         "previous_category": "ordinary",
+         "recipe_sha256": "818634825cb494606d25195a6601971a17542ed2caa22f28d1e18b1971b18cf7",
+         "successor": {
+           "key": "note.371b01c29e88599d4e94c848bc0303f2417681248237b2b6d1250cf4277a756a",
+           "sha256": "9e13169767ae31121eed17c62c09d9fddbb317b157904ceef6956b7d392cacef"
+         },
+         "superseded_at_ms": 1793252288157,
+         "valid_until_ms": 1793252302279
+       },
+       "operation_id": "0d1beb3f363d6aec08e7323bd824afe2",
+       "reason": "Stored signed historical retention deadline elapsed",
+       "request_sha256": "3e200e90fce3bbdea61066f1680aa6344962ac4e971c07a3e986d2932285295d",
+       "scope": "expired historical literal; any superseded retention-choice capsule may be compacted and is preserved in this journal, signed successor edge, admission clocks, original and review journals and shared evidence remain",
+       "target": {
+         "bytes": 1129,
+         "key": "note.6cb7b845557e39c208bb109b6b5628c548daec78557093e5e97cdcc2bf5d19a8",
+         "operation_id": "608162cfd467462113d972ac283ffe6e",
+         "revision": 5,
+         "sha256": "1c49434f2cd42d4476090b73fa119fda20bb07e83a4c9a64124f80925c9b0471",
+         "value": {
+           "category": "ordinary",
+           "created_at_ms": 1793252285259,
+           "event_at_ms": null,
+           "evidence": {
+             "sources": [
+               {
+                 "content_sha256": "aa238c7ea8382ace1944e69a6a1c264ad882ff6078729597b3e4b52007ac190d",
+                 "coverage": "available",
+                 "end_byte": 25,
+                 "kind": "input.assertion.ordinary",
+                 "occurrence_id": "b1b8a3767060e3cbf58419c744f83a60",
+                 "origin": "native_operator_assertion",
+                 "path": null,
+                 "quote": "My fixture ordinary value",
+                 "quote_sha256": "aa238c7ea8382ace1944e69a6a1c264ad882ff6078729597b3e4b52007ac190d",
+                 "receipt_sha256": "a4075b2d2da35a36298b5b6941e22e5570a734c454e96945c32a64667b78e246",
+                 "session_id": "8979a439897517e8369efe40e07d449d",
+                 "start_byte": 0,
+                 "version": 1,
+                 "version_id": "499ce9c02b6742d07b598477e96cd325"
+               }
+             ]
+           },
+           "expires_at_ms": 1801028285259,
+           "id": "6cb7b845557e39c208bb109b6b5628c548daec78557093e5e97cdcc2bf5d19a8",
+           "lineage": "6cb7b845557e39c208bb109b6b5628c548daec78557093e5e97cdcc2bf5d19a8",
+           "metadata_reserve": "0000000000000000000000000000000000000000000000000000000000000000",
+           "observed_at_ms": 1793252285259,
+           "previous_category": null,
+           "reason": "Native operator statement and category review.",
+           "superseded_at_ms": null,
+           "text": "My fixture ordinary value",
+           "version": 1
+         }
+       },
+       "version": 1
+     }
+     ** (ExUnit.AssertionError) 
+     
+     Assertion failed, no matching message after 5000ms
+          The following variables were pinned:
+            effect = #PID<0.828.0>
+            effect_ref = #Reference<0.2689938704.654835713.48401>
+          Showing 7 of 7 messages in the mailbox
+     code: assert_receive {:DOWN, ^effect_ref, :process, ^effect, _}
+     mailbox:
+            pattern: {:DOWN, ^effect_ref, :process, ^effect, _}
+            value:   {:ipse, #PID<0.299.0>, {:extension_result, %{"name" => "ext__knowledge__capture", "stage" => "invoke.command", "value" => %{"current_eligibility" => "not_established", "outcomes" => [%{"action_sha256" => "758c5ac1a23e040f22258d2e5632b22ca0d01d296084c81b7b136ad6976f5849", "category" => "ordinary", "generation" => 1, "normalization_sha256" => "3c131a7c134bca04027bab37ec57267379bf2e97ecd7e20519e59a0773f248af", "operation_id" => "de5249779c74ae51bf76712327ff8174", "receipt_sha256" => "d900c2a183bb431542c21df45f690391c258bc2e536fa29abf30597cb13dea1f", "record_key" => "note.6cb7b845557e39c208bb109b6b5628c548daec78557093e5e97cdcc2bf5d19a8"}], "status" => "historical_write_outcome"}}}}
+     
+            pattern: {:DOWN, ^effect_ref, :process, ^effect, _}
+            value:   {:ipse, #PID<0.299.0>, {:extension_result, %{"name" => "ext__knowledge__capture", "stage" => "invoke.command", "value" => %{"current_eligibility" => "not_established", "outcomes" => [%{"action_sha256" => "168c53183196f84927d8c95708da8a0dadf58806bc2a5a90ebd3f910042c2eb4", "category" => "current", "generation" => 2, "normalization_sha256" => "43298fc77a2a37440582e87d1f711df7cdd9e6d4bff1caeaeff946907dd2fb06", "operation_id" => "ae97b2918f362534181773ab39cd8392", "receipt_sha256" => "b26ddf68b02186d702ed361380799582af46dff925cffd9228a6e64f9e5505a4", "record_key" => "note.0bcc3ee58f7a01f096a1eb3d695d3e8124f464ff0397945c1cb04c57d87a943c"}], "status" => "historical_write_outcome"}}}}
+     
+            pattern: {:DOWN, ^effect_ref, :process, ^effect, _}
+            value:   {:ipse, #PID<0.299.0>, {:extension_result, %{"name" => "ext__knowledge__capture", "stage" => "invoke.command", "value" => %{"current_eligibility" => "not_established", "outcomes" => [%{"action_sha256" => "1f2440529f544344ed91f346b481e9cd5d7adf8ed3d3ddf280114f682c8ddc13", "category" => "ordinary", "generation" => 3, "normalization_sha256" => "4ec2ba4222af641bdce827d824038b0f36d31864a6930de27454cee5d9d4541b", "operation_id" => "a5909214a78a884930cbaf6bcd778734", "receipt_sha256" => "f1d1f1051eca3308e085557429bfe0cd00acb6dca5e8b8bed02e939601754ee0", "record_key" => "note.f18a3444034a36049720addf14f65ea47ce9721ca597707b10386e48c0582198"}], "status" => "historical_write_outcome"}}}}
+     
+            pattern: {:DOWN, ^effect_ref, :process, ^effect, _}
+            value:   {:ipse, #PID<0.299.0>, :native_relation_ready}
+     
+            pattern: {:DOWN, ^effect_ref, :process, ^effect, _}
+            value:   {:ipse, #PID<0.299.0>, {:extension_result, %{"name" => "knowledge.supersession", "stage" => "host.lifecycle", "value" => %{"historical_receipt" => true, "kind" => "managed_supersession_receipt", "new_lineage" => "371b01c29e88599d4e94c848bc0303f2417681248237b2b6d1250cf4277a756a", "old_lineage" => "6cb7b845557e39c208bb109b6b5628c548daec78557093e5e97cdcc2bf5d19a8", "operation_id" => "608162cfd467462113d972ac283ffe6e", "original_capture" => "not_executed", "status" => "settled", "version" => 1}}}}
+     
+            pattern: {:DOWN, ^effect_ref, :process, ^effect, _}
+            value:   {:ipse, #PID<0.299.0>, :native_relation_ready}
+     
+            pattern: {:DOWN, ^effect_ref, :process, ^effect, _}
+            value:   {:ipse, #PID<0.299.0>, {:extension_result, %{"name" => "knowledge.supersession", "stage" => "host.lifecycle", "value" => %{"historical_receipt" => true, "kind" => "managed_supersession_receipt", "new_lineage" => "8ec67667f7b996c3ca82468f806cd8700cd126645982cfc35ebbdcbe4da87a9f", "old_lineage" => "0bcc3ee58f7a01f096a1eb3d695d3e8124f464ff0397945c1cb04c57d87a943c", "operation_id" => "5de0702e9aab3bc1579fa5724e6c1956", "original_capture" => "not_executed", "status" => "settled", "version" => 1}}}}
+     
+         (ex_unit 1.20.4) lib/ex_unit/assertions.ex:627: ExUnit.Assertions.__timeout__/5
+         test/support/managed_shared_support.exs:157: Ipse.Test.ManagedSharedSupport.run/8
+         test/support/managed_supersession_session.exs:325: (file)
+
+     code: assert status == 0, output
+     stacktrace:
+       test/ipse/session/managed_supersession_session_test.exs:50: (test)
+
+
+Finished in 24.1 seconds (0.1s on load, 0.00s async, 23.9s sync)
+
+Result: 0/1 passed, 7 excluded
+Failed: 1 test

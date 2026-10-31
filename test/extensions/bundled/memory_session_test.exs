@@ -1,5 +1,6 @@
 defmodule Ipse.Builtins.MemorySessionTest do
   use ExUnit.Case, async: false
+  import Ipse.Test.ResumeAssertions
   alias Ipse.{Session, Journal}
   alias Ipse.Extension.Catalog
   alias Ipse.Extension.Config
@@ -229,9 +230,13 @@ defmodule Ipse.Builtins.MemorySessionTest do
       assert :ok = Session.close_confirmed(writer)
       journal_path = Path.join(ctx.dir, id <> ".jsonl")
       bytes = File.read!(journal_path)
+      assert {:ok, before_resume} = Journal.load(ctx.dir, id)
       resumed = start(ctx, selected, %{approval: :ask}, id)
       assert Session.info(resumed).phase == :idle
-      assert File.read!(journal_path) == bytes
+      assert_idle_resume_journal(journal_path, bytes, id)
+      resumed_events = events(ctx, resumed)
+      intents = fn entries -> Enum.count(entries, &(&1["type"] == "extension_action_intent")) end
+      assert intents.(resumed_events) == intents.(before_resume)
       assert {:ok, ^before} = State.execute(state_root, namespace, read, Ipse.Usage.id())
       assert :ok = Session.close_confirmed(resumed)
     else
@@ -274,7 +279,7 @@ defmodule Ipse.Builtins.MemorySessionTest do
     before = File.read!(file)
     {:ok, messages} = Session.restore_context(ev)
     resumed = start(ctx, entries, %{}, id)
-    assert File.read!(file) == before
+    assert_idle_resume_journal(file, before, id)
     assert {:ok, ^messages} = Session.restore_context(events(ctx, resumed))
     assert Session.info(resumed).phase == :idle
     next = start(ctx, entries)

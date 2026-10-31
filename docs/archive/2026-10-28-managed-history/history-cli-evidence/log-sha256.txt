@@ -1,0 +1,4 @@
+98f865bca205e81d42e5512b5c3192be974a546219a2d548ae97935dc28c5455  docs/archive/2026-10-28-managed-history/history-cli-evidence/compile.log
+486667ff0c52bbf76d5c9e7a5fc9b83978579c74d4e01b1347072bfc07312837  docs/archive/2026-10-28-managed-history/history-cli-evidence/consent-87235.log
+b12308c23f48c4c8806d525c42865e898dc32ce4c217cefcedd56e5e9daf9657  docs/archive/2026-10-28-managed-history/history-cli-evidence/native-cli-87236.log
+abe70412485a211acdcc6fb491faaa13f324799911765c340ac304873a6803c1  docs/archive/2026-10-28-managed-history/history-cli-evidence/native-cli-87237.log

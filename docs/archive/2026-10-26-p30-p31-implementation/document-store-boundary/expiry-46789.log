@@ -1,0 +1,30 @@
+Running ExUnit with seed: 46789, max_cases: 1
+Excluding tags: [:test]
+Including tags: [:draft_expiry]
+
+
+
+  1) test expired source and projection drafts refuse writes, retain selection and allow explicit cleanup (Ipse.KnowledgeStoreTest)
+     test/extensions/knowledge/store_test.exs:106
+     ** (ExUnit.AssertionError) 
+
+     match (=) failed
+     code:  assert {:done, {:ok, value}} = result
+     left:  {:done, {:ok, value}}
+     right: {:done, {:error, :store_refused, %{}}}
+
+         (stdlib 8.1) erl_eval.erl:1048: :erl_eval.do_apply/7
+         (stdlib 8.1) erl_eval.erl:792: :erl_eval.expr/6
+         (stdlib 8.1) erl_eval.erl:276: :erl_eval.exprs/6
+         (stdlib 8.1) erl_eval.erl:1664: :erl_eval.expr_list/7
+
+     code: isolated(~S'''
+     stacktrace:
+       test/extensions/knowledge/store_test.exs:82: Ipse.KnowledgeStoreTest.isolated/1
+       test/extensions/knowledge/store_test.exs:107: (test)
+
+
+Finished in 2.9 seconds (0.00s async, 2.9s sync)
+
+Result: 0/1 passed, 41 excluded
+Failed: 1 test

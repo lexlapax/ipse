@@ -1,0 +1,403 @@
+_build/shared-producer-guard-session-20261029/evidence/attempt-journals/b1612de88618dfa391d05b2e6678a04d.jsonl
+%{
+  "extension_action_intent" => 620,
+  "extension_action_result" => 620,
+  "extension_embedding_request" => 1,
+  "extension_invocation_intent" => 50,
+  "extension_invocation_result" => 50,
+  "inference_dispatch_intent" => 1,
+  "request_admitted" => 1,
+  "request_finished" => 1,
+  "session" => 1,
+  "session_release_intent" => 1,
+  "session_release_owner_started" => 1,
+  "skill_catalog_snapshot" => 1,
+  "turn_finished" => 50,
+  "workspace_context_snapshot" => 1
+}
+[
+  {
+    "type": "extension_invocation_result",
+    "value": {
+      "claims": [],
+      "continuation": {
+        "arguments": {
+          "action": "continue_collection_source",
+          "args": {
+            "collection_state": {
+              "active": null,
+              "base": {
+                "revision": 42,
+                "sha256": "f1e61de668e64343945a447d1323b07bfb6e11582dcf31e80142f0022ab1d4cf"
+              },
+              "expected_revision": 0,
+              "plan_sha256": "e2948b152e7e33d69126198e0c37a343d29c5cae9134fdc758af66f7fc45dd2d",
+              "stages": [
+                {
+                  "epoch": "13e8e5fd70677e7e945f2fb866f83cb6",
+                  "slot": 0
+                }
+              ],
+              "unit": 3,
+              "version": 3
+            },
+            "input_action": "put",
+            "input_args": {
+              "event_at_ms": null,
+              "expected_revision": 0,
+              "expires_at_ms": null,
+              "generation": 1,
+              "observed_at_ms": 10,
+              "source_id": "fixture:guard:8",
+              "text": "Exact source 8: α beta preserved.",
+              "title": "Synthetic guard source 8",
+              "uri": "provided:guard:8"
+            }
+          },
+          "store": "local"
+        },
+        "id": "source"
+      },
+      "coverage": {
+        "continuation": {
+          "active": null,
+          "base": {
+            "revision": 42,
+            "sha256": "f1e61de668e64343945a447d1323b07bfb6e11582dcf31e80142f0022ab1d4cf"
+          },
+          "expected_revision": 0,
+          "plan_sha256": "e2948b152e7e33d69126198e0c37a343d29c5cae9134fdc758af66f7fc45dd2d",
+          "stages": [
+            {
+              "epoch": "13e8e5fd70677e7e945f2fb866f83cb6",
+              "slot": 0
+            }
+          ],
+          "unit": 3,
+          "version": 3
+        },
+        "coverage": {
+          "cache_scope": "staged_source",
+          "effects_used": 1,
+          "evidence_readable": false,
+          "namespace_complete": false,
+          "population_qualified": false,
+          "reads_used": 9,
+          "selection_complete": false
+        },
+        "status": "staged"
+      },
+      "evidence": [],
+      "gaps": [],
+      "status": "draft",
+      "version": 1
+    }
+  },
+  {
+    "type": "extension_invocation_result",
+    "value": {
+      "claims": [],
+      "continuation": {
+        "arguments": {
+          "action": "continue_collection_source",
+          "args": {
+            "collection_state": {
+              "active": null,
+              "base": {
+                "revision": 42,
+                "sha256": "f1e61de668e64343945a447d1323b07bfb6e11582dcf31e80142f0022ab1d4cf"
+              },
+              "expected_revision": 0,
+              "plan_sha256": "e2948b152e7e33d69126198e0c37a343d29c5cae9134fdc758af66f7fc45dd2d",
+              "stages": [
+                {
+                  "epoch": "13e8e5fd70677e7e945f2fb866f83cb6",
+                  "slot": 0
+                },
+                {
+                  "epoch": "3bdbe01f3c16aebca006410bc94271bb",
+                  "slot": 1
+                }
+              ],
+              "unit": 4,
+              "version": 3
+            },
+            "input_action": "put",
+            "input_args": {
+              "event_at_ms": null,
+              "expected_revision": 0,
+              "expires_at_ms": null,
+              "generation": 1,
+              "observed_at_ms": 10,
+              "source_id": "fixture:guard:8",
+              "text": "Exact source 8: α beta preserved.",
+              "title": "Synthetic guard source 8",
+              "uri": "provided:guard:8"
+            }
+          },
+          "store": "local"
+        },
+        "id": "source"
+      },
+      "coverage": {
+        "continuation": {
+          "active": null,
+          "base": {
+            "revision": 42,
+            "sha256": "f1e61de668e64343945a447d1323b07bfb6e11582dcf31e80142f0022ab1d4cf"
+          },
+          "expected_revision": 0,
+          "plan_sha256": "e2948b152e7e33d69126198e0c37a343d29c5cae9134fdc758af66f7fc45dd2d",
+          "stages": [
+            {
+              "epoch": "13e8e5fd70677e7e945f2fb866f83cb6",
+              "slot": 0
+            },
+            {
+              "epoch": "3bdbe01f3c16aebca006410bc94271bb",
+              "slot": 1
+            }
+          ],
+          "unit": 4,
+          "version": 3
+        },
+        "coverage": {
+          "cache_scope": "staged_source",
+          "effects_used": 1,
+          "evidence_readable": false,
+          "namespace_complete": false,
+          "population_qualified": false,
+          "reads_used": 10,
+          "selection_complete": false
+        },
+        "status": "staged"
+      },
+      "evidence": [],
+      "gaps": [],
+      "status": "draft",
+      "version": 1
+    }
+  },
+  {
+    "type": "extension_invocation_result",
+    "value": {
+      "claims": [],
+      "continuation": {
+        "arguments": {
+          "action": "continue_collection_source",
+          "args": {
+            "collection_state": {
+              "active": null,
+              "base": {
+                "revision": 42,
+                "sha256": "f1e61de668e64343945a447d1323b07bfb6e11582dcf31e80142f0022ab1d4cf"
+              },
+              "expected_revision": 0,
+              "plan_sha256": "e2948b152e7e33d69126198e0c37a343d29c5cae9134fdc758af66f7fc45dd2d",
+              "stages": [
+                {
+                  "epoch": "13e8e5fd70677e7e945f2fb866f83cb6",
+                  "slot": 0
+                },
+                {
+                  "epoch": "3bdbe01f3c16aebca006410bc94271bb",
+                  "slot": 1
+                },
+                {
+                  "epoch": "134f6c885f0f58c4e46dd10cbcdc3244",
+                  "slot": 2
+                }
+              ],
+              "unit": 5,
+              "version": 3
+            },
+            "input_action": "put",
+            "input_args": {
+              "event_at_ms": null,
+              "expected_revision": 0,
+              "expires_at_ms": null,
+              "generation": 1,
+              "observed_at_ms": 10,
+              "source_id": "fixture:guard:8",
+              "text": "Exact source 8: α beta preserved.",
+              "title": "Synthetic guard source 8",
+              "uri": "provided:guard:8"
+            }
+          },
+          "store": "local"
+        },
+        "id": "source"
+      },
+      "coverage": {
+        "continuation": {
+          "active": null,
+          "base": {
+            "revision": 42,
+            "sha256": "f1e61de668e64343945a447d1323b07bfb6e11582dcf31e80142f0022ab1d4cf"
+          },
+          "expected_revision": 0,
+          "plan_sha256": "e2948b152e7e33d69126198e0c37a343d29c5cae9134fdc758af66f7fc45dd2d",
+          "stages": [
+            {
+              "epoch": "13e8e5fd70677e7e945f2fb866f83cb6",
+              "slot": 0
+            },
+            {
+              "epoch": "3bdbe01f3c16aebca006410bc94271bb",
+              "slot": 1
+            },
+            {
+              "epoch": "134f6c885f0f58c4e46dd10cbcdc3244",
+              "slot": 2
+            }
+          ],
+          "unit": 5,
+          "version": 3
+        },
+        "coverage": {
+          "cache_scope": "staged_source",
+          "effects_used": 1,
+          "evidence_readable": false,
+          "namespace_complete": false,
+          "population_qualified": false,
+          "reads_used": 11,
+          "selection_complete": false
+        },
+        "status": "staged"
+      },
+      "evidence": [],
+      "gaps": [],
+      "status": "draft",
+      "version": 1
+    }
+  },
+  {
+    "type": "extension_invocation_result",
+    "value": {
+      "claims": [],
+      "continuation": null,
+      "coverage": {
+        "catalog_generation": 8,
+        "continuation": null,
+        "coverage": {
+          "cache_scope": "staged_source",
+          "effects_used": 1,
+          "evidence_readable": false,
+          "namespace_complete": false,
+          "population_qualified": false,
+          "reads_used": 11,
+          "selection_complete": false
+        },
+        "generation": 1,
+        "revision": 1,
+        "source_id": "fixture:guard:8",
+        "status": "stored"
+      },
+      "evidence": [],
+      "gaps": [],
+      "status": "ok",
+      "version": 1
+    }
+  },
+  {
+    "type": "extension_invocation_result",
+    "value": {
+      "claims": [],
+      "continuation": null,
+      "coverage": {
+        "continuation": {
+          "catalog_sha256": "83bf353e981fcf6f6a2de2c8a49925ca0f200fb1da5c64a2b7339e16ae264e9a",
+          "id": "dfb0141fa1cd751eb67b9b221e9d16b9",
+          "job_revision": 51,
+          "plan_sha256": null,
+          "root_revision": 0,
+          "stages": [],
+          "unit": 0,
+          "version": 1,
+          "write": null
+        },
+        "coverage": {
+          "effects_used": 3,
+          "finalization_available": true,
+          "model_receipt_provenance": false,
+          "reads_used": 18,
+          "selected_changed": false
+        },
+        "job_progress": {
+          "catalog_sha256": "83bf353e981fcf6f6a2de2c8a49925ca0f200fb1da5c64a2b7339e16ae264e9a",
+          "cursor": 0,
+          "fact_selection_sha256": "d0a021ae157db24f08e743dcbd49c194000bb54c34728d3a16cb25b11c4762e2",
+          "facts": 0,
+          "generation": 1,
+          "id": "dfb0141fa1cd751eb67b9b221e9d16b9",
+          "job_schema_version": 1,
+          "kind": "shared_generation_progress",
+          "partition": "notes",
+          "reduction": null,
+          "root_revision": 0,
+          "root_sha256": null,
+          "source_count": 8,
+          "status": "groups",
+          "summary_count": 0,
+          "value_bytes": 821,
+          "value_sha256": "b693b27ed8a1c94d5527794726d75923e8f80391c9a840677f48068a6208d242",
+          "vector_selection_sha256": "92ec56bafc18d8583ba45cc4b40a84f87c25899ada609fbe94155a3ea8776468",
+          "version": 1
+        },
+        "representation": "compact_v1",
+        "status": "groups"
+      },
+      "evidence": [],
+      "gaps": [],
+      "status": "ok",
+      "version": 1
+    }
+  },
+  {
+    "type": "inference_dispatch_intent"
+  },
+  {
+    "operation_id": "e5ee7f5dc48825fd7436c8cc170b712c",
+    "outcome": {
+      "status": "failed",
+      "value": {
+        "code": "embedding_request_failed"
+      }
+    },
+    "request": {
+      "expected_selection_sha256": "6d9708b5fcb7d2d71ea52f64264f833b64251ccd931e0a7f1d3545dc570bf7cf",
+      "inputs": [
+        "Exact source 7: α beta preserved.",
+        "Exact source 6: α beta preserved."
+      ],
+      "op": "embedding.create",
+      "profile": "encoder",
+      "source_guard": {
+        "batch_index": 0,
+        "claim_key": "genproducer.notes",
+        "claim_revision": 53,
+        "claim_sha256": "6a45421253f131901fef453dc20747d815f5fab7d9da4b869f3184071afc35c1",
+        "version": 1
+      },
+      "timeout_ms": 120000,
+      "version": 2
+    },
+    "type": "extension_action_result"
+  },
+  {
+    "type": "extension_invocation_result",
+    "value": {
+      "claims": [],
+      "continuation": null,
+      "coverage": {},
+      "evidence": [],
+      "gaps": [
+        {
+          "code": "host_failed"
+        }
+      ],
+      "status": "refused",
+      "version": 1
+    }
+  }
+]

@@ -1,0 +1,3 @@
+TRANSACTION_EXPORT_ACKNOWLEDGED_PASSED helper_dead=1 recipient_retained=1 last_close_released=1
+SOURCE_EXPORT_ACKNOWLEDGED_PASSED helper_dead=1 recipient_retained=1 last_close_released=1
+SOURCE_EXPORT_INVALID_NAME_AND_SYMLINK_REFUSED

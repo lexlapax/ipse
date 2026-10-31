@@ -1,9 +1,23 @@
-# Enable and revoke native knowledge permission
+# Review native notes, permission and retention
 
 Use the standalone knowledge commands to select the bundled native notes tool
 for a project. Setup imports the shipped artifact and saves a protected permission;
 it does not start a model or change your provider configuration. The selected
 tool becomes available in the **next new session**.
+
+The current development source supports one new v3 capture through a reviewed
+`/remember` statement and a separate interactive review to forget one existing
+native note on a supported Linux storage profile. A focused authorized-client
+headless control also saved a genuine typed host outcome under the knowledge-only
+grant. Model-selected source lookups use selected-source preflight and
+status-only terminal previews. A synthetic loopback-model journey captured a
+note, performed later source reads and completed the turn; broader automatic
+capture and recall remain unqualified. Reviewed
+retention choices and forgetting have standalone management paths; correction
+and supersession remain unavailable.
+Existing-note reads, permission inspection/revocation and elapsed-policy
+reclamation have their own rules. Full capture readiness remains false; saving
+permission and one successful path do not qualify every source or later use.
 
 First install or build Ipse and [save your provider choice](configuration.md#choose-and-save-a-provider).
 Use a private Ipse home and an existing workspace. These commands use that saved
@@ -12,9 +26,13 @@ They require no separate embedding account or download.
 
 Protected writes also require the current native
 [allocation profile](../../native/README.md#publish-protected-state-through-its-lock-owner):
-64-bit Linux kernel `7.2.10` or `7.2.10-*`, with supported Btrfs or explicitly
-qualified tmpfs mount settings. Other kernels/filesystems and macOS currently
-refuse write admission. Installation alone does not establish this prerequisite.
+the reviewed Linux `7.2.10` Btrfs/tmpfs profile, or exact `7.2.11-arch1-1` on
+x86_64 with qualified tmpfs features. Btrfs on the newer kernel and macOS remain
+unsupported for these writes. Follow the [storage-location checks](arch-linux.md#check-protected-storage-admission)
+for exact feature requirements. All protected locations must qualify; the
+default Btrfs home on the newer kernel still refuses. Tmpfs is volatile and is
+never selected silently as a storage remedy. Installation alone does not
+establish this prerequisite.
 
 ## Review the project and exact permission
 
@@ -33,15 +51,25 @@ pointer does not establish membership.
 
 Read the full review, then enter its fresh `enable CODE`. The review identifies
 the artifact, project, selected main route, source categories, retention, expiry
-and finite daily allowances. Bare `yes`, an old code, piped text and command-line
+and finite daily allowances. It also warns when protected note saving is
+unavailable in the current runtime; saving permission does not enable that
+capability. Bare `yes`, an old code, piped text and command-line
 approval flags cannot save the grant. Anything else cancels the review. Import
 and project admission can already have occurred, but cancellation saves no new
 permission.
 
-The native preset permits literal, source-bound notes and attributed pending
-proposals. Ordinary notes have a 90-day host retention ceiling; pending proposals
-have seven days and never become current merely because they quote a source.
-Current facts and preferences can persist. The full review is authoritative for
+The permission is tied to the reviewed artifact. If an upgrade changes that
+artifact, check `ipse knowledge status --cwd /path/to/project` and complete a
+fresh `enable` review when needed; an earlier grant does not silently transfer.
+
+The native preset permits reviewed statements, literal typed tool outcomes and
+attributed pending proposals. Plain messages, quoted third-party reports, native
+question answers and generated text remain pending candidates. An exact quotation
+does not establish that you endorsed its claim or category. Saving any candidate
+still requires the corresponding grant. Ordinary notes have a 90-day host
+retention ceiling; pending proposals have seven days and never become current
+merely because they quote a source. Reviewed current statements and preferences
+can persist. The full permission review is authoritative for
 the selected rules. It authorizes no secondary model calls or downloads. Main
 conversation requests retain their ordinary route and resource accounting.
 The reviewed native selection bounds each Main request to the smaller of your
@@ -50,8 +78,16 @@ assistant text until the response passes completion checks, so text can appear
 after upstream generation finishes. Review the displayed route and effective
 timeout before enabling; setup does not enlarge a shorter configured timeout.
 
-The saved permission covers both chat and headless `run`. Covered collection
-effects do not ask for repeat approval, while workspace writes, shell commands,
+The saved permission records scope for chat and headless `run`; it cannot bypass
+source, recipe, expiry or current publication checks. Model-selected source reads
+check every selected source's provenance even when their starting dependency list
+is empty. Their terminal previews withhold source arguments and result text;
+authenticated content still enters the journal/model continuation. After a
+confirmed capture, subsequent source reads can continue under fresh checks. Older
+root metadata is explicitly historical and cannot establish that a stored note
+is currently eligible. Full automatic-capture readiness remains limited as
+described by status below.
+Workspace writes, shell commands,
 MCP and delegation keep their separate approval requirements. The grant expires
 after one year and has daily limits of 100 operations, 2 MiB of input and 4 MiB of
 output. A refusal or uncertain attempt may consume conservative allowance.
@@ -63,12 +99,294 @@ ipse knowledge status --cwd /path/to/project
 ipse chat --cwd /path/to/project
 ```
 
-In chat, `/ext` lists the admitted tool/command schemas. The native capture tool
-requires an exact quotation from an admitted Session source. Generated prose and
-unattended input remain pending. The presence of the tool does not guarantee
-automatic capture or current-note recall; those workflows and proposal management
-are separate from permission setup. For the existing explicit note-management
+In chat, `/ext` lists the admitted tool/command schemas. Listing capture does not
+grant permission to every candidate. Generated prose and unattended input do not
+become current notes merely by appearing in the conversation. The native selection can prepare bounded existing-note
+context before requests, subject to the
+source and route limits below. Proposal management and quality qualification
+remain separate from permission setup. For the existing explicit note-management
 workflow, follow [Memory](memory.md).
+
+## Save your own reviewed statement
+
+After enabling knowledge and starting a fresh chat in the same admitted project,
+wait for the Session to be idle, then enter your own statement:
+
+```text
+/remember ordinary The release checklist requires a migration audit.
+```
+
+Choose `ordinary`, `preference` or `current` deliberately. Read the complete
+statement, category and project/artifact scope at the native review. Enter exactly
+the displayed `remember CODE` at `remember>`; anything else cancels. This confirms
+your statement and category, not its external truth or permission for other
+effects. The selected saved policy, original source and normalizer are checked
+again before one new v3 record is admitted. Ordinary notes keep their original
+90-day ceiling; the other categories follow the reviewed policy. This command
+does not replace an existing note, change retention or perform a supersession.
+
+Wait for the final result. The native owner makes its final locked publication
+decision under the earliest policy/source deadline; a switch admitted before
+expiry may physically finish later. If confirmation or publication is uncertain,
+preserve the Session journal and inspect actual storage before new work. Resume
+does not repeat the statement review or publication, and `--yes` supplies no
+shortcut. The separate [Memory](memory.md) workflow keeps its own authority.
+
+The [terminal control](../archive/2026-10-26-p30-p31-implementation/remember-terminal-headless-controls.md)
+exercises this narrow statement journey. A later
+[direct-client headless control](../archive/2026-10-26-p30-p31-implementation/causal-root-cache.md)
+used a genuine typed host outcome and the saved knowledge-only grant; its read
+was real while ordinary write/shell requests stayed denied. The authorized client
+explicitly invoked capture. The separately
+[reviewed model-selected source path](../archive/2026-10-26-p30-p31-implementation/managed-source-tool-preflight-independent-review.md)
+supports bounded list/read/quote preflight and status-only previews. A later
+[synthetic loopback-model control](../archive/2026-10-26-p30-p31-implementation/combined-notes-current.md)
+captured one literal, performed subsequent source reads and completed its turn.
+This does not qualify every source or provider. If a turn reports an error,
+inspect the stored effect and Session journal before new work; an error does
+not mean nothing was saved, and resume does not repeat capture. General
+end-to-end automatic `run` capture remains unqualified.
+
+Eligible unattended input remains a pending proposal rather than an endorsed
+fact. A synthetic headless Session can save such a proposal under the saved
+knowledge grant, including two distinct proposals across a close and resume in
+a synthetic test. The end-to-end CLI journey remains unqualified. If a capture
+reports an unknown outcome, inspect the Session
+journal and stored state before attempting new work. Do not promote quoted
+reports or unattended task text to endorsed facts.
+
+Use the experimental standalone review below to inspect pending keys and confirm
+one selected decision. Until acceptance succeeds, a candidate stays out of
+current-note recall. Its stored provenance does not establish source freshness.
+
+Existing literal reads still require their signed record and original Session
+source. Keep the original sessions directory and retained lock files. A copy
+cannot substitute for an unavailable original. Historical endorsement establishes
+recorded input, not independent truth or new publication permission.
+
+## Review a pending proposal
+
+From the same admitted project and Ipse home, list one bounded page of pending
+metadata:
+
+```sh
+ipse knowledge review --cwd /path/to/project --json
+```
+
+The result contains at most 32 keys with revisions, hashes and encoded sizes;
+it contains no proposal text. If `next` is non-null, request another page with
+`--after` and that exact key. A continuation reports partial coverage, including
+on the last page. This is a historical metadata index: it can include expired
+candidates and does not verify source eligibility or signed deadlines. Listing
+works after revocation and starts no worker or model.
+
+Select one complete `pending.` key for native review:
+
+```sh
+ipse knowledge review pending.COPY_THE_64_CHARACTER_ID --cwd /path/to/project
+```
+
+If the original conversation used a custom sessions directory, add
+`--state-dir /path/to/original/sessions`. A copy cannot replace the original
+source. Acceptance requires currently active publication permission, sufficient
+saved allowance, and the supported Linux protected-storage profile described
+above. Provider overrides, `--yes` and `--json` cannot confirm a decision.
+Close the original source Session first; the standalone command cannot borrow
+its source while another active owner retains it.
+
+Keep the printed `Knowledge reservation` and `Management journal` IDs. Read the
+complete historical candidate, source provenance, category and proposed
+accepted-decision retention. Enter the fresh `accept CODE` at `approval>`;
+anything else cancels. The pending deadline limits when acceptance can occur.
+The accepted decision's category age starts at confirmation, subject to the
+saved policy expiry and any earlier lineage limits. Acceptance records your
+decision; it does not prove the source's premises or authorize other effects.
+
+Historical display can succeed while the original source is unavailable.
+Publication freshly checks that source, current permission and the unchanged
+signed target. A confirmed success removes the pending row and stores an
+accepted decision with its original proof and immutable acceptance link.
+A repeated attempt cannot accept it twice. An error or lost reply requires
+inspection before new work:
+
+```sh
+ipse knowledge operation MANAGEMENT_JOURNAL_ID --cwd /path/to/project
+ipse knowledge operation RESERVATION_ID --cwd /path/to/project
+```
+
+Inspection does not replay or settle anything. The reservation ID remains useful
+if interruption occurred before a journal was created. Confirmed acceptance
+charges one operation with measured input/output bytes; cancellation and known
+pre-publication refusal settle zero effect usage. An uncertain attempt retains
+its reservation. This experimental path supports one selected card; batch
+acceptance and rejection/correction remain unfinished. After confirmed acceptance,
+close the original conversation and use the current-note recall procedure below.
+
+## Correct or supersede a native note
+
+The `/correct` and `/supersede` paths are temporarily unavailable while their
+protected native review is being repaired. If an attempt reports an unconfirmed
+result, inspect the Session journal and [recovery guidance](recovery.md) before
+another attempt. Resume does not replay it.
+
+## Use bounded current-note recall
+
+For notes already stored, close the source conversation with `/exit` and start a new
+chat with the same project, home and reviewed selection. Ask a question that
+uses one of the saved facts or preferences. Before its first model request,
+the native selection prepares a turn-local Reference from current authenticated
+notes without another model service. Notes remain attributed derived evidence;
+recall does not promote them to new operator statements.
+
+Accepted decisions can join this pass. Their context explicitly labels them as
+recorded user decisions and preserves the original source attribution; acceptance
+does not establish that the source's premises are true. Each read and later use
+checks the original committed management journal, immutable acceptance link,
+signed record, original Session source and current permission. Keep both original
+journals available. Missing sources or altered acceptance events withhold the
+decision text. The registered provider route remains required for managed context;
+the credential-free demo does not qualify this delivery path.
+
+The automatic pass considers at most 32 notes and fits whole notes into the
+available context envelope. Larger sets or insufficient space produce partial
+coverage with omitted keys/pages. Missing original sources are unavailable;
+their text is withheld. Inspect coverage and use the declared index/read tools
+for further pages rather than treating an incomplete search as proof that no
+note exists. Each search reports partial coverage if it starts from a later
+cursor, a current record cannot be read or its indexed identity changes, or more
+metadata pages remain. Check `unavailable` and `next`, and inspect earlier
+pages as well when searching the whole collection. A search made only of
+whitespace or punctuation is refused; provide at least one search term. If
+recall or search reports `invalid_index_progress`, it stopped on an inconsistent
+metadata page, continuation or count. Inspect the collection and recovery guidance before
+retrying; the interrupted pass does not establish complete coverage. Pending
+proposals do not become current merely by being recalled.
+
+If the automatic pass cannot finish the metadata index, its earlier keys are
+discarded and its coverage is unavailable. A null candidate count means the
+number is unknown; it does not mean the collection is empty.
+If a current read or the final index check observes a different collection
+generation, recall or search also withholds that pass and reports unavailable
+coverage. Start a new pass to inspect the current collection. These checks do
+not lock the collection for the entire pass; a later change still requires
+current-use revalidation.
+
+This integration remains experimental: installed journeys, retrieval quality,
+cache behavior and latency are not yet qualified. The tested later-turn withdrawal
+path covers ordinary native Ollama text with closed, host-validated provenance.
+If changed or forgotten notes remain inside an unsupported opaque provider
+continuation, the next request refuses instead of silently rewriting that
+continuation. Start a fresh session after the change. No provider is substituted
+automatically. Forgetting also preserves original journals and already delivered
+answers; it does not erase those historical copies.
+
+## Forget a selected native note
+
+From the original project and Ipse home, use the complete `note.` key followed
+by its 64 lowercase hexadecimal characters:
+
+```sh
+ipse knowledge forget note.COPY_THE_64_CHARACTER_LINEAGE --cwd /path/to/project
+```
+
+Use a matching native input/display terminal and the saved configuration. The
+current development source supports this on Linux only when the protected
+storage locations satisfy the [allocation profile](arch-linux.md#check-protected-storage-admission).
+The project identity, management control and selected bundled artifact must be
+available. No model or worker is started. Headless use, provider overrides,
+`--yes` and `--json` are refused; `--yes` cannot replace this review.
+
+The command first prints `Management journal: ID`. Keep that ID, then read the
+complete displayed target, signed metadata, proposed action and scope. Enter
+the exact `forget CODE` at the `approval>` prompt, using the fresh code in that
+display. Any other answer cancels. The review describes the stored target even
+if its signed deadline has elapsed, capture permission was revoked, or its
+original source is unavailable. It does not establish that source's current
+eligibility or authorize another use of its text. Ipse checks the target and
+management state again before applying the confirmed action.
+
+On confirmed success, the selected literal is removed and signed suppression
+remains; the command prints the settled operation receipt. Original Session and
+management review journals and shared evidence remain. Previously delivered
+answers are not recalled or erased. If the command reports an unconfirmed
+result, or it stops before reporting one, inspect the printed journal ID before
+another attempt:
+
+```sh
+ipse knowledge operation MANAGEMENT_JOURNAL_ID --cwd /path/to/project
+```
+
+This inspection does not replay or reconcile the operation. An incomplete
+forgetting or retention journal tail makes the journal result unconfirmed even
+if an earlier result is present; the separately reported control status may
+still be settled.
+A `publishing`, unconfirmed or missing result may follow an admitted action that completed
+after its review expired or its owner was lost. Inspect the actual storage
+outcome and follow [protected recovery](recovery.md#inspect-unconfirmed-protected-knowledge)
+before deciding what to do next. A matching installed package and non-Linux
+behavior have not yet been qualified for this path.
+
+## Change a selected native note's retention
+
+Choose a retention policy for a selected stored literal on a supported Linux
+native terminal. For example:
+
+```sh
+ipse knowledge retention note.COPY_THE_64_CHARACTER_LINEAGE --policy session --cwd /path/to/project
+ipse knowledge retention note.COPY_THE_64_CHARACTER_LINEAGE --policy pin --cwd /path/to/project
+ipse knowledge retention note.COPY_THE_64_CHARACTER_LINEAGE --policy automatic --cwd /path/to/project
+ipse knowledge retention note.COPY_THE_64_CHARACTER_LINEAGE --policy duration --days 30 --cwd /path/to/project
+```
+
+Review the complete facts and type the displayed policy-specific confirmation.
+Session-only uses `forget` and the same protected removal and suppression as
+explicit forgetting; it does not erase the original journal, management review
+journal or shared evidence. Pin has no selected expiry; automatic selects 90 days,
+and duration selects the positive number of days provided. The finite choice
+starts at native confirmation; the original admission clock remains recorded.
+An expired target cannot be extended by a new persistent choice. Existing signed
+choices remain readable, and dependencies cannot borrow another revision's
+deadline. Inspect uncertain operations with
+`knowledge operation JOURNAL_ID` before deciding what to do next; they are not
+automatically replayed.
+
+## Reclaim an expired native note
+
+After a signed finite retention deadline has elapsed, reclaim its stored literal
+with the exact note key:
+
+```sh
+ipse knowledge expire note.COPY_THE_64_CHARACTER_LINEAGE --cwd /path/to/project
+```
+
+Replace the complete placeholder with the actual key. The command displays the
+full target and its elapsed signed policy, then performs that policy's reclamation.
+It uses the already saved retention choice, without a new per-record confirmation.
+It requires a normal interactive native terminal and respects execution ceilings
+and explicit effect denial. Headless use, provider overrides, `--yes` and `--json`
+are refused.
+
+An already expired ordinary policy or finite historical retention qualifies.
+Persistent pins, current statements and preferences remain stored; an explicit
+finite retention choice on one of those statements can later qualify. Reclamation
+preserves original admission clocks and, for history, its signed successor link;
+it advances the old-backup floor and leaves other notes and shared evidence in
+place. A historical retention choice may be compacted in signed storage after
+its exact reviewed capsule has been saved in the reclamation journal; a signed
+commitment remains to authenticate that capsule. Reading or
+recapturing the same expired support cannot give it a new
+lifetime. Capture permission may be disabled or expired, and the original source
+may be unavailable.
+
+The original Session and management journals remain, including reviewed target
+text. No model or worker runs. Preserve the printed management journal ID and use
+`knowledge operation JOURNAL_ID` to inspect an unconfirmed result before retrying.
+There is no idle background collector or automatic replay of an uncertain attempt.
+Management requires a matching native helper before it creates its journal.
+An unavailable helper or an unsafe management directory refuses; rebuild or
+restore the matching installation and preserve existing files for inspection.
+Do not repair an unsafe directory by deleting locks or changing its contents.
+A journal containing only a header does not establish that reclamation ran.
 
 ## Inspect readiness or the saved review
 
@@ -77,17 +395,33 @@ ipse knowledge status --cwd /path/to/project --json
 ipse knowledge permissions --cwd /path/to/project
 ```
 
-Status checks whether the saved selection is ready under the current installed
-artifact, route and timeout. Its JSON reports `activation_ready_now`, whether this
-worktree is admitted, the policy digest, epoch, expiry and headless selection.
+Status distinguishes a matching saved selection from broad capture readiness.
+`activation_ready_now` checks the current installed artifact, route and timeout.
+The conservative `publication_supported_now` flag still reports strict publication
+support as false, and `capture_ready_now` requires both a matching selection and
+that support. The narrower new-v3 admission scope is not represented as full
+support by these fields:
+
+```json
+{"publication_supported_now":false,"capture_ready_now":false,"publication_unavailable_reason":"collection_deadline_fence_unavailable"}
+```
+
+An `activation_ready_now` value of true can therefore coexist with false full
+capture readiness. Plain status describes the limited native-reviewed statement
+path and the remaining broad saving limitation. The saved permission remains
+intact. Status also reports
+whether this worktree is admitted, the policy digest, epoch, expiry and headless
+selection.
 It does not join a worktree, create a project or reclaim staged files. An
 unadmitted folder can still join during new-session admission when a repository
 grant permits it. Readiness is an observation; every later effect checks current
 permission again.
 
 `permissions` prints the complete saved policy without attempting activation.
-Its `activation_ready_now` is null. Use it when status refuses after a changed
-route or unavailable artifact. Neither command starts a worker or inference.
+Its `activation_ready_now` is null; it still reports false strict publication
+support and full capture readiness.
+Use it when status refuses after a changed route or unavailable artifact.
+Neither command starts a worker or inference.
 Keep saved output private because it describes your project and selected routes.
 
 Changing provider configuration does not silently replace the route in an old

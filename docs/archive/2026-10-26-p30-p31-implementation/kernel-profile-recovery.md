@@ -105,3 +105,43 @@ Human and macOS journeys remain prepared rather than executed. The
 [plan](../../plan.md) retains the full P30/P31 acceptance criteria.
 The later [independent review](2026-10-27-open-audit.md) records additional
 writeback-error, managed-publication and inference-egress proof gaps.
+
+## Partial-stage owner-death control
+
+On 2026-10-28 a test-only transaction helper was compiled from the current
+source with a single injected SIGKILL after a partial staged write and before
+its file sync. The next native owner observed the retained prefix and counted
+its allocation; a separate test-only Rust metadata query read the file's
+`st_blocks` for comparison, and the next owner reclaimed the pending file. The
+full transaction test file passed 21 tests on tmpfs (seed 46586), and the
+focused control passed on this host's Btrfs mount (seed 46587). An initial
+assertion assumed no additional lock metadata and failed (seed 46583); the
+corrected assertion accounts for that metadata, and its focused run passed
+(seed 46584). Seed 46585 passed the earlier 21-test version before adding the
+per-file block comparison.
+
+The host reported `7.2.11-arch1-1`. Working-tree SHA-256 values were
+`4a4d0a52a590e37c7e899f200e2e4ecf24392e768df0035ae0b072f36d54eef2`
+for `native/ipse-transaction.rs`,
+`7961798313baa32aa066ddb9a1f1b19516235d4e0189df16e12a000d8aa82c24`
+for `native/ipse-storage.rs`,
+`46ccb439014ff3d2eadde512be7ec8f4f471d0aa4df0652914e6278013c9ce3b`
+for its storage profile, and
+`55afe8f2e935f06380af5088fc57c367b937d77c7f0abb8d01ca7924898f73c8`
+for the transaction test. These identify source, not a frozen binary or an
+independent kernel build attestation.
+
+This is one synthetic interruption after a completed write call, using an
+instrumented test helper and no admitted quota or complete Collection
+publication. It does not test interruption inside a write, delayed writeback
+errors, filesystem exhaustion, power loss, all data patterns or kernel builds.
+It does not qualify the production profile or authorize the v3 capacity
+workload. The controller's helper-pinning and the remaining review gaps above
+still apply.
+
+On 2026-10-28 an escalated read-only availability check found the current
+process runs as UID 1000 and cannot write either `/dev/loop-control` or
+`/dev/mapper/control`, although `unshare`, `mkfs.btrfs` and `dmsetup` are
+installed. No device, mount or existing filesystem was modified. This does
+not establish that every fault-injection method is unavailable; in particular,
+it does not supply the Btrfs writeback-error evidence required above.

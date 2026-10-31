@@ -114,6 +114,21 @@ defmodule Ipse.KnowledgeEvidenceTest do
     ''')
   end
 
+  test "batched citation construction preserves exact spans and rejects one bad member" do
+    pure(~S'''
+    s=source.("café and tea",%{}); {:ok,[chunk]}=E.chunks(s)
+    spans=[{chunk,0,5},{chunk,10,13}]
+    {:ok,one}=E.citation(s,chunk,0,5); {:ok,two}=E.citation(s,chunk,10,13)
+    assert {:ok,[^one,^two]}=E.citations(s,spans)
+    assert {:error,:invalid_span}=E.citations(s,[hd(spans),{chunk,4,5}])
+    assert {:error,:invalid_span}=E.citations(s,[{Map.put(chunk,"chunk_id",String.duplicate("0",64)),0,5}])
+    assert {:ok,all}=E.citations(s,List.duplicate(hd(spans),256))
+    assert length(all)==256 and Enum.all?(all,&(&1===one))
+    assert {:error,:invalid_span}=E.citations(s,List.duplicate(hd(spans),257))
+    assert {:error,:invalid_span}=E.citations(s,[])
+    ''')
+  end
+
   test "64 KiB sources are contiguous and UTF8 chunk cuts never lose bytes" do
     pure(~S'''
     s=source.(String.duplicate("a",65536),%{})

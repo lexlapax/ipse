@@ -1,0 +1,117 @@
+Running ExUnit with seed: 47054, max_cases: 1
+Excluding tags: [:test]
+Including tags: [:public_generation_finalization]
+
+NAMESPACE_TEST_ARTIFACT 8f4de52dc9e2815200c2430682cbd23f0cda2e756416209047a41c92875f29ac
+
+
+  1) test public finalization stages native reductions and selects the exact canonical root once (Ipse.KnowledgeCollectionAdapterSessionTest)
+     test/extensions/knowledge/collection_adapter_session_test.exs:357
+     Expected truthy, got nil
+     code: assert result["coverage"]["selected_changed"]
+     arguments:
+
+         # 1
+         %{
+           "continuation" => %{
+             "catalog_sha256" => "6cbd43a6ab3e6b9554aa26ad0c2b66839b4d53386cdc16b1dd5b27ab30eb8574",
+             "id" => "5d33e540263455d3951604c24bab7341",
+             "job_revision" => 26,
+             "plan_sha256" => nil,
+             "root_revision" => 2,
+             "stages" => [],
+             "unit" => 0,
+             "version" => 1,
+             "write" => nil
+           },
+           "coverage" => %{
+             "effects_used" => 4,
+             "finalization_available" => true,
+             "model_receipt_provenance" => false,
+             "reads_used" => 31,
+             "selected_changed" => true
+           },
+           "job" => %{
+             "catalog" => %{
+               "assertions" => 0,
+               "chunks" => 1,
+               "entities" => 0,
+               "extracted_bytes" => 36,
+               "floor" => 0,
+               "generation" => 1,
+               "kind" => "catalog",
+               "pages" => [
+                 %{
+                   "key" => "catalog.notes.0",
+                   "sha256" => "06d443efaa496d69bc317e04eb490d4899eef1c57e0fe09de7b0da51363398f9"
+                 }
+               ],
+               "partition" => "notes",
+               "sources" => 1,
+               "version" => 1
+             },
+             "catalog_sha256" => "6cbd43a6ab3e6b9554aa26ad0c2b66839b4d53386cdc16b1dd5b27ab30eb8574",
+             "cursor" => 1,
+             "fact_selection" => %{
+               "kind" => "explicit",
+               "profile" => nil,
+               "version" => 1
+             },
+             "facts" => 2,
+             "generation" => 2,
+             "id" => "5d33e540263455d3951604c24bab7341",
+             "kind" => "shared_generation_job",
+             "partition" => "notes",
+             "reduction" => %{
+               "batch" => 1,
+               "chunks" => 1,
+               "entities" => 2,
+               "entities_sha256" => "e5825ae0f1026b30260d8c66db51ec01ae392358d17c2e9e9b668e6cb958ee80",
+               "entity_pages" => [
+                 %{
+                   "byte_count" => 308,
+                   "key" => "genent.notes.1586212285c939486d9ba5cee58a4afc2f6cdccc3a26629de1c136ce35f454c8",
+                   "sha256" => "1586212285c939486d9ba5cee58a4afc2f6cdccc3a26629de1c136ce35f454c8"
+                 }
+               ],
+               "facts" => 2,
+               "heads_sha256" => "f4cead2aefe7a8710f45cec828b449e9ebce5a30c3210ca8f709a4efe76ae7e7",
+               "manifests" => [
+                 %{
+                   "byte_count" => 460,
+                   "key" => "genman.notes.5c620021261fcf76b7ce273663f86ac5dfd9084ebb67e844f0b2114ed7fe40f0",
+                   "sha256" => "5c620021261fcf76b7ce273663f86ac5dfd9084ebb67e844f0b2114ed7fe40f0"
+                 }
+               ],
+               "phase" => "selected",
+               "positions" => [],
+               "runs" => [],
+               "text_bytes" => 36
+             },
+             "root_revision" => 2,
+             "root_sha256" => "937f9604a874a918af5a091a91c2cf427d7729ef95501ea6530dabb48e99fe29",
+             "status" => "selected",
+             "summaries" => [],
+             "vector_selection" => %{
+               "dimensions" => 1,
+               "encoding" => "float32le",
+               "model" => "fixture",
+               "profile" => "fixture",
+               "selection_sha256" => "5199bc398e4c7cd105844a304c91893e87eb9c3bd9ad9d74ea66a6de3632b9b4"
+             },
+             "version" => 2
+           },
+           "status" => "selected"
+         }
+
+         # 2
+         "selected_changed"
+
+     stacktrace:
+       test/extensions/knowledge/collection_adapter_session_test.exs:364: (test)
+
+
+Finished in 37.5 seconds (1.1s on load, 0.00s async, 36.4s sync)
+
+Result: 0/1 passed, 35 excluded
+Failed: 1 test

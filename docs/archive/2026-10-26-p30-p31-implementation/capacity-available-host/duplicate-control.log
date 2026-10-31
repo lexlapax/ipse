@@ -1,0 +1,8 @@
+** (MatchError) no match of right hand side value:
+
+    {:error, :eexist}
+
+    /home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/project/dev/knowledge/managed_v3_capacity.exs:1114: Ipse.Development.ManagedV3Capacity.save_new/2
+    /home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/project/dev/knowledge/managed_v3_capacity.exs:1127: Ipse.Development.ManagedV3Capacity.save_durable_new/3
+    controller.exs:265: Ipse.Development.ManagedV3Continuation.control/2
+    controller.exs:491: (file)

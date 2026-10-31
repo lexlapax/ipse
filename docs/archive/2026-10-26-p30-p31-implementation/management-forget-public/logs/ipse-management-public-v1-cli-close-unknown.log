@@ -1,0 +1,151 @@
+Use knowledge forget NOTE_KEY from a native terminal with the saved configuration; provider overrides, --yes and --json are unsupported.
+Management journal: cf53f9548e17be5d27ab2552a17f1bbd
+Retained management target at 1793315052917: signed deadline elapsed. Original source availability and current-use eligibility are not checked.
+Review the complete proposed facts below. This confirmation applies only to this exact review.
+{
+  "action_sha256": "d7281a62209dd51a4891e5b4ed66c854d479067f5009a8ac2c184e652646277d",
+  "collection": {
+    "manifest_sha256": "fdb92b46521f379861241acde7bb7e66ad00257afc9039fea272aa33537f3040",
+    "root": {
+      "floor": 1,
+      "floor_anchor": "a80a1880477b65b126c26a60b0d7c393",
+      "generation": 1,
+      "project": "9629bb4451eeb28e46061e26ab5f392f8f8830a2a9edf616d5c3577c9d56df0e",
+      "version": 3
+    },
+    "root_sha256": "ad06300fa03ebf77e6bd9e69a97ab6e1634d1130a4fd0b12e5497cfbe20ee53e",
+    "root_state": "present"
+  },
+  "context": {
+    "binding_sha256": "bfc3eb8cea0bc0026e3019601e01adbcf692a7f8b488bb577422c81fa3f2344c",
+    "client_id": "710fbbc01e28123c3ff02a0bf2ee5bca",
+    "job_id": "1e7bed2ede600ec0a8904773061e9691",
+    "management_epoch": 1,
+    "management_sha256": "10264c8bb1939906ebea482578301c77c568ec662aabaddedaf68ec9dfd2c1fb",
+    "namespace": "9629bb4451eeb28e46061e26ab5f392f8f8830a2a9edf616d5c3577c9d56df0e",
+    "original_pin": null,
+    "project_id": "73571a8c32f2195b234d053c44b826f04d17998602e7bdc210e47b1817c4ac54",
+    "recipe": {
+      "category_path": [
+        "category"
+      ],
+      "constraints_sha256": "d709745ab18405dff572c41053eda5cbe12c350ebbabdcd0d52ea1e80962368a",
+      "evidence_path": [
+        "evidence",
+        "sources"
+      ],
+      "key_prefix": "note.",
+      "kind": "literal_source",
+      "lineage_path": [
+        "lineage"
+      ],
+      "override_prefix": "override.",
+      "rules": [
+        {
+          "category": "current",
+          "max_age_ms": null,
+          "origins": [
+            "native_operator_assertion"
+          ]
+        },
+        {
+          "category": "ordinary",
+          "max_age_ms": 7776000000,
+          "origins": [
+            "native_operator_assertion",
+            "typed_host_outcome"
+          ]
+        },
+        {
+          "category": "preference",
+          "max_age_ms": null,
+          "origins": [
+            "native_operator_assertion"
+          ]
+        }
+      ],
+      "text_path": [
+        "text"
+      ],
+      "version": 1
+    },
+    "session_id": "cf53f9548e17be5d27ab2552a17f1bbd"
+  },
+  "kind": "managed_literal_forget",
+  "metadata": {
+    "category": "ordinary",
+    "first_admitted_ms": 86400000,
+    "lineage": "a25d954b728c71bc15cdfe3ef4c63f6a87e9f22be1dd1e5ddf9edf02ab769193",
+    "policy_sha256": "dbc7d380793c1fd92543f35461f649e62c5b1ffb7e82d904314ce91395ec651e",
+    "recipe_sha256": "818634825cb494606d25195a6601971a17542ed2caa22f28d1e18b1971b18cf7",
+    "valid_until_ms": 7862400000
+  },
+  "operation_id": "ab0684bf3ae50d5de0ff626c06d0a327",
+  "policy": {
+    "kind": "session"
+  },
+  "reason": "Operator requested forgetting this selected literal",
+  "request_sha256": "9b051f6e9fac22bbf0b47263b253f36162c69aab241b56409474eba219923a79",
+  "scope": "selected literal derivative; original journal, management review journal and shared evidence remain",
+  "target": {
+    "bytes": 1082,
+    "key": "note.a25d954b728c71bc15cdfe3ef4c63f6a87e9f22be1dd1e5ddf9edf02ab769193",
+    "operation_id": "a80a1880477b65b126c26a60b0d7c393",
+    "revision": 1,
+    "sha256": "101616baaa98218c0d51799a5cf199ffeba4f26dec2cbef3b198fbc2d868c3c6",
+    "value": {
+      "category": "ordinary",
+      "created_at_ms": 864000000,
+      "event_at_ms": null,
+      "evidence": {
+        "sources": [
+          {
+            "content_sha256": "4c1adf410e8092458cf9598d4ed4ba92a9ddc6c05fa3727c188a5fce5feada84",
+            "coverage": "available",
+            "end_byte": 19,
+            "kind": "input.assertion.ordinary",
+            "occurrence_id": "00000000000000000000000000000001",
+            "origin": "native_operator_assertion",
+            "path": null,
+            "quote": "Acme has owner Alex",
+            "quote_sha256": "4c1adf410e8092458cf9598d4ed4ba92a9ddc6c05fa3727c188a5fce5feada84",
+            "receipt_sha256": "249ded81fc09301d955175885ad1d43c9b47dd399ac1e0fedb40e418eb5c1547",
+            "session_id": "11111111111111111111111111111111",
+            "start_byte": 0,
+            "version": 1,
+            "version_id": "33333333333333333333333333333333"
+          }
+        ]
+      },
+      "expires_at_ms": 8640000000,
+      "id": "a25d954b728c71bc15cdfe3ef4c63f6a87e9f22be1dd1e5ddf9edf02ab769193",
+      "lineage": "a25d954b728c71bc15cdfe3ef4c63f6a87e9f22be1dd1e5ddf9edf02ab769193",
+      "metadata_reserve": "0000000000000000000000000000000000000000000000000000000000000000",
+      "observed_at_ms": 864000000,
+      "previous_category": null,
+      "reason": "trusted fixture source",
+      "superseded_at_ms": null,
+      "text": "Acme has owner Alex",
+      "version": 1
+    }
+  },
+  "version": 1
+}
+Type forget 3732fe1ad6e76d5f to confirm, or anything else to cancel.
+> approval> forget 3732fe1ad6e76d5f
+No successful forget is confirmed: {:unknown, :knowledge_management_journal_unconfirmed}. Inspect the management journal and protected operation before retrying; unknown effects never replay.
+{
+  "action_sha256": "d7281a62209dd51a4891e5b4ed66c854d479067f5009a8ac2c184e652646277d",
+  "control_status": "settled",
+  "current_note_eligibility": "not_checked",
+  "journal_directory": "/tmp/ipse-management-public-v1-cli-close-unknown/home/knowledge-management",
+  "journal_id": "cf53f9548e17be5d27ab2552a17f1bbd",
+  "journal_status": "settled",
+  "namespace": "9629bb4451eeb28e46061e26ab5f392f8f8830a2a9edf616d5c3577c9d56df0e",
+  "operation_id": "ab0684bf3ae50d5de0ff626c06d0a327",
+  "project_id": "73571a8c32f2195b234d053c44b826f04d17998602e7bdc210e47b1817c4ac54",
+  "record_key": "note.a25d954b728c71bc15cdfe3ef4c63f6a87e9f22be1dd1e5ddf9edf02ab769193",
+  "replayed": false
+}
+
+MANAGEMENT_PUBLIC_FORGET_UNKNOWN_INSPECTED

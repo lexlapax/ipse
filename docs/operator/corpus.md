@@ -128,6 +128,519 @@ no claims. They do not omit counterassertions or silently return the lexical
 component. Use a more specific query or reduce the configured graph depth or
 edge limit, then inspect coverage again.
 
+## Acquire a small Word document from the workspace
+
+Use the explicit `state-documents` preset when Corpus should acquire a `.docx`
+file through the native workspace read tool. This preset adds `host.tools` to
+lexical State authority. Existing `state-lexical` artifacts cannot acquire files.
+The current acquisition limit is **32,768 original file bytes**, read in
+hash-bound pages of at most 4096 bytes. Larger originals refuse rather than
+losing content. Extracted text is bounded separately at 64 KiB and 32 chunks.
+Typed locator metadata is bounded at 16 KiB, 32 segments and 32 warnings; its
+paging and the store's total capacity can refuse earlier. Nothing trims text or
+warnings to fit.
+
+Close the preceding chat with `/exit`. Keep its artifact parent and application
+home, then build a separate artifact and configuration:
+
+```sh
+elixir extensions/knowledge/build.exs \
+  --sdk _build/dev/lib/ipse/ebin \
+  --output "$IPSE_CORPUS_ARTIFACTS/corpus-documents" \
+  --package corpus --preset state-documents
+elixir extensions/knowledge/config.exs \
+  --artifact "$IPSE_CORPUS_ARTIFACTS/corpus-documents" \
+  --package corpus --preset state-documents --instance corpus \
+  --options extensions/knowledge/options/corpus-lexical.json \
+  --state-binding knowledge \
+  --output "$IPSE_CORPUS_ARTIFACTS/operator-documents.json"
+IPSE_HOME="$IPSE_CORPUS_HOME" ./bin/ipse extension import "$IPSE_CORPUS_ARTIFACTS/corpus-documents"
+```
+
+Inspect the printed digest with `ipse extension inspect DIGEST` using the same
+`IPSE_HOME`, and review the new native-tool grant. Put your small document at
+`$IPSE_CORPUS_WORKSPACE/source.docx`, then validate and start a new chat:
+
+```sh
+IPSE_HOME="$IPSE_CORPUS_HOME" ./bin/ipse config \
+  --config "$IPSE_CORPUS_ARTIFACTS/operator-documents.json" --no-project-config \
+  --extension corpus
+IPSE_HOME="$IPSE_CORPUS_HOME" ./bin/ipse chat --provider demo \
+  --config "$IPSE_CORPUS_ARTIFACTS/operator-documents.json" --no-project-config \
+  --extension corpus --cwd "$IPSE_CORPUS_WORKSPACE"
+```
+
+Run the source command first and complete its proposed State-write approvals:
+
+```text
+/ext ext__corpus__source {"store":"notes","action":"read_document","args":{"source_id":"workspace:source","generation":1,"expected_revision":0,"title":"Workspace Word document","path":"source.docx","expected_sha256":null,"uri":"workspace:source.docx","observed_at_ms":1700000000000,"event_at_ms":null,"expires_at_ms":null}}
+```
+
+Text up to 8192 bytes with small locator metadata can publish in that invocation.
+Larger text or locator metadata opens an unpublished draft and returns
+`continuation` containing `id: "source"` and the
+complete next `arguments`. Copy those arguments unchanged into a new
+`/ext ext__corpus__source` command. Finish its approvals, then use the next returned
+continuation. It stages locator metadata first in slices of at most 1,024 bytes,
+then text in parts of at most 4,096 UTF-8 bytes, before publishing the complete draft.
+Do not edit returned metadata/text offsets. A replacement keeps the earlier source selected until that
+final publication. Do not query the draft as if it were published.
+
+A draft has a finite expiry. State-backed draft writes retain that expiry through
+approval and synced staging; if it elapses before the final locked publication
+decision, `write_deadline_elapsed` refuses the replacement. A previously admitted
+native replacement can finish later. Ordinary document Collection stages use
+their own final locked decision, described below; managed-derived mutations
+retain separate refusal gates. Do not strip a deadline to continue a draft.
+A check never renews it.
+Inspect the retained source/draft and explicitly collect expired work before
+starting again. An interrupted stage may have written private pages; resume does
+not automatically repeat acquisition or publication.
+
+After publication, choose a query matching your document:
+
+```text
+/ext ext__corpus__query {"store":"notes","retrieval":"words","rerank":null,"query":"migration audit","top_k":5,"as_of_ms":null}
+```
+
+Corpus reconstructs the complete native binary pages, checks their complete-file
+hash, extracts the acquired bytes and performs a fresh hash-pinned read before
+proposing source writes. Every continuation reacquires the same original.
+A changed file refuses before that stage's storage writes.
+Symlinks, nonregular files, oversized input, invalid packages and exceeded text
+or metadata bounds refuse. No model service is required.
+
+A hit's document citation binds the original binary hash, extraction recipe and
+paragraph or table-cell locator alongside the exact text offsets. Inspect
+`status`, `coverage.complete` and `gaps`: unsupported relationships or document
+features can leave the result partial. A citation records an acquired snapshot;
+it does not assert that the workspace file is still unchanged. Ipse does not
+watch this file or automatically refresh it.
+
+For replacement, inspect the source and use its current revision with the next
+generation. Supply the new file's concrete SHA-256 as `expected_sha256`; only an
+initial generation-one/revision-zero acquisition permits `null`. The native
+`read` tool with `encoding: "base64"`, `byte_offset: 0`, `file_max_bytes: 32768`
+and `max_bytes: 4096` returns the complete-file hash with its first page.
+Do not retry an interrupted write automatically; inspect the stored source and
+draft before choosing a new explicit continuation. Forgetting uses the preceding ordinary source
+management procedure. The remote equivalent is the explicitly selected
+`mcp-documents` preset with the reviewed CAS binding and its separate approvals.
+
+## Query a document Collection
+
+The experimental `collection-documents` preset uses a fixed project document
+Collection instead of State. It needs a project identity **already admitted in
+the selected home**, a matching native helper and an available protected-storage
+profile. Its ordinary append, seal and consuming commit routes have focused
+native/Session controls. A complete installed Corpus ingestion, full-profile
+build/rebuild and Word fidelity journey are not yet qualified.
+
+For an existing admitted project, save these options as
+`$IPSE_CORPUS_ARTIFACTS/collection-options.json`:
+
+```json
+{
+  "version": 1,
+  "stores": {"notes": {"kind": "collection", "scope": "project", "partition": "manual"}},
+  "search": {}, "fetch": {},
+  "retrieval": {"words": {"kind": "bm25", "version": 1}},
+  "embedding": {}, "rerank": {}, "extraction": {}
+}
+```
+
+Close the old chat. Build a separate artifact and generate its disabled selection:
+
+```sh
+elixir extensions/knowledge/build.exs \
+  --sdk _build/dev/lib/ipse/ebin \
+  --output "$IPSE_CORPUS_ARTIFACTS/corpus-collection" \
+  --package corpus --preset collection-documents
+elixir extensions/knowledge/config.exs \
+  --artifact "$IPSE_CORPUS_ARTIFACTS/corpus-collection" \
+  --package corpus --preset collection-documents --instance corpus \
+  --options "$IPSE_CORPUS_ARTIFACTS/collection-options.json" \
+  --output "$IPSE_CORPUS_ARTIFACTS/operator-collection.json"
+```
+
+The generator derives the exact `collection_bindings` trust entry with ID
+`documents`, project scope and profile `document_graph_v1`. This preset has no
+State binding. Review its `host.collection.store` and workspace-tool grants;
+neither admits a project nor enables automatic capture or a saved knowledge grant.
+
+Replace the following paths with the existing admitted home and workspace:
+
+```sh
+IPSE_CORPUS_COLLECTION_HOME=/path/to/existing/private-home
+IPSE_CORPUS_COLLECTION_WORKSPACE=/path/to/already-admitted/project
+IPSE_HOME="$IPSE_CORPUS_COLLECTION_HOME" ./bin/ipse extension import "$IPSE_CORPUS_ARTIFACTS/corpus-collection"
+IPSE_HOME="$IPSE_CORPUS_COLLECTION_HOME" ./bin/ipse config \
+  --config "$IPSE_CORPUS_ARTIFACTS/operator-collection.json" --no-project-config \
+  --extension corpus
+IPSE_HOME="$IPSE_CORPUS_COLLECTION_HOME" ./bin/ipse chat --provider demo \
+  --config "$IPSE_CORPUS_ARTIFACTS/operator-collection.json" --no-project-config \
+  --extension corpus --cwd "$IPSE_CORPUS_COLLECTION_WORKSPACE"
+```
+
+Import/inspection and this configuration do not perform project admission. A
+missing or changed binding refuses; use the operator's existing admission
+procedure rather than inventing a binding or granting capture to make a read work.
+For existing selected sources/indexes, use the earlier ordinary `source` inspect
+and `query` commands. An explicit `query_selected` takes `store`, `retrieval`,
+`query`, `top_k`, `as_of_ms` and one to eight exact `source_ids`; it omits `rerank`.
+Inspect citations, `status`, `coverage.complete`, `namespace_complete` and gaps.
+A changed catalog or stale index refuses instead of answering from a mixed snapshot.
+
+Each exact ordinary stage mutation checks the earlier of its original one-hour
+expiry and any trusted inherited deadline after synced staging, immediately
+before the native root replacement. Expiry refuses a new decision; a replacement
+already admitted before expiry can finish later. Successful consumption removes
+its exact stage references in the same CAS. An unknown result may have changed
+storage and returns no safe automatic continuation. Inspect before new work;
+do not replay stages or remove protected files. Read-time source expiry remains
+separate from transport-stage expiry.
+
+Managed-derived document mutations refuse before approval/intent, with a second
+execution check for an already queued action. Its document grant supplies no
+protected-note permission. The separately reviewed `/remember` new-v3 capture
+and native `knowledge forget` routes use their own authority; session-only
+retention uses the same reviewed removal; other retention choices have their
+own reviewed management path. Supersession remains closed. See
+[protected knowledge procedures](knowledge-permissions.md) for those limits;
+full notes readiness and automatic headless capture remain unqualified.
+No fallback to State, MCP or a different namespace occurs. Follow
+[protected recovery](recovery.md#inspect-unconfirmed-protected-knowledge) for
+uncertain effects and unavailable native storage.
+
+## Inspect supplied shared projections
+
+For a Collection that already has a supplied shared generation, Corpus exposes
+`projection_selected` and `generation_job`. These are experimental inspection and
+explicit build-control APIs; they neither call an embedding/extraction model nor
+prove the supplied projections' model provenance. Keep their exact recorded
+selectors, rather than guessing a profile from its display name:
+
+| Command | Complete argument fields |
+| --- | --- |
+| `projection_selected` | `store`, one to eight unique `source_ids`, `vector_selection`, `fact_selection`, `as_of_ms` (integer or null), `top_k` (1..8) |
+| `generation_job` | `store`, `action` (`begin`, `inspect`, `abort`, `finalize` or `finalize_paged`), `continuation` (object or null), `vector_selection`, `fact_selection`; optional `response` (`full` or `compact_v1`) and `guard_sources` (boolean for dense finalization) |
+
+The vector selector contains `selection_sha256`, `profile`, `model`, `dimensions`
+and `encoding: "float32le"`; copy the exact recorded selection. The fact selector
+is the recorded extraction identity; explicit supplied facts use
+`{"kind":"explicit","profile":null,"version":1}`. A changed selector, source
+head, floor or catalog refuses. `projection_selected` hydrates complete selected
+groups and raw source bundles before returning bounded eligible claims in stored
+order with exact citations. It reports vector/fact counts, partial-document
+warnings and fact-window exclusions; it is not a vector similarity search.
+Hydration is limited to 512 reads and can refuse a wide selection without
+returning partial evidence. The result grants no authority for a later use.
+
+Start recovery with `generation_job` action `inspect`, using the exact selections
+for that retained job. `begin` initializes a job; it does not supply all projection
+groups. The dense producer can append a group after its vector pages and explicit
+facts are ready, as described below. `finalize` requires those captured groups and advances bounded
+manifest, entity-merge and digest phases. Known intermediate progress returns
+`status: "draft"` with a complete `continuation` command. Copy its `id` and full
+`arguments` unchanged, finish approvals, and wait before issuing the next one.
+Only final `selected` status switches the new generation into use. `abort`
+requires the exact inspected continuation and does not constitute general garbage
+collection. Timeout/unknown means inspect, never automatically repeat or edit a
+continuation to skip work.
+
+For repeated `generation_job` steps, add `"response":"compact_v1"` to its arguments. It returns
+`coverage.job_progress` with the complete logical Job digest, size and bounded
+progress instead of repeating the whole Job. The exact continuation and limits
+remain unchanged, and returned commands carry that option. Omit it or select
+`"response":"full"` for the complete Job value. A progress digest is not a
+backup, read permission or proof that interrupted work did not happen.
+
+For a known committed Job step, a stage-free continuation has `unit: 0`,
+`write: null` and `stages: []`. After confirmed closure of that Session, a fresh
+Session in the same admitted project with the same explicitly trusted artifact
+can inspect the retained job using its exact selectors and a null continuation,
+then use the newly returned token. This does not authorize transferring active
+stages or automatically continuing an unknown effect. A token's empty fields
+alone do not prove that the preceding operation completed.
+
+For a complete captured job still at its `manifests` phase, choose
+`finalize_paged` before starting the older `finalize` reduction. It uses smaller
+entity pages and durable page verification for wider metadata. Keep the exact
+inspected continuation and selections; after choosing this path, follow only
+its returned complete commands. A job already reduced by `finalize` cannot
+switch paths. Existing selected generations remain readable; no automatic
+conversion occurs on a budget refusal.
+
+For a `collection-dense` instance configured with the explicit
+`shared_producer_v1` Collection binding, include `"guard_sources":true` on the
+first `finalize_paged` or `finalize` command. Returned continuations retain the
+choice. At the final switch the host checks the captured manifest groups against
+the current catalog and source bytes, requires one unchanged native generation,
+and refuses expired, future-observed or historical sources. The binding is
+required for this option; an older Collection binding cannot use it. A selected
+producer cannot publish its generation by omitting the guard. This check does
+not establish that supplied facts are true or that vectors came from a model.
+
+Both finalization paths have focused native Session selection and recovery
+controls using small supplied generations. Complete acquisition,
+shared-generation build, full capacity/rebuild peaks, GC, job reclamation and
+migration remain unqualified. Ordinary document staging
+support does not qualify those journeys or turn a fixture-supplied generation
+into a complete ingestion workflow. The document namespace retains its fixed
+8,192-key/32,768-operation ceilings and 192 MiB native allocation limit; preparing
+a large generation also needs room for old, staged and replacement data. These
+ceilings are not a measured full-profile capacity promise. Refusal calls for
+inspection and an explicit recovery decision, never raising a worker quota.
+
+To inspect an explicitly configured embedding selection, use the separate opt-in
+`collection-dense` preset. It adds embedding/result grants; review them when
+building/selecting that artifact. In a chat already configured with that preset,
+the Collection store `notes` and embedding alias `vectors`, run:
+
+```text
+/ext ext__corpus__generation_produce {"store":"notes","version":1,"action":"selection","embedding":"vectors"}
+```
+
+This setup needs no Job or source and makes no inference request or Usage charge.
+It returns `configured_profile`, `selection_sha256` and `reported_model: null`.
+The configured model name is not an observed provider model or proof of weights.
+Keep the returned digest when selecting future pinned work; a changed selection
+refuses before inference rather than silently switching routes. Existing legacy
+unpinned calls retain their separate contract. The
+[embedding procedure](#add-explicit-embeddings-and-reranking) explains explicit
+host routes and approvals; its State example does not itself select a Collection
+preset.
+
+### Produce shared vector pages
+
+Use a separate source-bound `collection-dense` instance for this experimental
+page producer. It requires an already admitted project, current stored
+sources, an explicit 1,024-dimensional embedding profile and a registered inference
+service. It does not yet complete facts, group headers or a selected
+generation. The existing `collection-documents` preset keeps its supplied-generation
+procedures and grants.
+
+For an already installed local embedding model, replace
+`REPLACE_WITH_INSTALLED_1024_MODEL` below with its exact model name. This example
+explicitly selects the loopback Ollama route; it neither downloads a model nor
+switches provider or billing. Create the two input files:
+
+```sh
+cat > "$IPSE_CORPUS_ARTIFACTS/producer-options.json" <<'JSON'
+{
+  "version": 1,
+  "stores": {"notes": {"kind": "collection", "scope": "project", "partition": "notes"}},
+  "search": {}, "fetch": {},
+  "retrieval": {"words": {"kind": "bm25", "version": 1}},
+  "embedding": {"vectors": {"kind": "embedding", "profile": "encoder"}},
+  "rerank": {}, "extraction": {}
+}
+JSON
+cat > "$IPSE_CORPUS_ARTIFACTS/producer-inference.json" <<'JSON'
+{
+  "embedding_profiles": {
+    "encoder": {
+      "operation": "embedding", "provider": "ollama",
+      "model": "REPLACE_WITH_INSTALLED_1024_MODEL", "credential": "none",
+      "base_url": "http://127.0.0.1:11434", "dimensions": 1024,
+      "dimension_mode": "native", "timeout_ms": 120000
+    }
+  },
+  "inference_services": {"local": {"version": 1, "origins": ["http://127.0.0.1:11434"]}},
+  "budget": {"version": 1, "max_requests": 4}
+}
+JSON
+elixir extensions/knowledge/build.exs \
+  --sdk _build/dev/lib/ipse/ebin \
+  --output "$IPSE_CORPUS_ARTIFACTS/corpus-producer" \
+  --package corpus --preset collection-dense
+elixir extensions/knowledge/config.exs \
+  --artifact "$IPSE_CORPUS_ARTIFACTS/corpus-producer" \
+  --package corpus --preset collection-dense --instance producer \
+  --options "$IPSE_CORPUS_ARTIFACTS/producer-options.json" \
+  --inference-config "$IPSE_CORPUS_ARTIFACTS/producer-inference.json" \
+  --collection-source-use shared_producer_v1 \
+  --output "$IPSE_CORPUS_ARTIFACTS/operator-producer.json"
+```
+
+Review the disabled configuration, exact artifact digest, model, destination and
+budget. The explicit flag selects collection binding **v2** with
+`source_use: "shared_producer_v1"`. Without the flag the generator preserves v1.
+Every embedding request from a v2 instance requires an authenticated source guard;
+use a separate ordinary v1 instance for query embeddings that have no producer
+claim. The host's normal configuration validation checks the supplied service
+registry; the generator does not discover or select a service for you.
+
+Import and validate with the existing admitted home/workspace:
+
+```sh
+IPSE_HOME="$IPSE_CORPUS_COLLECTION_HOME" ./bin/ipse extension import "$IPSE_CORPUS_ARTIFACTS/corpus-producer"
+IPSE_HOME="$IPSE_CORPUS_COLLECTION_HOME" ./bin/ipse config \
+  --config "$IPSE_CORPUS_ARTIFACTS/operator-producer.json" --no-project-config \
+  --extension producer
+IPSE_HOME="$IPSE_CORPUS_COLLECTION_HOME" ./bin/ipse chat --provider demo \
+  --config "$IPSE_CORPUS_ARTIFACTS/operator-producer.json" --no-project-config \
+  --extension producer --cwd "$IPSE_CORPUS_COLLECTION_WORKSPACE"
+```
+
+Store sources using the earlier `source` procedure with instance name `producer`.
+Run `generation_produce` action `selection` to obtain the configured selection.
+For `generation_job begin`, construct the exact `vector_selection` from that
+selection result:
+
+| Selector field | Value |
+| --- | --- |
+| `selection_sha256` | returned `selection_sha256` |
+| `profile` | returned `configured_profile.id` |
+| `model` | returned `configured_profile.model` |
+| `dimensions` | returned `configured_profile.dimensions` (must be 1024) |
+| `encoding` | literal `"float32le"` |
+
+Use
+`{"kind":"explicit","profile":null,"version":1}` for `fact_selection`.
+You can stage explicit facts for a stored source before building the group.
+For a source whose first chunk begins with `Source`, this example cites those
+six UTF-8 bytes:
+
+```text
+/ext ext__producer__generation_produce {"store":"notes","version":2,"action":"facts","source_id":"<source-id>","expected_revision":0,"facts":[{"subject":"Source","predicate":"supports","object":"review","polarity":"positive","inferred":false,"valid_from_ms":null,"valid_to_ms":null,"spans":[[0,0,6]]}],"continuation":null}
+```
+
+Each span is `[chunk ordinal, start byte, end byte]`, with an exclusive end;
+offsets address the complete stored source. Use its actual chunk and byte
+boundaries. Each fact needs one to eight spans, and a source may have up to 32
+facts. Use `"facts":[]` for an explicit empty set. Follow each returned
+continuation with its exact arguments until the result is `ok`; for a later
+replacement, supply the stored projection revision as `expected_revision`.
+The encoded arguments with a null continuation must fit 12,000 bytes, leaving
+room for the continuation in the Session request. A larger set is refused
+before staging; use the multipart procedure below for a wider set.
+The host checks the source and expiry after the final approval. This stages
+explicit claims; it does not extract facts or complete a shared generation.
+
+For multipart input, create a local plan from the **exact stored source** and
+the compact fact rows. For example, first store this source in the producer
+instance and follow its continuations until it reports `ok`:
+
+```text
+/ext ext__producer__source {"store":"notes","action":"put","args":{"source_id":"provided:example","generation":1,"expected_revision":0,"title":"Example","text":"Source supports review.","uri":"provided:example","observed_at_ms":10,"event_at_ms":null,"expires_at_ms":null}}
+```
+
+In a separate shell at the repository root, create matching source attributes
+and rows, then run the planner against the artifact built above:
+
+```sh
+cat > "$IPSE_CORPUS_ARTIFACTS/fact-source.json" <<'JSON'
+{"source_id":"provided:example","partition":"notes","generation":1,"title":"Example","text":"Source supports review.","uri":"provided:example","observed_at_ms":10,"event_at_ms":null,"expires_at_ms":null,"origin":{"kind":"provided","store_profile":"notes","partition_or_scope":"notes","receipt":null,"historical":false}}
+JSON
+cat > "$IPSE_CORPUS_ARTIFACTS/fact-rows.json" <<'JSON'
+[{"subject":"Source","predicate":"supports","object":"review","polarity":"positive","inferred":false,"valid_from_ms":null,"valid_to_ms":null,"spans":[[0,0,6]]}]
+JSON
+mix run --no-start dev/knowledge/plan_fact_input.exs \
+  "$IPSE_CORPUS_ARTIFACTS/corpus-producer" \
+  "$IPSE_CORPUS_ARTIFACTS/fact-source.json" \
+  "$IPSE_CORPUS_ARTIFACTS/fact-rows.json" > "$IPSE_CORPUS_ARTIFACTS/fact-plan.json"
+```
+
+The source attributes, including origin and times, must match the stored
+version. For a document source, use its complete canonical source record,
+including its document metadata. The plan contains `draft_id`, `manifest` and
+an ordered `pages` array; it grants no storage permission. In chat, inspect
+the eight reusable slot revisions:
+
+```text
+/ext ext__producer__generation_produce {"store":"notes","version":2,"action":"facts_slots"}
+```
+
+For each page, substitute the plan's actual JSON objects and the listed revision
+for that page's ordinal into the following call. Review and approve its write:
+
+```text
+/ext ext__producer__generation_produce {"store":"notes","version":2,"action":"facts_page","source_id":"provided:example","draft_id":"<draft-id>","manifest":<manifest>,"page":<page>,"expected_slot_revision":<slot-revision>}
+```
+
+Once every page succeeds, use the same draft ID and manifest to assemble the
+projection, following returned continuations until `ok`:
+
+```text
+/ext ext__producer__generation_produce {"store":"notes","version":2,"action":"facts_commit","source_id":"provided:example","draft_id":"<draft-id>","manifest":<manifest>,"expected_revision":0,"continuation":null}
+```
+
+If another draft replaces a slot, the old draft refuses; inspect revisions and
+stage its pages again. A source change, expiry, mismatched manifest or missing
+page also refuses. An unknown outcome is not permission to replay an effect.
+The slots are reused; staging facts alone does not complete a group or qualify
+the full collection workload.
+
+Then call `generation_produce` with exactly `store`, `version: 1`, `action: "page"`,
+`embedding`, the returned `job_id` and `job_revision`, and those same two
+selectors. Review every storage and embedding approval. Expect `page_ready` in
+coverage, a first shared-vector page and `group_complete: false`; the selected
+generation stays unchanged.
+
+For the experimental multi-page path, use version 2 and include
+`"vector_cursor":0` and `"previous_ready":null` in the first `page` call;
+the other fields and selectors are the same. For example, replace the selectors
+and Job values with the actual returned values:
+
+```text
+/ext ext__producer__generation_produce {"store":"notes","version":2,"action":"page","embedding":"vectors","job_id":"<job-id>","job_revision":<job-revision>,"vector_selection":<vector-selection>,"fact_selection":{"kind":"explicit","profile":null,"version":1},"vector_cursor":0,"previous_ready":null}
+```
+
+When the result contains a `continuation`, invoke its `id` with its exact
+`arguments` to produce the next page. A null continuation means all vector pages
+in that captured group are ready, not that the group or generation is complete.
+Do not construct a continuation from an unknown outcome.
+
+Once all vector pages for the captured group are ready, stage explicit facts
+for every source in that group, including an explicit empty list for a source
+with no facts. Larger groups can exhaust a Session's bounded lineage ledger.
+After every page and fact operation has returned a completed result, with no
+outstanding staged continuation, close
+the Session with confirmed closure, start a fresh Session in the same admitted
+project with the same selected artifact, and inspect the Job using its exact
+selectors. Check that its ID and revision match the completed vector pages.
+A six-source, two-page synthetic journey needed this handoff before append;
+a separate nine-source journey used stage-free handoffs between its two group
+builds and finalization. Larger workloads are not yet qualified. Do not transfer
+active stages or treat an unknown outcome as completed.
+
+Request the guarded group append with the inspected Job identity and selectors.
+For example, replace the placeholders with the values used for the group's first page:
+
+```text
+/ext ext__producer__generation_produce {"store":"notes","version":2,"action":"append","embedding":"vectors","job_id":"<job-id>","job_revision":<job-revision>,"vector_selection":<vector-selection>,"fact_selection":{"kind":"explicit","profile":null,"version":1},"vector_cursor":0,"previous_ready":null,"continuation":null}
+```
+
+Review the proposed writes and follow every returned `generation_produce`
+continuation unchanged. A completed append reports its Job state in
+`coverage.job_progress` and provides the Job token in `coverage.continuation`.
+If it reports `groups`, use the token's `job_revision` to produce the next captured
+group. If it reports `manifests`, use that token with guarded `generation_job`
+finalization. A missing fact projection or changed source refuses the append;
+an unknown outcome requires inspection rather than replay.
+
+The claim commits before inference. After each approval the host authenticates
+the current claim, source byte ranges, source times and fixed job/catalog/root,
+then makes one final locked admission for that batch. Expired, historical,
+future-observed or changed sources refuse. Already admitted bytes may remain
+in flight after a later change. Selection pinning separately refuses a changed
+configured route; returned model/input/vector checks still apply.
+
+`inspect` is read-only. A pending or unknown claim offers no retry/adoption token,
+including across Sessions. An unsupported v1 binding can approve an inert claim
+and then refuse guarded inference with no egress; inspect it before deciding on
+new work. Do not replay the old intent or switch identity to consume its stage.
+The [actual guarded Session controls](../archive/2026-10-26-p30-p31-implementation/shared-producer-guard-session.md)
+and [finite-source positive](../archive/2026-10-26-p30-p31-implementation/shared-producer-finite-guard-session.md)
+use synthetic loopback models and a private artifact with this same delegation;
+they establish neither model quality nor complete producer/capacity acceptance.
+The [two-page v2 Session](../archive/2026-10-26-p30-p31-implementation/shared-producer-v4-public-session.md)
+also used a synthetic endpoint and an initially empty selected root.
+The [public-entry adoption review](../archive/2026-10-26-p30-p31-implementation/shared-producer-public-adoption-independent-review.md)
+separately checks the canonical build and exact delegation/configuration; it does
+not relabel the private artifact's native execution as a canonical-artifact run.
+
 ## Read a complete retrieval result
 
 Small queries return their JSON value directly. A larger query can return a
@@ -310,7 +823,9 @@ still reports the same model name and width. Older vectors without this identity
 also need an explicit reindex. Changing only a timeout preserves compatibility.
 A changed server-reported model also makes old vectors incompatible. Explicit
 reindexing can replace them even when the requested model and endpoint stay the
-same.
+same. A vector whose recorded input digest does not match its current source
+chunk is treated as missing; inspect the source and reindex that chunk rather
+than relying on the mismatched vector.
 
 After a configuration change, start a fresh chat with the reviewed configuration
 and the same home and workspace. Inspect the source and run the `index` command
@@ -571,6 +1086,10 @@ It does not replace the server's capacity or access policy. Keep the same
 
 ## Export sources before migration
 
+This source-envelope procedure applies to State and MCP stores. Complete
+document Collection export/import and faithful packed-record migration remain
+unavailable; a descriptor inventory or part layout is not a restorable backup.
+
 To export the earlier source, run:
 
 ```text
@@ -605,7 +1124,7 @@ Do not present an old export as a newly observed source.
 
 ## Keep stores bounded and recover from refusal
 
-Each partition permits 32 source roots, including unpublished drafts and
+For the State and MCP stores described above, each partition permits 32 source roots, including unpublished drafts and
 suppression markers. An import for a new source needs an unused root slot.
 Collection retains roots and suppression. Use separate reviewed partitions for
 new sources when the root ceiling is reached.
@@ -613,7 +1132,7 @@ new sources when the root ceiling is reached.
 State permits 256 retained records and 1 MiB per namespace. A qualified MCP v3
 partition permits 88 retained records and at most 1 MiB. Records include roots,
 pages, drafts' staged pages, old generations, orphan pages and tombstones.
-Collection removes unreachable bodies but retains their slots. Plan exports and
+The source `collect` action removes unreachable bodies but retains their slots. Plan exports and
 reviewed migration before filling either store. An open draft does not reserve
 all future space, so a competing writer can make append/publication refuse.
 Inspect the retained draft before continuing or approving an exact abort.

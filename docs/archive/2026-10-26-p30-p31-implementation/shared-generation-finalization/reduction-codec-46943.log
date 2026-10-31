@@ -1,0 +1,9 @@
+Running ExUnit with seed: 46943, max_cases: 1
+Excluding tags: [:test]
+Including tags: [:generation_reduction]
+
+GENERATION_REDUCTION {"canonical_equal":true,"entity_pages":5,"manifest_batches":2,"native_operations":0,"protected_publication_demonstrated":false}
+.
+Finished in 2.5 seconds (0.06s on load, 0.00s async, 2.4s sync)
+
+Result: 1 passed, 2 excluded

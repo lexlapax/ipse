@@ -1,0 +1,18 @@
+Running ExUnit with seed: 141184, max_cases: 4
+Excluding tags: [:test]
+Including tags: [split_append_native: true]
+
+
+
+  1) test native append keeps both metadata stages until its final verified atomic switch (Ipse.CollectionSplitAppendNativeTest)
+     test/extensions/knowledge/collection_split_append_native_test.exs:22
+     Expected truthy, got false
+     code: assert completed["status"] == "groups" and completed["job"]["cursor"] == 1
+     stacktrace:
+       test/extensions/knowledge/collection_split_append_native_test.exs:129: (test)
+
+
+Finished in 11.4 seconds (3.6s on load, 0.00s async, 7.7s sync)
+
+Result: 0/1 passed
+Failed: 1 test

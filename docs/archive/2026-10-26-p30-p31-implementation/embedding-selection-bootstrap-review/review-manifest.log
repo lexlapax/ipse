@@ -1,0 +1,16 @@
+EMBEDDING_SELECTION_BOOTSTRAP_OK: %{
+  sources: 6,
+  graphs: [
+    {"_build/reviewed-forget-cli-sol-20261029", 699,
+     %{"regular" => 698, "symlink" => 1}},
+    {"_build/embedding-selection-sol-20261029", 699,
+     %{"regular" => 698, "symlink" => 1}}
+  ],
+  delta: ["lib/ipse/ebin/Elixir.Ipse.Extension.Actions.beam",
+   "lib/ipse/ebin/Elixir.Ipse.Extension.EmbeddingCall.beam",
+   "lib/ipse/ebin/Elixir.Ipse.Extension.Host.beam",
+   "lib/ipse/ebin/Elixir.Ipse.Extension.Inference.beam",
+   "lib/ipse/ebin/Elixir.Ipse.Extension.ModelCall.beam",
+   "lib/ipse/ebin/Elixir.Ipse.Session.Invocation.beam"],
+  retained: 10
+}

@@ -1,0 +1,29 @@
+Running ExUnit with seed: 47011, max_cases: 8
+Excluding tags: [:native_sandbox, :macos_sandbox, :macos_filesystem, :memory_scope]
+
+
+
+  1) test native transitions refuse live MCP carryover and owner loss stops actual resources without replay (Ipse.MCP.PlanningLiveResourcesTest)
+     test/ipse/mcp/planning_live_resources_test.exs:9
+     ** (MatchError) no match of right hand side value:
+     
+         {:error, :invalid_planning_mcp_history}
+     
+         test/support/planning_live_mcp.exs:149: (file)
+         (elixir 1.20.4) lib/code.ex:1639: Code.require_file/2
+
+     thread 'main' (1632676) panicked at test/support/planning_live_mcp_pty.rs:123:5:
+     assertion failed: status.success()
+     note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+     code: for mode <- ~w(entry_release exit_kill) do
+     stacktrace:
+       test/ipse/mcp/planning_live_resources_test.exs:51: anonymous fn/4 in Ipse.MCP.PlanningLiveResourcesTest."test native transitions refuse live MCP carryover and owner loss stops actual resources without replay"/1
+       (elixir 1.20.4) lib/enum.ex:1725: Enum."-map/2-lists^map/1-1-"/2
+       test/ipse/mcp/planning_live_resources_test.exs:38: (test)
+
+
+Finished in 1.0 seconds (0.07s on load, 0.00s async, 0.9s sync)
+
+Result: 0/1 passed
+Failed: 1 test

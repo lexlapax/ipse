@@ -1,0 +1,604 @@
+{
+  "compiled_cohorts": {
+    "/home/lexlapax/projects/lexlapax/ipse/_build/shared-projection-codec-20261029/corpus-finalization-artifact/ebin": {
+      "Elixir.IpseKnowledge.Adapters.beam": {
+        "byte_count": 82340,
+        "sha256": "386845436890eae6814941d4f9a64e63189ceb1c2c43bf4f663f484aa73e7cb1"
+      },
+      "Elixir.IpseKnowledge.Corpus.beam": {
+        "byte_count": 110172,
+        "sha256": "9b39aecea188609283c013301cd0448cb0fa75a7d01a45c80298831025bf554a"
+      },
+      "Elixir.IpseKnowledge.Documents.Docx.Styles.beam": {
+        "byte_count": 45604,
+        "sha256": "3d15b42066d137da4d278c77c043e86bdb2564cd8105f17bc1adf40b5a9c5951"
+      },
+      "Elixir.IpseKnowledge.Documents.Docx.beam": {
+        "byte_count": 64940,
+        "sha256": "1c3d71572274772588f7f1063f31d851a637dcc1d4ced6e6b7fa81ecba1ad32c"
+      },
+      "Elixir.IpseKnowledge.Documents.ParserStage.beam": {
+        "byte_count": 30832,
+        "sha256": "7260fc5740ca54d5afa0a8112f297b0140b573fd47d7619487ababf695372652"
+      },
+      "Elixir.IpseKnowledge.Documents.Pdf.beam": {
+        "byte_count": 7960,
+        "sha256": "c1dea7a3de2016cf2359d25d9e66a4a048931f6f05a1fe81051529b257451312"
+      },
+      "Elixir.IpseKnowledge.Documents.Zip.beam": {
+        "byte_count": 11784,
+        "sha256": "c2429cee36cb6ba95d8b9b6b0878c01b87ee00eaf873685e4eb67e8e8d9fb6ef"
+      },
+      "Elixir.IpseKnowledge.Documents.beam": {
+        "byte_count": 24180,
+        "sha256": "2429684cda9bb06349936c8f5262726933c4ada6ba973297ac022299ddae495d"
+      },
+      "Elixir.IpseKnowledge.Evidence.beam": {
+        "byte_count": 167800,
+        "sha256": "4675dabe0ebdfb51fe557047728d8f3dde52419c5b101000edbefa59788311f7"
+      },
+      "Elixir.IpseKnowledge.Profiles.beam": {
+        "byte_count": 33084,
+        "sha256": "045f637aaa1cb88a07ac28d1740e177bcb2722eed5f41a634b9f7e1f70973b51"
+      },
+      "Elixir.IpseKnowledge.Store.Collection.Directory.beam": {
+        "byte_count": 48648,
+        "sha256": "0204d520efcd6e8357dea62680af43bf688c7ac4b52e2357fa69c280330b75d7"
+      },
+      "Elixir.IpseKnowledge.Store.Collection.Finalization.beam": {
+        "byte_count": 22412,
+        "sha256": "db1397dd9f6c0bd15dcc300a3eae722ab8bbd2fa021b1c9c3ade3e35131d9ec4"
+      },
+      "Elixir.IpseKnowledge.Store.Collection.Generation.beam": {
+        "byte_count": 37148,
+        "sha256": "7a733971040f9fcb64d7a75747e37d59e710523f005263cfab456b28aa9e3d2b"
+      },
+      "Elixir.IpseKnowledge.Store.Collection.Index.beam": {
+        "byte_count": 104488,
+        "sha256": "dd1737547eb34d0803a3675a6b485d717cb9f51b361ed45a1620522656fc6ef2"
+      },
+      "Elixir.IpseKnowledge.Store.Collection.Job.beam": {
+        "byte_count": 59532,
+        "sha256": "4c0ee73ec14d1d5a84fcdca9862dfebe675ce6cef7b0c5ee772671de194d19f8"
+      },
+      "Elixir.IpseKnowledge.Store.Collection.Projection.beam": {
+        "byte_count": 66968,
+        "sha256": "4e10cbf403da3ddca01f9d72a9cfd1a42c825bd81e6c6fe8722d4e8dcf08ea56"
+      },
+      "Elixir.IpseKnowledge.Store.Collection.Reduction.beam": {
+        "byte_count": 29920,
+        "sha256": "9371b1fc61689ae4d885b5fc20d341a066307da2b1d51479752b116b6cddac20"
+      },
+      "Elixir.IpseKnowledge.Store.Collection.Selected.beam": {
+        "byte_count": 21732,
+        "sha256": "d1bda1c92cbb23d613340142fb8e43892885495ef89c67694c477c2bf74573a1"
+      },
+      "Elixir.IpseKnowledge.Store.Collection.beam": {
+        "byte_count": 141348,
+        "sha256": "0541630bcc0de68ebd5e7f783dac1c344a40aa6c54e74062677ca53f5e663f4a"
+      },
+      "Elixir.IpseKnowledge.Store.MCPCAS.beam": {
+        "byte_count": 47968,
+        "sha256": "8a042a94941d5342fe74a82fc1a3b7ba70bf434b3ec2e4c4941fc857f5e3209b"
+      },
+      "Elixir.IpseKnowledge.Store.State.beam": {
+        "byte_count": 33180,
+        "sha256": "4e208fe8be000015589fa8a38d9401d9060a7648e2c8833bd809de4c3b6a2c98"
+      },
+      "Elixir.IpseKnowledge.Store.beam": {
+        "byte_count": 218108,
+        "sha256": "f5c59f195455c2c899e2437546d22d599c17c9611dcf25c5b15ada6e0187b3ce"
+      }
+    },
+    "/home/lexlapax/projects/lexlapax/ipse/_build/shared-projection-codec-20261029/tested-finalization-controller-beams": {
+      "Elixir.IpseKnowledge.Documents.Docx.Styles.beam": {
+        "byte_count": 45604,
+        "sha256": "423001f1e0dbfb323a5e6fa2c0ddb17a4b9321ad56604e4e826f172c60fbdf01"
+      },
+      "Elixir.IpseKnowledge.Documents.Docx.beam": {
+        "byte_count": 64940,
+        "sha256": "41856b49adc47ab14fde156197fd6f5246b8cc5bc5d9f36659296f1c8542361d"
+      },
+      "Elixir.IpseKnowledge.Documents.ParserStage.beam": {
+        "byte_count": 30832,
+        "sha256": "7d14517e03606e92f8b7013e2258ead2bbbdaec5300a09e6bda928b18ef360ef"
+      },
+      "Elixir.IpseKnowledge.Documents.Pdf.beam": {
+        "byte_count": 7960,
+        "sha256": "59f803bac764905f99133695bd83700cec947f7566747bf42f693160124ffebd"
+      },
+      "Elixir.IpseKnowledge.Documents.Zip.beam": {
+        "byte_count": 11784,
+        "sha256": "ffffd079b38369e347909b14cfcfd6fca1fbfe220605a7d288d562c3a2a3125c"
+      },
+      "Elixir.IpseKnowledge.Documents.beam": {
+        "byte_count": 24180,
+        "sha256": "16b485bba5b7f9dd33fd990c4ddac144be3e8cbe3646971de525078564547fc4"
+      },
+      "Elixir.IpseKnowledge.Evidence.beam": {
+        "byte_count": 167804,
+        "sha256": "8b257074bbce484965c8ecf5d0363adc77a3bd8aefc38de9d0aac0286bd2ad6c"
+      },
+      "Elixir.IpseKnowledge.Store.Collection.Directory.beam": {
+        "byte_count": 48648,
+        "sha256": "69486049567427f3d1a43ce9d4e5ddaa5d8716fbcd2210f7351c988b50c654bc"
+      },
+      "Elixir.IpseKnowledge.Store.Collection.Finalization.beam": {
+        "byte_count": 19840,
+        "sha256": "c80fb1d1092b35124d0ea95bd5eff2853f92b3665fdb7cbd607b786b169967c5"
+      },
+      "Elixir.IpseKnowledge.Store.Collection.Generation.beam": {
+        "byte_count": 37148,
+        "sha256": "3d03fedef34f8048e61a3b7e7aeb3ddbe01d7b57a41d0f0ba0b6691391d4f461"
+      },
+      "Elixir.IpseKnowledge.Store.Collection.Index.beam": {
+        "byte_count": 104484,
+        "sha256": "f15151f1a31c0fb2975a57d673cbf042afa452c0fdb11b5e0339e1383e4a6c47"
+      },
+      "Elixir.IpseKnowledge.Store.Collection.Job.beam": {
+        "byte_count": 57492,
+        "sha256": "edd979c5262b0c050298f1fc1b8b95237408cbc690f2c36c2f33e85a4c3cfb05"
+      },
+      "Elixir.IpseKnowledge.Store.Collection.Projection.beam": {
+        "byte_count": 66968,
+        "sha256": "2fb9c3ad2b5b097ecd54543f917345e34947740bd9b815bce435397b78b1fb07"
+      },
+      "Elixir.IpseKnowledge.Store.Collection.Reduction.beam": {
+        "byte_count": 29920,
+        "sha256": "f78f6299015cc52dc9d59cd9e0e24a554387b0bf5a85aa8600514478e40c4fc3"
+      },
+      "Elixir.IpseKnowledge.Store.Collection.Selected.beam": {
+        "byte_count": 21732,
+        "sha256": "090043eb257db6657e098cf466a95108ce4a07eb04f9009d64c5f51445ce5b93"
+      },
+      "Elixir.IpseKnowledge.Store.Collection.beam": {
+        "byte_count": 141348,
+        "sha256": "6d07c2517ddebc16725fdc648104d514e14da7761468df3aa54cb179cf6a3976"
+      }
+    },
+    "/home/lexlapax/projects/lexlapax/ipse/_build/shared-projection-codec-20261029/tested-finalization-controller-second-beams": {
+      "Elixir.IpseKnowledge.Documents.Docx.Styles.beam": {
+        "byte_count": 45604,
+        "sha256": "07a5d430b197aac691b4ba581996e231c8a20e0a29adb6499edc520f96c7314d"
+      },
+      "Elixir.IpseKnowledge.Documents.Docx.beam": {
+        "byte_count": 64940,
+        "sha256": "19b4b11d675c41b49cf39f0afa929c79df577ebe89a8ff238d7bed84ed813f9f"
+      },
+      "Elixir.IpseKnowledge.Documents.ParserStage.beam": {
+        "byte_count": 30832,
+        "sha256": "57f62c05cfb1c524224a56012152285c636d2c340116b16bc63106fc18b32655"
+      },
+      "Elixir.IpseKnowledge.Documents.Pdf.beam": {
+        "byte_count": 7960,
+        "sha256": "0b9086f06d41e1543a4760ec924ba65b8d220b62a8fdf70be6341fb75f8eeb61"
+      },
+      "Elixir.IpseKnowledge.Documents.Zip.beam": {
+        "byte_count": 11784,
+        "sha256": "ffffd079b38369e347909b14cfcfd6fca1fbfe220605a7d288d562c3a2a3125c"
+      },
+      "Elixir.IpseKnowledge.Documents.beam": {
+        "byte_count": 24180,
+        "sha256": "0986a820b1ee8857e4d8aebd5d80b543f0215e8d92de9598968e716be8af73fa"
+      },
+      "Elixir.IpseKnowledge.Evidence.beam": {
+        "byte_count": 167804,
+        "sha256": "8bb88be833742db86ced41908bfd3cf200821f496fd3a2e2f867dc98ae978cac"
+      },
+      "Elixir.IpseKnowledge.Store.Collection.Directory.beam": {
+        "byte_count": 48648,
+        "sha256": "79164b05224d6483a392bc923607b3d1b47699fbc31751bb301da3c27cd1bc48"
+      },
+      "Elixir.IpseKnowledge.Store.Collection.Finalization.beam": {
+        "byte_count": 19840,
+        "sha256": "c80fb1d1092b35124d0ea95bd5eff2853f92b3665fdb7cbd607b786b169967c5"
+      },
+      "Elixir.IpseKnowledge.Store.Collection.Generation.beam": {
+        "byte_count": 37148,
+        "sha256": "6ee2e085eb9b6c73bae4e248e9d23e49a617699e74f9cc6db5cbb4ee26fc8a5e"
+      },
+      "Elixir.IpseKnowledge.Store.Collection.Index.beam": {
+        "byte_count": 104484,
+        "sha256": "2dd292493a40cd876d908cf0d608df53062620bfcf57d3965fec1b7b89a3e0d1"
+      },
+      "Elixir.IpseKnowledge.Store.Collection.Job.beam": {
+        "byte_count": 57492,
+        "sha256": "56aaabf320aa126cb8e8acdbfa3cdb2a4929af74dd2a9fa8f6063634a13987b6"
+      },
+      "Elixir.IpseKnowledge.Store.Collection.Projection.beam": {
+        "byte_count": 66968,
+        "sha256": "2fb9c3ad2b5b097ecd54543f917345e34947740bd9b815bce435397b78b1fb07"
+      },
+      "Elixir.IpseKnowledge.Store.Collection.Reduction.beam": {
+        "byte_count": 29920,
+        "sha256": "f78f6299015cc52dc9d59cd9e0e24a554387b0bf5a85aa8600514478e40c4fc3"
+      },
+      "Elixir.IpseKnowledge.Store.Collection.Selected.beam": {
+        "byte_count": 21732,
+        "sha256": "090043eb257db6657e098cf466a95108ce4a07eb04f9009d64c5f51445ce5b93"
+      },
+      "Elixir.IpseKnowledge.Store.Collection.beam": {
+        "byte_count": 141348,
+        "sha256": "8a690d7d668843c431455404cd06e8c4443e452fa71f93fa1d807e4f6dbe2c00"
+      }
+    },
+    "/home/lexlapax/projects/lexlapax/ipse/_build/shared-projection-codec-20261029/tested-finalization-phases-beams": {
+      "Elixir.IpseKnowledge.Documents.Docx.Styles.beam": {
+        "byte_count": 45604,
+        "sha256": "423001f1e0dbfb323a5e6fa2c0ddb17a4b9321ad56604e4e826f172c60fbdf01"
+      },
+      "Elixir.IpseKnowledge.Documents.Docx.beam": {
+        "byte_count": 64940,
+        "sha256": "41856b49adc47ab14fde156197fd6f5246b8cc5bc5d9f36659296f1c8542361d"
+      },
+      "Elixir.IpseKnowledge.Documents.ParserStage.beam": {
+        "byte_count": 30832,
+        "sha256": "7d14517e03606e92f8b7013e2258ead2bbbdaec5300a09e6bda928b18ef360ef"
+      },
+      "Elixir.IpseKnowledge.Documents.Pdf.beam": {
+        "byte_count": 7960,
+        "sha256": "59f803bac764905f99133695bd83700cec947f7566747bf42f693160124ffebd"
+      },
+      "Elixir.IpseKnowledge.Documents.Zip.beam": {
+        "byte_count": 11784,
+        "sha256": "ffffd079b38369e347909b14cfcfd6fca1fbfe220605a7d288d562c3a2a3125c"
+      },
+      "Elixir.IpseKnowledge.Documents.beam": {
+        "byte_count": 24180,
+        "sha256": "16b485bba5b7f9dd33fd990c4ddac144be3e8cbe3646971de525078564547fc4"
+      },
+      "Elixir.IpseKnowledge.Evidence.beam": {
+        "byte_count": 167804,
+        "sha256": "8b257074bbce484965c8ecf5d0363adc77a3bd8aefc38de9d0aac0286bd2ad6c"
+      },
+      "Elixir.IpseKnowledge.Store.Collection.Directory.beam": {
+        "byte_count": 48648,
+        "sha256": "69486049567427f3d1a43ce9d4e5ddaa5d8716fbcd2210f7351c988b50c654bc"
+      },
+      "Elixir.IpseKnowledge.Store.Collection.Finalization.beam": {
+        "byte_count": 22412,
+        "sha256": "8e1a1e1418dc934204721074ed47449c0c578cf5d1e2938a0854872dfa68cf5b"
+      },
+      "Elixir.IpseKnowledge.Store.Collection.Generation.beam": {
+        "byte_count": 37148,
+        "sha256": "3d03fedef34f8048e61a3b7e7aeb3ddbe01d7b57a41d0f0ba0b6691391d4f461"
+      },
+      "Elixir.IpseKnowledge.Store.Collection.Index.beam": {
+        "byte_count": 104484,
+        "sha256": "f15151f1a31c0fb2975a57d673cbf042afa452c0fdb11b5e0339e1383e4a6c47"
+      },
+      "Elixir.IpseKnowledge.Store.Collection.Job.beam": {
+        "byte_count": 59532,
+        "sha256": "b540bb9bec9a18da2ceab11a43fd125682038825ca9ac57aead26d9ad8d864b6"
+      },
+      "Elixir.IpseKnowledge.Store.Collection.Projection.beam": {
+        "byte_count": 66968,
+        "sha256": "2fb9c3ad2b5b097ecd54543f917345e34947740bd9b815bce435397b78b1fb07"
+      },
+      "Elixir.IpseKnowledge.Store.Collection.Reduction.beam": {
+        "byte_count": 29920,
+        "sha256": "f78f6299015cc52dc9d59cd9e0e24a554387b0bf5a85aa8600514478e40c4fc3"
+      },
+      "Elixir.IpseKnowledge.Store.Collection.Selected.beam": {
+        "byte_count": 21732,
+        "sha256": "090043eb257db6657e098cf466a95108ce4a07eb04f9009d64c5f51445ce5b93"
+      },
+      "Elixir.IpseKnowledge.Store.Collection.beam": {
+        "byte_count": 141348,
+        "sha256": "6d07c2517ddebc16725fdc648104d514e14da7761468df3aa54cb179cf6a3976"
+      }
+    },
+    "/home/lexlapax/projects/lexlapax/ipse/_build/shared-projection-codec-20261029/tested-finalization-phases-final-beams/generation_finalization": {
+      "Elixir.IpseKnowledge.Documents.Docx.Styles.beam": {
+        "byte_count": 45604,
+        "sha256": "423001f1e0dbfb323a5e6fa2c0ddb17a4b9321ad56604e4e826f172c60fbdf01"
+      },
+      "Elixir.IpseKnowledge.Documents.Docx.beam": {
+        "byte_count": 64940,
+        "sha256": "41856b49adc47ab14fde156197fd6f5246b8cc5bc5d9f36659296f1c8542361d"
+      },
+      "Elixir.IpseKnowledge.Documents.ParserStage.beam": {
+        "byte_count": 30832,
+        "sha256": "7d14517e03606e92f8b7013e2258ead2bbbdaec5300a09e6bda928b18ef360ef"
+      },
+      "Elixir.IpseKnowledge.Documents.Pdf.beam": {
+        "byte_count": 7960,
+        "sha256": "59f803bac764905f99133695bd83700cec947f7566747bf42f693160124ffebd"
+      },
+      "Elixir.IpseKnowledge.Documents.Zip.beam": {
+        "byte_count": 11784,
+        "sha256": "ffffd079b38369e347909b14cfcfd6fca1fbfe220605a7d288d562c3a2a3125c"
+      },
+      "Elixir.IpseKnowledge.Documents.beam": {
+        "byte_count": 24180,
+        "sha256": "16b485bba5b7f9dd33fd990c4ddac144be3e8cbe3646971de525078564547fc4"
+      },
+      "Elixir.IpseKnowledge.Evidence.beam": {
+        "byte_count": 167804,
+        "sha256": "8b257074bbce484965c8ecf5d0363adc77a3bd8aefc38de9d0aac0286bd2ad6c"
+      },
+      "Elixir.IpseKnowledge.Store.Collection.Directory.beam": {
+        "byte_count": 48648,
+        "sha256": "69486049567427f3d1a43ce9d4e5ddaa5d8716fbcd2210f7351c988b50c654bc"
+      },
+      "Elixir.IpseKnowledge.Store.Collection.Finalization.beam": {
+        "byte_count": 22412,
+        "sha256": "8e1a1e1418dc934204721074ed47449c0c578cf5d1e2938a0854872dfa68cf5b"
+      },
+      "Elixir.IpseKnowledge.Store.Collection.Generation.beam": {
+        "byte_count": 37148,
+        "sha256": "3d03fedef34f8048e61a3b7e7aeb3ddbe01d7b57a41d0f0ba0b6691391d4f461"
+      },
+      "Elixir.IpseKnowledge.Store.Collection.Index.beam": {
+        "byte_count": 104484,
+        "sha256": "f15151f1a31c0fb2975a57d673cbf042afa452c0fdb11b5e0339e1383e4a6c47"
+      },
+      "Elixir.IpseKnowledge.Store.Collection.Job.beam": {
+        "byte_count": 59532,
+        "sha256": "b540bb9bec9a18da2ceab11a43fd125682038825ca9ac57aead26d9ad8d864b6"
+      },
+      "Elixir.IpseKnowledge.Store.Collection.Projection.beam": {
+        "byte_count": 66968,
+        "sha256": "2fb9c3ad2b5b097ecd54543f917345e34947740bd9b815bce435397b78b1fb07"
+      },
+      "Elixir.IpseKnowledge.Store.Collection.Reduction.beam": {
+        "byte_count": 29920,
+        "sha256": "f78f6299015cc52dc9d59cd9e0e24a554387b0bf5a85aa8600514478e40c4fc3"
+      },
+      "Elixir.IpseKnowledge.Store.Collection.Selected.beam": {
+        "byte_count": 21732,
+        "sha256": "090043eb257db6657e098cf466a95108ce4a07eb04f9009d64c5f51445ce5b93"
+      },
+      "Elixir.IpseKnowledge.Store.Collection.beam": {
+        "byte_count": 141348,
+        "sha256": "6d07c2517ddebc16725fdc648104d514e14da7761468df3aa54cb179cf6a3976"
+      }
+    },
+    "/home/lexlapax/projects/lexlapax/ipse/_build/shared-projection-codec-20261029/tested-reduction-codec-beams": {
+      "Elixir.IpseKnowledge.Documents.Docx.Styles.beam": {
+        "byte_count": 45604,
+        "sha256": "423001f1e0dbfb323a5e6fa2c0ddb17a4b9321ad56604e4e826f172c60fbdf01"
+      },
+      "Elixir.IpseKnowledge.Documents.Docx.beam": {
+        "byte_count": 64940,
+        "sha256": "41856b49adc47ab14fde156197fd6f5246b8cc5bc5d9f36659296f1c8542361d"
+      },
+      "Elixir.IpseKnowledge.Documents.ParserStage.beam": {
+        "byte_count": 30832,
+        "sha256": "7d14517e03606e92f8b7013e2258ead2bbbdaec5300a09e6bda928b18ef360ef"
+      },
+      "Elixir.IpseKnowledge.Documents.Pdf.beam": {
+        "byte_count": 7960,
+        "sha256": "59f803bac764905f99133695bd83700cec947f7566747bf42f693160124ffebd"
+      },
+      "Elixir.IpseKnowledge.Documents.Zip.beam": {
+        "byte_count": 11784,
+        "sha256": "ffffd079b38369e347909b14cfcfd6fca1fbfe220605a7d288d562c3a2a3125c"
+      },
+      "Elixir.IpseKnowledge.Documents.beam": {
+        "byte_count": 24180,
+        "sha256": "16b485bba5b7f9dd33fd990c4ddac144be3e8cbe3646971de525078564547fc4"
+      },
+      "Elixir.IpseKnowledge.Evidence.beam": {
+        "byte_count": 167804,
+        "sha256": "8b257074bbce484965c8ecf5d0363adc77a3bd8aefc38de9d0aac0286bd2ad6c"
+      },
+      "Elixir.IpseKnowledge.Store.Collection.Directory.beam": {
+        "byte_count": 48648,
+        "sha256": "69486049567427f3d1a43ce9d4e5ddaa5d8716fbcd2210f7351c988b50c654bc"
+      },
+      "Elixir.IpseKnowledge.Store.Collection.Generation.beam": {
+        "byte_count": 37148,
+        "sha256": "3d03fedef34f8048e61a3b7e7aeb3ddbe01d7b57a41d0f0ba0b6691391d4f461"
+      },
+      "Elixir.IpseKnowledge.Store.Collection.Index.beam": {
+        "byte_count": 104484,
+        "sha256": "f15151f1a31c0fb2975a57d673cbf042afa452c0fdb11b5e0339e1383e4a6c47"
+      },
+      "Elixir.IpseKnowledge.Store.Collection.Job.beam": {
+        "byte_count": 49220,
+        "sha256": "54321d3090c919a68e0c01c5ded58991d40e74c24eb2600111a79be7ade6cd67"
+      },
+      "Elixir.IpseKnowledge.Store.Collection.Projection.beam": {
+        "byte_count": 66968,
+        "sha256": "2fb9c3ad2b5b097ecd54543f917345e34947740bd9b815bce435397b78b1fb07"
+      },
+      "Elixir.IpseKnowledge.Store.Collection.Reduction.beam": {
+        "byte_count": 29920,
+        "sha256": "f78f6299015cc52dc9d59cd9e0e24a554387b0bf5a85aa8600514478e40c4fc3"
+      },
+      "Elixir.IpseKnowledge.Store.Collection.Selected.beam": {
+        "byte_count": 21732,
+        "sha256": "090043eb257db6657e098cf466a95108ce4a07eb04f9009d64c5f51445ce5b93"
+      },
+      "Elixir.IpseKnowledge.Store.Collection.beam": {
+        "byte_count": 141348,
+        "sha256": "6d07c2517ddebc16725fdc648104d514e14da7761468df3aa54cb179cf6a3976"
+      }
+    }
+  },
+  "created_at": "2026-10-29T17:41:04.454077Z",
+  "logs": {
+    "corpus-finalization-build-46948.log": {
+      "byte_count": 75,
+      "sha256": "c13e2f092a6cec155207a10cd61413b998a660112894bb16ecd6885aa0ef7d8a"
+    },
+    "finalization-controller-46944.log": {
+      "byte_count": 2083,
+      "sha256": "73ef7f337f7c126f0f04d77dfbf2e9622354b2557fbe4a58387cd530c873ab08"
+    },
+    "finalization-controller-46945.log": {
+      "byte_count": 453,
+      "sha256": "29ecf89192d1a096937f76b309fab0e0e2581ad7987ade58848e9d99c882de6e"
+    },
+    "finalization-phases-46946.log": {
+      "byte_count": 1089,
+      "sha256": "a18473a7e77663ff6e9a5a67a525d960f951876634ec494526e26f9573cffe7a"
+    },
+    "finalization-phases-46947.log": {
+      "byte_count": 508,
+      "sha256": "b04bbed28273a0256815f459e5722252759fd9846d4d773d60a58d3033cf09cd"
+    },
+    "reduction-codec-46943.log": {
+      "byte_count": 356,
+      "sha256": "400b74a9accf38d088339744c7b7b564272454e3c55dd7d77fdf6c028754f3c2"
+    }
+  },
+  "model_calls": 0,
+  "native_operations": 0,
+  "previous_manifest": "docs/archive/2026-10-26-p30-p31-implementation/shared-job-prerequisites/manifest.json",
+  "previous_manifest_sha256": "1945be650522a3d6d06317f834640c4de5112981d72e3f54f82980e1f6d3cffd",
+  "public_artifact": "/home/lexlapax/projects/lexlapax/ipse/_build/shared-projection-codec-20261029/corpus-finalization-artifact",
+  "public_artifact_files": {
+    "LICENSE": {
+      "byte_count": 11391,
+      "sha256": "a4b4034ccfb966fafe103ca64dd85157e35edb90742a070cf5575184c673bb98"
+    },
+    "ebin/Elixir.IpseKnowledge.Adapters.beam": {
+      "byte_count": 82340,
+      "sha256": "386845436890eae6814941d4f9a64e63189ceb1c2c43bf4f663f484aa73e7cb1"
+    },
+    "ebin/Elixir.IpseKnowledge.Corpus.beam": {
+      "byte_count": 110172,
+      "sha256": "9b39aecea188609283c013301cd0448cb0fa75a7d01a45c80298831025bf554a"
+    },
+    "ebin/Elixir.IpseKnowledge.Documents.Docx.Styles.beam": {
+      "byte_count": 45604,
+      "sha256": "3d15b42066d137da4d278c77c043e86bdb2564cd8105f17bc1adf40b5a9c5951"
+    },
+    "ebin/Elixir.IpseKnowledge.Documents.Docx.beam": {
+      "byte_count": 64940,
+      "sha256": "1c3d71572274772588f7f1063f31d851a637dcc1d4ced6e6b7fa81ecba1ad32c"
+    },
+    "ebin/Elixir.IpseKnowledge.Documents.ParserStage.beam": {
+      "byte_count": 30832,
+      "sha256": "7260fc5740ca54d5afa0a8112f297b0140b573fd47d7619487ababf695372652"
+    },
+    "ebin/Elixir.IpseKnowledge.Documents.Pdf.beam": {
+      "byte_count": 7960,
+      "sha256": "c1dea7a3de2016cf2359d25d9e66a4a048931f6f05a1fe81051529b257451312"
+    },
+    "ebin/Elixir.IpseKnowledge.Documents.Zip.beam": {
+      "byte_count": 11784,
+      "sha256": "c2429cee36cb6ba95d8b9b6b0878c01b87ee00eaf873685e4eb67e8e8d9fb6ef"
+    },
+    "ebin/Elixir.IpseKnowledge.Documents.beam": {
+      "byte_count": 24180,
+      "sha256": "2429684cda9bb06349936c8f5262726933c4ada6ba973297ac022299ddae495d"
+    },
+    "ebin/Elixir.IpseKnowledge.Evidence.beam": {
+      "byte_count": 167800,
+      "sha256": "4675dabe0ebdfb51fe557047728d8f3dde52419c5b101000edbefa59788311f7"
+    },
+    "ebin/Elixir.IpseKnowledge.Profiles.beam": {
+      "byte_count": 33084,
+      "sha256": "045f637aaa1cb88a07ac28d1740e177bcb2722eed5f41a634b9f7e1f70973b51"
+    },
+    "ebin/Elixir.IpseKnowledge.Store.Collection.Directory.beam": {
+      "byte_count": 48648,
+      "sha256": "0204d520efcd6e8357dea62680af43bf688c7ac4b52e2357fa69c280330b75d7"
+    },
+    "ebin/Elixir.IpseKnowledge.Store.Collection.Finalization.beam": {
+      "byte_count": 22412,
+      "sha256": "db1397dd9f6c0bd15dcc300a3eae722ab8bbd2fa021b1c9c3ade3e35131d9ec4"
+    },
+    "ebin/Elixir.IpseKnowledge.Store.Collection.Generation.beam": {
+      "byte_count": 37148,
+      "sha256": "7a733971040f9fcb64d7a75747e37d59e710523f005263cfab456b28aa9e3d2b"
+    },
+    "ebin/Elixir.IpseKnowledge.Store.Collection.Index.beam": {
+      "byte_count": 104488,
+      "sha256": "dd1737547eb34d0803a3675a6b485d717cb9f51b361ed45a1620522656fc6ef2"
+    },
+    "ebin/Elixir.IpseKnowledge.Store.Collection.Job.beam": {
+      "byte_count": 59532,
+      "sha256": "4c0ee73ec14d1d5a84fcdca9862dfebe675ce6cef7b0c5ee772671de194d19f8"
+    },
+    "ebin/Elixir.IpseKnowledge.Store.Collection.Projection.beam": {
+      "byte_count": 66968,
+      "sha256": "4e10cbf403da3ddca01f9d72a9cfd1a42c825bd81e6c6fe8722d4e8dcf08ea56"
+    },
+    "ebin/Elixir.IpseKnowledge.Store.Collection.Reduction.beam": {
+      "byte_count": 29920,
+      "sha256": "9371b1fc61689ae4d885b5fc20d341a066307da2b1d51479752b116b6cddac20"
+    },
+    "ebin/Elixir.IpseKnowledge.Store.Collection.Selected.beam": {
+      "byte_count": 21732,
+      "sha256": "d1bda1c92cbb23d613340142fb8e43892885495ef89c67694c477c2bf74573a1"
+    },
+    "ebin/Elixir.IpseKnowledge.Store.Collection.beam": {
+      "byte_count": 141348,
+      "sha256": "0541630bcc0de68ebd5e7f783dac1c344a40aa6c54e74062677ca53f5e663f4a"
+    },
+    "ebin/Elixir.IpseKnowledge.Store.MCPCAS.beam": {
+      "byte_count": 47968,
+      "sha256": "8a042a94941d5342fe74a82fc1a3b7ba70bf434b3ec2e4c4941fc857f5e3209b"
+    },
+    "ebin/Elixir.IpseKnowledge.Store.State.beam": {
+      "byte_count": 33180,
+      "sha256": "4e208fe8be000015589fa8a38d9401d9060a7648e2c8833bd809de4c3b6a2c98"
+    },
+    "ebin/Elixir.IpseKnowledge.Store.beam": {
+      "byte_count": 218108,
+      "sha256": "f5c59f195455c2c899e2437546d22d599c17c9611dcf25c5b15ada6e0187b3ce"
+    },
+    "extension.json": {
+      "byte_count": 12752,
+      "sha256": "ed90d769bf07bc8dc0ccd87b936c84bde7a0185863d04d856863cc4bad66efde"
+    }
+  },
+  "qualification": "pure streamed directory reductions and public controller protocol/build only; native publication, universal metadata-read geometry, populated capacity/rebuild, GC/migration/full peak, later-use authority and model quality remain unqualified",
+  "source_snapshot": "/home/lexlapax/projects/lexlapax/ipse/_build/shared-projection-codec-20261029/frozen-finalization-sources",
+  "sources": {
+    "extensions/knowledge/build.exs": {
+      "byte_count": 4622,
+      "sha256": "6ecd0351cba83724b67c222ad209b1c08e723a3a875cf36f182b30f6da5f2826"
+    },
+    "extensions/knowledge/src/corpus.ex": {
+      "byte_count": 54789,
+      "sha256": "8665397c5f8a4649a1444ab4a9b0394352ae60d4e9b19cfc0694cc8283690427"
+    },
+    "extensions/knowledge/src/store/collection/directory.ex": {
+      "byte_count": 17054,
+      "sha256": "49fc4ea3827f4469ae12d42790da45f6502af4cfc5cca2cbbf7f63b0e175b4ab"
+    },
+    "extensions/knowledge/src/store/collection/finalization.ex": {
+      "byte_count": 9421,
+      "sha256": "1addcf401161f7e4342b2618dd3706d95684d83d3063c24647029028ff2e2ec6"
+    },
+    "extensions/knowledge/src/store/collection/job.ex": {
+      "byte_count": 22694,
+      "sha256": "6df73fd04589429b157bb3469c7f299f911e99dee4ba81f3e93b9e145e332df9"
+    },
+    "extensions/knowledge/src/store/collection/reduction.ex": {
+      "byte_count": 11401,
+      "sha256": "1075bd1aaef68e7bfc9d0f389c293ee4a0182ba387c5556710534c5b559bc8e6"
+    },
+    "test/extensions/knowledge/collection_adapter_session_test.exs": {
+      "byte_count": 95677,
+      "sha256": "a5b1bad111d3231e98d8cd222d7e2993c5a4d918cc0af8d301e8c2abe5659640"
+    },
+    "test/extensions/knowledge/collection_directory_test.exs": {
+      "byte_count": 3510,
+      "sha256": "f825be19a66f5e4867a047e5eaee86d05547b6ad9d9df6ef09e18e2840c0ee8e"
+    },
+    "test/support/collection_directory.exs": {
+      "byte_count": 15755,
+      "sha256": "63fb03a3c467caf69886b246c05e04df66a26de33c38c329d10ea6745cb88f55"
+    },
+    "test/support/generation_finalization.exs": {
+      "byte_count": 9650,
+      "sha256": "8753520227e073753acd3362328d7f5bda95e4e3aaaa22910670313024b45ad5"
+    },
+    "test/support/generation_job_prerequisites.exs": {
+      "byte_count": 6922,
+      "sha256": "59ec0fdcb6f273efffc65a8baef8eeee8a96ccf0f88ee93f5b2efaebc77eb024"
+    },
+    "test/support/generation_reduction.exs": {
+      "byte_count": 3291,
+      "sha256": "054c4e80d8bfefd7bf5af94e55049a3d1d8d4372b31be6294adab1c2887d137b"
+    }
+  },
+  "strict_gates_unchanged": true,
+  "version": 1
+}

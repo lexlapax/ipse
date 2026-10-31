@@ -707,105 +707,132 @@ defmodule Ipse.KnowledgeEvaluationContractTest do
     end
   end
 
-  test "public Session and driver return all ten offline Research citations" do
-    root = Path.join(System.tmp_dir!(), "ipse-research-capacity-" <> Ipse.Usage.id())
-    artifact = Path.join(root, "artifact")
-    on_exit(fn -> File.rm_rf!(root) end)
+  if System.get_env("IPSE_RESEARCH_EVALUATION_CHILD") == "1" do
+    @tag :isolated_research
+    test "public Session and driver return all ten offline Research citations" do
+      root = Path.join(System.tmp_dir!(), "ipse-research-capacity-" <> Ipse.Usage.id())
+      artifact = Path.join(root, "artifact")
+      on_exit(fn -> File.rm_rf!(root) end)
 
-    {output, status} =
-      System.cmd(
-        System.find_executable("elixir"),
-        [
-          "extensions/knowledge/build.exs",
-          "--sdk",
-          Application.app_dir(:ipse, "ebin"),
-          "--output",
-          artifact,
-          "--package",
-          "research",
-          "--preset",
-          "offline"
-        ],
-        stderr_to_stdout: true
-      )
+      {output, status} =
+        System.cmd(
+          System.find_executable("elixir"),
+          [
+            "extensions/knowledge/build.exs",
+            "--sdk",
+            Application.app_dir(:ipse, "ebin"),
+            "--output",
+            artifact,
+            "--package",
+            "research",
+            "--preset",
+            "offline"
+          ],
+          stderr_to_stdout: true
+        )
 
-    assert status == 0, output
-    bytes = File.read!(Path.join(artifact, "extension.json"))
-    manifest = JSON.decode!(bytes)
-    digest = Ipse.JSON.sha256(bytes)
-    options = JSON.decode!(File.read!("extensions/knowledge/options/research-offline.json"))
+      assert status == 0, output
+      bytes = File.read!(Path.join(artifact, "extension.json"))
+      manifest = JSON.decode!(bytes)
+      digest = Ipse.JSON.sha256(bytes)
+      options = JSON.decode!(File.read!("extensions/knowledge/options/research-offline.json"))
 
-    selection = %{
-      root: root,
-      project: "synthetic",
-      variant: "research",
-      artifacts: [
-        %{
-          instance: "research",
-          path: artifact,
-          digest: digest,
-          options: options,
-          order: 0,
-          trust: %{
-            "artifact" => digest,
-            "capabilities" => manifest["capabilities"],
-            "allow_project" => false,
-            "allow_children" => false
-          }
-        }
-      ],
-      runtime: %{
-        provider: :demo,
-        model: "unused",
-        compact: false,
-        budget: %{"version" => 1, "max_requests" => 1}
-      },
-      bindings: %{"research" => %{"instance" => "research", "id" => "investigate"}},
-      required_verbs: ["research"],
-      timeout_ms: 30_000,
-      approval_validator: fn _ -> flunk("offline Research proposed a host action") end
-    }
-
-    alias Ipse.Development.Evaluation.Session
-    assert {:ok, run} = Session.open(selection)
-
-    try do
-      sources =
-        Enum.map(1..10, fn n ->
+      selection = %{
+        root: root,
+        project: "synthetic",
+        variant: "research",
+        artifacts: [
           %{
-            "source_id" => "s#{n}",
-            "generation" => 1,
-            "title" => "Locks",
-            "text" => "Lock files preserve inode identity.",
-            "uri" => "local:s#{n}",
-            "observed_at_ms" => 1,
-            "event_at_ms" => nil,
-            "expires_at_ms" => nil
+            instance: "research",
+            path: artifact,
+            digest: digest,
+            options: options,
+            order: 0,
+            trust: %{
+              "artifact" => digest,
+              "capabilities" => manifest["capabilities"],
+              "allow_project" => false,
+              "allow_children" => false
+            }
           }
-        end)
-
-      args = %{
-        "search" => "given",
-        "fetch" => "given",
-        "retrieval" => "words",
-        "rerank" => nil,
-        "query" => "lock files",
-        "as_of_ms" => 20,
-        "limits" => %{"max_sources" => 10, "max_body_bytes" => 1024, "timeout_ms" => 5000},
-        "sources" => sources
+        ],
+        runtime: %{
+          provider: :demo,
+          model: "unused",
+          compact: false,
+          budget: %{"version" => 1, "max_requests" => 1}
+        },
+        bindings: %{"research" => %{"instance" => "research", "id" => "investigate"}},
+        required_verbs: ["research"],
+        timeout_ms: 30_000,
+        approval_validator: fn _ -> flunk("offline Research proposed a host action") end
       }
 
-      assert {:ok, receipt, next} = Session.invoke(run, "research", args)
-      result = receipt["value"]
-      assert result["status"] == "ok" and length(result["evidence"]) == 10
-      assert hd(result["claims"])["evidence_indexes"] == Enum.to_list(0..9)
-      assert {:ok, snapshot} = Session.snapshot(next)
-      assert snapshot["accounting"]["request_count"] == 0
-      assert length(next.receipts) == 1
-      assert is_binary(hd(next.receipts)["result_sha256"])
-      assert :code.is_loaded(IpseKnowledge.Research) == false
-    after
-      assert {:ok, %{"cleanup" => "confirmed"}} = Session.close(run)
+      alias Ipse.Development.Evaluation.Session
+      assert {:ok, run} = Session.open(selection)
+
+      try do
+        sources =
+          Enum.map(1..10, fn n ->
+            %{
+              "source_id" => "s#{n}",
+              "generation" => 1,
+              "title" => "Locks",
+              "text" => "Lock files preserve inode identity.",
+              "uri" => "local:s#{n}",
+              "observed_at_ms" => 1,
+              "event_at_ms" => nil,
+              "expires_at_ms" => nil
+            }
+          end)
+
+        args = %{
+          "search" => "given",
+          "fetch" => "given",
+          "retrieval" => "words",
+          "rerank" => nil,
+          "query" => "lock files",
+          "as_of_ms" => 20,
+          "limits" => %{"max_sources" => 10, "max_body_bytes" => 1024, "timeout_ms" => 5000},
+          "sources" => sources
+        }
+
+        assert {:ok, receipt, next} = Session.invoke(run, "research", args)
+        result = receipt["value"]
+        assert result["status"] == "ok" and length(result["evidence"]) == 10
+        assert hd(result["claims"])["evidence_indexes"] == Enum.to_list(0..9)
+        assert {:ok, snapshot} = Session.snapshot(next)
+        assert snapshot["accounting"]["request_count"] == 0
+        assert length(next.receipts) == 1
+        assert is_binary(hd(next.receipts)["result_sha256"])
+        assert :code.is_loaded(IpseKnowledge.Research) == false
+      after
+        assert {:ok, %{"cleanup" => "confirmed"}} = Session.close(run)
+      end
+    end
+  else
+    @tag timeout: 120_000
+    test "public Session and driver return all ten offline Research citations" do
+      lib = Path.dirname(Application.app_dir(:ipse))
+      paths = Path.wildcard(Path.join(lib, "*/ebin")) |> Enum.flat_map(&["-pa", &1])
+
+      script =
+        "ExUnit.start(autorun: false, exclude: [:test], include: [isolated_research: true]); " <>
+          "{:ok, _} = Application.ensure_all_started(:ipse); " <>
+          "Code.require_file(#{inspect(Path.expand(__ENV__.file))}); " <>
+          "result = ExUnit.run(); if result.failures != 0, do: System.halt(1)"
+
+      {output, status} =
+        System.cmd(
+          System.find_executable("elixir"),
+          ["--erl", "+S 2:2"] ++ paths ++ ["-e", script],
+          stderr_to_stdout: true,
+          env: [{"IPSE_RESEARCH_EVALUATION_CHILD", "1"}, {"ERL_LIBS", lib}]
+        )
+
+      assert status == 0, output
+      assert output =~ "Result: 1 passed"
+      IO.write(output)
     end
   end
 end

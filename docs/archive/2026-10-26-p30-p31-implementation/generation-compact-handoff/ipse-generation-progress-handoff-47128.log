@@ -1,0 +1,10 @@
+Running ExUnit with seed: 20261029, max_cases: 40
+Excluding tags: [:test]
+Including tags: [:public_generation_handoff]
+
+NAMESPACE_TEST_ARTIFACT 5035860ab9d930acb733cdf7bf8a0c6e4b70183176395dd9748515a33f7dc931
+PUBLIC_GENERATION_HANDOFF {"fresh_session":true,"model_calls":0,"old_journal_unchanged":true,"stage_free":true}
+.
+Finished in 34.2 seconds (0.00s async, 34.2s sync)
+
+Result: 1 passed, 43 excluded

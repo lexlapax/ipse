@@ -1,0 +1,2 @@
+{:error, :invalid_extension_catalog}
+{:error, "Invalid or unsupported tool schema."}

@@ -1,0 +1,96 @@
+{
+  "controller_read_manifest": "docs/archive/2026-10-26-p30-p31-implementation/shared-generation-controller-read/manifest.json",
+  "controller_read_manifest_sha256": "e24c54dba3017d8d278715e984660b0d0d9dc9bd6db306baa637196572df733a",
+  "logs": {
+    "citation-origin-probe.log": {
+      "byte_count": 81,
+      "sha256": "f0aee92a08fc1b67e331b8e33484d6cc5437f6dc5b772a3f90150feaa941b757"
+    },
+    "shared-canonical-hydration-46938.log": {
+      "byte_count": 409,
+      "sha256": "117706d2e34175bc66ab2d09c9c8685523f7de0c7e07b5723f66c0102946a576"
+    },
+    "shared-citation-origin-46937.log": {
+      "byte_count": 400,
+      "sha256": "738087f6c361f091d65e6014e681ca9afc339ffe2fa007c695b8e12cd1dc890d"
+    }
+  },
+  "pre_repair_generation_beam": "/home/lexlapax/projects/lexlapax/ipse/_build/shared-projection-codec-20261029/tested-fixture-directory/ebin/Elixir.IpseKnowledge.Store.Collection.Generation.beam",
+  "pre_repair_generation_beam_sha256": "18c367e237d4fa4e675f01ee30e4701936c83f0de0f591a61f50777ea0876a00",
+  "probe_source": {
+    "byte_count": 2785,
+    "sha256": "3503fed28294090821b24e2c0673eae504bd6e0004c846ac1ac66e0ab4e517b1"
+  },
+  "qualification": "strict canonical citation metadata boundary only; legacy validation retained; no native/model/publication qualification",
+  "repaired_feature_beams": {
+    "Elixir.IpseKnowledge.Documents.Docx.Styles.beam": {
+      "byte_count": 45604,
+      "sha256": "423001f1e0dbfb323a5e6fa2c0ddb17a4b9321ad56604e4e826f172c60fbdf01"
+    },
+    "Elixir.IpseKnowledge.Documents.Docx.beam": {
+      "byte_count": 64940,
+      "sha256": "41856b49adc47ab14fde156197fd6f5246b8cc5bc5d9f36659296f1c8542361d"
+    },
+    "Elixir.IpseKnowledge.Documents.ParserStage.beam": {
+      "byte_count": 30832,
+      "sha256": "7d14517e03606e92f8b7013e2258ead2bbbdaec5300a09e6bda928b18ef360ef"
+    },
+    "Elixir.IpseKnowledge.Documents.Pdf.beam": {
+      "byte_count": 7960,
+      "sha256": "59f803bac764905f99133695bd83700cec947f7566747bf42f693160124ffebd"
+    },
+    "Elixir.IpseKnowledge.Documents.Zip.beam": {
+      "byte_count": 11784,
+      "sha256": "ffffd079b38369e347909b14cfcfd6fca1fbfe220605a7d288d562c3a2a3125c"
+    },
+    "Elixir.IpseKnowledge.Documents.beam": {
+      "byte_count": 24180,
+      "sha256": "16b485bba5b7f9dd33fd990c4ddac144be3e8cbe3646971de525078564547fc4"
+    },
+    "Elixir.IpseKnowledge.Evidence.beam": {
+      "byte_count": 167344,
+      "sha256": "69fc4bc2c3d99439d310c5a1d0eefcdba369db8b98871cd5cd39cb92bfc09f26"
+    },
+    "Elixir.IpseKnowledge.Store.Collection.Directory.beam": {
+      "byte_count": 46984,
+      "sha256": "2a4c27159bda37cfc0191da228be2784963d5c7583cfc33d767c5065846ce1cc"
+    },
+    "Elixir.IpseKnowledge.Store.Collection.Generation.beam": {
+      "byte_count": 37148,
+      "sha256": "3d03fedef34f8048e61a3b7e7aeb3ddbe01d7b57a41d0f0ba0b6691391d4f461"
+    },
+    "Elixir.IpseKnowledge.Store.Collection.Index.beam": {
+      "byte_count": 104484,
+      "sha256": "f15151f1a31c0fb2975a57d673cbf042afa452c0fdb11b5e0339e1383e4a6c47"
+    },
+    "Elixir.IpseKnowledge.Store.Collection.Job.beam": {
+      "byte_count": 45896,
+      "sha256": "db0ff54d73e83ef44518e68bff861b6cd27606bb30ab05afd020121f9693c79f"
+    },
+    "Elixir.IpseKnowledge.Store.Collection.Projection.beam": {
+      "byte_count": 66968,
+      "sha256": "2fb9c3ad2b5b097ecd54543f917345e34947740bd9b815bce435397b78b1fb07"
+    },
+    "Elixir.IpseKnowledge.Store.Collection.Selected.beam": {
+      "byte_count": 21732,
+      "sha256": "090043eb257db6657e098cf466a95108ce4a07eb04f9009d64c5f51445ce5b93"
+    },
+    "Elixir.IpseKnowledge.Store.Collection.beam": {
+      "byte_count": 140064,
+      "sha256": "94b9c806fa54d21b531c6e32b65014aebc74d0acf74c1e9b4753e1f5a4cdfd34"
+    }
+  },
+  "repaired_feature_path": "/home/lexlapax/projects/lexlapax/ipse/_build/shared-projection-codec-20261029/tested-citation-origin-beams",
+  "source_snapshot": "/home/lexlapax/projects/lexlapax/ipse/_build/shared-projection-codec-20261029/frozen-citation-origin-sources",
+  "sources": {
+    "extensions/knowledge/src/store/collection/generation.ex": {
+      "byte_count": 15802,
+      "sha256": "ff4278f57b94b8e417aa87143feae039ebbdb8be9d440f8d2b23abe711479f19"
+    },
+    "test/support/collection_directory.exs": {
+      "byte_count": 15755,
+      "sha256": "63fb03a3c467caf69886b246c05e04df66a26de33c38c329d10ea6745cb88f55"
+    }
+  },
+  "version": 1
+}

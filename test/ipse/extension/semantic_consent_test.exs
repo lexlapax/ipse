@@ -264,6 +264,23 @@ defmodule Ipse.Extension.SemanticConsentTest do
     end
   end
 
+  test "read source selection checks every origin and excluded path without granting consent",
+       c do
+    allowed = %{"category" => "typed_host_outcome", "path" => "public/file.txt"}
+    assert :ok = SemanticConsent.check_sources(c.policy, [allowed])
+
+    for denied <- [
+          %{"category" => "native_operator_assertion", "path" => nil},
+          %{allowed | "path" => "private/file.txt"},
+          %{allowed | "path" => "../public/file.txt"},
+          Map.put(allowed, "worker_authority", true)
+        ] do
+      assert {:error, _} = SemanticConsent.check_sources(c.policy, [allowed, denied])
+    end
+
+    assert {:error, _} = SemanticConsent.check_sources(%{}, [allowed])
+  end
+
   test "yes never supplies a grant or overcomes enclosing modes and saved headless opt-out", c do
     for config <- [
           %{approval: :allow, approval_origin: :yes, enclosing_mode: :planning},

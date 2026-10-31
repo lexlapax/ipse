@@ -1,0 +1,4 @@
+The first read-only reviewer verifier completed frozen-entry/runtime comparison,
+then stopped at its mistaken expected approval label "headless". The authentic
+journal uses "saved_consent". The verifier assertion was corrected; no candidate
+source, journal, runtime, test or effect was changed or repeated.

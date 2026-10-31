@@ -1,14 +1,22 @@
 # Publish evidence through a protected collection
 
-Use this contract when a reviewed extension needs a local immutable collection
-under saved semantic permission. Start with [extension authoring](extensions.md)
-and [Session evidence](session-sources.md). Ordinary extension state remains the
-smaller contract for explicitly approved key/value work. This chapter owns the
-generic host boundary; domain schemas, note eligibility and operator setup belong
-to the feature using it.
+Use Collection when a reviewed extension needs local immutable generations,
+bounded staged values and CAS. Start with [extension authoring](extensions.md)
+and [Session evidence](session-sources.md), then choose the authority contract:
+
+| Work | Host route and authority |
+| --- | --- |
+| Small explicit key/value state | Ordinary State approvals; see [State](extension-state.md) |
+| Ordinary document storage | Fixed `collection.store` project binding and separate full-argument approval |
+| Protected knowledge capture/read | Reviewed semantic mappings, saved policy and current source admission; one new v3 capture has its own admission scope |
+
+This chapter owns the generic host boundary. Domain schemas, note eligibility,
+projection algorithms and operator setup belong to the selected feature. The
+ordinary document route does not inherit a saved capture grant, and a protected
+export cannot lend its permission to ordinary writes.
 
 An artifact capability, source receipt or policy-shaped JSON grants no semantic
-permission. A fresh Session pins a previously reviewed protected policy and actual
+permission. For protected knowledge, a fresh Session pins a previously reviewed policy and actual
 project/artifact/routes. Active admission version 2 also saves the bounded original
 reviewed policy, whose canonical hash must match the pin. It contains public route
 disclosures and constraints, never credentials. The enclosing descriptor permits
@@ -21,6 +29,53 @@ read and publication checks the current protected policy again. Coherent hostile
 rewriting by trusted same-user code is outside this cooperative integrity boundary.
 
 ## Follow one capture across its owners
+
+Start with one new v3 record under the selected protected policy. The worker
+request must pass `ManagedCollectionCall.new_capture?/1`: a completely valid
+metadata-version-3 commit, exactly one new nonnil map and revision zero. Session
+retains the complete host-owned inherited-plus-own dependency union. Every
+root-only prerequisite must either match its own committed
+current-parent snapshot/nil-get or have an exact positive host classification
+derived from its original authenticated receipt/result pair. Cached classification
+permits closed snapshots, explicit nil-gets and an initial empty metadata-only
+index, never arbitrary index pages or record contents. All members must bind one
+identical complete root, project, pin, policy and expected generation. Inherited
+content, scans, mixed roots, missing/false cache entries and unmatched results
+refuse. These observations are
+[CAS prerequisites](../archive/2026-10-26-p30-p31-implementation/notes-publication-prerequisites.md),
+not current permission; the protected publisher rechecks that later.
+
+`/remember` obtains a fresh native statement/category confirmation before this
+path. Its terminal-client positive covers one new literal. A later direct
+authorized-client headless control saves a genuine typed host outcome with the
+earlier recall-root dependency preserved. The
+[causal-root implementation](../archive/2026-10-26-p30-p31-implementation/causal-root-cache.md)
+and [reviewed direction](../archive/2026-10-26-p30-p31-implementation/causal-root-and-source-tools-direction-independent-review.md)
+explain that bounded historical classification; the
+[implementation review](../archive/2026-10-26-p30-p31-implementation/causal-root-cache-independent-review.md)
+accepts that scope. Model-selected source tools now preflight all actual selected
+provenances before lookup and rederive them at result admission. Even an initially
+empty call must classify its complete selected union. Only truly empty or
+authentically cached payload-free same-root dependencies continue; missing
+producer/cache state and record-bearing data refuse. Starts suppress source
+arguments and subscriber results use a fixed status-only preview. The
+[source-tool review](../archive/2026-10-26-p30-p31-implementation/managed-source-tool-preflight-independent-review.md)
+accepts this bounded source/preview and inherited-root implementation. After a
+known new-v3 capture, the host can preserve prior root-only observations as
+historical while guarding subsequent use with its exact own adjacent successor.
+It checks the original complete write union, fresh snapshot, actual own receipt
+and floor anchor, then resolves both active observations and producer/call
+obligations through that same successor. Original dependencies and messages stay
+unchanged; an independently guarded notice explains their historical meaning.
+Record contents, mixed roots, missing cache and unknown or intervening writes
+refuse. The [own-write implementation review](../archive/2026-10-26-p30-p31-implementation/own-root-transition-independent-review.md)
+includes an actual synthetic-model turn that captures, performs later source
+reads and completes successfully. Full notes and provider qualification remain
+separate; the earlier settled-but-failed turns retain their original scope.
+The [admission review](../archive/2026-10-26-p30-p31-implementation/notes-publication-implementation-independent-review.md)
+and [earlier controls](../archive/2026-10-26-p30-p31-implementation/remember-terminal-headless-controls.md)
+retain their original scope. Ordinary Collection storage and document grants confer no
+saved semantic authority.
 
 [`SemanticAdmission`](../../lib/ipse/extension/semantic_admission.ex) admits an
 outer tool or command outside the Session GenServer. The check holds the actual
@@ -54,6 +109,25 @@ proofs and apply constraints again before the short Collection transaction.
 Managed settlement waits until the enclosing Identity checks and release succeed.
 Lock order is ProjectIdentity, Consent, then Collection. Slow IO runs in owned
 effect workers, never inside Session.
+
+For the new-v3 shape, `Collection.with_notes_publication_deadline/2` installs a
+trusted same-owner [admission scope](../archive/2026-10-26-p30-p31-implementation/notes-publication-admission.md)
+around that existing publisher. The authenticated policy
+deadline and the v3 normalizer's original nullable lineage deadline narrow the
+native owner's final locked root-switch decision after synced staging. An expired
+decision refuses; an admitted switch may physically finish later. Nested scopes
+preserve the minimum and restore previous state on exit. This scope grants no
+source or Consent authority and never renews a source clock.
+
+Generic strict `publication_deadline_admission/1`, `with_publication_deadline/2`
+and notes-profile `execute_profile_before/6` remain refused. The legacy
+`collection.call` publisher uses the same notes-profile final-decision mechanism
+after its own source, exact mapping, mode and Consent checks. Its unmanaged
+storage entry refuses a managed namespace; this does not enable managed
+replacement or supersession. The action gate retains the one-new-record predicate
+for `collection.managed`. Selected native management routes use their own review
+and publication checks. A direct Core component positive does not qualify every
+public source, later-use sink or full notes readiness.
 
 ## Declare the narrow operations
 
@@ -120,6 +194,323 @@ Fresh unique revision-zero inserts may use false. A collection's imported lineag
 floor can exceed its local generation; these are separate counters. Worker
 migration, import/export, rollback and maintenance operations are unavailable.
 
+## Stage ordinary documents under their own grant
+
+Use `collection.store` for the fixed document profile. This is a separate ordinary
+approval contract, not a `collection.call` proof batch or saved capture consent.
+Declare `host.actions` and `host.collection.store`. Operator trust supplies
+`collection_bindings` with the selected instance, ID `documents`, project scope
+and profile `document_graph_v1`. The host resolves an already admitted project;
+worker arguments cannot choose a namespace, profile, path, quota or project grant.
+`extensions/knowledge/config.exs` derives this trust entry for the
+`collection-documents` preset from its options. It takes no collection-binding
+flag, and a Collection-only preset takes no State binding.
+
+Trace [`CollectionStore`](../../lib/ipse/extension/collection_store.ex),
+[`DocumentStage`](../../lib/ipse/extension/collection/document_stage.ex) and the
+fixed [`Profile`](../../lib/ipse/extension/collection/profile.ex) together.
+CollectionStore binds the actual project/session, artifact identity, invocation
+and exact request before Session journals an action. Ordinary mutations show
+full approval arguments. For example, the callback's inner request uses observed
+generation/revision and a hash of the complete original encoded value:
+
+```elixir
+original_sha256 = Base.encode16(:crypto.hash(:sha256, original_bytes), case: :lower)
+
+%{"op" => "collection.store", "scope" => "project",
+  "request" => %{"op" => "value.open", "slot" => 0, "epoch" => fresh_epoch,
+    "key" => actual_key, "expected_revision" => observed_revision,
+    "generation" => observed_generation, "byte_count" => byte_size(original_bytes),
+    "sha256" => original_sha256}}
+```
+
+Opening is not permission to finish later. Sixteen reusable slots bind a random
+epoch, actual project/session/artifact, opening invocation, target/revision,
+original byte count/hash and one-hour expiry. A complete body is at most 60 KiB;
+each append part is at most 6 KiB and there are at most ten parts. The unchanged
+16 KiB SDK envelope and 8 KiB string bounds can require smaller parts after escaping.
+Append requires the exact next offset. Seal checks all original bytes, hash,
+duplicate-safe JSON and ResultDocument validity before selecting a sealed stage.
+Explicit continuation may use a later invocation in the same exact owning
+session/identity; it retains the opening invocation as provenance.
+
+`commit` consumes up to eight exact sealed references and publishes their target
+values while deleting header/ready records in one generation/revision CAS.
+The host's internal plan permits at most 32 changes; the ordinary notes commit
+still permits eight. Reads, reclaim, abort and slot reuse do not rebase a staged
+target. A stale generation, changed owner/epoch, wrong hash or duplicate consume
+refuses. Expired reclaim requires the exact expired epoch, runs under the same
+Collection lock and cannot overtake an earlier native mutation.
+
+Small `value.put_inline` and `value.prepare_inline`, and bounded multipart
+`value.write_parts`, reuse this fixed grant. Prepared values remain unselected
+until their consuming CAS. Fused packet transport does not increase value,
+string, request, stage, namespace or approval limits. `document_store` capability
+metadata is a negotiation result, never permission to invent a larger packet.
+
+For a metadata inventory, the same document read grant accepts `value.index`.
+Start at a checked snapshot generation with a null cursor:
+
+```elixir
+%{"op" => "collection.store", "scope" => "project",
+  "request" => %{"op" => "value.index", "generation" => observed_generation,
+    "after" => nil, "limit" => 16}}
+```
+
+Each page returns complete public descriptors containing `key`, `revision`,
+`record_sha256` and `record_bytes`, together with the checked generation/floor,
+public count, `next` cursor and `coverage: "public_document_records"`. The hash
+and size describe the physical packed record; they differ from `value.stat`'s
+logical original-body hash and byte count. Inventory opens no value object and
+does not establish that its bytes or semantic references remain valid. All
+`host.*` keys, including other invocations' stage metadata, are excluded before
+selection and counting. A private cursor refuses.
+
+Request at most sixteen descriptors and continue only with the returned cursor
+at that exact generation. Pages shrink by whole descriptors to the 4 KiB result
+bound, so do not assume every nonfinal page contains sixteen rows. A changed
+generation conflicts; begin a fresh scan explicitly rather than joining pages
+from different roots. A single page or caller-chosen cursor is not complete
+coverage. This read requires no mutation approval and grants no deletion,
+maintenance fence, export or migration authority.
+As with the existing Collection snapshot path, inspecting an absent store can
+create its private directories and persistent lock file; it does not publish a
+document value or root. Leave that lock inode in place.
+
+To inspect one selected object's original packing, request `value.layout` at
+the same captured generation:
+
+```elixir
+%{"op" => "collection.store", "scope" => "project",
+  "request" => %{"op" => "value.layout", "key" => actual_key,
+    "generation" => observed_generation}}
+```
+
+The response returns the checked summary, key and a closed version-1
+`document_packed_layout_v1` descriptor. Its `record_sha256`/`record_bytes` identify
+the exact encoded immutable object verified by Core. Its `sha256`/`byte_count`
+identify the logical concatenation of the stored parts. One through ten ordered
+part descriptors retain each original offset, count and hash. Existing
+`value.read` slices can cross those boundaries. Two packings of identical
+logical bytes can therefore have different physical hashes and layouts.
+
+An absent public record returns `layout: null`; stale generations, private keys,
+corrupt objects and invalid packed/logical values refuse. The existing read
+grant and budget apply, with no mutation approval. The bounded descriptor
+contains no body, path or extra authority. It supports faithful export planning,
+but is not a complete export or GC/migration grant: a future writer must still
+copy or reproduce the exact physical bytes and check their digest. Whole-store
+document migration and its operation/allocation accounting remain separate.
+
+Host code that must keep a document view current can use
+`Collection.with_document_read/3`. It retains the actual fixed-profile native
+owner through a trusted same-process callback and allows at most 512 key-only
+record reads. It exposes no scan, mutation or worker callback; escaped/foreign
+readers and nested owners refuse. The notes `with_managed_read/3` path keeps its
+separate 32-unit bound. Exhaustion and owner loss prevent known success.
+
+Inside the retained document callback, `DocumentStage.read_value/2` validates the
+physical packed wrapper, complete ordered parts, byte count and body hash, then
+decodes the complete logical object with existing duplicate-key/structural checks.
+It returns logical `sha256`/`byte_count` plus actual native revision and committing
+operation ID. Those logical hashes differ from `value.index`/`value.layout`'s
+physical record hash. Absence returns nil; corrupt or escaped reads refuse.
+These [reader](../archive/2026-10-26-p30-p31-implementation/document-held-reader.md)
+and [complete-value](../archive/2026-10-26-p30-p31-implementation/document-held-value.md)
+primitives establish owned transport, not source eligibility, inference permission
+or whole-workload memory qualification.
+
+### Decide expiry at the actual native owner
+
+For each append/seal/consume/fused mutation, DocumentStage takes the minimum of
+the original slot expiry and every trusted inherited deadline. Nested scopes
+can narrow but cannot clear or extend that minimum, and restore their exact
+previous value on every return. Collection's document-only deadline entry carries
+it through complete synced staging to `Transaction.switch_before/4`.
+
+The same native process owns the retained Collection lock, checks staged inode
+and target safety, samples the wall clock immediately before the fixed root
+replacement, renames and syncs the directory. Equality/expiry refuses that new
+decision. An admitted replacement may physically finish after expiry; no
+clock-atomic rename or physical completion timestamp is promised. The native
+elapsed reply contains an error code, not State's `checked_at_ms` receipt.
+Any failure after staging remains conservatively unknown, because immutable
+objects or the active root may already have changed. Final native check and
+acknowledged release precede every known result; no automatic replay follows loss.
+
+Ordinary State uses its own restored locked-decision contract and richer typed
+elapsed result; see [State](extension-state.md#bind-a-prepared-write-to-its-targets-expiry).
+Neither contract removes the separate managed-source/output gates. Invocation
+refuses a managed `collection.store` mutation before intent or approval. At
+execution, CollectionStore also refuses every mutating request whose trusted
+`ManagedToolUse.with_effect` callback supplies a non-null deadline. Only an exact
+empty dependency union takes the ordinary nil branch; unavailable, corrupt or
+missing-dictionary lineage is managed/refused. No worker flag selects the branch.
+
+## Continue a supplied shared generation
+
+The document grant supplies transport; shared projection policy stays in the
+knowledge extension. Read [`Collection.Job`](../../extensions/knowledge/src/store/collection/job.ex),
+[`Finalization`](../../extensions/knowledge/src/store/collection/finalization.ex),
+[`Reduction`](../../extensions/knowledge/src/store/collection/reduction.ex),
+[`Paged`](../../extensions/knowledge/src/store/collection/paged.ex) and
+[`Selected`](../../extensions/knowledge/src/store/collection/selected.ex) as one
+worked continuation. None grants later-use source authority or makes an inference
+request. Supplied vector/fact identities must be checked separately from model
+receipt provenance.
+
+Corpus exposes two exact command contracts in the `collection-documents` preset:
+
+| Export | Arguments and result boundary |
+| --- | --- |
+| `projection_selected` | `store`, 1..8 unique `source_ids`, exact `vector_selection`/`fact_selection`, `as_of_ms`, `top_k` 1..8; hydrates complete selected groups and source bundles before returning bounded eligible facts/citations in stored order |
+| `generation_job` | `store`, `action` in `begin/inspect/abort/finalize/finalize_paged`, `continuation`, exact `vector_selection`/`fact_selection`, optional `response`; known intermediate progress returns a complete next command |
+
+The vector selector binds `selection_sha256`, `profile`, `model`, `dimensions`
+and canonical `float32le` encoding. The fact selector binds the extraction
+identity; explicit facts use `{"kind":"explicit","profile":null,"version":1}`.
+Selected reads recheck the complete manifest chain, group page hashes, source
+heads, catalog generation/floor, selectors and native generation. Every supplied
+vector input and fact citation is reconstructed against its exact source chunk.
+They report partial-document warnings and fact-window exclusions, not a synthetic
+similarity ranking. Read hydration uses at most 512 calls and zero effects; a
+wide selection can exhaust the budget and refuse without partial evidence.
+Group packing splits pages on both logical JSON size and the native packed-value
+limit, including escaping. A single row that cannot fit refuses before publication.
+
+A job begins against one coherent captured catalog and old selected root.
+`inspect` returns its retained physical revision and recovery token. Group append
+is a private validated adapter operation, not a public Corpus action. It verifies
+the exact captured source/head order and model/extraction selectors, then stores
+immutable units before advancing job/captured-catalog metadata together. A public
+`begin` does not populate those groups or complete a build by itself.
+Append returns a known continuation after preparing each metadata stage. Those
+stages retain their original Session ownership and expiry; only the final
+continuation verifies both stages, the captured selected root and all immutable
+prerequisites at one native generation before the atomic switch. A continuation with live stages is not a
+fresh-Session handoff or authority to replay an unknown effect.
+
+For repeated public steps, select `response: "compact_v1"` explicitly. The
+default `full` response keeps the complete Job in `coverage.job`. Compact output
+instead puts a versioned `shared_generation_progress` object in
+`coverage.job_progress`, with the complete logical Job digest/byte count,
+catalog/root and selection bindings, source/cursor/fact counts and reduction
+scalars/reference counts. It preserves outcome, stale state and the exact
+continuation. The digest is not the packed physical record hash, a complete Job
+or a capability; choose `full` when the complete value is required. The worker
+removes this presentation option before calling the same controller, so it
+cannot change approval, publication or recovery behavior. Returned commands
+retain the response mode.
+
+`finalize` advances version-two jobs through bounded manifest batches, entity-run
+merge, source-head digest, entity-row digest and selection. A reducer accepts at
+most sixteen captured group summaries per batch and merges at most eight runs;
+entity pages contain at most 64 rows. It requests exact missing immutable inputs
+instead of hydrating the whole namespace. Finalization preserves version-one job
+inspection and existing directory formats.
+
+Choose `finalize_paged` explicitly from a complete captured version-one job in
+its `manifests` phase, before starting the older reduction. This creates Job3
+and eventually Root2; it does not convert a partially reduced Job2 or silently
+switch when a budget runs out. Subsequent continuations must keep that action.
+The paged recipe uses 32-row entity/run pages and a named ordered-page commitment
+instead of v1's flat entity-row digest. Each durable step validates one complete
+entity page and advances a closed cursor/count/last-ID state. Every resumed
+metadata position reconstructs its semantic input before staging. Root2 readers
+validate global page order, canonical IDs and memberships; older readers refuse
+the new root version. Both paths retain the existing source-head digest and
+manifest/group/source formats.
+
+Continuation tokens bind job ID, physical job/root revisions, captured catalog,
+complete plan digest, unit position and exact stage progress. They are inspected
+data, not capabilities. Resuming at a later position still verifies every required
+immutable predecessor. Each invocation retains 512 reads and sixteen effects;
+known partial progress yields an explicit next command, and unknown stops without
+one. Do not edit a token to skip work or automatically replay a failed phase.
+
+Before final selection, the controller checks complete manifest/entity-page hashes
+and sizes, prepares exactly job/catalog/selected-root stages, rechecks prerequisites
+at their sealed generation, then sends `value_commit_at` with that **same** native
+generation. Refreshing the epoch after proof would defeat CAS. Only that final
+three-stage commit changes selection; earlier phases retain the old root.
+
+Small actual Session controls cover both root versions, stale final approval
+and interrupted publication without replay. The maximum-width paged final-call
+protocol model includes all nested calls, but neither it nor that small native
+journey qualifies the complete shared build. Full 1,000-source/20 MiB evidence/
+10,000-chunk/5,000-entity/20,000-assertion geometry, rebuild overlap, total native/
+journal peaks, GC/job reclamation, migration/floors and installed Word fidelity
+remain unqualified. The fixed 8,192-key/32,768-operation/192 MiB document limits and
+256 MiB combined target are not raised by staging or continuation. Keep synthetic
+initial data, actual reads, proposed writes and successful native effects distinct.
+In particular, the public command does not yet provide the bounded producer
+that feeds supplied groups into private append. That integration must fit both
+storage operations and the Session journal; a successful finalizer alone does
+not supply it.
+
+The separate opt-in `collection-dense` artifact offers `generation_produce`
+action `selection` with exactly `store`, `version: 1`, `action: "selection"` and
+the configured embedding alias. This read returns `configured_profile`, its
+selection digest and `reported_model: nil` without inference or a Usage charge.
+Producer calls propagate that digest as `expected_selection_sha256`;
+legacy unpinned adapter requests retain their exact shape. A pin prevents a
+changed configured route from reaching inference but supplies no source authority.
+Version-1 public `page` uses the same bounded v3 first-page producer qualified through the
+private fixture artifact. It durably commits a claim before inference, then sends
+`source_guard` with version 1, exact `claim_key`, `claim_revision`, `claim_sha256`
+and zero-based `batch_index`. It supplies no committing operation ID: Host reads
+that from the actual retained record and requires the matching confirmed action
+in this live invocation. Each batch reauthenticates source slices, source times
+and job/catalog/root before final egress admission after approval. A confirmed
+claim alone cannot authorize another Session or repeat an uncertain batch.
+Version 2 instead uses v4 reusable slots and guard version 2. The Host observes
+actual absence or an exact closed prior ready row before the inline claim CAS,
+then binds its known committed result to the live invocation. A returned public
+continuation supplies the next cursor and prior ready descriptor; it grants no
+authority without that new claim and source admission.
+
+The same v2 binding also fences the private explicit fact-projection commit.
+Its `collection.store` request carries `source_guard: "explicit_fact_projection_v1"`
+and a two-stage `commit` at the inspected generation. After approval, Host
+authenticates the sealed stages, source and catalog under the retained document
+reader, rechecks the live Session, and uses the earliest source or stage expiry
+for the native commit. Multipart input uses `explicit_fact_input_v1` on a
+generation-bound inline write to one of eight `factdraft.` slots; Host checks
+the page, manifest and current source before deriving its deadline. The
+selected identity cannot publish `facts.` or `factdraft.` records by omitting
+their guards. The dense Corpus
+`generation_produce` action `facts` accepts explicit fact fields and compact
+`[chunk ordinal, start byte, end byte]` spans, reconstructs canonical citations
+from the selected source, and returns staging continuations. The guard does not
+certify fact truth or model provenance. This action does not complete group
+append, model extraction or full-capacity qualification. Admission limits the
+encoded arguments with a null continuation to 12,000 bytes, reserving room in
+the 16 KiB Session envelope for the staged-write checkpoint. Wider explicit
+input uses `facts_page` and `facts_commit`: the latter rereads fixed slots at
+one generation and validates the full ordered manifest on each continuation.
+`facts_slots` reads revision descriptors without loading draft contents. The
+local planner at [plan_fact_input.exs](../../dev/knowledge/plan_fact_input.exs)
+prepares pages from an exact source record and fact rows; it grants no authority.
+Individual synthetic Session controls cover a full-width 32-fact projection,
+but do not qualify the populated multi-source resource peak or cleanup.
+
+This requires an explicit operator binding v2 with
+`source_use: shared_producer_v1` and a registered inference route. All embeddings
+from that identity require guards, so unguarded query embeddings belong to a
+separate v1 instance. The fixed-choice generator flag selects v2 only on
+`corpus/collection-dense`; its absence preserves old bindings. An unsupported v1
+producer can leave a pending claim then refuse inference without egress. `inspect`
+is read-only; pending/unknown and legacy claims provide no replay/adoption token.
+The [public adoption review](../archive/2026-10-26-p30-p31-implementation/shared-producer-public-adoption-independent-review.md)
+accepts the canonical route by exact source/descriptor comparison and build/protocol
+controls, separately from the native-tested private artifact.
+The [actual Session cases](../archive/2026-10-26-p30-p31-implementation/shared-producer-guard-session.md)
+and [finite-TTL positive](../archive/2026-10-26-p30-p31-implementation/shared-producer-finite-guard-session.md)
+prove the stated synthetic first-page flow. A separate [v4 two-page Session](../archive/2026-10-26-p30-p31-implementation/shared-producer-v4-public-session.md)
+uses an initially empty root. Neither proves facts, group completion, historical
+model provenance or full capacity. Short locked admission permits
+already-admitted bytes to remain in flight after a later source change.
+
 ## Publish with host-computed validity metadata
 
 Use `collection.managed` only with an explicit settings-v2 policy and the
@@ -147,9 +538,10 @@ mapping/recipe for the actual key, schema and origins. Missing or ambiguous
 matches refuse, including an apparently stronger recipe selected by the worker.
 The original request is hashed and journaled unchanged. The complete request still
 fits 8192 bytes and carries 1..8 proofs. Structural validation permits eight
-changes; the current trusted normalizer explicitly supports **one new record**
-only. Replacement, deletion, typed acceptance and operator retention journeys
-are not implemented by this adapter.
+changes; this worker publication path supports **one new record** only. It cannot
+replace/delete records or accept existing proposals. Typed standalone host
+management uses the separate normalizer entry points described below; a worker
+cannot select them by changing its publication request.
 
 `advance_floor: true` is mandatory even for a first insert. It fences older
 backups that lack retained source clocks. The host never rewrites a false value,
@@ -159,14 +551,26 @@ protocol.
 Inside `Consent.publish_deferred`, current source proofs and reviewed constraints are
 checked again. `Collection.execute_managed/6` then checks the original generation,
 revision and operation ID under one native collection lock before invoking the
-trusted `Collection.Normalizer`. Its read closure is host-only and expires when
-the callback returns. The normalizer derives literal identity and exact quote
-support, or a proposal identity and finite pending deadline. It ignores worker
-clocks, preserves separate first-note and first-proposal anchors, and appends two
-bounded reserved sidecar changes atomically with the original unchanged change.
-Packed pages and the normalization receipt use version 2; older unreleased page
-versions refuse. Capacity refuses rather than evicting an anchor. Legacy raw
-override JSON cannot stand in for an unimplemented typed operator choice.
+trusted `Collection.Normalizer` for the version-2 request shown above. A request
+with `metadata_version: 3`, used by the native Knowledge artifact, instead uses
+`execute_managed_v3/6` and `NormalizerV3`; its authenticated pages and receipt
+have version 3 and can require up to five sidecar changes. In both paths the read
+closure is host-only and expires when the callback returns. The normalizer
+derives literal identity and exact quote support, or a proposal identity and
+finite pending deadline. It ignores worker clocks and preserves separate
+first-note and first-proposal anchors. Capacity refuses rather than evicting an
+anchor. Legacy raw override JSON cannot stand in for an unimplemented typed
+operator choice.
+
+For version-2 and version-3 proposals under `pending.`, the host also checks the
+retained count and encoded bytes under that same Collection lock. Its fixed-prefix metadata summary
+walks at most 64 already-loaded references without reading values, charges eight
+of the callback's 32 read units, and refuses a new proposal at 64 records or above
+256 KiB including the candidate. The summary does not grant source authority or
+purge expired proposals. Version-2 recipes with other prefixes and other
+publication routes need their own admission and capacity rules. A legacy
+pending publication can now refuse when the retained queue is already full;
+existing journal outcomes are not replayed or retroactively changed.
 
 The success value contains `version: 1`, `binding`, `normalization` and `receipt`.
 The binding hashes the original request, recipe and normalization receipt. The
@@ -176,18 +580,253 @@ legacy receipts retain their original formats. Worker replies omit sidecar value
 and keep the complete action continuation within 16384 bytes.
 
 These are publication and historical-integrity facts. Raw collection reads and
-normalization metadata **do not establish current managed eligibility**. Live
-read-view validation, every-dispatch withdrawal, inherited assistant/summary taint
-and resume revalidation remain separate integration work. Do not expose a stored
-`current` label as a freshness guarantee.
+normalization metadata **do not establish current managed eligibility**. Managed
+reads, host-derived producer lineage and owned inference use have separate checks
+below. Do not expose a stored `current` label as a freshness guarantee.
+
+## Manage a signed literal through native review
+
+Standalone `CLI.Knowledge.Management` derives its project, namespace and management
+epoch from actual protected state, selects the installed literal recipe, and
+authenticates the selected record. For faithful local preparation, the host can
+retain the exact management snapshot with
+`Consent.with_existing_management_snapshot/5`, then authenticate the target
+inside `ObservedRead.with_managed_record/7` while retaining its Collection owner.
+Both belong inside the actual Identity/domain-auth callback. The result is a
+stored historical snapshot: it does not renew source eligibility or endorse its
+contents. Native journal/tty ownership, complete lease closure and the actual
+Review input remain separate and are not enabled by those read APIs.
+`ManagedLifecycle.prepare_retention/4`
+constructs exact review facts; its session-only branch uses `prepare/3` for
+forgetting. Neither grants authority. Native `Runner.Review` binds a volatile
+same-owner permit to the complete display and fresh confirmation. Original source
+availability and capture TTL are not preconditions for reducing stored authority.
+Normal execution ceilings and explicit denial remain enforced.
+
+The public `knowledge forget NOTE_KEY` path uses an owned Resources scope and
+private management journal. It prints that journal ID before the complete native
+review, so an interrupted caller can inspect the operation. The writer reserves
+terminal-record capacity before review
+and syncs intent before storage admission. `Consent.forget_deferred/8` uses the
+exact existing management epoch/fingerprint and actual live review. This separate
+host-only path permits a bounded one-record forget after capture expiry/revocation;
+it does not mutate through `with_policy`'s read callback or grant other effects.
+It marks its finite operation publishing before entering Core.
+
+`NormalizerV3.forget/3` rechecks the exact signed record/root and consumes the
+permit inside the native transaction before deleting the public/live rows and
+retaining signed lineage suppression. The caller captures actual normalization
+sizing in that same process and checks the returned Core binding. Settlement
+waits for Identity finalization and release; success also requires journal close,
+retained-lock release and owned-resource cleanup. Uncertain effects never replay.
+The original Session, shared evidence and management review journal remain.
+
+In the retained retention contract, the CLI translates `automatic` to the exact
+ordinary 90-day policy, or validates an explicit positive duration, pin or
+session-only choice. `Consent.retain_deferred/8` shares the management state
+machine but binds `collection.retention`, the retention fact kind and actual
+policy-specific native command; it cannot reuse a forget permit. Session-only
+uses the forget path. `NormalizerV3.retain/3` performs a same-value CAS with a new
+record revision and signed choice capsule, retaining original source/admission
+clocks and publication policy. Ordinary/duration deadlines use actual native
+confirmation time, as the displayed relative rule promises. Expired targets
+refuse non-session changes both before review and under the final native lock.
+The normalization receipt retains the earlier old/new finite deadline.
+Generic managed mutation still refuses retention and supersession. The public
+pin, ordinary and duration choices instead claim the exact review and bind the
+synced management intent and its live journal owner through the timed native root
+decision. Session-only uses the same reducing path as forget. Public forget uses its distinct
+full-facts reducing path and has a
+[current-source integration review](../archive/2026-10-26-p30-p31-implementation/management-forget-current-source-independent-review.md).
+Its availability does not enable generic retention APIs. Review consumes a live
+permit once and withholds success after expiry/loss; it does not promise rollback
+of an already admitted effect. Complete managed-fact display additionally needs actual
+source/policy lease ownership through the native output sink and acknowledged
+closure. The distinct faithful local management purpose permits review of the
+explicitly selected retained target, including expired/revoked capture, under
+current project/management-epoch/Collection ownership. It must label historical
+source/expiry limits and cannot lend that authority to recall, model/MCP egress
+or worker delivery. Public forget retains that native display chain; an ordinary
+capture admission does not substitute for its fresh Review.
+Elapsed-policy reclamation has a separate path. Preserve
+earlier stages and unknown operations for inspection without automatic retry.
+
+Authenticated reads interpret that capsule through the pure `ManagedRetention`
+module. The effective category/deadline may differ from the unchanged public
+capture fields. Existing dependencies retain their old revision and deadline;
+only a fresh authenticated read can establish the new choice. Pinning does not
+change a worker's origin category or authorize a stronger automatic recipe.
+
+For `knowledge expire NOTE_KEY`, the same management owner authenticates one
+already expired effective ordinary or historical policy. `prepare_expiry/3` and
+`prepare_history_expiry/3` derive exact target/root/metadata and deadline facts;
+`Consent.expire_deferred/7` admits one
+zero-service operation under the existing positive management epoch, even with
+capture disabled. Its shape/clock checks do not authenticate stored metadata.
+The matching `NormalizerV3.expire/3` or `expire_history/3` must open the actual
+signed anchor/live pages with the real DomainAuth capability, check the exact
+preview and fresh host time, and delete the public/live derivative while
+retaining the original clocks. For elapsed finite history, the prepared intent
+includes the exact authenticated native-choice capsule. If the signed-page repair
+fits the existing Core limits, expiry can replace that capsule in the anchor with
+a versioned, domain-authenticated digest of the complete capsule; the signed
+successor edge and admission clocks remain. Older decoders refuse the new choice
+tag rather than interpreting it as an existing choice. The receipt reports whether
+it was compacted. A bounded repair that cannot fit keeps
+the capsule; this is not general compaction of forgotten-lineage suppression. The
+destructive floor advances. Persistent or unexpired targets refuse, and unrelated
+notes and shared evidence remain.
+
+The compact digest permits a trusted examiner to compare the retained capsule
+against an authenticated current anchor using `ManagedPages.compact_choice?/3`.
+`knowledge operation` does not yet perform that comparison; its journal/control
+status does not independently authenticate the capsule. A caller must obtain the
+current page through DomainAuth before treating the comparison as authenticated.
+
+This branch follows the previously saved signed expiry policy rather than
+spending a new native Review permit. It exposes no worker operation and cannot
+force an earlier deadline. The explicit standalone caller still enforces normal
+interactive/native-channel and effect ceilings. Intent, bounded measured
+reservation, final Identity release, deferred settlement and checked cleanup
+remain mandatory. A settlement failure after publication is unknown; it cannot
+be classified as a definite refusal merely because this branch has no consumed
+Review wrapper. Original and management journals remain; no idle task or automatic
+replay is introduced.
+
+Use `knowledge operation JOURNAL_ID` for bounded original-journal/control inspection.
+It neither reconciles nor establishes current eligibility. Legacy/unrecognized
+recipes require separately reviewed treatment. Proposal acceptance follows its
+[signed event/link workflow](knowledge-extensions.md#confirm-a-pending-decision).
+Session-owned typed
+correction and supersession are currently unavailable while the protected native
+display and its lease ownership are repaired; standalone expiry does not perform
+that path. The final verification section groups the distinct current behaviors.
+
+## Revalidate reads and downstream use
 
 The internal `Collection.ObservedRead` foundation can pair a `get`, `snapshot`,
 or bounded public `scan` result with the root witness from the same checked view.
-It is not connected to Session actions or managed eligibility. A scan checks its
+Protected `get` and `scan` actions with reviewed `managed_read` recipes now use
+this view through `ManagedRead`. A scan checks its
 generation under the revalidated root lock before reading selected values and
 filters reserved keys before selection. It refuses a stale generation instead of
-returning the ordinary scan conflict. Legacy roots and over-capacity view indexes
-refuse; snapshot also needs its public probe record to be readable if present.
+returning the ordinary scan conflict. Snapshot rechecks the root without reading
+any record values. Legacy roots and over-capacity view indexes refuse.
+The first observation discovers managed records without returning their values
+to the worker. `StoredSources` obtains original-journal ownership outside
+Identity/Consent; the final protected read must reproduce the exact result and
+root, authenticate each literal's signed metadata, re-extract it under the
+current recipe, check host deadlines and current source selection, and resolve
+its stored proofs against their actual committed sources. The consuming Session
+supplies its state directory, never a worker path. A source in that same Session
+uses its owner-only Writer cache and active action lease. An inactive source in
+another Session requires its existing retained lock and fully validated original
+journal. Busy sources refuse promptly; copies, missing locks, legacy origins,
+different project/namespace scope, incomplete tails and changed versions refuse.
+No reader repairs a tail or renews an admission clock. Source ownership remains
+held through the final read callback and is checked before its result escapes.
+Loss of the native lock owner refuses the result even when the pathname and
+journal bytes still match. Cached Writer reads also recheck the canonical
+directory and private parent, so moving the directory behind a symlink or
+making it public cannot retain source authority.
+
+Accepted decisions use a distinct version-6 observation. The host discovers the
+immutable link, retains the original committed management journal outside
+Identity/Consent and obtains the original Session source. The final protected
+read verifies the actual native event, note/link identities and signed anchor/live
+rows. Missing recipes or direct link delivery refuse. Receipt consistency binds
+the exact returned value and original source versions; it supplies no current
+authority by itself. `ManagedUse` reacquires these owners and current policy for
+each later use. The original weak source remains attributed; acceptance does not
+convert it into a literal operator statement or independent truth.
+
+The adapter retains the admitted dependencies through Session's actual action
+commit. `ManagedReads` binds the exact bounded result, request, operation, Session,
+pin/epoch and root; every returned literal additionally needs its selected recipe
+and exact source versions. Scan receipts retain their root selection as well as
+each literal dependency. The owner prepares this privately under its current
+worker/action lease. On success it writes `managed_read_observed` before the
+action result and sends the continuation only after both durable appends.
+An interrupted receipt without its result supplies no consumed read.
+
+Fresh headers pin `managed_reads_v1`; absent markers preserve older historical
+behavior, while explicit null or unknown markers refuse. Existing `Actions`
+reconstruction validates chronological bindings, missing/duplicate receipts and
+complete dependency coverage. It derives the union of all committed reads for
+each completed extension output; workers cannot choose that union. Session
+retains the same unions, including an extension question's earlier reads on
+resume. Reconstruction performs no storage/source IO and grants no freshness.
+`ManagedLineage` derives producer inheritance from actual committed outputs,
+selected references, context publishers and saved transformations. Equal text
+alone cannot substitute for that provenance. Existing journal reconstruction
+replays these host transitions without IO; old successful managed reads lacking
+genuine observations remain inspectable but cannot supply current authority.
+Dictionary/occurrence overflow refuses instead of silently evicting dependencies.
+
+For root-only publication prerequisites, the same owner keeps a bounded
+dependency-digest classification cache. It adds an exact `true` entry only after
+the original managed observation matches its active successful action/result;
+an orphan receipt or worker JSON cannot populate it. Pending classification is
+cleared on lifecycle boundaries, and cache/pending state count toward the existing
+2,048-entry/four-MiB lineage limits. Saved rebuilds it chronologically from the
+original receipt/result pair rather than trusting a serialized cache. This can
+qualify an earlier empty metadata-only index as historical CAS information while
+preserving the whole union. Actual source/recipe/policy expiry, native ownership
+and the final Collection root still require fresh validation; the cache supplies
+neither current-use permission nor full capture readiness.
+
+Before a registered main/helper inference, the owned task obtains historical
+preflight verdicts and Session checks/journals the exact input projection and
+causal binding. `ManagedUse.verdicts` batches source proofs by original Session
+under one aggregate scan budget. Those results are historical. Actual use
+reacquires original-source leases and current Identity/Consent, reproduces the
+selected root/literal observations and checks policy/literal deadlines after the
+last observation. Unchanged signed literals can refresh at newer unrelated roots
+without renewing their lifetimes; an exact-root selection cannot.
+
+The native registered transport applies that current authority to Mint's one-use
+exact request-body continuation. No authority lock is held while awaiting model
+generation. The host buffers managed text, confirms native parsing/socket and
+controlled-child cleanup, then revalidates dependencies for final inference-result
+release. A changed source or permission can therefore withhold generated text
+after the provider received the original request. A volatile owner seal binds the
+exact result and buffered text and is consumed once; it grants no reusable
+permission. TLS cleanup uses public Mint/OTP interfaces.
+
+Direct managed extension output uses `Session.ManagedOutput` to bind the exact
+parent, action/result digests and complete inherited/read union. Fresh journals
+declare its causal layout. Intent precedes privately staged raw output; current
+source/Identity/Consent checks surround actual release, and strict time checks
+follow blocking tool-message journal IO before notification. A cleanup record
+closes publication before a paged source becomes publicly readable. Interrupted
+prefixes remain historical staged bytes rather than reusable delivery authority.
+Self-write confirmation can instead use closed host publication facts without
+claiming current eligibility for the worker's raw text.
+
+This path remains under integration review, including live/replay consistency
+after uncertain cleanup. Ordinary tool arguments held for approval still need
+their separate actual-effect admission and final-output boundaries; an inference
+or extension-result release check does not cover those later effects. Unsupported
+opaque projections refuse. Read receipts and replay alone never make later uses
+current. Automatic recall publishes the same bounded turn-local Reference and
+retains its full host dependency union rather than minting new evidence.
+Within an active domain-auth callback, `managed_record` checks the selected
+recipe against a signed literal's stored value as well as the signed pages. This
+refuses historical literals that the current recipe no longer accepts. Evidence,
+lineage, text and category come from the selected recipe's paths; the stored proof
+is only a structural input until `StoredSources` independently resolves it.
+The internal `managed_proposal` operation
+also checks a pending Knowledge record, signed format/live/anchor pages and
+absence of the selected override at that same root. It uses the selected recipe
+paths for evidence and lineage while requiring the Knowledge proposal's ID and
+pending state. It checks stored proof-shaped
+data for consistency but does not authenticate its source anew or establish
+current consent, expiry, display or acceptance. The selected management adapter
+uses the retained proposal planning view for its separate native review;
+[the feature guide](knowledge-extensions.md#confirm-a-pending-decision) traces its
+fresh publication checks. The public value's worker-supplied timestamps are not host clock
+evidence; use the separately returned historical metadata when checking the
+admission deadline, and still revalidate current time and authority.
 Once the view closes, the witness is historical. A future use must establish
 current identity, consent, source eligibility, lineage and root at its own
 effect or send boundary; the witness grants no authority.
@@ -212,14 +851,24 @@ IDs, generations, HMAC handles and chunk IDs are absent. The host separately bin
 the current window and generations to its publication callback. A resumed Session
 requires fresh handles even when its original occurrence/version IDs stay stable.
 
-Only original input, atomic verified native operator answers, original visible
-assistant answers and typed tool-outcome metadata currently support capture
+Only original input, atomic verified native operator answers, explicitly reviewed
+operator statements, original visible assistant answers and typed tool-outcome metadata support capture
 proofs. Their non-file `path` is nil. Tool stdout, file-read content, external
 effect text, decision advice and legacy/unverified text refuse capture proof
 resolution. Public readability does not imply capture eligibility. File-derived
 capture needs a separately validated original path receipt; printed or truncated
 arguments cannot supply one. A native answer such as `2` proves those original
-answer bytes, not an assistant premise selected by that answer.
+answer bytes, not an assistant premise selected by that answer. The shared
+literal-source recipe therefore refuses plain-input and native-answer proofs,
+including for other extensions; a proposal recipe can retain them as
+never-current evidence when the corresponding effect is permitted.
+`native_operator_assertion` requires an actual native statement/category review.
+Its `input.assertion.ordinary`, `input.assertion.preference` or
+`input.assertion.current` kind binds the reviewed category, and the literal
+recipe requires that exact category. Source-page provenance carries its
+`assertion_id` and `category`; those public fields do not mint authority. The
+source owner resolves the actual occurrence again before publication. Literal
+typed tool outcomes support only the ordinary category.
 
 ## Review policy registries and activation data
 
@@ -302,6 +951,17 @@ witness. Ordinary intentional mutation
 recovery remains separate. The pure `draft/3` and `derive/2` functions alone grant
 no authority.
 
+Keep saved-selection matching distinct from runtime write capability in the CLI.
+`Collection.publication_support/0` still reports strict publication support as
+false. It does not describe the narrower named new-v3 final-admission scope or
+prepare authority. Knowledge status preserves
+`activation_ready_now` from the overlay check, reports publication support
+separately and requires both for `capture_ready_now`. Permissions inspection
+keeps its null activation check and exact raw policy. Thus full notes readiness
+remains false despite the narrow capture and public-forget positives. The native
+enable review retains its full policy arguments and original compare-and-swap
+path; setup alone qualifies neither automatic headless capture nor later use.
+
 ## Keep approval and replay facts distinct
 
 Saved semantic permission uses the explicit `saved_consent` tag. Ordinary
@@ -382,36 +1042,55 @@ same-VM hostile messages remain outside the trusted-host process boundary.
 
 ## Verify the boundary before adding a domain adapter
 
-From a built checkout:
+From a coherent built checkout, start with the boundary your change affects:
 
 ```sh
-mix test test/ipse/extension/collection_call_test.exs test/ipse/extension/collection_policy_test.exs
-mix test test/ipse/extension/collection_call_session_test.exs test/ipse/extension/source_read_test.exs
-mix test test/ipse/session/resources_authority_test.exs test/ipse/extension/result_source_test.exs
-mix test test/ipse/extension/managed_collection_call_test.exs test/ipse/extension/managed_collection_call_session_test.exs
-mix test test/ipse/extension/managed_collection_accounting_test.exs
-mix test test/ipse/extension/managed_recipe_test.exs test/ipse/extension/semantic_consent_v2_test.exs test/ipse/extension/activation_test.exs
+mix test test/ipse/extension/collection_deadline_gate_test.exs
+mix test test/ipse/extension/notes_publication_admission_test.exs
+mix test test/ipse/session/managed_tool_use_test.exs --only publication_prerequisite
+mix test test/ipse/extension/collection_document_stage_test.exs --only document_decision_restoration
+mix test test/ipse/extension/collection_document_stage_test.exs --only document_deadline_scope
+mix test test/ipse/extension/collection_document_stage_test.exs --only document_decision_expiry
+mix test test/ipse/extension/collection_store_session_test.exs --only document_decision_session
+mix test test/ipse/extension/managed_collection_call_session_test.exs --only document_decision_gate
+mix test test/ipse/session/managed_tool_use_test.exs --only document_decision_lineage
 ```
 
-The Session fixture compiles an independent SDK-2 artifact and uses a synthetic
-provider, temporary operator state and the actual bundled protected helper. Check
-headless capture, revoked preflight, ordinary-write denial, exact paged output,
-tampered replay, source revalidation, ambiguity and conservative conflict receipts.
-Two successive protected saves independently reconstruct their normalized commits
-and exact input charges under a finite period budget. A native-owner loss after
-normalization verifies that measured costs cannot turn uncertainty into a refund.
-Source-derived accounting fixtures separately exercise unreachable malformed
-measurements, callback repetition and foreign-process capture; they are not native
-publication evidence.
-Inspect an owner-loss case paused at its actual in-publication Session proof
-query; no late write or successful settlement may appear. The test uses OTP's
-system debug callback to pause that exact second commit-proof request after the
-durable publishing receipt, rather than relying on a fleeting lock-busy interval.
+Document component controls distinguish live staging from delayed pre-decision
+expiry, exact owner/CAS consumption and stale-epoch reuse. The public Session
+fixture compiles an independent SDK-2 artifact, requests full ordinary approvals,
+transports a value larger than 32 KiB and checks complete reconstruction/replay.
+Managed Session cases require refusal before intent/approval/namespace creation;
+the pure lineage case also requires missing-dictionary state to fail closed.
+Generic strict callback/notes APIs and unsupported management choices remain
+negative controls. New-v3 admission and its own-root prerequisites have separate
+positive and refusal cases; do not conflate those scopes.
 
-Then run the existing invocation, source and lifecycle regressions. These tests
-prove protocol and ownership behavior on the tested filesystem/platform, not
-human identity, model quality, domain eligibility or installed-user acceptance.
-The pure managed-policy tests use the actual native capture schemas, exact source
-identity/proposal hashes, unchanged JSON limits and explicit v2 pin/effect
-validation. They also require nil historical activation to stay absent and reject
-service-reference substitution, child widening and base-catalog collisions.
+For the extension-owned shared controller, study the selected hydration tests in
+`test/extensions/knowledge/collection_adapter_session_test.exs` and the focused
+codec/prerequisite/reduction/finalization cases in
+`test/extensions/knowledge/collection_directory_test.exs`. A fixture seeded through
+trusted Core writes does not prove approved acquisition. Focused public Session
+finalization controls separately cover old-root preservation, full approvals,
+native three-stage selection, stale-generation refusal and owner loss after
+publication without replay; their supplied pending job and reused immutable
+values do not qualify a complete build.
+The pure finalizer must reach its exact three-stage generation CAS and refuse
+missing/reordered prerequisites, changed catalogs and unknown outcomes.
+Populated peak/GC/migration and installed document
+journeys require their own controls before support claims.
+
+For protected notes, retain exact paged results, tampered replay, source
+revalidation, ambiguous mappings, finite accounting and owner-loss fixtures.
+Older successful cohorts remain historical unless their source/helper and exact
+scope match the current path. Use the new admission/prerequisite and genuine
+Session/terminal evidence for the restored slice; headless automatic capture and
+complete notes readiness remain open. Measured normalization costs cannot turn native-owner loss
+into a refund; malformed-measurement/callback-repetition fixtures prove protocol
+checks, not successful native publication.
+
+Then run the relevant invocation/source/lifecycle regressions and required
+source/package checks. Record the actual helper, filesystem, source cohort and
+executed selections. A protocol pass does not prove human identity, model quality,
+current-use authority, complete capacity or installed-user acceptance. The
+[testing chapter](testing.md) explains those qualification boundaries.

@@ -1,0 +1,36 @@
+Running ExUnit with seed: 47211, max_cases: 8
+Excluding tags: [:test]
+Including tags: [document_guard_positive: true]
+
+DOCUMENT_GATE_DIAGNOSTIC %{status: :ok, stage: :document_transport_entry}
+DOCUMENT_GATE_DIAGNOSTIC %{status: :ok, stage: :await_document_wire}
+DOCUMENT_GATE_DIAGNOSTIC %{status: :ok, stage: :before_entry}
+DOCUMENT_GATE_DIAGNOSTIC %{status: :ok, stage: :identity_callback}
+DOCUMENT_GATE_DIAGNOSTIC %{status: :ok, stage: :native_callback}
+DOCUMENT_GATE_DIAGNOSTIC %{status: :ok, stage: :native_auth}
+DOCUMENT_GATE_DIAGNOSTIC %{status: true, stage: :session_caller_authorized}
+DOCUMENT_GATE_DIAGNOSTIC %{status: :ok, stage: :document_admit_entry}
+DOCUMENT_GATE_DIAGNOSTIC %{status: true, stage: :document_admit_source}
+DOCUMENT_GATE_DIAGNOSTIC %{status: true, stage: :wire_task}
+DOCUMENT_GATE_DIAGNOSTIC %{status: true, stage: :wire_caller}
+DOCUMENT_GATE_DIAGNOSTIC %{status: :other, stage: :wire_view}
+DOCUMENT_GATE_DIAGNOSTIC %{status: true, stage: :wire_binding_current}
+DOCUMENT_GATE_DIAGNOSTIC %{status: true, stage: :wire_equal}
+DOCUMENT_GATE_DIAGNOSTIC %{status: :ok, stage: :admit_rpc}
+DOCUMENT_GATE_DIAGNOSTIC %{status: :denied, stage: :capture_status}
+
+
+  1) test actual Session binds native pending claim and four guarded batches before first-page publication (Ipse.SharedProducerGuardSessionTest)
+     test/extensions/knowledge/shared_producer_guard_session_test.exs:394
+     Assertion with == failed
+     code:  assert output.value["status"] == "ok"
+     left:  "refused"
+     right: "ok"
+     stacktrace:
+       test/extensions/knowledge/shared_producer_guard_session_test.exs:401: (test)
+
+
+Finished in 24.5 seconds (0.2s on load, 0.00s async, 24.2s sync)
+
+Result: 0/1 passed, 1 excluded
+Failed: 1 test

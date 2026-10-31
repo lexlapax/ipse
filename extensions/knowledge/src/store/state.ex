@@ -24,8 +24,15 @@ defmodule IpseKnowledge.Store.State do
     })
   end
 
-  def start(profile, :put_immutable_many, %{"pages" => pages}) do
-    next(%{profile: profile, operation: :put_immutable_many, pages: pages, records: [], reads: 0})
+  def start(profile, :put_immutable_many, %{"pages" => pages} = args) do
+    next(%{
+      profile: profile,
+      operation: :put_immutable_many,
+      pages: pages,
+      records: [],
+      reads: 0,
+      write_before_ms: args["write_before_ms"]
+    })
   end
 
   def start(profile, :cas_root, args) do
@@ -41,6 +48,8 @@ defmodule IpseKnowledge.Store.State do
       if args["expected_generation"] == nil,
         do: request,
         else: Map.put(request, "expected_generation", args["expected_generation"])
+
+    request = deadline(request, args["write_before_ms"])
 
     {:call, request, %{profile: profile, operation: :cas_root, request: request}}
   end
@@ -190,6 +199,7 @@ defmodule IpseKnowledge.Store.State do
       "value" => page["value"]
     }
 
+    request = deadline(request, state[:write_before_ms])
     {:call, request, Map.put(state, :request, request)}
   end
 
@@ -235,6 +245,8 @@ defmodule IpseKnowledge.Store.State do
       )
 
   defp keys?(value, fields), do: is_map(value) and Enum.sort(Map.keys(value)) == Enum.sort(fields)
+  defp deadline(request, nil), do: request
+  defp deadline(request, value), do: Map.put(request, "write_before_ms", value)
   defp id?(value), do: is_binary(value) and Regex.match?(~r/\A[0-9a-f]{32}\z/, value)
   defp error(code), do: {:done, {:error, code, %{}}}
 end

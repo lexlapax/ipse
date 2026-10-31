@@ -1,0 +1,144 @@
+{
+  "freeze_helpers": [
+    {
+      "bytes": 2506,
+      "path": "docs/archive/2026-10-26-p30-p31-implementation/reviewed-forget-core/ipse-freeze-reviewed-forget-core-initial-47149.exs",
+      "sha256": "8530fb6e8d31426a40afafe750d14c9cd579fa3cfb65b4476b84c01f05c86afe",
+      "type": "regular"
+    },
+    {
+      "bytes": 2958,
+      "path": "docs/archive/2026-10-26-p30-p31-implementation/reviewed-forget-core/ipse-freeze-reviewed-forget-core-47149.exs",
+      "sha256": "ce866040016cb814c558c513fbe79456d67a978bd98c7ef0f008d4defdcdb9ad",
+      "type": "regular"
+    }
+  ],
+  "graphs": [
+    {
+      "files": 699,
+      "graph": "_build/management-review-input-sol-20261029",
+      "inventory": {
+        "bytes": 172239,
+        "path": "docs/archive/2026-10-26-p30-p31-implementation/reviewed-forget-core/management-review-input-sol-20261029.json",
+        "sha256": "5132b68b12eefcdd33fecbfc14473898680185f94c965b243fe255e8235ef8a4",
+        "type": "regular"
+      }
+    },
+    {
+      "files": 699,
+      "graph": "_build/reviewed-forget-core-sol-20261029",
+      "inventory": {
+        "bytes": 170142,
+        "path": "docs/archive/2026-10-26-p30-p31-implementation/reviewed-forget-core/reviewed-forget-core-sol-20261029.json",
+        "sha256": "96f73b0ad83a0395b128fae264e86ccd72cad44e7a44db95dadcbf30e60cb12e",
+        "type": "regular"
+      }
+    },
+    {
+      "files": 699,
+      "graph": "_build/reviewed-forget-cli-sol-20261029",
+      "inventory": {
+        "bytes": 169443,
+        "path": "docs/archive/2026-10-26-p30-p31-implementation/reviewed-forget-core/reviewed-forget-cli-sol-20261029.json",
+        "sha256": "97fdc903af431106a099797565759e781822b09ce1c317a4d5be71911a912b0f",
+        "type": "regular"
+      }
+    }
+  ],
+  "launches_and_logs": [
+    {
+      "bytes": 654,
+      "path": "docs/archive/2026-10-26-p30-p31-implementation/reviewed-forget-core/ipse-reviewed-forget-core-compile-47145.exs",
+      "sha256": "1afd00f5478d66b8155c96121fdb39be41931e5b617e9f7afb19b8b7e374764f",
+      "type": "regular"
+    },
+    {
+      "bytes": 58,
+      "path": "docs/archive/2026-10-26-p30-p31-implementation/reviewed-forget-core/ipse-reviewed-forget-core-compile-47145.log",
+      "sha256": "a84ef3027234bcc1c2ed420bec3ea6d96c7c4c7dee40c4fb7e268c0b9f73ff42",
+      "type": "regular"
+    },
+    {
+      "bytes": 490,
+      "path": "docs/archive/2026-10-26-p30-p31-implementation/reviewed-forget-core/ipse-reviewed-forget-core-test-47146.exs",
+      "sha256": "720c3d474f894cec3a474fabcd6bc06bade2168d7587bd4f1e39dce2b5734c70",
+      "type": "regular"
+    },
+    {
+      "bytes": 1791,
+      "path": "docs/archive/2026-10-26-p30-p31-implementation/reviewed-forget-core/ipse-reviewed-forget-core-test-47146.log",
+      "sha256": "f3268c717fb839454d1db5d84dd7296a165f0e5d130d6efde13e3ae3554f1c54",
+      "type": "regular"
+    },
+    {
+      "bytes": 586,
+      "path": "docs/archive/2026-10-26-p30-p31-implementation/reviewed-forget-core/ipse-reviewed-forget-cli-compile-47147.exs",
+      "sha256": "0a9c743c37f269464e06d3545adeb5c659b892f8c47431f23edb5c47b539c018",
+      "type": "regular"
+    },
+    {
+      "bytes": 63,
+      "path": "docs/archive/2026-10-26-p30-p31-implementation/reviewed-forget-core/ipse-reviewed-forget-cli-compile-47147.log",
+      "sha256": "98f5bc9821b0bddcf255503d647a68a35f89bbd76456610bd70cd392d1e36f4b",
+      "type": "regular"
+    },
+    {
+      "bytes": 412,
+      "path": "docs/archive/2026-10-26-p30-p31-implementation/reviewed-forget-core/ipse-reviewed-forget-cli-test-47148.exs",
+      "sha256": "e0d551c5c65b6f40e2600b3e20c7079b5454835ac5ef554599287199383b9b81",
+      "type": "regular"
+    },
+    {
+      "bytes": 209,
+      "path": "docs/archive/2026-10-26-p30-p31-implementation/reviewed-forget-core/ipse-reviewed-forget-cli-test-47148.log",
+      "sha256": "bc4ad9af831bc8cf3cbd3ef80128ce3775da372cbab375ea87339fa84f7912de",
+      "type": "regular"
+    }
+  ],
+  "scope": "forget-only Core fence and retained public refusals",
+  "sources": [
+    {
+      "bytes": 73741,
+      "path": "docs/archive/2026-10-26-p30-p31-implementation/reviewed-forget-core/lib__ipse__extension__collection.ex.txt",
+      "sha256": "95f70bbfc695d6b1d54476c33e0209f7b641e616754c4fc3cbd3029787ed6e96",
+      "source": "lib/ipse/extension/collection.ex",
+      "type": "regular"
+    },
+    {
+      "bytes": 24425,
+      "path": "docs/archive/2026-10-26-p30-p31-implementation/reviewed-forget-core/lib__ipse__cli__knowledge.ex.txt",
+      "sha256": "a1217caa1c7bd9c19428ca60626399ceb7e1b18e55196d751234c49e0aa7b66f",
+      "source": "lib/ipse/cli/knowledge.ex",
+      "type": "regular"
+    },
+    {
+      "bytes": 7842,
+      "path": "docs/archive/2026-10-26-p30-p31-implementation/reviewed-forget-core/lib__ipse__cli__errors.ex.txt",
+      "sha256": "984a82099257e58e842e7dc23f24d173bfaa11c4f1854239d347dc5235b1d89f",
+      "source": "lib/ipse/cli/errors.ex",
+      "type": "regular"
+    },
+    {
+      "bytes": 2155,
+      "path": "docs/archive/2026-10-26-p30-p31-implementation/reviewed-forget-core/test__ipse__extension__collection_review_gate_test.exs.txt",
+      "sha256": "4f8bb7aec21950c4a60837cc450beafb076e359c20deada4ee9d67d3a54189e3",
+      "source": "test/ipse/extension/collection_review_gate_test.exs",
+      "type": "regular"
+    },
+    {
+      "bytes": 6872,
+      "path": "docs/archive/2026-10-26-p30-p31-implementation/reviewed-forget-core/test__ipse__extension__collection_managed_test.exs.txt",
+      "sha256": "5693e4728d761ce161bbcc444bea6fb216ebc1a98c37450718509d3d920be045",
+      "source": "test/ipse/extension/collection_managed_test.exs",
+      "type": "regular"
+    },
+    {
+      "bytes": 4356,
+      "path": "docs/archive/2026-10-26-p30-p31-implementation/reviewed-forget-core/test__ipse__extension__collection_deadline_gate_test.exs.txt",
+      "sha256": "5b876220f9435cdfcbda70b711c93779d7117423c116161c3334826c55e04b6d",
+      "source": "test/ipse/extension/collection_deadline_gate_test.exs",
+      "type": "regular"
+    }
+  ],
+  "version": 1
+}

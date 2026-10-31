@@ -1,0 +1,35 @@
+Running ExUnit with seed: 46855, max_cases: 8
+Excluding tags: [:test]
+Including tags: [managed_question_recovery: true]
+
+
+
+  1) test legacy managed pending question is inert after expiry on real resume (Ipse.Extension.ManagedCollectionCallSessionTest)
+     test/ipse/extension/managed_collection_call_session_test.exs:999
+     ** (MatchError) no match of right hand side value:
+
+         {:error, :invalid_runtime_lifecycle_source}
+
+     code: resumed = start(c, %{operator_questions: true}, id)
+     stacktrace:
+       test/ipse/extension/managed_collection_call_session_test.exs:932: Ipse.Extension.ManagedCollectionCallSessionTest.start/3
+       test/ipse/extension/managed_collection_call_session_test.exs:1034: (test)
+
+
+
+  2) test legacy managed pending question is inert after revoke on real resume (Ipse.Extension.ManagedCollectionCallSessionTest)
+     test/ipse/extension/managed_collection_call_session_test.exs:999
+     ** (MatchError) no match of right hand side value:
+
+         {:error, :invalid_runtime_lifecycle_source}
+
+     code: resumed = start(c, %{operator_questions: true}, id)
+     stacktrace:
+       test/ipse/extension/managed_collection_call_session_test.exs:932: Ipse.Extension.ManagedCollectionCallSessionTest.start/3
+       test/ipse/extension/managed_collection_call_session_test.exs:1034: (test)
+
+
+Finished in 7.7 seconds (0.00s async, 7.7s sync)
+
+Result: 0/2 passed, 93 excluded
+Failed: 2 tests

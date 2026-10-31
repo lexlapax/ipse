@@ -1,0 +1,23 @@
+Running ExUnit with seed: 46829, max_cases: 1
+Excluding tags: [:test]
+Including tags: [:namespace_groups]
+
+
+
+  1) test namespace postings cross catalog groups and match the full-source BM25 reference (Ipse.KnowledgeCollectionAdapterSessionTest)
+     test/extensions/knowledge/collection_adapter_session_test.exs:575
+     ** (MatchError) no match of right hand side value:
+
+         {:error, :project_identity_unavailable}
+
+     code: seed_index_sources(
+     stacktrace:
+       test/extensions/knowledge/collection_adapter_session_test.exs:838: Ipse.KnowledgeCollectionAdapterSessionTest.replace/2
+       test/extensions/knowledge/collection_adapter_session_test.exs:768: Ipse.KnowledgeCollectionAdapterSessionTest.seed_index_sources/2
+       test/extensions/knowledge/collection_adapter_session_test.exs:577: (test)
+
+
+Finished in 1.7 seconds (0.00s async, 1.7s sync)
+
+Result: 0/1 passed, 8 excluded
+Failed: 1 test

@@ -1,0 +1,10 @@
+Running ExUnit with seed: 46921, max_cases: 40
+Excluding tags: [:test]
+Including tags: [literal_v4_ab: true]
+
+LITERAL_V4_AB_REAL_READ=true inherited_union=true
+LITERAL_V4_AB_INHERITANCE_REFUSED=true candidate_intents=0 current_B_quote=true raw_subscriber_leak=false blanket_gate_reached=false
+.
+Finished in 1.8 seconds (0.00s async, 1.8s sync)
+
+Result: 1 passed, 109 excluded

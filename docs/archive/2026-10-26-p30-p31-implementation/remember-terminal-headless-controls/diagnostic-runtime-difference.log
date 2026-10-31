@@ -1,0 +1,11 @@
+--- docs/archive/2026-10-26-p30-p31-implementation/remember-publication-absence-integration/runtime.sha256	2026-10-29 16:44:48.779133075 -0700
++++ docs/archive/2026-10-26-p30-p31-implementation/remember-terminal-headless-controls/diagnostic-runtime.sha256	2026-10-29 16:58:29.369138060 -0700
+@@ -228,7 +228,7 @@
+ c8c4d231e5db04aa81e268393547df632a19872bffc9e50d54f18e2453f183e3  _build/dev/lib/ipse/ebin/Elixir.Ipse.Session.InferenceDispatch.beam
+ a2927095a898b961b5a5d6ed0e83a581c58b0fbb5f06c6f6ed00e49440843745  _build/dev/lib/ipse/ebin/Elixir.Ipse.Session.InferenceWire.beam
+ 3c7acf7f8a015ad690c96f53c29197f01aaa4a551bf760df8ad73b363f80c090  _build/dev/lib/ipse/ebin/Elixir.Ipse.Session.Input.beam
+-375a1eb6189e5ec5281f67e3a831b4db892516eb91c495f7802cef9b4adff3fe  _build/dev/lib/ipse/ebin/Elixir.Ipse.Session.Invocation.beam
++a9326dd47c9f9211612c176d5076b695af6cb3c79358f0d2f05e491bfb8faa80  _build/dev/lib/ipse/ebin/Elixir.Ipse.Session.Invocation.beam
+ 78b7736bf10716e2b1e1cfb91e9e58f2a1017445663498ce4f61b929bd2baa8c  _build/dev/lib/ipse/ebin/Elixir.Ipse.Session.Lifecycle.beam
+ 3dc23f999f4a854a6a193f88677eace63882fa182d3f05765385269e345ac73b  _build/dev/lib/ipse/ebin/Elixir.Ipse.Session.Lock.beam
+ 36ba719f3ee02e00f140f24956389d59ff1c3b5d28296c1bb5cf9e035c21ddf8  _build/dev/lib/ipse/ebin/Elixir.Ipse.Session.ManagedLifecycle.beam

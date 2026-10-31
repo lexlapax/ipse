@@ -81,6 +81,14 @@ Keep journal/native/cleanup assertions afterward. With after-turn jobs, wait for
 actual settlement rather than assuming that observation ends the turn.
 Observation watchdogs are not product latency guarantees.
 
+For a storage-profile change, isolate the new helper and compile-pinned Runner
+from earlier diagnostic graphs. Run the Rust selector/feature controls, actual
+positive protected publication and explicit unsupported-filesystem refusal,
+plus retained-stage sync/owner-loss/reinventory controls. Preserve first failures
+and rerun only repaired cases while iterating. An exact-kernel tmpfs pass cannot
+qualify Btrfs, native shell confinement or reboot durability. Match a full
+source/package candidate to its own freshly built helper before final acceptance.
+
 CLI prompt display can precede turn completion: busy-to-idle keeps an already
 active reader rather than redrawing its prompt. A PTY fixture should require
 completion and the current prompt after its last question display, allowing
@@ -243,6 +251,23 @@ Source success proves no installed compatibility. Preserve old artifacts for upg
 checks; rebuilding tests a different claim. [Examples](../../examples/README.md)
 cover model/embedding/MCP/saved-output recipes and their distinct assertions.
 
+For the decision operation, build its example artifact and verify the same bytes
+against source and the selected archive:
+
+```sh
+elixir dev/build-artifact.exs decision-calls --sdk _build/dev/lib/ipse/ebin \
+  --output "$IPSE_PROOF_ROOT/decision"
+elixir dev/verify.exs source decision --sdk _build/dev/lib/ipse/ebin \
+  --input "$IPSE_PROOF_ROOT/decision"
+elixir dev/verify.exs installed decision --archive "$IPSE_ARCHIVE" \
+  --input "$IPSE_PROOF_ROOT/decision"
+```
+
+The synthetic loopback fixture checks approval, the selected compatible route,
+typed advice, journaled usage, denial, interruption and idle resume. Expect seven
+passing checks and unchanged inventories; this is not a live account or
+Knowledge-consumer test.
+
 ### Follow compilation and runtime ownership
 
 `dev/verify.exs` delegates closed grammar to Scenarios. Scenarios owns finite source/
@@ -336,8 +361,11 @@ mix run examples/session.exs
 
 The checker rejects absolute filesystem links and targets outside the repository,
 then validates local targets/anchors, JSON examples, focused-test file paths
-in current manuals, audience/history rules, and archive hashes. It does not execute
-Markdown or judge usability. Review
+in current manuals, audience/history rules, and archive hashes. The pinned raw
+manual snapshots in the public-producer evidence resolve relative links from
+their original paths only after the manifest and snapshot hashes are verified;
+same-page anchors still resolve in the snapshot. Other archives use their own
+locations. It does not execute Markdown or judge usability. Review
 prerequisites/placeholders/expected results/recovery. Docs-only changes need those
 checks, without invented runtime regressions. Preserve substantial old manuals
 under the [archive policy](../archive/index.md#archive-policy).
@@ -490,8 +518,48 @@ old helper's cleanup fence and opaque Session witnesses. Run these test commands
 serially: their conservative per-user lock intentionally makes overlapping native
 test programs contend. PTY input remains automated, and ordinary CLI/card adoption
 and independent human journeys need separate verification. Keep atomic ordinals
-and fixed-clock collision tests for parallel
-fixtures. Probe macOS enforcement separately with a disposable workspace:
+and fixed-clock collision tests for parallel fixtures.
+
+The private Linux Session/Host terminal bridge controls require a matched PTY;
+the cancellation control also needs its test-only pause hook. They are excluded
+from the default `mix test` run and must be run separately when qualifying that
+boundary. From the repository root, after building the native helper, run them
+serially:
+
+```sh
+IPSE_TTY_TESTS=$(mktemp -d)
+rustc --edition=2021 -D warnings -O test/support/operator_pty.rs -o "$IPSE_TTY_TESTS/pty"
+"$IPSE_TTY_TESTS/pty" "$(command -v mix)" test test/ipse/session/share_host_job_test.exs --only controlled_tty_bridge
+IPSE_SHARE_TTY_PAUSE=1 "$IPSE_TTY_TESTS/pty" "$(command -v mix)" test test/ipse/session/share_host_job_test.exs --only controlled_tty_loss
+```
+
+These use synthetic output and do not qualify protected terminal delivery.
+
+For document Collection split-append changes, run the native staged-publication,
+root-race and empty-facts controls with:
+
+```sh
+mix test test/extensions/knowledge/collection_split_append_native_test.exs
+```
+
+The fixture builds a Corpus artifact and runs each tagged control in a separate
+worker VM, so it does not rely on domain modules loaded by another test. It
+does not establish full Collection capacity or installed document quality.
+The producer progression model uses the same isolated-artifact approach:
+
+```sh
+mix test test/extensions/knowledge/producer_progress_test.exs
+```
+
+Its geometry and fault controls exercise bounded synthetic model data; native
+publication and full source/Session qualification need their separate checks.
+
+For Word ingestion, run `mix test test/extensions/knowledge/document_ingestion_test.exs`.
+Its child VM uses the selected SDK and dependency paths rather than inheriting
+unrelated parent code paths. The fixture checks synthetic documents and does
+not replace real-Word fidelity or installed-user qualification.
+
+Probe macOS enforcement separately with a disposable workspace:
 
 ```sh
 IPSE_MACOS_WORKSPACE=$(mktemp -d)

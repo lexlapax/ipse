@@ -2,7 +2,22 @@ defmodule Ipse.Journal do
   @moduledoc "Durable bounded JSONL event journals for Ipse sessions."
 
   alias Ipse.Journal.Writer
+  alias Ipse.Journal.SourceOrigin, as: WriterOrigin
   @id_re ~r/\A[0-9a-f]{32}\z/
+  @header_transfer_timeout_ms 30_000
+
+  @doc false
+  def native_owner_layout, do: "native-journal-v1"
+
+  @doc false
+  def native_owner_required?(metadata) when is_map(metadata),
+    do:
+      not is_nil(metadata["native_journal_layout"]) or
+        not is_nil(metadata[:native_journal_layout]) or
+        not is_nil(metadata["release_receipt_layout"]) or
+        not is_nil(metadata[:release_receipt_layout])
+
+  def native_owner_required?(_), do: true
 
   def create(state_dir, metadata, policy \\ nil)
 
@@ -17,25 +32,72 @@ defmodule Ipse.Journal do
   def create_with_id(state_dir, id, metadata, policy \\ nil)
 
   def create_with_id(state_dir, id, metadata, policy) when is_map(metadata) do
+    with false <- native_owner_required?(metadata),
+         :ok <- validate_id(id),
+         {:ok, limits} <- normalize_limits(policy),
+         {:ok, encoded_metadata} <- Jason.encode(metadata, maps: :strict),
+         normalized_metadata = Jason.decode!(encoded_metadata),
+         false <- native_owner_required?(normalized_metadata),
+         :ok <- ensure_state_dir(state_dir),
+         event = %{
+           "type" => "session",
+           "metadata" => normalized_metadata,
+           "created_at" => now()
+         },
+         {:ok, encoded} <- encode_event(event, limits),
+         :ok <- initial_capacity(encoded, limits) do
+      case write_new(journal_path(state_dir, id), id, event, limits) do
+        :ok -> {:ok, id}
+        error -> error
+      end
+    else
+      true -> {:error, :journal_lock_owner_required}
+      error -> error
+    end
+  end
+
+  def create_with_id(_, _, _, _), do: {:error, :metadata_must_be_a_map}
+
+  @doc false
+  def create_with_locked_id(state_dir, id, metadata, policy, guard) when is_map(metadata) do
     with :ok <- validate_id(id),
          {:ok, limits} <- normalize_limits(policy),
-         :ok <- ensure_state_dir(state_dir),
-         {:ok, encoded_metadata} <- Jason.encode(metadata),
+         {:ok, encoded_metadata} <- Jason.encode(metadata, maps: :strict),
          event = %{
            "type" => "session",
            "metadata" => Jason.decode!(encoded_metadata),
            "created_at" => now()
          },
          {:ok, encoded} <- encode_event(event, limits),
-         :ok <- initial_capacity(encoded, limits) do
-      case write_new(journal_path(state_dir, id), encoded <> "\n") do
-        :ok -> {:ok, id}
-        error -> error
-      end
+         :ok <- initial_capacity(encoded, limits),
+         deadline = System.monotonic_time(:millisecond) + @header_transfer_timeout_ms,
+         {:ok, identity} <- Ipse.Session.Lock.begin_header(guard, deadline) do
+      path = Path.join(state_dir, ".pending-header-" <> id)
+
+      result =
+        with {:ok, file} <- :file.open(String.to_charlist(path), [:read, :binary, :raw]) do
+          try do
+            with {:ok, admitted} <- WriterOrigin.create(file, path, id, event["metadata"]),
+                 %{
+                   "major_device" => device,
+                   "inode" => inode,
+                   "uid" => uid
+                 } <- admitted["source_origin"],
+                 true <- {device, inode, uid} == {identity.device, identity.inode, identity.uid},
+                 {:ok, line} <- encode_event(Map.put(event, "metadata", admitted), limits),
+                 :ok <- initial_capacity(line, limits),
+                 :ok <- Ipse.Session.Lock.write_header(guard, line <> "\n", deadline),
+                 do: :ok
+          after
+            :file.close(file)
+          end
+        end
+
+      if result == :ok, do: {:ok, id}, else: {:error, :header_unconfirmed}
     end
   end
 
-  def create_with_id(_, _, _, _), do: {:error, :metadata_must_be_a_map}
+  def create_with_locked_id(_, _, _, _, _), do: {:error, :metadata_must_be_a_map}
 
   def append(state_dir, id, event), do: inactive_append(state_dir, id, event, :plain)
   def append_observed(state_dir, id, event), do: inactive_append(state_dir, id, event, :observed)
@@ -45,10 +107,15 @@ defmodule Ipse.Journal do
     Ipse.Session.Resources.file_effect(fn ->
       with :ok <- validate_id(id),
            {:ok, stats} <- read_path(journal_path(state_dir, id), nil, :validate),
+           {:ok, header} <- header(state_dir, id),
+           false <- native_owner_required?(header["metadata"]),
            :ok <- complete(stats),
            :ok <- ensure_state_dir(state_dir),
            :ok <- normalize_inactive(journal_path(state_dir, id)) do
         Writer.append_inactive(state_dir, id, event, mode)
+      else
+        true -> {:error, :journal_lock_owner_required}
+        error -> error
       end
     end)
   end
@@ -100,12 +167,72 @@ defmodule Ipse.Journal do
     Ipse.Session.Resources.file_effect(fn -> repair(state_dir, id, policy) end)
   end
 
+  @doc false
+  def repair_tail_fenced(state_dir, id, policy, guard) when is_pid(guard) do
+    case Ipse.Session.Resources.file_effect(fn -> repair_plan(state_dir, id, policy) end, guard) do
+      {:ok, :none} ->
+        :ok
+
+      {:ok, {identity, offset, target, action}} ->
+        Ipse.Session.Lock.journal_repair(guard, identity, offset, target, action)
+
+      {:error, _} = error ->
+        error
+
+      _ ->
+        {:error, :journal_write_unconfirmed}
+    end
+  end
+
+  def repair_tail_fenced(_, _, _, _), do: {:error, :journal_write_unconfirmed}
+
+  defp repair_plan(state_dir, id, policy) do
+    with :ok <- validate_id(id),
+         {:ok, limits} <- normalize_limits(policy),
+         path = journal_path(state_dir, id),
+         {:ok, stat} <- File.lstat(path),
+         true <- stat.type == :regular,
+         {:ok, stats} <- read_path(path, limits, :validate),
+         {:ok, header} <- header(state_dir, id),
+         {:ok, origin} when is_map(origin) <- WriterOrigin.recorded(header["metadata"], id),
+         {:ok, directory} <- Ipse.Workspace.canonical_path(state_dir),
+         true <-
+           origin["directory"] == directory and origin["major_device"] == stat.major_device and
+             origin["inode"] == stat.inode and origin["uid"] == stat.uid,
+         true <- stat.size == stats.bytes do
+      identity = %{device: stat.major_device, inode: stat.inode}
+      max_bytes = limits["max_bytes"]
+
+      case stats.tail do
+        :none ->
+          case complete(stats) do
+            :ok -> {:ok, :none}
+            error -> error
+          end
+
+        :valid when stats.bytes + 1 > max_bytes ->
+          {:error, :journal_limit_reached}
+
+        :valid ->
+          {:ok, {identity, stats.bytes, stats.bytes + 1, 1}}
+
+        _ ->
+          {:ok, {identity, stats.bytes, stats.complete_offset, 0}}
+      end
+    else
+      {:error, _} = error -> error
+      _ -> {:error, :invalid_journal}
+    end
+  end
+
   defp repair(state_dir, id, policy) do
     with :ok <- validate_id(id),
          {:ok, limits} <- normalize_limits(policy),
          path = journal_path(state_dir, id),
          {:ok, %{type: :regular}} <- File.lstat(path),
-         {:ok, stats} <- read_path(path, limits, :validate) do
+         {:ok, stats} <- read_path(path, limits, :validate),
+         {:ok, header} <- header(state_dir, id),
+         false <- native_owner_required?(header["metadata"]) do
       max_bytes = limits["max_bytes"]
 
       case stats.tail do
@@ -133,6 +260,7 @@ defmodule Ipse.Journal do
           end
       end
     else
+      true -> {:error, :journal_lock_owner_required}
       {:error, _} = error -> error
       _ -> {:error, :invalid_journal}
     end
@@ -180,10 +308,15 @@ defmodule Ipse.Journal do
     end
   end
 
-  defp write_new(path, bytes) do
+  defp write_new(path, id, event, limits) do
     with {:ok, file} <- File.open(path, [:write, :binary, :exclusive]) do
       try do
-        with :ok <- File.chmod(path, 0o600), :ok <- IO.binwrite(file, bytes), do: :file.sync(file)
+        with :ok <- File.chmod(path, 0o600),
+             {:ok, metadata} <- WriterOrigin.create(file, path, id, event["metadata"]),
+             {:ok, encoded} <- encode_event(Map.put(event, "metadata", metadata), limits),
+             :ok <- initial_capacity(encoded, limits),
+             :ok <- IO.binwrite(file, encoded <> "\n"),
+             do: :file.sync(file)
       after
         File.close(file)
       end

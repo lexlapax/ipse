@@ -1,0 +1,132 @@
+Running ExUnit with seed: 46777, max_cases: 1
+
+
+
+  1) test missing and non-directory write parents are refused before attempting a write (Ipse.ToolsTest)
+     test/ipse/tools_test.exs:33
+     ** (File.Error) could not write to file "/tmp/ipse-tools-514/parent-file": disk quota exceeded
+     code: File.write!(Path.join(c.cwd, "parent-file"), "keep")
+     stacktrace:
+       (elixir 1.20.4) lib/file.ex:1494: File.write!/3
+       test/ipse/tools_test.exs:34: (test)
+
+.
+
+  2) test rejects absent, repeated, overlapping, or empty edits (Ipse.ToolsTest)
+     test/ipse/tools_test.exs:44
+     ** (File.Error) could not write to file "/tmp/ipse-tools-546/notes": disk quota exceeded
+     code: File.write!(Path.join(cwd, "notes"), "aaa")
+     stacktrace:
+       (elixir 1.20.4) lib/file.ex:1494: File.write!/3
+       test/ipse/tools_test.exs:45: (test)
+
+
+
+  3) test binary reads refuse escapes, special aliases, excess bytes and mixed options (Ipse.ToolsTest)
+     test/ipse/tools_test.exs:206
+     ** (File.Error) could not write to file "/tmp/ipse-tools-562/data": disk quota exceeded
+     code: File.write!(Path.join(c.cwd, "data"), String.duplicate("x", 4097))
+     stacktrace:
+       (elixir 1.20.4) lib/file.ex:1494: File.write!/3
+       test/ipse/tools_test.exs:207: (test)
+
+
+
+  4) test Git metadata names remain reserved across case and ignorable format variants (Ipse.ToolsTest)
+     test/ipse/tools_test.exs:72
+     ** (File.Error) could not write to file "/tmp/ipse-tools-578/.GIT/protected": disk quota exceeded
+     code: for name <- [".GIT", ".GiT", ".g\u200bit", ".git\uFE0F"] do
+     stacktrace:
+       (elixir 1.20.4) lib/file.ex:1494: File.write!/3
+       test/ipse/tools_test.exs:76: anonymous fn/3 in Ipse.ToolsTest."test Git metadata names remain reserved across case and ignorable format variants"/1
+       (elixir 1.20.4) lib/enum.ex:2622: Enum."-reduce/3-lists^foldl/2-0-"/3
+       test/ipse/tools_test.exs:73: (test)
+
+
+
+  5) test binary pages bind exact complete-file bytes and refuse changes between pages (Ipse.ToolsTest)
+     test/ipse/tools_test.exs:159
+     ** (File.Error) could not write to file "/tmp/ipse-tools-594/pages.docx": disk quota exceeded
+     code: File.write!(path, bytes)
+     stacktrace:
+       (elixir 1.20.4) lib/file.ex:1494: File.write!/3
+       test/ipse/tools_test.exs:162: (test)
+
+.
+
+  6) test reads offsets, writes, and makes a unique edit (Ipse.ToolsTest)
+     test/ipse/tools_test.exs:12
+     match (=) failed
+     code:  assert {:ok, _} =
+              Tools.execute(
+                "write",
+                %{"path" => "notes", "content" => "first\nsecond\nthird\n"},
+                context
+              )
+     left:  {:ok, _}
+     right: {:unknown, "Write may have changed the file: disk quota exceeded"}
+     stacktrace:
+       test/ipse/tools_test.exs:13: (test)
+
+
+
+  7) test explicit binary reads return complete exact bytes and enforce the expected hash (Ipse.ToolsTest)
+     test/ipse/tools_test.exs:115
+     ** (File.Error) could not write to file "/tmp/ipse-tools-642/binary.docx": disk quota exceeded
+     code: File.write!(Path.join(c.cwd, "binary.docx"), bytes)
+     stacktrace:
+       (elixir 1.20.4) lib/file.ex:1494: File.write!/3
+       test/ipse/tools_test.exs:117: (test)
+
+
+
+  8) test bounds a large single line and returns valid UTF-8 (Ipse.ToolsTest)
+     test/ipse/tools_test.exs:97
+     ** (File.Error) could not write to file "/tmp/ipse-tools-658/large": disk quota exceeded
+     code: File.write!(Path.join(cwd, "large"), String.duplicate("€", 30_000))
+     stacktrace:
+       (elixir 1.20.4) lib/file.ex:1494: File.write!/3
+       test/ipse/tools_test.exs:98: (test)
+
+
+
+  9) test binary read alone admits a complete envelope above the legacy text ceiling (Ipse.Extension.ToolActionBinaryTest)
+     test/ipse/extension/tool_action_binary_test.exs:5
+     ** (File.Error) could not write to file "/tmp/ipse-binary-action-27f655cd7047fe46eefc909041d6f3d4/source.docx": disk quota exceeded
+     code: File.write!(Path.join(cwd, "source.docx"), bytes)
+     stacktrace:
+       (elixir 1.20.4) lib/file.ex:1494: File.write!/3
+       test/ipse/extension/tool_action_binary_test.exs:10: (test)
+
+????????
+
+  9) Ipse.KnowledgeDocumentAcquisitionSessionTest: failure on setup_all callback, all tests have been invalidated
+     match (=) failed
+     code:  assert {output, 0} =
+              System.cmd(
+                System.find_executable("elixir"),
+                [
+                  "extensions/knowledge/build.exs",
+                  "--sdk",
+                  Application.app_dir(:ipse, "ebin"),
+                  "--output",
+                  path,
+                  "--package",
+                  "corpus",
+                  "--preset",
+                  preset
+                ], stderr_to_stdout: true)
+     left:  {output, 0}
+     right: {"** (File.Error) could not write to file \"/tmp/ipse-document-acquisition-b4788d9b4e241cfdf6bfee98fbc5ddef/state-documents.building-5f691f843e997bb4/ebin/Elixir.IpseKnowledge.Profiles.beam\": disk quota exceeded\n    (elixir 1.20.4) lib/file.ex:1494: File.write!/3\n    extensions/knowledge/build.exs:28: (file)\n",
+             1}
+     stacktrace:
+       test/extensions/knowledge/document_acquisition_session_test.exs:19: anonymous fn/2 in Ipse.KnowledgeDocumentAcquisitionSessionTest.__ex_unit_setup_all_0/1
+       (elixir 1.20.4) lib/enum.ex:1725: Enum."-map/2-lists^map/1-1-"/2
+       test/extensions/knowledge/document_acquisition_session_test.exs:16: Ipse.KnowledgeDocumentAcquisitionSessionTest.__ex_unit_setup_all_0/1
+       test/extensions/knowledge/document_acquisition_session_test.exs:1: Ipse.KnowledgeDocumentAcquisitionSessionTest.__ex_unit__/2
+
+.....
+Finished in 19.2 seconds (0.01s async, 19.2s sync)
+
+Result: 7/16 passed, 8 invalid
+Failed: 9 tests

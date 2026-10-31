@@ -1,5 +1,6 @@
 defmodule Ipse.WorkspaceSessionTest do
   use ExUnit.Case, async: false
+  import Ipse.Test.ResumeAssertions
 
   defmodule Fixture do
     def complete(config, messages, _tools, _emit) do
@@ -121,7 +122,7 @@ defmodule Ipse.WorkspaceSessionTest do
     )
 
     resumed = start(ctx, %{}, id)
-    assert File.read!(Path.join(ctx.dir, id <> ".jsonl")) == bytes
+    assert_idle_resume_journal(Path.join(ctx.dir, id <> ".jsonl"), bytes, id)
 
     assert Enum.any?(
              Ipse.Session.info(resumed).context["diagnostics"],
@@ -348,7 +349,7 @@ defmodule Ipse.WorkspaceSessionTest do
 
     resumed = start(ctx, extra, id)
     assert Ipse.Session.info(resumed).phase == :idle
-    assert File.read!(path) == bytes
+    assert_idle_resume_journal(path, bytes, id)
     refute_receive {:model_input, _}, 50
     refute_receive {:ipse, ^resumed, {:tool, _, _}}, 50
     refute_receive {:ipse, ^resumed, {:approval, _, _, _}}, 50
@@ -479,12 +480,14 @@ defmodule Ipse.WorkspaceSessionTest do
     id = Ipse.Session.info(pid).id
     DynamicSupervisor.terminate_child(Ipse.Sessions, pid)
 
-    assert :ok =
-             Ipse.Journal.append(ctx.dir, id, %{
-               "type" => "workspace_context_snapshot",
-               "version" => 1,
-               "snapshot" => %{"version" => 1, "cwd" => "/tmp/../../etc", "sources" => []}
-             })
+    forged = %{
+      "type" => "workspace_context_snapshot",
+      "version" => 1,
+      "snapshot" => %{"version" => 1, "cwd" => "/tmp/../../etc", "sources" => []}
+    }
+
+    assert {:error, :journal_lock_owner_required} = Ipse.Journal.append(ctx.dir, id, forged)
+    File.write!(Path.join(ctx.dir, id <> ".jsonl"), Jason.encode!(forged) <> "\n", [:append])
 
     assert {:error, _} =
              DynamicSupervisor.start_child(

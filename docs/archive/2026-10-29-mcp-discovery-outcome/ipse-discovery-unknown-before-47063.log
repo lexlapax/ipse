@@ -1,0 +1,22 @@
+Running ExUnit with seed: 47063, max_cases: 8
+Excluding tags: [:test]
+Including tags: [discovery_unknown: true]
+
+
+
+  1) test bulk discovery retains lost session-close uncertainty and never starts the next server (Ipse.MCP.HTTPTest)
+     test/ipse/mcp/http_test.exs:117
+     ** (MatchError) no match of right hand side value:
+
+         {:error, :eperm}
+
+     code: {uncertain, first} = fixture(ctx, :drop_delete)
+     stacktrace:
+       test/ipse/mcp/http_test.exs:360: Ipse.MCP.HTTPTest.fixture/2
+       test/ipse/mcp/http_test.exs:119: (test)
+
+
+Finished in 0.4 seconds (0.4s on load, 0.00s async, 0.00s sync)
+
+Result: 0/1 passed, 13 excluded
+Failed: 1 test

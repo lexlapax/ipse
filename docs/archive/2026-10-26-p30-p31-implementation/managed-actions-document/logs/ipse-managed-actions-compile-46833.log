@@ -1,0 +1,149 @@
+     warning: this clause of defp inputs/3 is never used (or it will always fail/warn when invoked)
+     │
+ 253 │   defp inputs(state, %{"type" => "session", "metadata" => metadata}, _) do
+     │        ~
+     │
+     └─ lib/ipse/session/managed_lineage.ex:253:8: Ipse.Session.ManagedLineage.inputs/3
+
+     warning: unknown key :active_discovery for struct Ipse.Session.ManagedLineage
+     │
+ 157 │         with %ManagedLineage{unavailable: false, active_discovery: pending} when is_map(pending) <-
+     │              ~
+     │
+     └─ lib/ipse/session/managed_tool_use.ex:157:14: Ipse.Session.ManagedToolUse.finish_discovery/2
+     └─ lib/ipse/session/managed_tool_use.ex:721:12: Ipse.Session.ManagedToolUse.interrupted/1
+
+     warning: the following conditional expression will always succeed:
+
+         is_map(event)
+
+     because it evaluates to:
+
+         dynamic(true)
+
+     where "event" was given the type:
+
+         # type: dynamic(map())
+         # from: lib/ipse/session/managed_lineage.ex:306:66
+         %{"type" => "managed_mcp_discovery_result"} = event
+
+     type warning found at:
+     │
+ 310 │            is_map(event) and
+     │            ~~~~~~~~~~~~~~~~~
+     │
+     └─ lib/ipse/session/managed_lineage.ex:310: Ipse.Session.ManagedLineage.inputs/3
+
+     warning: Ipse.Session.ManagedSupersession.validate_events/2 is undefined (module Ipse.Session.ManagedSupersession is not available or is yet to be defined)
+     │
+ 294 │       Ipse.Session.ManagedSupersession.validate_events(
+     │                                        ~
+     │
+     └─ lib/ipse/extension/actions.ex:294:40: Ipse.Extension.Actions.restore/1
+
+     warning: this clause of defp inputs/3 is never used (or it will always fail/warn when invoked)
+     │
+ 589 │   defp inputs(
+     │        ~
+     │
+     └─ lib/ipse/session/managed_lineage.ex:589:8: Ipse.Session.ManagedLineage.inputs/3
+
+     warning: this clause of defp inputs/3 is never used (or it will always fail/warn when invoked)
+     │
+ 776 │   defp inputs(state, %{"type" => type}, _) when type in ~w(cancelled turn_finished),
+     │        ~
+     │
+     └─ lib/ipse/session/managed_lineage.ex:776:8: Ipse.Session.ManagedLineage.inputs/3
+
+      warning: Ipse.Session.ManagedSupersession.layout/0 is undefined (module Ipse.Session.ManagedSupersession is not available or is yet to be defined)
+      │
+ 1960 │              s.config[:managed_supersession_layout] == Ipse.Session.ManagedSupersession.layout(),
+      │                                                                                         ~
+      │
+      └─ lib/ipse/session.ex:1960:89: Ipse.Session.handle_call/3
+      └─ lib/ipse/session.ex:4357:53: Ipse.Session.supersession_lookup/3
+      └─ lib/ipse/session.ex:4749:86: Ipse.Session.open/4
+      └─ lib/ipse/session.ex:4773:84: Ipse.Session.open/4
+
+      warning: Ipse.Session.OperatorAssertion.parse_intake/1 is undefined or private
+      │
+ 2384 │          {:ok, category, statement, purpose} <- Ipse.Session.OperatorAssertion.parse_intake(text),
+      │                                                                                ~
+      │
+      └─ lib/ipse/session.ex:2384:80: Ipse.Session.handle_call/3
+
+      warning: Ipse.Session.ManagedSupersession.prepared?/2 is undefined (module Ipse.Session.ManagedSupersession is not available or is yet to be defined)
+      │
+ 4306 │          true <- Ipse.Session.ManagedSupersession.prepared?(prepared, s.id) do
+      │                                                   ~
+      │
+      └─ lib/ipse/session.ex:4306:51: Ipse.Session.prepare_supersession_intake/4
+
+      warning: Ipse.Session.ManagedSupersession.record?/4 is undefined (module Ipse.Session.ManagedSupersession is not available or is yet to be defined)
+      │
+ 4404 │            Ipse.Session.ManagedSupersession.record?(
+      │                                             ~
+      │
+      └─ lib/ipse/session.ex:4404:45: Ipse.Session.supersession_record/4
+      └─ lib/ipse/session.ex:4467:45: Ipse.Session.finish_supersession/2
+
+      warning: Ipse.Session.ManagedSupersession.marker/1 is undefined (module Ipse.Session.ManagedSupersession is not available or is yet to be defined)
+      │
+ 4830 │          {:ok, supersession_layout} <- Ipse.Session.ManagedSupersession.marker(meta),
+      │                                                                         ~
+      │
+      └─ lib/ipse/session.ex:4830:73: Ipse.Session.open/4
+
+== Type checking failed with errors ==
+warning: you must pass return_diagnostics: true when invoking Kernel.ParallelCompiler functions
+  (elixir 1.20.4) lib/kernel/parallel_compiler.ex:327: Kernel.ParallelCompiler.spawn_workers/3
+  _build/compile-managed-actions.exs:12: (file)
+  (elixir 1.20.4) src/elixir_compiler.erl:102: :elixir_compiler.dispatch/4
+  (elixir 1.20.4) src/elixir_compiler.erl:76: :elixir_compiler.compile/4
+  (elixir 1.20.4) src/elixir_compiler.erl:42: :elixir_compiler.optimize_defmodule/2
+  (elixir 1.20.4) src/elixir_lexical.erl:18: :elixir_lexical.run/3
+
+{:error,
+ [
+   {"/home/lexlapax/projects/lexlapax/ipse/lib/ipse/session/managed_tool_use.ex",
+    {157, 14},
+    "unknown key :active_discovery for struct Ipse.Session.ManagedLineage"},
+   {"/home/lexlapax/projects/lexlapax/ipse/lib/ipse/session/managed_tool_use.ex",
+    {721, 12},
+    "unknown key :active_discovery for struct Ipse.Session.ManagedLineage"}
+ ],
+ [
+   {"/home/lexlapax/projects/lexlapax/ipse/lib/ipse/session.ex", {1960, 89},
+    "Ipse.Session.ManagedSupersession.layout/0 is undefined (module Ipse.Session.ManagedSupersession is not available or is yet to be defined)"},
+   {"/home/lexlapax/projects/lexlapax/ipse/lib/ipse/session.ex", {4357, 53},
+    "Ipse.Session.ManagedSupersession.layout/0 is undefined (module Ipse.Session.ManagedSupersession is not available or is yet to be defined)"},
+   {"/home/lexlapax/projects/lexlapax/ipse/lib/ipse/session.ex", {4749, 86},
+    "Ipse.Session.ManagedSupersession.layout/0 is undefined (module Ipse.Session.ManagedSupersession is not available or is yet to be defined)"},
+   {"/home/lexlapax/projects/lexlapax/ipse/lib/ipse/session.ex", {4773, 84},
+    "Ipse.Session.ManagedSupersession.layout/0 is undefined (module Ipse.Session.ManagedSupersession is not available or is yet to be defined)"},
+   {"/home/lexlapax/projects/lexlapax/ipse/lib/ipse/session.ex", {2384, 80},
+    "Ipse.Session.OperatorAssertion.parse_intake/1 is undefined or private"},
+   {"/home/lexlapax/projects/lexlapax/ipse/lib/ipse/session.ex", {4306, 51},
+    "Ipse.Session.ManagedSupersession.prepared?/2 is undefined (module Ipse.Session.ManagedSupersession is not available or is yet to be defined)"},
+   {"/home/lexlapax/projects/lexlapax/ipse/lib/ipse/session.ex", {4404, 45},
+    "Ipse.Session.ManagedSupersession.record?/4 is undefined (module Ipse.Session.ManagedSupersession is not available or is yet to be defined)"},
+   {"/home/lexlapax/projects/lexlapax/ipse/lib/ipse/session.ex", {4467, 45},
+    "Ipse.Session.ManagedSupersession.record?/4 is undefined (module Ipse.Session.ManagedSupersession is not available or is yet to be defined)"},
+   {"/home/lexlapax/projects/lexlapax/ipse/lib/ipse/session.ex", {4830, 73},
+    "Ipse.Session.ManagedSupersession.marker/1 is undefined (module Ipse.Session.ManagedSupersession is not available or is yet to be defined)"},
+   {"/home/lexlapax/projects/lexlapax/ipse/lib/ipse/session/managed_lineage.ex",
+    {253, 8},
+    "this clause of defp inputs/3 is never used (or it will always fail/warn when invoked)"},
+   {"/home/lexlapax/projects/lexlapax/ipse/lib/ipse/session/managed_lineage.ex",
+    310,
+    "the following conditional expression will always succeed:\n\n    is_map(event)\n\nbecause it evaluates to:\n\n    dynamic(true)\n\nwhere \"event\" was given the type:\n\n    # type: dynamic(map())\n    # from: lib/ipse/session/managed_lineage.ex:306:66\n    %{\"type\" => \"managed_mcp_discovery_result\"} = event\n"},
+   {"/home/lexlapax/projects/lexlapax/ipse/lib/ipse/session/managed_lineage.ex",
+    {589, 8},
+    "this clause of defp inputs/3 is never used (or it will always fail/warn when invoked)"},
+   {"/home/lexlapax/projects/lexlapax/ipse/lib/ipse/session/managed_lineage.ex",
+    {776, 8},
+    "this clause of defp inputs/3 is never used (or it will always fail/warn when invoked)"},
+   {"/home/lexlapax/projects/lexlapax/ipse/lib/ipse/extension/actions.ex",
+    {294, 40},
+    "Ipse.Session.ManagedSupersession.validate_events/2 is undefined (module Ipse.Session.ManagedSupersession is not available or is yet to be defined)"}
+ ]}

@@ -1,0 +1,6 @@
+
+running 1 test
+test tests::guarded_review_redraw_after_release_never_repeats_protected_tail ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 21 filtered out; finished in 0.03s
+

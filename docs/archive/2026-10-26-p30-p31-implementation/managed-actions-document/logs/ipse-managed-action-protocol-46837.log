@@ -1,0 +1,99 @@
+Running ExUnit with seed: 46836, max_cases: 8
+Excluding tags: [:test]
+Including tags: [managed_action_protocol: true]
+
+
+
+  1) test managed discovery requires exact original input, confirmed stage cleanup and inert recovery (Ipse.Session.ManagedToolUseTest)
+     test/ipse/session/managed_tool_use_test.exs:250
+     Expected truthy, got false
+     code: assert ManagedToolUse.valid_discovery_intent?(intent, parent, [c.dependency])
+     arguments:
+
+         # 1
+         %{
+           "dependencies_sha256" => "a6a752ea325576426c3275aa9f6603497a2ca344d980b046d2829857f6c31816",
+           "discovery_id" => "2a4916eb205e27aae1e8dcf5790484a9",
+           "initialize_params" => %{
+             "capabilities" => %{},
+             "clientInfo" => %{"name" => "ipse", "version" => "0.1.0"},
+             "protocolVersion" => "2025-11-25"
+           },
+           "parent_invocation_id" => "7fa1cb68461632f0068714c150d01686",
+           "parent_sha256" => "7d67cf27d0d1a05e00a4cabaf015b1653bbeb5bf5e648ddad4f4bbbb2c876725",
+           "request" => %{
+             "arguments" => %{},
+             "binding" => "notes",
+             "op" => "mcp.call",
+             "timeout_ms" => 1000,
+             "version" => 1
+           },
+           "request_sha256" => "8d456096bda5b4430c8526eb7c9aca9942beea0dcd6cddbbbc02500675815582",
+           "server" => %{
+             "args" => [],
+             "command" => "elixir",
+             "env_names" => [],
+             "fingerprint" => "a139661c38177dbff4215d10fbfd29468d119795273cd3d570ba5924991f3d5f",
+             "id" => "local",
+             "prompts" => [],
+             "resources" => [],
+             "sandbox" => "off",
+             "timeout_ms" => 1000,
+             "tools" => ["write_note"]
+           },
+           "server_sha256" => "20ace2ac18730a3a0d19d3b4f31d28387be4053e1ca4283632681e4de0eb325c",
+           "session_id" => "ef28ddfa602281ba39bb5ee7fe8637e5",
+           "tool_id" => "mcp__local__write_note",
+           "type" => "managed_mcp_discovery_intent",
+           "version" => 1
+         }
+
+         # 2
+         %{
+           "identity" => %{
+             "mcp_bindings" => [
+               %{
+                 "alias" => "notes",
+                 "tool" => "mcp__local__write_note"
+               }
+             ]
+           },
+           "invocation_id" => "7fa1cb68461632f0068714c150d01686",
+           "payload" => %{
+             "session_id" => "ef28ddfa602281ba39bb5ee7fe8637e5"
+           }
+         }
+
+         # 3
+         [
+           %{
+             "collection" => %{
+               "floor" => 0,
+               "floor_anchor" => nil,
+               "generation" => 0,
+               "manifest_sha256" => nil,
+               "project" => "9359f3bb2efa7aabd0264fb67fb1d99f91871778e9b887179d6b2debaa251ec6",
+               "root_sha256" => nil,
+               "root_state" => "absent"
+             },
+             "namespace" => "9359f3bb2efa7aabd0264fb67fb1d99f91871778e9b887179d6b2debaa251ec6",
+             "pin_sha256" => "64f46a7526a186d2346552453ae478ca51244674f5b21ba150bd483b39f7c812",
+             "policy_generation" => 1,
+             "project_id" => "244210e48437b6556980a70249a99369934a352429034cef9d7bd253b3bf2c01",
+             "subject" => %{
+               "kind" => "root_observation",
+               "request_sha256" => "1f58b9145b24d108d7ac38887338b3ea3229833b9c1e418250343f907bfd1047",
+               "result_sha256" => "f6a214f7a5fcda0c2cee9660b7fc29f5649e3c68aad48e20e950137c98913a68"
+             },
+             "version" => 3
+           }
+         ]
+
+     stacktrace:
+       test/ipse/session/managed_tool_use_test.exs:312: (test)
+
+..
+Finished in 0.02 seconds (0.02s async, 0.00s sync)
+
+Result: 2/3 passed, 6 excluded
+Failed: 1 test

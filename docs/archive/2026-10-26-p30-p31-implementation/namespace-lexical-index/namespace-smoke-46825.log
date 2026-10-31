@@ -1,0 +1,9 @@
+Running ExUnit with seed: 46825, max_cases: 1
+Excluding tags: [:test]
+Including tags: [:namespace_smoke]
+
+NAMESPACE_NATIVE_BUDGET {"after":{"allocated_bytes":73728,"floor":63,"generation":63,"operations":63,"records":12},"before":{"allocated_bytes":53248,"floor":36,"generation":36,"operations":36,"records":8}}
+.
+Finished in 49.8 seconds (0.00s async, 49.8s sync)
+
+Result: 1 passed, 7 excluded

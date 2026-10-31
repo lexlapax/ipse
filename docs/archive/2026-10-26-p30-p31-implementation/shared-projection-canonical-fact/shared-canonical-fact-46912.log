@@ -1,0 +1,10 @@
+Running ExUnit with seed: 46912, max_cases: 1
+Excluding tags: [:test]
+Including tags: [:shared_projection_preview]
+
+NAMESPACE_TEST_ARTIFACT 8901a14bf203dcd71b56235cf95ac7c555bf533fc63ae25280533d1dbe51a760
+SHARED_READONLY_PREVIEW {"coverage":{"cache_scope":"source_bundle_preparation","effects_used":0,"evidence_readable":false,"namespace_complete":false,"population_qualified":false,"reads_used":74,"selection_complete":true},"document_citations":20,"document_warnings":1,"entities":40,"fact_pages":1,"facts":160,"header_bytes":3956,"leaf_values":14,"maximum_value_bytes":45073,"noncanonical_fact_refused":true,"partial_sources":1,"population_qualified":false,"publication_attempted":false,"source_pages":1,"sources":8,"status":"preview","vector_pages":12,"vectors":94}
+.
+Finished in 9.7 seconds (1.1s on load, 0.00s async, 8.6s sync)
+
+Result: 1 passed, 29 excluded

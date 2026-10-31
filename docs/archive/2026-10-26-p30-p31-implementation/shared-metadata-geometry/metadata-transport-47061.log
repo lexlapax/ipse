@@ -1,0 +1,9 @@
+Running ExUnit with seed: 47061, max_cases: 1
+Excluding tags: [:test]
+Including tags: [:metadata_transport_geometry]
+
+METADATA_TRANSPORT_GEOMETRY {"entities":5000,"escaped_object_reads":704,"escaped_value_refused_before_io_bytes":48011,"job_budget_reads":512,"job_budget_refused":true,"largest_page_bytes":37503,"maximum_write_frame_bytes":13018,"model_calls":0,"native_operations":0,"pages":79,"write_frames":8,"write_parts":9}
+.
+Finished in 5.7 seconds (0.06s on load, 0.00s async, 5.6s sync)
+
+Result: 1 passed, 4 excluded

@@ -20,10 +20,19 @@ fn bounded(path: &Path, maximum: usize) -> Result<String, TransactionAllowanceEr
 }
 
 #[cfg(any(all(target_os = "linux", target_pointer_width = "64"), test))]
-fn supported_kernel(release: &str) -> bool {
-    // This finite profile is tied to the inspected upstream 7.2.10 implementation.
-    // A broader kernel or platform contract needs independent review/qualification.
-    release.trim() == "7.2.10" || release.trim().starts_with("7.2.10-")
+#[derive(Clone, Copy, Debug, PartialEq)]
+enum KernelProfile { Linux7210, Linux7211ArchTmpfs }
+
+#[cfg(any(all(target_os = "linux", target_pointer_width = "64"), test))]
+fn kernel_profile(release: &str) -> Option<KernelProfile> {
+    let release = release.trim();
+    if release == "7.2.10" || release.starts_with("7.2.10-") {
+        Some(KernelProfile::Linux7210)
+    } else if release == "7.2.11-arch1-1" && cfg!(target_arch = "x86_64") {
+        // Qualified only for the exact tmpfs features checked below. In
+        // particular, this does not admit Btrfs on this newer kernel.
+        Some(KernelProfile::Linux7211ArchTmpfs)
+    } else { None }
 }
 
 fn allowance(unit: u64, lengths: &[u64]) -> Result<u64, TransactionAllowanceError> {
@@ -44,21 +53,22 @@ fn allowance(unit: u64, lengths: &[u64]) -> Result<u64, TransactionAllowanceErro
 }
 
 #[cfg(any(all(target_os = "linux", target_pointer_width = "64"), test))]
-fn selected_policy(global: &str) -> Result<(), TransactionAllowanceError> {
+fn selected_policy(global: &str) -> Result<&str, TransactionAllowanceError> {
     let selected: Vec<_> = global.split_whitespace().filter_map(|v| v.strip_prefix('[')?.strip_suffix(']')).collect();
     if selected.len() == 1 && matches!(selected[0], "never" | "deny" | "advise" | "within_size" | "always") {
-        Ok(())
+        Ok(selected[0])
     } else { Err(TransactionAllowanceError::Unsupported) }
 }
 
 #[cfg(any(all(target_os = "linux", target_pointer_width = "64"), test))]
-fn mount_policy(fdinfo: &str, mounts: &str) -> Result<(), TransactionAllowanceError> {
+fn mount_policy<'a>(fdinfo: &str, mounts: &'a str) -> Result<&'a str, TransactionAllowanceError> {
     let ids: Vec<_> = fdinfo.lines().filter_map(|line| {
         let (key, value) = line.split_once(':')?;
         if key == "mnt_id" { value.trim().parse::<u64>().ok() } else { None }
     }).collect();
     if ids.len() != 1 || ids[0] == 0 { return Err(TransactionAllowanceError::Unsupported); }
     let mut matched = 0;
+    let mut policy = None;
     for line in mounts.lines() {
         let Some((left, right)) = line.split_once(" - ") else { return Err(TransactionAllowanceError::Unsupported) };
         let fields: Vec<_> = left.split_whitespace().collect();
@@ -71,8 +81,31 @@ fn mount_policy(fdinfo: &str, mounts: &str) -> Result<(), TransactionAllowanceEr
             return Err(TransactionAllowanceError::Unsupported);
         }
         matched += 1;
+        policy = Some(policies[0]);
     }
-    if matched == 1 { Ok(()) } else { Err(TransactionAllowanceError::Unsupported) }
+    if matched == 1 { Ok(policy.unwrap()) } else { Err(TransactionAllowanceError::Unsupported) }
+}
+
+#[cfg(any(all(target_os = "linux", target_pointer_width = "64"), test))]
+fn filesystem_supported(profile: KernelProfile, kind: u64) -> bool {
+    match kind {
+        0x9123_683e => profile == KernelProfile::Linux7210,
+        0x0102_1994 => true,
+        _ => false,
+    }
+}
+
+#[cfg(any(all(target_os = "linux", target_pointer_width = "64"), test))]
+fn tmpfs_policy(profile: KernelProfile, unit: u64, page: i64, global: &str, fdinfo: &str, mounts: &str)
+    -> Result<(), TransactionAllowanceError> {
+    if page <= 0 || page as u64 != unit { return Err(TransactionAllowanceError::Unsupported); }
+    let selected = selected_policy(global)?;
+    let mounted = mount_policy(fdinfo, mounts)?;
+    if profile == KernelProfile::Linux7211ArchTmpfs &&
+        (unit != 4096 || selected != "advise" || mounted != "advise") {
+        return Err(TransactionAllowanceError::Unsupported);
+    }
+    Ok(())
 }
 
 #[cfg(all(target_os = "linux", target_pointer_width = "64"))]
@@ -94,15 +127,15 @@ fn unit(directory: &File) -> Result<u64, TransactionAllowanceError> {
     if stat.block <= 0 || stat.fragment != stat.block { return Err(TransactionAllowanceError::Unsupported); }
     let unit = stat.block as u64;
     allowance(unit, &[])?;
-    if !supported_kernel(&bounded(Path::new("/proc/sys/kernel/osrelease"), 256)?) {
-        return Err(TransactionAllowanceError::Unsupported);
-    }
+    let profile = kernel_profile(&bounded(Path::new("/proc/sys/kernel/osrelease"), 256)?)
+        .ok_or(TransactionAllowanceError::Unsupported)?;
+    if !filesystem_supported(profile, stat.kind as u64) { return Err(TransactionAllowanceError::Unsupported); }
     match stat.kind as u64 {
         0x9123_683e => (), // Btrfs sectorsize; directory blocks are checked separately.
         0x0102_1994 => {
-            if unsafe { sysconf(30) } != stat.block { return Err(TransactionAllowanceError::Unsupported); }
-            selected_policy(&bounded(Path::new("/sys/kernel/mm/transparent_hugepage/shmem_enabled"), 4096)?)?;
-            mount_policy(&bounded(Path::new(&format!("/proc/self/fdinfo/{}", directory.as_raw_fd())), 4096)?,
+            tmpfs_policy(profile, unit, unsafe { sysconf(30) } as i64,
+                &bounded(Path::new("/sys/kernel/mm/transparent_hugepage/shmem_enabled"), 4096)?,
+                &bounded(Path::new(&format!("/proc/self/fdinfo/{}", directory.as_raw_fd())), 4096)?,
                 &bounded(Path::new("/proc/self/mountinfo"), 1_048_576)?)?;
         }
         _ => return Err(TransactionAllowanceError::Unsupported),
@@ -134,7 +167,7 @@ mod tests {
     fn forced_huge_unknown_mounts_and_unreviewed_kernels_refuse() {
         let fd = "pos:\t0\nmnt_id:\t42\n";
         let mount = "42 1 0:2 / /tmp rw - tmpfs tmpfs rw,huge=advise";
-        assert_eq!(mount_policy(fd, mount), Ok(()));
+        assert_eq!(mount_policy(fd, mount), Ok("advise"));
         assert!(mount_policy(fd, &mount.replace("advise", "always")).is_err());
         assert!(mount_policy(fd, &mount.replace("advise", "within_size")).is_err());
         assert!(mount_policy("mnt_id: 7", mount).is_err());
@@ -142,9 +175,39 @@ mod tests {
         assert!(mount_policy(fd, &mount.replace(",huge=advise", "")).is_err());
         assert!(selected_policy("always [force] never").is_err());
         assert!(selected_policy("[advise] [never]").is_err());
-        assert_eq!(selected_policy("always [advise] never force"), Ok(()));
-        assert!(supported_kernel("7.2.10-arch1-1\n"));
-        assert!(!supported_kernel("7.2.100"));
-        assert!(!supported_kernel("7.3.0"));
+        assert_eq!(selected_policy("always [advise] never force"), Ok("advise"));
+        assert_eq!(kernel_profile("7.2.10-arch1-1\n"), Some(KernelProfile::Linux7210));
+        assert_eq!(kernel_profile("7.2.100"), None);
+        assert_eq!(kernel_profile("7.3.0"), None);
+    }
+    #[test]
+    fn exact_new_kernel_admits_only_qualified_tmpfs_features() {
+        let p = KernelProfile::Linux7211ArchTmpfs;
+        let fd = "pos:\t0\nmnt_id:\t42\n";
+        let mount = "42 1 0:2 / /tmp rw - tmpfs tmpfs rw,huge=advise";
+        if cfg!(target_arch = "x86_64") {
+            assert_eq!(kernel_profile("7.2.11-arch1-1\n"), Some(p));
+        }
+        for release in ["7.2.11", "7.2.11-arch1-2", "7.2.11-arch2-1", "7.2.11-arch1-1-extra", "7.2.110-arch1-1"] {
+            assert_eq!(kernel_profile(release), None);
+        }
+        assert!(filesystem_supported(p, 0x0102_1994));
+        assert!(!filesystem_supported(p, 0x9123_683e));
+        assert!(!filesystem_supported(p, 0xef53));
+        assert_eq!(tmpfs_policy(p, 4096, 4096, "always [advise] never force", fd, mount), Ok(()));
+        for (unit, page) in [(8192,8192),(4096,8192),(8192,4096),(4096,-1)] {
+            assert!(tmpfs_policy(p, unit, page, "[advise]", fd, mount).is_err());
+        }
+        for selected in ["[always]", "[never]", "[within_size]", "[deny]", "[force]", "[advise] [never]", "advise"] {
+            assert!(tmpfs_policy(p, 4096, 4096, selected, fd, mount).is_err());
+        }
+        for mounted in ["never", "always", "within_size", "deny", "force"] {
+            assert!(tmpfs_policy(p, 4096, 4096, "[advise]", fd, &mount.replace("advise", mounted)).is_err());
+        }
+        assert!(tmpfs_policy(p,4096,4096,"[advise]","mnt_id: 41",mount).is_err());
+        assert!(tmpfs_policy(p,4096,4096,"[advise]",fd,&mount.replace("tmpfs tmpfs", "ext4 /dev/sda1")).is_err());
+        // Preserve the older profile's broader reviewed policy choices.
+        assert!(filesystem_supported(KernelProfile::Linux7210,0x9123_683e));
+        assert_eq!(tmpfs_policy(KernelProfile::Linux7210,8192,8192,"[always]",fd,&mount.replace("advise","never")),Ok(()));
     }
 }

@@ -1,0 +1,6 @@
+53f3bfba07f641d3ea84291c02a8f8344a039e678e1c601d4d37a8a426a31128  _build/history-use-v3-sol-20261028/evidence-source-turnover/dev/knowledge/managed_v3_turnover_native.exs
+1aa6af236c79d963882f83cd0bc91bf12c13c47450b7691a59e94be9cdf09b72  _build/history-use-v3-sol-20261028/evidence-source-turnover/test/dev/knowledge/managed_v3_turnover_native_test.exs
+0e3e1c98b0380d55d47f0fe3fd77605f11db94cfa9c12153205c6669d8f4c9c8  _build/history-use-v3-sol-20261028/evidence-source-turnover/test/ipse/extension/collection_normalizer_v3_integration_test.exs
+a4c2ee131feca632728698753b3d9b90f380874023731e6b8a030144ebaab306  _build/history-use-v3-sol-20261028/evidence-source-turnover/test/support/managed_history_expiry.exs
+ca6310bea68c19bcb5961fb70548a2f7e3e177124081d8cbe09036a6657da7ec  _build/history-use-v3-sol-20261028/evidence-source-turnover/test/support/managed_literal_supersession.exs
+45c053d2148eb89294db18a718c9db23c8fe17625123663af62bdef61014cc13  _build/history-use-v3-sol-20261028/evidence-source-turnover/test/support/operator_pty.rs

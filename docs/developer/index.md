@@ -40,7 +40,7 @@ Use [Testing](testing.md) to review the complete path and verify a changed artif
 | lib/ipse/session/ | Same-process turn/invocation/context logic plus explicit resource, lock, and delivery owners |
 | lib/ipse/extension.ex and lib/ipse/extension/ | Generic public SDK and host contracts, with no domain algorithms |
 | extensions/bundled/ | Shipped Memory, reports, transforms, and trace features |
-| extensions/knowledge/ | Independently built Corpus, Graph, and Research artifacts |
+| extensions/knowledge/ | Independently built Knowledge, Corpus, Graph, and Research artifacts |
 | test/ipse/, test/extensions/, test/dev/ | Matching host, feature-package, and developer-tool tests |
 | dev/ | Separate build/check commands; evaluation, verification, fixtures, and platform helpers |
 | examples/ | Small extension sources and Session example; compatibility-lab workers share one lab folder |
@@ -101,7 +101,7 @@ the host contract your feature needs:
 | Request approved tools, MCP, text, native embeddings or typed advice | [Effects](extension-effects.md) |
 | Choose notifications, finite jobs, live feeds, or historical catch-up | [Events](extension-events.md) |
 | Change citations, retrieval, attributed facts, or native Research | [Knowledge algorithms](knowledge-extensions.md) |
-| Inspect bounded document-byte extraction and its coverage limits | [Document extraction](knowledge-extensions.md#inspect-bounded-document-extraction) |
+| Follow acquired bytes through document extraction, storage and cited retrieval | [Document ingestion](knowledge-extensions.md#follow-acquired-document-bytes-into-cited-storage) |
 | Publish immutable pages/root CAS, suppress/migrate, or implement a remote store/gateway | [Knowledge storage](knowledge-storage.md) |
 
 New domain features should use documented extension APIs where they fit. Core

@@ -1,0 +1,7 @@
+68ec7b0eaf30fb88e877fe5c0ab9c4cba7a3e61fe37d912bdb80da04e7f60181  docs/archive/2026-10-29-native-shared-lease/evidence/export/transaction-lease-export-v10.rs
+005af1f640997297c8aee95f787f0aa9575c49072bf78cd4ffc3d1ef211056b9  _build/shared-lease-sol-20261029/transaction-export-test-v10
+2e5c693f12e9d10b598c24a58789ccb2a960a00e93095fe685fb24a598fedc27  _build/shared-lease-sol-20261029/ipse-runner-export-v8
+bc44d52b31bce5e3def6f0e9c0de3996502f671730705ef5c8c9203244e32166  _build/shared-lease-sol-20261029/ipse-runner-export-race-v8
+142521ab6ad30ffe020df4ce5584b09d5633acef647699cad18be121701929bd  docs/archive/2026-10-29-native-shared-lease/evidence/export/frame-controls-v10.log
+0470eb23e3b5c00415980656278c3395b677c5d69439a0f6e0636cd772d17d8f  docs/archive/2026-10-29-native-shared-lease/evidence/export/frame-valid-v10.log
+8bed7fd41b612ab1cd629d1b5ad3576db0ff1d4c1cde111b5baded85a382b3de  docs/archive/2026-10-29-native-shared-lease/evidence/export/frame-race-v10.log

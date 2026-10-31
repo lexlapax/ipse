@@ -1,0 +1,37 @@
+Running ExUnit with seed: 629764, max_cases: 8
+Excluding tags: [:test]
+Including tags: [controlled_tty_bridge: true]
+
+
+
+  1) test actual Session and Host own native synthetic tty controls and settle before thaw (Ipse.Session.ShareHostJobTest)
+     [1m[30mtest/ipse/session/share_host_job_test.exs:790[0m
+     [31mAssertion failed, no matching message after 5000ms
+     The following variables were pinned:
+       command = {:synthetic_tty, ["/tmp/ipse-share-host-daed9cf9ccfb2eb7b7d72794361beb14/tty-lock-1/.lock", "/tmp/ipse-share-host-daed9cf9ccfb2eb7b7d72794361beb14/tty-lock-2/.lock", "/tmp/ipse-share-host-daed9cf9ccfb2eb7b7d72794361beb14/tty-lock-3/.lock"]}
+       expected = :ok
+     Showing 1 of 1 message in the mailbox[0m
+     [36mcode: [0massert_receive {:probe_result, ^command, ^expected}
+     [36mmailbox:[0m
+       [36mpattern: [0m{:probe_result, ^command, [31m^expected[0m}
+       [36mvalue:   [0m{
+                  :probe_result,
+                  {
+                    :synthetic_tty,
+                    [
+                      "/tmp/ipse-share-host-daed9cf9ccfb2eb7b7d72794361beb14/tty-lock-1/.lock",
+                      "/tmp/ipse-share-host-daed9cf9ccfb2eb7b7d72794361beb14/tty-lock-2/.lock",
+                      "/tmp/ipse-share-host-daed9cf9ccfb2eb7b7d72794361beb14/tty-lock-3/.lock"
+                    ]
+                  },
+                  [32m{:error, :cleanup_unconfirmed}[0m
+                }
+     [36mstacktrace:[0m
+       test/ipse/session/share_host_job_test.exs:849: Ipse.Session.ShareHostJobTest.probe/3
+       test/ipse/session/share_host_job_test.exs:799: (test)
+
+
+Finished in 6.6 seconds (0.7s on load, 0.00s async, 5.8s sync)
+
+Result: 0/1 passed, 16 excluded
+[31mFailed: 1 test[0m

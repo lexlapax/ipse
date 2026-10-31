@@ -1,0 +1,19 @@
+Running ExUnit with seed: 320558, max_cases: 8
+Excluding tags: [:test]
+Including tags: [location: {"test/ipse/session/export_session_start_test.exs", 50}]
+
+
+thread 'main' (1453642) panicked at library/std/src/io/stdio.rs:1168:9:
+failed printing to stdout: Broken pipe (os error 32)
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+
+  1) test real Session reports unconfirmed close while an exported recipient holds its lock (Ipse.Session.ExportSessionStartTest)
+     test/ipse/session/export_session_start_test.exs:50
+     ** (EXIT from #PID<0.259.0>) "source lock unavailable"
+
+
+Finished in 0.8 seconds (0.00s async, 0.8s sync)
+
+Result: 0/1 passed, 3 excluded
+Failed: 1 test

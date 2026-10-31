@@ -1,0 +1,6 @@
+%{marker: nil, valid: true}
+%{marker: %{"inline_bytes" => 8192, "version" => 1}, valid: true}
+%{
+  marker: %{"inline_bytes" => 8192, "version" => 2, "write_parts" => 2},
+  valid: false
+}

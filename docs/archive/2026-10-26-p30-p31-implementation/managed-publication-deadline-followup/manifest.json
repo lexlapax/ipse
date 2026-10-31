@@ -1,0 +1,79 @@
+{
+  "scope": "Ordinary native publication expiry, exact extension-question parent binding, actual legacy extension-question recovery and direct candidate-intent refusal controls.",
+  "date": "2026-10-29",
+  "files": {
+    "logs/ipse-managed-ab-followup-46875.log": {
+      "bytes": 313,
+      "sha256": "3abaf646e26f408dcc709f7dc58f93750bf3c44192e9c271f44ced1e01172230"
+    },
+    "logs/ipse-managed-extension-question-46871.log": {
+      "bytes": 10338,
+      "sha256": "aeffe5bfcf7b727d14be0f5a5f7c16f4caca4fdbf59d2ca3bff6ca47922afea5"
+    },
+    "logs/ipse-managed-extension-question-46873.log": {
+      "bytes": 243,
+      "sha256": "ead116a88d2ef68dace23d326aed01603d4de634da177613140806ea441976a2"
+    },
+    "logs/ipse-managed-question-parent-46876.log": {
+      "bytes": 211,
+      "sha256": "96317f85bf3a6341b395031141d77da49fb954e8c08b1aa53c5ce4707a76f7c9"
+    },
+    "logs/ipse-managed-review-followup-compile-46870.log": {
+      "bytes": 54,
+      "sha256": "9acab2bc77fd0b0661266ec60b472d9a4ee83b052e1003cd69cc2dd3c5c0b2ba"
+    },
+    "logs/ipse-ordinary-publication-deadline-46872.log": {
+      "bytes": 12159,
+      "sha256": "fac61db2f9f0996275ec63814b4900dc9f8ee3db9a170e62403be646345bf5b4"
+    },
+    "logs/ipse-ordinary-publication-deadline-46874.log": {
+      "bytes": 2861,
+      "sha256": "8e1739fc133eb7a660ea46f5e274f6c6a15cce37002c29b57a450ea562558af0"
+    },
+    "runtime.json": {
+      "bytes": 33768,
+      "sha256": "457f594a9832d76431d08f5188685070a342ae0eaeab6b72403a542d478e612f"
+    },
+    "source/_build/compile-managed-review-followup.exs": {
+      "bytes": 1084,
+      "sha256": "41c84364ff3a2d4734a4668d379dbc95c2e8e44875d65f94971d4c47ed34e2b8"
+    },
+    "source/_build/run-managed-ab-followup.exs": {
+      "bytes": 500,
+      "sha256": "9a61b3f784c1b878cc6431c837edad2e085a6cfc3b7d701e8ac46663f7459242"
+    },
+    "source/_build/run-managed-extension-question.exs": {
+      "bytes": 546,
+      "sha256": "4c1e05d06cec99a50bc9c14b51742e9e41bf64c957e8dcab5e9d4f4aafab2087"
+    },
+    "source/_build/run-ordinary-publication-deadline.exs": {
+      "bytes": 513,
+      "sha256": "71cf306438fd88d88082cfca42ede8a30635957d74555281d2e2880c86d928ae"
+    },
+    "source/lib/ipse/extension/collection.ex": {
+      "bytes": 70244,
+      "sha256": "bcf59704509d79ee7c4d3d0feb8af1b4e142d8de14bd3e1906b42cee90d9ca4a"
+    },
+    "source/lib/ipse/extension/collection_call.ex": {
+      "bytes": 28024,
+      "sha256": "6e7bd61238ee243d730d7453ecbb3ae9be7cdf82ff184c8474daf1e69da44f21"
+    },
+    "source/lib/ipse/extension/managed_collection_call.ex": {
+      "bytes": 31223,
+      "sha256": "9ac429511165a1a50cc03720c88ea6ec8c3a3ae3be275a2f897e24072707fc04"
+    },
+    "source/lib/ipse/session/saved.ex": {
+      "bytes": 35665,
+      "sha256": "eabe6061df30928654f5f1ac9be9a27efad961018f99121abe7e718baf57e8bd"
+    },
+    "source/test/ipse/extension/managed_collection_call_session_test.exs": {
+      "bytes": 186940,
+      "sha256": "001189ae84fdd94984d1d5bcde2eefa7c3b4cabf61d6cf01efeaf5fc8087686d"
+    },
+    "source/test/ipse/session/managed_lineage_test.exs": {
+      "bytes": 22079,
+      "sha256": "7a0eaf615544ec49cdf5f9b962e4996da2be922ad1edde2f333a67f3c83cb664"
+    }
+  },
+  "historical_only": true
+}

@@ -1,0 +1,31 @@
+ORIGINAL_ALIAS_NOW_REFUSED: %{
+  create: :refused,
+  key: "native_journal_layout",
+  input_type: :atom,
+  directory_exists: false
+}
+ORIGINAL_ALIAS_NOW_REFUSED: %{
+  create: :refused,
+  key: "release_receipt_layout",
+  input_type: :atom,
+  directory_exists: false
+}
+ORIGINAL_ALIAS_NOW_REFUSED: %{
+  create: :refused,
+  key: "native_journal_layout",
+  input_type: :charlist,
+  directory_exists: false
+}
+ORIGINAL_ALIAS_NOW_REFUSED: %{
+  create: :refused,
+  key: "release_receipt_layout",
+  input_type: :charlist,
+  directory_exists: false
+}
+ORIGINAL_ALIAS_NOW_REFUSED: %{
+  create: :refused,
+  key: "native_journal_layout",
+  input_type: :string,
+  directory_exists: false
+}
+Original counterexamples repaired before directory creation; no native helper, model, or network invoked

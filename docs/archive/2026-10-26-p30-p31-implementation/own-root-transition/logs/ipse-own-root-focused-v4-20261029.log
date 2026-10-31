@@ -1,0 +1,22 @@
+Running ExUnit with seed: 298401, max_cases: 40
+Excluding tags: [:native_sandbox, :macos_sandbox, :macos_filesystem, :memory_scope]
+
+.
+
+  1) test candidate requires the known own action and every original cached payload-free prerequisite (Ipse.Session.ManagedRootTransitionTest)
+     test/ipse/session/managed_root_transition_test.exs:94
+     ** (BadMapError) expected a map, got:
+
+         nil
+
+     code: binding = ManagedLineage.preflight_binding(state.preflight)
+     stacktrace:
+       (elixir 1.20.4) lib/map.ex:547: Map.take/2
+       lib/ipse/session/managed_lineage.ex:130: Ipse.Session.ManagedLineage.preflight_binding/1
+       test/ipse/session/managed_root_transition_test.exs:101: (test)
+
+.
+Finished in 1.8 seconds (0.1s on load, 1.6s async, 0.00s sync)
+
+Result: 2/3 passed
+Failed: 1 test

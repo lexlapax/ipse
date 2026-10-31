@@ -1,0 +1,9 @@
+Running ExUnit with seed: 47219, max_cases: 8
+Excluding tags: [:test]
+Including tags: [document_guard_finite_positive: true]
+
+DOCUMENT_GUARD_POSITIVE {"case":"finite-positive","unchanged_selection":true,"original_finite_expiry":1793322447085,"finished_at_ms":1793322353991,"batches":4,"store_approvals":8,"body_requests":4}
+.
+Finished in 27.4 seconds (0.2s on load, 0.00s async, 27.1s sync)
+
+Result: 1 passed, 2 excluded

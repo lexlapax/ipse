@@ -1,0 +1,8 @@
+Running ExUnit with seed: 46815, max_cases: 8
+Excluding tags: [:test]
+Including tags: [location: {"test/ipse/session/managed_output_test.exs", 64}, location: {"test/ipse/extension/managed_collection_call_session_test.exs", 1549}, location: {"test/ipse/extension/managed_collection_call_session_test.exs", 1633}]
+
+...
+Finished in 4.8 seconds (0.00s async, 4.8s sync)
+
+Result: 3 passed, 46 excluded

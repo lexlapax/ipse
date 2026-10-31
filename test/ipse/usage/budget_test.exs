@@ -146,6 +146,134 @@ defmodule Ipse.BudgetTest do
     assert :ok = Ipse.UsageDemo.run_budget()
   end
 
+  test "fresh startup records its release owner before budget initialization can fail", c do
+    budgets = Path.join(c.dir, "budgets")
+    File.mkdir!(budgets)
+    File.chmod!(budgets, 0o755)
+
+    config = %{
+      provider: :openai,
+      model: "cost-fixture",
+      provider_module: Model,
+      test_pid: self(),
+      home: Path.join(c.root, "home"),
+      budget: policy(),
+      approval: :deny
+    }
+
+    assert {:error, :unsafe_budget_directory} = start(c, config)
+    [journal] = Path.wildcard(Path.join(c.dir, "*.jsonl"))
+    id = journal |> Path.basename(".jsonl")
+    assert {:ok, events} = Ipse.Journal.load(c.dir, id)
+    [marker] = Enum.filter(events, &(&1["type"] == "session_release_owner_started"))
+    assert Ipse.Session.ReleaseReceipt.valid_owner_marker?(marker, id)
+    assert File.ls!(budgets) == []
+    refute_receive {:budget_provider, _, _, _}, 20
+  end
+
+  @tag timeout: 30_000
+  test "owner loss during resume with the budget lock held leaves a torn journal untouched", c do
+    config = %{
+      provider: :openai,
+      model: "cost-fixture",
+      provider_module: Model,
+      test_pid: self(),
+      home: Path.join(c.root, "home"),
+      budget: policy(),
+      approval: :deny
+    }
+
+    assert {:ok, first} = start(c, config)
+    id = Session.info(first).id
+    assert :ok = Session.close(first)
+    journal = Path.join(c.dir, id <> ".jsonl")
+    File.write!(journal, "{torn", [:append])
+    before = File.read!(journal)
+    assert {:ok, budget_lock} = Ipse.Runner.lock(Path.join([c.dir, "budgets", id <> ".lock"]))
+    parent = self()
+
+    caller =
+      spawn(fn ->
+        Process.flag(:trap_exit, true)
+        opts = [config: config, cwd: c.root, state_dir: c.dir, id: id, subscriber: parent]
+        send(parent, {:blocked_resume, Session.start_link(opts)})
+      end)
+
+    try do
+      {session, guard} =
+        await_resume_owner(c.dir, id, System.monotonic_time(:millisecond) + 5_000)
+
+      guard_ref = Process.monitor(guard)
+      session_ref = Process.monitor(session)
+      peer = await_budget_peer(guard, System.monotonic_time(:millisecond) + 2_000)
+      peer_ref = Process.monitor(peer)
+      Process.exit(session, :kill)
+      assert_receive {:DOWN, ^session_ref, :process, ^session, :killed}, 5_000
+      assert File.read!(journal) == before
+      assert Process.alive?(peer) and Process.alive?(guard)
+      assert {:error, _} = Ipse.Runner.protected_lock(Path.join(c.dir, id <> ".lock"))
+      assert :ok = Ipse.Runner.unlock(budget_lock)
+      assert_receive {:DOWN, ^peer_ref, :process, ^peer, _}, 5_000
+      assert_receive {:DOWN, ^guard_ref, :process, ^guard, _}, 5_000
+      assert File.read!(journal) == before
+      assert {:ok, resumed} = start(c, config, id)
+      refute_receive {:budget_provider, _, _, _}, 50
+      assert :ok = Session.close(resumed)
+    after
+      if Process.alive?(caller), do: Process.exit(caller, :kill)
+      if Port.info(budget_lock) != nil, do: Ipse.Runner.unlock(budget_lock)
+    end
+  end
+
+  defp await_resume_owner(dir, id, deadline) do
+    case Registry.lookup(Ipse.Registry, {dir, id}) do
+      [{session, _}] ->
+        case Ipse.Session.Lock.for_owner(session) do
+          guard when is_pid(guard) -> {session, guard}
+          _ -> retry_resume_owner(dir, id, deadline)
+        end
+
+      _ ->
+        retry_resume_owner(dir, id, deadline)
+    end
+  end
+
+  defp retry_resume_owner(dir, id, deadline) do
+    assert System.monotonic_time(:millisecond) < deadline
+    Process.sleep(10)
+    await_resume_owner(dir, id, deadline)
+  end
+
+  defp await_budget_peer(guard, deadline) do
+    peer =
+      :sys.get_state(guard).dependents
+      |> Map.values()
+      |> Enum.find_value(fn
+        {pid, :peer} ->
+          case Process.info(pid, :current_stacktrace) do
+            {:current_stacktrace, stack} ->
+              if Enum.any?(stack, fn {module, function, _, _} ->
+                   module == Ipse.Usage.BudgetStore and function == :acquire_lock
+                 end),
+                 do: pid
+
+            _ ->
+              nil
+          end
+
+        _ ->
+          nil
+      end)
+
+    if peer do
+      peer
+    else
+      assert System.monotonic_time(:millisecond) < deadline
+      Process.sleep(5)
+      await_budget_peer(guard, deadline)
+    end
+  end
+
   test "closed policies reject missing reservations, unsafe prices, project replacement and unsupported output bounds",
        c do
     assert :ok = Budget.validate_policy(policy())
@@ -368,7 +496,14 @@ defmodule Ipse.BudgetTest do
     journal = Path.join(c.dir, id <> ".jsonl")
     before = File.read!(journal)
     assert {:ok, resumed} = start(c, config, id)
-    assert File.read!(journal) == before
+    after_start = File.read!(journal)
+    assert String.starts_with?(after_start, before)
+
+    suffix =
+      binary_part(after_start, byte_size(before), byte_size(after_start) - byte_size(before))
+
+    [marker] = String.split(suffix, "\n", trim: true) |> Enum.map(&Jason.decode!/1)
+    assert Ipse.Session.ReleaseReceipt.valid_owner_marker?(marker, id)
     assert :ok = Session.close(resumed)
     ledger = Path.join([c.dir, "budgets", id <> ".jsonl"])
     [header | _] = File.read!(ledger) |> String.split("\n", trim: true)
@@ -705,7 +840,14 @@ defmodule Ipse.BudgetTest do
     journal = Path.join(c.dir, id <> ".jsonl")
     before = File.read!(journal)
     assert {:ok, resumed} = start(c, config, id)
-    assert File.read!(journal) == before
+    after_start = File.read!(journal)
+    assert String.starts_with?(after_start, before)
+
+    suffix =
+      binary_part(after_start, byte_size(before), byte_size(after_start) - byte_size(before))
+
+    [marker] = String.split(suffix, "\n", trim: true) |> Enum.map(&Jason.decode!/1)
+    assert Ipse.Session.ReleaseReceipt.valid_owner_marker?(marker, id)
     refute_receive {:budget_provider, _, _, _}, 50
     assert :ok = Session.close(resumed)
   end

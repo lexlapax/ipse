@@ -1,0 +1,20 @@
+Running ExUnit with seed: 47068, max_cases: 8
+Excluding tags: [:test]
+Including tags: [discovery_unknown_session: true]
+
+
+
+  1) test draft discovery preserves unknown setup and resumes without starting discovery again (Ipse.MCP.HTTPTest)
+     test/ipse/mcp/http_test.exs:158
+     Assertion with =~ failed
+     code:  assert message =~ "outcome unknown"
+     left:  "Task-owned OS cleanup could not be confirmed. Inspect running processes before retrying."
+     right: "outcome unknown"
+     stacktrace:
+       test/ipse/mcp/http_test.exs:168: (test)
+
+
+Finished in 0.6 seconds (0.5s on load, 0.00s async, 0.1s sync)
+
+Result: 0/1 passed, 14 excluded
+Failed: 1 test

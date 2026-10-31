@@ -1,0 +1,10 @@
+Running ExUnit with seed: 46847, max_cases: 1
+Excluding tags: [:test]
+Including tags: [:packed_fact_session, :packed_fact_unknown]
+
+NAMESPACE_TEST_ARTIFACT 26c5021563ff50f4b3acb88b008e12a3fec88f99bfe9aacda8bc55f9d507f733
+.FACT_NATIVE_BUDGET {"after":{"allocated_bytes":118784,"floor":25,"generation":25,"operations":25,"records":14},"before":{"allocated_bytes":77824,"floor":16,"generation":16,"operations":16,"records":10}}
+.
+Finished in 73.3 seconds (0.00s async, 73.3s sync)
+
+Result: 2 passed, 22 excluded

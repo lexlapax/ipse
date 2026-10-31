@@ -1,0 +1,152 @@
+[
+  {
+    "operation_id": "8c263cace8be01a30e041cd0762837c6",
+    "outcome": {
+      "status": "ok",
+      "value": {
+        "operation_id": "8c263cace8be01a30e041cd0762837c6",
+        "request_sha256": "1efaf84583578d765773d3bf76b7c5bb64093bdf326f7cf318e4343e9dbb5713",
+        "result": {
+          "floor": 53,
+          "floor_anchor": "1f8c46b0e82fe2d43134c53a07084d95",
+          "generation": 53,
+          "key": "source.notes.d3b91abb61bd7ca42151a10a024e1c22eb10364e9e3bd197ede1a10da3ca25eb",
+          "project": "2409f2fc67e15fc71150acf54422020704db7448424ee01eab55202fa0ed16f5",
+          "record": {
+            "byte_count": 875,
+            "revision": 6,
+            "sha256": "515cb082b1b1be8e2648792b838f4d639fac7141d8d317edf264903d83a53d10"
+          },
+          "version": 3
+        },
+        "version": 1
+      }
+    },
+    "parent_invocation_id": "839a43af6a7b62bdb708c190592ab67b",
+    "request": {
+      "op": "collection.store",
+      "request": {
+        "generation": 53,
+        "key": "source.notes.d3b91abb61bd7ca42151a10a024e1c22eb10364e9e3bd197ede1a10da3ca25eb",
+        "op": "value.stat"
+      },
+      "scope": "project"
+    },
+    "type": "extension_action_result"
+  },
+  {
+    "operation_id": "b5b9ac89a11ee4e294c8b3e8cd3cadc3",
+    "outcome": {
+      "status": "ok",
+      "value": {
+        "operation_id": "b5b9ac89a11ee4e294c8b3e8cd3cadc3",
+        "request_sha256": "e0a05e6f37f22f43e643964ce3c4bf8f09565c7a31865d674dd4f00cb42f57c9",
+        "result": {
+          "floor": 53,
+          "floor_anchor": "1f8c46b0e82fe2d43134c53a07084d95",
+          "generation": 53,
+          "key": "source.notes.f24fb1f5b7f39dfa08fe3043f82b9f40592afad97fa0780ca7d6ca8602be5a5f",
+          "project": "2409f2fc67e15fc71150acf54422020704db7448424ee01eab55202fa0ed16f5",
+          "record": {
+            "byte_count": 875,
+            "revision": 30,
+            "sha256": "40c621bd237ae9d59514208895a47f7d0ec97f86aa3afcba5939d784ec4e0d7f"
+          },
+          "version": 3
+        },
+        "version": 1
+      }
+    },
+    "parent_invocation_id": "839a43af6a7b62bdb708c190592ab67b",
+    "request": {
+      "op": "collection.store",
+      "request": {
+        "generation": 53,
+        "key": "source.notes.f24fb1f5b7f39dfa08fe3043f82b9f40592afad97fa0780ca7d6ca8602be5a5f",
+        "op": "value.stat"
+      },
+      "scope": "project"
+    },
+    "type": "extension_action_result"
+  },
+  {
+    "operation_id": "a0a0b454ce0846f3b8045b05138fb638",
+    "outcome": {
+      "status": "ok",
+      "value": {
+        "operation_id": "a0a0b454ce0846f3b8045b05138fb638",
+        "request_sha256": "d56ffdb2b53d4ad6779b5d4967e34764ebe4184eb8177dc5c4cc0748c9f5c309",
+        "result": {
+          "floor": 53,
+          "floor_anchor": "1f8c46b0e82fe2d43134c53a07084d95",
+          "generation": 53,
+          "key": "genproducer.notes",
+          "project": "2409f2fc67e15fc71150acf54422020704db7448424ee01eab55202fa0ed16f5",
+          "record": {
+            "byte_count": 5752,
+            "revision": 53,
+            "sha256": "9eeafc8dcf9dcffa1f18277ca12742954ff6113a4f87149e883e90d814d31ebf"
+          },
+          "version": 3
+        },
+        "version": 1
+      }
+    },
+    "parent_invocation_id": "839a43af6a7b62bdb708c190592ab67b",
+    "request": {
+      "op": "collection.store",
+      "request": {
+        "generation": 53,
+        "key": "genproducer.notes",
+        "op": "value.stat"
+      },
+      "scope": "project"
+    },
+    "type": "extension_action_result"
+  },
+  {
+    "operation_id": "80d29c639fabbdf5484c7f8bf3f4e86b",
+    "outcome": {
+      "status": "failed",
+      "value": {
+        "code": "embedding_limit"
+      }
+    },
+    "parent_invocation_id": "839a43af6a7b62bdb708c190592ab67b",
+    "request": {
+      "expected_selection_sha256": "eee5663c9ae6281b3d54d68a929c57b4c5e0688dca3b8c2e92f75ba1ca72fc84",
+      "inputs": [
+        "Exact source 7: α beta preserved.",
+        "Exact source 6: α beta preserved."
+      ],
+      "op": "embedding.create",
+      "profile": "encoder",
+      "source_guard": {
+        "batch_index": 0,
+        "claim_key": "genproducer.notes",
+        "claim_revision": 53,
+        "claim_sha256": "9eeafc8dcf9dcffa1f18277ca12742954ff6113a4f87149e883e90d814d31ebf",
+        "version": 1
+      },
+      "timeout_ms": 120000,
+      "version": 2
+    },
+    "type": "extension_action_result"
+  },
+  {
+    "type": "extension_invocation_result",
+    "value": {
+      "claims": [],
+      "continuation": null,
+      "coverage": {},
+      "evidence": [],
+      "gaps": [
+        {
+          "code": "host_failed"
+        }
+      ],
+      "status": "refused",
+      "version": 1
+    }
+  }
+]

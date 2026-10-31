@@ -1,0 +1,15 @@
+9129900a84be9fd63a7dbbcd563f9f65110173a2aabc5016166022cd75fe167b  docs/archive/2026-10-29-native-shared-lease/evidence/session-genuine/source.tar
+40ad8bac6b2579502580dcef31adeffed850c8fcba758a59720fda7c8c22583f  _build/session-export-genuine-sol-20261029/priv/ipse-runner
+a51c2d34654e21b0418b31bbe5ec2423d117230a3a8f3687803d5c1438d1c12e  _build/session-export-genuine-legacy-sol-20261029/priv/ipse-runner
+e63fb40281c4eb984be16d95f86ea87ec842145f34970f9a63982819a54ad77e  docs/archive/2026-10-29-native-shared-lease/evidence/session-genuine/runtime.sha256
+1badf3d380879ff843fb101c974520901c6a5d3f817269d64dd001b3a8929542  docs/archive/2026-10-29-native-shared-lease/evidence/session-genuine/runtime-legacy.sha256
+167a18c33c24c6d3ec75fd44560cdb6e758281572c7196647044d3b0d5b5d9cc  docs/archive/2026-10-29-native-shared-lease/evidence/session-genuine/coherent-compile.log
+431ebf1efc484ac6bd0808972f095f171a9d403c2c1fcc429b5a9dd2315d5633  docs/archive/2026-10-29-native-shared-lease/evidence/session-genuine/compile-initial.log
+b61f646fcfc7e4810927a373219da3b1c0235893c97309de636c1af317007c37  docs/archive/2026-10-29-native-shared-lease/evidence/session-genuine/compile-provisional.log
+e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855  docs/archive/2026-10-29-native-shared-lease/evidence/session-genuine/legacy-compile.log
+6430519b17e39f05dcdc82dba88fd275d3d1b8b00290549a990eef38deff3153  docs/archive/2026-10-29-native-shared-lease/evidence/session-genuine/legacy-resume-final.log
+f68d6ee75fdbd276644cbe73ba2f32c369434353faca4ae4d72791a2a4340f66  docs/archive/2026-10-29-native-shared-lease/evidence/session-genuine/legacy-unavailable.log
+3d708664c1f0b360a60aa04d1e0dc19b3221b22fef7a1417e2b109962755e22e  docs/archive/2026-10-29-native-shared-lease/evidence/session-genuine/resume-provisional-v2.log
+0e815e3b27baec8a8c889d59c97a52c6b6a70efd403e982be99b38fc09b703e1  docs/archive/2026-10-29-native-shared-lease/evidence/session-genuine/resume-provisional.log
+4cd3a5bf160ba9921acbb2b7df5ea541acc66b404f0bfab12f23aa5f398a03c3  docs/archive/2026-10-29-native-shared-lease/evidence/session-genuine/session-test-final.log
+561c80e26abe816c9b056203169f3f0e214f694ee65ec74849de29eebc3002f4  docs/archive/2026-10-29-native-shared-lease/evidence/session-genuine/session-test-provisional.log

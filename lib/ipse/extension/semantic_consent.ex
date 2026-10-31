@@ -395,6 +395,19 @@ defmodule Ipse.Extension.SemanticConsent do
       )
   end
 
+  @doc "Check source selections only; the caller still needs current protected consent."
+  def check_sources(policy, evidence) do
+    with true <- policy?(policy),
+         true <- evidence_rows?(evidence),
+         true <- source?(policy["settings"]["sources"], %{"sources" => evidence}) do
+      :ok
+    else
+      _ -> @error
+    end
+  rescue
+    _ -> @error
+  end
+
   defp source?(s, e) do
     Enum.all?(e["sources"], fn source ->
       source["category"] in s["categories"] and

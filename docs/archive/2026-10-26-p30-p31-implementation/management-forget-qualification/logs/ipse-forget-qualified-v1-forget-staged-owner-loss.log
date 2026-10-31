@@ -1,0 +1,140 @@
+[22m
+15:58:23.317 [info] The function passed as a handler with ID "management-staged-owner-loss" is a local function.
+This means that it is either an anonymous function or a capture of a function without a module specified. That may cause a performance penalty when calling that handler. For more details see the note in `telemetry:attach/4` documentation.
+
+https://hexdocs.pm/telemetry/telemetry.html#attach/4[0m
+Retained management target at 1793314703506: signed deadline elapsed. Original source availability and current-use eligibility are not checked.
+Review the complete proposed facts below. This confirmation applies only to this exact review.
+{
+  "action_sha256": "f60074c41bceedff29e62a07cbfdb5ebc4f5e051a93e8c745c465b669f221a42",
+  "collection": {
+    "manifest_sha256": "1b424bb483572a3d4c7590ffb1ae7ccfe1fee7f3470a7120885f2653d4cb3b93",
+    "root": {
+      "floor": 1,
+      "floor_anchor": "b96926d81afcd88e62364abf6c28425e",
+      "generation": 1,
+      "project": "fea99d196dcc28462d42cbd26010461246d85f55e8e19a6213015bc1f621ec19",
+      "version": 3
+    },
+    "root_sha256": "71782be5155674dcb2fd84fe16fa879c652b5f3fdf7ef3e6a349220027894b35",
+    "root_state": "present"
+  },
+  "context": {
+    "binding_sha256": "0e7e9a09d17335473e773c958ae6ce7d18cc6b612c47158c510ffa4d104e6473",
+    "client_id": "0ab47e02d10f96f9e3ab78cd397b2a09",
+    "job_id": "b57a711b0864331e306277109777fdf7",
+    "management_epoch": 1,
+    "management_sha256": "e4fca6d8e2d6fc9522fd67ef77dea0203427c62372394dc715ac4095541c06d5",
+    "namespace": "fea99d196dcc28462d42cbd26010461246d85f55e8e19a6213015bc1f621ec19",
+    "original_pin": null,
+    "project_id": "a78130f5225c56ecc34918b831e3360116ffffe2274ed42403dc5355c5ff5c2a",
+    "recipe": {
+      "category_path": [
+        "category"
+      ],
+      "constraints_sha256": "d709745ab18405dff572c41053eda5cbe12c350ebbabdcd0d52ea1e80962368a",
+      "evidence_path": [
+        "evidence",
+        "sources"
+      ],
+      "key_prefix": "note.",
+      "kind": "literal_source",
+      "lineage_path": [
+        "lineage"
+      ],
+      "override_prefix": "override.",
+      "rules": [
+        {
+          "category": "current",
+          "max_age_ms": null,
+          "origins": [
+            "native_operator_assertion"
+          ]
+        },
+        {
+          "category": "ordinary",
+          "max_age_ms": 7776000000,
+          "origins": [
+            "native_operator_assertion",
+            "typed_host_outcome"
+          ]
+        },
+        {
+          "category": "preference",
+          "max_age_ms": null,
+          "origins": [
+            "native_operator_assertion"
+          ]
+        }
+      ],
+      "text_path": [
+        "text"
+      ],
+      "version": 1
+    },
+    "session_id": "6f321b9625eda9538675af7d31b00cdc"
+  },
+  "kind": "managed_literal_forget",
+  "metadata": {
+    "category": "ordinary",
+    "first_admitted_ms": 86400000,
+    "lineage": "a25d954b728c71bc15cdfe3ef4c63f6a87e9f22be1dd1e5ddf9edf02ab769193",
+    "policy_sha256": "dbc7d380793c1fd92543f35461f649e62c5b1ffb7e82d904314ce91395ec651e",
+    "recipe_sha256": "818634825cb494606d25195a6601971a17542ed2caa22f28d1e18b1971b18cf7",
+    "valid_until_ms": 7862400000
+  },
+  "operation_id": "7476d8212afb273b8497a98d10076e45",
+  "policy": {
+    "kind": "session"
+  },
+  "reason": "Forget selected synthetic claim",
+  "request_sha256": "9b051f6e9fac22bbf0b47263b253f36162c69aab241b56409474eba219923a79",
+  "scope": "selected literal derivative; original journal, management review journal and shared evidence remain",
+  "target": {
+    "bytes": 1082,
+    "key": "note.a25d954b728c71bc15cdfe3ef4c63f6a87e9f22be1dd1e5ddf9edf02ab769193",
+    "operation_id": "b96926d81afcd88e62364abf6c28425e",
+    "revision": 1,
+    "sha256": "101616baaa98218c0d51799a5cf199ffeba4f26dec2cbef3b198fbc2d868c3c6",
+    "value": {
+      "category": "ordinary",
+      "created_at_ms": 864000000,
+      "event_at_ms": null,
+      "evidence": {
+        "sources": [
+          {
+            "content_sha256": "4c1adf410e8092458cf9598d4ed4ba92a9ddc6c05fa3727c188a5fce5feada84",
+            "coverage": "available",
+            "end_byte": 19,
+            "kind": "input.assertion.ordinary",
+            "occurrence_id": "00000000000000000000000000000001",
+            "origin": "native_operator_assertion",
+            "path": null,
+            "quote": "Acme has owner Alex",
+            "quote_sha256": "4c1adf410e8092458cf9598d4ed4ba92a9ddc6c05fa3727c188a5fce5feada84",
+            "receipt_sha256": "249ded81fc09301d955175885ad1d43c9b47dd399ac1e0fedb40e418eb5c1547",
+            "session_id": "11111111111111111111111111111111",
+            "start_byte": 0,
+            "version": 1,
+            "version_id": "33333333333333333333333333333333"
+          }
+        ]
+      },
+      "expires_at_ms": 8640000000,
+      "id": "a25d954b728c71bc15cdfe3ef4c63f6a87e9f22be1dd1e5ddf9edf02ab769193",
+      "lineage": "a25d954b728c71bc15cdfe3ef4c63f6a87e9f22be1dd1e5ddf9edf02ab769193",
+      "metadata_reserve": "0000000000000000000000000000000000000000000000000000000000000000",
+      "observed_at_ms": 864000000,
+      "previous_category": null,
+      "reason": "trusted fixture source",
+      "superseded_at_ms": null,
+      "text": "Acme has owner Alex",
+      "version": 1
+    }
+  },
+  "version": 1
+}
+Type forget e83b20b9e410e410 to confirm, or anything else to cancel.
+> approval> forget e83b20b9e410e410
+
+MANAGEMENT_FORGET_STAGED_OWNER_LOSS_UNCONFIRMED_NO_REPLAY target_present=true control=publishing

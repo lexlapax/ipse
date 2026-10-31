@@ -57,6 +57,36 @@ defmodule Ipse.Extension.ModeTest do
     end
   end
 
+  test "planning-read mode preserves approval and cannot widen read-only ceilings" do
+    for ceiling <- [:draft, :planning], approval <- [:ask, :allow, :deny] do
+      assert {:ok, mode} = Mode.capture(%{execution_mode: ceiling, approval: approval})
+      assert Mode.planning_read(mode) == approval
+      assert :deny = Mode.ordinary(mode, true)
+
+      assert {:ok, restricted} =
+               Mode.capture(%{
+                 execution_mode: ceiling,
+                 enclosing_mode: :read_only,
+                 approval: approval
+               })
+
+      assert :deny = Mode.planning_read(restricted)
+    end
+
+    assert {:ok, normal} = Mode.capture(%{approval: :allow})
+    assert :deny = Mode.planning_read(normal)
+
+    assert {:ok, headless} =
+             Mode.capture(%{
+               execution_mode: :planning,
+               approval: :deny,
+               approval_origin: :default_headless
+             })
+
+    assert :deny = Mode.planning_read(headless)
+    assert :deny = Mode.planning_read(%{})
+  end
+
   test "resume and child inheritance retain saved explicit restrictions despite CLI yes" do
     for ceiling <- [:read_only, :planning, :draft] do
       assert {:ok, saved} = Mode.capture(%{execution_mode: ceiling})
@@ -77,5 +107,41 @@ defmodule Ipse.Extension.ModeTest do
 
     assert Mode.valid?(interactive) and not interactive["headless"]
     assert interactive["approval"] == "ask"
+  end
+
+  test "same-owner resume keeps local and inherited planning separate while children inherit both" do
+    assert {:ok, local} = Mode.capture(%{execution_mode: :planning})
+    assert {:ok, inherited} = Mode.capture(%{enclosing_mode: :planning})
+    assert {:ok, resumed_local} = Mode.resume(local, %{approval: :allow, approval_origin: :yes})
+
+    assert {:ok, resumed_inherited} =
+             Mode.resume(inherited, %{approval: :allow, approval_origin: :yes})
+
+    assert resumed_local["ceiling"] == "planning" and
+             resumed_local["enclosing_ceiling"] == "normal"
+
+    assert resumed_inherited["ceiling"] == "normal" and
+             resumed_inherited["enclosing_ceiling"] == "planning"
+
+    assert :deny == Mode.ordinary(resumed_local, true)
+    assert :deny == Mode.ordinary(resumed_inherited, true)
+
+    for parent <- [resumed_local, resumed_inherited] do
+      assert {:ok, child} = Mode.inherit(parent, %{approval: :allow, approval_origin: :yes})
+      assert child["enclosing_ceiling"] == "planning"
+      assert :deny == Mode.ordinary(child, true)
+    end
+
+    assert {:ok, combined} =
+             Mode.resume(local, %{
+               execution_mode: :normal,
+               enclosing_mode: :read_only,
+               knowledge_ceiling: :disabled
+             })
+
+    assert combined["ceiling"] == "planning" and combined["enclosing_ceiling"] == "read_only"
+    assert combined["knowledge"] == "disabled"
+    refute Mode.resumed?(local, %{resumed_local | "ceiling" => "normal"})
+    refute Mode.resumed?(inherited, %{resumed_inherited | "enclosing_ceiling" => "normal"})
   end
 end

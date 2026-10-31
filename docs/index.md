@@ -23,7 +23,7 @@ quick start. Try the demo before configuring a model account.
 | Choose Grok API billing or prepare registered-client subscription access | [Grok configuration](operator/configuration.md#use-grok-through-xai) |
 | Connect tools from another service | [Configure MCP](operator/mcp.md) |
 | Remember an explicit project note | [Use memory](operator/memory.md) |
-| Enable native knowledge permission and inspect or revoke its next-session selection | [Manage knowledge permission](operator/knowledge-permissions.md) |
+| Enable native knowledge, manage retention/expiry and inspect or revoke permission | [Manage native knowledge](operator/knowledge-permissions.md) |
 | Retain source text and retrieve exact passages | [Use a corpus](operator/corpus.md) |
 | Record relationships with exact source quotations | [Use Graph](operator/graph.md) |
 | Investigate provided text or selected search/fetch tools | [Use the Research extension](operator/research.md) |
@@ -37,7 +37,7 @@ quick start. Try the demo before configuring a model account.
 | Add a domain tool without changing the host | [Build an extension](developer/extensions.md) |
 | Bind original source proofs and protected saved consent to local publication | [Study the collection SDK](developer/collection-sdk.md) |
 | Change source retrieval, graph or investigation behavior | [Study knowledge packages](developer/knowledge-extensions.md) |
-| Inspect bounded document extraction and coverage | [Study document extraction](developer/knowledge-extensions.md#inspect-bounded-document-extraction) |
+| Follow acquired document bytes through extraction, storage and citation | [Study document ingestion](developer/knowledge-extensions.md#follow-acquired-document-bytes-into-cited-storage) |
 | Admit typed advisory effects and validate native results | [Study decisions](developer/decisions.md) |
 | Measure retrieval and cited answers without exposing labels | [Work through knowledge evaluation](developer/knowledge-evaluation.md) |
 | Inspect synthetic capture proposals with private source/candidate audit data | [Run the capture pilot](developer/capture-pilot.md) |

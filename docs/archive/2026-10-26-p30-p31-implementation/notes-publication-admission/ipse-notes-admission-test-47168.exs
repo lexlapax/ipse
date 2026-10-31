@@ -1,0 +1,7 @@
+Path.wildcard("_build/notes-publication-admission-sol-20261029/_build/dev/lib/*/ebin") |> Enum.each(&Code.prepend_path/1)
+{:ok, _} = Application.ensure_all_started(:ipse)
+ExUnit.start(autorun: false, seed: 20261029, exclude: [:test], include: [:notes_admission])
+Code.require_file("test/ipse/extension/notes_publication_admission_test.exs")
+Code.require_file("test/ipse/extension/managed_collection_call_test.exs")
+result = ExUnit.run()
+System.halt(if result.failures == 0, do: 0, else: 1)

@@ -1,5 +1,6 @@
 defmodule Ipse.Session.LifecycleTest do
   use ExUnit.Case, async: false
+  import Ipse.Test.ResumeAssertions
   alias Ipse.{Journal, Session}
   alias Ipse.Journal
   alias Ipse.Session.Lifecycle
@@ -322,7 +323,7 @@ defmodule Ipse.Session.LifecycleTest do
 
       assert Session.info(resumed).id == id
       refute_receive {:ipse, ^resumed, {:done, _}}, 100
-      assert File.read!(path) == bytes
+      assert_idle_resume_journal(path, bytes, id)
       assert :ok = Session.close(resumed)
     end
   end

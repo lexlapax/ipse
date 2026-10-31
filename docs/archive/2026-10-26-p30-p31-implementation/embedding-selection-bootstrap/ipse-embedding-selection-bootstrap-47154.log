@@ -1,0 +1,8 @@
+Running ExUnit with seed: 20261029, max_cases: 4
+Excluding tags: [:test]
+Including tags: [:selection_bootstrap, :selection_bootstrap_refusal]
+
+..
+Finished in 2.1 seconds (0.00s async, 2.1s sync)
+
+Result: 2 passed, 16 excluded

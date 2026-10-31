@@ -1,0 +1,25 @@
+Running ExUnit with seed: 46808, max_cases: 1
+Excluding tags: [:test]
+Including tags: [:packed_unknown]
+
+
+18:54:55.601 [info] The function passed as a handler with ID "packed-source-unknown-4b4d41c087a90cca4d64a59c76b45230" is a local function.
+This means that it is either an anonymous function or a capture of a function without a module specified. That may cause a performance penalty when calling that handler. For more details see the note in `telemetry:attach/4` documentation.
+
+https://hexdocs.pm/telemetry/telemetry.html#attach/4
+
+
+  1) test unknown native packed write yields no continuation and saved Session never replays it (Ipse.KnowledgeCollectionAdapterSessionTest)
+     test/extensions/knowledge/collection_adapter_session_test.exs:344
+     match (=) failed
+     code:  assert :ok = Session.close_confirmed(c.pid)
+     left:  :ok
+     right: {:error, :cleanup_unconfirmed}
+     stacktrace:
+       test/extensions/knowledge/collection_adapter_session_test.exs:376: (test)
+
+
+Finished in 3.8 seconds (0.00s async, 3.8s sync)
+
+Result: 0/1 passed, 5 excluded
+Failed: 1 test

@@ -1,0 +1,24 @@
+CURRENT_SOURCE_FORGET_OK: %{
+  manifest_entries: 28,
+  source_tar_files: 217,
+  source_hash_entries: 213,
+  source_tar_not_in_list: [".formatter.exs", "LICENSE", "mix.exs", "mix.lock"],
+  changed_from_pre_reader_source: ["lib/ipse/cli/knowledge/management.ex",
+   "lib/ipse/extension/collection.ex"],
+  runtime_files: 668,
+  priv_files: 39,
+  inherited_symlinks: 2,
+  runtime_delta_from_held_reader: ["_build/dev/lib/ipse/ebin/Elixir.Ipse.CLI.Knowledge.Management.beam",
+   "_build/dev/lib/ipse/ebin/Elixir.Ipse.CLI.Knowledge.beam",
+   "_build/dev/lib/ipse/ebin/Elixir.Ipse.CLI.beam",
+   "priv/extension-bundles/catalog.json"],
+  additional_artifact_files: 10,
+  artifact_manifests: [
+    {"current",
+     "578cd2ade037601ee7f17a2b69f901d116efc664369459e53d9be566cdf317fc", 10},
+    {"old", "e7197bccd90590e89c584e33c41c2fb1dbd34765a3a4f3fbdbe214b98cf9b5ec",
+     10}
+  ],
+  journal_events: 3,
+  repeated_tests: 0
+}

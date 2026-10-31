@@ -1,0 +1,6 @@
+{
+  "lib/ipse/mcp.ex": "e21859261a7f96ca5b03844ae211354a4be226d593c1c79ca61d09531c16ee13",
+  "lib/ipse/session.ex": "432f2640b9eb6eb5a6908aac8c5df856a67ef199a7fde599524383779c885bdf",
+  "test/ipse/mcp/http_test.exs": "117569db40f86d229ddcbce13f164bc437f96c0c8550af811cb14c993f844b14",
+  "test/test_helper.exs": "3fe1c5ac8fab2068cc8d0001bc79f3a17fc6e9f6d997df9ccb34600509d6d63d"
+}

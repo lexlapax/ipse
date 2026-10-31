@@ -5,6 +5,8 @@ defmodule Ipse.Development.Verification.Runtime do
   @utilities ~w(dirname basename cut sed cat grep readlink sleep uname expr awk id tr head)
   @forbidden ~w(elixir elixirc erlc mix rustc cargo)
   @source_root Path.expand("../..", __DIR__)
+  @evaluation_source_limit 16_384
+  @evaluation_manifest_bytes 4_194_304
   @erts_bootstrap ~S'ROOTDIR=$1; BINDIR=$2; EMU=beam; PROGNAME=erl; export ROOTDIR BINDIR EMU PROGNAME; shift 2; exec "$BINDIR/erlexec" "$@"'
 
   alias Ipse.Development.Verification.Package
@@ -479,7 +481,7 @@ defmodule Ipse.Development.Verification.Runtime do
     argv = evaluation_arguments(options)
     true = is_binary(expected) and Regex.match?(~r/\A[0-9a-f]{64}\z/, expected)
     path = Path.expand(path)
-    bytes = bounded!(path, 1_048_576)
+    bytes = bounded!(path, @evaluation_manifest_bytes)
     true = hash(bytes) == expected
     manifest = decode_manifest!(bytes)
     files = manifest["runtime"]["files"]
@@ -1111,7 +1113,7 @@ defmodule Ipse.Development.Verification.Runtime do
     git = fn args -> command!("git", ["-C", repository | args], repository, []) end
     "" = git.(["status", "--porcelain=v1", "--untracked-files=all"])
     files = git.(["ls-files", "-z", "--cached"]) |> String.split(<<0>>, trim: true)
-    true = length(files) in 1..4096
+    true = length(files) in 1..@evaluation_source_limit
 
     %{
       commit: git.(["rev-parse", "HEAD"]),

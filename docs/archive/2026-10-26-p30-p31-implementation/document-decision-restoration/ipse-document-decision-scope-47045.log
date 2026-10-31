@@ -1,0 +1,23 @@
+Running ExUnit with seed: 47045, max_cases: 8
+Excluding tags: [:test]
+Including tags: [document_deadline_scope: true]
+
+
+
+  1) test inherited trusted deadlines cannot be cleared or extended and the scope restores exactly (Ipse.Extension.Collection.DocumentStageTest)
+     test/ipse/extension/collection_document_stage_test.exs:251
+     ** (MatchError) no match of right hand side value:
+
+         {:error, :document_store_refused}
+
+     code: assert {:error, :document_store_refused} = execute(c, next_request.())
+     stacktrace:
+       test/ipse/extension/collection_document_stage_test.exs:30: Ipse.Extension.Collection.DocumentStageTest.generation/1
+       test/ipse/extension/collection_document_stage_test.exs:266: anonymous fn/1 in Ipse.Extension.Collection.DocumentStageTest."test inherited trusted deadlines cannot be cleared or extended and the scope restores exactly"/1
+       test/ipse/extension/collection_document_stage_test.exs:291: (test)
+
+
+Finished in 0.7 seconds (0.4s on load, 0.00s async, 0.3s sync)
+
+Result: 0/1 passed, 10 excluded
+Failed: 1 test

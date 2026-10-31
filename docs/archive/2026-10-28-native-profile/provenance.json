@@ -1,0 +1,108 @@
+{
+  "aggregate_suite_run": false,
+  "btrfs_new_kernel_admitted": false,
+  "build_flags": [
+    "--edition=2021",
+    "-D",
+    "warnings",
+    "-C",
+    "opt-level=z",
+    "-C",
+    "strip=symbols",
+    "-C",
+    "panic=abort"
+  ],
+  "capacity_4000_repeated": false,
+  "helper": {
+    "path": "/home/lexlapax/projects/lexlapax/ipse/_build/native-profile-sol-20261028/project/priv/ipse-runner",
+    "sha256": "6407e40e96498029ff7e13d96215a263812732aad1979b4c3e5f4b867b5a4d56"
+  },
+  "host": {
+    "elixir": "Erlang/OTP 29 [erts-17.1] [source] [64-bit] [smp:20:20] [ds:20:20:10] [async-threads:1] [jit:ns]\n\nElixir 1.20.4 (compiled with Erlang/OTP 29)",
+    "global_shmem_policy": "always within_size [advise] never deny force",
+    "kernel_machine": "7.2.11-arch1-1 x86_64",
+    "page_size": "4096",
+    "rustc": "rustc 1.99.1 (58cf8f9c3 2026-10-13) (Arch Linux rust 1:1.99.1-1)",
+    "tmpfs": "tmpfs rw,nosuid,nodev,size=24524368k,nr_inodes=1048576,inode64,huge=advise,usrquota",
+    "workspace_mount": "btrfs rw,relatime,compress=zstd:3,ssd,discard=async,space_cache=v2,subvolid=5,subvol=/"
+  },
+  "native_build_sources": {
+    "ipse-bound.rs": "685308b63cb4dd29715c38dbdd4b8a91303d961de3f97477e981bb0e10198911",
+    "ipse-environment.rs": "84d8bb97d2eaebf8ae77b10e97d56ddcb0cf1b08794411d9e7c64e26e40d6db9",
+    "ipse-file-copy.rs": "02e38e7d94566d712029afb1076e5891de633c2a99004ac3c886d7aa2d1f8f05",
+    "ipse-linux-sandbox.rs": "60c4df2e46ba69d7544afb12d9fd062c56bbfe42670b6c5f0459edc46b059040",
+    "ipse-listener.rs": "cd3dfac133f9790959d7784d172ad59e149d9bce64d26bf53c53de668aaec1b6",
+    "ipse-macos-sandbox.rs": "e01faba9a7d02906c93005c46c9b0bee6cb9eaf3ae8ab594171f82bcd62a9ed1",
+    "ipse-measure.rs": "a4cd4e3d058a6c1c08b3e374259d81dc0ff9e8be3530bbdbe5494b28ff7e93a4",
+    "ipse-operator.rs": "912eb7cfaf68b6a634bd6a462be4e31e175a71e2f18b675cc603fbab79dcc8e5",
+    "ipse-process-group.rs": "bfa273dafb46dfe550ea71a68876d6feba8eceb2309e4de442e468ca7a58f24e",
+    "ipse-runner.rs": "8c581fc31c23eae57df38f0e9a8c0866c3dfa161d47d6fa06f3fb25c82395635",
+    "ipse-secrets.rs": "49ee5b6f4c1622c95337b3242b1d6d8e8d9c15fe9f78db138f0bea2bd2d678ef",
+    "ipse-sequence.rs": "1ae276bca0a898eb20d7318785e5e11bc0f49d93461e207f605085775cac7d5a",
+    "ipse-stdio.rs": "f33db4051a331ec913604fe2344e3b3dda5b7779dfa04f6eb2bc15dc244f4e46",
+    "ipse-storage-profile.rs": "6a96b7ecb7005b4d65a9f47864a6cd72169b99c4e707b325c9c1eae9a40843ad",
+    "ipse-storage.rs": "d541df861de0d6d6271a608cbf8e4c882ede90ff8e21577d26f8ae0a2869b200",
+    "ipse-transaction.rs": "4a4d0a52a590e37c7e899f200e2e4ecf24392e768df0035ae0b072f36d54eef2"
+  },
+  "native_initial": {
+    "failed": 2,
+    "passed": 22,
+    "total": 24
+  },
+  "native_repairs": {
+    "excluded": 22,
+    "failed": 0,
+    "passed": 2
+  },
+  "private_diagnostic_helper_sha256": "86d6226c868b7095c6ba7460cc0b42832e98fb70feea0779fb3473ac7bb28a6a",
+  "production_profile_source": true,
+  "profile_sha256": "6a96b7ecb7005b4d65a9f47864a6cd72169b99c4e707b325c9c1eae9a40843ad",
+  "runner_beam": {
+    "path": "/home/lexlapax/projects/lexlapax/ipse/_build/native-profile-sol-20261028/build/lib/ipse/ebin/Elixir.Ipse.Runner.beam",
+    "sha256": "d1236876607bec78f93b3d18a3b293b4fea21a8f36e2027f3e086c153333f0b5"
+  },
+  "rust_profile_tests": {
+    "failed": 0,
+    "filtered": 67,
+    "passed": 3
+  },
+  "scope": "exact_7.2.11-arch1-1_x86_64_tmpfs_only",
+  "source_inputs": {
+    "lib/ipse/runner.ex": {
+      "sha256": "92dfa544afe579cdd05dd55bb0c22c9ff60ed3836191f498c87c681542f41585",
+      "snapshot": "sources/lib__ipse__runner.ex"
+    },
+    "native/ipse-runner.rs": {
+      "sha256": "8c581fc31c23eae57df38f0e9a8c0866c3dfa161d47d6fa06f3fb25c82395635",
+      "snapshot": "sources/native__ipse-runner.rs"
+    },
+    "native/ipse-storage-profile.rs": {
+      "sha256": "6a96b7ecb7005b4d65a9f47864a6cd72169b99c4e707b325c9c1eae9a40843ad",
+      "snapshot": "sources/native__ipse-storage-profile.rs"
+    },
+    "native/ipse-storage.rs": {
+      "sha256": "d541df861de0d6d6271a608cbf8e4c882ede90ff8e21577d26f8ae0a2869b200",
+      "snapshot": "sources/native__ipse-storage.rs"
+    },
+    "native/ipse-transaction.rs": {
+      "sha256": "4a4d0a52a590e37c7e899f200e2e4ecf24392e768df0035ae0b072f36d54eef2",
+      "snapshot": "sources/native__ipse-transaction.rs"
+    },
+    "test/ipse/runner/storage_profile_test.exs": {
+      "sha256": "1f2322163924d0d456acbcbd03c17a2444b375a7c8514ea4c0e0a1eedb276505",
+      "snapshot": "sources/test__ipse__runner__storage_profile_test.exs"
+    },
+    "test/ipse/runner/transaction_test.exs": {
+      "sha256": "add8566b7377d04da3b27008b1be960365b3e7e67df9beb7d7976dd02d027a35",
+      "snapshot": "sources/test__ipse__runner__transaction_test.exs"
+    },
+    "test/support/transaction_fixture.exs": {
+      "sha256": "35f09c15c0f40c64ff25bef759ce9c167959f58c5550b2f40ab4346da8843500",
+      "snapshot": "sources/test__support__transaction_fixture.exs"
+    }
+  },
+  "strict_helper_compile_exit": 0,
+  "strict_runner_compile_exit": 0,
+  "strict_rust_tests_compile_exit": 0,
+  "version": 1
+}

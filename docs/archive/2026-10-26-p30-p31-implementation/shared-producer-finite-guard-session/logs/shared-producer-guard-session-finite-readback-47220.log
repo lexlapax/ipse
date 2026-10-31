@@ -1,0 +1,18 @@
+{
+  "actual_native_read_only": true,
+  "native_ready": {
+    "byte_count": 6115,
+    "key": "genproducer.notes",
+    "operation_id": "1194bc1f69b69a0eecabd23885fc5208",
+    "revision": 35,
+    "sha256": "c7c60467c21e31e711fba9a6d72a647a6e8bcbac3fffda78a79edaa98e278654"
+  },
+  "original_deadline_ms": 1793322447085,
+  "finished_at_ms": 1793322353988,
+  "unchanged_expiries": true,
+  "batches": 4,
+  "journal_bytes": 3059071,
+  "journal_events": 963,
+  "original_journal_exact": true,
+  "no_effect_or_inference_replay": true
+}

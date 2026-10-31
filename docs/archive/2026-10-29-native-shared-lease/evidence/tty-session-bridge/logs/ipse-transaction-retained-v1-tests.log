@@ -1,0 +1,32 @@
+Running ExUnit with seed: 351451, max_cases: 8
+Excluding tags: [:native_sandbox, :macos_sandbox, :macos_filesystem, :memory_scope]
+
+
+
+  1) test exact same-owner three retained descriptions settle in manifest order (Ipse.Runner.TransactionRetainedShareTest)
+     test/ipse/runner/transaction_retained_share_test.exs:22
+     match (=) failed
+     code:  assert {:ok, identity} = T.retained_share_identity(cap)
+     left:  {:ok, identity}
+     right: {:unknown, :transaction_lost}
+     stacktrace:
+       test/ipse/runner/transaction_retained_share_test.exs:31: anonymous fn/1 in Ipse.Runner.TransactionRetainedShareTest."test exact same-owner three retained descriptions settle in manifest order"/1
+       (elixir 1.20.4) lib/enum.ex:1725: Enum."-map/2-lists^map/1-1-"/2
+       test/ipse/runner/transaction_retained_share_test.exs:30: (test)
+
+
+
+  2) test recipient loss after transfer is unknown and never thaws (Ipse.Runner.TransactionRetainedShareTest)
+     test/ipse/runner/transaction_retained_share_test.exs:87
+     match (=) failed
+     code:  assert {:ok, id} = T.retained_share_identity(cap)
+     left:  {:ok, id}
+     right: {:unknown, :transaction_lost}
+     stacktrace:
+       test/ipse/runner/transaction_retained_share_test.exs:89: (test)
+
+
+Finished in 0.2 seconds (0.1s on load, 0.00s async, 0.03s sync)
+
+Result: 0/2 passed
+Failed: 2 tests

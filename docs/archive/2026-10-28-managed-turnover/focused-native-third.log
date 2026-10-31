@@ -1,0 +1,48 @@
+Running ExUnit with seed: 117157, max_cases: 4
+Excluding tags: [:native_sandbox, :macos_sandbox, :macos_filesystem, :memory_scope]
+
+
+
+  1) test changed client facts and cancellation leave the actual signed store unchanged (Ipse.Session.ManagedLifecycleTest)
+     test/ipse/session/managed_lifecycle_test.exs:9
+     operator channel unavailable: operator channel unavailable
+     ** (ExUnit.AssertionError) 
+     
+     match (=) failed
+     code:  assert {:ok, :native} = Ipse.Runner.operator_channel()
+     left:  {:ok, :native}
+     right: {:error, :operator_input_unavailable}
+     
+         test/support/managed_literal_forget.exs:138: anonymous fn/8 in :elixir_compiler_0.__FILE__/1
+         (ipse 0.1.0) lib/ipse/session/resources.ex:860: Ipse.Session.Resources.execute_file_effect/3
+
+     code: assert scenario("changed", "--review") =~ "NATIVE_MANAGED_LITERAL_FORGET_CHANGED_PASSED"
+     stacktrace:
+       test/ipse/session/managed_lifecycle_test.exs:41: Ipse.Session.ManagedLifecycleTest.scenario/2
+       test/ipse/session/managed_lifecycle_test.exs:10: (test)
+
+
+
+  2) test actual native-reviewed Core forget retains signed suppression and rejects recapture/old import (Ipse.Session.ManagedLifecycleTest)
+     test/ipse/session/managed_lifecycle_test.exs:5
+     operator channel unavailable: operator channel unavailable
+     ** (ExUnit.AssertionError) 
+     
+     match (=) failed
+     code:  assert {:ok, :native} = Ipse.Runner.operator_channel()
+     left:  {:ok, :native}
+     right: {:error, :operator_input_unavailable}
+     
+         test/support/managed_literal_forget.exs:138: anonymous fn/8 in :elixir_compiler_0.__FILE__/1
+         (ipse 0.1.0) lib/ipse/session/resources.ex:860: Ipse.Session.Resources.execute_file_effect/3
+
+     code: assert scenario("valid", "--review") =~ "NATIVE_MANAGED_LITERAL_FORGET_VALID_PASSED"
+     stacktrace:
+       test/ipse/session/managed_lifecycle_test.exs:41: Ipse.Session.ManagedLifecycleTest.scenario/2
+       test/ipse/session/managed_lifecycle_test.exs:6: (test)
+
+
+Finished in 4.1 seconds (0.04s on load, 0.00s async, 4.1s sync)
+
+Result: 0/2 passed
+Failed: 2 tests

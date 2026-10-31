@@ -1,0 +1,17 @@
+     warning: clauses with the same name and arity (number of arguments) should be grouped together, "defp drive/2" was previously defined (test/extensions/knowledge/collection_split_append_native_test.exs:210)
+     │
+ 268 │   defp drive(done, _ctx), do: done
+     │        ~
+     │
+     └─ test/extensions/knowledge/collection_split_append_native_test.exs:268:8
+
+Running ExUnit with seed: 822134, max_cases: 4
+Excluding tags: [:test]
+Including tags: [split_append_native: true, split_append_root_race: true]
+
+Retained synthetic split-append native store: /tmp/ipse-split-append-715f40e41491e1972a64c72b4820a9d8
+.Retained synthetic split-append native store: /tmp/ipse-split-append-b0fb97303c2ad0f12806b4dde7cb5cd2
+.
+Finished in 19.5 seconds (3.8s on load, 0.00s async, 15.7s sync)
+
+Result: 2 passed

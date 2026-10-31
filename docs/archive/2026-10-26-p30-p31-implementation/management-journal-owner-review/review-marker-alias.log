@@ -1,0 +1,13 @@
+UNFENCED_MARKER_ALIAS_REPRODUCED: %{
+  create: :ok,
+  key: :native_journal_layout,
+  persisted_native_owner_required: true,
+  lock_file: false
+}
+UNFENCED_MARKER_ALIAS_REPRODUCED: %{
+  create: :ok,
+  key: :release_receipt_layout,
+  persisted_native_owner_required: true,
+  lock_file: false
+}
+STRING_KEY_NEGATIVE_REFUSED; no native helper, model, or network invoked

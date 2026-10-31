@@ -1,0 +1,39 @@
+     warning: Ipse.JSON.encode!/1 is undefined or private
+     │
+ 395 │              JSON.sha256(IO.iodata_to_binary(JSON.encode!(pending)))
+     │                                                   ~
+     │
+     └─ test/extensions/knowledge/collection_adapter_session_test.exs:395:51: Ipse.KnowledgeCollectionAdapterSessionTest."test compact generation begin inspect and abort retain exact durable bytes and legacy output"/1
+     └─ test/extensions/knowledge/collection_adapter_session_test.exs:407:49: Ipse.KnowledgeCollectionAdapterSessionTest."test compact generation begin inspect and abort retain exact durable bytes and legacy output"/1
+     └─ test/extensions/knowledge/collection_adapter_session_test.exs:452:51: Ipse.KnowledgeCollectionAdapterSessionTest."test compact paged finalization preserves mode across drafts and selects the exact root"/1
+
+Running ExUnit with seed: 20261029, max_cases: 40
+Excluding tags: [:test]
+Including tags: [:public_generation_compact, :public_generation_job_compat]
+
+NAMESPACE_TEST_ARTIFACT 5035860ab9d930acb733cdf7bf8a0c6e4b70183176395dd9748515a33f7dc931
+.
+
+  1) test compact generation begin inspect and abort retain exact durable bytes and legacy output (Ipse.KnowledgeCollectionAdapterSessionTest)
+     test/extensions/knowledge/collection_adapter_session_test.exs:364
+     ** (UndefinedFunctionError) function Ipse.JSON.encode!/1 is undefined or private
+     code: JSON.sha256(IO.iodata_to_binary(JSON.encode!(pending)))
+     stacktrace:
+       (ipse 0.1.0) Ipse.JSON.encode!(%{"catalog" => %{"assertions" => 0, "chunks" => 1, "entities" => 0, "extracted_bytes" => 30, "floor" => 0, "generation" => 1, "kind" => "catalog", "pages" => [%{"key" => "catalog.notes.0", "sha256" => "f49b131260136f89fb3625ae323677a329b85fc4fd6577e02c02468826922e37"}], "partition" => "notes", "sources" => 1, "version" => 1}, "catalog_sha256" => "8eb1745cf30a6bd102e2de55a02d1288f4a4079776bd06f3456f1467421c966f", "cursor" => 0, "fact_selection" => %{"kind" => "explicit", "profile" => nil, "version" => 1}, "facts" => 0, "generation" => 2, "id" => "44609b0c8909d896ed070cb5ebd06902", "kind" => "shared_generation_job", "partition" => "notes", "root_revision" => 2, "root_sha256" => "b4329dc736a02c0f92aa9e5a336122971f0f6c95b0f412732344480f51c22f89", "status" => "groups", "summaries" => [], "vector_selection" => %{"dimensions" => 32, "encoding" => "float32le", "model" => "fixture", "profile" => "fixture", "selection_sha256" => "1858023894cc8d93c9e2f4221b897cca703769659ab9718da78eedc429f54cec"}, "version" => 1})
+       test/extensions/knowledge/collection_adapter_session_test.exs:395: (test)
+
+
+
+  2) test compact paged finalization preserves mode across drafts and selects the exact root (Ipse.KnowledgeCollectionAdapterSessionTest)
+     test/extensions/knowledge/collection_adapter_session_test.exs:439
+     ** (UndefinedFunctionError) function Ipse.JSON.encode!/1 is undefined or private
+     code: JSON.sha256(IO.iodata_to_binary(JSON.encode!(job)))
+     stacktrace:
+       (ipse 0.1.0) Ipse.JSON.encode!(%{"catalog" => %{"assertions" => 0, "chunks" => 1, "entities" => 0, "extracted_bytes" => 36, "floor" => 0, "generation" => 1, "kind" => "catalog", "pages" => [%{"key" => "catalog.notes.0", "sha256" => "06d443efaa496d69bc317e04eb490d4899eef1c57e0fe09de7b0da51363398f9"}], "partition" => "notes", "sources" => 1, "version" => 1}, "catalog_sha256" => "6cbd43a6ab3e6b9554aa26ad0c2b66839b4d53386cdc16b1dd5b27ab30eb8574", "cursor" => 1, "fact_selection" => %{"kind" => "explicit", "profile" => nil, "version" => 1}, "facts" => 2, "generation" => 2, "id" => "44a0292460d5fd14eeb5df868d2b6f2d", "kind" => "shared_generation_job", "partition" => "notes", "reduction" => %{"batch" => 1, "chunks" => 1, "digest_cursor" => 1, "entities" => 2, "entity_pages" => [%{"byte_count" => 308, "key" => "genent.notes.3744f92ca9c05701f89edefdbef173fbfb4a2ddf05aa203217e9f6a961836cce", "sha256" => "3744f92ca9c05701f89edefdbef173fbfb4a2ddf05aa203217e9f6a961836cce"}], "entity_pages_sha256" => "4cc83a281eb06a80e41a0f90f49bb4f7d9b6d73d2a77e3fcf63db9c43ca155c8", "facts" => 2, "heads_sha256" => "f4cead2aefe7a8710f45cec828b449e9ebce5a30c3210ca8f709a4efe76ae7e7", "last_entity_id" => "a88b0c0b4f210a3f1cacf92ca716a8de5fc9ef44d9bb91cce6c1935317b6fa56", "manifests" => [%{"byte_count" => 460, "key" => "genman.notes.5c620021261fcf76b7ce273663f86ac5dfd9084ebb67e844f0b2114ed7fe40f0", "sha256" => "5c620021261fcf76b7ce273663f86ac5dfd9084ebb67e844f0b2114ed7fe40f0"}], "phase" => "selected", "positions" => [], "recipe" => "ipse.evidence.shared_directory.v2", "runs" => [], "text_bytes" => 36, "verified_entities" => 2}, "root_revision" => 2, "root_sha256" => "937f9604a874a918af5a091a91c2cf427d7729ef95501ea6530dabb48e99fe29", "status" => "selected", "summaries" => [], "vector_selection" => %{"dimensions" => 1, "encoding" => "float32le", "model" => "fixture", "profile" => "fixture", "selection_sha256" => "5199bc398e4c7cd105844a304c91893e87eb9c3bd9ad9d74ea66a6de3632b9b4"}, "version" => 3})
+       test/extensions/knowledge/collection_adapter_session_test.exs:452: (test)
+
+
+Finished in 52.4 seconds (0.00s async, 52.4s sync)
+
+Result: 1/3 passed, 40 excluded
+Failed: 2 tests

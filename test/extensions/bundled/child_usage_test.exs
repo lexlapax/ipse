@@ -4,6 +4,7 @@ defmodule Ipse.Extension.ChildUsageTest do
   use ExUnit.Case, async: false
   alias Ipse.{Session, Journal, Usage}
   alias Ipse.Extension.{ChildUsage, Actions, Catalog}
+  import Ipse.Test.ResumeAssertions
 
   defmodule Model do
     def complete(config, messages, _, emit) do
@@ -151,7 +152,7 @@ defmodule Ipse.Extension.ChildUsageTest do
     before = File.read!(path)
     resumed = start(c, nil, id)
     assert Session.info(resumed).extension_result["value"] == value
-    assert File.read!(path) == before
+    assert_idle_resume_journal(path, before, id)
     :ok = Session.close(resumed)
   end
 

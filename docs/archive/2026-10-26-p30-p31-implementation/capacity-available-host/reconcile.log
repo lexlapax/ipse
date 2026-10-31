@@ -1,0 +1,17 @@
+%{
+  chunks: [
+    %{"first" => 2966, "last" => 3215},
+    %{"first" => 3216, "last" => 3465},
+    %{"first" => 3466, "last" => 3715},
+    %{"first" => 3716, "last" => 3965},
+    %{"first" => 3966, "last" => 4000}
+  ],
+  runtime_scope: %{
+    "helper_sha256" => "86d6226c868b7095c6ba7460cc0b42832e98fb70feea0779fb3473ac7bb28a6a",
+    "kind" => "available_host_diagnostic",
+    "native_profile" => "private-test-only-linux-7.2.11",
+    "production_admitted" => false
+  },
+  reconciled: 2965,
+  next_unattempted: 2966
+}

@@ -1,5 +1,6 @@
 defmodule Ipse.Extension.ResultSessionTest do
   use ExUnit.Case, async: false
+  import Ipse.Test.ResumeAssertions
   alias Ipse.{Journal, Session}
 
   alias Ipse.Extension.{Conformance, Config, Invocation, Registry, ResultSource, Artifact}
@@ -318,7 +319,7 @@ defmodule Ipse.Extension.ResultSessionTest do
     assert {:ok, ^view} = Session.read_saved_result(resumed, read_request(delivery))
     assert File.read!(c.marker) == loads
     assert File.read!(c.called) == calls
-    assert File.read!(Path.join(c.dir, id <> ".jsonl")) == before
+    assert_idle_resume_journal(Path.join(c.dir, id <> ".jsonl"), before, id)
     refute_receive {:result_session_model, _, _}, 0
     foreign = start(c)
     assert {:error, _} = Session.materialize_result(foreign, delivery)
@@ -450,13 +451,13 @@ defmodule Ipse.Extension.ResultSessionTest do
     loads = File.read!(c.marker)
     calls = File.read!(c.called)
     path = Path.join(c.dir, id <> ".jsonl")
-    journal_hash = Ipse.JSON.sha256(File.read!(path))
+    journal_before = File.read!(path)
     resumed = start(c, id)
     assert Session.info(resumed).extension_result["delivery"] == delivery
     assert {:ok, ^result} = Session.materialize_result(resumed, delivery)
     assert File.read!(c.marker) == loads
     assert File.read!(c.called) == calls
-    assert Ipse.JSON.sha256(File.read!(path)) == journal_hash
+    assert_idle_resume_journal(path, journal_before, id)
     assert :ok = Session.close_confirmed(resumed)
   end
 

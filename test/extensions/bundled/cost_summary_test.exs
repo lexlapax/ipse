@@ -2,6 +2,7 @@ Code.require_file("../../../priv/demo/usage.exs", __DIR__)
 
 defmodule Ipse.Usage.CostSummaryTest do
   use ExUnit.Case, async: false
+  import Ipse.Test.ResumeAssertions
   alias Ipse.{Session, Usage, Journal}
   alias Ipse.Usage.Costs
   alias Ipse.Extension.Actions
@@ -242,7 +243,7 @@ defmodule Ipse.Usage.CostSummaryTest do
         DynamicSupervisor.start_child(Ipse.Sessions, {Session, opts ++ [id: id]})
 
       assert Session.info(resumed).extension_result["value"] == value
-      assert File.read!(path) == before
+      assert_idle_resume_journal(path, before, id)
       :ok = Session.close(resumed)
     after
       File.rm_rf!(root)

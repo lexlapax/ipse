@@ -1,0 +1,12 @@
+9d50d84173aa3ad5193f1527d09a5127809eeb7b6a0327613d3ef69543cf54ac  ./base-runtime.sha256
+9387aa0df598ef694176f47cf7c8052b32bb383531337808ca4bcd8d8e3ca69b  ./beam/Elixir.Ipse.Extension.Collection.DocumentSourceUse.beam
+e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855  ./logs/ipse-document-source-v4-compile-20261029.log
+31ad5d2f4bf05c5f26d9ef93d2a7664eafa8da5bbbb97041e632a795fbd56a73  ./logs/ipse-document-source-v4-focused-20261029.log
+3d6751cd071a6b0bf9be8427266a90209a579c8661c12ccc06aca1772a40c794  ./logs/ipse-document-source-v4-focused-v2-20261029.log
+743c582d79da8f5a2bc83a53bbad06dde861fa90b75fb5b05bd2f0fa9dd2aab3  ./logs/ipse-document-source-v4-runtime-diff-20261029.log
+d52126d4ccbe4a26e0ccd8f69c470353c783e375aceb797e2900a92cde912042  ./logs/ipse-document-source-v4-v3-regression-20261029.log
+89989d5ea2477ca57ab281bddd073bfe4f6986f99c3c17ddeec346aa01bc6643  ./runtime.sha256
+cf3ba3cb7a40075f0c8ec788810176d0a5664bb86a7d98ce62807cef2b651641  ./sources/collection_document_source_use_test.exs
+ea0dcd6555b7d88f281a58682677263e5ffd44222d60baa9dbfa6355d270625b  ./sources/document_source_use.ex
+e816e0b3cb74cc3d0dd13fd5af9cae4bb3ba5d946a96e9fe9074151532d020ef  ./sources/evidence.ex
+6f1f9edd2d0531c5d49982b4365c2598596109a81e0ffad181424f11bbfe0dac  ./sources/pending-v3-model.exs

@@ -5,7 +5,9 @@ defmodule IpseKnowledge.Knowledge.Records do
   @safe 9_007_199_254_740_991
   @attrs ~w(text category reason event_at_ms)
   @proof ~w(version session_id occurrence_id version_id kind origin coverage path start_byte end_byte quote quote_sha256 content_sha256 receipt_sha256)
-  @strong ~w(interactive_operator native_operator_answer typed_host_outcome)
+  @accepted ~w(version kind lineage candidate_id text category reason source_proof acceptance_event_sha256 acceptance_link_sha256 accepted_at_ms valid_until_ms)
+  @strong ~w(interactive_operator native_operator_answer native_operator_assertion typed_host_outcome)
+  @direct ~w(native_operator_assertion typed_host_outcome)
 
   def capture(attrs, proof, now, override \\ nil) do
     with true <- keys?(attrs, @attrs) and proof?(proof) and uint?(now),
@@ -15,7 +17,8 @@ defmodule IpseKnowledge.Knowledge.Records do
          lineage = lineage(proof),
          true <-
            is_nil(override) or
-             (Notes.valid_override?(override) and override["lineage"] == lineage) do
+             (Notes.valid_override?(override) and override["lineage"] == lineage and
+                override["updated_at_ms"] <= now) do
       cond do
         not is_nil(override) and override["policy"]["kind"] == "session" ->
           {:suppressed, override}
@@ -69,8 +72,12 @@ defmodule IpseKnowledge.Knowledge.Records do
   end
 
   def direct?(attrs, proof) do
-    proof["origin"] in @strong and attrs["text"] == proof["quote"] and
-      (proof["origin"] != "typed_host_outcome" or attrs["category"] == "ordinary")
+    proof["origin"] in @direct and attrs["text"] == proof["quote"] and
+      proof["coverage"] == "available" and proof["start_byte"] == 0 and
+      proof["content_sha256"] == proof["quote_sha256"] and
+      ((proof["origin"] == "typed_host_outcome" and attrs["category"] == "ordinary") or
+         (proof["origin"] == "native_operator_assertion" and
+            proof["kind"] == "input.assertion." <> attrs["category"]))
   end
 
   @doc "Wrap retention metadata with its separate operator evidence for constrained publication."
@@ -135,10 +142,115 @@ defmodule IpseKnowledge.Knowledge.Records do
       else: {:error, :capture_capacity}
   end
 
+  @doc """
+  Project the closed stored pending format without granting authority.
+
+  The record's version is a schema version, not a Collection revision. The
+  returned source and worker-recorded times are claims: the host must separately
+  authenticate the source, current record revision and signed pending deadline.
+  This function does not establish eligibility, acceptance or publication consent.
+  """
+  def pending_projection(key, value) do
+    with :ok <-
+           Ipse.JSON.validate_arguments(
+             IpseKnowledge.Knowledge.Contracts.proposal_schema(),
+             value
+           ),
+         true <- value["version"] === 1,
+         true <- uint?(value["created_at_ms"]) and uint?(value["expires_at_ms"]),
+         true <- is_nil(value["event_at_ms"]) or uint?(value["event_at_ms"]),
+         true <- bounded?(value, 4096),
+         true <- text?(value["text"], 2048) and text?(value["reason"], 256),
+         true <- keys?(value["evidence"], ["sources"]),
+         [proof] <- value["evidence"]["sources"],
+         true <- proof?(proof),
+         lineage = lineage(proof),
+         true <- value["lineage"] === lineage,
+         id = canonical_hash(%{"lineage" => lineage, "text" => value["text"]}),
+         true <- value["id"] === id and key === "pending." <> id do
+      {:ok,
+       %{
+         "key" => key,
+         "record_schema_version" => value["version"],
+         "candidate_id" => id,
+         "lineage" => lineage,
+         "text" => value["text"],
+         "text_sha256" => hash(value["text"]),
+         "assigned_category" => value["assigned_category"],
+         "reason" => value["reason"],
+         "source_provenance" => proof,
+         "worker_recorded_event_at_ms" => value["event_at_ms"],
+         "worker_recorded_created_at_ms" => value["created_at_ms"],
+         "worker_recorded_expires_at_ms" => value["expires_at_ms"]
+       }}
+    else
+      _ -> {:error, :invalid_pending_projection}
+    end
+  rescue
+    _ -> {:error, :invalid_pending_projection}
+  end
+
+  @doc """
+  Parse an attributed accepted-decision value without authenticating acceptance.
+
+  The host must verify the actual native event, immutable link, signed rows,
+  original source and current policy before delivering it. A shaped event hash
+  or recorded acceptance time is not authority or evidence that premises are true.
+  """
+  def accepted_projection(key, value) do
+    with true <- keys?(value, @accepted) and value["version"] === 1,
+         true <- value["kind"] === "accepted_decision",
+         true <- text?(value["text"], 2048) and text?(value["reason"], 256),
+         true <- value["category"] in ~w(ordinary preference current),
+         proof = value["source_proof"],
+         true <- proof?(proof),
+         original = lineage(proof),
+         candidate = canonical_hash(%{"lineage" => original, "text" => value["text"]}),
+         true <- value["candidate_id"] === candidate,
+         {:ok, lineage} <-
+           Ipse.Extension.canonical_digest([
+             "ipse-knowledge",
+             1,
+             "accepted_decision",
+             candidate,
+             original
+           ]),
+         true <- value["lineage"] === lineage and key === "note." <> lineage,
+         true <- Enum.all?(~w(acceptance_event_sha256 acceptance_link_sha256), &sha?(value[&1])),
+         true <- uint?(value["accepted_at_ms"]),
+         deadline = value["valid_until_ms"],
+         true <-
+           if(is_nil(deadline),
+             do: value["category"] in ~w(preference current),
+             else: uint?(deadline) and deadline > value["accepted_at_ms"]
+           ),
+         true <- bounded?(value, 6144) do
+      {:ok,
+       %{
+         "key" => key,
+         "record_schema_version" => 1,
+         "claim_kind" => "accepted_decision",
+         "candidate_id" => candidate,
+         "lineage" => lineage,
+         "text" => value["text"],
+         "category" => value["category"],
+         "source_provenance" => proof,
+         "acceptance_event_sha256" => value["acceptance_event_sha256"],
+         "acceptance_link_sha256" => value["acceptance_link_sha256"],
+         "recorded_accepted_at_ms" => value["accepted_at_ms"],
+         "recorded_valid_until_ms" => deadline
+       }}
+    else
+      _ -> {:error, :invalid_accepted_projection}
+    end
+  rescue
+    _ -> {:error, :invalid_accepted_projection}
+  end
+
   def proof?(proof) do
     keys?(proof, @proof) and proof["version"] === 1 and
       Enum.all?(~w(session_id occurrence_id version_id), &id?(proof[&1])) and
-      proof["kind"] in ~w(input.original input.operator_answer answer.original tool.outcome) and
+      proof["kind"] in ~w(input.original input.operator_answer answer.original tool.outcome input.assertion.ordinary input.assertion.preference input.assertion.current) and
       proof["origin"] in (@strong ++ ~w(unattended_input assistant_proposal)) and
       proof["coverage"] in ~w(available partial) and is_nil(proof["path"]) and
       uint?(proof["start_byte"]) and uint?(proof["end_byte"]) and
@@ -159,6 +271,10 @@ defmodule IpseKnowledge.Knowledge.Records do
 
   defp origin_kind?(%{"kind" => "answer.original", "origin" => "assistant_proposal"}), do: true
   defp origin_kind?(%{"kind" => "tool.outcome", "origin" => "typed_host_outcome"}), do: true
+
+  defp origin_kind?(%{"origin" => "native_operator_assertion", "kind" => kind}),
+    do: kind in ~w(input.assertion.ordinary input.assertion.preference input.assertion.current)
+
   defp origin_kind?(_), do: false
 
   defp canonical_hash(value) do

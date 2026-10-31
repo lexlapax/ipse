@@ -1,0 +1,8 @@
+Running ExUnit with seed: 46827, max_cases: 8
+Excluding tags: [:test, :native_sandbox, :macos_sandbox, :macos_filesystem, :memory_scope]
+Including tags: [:shell_pregrant_refusal]
+
+....
+Finished in 13.7 seconds (0.00s async, 13.7s sync)
+
+Result: 4 passed, 70 excluded

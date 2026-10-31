@@ -1,0 +1,263 @@
+Running ExUnit with seed: 845943, max_cases: 4
+Excluding tags: [:test]
+Including tags: [v4_segmented_geometry: true, v4_corruption: true]
+
+.V4_APPEND_FAILURE {"code":"shared_producer_budget","requests":{"snapshot":20,"stage.inspect":2,"stage.list":2,"value.prepare_inline":2,"value.read":417,"value.stat":71},"token":{"catalog_sha256":"acd0b18900603ca74ba3868001886b44afe640adac16d1cad8784fa21b2f4e38","id":"12dc119fb255b01c7e4663598ee92083","job_revision":1099,"plan_sha256":"4519516544f191dd435ab371f9309b0a32bf7ae6ea3dd3529c9809ea1176e0ff","root_revision":0,"stages":[],"unit":36,"version":1,"write":null},"effects":2,"reads":512,"stages":2}
+
+
+  1) test eight segmented documents preserve all 256 chunks within the per-call budget (Ipse.ProducerProgressTest)
+     test/extensions/knowledge/producer_progress_test.exs:343
+     ** (MatchError) no match of right hand side value:
+
+         {{:done, {:error, :shared_producer_budget, %{}}},
+          %{
+            calls: 128,
+            requests: [
+              %{
+                "op" => "collection.store",
+                "request" => %{"op" => "snapshot"},
+                "scope" => "project"
+              },
+              %{
+                "op" => "collection.store",
+                "request" => %{
+                  "generation" => 1299,
+                  "key" => "catalog.notes",
+                  "op" => "value.stat"
+                },
+                "scope" => "project"
+              },
+              %{
+                "op" => "collection.store",
+                "request" => %{
+                  "generation" => 1299,
+                  "key" => "catalog.notes",
+                  "offset" => 0,
+                  "op" => "value.read"
+                },
+                "scope" => "project"
+              },
+              %{
+                "op" => "collection.store",
+                "request" => %{"op" => "snapshot"},
+                "scope" => "project"
+              },
+              %{
+                "op" => "collection.store",
+                "request" => %{
+                  "generation" => 1299,
+                  "key" => "generation.notes",
+                  "op" => "value.stat"
+                },
+                "scope" => "project"
+              },
+              %{
+                "op" => "collection.store",
+                "request" => %{"op" => "snapshot"},
+                "scope" => "project"
+              },
+              %{
+                "op" => "collection.store",
+                "request" => %{
+                  "generation" => 1299,
+                  "key" => "genjob.notes",
+                  "op" => "value.stat"
+                },
+                "scope" => "project"
+              },
+              %{
+                "op" => "collection.store",
+                "request" => %{
+                  "generation" => 1299,
+                  "key" => "genjob.notes",
+                  "offset" => 0,
+                  "op" => "value.read"
+                },
+                "scope" => "project"
+              },
+              %{
+                "op" => "collection.store",
+                "request" => %{"op" => "snapshot"},
+                "scope" => "project"
+              },
+              %{
+                "op" => "collection.store",
+                "request" => %{
+                  "generation" => 1299,
+                  "key" => "catalog.notes.0",
+                  "op" => "value.stat"
+                },
+                "scope" => "project"
+              },
+              %{
+                "op" => "collection.store",
+                "request" => %{
+                  "generation" => 1299,
+                  "key" => "catalog.notes.0",
+                  "offset" => 0,
+                  "op" => "value.read"
+                },
+                "scope" => "project"
+              },
+              %{
+                "op" => "collection.store",
+                "request" => %{"op" => "snapshot"},
+                "scope" => "project"
+              },
+              %{
+                "op" => "collection.store",
+                "request" => %{
+                  "generation" => 1299,
+                  "key" => "catalog.notes",
+                  "op" => "value.stat"
+                },
+                "scope" => "project"
+              },
+              %{
+                "op" => "collection.store",
+                "request" => %{
+                  "generation" => 1299,
+                  "key" => "catalog.notes",
+                  "offset" => 0,
+                  "op" => "value.read"
+                },
+                "scope" => "project"
+              },
+              %{
+                "op" => "collection.store",
+                "request" => %{
+                  "generation" => 1299,
+                  "key" => "source.notes.003213b5591efff383296cf8260866cd144b67fb5353ababcf10094a06e735a5",
+                  "op" => "value.stat"
+                },
+                "scope" => "project"
+              },
+              %{
+                "op" => "collection.store",
+                "request" => %{
+                  "generation" => 1299,
+                  "key" => "source.notes.003213b5591efff383296cf8260866cd144b67fb5353ababcf10094a06e735a5",
+                  "offset" => 0,
+                  "op" => "value.read"
+                },
+                "scope" => "project"
+              },
+              %{
+                "op" => "collection.store",
+                "request" => %{
+                  "generation" => 1299,
+                  "key" => "catalog.notes.0",
+                  "offset" => 0,
+                  "op" => "value.read"
+                },
+                "scope" => "project"
+              },
+              %{
+                "op" => "collection.store",
+                "request" => %{
+                  "generation" => 1299,
+                  "key" => "data.notes.07e446e62bc1e4801999eef37f24e87565af83f32d1bbaf28a2d2b3deace63eb",
+                  "offset" => 0,
+                  "op" => "value.read"
+                },
+                "scope" => "project"
+              },
+              %{
+                "op" => "collection.store",
+                "request" => %{
+                  "generation" => 1299,
+                  "key" => "data.notes.07e446e62bc1e4801999eef37f24e87565af83f32d1bbaf28a2d2b3deace63eb",
+                  "offset" => 6144,
+                  "op" => "value.read"
+                },
+                "scope" => "project"
+              },
+              %{
+                "op" => "collection.store",
+                "request" => %{
+                  "generation" => 1299,
+                  "key" => "data.notes.07e446e62bc1e4801999eef37f24e87565af83f32d1bbaf28a2d2b3deace63eb",
+                  "offset" => 12288,
+                  "op" => "value.read"
+                },
+                "scope" => "project"
+              },
+              %{
+                "op" => "collection.store",
+                "request" => %{
+                  "generation" => 1299,
+                  "key" => "data.notes.07e446e62bc1e4801999eef37f24e87565af83f32d1bbaf28a2d2b3deace63eb",
+                  "offset" => 18432,
+                  "op" => "value.read"
+                },
+                "scope" => "project"
+              },
+              %{
+                "op" => "collection.store",
+                "request" => %{
+                  "generation" => 1299,
+                  "key" => "data.notes.07e446e62bc1e4801999eef37f24e87565af83f32d1bbaf28a2d2b3deace63eb",
+                  "offset" => 24576,
+                  "op" => "value.read"
+                },
+                "scope" => "project"
+              },
+              %{
+                "op" => "collection.store",
+                "request" => %{
+                  "generation" => 1299,
+                  "key" => "data.notes.07e446e62bc1e4801999eef37f24e87565af83f32d1bbaf28a2d2b3deace63eb",
+                  "offset" => 30720,
+                  "op" => "value.read"
+                },
+                "scope" => "project"
+              },
+              %{
+                "op" => "collection.store",
+                "request" => %{
+                  "generation" => 1299,
+                  "key" => "data.notes.07e446e62bc1e4801999eef37f24e87565af83f32d1bbaf28a2d2b3deace63eb",
+                  "offset" => 36864,
+                  "op" => "value.read"
+                },
+                "scope" => "project"
+              },
+              %{
+                "op" => "collection.store",
+                "request" => %{
+                  "generation" => 1299,
+                  "key" => "data.notes.07e446e62bc1e4801999eef37f24e87565af83f32d1bbaf28a2d2b3deace63eb",
+                  "offset" => 43008,
+                  "op" => "value.read"
+                },
+                "scope" => "project"
+              },
+              %{
+                "op" => "collection.store",
+                "request" => %{
+                  "generation" => 1299,
+                  "key" => "data.notes.4371a2ad154a5c37eb3cbf37e40293d1c28d2339172a7a1ddced224464dbcbf7",
+                  "offset" => 0,
+                  "op" => "value.read"
+                },
+                "scope" => "project"
+              },
+              %{
+                "op" => "collection.store",
+                "request" => %{"generation" => 1299, ...},
+                ...
+              },
+              ...
+            ],
+            ...
+          }}
+
+     code: {{:done, {:ok, completed}}, _} = append(resolved, args, facts(full.bundles), nil, d)
+     stacktrace:
+       test/extensions/knowledge/producer_progress_test.exs:412: (test)
+
+
+Finished in 82.5 seconds (4.0s on load, 0.00s async, 78.4s sync)
+
+Result: 1/2 passed, 6 excluded
+Failed: 1 test

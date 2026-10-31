@@ -130,11 +130,19 @@ use its current `expected_revision` and a strictly greater `source_generation`.
 Revision counts store changes; generation is your version of the source. Stale
 or concurrent updates conflict instead of overwriting newer data.
 
-Approve an update while the existing note is still live. Remember and active
-import proposals include `write_before_ms` in the displayed state request, copied
-from that note's expiry. If the note expires while approval is pending, approving
-the proposal returns `source_expired` and leaves the old record unchanged. Ipse
-does not retry the renewal. Inspect or collect the expired note instead.
+Updates to an existing live target and active imports carry that target's expiry
+as `write_before_ms`. Approve while the target is still live: if it expires while
+waiting for approval or staging, the write returns `write_deadline_elapsed` and
+leaves the target unchanged. Use its current revision and inspect the result
+before deciding what to do next. Removing the condition or changing stores is
+not an automatic recovery step.
+
+The final decision occurs under the storage lock immediately before replacement.
+An already admitted replacement can finish later; recall still excludes expired
+notes at use time. A timeout or unknown result may have changed storage: inspect
+revision and operation ID rather than replaying the write. Ordinary suppression
+and reads keep their own approval rules; the native `knowledge forget` command
+has separate availability and authority requirements.
 
 ## Forget or collect a note
 
@@ -223,9 +231,11 @@ suppression upgrades without recreating forgotten plaintext.
 Importing a newer active backup over an unmigrated target also requires migration
 first. An incoming suppression record still takes priority.
 
-For a code/configuration upgrade, finish/cancel active work, retain the old runner
-for inspection/export, review the new schema, and start a fresh session with the
-same approved logical binding. Old unbound namespaces are not automatically
+For a code/configuration upgrade, finish/cancel active work and stop the old
+runtime and its dependent writers before opening the same store with the new
+runtime. Retain the old runner for isolated inspection/export, review the new
+schema, and start a fresh session with the same approved logical binding.
+Concurrent old and new storage writers are unsupported. Old unbound namespaces are not automatically
 reassigned. Exact session identity pins still apply to resume.
 
 After an interrupted write, inspect revision and operation ID before retrying.

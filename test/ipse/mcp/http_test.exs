@@ -24,6 +24,16 @@ defmodule Ipse.MCP.HTTPTest do
     end
   end
 
+  defmodule DiscoveryOwner do
+    use GenServer
+    def init({observer, job}), do: {:ok, {observer, job}}
+
+    def handle_call({:mcp_register, job, transport}, _, {observer, job} = state) do
+      send(observer, {:discovery_transport, transport})
+      {:reply, :ok, state}
+    end
+  end
+
   setup do
     root = Path.join(System.tmp_dir!(), "ipse-http-mcp-#{System.unique_integer([:positive])}")
     File.mkdir_p!(root)
@@ -111,6 +121,138 @@ defmodule Ipse.MCP.HTTPTest do
                  else: request.headers["mcp-session-id"] == "fixture-session-token"
              end)
     end
+  end
+
+  @tag :discovery_unknown
+  test "bulk discovery retains local transport-loss uncertainty and never starts the next server",
+       ctx do
+    {uncertain, first} = fixture(ctx, :hold_initialize)
+    {later, second} = fixture(ctx, :json)
+    job = make_ref()
+    {:ok, owner} = GenServer.start_link(DiscoveryOwner, {self(), job})
+    on_exit(fn -> if Process.alive?(owner), do: GenServer.stop(owner) end)
+
+    task =
+      Task.async(fn ->
+        MCP.discover([uncertain, later], ctx.root, %{owner: owner, job_ref: job})
+      end)
+
+    assert_receive {:discovery_transport, transport}, 3000
+    assert_receive {:http_initialization_held, peer}, 3000
+    Process.exit(transport, :kill)
+    assert {:unknown, message} = Task.await(task, 5000)
+    assert_receive {:http_initialization_closed, ^peer}, 3000
+    assert message =~ "unknown"
+    refute message =~ "synthetic-bearer-token"
+    refute message =~ "fixture-session-token"
+    requests = Agent.get(first, & &1.requests)
+    assert Enum.count(requests, &(&1.rpc["method"] == "initialize")) == 1
+    assert Enum.count(requests, &(&1.method == "DELETE")) == 0
+    assert Agent.get(second, & &1.requests) == []
+
+    assert {:ok, [_]} = MCP.discover([later], ctx.root)
+    assert Enum.count(Agent.get(second, & &1.requests), &(&1.rpc["method"] == "initialize")) == 1
+  end
+
+  @tag :discovery_unknown_session
+  test "draft discovery preserves unknown setup and resumes without starting discovery again",
+       ctx do
+    {server, agent} = fixture(ctx, :hold_initialize)
+    {pid, opts} = session(ctx, server, :ask)
+    id = Ipse.Session.info(pid).id
+    assert :ok = Ipse.Session.start_draft(pid, "Synthetic draft with uncertain discovery")
+    assert_receive {:http_initialization_held, peer}, 5000
+    [transport] = Map.keys(:sys.get_state(pid).mcp_resources)
+    Process.exit(transport, :kill)
+    assert_receive {:ipse, ^pid, {:error, message}}, 10_000
+    assert message =~ "cleanup could not be confirmed"
+    refute message =~ "Unexpected worker result"
+    assert_receive {:ipse, ^pid, {:done, :error}}, 3000
+    assert_receive {:http_initialization_closed, ^peer}, 3000
+    if Process.alive?(pid), do: Ipse.Session.close_confirmed(pid)
+    assert {:ok, events} = Ipse.Journal.load(opts[:state_dir], id)
+
+    [pending] = Enum.filter(events, &(&1["type"] == "draft_mcp_setup_intent"))
+    refute Enum.any?(events, &(&1["type"] == "draft_mcp_setup_result"))
+    refute Enum.any?(events, &(&1["type"] == "mcp_catalog"))
+    assert {:ok, saved} = Ipse.Session.Saved.restore(events, id)
+    assert saved.draft_mcp_interrupted
+    assert saved.draft_mcp_pending == pending
+    before = Agent.get(agent, & &1.requests)
+
+    assert {:ok, resumed} =
+             DynamicSupervisor.start_child(
+               Ipse.Sessions,
+               {Ipse.Session, Keyword.put(opts, :id, id)}
+             )
+
+    assert Ipse.Session.info(resumed).phase == :idle
+    assert Agent.get(agent, & &1.requests) == before
+    assert {:ok, after_resume} = Ipse.Journal.load(opts[:state_dir], id)
+    assert Enum.count(after_resume, &(&1["type"] == "draft_mcp_setup_intent")) == 1
+    assert :ok = Ipse.Session.close_confirmed(resumed)
+  end
+
+  @tag :extension_discovery_unknown
+  test "extension discovery retains transport uncertainty without a tool call", ctx do
+    {server, first} = fixture(ctx, :hold_initialize)
+    job = make_ref()
+    {:ok, owner} = GenServer.start_link(DiscoveryOwner, {self(), job})
+    on_exit(fn -> if Process.alive?(owner), do: GenServer.stop(owner) end)
+    resource = %{owner: owner, job_ref: job}
+
+    request = %{
+      "op" => "mcp.call",
+      "version" => 1,
+      "binding" => "documents",
+      "arguments" => %{"text" => "synthetic"},
+      "timeout_ms" => 3000
+    }
+
+    tool = Config.tool_id(server.id, "write")
+    assert :ok = Ipse.Extension.MCPCall.validate(request)
+
+    assert {:error, :invalid_extension_mcp_call} =
+             Ipse.Extension.MCPCall.discover(
+               server,
+               tool,
+               Map.put(request, "version", 2),
+               ctx.root,
+               resource
+             )
+
+    assert Agent.get(first, & &1.requests) == []
+
+    task =
+      Task.async(fn ->
+        Ipse.Extension.MCPCall.discover(server, tool, request, ctx.root, resource)
+      end)
+
+    assert_receive {:discovery_transport, transport}, 3000
+    assert_receive {:http_initialization_held, peer}, 3000
+    Process.exit(transport, :kill)
+    assert {:unknown, %{}} = Task.await(task, 5000)
+    assert_receive {:http_initialization_closed, ^peer}, 3000
+    requests = Agent.get(first, & &1.requests)
+    assert Enum.count(requests, &(&1.rpc["method"] == "initialize")) == 1
+    assert Enum.all?(requests, &(&1.rpc["method"] != "tools/call"))
+
+    {healthy, second} = fixture(ctx, :json)
+
+    assert {:ok, descriptor, public} =
+             Ipse.Extension.MCPCall.discover(
+               healthy,
+               Config.tool_id(healthy.id, "write"),
+               request,
+               ctx.root,
+               resource
+             )
+
+    assert descriptor.server == healthy
+    assert public["alias"] == "documents"
+    refute inspect(public) =~ "synthetic-bearer-token"
+    refute inspect(public) =~ "fixture-session-token"
+    assert Agent.get(second, & &1.calls) == 0
   end
 
   test "authentication, redirects, oversized bodies/headers and malformed streams fail closed",
@@ -205,7 +347,7 @@ defmodule Ipse.MCP.HTTPTest do
           do: get_in(e, ["message", "ipse_tool_outcome", "status"])
 
     assert outcomes == ["unknown", "not_started"]
-    :ok = Ipse.Session.close(pid)
+    assert :ok = Ipse.Session.close_confirmed(pid)
     {:ok, closed_events} = Ipse.Journal.load(opts[:state_dir], id)
     assert Enum.take(closed_events, length(events)) == events
 
@@ -214,15 +356,22 @@ defmodule Ipse.MCP.HTTPTest do
                "type" => "lifecycle_epoch_closed",
                "session_id" => ^id,
                "closure" => "close",
-               "cleanup_confirmed" => true
-             }
+               "cleanup_confirmed" => false
+             },
+             %{"type" => "session_release_intent", "session_id" => ^id}
            ] = Enum.drop(closed_events, length(events))
 
     {:ok, resumed} =
       DynamicSupervisor.start_child(Ipse.Sessions, {Ipse.Session, Keyword.put(opts, :id, id)})
 
-    assert {:ok, ^closed_events} = Ipse.Journal.load(opts[:state_dir], id)
-    :ok = Ipse.Session.close(resumed)
+    assert {:ok, resumed_events} = Ipse.Journal.load(opts[:state_dir], id)
+    assert Enum.take(resumed_events, length(closed_events)) == closed_events
+
+    assert [%{"type" => "session_release_owner_started", "session_id" => ^id}] =
+             Enum.drop(resumed_events, length(closed_events))
+
+    assert {:ok, _} = Ipse.Session.Saved.restore(resumed_events, id)
+    assert :ok = Ipse.Session.close_confirmed(resumed)
     assert Agent.get(agent, & &1.calls) == 1
   end
 
@@ -357,7 +506,7 @@ defmodule Ipse.MCP.HTTPTest do
       Jason.encode!(%{
         "servers" => [
           %{
-            "id" => "remote",
+            "id" => if(mode == :hold_initialize, do: "holding", else: "remote"),
             "transport" => "http",
             "url" => "http://127.0.0.1:#{port}/mcp",
             "allow_insecure_loopback" => true,
@@ -498,7 +647,13 @@ defmodule Ipse.MCP.HTTPTest do
           send(test, {:http_socket_closed, self()})
         end
       else
-        response(socket, method, rpc, result, mode, transport)
+        if rpc["method"] == "initialize" and mode == :hold_initialize do
+          send(test, {:http_initialization_held, self()})
+          {:error, :closed} = transport.recv(socket, 0, 5000)
+          send(test, {:http_initialization_closed, self()})
+        else
+          response(socket, method, rpc, result, mode, transport)
+        end
       end
     after
       transport.close(socket)

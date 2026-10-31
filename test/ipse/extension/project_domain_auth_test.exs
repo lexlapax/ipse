@@ -633,6 +633,9 @@ defmodule Ipse.Extension.ProjectDomainAuthTest do
     File.write!(source, """
     #[path=#{inspect(root <> "/native/ipse-transaction.rs")}] mod ipse_transaction;
     #[path=#{inspect(root <> "/native/ipse-storage.rs")}] mod ipse_storage;
+    #[path=#{inspect(root <> "/native/ipse-lease-transfer.rs")}] mod ipse_lease_transfer;
+    #[path=#{inspect(root <> "/native/ipse-lease-sink.rs")}] mod ipse_lease_sink;
+    #[path=#{inspect(root <> "/native/ipse-owner-control.rs")}] mod ipse_owner_control;
     use std::{io::{self,Write},process::Command,sync::atomic::{AtomicUsize,Ordering}};
     use std::os::unix::process::CommandExt;
     unsafe extern "C"{fn kill(pid:i32,signal:i32)->i32;}

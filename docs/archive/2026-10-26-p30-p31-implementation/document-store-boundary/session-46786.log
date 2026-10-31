@@ -1,0 +1,27 @@
+Running ExUnit with seed: 46786, max_cases: 1
+
+
+
+  1) test ordinary denial never initializes document storage and no identity is silently admitted (Ipse.Extension.CollectionStoreSessionTest)
+     test/ipse/extension/collection_store_session_test.exs:162
+     document store error: {"Extension outcome unknown after refusal, failure or interruption. Inspect its receipt before retrying; no callback was replayed.", [{"session", nil, nil, nil}, {"workspace_context_snapshot", nil, nil, nil}, {"skill_catalog_snapshot", nil, nil, nil}, {"extension_invocation_intent", nil, nil, nil}, {"extension_action_intent", "snapshot", nil, nil}, {"extension_action_result", "snapshot", ...}, ...]}
+     code: for opts <- [[approval: :deny], [admit: false]] do
+     stacktrace:
+       test/ipse/extension/collection_store_session_test.exs:166: anonymous fn/3 in Ipse.Extension.CollectionStoreSessionTest."test ordinary denial never initializes document storage and no identity is silently admitted"/1
+       (elixir 1.20.4) lib/enum.ex:2622: Enum."-reduce/3-lists^foldl/2-0-"/3
+       test/ipse/extension/collection_store_session_test.exs:163: (test)
+
+
+
+  2) test actual Session transports every bounded part, asks full mutation arguments and reconstructs exact large value (Ipse.Extension.CollectionStoreSessionTest)
+     test/ipse/extension/collection_store_session_test.exs:141
+     document store error: {"Extension outcome unknown after refusal, failure or interruption. Inspect its receipt before retrying; no callback was replayed.", [{"session", nil, nil, nil}, {"workspace_context_snapshot", nil, nil, nil}, {"skill_catalog_snapshot", nil, nil, nil}, {"extension_invocation_intent", nil, nil, nil}, {"extension_action_intent", "snapshot", nil, nil}, {"extension_action_result", "snapshot", ...}, ...]}
+     code: {result, approvals} = wait(run)
+     stacktrace:
+       test/ipse/extension/collection_store_session_test.exs:144: (test)
+
+
+Finished in 2.0 seconds (0.00s async, 2.0s sync)
+
+Result: 0/2 passed
+Failed: 2 tests

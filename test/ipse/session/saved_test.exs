@@ -43,6 +43,20 @@ defmodule Ipse.HandoffTest do
     }
   end
 
+  test "handoff accepts one valid initial release owner but rejects malformed or repeated markers" do
+    session_id = Ipse.Usage.id()
+    {:ok, marker} = Ipse.Session.ReleaseReceipt.owner_started(session_id)
+    {:ok, handoff} = Saved.prepare_handoff(Jason.encode!(artifact()))
+    header = %{"type" => "session", "metadata" => %{}}
+    assert :ok = Saved.validate_handoff_events([header, marker, handoff])
+
+    assert {:error, :invalid_handoff_record} =
+             Saved.validate_handoff_events([header, marker, marker, handoff])
+
+    assert {:error, :invalid_handoff_record} =
+             Saved.validate_handoff_events([header, Map.put(marker, "owner_id", "bad"), handoff])
+  end
+
   test "closed schema rejects unknown fields, duplicate keys, malformed JSON and wrong types" do
     bytes = Jason.encode!(artifact())
     assert {:ok, _} = Saved.prepare_handoff(bytes)
@@ -359,7 +373,7 @@ defmodule Ipse.HandoffTest do
     end
   end
 
-  test "idle resume validates saved import without rereading changed/deleted artifact or appending bytes",
+  test "idle resume validates saved import without rereading changed/deleted artifact or reimporting it",
        c do
     path = Path.join(c.root, "handoff.json")
     File.write!(path, Jason.encode!(artifact(), pretty: true) <> "\n")
@@ -371,20 +385,38 @@ defmodule Ipse.HandoffTest do
     assert :ok = Session.close(pid)
     journal = Path.join(c.dir, id <> ".jsonl")
     before = File.read!(journal)
+    {:ok, original_events} = Journal.load(c.dir, id)
 
-    for mutate <- [fn -> File.write!(path, "corrupt replacement") end, fn -> File.rm!(path) end] do
-      mutate.()
-      {:ok, resumed} = start(c, id: id)
-      assert :sys.get_state(resumed).messages == live
-      assert Session.info(resumed).phase == :idle
-      assert File.read!(journal) == before
-      {:ok, events} = Journal.load(c.dir, id)
-      assert {:ok, ^live} = Session.restore_context(events)
-      assert Enum.count(events, &(&1["type"] == "handoff_imported")) == 1
-      refute_receive {:handoff_model, _, _}, 50
-      assert :ok = Session.close(resumed)
-      assert File.read!(journal) == before
-    end
+    Enum.reduce(
+      [fn -> File.write!(path, "corrupt replacement") end, fn -> File.rm!(path) end],
+      {before, length(original_events)},
+      fn mutate, {previous, count} ->
+        mutate.()
+        {:ok, resumed} = start(c, id: id)
+        assert :sys.get_state(resumed).messages == live
+        assert Session.info(resumed).phase == :idle
+        assert String.starts_with?(File.read!(journal), previous)
+        {:ok, events} = Journal.load(c.dir, id)
+
+        assert Enum.map(Enum.drop(events, count), & &1["type"]) == [
+                 "session_release_owner_started"
+               ]
+
+        assert {:ok, ^live} = Session.restore_context(events)
+        assert Enum.count(events, &(&1["type"] == "handoff_imported")) == 1
+        refute_receive {:handoff_model, _, _}, 50
+        assert :ok = Session.close(resumed)
+        {:ok, closed} = Journal.load(c.dir, id)
+
+        assert Enum.map(Enum.drop(closed, count), & &1["type"]) == [
+                 "session_release_owner_started",
+                 "session_release_intent"
+               ]
+
+        assert {:ok, _} = Ipse.Session.ReleaseReceipt.intents(closed, id)
+        {File.read!(journal), length(closed)}
+      end
+    )
   end
 
   defp start(c, extra) do

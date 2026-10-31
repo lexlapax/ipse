@@ -1,5 +1,6 @@
 defmodule Ipse.HTTPProfileTest do
   use ExUnit.Case, async: false
+  import Ipse.Test.ResumeAssertions
   alias Ipse.HTTP
 
   test "private provider pool loss stops Session and requires explicit inert resume" do
@@ -57,6 +58,8 @@ defmodule Ipse.HTTPProfileTest do
         dir = Path.join(root, "sessions")
         {:ok, events} = Ipse.Journal.load(dir, id)
         assert {:ok, _} = Ipse.Session.restore_context(events)
+        path = Path.join(dir, id <> ".jsonl")
+        before_resume = File.read!(path)
 
         {:ok, resumed} =
           DynamicSupervisor.start_child(
@@ -65,7 +68,7 @@ defmodule Ipse.HTTPProfileTest do
           )
 
         assert Ipse.Session.info(resumed).phase == :idle
-        assert {:ok, ^events} = Ipse.Journal.load(dir, id)
+        assert_idle_resume_journal(path, before_resume, id)
         assert {:error, :timeout} = :gen_tcp.accept(listener, 100)
         assert :ok = Ipse.Session.close(resumed)
       after

@@ -1,0 +1,4 @@
+** (Code.LoadError) could not load /home/lexlapax/projects/lexlapax/ipse/_build/source-lock-reserve-20261028/project/extensions/knowledge/src/knowledge/contracts.ex. Reason: enoent
+    (elixir 1.20.4) lib/code.ex:2390: Code.find_file!/2
+    (elixir 1.20.4) lib/code.ex:1630: Code.require_file/2
+    _build/source-lock-reserve-20261028/project/test/support/managed_policy.exs:2: (file)

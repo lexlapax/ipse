@@ -1,0 +1,20 @@
+warning: could not open directory '.serenity-module-receipt.6Fow8PKP/ledger/': Permission denied
+warning: could not open directory '.serenity-retry-receipt.fD4JLnzb/ledger/': Permission denied
+warning: could not open directory '.serenity-third-receipt.h92H2Cpw/ledger/': Permission denied
+warning: could not open directory '.serenity-fourth-receipt.qptTv5Im/ledger/': Permission denied
+warning: could not open directory '.serenity-fifth-receipt.NisZ7idN/ledger/': Permission denied
+warning: could not open directory '.serenity-sixth-receipt.xQpB587i/ledger/': Permission denied
+warning: could not open directory '.serenity-seventh-receipt.62mbAQNi/ledger/': Permission denied
+docs/archive/2026-10-26-p30-p31-implementation/native-shell-unknown-cleanup/shell-source/native/README.md:1132: missing target ../docs/developer/extensions.md
+docs/archive/2026-10-26-p30-p31-implementation/native-shell-unknown-cleanup/shell-source/native/README.md:995: missing target ../docs/developer/sandbox.md
+docs/archive/2026-10-26-p30-p31-implementation/native-shell-unknown-cleanup/shell-source/native/README.md:993: missing target ../docs/archive/2026-10-18-before-manual-rewrite/docs/developer/testing.md#macos-stdio-cleanup-load-2026-10-15
+docs/archive/2026-10-26-p30-p31-implementation/native-shell-unknown-cleanup/shell-source/native/README.md:992: missing target ../docs/archive/2026-10-18-before-manual-rewrite/docs/developer/testing.md#p7-expanded-local-mcp-2026-10-15
+docs/archive/2026-10-26-p30-p31-implementation/native-shell-unknown-cleanup/shell-source/native/README.md:903: missing target ../docs/archive/2026-10-18-before-manual-rewrite/docs/developer/sandbox.md#observed-bash-and-dependency-visibility-limits
+docs/archive/2026-10-26-p30-p31-implementation/native-shell-unknown-cleanup/shell-source/native/README.md:862: missing target ../docs/archive/2026-10-18-before-manual-rewrite/docs/developer/testing.md#macos-native-backend-2026-10-15
+docs/archive/2026-10-26-p30-p31-implementation/native-shell-unknown-cleanup/shell-source/native/README.md:370: missing target ../docs/developer/knowledge-evaluation.md
+docs/archive/2026-10-26-p30-p31-implementation/native-shell-unknown-cleanup/shell-source/native/README.md:294: missing target ../docs/developer/measurement.md#require-natural-population-closure-under-original-deadlines
+docs/archive/2026-10-26-p30-p31-implementation/native-shell-unknown-cleanup/shell-source/native/README.md:219: missing target ../docs/developer/measurement.md#prove-ownership-and-loss-behavior-independently
+docs/archive/2026-10-26-p30-p31-implementation/native-shell-unknown-cleanup/shell-source/native/README.md:116: missing target ../docs/developer/measurement.md#separate-service-work-from-cleanup-and-inventory
+docs/archive/2026-10-26-p30-p31-implementation/planning-transition-design-followup.md:292: missing target planning-native-crash-46983.log
+docs/archive/2026-10-26-p30-p31-implementation/planning-transition-design-followup.md:289: missing target planning-native-crash-46982.log
+Checked 730 Markdown files, 6145 local links and manual/archive rules; 12 errors

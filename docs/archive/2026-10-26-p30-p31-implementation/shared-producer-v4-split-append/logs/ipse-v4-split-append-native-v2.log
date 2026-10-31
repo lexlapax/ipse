@@ -1,0 +1,9 @@
+Running ExUnit with seed: 486816, max_cases: 4
+Excluding tags: [:test]
+Including tags: [split_append_native: true]
+
+Retained synthetic split-append native store: /tmp/ipse-split-append-0c23217707d39c166bee15b04154dead
+.
+Finished in 11.6 seconds (3.7s on load, 0.00s async, 7.9s sync)
+
+Result: 1 passed

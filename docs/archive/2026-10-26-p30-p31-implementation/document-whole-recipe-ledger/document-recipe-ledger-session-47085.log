@@ -1,0 +1,10 @@
+Running ExUnit with seed: 47085, max_cases: 1
+Excluding tags: [:test]
+Including tags: [:recipe_journal_cost]
+
+NAMESPACE_TEST_ARTIFACT fca07d55dcd17afe2a6dbe8ae96719699511e7f81d5edf09bf6b2807c22f219c
+RECIPE_JOURNAL_COST {"first":{"bytes":399598,"events":121,"invocations":6,"sha256":"36b1c83fa027cadb9848c87dce6310d9d5021c69965861f655dc922d18d217da","types":{"extension_action_intent":{"bytes":86925,"events":49},"extension_action_result":{"bytes":113627,"events":49},"extension_invocation_intent":{"bytes":57799,"events":6},"extension_invocation_result":{"bytes":125521,"events":6},"session":{"bytes":12333,"events":1},"session_release_intent":{"bytes":491,"events":1},"session_release_owner_started":{"bytes":147,"events":1},"skill_catalog_snapshot":{"bytes":2251,"events":1},"turn_finished":{"bytes":234,"events":6},"workspace_context_snapshot":{"bytes":270,"events":1}}},"input":"two supplied synthetic plaintext sources, 5130 bytes each; no acquisition/inference/shared producer","native_status":{"allocated_bytes":61440,"floor":12,"generation":12,"operations":12,"records":8},"second":{"bytes":452644,"events":145,"invocations":6,"sha256":"194b356ec9c37ae0eee89833bb455663aa1d794b999fcaa76dff4fe00117a6c1","types":{"extension_action_intent":{"bytes":105930,"events":61},"extension_action_result":{"bytes":145756,"events":61},"extension_invocation_intent":{"bytes":58115,"events":6},"extension_invocation_result":{"bytes":127117,"events":6},"session":{"bytes":12333,"events":1},"session_release_intent":{"bytes":491,"events":1},"session_release_owner_started":{"bytes":147,"events":1},"skill_catalog_snapshot":{"bytes":2251,"events":1},"turn_finished":{"bytes":234,"events":6},"workspace_context_snapshot":{"bytes":270,"events":1}}},"session_boundary":"explicit close after confirmed complete source; no active stage transfer or unknown replay"}
+.
+Finished in 16.8 seconds (1.4s on load, 0.00s async, 15.3s sync)
+
+Result: 1 passed, 40 excluded

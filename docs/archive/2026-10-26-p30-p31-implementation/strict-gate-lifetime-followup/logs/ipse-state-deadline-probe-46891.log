@@ -1,0 +1,39 @@
+Running ExUnit with seed: 46891, max_cases: 8
+Excluding tags: [:test]
+Including tags: [state_deadline_probe: true]
+
+
+07:26:27.281 [error] handle_Info({:state_rename_release, #Reference<0.2096337233.1810104321.219448>}, _)
+
+
+  1) test diagnostic interposes the actual file-server rename after the State clock check (Ipse.Extension.StateDeadlineGateTest)
+     test/ipse/extension/state_deadline_gate_test.exs:13
+     Assertion failed, no matching message after 3000ms
+     Showing 2 of 2 messages in the mailbox
+     code: assert_receive {:state_rename_held, server, checked}
+     mailbox:
+       pattern: {:state_rename_held, server, checked}
+       value:   {#Reference<0.0.23683.2096337233.1810169857.219462>,
+                 {:ok,
+                  %{
+                    "generation" => 1,
+                    "record" => %{
+                      "deleted" => false,
+                      "key" => "derived",
+                      "operation_id" => "12f43a8bace4bd8ce87fa5eaa1672133",
+                      "revision" => 1,
+                      "value" => %{"text" => "synthetic"}
+                    }
+                  }}}
+
+       pattern: {:state_rename_held, server, checked}
+       value:   {:DOWN, #Reference<0.0.23683.2096337233.1810169857.219462>,
+                 :process, #PID<0.186.0>, :normal}
+     stacktrace:
+       test/ipse/extension/state_deadline_gate_test.exs:36: (test)
+
+
+Finished in 3.0 seconds (0.00s async, 3.0s sync)
+
+Result: 0/1 passed
+Failed: 1 test

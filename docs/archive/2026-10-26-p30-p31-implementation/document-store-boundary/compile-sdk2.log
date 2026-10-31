@@ -1,0 +1,5 @@
+{:ok,
+ [Ipse.Extension.Actions, Ipse.Extension.Catalog, Ipse.Extension.Config,
+  Ipse.Extension.Context, Ipse.Extension.Host, Ipse.Extension.Invocation,
+  Ipse.Extension.Registry, Ipse.Extension.Services, Ipse.Session,
+  Ipse.Session.Invocation], %{compile_warnings: [], runtime_warnings: []}}

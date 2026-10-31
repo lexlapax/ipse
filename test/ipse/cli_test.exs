@@ -51,6 +51,21 @@ defmodule Ipse.CLITest.HTTPFixture do
     }) <> "\n"
   end
 
+  def lookup_call_body do
+    Jason.encode!(%{
+      "message" => %{
+        "role" => "assistant",
+        "content" => "",
+        "tool_calls" => [
+          %{
+            "function" => %{"name" => "mcp__notes__lookup", "arguments" => %{"query" => "public"}}
+          }
+        ]
+      },
+      "done" => true
+    }) <> "\n"
+  end
+
   defp accept_loop(listener, owner, number, handlers) do
     receive do
       {:fixture_reply, reply_number, body} when is_map_key(handlers, reply_number) ->
@@ -537,6 +552,298 @@ defmodule Ipse.CLITest do
       Ipse.CLITest.IOFixture.feed(cli.stdio, :eof)
       assert 0 == Task.await(cli.task, 5_000)
     end)
+  end
+
+  test "planning CLI ceiling denies writes with yes and survives resume without the flag" do
+    with_fixture_and_cli(
+      true,
+      fn fixture, cli ->
+        await_input(cli.stdio)
+        id = session_id(cli.stderr)
+        session = lookup_session(cli.state_dir, id)
+        assert Ipse.Session.info(session).execution_mode["ceiling"] == "planning"
+        assert {:ok, [%{"metadata" => metadata} | _]} = Ipse.Journal.load(cli.state_dir, id)
+        assert metadata["planning_local_start"]["origin"] == "cli_flag"
+        assert Ipse.CLITest.IOFixture.output(cli.stderr) =~ "Execution ceiling: planning"
+        Ipse.CLITest.IOFixture.feed(cli.stdio, "propose a write")
+        {server, 1, _} = await_request(fixture)
+        Ipse.CLITest.HTTPFixture.reply(server, 1, Ipse.CLITest.HTTPFixture.write_call_body())
+        {^server, 2, after_denial} = await_request(fixture)
+        refute File.exists?(Path.join(cli.cwd, "should-not-exist.txt"))
+
+        assert Enum.any?(after_denial["messages"], fn message ->
+                 message["role"] == "tool" and String.contains?(message["content"], "Denied")
+               end)
+
+        Ipse.CLITest.HTTPFixture.reply(server, 2, Ipse.CLITest.HTTPFixture.final_body())
+        await_text(cli.stderr, "Finished.")
+        Ipse.CLITest.IOFixture.feed(cli.stdio, :eof)
+        assert 0 == Task.await(cli.task, 5_000)
+        cleanup_cli(cli)
+
+        resumed = start_cli(fixture.url, cli.cwd, true, id)
+
+        try do
+          await_input(resumed.stdio)
+          resumed_session = lookup_session(resumed.state_dir, id)
+
+          assert Ipse.Session.info(resumed_session).execution_mode["ceiling"] == "planning"
+
+          assert Ipse.CLITest.IOFixture.output(resumed.stderr) =~ "Execution ceiling: planning"
+          Ipse.CLITest.IOFixture.feed(resumed.stdio, "propose another write")
+          {^server, 3, _} = await_request(fixture)
+          Ipse.CLITest.HTTPFixture.reply(server, 3, Ipse.CLITest.HTTPFixture.write_call_body())
+          {^server, 4, after_resume} = await_request(fixture)
+          refute File.exists?(Path.join(cli.cwd, "should-not-exist.txt"))
+
+          assert Enum.any?(after_resume["messages"], fn message ->
+                   message["role"] == "tool" and String.contains?(message["content"], "Denied")
+                 end)
+
+          Ipse.CLITest.HTTPFixture.reply(server, 4, Ipse.CLITest.HTTPFixture.final_body())
+          await_text(resumed.stderr, "Finished.")
+          Ipse.CLITest.IOFixture.feed(resumed.stdio, :eof)
+          assert 0 == Task.await(resumed.task, 5_000)
+        after
+          cleanup_cli(resumed)
+        end
+
+        edits = start_cli(fixture.url, cli.cwd, false, id, ["--accept-edits"])
+
+        try do
+          await_input(edits.stdio)
+          session = lookup_session(edits.state_dir, id)
+          refute Ipse.Session.permissions(session)["workspace_edits"]
+
+          assert Ipse.CLITest.IOFixture.output(edits.stderr) =~
+                   "saved execution ceiling disables --accept-edits"
+
+          Ipse.CLITest.IOFixture.feed(edits.stdio, :eof)
+          assert 0 == Task.await(edits.task, 5_000)
+        after
+          cleanup_cli(edits)
+        end
+      end,
+      ["--planning"]
+    )
+  end
+
+  test "planning selected on resume remains effective on a later CLI resume" do
+    with_fixture_and_cli(fn fixture, cli ->
+      await_input(cli.stdio)
+      id = session_id(cli.stderr)
+      Ipse.CLITest.IOFixture.feed(cli.stdio, :eof)
+      assert 0 == Task.await(cli.task, 5_000)
+      cleanup_cli(cli)
+
+      planning = start_cli(fixture.url, cli.cwd, true, id, ["--planning"])
+
+      try do
+        await_input(planning.stdio)
+
+        assert Ipse.Session.info(lookup_session(planning.state_dir, id)).execution_mode["ceiling"] ==
+                 "planning"
+
+        assert {:ok, events} = Ipse.Journal.load(planning.state_dir, id)
+        assert Enum.any?(events, &(&1["type"] == "planning_start_selected"))
+
+        Ipse.CLITest.IOFixture.feed(planning.stdio, :eof)
+        assert 0 == Task.await(planning.task, 5_000)
+      after
+        cleanup_cli(planning)
+      end
+
+      resumed = start_cli(fixture.url, cli.cwd, true, id)
+
+      try do
+        await_input(resumed.stdio)
+
+        assert Ipse.Session.info(lookup_session(resumed.state_dir, id)).execution_mode[
+                 "ceiling"
+               ] == "planning"
+
+        Ipse.CLITest.IOFixture.feed(resumed.stdio, "propose a write")
+        {server, 1, _} = await_request(fixture)
+        Ipse.CLITest.HTTPFixture.reply(server, 1, Ipse.CLITest.HTTPFixture.write_call_body())
+        {^server, 2, _} = await_request(fixture)
+        refute File.exists?(Path.join(cli.cwd, "should-not-exist.txt"))
+        Ipse.CLITest.HTTPFixture.reply(server, 2, Ipse.CLITest.HTTPFixture.final_body())
+        await_text(resumed.stderr, "Finished.")
+        Ipse.CLITest.IOFixture.feed(resumed.stdio, :eof)
+        assert 0 == Task.await(resumed.task, 5_000)
+      after
+        cleanup_cli(resumed)
+      end
+    end)
+  end
+
+  test "planning CLI admits a declared MCP read with approval and retains it on resume" do
+    root =
+      Path.join(System.tmp_dir!(), "ipse-planning-mcp-cli-#{System.unique_integer([:positive])}")
+
+    File.mkdir_p!(root)
+    fixture = Ipse.CLITest.HTTPFixture.start(self())
+    mcp_path = Path.join(root, "mcp.json")
+    operator_path = Path.join(root, "operator.json")
+
+    document = %{
+      "servers" => [
+        %{
+          "id" => "notes",
+          "command" => System.find_executable("elixir"),
+          "args" => [
+            "--erl",
+            "+S 2:2",
+            "-pa",
+            Path.dirname(to_string(:code.which(Jason))),
+            Path.expand("test/support/mcp_server.exs"),
+            "planning_read"
+          ],
+          "tools" => ["lookup"],
+          "env" => %{"PATH" => Path.join(to_string(:code.root_dir()), "bin") <> ":/usr/bin:/bin"},
+          "timeout_ms" => 10_000
+        }
+      ]
+    }
+
+    File.write!(mcp_path, Jason.encode!(document))
+    {:ok, [server]} = Ipse.MCP.Config.load(mcp_path)
+    {:ok, [tool]} = Ipse.MCP.discover([server], root)
+
+    declaration = %{
+      "version" => 1,
+      "server_id" => server.id,
+      "tool" => tool.name,
+      "endpoint_sha256" => server.fingerprint,
+      "descriptor_sha256" => tool.digest
+    }
+
+    File.write!(
+      operator_path,
+      Jason.encode!(%{"version" => 1, "planning_mcp_reads" => %{tool.tool_id => declaration}})
+    )
+
+    options = ["--mcp-config", mcp_path, "--config", operator_path]
+    cli = start_cli(fixture.url, root, false, nil, ["--planning" | options])
+
+    try do
+      await_input(cli.stdio)
+      id = session_id(cli.stderr)
+      Ipse.CLITest.IOFixture.feed(cli.stdio, "look up public information")
+      {provider, 1, _} = await_request(fixture)
+      Ipse.CLITest.HTTPFixture.reply(provider, 1, Ipse.CLITest.HTTPFixture.lookup_call_body())
+      first = approval_confirmation(cli.stderr)
+      assert Ipse.CLITest.IOFixture.output(cli.stderr) =~ "External MCP target:"
+      refute File.exists?(Path.join(root, "calls.log"))
+      Ipse.CLITest.IOFixture.feed(cli.stdio, first)
+      {^provider, 2, observed} = await_request(fixture)
+
+      assert Enum.any?(
+               observed["messages"],
+               &(&1["role"] == "tool" and is_binary(&1["content"]) and
+                   &1["content"] =~ "Synthetic lookup result")
+             )
+
+      assert File.read!(Path.join(root, "calls.log")) == "lookup\n"
+      Ipse.CLITest.HTTPFixture.reply(provider, 2, Ipse.CLITest.HTTPFixture.final_body())
+      await_text(cli.stderr, "Finished.")
+      Ipse.CLITest.IOFixture.feed(cli.stdio, :eof)
+      assert 0 == Task.await(cli.task, 5_000)
+      cleanup_cli(cli)
+
+      resumed = start_cli(fixture.url, root, false, id, options)
+
+      try do
+        await_input(resumed.stdio)
+
+        assert Ipse.Session.info(lookup_session(resumed.state_dir, id)).execution_mode[
+                 "ceiling"
+               ] == "planning"
+
+        assert File.read!(Path.join(root, "calls.log")) == "lookup\n"
+        Ipse.CLITest.IOFixture.feed(resumed.stdio, "look up again")
+        {^provider, 3, _} = await_request(fixture)
+        Ipse.CLITest.HTTPFixture.reply(provider, 3, Ipse.CLITest.HTTPFixture.lookup_call_body())
+        approval = approval_confirmation(resumed.stderr)
+        assert File.read!(Path.join(root, "calls.log")) == "lookup\n"
+        Ipse.CLITest.IOFixture.feed(resumed.stdio, approval)
+        {^provider, 4, _} = await_request(fixture)
+        assert File.read!(Path.join(root, "calls.log")) == "lookup\nlookup\n"
+        Ipse.CLITest.HTTPFixture.reply(provider, 4, Ipse.CLITest.HTTPFixture.final_body())
+        await_text(resumed.stderr, "Finished.")
+        Ipse.CLITest.IOFixture.feed(resumed.stdio, :eof)
+        assert 0 == Task.await(resumed.task, 5_000)
+      after
+        cleanup_cli(resumed)
+      end
+
+      {:ok, events} = Ipse.Journal.load(cli.state_dir, id)
+      assert Enum.count(events, &(&1["type"] == "planning_mcp_read_intent")) == 2
+      assert {:ok, _} = Ipse.Session.Saved.restore(events, id)
+    after
+      cleanup_cli(cli)
+      Ipse.CLITest.HTTPFixture.stop(fixture)
+      File.rm_rf!(root)
+    end
+  end
+
+  test "planning is restricted to task commands and cannot enable edit grants" do
+    output =
+      ExUnit.CaptureIO.capture_io(:stderr, fn ->
+        assert 1 == Ipse.CLI.run(["status", "--planning"])
+        assert 1 == Ipse.CLI.run(["chat", "--planning", "--accept-edits"])
+      end)
+
+    assert output =~ "--planning requires chat or run"
+    assert output =~ "--planning cannot be combined with --accept-edits"
+  end
+
+  test "headless planning retains its ceiling even with yes" do
+    root =
+      Path.join(System.tmp_dir!(), "ipse-headless-planning-#{System.unique_integer([:positive])}")
+
+    File.mkdir_p!(root)
+    fixture = Ipse.CLITest.HTTPFixture.start(self())
+
+    try do
+      task =
+        Task.async(fn ->
+          ExUnit.CaptureIO.capture_io(:stderr, fn ->
+            assert 0 ==
+                     Ipse.CLI.run([
+                       "run",
+                       "--provider",
+                       "ollama",
+                       "--model",
+                       "test",
+                       "--base-url",
+                       fixture.url,
+                       "--cwd",
+                       root,
+                       "--state-dir",
+                       Path.join(root, "state"),
+                       "--yes",
+                       "--planning",
+                       "propose a write"
+                     ])
+          end)
+        end)
+
+      {server, 1, _} = await_request(fixture)
+      Ipse.CLITest.HTTPFixture.reply(server, 1, Ipse.CLITest.HTTPFixture.write_call_body())
+      {^server, 2, after_denial} = await_request(fixture)
+      refute File.exists?(Path.join(root, "should-not-exist.txt"))
+
+      assert Enum.any?(after_denial["messages"], fn message ->
+               message["role"] == "tool" and String.contains?(message["content"], "Denied")
+             end)
+
+      Ipse.CLITest.HTTPFixture.reply(server, 2, Ipse.CLITest.HTTPFixture.final_body())
+      assert Task.await(task, 5_000) =~ "Execution ceiling: planning"
+    after
+      Ipse.CLITest.HTTPFixture.stop(fixture)
+      File.rm_rf!(root)
+    end
   end
 
   test "chat accept-edits flag permits native writes without broad --yes authority" do

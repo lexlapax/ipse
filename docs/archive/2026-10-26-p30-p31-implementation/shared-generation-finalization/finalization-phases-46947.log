@@ -1,0 +1,9 @@
+Running ExUnit with seed: 46947, max_cases: 1
+Excluding tags: [:test]
+Including tags: [:generation_finalization]
+
+GENERATION_FINALIZATION {"canonical_equal":true,"initial_selection_reads":20,"max_job_bytes":5361,"max_reduction_reads":72,"native_operations":0,"phase_protocol_reads":[86,20,26,29,29,29,26,22,28,20],"phases":10,"protected_publication_demonstrated":false,"selection_reads":29,"selection_stages":3}
+.
+Finished in 2.8 seconds (0.06s on load, 0.00s async, 2.7s sync)
+
+Result: 1 passed, 3 excluded

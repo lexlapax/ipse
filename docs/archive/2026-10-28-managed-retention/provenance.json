@@ -1,0 +1,114 @@
+{
+  "actual_sources": "trusted synthetic members; no live Session source authority claimed",
+  "admission_clocks": "trusted controllable past clocks; native review uses actual host time",
+  "aggregate_suite_run": false,
+  "approval_timeout": "Process creation rejected because automatic review timed out; one explicitly permitted retry started the passed case.",
+  "capacity_workload_repeated": false,
+  "changed_production_modules": [
+    "ManagedRetention",
+    "ManagedLifecycle",
+    "NormalizerV3",
+    "ObservedRead"
+  ],
+  "first_failed_managed_reference_beam_sha256": "6ea74006ad1120565eeb1755a5cf9cb2602b25be842a544f853d7081770de371",
+  "graph": "/home/lexlapax/projects/lexlapax/ipse/_build/retention-sol-20261028",
+  "kind": "native_retention_and_current_reader_component",
+  "model_calls": 0,
+  "native_after_dependency_repair": {
+    "failed": 0,
+    "passed": 1
+  },
+  "native_annual_turnover_executed": false,
+  "native_first": {
+    "failed": 1,
+    "known_first_pin_published_and_read": true,
+    "passed": 0
+  },
+  "policy_controls": {
+    "failed": 0,
+    "passed": 4
+  },
+  "production_profile_helper": {
+    "path": "/home/lexlapax/projects/lexlapax/ipse/_build/retention-sol-20261028/project/priv/ipse-runner",
+    "sha256": "6407e40e96498029ff7e13d96215a263812732aad1979b4c3e5f4b867b5a4d56"
+  },
+  "profile_batch_repeated": false,
+  "qualification": "bounded production-profile tmpfs component control; not full lifecycle qualification",
+  "source_inputs": {
+    "extensions/knowledge/src/knowledge/contracts.ex": {
+      "sha256": "d60694a680de3e869fe3939527fa75aaa75d44ad10115c5d5c7df61822b8474c",
+      "snapshot": "sources/extensions__knowledge__src__knowledge__contracts.ex"
+    },
+    "extensions/knowledge/src/knowledge/records.ex": {
+      "sha256": "e70863709ddcc580d8dba251ce0532fe7e4d72399b01841af7238c6048d9de12",
+      "snapshot": "sources/extensions__knowledge__src__knowledge__records.ex"
+    },
+    "extensions/knowledge/src/notes.ex": {
+      "sha256": "a0474155b87c6b1b1bd53d6e51e6f5cb045a52eee0e0fa80ba2e613f36e9802b",
+      "snapshot": "sources/extensions__knowledge__src__notes.ex"
+    },
+    "lib/ipse/extension/collection/managed_retention.ex": {
+      "sha256": "2008c6c49b81a834952c96bf4939ff34e56bc69339279ed0b779a1ee58ca4e06",
+      "snapshot": "sources/lib__ipse__extension__collection__managed_retention.ex"
+    },
+    "lib/ipse/extension/collection/normalizer_v3.ex": {
+      "sha256": "7f3de290f3c9ac1d892fe6819bdc3baf2d862bcaa39076b0acb6ebaf6d32e703",
+      "snapshot": "sources/lib__ipse__extension__collection__normalizer_v3.ex"
+    },
+    "lib/ipse/extension/collection/observed_read.ex": {
+      "sha256": "49f904a06ffcfec1543ebfe8f744361ec75ed382cb990f05cc7825dfe996e0b1",
+      "snapshot": "sources/lib__ipse__extension__collection__observed_read.ex"
+    },
+    "lib/ipse/runner/review.ex": {
+      "sha256": "41c468bd7c77dd55bdbe95f59f527821c30f9bdf7c501e52d8d2e604c915f525",
+      "snapshot": "sources/lib__ipse__runner__review.ex"
+    },
+    "lib/ipse/session/managed_lifecycle.ex": {
+      "sha256": "b3410b92896deb1da4aeca6c46a5a8275500909e686c628c27cc829eb7be6cd3",
+      "snapshot": "sources/lib__ipse__session__managed_lifecycle.ex"
+    },
+    "lib/ipse/session/managed_reference.ex": {
+      "sha256": "95a5c862a9f253e8ffcde5b860ccfeb65c4eb20760430acd477fa25fcff44889",
+      "snapshot": "sources/lib__ipse__session__managed_reference.ex"
+    },
+    "test/ipse/extension/collection_managed_retention_test.exs": {
+      "sha256": "f28205ad057704f0f663deef1a5e543af4fc9d34cc059f6d888089677e15b84d",
+      "snapshot": "sources/test__ipse__extension__collection_managed_retention_test.exs"
+    },
+    "test/ipse/extension/collection_normalizer_v3_integration_test.exs": {
+      "sha256": "0e3e1c98b0380d55d47f0fe3fd77605f11db94cfa9c12153205c6669d8f4c9c8",
+      "snapshot": "sources/test__ipse__extension__collection_normalizer_v3_integration_test.exs"
+    },
+    "test/ipse/extension/collection_normalizer_v3_test.exs": {
+      "sha256": "bad3f670ad29dc08276f2a6ee94bf7af4d46f212da7127ef566accff0becbbdf",
+      "snapshot": "sources/test__ipse__extension__collection_normalizer_v3_test.exs"
+    },
+    "test/ipse/session/managed_retention_native_test.exs": {
+      "sha256": "d13ede427829fa58558d33da8f23a415a18e84cf4b3cf19985310ec5e688668d",
+      "snapshot": "sources/test__ipse__session__managed_retention_native_test.exs"
+    },
+    "test/support/managed_literal_retention.exs": {
+      "sha256": "cd416ec5f8e34022eedbb6a5cce65f60ff8dca52d0b6bcf9f878f7e3c3f661f9",
+      "snapshot": "sources/test__support__managed_literal_retention.exs"
+    },
+    "test/support/managed_policy.exs": {
+      "sha256": "d3e1c92b5b092ddf807df0d86230f20450bfec20fd92b3b8be7f40fe34f55e67",
+      "snapshot": "sources/test__support__managed_policy.exs"
+    },
+    "test/support/operator_pty.rs": {
+      "sha256": "7c03b26e14bee67c9421602936ac1ba22ec83fd5f6e8c1a2cf7e086fcbee6539",
+      "snapshot": "sources/test__support__operator_pty.rs"
+    },
+    "test/test_helper.exs": {
+      "sha256": "3fe1c5ac8fab2068cc8d0001bc79f3a17fc6e9f6d997df9ccb34600509d6d63d",
+      "snapshot": "sources/test__test_helper.exs"
+    }
+  },
+  "standalone_consent_and_cli_retention_qualified": false,
+  "strict_production_compile_exit_code": 0,
+  "unchanged_dependency_modules_compiled": [
+    "Review",
+    "ManagedReference"
+  ],
+  "version": 1
+}

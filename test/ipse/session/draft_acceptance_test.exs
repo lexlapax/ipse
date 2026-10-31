@@ -3,6 +3,25 @@ defmodule Ipse.Session.DraftAcceptanceTest do
   alias Ipse.Session.DraftAcceptance
   alias Ipse.{JSON, Usage}
 
+  test "inline replacement accepts bounded text and reserves multiline entry" do
+    parse = &Ipse.Session.Draft.inline_replacement/1
+    assert parse.("  /enhance replace  café  ") == {:ok, "café"}
+
+    assert parse.("/enhance replace " <> String.duplicate("x", 32_768)) ==
+             {:ok, String.duplicate("x", 32_768)}
+
+    for command <- [
+          "/enhance replace",
+          "/enhance replace   ",
+          "/enhance replace multi",
+          "/enhance replacement text",
+          "/enhance replace " <> String.duplicate("x", 32_769),
+          <<"/enhance replace ", 255>>
+        ] do
+      assert parse.(command) == :error
+    end
+  end
+
   test "receipt binds exact proposal, rendered display, channel, revision and native observation" do
     draft = %{id: Usage.id(), revision: 1, proposal: "Keep the original requirement."}
     assert {:ok, render} = DraftAcceptance.render(draft, Usage.id())
@@ -115,16 +134,24 @@ defmodule Ipse.Session.DraftAcceptanceTest do
       |> Enum.reverse()
       |> Enum.flat_map(&["-pa", &1])
 
-    {output, status} =
-      System.cmd(
-        driver,
-        ["--draft-cli", System.find_executable("elixir"), "--erl", "+S 2:2"] ++
-          paths ++ [Path.expand("test/support/draft_cli_pty.exs"), root],
-        stderr_to_stdout: true
-      )
+    for mode <- ["basic", "transport"] do
+      workspace = Path.join(root, mode)
+      File.mkdir!(workspace)
+      File.chmod!(workspace, 0o700)
 
-    assert status == 0, output
-    assert output =~ "SYNTHETIC_DRAFT_CLI_PASSED"
+      {output, status} =
+        System.cmd(
+          driver,
+          ["--draft-cli", System.find_executable("elixir"), "--erl", "+S 2:2"] ++
+            paths ++ [Path.expand("test/support/draft_cli_pty.exs"), workspace],
+          env: [{"IPSE_TEST_DRAFT_TRANSPORT", if(mode == "transport", do: "1", else: "0")}],
+          stderr_to_stdout: true
+        )
+
+      assert status == 0, output
+      assert output =~ "SYNTHETIC_DRAFT_CLI_PASSED"
+      if mode == "transport", do: assert(output =~ "DRAFT_NATIVE_TRANSPORT_PASSED")
+    end
   end
 
   test "synthetic native terminal binds every line in a multiline replacement" do
@@ -165,6 +192,50 @@ defmodule Ipse.Session.DraftAcceptanceTest do
       )
 
     assert status == 0, output
+    assert output =~ "SYNTHETIC_DRAFT_CLI_PASSED"
+  end
+
+  test "synthetic native terminal carries an approved MCP read into accepted inference" do
+    root = Path.join(System.tmp_dir!(), "ipse-draft-mcp-" <> Usage.id())
+    File.mkdir!(root)
+    File.chmod!(root, 0o700)
+    on_exit(fn -> File.rm_rf!(root) end)
+    driver = Path.join(root, "pty")
+
+    assert {_, 0} =
+             System.cmd(
+               "rustc",
+               [
+                 "--edition=2021",
+                 "-D",
+                 "warnings",
+                 "test/support/operator_cli_pty.rs",
+                 "-o",
+                 driver
+               ],
+               stderr_to_stdout: true
+             )
+
+    paths =
+      :code.get_path()
+      |> Enum.map(&List.to_string/1)
+      |> Enum.reject(&(&1 == "."))
+      |> Enum.map(&Path.expand/1)
+      |> Enum.reverse()
+      |> Enum.flat_map(&["-pa", &1])
+
+    {output, status} =
+      System.cmd(
+        driver,
+        ["--draft-mcp", System.find_executable("elixir"), "--erl", "+S 2:2"] ++
+          paths ++ [Path.expand("test/support/draft_cli_pty.exs"), "mcp", root],
+        stderr_to_stdout: true
+      )
+
+    assert status == 0, output
+    assert output =~ "External MCP target:"
+    assert output =~ "mcp__notes__lookup"
+    assert output =~ ~s("query": "public")
     assert output =~ "SYNTHETIC_DRAFT_CLI_PASSED"
   end
 
@@ -248,5 +319,46 @@ defmodule Ipse.Session.DraftAcceptanceTest do
 
     assert status == 0, output
     assert output =~ "SYNTHETIC_ENHANCE_CANCEL_PASSED"
+  end
+
+  test "inline replacement binds the full native command and rejects altered replay" do
+    root = Path.join(System.tmp_dir!(), "ipse-enhance-inline-" <> Usage.id())
+    File.mkdir!(root)
+    File.chmod!(root, 0o700)
+    on_exit(fn -> File.rm_rf!(root) end)
+    driver = Path.join(root, "pty")
+
+    assert {_, 0} =
+             System.cmd(
+               "rustc",
+               [
+                 "--edition=2021",
+                 "-D",
+                 "warnings",
+                 "test/support/operator_cli_pty.rs",
+                 "-o",
+                 driver
+               ],
+               stderr_to_stdout: true
+             )
+
+    paths =
+      :code.get_path()
+      |> Enum.map(&List.to_string/1)
+      |> Enum.reject(&(&1 == "."))
+      |> Enum.map(&Path.expand/1)
+      |> Enum.reverse()
+      |> Enum.flat_map(&["-pa", &1])
+
+    {output, status} =
+      System.cmd(
+        driver,
+        ["--enhance-inline", System.find_executable("elixir"), "--erl", "+S 2:2"] ++
+          paths ++ [Path.expand("test/support/draft_cli_pty.exs"), "inline", root],
+        stderr_to_stdout: true
+      )
+
+    assert status == 0, output
+    assert output =~ "SYNTHETIC_DRAFT_CLI_PASSED"
   end
 end

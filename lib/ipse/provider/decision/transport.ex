@@ -58,7 +58,7 @@ defmodule Ipse.Provider.Decision.Transport do
          true <- is_integer(timeout) and timeout in 1..120_000,
          {:ok, headers} <- headers(config),
          wire = Finch.build(:post, endpoint(config), headers, Jason.encode!(body)),
-         {:ok, status, bytes} <- Ipse.HTTP.bounded_request(wire, @limit, timeout),
+         {:ok, status, bytes} <- Ipse.HTTP.bounded_request(wire, @limit, timeout, "decision"),
          true <- status in 200..299 do
       case parse(config, request, bytes) do
         {:ok, _, _} = result ->

@@ -1,0 +1,57 @@
+     warning: Ipse.JSON.encode!/1 is undefined or private
+     │
+ 265 │     body = IO.iodata_to_binary(JSON.encode!(value))
+     │                                     ~
+     │
+     └─ test/ipse/extension/collection_document_source_use_test.exs:265:37: Ipse.Extension.CollectionDocumentSourceUseNativeTest.packed/1
+     └─ test/ipse/extension/collection_document_source_use_test.exs:347:64: Ipse.Extension.CollectionDocumentSourceUseNativeTest."test actual retained native reads preserve the real claim commit and refuse escaped reuse"/1
+
+** (MatchError) no match of right hand side value:
+
+    {:ok,
+     [Ipse.Extension.CollectionDocumentSourceUseNativeTest,
+      Ipse.Extension.CollectionDocumentSourceUseTest],
+     %{
+       compile_warnings: [],
+       runtime_warnings: [
+         %{
+           message: "Ipse.JSON.encode!/1 is undefined or private",
+           position: {265, 37},
+           file: "/home/lexlapax/projects/lexlapax/ipse/test/ipse/extension/collection_document_source_use_test.exs",
+           group: true,
+           stacktrace: [
+             {Ipse.Extension.CollectionDocumentSourceUseNativeTest, :packed, 1,
+              [
+                file: ~c"test/ipse/extension/collection_document_source_use_test.exs",
+                line: 265,
+                column: 37
+              ]}
+           ],
+           source: "/home/lexlapax/projects/lexlapax/ipse/test/ipse/extension/collection_document_source_use_test.exs",
+           span: nil,
+           severity: :warning
+         },
+         %{
+           message: "Ipse.JSON.encode!/1 is undefined or private",
+           position: {347, 64},
+           file: "/home/lexlapax/projects/lexlapax/ipse/test/ipse/extension/collection_document_source_use_test.exs",
+           group: true,
+           stacktrace: [
+             {Ipse.Extension.CollectionDocumentSourceUseNativeTest,
+              :"test actual retained native reads preserve the real claim commit and refuse escaped reuse",
+              1,
+              [
+                file: ~c"test/ipse/extension/collection_document_source_use_test.exs",
+                line: 347,
+                column: 64
+              ]}
+           ],
+           source: "/home/lexlapax/projects/lexlapax/ipse/test/ipse/extension/collection_document_source_use_test.exs",
+           span: nil,
+           severity: :warning
+         }
+       ]
+     }}
+
+    /tmp/ipse-document-source-use-additive-47183.exs:7: (file)
+    (elixir 1.20.4) lib/code.ex:1639: Code.require_file/2

@@ -1,0 +1,8 @@
+Running ExUnit with seed: 782525, max_cases: 8
+Excluding tags: [:test]
+Including tags: [controlled_partial: true, controlled_client_loss: true, controlled_stale: true, controlled_bad_frame: true, controlled_abort: true, controlled_late_control: true]
+
+......
+Finished in 2.4 seconds (0.6s on load, 0.00s async, 1.7s sync)
+
+Result: 6 passed, 8 excluded

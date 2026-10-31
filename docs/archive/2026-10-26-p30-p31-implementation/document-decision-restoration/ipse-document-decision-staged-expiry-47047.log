@@ -1,0 +1,13 @@
+Running ExUnit with seed: 47047, max_cases: 8
+Excluding tags: [:test]
+Including tags: [document_decision_expiry: true]
+
+
+10:37:56.249 [info] The function passed as a handler with ID "document-decision-expiry-36edef361c93ba9162c6f13de3642c89" is a local function.
+This means that it is either an anonymous function or a capture of a function without a module specified. That may cause a performance penalty when calling that handler. For more details see the note in `telemetry:attach/4` documentation.
+
+https://hexdocs.pm/telemetry/telemetry.html#attach/4
+.
+Finished in 1.6 seconds (0.4s on load, 0.00s async, 1.1s sync)
+
+Result: 1 passed, 11 excluded

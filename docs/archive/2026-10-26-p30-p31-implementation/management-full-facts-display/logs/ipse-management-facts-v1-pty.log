@@ -1,0 +1,9 @@
+** (ExUnit.AssertionError) 
+
+Assertion with == failed
+code:  assert opts.recipe == sidecar["recipes"]["note"]
+left:  %{"category_path" => ["category"], "constraints_sha256" => "d709745ab18405dff572c41053eda5cbe12c350ebbabdcd0d52ea1e80962368a", "evidence_path" => ["evidence", "sources"], "key_prefix" => "note.", "kind" => "literal_source", "lineage_path" => ["lineage"], "override_prefix" => "override.", "rules" => [%{"category" => "current", "max_age_ms" => nil, "origins" => ["native_operator_assertion", "typed_host_outcome"]}, %{"category" => "ordinary", "max_age_ms" => 7776000000, "origins" => ["native_operator_assertion", "typed_host_outcome"]}, %{"category" => "preference", "max_age_ms" => nil, "origins" => ["native_operator_assertion", "typed_host_outcome"]}], "text_path" => ["text"], "version" => 1}
+right: %{"category_path" => ["category"], "constraints_sha256" => "d709745ab18405dff572c41053eda5cbe12c350ebbabdcd0d52ea1e80962368a", "evidence_path" => ["evidence", "sources"], "key_prefix" => "note.", "kind" => "literal_source", "lineage_path" => ["lineage"], "override_prefix" => "override.", "rules" => [%{"category" => "current", "max_age_ms" => nil, "origins" => ["native_operator_assertion"]}, %{"category" => "ordinary", "max_age_ms" => 7776000000, "origins" => ["native_operator_assertion", "typed_host_outcome"]}, %{"category" => "preference", "max_age_ms" => nil, "origins" => ["native_operator_assertion"]}], "text_path" => ["text"], "version" => 1}
+
+    (ex_unit 1.20.4) lib/ex_unit/assertions.ex:460: ExUnit.Assertions.assert/2
+    test/support/management_full_facts.exs:38: (file)

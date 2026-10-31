@@ -1,0 +1,139 @@
+{
+  "scope": "Managed MCP discovery/current-root approval checks and managed document held-binding/deadline switch controls. Not C0 acceptance.",
+  "date": "2026-10-29",
+  "files": {
+    "logs/ipse-managed-actions-compile-46834.log": {
+      "bytes": 2312,
+      "sha256": "994a20c326fcc03d3039332da9492648a878f08d363028030d06f81059842eb9"
+    },
+    "logs/ipse-managed-actions-compile-46839.log": {
+      "bytes": 49,
+      "sha256": "f4e9ab1799af4c15a01387a995d65a2522f1434b07335e3b52f0afaf8fb61183"
+    },
+    "logs/ipse-managed-document-use-46847.log": {
+      "bytes": 1056,
+      "sha256": "98c4ea43f1aa9ac422181801bbb6ca6409b51c66aaa5e1f0c54cb5af085d21d1"
+    },
+    "source/test/ipse/extension/managed_collection_call_session_test.exs": {
+      "bytes": 152148,
+      "sha256": "f6f25d2f8b68a26dee11c185f6b6890d05dcf7aa9866ceec9ab8787962cff1d0"
+    },
+    "logs/ipse-managed-document-use-46845.log": {
+      "bytes": 982,
+      "sha256": "572906289a6971ef472db7a4e184529057adfd81ff4f43f1e63175886cfd96db"
+    },
+    "logs/ipse-managed-action-protocol-46837.log": {
+      "bytes": 3737,
+      "sha256": "1faf70445c54f7c37129d7cdae59563a09ff2d63536a17030e386343b61620eb"
+    },
+    "source/lib/ipse/session/invocation.ex": {
+      "bytes": 60070,
+      "sha256": "8ab5e009f3f8e8f4de2c27c38c2893e6ae9cbafb76ccc4d675079344e1eb0f03"
+    },
+    "logs/ipse-managed-actions-compile-46835.log": {
+      "bytes": 49,
+      "sha256": "f4e9ab1799af4c15a01387a995d65a2522f1434b07335e3b52f0afaf8fb61183"
+    },
+    "source/lib/ipse/session/managed_lineage.ex": {
+      "bytes": 41619,
+      "sha256": "2ab5ff93f9d676b4ef93e6c4ce312ca17a13b7550c8e11acee61e387f3601edb"
+    },
+    "source/lib/ipse/session/managed_tool_use.ex": {
+      "bytes": 45152,
+      "sha256": "51ca1eaa26b1e7ea6338eec8e801574bc545fc5da0d5c2311aff1b1dc0a2de12"
+    },
+    "logs/ipse-managed-actions-compile-46833.log": {
+      "bytes": 8685,
+      "sha256": "a688bc4089b4f4a2e343008ef9a642b1e155e13ccf30abe554eb886b7a4b2ec0"
+    },
+    "source/test/ipse/extension/project_identity_held_binding_test.exs": {
+      "bytes": 2793,
+      "sha256": "488f79803779abf841db87ab02837823996e3031522a2ce825ad6fa6a0075dbe"
+    },
+    "logs/ipse-managed-nested-discovery-46841.log": {
+      "bytes": 274,
+      "sha256": "6db26bbcd246386e59c26772c5905fe6cfb92b6539ddf0afd89182326ba0096d"
+    },
+    "logs/ipse-managed-document-use-46844.log": {
+      "bytes": 5891,
+      "sha256": "314a0f50a4d160bd78e1a845a9edf79ce32f54dfea732b83e38abc0841745d54"
+    },
+    "source/lib/ipse/runner/transaction.ex": {
+      "bytes": 23600,
+      "sha256": "745369d227c6c33d8bef08bfe88c77cae084cd26d96845d87e3175ba2d37974e"
+    },
+    "logs/ipse-managed-actions-compile-46837.log": {
+      "bytes": 1281,
+      "sha256": "5e3ae2ef38d8c80368f2714163bbc0f321dca051d47d8b1b218186398febacf1"
+    },
+    "source/test/ipse/session/managed_tool_use_test.exs": {
+      "bytes": 19855,
+      "sha256": "8fdd809102a45fd93893bb90c127d330d04c2588b38678a8a7a5f73361e1dea6"
+    },
+    "logs/ipse-held-binding-46843.log": {
+      "bytes": 202,
+      "sha256": "be4b9f40eb2f7b1e14310f1b00e0b52b37036c0b0f46f57b4aba0d6121380574"
+    },
+    "source/lib/ipse/extension/external_calls.ex": {
+      "bytes": 19670,
+      "sha256": "32c291e5039b6059d3957e777243c8b653356cded46f74899dc4aae48b1da9ee"
+    },
+    "logs/ipse-managed-document-use-46848.log": {
+      "bytes": 201,
+      "sha256": "1dbca270c97d406eebea4560e555c6e127b50a07da219dfa8aa8c7bb4dea19b1"
+    },
+    "logs/ipse-managed-action-protocol-46836.log": {
+      "bytes": 203,
+      "sha256": "ac5bd74b6118b55a0decdc0ff18b718c4f793a891fca30fd6d07e2ee2e4153d5"
+    },
+    "source/lib/ipse/session.ex": {
+      "bytes": 183766,
+      "sha256": "dde04be140027ca980e7bf10257e00198405046110e2d2c9d2ded1c6085229b8"
+    },
+    "runtime.json": {
+      "bytes": 70942,
+      "sha256": "069de63bdad38391f7e9f4dd9518655c0a25ae8394e33f20a8fb1526f5614314"
+    },
+    "logs/ipse-held-binding-46846.log": {
+      "bytes": 200,
+      "sha256": "56b5281d3473e2bf3b45d704eb78e5e205df2a071095045b3e38f523161b067a"
+    },
+    "source/lib/ipse/extension/project_identity.ex": {
+      "bytes": 46630,
+      "sha256": "eb24d364be310c47b7e203c6ed80d129ed7bc2a57f1fcd1f8a3eddae4a92d235"
+    },
+    "logs/ipse-managed-document-held-compile-46846.log": {
+      "bytes": 46,
+      "sha256": "23ab35b57e6962fe6edc541b53e63384cb40113748f158cddc7193243dbacfb6"
+    },
+    "logs/ipse-managed-actions-compile-46836.log": {
+      "bytes": 49,
+      "sha256": "f4e9ab1799af4c15a01387a995d65a2522f1434b07335e3b52f0afaf8fb61183"
+    },
+    "logs/ipse-managed-action-protocol-46838.log": {
+      "bytes": 204,
+      "sha256": "bd0f028df1b8fb8252517e6486b0775af3dd2cf020820527a180a869ced4e911"
+    },
+    "logs/ipse-managed-document-deadline-46849.log": {
+      "bytes": 644,
+      "sha256": "9e1da210d2bf51e8977e9099bf3b979085e3b067a45fac5814f4068c174e34c3"
+    },
+    "source/lib/ipse/extension/collection.ex": {
+      "bytes": 69340,
+      "sha256": "38e9d05695e80aca83096638bc2289b95997957f2714f4c9ad9c4844f38928f1"
+    },
+    "logs/ipse-managed-document-use-46842.log": {
+      "bytes": 2116,
+      "sha256": "0c8b042948abdd3fc3779c916820e4d81b5b8c7c677840843b49a43197ed4f00"
+    },
+    "source/lib/ipse/extension/actions.ex": {
+      "bytes": 47724,
+      "sha256": "3daacdb64f5f74ca8024b8adb1c2d35f29dab336a0684015b8218a00b33f8318"
+    },
+    "logs/ipse-managed-nested-discovery-46840.log": {
+      "bytes": 1469,
+      "sha256": "42d50473b530bb151734c2e5cf9e3e13e02a25da4ca487531268f4b604cf6db2"
+    }
+  },
+  "historical_only": true
+}

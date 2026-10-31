@@ -1,0 +1,9 @@
+Running ExUnit with seed: 705067, max_cases: 1
+Excluding tags: [:test]
+Including tags: [generation_job_prerequisites: true]
+
+GENERATION_JOB_PREREQUISITES {"edited_metadata_positions":2,"final_checks":5,"immutable_units":5,"native_operations":0,"pinned_commit_generation":500,"protected_publication_demonstrated":false}
+.
+Finished in 2.7 seconds (0.1s on load, 0.00s async, 2.6s sync)
+
+Result: 1 passed, 8 excluded

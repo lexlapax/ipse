@@ -1,0 +1,35 @@
+Running ExUnit with seed: 449036, max_cases: 8
+Excluding tags: [:native_sandbox, :macos_sandbox, :macos_filesystem, :memory_scope]
+
+.
+
+  1) test transport_unknown preserves cleanup uncertainty in an isolated runtime (Ipse.MCP.ManagedHTTPUnknownTest)
+     test/ipse/mcp/managed_http_unknown_test.exs:5
+     ** (MatchError) no match of right hand side value:
+
+         {:error,
+          {%ArgumentError{message: "unknown registry: Ipse.Registry"},
+           [
+             {Registry, :key_info!, 1, [file: ~c"lib/registry.ex", line: 1599]},
+             {Registry, :lookup, 2, [file: ~c"lib/registry.ex", line: 674]},
+             {Ipse.Session.Lock, :for_owner, 1,
+              [file: ~c"lib/ipse/session/lock.ex", line: 28]},
+             {Ipse.Session.Resources, :init, 1,
+              [file: ~c"lib/ipse/session/resources.ex", line: 178]},
+             {:gen_server, :init_it, 2, [file: ~c"gen_server.erl", line: 2276]},
+             {:gen_server, :init_it, 6, [file: ~c"gen_server.erl", line: 2236]},
+             {:proc_lib, :init_p_do_apply, 3, [file: ~c"proc_lib.erl", line: 333]}
+           ]}}
+
+         test/support/managed_http_unknown.exs:74: (file)
+         (elixir 1.20.4) lib/code.ex:1639: Code.require_file/2
+
+     code: assert status == 0, output
+     stacktrace:
+       test/ipse/mcp/managed_http_unknown_test.exs:14: (test)
+
+
+Finished in 0.5 seconds (0.04s on load, 0.00s async, 0.5s sync)
+
+Result: 1/2 passed
+Failed: 1 test

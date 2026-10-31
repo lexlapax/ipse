@@ -68,9 +68,12 @@ defmodule Ipse.Extension.Actions do
 
   defp read?(%{"op" => "collection.call"} = request), do: not CollectionCall.mutating?(request)
 
+  defp read?(%{"op" => "collection.store"} = request),
+    do: not Ipse.Extension.CollectionStore.mutating?(request)
+
   defp read?(%{"op" => op}),
     do:
-      op in ~w(state.get state.list state.scan history.read usage.read usage.children usage.child.read effect.result.read source.list source.read source.quote)
+      op in ~w(state.get state.list state.scan history.read usage.read usage.children usage.child.read effect.result.read source.list source.read source.quote embedding.profile)
 
   defp read?(_), do: false
 
@@ -192,8 +195,12 @@ defmodule Ipse.Extension.Actions do
       (not Ipse.Extension.SourceRead.operation?(event["request"]) or
          Ipse.Extension.SourceRead.bound_outcome?(event)) and
       (not CollectionCall.operation?(event["request"]) or CollectionCall.bound_outcome?(event)) and
+      (not Ipse.Extension.CollectionStore.operation?(event["request"]) or
+         Ipse.Extension.CollectionStore.bound_outcome?(event)) and
       (not ManagedCollectionCall.operation?(event["request"]) or
          ManagedCollectionCall.bound_outcome?(event)) and
+      (not Ipse.Extension.EmbeddingCall.profile_request?(event["request"]) or
+         Ipse.Extension.EmbeddingCall.bound_profile?(event)) and
       Ipse.Extension.validate(resume(event)) == :ok and bounded?(event)
   rescue
     _ -> false
@@ -281,8 +288,20 @@ defmodule Ipse.Extension.Actions do
   end
 
   def restore([%{"metadata" => metadata} | _] = events) do
+    {:ok, managed_layout} = Ipse.Session.ManagedReads.marker(metadata)
+    {:ok, output_layout} = Ipse.Session.ManagedOutput.marker(metadata)
+    {:ok, _} = Ipse.Session.ManagedToolUse.action_marker(metadata)
+
+    :ok =
+      Ipse.Session.ManagedSupersession.validate_events(
+        events,
+        get_in(metadata, ["source_origin", "session_id"]) ||
+          get_in(metadata, ["semantic_admission", "pin", "session_id"])
+      )
+
     :ok = Ipse.Journal.validate_limit_events(events)
     {:ok, _} = Ipse.Session.RuntimeLifecycle.restore(events)
+    :ok = validate_release_receipts(events, metadata)
     :ok = Ipse.Observability.validate_events(events)
     :ok = Ipse.Extension.Subscriptions.validate_events(events)
     {:ok, catalog} = Ipse.Extension.Catalog.from_metadata(metadata)
@@ -299,6 +318,18 @@ defmodule Ipse.Extension.Actions do
       seen: MapSet.new(),
       unknown: false,
       results_rev: [],
+      managed_read: nil,
+      managed_dependencies: [],
+      managed_outputs: %{},
+      output_layout: output_layout,
+      output_release: nil,
+      output_release_ids: MapSet.new(),
+      pending_contributions: nil,
+      last_display: nil,
+      managed_config: %{
+        managed_read_layout: managed_layout,
+        semantic_admission: metadata["semantic_admission"]
+      },
       question: nil,
       resume_needed: nil,
       context_sha256: nil,
@@ -331,6 +362,25 @@ defmodule Ipse.Extension.Actions do
 
   def restore(_), do: @error
 
+  defp validate_release_receipts(events, metadata) do
+    case metadata["release_receipt_layout"] do
+      nil ->
+        :ok
+
+      layout ->
+        with true <- layout == Ipse.Session.ReleaseReceipt.layout(),
+             {:ok, _} <-
+               Ipse.Session.ReleaseReceipt.intents(
+                 events,
+                 get_in(metadata, ["source_origin", "session_id"])
+               ) do
+          :ok
+        else
+          _ -> @error
+        end
+    end
+  end
+
   def question_event(parent, action, steps) do
     event = %{
       "type" => "extension_question",
@@ -361,6 +411,13 @@ defmodule Ipse.Extension.Actions do
   defp validate_event(%{"type" => "lifecycle_question_sources"}, state, _),
     do: {:ok, state}
 
+  defp validate_event(%{"type" => type}, state, _)
+       when type in ~w(session_release_owner_started session_release_intent) do
+    if state.metadata["release_receipt_layout"] == Ipse.Session.ReleaseReceipt.layout(),
+      do: {:ok, state},
+      else: @error
+  end
+
   defp validate_event(%{"type" => "journal_limit_reached"} = event, state, _),
     do: if(Ipse.Journal.valid_limit_receipt?(event), do: {:ok, state}, else: @error)
 
@@ -384,7 +441,7 @@ defmodule Ipse.Extension.Actions do
     do: if(Ipse.Tools.Delegation.valid_child_record?(event), do: {:ok, state}, else: @error)
 
   defp validate_event(%{"type" => "extension_invocation_intent"} = event, state, _) do
-    if is_nil(state.parent) and
+    if is_nil(state.parent) and is_nil(state.output_release) and
          Ipse.Extension.Invocation.validate_intent(event, state.metadata) == :ok,
        do:
          {:ok,
@@ -395,6 +452,8 @@ defmodule Ipse.Extension.Actions do
               step: 0,
               unknown: false,
               results_rev: [],
+              managed_read: nil,
+              managed_dependencies: [],
               effect_sources: %{},
               question: nil,
               resume_needed: nil
@@ -407,9 +466,108 @@ defmodule Ipse.Extension.Actions do
          is_nil(state.action) and not state.unknown and
          is_nil(state.resume_needed) and is_nil(state.question) and
          event["action_count"] == state.step and
-         event["actions_sha256"] == Ipse.JSON.digest(Enum.reverse(state.results_rev)),
-       do: {:ok, %{state | parent: nil}},
+         event["actions_sha256"] == Ipse.JSON.digest(Enum.reverse(state.results_rev)) and
+         (is_nil(state.output_release) or
+            Ipse.Session.ManagedOutput.bound_result?(state.output_release.intent, event)) and
+         not (state.output_layout != nil and state.managed_dependencies != [] and
+                is_nil(state.output_release)),
+       do:
+         {:ok,
+          %{
+            state
+            | parent: nil,
+              output_release: if(state.output_release, do: %{state.output_release | raw: event}),
+              last_display:
+                if(
+                  is_nil(state.output_release) and
+                    event["descriptor"]["stage"] in ~w(invoke.command invoke.service),
+                  do: Ipse.Session.ManagedOutput.display(event, "current", []),
+                  else: state.last_display
+                ),
+              managed_outputs:
+                Map.put(state.managed_outputs, event["invocation_id"], state.managed_dependencies)
+          }},
        else: @error
+  end
+
+  defp validate_event(%{"type" => "managed_output_release_intent"} = event, state, _) do
+    if state.parent != nil and is_nil(state.action) and is_nil(state.output_release) and
+         not state.unknown and not MapSet.member?(state.output_release_ids, event["release_id"]) and
+         Ipse.Session.ManagedOutput.valid_intent?(
+           event,
+           state.parent["payload"]["session_id"],
+           state.parent,
+           Ipse.JSON.digest(Enum.reverse(state.results_rev))
+         ) do
+      {:ok,
+       %{
+         state
+         | output_release: %{intent: event, parent: state.parent, raw: nil, admission: nil},
+           output_release_ids: MapSet.put(state.output_release_ids, event["release_id"])
+       }}
+    else
+      @error
+    end
+  end
+
+  defp validate_event(%{"type" => "managed_output_release_result"} = event, state, _) do
+    with release when is_map(release) <- state.output_release,
+         true <- is_map(release.raw) and is_nil(release.admission),
+         facts = Ipse.Session.ManagedOutput.write_facts(Enum.reverse(state.results_rev)),
+         true <-
+           Ipse.Session.ManagedOutput.valid_admission?(event, release.intent, release.raw, facts) do
+      contributions =
+        if event["decision"] == "current",
+          do: state.contributions,
+          else: Map.delete(state.contributions, release.parent["identity"]["instance"])
+
+      {:ok,
+       %{
+         state
+         | output_release: %{release | admission: event},
+           contributions: contributions,
+           pending_contributions:
+             if(event["decision"] == "current", do: state.pending_contributions)
+       }}
+    else
+      _ -> @error
+    end
+  end
+
+  defp validate_event(%{"type" => "managed_output_release_cleanup"} = event, state, _) do
+    with release when is_map(release) <- state.output_release,
+         true <- is_map(release.admission),
+         true <-
+           Ipse.Session.ManagedOutput.valid_cleanup?(event, release.intent, release.admission) do
+      display =
+        if release.raw["descriptor"]["stage"] in ~w(invoke.command invoke.service),
+          do:
+            Ipse.Session.ManagedOutput.display(
+              release.raw,
+              if(event["status"] == "confirmed",
+                do: release.admission["decision"],
+                else: "withdrawn"
+              ),
+              if(event["status"] == "confirmed", do: release.admission["write_facts"], else: [])
+            ),
+          else: state.last_display
+
+      contributions =
+        if event["status"] == "confirmed" and release.admission["decision"] == "current",
+          do: state.pending_contributions || state.contributions,
+          else: Map.delete(state.contributions, release.parent["identity"]["instance"])
+
+      {:ok,
+       %{
+         state
+         | output_release: nil,
+           last_display: display,
+           contributions: contributions,
+           pending_contributions: nil
+       }}
+    else
+      _ -> @error
+    end
   end
 
   defp validate_event(%{"type" => type} = event, state, _)
@@ -462,9 +620,19 @@ defmodule Ipse.Extension.Actions do
            state.action != nil and result_intent(event) == state.action and valid_result?(event),
          true <- bound_effect?(event, state.effect_sources, state.results_rev),
          true <- not question or not is_nil(state.question),
+         true <- is_nil(state.managed_read) or event["outcome"]["status"] == "ok",
+         {:ok, _, managed_dependencies} <-
+           Ipse.Session.ManagedReads.bind_result(
+             state.parent["payload"]["session_id"],
+             state.managed_config,
+             state.parent,
+             state.managed_read,
+             state.managed_dependencies,
+             event
+           ),
          {:ok, contributions} <-
            Ipse.Extension.Context.apply_result(
-             state.contributions,
+             state.pending_contributions || state.contributions,
              state.parent,
              if(event["request"]["op"] == "context.publish",
                do: Enum.reverse(state.results_rev),
@@ -473,19 +641,70 @@ defmodule Ipse.Extension.Actions do
              event,
              state.metadata["reference_layout"]
            ) do
+      staged =
+        event["request"]["op"] == "context.publish" and state.output_layout != nil and
+          managed_dependencies != []
+
       {:ok,
        %{
          state
          | action: nil,
+           managed_read: nil,
+           managed_dependencies: managed_dependencies,
            unknown: event["outcome"]["status"] in ~w(unknown cancelled),
            results_rev: [event | state.results_rev],
            question: nil,
            resume_needed: if(event["outcome"]["status"] == "answered", do: event),
-           contributions: contributions
+           contributions: if(staged, do: state.contributions, else: contributions),
+           pending_contributions: if(staged, do: contributions, else: state.pending_contributions)
        }}
     else
       _ -> @error
     end
+  end
+
+  defp validate_event(
+         %{"type" => "managed_tool_effect_admitted", "version" => 2} = event,
+         state,
+         _
+       ) do
+    if is_map(state.parent) and is_map(state.action) and
+         state.parent["invocation_id"] == event["parent_invocation_id"] and
+         state.action["operation_id"] == event["operation_id"], do: {:ok, state}, else: @error
+  end
+
+  defp validate_event(
+         %{"type" => "managed_tool_effect_admitted", "version" => 3} = event,
+         state,
+         _
+       ) do
+    if is_map(state.parent) and is_nil(state.action) and
+         state.parent["invocation_id"] == event["parent_invocation_id"],
+       do: {:ok, state},
+       else: @error
+  end
+
+  defp validate_event(%{"type" => type} = event, state, _)
+       when type in ~w(managed_mcp_discovery_intent managed_mcp_discovery_result) do
+    if is_map(state.parent) and is_nil(state.action) and
+         state.parent["invocation_id"] == event["parent_invocation_id"],
+       do: {:ok, state},
+       else: @error
+  end
+
+  defp validate_event(%{"type" => "managed_action_output_withheld"} = event, state, _) do
+    if Ipse.Session.ManagedToolUse.valid_action_withheld?(event, List.first(state.results_rev)),
+      do: {:ok, %{state | unknown: true}},
+      else: @error
+  end
+
+  defp validate_event(%{"type" => "managed_read_observed"} = event, state, _) do
+    if state.parent != nil and state.action != nil and is_nil(state.managed_read) and
+         Ipse.Session.ManagedReads.valid_observation?(
+           event,
+           state.parent["payload"]["session_id"],
+           state.action
+         ), do: {:ok, %{state | managed_read: event}}, else: @error
   end
 
   defp validate_event(%{"type" => "extension_effect_result"} = event, state, _) do
@@ -610,6 +829,30 @@ defmodule Ipse.Extension.Actions do
       else: @error
   end
 
+  defp validate_event(%{"type" => "managed_supersession_delivered"} = event, state, _) do
+    if is_map(state.parent) and state.parent["invocation_id"] == event["parent_invocation_id"] and
+         is_nil(state.action) and not state.unknown do
+      {:ok,
+       %{
+         state
+         | parent: nil,
+           action: nil,
+           question: nil,
+           resume_needed: nil,
+           context_request: nil,
+           managed_dependencies: [],
+           results_rev: [],
+           last_display: Ipse.Session.supersession_display(event)
+       }}
+    else
+      @error
+    end
+  end
+
+  defp validate_event(%{"type" => type}, state, _)
+       when type in ~w(managed_supersession_prepared managed_supersession_intent managed_supersession_review managed_supersession_result),
+       do: {:ok, state}
+
   defp validate_event(event, state, _) do
     if not is_nil(state.question) or Map.has_key?(event, "operation_id") or
          Map.has_key?(event, "parent_invocation_id"),
@@ -687,6 +930,20 @@ defmodule Ipse.Extension.Actions do
 
   defp effect_binding?(event, identity, metadata \\ nil) do
     cond do
+      Ipse.Extension.EmbeddingCall.profile_request?(event["request"]) ->
+        Ipse.Extension.EmbeddingCall.valid_profile_binding?(
+          event["effect_binding"],
+          event["request"],
+          metadata
+        )
+
+      Ipse.Extension.CollectionStore.operation?(event["request"]) ->
+        Ipse.Extension.CollectionStore.valid_binding?(
+          event["effect_binding"],
+          event["request"],
+          identity
+        )
+
       ManagedCollectionCall.operation?(event["request"]) ->
         ManagedCollectionCall.valid_binding?(
           event["effect_binding"],
@@ -721,7 +978,13 @@ defmodule Ipse.Extension.Actions do
           event["effect_binding"],
           event["request"],
           metadata
-        )
+        ) and
+          Ipse.Extension.EmbeddingCall.valid_identity?(
+            identity,
+            event["request"],
+            event["effect_binding"],
+            event["namespace"]
+          )
 
       mcp?(event["request"]) ->
         Ipse.Extension.MCPCall.valid_binding?(
@@ -742,7 +1005,9 @@ defmodule Ipse.Extension.Actions do
   defp version_two?(identity, request),
     do:
       "host.actions.mixed" in identity["capabilities"] or mcp?(request) or
+        Ipse.Extension.EmbeddingCall.profile_request?(request) or
         result_read?(request) or embedding?(request) or decision?(request) or
+        Ipse.Extension.CollectionStore.operation?(request) or
         CollectionCall.operation?(request)
 
   defp action_version(identity, request) do
@@ -765,6 +1030,9 @@ defmodule Ipse.Extension.Actions do
   def validate_operation(%{"op" => "embedding.create"} = request),
     do: Ipse.Extension.EmbeddingCall.validate(request)
 
+  def validate_operation(%{"op" => "embedding.profile"} = request),
+    do: Ipse.Extension.EmbeddingCall.validate_profile(request)
+
   def validate_operation(%{"op" => "decision.create"} = request),
     do: Ipse.Extension.DecisionCall.validate(request)
 
@@ -783,6 +1051,9 @@ defmodule Ipse.Extension.Actions do
   def validate_operation(%{"op" => "collection.call"} = request),
     do: CollectionCall.validate(request)
 
+  def validate_operation(%{"op" => "collection.store"} = request),
+    do: Ipse.Extension.CollectionStore.validate(request)
+
   def validate_operation(%{"op" => "collection.managed"} = request),
     do: ManagedCollectionCall.validate(request)
 
@@ -798,6 +1069,9 @@ defmodule Ipse.Extension.Actions do
 
   def validate_operation(%{"op" => "context.publish"} = request),
     do: Ipse.Extension.Context.validate(request)
+
+  def validate_operation(%{"op" => "context.available"} = request),
+    do: if(Map.keys(request) == ["op"], do: :ok, else: {:error, :invalid_extension_context})
 
   def validate_operation(%{"op" => "service.call"} = request),
     do: Ipse.Extension.Services.validate_request(request)
@@ -849,7 +1123,9 @@ defmodule Ipse.Extension.Actions do
     do: Ipse.Extension.History.capability(request)
 
   def capability(%{"op" => "context.publish"}), do: "host.context"
+  def capability(%{"op" => "context.available"}), do: "host.context"
   def capability(%{"op" => "collection.call"} = request), do: CollectionCall.capability(request)
+  def capability(%{"op" => "collection.store"}), do: "host.collection.store"
 
   def capability(%{"op" => "collection.managed"} = request),
     do: ManagedCollectionCall.capability(request)
@@ -867,6 +1143,7 @@ defmodule Ipse.Extension.Actions do
   def capability(%{"op" => "operator.question"}), do: "host.question"
   def capability(%{"op" => "model.complete"}), do: "host.model"
   def capability(%{"op" => "embedding.create"}), do: "host.embedding"
+  def capability(%{"op" => "embedding.profile"}), do: "host.embedding"
   def capability(%{"op" => "decision.create"}), do: "host.decision"
   def capability(%{"op" => "mcp.call"}), do: "host.mcp"
   def capability(%{"op" => "effect.result.read"}), do: "host.results"
@@ -874,9 +1151,14 @@ defmodule Ipse.Extension.Actions do
   def mutating?(%{"op" => "tool.call", "name" => name}), do: Ipse.Tools.mutating?(name)
   def mutating?(%{"op" => "model.complete"}), do: true
   def mutating?(%{"op" => "embedding.create"}), do: true
+  def mutating?(%{"op" => "embedding.profile"}), do: false
   def mutating?(%{"op" => "decision.create"}), do: true
   def mutating?(%{"op" => "mcp.call"}), do: true
   def mutating?(%{"op" => "collection.call"} = request), do: CollectionCall.mutating?(request)
+
+  def mutating?(%{"op" => "collection.store"} = request),
+    do: Ipse.Extension.CollectionStore.mutating?(request)
+
   def mutating?(%{"op" => "collection.managed"}), do: true
   def mutating?(%{"op" => op}) when op in ~w(source.list source.read source.quote), do: false
   def mutating?(request), do: State.mutating?(request)
@@ -884,12 +1166,14 @@ defmodule Ipse.Extension.Actions do
   def namespace(_identity, %{"op" => "operator.question"}, _cwd, _id), do: {:ok, nil}
   def namespace(_identity, %{"op" => "model.complete"}, _cwd, id), do: {:ok, id}
   def namespace(_identity, %{"op" => "embedding.create"}, _cwd, id), do: {:ok, id}
+  def namespace(_identity, %{"op" => "embedding.profile"}, _cwd, id), do: {:ok, id}
   def namespace(_identity, %{"op" => "decision.create"}, _cwd, id), do: {:ok, id}
   def namespace(_identity, %{"op" => "mcp.call"}, _cwd, _id), do: {:ok, nil}
   def namespace(_identity, %{"op" => "effect.result.read"}, _cwd, id), do: {:ok, id}
   def namespace(_identity, %{"op" => "tool.call"}, _cwd, _id), do: {:ok, nil}
   def namespace(_identity, %{"op" => "service.call"}, _cwd, _id), do: {:ok, nil}
   def namespace(_identity, %{"op" => "context.publish"}, _cwd, _id), do: {:ok, nil}
+  def namespace(_identity, %{"op" => "context.available"}, _cwd, _id), do: {:ok, nil}
   def namespace(_identity, %{"op" => "history.read"}, _cwd, id), do: {:ok, id}
 
   def namespace(_identity, %{"op" => op}, _cwd, id)
@@ -911,6 +1195,11 @@ defmodule Ipse.Extension.Actions do
          binding["pin"]["session_id"] == id,
        do: {:ok, binding["namespace"]},
        else: @error
+  end
+
+  defp action_namespace(identity, %{"op" => "collection.store"} = request, _cwd, id, binding) do
+    if Ipse.Extension.CollectionStore.valid_binding?(binding, request, identity) and
+         binding["session_id"] == id, do: {:ok, binding["namespace"]}, else: @error
   end
 
   defp action_namespace(identity, %{"op" => "collection.managed"} = request, _cwd, id, binding) do
@@ -940,6 +1229,9 @@ defmodule Ipse.Extension.Actions do
   def valid_outcome?(%{"op" => "embedding.create"} = request, status, value, id),
     do: Ipse.Extension.EmbeddingCall.valid_outcome?(request, status, value, id)
 
+  def valid_outcome?(%{"op" => "embedding.profile"} = request, status, value, _),
+    do: Ipse.Extension.EmbeddingCall.valid_profile_outcome?(request, status, value)
+
   def valid_outcome?(%{"op" => "decision.create"} = request, status, value, id),
     do: Ipse.Extension.DecisionCall.valid_outcome?(request, status, value, id)
 
@@ -954,6 +1246,9 @@ defmodule Ipse.Extension.Actions do
 
   def valid_outcome?(%{"op" => "collection.call"} = request, status, value, id),
     do: CollectionCall.valid_outcome?(request, status, value, id)
+
+  def valid_outcome?(%{"op" => "collection.store"} = request, status, value, id),
+    do: Ipse.Extension.CollectionStore.valid_outcome?(request, status, value, id)
 
   def valid_outcome?(%{"op" => "collection.managed"} = request, status, value, id),
     do: ManagedCollectionCall.valid_outcome?(request, status, value, id)
@@ -971,6 +1266,9 @@ defmodule Ipse.Extension.Actions do
 
   def valid_outcome?(%{"op" => "context.publish"} = request, status, value, id),
     do: Ipse.Extension.Context.valid_outcome?(request, status, value, id)
+
+  def valid_outcome?(%{"op" => "context.available"} = request, "ok", value, _),
+    do: validate_operation(request) == :ok and Ipse.Extension.Context.available?(value)
 
   def valid_outcome?(%{"op" => "operator.question"} = request, "answered", value, _) do
     Enum.sort(Map.keys(value)) == ["answers"] and

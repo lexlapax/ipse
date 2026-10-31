@@ -1,0 +1,16 @@
+GENERATION_COMPACT_PROGRESS_OK: %{
+  inventories: [
+    {"runtime", 716},
+    {"artifact", 25},
+    {"session-artifacts", 165},
+    {"helper", 1}
+  ],
+  manifest_entries: 16,
+  source_inputs: 28,
+  unchanged_ancestor_host_paths: 705,
+  declared_artifact_files: 24,
+  executable_code_delta: ["Elixir.IpseKnowledge.Corpus.beam",
+   "Elixir.IpseKnowledge.Store.Collection.Job.beam"],
+  compact_ledger_pinned_rows: 51,
+  retained_public_objects: 655
+}

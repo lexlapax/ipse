@@ -1,0 +1,13 @@
+UNFENCED_CHARLIST_MARKER_REPRODUCED: %{
+  create: :ok,
+  key: "native_journal_layout",
+  persisted_native_owner_required: true,
+  lock_file: false
+}
+UNFENCED_CHARLIST_MARKER_REPRODUCED: %{
+  create: :ok,
+  key: "release_receipt_layout",
+  persisted_native_owner_required: true,
+  lock_file: false
+}
+No native helper, model, or network invoked

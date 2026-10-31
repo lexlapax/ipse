@@ -1,0 +1,9 @@
+
+running 4 tests
+test ipse_transaction::unix::tests::optional_absence_requires_the_retained_named_root_and_child_identity ... ok
+test ipse_transaction::unix::tests::optional_links_directories_and_bad_names_are_not_absence ... ok
+test ipse_transaction::unix::tests::optional_missing_is_distinct_from_empty_and_never_continues_a_prefix ... ok
+test ipse_transaction::unix::tests::optional_present_reuses_chunk_bounds_and_private_file_checks ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 75 filtered out; finished in 0.00s
+

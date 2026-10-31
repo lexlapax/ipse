@@ -1,0 +1,2435 @@
+{
+  "actual_native_annual_turnover": false,
+  "base_graph": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02",
+  "helper_sha256": "86d6226c868b7095c6ba7460cc0b42832e98fb70feea0779fb3473ac7bb28a6a",
+  "host_kernel": "7.2.11-arch1-1",
+  "kind": "direct_native_component_diagnostic",
+  "override_graph": "/home/lexlapax/projects/lexlapax/ipse/_build/turnover-sol-20261028/ebin",
+  "production_admitted": false,
+  "runtime_beams": {
+    "Elixir.Jason.Encode.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/jason/ebin/Elixir.Jason.Encode.beam",
+      "sha256": "0ae6784a6ad6c9c2a12016555510741609872049a640b31cc76ed8655a11edfc"
+    },
+    "Elixir.Finch.Pool.Manager.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/finch/ebin/Elixir.Finch.Pool.Manager.beam",
+      "sha256": "89aa7aa6af95a92f8e831ffa8ae6027309dcd47e1c616f00e2d6a4ed157b3b2a"
+    },
+    "Elixir.Plug.Router.MalformedURIError.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/plug/ebin/Elixir.Plug.Router.MalformedURIError.beam",
+      "sha256": "9d461991f9cfe78d2f39650c9c2cb300901902ab5d12257b5227efb8a5862e1f"
+    },
+    "Elixir.Ipse.CLI.Terminal.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/ipse/ebin/Elixir.Ipse.CLI.Terminal.beam",
+      "sha256": "c53fe0cb3ff20c11783f9f0ceaa3ce384eaa580414d97493fa1629f67013aafe"
+    },
+    "Elixir.Ipse.Extension.Bundles.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/ipse/ebin/Elixir.Ipse.Extension.Bundles.beam",
+      "sha256": "213e59361316f2e9ee75f90c3149cde5a312bf8159031818158536b972ab2c9f"
+    },
+    "Elixir.NimblePool.Application.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/nimble_pool/ebin/Elixir.NimblePool.Application.beam",
+      "sha256": "9b4af51fcf2d5b3c869ef879481b6d82dfc774d82571ef84eddf2a41e0752ea9"
+    },
+    "telemetry_sup.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/telemetry/ebin/telemetry_sup.beam",
+      "sha256": "ac445e98ff6cc764218c11ab4b1c0a407754bfd13a094bc66bdb59199d8d6d5e"
+    },
+    "Elixir.MCP.Protocol.Messages.Elicitation.Params.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/mcp_elixir_sdk/ebin/Elixir.MCP.Protocol.Messages.Elicitation.Params.beam",
+      "sha256": "883ca5ebe598e7d9b0595e546a16f0a0a95d2c095c3426127c971536d99d4509"
+    },
+    "Elixir.Ipse.Extension.Invocation.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/ipse/ebin/Elixir.Ipse.Extension.Invocation.beam",
+      "sha256": "8579362245fb54004fd1a4888e603683ccb9618e5e43a900334882492dc93d53"
+    },
+    "Elixir.Plug.Crypto.MessageEncryptor.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/plug_crypto/ebin/Elixir.Plug.Crypto.MessageEncryptor.beam",
+      "sha256": "95b3f21bb4f282d5704c7542ff66c0704d7acb2c9156b03b464895f6f875cb63"
+    },
+    "Elixir.Plug.Parsers.MULTIPART.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/plug/ebin/Elixir.Plug.Parsers.MULTIPART.beam",
+      "sha256": "bc8d14693e055c530b2b7a96afc54083c103ff70127500771eb3464da5a846e8"
+    },
+    "Elixir.Ipse.Extension.History.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/ipse/ebin/Elixir.Ipse.Extension.History.beam",
+      "sha256": "17e1cf503b82645381e092f0da4080c2002b5839f6f1c43cf62690a2c0e0496a"
+    },
+    "Elixir.Mint.UnsafeProxy.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/mint/ebin/Elixir.Mint.UnsafeProxy.beam",
+      "sha256": "956772d6a943b18dc2cf2d274eb085030f7ee3e2e65fe8ec7a742c390b95713a"
+    },
+    "Elixir.MCP.Protocol.Types.PromptArgument.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/mcp_elixir_sdk/ebin/Elixir.MCP.Protocol.Types.PromptArgument.beam",
+      "sha256": "642fecb6a97e6fe815a423c13a08905637fd500879db741a2f0f108161fac37e"
+    },
+    "Elixir.Ipse.Extension.Services.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/ipse/ebin/Elixir.Ipse.Extension.Services.beam",
+      "sha256": "2f344258b76e91b4498cef7904fed863adf4bf48a10ac2ff1ec5d852832c3262"
+    },
+    "Elixir.Req.Test.OwnershipError.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/req/ebin/Elixir.Req.Test.OwnershipError.beam",
+      "sha256": "c4d2c35bfa7409058203885a87270b077949114ad62835a4363bfe6e659d47b5"
+    },
+    "Elixir.Inspect.Ipse.Session.SourceIndex.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/ipse/ebin/Elixir.Inspect.Ipse.Session.SourceIndex.beam",
+      "sha256": "091fc492f9e014968cc1b5230426ef227b432df0c072fbbe3221ed55fd95844c"
+    },
+    "Elixir.JSONSchex.Sigil.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/jsonschex/ebin/Elixir.JSONSchex.Sigil.beam",
+      "sha256": "049243ae7ff7d1383c5f3dc50038929f276c366f3352fbfccd80afec3726122a"
+    },
+    "Elixir.Finch.HTTPError.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/finch/ebin/Elixir.Finch.HTTPError.beam",
+      "sha256": "7adb28fa9efe1ab1d20278ac36f7b1a3e310718bd0235f98bfd0d986e7a52e73"
+    },
+    "Elixir.Mint.HTTP.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/mint/ebin/Elixir.Mint.HTTP.beam",
+      "sha256": "f70c2bafa0e993890b09b12958d2dae0761968b467184e7a7f89c417f7c413c7"
+    },
+    "Elixir.Ipse.JSON.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/ipse/ebin/Elixir.Ipse.JSON.beam",
+      "sha256": "a7ec971212cfdb6eb3262ce172c0b6ff465163323c191675f2917940a3ef1cd6"
+    },
+    "Elixir.Jason.Encoder.MCP.Protocol.Messages.Logging.MessageParams.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/mcp_elixir_sdk/ebin/Elixir.Jason.Encoder.MCP.Protocol.Messages.Logging.MessageParams.beam",
+      "sha256": "f1e67a5504b747b4a2340ef118238daa6d7f2652f21be9b6d27f47688b555590"
+    },
+    "telemetry_pt.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/telemetry/ebin/telemetry_pt.beam",
+      "sha256": "1404ccbcb666e38e35484c6d6ebaa7fdc54984ae2fae774a34e1ca6eeb3ee9f7"
+    },
+    "Elixir.Req.Finch.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/req/ebin/Elixir.Req.Finch.beam",
+      "sha256": "b58c7f3e8de19d0ac09d822e3886ab35d81d263cab2155e50e3ae42046e4177b"
+    },
+    "Elixir.Mint.TransportError.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/mint/ebin/Elixir.Mint.TransportError.beam",
+      "sha256": "3dcf882043e7d70f46874178af6a29bcca4826d8550d8dc2e0b086de54de2e5b"
+    },
+    "Elixir.MCP.Protocol.Messages.Resources.ReadParams.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/mcp_elixir_sdk/ebin/Elixir.MCP.Protocol.Messages.Resources.ReadParams.beam",
+      "sha256": "af91fd859a761aa5eb605be3f9b01665e2ba27b9c30df460ba22378ad5166a80"
+    },
+    "Elixir.Req.TransportError.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/req/ebin/Elixir.Req.TransportError.beam",
+      "sha256": "92965012acec9da1fb12a9945d67d834c0bc774efcf793c82d43d5bd61ef357e"
+    },
+    "Elixir.Ipse.Extension.ManagedRead.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/ipse/ebin/Elixir.Ipse.Extension.ManagedRead.beam",
+      "sha256": "81899a928273bbdd135f8d3f0363dac1bb14ff4b72aeb683a212c8aba5a3826a"
+    },
+    "Elixir.Ipse.Extension.Config.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/ipse/ebin/Elixir.Ipse.Extension.Config.beam",
+      "sha256": "5e20f178f3475575cae6360dced99284e5232c0c5c9add26709598837f7089b1"
+    },
+    "Elixir.Jason.Encoder.MCP.Protocol.Messages.Notifications.ResourceUpdatedParams.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/mcp_elixir_sdk/ebin/Elixir.Jason.Encoder.MCP.Protocol.Messages.Notifications.ResourceUpdatedParams.beam",
+      "sha256": "2c3495fb64fbd1390fc0aa5245ff3900a2d17696338b0a202cc9320344e3fda7"
+    },
+    "Elixir.Ipse.Extension.TextResources.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/ipse/ebin/Elixir.Ipse.Extension.TextResources.beam",
+      "sha256": "1ed398f5a541a05d4e344d2d0937c117e1c8d2cb519277885f6549318a7c7fd1"
+    },
+    "Elixir.Ipse.Session.InferenceDispatch.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/ipse/ebin/Elixir.Ipse.Session.InferenceDispatch.beam",
+      "sha256": "160f18c347f88f045b6bd17dfed3985b507d499b4832e014ffa2518b8144e3eb"
+    },
+    "Elixir.MCP.Protocol.Types.Content.TextContent.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/mcp_elixir_sdk/ebin/Elixir.MCP.Protocol.Types.Content.TextContent.beam",
+      "sha256": "dde6db3812d1979d0c83b00c77af571fe67ceddd5bdbd986bb9ccdadb1fd7f6d"
+    },
+    "Elixir.Ipse.Provider.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/ipse/ebin/Elixir.Ipse.Provider.beam",
+      "sha256": "768238c2a339635393dd3f74826438101c0bcf99aa9e8ff1bb5c6345f1c5a619"
+    },
+    "Elixir.Plug.Session.ETS.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/plug/ebin/Elixir.Plug.Session.ETS.beam",
+      "sha256": "5861203e6836fb3038b92ed3db5b1e7d6a0388d84106d1e5566ecbfcf50d3bb3"
+    },
+    "Elixir.Jason.Encoder.MCP.Protocol.Types.ResourceContents.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/mcp_elixir_sdk/ebin/Elixir.Jason.Encoder.MCP.Protocol.Types.ResourceContents.beam",
+      "sha256": "eff5e4a6ead834ef9ce68727ad0572dd8964fedfa4ad26b93c7b7fbdd490c20a"
+    },
+    "Elixir.Ipse.Runner.Review.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/ipse/ebin/Elixir.Ipse.Runner.Review.beam",
+      "sha256": "00e04a722aa86951bef80d31eec03a5c62b0782689988647ee15fadab60d875b"
+    },
+    "Elixir.Ipse.Extension.Activation.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/ipse/ebin/Elixir.Ipse.Extension.Activation.beam",
+      "sha256": "abef3e15aa644a5da950c4132dedffd0b1cd1d4521c19e6191e208c26b7d369c"
+    },
+    "Elixir.Ipse.Extension.Collection.ManagedPages.Planner.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/ipse/ebin/Elixir.Ipse.Extension.Collection.ManagedPages.Planner.beam",
+      "sha256": "7a2574590dd2feb1a4060defff89eac952e2888bcde8c45c5227ecda06320ac0"
+    },
+    "Elixir.Jason.Encoder.Jason.Fragment.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/jason/ebin/Elixir.Jason.Encoder.Jason.Fragment.beam",
+      "sha256": "44c8d2f707f28b276f33d8f1b470219063f710cb1609e0d7fa6f8e577f75a1bc"
+    },
+    "Elixir.Plug.MethodOverride.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/plug/ebin/Elixir.Plug.MethodOverride.beam",
+      "sha256": "7dd17b5e0c67e87f0b3f4d43c585f8e5836c9c9820d23b77b63014b9ed5301de"
+    },
+    "Elixir.Finch.HTTP1.Pool.State.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/finch/ebin/Elixir.Finch.HTTP1.Pool.State.beam",
+      "sha256": "012ef315be5d096b3699766ad4654a7e4b505414faf232b02377909218fddc76"
+    },
+    "Elixir.Ipse.Runner.Transaction.Capability.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/ipse/ebin/Elixir.Ipse.Runner.Transaction.Capability.beam",
+      "sha256": "1a6150dc87ec3690f8c9a6ba75eaafb2081b5e5fe339f497bf78a4b4955fa107"
+    },
+    "Elixir.Jason.Encoder.Any.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/jason/ebin/Elixir.Jason.Encoder.Any.beam",
+      "sha256": "1aae7c63cf2cfb46b7ede4a634f8ea439956c8679d0aa4b7b708e8696814d9fe"
+    },
+    "Elixir.Ipse.CLI.Errors.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/ipse/ebin/Elixir.Ipse.CLI.Errors.beam",
+      "sha256": "2e23719a525cbc99dddacd7f4f65d1e13086e66b03a2cbe6cd54065bcc74a409"
+    },
+    "Elixir.JSONSchex.Compiler.Cache.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/jsonschex/ebin/Elixir.JSONSchex.Compiler.Cache.beam",
+      "sha256": "5240070395f9b465cdea39517e73bea08f21151019387d19a0d1c809d3b38d3f"
+    },
+    "Elixir.Ipse.Extension.TextConsumer.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/ipse/ebin/Elixir.Ipse.Extension.TextConsumer.beam",
+      "sha256": "3982a0bb0078ba147ea90c48a3c02a1ff1cf90ea918ab974cf47fe84d59b08ca"
+    },
+    "Elixir.Plug.BasicAuth.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/plug/ebin/Elixir.Plug.BasicAuth.beam",
+      "sha256": "328a3c5e6b7c4bdc3812ff445909643255046b34d83d5ad348650b94a2b1d2cf"
+    },
+    "Elixir.Ipse.MCP.Planning.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/ipse/ebin/Elixir.Ipse.MCP.Planning.beam",
+      "sha256": "faf172e4570cb3ce0ce5dacb817d2ecfacefbecf6f186a36659e746d7ec81e56"
+    },
+    "Elixir.Jason.Encoder.MCP.Protocol.Messages.Prompts.GetResult.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/mcp_elixir_sdk/ebin/Elixir.Jason.Encoder.MCP.Protocol.Messages.Prompts.GetResult.beam",
+      "sha256": "abff213e0057ca041416b7760a1074ee0182e21c0728932635a204ec9844427f"
+    },
+    "Elixir.Ipse.Journal.SourceOrigin.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/ipse/ebin/Elixir.Ipse.Journal.SourceOrigin.beam",
+      "sha256": "3dfcc5467aa3cf509da2462ad1a1bfe252ef438feebb9049e762d1c0353b46b9"
+    },
+    "Elixir.Ipse.Decision.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/ipse/ebin/Elixir.Ipse.Decision.beam",
+      "sha256": "4a67b10126713af99d81b4cbc45f8e86eb2a287f2af253520d1a4b77258f94de"
+    },
+    "Elixir.Ipse.CLI.Setup.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/ipse/ebin/Elixir.Ipse.CLI.Setup.beam",
+      "sha256": "1a4a1f7491e6ce0389f7d87e814fa03f93f138f512722b70e7d2fc30ea359709"
+    },
+    "Elixir.JSONSchex.Formats.DateTime.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/jsonschex/ebin/Elixir.JSONSchex.Formats.DateTime.beam",
+      "sha256": "1d4347aefcfe396f1584bc4cbf9a8be894a3d96b5942599bc6963ff231fd8c96"
+    },
+    "Elixir.MCP.Protocol.Types.ModelPreferences.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/mcp_elixir_sdk/ebin/Elixir.MCP.Protocol.Types.ModelPreferences.beam",
+      "sha256": "2e7cbc83e20a694368426c1cc4443981afd18b11246528abd3899854c7afb776"
+    },
+    "Elixir.Ipse.Builtins.PromptAnnotation.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/ipse/ebin/Elixir.Ipse.Builtins.PromptAnnotation.beam",
+      "sha256": "cfc1243985038e1de0263955ccf6feefcd04495ab85bedd42ae1fabf94ae96f7"
+    },
+    "Elixir.MCP.Transport.Stdio.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/mcp_elixir_sdk/ebin/Elixir.MCP.Transport.Stdio.beam",
+      "sha256": "bbbf4c3da5d3cb45a500cead46ccb23e59cd05cf1ea0b14ada972755180f4d07"
+    },
+    "Elixir.Ipse.Workspace.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/ipse/ebin/Elixir.Ipse.Workspace.beam",
+      "sha256": "c28b61bc541806327f8b345c903f1981bb48f272ae89a5b6c2f0329c9f6b7245"
+    },
+    "Elixir.Plug.Parsers.URLENCODED.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/plug/ebin/Elixir.Plug.Parsers.URLENCODED.beam",
+      "sha256": "65dbe57c1021ec5578eae75e44c33ffdfe8ec5cb37bf45f4ad8fbb3e93b22e73"
+    },
+    "Elixir.Ipse.Extension.Collection.NormalizerV3.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/turnover-sol-20261028/ebin/Elixir.Ipse.Extension.Collection.NormalizerV3.beam",
+      "sha256": "14eab050093cf924e0dd18ac4612cc1b1262a88e8641756772769cd6961e6cef"
+    },
+    "Elixir.Ipse.Extension.Conformance.Model.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/ipse/ebin/Elixir.Ipse.Extension.Conformance.Model.beam",
+      "sha256": "34673dc30482707ee9175d0a1455a41e8ef020a4fb7696c1d4e362017a959c4d"
+    },
+    "Elixir.Plug.Builder.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/plug/ebin/Elixir.Plug.Builder.beam",
+      "sha256": "8de51066061f9fb018822bc86ce8ece933ee5f39902cc4fba35edb48b95e1c7b"
+    },
+    "Elixir.Jason.Encoder.NaiveDateTime.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/jason/ebin/Elixir.Jason.Encoder.NaiveDateTime.beam",
+      "sha256": "9b3be42c0bfd7a69a8c9198c4238e305ef326b784e6f2619977fbb0e3d9b9691"
+    },
+    "Elixir.Plug.Session.Store.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/plug/ebin/Elixir.Plug.Session.Store.beam",
+      "sha256": "86f059e4732204820d684b71f899b5641e716d3b402dfe5ad02dbc7d845edb95"
+    },
+    "Elixir.Plug.Adapters.Test.Conn.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/plug/ebin/Elixir.Plug.Adapters.Test.Conn.beam",
+      "sha256": "cdf3c086e4b7acc9570d6561fcf6f7f48302cac22d04515164e4b14fa88acf28"
+    },
+    "Elixir.Req.Test.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/req/ebin/Elixir.Req.Test.beam",
+      "sha256": "e3e584b33cdbdc8f97e0aa7925f0ce3a1cbec14b2d3af726d9c3f5b589d1eb9f"
+    },
+    "Elixir.Req.Response.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/req/ebin/Elixir.Req.Response.beam",
+      "sha256": "1b0f2488835937cac46cb435514d4ce35fa93abc2beee2779b0a58cad7fe7ebd"
+    },
+    "Elixir.JSONSchex.Draft202012.Dialect.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/jsonschex/ebin/Elixir.JSONSchex.Draft202012.Dialect.beam",
+      "sha256": "6f3a47f4dbf52e0d04b7663a654deb0195af563dfe4cef6efd0a357abca9b267"
+    },
+    "Elixir.Inspect.Ipse.Session.SourceWindow.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/ipse/ebin/Elixir.Inspect.Ipse.Session.SourceWindow.beam",
+      "sha256": "fc6193956a47a2fa43e0595b667033b0a63a003b4bf9613437e73b5c380ee8ec"
+    },
+    "Elixir.Plug.Static.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/plug/ebin/Elixir.Plug.Static.beam",
+      "sha256": "ce93e5bc8ff8764a5d61ae1bc99c535c2bc0cad24598565f0fae3daa8e4146c1"
+    },
+    "Elixir.Jason.Encoder.MCP.Protocol.Messages.Completion.Result.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/mcp_elixir_sdk/ebin/Elixir.Jason.Encoder.MCP.Protocol.Messages.Completion.Result.beam",
+      "sha256": "d0528e02db1a71861369039c0a0cd020e8cb550de381b35dba52d46713320164"
+    },
+    "Elixir.Jason.Encoder.MCP.Protocol.Messages.Prompts.ListResult.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/mcp_elixir_sdk/ebin/Elixir.Jason.Encoder.MCP.Protocol.Messages.Prompts.ListResult.beam",
+      "sha256": "4c82d1a0a34298798805648c456ffde8fbaab6de9c2b2fe018f06d5eb4366d03"
+    },
+    "Elixir.Ipse.Provider.Gemini.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/ipse/ebin/Elixir.Ipse.Provider.Gemini.beam",
+      "sha256": "8459589f88e98f667a1ad2ef79f1631652d7cb945364ad34c73fe9cc489c0c7f"
+    },
+    "Elixir.Ipse.Extension.Catalog.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/ipse/ebin/Elixir.Ipse.Extension.Catalog.beam",
+      "sha256": "0b99149708ad45a75821747adc5466bca9456c448815a794fa7915aa452f2af0"
+    },
+    "Elixir.Finch.HTTP1.Pool.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/finch/ebin/Elixir.Finch.HTTP1.Pool.beam",
+      "sha256": "b12678beb21d8b54510c7e34e4bbbea26d5f615402f69637acf157663c21c424"
+    },
+    "Elixir.Ipse.Extension.ModelCall.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/ipse/ebin/Elixir.Ipse.Extension.ModelCall.beam",
+      "sha256": "ecd5dd0f815f800de34b59dd83e67217100fbd57f132ff2ef155137abd72929f"
+    },
+    "Elixir.UUID.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/elixir_uuid/ebin/Elixir.UUID.beam",
+      "sha256": "c4a3796fa9ee0b7600665a3eae3752158879962b792c2843bebf981731ebb65f"
+    },
+    "Elixir.Plug.Conn.InvalidQueryError.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/plug/ebin/Elixir.Plug.Conn.InvalidQueryError.beam",
+      "sha256": "078592bb81aef16abf93108cc5e62850b736db97ac86f36edbacc5f0100d0080"
+    },
+    "Elixir.MCP.Protocol.Messages.Tools.ListResult.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/mcp_elixir_sdk/ebin/Elixir.MCP.Protocol.Messages.Tools.ListResult.beam",
+      "sha256": "cb4485bef4cae2cbed5507fe43cd396a1dfc90dfd1f3e063412801853a55282f"
+    },
+    "Elixir.Ipse.Session.DraftMCP.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/ipse/ebin/Elixir.Ipse.Session.DraftMCP.beam",
+      "sha256": "044f4e910f74b7ed9e94f728ac4ecbd8c7e6a4bf9ed8debc99def46ea938f3dd"
+    },
+    "Elixir.Inspect.Ipse.InferenceSlots.Handle.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/ipse/ebin/Elixir.Inspect.Ipse.InferenceSlots.Handle.beam",
+      "sha256": "248b90e4a090a2980bed0a18951b42e743ca155fb47063dc7b73455b6beed0a6"
+    },
+    "Elixir.JSONSchex.Types.Schema.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/jsonschex/ebin/Elixir.JSONSchex.Types.Schema.beam",
+      "sha256": "22d91857162f065b6bfad1c4d3f9eb16d8ea735e11518beba6cb974827922a2c"
+    },
+    "Elixir.MCP.Protocol.Types.Resource.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/mcp_elixir_sdk/ebin/Elixir.MCP.Protocol.Types.Resource.beam",
+      "sha256": "c34512898100611e992bd204bde03cd5b1891cb9e9d9ec64bba6e7eda9f10561"
+    },
+    "Elixir.Ipse.Extension.Conformance.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/ipse/ebin/Elixir.Ipse.Extension.Conformance.beam",
+      "sha256": "af58c5afc6f1155ff490417bffd5c59c4702a2a27c807151e72a0ebcfcde7e2c"
+    },
+    "Elixir.Req.Response.Async.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/req/ebin/Elixir.Req.Response.Async.beam",
+      "sha256": "2ef99fbb2dbece09e705308d61f98597a1a26b39dce80c4589ca1b092e4e2943"
+    },
+    "Elixir.Ipse.PrivateFile.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/ipse/ebin/Elixir.Ipse.PrivateFile.beam",
+      "sha256": "ce726533975098835a52b4f7d333243a31948af22fcbd5dbb75419ca24f42008"
+    },
+    "Elixir.Plug.HTML.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/plug/ebin/Elixir.Plug.HTML.beam",
+      "sha256": "7e712b912c5c631eea60bc0855fe441c510ea7e24f88a8346585395a674095b8"
+    },
+    "Elixir.Jason.Fragment.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/jason/ebin/Elixir.Jason.Fragment.beam",
+      "sha256": "aaa8aaf3f10fb790f442d00e481e85d289e73dc857afa791bf47beee639b1f54"
+    },
+    "Elixir.Ipse.Session.RuntimeLifecycle.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/ipse/ebin/Elixir.Ipse.Session.RuntimeLifecycle.beam",
+      "sha256": "3fc22e8e3072c38de2742267c4d5039d961a387792eaa40966b4672090a71eb4"
+    },
+    "Elixir.Ipse.Provider.CompletionWitness.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/ipse/ebin/Elixir.Ipse.Provider.CompletionWitness.beam",
+      "sha256": "1bb8c55d904c47024fd502cc58dea0255fb2dd76acf145b46c310d3f1f34eefc"
+    },
+    "Elixir.Req.Utils.CollectWithHash.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/req/ebin/Elixir.Req.Utils.CollectWithHash.beam",
+      "sha256": "d28540ac0b35f003f04d916513c07511fd14a53dfb8dd41e66e7d3d5891b5117"
+    },
+    "Elixir.MCP.Protocol.Messages.Sampling.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/mcp_elixir_sdk/ebin/Elixir.MCP.Protocol.Messages.Sampling.beam",
+      "sha256": "9a7a872ad887acfdda34da67f48cd6a46f59de3ddfe5ab668a40da45f4032773"
+    },
+    "Elixir.Ipse.Extension.ResultPublication.Output.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/ipse/ebin/Elixir.Ipse.Extension.ResultPublication.Output.beam",
+      "sha256": "b50b44f4edd1f4c2acca43c61b082f4bb2f78eea076cf07382f8dd180941900d"
+    },
+    "Elixir.Ipse.Provider.Spec.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/ipse/ebin/Elixir.Ipse.Provider.Spec.beam",
+      "sha256": "59f98218dd0bb76ee37f44ff9a97e26c7e37e558d85456766681edfbd27ff5d6"
+    },
+    "Elixir.Ipse.Session.Invocation.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/ipse/ebin/Elixir.Ipse.Session.Invocation.beam",
+      "sha256": "b42fa830f3da30446bc48e9ddc8d5842f6e36a33f2372642cc060dff8da93443"
+    },
+    "Elixir.Req.Test.Ownership.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/req/ebin/Elixir.Req.Test.Ownership.beam",
+      "sha256": "8d12c8bf5ca47839397b8b59051e978980681948757f412d5ae5f7dc00d0f4e5"
+    },
+    "Elixir.Jason.DecodeError.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/jason/ebin/Elixir.Jason.DecodeError.beam",
+      "sha256": "33b662dffaf61f248d2b09fdd9c49b55c4223525f15b437b568f9919c24b2635"
+    },
+    "Elixir.Jason.Encoder.Atom.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/jason/ebin/Elixir.Jason.Encoder.Atom.beam",
+      "sha256": "ce5483bc1587bdda13dc72d92fb51d6d6066987b5d9ba076eebfbb3cc725a31d"
+    },
+    "Elixir.Jason.Encoder.MCP.Protocol.Types.Content.EmbeddedResource.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/mcp_elixir_sdk/ebin/Elixir.Jason.Encoder.MCP.Protocol.Types.Content.EmbeddedResource.beam",
+      "sha256": "919bf94f07b5f25587319cc99456c3eab5ef0d7603fa993cf54dccffa04abe10"
+    },
+    "Elixir.Plug.Router.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/plug/ebin/Elixir.Plug.Router.beam",
+      "sha256": "049315cb06cbb1c55a4ef85b147b4200504bd88b2b27aed7950afdaa9fe165c9"
+    },
+    "Elixir.MCP.Protocol.Types.Implementation.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/mcp_elixir_sdk/ebin/Elixir.MCP.Protocol.Types.Implementation.beam",
+      "sha256": "1d2965e3f7cf09bedc9452bee72ee3efc03b394539c67609f19aa2aa2d0e8c33"
+    },
+    "Elixir.Ipse.Extension.Host.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/ipse/ebin/Elixir.Ipse.Extension.Host.beam",
+      "sha256": "afdeafbd69a37019abf388a3538f6d38fff6c3b47605997e306b69f11f1e6049"
+    },
+    "Elixir.Jason.Encoder.MCP.Protocol.Messages.Ping.Params.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/mcp_elixir_sdk/ebin/Elixir.Jason.Encoder.MCP.Protocol.Messages.Ping.Params.beam",
+      "sha256": "f16105188c93f1b8090259e8b2deeb9b805c57ef78d02e56321a5e1113888b1b"
+    },
+    "Elixir.Ipse.Extension.ResultSource.Sealed.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/ipse/ebin/Elixir.Ipse.Extension.ResultSource.Sealed.beam",
+      "sha256": "1170fc3703cc38ef626071ffd74153a6f4152881ce1de1c9482d7e0891f4ad81"
+    },
+    "Elixir.Ipse.Extension.CollectionPolicy.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/ipse/ebin/Elixir.Ipse.Extension.CollectionPolicy.beam",
+      "sha256": "eb99eb624fd7a0f427b81dca6789b5970d7597736a937970d5322919d6d6f61f"
+    },
+    "telemetry_app.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/telemetry/ebin/telemetry_app.beam",
+      "sha256": "028cbb249a9834bb4e28061d70f7f527498a27c137745c41f845aa592d946eb0"
+    },
+    "Elixir.MCP.Protocol.Messages.Tools.CallParams.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/mcp_elixir_sdk/ebin/Elixir.MCP.Protocol.Messages.Tools.CallParams.beam",
+      "sha256": "97bf5671ba402f432c95ff07ca74cbfb324b673471526d46a3ab577fcd719063"
+    },
+    "Elixir.Ipse.Session.OperatorAnswer.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/ipse/ebin/Elixir.Ipse.Session.OperatorAnswer.beam",
+      "sha256": "0425f60d0db9f1fd26721dac2f90c7877c1c1e07c9418fcc60e8039c77e7b724"
+    },
+    "Elixir.Finch.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/finch/ebin/Elixir.Finch.beam",
+      "sha256": "d6f2a7b938fae3a6ba9782794e83e6e841e29256ed3841f91c881aaf4c811121"
+    },
+    "Elixir.Ipse.Extension.ResultView.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/ipse/ebin/Elixir.Ipse.Extension.ResultView.beam",
+      "sha256": "9d131e7733de3cc9290cbf5731f491970728d9d11db6f5a657eb129c273eefcd"
+    },
+    "Elixir.Jason.Encoder.MCP.Protocol.Error.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/mcp_elixir_sdk/ebin/Elixir.Jason.Encoder.MCP.Protocol.Error.beam",
+      "sha256": "92445baa65a95f4ef427194e9d6ba3c93afe71cc049061697874eac951a168fb"
+    },
+    "Elixir.Ipse.MCP.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/ipse/ebin/Elixir.Ipse.MCP.beam",
+      "sha256": "a729bdaee01ed43a7c6e5a77388ee9dac3c401cacb56ff6bd815422c3a35af1e"
+    },
+    "Elixir.MCP.Protocol.Messages.Notification.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/mcp_elixir_sdk/ebin/Elixir.MCP.Protocol.Messages.Notification.beam",
+      "sha256": "331dbab7cd4a60df8ce6e893be22b4e2ff066d1076f7bb33d835ac3cd99cdebf"
+    },
+    "Elixir.Jason.Encoder.Integer.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/jason/ebin/Elixir.Jason.Encoder.Integer.beam",
+      "sha256": "48f9cc7884b769d5318454afc3feaa5aa4f325753030b4c3ad0b5494cbb19978"
+    },
+    "Elixir.Ipse.HTTP.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/ipse/ebin/Elixir.Ipse.HTTP.beam",
+      "sha256": "ec240cf0a832a5367900a90e6dcfc4446353ec5321fc9c164827a0e0447c1485"
+    },
+    "Elixir.Jason.Encoder.MCP.Protocol.Messages.Tools.ListParams.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/mcp_elixir_sdk/ebin/Elixir.Jason.Encoder.MCP.Protocol.Messages.Tools.ListParams.beam",
+      "sha256": "7fe866e89a41d54c4b602685f3b6c84233490f230ea7006c89a13f0dbf77d9ba"
+    },
+    "Elixir.Ipse.Extension.Mode.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/ipse/ebin/Elixir.Ipse.Extension.Mode.beam",
+      "sha256": "2d061ab15ce1372fc749783cbaf5fba2355457a5330c5cef91b1df8a7de4dd4b"
+    },
+    "Elixir.Enumerable.Jason.OrderedObject.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/jason/ebin/Elixir.Enumerable.Jason.OrderedObject.beam",
+      "sha256": "c3704df47c16b96ea341ace952c40ab96b22e5465468d933aa0961f3fa999705"
+    },
+    "Elixir.MCP.Protocol.Messages.Elicitation.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/mcp_elixir_sdk/ebin/Elixir.MCP.Protocol.Messages.Elicitation.beam",
+      "sha256": "105e7da8d9fa5444b8cd05375893a6b23523c4826872a6262e358f24fd364ddb"
+    },
+    "Elixir.Ipse.Builtins.AnswerFormat.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/ipse/ebin/Elixir.Ipse.Builtins.AnswerFormat.beam",
+      "sha256": "255a935022022775340b14486572de6d32e85de3f9603e481cbda6f189b4fee1"
+    },
+    "Elixir.Ipse.Runner.Transaction.Controller.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/ipse/ebin/Elixir.Ipse.Runner.Transaction.Controller.beam",
+      "sha256": "da27a776c81cf8d2f7c253ae75d1cc936862324f1a8fdbef7d6ed08b684dbb8c"
+    },
+    "Elixir.Req.DecompressError.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/req/ebin/Elixir.Req.DecompressError.beam",
+      "sha256": "3f42576e54252b9471639943bf694279f92387870e8194f131f67eeef50a4393"
+    },
+    "Elixir.Jason.Encoder.MCP.Protocol.Messages.Notifications.ProgressParams.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/mcp_elixir_sdk/ebin/Elixir.Jason.Encoder.MCP.Protocol.Messages.Notifications.ProgressParams.beam",
+      "sha256": "e10b4b0f6bbc52f53b63f96b294d274da779dcaf9272ca7ebfa600a82a9e9418"
+    },
+    "Elixir.Ipse.Session.Lifecycle.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/ipse/ebin/Elixir.Ipse.Session.Lifecycle.beam",
+      "sha256": "742337a429a2510a10de536a58463f1c8dd7892b327e7edabc783160639e886c"
+    },
+    "Elixir.Ipse.CLI.Knowledge.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/ipse/ebin/Elixir.Ipse.CLI.Knowledge.beam",
+      "sha256": "fceceb1a195e747e85d41f7a07333e712e8dc9cda9683fada8f12207e02ccba1"
+    },
+    "Elixir.Jason.Encoder.MCP.Protocol.Types.Resource.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/mcp_elixir_sdk/ebin/Elixir.Jason.Encoder.MCP.Protocol.Types.Resource.beam",
+      "sha256": "8852b7041d0de8b6452393eb6df11e0a9e650a1652b2b80fec423b6272adaa83"
+    },
+    "Elixir.Ipse.Observability.Trace.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/ipse/ebin/Elixir.Ipse.Observability.Trace.beam",
+      "sha256": "4e97a559094b73ad562356030ef5782aee20f452fb24bc8e0a92f9cc27937684"
+    },
+    "Elixir.Ipse.Provider.MintTransport.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/ipse/ebin/Elixir.Ipse.Provider.MintTransport.beam",
+      "sha256": "3ba76ab3d023550cd6d4747a963f502a8087612a2650ef1a76c5f65d7a7db402"
+    },
+    "Elixir.Req.Application.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/req/ebin/Elixir.Req.Application.beam",
+      "sha256": "8b8fc1eb52bcf61548814eda763ca1bcfd2e3906019267cbc24834e87d5516e6"
+    },
+    "Elixir.Ipse.Provider.ChatCompletions.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/ipse/ebin/Elixir.Ipse.Provider.ChatCompletions.beam",
+      "sha256": "89375fd117cc764ce82a6b89eea67d0e3a4b6aa69d88c7c98f1e50ce82192aa7"
+    },
+    "Elixir.MCP.Protocol.Messages.Notifications.ResourceUpdatedParams.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/mcp_elixir_sdk/ebin/Elixir.MCP.Protocol.Messages.Notifications.ResourceUpdatedParams.beam",
+      "sha256": "78256a6c2f8dcd1c0fbd42ad57a057258e9a7971d8484fcc7655b05518f8a7d5"
+    },
+    "Elixir.Jason.Encoder.MCP.Protocol.Messages.Resources.ListTemplatesResult.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/mcp_elixir_sdk/ebin/Elixir.Jason.Encoder.MCP.Protocol.Messages.Resources.ListTemplatesResult.beam",
+      "sha256": "2828680d3a574aee7a197bccb46c8b50117bae29366b010a5dd373b54fbf07c2"
+    },
+    "Elixir.Mint.Types.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/mint/ebin/Elixir.Mint.Types.beam",
+      "sha256": "d10c51b21649aed92f25afb805d39e103728c7e30b356f503fb994bfcb652367"
+    },
+    "Elixir.Ipse.Extension.Collection.ReadView.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/ipse/ebin/Elixir.Ipse.Extension.Collection.ReadView.beam",
+      "sha256": "2fc5559b6cbb987a3c2691d25b77c4a2f13e5e04abd491b5323cfa349933a38c"
+    },
+    "Elixir.Ipse.Provider.MintText.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/ipse/ebin/Elixir.Ipse.Provider.MintText.beam",
+      "sha256": "1e3c6a0193c7c39dc1c5d0745f82c620c85745e40f15a0ba8cd100384ce739af"
+    },
+    "Elixir.ExJSONPointer.Relative.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/ex_json_pointer/ebin/Elixir.ExJSONPointer.Relative.beam",
+      "sha256": "86914162be324880ba6b275a31e3bbf72b1a3bddab09590fb1e2bb075fc3525d"
+    },
+    "Elixir.JSONSchex.Schema.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/jsonschex/ebin/Elixir.JSONSchex.Schema.beam",
+      "sha256": "c28f3636066e7735e07f971d277d9b3bcfa03f88253b89b061aa96e21acbde10"
+    },
+    "Elixir.Ipse.Extension.CollectionCall.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/ipse/ebin/Elixir.Ipse.Extension.CollectionCall.beam",
+      "sha256": "8955988d5291859e61c667386ab144f067ad337268b821f1b67153c0e2dbe614"
+    },
+    "Elixir.JSONSchex.SchemaTraversal.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/jsonschex/ebin/Elixir.JSONSchex.SchemaTraversal.beam",
+      "sha256": "ff2f4b74f8e187660a1119f8de4d7940fb58cac8abf76f3d80d17c450eb94926"
+    },
+    "Elixir.Plug.SSL.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/plug/ebin/Elixir.Plug.SSL.beam",
+      "sha256": "84477ea5eaec31132d82040d6090960827a5c00d9a9b0ea097394a596fae0a2a"
+    },
+    "Elixir.Jason.Encoder.MCP.Protocol.Types.Content.ImageContent.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/mcp_elixir_sdk/ebin/Elixir.Jason.Encoder.MCP.Protocol.Types.Content.ImageContent.beam",
+      "sha256": "4bda17e5457af8d2d246599be92cfc6defddef6384e7436ef64424b0bd0cb463"
+    },
+    "Elixir.Ipse.Session.TextStream.RequiredFailure.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/ipse/ebin/Elixir.Ipse.Session.TextStream.RequiredFailure.beam",
+      "sha256": "c19abf97a828953f26b37923062127283cfbf0142dad3e0d46eb7ae36552f0e2"
+    },
+    "Elixir.Ipse.Extension.Inference.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/ipse/ebin/Elixir.Ipse.Extension.Inference.beam",
+      "sha256": "1cb0d70cd107e73ef0e5f224cb6ef28a7fdaa9eedc7a5a241340540fec005eac"
+    },
+    "Elixir.Ipse.InferenceDispatch.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/ipse/ebin/Elixir.Ipse.InferenceDispatch.beam",
+      "sha256": "2b8023165de1b8aec97902d67bc2e36c190eead83c09989b687023f89cb54c04"
+    },
+    "Elixir.Ipse.Extension.UsageRead.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/ipse/ebin/Elixir.Ipse.Extension.UsageRead.beam",
+      "sha256": "8416c8bc92355b98f1dd5f4fece0c8ad2041f1cbda97eac949bf43bff1f11a0c"
+    },
+    "Elixir.Jason.Encoder.MCP.Protocol.Capabilities.ToolCapabilities.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/mcp_elixir_sdk/ebin/Elixir.Jason.Encoder.MCP.Protocol.Capabilities.ToolCapabilities.beam",
+      "sha256": "a77615adb5d555f4ef0700479260b132e7321d32c2f7f71884c27820d8d2da31"
+    },
+    "Elixir.Ipse.Usage.BudgetStore.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/ipse/ebin/Elixir.Ipse.Usage.BudgetStore.beam",
+      "sha256": "19a158002b742153fe3cea1cbd27d931b423a47751ed5bfcdec72cb02821b6db"
+    },
+    "Elixir.MCP.Protocol.Types.ResourceTemplate.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/mcp_elixir_sdk/ebin/Elixir.MCP.Protocol.Types.ResourceTemplate.beam",
+      "sha256": "d3113da124dcd68bd2fe7c9283d853a8c883e93dcb989eccc86a063023b90542"
+    },
+    "Elixir.Jason.EncodeError.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/jason/ebin/Elixir.Jason.EncodeError.beam",
+      "sha256": "7e51f41e955e8824eb7a8aab2f84e46a2c6ad00cf8f45606fc62918e0dc52c68"
+    },
+    "Elixir.Ipse.Tools.Delegation.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/ipse/ebin/Elixir.Ipse.Tools.Delegation.beam",
+      "sha256": "de324b390566cc6150937d33455713dbf40b450bcdf7ee4a667189f3697b9063"
+    },
+    "Elixir.Req.Zstd.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/req/ebin/Elixir.Req.Zstd.beam",
+      "sha256": "277fd7afccf8ddb322b62eaf141a93c00816b17b4ce60aa010d860ac70b05f7c"
+    },
+    "Elixir.Collectable.Req.Utils.CollectWithHash.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/req/ebin/Elixir.Collectable.Req.Utils.CollectWithHash.beam",
+      "sha256": "445f2be3143219552ba63d2ec236931fc259b3d3560dd6263709bce6fa7b4507"
+    },
+    "Elixir.MCP.Protocol.Messages.Roots.ListResult.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/mcp_elixir_sdk/ebin/Elixir.MCP.Protocol.Messages.Roots.ListResult.beam",
+      "sha256": "c2a905d6e3c330c3d790e8729634722ca7b5aa6d4214d11c000145f120c3f477"
+    },
+    "Elixir.Jason.Encoder.MCP.Protocol.Messages.Notifications.CancelledParams.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/mcp_elixir_sdk/ebin/Elixir.Jason.Encoder.MCP.Protocol.Messages.Notifications.CancelledParams.beam",
+      "sha256": "6e75d2a930924818e3eaf34116115a87fd353f75756d567e6642a58309efb051"
+    },
+    "Elixir.Mint.HTTP2.Frame.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/mint/ebin/Elixir.Mint.HTTP2.Frame.beam",
+      "sha256": "3882993576861e3e10f84cec57c302e63e383c346a2e0a5f858220a824cf97b7"
+    },
+    "Elixir.Jason.Encoder.MCP.Protocol.Types.Implementation.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/mcp_elixir_sdk/ebin/Elixir.Jason.Encoder.MCP.Protocol.Types.Implementation.beam",
+      "sha256": "645f1cd798aa0855b1dc63886943d53f3b74f18a6d364972f3d31211d6c678ce"
+    },
+    "Elixir.Jason.Encoder.MCP.Protocol.Messages.Elicitation.Result.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/mcp_elixir_sdk/ebin/Elixir.Jason.Encoder.MCP.Protocol.Messages.Elicitation.Result.beam",
+      "sha256": "8ad593e9fdd25b391828e1eaaa7a2ec96af93a40dd3ac4a0a799db65c03c0677"
+    },
+    "Elixir.Plug.Conn.Adapter.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/plug/ebin/Elixir.Plug.Conn.Adapter.beam",
+      "sha256": "672c7b965a23aafa1223b0eeb0ef52559ce3e1dfe1fb0a9fb6e802c4b0245e32"
+    },
+    "Elixir.Ipse.Session.ManagedReference.Plan.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/ipse/ebin/Elixir.Ipse.Session.ManagedReference.Plan.beam",
+      "sha256": "9019d2fa1712505c47c18e898880bc94bd19194d36d556307cddb76036fc11af"
+    },
+    "Elixir.Jason.Encoder.MCP.Protocol.Messages.Roots.ListParams.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/mcp_elixir_sdk/ebin/Elixir.Jason.Encoder.MCP.Protocol.Messages.Roots.ListParams.beam",
+      "sha256": "5bbb30b462ce339e6e6c90ce2554cf9ef530111ff6996b514316d3353149e96c"
+    },
+    "Elixir.JSONSchex.ScopeScanner.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/jsonschex/ebin/Elixir.JSONSchex.ScopeScanner.beam",
+      "sha256": "44ad23197e954a0d5ade420d902d1aeee83d502168d26c426b43f233ec6c3651"
+    },
+    "Elixir.Ipse.Config.Profiles.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/ipse/ebin/Elixir.Ipse.Config.Profiles.beam",
+      "sha256": "12503e0ba264fcc5d1d96ced6a244a0ddc8a5724fed16e036dd7c8da34b9a19e"
+    },
+    "Elixir.Mint.HTTP1.Request.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/mint/ebin/Elixir.Mint.HTTP1.Request.beam",
+      "sha256": "7ee71ae241c92dfc6ed653bfd78b3e716e1d2753b9062d74ef9c84a345776ffa"
+    },
+    "Elixir.Ipse.Extension.ToolAction.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/ipse/ebin/Elixir.Ipse.Extension.ToolAction.beam",
+      "sha256": "d5fb69d253b39d3d5bb9d5877c98e54b9108cd5fa7c83740df4e6ef54bc2e7f5"
+    },
+    "Elixir.MCP.Protocol.Messages.Logging.MessageParams.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/mcp_elixir_sdk/ebin/Elixir.MCP.Protocol.Messages.Logging.MessageParams.beam",
+      "sha256": "7fa0b5846317bea481ecb96c5cd28bf634588fadcafcb94893eaf6d2d22c76f6"
+    },
+    "Elixir.MCP.Server.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/mcp_elixir_sdk/ebin/Elixir.MCP.Server.beam",
+      "sha256": "6c6b667c57c0789487633164e3ab735854ba23b12f2a8b33a02d2aa7f080df4d"
+    },
+    "Elixir.Ipse.Tools.Research.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/ipse/ebin/Elixir.Ipse.Tools.Research.beam",
+      "sha256": "d1a120a7f45f74b4c11ba782554c576de0ada07673e7aead295ff420905baf8f"
+    },
+    "Elixir.Ipse.Session.Turn.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/ipse/ebin/Elixir.Ipse.Session.Turn.beam",
+      "sha256": "76142c78b29edba23538bbbec6715453f13da27bb6855489f48b24fdd918751a"
+    },
+    "Elixir.JSONSchex.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/jsonschex/ebin/Elixir.JSONSchex.beam",
+      "sha256": "7548e70ba8b6009d280095eb78d58ed26cbdf3cbccbf368b17bd4e80e500bebd"
+    },
+    "Elixir.Jason.Encoder.MCP.Protocol.Messages.Resources.SubscribeParams.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/mcp_elixir_sdk/ebin/Elixir.Jason.Encoder.MCP.Protocol.Messages.Resources.SubscribeParams.beam",
+      "sha256": "016724adca0eab03ac24880cfbfe8e930019b7296fe4c7c53c6f20a381b4fb9e"
+    },
+    "Elixir.HPAX.Huffman.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/hpax/ebin/Elixir.HPAX.Huffman.beam",
+      "sha256": "15bc13c6fb8b0004aaae7fd049e42f4d559d3ae96c87eba231931fb1ed7a02ca"
+    },
+    "Elixir.Plug.ErrorHandler.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/plug/ebin/Elixir.Plug.ErrorHandler.beam",
+      "sha256": "c91449be426ac6814efe927927340c0def17be451c28c56f971c9dc8c87f715b"
+    },
+    "Elixir.Ipse.MCP.HTTPTransport.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/ipse/ebin/Elixir.Ipse.MCP.HTTPTransport.beam",
+      "sha256": "98a635e1cd066ab437026ed0a298d38edfc065ece5212e8dca42158e13dd7148"
+    },
+    "Elixir.HPAX.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/hpax/ebin/Elixir.HPAX.beam",
+      "sha256": "603641cebeb1e37feef878ee8fb40392623c1d141e42481c878891791dc971cd"
+    },
+    "Elixir.Plug.Parsers.RequestTooLargeError.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/plug/ebin/Elixir.Plug.Parsers.RequestTooLargeError.beam",
+      "sha256": "d502a174ce2074fa5596824a3a69b5250bd6123d1cf3a232c73d7f5238c34d4f"
+    },
+    "Elixir.Plug.Logger.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/plug/ebin/Elixir.Plug.Logger.beam",
+      "sha256": "84360bb0c96204a75d95d63856e3f967a4bc997f795f20e2bf12b075677deec2"
+    },
+    "plug_multipart.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/plug/ebin/plug_multipart.beam",
+      "sha256": "af1e17eaf2b98eff41dee72f05a1e615b2ed15e6d0620b82e526ac223299d5f1"
+    },
+    "Elixir.Plug.CSRFProtection.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/plug/ebin/Elixir.Plug.CSRFProtection.beam",
+      "sha256": "29a9ae3f19ebe8e61fb5ac4a81d24d0a96578543da5b417880a7f4096b5274e0"
+    },
+    "Elixir.JSONSchex.ErrorFormatter.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/jsonschex/ebin/Elixir.JSONSchex.ErrorFormatter.beam",
+      "sha256": "ef930587d99c1b15328d5009055c5d3f664e26757c4e0776eaa2c728ae8bf0eb"
+    },
+    "Elixir.Ipse.Extension.Subscriptions.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/ipse/ebin/Elixir.Ipse.Extension.Subscriptions.beam",
+      "sha256": "a0b785c11c8ebe1f3f88b77158d9a0eb8b15987c71f165391120276cacf70e92"
+    },
+    "Elixir.Req.Request.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/req/ebin/Elixir.Req.Request.beam",
+      "sha256": "bfcd1131a37d9fceb6bdee58f237c81640f223777768ef92f8b5a2ca4190ab04"
+    },
+    "Elixir.MCP.Protocol.Capabilities.SamplingCapabilities.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/mcp_elixir_sdk/ebin/Elixir.MCP.Protocol.Capabilities.SamplingCapabilities.beam",
+      "sha256": "bbd0505ed2e5beefd19fad7fa1ee3156de2727dda4575c0689ce5f002de296bc"
+    },
+    "Elixir.Plug.Session.COOKIE.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/plug/ebin/Elixir.Plug.Session.COOKIE.beam",
+      "sha256": "c23c01197a43d5cd396288a65d9949197da6c024eb997bd30a54dd927e684e9f"
+    },
+    "Elixir.MCP.Protocol.Messages.Initialize.Params.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/mcp_elixir_sdk/ebin/Elixir.MCP.Protocol.Messages.Initialize.Params.beam",
+      "sha256": "4fb8b06af886e3de19c73cd25840ecec0c3fdf9b81edb0d222722c4e729fbc96"
+    },
+    "Elixir.Plug.Telemetry.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/plug/ebin/Elixir.Plug.Telemetry.beam",
+      "sha256": "35474176924c30c64871ad33c9aa525558a46d14df6d0551aadb1cd930982d23"
+    },
+    "Elixir.Jason.Codegen.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/jason/ebin/Elixir.Jason.Codegen.beam",
+      "sha256": "d30c9856adb23fdae9b3a4d09286d78f5a8de550ee0954f6391daa2efd1d5ffa"
+    },
+    "Elixir.JSONSchex.Compiler.Fragment.Bundle.State.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/jsonschex/ebin/Elixir.JSONSchex.Compiler.Fragment.Bundle.State.beam",
+      "sha256": "d2528c67cdbd9e41d0bae79aeafb6c322aecf61c20feb3a20cfc8ca659d1c0d2"
+    },
+    "Elixir.Ipse.Extension.Collection.ManagedPages.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/ipse/ebin/Elixir.Ipse.Extension.Collection.ManagedPages.beam",
+      "sha256": "afd04eb62cb9176beff1fcde767a199f8573146a871ef24fffe9303353fe7028"
+    },
+    "Elixir.Finch.Request.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/finch/ebin/Elixir.Finch.Request.beam",
+      "sha256": "54b2040fa848a1960b6a18da3a83358bee6c0e48754e49adb15f77f5e39af81d"
+    },
+    "Elixir.Jason.Encoder.MCP.Protocol.Messages.Request.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/mcp_elixir_sdk/ebin/Elixir.Jason.Encoder.MCP.Protocol.Messages.Request.beam",
+      "sha256": "859739375dd5e40461ec47cbc5c95771f36aeee8b8bd802e8542aba9c1fa0333"
+    },
+    "Elixir.MCP.Protocol.Messages.Resources.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/mcp_elixir_sdk/ebin/Elixir.MCP.Protocol.Messages.Resources.beam",
+      "sha256": "2a415126f1f917fe0ecb26ad25277a2263d6362eb86a3a39a9abfb6f44616f0f"
+    },
+    "Elixir.Plug.Crypto.MessageVerifier.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/plug_crypto/ebin/Elixir.Plug.Crypto.MessageVerifier.beam",
+      "sha256": "faa44d9a6e588cb50ddf1f0e55c391c4c5fd627e64b37f299f78ebeaf57b6ddd"
+    },
+    "Elixir.MCP.Protocol.Capabilities.ElicitationCapabilities.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/mcp_elixir_sdk/ebin/Elixir.MCP.Protocol.Capabilities.ElicitationCapabilities.beam",
+      "sha256": "589cfd67b04b09cf15f333dafcf5c2e975f8b1aa1c29abaa4183b99cce9576c1"
+    },
+    "Elixir.MCP.Protocol.Messages.Resources.ListTemplatesResult.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/mcp_elixir_sdk/ebin/Elixir.MCP.Protocol.Messages.Resources.ListTemplatesResult.beam",
+      "sha256": "ddc81a2232c91a32ec0368f623f07b01754b1b5d305cdd9b779de171e777bdfd"
+    },
+    "Elixir.Jason.Encoder.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/jason/ebin/Elixir.Jason.Encoder.beam",
+      "sha256": "a1320e3a8b556869de5e622f3ffc598153b5912eeb063958ffe1e2afced5845c"
+    },
+    "Elixir.Mint.Core.Transport.SSL.Tunnel.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/mint/ebin/Elixir.Mint.Core.Transport.SSL.Tunnel.beam",
+      "sha256": "fbd5facca14255b47e2a4753a0d0db6f01a56d3eaefb048e762bc7a2bae9b6f4"
+    },
+    "mint_shims.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/mint/ebin/mint_shims.beam",
+      "sha256": "917bc7509fc9afb2469af0288ae7072310fb1a5847818cbae456f09cd505b429"
+    },
+    "Elixir.Ipse.Session.SourceIndex.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/ipse/ebin/Elixir.Ipse.Session.SourceIndex.beam",
+      "sha256": "61c48c12d0c558e1fba600e6caf4f4db6bc03410303b3e7f9aeab6fe851986f4"
+    },
+    "Elixir.Jason.Encoder.BitString.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/jason/ebin/Elixir.Jason.Encoder.BitString.beam",
+      "sha256": "e67124c20fd4ec3286d06b735468094c5f92e9a23934c4eb9385fef9b3dabe33"
+    },
+    "Elixir.MCP.Protocol.Messages.Roots.ListParams.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/mcp_elixir_sdk/ebin/Elixir.MCP.Protocol.Messages.Roots.ListParams.beam",
+      "sha256": "9ad5a95d3fa0d663615851b61dea822976ce946fd7653d07e496f37546d52487"
+    },
+    "Elixir.MCP.Transport.StreamableHTTP.Server.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/mcp_elixir_sdk/ebin/Elixir.MCP.Transport.StreamableHTTP.Server.beam",
+      "sha256": "eaebd367a6c695677e3501ff305f78b155d2c1a71be7bf23573309d520c3dc26"
+    },
+    "Elixir.Ipse.Extension.Actions.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/ipse/ebin/Elixir.Ipse.Extension.Actions.beam",
+      "sha256": "2da066b613f89b59d75269df534d6e1336b4a3ebae533c0d76a6ec35a7c5767d"
+    },
+    "Elixir.Mint.Core.Headers.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/mint/ebin/Elixir.Mint.Core.Headers.beam",
+      "sha256": "f56f82238626800a4ae8bea7175f3f09d22457f0ebd55b21522c580a99dd0daa"
+    },
+    "Elixir.MCP.Protocol.Messages.Logging.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/mcp_elixir_sdk/ebin/Elixir.MCP.Protocol.Messages.Logging.beam",
+      "sha256": "64636bf034e1951d7cac01d500e3efb3d3d30177c098ed46289e7dec3083cc44"
+    },
+    "Elixir.Ipse.Provider.Ollama.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/ipse/ebin/Elixir.Ipse.Provider.Ollama.beam",
+      "sha256": "86fcd881888976118542892ea59b3af1df458f53bd3e198b3b4aab3cd892271b"
+    },
+    "Elixir.Ipse.Tools.Questions.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/ipse/ebin/Elixir.Ipse.Tools.Questions.beam",
+      "sha256": "bb64a401116f371680081b34238b62ef586c5a118d1f6d27a237b7f8361695fc"
+    },
+    "Elixir.Plug.Parsers.ParseError.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/plug/ebin/Elixir.Plug.Parsers.ParseError.beam",
+      "sha256": "f5fcf9a034b5ae387831ddd9bf88a868d6b39315d10decc68160ed379d842e4c"
+    },
+    "Elixir.Ipse.Provider.Registry.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/ipse/ebin/Elixir.Ipse.Provider.Registry.beam",
+      "sha256": "5bcb0ed7b3c918d1a2ed8df93c67052f160a9b495c4807e348b3e1f97020666a"
+    },
+    "Elixir.Ipse.Extension.Collection.ObservedRead.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/ipse/ebin/Elixir.Ipse.Extension.Collection.ObservedRead.beam",
+      "sha256": "3a503f4c021878df6065f4a7ad26bc89b0385e8270bacf2ba0c976fe78a89627"
+    },
+    "Elixir.Finch.URI.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/finch/ebin/Elixir.Finch.URI.beam",
+      "sha256": "d155f5b0077b4d04f877eacd9a747dee1186aaa53f6532a4855420347f0bfcb6"
+    },
+    "Elixir.MCP.Protocol.Messages.Resources.ReadResult.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/mcp_elixir_sdk/ebin/Elixir.MCP.Protocol.Messages.Resources.ReadResult.beam",
+      "sha256": "55c7c83c49ca5e8bd12959ba7b0b95a9fe9fab453b8931b519a8a39865032f1e"
+    },
+    "Elixir.Req.TooManyRedirectsError.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/req/ebin/Elixir.Req.TooManyRedirectsError.beam",
+      "sha256": "44bd29a3284e485a5452d325c722295ac0b4cf0e2473e00b3c6498e75df171bb"
+    },
+    "Elixir.Jason.Encoder.MCP.Protocol.Types.Content.AudioContent.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/mcp_elixir_sdk/ebin/Elixir.Jason.Encoder.MCP.Protocol.Types.Content.AudioContent.beam",
+      "sha256": "6bc638f24a63e4a31c4a8444b0a94d9a707b0d6f79b003a8d10c0e6989be94ce"
+    },
+    "Elixir.Jason.Encoder.MCP.Protocol.Messages.Tools.CallParams.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/mcp_elixir_sdk/ebin/Elixir.Jason.Encoder.MCP.Protocol.Messages.Tools.CallParams.beam",
+      "sha256": "6d6731a55eeba191ad3d5908e01a0dc86be720a9f2e8f5d4d2132345e007b9ec"
+    },
+    "Elixir.Ipse.Provider.MintDecision.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/ipse/ebin/Elixir.Ipse.Provider.MintDecision.beam",
+      "sha256": "6a67f443bde8eaafc0a9e59a6158952394494e7f1d489fe596ec47c607acb6eb"
+    },
+    "Elixir.Jason.Encoder.MCP.Protocol.Messages.Logging.SetLevelParams.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/mcp_elixir_sdk/ebin/Elixir.Jason.Encoder.MCP.Protocol.Messages.Logging.SetLevelParams.beam",
+      "sha256": "f7170c2bf3dc789eebc7d2d5a48cb3477b86698bf70c14356f0b53c349d795d3"
+    },
+    "Elixir.Plug.CSRFProtection.InvalidCSRFTokenError.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/plug/ebin/Elixir.Plug.CSRFProtection.InvalidCSRFTokenError.beam",
+      "sha256": "b7369406f5017e5ad0a1c562506e63ecc2010b9573f6d2b0fe8a1c8d172c69a3"
+    },
+    "Elixir.Ipse.Extension.ManagedCollectionCall.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/ipse/ebin/Elixir.Ipse.Extension.ManagedCollectionCall.beam",
+      "sha256": "46112c99c7e77a6039fe9e13e8067ae7934c7a7770a0f0df243bcdef5c614e93"
+    },
+    "Elixir.JSONSchex.Compiler.ECMARegex.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/jsonschex/ebin/Elixir.JSONSchex.Compiler.ECMARegex.beam",
+      "sha256": "a1436b54a8b286c45680fc13727190003ee3c25f8e4fdd6a4489468bb24df91f"
+    },
+    "Elixir.Ipse.Provider.Demo.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/ipse/ebin/Elixir.Ipse.Provider.Demo.beam",
+      "sha256": "01ec2e157f721b449366806959821a29b017802e532c986ffcbf8f7edb3228ad"
+    },
+    "Elixir.MCP.Protocol.Capabilities.ResourceCapabilities.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/mcp_elixir_sdk/ebin/Elixir.MCP.Protocol.Capabilities.ResourceCapabilities.beam",
+      "sha256": "5c1f8191234e74a6020a400c82f71f6da4b19687f9c2f950cf03a936fcdbfc70"
+    },
+    "Elixir.MCP.Protocol.Types.Icon.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/mcp_elixir_sdk/ebin/Elixir.MCP.Protocol.Types.Icon.beam",
+      "sha256": "e242969c8e6692750eddc7fce67e7245424bf85eea362ff224ec0c305bcbfa39"
+    },
+    "Elixir.Ipse.Extension.State.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/ipse/ebin/Elixir.Ipse.Extension.State.beam",
+      "sha256": "fbe88f597a2dfbf2d27f886a68c2e3bd1a43f721255bea9d36d056588026e5c6"
+    },
+    "Elixir.Req.HTTPError.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/req/ebin/Elixir.Req.HTTPError.beam",
+      "sha256": "728364af39062601231ed3a8f37b24c57ba0c83750d5bc5178ee723ea737f1ac"
+    },
+    "Elixir.Jason.Encoder.MCP.Protocol.Messages.Resources.ListTemplatesParams.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/mcp_elixir_sdk/ebin/Elixir.Jason.Encoder.MCP.Protocol.Messages.Resources.ListTemplatesParams.beam",
+      "sha256": "8509600497069307e4f698e91a50a5cf063100f7a4c27a0368681c697440e05c"
+    },
+    "Elixir.Jason.Encoder.MCP.Protocol.Messages.Notification.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/mcp_elixir_sdk/ebin/Elixir.Jason.Encoder.MCP.Protocol.Messages.Notification.beam",
+      "sha256": "2a4e482af7a77f29292e0e8b122cc4b65bfccebba3fbfacad676ad0baa2a26bd"
+    },
+    "Elixir.Req.Fields.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/req/ebin/Elixir.Req.Fields.beam",
+      "sha256": "c13373570874296708a8a47a6cc77cd450a1d09ba2bbc41560217d987298661b"
+    },
+    "Elixir.Jason.Encoder.MCP.Protocol.Types.Annotations.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/mcp_elixir_sdk/ebin/Elixir.Jason.Encoder.MCP.Protocol.Types.Annotations.beam",
+      "sha256": "65b642f8929dc7cbc1159b6cdfaebdb38c5b90136fe6acad3526b653ecd87fd9"
+    },
+    "telemetry_handler_table.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/telemetry/ebin/telemetry_handler_table.beam",
+      "sha256": "3d82769d2d38190705e91107eec4d0cd86ab7f5f30fb8be5a08e57b15bb311bf"
+    },
+    "Elixir.Req.ArchiveError.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/req/ebin/Elixir.Req.ArchiveError.beam",
+      "sha256": "20a4d20e9723629c425d88ec79d2680eaf13021a65c23a2790400bc74360ac3c"
+    },
+    "Elixir.Jason.Encoder.MCP.Protocol.Capabilities.LoggingCapabilities.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/mcp_elixir_sdk/ebin/Elixir.Jason.Encoder.MCP.Protocol.Capabilities.LoggingCapabilities.beam",
+      "sha256": "9838a29b148f5699bb0a586ac1d22bf05b320d1af54a754ffaa9b274052126e8"
+    },
+    "Elixir.Ipse.Extension.Worker.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/ipse/ebin/Elixir.Ipse.Extension.Worker.beam",
+      "sha256": "bb5194c03af5a8d11e989a4fb4268a2996c0c242f4128e59cbd9783f37ef5cd7"
+    },
+    "Elixir.Ipse.Session.Input.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/ipse/ebin/Elixir.Ipse.Session.Input.beam",
+      "sha256": "d26486dd44ab793db48736ac2cc71c4b1f47387ab8404da4ef6967f2a0b4c038"
+    },
+    "Elixir.Plug.CSRFProtection.InvalidCrossOriginRequestError.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/plug/ebin/Elixir.Plug.CSRFProtection.InvalidCrossOriginRequestError.beam",
+      "sha256": "c85523eee598cabf690d0e7a17cc5c928185feba1d1ab74dc326f35b7564101a"
+    },
+    "Elixir.Mint.HTTP2.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/mint/ebin/Elixir.Mint.HTTP2.beam",
+      "sha256": "78030b5b24888fed390eb99957cc280ba00ccaadaee8db651e07e2564209416f"
+    },
+    "Elixir.Ipse.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/ipse/ebin/Elixir.Ipse.beam",
+      "sha256": "3ceb70374c06719e36f19b76933ce834881d65841f8fdc3f59ea103305d6ba1b"
+    },
+    "Elixir.Ipse.CLI.Input.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/ipse/ebin/Elixir.Ipse.CLI.Input.beam",
+      "sha256": "feaec6baef448c7445b8dc515f902a4e8648007792b8930251bd60d32c974534"
+    },
+    "Elixir.Ipse.Extension.Collection.Directory.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/ipse/ebin/Elixir.Ipse.Extension.Collection.Directory.beam",
+      "sha256": "24af175847091b77e90e79cced14e82df14fabae9cf3f890c6a8ebf6f33c9a5e"
+    },
+    "Elixir.MCP.Protocol.Messages.Tools.ListParams.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/mcp_elixir_sdk/ebin/Elixir.MCP.Protocol.Messages.Tools.ListParams.beam",
+      "sha256": "33d2fbe8d8fceacf87aeb73efcd89050e4a3488f9f6f02428eef663438555f8f"
+    },
+    "Elixir.MCP.Protocol.Types.Tool.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/mcp_elixir_sdk/ebin/Elixir.MCP.Protocol.Types.Tool.beam",
+      "sha256": "2d5792ae8270ce1bb3002650ef3b0ea1145812232e690744efe921710c7f6bbd"
+    },
+    "Elixir.Ipse.Session.Saved.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/ipse/ebin/Elixir.Ipse.Session.Saved.beam",
+      "sha256": "2b73684ebe6ed663f463d84e784916adf4a210cfc3a6b05233f2a0b4d9e067f0"
+    },
+    "Elixir.Ipse.Session.PlanningMCP.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/ipse/ebin/Elixir.Ipse.Session.PlanningMCP.beam",
+      "sha256": "4e7ce55caac6a94cb5e7c81383a0687508b622c78e8541772f2b9bcb808ee6df"
+    },
+    "Elixir.Jason.Encoder.Date.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/jason/ebin/Elixir.Jason.Encoder.Date.beam",
+      "sha256": "2db699c9086082cefe671df600e28c806d45059d19512717922ef7bfbe02b3fe"
+    },
+    "Elixir.Ipse.Application.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/ipse/ebin/Elixir.Ipse.Application.beam",
+      "sha256": "2556e1818f8fdc7b49c201b9fdf8c32c0a63ecf6d9d5cfccffeedd5ea38d9705"
+    },
+    "Elixir.Plug.Parsers.UnsupportedMediaTypeError.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/plug/ebin/Elixir.Plug.Parsers.UnsupportedMediaTypeError.beam",
+      "sha256": "5d998655148a2f393f8927681641b055d2de67472fe4d520cbecf467081f14ef"
+    },
+    "Elixir.Ipse.Provider.Stream.LineState.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/ipse/ebin/Elixir.Ipse.Provider.Stream.LineState.beam",
+      "sha256": "08cb50d393ebafbb99a0d9a5e18f9ba61b4457ec17c09ba2a383687cef974dce"
+    },
+    "Elixir.Ipse.Builtins.CostReport.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/ipse/ebin/Elixir.Ipse.Builtins.CostReport.beam",
+      "sha256": "25bc68b8feb72b3dd3b217e47b2298c8b1af6aca4d2e5a6baf9d1dcbf1f7a717"
+    },
+    "Elixir.Ipse.Extension.ResultSource.Index.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/ipse/ebin/Elixir.Ipse.Extension.ResultSource.Index.beam",
+      "sha256": "d9ece62b708094201b7dd6f484d2ec47d003acca287e076bce3176318307aa18"
+    },
+    "Elixir.Ipse.Provider.Transport.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/ipse/ebin/Elixir.Ipse.Provider.Transport.beam",
+      "sha256": "0354505c18f1761f50b61efa26c2cc8679dd4fb4e9153b1294696bc2649288df"
+    },
+    "Elixir.Ipse.InferenceSlots.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/ipse/ebin/Elixir.Ipse.InferenceSlots.beam",
+      "sha256": "b35ff98ab4549caf009dbdeb69e92f2aeca69a053149761a5fd9a6beac341b28"
+    },
+    "Elixir.Jason.Encoder.MCP.Protocol.Messages.Resources.UnsubscribeParams.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/mcp_elixir_sdk/ebin/Elixir.Jason.Encoder.MCP.Protocol.Messages.Resources.UnsubscribeParams.beam",
+      "sha256": "7d38fae9d53adc88ca35bb990aded9efef41f5d00d1f54d071da5cfbd87c2daa"
+    },
+    "Elixir.Ipse.Builtins.CostTree.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/ipse/ebin/Elixir.Ipse.Builtins.CostTree.beam",
+      "sha256": "f714559837083ac55f6cad0f2d08c9af7037dc35c91accbc47c1fe2bbf96d5e5"
+    },
+    "Elixir.Finch.Pool.Strategy.Hash.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/finch/ebin/Elixir.Finch.Pool.Strategy.Hash.beam",
+      "sha256": "7c4944367d2ac50a2ca7929507b15935edece94233b5d3ed189bd4287d25878e"
+    },
+    "Elixir.Jason.Encoder.MCP.Protocol.Types.SamplingMessage.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/mcp_elixir_sdk/ebin/Elixir.Jason.Encoder.MCP.Protocol.Types.SamplingMessage.beam",
+      "sha256": "c20f840d1b2a51121068b34e189d3073478f241ea3a170240b43ba2cea538890"
+    },
+    "Elixir.Jason.Encoder.MCP.Protocol.Types.ToolAnnotations.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/mcp_elixir_sdk/ebin/Elixir.Jason.Encoder.MCP.Protocol.Types.ToolAnnotations.beam",
+      "sha256": "b3aaf7953e7e9fc79ba204ba21ef16f66bc1ceac48fc8cbd2aba8ea05e2eac6a"
+    },
+    "Elixir.Finch.Pool.Strategy.Random.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/finch/ebin/Elixir.Finch.Pool.Strategy.Random.beam",
+      "sha256": "8ca44600e4ace3ba12a21e7430af925958507543d630b26fecb1dd3403895a9e"
+    },
+    "Elixir.MCP.Protocol.Messages.Resources.SubscribeParams.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/mcp_elixir_sdk/ebin/Elixir.MCP.Protocol.Messages.Resources.SubscribeParams.beam",
+      "sha256": "21e435ffc9d79d8dcadf087d34366e6fb62b1c53e8292e5ae3a19612086d9154"
+    },
+    "Elixir.Ipse.Session.Permissions.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/ipse/ebin/Elixir.Ipse.Session.Permissions.beam",
+      "sha256": "8c6cce4ab56db998ff9aa1703912396144840adb8c7bafe0583676028bd0e5b3"
+    },
+    "Elixir.MCP.Protocol.Types.PromptMessage.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/mcp_elixir_sdk/ebin/Elixir.MCP.Protocol.Types.PromptMessage.beam",
+      "sha256": "9712c507d53699ba2bed38f070f501f1ed60d4b4d160b115015e63c127820473"
+    },
+    "Elixir.Ipse.Extension.Projection.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/ipse/ebin/Elixir.Ipse.Extension.Projection.beam",
+      "sha256": "3f4d667ce4f776cc3176e8696262ef97d1d3779aeb20af578f28407802730b00"
+    },
+    "Elixir.Ipse.Extension.Context.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/ipse/ebin/Elixir.Ipse.Extension.Context.beam",
+      "sha256": "f5c4ae6c9524e3e756432859d870d7919b990db64ffa16dc57eaa7b1a2f9bfe6"
+    },
+    "Elixir.JSONSchex.Types.Rule.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/jsonschex/ebin/Elixir.JSONSchex.Types.Rule.beam",
+      "sha256": "d753be8c0ec12bd8b154576126251b6072acaf5b578970fca6898123df4385cc"
+    },
+    "Elixir.MCP.Protocol.Methods.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/mcp_elixir_sdk/ebin/Elixir.MCP.Protocol.Methods.beam",
+      "sha256": "6d9197abb919affa7c4ce30a484ac35966b05d83f2c0c969cc00fd347691aae4"
+    },
+    "Elixir.Finch.SSL.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/finch/ebin/Elixir.Finch.SSL.beam",
+      "sha256": "d6316cf0b80ae6630dd0388dcdd23a7809234277926d09bfa32f0a4d168d2326"
+    },
+    "Elixir.MCP.Protocol.Messages.Request.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/mcp_elixir_sdk/ebin/Elixir.MCP.Protocol.Messages.Request.beam",
+      "sha256": "46f4d831dd8531f96f096278d28d0719a5a4a142f108133a26b163aaef103d89"
+    },
+    "Elixir.Ipse.Tools.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/ipse/ebin/Elixir.Ipse.Tools.beam",
+      "sha256": "2a14ef1a5f562f4fd9ed06df29df2cad7cd3b7488429108087aba125ae444e28"
+    },
+    "Elixir.MCP.Transport.SSE.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/mcp_elixir_sdk/ebin/Elixir.MCP.Transport.SSE.beam",
+      "sha256": "7415c03f6e3e47e1d1a54739e9068fbc61bf3ea38dc765fba193fdd62c5d08da"
+    },
+    "Elixir.Jason.Decoder.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/jason/ebin/Elixir.Jason.Decoder.beam",
+      "sha256": "e98a7a687ba133bf42036060090f877e68b5083687691ce682e1c667c482918e"
+    },
+    "Elixir.Ipse.Usage.Costs.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/ipse/ebin/Elixir.Ipse.Usage.Costs.beam",
+      "sha256": "3d56ecaa9c345f1c9a9ae08c073db9451d8863e0bf4f6a84a9fa991273a21ff7"
+    },
+    "Elixir.Jason.Encoder.MCP.Protocol.Capabilities.ServerCapabilities.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/mcp_elixir_sdk/ebin/Elixir.Jason.Encoder.MCP.Protocol.Capabilities.ServerCapabilities.beam",
+      "sha256": "c648adec09d7fdebc326fce1fadb3a95ef66b02117d29d064301f57788cd84bc"
+    },
+    "Elixir.JSONSchex.Compiler.Fragment.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/jsonschex/ebin/Elixir.JSONSchex.Compiler.Fragment.beam",
+      "sha256": "99ade1ec9b2820ea23e73cb7c05eb19a6a616f90155874863cae2831249c718f"
+    },
+    "Elixir.Jason.Encoder.Map.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/jason/ebin/Elixir.Jason.Encoder.Map.beam",
+      "sha256": "ad13bb1f15962c206bb9bcbf690a63f42f882ce7c700a3d294e64678da5e1c03"
+    },
+    "Elixir.Plug.Crypto.Application.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/plug_crypto/ebin/Elixir.Plug.Crypto.Application.beam",
+      "sha256": "1b6d2f3145b338b53408f0220a731c038f21567d8756707490dfe420f7dada4a"
+    },
+    "Elixir.MCP.Protocol.Messages.Completion.Params.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/mcp_elixir_sdk/ebin/Elixir.MCP.Protocol.Messages.Completion.Params.beam",
+      "sha256": "9ca67fd577afc696f57a39256ac04d277e216beb0bd5f6b12aa86b7c20d7ba44"
+    },
+    "Elixir.NimblePool.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/nimble_pool/ebin/Elixir.NimblePool.beam",
+      "sha256": "39ae186146cced41b8a658ca7a596e4c2dec359cdf7d9b0ec696dd16172bfb29"
+    },
+    "telemetry_test.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/telemetry/ebin/telemetry_test.beam",
+      "sha256": "926732d8d90d99a34bc7e2e22d416fc51856aa0411d72a53bb0995804ce082be"
+    },
+    "Elixir.Plug.Parsers.BadEncodingError.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/plug/ebin/Elixir.Plug.Parsers.BadEncodingError.beam",
+      "sha256": "0b3acc4fb7cfe093b67189ac4755c5cdf0fbb3b0b0879cf4d3bbd78d2c6a9a4c"
+    },
+    "Elixir.Mint.HTTP1.Response.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/mint/ebin/Elixir.Mint.HTTP1.Response.beam",
+      "sha256": "f1bd171a1b3494aa1eb6aa0b8d73ceff795f5b1c3bcbfd3a3038124a112311aa"
+    },
+    "Elixir.Plug.Crypto.KeyGenerator.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/plug_crypto/ebin/Elixir.Plug.Crypto.KeyGenerator.beam",
+      "sha256": "589a5f312213cd2829a47e56e58383b133770c888352148875952f8e08d869fd"
+    },
+    "Elixir.Ipse.CLI.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/ipse/ebin/Elixir.Ipse.CLI.beam",
+      "sha256": "882b8df75d12fa5c3c6c1c3f9b9b4d1d4979fbd57b2bed28e5ad537f5121cb55"
+    },
+    "Elixir.Mint.Core.Transport.SSL.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/mint/ebin/Elixir.Mint.Core.Transport.SSL.beam",
+      "sha256": "8b781f19ecf2219bc8eab07f89a7229b6c033ec29f4c446af7b84a086accc78d"
+    },
+    "Elixir.JSONSchex.Ref.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/jsonschex/ebin/Elixir.JSONSchex.Ref.beam",
+      "sha256": "cce36a470c6c14f33223eeaad258c637e57fafe7c71869fefa0dd28da677b753"
+    },
+    "Elixir.Plug.Conn.NotSentError.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/plug/ebin/Elixir.Plug.Conn.NotSentError.beam",
+      "sha256": "0a845abb92abaadb3cd1a9ae06c64e941e0a0b2292da0deb64c38dd7dd195096"
+    },
+    "Elixir.Ipse.Extension.ProjectIdentity.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/ipse/ebin/Elixir.Ipse.Extension.ProjectIdentity.beam",
+      "sha256": "8363a53df8e9a9e834af93fd3122b43c8ed0d460a6e19729fa2ca5a7fde487fe"
+    },
+    "Elixir.JSONSchex.Formats.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/jsonschex/ebin/Elixir.JSONSchex.Formats.beam",
+      "sha256": "d4d35ac41c03cdec4c0b763b78c008f0fe02b72dd2bb2ffccf31a699901c714f"
+    },
+    "Elixir.MCP.Protocol.Messages.Prompts.GetResult.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/mcp_elixir_sdk/ebin/Elixir.MCP.Protocol.Messages.Prompts.GetResult.beam",
+      "sha256": "10b834db52b33d7451e666a215899ccca4625d43a898e7a4d9e03888a1a24131"
+    },
+    "Elixir.JSONSchex.ResourceContext.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/jsonschex/ebin/Elixir.JSONSchex.ResourceContext.beam",
+      "sha256": "e3dc88c53325664c3abbb132fda0198bf2744f5210ec933c99513a285e1470b6"
+    },
+    "Elixir.Finch.PoolMetrics.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/finch/ebin/Elixir.Finch.PoolMetrics.beam",
+      "sha256": "d43c83e92805141d9e47ec2f2b48cc3453b78ffbed1a946061f7ad2e79114ebc"
+    },
+    "Elixir.Jason.Sigil.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/jason/ebin/Elixir.Jason.Sigil.beam",
+      "sha256": "3ce60ed2b307dab37736f3d756e87ff4f99ef9475e5df34a9fe6deebaef2f32c"
+    },
+    "Elixir.Ipse.Session.ManagedReference.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/ipse/ebin/Elixir.Ipse.Session.ManagedReference.beam",
+      "sha256": "6ea74006ad1120565eeb1755a5cf9cb2602b25be842a544f853d7081770de371"
+    },
+    "Elixir.Ipse.Runner.Transaction.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/ipse/ebin/Elixir.Ipse.Runner.Transaction.beam",
+      "sha256": "ccb19f15c43b74bd911a42da1937763b8ff7c0bbb51cbb368d6302094de573de"
+    },
+    "Elixir.MCP.Protocol.Messages.Prompts.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/mcp_elixir_sdk/ebin/Elixir.MCP.Protocol.Messages.Prompts.beam",
+      "sha256": "b4aeb307850f7dff0a935bd595bac89ed4e9a44013792fce2cb454ad0e1579b0"
+    },
+    "Elixir.JSONSchex.Compiler.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/jsonschex/ebin/Elixir.JSONSchex.Compiler.beam",
+      "sha256": "c102673ae7d7a74880cf055fdab37045e6b8780cfd29db528470823019c85c43"
+    },
+    "Elixir.Ipse.Session.DraftHistory.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/ipse/ebin/Elixir.Ipse.Session.DraftHistory.beam",
+      "sha256": "0b27266623542ac9a0f1016a980e7e2df6f22d462b0d0c7c7c18253f10253fe7"
+    },
+    "Elixir.Ipse.Provider.MintBuffered.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/ipse/ebin/Elixir.Ipse.Provider.MintBuffered.beam",
+      "sha256": "ba62839eae67f0e43cbb3e17b3343361fa56d00cd5945384603d5036f1a7cf02"
+    },
+    "Elixir.Jason.Decoder.Unescape.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/jason/ebin/Elixir.Jason.Decoder.Unescape.beam",
+      "sha256": "0bedae0d0068d54278c2eda8b4ab429fe0fa297664fdfba93189bb2c688dbd62"
+    },
+    "Elixir.Ipse.Extension.Artifact.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/ipse/ebin/Elixir.Ipse.Extension.Artifact.beam",
+      "sha256": "59355ad10fb92a1e49b78db7ee482f970242a0026224a540f3a3180d3f34ef8c"
+    },
+    "Elixir.Ipse.InferenceSlots.Handle.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/ipse/ebin/Elixir.Ipse.InferenceSlots.Handle.beam",
+      "sha256": "3965cd2795824f6fb2d055ad69bb8faff12be7d3a1a14fa10515da86d0ac82ee"
+    },
+    "Elixir.MCP.Protocol.Messages.Notifications.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/mcp_elixir_sdk/ebin/Elixir.MCP.Protocol.Messages.Notifications.beam",
+      "sha256": "5ac45e7efb3b9512a6fd8a773f73d1dafcac98ffe406053734f6212cb708aba3"
+    },
+    "Elixir.JSONSchex.Formats.Email.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/jsonschex/ebin/Elixir.JSONSchex.Formats.Email.beam",
+      "sha256": "aa03f543f1ac8d58195d7f6b46159c281f1e41b5802f503a55422ed2c58d303c"
+    },
+    "Elixir.MCP.Protocol.Messages.Tools.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/mcp_elixir_sdk/ebin/Elixir.MCP.Protocol.Messages.Tools.beam",
+      "sha256": "49737873b117eb2b31fe5e1a3c9ba5f9351a34ae8200df72482bf3241ad4805e"
+    },
+    "Elixir.Req.ZIP.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/req/ebin/Elixir.Req.ZIP.beam",
+      "sha256": "c76f82f3d76dccde43868d08fdcc502a53336d35d4c8acb0ed15cc6ad49d786f"
+    },
+    "Elixir.Ipse.Session.Lock.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/ipse/ebin/Elixir.Ipse.Session.Lock.beam",
+      "sha256": "8a195499f4915600bbe59c70a8554c3efde0de4ed3496a818a6917536709141e"
+    },
+    "Elixir.MCP.Transport.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/mcp_elixir_sdk/ebin/Elixir.MCP.Transport.beam",
+      "sha256": "6be3b587e92d11b7f4d13ff04ffdf2f37de0e0a5b453e367658d430f436654a0"
+    },
+    "Elixir.Inspect.Ipse.Extension.ProjectIdentity.DomainAuth.Capability.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/ipse/ebin/Elixir.Inspect.Ipse.Extension.ProjectIdentity.DomainAuth.Capability.beam",
+      "sha256": "3373a861d1552d7842f3ad75ce26b4d0e2e65c6c984eb9869e56a14e0405c9e7"
+    },
+    "Elixir.Ipse.Extension.Registry.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/ipse/ebin/Elixir.Ipse.Extension.Registry.beam",
+      "sha256": "391d4d8bd024a419c03cbc9ba8619c894c8fbb1b92ffbd9e1d5e97ee77b136ed"
+    },
+    "Elixir.MCP.Protocol.Types.Content.EmbeddedResource.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/mcp_elixir_sdk/ebin/Elixir.MCP.Protocol.Types.Content.EmbeddedResource.beam",
+      "sha256": "d200f56c182e91bb6386484948cd88d72ca91c148385f5550a18896bf651d8e2"
+    },
+    "Elixir.Ipse.Extension.SemanticConsent.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/ipse/ebin/Elixir.Ipse.Extension.SemanticConsent.beam",
+      "sha256": "7f251ce0a0eab943957fe7be26f79fb11aaf55f89a9315c5fd436d9eff0f7626"
+    },
+    "Elixir.Plug.RequestId.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/plug/ebin/Elixir.Plug.RequestId.beam",
+      "sha256": "adbf9c249dff03f0811a3f63faa759e04dc8a45ec355bd05156d495885c34858"
+    },
+    "Elixir.Ipse.Extension.Collection.Migration.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/ipse/ebin/Elixir.Ipse.Extension.Collection.Migration.beam",
+      "sha256": "f7cd8e0b7e4f29a29442c59f66559ff1109581d903b80b7acac6c5b610fef9a5"
+    },
+    "Elixir.Ipse.Extension.MCPCall.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/ipse/ebin/Elixir.Ipse.Extension.MCPCall.beam",
+      "sha256": "b04a4f0288da1cacad4eee3e6d7c890596cb4e7712413071c06eeda32951f44a"
+    },
+    "Elixir.Plug.Conn.Cookies.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/plug/ebin/Elixir.Plug.Conn.Cookies.beam",
+      "sha256": "40d96a5b306af934a309db77fd7e6877c7de6e961f311071cebf46cdef5dc2ae"
+    },
+    "Elixir.Finch.HTTP2.Pool.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/finch/ebin/Elixir.Finch.HTTP2.Pool.beam",
+      "sha256": "51d20986803ae3344e334023e5bdad2387b37911ca4363f4bdba779bce699505"
+    },
+    "Elixir.Jason.Encoder.Time.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/jason/ebin/Elixir.Jason.Encoder.Time.beam",
+      "sha256": "7e4e5b703502499b3562644a43f9eb190e8a74f4ece25547f6cdf5d4cb08ad41"
+    },
+    "Elixir.Ipse.Builtins.CostSummary.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/ipse/ebin/Elixir.Ipse.Builtins.CostSummary.beam",
+      "sha256": "c85fed55ea3f1ca356b27785d5856d61b8fb29a1c7226933ae838bc494763542"
+    },
+    "Elixir.Finch.Pool.Strategy.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/finch/ebin/Elixir.Finch.Pool.Strategy.beam",
+      "sha256": "bb59c66a907d869ebebc57d01a246cb7cbe2566cdb3004b71cb0ca103058a506"
+    },
+    "Elixir.Ipse.Extension.ResultDocument.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/ipse/ebin/Elixir.Ipse.Extension.ResultDocument.beam",
+      "sha256": "9d572faa6db3943542df08e72af9038e16156e550e6cd4d3050983c5268cfc39"
+    },
+    "Elixir.Jason.Encoder.MCP.Protocol.Capabilities.PromptCapabilities.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/mcp_elixir_sdk/ebin/Elixir.Jason.Encoder.MCP.Protocol.Capabilities.PromptCapabilities.beam",
+      "sha256": "5b274cd501f3f2ce448086db4a4d96c50e0c08e4a728ea4691b9f82df4f8f05a"
+    },
+    "Elixir.Finch.HTTP2.PoolMetrics.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/finch/ebin/Elixir.Finch.HTTP2.PoolMetrics.beam",
+      "sha256": "edb471ef6775a6d5abb84c6567d1f4f4a8bf5128d21dc556d1d59dc35ff10058"
+    },
+    "Elixir.Jason.OrderedObject.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/jason/ebin/Elixir.Jason.OrderedObject.beam",
+      "sha256": "055c0788cc338f83e189f378a7f7c934ace6930fa63bfd9d8852f22894ea3f34"
+    },
+    "Elixir.Plug.MIME.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/plug/ebin/Elixir.Plug.MIME.beam",
+      "sha256": "7fba4427049829daa95d9dc95a0eb40185d95669c5cb78b433484628a1d86e78"
+    },
+    "Elixir.Inspect.Req.Request.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/req/ebin/Elixir.Inspect.Req.Request.beam",
+      "sha256": "1461ef93209d1f20b8bd0f643bc278df7a6ec52dc3e10af2eec24e9b8a048544"
+    },
+    "Elixir.Ipse.Extension.ProjectIdentity.Metadata.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/ipse/ebin/Elixir.Ipse.Extension.ProjectIdentity.Metadata.beam",
+      "sha256": "6c9102307e18dab97427046aadf33dcc4aebb72c1427c88d5f9b8abc583d46f4"
+    },
+    "Elixir.MCP.Protocol.Types.Prompt.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/mcp_elixir_sdk/ebin/Elixir.MCP.Protocol.Types.Prompt.beam",
+      "sha256": "ea655f2c4e318584cbfa41f49ccd3a60a7cf3c13f4f55c9a1b88cfb42ac2979e"
+    },
+    "Elixir.Ipse.Journal.Writer.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/ipse/ebin/Elixir.Ipse.Journal.Writer.beam",
+      "sha256": "77a1ff1f802ce67a9311238b2b29a375f9f52b0ea3cb6a1129367673245c5219"
+    },
+    "Elixir.MCP.Protocol.Types.Root.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/mcp_elixir_sdk/ebin/Elixir.MCP.Protocol.Types.Root.beam",
+      "sha256": "c8cfa0549dd5efb96e92282ece3aa2b5782ef2cb23a2b0d1c66b5fe1ca750b6a"
+    },
+    "Elixir.Ipse.Extension.FeedChannel.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/ipse/ebin/Elixir.Ipse.Extension.FeedChannel.beam",
+      "sha256": "5f1bcf6e2cac5042af1e3420f6b8d47f8ded48da4f01df78a07e4627cfbd1283"
+    },
+    "Elixir.Ipse.InferenceSlots.Ledger.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/ipse/ebin/Elixir.Ipse.InferenceSlots.Ledger.beam",
+      "sha256": "16630e07ecc5681f10f05c9f2d5eabb53a0d1c31f7557cd463e46f611936a800"
+    },
+    "Elixir.Ipse.Provider.Stream.EventState.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/ipse/ebin/Elixir.Ipse.Provider.Stream.EventState.beam",
+      "sha256": "809c4a92bf5e790c3cb47da200fce91983b8fff912f2dcbeca45192d302bb2d9"
+    },
+    "Elixir.MCP.Protocol.Messages.Resources.ListResult.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/mcp_elixir_sdk/ebin/Elixir.MCP.Protocol.Messages.Resources.ListResult.beam",
+      "sha256": "10e70221ed239e15c46626fc0269fd52ecefa7d2b6835725d00a57640f4dff1a"
+    },
+    "Elixir.Ipse.Session.DraftLineage.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/ipse/ebin/Elixir.Ipse.Session.DraftLineage.beam",
+      "sha256": "51ae0106e39b83f6531013f4232a4c6a973e0668811fc0533979fadedb88d91f"
+    },
+    "Elixir.Ipse.Extension.Feeds.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/ipse/ebin/Elixir.Ipse.Extension.Feeds.beam",
+      "sha256": "d5544cd1215d6673e7f1749e5baec0846ec397da0d2ce821bb0d4d8f4b14ead5"
+    },
+    "Elixir.MCP.Protocol.Types.ToolAnnotations.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/mcp_elixir_sdk/ebin/Elixir.MCP.Protocol.Types.ToolAnnotations.beam",
+      "sha256": "b99e99773a4b4d063dfa50a9cd69b8eccfe964d172bc68279969aae9045c8a93"
+    },
+    "Elixir.Jason.Encoder.MCP.Protocol.Messages.Sampling.CreateMessageResult.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/mcp_elixir_sdk/ebin/Elixir.Jason.Encoder.MCP.Protocol.Messages.Sampling.CreateMessageResult.beam",
+      "sha256": "0eaa7a08d8785a13514574bb1cef3f801ffa98ecfa26262c68f4c69fb8162601"
+    },
+    "Elixir.Ipse.Builtins.WorkingMemory.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/ipse/ebin/Elixir.Ipse.Builtins.WorkingMemory.beam",
+      "sha256": "8605f3e926f56f20d1ee276cf0094b31516e6f7612458a7ef82a359d909f9549"
+    },
+    "Elixir.Plug.Crypto.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/plug_crypto/ebin/Elixir.Plug.Crypto.beam",
+      "sha256": "9f179ea164e37d7b31b7f39b9fa6b5fc5899e487262b6ff7dbce13c345cad8f3"
+    },
+    "Elixir.Inspect.Ipse.Runner.Transaction.Capability.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/ipse/ebin/Elixir.Inspect.Ipse.Runner.Transaction.Capability.beam",
+      "sha256": "6f3d525b81ca1f77da377db96043e09842777bd549c358a000e50376dcf5d239"
+    },
+    "Elixir.JSONSchex.Types.ValidationContext.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/jsonschex/ebin/Elixir.JSONSchex.Types.ValidationContext.beam",
+      "sha256": "8ead7943686bc49e87b47fcc7d2856e27d65e5ad905b6b395550845df194be68"
+    },
+    "Elixir.Ipse.Extension.Collection.Planning.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/ipse/ebin/Elixir.Ipse.Extension.Collection.Planning.beam",
+      "sha256": "e89868eb701b80064367cee416c4cbfef3a0e428ddf3ecabcc35099567ae3cdb"
+    },
+    "Elixir.Jason.Encoder.MCP.Protocol.Messages.Prompts.GetParams.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/mcp_elixir_sdk/ebin/Elixir.Jason.Encoder.MCP.Protocol.Messages.Prompts.GetParams.beam",
+      "sha256": "df881caff186ed7f079f222e4cef237c36ed82828376d701ae7b962874e037ca"
+    },
+    "Elixir.JSONSchex.JSON.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/jsonschex/ebin/Elixir.JSONSchex.JSON.beam",
+      "sha256": "ab63bbf6e405da222f00418d01c373995c584d138ea80d8609e781a16ad89912"
+    },
+    "Elixir.Inspect.Ipse.Runner.Review.Permit.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/ipse/ebin/Elixir.Inspect.Ipse.Runner.Review.Permit.beam",
+      "sha256": "1e2fd544c2bfeeecaea880990b854e41b9ff43f727b7cc80e8cd1e6b01839a4d"
+    },
+    "Elixir.Ipse.Session.StoredSources.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/ipse/ebin/Elixir.Ipse.Session.StoredSources.beam",
+      "sha256": "392c5812fe14d9823c4dd6fea0b774b8889c67d170cc0f21098d860c37ed727d"
+    },
+    "Elixir.MCP.Server.Handler.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/mcp_elixir_sdk/ebin/Elixir.MCP.Server.Handler.beam",
+      "sha256": "1e0ba3753f0c66546ed313741864d602d7c172240107558a97b10d984201ad4f"
+    },
+    "Elixir.Ipse.MCP.Config.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/ipse/ebin/Elixir.Ipse.MCP.Config.beam",
+      "sha256": "0d91294e001722ce37a2dae8ba41a7998970dd6a7033ddf5981d8f8880194609"
+    },
+    "Elixir.MCP.Protocol.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/mcp_elixir_sdk/ebin/Elixir.MCP.Protocol.beam",
+      "sha256": "3b6affe84df8caff4cf74047c59fd0ecd77b7d967c7ff81a20ad003b25a2ffe7"
+    },
+    "Elixir.Plug.Exception.Any.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/plug/ebin/Elixir.Plug.Exception.Any.beam",
+      "sha256": "8363abd5a0691bb7e4b1c84429fb540e4af0bbdc734ecbf7a5f89d1659f04181"
+    },
+    "Elixir.JSONSchex.Validator.Rules.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/jsonschex/ebin/Elixir.JSONSchex.Validator.Rules.beam",
+      "sha256": "6eece39f0646c4aa7605af875d6f7ca5f17f2983a80b75b5b8cc43651f04999a"
+    },
+    "Elixir.Plug.Debugger.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/plug/ebin/Elixir.Plug.Debugger.beam",
+      "sha256": "b21d81984c5efa5ae4fdf28f90527c230884ceaa04d2d1542e013af5966560cb"
+    },
+    "Elixir.Req.Plug.Adapter.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/req/ebin/Elixir.Req.Plug.Adapter.beam",
+      "sha256": "f0dbe2c10fa43d79dfddad8ac283fe70f9e288e0811b7f4fc2aa744f0dc54a3d"
+    },
+    "Elixir.Ipse.Runner.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/ipse/ebin/Elixir.Ipse.Runner.beam",
+      "sha256": "1227bacd2b9b64a6e6bf0220cfb65afedc973db9147ac8e1e3b2f5089592cdd8"
+    },
+    "Elixir.Jason.Encoder.MCP.Protocol.Types.Content.ResourceLink.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/mcp_elixir_sdk/ebin/Elixir.Jason.Encoder.MCP.Protocol.Types.Content.ResourceLink.beam",
+      "sha256": "c0e7a737c5b6770d7e39cfbb0231ece063dc9d4156a066855b78948e9f52a778"
+    },
+    "Elixir.Plug.Conn.Status.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/plug/ebin/Elixir.Plug.Conn.Status.beam",
+      "sha256": "914bfed6ee5de766f98a56f697bec10d76dd493d093920c16d2f3d0ff8cd60e3"
+    },
+    "Elixir.MCP.Protocol.Messages.Ping.Params.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/mcp_elixir_sdk/ebin/Elixir.MCP.Protocol.Messages.Ping.Params.beam",
+      "sha256": "8a1c076b05912d5ae535a259dfa5d3ece5ca8eb64794a808c0c856c2ad55390d"
+    },
+    "Elixir.MCP.Client.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/mcp_elixir_sdk/ebin/Elixir.MCP.Client.beam",
+      "sha256": "ef47637dd446cb649b2fa1b84dde7fe8cf465342bbb783984f498f0c02fe1f40"
+    },
+    "Elixir.Finch.HTTP1.PoolMetrics.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/finch/ebin/Elixir.Finch.HTTP1.PoolMetrics.beam",
+      "sha256": "15460bb4e0bb3d5c09d49ab8fc053aa21741d4186a5c55b1ff81061a423c277d"
+    },
+    "Elixir.MCP.Protocol.Messages.Prompts.GetParams.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/mcp_elixir_sdk/ebin/Elixir.MCP.Protocol.Messages.Prompts.GetParams.beam",
+      "sha256": "4353ea06ef705ccbfcebce3620204cd93c413966702324872427bd2f7aba0e53"
+    },
+    "Elixir.Ipse.Journal.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/ipse/ebin/Elixir.Ipse.Journal.beam",
+      "sha256": "1af6c77c1f2c4aac353ecf2078970e678ee62bee82296746b270f1514b61db42"
+    },
+    "Elixir.String.Chars.JSONSchex.Types.Error.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/jsonschex/ebin/Elixir.String.Chars.JSONSchex.Types.Error.beam",
+      "sha256": "f70a2b057af6e834f35400c01fc80fa5c88498a8ebc71babc99e4b9333e5164e"
+    },
+    "Elixir.Ipse.Extension.SemanticRoutes.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/ipse/ebin/Elixir.Ipse.Extension.SemanticRoutes.beam",
+      "sha256": "e306b74c11601bb32674fef087b377f7e986df0efe45f4e274ba7a9b62f96c90"
+    },
+    "Elixir.MCP.Protocol.Messages.Elicitation.Result.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/mcp_elixir_sdk/ebin/Elixir.MCP.Protocol.Messages.Elicitation.Result.beam",
+      "sha256": "70d1ce18c30463e4359e8cca2f47f2af0848bb011905cd0f2926c9e73347ba4c"
+    },
+    "Elixir.Ipse.Builtins.Memory.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/ipse/ebin/Elixir.Ipse.Builtins.Memory.beam",
+      "sha256": "1c03ef73e1fec485b8222d6beebd5a6902660c1aab58a10190fcb4e7a69de46a"
+    },
+    "Elixir.Mint.Core.Conn.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/mint/ebin/Elixir.Mint.Core.Conn.beam",
+      "sha256": "02e32bb02e91b6fa00b7fd75140aba0338dba669e9d038de83d34e86462b978c"
+    },
+    "Elixir.Plug.Upload.Supervisor.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/plug/ebin/Elixir.Plug.Upload.Supervisor.beam",
+      "sha256": "f640af205926a75ea895f7ba85f6c1f7e478d8e790ba4c4a38b1008f0bfe5982"
+    },
+    "Elixir.Ipse.Config.Semantics.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/ipse/ebin/Elixir.Ipse.Config.Semantics.beam",
+      "sha256": "48d5f9371dcd7ed54f7c4527f8cb01f46e8735ee1833e07e58b8c9ebf7640b6f"
+    },
+    "Elixir.JSONSchex.Types.Error.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/jsonschex/ebin/Elixir.JSONSchex.Types.Error.beam",
+      "sha256": "95f8ed5d7e9f7417ea3c6c2f5e08d2ad4aaf8b85ad165c4ed34dc222869a0987"
+    },
+    "Elixir.Req.Plug.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/req/ebin/Elixir.Req.Plug.beam",
+      "sha256": "ee560f6bff3a8fb93a8883540aeac81de23a6071d24fb995acd4a7d0594b6288"
+    },
+    "Elixir.JSONSchex.Formats.URITemplate.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/jsonschex/ebin/Elixir.JSONSchex.Formats.URITemplate.beam",
+      "sha256": "d1032134f98a01b47ac9eb87e6be7bbd86d561f720e8011cd4233afc026df96e"
+    },
+    "Elixir.MCP.Protocol.Types.Content.AudioContent.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/mcp_elixir_sdk/ebin/Elixir.MCP.Protocol.Types.Content.AudioContent.beam",
+      "sha256": "83ffa54f32cc9a8b71c3620a0f0d9d99249789d93d0a7772bbd20dcfb93c0caf"
+    },
+    "Elixir.MCP.Protocol.Types.Content.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/mcp_elixir_sdk/ebin/Elixir.MCP.Protocol.Types.Content.beam",
+      "sha256": "86bff52e5b43737ce827cd6c2e187f5022b88bb817cf72a976822b6115a349ee"
+    },
+    "Elixir.MCP.Protocol.Types.Content.ImageContent.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/mcp_elixir_sdk/ebin/Elixir.MCP.Protocol.Types.Content.ImageContent.beam",
+      "sha256": "1647800ee7745284b4ccb232e16d1d852aa68981fdc596f94cd5342dcf2edacf"
+    },
+    "Elixir.Plug.TimeoutError.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/plug/ebin/Elixir.Plug.TimeoutError.beam",
+      "sha256": "338f8a5048e7e29bbf34e7a132824025aeb41ea1464bc0f9f6c35494bcb8a657"
+    },
+    "Elixir.MCP.Protocol.Messages.Ping.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/mcp_elixir_sdk/ebin/Elixir.MCP.Protocol.Messages.Ping.beam",
+      "sha256": "8feec0d06f6238e2da73a5d2a792f848624ed77721047554135d7911a209127c"
+    },
+    "Elixir.Plug.Parsers.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/plug/ebin/Elixir.Plug.Parsers.beam",
+      "sha256": "4153b78ae7baf8f8d5781dfc2bd1f339ac100a6d36a9defbc3439ad2883572ba"
+    },
+    "Elixir.Jason.Encoder.MCP.Protocol.Messages.Resources.ListResult.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/mcp_elixir_sdk/ebin/Elixir.Jason.Encoder.MCP.Protocol.Messages.Resources.ListResult.beam",
+      "sha256": "acf44165ced942477c0be78576bf024850da461c9cceba42c8cf74d958f5b576"
+    },
+    "Elixir.JSONSchex.Types.ErrorContext.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/jsonschex/ebin/Elixir.JSONSchex.Types.ErrorContext.beam",
+      "sha256": "5c6be1bfe6700a99d1d9fda3e156c86f3cef32fa007cd765c87b481fa7ddc8d1"
+    },
+    "Elixir.Plug.Conn.Query.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/plug/ebin/Elixir.Plug.Conn.Query.beam",
+      "sha256": "12ddfcbc7836e3f80d1809d83396bc229eda4ff6d6498b66d161646e73b6e20d"
+    },
+    "Elixir.Jason.Encoder.MCP.Protocol.Capabilities.ElicitationCapabilities.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/mcp_elixir_sdk/ebin/Elixir.Jason.Encoder.MCP.Protocol.Capabilities.ElicitationCapabilities.beam",
+      "sha256": "972b4bd550fb74f06e7b078f26dab7f8e6687639a1d4c1f54041a693aab773e9"
+    },
+    "Elixir.Ipse.Provider.MintOwned.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/ipse/ebin/Elixir.Ipse.Provider.MintOwned.beam",
+      "sha256": "04ab4efb7f01969f4a8b5e16c54c1a7e0f860182e2d4aaaefb932849652832ba"
+    },
+    "Elixir.MCP.Protocol.Types.SamplingMessage.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/mcp_elixir_sdk/ebin/Elixir.MCP.Protocol.Types.SamplingMessage.beam",
+      "sha256": "e8ad07ac0c2bba7a5466f94d96324a47f535dd540532b36e8d9368b3cbcda7ba"
+    },
+    "Elixir.Plug.Conn.Utils.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/plug/ebin/Elixir.Plug.Conn.Utils.beam",
+      "sha256": "000e0c57b50e48d1a4d7891edfa251c168759d0243b48d7d524aeba90aa132f3"
+    },
+    "Elixir.MCP.Protocol.Messages.Resources.ListTemplatesParams.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/mcp_elixir_sdk/ebin/Elixir.MCP.Protocol.Messages.Resources.ListTemplatesParams.beam",
+      "sha256": "3e6b9d5d5b47f669a8779d95bfaea78cd187a2c4c1d412bb749226cd5612811a"
+    },
+    "Elixir.Ipse.Auth.XAI.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/ipse/ebin/Elixir.Ipse.Auth.XAI.beam",
+      "sha256": "ae7a1a8b91223771afbc343f2ad0518d889ebc32dd8a5a7477248878858462a6"
+    },
+    "Elixir.Mint.Negotiate.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/mint/ebin/Elixir.Mint.Negotiate.beam",
+      "sha256": "7e29f514e1720eb3ff51b094bcfef7f54920ae0eacbc31b3605b2223051ef142"
+    },
+    "Elixir.Jason.Encoder.MCP.Protocol.Messages.Response.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/mcp_elixir_sdk/ebin/Elixir.Jason.Encoder.MCP.Protocol.Messages.Response.beam",
+      "sha256": "c32e8c49fede660dfb64432d9a3351746b1f5866c3cb97218864c48194c36518"
+    },
+    "Elixir.NimbleOptions.ValidationError.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/nimble_options/ebin/Elixir.NimbleOptions.ValidationError.beam",
+      "sha256": "4ad46c02ed406279318e2d9355048080e3ccca349e526a466ec020f856874f43"
+    },
+    "Elixir.JSONSchex.Validator.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/jsonschex/ebin/Elixir.JSONSchex.Validator.beam",
+      "sha256": "9238a6bc0c5aebadabc24432745bc9dd10b87650fa38913a06f8e3b4825a2d08"
+    },
+    "Elixir.Ipse.Extension.SourceRead.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/ipse/ebin/Elixir.Ipse.Extension.SourceRead.beam",
+      "sha256": "65f1e1a35f76d98fcaa05b27a8bc3d8a6555b23d0c850ce85aeb219dd8252f99"
+    },
+    "Elixir.Jason.Encoder.MCP.Protocol.Messages.Resources.ListParams.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/mcp_elixir_sdk/ebin/Elixir.Jason.Encoder.MCP.Protocol.Messages.Resources.ListParams.beam",
+      "sha256": "188b6d3c46324edf6672d5d1f8457dc420427111b46b137424d7bcd5e3699a74"
+    },
+    "Elixir.JSONSchex.Validator.Reference.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/jsonschex/ebin/Elixir.JSONSchex.Validator.Reference.beam",
+      "sha256": "f5e3e067930703c1f6949ab50bacb30f52057445ef4e3683aa78a73af2148d0b"
+    },
+    "Elixir.JSONSchex.Formats.IP.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/jsonschex/ebin/Elixir.JSONSchex.Formats.IP.beam",
+      "sha256": "196b00e7db9a66a9b30a8e08a79568605f793e186b1ff37d44aaffbb1b296ee5"
+    },
+    "Elixir.Ipse.Builtins.Memory.Records.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/ipse/ebin/Elixir.Ipse.Builtins.Memory.Records.beam",
+      "sha256": "70532ab2dc78701ea0428d711d8097a86e2376723035a64acf2b28ec07cc866e"
+    },
+    "Elixir.Ipse.Provider.Decision.Transport.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/ipse/ebin/Elixir.Ipse.Provider.Decision.Transport.beam",
+      "sha256": "cda5482afd1e8baa54c82840ee578a945879544c13e43742b99818ceb6908bf3"
+    },
+    "Elixir.MCP.Protocol.Capabilities.CompletionCapabilities.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/mcp_elixir_sdk/ebin/Elixir.MCP.Protocol.Capabilities.CompletionCapabilities.beam",
+      "sha256": "ad0ffb647b7eabff07670e9a49eafc77aa55795042d7c0851bb33a833cef07da"
+    },
+    "Elixir.Plug.Static.InvalidPathError.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/plug/ebin/Elixir.Plug.Static.InvalidPathError.beam",
+      "sha256": "d24c78695900a5690e221331091cdefa9ada6599c6af3300f567502e86961efc"
+    },
+    "Elixir.JSONSchex.Compiler.Predicates.MultipleOf.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/jsonschex/ebin/Elixir.JSONSchex.Compiler.Predicates.MultipleOf.beam",
+      "sha256": "9fa05605b513d4fbc04a940606ebdd0b270a64b2a03a23272db0f2b0e84a7047"
+    },
+    "telemetry_ets.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/telemetry/ebin/telemetry_ets.beam",
+      "sha256": "35320a4ff85e218f7c41a689fa9e6b2be9f81e23dee0ef14b9fbfe8ffee0fbd7"
+    },
+    "Elixir.Ipse.Provider.InferenceFacts.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/ipse/ebin/Elixir.Ipse.Provider.InferenceFacts.beam",
+      "sha256": "46fcb87ed2274be98216491491f4eaddfc73d3bd61c1d6c6725e7b88491ea216"
+    },
+    "Elixir.Req.ChecksumMismatchError.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/req/ebin/Elixir.Req.ChecksumMismatchError.beam",
+      "sha256": "87ad014413af4a980805154bb74426dbb3db346a404f336f9ecc67f1af6a16f7"
+    },
+    "Elixir.MCP.Protocol.Types.Content.ResourceLink.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/mcp_elixir_sdk/ebin/Elixir.MCP.Protocol.Types.Content.ResourceLink.beam",
+      "sha256": "4cb6f73cf040e62eae6cf3fd49f0bbff956207d6f85f19a5473aabf44e56df82"
+    },
+    "Elixir.Ipse.Extension.EffectResult.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/ipse/ebin/Elixir.Ipse.Extension.EffectResult.beam",
+      "sha256": "974425ffc7ad0435d0d57c6d4559812f77e50145210b6560d1750943129360ef"
+    },
+    "Elixir.Jason.Encoder.MCP.Protocol.Messages.Tools.CallResult.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/mcp_elixir_sdk/ebin/Elixir.Jason.Encoder.MCP.Protocol.Messages.Tools.CallResult.beam",
+      "sha256": "728c7e28854f907d3d9d0dec84259b4b9469239d585cceb0d74a0039180c7452"
+    },
+    "Elixir.Jason.Encoder.MCP.Protocol.Capabilities.ClientCapabilities.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/mcp_elixir_sdk/ebin/Elixir.Jason.Encoder.MCP.Protocol.Capabilities.ClientCapabilities.beam",
+      "sha256": "5566d914f2add99b6dd530fe6cd4b3227dbb542e0546d3e3ded139103e2bf34b"
+    },
+    "Elixir.Ipse.Auth.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/ipse/ebin/Elixir.Ipse.Auth.beam",
+      "sha256": "bad50d461fdd45efd14853b6527c24eeb1fa5cb84febbb9db8f61813777b2625"
+    },
+    "Elixir.Finch.HTTP1.Conn.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/finch/ebin/Elixir.Finch.HTTP1.Conn.beam",
+      "sha256": "320cdf2b026f5a56412faf3f2fd99c75f16b59aabb90639f66e1aba1c485ad2c"
+    },
+    "Elixir.Ipse.Extension.Collection.Blocks.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/ipse/ebin/Elixir.Ipse.Extension.Collection.Blocks.beam",
+      "sha256": "9a90fcb344332e29a0a276894834af028131ca6935d6b291053b10bba4660729"
+    },
+    "Elixir.Mint.ParsingTools.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/mint/ebin/Elixir.Mint.ParsingTools.beam",
+      "sha256": "a495fce835b48352e77295715c84de4908cd83a8d66cbe08734e2e3edd99f234"
+    },
+    "Elixir.Jason.Encoder.MCP.Protocol.Messages.Resources.ReadResult.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/mcp_elixir_sdk/ebin/Elixir.Jason.Encoder.MCP.Protocol.Messages.Resources.ReadResult.beam",
+      "sha256": "270c36698e47f4485d12a396e22de68e96c2c8a9524a8c5c2c36c035242fdf14"
+    },
+    "Elixir.Ipse.Extension.SemanticAdmission.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/ipse/ebin/Elixir.Ipse.Extension.SemanticAdmission.beam",
+      "sha256": "f383fbf6075eb8c3181d0fddad1891241c93a22ff50a9e71d55daf319a7feb9d"
+    },
+    "Elixir.JSONSchex.Types.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/jsonschex/ebin/Elixir.JSONSchex.Types.beam",
+      "sha256": "9c31a434c3201af332857b8a842ff6e7035fa351d6d34f0e91e2479ab00e286c"
+    },
+    "Elixir.Plug.Head.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/plug/ebin/Elixir.Plug.Head.beam",
+      "sha256": "5a0c7866c17b98c5b8b4487c667bb5b48d673962ca794789961f11e872c100ab"
+    },
+    "Elixir.Ipse.Usage.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/ipse/ebin/Elixir.Ipse.Usage.beam",
+      "sha256": "f606c26825e7197129ad58c37eca6c70885d748a3c1e5e6cb5d09849654436c9"
+    },
+    "Elixir.Ipse.Provider.MintEmbedding.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/ipse/ebin/Elixir.Ipse.Provider.MintEmbedding.beam",
+      "sha256": "a3b1df48df980a140b37a1fb5fd33c2ddd8be655711ba9b2ca9de792efc35beb"
+    },
+    "Elixir.Ipse.Builtins.LocalTrace.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/ipse/ebin/Elixir.Ipse.Builtins.LocalTrace.beam",
+      "sha256": "d00fe91464216060e5ac1c94b8027ef70d428d8866ee5009b3911b40eabd6af9"
+    },
+    "Elixir.Ipse.Session.ToolLifecycle.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/ipse/ebin/Elixir.Ipse.Session.ToolLifecycle.beam",
+      "sha256": "1d511c8867fcc351ed03edfe7bc5ccd7064f869401597ea02d777b6cdfb8f2f2"
+    },
+    "Elixir.Ipse.DocumentParser.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/ipse/ebin/Elixir.Ipse.DocumentParser.beam",
+      "sha256": "59b0e3136ba9cd45613926800184b164a0cfa26dd4cf0112878bf3e713bf71db"
+    },
+    "Elixir.Jason.Encoder.MCP.Protocol.Messages.Completion.Params.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/mcp_elixir_sdk/ebin/Elixir.Jason.Encoder.MCP.Protocol.Messages.Completion.Params.beam",
+      "sha256": "5d2af6172e6a6793c6f9e88b271352d3db85a875e006909c4fd6d272309d2633"
+    },
+    "Elixir.Inspect.Ipse.Extension.Collection.ReadView.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/ipse/ebin/Elixir.Inspect.Ipse.Extension.Collection.ReadView.beam",
+      "sha256": "b237349882688b3111070793255fd47959a51905b50f74e6fd9c3d194b05c2fa"
+    },
+    "Elixir.Finch.Pool.Strategy.RoundRobin.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/finch/ebin/Elixir.Finch.Pool.Strategy.RoundRobin.beam",
+      "sha256": "f37d3cadfa7d49168866198e8a828ecc33679f405d67bd66f5cf975f2dd789bb"
+    },
+    "Elixir.Plug.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/plug/ebin/Elixir.Plug.beam",
+      "sha256": "c9550d1c35f234756beefc46eac411acb0d47adbd18d8247c5cfab6e9445adf1"
+    },
+    "Elixir.Ipse.MCP.StdioTransport.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/ipse/ebin/Elixir.Ipse.MCP.StdioTransport.beam",
+      "sha256": "ead93acc02b03ae699309f1355a23491ee890e3f4bb9a0a6e700ef86077502b1"
+    },
+    "Elixir.Ipse.Extension.ProjectIdentity.DomainAuth.Capability.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/ipse/ebin/Elixir.Ipse.Extension.ProjectIdentity.DomainAuth.Capability.beam",
+      "sha256": "9c81f8a741ac0941635d7f84236cb2ea5e21c7c2c749204319e3f8940f572e6b"
+    },
+    "Elixir.Finch.Telemetry.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/finch/ebin/Elixir.Finch.Telemetry.beam",
+      "sha256": "15004cbf95e005af21c75d7cc8ae6b3c853905f46c8baf1c38a9b2b6fab6c43a"
+    },
+    "Elixir.HPAX.Types.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/hpax/ebin/Elixir.HPAX.Types.beam",
+      "sha256": "7c284829f34f6674741a80bbe3fd3265a42629be4d29f78b51f282eef091adbb"
+    },
+    "Elixir.MCP.Protocol.Messages.Resources.UnsubscribeParams.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/mcp_elixir_sdk/ebin/Elixir.MCP.Protocol.Messages.Resources.UnsubscribeParams.beam",
+      "sha256": "c6bc48e95cc5d83aaaec9102a82cee380c1f56076a73a05f2df55da931ab80f5"
+    },
+    "Elixir.Ipse.Extension.ResultSource.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/ipse/ebin/Elixir.Ipse.Extension.ResultSource.beam",
+      "sha256": "b1047fad48c73a486fd16cebf4a7df80291603fcc063ca984dd81b525f204567"
+    },
+    "Elixir.MCP.Protocol.Types.ModelHint.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/mcp_elixir_sdk/ebin/Elixir.MCP.Protocol.Types.ModelHint.beam",
+      "sha256": "2c90e58d693334c22318fde8cd5caffaa329a74aa5f106c67155257070445928"
+    },
+    "Elixir.Ipse.Extension.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/ipse/ebin/Elixir.Ipse.Extension.beam",
+      "sha256": "81a24e4818c2c5e03fee15702e6b09737138dabd3db7b8d7f6689dce3210d1b7"
+    },
+    "Elixir.Ipse.Session.TextStream.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/ipse/ebin/Elixir.Ipse.Session.TextStream.beam",
+      "sha256": "2512866ad9859531014ea07ea563b129fa57ccf0e749d478ea80a86ce3191792"
+    },
+    "Elixir.Req.Gzip.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/req/ebin/Elixir.Req.Gzip.beam",
+      "sha256": "62945a6b6b040c131257505ec338e091fa4f71f4bc83abc8de3a622c27f4cd1f"
+    },
+    "Elixir.Mint.Core.Util.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/mint/ebin/Elixir.Mint.Core.Util.beam",
+      "sha256": "e940f0534dfb48c23b0bc8ad653e3c62d9b4938621847d5f15efe333129d00db"
+    },
+    "Elixir.Ipse.Provider.EgressGate.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/ipse/ebin/Elixir.Ipse.Provider.EgressGate.beam",
+      "sha256": "b56a54973685f09e4904ede4326e874b254138f6704e08a9f69aa4b2c4395b51"
+    },
+    "Elixir.Inspect.Plug.Conn.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/plug/ebin/Elixir.Inspect.Plug.Conn.beam",
+      "sha256": "015bdf408939636c5351d505d28d5f20a261a29775dbdcacfdd5ddefe6a43ea6"
+    },
+    "Elixir.Finch.Pool.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/finch/ebin/Elixir.Finch.Pool.beam",
+      "sha256": "4b957c0e4a6f3fc11138d7b102bc510576ada4437df064e5b2c79d83916b0b78"
+    },
+    "Elixir.Jason.Encoder.MCP.Protocol.Messages.Sampling.CreateMessageParams.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/mcp_elixir_sdk/ebin/Elixir.Jason.Encoder.MCP.Protocol.Messages.Sampling.CreateMessageParams.beam",
+      "sha256": "72163a3413d23a29ce0b80aeffa84d1be697db00dda097cffe98f65fc0580e81"
+    },
+    "Elixir.JSONSchex.Draft202012.Schemas.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/jsonschex/ebin/Elixir.JSONSchex.Draft202012.Schemas.beam",
+      "sha256": "24fb086933e915d987f044f16b05064a222100ed528889cda85ccd896fee2d83"
+    },
+    "Elixir.Plug.Conn.Unfetched.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/plug/ebin/Elixir.Plug.Conn.Unfetched.beam",
+      "sha256": "67b4c37c52cae05e7a63700c00b11f2c61bfb9aa3e85052f834ca657752b3d33"
+    },
+    "Elixir.Ipse.Extension.Consent.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/ipse/ebin/Elixir.Ipse.Extension.Consent.beam",
+      "sha256": "80f6d4cf9ee90e762b2ec022d23e46206f4ff04ce2fa79dae6e33638b736d097"
+    },
+    "Elixir.Req.Utils.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/req/ebin/Elixir.Req.Utils.beam",
+      "sha256": "e1929e079a378aee01f597c878ba80ef196c475706ef7eb44aacd9e1fa1deffd"
+    },
+    "Elixir.JSONSchex.Formats.Hostname.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/jsonschex/ebin/Elixir.JSONSchex.Formats.Hostname.beam",
+      "sha256": "4c49b98dd65c4ab514f159540cd0c0338d4658e57fcb16353f5614bb4ff07c32"
+    },
+    "Elixir.Finch.Error.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/finch/ebin/Elixir.Finch.Error.beam",
+      "sha256": "1be4ea4e91f79273cf85584c8c2bf3b1f8be90827ff30b7dcc06109538405cb5"
+    },
+    "Elixir.Jason.Encoder.MCP.Protocol.Types.Tool.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/mcp_elixir_sdk/ebin/Elixir.Jason.Encoder.MCP.Protocol.Types.Tool.beam",
+      "sha256": "895164502d905111c786f8d01e7d889f190dc4221bd9ad6964ec4e2f7b0a0d31"
+    },
+    "Elixir.MCP.Protocol.Messages.Sampling.CreateMessageResult.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/mcp_elixir_sdk/ebin/Elixir.MCP.Protocol.Messages.Sampling.CreateMessageResult.beam",
+      "sha256": "925d14e5ca0285da4b5b8d0c2e0c29afb445c315c832428ccf28d5ae8087d707"
+    },
+    "Elixir.Ipse.Session.Context.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/ipse/ebin/Elixir.Ipse.Session.Context.beam",
+      "sha256": "a7cd7c302067243efe6c3e5eb621201b5ab03668f1763f77b556cfdfc799f442"
+    },
+    "Elixir.Plug.Parsers.JSON.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/plug/ebin/Elixir.Plug.Parsers.JSON.beam",
+      "sha256": "c44c3a09fd623a0b430849ac1fd6104025a53e10c87498ad328e3dc7b76480c1"
+    },
+    "Elixir.Plug.Conn.WrapperError.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/plug/ebin/Elixir.Plug.Conn.WrapperError.beam",
+      "sha256": "44050427b6aca60882ab7692db2f4ea24b01dcbc1d345b5c0af5c01da676d9d9"
+    },
+    "Elixir.Plug.Upload.Terminator.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/plug/ebin/Elixir.Plug.Upload.Terminator.beam",
+      "sha256": "07d2cfb3709ea771f775f0836cc5cc862f95cf88f1236537f2e4520e6d9c7e24"
+    },
+    "Elixir.Jason.Encoder.Float.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/jason/ebin/Elixir.Jason.Encoder.Float.beam",
+      "sha256": "54e8ced0ab87cef76dafc3e439e961a8f934f1d2326f481c0eed28ec70356cdd"
+    },
+    "Elixir.MCP.Protocol.Messages.Tools.CallResult.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/mcp_elixir_sdk/ebin/Elixir.MCP.Protocol.Messages.Tools.CallResult.beam",
+      "sha256": "dfba3f26101f90291086d48250da9a3b98392c768a6479402323cdca0c1269d9"
+    },
+    "Elixir.JSONSchex.Compiler.Predicates.MultipleOf.Native.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/jsonschex/ebin/Elixir.JSONSchex.Compiler.Predicates.MultipleOf.Native.beam",
+      "sha256": "8b5236d8aac6e5ac647ffc219661c2333fc5a339dd95db9e4e7782911e611cc6"
+    },
+    "Elixir.Jason.Encoder.MCP.Protocol.Types.PromptArgument.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/mcp_elixir_sdk/ebin/Elixir.Jason.Encoder.MCP.Protocol.Types.PromptArgument.beam",
+      "sha256": "3a491df66677a8782499e62b35dd0733ccf56045bd3e96f0e16fbbd06f4f51d9"
+    },
+    "Elixir.Req.Steps.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/req/ebin/Elixir.Req.Steps.beam",
+      "sha256": "2691ef69cfaca46d45a6a4771b286387f4cd3c270cce6d5ffa913d9e4eaf571b"
+    },
+    "Elixir.Plug.Conn.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/plug/ebin/Elixir.Plug.Conn.beam",
+      "sha256": "64534f36a242866d353d9f6c10ce97a4d73a9bc25b2330abab9e81b7047b2b5a"
+    },
+    "Elixir.Inspect.Req.Response.Async.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/req/ebin/Elixir.Inspect.Req.Response.Async.beam",
+      "sha256": "acf687ef273a885f08c1ec0184741dc337d7c7530bbfd2d994d1f6d6d3803d06"
+    },
+    "Elixir.Ipse.Extension.ManagedRecipe.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/ipse/ebin/Elixir.Ipse.Extension.ManagedRecipe.beam",
+      "sha256": "6423d2c10e035a0041871dced1af5002633ecc2f22c65e6aad50b011ec7b3fb3"
+    },
+    "Elixir.Ipse.Extension.Collection.Encoding.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/ipse/ebin/Elixir.Ipse.Extension.Collection.Encoding.beam",
+      "sha256": "a0891899d955dad92c15bd5e41c6cdc046c1d5fc5787ab482899ab2dba1159dc"
+    },
+    "Elixir.Jason.Encoder.MCP.Protocol.Capabilities.SamplingCapabilities.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/mcp_elixir_sdk/ebin/Elixir.Jason.Encoder.MCP.Protocol.Capabilities.SamplingCapabilities.beam",
+      "sha256": "f5211d59243f980353fe9e7f0679617e1616014d205dd569a6231dddeb9ebb2e"
+    },
+    "Elixir.MCP.Protocol.Messages.Roots.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/mcp_elixir_sdk/ebin/Elixir.MCP.Protocol.Messages.Roots.beam",
+      "sha256": "2875c1f35bea0b5ffa7ddd0f01e6d2614b4a4c2298f57f81f26bc9c5500db13b"
+    },
+    "Elixir.Ipse.Session.OperatorAssertion.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/ipse/ebin/Elixir.Ipse.Session.OperatorAssertion.beam",
+      "sha256": "b5d7a671185119c38ca6ac0bbbb0b301a808f308ead0b86e6c1107ada840d8c6"
+    },
+    "Elixir.Jason.Encoder.MCP.Protocol.Types.Prompt.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/mcp_elixir_sdk/ebin/Elixir.Jason.Encoder.MCP.Protocol.Types.Prompt.beam",
+      "sha256": "676064ca917161bd45ce6ada1c574897561138b7e3d87532d87d60c676fd54f1"
+    },
+    "Elixir.ExJSONPointer.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/ex_json_pointer/ebin/Elixir.ExJSONPointer.beam",
+      "sha256": "771b6b827a0842316a686315b525a509b7870913ba89c66a57288aa16624684a"
+    },
+    "Elixir.Jason.Encoder.MCP.Protocol.Types.PromptMessage.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/mcp_elixir_sdk/ebin/Elixir.Jason.Encoder.MCP.Protocol.Types.PromptMessage.beam",
+      "sha256": "06cf8f8753e85533917aa669b168edc0987eae8eb69a826032ecf0f7ed5326ce"
+    },
+    "Elixir.MCP.Protocol.Messages.Completion.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/mcp_elixir_sdk/ebin/Elixir.MCP.Protocol.Messages.Completion.beam",
+      "sha256": "dae19170508b07da854fd385e5fe96ae0fccfd0152e11b5dfb38dd9da69755fc"
+    },
+    "Elixir.Ipse.Runner.Operator.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/ipse/ebin/Elixir.Ipse.Runner.Operator.beam",
+      "sha256": "2345038203d5a47f50529c629cd04f7030b380d80436948c1a509ff80d2378ea"
+    },
+    "Elixir.Req.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/req/ebin/Elixir.Req.beam",
+      "sha256": "07f086ea591245a659f5e9d91d12a978820b7d0daaadf25703e297bbd796ff56"
+    },
+    "Elixir.Jason.Encoder.MCP.Protocol.Capabilities.ResourceCapabilities.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/mcp_elixir_sdk/ebin/Elixir.Jason.Encoder.MCP.Protocol.Capabilities.ResourceCapabilities.beam",
+      "sha256": "91d8e5273b03fbf19269906087aa3726f3bb17c5ec0734f4c36556ad7a9f7268"
+    },
+    "Elixir.JSONSchex.URIUtil.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/jsonschex/ebin/Elixir.JSONSchex.URIUtil.beam",
+      "sha256": "633606370b94e22bf21ae455f451191fc275a5134564cc596089623cacb634bd"
+    },
+    "Elixir.JSONSchex.Validator.Keywords.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/jsonschex/ebin/Elixir.JSONSchex.Validator.Keywords.beam",
+      "sha256": "4c1048d58e397fba6797b4762bba28ee90089d8b1bb6bef731dc90b055605b9a"
+    },
+    "Elixir.Finch.Pool.Supervisor.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/finch/ebin/Elixir.Finch.Pool.Supervisor.beam",
+      "sha256": "126c24171a8ca702c85ef817b20554aab2855d7f52e1a87b2ed2b15c9cccaea7"
+    },
+    "Elixir.ExJSONPointer.Compiled.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/ex_json_pointer/ebin/Elixir.ExJSONPointer.Compiled.beam",
+      "sha256": "1f3d93d577cbe1cebf476ebb6e994c3bd42e50118a0919977721340960add782"
+    },
+    "Elixir.Ipse.Session.Resources.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/ipse/ebin/Elixir.Ipse.Session.Resources.beam",
+      "sha256": "ac2d521d77fb7c008c059e3edcbef0f867153b624d7e4bd9b9368bc468e401bd"
+    },
+    "Elixir.Mint.HTTP1.Parse.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/mint/ebin/Elixir.Mint.HTTP1.Parse.beam",
+      "sha256": "170db7cbb367c9c347cfd4320caa3b7db2221110cf551c7c35444c24cb9919ed"
+    },
+    "Elixir.Plug.Application.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/plug/ebin/Elixir.Plug.Application.beam",
+      "sha256": "55bdfc486f193a7aa52cb9683b75ca2501e7ce574a0530d2b7147b171800ce31"
+    },
+    "Elixir.Jason.Encoder.MCP.Protocol.Messages.Tools.ListResult.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/mcp_elixir_sdk/ebin/Elixir.Jason.Encoder.MCP.Protocol.Messages.Tools.ListResult.beam",
+      "sha256": "65a718b8bddfbdba176828df9c14a6aedc0d854f8c02f7ba15f982a2fc7a04b7"
+    },
+    "Elixir.MCP.Protocol.Messages.Notifications.CancelledParams.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/mcp_elixir_sdk/ebin/Elixir.MCP.Protocol.Messages.Notifications.CancelledParams.beam",
+      "sha256": "4b02a4d88f736e4c4190e910d5cf692c44aa91e30e01cb6611d9f37822dd2ef1"
+    },
+    "Elixir.Jason.Encoder.Jason.OrderedObject.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/jason/ebin/Elixir.Jason.Encoder.Jason.OrderedObject.beam",
+      "sha256": "9b965819b8e5f92c392ae166b464d2ebff38d89ce0ae483e0e7048d09faaccb1"
+    },
+    "Elixir.Ipse.InferenceSlots.Store.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/ipse/ebin/Elixir.Ipse.InferenceSlots.Store.beam",
+      "sha256": "ea8c8d516c5abb06e1fd2c61b05e74b0cf79cdfe1fe38cdb8d56f33b00e5dc3e"
+    },
+    "Elixir.MCP.Protocol.Types.ResourceContents.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/mcp_elixir_sdk/ebin/Elixir.MCP.Protocol.Types.ResourceContents.beam",
+      "sha256": "76fd50fcf164ccb4559da49050ce59361cf04651373fa6a0214ca00568f42505"
+    },
+    "Elixir.Jason.Encoder.MCP.Protocol.Messages.Initialize.Params.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/mcp_elixir_sdk/ebin/Elixir.Jason.Encoder.MCP.Protocol.Messages.Initialize.Params.beam",
+      "sha256": "72226561b769beafd9994a3878ec5819e2ac86e84957afafe9dcdf35c5a3c6bb"
+    },
+    "Elixir.MCP.Protocol.Messages.Logging.SetLevelParams.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/mcp_elixir_sdk/ebin/Elixir.MCP.Protocol.Messages.Logging.SetLevelParams.beam",
+      "sha256": "257545754063a4084609abdf9730934830e8995f23eb9bac87882e62452c7086"
+    },
+    "Elixir.Jason.Encoder.MCP.Protocol.Messages.Roots.ListResult.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/mcp_elixir_sdk/ebin/Elixir.Jason.Encoder.MCP.Protocol.Messages.Roots.ListResult.beam",
+      "sha256": "2cfa708e5c74634c6e31fe006daf7e314504848ec60b6d139cee301855f6034a"
+    },
+    "Elixir.Mint.HTTPError.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/mint/ebin/Elixir.Mint.HTTPError.beam",
+      "sha256": "cb9e55456f05370dd4bbf32d8fb5332fbaacee05e127c125fe5865f908de4e06"
+    },
+    "Elixir.Jason.Encoder.MCP.Protocol.Types.ModelPreferences.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/mcp_elixir_sdk/ebin/Elixir.Jason.Encoder.MCP.Protocol.Types.ModelPreferences.beam",
+      "sha256": "93a37fdcd8e0b30774f414f94392be462bcb21f575f3f9391c426002b1c73d3d"
+    },
+    "Elixir.NimbleOptions.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/nimble_options/ebin/Elixir.NimbleOptions.beam",
+      "sha256": "e378ff1ed260d30afa0d43eb1639a6e15c16021050ca782e1c4b165e1220f981"
+    },
+    "Elixir.Ipse.Session.DraftAcceptance.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/ipse/ebin/Elixir.Ipse.Session.DraftAcceptance.beam",
+      "sha256": "b758b91f62fd209e3ae33d4136d9d41be98aa06b9cdcd264d0b9b418f7bfadd8"
+    },
+    "Elixir.Plug.Router.InvalidSpecError.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/plug/ebin/Elixir.Plug.Router.InvalidSpecError.beam",
+      "sha256": "ef826459da12126dfb18364d49219cd1839a118e922b6ed7af2f3bc5388e2c0f"
+    },
+    "Elixir.Enumerable.Req.Response.Async.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/req/ebin/Elixir.Enumerable.Req.Response.Async.beam",
+      "sha256": "63154c2e43d184a456fde4ded937a335f67bdb88a8d7da7203b383f895c1e59f"
+    },
+    "Elixir.MCP.Server.ToolContext.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/mcp_elixir_sdk/ebin/Elixir.MCP.Server.ToolContext.beam",
+      "sha256": "b5d2e91ccebb9a30fcf0719752f5354e58ddfa5c60da988e93cfb77cb8204a1e"
+    },
+    "Elixir.Ipse.Observability.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/ipse/ebin/Elixir.Ipse.Observability.beam",
+      "sha256": "9cb42085321b748d5cb1adddb0dd8cecb720259b70c901c4f7ba1f6f4727b568"
+    },
+    "Elixir.Plug.Upload.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/plug/ebin/Elixir.Plug.Upload.beam",
+      "sha256": "73b4352226df55cf08868c67cf945bbe01dce694dfb6e7f935bab6f873fe71af"
+    },
+    "Elixir.MCP.Protocol.Messages.Initialize.Result.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/mcp_elixir_sdk/ebin/Elixir.MCP.Protocol.Messages.Initialize.Result.beam",
+      "sha256": "72f686469f1bd0f0d68d8fed3ce5a2fb31998e40e1aeacc7c896121d48de05d5"
+    },
+    "Elixir.Ipse.Provider.Embedding.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/ipse/ebin/Elixir.Ipse.Provider.Embedding.beam",
+      "sha256": "6060ca46b1e19f5af495b56fce7293ee6d4080b00c0593fe05877a2fc11f778d"
+    },
+    "Elixir.Jason.Encoder.MCP.Protocol.Types.Icon.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/mcp_elixir_sdk/ebin/Elixir.Jason.Encoder.MCP.Protocol.Types.Icon.beam",
+      "sha256": "44d23eb5765273d0afad626a0fc6f6e39b224f9300cef0d5cd74f9b5652d41c7"
+    },
+    "Elixir.Ipse.Extension.Collection.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/ipse/ebin/Elixir.Ipse.Extension.Collection.beam",
+      "sha256": "99052c4aead693ca01d790a332d9dcbd59bf0133584b1eaab9e113b3ec86a1e2"
+    },
+    "Elixir.Ipse.Extension.DecisionCall.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/ipse/ebin/Elixir.Ipse.Extension.DecisionCall.beam",
+      "sha256": "c8cfbd003ee311b257c7950b9d7538f81b6a65c1fc37596fe55318abbb3c5fc0"
+    },
+    "Elixir.JSONSchex.Compiler.Predicates.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/jsonschex/ebin/Elixir.JSONSchex.Compiler.Predicates.beam",
+      "sha256": "34f654fe887de38ae8ec3d2900407415cbf064a03a759e7f9a4fe08f9f76c646"
+    },
+    "Elixir.Plug.Router.Utils.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/plug/ebin/Elixir.Plug.Router.Utils.beam",
+      "sha256": "9cad28ff08deb477432fc33981135f404b2edaebf9082c6a0e189158faa53d36"
+    },
+    "Elixir.Ipse.Config.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/ipse/ebin/Elixir.Ipse.Config.beam",
+      "sha256": "5c87cb4feff78ce67b395500765369a2652ab43a90e27a4731e07c1b04e2bcb6"
+    },
+    "Elixir.Ipse.Config.Activation.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/ipse/ebin/Elixir.Ipse.Config.Activation.beam",
+      "sha256": "f0578fee830b945b86312e84d5d0b75e469abe85e56d5a4eadd33221b45b7ecd"
+    },
+    "Elixir.Ipse.Config.Decisions.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/ipse/ebin/Elixir.Ipse.Config.Decisions.beam",
+      "sha256": "4b8e73e6d439e1a5f8ce17e2635157103579fbfdb02626a91bd03d02234ee13e"
+    },
+    "Elixir.MCPElixirSDK.Application.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/mcp_elixir_sdk/ebin/Elixir.MCPElixirSDK.Application.beam",
+      "sha256": "ddafba71526acafcf4efe2a3d548fd843d877297b70340e2daed894f57dbbeb1"
+    },
+    "Elixir.MCP.Protocol.Error.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/mcp_elixir_sdk/ebin/Elixir.MCP.Protocol.Error.beam",
+      "sha256": "43d29bace5c3e4253e5a041e45cba875ddb8172bc41f25f004a6aeaef1529ca9"
+    },
+    "Elixir.MCP.Protocol.Types.Annotations.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/mcp_elixir_sdk/ebin/Elixir.MCP.Protocol.Types.Annotations.beam",
+      "sha256": "dea749c6f95747a861a77766ffde73a7ed0b7692f401dd2b3750cd49ec9e846b"
+    },
+    "Elixir.ExJSONPointer.BatchResolver.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/ex_json_pointer/ebin/Elixir.ExJSONPointer.BatchResolver.beam",
+      "sha256": "634061a44adb0626b3736ee12674798f852ca0087c3db3c65d89db788a39868a"
+    },
+    "Elixir.Ipse.Session.PlanningTransition.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/ipse/ebin/Elixir.Ipse.Session.PlanningTransition.beam",
+      "sha256": "07330280a9d5f9841a2fdb3c98bf65351f2ceaf0984937beb9f691411a357127"
+    },
+    "Elixir.Ipse.Session.Reference.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/ipse/ebin/Elixir.Ipse.Session.Reference.beam",
+      "sha256": "436064ceda14e055573bd41638a292da4857eb7d5175b4081d477ae4c88bfbed"
+    },
+    "Elixir.Jason.Encoder.MCP.Protocol.Messages.Resources.ReadParams.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/mcp_elixir_sdk/ebin/Elixir.Jason.Encoder.MCP.Protocol.Messages.Resources.ReadParams.beam",
+      "sha256": "13fef33becf83c217a628e0030eef4c4c528fa3b2805effd7e39eed72e486bb7"
+    },
+    "Elixir.Plug.Conn.CookieOverflowError.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/plug/ebin/Elixir.Plug.Conn.CookieOverflowError.beam",
+      "sha256": "1e250279c867c1d8e94298b2166eb3bb583dea1d1d4736613081c4c6e8621d5e"
+    },
+    "Elixir.MCP.Protocol.Capabilities.ServerCapabilities.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/mcp_elixir_sdk/ebin/Elixir.MCP.Protocol.Capabilities.ServerCapabilities.beam",
+      "sha256": "0c3f45f670e3d0c5c0f1aea6f8337cc718028ff26605c78561b69a168d1544be"
+    },
+    "Elixir.Finch.TransportError.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/finch/ebin/Elixir.Finch.TransportError.beam",
+      "sha256": "d1ad05415feff25300229689b1a7ab16f05767ad76d0530d3582574d915162b2"
+    },
+    "Elixir.Req.Tar.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/req/ebin/Elixir.Req.Tar.beam",
+      "sha256": "3a632e9a290d468ed809d6f72f15a0f04a863c56ec6d0e7fcc0627c339c29823"
+    },
+    "Elixir.Ipse.Runner.Review.Permit.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/ipse/ebin/Elixir.Ipse.Runner.Review.Permit.beam",
+      "sha256": "effed6dce271b36e1d6e562611f409e85c530cf7299c883c3fb081747fca38dc"
+    },
+    "Elixir.MCP.Protocol.Capabilities.LoggingCapabilities.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/mcp_elixir_sdk/ebin/Elixir.MCP.Protocol.Capabilities.LoggingCapabilities.beam",
+      "sha256": "c9440604f592cab74dcc225a523943dbaa878dced307074e3efcf5c4690ea9ab"
+    },
+    "Elixir.Jason.Helpers.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/jason/ebin/Elixir.Jason.Helpers.beam",
+      "sha256": "f571499ab8b8c2b28cb437f75ed873b4eef99bc1f7d299829126dbeab24e0c17"
+    },
+    "Elixir.Plug.Exception.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/plug/ebin/Elixir.Plug.Exception.beam",
+      "sha256": "330ff0cd619caceaa016130c6d264915bc77c203baebb77842faad11dca45700"
+    },
+    "Elixir.Plug.RewriteOn.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/plug/ebin/Elixir.Plug.RewriteOn.beam",
+      "sha256": "ad03560b2e465432cf3035281ba00b650e45f55e5f45c3c59428911cc405c920"
+    },
+    "Elixir.Ipse.Session.ManagedReads.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/ipse/ebin/Elixir.Ipse.Session.ManagedReads.beam",
+      "sha256": "a8c52ddc22499d499138d08d8fdefc252f947723b2d04ba0bf2f980c8a62a96e"
+    },
+    "Elixir.MCP.Protocol.Capabilities.RootCapabilities.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/mcp_elixir_sdk/ebin/Elixir.MCP.Protocol.Capabilities.RootCapabilities.beam",
+      "sha256": "1fe74b5c025c9c1976e7c9d5f8a791422017eb68edc12b6bb319de62fc5c747c"
+    },
+    "Elixir.MCP.Protocol.Messages.Response.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/mcp_elixir_sdk/ebin/Elixir.MCP.Protocol.Messages.Response.beam",
+      "sha256": "cafefdd05fe0ce6c9377efc82912f4a5118251d9d9796b169c5fece82028add1"
+    },
+    "Elixir.Plug.Conn.AlreadySentError.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/plug/ebin/Elixir.Plug.Conn.AlreadySentError.beam",
+      "sha256": "19e1640cd4dd9fd519e98ad2f869a2179beac8c93a7e2f4e889c45eaca48769d"
+    },
+    "Elixir.Ipse.CLI.Doctor.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/ipse/ebin/Elixir.Ipse.CLI.Doctor.beam",
+      "sha256": "987af6d62f082ac5cdbaaf6c0b0822de663dfa2eb6970c332b6e5db6c1fbba1f"
+    },
+    "Elixir.JSONSchex.Formats.Regex.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/jsonschex/ebin/Elixir.JSONSchex.Formats.Regex.beam",
+      "sha256": "37543ae70f6d277c262c99f348a1677b284ab417bd6d7d7cb64a0ab82fad01cd"
+    },
+    "Elixir.MCP.Transport.StreamableHTTP.PreStarted.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/mcp_elixir_sdk/ebin/Elixir.MCP.Transport.StreamableHTTP.PreStarted.beam",
+      "sha256": "5a380cf23895f5e07e3b64730c182ef057c519e14c32c3bd363e9c9ac329db16"
+    },
+    "Elixir.Plug.Adapters.Cowboy.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/plug/ebin/Elixir.Plug.Adapters.Cowboy.beam",
+      "sha256": "2fb78a9d0a71ae005d47dead4715d905d42029f10df4e62f90766e7fdfb2bc8b"
+    },
+    "Elixir.Plug.UploadError.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/plug/ebin/Elixir.Plug.UploadError.beam",
+      "sha256": "011c38100eee664f23e85a6a36edea4b01c0110fa9932b92c1544e2c287db2be"
+    },
+    "Elixir.MCP.Transport.StreamableHTTP.Plug.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/mcp_elixir_sdk/ebin/Elixir.MCP.Transport.StreamableHTTP.Plug.beam",
+      "sha256": "7912467a9bfd7a1637586841583f49305275753bc6f4663a7a4235c043c3db76"
+    },
+    "Elixir.Jason.Encoder.MCP.Protocol.Capabilities.RootCapabilities.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/mcp_elixir_sdk/ebin/Elixir.Jason.Encoder.MCP.Protocol.Capabilities.RootCapabilities.beam",
+      "sha256": "3d2ab5809ff5ebc44395b5adf6431008491915567bce5bb23bf85afef095e701"
+    },
+    "Elixir.Plug.BadRequestError.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/plug/ebin/Elixir.Plug.BadRequestError.beam",
+      "sha256": "ddfcd62bac934930eb982a6b60626c0c4f8b70e32b50efe7d129be7f86d01e15"
+    },
+    "Elixir.Ipse.Session.InferenceWire.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/ipse/ebin/Elixir.Ipse.Session.InferenceWire.beam",
+      "sha256": "121b4916b58f28c7e569f1b3d839cae7c4e842ccaea8c6f2482b3a05cd172c0d"
+    },
+    "Elixir.Mint.Core.Transport.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/mint/ebin/Elixir.Mint.Core.Transport.beam",
+      "sha256": "0cc00b85a472563922e01db7db3dfd44bb4a7a66eb595f391f32670bbbe38d22"
+    },
+    "Elixir.Ipse.Observability.Channel.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/ipse/ebin/Elixir.Ipse.Observability.Channel.beam",
+      "sha256": "a1461e050e1b08963ec4aa7e7d6b3f05855e2cf4b7724b502547070d1a2c3374"
+    },
+    "Elixir.Jason.Encoder.MCP.Protocol.Types.ResourceTemplate.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/mcp_elixir_sdk/ebin/Elixir.Jason.Encoder.MCP.Protocol.Types.ResourceTemplate.beam",
+      "sha256": "f58653340252bcab52196205227a5a07df2caa6635f7947f490f6c1c2e91d213"
+    },
+    "Elixir.Ipse.Session.ManagedLifecycle.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/turnover-sol-20261028/ebin/Elixir.Ipse.Session.ManagedLifecycle.beam",
+      "sha256": "20ce7ce83bc00b1a72a99316bd9fcf7a90bf32724f3b98b14bea401c64c8e563"
+    },
+    "Elixir.Ipse.Extension.ChildUsage.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/ipse/ebin/Elixir.Ipse.Extension.ChildUsage.beam",
+      "sha256": "5a2ac9f92cec81d11f47ccb48ed1f5689a505363fb71ceb3edb8e8fa1f7a9ff5"
+    },
+    "Elixir.MCP.Protocol.Messages.Prompts.ListResult.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/mcp_elixir_sdk/ebin/Elixir.MCP.Protocol.Messages.Prompts.ListResult.beam",
+      "sha256": "39f3f924b2bfc50846b3cc6abfd68d34ccde80be64e5d753825ed0075d7d7d5e"
+    },
+    "Elixir.Jason.Formatter.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/jason/ebin/Elixir.Jason.Formatter.beam",
+      "sha256": "06fde93e3d91603ba2a3864bd4fa4129d4bb161e33238fe7b59eba05b119ac3a"
+    },
+    "Elixir.Ipse.Session.ManagedReference.State.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/ipse/ebin/Elixir.Ipse.Session.ManagedReference.State.beam",
+      "sha256": "3f14aa8d8168c0e8a60401a01161ee5bbb85f136638d2318b6792fa444bb58dc"
+    },
+    "Elixir.Jason.Encoder.MCP.Protocol.Messages.Prompts.ListParams.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/mcp_elixir_sdk/ebin/Elixir.Jason.Encoder.MCP.Protocol.Messages.Prompts.ListParams.beam",
+      "sha256": "3f12979c8bfdf7a7ca54149a579c1e0c791b1fbd8291db1abe790925735e4151"
+    },
+    "Elixir.Finch.Response.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/finch/ebin/Elixir.Finch.Response.beam",
+      "sha256": "53f5f6f8e36b2aab02b1d3e4a4d1302d68e0110064d0f81795056850dac23cef"
+    },
+    "Elixir.MCP.Protocol.Capabilities.PromptCapabilities.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/mcp_elixir_sdk/ebin/Elixir.MCP.Protocol.Capabilities.PromptCapabilities.beam",
+      "sha256": "20fa15b006a679bb3c9998200fbe3198126156144756aed9798db6db40660e34"
+    },
+    "Elixir.MCP.Protocol.Capabilities.ToolCapabilities.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/mcp_elixir_sdk/ebin/Elixir.MCP.Protocol.Capabilities.ToolCapabilities.beam",
+      "sha256": "c8959b31530b21c6694e6cda0ebb72de2e4f68026892f201fe7994246a653a80"
+    },
+    "Elixir.Mint.TunnelProxy.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/mint/ebin/Elixir.Mint.TunnelProxy.beam",
+      "sha256": "da83cf26bfe0b79ede23745655c5f1ac43b5eab9f7ada4cff6a3559164146516"
+    },
+    "Elixir.MCP.Transport.StreamableHTTP.Client.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/mcp_elixir_sdk/ebin/Elixir.MCP.Transport.StreamableHTTP.Client.beam",
+      "sha256": "767b18008d524c7159ac955e6491d829492567849d32a9d75e112405d1da8860"
+    },
+    "Elixir.MCP.Protocol.Messages.Sampling.CreateMessageParams.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/mcp_elixir_sdk/ebin/Elixir.MCP.Protocol.Messages.Sampling.CreateMessageParams.beam",
+      "sha256": "3afdd7d72dc30012adb59629dd4875831f60c3504fed1328c7adb9e9d246bb5c"
+    },
+    "Elixir.Ipse.Extension.ProjectIdentity.DomainAuth.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/ipse/ebin/Elixir.Ipse.Extension.ProjectIdentity.DomainAuth.beam",
+      "sha256": "d15990ecacf80b2d2c491f8ba039d85588f7a50ea576d37a3ee27161a5f210e0"
+    },
+    "Elixir.MCP.Protocol.Capabilities.ClientCapabilities.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/mcp_elixir_sdk/ebin/Elixir.MCP.Protocol.Capabilities.ClientCapabilities.beam",
+      "sha256": "408fc037a6fbf3f46dedd29604d28d94e80149265f99f668c495c64fe1772a80"
+    },
+    "Elixir.Ipse.Session.SourceWindow.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/ipse/ebin/Elixir.Ipse.Session.SourceWindow.beam",
+      "sha256": "22ce9c76ac017d27676bbdb61c7a90a4a5218f68ab767f2186faa9853f669357"
+    },
+    "Elixir.Ipse.Provider.Anthropic.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/ipse/ebin/Elixir.Ipse.Provider.Anthropic.beam",
+      "sha256": "1348adb313639b2b54e517c3fdfb6e43c5de5092cfa93cc482f77e2dad0d3bcd"
+    },
+    "Elixir.MCP.Protocol.Messages.Prompts.ListParams.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/mcp_elixir_sdk/ebin/Elixir.MCP.Protocol.Messages.Prompts.ListParams.beam",
+      "sha256": "f73d86fd738a59bb8e2f7807eb99fc647fb894ec783e671b9be5902da6e99dfb"
+    },
+    "Elixir.Jason.Encoder.MCP.Protocol.Messages.Elicitation.Params.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/mcp_elixir_sdk/ebin/Elixir.Jason.Encoder.MCP.Protocol.Messages.Elicitation.Params.beam",
+      "sha256": "4bd7cca00ca6b56ccc9497f14fdc0d63be8c3bfb38fd05eb444f41c742860621"
+    },
+    "Elixir.HPAX.Table.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/hpax/ebin/Elixir.HPAX.Table.beam",
+      "sha256": "2d6aaaf8b1f781467484544e62d5869331af1ffb28561695ff775793831f3e75"
+    },
+    "Elixir.Ipse.Tools.MacOSSandbox.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/ipse/ebin/Elixir.Ipse.Tools.MacOSSandbox.beam",
+      "sha256": "81c0c29977ed953bedb485f08b37975dbd1515441a0b68c12fa9f34258ea95c2"
+    },
+    "Elixir.Plug.Session.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/plug/ebin/Elixir.Plug.Session.beam",
+      "sha256": "e61109ee3d86b7b674d1144397ea4acc2f9d333c93ea7ed50acc4ef161ff6012"
+    },
+    "Elixir.Plug.Test.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/plug/ebin/Elixir.Plug.Test.beam",
+      "sha256": "c780641b181b5975c7c052f98710cca47d355ea3cbade8985e6357d25dcd5b58"
+    },
+    "Elixir.Plug.Conn.InvalidHeaderError.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/plug/ebin/Elixir.Plug.Conn.InvalidHeaderError.beam",
+      "sha256": "04403833379da56c55c2a726033f1a30ff7b98cea8471b6bc706670207599eae"
+    },
+    "Elixir.Mint.HTTP1.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/mint/ebin/Elixir.Mint.HTTP1.beam",
+      "sha256": "9491bd42615fba188ca9ab152d1eaa23ada46f003976b5b67f9af3657d9a2100"
+    },
+    "Elixir.JSONSchex.Draft202012.Vocabulary.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/jsonschex/ebin/Elixir.JSONSchex.Draft202012.Vocabulary.beam",
+      "sha256": "13745c2067ac5e10610bcd1a682409705028891c493c183dea092dc78e44f005"
+    },
+    "Elixir.Req.Brotli.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/req/ebin/Elixir.Req.Brotli.beam",
+      "sha256": "2b896c5f7782a9c0d5387a37196393e77e5a7b89974174f05345783b21651799"
+    },
+    "Elixir.Ipse.Extension.ResultPublication.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/ipse/ebin/Elixir.Ipse.Extension.ResultPublication.beam",
+      "sha256": "192a637444c22080184e93b8faf492e85e7c9f3e2e804d5c60b0d6f620d1fb13"
+    },
+    "Elixir.Ipse.Provider.Stream.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/ipse/ebin/Elixir.Ipse.Provider.Stream.beam",
+      "sha256": "f4df39e190dd391436ea11277d0919258f7fa255962685128e289d2e57e9ceba"
+    },
+    "Elixir.Ipse.Extension.Collection.PendingCapacity.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/ipse/ebin/Elixir.Ipse.Extension.Collection.PendingCapacity.beam",
+      "sha256": "24d8b80d6c4bde663a182d4cf5d25d11b33331f1dc51333204db237783302703"
+    },
+    "Elixir.Ipse.Provider.OpenAI.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/ipse/ebin/Elixir.Ipse.Provider.OpenAI.beam",
+      "sha256": "e133473851291f59b535eaea09949976ed79ea7a8efea2a5250f7c2ac34f82dc"
+    },
+    "Elixir.Ipse.Extension.Bootstrap.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/ipse/ebin/Elixir.Ipse.Extension.Bootstrap.beam",
+      "sha256": "b0a58cf94594a2a72a783b9f2fa558bee4b9d8c8f6d2b98e30e31dd9d6a0bdbc"
+    },
+    "Elixir.JSONSchex.Ref.Error.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/jsonschex/ebin/Elixir.JSONSchex.Ref.Error.beam",
+      "sha256": "fa2bd24bfdd5915f8fd8b31cdd2dd1f6b7b3d7fcdfc339873bba843dde050d07"
+    },
+    "Elixir.MIME.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/mime/ebin/Elixir.MIME.beam",
+      "sha256": "06422c9038c156a3f23f8cc7484143a1a351bc761b92614e95449b34077df92c"
+    },
+    "Elixir.Mint.Core.Transport.TCP.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/mint/ebin/Elixir.Mint.Core.Transport.TCP.beam",
+      "sha256": "7f9585ba4391fe529a968d3727ac8d6411fbff0ce3ce40bdaa921911f40a5d34"
+    },
+    "Elixir.Ipse.Session.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/ipse/ebin/Elixir.Ipse.Session.beam",
+      "sha256": "568ea74e9af2f80a67b18528dabd6e345d43ed7dab4297d0c8ff6e5021ca1fc9"
+    },
+    "Elixir.JSONSchex.Compiler.Fragment.Bundle.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/jsonschex/ebin/Elixir.JSONSchex.Compiler.Fragment.Bundle.beam",
+      "sha256": "949b7422c21e8b29507a40040cd7de5047ae48b0bdec5d6ea466d508465e939d"
+    },
+    "Elixir.MCP.Protocol.Messages.Notifications.ProgressParams.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/mcp_elixir_sdk/ebin/Elixir.MCP.Protocol.Messages.Notifications.ProgressParams.beam",
+      "sha256": "6fe4ef2d94ca85b33f94512b0b3654899389a468b4c267b05eed77d67084096e"
+    },
+    "Elixir.Ipse.Provider.Decision.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/ipse/ebin/Elixir.Ipse.Provider.Decision.beam",
+      "sha256": "3f4c6d9b36103a38c282cc6cddfaf1da5db11e8ce0aaeca2fba75c386c91dc08"
+    },
+    "Elixir.Jason.Encoder.MCP.Protocol.Types.ModelHint.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/mcp_elixir_sdk/ebin/Elixir.Jason.Encoder.MCP.Protocol.Types.ModelHint.beam",
+      "sha256": "d7ef3ef4145c2e1aa2749202b0439a051053688eeb388efe0c6af83064006078"
+    },
+    "Elixir.Jason.Encoder.MCP.Protocol.Types.Root.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/mcp_elixir_sdk/ebin/Elixir.Jason.Encoder.MCP.Protocol.Types.Root.beam",
+      "sha256": "925ccafa9e4069c791b10c3800985b8c542b29a0aedcab1c96f88fe98e6ec72d"
+    },
+    "Elixir.ExJSONPointer.RFC6901.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/ex_json_pointer/ebin/Elixir.ExJSONPointer.RFC6901.beam",
+      "sha256": "4cd3d4c9eeac5570e53781138b5f3f05e854e62383767bc02936b59047f23cb2"
+    },
+    "Elixir.Jason.Encoder.DateTime.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/jason/ebin/Elixir.Jason.Encoder.DateTime.beam",
+      "sha256": "de448b6c98acb645b29ac805ba1b7129641fcb7e83048168c5e810df674ead37"
+    },
+    "Elixir.Ipse.Usage.Budget.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/ipse/ebin/Elixir.Ipse.Usage.Budget.beam",
+      "sha256": "fa4adb27b0aadcb95addad1a9ccf38c5dad29e31b13df9dab36408daae924adf"
+    },
+    "Elixir.Ipse.Extension.EmbeddingCall.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/ipse/ebin/Elixir.Ipse.Extension.EmbeddingCall.beam",
+      "sha256": "e2db4f40c9425234be8c363e29324af2714d95ec82dc19e26bc327e4e4046b64"
+    },
+    "Elixir.Ipse.Session.Draft.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/ipse/ebin/Elixir.Ipse.Session.Draft.beam",
+      "sha256": "e754a2ba65472e37982d25676420538ae6e1a9b915ff0656841705592c9a889c"
+    },
+    "Elixir.Jason.Encoder.MCP.Protocol.Capabilities.CompletionCapabilities.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/mcp_elixir_sdk/ebin/Elixir.Jason.Encoder.MCP.Protocol.Capabilities.CompletionCapabilities.beam",
+      "sha256": "2bb103bdb7a8845cb21763e04acef3097cef2d4afb83ed4df9db71c3c2dd315f"
+    },
+    "Elixir.Jason.Encoder.MCP.Protocol.Types.Content.TextContent.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/mcp_elixir_sdk/ebin/Elixir.Jason.Encoder.MCP.Protocol.Types.Content.TextContent.beam",
+      "sha256": "719a1f0d317ff28a514f185a75d8a535c6f1b931309ed278f0abd6aeddc49296"
+    },
+    "Elixir.MCP.Protocol.Messages.Completion.Result.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/mcp_elixir_sdk/ebin/Elixir.MCP.Protocol.Messages.Completion.Result.beam",
+      "sha256": "d1b39f65108bb4b1dd1b9d0b941e73f4ae7f3309b67d54cc1d81f05ccf85d4c5"
+    },
+    "Elixir.Ipse.Extension.Collection.Normalizer.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/ipse/ebin/Elixir.Ipse.Extension.Collection.Normalizer.beam",
+      "sha256": "dfc2e3d0c809fee7e1d2487686d8b9bb1ad9972d97a5869467b4f8678428ed3c"
+    },
+    "Elixir.MCP.Protocol.Messages.Initialize.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/mcp_elixir_sdk/ebin/Elixir.MCP.Protocol.Messages.Initialize.beam",
+      "sha256": "94ea503c4a5dc4a95ff257c58bb196be537d018932f9f27a6c7f1e5005172c8a"
+    },
+    "Elixir.MCP.Protocol.Messages.Resources.ListParams.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/mcp_elixir_sdk/ebin/Elixir.MCP.Protocol.Messages.Resources.ListParams.beam",
+      "sha256": "5a550734cef1d4ce9b405b370671f012a7f0d6d6b74d34eaabd78aa7a6b14555"
+    },
+    "Elixir.Jason.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/jason/ebin/Elixir.Jason.beam",
+      "sha256": "381e7a237ed5e9b07f19fdcaad6376a157207e5091b0efd5e535c38e1b7d3fd4"
+    },
+    "Elixir.Finch.HTTP2.RequestStream.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/finch/ebin/Elixir.Finch.HTTP2.RequestStream.beam",
+      "sha256": "4f16b7c4c37b698d42a64b8281a476683513fa689234c55a1ddcd64c16f544e4"
+    },
+    "Elixir.NimbleOptions.Docs.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/nimble_options/ebin/Elixir.NimbleOptions.Docs.beam",
+      "sha256": "7d8f69c0dc85006f939208fad7b87aa53ed9f3e5d51f8dd7da9223623b832181"
+    },
+    "Elixir.Jason.Encoder.List.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/jason/ebin/Elixir.Jason.Encoder.List.beam",
+      "sha256": "6e84d1da82c339cc73cde558789303b2f88c97532c1a5826d4431eff76ae42e8"
+    },
+    "Elixir.Ipse.Session.DraftNative.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/ipse/ebin/Elixir.Ipse.Session.DraftNative.beam",
+      "sha256": "3052a929f43146b4f014891853865d1a453a359aa7ec2dec1a9cad42b0e592ea"
+    },
+    "telemetry.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/telemetry/ebin/telemetry.beam",
+      "sha256": "f68f22aff995366bfe5960a212be853fb2da09e91d6be1ce90e56d63438b179b"
+    },
+    "Elixir.Jason.Encoder.MCP.Protocol.Messages.Initialize.Result.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/mcp_elixir_sdk/ebin/Elixir.Jason.Encoder.MCP.Protocol.Messages.Initialize.Result.beam",
+      "sha256": "b113b75a786a08e85133036ff284e8a1f39f82238c23d41408c57b098e212e76"
+    },
+    "Elixir.Ipse.Tools.Sandbox.beam": {
+      "path": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/build/lib/ipse/ebin/Elixir.Ipse.Tools.Sandbox.beam",
+      "sha256": "e64958ba361f1bcffaae4ce945eac7a861cd7578f0c55ad99db27e27266c6f6f"
+    }
+  },
+  "source_inputs": {
+    "dev/knowledge/managed_v3_turnover.exs": {
+      "sha256": "669d79ff31dc845f4481c25095170bc9399cc4536c08edf8abe77091a952e7e8",
+      "snapshot": "sources/dev__knowledge__managed_v3_turnover.exs"
+    },
+    "extensions/knowledge/src/knowledge/contracts.ex": {
+      "sha256": "d60694a680de3e869fe3939527fa75aaa75d44ad10115c5d5c7df61822b8474c",
+      "snapshot": "sources/extensions__knowledge__src__knowledge__contracts.ex"
+    },
+    "extensions/knowledge/src/knowledge/records.ex": {
+      "sha256": "e70863709ddcc580d8dba251ce0532fe7e4d72399b01841af7238c6048d9de12",
+      "snapshot": "sources/extensions__knowledge__src__knowledge__records.ex"
+    },
+    "extensions/knowledge/src/notes.ex": {
+      "sha256": "a0474155b87c6b1b1bd53d6e51e6f5cb045a52eee0e0fa80ba2e613f36e9802b",
+      "snapshot": "sources/extensions__knowledge__src__notes.ex"
+    },
+    "lib/ipse/extension/collection/normalizer_v3.ex": {
+      "sha256": "70bb2e1caed0f5ab5188def5d991c6740ff66ba4a2f1d4e056d5bc60a3386521",
+      "snapshot": "sources/lib__ipse__extension__collection__normalizer_v3.ex"
+    },
+    "lib/ipse/session/managed_lifecycle.ex": {
+      "sha256": "a90f6acc0173b7bd059f9836564db4512a576b66cb97d1b17c09432b4d8df5a5",
+      "snapshot": "sources/lib__ipse__session__managed_lifecycle.ex"
+    },
+    "test/dev/knowledge/managed_v3_turnover_test.exs": {
+      "sha256": "fb25e199bbbb66e58c24280fca908fca72bdba14fc98d47dc3cd01f7becb3a92",
+      "snapshot": "sources/test__dev__knowledge__managed_v3_turnover_test.exs"
+    },
+    "test/ipse/extension/collection_normalizer_v3_integration_test.exs": {
+      "sha256": "0e3e1c98b0380d55d47f0fe3fd77605f11db94cfa9c12153205c6669d8f4c9c8",
+      "snapshot": "sources/test__ipse__extension__collection_normalizer_v3_integration_test.exs"
+    },
+    "test/ipse/extension/collection_normalizer_v3_test.exs": {
+      "sha256": "bad3f670ad29dc08276f2a6ee94bf7af4d46f212da7127ef566accff0becbbdf",
+      "snapshot": "sources/test__ipse__extension__collection_normalizer_v3_test.exs"
+    },
+    "test/ipse/session/managed_lifecycle_test.exs": {
+      "sha256": "74e62a4c74d25780f7d8b886705957aa7297490410bed1b661d62b6a8a42ede0",
+      "snapshot": "sources/test__ipse__session__managed_lifecycle_test.exs"
+    },
+    "test/support/managed_literal_forget.exs": {
+      "sha256": "69209f3d1e835931e2a2d5a39ac9a4b149ddb4af778236a9e78298f5c8098535",
+      "snapshot": "sources/test__support__managed_literal_forget.exs"
+    },
+    "test/support/managed_policy.exs": {
+      "sha256": "d3e1c92b5b092ddf807df0d86230f20450bfec20fd92b3b8be7f40fe34f55e67",
+      "snapshot": "sources/test__support__managed_policy.exs"
+    },
+    "test/support/operator_pty.rs": {
+      "sha256": "540acd738053c357a2ab002150e3741f813d1526356e24b35fcc3e493a322a6c",
+      "snapshot": "sources/test__support__operator_pty.rs"
+    },
+    "test/test_helper.exs": {
+      "sha256": "3fe1c5ac8fab2068cc8d0001bc79f3a17fc6e9f6d997df9ccb34600509d6d63d",
+      "snapshot": "sources/test__test_helper.exs"
+    }
+  },
+  "strict_compilation_exit_code": 0,
+  "version": 1
+}

@@ -1,3 +1,5 @@
+Code.require_file("../../support/provider_fixture.ex", __DIR__)
+
 defmodule Ipse.Session.DraftVerticalTest do
   use ExUnit.Case, async: false
   alias Ipse.{Journal, Session, Usage}
@@ -114,6 +116,13 @@ defmodule Ipse.Session.DraftVerticalTest do
     end
   end
 
+  defmodule HeldQuestionModel do
+    def complete(config, messages, tools, emit) do
+      send(config.test_owner, {:held_question_model, self()})
+      receive do: (:continue -> QuestionModel.complete(config, messages, tools, emit))
+    end
+  end
+
   defmodule NativeModel do
     def complete(config, messages, tools, _) do
       send(config.test_owner, {:native_request, config.test_label, messages, tools})
@@ -198,7 +207,6 @@ defmodule Ipse.Session.DraftVerticalTest do
   # witness; this synthetic journal fixture does not claim terminal origin.
   defp synthetic_accepted_resume(c, pid, extra \\ %{}) do
     id = Session.info(pid).id
-    assert :ok = Session.close_confirmed(pid)
     {:ok, events} = Journal.load(c.dir, id)
     {:ok, draft} = Ipse.Session.Draft.restore(events, id)
     {:ok, render} = Ipse.Session.DraftAcceptance.render(draft, Usage.id())
@@ -214,10 +222,33 @@ defmodule Ipse.Session.DraftVerticalTest do
     }
 
     {:ok, receipt} = Ipse.Session.DraftAcceptance.receipt(draft, render, text, observation)
-    assert :ok = Journal.append(c.dir, id, Ipse.Session.Draft.accepted(draft, receipt))
+    accepted = Ipse.Session.Draft.accepted(draft, receipt)
+
+    :sys.replace_state(pid, fn state ->
+      :ok = Ipse.Journal.Writer.append(state.journal_writer, accepted)
+      state
+    end)
+
+    assert :ok = Session.close_confirmed(pid)
     {resumed, label} = start(c, extra, id)
     assert :ok = Session.consume_draft(resumed, draft.id, draft.revision)
     {resumed, label}
+  end
+
+  # Simulate an interrupted append while preserving the native journal and
+  # lock identities. A copied journal is intentionally not a resumable source.
+  defp with_journal_prefix(c, id, events, fun) do
+    path = Path.join(c.dir, id <> ".jsonl")
+    original = File.read!(path)
+    inode = File.stat!(path).inode
+
+    try do
+      File.write!(path, Enum.map_join(events, "\n", &Jason.encode!/1) <> "\n")
+      assert File.stat!(path).inode == inode
+      fun.()
+    after
+      File.write!(path, original)
+    end
   end
 
   test "draft turn denies effects and withdraws cancelled history from future requests",
@@ -236,8 +267,8 @@ defmodule Ipse.Session.DraftVerticalTest do
     assert :ok = Session.cancel_draft(pid)
     assert :ok = Session.prompt(pid, "ordinary")
     assert_receive {:request, ^label, _, ^tools, followup}, 5_000
-    refute inspect(followup) =~ "canary secret requirement"
-    refute inspect(followup) =~ "draft-only canary"
+    refute Jason.encode!(followup) =~ "canary secret requirement"
+    refute Jason.encode!(followup) =~ "draft-only canary"
     assert_receive {:ipse, ^pid, {:done, :ok}}, 5_000
     assert :ok = Session.close_confirmed(pid)
     {:ok, events} = Journal.load(c.dir, id)
@@ -256,20 +287,18 @@ defmodule Ipse.Session.DraftVerticalTest do
     assert {:ok, _} = Session.restore_context(events)
 
     {before, [marker | _]} = Enum.split_while(events, &(&1["type"] != "draft_cancelled"))
-    crash_dir = Path.join(c.root, "cancel-before-notice")
-    File.mkdir_p!(crash_dir)
-    crash_file = Path.join(crash_dir, id <> ".jsonl")
-    File.write!(crash_file, Enum.map_join(before ++ [marker], "\n", &Jason.encode!/1) <> "\n")
-    File.chmod!(crash_file, 0o600)
-    {crashed, crash_label} = start(%{c | dir: crash_dir}, %{}, id)
-    refute_receive {:request, ^crash_label, _, _, _}, 100
-    assert {:error, :draft_recovery_required} = Session.prompt(crashed, "ordinary")
-    assert :ok = Session.cancel_draft(crashed)
-    assert :ok = Session.prompt(crashed, "ordinary")
-    assert_receive {:request, ^crash_label, _, _, recovered_messages}, 5_000
-    refute inspect(recovered_messages) =~ "canary secret requirement"
-    assert_receive {:ipse, ^crashed, {:done, :ok}}, 5_000
-    assert :ok = Session.close_confirmed(crashed)
+
+    with_journal_prefix(c, id, before ++ [marker], fn ->
+      {crashed, crash_label} = start(c, %{}, id)
+      refute_receive {:request, ^crash_label, _, _, _}, 100
+      assert {:error, :draft_recovery_required} = Session.prompt(crashed, "ordinary")
+      assert :ok = Session.cancel_draft(crashed)
+      assert :ok = Session.prompt(crashed, "ordinary")
+      assert_receive {:request, ^crash_label, _, _, recovered_messages}, 5_000
+      refute Jason.encode!(recovered_messages) =~ "canary secret requirement"
+      assert_receive {:ipse, ^crashed, {:done, :ok}}, 5_000
+      assert :ok = Session.close_confirmed(crashed)
+    end)
 
     for {type, field, value} <- [
           {"draft_started", "revision", 2},
@@ -321,22 +350,51 @@ defmodule Ipse.Session.DraftVerticalTest do
     {resumed, resumed_label} = start(c, %{}, id)
     assert :ok = Session.prompt(resumed, "ordinary")
     assert_receive {:request, ^resumed_label, _, _, resumed_messages}, 5_000
-    refute inspect(resumed_messages) =~ "canary secret requirement"
+    refute Jason.encode!(resumed_messages) =~ "canary secret requirement"
     assert_receive {:ipse, ^resumed, {:done, :ok}}, 5_000
     assert {:ok, page} = Session.sources(resumed, "source.list", %{"limit" => 32})
 
     assert page["sources"] != []
-    refute inspect(page) =~ "canary secret requirement"
+    refute Jason.encode!(page) =~ "canary secret requirement"
 
     for row <- page["sources"] do
       assert {:ok, source} =
                Session.sources(resumed, "source.read", %{"handle" => row["read_handle"]})
 
-      refute inspect(source) =~ "canary secret requirement"
-      refute inspect(source) =~ "draft-only canary"
+      refute Jason.encode!(source) =~ "canary secret requirement"
+      refute Jason.encode!(source) =~ "draft-only canary"
     end
 
     assert :ok = Session.close_confirmed(resumed)
+  end
+
+  test "an existing edit grant is unavailable while the actual Session is drafting", c do
+    {pid, label} =
+      start(c, %{
+        approval: :ask,
+        approval_origin: :interactive,
+        headless: false,
+        accept_edits: true,
+        hold: true
+      })
+
+    assert Session.permissions(pid)["workspace_edits"]
+    assert :ok = Session.start_draft(pid, "consider a request")
+    assert_receive {:request, ^label, _, _, _}, 5_000
+    drafting = :sys.get_state(pid)
+    refute Ipse.Session.Permissions.source(drafting, "write", %{"path" => "example"})
+
+    assert {:error, :grant_unavailable} =
+             Ipse.Session.Permissions.grant(drafting, "write", %{}, :session_edits)
+
+    assert :ok = Session.cancel_draft(pid)
+    assert Session.permissions(pid)["workspace_edits"]
+    normal = :sys.get_state(pid)
+
+    assert Ipse.Session.Permissions.source(normal, "write", %{"path" => "example"}) ==
+             "workspace_edits"
+
+    refute File.exists?(Path.join(c.root, "example"))
   end
 
   test "cancelling in-flight work fences its task and remains inert on resume", c do
@@ -356,7 +414,7 @@ defmodule Ipse.Session.DraftVerticalTest do
     refute_receive {:request, _, _, _, _}, 100
     assert :ok = Session.prompt(resumed, "ordinary")
     assert_receive {:request, ^resumed_label, _, _, resumed_messages}, 5_000
-    refute inspect(resumed_messages) =~ "cancelled canary"
+    refute Jason.encode!(resumed_messages) =~ "cancelled canary"
     assert_receive {:ipse, ^resumed, {:done, :ok}}, 5_000
     assert :ok = Session.close_confirmed(resumed)
   end
@@ -380,8 +438,8 @@ defmodule Ipse.Session.DraftVerticalTest do
            |> List.last()
            |> Map.get("content") == "ordinary"
 
-    refute inspect(accepted_messages) =~ "private draft requirement"
-    refute inspect(accepted_messages) =~ "draft-only canary"
+    refute Jason.encode!(accepted_messages) =~ "private draft requirement"
+    refute Jason.encode!(accepted_messages) =~ "draft-only canary"
     assert_receive {:ipse, ^pid, {:done, :ok}}, 5_000
     assert {:error, :native_draft_acceptance_required} = Session.accept_draft(pid, draft_id, 2)
     assert :ok = Session.close_confirmed(pid)
@@ -402,25 +460,22 @@ defmodule Ipse.Session.DraftVerticalTest do
              Session.Saved.restore(through.("draft_consumed"), id)
 
     for boundary <- ["draft_accepted", "draft_consumed"] do
-      state_dir = Path.join(c.root, boundary)
-      File.mkdir_p!(state_dir)
-      journal = through.(boundary) |> Enum.map_join("\n", &Jason.encode!/1)
-      File.write!(Path.join(state_dir, id <> ".jsonl"), journal <> "\n")
-      File.chmod!(Path.join(state_dir, id <> ".jsonl"), 0o600)
-      {interrupted, interrupted_label} = start(%{c | dir: state_dir}, %{}, id)
-      refute_receive {:request, ^interrupted_label, _, _, _}, 100
-      assert {:error, :draft_recovery_required} = Session.prompt(interrupted, "ordinary")
+      with_journal_prefix(c, id, through.(boundary), fn ->
+        {interrupted, interrupted_label} = start(c, %{}, id)
+        refute_receive {:request, ^interrupted_label, _, _, _}, 100
+        assert {:error, :draft_recovery_required} = Session.prompt(interrupted, "ordinary")
 
-      if boundary == "draft_accepted" do
-        assert :ok = Session.consume_draft(interrupted, draft_id, 2)
-        assert_receive {:request, ^interrupted_label, _, _, input}, 5_000
-        refute inspect(input) =~ "private draft requirement"
-        assert_receive {:ipse, ^interrupted, {:done, :ok}}, 5_000
-      else
-        assert {:error, :stale_draft} = Session.consume_draft(interrupted, draft_id, 2)
-      end
+        if boundary == "draft_accepted" do
+          assert :ok = Session.consume_draft(interrupted, draft_id, 2)
+          assert_receive {:request, ^interrupted_label, _, _, input}, 5_000
+          refute Jason.encode!(input) =~ "private draft requirement"
+          assert_receive {:ipse, ^interrupted, {:done, :ok}}, 5_000
+        else
+          assert {:error, :stale_draft} = Session.consume_draft(interrupted, draft_id, 2)
+        end
 
-      assert :ok = Session.close_confirmed(interrupted)
+        assert :ok = Session.close_confirmed(interrupted)
+      end)
     end
 
     for {type, field, value} <- [
@@ -443,8 +498,8 @@ defmodule Ipse.Session.DraftVerticalTest do
     refute_receive {:request, _, _, _, _}, 100
     assert :ok = Session.prompt(resumed, "ordinary")
     assert_receive {:request, ^resumed_label, _, _, messages}, 5_000
-    refute inspect(messages) =~ "private draft requirement"
-    refute inspect(messages) =~ "draft-only canary"
+    refute Jason.encode!(messages) =~ "private draft requirement"
+    refute Jason.encode!(messages) =~ "draft-only canary"
     assert_receive {:ipse, ^resumed, {:done, :ok}}, 5_000
     assert {:ok, page} = Session.sources(resumed, "source.list", %{"limit" => 32})
 
@@ -452,8 +507,8 @@ defmodule Ipse.Session.DraftVerticalTest do
       assert {:ok, source} =
                Session.sources(resumed, "source.read", %{"handle" => row["read_handle"]})
 
-      refute inspect(source) =~ "private draft requirement"
-      refute inspect(source) =~ "draft-only canary"
+      refute Jason.encode!(source) =~ "private draft requirement"
+      refute Jason.encode!(source) =~ "draft-only canary"
     end
   end
 
@@ -469,13 +524,13 @@ defmodule Ipse.Session.DraftVerticalTest do
     assert :ok = Session.replace_draft(pid, draft_id, 1, "implement this request")
     {pid, label} = synthetic_accepted_resume(c, pid)
     assert_receive {:request, ^label, _, _, accepted}, 5_000
-    refute inspect(accepted) =~ "private requirement"
+    refute Jason.encode!(accepted) =~ "private requirement"
     assert_receive {:request, ^label, _, _, _}, 5_000
     assert_receive {:ipse, ^pid, {:done, :ok}}, 5_000
     assert File.read!(Path.join(c.root, "forbidden")) == "bad"
     assert :ok = Session.prompt(pid, "later unrelated task")
     assert_receive {:request, ^label, _, _, later_input}, 5_000
-    refute inspect(later_input) =~ "private requirement"
+    refute Jason.encode!(later_input) =~ "private requirement"
     assert_receive {:request, ^label, _, _, _}, 5_000
     assert_receive {:ipse, ^pid, {:done, :ok}}, 5_000
     assert :ok = Session.close_confirmed(pid)
@@ -530,7 +585,7 @@ defmodule Ipse.Session.DraftVerticalTest do
         ] do
       assert :ok = Session.start_draft(pid, text)
       assert_receive {:request, ^label, _, _, first}, 5_000
-      if prior, do: refute(inspect(first) =~ prior)
+      if prior, do: refute(Jason.encode!(first) =~ prior)
       assert_receive {:request, ^label, _, _, _}, 5_000
       assert_receive {:ipse, ^pid, {:done, :ok}}, 5_000
       assert :ok = Session.cancel_draft(pid)
@@ -542,8 +597,8 @@ defmodule Ipse.Session.DraftVerticalTest do
     {:ok, events} = Journal.load(c.dir, id)
     assert Enum.any?(events, &(&1["type"] == "draft_rebased"))
     assert {:ok, %{draft: nil, messages: rebased}} = Session.Saved.restore(events, id)
-    refute inspect(rebased) =~ "first private requirement"
-    refute inspect(rebased) =~ "second private requirement"
+    refute Jason.encode!(rebased) =~ "first private requirement"
+    refute Jason.encode!(rebased) =~ "second private requirement"
 
     for field <- ["before_sha256", "after_sha256"] do
       corrupt =
@@ -557,24 +612,17 @@ defmodule Ipse.Session.DraftVerticalTest do
     end
 
     {before, [boundary | _]} = Enum.split_while(events, &(&1["type"] != "draft_rebased"))
-    recovery_dir = Path.join(c.root, "rebased-crash")
-    File.mkdir_p!(recovery_dir)
-    recovery_file = Path.join(recovery_dir, id <> ".jsonl")
 
-    File.write!(
-      recovery_file,
-      Enum.map_join(before ++ [boundary], "\n", &Jason.encode!/1) <> "\n"
-    )
-
-    File.chmod!(recovery_file, 0o600)
-    {recovered, recovered_label} = start(%{c | dir: recovery_dir}, %{}, id)
-    refute_receive {:request, ^recovered_label, _, _, _}, 100
-    assert :ok = Session.prompt(recovered, "ordinary")
-    assert_receive {:request, ^recovered_label, _, _, recovered_messages}, 5_000
-    refute inspect(recovered_messages) =~ "first private requirement"
-    refute inspect(recovered_messages) =~ "second private requirement"
-    assert_receive {:ipse, ^recovered, {:done, :ok}}, 5_000
-    assert :ok = Session.close_confirmed(recovered)
+    with_journal_prefix(c, id, before ++ [boundary], fn ->
+      {recovered, recovered_label} = start(c, %{}, id)
+      refute_receive {:request, ^recovered_label, _, _, _}, 100
+      assert :ok = Session.prompt(recovered, "ordinary")
+      assert_receive {:request, ^recovered_label, _, _, recovered_messages}, 5_000
+      refute Jason.encode!(recovered_messages) =~ "first private requirement"
+      refute Jason.encode!(recovered_messages) =~ "second private requirement"
+      assert_receive {:ipse, ^recovered, {:done, :ok}}, 5_000
+      assert :ok = Session.close_confirmed(recovered)
+    end)
 
     assert Enum.any?(events, &(&1["type"] == "reference_envelope"))
 
@@ -589,9 +637,9 @@ defmodule Ipse.Session.DraftVerticalTest do
     {resumed, resumed_label} = start(c, %{}, id)
     assert :ok = Session.prompt(resumed, "ordinary")
     assert_receive {:request, ^resumed_label, _, _, messages}, 5_000
-    refute inspect(messages) =~ "first private requirement"
-    refute inspect(messages) =~ "second private requirement"
-    refute inspect(messages) =~ "draft-only canary"
+    refute Jason.encode!(messages) =~ "first private requirement"
+    refute Jason.encode!(messages) =~ "second private requirement"
+    refute Jason.encode!(messages) =~ "draft-only canary"
     assert_receive {:ipse, ^resumed, {:done, :ok}}, 5_000
   end
 
@@ -653,7 +701,14 @@ defmodule Ipse.Session.DraftVerticalTest do
           "encrypted native canary",
           "draft-model-canary"
         ],
-        do: refute(inspect(input) =~ canary)
+        do: refute(Jason.encode!(input) =~ canary)
+
+    body = Ipse.Provider.OpenAI.request_body(%{provider: :chatgpt, model: "fixture"}, input, [])
+    assert Jason.encode!(body["input"]) =~ "ordinary"
+    refute Jason.encode!(body) =~ "native private draft"
+    refute Jason.encode!(body) =~ "native draft answer canary"
+    refute Jason.encode!(body) =~ "encrypted native canary"
+    refute Jason.encode!(body) =~ "draft-model-canary"
 
     assert_receive {:ipse, ^pid, {:done, :ok}}, 5_000
     assert :ok = Session.close_confirmed(pid)
@@ -671,8 +726,14 @@ defmodule Ipse.Session.DraftVerticalTest do
     {resumed, resumed_label} = start(c, cfg, id)
     assert :ok = Session.prompt(resumed, "ordinary")
     assert_receive {:native_request, ^resumed_label, input, _}, 5_000
-    refute inspect(input) =~ "draft-model-canary"
-    refute inspect(input) =~ "encrypted native canary"
+    refute Jason.encode!(input) =~ "draft-model-canary"
+    refute Jason.encode!(input) =~ "encrypted native canary"
+
+    resumed_body =
+      Ipse.Provider.OpenAI.request_body(%{provider: :chatgpt, model: "fixture"}, input, [])
+
+    refute Jason.encode!(resumed_body) =~ "draft-model-canary"
+    refute Jason.encode!(resumed_body) =~ "encrypted native canary"
     assert_receive {:ipse, ^resumed, {:done, :ok}}, 5_000
     assert :ok = Session.close_confirmed(resumed)
 
@@ -686,14 +747,156 @@ defmodule Ipse.Session.DraftVerticalTest do
     assert :ok = Session.replace_draft(second, draft_id, 1, "ordinary")
     {accepted, accepted_label} = synthetic_accepted_resume(c2, second, cfg)
     assert_receive {:native_request, ^accepted_label, accepted_input, _}, 5_000
-    refute inspect(accepted_input) =~ "native draft answer canary"
-    refute inspect(accepted_input) =~ "draft-model-canary"
+    refute Jason.encode!(accepted_input) =~ "native draft answer canary"
+    refute Jason.encode!(accepted_input) =~ "draft-model-canary"
+
+    accepted_body =
+      Ipse.Provider.OpenAI.request_body(
+        %{provider: :chatgpt, model: "fixture"},
+        accepted_input,
+        []
+      )
+
+    assert Jason.encode!(accepted_body["input"]) =~ "ordinary"
+    refute Jason.encode!(accepted_body) =~ "native draft answer canary"
+    refute Jason.encode!(accepted_body) =~ "encrypted native canary"
+    refute Jason.encode!(accepted_body) =~ "draft-model-canary"
     assert_receive {:ipse, ^accepted, {:done, :ok}}, 5_000
     assert :ok = Session.close_confirmed(accepted)
     {:ok, accepted_events} = Journal.load(c2.dir, second_id)
 
     assert {:ok, %{draft: %{status: :consumed}}} =
              Session.Saved.restore(accepted_events, second_id)
+  end
+
+  test "ChatGPT Responses transport isolates cancelled and accepted drafts across resume",
+       c do
+    fixture = Ipse.Test.ProviderFixture
+
+    response = fn id, text, reasoning ->
+      output =
+        if(reasoning,
+          do: [
+            %{
+              "type" => "reasoning",
+              "id" => "rs_private",
+              "summary" => [],
+              "encrypted_content" => "private encrypted canary"
+            }
+          ],
+          else: []
+        ) ++
+          [
+            %{
+              "type" => "message",
+              "id" => id,
+              "role" => "assistant",
+              "status" => "completed",
+              "content" => [%{"type" => "output_text", "text" => text, "annotations" => []}]
+            }
+          ]
+
+      fixture.sse(%{
+        "type" => "response.completed",
+        "response" => %{
+          "status" => "completed",
+          "model" => "fixture-model",
+          "output" => output,
+          "usage" => %{"input_tokens" => 1, "output_tokens" => 1}
+        }
+      })
+    end
+
+    {base_url, server} =
+      fixture.sequence([
+        response.("msg_private", "private draft response", true),
+        response.("msg_ordinary", "ordinary response", false),
+        response.("msg_resume", "resumed response", false),
+        response.("msg_private", "private draft response", true),
+        response.("msg_accepted", "accepted response", false),
+        response.("msg_after_accept", "after acceptance response", false)
+      ])
+
+    auth = Path.join(c.root, "transport-auth")
+
+    record = %{
+      "access_token" => "fixture-access",
+      "refresh_token" => "fixture-refresh",
+      "id_token" => "fixture-id",
+      "client_id" => "oaiapp_fixture",
+      "ext_agent_host_id" => "urn:uuid:00112233-4455-4677-8899-aabbccddeeff",
+      "subject" => "fixture",
+      "issuer" => "https://auth.openai.com",
+      "email" => "fixture@example.test",
+      "expires_at" => System.system_time(:second) + 3600,
+      "scopes" => ["chatgpt.tokens.use.direct"]
+    }
+
+    assert :ok =
+             Ipse.Auth.with_credential_lock(auth, fn ->
+               Ipse.Auth.write_credentials(auth, record)
+             end)
+
+    cfg = %{
+      provider: :chatgpt,
+      provider_module: Ipse.Provider.OpenAI,
+      auth_dir: auth,
+      base_url: base_url,
+      max_output_tokens: nil
+    }
+
+    {pid, _} = start(c, cfg)
+    id = Session.info(pid).id
+    assert :ok = Session.start_draft(pid, "private draft input")
+    assert_receive {:ipse, ^pid, {:done, :ok}}, 5_000
+    assert :ok = Session.cancel_draft(pid)
+    assert :ok = Session.prompt(pid, "ordinary task")
+    assert_receive {:ipse, ^pid, {:done, :ok}}, 5_000
+    assert :ok = Session.close_confirmed(pid)
+    {resumed, _} = start(c, cfg, id)
+    assert :ok = Session.prompt(resumed, "resumed task")
+    assert_receive {:ipse, ^resumed, {:done, :ok}}, 5_000
+    assert :ok = Session.close_confirmed(resumed)
+
+    accepted_context = %{c | dir: Path.join(c.root, "transport-accepted")}
+    {draft_session, _} = start(accepted_context, cfg)
+    accepted_id = Session.info(draft_session).id
+    assert :ok = Session.start_draft(draft_session, "private draft input")
+    assert_receive {:ipse, ^draft_session, {:done, :ok}}, 5_000
+    assert {:ok, %{id: draft_id, revision: 1}} = Session.draft(draft_session)
+    assert :ok = Session.replace_draft(draft_session, draft_id, 1, "accepted clean task")
+    {accepted, _} = synthetic_accepted_resume(accepted_context, draft_session, cfg)
+    assert_receive {:ipse, ^accepted, {:done, :ok}}, 5_000
+    assert :ok = Session.close_confirmed(accepted)
+    {after_accept, _} = start(accepted_context, cfg, accepted_id)
+    assert :ok = Session.prompt(after_accept, "later accepted task")
+    assert_receive {:ipse, ^after_accept, {:done, :ok}}, 5_000
+    assert :ok = Session.close_confirmed(after_accept)
+
+    [{_, first}, {_, second}, {_, third}, {_, fourth}, {_, fifth}, {_, sixth}] =
+      Task.await(server, 5_000)
+
+    assert Jason.encode!(first["input"]) =~ "private draft input"
+    assert Jason.encode!(second["input"]) =~ "ordinary task"
+    assert Jason.encode!(third["input"]) =~ "resumed task"
+    assert Jason.encode!(third["input"]) =~ "msg_ordinary"
+    assert Jason.encode!(third["input"]) =~ "ordinary response"
+    assert Jason.encode!(fourth["input"]) =~ "private draft input"
+    assert Jason.encode!(fifth["input"]) =~ "accepted clean task"
+    assert Jason.encode!(sixth["input"]) =~ "later accepted task"
+    assert Jason.encode!(sixth["input"]) =~ "msg_accepted"
+    assert Jason.encode!(sixth["input"]) =~ "accepted response"
+
+    for body <- [second, third, fifth, sixth],
+        canary <- [
+          "private draft input",
+          "private draft response",
+          "private encrypted canary",
+          "rs_private",
+          "msg_private"
+        ] do
+      refute Jason.encode!(body) =~ canary
+    end
   end
 
   test "accepted intent binds tool evidence and withdraws its bytes", c do
@@ -708,7 +911,7 @@ defmodule Ipse.Session.DraftVerticalTest do
     assert :ok = Session.replace_draft(pid, draft_id, 1, "implement this request")
     {pid, label} = synthetic_accepted_resume(c, pid, %{draft_read: true})
     assert_receive {:request, ^label, _, _, accepted_input}, 5_000
-    refute inspect(accepted_input) =~ "private evidence canary"
+    refute Jason.encode!(accepted_input) =~ "private evidence canary"
     assert_receive {:request, ^label, _, _, _}, 5_000
     assert_receive {:ipse, ^pid, {:done, :ok}}, 5_000
     assert :ok = Session.close_confirmed(pid)
@@ -771,7 +974,8 @@ defmodule Ipse.Session.DraftVerticalTest do
 
     {pid, label} = start(c, %{draft_read: true}, id)
     assert :ok = Session.start_draft(pid, "read evidence")
-    assert_receive {:request, ^label, _, _, _}, 5_000
+    assert_receive {:request, ^label, _, _, messages}, 5_000
+    assert List.last(messages)["content"] == Ipse.Session.Draft.effective("read evidence")
     assert_receive {:request, ^label, _, _, _}, 5_000
     assert_receive {:ipse, ^pid, {:done, :ok}}, 5_000
     state = :sys.get_state(pid)
@@ -819,6 +1023,28 @@ defmodule Ipse.Session.DraftVerticalTest do
     assert :ok = Session.cancel_draft(resumed)
   end
 
+  test "draft question refusal reports its own bound instead of headless input", c do
+    {pid, label} = start(c, %{provider_module: HeldQuestionModel, operator_questions: true})
+    assert :ok = Session.start_draft(pid, "request requiring clarification")
+    assert_receive {:held_question_model, worker}, 5_000
+
+    # Simulate a previously answered call ID to exercise the refusal branch
+    # without manufacturing a terminal-origin answer receipt in the journal.
+    :sys.replace_state(pid, fn state ->
+      update_in(state.draft, &%{&1 | question_ids: ["draft-q"], answer_source_ids: [Usage.id()]})
+    end)
+
+    send(worker, :continue)
+    assert_receive {:question_model, ^label}, 5_000
+    assert_receive {:ipse, ^pid, {:tool_result, "ask_operator", result}}, 5_000
+    assert result =~ "call ID is invalid or reused"
+    refute result =~ "headless"
+    assert_receive {:ipse, ^pid, {:error, error}}, 5_000
+    assert error =~ "Draft clarification cannot continue"
+    assert_receive {:ipse, ^pid, {:done, :error}}, 5_000
+    refute_receive {:ipse, ^pid, {:question, _, _}}, 50
+  end
+
   test "rebased draft stays absent from actual compaction and replay", c do
     {pid, label} =
       start(c, %{compact: true, context_bytes: 60_000, compact_threshold_bytes: 20_000})
@@ -840,8 +1066,8 @@ defmodule Ipse.Session.DraftVerticalTest do
       collect = fn collect ->
         receive do
           {:request, ^label, _, _, messages} ->
-            refute inspect(messages) =~ "compaction-secret-canary"
-            refute inspect(messages) =~ "draft-only canary"
+            refute Jason.encode!(messages) =~ "compaction-secret-canary"
+            refute Jason.encode!(messages) =~ "draft-only canary"
             collect.(collect)
 
           {:ipse, ^pid, {:done, :ok}} ->
@@ -869,16 +1095,16 @@ defmodule Ipse.Session.DraftVerticalTest do
     assert Enum.any?(events, &(&1["type"] == "reference_refresh"))
     assert Enum.any?(events, &(&1["type"] == "reference_epoch"))
     assert {:ok, %{messages: messages}} = Session.Saved.restore(events, id)
-    refute inspect(messages) =~ "compaction-secret-canary"
-    refute inspect(messages) =~ "draft-only canary"
+    refute Jason.encode!(messages) =~ "compaction-secret-canary"
+    refute Jason.encode!(messages) =~ "draft-only canary"
 
     {resumed, resumed_label} =
       start(c, %{compact: true, context_bytes: 60_000, compact_threshold_bytes: 20_000}, id)
 
     assert :ok = Session.prompt(resumed, "ordinary")
     assert_receive {:request, ^resumed_label, _, _, resumed_messages}, 5_000
-    refute inspect(resumed_messages) =~ "compaction-secret-canary"
-    refute inspect(resumed_messages) =~ "draft-only canary"
+    refute Jason.encode!(resumed_messages) =~ "compaction-secret-canary"
+    refute Jason.encode!(resumed_messages) =~ "draft-only canary"
     assert_receive {:ipse, ^resumed, {:done, :ok}}, 5_000
     assert {:ok, page} = Session.sources(resumed, "source.list", %{"limit" => 32})
 
@@ -886,8 +1112,8 @@ defmodule Ipse.Session.DraftVerticalTest do
       assert {:ok, source} =
                Session.sources(resumed, "source.read", %{"handle" => row["read_handle"]})
 
-      refute inspect(source) =~ "compaction-secret-canary"
-      refute inspect(source) =~ "draft-only canary"
+      refute Jason.encode!(source) =~ "compaction-secret-canary"
+      refute Jason.encode!(source) =~ "draft-only canary"
     end
   end
 
@@ -912,7 +1138,7 @@ defmodule Ipse.Session.DraftVerticalTest do
       collect = fn collect ->
         receive do
           {:request, ^label, _, _, messages} ->
-            refute inspect(messages) =~ "inherited private requirement"
+            refute Jason.encode!(messages) =~ "inherited private requirement"
             collect.(collect)
 
           {:ipse, ^pid, {:done, :ok}} ->
@@ -956,7 +1182,7 @@ defmodule Ipse.Session.DraftVerticalTest do
     {resumed, resumed_label} = start(c, cfg, id)
     assert :ok = Session.prompt(resumed, "later unrelated task")
     assert_receive {:request, ^resumed_label, _, _, messages}, 5_000
-    refute inspect(messages) =~ "inherited private requirement"
+    refute Jason.encode!(messages) =~ "inherited private requirement"
     assert_receive {:request, ^resumed_label, _, _, _}, 5_000
     assert_receive {:ipse, ^resumed, {:done, :ok}}, 5_000
     assert :ok = Session.close_confirmed(resumed)
@@ -987,8 +1213,8 @@ defmodule Ipse.Session.DraftVerticalTest do
         assert :ok = Session.replace_draft(owner, draft_id, revision, "ordinary")
         {next, next_label} = synthetic_accepted_resume(c, owner)
         assert_receive {:request, ^next_label, _, _, messages}, 5_000
-        refute inspect(messages) =~ "first private draft"
-        refute inspect(messages) =~ "second private draft"
+        refute Jason.encode!(messages) =~ "first private draft"
+        refute Jason.encode!(messages) =~ "second private draft"
         assert_receive {:ipse, ^next, {:done, :ok}}, 5_000
         {next, next_label}
       end)
@@ -998,8 +1224,8 @@ defmodule Ipse.Session.DraftVerticalTest do
     {resumed, resumed_label} = start(c, %{}, id)
     assert :ok = Session.prompt(resumed, "later unrelated task")
     assert_receive {:request, ^resumed_label, _, _, messages}, 5_000
-    refute inspect(messages) =~ "first private draft"
-    refute inspect(messages) =~ "second private draft"
+    refute Jason.encode!(messages) =~ "first private draft"
+    refute Jason.encode!(messages) =~ "second private draft"
     assert_receive {:request, ^resumed_label, _, _, _}, 5_000
     assert_receive {:ipse, ^resumed, {:done, :ok}}, 5_000
     assert :ok = Session.close_confirmed(resumed)
@@ -1026,7 +1252,7 @@ defmodule Ipse.Session.DraftVerticalTest do
     {held, held_label} = start(c, %{hold: true}, id)
     assert :ok = Session.prompt(held, "held continuation")
     assert_receive {:request, ^held_label, worker, _, held_input}, 5_000
-    refute inspect(held_input) =~ "private prior draft"
+    refute Jason.encode!(held_input) =~ "private prior draft"
     assert :ok = Session.cancel(held)
     refute Process.alive?(worker)
     assert_receive {:ipse, ^held, {:done, :cancelled}}, 5_000
@@ -1035,7 +1261,7 @@ defmodule Ipse.Session.DraftVerticalTest do
     refute_receive {:request, ^resumed_label, _, _, _}, 100
     assert :ok = Session.prompt(resumed, "later unrelated task")
     assert_receive {:request, ^resumed_label, _, _, input}, 5_000
-    refute inspect(input) =~ "private prior draft"
+    refute Jason.encode!(input) =~ "private prior draft"
     assert_receive {:request, ^resumed_label, _, _, _}, 5_000
     assert_receive {:ipse, ^resumed, {:done, :ok}}, 5_000
     assert :ok = Session.close_confirmed(resumed)

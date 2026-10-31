@@ -4,7 +4,8 @@ defmodule IpseKnowledge.Documents.Docx do
   @word ~c"http://schemas.openxmlformats.org/wordprocessingml/2006/main"
   @strict ~c"http://purl.oclc.org/ooxml/wordprocessingml/main"
   @parts ~w(word/document.xml word/footnotes.xml word/endnotes.xml word/comments.xml)
-  @structural ~w(document body footnotes endnotes comments footnote endnote comment p pPr r rPr t delText tbl tblPr tblGrid gridCol tr trPr tc tcPr ins moveTo del moveFrom hyperlink bookmarkStart bookmarkEnd commentRangeStart commentRangeEnd commentReference footnoteReference endnoteReference proofErr permStart permEnd sectPr lastRenderedPageBreak pStyle rStyle)
+  @property_containers ~w(pPr rPr tblPr trPr tcPr sectPr tblGrid)
+  @structural ~w(document body hdr ftr footnotes endnotes comments footnote endnote comment p pPr r rPr t delText tbl tblPr tblGrid gridCol tr trPr tc tcPr ins moveTo del moveFrom hyperlink bookmarkStart bookmarkEnd commentRangeStart commentRangeEnd commentReference footnoteReference endnoteReference proofErr permStart permEnd sectPr lastRenderedPageBreak pStyle rStyle)
 
   def extract(bytes, limits) do
     entries = Zip.entries(bytes, limits)
@@ -40,7 +41,8 @@ defmodule IpseKnowledge.Documents.Docx do
     root_relationships =
       IpseKnowledge.Documents.Docx.Styles.relationships(authority["_rels/.rels"], names, :root)
 
-    IpseKnowledge.Documents.Docx.Styles.content_types(authority["[Content_Types].xml"], names)
+    content_types =
+      IpseKnowledge.Documents.Docx.Styles.content_types(authority["[Content_Types].xml"], names)
 
     selected =
       Enum.filter(entries, &(&1.name in @parts))
@@ -49,7 +51,7 @@ defmodule IpseKnowledge.Documents.Docx do
     {relationships, relationship_bytes} =
       case Enum.find(entries, &(&1.name == "word/_rels/document.xml.rels")) do
         nil ->
-          {%{parts: %{}, external?: false, unexamined?: false}, 0}
+          {%{parts: %{}, sections: %{}, external?: false, unexamined?: false}, 0}
 
         entry ->
           xml = Zip.read(bytes, entry, limits.max_expanded_bytes - authority_bytes)
@@ -77,24 +79,87 @@ defmodule IpseKnowledge.Documents.Docx do
           {IpseKnowledge.Documents.Docx.Styles.parse(xml), byte_size(xml)}
       end
 
-    {segments, warnings, _expanded, _text} =
+    {segments, warnings, expanded, text, refs, references, ranges, ranges_unsafe} =
       Enum.reduce(
         selected,
-        {[], [], authority_bytes + style_bytes + relationship_bytes, 0},
-        fn entry, {segments, warnings, expanded, text} ->
+        {[], [], authority_bytes + style_bytes + relationship_bytes, 0, MapSet.new(), %{}, %{},
+         false},
+        fn entry, {segments, warnings, expanded, text, refs, references, ranges, ranges_unsafe} ->
           xml = Zip.read(bytes, entry, limits.max_expanded_bytes - expanded)
           state = parse(xml, entry.name, limits, length(segments), text, styles)
 
+          references =
+            if entry.name == "word/document.xml", do: state.references, else: references
+
+          {ranges, ranges_unsafe} =
+            if entry.name == "word/document.xml",
+              do: {state.ranges, state.ranges_unsafe},
+              else: {ranges, ranges_unsafe}
+
           {segments ++ Enum.reverse(state.segments), warnings ++ state.warnings,
-           expanded + byte_size(xml), state.text_bytes}
+           expanded + byte_size(xml), state.text_bytes, MapSet.union(refs, state.section_refs),
+           references, ranges, ranges_unsafe}
         end
       )
+
+    body_segments =
+      for %{"locator" => %{"part" => "word/document.xml"} = locator, "text" => text} <- segments,
+          into: %{},
+          do: {locator, byte_size(text)}
+
+    segments =
+      Enum.map(segments, &attach_reference(&1, references, ranges, ranges_unsafe, body_segments))
+
+    section_parts =
+      refs
+      |> Enum.map(fn {kind, id} ->
+        case relationships.sections[id] do
+          {^kind, part} ->
+            {kind, part}
+
+          _ ->
+            fail(:unsupported_docx_part_relationship)
+        end
+      end)
+      |> Enum.uniq()
+      |> Enum.sort_by(fn {kind, part} -> {if(kind == "header", do: 0, else: 1), part} end)
+
+    Enum.each(section_parts, fn {kind, part} ->
+      unless content_types["/" <> part] ==
+               "application/vnd.openxmlformats-officedocument.wordprocessingml.#{kind}+xml",
+             do: fail(:unsupported_docx_content_types)
+    end)
+
+    {segments, warnings, _expanded, _text} =
+      Enum.reduce(section_parts, {segments, warnings, expanded, text}, fn {kind, part},
+                                                                          {segments, warnings,
+                                                                           expanded, text} ->
+        entry =
+          Enum.find(entries, &(&1.name == part)) || fail(:unsupported_docx_part_relationship)
+
+        xml = Zip.read(bytes, entry, limits.max_expanded_bytes - expanded)
+        state = parse(xml, part, limits, length(segments), text, styles, kind)
+
+        {segments ++ Enum.reverse(state.segments), warnings ++ state.warnings,
+         expanded + byte_size(xml), state.text_bytes}
+      end)
 
     omissions =
       for name <- names,
           String.starts_with?(name, "word/") and String.ends_with?(name, ".xml") and
-            name not in ["word/styles.xml" | @parts],
+            name not in ["word/styles.xml" | @parts] and
+            name not in Enum.map(section_parts, &elem(&1, 1)),
           do: %{"code" => "part_not_extracted", "part" => name}
+
+    annotation_warnings =
+      for entry <- selected,
+          entry.name in tl(@parts),
+          do: %{"code" => "annotation_anchors_unresolved", "part" => entry.name}
+
+    reference_warnings =
+      if map_size(references) > 0 or map_size(ranges) > 0 or ranges_unsafe,
+        do: [%{"code" => "annotation_anchors_unresolved", "part" => "word/document.xml"}],
+        else: []
 
     relationship_warnings =
       Enum.flat_map(
@@ -122,7 +187,12 @@ defmodule IpseKnowledge.Documents.Docx do
          do: [%{"code" => "relationship_part_not_examined"}],
          else: []
 
-    warnings = Enum.uniq(warnings ++ omissions ++ relationship_warnings ++ unexamined)
+    warnings =
+      Enum.uniq(
+        warnings ++
+          omissions ++
+          annotation_warnings ++ reference_warnings ++ relationship_warnings ++ unexamined
+      )
 
     {:ok,
      %{
@@ -135,7 +205,7 @@ defmodule IpseKnowledge.Documents.Docx do
      }}
   end
 
-  defp parse(xml, part, limits, count, text, styles) do
+  defp parse(xml, part, limits, count, text, styles, region \\ nil) do
     # Refuse DTD syntax before the parser can invoke an entity resolver. DOCX XML
     # is UTF-8 in this version; UTF-16 is explicitly refused instead of bypassing
     # the independent declaration check with interleaved NULs.
@@ -146,6 +216,8 @@ defmodule IpseKnowledge.Documents.Docx do
 
     state = %{
       part: part,
+      region: region,
+      section_refs: MapSet.new(),
       limits: limits,
       depth: 0,
       stack: [],
@@ -155,6 +227,12 @@ defmodule IpseKnowledge.Documents.Docx do
       table_count: 0,
       tables: [],
       note: nil,
+      note_ids: MapSet.new(),
+      references: %{},
+      reference_count: 0,
+      ranges: %{},
+      ranges_unsafe: false,
+      marker_order: 0,
       excluded: 0,
       runs: [],
       styles: styles,
@@ -204,6 +282,7 @@ defmodule IpseKnowledge.Documents.Docx do
             "word/footnotes.xml" -> "footnotes"
             "word/endnotes.xml" -> "endnotes"
             "word/comments.xml" -> "comments"
+            _ -> if(state.region == "header", do: "hdr", else: "ftr")
           end
 
         if element != expected, do: fail(:invalid_word_namespace)
@@ -220,10 +299,20 @@ defmodule IpseKnowledge.Documents.Docx do
         else: state
 
     cond do
+      element == "tab" and match?(["tab", "tabs", "pPr", "p" | _], state.stack) ->
+        state
+
+      element in ~w(t tab br cr noBreakHyphen softHyphen) and
+          not match?([_, "r" | _], state.stack) ->
+        fail(:unsupported_docx_text_structure)
+
       element in ~w(del moveFrom) ->
         %{state | excluded: state.excluded + 1}
 
       element == "r" ->
+        if Enum.any?(state.stack, &(&1 in @property_containers)),
+          do: fail(:unsupported_docx_text_structure)
+
         if state.runs != [], do: fail(:unsupported_nested_run)
 
         %{
@@ -248,7 +337,13 @@ defmodule IpseKnowledge.Documents.Docx do
           else: fail(:unsupported_docx_style_visibility)
 
       element in ~w(headerReference footerReference) ->
-        warning(state, "referenced_part_not_extracted", element)
+        section_reference(state, element, attrs)
+
+      element in ~w(footnoteReference endnoteReference commentReference) ->
+        annotation_reference(state, element, attrs)
+
+      element in ~w(commentRangeStart commentRangeEnd) ->
+        comment_range(state, element, attrs)
 
       element == "tbl" ->
         index = state.table_count + 1
@@ -263,9 +358,12 @@ defmodule IpseKnowledge.Documents.Docx do
         %{state | tables: [%{table | cell: table.cell + 1} | rest]}
 
       element in ~w(footnote endnote comment) ->
-        %{state | note: attr(attrs, "id")}
+        annotation(state, element, attrs)
 
       element == "p" ->
+        if state.part in tl(@parts) and is_nil(state.note),
+          do: fail(:unsupported_docx_annotation)
+
         start_paragraph(state)
 
       element == "pStyle" and state.current != nil ->
@@ -348,6 +446,7 @@ defmodule IpseKnowledge.Documents.Docx do
   defp start_paragraph(state) do
     number = state.paragraph + 1
     locator = %{"kind" => "paragraph", "part" => state.part, "paragraph" => number}
+    locator = if state.region, do: Map.put(locator, "region", state.region), else: locator
 
     locator =
       if state.note == nil, do: locator, else: Map.put(locator, "annotation_id", state.note)
@@ -371,6 +470,7 @@ defmodule IpseKnowledge.Documents.Docx do
       | paragraph: number,
         current: %{
           text: [],
+          bytes: 0,
           style: nil,
           style_seen: false,
           content_started: false,
@@ -408,21 +508,7 @@ defmodule IpseKnowledge.Documents.Docx do
         [] -> state
       end
 
-    hidden =
-      case state.runs do
-        [run] ->
-          inherited =
-            IpseKnowledge.Documents.Docx.Styles.hidden?(
-              state.styles,
-              state.current.style,
-              run.style
-            )
-
-          if run.visibility_seen, do: run.hidden, else: inherited
-
-        [] ->
-          IpseKnowledge.Documents.Docx.Styles.hidden?(state.styles, state.current.style, nil)
-      end
+    hidden = hidden?(state)
 
     state = %{state | current: %{state.current | content_started: true}}
 
@@ -431,9 +517,175 @@ defmodule IpseKnowledge.Documents.Docx do
     else
       size = state.text_bytes + byte_size(bytes)
       if size > state.limits.max_text_bytes, do: fail(:text_limit)
-      %{state | text_bytes: size, current: %{state.current | text: [bytes | state.current.text]}}
+
+      %{
+        state
+        | text_bytes: size,
+          current: %{
+            state.current
+            | text: [bytes | state.current.text],
+              bytes: state.current.bytes + byte_size(bytes)
+          }
+      }
     end
   end
+
+  defp hidden?(state) do
+    case state.runs do
+      [run] ->
+        inherited =
+          IpseKnowledge.Documents.Docx.Styles.hidden?(
+            state.styles,
+            state.current.style,
+            run.style
+          )
+
+        if run.visibility_seen, do: run.hidden, else: inherited
+
+      [] ->
+        IpseKnowledge.Documents.Docx.Styles.hidden?(state.styles, state.current.style, nil)
+    end
+  end
+
+  defp annotation_reference(%{excluded: excluded} = state, _, _) when excluded > 0, do: state
+
+  defp annotation_reference(state, element, attrs) do
+    if state.part != "word/document.xml" or state.current == nil or
+         not match?([_, "r" | _], state.stack) or length(state.runs) != 1 do
+      warning(state, "annotation_reference_not_examined", element)
+    else
+      id = numeric_annotation_id!(attr(attrs, "id"))
+      [run] = state.runs
+      hidden = hidden?(state)
+
+      state = %{
+        state
+        | runs: [%{run | content_started: true}],
+          current: %{state.current | content_started: true}
+      }
+
+      if hidden do
+        state
+      else
+        if state.reference_count >= state.limits.max_segments,
+          do: fail(:unsupported_docx_annotation)
+
+        part =
+          %{
+            "footnoteReference" => "word/footnotes.xml",
+            "endnoteReference" => "word/endnotes.xml",
+            "commentReference" => "word/comments.xml"
+          }[element]
+
+        site =
+          state.current.locator
+          |> Map.put("byte_offset", state.current.bytes)
+          |> Map.put("__order", state.marker_order + 1)
+
+        key = {part, id}
+        references = Map.update(state.references, key, site, fn _ -> :ambiguous end)
+
+        %{
+          state
+          | references: references,
+            reference_count: state.reference_count + 1,
+            marker_order: state.marker_order + 1
+        }
+      end
+    end
+  end
+
+  defp attach_reference(
+         %{"locator" => %{"part" => part, "annotation_id" => id} = locator} = segment,
+         references,
+         ranges,
+         ranges_unsafe,
+         body_segments
+       ) do
+    case references[{part, numeric_annotation_id!(id)}] do
+      site when is_map(site) ->
+        {order, site} = Map.pop(site, "__order")
+        {offset, body_locator} = Map.pop(site, "byte_offset")
+
+        if is_integer(body_segments[body_locator]) and offset <= body_segments[body_locator] do
+          locator = Map.put(locator, "reference_site", site)
+
+          locator =
+            attach_range(locator, part, id, body_locator, offset, order, ranges, ranges_unsafe)
+
+          %{segment | "locator" => locator}
+        else
+          segment
+        end
+
+      _ ->
+        segment
+    end
+  end
+
+  defp attach_reference(segment, _, _, _, _), do: segment
+
+  defp comment_range(state, element, attrs) do
+    if state.part != "word/document.xml" do
+      warning(state, "annotation_range_not_examined", element)
+    else
+      if state.excluded > 0 or state.current == nil or
+           not match?([_, "p" | _], state.stack) or hidden?(state) do
+        %{warning(state, "annotation_range_not_examined", element) | ranges_unsafe: true}
+      else
+        if state.marker_order >= 3 * state.limits.max_segments,
+          do: fail(:unsupported_docx_annotation)
+
+        id = numeric_annotation_id!(attr(attrs, "id"))
+        side = if element == "commentRangeStart", do: :start, else: :end
+        order = state.marker_order + 1
+        point = {state.current.locator, state.current.bytes, order}
+        range = Map.get(state.ranges, id, %{})
+
+        range =
+          if Map.has_key?(range, side),
+            do: Map.put(range, side, :ambiguous),
+            else: Map.put(range, side, point)
+
+        %{
+          state
+          | ranges: Map.put(state.ranges, id, range),
+            marker_order: order,
+            current: %{state.current | content_started: true}
+        }
+      end
+    end
+  end
+
+  defp attach_range(
+         locator,
+         "word/comments.xml",
+         id,
+         body_locator,
+         reference_offset,
+         reference_order,
+         ranges,
+         false
+       ) do
+    case ranges[numeric_annotation_id!(id)] do
+      %{
+        start: {^body_locator, start_byte, start_order},
+        end: {^body_locator, end_byte, end_order}
+      }
+      when start_order < end_order and end_order < reference_order and start_byte < end_byte and
+             end_byte <= reference_offset ->
+        Map.put(
+          locator,
+          "reference_range",
+          Map.merge(body_locator, %{"start_byte" => start_byte, "end_byte" => end_byte})
+        )
+
+      _ ->
+        locator
+    end
+  end
+
+  defp attach_range(locator, _, _, _, _, _, _, _), do: locator
 
   defp hidden_property(%{stack: ["vanish", "rPr", "r" | _], runs: [run]} = state, attrs) do
     if run.content_started or run.visibility_seen, do: fail(:unsupported_docx_run_properties)
@@ -450,6 +702,32 @@ defmodule IpseKnowledge.Documents.Docx do
 
   defp hidden_property(state, _), do: warning(state, "unsupported_visibility_property", "vanish")
 
+  defp section_reference(state, element, attrs) do
+    if state.excluded > 0 or "sectPrChange" in state.stack do
+      warning(state, "historical_section_properties_not_extracted")
+    else
+      unless state.part == "word/document.xml" and match?([_, "sectPr" | _], state.stack),
+        do: fail(:unsupported_docx_part_relationship)
+
+      ids =
+        for {uri, _, local, value} <- attrs,
+            uri in [
+              ~c"http://schemas.openxmlformats.org/officeDocument/2006/relationships",
+              ~c"http://purl.oclc.org/ooxml/officeDocument/relationships"
+            ] and local == ~c"id",
+            do: List.to_string(value)
+
+      unless length(ids) == 1 and byte_size(hd(ids)) in 1..256 and
+               attr(attrs, "type") in ~w(default first even),
+             do: fail(:unsupported_docx_part_relationship)
+
+      kind = if element == "headerReference", do: "header", else: "footer"
+      refs = MapSet.put(state.section_refs, {kind, hd(ids)})
+      if MapSet.size(refs) > 1024, do: fail(:unsupported_docx_part_relationship)
+      %{warning(state, "header_footer_layout_unresolved") | section_refs: refs}
+    end
+  end
+
   defp warning(state, code, element \\ nil) do
     key = {code, element}
 
@@ -464,9 +742,45 @@ defmodule IpseKnowledge.Documents.Docx do
   end
 
   defp attr(attrs, name) do
-    Enum.find_value(attrs, fn {uri, _, local, value} ->
-      if uri in [@word, @strict] and List.to_string(local) == name, do: List.to_string(value)
-    end)
+    values =
+      for {uri, _, local, value} <- attrs,
+          uri in [@word, @strict] and List.to_string(local) == name,
+          do: List.to_string(value)
+
+    case values do
+      [] -> nil
+      [value] -> value
+      _ -> fail(:unsupported_docx_run_properties)
+    end
+  end
+
+  defp annotation(state, element, attrs) do
+    expected = %{
+      "footnote" => {"word/footnotes.xml", "footnotes"},
+      "endnote" => {"word/endnotes.xml", "endnotes"},
+      "comment" => {"word/comments.xml", "comments"}
+    }
+
+    {part, root} = Map.fetch!(expected, element)
+    id = attr(attrs, "id")
+
+    unless state.part == part and state.stack == [element, root] and is_nil(state.note),
+      do: fail(:unsupported_docx_annotation)
+
+    normalized = numeric_annotation_id!(id)
+
+    if MapSet.member?(state.note_ids, normalized) or
+         MapSet.size(state.note_ids) >= state.limits.max_segments,
+       do: fail(:unsupported_docx_annotation)
+
+    %{state | note: id, note_ids: MapSet.put(state.note_ids, normalized)}
+  end
+
+  defp numeric_annotation_id!(id) do
+    unless is_binary(id) and byte_size(id) in 1..128 and Regex.match?(~r/\A[+-]?[0-9]+\z/, id),
+      do: fail(:unsupported_docx_annotation)
+
+    id |> String.to_integer() |> Integer.to_string()
   end
 
   defp fail(code), do: throw({:document_error, code})
@@ -507,7 +821,7 @@ defmodule IpseKnowledge.Documents.Docx.Styles do
              do: fail(:unsupported_docx_content_types)
         end)
 
-        :ok
+        types
 
       {:document_error, _, code, _, _} when is_atom(code) ->
         fail(code)
@@ -524,6 +838,7 @@ defmodule IpseKnowledge.Documents.Docx.Styles do
       depth: 0,
       count: 0,
       parts: %{},
+      sections: %{},
       external?: false,
       unexamined?: false,
       ids: MapSet.new(),
@@ -549,7 +864,12 @@ defmodule IpseKnowledge.Documents.Docx.Styles do
         if mode == :root and not Map.has_key?(result.parts, "word/document.xml"),
           do: fail(result.error)
 
-        %{parts: result.parts, external?: result.external?, unexamined?: result.unexamined?}
+        %{
+          parts: result.parts,
+          sections: result.sections,
+          external?: result.external?,
+          unexamined?: result.unexamined?
+        }
 
       {:document_error, _, code, _, _} when is_atom(code) ->
         fail(code)
@@ -801,11 +1121,18 @@ defmodule IpseKnowledge.Documents.Docx.Styles do
   defp flag(value, _) when value in ["0", "false", "off"], do: false
   defp flag(_, _), do: fail(:unsupported_docx_style_visibility)
 
-  defp attr(attrs, name),
-    do:
-      Enum.find_value(attrs, fn {uri, _, local, value} ->
-        if uri in [@word, @strict] and List.to_string(local) == name, do: List.to_string(value)
-      end)
+  defp attr(attrs, name) do
+    values =
+      for {uri, _, local, value} <- attrs,
+          uri in [@word, @strict] and List.to_string(local) == name,
+          do: List.to_string(value)
+
+    case values do
+      [] -> nil
+      [value] -> value
+      _ -> fail(:unsupported_docx_style_visibility)
+    end
+  end
 
   defp fail(code), do: throw({:document_error, code})
 
@@ -893,13 +1220,41 @@ defmodule IpseKnowledge.Documents.Docx.Styles do
            do: fail(state.error)
       end
 
+      section_kind =
+        if state.mode == :document do
+          Enum.find(~w(header footer), fn kind ->
+            type in [
+              "http://schemas.openxmlformats.org/officeDocument/2006/relationships/#{kind}",
+              "http://purl.oclc.org/ooxml/officeDocument/relationships/#{kind}"
+            ]
+          end)
+        end
+
+      section =
+        if section_kind do
+          basename = String.replace_prefix(target, "/word/", "")
+
+          unless mode in [nil, "Internal"] and
+                   Regex.match?(~r/\A[A-Za-z0-9_][A-Za-z0-9_.-]{0,200}\.xml\z/, basename),
+                 do: fail(:unsupported_docx_part_relationship)
+
+          path = "word/" <> basename
+
+          if path not in state.names or path in Map.keys(@part_types),
+            do: fail(:unsupported_docx_part_relationship)
+
+          {section_kind, path}
+        end
+
       %{
         state
         | depth: 2,
           count: state.count + 1,
           parts: if(part, do: Map.put(state.parts, part, id), else: state.parts),
+          sections: if(section, do: Map.put(state.sections, id, section), else: state.sections),
           external?: state.external? or mode == "External",
-          unexamined?: state.unexamined? or (is_nil(part) and mode != "External"),
+          unexamined?:
+            state.unexamined? or (is_nil(part) and is_nil(section) and mode != "External"),
           ids: MapSet.put(state.ids, id)
       }
     end

@@ -1,0 +1,15 @@
+
+running 1 test
+
+thread 'ipse_operator::tests::guarded_display_with_elapsed_deadline_emits_no_terminal_bytes' (1025028) panicked at native/ipse-operator.rs:858:9:
+assertion failed: !ready(&probe.tty.master, 100)
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+test ipse_operator::tests::guarded_display_with_elapsed_deadline_emits_no_terminal_bytes ... FAILED
+
+failures:
+
+failures:
+    ipse_operator::tests::guarded_display_with_elapsed_deadline_emits_no_terminal_bytes
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 74 filtered out; finished in 0.01s
+

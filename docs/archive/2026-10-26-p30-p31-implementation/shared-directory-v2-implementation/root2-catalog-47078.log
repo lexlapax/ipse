@@ -1,0 +1,27 @@
+Running ExUnit with seed: 47078, max_cases: 1
+Excluding tags: [:test]
+Including tags: [:generation_paged_catalog]
+
+
+
+  1) test all125manifest groups bind1000ordered unique source heads before digest progress (Ipse.KnowledgeCollectionDirectoryTest)
+     test/extensions/knowledge/collection_directory_test.exs:89
+     ** (MatchError) no match of right hand side value:
+
+         {:error,
+          %Jason.DecodeError{
+            position: 153,
+            token: nil,
+            data: "{\"catalog_pages\":63,\"effects\":6,\"groups\":125,\"manifest_pages\":8,\"model_calls\":0,\"native_operations\":0,\"negative_effects\":0,\"reads\":85,\"sources\":1000}    warning: unused alias E\n    │\n 11 │ alias IpseKnowledge.Evidence, as: E\n    │ ~\n    │\n    └─ test/support/generation_paged_catalog.exs:11:1\n\n"
+          }}
+
+     code: result = run_fixture("test/support/generation_paged_catalog.exs")
+     stacktrace:
+       test/extensions/knowledge/collection_directory_test.exs:133: Ipse.KnowledgeCollectionDirectoryTest.run_fixture/1
+       test/extensions/knowledge/collection_directory_test.exs:90: (test)
+
+
+Finished in 3.2 seconds (0.07s on load, 0.00s async, 3.2s sync)
+
+Result: 0/1 passed, 8 excluded
+Failed: 1 test

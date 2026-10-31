@@ -1,0 +1,48 @@
+Running ExUnit with seed: 46842, max_cases: 8
+Excluding tags: [:test]
+Including tags: [nested_document_use: true]
+
+
+
+  1) test managed document publication reuses the held binding and enforces current at native switch (Ipse.Extension.ManagedCollectionCallSessionTest)
+     test/ipse/extension/managed_collection_call_session_test.exs:719
+     Assertion with == failed
+     code:  assert result["outcome"]["status"] ==
+              if :current == :current do
+                "ok"
+              else
+                "unknown"
+              end
+     left:  "failed"
+     right: "ok"
+     stacktrace:
+       test/ipse/extension/managed_collection_call_session_test.exs:788: (test)
+
+
+05:36:05.279 [info] The function passed as a handler with ID "managed-document-switch-4409eaa6d398d0bbb017682ad591a924" is a local function.
+This means that it is either an anonymous function or a capture of a function without a module specified. That may cause a performance penalty when calling that handler. For more details see the note in `telemetry:attach/4` documentation.
+
+https://hexdocs.pm/telemetry/telemetry.html#attach/4
+
+
+  2) test managed document publication reuses the held binding and enforces staged_deadline at native switch (Ipse.Extension.ManagedCollectionCallSessionTest)
+     test/ipse/extension/managed_collection_call_session_test.exs:719
+     Assertion failed, no matching message after 6000ms
+     Showing 2 of 2 messages in the mailbox
+     code: assert_receive {:managed_document_staged, peer, deadline}
+     mailbox:
+       pattern: {:managed_document_staged, peer, deadline}
+       value:   {:ipse, #PID<0.311.0>,
+                 {:error,
+                  "Extension outcome unknown after refusal, failure or interruption. Inspect its receipt before retrying; no callback was replayed."}}
+
+       pattern: {:managed_document_staged, peer, deadline}
+       value:   {:ipse, #PID<0.311.0>, {:done, :error}}
+     stacktrace:
+       test/ipse/extension/managed_collection_call_session_test.exs:764: (test)
+
+
+Finished in 7.7 seconds (0.00s async, 7.7s sync)
+
+Result: 0/2 passed, 76 excluded
+Failed: 2 tests

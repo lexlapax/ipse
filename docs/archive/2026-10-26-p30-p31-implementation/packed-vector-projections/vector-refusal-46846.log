@@ -1,0 +1,8 @@
+Running ExUnit with seed: 46846, max_cases: 1
+Excluding tags: [:test]
+Including tags: [:packed_vector_corruption, :packed_vector_unknown]
+
+..
+Finished in 42.6 seconds (0.00s async, 42.6s sync)
+
+Result: 2 passed, 20 excluded

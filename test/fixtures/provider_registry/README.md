@@ -10,9 +10,10 @@ followed by completed synthetic usage; its usage JSON captures the original rest
 result. Legacy variants remove only destination and metering events to represent
 the supported request-free format.
 
-Tests relocate only workspace paths, preserve provider/billing/destination facts,
-and require unchanged journals after idle resume. Internal MapSets and tuples use
-portable JSON. Bundled skill paths still identify the capture root: idle resume
+Tests relocate only workspace paths and preserve provider/billing/destination facts
+and the entire original journal prefix. An idle resume under explicit denial adds
+only the bound execution-mode checkpoint; it does not replay the saved work.
+Internal MapSets and tuples use portable JSON. Bundled skill paths still identify the capture root: idle resume
 must not read or refresh them. Never regenerate goldens from a refactored runtime.
 
 To reproduce, extract the recorded Git revision separately and build with its

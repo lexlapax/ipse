@@ -1,0 +1,9 @@
+strict Errors compile passed
+Running ExUnit with seed: 46906, max_cases: 40
+Excluding tags: [:test]
+Including tags: [lifetime_receipt_followup: true]
+
+....
+Finished in 0.03 seconds (0.00s async, 0.03s sync)
+
+Result: 4 passed, 23 excluded

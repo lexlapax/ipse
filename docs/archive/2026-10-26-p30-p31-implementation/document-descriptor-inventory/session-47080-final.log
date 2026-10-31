@@ -1,0 +1,15 @@
+Running ExUnit with seed: 47080, max_cases: 1
+Excluding tags: [:test]
+Including tags: [:document_inventory_session]
+
+.DOCUMENT_INVENTORY_SESSION: %{
+  approvals: 0,
+  public_records: 40,
+  inventory_pages: 3,
+  maximum_resume_frame_bytes: 4172,
+  model_calls: 0
+}
+.
+Finished in 1.7 seconds (0.00s async, 1.7s sync)
+
+Result: 2 passed, 4 excluded

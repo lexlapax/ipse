@@ -111,7 +111,7 @@ pub(crate) fn transaction_usage(path: &Path) -> Result<(u64, u64, u64), String> 
 }
 
 pub(crate) fn transaction_preflight(path: &Path, sizes: &[u64], ceiling: u64) -> Result<(), TransactionAllowanceError> {
-    if !(1..=64 * 1024 * 1024).contains(&ceiling) { return Err(TransactionAllowanceError::Unsafe); }
+    if !transaction_ceiling_valid(ceiling) { return Err(TransactionAllowanceError::Unsafe); }
     let uid = unsafe { geteuid() };
     let (directory, before) = open(path, uid).map_err(|_| TransactionAllowanceError::Unsafe)?;
     if !before.is_dir() { return Err(TransactionAllowanceError::Unsafe); }
@@ -125,6 +125,25 @@ pub(crate) fn transaction_preflight(path: &Path, sizes: &[u64], ceiling: u64) ->
     if usage.allocated.checked_add(reserve).ok_or(TransactionAllowanceError::Unsafe)? > ceiling {
         Err(TransactionAllowanceError::Capacity)
     } else { Ok(()) }
+}
+
+// Only trusted host profile dispatch can request this document allocation.
+// Legacy notes callers retain their smaller limits and the kernel rules do not change.
+pub(crate) fn transaction_ceiling_valid(ceiling: u64) -> bool {
+    (1..=192 * 1024 * 1024).contains(&ceiling)
+}
+
+#[cfg(test)]
+mod transaction_budget_tests {
+    #[test]
+    fn fixed_document_ceiling_preserves_legacy_and_refuses_excess() {
+        assert!(super::transaction_ceiling_valid(42 * 1024 * 1024));
+        assert!(super::transaction_ceiling_valid(64 * 1024 * 1024));
+        assert!(super::transaction_ceiling_valid(192 * 1024 * 1024));
+        assert!(!super::transaction_ceiling_valid(0));
+        assert!(!super::transaction_ceiling_valid(192 * 1024 * 1024 + 1));
+        assert!(!super::transaction_ceiling_valid(u64::MAX));
+    }
 }
 
 fn write_path<R: Read>(path: &Path, expected: u64, input: &mut R) -> Result<File, String> {

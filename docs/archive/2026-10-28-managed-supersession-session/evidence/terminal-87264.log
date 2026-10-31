@@ -1,0 +1,836 @@
+Running ExUnit with seed: 87264, max_cases: 4
+Excluding tags: [:test]
+Including tags: [supersession_scenario: "terminal"]
+
+
+
+  1) test genuine Session supersession: terminal (Ipse.Session.ManagedSupersessionSessionTest)
+     test/ipse/session/managed_supersession_session_test.exs:7
+     synthetic terminal exceeded its bound
+     Choose the knowledge identity for /tmp/ipse-supersession-session-192d410a71bb32ede84427de30e5c9e2/work.
+     Repository shares only with reciprocally verified worktrees; folder means only this canonical folder.
+     Type one exact choice: folder b5f28ab80003e326
+     > folder b5f28ab80003e326
+     Enable native notes for /tmp/ipse-supersession-session-192d410a71bb32ede84427de30e5c9e2/work (folder).
+     This selection takes effect in the next new session, including headless run.
+     Literal notes require a separate native statement/category review or a typed host outcome; other inputs remain pending.
+     Ordinary notes: 90 days; pending proposals: 7 days. Current/preferences may persist.
+     No secondary model calls are authorized. Ordinary tool approvals remain separate.
+     Exact permission, route, retention, artifact and daily limits:
+     {
+       "artifact_sha256": "26c3e913d377f1d3f2f67eab7666770506f6517e5bf7a82eb9e8c36c43d95b2b",
+       "expires_at_ms": 1824786752272,
+       "headless": true,
+       "limits": {
+         "cost_nanos": 0,
+         "download_bytes": 0,
+         "input_bytes": 2097152,
+         "model_calls": 0,
+         "operations": 100,
+         "output_bytes": 4194304
+       },
+       "operations": [
+         "notes.capture",
+         "notes.propose",
+         "notes.recall"
+       ],
+       "period_ms": 86400000,
+       "project": "34b7093e45b563ed2560daf3c061f54fa4fc199d7a9b817bd83b2c1061923b01",
+       "settings": {
+         "activation": {
+           "allow_children": false,
+           "artifact": "26c3e913d377f1d3f2f67eab7666770506f6517e5bf7a82eb9e8c36c43d95b2b",
+           "artifact_sha256": "26c3e913d377f1d3f2f67eab7666770506f6517e5bf7a82eb9e8c36c43d95b2b",
+           "capabilities": [
+             "event.job",
+             "host.actions",
+             "host.actions.mixed",
+             "host.collection.managed",
+             "host.collection.read",
+             "host.context",
+             "host.sources",
+             "invoke.command",
+             "invoke.result.pages",
+             "invoke.tool"
+           ],
+           "instance": "knowledge",
+           "kind": "reviewed.bundle",
+           "lifetime": "session",
+           "main_timeout_ms": 90000,
+           "options": {
+             "embedding": {},
+             "extraction": {},
+             "fetch": {},
+             "rerank": {},
+             "retrieval": {},
+             "search": {},
+             "stores": {},
+             "version": 1
+           },
+           "order": 100,
+           "service_refs": [
+             {
+               "operation": "main",
+               "profile": null,
+               "service_id": "demo"
+             }
+           ],
+           "sidecar_sha256": "6add073e340583f2debc3a59475298ccb2359bc1aab7f77b65f704fbb9553549",
+           "version": 1
+         },
+         "constraints": {
+           "78b6d7943b3430f0225a3ee45cc4cffc27de14ddd97c39f8e38c9f8fb85ca68e": {
+             "allow_delete": false,
+             "evidence_path": [
+               "evidence",
+               "sources"
+             ],
+             "key_prefix": "pending.",
+             "source_categories": [
+               "assistant_proposal",
+               "interactive_operator",
+               "native_operator_answer",
+               "native_operator_assertion",
+               "typed_host_outcome",
+               "unattended_input"
+             ],
+             "value_schema": {
+               "additionalProperties": false,
+               "properties": {
+                 "assigned_category": {
+                   "enum": [
+                     "ordinary",
+                     "preference",
+                     "current"
+                   ],
+                   "type": "string"
+                 },
+                 "created_at_ms": {
+                   "maximum": 9007199254740991,
+                   "minimum": 0,
+                   "type": "integer"
+                 },
+                 "event_at_ms": {
+                   "maximum": 9007199254740991,
+                   "minimum": 0,
+                   "type": [
+                     "integer",
+                     "null"
+                   ]
+                 },
+                 "evidence": {
+                   "additionalProperties": false,
+                   "properties": {
+                     "sources": {
+                       "items": {
+                         "additionalProperties": false,
+                         "properties": {
+                           "content_sha256": {
+                             "maxLength": 64,
+                             "minLength": 64,
+                             "type": "string"
+                           },
+                           "coverage": {
+                             "enum": [
+                               "available",
+                               "partial"
+                             ],
+                             "type": "string"
+                           },
+                           "end_byte": {
+                             "maximum": 9007199254740991,
+                             "minimum": 0,
+                             "type": "integer"
+                           },
+                           "kind": {
+                             "enum": [
+                               "input.original",
+                               "input.operator_answer",
+                               "answer.original",
+                               "tool.outcome",
+                               "input.assertion.ordinary",
+                               "input.assertion.preference",
+                               "input.assertion.current"
+                             ],
+                             "type": "string"
+                           },
+                           "occurrence_id": {
+                             "maxLength": 32,
+                             "minLength": 32,
+                             "type": "string"
+                           },
+                           "origin": {
+                             "enum": [
+                               "assistant_proposal",
+                               "interactive_operator",
+                               "native_operator_answer",
+                               "native_operator_assertion",
+                               "typed_host_outcome",
+                               "unattended_input"
+                             ],
+                             "type": "string"
+                           },
+                           "path": {
+                             "type": "null"
+                           },
+                           "quote": {
+                             "maxLength": 1024,
+                             "minLength": 1,
+                             "type": "string"
+                           },
+                           "quote_sha256": {
+                             "maxLength": 64,
+                             "minLength": 64,
+                             "type": "string"
+                           },
+                           "receipt_sha256": {
+                             "maxLength": 64,
+                             "minLength": 64,
+                             "type": "string"
+                           },
+                           "session_id": {
+                             "maxLength": 32,
+                             "minLength": 32,
+                             "type": "string"
+                           },
+                           "start_byte": {
+                             "maximum": 9007199254740991,
+                             "minimum": 0,
+                             "type": "integer"
+                           },
+                           "version": {
+                             "enum": [
+                               1
+                             ],
+                             "type": "integer"
+                           },
+                           "version_id": {
+                             "maxLength": 32,
+                             "minLength": 32,
+                             "type": "string"
+                           }
+                         },
+                         "required": [
+                           "content_sha256",
+                           "coverage",
+                           "end_byte",
+                           "kind",
+                           "occurrence_id",
+                           "origin",
+                           "path",
+                           "quote",
+                           "quote_sha256",
+                           "receipt_sha256",
+                           "session_id",
+                           "start_byte",
+                           "version",
+                           "version_id"
+                         ],
+                         "type": "object"
+                       },
+                       "maxItems": 1,
+                       "minItems": 1,
+                       "type": "array"
+                     }
+                   },
+                   "required": [
+                     "sources"
+                   ],
+                   "type": "object"
+                 },
+                 "expires_at_ms": {
+                   "maximum": 9007199254740991,
+                   "minimum": 0,
+                   "type": "integer"
+                 },
+                 "id": {
+                   "maxLength": 64,
+                   "minLength": 64,
+                   "type": "string"
+                 },
+                 "kind": {
+                   "enum": [
+                     "proposal"
+                   ],
+                   "type": "string"
+                 },
+                 "lineage": {
+                   "maxLength": 64,
+                   "minLength": 64,
+                   "type": "string"
+                 },
+                 "reason": {
+                   "maxLength": 256,
+                   "minLength": 1,
+                   "type": "string"
+                 },
+                 "state": {
+                   "enum": [
+                     "pending"
+                   ],
+                   "type": "string"
+                 },
+                 "text": {
+                   "maxLength": 2048,
+                   "minLength": 1,
+                   "type": "string"
+                 },
+                 "version": {
+                   "enum": [
+                     1
+                   ],
+                   "type": "integer"
+                 }
+               },
+               "required": [
+                 "assigned_category",
+                 "created_at_ms",
+                 "event_at_ms",
+                 "evidence",
+                 "expires_at_ms",
+                 "id",
+                 "kind",
+                 "lineage",
+                 "reason",
+                 "state",
+                 "text",
+                 "version"
+               ],
+               "type": "object"
+             },
+             "version": 1
+           },
+           "d709745ab18405dff572c41053eda5cbe12c350ebbabdcd0d52ea1e80962368a": {
+             "allow_delete": false,
+             "evidence_path": [
+               "evidence",
+               "sources"
+             ],
+             "key_prefix": "note.",
+             "source_categories": [
+               "native_operator_assertion",
+               "typed_host_outcome"
+             ],
+             "value_schema": {
+               "additionalProperties": false,
+               "properties": {
+                 "category": {
+                   "enum": [
+                     "ordinary",
+                     "preference",
+                     "current"
+                   ],
+                   "type": "string"
+                 },
+                 "created_at_ms": {
+                   "maximum": 9007199254740991,
+                   "minimum": 0,
+                   "type": "integer"
+                 },
+                 "event_at_ms": {
+                   "maximum": 9007199254740991,
+                   "minimum": 0,
+                   "type": [
+                     "integer",
+                     "null"
+                   ]
+                 },
+                 "evidence": {
+                   "additionalProperties": false,
+                   "properties": {
+                     "sources": {
+                       "items": {
+                         "additionalProperties": false,
+                         "properties": {
+                           "content_sha256": {
+                             "maxLength": 64,
+                             "minLength": 64,
+                             "type": "string"
+                           },
+                           "coverage": {
+                             "enum": [
+                               "available",
+                               "partial"
+                             ],
+                             "type": "string"
+                           },
+                           "end_byte": {
+                             "maximum": 9007199254740991,
+                             "minimum": 0,
+                             "type": "integer"
+                           },
+                           "kind": {
+                             "enum": [
+                               "input.original",
+                               "input.operator_answer",
+                               "answer.original",
+                               "tool.outcome",
+                               "input.assertion.ordinary",
+                               "input.assertion.preference",
+                               "input.assertion.current"
+                             ],
+                             "type": "string"
+                           },
+                           "occurrence_id": {
+                             "maxLength": 32,
+                             "minLength": 32,
+                             "type": "string"
+                           },
+                           "origin": {
+                             "enum": [
+                               "assistant_proposal",
+                               "interactive_operator",
+                               "native_operator_answer",
+                               "native_operator_assertion",
+                               "typed_host_outcome",
+                               "unattended_input"
+                             ],
+                             "type": "string"
+                           },
+                           "path": {
+                             "type": "null"
+                           },
+                           "quote": {
+                             "maxLength": 1024,
+                             "minLength": 1,
+                             "type": "string"
+                           },
+                           "quote_sha256": {
+                             "maxLength": 64,
+                             "minLength": 64,
+                             "type": "string"
+                           },
+                           "receipt_sha256": {
+                             "maxLength": 64,
+                             "minLength": 64,
+                             "type": "string"
+                           },
+                           "session_id": {
+                             "maxLength": 32,
+                             "minLength": 32,
+                             "type": "string"
+                           },
+                           "start_byte": {
+                             "maximum": 9007199254740991,
+                             "minimum": 0,
+                             "type": "integer"
+                           },
+                           "version": {
+                             "enum": [
+                               1
+                             ],
+                             "type": "integer"
+                           },
+                           "version_id": {
+                             "maxLength": 32,
+                             "minLength": 32,
+                             "type": "string"
+                           }
+                         },
+                         "required": [
+                           "content_sha256",
+                           "coverage",
+                           "end_byte",
+                           "kind",
+                           "occurrence_id",
+                           "origin",
+                           "path",
+                           "quote",
+                           "quote_sha256",
+                           "receipt_sha256",
+                           "session_id",
+                           "start_byte",
+                           "version",
+                           "version_id"
+                         ],
+                         "type": "object"
+                       },
+                       "maxItems": 1,
+                       "minItems": 1,
+                       "type": "array"
+                     }
+                   },
+                   "required": [
+                     "sources"
+                   ],
+                   "type": "object"
+                 },
+                 "expires_at_ms": {
+                   "maximum": 9007199254740991,
+                   "minimum": 0,
+                   "type": [
+                     "integer",
+                     "null"
+                   ]
+                 },
+                 "id": {
+                   "maxLength": 64,
+                   "minLength": 64,
+                   "type": "string"
+                 },
+                 "lineage": {
+                   "maxLength": 64,
+                   "minLength": 64,
+                   "type": "string"
+                 },
+                 "metadata_reserve": {
+                   "enum": [
+                     "",
+                     "0000000000000000000000000000000000000000000000000000000000000000"
+                   ],
+                   "type": "string"
+                 },
+                 "observed_at_ms": {
+                   "maximum": 9007199254740991,
+                   "minimum": 0,
+                   "type": "integer"
+                 },
+                 "previous_category": {
+                   "type": "null"
+                 },
+                 "reason": {
+                   "maxLength": 256,
+                   "minLength": 1,
+                   "type": "string"
+                 },
+                 "superseded_at_ms": {
+                   "type": "null"
+                 },
+                 "text": {
+                   "maxLength": 2048,
+                   "minLength": 1,
+                   "type": "string"
+                 },
+                 "version": {
+                   "enum": [
+                     1
+                   ],
+                   "type": "integer"
+                 }
+               },
+               "required": [
+                 "category",
+                 "created_at_ms",
+                 "event_at_ms",
+                 "evidence",
+                 "expires_at_ms",
+                 "id",
+                 "lineage",
+                 "metadata_reserve",
+                 "observed_at_ms",
+                 "previous_category",
+                 "reason",
+                 "superseded_at_ms",
+                 "text",
+                 "version"
+               ],
+               "type": "object"
+             },
+             "version": 1
+           }
+         },
+         "domain": "knowledge",
+         "effects": [
+           {
+             "class": "collection.publish",
+             "constraints_sha256": "d709745ab18405dff572c41053eda5cbe12c350ebbabdcd0d52ea1e80962368a",
+             "inner_op": "collection.managed",
+             "operation": "notes.capture",
+             "outer_sha256": "cf9f0a54e5190bc3b41039899bcd6c0eee9ffa2367dfa15b2d8b1e55ffd16e53",
+             "recipe_sha256": "818634825cb494606d25195a6601971a17542ed2caa22f28d1e18b1971b18cf7"
+           },
+           {
+             "class": "collection.publish",
+             "constraints_sha256": "d709745ab18405dff572c41053eda5cbe12c350ebbabdcd0d52ea1e80962368a",
+             "inner_op": "collection.managed",
+             "operation": "notes.capture",
+             "outer_sha256": "f5a509bff213a11a6b58186e73da0ba7e08017d4a89c4b959e683f9f6433e91a",
+             "recipe_sha256": "818634825cb494606d25195a6601971a17542ed2caa22f28d1e18b1971b18cf7"
+           },
+           {
+             "class": "collection.publish",
+             "constraints_sha256": "78b6d7943b3430f0225a3ee45cc4cffc27de14ddd97c39f8e38c9f8fb85ca68e",
+             "inner_op": "collection.managed",
+             "operation": "notes.propose",
+             "outer_sha256": "cf9f0a54e5190bc3b41039899bcd6c0eee9ffa2367dfa15b2d8b1e55ffd16e53",
+             "recipe_sha256": "d2622a1dd0ede7863d677e7ba76ef22f29509f5fc19fb72096c1b5ff70e7505d"
+           },
+           {
+             "class": "collection.publish",
+             "constraints_sha256": "78b6d7943b3430f0225a3ee45cc4cffc27de14ddd97c39f8e38c9f8fb85ca68e",
+             "inner_op": "collection.managed",
+             "operation": "notes.propose",
+             "outer_sha256": "f5a509bff213a11a6b58186e73da0ba7e08017d4a89c4b959e683f9f6433e91a",
+             "recipe_sha256": "d2622a1dd0ede7863d677e7ba76ef22f29509f5fc19fb72096c1b5ff70e7505d"
+           },
+           {
+             "class": "collection.read",
+             "inner_op": "collection.call",
+             "managed_read": [
+               "818634825cb494606d25195a6601971a17542ed2caa22f28d1e18b1971b18cf7",
+               "d2622a1dd0ede7863d677e7ba76ef22f29509f5fc19fb72096c1b5ff70e7505d"
+             ],
+             "operation": "notes.recall",
+             "outer_sha256": "5853488b301eebd88d26683849d9a4aee30db0ce9aa68a93d6f8a1736ff9b694"
+           },
+           {
+             "class": "collection.read",
+             "inner_op": "collection.call",
+             "managed_read": [
+               "818634825cb494606d25195a6601971a17542ed2caa22f28d1e18b1971b18cf7",
+               "d2622a1dd0ede7863d677e7ba76ef22f29509f5fc19fb72096c1b5ff70e7505d"
+             ],
+             "operation": "notes.recall",
+             "outer_sha256": "bb98a46f483a56058075dccd8fef4654b50bb290c717ee218f4bacb021039697"
+           },
+           {
+             "class": "collection.read",
+             "inner_op": "collection.call",
+             "managed_read": [
+               "818634825cb494606d25195a6601971a17542ed2caa22f28d1e18b1971b18cf7",
+               "d2622a1dd0ede7863d677e7ba76ef22f29509f5fc19fb72096c1b5ff70e7505d"
+             ],
+             "operation": "notes.recall",
+             "outer_sha256": "cf9f0a54e5190bc3b41039899bcd6c0eee9ffa2367dfa15b2d8b1e55ffd16e53"
+           },
+           {
+             "class": "collection.read",
+             "inner_op": "collection.call",
+             "managed_read": [
+               "818634825cb494606d25195a6601971a17542ed2caa22f28d1e18b1971b18cf7",
+               "d2622a1dd0ede7863d677e7ba76ef22f29509f5fc19fb72096c1b5ff70e7505d"
+             ],
+             "operation": "notes.recall",
+             "outer_sha256": "ed389dd91a2ffacc289b2d9193e3c26bff237c46793a7becc1e0cf5f0559c413"
+           },
+           {
+             "class": "collection.read",
+             "inner_op": "collection.call",
+             "managed_read": [
+               "818634825cb494606d25195a6601971a17542ed2caa22f28d1e18b1971b18cf7",
+               "d2622a1dd0ede7863d677e7ba76ef22f29509f5fc19fb72096c1b5ff70e7505d"
+             ],
+             "operation": "notes.recall",
+             "outer_sha256": "f548bb5ce92246f7c3913b4156d07a9790bcfb858c8f1f7520ab195fe32d70cf"
+           },
+           {
+             "class": "collection.read",
+             "inner_op": "collection.call",
+             "managed_read": [
+               "818634825cb494606d25195a6601971a17542ed2caa22f28d1e18b1971b18cf7",
+               "d2622a1dd0ede7863d677e7ba76ef22f29509f5fc19fb72096c1b5ff70e7505d"
+             ],
+             "operation": "notes.recall",
+             "outer_sha256": "f5a509bff213a11a6b58186e73da0ba7e08017d4a89c4b959e683f9f6433e91a"
+           }
+         ],
+         "identity_sha256": "f535ddc77ad8ec76d0b9f7230f7080141ac17067ccaca41e30e66e0d4a302274",
+         "instance": "knowledge",
+         "namespace": "2cfab0d95f82f717c0d6393a00f453b2cadfa3745ab0f83e20566bc7a16f263d",
+         "recipes": {
+           "818634825cb494606d25195a6601971a17542ed2caa22f28d1e18b1971b18cf7": {
+             "category_path": [
+               "category"
+             ],
+             "constraints_sha256": "d709745ab18405dff572c41053eda5cbe12c350ebbabdcd0d52ea1e80962368a",
+             "evidence_path": [
+               "evidence",
+               "sources"
+             ],
+             "key_prefix": "note.",
+             "kind": "literal_source",
+             "lineage_path": [
+               "lineage"
+             ],
+             "override_prefix": "override.",
+             "rules": [
+               {
+                 "category": "current",
+                 "max_age_ms": null,
+                 "origins": [
+                   "native_operator_assertion"
+                 ]
+               },
+               {
+                 "category": "ordinary",
+                 "max_age_ms": 7776000000,
+                 "origins": [
+                   "native_operator_assertion",
+                   "typed_host_outcome"
+                 ]
+               },
+               {
+                 "category": "preference",
+                 "max_age_ms": null,
+                 "origins": [
+                   "native_operator_assertion"
+                 ]
+               }
+             ],
+             "text_path": [
+               "text"
+             ],
+             "version": 1
+           },
+           "d2622a1dd0ede7863d677e7ba76ef22f29509f5fc19fb72096c1b5ff70e7505d": {
+             "category_path": [
+               "assigned_category"
+             ],
+             "constraints_sha256": "78b6d7943b3430f0225a3ee45cc4cffc27de14ddd97c39f8e38c9f8fb85ca68e",
+             "evidence_path": [
+               "evidence",
+               "sources"
+             ],
+             "key_prefix": "pending.",
+             "kind": "proposal",
+             "lineage_path": [
+               "lineage"
+             ],
+             "override_prefix": "override.",
+             "rules": [
+               {
+                 "category": "current",
+                 "max_age_ms": 604800000,
+                 "origins": [
+                   "assistant_proposal",
+                   "interactive_operator",
+                   "native_operator_answer",
+                   "native_operator_assertion",
+                   "typed_host_outcome",
+                   "unattended_input"
+                 ]
+               },
+               {
+                 "category": "ordinary",
+                 "max_age_ms": 604800000,
+                 "origins": [
+                   "assistant_proposal",
+                   "interactive_operator",
+                   "native_operator_answer",
+                   "native_operator_assertion",
+                   "typed_host_outcome",
+                   "unattended_input"
+                 ]
+               },
+               {
+                 "category": "preference",
+                 "max_age_ms": 604800000,
+                 "origins": [
+                   "assistant_proposal",
+                   "interactive_operator",
+                   "native_operator_answer",
+                   "native_operator_assertion",
+                   "typed_host_outcome",
+                   "unattended_input"
+                 ]
+               }
+             ],
+             "text_path": [
+               "text"
+             ],
+             "version": 1
+           }
+         },
+         "retention": {
+           "automatic": 90,
+           "manual": 3650
+         },
+         "routes": [
+           {
+             "account_controls": null,
+             "billing_mode": "none",
+             "cache_retention": null,
+             "endpoint": "demo://local",
+             "model": "scripted",
+             "operation": "main",
+             "processing_region": null,
+             "profile": null,
+             "provider": "demo",
+             "service_id": "demo",
+             "storage_region": null
+           }
+         ],
+         "scope": {
+           "kind": "project",
+           "worktree_id": null
+         },
+         "sources": {
+           "categories": [
+             "assistant_proposal",
+             "interactive_operator",
+             "native_operator_answer",
+             "native_operator_assertion",
+             "typed_host_outcome",
+             "unattended_input"
+           ],
+           "exclusions": []
+         },
+         "storage": {
+           "collection": "knowledge",
+           "kind": "local_collection"
+         },
+         "version": 2
+       },
+       "source_sha256": "098be7eda6b0f8e8efb36093fb7cc6cdde8bb55bc60f9e43567576c0d88fdd77",
+       "version": 1
+     }
+     Type enable 5af90bb7dfd27990 to confirm this exact review, or anything else to cancel.
+     > enable 5af90bb7dfd27990
+     Saved knowledge permission. Start a new chat or run to adopt this selection.
+     IPSE_SUPERSESSION_READ_1> you> /remember ordinary My fixture ordinary value
+     Remember this exact statement as your own ordinary note?
+     Statement: "My fixture ordinary value"
+     Retention: at most 90 days.
+     Workspace: "/tmp/ipse-supersession-session-192d410a71bb32ede84427de30e5c9e2/work"
+     Project: 34b7093e45b563ed2560daf3c061f54fa4fc199d7a9b817bd83b2c1061923b01
+     Collection: 2cfab0d95f82f717c0d6393a00f453b2cadfa3745ab0f83e20566bc7a16f263d
+     Artifact: 26c3e913d377f1d3f2f67eab7666770506f6517e5bf7a82eb9e8c36c43d95b2b
+     Permission: 2ae2240140840f50233d5e3590b5926fafa912d5c0a3bf7523cda01bae319d4d
+     This confirms the statement and category; other effects keep their own approvals.
+     Type remember 9658bdfad462184e8fa6c9b3b6d3d6cb to confirm. Anything else cancels.
+     remember> remember 9658bdfad462184e8fa6c9b3b6d3d6cb
+     IPSE_SUPERSESSION_READ_2> you> /remember current My fixture timezone is UTC
+     Remember this exact statement as your own current note?
+     Statement: "My fixture timezone is UTC"
+     Retention: until changed, forgotten or no longer eligible.
+     Workspace: "/tmp/ipse-supersession-session-192d410a71bb32ede84427de30e5c9e2/work"
+     Project: 34b7093e45b563ed2560daf3c061f54fa4fc199d7a9b817bd83b2c1061923b01
+     Collection: 2cfab0d95f82f717c0d6393a00f453b2cadfa3745ab0f83e20566bc7a16f263d
+     Artifact: 26c3e913d377f1d3f2f67eab7666770506f6517e5bf7a82eb9e8c36c43d95b2b
+     Permission: 2ae2240140840f50233d5e3590b5926fafa912d5c0a3bf7523cda01bae319d4d
+     This confirms the statement and category; other effects keep their own approvals.
+     Type remember 45f8f4e0f963c6d262c17fb03488865e to confirm. Anything else cancels.
+     remember> remember 45f8f4e0f963c6d262c17fb03488865e
+     IPSE_SUPERSESSION_TERMINAL_READY
+     Type a task, $review, or /help. Use /cancel while work is running.
+     
+     Extension ext__knowledge__capture: {"current_eligibility":"not_established","outcomes":[{"action_sha256":"c9d63d9d65d30a2e85869998daf83b502a6c37b1ea452817bb32a77976e1fbc8","category":"ordinary","generation":1,"normalization_sha256":"faf37d274db22151cc5466880cc68e7608722abb8f54ba01e8fc57fb3309cf1a","operation_id":"78d0ceadb59dc84494abbec1e51b31c2","receipt_sha256":"c0e830f9bfdd066ec8d40f67ace0a2b66705ac1eaed37cbaca36783024f8f984","record_key":"note.c260466def23239ef43f2e70adaca7fa6eaeeeb0a1a5302aca6522d3fe1aa74f"}],"status":"historical_write_outcome"}
+     
+     Extension ext__knowledge__capture: {"current_eligibility":"not_established","outcomes":[{"action_sha256":"5c6945a72606d71b110c9826a37ea69f00f6ca7283fd6d158f0379fd4000bc8d","category":"current","generation":2,"normalization_sha256":"4eb7caa4ce10d00f5075b59f2d7fd25fa87841468c020ce82baafc63f9622ce6","operation_id":"ebf37d0032aa1e4e9cec32485c0c873b","receipt_sha256":"a37a98d67ed67b679bb05ffab622998c8ec0d013c2450a48989846b620eb18a3","record_key":"note.f6258c38715cf993804f57289e110de0b5a710cc2e82d29155459dab9a43ae70"}],"status":"historical_write_outcome"}
+     you> /correct note.c260466def23239ef43f2e70adaca7fa6eaeeeb0a1a5302aca6522d3fe1aa74f My corrected ordinary value
+     Remember this exact statement as your own ordinary note?
+     Statement: "My corrected ordinary value"
+     Retention: at most 90 days.
+     Workspace: "/tmp/ipse-supersession-session-192d410a71bb32ede84427de30e5c9e2/work"
+     Project: 34b7093e45b563ed2560daf3c061f54fa4fc199d7a9b817bd83b2c1061923b01
+     Collection: 2cfab0d95f82f717c0d6393a00f453b2cadfa3745ab0f83e20566bc7a16f263d
+     Artifact: 26c3e913d377f1d3f2f67eab7666770506f6517e5bf7a82eb9e8c36c43d95b2b
+     Permission: 2ae2240140840f50233d5e3590b5926fafa912d5c0a3bf7523cda01bae319d4d
+     This confirms the statement and category; other effects keep their own approvals.
+     Type remember b7a860423a91fa9bc7acd21d0a329020 to confirm. Anything else cancels.
+     remember> remember b7a860423a91fa9bc7acd21d0a329020
+     you> operator channel unavailable: operator channel unavailable
+
+     Error: Supersession outcome or cleanup is unconfirmed; inspect the retained operation. No action was replayed. See docs/operator/recovery.md#diagnose-startup-and-service-errors.
+
+     Finished with an error.
+
+     code: assert status == 0, output
+     stacktrace:
+       test/ipse/session/managed_supersession_session_test.exs:49: (test)
+
+
+Finished in 60.3 seconds (0.1s on load, 0.00s async, 60.1s sync)
+
+Result: 0/1 passed, 4 excluded
+Failed: 1 test

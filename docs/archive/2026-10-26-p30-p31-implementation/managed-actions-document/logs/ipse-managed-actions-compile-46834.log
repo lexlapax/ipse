@@ -1,0 +1,63 @@
+     warning: the following conditional expression will always succeed:
+
+         is_map(event)
+
+     because it evaluates to:
+
+         dynamic(true)
+
+     where "event" was given the type:
+
+         # type: dynamic(map())
+         # from: lib/ipse/session/managed_lineage.ex:306:66
+         %{"type" => "managed_mcp_discovery_result"} = event
+
+     type warning found at:
+     │
+ 310 │            is_map(event) and
+     │            ~~~~~~~~~~~~~~~~~
+     │
+     └─ lib/ipse/session/managed_lineage.ex:310: Ipse.Session.ManagedLineage.inputs/3
+
+{:ok,
+ [Ipse.Extension.Actions, Ipse.Extension.Collection,
+  Ipse.Extension.Collection.DocumentStage, Ipse.Extension.CollectionStore,
+  Ipse.Extension.MCPCall, Ipse.Extension.ProjectIdentity,
+  Ipse.Extension.ProjectIdentity.Metadata, Ipse.Extension.ToolAction,
+  Ipse.Session, Ipse.Session.Invocation, Ipse.Session.ManagedLineage,
+  Ipse.Session.ManagedToolUse],
+ %{
+   compile_warnings: [],
+   runtime_warnings: [
+     %{
+       message: "the following conditional expression will always succeed:\n\n    is_map(event)\n\nbecause it evaluates to:\n\n    dynamic(true)\n\nwhere \"event\" was given the type:\n\n    # type: dynamic(map())\n    # from: lib/ipse/session/managed_lineage.ex:306:66\n    %{\"type\" => \"managed_mcp_discovery_result\"} = event\n",
+       position: 310,
+       file: "/home/lexlapax/projects/lexlapax/ipse/lib/ipse/session/managed_lineage.ex",
+       stacktrace: [
+         {Ipse.Session.ManagedLineage, :inputs, 3,
+          [file: ~c"lib/ipse/session/managed_lineage.ex", line: 310]}
+       ],
+       source: "/home/lexlapax/projects/lexlapax/ipse/lib/ipse/session/managed_lineage.ex",
+       span: nil,
+       severity: :warning,
+       details: %{
+         typing_traces: [
+           %{
+             name: :event,
+             type: :variable,
+             context: nil,
+             traces: [
+               %{
+                 meta: [line: 306, column: 66],
+                 file: "/home/lexlapax/projects/lexlapax/ipse/lib/ipse/session/managed_lineage.ex",
+                 formatted_type: "dynamic(map())",
+                 formatted_expr: "%{\"type\" => \"managed_mcp_discovery_result\"} = event",
+                 formatted_hints: []
+               }
+             ]
+           }
+         ]
+       }
+     }
+   ]
+ }}

@@ -1,0 +1,145 @@
+{
+  "files": [
+    {
+      "bytes": 294,
+      "path": "logs/production-cancel-46783.log",
+      "sha256": "dab4fdbd1124173a22aabbe02523eac93217dd61a5ac6c379d00fb344fffdac6"
+    },
+    {
+      "bytes": 86,
+      "path": "logs/production-launcher-46779.log",
+      "sha256": "1fb13df0a450d6b174a6836ba3e64f9b309aac3c4a5a998c2d66343f3f444108"
+    },
+    {
+      "bytes": 288,
+      "path": "logs/production-native-46779.log",
+      "sha256": "ac81c00b3d5eb56c9d148a5ebecef3c1d146dc563de6aff145891ec52465dff6"
+    },
+    {
+      "bytes": 48580,
+      "path": "logs/production-refusals-46782.log",
+      "sha256": "50b4684a7d39657dcffdd8fd104c54871da46c95e9f2f07008dc9041a1527dd9"
+    },
+    {
+      "bytes": 259,
+      "path": "logs/sol-consent-management-46768.log",
+      "sha256": "aa1bb1f306593fe32248f426614fa83b69c15a70d3f87c2d63b9a390b3058217"
+    },
+    {
+      "bytes": 44,
+      "path": "logs/sol-forget-cli-compile-46774.log",
+      "sha256": "8cb151d29eb04f95d722287fc9155061f6c63b1a7cbbcf0dd74de7f46e301cae"
+    },
+    {
+      "bytes": 49116,
+      "path": "logs/sol-forget-cli-native-46775.log",
+      "sha256": "a3cdeff0d08f1664135dd212e32d9721182c2ff6c0afae9cc7b4e948df4e3e86"
+    },
+    {
+      "bytes": 298,
+      "path": "logs/sol-forget-cli-native-46776.log",
+      "sha256": "5395320dc7f25ac2f63db5880236940f78c8bc2230b212a41f7959e3e045523c"
+    },
+    {
+      "bytes": 300,
+      "path": "logs/sol-forget-operation-native-46778.log",
+      "sha256": "6b784668e3d187e1b1ef106a1ac6518c60479b6e15ce3805c44cb4a83ddaff9c"
+    },
+    {
+      "bytes": 204,
+      "path": "logs/sol-management-mode-46777.log",
+      "sha256": "d8b55776926e3748d734249de7422bb341c07c9049985c6616b34da7da5ae2b5"
+    },
+    {
+      "bytes": 106348,
+      "path": "production-runtime.json",
+      "sha256": "46b70ddaa3c509e9821ebb99ba14e30f62184896a83544e63f1f92ef98ba940a"
+    },
+    {
+      "bytes": 21308,
+      "path": "source/lib/ipse/cli.ex",
+      "sha256": "862f4d1a573e62c6b1c012482b97a60ec8259aff842b52239ba265b10f5c7f11"
+    },
+    {
+      "bytes": 19594,
+      "path": "source/lib/ipse/cli/knowledge.ex",
+      "sha256": "0c5f7da8cf8a2b98ba5a730227d0c49695003749182143a6d035830d899aa678"
+    },
+    {
+      "bytes": 14506,
+      "path": "source/lib/ipse/cli/knowledge/management.ex",
+      "sha256": "b8ff1286809d2d96cb7a3af7287f0c18a3df8f4ca806392323c3b7a26b1271ca"
+    },
+    {
+      "bytes": 48277,
+      "path": "source/lib/ipse/cli/terminal.ex",
+      "sha256": "f7e7e6d62df01123013824242d15fde405410e60a3c9cad2627a1a82977def6b"
+    },
+    {
+      "bytes": 18726,
+      "path": "source/lib/ipse/extension/collection/normalizer_v3.ex",
+      "sha256": "94fcaccfdaded5fa7f67f8bcd89ad06fb065dd53c5e29cf6ffc86dec2d5283f1"
+    },
+    {
+      "bytes": 35542,
+      "path": "source/lib/ipse/extension/consent.ex",
+      "sha256": "54958e5bb133bed1608ce7f682119d35f6552b6887e861dce458ffde9dc1e23f"
+    },
+    {
+      "bytes": 28734,
+      "path": "source/lib/ipse/extension/managed_collection_call.ex",
+      "sha256": "86f551aa0410300ba565fe76acee30e629d41cf905b652c3432f35706103750e"
+    },
+    {
+      "bytes": 6504,
+      "path": "source/lib/ipse/runner/review.ex",
+      "sha256": "41c468bd7c77dd55bdbe95f59f527821c30f9bdf7c501e52d8d2e604c915f525"
+    },
+    {
+      "bytes": 4838,
+      "path": "source/lib/ipse/session/managed_lifecycle.ex",
+      "sha256": "09986e10ddbf6de245a9252faebd42dbae926e93190e7ecb89e2195546c865e1"
+    },
+    {
+      "bytes": 907,
+      "path": "source/test/ipse/cli/knowledge_management_test.exs",
+      "sha256": "f64755ee62eb521d1801ed93fb08a9c4959955b24fccabb0031ac19e55ed7da0"
+    },
+    {
+      "bytes": 1568,
+      "path": "source/test/ipse/extension/consent_management_native_test.exs",
+      "sha256": "0f55283eced15d3c4eb3945563ccefd56a85751b3ebd47e3bb6c94033b8fd8fd"
+    },
+    {
+      "bytes": 18600,
+      "path": "source/test/ipse/runner/review_test.exs",
+      "sha256": "42c4f2355c98a8a4586f7cf7167a14303ffe20ab8cda5ec8d88039578cf55e75"
+    },
+    {
+      "bytes": 1692,
+      "path": "source/test/ipse/session/operator_assertion_integration_test.exs",
+      "sha256": "ffc9941872de7c46e1c2a36017d21defedaaa4e9d39fdeb32dcbe87c1f51db8b"
+    },
+    {
+      "bytes": 6927,
+      "path": "source/test/support/consent_management.exs",
+      "sha256": "8a735445dfd4e65f188c9b0572ab04e501ccd03e5c5f900cf29fc54aaa5d5157"
+    },
+    {
+      "bytes": 2973,
+      "path": "source/test/support/native_review.exs",
+      "sha256": "7c18388f9690dd5367ab2521f8d2571d5ba4853a10109be479bceeec252b2a17"
+    },
+    {
+      "bytes": 23026,
+      "path": "source/test/support/operator_assertion.exs",
+      "sha256": "7cba4b9849e900515c92fda3e83814b116ef5a61d372db236662da483827e868"
+    },
+    {
+      "bytes": 11219,
+      "path": "source/test/support/operator_pty.rs",
+      "sha256": "ac5f61ae1876cedac5c78737e144679db25df0099dd786144af8a7b015531510"
+    }
+  ],
+  "version": 1
+}

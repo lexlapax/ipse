@@ -3,6 +3,15 @@ defmodule Ipse.CLI.Errors do
 
   @manual "docs/operator/recovery.md"
   @messages %{
+    native_review_publication_fence_unavailable:
+      {"Reviewed note mutation is temporarily unavailable: a live Review permit cannot fence the final rename before its expiry. No review or mutation was started. Keep existing records and inspect older uncertain operations; --yes cannot bypass this gate.",
+       "inspect-unconfirmed-protected-knowledge"},
+    state_deadline_fence_unavailable:
+      {"Deadline-bearing State writes are temporarily unavailable: the clock check and rename are separate operations. No write was started. Keep existing drafts and inspect earlier uncertain writes; do not remove the deadline to retry.",
+       "diagnose-startup-and-service-errors"},
+    collection_deadline_fence_unavailable:
+      {"Protected collection publication is temporarily unavailable: the native clock check cannot fence scheduling before rename. No publication was started. Keep existing records and inspect saved receipts; --yes cannot bypass this gate.",
+       "diagnose-startup-and-service-errors"},
     invalid_handoff:
       {"Invalid handoff: expected one closed version-1 UTF-8 artifact of at most 16 KiB with consistent unknown-effect provenance. No session was started; review the artifact before importing it.",
        "continue-in-a-fresh-session"},
@@ -33,9 +42,21 @@ defmodule Ipse.CLI.Errors do
     session_locked:
       {"Saved session already has an owner. No work was started by this attempt; close the existing owner normally, then retry. Never delete its lock file.",
        "respect-active-ownership"},
+    header_unconfirmed:
+      {"Fresh session header publication is unconfirmed. Preserve pending files and any published journal; inspect the original state before explicit resume after its lock is free. Do not automatically retry startup or delete its lock files.",
+       "respect-active-ownership"},
+    session_lock_identity_unavailable:
+      {"The saved Session lock identity could not be verified. No saved work was replayed. Preserve the original journal and lock file, and request developer-assisted inspection with the matching native helper.",
+       "respect-active-ownership"},
+    journal_lock_owner_required:
+      {"This journal requires its qualified native lock owner for changes. Preserve the original journal and lock file; do not modify it through an inactive or legacy writer.",
+       "respect-active-ownership"},
     journal_unavailable:
       {"Journal storage is unavailable. An append may already have reached disk; inspect the original journal and effects before retrying.",
        "respect-active-ownership"},
+    journal_origin_unavailable:
+      {"Saved journal does not match its original location or file identity. No saved work was replayed; preserve it and use the original state directory or a reviewed fresh-session handoff.",
+       "find-the-original-session"},
     workspace_not_found:
       {"Workspace directory does not exist or cannot be read. No task was started; pass --cwd with an existing readable directory and inspect ipse config.",
        "diagnose-startup-and-service-errors"},

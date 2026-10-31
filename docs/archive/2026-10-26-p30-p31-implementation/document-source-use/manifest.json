@@ -1,0 +1,178 @@
+{
+  "ancestors": [
+    {
+      "bytes": 3215,
+      "path": "docs/archive/2026-10-26-p30-p31-implementation/document-held-value/manifest.json",
+      "sha256": "86342fa9c06e719ef8c062d65cbfce419c575515033c90306d613f990f35679a",
+      "type": "regular"
+    },
+    {
+      "bytes": 3167,
+      "path": "docs/archive/2026-10-26-p30-p31-implementation/shared-producer-host-seed/manifest.json",
+      "sha256": "31fb0ef27e4532ac383575a9ffb3218f95f698d9763c5fdc8d2f2c180facfbd2",
+      "type": "regular"
+    },
+    {
+      "bytes": 4872,
+      "path": "docs/archive/2026-10-26-p30-p31-implementation/shared-producer-relation-seeds/manifest.json",
+      "sha256": "9a078ffe0fef2a83b3f7631881caeac17d9157c5882c88fd26bf299754c5211a",
+      "type": "regular"
+    }
+  ],
+  "graphs": [
+    {
+      "files": 699,
+      "graph": "_build/document-held-value-sol-20261029",
+      "inventory": {
+        "bytes": 176497,
+        "path": "docs/archive/2026-10-26-p30-p31-implementation/document-source-use/document-held-value-sol-20261029.json",
+        "sha256": "271e4fc5a3f04f5e252c838cf4b11fd0d8cba7636f10643c66e86f263a119c57",
+        "type": "regular"
+      }
+    },
+    {
+      "files": 700,
+      "graph": "_build/document-source-use-sol-20261029",
+      "inventory": {
+        "bytes": 176766,
+        "path": "docs/archive/2026-10-26-p30-p31-implementation/document-source-use/document-source-use-sol-20261029.json",
+        "sha256": "0de5641d5f5c969242f9af4e7fc552d5300fd19b5995c8bbdcf5d0073d83e2f2",
+        "type": "regular"
+      }
+    }
+  ],
+  "retained": [
+    {
+      "bytes": 722,
+      "path": "docs/archive/2026-10-26-p30-p31-implementation/document-source-use/ipse-document-source-use-additive-47183.exs",
+      "sha256": "11f207afcc8ffef918fe147a49bb2bf627f46dbf0708f0bb2f57467dcf7be6ed",
+      "type": "regular"
+    },
+    {
+      "bytes": 2506,
+      "path": "docs/archive/2026-10-26-p30-p31-implementation/document-source-use/ipse-document-source-use-additive-47183.log",
+      "sha256": "cad33fec62885c52452969f24d2153f6e39b903a2412ab251a25a5f3bd9b4dba",
+      "type": "regular"
+    },
+    {
+      "bytes": 722,
+      "path": "docs/archive/2026-10-26-p30-p31-implementation/document-source-use/ipse-document-source-use-additive-47184.exs",
+      "sha256": "11f207afcc8ffef918fe147a49bb2bf627f46dbf0708f0bb2f57467dcf7be6ed",
+      "type": "regular"
+    },
+    {
+      "bytes": 1451,
+      "path": "docs/archive/2026-10-26-p30-p31-implementation/document-source-use/ipse-document-source-use-additive-47184.log",
+      "sha256": "dbd9d5cc13432b7a9e880d9d497bd414600e8366134f21669fc7b8ebcb45d347",
+      "type": "regular"
+    },
+    {
+      "bytes": 12737,
+      "path": "docs/archive/2026-10-26-p30-p31-implementation/document-source-use/ipse-document-source-use-alias-tests-47183.exs",
+      "sha256": "db256ade2ddee8b3236893af4263ba0070bddc6c2e64697d6c6a2cfa4375b00a",
+      "type": "regular"
+    },
+    {
+      "bytes": 678,
+      "path": "docs/archive/2026-10-26-p30-p31-implementation/document-source-use/ipse-document-source-use-anchor-47182.exs",
+      "sha256": "56ac2e62194bfd1bedaeb4c257da71b2032efc912272755459ea5ec7c74c7ed2",
+      "type": "regular"
+    },
+    {
+      "bytes": 293,
+      "path": "docs/archive/2026-10-26-p30-p31-implementation/document-source-use/ipse-document-source-use-anchor-47182.log",
+      "sha256": "a33d100161bbab383cf6d2eeeae804d11895c914d84fee65931d7b9f6a2689ff",
+      "type": "regular"
+    },
+    {
+      "bytes": 629,
+      "path": "docs/archive/2026-10-26-p30-p31-implementation/document-source-use/ipse-document-source-use-compile-47179.exs",
+      "sha256": "3bd2b3f3e73b488fbe9024aa3dec77dd07d8c2a6ed3f31b05f65ca49d9f873ed",
+      "type": "regular"
+    },
+    {
+      "bytes": 1302,
+      "path": "docs/archive/2026-10-26-p30-p31-implementation/document-source-use/ipse-document-source-use-compile-47179.log",
+      "sha256": "d9bafc2fe100a79296c4419b855346e24ec6a1e0300cb436df8704a8807fc608",
+      "type": "regular"
+    },
+    {
+      "bytes": 7194,
+      "path": "docs/archive/2026-10-26-p30-p31-implementation/document-source-use/ipse-document-source-use-initial-tests-47180.exs",
+      "sha256": "a0f2d4b7b17c936e7bc97c698d6ce901566ec0c968e0e14590ec1ad21f5d9bc6",
+      "type": "regular"
+    },
+    {
+      "bytes": 7553,
+      "path": "docs/archive/2026-10-26-p30-p31-implementation/document-source-use/ipse-document-source-use-intermediate-tests-47181.exs",
+      "sha256": "4926b49cba3778639423281c7bba8dd54cf8f006f33755b8ebc578063f7fd682",
+      "type": "regular"
+    },
+    {
+      "bytes": 699,
+      "path": "docs/archive/2026-10-26-p30-p31-implementation/document-source-use/ipse-document-source-use-native-47185.exs",
+      "sha256": "7d3a04e90e0e27970f83f326931892c6aff4199ba5e18e530a723044b8d4e7ed",
+      "type": "regular"
+    },
+    {
+      "bytes": 265,
+      "path": "docs/archive/2026-10-26-p30-p31-implementation/document-source-use/ipse-document-source-use-native-47185.log",
+      "sha256": "fc03e1a9ebf6ab373f1fbb8f2283ebbedc1d03da6bbaac27cda61e7fa9d9c3e2",
+      "type": "regular"
+    },
+    {
+      "bytes": 666,
+      "path": "docs/archive/2026-10-26-p30-p31-implementation/document-source-use/ipse-document-source-use-repair-47181.exs",
+      "sha256": "0628c3769d20f70fe2a96b3b517d5f398c292ddbc6e5ce1376da41cd035e276c",
+      "type": "regular"
+    },
+    {
+      "bytes": 1807,
+      "path": "docs/archive/2026-10-26-p30-p31-implementation/document-source-use/ipse-document-source-use-repair-47181.log",
+      "sha256": "daef33dae2572fd732432dbbc5caea6738e79549189d0b8609a76879e26bba6e",
+      "type": "regular"
+    },
+    {
+      "bytes": 983,
+      "path": "docs/archive/2026-10-26-p30-p31-implementation/document-source-use/ipse-document-source-use-test-47180.exs",
+      "sha256": "2a20e236141d8c55a52920b609cb2bac3b508e07a7ebed67bef563f6618a59b8",
+      "type": "regular"
+    },
+    {
+      "bytes": 2212,
+      "path": "docs/archive/2026-10-26-p30-p31-implementation/document-source-use/ipse-document-source-use-test-47180.log",
+      "sha256": "6dc9443f25f0de329f64b3b8a3876a7765c2495be11afeba05f10d9fe9f78a71",
+      "type": "regular"
+    },
+    {
+      "bytes": 12751,
+      "path": "docs/archive/2026-10-26-p30-p31-implementation/document-source-use/ipse-document-source-use-witness-tests-47184.exs",
+      "sha256": "20376f13e94d70ef68e836e7f2441f9b78ec03cfb55f95faf446282ad4f71723",
+      "type": "regular"
+    },
+    {
+      "bytes": 2905,
+      "path": "docs/archive/2026-10-26-p30-p31-implementation/document-source-use/ipse-freeze-document-source-use-47186.exs",
+      "sha256": "659588d8d5dc03135f84b03810f869d2eff0814a2b6dfe10764910dd94941d62",
+      "type": "regular"
+    }
+  ],
+  "scope": "unwired closed document input byte/time relation",
+  "sources": [
+    {
+      "bytes": 17746,
+      "path": "docs/archive/2026-10-26-p30-p31-implementation/document-source-use/lib__ipse__extension__collection__document_source_use.ex.txt",
+      "sha256": "4823ad7d39c7f919249a3d39ed85c8a7bd74b25659ed454b5cf549d4d455821e",
+      "source": "lib/ipse/extension/collection/document_source_use.ex",
+      "type": "regular"
+    },
+    {
+      "bytes": 12795,
+      "path": "docs/archive/2026-10-26-p30-p31-implementation/document-source-use/test__ipse__extension__collection_document_source_use_test.exs.txt",
+      "sha256": "13a2936c60094279282f7472101de38343737eccd21559a140aa09404416ed5d",
+      "source": "test/ipse/extension/collection_document_source_use_test.exs",
+      "type": "regular"
+    }
+  ],
+  "version": 1
+}

@@ -1,0 +1,7 @@
+Running ExUnit with seed: 46833, max_cases: 1
+
+COLLECTION_CHUNK_GEOMETRY_PASS bytes20971520 chunks10000 legacygap491520; arithmetic, not populated capacity
+.
+Finished in 1.7 seconds (0.00s async, 1.7s sync)
+
+Result: 1 passed

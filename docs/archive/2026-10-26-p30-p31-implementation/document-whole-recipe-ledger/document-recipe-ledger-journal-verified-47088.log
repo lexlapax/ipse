@@ -1,0 +1,141 @@
+{
+  "version": 1,
+  "source": "47085 actual independent public Corpus and native document store, full approvals",
+  "kind": "actual_synthetic_session_journal_measurement",
+  "sessions": [
+    {
+      "path": "_build/document-recipe-ledger-20261029/session-47085/synthetic-first.jsonl",
+      "events": 121,
+      "bytes": 399598,
+      "types": {
+        "extension_action_intent": {
+          "events": 49,
+          "bytes": 86925
+        },
+        "extension_action_result": {
+          "events": 49,
+          "bytes": 113627
+        },
+        "extension_invocation_intent": {
+          "events": 6,
+          "bytes": 57799
+        },
+        "extension_invocation_result": {
+          "events": 6,
+          "bytes": 125521
+        },
+        "session": {
+          "events": 1,
+          "bytes": 12333
+        },
+        "session_release_intent": {
+          "events": 1,
+          "bytes": 491
+        },
+        "session_release_owner_started": {
+          "events": 1,
+          "bytes": 147
+        },
+        "skill_catalog_snapshot": {
+          "events": 1,
+          "bytes": 2251
+        },
+        "turn_finished": {
+          "events": 6,
+          "bytes": 234
+        },
+        "workspace_context_snapshot": {
+          "events": 1,
+          "bytes": 270
+        }
+      },
+      "namespaces": [
+        "dc5fd409ee0b241bb1024e24e7c4c09a4d04ebba450c350a05476076ac1af934"
+      ],
+      "sha256": "36b1c83fa027cadb9848c87dce6310d9d5021c69965861f655dc922d18d217da",
+      "invocations": 6,
+      "input_text_bytes": 5320,
+      "known_successful_native_mutations": 6,
+      "native_operation_ids": [
+        "071b2e67c1f6a8b864bca6c4aba4662b",
+        "234965d1eb9007c3592ebfc8c0b1bea4",
+        "3eb536f8e26ca28d3508e7097d5fbbd1",
+        "5f5d39f2fae2ea3d8f3bd5fa8a8d0296",
+        "e16dacd46ada576a1c0fde4f2f20a7f9",
+        "ef790ac53b1bfeaa7170e7ec73e46612"
+      ],
+      "known_active_stages_at_close": 0,
+      "session_id": "32fb0e92e7871a676a1b511a0311ca6d",
+      "artifact_sha256": "ed8a50d401b15c5f95c3b58d62b16715435ceeadea91ca420356faece1add07f"
+    },
+    {
+      "path": "_build/document-recipe-ledger-20261029/session-47085/synthetic-second.jsonl",
+      "events": 145,
+      "bytes": 452644,
+      "types": {
+        "extension_action_intent": {
+          "events": 61,
+          "bytes": 105930
+        },
+        "extension_action_result": {
+          "events": 61,
+          "bytes": 145756
+        },
+        "extension_invocation_intent": {
+          "events": 6,
+          "bytes": 58115
+        },
+        "extension_invocation_result": {
+          "events": 6,
+          "bytes": 127117
+        },
+        "session": {
+          "events": 1,
+          "bytes": 12333
+        },
+        "session_release_intent": {
+          "events": 1,
+          "bytes": 491
+        },
+        "session_release_owner_started": {
+          "events": 1,
+          "bytes": 147
+        },
+        "skill_catalog_snapshot": {
+          "events": 1,
+          "bytes": 2251
+        },
+        "turn_finished": {
+          "events": 6,
+          "bytes": 234
+        },
+        "workspace_context_snapshot": {
+          "events": 1,
+          "bytes": 270
+        }
+      },
+      "namespaces": [
+        "dc5fd409ee0b241bb1024e24e7c4c09a4d04ebba450c350a05476076ac1af934"
+      ],
+      "sha256": "194b356ec9c37ae0eee89833bb455663aa1d794b999fcaa76dff4fe00117a6c1",
+      "invocations": 6,
+      "input_text_bytes": 5320,
+      "known_successful_native_mutations": 6,
+      "native_operation_ids": [
+        "21f64fccd4e1560b910d8c3065a4d35e",
+        "375373d25be65e33b6196cb3e2ec85a9",
+        "39d328099be19db1d26ac065125a52ba",
+        "617a09517f6f8182d248c02b176cca4b",
+        "d509fa32c784bd2786add9ff36d52ef9",
+        "eb14a11664293eb787db6bd35ee75e89"
+      ],
+      "known_active_stages_at_close": 0,
+      "session_id": "af56ae9f16d6e5b09eec4c92b461dc0f",
+      "artifact_sha256": "ed8a50d401b15c5f95c3b58d62b16715435ceeadea91ca420356faece1add07f"
+    }
+  ],
+  "total_bytes": 852242,
+  "total_events": 266,
+  "total_known_native_mutations": 12,
+  "limitations": "two small supplied plaintext inputs; no Word acquisition, graph/vector producer, full recipe journal extrapolation, unknown recovery or active stage transfer"
+}

@@ -1,0 +1,10 @@
+Code.prepend_paths(Path.wildcard(Path.expand("_build/strict-deadline-gate-sol-20261029/lib/*/ebin")))
+root = "/tmp/ipse-forget-permit-expiry-46892"
+File.mkdir!(root)
+File.chmod!(root, 0o700)
+driver = Path.join(root,"pty-driver")
+{"",0} = System.cmd("rustc",["--edition=2021","-D","warnings","test/support/operator_pty.rs","-o",driver],stderr_to_stdout: true)
+paths = Enum.flat_map(Enum.reverse(:code.get_path()), &["-pa",List.to_string(&1)])
+{output,status} = System.cmd(driver,["--review",System.find_executable("elixir"),"--erl","+S 2:2"] ++ paths ++ ["test/support/managed_literal_forget.exs",root,"permit_expiry"],stderr_to_stdout: true,env: [{"HOME",root},{"IPSE_HOME",root <> "/ipse"},{"TMPDIR",root}])
+IO.write(output)
+System.halt(status)

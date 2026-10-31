@@ -14,6 +14,7 @@ defmodule Ipse.MixProject do
         {:jason, github: "michalmuskala/jason", tag: "v1.4.4", override: true},
         {:mcp_elixir_sdk, "== 1.1.0"},
         {:jsonschex, "== 0.10.0"},
+        {:mint, "== 1.11.0"},
         {:req, "== 0.7.5"},
         {:plug, "== 1.20.3"}
       ],

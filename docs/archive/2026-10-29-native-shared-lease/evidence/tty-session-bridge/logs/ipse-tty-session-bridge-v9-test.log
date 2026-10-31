@@ -1,0 +1,8 @@
+Running ExUnit with seed: 990072, max_cases: 8
+Excluding tags: [:test]
+Including tags: [controlled_tty_bridge: true]
+
+SYNTHETIC_LEASED_DISPLAY[32m.[0m
+Finished in 1.8 seconds (0.8s on load, 0.00s async, 1.0s sync)
+[32m
+Result: 1 passed, 16 excluded[0m

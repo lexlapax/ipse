@@ -1,0 +1,5 @@
+3f709633e193d2bba8b945cb3677f3854098c233726b448eb30ed4a16de2cc74  lib/ipse/extension/collection.ex
+67e4f351595e4c45b4c9f0dcd4a9c33ec9ae8971d71c311ed3f4d0d1bd9bed28  lib/ipse/extension/collection/normalizer_v3.ex
+a0c0b5e59b32159af2713b02d3061c33e0694172039287643b382338015c91b8  lib/ipse/runner/review.ex
+360b2b980bce5e4ec015be656ef9b88db868a7f8308c30c02a356d8c37152e59  lib/ipse/extension/consent.ex
+46cb77af5a6f34c12e3716b1e5ec8ff42046f91fc84dc8507d5999d97ae07fe2  lib/ipse/cli/knowledge/management.ex

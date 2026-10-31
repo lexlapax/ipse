@@ -1,0 +1,10 @@
+OWNER_CONTROLS_MANIFEST_OK: %{
+  manifest_entries: 24,
+  source_files: 34,
+  runtime_files: [{"session", 697}, {"host-instrumented", 697}],
+  graph_delta: ["./ipse/ebin/Elixir.Ipse.Extension.Host.beam"],
+  helper_matches: true,
+  instrumented_host_matches: true,
+  session_lock_journal_writer_inherited: true,
+  artifact_files: 3
+}

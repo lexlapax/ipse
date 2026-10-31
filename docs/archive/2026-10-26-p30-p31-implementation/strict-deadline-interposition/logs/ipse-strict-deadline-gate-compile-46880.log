@@ -1,0 +1,220 @@
+     warning: the following clause will never match:
+
+         {{:deferred, _}, witness} when is_map(witness) ->
+
+     because it attempts to match on the result of:
+
+         {result, Process.get(proof_key)}
+
+     which has type:
+
+         dynamic({{:failed, %{binary() => term()}}, term()})
+
+     where "witness" was given the type:
+
+         # type: map()
+         # from: lib/ipse/extension/managed_collection_call.ex:250:46
+         is_map(witness)
+
+     type warning found at:
+     │
+ 250 │               {{:deferred, _}, witness} when is_map(witness) ->
+     │               ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+     │
+     └─ lib/ipse/extension/managed_collection_call.ex:250: Ipse.Extension.ManagedCollectionCall.protected_v3/2
+
+     warning: the following clause will never match:
+
+         {status, value} when status === :ok or status === :conflict or status === :failed ->
+
+     because it attempts to match on the result of:
+
+         Ipse.Extension.Collection.with_publication_deadline(plan.publish_before_ms, fn ->
+           storage(context, intent)
+         end)
+
+     which has type:
+
+         dynamic({:error, :collection_deadline_fence_unavailable})
+
+     where "status" was given the type:
+
+         # type: :conflict or :failed or :ok
+         # from: lib/ipse/extension/collection_call.ex:482
+         status in [:ok, :conflict, :failed]
+
+     type warning found at:
+     │
+ 482 │                  {status, value} when status in [:ok, :conflict, :failed] ->
+     │                  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+     │
+     └─ lib/ipse/extension/collection_call.ex:482: Ipse.Extension.CollectionCall.publish_authorized/5
+
+     warning: the following clause will never match:
+
+         {:ok, value, actual} ->
+
+     because it attempts to match on the result of:
+
+         Ipse.Extension.Collection.with_publication_deadline(plan.publish_before_ms, fn ->
+           storage(c, i, proofs, plan)
+         end)
+
+     which has type:
+
+         dynamic({:error, :collection_deadline_fence_unavailable})
+
+     type warning found at:
+     │
+ 430 │                  {:ok, value, actual} ->
+     │                  ~
+     │
+     └─ lib/ipse/extension/managed_collection_call.ex:430:18: Ipse.Extension.ManagedCollectionCall.publish_authorized/5
+
+     warning: the following clause will never match:
+
+         {status, value} when status === :conflict or status === :failed ->
+
+     because it attempts to match on the result of:
+
+         Ipse.Extension.Collection.with_publication_deadline(plan.publish_before_ms, fn ->
+           storage(c, i, proofs, plan)
+         end)
+
+     which has type:
+
+         dynamic({:error, :collection_deadline_fence_unavailable})
+
+     where "status" was given the type:
+
+         # type: :conflict or :failed
+         # from: lib/ipse/extension/managed_collection_call.ex:433
+         status in [:conflict, :failed]
+
+     type warning found at:
+     │
+ 433 │                  {status, value} when status in [:conflict, :failed] ->
+     │                  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+     │
+     └─ lib/ipse/extension/managed_collection_call.ex:433: Ipse.Extension.ManagedCollectionCall.publish_authorized/5
+
+{:ok,
+ [Inspect.Ipse.Runner.Transaction.Capability, Ipse.CLI.Errors,
+  Ipse.CLI.Knowledge, Ipse.CLI.Knowledge.Management, Ipse.CLI.Terminal,
+  Ipse.Extension.Collection, Ipse.Extension.CollectionCall,
+  Ipse.Extension.ManagedCollectionCall, Ipse.Runner.Transaction,
+  Ipse.Runner.Transaction.Capability, Ipse.Runner.Transaction.Controller,
+  Ipse.Session, Ipse.Session.Invocation, Ipse.Session.Saved],
+ %{
+   compile_warnings: [],
+   runtime_warnings: [
+     %{
+       message: "the following clause will never match:\n\n    {{:deferred, _}, witness} when is_map(witness) ->\n\nbecause it attempts to match on the result of:\n\n    {result, Process.get(proof_key)}\n\nwhich has type:\n\n    dynamic({{:failed, %{binary() => term()}}, term()})\n\nwhere \"witness\" was given the type:\n\n    # type: map()\n    # from: lib/ipse/extension/managed_collection_call.ex:250:46\n    is_map(witness)\n",
+       position: 250,
+       file: "/home/lexlapax/projects/lexlapax/ipse/lib/ipse/extension/managed_collection_call.ex",
+       stacktrace: [
+         {Ipse.Extension.ManagedCollectionCall, :protected_v3, 2,
+          [file: ~c"lib/ipse/extension/managed_collection_call.ex", line: 250]}
+       ],
+       source: "/home/lexlapax/projects/lexlapax/ipse/lib/ipse/extension/managed_collection_call.ex",
+       span: nil,
+       severity: :warning,
+       details: %{
+         typing_traces: [
+           %{
+             name: :witness,
+             type: :variable,
+             context: nil,
+             traces: [
+               %{
+                 meta: [line: 250, column: 46],
+                 file: "/home/lexlapax/projects/lexlapax/ipse/lib/ipse/extension/managed_collection_call.ex",
+                 formatted_type: "map()",
+                 formatted_expr: "is_map(witness)",
+                 formatted_hints: []
+               }
+             ]
+           }
+         ]
+       }
+     },
+     %{
+       message: "the following clause will never match:\n\n    {:ok, value, actual} ->\n\nbecause it attempts to match on the result of:\n\n    Ipse.Extension.Collection.with_publication_deadline(plan.publish_before_ms, fn ->\n      storage(c, i, proofs, plan)\n    end)\n\nwhich has type:\n\n    dynamic({:error, :collection_deadline_fence_unavailable})\n",
+       position: {430, 18},
+       file: "/home/lexlapax/projects/lexlapax/ipse/lib/ipse/extension/managed_collection_call.ex",
+       stacktrace: [
+         {Ipse.Extension.ManagedCollectionCall, :publish_authorized, 5,
+          [
+            file: ~c"lib/ipse/extension/managed_collection_call.ex",
+            line: 430,
+            column: 18,
+            line: 430
+          ]}
+       ],
+       source: "/home/lexlapax/projects/lexlapax/ipse/lib/ipse/extension/managed_collection_call.ex",
+       span: nil,
+       severity: :warning,
+       details: %{typing_traces: []}
+     },
+     %{
+       message: "the following clause will never match:\n\n    {status, value} when status === :conflict or status === :failed ->\n\nbecause it attempts to match on the result of:\n\n    Ipse.Extension.Collection.with_publication_deadline(plan.publish_before_ms, fn ->\n      storage(c, i, proofs, plan)\n    end)\n\nwhich has type:\n\n    dynamic({:error, :collection_deadline_fence_unavailable})\n\nwhere \"status\" was given the type:\n\n    # type: :conflict or :failed\n    # from: lib/ipse/extension/managed_collection_call.ex:433\n    status in [:conflict, :failed]\n",
+       position: 433,
+       file: "/home/lexlapax/projects/lexlapax/ipse/lib/ipse/extension/managed_collection_call.ex",
+       stacktrace: [
+         {Ipse.Extension.ManagedCollectionCall, :publish_authorized, 5,
+          [file: ~c"lib/ipse/extension/managed_collection_call.ex", line: 433]}
+       ],
+       source: "/home/lexlapax/projects/lexlapax/ipse/lib/ipse/extension/managed_collection_call.ex",
+       span: nil,
+       severity: :warning,
+       details: %{
+         typing_traces: [
+           %{
+             name: :status,
+             type: :variable,
+             context: nil,
+             traces: [
+               %{
+                 meta: [line: 433],
+                 file: "/home/lexlapax/projects/lexlapax/ipse/lib/ipse/extension/managed_collection_call.ex",
+                 formatted_type: ":conflict or :failed",
+                 formatted_expr: "status in [:conflict, :failed]",
+                 formatted_hints: []
+               }
+             ]
+           }
+         ]
+       }
+     },
+     %{
+       message: "the following clause will never match:\n\n    {status, value} when status === :ok or status === :conflict or status === :failed ->\n\nbecause it attempts to match on the result of:\n\n    Ipse.Extension.Collection.with_publication_deadline(plan.publish_before_ms, fn ->\n      storage(context, intent)\n    end)\n\nwhich has type:\n\n    dynamic({:error, :collection_deadline_fence_unavailable})\n\nwhere \"status\" was given the type:\n\n    # type: :conflict or :failed or :ok\n    # from: lib/ipse/extension/collection_call.ex:482\n    status in [:ok, :conflict, :failed]\n",
+       position: 482,
+       file: "/home/lexlapax/projects/lexlapax/ipse/lib/ipse/extension/collection_call.ex",
+       stacktrace: [
+         {Ipse.Extension.CollectionCall, :publish_authorized, 5,
+          [file: ~c"lib/ipse/extension/collection_call.ex", line: 482]}
+       ],
+       source: "/home/lexlapax/projects/lexlapax/ipse/lib/ipse/extension/collection_call.ex",
+       span: nil,
+       severity: :warning,
+       details: %{
+         typing_traces: [
+           %{
+             name: :status,
+             type: :variable,
+             context: nil,
+             traces: [
+               %{
+                 meta: [line: 482],
+                 file: "/home/lexlapax/projects/lexlapax/ipse/lib/ipse/extension/collection_call.ex",
+                 formatted_type: ":conflict or :failed or :ok",
+                 formatted_expr: "status in [:ok, :conflict, :failed]",
+                 formatted_hints: []
+               }
+             ]
+           }
+         ]
+       }
+     }
+   ]
+ }}

@@ -1,0 +1,13 @@
+MANAGEMENT_REVIEW_INPUT_OK: %{
+  manifest_entries: 33,
+  frozen_sources: 39,
+  physical_runtime_files: 698,
+  retained_beams: 5,
+  runtime_delta: ["./ipse/ebin/Elixir.Ipse.CLI.Knowledge.Management.beam",
+   "./ipse/ebin/Elixir.Ipse.Runner.ManagementTerminal.beam",
+   "./ipse/ebin/Elixir.Ipse.Runner.Review.beam",
+   "./ipse/ebin/Elixir.Ipse.Runner.beam",
+   "./ipse/ebin/Elixir.Ipse.Session.Resources.beam", "./ipse/priv/ipse-runner"],
+  final_instrumentation_exact: true,
+  production_test_markers_absent: true
+}

@@ -1,0 +1,8 @@
+Running ExUnit with seed: 46824, max_cases: 1
+Excluding tags: [:test]
+Including tags: [:packed_lexical_run, :lexical_recipe]
+
+..
+Finished in 41.4 seconds (0.00s async, 41.4s sync)
+
+Result: 2 passed, 6 excluded

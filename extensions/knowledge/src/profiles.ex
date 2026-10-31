@@ -3,16 +3,26 @@ defmodule IpseKnowledge.Profiles do
   @families ~w(stores search fetch retrieval embedding rerank extraction)
   @state ~w(host.actions host.actions.mixed host.state.read host.state.scan host.state.write host.state.bound)
   @mcp ~w(host.actions host.actions.mixed host.mcp host.results)
+  @collection ~w(host.actions host.actions.mixed host.collection.store)
   @invoke ~w(invoke.command invoke.tool invoke.result.pages)
 
   def capabilities(package, preset) do
     extra =
       case {package, preset} do
         {"knowledge", "native"} ->
-          ~w(host.actions host.actions.mixed host.sources host.collection.read host.collection.managed)
+          ~w(host.actions host.actions.mixed host.sources host.collection.read host.collection.managed host.context event.job)
 
         {"corpus", "state-lexical"} ->
           @state
+
+        {"corpus", "state-documents"} ->
+          @state ++ ~w(host.tools)
+
+        {"corpus", "collection-documents"} ->
+          @collection ++ ~w(host.tools)
+
+        {"corpus", "collection-dense"} ->
+          @collection ++ ~w(host.tools host.embedding host.results)
 
         {"corpus", "state-dense"} ->
           @state ++ ~w(host.embedding host.results)
@@ -25,6 +35,9 @@ defmodule IpseKnowledge.Profiles do
 
         {"corpus", "mcp-lexical"} ->
           @mcp
+
+        {"corpus", "mcp-documents"} ->
+          @mcp ++ ~w(host.tools)
 
         {"corpus", "mcp-dense"} ->
           @mcp ++ ~w(host.embedding)
@@ -117,7 +130,14 @@ defmodule IpseKnowledge.Profiles do
       end
 
     empty_unused = Enum.all?(@families -- allowed, &(o[&1] == %{}))
-    store_kind = if String.starts_with?(preset, "state-"), do: "state", else: "mcp_cas"
+
+    store_kind =
+      cond do
+        String.starts_with?(preset, "state-") -> "state"
+        String.starts_with?(preset, "collection-") -> "collection"
+        true -> "mcp_cas"
+      end
+
     all_stores = Enum.all?(o["stores"], fn {_, p} -> p["kind"] == store_kind end)
 
     required =
@@ -148,10 +168,16 @@ defmodule IpseKnowledge.Profiles do
     retrieval =
       package != "research" or Enum.all?(o["retrieval"], fn {_, p} -> p["kind"] == "bm25" end)
 
-    empty_unused and all_stores and required and authority and offline and retrieval
+    collection_retrieval =
+      preset not in ~w(collection-documents collection-dense) or
+        Enum.all?(o["retrieval"], fn {_, p} -> p["kind"] == "bm25" end)
+
+    empty_unused and all_stores and required and authority and offline and retrieval and
+      collection_retrieval
   end
 
   defp needs("stores", %{"kind" => "state"}), do: @state
+  defp needs("stores", %{"kind" => "collection"}), do: @collection
 
   defp needs(_, %{"kind" => kind}) when kind in ~w(mcp mcp_cas mcp_query),
     do: ~w(host.actions host.mcp host.results)
@@ -174,6 +200,11 @@ defmodule IpseKnowledge.Profiles do
     do:
       exact?(p, ~w(kind binding partition contract)) and name?(p["binding"]) and
         name?(p["partition"]) and p["contract"] in ~w(ipse-cas-v1 ipse-cas-v2 ipse-cas-v3)
+
+  defp profile?("stores", %{"kind" => "collection"} = p),
+    do:
+      exact?(p, ~w(kind scope partition)) and p["scope"] == "project" and
+        name?(p["partition"]) and byte_size(p["partition"]) <= 16
 
   defp profile?(f, %{"kind" => "provided"} = p) when f in ~w(search fetch),
     do: exact?(p, ~w(kind version)) and p["version"] == 1

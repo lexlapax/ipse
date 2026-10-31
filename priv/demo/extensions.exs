@@ -91,17 +91,20 @@ defmodule Ipse.ExtensionDemo do
       "fixture answer" = visible_text(text_handle)
       "fixture answer" = visible_text(event_handle)
 
-      receive do
-        {:extension_fixture_context, [system, reference, user]} ->
-          "system" = system["role"]
-          "user" = reference["role"]
-          true = String.starts_with?(reference["content"], "Untrusted reference context")
-          false = String.contains?(system["content"], "Fixture context")
-          true = String.starts_with?(user["content"], "original fixture task")
-          true = String.contains?(user["content"], "Fixture context")
-      after
-        1000 -> raise "Extension fixture context unavailable"
-      end
+      {user, selection} =
+        receive do
+          {:extension_fixture_context, [system, reference, user, selection]} ->
+            "system" = system["role"]
+            "user" = reference["role"]
+            true = String.starts_with?(reference["content"], "Untrusted reference context")
+            false = String.contains?(system["content"], "Fixture context")
+            true = String.starts_with?(user["content"], "original fixture task")
+            true = String.contains?(user["content"], "Fixture context")
+            true = Ipse.Session.Reference.reference?(selection)
+            {user, selection}
+        after
+          1000 -> raise "Extension fixture context unavailable"
+        end
 
       info = Ipse.Session.info(session)
       accounting = info.accounting
@@ -121,7 +124,7 @@ defmodule Ipse.ExtensionDemo do
       false = String.contains?(Jason.encode!(accounting), "synthetic-private-native")
       "<answer>fixture answer</answer>" = info.final
       {:ok, events} = Ipse.Journal.load(opts[:state_dir], info.id)
-      {:ok, [_user, assistant]} = Ipse.Session.restore_context(events)
+      {:ok, [^user, ^selection, assistant]} = Ipse.Session.restore_context(events)
       "fixture answer" = assistant["content"]
       %{"opaque" => "synthetic-private-native"} = assistant["provider_data"]
       projections = Enum.filter(events, &(&1["type"] == "extension_transform_result"))

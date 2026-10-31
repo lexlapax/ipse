@@ -1,5 +1,6 @@
 defmodule Ipse.Extension.TextTest do
   use ExUnit.Case, async: false
+  import Ipse.Test.ResumeAssertions
   alias Ipse.{Session, Journal}
   alias Ipse.Extension.{Config, Registry, Artifact, TextResources}
 
@@ -415,7 +416,7 @@ defmodule Ipse.Extension.TextTest do
     resumed = start(ctx, cfg, id)
     assert Session.info(resumed).phase == :idle
     assert File.read!(ctx.path) == old_frames
-    assert File.read!(Path.join(ctx.dir, id <> ".jsonl")) == before
+    assert_idle_resume_journal(Path.join(ctx.dir, id <> ".jsonl"), before, id)
     refute File.exists?(ctx.path <> ".init")
     :ok = Session.prompt(resumed, "new explicit event enrollment")
     assert_receive {:ipse, ^resumed, {:done, :ok}}, 5_000
@@ -442,7 +443,7 @@ defmodule Ipse.Extension.TextTest do
     assert Session.info(resumed).phase == :idle
     refute File.exists?(ctx.path <> ".init")
     assert File.read!(ctx.path) == before_frames
-    assert File.read!(Path.join(ctx.dir, id <> ".jsonl")) == before
+    assert_idle_resume_journal(Path.join(ctx.dir, id <> ".jsonl"), before, id)
     assert :ok = Session.prompt(resumed, "explicit new prompt")
     assert_receive {:ipse, ^resumed, {:done, :ok}}, 5000
     await(fn -> length(Enum.filter(frames(ctx), &(&1["frame"]["kind"] == "end"))) == 2 end)

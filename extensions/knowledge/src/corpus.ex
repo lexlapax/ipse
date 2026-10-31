@@ -1,9 +1,17 @@
 defmodule IpseKnowledge.Corpus do
   @behaviour Ipse.Extension
-  alias IpseKnowledge.{Adapters, Evidence, Profiles, Store}
+  alias IpseKnowledge.{Adapters, Documents, Evidence, Profiles, Store}
+  alias IpseKnowledge.Store.Collection, as: CollectionStore
   @preset "state-lexical"
+  # Leave room in the 16 KiB SDK argument envelope for a staged-write checkpoint.
+  @fact_input_bytes 12_000
   @source_actions %{
     "put" => :put,
+    "put_document" => :put,
+    "read_document" => :put,
+    "continue_document" => :append,
+    "continue_collection_document" => :append,
+    "continue_collection_source" => :put,
     "open" => :open,
     "append" => :append,
     "publish" => :publish,
@@ -22,12 +30,14 @@ defmodule IpseKnowledge.Corpus do
       "exports" => %{
         "version" => 1,
         "services" => [],
-        "commands" => [
-          entry("source", "Explicit source lifecycle", source_schema()),
-          entry("query", "Read current cited evidence", query_schema()),
-          entry("index", "Explicit embedding projection", index_schema())
-        ],
-        "tools" => [entry("query", "Read current cited evidence", query_schema())]
+        "commands" =>
+          [
+            entry("source", "Explicit source lifecycle", source_schema()),
+            entry("query", "Read current cited evidence", query_schema()),
+            entry("index", "Explicit embedding projection", index_schema())
+          ] ++ collection_entries(),
+        "tools" =>
+          [entry("query", "Read current cited evidence", query_schema())] ++ collection_entries()
       }
     }
   end
@@ -45,6 +55,9 @@ defmodule IpseKnowledge.Corpus do
   def handle("invoke.command", payload, state), do: invoke(payload, state)
   def handle("invoke.tool", payload, state), do: invoke(payload, state)
 
+  def handle("host.actions", payload, %{phase: phase} = state)
+      when phase in [:document_read, :document_check], do: document_read(payload, state)
+
   def handle(
         "host.actions",
         %{"outcome" => outcome},
@@ -52,7 +65,12 @@ defmodule IpseKnowledge.Corpus do
       )
       when phase != :idle do
     result =
-      if pending == :store, do: Store.resume(cont, outcome), else: Adapters.resume(cont, outcome)
+      case pending do
+        :store -> Store.resume(cont, outcome)
+        :collection -> CollectionStore.resume(cont, outcome)
+        :producer -> IpseKnowledge.Store.Collection.Producer.resume(cont, outcome)
+        _ -> Adapters.resume(cont, outcome)
+      end
 
     advance(result, state)
   end
@@ -62,6 +80,22 @@ defmodule IpseKnowledge.Corpus do
   defp invoke(_payload, %{invalid: code} = state), do: finish(state, refused(code))
   defp invoke(%{"id" => "source", "arguments" => args}, state), do: source(args, state)
   defp invoke(%{"id" => "query", "arguments" => args}, state), do: query(args, state)
+
+  defp invoke(%{"id" => "query_selected", "arguments" => args}, state),
+    do: collection_query(args, state)
+
+  defp invoke(%{"id" => "lexical_index", "arguments" => args}, state),
+    do: collection_index(args, state)
+
+  defp invoke(%{"id" => "projection_selected", "arguments" => args}, state),
+    do: collection_projection(args, state)
+
+  defp invoke(%{"id" => "generation_job", "arguments" => args}, state),
+    do: collection_job(args, state)
+
+  defp invoke(%{"id" => "generation_produce", "arguments" => args}, state),
+    do: collection_produce(args, state)
+
   defp invoke(%{"id" => "index", "arguments" => args}, state), do: index(args, state)
   defp invoke(_, state), do: finish(state, refused(:invalid_invocation))
 
@@ -69,18 +103,678 @@ defmodule IpseKnowledge.Corpus do
     with true <- exact?(outer, ~w(store action args)),
          {:ok, profile} <- Profiles.lookup(state.resolved, "stores", store),
          {:ok, operation} <- Map.fetch(@source_actions, action),
-         true <- valid_source_args?(action, source_args) do
-      advance(Store.start(store, profile, operation, source_args), %{
-        state
-        | phase: :source,
-          ctx: %{store: store}
-      })
+         true <- valid_source_args?(action, source_args),
+         true <-
+           action not in ~w(continue_collection_document continue_collection_source) or
+             profile["kind"] == "collection",
+         true <- profile["kind"] != "collection" or action != "continue_document" do
+      cond do
+        action in ~w(read_document continue_document continue_collection_document) ->
+          acquire_document(store, profile, source_args, action, state)
+
+        action == "continue_collection_source" ->
+          input_action = source_args["input_action"]
+          input_args = source_args["input_args"]
+
+          if input_action in ~w(put put_document) and valid_source_args?(input_action, input_args),
+            do:
+              collection_provided(
+                state,
+                store,
+                profile,
+                input_action,
+                input_args,
+                source_args["collection_state"]
+              ),
+            else: finish(state, refused(:invalid_collection_continuation))
+
+        profile["kind"] == "collection" ->
+          if action in ~w(put put_document),
+            do: collection_provided(state, store, profile, action, source_args, nil),
+            else: finish(state, refused(:collection_lifecycle_unavailable))
+
+        true ->
+          case document_args(action, source_args) do
+            {:ok, source_args} ->
+              advance(Store.start(store, profile, operation, source_args), %{
+                state
+                | phase: :source,
+                  ctx: %{store: store}
+              })
+
+            {:error, code} ->
+              finish(state, refused(code))
+          end
+      end
     else
       _ -> finish(state, refused(:invalid_source_command))
     end
   end
 
   defp source(_, state), do: finish(state, refused(:invalid_source_command))
+
+  defp document_args(action, args), do: document_args(action, args, 1)
+
+  defp document_args("put_document", args, chunking) do
+    with true <- text?(args["bytes_base64"], 8192) and text?(args["filename"], 256),
+         {:ok, bytes} <- Base.decode64(args["bytes_base64"]),
+         {:ok, document} <- Documents.extract(bytes, args["filename"]),
+         {:ok, payload} <-
+           Documents.source_payload(document, if(chunking == 2, do: 65_536, else: 8192), chunking) do
+      {:ok, Map.merge(Map.drop(args, ~w(filename bytes_base64)), payload)}
+    else
+      {:error, code} when is_atom(code) -> {:error, code}
+      _ -> {:error, :document_source_refused}
+    end
+  end
+
+  defp document_args(_, args, _), do: {:ok, args}
+
+  defp acquire_document(store, profile, args, action, state) do
+    with true <-
+           state.resolved["preset"] in ~w(state-documents mcp-documents collection-documents collection-dense),
+         true <-
+           workspace_path?(args["path"]) and
+             String.downcase(Path.extname(args["path"])) == ".docx",
+         true <-
+           Evidence.sha256?(args["expected_sha256"]) or
+             (action == "read_document" and is_nil(args["expected_sha256"]) and
+                args["expected_revision"] == 0 and
+                args["generation"] == 1) do
+      call(document_request(args["path"], args["expected_sha256"]), %{
+        state
+        | phase: :document_read,
+          ctx: %{
+            store: store,
+            profile: profile,
+            args: args,
+            action: action,
+            pieces: [],
+            offset: 0,
+            sha256: args["expected_sha256"],
+            total: nil,
+            effects_used: 1
+          }
+      })
+    else
+      _ -> finish(state, refused(:document_acquisition_refused))
+    end
+  end
+
+  defp document_request(path, expected, offset \\ 0) do
+    arguments = %{
+      "path" => path,
+      "encoding" => "base64",
+      "max_bytes" => 4096,
+      "byte_offset" => offset,
+      "file_max_bytes" => 32768
+    }
+
+    arguments = if expected, do: Map.put(arguments, "expected_sha256", expected), else: arguments
+    %{"op" => "tool.call", "name" => "read", "timeout_ms" => 5000, "arguments" => arguments}
+  end
+
+  defp document_read(
+         %{
+           "outcome" => %{"status" => "ok", "value" => %{"text" => text}},
+           "operation_id" => operation
+         },
+         state
+       ) do
+    with true <- is_binary(operation) and Regex.match?(~r/\A[0-9a-f]{32}\z/, operation),
+         true <- text?(text, 8192),
+         value when is_map(value) <- JSON.decode!(text),
+         true <-
+           exact?(value, ~w(version encoding path byte_count sha256 data offset page_sha256 next)),
+         true <-
+           value["version"] === 2 and value["encoding"] == "base64",
+         true <- value["path"] == state.ctx.args["path"],
+         {:ok, bytes} <- Base.decode64(value["data"]),
+         count when is_integer(count) and count in 1..32768 <- value["byte_count"],
+         offset = if(state.phase == :document_check, do: 0, else: state.ctx.offset),
+         true <- value["offset"] === offset and offset < count,
+         true <- byte_size(bytes) == min(4096, count - offset),
+         true <-
+           value["page_sha256"] == Evidence.sha256(bytes) and Evidence.sha256?(value["sha256"]),
+         finish = offset + byte_size(bytes),
+         true <- value["next"] === if(finish < count, do: finish, else: nil),
+         true <-
+           is_nil(state.ctx.sha256) or state.ctx.sha256 == value["sha256"],
+         true <- is_nil(state.ctx.total) or state.ctx.total === count do
+      case state.phase do
+        :document_read ->
+          ctx = %{
+            state.ctx
+            | pieces: [bytes | state.ctx.pieces],
+              offset: finish,
+              sha256: value["sha256"],
+              total: count,
+              effects_used: state.ctx.effects_used + 1
+          }
+
+          if value["next"] do
+            call(document_request(value["path"], value["sha256"], finish), %{state | ctx: ctx})
+          else
+            complete_document_read(%{state | ctx: ctx})
+          end
+
+        :document_check ->
+          if bytes == state.ctx.first_page do
+            receipt =
+              state.ctx.payload["document"]
+              |> Map.put("version", 2)
+              |> Map.put("acquisition", %{
+                "kind" => "workspace.read",
+                "path" => value["path"],
+                "operation_id" => operation
+              })
+
+            store_document(state, receipt)
+          else
+            finish(state, refused(:document_source_changed))
+          end
+      end
+    else
+      _ -> finish(state, refused(:document_acquisition_refused))
+    end
+  rescue
+    _ -> finish(state, refused(:document_acquisition_refused))
+  end
+
+  defp document_read(_, state), do: finish(state, refused(:document_acquisition_refused))
+
+  defp complete_document_read(state) do
+    bytes = state.ctx.pieces |> Enum.reverse() |> IO.iodata_to_binary()
+    chunking = if state.ctx.profile["kind"] == "collection", do: 2, else: 1
+
+    with true <-
+           byte_size(bytes) == state.ctx.total and Evidence.sha256(bytes) == state.ctx.sha256,
+         {:ok, document} <- Documents.extract(bytes, Path.basename(state.ctx.args["path"])),
+         {:ok, payload} <- Documents.source_payload(document, 65_536, chunking),
+         true <-
+           Evidence.valid_document?(
+             payload["document"],
+             payload["text"],
+             if(chunking == 2, do: Evidence.collection_chunking())
+           ) do
+      ctx =
+        state.ctx
+        |> Map.drop([:pieces])
+        |> Map.merge(%{
+          payload: payload,
+          first_page: binary_part(bytes, 0, min(4096, byte_size(bytes)))
+        })
+
+      call(document_request(state.ctx.args["path"], state.ctx.sha256), %{
+        state
+        | phase: :document_check,
+          ctx: ctx
+      })
+    else
+      {:error, code} -> finish(state, refused(code))
+      _ -> finish(state, refused(:document_source_changed))
+    end
+  end
+
+  defp store_document(state, receipt) do
+    if state.ctx.profile["kind"] == "collection",
+      do: store_collection_document(state, receipt),
+      else: store_legacy_document(state, receipt)
+  end
+
+  defp store_legacy_document(state, receipt) do
+    ctx = state.ctx
+
+    document = %{
+      "document" => receipt,
+      "document_text" => ctx.payload["text"],
+      "effects_used" => ctx.effects_used
+    }
+
+    {operation, args} =
+      if ctx.action == "continue_document" do
+        offset = ctx.args["offset"]
+        text = ctx.payload["text"]
+
+        if is_integer(offset) and offset in 0..byte_size(text) do
+          common =
+            Map.take(ctx.args, ~w(source_id draft_id expected_revision metadata_offset))
+            |> Map.merge(document)
+
+          if offset == byte_size(text),
+            do: {:publish, common},
+            else:
+              {:append,
+               Map.merge(common, %{
+                 "offset" => offset,
+                 "text" => utf8_part(binary_part(text, offset, byte_size(text) - offset), 4096)
+               })}
+        else
+          {:append, %{}}
+        end
+      else
+        common = ctx.args |> Map.drop(~w(path expected_sha256)) |> Map.merge(document)
+
+        if byte_size(ctx.payload["text"]) <= 8192 and
+             Evidence.document_storage_receipt!(receipt)["version"] != 4 do
+          {:put, Map.delete(common, "document_text") |> Map.put("text", ctx.payload["text"])}
+        else
+          {:open,
+           Map.merge(common, %{
+             "byte_count" => byte_size(ctx.payload["text"]),
+             "content_sha256" => Evidence.sha256(ctx.payload["text"])
+           })}
+        end
+      end
+
+    advance(Store.start(ctx.store, ctx.profile, operation, args), %{
+      state
+      | phase: :source,
+        ctx: %{store: ctx.store, document_path: ctx.args["path"], document_sha256: ctx.sha256}
+    })
+  end
+
+  defp collection_provided(state, store, profile, action, original, checkpoint) do
+    with {:ok, args} <- document_args(action, original, 2) do
+      attrs = collection_attrs(store, profile, args, args["text"], args["document"])
+
+      advance(
+        CollectionStore.start(profile, :put, %{
+          "source" => attrs,
+          "expected_revision" => args["expected_revision"],
+          "continuation" => checkpoint
+        }),
+        %{
+          state
+          | phase: :collection_source,
+            ctx: %{store: store, input_action: action, input_args: original}
+        }
+      )
+    else
+      {:error, code} -> finish(state, refused(code))
+    end
+  end
+
+  defp collection_attrs(store, profile, args, text, document) do
+    receipt = if document, do: Evidence.document_storage_receipt!(document)
+
+    attrs =
+      args
+      |> Map.take(~w(source_id generation title uri observed_at_ms event_at_ms expires_at_ms))
+      |> Map.merge(%{
+        "partition" => profile["partition"],
+        "text" => text,
+        "origin" => %{
+          "kind" => "provided",
+          "store_profile" => store,
+          "partition_or_scope" => profile["partition"],
+          "receipt" => receipt,
+          "historical" => false
+        }
+      })
+
+    if is_map(receipt) and receipt["version"] == 4,
+      do: Map.put(attrs, "document", document),
+      else: attrs
+  end
+
+  defp store_collection_document(state, receipt) do
+    ctx = state.ctx
+    opening = ctx.args["opening_acquisition"] || receipt["acquisition"]
+
+    with true <-
+           is_map(opening) and opening["kind"] == "workspace.read" and
+             opening["path"] == receipt["acquisition"]["path"] and
+             is_binary(opening["operation_id"]) and
+             Regex.match?(~r/\A[0-9a-f]{32}\z/, opening["operation_id"]) do
+      receipt = Map.put(receipt, "acquisition", opening)
+      attrs = collection_attrs(ctx.store, ctx.profile, ctx.args, ctx.payload["text"], receipt)
+
+      original =
+        ctx.args
+        |> Map.drop(~w(collection_state opening_acquisition))
+        |> Map.put("expected_sha256", ctx.sha256)
+
+      advance(
+        CollectionStore.start(ctx.profile, :put, %{
+          "source" => attrs,
+          "expected_revision" => ctx.args["expected_revision"],
+          "continuation" => ctx.args["collection_state"],
+          "effects_used" => ctx.effects_used
+        }),
+        %{
+          state
+          | phase: :collection_source,
+            ctx: %{store: ctx.store, document_args: original, opening_acquisition: opening}
+        }
+      )
+    else
+      _ -> finish(state, refused(:document_acquisition_refused))
+    end
+  end
+
+  defp collection_query(args, state) do
+    with true <- state.resolved["preset"] in ~w(collection-documents collection-dense),
+         true <- exact?(args, ~w(store retrieval query top_k as_of_ms source_ids)),
+         {:ok, profile} <- Profiles.lookup(state.resolved, "stores", args["store"]),
+         {:ok, %{"kind" => "bm25"}} <-
+           Profiles.lookup(state.resolved, "retrieval", args["retrieval"]),
+         true <- text?(args["query"], 1024) and args["top_k"] in 1..10,
+         at = args["as_of_ms"] || System.system_time(:millisecond),
+         true <- Evidence.safe_uint?(at) do
+      advance(
+        CollectionStore.start(profile, :selected, %{
+          "source_ids" => args["source_ids"],
+          "as_of_ms" => at
+        }),
+        %{state | phase: :collection_query, ctx: %{args: args, as_of_ms: at}}
+      )
+    else
+      _ -> finish(state, refused(:invalid_collection_query))
+    end
+  end
+
+  defp collection_job(args, state) do
+    with true <- state.resolved["preset"] in ~w(collection-documents collection-dense),
+         true <-
+           exact?(
+             Map.drop(args, ~w(response guard_sources)),
+             ~w(store action continuation vector_selection fact_selection)
+           ),
+         true <- Map.get(args, "response", "full") in ~w(full compact_v1),
+         true <- args["action"] in ~w(begin inspect abort finalize finalize_paged),
+         true <- Map.get(args, "guard_sources", false) in [true, false],
+         true <-
+           Map.get(args, "guard_sources", false) === false or
+             (state.resolved["preset"] == "collection-dense" and
+                args["action"] in ~w(finalize finalize_paged)),
+         {:ok, %{"kind" => "collection"} = profile} <-
+           Profiles.lookup(state.resolved, "stores", args["store"]) do
+      advance(
+        CollectionStore.start(
+          profile,
+          if(args["guard_sources"] === true,
+            do: :guarded_generation_finalize,
+            else: :generation_job
+          ),
+          args |> Map.drop(~w(store response guard_sources)) |> Map.put("group", nil)
+        ),
+        %{state | phase: :collection_job, ctx: %{args: args}}
+      )
+    else
+      _ -> finish(state, refused(:invalid_generation_job_request))
+    end
+  end
+
+  defp collection_produce(args, state) do
+    case args["action"] do
+      "facts" -> collection_fact_stage(args, state)
+      "facts_page" -> collection_fact_page(args, state)
+      "facts_commit" -> collection_fact_commit(args, state)
+      "facts_slots" -> collection_fact_slots(args, state)
+      "append" -> collection_produce_append(args, state)
+      _ -> collection_produce_vectors(args, state)
+    end
+  end
+
+  defp collection_produce_append(args, state) do
+    with true <- state.resolved["preset"] == "collection-dense",
+         true <-
+           exact?(
+             args,
+             ~w(store version action embedding job_id job_revision vector_selection fact_selection vector_cursor previous_ready continuation)
+           ),
+         true <- args["version"] === 2 and args["action"] === "append",
+         true <- is_nil(args["continuation"]) or is_map(args["continuation"]),
+         {:ok, %{"kind" => "collection"} = profile} <-
+           Profiles.lookup(state.resolved, "stores", args["store"]) do
+      producer_args = args |> Map.drop(~w(store continuation)) |> Map.put("action", "page")
+
+      advance(
+        IpseKnowledge.Store.Collection.Producer.Progress.append_selected(
+          state.resolved,
+          profile,
+          producer_args,
+          args["continuation"]
+        ),
+        %{state | phase: :collection_producer_append, ctx: %{args: args}}
+      )
+    else
+      _ -> finish(state, refused(:invalid_shared_producer_request))
+    end
+  end
+
+  defp collection_produce_vectors(args, state) do
+    with true <- state.resolved["preset"] == "collection-dense",
+         true <-
+           (args["action"] == "selection" and exact?(args, ~w(store version action embedding))) or
+             (args["version"] === 1 and args["action"] in ~w(page inspect) and
+                exact?(
+                  args,
+                  ~w(store version action embedding job_id job_revision vector_selection fact_selection)
+                )) or
+             (args["version"] === 2 and args["action"] in ~w(page inspect) and
+                exact?(
+                  args,
+                  ~w(store version action embedding job_id job_revision vector_selection fact_selection vector_cursor previous_ready)
+                )),
+         true <-
+           (args["version"] === 1 and args["action"] in ~w(page inspect selection)) or
+             (args["version"] === 2 and args["action"] in ~w(page inspect)),
+         {:ok, %{"kind" => "collection"} = profile} <-
+           Profiles.lookup(state.resolved, "stores", args["store"]) do
+      case args["action"] do
+        "page" ->
+          advance(
+            IpseKnowledge.Store.Collection.Producer.start(
+              state.resolved,
+              profile,
+              Map.delete(args, "store")
+            ),
+            %{state | phase: :collection_producer, ctx: %{args: args}}
+          )
+
+        "selection" ->
+          advance(
+            IpseKnowledge.Store.Collection.Producer.selection(state.resolved, args["embedding"]),
+            %{state | phase: :collection_producer, ctx: %{args: args}}
+          )
+
+        "inspect" ->
+          advance(
+            IpseKnowledge.Store.Collection.Producer.start(
+              state.resolved,
+              profile,
+              Map.delete(args, "store")
+            ),
+            %{state | phase: :collection_producer, ctx: %{args: args}}
+          )
+      end
+    else
+      _ -> finish(state, refused(:invalid_shared_producer_request))
+    end
+  end
+
+  defp collection_fact_stage(args, state) do
+    with true <- state.resolved["preset"] == "collection-dense",
+         true <-
+           exact?(args, ~w(store version action source_id expected_revision facts continuation)),
+         true <- args["version"] === 2 and args["action"] === "facts",
+         true <- text?(args["source_id"], 256) and Evidence.safe_uint?(args["expected_revision"]),
+         true <- is_list(args["facts"]) and length(args["facts"]) in 0..32,
+         true <- is_nil(args["continuation"]) or is_map(args["continuation"]),
+         true <- byte_size(JSON.encode!(Map.put(args, "continuation", nil))) <= @fact_input_bytes,
+         {:ok, %{"kind" => "collection"} = profile} <-
+           Profiles.lookup(state.resolved, "stores", args["store"]) do
+      advance(
+        CollectionStore.start(profile, :selected, %{
+          "source_ids" => [args["source_id"]],
+          "as_of_ms" => System.system_time(:millisecond)
+        }),
+        %{state | phase: :collection_fact_source, ctx: %{args: args, profile: profile}}
+      )
+    else
+      _ -> finish(state, refused(:invalid_explicit_fact_stage))
+    end
+  end
+
+  defp collection_fact_page(args, state) do
+    with true <- state.resolved["preset"] == "collection-dense",
+         true <-
+           exact?(
+             args,
+             ~w(store version action source_id draft_id manifest page expected_slot_revision)
+           ),
+         true <- args["version"] === 2 and args["action"] === "facts_page",
+         true <-
+           text?(args["source_id"], 256) and is_binary(args["draft_id"]) and
+             Regex.match?(~r/\A[0-9a-f]{32}\z/, args["draft_id"]),
+         true <- Evidence.safe_uint?(args["expected_slot_revision"]),
+         true <- is_map(args["manifest"]) and is_map(args["page"]),
+         {:ok, %{"kind" => "collection"} = profile} <-
+           Profiles.lookup(state.resolved, "stores", args["store"]) do
+      advance(
+        CollectionStore.start(profile, :selected, %{
+          "source_ids" => [args["source_id"]],
+          "as_of_ms" => System.system_time(:millisecond)
+        }),
+        %{state | phase: :fact_input_source, ctx: %{args: args, profile: profile}}
+      )
+    else
+      _ -> finish(state, refused(:invalid_fact_input_page))
+    end
+  end
+
+  defp collection_fact_commit(args, state) do
+    with true <- state.resolved["preset"] == "collection-dense",
+         true <-
+           exact?(
+             args,
+             ~w(store version action source_id draft_id manifest expected_revision continuation)
+           ),
+         true <- args["version"] === 2 and args["action"] === "facts_commit",
+         true <-
+           text?(args["source_id"], 256) and is_binary(args["draft_id"]) and
+             Regex.match?(~r/\A[0-9a-f]{32}\z/, args["draft_id"]),
+         true <- Evidence.safe_uint?(args["expected_revision"]),
+         true <- is_nil(args["continuation"]) or is_map(args["continuation"]),
+         true <-
+           is_map(args["manifest"]) and is_list(args["manifest"]["page_sha256"]) and
+             length(args["manifest"]["page_sha256"]) in 1..8,
+         {:ok, %{"kind" => "collection"} = profile} <-
+           Profiles.lookup(state.resolved, "stores", args["store"]) do
+      advance(
+        CollectionStore.start(profile, :selected, %{
+          "source_ids" => [args["source_id"]],
+          "as_of_ms" => System.system_time(:millisecond)
+        }),
+        %{state | phase: :fact_collect_source, ctx: %{args: args, profile: profile}}
+      )
+    else
+      _ -> finish(state, refused(:invalid_fact_input_set))
+    end
+  end
+
+  defp collection_fact_slots(args, state) do
+    with true <- state.resolved["preset"] == "collection-dense",
+         true <- exact?(args, ~w(store version action)),
+         true <- args["version"] === 2 and args["action"] === "facts_slots",
+         {:ok, %{"kind" => "collection"} = profile} <-
+           Profiles.lookup(state.resolved, "stores", args["store"]) do
+      ctx = %{profile: profile, ordinal: 0, generation: nil, slots: []}
+
+      advance(
+        CollectionStore.start(profile, :value_read, %{"key" => "catalog." <> profile["partition"]}),
+        %{state | phase: :fact_slots_boot, ctx: ctx}
+      )
+    else
+      _ -> finish(state, refused(:invalid_fact_input_slots))
+    end
+  end
+
+  defp fact_collect_next(state) do
+    ctx = state.ctx
+
+    if ctx.ordinal < length(ctx.args["manifest"]["page_sha256"]) do
+      key = "factdraft.#{ctx.profile["partition"]}.#{ctx.ordinal}"
+
+      advance(
+        CollectionStore.start(ctx.profile, :value_read_at, %{
+          "key" => key,
+          "generation" => ctx.generation
+        }),
+        %{state | phase: :fact_collect_slot}
+      )
+    else
+      case IpseKnowledge.Store.Collection.Projection.fact_input_rows(
+             ctx.source,
+             ctx.pages,
+             ctx.args["manifest"]
+           ) do
+        {:ok, %{facts: facts}} ->
+          advance(
+            CollectionStore.start(ctx.profile, :fact_store, %{
+              "source_id" => ctx.args["source_id"],
+              "selection" => %{"kind" => "explicit", "profile" => nil, "version" => 1},
+              "facts" => facts,
+              "expected_revision" => ctx.args["expected_revision"],
+              "as_of_ms" => System.system_time(:millisecond),
+              "continuation" => ctx.args["continuation"]
+            }),
+            %{state | phase: :collection_fact_stage}
+          )
+
+        _ ->
+          finish(state, refused(:invalid_fact_input_set))
+      end
+    end
+  end
+
+  defp collection_projection(args, state) do
+    with true <- state.resolved["preset"] in ~w(collection-documents collection-dense),
+         true <- exact?(args, ~w(store source_ids vector_selection fact_selection as_of_ms top_k)),
+         {:ok, %{"kind" => "collection"} = profile} <-
+           Profiles.lookup(state.resolved, "stores", args["store"]),
+         true <- args["top_k"] in 1..8,
+         at = args["as_of_ms"] || System.system_time(:millisecond),
+         true <- Evidence.safe_uint?(at) do
+      advance(
+        CollectionStore.start(
+          profile,
+          :generation_selected,
+          args |> Map.drop(~w(store top_k)) |> Map.put("as_of_ms", at)
+        ),
+        %{state | phase: :collection_projection, ctx: %{args: args, as_of_ms: at}}
+      )
+    else
+      _ -> finish(state, refused(:invalid_shared_selection))
+    end
+  end
+
+  defp collection_index(args, state) do
+    with true <- state.resolved["preset"] in ~w(collection-documents collection-dense),
+         true <- exact?(args, ~w(store action continuation)),
+         {:ok, %{"kind" => "collection"} = profile} <-
+           Profiles.lookup(state.resolved, "stores", args["store"]) do
+      advance(
+        CollectionStore.start(profile, :lexical_build, Map.drop(args, ["store"])),
+        %{state | phase: :collection_index, ctx: %{args: args}}
+      )
+    else
+      _ -> finish(state, refused(:invalid_lexical_index))
+    end
+  end
+
+  defp utf8_part(text, limit) do
+    part = binary_part(text, 0, min(byte_size(text), limit))
+    if String.valid?(part), do: part, else: utf8_part(text, byte_size(part) - 1)
+  end
+
+  defp workspace_path?(path) do
+    text?(path, 1024) and Path.type(path) == :relative and
+      not String.contains?(path, ["\\", <<0>>]) and
+      Enum.all?(String.split(path, "/"), &(&1 not in ["", ".", ".."]))
+  end
 
   defp query(args, state) do
     with true <- exact?(args, ~w(store retrieval rerank query top_k as_of_ms)),
@@ -106,22 +800,38 @@ defmodule IpseKnowledge.Corpus do
         as_of_ms: at
       }
 
-      if retrieval["kind"] == "mcp_query" do
-        advance(
-          Adapters.start(state.resolved, :query_refs, %{
-            "profile" => args["retrieval"],
-            "query" => args["query"],
-            "top_k" => args["top_k"],
-            "as_of_ms" => at
-          }),
-          %{state | phase: :query_refs, ctx: ctx}
-        )
-      else
-        advance(Store.start(args["store"], store_profile, :snapshot, %{}), %{
-          state
-          | phase: :query_snapshot,
-            ctx: ctx
-        })
+      cond do
+        store_profile["kind"] == "collection" ->
+          if retrieval["kind"] == "bm25" and is_nil(rerank_profile) do
+            advance(
+              CollectionStore.start(store_profile, :lexical_query, %{
+                "query" => args["query"],
+                "top_k" => args["top_k"],
+                "as_of_ms" => at
+              }),
+              %{state | phase: :collection_namespace, ctx: ctx}
+            )
+          else
+            finish(state, refused(:invalid_collection_query))
+          end
+
+        retrieval["kind"] == "mcp_query" ->
+          advance(
+            Adapters.start(state.resolved, :query_refs, %{
+              "profile" => args["retrieval"],
+              "query" => args["query"],
+              "top_k" => args["top_k"],
+              "as_of_ms" => at
+            }),
+            %{state | phase: :query_refs, ctx: ctx}
+          )
+
+        true ->
+          advance(Store.start(args["store"], store_profile, :snapshot, %{}), %{
+            state
+            | phase: :query_snapshot,
+              ctx: ctx
+          })
       end
     else
       _ -> finish(state, refused(:invalid_query))
@@ -179,12 +889,39 @@ defmodule IpseKnowledge.Corpus do
 
   defp advance({:call, request, cont}, state) do
     pending =
-      if String.starts_with?(Atom.to_string(state.phase), "index_embed") or
-           state.phase in [:query_refs, :query_embed, :query_rerank] do
-        :adapter
+      if state.phase in [
+           :collection_source,
+           :collection_query,
+           :collection_projection,
+           :collection_job,
+           :collection_index,
+           :collection_namespace,
+           :collection_fact_source,
+           :collection_fact_stage,
+           :fact_input_source,
+           :fact_input_catalog,
+           :fact_input_slot,
+           :fact_input_write,
+           :fact_collect_source,
+           :fact_collect_catalog,
+           :fact_collect_slot,
+           :fact_slots_boot,
+           :fact_slots
+         ] do
+        :collection
       else
-        :store
+        if String.starts_with?(Atom.to_string(state.phase), "index_embed") or
+             state.phase in [:query_refs, :query_embed, :query_rerank] do
+          :adapter
+        else
+          :store
+        end
       end
+
+    pending =
+      if state.phase in [:collection_producer, :collection_producer_append],
+        do: :producer,
+        else: pending
 
     call(request, %{state | cont: cont, pending: pending})
   end
@@ -192,19 +929,492 @@ defmodule IpseKnowledge.Corpus do
   defp advance({:stop, :unknown_effect}, state), do: finish(state, refused(:unknown_effect))
   defp advance({:done, {:error, code, _}}, state), do: finish(state, refused(code))
 
-  defp advance({:done, {:ok, value}}, %{phase: :source} = state),
+  defp advance(
+         {:done, {:ok, %{"native_generation" => generation}}},
+         %{phase: :fact_slots_boot} = state
+       ) do
+    ctx = %{state.ctx | generation: generation}
+    key = "factdraft.#{ctx.profile["partition"]}.0"
+
+    advance(
+      CollectionStore.start(ctx.profile, :value_stat, %{"key" => key, "generation" => generation}),
+      %{state | phase: :fact_slots, ctx: ctx}
+    )
+  end
+
+  defp advance(
+         {:done, {:ok, %{"record" => row, "generation" => generation}}},
+         %{phase: :fact_slots} = state
+       ) do
+    ctx = state.ctx
+
+    if is_nil(ctx.generation) or generation === ctx.generation do
+      revision = if is_nil(row), do: 0, else: row["revision"]
+      slot = %{"ordinal" => ctx.ordinal, "revision" => revision, "occupied" => not is_nil(row)}
+      ctx = %{ctx | generation: generation, slots: ctx.slots ++ [slot], ordinal: ctx.ordinal + 1}
+
+      if ctx.ordinal == 8 do
+        finish(state, output("ok", [], [], [], %{"slots" => ctx.slots}, nil))
+      else
+        key = "factdraft.#{ctx.profile["partition"]}.#{ctx.ordinal}"
+
+        advance(
+          CollectionStore.start(ctx.profile, :value_stat, %{
+            "key" => key,
+            "generation" => generation
+          }),
+          %{state | ctx: ctx}
+        )
+      end
+    else
+      finish(state, refused(:fact_input_changed))
+    end
+  end
+
+  defp advance(
+         {:done, {:ok, %{"sources" => [source], "native_generation" => generation}}},
+         %{phase: :fact_collect_source} = state
+       ) do
+    ctx = Map.merge(state.ctx, %{source: source, generation: generation})
+
+    advance(
+      CollectionStore.start(ctx.profile, :value_read_at, %{
+        "key" => "catalog." <> ctx.profile["partition"],
+        "generation" => generation
+      }),
+      %{state | phase: :fact_collect_catalog, ctx: ctx}
+    )
+  end
+
+  defp advance(
+         {:done, {:ok, %{"record" => catalog, "native_generation" => generation}}},
+         %{phase: :fact_collect_catalog} = state
+       )
+       when is_map(catalog) do
+    if generation === state.ctx.generation do
+      fact_collect_next(%{
+        state
+        | ctx: Map.merge(state.ctx, %{catalog: catalog, pages: [], ordinal: 0})
+      })
+    else
+      finish(state, refused(:fact_input_changed))
+    end
+  end
+
+  defp advance(
+         {:done, {:ok, %{"record" => row, "native_generation" => generation}}},
+         %{phase: :fact_collect_slot} = state
+       )
+       when is_map(row) do
+    ctx = state.ctx
+    slot = row["value"]
+
+    if generation === ctx.generation and
+         exact?(slot, ~w(version kind draft_id source_key catalog_sha256 manifest page)) and
+         slot["version"] === 1 and slot["kind"] === "explicit_fact_input_slot" and
+         slot["draft_id"] === ctx.args["draft_id"] and
+         slot["source_key"] === ctx.source["source_key"] and
+         slot["catalog_sha256"] === ctx.catalog["sha256"] and
+         slot["manifest"] === ctx.args["manifest"] and
+         is_map(slot["page"]) and slot["page"]["ordinal"] === ctx.ordinal do
+      fact_collect_next(%{
+        state
+        | ctx: %{ctx | pages: ctx.pages ++ [slot["page"]], ordinal: ctx.ordinal + 1}
+      })
+    else
+      finish(state, refused(:fact_input_changed))
+    end
+  end
+
+  defp advance(
+         {:done, {:ok, %{"sources" => [source], "native_generation" => generation}}},
+         %{phase: :fact_input_source} = state
+       ) do
+    args = state.ctx.args
+
+    if IpseKnowledge.Store.Collection.Projection.fact_input_page?(
+         source,
+         args["page"],
+         args["manifest"]
+       ) do
+      ctx = Map.merge(state.ctx, %{source: source, generation: generation})
+
+      advance(
+        CollectionStore.start(ctx.profile, :value_read_at, %{
+          "key" => "catalog." <> ctx.profile["partition"],
+          "generation" => generation
+        }),
+        %{state | phase: :fact_input_catalog, ctx: ctx}
+      )
+    else
+      finish(state, refused(:invalid_fact_input_page))
+    end
+  end
+
+  defp advance(
+         {:done, {:ok, %{"record" => catalog, "native_generation" => generation}}},
+         %{phase: :fact_input_catalog} = state
+       )
+       when is_map(catalog) do
+    ctx = state.ctx
+    key = "factdraft.#{ctx.profile["partition"]}.#{ctx.args["page"]["ordinal"]}"
+
+    if generation === ctx.generation do
+      advance(
+        CollectionStore.start(ctx.profile, :value_read_at, %{
+          "key" => key,
+          "generation" => generation
+        }),
+        %{
+          state
+          | phase: :fact_input_slot,
+            ctx: Map.merge(ctx, %{catalog: catalog, slot_key: key})
+        }
+      )
+    else
+      finish(state, refused(:fact_input_changed))
+    end
+  end
+
+  defp advance(
+         {:done, {:ok, %{"record" => row, "native_generation" => generation}}},
+         %{phase: :fact_input_slot} = state
+       ) do
+    ctx = state.ctx
+    revision = if is_nil(row), do: 0, else: row["revision"]
+
+    if generation === ctx.generation and revision === ctx.args["expected_slot_revision"] do
+      value = %{
+        "version" => 1,
+        "kind" => "explicit_fact_input_slot",
+        "draft_id" => ctx.args["draft_id"],
+        "source_key" => ctx.source["source_key"],
+        "catalog_sha256" => ctx.catalog["sha256"],
+        "manifest" => ctx.args["manifest"],
+        "page" => ctx.args["page"]
+      }
+
+      advance(
+        CollectionStore.start(ctx.profile, :fact_input_put_at, %{
+          "key" => ctx.slot_key,
+          "value" => value,
+          "generation" => generation,
+          "expected_revision" => revision
+        }),
+        %{state | phase: :fact_input_write}
+      )
+    else
+      finish(state, refused(:fact_input_changed))
+    end
+  end
+
+  defp advance({:done, {:ok, %{"record" => record}}}, %{phase: :fact_input_write} = state) do
+    finish(
+      state,
+      output(
+        "ok",
+        [],
+        [],
+        [],
+        %{
+          "status" => "fact_input_staged",
+          "slot" => record,
+          "draft_id" => state.ctx.args["draft_id"],
+          "ordinal" => state.ctx.args["page"]["ordinal"]
+        },
+        nil
+      )
+    )
+  end
+
+  defp advance(
+         {:done, {:ok, %{"sources" => [source]}}},
+         %{phase: :collection_fact_source} = state
+       ) do
+    case IpseKnowledge.Store.Collection.Projection.facts_from_spans(
+           source,
+           state.ctx.args["facts"]
+         ) do
+      {:ok, facts} ->
+        args = state.ctx.args
+
+        advance(
+          CollectionStore.start(state.ctx.profile, :fact_store, %{
+            "source_id" => args["source_id"],
+            "selection" => %{"kind" => "explicit", "profile" => nil, "version" => 1},
+            "facts" => facts,
+            "expected_revision" => args["expected_revision"],
+            "as_of_ms" => System.system_time(:millisecond),
+            "continuation" => args["continuation"]
+          }),
+          %{state | phase: :collection_fact_stage}
+        )
+
+      _ ->
+        finish(state, refused(:invalid_explicit_fact_spans))
+    end
+  end
+
+  defp advance({:done, {:continue, value}}, %{phase: :collection_fact_stage} = state) do
+    continuation = %{
+      "id" => "generation_produce",
+      "arguments" => Map.put(state.ctx.args, "continuation", value["continuation"])
+    }
+
+    finish(state, output("draft", [], [], [], Map.delete(value, "continuation"), continuation))
+  end
+
+  defp advance({:done, {:ok, value}}, %{phase: :collection_fact_stage} = state),
+    do: finish(state, output("ok", [], [], [], value, nil))
+
+  defp advance({:done, {:continue, value}}, %{phase: :collection_source} = state) do
+    {action, args} =
+      if Map.has_key?(state.ctx, :document_args),
+        do:
+          {"continue_collection_document",
+           Map.merge(state.ctx.document_args, %{
+             "collection_state" => value["continuation"],
+             "opening_acquisition" => state.ctx.opening_acquisition
+           })},
+        else:
+          {"continue_collection_source",
+           %{
+             "input_action" => state.ctx.input_action,
+             "input_args" => state.ctx.input_args,
+             "collection_state" => value["continuation"]
+           }}
+
+    continuation = %{
+      "id" => "source",
+      "arguments" => %{"store" => state.ctx.store, "action" => action, "args" => args}
+    }
+
+    finish(state, output("draft", [], [], [], value, continuation))
+  end
+
+  defp advance({:done, {:continue, value}}, %{phase: :collection_job} = state) do
+    continuation = %{
+      "id" => "generation_job",
+      "arguments" => Map.put(state.ctx.args, "continuation", value["continuation"])
+    }
+
+    finish(
+      state,
+      output(
+        "draft",
+        [],
+        [],
+        [],
+        Map.drop(job_result(state, value), ["continuation"]),
+        continuation
+      )
+    )
+  end
+
+  defp advance(
+         {:done, {:ok, %{"status" => status} = value}},
+         %{phase: :collection_job, ctx: %{args: %{"action" => action}}} = state
+       )
+       when action in ~w(finalize finalize_paged) and status != "selected" do
+    continuation = %{
+      "id" => "generation_job",
+      "arguments" => Map.put(state.ctx.args, "continuation", value["continuation"])
+    }
+
+    finish(
+      state,
+      output(
+        "draft",
+        [],
+        [],
+        [],
+        Map.drop(job_result(state, value), ["continuation"]),
+        continuation
+      )
+    )
+  end
+
+  defp advance({:done, {:ok, value}}, %{phase: :collection_job} = state),
+    do: finish(state, output("ok", [], [], [], job_result(state, value), nil))
+
+  defp advance({:done, {:continue, value}}, %{phase: :collection_producer_append} = state) do
+    continuation = %{
+      "id" => "generation_produce",
+      "arguments" => Map.put(state.ctx.args, "continuation", value["continuation"])
+    }
+
+    finish(state, output("draft", [], [], [], Map.delete(value, "continuation"), continuation))
+  end
+
+  defp advance({:done, {:ok, value}}, %{phase: :collection_producer_append} = state) do
+    compact = IpseKnowledge.Store.Collection.Job.compact_result(value)
+    finish(state, output("ok", [], [], [], compact, nil))
+  end
+
+  defp advance(
+         {:done, {:ok, value}},
+         %{phase: :collection_producer, ctx: %{args: %{"version" => 2} = args}} = state
+       ) do
+    continuation =
+      case value["continuation"] do
+        nil ->
+          nil
+
+        next ->
+          %{"id" => "generation_produce", "arguments" => Map.put(next, "store", args["store"])}
+      end
+
+    finish(state, output("ok", [], [], [], Map.delete(value, "continuation"), continuation))
+  end
+
+  defp advance({:done, {:ok, value}}, %{phase: :collection_producer} = state),
+    do: finish(state, output("ok", [], [], [], value, nil))
+
+  defp advance({:done, {:ok, snapshot}}, %{phase: :collection_projection} = state) do
+    selected = snapshot["selected"]
+    facts = Enum.flat_map(selected, & &1["facts"])
+    at = state.ctx.as_of_ms
+    eligible = Enum.filter(facts, &Evidence.current_fact?(&1, at))
+    claims = Enum.take(eligible, state.ctx.args["top_k"])
+
+    gaps =
+      Enum.flat_map(selected, fn item ->
+        case Evidence.document_receipt(item["source"]) do
+          %{"status" => "partial", "warnings" => warnings} ->
+            [
+              %{
+                "code" => "partial_document",
+                "source_key" => item["source"]["source_key"],
+                "warnings" => warnings
+              }
+            ]
+
+          _ ->
+            []
+        end
+      end)
+
+    gaps =
+      gaps ++
+        Enum.map(facts -- eligible, &%{"code" => "excluded_fact", "fact_id" => &1["fact_id"]})
+
+    complete = not Enum.any?(gaps, &(&1["code"] == "partial_document"))
+
+    coverage =
+      Map.merge(snapshot["coverage"], %{
+        "sources" => length(selected),
+        "vectors" => Enum.sum(Enum.map(selected, &length(&1["vectors"]))),
+        "facts" => length(facts),
+        "eligible_facts" => length(eligible),
+        "complete" => complete,
+        "claims_returned" => length(claims),
+        "ranking" => "stored_order"
+      })
+
+    finish(
+      state,
+      output(
+        if(complete, do: "ok", else: "partial"),
+        Enum.flat_map(claims, & &1["citations"]),
+        claims,
+        gaps,
+        coverage,
+        nil
+      )
+    )
+  end
+
+  defp advance({:done, {:ok, value}}, %{phase: :collection_source} = state),
+    do: finish(state, output("ok", [], [], [], value, nil))
+
+  defp advance({:done, {:continue, value}}, %{phase: :collection_index} = state) do
+    continuation =
+      %{
+        "id" => "lexical_index",
+        "arguments" => %{
+          "store" => state.ctx.args["store"],
+          "action" => "next",
+          "continuation" => value["continuation"]
+        }
+      }
+
+    finish(state, output("draft", [], [], [], Map.drop(value, ["continuation"]), continuation))
+  end
+
+  defp advance({:done, {:ok, value}}, %{phase: :collection_index} = state),
+    do: finish(state, output("ok", [], [], [], value, nil))
+
+  defp advance({:done, {:ok, rank}}, %{phase: :collection_namespace} = state),
     do:
       finish(
         state,
         output(
-          if(value["status"] == "draft", do: "draft", else: "ok"),
-          [],
-          [],
-          [],
-          value,
-          value["continuation"]
+          rank["status"],
+          rank["evidence"],
+          rank["claims"],
+          rank["gaps"],
+          rank["coverage"],
+          nil
         )
       )
+
+  defp advance({:done, {:ok, snapshot}}, %{phase: :collection_query} = state) do
+    with {:ok, rank} <-
+           Evidence.rank_lexical(
+             snapshot["sources"],
+             state.ctx.args["query"],
+             state.ctx.args["top_k"],
+             state.ctx.as_of_ms
+           ) do
+      rank = Evidence.query_scope(rank, snapshot["sources"], [], state.ctx.as_of_ms)
+
+      coverage =
+        rank["coverage"]
+        |> Map.delete("complete")
+        |> Map.merge(snapshot["coverage"])
+        |> Map.put("catalog_generation", snapshot["catalog_generation"])
+
+      finish(
+        state,
+        output(rank["status"], rank["evidence"], rank["claims"], rank["gaps"], coverage, nil)
+      )
+    else
+      {:error, code} -> finish(state, refused(code))
+    end
+  end
+
+  defp advance({:done, {:ok, value}}, %{phase: :source} = state) do
+    continuation =
+      if value["status"] == "draft" and Map.has_key?(state.ctx, :document_path) do
+        %{
+          "id" => "source",
+          "arguments" => %{
+            "store" => state.ctx.store,
+            "action" => "continue_document",
+            "args" =>
+              Map.merge(value["continuation"], %{
+                "source_id" => value["source_id"],
+                "path" => state.ctx.document_path,
+                "expected_sha256" => state.ctx.document_sha256
+              })
+          }
+        }
+      else
+        value["continuation"]
+      end
+
+    finish(
+      state,
+      output(
+        if(value["status"] == "draft", do: "draft", else: "ok"),
+        [],
+        [],
+        [],
+        value,
+        continuation
+      )
+    )
+  end
 
   defp advance({:done, {:ok, value}}, %{phase: phase} = state)
        when phase in [:index_inspect, :index_abort] do
@@ -572,7 +1782,8 @@ defmodule IpseKnowledge.Corpus do
         Enum.reduce(chunks, {acc, missing}, fn chunk, {hits, gaps} ->
           vector =
             Enum.find(vectors, fn v ->
-              v["chunk_id"] == chunk["chunk_id"] and Evidence.compatible_vectors?(v, query_vector)
+              v["chunk_id"] == chunk["chunk_id"] and Evidence.compatible_vectors?(v, query_vector) and
+                Evidence.vector_input_matches_chunk?(v, chunk)
             end)
 
           if vector == nil do
@@ -672,6 +1883,21 @@ defmodule IpseKnowledge.Corpus do
         "put" ->
           ~w(source_id generation expected_revision title text uri observed_at_ms event_at_ms expires_at_ms)
 
+        "put_document" ->
+          ~w(source_id generation expected_revision title filename bytes_base64 uri observed_at_ms event_at_ms expires_at_ms)
+
+        "read_document" ->
+          ~w(source_id generation expected_revision title path expected_sha256 uri observed_at_ms event_at_ms expires_at_ms)
+
+        "continue_document" ->
+          ~w(source_id draft_id expected_revision offset path expected_sha256)
+
+        "continue_collection_document" ->
+          ~w(source_id generation expected_revision title path expected_sha256 uri observed_at_ms event_at_ms expires_at_ms collection_state opening_acquisition)
+
+        "continue_collection_source" ->
+          ~w(input_action input_args collection_state)
+
         "open" ->
           ~w(source_id generation expected_revision title uri observed_at_ms event_at_ms expires_at_ms byte_count content_sha256)
 
@@ -703,7 +1929,8 @@ defmodule IpseKnowledge.Corpus do
           []
       end
 
-    exact?(args, keys) or (action == "open" and exact?(args, keys ++ ["historical_import"]))
+    exact?(args, keys) or (action == "open" and exact?(args, keys ++ ["historical_import"])) or
+      (action == "continue_document" and exact?(args, keys ++ ["metadata_offset"]))
   end
 
   defp source_schema do
@@ -730,6 +1957,10 @@ defmodule IpseKnowledge.Corpus do
       "expected_revision" => integer(0, 1_000_000_000),
       "title" => string(128),
       "text" => string(8192),
+      "filename" => string(256),
+      "bytes_base64" => string(8192),
+      "path" => string(1024),
+      "expected_sha256" => %{"type" => ["string", "null"], "minLength" => 64, "maxLength" => 64},
       "uri" => string(512),
       "observed_at_ms" => integer(0, 9_000_000_000_000),
       "event_at_ms" => %{
@@ -746,10 +1977,15 @@ defmodule IpseKnowledge.Corpus do
       "content_sha256" => string(64),
       "draft_id" => string(64),
       "offset" => integer(0, 65_536),
+      "metadata_offset" => integer(0, 16_384),
       "cursor" => %{"type" => ["integer", "null"]},
       "limit" => integer(1, 12),
       "export" => %{"type" => "object"},
-      "historical_import" => %{"type" => "object"}
+      "historical_import" => %{"type" => "object"},
+      "collection_state" => %{"type" => "object"},
+      "opening_acquisition" => %{"type" => "object"},
+      "input_action" => %{"type" => "string", "enum" => ~w(put put_document)},
+      "input_args" => %{"type" => "object"}
     }
   end
 
@@ -773,6 +2009,87 @@ defmodule IpseKnowledge.Corpus do
     }
   end
 
+  defp collection_entries do
+    if @preset in ~w(collection-documents collection-dense) do
+      schema =
+        query_schema()
+        |> Map.update!("required", &((&1 -- ["rerank"]) ++ ["source_ids"]))
+        |> Map.update!(
+          "properties",
+          &(Map.delete(&1, "rerank")
+            |> Map.put("source_ids", %{
+              "type" => "array",
+              "minItems" => 1,
+              "maxItems" => 8,
+              "items" => string(256)
+            }))
+        )
+
+      [
+        entry("query_selected", "Read cited evidence from explicit source IDs", schema),
+        entry(
+          "generation_job",
+          "Begin, inspect, finalize or abort a supplied shared projection build",
+          %{
+            "type" => "object",
+            "additionalProperties" => false,
+            "required" => ~w(store action continuation vector_selection fact_selection),
+            "properties" => %{
+              "store" => string(64),
+              "action" => %{
+                "type" => "string",
+                "enum" => ~w(begin inspect abort finalize finalize_paged)
+              },
+              "continuation" => %{"type" => ["object", "null"]},
+              "vector_selection" => %{"type" => "object"},
+              "fact_selection" => %{"type" => "object"},
+              "response" => %{"type" => "string", "enum" => ~w(full compact_v1)},
+              "guard_sources" => %{"type" => "boolean"}
+            }
+          }
+        ),
+        entry(
+          "projection_selected",
+          "Inspect current supplied shared projections with exact citations",
+          %{
+            "type" => "object",
+            "additionalProperties" => false,
+            "required" => ~w(store source_ids vector_selection fact_selection as_of_ms top_k),
+            "properties" => %{
+              "store" => string(64),
+              "source_ids" => %{
+                "type" => "array",
+                "minItems" => 1,
+                "maxItems" => 8,
+                "items" => string(512)
+              },
+              "vector_selection" => %{"type" => "object"},
+              "fact_selection" => %{"type" => "object"},
+              "as_of_ms" => %{"type" => ["integer", "null"]},
+              "top_k" => integer(1, 8)
+            }
+          }
+        ),
+        entry(
+          "lexical_index",
+          "Build, rebuild or inspect the catalog-bound namespace lexical index",
+          %{
+            "type" => "object",
+            "additionalProperties" => false,
+            "required" => ~w(store action continuation),
+            "properties" => %{
+              "store" => string(64),
+              "action" => %{"type" => "string", "enum" => ~w(begin next inspect abort)},
+              "continuation" => %{"type" => ["object", "null"]}
+            }
+          }
+        )
+      ] ++ producer_entries()
+    else
+      []
+    end
+  end
+
   defp index_schema do
     %{
       "type" => "object",
@@ -789,6 +2106,51 @@ defmodule IpseKnowledge.Corpus do
     }
   end
 
+  defp producer_entries do
+    if @preset == "collection-dense" do
+      schema =
+        %{
+          "type" => "object",
+          "additionalProperties" => false,
+          "required" => ~w(store version action),
+          "properties" => %{
+            "store" => string(64),
+            "version" => %{"type" => "integer", "enum" => [1, 2]},
+            "action" => %{
+              "type" => "string",
+              "enum" =>
+                ~w(page inspect selection facts facts_page facts_commit facts_slots append)
+            },
+            "embedding" => string(64),
+            "job_id" => string(32),
+            "job_revision" => integer(0, Evidence.safe_integer_max()),
+            "vector_selection" => %{"type" => "object"},
+            "fact_selection" => %{"type" => "object"},
+            "vector_cursor" => integer(0, 248),
+            "previous_ready" => %{"type" => ["object", "null"]},
+            "source_id" => string(256),
+            "expected_revision" => integer(0, Evidence.safe_integer_max()),
+            "continuation" => %{"type" => ["object", "null"]},
+            "facts" => %{"type" => "array", "maxItems" => 32, "items" => %{"type" => "object"}},
+            "draft_id" => string(32),
+            "manifest" => %{"type" => "object"},
+            "page" => %{"type" => "object"},
+            "expected_slot_revision" => integer(0, Evidence.safe_integer_max())
+          }
+        }
+
+      [
+        entry(
+          "generation_produce",
+          "Stage explicit facts, produce guarded vector pages or inspect producer progress",
+          schema
+        )
+      ]
+    else
+      []
+    end
+  end
+
   defp entry(id, description, schema),
     do: %{
       "id" => id,
@@ -802,6 +2164,11 @@ defmodule IpseKnowledge.Corpus do
 
   defp call(request, state),
     do: {:ok, %{"api_version" => 1, "kind" => "host_call", "request" => request}, state}
+
+  defp job_result(%{ctx: %{args: %{"response" => "compact_v1"}}}, value),
+    do: IpseKnowledge.Store.Collection.Job.compact_result(value)
+
+  defp job_result(_, value), do: value
 
   defp finish(state, value) do
     {:ok, reply} =

@@ -1,0 +1,9 @@
+CONTROLLER_READ_MANIFEST_OK: %{
+  sources: 22,
+  ancestors: 3,
+  logs: 18,
+  artifact_inventories: 29,
+  artifact_files: 533,
+  host_beams: 209
+}
+CITATION_ORIGIN_MANIFEST_OK: %{sources: 2, logs: 3, repaired_beams: 14}

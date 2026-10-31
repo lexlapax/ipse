@@ -1,0 +1,9 @@
+Running ExUnit with seed: 47104, max_cases: 1
+Excluding tags: [:test]
+Including tags: [:document_layout_protocol]
+
+DOCUMENT_LAYOUT_PROTOCOL {"result_bytes":1702,"worker_request_bytes":2093,"mutation":false}
+.
+Finished in 0.6 seconds (0.6s on load, 0.00s async, 0.00s sync)
+
+Result: 1 passed, 13 excluded

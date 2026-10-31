@@ -1,0 +1,8 @@
+Running ExUnit with seed: 46836, max_cases: 1
+Excluding tags: [:test]
+Including tags: [:collection_legacy_consumer]
+
+.
+Finished in 11.1 seconds (0.00s async, 11.1s sync)
+
+Result: 1 passed, 13 excluded

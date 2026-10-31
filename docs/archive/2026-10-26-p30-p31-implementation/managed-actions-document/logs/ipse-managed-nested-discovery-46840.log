@@ -1,0 +1,33 @@
+Running ExUnit with seed: 46840, max_cases: 8
+Excluding tags: [:test]
+Including tags: [nested_discovery: true]
+
+
+
+  1) test nested managed MCP discovery is admitted before approval and current is checked at effect entry (Ipse.Extension.ManagedCollectionCallSessionTest)
+     test/ipse/extension/managed_collection_call_session_test.exs:691
+     ** (MatchError) no match of right hand side value:
+
+         {:error, :project_identity_unavailable}
+
+     stacktrace:
+       test/ipse/extension/managed_collection_call_session_test.exs:488: Ipse.Extension.ManagedCollectionCallSessionTest.__ex_unit_setup_0/1
+       test/ipse/extension/managed_collection_call_session_test.exs:4: Ipse.Extension.ManagedCollectionCallSessionTest.__ex_unit__/2
+
+
+
+  2) test nested managed MCP discovery is admitted before approval and root_change is checked at effect entry (Ipse.Extension.ManagedCollectionCallSessionTest)
+     test/ipse/extension/managed_collection_call_session_test.exs:691
+     ** (MatchError) no match of right hand side value:
+
+         {:error, :project_identity_unavailable}
+
+     stacktrace:
+       test/ipse/extension/managed_collection_call_session_test.exs:488: Ipse.Extension.ManagedCollectionCallSessionTest.__ex_unit_setup_0/1
+       test/ipse/extension/managed_collection_call_session_test.exs:4: Ipse.Extension.ManagedCollectionCallSessionTest.__ex_unit__/2
+
+
+Finished in 0.3 seconds (0.00s async, 0.3s sync)
+
+Result: 0/2 passed, 74 excluded
+Failed: 2 tests

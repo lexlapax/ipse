@@ -1,5 +1,6 @@
 defmodule Ipse.JournalWriterTest do
   use ExUnit.Case, async: false
+  import Ipse.Test.ResumeAssertions
   alias Ipse.Journal
   alias Ipse.Journal.Writer
 
@@ -339,7 +340,7 @@ defmodule Ipse.JournalWriterTest do
 
       assert Ipse.Session.info(resumed).phase == :idle
       assert File.read!(Path.join(c.dir, "effect")) == "operator edit"
-      assert File.read!(Path.join(c.dir, id <> ".jsonl")) == bytes
+      assert_idle_resume_journal(Path.join(c.dir, id <> ".jsonl"), bytes, id)
       assert :ok = Ipse.Session.close(resumed)
     after
       if Process.alive?(writer), do: :sys.resume(writer)

@@ -7,6 +7,7 @@ defmodule Ipse.CLI.Knowledge do
     Artifact,
     Bundles,
     Catalog,
+    Collection,
     CollectionPolicy,
     Consent,
     ManagedRecipe,
@@ -53,7 +54,220 @@ defmodule Ipse.CLI.Knowledge do
     _ -> fail(:knowledge_setup_refused)
   end
 
+  def run("review", opts, home, cwd) do
+    with true <- Enum.all?(Keyword.keys(opts), &(&1 in (@options ++ [:after]))),
+         {:ok, cwd} <- Ipse.Workspace.canonical_path(cwd),
+         {:ok, config} <- runtime(Keyword.delete(opts, :after), home, cwd),
+         {:ok, index} <- Ipse.CLI.Knowledge.Management.pending_metadata(config, cwd, opts[:after]) do
+      unless opts[:json],
+        do:
+          Terminal.puts(
+            "Historical pending keys only; source eligibility and signed deadlines are not checked. Use knowledge review PENDING_KEY for native review."
+          )
+
+      Terminal.puts(Jason.encode!(index, pretty: opts[:json] != true))
+      0
+    else
+      _ -> fail(:knowledge_management_refused)
+    end
+  end
+
   def run(_, _, _, _), do: fail(:unknown_knowledge_command)
+
+  def run_target("review", key, opts, home, cwd) do
+    with true <-
+           Enum.all?(Keyword.keys(opts), &(&1 in (@options ++ [:state_dir]))) and
+             opts[:json] != true,
+         {:ok, cwd} <- Ipse.Workspace.canonical_path(cwd),
+         {:ok, config} <- runtime(Keyword.delete(opts, :state_dir), home, cwd) do
+      history_dir = Path.expand(opts[:state_dir] || Path.join(home, "sessions"))
+
+      case Ipse.CLI.Knowledge.Management.review(config, cwd, history_dir, key) do
+        {:ok, result} ->
+          Terminal.puts(
+            "Accepted the selected proposal as your decision; original provenance remains."
+          )
+
+          Terminal.puts(Jason.encode!(result))
+          0
+
+        result ->
+          Terminal.puts(
+            :stderr,
+            "No successful acceptance is confirmed: #{inspect(result)}. Inspect the management journal and stored state before new work; unknown effects never replay."
+          )
+
+          1
+      end
+    else
+      _ ->
+        Terminal.puts(
+          :stderr,
+          "Use knowledge review PENDING_KEY in a native terminal with the saved configuration. Select the original --state-dir when needed; provider overrides, --yes and --json are unsupported."
+        )
+
+        1
+    end
+  end
+
+  def run_target("forget", key, opts, home, cwd) do
+    with true <- Enum.all?(Keyword.keys(opts), &(&1 in @options)) and opts[:json] != true,
+         {:ok, cwd} <- Ipse.Workspace.canonical_path(cwd),
+         {:ok, config} <- runtime(opts, home, cwd) do
+      case Ipse.CLI.Knowledge.Management.forget(config, cwd, key) do
+        {:error, :native_review_publication_fence_unavailable} ->
+          Terminal.puts(
+            :stderr,
+            Ipse.CLI.Errors.format(:native_review_publication_fence_unavailable)
+          )
+
+          1
+
+        {:ok, result} ->
+          Terminal.puts("Forgot the selected note; signed suppression remains.")
+          Terminal.puts(Jason.encode!(result))
+          0
+
+        other ->
+          Terminal.puts(
+            :stderr,
+            "No successful forget is confirmed: #{inspect(other)}. Inspect the management journal and protected operation before retrying; unknown effects never replay."
+          )
+
+          1
+      end
+    else
+      _ ->
+        Terminal.puts(
+          :stderr,
+          "Use knowledge forget NOTE_KEY from a native terminal with the saved configuration; provider overrides, --yes and --json are unsupported."
+        )
+
+        1
+    end
+  end
+
+  def run_target("retention", key, opts, home, cwd) do
+    with true <-
+           Enum.all?(Keyword.keys(opts), &(&1 in (@options ++ [:policy, :days]))) and
+             opts[:json] != true,
+         {:ok, policy} <- retention_policy(opts),
+         {:ok, cwd} <- Ipse.Workspace.canonical_path(cwd),
+         {:ok, config} <- runtime(Keyword.drop(opts, [:policy, :days]), home, cwd) do
+      case Ipse.CLI.Knowledge.Management.retain(config, cwd, key, policy) do
+        {:error, :native_review_publication_fence_unavailable} ->
+          Terminal.puts(
+            :stderr,
+            Ipse.CLI.Errors.format(:native_review_publication_fence_unavailable)
+          )
+
+          1
+
+        {:error, :collection_deadline_fence_unavailable} ->
+          Terminal.puts(:stderr, Ipse.CLI.Errors.format(:collection_deadline_fence_unavailable))
+          1
+
+        {:ok, result} ->
+          Terminal.puts(
+            if(policy["kind"] == "session",
+              do: "Removed the reviewed stored literal for session-only retention.",
+              else: "Saved the exact reviewed retention choice; original admission clocks remain."
+            )
+          )
+
+          Terminal.puts(Jason.encode!(result))
+          0
+
+        other ->
+          Terminal.puts(
+            :stderr,
+            "No successful retention change is confirmed: #{inspect(other)}. Inspect the management operation before retrying; unknown effects never replay."
+          )
+
+          1
+      end
+    else
+      _ ->
+        Terminal.puts(
+          :stderr,
+          "Use knowledge retention NOTE_KEY --policy automatic|pin|session, or --policy duration --days POSITIVE_DAYS, in a native terminal. Provider overrides, --yes and --json are unsupported."
+        )
+
+        1
+    end
+  end
+
+  def run_target("expire", key, opts, home, cwd) do
+    with true <- Enum.all?(Keyword.keys(opts), &(&1 in @options)) and opts[:json] != true,
+         {:ok, cwd} <- Ipse.Workspace.canonical_path(cwd),
+         {:ok, config} <- runtime(opts, home, cwd) do
+      case Ipse.CLI.Knowledge.Management.expire(config, cwd, key) do
+        {:ok, result} ->
+          Terminal.puts(
+            "Reclaimed the selected expired note or history; original admission clocks remain."
+          )
+
+          Terminal.puts(Jason.encode!(result))
+          0
+
+        other ->
+          Terminal.puts(
+            :stderr,
+            "No successful expiry reclamation is confirmed: #{inspect(other)}. Inspect the management operation before retrying; unknown effects never replay."
+          )
+
+          1
+      end
+    else
+      _ ->
+        Terminal.puts(
+          :stderr,
+          "Use knowledge expire NOTE_KEY for an already expired signed ordinary note or history in a native terminal. Provider overrides, --yes and --json are unsupported."
+        )
+
+        1
+    end
+  end
+
+  def run_target("operation", id, opts, home, cwd) do
+    with true <- Enum.all?(Keyword.keys(opts), &(&1 in @options)),
+         {:ok, cwd} <- Ipse.Workspace.canonical_path(cwd),
+         {:ok, config} <- runtime(opts, home, cwd),
+         {:ok, result} <- Ipse.CLI.Knowledge.Management.operation(config, cwd, id) do
+      Terminal.puts(Jason.encode!(result, pretty: true))
+      0
+    else
+      _ ->
+        Terminal.puts(
+          :stderr,
+          "Management operation unavailable for this project. Preserve the original management journal and protected state; no action was replayed."
+        )
+
+        1
+    end
+  end
+
+  def run_target(_, _, _, _, _), do: fail(:unknown_knowledge_command)
+
+  defp retention_policy(opts) do
+    case {opts[:policy], opts[:days]} do
+      {kind, days} when kind in ["automatic", "ordinary"] and days in [nil, 90] ->
+        {:ok, %{"kind" => "ordinary"}}
+
+      {"duration", days} when is_integer(days) and days > 0 ->
+        duration = days * @day
+
+        if JSON.safe_uint?(duration),
+          do: {:ok, %{"kind" => "duration", "duration_ms" => duration}},
+          else: @error
+
+      {kind, nil} when kind in ["pin", "session"] ->
+        {:ok, %{"kind" => kind}}
+
+      _ ->
+        @error
+    end
+  end
 
   defp runtime(opts, home, cwd) do
     client = %{
@@ -82,9 +296,13 @@ defmodule Ipse.CLI.Knowledge do
 
     with {:ok, current} <- inspect.(config, cwd) do
       policy = if current.snapshot, do: current.snapshot["policy"]
+      publication = Collection.publication_support()
 
       value = %{
         "activation_ready_now" => Map.get(current, :ready),
+        "publication_supported_now" => publication["supported"],
+        "capture_ready_now" => Map.get(current, :ready) == true and publication["supported"],
+        "publication_unavailable_reason" => publication["reason"],
         "worktree_admitted" => not is_nil(current.binding),
         "project" => current.binding,
         "epoch" => if(current.snapshot, do: current.snapshot["epoch"], else: nil),
@@ -101,7 +319,11 @@ defmodule Ipse.CLI.Knowledge do
         Terminal.puts(
           cond do
             current.ready ->
-              "Saved knowledge selection is ready for the next new session."
+              if publication["supported"] do
+                "Saved knowledge selection is ready for the next new session."
+              else
+                "Saved knowledge selection matches the next new session."
+              end
 
             is_nil(current.binding) ->
               "This folder is not admitted. A new session can join a reciprocally verified worktree when its existing repository grant permits it."
@@ -114,6 +336,8 @@ defmodule Ipse.CLI.Knowledge do
         Terminal.puts(
           "Existing sessions retain their catalog and check current permission before each effect."
         )
+
+        unless publication["supported"], do: Terminal.puts(publication_notice())
       end
 
       :ok
@@ -149,6 +373,9 @@ defmodule Ipse.CLI.Knowledge do
       Terminal.puts(
         "Saved knowledge permission. Start a new chat or run to adopt this selection."
       )
+
+      unless Collection.publication_support()["supported"],
+        do: Terminal.puts(publication_notice())
 
       :ok
     else
@@ -257,7 +484,7 @@ defmodule Ipse.CLI.Knowledge do
            "sources" => %{
              "categories" =>
                Enum.sort(
-                 ~w(interactive_operator native_operator_answer typed_host_outcome unattended_input assistant_proposal)
+                 ~w(interactive_operator native_operator_answer native_operator_assertion typed_host_outcome unattended_input assistant_proposal)
                ),
              "exclusions" => []
            },
@@ -307,21 +534,32 @@ defmodule Ipse.CLI.Knowledge do
       Enum.map(~w(note pending), &JSON.digest([sidecar["recipes"][&1]])) |> Enum.sort()
 
     catalog["entries"]
-    |> Enum.filter(&(&1["instance"] == "knowledge" and &1["id"] == "capture"))
+    |> Enum.filter(fn descriptor ->
+      descriptor["instance"] == "knowledge" and
+        ((descriptor["stage"] in ["invoke.tool", "invoke.command"] and
+            descriptor["id"] == "capture") or
+           (descriptor["stage"] == "invoke.tool" and
+              descriptor["id"] in ~w(index read search)) or
+           (descriptor["stage"] == "event.job" and descriptor["id"] == "recall"))
+    end)
     |> Enum.flat_map(fn descriptor ->
       outer = JSON.digest([descriptor])
 
       publish =
-        Enum.map(~w(note pending), fn kind ->
-          %{
-            "operation" => if(kind == "note", do: "notes.capture", else: "notes.propose"),
-            "class" => "collection.publish",
-            "outer_sha256" => outer,
-            "inner_op" => "collection.managed",
-            "constraints_sha256" => JSON.digest([sidecar["publication"][kind]]),
-            "recipe_sha256" => JSON.digest([sidecar["recipes"][kind]])
-          }
-        end)
+        if descriptor["id"] == "capture" do
+          Enum.map(~w(note pending), fn kind ->
+            %{
+              "operation" => if(kind == "note", do: "notes.capture", else: "notes.propose"),
+              "class" => "collection.publish",
+              "outer_sha256" => outer,
+              "inner_op" => "collection.managed",
+              "constraints_sha256" => JSON.digest([sidecar["publication"][kind]]),
+              "recipe_sha256" => JSON.digest([sidecar["recipes"][kind]])
+            }
+          end)
+        else
+          []
+        end
 
       publish ++
         [
@@ -412,12 +650,20 @@ defmodule Ipse.CLI.Knowledge do
   defp review(binding, policy) do
     "Enable native notes for #{binding["root"]} (#{binding["scope"]}).\n" <>
       "This selection takes effect in the next new session, including headless run.\n" <>
-      "Literal native observations may become notes; unattended and assistant claims remain pending.\n" <>
+      if(Collection.publication_support()["supported"],
+        do: "",
+        else: publication_notice() <> "\n"
+      ) <>
+      "Literal notes require a separate native statement/category review or a typed host outcome; other inputs remain pending.\n" <>
       "Ordinary notes: 90 days; pending proposals: 7 days. Current/preferences may persist.\n" <>
       "No secondary model calls are authorized. Ordinary tool approvals remain separate.\n" <>
       "Exact permission, route, retention, artifact and daily limits:\n" <>
       Jason.encode!(policy, pretty: true)
   end
+
+  defp publication_notice,
+    do:
+      "Broad protected note saving is not ready. A new statement may be saved through separate native review when permission is active; saved permission is retained."
 
   defp private_home(home) do
     with true <- is_binary(home) and Path.type(home) == :absolute,

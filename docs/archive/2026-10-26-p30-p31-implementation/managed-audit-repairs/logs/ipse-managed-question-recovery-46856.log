@@ -1,0 +1,31 @@
+Running ExUnit with seed: 46855, max_cases: 8
+Excluding tags: [:test]
+Including tags: [managed_question_recovery: true]
+
+
+
+  1) test legacy managed pending question is inert after expiry on real resume (Ipse.Extension.ManagedCollectionCallSessionTest)
+     test/ipse/extension/managed_collection_call_session_test.exs:999
+     Assertion with == failed
+     code:  assert restored.question_recovery == :managed_question_withheld
+     left:  nil
+     right: :managed_question_withheld
+     stacktrace:
+       test/ipse/extension/managed_collection_call_session_test.exs:1021: (test)
+
+
+
+  2) test legacy managed pending question is inert after revoke on real resume (Ipse.Extension.ManagedCollectionCallSessionTest)
+     test/ipse/extension/managed_collection_call_session_test.exs:999
+     Assertion with == failed
+     code:  assert restored.question_recovery == :managed_question_withheld
+     left:  nil
+     right: :managed_question_withheld
+     stacktrace:
+       test/ipse/extension/managed_collection_call_session_test.exs:1021: (test)
+
+
+Finished in 2.4 seconds (0.00s async, 2.4s sync)
+
+Result: 0/2 passed, 93 excluded
+Failed: 2 tests

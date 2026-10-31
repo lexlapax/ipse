@@ -1,0 +1,65 @@
+{
+  "ancestor": {
+    "bytes": 8599,
+    "path": "docs/archive/2026-10-26-p30-p31-implementation/document-source-admission-initial/manifest.json",
+    "sha256": "21102c428a39f268cfda91f343185346877583c5cbbcaac71f4c441933867df2",
+    "type": "regular"
+  },
+  "graphs": [
+    {
+      "files": 701,
+      "graph": "_build/document-embedding-admission-inventory-sol-20261029",
+      "inventory": {
+        "bytes": 190342,
+        "path": "docs/archive/2026-10-26-p30-p31-implementation/document-source-admission-return/document-embedding-admission-inventory-sol-20261029.json",
+        "sha256": "3cd8ff9bbe2c024ddb4bc779159c5e4ec12be6aabf37a9c30c80420663880b04",
+        "type": "regular"
+      }
+    },
+    {
+      "files": 701,
+      "graph": "_build/document-embedding-admission-return-sol-20261029",
+      "inventory": {
+        "bytes": 188239,
+        "path": "docs/archive/2026-10-26-p30-p31-implementation/document-source-admission-return/document-embedding-admission-return-sol-20261029.json",
+        "sha256": "5892b9f4608bec537a338aa647994ed61b3ef66ddb3f61ad495db5fbdff33cf6",
+        "type": "regular"
+      }
+    }
+  ],
+  "layer": {
+    "bytes": 105,
+    "path": "docs/archive/2026-10-26-p30-p31-implementation/document-source-admission-return/admission-return-overlay.sha256",
+    "sha256": "7a1f6042ebbf334ff04a56f2058ef5550ee0e7eeec885193c84f5db8e03d15a3",
+    "type": "regular"
+  },
+  "retained": [
+    {
+      "bytes": 969,
+      "path": "docs/archive/2026-10-26-p30-p31-implementation/document-source-admission-return/ipse-document-embedding-return-47212.exs",
+      "sha256": "ec18a09f73df0ebe3acb3c1ec3468e791b3959ec29b8ca7ef4495e5a26526c94",
+      "type": "regular"
+    },
+    {
+      "bytes": 123,
+      "path": "docs/archive/2026-10-26-p30-p31-implementation/document-source-admission-return/ipse-document-embedding-return-47212.log",
+      "sha256": "291e0dca8a6fbd69eea33566875fefce5340486b1ebc7ca51edcd25f6b7f9923",
+      "type": "regular"
+    },
+    {
+      "bytes": 2392,
+      "path": "docs/archive/2026-10-26-p30-p31-implementation/document-source-admission-return/ipse-freeze-document-return-47215.exs",
+      "sha256": "288375d43fa7aa8d755f2fd201571a1ba4bd846fe13b4eed29040663c66e3585",
+      "type": "regular"
+    }
+  ],
+  "scope": "exact private success marker through retained reader and Identity cleanup",
+  "source": {
+    "bytes": 8185,
+    "path": "docs/archive/2026-10-26-p30-p31-implementation/document-source-admission-return/document_embedding.ex.txt",
+    "sha256": "dd95dac4c48792962fadbf2cae523ae6ef7d935269cfa78046ea8fc45fba27b9",
+    "source": "lib/ipse/session/document_embedding.ex",
+    "type": "regular"
+  },
+  "version": 1
+}

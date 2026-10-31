@@ -1,0 +1,4 @@
+SCM_RIGHTS_WRONG_IDENTITY_REFUSED cleanup_released_lock=1
+SHARED_FLOCK_UNLOCK_HAZARD_CONFIRMED explicit_unlock_releases_all_duplicates=1
+SCM_RIGHTS_SHARED_FLOCK_PASSED sender_sigkill=1 receiver_sigkill=0 receiver_held=1 contender_blocked=1 real_helper_blocked=1 real_helper_acquired=1 final_release=1 cloexec=1 missing_fd_rejected=1
+SCM_RIGHTS_SHARED_FLOCK_PASSED sender_sigkill=1 receiver_sigkill=1 receiver_held=1 contender_blocked=1 real_helper_blocked=1 real_helper_acquired=1 final_release=1 cloexec=1 missing_fd_rejected=1

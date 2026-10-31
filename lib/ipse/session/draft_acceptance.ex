@@ -80,7 +80,19 @@ defmodule Ipse.Session.DraftAcceptance do
           %{"type" => "input_received", "observation" => %{"event_id" => id}} ->
             [id]
 
+          %{"type" => "operator_assertion", "observation" => %{"event_id" => id}} ->
+            [id]
+
+          %{"type" => "planning_entry_observed", "observation" => %{"event_id" => id}} ->
+            [id]
+
+          %{"type" => "planning_exited", "observation" => %{"event_id" => id}} ->
+            [id]
+
           %{"type" => "draft_replaced", "version" => 2, "observation" => %{"event_id" => id}} ->
+            [id]
+
+          %{"type" => "draft_replaced", "version" => 4, "observation" => %{"event_id" => id}} ->
             [id]
 
           %{"type" => "draft_replaced", "version" => 3, "pieces" => pieces}

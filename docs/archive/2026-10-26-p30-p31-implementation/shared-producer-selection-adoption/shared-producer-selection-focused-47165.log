@@ -1,0 +1,59 @@
+Running ExUnit with seed: 570051, max_cases: 4
+Excluding tags: [:native_sandbox, :macos_sandbox, :macos_filesystem, :memory_scope]
+
+
+
+  1) test bounded shared producer receipt flow and unknown controls in an isolated worker (Ipse.SharedProducerFixtureTest)
+     test/extensions/knowledge/shared_producer_test.exs:4
+     Running ExUnit with seed: 829857, max_cases: 4
+     Excluding tags: [:test]
+     Including tags: [selection_api: true]
+
+     .
+
+       1) test legacy embedding shape is unchanged while exact optional pin reaches Host binding (Ipse.SharedProducerTest)
+          test/support/shared_producer_fixture.exs:530
+          match (=) failed
+          code:  assert {:done, {:error, :invalid_adapter_input}} =
+                   Adapters.start(
+                     resolved,
+                     :embed,
+                     Map.put(args, "expected_selection_sha256", malformed)
+                   )
+          left:  {:done, {:error, :invalid_adapter_input}}
+          right: {:done, {:error, :invalid_adapter_input, %{}}}
+          stacktrace:
+            test/support/shared_producer_fixture.exs:563: anonymous fn/3 in Ipse.SharedProducerTest."test legacy embedding shape is unchanged while exact optional pin reaches Host binding"/1
+            (elixir 1.20.4) lib/enum.ex:1725: Enum."-map/2-lists^map/1-1-"/2
+            test/support/shared_producer_fixture.exs:562: (test)
+
+
+
+       2) test bootstrap aliases malformed versions and post-response pin mismatches refuse (Ipse.SharedProducerTest)
+          test/support/shared_producer_fixture.exs:597
+          match (=) failed
+          code:  assert {:done, {:error, :invalid_embedding_profile}} =
+                   Adapters.resume(state, %{
+                     "status" => "ok",
+                     "value" => put_in(value, ["profile", "id"], "foreign")
+                   })
+          left:  {:done, {:error, :invalid_embedding_profile}}
+          right: {:done, {:error, :invalid_embedding_profile, %{}}}
+          stacktrace:
+            test/support/shared_producer_fixture.exs:602: (test)
+
+     .
+     Finished in 4.6 seconds (4.0s on load, 0.00s async, 0.5s sync)
+
+     Result: 2/4 passed, 9 excluded
+     Failed: 2 tests
+
+     code: assert status == 0, output
+     stacktrace:
+       test/extensions/knowledge/shared_producer_test.exs:32: (test)
+
+
+Finished in 4.8 seconds (0.04s on load, 0.00s async, 4.8s sync)
+
+Result: 0/1 passed
+Failed: 1 test

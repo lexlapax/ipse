@@ -29,10 +29,11 @@ defmodule Ipse.KnowledgeGraphPopulationTest do
     def run(_,{:ok,%{bytes: bytes},state},db),do: {JSON.decode!(bytes),state,db}
     defp host(db,%{"op"=>"embedding.create"}=request) do
       bytes=<<1.0::little-float-size(32)>>
+      {:ok,input_hash}=Ipse.Extension.canonical_digest([hd(request["inputs"])])
       descriptor=%{"version"=>2,"operation_id"=>String.duplicate("1",32),"kind"=>"embedding.f32le",
         "encoding"=>"float32le.base64","vector_count"=>1,"dimensions"=>1,"source_sha256"=>Evidence.sha256(bytes)}
       page=Map.merge(Map.drop(descriptor,["vector_count"]),%{"vector_index"=>0,"offset"=>0,
-        "complete"=>true,"next"=>nil,"input_sha256"=>Evidence.sha256(hd(request["inputs"])),
+        "complete"=>true,"next"=>nil,"input_sha256"=>input_hash,
         "vector_sha256"=>Evidence.sha256(bytes),"values"=>Base.encode64(bytes)})
       value=%{"version"=>2,"profile"=>request["profile"],"selection_sha256"=>Evidence.sha256("fixture encoder"),
         "reported_model"=>"fixture","result"=>descriptor,"usage"=>nil}
@@ -209,6 +210,8 @@ defmodule Ipse.KnowledgeGraphPopulationTest do
 
   @tag timeout: 180_000
   test "query population controls run in an isolated domain VM" do
+    modules = [IpseKnowledge.Evidence, IpseKnowledge.Graph, IpseKnowledge.Corpus]
+    before = Enum.map(modules, &:code.is_loaded/1)
     paths = Enum.flat_map(:code.get_path(), &["-pa", List.to_string(&1)])
 
     {output, status} =
@@ -219,7 +222,6 @@ defmodule Ipse.KnowledgeGraphPopulationTest do
 
     assert status == 0, output
 
-    for module <- [IpseKnowledge.Evidence, IpseKnowledge.Graph, IpseKnowledge.Corpus],
-        do: refute(Code.ensure_loaded?(module))
+    assert Enum.map(modules, &:code.is_loaded/1) == before
   end
 end

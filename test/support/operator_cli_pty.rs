@@ -24,7 +24,7 @@ extern "C" {
 }
 
 fn ready_for_exit(text: &str) -> bool {
-    text.contains("Finished.") && match (text.rfind("you> "), text.rfind("answer> ")) {
+    (text.contains("Finished.") || text.contains("Finished with an error.")) && match (text.rfind("you> "), text.rfind("answer> ")) {
         (Some(prompt), Some(answer)) => prompt > answer,
         _ => false,
     }
@@ -46,12 +46,19 @@ fn main() {
     let kill_owner = args.first().is_some_and(|a| a == "--kill-owner");
     let queued_eof = args.first().is_some_and(|a| a == "--queued-eof");
     let draft = args.first().is_some_and(|a| a == "--draft");
+    let draft_accept_one = args.first().is_some_and(|a| a == "--draft-accept-one");
     let draft_cli = args.first().is_some_and(|a| a == "--draft-cli");
     let draft_multi = args.first().is_some_and(|a| a == "--draft-multi");
     let draft_question = args.first().is_some_and(|a| a == "--draft-question");
+    let draft_mcp = args.first().is_some_and(|a| a == "--draft-mcp");
     let draft_mcp_resume = args.first().is_some_and(|a| a == "--draft-mcp-resume");
     let enhance_cancel = args.first().is_some_and(|a| a == "--enhance-cancel");
-    if kill_owner || queued_eof || draft || draft_cli || draft_multi || draft_question || draft_mcp_resume || enhance_cancel { args.remove(0); }
+    let enhance_inline = args.first().is_some_and(|a| a == "--enhance-inline");
+    let planning_entry = args.first().is_some_and(|a| a == "--planning-entry");
+    let planning_startup = args.first().is_some_and(|a| a == "--planning-startup");
+    let planning_crash = args.first().is_some_and(|a| a == "--planning-crash");
+    let planning_crash_exit = args.first().is_some_and(|a| a == "--planning-crash-exit");
+    if kill_owner || queued_eof || draft || draft_accept_one || draft_cli || draft_multi || draft_question || draft_mcp || draft_mcp_resume || enhance_cancel || enhance_inline || planning_entry || planning_startup || planning_crash || planning_crash_exit { args.remove(0); }
     let root = std::path::PathBuf::from(args.last().unwrap());
     let check_terminal = slave.try_clone().unwrap();
     let mut original = [0_usize; 64];
@@ -98,6 +105,71 @@ fn main() {
             }
         }
         let text = String::from_utf8_lossy(&output);
+        if draft_accept_one {
+            if phase == 0 {
+                if let Some(part) = text.split("Type accept ").nth(1) {
+                    if part.len() >= 32 && part.as_bytes()[..32].iter().all(u8::is_ascii_hexdigit) && part.contains("draft> ") {
+                        master.write_all(format!("accept {}\n", &part[..32]).as_bytes()).unwrap(); phase = 1;
+                    }
+                }
+            }
+            continue;
+        }
+        if planning_crash || planning_crash_exit {
+            if phase == 0 && text.contains("you> ") { master.write_all(b"/plan\n").unwrap(); phase = 1; }
+            if planning_crash_exit && phase == 1 && text.contains("Planning mode entered.") && text.matches("you> ").count() >= 2 {
+                master.write_all(b"/plan exit\n").unwrap(); phase = 2;
+            }
+            continue;
+        }
+        if planning_startup {
+            match phase {
+                0 if text.contains("you> ") => { master.write_all(b"/plan exit\n").unwrap(); phase = 1; },
+                1 if text.contains("Local planning mode exited.") && text.matches("you> ").count() >= 2 => {
+                    master.write_all(b"/exit\n").unwrap(); phase = 2;
+                },
+                _ => {},
+            }
+            continue;
+        }
+        if planning_entry {
+            match phase {
+                0 if text.contains("you> ") => { master.write_all(b"/plan\n").unwrap(); phase = 1; },
+                1 if text.contains("Planning mode entered.") && text.matches("you> ").count() >= 2 => {
+                    master.write_all(b"/plan exit\n").unwrap(); phase = 2;
+                },
+                2 if text.contains("Local planning mode exited.") && text.matches("you> ").count() >= 3 => {
+                    master.write_all(b"/exit\n").unwrap(); phase = 3;
+                },
+                _ => {},
+            }
+            continue;
+        }
+        if enhance_inline {
+            let prompts = text.matches("you> ").count();
+            let finished = text.matches("Finished.").count();
+            match phase {
+                0 if prompts >= 1 => {
+                    master.write_all(b"/enhance private initial request\n").unwrap(); phase = 1;
+                },
+                1 if prompts >= 2 && finished >= 1 => {
+                    master.write_all(b"/enhance replace  accepted replacement  \n").unwrap(); phase = 2;
+                },
+                2 if prompts >= 3 && text.contains("Draft replaced") => {
+                    master.write_all(b"/enhance accept\n").unwrap(); phase = 3;
+                },
+                3 => if let Some(part) = text.split("Type accept ").nth(1) {
+                    if part.len() >= 32 && part.as_bytes()[..32].iter().all(u8::is_ascii_hexdigit) && part.contains("draft> ") {
+                        master.write_all(format!("accept {}\n", &part[..32]).as_bytes()).unwrap(); phase = 4;
+                    }
+                },
+                4 if prompts >= 4 && finished >= 2 => {
+                    master.write_all(b"/exit\n").unwrap(); phase = 5;
+                },
+                _ => {},
+            }
+            continue;
+        }
         if enhance_cancel {
             let prompts = text.matches("you> ").count();
             let finished = text.matches("Finished.").count();
@@ -144,6 +216,30 @@ fn main() {
                         master.write_all(format!("answer {} synthetic answer\n", &part[..32]).as_bytes()).unwrap(); phase = 1;
                     }
                 }
+            }
+            continue;
+        }
+        if draft_mcp {
+            match phase {
+                0 if text.contains("you> ") => { master.write_all(b"/enhance\n").unwrap(); phase = 1; },
+                1 if text.contains("Enter the request to draft") && text.matches("you> ").count() >= 2 => {
+                    master.write_all(b"private initial request\n").unwrap(); phase = 2;
+                },
+                2 => if let Some(part) = text.split("Type allow ").nth(1) {
+                    if part.len() >= 16 && part.as_bytes()[..16].iter().all(u8::is_ascii_hexdigit) && part.contains("approval> ") {
+                        master.write_all(format!("allow {}\n", &part[..16]).as_bytes()).unwrap(); phase = 3;
+                    }
+                },
+                3 if text.contains("Finished.") && text.matches("you> ").count() >= 3 => {
+                    master.write_all(b"/enhance accept\n").unwrap(); phase = 4;
+                },
+                4 => if let Some(part) = text.split("Type accept ").nth(1) {
+                    if part.len() >= 32 && part.as_bytes()[..32].iter().all(u8::is_ascii_hexdigit) && part.contains("draft> ") {
+                        master.write_all(format!("accept {}\n", &part[..32]).as_bytes()).unwrap(); phase = 5;
+                    }
+                },
+                5 if text.matches("Finished.").count() >= 2 && text.matches("you> ").count() >= 4 => { master.write_all(b"/exit\n").unwrap(); phase = 6; },
+                _ => {},
             }
             continue;
         }
@@ -237,31 +333,33 @@ fn main() {
             } else if phase == 1 && text.matches("you> ").count() >= 2 {
                 master.write_all(b"synthetic draft input\n").unwrap(); phase = 2;
             } else if phase == 2 && text.matches("you> ").count() >= 3 {
-                master.write_all(b"rejected replacement\n").unwrap(); phase = 3;
+                master.write_all(b"/enhance replace rejected replacement\n").unwrap(); phase = 3;
             } else if phase == 3 && text.matches("you> ").count() >= 4 {
-                master.write_all(b"synthetic proposed request\n").unwrap(); phase = 4;
-            } else if phase == 4 {
-                if let Some(part) = text.split("Type accept ").nth(1) {
-                    if part.len() >= 32 && part.as_bytes()[..32].iter().all(u8::is_ascii_hexdigit) && part.contains("draft> ") {
-                        master.write_all(format!("accept {}\n", &part[..32]).as_bytes()).unwrap();
-                        phase = 5;
-                    }
-                }
+                master.write_all(b"rejected replacement\n").unwrap(); phase = 4;
+            } else if phase == 4 && text.matches("you> ").count() >= 5 {
+                master.write_all(b"synthetic proposed request\n").unwrap(); phase = 5;
             } else if phase == 5 {
-                if let Some(part) = text.split("Type accept ").nth(2) {
+                if let Some(part) = text.split("Type accept ").nth(1) {
                     if part.len() >= 32 && part.as_bytes()[..32].iter().all(u8::is_ascii_hexdigit) && part.contains("draft> ") {
                         master.write_all(format!("accept {}\n", &part[..32]).as_bytes()).unwrap();
                         phase = 6;
                     }
                 }
-            } else if phase == 6 && text.matches("you> ").count() >= 5 {
-                master.write_all(b"staged before cancellation\n").unwrap(); phase = 7;
+            } else if phase == 6 {
+                if let Some(part) = text.split("Type accept ").nth(2) {
+                    if part.len() >= 32 && part.as_bytes()[..32].iter().all(u8::is_ascii_hexdigit) && part.contains("draft> ") {
+                        master.write_all(format!("accept {}\n", &part[..32]).as_bytes()).unwrap();
+                        phase = 7;
+                    }
+                }
             } else if phase == 7 && text.matches("you> ").count() >= 6 {
-                master.write_all(b"staged before owner loss\n").unwrap(); phase = 8;
-            } else if phase == 8 {
+                master.write_all(b"staged before cancellation\n").unwrap(); phase = 8;
+            } else if phase == 8 && text.matches("you> ").count() >= 7 {
+                master.write_all(b"staged before owner loss\n").unwrap(); phase = 9;
+            } else if phase == 9 {
                 if let Some(part) = text.split("Type accept ").nth(3) {
                     if part.len() >= 32 && part.as_bytes()[..32].iter().all(u8::is_ascii_hexdigit) && part.contains("draft> ") {
-                        master.write_all(format!("accept {}\n", &part[..32]).as_bytes()).unwrap(); phase = 9;
+                        master.write_all(format!("accept {}\n", &part[..32]).as_bytes()).unwrap(); phase = 10;
                     }
                 }
             }
@@ -338,7 +436,14 @@ fn main() {
         std::process::exit(0);
     }
     if queued_eof { assert_eq!(phase, 5); assert!(status.success()); }
+    if draft_accept_one { assert_eq!(phase, 1); assert!(status.success()); }
     if enhance_cancel { assert_eq!(phase, 11); assert!(status.success()); }
+    if enhance_inline { assert_eq!(phase, 5); assert!(status.success()); }
+    if draft_mcp { assert_eq!(phase, 6); assert!(status.success()); }
+    if planning_entry { assert_eq!(phase, 3); assert!(status.success()); }
+    if planning_startup { assert_eq!(phase, 2); assert!(status.success()); }
+    if planning_crash { assert_eq!(phase, 1); assert!(status.success()); }
+    if planning_crash_exit { assert_eq!(phase, 2); assert!(status.success()); }
     std::process::exit(status.code().unwrap_or(1));
 }
 
@@ -349,6 +454,8 @@ mod tests {
     fn complete_then_active_prompt() { assert!(ready_for_exit("answer> done\nFinished.\nyou> ")); }
     #[test]
     fn active_prompt_then_complete() { assert!(ready_for_exit("answer> done\nyou> \nFinished.\n")); }
+    #[test]
+    fn failed_turn_then_active_prompt() { assert!(ready_for_exit("answer> done\nyou> \nFinished with an error.\n")); }
     #[test]
     fn historical_initial_prompt_is_not_current() { assert!(!ready_for_exit("you> task\nanswer> done\nFinished.\n")); }
     #[test]

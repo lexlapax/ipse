@@ -1,0 +1,8 @@
+Running ExUnit with seed: 46796, max_cases: 40
+Excluding tags: [:test]
+Including tags: [location: {"test/ipse/session/managed_lineage_test.exs", 288}, location: {"test/ipse/session/inference_dispatch_test.exs", 112}]
+
+..
+Finished in 0.3 seconds (0.2s async, 0.1s sync)
+
+Result: 2 passed, 17 excluded

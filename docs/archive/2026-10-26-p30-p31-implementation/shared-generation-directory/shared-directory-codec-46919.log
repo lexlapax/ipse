@@ -1,0 +1,26 @@
+Running ExUnit with seed: 46919, max_cases: 1
+Excluding tags: [:test]
+Including tags: [:shared_directory_codec]
+
+
+
+  1) test two manifest pages bind exact catalog heads and selected groups without projection payloads (Ipse.KnowledgeCollectionDirectoryTest)
+     test/extensions/knowledge/collection_directory_test.exs:4
+     ** (MatchError) no match of right hand side value:
+
+         {:error,
+          %Jason.DecodeError{
+            position: 0,
+            token: nil,
+            data: "warning: you must pass return_diagnostics: true when invoking Kernel.ParallelCompiler functions\n  (elixir 1.20.4) lib/kernel/parallel_compiler.ex:327: Kernel.ParallelCompiler.spawn_workers/3\n  (elixir 1.20.4) src/elixir.erl:382: :elixir.eval_external_handler/3\n  (stdlib 8.1) erl_eval.erl:1048: :erl_eval.do_apply/7\n  (stdlib 8.1) erl_eval.erl:792: :erl_eval.expr/6\n  (stdlib 8.1) erl_eval.erl:276: :erl_eval.exprs/6\n  (elixir 1.20.4) src/elixir.erl:365: :elixir.erl_eval/3\n\n{\"directory_root_bytes\":2082,\"entities\":272,\"entity_pages\":5,\"groups\":17,\"manifest_pages\":2,\"native_operations\":0,\"publication_attempted\":false,\"selected_headers\":2,\"sources\":136}\n"
+          }}
+
+     code: assert {:ok,result} = Jason.decode(output), output
+     stacktrace:
+       test/extensions/knowledge/collection_directory_test.exs:23: (test)
+
+
+Finished in 2.1 seconds (0.04s on load, 0.00s async, 2.1s sync)
+
+Result: 0/1 passed
+Failed: 1 test

@@ -1,0 +1,21 @@
+Running ExUnit with seed: 47065, max_cases: 8
+Excluding tags: [:test]
+Including tags: [discovery_unknown: true]
+
+
+
+  1) test bulk discovery retains local transport-loss uncertainty and never starts the next server (Ipse.MCP.HTTPTest)
+     test/ipse/mcp/http_test.exs:127
+     match (=) failed
+     code:  assert {:unknown, message} = Task.await(task, 5000)
+     left:  {:unknown, message}
+     right: {:error,
+             "MCP call outcome unknown after connection loss or an invalid result. Inspect before retrying; the call was not replayed."}
+     stacktrace:
+       test/ipse/mcp/http_test.exs:143: (test)
+
+
+Finished in 5.4 seconds (0.4s on load, 0.00s async, 5.0s sync)
+
+Result: 0/1 passed, 13 excluded
+Failed: 1 test

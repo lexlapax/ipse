@@ -1,0 +1,79 @@
+{
+  "files": [
+    {
+      "bytes": 22026,
+      "path": "lib/ipse/tools.ex",
+      "sha256": "0742dfee4105469471fdc3e8c278fcf1eb45e91c4dd37febd867a86f11fbcec1"
+    },
+    {
+      "bytes": 19106,
+      "path": "lib/ipse/extension/external_calls.ex",
+      "sha256": "ed9fd38780b85dad8e09d03854860f7247687585e56f120b4e1aacc86081ec77"
+    },
+    {
+      "bytes": 37525,
+      "path": "extensions/knowledge/src/corpus.ex",
+      "sha256": "76fe2a7ae190a1beefae620f167244fd64a44d57a4949770f7af95c7ca3cb501"
+    },
+    {
+      "bytes": 9033,
+      "path": "extensions/knowledge/src/documents.ex",
+      "sha256": "3e70e11aeeeda0d0b5b2832b6b593fdb9e2c3e24f87c52a01e9a4aecba45c102"
+    },
+    {
+      "bytes": 52527,
+      "path": "extensions/knowledge/src/evidence.ex",
+      "sha256": "49f188c512318ba9ac3bfd218fab9de3876817868c37c9382bccbb3ddb12be90"
+    },
+    {
+      "bytes": 107734,
+      "path": "extensions/knowledge/src/store.ex",
+      "sha256": "dd191bc53d0ed8cbe804b0c37c6843857424013461d55ff619b18f454f32b0c0"
+    },
+    {
+      "bytes": 8455,
+      "path": "test/ipse/tools_test.exs",
+      "sha256": "c391307d64b731333cb1a35290b91ffd1b2ba08a67d9789612c6bfa4856d75d2"
+    },
+    {
+      "bytes": 1627,
+      "path": "test/ipse/extension/tool_action_binary_test.exs",
+      "sha256": "817d91a2a817ee75ad0b761a50c241350bae2aaf4c169ee2aa7198f4399cb4d5"
+    },
+    {
+      "bytes": 27923,
+      "path": "test/extensions/knowledge/document_acquisition_session_test.exs",
+      "sha256": "e3eaa1bf253a86495bc783ef2f633cb19fc1eed3fb3b0fa2539ac28b7f307cd5"
+    },
+    {
+      "bytes": 17695,
+      "path": "test/extensions/knowledge/document_ingestion_test.exs",
+      "sha256": "ddf52b6f6d5764f554e3a3e40cca0e8bcc09fc308fd6e551946c4d66beede0b2"
+    },
+    {
+      "bytes": 8383,
+      "path": "docs/archive/2026-10-26-p30-p31-implementation/word-locator-manifest.md",
+      "sha256": "d1347304e5aa195093940aadeb1c9b6f17c6628d54cae2fd97c12fe3b9c97e07"
+    },
+    {
+      "bytes": 137,
+      "path": "docs/archive/2026-10-26-p30-p31-implementation/word-locator-manifest/native-session-46778.log",
+      "sha256": "af285947627d537a2124e6e93a370953bce7790988e507b350676ab9dad6eccf"
+    },
+    {
+      "bytes": 181,
+      "path": "docs/archive/2026-10-26-p30-p31-implementation/word-locator-manifest/plain-stage-46779.log",
+      "sha256": "0d59a3b28be495d9967bcd2ff1dec2cd56d90add185ac2e17437e136484decb8"
+    },
+    {
+      "bytes": 5788,
+      "path": "docs/archive/2026-10-26-p30-p31-implementation/word-locator-manifest/section-46777.log",
+      "sha256": "db2d71ab27c33a0633552d3f41ddd1344656e4a0c35068cbeb59d3538f261c46"
+    }
+  ],
+  "full_c1b_qualified": false,
+  "full_word_qualified": false,
+  "kind": "bounded_typed_locator_manifest_section",
+  "production_admitted": false,
+  "version": 1
+}

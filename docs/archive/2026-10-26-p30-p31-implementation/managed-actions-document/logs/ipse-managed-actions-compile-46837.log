@@ -1,0 +1,31 @@
+     warning: this clause of defp inputs/3 is never used (or it will always fail/warn when invoked)
+     │
+ 777 │   defp inputs(state, %{"type" => "managed_action_output_withheld"} = event, _) do
+     │        ~
+     │
+     └─ lib/ipse/session/managed_lineage.ex:777:8: Ipse.Session.ManagedLineage.inputs/3
+
+{:ok,
+ [Ipse.Extension.Actions, Ipse.Extension.Collection,
+  Ipse.Extension.Collection.DocumentStage, Ipse.Extension.CollectionStore,
+  Ipse.Extension.MCPCall, Ipse.Extension.ProjectIdentity,
+  Ipse.Extension.ProjectIdentity.Metadata, Ipse.Extension.ToolAction,
+  Ipse.Session, Ipse.Session.Invocation, Ipse.Session.ManagedLineage,
+  Ipse.Session.ManagedToolUse],
+ %{
+   compile_warnings: [],
+   runtime_warnings: [
+     %{
+       message: "this clause of defp inputs/3 is never used (or it will always fail/warn when invoked)",
+       position: {777, 8},
+       file: "/home/lexlapax/projects/lexlapax/ipse/lib/ipse/session/managed_lineage.ex",
+       stacktrace: [
+         {Ipse.Session.ManagedLineage, :inputs, 3,
+          [file: ~c"lib/ipse/session/managed_lineage.ex", line: 777, column: 8]}
+       ],
+       source: "/home/lexlapax/projects/lexlapax/ipse/lib/ipse/session/managed_lineage.ex",
+       span: nil,
+       severity: :warning
+     }
+   ]
+ }}

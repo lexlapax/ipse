@@ -1,0 +1,18 @@
+Running ExUnit with seed: 46918, max_cases: 40
+Excluding tags: [:test]
+Including tags: [literal_v4_ab: true]
+
+
+
+  1) test upgraded literal v4 A cannot be discarded while candidate cites independent current B (Ipse.Extension.ManagedCollectionCallSessionTest)
+     test/ipse/extension/managed_collection_call_session_test.exs:1446
+     synthetic worker marker was not reached
+     code: await_marker(c.trace, "ab-held", 1000)
+     stacktrace:
+       test/ipse/extension/managed_collection_call_session_test.exs:1456: (test)
+
+
+Finished in 12.3 seconds (0.00s async, 12.3s sync)
+
+Result: 0/1 passed, 109 excluded
+Failed: 1 test

@@ -1,0 +1,1 @@
+{"embedding_profiles":{"encoder":{"base_url":"http://127.0.0.1:11434","credential":"none","dimension_mode":"native","dimensions":1024,"model":"operator-selected","operation":"embedding","provider":"ollama","timeout_ms":5000}},"inference_services":{"local":{"origins":["http://127.0.0.1:11434"],"version":1}}}

@@ -1,0 +1,9 @@
+Five amended owners compile without diagnostics; parent175-source cohort preserved
+Running ExUnit with seed: 20261029, max_cases: 4
+Excluding tags: [:test]
+Including tags: [:document_guard_repair]
+
+...
+Finished in 0.02 seconds (0.02s async, 0.00s sync)
+
+Result: 3 passed, 3 excluded

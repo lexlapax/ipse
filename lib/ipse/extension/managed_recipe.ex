@@ -14,8 +14,8 @@ defmodule Ipse.Extension.ManagedRecipe do
   @keys ~w(version kind key_prefix constraints_sha256 evidence_path lineage_path text_path category_path rules override_prefix)
   @proof ~w(version session_id occurrence_id version_id kind origin coverage path start_byte end_byte quote quote_sha256 content_sha256 receipt_sha256)
   @identity ~w(session_id occurrence_id version_id start_byte end_byte quote_sha256 content_sha256)
-  @origins ~w(interactive_operator native_operator_answer unattended_input assistant_proposal typed_host_outcome)
-  @strong ~w(interactive_operator native_operator_answer typed_host_outcome)
+  @origins ~w(interactive_operator native_operator_answer native_operator_assertion unattended_input assistant_proposal typed_host_outcome)
+  @strong ~w(native_operator_assertion typed_host_outcome)
   @kinds ~w(literal_source proposal operator_override)
   @week 604_800_000
   @error {:error, :managed_recipe_refused}
@@ -103,7 +103,10 @@ defmodule Ipse.Extension.ManagedRecipe do
 
   defp supported?("literal_source", text, category, proof) do
     proof["origin"] in @strong and text == proof["quote"] and
-      (proof["origin"] != "typed_host_outcome" or category == "ordinary")
+      proof["coverage"] == "available" and proof["start_byte"] == 0 and
+      proof["content_sha256"] == proof["quote_sha256"] and
+      ((proof["origin"] == "typed_host_outcome" and category == "ordinary") or
+         Ipse.Session.OperatorAssertion.asserted_category?(proof, category))
   end
 
   defp fields?(%{"kind" => "operator_override"} = r),
@@ -155,6 +158,10 @@ defmodule Ipse.Extension.ManagedRecipe do
 
   defp origin_kind?(%{"kind" => "answer.original", "origin" => "assistant_proposal"}), do: true
   defp origin_kind?(%{"kind" => "tool.outcome", "origin" => "typed_host_outcome"}), do: true
+
+  defp origin_kind?(%{"origin" => "native_operator_assertion", "kind" => kind}),
+    do: kind in ~w(input.assertion.ordinary input.assertion.preference input.assertion.current)
+
   defp origin_kind?(_), do: false
 
   defp pair_hash(value) do

@@ -3,6 +3,9 @@
 defmodule Ipse.DocsCheck do
   @moduledoc false
 
+  @raw_manifest "docs/archive/2026-10-26-p30-p31-implementation/shared-producer-public-adoption/manifest.json"
+  @raw_manifest_sha "2b503a998c9eaa03dd3b3a878fd2c2a9dbdcd33e40d35209e05ca896ad16c098"
+
   def run do
     {listed, 0} =
       System.cmd("git", ["ls-files", "--cached", "--others", "--exclude-standard", "--", "*.md"])
@@ -11,6 +14,14 @@ defmodule Ipse.DocsCheck do
       listed |> String.split("\n", trim: true) |> Enum.uniq() |> Enum.filter(&File.regular?/1)
 
     documents = Map.new(files, &{Path.expand(&1), read(&1)})
+    snapshot_dir = Path.join(Path.dirname(@raw_manifest), "source/docs/")
+
+    {link_origins, provenance_errors} =
+      if File.exists?(@raw_manifest) or Enum.any?(files, &String.starts_with?(&1, snapshot_dir)) do
+        raw_snapshot_origins(@raw_manifest, @raw_manifest_sha)
+      else
+        {%{}, []}
+      end
 
     {links, link_errors} =
       Enum.reduce(documents, {0, []}, fn {path, doc}, {count, errors} ->
@@ -21,7 +32,10 @@ defmodule Ipse.DocsCheck do
             [file | fragment] = String.split(target, "#", parts: 2)
 
             resolved =
-              if file == "", do: path, else: Path.expand(URI.decode(file), Path.dirname(path))
+              if file == "",
+                do: path,
+                else:
+                  Path.expand(URI.decode(file), Path.dirname(Map.get(link_origins, path, path)))
 
             error =
               cond do
@@ -68,7 +82,7 @@ defmodule Ipse.DocsCheck do
         example_errors ++
         index_errors(documents) ++
         test_example_errors(documents) ++
-        archive_errors
+        archive_errors ++ provenance_errors
 
     Enum.each(errors, &IO.puts(:stderr, &1))
 
@@ -78,6 +92,50 @@ defmodule Ipse.DocsCheck do
 
     if errors != [], do: System.halt(1)
   end
+
+  # Only explicitly pinned, unchanged raw manual snapshots retain their original
+  # link base. Other archives continue to resolve relative to their own location.
+  def raw_snapshot_origins(manifest, expected_sha) do
+    with {:ok, bytes} <- File.read(manifest),
+         ^expected_sha <- sha256(bytes),
+         {:ok, data} <- decode_json(bytes),
+         rows when is_list(rows) <- data["source"] do
+      rows
+      |> Enum.filter(fn row ->
+        is_binary(row["original"]) and String.starts_with?(row["original"], "docs/") and
+          String.ends_with?(row["original"], ".md")
+      end)
+      |> Enum.reduce({%{}, []}, fn row, {origins, errors} ->
+        snapshot = row["path"]
+        original = row["original"]
+        expected_path = Path.join(Path.dirname(manifest), "source/" <> original)
+
+        if is_binary(snapshot) and snapshot == expected_path and File.regular?(original) and
+             File.regular?(snapshot) and sha256(File.read!(snapshot)) == row["sha256"] and
+             byte_size(File.read!(snapshot)) == row["bytes"] do
+          {Map.put(origins, Path.expand(snapshot), Path.expand(original)), errors}
+        else
+          {origins,
+           [
+             "#{manifest}: invalid raw manual snapshot provenance for #{inspect(original)}"
+             | errors
+           ]}
+        end
+      end)
+    else
+      _ -> {%{}, ["#{manifest}: raw manual provenance manifest missing, invalid or changed"]}
+    end
+  end
+
+  defp decode_json(bytes) do
+    try do
+      {:ok, :json.decode(bytes)}
+    catch
+      _, _ -> :error
+    end
+  end
+
+  defp sha256(bytes), do: Base.encode16(:crypto.hash(:sha256, bytes), case: :lower)
 
   defp read(path) do
     initial = %{

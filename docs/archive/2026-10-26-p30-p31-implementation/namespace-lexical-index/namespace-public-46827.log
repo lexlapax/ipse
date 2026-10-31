@@ -1,0 +1,36 @@
+Running ExUnit with seed: 46827, max_cases: 1
+Excluding tags: [:test]
+Including tags: [:namespace_smoke, :namespace_public]
+
+NAMESPACE_NATIVE_BUDGET {"after":{"allocated_bytes":73728,"floor":59,"generation":59,"operations":59,"records":12},"before":{"allocated_bytes":53248,"floor":36,"generation":36,"operations":36,"records":8}}
+.?
+
+  0) Ipse.KnowledgeDocumentAcquisitionSessionTest: failure on setup_all callback, all tests have been invalidated
+     match (=) failed
+     code:  assert {output, 0} =
+              System.cmd(
+                System.find_executable("elixir"),
+                [
+                  "extensions/knowledge/build.exs",
+                  "--sdk",
+                  Application.app_dir(:ipse, "ebin"),
+                  "--output",
+                  path,
+                  "--package",
+                  "corpus",
+                  "--preset",
+                  preset
+                ], stderr_to_stdout: true)
+     left:  {output, 0}
+     right: {"     error: undefined function ready/2 (expected IpseKnowledge.Corpus to define such a function or for it to be imported, but none are available)\n     │\n 646 │       ready(\"lexical_index\", %{\n     │       ^^^^^\n     │\n     └─ _build/document-store-adapter-20261028/tmp/ipse-document-acquisition-523a64db79c69f5bd92eabc82235d9a2/state-documents.building-d634e775e97ac716/corpus.ex:646:7: IpseKnowledge.Corpus.advance/2\n\n\n== Compilation error in file _build/document-store-adapter-20261028/tmp/ipse-document-acquisition-523a64db79c69f5bd92eabc82235d9a2/state-documents.building-d634e775e97ac716/corpus.ex ==\n** (CompileError) _build/document-store-adapter-20261028/tmp/ipse-document-acquisition-523a64db79c69f5bd92eabc82235d9a2/state-documents.building-d634e775e97ac716/corpus.ex: cannot compile module IpseKnowledge.Corpus (errors have been logged)\n\n** (RuntimeError) Artifact compilation failed or emitted diagnostics.\n    extensions/knowledge/build.exs:54: (file)\n    (elixir 1.20.4) lib/code.ex:1639: Code.require_file/2\n",
+             1}
+     stacktrace:
+       test/extensions/knowledge/document_acquisition_session_test.exs:19: anonymous fn/2 in Ipse.KnowledgeDocumentAcquisitionSessionTest.__ex_unit_setup_all_0/1
+       (elixir 1.20.4) lib/enum.ex:1725: Enum."-map/2-lists^map/1-1-"/2
+       test/extensions/knowledge/document_acquisition_session_test.exs:16: Ipse.KnowledgeDocumentAcquisitionSessionTest.__ex_unit_setup_all_0/1
+       test/extensions/knowledge/document_acquisition_session_test.exs:1: Ipse.KnowledgeDocumentAcquisitionSessionTest.__ex_unit__/2
+
+
+Finished in 48.2 seconds (0.00s async, 48.2s sync)
+
+Result: 1 passed, 1 invalid, 19 excluded

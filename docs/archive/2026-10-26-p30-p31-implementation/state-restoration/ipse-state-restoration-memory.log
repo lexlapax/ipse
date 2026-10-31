@@ -1,0 +1,121 @@
+Running ExUnit with seed: 295899, max_cases: 8
+Excluding tags: [:test]
+Including tags: [line: 360, line: 364, line: 368, line: 372, line: 429]
+
+
+
+  1) test remember approved while the target is live can renew it (Ipse.Builtins.MemorySessionTest)
+     test/extensions/bundled/memory_session_test.exs:360
+     Assertion failed, no matching message after 5000ms
+     The following variables were pinned:
+       pid = #PID<0.206.0>
+     Showing 2 of 2 messages in the mailbox
+     code: assert_receive {:ipse, ^pid, {:done, :ok}}
+     mailbox:
+       pattern: {:ipse, ^pid, {:done, :ok}}
+       value:   {:ipse, #PID<0.206.0>,
+                 {:error,
+                  "Extension outcome unknown after refusal, failure or interruption. Inspect its receipt before retrying; no callback was replayed."}}
+
+       pattern: {:ipse, ^pid, {:done, :ok}}
+       value:   {:ipse, #PID<0.206.0>, {:done, :error}}
+     stacktrace:
+       test/extensions/bundled/memory_session_test.exs:140: Ipse.Builtins.MemorySessionTest.await_done/1
+       test/extensions/bundled/memory_session_test.exs:145: Ipse.Builtins.MemorySessionTest.command/3
+       test/extensions/bundled/memory_session_test.exs:172: Ipse.Builtins.MemorySessionTest.assert_renewal/3
+
+
+
+  2) test fresh model inspection hides blocked and expired text and missing collection leaves Session usable (Ipse.Builtins.MemorySessionTest)
+     test/extensions/bundled/memory_session_test.exs:429
+     Assertion failed, no matching message after 5000ms
+     The following variables were pinned:
+       pid = #PID<0.229.0>
+     Showing 2 of 2 messages in the mailbox
+     code: assert_receive {:ipse, ^pid, {:done, :ok}}
+     mailbox:
+       pattern: {:ipse, ^pid, {:done, :ok}}
+       value:   {:ipse, #PID<0.229.0>,
+                 {:error,
+                  "Extension outcome unknown after refusal, failure or interruption. Inspect its receipt before retrying; no callback was replayed."}}
+
+       pattern: {:ipse, ^pid, {:done, :ok}}
+       value:   {:ipse, #PID<0.229.0>, {:done, :error}}
+     stacktrace:
+       test/extensions/bundled/memory_session_test.exs:140: Ipse.Builtins.MemorySessionTest.await_done/1
+       test/extensions/bundled/memory_session_test.exs:145: Ipse.Builtins.MemorySessionTest.command/3
+       test/extensions/bundled/memory_session_test.exs:452: anonymous fn/3 in Ipse.Builtins.MemorySessionTest."test fresh model inspection hides blocked and expired text and missing collection leaves Session usable"/1
+       (elixir 1.20.4) lib/enum.ex:2622: Enum."-reduce/3-lists^foldl/2-0-"/3
+       test/extensions/bundled/memory_session_test.exs:435: (test)
+
+
+
+  3) test remember approved after target expiry cannot renew it (Ipse.Builtins.MemorySessionTest)
+     test/extensions/bundled/memory_session_test.exs:368
+     Assertion failed, no matching message after 5000ms
+     The following variables were pinned:
+       pid = #PID<0.264.0>
+     Showing 2 of 2 messages in the mailbox
+     code: assert_receive {:ipse, ^pid, {:done, :ok}}
+     mailbox:
+       pattern: {:ipse, ^pid, {:done, :ok}}
+       value:   {:ipse, #PID<0.264.0>,
+                 {:error,
+                  "Extension outcome unknown after refusal, failure or interruption. Inspect its receipt before retrying; no callback was replayed."}}
+
+       pattern: {:ipse, ^pid, {:done, :ok}}
+       value:   {:ipse, #PID<0.264.0>, {:done, :error}}
+     stacktrace:
+       test/extensions/bundled/memory_session_test.exs:140: Ipse.Builtins.MemorySessionTest.await_done/1
+       test/extensions/bundled/memory_session_test.exs:145: Ipse.Builtins.MemorySessionTest.command/3
+       test/extensions/bundled/memory_session_test.exs:172: Ipse.Builtins.MemorySessionTest.assert_renewal/3
+
+
+
+  4) test active import approved after target expiry cannot renew it (Ipse.Builtins.MemorySessionTest)
+     test/extensions/bundled/memory_session_test.exs:372
+     Assertion failed, no matching message after 5000ms
+     The following variables were pinned:
+       pid = #PID<0.300.0>
+     Showing 2 of 2 messages in the mailbox
+     code: assert_receive {:ipse, ^pid, {:done, :ok}}
+     mailbox:
+       pattern: {:ipse, ^pid, {:done, :ok}}
+       value:   {:ipse, #PID<0.300.0>,
+                 {:error,
+                  "Extension outcome unknown after refusal, failure or interruption. Inspect its receipt before retrying; no callback was replayed."}}
+
+       pattern: {:ipse, ^pid, {:done, :ok}}
+       value:   {:ipse, #PID<0.300.0>, {:done, :error}}
+     stacktrace:
+       test/extensions/bundled/memory_session_test.exs:140: Ipse.Builtins.MemorySessionTest.await_done/1
+       test/extensions/bundled/memory_session_test.exs:145: Ipse.Builtins.MemorySessionTest.command/3
+       test/extensions/bundled/memory_session_test.exs:172: Ipse.Builtins.MemorySessionTest.assert_renewal/3
+
+
+
+  5) test active import approved while the target is live can renew it (Ipse.Builtins.MemorySessionTest)
+     test/extensions/bundled/memory_session_test.exs:364
+     Assertion failed, no matching message after 5000ms
+     The following variables were pinned:
+       pid = #PID<0.336.0>
+     Showing 2 of 2 messages in the mailbox
+     code: assert_receive {:ipse, ^pid, {:done, :ok}}
+     mailbox:
+       pattern: {:ipse, ^pid, {:done, :ok}}
+       value:   {:ipse, #PID<0.336.0>,
+                 {:error,
+                  "Extension outcome unknown after refusal, failure or interruption. Inspect its receipt before retrying; no callback was replayed."}}
+
+       pattern: {:ipse, ^pid, {:done, :ok}}
+       value:   {:ipse, #PID<0.336.0>, {:done, :error}}
+     stacktrace:
+       test/extensions/bundled/memory_session_test.exs:140: Ipse.Builtins.MemorySessionTest.await_done/1
+       test/extensions/bundled/memory_session_test.exs:145: Ipse.Builtins.MemorySessionTest.command/3
+       test/extensions/bundled/memory_session_test.exs:172: Ipse.Builtins.MemorySessionTest.assert_renewal/3
+
+
+Finished in 26.3 seconds (0.5s on load, 0.00s async, 25.7s sync)
+
+Result: 0/5 passed, 11 excluded
+Failed: 5 tests

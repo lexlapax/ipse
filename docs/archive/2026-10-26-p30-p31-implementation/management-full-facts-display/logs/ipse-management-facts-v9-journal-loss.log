@@ -1,0 +1,111 @@
+Retained management target at 1793309844470: signed deadline elapsed. Original source availability and current-use eligibility are not checked.
+Review the complete proposed facts below. This confirmation applies only to this exact review.
+{
+  "action_sha256": "ca131059e237c32c98d10c756e39afeee4dac04f5dc4683c076337667f566bc8",
+  "collection": {
+    "manifest_sha256": "468d5739303691f0bbca7d3be55df03bea1bca3b8e21bfa36cd7793fb21256c3",
+    "root": {
+      "floor": 1,
+      "floor_anchor": "08ae076b11190a75d31ad945f5ef82b3",
+      "generation": 1,
+      "project": "81c1237f1c0e518aa61fe687e6ad958092d24cc5e68a0b6306c01b60a9aa0834",
+      "version": 3
+    },
+    "root_sha256": "2b943ed5777007ecba745c0655d46a0100fd692bc279ebbd61e34b42a9141988",
+    "root_state": "present"
+  },
+  "context": {
+    "binding_sha256": "3f045198fa3a3997d75caf04acf1f2b50897150cc654a3e7b3ace9522128c383",
+    "client_id": "d59fcaa9d259f27fb1d4f7a1bfdb8af6",
+    "job_id": "d2cc235abf14682504dea591f52c1c3c",
+    "management_epoch": 1,
+    "management_sha256": "86067c45ddd4ce96a9492374ca4ba40f982efc3f2bd01da359601e36d1abc5d0",
+    "namespace": "81c1237f1c0e518aa61fe687e6ad958092d24cc5e68a0b6306c01b60a9aa0834",
+    "original_pin": null,
+    "project_id": "6a9017c19367b3df794045071ea7b31e0765d3400b45759224346d5c272bfc01",
+    "recipe": {
+      "category_path": [
+        "category"
+      ],
+      "constraints_sha256": "d709745ab18405dff572c41053eda5cbe12c350ebbabdcd0d52ea1e80962368a",
+      "evidence_path": [
+        "evidence",
+        "sources"
+      ],
+      "key_prefix": "note.",
+      "kind": "literal_source",
+      "lineage_path": [
+        "lineage"
+      ],
+      "override_prefix": "override.",
+      "rules": [
+        {
+          "category": "current",
+          "max_age_ms": null,
+          "origins": [
+            "native_operator_assertion"
+          ]
+        },
+        {
+          "category": "ordinary",
+          "max_age_ms": 7776000000,
+          "origins": [
+            "native_operator_assertion",
+            "typed_host_outcome"
+          ]
+        },
+        {
+          "category": "preference",
+          "max_age_ms": null,
+          "origins": [
+            "native_operator_assertion"
+          ]
+        }
+      ],
+      "text_path": [
+        "text"
+      ],
+      "version": 1
+    },
+    "session_id": "c3e8e81e2e63df49f63d8eae61dfe46d"
+  },
+  "kind": "managed_literal_forget",
+  "metadata": {
+    "category": "ordinary",
+    "first_admitted_ms": 86400000,
+    "lineage": "a25d954b728c71bc15cdfe3ef4c63f6a87e9f22be1dd1e5ddf9edf02ab769193",
+    "policy_sha256": "dbc7d380793c1fd92543f35461f649e62c5b1ffb7e82d904314ce91395ec651e",
+    "recipe_sha256": "818634825cb494606d25195a6601971a17542ed2caa22f28d1e18b1971b18cf7",
+    "valid_until_ms": 7862400000
+  },
+  "operation_id": "621ee1e52bf81128f227a6c9b739797d",
+  "policy": {
+    "kind": "session"
+  },
+  "reason": "Forget selected synthetic claim",
+  "request_sha256": "9b051f6e9fac22bbf0b47263b253f36162c69aab241b56409474eba219923a79",
+  "scope": "selected literal derivative; original journal, management review journal and shared evidence remain",
+  "target": {
+    "bytes": 1082,
+    "key": "note.a25d954b728c71bc15cdfe3ef4c63f6a87e9f22be1dd1e5ddf9edf02ab769193",
+    "operation_id": "08ae076b11190a75d31ad945f5ef82b3",
+    "revision": 1,
+    "sha256": "101616baaa98218c0d51799a5cf199ffeba4f26dec2cbef3b198fbc2d868c3c6",
+    "value": {
+      "category": "ordinary",
+      "created_at_ms": 864000000,
+      "event_at_ms": null,
+      "evidence": {
+        "sources": [
+          {
+            "content_sha256": "4c1adf410e8092458cf9598d4ed4ba92a9ddc6c05fa3727c188a5fce5feada84",
+            "coverage": "available",
+            "end_byte": 19,
+            "kind": "input.assertion.ordinary",
+            "occurrence_id": "00000000000000000000000000000001",
+            "origin": "native_operator_assertion",
+            "path": null,
+            "quote": "Acme has owner Alex",
+            "quote_sha256": "4c1adf410e8092458cf9598d4ed4ba92a9ddc6c05fa3727c188a5fce5feada84",
+            "receipt_sha256": "249ded81fc093
+MANAGEMENT_ADMITTED_WRITE_OWNER_LOSS_UNKNOWN_FOUR_LOCKS_HELD_UNTIL_READER_EXIT

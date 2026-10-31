@@ -43,7 +43,33 @@ defmodule Ipse.KnowledgeIndependenceTest do
       package <- ~w(corpus graph research) do
     @tag selection: {kind, scope, package}
     test "#{scope} memory and #{package} remain independent through real Sessions", ctx do
-      report = IpseKnowledgeExample.Proof.independence(ctx.artifacts, ctx.selection)
+      {kind, scope, package} = ctx.selection
+
+      paths =
+        :code.get_path()
+        |> Enum.map(&List.to_string/1)
+        |> Enum.filter(&(Path.basename(&1) == "ebin"))
+        |> Enum.flat_map(&["-pa", &1])
+
+      code = ~S'''
+      Code.require_file("dev/verification/knowledge.exs")
+      [artifacts, kind, scope, package] = System.argv()
+      report = IpseKnowledgeExample.Proof.independence(artifacts, {kind, scope, package})
+      IO.puts("IPSE_PROOF_REPORT:" <> Jason.encode!(report))
+      '''
+
+      {output, status} =
+        System.cmd(
+          System.find_executable("elixir"),
+          ["--erl", "+S 2:2"] ++ paths ++ ["-e", code, ctx.artifacts, kind, scope, package],
+          stderr_to_stdout: true,
+          env: [{"ERL_LIBS", Path.dirname(Application.app_dir(:ipse))}]
+        )
+
+      assert status == 0, output
+      reports = for "IPSE_PROOF_REPORT:" <> json <- String.split(output, "\n"), do: json
+      assert [json] = reports
+      report = Jason.decode!(json)
       assert report["checks"] == 2
       assert report["catalog_bound_refused"] and report["cleanup"] == "confirmed"
       assert report["model_requests"] == 0 and report["payloads_traced"] == false

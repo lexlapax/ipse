@@ -283,7 +283,12 @@ defmodule IpseLab.Proof do
 
       {resumed, _} = start(c, cfg, id)
       {:question, ^question} = drive(resumed, :pause)
-      checked("question_resume_is_inert", File.read!(Path.join(c.dir, id <> ".jsonl")) == before)
+
+      checked(
+        "question_resume_is_inert",
+        idle_resume_journal?(Path.join(c.dir, id <> ".jsonl"), before, id)
+      )
+
       :ok = Session.answer(resumed, question, %{"choice" => "second"})
       :ok = drive(resumed, :deny)
       denied = Session.info(resumed).extension_result["value"]
@@ -584,7 +589,7 @@ defmodule IpseLab.Proof do
 
     checked(
       "interrupted_capture_idle_resume_no_replay",
-      Session.info(resumed).phase == :idle and File.read!(path) == before
+      Session.info(resumed).phase == :idle and idle_resume_journal?(path, before, id)
     )
 
     checked(
@@ -680,7 +685,7 @@ defmodule IpseLab.Proof do
     checked(
       "feed_resume_does_not_reenroll",
       Session.diagnostics(idle)["extension_feeds"]["feeds"] == [] and
-        File.read!(Path.join(c.dir, id <> ".jsonl")) == before
+        idle_resume_journal?(Path.join(c.dir, id <> ".jsonl"), before, id)
     )
 
     :ok = Session.close(idle)
@@ -847,6 +852,31 @@ defmodule IpseLab.Proof do
   defp events(c, pid) do
     {:ok, rows} = Journal.load(c.dir, Session.info(pid).id)
     rows
+  end
+
+  defp idle_resume_journal?(path, before, id) do
+    after_resume = File.read!(path)
+
+    with true <- String.starts_with?(after_resume, before),
+         [header | _] <- String.split(before, "\n", trim: true),
+         {:ok, %{"metadata" => metadata}} <- Jason.decode(header) do
+      suffix =
+        binary_part(after_resume, byte_size(before), byte_size(after_resume) - byte_size(before))
+
+      if metadata["release_receipt_layout"] == Ipse.Session.ReleaseReceipt.layout() do
+        with [line] <- String.split(suffix, "\n", trim: true),
+             true <- suffix == line <> "\n",
+             {:ok, marker} <- Jason.decode(line) do
+          Ipse.Session.ReleaseReceipt.valid_owner_marker?(marker, id)
+        else
+          _ -> false
+        end
+      else
+        suffix == ""
+      end
+    else
+      _ -> false
+    end
   end
 
   defp checked(label, value) do

@@ -4,6 +4,28 @@ defmodule Ipse.Session.DraftNative do
   def policy(%{provider: :chatgpt}), do: :chatgpt
   def policy(_), do: :none
 
+  @doc false
+  def plain_text_only?(
+        %{
+          "role" => "assistant",
+          "content" => content,
+          "provider_data" => %{"provider" => "ollama", "message" => native} = data
+        } = message
+      ) do
+    is_binary(content) and String.valid?(content) and is_map(native) and
+      Enum.all?(Map.keys(data), &(&1 in ~w(provider message reported_model))) and
+      (not Map.has_key?(data, "reported_model") or
+         Ipse.Provider.model_name(data["reported_model"]) === data["reported_model"]) and
+      Enum.sort(Map.keys(native)) == ~w(content role thinking tool_calls) and
+      native["role"] === "assistant" and native["content"] === content and
+      native["thinking"] === "" and native["tool_calls"] === [] and
+      message["tool_calls"] in [nil, []]
+  rescue
+    _ -> false
+  end
+
+  def plain_text_only?(_), do: false
+
   def visible_models(messages) do
     messages
     |> Enum.flat_map(fn

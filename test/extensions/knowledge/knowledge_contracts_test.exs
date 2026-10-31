@@ -46,17 +46,17 @@ defmodule IpseKnowledge.Knowledge.ContractsTest do
     end
 
     assert p["note"]["source_categories"] ==
-             Enum.sort(~w(interactive_operator native_operator_answer typed_host_outcome))
+             Enum.sort(~w(native_operator_assertion typed_host_outcome))
 
     assert p["pending"]["source_categories"] ==
              Enum.sort(
-               ~w(interactive_operator native_operator_answer typed_host_outcome unattended_input assistant_proposal)
+               ~w(interactive_operator native_operator_answer native_operator_assertion typed_host_outcome unattended_input assistant_proposal)
              )
   end
 
   test "current capture output fits while pins, histories and unknown fields refuse" do
     r = IpseKnowledge.Knowledge.Records
-    p = proof()
+    p = %{proof() | "kind" => "input.assertion.ordinary", "origin" => "native_operator_assertion"}
 
     attrs = %{
       "text" => p["quote"],
@@ -78,7 +78,7 @@ defmodule IpseKnowledge.Knowledge.ContractsTest do
       assert {:error, _} = Ipse.JSON.validate_arguments(C.note_schema(), damaged)
     end
 
-    weak = %{p | "origin" => "unattended_input"}
+    weak = %{proof() | "origin" => "unattended_input"}
     assert {:ok, "pending." <> _, pending} = apply(r, :capture, [attrs, weak, 0])
     assert :ok == Ipse.JSON.validate_arguments(C.proposal_schema(), pending)
   end

@@ -1,0 +1,113 @@
+      warning: the following pattern will never match:
+
+          :ok <-
+            Ipse.Extension.Collection.publication_deadline_admission(
+              s.config.semantic_admission["policy"]["expires_at_ms"]
+            )
+
+      because the right-hand side has type:
+
+          dynamic({:error, :collection_deadline_fence_unavailable})
+
+      where "s" was given the types:
+
+          # type: dynamic(%{..., operator_channel: %{..., client: term(), id: term()}, phase: :idle})
+          # from: _build/session-export-genuine-sol-20261029/lib/ipse/session.ex:2394:75
+          %{phase: :idle, operator_channel: %{id: channel, client: client}} = s
+
+          # type: dynamic(%{..., draft: term(), operator_channel: %{..., client: term(), id: term()}, phase: :idle})
+          # from: _build/session-export-genuine-sol-20261029/lib/ipse/session.ex:2396:18
+          planning_entry_quiet?(s)
+
+          # type: dynamic(%{
+            ...,
+            config: term(),
+            draft: term(),
+            operator_channel: %{..., client: term(), id: term()},
+            phase: :idle
+          })
+          # from: _build/session-export-genuine-sol-20261029/lib/ipse/session.ex:2400:63
+          Ipse.Session.OperatorAssertion.selection(s.config)
+
+          # type: dynamic(%{
+            ...,
+            config: %{
+              ...,
+              semantic_admission:
+                %{..., __struct__: atom()} or nil or empty_list() or non_empty_list(term(), term()) or
+                  non_struct_map()
+            },
+            draft: term(),
+            operator_channel: %{..., client: term(), id: term()},
+            phase: :idle
+          })
+          # from: _build/session-export-genuine-sol-20261029/lib/ipse/session.ex:2401:101
+          s.config.semantic_admission["policy"]
+
+      type warning found at:
+      │
+ 2401 │          :ok <- Ipse.Extension.Collection.publication_deadline_admission(s.config.semantic_admission["policy"]["expires_at_ms"]),
+      │          ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+      │
+      └─ _build/session-export-genuine-sol-20261029/lib/ipse/session.ex:2401: Ipse.Session.handle_call/3
+
+{:ok, [Ipse.Extension.Collection, Ipse.Session],
+ %{
+   compile_warnings: [],
+   runtime_warnings: [
+     %{
+       message: "the following pattern will never match:\n\n    :ok <-\n      Ipse.Extension.Collection.publication_deadline_admission(\n        s.config.semantic_admission[\"policy\"][\"expires_at_ms\"]\n      )\n\nbecause the right-hand side has type:\n\n    dynamic({:error, :collection_deadline_fence_unavailable})\n\nwhere \"s\" was given the types:\n\n    # type: dynamic(%{..., operator_channel: %{..., client: term(), id: term()}, phase: :idle})\n    # from: _build/session-export-genuine-sol-20261029/lib/ipse/session.ex:2394:75\n    %{phase: :idle, operator_channel: %{id: channel, client: client}} = s\n\n    # type: dynamic(%{..., draft: term(), operator_channel: %{..., client: term(), id: term()}, phase: :idle})\n    # from: _build/session-export-genuine-sol-20261029/lib/ipse/session.ex:2396:18\n    planning_entry_quiet?(s)\n\n    # type: dynamic(%{\n      ...,\n      config: term(),\n      draft: term(),\n      operator_channel: %{..., client: term(), id: term()},\n      phase: :idle\n    })\n    # from: _build/session-export-genuine-sol-20261029/lib/ipse/session.ex:2400:63\n    Ipse.Session.OperatorAssertion.selection(s.config)\n\n    # type: dynamic(%{\n      ...,\n      config: %{\n        ...,\n        semantic_admission:\n          %{..., __struct__: atom()} or nil or empty_list() or non_empty_list(term(), term()) or\n            non_struct_map()\n      },\n      draft: term(),\n      operator_channel: %{..., client: term(), id: term()},\n      phase: :idle\n    })\n    # from: _build/session-export-genuine-sol-20261029/lib/ipse/session.ex:2401:101\n    s.config.semantic_admission[\"policy\"]\n",
+       position: 2401,
+       file: "/home/lexlapax/projects/lexlapax/ipse/_build/session-export-genuine-sol-20261029/lib/ipse/session.ex",
+       stacktrace: [
+         {Ipse.Session, :handle_call, 3,
+          [
+            file: ~c"_build/session-export-genuine-sol-20261029/lib/ipse/session.ex",
+            line: 2401
+          ]}
+       ],
+       source: "/home/lexlapax/projects/lexlapax/ipse/_build/session-export-genuine-sol-20261029/lib/ipse/session.ex",
+       span: nil,
+       severity: :warning,
+       details: %{
+         typing_traces: [
+           %{
+             name: :s,
+             type: :variable,
+             context: nil,
+             traces: [
+               %{
+                 meta: [line: 2394, column: 75],
+                 file: "/home/lexlapax/projects/lexlapax/ipse/_build/session-export-genuine-sol-20261029/lib/ipse/session.ex",
+                 formatted_type: "dynamic(%{..., operator_channel: %{..., client: term(), id: term()}, phase: :idle})",
+                 formatted_expr: "%{phase: :idle, operator_channel: %{id: channel, client: client}} = s",
+                 formatted_hints: []
+               },
+               %{
+                 meta: [line: 2396, column: 18],
+                 file: "/home/lexlapax/projects/lexlapax/ipse/_build/session-export-genuine-sol-20261029/lib/ipse/session.ex",
+                 formatted_type: "dynamic(%{..., draft: term(), operator_channel: %{..., client: term(), id: term()}, phase: :idle})",
+                 formatted_expr: "planning_entry_quiet?(s)",
+                 formatted_hints: []
+               },
+               %{
+                 meta: [line: 2400, column: 63],
+                 file: "/home/lexlapax/projects/lexlapax/ipse/_build/session-export-genuine-sol-20261029/lib/ipse/session.ex",
+                 formatted_type: "dynamic(%{\n  ...,\n  config: term(),\n  draft: term(),\n  operator_channel: %{..., client: term(), id: term()},\n  phase: :idle\n})",
+                 formatted_expr: "Ipse.Session.OperatorAssertion.selection(s.config)",
+                 formatted_hints: []
+               },
+               %{
+                 meta: [from_brackets: true, line: 2401, column: 101],
+                 file: "/home/lexlapax/projects/lexlapax/ipse/_build/session-export-genuine-sol-20261029/lib/ipse/session.ex",
+                 formatted_type: "dynamic(%{\n  ...,\n  config: %{\n    ...,\n    semantic_admission:\n      %{..., __struct__: atom()} or nil or empty_list() or non_empty_list(term(), term()) or\n        non_struct_map()\n  },\n  draft: term(),\n  operator_channel: %{..., client: term(), id: term()},\n  phase: :idle\n})",
+                 formatted_expr: "s.config.semantic_admission[\"policy\"]",
+                 formatted_hints: []
+               }
+             ]
+           }
+         ]
+       }
+     }
+   ]
+ }}

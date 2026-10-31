@@ -1,0 +1,24 @@
+Running ExUnit with seed: 47201, max_cases: 8
+Excluding tags: [:test]
+Including tags: [document_guard_positive: true]
+
+
+
+  1) test actual Session binds native pending claim and four guarded batches before first-page publication (Ipse.SharedProducerGuardSessionTest)
+     test/extensions/knowledge/shared_producer_guard_session_test.exs:333
+     Assertion with == failed
+     code:  assert invoke(c, "source", %{"store" => "local", "action" => "put", "args" => source}).value["status"] ==
+              "ok"
+     left:  "draft"
+     right: "ok"
+     stacktrace:
+       test/extensions/knowledge/shared_producer_guard_session_test.exs:220: anonymous fn/4 in Ipse.SharedProducerGuardSessionTest.prepare/2
+       (elixir 1.20.4) lib/enum.ex:4659: Enum.reduce/3
+       test/extensions/knowledge/shared_producer_guard_session_test.exs:204: Ipse.SharedProducerGuardSessionTest.prepare/2
+       test/extensions/knowledge/shared_producer_guard_session_test.exs:336: (test)
+
+
+Finished in 1.0 seconds (0.2s on load, 0.00s async, 0.7s sync)
+
+Result: 0/1 passed, 1 excluded
+Failed: 1 test

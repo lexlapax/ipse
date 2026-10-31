@@ -1,0 +1,11 @@
+_build/history-compaction-v2-sol-20261028/lib/ipse/ebin/Elixir.Ipse.Extension.Collection.ManagedPages.beam: OK
+_build/history-commitment-sol-20261028/compat-page.bin: OK
+_build/history-commitment-sol-20261028/compat-legacy-page.bin: OK
+_build/history-commitment-sol-20261028/compile-commitment.log: OK
+_build/history-commitment-sol-20261028/choice-87286.log: OK
+_build/history-commitment-sol-20261028/compat-new.log: OK
+_build/history-commitment-sol-20261028/compat-old.log: OK
+_build/history-commitment-sol-20261028/compat-old-positive.log: OK
+_build/history-commitment-sol-20261028/compact-87287.log: OK
+_build/history-commitment-sol-20261028/compact-87288.log: OK
+_build/history-commitment-sol-20261028/pin-87289.log: OK

@@ -1,0 +1,8 @@
+Running ExUnit with seed: 20261029, max_cases: 4
+Excluding tags: [:test]
+Including tags: [:gate_cli, :reviewed_forget_gate]
+
+..
+Finished in 0.03 seconds (0.00s async, 0.03s sync)
+
+Result: 2 passed, 2 excluded

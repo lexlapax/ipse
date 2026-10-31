@@ -1,0 +1,9 @@
+Running ExUnit with seed: 946096, max_cases: 4
+Excluding tags: [:test]
+Including tags: [v4_wide_geometry: true]
+
+V4_WIDE_GEOMETRY {"sources":8,"chunks":128,"pages":16,"hydrate_reads":359,"hydrate_maximum_store_frame":239}
+.
+Finished in 6.6 seconds (4.0s on load, 0.00s async, 2.5s sync)
+
+Result: 1 passed, 6 excluded

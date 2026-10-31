@@ -137,6 +137,27 @@ defmodule Ipse.DelegationSessionTest do
     %{root: root, cwd: Path.join(root, "workspace"), home: home, dir: Path.join(root, "state")}
   end
 
+  test "a child can start after exiting locally selected planning without inheriting its marker",
+       ctx do
+    parent = start(ctx, %{subagents: true, execution_mode: :planning, planning_cli_start: true})
+    reader = spawn(fn -> receive do: (:stop -> :ok) end)
+    on_exit(fn -> Process.exit(reader, :kill) end)
+    assert {:ok, channel} = Session.open_input_channel(parent, reader)
+    ticket = staged_exit(parent, reader, channel)
+    assert :ok = Session.exit_planning_observed(parent, channel, ticket)
+    assert :ok = Session.prompt(parent, "delegate after explicit planning exit")
+    assert_receive {:ipse, ^parent, {:approval, ref, "delegate", _}}, 2_000
+    assert :ok = Session.approve(parent, ref, true)
+    assert_receive {:ipse, ^parent, {:subagent, child_id, :started}}, 2_000
+    {_origin, child_config, _messages, _tools, _provider_pid} = child_provider_call()
+    refute Map.has_key?(child_config, :planning_cli_start)
+    assert_receive {:ipse, ^parent, {:done, :ok}}, 2_000
+    child_dir = Path.join([ctx.dir, "subagents", Session.info(parent).id])
+    child_events = events(child_dir, child_id)
+    refute Map.has_key?(hd(child_events)["metadata"], "planning_local_start")
+    assert {:ok, _} = Session.Saved.restore(child_events, child_id)
+  end
+
   test "parent approval precedes child start and exact child mutation approval is forwarded",
        ctx do
     parent =
@@ -615,6 +636,55 @@ defmodule Ipse.DelegationSessionTest do
     end)
 
     pid
+  end
+
+  # Synthetic host-state witness; native-terminal attestation has separate PTY tests.
+  defp staged_exit(session, reader, channel) do
+    state = :sys.get_state(session)
+    text = "/plan exit"
+    witness = make_ref()
+
+    binding = %{
+      session_id: state.id,
+      cwd: state.cwd,
+      generation: state.operator_channel.generation,
+      channel_id: channel,
+      purpose: "prompt",
+      render_id: nil
+    }
+
+    observation = %{
+      "version" => 2,
+      "event_id" => Ipse.Usage.id(),
+      "text" => text,
+      "text_sha256" => Ipse.JSON.sha256(text),
+      "display_sha256" => Ipse.JSON.sha256("you> "),
+      "input_limit" => 1_048_576,
+      "display_limit" => 16_777_216
+    }
+
+    :sys.replace_state(Session.Input, fn input ->
+      entry = %{
+        target: session,
+        kind: :observation,
+        client: reader,
+        target_monitor: Process.monitor(session),
+        client_monitor: Process.monitor(reader),
+        task: nil,
+        from: nil,
+        cancelled: false,
+        binding: binding,
+        display_sha256: observation["display_sha256"],
+        observation: observation,
+        expires: System.monotonic_time(:millisecond) + 300_000,
+        timer: nil
+      }
+
+      put_in(input.entries[witness], entry)
+    end)
+
+    assert {:ok, ticket} = Session.stage_input(session, channel, text, witness)
+    ticket
   end
 
   defp child_provider_call do

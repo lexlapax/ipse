@@ -138,7 +138,7 @@ defmodule Ipse.Config.RouterIntegrationTest do
              )
   end
 
-  test "idle OpenRouter resume preserves bytes and a changed upstream or data policy refuses before repair",
+  test "idle OpenRouter resume is inert and a changed upstream or data policy refuses before repair",
        c do
     {_, config} = resolved(c, route())
     opts = [cwd: c.cwd, state_dir: c.state, subscriber: self()]
@@ -153,6 +153,7 @@ defmodule Ipse.Config.RouterIntegrationTest do
     assert :ok = Ipse.Session.close(pid)
     path = Path.join(c.state, id <> ".jsonl")
     bytes = File.read!(path)
+    assert {:ok, before_events} = Ipse.Journal.load(c.state, id)
 
     assert {:ok, pid} =
              DynamicSupervisor.start_child(
@@ -161,8 +162,14 @@ defmodule Ipse.Config.RouterIntegrationTest do
              )
 
     assert Ipse.Session.info(pid).phase == :idle
-    assert :ok = Ipse.Session.close(pid)
-    assert File.read!(path) == bytes
+    assert {:ok, resumed_events} = Ipse.Journal.load(c.state, id)
+    assert Enum.take(resumed_events, length(before_events)) == before_events
+
+    assert [%{"type" => "session_release_owner_started", "session_id" => ^id}] =
+             Enum.drop(resumed_events, length(before_events))
+
+    assert String.starts_with?(File.read!(path), bytes)
+    assert :ok = Ipse.Session.close_confirmed(pid)
     File.write!(path, "{\"type\"", [:append])
     torn = File.read!(path)
 

@@ -36,6 +36,22 @@ defmodule Ipse.KnowledgeProfilesTest do
     ''')
   end
 
+  test "workspace document acquisition is an explicit preset capability without widening existing presets" do
+    pure(~S'''
+    state_caps=P.capabilities("corpus","state-lexical")
+    document_caps=P.capabilities("corpus","state-documents")
+    assert document_caps--state_caps==["host.tools"]
+    assert state_caps--document_caps==[]
+    assert {:ok,_}=P.validate("corpus","state-documents",lexical)
+    remote=put_in(lexical,["stores","notes"],%{"kind"=>"mcp_cas","binding"=>"storage","partition"=>"notes","contract"=>"ipse-cas-v3"})
+    assert P.capabilities("corpus","mcp-documents")--P.capabilities("corpus","mcp-lexical")==["host.tools"]
+    assert {:ok,_}=P.validate("corpus","mcp-documents",remote)
+    for preset<-~w(state-lexical state-dense state-rerank state-semantic mcp-lexical mcp-dense mcp-rerank mcp-semantic) do
+      refute "host.tools" in P.capabilities("corpus",preset)
+    end
+    ''')
+  end
+
   test "profile references and compiled preset authority are checked before dispatch" do
     pure(~S'''
     dense=lexical|>put_in(["embedding","encoder"],%{"kind"=>"embedding","profile"=>"reviewed"})|>put_in(["retrieval","semantic"],%{"kind"=>"dense","version"=>1,"embedding"=>"encoder"})

@@ -1,0 +1,10 @@
+Running ExUnit with seed: 46844, max_cases: 1
+Excluding tags: [:test]
+Including tags: [:packed_vector_geometry, :packed_vector_session]
+
+NAMESPACE_TEST_ARTIFACT 28be9e9cbf1e42601b44139598d1ebff11191b503b10e055aa2025692f899998
+.VECTOR_NATIVE_BUDGET {"allocated_bytes":204800,"floor":41,"generation":41,"operations":41,"records":10}
+.
+Finished in 63.5 seconds (0.00s async, 63.5s sync)
+
+Result: 2 passed, 17 excluded

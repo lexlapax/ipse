@@ -1,0 +1,4 @@
+The first reviewer verifier failed to compile before reading evidence because
+`keys=~w(...)` was parsed as the =~ operator. Adding whitespace corrected the
+reviewer script. Candidate sources/evidence/runtime were untouched; no tests or
+effects were run.

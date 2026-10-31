@@ -1,0 +1,24 @@
+Running ExUnit with seed: 47178, max_cases: 8
+Excluding tags: [:native_sandbox, :macos_sandbox, :macos_filesystem, :memory_scope]
+
+Running ExUnit with seed: 620769, max_cases: 4
+Excluding tags: [:test]
+Including tags: [host_seed: true]
+
+%{
+  records: 7,
+  host_seed: nil,
+  generation: 1014,
+  inference_calls: 0,
+  claim_operation_id: "00000000000000000000000000000076",
+  active_stages: 0
+}
+.
+Finished in 4.3 seconds (4.1s on load, 0.00s async, 0.1s sync)
+
+Result: 1 passed, 16 excluded
+
+.
+Finished in 4.5 seconds (0.04s on load, 0.00s async, 4.4s sync)
+
+Result: 1 passed

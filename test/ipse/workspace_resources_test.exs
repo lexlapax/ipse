@@ -141,9 +141,22 @@ defmodule Ipse.SkillResourceSessionTest do
                  "type" => "lifecycle_epoch_closed",
                  "session_id" => ^id,
                  "closure" => "close",
-                 "cleanup_confirmed" => true
+                 "cleanup_confirmed" => false,
+                 "epoch_id" => epoch
+               } = closure,
+               %{
+                 "type" => "session_release_intent",
+                 "session_id" => ^id,
+                 "epoch_id" => intent_epoch,
+                 "closure_sha256" => closure_sha
                }
              ] = Enum.drop(closed_events, length(events))
+
+      assert intent_epoch == epoch
+      assert closure_sha == Ipse.JSON.digest([closure])
+
+      assert {:ok, %{"release_claim" => "signed_release_claim"}} =
+               Ipse.Session.Saved.inspect_saved(state, id)
 
       File.write!(resource, "Changed resource must not replace history.")
 
@@ -151,7 +164,12 @@ defmodule Ipse.SkillResourceSessionTest do
         DynamicSupervisor.start_child(Ipse.Sessions, {Ipse.Session, Keyword.put(opts, :id, id)})
 
       on_exit(fn -> if Process.alive?(resumed), do: Ipse.Session.close(resumed) end)
-      assert {:ok, ^closed_events} = Ipse.Journal.load(state, id)
+      assert {:ok, resumed_events} = Ipse.Journal.load(state, id)
+      assert Enum.take(resumed_events, length(closed_events)) == closed_events
+
+      assert [%{"type" => "session_release_owner_started", "session_id" => ^id}] =
+               Enum.drop(resumed_events, length(closed_events))
+
       :ok = Ipse.Session.prompt(resumed, "Continue from saved evidence.")
       assert_receive {:ipse, ^resumed, {:done, :ok}}, 3000
       {:ok, final_events} = Ipse.Journal.load(state, id)

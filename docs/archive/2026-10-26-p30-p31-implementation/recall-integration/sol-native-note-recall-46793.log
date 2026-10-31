@@ -1,0 +1,9 @@
+Compiling 13 files (.ex)
+Running ExUnit with seed: 46793, max_cases: 40
+Excluding tags: [:test]
+Including tags: [location: {"test/ipse/session/managed_reference_test.exs", 247}, location: "test/ipse/session/native_note_recall_test.exs"]
+
+..
+Finished in 12.8 seconds (0.4s async, 12.4s sync)
+
+Result: 2 passed, 39 excluded

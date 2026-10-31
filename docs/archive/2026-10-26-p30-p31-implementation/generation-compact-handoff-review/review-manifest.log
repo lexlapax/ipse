@@ -1,0 +1,6 @@
+GENERATION_COMPACT_HANDOFF_OK: %{
+  manifest_entries: 7,
+  source_snapshots: 1,
+  inventories: [{"runtime", 716}, {"artifacts", 45}],
+  compact_parent_runtime_exact: true
+}

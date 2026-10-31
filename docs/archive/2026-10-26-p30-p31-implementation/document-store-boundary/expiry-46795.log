@@ -1,0 +1,8 @@
+Running ExUnit with seed: 46795, max_cases: 1
+Excluding tags: [:test]
+Including tags: [:queued_document_expiry, :draft_expiry]
+
+..
+Finished in 8.1 seconds (0.00s async, 8.1s sync)
+
+Result: 2 passed, 49 excluded

@@ -1,0 +1,49 @@
+     warning: the variable "size" is accessed inside size(...) of a bitstring but it was defined outside of the match. You must precede it with the pin operator
+     │
+ 135 │     <<body::binary-size(size), tail::binary>> = rest
+     │                         ~
+     │
+     └─ test/ipse/runner/stdio_admission_test.exs:135:25: Ipse.Runner.StdioAdmissionTest.parse/2
+
+Running ExUnit with seed: 761788, max_cases: 40
+Excluding tags: [:native_sandbox, :macos_sandbox, :macos_filesystem, :memory_scope]
+
+
+
+  1) test expired startup grant never runs the configured server (Ipse.Runner.StdioAdmissionTest)
+     test/ipse/runner/stdio_admission_test.exs:68
+     match (=) failed
+     code:  assert {:ok, port} =
+              Runner.open_stdio(
+                "/bin/sh",
+                ["-c", "printf started > \"$1\"", "fixture", marker],
+                root,
+                %{},
+                10000, protected_supervisor: true, admit_start: true)
+     left:  {:ok, port}
+     right: {:error, :operator_helper_identity_unavailable}
+     stacktrace:
+       test/ipse/runner/stdio_admission_test.exs:74: (test)
+
+
+
+  2) test native stdio grants the actual start and acknowledges deadline-bound pipe writes (Ipse.Runner.StdioAdmissionTest)
+     test/ipse/runner/stdio_admission_test.exs:6
+     match (=) failed
+     code:  assert {:ok, port} =
+              Runner.open_stdio(
+                "/bin/sh",
+                ["-c", "printf started > \"$1\"; exec /bin/cat", "fixture", marker],
+                root,
+                %{},
+                10000, protected_supervisor: true, admit_start: true)
+     left:  {:ok, port}
+     right: {:error, :operator_helper_identity_unavailable}
+     stacktrace:
+       test/ipse/runner/stdio_admission_test.exs:12: (test)
+
+
+Finished in 0.09 seconds (0.09s on load, 0.00s async, 0.00s sync)
+
+Result: 0/2 passed
+Failed: 2 tests

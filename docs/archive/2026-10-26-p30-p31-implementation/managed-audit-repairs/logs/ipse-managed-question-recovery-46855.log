@@ -1,0 +1,31 @@
+Running ExUnit with seed: 46855, max_cases: 8
+Excluding tags: [:test]
+Including tags: [managed_question_recovery: true]
+
+
+
+  1) test legacy managed pending question is inert after expiry on real resume (Ipse.Extension.ManagedCollectionCallSessionTest)
+     test/ipse/extension/managed_collection_call_session_test.exs:994
+     match (=) failed
+     code:  assert {:ok, restored} = Session.Saved.restore(legacy, id)
+     left:  {:ok, restored}
+     right: {:error, :invalid_usage_journal}
+     stacktrace:
+       test/ipse/extension/managed_collection_call_session_test.exs:1014: (test)
+
+
+
+  2) test legacy managed pending question is inert after revoke on real resume (Ipse.Extension.ManagedCollectionCallSessionTest)
+     test/ipse/extension/managed_collection_call_session_test.exs:994
+     match (=) failed
+     code:  assert {:ok, restored} = Session.Saved.restore(legacy, id)
+     left:  {:ok, restored}
+     right: {:error, :invalid_usage_journal}
+     stacktrace:
+       test/ipse/extension/managed_collection_call_session_test.exs:1014: (test)
+
+
+Finished in 2.1 seconds (0.00s async, 2.1s sync)
+
+Result: 0/2 passed, 93 excluded
+Failed: 2 tests

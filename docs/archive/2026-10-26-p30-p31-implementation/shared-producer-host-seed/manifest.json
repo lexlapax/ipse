@@ -1,0 +1,62 @@
+{
+  "scope": "47177 emitted trusted Elixir fixture from actual private producer over closed model;47178 same fixture has optional serialization; no native record history/inference/authority; claim modeled operation ID carried separately, other retained opIDs nil",
+  "version": 1,
+  "source": [
+    {
+      "path": "docs/archive/2026-10-26-p30-p31-implementation/shared-producer-host-seed/source/extensions/knowledge/src/store/collection/producer.ex",
+      "bytes": 23072,
+      "sha256": "f73bad96ffba74702900f3a8b6a597b47d49c1a04eae98fc3316ee57fc7ccde9",
+      "original": "extensions/knowledge/src/store/collection/producer.ex"
+    },
+    {
+      "path": "docs/archive/2026-10-26-p30-p31-implementation/shared-producer-host-seed/source/test/support/shared_producer_fixture.exs",
+      "bytes": 31412,
+      "sha256": "6f403befbe4e7f1cf2505a58ac02301012380827f35737e80408ac6b96871b07",
+      "original": "test/support/shared_producer_fixture.exs"
+    },
+    {
+      "path": "docs/archive/2026-10-26-p30-p31-implementation/shared-producer-host-seed/source/test/extensions/knowledge/shared_producer_test.exs",
+      "bytes": 2140,
+      "sha256": "6dbaf757c5663bb479cfb431be9ed82ce9f186ecf535d2ecf59edc2bdd4c1020",
+      "original": "test/extensions/knowledge/shared_producer_test.exs"
+    }
+  ],
+  "kind": "synthetic_v3_pending_relation_before_first_inference",
+  "files": [
+    {
+      "path": "docs/archive/2026-10-26-p30-p31-implementation/shared-producer-host-seed/pending-v3-model.exs",
+      "bytes": 74893,
+      "sha256": "6f1f9edd2d0531c5d49982b4365c2598596109a81e0ffad181424f11bbfe0dac",
+      "original": "_build/shared-producer-ranges-20261029/pending-v3-model.exs"
+    },
+    {
+      "path": "docs/archive/2026-10-26-p30-p31-implementation/shared-producer-host-seed/host-seed-tested-47177.exs",
+      "bytes": 31382,
+      "sha256": "0ea187ee96fe03ad2c57b355b3af2acbe18044d8b503a79a826162dc519c6107",
+      "original": "_build/shared-producer-ranges-20261029/host-seed-tested-47177.exs"
+    },
+    {
+      "path": "docs/archive/2026-10-26-p30-p31-implementation/shared-producer-host-seed/shared-producer-host-seed-47177.log",
+      "bytes": 670,
+      "sha256": "8e7c0b631b0a5f6a4fa09150b1c504eded01cc568b9c49e23211c81c17a0d580",
+      "original": "_build/shared-producer-host-seed-47177.log"
+    },
+    {
+      "path": "docs/archive/2026-10-26-p30-p31-implementation/shared-producer-host-seed/shared-producer-host-seed-default-47178.log",
+      "bytes": 574,
+      "sha256": "7b7a8a93074fcab7de88e14ffe46d1462d2d6519ce41a9609ed0392e9a2ea045",
+      "original": "_build/shared-producer-host-seed-default-47178.log"
+    },
+    {
+      "path": "docs/archive/2026-10-26-p30-p31-implementation/shared-producer-host-seed/freeze-seed.exs",
+      "bytes": 2139,
+      "sha256": "03787060f08c6c76e890f84a81ed063e192c31db9b36f01aab4ca8d6f923c6d5",
+      "original": "_build/shared-producer-ranges-20261029/freeze-seed.exs"
+    }
+  ],
+  "ancestor": {
+    "path": "docs/archive/2026-10-26-p30-p31-implementation/shared-producer-range-claim/manifest.json",
+    "bytes": 187820,
+    "sha256": "c464ec617ef4d403f47582068de49f749185263d0a95361ef6ddb5acd84d5d12"
+  }
+}

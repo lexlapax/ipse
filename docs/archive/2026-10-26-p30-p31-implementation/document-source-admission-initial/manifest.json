@@ -1,0 +1,199 @@
+{
+  "ancestors": [
+    {
+      "bytes": 7514,
+      "path": "docs/archive/2026-10-26-p30-p31-implementation/document-source-use/manifest.json",
+      "sha256": "77ec4fd5cfb91e1d7be513f3c2aea0eb2d2a5a5841312f189d153b17d2f0371b",
+      "type": "regular"
+    },
+    {
+      "bytes": 419816,
+      "path": "docs/archive/2026-10-26-p30-p31-implementation/shared-producer-guarded-wire/manifest.json",
+      "sha256": "fc79fe5cef7190e5b2a0f6414b1107e9470f39758e566c6d759a2e0a8a558388",
+      "type": "regular"
+    }
+  ],
+  "graphs": [
+    {
+      "files": 701,
+      "graph": "_build/document-embedding-admission-sol-20261029",
+      "inventory": {
+        "bytes": 183331,
+        "path": "docs/archive/2026-10-26-p30-p31-implementation/document-source-admission-initial/document-embedding-admission-sol-20261029.json",
+        "sha256": "109d346e2b21cf52409fb597ca0dc9e48ccade47996bd3e5e040be2adaed6986",
+        "type": "regular"
+      }
+    },
+    {
+      "files": 701,
+      "graph": "_build/document-embedding-admission-clock-sol-20261029",
+      "inventory": {
+        "bytes": 187537,
+        "path": "docs/archive/2026-10-26-p30-p31-implementation/document-source-admission-initial/document-embedding-admission-clock-sol-20261029.json",
+        "sha256": "23bd174944280cb4da97380f4a0eff9a61d1aa372ce0efb9cfe46836f7dd7060",
+        "type": "regular"
+      }
+    },
+    {
+      "files": 701,
+      "graph": "_build/document-embedding-admission-inventory-sol-20261029",
+      "inventory": {
+        "bytes": 190342,
+        "path": "docs/archive/2026-10-26-p30-p31-implementation/document-source-admission-initial/document-embedding-admission-inventory-sol-20261029.json",
+        "sha256": "3cd8ff9bbe2c024ddb4bc779159c5e4ec12be6aabf37a9c30c80420663880b04",
+        "type": "regular"
+      }
+    }
+  ],
+  "layers": [
+    {
+      "bytes": 17152,
+      "path": "docs/archive/2026-10-26-p30-p31-implementation/document-source-admission-initial/admission-source.sha256",
+      "sha256": "3c366a16a3fa43beeb1b29360324984038fdf53ae70b70db6a6af5f9efb9a783",
+      "type": "regular"
+    },
+    {
+      "bytes": 493,
+      "path": "docs/archive/2026-10-26-p30-p31-implementation/document-source-admission-initial/admission-clock-overlays.sha256",
+      "sha256": "f2c48f240305331d6cb8766ecfc76ecc4527a01e5f02c688b2757f0e9d0c4a84",
+      "type": "regular"
+    },
+    {
+      "bytes": 7757,
+      "path": "docs/archive/2026-10-26-p30-p31-implementation/document-source-admission-initial/ipse.app-before-inventory",
+      "sha256": "34446586113f0c8ae6313f3e499bc7b1f864c30b6ffa7aaf753801e7dbb91123",
+      "type": "regular"
+    }
+  ],
+  "retained": [
+    {
+      "bytes": 1574,
+      "path": "docs/archive/2026-10-26-p30-p31-implementation/document-source-admission-initial/ipse-document-embedding-clock-47200.exs",
+      "sha256": "43c08420c66a2903fb2aac49554f9c70998c11f53af962389f2ad5e991ed13bd",
+      "type": "regular"
+    },
+    {
+      "bytes": 283,
+      "path": "docs/archive/2026-10-26-p30-p31-implementation/document-source-admission-initial/ipse-document-embedding-clock-47200.log",
+      "sha256": "cadbb4ea7f1456bd138cc7b02eb502a1af6292e2f4053be5be622652505fc621",
+      "type": "regular"
+    },
+    {
+      "bytes": 1322,
+      "path": "docs/archive/2026-10-26-p30-p31-implementation/document-source-admission-initial/ipse-document-embedding-host-47194.exs",
+      "sha256": "dc2255372d7c14893ea3a727b476f595084081e98f1d0b92fdf8d9aed72573fc",
+      "type": "regular"
+    },
+    {
+      "bytes": 1005,
+      "path": "docs/archive/2026-10-26-p30-p31-implementation/document-source-admission-initial/ipse-document-embedding-host-47194.log",
+      "sha256": "c8df6471b58f943c1c2b3906dc0393a31cdf46342ca52d72ad3ea3bdd7cf8c6f",
+      "type": "regular"
+    },
+    {
+      "bytes": 1031,
+      "path": "docs/archive/2026-10-26-p30-p31-implementation/document-source-admission-initial/ipse-document-embedding-host-47195.exs",
+      "sha256": "90de0be86ecf946ffbe5afbe5f92744abd6281b02ad0e5cc0fc4482e6453098e",
+      "type": "regular"
+    },
+    {
+      "bytes": 4885,
+      "path": "docs/archive/2026-10-26-p30-p31-implementation/document-source-admission-initial/ipse-document-embedding-host-47195.log",
+      "sha256": "48c7e3f267e4dd03bdc755e0e534e3b17884194dfec3fd8ffd90d34f7b554b9b",
+      "type": "regular"
+    },
+    {
+      "bytes": 1164,
+      "path": "docs/archive/2026-10-26-p30-p31-implementation/document-source-admission-initial/ipse-document-embedding-host-47196.exs",
+      "sha256": "ecd13e1d0231889401e8f9d16cb85215745b9a06534367921eb360b4f267b1b4",
+      "type": "regular"
+    },
+    {
+      "bytes": 372,
+      "path": "docs/archive/2026-10-26-p30-p31-implementation/document-source-admission-initial/ipse-document-embedding-host-47196.log",
+      "sha256": "707dea31a5b9444caa6d1efaea6a9da9768a4528832460452145828f65d7a9a4",
+      "type": "regular"
+    },
+    {
+      "bytes": 1571,
+      "path": "docs/archive/2026-10-26-p30-p31-implementation/document-source-admission-initial/ipse-document-embedding-inventory-47202.exs",
+      "sha256": "83f7a4d6817891fa734b62b2228dde774aa7ddc92e7c6933fa08b4fc26d73620",
+      "type": "regular"
+    },
+    {
+      "bytes": 193,
+      "path": "docs/archive/2026-10-26-p30-p31-implementation/document-source-admission-initial/ipse-document-embedding-inventory-47202.log",
+      "sha256": "eb241cb3e24a2002973c5ff982ecaab513291efaed6f294bfcb138fe16c7be61",
+      "type": "regular"
+    },
+    {
+      "bytes": 853,
+      "path": "docs/archive/2026-10-26-p30-p31-implementation/document-source-admission-initial/ipse-document-embedding-sdk-47191.exs",
+      "sha256": "f40d55291aa1fa1e7a150e7219c2be7b1bb705831adecc2ed9f0dd5d5325480a",
+      "type": "regular"
+    },
+    {
+      "bytes": 1012,
+      "path": "docs/archive/2026-10-26-p30-p31-implementation/document-source-admission-initial/ipse-document-embedding-sdk-47191.log",
+      "sha256": "09a43170d26fe3d9ffee3ffe9df53b42174e92a57bd5e08c5c2a4e272fffd527",
+      "type": "regular"
+    },
+    {
+      "bytes": 746,
+      "path": "docs/archive/2026-10-26-p30-p31-implementation/document-source-admission-initial/ipse-document-embedding-sdk-47192.exs",
+      "sha256": "858be5961f8cd30d979a01fb444fde10507d06f349db37f7d1feed41ace02f97",
+      "type": "regular"
+    },
+    {
+      "bytes": 85,
+      "path": "docs/archive/2026-10-26-p30-p31-implementation/document-source-admission-initial/ipse-document-embedding-sdk-47192.log",
+      "sha256": "89a3031e88c178f954238335a5a8ce0b02a8aed07cceed26fc05e8adbb26849c",
+      "type": "regular"
+    },
+    {
+      "bytes": 2046,
+      "path": "docs/archive/2026-10-26-p30-p31-implementation/document-source-admission-initial/ipse-document-embedding-session-handlers.patch",
+      "sha256": "831c66d8fada2143bcb5e9404018761da71d00b5936f95741d55c0a4fa65d302",
+      "type": "regular"
+    },
+    {
+      "bytes": 595,
+      "path": "docs/archive/2026-10-26-p30-p31-implementation/document-source-admission-initial/ipse-document-embedding-state-47197.exs",
+      "sha256": "be9a129ea8a9bb13338766726c349fc43f1e49d845fbc3f4adb7757c1b18d59c",
+      "type": "regular"
+    },
+    {
+      "bytes": 202,
+      "path": "docs/archive/2026-10-26-p30-p31-implementation/document-source-admission-initial/ipse-document-embedding-state-47197.log",
+      "sha256": "db64ade7054d90a217dd6a68d1763a6eb1c5997c148b4363e4384544ff263846",
+      "type": "regular"
+    },
+    {
+      "bytes": 3513,
+      "path": "docs/archive/2026-10-26-p30-p31-implementation/document-source-admission-initial/ipse-freeze-document-admission-47210.exs",
+      "sha256": "71578057b7cc65899f67fd4d97c1a1bb3dd0b8a13a567fa00d51d9554b63286b",
+      "type": "regular"
+    }
+  ],
+  "scope": "initial document source admission wiring; actual transport qualification unresolved",
+  "source_count": 175,
+  "source_hashes": {
+    "bytes": 17152,
+    "path": "docs/archive/2026-10-26-p30-p31-implementation/document-source-admission-initial/source.sha256",
+    "sha256": "1fdad6a9b1ee9d86c8d9232842bdf59e505c307c51943c3e150ebec991e29ad2",
+    "type": "regular"
+  },
+  "source_tar": {
+    "bytes": 3467264,
+    "path": "docs/archive/2026-10-26-p30-p31-implementation/document-source-admission-initial/source.tar",
+    "sha256": "71b4a43100fc75d17aefeb09691c366046f24994ffd852c283d9199896906595",
+    "type": "regular"
+  },
+  "test": {
+    "bytes": 11835,
+    "path": "docs/archive/2026-10-26-p30-p31-implementation/document-source-admission-initial/document_embedding_test.exs.txt",
+    "sha256": "698330b7addd021d02a0da40abe95404dc99fb36ab8e7bec23c48841e3cb790c",
+    "type": "regular"
+  },
+  "version": 1
+}

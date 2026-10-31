@@ -1,0 +1,24 @@
+Running ExUnit with seed: 46805, max_cases: 1
+
+
+
+  1) test embedded complete typed metadata survives packing and forged continuation cannot publish (Ipse.KnowledgeCollectionAdapterSessionTest)
+     test/extensions/knowledge/collection_adapter_session_test.exs:239
+     Expected truthy, got false
+     code: assert Enum.any?(result["gaps"], &(&1["code"] == "partial_document" and &1["warnings"] != []))
+     arguments:
+
+         # 1
+         []
+
+         # 2
+         #Function<13.8840984/1 in Ipse.KnowledgeCollectionAdapterSessionTest."test embedded complete typed metadata survives packing and forged continuation cannot publish"/1>
+
+     stacktrace:
+       test/extensions/knowledge/collection_adapter_session_test.exs:251: (test)
+
+..
+Finished in 103.4 seconds (0.00s async, 103.4s sync)
+
+Result: 2/3 passed
+Failed: 1 test

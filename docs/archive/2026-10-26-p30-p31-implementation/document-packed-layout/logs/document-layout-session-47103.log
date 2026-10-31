@@ -1,0 +1,9 @@
+Running ExUnit with seed: 47103, max_cases: 1
+Excluding tags: [:test]
+Including tags: [:document_layout_session]
+
+DOCUMENT_LAYOUT_SESSION {"approvals":0,"model_calls":0,"receipts":3,"max_worker_request_bytes":1021}
+.
+Finished in 2.3 seconds (0.4s on load, 0.00s async, 1.8s sync)
+
+Result: 1 passed, 6 excluded

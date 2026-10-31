@@ -1,0 +1,12 @@
+Wrote disabled instance and exact trust selection. Review before enabling.
+{
+  "corpus_ast_exact_private_delegation": true,
+  "adapters_bytes_exact": true,
+  "producer_only_delta": "remove obsolete source_dispatch_available selection coverage field",
+  "catalog_shapes_exact": true,
+  "actual_generator_v2": true,
+  "host_closed_services_valid": true,
+  "extension_config_valid": true,
+  "inference_or_storage_effects": 0,
+  "canonical_manifest_sha256": "a7eba4d0daf79bcd6ec2d268a22b12e41b16bdae55d839f17284372218b8a5e6"
+}

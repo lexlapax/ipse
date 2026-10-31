@@ -1,0 +1,186 @@
+Running ExUnit with seed: 334256, max_cases: 4
+Excluding tags: [:native_sandbox, :macos_sandbox, :macos_filesystem, :memory_scope]
+
+
+
+  1) test bounded shared producer receipt flow and unknown controls in an isolated worker (Ipse.SharedProducerFixtureTest)
+     test/extensions/knowledge/shared_producer_test.exs:4
+     Running ExUnit with seed: 625387, max_cases: 4
+
+
+
+       1) test public page production refuses before any claim, host call or inference (Ipse.SharedProducerTest)
+          test/support/shared_producer_fixture.exs:451
+          {%{"op" => "collection.store", "request" => %{"op" => "snapshot"}, "scope" => "project"}, %{"document_store" => %{"inline_bytes" => 8192, "version" => 2, "write_parts" => 2}, "floor" => 0, "floor_anchor" => nil, "generation" => 1000, "project" => "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "version" => 3}}
+          code: {resolved, args, d} = initial()
+          stacktrace:
+            dev/knowledge/collection_recipe_model.ex:97: Ipse.CollectionRecipeModel.run/3
+            test/support/shared_producer_fixture.exs:86: Ipse.SharedProducerTest.put_loop/2
+            test/support/shared_producer_fixture.exs:48: Ipse.SharedProducerTest.initial/1
+            test/support/shared_producer_fixture.exs:452: (test)
+
+
+
+       2) test mismatched pin refuses before the closed host inference continuation (Ipse.SharedProducerTest)
+          test/support/shared_producer_fixture.exs:569
+          {%{"op" => "collection.store", "request" => %{"op" => "snapshot"}, "scope" => "project"}, %{"document_store" => %{"inline_bytes" => 8192, "version" => 2, "write_parts" => 2}, "floor" => 0, "floor_anchor" => nil, "generation" => 1000, "project" => "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "version" => 3}}
+          code: {resolved, _, _} = initial()
+          stacktrace:
+            dev/knowledge/collection_recipe_model.ex:97: Ipse.CollectionRecipeModel.run/3
+            test/support/shared_producer_fixture.exs:86: Ipse.SharedProducerTest.put_loop/2
+            test/support/shared_producer_fixture.exs:48: Ipse.SharedProducerTest.initial/1
+            test/support/shared_producer_fixture.exs:570: (test)
+
+
+
+       3) test read-only domain selection setup preserves configured identity and never invents reported model (Ipse.SharedProducerTest)
+          test/support/shared_producer_fixture.exs:490
+          {%{"op" => "collection.store", "request" => %{"op" => "snapshot"}, "scope" => "project"}, %{"document_store" => %{"inline_bytes" => 8192, "version" => 2, "write_parts" => 2}, "floor" => 0, "floor_anchor" => nil, "generation" => 1000, "project" => "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "version" => 3}}
+          code: {resolved, _, _} = initial()
+          stacktrace:
+            dev/knowledge/collection_recipe_model.ex:97: Ipse.CollectionRecipeModel.run/3
+            test/support/shared_producer_fixture.exs:86: Ipse.SharedProducerTest.put_loop/2
+            test/support/shared_producer_fixture.exs:48: Ipse.SharedProducerTest.initial/1
+            test/support/shared_producer_fixture.exs:491: (test)
+
+
+
+       4) test expired historical and future-observed sources refuse before claim and inference (Ipse.SharedProducerTest)
+          test/support/shared_producer_fixture.exs:416
+          {%{"op" => "collection.store", "request" => %{"op" => "snapshot"}, "scope" => "project"}, %{"document_store" => %{"inline_bytes" => 8192, "version" => 2, "write_parts" => 2}, "floor" => 0, "floor_anchor" => nil, "generation" => 1000, "project" => "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "version" => 3}}
+          code: for opts <- [[expires_at_ms: now - 1], [historical: true], [observed_at_ms: now + 60_000]] do
+          stacktrace:
+            dev/knowledge/collection_recipe_model.ex:97: Ipse.CollectionRecipeModel.run/3
+            test/support/shared_producer_fixture.exs:86: Ipse.SharedProducerTest.put_loop/2
+            test/support/shared_producer_fixture.exs:48: Ipse.SharedProducerTest.initial/1
+            test/support/shared_producer_fixture.exs:420: anonymous fn/1 in Ipse.SharedProducerTest."test expired historical and future-observed sources refuse before claim and inference"/1
+            (elixir 1.20.4) lib/enum.ex:1725: Enum."-map/2-lists^map/1-1-"/2
+            test/support/shared_producer_fixture.exs:419: (test)
+
+
+
+       5) test source and root mutations before the next batch stop without a retry or new inference (Ipse.SharedProducerTest)
+          test/support/shared_producer_fixture.exs:440
+          {%{"op" => "collection.store", "request" => %{"op" => "snapshot"}, "scope" => "project"}, %{"document_store" => %{"inline_bytes" => 8192, "version" => 2, "write_parts" => 2}, "floor" => 0, "floor_anchor" => nil, "generation" => 1000, "project" => "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "version" => 3}}
+          code: for fault <- [:source, :root] do
+          stacktrace:
+            dev/knowledge/collection_recipe_model.ex:97: Ipse.CollectionRecipeModel.run/3
+            test/support/shared_producer_fixture.exs:86: Ipse.SharedProducerTest.put_loop/2
+            test/support/shared_producer_fixture.exs:48: Ipse.SharedProducerTest.initial/1
+            test/support/shared_producer_fixture.exs:442: anonymous fn/2 in Ipse.SharedProducerTest."test source and root mutations before the next batch stop without a retry or new inference"/1
+            (elixir 1.20.4) lib/enum.ex:2622: Enum."-reduce/3-lists^foldl/2-0-"/3
+            test/support/shared_producer_fixture.exs:441: (test)
+
+
+
+       6) test a committed final page with unknown acknowledgement never offers replay (Ipse.SharedProducerTest)
+          test/support/shared_producer_fixture.exs:367
+          {%{"op" => "collection.store", "request" => %{"op" => "snapshot"}, "scope" => "project"}, %{"document_store" => %{"inline_bytes" => 8192, "version" => 2, "write_parts" => 2}, "floor" => 0, "floor_anchor" => nil, "generation" => 1000, "project" => "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "version" => 3}}
+          code: {resolved, args, d} = initial()
+          stacktrace:
+            dev/knowledge/collection_recipe_model.ex:97: Ipse.CollectionRecipeModel.run/3
+            test/support/shared_producer_fixture.exs:86: Ipse.SharedProducerTest.put_loop/2
+            test/support/shared_producer_fixture.exs:48: Ipse.SharedProducerTest.initial/1
+            test/support/shared_producer_fixture.exs:368: (test)
+
+
+
+       7) test claim precedes four receipt flows and publishes exactly the canonical shared first page (Ipse.SharedProducerTest)
+          test/support/shared_producer_fixture.exs:239
+          {%{"op" => "collection.store", "request" => %{"op" => "snapshot"}, "scope" => "project"}, %{"document_store" => %{"inline_bytes" => 8192, "version" => 2, "write_parts" => 2}, "floor" => 0, "floor_anchor" => nil, "generation" => 1000, "project" => "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "version" => 3}}
+          code: {resolved, args, d} = initial(expires_at_ms: System.system_time(:millisecond) + 60_000)
+          stacktrace:
+            dev/knowledge/collection_recipe_model.ex:97: Ipse.CollectionRecipeModel.run/3
+            test/support/shared_producer_fixture.exs:86: Ipse.SharedProducerTest.put_loop/2
+            test/support/shared_producer_fixture.exs:48: Ipse.SharedProducerTest.initial/1
+            test/support/shared_producer_fixture.exs:240: (test)
+
+
+
+       8) test legacy embedding shape is unchanged while exact optional pin reaches Host binding (Ipse.SharedProducerTest)
+          test/support/shared_producer_fixture.exs:527
+          {%{"op" => "collection.store", "request" => %{"op" => "snapshot"}, "scope" => "project"}, %{"document_store" => %{"inline_bytes" => 8192, "version" => 2, "write_parts" => 2}, "floor" => 0, "floor_anchor" => nil, "generation" => 1000, "project" => "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "version" => 3}}
+          code: {resolved, _, _} = initial()
+          stacktrace:
+            dev/knowledge/collection_recipe_model.ex:97: Ipse.CollectionRecipeModel.run/3
+            test/support/shared_producer_fixture.exs:86: Ipse.SharedProducerTest.put_loop/2
+            test/support/shared_producer_fixture.exs:48: Ipse.SharedProducerTest.initial/1
+            test/support/shared_producer_fixture.exs:528: (test)
+
+
+
+       9) test catalog changes during inference cannot select staged output or rebase the final CAS (Ipse.SharedProducerTest)
+          test/support/shared_producer_fixture.exs:383
+          {%{"op" => "collection.store", "request" => %{"op" => "snapshot"}, "scope" => "project"}, %{"document_store" => %{"inline_bytes" => 8192, "version" => 2, "write_parts" => 2}, "floor" => 0, "floor_anchor" => nil, "generation" => 1000, "project" => "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "version" => 3}}
+          code: {resolved, args, d} = initial()
+          stacktrace:
+            dev/knowledge/collection_recipe_model.ex:97: Ipse.CollectionRecipeModel.run/3
+            test/support/shared_producer_fixture.exs:86: Ipse.SharedProducerTest.put_loop/2
+            test/support/shared_producer_fixture.exs:48: Ipse.SharedProducerTest.initial/1
+            test/support/shared_producer_fixture.exs:384: (test)
+
+
+
+      10) test unknown inference or changed result selection leaves an inspectable non-replayable claim (Ipse.SharedProducerTest)
+          test/support/shared_producer_fixture.exs:341
+          {%{"op" => "collection.store", "request" => %{"op" => "snapshot"}, "scope" => "project"}, %{"document_store" => %{"inline_bytes" => 8192, "version" => 2, "write_parts" => 2}, "floor" => 0, "floor_anchor" => nil, "generation" => 1000, "project" => "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "version" => 3}}
+          code: for {fault, expected} <- [{:inference_unknown, :unknown}, {:selection, :mismatch}] do
+          stacktrace:
+            dev/knowledge/collection_recipe_model.ex:97: Ipse.CollectionRecipeModel.run/3
+            test/support/shared_producer_fixture.exs:86: Ipse.SharedProducerTest.put_loop/2
+            test/support/shared_producer_fixture.exs:48: Ipse.SharedProducerTest.initial/1
+            test/support/shared_producer_fixture.exs:343: anonymous fn/2 in Ipse.SharedProducerTest."test unknown inference or changed result selection leaves an inspectable non-replayable claim"/1
+            (elixir 1.20.4) lib/enum.ex:2622: Enum."-reduce/3-lists^foldl/2-0-"/3
+            test/support/shared_producer_fixture.exs:342: (test)
+
+
+
+      11) test opt-in grants and malformed producer bindings refuse without widening the old preset (Ipse.SharedProducerTest)
+          test/support/shared_producer_fixture.exs:397
+          {%{"op" => "collection.store", "request" => %{"op" => "snapshot"}, "scope" => "project"}, %{"document_store" => %{"inline_bytes" => 8192, "version" => 2, "write_parts" => 2}, "floor" => 0, "floor_anchor" => nil, "generation" => 1000, "project" => "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "version" => 3}}
+          code: {resolved, args, _} = initial()
+          stacktrace:
+            dev/knowledge/collection_recipe_model.ex:97: Ipse.CollectionRecipeModel.run/3
+            test/support/shared_producer_fixture.exs:86: Ipse.SharedProducerTest.put_loop/2
+            test/support/shared_producer_fixture.exs:48: Ipse.SharedProducerTest.initial/1
+            test/support/shared_producer_fixture.exs:402: (test)
+
+
+
+      12) test expiry during a preceding batch stops before another inference and keeps pending uncertainty (Ipse.SharedProducerTest)
+          test/support/shared_producer_fixture.exs:430
+          {%{"op" => "collection.store", "request" => %{"op" => "snapshot"}, "scope" => "project"}, %{"document_store" => %{"inline_bytes" => 8192, "version" => 2, "write_parts" => 2}, "floor" => 0, "floor_anchor" => nil, "generation" => 1000, "project" => "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "version" => 3}}
+          code: {resolved, args, d} = initial(expires_at_ms: System.system_time(:millisecond) + 1_000)
+          stacktrace:
+            dev/knowledge/collection_recipe_model.ex:97: Ipse.CollectionRecipeModel.run/3
+            test/support/shared_producer_fixture.exs:86: Ipse.SharedProducerTest.put_loop/2
+            test/support/shared_producer_fixture.exs:48: Ipse.SharedProducerTest.initial/1
+            test/support/shared_producer_fixture.exs:431: (test)
+
+
+
+      13) test bootstrap aliases malformed versions and post-response pin mismatches refuse (Ipse.SharedProducerTest)
+          test/support/shared_producer_fixture.exs:592
+          {%{"op" => "collection.store", "request" => %{"op" => "snapshot"}, "scope" => "project"}, %{"document_store" => %{"inline_bytes" => 8192, "version" => 2, "write_parts" => 2}, "floor" => 0, "floor_anchor" => nil, "generation" => 1000, "project" => "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "version" => 3}}
+          code: {resolved, _, _} = initial()
+          stacktrace:
+            dev/knowledge/collection_recipe_model.ex:97: Ipse.CollectionRecipeModel.run/3
+            test/support/shared_producer_fixture.exs:86: Ipse.SharedProducerTest.put_loop/2
+            test/support/shared_producer_fixture.exs:48: Ipse.SharedProducerTest.initial/1
+            test/support/shared_producer_fixture.exs:593: (test)
+
+
+     Finished in 1.3 seconds (1.0s on load, 0.00s async, 0.2s sync)
+
+     Result: 0/13 passed
+     Failed: 13 tests
+
+     code: assert status == 0, output
+     stacktrace:
+       test/extensions/knowledge/shared_producer_test.exs:24: (test)
+
+
+Finished in 4.6 seconds (0.03s on load, 0.00s async, 4.5s sync)
+
+Result: 0/1 passed
+Failed: 1 test

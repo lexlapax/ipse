@@ -1,0 +1,127 @@
+{
+  "scope": "Managed legacy-question recovery and unfenced State/service/publication refusal repairs; scoped controls only.",
+  "date": "2026-10-29",
+  "files": {
+    "logs/ipse-managed-ab-probe-46858.log": {
+      "bytes": 620,
+      "sha256": "eb25394605c8ade33b16649ca593fe06b93c70c2c9373b238b2133ab4229b725"
+    },
+    "logs/ipse-managed-ab-probe-46860.log": {
+      "bytes": 581,
+      "sha256": "bdd6c5b1d7aa4939e3836b469af609b7b652bce729ee9fe363c140be33da1e2d"
+    },
+    "logs/ipse-managed-ab-probe-46861.log": {
+      "bytes": 670,
+      "sha256": "4ae158517654ede81d5ab71343b326d899e7dc7ffeba7164617961dfa4cad09b"
+    },
+    "logs/ipse-managed-ab-probe-46862.log": {
+      "bytes": 8369,
+      "sha256": "fae68a459c1df7cc4c09fa61b6b2374c59aa78d65baae550ebf375c3cec59ac7"
+    },
+    "logs/ipse-managed-ab-repair-46865.log": {
+      "bytes": 312,
+      "sha256": "f355387c9cf77841b22702d8e363781ef8f1f51dc9b4d3b5920f09aa96152bab"
+    },
+    "logs/ipse-managed-audit-host-46854.log": {
+      "bytes": 207,
+      "sha256": "c89f9c245565a801042839f6829e28604d29736461c2b1c74f0e4ed90dbb8fc4"
+    },
+    "logs/ipse-managed-audit-pure-46866.log": {
+      "bytes": 3546,
+      "sha256": "4463b7850d9ee9a6b68ef5ffa6d3501e17d9e44e6a55416fe71e2b645e142558"
+    },
+    "logs/ipse-managed-audit-pure-46867.log": {
+      "bytes": 200,
+      "sha256": "ce82040166865250179a08c7b0dc16cfca449386c91e4d9fef46f86a24ae49b1"
+    },
+    "logs/ipse-managed-audit-repairs-compile-46853.log": {
+      "bytes": 54,
+      "sha256": "a221061ed8ed7cb0eaa5a6aae871fdb333d2f42bc8f3abc98f748e7b4df693a7"
+    },
+    "logs/ipse-managed-audit-repairs-compile-46864.log": {
+      "bytes": 54,
+      "sha256": "9acab2bc77fd0b0661266ec60b472d9a4ee83b052e1003cd69cc2dd3c5c0b2ba"
+    },
+    "logs/ipse-managed-audit-repairs-compile-46868.log": {
+      "bytes": 54,
+      "sha256": "9acab2bc77fd0b0661266ec60b472d9a4ee83b052e1003cd69cc2dd3c5c0b2ba"
+    },
+    "logs/ipse-managed-audit-repairs-compile-46869.log": {
+      "bytes": 54,
+      "sha256": "9acab2bc77fd0b0661266ec60b472d9a4ee83b052e1003cd69cc2dd3c5c0b2ba"
+    },
+    "logs/ipse-managed-question-ordinary-46863.log": {
+      "bytes": 203,
+      "sha256": "2c952e7d57cc8ba990fed3e05141362809cab331fdbe6a9f56bd1ddc1df14d39"
+    },
+    "logs/ipse-managed-question-recovery-46855.log": {
+      "bytes": 1152,
+      "sha256": "8220a4d8fee8ee4276c2ebad5ad520699fde8427c1a1fbab99f2e73761facbc2"
+    },
+    "logs/ipse-managed-question-recovery-46856.log": {
+      "bytes": 1142,
+      "sha256": "56ca08306b8d649c6a31f754448f6aff664f2c9a2cc67099130b33254c05c303"
+    },
+    "logs/ipse-managed-question-recovery-46857.log": {
+      "bytes": 1426,
+      "sha256": "03aeb730a60e174775b6e7efe63f7fb3561bbefc5e2b15ba4424221b00b1070e"
+    },
+    "logs/ipse-managed-question-recovery-46859.log": {
+      "bytes": 204,
+      "sha256": "d4dbfc90ead1525ab19de19e72df6564861f9e1cb6d6e20b5909687311f275ea"
+    },
+    "runtime.json": {
+      "bytes": 33785,
+      "sha256": "dc21c0744dde047c49eda55cdbdddece9c97e055335a219c13ca7845b11caa4a"
+    },
+    "source/_build/compile-managed-audit-repairs.exs": {
+      "bytes": 1052,
+      "sha256": "cc2dda0cc8dac2d644d7908101dfd7203d143926e0c211d1bc03cf1e684f6e52"
+    },
+    "source/_build/run-managed-ab-probe.exs": {
+      "bytes": 498,
+      "sha256": "747487c2e8ae698ff4efe7f3538254eb7523672c6d5161e91c040961ba07e7a7"
+    },
+    "source/_build/run-managed-audit-repairs.exs": {
+      "bytes": 501,
+      "sha256": "11781f26c534a7cef3559fc8d442cae0c24adbd0214029755c815de9a2c3b9dc"
+    },
+    "source/_build/run-managed-question-ordinary.exs": {
+      "bytes": 507,
+      "sha256": "2578e7075553f173c4fe2472b2ea6723ee84284faa9fb3fa35315d98b1d2f147"
+    },
+    "source/_build/run-managed-question-recovery.exs": {
+      "bytes": 507,
+      "sha256": "cb0b6bca9e318bf8433cc8a086beca869cd8076bc5e7cab404aaacb9e9a31e64"
+    },
+    "source/lib/ipse/session.ex": {
+      "bytes": 183876,
+      "sha256": "16e49ae3cefa3045ce1d73d31d60864e9cfea4bb2aa47d690e2bdf5100b614a9"
+    },
+    "source/lib/ipse/session/invocation.ex": {
+      "bytes": 61375,
+      "sha256": "082a9566fc41b3fba015d8173ad739cd96a89ee27019c9a1b7f0dba7523a46e1"
+    },
+    "source/lib/ipse/session/managed_tool_use.ex": {
+      "bytes": 47326,
+      "sha256": "c4be52beb759d64192fa7037e488fca0c1cdebc43c1526d4a8aff9064091664e"
+    },
+    "source/lib/ipse/session/saved.ex": {
+      "bytes": 35676,
+      "sha256": "e7faf643b76980f957281a4c4d32619774455cf91ab399ca5085313a37f22d0e"
+    },
+    "source/test/ipse/extension/managed_collection_call_session_test.exs": {
+      "bytes": 175671,
+      "sha256": "126c4cb7dd8bb81817c753328afeb10278e9a5b6b44a098bb766645228b4a2eb"
+    },
+    "source/test/ipse/session/managed_lineage_test.exs": {
+      "bytes": 21323,
+      "sha256": "96e8b816266c43e6a73a1329c89fd58706af924432d8b0b63468cf6c4391364d"
+    },
+    "source/test/ipse/session/managed_tool_use_test.exs": {
+      "bytes": 22545,
+      "sha256": "52344c73d8988837d9b96ab1171b6346991912e59bd4ad991b30c60f570dade3"
+    }
+  },
+  "historical_only": true
+}

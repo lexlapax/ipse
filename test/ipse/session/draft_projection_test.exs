@@ -3,6 +3,44 @@ defmodule Ipse.Session.DraftProjectionTest do
   alias Ipse.Session.Draft
   alias Ipse.JSON
 
+  test "draft replay binds the instruction version and retains legacy prompts" do
+    session = String.duplicate("1", 32)
+    turn = String.duplicate("2", 32)
+    id = String.duplicate("3", 32)
+    original = "/enhance Build a report"
+    current = Draft.effective(original)
+    legacy = Draft.effective(original, 1)
+
+    assert current =~ "Check available relevant context before asking questions"
+    assert current =~ "Ask only about material"
+
+    assert legacy ==
+             "Draft a clearer version of the request below. Do not carry out the request. Return only the proposed request.\n\nBuild a report"
+
+    for {version, effective} <- [{1, legacy}, {2, current}] do
+      started =
+        Draft.started(session, turn, id, original, effective, [], nil, nil)
+        |> Map.put("version", version)
+
+      input = %{
+        "type" => "input_received",
+        "session_id" => session,
+        "turn_id" => turn,
+        "text" => original,
+        "text_sha256" => JSON.sha256(original),
+        "effective_sha256" => JSON.sha256(effective),
+        "source_id" => "source"
+      }
+
+      assert {:ok, draft} = Draft.advance(nil, started, session)
+      assert {:ok, _} = Draft.advance(draft, input, session)
+
+      other = if version == 1, do: 2, else: 1
+      assert {:ok, mismatched} = Draft.advance(nil, Map.put(started, "version", other), session)
+      assert {:error, :invalid_saved_draft} = Draft.advance(mismatched, input, session)
+    end
+  end
+
   defp projection(segment, prefix \\ []) do
     notice = %{"role" => "user", "content" => Draft.notice()}
 

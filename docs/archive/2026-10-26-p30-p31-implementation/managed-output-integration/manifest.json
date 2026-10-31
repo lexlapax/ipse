@@ -1,0 +1,1403 @@
+{
+  "elixir": "1.20.4",
+  "files": [
+    {
+      "bytes": 167556,
+      "path": "source/lib/ipse/session.ex",
+      "role": "tested_source",
+      "sha256": "db1619e7c08358a4a75bad6c8dec731db03ca58f1c10de08643a386bd8ad69ac"
+    },
+    {
+      "bytes": 68622,
+      "path": "source/lib/ipse/session/turn.ex",
+      "role": "tested_source",
+      "sha256": "b4b7c0fbbfae1932ddc15b837b88b5270351808bc9e18e33deacf98caaa4f94c"
+    },
+    {
+      "bytes": 58976,
+      "path": "source/lib/ipse/session/invocation.ex",
+      "role": "tested_source",
+      "sha256": "103b58951720237c94346809cccc76c5f02580666b517de225e90af60f7ca99f"
+    },
+    {
+      "bytes": 20018,
+      "path": "source/lib/ipse/session/managed_output.ex",
+      "role": "tested_source",
+      "sha256": "99dc059ed6b1da3a596e6c918b4ead200d4658f2a280cdb492571d96c73ad510"
+    },
+    {
+      "bytes": 28102,
+      "path": "source/lib/ipse/session/managed_lineage.ex",
+      "role": "tested_source",
+      "sha256": "88626a0dfa0f24fbc243ab562fe5ff42929078baa04748a2fd230b6cb8305dc7"
+    },
+    {
+      "bytes": 34270,
+      "path": "source/lib/ipse/session/managed_reference.ex",
+      "role": "tested_source",
+      "sha256": "9091d691d4993b5186b8aea7d334b411bff5c4c45e9d1f577537fef1f45684af"
+    },
+    {
+      "bytes": 12174,
+      "path": "source/lib/ipse/session/managed_use.ex",
+      "role": "tested_source",
+      "sha256": "8d8c834e0a0173d22b77bf8174000a010e30206923b2811a3705c61aa5c6d4f3"
+    },
+    {
+      "bytes": 8928,
+      "path": "source/lib/ipse/session/managed_reads.ex",
+      "role": "tested_source",
+      "sha256": "0ff619d0d618a88faa9b1823fb3b32f4de29db49d8b3e4f57fdd7fe87859ecfb"
+    },
+    {
+      "bytes": 14110,
+      "path": "source/lib/ipse/session/inference_dispatch.ex",
+      "role": "tested_source",
+      "sha256": "5d609f9bbf1e0cc9fd026335535d3582b69963778bb045a01e3a243b92bc9cad"
+    },
+    {
+      "bytes": 34142,
+      "path": "source/lib/ipse/session/saved.ex",
+      "role": "tested_source",
+      "sha256": "bfa6f006ee3fd16f22ee27b404c077c2e2f3f47cd4cff0ce38b826a55daf7901"
+    },
+    {
+      "bytes": 9384,
+      "path": "source/lib/ipse/session/stored_sources.ex",
+      "role": "tested_source",
+      "sha256": "23882b76fb6f85c954c51b6533546735ba8fea7be6889bfb6d7230157c8e4506"
+    },
+    {
+      "bytes": 21638,
+      "path": "source/lib/ipse/extension/host.ex",
+      "role": "tested_source",
+      "sha256": "e9aa4f371878b092d6546306c7f9c36363ce293b22ed411457d25dfa189661d2"
+    },
+    {
+      "bytes": 45341,
+      "path": "source/lib/ipse/extension/actions.ex",
+      "role": "tested_source",
+      "sha256": "83ac69e2907e88d39f49f7eb6e2f3ed4a78bba78a0252a2d3c5b3063af8ff5a8"
+    },
+    {
+      "bytes": 28105,
+      "path": "source/lib/ipse/extension/invocation.ex",
+      "role": "tested_source",
+      "sha256": "6fea7f8d25466cb84059d8536813dc72eb2116d57c150a6f1c15402fa78930ac"
+    },
+    {
+      "bytes": 32144,
+      "path": "source/lib/ipse/extension/result_source.ex",
+      "role": "tested_source",
+      "sha256": "ae7b04ddb0743a35b8c204ca0230b08968a7d9f0869a5f92948441b5d76b95a0"
+    },
+    {
+      "bytes": 10174,
+      "path": "source/lib/ipse/extension/context.ex",
+      "role": "tested_source",
+      "sha256": "9038b4df1b6749d5e91a66134cdadda3d682170c5a3a4f97a3f41571b3bd109d"
+    },
+    {
+      "bytes": 65030,
+      "path": "source/lib/ipse/extension/collection.ex",
+      "role": "tested_source",
+      "sha256": "6e12625253cf7489d91ccd9f5090d91d2320386bd170b15ee07a6640c09bb346"
+    },
+    {
+      "bytes": 20962,
+      "path": "source/lib/ipse/extension/collection/normalizer_v3.ex",
+      "role": "tested_source",
+      "sha256": "ac2ba5d72dd754c2b551f67937c6034f4709459cbd6cdc7bc42de1288b1c8531"
+    },
+    {
+      "bytes": 24221,
+      "path": "source/lib/ipse/extension/collection/observed_read.ex",
+      "role": "tested_source",
+      "sha256": "49f904a06ffcfec1543ebfe8f744361ec75ed382cb990f05cc7825dfe996e0b1"
+    },
+    {
+      "bytes": 6585,
+      "path": "source/lib/ipse/extension/collection/managed_retention.ex",
+      "role": "tested_source",
+      "sha256": "2008c6c49b81a834952c96bf4939ff34e56bc69339279ed0b779a1ee58ca4e06"
+    },
+    {
+      "bytes": 6885,
+      "path": "source/lib/ipse/session/managed_lifecycle.ex",
+      "role": "tested_source",
+      "sha256": "b3410b92896deb1da4aeca6c46a5a8275500909e686c628c27cc829eb7be6cd3"
+    },
+    {
+      "bytes": 5277,
+      "path": "source/lib/ipse/extension/managed_read.ex",
+      "role": "tested_source",
+      "sha256": "7b5e48cd7fa102721126809fc2d530f2e1aa50aec08399a3b64f718204c5773d"
+    },
+    {
+      "bytes": 36675,
+      "path": "source/lib/ipse/extension/consent.ex",
+      "role": "tested_source",
+      "sha256": "7c898ec93b0987f7b45292ea169c6bc3f4c2a6ef17bfa3ad39a24fb15523cac7"
+    },
+    {
+      "bytes": 21836,
+      "path": "source/lib/ipse/cli/knowledge.ex",
+      "role": "tested_source",
+      "sha256": "c145ed02be158535cfa3e70c33454b328e9c72bbbd9b494c4f2c4d5bd9c02456"
+    },
+    {
+      "bytes": 15706,
+      "path": "source/lib/ipse/cli/knowledge/management.ex",
+      "role": "tested_source",
+      "sha256": "901fbff1a19748f30b96864cac29c9ced14e9a0572c7c8ea27e570cc9e7d731e"
+    },
+    {
+      "bytes": 16115,
+      "path": "source/lib/ipse/journal/writer.ex",
+      "role": "tested_source",
+      "sha256": "eab6ac68e8e2beb89d8547e403fbcb7f90683feac6482411d06473c8d20e54db"
+    },
+    {
+      "bytes": 4171,
+      "path": "source/lib/ipse/journal/source_origin.ex",
+      "role": "tested_source",
+      "sha256": "adec1244c5a0a4b66e41c2571ac62172a2a6a170f425d874df015fa7ffac53fb"
+    },
+    {
+      "bytes": 48171,
+      "path": "source/lib/ipse/runner.ex",
+      "role": "tested_source",
+      "sha256": "92dfa544afe579cdd05dd55bb0c22c9ff60ed3836191f498c87c681542f41585"
+    },
+    {
+      "bytes": 23199,
+      "path": "source/lib/ipse/runner/transaction.ex",
+      "role": "tested_source",
+      "sha256": "05f9ba548a957ef9574f27dec2be7cfaf5e76cfbef6cfc192b230306fe5a7886"
+    },
+    {
+      "bytes": 20020,
+      "path": "source/extensions/knowledge/src/knowledge.ex",
+      "role": "tested_source",
+      "sha256": "8d2f1ce2d65f52d1bb60b797c82c2dfdb655e5f00e2c19d9863cc87004048ca5"
+    },
+    {
+      "bytes": 11402,
+      "path": "source/extensions/knowledge/src/notes.ex",
+      "role": "tested_source",
+      "sha256": "a0474155b87c6b1b1bd53d6e51e6f5cb045a52eee0e0fa80ba2e613f36e9802b"
+    },
+    {
+      "bytes": 8006,
+      "path": "source/extensions/knowledge/src/knowledge/records.ex",
+      "role": "tested_source",
+      "sha256": "e70863709ddcc580d8dba251ce0532fe7e4d72399b01841af7238c6048d9de12"
+    },
+    {
+      "bytes": 6290,
+      "path": "source/extensions/knowledge/src/knowledge/contracts.ex",
+      "role": "tested_source",
+      "sha256": "d60694a680de3e869fe3939527fa75aaa75d44ad10115c5d5c7df61822b8474c"
+    },
+    {
+      "bytes": 9644,
+      "path": "source/extensions/knowledge/src/profiles.ex",
+      "role": "tested_source",
+      "sha256": "a2cca7f38fea18287f00f59fe830a06927a328f0c726ba157ae2847e494cf91b"
+    },
+    {
+      "bytes": 4412,
+      "path": "source/extensions/knowledge/build.exs",
+      "role": "tested_source",
+      "sha256": "8a271781439a841474c75cd322ae157ddbac4eb33bc8d88ddaa1b65cf04652f4"
+    },
+    {
+      "bytes": 6736,
+      "path": "source/extensions/knowledge/spec.exs",
+      "role": "tested_source",
+      "sha256": "7f784975d56ddccd5082a918cdf8e3840b4da2fb4c4d655411c5e5a355e27666"
+    },
+    {
+      "bytes": 105011,
+      "path": "source/test/ipse/extension/managed_collection_call_session_test.exs",
+      "role": "tested_source",
+      "sha256": "8cc30b232c2efa0021d0f1877fb2db67bfe2cf8bf5bbf65b0191514292f02e3f"
+    },
+    {
+      "bytes": 2242,
+      "path": "source/test/ipse/session/managed_output_test.exs",
+      "role": "tested_source",
+      "sha256": "672d0e75175fc4fc1b2978e85cbe89d5cbbd3edb139ceb013b86d3293db2d28b"
+    },
+    {
+      "bytes": 3495,
+      "path": "source/test/ipse/session/managed_output_native_test.exs",
+      "role": "tested_source",
+      "sha256": "f30ab5cf0c1bc3d6512828ba7296e6d0d54fc7f9a62f02aa4828498d001afa2e"
+    },
+    {
+      "bytes": 1206,
+      "path": "source/test/ipse/session/native_note_recall_test.exs",
+      "role": "tested_source",
+      "sha256": "2a22b30972b2807661d1694251ac077258850e0284d75c3a3be7b231aef02b37"
+    },
+    {
+      "bytes": 6809,
+      "path": "source/test/support/managed_output_expiry.exs",
+      "role": "tested_source",
+      "sha256": "1ef2341f6fef8c1132fd7933720285e1343907c1e4c717e318420f3f66154f69"
+    },
+    {
+      "bytes": 4328,
+      "path": "source/test/support/managed_output_literal.exs",
+      "role": "tested_source",
+      "sha256": "4e5a6da18ea794a9c31c29095de744934a3aca94910aa91a53f9fd948a0b2d82"
+    },
+    {
+      "bytes": 9769,
+      "path": "source/test/support/native_note_recall.exs",
+      "role": "tested_source",
+      "sha256": "a6b644f7b2d4d7cab9b03568a45017a5ab1645bf5d86cda6cb9c4533636e3f8b"
+    },
+    {
+      "bytes": 11847,
+      "path": "source/test/support/operator_pty.rs",
+      "role": "tested_source",
+      "sha256": "8775d93c36e6f9e517f77b3d5305f29993c46b74fd90d27c41bce1c98593eecb"
+    },
+    {
+      "bytes": 2925,
+      "path": "source/test/support/provider_fixture.ex",
+      "role": "tested_source",
+      "sha256": "0b58205776df3b8881c250bd3f1fc82ee57921f8b3d563532aaeeb79e1d497b2"
+    },
+    {
+      "bytes": 253,
+      "path": "sol-managed-output-first-46800.log",
+      "role": "earlier_focused_test_log",
+      "sha256": "6c956b2a1384c31dafd1829328dc1b924af9c54eff262db8619a4b1f17ef1f8e"
+    },
+    {
+      "bytes": 314,
+      "path": "sol-managed-output-boundaries-46801.log",
+      "role": "earlier_focused_test_log",
+      "sha256": "9bb1bd02e645b6713268d37ba7aeb1addd439b975f00e29d25403baef0aa40db"
+    },
+    {
+      "bytes": 334,
+      "path": "sol-managed-output-replay-46805.log",
+      "role": "earlier_focused_test_log",
+      "sha256": "628177c26666460abe6ef3a3af17b39668b62a87eb8c02782d4b1cbed1892361"
+    },
+    {
+      "bytes": 226,
+      "path": "sol-managed-output-clock-46806.log",
+      "role": "earlier_focused_test_log",
+      "sha256": "a65bee7f18378e4542ccc21e4ac646685bd6ae357f91de1bb85a6608cf33df67"
+    },
+    {
+      "bytes": 45,
+      "path": "strict-compile.log",
+      "role": "final_focused_test_log",
+      "sha256": "fbe3aac273258b07787c9893c8d9a31307cc66bc7c5d29d2c598be6c6498bdea"
+    },
+    {
+      "bytes": 25,
+      "path": "release-replay-compile.log",
+      "role": "final_focused_test_log",
+      "sha256": "145e3414c37eef03448fd5cf0b9bf7b0401ef6c6990b2a6e23c952689167e30a"
+    },
+    {
+      "bytes": 202,
+      "path": "native-expiry-46810.log",
+      "role": "final_focused_test_log",
+      "sha256": "be90690a8dc8ec5bcd8d2f6b695c0eb67303994a8f273ebf356b4b33ae41ea4c"
+    },
+    {
+      "bytes": 202,
+      "path": "native-recall-release-46811.log",
+      "role": "final_focused_test_log",
+      "sha256": "51082824494af6d3fc069fefadd9439aedf2552772ee2e89cb1164268fddd308"
+    },
+    {
+      "bytes": 252,
+      "path": "replay-prefix-46812.log",
+      "role": "final_focused_test_log",
+      "sha256": "749bb0510cecada4d7ca7aa79ed8af03ad7618b576f5c1f8fe43d0042b5ed312"
+    },
+    {
+      "bytes": 334,
+      "path": "paged-owner-release-46813.log",
+      "role": "final_focused_test_log",
+      "sha256": "fa4cfaa724bdc45158475a434acbf93d262abde30b5e5634cc6d891cdca0bf2f"
+    },
+    {
+      "bytes": 252,
+      "path": "owner-release-46814.log",
+      "role": "final_focused_test_log",
+      "sha256": "13252f290ef0058260e94d4e6a7b1bf32303a5e0ea6da42a43c21de762bdf3d1"
+    },
+    {
+      "bytes": 197,
+      "path": "artifact/catalog.json",
+      "role": "ordinary_native_artifact_manifest",
+      "sha256": "a9659fdb4dc738f4390f9424cce057e8c65bd82a35f9bd0065ef7bb2d2018214"
+    },
+    {
+      "bytes": 5270,
+      "path": "artifact/knowledge/extension.json",
+      "role": "ordinary_native_artifact_manifest",
+      "sha256": "26c3e913d377f1d3f2f67eab7666770506f6517e5bf7a82eb9e8c36c43d95b2b"
+    }
+  ],
+  "final_graph": "_build/managed-output-native-sol-20261028",
+  "final_runtime_beams": [
+    {
+      "bytes": 2748,
+      "name": "Elixir.Inspect.Ipse.Extension.Collection.ReadView.beam",
+      "sha256": "5ce4dc14172dc595b3f84b8a3e2a6d2a64e50cb26d283416076d20604b9c8a3f"
+    },
+    {
+      "bytes": 2880,
+      "name": "Elixir.Inspect.Ipse.Extension.ProjectIdentity.DomainAuth.Capability.beam",
+      "sha256": "93e824ad0f72d21ee59a257b763fd67442c24eda855ab14663222e5261b6d656"
+    },
+    {
+      "bytes": 2656,
+      "name": "Elixir.Inspect.Ipse.InferenceSlots.Handle.beam",
+      "sha256": "845dd25dfa661a3eb045680155c53b1a29ffaa1adf1d8e02a161689749028de2"
+    },
+    {
+      "bytes": 2644,
+      "name": "Elixir.Inspect.Ipse.Runner.Review.Permit.beam",
+      "sha256": "ac6b5dd4c2b49d0c4b43c3c5ff92d8fb4ad60dad248585f2d57a3057dffb4c47"
+    },
+    {
+      "bytes": 2712,
+      "name": "Elixir.Inspect.Ipse.Runner.Transaction.Capability.beam",
+      "sha256": "b4c8db14ea53b08bc9019fca3f8ada4f9a24038d61456d6f2e5894f7145180f3"
+    },
+    {
+      "bytes": 3808,
+      "name": "Elixir.Inspect.Ipse.Session.SourceIndex.beam",
+      "sha256": "21015dc3e54a2694af1a3ae3bf12ef4595cf9539d49c5b9fb9a3f94e3f480d0d"
+    },
+    {
+      "bytes": 3760,
+      "name": "Elixir.Inspect.Ipse.Session.SourceWindow.beam",
+      "sha256": "e250f9ee49460ebbdb826399c907ce7f4b04cfa3124bd0d6f0159d8dd86997ce"
+    },
+    {
+      "bytes": 2592,
+      "name": "Elixir.Ipse.Application.beam",
+      "sha256": "db0dfaf8f645e25fcfcae80684089f1803391797135d9c80ecd279d57b2c210d"
+    },
+    {
+      "bytes": 34192,
+      "name": "Elixir.Ipse.Auth.XAI.beam",
+      "sha256": "291cdfe23dafc664d709a15a18fbd75d6a519021b3788712bdcaa006dc2e3817"
+    },
+    {
+      "bytes": 62136,
+      "name": "Elixir.Ipse.Auth.beam",
+      "sha256": "01f77e7a0ff76df549caeee20295d7044f496f6ffaea8007907186ec1868adf3"
+    },
+    {
+      "bytes": 2828,
+      "name": "Elixir.Ipse.Builtins.AnswerFormat.beam",
+      "sha256": "21edd73a21ec8486d7fc3436dd06edc723e95415237188f65f2abff745bd00a5"
+    },
+    {
+      "bytes": 13232,
+      "name": "Elixir.Ipse.Builtins.CostReport.beam",
+      "sha256": "f879ef04cbab99113de552508ab9f7ba104039510608ebcb7b36e7631570c8cd"
+    },
+    {
+      "bytes": 9188,
+      "name": "Elixir.Ipse.Builtins.CostSummary.beam",
+      "sha256": "32a858920b18fddfdf371225f5cc559828ce1fc08b8bffe1d186e87ee9da8982"
+    },
+    {
+      "bytes": 18152,
+      "name": "Elixir.Ipse.Builtins.CostTree.beam",
+      "sha256": "58982918fc937b0d43b14b78d2212eb16c87729ae69e1078f74e09ab99b93466"
+    },
+    {
+      "bytes": 23768,
+      "name": "Elixir.Ipse.Builtins.LocalTrace.beam",
+      "sha256": "6b7f7c72bb63a857afe9b1efbfeec5b19da789b7a48f808d8453f35ed6657e10"
+    },
+    {
+      "bytes": 21772,
+      "name": "Elixir.Ipse.Builtins.Memory.Records.beam",
+      "sha256": "19f742833ec086981b0f3a6328916d0cf61b7695ba5f566dfdb46d97815795ed"
+    },
+    {
+      "bytes": 35152,
+      "name": "Elixir.Ipse.Builtins.Memory.beam",
+      "sha256": "37fff730bac03d0361e00a8df16cb30d2536de0505c460fda028a2e72d0cfa25"
+    },
+    {
+      "bytes": 3600,
+      "name": "Elixir.Ipse.Builtins.PromptAnnotation.beam",
+      "sha256": "a5752ef6470bd97dd62e6fa532ab169059d1ddb0d419842ecf8d1dab1f4251a5"
+    },
+    {
+      "bytes": 2820,
+      "name": "Elixir.Ipse.Builtins.WorkingMemory.beam",
+      "sha256": "c1b4b32a7b66a91accdac53150f0368b0a5725f13d737a80d1f9c6edbe6886d0"
+    },
+    {
+      "bytes": 36860,
+      "name": "Elixir.Ipse.CLI.Doctor.beam",
+      "sha256": "a0dbd470d83fe8d76c0195615afbe268c155d8fd908c3a794253b89f5e9b96a1"
+    },
+    {
+      "bytes": 15720,
+      "name": "Elixir.Ipse.CLI.Errors.beam",
+      "sha256": "c44fa5366508ce0683e5f3c95f0ee3f8f932accc0ddbe9f5ad0d5f275eaa74c9"
+    },
+    {
+      "bytes": 7384,
+      "name": "Elixir.Ipse.CLI.Input.beam",
+      "sha256": "b4b9d53fc78d8a3be897f606e1282a4c91ea81c349f5486856e154dcc8635822"
+    },
+    {
+      "bytes": 30532,
+      "name": "Elixir.Ipse.CLI.Knowledge.Management.beam",
+      "sha256": "c3e92245150a8081639aa9091491a4d0427fa77e41e3c537df60f3f7b09ab645"
+    },
+    {
+      "bytes": 44560,
+      "name": "Elixir.Ipse.CLI.Knowledge.beam",
+      "sha256": "99b56657fe2de3fe6b65e363906f58035db13aa1792267e8aae78be430be0561"
+    },
+    {
+      "bytes": 32952,
+      "name": "Elixir.Ipse.CLI.Setup.beam",
+      "sha256": "7b89a48967592b078d2877447dbfebf55d8f73fde0302972c53f7ea94511f0c7"
+    },
+    {
+      "bytes": 95340,
+      "name": "Elixir.Ipse.CLI.Terminal.beam",
+      "sha256": "522659f04d8687eb530322d161bae4ee6cad4472b8208335ff0a318f94b638d2"
+    },
+    {
+      "bytes": 43796,
+      "name": "Elixir.Ipse.CLI.beam",
+      "sha256": "594295fea3b4acafe85019135267245b8407f4926a40e344c9cc50b67a8ba45a"
+    },
+    {
+      "bytes": 23748,
+      "name": "Elixir.Ipse.Config.Activation.beam",
+      "sha256": "a9bdd4256bdf50149caf249c4a55bdf4436826d9fd7e8493aaac39695eadc8f1"
+    },
+    {
+      "bytes": 27312,
+      "name": "Elixir.Ipse.Config.Decisions.beam",
+      "sha256": "44cafdc1a4e376292550fa055cbfabe97b90b57a485495870a765bb5d4537e91"
+    },
+    {
+      "bytes": 44972,
+      "name": "Elixir.Ipse.Config.Profiles.beam",
+      "sha256": "be76ad6db8afe1f79c16b12518bbf480de71d962e3eff20d2589d6bb030d0625"
+    },
+    {
+      "bytes": 18008,
+      "name": "Elixir.Ipse.Config.Semantics.beam",
+      "sha256": "ea71b3cf99513c6c08fc48b23fd886ccbce389cd515346f77d2d6fa0e77b0e40"
+    },
+    {
+      "bytes": 51512,
+      "name": "Elixir.Ipse.Config.beam",
+      "sha256": "97971a287c5bb2bd9871d68dd24b85780066352b09d826e4a830dfc142da8f56"
+    },
+    {
+      "bytes": 18988,
+      "name": "Elixir.Ipse.Decision.beam",
+      "sha256": "65b40ec6d5f7e3822d59c0278afc7051944eb2348b23eae60be382163924ed44"
+    },
+    {
+      "bytes": 16376,
+      "name": "Elixir.Ipse.DocumentParser.beam",
+      "sha256": "dc64068310d7a1c3e432d8072ce851cd269c21a2e5f9f30a18a6b41a019f610e"
+    },
+    {
+      "bytes": 101352,
+      "name": "Elixir.Ipse.Extension.Actions.beam",
+      "sha256": "6906747906cd31432c534834689a117bd379939d9f473f34089f6d4796260fbd"
+    },
+    {
+      "bytes": 21832,
+      "name": "Elixir.Ipse.Extension.Activation.beam",
+      "sha256": "c7ed2437ef86026a7c5fa400c40edf66946db49e88d9792fd112dd114e6970d2"
+    },
+    {
+      "bytes": 39064,
+      "name": "Elixir.Ipse.Extension.Artifact.beam",
+      "sha256": "828571401b68e14c66fe84069516ddd5f3d991c0a7715b20293e6f1ee9c92fb3"
+    },
+    {
+      "bytes": 9784,
+      "name": "Elixir.Ipse.Extension.Bootstrap.beam",
+      "sha256": "4fcf37b01eb7b29474347767db81adc86b2cf81bee049839615b9dac51414260"
+    },
+    {
+      "bytes": 12628,
+      "name": "Elixir.Ipse.Extension.Bundles.beam",
+      "sha256": "666e718466f274860803d8e9fbbc286aa880a260725cf7353156a4144cfcd3a1"
+    },
+    {
+      "bytes": 31052,
+      "name": "Elixir.Ipse.Extension.Catalog.beam",
+      "sha256": "c50cb12517bf58bd5111cc28cae3c9ba617b6fa5f8f02c40008a879879ae7ada"
+    },
+    {
+      "bytes": 53652,
+      "name": "Elixir.Ipse.Extension.ChildUsage.beam",
+      "sha256": "72a8e77947b550a8a62b831c1af86ed5cc03c4228dd6544f74f4f3b1c3d6bcaf"
+    },
+    {
+      "bytes": 29320,
+      "name": "Elixir.Ipse.Extension.Collection.Blocks.beam",
+      "sha256": "f4c3fa79b417aab50cc4ea1ade0c603bdf555fd1c1b4dfbe1842274af9b76318"
+    },
+    {
+      "bytes": 27644,
+      "name": "Elixir.Ipse.Extension.Collection.Directory.beam",
+      "sha256": "fdc5bf5c43b1d3b5ca309505099ccd3787cf682a9c7e7f39c4e88e81368b2805"
+    },
+    {
+      "bytes": 37312,
+      "name": "Elixir.Ipse.Extension.Collection.DocumentStage.beam",
+      "sha256": "e20dd47afd94465e0803bada27d32d61513920aba64d6d5c4159895168fb193f"
+    },
+    {
+      "bytes": 17136,
+      "name": "Elixir.Ipse.Extension.Collection.Encoding.beam",
+      "sha256": "fde23b9173cc42f948c9db9e8427cde92ed8364c00184a5203229193e5ae1c50"
+    },
+    {
+      "bytes": 27316,
+      "name": "Elixir.Ipse.Extension.Collection.ManagedPages.Planner.beam",
+      "sha256": "ae881934844d8c6150313958c878ae84aa45e602dd04a7689e1423ae33ce4093"
+    },
+    {
+      "bytes": 69688,
+      "name": "Elixir.Ipse.Extension.Collection.ManagedPages.beam",
+      "sha256": "8a6e2cfa890cda05a8f28f57c1128ce8e20ba0072d3d6dc1150b9f58c7171b98"
+    },
+    {
+      "bytes": 15328,
+      "name": "Elixir.Ipse.Extension.Collection.ManagedRetention.beam",
+      "sha256": "2d44aa89b993c195e06d40af005f6f359113dbf8ad50a0767e55882bf4ba0e1b"
+    },
+    {
+      "bytes": 54984,
+      "name": "Elixir.Ipse.Extension.Collection.Migration.beam",
+      "sha256": "3f6fd2d3fc79c196afaecdd6804ce9c488e610f468c5f81e997694e7cf932972"
+    },
+    {
+      "bytes": 33152,
+      "name": "Elixir.Ipse.Extension.Collection.Normalizer.beam",
+      "sha256": "9b54e567292b74a70a8228883330e765ecd2d2db8aae73cfaa0610cd7d0db5c6"
+    },
+    {
+      "bytes": 43936,
+      "name": "Elixir.Ipse.Extension.Collection.NormalizerV3.beam",
+      "sha256": "688ea610df0b0ddd082545bae65aca73876520ea0c8a3fc0ee2b32659a723484"
+    },
+    {
+      "bytes": 41456,
+      "name": "Elixir.Ipse.Extension.Collection.ObservedRead.beam",
+      "sha256": "4d8c36f354524db0240aea9cc924b6e66cea99b0fca772c4146a56f1fd78c647"
+    },
+    {
+      "bytes": 3916,
+      "name": "Elixir.Ipse.Extension.Collection.PendingCapacity.beam",
+      "sha256": "a3a9680ea62b197e5f654b233901a0e8342691066d82a8f1cd4d3ebc8c7431cc"
+    },
+    {
+      "bytes": 13060,
+      "name": "Elixir.Ipse.Extension.Collection.Planning.beam",
+      "sha256": "358ef0a68da8f1e6d59aa5eee6449aced04cc5e4d5dc227f12c4b9fbc24a9940"
+    },
+    {
+      "bytes": 8304,
+      "name": "Elixir.Ipse.Extension.Collection.Profile.beam",
+      "sha256": "becc50cb88d13dfd8d959f49faa8b23c7674f309672485d4ca1ecd5df53de42f"
+    },
+    {
+      "bytes": 44068,
+      "name": "Elixir.Ipse.Extension.Collection.ReadView.beam",
+      "sha256": "00bd6c00cb84d755beb07e3a83478aaecbfa3d04357c58e12605d0bb9a47917e"
+    },
+    {
+      "bytes": 127128,
+      "name": "Elixir.Ipse.Extension.Collection.beam",
+      "sha256": "b8974e7dcb939a05f04dde698a2a04ae3a053ac7025358a44dd963cecc640224"
+    },
+    {
+      "bytes": 67308,
+      "name": "Elixir.Ipse.Extension.CollectionCall.beam",
+      "sha256": "fc401fa5bfd665c7d9950b9286d9c3a6a52e030b34de6fc5543d9db6f2dec0e9"
+    },
+    {
+      "bytes": 14856,
+      "name": "Elixir.Ipse.Extension.CollectionPolicy.beam",
+      "sha256": "8f4978880b88c618e5777d04ded3c0b69c196fe86d3db4fa6fc78ead409d87c4"
+    },
+    {
+      "bytes": 35088,
+      "name": "Elixir.Ipse.Extension.CollectionStore.beam",
+      "sha256": "b8c41906d47db1b4a9559dc36e5933792570ff739ee26499d0879e31ae395ca2"
+    },
+    {
+      "bytes": 28004,
+      "name": "Elixir.Ipse.Extension.Config.beam",
+      "sha256": "040996ae76115a5f39388a69221d72d9875a364ae5d47236d53c15c658982cc0"
+    },
+    {
+      "bytes": 7128,
+      "name": "Elixir.Ipse.Extension.Conformance.Model.beam",
+      "sha256": "5e73fbec7f6638b52fdc816476a0a617b717c089e336bb62f820b1bc39b8bd6a"
+    },
+    {
+      "bytes": 43480,
+      "name": "Elixir.Ipse.Extension.Conformance.beam",
+      "sha256": "c9e166234b64e380f5be00234ba8e67946057529fb89dc3e40836d622d2b78d7"
+    },
+    {
+      "bytes": 79824,
+      "name": "Elixir.Ipse.Extension.Consent.beam",
+      "sha256": "b2bfdb961501c040a75756066e5d520ade87752ddf5a949bde83479d86cacfe4"
+    },
+    {
+      "bytes": 32348,
+      "name": "Elixir.Ipse.Extension.Context.beam",
+      "sha256": "2b3183e9037992a45a8b23edd1b50529185b9aa3401dc8d0adac9fc52046395c"
+    },
+    {
+      "bytes": 36600,
+      "name": "Elixir.Ipse.Extension.DecisionCall.beam",
+      "sha256": "d75a54ed632dbd7d2faca92a957acbba4181b476a72fb81553711277b9b92cff"
+    },
+    {
+      "bytes": 46212,
+      "name": "Elixir.Ipse.Extension.EffectResult.beam",
+      "sha256": "746bf716227a19cd798ce39bd4d988decd84f2c638d7f8c11d670386d0e765f7"
+    },
+    {
+      "bytes": 35148,
+      "name": "Elixir.Ipse.Extension.EmbeddingCall.beam",
+      "sha256": "b369ffc540ef2fcc896c5741f3a79746a948e6ac7fe9c7409e5b4a11b2c5c54f"
+    },
+    {
+      "bytes": 29172,
+      "name": "Elixir.Ipse.Extension.FeedChannel.beam",
+      "sha256": "9318fed221697f07975fee6398f8db8a2a67f01a98471a2699d3d8f57974f6bd"
+    },
+    {
+      "bytes": 59808,
+      "name": "Elixir.Ipse.Extension.Feeds.beam",
+      "sha256": "7d7478b28c3d09ffff3d4806e8a8522229e3669faa33bfa0cfcd5aad42a28484"
+    },
+    {
+      "bytes": 40108,
+      "name": "Elixir.Ipse.Extension.History.beam",
+      "sha256": "dccd933ac86c2630b70a22782c313bae6c7a18369718a07645282c3dc1f40ad6"
+    },
+    {
+      "bytes": 42896,
+      "name": "Elixir.Ipse.Extension.Host.beam",
+      "sha256": "62701a648d83239f0c12434cf968e32704a9587abb12099ea01e1e3ad44a2d1e"
+    },
+    {
+      "bytes": 15176,
+      "name": "Elixir.Ipse.Extension.Inference.beam",
+      "sha256": "15d8ac4a8fd75a394fcc30463975574ad0773fce98b98b60f1f040ed7c132bda"
+    },
+    {
+      "bytes": 71468,
+      "name": "Elixir.Ipse.Extension.Invocation.beam",
+      "sha256": "38370464e406e8f8606a1d038907effc42a4d5722004bbf2af73f5e1583082a9"
+    },
+    {
+      "bytes": 57056,
+      "name": "Elixir.Ipse.Extension.MCPCall.beam",
+      "sha256": "1b8ec68c2f5ed400433d58e1f692d81b9385e44f1d9e5e8508e78df949ddf2fe"
+    },
+    {
+      "bytes": 62124,
+      "name": "Elixir.Ipse.Extension.ManagedCollectionCall.beam",
+      "sha256": "acfc0619fb4f8637f46d525c2f29c82993dc5940df591899e62264749ca3dcc2"
+    },
+    {
+      "bytes": 13180,
+      "name": "Elixir.Ipse.Extension.ManagedRead.beam",
+      "sha256": "0d762b4dcf29a382390a39dc43047e545596ec509b747338e810c9a78310f25c"
+    },
+    {
+      "bytes": 26272,
+      "name": "Elixir.Ipse.Extension.ManagedRecipe.beam",
+      "sha256": "45b295b43ddd14cce5c42044141d418c1c61bbb8ea532d24b7711ef1373c3a83"
+    },
+    {
+      "bytes": 16232,
+      "name": "Elixir.Ipse.Extension.Mode.beam",
+      "sha256": "e2be47c56af63c7a18c510dd51fdca004fdec383f28844b0e3bf99715f9f7bf3"
+    },
+    {
+      "bytes": 45904,
+      "name": "Elixir.Ipse.Extension.ModelCall.beam",
+      "sha256": "e90c876143bc581ced2b0148bc693e21897b341ded3bb216485dd3a062d7d22f"
+    },
+    {
+      "bytes": 3952,
+      "name": "Elixir.Ipse.Extension.ProjectIdentity.DomainAuth.Capability.beam",
+      "sha256": "84339aa33ed1cb2f12849b7767c36c5b36b7ae2b0549fb2ec5d1e1d79e1c9748"
+    },
+    {
+      "bytes": 35396,
+      "name": "Elixir.Ipse.Extension.ProjectIdentity.DomainAuth.beam",
+      "sha256": "e2c2678ca73f5a44810a066a881d6c11328e9ed3d4e97a008dac032def8d881c"
+    },
+    {
+      "bytes": 25124,
+      "name": "Elixir.Ipse.Extension.ProjectIdentity.Metadata.beam",
+      "sha256": "124ae7b3f87c527df74f82abf151730ee7d01d280a090142cca611a126079dfe"
+    },
+    {
+      "bytes": 76588,
+      "name": "Elixir.Ipse.Extension.ProjectIdentity.beam",
+      "sha256": "208f379db62a43428d933224fa9788ded8cace5c1ad8e57481da61792ad44198"
+    },
+    {
+      "bytes": 28836,
+      "name": "Elixir.Ipse.Extension.Projection.beam",
+      "sha256": "d9806b356c5aafebd0ba4990dd24ee61ab04bf823afd288bfe22c199df50380c"
+    },
+    {
+      "bytes": 87228,
+      "name": "Elixir.Ipse.Extension.Registry.beam",
+      "sha256": "66def9d81957b8f0528249dcb7065ddb278813b6d52b167c0c71046cd8c2604f"
+    },
+    {
+      "bytes": 12836,
+      "name": "Elixir.Ipse.Extension.ResultDocument.beam",
+      "sha256": "2eef99d2daf405e3035d38a7bd64b2fbce878fe9bdd962cc8878d2e388ea159b"
+    },
+    {
+      "bytes": 3872,
+      "name": "Elixir.Ipse.Extension.ResultPublication.Output.beam",
+      "sha256": "db3c862d1f6e03736af97f7ea68086f8d24ed98de08658f8573344d90b28e3bc"
+    },
+    {
+      "bytes": 21684,
+      "name": "Elixir.Ipse.Extension.ResultPublication.beam",
+      "sha256": "eb50515f6edc5a0ecc124e49dfae1156a42e9b77f617da154964813cd72a2bee"
+    },
+    {
+      "bytes": 3452,
+      "name": "Elixir.Ipse.Extension.ResultSource.Index.beam",
+      "sha256": "9b8a4189d05f9b9dfb6c10553c24fc1953b6160b0c49c8b404eceaa5bbfcc3d0"
+    },
+    {
+      "bytes": 3592,
+      "name": "Elixir.Ipse.Extension.ResultSource.Sealed.beam",
+      "sha256": "9f7bafb6e080dbaa358958cf2d7291c852f51792b03895f3009f86f66ba7aa8d"
+    },
+    {
+      "bytes": 106460,
+      "name": "Elixir.Ipse.Extension.ResultSource.beam",
+      "sha256": "7e611eff33a7566e2fac457d950504472868aa432c98a029e2fee0ec40ecf78a"
+    },
+    {
+      "bytes": 17344,
+      "name": "Elixir.Ipse.Extension.ResultView.beam",
+      "sha256": "dca9646dcb0c74d72b798ef7311427718ffcf9294ea23f51929a8e05bfa8e957"
+    },
+    {
+      "bytes": 32032,
+      "name": "Elixir.Ipse.Extension.SemanticAdmission.beam",
+      "sha256": "230f9eebd4511f0ff7789c96e543d503208941ebaaae8f9c039723b078cfd10c"
+    },
+    {
+      "bytes": 67172,
+      "name": "Elixir.Ipse.Extension.SemanticConsent.beam",
+      "sha256": "c51dd6b86617f0da616199dcec3f548049a571d104ee99571c876053d4799478"
+    },
+    {
+      "bytes": 18712,
+      "name": "Elixir.Ipse.Extension.SemanticRoutes.beam",
+      "sha256": "845fe8a599cb0106b111ec74b66979d7f2e7efca977001f3a548bb3098248c22"
+    },
+    {
+      "bytes": 37092,
+      "name": "Elixir.Ipse.Extension.Services.beam",
+      "sha256": "93422157102e9ca5ad6530b86f45dda1153581c46d79f26d7e06847a4dbdd019"
+    },
+    {
+      "bytes": 28304,
+      "name": "Elixir.Ipse.Extension.SourceRead.beam",
+      "sha256": "5888c1b834051e8bf02769aa3d616573d431b257b111a5404225cdb0d890dc8d"
+    },
+    {
+      "bytes": 41808,
+      "name": "Elixir.Ipse.Extension.State.beam",
+      "sha256": "042dfb2ca69ec5a5f1cb0b0b8ca0c7451c72199eaf60c98b39e0b6f1c076688d"
+    },
+    {
+      "bytes": 76156,
+      "name": "Elixir.Ipse.Extension.Subscriptions.beam",
+      "sha256": "6ec7ed7cb7fe82e77425feb609918765edf63d221cd887b4b4bafd276a7c1f2f"
+    },
+    {
+      "bytes": 23688,
+      "name": "Elixir.Ipse.Extension.TextConsumer.beam",
+      "sha256": "40cf8dc7489a67ed9282af1c9265c0304c6a6138245d115a48eee2133c381d74"
+    },
+    {
+      "bytes": 23768,
+      "name": "Elixir.Ipse.Extension.TextResources.beam",
+      "sha256": "9be999199815d0709a66aa511d4a3e55554153376ee053c15aab92335a18a3f4"
+    },
+    {
+      "bytes": 12648,
+      "name": "Elixir.Ipse.Extension.ToolAction.beam",
+      "sha256": "a78e61f9b7b7cc076b9b5d7d6747b07975c74f54a1371ae6e14b6467fced186e"
+    },
+    {
+      "bytes": 26200,
+      "name": "Elixir.Ipse.Extension.UsageRead.beam",
+      "sha256": "be1c1caef18dffb04c6a993e8991fc441d03aa8251e32691dce176df679c1a27"
+    },
+    {
+      "bytes": 42132,
+      "name": "Elixir.Ipse.Extension.Worker.beam",
+      "sha256": "edac79da55b30060c8e6564b039f0c539bd9f2a823a7575042764c6f8e82a1bb"
+    },
+    {
+      "bytes": 15080,
+      "name": "Elixir.Ipse.Extension.beam",
+      "sha256": "1542dbe3be9c3d01b99378e9e18ecda4d4837d419534270604bb1d2e1e7dc47b"
+    },
+    {
+      "bytes": 33120,
+      "name": "Elixir.Ipse.HTTP.beam",
+      "sha256": "fb64455a559221fbf54957bc080570b9b04449da0e084636f74f49915985002e"
+    },
+    {
+      "bytes": 27748,
+      "name": "Elixir.Ipse.InferenceDispatch.beam",
+      "sha256": "36b8a749f48509bf45b330596924f0d45627faa03f5dc5cdae53f451bfaf29af"
+    },
+    {
+      "bytes": 4668,
+      "name": "Elixir.Ipse.InferenceSlots.Handle.beam",
+      "sha256": "5ff6c6fb55deec342c195caa8c3d3c0f705d91cd186971165da675d7a4981c79"
+    },
+    {
+      "bytes": 35248,
+      "name": "Elixir.Ipse.InferenceSlots.Ledger.beam",
+      "sha256": "15d9c8b3495807aa4713f446d53bc6f5d2749dc02c4b5f2c0c94a46eedb20e8e"
+    },
+    {
+      "bytes": 29608,
+      "name": "Elixir.Ipse.InferenceSlots.Store.beam",
+      "sha256": "89fd09fed515ba9aab8da67244c2b730bcddac453dc6f99feb531920c81c7711"
+    },
+    {
+      "bytes": 45276,
+      "name": "Elixir.Ipse.InferenceSlots.beam",
+      "sha256": "43ae1488d5113cfd0eb5a872ffd1a42b8b614494fcc2294dde8904139b9df52d"
+    },
+    {
+      "bytes": 33300,
+      "name": "Elixir.Ipse.JSON.beam",
+      "sha256": "de95acca283cdefc57543dc1b188f840d961165cb62457032730f7a36a2be378"
+    },
+    {
+      "bytes": 15348,
+      "name": "Elixir.Ipse.Journal.SourceOrigin.beam",
+      "sha256": "0ba3a962b6d448c27e8934ead29eb1e0c076a838ed37685260cff3302efa9247"
+    },
+    {
+      "bytes": 56352,
+      "name": "Elixir.Ipse.Journal.Writer.beam",
+      "sha256": "89b216a5b370236bacbfbdf81c4333e013a770c6f0c399652be869c08321f17a"
+    },
+    {
+      "bytes": 56828,
+      "name": "Elixir.Ipse.Journal.beam",
+      "sha256": "329438289896e52836ba2aee3d70df4e58454da958aac994fb469298b9719aac"
+    },
+    {
+      "bytes": 54056,
+      "name": "Elixir.Ipse.MCP.Config.beam",
+      "sha256": "efd5463ac752045fd1edf4361073813054d8718d61d50ab168d17a6b932a640b"
+    },
+    {
+      "bytes": 45092,
+      "name": "Elixir.Ipse.MCP.HTTPTransport.beam",
+      "sha256": "8661244e2c97cc09e29c24acf38626543352b77de2e699d19a3cef56d1832f83"
+    },
+    {
+      "bytes": 15228,
+      "name": "Elixir.Ipse.MCP.Planning.beam",
+      "sha256": "e50569303f025e4692f15bb373c78dbdc93599774f636e6c3ba50cb3535588fe"
+    },
+    {
+      "bytes": 30228,
+      "name": "Elixir.Ipse.MCP.StdioTransport.beam",
+      "sha256": "b13cfcdb8b2aa16481547fcc69166f18e50fc8fecbf0dae3cec7a3ab18a0d928"
+    },
+    {
+      "bytes": 58008,
+      "name": "Elixir.Ipse.MCP.beam",
+      "sha256": "f9b20318c6298312bea29f441d1ca61f01ac4cd91605b5fcb4908e0065908278"
+    },
+    {
+      "bytes": 32240,
+      "name": "Elixir.Ipse.Observability.Channel.beam",
+      "sha256": "fcb8d389480be2225ba29749adc298ab40940ba480842aaf04de66dd50121ff1"
+    },
+    {
+      "bytes": 25820,
+      "name": "Elixir.Ipse.Observability.Trace.beam",
+      "sha256": "8e8af0a7c7ecb5513143824a5930fb93b793958dbcbf7be8cf72d4a050164b11"
+    },
+    {
+      "bytes": 40288,
+      "name": "Elixir.Ipse.Observability.beam",
+      "sha256": "9ed51b9292950c078d387bc490be7c379d33c1c75ca9386415119e91323087e8"
+    },
+    {
+      "bytes": 5584,
+      "name": "Elixir.Ipse.PrivateFile.beam",
+      "sha256": "8f84012e4126705e4f54e940742b68d1b7d4f05dd6784fdf42d6f05f41d58ee4"
+    },
+    {
+      "bytes": 19244,
+      "name": "Elixir.Ipse.Provider.Anthropic.beam",
+      "sha256": "0eccf7e2f094f45728d2d3b137d1a086a4af82b463482bf215585c495a020720"
+    },
+    {
+      "bytes": 37620,
+      "name": "Elixir.Ipse.Provider.ChatCompletions.beam",
+      "sha256": "e114a9215b7ddd5b48dc39e1561eb14b97a0e7e45ec0a821273ec6ce10ebae22"
+    },
+    {
+      "bytes": 15460,
+      "name": "Elixir.Ipse.Provider.CompletionWitness.beam",
+      "sha256": "689d6b2981592c9bb9da70e80785e7e652c12f1cbea291a1cdaff13b7e707123"
+    },
+    {
+      "bytes": 18724,
+      "name": "Elixir.Ipse.Provider.Decision.Transport.beam",
+      "sha256": "331702a15cb399bf536d76ddb74e64920f214b918049973f76b82d4acef0c430"
+    },
+    {
+      "bytes": 21156,
+      "name": "Elixir.Ipse.Provider.Decision.beam",
+      "sha256": "9306aae74bb61a0ae204bb813693d06a4d5351182f9416df6232a6cb53aaefe7"
+    },
+    {
+      "bytes": 5388,
+      "name": "Elixir.Ipse.Provider.Demo.beam",
+      "sha256": "afae912155960c57cf0bfbf3ad3a6b0eb8abff72b693a314768789a8b9a9491d"
+    },
+    {
+      "bytes": 13252,
+      "name": "Elixir.Ipse.Provider.EgressGate.beam",
+      "sha256": "11219d1bb322f561e829679422bcf2132e108478734a0ebf256e79d8e739986c"
+    },
+    {
+      "bytes": 33324,
+      "name": "Elixir.Ipse.Provider.Embedding.beam",
+      "sha256": "d3a98c987194dcab17f17d7eb068e871822aa3aa22f13498012f43089153433f"
+    },
+    {
+      "bytes": 35064,
+      "name": "Elixir.Ipse.Provider.Gemini.beam",
+      "sha256": "141ae7d0dee8a2aff7879b72da8ca1fe884ad9cf89460657c6b6d0acf7548399"
+    },
+    {
+      "bytes": 9776,
+      "name": "Elixir.Ipse.Provider.InferenceFacts.beam",
+      "sha256": "e9897598a185753268e02af113bce308b74cc8c6cee467ce1f3f9a8058e00e9c"
+    },
+    {
+      "bytes": 3592,
+      "name": "Elixir.Ipse.Provider.MintBuffered.beam",
+      "sha256": "f55b9d67ee1c022a6612c32756a143ec8112440e697eca5b3ff146e7e5da3bbe"
+    },
+    {
+      "bytes": 4720,
+      "name": "Elixir.Ipse.Provider.MintDecision.beam",
+      "sha256": "40808c8b140ef7229323bafc68c3a56672e7229bab5a227389ff46526c976d91"
+    },
+    {
+      "bytes": 5372,
+      "name": "Elixir.Ipse.Provider.MintEmbedding.beam",
+      "sha256": "9c9bcb5051efb3c090e536d4fd29aa96c6cc205ac671e551e6f70b1e14ec30d4"
+    },
+    {
+      "bytes": 6972,
+      "name": "Elixir.Ipse.Provider.MintOwned.beam",
+      "sha256": "127fbd369d14519f864d40a6ff3b33822cabdb57461edc56f9f0ba2c22932192"
+    },
+    {
+      "bytes": 5668,
+      "name": "Elixir.Ipse.Provider.MintText.beam",
+      "sha256": "7c89998245153bd51b764c4e8de8c45ebc5bfd057d4b458cf6f6da75eaad52cd"
+    },
+    {
+      "bytes": 26448,
+      "name": "Elixir.Ipse.Provider.MintTransport.beam",
+      "sha256": "4d9d2c9e94f46ff7a1a92854e65682337e97fbc21562118473659a64573f62e2"
+    },
+    {
+      "bytes": 19548,
+      "name": "Elixir.Ipse.Provider.Ollama.beam",
+      "sha256": "72ab1e1f51bd208c706750b31d312aeaad33fda456035395b07563d51b8353b4"
+    },
+    {
+      "bytes": 24072,
+      "name": "Elixir.Ipse.Provider.OpenAI.beam",
+      "sha256": "32fd0ba6cf63294d1f519e9b9f8b7135cd229a2ca2f840476d9d89ed9c701526"
+    },
+    {
+      "bytes": 122092,
+      "name": "Elixir.Ipse.Provider.Registry.beam",
+      "sha256": "01fcb895ba7cca9aa70ca8cefde3883c49750b249a951998fdafb7354a1a82c3"
+    },
+    {
+      "bytes": 7632,
+      "name": "Elixir.Ipse.Provider.Spec.beam",
+      "sha256": "c33c38d6bc8368a03a59ceaf0efeb69f61882117e1e867c8ba6dd315489bfffc"
+    },
+    {
+      "bytes": 3928,
+      "name": "Elixir.Ipse.Provider.Stream.EventState.beam",
+      "sha256": "dab5d471b745d2602d630c4cfa911a78b7eef004c99bde079712d3cd2e55cbdd"
+    },
+    {
+      "bytes": 3268,
+      "name": "Elixir.Ipse.Provider.Stream.LineState.beam",
+      "sha256": "901349b22c2da2265c2103c7d27ecd6cbdc1d252066c9a747bf5213d46ce0417"
+    },
+    {
+      "bytes": 26212,
+      "name": "Elixir.Ipse.Provider.Stream.beam",
+      "sha256": "d7736ddfdc683bcfbec4833db6a383baac32e2ef2030aeecb7d66c55b2044a96"
+    },
+    {
+      "bytes": 30504,
+      "name": "Elixir.Ipse.Provider.Transport.beam",
+      "sha256": "29917e7b7233f8c98268f228ee364101aaffacbdd5176a2eb0e3262281e797d0"
+    },
+    {
+      "bytes": 33316,
+      "name": "Elixir.Ipse.Provider.beam",
+      "sha256": "c6adf568eacc9d6bded9376cfacc4ee8e8795726813eca6592fd41b01333c440"
+    },
+    {
+      "bytes": 21924,
+      "name": "Elixir.Ipse.Runner.Operator.beam",
+      "sha256": "a8046e36844fdbd1c21746b8da1c26ee674adbdc9ee1d8f8a88595f184096516"
+    },
+    {
+      "bytes": 3468,
+      "name": "Elixir.Ipse.Runner.Review.Permit.beam",
+      "sha256": "12420b3836c4240adeaa3283bd1e32abf18d2adb6b5e25c18c3d1d74f51e729e"
+    },
+    {
+      "bytes": 16780,
+      "name": "Elixir.Ipse.Runner.Review.beam",
+      "sha256": "94e0a52f9d5410a69fa083017e1086246de30ff8cdad83ed86d50198047ea5f3"
+    },
+    {
+      "bytes": 3984,
+      "name": "Elixir.Ipse.Runner.Transaction.Capability.beam",
+      "sha256": "2fd72ae308cb718b2ad812ef141e857fbd5c33820e38762f6a6d683873a0318b"
+    },
+    {
+      "bytes": 41660,
+      "name": "Elixir.Ipse.Runner.Transaction.Controller.beam",
+      "sha256": "d1a24dbfb1f680ada5898890891aca77268db58364ff0e1a7bdf018f6e54c9a9"
+    },
+    {
+      "bytes": 30500,
+      "name": "Elixir.Ipse.Runner.Transaction.beam",
+      "sha256": "65322218c925c38e35acf8938ceb3790c21a4fce356ab88926862de931993053"
+    },
+    {
+      "bytes": 87680,
+      "name": "Elixir.Ipse.Runner.beam",
+      "sha256": "b2e988a6308d8a296a2a60180ac91e79c58de81c75ad925f19b9dc5753903878"
+    },
+    {
+      "bytes": 77400,
+      "name": "Elixir.Ipse.Session.Context.beam",
+      "sha256": "68614fda47d30dd452efc3a2d0f8ba575cac91c0394ff7fbaa84ec0fe7d56b5a"
+    },
+    {
+      "bytes": 68396,
+      "name": "Elixir.Ipse.Session.Draft.beam",
+      "sha256": "01eaed75fb5ef565e0334b83c30d48de5165c9e5053ff9065e54d64203c298e5"
+    },
+    {
+      "bytes": 15276,
+      "name": "Elixir.Ipse.Session.DraftAcceptance.beam",
+      "sha256": "fb5a6e7e95a4f73295415a79166572c0e7b5b806fd684420564751014d665b28"
+    },
+    {
+      "bytes": 7524,
+      "name": "Elixir.Ipse.Session.DraftHistory.beam",
+      "sha256": "807ea40741884fb0badb9b6a501f282bce97a32225ddd509035bbad200df38b8"
+    },
+    {
+      "bytes": 19068,
+      "name": "Elixir.Ipse.Session.DraftLineage.beam",
+      "sha256": "80ec6baf4e8f9628dadb50241ce164bc7814e9d356da2220d379682ffefd9d68"
+    },
+    {
+      "bytes": 18728,
+      "name": "Elixir.Ipse.Session.DraftMCP.beam",
+      "sha256": "fa1e0d0d4b73aa77a3cfaca32dd8e070e383c457e6260c82d0dded41f90c1790"
+    },
+    {
+      "bytes": 17612,
+      "name": "Elixir.Ipse.Session.DraftNative.beam",
+      "sha256": "d64b6a8eacf1b5c0db8ce2e4ff7dedb4b99ab516e92991a2349cc4bc7ae03ab5"
+    },
+    {
+      "bytes": 43632,
+      "name": "Elixir.Ipse.Session.InferenceDispatch.beam",
+      "sha256": "18da4325a9d481ce603a0b7a24b0e37af0962857e57a247302db1badc3670bb7"
+    },
+    {
+      "bytes": 8476,
+      "name": "Elixir.Ipse.Session.InferenceWire.beam",
+      "sha256": "f7e7555f2d53d4290c9a5cafa2d6e0233d9e4e66121164f0b377db19a3f9fc99"
+    },
+    {
+      "bytes": 56740,
+      "name": "Elixir.Ipse.Session.Input.beam",
+      "sha256": "bda9ff2c6497b8a10e267ea1f03779572f8b9f67c32990d4217a9cf975abe70d"
+    },
+    {
+      "bytes": 174836,
+      "name": "Elixir.Ipse.Session.Invocation.beam",
+      "sha256": "cfef85bb2ce77277ad01a065f197c1fcd4d5d3165434c8b1460dc6f07dba6f8e"
+    },
+    {
+      "bytes": 43496,
+      "name": "Elixir.Ipse.Session.Lifecycle.beam",
+      "sha256": "9f218e23ed1396f9b7fcd50a7aa4795c5e95243c8e46afeaf08e2368a88f3816"
+    },
+    {
+      "bytes": 22376,
+      "name": "Elixir.Ipse.Session.Lock.beam",
+      "sha256": "bb44c858f035f3da97498d9ff3dbe9c63bb1004d6b13c8bb73b3f8ad8f76498b"
+    },
+    {
+      "bytes": 17176,
+      "name": "Elixir.Ipse.Session.ManagedLifecycle.beam",
+      "sha256": "3700dfab0dd09a4e99eb6e932ccc4c130fdbf1326b4526014d58be42a7033308"
+    },
+    {
+      "bytes": 73564,
+      "name": "Elixir.Ipse.Session.ManagedLineage.beam",
+      "sha256": "dca5569b8d7522700345f36fa49e62f66e8a94497b8e6a8a94d9f17dda09ed77"
+    },
+    {
+      "bytes": 60520,
+      "name": "Elixir.Ipse.Session.ManagedOutput.beam",
+      "sha256": "dbad734e9913ebe5cf0f722d7a4ce26cee1af3e8482137e26595d5f35a95d146"
+    },
+    {
+      "bytes": 21732,
+      "name": "Elixir.Ipse.Session.ManagedReads.beam",
+      "sha256": "d75ff49c12275452cc6277e7ed581a2d10d6aedf09f2e3ffd8094ebe93d08009"
+    },
+    {
+      "bytes": 3888,
+      "name": "Elixir.Ipse.Session.ManagedReference.Plan.beam",
+      "sha256": "d360649fd27703c71efef635e3c58df59bd528375048e55a045cbe9ba670ab8e"
+    },
+    {
+      "bytes": 3864,
+      "name": "Elixir.Ipse.Session.ManagedReference.State.beam",
+      "sha256": "8071edb3dc804b42efb8f39d487e99ddfec698bc906f2283e5e518cfdc4ec5b6"
+    },
+    {
+      "bytes": 96544,
+      "name": "Elixir.Ipse.Session.ManagedReference.beam",
+      "sha256": "bbc432cdd892eb6e882b6aca20eadf416804ae1cf7a272a179e804505bea771d"
+    },
+    {
+      "bytes": 26488,
+      "name": "Elixir.Ipse.Session.ManagedUse.beam",
+      "sha256": "1ba75cba9a8f25801c83a4af5bb3e7a281d401bcbfe7f9c38c3dde88737c5225"
+    },
+    {
+      "bytes": 25836,
+      "name": "Elixir.Ipse.Session.OperatorAnswer.beam",
+      "sha256": "1a88236a7b2ecb16fc404d50ffd224d13f242abc23e8eda8d8d1b37bea4626ff"
+    },
+    {
+      "bytes": 25744,
+      "name": "Elixir.Ipse.Session.OperatorAssertion.beam",
+      "sha256": "ecde974d4c447d4ca953a215b062b9c32727196347262f13e8e22160f7415a74"
+    },
+    {
+      "bytes": 9736,
+      "name": "Elixir.Ipse.Session.Permissions.beam",
+      "sha256": "0e2439b7e301561a556aa9983ba74890aadfd81bc496b09bbd9352de238a34a8"
+    },
+    {
+      "bytes": 39308,
+      "name": "Elixir.Ipse.Session.PlanningMCP.beam",
+      "sha256": "aaa10f10f0858151df1b0fcb50e0c8845d125386b26a682eedac71185d7934f8"
+    },
+    {
+      "bytes": 20828,
+      "name": "Elixir.Ipse.Session.PlanningTransition.beam",
+      "sha256": "a14cee85c0cbc5fd745b67541ae1f74267c8ec80a31b4c766dc0ea71efc900c5"
+    },
+    {
+      "bytes": 44840,
+      "name": "Elixir.Ipse.Session.Reference.beam",
+      "sha256": "0cd71a217467a8ab2e15d27b3ad701ad436d23dd15c6ec974c5e7b50c7e4e319"
+    },
+    {
+      "bytes": 81732,
+      "name": "Elixir.Ipse.Session.Resources.beam",
+      "sha256": "f74ee2369eac0be9d64aba543916c6706ee591702106a0cb0dbe9add558ca847"
+    },
+    {
+      "bytes": 47132,
+      "name": "Elixir.Ipse.Session.RuntimeLifecycle.beam",
+      "sha256": "0aafbaa8ba9b5a3f31571a711f2dbbf0247d6d46543650d6190846d5940c3cf0"
+    },
+    {
+      "bytes": 67876,
+      "name": "Elixir.Ipse.Session.Saved.beam",
+      "sha256": "9aee2490f1948c6e7c8b66b018b66aad01bc5f8e83f41970c39b18897aa798e4"
+    },
+    {
+      "bytes": 102464,
+      "name": "Elixir.Ipse.Session.SourceIndex.beam",
+      "sha256": "6cf6aa5536a8881c3108ff1720ef2b3e626c27dbec3afd3eab1d90055f2e3ff0"
+    },
+    {
+      "bytes": 39888,
+      "name": "Elixir.Ipse.Session.SourceWindow.beam",
+      "sha256": "b2cb06f8be290613ef11726cb61f5e8fab82cec0cb8ffd69dc23aedafaf382e3"
+    },
+    {
+      "bytes": 22212,
+      "name": "Elixir.Ipse.Session.StoredSources.beam",
+      "sha256": "82d3e3f9a82eff4d7dc21fe12210fe400a5641d5ab5a07b1d418d0d4d0b7ef14"
+    },
+    {
+      "bytes": 3976,
+      "name": "Elixir.Ipse.Session.TextStream.RequiredFailure.beam",
+      "sha256": "7cb946a8cebc15cac70132101651dd2dd6edb063ac922be299eb3a7bff86bcc0"
+    },
+    {
+      "bytes": 83908,
+      "name": "Elixir.Ipse.Session.TextStream.beam",
+      "sha256": "3d2994e50ba3c3f844286e5f0669c73689c6d7e02d3727a187a2891d41383298"
+    },
+    {
+      "bytes": 71152,
+      "name": "Elixir.Ipse.Session.ToolLifecycle.beam",
+      "sha256": "8f3b54e0e062aa58adf4ba8371d35b962729e49518c4c715584e235dde3c7a8c"
+    },
+    {
+      "bytes": 194208,
+      "name": "Elixir.Ipse.Session.Turn.beam",
+      "sha256": "1175f9083e59e8b3ab1bb1c3c5cf2fdbea3da6b9a289c9fe4ddcae6cf177d7a3"
+    },
+    {
+      "bytes": 526056,
+      "name": "Elixir.Ipse.Session.beam",
+      "sha256": "c4240717591d773291e7682bf99cc3161b50f01c9ed1dcd1aa45e33786b6710e"
+    },
+    {
+      "bytes": 49708,
+      "name": "Elixir.Ipse.Tools.Delegation.beam",
+      "sha256": "d9a95bf93c1665d9e124e0bfdb6a1c1603eff517f711c2305d03a9cd78b56700"
+    },
+    {
+      "bytes": 46628,
+      "name": "Elixir.Ipse.Tools.MacOSSandbox.beam",
+      "sha256": "9ab9701ee11db61f8a9261aeb013b4fd21bade3249398616f23224c172451adf"
+    },
+    {
+      "bytes": 21468,
+      "name": "Elixir.Ipse.Tools.Questions.beam",
+      "sha256": "c80f7c3cace8233b9761b85d0a4d2c326adc6d6696164408d268aca4aef9985b"
+    },
+    {
+      "bytes": 26296,
+      "name": "Elixir.Ipse.Tools.Research.beam",
+      "sha256": "7867c57e8d023153627b60cae5a172bf80e065f4d7a6c78480284f2c248583de"
+    },
+    {
+      "bytes": 20532,
+      "name": "Elixir.Ipse.Tools.Sandbox.beam",
+      "sha256": "fd3a31eda987f6b4d10de7ff77d433e9e92d882cebe2dcc024af8f5cca412a09"
+    },
+    {
+      "bytes": 46696,
+      "name": "Elixir.Ipse.Tools.beam",
+      "sha256": "9b0017ef55939ad103cbcf43127666b89541e6126e3e5c678274a87699c90cde"
+    },
+    {
+      "bytes": 74284,
+      "name": "Elixir.Ipse.Usage.Budget.beam",
+      "sha256": "356f739420db027ee8107355697458c71b35d5cfa84e8d42df8957fcd413d2ea"
+    },
+    {
+      "bytes": 23408,
+      "name": "Elixir.Ipse.Usage.BudgetStore.beam",
+      "sha256": "fc399598974e4b7acf08028f24f4786ec8c8ce87a987acbb6495eacf8a716834"
+    },
+    {
+      "bytes": 60540,
+      "name": "Elixir.Ipse.Usage.Costs.beam",
+      "sha256": "bd03b71d2349800c979df97c956971b2cf611081953adad34e9fedfc652e12ac"
+    },
+    {
+      "bytes": 95104,
+      "name": "Elixir.Ipse.Usage.beam",
+      "sha256": "5a5ed3d802d88d3d6fe45cc6b76bcf5259c166362a64fa6fc4acd5e9bbd8d173"
+    },
+    {
+      "bytes": 77756,
+      "name": "Elixir.Ipse.Workspace.beam",
+      "sha256": "beadb32c248cf1c2079e261f1e55bcd1dae13bda7b3ecccfa57b9930e1f03101"
+    },
+    {
+      "bytes": 3188,
+      "name": "Elixir.Ipse.beam",
+      "sha256": "c404b64bdcf6cb162d2d61a1fd1ed82cf8f5f4e1718393b2c6822f5586da6e1c"
+    }
+  ],
+  "kernel": "7.2.11-arch1-1",
+  "limits": [
+    "Earlier46800/46801/46805/46806 ran on isolated86d diagnostic helper; final46810-46814 use113df production tmpfs profile.",
+    "The changed worker expiry artifact was freshly built and natively reviewed in a private temporary runtime; exact ephemeral artifact bytes were not retained after success. Its unchanged generator/input source is captured.",
+    "Current shared tree includes later unrelated in-flight work; copied source comes from the tested isolated graph.",
+    "No aggregate suite, installed release, live account, other OS or full milestone acceptance was run."
+  ],
+  "native_helper_sha256": "113df584e83b7749a11a72509092cb9c2b32d6fdc3fcf91b0181335f5f8c2550",
+  "otp": "29",
+  "recorded_on": "2026-10-28",
+  "scope": "Focused managed extension output release integration; not milestone acceptance",
+  "version": 1
+}

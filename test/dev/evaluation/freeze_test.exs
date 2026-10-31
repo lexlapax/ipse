@@ -5,6 +5,22 @@ defmodule Ipse.KnowledgeEvaluationFreezeTest do
   use ExUnit.Case, async: false
   alias Ipse.Development.Evaluation.Freeze
 
+  test "snapshot decoding rejects oversized and duplicate-key declarations", ctx do
+    assert {:ok, experiment} =
+             Freeze.declare(ctx.repository, JSON.encode!(plan_v2(ctx)), %{
+               "fixture" => ctx.artifact
+             })
+
+    assert {:ok, _} = Freeze.resolve_plan(experiment["bytes"], resolution(ctx))
+    "{" <> remainder = experiment["bytes"]
+    duplicate = "{\"version\":2," <> remainder
+    assert {:error, _} = Freeze.resolve_plan(duplicate, resolution(ctx))
+
+    oversized = experiment["bytes"] <> String.duplicate(" ", Freeze.snapshot_bytes())
+    assert byte_size(oversized) > Freeze.snapshot_bytes()
+    assert {:error, _} = Freeze.resolve_plan(oversized, resolution(ctx))
+  end
+
   setup do
     root = Path.join(System.tmp_dir!(), "ipse-evaluation-freeze-" <> Ipse.Usage.id())
     repository = Path.join(root, "repository")

@@ -1,0 +1,19 @@
+Running ExUnit with seed: 614698, max_cases: 8
+Excluding tags: [:native_sandbox, :macos_sandbox, :macos_filesystem, :memory_scope]
+
+
+
+  1) test fresh Session binds actual header inode under the lock and resumes (Ipse.Session.NativeHeaderSessionTest)
+     test/ipse/session/native_header_session_test.exs:37
+     match (=) failed
+     code:  assert {:ok, diagnosis} = Ipse.Session.Saved.inspect_saved(c.dir, state.id)
+     left:  {:ok, diagnosis}
+     right: {:error, :invalid_extension_action}
+     stacktrace:
+       test/ipse/session/native_header_session_test.exs:99: (test)
+
+.
+Finished in 0.8 seconds (0.2s on load, 0.00s async, 0.6s sync)
+
+Result: 1/2 passed
+Failed: 1 test

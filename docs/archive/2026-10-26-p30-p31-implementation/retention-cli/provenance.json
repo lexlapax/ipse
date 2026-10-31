@@ -1,0 +1,10 @@
+{
+  "runtime": "/tmp/ipse-management-retention-cli-20261028-46784",
+  "scope": "Standalone retention CLI and original control ledger; final-switch deadline fence remains open; no installed/full-source acceptance",
+  "source_snapshot": "source/",
+  "core_snapshot_from": "../2026-10-28-managed-retention/sources/",
+  "runtime_helper_sha256": "6407e40e96498029ff7e13d96215a263812732aad1979b4c3e5f4b867b5a4d56",
+  "available_profile": "7.2.11-arch1-1 x86_64 tmpfs",
+  "native_success": "logs/native-46786.log",
+  "source_match": "logs/source-match-46787.log"
+}

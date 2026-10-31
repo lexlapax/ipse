@@ -13,7 +13,7 @@ use std::process::{Command, Stdio};
 use std::sync::{mpsc, Arc, Mutex};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::thread;
-use std::time::{Duration, Instant};
+use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 #[cfg(target_os = "linux")]
 #[path = "ipse-linux-sandbox.rs"]
 mod ipse_linux_sandbox;
@@ -39,6 +39,21 @@ mod ipse_operator;
 mod ipse_storage;
 #[path = "ipse-transaction.rs"]
 mod ipse_transaction;
+#[cfg(target_os = "linux")]
+#[path = "ipse-lease-transfer.rs"]
+mod ipse_lease_transfer;
+#[cfg(target_os = "linux")]
+#[path = "ipse-lease-sink.rs"]
+mod ipse_lease_sink;
+#[cfg(target_os = "linux")]
+#[path = "ipse-owner-control.rs"]
+mod ipse_owner_control;
+#[cfg(all(target_os = "linux", not(test)))]
+#[path = "ipse-terminal-lease.rs"]
+mod ipse_terminal_lease;
+#[cfg(all(target_os = "linux", ipse_lease_output_experiment))]
+#[path = "ipse-lease-output.rs"]
+mod ipse_lease_output;
 use process_group::{signal_group, GroupGuard};
 
 extern "C" {
@@ -97,13 +112,53 @@ fn lock_file(path: &str) -> Result<(), String> {
     Ok(())
 }
 fn run() -> Result<(), String> {
-    let args: Vec<String> = env::args().collect();
+    let mut args: Vec<String> = env::args().collect();
+    let admitted_shell = args.get(1).is_some_and(|arg| arg == "--admitted-shell");
+    if admitted_shell { args.remove(1); }
+    #[cfg(not(target_os = "linux"))]
+    if admitted_shell { return Err("managed shell admission is unavailable on this platform".into()); }
     #[cfg(target_os = "linux")]
     if !args.get(1).is_some_and(|a| matches!(a.as_str(), "--measure-sequence" | "--measure-stage" | "--measure-cgroup")) {
         ipse_bound::scrub_ordinary();
     }
     if args.get(1).is_some_and(|arg| arg == "--copy-regular") { return ipse_file_copy::run(&args); }
     if args.get(1).is_some_and(|arg| arg == "--transaction-lock") { return ipse_transaction::run(&args); }
+    #[cfg(target_os = "linux")]
+    if args.get(1).is_some_and(|arg| arg == "--lock-export-v1") { return ipse_transaction::run_source(&args, cfg!(ipse_session_header_experiment), false, false); }
+    #[cfg(target_os = "linux")]
+    if args.get(1).is_some_and(|arg| arg == "--session-header-v1") { return ipse_transaction::run_source(&args, true, false, false); }
+    #[cfg(target_os = "linux")]
+    if args.get(1).is_some_and(|arg| arg == "--session-resume-v1") { return ipse_transaction::run_source(&args, true, true, false); }
+    #[cfg(target_os = "linux")]
+    if args.get(1).is_some_and(|arg| arg == "--session-header-share-v2") { return ipse_transaction::run_source(&args, true, false, true); }
+    #[cfg(target_os = "linux")]
+    if args.get(1).is_some_and(|arg| arg == "--session-resume-share-v2") { return ipse_transaction::run_source(&args, true, true, true); }
+    #[cfg(target_os = "linux")]
+    if args.get(1).is_some_and(|arg| arg == "--session-release-v1") { return ipse_transaction::publish_release(&args); }
+    #[cfg(target_os = "linux")]
+    if args.get(1).is_some_and(|arg| arg == "--lease-collect-v1") { return ipse_lease_sink::run(&args); }
+    #[cfg(target_os = "linux")]
+    if args.get(1).is_some_and(|arg| arg == "--lease-collect-close-v2") { return ipse_lease_sink::run_close(&args, false, false); }
+    #[cfg(target_os = "linux")]
+    if args.get(1).is_some_and(|arg| arg == "--lease-collect-close-ready-v3") { return ipse_lease_sink::run_close(&args, true, false); }
+    #[cfg(target_os = "linux")]
+    if args.get(1).is_some_and(|arg| arg == "--lease-collect-accepted-v4") { return ipse_lease_sink::run_close(&args, true, true); }
+    #[cfg(target_os = "linux")]
+    if args.get(1).is_some_and(|arg| arg == "--owner-control-send-v1") { return ipse_owner_control::send(&args); }
+    #[cfg(target_os = "linux")]
+    if args.get(1).is_some_and(|arg| arg == "--owner-control-send-v2") { return ipse_owner_control::send(&args); }
+    #[cfg(target_os = "linux")]
+    if args.get(1).is_some_and(|arg| arg == "--owner-control-send-review-v3") { return ipse_owner_control::send(&args); }
+    if args.get(1).is_some_and(|arg| arg == "--owner-control-send-review-notice-v4") { return ipse_owner_control::send(&args); }
+    #[cfg(target_os = "linux")]
+    if args.get(1).is_some_and(|arg| arg == "--owner-control-observe-v1") { return ipse_owner_control::observe(&args); }
+    #[cfg(target_os = "linux")]
+    if args.get(1).is_some_and(|arg| arg == "--owner-control-observe-v2") { return ipse_owner_control::observe(&args); }
+    #[cfg(target_os = "linux")]
+    if args.get(1).is_some_and(|arg| arg == "--lease-output-v1") {
+        #[cfg(ipse_lease_output_experiment)] { return ipse_lease_output::run(&args); }
+        #[cfg(not(ipse_lease_output_experiment))] { return Err("leased output is unavailable".into()); }
+    }
     if args.get(1).is_some_and(|arg| arg == "--storage-allocation") { return ipse_storage::run(&args); }
     if args.get(1).is_some_and(|arg| arg == "--storage-write") { return ipse_storage::write(&args); }
     if args.get(1).is_some_and(|arg| arg == "--storage-write-many") { return ipse_storage::write_many(&args); }
@@ -162,7 +217,7 @@ fn run() -> Result<(), String> {
         }
     }
     if args.len() == 3 && args[1] == "--lock" { return lock_file(&args[2]); }
-    if args.get(1).is_some_and(|arg|arg=="--stdio" || arg=="--stdio-listener") {return ipse_stdio::run(&args);}
+    if args.get(1).is_some_and(|arg|arg=="--stdio" || arg=="--stdio-listener" || arg=="--admitted-stdio") {return ipse_stdio::run(&args);}
     let (sandboxed, offset) = if args.len() == 8 && args[1] == "--sandbox" && args[2] == "macos-workspace-v1" {
         #[cfg(not(target_os = "macos"))]
         return Err("macos-workspace-v1 requires macOS".into());
@@ -180,10 +235,32 @@ fn run() -> Result<(), String> {
     let child_slot = Arc::new(Mutex::new(None::<i32>));
     let owner_cancelled = cancelled.clone();
     let owner_child = child_slot.clone();
+    let (grant_tx, grant_rx) = mpsc::sync_channel::<u64>(1);
     // Watch owner death during signature verification as well as command execution.
     thread::spawn(move || {
         let mut input = io::stdin();
         let mut buffer = [0u8; 256];
+        if admitted_shell {
+            let mut header = [0u8; 5];
+            let accepted = input.read_exact(&mut header).is_ok()
+                && header == [b'G', 0, 0, 0, 8];
+            if !accepted {
+                owner_cancelled.store(true, Ordering::SeqCst);
+                signal_group(&owner_child);
+                return;
+            }
+            let mut grant = [0u8; 8];
+            if input.read_exact(&mut grant).is_err() {
+                owner_cancelled.store(true, Ordering::SeqCst);
+                return;
+            }
+            let deadline = u64::from_be_bytes(grant);
+            if !(1..=9_007_199_254_740_991).contains(&deadline) || grant_tx.send(deadline).is_err() {
+                owner_cancelled.store(true, Ordering::SeqCst);
+                signal_group(&owner_child);
+                return;
+            }
+        }
         loop {
             match input.read(&mut buffer) {
                 Ok(0) => break,
@@ -232,12 +309,30 @@ fn run() -> Result<(), String> {
     let cleanup = GroupGuard::start(child_slot.clone())
         .map_err(|_| "cannot start process-group owner")?;
     cleanup.attach(command);
+    let _grant_deadline = if admitted_shell {
+        frame(b'R', b"shell-ready-v1").map_err(|_| "cannot report shell readiness")?;
+        let deadline = grant_rx.recv_timeout(Duration::from_secs(10))
+            .map_err(|_| "shell admission was not received")?;
+        let now = SystemTime::now().duration_since(UNIX_EPOCH)
+            .map_err(|_| "shell clock unavailable")?.as_millis();
+        if now >= deadline as u128 || cancelled.load(Ordering::SeqCst) {
+            return Err("shell admission expired before launch".into());
+        }
+        Some(deadline)
+    } else { None };
     #[cfg(target_os = "linux")]
     let child_sandbox = sandbox.clone();
     #[cfg(target_os = "linux")]
     unsafe {
         command.pre_exec(move || {
             if let Some(policy) = &child_sandbox {policy.apply()?;}
+            if let Some(deadline) = _grant_deadline {
+                let now = SystemTime::now().duration_since(UNIX_EPOCH)
+                    .map_err(|_| io::Error::other("shell clock unavailable"))?.as_millis();
+                if now >= deadline as u128 {
+                    return Err(io::Error::other("shell admission expired before exec"));
+                }
+            }
             Ok(())
         });
     }
@@ -245,6 +340,13 @@ fn run() -> Result<(), String> {
     if cancelled.load(Ordering::SeqCst) { return Err("shell owner disconnected before launch".into()); }
     let mut child = command.spawn().map_err(|e| format!("cannot start shell: {e}"))?;
     drop(slot);
+    if admitted_shell {
+        if frame(b'A', b"shell-started-v1").is_err() {
+            signal_group(&child_slot);
+            let _ = child.wait();
+            return Ok(());
+        }
+    }
     // The owner watcher kills this group even while output delivery is blocked.
     let (tx, rx) = mpsc::sync_channel(32);
     reader(child.stdout.take().unwrap(), tx.clone());

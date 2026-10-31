@@ -1,0 +1,9 @@
+Running ExUnit with seed: 156167, max_cases: 4
+Excluding tags: [:test, :native_sandbox, :macos_sandbox, :macos_filesystem, :memory_scope]
+Including tags: [source_lock_positive: true]
+
+Synthetic source-lock fixture retained at /tmp/ipse-source-lock-capacity-1ee89627b40476b0b358dd1aa1e550bc
+.
+Finished in 0.9 seconds (0.2s on load, 0.00s async, 0.7s sync)
+
+Result: 1 passed, 1 excluded

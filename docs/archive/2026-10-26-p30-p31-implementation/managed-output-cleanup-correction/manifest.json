@@ -1,0 +1,51 @@
+{
+  "files": [
+    {
+      "bytes": 20253,
+      "path": "lib/ipse/session/managed_output.ex",
+      "sha256": "dbcc1f5efff1159db102b47c62d5cf7c265f4d16cc36e37893c5c99717ad979d"
+    },
+    {
+      "bytes": 68688,
+      "path": "lib/ipse/session/turn.ex",
+      "sha256": "bf6fb9219439062e4bb8240e24a65cfb8df3b097814fd4e29f5105eeade2947e"
+    },
+    {
+      "bytes": 5066,
+      "path": "test/ipse/session/managed_output_test.exs",
+      "sha256": "1c94cc7809043dc1c91e2acb44b6ef74d52a27942774feece908228c9942fb02"
+    },
+    {
+      "bytes": 108549,
+      "path": "test/ipse/extension/managed_collection_call_session_test.exs",
+      "sha256": "d5154a429cdb679c0d233481d353fcd800661008f78c07562f4270bacd901036"
+    },
+    {
+      "bytes": 25,
+      "path": "_build/output-audit-correction-compile.log",
+      "sha256": "04ef88419ce6ce50a26912ead3ba4b6051d2641f5e68b0abcd9b8f55c85b2338"
+    },
+    {
+      "bytes": 397,
+      "path": "_build/output-audit-correction-46815.log",
+      "sha256": "b3b531aae8a4949a186bed01c30181b4b46e89024104d0c7fc6327ddd5d8a913"
+    }
+  ],
+  "helper_sha256": "113df584e83b7749a11a72509092cb9c2b32d6fdc3fcf91b0181335f5f8c2550",
+  "recorded_on": "2026-10-28",
+  "runtime_beams": [
+    {
+      "bytes": 61076,
+      "name": "Elixir.Ipse.Session.ManagedOutput.beam",
+      "sha256": "125c387ece8f444a6c19395c29d0b092c4dc9913f8331a243b86cf6d1f6d8844"
+    },
+    {
+      "bytes": 193872,
+      "name": "Elixir.Ipse.Session.Turn.beam",
+      "sha256": "77580aaf3202d42cfe6855ef12889882e10ec99c48c8cf9dbbe2597ed738ba91"
+    }
+  ],
+  "scope": "Two independently reported direct-result cleanup defects; no aggregate or native test rerun",
+  "supersedes_source_fields_of_manifest_sha256": "55e648238222db4daf99e26c423d4a3ea2f09adb2039e47581dfa349d9493726",
+  "version": 1
+}

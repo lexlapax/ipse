@@ -1,0 +1,7 @@
+Running ExUnit with seed: 442235, max_cases: 4
+Excluding tags: [supersession_scenario: "current", supersession_scenario: "relation_cancel", supersession_scenario: "revoke", supersession_scenario: "old_missing", supersession_scenario: "terminal", supersession_scenario: "terminal_cancel", supersession_scenario: "terminal_unknown", supersession_scenario: "shared"]
+
+.
+Finished in 4.3 seconds (0.09s on load, 0.00s async, 4.3s sync)
+
+Result: 1 passed, 8 excluded

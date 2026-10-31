@@ -821,6 +821,79 @@ defmodule Ipse.Extension.CollectionCallSessionTest do
     assert result["outcome"]["status"] == "ok"
   end
 
+  @tag :legacy_policy_expiry
+  test "policy expiry after actual staging prevents legacy selection and retains liability", c do
+    assert {:ok, before} = Consent.existing_snapshot(c.control, c.binding["project_id"])
+    deadline = System.system_time(:millisecond) + 5000
+    policy = Map.put(before["policy"], "expires_at_ms", deadline)
+
+    assert {:ok, _} =
+             Consent.replace(
+               c.control,
+               c.binding["project_id"],
+               before["epoch"],
+               policy,
+               System.system_time(:millisecond)
+             )
+
+    assert {:ok, selected} = Ipse.Config.Semantics.selection(policy)
+    c = put_in(c.config.semantic_selections, selected)
+    observer = self()
+    handler = {__MODULE__, make_ref()}
+
+    :ok =
+      :telemetry.attach(
+        handler,
+        [:ipse, :extension, :collection, :staged],
+        fn _, _, _, _ ->
+          assert Process.get({Ipse.Extension.Collection, :switch_deadline}) == deadline
+          send(observer, :legacy_staged_before_expiry)
+          Process.sleep(max(deadline - System.system_time(:millisecond) + 2, 0))
+        end,
+        nil
+      )
+
+    pid = start(c)
+
+    try do
+      assert :ok = Session.prompt(pid, "Synthetic café observation")
+      assert_receive :legacy_staged_before_expiry, 5000
+      assert_receive {:ipse, ^pid, {:done, :error}}, 10_000
+      assert System.system_time(:millisecond) >= deadline
+
+      assert {:ok, stored} =
+               Ipse.Extension.Collection.execute(
+                 SemanticAdmission.collection_root(c.home),
+                 c.namespace,
+                 %{"op" => "snapshot"},
+                 Ipse.Usage.id()
+               )
+
+      assert stored["generation"] == 0
+      assert {:ok, control} = Consent.existing_snapshot(c.control, c.binding["project_id"])
+      assert [operation] = Map.values(control["operations"])
+      assert operation["status"] == "publishing" and operation["actual"] == nil
+      assert {:ok, events} = Journal.load(c.dir, Session.info(pid).id)
+
+      assert Enum.count(
+               events,
+               &(&1["type"] == "extension_action_intent" and
+                   get_in(&1, ["request", "request", "op"]) == "commit")
+             ) == 1
+
+      assert Enum.any?(
+               events,
+               &(&1["type"] == "extension_action_result" and &1["operation_id"] == operation["id"] and
+                   get_in(&1, ["outcome", "status"]) == "unknown")
+             )
+
+      assert {:ok, _} = Ipse.Session.Saved.restore(events, Session.info(pid).id)
+      assert :ok = Session.close_confirmed(pid)
+    after
+      :telemetry.detach(handler)
+    end
+  end
+
   defp publication_gate(owner) do
     fn
       count, {:in, {:"$gen_call", _, {:extension_collection_sources, ref, intent}}}, _ ->

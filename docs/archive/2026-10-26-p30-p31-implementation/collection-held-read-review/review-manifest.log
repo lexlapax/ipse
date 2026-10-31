@@ -1,0 +1,10 @@
+COLLECTION_HELD_READ_MANIFEST_OK: %{
+  manifest_entries: 17,
+  source_files: 5,
+  runtime_files: 726,
+  base_inventory_files: 670,
+  additional_pinned_files: 56,
+  changed_modules: ["Elixir.Ipse.Extension.Collection.Directory.beam",
+   "Elixir.Ipse.Extension.Collection.beam"],
+  helper_unchanged: true
+}

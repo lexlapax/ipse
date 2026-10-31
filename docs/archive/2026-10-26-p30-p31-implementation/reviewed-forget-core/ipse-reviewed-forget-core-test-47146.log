@@ -1,0 +1,31 @@
+Running ExUnit with seed: 20261029, max_cases: 4
+
+..........
+
+  1) test standalone retention CLI reports the temporary gate without requesting review (Ipse.Extension.CollectionDeadlineGateTest)
+     test/ipse/extension/collection_deadline_gate_test.exs:75
+     Assertion with =~ failed
+     code:  assert output =~ "Protected collection publication is temporarily unavailable"
+     left:  "No successful retention change is confirmed: {:error, :collection_deadline_fence_unavailable}. Inspect the management operation before retrying; unknown effects never replay.\n"
+     right: "Protected collection publication is temporarily unavailable"
+     stacktrace:
+       test/ipse/extension/collection_deadline_gate_test.exs:95: (test)
+
+
+
+  2) test forget and session-only suppression CLI refuse before review or management journal (Ipse.Extension.CollectionDeadlineGateTest)
+     test/ipse/extension/collection_deadline_gate_test.exs:101
+     Assertion with =~ failed
+     code:  assert output =~ "Reviewed note mutation is temporarily unavailable"
+     left:  "No successful forget is confirmed: {:error, :native_review_publication_fence_unavailable}. Inspect the management journal and protected operation before retrying; unknown effects never replay.\n"
+     right: "Reviewed note mutation is temporarily unavailable"
+     stacktrace:
+       test/ipse/extension/collection_deadline_gate_test.exs:122: anonymous fn/4 in Ipse.Extension.CollectionDeadlineGateTest."test forget and session-only suppression CLI refuse before review or management journal"/1
+       (elixir 1.20.4) lib/enum.ex:2622: Enum."-reduce/3-lists^foldl/2-0-"/3
+       test/ipse/extension/collection_deadline_gate_test.exs:110: (test)
+
+
+Finished in 2.9 seconds (2.7s async, 0.1s sync)
+
+Result: 10/12 passed
+Failed: 2 tests

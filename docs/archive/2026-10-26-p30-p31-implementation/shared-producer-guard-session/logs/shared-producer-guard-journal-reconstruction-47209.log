@@ -1,0 +1,24 @@
+{
+  "allowed": true,
+  "kind": "read_only_actual_journal_reconstruction_NOT_native_current_store",
+  "journal": "_build/shared-producer-guard-session-20261029/evidence/attempt-journals/b1612de88618dfa391d05b2e6678a04d.jsonl",
+  "authenticate": {
+    "status": "ok",
+    "reads": 21,
+    "logical_bytes": 21365,
+    "bundle_bytes": 4512,
+    "source_count": 8,
+    "current_at_diagnostic": true,
+    "claim_operation_id": "f019320f6811cba1bd1a307ef62d609c"
+  },
+  "successful_collection_actions": 619,
+  "logical_records": 28,
+  "generation": 53,
+  "claim_revision_matches": true,
+  "selection_matches_claim": true,
+  "live_cache_status": "ready",
+  "live_cache_operation_matches": true,
+  "mocked_packed_read": true,
+  "model_floor_adapter": "generation-zero instead of prior synthetic seed1000",
+  "native_effects_replayed": false
+}

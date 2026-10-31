@@ -1,0 +1,23 @@
+Running ExUnit with seed: 47066, max_cases: 1
+Excluding tags: [:test]
+Including tags: [:generation_paged]
+
+
+
+  1) test explicit root2 finalization preserves v1 and verifies each ordered entity page durably (Ipse.KnowledgeCollectionDirectoryTest)
+     test/extensions/knowledge/collection_directory_test.exs:56
+     ** (MatchError) no match of right hand side value:
+
+         {"     warning: clauses with the same name and arity (number of arguments) should be grouped together, \"defp current_root?/2\" was previously defined (extensions/knowledge/src/store/collection/job.ex:640)\n     │\n 674 │   defp current_root?(job, row),\n     │        ~\n     │\n     └─ extensions/knowledge/src/store/collection/job.ex:674:8\n\n** (RuntimeError) {:ok, [IpseKnowledge.Documents, IpseKnowledge.Documents.Docx, IpseKnowledge.Documents.Docx.Styles, IpseKnowledge.Documents.ParserStage, IpseKnowledge.Documents.Pdf, IpseKnowledge.Documents.Zip, IpseKnowledge.Evidence, IpseKnowledge.Store.Collection, IpseKnowledge.Store.Collection.Directory, IpseKnowledge.Store.Collection.Finalization, IpseKnowledge.Store.Collection.Generation, IpseKnowledge.Store.Collection.Index, IpseKnowledge.Store.Collection.Job, IpseKnowledge.Store.Collection.Paged, IpseKnowledge.Store.Collection.Projection, IpseKnowledge.Store.Collection.Reduction, IpseKnowledge.Store.Collection.Selected], %{compile_warnings: [%{message: \"clauses with the same name and arity (number of arguments) should be grouped together, \\\"defp current_root?/2\\\" was previously defined (extensions/knowledge/src/store/collection/job.ex:640)\", position: {674, 8}, file: \"/home/lexlapax/projects/lexlapax/ipse/extensions/knowledge/src/store/collection/job.ex\", stacktrace: [], source: \"/home/lexlapax/projects/lexlapax/ipse/extensions/knowledge/src/store/collection/job.ex\", span: nil, severity: :warning}], runtime_warnings: []}}\n    (stdlib 8.1) erl_eval.erl:1048: :erl_eval.do_apply/7\n    (stdlib 8.1) erl_eval.erl:276: :erl_eval.exprs/6\n    (elixir 1.20.4) lib/code.ex:649: Code.validated_eval_string/4\n",
+          1}
+
+     code: result = run_fixture("test/support/generation_paged.exs")
+     stacktrace:
+       test/extensions/knowledge/collection_directory_test.exs:97: Ipse.KnowledgeCollectionDirectoryTest.run_fixture/1
+       test/extensions/knowledge/collection_directory_test.exs:57: (test)
+
+
+Finished in 2.3 seconds (0.06s on load, 0.00s async, 2.3s sync)
+
+Result: 0/1 passed, 5 excluded
+Failed: 1 test

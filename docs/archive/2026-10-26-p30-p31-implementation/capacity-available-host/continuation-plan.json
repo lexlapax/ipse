@@ -1,0 +1,124 @@
+{
+  "automatic_retries": 0,
+  "baseline": {
+    "calls_sha256": "787ba805f40044737e0c040036c74b5d28fe468b85a143573032ee99cb92053c",
+    "checkpoint": {
+      "actual_scan_units": 3184,
+      "collection_allocated_headroom_bytes": 29646848,
+      "complete_import_native_preflight_exercised": false,
+      "diagnostic_ms": 19034.642,
+      "export_plan_bytes": 1032078,
+      "export_plan_sha256": "13d1b2b9e9e27cd531b160b126689cac613472e02f7403151828d5537c5a6233",
+      "import_authority_exercised": false,
+      "max_sidecar_bytes": 5846,
+      "notes": 2965,
+      "public_value_bytes": 9905819,
+      "record_count": 3182,
+      "root_sha256": "39c01390c75d807a301a0b1ac25d6c6e734c33a33de8ed5938160f900f98b98d",
+      "sidecar_records": 217,
+      "sidecar_value_bytes": 647343,
+      "snapshot_sha256": "0528df951bd745bcdc51cba9bc0ee6e2ab1d7c19718ef4318f53720cc1db2528",
+      "status": {
+        "accounted_allocated_bytes": 37462016,
+        "accounted_total_bytes": 34789339,
+        "allocated_bytes": 14393344,
+        "checkpoint": null,
+        "checkpoint_data_bytes": 0,
+        "checkpoint_records": 0,
+        "data_bytes": 10553162,
+        "disk_bytes": 11720667,
+        "envelope_data_bytes": 10553162,
+        "floor": 2965,
+        "floor_anchor": "14b3ad8cf1db427f7728a983d10aa02b",
+        "generation": 2965,
+        "limits": {
+          "control_reserved_bytes": 23068672,
+          "data_bytes": 25165824,
+          "operations": 32768,
+          "records": 8192,
+          "total_bytes": 67108864,
+          "value_bytes": 6144
+        },
+        "migration": null,
+        "notice": null,
+        "operations": 2965,
+        "project": "84ac639a0155b4b6d3095d278b6aad2a12ba57be2bd55dc4f9858ff09e24f168",
+        "records": 3182,
+        "reserved_operation_slots": 0,
+        "staged_data_bytes": 0,
+        "staged_records": 0,
+        "version": 3
+      },
+      "total_accounted_headroom_bytes": 29646848
+    },
+    "failure_log_sha256": "1e9b75f973ce2519f8acc2e59cd94a10fd90f2c38b7c89561f9c41c3cf8eda4e",
+    "last": 2965,
+    "next_operation_absent": true,
+    "next_operation_id": "6aad73027cf57d94fafc09270fc66188",
+    "next_record_absent": true,
+    "pending_sha256": "ca747e94f2048715b19c570a90f9b430cdc27f833b0103107dbdc675bfde10ac",
+    "segment": 6
+  },
+  "chunks": [
+    {
+      "first": 2966,
+      "last": 3215
+    },
+    {
+      "first": 3216,
+      "last": 3465
+    },
+    {
+      "first": 3466,
+      "last": 3715
+    },
+    {
+      "first": 3716,
+      "last": 3965
+    },
+    {
+      "first": 3966,
+      "last": 4000
+    }
+  ],
+  "controller_sha256": "57996de4f726f7d09b70c69ce80796b914599a571178c581a2c76b63f5718dbc",
+  "directory": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-continuation-sol-20261028",
+  "graph": "/home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02",
+  "kind": "diagnostic_managed_v3_soft_boundary_continuation",
+  "limits": {
+    "beam_memory_limit": 536870912,
+    "hard_ms": 480000,
+    "max_heap_words": 16000000,
+    "publications": 4000,
+    "segment_size": 250,
+    "segments": 8,
+    "soft_ms": 360000,
+    "turnover_implemented": false
+  },
+  "origin": {
+    "gid": 1000,
+    "inode": 15268380,
+    "major_device": 29,
+    "minor_device": 0,
+    "uid": 1000
+  },
+  "original_binding_sha256": "921b166f5cea59f1440f57c6e673f57e00c4bfc61fd9c80fa6a86e9670988d8b",
+  "original_plan_sha256": "cb6a6f8fbe00fc4c5f5bb64ea55559dbbeb825fedcbe9c003cd55fc3cb18efc1",
+  "performance_qualified": false,
+  "qualification_passed": false,
+  "runtime_scope": {
+    "helper_sha256": "86d6226c868b7095c6ba7460cc0b42832e98fb70feea0779fb3473ac7bb28a6a",
+    "kind": "available_host_diagnostic",
+    "native_profile": "private-test-only-linux-7.2.11",
+    "production_admitted": false
+  },
+  "store_origin": {
+    "gid": 1000,
+    "inode": 15238052,
+    "major_device": 29,
+    "minor_device": 0,
+    "uid": 1000
+  },
+  "target": 4000,
+  "version": 1
+}

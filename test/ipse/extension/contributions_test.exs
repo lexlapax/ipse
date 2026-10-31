@@ -1,5 +1,6 @@
 defmodule Ipse.Extension.ContributionsTest do
   use ExUnit.Case, async: false
+  import Ipse.Test.ResumeAssertions
   alias Ipse.{Session, Journal}
   alias Ipse.Extension.Context, as: ExtensionContext
   alias Ipse.Extension.Config
@@ -209,7 +210,7 @@ defmodule Ipse.Extension.ContributionsTest do
     invoke(pid, "assertion")
     assert Session.info(pid).accounting["request_count"] == 0
     assert Session.diagnostics(pid)["extension_context"]["items"] == 1
-    refute inspect(Session.diagnostics(pid)) =~ "literal evidence"
+    refute Jason.encode!(Session.diagnostics(pid)) =~ "literal evidence"
     assert :ok = Session.prompt(pid, "original operator request")
     assert_receive {:context_request, [system, admitted | messages]}, 3000
     assert [user, reference] = messages
@@ -235,7 +236,7 @@ defmodule Ipse.Extension.ContributionsTest do
     resumed = start(ctx, id)
     assert Session.diagnostics(resumed)["extension_context"]["items"] == 1
     refute File.exists?(ctx.marker)
-    assert bytes == File.read!(Path.join(ctx.dir, id <> ".jsonl"))
+    assert_idle_resume_journal(Path.join(ctx.dir, id <> ".jsonl"), bytes, id)
 
     assert {:ok, restored_messages} = Session.restore_context(events)
 

@@ -1,0 +1,43 @@
+Running ExUnit with seed: 46919, max_cases: 40
+Excluding tags: [:test]
+Including tags: [literal_v4_ab: true]
+
+
+
+  1) test upgraded literal v4 A cannot be discarded while candidate cites independent current B (Ipse.Extension.ManagedCollectionCallSessionTest)
+     test/ipse/extension/managed_collection_call_session_test.exs:1447
+     ** (FunctionClauseError) no function clause matching in Access.get/3
+
+     The following arguments were given to Access.get/3:
+
+         # 1
+         "completed"
+
+         # 2
+         "value"
+
+         # 3
+         nil
+
+     Attempted function clauses (showing 6 out of 6):
+
+         def get(-%module{} = container-, key, default)
+         def get(map, key, default) when -is_map(map)-
+         def get(list, key, default) when -is_list(list)- and -is_atom(key)-
+         def get(list, key, _default) when -is_list(list)- and -is_integer(key)-
+         def get(list, key, _default) when -is_list(list)-
+         def get(-nil-, _key, default)
+
+     code: |> Enum.find(&(get_in(&1, ["outcome", "value", "record", "key"]) == seed["key"]))
+     stacktrace:
+       (elixir 1.20.4) lib/access.ex:324: Access.get/3
+       (elixir 1.20.4) lib/kernel.ex:2934: Kernel.get_in/2
+       test/ipse/extension/managed_collection_call_session_test.exs:1472: anonymous fn/2 in Ipse.Extension.ManagedCollectionCallSessionTest."test upgraded literal v4 A cannot be discarded while candidate cites independent current B"/1
+       (elixir 1.20.4) lib/enum.ex:4556: Enum.find_list/3
+       test/ipse/extension/managed_collection_call_session_test.exs:1472: (test)
+
+
+Finished in 1.7 seconds (0.00s async, 1.7s sync)
+
+Result: 0/1 passed, 109 excluded
+Failed: 1 test

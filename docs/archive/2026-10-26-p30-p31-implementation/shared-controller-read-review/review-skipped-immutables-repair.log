@@ -1,0 +1,8 @@
+SKIPPED_IMMUTABLES_REPAIR_OK: %{
+  required_immutable_values: 5,
+  required_immutable_values_present: 0,
+  refusal: :generation_prerequisite_missing,
+  proposed_effects: 0,
+  native_operations: 0,
+  protected_publication_demonstrated: false
+}

@@ -1,0 +1,19 @@
+Running ExUnit with seed: 46917, max_cases: 1
+Excluding tags: [:test]
+Including tags: [:shared_directory_codec]
+
+
+
+  1) test two manifest pages bind exact catalog heads and selected groups without projection payloads (Ipse.KnowledgeCollectionDirectoryTest)
+     test/extensions/knowledge/collection_directory_test.exs:4
+     ** (Jason.DecodeError) unexpected byte at position 0: 0x77 ("w")
+     code: result = Jason.decode!(output)
+     stacktrace:
+       lib/jason.ex:92: Jason.decode!/2
+       test/extensions/knowledge/collection_directory_test.exs:23: (test)
+
+
+Finished in 2.1 seconds (0.05s on load, 0.00s async, 2.1s sync)
+
+Result: 0/1 passed
+Failed: 1 test

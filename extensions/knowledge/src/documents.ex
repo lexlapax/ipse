@@ -28,8 +28,85 @@ defmodule IpseKnowledge.Documents do
   def version, do: "ipse-documents-v2"
 
   @doc "Return the immutable extraction recipe selected for a result format."
-  def version("docx"), do: "ipse-documents-v3"
+  def version("docx"), do: "ipse-documents-v11"
   def version(format) when format in ~w(text markdown pdf), do: version()
+
+  @doc "Project an extracted DOCX into the bounded explicit source-put contract."
+  def source_payload(document), do: source_payload(document, 8192)
+  def source_payload(document, maximum), do: source_payload(document, maximum, 1)
+
+  @doc "Build a complete source using explicit legacy or Collection chunking, without crossing segments."
+  def source_payload(%{"format" => "docx", "segments" => segments} = document, maximum, chunking)
+      when maximum in [8192, 65_536] and
+             chunking in [1, 2] and
+             is_list(segments) and length(segments) in 1..32 do
+    {parts, spans, _offset} =
+      Enum.reduce(segments, {[], [], 0}, fn segment, {parts, spans, offset} ->
+        text = segment["text"]
+        start = offset + if(parts == [], do: 0, else: 1)
+
+        span = %{
+          "start_byte" => start,
+          "end_byte" => start + byte_size(text),
+          "text_sha256" => digest(text),
+          "locator" => segment["locator"]
+        }
+
+        {parts ++ [text], spans ++ [span], start + byte_size(text)}
+      end)
+
+    text = Enum.join(parts, "\n")
+
+    receipt = %{
+      "kind" => "document_extraction",
+      "version" => 1,
+      "format" => "docx",
+      "original_sha256" => document["original_sha256"],
+      "original_bytes" => document["original_bytes"],
+      "extraction_version" => document["extraction_version"],
+      "status" => document["status"],
+      "warnings" => document["warnings"],
+      "segments" => spans
+    }
+
+    chunk_bytes = if chunking == 2, do: 4096, else: 2048
+    chunks = Enum.sum(Enum.map(parts, &source_chunk_count(&1, chunk_bytes)))
+
+    if text != "" and byte_size(text) <= maximum and chunks <= 32 and
+         byte_size(IO.iodata_to_binary(JSON.encode!(receipt))) <= 16_384 do
+      {:ok, %{"text" => text, "document" => receipt}}
+    else
+      {:error, :document_source_limit}
+    end
+  rescue
+    _ -> {:error, :invalid_document_extraction}
+  end
+
+  def source_payload(%{"format" => "docx"}, _, _), do: {:error, :document_source_limit}
+  def source_payload(_, _, _), do: {:error, :document_format_unsupported}
+
+  defp source_chunk_count(text, maximum) do
+    Stream.unfold(text, fn
+      "" ->
+        nil
+
+      rest ->
+        prefix = binary_part(rest, 0, min(byte_size(rest), maximum))
+
+        bytes =
+          case :unicode.characters_to_binary(prefix, :utf8, :utf8) do
+            binary when is_binary(binary) -> byte_size(binary)
+            {:incomplete, binary, _} -> byte_size(binary)
+            _ -> raise ArgumentError, "Invalid source text"
+          end
+
+        {1, binary_part(rest, bytes, byte_size(rest) - bytes)}
+    end)
+    |> Enum.take(33)
+    |> Enum.sum()
+  end
+
+  defp digest(bytes), do: Base.encode16(:crypto.hash(:sha256, bytes), case: :lower)
 
   @doc """
   Explicit experimental PDF selection. The host must admit the parser's absolute

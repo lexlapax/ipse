@@ -1,0 +1,948 @@
+Running ExUnit with seed: 326040, max_cases: 8
+Excluding tags: [:native_sandbox, :macos_sandbox, :macos_filesystem, :memory_scope]
+
+
+
+  1) test real Session starts with the candidate, writes through its Writer and closes cleanly (Ipse.Session.ExportSessionStartTest)
+     test/ipse/session/export_session_start_test.exs:34
+     ** (EXIT from #PID<0.259.0>) an exception was raised:
+         ** (KeyError) key :question_recovery not found in:
+
+         %{
+           messages: [],
+           reference: %{
+             pending: nil,
+             header: nil,
+             selected: false,
+             base: nil,
+             source_generation: 0,
+             catalog: nil,
+             epoch: 0,
+             last_digest: nil,
+             last_turn: nil
+           },
+           accounting: %{
+             scope: %{
+               "budget" => nil,
+               "decision_profiles" => nil,
+               "delegation_origin" => nil,
+               "embedding_profiles" => nil,
+               "max_output_tokens" => nil,
+               "model" => "fixture",
+               "model_profiles" => nil,
+               "provider" => "demo"
+             },
+             bindings: MapSet.new([]),
+             requests: %{},
+             session_id: "8b9013dc9fddd80657065b49bd9ad2c5",
+             model_sources: %{},
+             model_action: nil,
+             model_route: nil,
+             usage_version: 1,
+             model_responses: %{},
+             legacy_unmetered: false,
+             attempts: MapSet.new([]),
+             order: []
+           },
+           draft_lineages: [],
+           managed_lineage: %Ipse.Session.ManagedLineage{
+             reference: %Ipse.Session.ManagedReference.State{
+               session_id: "8b9013dc9fddd80657065b49bd9ad2c5",
+               dependencies: %{},
+               occurrences: %{},
+               bytes: 2
+             },
+             requests: %{},
+             native_requests: %{},
+             output_release: nil,
+             output_release_ids: %{},
+             output_layout: "managed_output_release_v1",
+             calls: %{},
+             call_bindings: %{},
+             tool_effect_ids: %{},
+             tool_effect_inputs: %{},
+             tool_layout: "managed_tool_effects_v1",
+             active_tool: nil,
+             active_action: nil,
+             last_action_result: nil,
+             action_layout: "managed_tool_actions_v1",
+             active_discovery: nil,
+             discovery_ids: %{},
+             mcp_servers: [],
+             tool_result_release: nil,
+             tool_result_ids: %{},
+             invocations: %{},
+             outputs: %{},
+             publishers: %{},
+             pending: %{},
+             effects: %{},
+             dictionary: %{},
+             write_facts: %{},
+             admissions: %{},
+             preflight: nil,
+             preflight_ids: %{},
+             helper_inputs: %{},
+             header: nil,
+             active_invocation: nil,
+             admission: %{
+               "binding" => nil,
+               "instance" => nil,
+               "pin" => nil,
+               "selectors" => [],
+               "status" => "off",
+               "version" => 1
+             },
+             strict: true,
+             frozen_header: true,
+             unavailable: false
+           },
+           turn_id: nil,
+           last_request_id: nil,
+           draft: nil,
+           managed_reads: %{invocations: %{}, outputs: %{}},
+           historical_model: nil,
+           question: nil,
+           draft_mcp_snapshot: nil,
+           source_window: #Ipse.Session.SourceWindow<
+             pending_bytes: 0,
+             coverage: %{
+               "capacity_refused" => 0,
+               "indexed" => 0,
+               "legacy_unverified" => 0,
+               "observed" => 0,
+               "pending_gaps" => 0,
+               "refused" => 0,
+               "unavailable" => 0
+             },
+             ...
+           >,
+           result_sources: %Ipse.Extension.ResultSource.Index{
+             sources: %{},
+             committed: %{},
+             finals: %{},
+             recorded: %{},
+             releases: %{},
+             release_bytes: 0,
+             begun_count: 0,
+             source_bytes: 0
+           },
+           extension_state: %{
+             parent: nil,
+             action: nil,
+             unknown: false,
+             metadata: %{
+               "execution_mode" => %{
+                 "approval" => "deny",
+                 "approval_origin" => "explicit",
+                 "ceiling" => "normal",
+                 "enclosing_ceiling" => "normal",
+                 "headless" => false,
+                 "knowledge" => "available",
+                 "version" => 1
+               },
+               "extension_catalog" => %{"entries" => [], "version" => 1},
+               "managed_tool_layout" => "managed_tool_effects_v1",
+               "model_profiles" => nil,
+               "extension_subscriptions" => %{"entries" => [], "version" => 1},
+               "source_layout" => "session_sources_v1",
+               "reference_layout" => "turn_reference_v1",
+               "cwd" => "/tmp/ipse-export-session-b6f77ee11199a6c6428d1378dde2ee7a",
+               "source_origin" => %{
+                 "directory" => "/tmp/ipse-export-session-b6f77ee11199a6c6428d1378dde2ee7a/state",
+                 "inode" => 1032886,
+                 "major_device" => 53,
+                 "minor_device" => 0,
+                 "session_id" => "8b9013dc9fddd80657065b49bd9ad2c5",
+                 "uid" => 1000,
+                 "version" => 1
+               },
+               "managed_action_layout" => "managed_tool_actions_v1",
+               "subagents" => false,
+               "provider_destination" => nil,
+               "execution" => nil,
+               "delegation_origin" => nil,
+               "managed_output_layout" => "managed_output_release_v1",
+               "sandbox" => "off",
+               "mcp_servers" => [],
+               "managed_read_layout" => "managed_reads_v1",
+               "managed_supersession_layout" => "managed_supersession_v1",
+               "subagent_concurrency" => 1,
+               "configuration" => nil,
+               "decision_profiles" => nil,
+               "model" => "fixture",
+               "semantic_admission" => %{
+                 "binding" => nil,
+                 "instance" => nil,
+                 "pin" => nil,
+                 "selectors" => [],
+                 "status" => "off",
+                 "version" => 1
+               },
+               "extensions" => [],
+               "usage_version" => 1,
+               "embedding_profiles" => nil,
+               "source_origin_layout" => "journal_origin_v1",
+               "budget" => nil,
+               "budget_root" => nil,
+               "provider" => "demo",
+               "max_output_tokens" => nil,
+               "mcp_fingerprint_version" => 2
+             },
+             step: 0,
+             seen: MapSet.new([]),
+             child_usage: %{
+               index: %{},
+               request: nil,
+               order: [],
+               overflow: false,
+               reads: %{}
+             },
+             effect_sources: %{},
+             pending_contributions: nil,
+             results: [],
+             question: nil,
+             managed_read: nil,
+             managed_dependencies: [],
+             catalog: %{"entries" => [], "version" => 1},
+             contributions: %{},
+             usage_reads: %{},
+             last_display: nil,
+             managed_outputs: %{},
+             output_release: nil,
+             context_request: nil,
+             context_sha256: nil,
+             identities: %{},
+             inference_source: nil,
+             managed_config: %{
+               semantic_admission: %{
+                 "binding" => nil,
+                 "instance" => nil,
+                 "pin" => nil,
+                 "selectors" => [],
+                 "status" => "off",
+                 "version" => 1
+               },
+               managed_read_layout: "managed_reads_v1"
+             },
+             output_layout: "managed_output_release_v1",
+             output_release_ids: MapSet.new([]),
+             resume_needed: nil
+           },
+           ...
+         }
+
+             (ipse 0.1.0) _build/session-export-genuine-sol-20261029/lib/ipse/session.ex:736: Ipse.Session.init_session/2
+             (stdlib 8.1) gen_server.erl:2276: :gen_server.init_it/2
+             (stdlib 8.1) gen_server.erl:2236: :gen_server.init_it/6
+             (stdlib 8.1) proc_lib.erl:333: :proc_lib.init_p_do_apply/3
+
+
+
+  2) test ordinary Session options do not select the candidate (Ipse.Session.ExportSessionStartTest)
+     test/ipse/session/export_session_start_test.exs:77
+     ** (EXIT from #PID<0.272.0>) an exception was raised:
+         ** (KeyError) key :question_recovery not found in:
+
+         %{
+           messages: [],
+           reference: %{
+             pending: nil,
+             header: nil,
+             selected: false,
+             base: nil,
+             source_generation: 0,
+             catalog: nil,
+             epoch: 0,
+             last_digest: nil,
+             last_turn: nil
+           },
+           accounting: %{
+             scope: %{
+               "budget" => nil,
+               "decision_profiles" => nil,
+               "delegation_origin" => nil,
+               "embedding_profiles" => nil,
+               "max_output_tokens" => nil,
+               "model" => "fixture",
+               "model_profiles" => nil,
+               "provider" => "demo"
+             },
+             bindings: MapSet.new([]),
+             requests: %{},
+             session_id: "7965f5b753c9b2fa5c7fcd1d0ab5c7ef",
+             model_sources: %{},
+             model_action: nil,
+             model_route: nil,
+             usage_version: 1,
+             model_responses: %{},
+             legacy_unmetered: false,
+             attempts: MapSet.new([]),
+             order: []
+           },
+           draft_lineages: [],
+           managed_lineage: %Ipse.Session.ManagedLineage{
+             reference: %Ipse.Session.ManagedReference.State{
+               session_id: "7965f5b753c9b2fa5c7fcd1d0ab5c7ef",
+               dependencies: %{},
+               occurrences: %{},
+               bytes: 2
+             },
+             requests: %{},
+             native_requests: %{},
+             output_release: nil,
+             output_release_ids: %{},
+             output_layout: "managed_output_release_v1",
+             calls: %{},
+             call_bindings: %{},
+             tool_effect_ids: %{},
+             tool_effect_inputs: %{},
+             tool_layout: "managed_tool_effects_v1",
+             active_tool: nil,
+             active_action: nil,
+             last_action_result: nil,
+             action_layout: "managed_tool_actions_v1",
+             active_discovery: nil,
+             discovery_ids: %{},
+             mcp_servers: [],
+             tool_result_release: nil,
+             tool_result_ids: %{},
+             invocations: %{},
+             outputs: %{},
+             publishers: %{},
+             pending: %{},
+             effects: %{},
+             dictionary: %{},
+             write_facts: %{},
+             admissions: %{},
+             preflight: nil,
+             preflight_ids: %{},
+             helper_inputs: %{},
+             header: nil,
+             active_invocation: nil,
+             admission: %{
+               "binding" => nil,
+               "instance" => nil,
+               "pin" => nil,
+               "selectors" => [],
+               "status" => "off",
+               "version" => 1
+             },
+             strict: true,
+             frozen_header: true,
+             unavailable: false
+           },
+           turn_id: nil,
+           last_request_id: nil,
+           draft: nil,
+           managed_reads: %{invocations: %{}, outputs: %{}},
+           historical_model: nil,
+           question: nil,
+           draft_mcp_snapshot: nil,
+           source_window: #Ipse.Session.SourceWindow<
+             pending_bytes: 0,
+             coverage: %{
+               "capacity_refused" => 0,
+               "indexed" => 0,
+               "legacy_unverified" => 0,
+               "observed" => 0,
+               "pending_gaps" => 0,
+               "refused" => 0,
+               "unavailable" => 0
+             },
+             ...
+           >,
+           result_sources: %Ipse.Extension.ResultSource.Index{
+             sources: %{},
+             committed: %{},
+             finals: %{},
+             recorded: %{},
+             releases: %{},
+             release_bytes: 0,
+             begun_count: 0,
+             source_bytes: 0
+           },
+           extension_state: %{
+             parent: nil,
+             action: nil,
+             unknown: false,
+             metadata: %{
+               "execution_mode" => %{
+                 "approval" => "deny",
+                 "approval_origin" => "explicit",
+                 "ceiling" => "normal",
+                 "enclosing_ceiling" => "normal",
+                 "headless" => false,
+                 "knowledge" => "available",
+                 "version" => 1
+               },
+               "extension_catalog" => %{"entries" => [], "version" => 1},
+               "managed_tool_layout" => "managed_tool_effects_v1",
+               "model_profiles" => nil,
+               "extension_subscriptions" => %{"entries" => [], "version" => 1},
+               "source_layout" => "session_sources_v1",
+               "reference_layout" => "turn_reference_v1",
+               "cwd" => "/tmp/ipse-export-session-45389f2f84f7bd066cbbde8d9355990e",
+               "source_origin" => %{
+                 "directory" => "/tmp/ipse-export-session-45389f2f84f7bd066cbbde8d9355990e/state",
+                 "inode" => 1032910,
+                 "major_device" => 53,
+                 "minor_device" => 0,
+                 "session_id" => "7965f5b753c9b2fa5c7fcd1d0ab5c7ef",
+                 "uid" => 1000,
+                 "version" => 1
+               },
+               "managed_action_layout" => "managed_tool_actions_v1",
+               "subagents" => false,
+               "provider_destination" => nil,
+               "execution" => nil,
+               "delegation_origin" => nil,
+               "managed_output_layout" => "managed_output_release_v1",
+               "sandbox" => "off",
+               "mcp_servers" => [],
+               "managed_read_layout" => "managed_reads_v1",
+               "managed_supersession_layout" => "managed_supersession_v1",
+               "subagent_concurrency" => 1,
+               "configuration" => nil,
+               "decision_profiles" => nil,
+               "model" => "fixture",
+               "semantic_admission" => %{
+                 "binding" => nil,
+                 "instance" => nil,
+                 "pin" => nil,
+                 "selectors" => [],
+                 "status" => "off",
+                 "version" => 1
+               },
+               "extensions" => [],
+               "usage_version" => 1,
+               "embedding_profiles" => nil,
+               "source_origin_layout" => "journal_origin_v1",
+               "budget" => nil,
+               "budget_root" => nil,
+               "provider" => "demo",
+               "max_output_tokens" => nil,
+               "mcp_fingerprint_version" => 2
+             },
+             step: 0,
+             seen: MapSet.new([]),
+             child_usage: %{
+               index: %{},
+               request: nil,
+               order: [],
+               overflow: false,
+               reads: %{}
+             },
+             effect_sources: %{},
+             pending_contributions: nil,
+             results: [],
+             question: nil,
+             managed_read: nil,
+             managed_dependencies: [],
+             catalog: %{"entries" => [], "version" => 1},
+             contributions: %{},
+             usage_reads: %{},
+             last_display: nil,
+             managed_outputs: %{},
+             output_release: nil,
+             context_request: nil,
+             context_sha256: nil,
+             identities: %{},
+             inference_source: nil,
+             managed_config: %{
+               semantic_admission: %{
+                 "binding" => nil,
+                 "instance" => nil,
+                 "pin" => nil,
+                 "selectors" => [],
+                 "status" => "off",
+                 "version" => 1
+               },
+               managed_read_layout: "managed_reads_v1"
+             },
+             output_layout: "managed_output_release_v1",
+             output_release_ids: MapSet.new([]),
+             resume_needed: nil
+           },
+           ...
+         }
+
+             (ipse 0.1.0) _build/session-export-genuine-sol-20261029/lib/ipse/session.ex:736: Ipse.Session.init_session/2
+             (stdlib 8.1) gen_server.erl:2276: :gen_server.init_it/2
+             (stdlib 8.1) gen_server.erl:2236: :gen_server.init_it/6
+             (stdlib 8.1) proc_lib.erl:333: :proc_lib.init_p_do_apply/3
+
+
+
+  3) test real Session reports unconfirmed close while an exported recipient holds its lock (Ipse.Session.ExportSessionStartTest)
+     test/ipse/session/export_session_start_test.exs:49
+     ** (EXIT from #PID<0.285.0>) an exception was raised:
+         ** (KeyError) key :question_recovery not found in:
+
+         %{
+           messages: [],
+           reference: %{
+             pending: nil,
+             header: nil,
+             selected: false,
+             base: nil,
+             source_generation: 0,
+             catalog: nil,
+             epoch: 0,
+             last_digest: nil,
+             last_turn: nil
+           },
+           accounting: %{
+             scope: %{
+               "budget" => nil,
+               "decision_profiles" => nil,
+               "delegation_origin" => nil,
+               "embedding_profiles" => nil,
+               "max_output_tokens" => nil,
+               "model" => "fixture",
+               "model_profiles" => nil,
+               "provider" => "demo"
+             },
+             bindings: MapSet.new([]),
+             requests: %{},
+             session_id: "6a1b891e31080ac2e4ea6a01529bffa1",
+             model_sources: %{},
+             model_action: nil,
+             model_route: nil,
+             usage_version: 1,
+             model_responses: %{},
+             legacy_unmetered: false,
+             attempts: MapSet.new([]),
+             order: []
+           },
+           draft_lineages: [],
+           managed_lineage: %Ipse.Session.ManagedLineage{
+             reference: %Ipse.Session.ManagedReference.State{
+               session_id: "6a1b891e31080ac2e4ea6a01529bffa1",
+               dependencies: %{},
+               occurrences: %{},
+               bytes: 2
+             },
+             requests: %{},
+             native_requests: %{},
+             output_release: nil,
+             output_release_ids: %{},
+             output_layout: "managed_output_release_v1",
+             calls: %{},
+             call_bindings: %{},
+             tool_effect_ids: %{},
+             tool_effect_inputs: %{},
+             tool_layout: "managed_tool_effects_v1",
+             active_tool: nil,
+             active_action: nil,
+             last_action_result: nil,
+             action_layout: "managed_tool_actions_v1",
+             active_discovery: nil,
+             discovery_ids: %{},
+             mcp_servers: [],
+             tool_result_release: nil,
+             tool_result_ids: %{},
+             invocations: %{},
+             outputs: %{},
+             publishers: %{},
+             pending: %{},
+             effects: %{},
+             dictionary: %{},
+             write_facts: %{},
+             admissions: %{},
+             preflight: nil,
+             preflight_ids: %{},
+             helper_inputs: %{},
+             header: nil,
+             active_invocation: nil,
+             admission: %{
+               "binding" => nil,
+               "instance" => nil,
+               "pin" => nil,
+               "selectors" => [],
+               "status" => "off",
+               "version" => 1
+             },
+             strict: true,
+             frozen_header: true,
+             unavailable: false
+           },
+           turn_id: nil,
+           last_request_id: nil,
+           draft: nil,
+           managed_reads: %{invocations: %{}, outputs: %{}},
+           historical_model: nil,
+           question: nil,
+           draft_mcp_snapshot: nil,
+           source_window: #Ipse.Session.SourceWindow<
+             pending_bytes: 0,
+             coverage: %{
+               "capacity_refused" => 0,
+               "indexed" => 0,
+               "legacy_unverified" => 0,
+               "observed" => 0,
+               "pending_gaps" => 0,
+               "refused" => 0,
+               "unavailable" => 0
+             },
+             ...
+           >,
+           result_sources: %Ipse.Extension.ResultSource.Index{
+             sources: %{},
+             committed: %{},
+             finals: %{},
+             recorded: %{},
+             releases: %{},
+             release_bytes: 0,
+             begun_count: 0,
+             source_bytes: 0
+           },
+           extension_state: %{
+             parent: nil,
+             action: nil,
+             unknown: false,
+             metadata: %{
+               "execution_mode" => %{
+                 "approval" => "deny",
+                 "approval_origin" => "explicit",
+                 "ceiling" => "normal",
+                 "enclosing_ceiling" => "normal",
+                 "headless" => false,
+                 "knowledge" => "available",
+                 "version" => 1
+               },
+               "extension_catalog" => %{"entries" => [], "version" => 1},
+               "managed_tool_layout" => "managed_tool_effects_v1",
+               "model_profiles" => nil,
+               "extension_subscriptions" => %{"entries" => [], "version" => 1},
+               "source_layout" => "session_sources_v1",
+               "reference_layout" => "turn_reference_v1",
+               "cwd" => "/tmp/ipse-export-session-be3b2cca6225c7b931b735c9edf16799",
+               "source_origin" => %{
+                 "directory" => "/tmp/ipse-export-session-be3b2cca6225c7b931b735c9edf16799/state",
+                 "inode" => 1032934,
+                 "major_device" => 53,
+                 "minor_device" => 0,
+                 "session_id" => "6a1b891e31080ac2e4ea6a01529bffa1",
+                 "uid" => 1000,
+                 "version" => 1
+               },
+               "managed_action_layout" => "managed_tool_actions_v1",
+               "subagents" => false,
+               "provider_destination" => nil,
+               "execution" => nil,
+               "delegation_origin" => nil,
+               "managed_output_layout" => "managed_output_release_v1",
+               "sandbox" => "off",
+               "mcp_servers" => [],
+               "managed_read_layout" => "managed_reads_v1",
+               "managed_supersession_layout" => "managed_supersession_v1",
+               "subagent_concurrency" => 1,
+               "configuration" => nil,
+               "decision_profiles" => nil,
+               "model" => "fixture",
+               "semantic_admission" => %{
+                 "binding" => nil,
+                 "instance" => nil,
+                 "pin" => nil,
+                 "selectors" => [],
+                 "status" => "off",
+                 "version" => 1
+               },
+               "extensions" => [],
+               "usage_version" => 1,
+               "embedding_profiles" => nil,
+               "source_origin_layout" => "journal_origin_v1",
+               "budget" => nil,
+               "budget_root" => nil,
+               "provider" => "demo",
+               "max_output_tokens" => nil,
+               "mcp_fingerprint_version" => 2
+             },
+             step: 0,
+             seen: MapSet.new([]),
+             child_usage: %{
+               index: %{},
+               request: nil,
+               order: [],
+               overflow: false,
+               reads: %{}
+             },
+             effect_sources: %{},
+             pending_contributions: nil,
+             results: [],
+             question: nil,
+             managed_read: nil,
+             managed_dependencies: [],
+             catalog: %{"entries" => [], "version" => 1},
+             contributions: %{},
+             usage_reads: %{},
+             last_display: nil,
+             managed_outputs: %{},
+             output_release: nil,
+             context_request: nil,
+             context_sha256: nil,
+             identities: %{},
+             inference_source: nil,
+             managed_config: %{
+               semantic_admission: %{
+                 "binding" => nil,
+                 "instance" => nil,
+                 "pin" => nil,
+                 "selectors" => [],
+                 "status" => "off",
+                 "version" => 1
+               },
+               managed_read_layout: "managed_reads_v1"
+             },
+             output_layout: "managed_output_release_v1",
+             output_release_ids: MapSet.new([]),
+             resume_needed: nil
+           },
+           ...
+         }
+
+             (ipse 0.1.0) _build/session-export-genuine-sol-20261029/lib/ipse/session.ex:736: Ipse.Session.init_session/2
+             (stdlib 8.1) gen_server.erl:2276: :gen_server.init_it/2
+             (stdlib 8.1) gen_server.erl:2236: :gen_server.init_it/6
+             (stdlib 8.1) proc_lib.erl:333: :proc_lib.init_p_do_apply/3
+
+
+
+  4) test real Session owner death stops its Writer while the exported recipient retains exclusion (Ipse.Session.ExportSessionStartTest)
+     test/ipse/session/export_session_start_test.exs:61
+     ** (EXIT from #PID<0.298.0>) an exception was raised:
+         ** (KeyError) key :question_recovery not found in:
+
+         %{
+           messages: [],
+           reference: %{
+             pending: nil,
+             header: nil,
+             selected: false,
+             base: nil,
+             source_generation: 0,
+             catalog: nil,
+             epoch: 0,
+             last_digest: nil,
+             last_turn: nil
+           },
+           accounting: %{
+             scope: %{
+               "budget" => nil,
+               "decision_profiles" => nil,
+               "delegation_origin" => nil,
+               "embedding_profiles" => nil,
+               "max_output_tokens" => nil,
+               "model" => "fixture",
+               "model_profiles" => nil,
+               "provider" => "demo"
+             },
+             bindings: MapSet.new([]),
+             requests: %{},
+             session_id: "b5f2f8ce8fb54e1304bce1bde0eee0f3",
+             model_sources: %{},
+             model_action: nil,
+             model_route: nil,
+             usage_version: 1,
+             model_responses: %{},
+             legacy_unmetered: false,
+             attempts: MapSet.new([]),
+             order: []
+           },
+           draft_lineages: [],
+           managed_lineage: %Ipse.Session.ManagedLineage{
+             reference: %Ipse.Session.ManagedReference.State{
+               session_id: "b5f2f8ce8fb54e1304bce1bde0eee0f3",
+               dependencies: %{},
+               occurrences: %{},
+               bytes: 2
+             },
+             requests: %{},
+             native_requests: %{},
+             output_release: nil,
+             output_release_ids: %{},
+             output_layout: "managed_output_release_v1",
+             calls: %{},
+             call_bindings: %{},
+             tool_effect_ids: %{},
+             tool_effect_inputs: %{},
+             tool_layout: "managed_tool_effects_v1",
+             active_tool: nil,
+             active_action: nil,
+             last_action_result: nil,
+             action_layout: "managed_tool_actions_v1",
+             active_discovery: nil,
+             discovery_ids: %{},
+             mcp_servers: [],
+             tool_result_release: nil,
+             tool_result_ids: %{},
+             invocations: %{},
+             outputs: %{},
+             publishers: %{},
+             pending: %{},
+             effects: %{},
+             dictionary: %{},
+             write_facts: %{},
+             admissions: %{},
+             preflight: nil,
+             preflight_ids: %{},
+             helper_inputs: %{},
+             header: nil,
+             active_invocation: nil,
+             admission: %{
+               "binding" => nil,
+               "instance" => nil,
+               "pin" => nil,
+               "selectors" => [],
+               "status" => "off",
+               "version" => 1
+             },
+             strict: true,
+             frozen_header: true,
+             unavailable: false
+           },
+           turn_id: nil,
+           last_request_id: nil,
+           draft: nil,
+           managed_reads: %{invocations: %{}, outputs: %{}},
+           historical_model: nil,
+           question: nil,
+           draft_mcp_snapshot: nil,
+           source_window: #Ipse.Session.SourceWindow<
+             pending_bytes: 0,
+             coverage: %{
+               "capacity_refused" => 0,
+               "indexed" => 0,
+               "legacy_unverified" => 0,
+               "observed" => 0,
+               "pending_gaps" => 0,
+               "refused" => 0,
+               "unavailable" => 0
+             },
+             ...
+           >,
+           result_sources: %Ipse.Extension.ResultSource.Index{
+             sources: %{},
+             committed: %{},
+             finals: %{},
+             recorded: %{},
+             releases: %{},
+             release_bytes: 0,
+             begun_count: 0,
+             source_bytes: 0
+           },
+           extension_state: %{
+             parent: nil,
+             action: nil,
+             unknown: false,
+             metadata: %{
+               "execution_mode" => %{
+                 "approval" => "deny",
+                 "approval_origin" => "explicit",
+                 "ceiling" => "normal",
+                 "enclosing_ceiling" => "normal",
+                 "headless" => false,
+                 "knowledge" => "available",
+                 "version" => 1
+               },
+               "extension_catalog" => %{"entries" => [], "version" => 1},
+               "managed_tool_layout" => "managed_tool_effects_v1",
+               "model_profiles" => nil,
+               "extension_subscriptions" => %{"entries" => [], "version" => 1},
+               "source_layout" => "session_sources_v1",
+               "reference_layout" => "turn_reference_v1",
+               "cwd" => "/tmp/ipse-export-session-60ae807c1883921fc26ca043b7612cb5",
+               "source_origin" => %{
+                 "directory" => "/tmp/ipse-export-session-60ae807c1883921fc26ca043b7612cb5/state",
+                 "inode" => 1032958,
+                 "major_device" => 53,
+                 "minor_device" => 0,
+                 "session_id" => "b5f2f8ce8fb54e1304bce1bde0eee0f3",
+                 "uid" => 1000,
+                 "version" => 1
+               },
+               "managed_action_layout" => "managed_tool_actions_v1",
+               "subagents" => false,
+               "provider_destination" => nil,
+               "execution" => nil,
+               "delegation_origin" => nil,
+               "managed_output_layout" => "managed_output_release_v1",
+               "sandbox" => "off",
+               "mcp_servers" => [],
+               "managed_read_layout" => "managed_reads_v1",
+               "managed_supersession_layout" => "managed_supersession_v1",
+               "subagent_concurrency" => 1,
+               "configuration" => nil,
+               "decision_profiles" => nil,
+               "model" => "fixture",
+               "semantic_admission" => %{
+                 "binding" => nil,
+                 "instance" => nil,
+                 "pin" => nil,
+                 "selectors" => [],
+                 "status" => "off",
+                 "version" => 1
+               },
+               "extensions" => [],
+               "usage_version" => 1,
+               "embedding_profiles" => nil,
+               "source_origin_layout" => "journal_origin_v1",
+               "budget" => nil,
+               "budget_root" => nil,
+               "provider" => "demo",
+               "max_output_tokens" => nil,
+               "mcp_fingerprint_version" => 2
+             },
+             step: 0,
+             seen: MapSet.new([]),
+             child_usage: %{
+               index: %{},
+               request: nil,
+               order: [],
+               overflow: false,
+               reads: %{}
+             },
+             effect_sources: %{},
+             pending_contributions: nil,
+             results: [],
+             question: nil,
+             managed_read: nil,
+             managed_dependencies: [],
+             catalog: %{"entries" => [], "version" => 1},
+             contributions: %{},
+             usage_reads: %{},
+             last_display: nil,
+             managed_outputs: %{},
+             output_release: nil,
+             context_request: nil,
+             context_sha256: nil,
+             identities: %{},
+             inference_source: nil,
+             managed_config: %{
+               semantic_admission: %{
+                 "binding" => nil,
+                 "instance" => nil,
+                 "pin" => nil,
+                 "selectors" => [],
+                 "status" => "off",
+                 "version" => 1
+               },
+               managed_read_layout: "managed_reads_v1"
+             },
+             output_layout: "managed_output_release_v1",
+             output_release_ids: MapSet.new([]),
+             resume_needed: nil
+           },
+           ...
+         }
+
+             (ipse 0.1.0) _build/session-export-genuine-sol-20261029/lib/ipse/session.ex:736: Ipse.Session.init_session/2
+             (stdlib 8.1) gen_server.erl:2276: :gen_server.init_it/2
+             (stdlib 8.1) gen_server.erl:2236: :gen_server.init_it/6
+             (stdlib 8.1) proc_lib.erl:333: :proc_lib.init_p_do_apply/3
+
+
+Finished in 1.3 seconds (0.00s async, 1.3s sync)
+
+Result: 0/4 passed
+Failed: 4 tests

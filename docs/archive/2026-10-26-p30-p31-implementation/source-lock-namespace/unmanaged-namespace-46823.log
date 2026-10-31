@@ -1,0 +1,12 @@
+Running ExUnit with seed: 46823, max_cases: 8
+Excluding tags: [:test]
+Including tags: [location: "test/ipse/extension/collection_unmanaged_test.exs", location: {"test/ipse/extension/managed_collection_call_session_test.exs", 671}, location: {"test/ipse/extension/managed_collection_call_session_test.exs", 723}]
+
+
+== Compilation error in file test/ipse/extension/managed_collection_call_session_test.exs ==
+** (Code.LoadError) could not load /home/lexlapax/projects/lexlapax/ipse/_build/managed-tool-sol-20261028/test/support/managed_mcp_http.exs. Reason: enoent
+    (elixir 1.20.4) lib/code.ex:2390: Code.find_file!/2
+    (elixir 1.20.4) lib/code.ex:1630: Code.require_file/2
+    test/ipse/extension/managed_collection_call_session_test.exs:2: (file)
+    (elixir 1.20.4) lib/kernel/parallel_compiler.ex:667: Kernel.ParallelCompiler.require_file/2
+    (elixir 1.20.4) lib/kernel/parallel_compiler.ex:550: anonymous fn/5 in Kernel.ParallelCompiler.spawn_workers/8

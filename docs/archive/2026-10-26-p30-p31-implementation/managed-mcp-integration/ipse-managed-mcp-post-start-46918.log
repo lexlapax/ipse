@@ -1,0 +1,10 @@
+Running ExUnit with seed: 395788, max_cases: 8
+Excluding tags: [:test]
+Including tags: [line: 1794]
+
+
+21:13:23.400 [debug] MCP Client: transport closed: :managed_input_unconfirmed
+.
+Finished in 4.3 seconds (2.2s on load, 0.00s async, 2.0s sync)
+
+Result: 1 passed, 56 excluded

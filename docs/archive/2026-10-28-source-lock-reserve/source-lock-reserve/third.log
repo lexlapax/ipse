@@ -1,0 +1,163 @@
+Running ExUnit with seed: 386758, max_cases: 4
+Excluding tags: [:native_sandbox, :macos_sandbox, :macos_filesystem, :memory_scope]
+
+Synthetic source-lock fixture retained at /tmp/ipse-source-lock-capacity-5c7ee3adebdba31f5a87c0e88882e05c
+
+20:41:15.841 [error] Task #PID<0.714.0> started from #PID<0.712.0> terminating
+** (ExUnit.AssertionError) 
+
+match (=) failed
+code:  assert {:ok, {:admitted, true}} =
+              Resources.controlled_owned_effect(
+                fn ->
+                  child_scope = Resources.current()
+                  assert child_scope != scope
+                  owner = self()
+                  gate = Path.join(c.root, "shell-gate")
+
+                  shell =
+                    Resources.async(fn ->
+                      Runner.run(
+                        "printf ready; while [ ! -f shell-gate ]; do sleep 0.05; done",
+                        c.root,
+                        timeout_ms: 60000,
+                        emit: fn
+                          {:tool_output, "ready"} -> send(owner, :shell_ready)
+                          _ -> :ok
+                        end
+                      )
+                    end)
+
+                  assert_receive :shell_ready, 5000
+
+                  try do
+                    proofs = Enum.map(c.sources, & &1.proof)
+
+                    assert :admitted =
+                             StoredSources.with_verified(c.context, nil, proofs, fn actual ->
+                               assert Enum.map(actual, & &1["proof"]) === proofs
+                               assert Enum.all?(actual, &(&1["unavailable"] != true))
+                               state = :sys.get_state(child_scope)
+
+                               assert Enum.count(state.resources, fn {_, r} -> r.kind == :source_lock end) ==
+                                        128
+
+                               extra = Path.join(c.root, "extra-source.lock")
+                               File.write!(extra, "", [:exclusive])
+                               File.chmod!(extra, 384)
+                               assert {:error, :cleanup_scope_closed} = Runner.lock_source(extra)
+                               assert {:ok, cap} = Transaction.acquire(Path.join(c.protected, ".lock"))
+                               assert :ok = Transaction.check(cap)
+
+                               tickets =
+                                 for _ <- 1..30 do
+                                   assert {:ok, ticket} = Resources.register(:http)
+                                   ticket
+                                 end
+
+                               assert {:error, :cleanup_scope_closed} = Resources.register(:http)
+                               Enum.each(tickets, &Resources.closed(&1, :ok))
+                               assert :ok = Transaction.check(cap)
+                               assert :ok = Transaction.release(cap)
+                               :admitted
+                             end)
+
+                    :admitted
+                  after
+                    File.write!(gate, "done")
+                    assert {:ok, _} = Task.await(shell, 5000)
+                  end
+                end,
+                60000
+              )
+left:  {:ok, {:admitted, true}}
+right: {:ok, :admitted}
+
+    _build/source-lock-reserve-20261028-02/project/test/ipse/session/source_lock_capacity_test.exs:121: anonymous fn/2 in Ipse.Session.SourceLockCapacityTest."test 128 actual source leases coexist with shell and protected transaction; independent caps refuse excess"/1
+    (elixir 1.20.4) lib/task/supervised.ex:105: Task.Supervised.invoke_mfa/2
+    (elixir 1.20.4) lib/task/supervised.ex:40: Task.Supervised.reply/4
+Function: #Function<1.18787/0 in Ipse.Session.SourceLockCapacityTest."test 128 actual source leases coexist with shell and protected transaction; independent caps refuse excess"/1>
+    Args: []
+
+
+  1) test 128 actual source leases coexist with shell and protected transaction; independent caps refuse excess (Ipse.Session.SourceLockCapacityTest)
+     _build/source-lock-reserve-20261028-02/project/test/ipse/session/source_lock_capacity_test.exs:108
+     ** (EXIT from #PID<0.712.0>) an exception was raised:
+
+          match (=) failed
+          code:  assert {:ok, {:admitted, true}} =
+                   Resources.controlled_owned_effect(
+                     fn ->
+                       child_scope = Resources.current()
+                       assert child_scope != scope
+                       owner = self()
+                       gate = Path.join(c.root, "shell-gate")
+
+                       shell =
+                         Resources.async(fn ->
+                           Runner.run(
+                             "printf ready; while [ ! -f shell-gate ]; do sleep 0.05; done",
+                             c.root,
+                             timeout_ms: 60000,
+                             emit: fn
+                               {:tool_output, "ready"} -> send(owner, :shell_ready)
+                               _ -> :ok
+                             end
+                           )
+                         end)
+
+                       assert_receive :shell_ready, 5000
+
+                       try do
+                         proofs = Enum.map(c.sources, & &1.proof)
+
+                         assert :admitted =
+                                  StoredSources.with_verified(c.context, nil, proofs, fn actual ->
+                                    assert Enum.map(actual, & &1["proof"]) === proofs
+                                    assert Enum.all?(actual, &(&1["unavailable"] != true))
+                                    state = :sys.get_state(child_scope)
+
+                                    assert Enum.count(state.resources, fn {_, r} -> r.kind == :source_lock end) ==
+                                             128
+
+                                    extra = Path.join(c.root, "extra-source.lock")
+                                    File.write!(extra, "", [:exclusive])
+                                    File.chmod!(extra, 384)
+                                    assert {:error, :cleanup_scope_closed} = Runner.lock_source(extra)
+                                    assert {:ok, cap} = Transaction.acquire(Path.join(c.protected, ".lock"))
+                                    assert :ok = Transaction.check(cap)
+
+                                    tickets =
+                                      for _ <- 1..30 do
+                                        assert {:ok, ticket} = Resources.register(:http)
+                                        ticket
+                                      end
+
+                                    assert {:error, :cleanup_scope_closed} = Resources.register(:http)
+                                    Enum.each(tickets, &Resources.closed(&1, :ok))
+                                    assert :ok = Transaction.check(cap)
+                                    assert :ok = Transaction.release(cap)
+                                    :admitted
+                                  end)
+
+                         :admitted
+                       after
+                         File.write!(gate, "done")
+                         assert {:ok, _} = Task.await(shell, 5000)
+                       end
+                     end,
+                     60000
+                   )
+          left:  {:ok, {:admitted, true}}
+          right: {:ok, :admitted}
+          stacktrace:
+            _build/source-lock-reserve-20261028-02/project/test/ipse/session/source_lock_capacity_test.exs:121: anonymous fn/2 in Ipse.Session.SourceLockCapacityTest."test 128 actual source leases coexist with shell and protected transaction; independent caps refuse excess"/1
+            (elixir 1.20.4) lib/task/supervised.ex:105: Task.Supervised.invoke_mfa/2
+            (elixir 1.20.4) lib/task/supervised.ex:40: Task.Supervised.reply/4
+
+
+.
+Finished in 0.9 seconds (0.2s on load, 0.00s async, 0.6s sync)
+
+Result: 1/2 passed
+Failed: 1 test

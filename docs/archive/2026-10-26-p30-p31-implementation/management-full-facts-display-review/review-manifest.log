@@ -1,0 +1,21 @@
+MANAGEMENT_FULL_FACTS_MANIFEST_OK: %{
+  manifest_entries: 115,
+  frozen_sources: 56,
+  graph_files_and_retained_beams: [
+    {"management-facts-v1-sol-20261029", 698, 14},
+    {"management-facts-v2-sol-20261029", 698, 14},
+    {"management-facts-v4-sol-20261029", 698, 14},
+    {"management-facts-v4-loss-sol-20261029", 698, 14}
+  ],
+  v1_to_v2: ["./ipse/ebin/Elixir.Ipse.Runner.ManagementTerminal.beam",
+   "./ipse/ebin/Elixir.Ipse.Runner.Review.beam"],
+  v2_to_final: ["./ipse/ebin/Elixir.Ipse.Runner.ManagementTerminal.beam",
+   "./ipse/ebin/Elixir.Ipse.Runner.beam", "./ipse/priv/ipse-runner"],
+  final_to_hook: ["./ipse/ebin/Elixir.Ipse.Runner.beam",
+   "./ipse/priv/ipse-runner"],
+  selected_artifact_digest: "26c3e913d377f1d3f2f67eab7666770506f6517e5bf7a82eb9e8c36c43d95b2b",
+  selected_artifact_files: 10,
+  declared_artifact_files: 9,
+  negative_source_delta: ["native/ipse-terminal-lease.rs"],
+  production_hook_markers_absent: true
+}

@@ -88,6 +88,7 @@ defmodule Ipse.Extension.MCPCall do
          true <- not Config.contains_private?(public, server) do
       {:ok, descriptor, public}
     else
+      {:unknown, _} -> @unknown
       _ -> @error
     end
   rescue
@@ -136,6 +137,11 @@ defmodule Ipse.Extension.MCPCall do
     request = intent["request"]
     descriptor = context[:mcp_descriptor]
     resource = %{owner: context[:owner], job_ref: context[:job_ref]}
+
+    resource =
+      if is_map(context[:managed_tool]),
+        do: Map.put(resource, :managed_tool, context.managed_tool),
+        else: resource
 
     with :ok <- validate(request),
          true <- is_map(descriptor) and resource?(resource),
@@ -281,7 +287,8 @@ defmodule Ipse.Extension.MCPCall do
 
   defp manifest_target?(_, _, _), do: false
 
-  defp public_server?(server) do
+  @doc false
+  def public_server?(server) do
     base = ~w(id tools resources prompts sandbox env_names timeout_ms fingerprint)
 
     base =
@@ -429,7 +436,7 @@ defmodule Ipse.Extension.ToolAction do
     task =
       Ipse.Session.Resources.async(fn ->
         try do
-          run(request, context)
+          Ipse.Session.Resources.file_effect(fn -> run(request, context) end)
         rescue
           _ -> unknown()
         catch
@@ -461,7 +468,17 @@ defmodule Ipse.Extension.ToolAction do
     case Ipse.Runner.run(arguments["command"], context.cwd,
            timeout_ms: arguments["timeout_ms"] || request["timeout_ms"],
            output_limit: @limit,
-           sandbox: context.sandbox
+           sandbox: context.sandbox,
+           admit:
+             if(is_map(context[:managed_tool]),
+               do: fn start ->
+                 Ipse.Session.ManagedToolUse.with_effect(
+                   context.managed_tool,
+                   Ipse.Session.ManagedToolUse.native_binding("shell", arguments),
+                   start
+                 )
+               end
+             )
          ) do
       {:ok, %{timed_out: false, output_truncated: false, exit_code: code} = result}
       when code in 0..255 ->
@@ -518,7 +535,9 @@ defmodule Ipse.Extension.ToolAction do
 
     is_map(value) and Enum.sort(Map.keys(value)) == Enum.sort(keys) and
       is_binary(value["text"]) and String.valid?(value["text"]) and
-      byte_size(value["text"]) <= @limit and
+      byte_size(value["text"]) <= result_limit(request) and
+      (not binary_read?(request) or
+         Ipse.Tools.binary_read_result?(value["text"], request["arguments"])) and
       (request["name"] != "shell" or
          (is_integer(value["exit_code"]) and value["exit_code"] in 0..255 and
             is_integer(value["output_bytes"]) and
@@ -529,5 +548,10 @@ defmodule Ipse.Extension.ToolAction do
   end
 
   def valid_outcome?(_, _, _), do: false
+
+  defp binary_read?(request),
+    do: request["name"] == "read" and get_in(request, ["arguments", "encoding"]) == "base64"
+
+  defp result_limit(request), do: if(binary_read?(request), do: 8192, else: @limit)
   defp unknown, do: {:unknown, %{}}
 end

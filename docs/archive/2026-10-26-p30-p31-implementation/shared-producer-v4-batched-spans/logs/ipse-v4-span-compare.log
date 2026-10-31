@@ -1,0 +1,10 @@
+Running ExUnit with seed: 205477, max_cases: 4
+Excluding tags: [:test]
+Including tags: [v4_pages: true]
+
+V4_BATCH_SPANS_BASELINE_COMPARE valid_and_four_invalid=true
+V4_TWO_PAGES {"pages":2,"vectors":11,"embedding_calls":6,"maximum_store_frame":12758,"hydrate_reads":35,"native_operations":0}
+.
+Finished in 4.7 seconds (4.6s on load, 0.00s async, 0.1s sync)
+
+Result: 1 passed, 9 excluded

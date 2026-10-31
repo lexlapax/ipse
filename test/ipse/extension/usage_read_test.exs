@@ -1,5 +1,6 @@
 defmodule Ipse.Extension.UsageReadTest do
   use ExUnit.Case, async: false
+  import Ipse.Test.ResumeAssertions
   alias Ipse.{Usage, Journal, Session}
   alias Ipse.Extension.{UsageRead, Config, Registry, Catalog, Artifact, Actions}
 
@@ -351,7 +352,7 @@ defmodule Ipse.Extension.UsageReadTest do
     before = File.read!(path)
     {:ok, resumed} = start(c, cfg, id)
     assert Session.info(resumed).phase == :idle
-    assert File.read!(path) == before
+    assert_idle_resume_journal(path, before, id)
     assert %{"value" => ^page} = read(resumed, %{"snapshot" => page["snapshot"]})
     :ok = Session.close(resumed)
     assert {:ok, _} = Ipse.Session.Saved.inspect_saved(c.dir, id)
@@ -406,7 +407,7 @@ defmodule Ipse.Extension.UsageReadTest do
     before = File.read!(path)
     {:ok, resumed} = start(c, cfg, id)
     assert Session.info(resumed).phase == :idle
-    assert File.read!(path) == before
+    assert_idle_resume_journal(path, before, id)
     assert Session.info(resumed).accounting["request_count"] == 0
   end
 

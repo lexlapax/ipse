@@ -1,0 +1,134 @@
+Retained management target at 1793309733873: signed deadline elapsed. Original source availability and current-use eligibility are not checked.
+Review the complete proposed facts below. This confirmation applies only to this exact review.
+{
+  "action_sha256": "54104881debd63da51494ac7e7aeb71bc2b5363b871edf9626416ad372e6f596",
+  "collection": {
+    "manifest_sha256": "0524ed7b3b40e63492a6993492050bd28bf47e88c90fdca7695732d53ce9400e",
+    "root": {
+      "floor": 1,
+      "floor_anchor": "f960febb7f5db576c3882693839b7dcb",
+      "generation": 1,
+      "project": "638cb999dbfedc0f8bb7922201515fb0a25960f10b7ab5ea3c28ffba329c3259",
+      "version": 3
+    },
+    "root_sha256": "e9331712a66fe049b02e83c152b76371e44a49c7d604999c3ae2a1f1e83d5794",
+    "root_state": "present"
+  },
+  "context": {
+    "binding_sha256": "06350d3c24646d5773110aabda41f67ab589268e9901279aafd26e27fececd6f",
+    "client_id": "92e9cfd7718e209df3ae09a7403f8758",
+    "job_id": "fa241d03a02ec411fbd039f71e7ca752",
+    "management_epoch": 1,
+    "management_sha256": "9cc462023820662a01c4e3aeb08d7a34413d058cdd36d39cf0d8901e8aa1e15a",
+    "namespace": "638cb999dbfedc0f8bb7922201515fb0a25960f10b7ab5ea3c28ffba329c3259",
+    "original_pin": null,
+    "project_id": "a0d14bcac4d045768b10dacc02a287e301c196980b47d06306b8364cdd159f16",
+    "recipe": {
+      "category_path": [
+        "category"
+      ],
+      "constraints_sha256": "d709745ab18405dff572c41053eda5cbe12c350ebbabdcd0d52ea1e80962368a",
+      "evidence_path": [
+        "evidence",
+        "sources"
+      ],
+      "key_prefix": "note.",
+      "kind": "literal_source",
+      "lineage_path": [
+        "lineage"
+      ],
+      "override_prefix": "override.",
+      "rules": [
+        {
+          "category": "current",
+          "max_age_ms": null,
+          "origins": [
+            "native_operator_assertion"
+          ]
+        },
+        {
+          "category": "ordinary",
+          "max_age_ms": 7776000000,
+          "origins": [
+            "native_operator_assertion",
+            "typed_host_outcome"
+          ]
+        },
+        {
+          "category": "preference",
+          "max_age_ms": null,
+          "origins": [
+            "native_operator_assertion"
+          ]
+        }
+      ],
+      "text_path": [
+        "text"
+      ],
+      "version": 1
+    },
+    "session_id": "89b3dba51bb8d04878678e36423464ed"
+  },
+  "kind": "managed_literal_forget",
+  "metadata": {
+    "category": "ordinary",
+    "first_admitted_ms": 86400000,
+    "lineage": "f3d5e4cfebf42e0f4bf19746d65295802fdbfad8f1befa631aacdf093dc50fd4",
+    "policy_sha256": "dbc7d380793c1fd92543f35461f649e62c5b1ffb7e82d904314ce91395ec651e",
+    "recipe_sha256": "818634825cb494606d25195a6601971a17542ed2caa22f28d1e18b1971b18cf7",
+    "valid_until_ms": 7862400000
+  },
+  "operation_id": "7f8a7230eef265a05d3b5e7b7d66ba79",
+  "policy": {
+    "kind": "session"
+  },
+  "reason": "Forget selected synthetic claim",
+  "request_sha256": "f9db19303dbe5a9047a7471451be66073ad633c5322acf15c5aa0f2c28e67c9f",
+  "scope": "selected literal derivative; original journal, management review journal and shared evidence remain",
+  "target": {
+    "bytes": 2645,
+    "key": "note.f3d5e4cfebf42e0f4bf19746d65295802fdbfad8f1befa631aacdf093dc50fd4",
+    "operation_id": "f960febb7f5db576c3882693839b7dcb",
+    "revision": 1,
+    "sha256": "1a65f2551fefc643739916aed7b967f2c9fa9e5ba251bc6f44211f9ca02a9cb6",
+    "value": {
+      "category": "ordinary",
+      "created_at_ms": 864000000,
+      "event_at_ms": null,
+      "evidence": {
+        "sources": [
+          {
+            "content_sha256": "b5e1017cc2cb2337c81e35dd712eb2823ead2b4e2d12f837ec45a51046e77964",
+            "coverage": "available",
+            "end_byte": 400,
+            "kind": "input.assertion.ordinary",
+            "occurrence_id": "00000000000000000000000000000001",
+            "origin": "native_operator_assertion",
+            "path": null,
+            "quote": "\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"",
+            "quote_sha256": "b5e1017cc2cb2337c81e35dd712eb2823ead2b4e2d12f837ec45a51046e77964",
+            "receipt_sha256": "249ded81fc09301d955175885ad1d43c9b47dd399ac1e0fedb40e418eb5c1547",
+            "session_id": "11111111111111111111111111111111",
+            "start_byte": 0,
+            "version": 1,
+            "version_id": "33333333333333333333333333333333"
+          }
+        ]
+      },
+      "expires_at_ms": 8640000000,
+      "id": "f3d5e4cfebf42e0f4bf19746d65295802fdbfad8f1befa631aacdf093dc50fd4",
+      "lineage": "f3d5e4cfebf42e0f4bf19746d65295802fdbfad8f1befa631aacdf093dc50fd4",
+      "metadata_reserve": "0000000000000000000000000000000000000000000000000000000000000000",
+      "observed_at_ms": 864000000,
+      "previous_category": null,
+      "reason": "trusted fixture source",
+      "superseded_at_ms": null,
+      "text": "\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"\\\"",
+      "version": 1
+    }
+  },
+  "version": 1
+}
+Type forget 37a1c9eb36d11586 to confirm, or anything else to cancel.
+> 
+MANAGEMENT_FULL_FACTS_DISPLAY_CLOSED 66bac4608f0419d6c0bc48ba35020222169daf5aa1c6847f93083e83d22d1003 0c63b5a785b55ce88c672134c41a724cfa78618cd5182e5aae25fde821a69236 note.f3d5e4cfebf42e0f4bf19746d65295802fdbfad8f1befa631aacdf093dc50fd4

@@ -1,0 +1,8 @@
+Running ExUnit with seed: 47051, max_cases: 8
+Excluding tags: [:test]
+Including tags: [document_decision_lineage: true, document_decision_gate: true]
+
+...
+Finished in 7.3 seconds (4.9s on load, 0.01s async, 2.4s sync)
+
+Result: 3 passed, 119 excluded

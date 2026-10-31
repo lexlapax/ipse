@@ -6,6 +6,9 @@ defmodule Ipse.Development.Verification.Scenarios do
       {"dev/verification/documents.exs", Ipse.Development.Verification.Documents,
        [Ipse.Development.Verification.Documents]},
     "model" => {"dev/verification/model.exs", IpseModelExample.Proof, [IpseModelExample.Proof]},
+    "decision" =>
+      {"dev/verification/decision_installed.exs", Ipse.InstalledDecisionProbe,
+       [Ipse.InstalledDecisionProbe, Ipse.InstalledDecisionProbe.NoModel]},
     "embedding" =>
       {"dev/verification/embedding.exs", IpseEmbeddingExample.Proof,
        [IpseEmbeddingExample.Proof, IpseEmbeddingExample.Proof.NoModel]},
@@ -346,6 +349,17 @@ defmodule Ipse.Development.Verification.Scenarios do
         end
 
     checks!(report, 9)
+  end
+
+  def validate!(%{name: "decision"}, report, "default") do
+    true = report["synthetic"] and report["conversation_inference"] == false
+
+    all_true!(
+      report["checks"],
+      ~w(approval_before_request compatible_route_no_authorization typed_advice ordered_usage_restores idle_resume_no_replay denial_no_egress interrupted_no_replay)
+    )
+
+    checks!(report, 7)
   end
 
   def validate!(%{name: name}, report, "default") when name in ~w(embedding mcp),

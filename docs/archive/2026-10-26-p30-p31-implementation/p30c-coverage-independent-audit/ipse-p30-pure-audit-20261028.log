@@ -1,0 +1,4 @@
+** (RuntimeError) bad malformed fallback
+    /tmp/ipse-p30-pure-audit-20261028.exs:51: anonymous fn/9 in :elixir_compiler_0.__FILE__/1
+    (elixir 1.20.4) lib/enum.ex:2622: Enum."-reduce/3-lists^foldl/2-0-"/3
+    /tmp/ipse-p30-pure-audit-20261028.exs:8: (file)

@@ -1,0 +1,226 @@
+Running ExUnit with seed: 47069, max_cases: 8
+Excluding tags: [:test]
+Including tags: [discovery_unknown_session: true]
+
+
+
+  1) test draft discovery preserves unknown setup and resumes without starting discovery again (Ipse.MCP.HTTPTest)
+     test/ipse/mcp/http_test.exs:158
+     Expected truthy, got false
+     code: assert Enum.any?(
+             events,
+             &(&1["type"] == "draft_mcp_setup_result" and &1["result"] == "unknown")
+           )
+     arguments:
+
+         # 1
+         [
+           %{
+             "created_at" => "2026-10-29T18:24:32.951688Z",
+             "metadata" => %{
+               "execution_mode" => %{
+                 "approval" => "ask",
+                 "approval_origin" => "explicit",
+                 "ceiling" => "normal",
+                 "enclosing_ceiling" => "normal",
+                 "headless" => false,
+                 "knowledge" => "available",
+                 "version" => 1
+               },
+               "extension_catalog" => %{
+                 "entries" => [],
+                 "version" => 1
+               },
+               "managed_tool_layout" => "managed_tool_effects_v1",
+               "model_profiles" => nil,
+               "extension_subscriptions" => %{
+                 "entries" => [],
+                 "version" => 1
+               },
+               "source_layout" => "session_sources_v1",
+               "reference_layout" => "turn_reference_v1",
+               "cwd" => "/tmp/ipse-http-mcp-2",
+               "source_origin" => %{
+                 "directory" => "/tmp/ipse-http-mcp-2/sessions",
+                 "inode" => 1237777,
+                 "major_device" => 53,
+                 "minor_device" => 0,
+                 "session_id" => "88f8a70c20a8d18ca61252643a48c732",
+                 "uid" => 1000,
+                 "version" => 1
+               },
+               "managed_action_layout" => "managed_tool_actions_v1",
+               "subagents" => false,
+               "provider_destination" => nil,
+               "execution" => nil,
+               "delegation_origin" => nil,
+               "managed_output_layout" => "managed_output_release_v1",
+               "sandbox" => "off",
+               "mcp_servers" => ["c249fb942abb80228cf5f3d6a87af7cb367be885aea5049eafa2b6d862bb7c2f"],
+               "session_lock_identity" => %{
+                 "device" => 53,
+                 "inode" => 1237776,
+                 "version" => 1
+               },
+               "managed_read_layout" => "managed_reads_v1",
+               "managed_supersession_layout" => "managed_supersession_v1",
+               "subagent_concurrency" => 1,
+               "release_receipt_layout" => "session_release_receipt_v1",
+               "configuration" => nil,
+               "decision_profiles" => nil,
+               "model" => "fixture",
+               "semantic_admission" => %{
+                 "binding" => nil,
+                 "instance" => nil,
+                 "pin" => nil,
+                 "selectors" => [],
+                 "status" => "off",
+                 "version" => 1
+               },
+               "extensions" => [],
+               "usage_version" => 1,
+               "embedding_profiles" => nil,
+               "source_origin_layout" => "journal_origin_v1",
+               "budget" => nil,
+               "budget_root" => nil,
+               "provider" => "demo",
+               "max_output_tokens" => nil,
+               "mcp_fingerprint_version" => 2
+             },
+             "type" => "session"
+           },
+           %{
+             "owner_id" => "e93b5b626010998009fb3ab06dc32456",
+             "session_id" => "88f8a70c20a8d18ca61252643a48c732",
+             "type" => "session_release_owner_started",
+             "version" => 1
+           },
+           %{
+             "snapshot" => %{
+               "boundary" => "/tmp/ipse-http-mcp-2",
+               "cwd" => "/tmp/ipse-http-mcp-2",
+               "diagnostics" => [],
+               "sources" => [],
+               "version" => 1
+             },
+             "type" => "workspace_context_snapshot",
+             "version" => 1
+           },
+           %{
+             "sha256" => "72971bdad6c2e2151e47be3d69ae0d2a08bd93556f763e676dea63309e42f741",
+             "skills" => [
+               %{
+                 "canonical_path" => "/home/lexlapax/projects/lexlapax/ipse/_build/mcp-discovery-unknown-sol-20261029/lib/ipse/priv/skills/project-orientation/SKILL.md",
+                 "description" => "Assess an unfamiliar project and prioritize next steps from its instructions, current Git state, implementation, and available validation.",
+                 "name" => "project-orientation",
+                 "path" => "/home/lexlapax/projects/lexlapax/ipse/_build/mcp-discovery-unknown-sol-20261029/lib/ipse/priv/skills/project-orientation/SKILL.md",
+                 "sha256" => "87788a544de9fe9ce3157cc81b0eaf312f6ca46644d11372f02aa87a154132a6",
+                 "shadowed_paths" => []
+               },
+               %{
+                 "canonical_path" => "/home/lexlapax/projects/lexlapax/ipse/_build/mcp-discovery-unknown-sol-20261029/lib/ipse/priv/skills/research/SKILL.md",
+                 "description" => "Bounded evidence-based research using explicitly configured search and page retrieval, durable source excerpts and cited claims.",
+                 "name" => "research",
+                 "path" => "/home/lexlapax/projects/lexlapax/ipse/_build/mcp-discovery-unknown-sol-20261029/lib/ipse/priv/skills/research/SKILL.md",
+                 "sha256" => "02af7ee5c5871d8e38f0a364373a83997ed07eb281564e69dce4e7919d603ec0",
+                 "shadowed_paths" => []
+               },
+               %{
+                 "canonical_path" => "/home/lexlapax/projects/lexlapax/ipse/_build/mcp-discovery-unknown-sol-20261029/lib/ipse/priv/skills/review/SKILL.md",
+                 "description" => "Review a code change for correctness, regressions, and missing coverage.",
+                 "name" => "review",
+                 "path" => "/home/lexlapax/projects/lexlapax/ipse/_build/mcp-discovery-unknown-sol-20261029/lib/ipse/priv/skills/review/SKILL.md",
+                 "sha256" => "881df29cc993d5bb3ca3055131d772c92d2eba17f9ab31433b2e57df3dd2eea5",
+                 "shadowed_paths" => []
+               },
+               %{
+                 "canonical_path" => "/home/lexlapax/projects/lexlapax/ipse/_build/mcp-discovery-unknown-sol-20261029/lib/ipse/priv/skills/self-development/SKILL.md",
+                 "description" => "Make a bounded Ipse change with a frozen runner, explicit task scope, independent review, honest validation and safe handoff.",
+                 "name" => "self-development",
+                 "path" => "/home/lexlapax/projects/lexlapax/ipse/_build/mcp-discovery-unknown-sol-20261029/lib/ipse/priv/skills/self-development/SKILL.md",
+                 "sha256" => "45689f5c72ee0dbf9b3eb34b9320b6afa5f68f676d958b7027f10e0d77ae488a",
+                 "shadowed_paths" => []
+               }
+             ],
+             "type" => "skill_catalog_snapshot",
+             "version" => 1
+           },
+           %{
+             "draft_id" => "1830a8e1924d0f2a5bdbaf520df29fc6",
+             "effective_sha256" => "e930bbd7d7b90737b2a25a54832fbea69d09ddb54ceaeecdd745cbe0566ee097",
+             "input_sha256" => "7b4d58a6133d24f1e216b8e16ce908b9079a31cb893e081527cd59627c37825d",
+             "prefix_count" => 0,
+             "prefix_sha256" => "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+             "prior_historical_model" => nil,
+             "prior_reported_model" => nil,
+             "revision" => 1,
+             "session_id" => "88f8a70c20a8d18ca61252643a48c732",
+             "turn_id" => "919fadb21582a38fcbe2b8020ad2d3a2",
+             "type" => "draft_started",
+             "version" => 1
+           },
+           %{
+             "effective_sha256" => "e930bbd7d7b90737b2a25a54832fbea69d09ddb54ceaeecdd745cbe0566ee097",
+             "observation" => nil,
+             "origin" => "unattended_input",
+             "session_id" => "88f8a70c20a8d18ca61252643a48c732",
+             "source_id" => "1d57a1cc5c95defd7b036776d9279e14",
+             "text" => "Synthetic draft with uncertain discovery",
+             "text_sha256" => "7b4d58a6133d24f1e216b8e16ce908b9079a31cb893e081527cd59627c37825d",
+             "turn_id" => "919fadb21582a38fcbe2b8020ad2d3a2",
+             "type" => "input_received",
+             "version" => 1
+           },
+           %{
+             "message" => %{
+               "content" => "Draft a clearer version of the request below. Do not carry out the request. Return only the proposed request.\n\nSynthetic draft with uncertain discovery",
+               "role" => "user"
+             },
+             "type" => "message"
+           },
+           %{
+             "policy_generation" => 1,
+             "session_id" => "88f8a70c20a8d18ca61252643a48c732",
+             "type" => "source_window_opened",
+             "version" => 1,
+             "window_id" => "ad5af78b169a4ab81830879da7da83ce"
+           },
+           %{
+             "epoch_id" => "7c4dbac2bf638d5124c6dc3e92b76c1e",
+             "mode" => "fresh",
+             "previous_epoch_id" => nil,
+             "previous_state" => "none",
+             "session_id" => "88f8a70c20a8d18ca61252643a48c732",
+             "type" => "lifecycle_epoch_started",
+             "version" => 1
+           },
+           %{
+             "draft_id" => "1830a8e1924d0f2a5bdbaf520df29fc6",
+             "revalidation_id" => "5b0dd347ca71e2c886a2d200f3374868",
+             "session_id" => "88f8a70c20a8d18ca61252643a48c732",
+             "turn_id" => "919fadb21582a38fcbe2b8020ad2d3a2",
+             "type" => "draft_mcp_setup_intent",
+             "version" => 1
+           },
+           %{"type" => "cancelled"},
+           %{
+             "cleanup_confirmed" => false,
+             "closure" => "cleanup_failure",
+             "epoch_id" => "7c4dbac2bf638d5124c6dc3e92b76c1e",
+             "session_id" => "88f8a70c20a8d18ca61252643a48c732",
+             "type" => "lifecycle_epoch_closed",
+             "version" => 1
+           }
+         ]
+
+         # 2
+         #Function<44.7877184/1 in Ipse.MCP.HTTPTest."test draft discovery preserves unknown setup and resumes without starting discovery again"/1>
+
+     stacktrace:
+       test/ipse/mcp/http_test.exs:175: (test)
+
+
+Finished in 0.6 seconds (0.4s on load, 0.00s async, 0.1s sync)
+
+Result: 0/1 passed, 14 excluded
+Failed: 1 test

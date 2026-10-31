@@ -1,0 +1,23 @@
+Running ExUnit with seed: 686376, max_cases: 4
+Excluding tags: [:test]
+Including tags: [v4_selected_reuse: true]
+
+
+
+  1) test selected prior group authorizes reuse only for a page actually in that group (Ipse.ProducerProgressTest)
+     test/extensions/knowledge/producer_progress_test.exs:381
+     ** (MatchError) no match of right hand side value:
+
+         false
+
+     code: invoke(Producer.start(resolved, @profile, next), %{d | model: forged})
+     stacktrace:
+       /tmp/ipse-v4-progress-diagnostic.ex:360: IpseKnowledge.Store.Collection.Producer.Progress.done/2
+       test/extensions/knowledge/producer_progress_test.exs:110: Ipse.ProducerProgressTest.drive/2
+       test/extensions/knowledge/producer_progress_test.exs:411: (test)
+
+
+Finished in 4.1 seconds (4.0s on load, 0.00s async, 0.1s sync)
+
+Result: 0/1 passed, 5 excluded
+Failed: 1 test

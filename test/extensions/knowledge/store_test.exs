@@ -69,6 +69,7 @@ defmodule Ipse.KnowledgeStoreTest do
     put=fn text,extra -> Map.merge(%{"source_id"=>"manual:one","generation"=>1,"expected_revision"=>0,"title"=>"A manual","text"=>text,"uri"=>"local:manual","observed_at_ms"=>10,"event_at_ms"=>nil,"expires_at_ms"=>nil},extra) end
     success=fn result -> assert {:done,{:ok,value}}=result; value end
     snapshot=fn db,profile -> {result,db}=invoke.(db,profile,:snapshot,%{}); {success.(result),db} end
+    input_digest=fn chunk -> {:ok,digest}=Ipse.Extension.canonical_digest([chunk["text"]]); digest end
     effects=fn db -> F.requests(db) |> Enum.count(&(&1["op"] not in ~w(state.scan state.get effect.result.read))) end
     selected_args=fn db,refs,extra -> Map.merge(%{"refs"=>refs,"store_generation"=>db.generation,"effects_used"=>1,"reads_used"=>2,"as_of_ms"=>20},extra) end
     '''
@@ -97,6 +98,57 @@ defmodule Ipse.KnowledgeStoreTest do
         assert {:done,{:error,:invalid_store_arguments,%{}}}=
           S.start("notes",profile,operation,Map.put(args,field,max+1))
       end
+    end
+    ''')
+  end
+
+  @tag :draft_expiry
+  test "expired source and projection drafts refuse writes, retain selection and allow explicit cleanup" do
+    isolated(~S'''
+    writes=fn db -> Enum.count(F.requests(db),fn r ->
+      r["op"] in ~w(state.put state.delete) or get_in(r,["arguments","action"]) in ~w(put_immutable_many cas_root collect)
+    end) end
+    for backend <- [state,remote], existing <- [false,true] do
+      db=F.new()
+      {db,revision}=if existing do
+        {r,db}=invoke.(db,backend,:put,put.("selected old evidence",%{})); {db,success.(r)["revision"]}
+      else
+        {db,0}
+      end
+      text="staged replacement"
+      args=put.(text,%{"generation"=>if(existing,do: 2,else: 1),"expected_revision"=>revision}) |> Map.delete("text") |> Map.merge(%{"byte_count"=>byte_size(text),"content_sha256"=>E.sha256(text)})
+      {r,db}=invoke.(db,backend,:open,args); opened=success.(r)
+      {r,db}=invoke.(db,backend,:append,%{"source_id"=>"manual:one","draft_id"=>opened["draft_id"],"expected_revision"=>opened["revision"],"offset"=>0,"text"=>text}); appended=success.(r)
+      key=S.root_key("notes",E.sha256("manual:one"))
+      expired=put_in(db.records[key]["value"]["draft"]["expires_at_ms"],0)
+      before=writes.(expired)
+      for {op,extra} <- [{:append,%{"offset"=>byte_size(text),"text"=>"x"}},{:publish,%{}}] do
+        args=Map.merge(%{"source_id"=>"manual:one","draft_id"=>opened["draft_id"],"expected_revision"=>appended["revision"]},extra)
+        {r,after_refusal}=invoke.(expired,backend,op,args)
+        assert {:done,{:error,:stale_draft,%{}}}=r
+        assert writes.(after_refusal)==before and after_refusal.records==expired.records
+      end
+      {r,aborted}=invoke.(expired,backend,:abort,%{"source_id"=>"manual:one","draft_id"=>opened["draft_id"],"expected_revision"=>appended["revision"]});success.(r)
+      assert aborted.records[key]["value"]["draft"]==nil
+      {r,collected}=invoke.(expired,backend,:collect,%{"limit"=>12}); assert success.(r)["expired_drafts_released"]==1
+      assert collected.records[key]["value"]["draft"]==nil
+      {r,collected}=invoke.(collected,backend,:collect,%{"limit"=>12}); assert success.(r)["count"]>0
+      {snap,collected}=snapshot.(collected,backend)
+      assert Enum.map(snap["sources"],& &1["text"])==if(existing,do: ["selected old evidence"],else: [])
+    end
+    for backend <- [state,remote] do
+      {r,db}=invoke.(F.new(),backend,:put,put.("projection evidence",%{})); success.(r)
+      {snap,db}=snapshot.(db,backend); source=hd(snap["sources"]); {:ok,[chunk]}=E.chunks(source)
+      profile=%{"kind"=>"embedding","profile"=>"encoder"}
+      {r,db}=invoke.(db,backend,:projection_open,%{"source_id"=>"manual:one","generation"=>1,"projection_kind"=>"vectors","profile"=>profile,"chunks"=>[chunk["chunk_id"]]}); opened=success.(r)
+      {:ok,vector}=E.vector(%{"chunk_id"=>chunk["chunk_id"],"selection_sha256"=>E.sha256("selection"),"input_sha256"=>input_digest.(chunk),"profile"=>"encoder","model"=>"synthetic","dimensions"=>2,"values"=>[1.0,0.0]})
+      key=S.root_key("notes",E.sha256("manual:one")); db=put_in(db.records[key]["value"]["draft"]["expires_at_ms"],0)
+      before=writes.(db)
+      {r,after_refusal}=invoke.(db,backend,:projection_commit,%{"draft"=>opened["draft"],"vectors"=>[vector]})
+      assert {:done,{:error,:stale_draft,%{}}}=r
+      assert writes.(after_refusal)==before and after_refusal.records==db.records
+      {r,db}=invoke.(db,backend,:projection_abort,%{"draft"=>opened["draft"]}); success.(r)
+      {snap,_}=snapshot.(db,backend); assert hd(snap["sources"])["text"]=="projection evidence"
     end
     ''')
   end
@@ -132,7 +184,7 @@ defmodule Ipse.KnowledgeStoreTest do
       embedding = %{"kind" => "embedding", "profile" => "encoder1"}
       model = fn i -> %{"kind" => "model_complete", "profile" => "extractor#{i}", "version" => 1} end
       {:ok, vector} = E.vector(%{"chunk_id" => chunk["chunk_id"],
-        "selection_sha256" => E.sha256("selection"), "input_sha256" => E.sha256("input"),
+        "selection_sha256" => E.sha256("selection"), "input_sha256" => input_digest.(chunk),
         "profile" => "encoder1", "model" => "synthetic", "dimensions" => 1, "values" => [1.0]})
       profiles = [{"vectors", embedding, [vector]}] ++
         Enum.map(1..7, &{"facts", model.(&1), []})
@@ -264,7 +316,7 @@ defmodule Ipse.KnowledgeStoreTest do
     assert opened["coverage"]["effects_remaining"]==15
     assert opened["coverage"]["commit_effects_worst_case"]==14
     values=Enum.map(1..4096,&(&1/4096))
-    vectors=Enum.map(chunks,fn chunk -> {:ok,v}=E.vector(%{"chunk_id"=>chunk["chunk_id"],"selection_sha256"=>E.sha256("selected encoder"),"input_sha256"=>E.sha256("host canonical input"<>chunk["chunk_id"]),"profile"=>"encoder","model"=>"native-model","dimensions"=>4096,"values"=>values}); v end)
+    vectors=Enum.map(chunks,fn chunk -> {:ok,v}=E.vector(%{"chunk_id"=>chunk["chunk_id"],"selection_sha256"=>E.sha256("selected encoder"),"input_sha256"=>input_digest.(chunk),"profile"=>"encoder","model"=>"native-model","dimensions"=>4096,"values"=>values}); v end)
     {r,db}=invoke.(db,state,:projection_commit,%{"draft"=>opened["draft"],"vectors"=>vectors}); success.(r)
     assert effects.(db)+1==16
     pages=Map.values(db.records) |> Enum.filter(&(get_in(&1,["value","page_kind"])=="vector"))
@@ -278,6 +330,34 @@ defmodule Ipse.KnowledgeStoreTest do
     ''')
   end
 
+  test "projection commits reject a vector bound to a different source chunk input" do
+    isolated(~S'''
+    for backend <- [state,remote] do
+      text=if backend==state,do: String.duplicate("a",2048)<>"snow 雪",else: "snow 雪"
+      {r,db}=invoke.(F.new(),backend,:put,put.(text,%{})); success.(r)
+      {snap,db}=snapshot.(db,backend); source=hd(snap["sources"]); {:ok,chunks}=E.chunks(source)
+      profile=%{"kind"=>"embedding","profile"=>"encoder"}
+      args=%{"source_id"=>"manual:one","generation"=>1,"projection_kind"=>"vectors","profile"=>profile,"chunks"=>Enum.map(chunks,& &1["chunk_id"])}
+      {r,db}=invoke.(db,backend,:projection_open,args); opened=success.(r)
+      vectors=Enum.map(chunks,fn chunk ->
+        {:ok,hash}=Ipse.Extension.canonical_digest([chunk["text"]])
+        {:ok,vector}=E.vector(%{"chunk_id"=>chunk["chunk_id"],"input_sha256"=>hash,"selection_sha256"=>E.sha256("selection"),"profile"=>"encoder","model"=>"fixture","dimensions"=>1,"values"=>[1.0]})
+        vector
+      end)
+      [one|rest]=vectors
+      wrong=case rest do [two] -> two["input_sha256"]; [] -> E.sha256("other input") end
+      swapped=[Map.put(one,"input_sha256",wrong)|rest]
+      before=db.records
+      {r,after_rejection}=invoke.(db,backend,:projection_commit,%{"draft"=>opened["draft"],"vectors"=>swapped})
+      assert {:done,{:error,:invalid_vectors,%{}}}=r
+      assert after_rejection.records==before
+      {r,db}=invoke.(after_rejection,backend,:projection_commit,%{"draft"=>opened["draft"],"vectors"=>vectors}); success.(r)
+      {snap,_}=snapshot.(db,backend)
+      assert Enum.sort_by(snap["projections"][source["source_key"]]["vectors"],& &1["chunk_id"])==Enum.sort_by(vectors,& &1["chunk_id"])
+    end
+    ''')
+  end
+
   test "one full4096 vector fits MCP reservation and all existing page and SDK bounds" do
     isolated(~S'''
     {r,db}=invoke.(F.new(),remote,:put,put.("maximum dimensions",%{})); success.(r)
@@ -286,7 +366,7 @@ defmodule Ipse.KnowledgeStoreTest do
     db=%{db|requests: []}
     {r,db}=invoke.(db,remote,:projection_open,%{"source_id"=>"manual:one","generation"=>1,"projection_kind"=>"vectors","profile"=>selected,"chunks"=>[chunk["chunk_id"]]})
     opened=success.(r); assert opened["coverage"]["total_effects"]<=16
-    {:ok,vector}=E.vector(%{"chunk_id"=>chunk["chunk_id"],"input_sha256"=>E.sha256("input"),"selection_sha256"=>E.sha256("selected encoder"),"profile"=>"encoder","model"=>"same-model","dimensions"=>4096,"values"=>[1.0|List.duplicate(0.0,4095)]})
+    {:ok,vector}=E.vector(%{"chunk_id"=>chunk["chunk_id"],"input_sha256"=>input_digest.(chunk),"selection_sha256"=>E.sha256("selected encoder"),"profile"=>"encoder","model"=>"same-model","dimensions"=>4096,"values"=>[1.0|List.duplicate(0.0,4095)]})
     {r,db}=invoke.(db,remote,:projection_commit,%{"draft"=>opened["draft"],"vectors"=>[vector]}); success.(r)
     assert effects.(db)+1<=16
     assert Enum.all?(Map.values(db.records),fn row -> byte_size(IO.iodata_to_binary(JSON.encode!(row["value"])))<=6000 end)
@@ -306,7 +386,7 @@ defmodule Ipse.KnowledgeStoreTest do
         {r,db}=invoke.(db,backend,:projection_open,args); opened=success.(r)
         assert opened["draft"]["vector_version"] === 2
         assert opened["coverage"]["vector_version"] === 2
-        {:ok,vector}=E.vector(%{"chunk_id"=>chunk["chunk_id"],"input_sha256"=>E.sha256(chunk["text"]),"selection_sha256"=>selection,"profile"=>"encoder","model"=>"same-model","dimensions"=>1,"values"=>[1.0]})
+        {:ok,vector}=E.vector(%{"chunk_id"=>chunk["chunk_id"],"input_sha256"=>input_digest.(chunk),"selection_sha256"=>selection,"profile"=>"encoder","model"=>"same-model","dimensions"=>1,"values"=>[1.0]})
         {r,db}=invoke.(db,backend,:projection_commit,%{"draft"=>opened["draft"],"vectors"=>[vector]}); success.(r)
         {snapshot,db}=snapshot.(db,backend)
         vectors=snapshot["projections"][source["source_key"]]["vectors"]
@@ -338,7 +418,7 @@ defmodule Ipse.KnowledgeStoreTest do
       args=%{"source_id"=>"manual:one","generation"=>1,"projection_kind"=>"vectors","profile"=>profile,"chunks"=>[chunk["chunk_id"]]}
       db=Enum.reduce(~w(resolved-v1 resolved-v2),db,fn model,db ->
         {r,db}=invoke.(db,backend,:projection_open,args); opened=success.(r)
-        {:ok,v}=E.vector(%{"chunk_id"=>chunk["chunk_id"],"input_sha256"=>E.sha256("input"),"selection_sha256"=>E.sha256("same approved selection"),"profile"=>"encoder","model"=>model,"dimensions"=>1,"values"=>[1.0]})
+        {:ok,v}=E.vector(%{"chunk_id"=>chunk["chunk_id"],"input_sha256"=>input_digest.(chunk),"selection_sha256"=>E.sha256("same approved selection"),"profile"=>"encoder","model"=>model,"dimensions"=>1,"values"=>[1.0]})
         {r,db}=invoke.(db,backend,:projection_commit,%{"draft"=>opened["draft"],"vectors"=>[v]}); success.(r)
         {snap,db}=snapshot.(db,backend)
         assert snap["projections"][source["source_key"]]["vectors"]==[v]
@@ -352,6 +432,34 @@ defmodule Ipse.KnowledgeStoreTest do
     ''')
   end
 
+  test "an older mismatched vector remains readable and can be replaced by reindex" do
+    isolated(~S'''
+    for backend <- [state,remote] do
+      {r,db}=invoke.(F.new(),backend,:put,put.("snow 雪",%{})); success.(r)
+      {snap,db}=snapshot.(db,backend); source=hd(snap["sources"]); {:ok,[chunk]}=E.chunks(source)
+      profile=%{"kind"=>"embedding","profile"=>"encoder"}
+      args=%{"source_id"=>"manual:one","generation"=>1,"projection_kind"=>"vectors","profile"=>profile,"chunks"=>[chunk["chunk_id"]]}
+      {:ok,vector}=E.vector(%{"chunk_id"=>chunk["chunk_id"],"input_sha256"=>input_digest.(chunk),"selection_sha256"=>E.sha256("selection"),"profile"=>"encoder","model"=>"fixture","dimensions"=>1,"values"=>[1.0]})
+      {r,db}=invoke.(db,backend,:projection_open,args); opened=success.(r)
+      {r,db}=invoke.(db,backend,:projection_commit,%{"draft"=>opened["draft"],"vectors"=>[vector]}); success.(r)
+      root=Enum.find(Map.values(db.records),&(get_in(&1,["value","kind"])=="root"))
+      [{id,head}]=Map.to_list(root["value"]["projections"])
+      wrong=E.sha256("different input")
+      change=fn map -> if Map.has_key?(map,"input_sha256"),do: Map.put(map,"input_sha256",wrong),else: map end
+      {old,new_ref}=Driver.rewrite_projection(db,head["ref"],change)
+      old=put_in(old.records[root["key"]]["value"]["projections"][id]["ref"],new_ref)
+      {snap,old}=snapshot.(old,backend)
+      assert [stale]=snap["projections"][source["source_key"]]["vectors"]
+      assert stale["input_sha256"]==wrong and not E.vector_input_matches_chunk?(stale,chunk)
+      assert hd(snap["sources"])["text"]==source["text"]
+      {r,old}=invoke.(old,backend,:projection_open,args); opened=success.(r)
+      {r,old}=invoke.(old,backend,:projection_commit,%{"draft"=>opened["draft"],"vectors"=>[vector]}); success.(r)
+      {snap,_}=snapshot.(old,backend)
+      assert snap["projections"][source["source_key"]]["vectors"]==[vector]
+    end
+    ''')
+  end
+
   test "legacy pages stay readable and reindexable while mixed chains refuse before deduplication" do
     isolated(~S'''
     for backend <- [state,remote] do
@@ -359,7 +467,7 @@ defmodule Ipse.KnowledgeStoreTest do
       {snap,db}=snapshot.(db,backend); source=hd(snap["sources"]); {:ok,[chunk]}=E.chunks(source)
       profile=%{"kind"=>"embedding","profile"=>"encoder"}
       args=%{"source_id"=>"manual:one","generation"=>1,"projection_kind"=>"vectors","profile"=>profile,"chunks"=>[chunk["chunk_id"]]}
-      {:ok,v}=E.vector(%{"chunk_id"=>chunk["chunk_id"],"input_sha256"=>E.sha256("input"),"selection_sha256"=>E.sha256("A"),"profile"=>"encoder","model"=>"same-model","dimensions"=>1,"values"=>[1.0]})
+      {:ok,v}=E.vector(%{"chunk_id"=>chunk["chunk_id"],"input_sha256"=>input_digest.(chunk),"selection_sha256"=>E.sha256("A"),"profile"=>"encoder","model"=>"same-model","dimensions"=>1,"values"=>[1.0]})
       db=Enum.reduce(1..2,db,fn _,db ->
         {r,db}=invoke.(db,backend,:projection_open,args); opened=success.(r)
         {r,db}=invoke.(db,backend,:projection_commit,%{"draft"=>opened["draft"],"vectors"=>[v]}); success.(r); db
@@ -424,7 +532,7 @@ defmodule Ipse.KnowledgeStoreTest do
     {r,db}=invoke.(db,state,:projection_abort,Map.drop(args,["projection_kind"])); assert success.(r)["status"]=="aborted"
     {r,db}=invoke.(db,state,:projection_open,args); next=success.(r)
     {r,db}=invoke.(db,state,:forget,%{"source_id"=>"manual:one","expected_revision"=>next["draft"]["revision"]}); success.(r)
-    {:ok,vector}=E.vector(%{"chunk_id"=>chunk["chunk_id"],"selection_sha256"=>E.sha256("selected encoder"),"input_sha256"=>E.sha256("opaque input"),"profile"=>"encoder","model"=>"model","dimensions"=>1,"values"=>[1.0]})
+    {:ok,vector}=E.vector(%{"chunk_id"=>chunk["chunk_id"],"selection_sha256"=>E.sha256("selected encoder"),"input_sha256"=>input_digest.(chunk),"profile"=>"encoder","model"=>"model","dimensions"=>1,"values"=>[1.0]})
     before=effects.(db)
     {r,db}=invoke.(db,state,:projection_commit,%{"draft"=>next["draft"],"vectors"=>[vector]}); assert {:done,{:error,:stale_draft,%{}}}=r
     assert effects.(db)==before

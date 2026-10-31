@@ -1,0 +1,7 @@
+ALIAS_REPAIR_MANIFEST_OK: %{
+  manifest_entries: 7,
+  source_files: 2,
+  runtime_files: 670,
+  changed_runtime_files: ["lib/ipse/ebin/Elixir.Ipse.Journal.beam"],
+  helper_unchanged: true
+}

@@ -65,6 +65,65 @@ system instructions. Resources expose bounded text. Invalid/non-text
 resource/prompt results stop as unknown; ordinary tool results identify omitted
 unsupported blocks. Returned content grants no permissions.
 
+## Review a tool for request refinement
+
+The experimental `/enhance` workflow and sessions started with `--planning` can
+invoke a specific MCP tool that you have declared suitable for planning. Review
+the server and tool yourself: Ipse cannot enforce its claimed read-only behavior.
+The declaration does not cover other tools, resources or prompts, and it does
+not bypass MCP approval.
+
+First start an ordinary chat with the selected `--mcp-config`, ask it to call
+the exact tool on public test input, and **deny** the approval. The displayed
+`External MCP target` contains `tool_id`, `server_id`, `name`,
+`descriptor_sha256`, and `origin.configured_endpoint_fingerprint`. Copy those
+values after reviewing the full target and arguments. Discovery starts the
+configured server or contacts its endpoint even when you deny the call.
+
+Add a declaration to your operator configuration, substituting the reviewed
+values below. The hash strings in this example are placeholders; they must match
+your actual target. Keep any existing settings in the same JSON object.
+
+```json
+{
+  "version": 1,
+  "planning_mcp_reads": {
+    "mcp__notes__lookup": {
+      "version": 1,
+      "server_id": "notes",
+      "tool": "lookup",
+      "endpoint_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "descriptor_sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+    }
+  }
+}
+```
+
+Start a **new** chat with both files selected:
+
+```sh
+ipse chat --provider chatgpt --config /private/path/operator.json \
+  --mcp-config /private/path/mcp.json --cwd /path/to/workspace
+```
+
+Run `/enhance` and review each proposed MCP call's complete arguments before
+approving it. The tool's result can inform the proposal and is recorded as draft
+evidence. A different endpoint, command, tool descriptor, or schema will not
+match the declaration; update it only after a new review. Unavailable evidence
+tracking also refuses the call. A read-only ceiling and explicit denial remain
+in force; headless execution still needs `--yes` for MCP. Workspace writes and
+shell commands do not gain permission from this declaration.
+
+To use the declared tool throughout a planning session instead, add `--planning`
+to the chat command above. Review each call's displayed target and arguments.
+The planning ceiling persists on resume; see [planning before acting](usage.md#plan-before-acting).
+
+Configuration is selected at Session startup. To revoke or change a declaration,
+stop pending work, exit the Session, edit the operator configuration and start a
+new Session. Editing the file does not change an already-running Session. A lost
+response can mean the server acted; inspect it before retrying. Resume never
+automatically replays an interrupted call.
+
 ## Allow a reviewed extension to use a selected item
 
 An extension can call one explicitly bound MCP item when it declares
@@ -246,6 +305,11 @@ leave an unknown outcome. The remaining batch stops. Inspect affected files or
 the remote service before explicitly asking again. Resume never replays the
 call. A helper launch refusal before startup is a known error; correct the
 executable/workspace/profile before a new attempt.
+
+Discovery can also stop with an unknown outcome before the requested tool is
+called. Initialization may already have reached the server. Keep the incomplete
+setup record, inspect the service, and resolve cleanup before making a new
+explicit request. Idle resume does not repeat discovery to fill in that record.
 
 A tool can return an error after performing part of its work. Ipse displays the
 server's redacted diagnostic with a warning about possible effects; an extension

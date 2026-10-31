@@ -24,7 +24,7 @@ defmodule Ipse.Extension.SemanticAdmission do
     with {:ok, context} <- context(config, session_id, 0),
          true <- config[:semantic_admission]["version"] === 2,
          true <- context["identity"] === identity,
-         true <- descriptor["stage"] in ~w(invoke.tool invoke.command),
+         true <- descriptor["stage"] in ~w(invoke.tool invoke.command event.job),
          true <- descriptor["instance"] == identity["instance"],
          true <- Ipse.Extension.Registry.live?(identity),
          admission = config[:semantic_admission],
@@ -51,6 +51,7 @@ defmodule Ipse.Extension.SemanticAdmission do
             with true <- SemanticConsent.policy?(policy),
                  true <- not context["mode"]["headless"] or policy["headless"],
                  {:ok, class} <- outer_class(policy, base["descriptor_sha256"]),
+                 true <- descriptor["stage"] != "event.job" or class == "collection.read",
                  :ok <- Mode.knowledge(context["mode"], class) do
               {:ok, Map.put(base, "class", class)}
             else
@@ -89,7 +90,8 @@ defmodule Ipse.Extension.SemanticAdmission do
       binding["artifact_sha256"] == identity["artifact_sha256"] and
       binding["descriptor_sha256"] == Ipse.JSON.digest([descriptor]) and
       descriptor["instance"] == identity["instance"] and
-      descriptor["stage"] in ~w(invoke.tool invoke.command) and
+      descriptor["stage"] in ~w(invoke.tool invoke.command event.job) and
+      (descriptor["stage"] != "event.job" or binding["class"] == "collection.read") and
       binding["namespace"] == pin["namespace"] and
       (is_nil(metadata) or
          (valid?(metadata["semantic_admission"], session_id) and

@@ -83,6 +83,39 @@ defmodule Ipse.QuestionSessionTest do
       }
   end
 
+  defmodule RepeatQuestion do
+    def complete(config, messages, _, _) do
+      results = Enum.filter(messages, &(&1["role"] == "tool"))
+      send(config.test_pid, {:repeat_results, results})
+
+      if length(results) >= 2 do
+        {:ok, %{"role" => "assistant", "content" => "Done"}, %{}}
+      else
+        question = %{"id" => "deadline", "kind" => "text", "prompt" => "Which deadline?"}
+        call_id = if results == [], do: "first-question", else: "second-question"
+
+        question =
+          if results == [],
+            do: question,
+            else: question |> Map.put("options", nil) |> Map.put("recommended", nil)
+
+        args = %{"questions" => [Map.put(question, "id", call_id)]}
+
+        {:ok,
+         %{
+           "role" => "assistant",
+           "content" => "",
+           "tool_calls" => [
+             %{
+               "id" => call_id,
+               "function" => %{"name" => "ask_operator", "arguments" => Jason.encode!(args)}
+             }
+           ]
+         }, %{}}
+      end
+    end
+  end
+
   setup do
     root = Path.join(System.tmp_dir!(), "ipse-question-#{System.unique_integer([:positive])}")
     File.mkdir_p!(root)
@@ -228,6 +261,63 @@ defmodule Ipse.QuestionSessionTest do
     assert_receive {:ipse, ^pid, {:done, :ok}}, 2000
     {:ok, events} = Journal.load(ctx.dir, Session.info(pid).id)
     assert Enum.count(events, &(&1["type"] == "operator_answer")) == 1
+  end
+
+  test "duplicate questions are returned to the model without asking the operator", ctx do
+    question = %{"id" => "first", "kind" => "text", "prompt" => "Which deadline?"}
+    questions = %{"questions" => [question, Map.put(question, "id", "second")]}
+    {:ok, pid} = start(ctx, %{questions: questions})
+    on_exit(fn -> if Process.alive?(pid), do: Session.close(pid) end)
+
+    assert :ok = Session.prompt(pid, "Plan the deadline")
+    assert_receive {:ipse, ^pid, {:tool_result, "ask_operator", message}}, 5_000
+    assert message =~ "Do not repeat"
+    assert_receive {:ipse, ^pid, {:done, :ok}}, 5_000
+    refute_receive {:ipse, ^pid, {:question, _, _}}, 20
+
+    {:ok, events} = Journal.load(ctx.dir, Session.info(pid).id)
+    refute Enum.any?(events, &(&1["type"] == "operator_question"))
+    assert {:ok, _} = Session.restore_context(events)
+  end
+
+  test "an answered question is not asked again in the same turn", ctx do
+    {:ok, pid} = start(ctx, %{provider_module: RepeatQuestion})
+    on_exit(fn -> if Process.alive?(pid), do: Session.close(pid) end)
+    assert :ok = Session.prompt(pid, "Plan the deadline")
+    assert_receive {:ipse, ^pid, {:question, "first-question", _}}, 5_000
+    assert :ok = Session.answer(pid, "first-question", %{"first-question" => "Friday"})
+    assert_receive {:ipse, ^pid, {:tool_result, "ask_operator", _answer}}, 5_000
+    assert_receive {:ipse, ^pid, {:tool_result, "ask_operator", repeated}}, 5_000
+    assert repeated =~ "already answered"
+    assert_receive {:ipse, ^pid, {:done, :ok}}, 5_000
+    refute_receive {:ipse, ^pid, {:question, "second-question", _}}, 20
+
+    {:ok, events} = Journal.load(ctx.dir, Session.info(pid).id)
+    assert Enum.count(events, &(&1["type"] == "operator_question")) == 1
+    assert {:ok, _} = Session.restore_context(events)
+  end
+
+  test "a resumed pending question still suppresses its answered repeat", ctx do
+    extra = %{provider_module: RepeatQuestion}
+    {:ok, pid} = start(ctx, extra)
+    assert :ok = Session.prompt(pid, "Plan the deadline")
+    assert_receive {:ipse, ^pid, {:question, "first-question", _}}, 5_000
+    id = Session.info(pid).id
+    kill(pid)
+
+    assert {:ok, resumed} = resume(ctx, extra, id)
+    on_exit(fn -> if Process.alive?(resumed), do: Session.close(resumed) end)
+    assert Session.info(resumed).phase == :question
+    assert :ok = Session.answer(resumed, "first-question", %{"first-question" => "Friday"})
+    assert_receive {:ipse, ^resumed, {:tool_result, "ask_operator", _answer}}, 5_000
+    assert_receive {:ipse, ^resumed, {:tool_result, "ask_operator", repeated}}, 5_000
+    assert repeated =~ "already answered"
+    assert_receive {:ipse, ^resumed, {:done, :ok}}, 5_000
+    refute_receive {:ipse, ^resumed, {:question, "second-question", _}}, 20
+
+    {:ok, events} = Journal.load(ctx.dir, id)
+    assert Enum.count(events, &(&1["type"] == "operator_question")) == 1
+    assert {:ok, _} = Session.restore_context(events)
   end
 
   test "brutal owner death restores the question and recorded effects without inference/replay",

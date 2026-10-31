@@ -230,4 +230,184 @@ defmodule Ipse.Extension.CollectionManagedV3Test do
         else: assert({:error, :managed_normalization_refused} = result)
     end
   end
+
+  test "pending metadata summaries share the same fail-closed read budget", c do
+    for count <- [4, 5] do
+      separate = %{c | root: c.root <> "-pending-#{count}"}
+      original = request(0)
+
+      result =
+        C.execute_managed_v3(
+          separate.root,
+          c.project,
+          original,
+          Ipse.Usage.id(),
+          JSON.sha256("recipe"),
+          fn _, read ->
+            assert {:error, :managed_read_refused} =
+                     Task.async(fn -> read.(%{"op" => "pending_summary"}) end) |> Task.await()
+
+            results = for _ <- 1..count, do: read.(%{"op" => "pending_summary"})
+
+            assert Enum.take(results, 4) ==
+                     List.duplicate({:ok, %{"count" => 0, "bytes" => 0}}, 4)
+
+            {:ok, normalized(original, initial()), %{"version" => 3}}
+          end
+        )
+
+      if count == 4,
+        do: assert({:ok, _} = result),
+        else: assert({:error, :managed_normalization_refused} = result)
+    end
+  end
+
+  test "pending summary and publication share the Collection lock across owners", c do
+    assert {:ok, _} = run(c, 0, initial())
+
+    for batch <- 0..7 do
+      count = if batch == 7, do: 7, else: 8
+
+      changes =
+        for offset <- 1..count do
+          n = batch * 8 + offset
+          change("pending." <> fence(n, 64), 0, %{"synthetic" => n})
+        end
+
+      assert {:ok, _} =
+               C.execute(
+                 c.root,
+                 c.project,
+                 %{
+                   "op" => "commit",
+                   "expected_generation" => batch + 1,
+                   "advance_floor" => false,
+                   "changes" => changes
+                 },
+                 Ipse.Usage.id()
+               )
+    end
+
+    parent = self()
+
+    proposal = fn n, generation ->
+      %{
+        "op" => "commit",
+        "expected_generation" => generation,
+        "advance_floor" => true,
+        "changes" => [change("pending." <> fence(n, 64), 0)]
+      }
+    end
+
+    first = proposal.(100, 9)
+
+    worker =
+      Task.async(fn ->
+        C.execute_managed_v3(
+          c.root,
+          c.project,
+          first,
+          Ipse.Usage.id(),
+          JSON.sha256("recipe"),
+          fn _, read ->
+            assert {:ok, %{"count" => 63}} = read.(%{"op" => "pending_summary"})
+            send(parent, {:locked_summary, self()})
+            receive do: (:release -> :ok)
+            {:ok, normalized(first, [change(a(0), 1)]), %{"version" => 3}}
+          end
+        )
+      end)
+
+    assert_receive {:locked_summary, owner}, 5_000
+    second = proposal.(101, 9)
+
+    paths = Enum.flat_map(:code.get_path(), &["-pa", List.to_string(&1)])
+
+    program = """
+    {:ok, _} = Application.ensure_all_started(:ipse)
+    result = Ipse.Extension.Collection.execute_managed_v3(
+      #{inspect(c.root)}, #{inspect(c.project)}, #{inspect(second)},
+      #{inspect(Ipse.Usage.id())}, #{inspect(JSON.sha256("recipe"))},
+      fn _, _ -> IO.puts("UNEXPECTED_CALLBACK"); {:error, :unexpected} end)
+    case result do
+      {:error, :collection_unavailable} -> IO.puts("BUSY")
+      {:conflict, _} -> IO.puts("CONFLICT")
+      _ -> System.halt(2)
+    end
+    """
+
+    invoke_other_vm = fn ->
+      System.cmd("elixir", ["--erl", "+S 2:2"] ++ paths ++ ["-e", program],
+        stderr_to_stdout: true
+      )
+    end
+
+    assert {"BUSY\n", 0} = invoke_other_vm.()
+
+    rival =
+      Task.async(fn ->
+        send(parent, :rival_started)
+
+        C.execute_managed_v3(
+          c.root,
+          c.project,
+          second,
+          Ipse.Usage.id(),
+          JSON.sha256("recipe"),
+          fn _, _ ->
+            send(parent, :rival_entered)
+            {:ok, normalized(second, [change(a(0), 1)]), %{"version" => 3}}
+          end
+        )
+      end)
+
+    assert_receive :rival_started, 5_000
+    refute_receive :rival_entered, 100
+    send(owner, :release)
+    assert {:ok, _} = Task.await(worker, 10_000)
+    assert {"CONFLICT\n", 0} = invoke_other_vm.()
+    rival_result = Task.await(rival, 10_000)
+
+    assert match?({:conflict, _}, rival_result) or
+             rival_result == {:error, :collection_unavailable}
+
+    refute_receive :rival_entered
+
+    last = proposal.(102, 10)
+
+    current_program = """
+    {:ok, _} = Application.ensure_all_started(:ipse)
+    result = Ipse.Extension.Collection.execute_managed_v3(
+      #{inspect(c.root)}, #{inspect(c.project)}, #{inspect(last)},
+      #{inspect(Ipse.Usage.id())}, #{inspect(JSON.sha256("recipe"))},
+      fn _, read ->
+        case read.(%{"op" => "pending_summary"}) do
+          {:ok, %{"count" => 64}} -> IO.puts("FULL_64"); {:error, :queue_full}
+          _ -> System.halt(3)
+        end
+      end)
+    case result do
+      {:error, :managed_normalization_refused} -> IO.puts("REFUSED")
+      _ -> System.halt(2)
+    end
+    """
+
+    assert {"FULL_64\nREFUSED\n", 0} =
+             System.cmd("elixir", ["--erl", "+S 2:2"] ++ paths ++ ["-e", current_program],
+               stderr_to_stdout: true
+             )
+
+    assert {:error, :managed_normalization_refused} =
+             C.execute_managed_v3(
+               c.root,
+               c.project,
+               last,
+               Ipse.Usage.id(),
+               JSON.sha256("recipe"),
+               fn _, read ->
+                 assert {:ok, %{"count" => 64}} = read.(%{"op" => "pending_summary"})
+                 {:error, :queue_full}
+               end
+             )
+  end
 end

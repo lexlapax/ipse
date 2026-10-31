@@ -1,0 +1,793 @@
+Choose the knowledge identity for /tmp/ipse-remember-terminal-publication-v2-20261029/project.
+Repository shares only with reciprocally verified worktrees; folder means only this canonical folder.
+Type one exact choice: folder da26dad1effb8f61
+> folder da26dad1effb8f61
+Enable native notes for /tmp/ipse-remember-terminal-publication-v2-20261029/project (folder).
+This selection takes effect in the next new session, including headless run.
+Protected note saving is currently unavailable in this runtime; saved permission is retained.
+Literal notes require a separate native statement/category review or a typed host outcome; other inputs remain pending.
+Ordinary notes: 90 days; pending proposals: 7 days. Current/preferences may persist.
+No secondary model calls are authorized. Ordinary tool approvals remain separate.
+Exact permission, route, retention, artifact and daily limits:
+{
+  "artifact_sha256": "578cd2ade037601ee7f17a2b69f901d116efc664369459e53d9be566cdf317fc",
+  "expires_at_ms": 1824853895528,
+  "headless": true,
+  "limits": {
+    "cost_nanos": 0,
+    "download_bytes": 0,
+    "input_bytes": 2097152,
+    "model_calls": 0,
+    "operations": 100,
+    "output_bytes": 4194304
+  },
+  "operations": [
+    "notes.capture",
+    "notes.propose",
+    "notes.recall"
+  ],
+  "period_ms": 86400000,
+  "project": "b74c7c4dc6226d61d1a3c6f0568420296f3c202ee4ad0c7dbda156c37008e020",
+  "settings": {
+    "activation": {
+      "allow_children": false,
+      "artifact": "578cd2ade037601ee7f17a2b69f901d116efc664369459e53d9be566cdf317fc",
+      "artifact_sha256": "578cd2ade037601ee7f17a2b69f901d116efc664369459e53d9be566cdf317fc",
+      "capabilities": [
+        "event.job",
+        "host.actions",
+        "host.actions.mixed",
+        "host.collection.managed",
+        "host.collection.read",
+        "host.context",
+        "host.sources",
+        "invoke.command",
+        "invoke.result.pages",
+        "invoke.tool"
+      ],
+      "instance": "knowledge",
+      "kind": "reviewed.bundle",
+      "lifetime": "session",
+      "main_timeout_ms": 90000,
+      "options": {
+        "embedding": {},
+        "extraction": {},
+        "fetch": {},
+        "rerank": {},
+        "retrieval": {},
+        "search": {},
+        "stores": {},
+        "version": 1
+      },
+      "order": 100,
+      "service_refs": [
+        {
+          "operation": "main",
+          "profile": null,
+          "service_id": "demo"
+        }
+      ],
+      "sidecar_sha256": "6add073e340583f2debc3a59475298ccb2359bc1aab7f77b65f704fbb9553549",
+      "version": 1
+    },
+    "constraints": {
+      "78b6d7943b3430f0225a3ee45cc4cffc27de14ddd97c39f8e38c9f8fb85ca68e": {
+        "allow_delete": false,
+        "evidence_path": [
+          "evidence",
+          "sources"
+        ],
+        "key_prefix": "pending.",
+        "source_categories": [
+          "assistant_proposal",
+          "interactive_operator",
+          "native_operator_answer",
+          "native_operator_assertion",
+          "typed_host_outcome",
+          "unattended_input"
+        ],
+        "value_schema": {
+          "additionalProperties": false,
+          "properties": {
+            "assigned_category": {
+              "enum": [
+                "ordinary",
+                "preference",
+                "current"
+              ],
+              "type": "string"
+            },
+            "created_at_ms": {
+              "maximum": 9007199254740991,
+              "minimum": 0,
+              "type": "integer"
+            },
+            "event_at_ms": {
+              "maximum": 9007199254740991,
+              "minimum": 0,
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "evidence": {
+              "additionalProperties": false,
+              "properties": {
+                "sources": {
+                  "items": {
+                    "additionalProperties": false,
+                    "properties": {
+                      "content_sha256": {
+                        "maxLength": 64,
+                        "minLength": 64,
+                        "type": "string"
+                      },
+                      "coverage": {
+                        "enum": [
+                          "available",
+                          "partial"
+                        ],
+                        "type": "string"
+                      },
+                      "end_byte": {
+                        "maximum": 9007199254740991,
+                        "minimum": 0,
+                        "type": "integer"
+                      },
+                      "kind": {
+                        "enum": [
+                          "input.original",
+                          "input.operator_answer",
+                          "answer.original",
+                          "tool.outcome",
+                          "input.assertion.ordinary",
+                          "input.assertion.preference",
+                          "input.assertion.current"
+                        ],
+                        "type": "string"
+                      },
+                      "occurrence_id": {
+                        "maxLength": 32,
+                        "minLength": 32,
+                        "type": "string"
+                      },
+                      "origin": {
+                        "enum": [
+                          "assistant_proposal",
+                          "interactive_operator",
+                          "native_operator_answer",
+                          "native_operator_assertion",
+                          "typed_host_outcome",
+                          "unattended_input"
+                        ],
+                        "type": "string"
+                      },
+                      "path": {
+                        "type": "null"
+                      },
+                      "quote": {
+                        "maxLength": 1024,
+                        "minLength": 1,
+                        "type": "string"
+                      },
+                      "quote_sha256": {
+                        "maxLength": 64,
+                        "minLength": 64,
+                        "type": "string"
+                      },
+                      "receipt_sha256": {
+                        "maxLength": 64,
+                        "minLength": 64,
+                        "type": "string"
+                      },
+                      "session_id": {
+                        "maxLength": 32,
+                        "minLength": 32,
+                        "type": "string"
+                      },
+                      "start_byte": {
+                        "maximum": 9007199254740991,
+                        "minimum": 0,
+                        "type": "integer"
+                      },
+                      "version": {
+                        "enum": [
+                          1
+                        ],
+                        "type": "integer"
+                      },
+                      "version_id": {
+                        "maxLength": 32,
+                        "minLength": 32,
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "content_sha256",
+                      "coverage",
+                      "end_byte",
+                      "kind",
+                      "occurrence_id",
+                      "origin",
+                      "path",
+                      "quote",
+                      "quote_sha256",
+                      "receipt_sha256",
+                      "session_id",
+                      "start_byte",
+                      "version",
+                      "version_id"
+                    ],
+                    "type": "object"
+                  },
+                  "maxItems": 1,
+                  "minItems": 1,
+                  "type": "array"
+                }
+              },
+              "required": [
+                "sources"
+              ],
+              "type": "object"
+            },
+            "expires_at_ms": {
+              "maximum": 9007199254740991,
+              "minimum": 0,
+              "type": "integer"
+            },
+            "id": {
+              "maxLength": 64,
+              "minLength": 64,
+              "type": "string"
+            },
+            "kind": {
+              "enum": [
+                "proposal"
+              ],
+              "type": "string"
+            },
+            "lineage": {
+              "maxLength": 64,
+              "minLength": 64,
+              "type": "string"
+            },
+            "reason": {
+              "maxLength": 256,
+              "minLength": 1,
+              "type": "string"
+            },
+            "state": {
+              "enum": [
+                "pending"
+              ],
+              "type": "string"
+            },
+            "text": {
+              "maxLength": 2048,
+              "minLength": 1,
+              "type": "string"
+            },
+            "version": {
+              "enum": [
+                1
+              ],
+              "type": "integer"
+            }
+          },
+          "required": [
+            "assigned_category",
+            "created_at_ms",
+            "event_at_ms",
+            "evidence",
+            "expires_at_ms",
+            "id",
+            "kind",
+            "lineage",
+            "reason",
+            "state",
+            "text",
+            "version"
+          ],
+          "type": "object"
+        },
+        "version": 1
+      },
+      "d709745ab18405dff572c41053eda5cbe12c350ebbabdcd0d52ea1e80962368a": {
+        "allow_delete": false,
+        "evidence_path": [
+          "evidence",
+          "sources"
+        ],
+        "key_prefix": "note.",
+        "source_categories": [
+          "native_operator_assertion",
+          "typed_host_outcome"
+        ],
+        "value_schema": {
+          "additionalProperties": false,
+          "properties": {
+            "category": {
+              "enum": [
+                "ordinary",
+                "preference",
+                "current"
+              ],
+              "type": "string"
+            },
+            "created_at_ms": {
+              "maximum": 9007199254740991,
+              "minimum": 0,
+              "type": "integer"
+            },
+            "event_at_ms": {
+              "maximum": 9007199254740991,
+              "minimum": 0,
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "evidence": {
+              "additionalProperties": false,
+              "properties": {
+                "sources": {
+                  "items": {
+                    "additionalProperties": false,
+                    "properties": {
+                      "content_sha256": {
+                        "maxLength": 64,
+                        "minLength": 64,
+                        "type": "string"
+                      },
+                      "coverage": {
+                        "enum": [
+                          "available",
+                          "partial"
+                        ],
+                        "type": "string"
+                      },
+                      "end_byte": {
+                        "maximum": 9007199254740991,
+                        "minimum": 0,
+                        "type": "integer"
+                      },
+                      "kind": {
+                        "enum": [
+                          "input.original",
+                          "input.operator_answer",
+                          "answer.original",
+                          "tool.outcome",
+                          "input.assertion.ordinary",
+                          "input.assertion.preference",
+                          "input.assertion.current"
+                        ],
+                        "type": "string"
+                      },
+                      "occurrence_id": {
+                        "maxLength": 32,
+                        "minLength": 32,
+                        "type": "string"
+                      },
+                      "origin": {
+                        "enum": [
+                          "assistant_proposal",
+                          "interactive_operator",
+                          "native_operator_answer",
+                          "native_operator_assertion",
+                          "typed_host_outcome",
+                          "unattended_input"
+                        ],
+                        "type": "string"
+                      },
+                      "path": {
+                        "type": "null"
+                      },
+                      "quote": {
+                        "maxLength": 1024,
+                        "minLength": 1,
+                        "type": "string"
+                      },
+                      "quote_sha256": {
+                        "maxLength": 64,
+                        "minLength": 64,
+                        "type": "string"
+                      },
+                      "receipt_sha256": {
+                        "maxLength": 64,
+                        "minLength": 64,
+                        "type": "string"
+                      },
+                      "session_id": {
+                        "maxLength": 32,
+                        "minLength": 32,
+                        "type": "string"
+                      },
+                      "start_byte": {
+                        "maximum": 9007199254740991,
+                        "minimum": 0,
+                        "type": "integer"
+                      },
+                      "version": {
+                        "enum": [
+                          1
+                        ],
+                        "type": "integer"
+                      },
+                      "version_id": {
+                        "maxLength": 32,
+                        "minLength": 32,
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "content_sha256",
+                      "coverage",
+                      "end_byte",
+                      "kind",
+                      "occurrence_id",
+                      "origin",
+                      "path",
+                      "quote",
+                      "quote_sha256",
+                      "receipt_sha256",
+                      "session_id",
+                      "start_byte",
+                      "version",
+                      "version_id"
+                    ],
+                    "type": "object"
+                  },
+                  "maxItems": 1,
+                  "minItems": 1,
+                  "type": "array"
+                }
+              },
+              "required": [
+                "sources"
+              ],
+              "type": "object"
+            },
+            "expires_at_ms": {
+              "maximum": 9007199254740991,
+              "minimum": 0,
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "id": {
+              "maxLength": 64,
+              "minLength": 64,
+              "type": "string"
+            },
+            "lineage": {
+              "maxLength": 64,
+              "minLength": 64,
+              "type": "string"
+            },
+            "metadata_reserve": {
+              "enum": [
+                "",
+                "0000000000000000000000000000000000000000000000000000000000000000"
+              ],
+              "type": "string"
+            },
+            "observed_at_ms": {
+              "maximum": 9007199254740991,
+              "minimum": 0,
+              "type": "integer"
+            },
+            "previous_category": {
+              "type": "null"
+            },
+            "reason": {
+              "maxLength": 256,
+              "minLength": 1,
+              "type": "string"
+            },
+            "superseded_at_ms": {
+              "type": "null"
+            },
+            "text": {
+              "maxLength": 2048,
+              "minLength": 1,
+              "type": "string"
+            },
+            "version": {
+              "enum": [
+                1
+              ],
+              "type": "integer"
+            }
+          },
+          "required": [
+            "category",
+            "created_at_ms",
+            "event_at_ms",
+            "evidence",
+            "expires_at_ms",
+            "id",
+            "lineage",
+            "metadata_reserve",
+            "observed_at_ms",
+            "previous_category",
+            "reason",
+            "superseded_at_ms",
+            "text",
+            "version"
+          ],
+          "type": "object"
+        },
+        "version": 1
+      }
+    },
+    "domain": "knowledge",
+    "effects": [
+      {
+        "class": "collection.publish",
+        "constraints_sha256": "d709745ab18405dff572c41053eda5cbe12c350ebbabdcd0d52ea1e80962368a",
+        "inner_op": "collection.managed",
+        "operation": "notes.capture",
+        "outer_sha256": "cf9f0a54e5190bc3b41039899bcd6c0eee9ffa2367dfa15b2d8b1e55ffd16e53",
+        "recipe_sha256": "818634825cb494606d25195a6601971a17542ed2caa22f28d1e18b1971b18cf7"
+      },
+      {
+        "class": "collection.publish",
+        "constraints_sha256": "d709745ab18405dff572c41053eda5cbe12c350ebbabdcd0d52ea1e80962368a",
+        "inner_op": "collection.managed",
+        "operation": "notes.capture",
+        "outer_sha256": "f5a509bff213a11a6b58186e73da0ba7e08017d4a89c4b959e683f9f6433e91a",
+        "recipe_sha256": "818634825cb494606d25195a6601971a17542ed2caa22f28d1e18b1971b18cf7"
+      },
+      {
+        "class": "collection.publish",
+        "constraints_sha256": "78b6d7943b3430f0225a3ee45cc4cffc27de14ddd97c39f8e38c9f8fb85ca68e",
+        "inner_op": "collection.managed",
+        "operation": "notes.propose",
+        "outer_sha256": "cf9f0a54e5190bc3b41039899bcd6c0eee9ffa2367dfa15b2d8b1e55ffd16e53",
+        "recipe_sha256": "d2622a1dd0ede7863d677e7ba76ef22f29509f5fc19fb72096c1b5ff70e7505d"
+      },
+      {
+        "class": "collection.publish",
+        "constraints_sha256": "78b6d7943b3430f0225a3ee45cc4cffc27de14ddd97c39f8e38c9f8fb85ca68e",
+        "inner_op": "collection.managed",
+        "operation": "notes.propose",
+        "outer_sha256": "f5a509bff213a11a6b58186e73da0ba7e08017d4a89c4b959e683f9f6433e91a",
+        "recipe_sha256": "d2622a1dd0ede7863d677e7ba76ef22f29509f5fc19fb72096c1b5ff70e7505d"
+      },
+      {
+        "class": "collection.read",
+        "inner_op": "collection.call",
+        "managed_read": [
+          "818634825cb494606d25195a6601971a17542ed2caa22f28d1e18b1971b18cf7",
+          "d2622a1dd0ede7863d677e7ba76ef22f29509f5fc19fb72096c1b5ff70e7505d"
+        ],
+        "operation": "notes.recall",
+        "outer_sha256": "5853488b301eebd88d26683849d9a4aee30db0ce9aa68a93d6f8a1736ff9b694"
+      },
+      {
+        "class": "collection.read",
+        "inner_op": "collection.call",
+        "managed_read": [
+          "818634825cb494606d25195a6601971a17542ed2caa22f28d1e18b1971b18cf7",
+          "d2622a1dd0ede7863d677e7ba76ef22f29509f5fc19fb72096c1b5ff70e7505d"
+        ],
+        "operation": "notes.recall",
+        "outer_sha256": "bb98a46f483a56058075dccd8fef4654b50bb290c717ee218f4bacb021039697"
+      },
+      {
+        "class": "collection.read",
+        "inner_op": "collection.call",
+        "managed_read": [
+          "818634825cb494606d25195a6601971a17542ed2caa22f28d1e18b1971b18cf7",
+          "d2622a1dd0ede7863d677e7ba76ef22f29509f5fc19fb72096c1b5ff70e7505d"
+        ],
+        "operation": "notes.recall",
+        "outer_sha256": "cf9f0a54e5190bc3b41039899bcd6c0eee9ffa2367dfa15b2d8b1e55ffd16e53"
+      },
+      {
+        "class": "collection.read",
+        "inner_op": "collection.call",
+        "managed_read": [
+          "818634825cb494606d25195a6601971a17542ed2caa22f28d1e18b1971b18cf7",
+          "d2622a1dd0ede7863d677e7ba76ef22f29509f5fc19fb72096c1b5ff70e7505d"
+        ],
+        "operation": "notes.recall",
+        "outer_sha256": "ed389dd91a2ffacc289b2d9193e3c26bff237c46793a7becc1e0cf5f0559c413"
+      },
+      {
+        "class": "collection.read",
+        "inner_op": "collection.call",
+        "managed_read": [
+          "818634825cb494606d25195a6601971a17542ed2caa22f28d1e18b1971b18cf7",
+          "d2622a1dd0ede7863d677e7ba76ef22f29509f5fc19fb72096c1b5ff70e7505d"
+        ],
+        "operation": "notes.recall",
+        "outer_sha256": "f548bb5ce92246f7c3913b4156d07a9790bcfb858c8f1f7520ab195fe32d70cf"
+      },
+      {
+        "class": "collection.read",
+        "inner_op": "collection.call",
+        "managed_read": [
+          "818634825cb494606d25195a6601971a17542ed2caa22f28d1e18b1971b18cf7",
+          "d2622a1dd0ede7863d677e7ba76ef22f29509f5fc19fb72096c1b5ff70e7505d"
+        ],
+        "operation": "notes.recall",
+        "outer_sha256": "f5a509bff213a11a6b58186e73da0ba7e08017d4a89c4b959e683f9f6433e91a"
+      }
+    ],
+    "identity_sha256": "dad99d2a5017fd6cc3f4ea1c99885a53ee5a29dd8d9d7a9eeda2d7d2e9ffb8da",
+    "instance": "knowledge",
+    "namespace": "d388d990c68798b1060dfd66f4e5df073a04061424610f0c6469673c3f80ed2f",
+    "recipes": {
+      "818634825cb494606d25195a6601971a17542ed2caa22f28d1e18b1971b18cf7": {
+        "category_path": [
+          "category"
+        ],
+        "constraints_sha256": "d709745ab18405dff572c41053eda5cbe12c350ebbabdcd0d52ea1e80962368a",
+        "evidence_path": [
+          "evidence",
+          "sources"
+        ],
+        "key_prefix": "note.",
+        "kind": "literal_source",
+        "lineage_path": [
+          "lineage"
+        ],
+        "override_prefix": "override.",
+        "rules": [
+          {
+            "category": "current",
+            "max_age_ms": null,
+            "origins": [
+              "native_operator_assertion"
+            ]
+          },
+          {
+            "category": "ordinary",
+            "max_age_ms": 7776000000,
+            "origins": [
+              "native_operator_assertion",
+              "typed_host_outcome"
+            ]
+          },
+          {
+            "category": "preference",
+            "max_age_ms": null,
+            "origins": [
+              "native_operator_assertion"
+            ]
+          }
+        ],
+        "text_path": [
+          "text"
+        ],
+        "version": 1
+      },
+      "d2622a1dd0ede7863d677e7ba76ef22f29509f5fc19fb72096c1b5ff70e7505d": {
+        "category_path": [
+          "assigned_category"
+        ],
+        "constraints_sha256": "78b6d7943b3430f0225a3ee45cc4cffc27de14ddd97c39f8e38c9f8fb85ca68e",
+        "evidence_path": [
+          "evidence",
+          "sources"
+        ],
+        "key_prefix": "pending.",
+        "kind": "proposal",
+        "lineage_path": [
+          "lineage"
+        ],
+        "override_prefix": "override.",
+        "rules": [
+          {
+            "category": "current",
+            "max_age_ms": 604800000,
+            "origins": [
+              "assistant_proposal",
+              "interactive_operator",
+              "native_operator_answer",
+              "native_operator_assertion",
+              "typed_host_outcome",
+              "unattended_input"
+            ]
+          },
+          {
+            "category": "ordinary",
+            "max_age_ms": 604800000,
+            "origins": [
+              "assistant_proposal",
+              "interactive_operator",
+              "native_operator_answer",
+              "native_operator_assertion",
+              "typed_host_outcome",
+              "unattended_input"
+            ]
+          },
+          {
+            "category": "preference",
+            "max_age_ms": 604800000,
+            "origins": [
+              "assistant_proposal",
+              "interactive_operator",
+              "native_operator_answer",
+              "native_operator_assertion",
+              "typed_host_outcome",
+              "unattended_input"
+            ]
+          }
+        ],
+        "text_path": [
+          "text"
+        ],
+        "version": 1
+      }
+    },
+    "retention": {
+      "automatic": 90,
+      "manual": 3650
+    },
+    "routes": [
+      {
+        "account_controls": null,
+        "billing_mode": "none",
+        "cache_retention": null,
+        "endpoint": "demo://local",
+        "model": "scripted",
+        "operation": "main",
+        "processing_region": null,
+        "profile": null,
+        "provider": "demo",
+        "service_id": "demo",
+        "storage_region": null
+      }
+    ],
+    "scope": {
+      "kind": "project",
+      "worktree_id": null
+    },
+    "sources": {
+      "categories": [
+        "assistant_proposal",
+        "interactive_operator",
+        "native_operator_answer",
+        "native_operator_assertion",
+        "typed_host_outcome",
+        "unattended_input"
+      ],
+      "exclusions": []
+    },
+    "storage": {
+      "collection": "knowledge",
+      "kind": "local_collection"
+    },
+    "version": 2
+  },
+  "source_sha256": "098be7eda6b0f8e8efb36093fb7cc6cdde8bb55bc60f9e43567576c0d88fdd77",
+  "version": 1
+}
+Type enable 09f87be0efd08dfb to confirm this exact review, or anything else to cancel.
+> enable 09f87be0efd08dfb
+Saved knowledge permission. Start a new chat or run to adopt this selection.
+Protected note saving is currently unavailable in this runtime; saved permission is retained.
+IPSE_SUPERSESSION_TERMINAL_READY
+Type a task, $review, or /help. Use /cancel while work is running.
+you> /remember ordinary SYNTHETIC_TERMINAL_STATEMENT
+Remember this exact statement as your own ordinary note?
+Statement: "SYNTHETIC_TERMINAL_STATEMENT"
+Retention: at most 90 days.
+Workspace: "/tmp/ipse-remember-terminal-publication-v2-20261029/project"
+Project: b74c7c4dc6226d61d1a3c6f0568420296f3c202ee4ad0c7dbda156c37008e020
+Collection: d388d990c68798b1060dfd66f4e5df073a04061424610f0c6469673c3f80ed2f
+Artifact: 578cd2ade037601ee7f17a2b69f901d116efc664369459e53d9be566cdf317fc
+Permission: 13a7358ba8eff0297ad92d12cec5d2d2e08573e75e83aed65324ff512c7d62c4
+This confirms the statement and category; other effects keep their own approvals.
+Type remember 395292ab64d8644df477d09c9f82bbf3 to confirm. Anything else cancels.
+remember> remember 395292ab64d8644df477d09c9f82bbf3
+you> 
+Extension ext__knowledge__capture: {"current_eligibility":"not_established","outcomes":[{"action_sha256":"6fb2beff7bde9fa59c3ce2a48c211447cebc4530828b30f5d80956b55fe76ec7","category":"ordinary","generation":1,"normalization_sha256":"fa5f3a083f823b1def9445f9892adc714925d646edc2b15a7501f620d4f48a19","operation_id":"5455a5a5c4e06d8229729ff66203f5cf","receipt_sha256":"6a42e0ceae95f4d36a216591e925d2945ab13ea7c5bd5eba253ca5a7e90f9a8e","record_key":"note.4f49ecebb94b542ab80c39db8d969eebc31c5bdc230132639fd2d850397d0e8e"}],"status":"historical_write_outcome"}
+
+Finished.
+/exit
+TERMINAL_REMEMBER_EVENTS [{"created_at":"2026-10-29T23:51:35.816437Z","metadata":{"execution_mode":{"approval":"ask","approval_origin":"interactive","ceiling":"normal","enclosing_ceiling":"normal","headless":false,"knowledge":"available","version":1},"extension_catalog":{"entries":[{"arguments_schema":{"additionalProperties":false,"properties":{"category":{"enum":["ordinary","preference","current"],"type":"string"},"event_at_ms":{"maximum":9007199254740991,"minimum":0,"type":["integer","null"]},"reason":{"maxLength":256,"minLength":1,"type":"string"},"source":{"additionalProperties":false,"properties":{"handle":{"maxLength":2048,"minLength":1,"type":"string"},"quote":{"maxLength":1024,"minLength":1,"type":"string"}},"required":["handle","quote"],"type":"object"},"text":{"maxLength":2048,"minLength":1,"type":"string"}},"required":["category","event_at_ms","reason","source","text"],"type":"object"},"description":"Save one exact attributed observation or queue a proposal; permission is checked by the host","id":"capture","instance":"knowledge","name":"ext__knowledge__capture","result_schema":{"type":"object"},"stage":"invoke.command"},{"arguments_schema":{"additionalProperties":false,"properties":{"event":{"type":"object"}},"required":["event"],"type":"object"},"description":"Prepare bounded turn-local current notes before the first inference request","id":"recall","instance":"knowledge","name":"ext__knowledge__recall","result_schema":{"type":"object"},"stage":"event.job"},{"arguments_schema":{"additionalProperties":false,"properties":{"category":{"enum":["ordinary","preference","current"],"type":"string"},"event_at_ms":{"maximum":9007199254740991,"minimum":0,"type":["integer","null"]},"reason":{"maxLength":256,"minLength":1,"type":"string"},"source":{"additionalProperties":false,"properties":{"handle":{"maxLength":2048,"minLength":1,"type":"string"},"quote":{"maxLength":1024,"minLength":1,"type":"string"}},"required":["handle","quote"],"type":"object"},"text":{"maxLength":2048,"minLength":1,"type":"string"}},"required":["category","event_at_ms","reason","source","text"],"type":"object"},"description":"Save one exact attributed observation or queue a proposal; permission is checked by the host","id":"capture","instance":"knowledge","name":"ext__knowledge__capture","result_schema":{"type":"object"},"stage":"invoke.tool"},{"arguments_schema":{"additionalProperties":false,"properties":{"cursor":{"maxLength":2048,"minLength":1,"type":["string","null"]}},"required":["cursor"],"type":"object"},"description":"Page the current note metadata index; metadata is unverified until read, and coverage is explicit","id":"index","instance":"knowledge","name":"ext__knowledge__index","result_schema":{"type":"object"},"stage":"invoke.tool"},{"arguments_schema":{"additionalProperties":false,"properties":{"key":{"maxLength":96,"minLength":1,"type":"string"}},"required":["key"],"type":"object"},"description":"Read one current eligible note by its exact note key, with source receipts","id":"read","instance":"knowledge","name":"ext__knowledge__read","result_schema":{"type":"object"},"stage":"invoke.tool"},{"arguments_schema":{"additionalProperties":false,"properties":{"cursor":{"maxLength":2048,"minLength":1,"type":["string","null"]},"query":{"maxLength":256,"minLength":1,"type":"string"}},"required":["cursor","query"],"type":"object"},"description":"Search at most 32 current note candidates without another model; follow explicit metadata pages for larger sets","id":"search","instance":"knowledge","name":"ext__knowledge__search","result_schema":{"type":"object"},"stage":"invoke.tool"}],"version":1},"managed_tool_layout":"managed_tool_effects_v1","model_profiles":null,"extension_subscriptions":{"entries":[{"declaration":{"event":"prompt.effective_committed","event_version":1,"handler":"recall","id":"recall","mode":"job","required":false,"schedule":"before_request","view":"metadata"},"instance":"knowledge"}],"version":1},"source_layout":"session_sources_v1","reference_layout":"turn_reference_v1","cwd":"/tmp/ipse-remember-terminal-publication-v2-20261029/project","source_origin":{"directory":"/tmp/ipse-remember-terminal-publication-v2-20261029/home/sessions","inode":1308073,"major_device":53,"minor_device":0,"session_id":"538f590e7cb4adb299377b1272398d14","uid":1000,"version":1},"managed_action_layout":"managed_tool_actions_v1","subagents":false,"provider_destination":null,"execution":null,"delegation_origin":null,"managed_output_layout":"managed_output_release_v1","sandbox":"off","mcp_servers":[],"session_lock_identity":{"device":53,"inode":1308072,"version":1},"managed_read_layout":"managed_reads_v1","managed_supersession_layout":"managed_supersession_v1","subagent_concurrency":1,"release_receipt_layout":"session_release_receipt_v1","configuration":{"budget":null,"execution":null,"extensions":{"instances":[],"trust":[]},"fingerprint":"3ab33e962748399da1429cf05562e658827323dbf8a1b2927aa224e9305dc543","journal":{"max_bytes":134217728,"max_events":100000,"max_record_bytes":16777216},"observability":{"mode_source":"built-in","policy":{"event_bytes":16384,"file_bytes":10485760,"groups":["session","prompt","context","model","stream","tool","approval","question","child","compaction","extension","turn","error"],"level":"info","mode":"off","queue_events":256,"retained_files":2,"sample_every":1}},"profiles":{},"provenance":{"compact":"built-in","context_bytes":"built-in","max_steps":"built-in","model":"/tmp/ipse-remember-terminal-publication-v2-20261029/home/config.json","provider":"/tmp/ipse-remember-terminal-publication-v2-20261029/home/config.json","sandbox":"built-in","subagent_concurrency":"built-in","subagents":"built-in","timeout_ms":"built-in"},"roles":{},"settings":{"compact":true,"context_bytes":400000,"max_steps":30,"model":"scripted","provider":"demo","sandbox":"off","subagent_concurrency":1,"subagents":false,"timeout_ms":120000},"sources":[{"canonical_path":"/tmp/ipse-remember-terminal-publication-v2-20261029/home/config.json","path":"/tmp/ipse-remember-terminal-publication-v2-20261029/home/config.json","scope":"operator","sha256":"02b69af474c77fa9baed6589a572818d58754d121673169c499fbe104fb2864a"}]},"decision_profiles":null,"model":"scripted","semantic_admission":{"binding":{"binding_sha256":"47aa463fe76f039ccb51b3f05e3190b92218feec3aea8d984d954e24725370c1","common_directory":null,"primary_root":"/tmp/ipse-remember-terminal-publication-v2-20261029/project","project_id":"b74c7c4dc6226d61d1a3c6f0568420296f3c202ee4ad0c7dbda156c37008e020","root":"/tmp/ipse-remember-terminal-publication-v2-20261029/project","scope":"folder","version":1,"worktree_id":"7761d94068d8e343d920d06344b27e85dc4f5f87e8e56bef4f28e4291a4a6900"},"instance":"knowledge","pin":{"binding_sha256":"47aa463fe76f039ccb51b3f05e3190b92218feec3aea8d984d954e24725370c1","epoch":1,"identity_sha256":"dad99d2a5017fd6cc3f4ea1c99885a53ee5a29dd8d9d7a9eeda2d7d2e9ffb8da","namespace":"d388d990c68798b1060dfd66f4e5df073a04061424610f0c6469673c3f80ed2f","policy_sha256":"13a7358ba8eff0297ad92d12cec5d2d2e08573e75e83aed65324ff512c7d62c4","project_id":"b74c7c4dc6226d61d1a3c6f0568420296f3c202ee4ad0c7dbda156c37008e020","routes_sha256":"0d55114f77d605e25cf7d7ce2d506488a3525da0f0550f8121b190fb430a2cab","session_id":"538f590e7cb4adb299377b1272398d14","source_sha256":"098be7eda6b0f8e8efb36093fb7cc6cdde8bb55bc60f9e43567576c0d88fdd77","version":1,"worktree_id":"7761d94068d8e343d920d06344b27e85dc4f5f87e8e56bef4f28e4291a4a6900"},"policy":{"artifact_sha256":"578cd2ade037601ee7f17a2b69f901d116efc664369459e53d9be566cdf317fc","expires_at_ms":1824853895528,"headless":true,"limits":{"cost_nanos":0,"download_bytes":0,"input_bytes":2097152,"model_calls":0,"operations":100,"output_bytes":4194304},"operations":["notes.capture","notes.propose","notes.recall"],"period_ms":86400000,"project":"b74c7c4dc6226d61d1a3c6f0568420296f3c202ee4ad0c7dbda156c37008e020","settings":{"activation":{"allow_children":false,"artifact":"578cd2ade037601ee7f17a2b69f901d116efc664369459e53d9be566cdf317fc","artifact_sha256":"578cd2ade037601ee7f17a2b69f901d116efc664369459e53d9be566cdf317fc","capabilities":["event.job","host.actions","host.actions.mixed","host.collection.managed","host.collection.read","host.context","host.sources","invoke.command","invoke.result.pages","invoke.tool"],"instance":"knowledge","kind":"reviewed.bundle","lifetime":"session","main_timeout_ms":90000,"options":{"embedding":{},"extraction":{},"fetch":{},"rerank":{},"retrieval":{},"search":{},"stores":{},"version":1},"order":100,"service_refs":[{"operation":"main","profile":null,"service_id":"demo"}],"sidecar_sha256":"6add073e340583f2debc3a59475298ccb2359bc1aab7f77b65f704fbb9553549","version":1},"constraints":{"78b6d7943b3430f0225a3ee45cc4cffc27de14ddd97c39f8e38c9f8fb85ca68e":{"allow_delete":false,"evidence_path":["evidence","sources"],"key_prefix":"pending.","source_categories":["assistant_proposal","interactive_operator","native_operator_answer","native_operator_assertion","typed_host_outcome","unattended_input"],"value_schema":{"additionalProperties":false,"properties":{"assigned_category":{"enum":["ordinary","preference","current"],"type":"string"},"created_at_ms":{"maximum":9007199254740991,"minimum":0,"type":"integer"},"event_at_ms":{"maximum":9007199254740991,"minimum":0,"type":["integer","null"]},"evidence":{"additionalProperties":false,"properties":{"sources":{"items":{"additionalProperties":false,"properties":{"content_sha256":{"maxLength":64,"minLength":64,"type":"string"},"coverage":{"enum":["available","partial"],"type":"string"},"end_byte":{"maximum":9007199254740991,"minimum":0,"type":"integer"},"kind":{"enum":["input.original","input.operator_answer","answer.original","tool.outcome","input.assertion.ordinary","input.assertion.preference","input.assertion.current"],"type":"string"},"occurrence_id":{"maxLength":32,"minLength":32,"type":"string"},"origin":{"enum":["assistant_proposal","interactive_operator","native_operator_answer","native_operator_assertion","typed_host_outcome","unattended_input"],"type":"string"},"path":{"type":"null"},"quote":{"maxLength":1024,"minLength":1,"type":"string"},"quote_sha256":{"maxLength":64,"minLength":64,"type":"string"},"receipt_sha256":{"maxLength":64,"minLength":64,"type":"string"},"session_id":{"maxLength":32,"minLength":32,"type":"string"},"start_byte":{"maximum":9007199254740991,"minimum":0,"type":"integer"},"version":{"enum":[1],"type":"integer"},"version_id":{"maxLength":32,"minLength":32,"type":"string"}},"required":["content_sha256","coverage","end_byte","kind","occurrence_id","origin","path","quote","quote_sha256","receipt_sha256","session_id","start_byte","version","version_id"],"type":"object"},"maxItems":1,"minItems":1,"type":"array"}},"required":["sources"],"type":"object"},"expires_at_ms":{"maximum":9007199254740991,"minimum":0,"type":"integer"},"id":{"maxLength":64,"minLength":64,"type":"string"},"kind":{"enum":["proposal"],"type":"string"},"lineage":{"maxLength":64,"minLength":64,"type":"string"},"reason":{"maxLength":256,"minLength":1,"type":"string"},"state":{"enum":["pending"],"type":"string"},"text":{"maxLength":2048,"minLength":1,"type":"string"},"version":{"enum":[1],"type":"integer"}},"required":["assigned_category","created_at_ms","event_at_ms","evidence","expires_at_ms","id","kind","lineage","reason","state","text","version"],"type":"object"},"version":1},"d709745ab18405dff572c41053eda5cbe12c350ebbabdcd0d52ea1e80962368a":{"allow_delete":false,"evidence_path":["evidence","sources"],"key_prefix":"note.","source_categories":["native_operator_assertion","typed_host_outcome"],"value_schema":{"additionalProperties":false,"properties":{"category":{"enum":["ordinary","preference","current"],"type":"string"},"created_at_ms":{"maximum":9007199254740991,"minimum":0,"type":"integer"},"event_at_ms":{"maximum":9007199254740991,"minimum":0,"type":["integer","null"]},"evidence":{"additionalProperties":false,"properties":{"sources":{"items":{"additionalProperties":false,"properties":{"content_sha256":{"maxLength":64,"minLength":64,"type":"string"},"coverage":{"enum":["available","partial"],"type":"string"},"end_byte":{"maximum":9007199254740991,"minimum":0,"type":"integer"},"kind":{"enum":["input.original","input.operator_answer","answer.original","tool.outcome","input.assertion.ordinary","input.assertion.preference","input.assertion.current"],"type":"string"},"occurrence_id":{"maxLength":32,"minLength":32,"type":"string"},"origin":{"enum":["assistant_proposal","interactive_operator","native_operator_answer","native_operator_assertion","typed_host_outcome","unattended_input"],"type":"string"},"path":{"type":"null"},"quote":{"maxLength":1024,"minLength":1,"type":"string"},"quote_sha256":{"maxLength":64,"minLength":64,"type":"string"},"receipt_sha256":{"maxLength":64,"minLength":64,"type":"string"},"session_id":{"maxLength":32,"minLength":32,"type":"string"},"start_byte":{"maximum":9007199254740991,"minimum":0,"type":"integer"},"version":{"enum":[1],"type":"integer"},"version_id":{"maxLength":32,"minLength":32,"type":"string"}},"required":["content_sha256","coverage","end_byte","kind","occurrence_id","origin","path","quote","quote_sha256","receipt_sha256","session_id","start_byte","version","version_id"],"type":"object"},"maxItems":1,"minItems":1,"type":"array"}},"required":["sources"],"type":"object"},"expires_at_ms":{"maximum":9007199254740991,"minimum":0,"type":["integer","null"]},"id":{"maxLength":64,"minLength":64,"type":"string"},"lineage":{"maxLength":64,"minLength":64,"type":"string"},"metadata_reserve":{"enum":["","0000000000000000000000000000000000000000000000000000000000000000"],"type":"string"},"observed_at_ms":{"maximum":9007199254740991,"minimum":0,"type":"integer"},"previous_category":{"type":"null"},"reason":{"maxLength":256,"minLength":1,"type":"string"},"superseded_at_ms":{"type":"null"},"text":{"maxLength":2048,"minLength":1,"type":"string"},"version":{"enum":[1],"type":"integer"}},"required":["category","created_at_ms","event_at_ms","evidence","expires_at_ms","id","lineage","metadata_reserve","observed_at_ms","previous_category","reason","superseded_at_ms","text","version"],"type":"object"},"version":1}},"domain":"knowledge","effects":[{"class":"collection.publish","constraints_sha256":"d709745ab18405dff572c41053eda5cbe12c350ebbabdcd0d52ea1e80962368a","inner_op":"collection.managed","operation":"notes.capture","outer_sha256":"cf9f0a54e5190bc3b41039899bcd6c0eee9ffa2367dfa15b2d8b1e55ffd16e53","recipe_sha256":"818634825cb494606d25195a6601971a17542ed2caa22f28d1e18b1971b18cf7"},{"class":"collection.publish","constraints_sha256":"d709745ab18405dff572c41053eda5cbe12c350ebbabdcd0d52ea1e80962368a","inner_op":"collection.managed","operation":"notes.capture","outer_sha256":"f5a509bff213a11a6b58186e73da0ba7e08017d4a89c4b959e683f9f6433e91a","recipe_sha256":"818634825cb494606d25195a6601971a17542ed2caa22f28d1e18b1971b18cf7"},{"class":"collection.publish","constraints_sha256":"78b6d7943b3430f0225a3ee45cc4cffc27de14ddd97c39f8e38c9f8fb85ca68e","inner_op":"collection.managed","operation":"notes.propose","outer_sha256":"cf9f0a54e5190bc3b41039899bcd6c0eee9ffa2367dfa15b2d8b1e55ffd16e53","recipe_sha256":"d2622a1dd0ede7863d677e7ba76ef22f29509f5fc19fb72096c1b5ff70e7505d"},{"class":"collection.publish","constraints_sha256":"78b6d7943b3430f0225a3ee45cc4cffc27de14ddd97c39f8e38c9f8fb85ca68e","inner_op":"collection.managed","operation":"notes.propose","outer_sha256":"f5a509bff213a11a6b58186e73da0ba7e08017d4a89c4b959e683f9f6433e91a","recipe_sha256":"d2622a1dd0ede7863d677e7ba76ef22f29509f5fc19fb72096c1b5ff70e7505d"},{"class":"collection.read","inner_op":"collection.call","managed_read":["818634825cb494606d25195a6601971a17542ed2caa22f28d1e18b1971b18cf7","d2622a1dd0ede7863d677e7ba76ef22f29509f5fc19fb72096c1b5ff70e7505d"],"operation":"notes.recall","outer_sha256":"5853488b301eebd88d26683849d9a4aee30db0ce9aa68a93d6f8a1736ff9b694"},{"class":"collection.read","inner_op":"collection.call","managed_read":["818634825cb494606d25195a6601971a17542ed2caa22f28d1e18b1971b18cf7","d2622a1dd0ede7863d677e7ba76ef22f29509f5fc19fb72096c1b5ff70e7505d"],"operation":"notes.recall","outer_sha256":"bb98a46f483a56058075dccd8fef4654b50bb290c717ee218f4bacb021039697"},{"class":"collection.read","inner_op":"collection.call","managed_read":["818634825cb494606d25195a6601971a17542ed2caa22f28d1e18b1971b18cf7","d2622a1dd0ede7863d677e7ba76ef22f29509f5fc19fb72096c1b5ff70e7505d"],"operation":"notes.recall","outer_sha256":"cf9f0a54e5190bc3b41039899bcd6c0eee9ffa2367dfa15b2d8b1e55ffd16e53"},{"class":"collection.read","inner_op":"collection.call","managed_read":["818634825cb494606d25195a6601971a17542ed2caa22f28d1e18b1971b18cf7","d2622a1dd0ede7863d677e7ba76ef22f29509f5fc19fb72096c1b5ff70e7505d"],"operation":"notes.recall","outer_sha256":"ed389dd91a2ffacc289b2d9193e3c26bff237c46793a7becc1e0cf5f0559c413"},{"class":"collection.read","inner_op":"collection.call","managed_read":["818634825cb494606d25195a6601971a17542ed2caa22f28d1e18b1971b18cf7","d2622a1dd0ede7863d677e7ba76ef22f29509f5fc19fb72096c1b5ff70e7505d"],"operation":"notes.recall","outer_sha256":"f548bb5ce92246f7c3913b4156d07a9790bcfb858c8f1f7520ab195fe32d70cf"},{"class":"collection.read","inner_op":"collection.call","managed_read":["818634825cb494606d25195a6601971a17542ed2caa22f28d1e18b1971b18cf7","d2622a1dd0ede7863d677e7ba76ef22f29509f5fc19fb72096c1b5ff70e7505d"],"operation":"notes.recall","outer_sha256":"f5a509bff213a11a6b58186e73da0ba7e08017d4a89c4b959e683f9f6433e91a"}],"identity_sha256":"dad99d2a5017fd6cc3f4ea1c99885a53ee5a29dd8d9d7a9eeda2d7d2e9ffb8da","instance":"knowledge","namespace":"d388d990c68798b1060dfd66f4e5df073a04061424610f0c6469673c3f80ed2f","recipes":{"818634825cb494606d25195a6601971a17542ed2caa22f28d1e18b1971b18cf7":{"category_path":["category"],"constraints_sha256":"d709745ab18405dff572c41053eda5cbe12c350ebbabdcd0d52ea1e80962368a","evidence_path":["evidence","sources"],"key_prefix":"note.","kind":"literal_source","lineage_path":["lineage"],"override_prefix":"override.","rules":[{"category":"current","max_age_ms":null,"origins":["native_operator_assertion"]},{"category":"ordinary","max_age_ms":7776000000,"origins":["native_operator_assertion","typed_host_outcome"]},{"category":"preference","max_age_ms":null,"origins":["native_operator_assertion"]}],"text_path":["text"],"version":1},"d2622a1dd0ede7863d677e7ba76ef22f29509f5fc19fb72096c1b5ff70e7505d":{"category_path":["assigned_category"],"constraints_sha256":"78b6d7943b3430f0225a3ee45cc4cffc27de14ddd97c39f8e38c9f8fb85ca68e","evidence_path":["evidence","sources"],"key_prefix":"pending.","kind":"proposal","lineage_path":["lineage"],"override_prefix":"override.","rules":[{"category":"current","max_age_ms":604800000,"origins":["assistant_proposal","interactive_operator","native_operator_answer","native_operator_assertion","typed_host_outcome","unattended_input"]},{"category":"ordinary","max_age_ms":604800000,"origins":["assistant_proposal","interactive_operator","native_operator_answer","native_operator_assertion","typed_host_outcome","unattended_input"]},{"category":"preference","max_age_ms":604800000,"origins":["assistant_proposal","interactive_operator","native_operator_answer","native_operator_assertion","typed_host_outcome","unattended_input"]}],"text_path":["text"],"version":1}},"retention":{"automatic":90,"manual":3650},"routes":[{"account_controls":null,"billing_mode":"none","cache_retention":null,"endpoint":"demo://local","model":"scripted","operation":"main","processing_region":null,"profile":null,"provider":"demo","service_id":"demo","storage_region":null}],"scope":{"kind":"project","worktree_id":null},"sources":{"categories":["assistant_proposal","interactive_operator","native_operator_answer","native_operator_assertion","typed_host_outcome","unattended_input"],"exclusions":[]},"storage":{"collection":"knowledge","kind":"local_collection"},"version":2},"source_sha256":"098be7eda6b0f8e8efb36093fb7cc6cdde8bb55bc60f9e43567576c0d88fdd77","version":1},"selectors":[{"account_controls":null,"cache_retention":null,"operation":"main","processing_region":null,"profile":null,"storage_region":null}],"status":"active","version":2},"extensions":[{"allow_children":false,"artifact":"578cd2ade037601ee7f17a2b69f901d116efc664369459e53d9be566cdf317fc","artifact_sha256":"578cd2ade037601ee7f17a2b69f901d116efc664369459e53d9be566cdf317fc","capabilities":["event.job","host.actions","host.actions.mixed","host.collection.managed","host.collection.read","host.context","host.sources","invoke.command","invoke.result.pages","invoke.tool"],"expires_at":null,"exports_sha256":"6e45541c6159a47550e7dc59e24b0942c8b92df88309f48601aa9851bdf5e967","generation":1,"host_sha256":"3ea0072426fb0a1a4aca5f0d41c1ac6c2a5610cfff09035f3d34c5916d0afab2","instance":"knowledge","lifetime":"session","options_sha256":"a6e72b477ff303a177ac9ddddca972451778ac44ef36f9f9b2723746924036ee","order":100,"protocol":1,"requires_sha256":"1104e0e297e593f73d794834a318fd9f6b129c080e1089b1c7a444ab1585af7d","runtime":{"architecture":"x86_64-pc-linux-gnu","elixir":"1.20.4","erts":"17.1","otp":"29"},"scope":"operator","sdk":2,"services":[],"source_sha256":"1c8c90764d2f2048fa0dde86317833729a9b706c7f317afe2fe61fb8e9fb605c","subscriptions_sha256":"fa043cbeb171b077242a2f2fcc702b5b869cd4cdec237b07d09ec1e3685db09f"}],"usage_version":1,"embedding_profiles":null,"source_origin_layout":"journal_origin_v1","budget":null,"budget_root":null,"provider":"demo","max_output_tokens":null,"mcp_fingerprint_version":2},"type":"session"},{"owner_id":"d238f9cb7e95abaefbb50f4ad35fd0e8","session_id":"538f590e7cb4adb299377b1272398d14","type":"session_release_owner_started","version":1},{"snapshot":{"boundary":"/tmp/ipse-remember-terminal-publication-v2-20261029/project","cwd":"/tmp/ipse-remember-terminal-publication-v2-20261029/project","diagnostics":[],"sources":[],"version":1},"type":"workspace_context_snapshot","version":1},{"sha256":"74d1655012fe2a0d96b515cd5ce5601b17f5c87b2a200b782151b2b63c40fc7d","skills":[{"canonical_path":"/home/lexlapax/projects/lexlapax/ipse/_build/remember-absence-integration-sol-20261029/priv/skills/project-orientation/SKILL.md","description":"Assess an unfamiliar project and prioritize next steps from its instructions, current Git state, implementation, and available validation.","name":"project-orientation","path":"/home/lexlapax/projects/lexlapax/ipse/_build/remember-absence-integration-sol-20261029/_build/dev/lib/ipse/priv/skills/project-orientation/SKILL.md","sha256":"87788a544de9fe9ce3157cc81b0eaf312f6ca46644d11372f02aa87a154132a6","shadowed_paths":[]},{"canonical_path":"/home/lexlapax/projects/lexlapax/ipse/_build/remember-absence-integration-sol-20261029/priv/skills/research/SKILL.md","description":"Bounded evidence-based research using explicitly configured search and page retrieval, durable source excerpts and cited claims.","name":"research","path":"/home/lexlapax/projects/lexlapax/ipse/_build/remember-absence-integration-sol-20261029/_build/dev/lib/ipse/priv/skills/research/SKILL.md","sha256":"02af7ee5c5871d8e38f0a364373a83997ed07eb281564e69dce4e7919d603ec0","shadowed_paths":[]},{"canonical_path":"/home/lexlapax/projects/lexlapax/ipse/_build/remember-absence-integration-sol-20261029/priv/skills/review/SKILL.md","description":"Review a code change for correctness, regressions, and missing coverage.","name":"review","path":"/home/lexlapax/projects/lexlapax/ipse/_build/remember-absence-integration-sol-20261029/_build/dev/lib/ipse/priv/skills/review/SKILL.md","sha256":"881df29cc993d5bb3ca3055131d772c92d2eba17f9ab31433b2e57df3dd2eea5","shadowed_paths":[]},{"canonical_path":"/home/lexlapax/projects/lexlapax/ipse/_build/remember-absence-integration-sol-20261029/priv/skills/self-development/SKILL.md","description":"Make a bounded Ipse change with a frozen runner, explicit task scope, independent review, honest validation and safe handoff.","name":"self-development","path":"/home/lexlapax/projects/lexlapax/ipse/_build/remember-absence-integration-sol-20261029/_build/dev/lib/ipse/priv/skills/self-development/SKILL.md","sha256":"45689f5c72ee0dbf9b3eb34b9320b6afa5f68f676d958b7027f10e0d77ae488a","shadowed_paths":[]}],"type":"skill_catalog_snapshot","version":1},{"policy_generation":1,"session_id":"538f590e7cb4adb299377b1272398d14","type":"source_window_opened","version":1,"window_id":"df1da8e6b08f95837e19256897b899a4"},{"category":"ordinary","channel_id":"6446a75aa9854731daf898333570aa5b","code":"395292ab64d8644df477d09c9f82bbf3","id":"e2ab8314b5cb31cde03bf7259f6e3aa3","input":"remember 395292ab64d8644df477d09c9f82bbf3","observation":{"display_limit":16777216,"display_sha256":"d24516fac51c88716a59f223df62bd76294027be6e64eaca1d0458341047c72a","event_id":"7d7402af7635541b979d1f071422bad5","input_limit":1048576,"text_sha256":"1034eb4ae8e3b6acf8a239298c575eb3913d2f83cb8b7a224bb5248fb91b5877","version":2},"scope":{"artifact_sha256":"578cd2ade037601ee7f17a2b69f901d116efc664369459e53d9be566cdf317fc","namespace":"d388d990c68798b1060dfd66f4e5df073a04061424610f0c6469673c3f80ed2f","policy_sha256":"13a7358ba8eff0297ad92d12cec5d2d2e08573e75e83aed65324ff512c7d62c4","project_id":"b74c7c4dc6226d61d1a3c6f0568420296f3c202ee4ad0c7dbda156c37008e020","workspace":"/tmp/ipse-remember-terminal-publication-v2-20261029/project"},"session_id":"538f590e7cb4adb299377b1272398d14","text":"SYNTHETIC_TERMINAL_STATEMENT","type":"operator_assertion","version":1},{"approval":"saved_consent","descriptor":{"arguments_schema":{"additionalProperties":false,"properties":{"category":{"enum":["ordinary","preference","current"],"type":"string"},"event_at_ms":{"maximum":9007199254740991,"minimum":0,"type":["integer","null"]},"reason":{"maxLength":256,"minLength":1,"type":"string"},"source":{"additionalProperties":false,"properties":{"handle":{"maxLength":2048,"minLength":1,"type":"string"},"quote":{"maxLength":1024,"minLength":1,"type":"string"}},"required":["handle","quote"],"type":"object"},"text":{"maxLength":2048,"minLength":1,"type":"string"}},"required":["category","event_at_ms","reason","source","text"],"type":"object"},"description":"Save one exact attributed observation or queue a proposal; permission is checked by the host","id":"capture","instance":"knowledge","name":"ext__knowledge__capture","result_schema":{"type":"object"},"stage":"invoke.command"},"identity":{"allow_children":false,"artifact":"578cd2ade037601ee7f17a2b69f901d116efc664369459e53d9be566cdf317fc","artifact_sha256":"578cd2ade037601ee7f17a2b69f901d116efc664369459e53d9be566cdf317fc","capabilities":["event.job","host.actions","host.actions.mixed","host.collection.managed","host.collection.read","host.context","host.sources","invoke.command","invoke.result.pages","invoke.tool"],"expires_at":null,"exports_sha256":"6e45541c6159a47550e7dc59e24b0942c8b92df88309f48601aa9851bdf5e967","generation":1,"host_sha256":"3ea0072426fb0a1a4aca5f0d41c1ac6c2a5610cfff09035f3d34c5916d0afab2","instance":"knowledge","lifetime":"session","options_sha256":"a6e72b477ff303a177ac9ddddca972451778ac44ef36f9f9b2723746924036ee","order":100,"protocol":1,"requires_sha256":"1104e0e297e593f73d794834a318fd9f6b129c080e1089b1c7a444ab1585af7d","runtime":{"architecture":"x86_64-pc-linux-gnu","elixir":"1.20.4","erts":"17.1","otp":"29"},"scope":"operator","sdk":2,"services":[],"source_sha256":"1c8c90764d2f2048fa0dde86317833729a9b706c7f317afe2fe61fb8e9fb605c","subscriptions_sha256":"fa043cbeb171b077242a2f2fcc702b5b869cd4cdec237b07d09ec1e3685db09f"},"invocation_id":"406233290244b0204baf40416e6764e2","parent_call_id":null,"parent_request_id":null,"payload":{"api_version":1,"arguments":{"category":"ordinary","event_at_ms":null,"reason":"Native operator statement and category review.","source":{"handle":"eyJnZW5lcmF0aW9uIjozLCJraW5kIjoicmVhZCIsIm9jY3VycmVuY2UiOiJlZjU0YTY1YTUxYzg4Yzc1NDA5OWFhOTYyMmQ1NGYwNiIsIm9mZnNldCI6MCwicG9saWN5IjoxLCJzZXNzaW9uIjoiNTM4ZjU5MGU3Y2I0YWRiMjk5Mzc3YjEyNzIzOThkMTQiLCJzb3VyY2VfdmVyc2lvbiI6ImZkYmQ3MjQ5YzgyZTBjY2Y4Njc5OThlMmI2YjRmZmZkIiwidmVyc2lvbiI6MSwid2luZG93IjoiZGYxZGE4ZTZiMDhmOTU4MzdlMTkyNTY4OTdiODk5YTQifQ.hz5Q7JjcU1C8QYITL2TCeuIu076s_t48GqXfMz_z3D0","quote":"SYNTHETIC_TERMINAL_STATEMENT"},"text":"SYNTHETIC_TERMINAL_STATEMENT"},"id":"capture","invocation_id":"406233290244b0204baf40416e6764e2","session_id":"538f590e7cb4adb299377b1272398d14","turn_id":"6875e69b5a72bbfedc704037fac06341"},"payload_sha256":"22039c67162c53b3d0b023e339a108ea63a1b9e3ec4fcbf2b260c19103685257","semantic_binding":{"artifact_sha256":"578cd2ade037601ee7f17a2b69f901d116efc664369459e53d9be566cdf317fc","class":"collection.publish","descriptor_sha256":"cf9f0a54e5190bc3b41039899bcd6c0eee9ffa2367dfa15b2d8b1e55ffd16e53","kind":"semantic.outer","namespace":"d388d990c68798b1060dfd66f4e5df073a04061424610f0c6469673c3f80ed2f","pin":{"binding_sha256":"47aa463fe76f039ccb51b3f05e3190b92218feec3aea8d984d954e24725370c1","epoch":1,"identity_sha256":"dad99d2a5017fd6cc3f4ea1c99885a53ee5a29dd8d9d7a9eeda2d7d2e9ffb8da","namespace":"d388d990c68798b1060dfd66f4e5df073a04061424610f0c6469673c3f80ed2f","policy_sha256":"13a7358ba8eff0297ad92d12cec5d2d2e08573e75e83aed65324ff512c7d62c4","project_id":"b74c7c4dc6226d61d1a3c6f0568420296f3c202ee4ad0c7dbda156c37008e020","routes_sha256":"0d55114f77d605e25cf7d7ce2d506488a3525da0f0550f8121b190fb430a2cab","session_id":"538f590e7cb4adb299377b1272398d14","source_sha256":"098be7eda6b0f8e8efb36093fb7cc6cdde8bb55bc60f9e43567576c0d88fdd77","version":1,"worktree_id":"7761d94068d8e343d920d06344b27e85dc4f5f87e8e56bef4f28e4291a4a6900"},"version":1},"type":"extension_invocation_intent","version":3},{"approval":"not_required","context_sha256":null,"effect_binding":null,"identity_sha256":"dad99d2a5017fd6cc3f4ea1c99885a53ee5a29dd8d9d7a9eeda2d7d2e9ffb8da","namespace":"538f590e7cb4adb299377b1272398d14","operation_id":"deaf95fedd42a513657ce432c38b6404","parent_invocation_id":"406233290244b0204baf40416e6764e2","request":{"handle":"eyJnZW5lcmF0aW9uIjozLCJraW5kIjoicmVhZCIsIm9jY3VycmVuY2UiOiJlZjU0YTY1YTUxYzg4Yzc1NDA5OWFhOTYyMmQ1NGYwNiIsIm9mZnNldCI6MCwicG9saWN5IjoxLCJzZXNzaW9uIjoiNTM4ZjU5MGU3Y2I0YWRiMjk5Mzc3YjEyNzIzOThkMTQiLCJzb3VyY2VfdmVyc2lvbiI6ImZkYmQ3MjQ5YzgyZTBjY2Y4Njc5OThlMmI2YjRmZmZkIiwidmVyc2lvbiI6MSwid2luZG93IjoiZGYxZGE4ZTZiMDhmOTU4MzdlMTkyNTY4OTdiODk5YTQifQ.hz5Q7JjcU1C8QYITL2TCeuIu076s_t48GqXfMz_z3D0","op":"source.read"},"request_sha256":"99f407092b62a67c4261acc9352d9bb16759bfc8102887d05a52dda5ad2aed7b","service":null,"step":1,"type":"extension_action_intent","version":2},{"approval":"not_required","context_sha256":null,"effect_binding":null,"identity_sha256":"dad99d2a5017fd6cc3f4ea1c99885a53ee5a29dd8d9d7a9eeda2d7d2e9ffb8da","namespace":"538f590e7cb4adb299377b1272398d14","operation_id":"deaf95fedd42a513657ce432c38b6404","outcome":{"status":"ok","value":{"chunk_id":"41636c0e4663211c677bae9a1beec3d7","complete":true,"content_sha256":"23c2b10fa6d4c9ce46a27a36d3900f9506e942524962fb4b8abb7c90b636ec51","coverage":"available","handle":"eyJnZW5lcmF0aW9uIjozLCJraW5kIjoicmVhZCIsIm9jY3VycmVuY2UiOiJlZjU0YTY1YTUxYzg4Yzc1NDA5OWFhOTYyMmQ1NGYwNiIsIm9mZnNldCI6MCwicG9saWN5IjoxLCJzZXNzaW9uIjoiNTM4ZjU5MGU3Y2I0YWRiMjk5Mzc3YjEyNzIzOThkMTQiLCJzb3VyY2VfdmVyc2lvbiI6ImZkYmQ3MjQ5YzgyZTBjY2Y4Njc5OThlMmI2YjRmZmZkIiwidmVyc2lvbiI6MSwid2luZG93IjoiZGYxZGE4ZTZiMDhmOTU4MzdlMTkyNTY4OTdiODk5YTQifQ.hz5Q7JjcU1C8QYITL2TCeuIu076s_t48GqXfMz_z3D0","kind":"input.assertion.ordinary","next":null,"occurrence_id":"ef54a65a51c88c754099aa9622d54f06","offset":0,"origin":"native_operator_assertion","original_bytes":28,"provenance":{"assertion_id":"e2ab8314b5cb31cde03bf7259f6e3aa3","category":"ordinary","receipt_sha256":"96559c7b963ad7318d2106165c1e609d2db4b2c522bc506f71f157130faa2609"},"reason":null,"text":"SYNTHETIC_TERMINAL_STATEMENT","version":1,"version_id":"fdbd7249c82e0ccf867998e2b6b4fffd","window":{"count":1,"coverage":{"capacity_refused":0,"indexed":1,"legacy_unverified":0,"observed":1,"pending_gaps":0,"refused":0,"unavailable":0},"generation":3,"policy_generation":1,"session_id":"538f590e7cb4adb299377b1272398d14","version":1,"window_id":"df1da8e6b08f95837e19256897b899a4"}}},"outcome_sha256":"a1318c0d6bb0b54c97a021f4e92e31edf21e6118642f75ac25755dc863173c22","parent_invocation_id":"406233290244b0204baf40416e6764e2","request":{"handle":"eyJnZW5lcmF0aW9uIjozLCJraW5kIjoicmVhZCIsIm9jY3VycmVuY2UiOiJlZjU0YTY1YTUxYzg4Yzc1NDA5OWFhOTYyMmQ1NGYwNiIsIm9mZnNldCI6MCwicG9saWN5IjoxLCJzZXNzaW9uIjoiNTM4ZjU5MGU3Y2I0YWRiMjk5Mzc3YjEyNzIzOThkMTQiLCJzb3VyY2VfdmVyc2lvbiI6ImZkYmQ3MjQ5YzgyZTBjY2Y4Njc5OThlMmI2YjRmZmZkIiwidmVyc2lvbiI6MSwid2luZG93IjoiZGYxZGE4ZTZiMDhmOTU4MzdlMTkyNTY4OTdiODk5YTQifQ.hz5Q7JjcU1C8QYITL2TCeuIu076s_t48GqXfMz_z3D0","op":"source.read"},"request_sha256":"99f407092b62a67c4261acc9352d9bb16759bfc8102887d05a52dda5ad2aed7b","service":null,"step":1,"type":"extension_action_result","version":2},{"approval":"not_required","context_sha256":null,"effect_binding":null,"identity_sha256":"dad99d2a5017fd6cc3f4ea1c99885a53ee5a29dd8d9d7a9eeda2d7d2e9ffb8da","namespace":"538f590e7cb4adb299377b1272398d14","operation_id":"ac3ae667ffaf2d20fb4c954963ceb62a","parent_invocation_id":"406233290244b0204baf40416e6764e2","request":{"handle":"eyJnZW5lcmF0aW9uIjozLCJraW5kIjoicmVhZCIsIm9jY3VycmVuY2UiOiJlZjU0YTY1YTUxYzg4Yzc1NDA5OWFhOTYyMmQ1NGYwNiIsIm9mZnNldCI6MCwicG9saWN5IjoxLCJzZXNzaW9uIjoiNTM4ZjU5MGU3Y2I0YWRiMjk5Mzc3YjEyNzIzOThkMTQiLCJzb3VyY2VfdmVyc2lvbiI6ImZkYmQ3MjQ5YzgyZTBjY2Y4Njc5OThlMmI2YjRmZmZkIiwidmVyc2lvbiI6MSwid2luZG93IjoiZGYxZGE4ZTZiMDhmOTU4MzdlMTkyNTY4OTdiODk5YTQifQ.hz5Q7JjcU1C8QYITL2TCeuIu076s_t48GqXfMz_z3D0","op":"source.quote","quote":"SYNTHETIC_TERMINAL_STATEMENT"},"request_sha256":"c9e9c347867b2ed9eaedea7665125fb60624a8b799de4fffefef78e8b17d653c","service":null,"step":2,"type":"extension_action_intent","version":2},{"approval":"not_required","context_sha256":null,"effect_binding":null,"identity_sha256":"dad99d2a5017fd6cc3f4ea1c99885a53ee5a29dd8d9d7a9eeda2d7d2e9ffb8da","namespace":"538f590e7cb4adb299377b1272398d14","operation_id":"ac3ae667ffaf2d20fb4c954963ceb62a","outcome":{"status":"ok","value":{"chunk_id":"41636c0e4663211c677bae9a1beec3d7","content_sha256":"23c2b10fa6d4c9ce46a27a36d3900f9506e942524962fb4b8abb7c90b636ec51","coverage":"available","end_byte":28,"occurrence_id":"ef54a65a51c88c754099aa9622d54f06","origin":"native_operator_assertion","quote_sha256":"23c2b10fa6d4c9ce46a27a36d3900f9506e942524962fb4b8abb7c90b636ec51","start_byte":0,"version_id":"fdbd7249c82e0ccf867998e2b6b4fffd"}},"outcome_sha256":"7a5ee27d56fda454444f316dc07320d50ad3146317acc083f845b66837d3a50c","parent_invocation_id":"406233290244b0204baf40416e6764e2","request":{"handle":"eyJnZW5lcmF0aW9uIjozLCJraW5kIjoicmVhZCIsIm9jY3VycmVuY2UiOiJlZjU0YTY1YTUxYzg4Yzc1NDA5OWFhOTYyMmQ1NGYwNiIsIm9mZnNldCI6MCwicG9saWN5IjoxLCJzZXNzaW9uIjoiNTM4ZjU5MGU3Y2I0YWRiMjk5Mzc3YjEyNzIzOThkMTQiLCJzb3VyY2VfdmVyc2lvbiI6ImZkYmQ3MjQ5YzgyZTBjY2Y4Njc5OThlMmI2YjRmZmZkIiwidmVyc2lvbiI6MSwid2luZG93IjoiZGYxZGE4ZTZiMDhmOTU4MzdlMTkyNTY4OTdiODk5YTQifQ.hz5Q7JjcU1C8QYITL2TCeuIu076s_t48GqXfMz_z3D0","op":"source.quote","quote":"SYNTHETIC_TERMINAL_STATEMENT"},"request_sha256":"c9e9c347867b2ed9eaedea7665125fb60624a8b799de4fffefef78e8b17d653c","service":null,"step":2,"type":"extension_action_result","version":2},{"approval":"not_required","context_sha256":null,"effect_binding":{"inner_op":"get","kind":"collection","namespace":"d388d990c68798b1060dfd66f4e5df073a04061424610f0c6469673c3f80ed2f","pin":{"binding_sha256":"47aa463fe76f039ccb51b3f05e3190b92218feec3aea8d984d954e24725370c1","epoch":1,"identity_sha256":"dad99d2a5017fd6cc3f4ea1c99885a53ee5a29dd8d9d7a9eeda2d7d2e9ffb8da","namespace":"d388d990c68798b1060dfd66f4e5df073a04061424610f0c6469673c3f80ed2f","policy_sha256":"13a7358ba8eff0297ad92d12cec5d2d2e08573e75e83aed65324ff512c7d62c4","project_id":"b74c7c4dc6226d61d1a3c6f0568420296f3c202ee4ad0c7dbda156c37008e020","routes_sha256":"0d55114f77d605e25cf7d7ce2d506488a3525da0f0550f8121b190fb430a2cab","session_id":"538f590e7cb4adb299377b1272398d14","source_sha256":"098be7eda6b0f8e8efb36093fb7cc6cdde8bb55bc60f9e43567576c0d88fdd77","version":1,"worktree_id":"7761d94068d8e343d920d06344b27e85dc4f5f87e8e56bef4f28e4291a4a6900"},"request_sha256":"bd86bab73dd88bf60d97f2d099d00b9332d28378044ba4632dc3765dacabbcf8","version":1},"identity_sha256":"dad99d2a5017fd6cc3f4ea1c99885a53ee5a29dd8d9d7a9eeda2d7d2e9ffb8da","namespace":"d388d990c68798b1060dfd66f4e5df073a04061424610f0c6469673c3f80ed2f","operation_id":"4c2dd715124c4fbcb2c5602285f2415a","parent_invocation_id":"406233290244b0204baf40416e6764e2","request":{"op":"collection.call","request":{"key":"override.4f49ecebb94b542ab80c39db8d969eebc31c5bdc230132639fd2d850397d0e8e","op":"get"}},"request_sha256":"fd59dff48be4165b77ba7fe4f0fe54350e6f43e376941054e69ef06440f36f65","service":null,"step":3,"type":"extension_action_intent","version":2},{"dependencies":[{"collection":{"floor":0,"floor_anchor":null,"generation":0,"manifest_sha256":null,"project":"d388d990c68798b1060dfd66f4e5df073a04061424610f0c6469673c3f80ed2f","root_sha256":null,"root_state":"absent"},"namespace":"d388d990c68798b1060dfd66f4e5df073a04061424610f0c6469673c3f80ed2f","pin_sha256":"b1063d0c5d6086553baee7c95628dbf3eba23f0b82bae864b3f3f36b7e522304","policy_generation":1,"project_id":"b74c7c4dc6226d61d1a3c6f0568420296f3c202ee4ad0c7dbda156c37008e020","subject":{"kind":"root_observation","request_sha256":"bd86bab73dd88bf60d97f2d099d00b9332d28378044ba4632dc3765dacabbcf8","result_sha256":"bd927e3e384c835ce0f14005116509b712365454024364fc1e499fd604db694c"},"version":3}],"dependencies_sha256":"a78ecb808e35463e97e3e5dbef8cadf0c7267451736ecf05c4018dc58a2fed1b","operation_id":"4c2dd715124c4fbcb2c5602285f2415a","parent_invocation_id":"406233290244b0204baf40416e6764e2","request_sha256":"fd59dff48be4165b77ba7fe4f0fe54350e6f43e376941054e69ef06440f36f65","result_sha256":"bd927e3e384c835ce0f14005116509b712365454024364fc1e499fd604db694c","session_id":"538f590e7cb4adb299377b1272398d14","type":"managed_read_observed","version":1},{"approval":"not_required","context_sha256":null,"effect_binding":{"inner_op":"get","kind":"collection","namespace":"d388d990c68798b1060dfd66f4e5df073a04061424610f0c6469673c3f80ed2f","pin":{"binding_sha256":"47aa463fe76f039ccb51b3f05e3190b92218feec3aea8d984d954e24725370c1","epoch":1,"identity_sha256":"dad99d2a5017fd6cc3f4ea1c99885a53ee5a29dd8d9d7a9eeda2d7d2e9ffb8da","namespace":"d388d990c68798b1060dfd66f4e5df073a04061424610f0c6469673c3f80ed2f","policy_sha256":"13a7358ba8eff0297ad92d12cec5d2d2e08573e75e83aed65324ff512c7d62c4","project_id":"b74c7c4dc6226d61d1a3c6f0568420296f3c202ee4ad0c7dbda156c37008e020","routes_sha256":"0d55114f77d605e25cf7d7ce2d506488a3525da0f0550f8121b190fb430a2cab","session_id":"538f590e7cb4adb299377b1272398d14","source_sha256":"098be7eda6b0f8e8efb36093fb7cc6cdde8bb55bc60f9e43567576c0d88fdd77","version":1,"worktree_id":"7761d94068d8e343d920d06344b27e85dc4f5f87e8e56bef4f28e4291a4a6900"},"request_sha256":"bd86bab73dd88bf60d97f2d099d00b9332d28378044ba4632dc3765dacabbcf8","version":1},"identity_sha256":"dad99d2a5017fd6cc3f4ea1c99885a53ee5a29dd8d9d7a9eeda2d7d2e9ffb8da","namespace":"d388d990c68798b1060dfd66f4e5df073a04061424610f0c6469673c3f80ed2f","operation_id":"4c2dd715124c4fbcb2c5602285f2415a","outcome":{"status":"ok","value":{"floor":0,"floor_anchor":null,"generation":0,"project":"d388d990c68798b1060dfd66f4e5df073a04061424610f0c6469673c3f80ed2f","record":null,"version":3}},"outcome_sha256":"d2df5933f24ee50635f8206c3474f85c2641587ce26c9b6a1a9ea23c1c26640e","parent_invocation_id":"406233290244b0204baf40416e6764e2","request":{"op":"collection.call","request":{"key":"override.4f49ecebb94b542ab80c39db8d969eebc31c5bdc230132639fd2d850397d0e8e","op":"get"}},"request_sha256":"fd59dff48be4165b77ba7fe4f0fe54350e6f43e376941054e69ef06440f36f65","service":null,"step":3,"type":"extension_action_result","version":2},{"approval":"not_required","context_sha256":null,"effect_binding":{"inner_op":"get","kind":"collection","namespace":"d388d990c68798b1060dfd66f4e5df073a04061424610f0c6469673c3f80ed2f","pin":{"binding_sha256":"47aa463fe76f039ccb51b3f05e3190b92218feec3aea8d984d954e24725370c1","epoch":1,"identity_sha256":"dad99d2a5017fd6cc3f4ea1c99885a53ee5a29dd8d9d7a9eeda2d7d2e9ffb8da","namespace":"d388d990c68798b1060dfd66f4e5df073a04061424610f0c6469673c3f80ed2f","policy_sha256":"13a7358ba8eff0297ad92d12cec5d2d2e08573e75e83aed65324ff512c7d62c4","project_id":"b74c7c4dc6226d61d1a3c6f0568420296f3c202ee4ad0c7dbda156c37008e020","routes_sha256":"0d55114f77d605e25cf7d7ce2d506488a3525da0f0550f8121b190fb430a2cab","session_id":"538f590e7cb4adb299377b1272398d14","source_sha256":"098be7eda6b0f8e8efb36093fb7cc6cdde8bb55bc60f9e43567576c0d88fdd77","version":1,"worktree_id":"7761d94068d8e343d920d06344b27e85dc4f5f87e8e56bef4f28e4291a4a6900"},"request_sha256":"d03f1c472791abd3670b0db23e1cff441c3ebb58c23cc7637deb20a1366052df","version":1},"identity_sha256":"dad99d2a5017fd6cc3f4ea1c99885a53ee5a29dd8d9d7a9eeda2d7d2e9ffb8da","namespace":"d388d990c68798b1060dfd66f4e5df073a04061424610f0c6469673c3f80ed2f","operation_id":"0568076293a505b71f7e0941f5abacd0","parent_invocation_id":"406233290244b0204baf40416e6764e2","request":{"op":"collection.call","request":{"key":"note.4f49ecebb94b542ab80c39db8d969eebc31c5bdc230132639fd2d850397d0e8e","op":"get"}},"request_sha256":"45fb8376064eb4697ce8109bf0dc0c8c577992e8f73237d6315b183f5c937b08","service":null,"step":4,"type":"extension_action_intent","version":2},{"dependencies":[{"collection":{"floor":0,"floor_anchor":null,"generation":0,"manifest_sha256":null,"project":"d388d990c68798b1060dfd66f4e5df073a04061424610f0c6469673c3f80ed2f","root_sha256":null,"root_state":"absent"},"namespace":"d388d990c68798b1060dfd66f4e5df073a04061424610f0c6469673c3f80ed2f","pin_sha256":"b1063d0c5d6086553baee7c95628dbf3eba23f0b82bae864b3f3f36b7e522304","policy_generation":1,"project_id":"b74c7c4dc6226d61d1a3c6f0568420296f3c202ee4ad0c7dbda156c37008e020","subject":{"kind":"root_observation","request_sha256":"d03f1c472791abd3670b0db23e1cff441c3ebb58c23cc7637deb20a1366052df","result_sha256":"bd927e3e384c835ce0f14005116509b712365454024364fc1e499fd604db694c"},"version":3}],"dependencies_sha256":"9139ea671705bcd39b480312c08b9a3961ea6965072cfe2abaa717aaa9df2c27","operation_id":"0568076293a505b71f7e0941f5abacd0","parent_invocation_id":"406233290244b0204baf40416e6764e2","request_sha256":"45fb8376064eb4697ce8109bf0dc0c8c577992e8f73237d6315b183f5c937b08","result_sha256":"bd927e3e384c835ce0f14005116509b712365454024364fc1e499fd604db694c","session_id":"538f590e7cb4adb299377b1272398d14","type":"managed_read_observed","version":1},{"approval":"not_required","context_sha256":null,"effect_binding":{"inner_op":"get","kind":"collection","namespace":"d388d990c68798b1060dfd66f4e5df073a04061424610f0c6469673c3f80ed2f","pin":{"binding_sha256":"47aa463fe76f039ccb51b3f05e3190b92218feec3aea8d984d954e24725370c1","epoch":1,"identity_sha256":"dad99d2a5017fd6cc3f4ea1c99885a53ee5a29dd8d9d7a9eeda2d7d2e9ffb8da","namespace":"d388d990c68798b1060dfd66f4e5df073a04061424610f0c6469673c3f80ed2f","policy_sha256":"13a7358ba8eff0297ad92d12cec5d2d2e08573e75e83aed65324ff512c7d62c4","project_id":"b74c7c4dc6226d61d1a3c6f0568420296f3c202ee4ad0c7dbda156c37008e020","routes_sha256":"0d55114f77d605e25cf7d7ce2d506488a3525da0f0550f8121b190fb430a2cab","session_id":"538f590e7cb4adb299377b1272398d14","source_sha256":"098be7eda6b0f8e8efb36093fb7cc6cdde8bb55bc60f9e43567576c0d88fdd77","version":1,"worktree_id":"7761d94068d8e343d920d06344b27e85dc4f5f87e8e56bef4f28e4291a4a6900"},"request_sha256":"d03f1c472791abd3670b0db23e1cff441c3ebb58c23cc7637deb20a1366052df","version":1},"identity_sha256":"dad99d2a5017fd6cc3f4ea1c99885a53ee5a29dd8d9d7a9eeda2d7d2e9ffb8da","namespace":"d388d990c68798b1060dfd66f4e5df073a04061424610f0c6469673c3f80ed2f","operation_id":"0568076293a505b71f7e0941f5abacd0","outcome":{"status":"ok","value":{"floor":0,"floor_anchor":null,"generation":0,"project":"d388d990c68798b1060dfd66f4e5df073a04061424610f0c6469673c3f80ed2f","record":null,"version":3}},"outcome_sha256":"d2df5933f24ee50635f8206c3474f85c2641587ce26c9b6a1a9ea23c1c26640e","parent_invocation_id":"406233290244b0204baf40416e6764e2","request":{"op":"collection.call","request":{"key":"note.4f49ecebb94b542ab80c39db8d969eebc31c5bdc230132639fd2d850397d0e8e","op":"get"}},"request_sha256":"45fb8376064eb4697ce8109bf0dc0c8c577992e8f73237d6315b183f5c937b08","service":null,"step":4,"type":"extension_action_result","version":2},{"approval":"saved_consent","context_sha256":null,"effect_binding":{"inner_op":"commit","kind":"collection.managed","metadata_version":3,"namespace":"d388d990c68798b1060dfd66f4e5df073a04061424610f0c6469673c3f80ed2f","outer_sha256":"cf9f0a54e5190bc3b41039899bcd6c0eee9ffa2367dfa15b2d8b1e55ffd16e53","pin":{"binding_sha256":"47aa463fe76f039ccb51b3f05e3190b92218feec3aea8d984d954e24725370c1","epoch":1,"identity_sha256":"dad99d2a5017fd6cc3f4ea1c99885a53ee5a29dd8d9d7a9eeda2d7d2e9ffb8da","namespace":"d388d990c68798b1060dfd66f4e5df073a04061424610f0c6469673c3f80ed2f","policy_sha256":"13a7358ba8eff0297ad92d12cec5d2d2e08573e75e83aed65324ff512c7d62c4","project_id":"b74c7c4dc6226d61d1a3c6f0568420296f3c202ee4ad0c7dbda156c37008e020","routes_sha256":"0d55114f77d605e25cf7d7ce2d506488a3525da0f0550f8121b190fb430a2cab","session_id":"538f590e7cb4adb299377b1272398d14","source_sha256":"098be7eda6b0f8e8efb36093fb7cc6cdde8bb55bc60f9e43567576c0d88fdd77","version":1,"worktree_id":"7761d94068d8e343d920d06344b27e85dc4f5f87e8e56bef4f28e4291a4a6900"},"recipe_sha256":"818634825cb494606d25195a6601971a17542ed2caa22f28d1e18b1971b18cf7","request_sha256":"25152e47af7428e4d35c8e6ec52d3f38b77a3d9265bc26a7324bfafce9123c28","version":3},"identity_sha256":"dad99d2a5017fd6cc3f4ea1c99885a53ee5a29dd8d9d7a9eeda2d7d2e9ffb8da","namespace":"d388d990c68798b1060dfd66f4e5df073a04061424610f0c6469673c3f80ed2f","operation_id":"5455a5a5c4e06d8229729ff66203f5cf","parent_invocation_id":"406233290244b0204baf40416e6764e2","request":{"metadata_version":3,"op":"collection.managed","proofs":[{"handle":"eyJnZW5lcmF0aW9uIjozLCJraW5kIjoicmVhZCIsIm9jY3VycmVuY2UiOiJlZjU0YTY1YTUxYzg4Yzc1NDA5OWFhOTYyMmQ1NGYwNiIsIm9mZnNldCI6MCwicG9saWN5IjoxLCJzZXNzaW9uIjoiNTM4ZjU5MGU3Y2I0YWRiMjk5Mzc3YjEyNzIzOThkMTQiLCJzb3VyY2VfdmVyc2lvbiI6ImZkYmQ3MjQ5YzgyZTBjY2Y4Njc5OThlMmI2YjRmZmZkIiwidmVyc2lvbiI6MSwid2luZG93IjoiZGYxZGE4ZTZiMDhmOTU4MzdlMTkyNTY4OTdiODk5YTQifQ.hz5Q7JjcU1C8QYITL2TCeuIu076s_t48GqXfMz_z3D0","quote":"SYNTHETIC_TERMINAL_STATEMENT"}],"recipe_sha256":"818634825cb494606d25195a6601971a17542ed2caa22f28d1e18b1971b18cf7","request":{"advance_floor":true,"changes":[{"expected_revision":0,"key":"note.4f49ecebb94b542ab80c39db8d969eebc31c5bdc230132639fd2d850397d0e8e","value":{"category":"ordinary","created_at_ms":1793317896107,"event_at_ms":null,"evidence":{"sources":[{"content_sha256":"23c2b10fa6d4c9ce46a27a36d3900f9506e942524962fb4b8abb7c90b636ec51","coverage":"available","end_byte":28,"kind":"input.assertion.ordinary","occurrence_id":"ef54a65a51c88c754099aa9622d54f06","origin":"native_operator_assertion","path":null,"quote":"SYNTHETIC_TERMINAL_STATEMENT","quote_sha256":"23c2b10fa6d4c9ce46a27a36d3900f9506e942524962fb4b8abb7c90b636ec51","receipt_sha256":"96559c7b963ad7318d2106165c1e609d2db4b2c522bc506f71f157130faa2609","session_id":"538f590e7cb4adb299377b1272398d14","start_byte":0,"version":1,"version_id":"fdbd7249c82e0ccf867998e2b6b4fffd"}]},"expires_at_ms":1801093896107,"id":"4f49ecebb94b542ab80c39db8d969eebc31c5bdc230132639fd2d850397d0e8e","lineage":"4f49ecebb94b542ab80c39db8d969eebc31c5bdc230132639fd2d850397d0e8e","metadata_reserve":"0000000000000000000000000000000000000000000000000000000000000000","observed_at_ms":1793317896107,"previous_category":null,"reason":"Native operator statement and category review.","superseded_at_ms":null,"text":"SYNTHETIC_TERMINAL_STATEMENT","version":1}}],"expected_generation":0,"op":"commit"}},"request_sha256":"6cc3dd96c8bb9300da47c43b9ec37d0cf0cd94f8ce0b9b218b5a1ca0c2ac0654","service":null,"step":5,"type":"extension_action_intent","version":3},{"approval":"saved_consent","context_sha256":null,"effect_binding":{"inner_op":"commit","kind":"collection.managed","metadata_version":3,"namespace":"d388d990c68798b1060dfd66f4e5df073a04061424610f0c6469673c3f80ed2f","outer_sha256":"cf9f0a54e5190bc3b41039899bcd6c0eee9ffa2367dfa15b2d8b1e55ffd16e53","pin":{"binding_sha256":"47aa463fe76f039ccb51b3f05e3190b92218feec3aea8d984d954e24725370c1","epoch":1,"identity_sha256":"dad99d2a5017fd6cc3f4ea1c99885a53ee5a29dd8d9d7a9eeda2d7d2e9ffb8da","namespace":"d388d990c68798b1060dfd66f4e5df073a04061424610f0c6469673c3f80ed2f","policy_sha256":"13a7358ba8eff0297ad92d12cec5d2d2e08573e75e83aed65324ff512c7d62c4","project_id":"b74c7c4dc6226d61d1a3c6f0568420296f3c202ee4ad0c7dbda156c37008e020","routes_sha256":"0d55114f77d605e25cf7d7ce2d506488a3525da0f0550f8121b190fb430a2cab","session_id":"538f590e7cb4adb299377b1272398d14","source_sha256":"098be7eda6b0f8e8efb36093fb7cc6cdde8bb55bc60f9e43567576c0d88fdd77","version":1,"worktree_id":"7761d94068d8e343d920d06344b27e85dc4f5f87e8e56bef4f28e4291a4a6900"},"recipe_sha256":"818634825cb494606d25195a6601971a17542ed2caa22f28d1e18b1971b18cf7","request_sha256":"25152e47af7428e4d35c8e6ec52d3f38b77a3d9265bc26a7324bfafce9123c28","version":3},"identity_sha256":"dad99d2a5017fd6cc3f4ea1c99885a53ee5a29dd8d9d7a9eeda2d7d2e9ffb8da","namespace":"d388d990c68798b1060dfd66f4e5df073a04061424610f0c6469673c3f80ed2f","operation_id":"5455a5a5c4e06d8229729ff66203f5cf","outcome":{"status":"ok","value":{"binding":{"normalization_sha256":"fa5f3a083f823b1def9445f9892adc714925d646edc2b15a7501f620d4f48a19","original_request_sha256":"25152e47af7428e4d35c8e6ec52d3f38b77a3d9265bc26a7324bfafce9123c28","recipe_sha256":"818634825cb494606d25195a6601971a17542ed2caa22f28d1e18b1971b18cf7","version":1},"normalization":{"category":"ordinary","eligibility":"current","first_admitted_ms":1793317896410,"format_value_sha256":"5448a9effaaf694752ce676d9905c9ac88c094be12d49292dca35aa6f4fa3236","lineage":"4f49ecebb94b542ab80c39db8d969eebc31c5bdc230132639fd2d850397d0e8e","metadata_changes":[{"expected_revision":0,"key":"host.validity.format","value_sha256":"5448a9effaaf694752ce676d9905c9ac88c094be12d49292dca35aa6f4fa3236"},{"expected_revision":0,"key":"host.validity.a.0000000000000000000000000000000000000000000000000000000000000000","value_sha256":"d3db30de7c8df966bc91338d46d7abf04b197edf27809dce95f6f9dae9d27baf"},{"expected_revision":0,"key":"host.validity.l.000000000000000000000000000000000000000000000000000000000000000000","value_sha256":"00e6c7bdcbbd6d88723975d34c1e2477c225bd514e171faa40944948d23d2bda"}],"record_key":"note.4f49ecebb94b542ab80c39db8d969eebc31c5bdc230132639fd2d850397d0e8e","valid_until_ms":1801093896410,"version":3},"receipt":{"floor":1,"generation":1,"managed_binding_sha256":"0952f7a6a17af6cc2a50c8b24a616f7547a27c09c414caddbb1d7272f46aa970","request_sha256":"8957417100555e8d9ebd5eb720d3a2ec934fc36127524ed113b20bfd48123703"},"version":1}},"outcome_sha256":"296d0b46d444285fd566a9eb5c3181e74fd8e1c3df08613992646c7187b2340b","parent_invocation_id":"406233290244b0204baf40416e6764e2","request":{"metadata_version":3,"op":"collection.managed","proofs":[{"handle":"eyJnZW5lcmF0aW9uIjozLCJraW5kIjoicmVhZCIsIm9jY3VycmVuY2UiOiJlZjU0YTY1YTUxYzg4Yzc1NDA5OWFhOTYyMmQ1NGYwNiIsIm9mZnNldCI6MCwicG9saWN5IjoxLCJzZXNzaW9uIjoiNTM4ZjU5MGU3Y2I0YWRiMjk5Mzc3YjEyNzIzOThkMTQiLCJzb3VyY2VfdmVyc2lvbiI6ImZkYmQ3MjQ5YzgyZTBjY2Y4Njc5OThlMmI2YjRmZmZkIiwidmVyc2lvbiI6MSwid2luZG93IjoiZGYxZGE4ZTZiMDhmOTU4MzdlMTkyNTY4OTdiODk5YTQifQ.hz5Q7JjcU1C8QYITL2TCeuIu076s_t48GqXfMz_z3D0","quote":"SYNTHETIC_TERMINAL_STATEMENT"}],"recipe_sha256":"818634825cb494606d25195a6601971a17542ed2caa22f28d1e18b1971b18cf7","request":{"advance_floor":true,"changes":[{"expected_revision":0,"key":"note.4f49ecebb94b542ab80c39db8d969eebc31c5bdc230132639fd2d850397d0e8e","value":{"category":"ordinary","created_at_ms":1793317896107,"event_at_ms":null,"evidence":{"sources":[{"content_sha256":"23c2b10fa6d4c9ce46a27a36d3900f9506e942524962fb4b8abb7c90b636ec51","coverage":"available","end_byte":28,"kind":"input.assertion.ordinary","occurrence_id":"ef54a65a51c88c754099aa9622d54f06","origin":"native_operator_assertion","path":null,"quote":"SYNTHETIC_TERMINAL_STATEMENT","quote_sha256":"23c2b10fa6d4c9ce46a27a36d3900f9506e942524962fb4b8abb7c90b636ec51","receipt_sha256":"96559c7b963ad7318d2106165c1e609d2db4b2c522bc506f71f157130faa2609","session_id":"538f590e7cb4adb299377b1272398d14","start_byte":0,"version":1,"version_id":"fdbd7249c82e0ccf867998e2b6b4fffd"}]},"expires_at_ms":1801093896107,"id":"4f49ecebb94b542ab80c39db8d969eebc31c5bdc230132639fd2d850397d0e8e","lineage":"4f49ecebb94b542ab80c39db8d969eebc31c5bdc230132639fd2d850397d0e8e","metadata_reserve":"0000000000000000000000000000000000000000000000000000000000000000","observed_at_ms":1793317896107,"previous_category":null,"reason":"Native operator statement and category review.","superseded_at_ms":null,"text":"SYNTHETIC_TERMINAL_STATEMENT","version":1}}],"expected_generation":0,"op":"commit"}},"request_sha256":"6cc3dd96c8bb9300da47c43b9ec37d0cf0cd94f8ce0b9b218b5a1ca0c2ac0654","service":null,"step":5,"type":"extension_action_result","version":3},{"actions_sha256":"89f0efc4a2f91947893c9c13bd517755c5c5444fad8afcc6c822d9aea5f0b844","checked_at_ms":1793317896492,"deadline_ms":1793318015931,"dependencies_sha256":"d92fab25589f626de18e54d6b92be54cb57bb3f3a1587aff7d8dbefcbdfffeb5","kind":"inline","parent_invocation_id":"406233290244b0204baf40416e6764e2","parent_sha256":"5cc20ce049a394daa3b9d5497464a0c73d9e2f196719be5bb24ac8157c2a3c93","release_id":"455cc2bd1ab57290246f797f5a60b7b7","result_sha256":"33793196910f45074adf9157f2ef4558c11f08f452770c8e3249fe26a9f5ea13","session_id":"538f590e7cb4adb299377b1272398d14","type":"managed_output_release_intent","version":1},{"action_count":5,"actions_sha256":"89f0efc4a2f91947893c9c13bd517755c5c5444fad8afcc6c822d9aea5f0b844","approval":"saved_consent","descriptor":{"arguments_schema":{"additionalProperties":false,"properties":{"category":{"enum":["ordinary","preference","current"],"type":"string"},"event_at_ms":{"maximum":9007199254740991,"minimum":0,"type":["integer","null"]},"reason":{"maxLength":256,"minLength":1,"type":"string"},"source":{"additionalProperties":false,"properties":{"handle":{"maxLength":2048,"minLength":1,"type":"string"},"quote":{"maxLength":1024,"minLength":1,"type":"string"}},"required":["handle","quote"],"type":"object"},"text":{"maxLength":2048,"minLength":1,"type":"string"}},"required":["category","event_at_ms","reason","source","text"],"type":"object"},"description":"Save one exact attributed observation or queue a proposal; permission is checked by the host","id":"capture","instance":"knowledge","name":"ext__knowledge__capture","result_schema":{"type":"object"},"stage":"invoke.command"},"identity":{"allow_children":false,"artifact":"578cd2ade037601ee7f17a2b69f901d116efc664369459e53d9be566cdf317fc","artifact_sha256":"578cd2ade037601ee7f17a2b69f901d116efc664369459e53d9be566cdf317fc","capabilities":["event.job","host.actions","host.actions.mixed","host.collection.managed","host.collection.read","host.context","host.sources","invoke.command","invoke.result.pages","invoke.tool"],"expires_at":null,"exports_sha256":"6e45541c6159a47550e7dc59e24b0942c8b92df88309f48601aa9851bdf5e967","generation":1,"host_sha256":"3ea0072426fb0a1a4aca5f0d41c1ac6c2a5610cfff09035f3d34c5916d0afab2","instance":"knowledge","lifetime":"session","options_sha256":"a6e72b477ff303a177ac9ddddca972451778ac44ef36f9f9b2723746924036ee","order":100,"protocol":1,"requires_sha256":"1104e0e297e593f73d794834a318fd9f6b129c080e1089b1c7a444ab1585af7d","runtime":{"architecture":"x86_64-pc-linux-gnu","elixir":"1.20.4","erts":"17.1","otp":"29"},"scope":"operator","sdk":2,"services":[],"source_sha256":"1c8c90764d2f2048fa0dde86317833729a9b706c7f317afe2fe61fb8e9fb605c","subscriptions_sha256":"fa043cbeb171b077242a2f2fcc702b5b869cd4cdec237b07d09ec1e3685db09f"},"invocation_id":"406233290244b0204baf40416e6764e2","parent_call_id":null,"parent_request_id":null,"payload":{"api_version":1,"arguments":{"category":"ordinary","event_at_ms":null,"reason":"Native operator statement and category review.","source":{"handle":"eyJnZW5lcmF0aW9uIjozLCJraW5kIjoicmVhZCIsIm9jY3VycmVuY2UiOiJlZjU0YTY1YTUxYzg4Yzc1NDA5OWFhOTYyMmQ1NGYwNiIsIm9mZnNldCI6MCwicG9saWN5IjoxLCJzZXNzaW9uIjoiNTM4ZjU5MGU3Y2I0YWRiMjk5Mzc3YjEyNzIzOThkMTQiLCJzb3VyY2VfdmVyc2lvbiI6ImZkYmQ3MjQ5YzgyZTBjY2Y4Njc5OThlMmI2YjRmZmZkIiwidmVyc2lvbiI6MSwid2luZG93IjoiZGYxZGE4ZTZiMDhmOTU4MzdlMTkyNTY4OTdiODk5YTQifQ.hz5Q7JjcU1C8QYITL2TCeuIu076s_t48GqXfMz_z3D0","quote":"SYNTHETIC_TERMINAL_STATEMENT"},"text":"SYNTHETIC_TERMINAL_STATEMENT"},"id":"capture","invocation_id":"406233290244b0204baf40416e6764e2","session_id":"538f590e7cb4adb299377b1272398d14","turn_id":"6875e69b5a72bbfedc704037fac06341"},"payload_sha256":"22039c67162c53b3d0b023e339a108ea63a1b9e3ec4fcbf2b260c19103685257","semantic_binding":{"artifact_sha256":"578cd2ade037601ee7f17a2b69f901d116efc664369459e53d9be566cdf317fc","class":"collection.publish","descriptor_sha256":"cf9f0a54e5190bc3b41039899bcd6c0eee9ffa2367dfa15b2d8b1e55ffd16e53","kind":"semantic.outer","namespace":"d388d990c68798b1060dfd66f4e5df073a04061424610f0c6469673c3f80ed2f","pin":{"binding_sha256":"47aa463fe76f039ccb51b3f05e3190b92218feec3aea8d984d954e24725370c1","epoch":1,"identity_sha256":"dad99d2a5017fd6cc3f4ea1c99885a53ee5a29dd8d9d7a9eeda2d7d2e9ffb8da","namespace":"d388d990c68798b1060dfd66f4e5df073a04061424610f0c6469673c3f80ed2f","policy_sha256":"13a7358ba8eff0297ad92d12cec5d2d2e08573e75e83aed65324ff512c7d62c4","project_id":"b74c7c4dc6226d61d1a3c6f0568420296f3c202ee4ad0c7dbda156c37008e020","routes_sha256":"0d55114f77d605e25cf7d7ce2d506488a3525da0f0550f8121b190fb430a2cab","session_id":"538f590e7cb4adb299377b1272398d14","source_sha256":"098be7eda6b0f8e8efb36093fb7cc6cdde8bb55bc60f9e43567576c0d88fdd77","version":1,"worktree_id":"7761d94068d8e343d920d06344b27e85dc4f5f87e8e56bef4f28e4291a4a6900"},"version":1},"text":"{\"category\":\"ordinary\",\"key\":\"note.4f49ecebb94b542ab80c39db8d969eebc31c5bdc230132639fd2d850397d0e8e\",\"receipt\":{\"binding\":{\"normalization_sha256\":\"fa5f3a083f823b1def9445f9892adc714925d646edc2b15a7501f620d4f48a19\",\"original_request_sha256\":\"25152e47af7428e4d35c8e6ec52d3f38b77a3d9265bc26a7324bfafce9123c28\",\"recipe_sha256\":\"818634825cb494606d25195a6601971a17542ed2caa22f28d1e18b1971b18cf7\",\"version\":1},\"normalization\":{\"category\":\"ordinary\",\"eligibility\":\"current\",\"first_admitted_ms\":1793317896410,\"format_value_sha256\":\"5448a9effaaf694752ce676d9905c9ac88c094be12d49292dca35aa6f4fa3236\",\"lineage\":\"4f49ecebb94b542ab80c39db8d969eebc31c5bdc230132639fd2d850397d0e8e\",\"metadata_changes\":[{\"expected_revision\":0,\"key\":\"host.validity.format\",\"value_sha256\":\"5448a9effaaf694752ce676d9905c9ac88c094be12d49292dca35aa6f4fa3236\"},{\"expected_revision\":0,\"key\":\"host.validity.a.0000000000000000000000000000000000000000000000000000000000000000\",\"value_sha256\":\"d3db30de7c8df966bc91338d46d7abf04b197edf27809dce95f6f9dae9d27baf\"},{\"expected_revision\":0,\"key\":\"host.validity.l.000000000000000000000000000000000000000000000000000000000000000000\",\"value_sha256\":\"00e6c7bdcbbd6d88723975d34c1e2477c225bd514e171faa40944948d23d2bda\"}],\"record_key\":\"note.4f49ecebb94b542ab80c39db8d969eebc31c5bdc230132639fd2d850397d0e8e\",\"valid_until_ms\":1801093896410,\"version\":3},\"receipt\":{\"floor\":1,\"generation\":1,\"managed_binding_sha256\":\"0952f7a6a17af6cc2a50c8b24a616f7547a27c09c414caddbb1d7272f46aa970\",\"request_sha256\":\"8957417100555e8d9ebd5eb720d3a2ec934fc36127524ed113b20bfd48123703\"},\"version\":1},\"status\":\"saved\"}","text_sha256":"b413727d95634f65335486018ad142bd05c5214c6f11b49be0304d7ba697fd5a","type":"extension_invocation_result","value":{"category":"ordinary","key":"note.4f49ecebb94b542ab80c39db8d969eebc31c5bdc230132639fd2d850397d0e8e","receipt":{"binding":{"normalization_sha256":"fa5f3a083f823b1def9445f9892adc714925d646edc2b15a7501f620d4f48a19","original_request_sha256":"25152e47af7428e4d35c8e6ec52d3f38b77a3d9265bc26a7324bfafce9123c28","recipe_sha256":"818634825cb494606d25195a6601971a17542ed2caa22f28d1e18b1971b18cf7","version":1},"normalization":{"category":"ordinary","eligibility":"current","first_admitted_ms":1793317896410,"format_value_sha256":"5448a9effaaf694752ce676d9905c9ac88c094be12d49292dca35aa6f4fa3236","lineage":"4f49ecebb94b542ab80c39db8d969eebc31c5bdc230132639fd2d850397d0e8e","metadata_changes":[{"expected_revision":0,"key":"host.validity.format","value_sha256":"5448a9effaaf694752ce676d9905c9ac88c094be12d49292dca35aa6f4fa3236"},{"expected_revision":0,"key":"host.validity.a.0000000000000000000000000000000000000000000000000000000000000000","value_sha256":"d3db30de7c8df966bc91338d46d7abf04b197edf27809dce95f6f9dae9d27baf"},{"expected_revision":0,"key":"host.validity.l.000000000000000000000000000000000000000000000000000000000000000000","value_sha256":"00e6c7bdcbbd6d88723975d34c1e2477c225bd514e171faa40944948d23d2bda"}],"record_key":"note.4f49ecebb94b542ab80c39db8d969eebc31c5bdc230132639fd2d850397d0e8e","valid_until_ms":1801093896410,"version":3},"receipt":{"floor":1,"generation":1,"managed_binding_sha256":"0952f7a6a17af6cc2a50c8b24a616f7547a27c09c414caddbb1d7272f46aa970","request_sha256":"8957417100555e8d9ebd5eb720d3a2ec934fc36127524ed113b20bfd48123703"},"version":1},"status":"saved"},"version":3},{"checked_at_ms":1793317896529,"deadline_ms":1793318015931,"decision":"historical_write","intent_sha256":"4693c0cf0826406f245c126350544ca064f565b00fc5b70e251fea6859728a70","projection_sha256":"bb931547f0b090eceb85859f0ed715116414123c9101de3417a05e16564de225","release_id":"455cc2bd1ab57290246f797f5a60b7b7","type":"managed_output_release_result","version":1,"write_facts":[{"action_sha256":"6fb2beff7bde9fa59c3ce2a48c211447cebc4530828b30f5d80956b55fe76ec7","category":"ordinary","generation":1,"normalization_sha256":"fa5f3a083f823b1def9445f9892adc714925d646edc2b15a7501f620d4f48a19","operation_id":"5455a5a5c4e06d8229729ff66203f5cf","receipt_sha256":"6a42e0ceae95f4d36a216591e925d2945ab13ea7c5bd5eba253ca5a7e90f9a8e","record_key":"note.4f49ecebb94b542ab80c39db8d969eebc31c5bdc230132639fd2d850397d0e8e"}]},{"release_id":"455cc2bd1ab57290246f797f5a60b7b7","result_sha256":"df8338e4253f5a6f75aa9c153c1e7a98145ca2961fd2f8ae3ea97f43ed7b1bcc","status":"confirmed","type":"managed_output_release_cleanup","version":1},{"status":"ok","type":"turn_finished"},{"type":"cancelled"}]
+TERMINAL_REMEMBER_PUBLICATION_PASSED

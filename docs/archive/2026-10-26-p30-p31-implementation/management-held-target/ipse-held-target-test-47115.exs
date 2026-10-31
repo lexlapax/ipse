@@ -1,0 +1,6 @@
+Path.wildcard("_build/management-held-target-sol-20261029/lib/*/ebin") |> Enum.each(&Code.prepend_path/1)
+{:ok, _} = Application.ensure_all_started(:ipse)
+ExUnit.start(autorun: false, seed: 20261029, exclude: [:test], include: [:held_target_read, :held_target_regression])
+Code.require_file("test/ipse/extension/collection_normalizer_v3_integration_test.exs")
+result = ExUnit.run()
+System.halt(if result.failures == 0 and result.total - result.excluded == 4, do: 0, else: 1)

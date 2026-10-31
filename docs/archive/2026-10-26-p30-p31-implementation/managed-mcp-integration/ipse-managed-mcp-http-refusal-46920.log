@@ -1,0 +1,12 @@
+Running ExUnit with seed: 916506, max_cases: 8
+Excluding tags: [:test]
+Including tags: [managed_http_prestart: true]
+
+
+21:15:10.455 [debug] MCP Client: transport closed: :invalid_http_transport
+.
+21:15:16.604 [debug] MCP Client: transport closed: :invalid_http_transport
+.
+Finished in 10.1 seconds (2.3s on load, 0.00s async, 7.7s sync)
+
+Result: 2 passed, 59 excluded

@@ -1,0 +1,23 @@
+Running ExUnit with seed: 47069, max_cases: 1
+Excluding tags: [:test]
+Including tags: [:generation_paged_budget]
+
+
+
+  1) test complete maximum-width root2 selection stays within native and SDK invocation limits (Ipse.KnowledgeCollectionDirectoryTest)
+     test/extensions/knowledge/collection_directory_test.exs:67
+     ** (MatchError) no match of right hand side value:
+
+         {"     warning: Ipse.JSON.decode!/1 is undefined or private. Did you mean:\n\n         * decode_unique/1\n         * decode_unique/2\n\n     │\n 137 │     value = JSON.decode!(r[\"data\"])\n     │                  ~\n     │\n     └─ test/support/collection_protocol.exs:137:18: IpseTest.CollectionProtocol.execute/2\n     └─ test/support/collection_protocol.exs:192:22: IpseTest.CollectionProtocol.execute/2\n\n     warning: Ipse.JSON.encode!/1 is undefined or private\n     │\n 261 │   defp json(value), do: IO.iodata_to_binary(JSON.encode!(value))\n     │                                                  ~\n     │\n     └─ test/support/collection_protocol.exs:261:50: IpseTest.CollectionProtocol.json/1\n\n** (UndefinedFunctionError) function Ipse.JSON.encode!/1 is undefined or private\n    Ipse.JSON.encode!(%{\"api_version\" => 1, \"kind\" => \"host_call\", \"request\" => %{\"op\" => \"collection.store\", \"request\" => %{\"op\" => \"snapshot\"}, \"scope\" => \"project\"}})\n    test/support/collection_protocol.exs:261: IpseTest.CollectionProtocol.json/1\n    test/support/collection_protocol.exs:38: IpseTest.CollectionProtocol.run/3\n    test/support/generation_paged_budget.exs:224: (file)\n",
+          1}
+
+     code: result = run_fixture("test/support/generation_paged_budget.exs")
+     stacktrace:
+       test/extensions/knowledge/collection_directory_test.exs:108: Ipse.KnowledgeCollectionDirectoryTest.run_fixture/1
+       test/extensions/knowledge/collection_directory_test.exs:68: (test)
+
+
+Finished in 2.7 seconds (0.06s on load, 0.00s async, 2.7s sync)
+
+Result: 0/1 passed, 6 excluded
+Failed: 1 test

@@ -1,0 +1,18 @@
+Running ExUnit with seed: 809361, max_cases: 4
+
+
+
+  1) test claim precedes four receipt flows and publishes exactly the canonical shared first page (Ipse.SharedProducerTest)
+     test/extensions/knowledge/shared_producer_test.exs:185
+     Assertion with == failed
+     code:  assert d.calls == 4
+     left:  1
+     right: 4
+     stacktrace:
+       test/extensions/knowledge/shared_producer_test.exs:192: (test)
+
+...
+Finished in 0.4 seconds (0.3s on load, 0.00s async, 0.1s sync)
+
+Result: 3/4 passed
+Failed: 1 test

@@ -1,0 +1,8 @@
+Running ExUnit with seed: 997597, max_cases: 8
+Excluding tags: [:native_sandbox, :macos_sandbox, :macos_filesystem, :memory_scope]
+
+PUBLIC_SHARED_PRODUCER {"vectors":2,"embedding_admissions":1,"effects_used":6,"reads_used":51,"ready_bytes":1786}
+.
+Finished in 11.1 seconds (0.1s on load, 0.00s async, 10.9s sync)
+
+Result: 1 passed

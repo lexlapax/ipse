@@ -1,0 +1,152 @@
+Review the complete proposed facts below. This confirmation applies only to this exact review.
+{
+  "action_sha256": "a23c3a6c76267a7414f2ad64384e1ade8e7b6506585ca70ee97c36856bf75f03",
+  "collection": {
+    "manifest_sha256": "35b50add24cc514f8eeb1fd8a2a722dce4a2ed7e64aa89d80c29d82024c68c66",
+    "root": {
+      "floor": 1,
+      "floor_anchor": "75d30b5414d3cf5afc16f78b5d7b9082",
+      "generation": 1,
+      "project": "c6abf2a62f03a1ff496dff22f66c0ca0696b0487bada556c4e8f25ecbc6cefab",
+      "version": 3
+    },
+    "root_sha256": "d9cdd257662d61861d37603811cc3dc8fea0d84833ddff11ec5f6a827fee9ac3",
+    "root_state": "present"
+  },
+  "context": {
+    "binding_sha256": "244093e0d207c4bbd2f4905f1ad1b0791303cc9b0932ffda6789a642e99cdec8",
+    "client_id": "999a8752d601214d58bb3d9c5c87014d",
+    "job_id": "2ea722cc2004590f71fc076f3249a1e9",
+    "management_epoch": 0,
+    "management_sha256": "85af9d26c61ecd4967de522ae74bf934d275a1a8f0e53ef49846c2d8575e0763",
+    "namespace": "c6abf2a62f03a1ff496dff22f66c0ca0696b0487bada556c4e8f25ecbc6cefab",
+    "original_pin": null,
+    "project_id": "3e32b247373531ebb48aa054de2715acbdb06c3dfea1a2dd8d51f14c949844c8",
+    "recipe": {
+      "category_path": [
+        "category"
+      ],
+      "constraints_sha256": "d709745ab18405dff572c41053eda5cbe12c350ebbabdcd0d52ea1e80962368a",
+      "evidence_path": [
+        "evidence",
+        "sources"
+      ],
+      "key_prefix": "note.",
+      "kind": "literal_source",
+      "lineage_path": [
+        "lineage"
+      ],
+      "override_prefix": "override.",
+      "rules": [
+        {
+          "category": "current",
+          "max_age_ms": null,
+          "origins": [
+            "native_operator_assertion",
+            "typed_host_outcome"
+          ]
+        },
+        {
+          "category": "ordinary",
+          "max_age_ms": 7776000000,
+          "origins": [
+            "native_operator_assertion",
+            "typed_host_outcome"
+          ]
+        },
+        {
+          "category": "preference",
+          "max_age_ms": null,
+          "origins": [
+            "native_operator_assertion",
+            "typed_host_outcome"
+          ]
+        }
+      ],
+      "text_path": [
+        "text"
+      ],
+      "version": 1
+    },
+    "session_id": "96a0cf2a0e5dda5eba1c1be1a3346f89"
+  },
+  "kind": "managed_literal_forget",
+  "metadata": {
+    "category": "ordinary",
+    "first_admitted_ms": 86400000,
+    "lineage": "a25d954b728c71bc15cdfe3ef4c63f6a87e9f22be1dd1e5ddf9edf02ab769193",
+    "policy_sha256": "dbc7d380793c1fd92543f35461f649e62c5b1ffb7e82d904314ce91395ec651e",
+    "recipe_sha256": "9b330108f5f6d48b5ff93126cab258964531117619501ad5a00de3e4e8d3fc26",
+    "valid_until_ms": 7862400000
+  },
+  "operation_id": "5eb9a08e9052710c17e847e349713e1e",
+  "policy": {
+    "kind": "session"
+  },
+  "reason": "Forget selected synthetic claim",
+  "request_sha256": "9b051f6e9fac22bbf0b47263b253f36162c69aab241b56409474eba219923a79",
+  "scope": "selected literal derivative; original journal, management review journal and shared evidence remain",
+  "target": {
+    "bytes": 1082,
+    "key": "note.a25d954b728c71bc15cdfe3ef4c63f6a87e9f22be1dd1e5ddf9edf02ab769193",
+    "operation_id": "75d30b5414d3cf5afc16f78b5d7b9082",
+    "revision": 1,
+    "sha256": "101616baaa98218c0d51799a5cf199ffeba4f26dec2cbef3b198fbc2d868c3c6",
+    "value": {
+      "category": "ordinary",
+      "created_at_ms": 864000000,
+      "event_at_ms": null,
+      "evidence": {
+        "sources": [
+          {
+            "content_sha256": "4c1adf410e8092458cf9598d4ed4ba92a9ddc6c05fa3727c188a5fce5feada84",
+            "coverage": "available",
+            "end_byte": 19,
+            "kind": "input.assertion.ordinary",
+            "occurrence_id": "00000000000000000000000000000001",
+            "origin": "native_operator_assertion",
+            "path": null,
+            "quote": "Acme has owner Alex",
+            "quote_sha256": "4c1adf410e8092458cf9598d4ed4ba92a9ddc6c05fa3727c188a5fce5feada84",
+            "receipt_sha256": "249ded81fc09301d955175885ad1d43c9b47dd399ac1e0fedb40e418eb5c1547",
+            "session_id": "11111111111111111111111111111111",
+            "start_byte": 0,
+            "version": 1,
+            "version_id": "33333333333333333333333333333333"
+          }
+        ]
+      },
+      "expires_at_ms": 8640000000,
+      "id": "a25d954b728c71bc15cdfe3ef4c63f6a87e9f22be1dd1e5ddf9edf02ab769193",
+      "lineage": "a25d954b728c71bc15cdfe3ef4c63f6a87e9f22be1dd1e5ddf9edf02ab769193",
+      "metadata_reserve": "0000000000000000000000000000000000000000000000000000000000000000",
+      "observed_at_ms": 864000000,
+      "previous_category": null,
+      "reason": "trusted fixture source",
+      "superseded_at_ms": null,
+      "text": "Acme has owner Alex",
+      "version": 1
+    }
+  },
+  "version": 1
+}
+Type forget 97f0e34e7e6db2af to confirm, or anything else to cancel.
+> forget 97f0e34e7e6db2af
+[22m
+07:27:40.886 [info] The function passed as a handler with ID "forget-permit-expiry-2e0abca1565d05d1d2cc03e5a6c6a935" is a local function.
+This means that it is either an anonymous function or a capture of a function without a module specified. That may cause a performance penalty when calling that handler. For more details see the note in `telemetry:attach/4` documentation.
+
+https://hexdocs.pm/telemetry/telemetry.html#attach/4[0m
+FORGET_PERMIT_EXPIRED_BEFORE_NATIVE_SWITCH
+** (ExUnit.AssertionError) 
+
+Expected truthy, got false
+code: assert is_map(Process.get(:forget_after_expiry_core))
+arguments:
+
+         # 1
+         nil
+
+
+    test/support/managed_literal_forget.exs:204: anonymous fn/8 in :elixir_compiler_0.__FILE__/1
+    (ipse 0.1.0) lib/ipse/session/resources.ex:871: Ipse.Session.Resources.execute_file_effect/3

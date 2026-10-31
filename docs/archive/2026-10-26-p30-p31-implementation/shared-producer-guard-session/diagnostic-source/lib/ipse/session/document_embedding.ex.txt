@@ -1,0 +1,277 @@
+defmodule Ipse.Session.DocumentEmbedding do
+  @moduledoc false
+  alias Ipse.Session
+  alias Ipse.Extension.{CollectionStore, EmbeddingCall, Registry}
+  alias Ipse.Extension.Collection.DocumentSourceUse
+  @error {:error, :document_source_use_refused}
+
+  # This state is populated only by live, durably committed action results.
+  # Saved result lists and pending Collection records never reconstruct it.
+  def record_action(invocation, event) do
+    identity = invocation.parent["identity"]
+
+    if CollectionStore.embedding_source_required?(identity) do
+      state = invocation.document_producer || initial()
+      state = record(state, event, identity, invocation.parent["invocation_id"])
+      %{invocation | document_producer: state}
+    else
+      invocation
+    end
+  end
+
+  def allowed?(invocation, request, binding) do
+    state = invocation.document_producer
+    source = binding["source_binding"]
+    guard = request["source_guard"]
+    claim = state && state.claim
+
+    is_map(claim) and state.status === :ready and state.next === guard["batch_index"] and
+      claim.key === guard["claim_key"] and claim.revision === guard["claim_revision"] and
+      claim.sha256 === guard["claim_sha256"] and claim.namespace === source["namespace"] and
+      claim.project === source["project"] and
+      claim.identity_sha256 === source["identity_sha256"] and
+      claim.parent === invocation.parent["invocation_id"]
+  rescue
+    _ -> false
+  end
+
+  def admit(s, facts) do
+    intent = s.invocation.action.intent
+    binding = intent["effect_binding"]
+    state = s.invocation.document_producer
+
+    with true <- Session.Invocation.output_timely?(s) and not s.invocation.interrupted,
+         true <- Registry.live?(s.invocation.parent["identity"]),
+         true <-
+           EmbeddingCall.valid_identity?(
+             s.invocation.parent["identity"],
+             intent["request"],
+             binding
+           ),
+         true <- binding["source_binding"]["session_id"] === s.id,
+         true <- allowed?(s.invocation, intent["request"], binding),
+         true <- facts.claim_operation_id === state.claim.operation_id,
+         true <-
+           facts.claim_revision === state.claim.revision and
+             facts.claim_sha256 === state.claim.sha256,
+         true <- facts.claim_key === state.claim.key and facts.batch_index === state.next,
+         true <- facts.selection_sha256 === intent["request"]["expected_selection_sha256"],
+         true <-
+           facts.batch_count in 1..4 and
+             (is_nil(state.count) or state.count === facts.batch_count) do
+      next = %{
+        state
+        | status: :inflight,
+          inflight: intent["operation_id"],
+          count: facts.batch_count
+      }
+
+      {:reply, :ok, %{s | invocation: %{s.invocation | document_producer: next}}}
+    else
+      _ -> {:reply, @error, poison(s)}
+    end
+  rescue
+    _ -> {:reply, @error, poison(s)}
+  end
+
+  def poison(s) do
+    state = s.invocation.document_producer || initial()
+    %{s | invocation: %{s.invocation | document_producer: %{state | status: :poisoned}}}
+  end
+
+  @doc false
+  def before_dispatch(data, wire_facts) do
+    document_diag(:before_entry, :ok)
+    source = data.document_source.binding["source_binding"]
+    request = data.document_source.request
+
+    Session.Resources.file_effect(fn ->
+      Ipse.Extension.ProjectIdentity.with_existing_binding(
+        data.config[:home],
+        data.cwd,
+        source["project"],
+        fn _ ->
+          document_diag(:identity_callback, :ok)
+
+          Ipse.Extension.Collection.with_document_read(
+            CollectionStore.root(data.config[:home]),
+            source["namespace"],
+            fn _, read ->
+              document_diag(:native_callback, :ok)
+
+              with true <- data.phase == "embedding.create" and is_map(data.wire),
+                   {:ok, facts} <-
+                     document_diag(
+                       :native_auth,
+                       DocumentSourceUse.authenticate(
+                         read,
+                         request["source_guard"],
+                         request["inputs"],
+                         data.document_source.selection
+                       )
+                     ),
+                   :ok <-
+                     document_diag(
+                       :admit_rpc,
+                       GenServer.call(
+                         data.owner,
+                         {:document_embedding_admit, data.job_ref, data.phase, data.admission,
+                          data.expected, wire_facts, facts},
+                         5_000
+                       )
+                     ),
+                   # All blocking validation and the one-use spend precede UTC.
+                   now = System.system_time(:millisecond),
+                   true <- DocumentSourceUse.current?(facts, now),
+                   true <- Registry.live?(data.document_source.identity, div(now, 1000)) do
+                :ok
+              else
+                _ -> @error
+              end
+            end
+          )
+        end
+      )
+    end)
+  rescue
+    _ -> @error
+  catch
+    _, _ -> @error
+  end
+
+  def dispatch_data(s) do
+    intent = s.invocation.action.intent
+    request = intent["request"]
+    binding = intent["effect_binding"]
+    execution = binding["execution"]
+
+    %{
+      request: request,
+      binding: binding,
+      identity: s.invocation.parent["identity"],
+      deadline_ms:
+        if(s.extension_output_clock, do: s.extension_output_clock.started_ms + 120_000),
+      selection: %{
+        "profile" => execution["id"],
+        "model" => execution["model"],
+        "dimensions" => execution["dimensions"],
+        "encoding" => "float32le",
+        "selection_sha256" => request["expected_selection_sha256"]
+      }
+    }
+  end
+
+  defp record(state, %{"request" => %{"op" => "embedding.create"}} = event, _, _) do
+    if state.status === :inflight and state.inflight === event["operation_id"] and
+         event["outcome"]["status"] == "ok" do
+      next = state.next + 1
+
+      %{
+        state
+        | next: next,
+          inflight: nil,
+          status: if(next == state.count, do: :done, else: :ready)
+      }
+    else
+      %{state | status: :poisoned}
+    end
+  end
+
+  defp record(state, event, identity, parent) do
+    request = event["request"]
+    binding = event["effect_binding"]
+
+    if CollectionStore.operation?(request) and event["outcome"]["status"] == "ok" and
+         event["parent_invocation_id"] === parent and
+         CollectionStore.valid_binding?(binding, request, identity) do
+      record_store(state, event, binding, parent)
+    else
+      state
+    end
+  end
+
+  defp record_store(%{claim: nil} = state, event, binding, parent) do
+    request = event["request"]["request"]
+    result = event["outcome"]["value"]["result"]
+
+    cond do
+      state.status !== :ready ->
+        state
+
+      request["op"] == "value.prepare_inline" and request["expected_revision"] === 0 and
+        is_binary(request["key"]) and String.starts_with?(request["key"], "genproducer.") ->
+        prepare = %{
+          ref: Map.take(result["stage"], ~w(slot epoch)),
+          key: request["key"],
+          sha256: request["sha256"],
+          namespace: binding["namespace"],
+          project: binding["project"],
+          identity_sha256: binding["identity_sha256"],
+          parent: parent
+        }
+
+        if is_nil(state.prepare),
+          do: %{state | prepare: prepare},
+          else: %{state | status: :poisoned}
+
+      request["op"] == "commit" and not is_nil(state.prepare) ->
+        p = state.prepare
+
+        if request["stages"] === [p.ref] and binding["namespace"] === p.namespace and
+             binding["project"] === p.project and binding["identity_sha256"] === p.identity_sha256 do
+          %{
+            state
+            | claim:
+                p
+                |> Map.delete(:ref)
+                |> Map.merge(%{
+                  operation_id: event["operation_id"],
+                  revision: result["generation"]
+                }),
+              prepare: nil
+          }
+        else
+          %{state | status: :poisoned}
+        end
+
+      true ->
+        state
+    end
+  end
+
+  defp record_store(state, _, _, _), do: state
+
+  defp initial,
+    do: %{prepare: nil, claim: nil, status: :ready, next: 0, count: nil, inflight: nil}
+
+  defp document_diag(stage, value) do
+    status =
+      case value do
+        {:ok, _} ->
+          :ok
+
+        {:reply, :ok, _} ->
+          :ok
+
+        {:reply, {:error, _}, _} ->
+          :error
+
+        {:error, _} ->
+          :error
+
+        value when is_boolean(value) ->
+          value
+
+        value
+        when value in [:ok, :error, :authorized, :pending, :checking, :denied, :unknown, :invalid] ->
+          value
+
+        _ ->
+          :other
+      end
+
+    IO.puts("DOCUMENT_GATE_DIAGNOSTIC " <> inspect(%{stage: stage, status: status}))
+    value
+  end
+end
+

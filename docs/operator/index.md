@@ -41,8 +41,9 @@ are refused as busy; they are not queued for later execution.
 | Connect explicitly selected external tools/resources/prompts | [MCP](mcp.md) |
 | Review/import/select extensions, inspect exact Session sources and complete results, generate vectors, request typed advice, try the lab | [Extensions](extensions.md) |
 | Retain explicit notes, update revisions, expire, forget, export/migrate | [Memory](memory.md) |
-| Review native knowledge permission, check next-session readiness and revoke it | [Knowledge permissions](knowledge-permissions.md) |
+| Review native notes and permission, inspect or accept a pending proposal, change retention, reclaim expiry, forget or inspect an operation | [Knowledge management](knowledge-permissions.md) |
 | Store sources and retrieve cited passages | [Corpus](corpus.md) |
+| Acquire a small workspace Word document and inspect its citations | [Word acquisition](corpus.md#acquire-a-small-word-document-from-the-workspace) |
 | Extract attributed facts and follow relationships | [Graph](graph.md) |
 | Investigate with the main agent, supplied text, or an explicit retrieval gateway | [Research](research.md) |
 | Inspect usage/cost estimates and reserve shared model allowances | [Resource controls](resources.md) |

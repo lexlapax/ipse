@@ -1,0 +1,12 @@
+NATIVE_FINALIZATION_MANIFEST_OK: %{
+  sources: 13,
+  helper: "7e1913446865a16cdfb7c96ca0285dc9e117a018c36c7b1940ba249a72ffd067",
+  logs: 6,
+  runtime_files: 669,
+  inherited_runtime_inventory_files: 621,
+  additional_pinned_runtime_files: 48,
+  artifact_inventories: 11,
+  artifact_files: 239,
+  unchanged_feature_sources: 6,
+  copied_runtime_matches_base: true
+}

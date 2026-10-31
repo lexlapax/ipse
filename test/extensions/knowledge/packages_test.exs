@@ -68,6 +68,11 @@ defmodule IpseKnowledge.PackagesIsolationTest do
       resolved=%{"options"=>%{"extraction"=>%{"model"=>%{"kind"=>"model_complete","profile"=>"model","version"=>1}}}}
       {:call,request,cont}=Adapters.start(resolved,:extract,%{"profile"=>"model","source"=>source,"chunks"=>[chunk],"max_edges"=>1})
       assert JSON.decode!(request["input"])["chunks"]==[%{"id"=>"c1","text"=>chunk["text"]}]
+      for invalid <- [[Map.put(chunk,"text","different source text")],
+        [Map.put(chunk,"start_byte",0)], [chunk,chunk]] do
+        assert {:done,{:error,:invalid_adapter_input,%{}}}=
+          Adapters.start(resolved,:extract,%{"profile"=>"model","source"=>source,"chunks"=>invalid,"max_edges"=>1})
+      end
       proposal=%{"subject"=>"Éclair","predicate"=>"requires","object"=>"β","polarity"=>"negative","chunk"=>"c1","quote"=>quote}
       respond=fn raw -> Adapters.resume(cont,%{"status"=>"ok","value"=>%{"profile"=>"model","text"=>raw,"usage"=>nil}}) end
       assert {:done,{:ok,%{"facts"=>[fact]}}}=respond.(JSON.encode!(%{"facts"=>[proposal]}))
@@ -88,6 +93,30 @@ defmodule IpseKnowledge.PackagesIsolationTest do
       assert {:done,{:error,:invalid_model_output,%{}}}=respond.(duplicate)
     end
 
+    test "model extraction validates a full fact batch without accepting an invalid member" do
+      alias IpseKnowledge.{Adapters,Evidence}
+      quotes=for i<-1..32, do: "Item #{i} requires resource #{i}."
+      {:ok,source}=Evidence.source(%{"source_id"=>"model:batch","partition"=>"notes","generation"=>1,
+        "title"=>"Batch","text"=>Enum.join(quotes,"\n"),"uri"=>"local:batch","observed_at_ms"=>1,
+        "event_at_ms"=>nil,"expires_at_ms"=>nil,"origin"=>%{"kind"=>"provided","store_profile"=>"notes",
+        "partition_or_scope"=>"notes","receipt"=>nil,"historical"=>false}})
+      {:ok,[chunk]}=Evidence.chunks(source)
+      resolved=%{"options"=>%{"extraction"=>%{"model"=>%{"kind"=>"model_complete","profile"=>"model","version"=>1}}}}
+      {:call,_,cont}=Adapters.start(resolved,:extract,%{"profile"=>"model","source"=>source,"chunks"=>[chunk],"max_edges"=>32})
+      proposals=for {quote,i}<-Enum.with_index(quotes,1), do: %{"subject"=>"Item #{i}","predicate"=>"requires",
+        "object"=>"resource #{i}","polarity"=>"positive","chunk"=>"c1","quote"=>quote}
+      respond=fn facts -> Adapters.resume(cont,%{"status"=>"ok","value"=>%{"profile"=>"model",
+        "text"=>JSON.encode!(%{"facts"=>facts}),"usage"=>nil}}) end
+      assert {:done,{:ok,%{"facts"=>facts}}}=respond.(proposals)
+      assert Enum.map(facts,fn fact -> hd(fact["citations"])["quote"] end)==quotes
+      assert Enum.all?(facts,fn fact -> Evidence.valid_fact?(fact) and Evidence.valid_span?(source,hd(fact["citations"])) end)
+      assert {:done,{:ok,%{"facts"=>[]}}}=respond.([])
+      for bad <- [Map.put(List.last(proposals),"quote","missing"),
+        Map.put(List.last(proposals),"subject",""),Map.put(List.last(proposals),"chunk","c2")] do
+        assert {:done,{:error,:invalid_model_output,%{}}}=respond.(List.replace_at(proposals,-1,bad))
+      end
+    end
+
     test "model rerank manipulates short IDs while canonical references remain independently checkable" do
       alias IpseKnowledge.{Adapters,Evidence}
       candidates=for i<-1..3,do: %{"citation"=>%{"chunk_id"=>Evidence.sha256("chunk#{i}"),"start_byte"=>0,"end_byte"=>5,"quote"=>"same!"}}
@@ -104,6 +133,75 @@ defmodule IpseKnowledge.PackagesIsolationTest do
         assert {:done,{:error,:invalid_model_output,%{}}}=respond.(JSON.encode!(%{"order"=>bad}))
       end
       assert {:done,{:error,:invalid_model_output,%{}}}=respond.(~s({"order":[],"order":["e1","e2","e3"]}))
+    end
+
+    test "bounded document extraction windows retain canonical citations and refuse altered ranges" do
+      alias IpseKnowledge.{Adapters,Evidence}
+      quote="Second half supports β."
+      attrs=%{"source_id"=>"window:source","partition"=>"notes","generation"=>1,
+        "title"=>"Window","text"=>String.duplicate("x",2048)<>quote,"uri"=>"local:window",
+        "observed_at_ms"=>1,"event_at_ms"=>nil,"expires_at_ms"=>nil,
+        "origin"=>%{"kind"=>"provided","store_profile"=>"notes","partition_or_scope"=>"notes",
+          "receipt"=>nil,"historical"=>false}}
+      {:ok,source}=Evidence.collection_source(attrs)
+      {:ok,[chunk]}=Evidence.chunks(source)
+      profile=%{"kind"=>"model_complete","profile"=>"model","version"=>1}
+      resolved=%{"options"=>%{"extraction"=>%{"model"=>profile}}}
+      window=%{"chunk_id"=>chunk["chunk_id"],"start_byte"=>2048,"end_byte"=>byte_size(attrs["text"])}
+      args=%{"profile"=>"model","source"=>source,"chunks"=>[chunk],"windows"=>[window],"max_edges"=>1}
+      {:call,request,cont}=Adapters.start(resolved,:extract,args)
+      assert JSON.decode!(request["input"])["chunks"]==[%{"id"=>"c1","text"=>quote}]
+      proposal=%{"subject"=>"Second half","predicate"=>"supports","object"=>"β",
+        "polarity"=>"positive","chunk"=>"c1","quote"=>quote}
+      result=%{"status"=>"ok","value"=>%{"profile"=>"model","text"=>JSON.encode!(%{"facts"=>[proposal]}),"usage"=>nil}}
+      assert {:done,{:ok,%{"facts"=>[fact],"coverage"=>%{"windowed"=>true,"source_complete"=>false}}}}=Adapters.resume(cont,result)
+      [citation]=fact["citations"]
+      assert citation["chunk_id"]==chunk["chunk_id"] and citation["start_byte"]==2048
+      assert Evidence.valid_span?(source,citation)
+      for bad <- [Map.put(window,"chunk_id",String.duplicate("0",64)),
+        Map.put(window,"end_byte",window["end_byte"]-2), Map.put(window,"end_byte",window["end_byte"]+1),
+        Map.put(window,"start_byte",0), Map.put(window,"unexpected",true)] do
+        assert {:done,{:error,:invalid_adapter_input,%{}}}=Adapters.start(resolved,:extract,Map.put(args,"windows",[bad]))
+      end
+      {:ok,ambiguous}=Evidence.collection_source(%{attrs | "text"=>quote<>String.duplicate("x",2048-byte_size(quote))<>quote})
+      {:ok,[same_chunk]}=Evidence.chunks(ambiguous)
+      ambiguous_window=%{window | "chunk_id"=>same_chunk["chunk_id"],"end_byte"=>byte_size(ambiguous["text"])}
+      {:call,_,ambiguous_cont}=Adapters.start(resolved,:extract,%{args | "source"=>ambiguous,"chunks"=>[same_chunk],"windows"=>[ambiguous_window]})
+      assert {:done,{:error,:invalid_model_output,%{}}}=Adapters.resume(ambiguous_cont,result)
+    end
+
+    test "document extraction windows cover each chunk with measured quote overlap and bounded requests" do
+      alias IpseKnowledge.{Adapters,Evidence}
+      profiles=for contract <- [nil,"json_schema_v2"] do
+        p=%{"kind"=>"model_complete","profile"=>"model","version"=>1}
+        if contract, do: Map.put(p,"output_contract",contract), else: p
+      end
+      for text <- [String.duplicate("x",4096),String.duplicate("\"",4096),
+                   String.duplicate(<<1>>,4096),String.duplicate("β",2048)] do
+        attrs=%{"source_id"=>"windows:#{Evidence.sha256(text)}","partition"=>"notes","generation"=>1,
+          "title"=>"Windows","text"=>text,"uri"=>"local:windows","observed_at_ms"=>1,
+          "event_at_ms"=>nil,"expires_at_ms"=>nil,"origin"=>%{"kind"=>"provided",
+            "store_profile"=>"notes","partition_or_scope"=>"notes","receipt"=>nil,"historical"=>false}}
+        {:ok,source}=Evidence.collection_source(attrs)
+        {:ok,[chunk]}=Evidence.chunks(source)
+        {:ok,plan}=Adapters.extraction_windows(source,chunk,32)
+        windows=plan["windows"]
+        assert plan["chunk_complete"] and not plan["source_complete"]
+        assert hd(windows)["start_byte"]==chunk["start_byte"]
+        assert List.last(windows)["end_byte"]==chunk["end_byte"]
+        assert length(windows) in 1..32
+        for {left,right}<-Enum.zip(windows,Enum.drop(windows,1)) do
+          assert right["start_byte"]>left["start_byte"]
+          assert left["end_byte"]-right["start_byte"]+1>=plan["guaranteed_quote_bytes"]
+        end
+        for profile<-profiles, window<-windows do
+          resolved=%{"options"=>%{"extraction"=>%{"model"=>profile}}}
+          args=%{"profile"=>"model","source"=>source,"chunks"=>[chunk],"windows"=>[window],"max_edges"=>32}
+          assert {:call,request,_}=Adapters.start(resolved,:extract,args)
+          assert :ok=Ipse.Extension.ModelCall.validate(request)
+          assert byte_size(request["input"])<=3000
+        end
+      end
     end
 
     test "extraction gives the model its fact bound and enforces that bound on returned proposals" do
@@ -158,18 +256,23 @@ defmodule IpseKnowledge.PackagesIsolationTest do
       assert old==Map.delete(Map.put(request,"version",1),"response_schema")
 
       # Large ordinary input and quote-heavy input fit without changing their bytes.
-      chunks=for _<-1..2,do: Map.put(chunk,"text",String.duplicate("x",1950))
-      {:call,large,_}=Adapters.start(resolved,:extract,Map.merge(args,%{"chunks"=>chunks,"max_edges"=>32}))
+      make_source=fn text ->
+        {:ok,s}=source |> Map.drop(~w(version source_key content_sha256)) |> Map.put("text",text) |> Evidence.source()
+        {:ok,chunks}=Evidence.chunks(s)
+        {s,chunks}
+      end
+      {large_source,chunks}=make_source.(String.duplicate("x",3900))
+      {:call,large,_}=Adapters.start(resolved,:extract,Map.merge(args,%{"source"=>large_source,"chunks"=>chunks,"max_edges"=>32}))
       assert byte_size(large["input"])<=4096
       assert :ok=Ipse.Extension.ModelCall.validate(large)
-      escaped=Map.put(chunk,"text",String.duplicate("\"",1700))
+      {escaped_source,[escaped]}=make_source.(String.duplicate("\"",1700))
       for selection<-[resolved,legacy] do
-        {:call,r,_}=Adapters.start(selection,:extract,Map.put(args,"chunks",[escaped]))
+        {:call,r,_}=Adapters.start(selection,:extract,Map.merge(args,%{"source"=>escaped_source,"chunks"=>[escaped]}))
         assert :ok=Ipse.Extension.ModelCall.validate(r)
         assert JSON.decode!(r["input"])["chunks"]==[%{"id"=>"c1","text"=>escaped["text"]}]
       end
-      too_large=Map.put(chunk,"text",String.duplicate("\"",2048))
-      assert {:done,{:error,:invalid_adapter_input,%{}}}=Adapters.start(resolved,:extract,Map.put(args,"chunks",[too_large]))
+      {too_large_source,[too_large]}=make_source.(String.duplicate("\"",2048))
+      assert {:done,{:error,:invalid_adapter_input,%{}}}=Adapters.start(resolved,:extract,Map.merge(args,%{"source"=>too_large_source,"chunks"=>[too_large]}))
 
       candidates=for i<-1..2,do: %{"citation"=>%{"chunk_id"=>Evidence.sha256("chunk#{i}"),"start_byte"=>0,"end_byte"=>5,"quote"=>"same!"}}
       rank=%{"options"=>%{"rerank"=>%{"chosen"=>%{"kind"=>"model_complete","profile"=>"ranker","max_candidates"=>16,"quote_bytes"=>128,"output_contract"=>"json_schema_v2"}}}}
@@ -190,7 +293,7 @@ defmodule IpseKnowledge.PackagesIsolationTest do
     end
 
     test "Graph publishes all32 bounded model proposals and exact-size explicit batches" do
-      alias IpseKnowledge.{Evidence,Graph,Store}
+      alias IpseKnowledge.{Adapters,Evidence,Graph,Store}
       alias Ipse.Development.Fixtures.Knowledge,as: F
       profiles=[%{"kind"=>"state","scope"=>"project","partition"=>"notes"},
         %{"kind"=>"mcp_cas","binding"=>"storage","partition"=>"notes","contract"=>"ipse-cas-v3"}]
@@ -228,6 +331,16 @@ defmodule IpseKnowledge.PackagesIsolationTest do
         assert length(facts)==32 and length(Enum.uniq_by(facts,& &1["fact_id"]))==32
         assert Enum.all?(facts,&Evidence.valid_fact?/1)
         assert hd(snapshot["sources"])["text"]==text
+        source=hd(snapshot["sources"])
+        adapter_args=%{"profile"=>"explicit","source"=>source,"max_edges"=>32,"facts"=>facts}
+        assert {:done,{:ok,%{"facts"=>^facts}}}=Adapters.start(state.resolved,:extract,adapter_args)
+        assert {:done,{:ok,%{"facts"=>[]}}}=Adapters.start(state.resolved,:extract,Map.put(adapter_args,"facts",[]))
+        [first|rest]=facts
+        [citation]=first["citations"]
+        changed=Map.put(citation,"content_sha256",String.duplicate("0",64))
+        {:ok,forged}=first |> Map.drop(~w(version fact_id)) |> Map.put("citations",[changed]) |> Evidence.fact()
+        assert Evidence.valid_fact?(forged)
+        assert {:done,{:error,:invalid_adapter_input,%{}}}=Adapters.start(state.resolved,:extract,Map.put(adapter_args,"facts",[forged|rest]))
         db=%{db|requests: []}
         explicit=extract|>Map.put("extraction","explicit")|>Map.put("facts",Enum.take(facts,3))
         {published,_,db}=graph_command(state,db,"extract",explicit)
@@ -333,26 +446,29 @@ defmodule IpseKnowledge.PackagesIsolationTest do
       for kind <- ~w(dense hybrid),
           text <- [String.duplicate("a", 1100), "a" <> String.duplicate(<<0x0301::utf8>>, 600),
             "Preface "<>String.duplicate("x",1100)<>". Owner Ada answers the query only after audit."],
-          indexed <- [true, false] do
+          indexed <- [:valid, :missing, :wrong_input] do
         {:ok, source}=Evidence.source(%{"source_id"=>"unicode", "partition"=>"notes", "generation"=>1,
           "title"=>"Unicode", "text"=>text, "uri"=>"local:unicode", "observed_at_ms"=>1,
           "event_at_ms"=>nil, "expires_at_ms"=>nil, "origin"=>%{"kind"=>"provided",
           "store_profile"=>"notes", "partition_or_scope"=>"notes", "receipt"=>nil, "historical"=>false}})
         {:ok,[chunk]}=Evidence.chunks(source)
-        {:ok,vector}=Evidence.vector(%{"chunk_id"=>chunk["chunk_id"], "selection_sha256"=>Evidence.sha256("selected encoder"), "input_sha256"=>Evidence.sha256(text),
+        {:ok,chunk_hash}=Ipse.Extension.canonical_digest([chunk["text"]])
+        vector_hash=if indexed==:wrong_input,do: Evidence.sha256("unrelated input"),else: chunk_hash
+        {:ok,vector}=Evidence.vector(%{"chunk_id"=>chunk["chunk_id"], "selection_sha256"=>Evidence.sha256("selected encoder"), "input_sha256"=>vector_hash,
           "profile"=>"encoder", "model"=>"test", "dimensions"=>1, "values"=>[1.0]})
         input=%{"chunk_id"=>Evidence.sha256("query"), "text"=>"query"}
+        {:ok,query_hash}=Ipse.Extension.canonical_digest([input["text"]])
         bytes=<<1.0::little-float-size(32)>>
         descriptor=%{"version"=>2, "kind"=>"embedding.f32le", "encoding"=>"float32le.base64",
           "vector_count"=>1, "dimensions"=>1, "source_sha256"=>Evidence.sha256("source"),
           "operation_id"=>String.duplicate("1",32)}
         page=Map.merge(Map.take(descriptor,~w(version kind encoding dimensions source_sha256 operation_id)),
           %{"vector_index"=>0, "offset"=>0, "complete"=>true, "next"=>nil,
-            "input_sha256"=>Evidence.sha256("query"), "vector_sha256"=>Evidence.sha256(bytes), "values"=>Base.encode64(bytes)})
+            "input_sha256"=>query_hash, "vector_sha256"=>Evidence.sha256(bytes), "values"=>Base.encode64(bytes)})
         cont=%{phase: :embedding_read, descriptor: descriptor, inference: %{"selection_sha256"=>Evidence.sha256("selected encoder"),"reported_model"=>"test", "usage"=>%{}},
           host_profile: "encoder", inputs: [input], raw_hashes: [Evidence.sha256("query")], vector_index: 0,
           offset: 0, bytes: <<>>, input_hash: nil, vector_hash: nil, vectors: [], reads: 0, effects: 1}
-        snapshot=%{"sources"=>[source], "projections"=>%{source["source_key"]=>%{"vectors"=>if(indexed,do: [vector],else: [])}},
+        snapshot=%{"sources"=>[source], "projections"=>%{source["source_key"]=>%{"vectors"=>if(indexed==:missing,do: [],else: [vector])}},
           "tokens"=>[], "gaps"=>[], "coverage"=>%{}}
         ctx=%{snapshot: snapshot, args: %{"query"=>"query", "top_k"=>1, "store"=>"notes", "rerank"=>nil},
           retrieval: %{"kind"=>kind, "missing_embedding"=>"refuse"},
@@ -360,7 +476,7 @@ defmodule IpseKnowledge.PackagesIsolationTest do
         state=%{resolved: %{}, phase: :query_embed, pending: :adapter, cont: cont, ctx: ctx}
         assert {:ok,%{"kind"=>"result", "value"=>result},_}=
           Corpus.handle("host.actions",%{"outcome"=>%{"status"=>"ok", "value"=>page}},state)
-        if indexed do
+        if indexed==:valid do
           assert result["status"]=="ok" and result["gaps"]==[]
           assert result["coverage"]["revalidated"]
           [candidate]=result["evidence"]
@@ -370,7 +486,7 @@ defmodule IpseKnowledge.PackagesIsolationTest do
           assert citation["quote"]==binary_part(text,citation["start_byte"],citation["end_byte"]-citation["start_byte"])
           assert citation["quote_sha256"]==Evidence.sha256(citation["quote"])
           assert Evidence.chunks(source)=={:ok,[chunk]}
-          assert vector["input_sha256"]==Evidence.sha256(text)
+          assert vector["input_sha256"]==chunk_hash
           if String.starts_with?(text,"Preface") do
             assert citation["quote"]=="Owner Ada answers the query only after audit."
             assert citation["start_byte"]>200
@@ -387,6 +503,13 @@ defmodule IpseKnowledge.PackagesIsolationTest do
         else
           assert result["status"]=="refused"
           assert result["gaps"]==[%{"code"=>"missing_embedding"}]
+          if indexed==:wrong_input and kind=="hybrid" do
+            fallback=put_in(state,[:ctx,:retrieval,"missing_embedding"],"lexical_with_gap")
+            assert {:ok,%{"kind"=>"result","value"=>partial},_}=
+              Corpus.handle("host.actions",%{"outcome"=>%{"status"=>"ok","value"=>page}},fallback)
+            assert partial["status"]=="partial"
+            assert Enum.any?(partial["gaps"],&(&1["code"]=="missing_embedding" and &1["count"]==1))
+          end
         end
       end
     end
@@ -618,6 +741,44 @@ defmodule IpseKnowledge.PackagesIsolationTest do
         IpseKnowledge.Adapters.resume(state, %{"status" => "ok", "value" => page})
     end
 
+    test "embedding rejects a vector page bound to a different requested input" do
+      alias IpseKnowledge.{Adapters, Evidence}
+      resolved=%{"options"=>%{"embedding"=>%{"encoder"=>%{"kind"=>"embedding","profile"=>"host_encoder"}}}}
+      inputs=for text<- ["first café", "second 雪"],do: %{"chunk_id"=>Evidence.sha256(text),"text"=>text}
+      {:call,_,cont}=Adapters.start(resolved,:embed,%{"profile"=>"encoder","inputs"=>inputs})
+      bytes=<<1.0::little-float-size(32)>>
+      descriptor=%{"version"=>2,"kind"=>"embedding.f32le","encoding"=>"float32le.base64",
+        "operation_id"=>String.duplicate("1",32),"source_sha256"=>Evidence.sha256("source"),
+        "vector_count"=>2,"dimensions"=>1}
+      inference=%{"version"=>2,"selection_sha256"=>Evidence.sha256("selection"),"result"=>descriptor,
+        "profile"=>"host_encoder","reported_model"=>"synthetic","usage"=>%{}}
+      {:call,_,reading}=Adapters.resume(cont,%{"status"=>"ok","value"=>inference})
+      {:ok,wrong_hash}=Ipse.Extension.canonical_digest([List.last(inputs)["text"]])
+      page=Map.merge(Map.take(descriptor,~w(version kind encoding dimensions source_sha256 operation_id)),
+        %{"vector_index"=>0,"offset"=>0,"complete"=>true,"next"=>nil,
+          "input_sha256"=>wrong_hash,"vector_sha256"=>Evidence.sha256(bytes),"values"=>Base.encode64(bytes)})
+      assert {:done,{:error,:invalid_embedding_result,%{}}}=
+        Adapters.resume(reading,%{"status"=>"ok","value"=>page})
+      {:ok,first_hash}=Ipse.Extension.canonical_digest([hd(inputs)["text"]])
+      {:call,_,second}=Adapters.resume(reading,%{"status"=>"ok","value"=>Map.put(page,"input_sha256",first_hash)})
+      wrong_second=page|>Map.put("vector_index",1)|>Map.put("input_sha256",first_hash)
+      assert {:done,{:error,:invalid_embedding_result,%{}}}=
+        Adapters.resume(second,%{"status"=>"ok","value"=>wrong_second})
+      assert {:done,{:ok,%{"vectors"=>vectors}}}=
+        Adapters.resume(second,%{"status"=>"ok","value"=>Map.put(wrong_second,"input_sha256",wrong_hash)})
+      assert Enum.map(vectors,& &1["input_sha256"])==[first_hash,wrong_hash]
+
+      descriptor2=Map.put(descriptor,"dimensions",2)
+      {:call,_,partial}=Adapters.resume(cont,%{"status"=>"ok","value"=>Map.put(inference,"result",descriptor2)})
+      first_page=page|>Map.put("dimensions",2)|>Map.put("input_sha256",first_hash)
+        |>Map.put("vector_sha256",Evidence.sha256(bytes<>bytes))|>Map.put("complete",false)|>Map.put("next",1)
+      {:call,_,later}=Adapters.resume(partial,%{"status"=>"ok","value"=>first_page})
+      wrong_later=first_page|>Map.put("offset",1)|>Map.put("complete",true)|>Map.put("next",nil)
+        |>Map.put("input_sha256",wrong_hash)
+      assert {:done,{:error,:invalid_embedding_result,%{}}}=
+        Adapters.resume(later,%{"status"=>"ok","value"=>wrong_later})
+    end
+
     test "embedding preserves finite float32 extremes and refuses non-finite bit patterns" do
       alias IpseKnowledge.{Adapters, Evidence}
       decode=fn bytes ->
@@ -630,9 +791,10 @@ defmodule IpseKnowledge.PackagesIsolationTest do
         inference=%{"version"=>2,"selection_sha256"=>Evidence.sha256("selection"),"result"=>descriptor,
           "profile"=>"host_encoder","reported_model"=>"synthetic","usage"=>%{}}
         {:call,_,reading}=Adapters.resume(cont,%{"status"=>"ok","value"=>inference})
+        {:ok,input_hash}=Ipse.Extension.canonical_digest([input["text"]])
         page=Map.merge(Map.take(descriptor,~w(version kind encoding dimensions source_sha256 operation_id)),
           %{"vector_index"=>0,"offset"=>0,"complete"=>true,"next"=>nil,
-            "input_sha256"=>Evidence.sha256("opaque"),"vector_sha256"=>Evidence.sha256(bytes),"values"=>Base.encode64(bytes)})
+            "input_sha256"=>input_hash,"vector_sha256"=>Evidence.sha256(bytes),"values"=>Base.encode64(bytes)})
         Adapters.resume(reading,%{"status"=>"ok","value"=>page})
       end
       bytes=for bits<-[0x7f7fffff,0xff7fffff,0,1],into: <<>>,do: <<bits::little-unsigned-size(32)>>
@@ -661,12 +823,13 @@ defmodule IpseKnowledge.PackagesIsolationTest do
       first=Adapters.resume(cont,%{"status"=>"ok","value"=>inference})
       result=Enum.reduce(1..12,first,fn _,{:call,read,continuation}->
         index=read["vector_index"]; offset=read["offset"]; count=min(768,4096-offset)
+        {:ok,input_hash}=Ipse.Extension.canonical_digest([Enum.at(inputs,index)["text"]])
         bytes=for n<-0..4095,into: <<>>,do: <<(if n==index,do: 1.0,else: 0.0)::little-float-size(32)>>
         complete=offset+count==4096
         page=%{"version"=>2,"kind"=>"embedding.f32le","encoding"=>"float32le.base64",
           "operation_id"=>descriptor["operation_id"],"source_sha256"=>descriptor["source_sha256"],
           "vector_index"=>index,"offset"=>offset,"dimensions"=>4096,
-          "input_sha256"=>Evidence.sha256("opaque#{index}"),"vector_sha256"=>Evidence.sha256(bytes),
+          "input_sha256"=>input_hash,"vector_sha256"=>Evidence.sha256(bytes),
           "values"=>Base.encode64(binary_part(bytes,offset*4,count*4)),
           "complete"=>complete,"next"=>if(complete,do: nil,else: offset+count)}
         Adapters.resume(continuation,%{"status"=>"ok","value"=>page})
@@ -675,7 +838,7 @@ defmodule IpseKnowledge.PackagesIsolationTest do
       assert length(value["vectors"])==2
       assert Enum.all?(value["vectors"],&(length(&1["values"])==4096 and Evidence.valid_vector?(&1)))
       assert value["receipt"]["raw_input_sha256"]==Enum.map(inputs,&Evidence.sha256(&1["text"]))
-      assert Enum.map(value["vectors"],& &1["input_sha256"])==Enum.map(0..1,&Evidence.sha256("opaque#{&1}"))
+      assert Enum.map(value["vectors"],& &1["input_sha256"])==Enum.map(inputs,fn input -> {:ok,hash}=Ipse.Extension.canonical_digest([input["text"]]); hash end)
     end
 
     test "query-v1 emits only the selected binding and exact bounded arguments" do

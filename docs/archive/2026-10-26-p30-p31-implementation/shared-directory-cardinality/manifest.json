@@ -1,0 +1,82 @@
+{
+  "compiled_feature_beams": {
+    "Elixir.IpseKnowledge.Documents.Docx.Styles.beam": {
+      "byte_count": 45604,
+      "sha256": "423001f1e0dbfb323a5e6fa2c0ddb17a4b9321ad56604e4e826f172c60fbdf01"
+    },
+    "Elixir.IpseKnowledge.Documents.Docx.beam": {
+      "byte_count": 64940,
+      "sha256": "41856b49adc47ab14fde156197fd6f5246b8cc5bc5d9f36659296f1c8542361d"
+    },
+    "Elixir.IpseKnowledge.Documents.ParserStage.beam": {
+      "byte_count": 30832,
+      "sha256": "7d14517e03606e92f8b7013e2258ead2bbbdaec5300a09e6bda928b18ef360ef"
+    },
+    "Elixir.IpseKnowledge.Documents.Pdf.beam": {
+      "byte_count": 7960,
+      "sha256": "59f803bac764905f99133695bd83700cec947f7566747bf42f693160124ffebd"
+    },
+    "Elixir.IpseKnowledge.Documents.Zip.beam": {
+      "byte_count": 11784,
+      "sha256": "ffffd079b38369e347909b14cfcfd6fca1fbfe220605a7d288d562c3a2a3125c"
+    },
+    "Elixir.IpseKnowledge.Documents.beam": {
+      "byte_count": 24180,
+      "sha256": "16b485bba5b7f9dd33fd990c4ddac144be3e8cbe3646971de525078564547fc4"
+    },
+    "Elixir.IpseKnowledge.Evidence.beam": {
+      "byte_count": 167344,
+      "sha256": "69fc4bc2c3d99439d310c5a1d0eefcdba369db8b98871cd5cd39cb92bfc09f26"
+    },
+    "Elixir.IpseKnowledge.Store.Collection.Directory.beam": {
+      "byte_count": 46692,
+      "sha256": "1b273259e2d521c95d7431ede2b35f371ec29ffdc5aedcf9ce3eb8ecc5d40d99"
+    },
+    "Elixir.IpseKnowledge.Store.Collection.Generation.beam": {
+      "byte_count": 35620,
+      "sha256": "18c367e237d4fa4e675f01ee30e4701936c83f0de0f591a61f50777ea0876a00"
+    },
+    "Elixir.IpseKnowledge.Store.Collection.Index.beam": {
+      "byte_count": 104484,
+      "sha256": "f15151f1a31c0fb2975a57d673cbf042afa452c0fdb11b5e0339e1383e4a6c47"
+    },
+    "Elixir.IpseKnowledge.Store.Collection.Projection.beam": {
+      "byte_count": 66452,
+      "sha256": "18e3abf1557c1809a83c4414217df1c70fba86d05c9475dd614931b0124c5861"
+    },
+    "Elixir.IpseKnowledge.Store.Collection.beam": {
+      "byte_count": 138952,
+      "sha256": "62b01485b9d0fe50d344f3088b7bebb287888489a41f96a1b5a4b879b9049794"
+    }
+  },
+  "compiled_feature_path": "/home/lexlapax/projects/lexlapax/ipse/_build/shared-projection-codec-20261029/tested-directory-cardinality-beams",
+  "logs": {
+    "shared-directory-cardinality-46922.log": {
+      "byte_count": 400,
+      "sha256": "bd1d4eaf2766f94285bc52835c98cf2c27b1c70256be5b9a18608dbd12ed1e9d"
+    },
+    "shared-directory-cardinality-46923.log": {
+      "byte_count": 400,
+      "sha256": "5edacdad2dfe04ec9a31a54046c68d0c467b7791a449d58f8538f05b00a3770d"
+    }
+  },
+  "previous_manifest": "docs/archive/2026-10-26-p30-p31-implementation/shared-generation-directory/manifest.json",
+  "previous_manifest_sha256": "8248ea95e5f078f3097db74edf9a15f0be08f7f2e4d3b974d173018233ec000e",
+  "qualification": "pure canonical cardinality repair only; no native/publication effects or broader qualification",
+  "source_snapshot": "/home/lexlapax/projects/lexlapax/ipse/_build/shared-projection-codec-20261029/frozen-cardinality-sources",
+  "sources": {
+    "extensions/knowledge/src/store/collection/directory.ex": {
+      "byte_count": 16658,
+      "sha256": "337f72b0dde4f4c768d5928c758ccc7912b8172455236df1fc2eca003f62f607"
+    },
+    "test/extensions/knowledge/collection_directory_test.exs": {
+      "byte_count": 1890,
+      "sha256": "4c9337aec0a5ba07cbbdaeb62fe2ce921c0c82f7f5ffcea10f341aad8e46e39c"
+    },
+    "test/support/collection_directory.exs": {
+      "byte_count": 8953,
+      "sha256": "9473f197ecdbcf7b2c6bacfce702a4a079af182d76632e4bc969d5a881e7e48c"
+    }
+  },
+  "version": 1
+}

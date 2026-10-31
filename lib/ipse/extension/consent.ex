@@ -68,6 +68,36 @@ defmodule Ipse.Extension.Consent do
 
   def with_existing_policy(_, _, _, _, _, _), do: {:error, :consent_read_refused}
 
+  @doc """
+  Retain an existing exact management snapshot for a trusted read-only callback.
+
+  Expired or revoked capture permission does not prevent faithful local
+  management inspection. This checks the positive epoch and management digest,
+  not active capture eligibility, and supplies no publication or display permit.
+  The caller must establish its project, target and operator authority separately.
+  No worker bridge exists. The callback must not run inference, untrusted code
+  or storage/service effects. Qualified native ownership or display coordination
+  still requires the caller's separate admission; this function grants none.
+  Results return only after final native checks and release; an uncertain
+  callback remains unknown.
+  Existing-only inspection creates, repairs and reclaims no control state.
+  """
+  def with_existing_management_snapshot(root, project, epoch, fingerprint, fun)
+      when is_function(fun, 1) do
+    if uint?(epoch) and epoch > 0 and JSON.sha256?(fingerprint) do
+      existing_transaction(root, project, fn state ->
+        if is_map(state) and state["epoch"] === epoch and
+             management_sha256(project, epoch, state["policy"]) === fingerprint,
+           do: existing_callback(fun, Map.take(state, ~w(epoch policy))),
+           else: {:error, :consent_read_refused}
+      end)
+    else
+      {:error, :consent_read_refused}
+    end
+  end
+
+  def with_existing_management_snapshot(_, _, _, _, _), do: {:error, :consent_read_refused}
+
   defp policy_matches?(state, epoch, sha, now) do
     policy = state["policy"]
 
@@ -79,6 +109,7 @@ defmodule Ipse.Extension.Consent do
     case fun.(value) do
       {:ok, _} = result -> result
       {:error, _} = result -> result
+      {:unknown, _} = result -> result
       _ -> {:error, :consent_read_refused}
     end
   end
@@ -131,6 +162,15 @@ defmodule Ipse.Extension.Consent do
         do: update_policy(s, nil),
         else: {:error, :consent_conflict}
     end)
+  end
+
+  @doc "Inspect one retained operation or compacted receipt without admission, settlement or replay."
+  def operation(root, project, id) do
+    with true <- id?(id),
+         {:ok, state} when is_map(state) <- existing_snapshot(root, project),
+         operation when is_map(operation) <- existing(state, id),
+         do: {:ok, operation},
+         else: (_ -> {:error, :consent_operation_refused})
   end
 
   defp update_policy(s, p) do
@@ -206,6 +246,241 @@ defmodule Ipse.Extension.Consent do
   """
   def publish_deferred(root, project, ticket, now, fun) when is_function(fun, 0) do
     publication(root, project, ticket, now, fun, :defer)
+  end
+
+  @doc "Digest the exact current management epoch/policy; this pure value grants no authority."
+  def management_sha256(project, epoch, policy),
+    do: JSON.digest(["management.v1", project, epoch, policy])
+
+  @doc """
+  Reserve and mark one native-reviewed literal forget before its short publication.
+
+  This host-only path requires an actual same-owner review, an existing protected
+  control and its exact management epoch. It remains available with expired or
+  revoked capture permission. It authorizes no worker, model, file or network
+  effect. The owner must journal the exact intent first, retain Identity outside
+  this callback and pass the permit to the trusted Collection normalizer, which
+  consumes it before mutation. A possible effect stays publishing until the owner
+  settles the returned packet after all outer checks and cleanup succeed.
+  """
+  def forget_deferred(root, project, epoch, request, permit, facts, now, fun)
+      when is_function(fun, 0) do
+    reviewed_management(root, project, epoch, request, permit, facts, now, fun, %{
+      command: "forget",
+      operation: "collection.forget",
+      kind: "managed_literal_forget"
+    })
+  end
+
+  def forget_deferred(_, _, _, _, _, _, _, _), do: {:error, :consent_management_refused}
+
+  @doc "Reserve a same-owner native pin, ordinary or duration choice; settlement follows outer Identity cleanup."
+  def retain_deferred(root, project, epoch, request, permit, facts, now, fun)
+      when is_function(fun, 0) do
+    policy = facts["policy"]
+
+    if Ipse.Extension.Collection.ManagedRetention.policy?(policy) and
+         policy["kind"] in ~w(pin ordinary duration) do
+      reviewed_management(root, project, epoch, request, permit, facts, now, fun, %{
+        command: policy["kind"],
+        operation: "collection.retention",
+        kind: "managed_literal_retention"
+      })
+    else
+      {:error, :consent_management_refused}
+    end
+  rescue
+    _ -> {:error, :consent_management_refused}
+  end
+
+  def retain_deferred(_, _, _, _, _, _, _, _), do: {:error, :consent_management_refused}
+
+  @doc """
+  Reserve an explicit host-owned reclamation of an already expired signed literal.
+
+  This is separate from native-reviewed retention changes: the final trusted
+  normalizer must authenticate the existing ordinary or historical policy and elapsed deadline.
+  No worker API exposes this operation. The owner journals the exact intent first,
+  retains Identity around Core, verifies the actual normalized receipt, and settles
+  only after outer cleanup. Revoked capture does not renew expired evidence or
+  prevent its bounded reclamation. This path grants no headless or service effect.
+  """
+  def expire_deferred(root, project, epoch, request, facts, now, fun)
+      when is_function(fun, 0) do
+    with {:ok, snapshot} when is_map(snapshot) <- existing_snapshot(root, project),
+         true <- snapshot["epoch"] === epoch and epoch > 0 do
+      transaction(root, project, fn state ->
+        with true <- expiry_request?(state, epoch, request, facts, now),
+             nil <- existing(state, request["id"]),
+             :ok <- capacity(state),
+             true <- state["sequence"] < 9_007_199_254_740_991 do
+          operation =
+            Map.merge(request, %{
+              "sequence" => state["sequence"] + 1,
+              "epoch" => epoch,
+              "created_at_ms" => now,
+              "status" => "publishing",
+              "actual" => nil,
+              "receipt" => nil
+            })
+
+          publishing = %{
+            state
+            | "sequence" => operation["sequence"],
+              "operations" => Map.put(state["operations"], operation["id"], operation)
+          }
+
+          with :ok <- write(Path.join(root, project), publishing) do
+            try do
+              with {:ok, actual, receipt} <- fun.(),
+                   true <- expiry_receipt?(receipt, facts) do
+                finish(publishing, operation, actual, receipt)
+                |> publication_result(:defer, ticket(project, operation), actual, receipt)
+              else
+                _ -> {:unknown, :publication_unconfirmed}
+              end
+            catch
+              _, _ -> {:unknown, :publication_unconfirmed}
+            end
+          else
+            _ -> {:unknown, :consent_write_unconfirmed}
+          end
+        else
+          _ -> {:error, :consent_management_refused}
+        end
+      end)
+    else
+      _ -> {:error, :consent_management_refused}
+    end
+  end
+
+  def expire_deferred(_, _, _, _, _, _, _), do: {:error, :consent_management_refused}
+
+  defp expiry_request?(state, epoch, request, facts, now) do
+    fields =
+      ~w(version kind operation_id context collection target metadata reason request_sha256 scope expired_at_ms checked_at_ms action_sha256)
+
+    {kind, category} =
+      case facts["kind"] do
+        "managed_literal_expiry" -> {"managed_literal_expiry", "ordinary"}
+        "managed_literal_history_expiry" -> {"managed_literal_history_expiry", "history"}
+        _ -> {nil, nil}
+      end
+
+    not is_nil(kind) and
+      management_request?(state, epoch, request, facts, now, %{
+        operation: "collection.expire",
+        kind: kind
+      }) and
+      is_map(facts) and Enum.sort(Map.keys(facts)) == Enum.sort(fields) and
+      facts["version"] === 1 and
+      facts["action_sha256"] == JSON.digest([Map.delete(facts, "action_sha256")]) and
+      JSON.safe_uint?(facts["expired_at_ms"]) and facts["expired_at_ms"] > 0 and
+      JSON.safe_uint?(facts["checked_at_ms"]) and
+      facts["expired_at_ms"] <= facts["checked_at_ms"] and facts["checked_at_ms"] <= now and
+      facts["metadata"]["category"] == category and
+      facts["metadata"]["valid_until_ms"] === facts["expired_at_ms"]
+  rescue
+    _ -> false
+  end
+
+  defp expiry_receipt?(receipt, facts) do
+    core = receipt["publication"]
+    normalized = core["normalization"]
+
+    receipt["action_sha256"] == facts["action_sha256"] and
+      normalized["version"] === 3 and normalized["kind"] == facts["kind"] and
+      normalized["action_sha256"] == facts["action_sha256"] and
+      normalized["eligibility"] == "expired" and
+      normalized["first_admitted_ms"] === facts["metadata"]["first_admitted_ms"] and
+      normalized["valid_until_ms"] === facts["expired_at_ms"] and
+      normalized["policy_sha256"] == facts["metadata"]["policy_sha256"] and
+      JSON.safe_uint?(normalized["checked_at_ms"]) and
+      normalized["checked_at_ms"] >= facts["checked_at_ms"] and
+      core["binding"]["normalization_sha256"] == JSON.digest([normalized])
+  rescue
+    _ -> false
+  end
+
+  defp reviewed_management(root, project, epoch, request, permit, facts, now, fun, selected) do
+    with :ok <- Ipse.Runner.Review.check(permit, selected.command, facts),
+         {:ok, snapshot} when is_map(snapshot) <- existing_snapshot(root, project),
+         true <- snapshot["epoch"] === epoch and epoch > 0 do
+      transaction(root, project, fn state ->
+        with true <- management_request?(state, epoch, request, facts, now, selected),
+             nil <- existing(state, request["id"]),
+             :ok <- capacity(state),
+             true <- state["sequence"] < 9_007_199_254_740_991,
+             :ok <- Ipse.Runner.Review.check(permit, selected.command, facts) do
+          operation =
+            Map.merge(request, %{
+              "sequence" => state["sequence"] + 1,
+              "epoch" => epoch,
+              "created_at_ms" => now,
+              "status" => "publishing",
+              "actual" => nil,
+              "receipt" => nil
+            })
+
+          publishing = %{
+            state
+            | "sequence" => operation["sequence"],
+              "operations" => Map.put(state["operations"], operation["id"], operation)
+          }
+
+          with :ok <- write(Path.join(root, project), publishing) do
+            try do
+              with {:ok, actual, receipt} <- fun.(),
+                   {:ok, review} <-
+                     if(selected.kind == "managed_literal_retention",
+                       do:
+                         Ipse.Runner.Review.claimed_retention_receipt(
+                           permit,
+                           selected.command,
+                           facts
+                         ),
+                       else: Ipse.Runner.Review.consumed_receipt(permit, selected.command, facts)
+                     ),
+                   true <- receipt["action_sha256"] == facts["action_sha256"],
+                   true <- receipt["native_review_sha256"] == JSON.digest([review]) do
+                finish(publishing, operation, actual, receipt)
+                |> publication_result(:defer, ticket(project, operation), actual, receipt)
+              else
+                _ -> {:unknown, :publication_unconfirmed}
+              end
+            catch
+              _, _ -> {:unknown, :publication_unconfirmed}
+            end
+          else
+            _ -> {:unknown, :consent_write_unconfirmed}
+          end
+        else
+          _ -> {:error, :consent_management_refused}
+        end
+      end)
+    else
+      _ -> {:error, :consent_management_refused}
+    end
+  end
+
+  defp management_request?(state, epoch, request, facts, now, selected) do
+    resources = request["reserved"]
+    context = facts["context"]
+
+    request?(request) and uint?(now) and uint?(epoch) and epoch > 0 and
+      state["epoch"] === epoch and not quarantined?(state) and
+      request["operation"] == selected.operation and request["headless"] === false and
+      request["source_sha256"] == JSON.digest([facts]) and
+      request["request_sha256"] == facts["action_sha256"] and
+      request["policy_sha256"] == management_sha256(state["project"], epoch, state["policy"]) and
+      facts["kind"] == selected.kind and request["id"] == facts["operation_id"] and
+      context["project_id"] == state["project"] and context["management_epoch"] === epoch and
+      context["management_sha256"] == request["policy_sha256"] and
+      resources["model_calls"] == 0 and resources["download_bytes"] == 0 and
+      resources["cost_nanos"] == 0 and resources["input_bytes"] in 1..65_536 and
+      resources["output_bytes"] in 0..16_384
+  rescue
+    _ -> false
   end
 
   defp publication(root, project, ticket, now, fun, mode) do

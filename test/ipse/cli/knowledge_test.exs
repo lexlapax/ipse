@@ -14,6 +14,14 @@ defmodule Ipse.CLI.KnowledgeTest do
     assert scenario("save", "--knowledge") =~ "KNOWLEDGE_NATIVE_SETUP_SAVE_DISABLE_PASSED"
   end
 
+  @tag knowledge_readiness: true
+  test "saved native permission distinguishes activation matching from unavailable capture" do
+    output = scenario("readiness", "--knowledge")
+    assert output =~ "KNOWLEDGE_NATIVE_READINESS_PUBLICATION_UNAVAILABLE"
+    assert output =~ "Broad protected note saving is not ready"
+    assert output =~ "A new statement may be saved through separate native review"
+  end
+
   test "bare yes and a mismatched native challenge cannot grant permission" do
     for {name, mode} <- [{"cancel", "--knowledge-cancel"}, {"stale", "--knowledge-stale"}] do
       assert scenario(name, mode) =~ "KNOWLEDGE_NATIVE_REVIEW_CANCELLED"
@@ -79,8 +87,49 @@ defmodule Ipse.CLI.KnowledgeTest do
     assert policy["settings"]["activation"]["artifact_sha256"] == artifact.digest
     assert policy["settings"]["activation"]["main_timeout_ms"] == 90_000
     assert policy["settings"]["routes"] |> Enum.map(& &1["operation"]) == ["main"]
-    assert length(policy["settings"]["effects"]) == 6
     assert map_size(policy["settings"]["recipes"]) == 2
+    effects = policy["settings"]["effects"]
+    recipes = policy["settings"]["recipes"] |> Map.keys() |> Enum.sort()
+
+    descriptors =
+      for {group, stage} <- [
+            {"commands", "invoke.command"},
+            {"tools", "invoke.tool"},
+            {"jobs", "event.job"}
+          ],
+          descriptor <- artifact.manifest["exports"][group] do
+        Map.merge(descriptor, %{
+          "instance" => "knowledge",
+          "stage" => stage,
+          "name" => "ext__knowledge__" <> descriptor["id"]
+        })
+      end
+
+    assert length(descriptors) == 6
+    assert length(effects) == 10
+
+    for descriptor <- descriptors do
+      hash = Ipse.JSON.digest([descriptor])
+      selected = Enum.filter(effects, &(&1["outer_sha256"] == hash))
+      reads = Enum.filter(selected, &(&1["class"] == "collection.read"))
+      writes = Enum.filter(selected, &(&1["class"] == "collection.publish"))
+
+      assert [
+               %{
+                 "operation" => "notes.recall",
+                 "inner_op" => "collection.call",
+                 "managed_read" => ^recipes
+               }
+             ] = reads
+
+      if descriptor["id"] == "capture" do
+        assert Enum.sort(Enum.map(writes, & &1["operation"])) == ~w(notes.capture notes.propose)
+        assert Enum.all?(writes, &(&1["inner_op"] == "collection.managed"))
+      else
+        assert writes == []
+      end
+    end
+
     assert policy["limits"]["model_calls"] == 0
     assert policy["limits"]["cost_nanos"] == 0
     assert policy["expires_at_ms"] == now + 365 * 86_400_000

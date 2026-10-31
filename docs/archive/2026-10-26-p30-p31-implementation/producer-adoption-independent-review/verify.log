@@ -1,0 +1,4 @@
+shared-producer-selection-adoption: 785 exact rows; 670 runtime nodes verified
+shared-producer-range-claim: 702 exact rows; 670 runtime nodes verified
+Range runtime/helper exactly identical to selection cohort
+Retained actual selection journal: 173 events; profile binding/value/setup exact; page zero actions; boundary unchanged; no inference admission

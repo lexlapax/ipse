@@ -1,0 +1,8 @@
+PREREQUISITE_REPAIR_MANIFEST_OK: %{
+  sources: 4,
+  logs: 1,
+  feature_beams: 14,
+  ancestor: true,
+  original_counterexample: true,
+  frozen_fixture_factory: true
+}

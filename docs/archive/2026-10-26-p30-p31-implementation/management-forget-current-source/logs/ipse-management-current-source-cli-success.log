@@ -1,0 +1,9 @@
+** (ExUnit.AssertionError) 
+
+match (=) failed
+code:  assert {:ok, _} = Fixture.publish(c, opts, scope, first: true)
+left:  {:ok, _}
+right: {:unknown, :project_domain_initialization_unconfirmed}
+
+    test/support/management_full_facts.exs:318: (file)
+    (elixir 1.20.4) lib/code.ex:1639: Code.require_file/2

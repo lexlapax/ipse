@@ -1,0 +1,13 @@
+1d765a234004c4b10505afb75042144aed1351464be5f55445ca6d7acfaa533e  ./ipse-session-operation-compile.log
+ca8b70886a84405546cd4d4b18228535ccb48f88a9246acce24228e7ccbab4ad  ./ipse-session-operation-test.log
+2872067a2688033b4edf067983757381291142932571c8877aa8daf20db4f7ea  ./ipse-session-operation-timeout-test.log
+1d765a234004c4b10505afb75042144aed1351464be5f55445ca6d7acfaa533e  ./ipse-session-operation-v2-compile.log
+80f1834e17ee707d8a14bc1bf55ebd6e362bb878e0edff334a3aee9c9ff4548c  ./ipse-session-operation-v2-test.log
+1d765a234004c4b10505afb75042144aed1351464be5f55445ca6d7acfaa533e  ./ipse-session-operation-v3-compile.log
+ac7390b676ffc03718a418661a59e3d70ace5e56a056fdbf89051f16bbd297bc  ./ipse-session-operation-v3-test.log
+746ef6051d6dfd2d04d32b4ff0080ba8c7235a0c8118f01ff958f6221f33e672  ./ipse-session-operation-v4-journal-compile.log
+083da1e222b431f4fcc7aae0e14dbe13c7b5534a68e40942217e7bbdc50cee0b  ./ipse-session-operation-v4-test.log
+1d765a234004c4b10505afb75042144aed1351464be5f55445ca6d7acfaa533e  ./ipse-session-operation-v5-compile.log
+f37c64bae89d595338276692dc709b54e99325d28d8ac69f532923ac4e48242a  ./ipse-session-operation-v5-test.log
+fc3a17d027277a72f5d1f2733fa81bd319ba96f786cfa39f5bf4b06ced7213b1  ./runtime.sha256
+72577c6fa1c6baec20a0b542572d9bbca071887dd984c885c283fa7959c4d9f3  ./source.tar

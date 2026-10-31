@@ -67,6 +67,31 @@ defmodule Ipse.Session.ToolLifecycle do
   def active?(_), do: false
 
   @doc false
+  def ready_for_start?(
+        %{
+          recording: true,
+          active: nil,
+          count: count,
+          proposal: proposal,
+          session: session,
+          epoch: epoch
+        },
+        call,
+        remaining
+      )
+      when is_integer(count) and is_map(proposal) and is_map(call) and is_integer(remaining) do
+    calls = get_in(proposal, [:record, "message", "tool_calls"])
+
+    count <= @limit - 2 and Journal.valid_source?(proposal[:source]) and
+      proposal[:source]["session_id"] === session and id?(epoch) and is_list(calls) and
+      remaining in 1..length(calls) and Enum.at(calls, length(calls) - remaining) === call
+  rescue
+    _ -> false
+  end
+
+  def ready_for_start?(_, _, _), do: false
+
+  @doc false
   def open_source(saved, session, runtime) do
     ctx = %{
       session: session,

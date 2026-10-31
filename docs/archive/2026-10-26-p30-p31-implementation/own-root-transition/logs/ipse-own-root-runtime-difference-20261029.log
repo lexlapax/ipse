@@ -1,0 +1,32 @@
+--- docs/archive/2026-10-26-p30-p31-implementation/managed-source-tool-preflight/runtime-final.sha256	2026-10-29 17:31:37.475814454 -0700
++++ /tmp/ipse-own-root-runtime-20261029.sha256	2026-10-29 18:42:39.849867007 -0700
+@@ -232,15 +232,15 @@
+ 78b7736bf10716e2b1e1cfb91e9e58f2a1017445663498ce4f61b929bd2baa8c  _build/dev/lib/ipse/ebin/Elixir.Ipse.Session.Lifecycle.beam
+ 3dc23f999f4a854a6a193f88677eace63882fa182d3f05765385269e345ac73b  _build/dev/lib/ipse/ebin/Elixir.Ipse.Session.Lock.beam
+ 36ba719f3ee02e00f140f24956389d59ff1c3b5d28296c1bb5cf9e035c21ddf8  _build/dev/lib/ipse/ebin/Elixir.Ipse.Session.ManagedLifecycle.beam
+-e20debf3d7d5a3c1cfac310fc88b312cfcd46581507dcf830a91dc182e1508b0  _build/dev/lib/ipse/ebin/Elixir.Ipse.Session.ManagedLineage.beam
++b1d1ac3268045b5fd06edbdbc7db404845b04a3ae96a187b5901ada02e6f5982  _build/dev/lib/ipse/ebin/Elixir.Ipse.Session.ManagedLineage.beam
+ defb271b07fdb502bba1db72ddc5a2bf7aa2eccf075e778b108361532e44b5cc  _build/dev/lib/ipse/ebin/Elixir.Ipse.Session.ManagedOutput.beam
+ 4a41392fd6ea078ce480282ce0df3657392ced84ba516e7fa2d39e54b6b7838b  _build/dev/lib/ipse/ebin/Elixir.Ipse.Session.ManagedReads.beam
+-1456e949553b8063a9dc60e0368d9ed009bc868bdc939d788c84977ab7c50162  _build/dev/lib/ipse/ebin/Elixir.Ipse.Session.ManagedReference.Plan.beam
+-9f24e99c6bf23339ff10e824306772b0ada30e9339e19a62ee234091e6b8a9c7  _build/dev/lib/ipse/ebin/Elixir.Ipse.Session.ManagedReference.State.beam
+-50a8edebccc052fb1a99252c4c83d0ff0fccf7463879f73ba100af7bb616e73c  _build/dev/lib/ipse/ebin/Elixir.Ipse.Session.ManagedReference.beam
++0f92e977043359c9813038da7ab42682eeec7665fe229b1fc65b9ffb19119c09  _build/dev/lib/ipse/ebin/Elixir.Ipse.Session.ManagedReference.Plan.beam
++31b5d6d853c5c724a5fedd40828df733db7a9f93c3190491a936a2ec12e098b9  _build/dev/lib/ipse/ebin/Elixir.Ipse.Session.ManagedReference.State.beam
++2d48af8dce78c4cae14ee2455f010938bae477fcd0ae96102fc7eca48eb38d29  _build/dev/lib/ipse/ebin/Elixir.Ipse.Session.ManagedReference.beam
+ 1368ae5997a29f0b63843ef1b72dedbb6ab783c4fdfc28d55ee746a75ef6fa79  _build/dev/lib/ipse/ebin/Elixir.Ipse.Session.ManagedSupersession.beam
+ e159498f1fc528181077e04391d6dbc27edc0466c9e76a4f0765cc97b0514c36  _build/dev/lib/ipse/ebin/Elixir.Ipse.Session.ManagedToolUse.beam
+-195d67c28ae3ae0251b8b9b01cae8f426f0efe2c35570964e6e22faacc0f3fac  _build/dev/lib/ipse/ebin/Elixir.Ipse.Session.ManagedUse.beam
++18b703275f5803e733b4c298165b23c60e6efa8583a24a7ab8bcf07f8b5f2caf  _build/dev/lib/ipse/ebin/Elixir.Ipse.Session.ManagedUse.beam
+ 1ded5da86381b3101e6a129bcd7f4956af00ce2ac8d4ae7c4583033dcb4897fe  _build/dev/lib/ipse/ebin/Elixir.Ipse.Session.OperatorAnswer.beam
+ a8af7b1c682fd6e7f8b8618ef06d78be87815bd7fd68808f1d278951311549c4  _build/dev/lib/ipse/ebin/Elixir.Ipse.Session.OperatorAssertion.beam
+ 1862cfb0326e9b7906502f3e22d98630da90ab396478042738b047b0e7ac0499  _build/dev/lib/ipse/ebin/Elixir.Ipse.Session.Permissions.beam
+@@ -259,7 +259,7 @@
+ d2923b1c38b77c2bbd1dcd841920aba55c9ac30b92e4569ab5df400356a91aa7  _build/dev/lib/ipse/ebin/Elixir.Ipse.Session.TextStream.beam
+ bfe571e03c152428c9e9cdfb458ebf571ced30f62d53cb46791da6173610f825  _build/dev/lib/ipse/ebin/Elixir.Ipse.Session.ToolLifecycle.beam
+ 464676c89a4903c05f11cb157567adf5abbe960366376416fb11bc191675d2fd  _build/dev/lib/ipse/ebin/Elixir.Ipse.Session.Turn.beam
+-86ad7f540167c220dfa4abef0f854d603fce3b0b1871fe0c0d53fc990279ac2b  _build/dev/lib/ipse/ebin/Elixir.Ipse.Session.beam
++0f76f8735ac79fd9ef324204c284a84d03e77a748d37f07123e5c96027a79091  _build/dev/lib/ipse/ebin/Elixir.Ipse.Session.beam
+ 476fc65e1bff12159115628c51a473033d613d70f61402ec02d82b0bffea2fc9  _build/dev/lib/ipse/ebin/Elixir.Ipse.Tools.Delegation.beam
+ a3b0da0a9d13ffa305e9d2540322aceb60a69350292469828c28a2e1f43555c4  _build/dev/lib/ipse/ebin/Elixir.Ipse.Tools.MacOSSandbox.beam
+ fb90055e27e0f9b4e1ef29369cb086f0cbcc61adeaeb6b1d53bcd5bf43bef8bd  _build/dev/lib/ipse/ebin/Elixir.Ipse.Tools.Questions.beam

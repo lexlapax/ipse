@@ -1,0 +1,153 @@
+Running ExUnit with seed: 46858, max_cases: 8
+Excluding tags: [:test]
+Including tags: [managed_ab_probe: true]
+
+MANAGED_AB_OBSERVATIONS=[{3, "root_observation", false}, {3, "root_observation", false}]
+MANAGED_AB_WRITE_STATUSES=["ok"]
+
+
+  1) test publication cannot discard an earlier stale managed A while citing current source B (Ipse.Extension.ManagedCollectionCallSessionTest)
+     test/ipse/extension/managed_collection_call_session_test.exs:1015
+     Expected false or nil, got true
+     code: refute Enum.any?(writes, &(&1["outcome"]["status"] == "ok"))
+     arguments:
+
+         # 1
+         [
+           %{
+             "approval" => "saved_consent",
+             "context_sha256" => nil,
+             "effect_binding" => %{
+               "inner_op" => "commit",
+               "kind" => "collection.managed",
+               "metadata_version" => 3,
+               "namespace" => "c4a85b8f5b5262a683f78db13085c8aa403c3b4d3f611b3386ea7ec84c526796",
+               "outer_sha256" => "de4b0e54c9baf4e1657333405b2a74947fad8da4d9fc397b432edfe9e26dc135",
+               "pin" => %{
+                 "binding_sha256" => "7796158d18f1496f5380d77f10fcbabd81df901fb4ef4c2725295ffc49ea7f0f",
+                 "epoch" => 1,
+                 "identity_sha256" => "5995203426002a594704c6d0c75a5298415480ebb7628d2dbbcff8f30cf817e1",
+                 "namespace" => "c4a85b8f5b5262a683f78db13085c8aa403c3b4d3f611b3386ea7ec84c526796",
+                 "policy_sha256" => "74d4049e48b8535a1e24ef2dbbf8b91fc03f3a2fd6e96bd321c958c842ed9a73",
+                 "project_id" => "9df950c114d3e8b39943d4152437f16a8352f3d25d9f1992b91cdc9b205895f1",
+                 "routes_sha256" => "34b4909da48e835199b942f8fd26fbc339ed0bd74b3cf948cdd8344cdbe06db6",
+                 "session_id" => "fc2e8791994c53f4f588fe82551a561d",
+                 "source_sha256" => "17b9d5587b9e5a1e7f2b96b3d0538190cfb14c439b53e9b2088a2b22ec5e8474",
+                 "version" => 1,
+                 "worktree_id" => "2ba27699b42cd69abc74e16c18655cabe79f9e8655b9a31525e99bb0bb0c04ea"
+               },
+               "recipe_sha256" => "56f9f33777440e240a256b1c20a3bbee926a98602c943c2862f7c86a94648a29",
+               "request_sha256" => "301ac1367341a19f7ec61efa4403189d89fe88a925cea296a16a9d126cbf1e91",
+               "version" => 3
+             },
+             "identity_sha256" => "5995203426002a594704c6d0c75a5298415480ebb7628d2dbbcff8f30cf817e1",
+             "namespace" => "c4a85b8f5b5262a683f78db13085c8aa403c3b4d3f611b3386ea7ec84c526796",
+             "operation_id" => "386bf28932669ab5fa84aa773fc4ef98",
+             "outcome" => %{
+               "status" => "ok",
+               "value" => %{
+                 "binding" => %{
+                   "normalization_sha256" => "3ccc67ee49666da19b5ce9fadac01cdb0a3cf37cb050e606d4b977ac49297981",
+                   "original_request_sha256" => "301ac1367341a19f7ec61efa4403189d89fe88a925cea296a16a9d126cbf1e91",
+                   "recipe_sha256" => "56f9f33777440e240a256b1c20a3bbee926a98602c943c2862f7c86a94648a29",
+                   "version" => 1
+                 },
+                 "normalization" => %{
+                   "category" => "ordinary",
+                   "eligibility" => "never_current",
+                   "first_admitted_ms" => 1793280500698,
+                   "format_value_sha256" => "cd0523298c63d511546f8c37caeed81c1a129af47274c58a7e1bdcb5b5c4f77c",
+                   "lineage" => "f5456770332cdded7377a6d0336c10d5e10bc6bb2b31062c0967b9fbdbacac5c",
+                   "metadata_changes" => [
+                     %{
+                       "expected_revision" => 2,
+                       "key" => "host.validity.a.0000000000000000000000000000000000000000000000000000000000000000",
+                       "value_sha256" => "f7dc77b0ec866aea9d64e0dfa74236185ee770b2ee0180b079ad666bee5a8480"
+                     },
+                     %{
+                       "expected_revision" => 2,
+                       "key" => "host.validity.l.000000000000000000000000000000000000000000000000000000000000000000",
+                       "value_sha256" => "17d73a4ed575e0729841830e22c3dc7f366a808cf5fa9f46578044ce8a06f2c8"
+                     }
+                   ],
+                   "record_key" => "pending.cec26fbdf2d95144248b351f6f35f93df1ade871596aeee7780f964f719c7d4c",
+                   "valid_until_ms" => 1793885300698,
+                   "version" => 3
+                 },
+                 "receipt" => %{
+                   "floor" => 3,
+                   "generation" => 3,
+                   "managed_binding_sha256" => "851e7c278b6c167e939ac4fd00444e4c527e3841e6a0961b4227c2b5cd4f36c4",
+                   "request_sha256" => "e82ec02613ad5779fa778429e85ba1a5ff57fcedae78ff95c9bb83a0c9d21da8"
+                 },
+                 "version" => 1
+               }
+             },
+             "outcome_sha256" => "2108631b14eb141e7ee22199abaf4ebc15b07f0b4d99957e007ec2eeb6dd0c2f",
+             "parent_invocation_id" => "abcd0d8aad139a7fabe948ece6c0de33",
+             "request" => %{
+               "metadata_version" => 3,
+               "op" => "collection.managed",
+               "proofs" => [
+                 %{
+                   "handle" => "eyJnZW5lcmF0aW9uIjozLCJraW5kIjoicmVhZCIsIm9jY3VycmVuY2UiOiJkMmUwMTdjMzJiYTQ1NWY1MThhMTAzZmEyMmIxY2QxYSIsIm9mZnNldCI6MCwicG9saWN5IjoxLCJzZXNzaW9uIjoiZmMyZTg3OTE5OTRjNTNmNGY1ODhmZTgyNTUxYTU2MWQiLCJzb3VyY2VfdmVyc2lvbiI6IjgxNGM3MWRmNjZkNzcwYmNlY2M1NDY0NTQwODhhM2E1IiwidmVyc2lvbiI6MSwid2luZG93IjoiNzE2OGI1NWY4NDI2ZTc3OTVmZThhNGM4MWU2ZDMyMmMifQ.OWCWcvvFI07wTnPLoT-GKq2EVjb-mHJibFm2K07clSM",
+                   "quote" => "Synthetic café observation"
+                 }
+               ],
+               "recipe_sha256" => "56f9f33777440e240a256b1c20a3bbee926a98602c943c2862f7c86a94648a29",
+               "request" => %{
+                 "advance_floor" => true,
+                 "changes" => [
+                   %{
+                     "expected_revision" => 0,
+                     "key" => "pending.cec26fbdf2d95144248b351f6f35f93df1ade871596aeee7780f964f719c7d4c",
+                     "value" => %{
+                       "assigned_category" => "ordinary",
+                       "evidence" => %{
+                         "sources" => [
+                           %{
+                             "content_sha256" => "92b304015aee79017d7d421982fffa56dcf42544245545541e1c68916c8faf59",
+                             "coverage" => "available",
+                             "end_byte" => 27,
+                             "kind" => "input.original",
+                             "occurrence_id" => "d2e017c32ba455f518a103fa22b1cd1a",
+                             "origin" => "unattended_input",
+                             "path" => nil,
+                             "quote" => "Synthetic café observation",
+                             "quote_sha256" => "92b304015aee79017d7d421982fffa56dcf42544245545541e1c68916c8faf59",
+                             "receipt_sha256" => "db68a7baa9a1efef5eff79be53e187b6e0d7846c155df90a01056f8929ca134b",
+                             "session_id" => "fc2e8791994c53f4f588fe82551a561d",
+                             "start_byte" => 0,
+                             "version" => 1,
+                             "version_id" => "814c71df66d770bcecc546454088a3a5"
+                           }
+                         ]
+                       },
+                       "lineage" => "f5456770332cdded7377a6d0336c10d5e10bc6bb2b31062c0967b9fbdbacac5c",
+                       "text" => "Synthetic café observation"
+                     }
+                   }
+                 ],
+                 "expected_generation" => 2,
+                 "op" => "commit"
+               }
+             },
+             "request_sha256" => "5a88a0a98c127e90214759bd4f6898b261d469530b1f9ea1fc6926300cc54b2d",
+             "service" => nil,
+             "step" => 7,
+             "type" => "extension_action_result",
+             "version" => 3
+           }
+         ]
+
+         # 2
+         #Function<373.9505992/1 in Ipse.Extension.ManagedCollectionCallSessionTest."test publication cannot discard an earlier stale managed A while citing current source B"/1>
+
+     stacktrace:
+       test/ipse/extension/managed_collection_call_session_test.exs:1040: (test)
+
+
+Finished in 3.2 seconds (0.00s async, 3.2s sync)
+
+Result: 0/1 passed, 95 excluded
+Failed: 1 test

@@ -1,0 +1,24 @@
+    warning: variable "root" is unused (if the variable is not meant to be used, prefix it with an underscore)
+    │
+ 14 │   defp open_owner(root, hook \\ nil) do
+    │                   ~~~~
+    │
+    └─ test/ipse/runner/state_owner_native_test.exs:14:19: Ipse.Runner.StateOwnerNativeTest.open_owner/2
+
+Running ExUnit with seed: 56151, max_cases: 8
+Excluding tags: [:native_sandbox, :macos_sandbox, :macos_filesystem, :memory_scope]
+
+
+
+  1) test a valid final decision can physically complete after the deadline (Ipse.Runner.StateOwnerNativeTest)
+     test/ipse/runner/state_owner_native_test.exs:85
+     helper reply timed out
+     code: assert <<1, checked::64>> = reply(port, ?V, 5, 1)
+     stacktrace:
+       test/ipse/runner/state_owner_native_test.exs:94: (test)
+
+..
+Finished in 5.9 seconds (0.1s on load, 0.00s async, 5.8s sync)
+
+Result: 2/3 passed
+Failed: 1 test

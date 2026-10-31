@@ -1,0 +1,14 @@
+_build/history-commitment-sol-20261028/evidence-source-commitment/lib/ipse/cli/knowledge/management.ex: OK
+_build/history-commitment-sol-20261028/evidence-source-commitment/lib/ipse/extension/collection/managed_pages.ex: OK
+_build/history-commitment-sol-20261028/evidence-source-commitment/lib/ipse/extension/collection/managed_retention.ex: OK
+_build/history-commitment-sol-20261028/evidence-source-commitment/lib/ipse/extension/collection/normalizer_v3.ex: OK
+_build/history-commitment-sol-20261028/evidence-source-commitment/lib/ipse/extension/collection/observed_read.ex: OK
+_build/history-commitment-sol-20261028/evidence-source-commitment/lib/ipse/session/managed_lifecycle.ex: OK
+_build/history-commitment-sol-20261028/evidence-source-commitment/test/ipse/extension/collection_compact_choice_test.exs: OK
+_build/history-commitment-sol-20261028/evidence-source-commitment/test/ipse/session/managed_supersession_native_test.exs: OK
+_build/history-commitment-sol-20261028/evidence-source-commitment/test/ipse/session/managed_supersession_session_test.exs: OK
+_build/history-commitment-sol-20261028/evidence-source-commitment/test/support/managed_history_pin.exs: OK
+_build/history-commitment-sol-20261028/evidence-source-commitment/test/support/managed_literal_supersession.exs: OK
+_build/history-commitment-sol-20261028/evidence-source-commitment/test/support/managed_shared_support.exs: OK
+_build/history-commitment-sol-20261028/evidence-source-commitment/test/support/managed_supersession_session.exs: OK
+_build/history-commitment-sol-20261028/evidence-source-commitment/test/support/operator_pty.rs: OK

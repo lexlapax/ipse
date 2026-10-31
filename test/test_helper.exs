@@ -22,7 +22,19 @@ System.put_env("HOME", operator_home)
 System.put_env("IPSE_HOME", Path.join(operator_home, ".ipse"))
 System.at_exit(fn _ -> File.rm_rf!(operator_home) end)
 
-ExUnit.start(exclude: [:native_sandbox, :macos_sandbox, :macos_filesystem, :memory_scope])
+ExUnit.start(
+  exclude: [
+    :native_sandbox,
+    :macos_sandbox,
+    :macos_filesystem,
+    :memory_scope,
+    :controlled_tty_bridge,
+    :controlled_tty_loss
+  ]
+)
+
+Code.require_file("support/resume_assertions.exs", __DIR__)
+Code.require_file("support/witnessed_draft.exs", __DIR__)
 
 defmodule Ipse.Test.FileEffectProbe do
   def fifo!(path) do

@@ -1,0 +1,32 @@
+
+14:00:56.766 [info] The function passed as a handler with ID {:collection_held_read_review, #Reference<0.4169887971.4286840833.2644>} is a local function.
+This means that it is either an anonymous function or a capture of a function without a module specified. That may cause a performance penalty when calling that handler. For more details see the note in `telemetry:attach/4` documentation.
+
+https://hexdocs.pm/telemetry/telemetry.html#attach/4
+AFTER_NORMALIZER_READ: %{read: {:error, :managed_read_refused}, stage: %{generation: 1}}
+KNOWN_REFUSAL_AFTER_ACTUAL_PUBLICATION: %{
+  returned: {:error, :managed_normalization_refused},
+  physical_root: %{
+    "floor" => 1,
+    "floor_anchor" => "e95b4361faec9fcf8c22d943cb933348",
+    "generation" => 1,
+    "manifest" => "073d69831ebffc2be1ee72ea99faeda0fca4247cfbbb58526508e75b032a815e",
+    "project" => "a941480cf6bb7f4af01039d78cefbeeb7d9657a81d8edc95e0845863ba0121c5",
+    "version" => 5
+  },
+  physical_root_sha256: "4e0783cfa47d3574b1525b4f82304ca83eb7e03ffac642a20bcb472a44a5ca48",
+  selected_record: %{
+    "bytes" => 29,
+    "key" => "note.a",
+    "operation_id" => "e95b4361faec9fcf8c22d943cb933348",
+    "revision" => 1,
+    "sha256" => "a3dd9f416cc70a2aa5acc96ac7383a84e8e867e18a92760d3dffa92a71b1eed1",
+    "value" => %{"text" => "synthetic selected"}
+  },
+  stored_operation: %{
+    "floor" => 1,
+    "generation" => 1,
+    "managed_binding_sha256" => "8e938eac752130f2a5075ff0278a48a6cd0fa6121a859a57847ba728bc0ca6f2",
+    "request_sha256" => "aafd62cac02823f8eead7e9a4d3312310f9b3fa7aac1c0774b851d573e687ce0"
+  }
+}

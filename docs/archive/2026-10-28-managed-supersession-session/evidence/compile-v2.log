@@ -1,0 +1,4 @@
+{:ok,
+ [Ipse.Extension.Collection.ObservedRead, Ipse.Session.ManagedReference,
+  Ipse.Session.ManagedReference.Plan, Ipse.Session.ManagedReference.State,
+  Ipse.Session.ManagedUse], %{compile_warnings: [], runtime_warnings: []}}

@@ -1,0 +1,18 @@
+Knowledge command refused. A matching native input and display terminal is required. No successful permission change is confirmed.
+** (ExUnit.AssertionError) 
+
+Assertion with == failed
+code:  assert Ipse.CLI.run([
+              "knowledge",
+              "enable",
+              "--cwd",
+              cwd,
+              "--config",
+              config_path,
+              "--no-project-config"
+            ]) == 0
+left:  1
+right: 0
+
+    (ex_unit 1.20.4) lib/ex_unit/assertions.ex:460: ExUnit.Assertions.assert/2
+    test/support/headless_typed_root_transition.exs:193: (file)

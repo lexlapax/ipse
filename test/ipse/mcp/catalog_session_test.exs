@@ -279,7 +279,16 @@ defmodule Ipse.MCP.CatalogSessionTest do
     assert {:ok, _} = Ipse.Session.Saved.restore(events, id)
   end
 
+  @tag :witnessed_draft_mcp
   test "accepted draft lineage binds a later actual MCP resource call", ctx do
+    if System.get_env("IPSE_WITNESSED_DRAFT_CHILD") == "1" do
+      witnessed_draft_mcp(ctx)
+    else
+      Ipse.Test.WitnessedDraft.run(ctx.root, "test/support/draft_mcp_lineage_entry.exs")
+    end
+  end
+
+  defp witnessed_draft_mcp(ctx) do
     pid = session(ctx, provider_module: DraftModel, approval: :allow)
     id = Ipse.Session.info(pid).id
     assert :ok = Ipse.Session.prompt(pid, "preload")
@@ -291,25 +300,8 @@ defmodule Ipse.MCP.CatalogSessionTest do
     assert_receive {:ipse, ^pid, {:done, :ok}}, 5_000
     {:ok, %{id: draft_id, revision: revision}} = Ipse.Session.draft(pid)
     assert :ok = Ipse.Session.replace_draft(pid, draft_id, revision, "accepted request")
-    assert :ok = Ipse.Session.close_confirmed(pid)
-    {:ok, events} = Ipse.Journal.load(ctx.dir, id)
-    {:ok, draft} = Ipse.Session.Draft.restore(events, id)
-    {:ok, render} = Ipse.Session.DraftAcceptance.render(draft, Ipse.Usage.id())
-    text = "accept " <> render["code"]
-
-    observation = %{
-      "version" => 2,
-      "event_id" => Ipse.Usage.id(),
-      "display_limit" => 16_777_216,
-      "input_limit" => 1_048_576,
-      "display_sha256" => Ipse.JSON.sha256(render["display"]),
-      "text_sha256" => Ipse.JSON.sha256(text)
-    }
-
-    {:ok, receipt} = Ipse.Session.DraftAcceptance.receipt(draft, render, text, observation)
-    assert :ok = Ipse.Journal.append(ctx.dir, id, Ipse.Session.Draft.accepted(draft, receipt))
-    resumed = session(ctx, [provider_module: DraftModel, approval: :allow], id)
-    assert :ok = Ipse.Session.consume_draft(resumed, draft_id, revision + 1)
+    assert :ok = Ipse.Test.WitnessedDraft.accept(pid, draft_id, revision + 1)
+    resumed = pid
     assert_receive {:draft_mcp_input, input, _}, 5_000
     refute inspect(input) =~ "private draft source"
     assert_receive {:draft_mcp_input, _, _}, 5_000
@@ -548,6 +540,36 @@ defmodule Ipse.MCP.CatalogSessionTest do
     assert content_calls(ctx) == before
   end
 
+  test "ordinary resource and prompt starts bind to the planning checkpoint", ctx do
+    reads = %{
+      "mcp__notes__lookup" => %{
+        "version" => 1,
+        "server_id" => "notes",
+        "tool" => "lookup",
+        "endpoint_sha256" => Ipse.JSON.sha256("not-enabled-endpoint"),
+        "descriptor_sha256" => Ipse.JSON.sha256("not-enabled-descriptor")
+      }
+    }
+
+    pid = session(ctx, approval: :allow, planning_mcp_reads: reads)
+    assert :ok = Ipse.Session.prompt(pid, "inspect catalog")
+    assert_receive {:ipse, ^pid, {:done, :ok}}, 5_000
+    {:ok, events} = Ipse.Journal.load(ctx.dir, Ipse.Session.info(pid).id)
+    markers = Enum.filter(events, &(&1["type"] == "mcp_epoch_intent"))
+    starts = Enum.filter(events, &(&1["type"] == "tool_started" and is_map(&1["mcp"])))
+
+    assert length(markers) == 2 and
+             Enum.map(starts, &get_in(&1, ["mcp", "kind"])) == ["resource", "prompt"]
+
+    assert {:ok, _} = Ipse.Session.Saved.restore(events, Ipse.Session.info(pid).id)
+    id = Ipse.Session.info(pid).id
+    before = content_calls(ctx)
+    assert :ok = Ipse.Session.close_confirmed(pid)
+    resumed = session(ctx, [approval: :allow, planning_mcp_reads: reads], id)
+    assert Ipse.Session.info(resumed).phase == :idle
+    assert content_calls(ctx) == before
+  end
+
   test "lost resource response stops the prompt batch and unknown resume does not retry", ctx do
     pid = session(ctx, scenario: "resource_disconnect", approval: :allow)
     :ok = Ipse.Session.prompt(pid, "inspect catalog")
@@ -613,6 +635,12 @@ defmodule Ipse.MCP.CatalogSessionTest do
     path = Path.join(ctx.root, "mcp.json")
     File.write!(path, Jason.encode!(document))
     {:ok, servers} = Config.load(path)
+    reads = Keyword.get(opts, :planning_mcp_reads, %{})
+
+    configuration =
+      if reads == %{},
+        do: nil,
+        else: %{fingerprint: Ipse.JSON.digest([reads]), planning_mcp_reads: reads, sources: []}
 
     config = %{
       provider: :demo,
@@ -621,6 +649,8 @@ defmodule Ipse.MCP.CatalogSessionTest do
       test_pid: self(),
       home: Path.join(ctx.root, "home"),
       mcp_servers: servers,
+      planning_mcp_reads: reads,
+      configuration: configuration,
       approval: Keyword.get(opts, :approval, :ask)
     }
 

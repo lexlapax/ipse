@@ -1,0 +1,26 @@
+Running ExUnit with seed: 46914, max_cases: 1
+Excluding tags: [:test]
+Including tags: [:shared_directory_preview]
+
+?
+
+  0) Ipse.KnowledgeCollectionAdapterSessionTest: failure on setup_all callback, all tests have been invalidated
+     match (=) failed
+     code:  assert {"", 0} =
+              System.cmd(
+                System.find_executable("elixirc"),
+                ["--erl", "+S 2:2"] ++ paths ++ ["-o", Path.join(root, "ebin")] ++ files,
+                stderr_to_stdout: true
+              )
+     left:  {"", 0}
+     right: {"     warning: incompatible types given to Kernel.hd/1:\n\n         hd(__STACKTRACE__)\n\n     given types:\n\n         -empty_list()- or non_empty_list(\n             {atom(), atom(), integer() or list(term()),\n              list({:error_info, map()} or {:file, list(integer())} or {:line, integer()})} or\n               {fun(), integer() or list(term()),\n                list({:error_info, map()} or {:file, list(integer())} or {:line, integer()})}\n           )\n\n     but expected one of:\n\n         non_empty_list(term(), term())\n\n     type warning found at:\n     │\n 197 │           \"frame\" => inspect(hd(__STACKTRACE__))\n     │                              ~\n     │\n     └─ test/support/collection_adapter_fixture.exs:197:30: IpseTest.CollectionAdapter.handle/3\n\n",
+             0}
+     stacktrace:
+       test/extensions/knowledge/collection_adapter_session_test.exs:27: Ipse.KnowledgeCollectionAdapterSessionTest.__ex_unit_setup_all_0/1
+       test/extensions/knowledge/collection_adapter_session_test.exs:1: Ipse.KnowledgeCollectionAdapterSessionTest.__ex_unit__/2
+
+All tests have been excluded.
+
+Finished in 3.0 seconds (1.0s on load, 0.00s async, 2.0s sync)
+
+Result: 0 tests, 1 invalid, 30 excluded

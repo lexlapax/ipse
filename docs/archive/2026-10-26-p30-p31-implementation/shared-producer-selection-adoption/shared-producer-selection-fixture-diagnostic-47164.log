@@ -1,0 +1,12 @@
+nil
+** (UndefinedFunctionError) function Ipse.Config.Profiles.validate_embedding_profiles/1 is undefined or private. Did you mean:
+
+    * validate_embedding_profile/1
+    * validate_embeddings/1
+    * validate_profile/1
+
+    Ipse.Config.Profiles.validate_embedding_profiles(%{"encoder" => %{"base_url" => "http://127.0.0.1:9", "dimension_mode" => "native", "dimensions" => 1024, "model" => "configured-model", "operation" => "embedding", "provider" => "ollama", "timeout_ms" => 5000}})
+    (stdlib 8.1) erl_eval.erl:1048: :erl_eval.do_apply/7
+    (stdlib 8.1) erl_eval.erl:1664: :erl_eval.expr_list/7
+    (stdlib 8.1) erl_eval.erl:1660: :erl_eval.expr_list/5
+    (stdlib 8.1) erl_eval.erl:754: :erl_eval.expr/6

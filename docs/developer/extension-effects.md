@@ -13,10 +13,12 @@ Choose the host operation that owns the effect:
 | Selected external tool, resource or prompt | `mcp.call` | `host.mcp` | `Ipse.Extension.MCPCall` |
 | Text or schema-constrained inference | `model.complete` | `host.model` | `Ipse.Extension.ModelCall` |
 | Native vector generation | `embedding.create` | `host.embedding` | `Ipse.Extension.EmbeddingCall` |
+| Inspect one configured embedding selection | `embedding.profile` | `host.embedding` | `Ipse.Extension.EmbeddingCall` |
 | Typed advisory inference | `decision.create` | `host.decision` | `Ipse.Extension.DecisionCall` |
 | Read a successful retained effect | `effect.result.read` | `host.results` | `Ipse.Extension.EffectResult` |
 | Read admitted current-Session evidence | `source.list`, `source.read`, `source.quote` | `host.sources` | `Ipse.Extension.SourceRead` |
 | Read or publish a protected local collection | `collection.call` | `host.collection.read` / `host.collection.write` | `Ipse.Extension.CollectionCall` |
+| Stage and read operator-selected project documents | `collection.store` | `host.collection.store` | `Ipse.Extension.CollectionStore` |
 
 Every operation also needs `host.actions` in the artifact and the operator trust
 ceiling. An installed package, command invocation or answered question grants no
@@ -343,7 +345,10 @@ request goes inside the host-call envelope:
 {"op":"embedding.create","version":2,"profile":"local_embedding","inputs":["A bounded synthetic source chunk."],"timeout_ms":30000}
 ```
 
-All fields are required. There are 1..8 nonempty UTF-8 inputs, at most 4096 bytes
+The five displayed fields are required. Ordinary v2 requests also accept optional
+`expected_selection_sha256`; a present value must be a SHA-256 digest. V1 does
+not accept that field. Source-bound v2 requests add the closed `source_guard`
+described below and require the selection pin. Ordinary requests have 1..8 nonempty UTF-8 inputs, at most 4096 bytes
 each and 12288 bytes together. The request fits the ordinary 16 KiB SDK object;
 the deadline is 1000..120000 milliseconds. Arguments cannot select dimensions,
 model, endpoint, credentials, headers, output caps, truncation or provider modules.
@@ -353,8 +358,82 @@ Use `host.embedding` and, for pages, `host.results`. The
 Trace `Operation.validate/1` into `EmbeddingCall`, then Session action admission.
 `Ipse.Config.Profiles.prepare_embedding/2` selects only operator settings and private budget/
 origin references. Parent history, keys, tools, injected modules, text caps and
-reasoning settings are absent. The v2 `effect_binding` pins embedding execution
-and safe destination. Approval uses those exact facts.
+reasoning settings are absent. The action's effect binding pins execution and
+safe destination: ordinary embeddings use binding v1, while source-bound
+embeddings use binding v2 with their project/source binding. Approval uses those
+exact facts.
+
+When a caller needs to retain a particular configured selection, first read its
+public metadata without making an inference request:
+
+```json
+{"op":"embedding.profile","version":1,"profile":"local_embedding"}
+```
+
+This separate read-only action returns `{version:1, profile, selection_sha256}`.
+`profile` is the exact requested entry in the frozen Session embedding snapshot,
+including public destination and dimension semantics. It exposes no credential,
+contacts no provider, and creates no inference Usage admission. Absent or disabled
+profiles refuse. Its Actions binding and result are checked against that snapshot
+again during Saved reconstruction; a self-consistent foreign profile/hash refuses.
+It consumes an ordinary bounded action/read slot and requires `host.actions`
+and `host.embedding` in the artifact's explicit trust ceiling.
+
+Copy the returned digest into `expected_selection_sha256` on the v2 create
+request. The host compares it with the selected execution/destination before
+approval and intent admission, and repeats binding validation at execution and
+reconstruction. Mismatch refuses without a provider request or alias fallback.
+Omitting the pin preserves the existing v1/v2 contract. The full request,
+including any pin, remains part of the approved arguments and request digest.
+Configured selection does not prove the eventual reported model or source
+eligibility. In particular, this pin cannot enforce source freshness across an
+approval wait; domain source and dispatch checks remain separate requirements.
+
+For the shared document producer, the operator can explicitly select document
+binding v2 with `source_use: "shared_producer_v1"`. This restricts **every**
+embedding create from that identity to the fixed source-bound relation; it is
+not a general query-embedding identity. Default v1 identities keep their existing
+behavior. Configure the producer through the [Corpus procedure](../operator/corpus.md),
+including a registered inference route. This is separate from profile existence
+or full destination/input approval.
+
+The worker supplies this additional request field using its actual confirmed
+claim reference, not the illustrative values below:
+
+```json
+{"source_guard":{"version":1,"claim_key":"genproducer.notes","claim_revision":53,"claim_sha256":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","batch_index":0}}
+```
+
+Guarded requests contain one or two inputs and a nonnull selection pin. Host
+requires the selected operator binding, actual project/worktree, Session, artifact
+identity and request. It also requires the claim's original successful prepare
+and commit in this **live invocation**, then the actual retained claim operation,
+revision and logical hash. An existing pending record, copied reference or saved
+journal cannot recreate that authority. Positions 0..3 are spent once; only the
+matching durably successful result permits the next position. Denied, uncertain
+or mismatched results stop the path without replay.
+
+Trace `CollectionStore.prepare_source/5` and `Session.DocumentEmbedding` beside
+`Collection.DocumentSourceUse`. The final plain EgressGate callback authenticates
+current Job/catalog/root, complete stored source bundles, exact next byte ranges
+and actual serialized target/body under short Identity → Collection ownership.
+After blocking validation and the Session's one-use spend, host UTC checks the
+original source deadlines and Registry expiry. The original extension/request
+monotonic bounds also remain. Only an exact private success marker surviving
+reader and Identity cleanup authorizes the gate. Ownership releases before long
+IO; source expiry or revocation cannot retract already admitted remote bytes.
+The existing managed-note transport remains separate, and mixed note/document
+inference currently refuses.
+
+An omitted guard on the restricted identity refuses; a guard on an unselected
+identity refuses too. Unsupported configuration can leave an explicitly approved
+inert pending claim before the embedding refusal. Inspect that operation; it is
+not a retry token. A guarded successful result retains the same v2 vector/result
+contract below. These checks authenticate stored byte use, not document-author
+truth, extraction fidelity or a maximum-capacity/quality qualification. The
+[native Session controls](../archive/2026-10-26-p30-p31-implementation/shared-producer-guard-session.md)
+and [finite-TTL control](../archive/2026-10-26-p30-p31-implementation/shared-producer-finite-guard-session.md)
+record their exact private-artifact scope separately from public adoption.
 
 Before approval, `EffectResult`'s capacity planner constructs bounded canonical request, source,
 usage, completion and action-result records for selected input count/width,
@@ -457,6 +536,7 @@ Choose a regression that proves the boundary, including its refusal path:
 | MCP source/capacity | Select a 65536-byte record ceiling; require zero discovery/effects and an unsealed journal. Compare exact 262144-byte encoded source with one byte less | `test/ipse/extension/effect_result_test.exs`, `test/ipse/extension/mcp_call_session_test.exs`, `test/ipse/mcp/` |
 | Text wire/result | Keep a small answer with more than 64 KiB valid framing; refuse above 1 MiB wire. Reject oversized text while retaining completed usage | `test/ipse/extension/invocation_test.exs`, `test/ipse/extension/model_call_test.exs`, `test/ipse/extension/model_jobs_test.exs` |
 | Embedding identity | Change only a successful selection hash and recompute the superficial outcome hash; standalone Actions and Session must still refuse | `test/ipse/extension/embedding_call_session_test.exs`, `test/ipse/config/profiles_test.exs` |
+| Document source admission | Preserve an actual live claim through four batches; hold approval beyond source expiry and require no request body; reject foreign Session binding and restored claim authority | `test/ipse/session/document_embedding_test.exs`, `test/ipse/extension/collection_document_source_use_test.exs`, `test/extensions/knowledge/shared_producer_guard_session_test.exs` |
 | Embedding capacity | Four 4096-coordinate vectors under a 65536-byte ceiling must dispatch zero requests; normal-ceiling and one-vector controls complete | `test/ipse/extension/embedding_result_test.exs`, `test/ipse/provider/embedding_test.exs` |
 | Typed advice | Deny before HTTP, tamper service/model/usage bindings, kill the actual owner, then resume without replay; require separate child approval and retained shared liability | `test/ipse/extension/decision_session_test.exs`, `test/ipse/usage/decision_test.exs` |
 | Settlement | Fail settlement after response; require known counters, no readable vectors and retained applicable liability | `test/ipse/usage/embedding_test.exs`, `test/ipse/usage/costs_test.exs` |

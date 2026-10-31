@@ -1,0 +1,24 @@
+Running ExUnit with seed: 46866, max_cases: 8
+Excluding tags: [:test]
+Including tags: [managed_audit_pure: true]
+
+..
+
+  1) test publication permits only its exact host snapshot CAS prerequisite (Ipse.Session.ManagedToolUseTest)
+     test/ipse/session/managed_tool_use_test.exs:109
+     ** (UndefinedFunctionError) function Ipse.Session.ManagedLineage.get_and_update/3 is undefined (Ipse.Session.ManagedLineage does not implement the Access behaviour
+
+     You can use the "struct.field" syntax to access struct fields. You can also use Access.key!/1 to access struct fields dynamically inside get_in/put_in/update_in)
+     code: inherited = put_in(state, [:managed_lineage, :invocations, id, :input], [sha])
+     stacktrace:
+       (ipse 0.1.0) Ipse.Session.ManagedLineage.get_and_update(%Ipse.Session.ManagedLineage{reference: %Ipse.Session.ManagedReference.State{session_id: "f2b1599b6a5d3c8ea69efabd044dc2a2", dependencies: %{}, occurrences: %{}, bytes: 2}, requests: %{}, native_requests: %{}, output_release: nil, output_release_ids: %{}, output_layout: nil, calls: %{"call_current" => ["a6a752ea325576426c3275aa9f6603497a2ca344d980b046d2829857f6c31816"]}, call_bindings: %{"call_current" => %{call: %{"function" => %{"arguments" => "{\"content\":\"Synthetic derived value\",\"path\":\"result.txt\"}", "name" => "write"}, "id" => "call_current"}, request_id: "5025e13043cd185b3e710121859c6497"}}, tool_effect_ids: %{}, tool_effect_inputs: %{}, tool_layout: "managed_tool_effects_v1", active_tool: %{"approval" => "approved", "call_id" => "call_current", "mcp" => nil, "name" => "write", "type" => "tool_started"}, active_action: nil, last_action_result: nil, action_layout: nil, active_discovery: nil, discovery_ids: %{}, mcp_servers: [], tool_result_release: nil, tool_result_ids: %{}, invocations: %{"ef02c7baf7009e0085fa06b0d853afd5" => %{input: [], parent: %{"invocation_id" => "ef02c7baf7009e0085fa06b0d853afd5"}, reads: ["9fea14b7a0895e63cd192513095e8ba8f9cf9226270895034b5719427544c6a9"]}}, outputs: %{}, publishers: %{}, pending: %{}, effects: %{}, dictionary: %{"9fea14b7a0895e63cd192513095e8ba8f9cf9226270895034b5719427544c6a9" => %{"collection" => %{"floor" => 0, "floor_anchor" => nil, "generation" => 0, "manifest_sha256" => nil, "project" => "9359f3bb2efa7aabd0264fb67fb1d99f91871778e9b887179d6b2debaa251ec6", "root_sha256" => nil, "root_state" => "absent"}, "namespace" => "9359f3bb2efa7aabd0264fb67fb1d99f91871778e9b887179d6b2debaa251ec6", "pin_sha256" => "d1eb97b1367b028c115a31fc1dcefa5860ba127607eb0f72212d62fea28c7766", "policy_generation" => 1, "project_id" => "244210e48437b6556980a70249a99369934a352429034cef9d7bd253b3bf2c01", "subject" => %{"kind" => "root_observation", "request_sha256" => "850e5bcefcad41c805070afa09bd0c2474994a94210604995a466638301743cb", "result_sha256" => "c4f6077b7e8374824ae8507b4efae4ebfc48fd13e40dc7eec5617980e6495ddd"}, "version" => 3}}, write_facts: %{}, admissions: %{}, preflight: nil, preflight_ids: %{}, helper_inputs: %{}, header: nil, active_invocation: "ef02c7baf7009e0085fa06b0d853afd5", admission: nil, strict: false, frozen_header: false, unavailable: false}, :invocations, #Function<6.18806016/1 in Kernel.get_and_update_in/3>)
+       (elixir 1.20.4) lib/access.ex:401: Access.get_and_update/3
+       (elixir 1.20.4) lib/map.ex:1012: Map.get_and_update/3
+       (elixir 1.20.4) lib/kernel.ex:2959: Kernel.put_in/3
+       test/ipse/session/managed_tool_use_test.exs:175: (test)
+
+
+Finished in 0.01 seconds (0.01s async, 0.00s sync)
+
+Result: 2/3 passed, 20 excluded
+Failed: 1 test

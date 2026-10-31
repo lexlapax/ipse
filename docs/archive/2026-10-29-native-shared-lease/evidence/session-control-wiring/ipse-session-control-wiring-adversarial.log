@@ -1,0 +1,8 @@
+Running ExUnit with seed: 481146, max_cases: 8
+Excluding tags: [:test]
+Including tags: [controlled_stale: true, controlled_bad_frame: true]
+
+..
+Finished in 1.4 seconds (0.5s on load, 0.00s async, 0.9s sync)
+
+Result: 2 passed, 10 excluded

@@ -1,0 +1,9 @@
+** (ExUnit.AssertionError) 
+
+match (=) failed
+code:  assert {:ok, _} = Bundles.install("knowledge", home)
+left:  {:ok, _}
+right: {:error, :extension_bundle_unavailable}
+
+    test/support/management_full_facts.exs:122: (file)
+    (elixir 1.20.4) lib/code.ex:1639: Code.require_file/2

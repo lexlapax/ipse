@@ -1,0 +1,14 @@
+Running ExUnit with seed: 658054, max_cases: 8
+Excluding tags: [:native_sandbox, :macos_sandbox, :macos_filesystem, :memory_scope]
+
+
+
+  1) test older pinned helper refuses candidate before creating a journal (Ipse.Session.ShareCandidateOldHelperTest)
+     test/ipse/session/share_candidate_old_helper_test.exs:5
+     ** (EXIT from #PID<0.186.0>) "usage: ipse-runner [--sandbox linux-workspace-v1] CWD TIMEOUT_MS COMMAND"
+
+
+Finished in 0.4 seconds (0.08s on load, 0.00s async, 0.3s sync)
+
+Result: 0/1 passed
+Failed: 1 test

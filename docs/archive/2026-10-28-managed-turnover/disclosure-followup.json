@@ -1,0 +1,18 @@
+{
+  "change": "Native review facts now explicitly disclose retained original journal, management review journal and shared evidence. The exact normalizer scope check changed with the renderer; no effect-order or authority gate changed.",
+  "component_native_tests_repeated": false,
+  "date": "2026-10-28",
+  "integration": "Root owns the subsequent standalone Consent/CLI qualification against these facts.",
+  "original_native_evidence_rewritten": false,
+  "scope": "selected literal derivative; original journal, management review journal and shared evidence remain",
+  "source_inputs": {
+    "lib/ipse/extension/collection/normalizer_v3.ex": {
+      "sha256": "94fcaccfdaded5fa7f67f8bcd89ad06fb065dd53c5e29cf6ffc86dec2d5283f1",
+      "snapshot": "sources/disclosure-followup__lib__ipse__extension__collection__normalizer_v3.ex"
+    },
+    "lib/ipse/session/managed_lifecycle.ex": {
+      "sha256": "09986e10ddbf6de245a9252faebd42dbae926e93190e7ecb89e2195546c865e1",
+      "snapshot": "sources/disclosure-followup__lib__ipse__session__managed_lifecycle.ex"
+    }
+  }
+}

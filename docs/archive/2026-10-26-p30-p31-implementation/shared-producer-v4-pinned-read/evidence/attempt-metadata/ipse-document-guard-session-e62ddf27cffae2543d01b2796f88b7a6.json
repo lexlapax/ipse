@@ -1,0 +1,1 @@
+{"synthetic_fixture":true,"host_sha256":"42b1c801e26516ceb590ae66ee808045c07c486559c9e4a7fbb622ef67e64d1a","artifact_sha256":"ff8273cef5d12713308336fd18e5a4c5b54affb4fe69a335d79ce25277bae02b","app_modules":216,"operator_binding":{"id":"documents","profile":"document_graph_v1","scope":"project","source_use":"shared_producer_v1","version":2},"native_home_retained":true}

@@ -1,0 +1,11 @@
+SESSION_SHARE_MANIFEST_OK: %{
+  manifest_entries: 36,
+  source_files: 36,
+  runtime_inventory_counts: [
+    {"runtime.sha256", 697},
+    {"runtime-old.sha256", 696},
+    {"runtime-diagnostic.sha256", 697}
+  ],
+  matching_standard_helper: true,
+  matching_old_helper: true
+}

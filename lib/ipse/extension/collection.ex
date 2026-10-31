@@ -23,19 +23,32 @@ defmodule Ipse.Extension.Collection do
   """
   alias Ipse.JSON
   alias Ipse.Runner.Transaction
-  alias Ipse.Extension.Collection.{Blocks, Directory, Encoding, Migration, Planning, ReadView}
+
+  alias Ipse.Extension.Collection.{
+    Blocks,
+    Directory,
+    Encoding,
+    Migration,
+    Planning,
+    ReadView,
+    Profile
+  }
+
   import Bitwise, only: [band: 2]
   @value_bytes 6 * 1024
+  @publication_error :collection_deadline_fence_unavailable
   @data_bytes 24 * 1024 * 1024
   @total_bytes 64 * 1024 * 1024
   # Consent's active/staged ledger allowance is 18 MiB; shared project identity
   # adds 4 MiB. Both owners independently enforce their protected native budgets.
   @control_bytes 22 * 1024 * 1024
-  @manifest_bytes 8 * 1024 * 1024
   @records 8192
   @operations 32_768
   @lock_key {__MODULE__, :lock_held}
   @path_key {__MODULE__, :directory}
+  @switch_deadline_key {__MODULE__, :switch_deadline}
+  @notes_admission_key {__MODULE__, :notes_publication_admission}
+  @acceptance_attempt_key {__MODULE__, :acceptance_effect_attempted}
   @error {:error, :collection_unavailable}
 
   def limits do
@@ -49,12 +62,164 @@ defmodule Ipse.Extension.Collection do
     }
   end
 
-  def execute(root, project, request, operation_id) do
+  def limits(profile) do
+    case Profile.fetch(profile) do
+      {:ok, %{"id" => "notes-v1"}} ->
+        limits()
+
+      {:ok, values} ->
+        Map.take(
+          values,
+          ~w(value_bytes data_bytes total_bytes reserved_bytes control_reserved_bytes notes_reserved_bytes records operations)
+        )
+        |> Map.put("storage_profile", profile)
+
+      error ->
+        error
+    end
+  end
+
+  def execute(root, project, request, operation_id),
+    do: execute_profile(root, project, request, operation_id, Profile.notes())
+
+  @doc "Refuse strict-deadline publication until the clock-to-rename scheduling gap has an enforceable fence."
+  def publication_deadline_admission(_deadline),
+    do: {:error, @publication_error}
+
+  @doc "Report strict-publication support without preparing authority or running an effect."
+  def publication_support,
+    do: %{"supported" => false, "reason" => Atom.to_string(@publication_error)}
+
+  @doc "Host deadline entry currently refuses without invoking its callback; grants no authority."
+  def with_publication_deadline(deadline, fun) when is_function(fun, 0),
+    # Fixed host dispatch keeps historical caller result contracts available
+    # without a configurable backend or a callback execution path.
+    do: apply(__MODULE__, :publication_deadline_admission, [deadline])
+
+  @doc """
+  Scope a trusted notes-profile final locked admission, without granting authority.
+
+  The authenticated policy deadline and any earlier inherited deadline narrow
+  the actual native root-switch decision. Capture normalization can further
+  narrow it to original lineage expiry; selected management adapters provide
+  their effective target deadline, and unmanaged SDK publication supplies current
+  consent expiry. Admitted completion may occur later. Strict physical-deadline
+  APIs retain their separate refusal.
+  The callback runs once in the tracked file-effect owner and prior state is
+  restored on every exit. Source, consent, mode and accounting remain caller duties.
+  """
+  def with_notes_publication_deadline(deadline, fun) when is_function(fun, 0) do
+    inherited = Process.get(@switch_deadline_key)
+
+    if JSON.safe_uint?(deadline) and deadline > 0 and
+         (is_nil(inherited) or (JSON.safe_uint?(inherited) and inherited > 0)) do
+      selected = if is_nil(inherited), do: deadline, else: min(deadline, inherited)
+
+      Ipse.Session.Resources.file_effect(fn ->
+        before = Process.get(@notes_admission_key)
+        token = {self(), make_ref()}
+        Process.put(@notes_admission_key, token)
+
+        try do
+          Profile.run(Profile.notes(), fn -> with_switch_deadline(selected, fun) end)
+        after
+          if is_nil(before),
+            do: Process.delete(@notes_admission_key),
+            else: Process.put(@notes_admission_key, before)
+        end
+      end)
+    else
+      {:error, :invalid_collection_request}
+    end
+  end
+
+  def with_notes_publication_deadline(_, _), do: {:error, :invalid_collection_request}
+
+  @doc "Host SDK legacy access: refuse a managed namespace under the same lock as the operation."
+  def execute_unmanaged(root, project, request, operation_id) do
+    with false <- Process.get(@lock_key, false) != false,
+         true <- valid_request?(request) and id?(operation_id),
+         true <- request["op"] in ~w(status snapshot get inspect scan commit) do
+      Ipse.Session.Resources.file_effect(fn ->
+        locked(root, project, request, operation_id, :unmanaged)
+      end)
+    else
+      _ -> {:error, :invalid_collection_request}
+    end
+  rescue
+    _ -> @error
+  end
+
+  @doc "Trusted fixed-profile storage entry; caller must establish project and operator authority."
+  def execute_profile(root, project, request, operation_id, profile) do
+    Profile.run(profile, fn -> execute_selected(root, project, request, operation_id, profile) end)
+  end
+
+  @doc "Read only fixed-profile public document descriptors under the actual native owner."
+  def document_index(root, project, request) do
+    with false <- Process.get(@lock_key, false) != false,
+         true <- Directory.document_index_request?(request) do
+      Ipse.Session.Resources.file_effect(fn ->
+        Profile.run(Profile.documents(), fn ->
+          locked(root, project, request, nil, :document_index)
+        end)
+      end)
+    else
+      _ -> {:error, :invalid_collection_request}
+    end
+  rescue
+    _ -> @error
+  end
+
+  @doc "Document publication checks its final locked decision before expiry; other timed profiles remain unavailable."
+  def execute_profile_before(root, project, request, operation_id, profile, deadline) do
+    if profile == Profile.documents() do
+      if JSON.safe_uint?(deadline) and deadline > 0 do
+        Profile.run(profile, fn ->
+          execute_selected(root, project, request, operation_id, profile, deadline)
+        end)
+      else
+        {:error, :invalid_collection_request}
+      end
+    else
+      publication_deadline_admission(deadline)
+    end
+  end
+
+  defp execute_selected(root, project, request, operation_id, profile, deadline \\ nil) do
     if Process.get(@lock_key) do
       {:error, :collection_lock_order}
     else
-      with true <- valid_request?(request) and id?(operation_id) do
-        Ipse.Session.Resources.file_effect(fn -> locked(root, project, request, operation_id) end)
+      with true <- valid_request?(request) and id?(operation_id),
+           true <-
+             profile == Profile.notes() or
+               request["op"] in ~w(status snapshot get inspect scan commit) do
+        Ipse.Session.Resources.file_effect(fn ->
+          Profile.run(profile, fn ->
+            before = Process.get(@switch_deadline_key)
+
+            selected =
+              case {before, deadline} do
+                {nil, value} -> value
+                {value, nil} -> value
+                {left, right} -> min(left, right)
+              end
+
+            if is_nil(selected) or System.system_time(:millisecond) < selected do
+              Process.put(@switch_deadline_key, selected)
+
+              try do
+                locked(root, project, request, operation_id)
+              after
+                if is_nil(before),
+                  do: Process.delete(@switch_deadline_key),
+                  else: Process.put(@switch_deadline_key, before)
+              end
+            else
+              {:error, :collection_use_expired}
+            end
+          end)
+        end)
       else
         _ -> {:error, :invalid_collection_request}
       end
@@ -62,6 +227,10 @@ defmodule Ipse.Extension.Collection do
   rescue
     _ -> @error
   end
+
+  @doc "Open a trusted fixed-profile read view; no worker profile selection is accepted."
+  def open_view_profile(root, project, profile),
+    do: Profile.run(profile, fn -> open_view(root, project) end)
 
   @doc "Open one bounded owner-task index cache after full protected validation; no authority is granted."
   def open_view(root, project) do
@@ -78,9 +247,13 @@ defmodule Ipse.Extension.Collection do
   end
 
   defp install_view(root, project, view) do
+    profile = Profile.selected()
+
     try do
       result =
-        Ipse.Session.Resources.file_effect(fn -> locked(root, project, nil, nil, :view_open) end)
+        Ipse.Session.Resources.file_effect(fn ->
+          Profile.run(profile, fn -> locked(root, project, nil, nil, :view_open) end)
+        end)
 
       case result do
         {:ok, cache} ->
@@ -137,7 +310,9 @@ defmodule Ipse.Extension.Collection do
     try do
       result =
         Ipse.Session.Resources.file_effect(fn ->
-          locked(cache["collection_root"], cache["project"], nil, nil, {:view_read, cache})
+          Profile.run(Map.get(cache, "storage_profile", Profile.notes()), fn ->
+            locked(cache["collection_root"], cache["project"], nil, nil, {:view_read, cache})
+          end)
         end)
 
       finished =
@@ -154,6 +329,92 @@ defmodule Ipse.Extension.Collection do
   end
 
   def close_view(view), do: ReadView.close(view)
+
+  @doc """
+  Retain one notes Collection owner for a trusted bounded read callback.
+
+  The callback receives the actual root witness and the existing 32-unit
+  managed read closure. Selected values are read by the same native owner;
+  escaped or cross-process closures refuse. This grants no source, Identity,
+  Consent, output or mutation authority. As with opening a view, absent storage
+  can create protected directories and retained lock files, but no root or
+  operation is published. Callers needing an existing record must authenticate
+  its presence and exact metadata inside the callback.
+
+  Native export/display coordination is a separate trusted caller obligation.
+  A known result is returned only after checking and releasing the native lock.
+  A trusted three-argument callback also receives a non-consuming lease check;
+  it refuses after budget exhaustion, owner loss, or callback closure and does
+  not authorize reading or publishing independently.
+  """
+  def with_managed_read(root, project, fun) when is_function(fun, 2) or is_function(fun, 3) do
+    with false <- Process.get(@lock_key, false) != false do
+      Ipse.Session.Resources.file_effect(fn ->
+        Profile.run(Profile.notes(), fn ->
+          locked(root, project, nil, nil, {:managed_read, fun})
+        end)
+      end)
+    else
+      _ -> {:error, :collection_lock_order}
+    end
+  rescue
+    _ -> @error
+  end
+
+  def with_managed_read(_, _, _), do: {:error, :invalid_collection_request}
+
+  @doc false
+  def with_managed_acceptance_read(root, project, fun) when is_function(fun, 4) do
+    with false <- Process.get(@lock_key, false) != false do
+      Ipse.Session.Resources.file_effect(fn ->
+        previous = Process.put(@acceptance_attempt_key, false)
+
+        try do
+          Profile.run(Profile.notes(), fn ->
+            locked(root, project, nil, nil, {:acceptance_read, fun})
+          end)
+        after
+          if is_nil(previous),
+            do: Process.delete(@acceptance_attempt_key),
+            else: Process.put(@acceptance_attempt_key, previous)
+        end
+      end)
+    else
+      _ -> {:error, :collection_lock_order}
+    end
+  rescue
+    _ -> @error
+  end
+
+  def with_managed_acceptance_read(_, _, _), do: {:error, :invalid_collection_request}
+
+  @doc """
+  Retain the fixed document Collection for a trusted bounded read callback.
+
+  The callback receives an actual root witness and a same-owner closure for
+  at most 512 selected record reads, each bounded by the existing 64 KiB document
+  value limit. It cannot mutate, cross processes or survive callback closure.
+  Notes retain their separate 32-unit allowance. No source policy, inference
+  permission or dispatch authority is supplied by this storage primitive.
+
+  Use this for short source validation, releasing ownership before long IO.
+  An admitted remote effect has its own lifetime and uncertainty contract.
+  """
+  def with_document_read(root, project, fun) when is_function(fun, 2) do
+    with false <- Process.get(@lock_key, false) != false do
+      Ipse.Session.Resources.file_effect(fn ->
+        Profile.run(Profile.documents(), fn ->
+          locked(root, project, nil, nil, {:document_read, fun})
+        end)
+      end)
+    else
+      _ -> {:error, :collection_lock_order}
+    end
+  rescue
+    _ -> @error
+  end
+
+  def with_document_read(_, _, _), do: {:error, :invalid_collection_request}
 
   @doc "Host SDK scan: exclude reserved validity keys before selecting any values, under one lock."
   def scan_visible(root, project, request, operation_id) do
@@ -210,6 +471,79 @@ defmodule Ipse.Extension.Collection do
         )
 
   def execute_managed_v3(_, _, _, _, _, _), do: {:error, :invalid_managed_collection_request}
+
+  @doc false
+  def execute_managed_retention(
+        root,
+        project,
+        original,
+        operation_id,
+        recipe_sha256,
+        normalizer,
+        owned,
+        intent,
+        permit
+      )
+      when is_function(normalizer, 2) and is_map(owned) and is_map(intent) do
+    facts = intent["facts"]
+    command = Ipse.Extension.Collection.ManagedRetention.command(facts["policy"])
+
+    with true <- owned[:journal_owner] === self(),
+         true <- intent["operation_id"] === operation_id,
+         true <- get_in(facts, ["context", "namespace"]) === project,
+         true <- get_in(facts, ["context", "session_id"]) === owned[:id],
+         true <- facts["request_sha256"] === JSON.digest([original]),
+         :ok <- Ipse.Runner.Review.check(permit, command, facts) do
+      previous = Process.put(@acceptance_attempt_key, false)
+
+      try do
+        execute_managed_version(
+          root,
+          project,
+          original,
+          operation_id,
+          recipe_sha256,
+          normalizer,
+          {:retention, owned, intent, permit}
+        )
+      after
+        if is_nil(previous),
+          do: Process.delete(@acceptance_attempt_key),
+          else: Process.put(@acceptance_attempt_key, previous)
+      end
+    else
+      _ -> {:error, :invalid_managed_collection_request}
+    end
+  rescue
+    _ -> {:error, :invalid_managed_collection_request}
+  end
+
+  def execute_managed_retention(_, _, _, _, _, _, _, _, _),
+    do: {:error, :invalid_managed_collection_request}
+
+  @doc "Host-only atomic literal supersession; this does not widen the worker publication profile."
+  def execute_managed_supersession(
+        root,
+        project,
+        original,
+        operation_id,
+        recipe_sha256,
+        normalizer
+      )
+      when is_function(normalizer, 2),
+      do:
+        execute_managed_version(
+          root,
+          project,
+          original,
+          operation_id,
+          recipe_sha256,
+          normalizer,
+          :supersession
+        )
+
+  def execute_managed_supersession(_, _, _, _, _, _),
+    do: {:error, :invalid_managed_collection_request}
 
   defp execute_managed_version(
          root,
@@ -271,8 +605,15 @@ defmodule Ipse.Extension.Collection do
   end
 
   defp value?(v) do
-    is_map(v) and :ok == JSON.validate_object(v) and
-      byte_size(Jason.encode!(v)) <= @value_bytes
+    if Profile.selected() == Profile.documents() do
+      case Ipse.Extension.ResultDocument.encode(v, %{"type" => "object"}) do
+        {:ok, bytes} -> byte_size(bytes) <= Profile.limit(:value_bytes)
+        _ -> false
+      end
+    else
+      is_map(v) and :ok == JSON.validate_object(v) and
+        byte_size(Jason.encode!(v)) <= Profile.limit(:value_bytes)
+    end
   end
 
   defp locked(root, project, request, operation_id, managed \\ nil) do
@@ -294,7 +635,12 @@ defmodule Ipse.Extension.Collection do
           with :ok <- safe_lock(Path.join(path, ".lock"), uid),
                {:ok, state, manifest} <- load_for(path, project, uid, managed),
                :ok <- Transaction.check(cap),
-               :ok <- Transaction.quota(cap, :collection, @total_bytes - @control_bytes) do
+               :ok <-
+                 Transaction.quota(
+                   cap,
+                   :collection,
+                   Profile.limit(:total_bytes) - Profile.limit(:reserved_bytes)
+                 ) do
             case managed do
               nil ->
                 apply_request(path, uid, state, manifest, request, operation_id)
@@ -302,11 +648,114 @@ defmodule Ipse.Extension.Collection do
               :visible_scan ->
                 scan(path, uid, state, request, true)
 
+              :unmanaged ->
+                if Enum.any?(Map.keys(state["records"]), &managed_key?/1) do
+                  {:error, :collection_managed_namespace}
+                else
+                  apply_request(path, uid, state, manifest, request, operation_id)
+                end
+
               :view_open ->
                 view_cache(root, path, project, uid, state, manifest)
 
+              {kind, fun} when kind in [:managed_read, :document_read, :acceptance_read] ->
+                limit = if kind == :document_read, do: 512, else: 32
+
+                with_managed_reads(
+                  path,
+                  uid,
+                  state,
+                  manifest,
+                  fn witness, read, check ->
+                    owner = self()
+                    cap = Process.get(@lock_key)
+                    {token, _, :open} = Process.get({__MODULE__, :managed_read})
+
+                    alive = fn ->
+                      with true <- self() == owner and Process.get(@lock_key) === cap,
+                           {^token, _, :open} <- Process.get({__MODULE__, :managed_read}),
+                           :ok <- Transaction.check(cap),
+                           do: :ok,
+                           else: (_ -> {:error, :managed_read_refused})
+                    end
+
+                    result =
+                      if kind == :acceptance_read do
+                        slot = {__MODULE__, make_ref()}
+                        Process.put(slot, owner)
+
+                        publish = fn event, intent, normalized, permit ->
+                          if self() == owner and Process.delete(slot) == owner do
+                            publish_acceptance(
+                              path,
+                              uid,
+                              state,
+                              manifest,
+                              witness,
+                              cap,
+                              alive,
+                              check,
+                              event,
+                              intent,
+                              normalized,
+                              permit
+                            )
+                          else
+                            {:error, :pending_acceptance_refused}
+                          end
+                        end
+
+                        try do
+                          fun.(witness, read, alive, publish)
+                        after
+                          Process.delete(slot)
+                        end
+                      else
+                        if is_function(fun, 3),
+                          do: fun.(witness, read, alive),
+                          else: fun.(witness, read)
+                      end
+
+                    case result do
+                      {:ok, _} = result ->
+                        result
+
+                      {:error, _} when kind == :acceptance_read ->
+                        if Process.get(@acceptance_attempt_key) == true,
+                          do: {:unknown, :collection_publication_unconfirmed},
+                          else: result
+
+                      {:error, _} = result ->
+                        result
+
+                      {:unknown, _} = result ->
+                        result
+
+                      _ ->
+                        {:error, :managed_read_refused}
+                    end
+                  end,
+                  limit
+                )
+
+              :document_index ->
+                if request["generation"] === state["generation"] do
+                  :telemetry.execute(
+                    [:ipse, :extension, :collection, :document_index],
+                    %{value_reads: 0},
+                    %{}
+                  )
+
+                  Directory.document_index(state["records"], summary(state), request)
+                else
+                  {:conflict, summary(state)}
+                end
+
               {:view_read, %{"neighbors" => neighbors} = cache} when is_map(neighbors) ->
                 view_neighbor_refs(cache)
+
+              {:view_read, %{"metadata_only" => true} = cache} ->
+                view_index(state, cache)
 
               {:view_read, cache} ->
                 view_records(path, uid, state, cache)
@@ -381,7 +830,7 @@ defmodule Ipse.Extension.Collection do
     with :absent <- Transaction.read_optional(publication_cap(), ".", "root.json", 1024),
          true <- state === empty(project) do
       {:ok,
-       %{
+       profile_cache(%{
          "version" => 2,
          "collection_root" => root,
          "project" => project,
@@ -391,7 +840,7 @@ defmodule Ipse.Extension.Collection do
          "manifest_sha256" => nil,
          "summary" => summary(state),
          "records" => %{}
-       }}
+       })}
     else
       _ -> @error
     end
@@ -400,11 +849,12 @@ defmodule Ipse.Extension.Collection do
   defp view_cache(root, path, project, uid, state, manifest) do
     with {:ok, bytes} <- bounded_file(Path.join(path, "root.json"), uid, 1024),
          {:ok, pointer} <- JSON.decode_unique(bytes),
+         {:ok, pointer} <- Profile.unfence(pointer, Profile.selected()),
          true <- pointer["version"] in [4, 5],
          true <- pointer["manifest"] === manifest.hash,
          true <- pointer |> Map.delete("manifest") |> Map.put("version", 3) == summary(state) do
       {:ok,
-       %{
+       profile_cache(%{
          "version" => 2,
          "collection_root" => root,
          "project" => project,
@@ -414,11 +864,17 @@ defmodule Ipse.Extension.Collection do
          "manifest_sha256" => manifest.hash,
          "summary" => summary(state),
          "records" => state["records"]
-       }}
+       })}
     else
       false -> {:error, :collection_view_unsupported}
       _ -> @error
     end
+  end
+
+  defp profile_cache(cache) do
+    if Profile.selected() == Profile.notes(),
+      do: cache,
+      else: Map.merge(cache, %{"version" => 3, "storage_profile" => Profile.selected()})
   end
 
   defp view_records(path, uid, state, cache) do
@@ -445,6 +901,34 @@ defmodule Ipse.Extension.Collection do
       false -> {:error, :collection_view_reply_capacity}
       {:error, :collection_view_stale} = error -> error
       _ -> @error
+    end
+  end
+
+  defp view_index(state, cache) do
+    :telemetry.execute(
+      [:ipse, :extension, :collection, :view_index],
+      %{refs: length(cache["selected"]), value_reads: 0},
+      %{}
+    )
+
+    with :ok <- view_generation(state, cache),
+         {:ok, witness} <- view_witness(cache) do
+      records =
+        Enum.map(
+          cache["selected"],
+          &Map.take(cache["records"][&1], ~w(key revision bytes sha256))
+        )
+
+      {:ok,
+       %{
+         "version" => 2,
+         "summary" => cache["summary"],
+         "witness" => witness,
+         "keys" => cache["selected"],
+         "records" => records,
+         "next" => cache["next"],
+         "count" => cache["visible_count"]
+       }}
     end
   end
 
@@ -579,23 +1063,98 @@ defmodule Ipse.Extension.Collection do
   end
 
   defp normalize_managed(path, uid, s, manifest, original, id, recipe, normalizer, version) do
+    result =
+      with_managed_reads(path, uid, s, manifest, fn root, read, check ->
+        normalize_managed(
+          path,
+          uid,
+          s,
+          manifest,
+          original,
+          id,
+          recipe,
+          normalizer,
+          root,
+          read,
+          check,
+          version
+        )
+      end)
+
+    if result == {:error, :managed_read_refused},
+      do: {:error, :managed_normalization_refused},
+      else: result
+  end
+
+  defp with_managed_reads(path, uid, s, manifest, fun, limit \\ 32) do
     with {:ok, root} <- managed_root(s, manifest),
          {:ok, directory} <- Directory.index(s["records"] |> Map.keys() |> Enum.sort()) do
-      normalize_managed(
-        path,
-        uid,
-        s,
-        manifest,
-        original,
-        id,
-        recipe,
-        normalizer,
-        root,
-        directory,
-        version
-      )
+      with_managed_reads(path, uid, s, manifest, root, directory, fun, limit)
     else
-      _ -> {:error, :managed_normalization_refused}
+      _ -> {:error, :managed_read_refused}
+    end
+  end
+
+  defp with_managed_reads(path, uid, s, manifest, root, directory, fun, limit) do
+    key = {__MODULE__, :managed_read}
+    owner = self()
+    token = make_ref()
+    cap = Process.get(@lock_key)
+    previous = Process.put(key, {token, 0, :open})
+
+    check = fn ->
+      case Process.get(key) do
+        {^token, count, :open} ->
+          Process.put(key, {token, count, :closed})
+          :ok
+
+        {^token, _, :closed} ->
+          :ok
+
+        _ ->
+          {:error, :managed_read_refused}
+      end
+    end
+
+    read = fn selected ->
+      with true <- self() == owner and Process.get(@lock_key) === cap,
+           true <- limit == 32 or is_binary(selected),
+           {:ok, cost} <- managed_read_cost(selected),
+           :ok <- debit_managed_read(key, token, cost, limit),
+           :ok <- Transaction.check(cap) do
+        result = managed_read(path, uid, s, directory, root, selected)
+        if Transaction.check(cap) == :ok, do: result, else: {:error, :managed_read_refused}
+      else
+        _ -> {:error, :managed_read_refused}
+      end
+    end
+
+    witness =
+      Map.merge(root, %{
+        "root" => summary(s),
+        "manifest_sha256" => if(manifest, do: manifest.hash)
+      })
+
+    try do
+      result = fun.(witness, read, check)
+
+      case result do
+        {:unknown, _} ->
+          result
+
+        _ ->
+          with :ok <- check.(),
+               :ok <- Transaction.check(cap) do
+            result
+          else
+            _ ->
+              if Process.get(@acceptance_attempt_key) == true,
+                do: {:unknown, :collection_publication_unconfirmed},
+                else: {:error, :managed_read_refused}
+          end
+      end
+    after
+      if is_nil(previous), do: Process.delete(key), else: Process.put(key, previous)
     end
   end
 
@@ -609,26 +1168,11 @@ defmodule Ipse.Extension.Collection do
          recipe,
          normalizer,
          root,
-         directory,
+         read,
+         check,
          version
        ) do
-    key = {__MODULE__, :managed_read}
-    owner = self()
-    token = make_ref()
     cap = Process.get(@lock_key)
-    previous = Process.put(key, {token, 0, :open})
-
-    read = fn selected ->
-      with true <- self() == owner and Process.get(@lock_key) === cap,
-           {:ok, cost} <- managed_read_cost(selected),
-           :ok <- debit_managed_read(key, token, cost),
-           :ok <- Transaction.check(cap) do
-        result = managed_read(path, uid, s, directory, root, selected)
-        if Transaction.check(cap) == :ok, do: result, else: {:error, :managed_read_refused}
-      else
-        _ -> {:error, :managed_read_refused}
-      end
-    end
 
     witness =
       Map.merge(root, %{
@@ -639,41 +1183,231 @@ defmodule Ipse.Extension.Collection do
         "recipe_sha256" => recipe
       })
 
-    try do
-      with {:ok, normalized, normalization} <- normalizer.(witness, read),
-           {^token, _, :open} <- Process.get(key),
-           true <- normalized_managed?(original, normalized, s, root, version),
-           true <- version == 2 or (is_map(normalization) and normalization["version"] === 3),
-           :ok <- JSON.validate_object(normalization),
-           true <- byte_size(Jason.encode!(normalization)) <= 2048,
-           :ok <- Transaction.check(cap) do
-        binding = %{
-          "version" => 1,
-          "original_request_sha256" => witness["original_request_sha256"],
-          "recipe_sha256" => recipe,
-          "normalization_sha256" => JSON.digest([normalization])
-        }
+    validation_version = if match?({:retention, _, _, _}, version), do: 3, else: version
 
-        extra = %{"managed_binding_sha256" => JSON.digest([binding])}
+    with {:ok, normalized, normalization} <- normalizer.(witness, read),
+         :ok <- check.(),
+         true <- normalized_managed?(original, normalized, s, root, validation_version),
+         true <-
+           validation_version == 2 or (is_map(normalization) and normalization["version"] === 3),
+         true <-
+           version != :supersession or normalization["kind"] == "native_literal_supersession",
+         :ok <- JSON.validate_object(normalization),
+         true <- byte_size(Jason.encode!(normalization)) <= 2048,
+         :ok <- Transaction.check(cap) do
+      binding = %{
+        "version" => 1,
+        "original_request_sha256" => witness["original_request_sha256"],
+        "recipe_sha256" => recipe,
+        "normalization_sha256" => JSON.digest([normalization])
+      }
 
-        case apply_mutation(path, uid, s, manifest, normalized, id, extra) do
-          {:ok, receipt} ->
-            {:ok,
-             %{
-               "version" => 1,
-               "binding" => binding,
-               "normalization" => normalization,
-               "receipt" => receipt
-             }}
+      extra = %{"managed_binding_sha256" => JSON.digest([binding])}
 
-          other ->
-            other
-        end
-      else
-        _ -> {:error, :managed_normalization_refused}
+      case managed_mutation(
+             path,
+             uid,
+             s,
+             manifest,
+             original,
+             normalized,
+             id,
+             extra,
+             normalization,
+             version,
+             witness,
+             cap
+           ) do
+        {:ok, receipt} ->
+          {:ok,
+           %{
+             "version" => 1,
+             "binding" => binding,
+             "normalization" => normalization,
+             "receipt" => receipt
+           }}
+
+        other ->
+          other
       end
-    after
-      if is_nil(previous), do: Process.delete(key), else: Process.put(key, previous)
+    else
+      _ -> {:error, :managed_normalization_refused}
+    end
+  end
+
+  defp managed_mutation(
+         path,
+         uid,
+         state,
+         manifest,
+         original,
+         request,
+         id,
+         extra,
+         normalization,
+         {:retention, owned, intent, permit},
+         witness,
+         cap
+       ) do
+    alias Ipse.Runner.Review
+    facts = intent["facts"]
+
+    with true <- normalization["kind"] === "native_literal_retention",
+         true <- get_in(facts, ["collection", "root_sha256"]) === witness["root_sha256"],
+         true <- facts["operation_id"] === id,
+         {:ok, bound} <-
+           Review.claim_retention_effect(permit, facts, intent, original, request, normalization) do
+      Transaction.with_lifecycle_journal_lease(cap, owned, intent, fn ->
+        with :ok <- Transaction.lifecycle_guard(cap, intent),
+             {:ok, ^bound} <-
+               Review.claimed_retention_effect(
+                 permit,
+                 facts,
+                 intent,
+                 original,
+                 request,
+                 normalization
+               ) do
+          with_notes_publication_deadline(bound.publish_before_ms, fn ->
+            Process.put(@acceptance_attempt_key, true)
+            apply_mutation(path, uid, state, manifest, request, id, extra)
+          end)
+        else
+          _ -> {:error, :native_review_publication_fence_unavailable}
+        end
+      end)
+    else
+      _ -> {:error, :native_review_publication_fence_unavailable}
+    end
+  end
+
+  defp managed_mutation(
+         path,
+         uid,
+         state,
+         manifest,
+         _original,
+         request,
+         id,
+         extra,
+         normalization,
+         _version,
+         _witness,
+         _cap
+       ) do
+    if normalization["kind"] in ~w(native_literal_retention native_literal_supersession),
+      do: {:error, :native_review_publication_fence_unavailable},
+      else:
+        with_capture_deadline(normalization, fn ->
+          apply_mutation(path, uid, state, manifest, request, id, extra)
+        end)
+  end
+
+  defp publish_acceptance(
+         path,
+         uid,
+         state,
+         manifest,
+         witness,
+         cap,
+         alive,
+         check,
+         event,
+         intent,
+         request,
+         permit
+       ) do
+    alias Ipse.Session.PendingAcceptance
+    alias Ipse.Runner.Review
+
+    with true <- notes_admission?(),
+         deadline when is_integer(deadline) <- Process.get(@switch_deadline_key),
+         true <- PendingAcceptance.valid_event?(event),
+         facts = event["facts"],
+         {:ok, ^intent} <- PendingAcceptance.effect_intent(event, intent["request"]),
+         true <- PendingAcceptance.normalized_acceptance?(intent, request),
+         [_, note, _] <- intent["request"]["changes"],
+         note_deadline = note["value"]["valid_until_ms"],
+         true <-
+           deadline <= facts["valid_until_ms"] and
+             (is_nil(note_deadline) or deadline <= note_deadline),
+         true <-
+           witness["root_sha256"] === facts["root_sha256"] and
+             state["project"] === facts["namespace"],
+         true <- normalized_managed?(intent["request"], request, state, witness, 3),
+         {:ok, receipt} <- Review.claimed_acceptance_request(permit, facts, intent, request),
+         true <- receipt === event["review"],
+         :ok <- alive.(),
+         :ok <- Transaction.acceptance_guard(cap, event, intent),
+         :ok <- check.() do
+      binding = JSON.digest(["pending_acceptance", 1, event, intent])
+      Process.put(@acceptance_attempt_key, true)
+
+      try do
+        case apply_mutation(path, uid, state, manifest, request, facts["operation_id"], %{
+               "managed_binding_sha256" => binding
+             }) do
+          {:ok, result} -> {:ok, result}
+          {:unknown, _} = unknown -> unknown
+          _ -> {:error, :pending_acceptance_refused}
+        end
+      rescue
+        _ -> {:unknown, :collection_publication_unconfirmed}
+      catch
+        _, _ -> {:unknown, :collection_publication_unconfirmed}
+      end
+    else
+      _ -> {:error, :pending_acceptance_refused}
+    end
+  rescue
+    _ -> {:error, :pending_acceptance_refused}
+  end
+
+  defp with_capture_deadline(normalization, fun) do
+    if notes_admission?() do
+      deadline = normalization["valid_until_ms"]
+
+      if normalization["version"] === 3 and not Map.has_key?(normalization, "kind") and
+           Map.has_key?(normalization, "valid_until_ms") and
+           (is_nil(deadline) or (JSON.safe_uint?(deadline) and deadline > 0)) do
+        with_switch_deadline(deadline, fun)
+      else
+        {:error, :managed_normalization_refused}
+      end
+    else
+      fun.()
+    end
+  end
+
+  defp notes_admission? do
+    case Process.get(@notes_admission_key) do
+      {owner, token} when owner == self() and is_reference(token) -> true
+      _ -> false
+    end
+  end
+
+  defp with_switch_deadline(deadline, fun) do
+    before = Process.get(@switch_deadline_key)
+
+    selected =
+      case {before, deadline} do
+        {nil, value} -> value
+        {value, nil} -> value
+        {left, right} -> min(left, right)
+      end
+
+    if is_nil(selected) or System.system_time(:millisecond) < selected do
+      Process.put(@switch_deadline_key, selected)
+
+      try do
+        fun.()
+      after
+        if is_nil(before),
+          do: Process.delete(@switch_deadline_key),
+          else: Process.put(@switch_deadline_key, before)
+      end
+    else
+      {:error, :collection_use_expired}
     end
   end
 
@@ -691,6 +1425,7 @@ defmodule Ipse.Extension.Collection do
     with {:ok, bytes} <- Transaction.read_optional(publication_cap(), ".", "root.json", 1024),
          true <- is_binary(bytes) and byte_size(bytes) in 1..1024,
          {:ok, pointer} <- JSON.decode_unique(bytes),
+         {:ok, pointer} <- Profile.unfence(pointer, Profile.selected()),
          true <- pointer["version"] in [2, 3, 4, 5],
          true <- pointer["manifest"] === manifest.hash,
          true <-
@@ -713,11 +1448,12 @@ defmodule Ipse.Extension.Collection do
   defp managed_read_cost(selected) when is_binary(selected), do: Directory.cost(selected)
 
   defp managed_read_cost(%{"op" => "neighbors"} = selected), do: Directory.cost(selected)
+  defp managed_read_cost(%{"op" => "pending_summary"} = selected), do: Directory.cost(selected)
   defp managed_read_cost(_), do: :error
 
-  defp debit_managed_read(key, token, cost) do
+  defp debit_managed_read(key, token, cost, limit) do
     case Process.get(key) do
-      {^token, count, :open} when count + cost <= 32 ->
+      {^token, count, :open} when count + cost <= limit ->
         Process.put(key, {token, count + cost, :open})
         :ok
 
@@ -732,6 +1468,12 @@ defmodule Ipse.Extension.Collection do
 
   defp managed_read(path, uid, s, _, _, key) when is_binary(key),
     do: read_record(path, uid, s, key)
+
+  defp managed_read(_, _, s, directory, _, %{"op" => "pending_summary"}) do
+    keys = Directory.pending_keys(directory)
+    bytes = Enum.reduce(keys, 0, fn key, total -> total + s["records"][key]["bytes"] end)
+    {:ok, %{"count" => length(keys), "bytes" => bytes}}
+  end
 
   defp managed_read(_, _, s, directory, root, %{"op" => "neighbors", "request" => request} = r) do
     with {:ok, pointer} <- managed_pointer(root),
@@ -769,6 +1511,37 @@ defmodule Ipse.Extension.Collection do
 
   defp normalized_managed?(original, normalized, _, _, 2),
     do: normalized_managed?(original, normalized)
+
+  defp normalized_managed?(original, normalized, state, root, :supersession) do
+    with true <- valid_request?(normalized) and normalized["op"] == "commit",
+         true <- normalized["expected_generation"] === original["expected_generation"],
+         true <- normalized["advance_floor"] === true and original["advance_floor"] === true,
+         [old, new] <- original["changes"],
+         true <-
+           String.starts_with?(old["key"], "note.") and String.starts_with?(new["key"], "note."),
+         true <-
+           old["key"] != new["key"] and old["expected_revision"] > 0 and
+             new["expected_revision"] === 0,
+         true <- is_map(old["value"]) and is_map(new["value"]),
+         true <- Enum.all?(original["changes"], &(&1 in normalized["changes"])),
+         extras = normalized["changes"] -- original["changes"],
+         true <- length(extras) in 1..8,
+         true <-
+           Enum.all?(
+             extras,
+             &(v3_metadata_key?(&1["key"]) and &1["key"] != "host.validity.format" and
+                 is_map(&1["value"]))
+           ),
+         true <-
+           root["root_state"] == "present" and
+             Map.has_key?(state["records"], "host.validity.format") do
+      true
+    else
+      _ -> false
+    end
+  rescue
+    _ -> false
+  end
 
   defp normalized_managed?(original, normalized, state, root, 3) do
     with true <- valid_request?(normalized) and normalized["op"] == "commit",
@@ -853,7 +1626,7 @@ defmodule Ipse.Extension.Collection do
       r["op"] == "import" and (r["project"] != s["project"] or r["floor"] != s["floor"]) ->
         {:failed, Map.put(summary(s), "code", "collection_import_floor")}
 
-      map_size(known) >= @operations or not uint?(s["generation"] + 1) ->
+      map_size(known) >= Profile.limit(:operations) or not uint?(s["generation"] + 1) ->
         capacity(s)
 
       r["op"] == "import.open" and not Map.has_key?(r, "plan") and
@@ -905,12 +1678,13 @@ defmodule Ipse.Extension.Collection do
 
     manifest_bound = byte_size(Encoding.encode(s)) + extra_manifest
 
-    with true <- manifest_bound <= @manifest_bytes,
+    with true <- manifest_bound <= Profile.limit(:manifest_bytes),
          {:ok, disk} <- disk_bytes(path, uid),
          {:ok, allocation} <- allocation() do
-      disk + descriptor["data_bytes"] + 2 * manifest_bound + @control_bytes <= @total_bytes and
+      disk + descriptor["data_bytes"] + 2 * manifest_bound + Profile.limit(:reserved_bytes) <=
+        Profile.limit(:total_bytes) and
         allocation["allocated_bytes"] + descriptor["data_bytes"] + 2 * manifest_bound +
-          @control_bytes <= @total_bytes
+          Profile.limit(:reserved_bytes) <= Profile.limit(:total_bytes)
     else
       _ -> false
     end
@@ -935,7 +1709,7 @@ defmodule Ipse.Extension.Collection do
     with {:ok, next, values, extra} <- Migration.prepare(s, r, id),
          true <-
            map_size(Migration.known_operations(next)) + Migration.reserved_operation_slots(next) +
-             1 <= @operations do
+             1 <= Profile.limit(:operations) do
       {:ok, next, values, extra}
     else
       false -> {:failed, "collection_capacity"}
@@ -962,19 +1736,21 @@ defmodule Ipse.Extension.Collection do
          "data_bytes" => data_bytes(s),
          "envelope_data_bytes" => envelope_bytes(s),
          "disk_bytes" => disk,
-         "accounted_total_bytes" => disk + @control_bytes,
+         "accounted_total_bytes" => disk + Profile.limit(:reserved_bytes),
          "allocated_bytes" => allocation["allocated_bytes"],
-         "accounted_allocated_bytes" => allocation["allocated_bytes"] + @control_bytes,
+         "accounted_allocated_bytes" =>
+           allocation["allocated_bytes"] + Profile.limit(:reserved_bytes),
          "notice" =>
            if(
-             envelope_bytes(s) >= div(@data_bytes * 4, 5) or
-               disk + @control_bytes >= div(@total_bytes * 4, 5) or
-               allocation["allocated_bytes"] + @control_bytes >= div(@total_bytes * 4, 5) or
-               map_size(s["records"]) >= div(@records * 4, 5) or
-               map_size(Migration.operations(s)) >= div(@operations * 4, 5),
+             envelope_bytes(s) >= div(Profile.limit(:data_bytes) * 4, 5) or
+               disk + Profile.limit(:reserved_bytes) >= div(Profile.limit(:total_bytes) * 4, 5) or
+               allocation["allocated_bytes"] + Profile.limit(:reserved_bytes) >=
+                 div(Profile.limit(:total_bytes) * 4, 5) or
+               map_size(s["records"]) >= div(Profile.limit(:records) * 4, 5) or
+               map_size(Migration.operations(s)) >= div(Profile.limit(:operations) * 4, 5),
              do: "capacity_80_percent"
            ),
-         "limits" => limits()
+         "limits" => limits(Profile.selected())
        })}
     end
   end
@@ -1015,8 +1791,10 @@ defmodule Ipse.Extension.Collection do
 
     cond do
       not valid_state?(next, next["project"]) or
-        map_size(next["records"]) > @records or data_bytes(next) > @data_bytes or
-        byte_size(bytes) > @manifest_bytes or Enum.any?(terminal, &(&1 > @manifest_bytes)) ->
+        map_size(next["records"]) > Profile.limit(:records) or
+        data_bytes(next) > Profile.limit(:data_bytes) or
+        byte_size(bytes) > Profile.limit(:manifest_bytes) or
+          Enum.any?(terminal, &(&1 > Profile.limit(:manifest_bytes))) ->
         capacity(old)
 
       true ->
@@ -1027,6 +1805,7 @@ defmodule Ipse.Extension.Collection do
             summary(next)
             |> Map.put("version", Blocks.version(next))
             |> Map.put("manifest", hash)
+            |> Profile.fence()
           )
 
         with :ok <- collect(path, uid, old, manifest),
@@ -1035,10 +1814,10 @@ defmodule Ipse.Extension.Collection do
              {:ok, pending_blocks} <- prepare_files(path, uid, blocks, "manifests", 64 * 1024),
              {:ok, disk} <- disk_bytes(path, uid),
              true <-
-               disk + @control_bytes + byte_size(bytes) +
+               disk + Profile.limit(:reserved_bytes) + byte_size(bytes) +
                  Enum.sum(Enum.map(pending, fn {_, _, v} -> byte_size(v) end)) +
                  Enum.sum(Enum.map(pending_blocks, fn {_, _, v} -> byte_size(v) end)) +
-                 byte_size(pointer) + Enum.sum(terminal) <= @total_bytes,
+                 byte_size(pointer) + Enum.sum(terminal) <= Profile.limit(:total_bytes),
              :ok <-
                Transaction.preflight(
                  publication_cap(),
@@ -1086,9 +1865,24 @@ defmodule Ipse.Extension.Collection do
     with :ok <- Transaction.stage(publication_cap(), ".", [{temporary, bytes}]),
          {:ok, allocation} <- allocation(),
          :ok <- report_allocation(state, allocation),
-         true <- allocation["allocated_bytes"] + @control_bytes <= @total_bytes,
-         :ok <- Transaction.switch(publication_cap(), temporary, "root.json"),
+         true <-
+           allocation["allocated_bytes"] + Profile.limit(:reserved_bytes) <=
+             Profile.limit(:total_bytes),
+         :ok <- switch_pointer(temporary),
          do: :ok
+  end
+
+  defp switch_pointer(temporary) do
+    case Process.get(@switch_deadline_key) do
+      nil ->
+        Transaction.switch(publication_cap(), temporary, "root.json")
+
+      deadline ->
+        if Profile.selected() == Profile.documents() or
+             (Profile.selected() == Profile.notes() and notes_admission?()),
+           do: Transaction.switch_before(publication_cap(), temporary, "root.json", deadline),
+           else: publication_deadline_admission(deadline)
+    end
   end
 
   defp allocation do
@@ -1106,7 +1900,7 @@ defmodule Ipse.Extension.Collection do
       [:ipse, :extension, :collection, :staged],
       %{
         allocated_bytes: allocation["allocated_bytes"],
-        accounted_allocated_bytes: allocation["allocated_bytes"] + @control_bytes,
+        accounted_allocated_bytes: allocation["allocated_bytes"] + Profile.limit(:reserved_bytes),
         root_publication_reserved_bytes: 0
       },
       %{generation: state["generation"]}
@@ -1116,7 +1910,7 @@ defmodule Ipse.Extension.Collection do
   end
 
   defp prepare_values(path, uid, values) do
-    prepare_files(path, uid, values, "objects", @value_bytes)
+    prepare_files(path, uid, values, "objects", Profile.limit(:value_bytes))
   end
 
   defp prepare_files(path, uid, values, relative, limit) do
@@ -1176,7 +1970,7 @@ defmodule Ipse.Extension.Collection do
         replace(dir, hash <> ".json", bytes, uid)
 
       {:ok, _} ->
-        with {:ok, ^bytes} <- bounded_file(file, uid, @manifest_bytes),
+        with {:ok, ^bytes} <- bounded_file(file, uid, Profile.limit(:manifest_bytes)),
              do: :ok,
              else: (_ -> @error)
 
@@ -1224,6 +2018,7 @@ defmodule Ipse.Extension.Collection do
 
   defp load_pointer(path, project, uid, bytes) do
     with {:ok, root} <- JSON.decode_unique(bytes),
+         {:ok, root} <- Profile.unfence(root, Profile.selected()),
          true <-
            (keys?(root, ~w(version project generation floor manifest)) or
               keys?(root, ~w(version project generation floor floor_anchor manifest))) and
@@ -1234,7 +2029,7 @@ defmodule Ipse.Extension.Collection do
            bounded_file(
              Path.join([path, "manifests", root["manifest"] <> ".json"]),
              uid,
-             @manifest_bytes
+             Profile.limit(:manifest_bytes)
            ),
          true <- JSON.sha256(bytes) == root["manifest"],
          {:ok, stored} <- JSON.decode_unique(bytes),
@@ -1271,8 +2066,8 @@ defmodule Ipse.Extension.Collection do
       s["version"] === 3 and
       s["project"] == project and uint?(s["generation"]) and uint?(s["floor"]) and
       is_map(s["records"]) and
-      map_size(s["records"]) <= @records and
-      is_map(s["operations"]) and map_size(s["operations"]) <= @operations and
+      map_size(s["records"]) <= Profile.limit(:records) and
+      is_map(s["operations"]) and map_size(s["operations"]) <= Profile.limit(:operations) and
       s["generation"] == map_size(s["operations"]) and
       valid_imported_operations?(s) and
       valid_floor_anchor?(s) and
@@ -1288,7 +2083,7 @@ defmodule Ipse.Extension.Collection do
         id?(id) and Migration.receipt?(r) and r["generation"] in 1..s["generation"]
       end) and
       length(Enum.uniq_by(Map.values(s["operations"]), & &1["generation"])) == s["generation"] and
-      envelope_bytes(s) <= @data_bytes
+      envelope_bytes(s) <= Profile.limit(:data_bytes)
   rescue
     _ -> false
   end
@@ -1296,11 +2091,12 @@ defmodule Ipse.Extension.Collection do
   defp valid_records?(records, s) do
     operations = Migration.operations(s)
 
-    is_map(records) and map_size(records) <= @records and
+    is_map(records) and map_size(records) <= Profile.limit(:records) and
       Enum.all?(records, fn {key, r} ->
         keys?(r, ~w(key revision sha256 bytes operation_id)) and key?(key) and r["key"] == key and
           uint?(r["revision"]) and r["revision"] in 1..s["generation"] and
-          JSON.sha256?(r["sha256"]) and is_integer(r["bytes"]) and r["bytes"] in 2..@value_bytes and
+          JSON.sha256?(r["sha256"]) and is_integer(r["bytes"]) and
+          r["bytes"] in 2..Profile.limit(:value_bytes) and
           id?(r["operation_id"]) and
           get_in(operations, [r["operation_id"], "generation"]) == r["revision"]
       end)
@@ -1312,7 +2108,7 @@ defmodule Ipse.Extension.Collection do
 
     is_map(imported) and is_map(staged) and
       map_size(s["operations"]) + map_size(imported) + map_size(staged) +
-        Migration.reserved_operation_slots(s) <= @operations and
+        Migration.reserved_operation_slots(s) <= Profile.limit(:operations) and
       Enum.all?(imported, fn {id, receipt} -> id?(id) and Migration.receipt?(receipt) end) and
       Enum.all?(Map.keys(imported), &(not Map.has_key?(s["operations"], &1))) and
       Enum.all?(
@@ -1331,7 +2127,7 @@ defmodule Ipse.Extension.Collection do
                bounded_file(
                  Path.join([path, "objects", r["sha256"] <> ".json"]),
                  uid,
-                 @value_bytes
+                 Profile.limit(:value_bytes)
                ),
              true <- byte_size(bytes) == r["bytes"] and JSON.sha256(bytes) == r["sha256"],
              {:ok, value} <- JSON.decode_unique(bytes),
@@ -1399,7 +2195,8 @@ defmodule Ipse.Extension.Collection do
   end
 
   defp collect_dir(dir, uid, live) do
-    with {:ok, names} <- File.ls(dir), true <- length(names) <= @records * 2 + 1024 do
+    with {:ok, names} <- File.ls(dir),
+         true <- length(names) <= Profile.limit(:records) * 2 + 1024 do
       reclaim_selected(
         dir,
         Path.basename(dir),
@@ -1441,10 +2238,11 @@ defmodule Ipse.Extension.Collection do
          {:ok, bytes} <- files_bytes(path, Enum.reject(top, &(&1 in ~w(objects manifests))), uid),
          {:ok, objects} <- File.ls(Path.join(path, "objects")),
          {:ok, manifests} <- File.ls(Path.join(path, "manifests")),
-         true <- length(objects) <= @records * 2 + 1024 and length(manifests) <= 2048,
+         true <-
+           length(objects) <= Profile.limit(:records) * 2 + 1024 and length(manifests) <= 2048,
          {:ok, a} <- files_bytes(Path.join(path, "objects"), objects, uid),
          {:ok, b} <- files_bytes(Path.join(path, "manifests"), manifests, uid),
-         true <- bytes + a + b + @control_bytes <= @total_bytes do
+         true <- bytes + a + b + Profile.limit(:reserved_bytes) <= Profile.limit(:total_bytes) do
       {:ok, bytes + a + b}
     else
       _ -> @error
@@ -1543,7 +2341,7 @@ defmodule Ipse.Extension.Collection do
     known = Migration.known_operations(s)
 
     id =
-      Enum.find_value(0..@operations, fn n ->
+      Enum.find_value(0..Profile.limit(:operations), fn n ->
         candidate = n |> Integer.to_string(16) |> String.downcase() |> String.pad_leading(32, "0")
         if not Map.has_key?(known, candidate), do: candidate
       end)
@@ -1582,7 +2380,7 @@ defmodule Ipse.Extension.Collection do
        }) do
     with {:ok, plan} <- Planning.validate(old, descriptor, supplied),
          future = planned_generation(next, plan.records),
-         true <- envelope_bytes(future) <= @data_bytes,
+         true <- envelope_bytes(future) <= Profile.limit(:data_bytes),
          {:ok, sizes} <- planned_object_sizes(path, uid, plan.records),
          {:ok, future_bytes, future_blocks} <- Blocks.encode(future),
          {:ok, new_blocks} <- prepare_files(path, uid, future_blocks, "manifests", 64 * 1024),
@@ -1595,9 +2393,9 @@ defmodule Ipse.Extension.Collection do
            end)
            |> Enum.map(fn {_, _, bytes} -> byte_size(bytes) end),
          manifest_size = byte_size(future_bytes),
-         true <- manifest_size <= @manifest_bytes,
+         true <- manifest_size <= Profile.limit(:manifest_bytes),
          terminal = terminal_reserve(future, future_blocks),
-         true <- Enum.all?(terminal, &(&1 <= @manifest_bytes)),
+         true <- Enum.all?(terminal, &(&1 <= Profile.limit(:manifest_bytes))),
          # Immutable metadata reachable at successful open needs one set. A late
          # page can have both previous and next variable tails/staged indexes.
          # Keep two sets of those, plus the independently publishable abort; the
@@ -1609,7 +2407,8 @@ defmodule Ipse.Extension.Collection do
          ],
          true <- length(sizes) <= 256,
          {:ok, disk} <- disk_bytes(path, uid),
-         true <- disk + @control_bytes + Enum.sum(sizes) <= @total_bytes,
+         true <-
+           disk + Profile.limit(:reserved_bytes) + Enum.sum(sizes) <= Profile.limit(:total_bytes),
          :ok <- report_import_plan(sizes),
          :ok <- Transaction.preflight(publication_cap(), sizes) do
       {:ok, []}
@@ -1636,7 +2435,7 @@ defmodule Ipse.Extension.Collection do
     known = Migration.known_operations(state)
 
     ids =
-      0..@operations
+      0..Profile.limit(:operations)
       |> Enum.map(fn n ->
         n |> Integer.to_string(16) |> String.downcase() |> String.pad_leading(32, "0")
       end)
@@ -1689,7 +2488,7 @@ defmodule Ipse.Extension.Collection do
           {:cont, {:ok, [record["bytes"] | sizes]}}
 
         {:ok, _} ->
-          with {:ok, bytes} <- bounded_file(file, uid, @value_bytes),
+          with {:ok, bytes} <- bounded_file(file, uid, Profile.limit(:value_bytes)),
                true <-
                  byte_size(bytes) == record["bytes"] and JSON.sha256(bytes) == record["sha256"] do
             {:cont, {:ok, sizes}}

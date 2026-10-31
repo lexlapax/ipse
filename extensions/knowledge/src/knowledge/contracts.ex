@@ -52,7 +52,7 @@ defmodule IpseKnowledge.Knowledge.Contracts do
           cond do
             kind == "pending" -> all_origins()
             category == "ordinary" -> strong_origins()
-            true -> Enum.sort(~w(interactive_operator native_operator_answer))
+            true -> ["native_operator_assertion"]
           end
 
         %{"category" => category, "max_age_ms" => age, "origins" => origins}
@@ -136,7 +136,10 @@ defmodule IpseKnowledge.Knowledge.Contracts do
       "session_id" => fixed_text(32),
       "occurrence_id" => fixed_text(32),
       "version_id" => fixed_text(32),
-      "kind" => enum(~w(input.original input.operator_answer answer.original tool.outcome)),
+      "kind" =>
+        enum(
+          ~w(input.original input.operator_answer answer.original tool.outcome input.assertion.ordinary input.assertion.preference input.assertion.current)
+        ),
       "origin" => enum(all_origins()),
       "coverage" => enum(~w(available partial)),
       "path" => %{"type" => "null"},
@@ -180,10 +183,14 @@ defmodule IpseKnowledge.Knowledge.Contracts do
     }
 
   defp strong_origins,
-    do: Enum.sort(~w(interactive_operator native_operator_answer typed_host_outcome))
+    do: Enum.sort(~w(native_operator_assertion typed_host_outcome))
 
   defp all_origins,
-    do: Enum.sort(strong_origins() ++ ~w(unattended_input assistant_proposal))
+    do:
+      Enum.sort(
+        strong_origins() ++
+          ~w(interactive_operator native_operator_answer unattended_input assistant_proposal)
+      )
 
   defp uint, do: %{"type" => "integer", "minimum" => 0, "maximum" => @safe}
   defp nullable_uint, do: Map.put(uint(), "type", ["integer", "null"])

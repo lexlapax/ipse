@@ -1,0 +1,10 @@
+operator channel unavailable: operator channel unavailable
+** (ExUnit.AssertionError) 
+
+match (=) failed
+code:  assert {:ok, :native} = Ipse.Runner.operator_channel()
+left:  {:ok, :native}
+right: {:error, :operator_input_unavailable}
+
+    test/support/managed_literal_forget.exs:138: anonymous fn/8 in :elixir_compiler_0.__FILE__/1
+    (ipse 0.1.0) lib/ipse/session/resources.ex:871: Ipse.Session.Resources.execute_file_effect/3

@@ -1,0 +1,9 @@
+Running ExUnit with seed: 46832, max_cases: 1
+Excluding tags: [:test]
+Including tags: [:namespace_unknown]
+
+NAMESPACE_TEST_ARTIFACT 093c739518fc8157682874a750fc3983170acd07fc487aeade08bb47a74e8e59
+.
+Finished in 9.4 seconds (0.00s async, 9.4s sync)
+
+Result: 1 passed, 11 excluded

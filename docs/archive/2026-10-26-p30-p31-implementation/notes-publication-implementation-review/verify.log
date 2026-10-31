@@ -1,0 +1,19 @@
+NOTES_PUBLICATION_IMPLEMENTATION_VERIFIED: %{
+  admission_delta: ["_build/dev/lib/ipse/ebin/Elixir.Ipse.Extension.Collection.DocumentStage.beam",
+   "_build/dev/lib/ipse/ebin/Elixir.Ipse.Extension.Collection.beam",
+   "_build/dev/lib/ipse/ebin/Elixir.Ipse.Extension.ManagedCollectionCall.beam",
+   "_build/dev/lib/ipse/ebin/Elixir.Ipse.Session.Invocation.beam"],
+  prerequisite_delta: ["_build/dev/lib/ipse/ebin/Elixir.Ipse.Session.ManagedReads.beam",
+   "_build/dev/lib/ipse/ebin/Elixir.Ipse.Session.ManagedToolUse.beam"],
+  admission_sources: 12,
+  admission_retained: 12,
+  prerequisite_sources: 3,
+  prerequisite_retained: 5,
+  graph_regular_and_symlink: %{"regular" => 707, "symlink" => 2},
+  positive_manifest_entries: 15,
+  positive_source_owners: 7,
+  source_hashes_recorded: 10,
+  actual_journal_managed_intents: 1,
+  original_ordinary_age_ms: 7776000000,
+  repeated_tests_effects: 0
+}

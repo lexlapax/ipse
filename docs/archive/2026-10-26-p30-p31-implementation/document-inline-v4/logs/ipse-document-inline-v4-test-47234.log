@@ -1,0 +1,71 @@
+     warning: Ipse.JSON.encode!/1 is undefined or private
+     │
+ 188 │     data = JSON.encode!(pending) |> IO.iodata_to_binary()
+     │                 ~
+     │
+     └─ test/ipse/session/document_embedding_test.exs:188:17: Ipse.Session.DocumentEmbeddingTest.inline_fixture/0
+     └─ test/ipse/session/document_embedding_test.exs:245:26: Ipse.Session.DocumentEmbeddingTest.ready_record/1
+     └─ test/ipse/session/document_embedding_test.exs:252:18: Ipse.Session.DocumentEmbeddingTest.packed_read/2
+
+** (MatchError) no match of right hand side value:
+
+    {:ok, [Ipse.Session.DocumentEmbeddingTest],
+     %{
+       compile_warnings: [],
+       runtime_warnings: [
+         %{
+           message: "Ipse.JSON.encode!/1 is undefined or private",
+           position: {188, 17},
+           file: "/home/lexlapax/projects/lexlapax/ipse/test/ipse/session/document_embedding_test.exs",
+           group: true,
+           stacktrace: [
+             {Ipse.Session.DocumentEmbeddingTest, :inline_fixture, 0,
+              [
+                file: ~c"test/ipse/session/document_embedding_test.exs",
+                line: 188,
+                column: 17
+              ]}
+           ],
+           source: "/home/lexlapax/projects/lexlapax/ipse/test/ipse/session/document_embedding_test.exs",
+           span: nil,
+           severity: :warning
+         },
+         %{
+           message: "Ipse.JSON.encode!/1 is undefined or private",
+           position: {245, 26},
+           file: "/home/lexlapax/projects/lexlapax/ipse/test/ipse/session/document_embedding_test.exs",
+           group: true,
+           stacktrace: [
+             {Ipse.Session.DocumentEmbeddingTest, :ready_record, 1,
+              [
+                file: ~c"test/ipse/session/document_embedding_test.exs",
+                line: 245,
+                column: 26
+              ]}
+           ],
+           source: "/home/lexlapax/projects/lexlapax/ipse/test/ipse/session/document_embedding_test.exs",
+           span: nil,
+           severity: :warning
+         },
+         %{
+           message: "Ipse.JSON.encode!/1 is undefined or private",
+           position: {252, 18},
+           file: "/home/lexlapax/projects/lexlapax/ipse/test/ipse/session/document_embedding_test.exs",
+           group: true,
+           stacktrace: [
+             {Ipse.Session.DocumentEmbeddingTest, :packed_read, 2,
+              [
+                file: ~c"test/ipse/session/document_embedding_test.exs",
+                line: 252,
+                column: 18
+              ]}
+           ],
+           source: "/home/lexlapax/projects/lexlapax/ipse/test/ipse/session/document_embedding_test.exs",
+           span: nil,
+           severity: :warning
+         }
+       ]
+     }}
+
+    /tmp/ipse-document-inline-v4-test-47234.exs:4: (file)
+    (elixir 1.20.4) lib/code.ex:1639: Code.require_file/2

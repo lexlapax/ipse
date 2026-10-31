@@ -50,7 +50,7 @@ defmodule Ipse.Test.ProviderFixture do
     end
   end
 
-  def sequence(bodies) do
+  def sequence(bodies, timeout \\ 5000) do
     {:ok, listener} =
       :gen_tcp.listen(0, [:binary, active: false, reuseaddr: true, ip: {127, 0, 0, 1}])
 
@@ -60,7 +60,7 @@ defmodule Ipse.Test.ProviderFixture do
       Task.async(fn ->
         try do
           for body <- bodies do
-            {:ok, socket} = :gen_tcp.accept(listener, 5000)
+            {:ok, socket} = :gen_tcp.accept(listener, timeout)
 
             try do
               {headers, payload} = request(socket, "")

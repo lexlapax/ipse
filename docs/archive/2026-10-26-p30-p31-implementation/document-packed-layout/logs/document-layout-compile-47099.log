@@ -1,0 +1,14 @@
+    warning: Ipse.Extension.Collection.Directory.document_index_request?/1 is undefined or private
+    │
+ 90 │           Directory.document_index_request?(r)
+    │                     ~
+    │
+    └─ lib/ipse/extension/collection/document_stage.ex:90:21: Ipse.Extension.Collection.DocumentStage.request?/1
+
+     warning: Ipse.Extension.Collection.document_index/3 is undefined or private
+     │
+ 180 │     do: Collection.document_index(root, ns, r)
+     │                    ~
+     │
+     └─ lib/ipse/extension/collection/document_stage.ex:180:20: Ipse.Extension.Collection.DocumentStage.dispatch/6
+

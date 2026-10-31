@@ -1,0 +1,1299 @@
+Running ExUnit with seed: 87236, max_cases: 4
+Excluding tags: [:test]
+Including tags: [assertion_scenario: "save_history_expire"]
+
+
+
+  1) test actual native CLI statement review: save_history_expire (Ipse.Session.OperatorAssertionIntegrationTest)
+     test/ipse/session/operator_assertion_integration_test.exs:26
+     Choose the knowledge identity for /tmp/ipse-assertion-a2b13d62f549d1e66fc8361e663d227e/work.
+     Repository shares only with reciprocally verified worktrees; folder means only this canonical folder.
+     Type one exact choice: folder 1177d38db9fc5408
+     > folder 1177d38db9fc5408
+     Enable native notes for /tmp/ipse-assertion-a2b13d62f549d1e66fc8361e663d227e/work (folder).
+     This selection takes effect in the next new session, including headless run.
+     Literal notes require a separate native statement/category review or a typed host outcome; other inputs remain pending.
+     Ordinary notes: 90 days; pending proposals: 7 days. Current/preferences may persist.
+     No secondary model calls are authorized. Ordinary tool approvals remain separate.
+     Exact permission, route, retention, artifact and daily limits:
+     {
+       "artifact_sha256": "42f4fb454e9dad8ef0a55d6448b65911f2ed8daef44dbdc01fb37e6ac91cdd77",
+       "expires_at_ms": 1824784742327,
+       "headless": true,
+       "limits": {
+         "cost_nanos": 0,
+         "download_bytes": 0,
+         "input_bytes": 2097152,
+         "model_calls": 0,
+         "operations": 100,
+         "output_bytes": 4194304
+       },
+       "operations": [
+         "notes.capture",
+         "notes.propose",
+         "notes.recall"
+       ],
+       "period_ms": 86400000,
+       "project": "8b9a2d3df081bae4047fcce00032741567ecf2121c26562064da879d902ee260",
+       "settings": {
+         "activation": {
+           "allow_children": false,
+           "artifact": "42f4fb454e9dad8ef0a55d6448b65911f2ed8daef44dbdc01fb37e6ac91cdd77",
+           "artifact_sha256": "42f4fb454e9dad8ef0a55d6448b65911f2ed8daef44dbdc01fb37e6ac91cdd77",
+           "capabilities": [
+             "host.actions",
+             "host.actions.mixed",
+             "host.collection.managed",
+             "host.collection.read",
+             "host.sources",
+             "invoke.command",
+             "invoke.result.pages",
+             "invoke.tool"
+           ],
+           "instance": "knowledge",
+           "kind": "reviewed.bundle",
+           "lifetime": "session",
+           "main_timeout_ms": 90000,
+           "options": {
+             "embedding": {},
+             "extraction": {},
+             "fetch": {},
+             "rerank": {},
+             "retrieval": {},
+             "search": {},
+             "stores": {},
+             "version": 1
+           },
+           "order": 100,
+           "service_refs": [
+             {
+               "operation": "main",
+               "profile": null,
+               "service_id": "demo"
+             }
+           ],
+           "sidecar_sha256": "6add073e340583f2debc3a59475298ccb2359bc1aab7f77b65f704fbb9553549",
+           "version": 1
+         },
+         "constraints": {
+           "78b6d7943b3430f0225a3ee45cc4cffc27de14ddd97c39f8e38c9f8fb85ca68e": {
+             "allow_delete": false,
+             "evidence_path": [
+               "evidence",
+               "sources"
+             ],
+             "key_prefix": "pending.",
+             "source_categories": [
+               "assistant_proposal",
+               "interactive_operator",
+               "native_operator_answer",
+               "native_operator_assertion",
+               "typed_host_outcome",
+               "unattended_input"
+             ],
+             "value_schema": {
+               "additionalProperties": false,
+               "properties": {
+                 "assigned_category": {
+                   "enum": [
+                     "ordinary",
+                     "preference",
+                     "current"
+                   ],
+                   "type": "string"
+                 },
+                 "created_at_ms": {
+                   "maximum": 9007199254740991,
+                   "minimum": 0,
+                   "type": "integer"
+                 },
+                 "event_at_ms": {
+                   "maximum": 9007199254740991,
+                   "minimum": 0,
+                   "type": [
+                     "integer",
+                     "null"
+                   ]
+                 },
+                 "evidence": {
+                   "additionalProperties": false,
+                   "properties": {
+                     "sources": {
+                       "items": {
+                         "additionalProperties": false,
+                         "properties": {
+                           "content_sha256": {
+                             "maxLength": 64,
+                             "minLength": 64,
+                             "type": "string"
+                           },
+                           "coverage": {
+                             "enum": [
+                               "available",
+                               "partial"
+                             ],
+                             "type": "string"
+                           },
+                           "end_byte": {
+                             "maximum": 9007199254740991,
+                             "minimum": 0,
+                             "type": "integer"
+                           },
+                           "kind": {
+                             "enum": [
+                               "input.original",
+                               "input.operator_answer",
+                               "answer.original",
+                               "tool.outcome",
+                               "input.assertion.ordinary",
+                               "input.assertion.preference",
+                               "input.assertion.current"
+                             ],
+                             "type": "string"
+                           },
+                           "occurrence_id": {
+                             "maxLength": 32,
+                             "minLength": 32,
+                             "type": "string"
+                           },
+                           "origin": {
+                             "enum": [
+                               "assistant_proposal",
+                               "interactive_operator",
+                               "native_operator_answer",
+                               "native_operator_assertion",
+                               "typed_host_outcome",
+                               "unattended_input"
+                             ],
+                             "type": "string"
+                           },
+                           "path": {
+                             "type": "null"
+                           },
+                           "quote": {
+                             "maxLength": 1024,
+                             "minLength": 1,
+                             "type": "string"
+                           },
+                           "quote_sha256": {
+                             "maxLength": 64,
+                             "minLength": 64,
+                             "type": "string"
+                           },
+                           "receipt_sha256": {
+                             "maxLength": 64,
+                             "minLength": 64,
+                             "type": "string"
+                           },
+                           "session_id": {
+                             "maxLength": 32,
+                             "minLength": 32,
+                             "type": "string"
+                           },
+                           "start_byte": {
+                             "maximum": 9007199254740991,
+                             "minimum": 0,
+                             "type": "integer"
+                           },
+                           "version": {
+                             "enum": [
+                               1
+                             ],
+                             "type": "integer"
+                           },
+                           "version_id": {
+                             "maxLength": 32,
+                             "minLength": 32,
+                             "type": "string"
+                           }
+                         },
+                         "required": [
+                           "content_sha256",
+                           "coverage",
+                           "end_byte",
+                           "kind",
+                           "occurrence_id",
+                           "origin",
+                           "path",
+                           "quote",
+                           "quote_sha256",
+                           "receipt_sha256",
+                           "session_id",
+                           "start_byte",
+                           "version",
+                           "version_id"
+                         ],
+                         "type": "object"
+                       },
+                       "maxItems": 1,
+                       "minItems": 1,
+                       "type": "array"
+                     }
+                   },
+                   "required": [
+                     "sources"
+                   ],
+                   "type": "object"
+                 },
+                 "expires_at_ms": {
+                   "maximum": 9007199254740991,
+                   "minimum": 0,
+                   "type": "integer"
+                 },
+                 "id": {
+                   "maxLength": 64,
+                   "minLength": 64,
+                   "type": "string"
+                 },
+                 "kind": {
+                   "enum": [
+                     "proposal"
+                   ],
+                   "type": "string"
+                 },
+                 "lineage": {
+                   "maxLength": 64,
+                   "minLength": 64,
+                   "type": "string"
+                 },
+                 "reason": {
+                   "maxLength": 256,
+                   "minLength": 1,
+                   "type": "string"
+                 },
+                 "state": {
+                   "enum": [
+                     "pending"
+                   ],
+                   "type": "string"
+                 },
+                 "text": {
+                   "maxLength": 2048,
+                   "minLength": 1,
+                   "type": "string"
+                 },
+                 "version": {
+                   "enum": [
+                     1
+                   ],
+                   "type": "integer"
+                 }
+               },
+               "required": [
+                 "assigned_category",
+                 "created_at_ms",
+                 "event_at_ms",
+                 "evidence",
+                 "expires_at_ms",
+                 "id",
+                 "kind",
+                 "lineage",
+                 "reason",
+                 "state",
+                 "text",
+                 "version"
+               ],
+               "type": "object"
+             },
+             "version": 1
+           },
+           "d709745ab18405dff572c41053eda5cbe12c350ebbabdcd0d52ea1e80962368a": {
+             "allow_delete": false,
+             "evidence_path": [
+               "evidence",
+               "sources"
+             ],
+             "key_prefix": "note.",
+             "source_categories": [
+               "native_operator_assertion",
+               "typed_host_outcome"
+             ],
+             "value_schema": {
+               "additionalProperties": false,
+               "properties": {
+                 "category": {
+                   "enum": [
+                     "ordinary",
+                     "preference",
+                     "current"
+                   ],
+                   "type": "string"
+                 },
+                 "created_at_ms": {
+                   "maximum": 9007199254740991,
+                   "minimum": 0,
+                   "type": "integer"
+                 },
+                 "event_at_ms": {
+                   "maximum": 9007199254740991,
+                   "minimum": 0,
+                   "type": [
+                     "integer",
+                     "null"
+                   ]
+                 },
+                 "evidence": {
+                   "additionalProperties": false,
+                   "properties": {
+                     "sources": {
+                       "items": {
+                         "additionalProperties": false,
+                         "properties": {
+                           "content_sha256": {
+                             "maxLength": 64,
+                             "minLength": 64,
+                             "type": "string"
+                           },
+                           "coverage": {
+                             "enum": [
+                               "available",
+                               "partial"
+                             ],
+                             "type": "string"
+                           },
+                           "end_byte": {
+                             "maximum": 9007199254740991,
+                             "minimum": 0,
+                             "type": "integer"
+                           },
+                           "kind": {
+                             "enum": [
+                               "input.original",
+                               "input.operator_answer",
+                               "answer.original",
+                               "tool.outcome",
+                               "input.assertion.ordinary",
+                               "input.assertion.preference",
+                               "input.assertion.current"
+                             ],
+                             "type": "string"
+                           },
+                           "occurrence_id": {
+                             "maxLength": 32,
+                             "minLength": 32,
+                             "type": "string"
+                           },
+                           "origin": {
+                             "enum": [
+                               "assistant_proposal",
+                               "interactive_operator",
+                               "native_operator_answer",
+                               "native_operator_assertion",
+                               "typed_host_outcome",
+                               "unattended_input"
+                             ],
+                             "type": "string"
+                           },
+                           "path": {
+                             "type": "null"
+                           },
+                           "quote": {
+                             "maxLength": 1024,
+                             "minLength": 1,
+                             "type": "string"
+                           },
+                           "quote_sha256": {
+                             "maxLength": 64,
+                             "minLength": 64,
+                             "type": "string"
+                           },
+                           "receipt_sha256": {
+                             "maxLength": 64,
+                             "minLength": 64,
+                             "type": "string"
+                           },
+                           "session_id": {
+                             "maxLength": 32,
+                             "minLength": 32,
+                             "type": "string"
+                           },
+                           "start_byte": {
+                             "maximum": 9007199254740991,
+                             "minimum": 0,
+                             "type": "integer"
+                           },
+                           "version": {
+                             "enum": [
+                               1
+                             ],
+                             "type": "integer"
+                           },
+                           "version_id": {
+                             "maxLength": 32,
+                             "minLength": 32,
+                             "type": "string"
+                           }
+                         },
+                         "required": [
+                           "content_sha256",
+                           "coverage",
+                           "end_byte",
+                           "kind",
+                           "occurrence_id",
+                           "origin",
+                           "path",
+                           "quote",
+                           "quote_sha256",
+                           "receipt_sha256",
+                           "session_id",
+                           "start_byte",
+                           "version",
+                           "version_id"
+                         ],
+                         "type": "object"
+                       },
+                       "maxItems": 1,
+                       "minItems": 1,
+                       "type": "array"
+                     }
+                   },
+                   "required": [
+                     "sources"
+                   ],
+                   "type": "object"
+                 },
+                 "expires_at_ms": {
+                   "maximum": 9007199254740991,
+                   "minimum": 0,
+                   "type": [
+                     "integer",
+                     "null"
+                   ]
+                 },
+                 "id": {
+                   "maxLength": 64,
+                   "minLength": 64,
+                   "type": "string"
+                 },
+                 "lineage": {
+                   "maxLength": 64,
+                   "minLength": 64,
+                   "type": "string"
+                 },
+                 "metadata_reserve": {
+                   "enum": [
+                     "",
+                     "0000000000000000000000000000000000000000000000000000000000000000"
+                   ],
+                   "type": "string"
+                 },
+                 "observed_at_ms": {
+                   "maximum": 9007199254740991,
+                   "minimum": 0,
+                   "type": "integer"
+                 },
+                 "previous_category": {
+                   "type": "null"
+                 },
+                 "reason": {
+                   "maxLength": 256,
+                   "minLength": 1,
+                   "type": "string"
+                 },
+                 "superseded_at_ms": {
+                   "type": "null"
+                 },
+                 "text": {
+                   "maxLength": 2048,
+                   "minLength": 1,
+                   "type": "string"
+                 },
+                 "version": {
+                   "enum": [
+                     1
+                   ],
+                   "type": "integer"
+                 }
+               },
+               "required": [
+                 "category",
+                 "created_at_ms",
+                 "event_at_ms",
+                 "evidence",
+                 "expires_at_ms",
+                 "id",
+                 "lineage",
+                 "metadata_reserve",
+                 "observed_at_ms",
+                 "previous_category",
+                 "reason",
+                 "superseded_at_ms",
+                 "text",
+                 "version"
+               ],
+               "type": "object"
+             },
+             "version": 1
+           }
+         },
+         "domain": "knowledge",
+         "effects": [
+           {
+             "class": "collection.publish",
+             "constraints_sha256": "d709745ab18405dff572c41053eda5cbe12c350ebbabdcd0d52ea1e80962368a",
+             "inner_op": "collection.managed",
+             "operation": "notes.capture",
+             "outer_sha256": "cf9f0a54e5190bc3b41039899bcd6c0eee9ffa2367dfa15b2d8b1e55ffd16e53",
+             "recipe_sha256": "818634825cb494606d25195a6601971a17542ed2caa22f28d1e18b1971b18cf7"
+           },
+           {
+             "class": "collection.publish",
+             "constraints_sha256": "d709745ab18405dff572c41053eda5cbe12c350ebbabdcd0d52ea1e80962368a",
+             "inner_op": "collection.managed",
+             "operation": "notes.capture",
+             "outer_sha256": "f5a509bff213a11a6b58186e73da0ba7e08017d4a89c4b959e683f9f6433e91a",
+             "recipe_sha256": "818634825cb494606d25195a6601971a17542ed2caa22f28d1e18b1971b18cf7"
+           },
+           {
+             "class": "collection.publish",
+             "constraints_sha256": "78b6d7943b3430f0225a3ee45cc4cffc27de14ddd97c39f8e38c9f8fb85ca68e",
+             "inner_op": "collection.managed",
+             "operation": "notes.propose",
+             "outer_sha256": "cf9f0a54e5190bc3b41039899bcd6c0eee9ffa2367dfa15b2d8b1e55ffd16e53",
+             "recipe_sha256": "d2622a1dd0ede7863d677e7ba76ef22f29509f5fc19fb72096c1b5ff70e7505d"
+           },
+           {
+             "class": "collection.publish",
+             "constraints_sha256": "78b6d7943b3430f0225a3ee45cc4cffc27de14ddd97c39f8e38c9f8fb85ca68e",
+             "inner_op": "collection.managed",
+             "operation": "notes.propose",
+             "outer_sha256": "f5a509bff213a11a6b58186e73da0ba7e08017d4a89c4b959e683f9f6433e91a",
+             "recipe_sha256": "d2622a1dd0ede7863d677e7ba76ef22f29509f5fc19fb72096c1b5ff70e7505d"
+           },
+           {
+             "class": "collection.read",
+             "inner_op": "collection.call",
+             "managed_read": [
+               "818634825cb494606d25195a6601971a17542ed2caa22f28d1e18b1971b18cf7",
+               "d2622a1dd0ede7863d677e7ba76ef22f29509f5fc19fb72096c1b5ff70e7505d"
+             ],
+             "operation": "notes.recall",
+             "outer_sha256": "cf9f0a54e5190bc3b41039899bcd6c0eee9ffa2367dfa15b2d8b1e55ffd16e53"
+           },
+           {
+             "class": "collection.read",
+             "inner_op": "collection.call",
+             "managed_read": [
+               "818634825cb494606d25195a6601971a17542ed2caa22f28d1e18b1971b18cf7",
+               "d2622a1dd0ede7863d677e7ba76ef22f29509f5fc19fb72096c1b5ff70e7505d"
+             ],
+             "operation": "notes.recall",
+             "outer_sha256": "f5a509bff213a11a6b58186e73da0ba7e08017d4a89c4b959e683f9f6433e91a"
+           }
+         ],
+         "identity_sha256": "14654bbd5e5a2ed0b8f9b92d7dc4bb8e6793ca2c7384391338711735cfe4486e",
+         "instance": "knowledge",
+         "namespace": "52770c61d49ef11b7136363c5bf0383e1c7b38fd15d8897ba11b897390212c16",
+         "recipes": {
+           "818634825cb494606d25195a6601971a17542ed2caa22f28d1e18b1971b18cf7": {
+             "category_path": [
+               "category"
+             ],
+             "constraints_sha256": "d709745ab18405dff572c41053eda5cbe12c350ebbabdcd0d52ea1e80962368a",
+             "evidence_path": [
+               "evidence",
+               "sources"
+             ],
+             "key_prefix": "note.",
+             "kind": "literal_source",
+             "lineage_path": [
+               "lineage"
+             ],
+             "override_prefix": "override.",
+             "rules": [
+               {
+                 "category": "current",
+                 "max_age_ms": null,
+                 "origins": [
+                   "native_operator_assertion"
+                 ]
+               },
+               {
+                 "category": "ordinary",
+                 "max_age_ms": 7776000000,
+                 "origins": [
+                   "native_operator_assertion",
+                   "typed_host_outcome"
+                 ]
+               },
+               {
+                 "category": "preference",
+                 "max_age_ms": null,
+                 "origins": [
+                   "native_operator_assertion"
+                 ]
+               }
+             ],
+             "text_path": [
+               "text"
+             ],
+             "version": 1
+           },
+           "d2622a1dd0ede7863d677e7ba76ef22f29509f5fc19fb72096c1b5ff70e7505d": {
+             "category_path": [
+               "assigned_category"
+             ],
+             "constraints_sha256": "78b6d7943b3430f0225a3ee45cc4cffc27de14ddd97c39f8e38c9f8fb85ca68e",
+             "evidence_path": [
+               "evidence",
+               "sources"
+             ],
+             "key_prefix": "pending.",
+             "kind": "proposal",
+             "lineage_path": [
+               "lineage"
+             ],
+             "override_prefix": "override.",
+             "rules": [
+               {
+                 "category": "current",
+                 "max_age_ms": 604800000,
+                 "origins": [
+                   "assistant_proposal",
+                   "interactive_operator",
+                   "native_operator_answer",
+                   "native_operator_assertion",
+                   "typed_host_outcome",
+                   "unattended_input"
+                 ]
+               },
+               {
+                 "category": "ordinary",
+                 "max_age_ms": 604800000,
+                 "origins": [
+                   "assistant_proposal",
+                   "interactive_operator",
+                   "native_operator_answer",
+                   "native_operator_assertion",
+                   "typed_host_outcome",
+                   "unattended_input"
+                 ]
+               },
+               {
+                 "category": "preference",
+                 "max_age_ms": 604800000,
+                 "origins": [
+                   "assistant_proposal",
+                   "interactive_operator",
+                   "native_operator_answer",
+                   "native_operator_assertion",
+                   "typed_host_outcome",
+                   "unattended_input"
+                 ]
+               }
+             ],
+             "text_path": [
+               "text"
+             ],
+             "version": 1
+           }
+         },
+         "retention": {
+           "automatic": 90,
+           "manual": 3650
+         },
+         "routes": [
+           {
+             "account_controls": null,
+             "billing_mode": "none",
+             "cache_retention": null,
+             "endpoint": "demo://local",
+             "model": "scripted",
+             "operation": "main",
+             "processing_region": null,
+             "profile": null,
+             "provider": "demo",
+             "service_id": "demo",
+             "storage_region": null
+           }
+         ],
+         "scope": {
+           "kind": "project",
+           "worktree_id": null
+         },
+         "sources": {
+           "categories": [
+             "assistant_proposal",
+             "interactive_operator",
+             "native_operator_answer",
+             "native_operator_assertion",
+             "typed_host_outcome",
+             "unattended_input"
+           ],
+           "exclusions": []
+         },
+         "storage": {
+           "collection": "knowledge",
+           "kind": "local_collection"
+         },
+         "version": 2
+       },
+       "source_sha256": "098be7eda6b0f8e8efb36093fb7cc6cdde8bb55bc60f9e43567576c0d88fdd77",
+       "version": 1
+     }
+     Type enable cd9f9501ce53b24e to confirm this exact review, or anything else to cancel.
+     > enable cd9f9501ce53b24e
+     Saved knowledge permission. Start a new chat or run to adopt this selection.
+     IPSE_ASSERTION_CLI_READY
+     Type a task, $review, or /help. Use /cancel while work is running.
+     you> /remember ordinary Synthetic ordinary statement
+     Remember this exact statement as your own ordinary note?
+     Statement: "Synthetic ordinary statement"
+     Retention: at most 90 days.
+     Workspace: "/tmp/ipse-assertion-a2b13d62f549d1e66fc8361e663d227e/work"
+     Project: 8b9a2d3df081bae4047fcce00032741567ecf2121c26562064da879d902ee260
+     Collection: 52770c61d49ef11b7136363c5bf0383e1c7b38fd15d8897ba11b897390212c16
+     Artifact: 42f4fb454e9dad8ef0a55d6448b65911f2ed8daef44dbdc01fb37e6ac91cdd77
+     Permission: 2b87ffe8665f8685ee1306f70116ff7622bf20b34f45a217664412851ff6a2fe
+     This confirms the statement and category; other effects keep their own approvals.
+     Type remember 87a311d9f2a1123e0a35e868704fe479 to confirm. Anything else cancels.
+     remember> remember 87a311d9f2a1123e0a35e868704fe479
+     you> 
+     Extension ext__knowledge__capture: {"current_eligibility":"not_established","outcomes":[{"action_sha256":"2b256abf2a22a7256f00c2ca246771164178d93e9171cb86ffa7c2995bb8175e","category":"ordinary","generation":1,"normalization_sha256":"2cd9210010a6c9bffbabb96b23c06408d7efe2f7e71c54ad8cbb4228f1f8c9c2","operation_id":"f753ebaca05352cda1f7730c2baeeac4","receipt_sha256":"7db7548eb96388028ed73c522c0988f1cb900d494d276dc396baa428083fa07a","record_key":"note.f5662572c4373e1c78f5213de9b47fffd2ebeffefe3fa9fd6357ad15eb92b9b6"}],"status":"historical_write_outcome"}
+
+     Finished.
+     /remember preference My synthetic preference is compact output
+     Remember this exact statement as your own preference note?
+     Statement: "My synthetic preference is compact output"
+     Retention: until changed, forgotten or no longer eligible.
+     Workspace: "/tmp/ipse-assertion-a2b13d62f549d1e66fc8361e663d227e/work"
+     Project: 8b9a2d3df081bae4047fcce00032741567ecf2121c26562064da879d902ee260
+     Collection: 52770c61d49ef11b7136363c5bf0383e1c7b38fd15d8897ba11b897390212c16
+     Artifact: 42f4fb454e9dad8ef0a55d6448b65911f2ed8daef44dbdc01fb37e6ac91cdd77
+     Permission: 2b87ffe8665f8685ee1306f70116ff7622bf20b34f45a217664412851ff6a2fe
+     This confirms the statement and category; other effects keep their own approvals.
+     Type remember 20023d987b9d1808cb45a3a4af66ad94 to confirm. Anything else cancels.
+     remember> remember 20023d987b9d1808cb45a3a4af66ad94
+     you> 
+     Extension ext__knowledge__capture: {"current_eligibility":"not_established","outcomes":[{"action_sha256":"6434584d5a9c882a96c7b62f25f9ecc38b5c25bf9bfc2d2c4402de53819882dc","category":"preference","generation":2,"normalization_sha256":"28ddd619f5310fb74ea2be80937d9a24255f9f29130de383c92a4fd9747297ad","operation_id":"5f39b0361562d1622adf514193e8326c","receipt_sha256":"f9a6c7a50a871d43938d055f315a3fe2985cd68830d18cc146f8acca6f4154cc","record_key":"note.95bd59dc4467263f26d4924fe37723494a80d48d3cc486fccb44e3060690e629"}],"status":"historical_write_outcome"}
+
+     Finished.
+     /remember current My synthetic timezone is UTC
+     Remember this exact statement as your own current note?
+     Statement: "My synthetic timezone is UTC"
+     Retention: until changed, forgotten or no longer eligible.
+     Workspace: "/tmp/ipse-assertion-a2b13d62f549d1e66fc8361e663d227e/work"
+     Project: 8b9a2d3df081bae4047fcce00032741567ecf2121c26562064da879d902ee260
+     Collection: 52770c61d49ef11b7136363c5bf0383e1c7b38fd15d8897ba11b897390212c16
+     Artifact: 42f4fb454e9dad8ef0a55d6448b65911f2ed8daef44dbdc01fb37e6ac91cdd77
+     Permission: 2b87ffe8665f8685ee1306f70116ff7622bf20b34f45a217664412851ff6a2fe
+     This confirms the statement and category; other effects keep their own approvals.
+     Type remember 8aa2108e993a8f8ae38daba8a52cbc48 to confirm. Anything else cancels.
+     remember> remember 8aa2108e993a8f8ae38daba8a52cbc48
+     you> 
+     Extension ext__knowledge__capture: {"current_eligibility":"not_established","outcomes":[{"action_sha256":"90c04dab282f478ceb7e5e137d536f24bd151879fb35923e1f65f23b18c4720d","category":"current","generation":3,"normalization_sha256":"b366077ebf7648285b6039c7c393f66b1c0dadbffe407048721977d589d07358","operation_id":"4f3f5f8090bbf4633e88ba58e9645984","receipt_sha256":"69b753ebe10cbed7318459a7244a6ea4c3f1bd5fed4c04176b287f95bb1792d0","record_key":"note.3dcf880dc040567831bb0c513866c66f01cdd303d4f54697202b2162972421d5"}],"status":"historical_write_outcome"}
+
+     Finished.
+     /exit
+     ASSERTION_JOURNAL_TYPES {"cancelled":1,"extension_action_intent":15,"extension_action_result":15,"extension_invocation_intent":3,"extension_invocation_result":3,"managed_output_release_cleanup":3,"managed_output_release_intent":3,"managed_output_release_result":3,"managed_read_observed":6,"operator_assertion":3,"session":1,"skill_catalog_snapshot":1,"source_window_opened":1,"turn_finished":3,"workspace_context_snapshot":1}
+     ASSERTION_OUTCOMES [{"type":"extension_invocation_intent"},{"type":"extension_action_intent"},{"outcome":{"status":"ok","value":{"chunk_id":"0c4c9faf98baa6239cf7e1cc9020fea4","complete":true,"content_sha256":"975ba9b29c0d1f8fa9c1b5f0849c103cafb1f51767b441b94de16fdefd6c091a","coverage":"available","handle":"eyJnZW5lcmF0aW9uIjozLCJraW5kIjoicmVhZCIsIm9jY3VycmVuY2UiOiJkY2M4MWQ0MTFhZWI0OTk5ODQwZTFiMDg3NjU3NDVlMiIsIm9mZnNldCI6MCwicG9saWN5IjoxLCJzZXNzaW9uIjoiYzEzYWM4N2Q1MWYwMWJkOWVjNjVlMjNhYzQxZjM0N2IiLCJzb3VyY2VfdmVyc2lvbiI6ImFmNjk5OTJiNzIzYTBhY2I5ZDdhZTM3OWIxMjU0YWZlIiwidmVyc2lvbiI6MSwid2luZG93IjoiNTdmNmM0MDRkZjg2YzMyYjdkMmM0ZmQ5MGJiOTRlODAifQ.ap__-x66p9IN4EOshQjj0NiKaSbSKcasgNfjAhTKfF4","kind":"input.assertion.ordinary","next":null,"occurrence_id":"dcc81d411aeb4999840e1b08765745e2","offset":0,"origin":"native_operator_assertion","original_bytes":28,"provenance":{"assertion_id":"4bcc85fe4b1564b4b6e543db0beec41c","category":"ordinary","receipt_sha256":"c6080e891de134bbdd1507eae923d0a29be0a31d53c84eb503c43934936bc2eb"},"reason":null,"text":"Synthetic ordinary statement","version":1,"version_id":"af69992b723a0acb9d7ae379b1254afe","window":{"count":1,"coverage":{"capacity_refused":0,"indexed":1,"legacy_unverified":0,"observed":1,"pending_gaps":0,"refused":0,"unavailable":0},"generation":3,"policy_generation":1,"session_id":"c13ac87d51f01bd9ec65e23ac41f347b","version":1,"window_id":"57f6c404df86c32b7d2c4fd90bb94e80"}}},"type":"extension_action_result"},{"type":"extension_action_intent"},{"outcome":{"status":"ok","value":{"chunk_id":"0c4c9faf98baa6239cf7e1cc9020fea4","content_sha256":"975ba9b29c0d1f8fa9c1b5f0849c103cafb1f51767b441b94de16fdefd6c091a","coverage":"available","end_byte":28,"occurrence_id":"dcc81d411aeb4999840e1b08765745e2","origin":"native_operator_assertion","quote_sha256":"975ba9b29c0d1f8fa9c1b5f0849c103cafb1f51767b441b94de16fdefd6c091a","start_byte":0,"version_id":"af69992b723a0acb9d7ae379b1254afe"}},"type":"extension_action_result"},{"type":"extension_action_intent"},{"outcome":{"status":"ok","value":{"floor":0,"floor_anchor":null,"generation":0,"project":"52770c61d49ef11b7136363c5bf0383e1c7b38fd15d8897ba11b897390212c16","record":null,"version":3}},"type":"extension_action_result"},{"type":"extension_action_intent"},{"outcome":{"status":"ok","value":{"floor":0,"floor_anchor":null,"generation":0,"project":"52770c61d49ef11b7136363c5bf0383e1c7b38fd15d8897ba11b897390212c16","record":null,"version":3}},"type":"extension_action_result"},{"type":"extension_action_intent"},{"outcome":{"status":"ok","value":{"binding":{"normalization_sha256":"2cd9210010a6c9bffbabb96b23c06408d7efe2f7e71c54ad8cbb4228f1f8c9c2","original_request_sha256":"80488b434e99e6b2645e2714ee122c3c99cc4428f8e969f1ed4c1925c1e9d8b1","recipe_sha256":"818634825cb494606d25195a6601971a17542ed2caa22f28d1e18b1971b18cf7","version":1},"normalization":{"category":"ordinary","eligibility":"current","first_admitted_ms":1793248743245,"format_value_sha256":"331275dd9f14e2646324c28fa4e26d22612f11b792e51a61f46cdb5c203e6282","lineage":"f5662572c4373e1c78f5213de9b47fffd2ebeffefe3fa9fd6357ad15eb92b9b6","metadata_changes":[{"expected_revision":0,"key":"host.validity.format","value_sha256":"331275dd9f14e2646324c28fa4e26d22612f11b792e51a61f46cdb5c203e6282"},{"expected_revision":0,"key":"host.validity.a.0000000000000000000000000000000000000000000000000000000000000000","value_sha256":"e8b7a55b6d23f9d3650a75f66967ae32e093a989cebde499cb324164d825f761"},{"expected_revision":0,"key":"host.validity.l.000000000000000000000000000000000000000000000000000000000000000000","value_sha256":"79266a9881f9780451b76354004975de4ff65a9198c4029891c6278ae7d4fcca"}],"record_key":"note.f5662572c4373e1c78f5213de9b47fffd2ebeffefe3fa9fd6357ad15eb92b9b6","valid_until_ms":1801024743245,"version":3},"receipt":{"floor":1,"generation":1,"managed_binding_sha256":"e0704b2b28e9027682141c072abf5268ecfe73dae538812a4fb58c9906af4a87","request_sha256":"566b6efcd0712be0e2741db9af2ab1a565f115999e4b46fba5c7393b87db13df"},"version":1}},"type":"extension_action_result"},{"type":"extension_invocation_result"},{"type":"extension_invocation_intent"},{"type":"extension_action_intent"},{"outcome":{"status":"ok","value":{"chunk_id":"6a45f91401428e10f06d286d5c4d5ff2","complete":true,"content_sha256":"cdbbf4bb65d165439eb20baf11ca2789bbe7ba31b9c566bd74abb2d61dfdc3fd","coverage":"available","handle":"eyJnZW5lcmF0aW9uIjo1LCJraW5kIjoicmVhZCIsIm9jY3VycmVuY2UiOiJiZjY4ZWQ2ZTYxYWJmZWZmNDdmMTJlNTA0ZWM0MzMwYyIsIm9mZnNldCI6MCwicG9saWN5IjoxLCJzZXNzaW9uIjoiYzEzYWM4N2Q1MWYwMWJkOWVjNjVlMjNhYzQxZjM0N2IiLCJzb3VyY2VfdmVyc2lvbiI6ImExOWU3MzE2YjEzMGY2ZDQwNWUyMGE0OGVhNmI3ZDk3IiwidmVyc2lvbiI6MSwid2luZG93IjoiNTdmNmM0MDRkZjg2YzMyYjdkMmM0ZmQ5MGJiOTRlODAifQ.x71F7-f6CTvzcVJdUUyh98hZbLirrPmrQd-g7I8O3t8","kind":"input.assertion.preference","next":null,"occurrence_id":"bf68ed6e61abfeff47f12e504ec4330c","offset":0,"origin":"native_operator_assertion","original_bytes":41,"provenance":{"assertion_id":"bf4b00c2451c56790f44e43d1e46c157","category":"preference","receipt_sha256":"d468c18f22fca327e8bbd42e7b326c175d35eceeb3bb5e576f56a41886baaaa3"},"reason":null,"text":"My synthetic preference is compact output","version":1,"version_id":"a19e7316b130f6d405e20a48ea6b7d97","window":{"count":2,"coverage":{"capacity_refused":0,"indexed":2,"legacy_unverified":0,"observed":2,"pending_gaps":0,"refused":0,"unavailable":0},"generation":5,"policy_generation":1,"session_id":"c13ac87d51f01bd9ec65e23ac41f347b","version":1,"window_id":"57f6c404df86c32b7d2c4fd90bb94e80"}}},"type":"extension_action_result"},{"type":"extension_action_intent"},{"outcome":{"status":"ok","value":{"chunk_id":"6a45f91401428e10f06d286d5c4d5ff2","content_sha256":"cdbbf4bb65d165439eb20baf11ca2789bbe7ba31b9c566bd74abb2d61dfdc3fd","coverage":"available","end_byte":41,"occurrence_id":"bf68ed6e61abfeff47f12e504ec4330c","origin":"native_operator_assertion","quote_sha256":"cdbbf4bb65d165439eb20baf11ca2789bbe7ba31b9c566bd74abb2d61dfdc3fd","start_byte":0,"version_id":"a19e7316b130f6d405e20a48ea6b7d97"}},"type":"extension_action_result"},{"type":"extension_action_intent"},{"outcome":{"status":"ok","value":{"floor":1,"floor_anchor":"f753ebaca05352cda1f7730c2baeeac4","generation":1,"project":"52770c61d49ef11b7136363c5bf0383e1c7b38fd15d8897ba11b897390212c16","record":null,"version":3}},"type":"extension_action_result"},{"type":"extension_action_intent"},{"outcome":{"status":"ok","value":{"floor":1,"floor_anchor":"f753ebaca05352cda1f7730c2baeeac4","generation":1,"project":"52770c61d49ef11b7136363c5bf0383e1c7b38fd15d8897ba11b897390212c16","record":null,"version":3}},"type":"extension_action_result"},{"type":"extension_action_intent"},{"outcome":{"status":"ok","value":{"binding":{"normalization_sha256":"28ddd619f5310fb74ea2be80937d9a24255f9f29130de383c92a4fd9747297ad","original_request_sha256":"55ed35d1e2af974e9ed293c6b0a0bfa073899ae53b38ec551ce46156945d4eaa","recipe_sha256":"818634825cb494606d25195a6601971a17542ed2caa22f28d1e18b1971b18cf7","version":1},"normalization":{"category":"preference","eligibility":"current","first_admitted_ms":1793248743872,"format_value_sha256":"331275dd9f14e2646324c28fa4e26d22612f11b792e51a61f46cdb5c203e6282","lineage":"95bd59dc4467263f26d4924fe37723494a80d48d3cc486fccb44e3060690e629","metadata_changes":[{"expected_revision":1,"key":"host.validity.a.0000000000000000000000000000000000000000000000000000000000000000","value_sha256":"890029f9f1c6ad4fbed62c376538310cf440b3bb91a4a707fcfcddac4de04944"},{"expected_revision":1,"key":"host.validity.l.000000000000000000000000000000000000000000000000000000000000000000","value_sha256":"d044c0ec986611b870e80e2c1cbb70122f527146b5de56de03c1dc0712500920"}],"record_key":"note.95bd59dc4467263f26d4924fe37723494a80d48d3cc486fccb44e3060690e629","valid_until_ms":null,"version":3},"receipt":{"floor":2,"generation":2,"managed_binding_sha256":"23b18917fb7f37454fa77e9d4ff876dc05cd582170be266b9fc9d4a527c7a5c7","request_sha256":"166fa0ee04a16bf378e409e59362443194c8723c2f399f81245668342c604077"},"version":1}},"type":"extension_action_result"},{"type":"extension_invocation_result"},{"type":"extension_invocation_intent"},{"type":"extension_action_intent"},{"outcome":{"status":"ok","value":{"chunk_id":"b5b141b02028d2e7db4f08c9818e7474","complete":true,"content_sha256":"383568a19bb4d3d8dff4b2029fca427f575080b3360b93d9bbc25c413f049c2c","coverage":"available","handle":"eyJnZW5lcmF0aW9uIjo3LCJraW5kIjoicmVhZCIsIm9jY3VycmVuY2UiOiIyMTEyYzI2NzNjMzIxN2NkN2NkZjlmNGFjODlkMzlkZiIsIm9mZnNldCI6MCwicG9saWN5IjoxLCJzZXNzaW9uIjoiYzEzYWM4N2Q1MWYwMWJkOWVjNjVlMjNhYzQxZjM0N2IiLCJzb3VyY2VfdmVyc2lvbiI6Ijc2MTA3NjY2Zjg2Zjk2NGQyMTYwMDNkZDE4ZGRlY2I4IiwidmVyc2lvbiI6MSwid2luZG93IjoiNTdmNmM0MDRkZjg2YzMyYjdkMmM0ZmQ5MGJiOTRlODAifQ.U2wPrEf7r6y25forEOFWbDxea5hc67Vpk5pVvI6KScA","kind":"input.assertion.current","next":null,"occurrence_id":"2112c2673c3217cd7cdf9f4ac89d39df","offset":0,"origin":"native_operator_assertion","original_bytes":28,"provenance":{"assertion_id":"7e32ff6b00cd23b0f286bddef230b198","category":"current","receipt_sha256":"7878b6ce20977874c4c3167b8108d2f1a34bcf2a06c7cd67b06d627a9d024243"},"reason":null,"text":"My synthetic timezone is UTC","version":1,"version_id":"76107666f86f964d216003dd18ddecb8","window":{"count":3,"coverage":{"capacity_refused":0,"indexed":3,"legacy_unverified":0,"observed":3,"pending_gaps":0,"refused":0,"unavailable":0},"generation":7,"policy_generation":1,"session_id":"c13ac87d51f01bd9ec65e23ac41f347b","version":1,"window_id":"57f6c404df86c32b7d2c4fd90bb94e80"}}},"type":"extension_action_result"},{"type":"extension_action_intent"},{"outcome":{"status":"ok","value":{"chunk_id":"b5b141b02028d2e7db4f08c9818e7474","content_sha256":"383568a19bb4d3d8dff4b2029fca427f575080b3360b93d9bbc25c413f049c2c","coverage":"available","end_byte":28,"occurrence_id":"2112c2673c3217cd7cdf9f4ac89d39df","origin":"native_operator_assertion","quote_sha256":"383568a19bb4d3d8dff4b2029fca427f575080b3360b93d9bbc25c413f049c2c","start_byte":0,"version_id":"76107666f86f964d216003dd18ddecb8"}},"type":"extension_action_result"},{"type":"extension_action_intent"},{"outcome":{"status":"ok","value":{"floor":2,"floor_anchor":"5f39b0361562d1622adf514193e8326c","generation":2,"project":"52770c61d49ef11b7136363c5bf0383e1c7b38fd15d8897ba11b897390212c16","record":null,"version":3}},"type":"extension_action_result"},{"type":"extension_action_intent"},{"outcome":{"status":"ok","value":{"floor":2,"floor_anchor":"5f39b0361562d1622adf514193e8326c","generation":2,"project":"52770c61d49ef11b7136363c5bf0383e1c7b38fd15d8897ba11b897390212c16","record":null,"version":3}},"type":"extension_action_result"},{"type":"extension_action_intent"},{"outcome":{"status":"ok","value":{"binding":{"normalization_sha256":"b366077ebf7648285b6039c7c393f66b1c0dadbffe407048721977d589d07358","original_request_sha256":"b59bb6d60fa3a809e70778323b107b877f4f12211834a228039a61c98536c5f3","recipe_sha256":"818634825cb494606d25195a6601971a17542ed2caa22f28d1e18b1971b18cf7","version":1},"normalization":{"category":"current","eligibility":"current","first_admitted_ms":1793248744433,"format_value_sha256":"331275dd9f14e2646324c28fa4e26d22612f11b792e51a61f46cdb5c203e6282","lineage":"3dcf880dc040567831bb0c513866c66f01cdd303d4f54697202b2162972421d5","metadata_changes":[{"expected_revision":2,"key":"host.validity.a.0000000000000000000000000000000000000000000000000000000000000000","value_sha256":"b5a447e8b41d5023b878ad6b2959560503dfa92ddcb038fe93bb90d860953cd3"},{"expected_revision":2,"key":"host.validity.l.000000000000000000000000000000000000000000000000000000000000000000","value_sha256":"bbe8725393e1b130594410d86f73d5381f7477e70bee333ca814dbe428a1884f"}],"record_key":"note.3dcf880dc040567831bb0c513866c66f01cdd303d4f54697202b2162972421d5","valid_until_ms":null,"version":3},"receipt":{"floor":3,"generation":3,"managed_binding_sha256":"ef3ae55632aa99dc3a62041628ae12849651e01dc4c3b661aff18504e4a58b68","request_sha256":"e3c528fcd17a3ffa175e572373e9eff79feb79ec284b0fdb4a05761f87157ee8"},"version":1}},"type":"extension_action_result"},{"type":"extension_invocation_result"}]
+         [33mwarning:[0m IpseKnowledge.Knowledge.Records.capture/3 is undefined (module IpseKnowledge.Knowledge.Records is not available or is yet to be defined)
+         │
+      61 │       IpseKnowledge.Knowledge.Records.capture(
+         │ [33m                                      ~[0m
+         │
+         └─ test/support/managed_history_cli.exs:61:39: Ipse.Test.ManagedHistoryCLI.run/9
+     
+     Management journal: a3593782f6d0eaf5639f5660ffc119fa
+     Review the complete proposed facts below. This confirmation applies only to this exact review.
+     {
+       "action_sha256": "6f0aeb80d492b64b03dde580a92ac621ae75e24ce2952298dc57148e02982b8b",
+       "collection": {
+         "manifest_sha256": "ce6c614fa6af105517e9479437fe2e4490df0b79f507448266f4cfb556287f3f",
+         "root": {
+           "floor": 5,
+           "floor_anchor": "a68eedf43fa70528b8c637011b40e05e",
+           "generation": 7,
+           "project": "52770c61d49ef11b7136363c5bf0383e1c7b38fd15d8897ba11b897390212c16",
+           "version": 3
+         },
+         "root_sha256": "447746c24989180d477c26f211f5b0939091f26ba86e3bcfef8d240a75473a8f",
+         "root_state": "present"
+       },
+       "context": {
+         "binding_sha256": "1736dd4d4fb6d15d180f73a48cad633df2e9139af179eb35d9bf2e2de318a538",
+         "client_id": "925ee4a3010d32e618cd08e339a8b74d",
+         "job_id": "4c7ad0abca1b392359116c1d4e64cbf5",
+         "management_epoch": 1,
+         "management_sha256": "4797cd9e34a436db066dc9f7882941e876e065d6c5f60c54d141d8ec4637eae3",
+         "namespace": "52770c61d49ef11b7136363c5bf0383e1c7b38fd15d8897ba11b897390212c16",
+         "original_pin": null,
+         "project_id": "8b9a2d3df081bae4047fcce00032741567ecf2121c26562064da879d902ee260",
+         "recipe": {
+           "category_path": [
+             "category"
+           ],
+           "constraints_sha256": "d709745ab18405dff572c41053eda5cbe12c350ebbabdcd0d52ea1e80962368a",
+           "evidence_path": [
+             "evidence",
+             "sources"
+           ],
+           "key_prefix": "note.",
+           "kind": "literal_source",
+           "lineage_path": [
+             "lineage"
+           ],
+           "override_prefix": "override.",
+           "rules": [
+             {
+               "category": "current",
+               "max_age_ms": null,
+               "origins": [
+                 "native_operator_assertion"
+               ]
+             },
+             {
+               "category": "ordinary",
+               "max_age_ms": 7776000000,
+               "origins": [
+                 "native_operator_assertion",
+                 "typed_host_outcome"
+               ]
+             },
+             {
+               "category": "preference",
+               "max_age_ms": null,
+               "origins": [
+                 "native_operator_assertion"
+               ]
+             }
+           ],
+           "text_path": [
+             "text"
+           ],
+           "version": 1
+         },
+         "session_id": "a3593782f6d0eaf5639f5660ffc119fa"
+       },
+       "historical_gap": true,
+       "historical_gap_notice": "This reduces the selected current or persistent claim's historical coverage; other claims and shared evidence keep their own policies.",
+       "kind": "managed_literal_retention",
+       "metadata": {
+         "category": "preference",
+         "first_admitted_ms": 1793248743872,
+         "lineage": "95bd59dc4467263f26d4924fe37723494a80d48d3cc486fccb44e3060690e629",
+         "policy_sha256": "2b87ffe8665f8685ee1306f70116ff7622bf20b34f45a217664412851ff6a2fe",
+         "recipe_sha256": "818634825cb494606d25195a6601971a17542ed2caa22f28d1e18b1971b18cf7",
+         "valid_until_ms": null
+       },
+       "new_deadline_rule": {
+         "basis": "native_confirmation_time",
+         "duration_ms": 8000
+       },
+       "old_deadline_ms": null,
+       "operation_id": "c9270f60d6b008f11d5876c28128d9f5",
+       "policy": {
+         "duration_ms": 8000,
+         "kind": "duration"
+       },
+       "reason": "Operator requested this selected retention choice",
+       "request_sha256": "a6c11f702a307a812982df1109ca578e16ef68073399235f93c3b2fb928c4146",
+       "scope": "selected literal derivative; original journal, management review journal and shared evidence remain",
+       "target": {
+         "bytes": 1156,
+         "key": "note.95bd59dc4467263f26d4924fe37723494a80d48d3cc486fccb44e3060690e629",
+         "operation_id": "5f39b0361562d1622adf514193e8326c",
+         "revision": 2,
+         "sha256": "3b060571071d8c1f48b1063ef6d11595438cb15116fc68c94fdf82f5839b91dd",
+         "value": {
+           "category": "preference",
+           "created_at_ms": 1793248743598,
+           "event_at_ms": null,
+           "evidence": {
+             "sources": [
+               {
+                 "content_sha256": "cdbbf4bb65d165439eb20baf11ca2789bbe7ba31b9c566bd74abb2d61dfdc3fd",
+                 "coverage": "available",
+                 "end_byte": 41,
+                 "kind": "input.assertion.preference",
+                 "occurrence_id": "bf68ed6e61abfeff47f12e504ec4330c",
+                 "origin": "native_operator_assertion",
+                 "path": null,
+                 "quote": "My synthetic preference is compact output",
+                 "quote_sha256": "cdbbf4bb65d165439eb20baf11ca2789bbe7ba31b9c566bd74abb2d61dfdc3fd",
+                 "receipt_sha256": "d468c18f22fca327e8bbd42e7b326c175d35eceeb3bb5e576f56a41886baaaa3",
+                 "session_id": "c13ac87d51f01bd9ec65e23ac41f347b",
+                 "start_byte": 0,
+                 "version": 1,
+                 "version_id": "a19e7316b130f6d405e20a48ea6b7d97"
+               }
+             ]
+           },
+           "expires_at_ms": null,
+           "id": "95bd59dc4467263f26d4924fe37723494a80d48d3cc486fccb44e3060690e629",
+           "lineage": "95bd59dc4467263f26d4924fe37723494a80d48d3cc486fccb44e3060690e629",
+           "metadata_reserve": "0000000000000000000000000000000000000000000000000000000000000000",
+           "observed_at_ms": 1793248743598,
+           "previous_category": null,
+           "reason": "Native operator statement and category review.",
+           "superseded_at_ms": null,
+           "text": "My synthetic preference is compact output",
+           "version": 1
+         }
+       },
+       "version": 1
+     }
+     Type duration 094ea83188b4b43c to confirm, or anything else to cancel.
+     > duration 094ea83188b4b43c
+     Review the complete proposed facts below. This confirmation applies only to this exact review.
+     {
+       "action_sha256": "6f20dd13e46df74f4d3b1a1c2ccd3bbe6dcb380ab7a760437992b13f7dc489b1",
+       "checked_at_ms": 1793248754402,
+       "collection": {
+         "manifest_sha256": "afdaa1bba2d018fabffee6f9a1366b07229fffd7992d5ac57de211448fa223d4",
+         "root": {
+           "floor": 8,
+           "floor_anchor": "c9270f60d6b008f11d5876c28128d9f5",
+           "generation": 8,
+           "project": "52770c61d49ef11b7136363c5bf0383e1c7b38fd15d8897ba11b897390212c16",
+           "version": 3
+         },
+         "root_sha256": "29801040147fac530ab74091998dd90d49a9693c8b6c0a637299f7089ea8878a",
+         "root_state": "present"
+       },
+       "context": {
+         "binding_sha256": "1736dd4d4fb6d15d180f73a48cad633df2e9139af179eb35d9bf2e2de318a538",
+         "client_id": "415ca2ad05aeba08edbae04bc427a416",
+         "job_id": "bc42a12ea3c08ba90b67149f25fe280b",
+         "management_epoch": 1,
+         "management_sha256": "4797cd9e34a436db066dc9f7882941e876e065d6c5f60c54d141d8ec4637eae3",
+         "namespace": "52770c61d49ef11b7136363c5bf0383e1c7b38fd15d8897ba11b897390212c16",
+         "original_pin": null,
+         "project_id": "8b9a2d3df081bae4047fcce00032741567ecf2121c26562064da879d902ee260",
+         "recipe": {
+           "category_path": [
+             "category"
+           ],
+           "constraints_sha256": "d709745ab18405dff572c41053eda5cbe12c350ebbabdcd0d52ea1e80962368a",
+           "evidence_path": [
+             "evidence",
+             "sources"
+           ],
+           "key_prefix": "note.",
+           "kind": "literal_source",
+           "lineage_path": [
+             "lineage"
+           ],
+           "override_prefix": "override.",
+           "rules": [
+             {
+               "category": "current",
+               "max_age_ms": null,
+               "origins": [
+                 "native_operator_assertion"
+               ]
+             },
+             {
+               "category": "ordinary",
+               "max_age_ms": 7776000000,
+               "origins": [
+                 "native_operator_assertion",
+                 "typed_host_outcome"
+               ]
+             },
+             {
+               "category": "preference",
+               "max_age_ms": null,
+               "origins": [
+                 "native_operator_assertion"
+               ]
+             }
+           ],
+           "text_path": [
+             "text"
+           ],
+           "version": 1
+         },
+         "session_id": "5a825396ce2374d26d3a3c387a8457c5"
+       },
+       "history_rule": {
+         "at_ms": 1793248761694,
+         "basis": "existing_deadline"
+       },
+       "kind": "managed_literal_supersession",
+       "metadata": {
+         "category": "ordinary",
+         "choice": {
+           "challenge": "094ea83188b4b43c",
+           "display_sha256": "247fbd1289a1d3078c04e145cc0963063d6a4b35596a91f72a0707bdc1edda67",
+           "event_id": "440588090078a607f6a84234800de375",
+           "input_sha256": "61ba7d460728c4b2d5ab01b0beb4f682fbf76b2c5e2683b8d089f9017904270f",
+           "kind": "native_management",
+           "lineage": "95bd59dc4467263f26d4924fe37723494a80d48d3cc486fccb44e3060690e629",
+           "observed_at_ms": 1793248753694,
+           "policy": {
+             "duration_ms": 8000,
+             "kind": "duration"
+           },
+           "reason": "Operator requested this selected retention choice",
+           "target_key": "note.95bd59dc4467263f26d4924fe37723494a80d48d3cc486fccb44e3060690e629",
+           "target_value_sha256": "3b060571071d8c1f48b1063ef6d11595438cb15116fc68c94fdf82f5839b91dd",
+           "version": 2
+         },
+         "first_admitted_ms": 1793248743872,
+         "lineage": "95bd59dc4467263f26d4924fe37723494a80d48d3cc486fccb44e3060690e629",
+         "policy_sha256": "2b87ffe8665f8685ee1306f70116ff7622bf20b34f45a217664412851ff6a2fe",
+         "recipe_sha256": "818634825cb494606d25195a6601971a17542ed2caa22f28d1e18b1971b18cf7",
+         "valid_until_ms": 1793248761694
+       },
+       "mode": "ordinary",
+       "new_policy_sha256": "2b87ffe8665f8685ee1306f70116ff7622bf20b34f45a217664412851ff6a2fe",
+       "new_source_sha256": "26a309866b8286b03aa51252f646e94f0df330fd2130f087cf0c7149eab899a8",
+       "operation_id": "27aa347fabb55f401b04397bc66b63d6",
+       "reason": "Synthetic trusted successor fixture",
+       "replacement": {
+         "key": "note.7da6cba3fdb5b7143f2cb5d790ec68560752525f7cc02a4316351c6111e48f9b",
+         "value": {
+           "category": "ordinary",
+           "created_at_ms": 864000000,
+           "event_at_ms": null,
+           "evidence": {
+             "sources": [
+               {
+                 "content_sha256": "42616723f2363f5c040c8cc7dd78134d0580b18a3cd17f49b4ddffd67266f9ef",
+                 "coverage": "available",
+                 "end_byte": 50,
+                 "kind": "input.assertion.ordinary",
+                 "occurrence_id": "8b0a176d7180075caee73084ff4356a7",
+                 "origin": "native_operator_assertion",
+                 "path": null,
+                 "quote": "Synthetic replacement statement for history expiry",
+                 "quote_sha256": "42616723f2363f5c040c8cc7dd78134d0580b18a3cd17f49b4ddffd67266f9ef",
+                 "receipt_sha256": "ee97424da4574821abea3a2d5d7c458c8f8fa971130c05e3ee7d9be649bb43a7",
+                 "session_id": "c13ac87d51f01bd9ec65e23ac41f347b",
+                 "start_byte": 0,
+                 "version": 1,
+                 "version_id": "2c35ac1fc36edacbced05ec24895af76"
+               }
+             ]
+           },
+           "expires_at_ms": 8640000000,
+           "id": "7da6cba3fdb5b7143f2cb5d790ec68560752525f7cc02a4316351c6111e48f9b",
+           "lineage": "7da6cba3fdb5b7143f2cb5d790ec68560752525f7cc02a4316351c6111e48f9b",
+           "metadata_reserve": "0000000000000000000000000000000000000000000000000000000000000000",
+           "observed_at_ms": 864000000,
+           "previous_category": null,
+           "reason": "trusted fixture successor",
+           "superseded_at_ms": null,
+           "text": "Synthetic replacement statement for history expiry",
+           "version": 1
+         }
+       },
+       "request_sha256": "ed1376f280cf09deede33f99a484857b95cd0d6db38caf4166290d5141e7f00b",
+       "scope": "atomic literal successor and noncurrent signed history; original journal and shared evidence remain",
+       "target": {
+         "bytes": 1156,
+         "key": "note.95bd59dc4467263f26d4924fe37723494a80d48d3cc486fccb44e3060690e629",
+         "operation_id": "c9270f60d6b008f11d5876c28128d9f5",
+         "revision": 8,
+         "sha256": "3b060571071d8c1f48b1063ef6d11595438cb15116fc68c94fdf82f5839b91dd",
+         "value": {
+           "category": "preference",
+           "created_at_ms": 1793248743598,
+           "event_at_ms": null,
+           "evidence": {
+             "sources": [
+               {
+                 "content_sha256": "cdbbf4bb65d165439eb20baf11ca2789bbe7ba31b9c566bd74abb2d61dfdc3fd",
+                 "coverage": "available",
+                 "end_byte": 41,
+                 "kind": "input.assertion.preference",
+                 "occurrence_id": "bf68ed6e61abfeff47f12e504ec4330c",
+                 "origin": "native_operator_assertion",
+                 "path": null,
+                 "quote": "My synthetic preference is compact output",
+                 "quote_sha256": "cdbbf4bb65d165439eb20baf11ca2789bbe7ba31b9c566bd74abb2d61dfdc3fd",
+                 "receipt_sha256": "d468c18f22fca327e8bbd42e7b326c175d35eceeb3bb5e576f56a41886baaaa3",
+                 "session_id": "c13ac87d51f01bd9ec65e23ac41f347b",
+                 "start_byte": 0,
+                 "version": 1,
+                 "version_id": "a19e7316b130f6d405e20a48ea6b7d97"
+               }
+             ]
+           },
+           "expires_at_ms": null,
+           "id": "95bd59dc4467263f26d4924fe37723494a80d48d3cc486fccb44e3060690e629",
+           "lineage": "95bd59dc4467263f26d4924fe37723494a80d48d3cc486fccb44e3060690e629",
+           "metadata_reserve": "0000000000000000000000000000000000000000000000000000000000000000",
+           "observed_at_ms": 1793248743598,
+           "previous_category": null,
+           "reason": "Native operator statement and category review.",
+           "superseded_at_ms": null,
+           "text": "My synthetic preference is compact output",
+           "version": 1
+         }
+       },
+       "version": 1
+     }
+     Type correct 01164618e90c1181 to confirm, or anything else to cancel.
+     > correct 01164618e90c1181
+     Revoke knowledge permission for /tmp/ipse-assertion-a2b13d62f549d1e66fc8361e663d227e/work.
+     Project 8b9a2d3df081bae4047fcce00032741567ecf2121c26562064da879d902ee260; epoch 1.
+     Later effects will be denied. Already admitted work may have started. Stored records remain available for management.
+     
+     Type disable ed250418e101b397 to confirm this exact review, or anything else to cancel.
+     > disable ed250418e101b397
+     Knowledge permission revoked. New sessions use the ordinary catalog.
+     [22m
+     21:39:21.706 [info] The function passed as a handler with ID "history-cli-intent-acc5494257e102347f76b161171aa690" is a local function.
+     This means that it is either an anonymous function or a capture of a function without a module specified. That may cause a performance penalty when calling that handler. For more details see the note in `telemetry:attach/4` documentation.
+     
+     https://hexdocs.pm/telemetry/telemetry.html#attach/4[0m
+     Management journal: 91b3e1a24e2b38d3b063a858853dd2ef
+     Reclaiming the selected expired signed policy:
+     {
+       "action_sha256": "fe99bae6fba0cda42e1d7095fc6c1a7d8a294e9065d15a1462f7a390613333c7",
+       "checked_at_ms": 1793248761803,
+       "collection": {
+         "manifest_sha256": "1a78fd6acd53d6ef744c91b632f882f8a20b6d9da83bbdc63e29ee2163654089",
+         "root": {
+           "floor": 9,
+           "floor_anchor": "27aa347fabb55f401b04397bc66b63d6",
+           "generation": 9,
+           "project": "52770c61d49ef11b7136363c5bf0383e1c7b38fd15d8897ba11b897390212c16",
+           "version": 3
+         },
+         "root_sha256": "1f0a3da35cdfc738c0ed95ba836887fe7ae38260d9aa6abb5b20a8a1e8407736",
+         "root_state": "present"
+       },
+       "context": {
+         "binding_sha256": "1736dd4d4fb6d15d180f73a48cad633df2e9139af179eb35d9bf2e2de318a538",
+         "client_id": "ef1b033f0e0f90d29aa11a626af85094",
+         "job_id": "ba19981ee04d62b031cb94cc494cef18",
+         "management_epoch": 2,
+         "management_sha256": "55d4d26548ed1d788a43caa47ed78926a3673a51b5cf03bef80c7566993dc13f",
+         "namespace": "52770c61d49ef11b7136363c5bf0383e1c7b38fd15d8897ba11b897390212c16",
+         "original_pin": null,
+         "project_id": "8b9a2d3df081bae4047fcce00032741567ecf2121c26562064da879d902ee260",
+         "recipe": {
+           "category_path": [
+             "category"
+           ],
+           "constraints_sha256": "d709745ab18405dff572c41053eda5cbe12c350ebbabdcd0d52ea1e80962368a",
+           "evidence_path": [
+             "evidence",
+             "sources"
+           ],
+           "key_prefix": "note.",
+           "kind": "literal_source",
+           "lineage_path": [
+             "lineage"
+           ],
+           "override_prefix": "override.",
+           "rules": [
+             {
+               "category": "current",
+               "max_age_ms": null,
+               "origins": [
+                 "native_operator_assertion"
+               ]
+             },
+             {
+               "category": "ordinary",
+               "max_age_ms": 7776000000,
+               "origins": [
+                 "native_operator_assertion",
+                 "typed_host_outcome"
+               ]
+             },
+             {
+               "category": "preference",
+               "max_age_ms": null,
+               "origins": [
+                 "native_operator_assertion"
+               ]
+             }
+           ],
+           "text_path": [
+             "text"
+           ],
+           "version": 1
+         },
+         "session_id": "91b3e1a24e2b38d3b063a858853dd2ef"
+       },
+       "expired_at_ms": 1793248761694,
+       "kind": "managed_literal_history_expiry",
+       "metadata": {
+         "category": "history",
+         "first_admitted_ms": 1793248743872,
+         "lineage": "95bd59dc4467263f26d4924fe37723494a80d48d3cc486fccb44e3060690e629",
+         "policy_sha256": "2b87ffe8665f8685ee1306f70116ff7622bf20b34f45a217664412851ff6a2fe",
+         "previous_category": "ordinary",
+         "recipe_sha256": "818634825cb494606d25195a6601971a17542ed2caa22f28d1e18b1971b18cf7",
+         "successor": {
+           "key": "note.7da6cba3fdb5b7143f2cb5d790ec68560752525f7cc02a4316351c6111e48f9b",
+           "sha256": "25ccba43f25d2a4f6b1cb6bca8b2729c4ce41e728f230db433162f9dcbbd38a0"
+         },
+         "superseded_at_ms": 1793248754416,
+         "valid_until_ms": 1793248761694
+       },
+       "operation_id": "e027e4c14a65c4d28b0928f3fa21c4a8",
+       "reason": "Stored signed historical retention deadline elapsed",
+       "request_sha256": "a61eaf7b73e9e2ccdb17bf81beaf3615157967a6f6327cbb5c03068e2e5dd9a3",
+       "scope": "expired historical literal derivative; signed successor edge, original journal and shared evidence remain",
+       "target": {
+         "bytes": 1156,
+         "key": "note.95bd59dc4467263f26d4924fe37723494a80d48d3cc486fccb44e3060690e629",
+         "operation_id": "27aa347fabb55f401b04397bc66b63d6",
+         "revision": 9,
+         "sha256": "3b060571071d8c1f48b1063ef6d11595438cb15116fc68c94fdf82f5839b91dd",
+         "value": {
+           "category": "preference",
+           "created_at_ms": 1793248743598,
+           "event_at_ms": null,
+           "evidence": {
+             "sources": [
+               {
+                 "content_sha256": "cdbbf4bb65d165439eb20baf11ca2789bbe7ba31b9c566bd74abb2d61dfdc3fd",
+                 "coverage": "available",
+                 "end_byte": 41,
+                 "kind": "input.assertion.preference",
+                 "occurrence_id": "bf68ed6e61abfeff47f12e504ec4330c",
+                 "origin": "native_operator_assertion",
+                 "path": null,
+                 "quote": "My synthetic preference is compact output",
+                 "quote_sha256": "cdbbf4bb65d165439eb20baf11ca2789bbe7ba31b9c566bd74abb2d61dfdc3fd",
+                 "receipt_sha256": "d468c18f22fca327e8bbd42e7b326c175d35eceeb3bb5e576f56a41886baaaa3",
+                 "session_id": "c13ac87d51f01bd9ec65e23ac41f347b",
+                 "start_byte": 0,
+                 "version": 1,
+                 "version_id": "a19e7316b130f6d405e20a48ea6b7d97"
+               }
+             ]
+           },
+           "expires_at_ms": null,
+           "id": "95bd59dc4467263f26d4924fe37723494a80d48d3cc486fccb44e3060690e629",
+           "lineage": "95bd59dc4467263f26d4924fe37723494a80d48d3cc486fccb44e3060690e629",
+           "metadata_reserve": "0000000000000000000000000000000000000000000000000000000000000000",
+           "observed_at_ms": 1793248743598,
+           "previous_category": null,
+           "reason": "Native operator statement and category review.",
+           "superseded_at_ms": null,
+           "text": "My synthetic preference is compact output",
+           "version": 1
+         }
+       },
+       "version": 1
+     }
+     Reclaimed the selected expired note or history; original admission clocks remain.
+     {"journal_directory":"/tmp/ipse-assertion-a2b13d62f549d1e66fc8361e663d227e/home/knowledge-management","journal_id":"91b3e1a24e2b38d3b063a858853dd2ef","operation_id":"e027e4c14a65c4d28b0928f3fa21c4a8","receipt":{"action_sha256":"fe99bae6fba0cda42e1d7095fc6c1a7d8a294e9065d15a1462f7a390613333c7","native_review_sha256":null,"publication":{"binding":{"normalization_sha256":"1d0a06cc43f0062f52b43b31db7c5ba22c824ce5c365611a8b265fb568eeab5a","original_request_sha256":"a61eaf7b73e9e2ccdb17bf81beaf3615157967a6f6327cbb5c03068e2e5dd9a3","recipe_sha256":"818634825cb494606d25195a6601971a17542ed2caa22f28d1e18b1971b18cf7","version":1},"normalization":{"action_sha256":"fe99bae6fba0cda42e1d7095fc6c1a7d8a294e9065d15a1462f7a390613333c7","checked_at_ms":1793248761827,"eligibility":"expired","first_admitted_ms":1793248743872,"kind":"managed_literal_history_expiry","lineage":"95bd59dc4467263f26d4924fe37723494a80d48d3cc486fccb44e3060690e629","metadata_changes":[{"expected_revision":9,"key":"host.validity.l.000000000000000000000000000000000000000000000000000000000000000000","value_sha256":"2513bb9996fc6d4665d906f8f1fe8c06d3e9b6c1bc4b9ad82d799782e14e183b"}],"policy_sha256":"2b87ffe8665f8685ee1306f70116ff7622bf20b34f45a217664412851ff6a2fe","record_key":"note.95bd59dc4467263f26d4924fe37723494a80d48d3cc486fccb44e3060690e629","valid_until_ms":1793248761694,"version":3},"receipt":{"floor":10,"generation":10,"managed_binding_sha256":"6d25af27dee1641da03049cc1740cdb62c6ec56c5206181cd931cdf0deee7ee2","request_sha256":"e666694c467a793fd190d335f431f347f27b4855de47c4dc9473c579ebcb13fa"},"version":1}},"storage_status":"settled"}
+     ** (ExUnit.AssertionError) 
+     
+     Assertion with == failed
+     code:  assert Process.get(:history_cli_intent_before_switch) == true
+     left:  nil
+     right: true
+     
+         (ex_unit 1.20.4) lib/ex_unit/assertions.ex:460: ExUnit.Assertions.assert/2
+         test/support/managed_history_cli.exs:237: Ipse.Test.ManagedHistoryCLI.run/9
+         test/support/operator_assertion.exs:800: (file)
+
+     code: assert status == 0, output
+     stacktrace:
+       test/ipse/session/operator_assertion_integration_test.exs:49: (test)
+
+
+Finished in 20.8 seconds (0.1s on load, 0.00s async, 20.6s sync)
+
+Result: 0/1 passed, 10 excluded
+Failed: 1 test

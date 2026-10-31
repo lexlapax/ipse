@@ -1,0 +1,7 @@
+MCP_DISCOVERY_REVIEW_MANIFEST_OK: %{
+  manifest_entries: 13,
+  frozen_sources: 4,
+  runtime_files: 621,
+  changed_runtime_files: ["Elixir.Ipse.MCP.beam", "Elixir.Ipse.Session.beam"],
+  helper: "7e1913446865a16cdfb7c96ca0285dc9e117a018c36c7b1940ba249a72ffd067"
+}

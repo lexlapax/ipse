@@ -1,0 +1,111 @@
+Retained management target at 1793310099321: signed deadline elapsed. Original source availability and current-use eligibility are not checked.
+Review the complete proposed facts below. This confirmation applies only to this exact review.
+{
+  "action_sha256": "7efc3ce75d61305367713b9525623334d05b19c1402ccadf2eb7e01bf8f603c9",
+  "collection": {
+    "manifest_sha256": "cb665cc1f8de58952ce12591b13dc0112246aced12dc4d092b08ea9be80da172",
+    "root": {
+      "floor": 1,
+      "floor_anchor": "5c1471d72903e2ad92fbd6f4ae66e3f5",
+      "generation": 1,
+      "project": "42577467e4265105a9fc6fef6070b8a29577356052d05cced0cf91a264cf74a5",
+      "version": 3
+    },
+    "root_sha256": "fe8668b2ed6279f0181175af130d077fd85e35571f37cdc1ec2ca4f2f4930a5f",
+    "root_state": "present"
+  },
+  "context": {
+    "binding_sha256": "478a2730a1261036dcdb6b1c44a09e82bea3efd2bad8eb7df3134976840b9f7c",
+    "client_id": "b71b57ece85bb62d71e444adb361f482",
+    "job_id": "4a68c1a0a2f95f8ecd6d1bf7ee4c7beb",
+    "management_epoch": 1,
+    "management_sha256": "c77441c52a0a70c694ed9824d778ee7c66235826ffe0f0fb88a07a8f6fca5b48",
+    "namespace": "42577467e4265105a9fc6fef6070b8a29577356052d05cced0cf91a264cf74a5",
+    "original_pin": null,
+    "project_id": "9a57c1210ff96f6e8c6372217385facdf296cae21093758528aa919598130148",
+    "recipe": {
+      "category_path": [
+        "category"
+      ],
+      "constraints_sha256": "d709745ab18405dff572c41053eda5cbe12c350ebbabdcd0d52ea1e80962368a",
+      "evidence_path": [
+        "evidence",
+        "sources"
+      ],
+      "key_prefix": "note.",
+      "kind": "literal_source",
+      "lineage_path": [
+        "lineage"
+      ],
+      "override_prefix": "override.",
+      "rules": [
+        {
+          "category": "current",
+          "max_age_ms": null,
+          "origins": [
+            "native_operator_assertion"
+          ]
+        },
+        {
+          "category": "ordinary",
+          "max_age_ms": 7776000000,
+          "origins": [
+            "native_operator_assertion",
+            "typed_host_outcome"
+          ]
+        },
+        {
+          "category": "preference",
+          "max_age_ms": null,
+          "origins": [
+            "native_operator_assertion"
+          ]
+        }
+      ],
+      "text_path": [
+        "text"
+      ],
+      "version": 1
+    },
+    "session_id": "c3afcb04d5805a0f530611ee74d439b4"
+  },
+  "kind": "managed_literal_forget",
+  "metadata": {
+    "category": "ordinary",
+    "first_admitted_ms": 86400000,
+    "lineage": "a25d954b728c71bc15cdfe3ef4c63f6a87e9f22be1dd1e5ddf9edf02ab769193",
+    "policy_sha256": "dbc7d380793c1fd92543f35461f649e62c5b1ffb7e82d904314ce91395ec651e",
+    "recipe_sha256": "818634825cb494606d25195a6601971a17542ed2caa22f28d1e18b1971b18cf7",
+    "valid_until_ms": 7862400000
+  },
+  "operation_id": "2d9e95d5c835ff085cf3eb5ab0f00e68",
+  "policy": {
+    "kind": "session"
+  },
+  "reason": "Forget selected synthetic claim",
+  "request_sha256": "9b051f6e9fac22bbf0b47263b253f36162c69aab241b56409474eba219923a79",
+  "scope": "selected literal derivative; original journal, management review journal and shared evidence remain",
+  "target": {
+    "bytes": 1082,
+    "key": "note.a25d954b728c71bc15cdfe3ef4c63f6a87e9f22be1dd1e5ddf9edf02ab769193",
+    "operation_id": "5c1471d72903e2ad92fbd6f4ae66e3f5",
+    "revision": 1,
+    "sha256": "101616baaa98218c0d51799a5cf199ffeba4f26dec2cbef3b198fbc2d868c3c6",
+    "value": {
+      "category": "ordinary",
+      "created_at_ms": 864000000,
+      "event_at_ms": null,
+      "evidence": {
+        "sources": [
+          {
+            "content_sha256": "4c1adf410e8092458cf9598d4ed4ba92a9ddc6c05fa3727c188a5fce5feada84",
+            "coverage": "available",
+            "end_byte": 19,
+            "kind": "input.assertion.ordinary",
+            "occurrence_id": "00000000000000000000000000000001",
+            "origin": "native_operator_assertion",
+            "path": null,
+            "quote": "Acme has owner Alex",
+            "quote_sha256": "4c1adf410e8092458cf9598d4ed4ba92a9ddc6c05fa3727c188a5fce5feada84",
+            "receipt_sha256": "249ded81fc093
+MANAGEMENT_CLI_LOSS_WITH_LIVE_EFFECT_UNKNOWN_AND_RELEASED

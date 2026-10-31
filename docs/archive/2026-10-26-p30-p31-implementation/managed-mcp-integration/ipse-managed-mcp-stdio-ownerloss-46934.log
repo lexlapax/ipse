@@ -1,0 +1,8 @@
+Running ExUnit with seed: 774850, max_cases: 8
+Excluding tags: [:test]
+Including tags: [managed_stdio_owner_loss: true]
+
+.
+Finished in 5.0 seconds (2.4s on load, 0.00s async, 2.6s sync)
+
+Result: 1 passed, 64 excluded

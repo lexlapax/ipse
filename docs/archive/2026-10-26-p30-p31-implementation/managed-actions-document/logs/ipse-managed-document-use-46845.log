@@ -1,0 +1,28 @@
+Running ExUnit with seed: 46844, max_cases: 8
+Excluding tags: [:test]
+Including tags: [nested_document_use: :current]
+
+DOCUMENT_DIAGNOSTIC: {:held, %{owner: true, home: true, binding: true, cwd: true}}
+DOCUMENT_DIAGNOSTIC: {{Ipse.Extension.ProjectIdentity, :with_held_binding},
+ {:error, :project_identity_unavailable}}
+
+
+  1) test managed document publication reuses the held binding and enforces current at native switch (Ipse.Extension.ManagedCollectionCallSessionTest)
+     test/ipse/extension/managed_collection_call_session_test.exs:719
+     Assertion with == failed
+     code:  assert result["outcome"]["status"] ==
+              if :current == :current do
+                "ok"
+              else
+                "unknown"
+              end
+     left:  "failed"
+     right: "ok"
+     stacktrace:
+       test/ipse/extension/managed_collection_call_session_test.exs:823: (test)
+
+
+Finished in 1.1 seconds (0.00s async, 1.1s sync)
+
+Result: 0/1 passed, 77 excluded
+Failed: 1 test

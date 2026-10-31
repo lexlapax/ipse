@@ -1,0 +1,7 @@
+Path.wildcard("_build/document-held-read-sol-20261029/_build/dev/lib/*/ebin") |> Enum.each(&Code.prepend_path/1)
+{:ok, _} = Application.ensure_all_started(:ipse)
+ExUnit.start(autorun: false, seed: 20261029)
+Code.require_file("test/ipse/extension/collection_document_held_read_test.exs")
+Code.require_file("test/ipse/extension/collection_held_read_test.exs")
+result = ExUnit.run()
+System.halt(if result.failures == 0, do: 0, else: 1)

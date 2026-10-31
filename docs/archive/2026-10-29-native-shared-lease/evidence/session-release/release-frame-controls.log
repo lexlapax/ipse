@@ -1,0 +1,8 @@
+Running ExUnit with seed: 804061, max_cases: 8
+Excluding tags: [:test]
+Including tags: [location: {"test/ipse/session/export_lock_test.exs", 135}]
+
+.
+Finished in 3.1 seconds (0.00s async, 3.1s sync)
+
+Result: 1 passed, 5 excluded

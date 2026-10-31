@@ -1,0 +1,27 @@
+%{
+  fixture: "headless-typed-loopback",
+  root_generation: 0,
+  consent_sequence: 0,
+  managed_intents: 0,
+  lifecycle_outcomes: 1,
+  last_invocation_input: nil,
+  saved_restore: :ok
+}
+%{
+  fixture: "headless-typed-direct",
+  root_generation: 0,
+  consent_sequence: 0,
+  managed_intents: 0,
+  lifecycle_outcomes: 1,
+  last_invocation_input: [],
+  saved_restore: :ok
+}
+%{
+  fixture: "headless-typed-diagnostic",
+  root_generation: 0,
+  consent_sequence: 0,
+  managed_intents: 0,
+  lifecycle_outcomes: 1,
+  last_invocation_input: [],
+  saved_restore: :ok
+}

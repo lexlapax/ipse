@@ -1,0 +1,23 @@
+{
+  "scope": "Actual standalone CLI finite-retention native switch integration in matched frozen host graph; later direct-result/latest artifact/full-source/package scope not qualified",
+  "graph": "/home/lexlapax/projects/lexlapax/ipse/_build/retention-cli-final-switch-20261028",
+  "result": {
+    "seconds": 12.5,
+    "seed": 49022,
+    "passed": 1,
+    "excluded": 8
+  },
+  "base": "docs/archive/2026-10-28-retention-publication-deadline/manifest.json",
+  "base_manifest": {
+    "bytes": 6788,
+    "sha256": "31f9e6e2dbd3b403e7a6e6b44ba2df8b40a10bccd2c7a103df484de714491c6e"
+  },
+  "helper_sha256": "113df584e83b7749a11a72509092cb9c2b32d6fdc3fcf91b0181335f5f8c2550",
+  "changed_modules": [
+    "Ipse.Extension.Consent",
+    "Ipse.CLI",
+    "Ipse.CLI.Knowledge",
+    "Ipse.CLI.Knowledge.Management",
+    "Ipse.CLI.Terminal"
+  ]
+}

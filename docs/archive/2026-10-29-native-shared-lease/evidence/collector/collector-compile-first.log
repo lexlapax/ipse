@@ -1,0 +1,18 @@
+error: `syscall` redeclared with a different signature
+  --> native/ipse-lease-sink.rs:60:5
+   |
+60 |     fn syscall(number: isize, ...) -> isize;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ this signature doesn't match the previous declaration
+   |
+  ::: native/ipse-linux-sandbox.rs:14:5
+   |
+14 |     fn syscall(number: i64, ...) -> i64;
+   |     ------------------------------------ `syscall` previously declared here
+   |
+   = note: expected `unsafe extern "C" fn(i64, ...) -> i64`
+              found `unsafe extern "C" fn(isize, ...) -> isize`
+   = note: `-D clashing-extern-declarations` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clashing_extern_declarations)]`
+
+error: aborting due to 1 previous error
+

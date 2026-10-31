@@ -37,7 +37,7 @@ try do
     if package == "knowledge",
       do: ~w(notes knowledge/records knowledge/contracts knowledge/decision_policy),
       else:
-        ~w(evidence store store/state store/mcp_cas adapters documents documents/zip documents/docx documents/parser_stage documents/pdf)
+        ~w(evidence store store/state store/mcp_cas store/collection store/collection/index store/collection/projection store/collection/generation store/collection/directory store/collection/selected store/collection/job store/collection/reduction store/collection/finalization store/collection/paged store/collection/producer store/collection/producer_progress adapters documents documents/zip documents/docx documents/parser_stage documents/pdf)
 
   helpers = for path <- helper_paths, do: Path.join([__DIR__, "src", path <> ".ex"])
 
@@ -57,6 +57,7 @@ try do
   description = module.describe()
   true = description["sdk"] === 2
   true = description["capabilities"] == IpseKnowledge.Profiles.capabilities(package, preset)
+  :ok = Ipse.Extension.Catalog.validate(description["exports"], description["capabilities"])
   File.rm!(entry_path)
   File.cp!(Path.expand("../../LICENSE", __DIR__), Path.join(temporary, "LICENSE"))
 
@@ -110,6 +111,11 @@ try do
         }
       end)
   }
+
+  manifest =
+    if Map.has_key?(description, "subscriptions"),
+      do: Map.put(manifest, "subscriptions", description["subscriptions"]),
+      else: manifest
 
   manifest_bytes = IO.iodata_to_binary(JSON.encode!(manifest))
   true = byte_size(manifest_bytes) <= 16_384

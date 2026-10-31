@@ -1,0 +1,46 @@
+    warning: unused alias Journal
+    │
+ 45 │   alias Ipse.{Journal, JSON, Runner, Session, Usage}
+    │   ~
+    │
+    └─ test/ipse/session/share_host_job_test.exs:45:3
+
+    warning: unused alias Runner
+    │
+ 45 │   alias Ipse.{Journal, JSON, Runner, Session, Usage}
+    │   ~
+    │
+    └─ test/ipse/session/share_host_job_test.exs:45:3
+
+Running ExUnit with seed: 598511, max_cases: 8
+Excluding tags: [:native_sandbox, :macos_sandbox, :macos_filesystem, :memory_scope]
+
+
+
+  1) test actual Host, selected artifact and worker bind the sealed action and reject foreign controls (Ipse.Session.ShareHostJobTest)
+     test/ipse/session/share_host_job_test.exs:190
+     ** (MatchError) no match of right hand side value:
+
+         {:error, :extension_admission_refused}
+
+     stacktrace:
+       test/ipse/session/share_host_job_test.exs:161: Ipse.Session.ShareHostJobTest.__ex_unit_setup_0/1
+       test/ipse/session/share_host_job_test.exs:42: Ipse.Session.ShareHostJobTest.__ex_unit__/2
+
+
+
+  2) test cancellation kills the real Host and worker while its Writer drain is suspended (Ipse.Session.ShareHostJobTest)
+     test/ipse/session/share_host_job_test.exs:217
+     ** (MatchError) no match of right hand side value:
+
+         {:error, :extension_admission_refused}
+
+     stacktrace:
+       test/ipse/session/share_host_job_test.exs:161: Ipse.Session.ShareHostJobTest.__ex_unit_setup_0/1
+       test/ipse/session/share_host_job_test.exs:42: Ipse.Session.ShareHostJobTest.__ex_unit__/2
+
+
+Finished in 0.6 seconds (0.1s on load, 0.00s async, 0.5s sync)
+
+Result: 0/2 passed
+Failed: 2 tests

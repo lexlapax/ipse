@@ -1,0 +1,11 @@
+DOCUMENT_PACKED_LAYOUT_MANIFEST_OK: %{
+  source_files: 4,
+  log_files: 6,
+  resolved_runtime_paths: 705,
+  physical_regular_files: 696,
+  inherited_symlink_source_paths: 9,
+  changed_beams: ["ipse/ebin/Elixir.Ipse.Extension.Collection.DocumentStage.beam",
+   "ipse/ebin/Elixir.Ipse.Extension.CollectionStore.beam"],
+  inherited_unchanged_paths: 703,
+  helper_unchanged: true
+}

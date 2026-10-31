@@ -18,9 +18,14 @@ case mode do
       {:ok, receipt} =
         Review.with_review(command, facts, fn permit ->
           "#NativeReview<private>" = inspect(permit)
+          :ok = Review.check(permit, command, facts)
+          ^refused = Review.consumed_receipt(permit, command, facts)
+          ^refused = Task.async(fn -> Review.check(permit, command, facts) end) |> Task.await()
           ^refused = Task.async(fn -> Review.consume(permit, command, facts) end) |> Task.await()
           ^refused = Review.consume(%{permit | ref: make_ref()}, command, facts)
           {:ok, receipt} = Review.consume(permit, command, facts)
+          {:ok, ^receipt} = Review.consumed_receipt(permit, command, facts)
+          ^refused = Review.check(permit, command, facts)
           ^refused = Review.consume(permit, command, facts)
           "native_review" = receipt["kind"]
           ^command = receipt["command"]

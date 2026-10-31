@@ -41,6 +41,84 @@ defmodule Ipse.QuestionValidationTest do
     assert {:error, _} = Questions.validate(%{"questions" => [Map.put(choice(), "kind", "text")]})
   end
 
+  test "new batches reject identical questions without invalidating historical receipts" do
+    duplicate = Map.put(choice(), "id", "other")
+    batch = %{"questions" => [choice(), duplicate]}
+    assert {:ok, ^batch} = Questions.validate(batch)
+    assert {:error, message} = Questions.validate_new(batch)
+    assert message =~ "repeat"
+
+    equivalent =
+      duplicate
+      |> Map.delete("recommended")
+      |> put_in(["options", Access.at(0), "id"], "renamed_local")
+
+    assert {:error, _} = Questions.validate_new(%{"questions" => [choice(), equivalent]})
+
+    text = %{"id" => "one", "prompt" => "Describe it", "kind" => "text"}
+
+    explicit_nil =
+      text |> Map.put("id", "two") |> Map.put("options", nil) |> Map.put("recommended", nil)
+
+    assert {:error, _} = Questions.validate_new(%{"questions" => [text, explicit_nil]})
+
+    distinct = put_in(duplicate, ["options", Access.at(0), "label"], "On device")
+    assert {:ok, _} = Questions.validate_new(%{"questions" => [choice(), distinct]})
+  end
+
+  test "only a validated answer in the current user turn suppresses an exact question" do
+    first = %{"questions" => [choice()]}
+    repeated = %{"questions" => [Map.put(choice(), "id", "other")]}
+
+    assistant = %{
+      "role" => "assistant",
+      "tool_calls" => [
+        %{
+          "id" => "call",
+          "function" => %{"name" => "ask_operator", "arguments" => Jason.encode!(first)}
+        }
+      ]
+    }
+
+    answer = %{
+      "role" => "tool",
+      "tool_call_id" => "call",
+      "content" => Jason.encode!(%{"answers" => %{"stack" => "local"}}),
+      "ipse_tool_outcome" => %{"status" => "result_recorded"}
+    }
+
+    user = %{"role" => "user", "content" => "Plan this"}
+    assert Questions.repeated_answer?([user, assistant, answer], repeated)
+
+    equivalent =
+      update_in(repeated, ["questions", Access.at(0)], fn q ->
+        q |> Map.delete("recommended") |> put_in(["options", Access.at(0), "id"], "new_id")
+      end)
+
+    assert Questions.repeated_answer?([user, assistant, answer], equivalent)
+    refute Questions.repeated_answer?([user, assistant], repeated)
+
+    refute Questions.repeated_answer?(
+             [user, assistant, Map.put(answer, "content", "{}")],
+             repeated
+           )
+
+    refute Questions.repeated_answer?([user, assistant, answer, user], repeated)
+    unrelated = put_in(assistant, ["tool_calls", Access.at(0), "function", "name"], "read")
+    refute Questions.repeated_answer?([user, unrelated, answer, assistant], repeated)
+    changed = put_in(repeated, ["questions", Access.at(0), "prompt"], "Choose a region")
+    refute Questions.repeated_answer?([user, assistant, answer], changed)
+
+    described =
+      put_in(
+        repeated,
+        ["questions", Access.at(0), "options", Access.at(0), "description"],
+        "Uses this device"
+      )
+
+    refute Questions.repeated_answer?([user, assistant, answer], described)
+  end
+
   test "single and multiple selections require explicit valid IDs, never recommendations" do
     args = %{"questions" => [choice()]}
     assert {:error, _} = Questions.validate_answers(args, %{})

@@ -1,0 +1,11 @@
+TERMINAL_DISPLAY_REPAIR_MANIFEST_OK: %{
+  negative_delta: ["native/ipse-terminal-lease.rs"],
+  manifest_entries: 17,
+  source_files: 32,
+  changed_sources: ["dev/fixtures/terminal_lease_probe.rs",
+   "native/ipse-terminal-lease.rs"],
+  negative_source_files: 31,
+  production_helper: "3fa931bdf2d551440813507a608d9a36f7bf199801d87b89bea18a345458d318",
+  hook_helper: "86d3bb41a29dbefd96b20cb1b1c8ff87d528a508bc072368795b1e99a4517a14",
+  production_has_no_test_markers: true
+}

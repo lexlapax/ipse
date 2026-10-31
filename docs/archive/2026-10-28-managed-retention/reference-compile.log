@@ -1,0 +1,14 @@
+     warning: Ipse.Session.Reference.withdrawn_message/2 is undefined or private
+     │
+ 483 │                 {:ok, retracted} = Ipse.Session.Reference.withdrawn_message(original, text)
+     │                                                           ~
+     │
+     └─ lib/ipse/session/managed_reference.ex:483:59: Ipse.Session.ManagedReference.withdraw/3
+
+     warning: Ipse.Session.Reference.selected_publishers/1 is undefined or private
+     │
+ 522 │               Ipse.Session.Reference.selected_publishers(%{"content" => message["content"]})
+     │                                      ~
+     │
+     └─ lib/ipse/session/managed_reference.ex:522:38: Ipse.Session.ManagedReference.safely_projectable?/3
+

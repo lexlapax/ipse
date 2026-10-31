@@ -66,16 +66,7 @@ defmodule Ipse.Provider.Ollama do
     url = endpoint(config)
     body = request_body(config, messages, tools)
 
-    state = %{
-      lines: Stream.new_lines(:lf),
-      content: Stream.new_buffer(),
-      thinking: Stream.new_buffer(),
-      calls: [],
-      call_count: 0,
-      done: false,
-      usage: %{},
-      reported_model: nil
-    }
+    state = new_state()
 
     headers =
       if config[:api_key] in [nil, ""],
@@ -87,49 +78,75 @@ defmodule Ipse.Provider.Ollama do
              consume(state, chunk, emit)
            end),
          {:ok, state} <- last_line(state, emit),
-         :ok <- Stream.check_deadline(state) do
-      if state.done do
-        response_id = :crypto.strong_rand_bytes(8) |> Base.encode16(case: :lower)
-        content = Stream.buffer_value(state.content)
-        thinking = Stream.buffer_value(state.thinking)
-        native_calls = Enum.reverse(state.calls)
+         :ok <- Stream.check_deadline(state),
+         do: finish_state(state)
+  end
 
-        calls =
-          Enum.with_index(native_calls)
-          |> Enum.map(fn {call, index} ->
-            %{
-              "id" => call["id"] || "ollama_#{response_id}_#{index}",
-              "type" => "function",
-              "function" => %{
-                "name" => call["function"]["name"],
-                "arguments" => encode_args(call["function"]["arguments"])
-              }
+  # Unwired owned transport uses the same native parser with a private sink.
+  @doc false
+  def parse_buffered(bytes) when is_binary(bytes) do
+    sink = fn _ -> :ok end
+
+    with {:ok, state} <- consume(new_state(), bytes, sink),
+         {:ok, state} <- last_line(state, sink),
+         do: finish_state(state)
+  end
+
+  defp new_state do
+    %{
+      lines: Stream.new_lines(:lf),
+      content: Stream.new_buffer(),
+      thinking: Stream.new_buffer(),
+      calls: [],
+      call_count: 0,
+      done: false,
+      usage: %{},
+      reported_model: nil
+    }
+  end
+
+  defp finish_state(state) do
+    if state.done do
+      response_id = :crypto.strong_rand_bytes(8) |> Base.encode16(case: :lower)
+      content = Stream.buffer_value(state.content)
+      thinking = Stream.buffer_value(state.thinking)
+      native_calls = Enum.reverse(state.calls)
+
+      calls =
+        Enum.with_index(native_calls)
+        |> Enum.map(fn {call, index} ->
+          %{
+            "id" => call["id"] || "ollama_#{response_id}_#{index}",
+            "type" => "function",
+            "function" => %{
+              "name" => call["function"]["name"],
+              "arguments" => encode_args(call["function"]["arguments"])
             }
-          end)
+          }
+        end)
 
-        native = %{
-          "role" => "assistant",
-          "content" => content,
-          "thinking" => thinking,
-          "tool_calls" => native_calls
-        }
+      native = %{
+        "role" => "assistant",
+        "content" => content,
+        "thinking" => thinking,
+        "tool_calls" => native_calls
+      }
 
-        message = %{
-          "role" => "assistant",
-          "content" => content,
-          "provider_data" => %{"provider" => "ollama", "message" => native}
-        }
+      message = %{
+        "role" => "assistant",
+        "content" => content,
+        "provider_data" => %{"provider" => "ollama", "message" => native}
+      }
 
-        message =
-          if state.reported_model,
-            do: put_in(message, ["provider_data", "reported_model"], state.reported_model),
-            else: message
+      message =
+        if state.reported_model,
+          do: put_in(message, ["provider_data", "reported_model"], state.reported_model),
+          else: message
 
-        message = if calls == [], do: message, else: Map.put(message, "tool_calls", calls)
-        with :ok <- Stream.check_deadline(state), do: {:ok, message, state.usage}
-      else
-        {:error, "Ollama stream ended before its completion marker; no tools were executed."}
-      end
+      message = if calls == [], do: message, else: Map.put(message, "tool_calls", calls)
+      with :ok <- Stream.check_deadline(state), do: {:ok, message, state.usage}
+    else
+      {:error, "Ollama stream ended before its completion marker; no tools were executed."}
     end
   end
 

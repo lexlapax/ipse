@@ -87,6 +87,16 @@ assert {:error, :invalid_input_witness} =
            original_ticket
          )
 
+assert {:error, :invalid_input_witness} =
+         Ipse.Session.replace_draft_observed(
+           session,
+           channel,
+           draft_id,
+           revision + 1,
+           original,
+           original_ticket
+         )
+
 assert {:ok, %{"render_id" => first}} =
          Ipse.Session.render_draft(session, channel, draft_id, revision)
 
@@ -98,14 +108,29 @@ assert {:ok, %{"render_id" => _stale}} =
 
 send(reader, {:read, channel, %{"kind" => "prompt"}})
 
-assert_receive {:read_result, {:ok, "rejected replacement" = rejected_replace, rejected_witness}},
+assert_receive {:read_result,
+                {:ok, "/enhance replace rejected replacement" = rejected_replace,
+                 rejected_witness}},
                5_000
 
 assert {:ok, rejected_ticket2} =
          Ipse.Session.stage_input(session, channel, rejected_replace, rejected_witness)
 
 assert {:error, :invalid_input_witness} =
-         Ipse.Session.replace_draft_observed(
+         Task.async(fn ->
+           Ipse.Session.replace_draft_command_observed(
+             session,
+             channel,
+             draft_id,
+             revision,
+             rejected_replace,
+             rejected_ticket2
+           )
+         end)
+         |> Task.await()
+
+assert {:error, :invalid_input_witness} =
+         Ipse.Session.replace_draft_command_observed(
            session,
            channel,
            draft_id,
@@ -120,6 +145,22 @@ assert {:error, :draft_recovery_required} =
 assert {:error, :invalid_input_witness} =
          Ipse.Session.discard_input(session, channel, rejected_ticket2)
 
+send(reader, {:read, channel, %{"kind" => "prompt"}})
+
+assert_receive {:read_result, {:ok, "rejected replacement" = old_replace, old_witness}}, 5_000
+assert {:ok, old_ticket} = Ipse.Session.stage_input(session, channel, old_replace, old_witness)
+
+assert {:error, :invalid_input_witness} =
+         Ipse.Session.replace_draft_observed(
+           session,
+           channel,
+           draft_id,
+           revision + 1,
+           old_replace,
+           old_ticket
+         )
+
+assert {:error, :invalid_input_witness} = Ipse.Session.discard_input(session, channel, old_ticket)
 send(reader, {:read, channel, %{"kind" => "prompt"}})
 
 assert_receive {:read_result,

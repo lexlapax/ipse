@@ -1,0 +1,19 @@
+Running ExUnit with seed: 46858, max_cases: 8
+Excluding tags: [:test]
+Including tags: [managed_ab_probe: true]
+
+MANAGED_AB_OBSERVATIONS=[{3, "root_observation", false}, {3, "root_observation", false}]
+
+
+  1) test publication cannot discard an earlier stale managed A while citing current source B (Ipse.Extension.ManagedCollectionCallSessionTest)
+     test/ipse/extension/managed_collection_call_session_test.exs:1015
+     Expected truthy, got nil
+     code: assert read_a
+     stacktrace:
+       test/ipse/extension/managed_collection_call_session_test.exs:1030: (test)
+
+
+Finished in 2.3 seconds (0.00s async, 2.3s sync)
+
+Result: 0/1 passed, 95 excluded
+Failed: 1 test

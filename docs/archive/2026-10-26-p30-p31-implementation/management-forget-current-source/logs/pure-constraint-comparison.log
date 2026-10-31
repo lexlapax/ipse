@@ -1,0 +1,14 @@
+%{
+  artifact: "knowledge",
+  fixture_constraints: "d709745ab18405dff572c41053eda5cbe12c350ebbabdcd0d52ea1e80962368a",
+  selected_constraints: "fa53c1fc285724db5cad36e3292d54175aa126a956e27857f812e306f691abc3",
+  selected_policy_result: {:error, :collection_policy_refused},
+  recipe_valid: true
+}
+%{
+  artifact: "knowledge-current",
+  fixture_constraints: "d709745ab18405dff572c41053eda5cbe12c350ebbabdcd0d52ea1e80962368a",
+  selected_constraints: "d709745ab18405dff572c41053eda5cbe12c350ebbabdcd0d52ea1e80962368a",
+  selected_policy_result: :ok,
+  recipe_valid: true
+}

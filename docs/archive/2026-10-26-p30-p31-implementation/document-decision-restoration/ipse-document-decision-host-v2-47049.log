@@ -1,0 +1,49 @@
+Running ExUnit with seed: 47049, max_cases: 8
+Excluding tags: [:test]
+Including tags: [document_decision_session: true, gate_compatibility: true, document_decision_lineage: true]
+
+
+
+  1) test managed mutation classification includes inherited reads and unavailable lineage (Ipse.Session.ManagedToolUseTest)
+     test/ipse/session/managed_tool_use_test.exs:110
+     ** (KeyError) key "ffa63583dfa6706b87d284b86b0d693a161e4840aad2c5cf6b5d27c3b9621f7d" not found in:
+
+         %{
+           "a6a752ea325576426c3275aa9f6603497a2ca344d980b046d2829857f6c31816" => %{
+             "collection" => %{
+               "floor" => 0,
+               "floor_anchor" => nil,
+               "generation" => 0,
+               "manifest_sha256" => nil,
+               "project" => "9359f3bb2efa7aabd0264fb67fb1d99f91871778e9b887179d6b2debaa251ec6",
+               "root_sha256" => nil,
+               "root_state" => "absent"
+             },
+             "namespace" => "9359f3bb2efa7aabd0264fb67fb1d99f91871778e9b887179d6b2debaa251ec6",
+             "pin_sha256" => "64f46a7526a186d2346552453ae478ca51244674f5b21ba150bd483b39f7c812",
+             "policy_generation" => 1,
+             "project_id" => "244210e48437b6556980a70249a99369934a352429034cef9d7bd253b3bf2c01",
+             "subject" => %{
+               "kind" => "root_observation",
+               "request_sha256" => "1f58b9145b24d108d7ac38887338b3ea3229833b9c1e418250343f907bfd1047",
+               "result_sha256" => "f6a214f7a5fcda0c2cee9660b7fc29f5649e3c68aad48e20e950137c98913a68"
+             },
+             "version" => 3
+           }
+         }
+
+     code: assert ManagedToolUse.managed_invocation?(
+     stacktrace:
+       :erlang.map_get("ffa63583dfa6706b87d284b86b0d693a161e4840aad2c5cf6b5d27c3b9621f7d", %{"a6a752ea325576426c3275aa9f6603497a2ca344d980b046d2829857f6c31816" => %{"collection" => %{"floor" => 0, "floor_anchor" => nil, "generation" => 0, "manifest_sha256" => nil, "project" => "9359f3bb2efa7aabd0264fb67fb1d99f91871778e9b887179d6b2debaa251ec6", "root_sha256" => nil, "root_state" => "absent"}, "namespace" => "9359f3bb2efa7aabd0264fb67fb1d99f91871778e9b887179d6b2debaa251ec6", "pin_sha256" => "64f46a7526a186d2346552453ae478ca51244674f5b21ba150bd483b39f7c812", "policy_generation" => 1, "project_id" => "244210e48437b6556980a70249a99369934a352429034cef9d7bd253b3bf2c01", "subject" => %{"kind" => "root_observation", "request_sha256" => "1f58b9145b24d108d7ac38887338b3ea3229833b9c1e418250343f907bfd1047", "result_sha256" => "f6a214f7a5fcda0c2cee9660b7fc29f5649e3c68aad48e20e950137c98913a68"}, "version" => 3}})
+       (ipse 0.1.0) lib/ipse/session/managed_lineage.ex:1106: anonymous fn/2 in Ipse.Session.ManagedLineage.decode/2
+       (elixir 1.20.4) lib/enum.ex:1725: Enum."-map/2-lists^map/1-1-"/2
+       (ipse 0.1.0) lib/ipse/session/managed_lineage.ex:1098: Ipse.Session.ManagedLineage.invocation_dependencies/2
+       (ipse 0.1.0) lib/ipse/session/managed_tool_use.ex:901: Ipse.Session.ManagedToolUse.invocation_union/1
+       (ipse 0.1.0) lib/ipse/session/managed_tool_use.ex:26: Ipse.Session.ManagedToolUse.managed_invocation?/1
+       test/ipse/session/managed_tool_use_test.exs:148: (test)
+
+..
+Finished in 2.4 seconds (0.5s on load, 0.01s async, 1.8s sync)
+
+Result: 2/3 passed, 16 excluded
+Failed: 1 test

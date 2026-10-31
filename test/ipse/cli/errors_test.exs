@@ -3,8 +3,9 @@ defmodule Ipse.CLI.ErrorsTest do
   import ExUnit.CaptureIO
   alias Ipse.CLI.Errors
 
-  @mapped ~w(invalid_handoff invalid_handoff_record resume_configuration_mismatch journal_limit_reached invalid_session session_not_found invalid_id invalid_journal incomplete_journal session_locked journal_unavailable workspace_not_found workspace_path_unavailable invalid_provider_endpoint question_confirmation invalid_answer)a
+  @mapped ~w(invalid_handoff invalid_handoff_record resume_configuration_mismatch journal_limit_reached invalid_session session_not_found invalid_id invalid_journal incomplete_journal session_locked header_unconfirmed session_lock_identity_unavailable journal_lock_owner_required journal_unavailable workspace_not_found workspace_path_unavailable invalid_provider_endpoint question_confirmation invalid_answer)a
 
+  @tag lifetime_receipt_followup: true
   test "each mapped error supplies a cause and a real recovery anchor without term dumps" do
     for reason <- @mapped do
       %{text: text, recovery: recovery} = Errors.message(reason)
@@ -17,6 +18,25 @@ defmodule Ipse.CLI.ErrorsTest do
       assert File.regular?(path)
       assert anchor in recovery_anchors(path)
       assert Errors.format(reason) == text <> " See " <> recovery <> "."
+    end
+  end
+
+  @tag lifetime_receipt_followup: true
+  test "unconfirmed fresh header preserves uncertainty and requires explicit recovery" do
+    %{text: text, recovery: recovery} = Errors.message({:error, :header_unconfirmed})
+    assert text =~ "Preserve pending files and any published journal"
+    assert text =~ "before explicit resume after its lock is free"
+    assert text =~ "Do not automatically retry"
+    assert recovery == "docs/operator/recovery.md#respect-active-ownership"
+  end
+
+  test "fenced journal refusals preserve the original identity files" do
+    for reason <- [:session_lock_identity_unavailable, :journal_lock_owner_required] do
+      %{text: text, recovery: recovery} = Errors.message({:error, reason})
+      assert text =~ "Preserve the original journal and lock file"
+      assert recovery == "docs/operator/recovery.md#respect-active-ownership"
+      refute text =~ "delete"
+      refute text =~ "recreate"
     end
   end
 

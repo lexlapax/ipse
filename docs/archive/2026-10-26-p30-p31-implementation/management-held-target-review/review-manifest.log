@@ -1,0 +1,7 @@
+HELD_TARGET_MANIFEST_OK: %{
+  manifest_entries: 11,
+  source_files: 7,
+  runtime_files: 726,
+  changed_from_collection_v2: ["Elixir.Ipse.Extension.Collection.ObservedRead.beam"],
+  helper_unchanged: true
+}

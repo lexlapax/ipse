@@ -1,0 +1,19 @@
+%{
+  "actual_prepare_mutations" => 11168,
+  "max_frame_bytes" => 13531,
+  "packed_bytes" => 96223258,
+  "prepare_plus_proposed_accept_mutations" => 16445,
+  "semantic_note" => "actual C.value_prepare/SDK/Core-validator costs, one isolated target per value; missing physical-layout API and pending-map migration.accept are not implemented or dispatched",
+  "values" => 5277
+}
+%{
+  {1, 1} => 2510,
+  {1, 2} => 380,
+  {2, 3} => 1,
+  {2, 4} => 133,
+  {3, 5} => 1001,
+  {3, 6} => 1,
+  {4, 7} => 1,
+  {4, 8} => 1250
+}
+35085

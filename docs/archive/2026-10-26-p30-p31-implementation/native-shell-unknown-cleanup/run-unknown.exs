@@ -1,0 +1,7 @@
+Code.prepend_paths(Path.wildcard(Path.join(__DIR__, "lib/*/ebin")))
+{:ok, _} = Application.ensure_all_started(:ipse)
+Code.require_file("test/test_helper.exs")
+ExUnit.configure(autorun: false, exclude: [:test], include: [supersession_scenario: "terminal_unknown"], seed: 46831)
+Code.require_file("test/ipse/session/managed_supersession_session_test.exs")
+result = ExUnit.run()
+System.halt(if result.failures == 0, do: 0, else: 2)

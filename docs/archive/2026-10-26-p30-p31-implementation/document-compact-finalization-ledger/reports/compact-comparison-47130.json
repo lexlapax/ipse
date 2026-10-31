@@ -1,0 +1,58 @@
+{
+  "scope": "new artifact/explicit response compact_v1 from known private shared-appended checkpoint; only modeled finalization, not acquisition/rebuild/native effects, Session appends or cross-Session adoption",
+  "version": 1,
+  "kind": "new_code_compact_finalization_closed_model_comparison",
+  "fresh_ids": {
+    "first": "000000000000000000000000000F4241",
+    "start": 1000000,
+    "last": "00000000000000000000000000100D7F",
+    "unique_actions": 52031
+  },
+  "native_mutations_executed": 0,
+  "old_native_receipts_replayed": 0,
+  "selected_map_exact_equal": true,
+  "selected_records": 5277,
+  "selected_generation": 19640,
+  "descriptors_sha256": "dd5de4d15e4467ac6e92324593d90da89ffce802eabd27959816c5225d43dfdf",
+  "totals_exact_equal": true,
+  "request_operations_geometry_payload_sha_and_sizes_exact_equal": true,
+  "request_digest_changes": {
+    "commit": 654,
+    "stage.inspect": 649,
+    "value.prepare_inline": 646,
+    "value.write_parts": 1075
+  },
+  "digest_scope": "new stage epochs/operation IDs are fresh; request digests are not required equal. Exact canonical selected descriptors and retained logical payload hashes/counts/parts/sizes match",
+  "totals_with_one_checkpoint_inspection": {
+    "action_events": 104062,
+    "effects": 2375,
+    "invocations": 655,
+    "max_frame_bytes": 13561,
+    "minimum_action_journal_bytes": 161998001,
+    "reads": 49656
+  },
+  "finalization_only": {
+    "replies": 654,
+    "kinds": {
+      "inline": 654
+    },
+    "document_bytes": 907489,
+    "result_source_slots": 0,
+    "output_events": 0,
+    "maximum_document_bytes": 1797
+  },
+  "old_full_finalization_only": {
+    "replies": 654,
+    "kinds": {
+      "inline": 334,
+      "sdk2_paged": 320
+    },
+    "document_bytes": 10719368,
+    "result_source_slots": 320,
+    "output_events": 3344,
+    "maximum_document_bytes": 39764
+  },
+  "complete_new_public_objects": 655,
+  "maximum_inline_frame_bytes": 1839,
+  "remaining": "action events/pair bytes still exceed one Session; public producer, safe durable boundaries, whole native allocation/history/maintenance/migration and provenance remain unqualified"
+}

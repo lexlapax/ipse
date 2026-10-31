@@ -1,0 +1,9 @@
+** (MatchError) no match of right hand side value:
+
+    {:ok,
+     [Ipse.CLI, Ipse.CLI.Knowledge, Ipse.CLI.Knowledge.Management,
+      Ipse.CLI.Terminal, Ipse.Extension.Consent],
+     %{compile_warnings: [], runtime_warnings: []}}
+
+    /tmp/ipse-retention-final-switch-build-46790.exs:15: (file)
+    (elixir 1.20.4) lib/code.ex:1639: Code.require_file/2

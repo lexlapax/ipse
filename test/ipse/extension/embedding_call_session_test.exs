@@ -590,6 +590,130 @@ defmodule Ipse.Extension.EmbeddingCallSessionTest do
     assert_idle_resume(ctx, pid, cfg, http)
   end
 
+  @tag selection_bootstrap: true
+  test "read-only public selection binds Saved metadata without provider or Usage admission",
+       ctx do
+    http = http(ctx, 768)
+    cfg = config(ctx, http.base, 768) |> Map.put(:approval, :ask)
+    pid = start(ctx, cfg)
+    request = %{"op" => "embedding.profile", "version" => 1, "profile" => "vectors"}
+    invoke(pid, request, %{"read" => false})
+    done(pid)
+    refute_receive {:ipse, ^pid, {:approval, _, _, _}}, 20
+    assert calls(ctx) == []
+    ev = events(ctx, pid)
+    [result] = results(ev)
+    assert result["version"] === 2
+    assert result["approval"] == "not_required"
+    assert result["namespace"] == Session.info(pid).id
+
+    assert result["outcome"]["value"]["profile"] ===
+             hd(ev)["metadata"]["embedding_profiles"]["vectors"]
+
+    refute Enum.any?(
+             ev,
+             &(&1["type"] in ~w(request_admitted extension_embedding_request extension_effect_result))
+           )
+
+    assert {:ok, _} = Session.Saved.restore(ev, Session.info(pid).id)
+
+    altered = put_in(hd(ev)["metadata"], ["embedding_profiles", "vectors", "model"], "changed")
+    assert {:ok, foreign_binding} = Ipse.Extension.EmbeddingCall.profile_binding(altered, request)
+
+    tampered =
+      Enum.map(ev, fn event ->
+        if event["request"] == request do
+          event = Map.put(event, "effect_binding", foreign_binding)
+
+          if event["type"] == "extension_action_result" do
+            outcome = %{
+              "status" => "ok",
+              "value" => Ipse.Extension.EmbeddingCall.profile_value(foreign_binding)
+            }
+
+            event |> Map.put("outcome", outcome) |> Map.put("outcome_sha256", digest(outcome))
+          else
+            event
+          end
+        else
+          event
+        end
+      end)
+
+    assert {:error, _} = Session.Saved.restore(tampered, Session.info(pid).id)
+    assert_idle_resume(ctx, pid, cfg, http)
+  end
+
+  @tag selection_pin: true
+  test "public bootstrap feeds an approved v2 pin and mismatch never reaches provider", ctx do
+    http = http(ctx, 768)
+    cfg = config(ctx, http.base, 768) |> Map.put(:approval, :ask)
+    pid = start(ctx, cfg)
+
+    invoke(pid, %{"op" => "embedding.profile", "version" => 1, "profile" => "vectors"}, %{
+      "read" => false
+    })
+
+    done(pid)
+    [profile] = results(events(ctx, pid))
+    selection = profile["outcome"]["value"]["selection_sha256"]
+
+    request =
+      request() |> Map.put("version", 2) |> Map.put("expected_selection_sha256", selection)
+
+    invoke(pid, request, %{"read" => false})
+    assert_receive {:ipse, ^pid, {:approval, ref, "extension:embedding.create", proposed}}, 10_000
+    assert proposed["request"] == request
+    assert calls(ctx) == []
+    assert :ok = Session.approve(pid, ref, true)
+    assert_receive {:embedding_http, tag, handler, _}, 5000
+    assert tag == http.tag
+    send(handler, :respond)
+    done(pid)
+    ev = events(ctx, pid)
+    [_, result] = results(ev)
+    assert result["outcome"]["value"]["selection_sha256"] == selection
+    assert {:ok, _} = Session.Saved.restore(ev, Session.info(pid).id)
+
+    mismatch = Map.put(request, "expected_selection_sha256", digest("different selection"))
+    invoke(pid, mismatch, %{"read" => false})
+    done_any(pid)
+    refute_receive {:ipse, ^pid, {:approval, _, "extension:embedding.create", _}}, 20
+    assert length(calls(ctx)) == 1
+    final = events(ctx, pid)
+
+    refute Enum.any?(
+             final,
+             &(&1["type"] == "extension_action_intent" and &1["request"] == mismatch)
+           )
+
+    assert Enum.count(final, &(&1["type"] == "request_admitted")) == 1
+    assert {:ok, _} = Session.Saved.restore(final, Session.info(pid).id)
+  end
+
+  @tag selection_bootstrap_refusal: true
+  test "missing or ungranted public profile never admits an action or provider call", ctx do
+    http = http(ctx, 768)
+
+    for {variant, profile} <- [{:mixed, "missing"}, {:ungranted, "vectors"}] do
+      cfg = config(ctx, http.base, 768, variant) |> Map.put(:approval, :ask)
+      pid = start(ctx, cfg)
+
+      invoke(pid, %{"op" => "embedding.profile", "version" => 1, "profile" => profile}, %{
+        "read" => false
+      })
+
+      done_any(pid)
+      ev = events(ctx, pid)
+      assert results(ev) == []
+      refute Enum.any?(ev, &(&1["type"] in ~w(extension_action_intent request_admitted)))
+      refute_receive {:ipse, ^pid, {:approval, _, _, _}}, 20
+      assert calls(ctx) == []
+      assert {:ok, _} = Session.Saved.restore(ev, Session.info(pid).id)
+      assert :ok = Session.close_confirmed(pid)
+    end
+  end
+
   defp config(ctx, base, dimensions, variant \\ :mixed) do
     assert {:ok, installed} =
              Artifact.import(ctx.artifacts[variant], Path.join(ctx.home, "extensions/artifacts"))
@@ -709,7 +833,22 @@ defmodule Ipse.Extension.EmbeddingCallSessionTest do
     calls_before = calls(ctx)
     resumed = start(ctx, cfg, id)
     assert Session.info(resumed).phase == :idle
-    assert File.read!(path) == before
+    after_bytes = File.read!(path)
+    assert String.starts_with?(after_bytes, before)
+
+    appended =
+      binary_part(after_bytes, byte_size(before), byte_size(after_bytes) - byte_size(before))
+
+    prior_events = before |> String.split("\n", trim: true) |> Enum.map(&Jason.decode!/1)
+
+    if hd(prior_events)["metadata"]["release_receipt_layout"] do
+      [marker] = appended |> String.split("\n", trim: true) |> Enum.map(&Jason.decode!/1)
+      assert Ipse.Session.ReleaseReceipt.valid_owner_marker?(marker, id)
+      refute marker["owner_id"] in Enum.map(prior_events, & &1["owner_id"])
+    else
+      assert appended == ""
+    end
+
     assert calls(ctx) == calls_before
     tag = http.tag
     refute_receive {:embedding_http, ^tag, _, _}, 100

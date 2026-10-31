@@ -1,0 +1,19 @@
+Running ExUnit with seed: 46883, max_cases: 8
+Excluding tags: [:native_sandbox, :macos_sandbox, :macos_filesystem, :memory_scope]
+
+
+
+  1) test strict deadline entry refuses before callback/staging while ordinary storage remains available (Ipse.Extension.CollectionDeadlineGateTest)
+     test/ipse/extension/collection_deadline_gate_test.exs:5
+     match (=) failed
+     code:  assert {:ok, %{"generation" => 1}} = Collection.execute(root, namespace, request, Ipse.Usage.id())
+     left:  {:ok, %{"generation" => 1}}
+     right: {:error, :collection_unavailable}
+     stacktrace:
+       test/ipse/extension/collection_deadline_gate_test.exs:21: (test)
+
+.
+Finished in 0.04 seconds (0.00s async, 0.04s sync)
+
+Result: 1/2 passed
+Failed: 1 test

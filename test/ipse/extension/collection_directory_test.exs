@@ -16,6 +16,24 @@ defmodule Ipse.Extension.CollectionDirectoryTest do
   defp select(index, n, width \\ 32),
     do: D.select(index, %{"op" => "neighbors", "request" => request(n, width)}, "present")
 
+  test "snapshot selection consumes a bounded read without selecting any value" do
+    request = %{"op" => "snapshot"}
+    assert {:ok, tree} = D.index(["ipse.observation", "note.one"])
+    assert D.read_request?(request)
+    assert {:ok, 1} = D.cost(request)
+    assert {:ok, [], nil, nil} = D.select(tree, request, "present")
+    refute D.read_request?(Map.put(request, "extra", true))
+    assert :error = D.cost(Map.put(request, "extra", true))
+  end
+
+  test "pending summary selects at most 64 cached references within its fixed prefix" do
+    pending = for n <- 0..69, do: "pending." <> String.pad_leading(Integer.to_string(n), 3, "0")
+    assert {:ok, tree} = D.index(Enum.sort(["note.one", "pendingX", "z"] ++ pending))
+    assert D.pending_keys(tree) == Enum.take(pending, 64)
+    assert {:ok, 8} = D.cost(%{"op" => "pending_summary"})
+    assert :error = D.cost(%{"op" => "pending_summary", "prefix" => "note."})
+  end
+
   test "exact and between fences include the preceding leaf and two following boundaries" do
     assert {:ok, tree} = D.index(["other", key(0), key(10), key(20), key(30), "z"])
     assert {:ok, [a, b, c, d], nil, slots} = select(tree, 15)

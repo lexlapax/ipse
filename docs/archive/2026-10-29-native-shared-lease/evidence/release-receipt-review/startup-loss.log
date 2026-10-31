@@ -1,0 +1,8 @@
+RELEASE_STARTUP_HELPER_LOSS_REVIEW: %{
+  root: "/tmp/ipse-release-startup-loss-review-99bfc0d5bee3e44e1b481eced7fa5e37",
+  starting_owner_marker_count: 1,
+  owner_markers_while_contender_holds: 2,
+  journal_changed_while_contender_holds: true,
+  startup_returned_ok: true,
+  contender_lock_retained: true
+}

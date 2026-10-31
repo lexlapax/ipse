@@ -1,0 +1,37 @@
+Running ExUnit with seed: 926425, max_cases: 4
+Excluding tags: [:native_sandbox, :macos_sandbox, :macos_filesystem, :memory_scope]
+
+Running ExUnit with seed: 30115, max_cases: 4
+
+...%{
+  outcome: {:done, {:error, :shared_producer_ineligible, %{}}},
+  inference_calls: 0,
+  source_policy_case: [expires_at_ms: 1793314284472]
+}
+%{
+  outcome: {:done, {:error, :shared_producer_ineligible, %{}}},
+  inference_calls: 0,
+  source_policy_case: [historical: true]
+}
+%{
+  outcome: {:done, {:error, :shared_producer_ineligible, %{}}},
+  inference_calls: 0,
+  source_policy_case: [observed_at_ms: 1793314344473]
+}
+...%{
+  effects: 12,
+  page_bytes: 45064,
+  producer_reads: 114,
+  inference_calls: 4,
+  max_host_frame: 12759,
+  ready_bytes: 4795
+}
+...
+Finished in 3.4 seconds (0.8s on load, 0.00s async, 2.6s sync)
+
+Result: 9 passed
+
+.
+Finished in 6.7 seconds (0.04s on load, 0.00s async, 6.7s sync)
+
+Result: 1 passed

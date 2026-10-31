@@ -1,0 +1,9 @@
+69d3e205d5c0e8b309b9c8535b8d124d989f32da8bab55a8fffb51f8a84e9fd8  docs/archive/2026-10-29-native-shared-lease/evidence/export/source-v9.tar
+0978f25d66831146a279c6ec8b844e8fdf3d205cd608e34b15ff29a53a41f3e2  _build/shared-lease-sol-20261029/transaction-export-test-v9
+2e5c693f12e9d10b598c24a58789ccb2a960a00e93095fe685fb24a598fedc27  _build/shared-lease-sol-20261029/ipse-runner-export-v8
+bc44d52b31bce5e3def6f0e9c0de3996502f671730705ef5c8c9203244e32166  _build/shared-lease-sol-20261029/ipse-runner-export-race-v8
+e12113e351ddcff8a3ceaf1a1c1786fa0e93e4af85d4e8bd2644e512f78d8eb6  docs/archive/2026-10-29-native-shared-lease/evidence/export/receiver-controls-v9.log
+0470eb23e3b5c00415980656278c3395b677c5d69439a0f6e0636cd772d17d8f  docs/archive/2026-10-29-native-shared-lease/evidence/export/receiver-valid-v9.log
+8bed7fd41b612ab1cd629d1b5ad3576db0ff1d4c1cde111b5baded85a382b3de  docs/archive/2026-10-29-native-shared-lease/evidence/export/transaction-export-race-v9.log
+5ceb9590041aa7c7fac067f941fef4ba7b210666dd5d363a2fa298b490f3cd5e  docs/archive/2026-10-29-native-shared-lease/evidence/export/rustc-v9.txt
+1d4b8818d7a9d8f4cd61fb367c7364ae380cec9eebae9834d5ac2c2ede98611b  docs/archive/2026-10-29-native-shared-lease/evidence/export/platform-v9.txt

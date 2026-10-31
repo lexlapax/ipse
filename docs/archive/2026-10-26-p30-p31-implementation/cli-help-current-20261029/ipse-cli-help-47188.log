@@ -1,0 +1,90 @@
+Ipse 0.1.0 — a general-purpose local AI agent
+
+ipse --version                  Show the application version
+ipse version [--json]           Show version or non-secret runtime build identity
+ipse login                      Continue with ChatGPT
+ipse login --provider xai_oauth  Grok device login (registered Ipse client required)
+ipse status                     Show subscription sign-in status as JSON
+ipse logout                     Sign out of ChatGPT
+ipse status --provider xai_oauth  Inspect Grok subscription sign-in
+ipse logout --provider xai_oauth  Remove Grok subscription sign-in
+ipse chat [options]              Interactive conversation
+ipse run [options] "task"         Run one task
+ipse demo                        Scripted demo in a temporary directory
+ipse sessions [--json]           List saved sessions
+ipse skills [--cwd PATH]         List available skills
+ipse config [options]            Show effective non-secret configuration
+ipse doctor [options] [--json]    Diagnose setup offline; --probe-provider opts into GET probes
+ipse setup [options]             Preview or confirm private provider/model defaults
+ipse knowledge enable           Review and save project knowledge permission in a native terminal
+ipse knowledge status [--json]   Inspect saved project knowledge permission
+ipse knowledge permissions      Show the complete saved permission
+ipse knowledge disable          Revoke permission through a fresh native review
+ipse knowledge forget NOTE_KEY  Review and forget one selected literal
+ipse knowledge expire NOTE_KEY  Reclaim an already expired signed ordinary note
+ipse knowledge retention KEY --policy POLICY  Temporarily unavailable: publication lifetime gates
+ipse knowledge operation ID     Inspect a management journal without replaying its action
+ipse extension import PATH       Copy a local inert extension artifact
+ipse extension inspect DIGEST    Verify an installed artifact without executing it
+ipse extension list              List inert built-in extension descriptors
+ipse extension check --fixture PATH  Exercise selected extensions with synthetic inputs
+ipse research --resume ID        Export a saved session's evidence ledger locally
+ipse result OUTPUT_ID --resume ID  Read a complete saved extension result locally
+ipse diagnose --resume ID        Inspect content-free saved context measurements
+ipse budget --resume ID          Inspect saved shared admission reservations
+ipse handoff --resume ID --note TEXT  Export an explicit recovery note locally
+
+--provider chatgpt|openai|ollama|anthropic|gemini|openrouter|xai|xai_oauth|openai_compatible|demo  (default: chatgpt)
+--model NAME                         Override the provider default
+--cwd PATH                           Workspace (default: current directory)
+--handoff PATH                       Fresh chat only: import reviewed historical recovery context
+--resume ID                          Resume a saved session
+--yes                                Approve eligible effects; execution ceilings still apply
+--planning                           Start or resume with a planning execution ceiling
+--base-url URL                       Explicit API/local endpoint (no subscription override)
+--upstream SLUG                      setup only: pinned OpenRouter upstream
+--data-collection deny|allow          setup only: OpenRouter policy (default deny)
+--state-dir PATH                     Session directory
+--json                               sessions: id/provider/model/cwd; version/doctor: structured facts
+--probe-provider                     doctor only: bounded GET reachability checks, no inference
+--write                              setup only: save an explicit provider/model configuration
+--replace                            setup only: back up and replace setup-owned settings
+--note TEXT                          handoff only: operator-written continuation note
+--max-steps N                        Model calls per turn (default: 30)
+--max-output-tokens N                Per-request cap (API/local/Grok subscription; no aggregate budget)
+--context-bytes N                    Context byte ceiling (default: 400000)
+--no-compact                         Stop at the ceiling without automatic reduction
+--sandbox off|native                 Shell OS policy (default: off)
+--mcp-config PATH                    Explicit stdio/HTTP servers and capability allowlists
+--subagents                          Enable bounded local delegation with parent approvals
+--subagent-concurrency 1|2            Permit two parallel local children (requires --subagents)
+--config PATH                        Explicit operator JSON configuration
+--trust-project-config               Authorize scoped project settings for this run
+--no-project-config                  Ignore project/directory configuration
+--timeout-ms N                       Provider request timeout (1000..600000)
+--profile ID                         Select an operator-configured main profile
+--extension INSTANCE                 Activate a configured temporary extension instance
+--no-extensions                      Disable configured extension instances
+--fixture PATH                       Synthetic inputs for extension check
+--keep-fixture                       Retain its private scratch state and journals
+--developer-trace                    Sample synthetic Session dispatcher calls
+--trace-ms N                         Capture deadline, 1..5000 ms (default 1000)
+--trace-events N                     Sample limit, 1..128 (default 32)
+--observability off|local|export      Operator diagnostic capture policy (default off)
+
+Chat asks before writes, shell, MCP, and delegation. Headless run denies them without --yes.
+Protected Knowledge uses its separately saved permission.
+Shell execution uses your user permissions unless --sandbox native is selected.
+Native enforcement fails closed when unavailable; approvals remain required.
+--accept-edits                       Allow native workspace file edits in interactive chat
+Chat commands: /help /skills /session /info /diagnostics /permissions /permissions clear /observability off /events off /context /context refresh /ext [NAME JSON] /result JSON /cancel /exit.
+/enhance [TEXT]                      Draft a request in this conversation before submitting it
+/remember CATEGORY TEXT              Review and capture an ordinary, preference or current statement
+/correct NOTE_KEY TEXT               Unavailable pending native correction review
+/supersede NOTE_KEY TEXT             Unavailable pending native supersession review
+/plan                                Enter planning mode from an idle native terminal
+/plan exit                           Exit a locally entered planning mode
+/enhance show|replace [TEXT]|replace multi|accept [ID]|cancel  Review and manage the draft
+Invoke skills with $name.
+EOF finishes accepted work; errors and /cancel clear queued input.
+

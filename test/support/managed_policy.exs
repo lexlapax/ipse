@@ -177,12 +177,15 @@ defmodule Ipse.Test.ManagedPolicy do
     }
   end
 
-  def proof(origin \\ "interactive_operator", text \\ "Exact café 雪") do
+  # Trusted-function fixtures represent an already authenticated category review.
+  # Actual terminal/source admission is exercised separately.
+  def proof(origin \\ "native_operator_assertion", text \\ "Exact café 雪", category \\ "ordinary") do
     kind =
       case origin do
         "native_operator_answer" -> "input.operator_answer"
         "assistant_proposal" -> "answer.original"
         "typed_host_outcome" -> "tool.outcome"
+        "native_operator_assertion" -> "input.assertion." <> category
         _ -> "input.original"
       end
 

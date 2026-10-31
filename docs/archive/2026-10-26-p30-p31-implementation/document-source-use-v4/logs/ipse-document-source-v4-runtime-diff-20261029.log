@@ -1,0 +1,11 @@
+--- /tmp/ipse-document-source-v4-base-runtime-20261029.sha256	2026-10-29 18:55:34.383565778 -0700
++++ /tmp/ipse-document-source-v4-runtime-20261029.sha256	2026-10-29 18:55:29.598547812 -0700
+@@ -102,7 +102,7 @@
+ 85cd278eb51e8ac0dafbdfce9b714944ce90c6f49de21158d901473bc4e190f5  _build/dev/lib/ipse/ebin/Elixir.Ipse.Extension.ChildUsage.beam
+ 75e215c123066dd224c39a283b6b347bcd64cacee67fd794ac8cfd137705fe93  _build/dev/lib/ipse/ebin/Elixir.Ipse.Extension.Collection.Blocks.beam
+ d86ae4b56d01364b1acd8840d03965e8042f51288c2d0a333fa4510948f0075f  _build/dev/lib/ipse/ebin/Elixir.Ipse.Extension.Collection.Directory.beam
+-caa15f575ab080133baffafee708c8b3cea05941b305dd96229df39ebb1787d9  _build/dev/lib/ipse/ebin/Elixir.Ipse.Extension.Collection.DocumentSourceUse.beam
++9387aa0df598ef694176f47cf7c8052b32bb383531337808ca4bcd8d8e3ca69b  _build/dev/lib/ipse/ebin/Elixir.Ipse.Extension.Collection.DocumentSourceUse.beam
+ ff2e5120246809ab66f819de45298eb83c9f97f13b40330ab281b7bc4e461eb3  _build/dev/lib/ipse/ebin/Elixir.Ipse.Extension.Collection.DocumentStage.beam
+ e803f67bd5f1ece6b27d1bb3df71c89cddac943d6ebe593f93eda35bd28d2d2f  _build/dev/lib/ipse/ebin/Elixir.Ipse.Extension.Collection.Encoding.beam
+ 813e42f28a26e4e15a9f681191202781ef47de65a82464ab9fa05d243c8c9655  _build/dev/lib/ipse/ebin/Elixir.Ipse.Extension.Collection.ManagedPages.Planner.beam

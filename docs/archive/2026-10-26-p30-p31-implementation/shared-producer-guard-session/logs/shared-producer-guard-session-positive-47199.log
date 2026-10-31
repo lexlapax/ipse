@@ -1,0 +1,22 @@
+Running ExUnit with seed: 47199, max_cases: 8
+Excluding tags: [:test]
+Including tags: [document_guard_positive: true]
+
+
+
+  1) test actual Session binds native pending claim and four guarded batches before first-page publication (Ipse.SharedProducerGuardSessionTest)
+     test/extensions/knowledge/shared_producer_guard_session_test.exs:275
+     ** (MatchError) no match of right hand side value:
+
+         {:error, "Invalid extension configuration or operator trust policy."}
+
+     code: c = open(c)
+     stacktrace:
+       test/extensions/knowledge/shared_producer_guard_session_test.exs:78: Ipse.SharedProducerGuardSessionTest.open/1
+       test/extensions/knowledge/shared_producer_guard_session_test.exs:277: (test)
+
+
+Finished in 0.2 seconds (0.2s on load, 0.00s async, 0.03s sync)
+
+Result: 0/1 passed, 1 excluded
+Failed: 1 test

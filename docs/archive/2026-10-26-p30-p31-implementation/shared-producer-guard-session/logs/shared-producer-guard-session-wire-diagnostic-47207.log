@@ -1,0 +1,95 @@
+[
+  {
+    "admission": {
+      "admitted_at_ms": 1793320840855,
+      "attempt": 1,
+      "attempt_id": "d5f50909d2f12063ec4c9345328a225c",
+      "billing_mode": "local",
+      "endpoint_sha256": "c93bbbf79508e03053c2afb0a42212505d21a6d77975cc99ad3d2f9de74e8784",
+      "kind": "extension",
+      "model": "fixture-model",
+      "operation": "embedding",
+      "parent_request_id": null,
+      "parent_session_id": null,
+      "provider": "ollama",
+      "request_id": "e5ee7f5dc48825fd7436c8cc170b712c",
+      "selected_profile": "encoder",
+      "session_id": "b1612de88618dfa391d05b2e6678a04d",
+      "turn_id": "59b98da5d1ded82f1c1eab0d9470b024",
+      "type": "request_admitted",
+      "version": 2
+    },
+    "binding_sha256": "66f382f44f30ba8f9147a18c473f2edcdb2fdb341ad086156589b953fb2dfc8f",
+    "execution": {
+      "billing_mode": "local",
+      "dimension_mode": "native",
+      "dimensions": 1024,
+      "endpoint_sha256": "c93bbbf79508e03053c2afb0a42212505d21a6d77975cc99ad3d2f9de74e8784",
+      "id": "encoder",
+      "model": "fixture-model",
+      "operation": "embedding",
+      "provider": "ollama",
+      "timeout_ms": 5000
+    },
+    "identity_sha256": "94997f96a6630d5788eaa8955dd2ee6307442f205a9e36de1b46f7885a4b941b",
+    "operation_id": "e5ee7f5dc48825fd7436c8cc170b712c",
+    "parent_invocation_id": "925002ae694ffb96da8edd182f538cd0",
+    "request_sha256": "f34f478e16992d5881936978cae9e791f21cf1fcf22ec2dbfb6eb954e0d28ee8",
+    "type": "extension_embedding_request",
+    "version": 1
+  },
+  {
+    "admission_sha256": "2c9bfe760e8b03fa1db0463e70ddf4c7a1705e974e3800a49c999300bb343424",
+    "attempt_id": "d5f50909d2f12063ec4c9345328a225c",
+    "input_sha256": "f34f478e16992d5881936978cae9e791f21cf1fcf22ec2dbfb6eb954e0d28ee8",
+    "intent_id": "a9a8889c155dc9e301c12fd1d24dfd15",
+    "mode_sha256": "8eb1357a3b9d7b2f0a3fc0cc2cc855eb36c03f764f4daf16e663161c8a421ea0",
+    "phase": "embedding.create",
+    "pin_sha256": "82fa4b66aa73aa03c6fd88e43aa571a4cc7aef3aeb8411942c5b63401693ceea",
+    "request_id": "e5ee7f5dc48825fd7436c8cc170b712c",
+    "reservation_id": "eb22e67e4435bb22c2451c1174089762",
+    "route_sha256": "90852ce285d33157a66bdd652bca7e9c10ab24d4b3c24f5eb46e26a5c6c94f36",
+    "service_id": "local",
+    "session_id": "b1612de88618dfa391d05b2e6678a04d",
+    "source_sha256": "ab20469e8e6635f93e53d3073b4b2162280ca47abd0fd0a5712f483a6ac4c45f",
+    "tools_sha256": "cf1cbb66a638b4860a516671fb74850e6ccf787fe6c4c8d29e9c04efe880bd05",
+    "turn_id": "59b98da5d1ded82f1c1eab0d9470b024",
+    "type": "inference_dispatch_intent",
+    "version": 1
+  },
+  {
+    "attempt_id": "d5f50909d2f12063ec4c9345328a225c",
+    "duration_ms": 149,
+    "finality": "partial",
+    "operation": "embedding",
+    "outcome": "failed",
+    "reported_model": null,
+    "request_id": "e5ee7f5dc48825fd7436c8cc170b712c",
+    "type": "request_finished",
+    "usage": {
+      "counts": {
+        "input_cache_write_1h_tokens": null,
+        "input_cache_write_5m_tokens": null,
+        "input_cache_write_tokens": null,
+        "input_cached_tokens": null,
+        "input_tokens": null,
+        "input_uncached_tokens": null,
+        "output_reasoning_tokens": null,
+        "output_tokens": null,
+        "provider_duration_ns": null,
+        "provider_web_fetch_requests": null,
+        "provider_web_search_requests": null,
+        "total_tokens": null
+      },
+      "derived_fields": [],
+      "issues": [],
+      "not_applicable_fields": [
+        "output_tokens"
+      ],
+      "operation": "embedding",
+      "quality": "unavailable",
+      "version": 2
+    },
+    "version": 2
+  }
+]

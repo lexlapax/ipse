@@ -1,0 +1,35 @@
+
+== Compilation error in file docs/archive/2026-10-29-native-shared-lease/evidence/session-header-owner-loss/journal-instrumented.ex ==
+** (SyntaxError) invalid syntax found on docs/archive/2026-10-29-native-shared-lease/evidence/session-header-owner-loss/journal-instrumented.ex:199:19:
+     error: syntax error before: ','
+     │
+ 199 │                end,
+     │                   ^
+     │
+     └─ docs/archive/2026-10-29-native-shared-lease/evidence/session-header-owner-loss/journal-instrumented.ex:199:19
+    (elixir 1.20.4) lib/kernel/parallel_compiler.ex:548: anonymous fn/5 in Kernel.ParallelCompiler.spawn_workers/8
+{:error,
+ [
+   %{
+     message: "** (SyntaxError) invalid syntax found on docs/archive/2026-10-29-native-shared-lease/evidence/session-header-owner-loss/journal-instrumented.ex:199:19:\n     error: syntax error before: ','\n     │\n 199 │                end,\n     │                   ^\n     │\n     └─ docs/archive/2026-10-29-native-shared-lease/evidence/session-header-owner-loss/journal-instrumented.ex:199:19\n    (elixir 1.20.4) lib/kernel/parallel_compiler.ex:548: anonymous fn/5 in Kernel.ParallelCompiler.spawn_workers/8\n",
+     position: {199, 19},
+     file: "/home/lexlapax/projects/lexlapax/ipse/docs/archive/2026-10-29-native-shared-lease/evidence/session-header-owner-loss/journal-instrumented.ex",
+     stacktrace: [
+       {:elixir_compiler, :string, 3,
+        [file: ~c"src/elixir_compiler.erl", line: 11]},
+       {Kernel.ParallelCompiler, :"-spawn_workers/8-fun-0-", 5,
+        [file: ~c"lib/kernel/parallel_compiler.ex", line: 548]}
+     ],
+     source: "/home/lexlapax/projects/lexlapax/ipse/docs/archive/2026-10-29-native-shared-lease/evidence/session-header-owner-loss/journal-instrumented.ex",
+     span: nil,
+     severity: :error,
+     details: {:error,
+      %SyntaxError{
+        file: "/home/lexlapax/projects/lexlapax/ipse/docs/archive/2026-10-29-native-shared-lease/evidence/session-header-owner-loss/journal-instrumented.ex",
+        line: 199,
+        column: 19,
+        snippet: "               end,",
+        description: "syntax error before: ','"
+      }}
+   }
+ ], %{compile_warnings: [], runtime_warnings: []}}

@@ -1,0 +1,5 @@
+error: undefined variable "paths"
+└─ nofile:1
+
+** (CompileError) nofile: cannot compile file (errors have been logged)
+

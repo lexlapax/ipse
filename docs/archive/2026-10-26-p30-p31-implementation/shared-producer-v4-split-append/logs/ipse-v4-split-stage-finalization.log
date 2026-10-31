@@ -1,0 +1,6 @@
+{"canonical_equal":true,"initial_selection_reads":20,"max_job_bytes":5361,"max_reduction_reads":72,"native_operations":0,"phase_protocol_reads":[86,20,26,29,29,29,26,22,28,20],"phases":10,"protected_publication_demonstrated":false,"root_version":1,"selection_reads":29,"selection_stages":3}Running ExUnit with seed: 907377, max_cases: 4
+
+
+Finished in 4.5 seconds (4.5s on load, 0.00s async, 0.00s sync)
+
+Result: 0 tests

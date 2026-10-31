@@ -1,0 +1,8 @@
+Running ExUnit with seed: 46816, max_cases: 1
+Excluding tags: [:test]
+Including tags: [:public_collection_document]
+
+..
+Finished in 16.1 seconds (0.00s async, 16.1s sync)
+
+Result: 2 passed, 9 excluded

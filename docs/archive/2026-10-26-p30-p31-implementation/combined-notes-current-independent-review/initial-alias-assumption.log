@@ -1,0 +1,7 @@
+** (MatchError) no match of right hand side value:
+
+    ["priv/extension-bundles/catalog.json",
+     "_build/dev/lib/ipse/priv/extension-bundles/catalog.json"]
+
+    docs/archive/2026-10-26-p30-p31-implementation/combined-notes-current-independent-review/verify.exs:11: (file)
+    (elixir 1.20.4) lib/code.ex:1639: Code.require_file/2

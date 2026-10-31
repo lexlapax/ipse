@@ -1,0 +1,45 @@
+Running ExUnit with seed: 576548, max_cases: 4
+Excluding tags: [:test]
+Including tags: [v4_segmented_geometry: true, v4_corruption: true, v4_selected_reuse: true, v4_append: true]
+
+
+
+  1) test eight segmented documents preserve all 256 chunks within the per-call budget (Ipse.ProducerProgressTest)
+     test/extensions/knowledge/producer_progress_test.exs:342
+     ** (ExUnit.TimeoutError) test timed out after 60000ms. You can change the timeout:
+
+       1. per test by setting "@tag timeout: x" (accepts :infinity)
+       2. per test module by setting "@moduletag timeout: x" (accepts :infinity)
+       3. globally via "ExUnit.start(timeout: x)" configuration
+       4. by running "mix test --timeout x" which sets timeout
+       5. or by running "mix test --trace" which sets timeout to infinity
+          (useful when using IEx.pry/0)
+
+     where "x" is the timeout given as integer in milliseconds (defaults to 60_000).
+
+     code: {{:done, {:ok, completed}}, _} = append(resolved, args, facts(full.bundles), nil, d)
+     stacktrace:
+       (elixir 1.20.4) lib/string.ex:1974: String.valid_utf8?/1
+       extensions/knowledge/src/evidence.ex:1364: IpseKnowledge.Evidence.valid_document?/3
+       extensions/knowledge/src/evidence.ex:167: IpseKnowledge.Evidence.chunks/1
+       extensions/knowledge/src/store/collection/generation.ex:170: anonymous fn/1 in IpseKnowledge.Store.Collection.Generation.vector_page/6
+       (elixir 1.20.4) lib/enum.ex:4594: Enum.flat_map_list/2
+       (elixir 1.20.4) lib/enum.ex:4598: Enum.flat_map_list/2
+       extensions/knowledge/src/store/collection/generation.ex:169: IpseKnowledge.Store.Collection.Generation.vector_page/6
+       extensions/knowledge/src/store/collection/generation.ex:220: anonymous fn/6 in IpseKnowledge.Store.Collection.Generation.unpack_vector_pages/5
+       (elixir 1.20.4) lib/enum.ex:4419: Enum.predicate_list/3
+       extensions/knowledge/src/store/collection/generation.ex:218: IpseKnowledge.Store.Collection.Generation.unpack_vector_pages/5
+       extensions/knowledge/src/store/collection/producer_progress.ex:750: IpseKnowledge.Store.Collection.Producer.Progress.collect_page/1
+       extensions/knowledge/src/store/collection/producer_progress.ex:131: IpseKnowledge.Store.Collection.Producer.Progress.advance/2
+       test/extensions/knowledge/producer_progress_test.exs:114: Ipse.ProducerProgressTest.drive/2
+       test/extensions/knowledge/producer_progress_test.exs:599: Ipse.ProducerProgressTest.append/5
+       test/extensions/knowledge/producer_progress_test.exs:411: (test)
+       (ex_unit 1.20.4) lib/ex_unit/runner.ex:533: ExUnit.Runner.exec_test/2
+       (stdlib 8.1) timer.erl:599: :timer.tc/2
+       (ex_unit 1.20.4) lib/ex_unit/runner.ex:455: anonymous fn/6 in ExUnit.Runner.spawn_test_monitor/4
+
+...
+Finished in 64.6 seconds (4.1s on load, 0.00s async, 60.4s sync)
+
+Result: 3/4 passed, 4 excluded
+Failed: 1 test

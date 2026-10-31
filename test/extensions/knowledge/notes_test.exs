@@ -32,6 +32,21 @@ defmodule IpseKnowledge.NotesTest do
     end
   end
 
+  test "a note or historical version is unavailable before its own creation" do
+    assert {:ok, current} = N.new(attrs("current"), 10 * @day)
+    refute N.eligible?(current, 9 * @day)
+    refute N.coverage(current, 9 * @day)["available"]
+    assert N.eligible?(current, 10 * @day)
+
+    assert {:ok, changed} = N.supersede(current, attrs("current"), 100 * @day)
+    refute N.eligible?(changed["history"], 99 * @day)
+    assert N.eligible?(changed["history"], 100 * @day)
+    refute N.valid?(Map.put(changed["history"], "superseded_at_ms", 9 * @day))
+
+    assert {:error, :invalid_note} =
+             N.new(Map.put(attrs(), "observed_at_ms", 11 * @day), 10 * @day)
+  end
+
   test "first temporal update after day 90 retains prior support for a further year" do
     assert {:ok, old} = N.new(attrs("current"), 0)
     replacement = attrs("current") |> Map.put("text", "Acme has owner Blair")
@@ -93,6 +108,23 @@ defmodule IpseKnowledge.NotesTest do
     assert {:ok, ordinary} = N.new(attrs(), 0)
     assert {:ok, corrected} = N.supersede(ordinary, attrs(), 20 * @day)
     assert corrected["history"]["expires_at_ms"] == 90 * @day
+    assert corrected["current"]["expires_at_ms"] == 90 * @day
+
+    assert {:error, :invalid_note} = N.supersede(ordinary, attrs(), 90 * @day)
+
+    for category <- ~w(pin preference current) do
+      assert {:error, :invalid_note} = N.supersede(ordinary, attrs(category), 20 * @day)
+    end
+
+    assert {:ok, selected} =
+             N.retention(ordinary, %{"kind" => "pin"}, "explicit choice", 20 * @day)
+
+    assert {:ok, pinned} = N.supersede(ordinary, attrs("pin"), 30 * @day, selected["override"])
+    assert pinned["current"]["category"] == "pin"
+
+    new_source = Map.put(attrs(), "lineage", Ipse.JSON.sha256("new evidence"))
+    assert {:ok, fresh} = N.supersede(ordinary, new_source, 100 * @day)
+    assert fresh["current"]["expires_at_ms"] == 190 * @day
   end
 
   test "one-step downgrade persists against paraphrases with the same admitted lineage" do
@@ -104,6 +136,8 @@ defmodule IpseKnowledge.NotesTest do
     assert reduced["advance_floor"]
     assert reduced["note"]["category"] == "ordinary"
     assert reduced["note"]["expires_at_ms"] == 100 * @day
+
+    assert {:error, :invalid_note} = N.new(attrs("preference"), 9 * @day, reduced["override"])
 
     assert {:ok, recaptured} =
              N.new(
@@ -145,6 +179,121 @@ defmodule IpseKnowledge.NotesTest do
     assert {:ok, [expired]} = N.expired([reduced["note"], result["current"]], 103 * @day)
     assert expired == reduced["note"]
     assert N.valid_override?(reduced["override"])
+  end
+
+  test "reducing a current temporal claim discloses the loss of its future history policy" do
+    assert {:ok, current} = N.new(attrs("current"), 0)
+
+    for policy <- [
+          %{"kind" => "ordinary"},
+          %{"kind" => "duration", "duration_ms" => 7 * @day},
+          %{"kind" => "session"}
+        ] do
+      assert {:ok, receipt} = N.retention(current, policy, "operator choice", 10 * @day)
+      assert receipt["historical_gap"]
+    end
+
+    assert {:ok, pinned} = N.retention(current, %{"kind" => "pin"}, "operator choice", 10 * @day)
+    refute pinned["historical_gap"]
+  end
+
+  test "reducing pinned and enduring preference notes warns of potential historical coverage loss" do
+    for category <- ~w(pin preference),
+        policy <- [%{"kind" => "ordinary"}, %{"kind" => "session"}] do
+      assert {:ok, note} = N.new(attrs(category), 0)
+      assert {:ok, receipt} = N.retention(note, policy, "reduce", 10 * @day)
+      assert receipt["historical_gap"]
+    end
+
+    assert {:ok, ordinary} = N.new(attrs(), 0)
+    assert {:ok, receipt} = N.retention(ordinary, %{"kind" => "ordinary"}, "ordinary", @day)
+    refute receipt["historical_gap"]
+  end
+
+  test "new retention choices cannot predate the selected record or its supersession" do
+    assert {:ok, current} = N.new(attrs("current"), 10 * @day)
+
+    assert {:error, :invalid_retention} =
+             N.retention(current, %{"kind" => "ordinary"}, "earlier", 9 * @day)
+
+    assert {:ok, changed} = N.supersede(current, attrs("current"), 100 * @day)
+    history = changed["history"]
+
+    assert {:error, :invalid_retention} =
+             N.retention(history, %{"kind" => "session"}, "before supersession", 99 * @day)
+
+    assert {:ok, _} =
+             N.retention(history, %{"kind" => "ordinary"}, "at supersession", 100 * @day)
+  end
+
+  test "a later retention choice must match and follow the selected prior override" do
+    assert {:ok, current} = N.new(attrs("current"), 0)
+    assert {:ok, first} = N.retention(current, %{"kind" => "ordinary"}, "first", 20 * @day)
+    note = first["note"]
+    prior = first["override"]
+
+    assert {:error, :invalid_retention} =
+             N.retention(note, %{"kind" => "pin"}, "missing", 21 * @day)
+
+    assert {:error, :invalid_retention} =
+             N.retention(note, %{"kind" => "pin"}, "earlier", 19 * @day, prior)
+
+    for bad <- [
+          Map.put(prior, "lineage", Ipse.JSON.sha256("other")),
+          Map.put(prior, "policy", %{"kind" => "pin"}),
+          Map.put(prior, "updated_at_ms", 21 * @day)
+        ] do
+      assert {:error, :invalid_retention} =
+               N.retention(note, %{"kind" => "pin"}, "mismatch", 22 * @day, bad)
+    end
+
+    assert {:ok, second} = N.retention(note, %{"kind" => "pin"}, "second", 21 * @day, prior)
+    assert second["note"]["category"] == "pin"
+
+    # Matching the effective note cannot authenticate the retained operator reason.
+    assert {:ok, _} =
+             N.retention(
+               note,
+               %{"kind" => "pin"},
+               "second",
+               21 * @day,
+               Map.put(prior, "reason", "unverified alternative")
+             )
+
+    assert {:ok, forgotten} = N.forget(second["note"], "forget", 22 * @day, second["override"])
+    assert is_nil(forgotten["note"])
+  end
+
+  test "an ordinary source reason equal to the override marker can use host-checked absence" do
+    assert {:ok, note} = N.new(Map.put(attrs(), "reason", "operator override"), 0)
+    assert {:error, :invalid_retention} = N.retention(note, %{"kind" => "pin"}, "choice", @day)
+    assert {:error, :lineage_override_required} = N.supersede(note, attrs(), @day)
+    assert {:ok, correction} = N.supersede(note, attrs(), @day, :absent)
+    assert correction["current"]["expires_at_ms"] == 90 * @day
+
+    assert {:ok, result} =
+             N.retention(note, %{"kind" => "pin"}, "choice", @day, :absent)
+
+    assert result["note"]["category"] == "pin"
+
+    # The marker is a caller assertion; it cannot prove protected-store absence.
+    assert {:ok, _} =
+             N.retention(result["note"], %{"kind" => "ordinary"}, "later", 2 * @day, :absent)
+  end
+
+  test "an expired note cannot be revived by changing retention without fresh evidence" do
+    assert {:ok, note} = N.new(attrs(), 0)
+
+    for policy <- [
+          %{"kind" => "pin"},
+          %{"kind" => "ordinary"},
+          %{"kind" => "duration", "duration_ms" => @day}
+        ] do
+      assert {:error, :invalid_retention} = N.retention(note, policy, "too late", 90 * @day)
+    end
+
+    assert {:ok, forgotten} = N.forget(note, "suppress recapture", 90 * @day)
+    assert is_nil(forgotten["note"])
   end
 
   test "complete record plus evidence must fit maximum value; malformed policy cannot promote" do

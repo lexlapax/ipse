@@ -16,6 +16,8 @@ defmodule Ipse.Session do
 
   alias Ipse.Session.Invocation, as: CurrentInvocation
 
+  @synthetic_review_text "Synthetic grouped review.\nType pin 0123456789abcdef to confirm, or anything else to cancel.\n> "
+
   alias Ipse.Extension.{
     Projection,
     Catalog,
@@ -29,8 +31,20 @@ defmodule Ipse.Session do
     ResultSource
   }
 
-  def start_link(opts) do
+  def start_link(opts), do: start_session(opts, :legacy)
+
+  @doc false
+  # Inactive experiment; same-VM callers are trusted, not access-controlled.
+  # No CLI, config, or worker option selects this path.
+  def start_export_candidate_link(opts), do: start_session(opts, :export_v1)
+
+  @doc false
+  # Host-only candidate; no CLI, configuration, or worker selector exposes it.
+  def start_share_candidate_link(opts), do: start_session(opts, :share_candidate_v2)
+
+  defp start_session(opts, lock_mode) do
     config = Keyword.fetch!(opts, :config)
+    init_arg = if lock_mode == :legacy, do: opts, else: {lock_mode, opts}
 
     cond do
       not Ipse.Extension.Registry.valid_entries?(config) ->
@@ -40,7 +54,7 @@ defmodule Ipse.Session do
         {:error, :invalid_observability_policy}
 
       Map.get(config, :extensions, []) == [] ->
-        GenServer.start_link(__MODULE__, opts)
+        GenServer.start_link(__MODULE__, init_arg)
 
       true ->
         task = owned_task(fn -> Ipse.Extension.Registry.revalidate(config) end)
@@ -49,7 +63,7 @@ defmodule Ipse.Session do
         Ipse.Session.Resources.close_task(task.pid)
 
         case result do
-          {:ok, :ok} -> GenServer.start_link(__MODULE__, opts)
+          {:ok, :ok} -> GenServer.start_link(__MODULE__, init_arg)
           _ -> {:error, :extension_admission_refused}
         end
     end
@@ -82,6 +96,7 @@ defmodule Ipse.Session do
              Ipse.Session.DraftNative.policy(s.config)
            ) do
       record(s, event)
+      s = managed_event(s, event, projected)
       {:ok, %{s | draft: nil, messages: projected}}
     end
   end
@@ -97,12 +112,28 @@ defmodule Ipse.Session do
     do: GenServer.call(pid, {:accept_draft_observed, channel, render_id, text, witness})
 
   @doc false
+  def prepare_assertion(pid, channel, text, ticket),
+    do: GenServer.call(pid, {:prepare_assertion, channel, text, ticket})
+
+  @doc false
+  def accept_assertion_observed(pid, channel, render_id, text, witness),
+    do: GenServer.call(pid, {:accept_assertion_observed, channel, render_id, text, witness})
+
+  @doc false
   def replace_draft(pid, id, revision, text),
     do: GenServer.call(pid, {:replace_draft, id, revision, text})
 
   @doc false
   def replace_draft_observed(pid, channel, id, revision, text, ticket),
     do: GenServer.call(pid, {:replace_draft_observed, channel, id, revision, text, ticket})
+
+  @doc false
+  def replace_draft_command_observed(pid, channel, id, revision, command, ticket),
+    do:
+      GenServer.call(
+        pid,
+        {:replace_draft_command_observed, channel, id, revision, command, ticket}
+      )
 
   @doc false
   def replace_draft_lines_observed(pid, channel, id, revision, lines),
@@ -148,6 +179,14 @@ defmodule Ipse.Session do
     do: GenServer.call(pid, {:stage_input, channel, text, witness})
 
   @doc false
+  def enter_planning_observed(pid, channel, ticket),
+    do: GenServer.call(pid, {:enter_planning_observed, channel, ticket}, 15_000)
+
+  @doc false
+  def exit_planning_observed(pid, channel, ticket),
+    do: GenServer.call(pid, {:exit_planning_observed, channel, ticket}, 15_000)
+
+  @doc false
   def discard_input(pid, channel, witness),
     do: GenServer.call(pid, {:discard_input, channel, witness})
 
@@ -171,6 +210,314 @@ defmodule Ipse.Session do
     case Writer.source_query(s.journal_writer, :snapshot) do
       {:ok, snapshot} -> snapshot
       _ -> %{"version" => 1, "available" => false}
+    end
+  end
+
+  @doc false
+  def managed_event(s, event, messages \\ nil) do
+    messages = messages || s.messages
+
+    case Ipse.Session.ManagedLineage.advance(s.managed_lineage, event, s.messages, messages) do
+      {:ok, lineage} -> %{s | managed_lineage: lineage}
+      _ -> %{s | managed_lineage: {:error, :managed_lineage_unavailable}}
+    end
+  end
+
+  @doc false
+  def managed_dependencies(s, "extension.result"), do: Ipse.Session.ManagedOutput.snapshot(s)
+  def managed_dependencies(s, "tool.effect"), do: Ipse.Session.ManagedToolUse.snapshot(s)
+  def managed_dependencies(s, "tool.result"), do: Ipse.Session.ManagedToolUse.result_snapshot(s)
+
+  def managed_dependencies(s, phase) do
+    with {:ok, dependencies} <-
+           Ipse.Session.ManagedLineage.dependencies(s.managed_lineage, s.messages),
+         {:ok, input, extra, plan} <- managed_input(s, phase),
+         {:ok, dependencies} <- Ipse.Session.ManagedReference.union([dependencies, extra]) do
+      {:ok,
+       %{
+         dependencies: dependencies,
+         input_sha256: Ipse.JSON.digest([input]),
+         sha256: Ipse.JSON.digest([phase, input, dependencies]),
+         plan: plan
+       }}
+    else
+      _ -> {:error, :managed_lineage_unavailable}
+    end
+  rescue
+    _ -> {:error, :managed_lineage_unavailable}
+  end
+
+  @doc false
+  def managed_empty?(s) do
+    with {:ok, active} <- Ipse.Session.ManagedLineage.dependencies(s.managed_lineage, s.messages),
+         {:ok, inherited} <-
+           Ipse.Session.ManagedLineage.invocation_dependencies(
+             s.managed_lineage,
+             if(s.invocation.parent, do: s.invocation.parent["invocation_id"])
+           ),
+         {:ok, []} <-
+           Ipse.Session.ManagedReference.union([active, inherited, s.invocation.managed_reads]) do
+      true
+    else
+      _ -> false
+    end
+  rescue
+    _ -> false
+  end
+
+  @doc false
+  def managed_preflight(owner, job, phase) do
+    case GenServer.call(owner, {:managed_preflight_begin, job, phase}, 5_000) do
+      {:ok, :empty, view} ->
+        {:ok, view}
+
+      {:ok, context, dependencies, intent, candidate} ->
+        verdicts = Ipse.Session.ManagedUse.verdicts(context, dependencies)
+
+        result =
+          if is_map(candidate) and Enum.any?(verdicts, &(&1["status"] != "eligible")) do
+            case Ipse.Session.ManagedUse.root_transition_observation(
+                   context,
+                   dependencies,
+                   candidate
+                 ) do
+              {:ok, %{observation: observation, inspected: inspection}} ->
+                {:root_transition, observation, inspection}
+
+              _ ->
+                verdicts
+            end
+          else
+            verdicts
+          end
+
+        GenServer.call(
+          owner,
+          {:managed_preflight_commit, job, intent["intent_id"], result},
+          5_000
+        )
+
+      _ ->
+        {:error, :managed_reference_projection_unsafe}
+    end
+  catch
+    :exit, _ -> {:error, :managed_reference_projection_unsafe}
+  end
+
+  defp managed_preflight_view(s, phase) do
+    with {:ok, snapshot} <- managed_dependencies(s, phase),
+         {:ok, runtime, input, tools, admission} <- managed_dispatch_view(s, phase),
+         {:ok, %{route: route}} <-
+           Ipse.InferenceDispatch.selection(
+             s.config,
+             runtime,
+             Ipse.Session.InferenceDispatch.operation(phase),
+             Ipse.Session.InferenceDispatch.profile(phase, admission)
+           ) do
+      {:ok, snapshot, runtime, input, tools, admission, route}
+    else
+      _ -> {:error, :managed_reference_projection_unsafe}
+    end
+  end
+
+  defp managed_dispatch_view(s, phase) when phase in ["model", "compaction"],
+    do: Ipse.Session.Turn.dispatch_view(s, phase)
+
+  defp managed_dispatch_view(s, phase), do: Ipse.Session.Invocation.dispatch_view(s, phase)
+
+  defp managed_worker?(s, caller) do
+    s.task != nil and
+      (caller == s.task.pid or Ipse.Session.Resources.authorized_effect?(s.task.pid, caller))
+  end
+
+  defp managed_preflight_start(s, caller, phase) do
+    with true <- managed_worker?(s, caller),
+         {:ok, snapshot, runtime, input, tools, admission, route} <-
+           managed_preflight_view(s, phase) do
+      if snapshot.dependencies == [] do
+        dispatch =
+          Ipse.Session.InferenceDispatch.prepare(s, runtime, input, tools, phase, admission)
+
+        {:reply, {:ok, :empty, {runtime, input, tools, dispatch}}, s}
+      else
+        now = System.system_time(:millisecond)
+        source = source_snapshot(s)
+
+        intent = %{
+          "type" => "managed_preflight_intent",
+          "version" => 1,
+          "intent_id" => Ipse.Usage.id(),
+          "session_id" => s.id,
+          "turn_id" => admission["turn_id"],
+          "request_id" => admission["request_id"],
+          "phase" => phase,
+          "admission_sha256" => Ipse.JSON.digest([admission]),
+          "input_sha256" => Ipse.JSON.digest([input]),
+          "tools_sha256" => Ipse.JSON.digest([tools]),
+          "snapshot_sha256" => snapshot.sha256,
+          "before_sha256" => Ipse.JSON.digest(s.messages),
+          "dependencies_sha256" => Ipse.JSON.digest(snapshot.dependencies),
+          "route_sha256" => Ipse.JSON.digest([route]),
+          "source_generation" => source["generation"] || 0,
+          "policy_generation" => get_in(s.config, [:semantic_admission, "pin", "epoch"]) || 0,
+          "checked_at_ms" => now,
+          "deadline_ms" => now + 120_000
+        }
+
+        with {:ok, lineage} <-
+               Ipse.Session.ManagedLineage.advance(
+                 s.managed_lineage,
+                 intent,
+                 s.messages,
+                 s.messages
+               ),
+             true <- is_map(lineage) and not lineage.unavailable do
+          record(s, intent)
+
+          context = %{
+            config: s.config,
+            cwd: s.cwd,
+            session_id: s.id,
+            history_dir: s.dir,
+            owner: self(),
+            job_ref: s.job_ref,
+            source_binding: {:snapshot, phase, snapshot.sha256}
+          }
+
+          candidate =
+            case Ipse.Session.ManagedLineage.root_candidate(lineage, snapshot.dependencies) do
+              {:ok, action} -> action
+              _ -> nil
+            end
+
+          {:reply, {:ok, context, snapshot.dependencies, intent, candidate},
+           %{s | managed_lineage: lineage}}
+        else
+          _ -> {:reply, {:error, :managed_reference_projection_unsafe}, s}
+        end
+      end
+    else
+      _ -> {:reply, {:error, :managed_reference_projection_unsafe}, s}
+    end
+  end
+
+  defp managed_preflight_finish(s, caller, id, verdicts) do
+    with true <- managed_worker?(s, caller),
+         intent when is_map(intent) <- s.managed_lineage.preflight,
+         true <-
+           intent["intent_id"] == id and System.system_time(:millisecond) <= intent["deadline_ms"],
+         phase = intent["phase"],
+         {:ok, snapshot, _, input, tools, admission, route} <- managed_preflight_view(s, phase),
+         true <-
+           snapshot.sha256 == intent["snapshot_sha256"] and
+             Ipse.JSON.digest([input]) == intent["input_sha256"] and
+             Ipse.JSON.digest([tools]) == intent["tools_sha256"] and
+             Ipse.JSON.digest([admission]) == intent["admission_sha256"] and
+             Ipse.JSON.digest([route]) == intent["route_sha256"],
+         binding = Ipse.Session.ManagedLineage.preflight_binding(intent),
+         {:ok, projection} <-
+           managed_projection(s, snapshot, verdicts, binding, phase),
+         event = %{
+           "type" => "managed_preflight_result",
+           "version" => 1,
+           "intent_id" => id,
+           "projection" => projection,
+           "verdicts" => if(projection, do: nil, else: verdicts)
+         },
+         {:ok, messages, lineage} <-
+           Ipse.Session.ManagedLineage.replay_projection(s.managed_lineage, event, s.messages),
+         next = %{s | messages: messages, managed_lineage: lineage},
+         {:ok, _, runtime, input, tools, admission, _} <- managed_preflight_view(next, phase) do
+      record(s, event)
+
+      dispatch =
+        Ipse.Session.InferenceDispatch.prepare(next, runtime, input, tools, phase, admission)
+
+      {:reply, {:ok, {runtime, input, tools, dispatch}}, next}
+    else
+      _ -> managed_preflight_refused(s, caller, id)
+    end
+  rescue
+    _ -> managed_preflight_refused(s, caller, id)
+  end
+
+  defp managed_preflight_refused(s, caller, id) do
+    next =
+      if managed_worker?(s, caller) and is_map(s.managed_lineage) and
+           is_map(s.managed_lineage.preflight) and s.managed_lineage.preflight["intent_id"] == id do
+        event = %{"type" => "managed_preflight_refused", "version" => 1, "intent_id" => id}
+        record(s, event)
+        managed_event(s, event)
+      else
+        s
+      end
+
+    {:reply, {:error, :managed_reference_projection_unsafe}, next}
+  end
+
+  defp managed_projection(s, _, {:root_transition, observation, inspection}, binding, "model") do
+    with {:ok, event, _, _, _} <-
+           Ipse.Session.ManagedLineage.root_projection(
+             s.managed_lineage,
+             s.messages,
+             binding,
+             observation,
+             inspection
+           ),
+         do: {:ok, event},
+         else: (_ -> {:error, :managed_reference_projection_unsafe})
+  end
+
+  defp managed_projection(s, snapshot, verdicts, binding, phase)
+       when phase in ["model", "compaction"] do
+    with {:ok, event, _, _} <-
+           Ipse.Session.ManagedReference.project(
+             snapshot.plan,
+             verdicts,
+             binding,
+             s.managed_lineage.write_facts
+           ),
+         true <- is_map(event),
+         do: {:ok, event},
+         else: (_ -> {:error, :managed_reference_projection_unsafe})
+  end
+
+  defp managed_projection(_, snapshot, verdicts, binding, _) do
+    with {:ok, _} <-
+           Ipse.Session.ManagedReference.refresh(snapshot.dependencies, verdicts, binding),
+         do: {:ok, nil},
+         else: (_ -> {:error, :managed_reference_projection_unsafe})
+  end
+
+  defp managed_input(s, phase) when phase in ["model", "compaction"] do
+    with {:ok, plan} <-
+           Ipse.Session.ManagedReference.plan(s.managed_lineage.reference, s.messages),
+         {:ok, messages} <-
+           Ipse.Session.Draft.project(
+             s.draft,
+             s.messages,
+             s.reference_occurrences,
+             Ipse.Session.DraftNative.policy(s.config)
+           ) do
+      input =
+        if phase == "compaction",
+          do: s.compaction.summary_messages,
+          else: Ipse.Session.Context.header(s) ++ messages
+
+      {:ok, input, [], plan}
+    end
+  end
+
+  defp managed_input(s, phase) do
+    with {:ok, _, input, _, _} <- Ipse.Session.Invocation.dispatch_view(s, phase),
+         {:ok, inherited} <-
+           Ipse.Session.ManagedLineage.invocation_dependencies(
+             s.managed_lineage,
+             s.invocation.parent["invocation_id"]
+           ),
+         {:ok, dependencies} <-
+           Ipse.Session.ManagedReference.union([inherited, s.invocation.managed_reads]) do
+      {:ok, input, dependencies, nil}
     end
   end
 
@@ -209,17 +556,21 @@ defmodule Ipse.Session do
 
   defp drain_observations(pid, deadline) do
     try do
-      %{idle: idle, capture: capture} = GenServer.call(pid, :observation_drain_state, 500)
+      case GenServer.call(pid, :observation_drain_state, 500) do
+        %{idle: idle, capture: capture} ->
+          if idle and capture["mode"] != "off" and
+               Enum.any?(
+                 capture["sinks"],
+                 &(&1["closed"] == false and
+                     (not &1["ready"] or &1["pending"] > 0))
+               ) and
+               System.monotonic_time(:millisecond) < deadline do
+            Process.sleep(10)
+            drain_observations(pid, deadline)
+          end
 
-      if idle and capture["mode"] != "off" and
-           Enum.any?(
-             capture["sinks"],
-             &(&1["closed"] == false and
-                 (not &1["ready"] or &1["pending"] > 0))
-           ) and
-           System.monotonic_time(:millisecond) < deadline do
-        Process.sleep(10)
-        drain_observations(pid, deadline)
+        _ ->
+          :ok
       end
     catch
       :exit, _ -> :ok
@@ -261,6 +612,14 @@ defmodule Ipse.Session do
   defp operator_request(_s, %{"kind" => "prompt"} = request) when map_size(request) == 1,
     do: {:ok, "you> ", "prompt", nil}
 
+  defp operator_request(s, %{"kind" => "assertion", "render_id" => id} = request)
+       when map_size(request) == 2 do
+    case s.assertion_render do
+      %{render: %{"id" => ^id, "display" => display}} -> {:ok, display, "assertion", id}
+      _ -> :error
+    end
+  end
+
   defp operator_request(_s, %{"kind" => "control", "display" => display} = request)
        when map_size(request) == 2 and is_binary(display) do
     {:ok, display, "control", nil}
@@ -289,7 +648,16 @@ defmodule Ipse.Session do
 
   @impl true
 
-  def init(opts) do
+  # Header creation can outlive a dead Session through its file-server peer.
+  # Keep every selector closed until that IO is fenced by the lock owner.
+  def init({:export_v1, opts}) when is_list(opts), do: {:stop, :export_candidate_unavailable}
+
+  def init({:share_candidate_v2, opts}) when is_list(opts),
+    do: init_session(opts, :share_candidate_v2)
+
+  def init(opts) when is_list(opts), do: init_session(opts, :legacy)
+
+  defp init_session(opts, lock_mode) do
     config = Keyword.fetch!(opts, :config)
     requested_cwd = Keyword.fetch!(opts, :cwd)
     home = Map.get(config, :home) || System.get_env("IPSE_HOME") || Path.expand("~/.ipse")
@@ -299,7 +667,9 @@ defmodule Ipse.Session do
     owner_ref = if is_pid(opts[:owner]), do: Process.monitor(opts[:owner])
 
     with {:ok, handoff} <- handoff_option(opts),
+         :ok <- planning_cli_start_valid(config),
          :ok <- extension_configuration(config),
+         :ok <- Ipse.MCP.Planning.runtime_configuration(config),
          :ok <- Ipse.Observability.runtime(config),
          :ok <- Ipse.Usage.configuration(config),
          :ok <- ModelCall.configuration(config),
@@ -313,21 +683,54 @@ defmodule Ipse.Session do
          {:ok, cwd} <- Workspace.canonical_path(requested_cwd),
          true <- File.dir?(cwd),
          {:ok, _sandbox} <- Ipse.Tools.Sandbox.resolve(Map.get(config, :sandbox, :off), cwd),
-         {:ok, id, _events, config} <- open(dir, id, cwd, config),
-         {:ok, _} <- Registry.register(Ipse.Registry, {dir, id}, nil),
-         {:ok, lock} <- acquire_lock(Path.join(dir, id <> ".lock"), 10),
+         {:ok, id, _events, config, lock} <- open_and_lock(dir, id, cwd, config, lock_mode),
          {:ok, locked_events} <- Journal.load(dir, id, config[:journal]),
+         :ok <-
+           Ipse.Journal.SourceOrigin.check_path(dir, id, hd(locked_events)["metadata"]),
+         actual_lock_mode = Ipse.Session.Lock.mode(Ipse.Session.Lock.current()),
+         :ok <- verify_resume_lock(actual_lock_mode, locked_events, id),
+         {:ok, fresh_release_owner} <-
+           if(opts[:id] == nil,
+             do: start_release_owner(dir, id, config, locked_events, actual_lock_mode),
+             else: {:ok, nil}
+           ),
+         {:ok, locked_mode} <- Saved.execution_mode(locked_events, id),
+         {:ok, startup_mode} <-
+           if(opts[:id] == nil,
+             do: Ipse.Extension.Mode.capture(config),
+             else: resume_execution_mode(locked_mode, config)
+           ),
+         config = apply_execution_mode(config, startup_mode),
          {:ok, config} <- Ipse.Usage.BudgetStore.attach(config, dir, id, opts[:id] == nil),
          {:ok, _} <- restore_context(locked_events),
          :ok <- Ipse.Observability.validate_events(locked_events, id),
          :ok <- Ipse.Extension.TextResources.validate_events(locked_events, id),
          :ok <- Subscriptions.validate_sources(dir, id, locked_events),
-         {:ok, _validated_prefix} <- Saved.restore(locked_events, id),
+         {:ok, validated_prefix} <- Saved.restore(locked_events, id),
          :ok <- Ipse.Session.SourceWindow.validate_sources(dir, id, locked_events),
          :ok <- Ipse.Usage.Budget.validate_sources(config, id, locked_events),
-         :ok <- Journal.repair_tail(dir, id, config[:journal]),
+         {_prefix, prefix_config} = restore_draft_mode(validated_prefix, config),
+         :ok <- question_available(validated_prefix.question, prefix_config),
+         {:ok, prefix_event_question} <-
+           Invocation.restore_event_question(validated_prefix.question, dir, id, locked_events),
+         {:ok, _} <-
+           Subscriptions.restore_question(
+             validated_prefix.question,
+             prefix_event_question,
+             dir,
+             id,
+             locked_events
+           ),
+         {:ok, release_owner} <-
+           if(opts[:id] == nil,
+             do: {:ok, fresh_release_owner},
+             else: start_release_owner(dir, id, config, locked_events, actual_lock_mode)
+           ),
+         :ok <- repair_session_tail(dir, id, config, actual_lock_mode),
          {:ok, events} <- Journal.load(dir, id, config[:journal]),
          {:ok, saved} <- Saved.restore(events, id),
+         {:ok, _saved_mode, planning_entry} <-
+           Ipse.Session.PlanningTransition.reconstruct(events, id),
          {saved, config} <- restore_draft_mode(saved, config),
          {:ok, source_window} <-
            Ipse.Session.SourceWindow.attach_effective_source(saved.source_window, dir, id),
@@ -353,9 +756,8 @@ defmodule Ipse.Session do
          {:ok, skills, skills_saved} <- Workspace.restore_skills(events, discovered),
          {:ok, source_runtime} <- Ipse.Session.RuntimeLifecycle.restore(events, id),
          {:ok, source_tools} <- Ipse.Session.ToolLifecycle.restore(events, id),
-         {:ok, writer} <- Writer.start(dir, id, self(), config[:journal]) do
+         {:ok, writer} <- startup_writer(dir, id, config, release_owner) do
       :ok = Writer.install_source_window(writer, source_window)
-      :ok = Ipse.Session.Lock.track(writer, :writer)
 
       state = %{
         id: id,
@@ -394,27 +796,40 @@ defmodule Ipse.Session do
         operator_channel: nil,
         operator_render: nil,
         draft_render: nil,
+        assertion_render: nil,
+        managed_supersession: nil,
         operator_answers: %{},
         operator_pieces: [],
+        planning_entry: if(startup_mode["ceiling"] == "planning", do: planning_entry),
         reference: saved.reference,
         reference_occurrences: Ipse.Session.Reference.occurrences(events),
         task_cleanup_failed: false,
+        share_barrier: nil,
+        share_ticket: nil,
         job_ref: nil,
         phase: if(question, do: :question, else: :idle),
         calls: if(question && question.call, do: [question.call], else: []),
         question: question,
+        question_recovery: saved.question_recovery,
         approval: nil,
         permissions: Ipse.Session.Permissions.new(config),
         steps: if(question, do: question.steps, else: 0),
         tool_budget: Tools.restore_call_budget(messages),
         lock: lock,
+        lock_mode: actual_lock_mode,
         lock_guard: Ipse.Session.Lock.current(),
         lock_guard_ref: Process.monitor(Ipse.Session.Lock.current()),
+        release_owner: if(release_owner, do: release_owner.marker),
+        release_origin: get_in(hd(locked_events), ["metadata", "source_origin"]),
         usage: %{},
         accounting: accounting,
         usage_reads: extension_state.usage_reads,
         child_usage: extension_state.child_usage,
         active_request: nil,
+        managed_result_seal: nil,
+        managed_output_release: nil,
+        managed_tool_effect: nil,
+        managed_tool_result: nil,
         extension_model: nil,
         last_request_id: saved.last_request_id,
         turn_id:
@@ -448,10 +863,17 @@ defmodule Ipse.Session do
         extension_result_sources: result_sources,
         extension_output: nil,
         extension_output_clock: nil,
-        invocation: CurrentInvocation.restore(question, extension_state.effect_sources),
+        invocation:
+          CurrentInvocation.restore(
+            question,
+            extension_state.effect_sources,
+            saved.managed_reads.invocations
+          ),
+        managed_outputs: saved.managed_reads.outputs,
+        managed_lineage: saved.managed_lineage,
         extension_tool_context: nil,
         extension_mcp_context: nil,
-        extension_result: Invocation.latest_display(events),
+        extension_result: extension_state.last_display,
         extension_catalog: extension_catalog(config),
         extension_invocations: Invocation.count(events),
         mcp_tools: [],
@@ -482,6 +904,57 @@ defmodule Ipse.Session do
         feeds: Feeds.new(events, id)
       }
 
+      startup_checkpoint =
+        if opts[:id] != nil and
+             Ipse.Extension.Mode.checkpoint_required?(locked_mode, startup_mode) do
+          checkpoint = %{
+            "type" => "execution_mode_resumed",
+            "version" => 2,
+            "session_id" => id,
+            "previous_sha256" => Ipse.JSON.digest([locked_mode]),
+            "mode" => startup_mode
+          }
+
+          record(state, checkpoint)
+          checkpoint
+        end
+
+      state =
+        if Map.get(config, :planning_mcp_reads, %{}) != %{} do
+          {:ok, mode} = Ipse.Extension.Mode.capture(config)
+          epoch_id = Ipse.Usage.id()
+
+          record(
+            state,
+            Ipse.Session.PlanningMCP.epoch(
+              id,
+              epoch_id,
+              Ipse.Session.PlanningMCP.last_epoch(events),
+              if(opts[:id] == nil, do: "fresh", else: "resume"),
+              mode,
+              config[:planning_mcp_reads]
+            )
+          )
+
+          Map.put(state, :planning_mcp_epoch_id, epoch_id)
+        else
+          Map.put(state, :planning_mcp_epoch_id, nil)
+        end
+
+      state =
+        if planning_cli_resume_entry?(
+             config,
+             locked_mode,
+             startup_mode,
+             startup_checkpoint
+           ) do
+          marker = Ipse.Session.PlanningTransition.startup_selected(id, startup_checkpoint)
+          record(state, marker)
+          %{state | planning_entry: marker}
+        else
+          state
+        end
+
       state =
         %{
           state
@@ -496,6 +969,7 @@ defmodule Ipse.Session do
       state =
         if handoff do
           record(state, handoff)
+          state = managed_event(state, handoff, state.messages ++ [handoff["message"]])
           %{state | messages: state.messages ++ [handoff["message"]]}
         else
           state
@@ -594,6 +1068,899 @@ defmodule Ipse.Session do
 
   @impl true
 
+  # This inactive host-only protocol seals Session state before queuing the
+  # Writer drain. No worker or CLI entry point starts it. Unknown messages or
+  # cancellation quarantine the Session instead of waiting on Writer IO.
+  def handle_call(
+        {:session_control_ticket, ref, intent},
+        {caller, _},
+        %{share_barrier: nil, job_ref: ref, task: %{pid: caller}, lock_mode: mode} = s
+      )
+      when ref != nil and mode in [:header_share_v2, :resume_share_v2] do
+    with %{action: %{intent: ^intent}, parent: parent, interrupted: false} <- s.invocation,
+         true <- is_map(parent) and is_map(parent["identity"]),
+         true <-
+           Enum.any?(Map.get(s.config, :extensions, []), &(&1.identity == parent["identity"])),
+         true <- Ipse.Extension.Registry.live?(parent["identity"]),
+         true <- s.phase in [:tool, :extension_command, :extension_service, :extension_events],
+         %{client: client, reader: reader} = channel <- s.operator_channel,
+         true <-
+           is_pid(client) and is_pid(reader) and Process.alive?(client) and Process.alive?(reader) do
+      ticket = make_ref()
+      operation = :crypto.strong_rand_bytes(16)
+      deadline = System.monotonic_time(:millisecond) + 5_000
+
+      binding = %{
+        ticket: ticket,
+        operation: operation,
+        deadline: deadline,
+        caller: caller,
+        job_ref: ref,
+        intent: intent,
+        parent: parent,
+        phase: s.phase,
+        channel: channel
+      }
+
+      {:reply, {:ok, ticket, operation, deadline}, %{s | share_ticket: binding}}
+    else
+      _ -> {:reply, {:error, :session_share_refused}, %{s | share_ticket: nil}}
+    end
+  end
+
+  def handle_call({:session_control_ticket, _, _}, _, s),
+    do: {:reply, {:error, :session_share_refused}, s}
+
+  # Fixed-purpose host fixture: this establishes no publication authority.
+  def handle_call({:session_control_ticket_source_fixture, ref, intent, proofs}, from, s) do
+    case handle_call({:session_control_ticket, ref, intent}, from, s) do
+      {:reply, {:ok, _, _, _} = result, next} ->
+        with true <-
+               is_list(proofs) and length(proofs) in 1..8 and
+                 length(Enum.uniq(proofs)) == length(proofs),
+             true <- Enum.all?(proofs, &(is_map(&1) and &1["session_id"] == s.id)),
+             {:ok, sources} <- supersession_proofs(s, proofs) do
+          {:reply, result,
+           update_in(
+             next.share_ticket,
+             &Map.merge(&1, %{source_proofs: proofs, expected_sources: sources})
+           )}
+        else
+          _ -> {:reply, {:error, :session_share_refused}, %{next | share_ticket: nil}}
+        end
+
+      other ->
+        other
+    end
+  end
+
+  def handle_call(
+        {:session_control_ticket_supersession, ref, intent, sha},
+        {caller, _} = from,
+        %{
+          job_ref: ref,
+          managed_supersession: %{
+            prepared: prepared,
+            candidate: candidate,
+            records: [event, review_event]
+          }
+        } = s
+      )
+      when ref != nil and is_binary(sha) do
+    with true <- candidate === intent and sha === Ipse.JSON.digest([prepared, intent]),
+         {:ok, binding} when is_map(binding) <- supersession_lookup(s, caller, intent),
+         true <- binding.source_binding === {:supersession, sha},
+         true <- Ipse.Session.ManagedSupersession.record?(event, prepared, candidate, []),
+         true <-
+           Ipse.Session.ManagedSupersession.record?(review_event, prepared, candidate, [event]),
+         {:ok, sources} <-
+           Ipse.Session.ManagedSupersession.reviewed_publication_sources(
+             event["facts"],
+             review_event["review"],
+             s.id,
+             System.system_time(:millisecond)
+           ),
+         true <- binding.proof in sources.active,
+         {:reply, {:ok, _, _, _} = result, next} <-
+           handle_call(
+             {:session_control_ticket_source_fixture, ref, intent, sources.active},
+             from,
+             s
+           ) do
+      ticket =
+        Map.merge(next.share_ticket, %{
+          relation_facts_sha256: sources.facts_sha256,
+          relation_review_sha256: Ipse.JSON.digest([review_event]),
+          relation_inactive_sources: sources.inactive,
+          relation_purpose_sha256: sha
+        })
+
+      {:reply, result, %{next | share_ticket: ticket}}
+    else
+      _ -> {:reply, {:error, :session_share_refused}, s}
+    end
+  end
+
+  def handle_call({:session_control_ticket_supersession, _, _, _}, _, s),
+    do: {:reply, {:error, :session_share_refused}, s}
+
+  # Private fixed-text bridge only. The eventual protected display needs a
+  # separate native recipient and full-facts authorization; this ticket merely
+  # binds the recorded pre-review relation and active source to that bridge.
+  def handle_call(
+        {:session_control_ticket_supersession_display_fixture, ref, intent, sha},
+        {caller, _} = from,
+        %{
+          job_ref: ref,
+          managed_supersession: %{prepared: prepared, candidate: candidate, records: [event]}
+        } = s
+      )
+      when ref != nil and is_binary(sha) do
+    with true <- candidate === intent and sha === Ipse.JSON.digest([prepared, intent]),
+         {:ok, binding} when is_map(binding) <- supersession_lookup(s, caller, intent),
+         true <- binding.source_binding === {:supersession, sha},
+         true <- Ipse.Session.ManagedSupersession.record?(event, prepared, candidate, []),
+         {:ok, sources} <-
+           Ipse.Session.ManagedSupersession.reviewed_display_sources(
+             event["facts"],
+             s.id,
+             System.system_time(:millisecond)
+           ),
+         true <- binding.proof in sources.active,
+         {:reply, {:ok, ticket, operation, deadline}, next} <-
+           handle_call(
+             {:session_control_ticket_source_fixture, ref, intent, sources.active},
+             from,
+             s
+           ) do
+      remaining = max(deadline - System.monotonic_time(:millisecond), 0)
+      overall = System.monotonic_time(:millisecond) + 15_000
+      overall_wall = System.system_time(:millisecond) + 15_000
+
+      bound =
+        Map.merge(next.share_ticket, %{
+          protocol: :synthetic_review,
+          terminal_purpose: :review,
+          wall_deadline: System.system_time(:millisecond) + remaining,
+          overall_deadline: overall,
+          overall_wall: overall_wall,
+          relation_display_purpose_sha256: sha,
+          relation_display_facts_sha256: sources.facts_sha256,
+          relation_display_inactive_sources: sources.inactive
+        })
+
+      {:reply, {:ok, ticket, operation, deadline, overall}, %{next | share_ticket: bound}}
+    else
+      _ -> {:reply, {:error, :session_share_refused}, s}
+    end
+  end
+
+  def handle_call({:session_control_ticket_supersession_display_fixture, _, _, _}, _, s),
+    do: {:reply, {:error, :session_share_refused}, s}
+
+  def handle_call({:session_control_ticket_synthetic, ref, intent}, from, s) do
+    case handle_call({:session_control_ticket, ref, intent}, from, s) do
+      {:reply, {:ok, _, _, _} = result, next} ->
+        remaining = max(next.share_ticket.deadline - System.monotonic_time(:millisecond), 0)
+        wall_deadline = System.system_time(:millisecond) + remaining
+
+        {:reply, result,
+         update_in(
+           next.share_ticket,
+           &Map.merge(&1, %{protocol: :synthetic_notice, wall_deadline: wall_deadline})
+         )}
+
+      other ->
+        other
+    end
+  end
+
+  def handle_call({:session_control_ticket_synthetic_review, ref, intent}, from, s) do
+    case handle_call({:session_control_ticket_synthetic, ref, intent}, from, s) do
+      {:reply, {:ok, ticket, operation, deadline}, next} ->
+        overall = System.monotonic_time(:millisecond) + 15_000
+        overall_wall = System.system_time(:millisecond) + 15_000
+
+        binding =
+          Map.merge(next.share_ticket, %{
+            protocol: :synthetic_review,
+            terminal_purpose: :review,
+            overall_deadline: overall,
+            overall_wall: overall_wall
+          })
+
+        {:reply, {:ok, ticket, operation, deadline, overall}, %{next | share_ticket: binding}}
+
+      other ->
+        other
+    end
+  end
+
+  def handle_call({:session_control_ticket_synthetic_accepted, ref, intent, cutoff}, from, s)
+      when is_nil(cutoff) or (is_integer(cutoff) and cutoff in 1..9_007_199_254_740_991) do
+    case handle_call({:session_control_ticket_synthetic, ref, intent}, from, s) do
+      {:reply, {:ok, _, _, _} = result, next} ->
+        ticket = next.share_ticket
+
+        wall =
+          if is_nil(cutoff), do: ticket.wall_deadline, else: min(ticket.wall_deadline, cutoff)
+
+        if wall > System.system_time(:millisecond) do
+          {:reply, result,
+           %{
+             next
+             | share_ticket:
+                 Map.merge(ticket, %{terminal_purpose: :accepted, wall_deadline: wall})
+           }}
+        else
+          {:reply, {:error, :session_share_refused}, %{next | share_ticket: nil}}
+        end
+
+      other ->
+        other
+    end
+  end
+
+  def handle_call({:session_control_ticket_synthetic_accepted, _, _, _}, _, s),
+    do: {:reply, {:error, :session_share_refused}, s}
+
+  def handle_call(
+        {:session_share_begin_controlled, ref, intent, prepared, host_port},
+        {caller, _} = from,
+        %{share_barrier: nil, job_ref: ref, task: %{pid: caller}, share_ticket: ticket} = s
+      )
+      when ref != nil and is_map(ticket) and is_port(host_port) do
+    valid =
+      ticket.caller == caller and ticket.job_ref == ref and ticket.intent == intent and
+        match?(%{parent: _, action: %{intent: _}, interrupted: false}, s.invocation) and
+        ticket.parent == s.invocation.parent and s.invocation.action.intent == intent and
+        Ipse.Extension.Registry.live?(ticket.parent["identity"]) and
+        ticket.phase == s.phase and ticket.channel == s.operator_channel and
+        relation_ticket_current?(s, ticket) and
+        Process.alive?(ticket.channel.client) and Process.alive?(ticket.channel.reader) and
+        Port.info(host_port, :connected) == {:connected, caller} and
+        Ipse.Runner.valid_owner_preparation?(prepared, caller, ref, intent) and
+        prepared.ticket == ticket.ticket and prepared.operation == ticket.operation and
+        prepared.deadline == ticket.deadline
+
+    if valid do
+      protocol = Map.get(ticket, :protocol, :legacy)
+
+      opened =
+        if protocol == :synthetic_review,
+          do:
+            Ipse.Runner.open_prepared_review_notice_owner_control(
+              prepared,
+              caller,
+              ref,
+              intent,
+              ticket.overall_deadline
+            ),
+          else: Ipse.Runner.open_prepared_owner_control(prepared, caller, ref, intent, protocol)
+
+      case opened do
+        {:ok, port} ->
+          generation = make_ref()
+
+          timer =
+            Process.send_after(
+              self(),
+              {:session_share_timeout, generation},
+              max(ticket.deadline - System.monotonic_time(:millisecond), 0)
+            )
+
+          request =
+            cond do
+              Map.has_key?(ticket, :relation_display_inactive_sources) ->
+                inactive_ids =
+                  ticket.relation_display_inactive_sources
+                  |> Enum.map(& &1["session_id"])
+                  |> Enum.uniq()
+                  |> Enum.sort()
+
+                Writer.request_share_barrier_display_sources(
+                  s.journal_writer,
+                  ticket.operation,
+                  ref,
+                  generation,
+                  ticket.source_proofs,
+                  inactive_ids
+                )
+
+              Map.has_key?(ticket, :source_proofs) ->
+                Writer.request_share_barrier_sources(
+                  s.journal_writer,
+                  ticket.operation,
+                  ref,
+                  generation,
+                  ticket.source_proofs
+                )
+
+              true ->
+                Writer.request_share_barrier(s.journal_writer, ticket.operation, ref, generation)
+            end
+
+          barrier = %{
+            phase: :draining,
+            request: request,
+            from: from,
+            caller: caller,
+            job_ref: ref,
+            operation: ticket.operation,
+            generation: generation,
+            deadline: ticket.deadline,
+            timer: timer,
+            intent: intent,
+            parent: ticket.parent,
+            session_phase: s.phase,
+            controlled: true,
+            owner_protocol: protocol,
+            terminal_purpose: Map.get(ticket, :terminal_purpose, :ordinary),
+            wall_deadline: Map.get(ticket, :wall_deadline),
+            overall_deadline: Map.get(ticket, :overall_deadline),
+            overall_wall: Map.get(ticket, :overall_wall),
+            owner_port: port,
+            host_port: host_port,
+            owner_phase: :starting,
+            owner_buffer: <<>>,
+            channel: ticket.channel
+          }
+
+          barrier =
+            if Map.has_key?(ticket, :source_proofs),
+              do: Map.put(barrier, :expected_sources, ticket.expected_sources),
+              else: barrier
+
+          barrier =
+            Map.merge(
+              barrier,
+              Map.take(ticket, [
+                :relation_facts_sha256,
+                :relation_review_sha256,
+                :relation_inactive_sources,
+                :relation_purpose_sha256,
+                :relation_display_purpose_sha256,
+                :relation_display_facts_sha256,
+                :relation_display_inactive_sources,
+                :source_proofs
+              ])
+            )
+
+          {:noreply, %{s | share_ticket: nil, share_barrier: barrier}}
+
+        _ ->
+          {:reply, {:error, :session_share_refused}, %{s | share_ticket: nil}}
+      end
+    else
+      {:reply, {:error, :session_share_refused}, %{s | share_ticket: nil}}
+    end
+  end
+
+  def handle_call({:session_share_begin_controlled, _, _, _, _}, _, %{share_barrier: nil} = s),
+    do: {:reply, {:error, :session_share_refused}, %{s | share_ticket: nil}}
+
+  def handle_call(
+        {:session_share_begin, ref, intent},
+        {caller, _} = from,
+        %{share_barrier: nil, job_ref: ref, task: %{pid: caller}, lock_mode: mode} = s
+      )
+      when ref != nil and mode in [:header_share_v2, :resume_share_v2] do
+    with %{action: %{intent: ^intent}, parent: parent, interrupted: false} <- s.invocation,
+         true <- is_map(parent) and is_map(parent["identity"]),
+         true <-
+           Enum.any?(Map.get(s.config, :extensions, []), &(&1.identity == parent["identity"])),
+         true <- Ipse.Extension.Registry.live?(parent["identity"]),
+         true <- s.phase in [:tool, :extension_command, :extension_service, :extension_events] do
+      operation = :crypto.strong_rand_bytes(16)
+      generation = make_ref()
+      deadline = System.monotonic_time(:millisecond) + 5_000
+      timer = Process.send_after(self(), {:session_share_timeout, generation}, 5_000)
+      request = Writer.request_share_barrier(s.journal_writer, operation, ref, generation)
+
+      barrier = %{
+        phase: :draining,
+        request: request,
+        from: from,
+        caller: caller,
+        job_ref: ref,
+        operation: operation,
+        generation: generation,
+        deadline: deadline,
+        timer: timer,
+        intent: intent,
+        parent: parent,
+        session_phase: s.phase
+      }
+
+      {:noreply, %{s | share_ticket: nil, share_barrier: barrier}}
+    else
+      _ -> {:reply, {:error, :session_share_refused}, s}
+    end
+  end
+
+  def handle_call({:session_share_begin, _, _}, _, %{share_barrier: nil} = s),
+    do: {:reply, {:error, :session_share_refused}, s}
+
+  # Only the fixed-marker synthetic helper is available here. Session chooses
+  # the executable and mode before transferring its Port to the current Host.
+  def handle_call(
+        {:session_share_spawn_synthetic_terminal, ref, capability},
+        {caller, _},
+        %{
+          share_barrier:
+            %{
+              controlled: true,
+              phase: :armed,
+              owner_phase: :ready,
+              caller: caller,
+              job_ref: ref,
+              capability: capability
+            } = b
+        } = s
+      ) do
+    remaining =
+      if b.owner_protocol == :synthetic_review,
+        do: b.overall_deadline - System.monotonic_time(:millisecond),
+        else: min(b.deadline - System.monotonic_time(:millisecond), 5_000)
+
+    if remaining > 0 and Process.alive?(caller) and share_deadline_current?(b) and
+         not Map.has_key?(b, :issued_terminal) do
+      case Ipse.Runner.open_synthetic_notice_terminal(s.cwd, remaining, b.terminal_purpose) do
+        {:ok, port} ->
+          case transfer_synthetic_terminal(port, caller) do
+            {:ok, pid} ->
+              next = Map.put(b, :issued_terminal, %{port: port, pid: pid})
+              {:reply, {:ok, port}, %{s | share_barrier: next}}
+
+            _ ->
+              {:reply, {:error, :cleanup_unconfirmed}, poison_session_share(s)}
+          end
+
+        _ ->
+          {:reply, {:error, :session_share_refused}, s}
+      end
+    else
+      {:reply, {:error, :session_share_refused}, s}
+    end
+  rescue
+    _ -> {:reply, {:error, :cleanup_unconfirmed}, poison_session_share(s)}
+  end
+
+  def handle_call(
+        {:session_share_writer_open, ref, capability},
+        {caller, _} = from,
+        %{
+          share_barrier:
+            %{
+              controlled: true,
+              owner_protocol: :legacy,
+              phase: :armed,
+              job_ref: ref,
+              caller: caller,
+              capability: capability
+            } = b
+        } = s
+      ) do
+    if not Map.has_key?(b, :writer_control) and share_deadline_current?(b) do
+      request =
+        Writer.request_share_control_open(s.journal_writer, b.token, b.operation, b.deadline)
+
+      {:noreply,
+       %{s | share_barrier: %{b | phase: :writer_opening, request: request, from: from}}}
+    else
+      {:reply, {:error, :cleanup_unconfirmed}, poison_session_share(s)}
+    end
+  end
+
+  def handle_call(
+        {:session_share_writer_transfer, ref, capability, recipient, name, secret},
+        {caller, _} = from,
+        %{
+          share_barrier:
+            %{
+              controlled: true,
+              owner_protocol: :legacy,
+              phase: :armed,
+              owner_phase: :ready,
+              writer_control: :ready,
+              job_ref: ref,
+              caller: caller,
+              capability: capability
+            } = b
+        } = s
+      ) do
+    if is_integer(recipient) and recipient > 0 and is_binary(name) and byte_size(name) == 16 and
+         is_binary(secret) and byte_size(secret) == 32 and share_deadline_current?(b) do
+      request =
+        Writer.request_share_control_transfer(
+          s.journal_writer,
+          b.token,
+          b.operation,
+          recipient,
+          name,
+          secret,
+          b.deadline
+        )
+
+      {:noreply,
+       %{
+         s
+         | share_barrier:
+             Map.merge(b, %{
+               phase: :writer_transferring,
+               request: request,
+               from: from,
+               writer_recipient: recipient
+             })
+       }}
+    else
+      {:reply, {:error, :cleanup_unconfirmed}, poison_session_share(s)}
+    end
+  end
+
+  def handle_call(
+        {:session_share_writer_prepare_close, ref, capability},
+        {caller, _} = from,
+        %{
+          share_barrier:
+            %{
+              controlled: true,
+              owner_protocol: :legacy,
+              phase: :settled,
+              owner_phase: :transferred,
+              writer_control: :transferred,
+              job_ref: ref,
+              caller: caller,
+              capability: capability
+            } = b
+        } = s
+      ) do
+    if share_deadline_current?(b) and b.owner_recipient == b.writer_recipient do
+      request = Writer.request_share_control_prepare_close(s.journal_writer, b.token, b.operation)
+
+      {:noreply,
+       %{s | share_barrier: %{b | phase: :writer_preparing, request: request, from: from}}}
+    else
+      {:reply, {:error, :cleanup_unconfirmed}, poison_session_share(s)}
+    end
+  end
+
+  def handle_call(
+        {:session_share_transaction_close, ref, capability},
+        {caller, _},
+        %{
+          share_barrier:
+            %{
+              controlled: true,
+              owner_protocol: :legacy,
+              phase: :settled,
+              owner_phase: :transferred,
+              writer_control: :closing,
+              job_ref: ref,
+              caller: caller,
+              capability: capability
+            } = b
+        } = s
+      ) do
+    if share_deadline_current?(b) and b.owner_recipient == b.writer_recipient do
+      {:reply, :ok, %{s | share_barrier: %{b | phase: :transaction_closing}}}
+    else
+      {:reply, {:error, :cleanup_unconfirmed}, poison_session_share(s)}
+    end
+  end
+
+  def handle_call(
+        {:session_share_writer_close, ref, capability},
+        {caller, _} = from,
+        %{
+          share_barrier:
+            %{
+              controlled: true,
+              owner_protocol: :legacy,
+              phase: :transaction_closed,
+              writer_control: :closing,
+              job_ref: ref,
+              caller: caller,
+              capability: capability
+            } = b
+        } = s
+      ) do
+    if share_deadline_current?(b) do
+      request = Writer.request_share_control_close(s.journal_writer, b.token, b.operation)
+
+      {:noreply,
+       %{s | share_barrier: %{b | phase: :writer_closing, request: request, from: from}}}
+    else
+      {:reply, {:error, :cleanup_unconfirmed}, poison_session_share(s)}
+    end
+  end
+
+  def handle_call(
+        {:session_share_synthetic_review_manifest, ref, capability, prefix},
+        {caller, _},
+        %{
+          share_barrier:
+            %{
+              controlled: true,
+              owner_protocol: :synthetic_review,
+              phase: :armed,
+              owner_phase: :ready,
+              job_ref: ref,
+              caller: caller,
+              capability: capability,
+              issued_terminal: %{port: port}
+            } = b
+        } = s
+      )
+      when is_binary(prefix) do
+    if not Map.get(b, :manifest_issued, false) and share_deadline_current?(b) and
+         Port.info(port, :connected) == {:connected, caller} and
+         synthetic_review_manifest?(prefix, b) do
+      payload = @synthetic_review_text
+      body = <<prefix::binary, byte_size(payload)::32, payload::binary>>
+
+      if Port.command(port, <<?I, byte_size(body)::32, body::binary>>, [:nosuspend]) do
+        {:reply, :ok, %{s | share_barrier: Map.put(b, :manifest_issued, true)}}
+      else
+        {:reply, {:error, :cleanup_unconfirmed}, poison_session_share(s)}
+      end
+    else
+      {:reply, {:error, :cleanup_unconfirmed}, poison_session_share(s)}
+    end
+  rescue
+    _ -> {:reply, {:error, :cleanup_unconfirmed}, poison_session_share(s)}
+  end
+
+  def handle_call(
+        {:session_control_configure, ref, capability, recipient, name, secret},
+        {caller, _},
+        %{
+          share_barrier:
+            %{
+              controlled: true,
+              phase: :armed,
+              owner_phase: :ready,
+              caller: caller,
+              job_ref: ref,
+              capability: capability
+            } = b
+        } = s
+      ) do
+    if (b.owner_protocol not in [:synthetic_notice, :synthetic_review] or
+          Map.has_key?(b, :issued_terminal)) and
+         (b.owner_protocol != :synthetic_review or Map.get(b, :manifest_issued, false)) and
+         (not Map.has_key?(b, :writer_control) or
+            (b.writer_control == :transferred and b.writer_recipient == recipient)) and
+         (not Map.has_key?(b, :issued_terminal) or b.issued_terminal.pid == recipient) and
+         System.monotonic_time(:millisecond) < b.deadline and
+         Ipse.Runner.send_owner_control(
+           b.owner_port,
+           b.operation,
+           :session,
+           recipient,
+           name,
+           secret
+         ) == :ok do
+      {:reply, :ok,
+       %{s | share_barrier: Map.merge(b, %{owner_phase: :sending, owner_recipient: recipient})}}
+    else
+      {:reply, {:error, :cleanup_unconfirmed}, poison_session_share(s)}
+    end
+  end
+
+  def handle_call(
+        {:session_share_review_thaw, ref, capability, terminal_port},
+        {caller, _} = from,
+        %{
+          share_barrier:
+            %{
+              owner_protocol: :synthetic_review,
+              phase: :settled,
+              owner_phase: :transferred,
+              job_ref: ref,
+              caller: caller,
+              capability: capability,
+              issued_terminal: %{port: terminal_port, pid: recipient}
+            } = b
+        } = s
+      )
+      when is_port(terminal_port) do
+    if Map.get(b, :notice_received, false) and
+         Port.info(terminal_port, :connected) == {:connected, caller} and
+         Port.info(terminal_port, :os_pid) == {:os_pid, recipient} and Process.alive?(caller) and
+         share_deadline_current?(b) do
+      request = :gen_server.send_request(s.journal_writer, {:share_thaw, b.token, b.operation})
+
+      {:noreply,
+       %{s | share_barrier: %{b | phase: :review_thawing, request: request, from: from}}}
+    else
+      {:reply, {:error, :cleanup_unconfirmed}, poison_session_share(s)}
+    end
+  end
+
+  def handle_call(
+        {:session_share_finish, ref, capability},
+        {caller, _},
+        %{
+          share_barrier:
+            %{
+              owner_protocol: :synthetic_review,
+              phase: :review_closed,
+              job_ref: ref,
+              caller: caller,
+              capability: capability
+            } = b
+        } = s
+      ) do
+    if share_deadline_current?(b) and Port.info(b.host_port) == nil and
+         Port.info(b.owner_port) == nil and Port.info(b.issued_terminal.port) == nil do
+      Process.cancel_timer(b.timer)
+      {:reply, :ok, %{s | share_barrier: nil}}
+    else
+      {:reply, {:error, :cleanup_unconfirmed}, poison_session_share(s)}
+    end
+  end
+
+  def handle_call(
+        {:session_share_identity, ref, capability},
+        {caller, _} = from,
+        %{
+          share_barrier:
+            %{
+              controlled: true,
+              phase: :armed,
+              job_ref: ref,
+              caller: caller,
+              capability: capability
+            } = b
+        } = s
+      ) do
+    if System.monotonic_time(:millisecond) < b.deadline do
+      request =
+        Ipse.Session.Lock.request_share_identity(s.lock_guard, b.token, b.operation, b.deadline)
+
+      {:noreply, %{s | share_barrier: %{b | phase: :identifying, request: request, from: from}}}
+    else
+      {:reply, {:error, :cleanup_unconfirmed}, poison_session_share(s)}
+    end
+  end
+
+  def handle_call(
+        {:session_share_export, ref, capability, request},
+        {caller, _} = from,
+        %{
+          share_barrier:
+            %{phase: :armed, job_ref: ref, caller: caller, capability: capability} = b
+        } = s
+      )
+      when is_binary(request) and byte_size(request) == 68 do
+    if System.monotonic_time(:millisecond) < b.deadline do
+      pending =
+        Ipse.Session.Lock.request_share_export(
+          s.lock_guard,
+          b.token,
+          b.operation,
+          request,
+          b.deadline
+        )
+
+      {:noreply, %{s | share_barrier: %{b | phase: :exporting, request: pending, from: from}}}
+    else
+      {:reply, {:error, :cleanup_unconfirmed}, poison_session_share(s)}
+    end
+  end
+
+  def handle_call(
+        {:session_share_settle, ref, capability},
+        {caller, _} = from,
+        %{
+          share_barrier:
+            %{phase: :exported, job_ref: ref, caller: caller, capability: capability} = b
+        } = s
+      ) do
+    if System.monotonic_time(:millisecond) < b.deadline do
+      pending =
+        Ipse.Session.Lock.request_share_settle(s.lock_guard, b.token, b.operation, b.deadline)
+
+      {:noreply, %{s | share_barrier: %{b | phase: :settling, request: pending, from: from}}}
+    else
+      {:reply, {:error, :cleanup_unconfirmed}, poison_session_share(s)}
+    end
+  end
+
+  def handle_call(
+        {:session_share_terminal_close, ref, capability, terminal_port},
+        {caller, _},
+        %{
+          share_barrier:
+            %{
+              controlled: true,
+              phase: :settled,
+              owner_phase: :transferred,
+              owner_recipient: recipient,
+              job_ref: ref,
+              caller: caller,
+              capability: capability
+            } = b
+        } = s
+      )
+      when is_port(terminal_port) do
+    if b.owner_protocol != :synthetic_review and
+         (b.owner_protocol != :synthetic_notice or Map.get(b, :notice_received, false)) and
+         (not Map.has_key?(b, :issued_terminal) or b.issued_terminal.port == terminal_port) and
+         Port.info(terminal_port, :connected) == {:connected, caller} and
+         Port.info(terminal_port, :os_pid) == {:os_pid, recipient} and
+         Process.alive?(caller) and share_deadline_current?(b) do
+      {:reply, :ok,
+       %{
+         s
+         | share_barrier: Map.merge(b, %{phase: :terminal_closing, terminal_port: terminal_port})
+       }}
+    else
+      {:reply, {:error, :cleanup_unconfirmed}, poison_session_share(s)}
+    end
+  end
+
+  def handle_call(
+        {:session_share_finish, ref, capability},
+        {caller, _} = from,
+        %{
+          share_barrier: %{phase: phase, job_ref: ref, caller: caller, capability: capability} = b
+        } = s
+      )
+      when phase in [:settled, :terminal_closed, :transaction_closed] do
+    case if(
+           not share_deadline_current?(b) or Map.has_key?(b, :writer_control) or
+             (Map.has_key?(b, :issued_terminal) and phase != :terminal_closed),
+           do: {:error, :cleanup_unconfirmed},
+           else: close_share_controls(b)
+         ) do
+      {:ok, next} ->
+        request = :gen_server.send_request(s.journal_writer, {:share_thaw, b.token, b.operation})
+        {:noreply, %{s | share_barrier: %{next | phase: :thawing, request: request, from: from}}}
+
+      _ ->
+        {:reply, {:error, :cleanup_unconfirmed}, poison_session_share(s)}
+    end
+  end
+
+  def handle_call(
+        {:session_share_abort, ref, capability},
+        {caller, _} = from,
+        %{
+          share_barrier:
+            %{phase: :armed, job_ref: ref, caller: caller, capability: capability} = b
+        } = s
+      ) do
+    case close_share_controls(b) do
+      {:ok, next} ->
+        request = Ipse.Session.Lock.request_share_cancel(s.lock_guard, b.token, b.operation)
+
+        {:noreply,
+         %{s | share_barrier: %{next | phase: :cancelling, request: request, from: from}}}
+
+      _ ->
+        {:reply, {:error, :cleanup_unconfirmed}, poison_session_share(s)}
+    end
+  end
+
+  def handle_call(
+        {:session_share_abort, ref, capability},
+        {caller, _},
+        %{share_barrier: %{job_ref: ref, caller: caller, capability: capability}} = s
+      ),
+      do: {:reply, {:error, :cleanup_unconfirmed}, poison_session_share(s)}
+
+  def handle_call(command, _from, %{share_barrier: barrier} = s)
+      when command in [:cancel, :cancel_draft] and not is_nil(barrier),
+      do: {:reply, {:error, :cleanup_unconfirmed}, poison_session_share(s)}
+
+  def handle_call(:close, _from, %{share_barrier: barrier} = s) when not is_nil(barrier),
+    do: {:stop, :normal, {:error, :cleanup_unconfirmed}, poison_session_share(s)}
+
+  def handle_call(_, _, %{share_barrier: barrier} = s) when not is_nil(barrier),
+    do: {:reply, {:error, :session_share_frozen}, s}
+
   def handle_call(
         {:extension_begin, ref, instance, stage},
         {caller, _},
@@ -630,6 +1997,7 @@ defmodule Ipse.Session do
          true <- Ipse.Extension.Registry.live?(intent["identity"]),
          {:ok, messages} <- Projection.apply(s.messages, event) do
       record(s, event)
+      s = managed_event(s, event, messages)
       final = if phase == :extension_presentation, do: event["output"], else: s.final
       {:reply, :ok, %{s | messages: messages, final: final, extension_intent: nil}}
     else
@@ -638,6 +2006,21 @@ defmodule Ipse.Session do
   end
 
   def handle_call({:extension_commit, _, _}, _, s), do: {:reply, {:error, :cancelled}, s}
+
+  def handle_call(
+        {:extension_event_begin, ref, instance, subscription, binding},
+        {caller, _} = from,
+        %{job_ref: ref, task: %{pid: caller}, phase: :extension_events, event_intent: nil} = s
+      )
+      when ref != nil do
+    handle_call({:extension_event_begin, ref, instance, subscription}, from, %{
+      s
+      | invocation: %CurrentInvocation{semantic_binding: binding}
+    })
+  end
+
+  def handle_call({:extension_event_begin, _, _, _, _}, _, s),
+    do: {:reply, {:error, :cancelled}, s}
 
   def handle_call(
         {:extension_event_begin, ref, instance, subscription},
@@ -670,9 +2053,34 @@ defmodule Ipse.Session do
           answer: s.event_answer
         }
 
-        case Invocation.prepare_event(s.config, entry, intent, payload, facts, s.id, s.turn_id) do
+        admission = s.config[:semantic_admission]
+
+        protected =
+          is_map(admission) and is_map(admission["pin"]) and admission["instance"] == instance
+
+        binding = if protected, do: s.invocation.semantic_binding, else: {:ok, nil}
+
+        prepared =
+          with {:ok, binding} <- binding,
+               true <- not protected or is_map(binding),
+               do:
+                 Invocation.prepare_event(
+                   s.config,
+                   entry,
+                   intent,
+                   payload,
+                   facts,
+                   s.id,
+                   s.turn_id,
+                   binding
+                 )
+
+        entry = Map.merge(entry, %{host_config: s.config, host_cwd: s.cwd})
+
+        case prepared do
           {:ok, parent} when s.extension_invocations < 10_000 ->
             record(s, parent)
+            s = managed_event(s, parent)
 
             {:reply, {:job, intent, entry, parent},
              %{
@@ -718,6 +2126,8 @@ defmodule Ipse.Session do
        %{
          s
          | event_intent: nil,
+           invocation:
+             if(is_nil(s.invocation.parent), do: %CurrentInvocation{}, else: s.invocation),
            event_cleanup_failed: s.event_cleanup_failed or not result["cleanup_confirmed"]
        }}
     else
@@ -848,9 +2258,12 @@ defmodule Ipse.Session do
   end
 
   def handle_call(:info, _from, s) do
+    {:ok, execution_mode} = Ipse.Extension.Mode.capture(s.config)
+
     info =
       Map.take(s, [:id, :cwd, :phase, :usage, :final])
       |> Map.put(:runtime, runtime(s))
+      |> Map.put(:execution_mode, execution_mode)
       |> Map.put(
         :context,
         Ipse.Session.Context.manifest(
@@ -869,6 +2282,7 @@ defmodule Ipse.Session do
       |> Map.put(:extension_result, s.extension_result)
       |> Map.put(:draft, if(s.draft, do: Map.take(s.draft, [:id, :revision, :status])))
       |> Map.put(:question, if(s.question, do: Map.take(s.question, [:id, :arguments])))
+      |> Map.put(:question_recovery, s.question_recovery)
 
     {:reply, info, s}
   end
@@ -1205,6 +2619,119 @@ defmodule Ipse.Session do
     do: {:reply, {:error, :extension_mcp_refused}, s}
 
   def handle_call(
+        {:extension_document_prepare, ref, request},
+        {caller, _},
+        %{job_ref: ref, task: %{pid: caller}, invocation: %{action: nil}, phase: phase} = s
+      )
+      when ref != nil and
+             phase in [:tool, :extension_command, :extension_service, :extension_events],
+      do: CurrentInvocation.prepare_document(s, ref, request)
+
+  def handle_call(
+        {:extension_document_bound, ref, request, binding},
+        {caller, _},
+        %{job_ref: ref, task: %{pid: caller}, invocation: %{action: nil}, phase: phase} = s
+      )
+      when ref != nil and
+             phase in [:tool, :extension_command, :extension_service, :extension_events],
+      do: CurrentInvocation.bind_document(s, ref, request, binding)
+
+  def handle_call(
+        {:extension_document_current, ref, intent},
+        {caller, _},
+        %{
+          job_ref: ref,
+          task: %{pid: worker},
+          invocation: %{action: %{intent: intent}},
+          phase: phase
+        } = s
+      )
+      when ref != nil and
+             phase in [:tool, :extension_command, :extension_service, :extension_events] do
+    if caller == worker or Ipse.Session.Resources.authorized_effect?(worker, caller),
+      do: CurrentInvocation.document_current(s, intent),
+      else: {:reply, {:error, :document_store_refused}, s}
+  end
+
+  def handle_call({:extension_document_prepare, _, _}, _, s),
+    do: {:reply, {:error, :document_store_refused}, s}
+
+  def handle_call({:extension_document_bound, _, _, _}, _, s),
+    do: {:reply, {:error, :document_store_refused}, s}
+
+  def handle_call({:extension_document_current, _, _}, _, s),
+    do: {:reply, {:error, :document_store_refused}, s}
+
+  def handle_call(
+        {:extension_document_embedding_prepare, ref, request},
+        {caller, _},
+        %{job_ref: ref, task: %{pid: caller}, invocation: %{action: nil}, phase: phase} = s
+      )
+      when ref != nil and
+             phase in [:tool, :extension_command, :extension_service, :extension_events],
+      do: CurrentInvocation.prepare_document_embedding(s, ref, request)
+
+  def handle_call(
+        {:extension_document_embedding_bound, ref, request, binding},
+        {caller, _},
+        %{job_ref: ref, task: %{pid: caller}, invocation: %{action: nil}, phase: phase} = s
+      )
+      when ref != nil and
+             phase in [:tool, :extension_command, :extension_service, :extension_events],
+      do: CurrentInvocation.bind_document_embedding(s, ref, request, binding)
+
+  def handle_call(
+        {:document_embedding_admit, ref, phase, admission, expected, wire, sources},
+        {caller, _},
+        %{job_ref: ref, task: %{pid: worker}, invocation: %{action: %{intent: _}}, phase: current} =
+          s
+      )
+      when ref != nil and
+             current in [:tool, :extension_command, :extension_service, :extension_events] do
+    if caller == worker or Ipse.Session.Resources.authorized_effect?(worker, caller),
+      do:
+        Ipse.Session.InferenceDispatch.document_admit(
+          s,
+          caller,
+          phase,
+          admission,
+          expected,
+          wire,
+          sources
+        ),
+      else: {:reply, {:error, :document_source_use_refused}, s}
+  end
+
+  def handle_call({:extension_document_embedding_prepare, _, _}, _, s),
+    do: {:reply, {:error, :document_source_use_refused}, s}
+
+  def handle_call({:extension_document_embedding_bound, _, _, _}, _, s),
+    do: {:reply, {:error, :document_source_use_refused}, s}
+
+  def handle_call({:document_embedding_admit, _, _, _, _, _, _}, _, s),
+    do: {:reply, {:error, :document_source_use_refused}, s}
+
+  def handle_call(
+        {:document_embedding_claim_put, ref, intent, observation},
+        {caller, _},
+        %{
+          job_ref: ref,
+          task: %{pid: worker},
+          invocation: %{action: %{intent: intent}},
+          phase: phase
+        } = s
+      )
+      when ref != nil and
+             phase in [:tool, :extension_command, :extension_service, :extension_events] do
+    if caller == worker or Ipse.Session.Resources.authorized_effect?(worker, caller),
+      do: Ipse.Session.DocumentEmbedding.prepare_inline(s, intent, observation),
+      else: {:reply, {:error, :document_source_use_refused}, s}
+  end
+
+  def handle_call({:document_embedding_claim_put, _, _, _}, _, s),
+    do: {:reply, {:error, :document_source_use_refused}, s}
+
+  def handle_call(
         {:extension_action_begin, ref, request},
         from = {caller, _},
         %{job_ref: ref, task: %{pid: caller}, invocation: %{action: nil}, phase: phase} = s
@@ -1230,6 +2757,11 @@ defmodule Ipse.Session do
            true <- not s.invocation.interrupted,
            true <- Ipse.Extension.Registry.live?(s.invocation.parent["identity"]),
            true <- Ipse.Session.Resources.authorized_effect?(worker, caller),
+           {:ok, origin} <- Writer.source_query(s.journal_writer, :origin),
+           true <-
+             is_map(origin) or
+               (not Ipse.Extension.ManagedCollectionCall.operation?(intent["request"]) and
+                  Map.get(intent["request"], "proofs", []) == []),
            {:ok, window} <- Writer.source_query(s.journal_writer, :snapshot),
            {:ok, context} <-
              Ipse.Extension.SemanticAdmission.context(s.config, s.id, window["generation"]) do
@@ -1261,6 +2793,98 @@ defmodule Ipse.Session do
     do: {:reply, {:error, :inference_dispatch_refused}, s}
 
   def handle_call(
+        {:inference_wire_use, ref, phase, admission, expected, wire},
+        {caller, _},
+        %{job_ref: ref} = s
+      )
+      when ref != nil,
+      do: Ipse.Session.InferenceDispatch.wire_use(s, caller, phase, admission, expected, wire)
+
+  def handle_call({:inference_wire_use, _, _, _, _, _}, _, s),
+    do: {:reply, {:error, :inference_dispatch_refused}, s}
+
+  def handle_call({:managed_tool_effect_prepare, ref, binding}, {caller, _}, %{job_ref: ref} = s)
+      when ref != nil,
+      do: Ipse.Session.ManagedToolUse.prepare(s, caller, binding)
+
+  def handle_call({:managed_tool_effect_prepare, _, _}, _, s),
+    do: {:reply, {:error, :managed_tool_inputs_unavailable}, s}
+
+  def handle_call(
+        {:managed_tool_effect_admit, ref, id, deadline},
+        {caller, _},
+        %{job_ref: ref} = s
+      )
+      when ref != nil,
+      do: Ipse.Session.ManagedToolUse.admit(s, caller, id, deadline)
+
+  def handle_call({:managed_tool_effect_admit, _, _, _}, _, s),
+    do: {:reply, {:error, :managed_tool_inputs_unavailable}, s}
+
+  def handle_call(
+        {:managed_tool_effect_cleanup, ref, id, status},
+        {caller, _},
+        %{job_ref: ref} = s
+      )
+      when ref != nil,
+      do: Ipse.Session.ManagedToolUse.finish_effect(s, caller, id, status)
+
+  def handle_call({:managed_tool_effect_cleanup, _, _, _}, _, s),
+    do: {:reply, {:error, :managed_tool_inputs_unavailable}, s}
+
+  def handle_call(
+        {:managed_tool_result_prepare, ref, outcome, text},
+        {caller, _},
+        %{job_ref: ref} = s
+      )
+      when ref != nil,
+      do: Ipse.Session.ManagedToolUse.prepare_result(s, caller, outcome, text)
+
+  def handle_call({:managed_tool_result_prepare, _, _, _}, _, s),
+    do: {:reply, {:error, :managed_tool_inputs_unavailable}, s}
+
+  def handle_call(
+        {:managed_tool_result_admit, ref, id, mode, deadline},
+        {caller, _},
+        %{job_ref: ref} = s
+      )
+      when ref != nil,
+      do: Ipse.Session.ManagedToolUse.admit_result(s, caller, id, mode, deadline)
+
+  def handle_call({:managed_tool_result_admit, _, _, _, _}, _, s),
+    do: {:reply, {:error, :managed_tool_inputs_unavailable}, s}
+
+  def handle_call(
+        {:managed_tool_result_cleanup, ref, id, status},
+        {caller, _},
+        %{job_ref: ref} = s
+      )
+      when ref != nil,
+      do: Ipse.Session.ManagedToolUse.finish_result(s, caller, id, status)
+
+  def handle_call({:managed_tool_result_cleanup, _, _, _}, _, s),
+    do: {:reply, {:error, :managed_tool_inputs_unavailable}, s}
+
+  def handle_call(
+        {:managed_result_admit, ref, phase, admission, expected, result_sha},
+        {caller, _},
+        %{job_ref: ref} = s
+      )
+      when ref != nil,
+      do:
+        Ipse.Session.InferenceDispatch.result_admit(
+          s,
+          caller,
+          phase,
+          admission,
+          expected,
+          result_sha
+        )
+
+  def handle_call({:managed_result_admit, _, _, _, _, _}, _, s),
+    do: {:reply, {:error, :inference_dispatch_refused}, s}
+
+  def handle_call(
         {:inference_service_status, ref, {event, _} = status},
         {caller, _},
         %{job_ref: ref, task: %{pid: caller}} = s
@@ -1275,6 +2899,196 @@ defmodule Ipse.Session do
 
   def handle_call({:extension_collection_sources, _, _}, _, s),
     do: {:reply, {:error, :collection_source_refused}, s}
+
+  def handle_call(
+        {:extension_stored_sources, ref, intent, proofs},
+        {caller, _},
+        %{job_ref: ref, task: %{pid: worker}, invocation: %{action: %{intent: intent}}} = s
+      )
+      when ref != nil do
+    reply =
+      with true <- Ipse.Extension.CollectionCall.operation?(intent["request"]),
+           true <- not s.invocation.interrupted,
+           true <- Ipse.Extension.Registry.live?(s.invocation.parent["identity"]),
+           true <- Ipse.Session.Resources.authorized_effect?(worker, caller),
+           true <- is_list(proofs) and length(proofs) in 1..8,
+           true <- Enum.all?(proofs, &(is_map(&1) and &1["session_id"] == s.id)),
+           {:ok, origin} when is_map(origin) <- Writer.source_query(s.journal_writer, :origin) do
+        Enum.reduce_while(proofs, {:ok, []}, fn proof, {:ok, acc} ->
+          case Writer.source_query(s.journal_writer, {:stored_proof, proof}) do
+            {:ok, checked} -> {:cont, {:ok, acc ++ [checked]}}
+            _ -> {:halt, {:error, :collection_source_refused}}
+          end
+        end)
+      else
+        _ -> {:error, :collection_source_refused}
+      end
+
+    {:reply, reply, s}
+  end
+
+  def handle_call({:extension_stored_sources, _, _, _}, _, s),
+    do: {:reply, {:error, :collection_source_refused}, s}
+
+  def handle_call(
+        {:extension_managed_read, ref, intent, value, dependencies},
+        {caller, _},
+        %{job_ref: ref, task: %{pid: worker}, invocation: %{action: %{intent: intent} = action}} =
+          s
+      )
+      when ref != nil do
+    with true <- not s.invocation.interrupted and is_nil(action[:managed_read]),
+         true <- Ipse.Extension.Registry.live?(s.invocation.parent["identity"]),
+         true <- Ipse.Session.Resources.authorized_effect?(worker, caller),
+         true <-
+           Ipse.Session.ManagedReads.managed_mapping?(
+             s.config[:semantic_admission],
+             s.invocation.parent,
+             intent
+           ),
+         {:ok, receipt} <- Ipse.Session.ManagedReads.prepare(s.id, intent, value, dependencies),
+         true <-
+           Ipse.Session.ManagedReads.covered?(
+             s.config[:semantic_admission],
+             s.invocation.parent,
+             intent,
+             value,
+             receipt["dependencies"]
+           ) do
+      {:reply, :ok,
+       %{s | invocation: %{s.invocation | action: Map.put(action, :managed_read, receipt)}}}
+    else
+      _ -> {:reply, {:error, :collection_source_refused}, s}
+    end
+  end
+
+  def handle_call({:extension_managed_read, _, _, _, _}, _, s),
+    do: {:reply, {:error, :collection_source_refused}, s}
+
+  def handle_call({:managed_preflight_begin, ref, phase}, {caller, _}, %{job_ref: ref} = s)
+      when ref != nil, do: managed_preflight_start(s, caller, phase)
+
+  def handle_call(
+        {:managed_preflight_commit, ref, id, verdicts},
+        {caller, _},
+        %{job_ref: ref} = s
+      )
+      when ref != nil, do: managed_preflight_finish(s, caller, id, verdicts)
+
+  def handle_call({:managed_preflight_begin, _, _}, _, s),
+    do: {:reply, {:error, :managed_reference_projection_unsafe}, s}
+
+  def handle_call({:managed_preflight_commit, _, _, _}, _, s),
+    do: {:reply, {:error, :managed_reference_projection_unsafe}, s}
+
+  def handle_call({:extension_supersession, ref, intent}, {caller, _}, %{job_ref: ref} = s)
+      when ref != nil do
+    case supersession_lookup(s, caller, intent) do
+      {:ok, nil} ->
+        {:reply, {:ok, nil}, s}
+
+      {:ok, reply} ->
+        next = put_in(s.managed_supersession.candidate, intent)
+        {:reply, {:ok, reply}, next}
+
+      _ ->
+        {:reply, {:error, :managed_supersession_refused}, s}
+    end
+  end
+
+  def handle_call({:extension_supersession, _, _}, _, s),
+    do: {:reply, {:error, :managed_supersession_refused}, s}
+
+  def handle_call(
+        {:managed_review_publisher, ref, sha, peer},
+        {caller, _},
+        %{job_ref: ref} = s
+      )
+      when ref != nil and is_pid(peer) do
+    reply =
+      with %{pid: ^caller} <- s.task,
+           %{prepared: prepared, candidate: candidate} when is_map(candidate) <-
+             s.managed_supersession,
+           true <- s.phase == :extension_command,
+           true <-
+             s.config[:managed_supersession_layout] == Ipse.Session.ManagedSupersession.layout(),
+           true <- sha == Ipse.JSON.digest([prepared, candidate]),
+           true <- supersession_worker?(s, peer, candidate),
+           true <- Ipse.Session.Resources.authorized_effect?(s.task.pid, peer) do
+        :ok
+      else
+        _ -> {:error, :managed_supersession_refused}
+      end
+
+    {:reply, reply, s}
+  end
+
+  def handle_call({:managed_review_publisher, _, _, _}, _, s),
+    do: {:reply, {:error, :managed_supersession_refused}, s}
+
+  def handle_call({:supersession_record, ref, sha, event}, {caller, _}, %{job_ref: ref} = s)
+      when ref != nil,
+      do: supersession_record(s, caller, sha, event)
+
+  def handle_call({:supersession_record, _, _, _}, _, s),
+    do: {:reply, {:error, :managed_supersession_refused}, s}
+
+  def handle_call(
+        {:managed_sources, ref, {:supersession, sha}, proofs},
+        {caller, _},
+        %{job_ref: ref} = s
+      )
+      when ref != nil do
+    reply =
+      with %{candidate: intent} <- s.managed_supersession,
+           {:ok, binding} when is_map(binding) <- supersession_lookup(s, caller, intent),
+           true <- binding.source_binding == {:supersession, sha},
+           true <- is_list(proofs) and length(proofs) in 1..8 and binding.proof in proofs,
+           true <- Enum.all?(proofs, &(is_map(&1) and &1["session_id"] == s.id)),
+           {:ok, verified} <- supersession_proofs(s, proofs) do
+        {:ok, verified}
+      else
+        _ -> {:error, :managed_supersession_refused}
+      end
+
+    {:reply, reply, s}
+  end
+
+  def handle_call({:managed_sources, ref, binding, proofs}, {caller, _}, %{job_ref: ref} = s)
+      when ref != nil do
+    {:reply, Ipse.Session.ManagedUse.sources(s, caller, binding, proofs), s}
+  end
+
+  def handle_call({:managed_sources, _, _, _}, _, s),
+    do: {:reply, {:error, :collection_source_refused}, s}
+
+  def handle_call({:managed_output_prepare, ref, kind, payload}, {caller, _}, %{job_ref: ref} = s)
+      when ref != nil, do: Ipse.Session.ManagedOutput.prepare(s, caller, kind, payload)
+
+  def handle_call(
+        {:managed_output_admit, ref, id, mode, deadline},
+        {caller, _},
+        %{job_ref: ref} = s
+      )
+      when ref != nil, do: Ipse.Session.ManagedOutput.admit(s, caller, id, mode, deadline)
+
+  def handle_call({:managed_output_cleanup, ref, id, status}, {caller, _}, %{job_ref: ref} = s)
+      when ref != nil, do: Ipse.Session.ManagedOutput.finish(s, caller, id, status)
+
+  def handle_call({:managed_output_event_complete, ref, id}, {caller, _}, %{job_ref: ref} = s)
+      when ref != nil, do: Ipse.Session.ManagedOutput.complete_event(s, caller, id)
+
+  def handle_call({:managed_output_prepare, _, _, _}, _, s),
+    do: {:reply, {:error, :managed_output_unavailable}, s}
+
+  def handle_call({:managed_output_admit, _, _, _, _}, _, s),
+    do: {:reply, {:error, :managed_output_unavailable}, s}
+
+  def handle_call({:managed_output_cleanup, _, _, _}, _, s),
+    do: {:reply, {:error, :managed_output_unavailable}, s}
+
+  def handle_call({:managed_output_event_complete, _, _}, _, s),
+    do: {:reply, {:error, :managed_output_unavailable}, s}
 
   def handle_call(
         {:extension_effect_source, ref, intent, kind, data},
@@ -1551,6 +3365,7 @@ defmodule Ipse.Session do
          | operator_channel: channel,
            operator_render: nil,
            draft_render: nil,
+           assertion_render: nil,
            operator_answers: %{},
            operator_pieces: []
        }}
@@ -1613,6 +3428,190 @@ defmodule Ipse.Session do
 
   def handle_call({:stage_input, _, _, _}, _, s),
     do: {:reply, {:error, :invalid_input_witness}, s}
+
+  def handle_call(
+        {:prepare_assertion, channel, text, ticket},
+        {client, _},
+        %{phase: :idle, operator_channel: %{id: channel, client: client}} = s
+      ) do
+    with true <- planning_entry_quiet?(s),
+         {:ok, category, statement} <- Ipse.Session.OperatorAssertion.parse_command(text),
+         {:ok, scope, name} <- Ipse.Session.OperatorAssertion.selection(s.config),
+         {:ok, origin} when is_map(origin) <- Writer.source_query(s.journal_writer, :origin),
+         {:ok, window} <- Writer.source_query(s.journal_writer, :snapshot),
+         {:ok, _} <- Ipse.Session.Input.submit(ticket, text, operator_binding(s, "prompt", nil)),
+         {:ok, render} <-
+           Ipse.Session.OperatorAssertion.render(s.id, channel, category, statement, scope) do
+      pending = %{
+        render: render,
+        purpose: nil,
+        name: name,
+        source_generation: window["generation"],
+        input_generation: s.input_generation
+      }
+
+      {:reply, {:ok, %{"render_id" => render["id"]}}, %{s | assertion_render: pending}}
+    else
+      _ ->
+        Ipse.Session.Input.discard(ticket)
+        {:reply, {:error, :operator_assertion_refused}, %{s | assertion_render: nil}}
+    end
+  end
+
+  def handle_call({:prepare_assertion, _, _, _}, _, s),
+    do: {:reply, {:error, :operator_assertion_refused}, s}
+
+  def handle_call(
+        {:accept_assertion_observed, channel, render_id, text, witness},
+        {client, _},
+        %{
+          phase: :idle,
+          operator_channel: %{id: channel, client: client},
+          assertion_render: %{render: %{"id" => render_id} = render} = pending
+        } = s
+      ) do
+    with true <- planning_entry_quiet?(s),
+         true <-
+           render["channel_id"] == channel and pending.input_generation == s.input_generation,
+         {:ok, scope, name} <- Ipse.Session.OperatorAssertion.selection(s.config),
+         true <- scope === render["scope"] and name === pending.name,
+         {:ok, window} <- Writer.source_query(s.journal_writer, :snapshot),
+         true <- window["generation"] === pending.source_generation,
+         {:ok, observation} <-
+           Ipse.Session.Input.consume(witness, text, operator_binding(s, "assertion", render_id)),
+         {:ok, event} <- Ipse.Session.OperatorAssertion.receipt(render, text, observation),
+         :ok <- Writer.ensure_source_window(s.journal_writer) do
+      record(s, event)
+      s = %{s | assertion_render: nil, input_generation: Ipse.Usage.id()}
+
+      case Writer.source_query(s.journal_writer, {:assertion_request, event["id"]}) do
+        {:ok, source} ->
+          args = %{
+            "text" => event["text"],
+            "category" => event["category"],
+            "reason" => "Native operator statement and category review.",
+            "event_at_ms" => nil,
+            "source" => source
+          }
+
+          with {:ok, s} <- prepare_supersession_intake(s, pending, event, source) do
+            invoke_assertion_capture(s, name, args)
+          else
+            _ -> {:reply, {:error, :operator_assertion_refused}, s}
+          end
+
+        _ ->
+          {:reply, {:error, :operator_assertion_refused}, s}
+      end
+    else
+      _ ->
+        Ipse.Session.Input.discard(witness)
+        {:reply, {:error, :operator_assertion_refused}, %{s | assertion_render: nil}}
+    end
+  end
+
+  def handle_call({:accept_assertion_observed, _, _, _, _}, _, s),
+    do: {:reply, {:error, :operator_assertion_refused}, s}
+
+  def handle_call(
+        {:enter_planning_observed, channel, ticket},
+        {client, _},
+        %{operator_channel: %{id: channel, client: client}, phase: :idle} = s
+      ) do
+    with true <- planning_entry_quiet?(s),
+         {:ok, current} <- Ipse.Extension.Mode.capture(s.config),
+         true <- current["ceiling"] == "normal" and current["enclosing_ceiling"] == "normal",
+         {:ok, observation} <-
+           Ipse.Session.Input.submit(ticket, "/plan", operator_binding(s, "prompt", nil)),
+         true <- Ipse.Session.Input.valid_observation?(observation, "/plan", 2) do
+      :ok = Ipse.Session.Input.invalidate()
+      next_mode = Map.put(current, "ceiling", "planning")
+
+      checkpoint = %{
+        "type" => "execution_mode_resumed",
+        "version" => 2,
+        "session_id" => s.id,
+        "previous_sha256" => Ipse.JSON.digest([current]),
+        "mode" => next_mode
+      }
+
+      record(s, checkpoint)
+      epoch_id = record_planning_epoch(s, next_mode)
+      entry = Ipse.Session.PlanningTransition.entry(s.id, checkpoint, observation)
+      record(s, entry)
+
+      {:reply, :ok,
+       %{
+         s
+         | config: apply_execution_mode(s.config, next_mode),
+           planning_mcp_epoch_id: epoch_id,
+           planning_entry: entry,
+           input_generation: Ipse.Usage.id(),
+           operator_channel: %{s.operator_channel | generation: Ipse.Usage.id()}
+       }}
+    else
+      _ ->
+        Ipse.Session.Input.discard(ticket)
+        {:reply, {:error, :planning_entry_unavailable}, s}
+    end
+  end
+
+  def handle_call(
+        {:enter_planning_observed, channel, ticket},
+        {client, _},
+        %{operator_channel: %{id: channel, client: client}} = s
+      ) do
+    Ipse.Session.Input.discard(ticket)
+    {:reply, {:error, :planning_entry_unavailable}, s}
+  end
+
+  def handle_call({:enter_planning_observed, _, _}, _, s),
+    do: {:reply, {:error, :planning_entry_unavailable}, s}
+
+  def handle_call(
+        {:exit_planning_observed, channel, ticket},
+        {client, _},
+        %{operator_channel: %{id: channel, client: client}, phase: :idle} = s
+      ) do
+    with true <- planning_entry_quiet?(s) and is_map(s.planning_entry),
+         {:ok, current} <- Ipse.Extension.Mode.capture(s.config),
+         true <- current["ceiling"] == "planning",
+         {:ok, observation} <-
+           Ipse.Session.Input.submit(ticket, "/plan exit", operator_binding(s, "prompt", nil)),
+         true <- Ipse.Session.Input.valid_observation?(observation, "/plan exit", 2) do
+      :ok = Ipse.Session.Input.invalidate()
+      event = Ipse.Session.PlanningTransition.exit(s.id, s.planning_entry, current, observation)
+      next_mode = event["mode"]
+      record(s, event)
+      epoch_id = record_planning_epoch(s, next_mode)
+
+      {:reply, :ok,
+       %{
+         s
+         | config: apply_execution_mode(s.config, next_mode),
+           planning_mcp_epoch_id: epoch_id,
+           planning_entry: nil,
+           input_generation: Ipse.Usage.id(),
+           operator_channel: %{s.operator_channel | generation: Ipse.Usage.id()}
+       }}
+    else
+      _ ->
+        Ipse.Session.Input.discard(ticket)
+        {:reply, {:error, :planning_exit_unavailable}, s}
+    end
+  end
+
+  def handle_call(
+        {:exit_planning_observed, channel, ticket},
+        {client, _},
+        %{operator_channel: %{id: channel, client: client}} = s
+      ) do
+    Ipse.Session.Input.discard(ticket)
+    {:reply, {:error, :planning_exit_unavailable}, s}
+  end
+
+  def handle_call({:exit_planning_observed, _, _}, _, s),
+    do: {:reply, {:error, :planning_exit_unavailable}, s}
 
   def handle_call(
         {:discard_input, channel, witness},
@@ -1741,6 +3740,7 @@ defmodule Ipse.Session do
          ) do
       {:ok, event, projected} ->
         record(s, event)
+        s = managed_event(s, event, projected)
         {:reply, :ok, %{s | draft: nil, messages: projected}}
 
       error ->
@@ -1885,6 +3885,43 @@ defmodule Ipse.Session do
   end
 
   def handle_call({:replace_draft_observed, _, _, _, _, _}, _, s),
+    do: {:reply, {:error, :invalid_input_witness}, s}
+
+  def handle_call(
+        {:replace_draft_command_observed, channel, id, revision, command, ticket},
+        {client, _},
+        %{
+          phase: :idle,
+          operator_channel: %{id: channel, client: client},
+          draft: %{id: id, revision: revision, status: :completed} = draft
+        } = s
+      )
+      when revision < 100 do
+    with {:ok, text} <- Ipse.Session.Draft.inline_replacement(command),
+         {:ok, observation} <-
+           Ipse.Session.Input.submit(ticket, command, operator_binding(s, "prompt", nil)) do
+      :ok = Ipse.Session.Input.cancel_read()
+      record(s, Ipse.Session.Draft.replaced_command(draft, text, command, observation))
+
+      {:reply, :ok,
+       %{s | draft: %{draft | revision: revision + 1, proposal: text}, draft_render: nil}}
+    else
+      _ ->
+        Ipse.Session.Input.discard(ticket)
+        {:reply, {:error, :invalid_input_witness}, s}
+    end
+  end
+
+  def handle_call(
+        {:replace_draft_command_observed, channel, _, _, _, ticket},
+        {client, _},
+        %{operator_channel: %{id: channel, client: client}} = s
+      ) do
+    Ipse.Session.Input.discard(ticket)
+    {:reply, {:error, :invalid_input_witness}, s}
+  end
+
+  def handle_call({:replace_draft_command_observed, _, _, _, _, _}, _, s),
     do: {:reply, {:error, :invalid_input_witness}, s}
 
   def handle_call(
@@ -2117,6 +4154,56 @@ defmodule Ipse.Session do
     do: {:reply, {:error, :source_index_refused}, s}
 
   def handle_call(
+        {:prepare_model_source, ref, operation, request},
+        {worker, _},
+        %{task: %{pid: worker}, job_ref: ref, phase: :tool} = s
+      ) do
+    call = List.first(s.calls)
+
+    with true <- Ipse.Session.SourceWindow.enabled?(s.config),
+         true <-
+           get_in(call, ["function", "name"]) == Ipse.Extension.SourceRead.tool_name(operation),
+         true <-
+           Ipse.JSON.decode_unique(get_in(call, ["function", "arguments"])) == {:ok, request},
+         false <- Map.has_key?(s.managed_lineage.source_lookups, call["id"]),
+         {:ok, rows} <-
+           Writer.source_query(
+             s.journal_writer,
+             {:tool_query_provenances, call["id"], operation, request}
+           ),
+         {:ok, lineage, dependencies} <-
+           Ipse.Session.ManagedLineage.add_selected_source_dependencies(
+             s.managed_lineage,
+             call["id"],
+             rows
+           ),
+         next = %{s | managed_lineage: lineage},
+         true <- dependencies == [] or Ipse.Session.ManagedToolUse.root_only?(next, dependencies),
+         event = %{
+           "type" => "managed_source_lookup_prepared",
+           "version" => 1,
+           "session_id" => s.id,
+           "call_id" => call["id"],
+           "operation" => operation,
+           "request_sha256" => Ipse.JSON.digest([Map.put(request, "op", operation)]),
+           "selection_sha256" => Ipse.JSON.digest([rows]),
+           "dependencies_sha256" => Ipse.JSON.digest(dependencies)
+         } do
+      record(next, event)
+      next = managed_event(next, event)
+
+      if match?(%Ipse.Session.ManagedLineage{unavailable: false}, next.managed_lineage),
+        do: {:reply, :ok, next},
+        else: {:reply, {:error, :source_index_refused}, next}
+    else
+      _ -> {:reply, {:error, :source_index_refused}, s}
+    end
+  end
+
+  def handle_call({:prepare_model_source, _, _, _}, _, s),
+    do: {:reply, {:error, :source_index_refused}, s}
+
+  def handle_call(
         {:model_sources, ref, operation, request},
         {worker, _},
         %{task: %{pid: worker}, job_ref: ref, phase: :tool} = s
@@ -2124,9 +4211,34 @@ defmodule Ipse.Session do
     call = List.first(s.calls)
 
     if Ipse.Session.SourceWindow.enabled?(s.config) and
+         source_lookup_prepared?(s, call, operation, request) and
+         Ipse.Session.ManagedLineage.tool_dependencies(s.managed_lineage, call["id"]) == {:ok, []} and
          get_in(call, ["function", "name"]) == Ipse.Extension.SourceRead.tool_name(operation) and
          Ipse.JSON.decode_unique(get_in(call, ["function", "arguments"])) == {:ok, request},
-       do: {:reply, source_query(s, operation, request), s},
+       do: {:reply, source_query(s, operation, request), consume_source_lookup(s, call["id"])},
+       else: {:reply, {:error, :source_index_refused}, s}
+  end
+
+  def handle_call(
+        {:model_sources, ref, operation, request},
+        {caller, _},
+        %{task: %{pid: worker}, job_ref: ref, phase: :tool} = s
+      ) do
+    call = List.first(s.calls)
+    pending = s.managed_tool_effect
+    name = Ipse.Extension.SourceRead.tool_name(operation)
+
+    if Ipse.Session.SourceWindow.enabled?(s.config) and
+         source_lookup_prepared?(s, call, operation, request) and
+         Ipse.Session.Resources.authorized_effect?(worker, caller) and
+         is_map(pending) and pending.worker == worker and pending.job == ref and
+         pending.admitted and is_nil(pending.cleanup) and
+         System.system_time(:millisecond) < pending.deadline and
+         get_in(call, ["function", "name"]) == name and
+         Ipse.JSON.decode_unique(get_in(call, ["function", "arguments"])) == {:ok, request} and
+         pending.binding == Ipse.Session.ManagedToolUse.native_binding(name, request) and
+         Ipse.Session.ManagedToolUse.root_only_source_call?(s, call),
+       do: {:reply, source_query(s, operation, request), consume_source_lookup(s, call["id"])},
        else: {:reply, {:error, :source_index_refused}, s}
   end
 
@@ -2150,13 +4262,40 @@ defmodule Ipse.Session do
   def handle_call(:cancel, _from, %{draft: %{status: status}} = s)
       when status in [:pending, :completed, :accepted], do: cancel_draft_work(s)
 
-  def handle_call(:cancel, _from, s), do: cancel_work(s, false)
+  def handle_call(:cancel, _from, s), do: cancel_work(%{s | assertion_render: nil}, false)
+
+  def handle_call(:close, _from, %{lock_mode: mode} = s)
+      when mode in [:export_v1, :header_v1, :resume_v1, :header_share_v2, :resume_share_v2] do
+    {cleanup, next} = stop_work(s, s.phase != :idle, "cancelled", "session_close")
+    observer_cleanup = Ipse.Observability.close(s.observation, &record(s, &1))
+    # The Writer cannot append after lock release, so do not claim a clean
+    # final lock outcome in the lifecycle journal before that outcome exists.
+    {next, closure} = close_epoch_for_release(next)
+    prepared = prepare_release(next, closure, cleanup ++ observer_cleanup)
+    writer_cleanup = stop_writer_confirmed(next)
+
+    lock_cleanup = release_lock_confirmed(next.lock_guard)
+
+    result =
+      complete_release(
+        next,
+        prepared,
+        cleanup ++ observer_cleanup ++ [writer_cleanup, lock_cleanup]
+      )
+
+    {:stop, :normal, result, next}
+  end
 
   def handle_call(:close, _from, s) do
     {cleanup, next} = stop_work(s, s.phase != :idle, "cancelled", "session_close")
     observer_cleanup = Ipse.Observability.close(s.observation, &record(s, &1))
     cleanup = cleanup ++ observer_cleanup
-    result = if Enum.all?(cleanup, &(&1 == :ok)), do: :ok, else: {:error, :cleanup_unconfirmed}
+
+    result =
+      if is_nil(s.release_owner) and Enum.all?(cleanup, &(&1 == :ok)),
+        do: :ok,
+        else: {:error, :cleanup_unconfirmed}
+
     {:stop, :normal, result, close_epoch(next, "close", result == :ok)}
   end
 
@@ -2292,6 +4431,7 @@ defmodule Ipse.Session do
   end
 
   defp cancel_work(s, keep_queued) do
+    relation = s.managed_supersession != nil
     {cleanup, next} = stop_work(s, true, "cancelled", "cancelled", keep_queued)
 
     if Enum.any?(cleanup, &(&1 != :ok)) do
@@ -2306,6 +4446,7 @@ defmodule Ipse.Session do
       {:stop, :normal, {:error, :cleanup_unconfirmed},
        close_epoch(next, "cleanup_failure", false)}
     else
+      if relation, do: notify(s, :native_relation_ready)
       notify(s, {:done, :cancelled})
       {:reply, :ok, next}
     end
@@ -2358,6 +4499,18 @@ defmodule Ipse.Session do
        else: {:error, :source_index_refused}
   end
 
+  defp source_lookup_prepared?(s, call, operation, request) do
+    event = s.managed_lineage.source_lookups[call["id"]]
+
+    is_map(event) and event["used"] != true and event["operation"] === operation and
+      event["request_sha256"] === Ipse.JSON.digest([Map.put(request, "op", operation)])
+  rescue
+    _ -> false
+  end
+
+  defp consume_source_lookup(s, call_id),
+    do: put_in(s.managed_lineage.source_lookups[call_id]["used"], true)
+
   defp stop_work(
          s,
          record_cancel,
@@ -2365,10 +4518,23 @@ defmodule Ipse.Session do
          feed_reason \\ "cancelled",
          keep_queued \\ false
        ) do
+    s = Ipse.Session.ManagedToolUse.interrupted(s)
+
     :ok =
       if keep_queued, do: Ipse.Session.Input.cancel_read(), else: Ipse.Session.Input.invalidate()
 
-    s = %{s | operator_render: nil, operator_answers: %{}, operator_pieces: []}
+    s = %{
+      s
+      | operator_render: nil,
+        operator_answers: %{},
+        operator_pieces: [],
+        managed_result_seal: nil,
+        managed_output_release: nil,
+        managed_tool_effect: nil,
+        managed_tool_result: nil,
+        managed_supersession: release_supersession_reservation(s)
+    }
+
     s = CurrentInvocation.release_output(s)
     s = finish_wait(s, wait_outcome)
     s = if s.task, do: measure_request(s, :cancelled), else: s
@@ -2490,6 +4656,91 @@ defmodule Ipse.Session do
 
   @impl true
 
+  def handle_info(_, %{share_barrier: %{phase: :poisoned}} = s), do: {:noreply, s}
+
+  def handle_info(
+        {port, {:data, bytes}},
+        %{share_barrier: %{controlled: true, owner_port: port} = b} = s
+      )
+      when is_binary(bytes) and byte_size(bytes) + byte_size(b.owner_buffer) <= 128 do
+    if share_deadline_current?(b) do
+      case session_control_frames(s, b, b.owner_buffer <> bytes) do
+        {:ok, next} -> maybe_deliver_controlled(%{s | share_barrier: next})
+        _ -> {:noreply, poison_session_share(s)}
+      end
+    else
+      {:noreply, poison_session_share(s)}
+    end
+  end
+
+  def handle_info(
+        {port, {:exit_status, 0}},
+        %{share_barrier: %{controlled: true, phase: :transaction_closing, owner_port: port} = b} =
+          s
+      ) do
+    if Process.alive?(b.caller) and share_deadline_current?(b) do
+      send(b.caller, {:session_owner_control, b.capability, :closed})
+      {:noreply, %{s | share_barrier: %{b | phase: :transaction_closed, owner_phase: :closed}}}
+    else
+      {:noreply, poison_session_share(s)}
+    end
+  end
+
+  def handle_info(
+        {port, {:exit_status, 0}},
+        %{
+          share_barrier:
+            %{
+              controlled: true,
+              owner_protocol: :synthetic_review,
+              phase: :review_input,
+              owner_port: port
+            } = b
+        } = s
+      ) do
+    if Map.get(b, :notice_final, false) and Process.alive?(b.caller) and
+         share_deadline_current?(b) do
+      send(b.caller, {:session_owner_control, b.capability, :closed})
+      {:noreply, %{s | share_barrier: %{b | phase: :review_closed, owner_phase: :closed}}}
+    else
+      {:noreply, poison_session_share(s)}
+    end
+  end
+
+  def handle_info(
+        {port, {:exit_status, 0}},
+        %{share_barrier: %{controlled: true, phase: :terminal_closing, owner_port: port} = b} = s
+      ) do
+    if (b.owner_protocol != :synthetic_notice or Map.get(b, :notice_final, false)) and
+         Process.alive?(b.caller) and share_deadline_current?(b) do
+      send(b.caller, {:session_owner_control, b.capability, :closed})
+      {:noreply, %{s | share_barrier: %{b | phase: :terminal_closed, owner_phase: :closed}}}
+    else
+      {:noreply, poison_session_share(s)}
+    end
+  end
+
+  def handle_info(
+        {port, {:exit_status, _}},
+        %{share_barrier: %{controlled: true, owner_port: port, owner_phase: :closed}} = s
+      ),
+      do: {:noreply, s}
+
+  def handle_info({port, _}, %{share_barrier: %{controlled: true, owner_port: port}} = s),
+    do: {:noreply, poison_session_share(s)}
+
+  def handle_info(message, %{share_barrier: %{request: request} = b} = s)
+      when not is_nil(request) do
+    case :gen_server.check_response(message, request) do
+      {:reply, reply} -> session_share_response(s, b, reply)
+      {:error, _} -> {:noreply, poison_session_share(s)}
+      :no_reply -> {:noreply, poison_session_share(s)}
+    end
+  end
+
+  def handle_info(_, %{share_barrier: barrier} = s) when not is_nil(barrier),
+    do: {:noreply, poison_session_share(s)}
+
   def handle_info(
         {:extension_output_deadline, ref},
         %{job_ref: ref, extension_output_clock: clock} = s
@@ -2576,12 +4827,33 @@ defmodule Ipse.Session do
   def handle_info({ref, result}, %{task: %{ref: ref}} = s) do
     cleanup = Ipse.Session.Resources.close_task(s.task.pid)
     result = if cleanup == :ok, do: result, else: :task_cleanup_unconfirmed
+
+    {result, s} =
+      if s.phase in [:model, :compaction],
+        do: Ipse.Session.InferenceDispatch.consume_result(s, Atom.to_string(s.phase), result),
+        else: {result, s}
+
     s = measure_request(s, result)
     Process.demonitor(ref, [:flush])
     phase = if s.phase == :delegated_approval, do: :tool, else: s.phase
     s = %{s | task: nil}
 
+    s =
+      if cleanup == :ok and phase == :extension_command and s.managed_supersession != nil and
+           not match?({:extension_question, _}, result) do
+        notify(s, :native_relation_ready)
+
+        if match?({:managed_supersession_finished, _}, result),
+          do: s,
+          else: %{s | managed_supersession: release_supersession_reservation(s)}
+      else
+        s
+      end
+
     case {phase, result} do
+      {:extension_command, {:managed_supersession_finished, outcome}} ->
+        finish_supersession(s, outcome)
+
       {_, :task_cleanup_unconfirmed} ->
         {_, next} =
           stop_work(%{s | task_cleanup_failed: true}, true, "interrupted", "cleanup_failure")
@@ -2595,7 +4867,14 @@ defmodule Ipse.Session do
         {:stop, :normal, close_epoch(next, "cleanup_failure", false)}
 
       {:semantic_outer, {:extension_command_outer, request, result}} ->
-        CurrentInvocation.command_outer(s, request, result)
+        case CurrentInvocation.command_outer(s, request, result) do
+          {:noreply, %{task: nil} = next} ->
+            if s.managed_supersession != nil, do: notify(s, :native_relation_ready)
+            {:noreply, %{next | managed_supersession: release_supersession_reservation(next)}}
+
+          other ->
+            other
+        end
 
       {:semantic_outer, result} ->
         Turn.semantic_outer_completed(s, result)
@@ -2606,6 +4885,13 @@ defmodule Ipse.Session do
 
       {:extension_events, {:extension_invocation_result, event}} ->
         CurrentInvocation.complete_event_job(s, event)
+
+      {invocation_phase, {:extension_released, id}}
+      when invocation_phase in [:tool, :extension_command, :extension_service] ->
+        Ipse.Session.ManagedOutput.complete(s, id)
+
+      {:tool, {:managed_tool_released, id}} ->
+        Ipse.Session.ManagedToolUse.complete_result(s, id)
 
       {invocation_phase, {:extension_saved_result, delivery}}
       when invocation_phase in [:tool, :extension_command] ->
@@ -2650,7 +4936,7 @@ defmodule Ipse.Session do
       {:mcp_discovery, {:ok, tools}} ->
         Turn.mcp_discovered(s, tools)
 
-      {:mcp_discovery, {:error, error}} ->
+      {:mcp_discovery, {status, error}} when status in [:error, :unknown] ->
         {:noreply, Turn.fail(Turn.mcp_revalidation_failed(s, error), error)}
 
       {:tool, {:unknown, error}} ->
@@ -2996,6 +5282,451 @@ defmodule Ipse.Session do
 
   def handle_info(_, s), do: {:noreply, s}
 
+  defp session_share_response(s, %{phase: :draining} = b, {:ok, token, snapshot}) do
+    if is_reference(token) and is_map(snapshot) and snapshot[:session_id] == s.id and
+         relation_ticket_current?(s, b) and
+         (not Map.has_key?(b, :expected_sources) or
+            snapshot[:verified_sources] === b.expected_sources) and
+         snapshot[:job_ref] == b.job_ref and snapshot[:owner_generation] == b.generation and
+         s.job_ref == b.job_ref and s.task != nil and s.task.pid == b.caller and
+         s.invocation.parent == b.parent and s.invocation.action.intent == b.intent and
+         s.phase == b.session_phase and Process.alive?(b.caller) and
+         (not Map.get(b, :controlled, false) or
+            (s.operator_channel == b.channel and Process.alive?(b.channel.client) and
+               Process.alive?(b.channel.reader))) and
+         System.monotonic_time(:millisecond) < b.deadline do
+      request =
+        Ipse.Session.Lock.request_share_arm(s.lock_guard, s.journal_writer, token, b.operation)
+
+      barrier =
+        Map.merge(b, %{phase: :arming, request: request, token: token, snapshot: snapshot})
+
+      {:noreply, %{s | share_barrier: barrier}}
+    else
+      {:noreply, poison_session_share(s)}
+    end
+  end
+
+  defp session_share_response(s, %{phase: :arming} = b, {:ok, transport})
+       when is_binary(transport) and byte_size(transport) == 16 do
+    if Process.alive?(b.caller) and share_deadline_current?(b) do
+      capability = make_ref()
+
+      if Map.get(b, :controlled, false) do
+        barrier =
+          Map.merge(b, %{
+            phase: :armed_wait,
+            request: nil,
+            capability: capability,
+            transport: transport
+          })
+
+        maybe_deliver_controlled(%{s | share_barrier: barrier})
+      else
+        GenServer.reply(b.from, {:ok, capability, transport, b.snapshot})
+
+        {:noreply,
+         %{
+           s
+           | share_barrier:
+               Map.merge(b, %{phase: :armed, request: nil, from: nil, capability: capability})
+         }}
+      end
+    else
+      {:noreply, poison_session_share(s)}
+    end
+  end
+
+  defp session_share_response(s, %{phase: :cancelling} = b, :ok) do
+    if Process.alive?(b.caller) and System.monotonic_time(:millisecond) < b.deadline do
+      request = :gen_server.send_request(s.journal_writer, {:share_thaw, b.token, b.operation})
+      {:noreply, %{s | share_barrier: %{b | phase: :thawing, request: request}}}
+    else
+      {:noreply, poison_session_share(s)}
+    end
+  end
+
+  defp session_share_response(s, %{phase: :identifying} = b, {:ok, identity})
+       when is_map(identity) do
+    if Process.alive?(b.caller) and System.monotonic_time(:millisecond) < b.deadline and
+         is_integer(identity[:pid]) and identity.pid > 0 and is_integer(identity[:device]) and
+         identity.device >= 0 and is_integer(identity[:inode]) and identity.inode > 0 do
+      GenServer.reply(b.from, {:ok, identity})
+      {:noreply, %{s | share_barrier: %{b | phase: :armed, request: nil, from: nil}}}
+    else
+      {:noreply, poison_session_share(s)}
+    end
+  end
+
+  defp session_share_response(s, %{phase: :writer_opening} = b, {:ok, identity})
+       when is_map(identity) do
+    if Process.alive?(b.caller) and share_deadline_current?(b) and
+         is_integer(identity[:pid]) and identity.pid > 0 and is_integer(identity[:device]) and
+         identity.device >= 0 and
+         is_integer(identity[:inode]) and identity.inode > 0 do
+      GenServer.reply(b.from, {:ok, identity})
+
+      {:noreply,
+       %{
+         s
+         | share_barrier:
+             Map.merge(b, %{phase: :armed, request: nil, from: nil, writer_control: :ready})
+       }}
+    else
+      {:noreply, poison_session_share(s)}
+    end
+  end
+
+  defp session_share_response(s, %{phase: phase} = b, :ok)
+       when phase in [:writer_transferring, :writer_preparing, :writer_closing] do
+    if Process.alive?(b.caller) and share_deadline_current?(b) do
+      GenServer.reply(b.from, :ok)
+
+      next =
+        case phase do
+          :writer_transferring ->
+            Map.merge(b, %{phase: :armed, writer_control: :transferred})
+
+          :writer_preparing ->
+            Map.merge(b, %{phase: :settled, writer_control: :closing})
+
+          :writer_closing ->
+            b |> Map.delete(:writer_control) |> Map.put(:phase, :transaction_closed)
+        end
+
+      {:noreply, %{s | share_barrier: %{next | request: nil, from: nil}}}
+    else
+      {:noreply, poison_session_share(s)}
+    end
+  end
+
+  defp session_share_response(s, %{phase: phase} = b, :ok)
+       when phase in [:exporting, :settling] do
+    if Process.alive?(b.caller) and System.monotonic_time(:millisecond) < b.deadline do
+      GenServer.reply(b.from, :ok)
+      next = if phase == :exporting, do: :exported, else: :settled
+      {:noreply, %{s | share_barrier: %{b | phase: next, request: nil, from: nil}}}
+    else
+      {:noreply, poison_session_share(s)}
+    end
+  end
+
+  defp session_share_response(s, %{phase: :thawing} = b, :ok) do
+    if Process.alive?(b.caller) and share_deadline_current?(b) do
+      Process.cancel_timer(b.timer)
+      GenServer.reply(b.from, :ok)
+      {:noreply, %{s | share_barrier: nil}}
+    else
+      {:noreply, poison_session_share(s)}
+    end
+  end
+
+  defp session_share_response(s, %{phase: :review_thawing} = b, :ok) do
+    if Process.alive?(b.caller) and share_deadline_current?(b) and
+         System.monotonic_time(:millisecond) < b.overall_deadline and
+         System.system_time(:millisecond) < b.overall_wall do
+      Process.cancel_timer(b.timer)
+
+      timer =
+        Process.send_after(
+          self(),
+          {:session_share_timeout, b.generation},
+          max(b.overall_deadline - System.monotonic_time(:millisecond), 0)
+        )
+
+      GenServer.reply(b.from, :ok)
+
+      {:noreply,
+       %{
+         s
+         | share_barrier: %{
+             b
+             | phase: :review_input,
+               request: nil,
+               from: nil,
+               deadline: b.overall_deadline,
+               wall_deadline: b.overall_wall,
+               timer: timer
+           }
+       }}
+    else
+      {:noreply, poison_session_share(s)}
+    end
+  end
+
+  defp session_share_response(s, _, _), do: {:noreply, poison_session_share(s)}
+
+  defp maybe_deliver_controlled(
+         %{share_barrier: %{controlled: true, phase: :armed_wait, owner_phase: :ready} = b} = s
+       ) do
+    if Process.alive?(b.caller) and Process.alive?(b.channel.client) and
+         Process.alive?(b.channel.reader) and s.operator_channel == b.channel and
+         System.monotonic_time(:millisecond) < b.deadline and
+         Port.info(b.host_port, :connected) == {:connected, b.caller} do
+      case Port.info(b.owner_port, :os_pid) do
+        {:os_pid, pid} ->
+          controls = %{
+            operation: b.operation,
+            deadline: b.deadline,
+            session_pid: pid,
+            host_port: b.host_port,
+            channel_id: b.channel.id
+          }
+
+          controls =
+            if b.owner_protocol in [:synthetic_notice, :synthetic_review],
+              do:
+                Map.merge(controls, %{
+                  wall_deadline: b.wall_deadline,
+                  overall_deadline: b.overall_deadline,
+                  overall_wall: b.overall_wall
+                }),
+              else: controls
+
+          controls =
+            if Map.has_key?(b, :relation_display_inactive_sources),
+              do:
+                Map.put(
+                  controls,
+                  :relation_inactive_sha256,
+                  Ipse.JSON.digest([b.relation_display_inactive_sources])
+                ),
+              else: controls
+
+          GenServer.reply(b.from, {:ok, b.capability, b.transport, b.snapshot, controls})
+          {:noreply, %{s | share_barrier: %{b | phase: :armed, from: nil}}}
+
+        _ ->
+          {:noreply, poison_session_share(s)}
+      end
+    else
+      {:noreply, poison_session_share(s)}
+    end
+  end
+
+  defp maybe_deliver_controlled(s), do: {:noreply, s}
+
+  defp relation_ticket_current?(s, %{relation_display_purpose_sha256: sha} = ticket) do
+    with %{prepared: prepared, candidate: candidate, records: [event]} <- s.managed_supersession,
+         true <- sha === Ipse.JSON.digest([prepared, candidate]),
+         true <- Ipse.Session.ManagedSupersession.record?(event, prepared, candidate, []),
+         {:ok, sources} <-
+           Ipse.Session.ManagedSupersession.reviewed_display_sources(
+             event["facts"],
+             s.id,
+             System.system_time(:millisecond)
+           ),
+         true <- sources.facts_sha256 === ticket.relation_display_facts_sha256,
+         true <- sources.active === ticket.source_proofs,
+         true <- sources.inactive === ticket.relation_display_inactive_sources do
+      true
+    else
+      _ -> false
+    end
+  rescue
+    _ -> false
+  end
+
+  defp relation_ticket_current?(s, %{relation_purpose_sha256: sha} = ticket) do
+    with %{prepared: prepared, candidate: candidate, records: [event, review_event]} <-
+           s.managed_supersession,
+         true <- sha === Ipse.JSON.digest([prepared, candidate]),
+         true <- ticket.relation_facts_sha256 === Ipse.JSON.digest([event["facts"]]),
+         true <- ticket.relation_review_sha256 === Ipse.JSON.digest([review_event]),
+         {:ok, sources} <-
+           Ipse.Session.ManagedSupersession.reviewed_publication_sources(
+             event["facts"],
+             review_event["review"],
+             s.id,
+             System.system_time(:millisecond)
+           ),
+         true <- sources.active === ticket.source_proofs,
+         true <- sources.inactive === ticket.relation_inactive_sources do
+      true
+    else
+      _ -> false
+    end
+  rescue
+    _ -> false
+  end
+
+  defp relation_ticket_current?(_, _), do: true
+
+  defp synthetic_review_manifest?(prefix, b) do
+    with <<operation::binary-size(16), count, rest::binary>> <- prefix,
+         true <- operation === b.operation and count in 4..132,
+         true <-
+           not Map.has_key?(b, :relation_display_inactive_sources) or
+             count ===
+               4 +
+                 (b.relation_display_inactive_sources
+                  |> Enum.map(& &1["session_id"])
+                  |> Enum.uniq()
+                  |> length()),
+         <<session_pid::32, _session::binary-size(64), host_pid::32, _host::binary-size(64),
+           entries::binary-size(^count * 85), _device::64, _inode::64, _rdev::64, expiry::64,
+           native_deadline::64, overall_wall::64, native_overall::64>> <- rest,
+         {:os_pid, ^session_pid} <- Port.info(b.owner_port, :os_pid),
+         {:os_pid, ^host_pid} <- Port.info(b.host_port, :os_pid),
+         true <- expiry === b.wall_deadline and overall_wall === b.overall_wall,
+         true <- native_deadline > 0 and native_overall >= native_deadline,
+         true <- synthetic_review_source_locks_match?(entries, b) do
+      actual =
+        for <<slot, op::binary-size(16), _identity::binary-size(68) <- entries>>,
+          do: {slot, op}
+
+      expected =
+        [{0, b.transport}, {0, b.operation}, {1, b.operation}, {2, b.operation}] ++
+          List.duplicate({0, b.operation}, count - 4)
+
+      actual === expected
+    else
+      _ -> false
+    end
+  rescue
+    _ -> false
+  end
+
+  defp synthetic_review_source_locks_match?(entries, %{
+         relation_display_inactive_sources: _,
+         snapshot: snapshot
+       }) do
+    with locks when is_list(locks) <- snapshot[:inactive_source_locks] do
+      actual =
+        for <<_slot, _operation::binary-size(16), _pid::32, _name::binary-size(16),
+              _secret::binary-size(32), device::64, inode::64 <- entries>>,
+            do: {device, inode}
+
+      expected = Enum.map(locks, &{&1.device, &1.inode})
+      Enum.sort(Enum.drop(actual, 4)) === Enum.sort(expected)
+    else
+      _ -> false
+    end
+  end
+
+  defp synthetic_review_source_locks_match?(_, _), do: true
+
+  defp share_deadline_current?(%{
+         owner_protocol: protocol,
+         deadline: deadline,
+         wall_deadline: wall
+       })
+       when protocol in [:synthetic_notice, :synthetic_review] and is_integer(wall),
+       do:
+         System.monotonic_time(:millisecond) < deadline and
+           System.system_time(:millisecond) < wall
+
+  defp share_deadline_current?(%{owner_protocol: :synthetic_notice}), do: false
+  defp share_deadline_current?(%{owner_protocol: :synthetic_review}), do: false
+
+  defp share_deadline_current?(%{deadline: deadline}),
+    do: System.monotonic_time(:millisecond) < deadline
+
+  defp session_control_frames(_s, b, buffer) when byte_size(buffer) < 5,
+    do: {:ok, %{b | owner_buffer: buffer}}
+
+  defp session_control_frames(s, b, <<kind, size::32, rest::binary>> = buffer) when size <= 32 do
+    if byte_size(rest) < size do
+      {:ok, %{b | owner_buffer: buffer}}
+    else
+      <<body::binary-size(^size), tail::binary>> = rest
+
+      next =
+        case {kind, body, b.owner_phase} do
+          {?R, "owner-control-v1", :starting} when b.owner_protocol == :legacy ->
+            %{b | owner_phase: :ready}
+
+          {?R, "owner-control-v2", :starting} when b.owner_protocol == :synthetic_notice ->
+            %{b | owner_phase: :ready}
+
+          {?R, "owner-control-v2", :starting} when b.owner_protocol == :synthetic_review ->
+            %{b | owner_phase: :ready}
+
+          {?H, <<operation::binary-size(16), 1>>, :sending} when operation == b.operation ->
+            %{b | owner_phase: :bound}
+
+          {?T, <<operation::binary-size(16), 1>>, :bound} when operation == b.operation ->
+            send(b.caller, {:session_owner_control, b.capability, :transferred})
+            %{b | owner_phase: :transferred}
+
+          {?N, <<operation::binary-size(16), 1, expiry::64>>, :transferred}
+          when operation == b.operation and
+                 b.owner_protocol in [:synthetic_notice, :synthetic_review] and
+                 b.phase in [:settling, :settled] ->
+            if expiry == b.wall_deadline and Map.has_key?(b, :issued_terminal) and
+                 not Map.get(b, :notice_received, false) do
+              send(b.caller, {:session_owner_control, b.capability, :notice})
+              Map.put(b, :notice_received, true)
+            end
+
+          {?F, <<operation::binary-size(16), 1>>, :transferred}
+          when operation == b.operation and
+                 b.owner_protocol in [:synthetic_notice, :synthetic_review] and
+                 b.phase in [:terminal_closing, :review_input] ->
+            if Map.get(b, :notice_received, false) and not Map.get(b, :notice_final, false),
+              do: Map.put(b, :notice_final, true)
+
+          _ ->
+            nil
+        end
+
+      if next, do: session_control_frames(s, next, tail), else: :error
+    end
+  end
+
+  defp session_control_frames(_, _, _), do: :error
+
+  defp close_share_controls(
+         %{controlled: true, phase: :transaction_closed, owner_phase: :closed} = b
+       ) do
+    if Port.info(b.host_port) == nil and Port.info(b.owner_port) == nil,
+      do: {:ok, b},
+      else: {:error, :cleanup_unconfirmed}
+  end
+
+  defp close_share_controls(
+         %{controlled: true, phase: :terminal_closed, owner_phase: :closed} = b
+       ) do
+    if Port.info(b.host_port) == nil and Port.info(b.owner_port) == nil and
+         (not Map.has_key?(b, :issued_terminal) or Port.info(b.issued_terminal.port) == nil),
+       do: {:ok, b},
+       else: {:error, :cleanup_unconfirmed}
+  end
+
+  defp close_share_controls(%{controlled: true} = b) do
+    if Port.info(b.host_port) == nil and Ipse.Runner.close_owner_control(b.owner_port) == :ok,
+      do: {:ok, %{b | owner_phase: :closed}},
+      else: {:error, :cleanup_unconfirmed}
+  end
+
+  defp close_share_controls(b), do: {:ok, b}
+
+  defp transfer_synthetic_terminal(port, caller) do
+    with {:os_pid, pid} when is_integer(pid) and pid > 0 <- Port.info(port, :os_pid),
+         true <- Port.connect(port, caller) do
+      Process.unlink(port)
+      {:ok, pid}
+    else
+      _ ->
+        if Port.info(port, :connected) == {:connected, self()}, do: Port.close(port)
+        :error
+    end
+  rescue
+    _ ->
+      if Port.info(port, :connected) == {:connected, self()}, do: Port.close(port)
+      :error
+  end
+
+  defp poison_session_share(%{share_barrier: %{phase: :poisoned}} = s), do: s
+
+  defp poison_session_share(%{share_barrier: b} = s) do
+    Process.cancel_timer(b.timer)
+    if Map.get(b, :controlled, false), do: Ipse.Runner.close_owner_control(b.owner_port)
+    if b.from, do: GenServer.reply(b.from, {:error, :cleanup_unconfirmed})
+    if s.task && Process.alive?(s.task.pid), do: Process.exit(s.task.pid, :kill)
+    %{s | share_barrier: Map.merge(b, %{phase: :poisoned, from: nil, request: nil})}
+  end
+
   @impl true
 
   def terminate(_reason, s) do
@@ -3019,6 +5750,14 @@ defmodule Ipse.Session do
 
     # A timed-out append may still be queued or inside IO. Stop its sole writer
     # before releasing the session lock; never retry an unconfirmed record.
+    stop_writer(s)
+
+    if Process.alive?(s.lock_guard), do: Ipse.Session.Lock.release(s.lock_guard)
+
+    :ok
+  end
+
+  defp stop_writer(s) do
     Process.unlink(s.journal_writer)
     writer_ref = Process.monitor(s.journal_writer)
     Process.exit(s.journal_writer, :kill)
@@ -3027,10 +5766,82 @@ defmodule Ipse.Session do
       {:DOWN, ^writer_ref, :process, _, _} -> :ok
     end
 
-    if Process.alive?(s.lock_guard), do: Ipse.Session.Lock.release(s.lock_guard)
-
     :ok
   end
+
+  defp stop_writer_confirmed(s) do
+    Process.unlink(s.journal_writer)
+    writer_ref = Process.monitor(s.journal_writer)
+    Process.exit(s.journal_writer, :kill)
+
+    receive do
+      {:DOWN, ^writer_ref, :process, _, :killed} -> :ok
+      {:DOWN, ^writer_ref, :process, _, _} -> {:error, :cleanup_unconfirmed}
+    end
+  end
+
+  defp release_lock_confirmed(guard) do
+    if Process.alive?(guard),
+      do: Ipse.Session.Lock.release(guard),
+      else: {:error, :cleanup_unconfirmed}
+  catch
+    :exit, _ -> {:error, :cleanup_unconfirmed}
+  end
+
+  defp close_epoch_for_release(s) do
+    {context, records} = Ipse.Session.RuntimeLifecycle.close(s.lifecycle, "close", false)
+    next = lifecycle_records(s, {context, records})
+    {next, Enum.find(records, &(&1["type"] == "lifecycle_epoch_closed"))}
+  end
+
+  defp prepare_release(%{lock_mode: mode, release_owner: owner} = s, closure, cleanup)
+       when mode in [:header_v1, :resume_v1, :header_share_v2, :resume_share_v2] and is_map(owner) do
+    with true <- Enum.all?(cleanup, &(&1 == :ok)),
+         false <- is_map(s.lifecycle) and not s.lifecycle.active and is_nil(closure),
+         {:ok, lock} <-
+           Ipse.Session.Lock.header_identity(
+             s.lock_guard,
+             System.monotonic_time(:millisecond) + 2_000
+           ),
+         {:ok, helper} <- Ipse.Runner.protected_helper_digest(),
+         {:ok, intent, key} <-
+           Ipse.Session.ReleaseReceipt.prepare(
+             s.id,
+             owner["owner_id"],
+             if(closure, do: closure["epoch_id"]),
+             closure,
+             s.release_origin,
+             lock,
+             helper
+           ),
+         :ok <- Writer.append(s.journal_writer, intent) do
+      {:ok, intent, key, lock}
+    else
+      _ -> {:error, :cleanup_unconfirmed}
+    end
+  end
+
+  defp prepare_release(_, _, _), do: {:error, :cleanup_unconfirmed}
+
+  defp complete_release(s, {:ok, intent, key, lock}, cleanup) do
+    with true <- Enum.all?(cleanup, &(&1 == :ok)),
+         {:ok, bytes} <- Ipse.Session.ReleaseReceipt.seal(intent, key),
+         :ok <-
+           Ipse.Runner.publish_session_release(
+             s.dir,
+             s.id,
+             intent["operation_id"],
+             s.release_origin,
+             lock,
+             bytes
+           ) do
+      :ok
+    else
+      _ -> {:error, :cleanup_unconfirmed}
+    end
+  end
+
+  defp complete_release(_, _, _), do: {:error, :cleanup_unconfirmed}
 
   @impl true
 
@@ -3251,6 +6062,238 @@ defmodule Ipse.Session do
     end
   end
 
+  defp prepare_supersession_intake(s, %{purpose: nil}, _, _),
+    do: {:ok, %{s | managed_supersession: release_supersession_reservation(s)}}
+
+  defp prepare_supersession_intake(s, %{purpose: purpose}, assertion, source) do
+    with {:ok, _, name} <- Ipse.Session.OperatorAssertion.selection(s.config),
+         {:ok, _, descriptor} <- Ipse.Extension.Catalog.lookup(s.config, "invoke.command", name),
+         {:ok, %{"proof" => proof}} <- Writer.source_query(s.journal_writer, {:proof, source}),
+         prepared =
+           Map.merge(purpose, %{
+             "type" => "managed_supersession_prepared",
+             "version" => 1,
+             "id" => Ipse.Usage.id(),
+             "session_id" => s.id,
+             "assertion_id" => assertion["id"],
+             "pin_sha256" => Ipse.JSON.digest([s.config.semantic_admission["pin"]]),
+             "descriptor_sha256" => Ipse.JSON.digest([descriptor])
+           }),
+         true <- Ipse.Session.ManagedSupersession.prepared?(prepared, s.id) do
+      {:ok,
+       %{
+         s
+         | managed_supersession: %{
+             prepared: prepared,
+             source: source,
+             proof: proof,
+             candidate: nil,
+             records: [],
+             token: nil
+           }
+       }}
+    else
+      _ -> {:error, :managed_supersession_refused}
+    end
+  end
+
+  defp invoke_assertion_capture(s, name, args) do
+    case CurrentInvocation.invoke_export(s, :command, name, args) do
+      {:reply, :ok, started} = result ->
+        if started.managed_supersession,
+          do: record(started, started.managed_supersession.prepared)
+
+        result
+
+      {:reply, error, refused} ->
+        {:reply, error,
+         %{refused | managed_supersession: release_supersession_reservation(refused)}}
+    end
+  end
+
+  defp supersession_worker?(s, caller, intent) do
+    s.phase in [:tool, :extension_command, :extension_service, :extension_events] and
+      is_map(s.task) and
+      (s.task.pid == caller or Ipse.Session.Resources.authorized_effect?(s.task.pid, caller)) and
+      not s.invocation.interrupted and s.invocation.action != nil and
+      s.invocation.action.intent === intent and
+      Ipse.Extension.Registry.live?(s.invocation.parent["identity"])
+  end
+
+  defp supersession_lookup(s, caller, intent) do
+    with true <- supersession_worker?(s, caller, intent) do
+      case s.managed_supersession do
+        nil ->
+          {:ok, nil}
+
+        %{prepared: prepared, candidate: candidate, proof: proof} = pending ->
+          with true <- s.phase == :extension_command,
+               true <-
+                 s.config[:managed_supersession_layout] ==
+                   Ipse.Session.ManagedSupersession.layout(),
+               true <- is_nil(candidate) or candidate === intent,
+               true <- Ipse.Extension.ManagedCollectionCall.operation?(intent["request"]),
+               true <- intent["request"]["metadata_version"] === 3,
+               true <-
+                 prepared["pin_sha256"] == Ipse.JSON.digest([intent["effect_binding"]["pin"]]),
+               true <-
+                 prepared["descriptor_sha256"] ==
+                   Ipse.JSON.digest([s.invocation.parent["descriptor"]]),
+               {:ok, origin} when is_map(origin) <- Writer.source_query(s.journal_writer, :origin),
+               {:ok, _} <- Writer.source_query(s.journal_writer, {:stored_proof, proof}),
+               [request] <- intent["request"]["proofs"],
+               {:ok, actual} <- Writer.source_query(s.journal_writer, {:proof, request}),
+               true <- actual["proof"] === proof do
+            {:ok,
+             %{
+               purpose: prepared,
+               prepared: prepared,
+               proof: proof,
+               source: pending.source,
+               source_binding: {:supersession, Ipse.JSON.digest([prepared, intent])}
+             }}
+          else
+            _ -> {:error, :managed_supersession_refused}
+          end
+      end
+    else
+      _ -> {:error, :managed_supersession_refused}
+    end
+  rescue
+    _ -> {:error, :managed_supersession_refused}
+  end
+
+  defp supersession_proofs(s, proofs) do
+    Enum.reduce_while(proofs, {:ok, []}, fn proof, {:ok, acc} ->
+      case Writer.source_query(s.journal_writer, {:stored_proof, proof}) do
+        {:ok, verified} -> {:cont, {:ok, acc ++ [verified]}}
+        _ -> {:halt, {:error, :managed_supersession_refused}}
+      end
+    end)
+  end
+
+  defp supersession_record(s, caller, sha, event) do
+    with %{candidate: candidate} = pending when is_map(candidate) <- s.managed_supersession,
+         {:ok, binding} when is_map(binding) <- supersession_lookup(s, caller, candidate),
+         true <- binding.source_binding == {:supersession, sha},
+         true <-
+           Ipse.Session.ManagedSupersession.record?(
+             event,
+             pending.prepared,
+             candidate,
+             pending.records
+           ),
+         {:ok, token} <- supersession_reservation(s, pending.token) do
+      pending = %{pending | token: token}
+      append_supersession(s, pending, event)
+      {:reply, :ok, %{s | managed_supersession: %{pending | records: pending.records ++ [event]}}}
+    else
+      _ -> {:reply, {:error, :managed_supersession_refused}, s}
+    end
+  end
+
+  defp supersession_reservation(s, nil),
+    do: Writer.reserve(s.journal_writer, %{events: 4, bytes: 131_072})
+
+  defp supersession_reservation(_, token), do: {:ok, token}
+
+  defp append_supersession(s, pending, event) do
+    record_extension_lineage(s, event)
+
+    case Writer.append_reserved(s.journal_writer, pending.token, event) do
+      :ok -> :ok
+      {:error, reason} -> journal_failed(s, reason)
+    end
+  end
+
+  defp release_supersession_reservation(s) do
+    if is_map(s.managed_supersession) and s.managed_supersession.token != nil do
+      case Writer.release(s.journal_writer, s.managed_supersession.token) do
+        :ok -> :ok
+        {:error, reason} -> journal_failed(s, reason)
+      end
+    end
+
+    nil
+  end
+
+  defp finish_supersession(s, delivery) do
+    with %{candidate: candidate} = pending <- s.managed_supersession,
+         result when is_map(result) <- List.last(pending.records),
+         true <- result["type"] == "managed_supersession_result",
+         true <-
+           delivery === %{
+             "version" => 1,
+             "kind" => "managed_supersession_delivery",
+             "purpose_sha256" => result["purpose_sha256"],
+             "status" => result["status"],
+             "outcome" => result["outcome"]
+           },
+         action when is_map(action) <- List.last(s.invocation.results),
+         event = %{
+           "type" => "managed_supersession_delivered",
+           "version" => 1,
+           "purpose_sha256" => result["purpose_sha256"],
+           "candidate_operation_id" => candidate["operation_id"],
+           "operation_id" => result["operation_id"],
+           "parent_invocation_id" => candidate["parent_invocation_id"],
+           "delivery" => delivery
+         },
+         true <-
+           Ipse.Session.ManagedSupersession.record?(
+             event,
+             pending.prepared,
+             candidate,
+             pending.records ++ [action]
+           ) do
+      append_supersession(s, pending, event)
+      release_supersession_reservation(s)
+      display = supersession_display(event)
+      notify(s, {:extension_result, display})
+      next = CurrentInvocation.release_output(s)
+
+      {:noreply,
+       Turn.finish(
+         %{
+           next
+           | managed_supersession: nil,
+             invocation: %CurrentInvocation{},
+             extension_result: display
+         },
+         if(delivery["status"] == "settled", do: :ok, else: :error)
+       )}
+    else
+      _ ->
+        {:noreply,
+         Turn.fail(
+           %{s | managed_supersession: release_supersession_reservation(s)},
+           "Supersession outcome or cleanup is unconfirmed; inspect the retained operation. No action was replayed."
+         )}
+    end
+  end
+
+  @doc false
+  def supersession_display(event) do
+    delivery = event["delivery"]
+    normalized = get_in(delivery, ["outcome", "publication", "normalization"]) || %{}
+
+    value = %{
+      "version" => 1,
+      "kind" => "managed_supersession_receipt",
+      "status" => delivery["status"],
+      "operation_id" => event["operation_id"],
+      "historical_receipt" => true,
+      "original_capture" => "not_executed"
+    }
+
+    value =
+      Enum.reduce(~w(old_lineage new_lineage), value, fn key, acc ->
+        if Ipse.JSON.sha256?(normalized[key]), do: Map.put(acc, key, normalized[key]), else: acc
+      end)
+
+    %{"name" => "knowledge.supersession", "stage" => "host.lifecycle", "value" => value}
+  end
+
   @doc false
   def record(s, event) do
     record_extension_lineage(s, event)
@@ -3383,7 +6426,11 @@ defmodule Ipse.Session do
   def account(s, event) do
     {:ok, accounting} = Ipse.Usage.apply_event(s.accounting, event)
     record(s, event)
-    %{s | accounting: accounting}
+    next = %{s | accounting: accounting}
+
+    if event["type"] == "request_finished" and Map.has_key?(next, :managed_lineage),
+      do: managed_event(next, event),
+      else: next
   end
 
   @doc false
@@ -3467,9 +6514,154 @@ defmodule Ipse.Session do
     end
   end
 
-  defp open(dir, nil, cwd, config) do
+  # Versioned journals identify each owner before it performs startup effects.
+  # Repair a validated torn tail under the same retained lock first, because
+  # Writer.open refuses a torn tail. It does not adopt any earlier receipt.
+  defp start_release_owner(dir, id, config, events, mode) do
+    case get_in(hd(events), ["metadata", "release_receipt_layout"]) do
+      nil ->
+        {:ok, nil}
+
+      layout ->
+        with true <- layout == Ipse.Session.ReleaseReceipt.layout(),
+             true <- mode in [:header_v1, :resume_v1, :header_share_v2, :resume_share_v2],
+             {:ok, _} <- Ipse.Session.ReleaseReceipt.intents(events, id),
+             {:ok, _} <- Saved.restore(events, id),
+             :ok <- repair_session_tail(dir, id, config, mode),
+             {:ok, writer} <- Writer.start(dir, id, self(), config[:journal], mode),
+             :ok <- Ipse.Session.Lock.track(writer, :writer),
+             {:ok, marker} <- Ipse.Session.ReleaseReceipt.owner_started(id),
+             :ok <- Writer.append(writer, marker) do
+          {:ok, %{writer: writer, marker: marker}}
+        else
+          _ -> {:error, :session_release_owner_unconfirmed}
+        end
+    end
+  end
+
+  defp repair_session_tail(dir, id, config, mode)
+       when mode in [:header_v1, :resume_v1, :header_share_v2, :resume_share_v2],
+       do: Journal.repair_tail_fenced(dir, id, config[:journal], Ipse.Session.Lock.current())
+
+  defp repair_session_tail(dir, id, config, _mode),
+    do: Journal.repair_tail(dir, id, config[:journal])
+
+  defp startup_writer(_dir, _id, _config, %{writer: writer}), do: {:ok, writer}
+
+  defp startup_writer(dir, id, config, nil) do
+    with {:ok, writer} <- Writer.start(dir, id, self(), config[:journal]),
+         :ok <- Ipse.Session.Lock.track(writer, :writer),
+         do: {:ok, writer}
+  end
+
+  defp open_and_lock(dir, nil, cwd, config, :export_v1),
+    do: open_fresh(dir, cwd, config, :export_v1)
+
+  defp open_and_lock(dir, nil, cwd, config, :share_candidate_v2),
+    do: open_fresh(dir, cwd, config, :header_share_v2)
+
+  defp open_and_lock(dir, nil, cwd, config, :legacy) do
+    if :os.type() == {:unix, :linux},
+      do: open_fresh(dir, cwd, config, :header_v1),
+      else: open_then_lock(dir, nil, cwd, config, :legacy)
+  end
+
+  defp open_and_lock(dir, id, cwd, config, mode),
+    do: open_then_lock(dir, id, cwd, config, mode)
+
+  defp open_then_lock(dir, id, cwd, config, mode) do
+    opened =
+      if is_nil(id),
+        do: open_fresh(dir, cwd, config, :legacy),
+        else: open_existing(dir, id, cwd, config)
+
+    with {:ok, id, events, config} <- opened,
+         {:ok, selected_mode} <- select_resume_lock(mode, id, events),
+         {:ok, _} <- Registry.register(Ipse.Registry, {dir, id}, nil),
+         {:ok, lock} <- acquire_lock(Path.join(dir, id <> ".lock"), 10, selected_mode),
+         do: {:ok, id, events, config, lock}
+  end
+
+  defp select_resume_lock(:legacy, id, [%{"metadata" => metadata} | _] = events) do
+    if :os.type() == {:unix, :linux} and
+         metadata["release_receipt_layout"] == Ipse.Session.ReleaseReceipt.layout() do
+      with {:ok, anchor} <- header_lock_anchor(metadata),
+           {:ok, intents} <- Ipse.Session.ReleaseReceipt.intents(events, id),
+           true <- is_map(anchor) or intents != [] do
+        {:ok, :resume_v1}
+      else
+        _ -> {:error, :session_lock_identity_unavailable}
+      end
+    else
+      {:ok, :legacy}
+    end
+  end
+
+  defp select_resume_lock(:share_candidate_v2, id, [%{"metadata" => metadata} | _] = events) do
+    with true <- :os.type() == {:unix, :linux},
+         true <- metadata["release_receipt_layout"] == Ipse.Session.ReleaseReceipt.layout(),
+         {:ok, anchor} <- header_lock_anchor(metadata),
+         {:ok, intents} <- Ipse.Session.ReleaseReceipt.intents(events, id),
+         true <- is_map(anchor) or intents != [] do
+      {:ok, :resume_share_v2}
+    else
+      _ -> {:error, :session_lock_identity_unavailable}
+    end
+  end
+
+  defp select_resume_lock(mode, _, _), do: {:ok, mode}
+
+  defp verify_resume_lock(mode, events, id) when mode in [:resume_v1, :resume_share_v2] do
+    with true <-
+           get_in(hd(events), ["metadata", "release_receipt_layout"]) ==
+             Ipse.Session.ReleaseReceipt.layout(),
+         {:ok, anchor} <- header_lock_anchor(hd(events)["metadata"]),
+         {:ok, intents} <- Ipse.Session.ReleaseReceipt.intents(events, id),
+         intent = List.last(intents),
+         true <- is_map(anchor) or is_map(intent),
+         {:ok, lock} <-
+           Ipse.Session.Lock.header_identity(
+             Ipse.Session.Lock.current(),
+             System.monotonic_time(:millisecond) + 2_000
+           ),
+         true <-
+           is_nil(anchor) or {lock.device, lock.inode} == {anchor["device"], anchor["inode"]},
+         true <-
+           is_nil(intent) or
+             {lock.device, lock.inode} == {intent["lock_device"], intent["lock_inode"]} do
+      :ok
+    else
+      _ -> {:error, :session_lock_identity_unavailable}
+    end
+  end
+
+  defp verify_resume_lock(_, _, _), do: :ok
+
+  defp header_lock_anchor(metadata) do
+    case metadata["session_lock_identity"] do
+      nil ->
+        {:ok, nil}
+
+      %{"version" => 1, "device" => device, "inode" => inode} = anchor
+      when map_size(anchor) == 3 ->
+        if Ipse.JSON.safe_uint?(device) and Ipse.JSON.safe_uint?(inode) and inode > 0,
+          do: {:ok, anchor},
+          else: {:error, :session_lock_identity_unavailable}
+
+      _ ->
+        {:error, :session_lock_identity_unavailable}
+    end
+  end
+
+  defp open_fresh(dir, cwd, config, lock_mode) do
     config = Ipse.MCP.fingerprint_version(config, 2)
     config = Map.put(config, :source_layout, Ipse.Session.SourceWindow.layout())
+    config = Map.put(config, :managed_read_layout, Ipse.Session.ManagedReads.layout())
+    config = Map.put(config, :managed_tool_layout, Ipse.Session.ManagedToolUse.layout())
+    config = Map.put(config, :managed_action_layout, Ipse.Session.ManagedToolUse.action_layout())
+
+    config =
+      Map.put(config, :managed_supersession_layout, Ipse.Session.ManagedSupersession.layout())
 
     with {:ok, config} <- Ipse.Config.Activation.fresh(config, cwd),
          {:ok, mode} <- Ipse.Extension.Mode.capture(config),
@@ -3479,51 +6671,139 @@ defmodule Ipse.Session do
            Ipse.Extension.SemanticAdmission.fresh(config, cwd, selected_id),
          :ok <- Ipse.Config.Activation.admitted(config, semantic_admission),
          config = Map.put(config, :semantic_admission, semantic_admission),
+         {:ok, lock} <- fresh_candidate_lock(dir, selected_id, lock_mode),
+         {:ok, lock_anchor} <- fresh_lock_anchor(lock_mode),
          {:ok, id} <-
-           Journal.create_with_id(
+           create_fresh_journal(
+             lock_mode,
              dir,
              selected_id,
-             %{
-               "cwd" => cwd,
-               "reference_layout" => Ipse.Session.Reference.layout(),
-               "source_layout" => Ipse.Session.SourceWindow.layout(),
-               "execution_mode" => mode,
-               "semantic_admission" => semantic_admission,
-               "usage_version" => usage_version(config),
-               "embedding_profiles" => Ipse.Config.Profiles.embedding_snapshot(config),
-               "decision_profiles" => Ipse.Config.Decisions.snapshot(config),
-               "max_output_tokens" => config[:max_output_tokens],
-               "model_profiles" => ModelCall.snapshot(config),
-               "budget" => config[:budget],
-               "budget_root" => config[:budget_root],
-               "provider" => to_string(config.provider),
-               "provider_destination" => provider_destination(config),
-               "model" => config.model,
-               "sandbox" => to_string(Map.get(config, :sandbox, :off)),
-               "mcp_servers" => Ipse.MCP.fingerprints(config),
-               "mcp_fingerprint_version" => 2,
-               "subagents" => Ipse.Tools.Delegation.enabled?(config),
-               "subagent_concurrency" => Map.get(config, :subagent_concurrency, 1),
-               "delegation_origin" => config[:delegation_origin],
-               "configuration" => Map.get(config, :configuration),
-               "execution" => Map.get(config, :execution),
-               "extensions" => Ipse.Extension.Registry.manifests(config),
-               "extension_catalog" => extension_catalog(config),
-               "extension_subscriptions" => Subscriptions.snapshot(config)
-             },
+             Map.merge(
+               %{
+                 "cwd" => cwd,
+                 "reference_layout" => Ipse.Session.Reference.layout(),
+                 "source_layout" => Ipse.Session.SourceWindow.layout(),
+                 "source_origin_layout" => Ipse.Journal.SourceOrigin.layout(),
+                 "release_receipt_layout" =>
+                   if(lock_mode in [:header_v1, :header_share_v2],
+                     do: Ipse.Session.ReleaseReceipt.layout()
+                   ),
+                 "session_lock_identity" => lock_anchor,
+                 "managed_read_layout" => Ipse.Session.ManagedReads.layout(),
+                 "managed_output_layout" => Ipse.Session.ManagedOutput.layout(),
+                 "managed_tool_layout" => Ipse.Session.ManagedToolUse.layout(),
+                 "managed_action_layout" => Ipse.Session.ManagedToolUse.action_layout(),
+                 "managed_supersession_layout" => Ipse.Session.ManagedSupersession.layout(),
+                 "execution_mode" => mode,
+                 "semantic_admission" => semantic_admission,
+                 "usage_version" => usage_version(config),
+                 "embedding_profiles" => Ipse.Config.Profiles.embedding_snapshot(config),
+                 "decision_profiles" => Ipse.Config.Decisions.snapshot(config),
+                 "max_output_tokens" => config[:max_output_tokens],
+                 "model_profiles" => ModelCall.snapshot(config),
+                 "budget" => config[:budget],
+                 "budget_root" => config[:budget_root],
+                 "provider" => to_string(config.provider),
+                 "provider_destination" => provider_destination(config),
+                 "model" => config.model,
+                 "sandbox" => to_string(Map.get(config, :sandbox, :off)),
+                 "mcp_servers" => Ipse.MCP.fingerprints(config),
+                 "mcp_fingerprint_version" => 2,
+                 "subagents" => Ipse.Tools.Delegation.enabled?(config),
+                 "subagent_concurrency" => Map.get(config, :subagent_concurrency, 1),
+                 "delegation_origin" => config[:delegation_origin],
+                 "configuration" => Map.get(config, :configuration),
+                 "execution" => Map.get(config, :execution),
+                 "extensions" => Ipse.Extension.Registry.manifests(config),
+                 "extension_catalog" => extension_catalog(config),
+                 "extension_subscriptions" => Subscriptions.snapshot(config)
+               },
+               Map.merge(
+                 if(Map.get(config, :planning_mcp_reads, %{}) == %{},
+                   do: %{},
+                   else: %{"planning_mcp_protocol" => 1}
+                 ),
+                 if(config[:planning_cli_start] === true,
+                   do: %{
+                     "planning_local_start" =>
+                       Ipse.Session.PlanningTransition.startup(selected_id, mode)
+                   },
+                   else: %{}
+                 )
+               )
+             ),
              config[:journal]
            ),
-         do: {:ok, id, [], config}
+         do:
+           if(lock_mode == :legacy,
+             do: {:ok, id, [], config},
+             else: {:ok, id, [], config, lock}
+           )
   end
 
-  defp open(dir, id, cwd, config) do
+  defp create_fresh_journal(mode, dir, id, metadata, policy)
+       when mode in [:header_v1, :header_share_v2],
+       do: Journal.create_with_locked_id(dir, id, metadata, policy, Ipse.Session.Lock.current())
+
+  defp create_fresh_journal(_, dir, id, metadata, policy),
+    do: Journal.create_with_id(dir, id, metadata, policy)
+
+  defp fresh_lock_anchor(mode) when mode in [:header_v1, :header_share_v2] do
+    with {:ok, lock} <-
+           Ipse.Session.Lock.header_identity(
+             Ipse.Session.Lock.current(),
+             System.monotonic_time(:millisecond) + 2_000
+           ),
+         true <-
+           Ipse.JSON.safe_uint?(lock.device) and Ipse.JSON.safe_uint?(lock.inode) and
+             lock.inode > 0 do
+      {:ok, %{"version" => 1, "device" => lock.device, "inode" => lock.inode}}
+    else
+      _ -> {:error, :session_lock_identity_unavailable}
+    end
+  end
+
+  defp fresh_lock_anchor(_), do: {:ok, nil}
+
+  defp fresh_candidate_lock(_dir, _id, :legacy), do: {:ok, nil}
+
+  defp fresh_candidate_lock(dir, id, :export_v1) do
+    with :ok <- File.mkdir_p(dir),
+         :ok <- File.chmod(dir, 0o700),
+         {:ok, _} <- Registry.register(Ipse.Registry, {dir, id}, nil),
+         do: acquire_lock(Path.join(dir, id <> ".lock"), 10, :export_v1)
+  end
+
+  defp fresh_candidate_lock(dir, id, :header_v1) do
+    with :ok <- File.mkdir_p(dir),
+         :ok <- File.chmod(dir, 0o700),
+         {:ok, _} <- Registry.register(Ipse.Registry, {dir, id}, nil),
+         do: acquire_lock(Path.join(dir, id <> ".lock"), 10, :header_v1)
+  end
+
+  defp fresh_candidate_lock(dir, id, :header_share_v2) do
+    with :ok <- File.mkdir_p(dir),
+         :ok <- File.chmod(dir, 0o700),
+         {:ok, _} <- Registry.register(Ipse.Registry, {dir, id}, nil),
+         do: acquire_lock(Path.join(dir, id <> ".lock"), 10, :header_share_v2)
+  end
+
+  defp open_existing(dir, id, cwd, config) do
     with {:ok, [%{"metadata" => meta} | _] = events} <- Journal.load(dir, id, config[:journal]),
          :ok <- Ipse.Journal.writable_events(events),
          {:ok, version} <- Ipse.MCP.Config.journal_fingerprint_version(meta),
          config = Ipse.MCP.fingerprint_version(config, version),
          true <- meta["source_layout"] in [nil, Ipse.Session.SourceWindow.layout()],
          config = Map.put(config, :source_layout, meta["source_layout"]),
-         {:ok, saved_mode} <- Saved.execution_mode(events),
+         {:ok, managed_layout} <- Ipse.Session.ManagedReads.marker(meta),
+         config = Map.put(config, :managed_read_layout, managed_layout),
+         {:ok, tool_layout} <- Ipse.Session.ManagedToolUse.marker(meta),
+         config = Map.put(config, :managed_tool_layout, tool_layout),
+         {:ok, action_layout} <- Ipse.Session.ManagedToolUse.action_marker(meta),
+         config = Map.put(config, :managed_action_layout, action_layout),
+         {:ok, supersession_layout} <- Ipse.Session.ManagedSupersession.marker(meta),
+         config = Map.put(config, :managed_supersession_layout, supersession_layout),
+         {:ok, saved_mode} <- Saved.execution_mode(events, id),
          {:ok, mode} <- resume_execution_mode(saved_mode, config),
          config = apply_execution_mode(config, mode),
          {:ok, saved_admission} <- Saved.semantic_admission(events, id),
@@ -3548,6 +6828,9 @@ defmodule Ipse.Session do
              Map.get(meta, "subagent_concurrency", 1) == Map.get(config, :subagent_concurrency, 1) and
              meta["delegation_origin"] == config[:delegation_origin] and
              compatible_configuration?(meta["configuration"], config[:configuration]) and
+             Ipse.MCP.Planning.saved_configuration?(meta["configuration"], config) and
+             meta["planning_mcp_protocol"] ===
+               if(Map.get(config, :planning_mcp_reads, %{}) == %{}, do: nil, else: 1) and
              meta["execution"] == json_execution(config[:execution]) and
              Map.get(meta, "extensions", []) == Ipse.Extension.Registry.manifests(config),
          true <-
@@ -3567,8 +6850,34 @@ defmodule Ipse.Session do
     end
   end
 
+  defp planning_cli_start_valid(config) do
+    case Map.get(config, :planning_cli_start, false) do
+      false ->
+        :ok
+
+      true ->
+        with nil <- config[:delegation_origin],
+             {:ok, mode} <- Ipse.Extension.Mode.capture(config),
+             true <- mode["ceiling"] == "planning" and mode["enclosing_ceiling"] == "normal" do
+          :ok
+        else
+          _ -> {:error, :invalid_planning_start_origin}
+        end
+
+      _ ->
+        {:error, :invalid_planning_start_origin}
+    end
+  end
+
+  defp planning_cli_resume_entry?(config, previous, mode, checkpoint) do
+    config[:planning_cli_start] === true and is_map(checkpoint) and
+      Ipse.Extension.Mode.valid?(previous) and previous["ceiling"] == "normal" and
+      previous["enclosing_ceiling"] == "normal" and mode["ceiling"] == "planning" and
+      mode["enclosing_ceiling"] == "normal"
+  end
+
   defp resume_execution_mode(nil, config), do: Ipse.Extension.Mode.capture(config)
-  defp resume_execution_mode(saved, config), do: Ipse.Extension.Mode.inherit(saved, config)
+  defp resume_execution_mode(saved, config), do: Ipse.Extension.Mode.resume(saved, config)
 
   defp apply_execution_mode(config, mode) do
     Map.merge(config, %{
@@ -3783,6 +7092,46 @@ defmodule Ipse.Session do
       end)
   end
 
+  defp record_planning_epoch(s, mode) do
+    reads = Map.get(s.config, :planning_mcp_reads, %{})
+
+    if reads != %{} do
+      epoch = Ipse.Usage.id()
+
+      record(
+        s,
+        Ipse.Session.PlanningMCP.epoch(
+          s.id,
+          epoch,
+          s.planning_mcp_epoch_id,
+          "resume",
+          mode,
+          reads
+        )
+      )
+
+      epoch
+    end
+  end
+
+  defp planning_entry_quiet?(s) do
+    planning_draft_settled?(s.draft) and is_nil(s.task) and is_nil(s.job_ref) and
+      is_nil(s.approval) and
+      is_nil(s.question) and is_nil(s.active_request) and is_nil(s.text_stream) and
+      is_nil(s.extension_intent) and is_nil(s.event_intent) and
+      is_nil(s.invocation.parent) and is_nil(s.invocation.action) and
+      s.mcp_resources == %{} and s.delegation_resources == %{} and
+      MapSet.size(s.delegation_workers) == 0 and s.delegation_queue == [] and
+      is_nil(s.delegation_effect) and not s.task_cleanup_failed and
+      not s.event_cleanup_failed and not s.extension_text_cleanup_failed and
+      not match?(%{wait: wait} when not is_nil(wait), s.lifecycle) and draft_extension_quiet?(s)
+  end
+
+  defp planning_draft_settled?(nil), do: true
+  defp planning_draft_settled?(%{status: :cancelled, notice: true}), do: true
+  defp planning_draft_settled?(%{status: :consumed, accepted_message: true}), do: true
+  defp planning_draft_settled?(_), do: false
+
   defp question_available(nil, _), do: :ok
 
   defp question_available(_, config),
@@ -3838,14 +7187,24 @@ defmodule Ipse.Session do
     task
   end
 
-  defp acquire_lock(path, retries) do
-    case Ipse.Session.Lock.acquire(path) do
+  defp acquire_lock(path, retries, lock_mode) do
+    result =
+      case lock_mode do
+        :legacy -> Ipse.Session.Lock.acquire(path)
+        :export_v1 -> Ipse.Session.Lock.acquire_export_candidate(path)
+        :header_v1 -> Ipse.Session.Lock.acquire_header(path)
+        :resume_v1 -> Ipse.Session.Lock.acquire_resume(path)
+        :header_share_v2 -> Ipse.Session.Lock.acquire_share_header(path)
+        :resume_share_v2 -> Ipse.Session.Lock.acquire_share_resume(path)
+      end
+
+    case result do
       {:ok, port} ->
         {:ok, port}
 
       {:error, _} when retries > 0 ->
         Process.sleep(20)
-        acquire_lock(path, retries - 1)
+        acquire_lock(path, retries - 1, lock_mode)
 
       error ->
         error

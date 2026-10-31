@@ -45,12 +45,30 @@ defmodule Ipse.Test.ReviewRunner do
     end
   end
 
+  # This permit-state fixture does not simulate the native guarded display.
+  def operator_input(_, _, _, _), do: {:error, :operator_input_unavailable}
+
   def now do
     case Process.get({__MODULE__, :clock}) do
       nil -> Process.get({__MODULE__, :now}, 1_000)
       clock -> :atomics.get(clock, 1)
     end
   end
+
+  def wall_now, do: Process.get({__MODULE__, :wall_now}, System.system_time(:millisecond))
+end
+
+defmodule Ipse.Test.AcceptanceIntent do
+  @moduledoc false
+  def effect_intent(event, %{"fixture" => true} = request),
+    do: {:ok, %{"request" => request, "acceptance_sha256" => Ipse.JSON.digest([event])}}
+
+  def effect_intent(_, _), do: {:error, :fixture_refused}
+
+  def normalized_acceptance?(%{"request" => %{"fixture" => true}}, %{"fixture" => "sealed"}),
+    do: true
+
+  def normalized_acceptance?(_, _), do: false
 end
 
 # This renamed fixture replaces only native IO and monotonic time. It tests the
@@ -60,8 +78,22 @@ source = File.read!(Path.expand("../../../lib/ipse/runner/review.ex", __DIR__))
 source =
   String.replace(
     source,
+    "def bind_acceptance_request(permit, facts, intent, request, deadline) do",
+    "def bind_acceptance_request(permit, facts, intent, request, deadline \\\\ nil) do"
+  )
+
+source =
+  String.replace(
+    source,
     "defmodule Ipse.Runner.Review do",
     "defmodule Ipse.Test.ReviewFixture do"
+  )
+
+source =
+  String.replace(
+    source,
+    "Ipse.Session.PendingAcceptance.normalized_acceptance?(",
+    "Ipse.Test.AcceptanceIntent.normalized_acceptance?("
   )
 
 source =
@@ -85,6 +117,20 @@ source =
 source =
   String.replace(source, "System.monotonic_time(:millisecond)", "Ipse.Test.ReviewRunner.now()")
 
+source =
+  String.replace(
+    source,
+    "System.system_time(:millisecond)",
+    "Ipse.Test.ReviewRunner.wall_now()"
+  )
+
+source =
+  String.replace(
+    source,
+    "Ipse.Session.PendingAcceptance.effect_intent(",
+    "Ipse.Test.AcceptanceIntent.effect_intent("
+  )
+
 Code.compile_string(source, "review-permit-state-fixture.ex")
 
 defmodule Ipse.Runner.ReviewTest do
@@ -95,6 +141,45 @@ defmodule Ipse.Runner.ReviewTest do
   setup do
     facts = %{"target" => "synthetic", "value" => "café 日本語\e[31m", "choice" => "pin"}
     %{facts: facts}
+  end
+
+  test "coordinated review forwards held authority and refuses a rejected display", c do
+    coordinator = self()
+    ticket = make_ref()
+    secret = make_ref()
+    guard_ref = make_ref()
+    authority = %{sources: ["synthetic"], owners: [0, 1, 2]}
+    wall = 123_456
+
+    task =
+      Task.async(fn ->
+        Resources.file_effect(fn ->
+          ReviewFixture.with_coordinated_review(
+            "pin",
+            c.facts,
+            fn _ -> send(coordinator, :unexpected_permit) end,
+            fn continuation -> continuation.(wall, authority) end,
+            {coordinator, ticket}
+          )
+        end)
+      end)
+
+    assert_receive {:managed_review_input, ^ticket, publisher, _display, _guard}, 5_000
+    send(publisher, {:managed_review_guard_authority, ticket, coordinator, secret})
+    send(publisher, {:managed_review_guard, ticket, secret, self(), guard_ref})
+
+    assert_receive {:managed_review_deadline, ^ticket, ^publisher, ^guard_ref, ^wall, ^authority},
+                   5_000
+
+    send(publisher, {:managed_review_displayed, ticket, self(), guard_ref, {:error, :refused}})
+
+    assert_receive {:managed_review_release, ^ticket, ^publisher, ^guard_ref,
+                    {:error, :native_review_refused}},
+                   5_000
+
+    send(publisher, {:managed_review_result, ticket, coordinator, {:error, :refused}})
+    assert {:error, :native_review_refused} = Task.await(task, 5_000)
+    refute_receive :unexpected_permit
   end
 
   test "invalid production arguments and ordinary JSON cannot construct or consume a permit", c do
@@ -109,16 +194,306 @@ defmodule Ipse.Runner.ReviewTest do
     end
 
     assert {:error, :native_review_refused} = Ipse.Runner.Review.consume(%{}, "pin", c.facts)
+    assert {:error, :native_review_refused} = Ipse.Runner.Review.check(%{}, "pin", c.facts)
+
+    assert {:error, :native_review_refused} =
+             Ipse.Runner.Review.consumed_receipt(%{}, "pin", c.facts)
+
     forged = %Ipse.Runner.Review.Permit{owner: self(), ref: make_ref()}
     assert inspect(forged) == "#NativeReview<private>"
     assert {:error, :native_review_refused} = Ipse.Runner.Review.consume(forged, "pin", c.facts)
+  end
+
+  test "a consumed acceptance admits only one same-owner effect claim", c do
+    facts = Map.put(c.facts, "valid_until_ms", System.system_time(:millisecond) + 60_000)
+
+    assert {:ok, :checked} =
+             ReviewFixture.with_review("accept", facts, fn permit ->
+               assert {:error, :native_review_refused} =
+                        ReviewFixture.claim_acceptance_effect(permit, facts, %{})
+
+               assert {:ok, receipt} = ReviewFixture.consume(permit, "accept", facts)
+               intent = acceptance_intent(facts, receipt)
+
+               assert :ok =
+                        ReviewFixture.bind_acceptance_request(permit, facts, intent, %{
+                          "fixture" => "sealed"
+                        })
+
+               assert {:error, :native_review_refused} =
+                        ReviewFixture.bind_acceptance_request(permit, facts, intent, %{
+                          "fixture" => "sealed"
+                        })
+
+               assert {:error, :native_review_refused} =
+                        Task.async(fn ->
+                          ReviewFixture.claim_acceptance_effect(permit, facts, intent)
+                        end)
+                        |> Task.await()
+
+               assert {:ok, ^receipt} =
+                        ReviewFixture.claim_acceptance_effect(permit, facts, intent)
+
+               assert {:ok, ^receipt} =
+                        ReviewFixture.claimed_acceptance_receipt(permit, facts, intent)
+
+               assert {:ok, ^receipt} =
+                        ReviewFixture.claimed_acceptance_request(permit, facts, intent, %{
+                          "fixture" => "sealed"
+                        })
+
+               assert {:error, :native_review_refused} =
+                        ReviewFixture.claimed_acceptance_request(permit, facts, intent, %{
+                          "fixture" => "changed"
+                        })
+
+               assert {:error, :native_review_refused} =
+                        ReviewFixture.claimed_acceptance_receipt(
+                          permit,
+                          facts,
+                          Map.put(intent, "extra", true)
+                        )
+
+               assert {:error, :native_review_refused} =
+                        ReviewFixture.claim_acceptance_effect(permit, facts, intent)
+
+               assert {:error, :native_review_refused} =
+                        ReviewFixture.consumed_receipt(permit, "accept", facts)
+
+               {:ok, :checked}
+             end)
+  end
+
+  test "a changed first effect claim spends the consumed acceptance", c do
+    facts = Map.put(c.facts, "valid_until_ms", System.system_time(:millisecond) + 60_000)
+
+    for change <- [:facts, :intent] do
+      assert {:error, :native_review_refused} =
+               ReviewFixture.with_review("accept", facts, fn permit ->
+                 assert {:ok, receipt} = ReviewFixture.consume(permit, "accept", facts)
+                 intent = acceptance_intent(facts, receipt)
+
+                 assert :ok =
+                          ReviewFixture.bind_acceptance_request(permit, facts, intent, %{
+                            "fixture" => "sealed"
+                          })
+
+                 changed_facts =
+                   if change == :facts, do: Map.put(facts, "target", "other"), else: facts
+
+                 changed_intent =
+                   if change == :intent, do: Map.put(intent, "extra", true), else: intent
+
+                 assert {:error, :native_review_refused} =
+                          ReviewFixture.claim_acceptance_effect(
+                            permit,
+                            changed_facts,
+                            changed_intent
+                          )
+
+                 assert {:error, :native_review_refused} =
+                          ReviewFixture.claim_acceptance_effect(permit, facts, intent)
+
+                 {:ok, :refused}
+               end)
+    end
+  end
+
+  test "an unbound acceptance cannot claim an effect", c do
+    facts = Map.put(c.facts, "valid_until_ms", System.system_time(:millisecond) + 60_000)
+
+    assert {:error, :native_review_refused} =
+             ReviewFixture.with_review("accept", facts, fn permit ->
+               assert {:ok, receipt} = ReviewFixture.consume(permit, "accept", facts)
+               intent = acceptance_intent(facts, receipt)
+
+               assert {:error, :native_review_refused} =
+                        ReviewFixture.claim_acceptance_effect(permit, facts, intent)
+
+               assert {:error, :native_review_refused} =
+                        ReviewFixture.bind_acceptance_request(permit, facts, intent, %{
+                          "fixture" => "sealed"
+                        })
+
+               {:ok, :refused}
+             end)
+  end
+
+  test "failure after an acceptance effect claim remains unconfirmed", c do
+    facts = Map.put(c.facts, "valid_until_ms", System.system_time(:millisecond) + 60_000)
+
+    for callback <- [fn -> {:error, :fixture_failure} end, fn -> raise "fixture interruption" end] do
+      assert {:unknown, :native_review_unconfirmed} =
+               ReviewFixture.with_review("accept", facts, fn permit ->
+                 assert {:ok, receipt} = ReviewFixture.consume(permit, "accept", facts)
+
+                 assert :ok =
+                          ReviewFixture.bind_acceptance_request(
+                            permit,
+                            facts,
+                            acceptance_intent(facts, receipt),
+                            %{"fixture" => "sealed"}
+                          )
+
+                 assert {:ok, _} =
+                          ReviewFixture.claim_acceptance_effect(
+                            permit,
+                            facts,
+                            acceptance_intent(facts, receipt)
+                          )
+
+                 callback.()
+               end)
+    end
+  end
+
+  test "an expired acceptance cannot claim an effect", c do
+    facts = Map.put(c.facts, "valid_until_ms", System.system_time(:millisecond))
+
+    assert {:error, :native_review_refused} =
+             ReviewFixture.with_review("accept", facts, fn permit ->
+               assert {:ok, receipt} = ReviewFixture.consume(permit, "accept", facts)
+
+               assert {:error, :native_review_refused} =
+                        ReviewFixture.claim_acceptance_effect(
+                          permit,
+                          facts,
+                          acceptance_intent(facts, receipt)
+                        )
+
+               {:ok, :refused}
+             end)
+  end
+
+  test "a claimed acceptance stops being inspectable when its candidate expires", c do
+    now = System.system_time(:millisecond)
+    facts = Map.put(c.facts, "valid_until_ms", now + 1_000)
+    Process.put({ReviewRunner, :wall_now}, now)
+
+    assert {:ok, :checked} =
+             ReviewFixture.with_review("accept", facts, fn permit ->
+               assert {:ok, receipt} = ReviewFixture.consume(permit, "accept", facts)
+               intent = acceptance_intent(facts, receipt)
+
+               assert :ok =
+                        ReviewFixture.bind_acceptance_request(permit, facts, intent, %{
+                          "fixture" => "sealed"
+                        })
+
+               assert {:ok, ^receipt} =
+                        ReviewFixture.claim_acceptance_effect(permit, facts, intent)
+
+               assert {:ok, ^receipt} =
+                        ReviewFixture.claimed_acceptance_receipt(permit, facts, intent)
+
+               Process.put({ReviewRunner, :wall_now}, facts["valid_until_ms"])
+
+               assert {:error, :native_review_refused} =
+                        ReviewFixture.claimed_acceptance_receipt(permit, facts, intent)
+
+               {:ok, :checked}
+             end)
+  end
+
+  test "a claimed acceptance stops being inspectable at the earlier retention deadline", c do
+    now = System.system_time(:millisecond)
+    facts = Map.put(c.facts, "valid_until_ms", now + 2_000)
+    Process.put({ReviewRunner, :wall_now}, now)
+
+    assert {:ok, :checked} =
+             ReviewFixture.with_review("accept", facts, fn permit ->
+               assert {:ok, receipt} = ReviewFixture.consume(permit, "accept", facts)
+               intent = acceptance_intent(facts, receipt)
+
+               assert :ok =
+                        ReviewFixture.bind_acceptance_request(
+                          permit,
+                          facts,
+                          intent,
+                          %{"fixture" => "sealed"},
+                          now + 1_000
+                        )
+
+               assert {:ok, ^receipt} =
+                        ReviewFixture.claim_acceptance_effect(permit, facts, intent)
+
+               Process.put({ReviewRunner, :wall_now}, now + 1_000)
+
+               assert {:error, :native_review_refused} =
+                        ReviewFixture.claimed_acceptance_request(permit, facts, intent, %{
+                          "fixture" => "sealed"
+                        })
+
+               {:ok, :checked}
+             end)
+  end
+
+  test "an acceptance cannot be claimed after the earlier retention deadline", c do
+    now = System.system_time(:millisecond)
+    facts = Map.put(c.facts, "valid_until_ms", now + 2_000)
+    Process.put({ReviewRunner, :wall_now}, now)
+
+    assert {:error, :native_review_refused} =
+             ReviewFixture.with_review("accept", facts, fn permit ->
+               assert {:ok, receipt} = ReviewFixture.consume(permit, "accept", facts)
+               intent = acceptance_intent(facts, receipt)
+
+               assert :ok =
+                        ReviewFixture.bind_acceptance_request(
+                          permit,
+                          facts,
+                          intent,
+                          %{"fixture" => "sealed"},
+                          now + 1_000
+                        )
+
+               Process.put({ReviewRunner, :wall_now}, now + 1_000)
+
+               assert {:error, :native_review_refused} =
+                        ReviewFixture.claim_acceptance_effect(permit, facts, intent)
+
+               {:ok, :refused}
+             end)
+  end
+
+  defp acceptance_intent(facts, receipt) do
+    event = %{
+      "type" => "pending_proposal_accepted",
+      "version" => 1,
+      "facts" => facts,
+      "review" => receipt
+    }
+
+    {:ok, intent} = Ipse.Test.AcceptanceIntent.effect_intent(event, %{"fixture" => true})
+    intent
   end
 
   test "a matching simulated observation binds full escaped facts and can be consumed only once",
        c do
     assert {:ok, receipt} =
              ReviewFixture.with_review("pin", c.facts, fn permit ->
+               assert :ok = ReviewFixture.check(permit, "pin", c.facts)
+               assert :ok = ReviewFixture.check(permit, "pin", c.facts)
+               assert {:ok, preview} = ReviewFixture.preview_receipt(permit, "pin", c.facts)
+
+               assert {:error, :native_review_refused} =
+                        ReviewFixture.preview_receipt(
+                          permit,
+                          "pin",
+                          Map.put(c.facts, "changed", true)
+                        )
+
+               assert {:error, :native_review_refused} =
+                        ReviewFixture.consumed_receipt(permit, "pin", c.facts)
+
                assert {:ok, receipt} = ReviewFixture.consume(permit, "pin", c.facts)
+               assert receipt === preview
+
+               assert {:ok, ^receipt} =
+                        ReviewFixture.consumed_receipt(permit, "pin", c.facts)
+
+               assert {:error, :native_review_refused} =
+                        ReviewFixture.check(permit, "pin", c.facts)
 
                assert {:error, :native_review_refused} =
                         ReviewFixture.consume(permit, "pin", c.facts)
@@ -143,6 +518,192 @@ defmodule Ipse.Runner.ReviewTest do
     assert Process.get({ReviewFixture, :permit}) == nil
   end
 
+  test "a consumed retention review binds one effect and a finite native deadline" do
+    wall = System.system_time(:millisecond)
+    Process.put({ReviewRunner, :wall_now}, wall)
+    operation = String.duplicate("1", 32)
+
+    request = %{
+      "op" => "commit",
+      "expected_generation" => 1,
+      "advance_floor" => true,
+      "changes" => [
+        %{
+          "key" => "note." <> String.duplicate("a", 64),
+          "expected_revision" => 1,
+          "value" => %{"text" => "synthetic"}
+        }
+      ]
+    }
+
+    normalized =
+      Map.update!(
+        request,
+        "changes",
+        &(&1 ++
+            [
+              %{
+                "key" => "host.validity.synthetic",
+                "expected_revision" => 0,
+                "value" => %{"v" => 1}
+              }
+            ])
+      )
+
+    body = %{
+      "kind" => "managed_literal_retention",
+      "operation_id" => operation,
+      "policy" => %{"kind" => "pin"},
+      "metadata" => %{
+        "lineage" => String.duplicate("a", 64),
+        "first_admitted_ms" => wall - 1,
+        "valid_until_ms" => nil
+      },
+      "target" => %{
+        "key" => hd(request["changes"])["key"],
+        "revision" => 1,
+        "value" => hd(request["changes"])["value"]
+      },
+      "old_deadline_ms" => nil,
+      "request_sha256" => Ipse.JSON.digest([request])
+    }
+
+    facts = Map.put(body, "action_sha256", Ipse.JSON.digest([body]))
+
+    intent = %{
+      "type" => "managed_lifecycle_intent",
+      "version" => 1,
+      "operation_id" => operation,
+      "facts" => facts
+    }
+
+    assert {:ok, :bound} =
+             ReviewFixture.with_review("pin", facts, fn permit ->
+               assert {:ok, review} = ReviewFixture.consume(permit, "pin", facts)
+
+               receipt = %{
+                 "version" => 3,
+                 "kind" => "native_literal_retention",
+                 "policy" => facts["policy"],
+                 "record_key" => facts["target"]["key"],
+                 "lineage" => facts["metadata"]["lineage"],
+                 "category" => "pin",
+                 "first_admitted_ms" => facts["metadata"]["first_admitted_ms"],
+                 "action_sha256" => facts["action_sha256"],
+                 "native_review_sha256" => Ipse.JSON.digest([review]),
+                 "valid_until_ms" => nil,
+                 "publish_before_ms" => nil
+               }
+
+               assert {:ok, bound} =
+                        ReviewFixture.claim_retention_effect(
+                          permit,
+                          facts,
+                          intent,
+                          request,
+                          normalized,
+                          receipt
+                        )
+
+               assert bound.review === review
+               assert bound.publish_before_ms > wall and bound.publish_before_ms <= wall + 30_000
+
+               assert {:ok, ^review} =
+                        ReviewFixture.claimed_retention_receipt(permit, "pin", facts)
+
+               assert {:ok, ^bound} =
+                        ReviewFixture.claimed_retention_effect(
+                          permit,
+                          facts,
+                          intent,
+                          request,
+                          normalized,
+                          receipt
+                        )
+
+               assert {:error, :native_review_refused} =
+                        ReviewFixture.claim_retention_effect(
+                          permit,
+                          facts,
+                          intent,
+                          request,
+                          normalized,
+                          receipt
+                        )
+
+               assert {:error, :native_review_refused} =
+                        ReviewFixture.claimed_retention_effect(
+                          permit,
+                          facts,
+                          intent,
+                          request,
+                          Map.put(normalized, "expected_generation", 2),
+                          receipt
+                        )
+
+               Process.put({ReviewRunner, :wall_now}, bound.publish_before_ms)
+
+               assert {:error, :native_review_refused} =
+                        ReviewFixture.claimed_retention_receipt(permit, "pin", facts)
+
+               assert {:error, :native_review_refused} =
+                        ReviewFixture.claimed_retention_effect(
+                          permit,
+                          facts,
+                          intent,
+                          request,
+                          normalized,
+                          receipt
+                        )
+
+               Process.put({ReviewRunner, :wall_now}, wall)
+               {:ok, :bound}
+             end)
+
+    assert {:error, :native_review_refused} =
+             ReviewFixture.with_review("pin", facts, fn permit ->
+               assert {:ok, review} = ReviewFixture.consume(permit, "pin", facts)
+
+               receipt = %{
+                 "version" => 3,
+                 "kind" => "native_literal_retention",
+                 "policy" => facts["policy"],
+                 "record_key" => facts["target"]["key"],
+                 "lineage" => facts["metadata"]["lineage"],
+                 "category" => "pin",
+                 "first_admitted_ms" => facts["metadata"]["first_admitted_ms"],
+                 "action_sha256" => facts["action_sha256"],
+                 "native_review_sha256" => Ipse.JSON.digest([review]),
+                 "valid_until_ms" => nil,
+                 "publish_before_ms" => nil
+               }
+
+               forged = put_in(normalized, ["changes", Access.at(1), "key"], "other.record")
+
+               assert {:error, :native_review_refused} =
+                        ReviewFixture.claim_retention_effect(
+                          permit,
+                          facts,
+                          intent,
+                          request,
+                          forged,
+                          receipt
+                        )
+
+               assert {:error, :native_review_refused} =
+                        ReviewFixture.claim_retention_effect(
+                          permit,
+                          facts,
+                          intent,
+                          request,
+                          normalized,
+                          receipt
+                        )
+
+               {:error, :refused}
+             end)
+  end
+
   test "changed command or exact facts spends the permit without a silent rebase", c do
     for {command, facts} <- [{"forget", c.facts}, {"pin", Map.put(c.facts, "new", true)}] do
       assert {:error, :native_review_refused} =
@@ -161,6 +722,10 @@ defmodule Ipse.Runner.ReviewTest do
   test "foreign process and forged ref do not spend the actual owner's permit", c do
     assert :ok =
              ReviewFixture.with_review("pin", c.facts, fn permit ->
+               assert {:error, :native_review_refused} =
+                        Task.async(fn -> ReviewFixture.check(permit, "pin", c.facts) end)
+                        |> Task.await()
+
                assert {:error, :native_review_refused} =
                         Task.async(fn -> ReviewFixture.consume(permit, "pin", c.facts) end)
                         |> Task.await()

@@ -1,0 +1,10 @@
+Running ExUnit with seed: 46918, max_cases: 1
+Excluding tags: [:test]
+Including tags: [:shared_directory_preview]
+
+NAMESPACE_TEST_ARTIFACT 0bf86b802fcc39f0da0cefe99be927f21a964234d954749be9fe437d1900e56f
+SHARED_DIRECTORY_PREVIEW {"actual_read_calls":58,"result":{"coverage":{"cache_scope":"source_bundle_preparation","effects_used":0,"evidence_readable":false,"namespace_complete":false,"population_qualified":false,"reads_used":52,"selection_complete":true},"directory_entities":40,"directory_groups":1,"directory_lookup":{"catalog_sha256":"f10931f4216dc01b6dfe7b0906967d86eff50cac1fb2538c038c61afd812dc70","directory_complete":true,"evidence_readable":false,"floor":0,"manifest_pages":1,"projection_payloads_read":false,"selected_headers":1},"directory_publication_attempted":false,"directory_root_bytes":1176,"directory_values":2,"document_citations":0,"document_warnings":0,"entities":40,"fact_pages":1,"facts":160,"header_bytes":1939,"leaf_values":3,"maximum_value_bytes":21723,"noncanonical_fact_refused":true,"partial_sources":0,"population_qualified":false,"publication_attempted":false,"source_pages":1,"sources":8,"status":"preview","vector_pages":1,"vectors":8}}
+.
+Finished in 8.7 seconds (1.0s on load, 0.00s async, 7.7s sync)
+
+Result: 1 passed, 30 excluded

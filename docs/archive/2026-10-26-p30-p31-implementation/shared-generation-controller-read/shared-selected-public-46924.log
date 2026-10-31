@@ -1,0 +1,19 @@
+Running ExUnit with seed: 46924, max_cases: 1
+Excluding tags: [:test]
+Including tags: [:public_shared_selected]
+
+NAMESPACE_TEST_ARTIFACT 83ca511938cd457ba101bfbe8eab7af5a45753af5f38bcbe1c19f8464a3443a1
+
+
+  1) test public Corpus reads fully hydrated selected supplied projections with Word citations and current-source refusal (Ipse.KnowledgeCollectionAdapterSessionTest)
+     test/extensions/knowledge/collection_adapter_session_test.exs:290
+     %{"claims" => [], "continuation" => nil, "coverage" => %{}, "evidence" => [], "gaps" => [%{"code" => "invalid_profile"}], "status" => "refused", "version" => 1}
+     code: assert result["status"] == "ok", inspect(result)
+     stacktrace:
+       test/extensions/knowledge/collection_adapter_session_test.exs:323: (test)
+
+
+Finished in 10.3 seconds (0.9s on load, 0.00s async, 9.3s sync)
+
+Result: 0/1 passed, 31 excluded
+Failed: 1 test

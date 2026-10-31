@@ -1,12 +1,14 @@
 [root] = System.argv()
 true = Path.expand(Application.app_dir(:ipse)) == Path.join(root, "ipse")
 Code.require_file("test/support/managed_policy.exs")
+Code.require_file("test/support/resume_assertions.exs")
 {:ok, _} = Application.ensure_all_started(:ipse)
 Application.put_env(:ipse, :activation_test_root, root)
 ExUnit.start(seed: 20_261_026)
 
 defmodule Ipse.Test.ActivationOverlayVM do
   use ExUnit.Case, async: false
+  import Ipse.Test.ResumeAssertions
   alias Ipse.{Config, JSON, Journal, Session}
   alias Ipse.Config.Activation, as: Host
 
@@ -364,7 +366,7 @@ defmodule Ipse.Test.ActivationOverlayVM do
     actual = :sys.get_state(resumed).config
     assert Registry.manifests(actual) == Registry.manifests(old)
     assert actual.timeout_ms == 90_000
-    assert File.read!(journal) == before
+    assert_idle_resume_journal(journal, before, id)
     assert :ok = Session.invoke_export(resumed, :command, "ext__knowledge__inspect", %{})
     assert_receive {:ipse, ^resumed, {:done, :error}}, 10_000
     assert :ok = Session.close_confirmed(resumed)

@@ -293,13 +293,19 @@ defmodule Ipse.DelegationDemo do
       "delegate_parallel" = intent["name"]
       true = intent["arguments"] == @args
       :ok = Session.close(pid)
+      {:ok, closed_events} = Ipse.Journal.load(opts[:state_dir], id)
+      [closure] = Enum.drop(closed_events, length(events))
+      true = Enum.take(closed_events, length(events)) == events
+      "lifecycle_epoch_closed" = closure["type"]
+      "close" = closure["closure"]
+      true = closure["cleanup_confirmed"]
 
       {:ok, resumed} =
         DynamicSupervisor.start_child(Ipse.Sessions, {Session, Keyword.put(opts, :id, id)})
 
       try do
         :idle = Session.info(resumed).phase
-        {:ok, ^events} = Ipse.Journal.load(opts[:state_dir], id)
+        {:ok, ^closed_events} = Ipse.Journal.load(opts[:state_dir], id)
       after
         Session.close(resumed)
       end

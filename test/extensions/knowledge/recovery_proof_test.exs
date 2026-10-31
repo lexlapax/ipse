@@ -1,5 +1,3 @@
-Code.require_file("../../../dev/verification/knowledge_recovery.exs", __DIR__)
-
 defmodule Ipse.KnowledgeRecoveryProofTest do
   use ExUnit.Case, async: false
 
@@ -26,6 +24,38 @@ defmodule Ipse.KnowledgeRecoveryProofTest do
 
     assert status == 0, output
 
+    paths =
+      :code.get_path()
+      |> Enum.map(&List.to_string/1)
+      |> Enum.reject(&(&1 == "."))
+      |> Enum.map(&Path.expand/1)
+      |> Enum.reverse()
+      |> Enum.flat_map(&["-pa", &1])
+
+    expression = """
+    {:ok, _} = Application.ensure_all_started(:ipse)
+    [proof, artifact] = System.argv()
+    Code.require_file(proof)
+    IO.puts(Jason.encode!(IpseKnowledgeExample.RecoveryProof.run(artifact)))
+    """
+
+    {proof_output, proof_status} =
+      System.cmd(
+        System.find_executable("elixir"),
+        ["--erl", "+S 2:2"] ++
+          paths ++
+          [
+            "-e",
+            expression,
+            Path.expand("../../../dev/verification/knowledge_recovery.exs", __DIR__),
+            root
+          ],
+        stderr_to_stdout: true
+      )
+
+    assert proof_status == 0, proof_output
+    report = proof_output |> String.split("\n", trim: true) |> List.last() |> Jason.decode!()
+
     assert %{
              "checks" => 8,
              "cleanup" => "confirmed",
@@ -36,6 +66,6 @@ defmodule Ipse.KnowledgeRecoveryProofTest do
              "exact_abort" => true,
              "stale_abort_zero_writes" => true,
              "explicit_new_draft" => true
-           } = IpseKnowledgeExample.RecoveryProof.run(root)
+           } = report
   end
 end

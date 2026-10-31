@@ -1,5 +1,6 @@
 defmodule Ipse.Extension.SessionTest do
   use ExUnit.Case, async: false
+  import Ipse.Test.ResumeAssertions
   alias Ipse.{Session, Journal}
   alias Ipse.Extension.{Config, Registry, Projection}
 
@@ -345,7 +346,16 @@ defmodule Ipse.Extension.SessionTest do
     assert :ok = Session.cancel_draft(pid)
   end
 
+  @tag :witnessed_draft_lineage
   test "accepted draft lineage binds subsequent real extension invocation and actions", c do
+    if System.get_env("IPSE_WITNESSED_DRAFT_CHILD") == "1" do
+      witnessed_draft_lineage(c)
+    else
+      Ipse.Test.WitnessedDraft.run(c.root, "test/support/draft_extension_entry.exs")
+    end
+  end
+
+  defp witnessed_draft_lineage(c) do
     memory =
       instance(
         "memory",
@@ -366,31 +376,12 @@ defmodule Ipse.Extension.SessionTest do
     assert_receive {:ipse, ^pid, {:done, :ok}}, 5_000
     {:ok, %{id: draft_id, revision: revision}} = Session.draft(pid)
     assert :ok = Session.replace_draft(pid, draft_id, revision, "accepted request")
-    assert :ok = Session.close_confirmed(pid)
-    {:ok, events} = Journal.load(c.dir, id)
-    {:ok, draft} = Ipse.Session.Draft.restore(events, id)
-    {:ok, render} = Ipse.Session.DraftAcceptance.render(draft, Ipse.Usage.id())
-    text = "accept " <> render["code"]
-
-    observation = %{
-      "version" => 2,
-      "event_id" => Ipse.Usage.id(),
-      "display_limit" => 16_777_216,
-      "input_limit" => 1_048_576,
-      "display_sha256" => Ipse.JSON.sha256(render["display"]),
-      "text_sha256" => Ipse.JSON.sha256(text)
-    }
-
-    {:ok, receipt} = Ipse.Session.DraftAcceptance.receipt(draft, render, text, observation)
-    assert :ok = Journal.append(c.dir, id, Ipse.Session.Draft.accepted(draft, receipt))
-    {:ok, resumed} = start(c, config, id)
-    on_exit(fn -> if Process.alive?(resumed), do: Session.close(resumed) end)
-    assert :ok = Session.consume_draft(resumed, draft_id, revision + 1)
+    assert :ok = Ipse.Test.WitnessedDraft.accept(pid, draft_id, revision + 1)
     assert_receive {:draft_extension_input, messages, _}, 5_000
     refute inspect(messages) =~ "private source draft"
-    assert_receive {:ipse, ^resumed, {:done, status}}, 10_000
+    assert_receive {:ipse, ^pid, {:done, status}}, 10_000
     assert status in [:ok, :error]
-    assert :ok = Session.close_confirmed(resumed)
+    assert :ok = Session.close_confirmed(pid)
     {:ok, events} = Journal.load(c.dir, id)
     assert Enum.any?(events, &(&1["type"] == "extension_invocation_intent"))
     assert Enum.any?(events, &(&1["type"] == "extension_action_intent"))
@@ -539,7 +530,7 @@ defmodule Ipse.Extension.SessionTest do
     assert :idle = Session.info(resumed).phase
     assert Session.info(resumed).final == "<answer>visible</answer>"
     refute_receive {:model_context, _}, 150
-    assert File.read!(path) == bytes
+    assert_idle_resume_journal(path, bytes, id)
     assert :ok = Session.close(resumed)
   end
 
@@ -714,7 +705,7 @@ defmodule Ipse.Extension.SessionTest do
       assert {:ok, resumed} = start(c, config, id)
       assert :idle = Session.info(resumed).phase
       refute_receive {:model_context, _}, 100
-      assert File.read!(Path.join(c.dir, id <> ".jsonl")) == bytes
+      assert_idle_resume_journal(Path.join(c.dir, id <> ".jsonl"), bytes, id)
       assert :ok = Session.close(resumed)
     end
   end

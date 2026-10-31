@@ -207,6 +207,9 @@ defmodule Ipse.KnowledgeStoreContractTest do
       Enum.flat_map(sources, &["-r", Path.join(@root, &1)]) ++
         ["-e", "Ipse.Development.Verification.Runtime.load_fixture!(:knowledge)"]
 
+    modules = [IpseKnowledge.Profiles, IpseKnowledge.Evidence, IpseKnowledge.Store.MCPCAS]
+    loaded_before = Map.new(modules, &{&1, :code.is_loaded(&1)})
+
     {output, status} =
       System.cmd(System.find_executable("elixir"), paths ++ loads ++ ["-e", @suite],
         stderr_to_stdout: true,
@@ -215,12 +218,6 @@ defmodule Ipse.KnowledgeStoreContractTest do
 
     assert status == 0, output
 
-    for module <- [
-          IpseKnowledge.Profiles,
-          IpseKnowledge.Evidence,
-          IpseKnowledge.Store.MCPCAS
-        ] do
-      refute Code.ensure_loaded?(module)
-    end
+    assert Map.new(modules, &{&1, :code.is_loaded(&1)}) == loaded_before
   end
 end

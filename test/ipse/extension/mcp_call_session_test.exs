@@ -274,11 +274,18 @@ defmodule Ipse.Extension.MCPCallSessionTest do
 
     metadata =
       header["metadata"]
+      |> Map.drop(
+        ~w(native_journal_layout release_receipt_layout session_lock_identity source_origin source_origin_layout)
+      )
       |> Map.delete("mcp_fingerprint_version")
       |> Map.put("mcp_servers", Ipse.MCP.fingerprints(legacy))
 
     assert {:ok, id} = Journal.create(ctx.dir, metadata)
-    for event <- initial, do: assert(:ok = Journal.append(ctx.dir, id, event))
+
+    for event <- initial,
+        event["type"] != "session_release_owner_started",
+        do: assert(:ok = Journal.append(ctx.dir, id, event))
+
     pid = start(ctx, cfg, id)
     invoke(pid)
     assert_receive {:ipse, ^pid, {:approval, ref, "extension:mcp.call", proposed}}, 10_000
@@ -366,6 +373,9 @@ defmodule Ipse.Extension.MCPCallSessionTest do
 
       metadata =
         metadata
+        |> Map.drop(
+          ~w(native_journal_layout release_receipt_layout session_lock_identity source_origin source_origin_layout)
+        )
         |> Map.delete("mcp_fingerprint_version")
         |> Map.put("mcp_servers", Ipse.MCP.fingerprints(legacy))
 
@@ -456,12 +466,11 @@ defmodule Ipse.Extension.MCPCallSessionTest do
       assert source_text(pid, content["read_handle"]) == Fixture.text()
       id = Session.info(pid).id
       assert :ok = Session.close_confirmed(pid)
-      path = Path.join(ctx.dir, id <> ".jsonl")
-      before = File.read!(path)
+      {:ok, before} = Journal.load(ctx.dir, id)
       discoveries = Fixture.discoveries(ctx.root)
       resumed = start(ctx, cfg, id)
       assert Session.info(resumed).phase == :idle
-      assert File.read!(path) == before
+      assert_inert_resume(ctx, id, before)
       assert Fixture.calls(ctx.root) == 1 and Fixture.discoveries(ctx.root) == discoveries
       refute_receive :unexpected_mcp_model_call
     end
@@ -471,6 +480,18 @@ defmodule Ipse.Extension.MCPCallSessionTest do
     assert {:ok, page} = Session.sources(pid, "source.read", %{"handle" => handle})
     assert byte_size(Jason.encode!(page)) <= 8192
     page["text"] <> if(page["next"], do: source_text(pid, page["next"]), else: "")
+  end
+
+  defp assert_inert_resume(ctx, id, before) do
+    assert {:ok, after_events} = Journal.load(ctx.dir, id)
+    assert Enum.take(after_events, length(before)) === before
+
+    assert Enum.all?(
+             Enum.drop(after_events, length(before)),
+             &(&1["type"] in ~w(session_release_owner_started session_release_intent lifecycle_epoch_started lifecycle_epoch_closed lifecycle_recording_stopped execution_mode_resumed))
+           )
+
+    assert {:ok, _} = Session.Saved.restore(after_events, id)
   end
 
   for transport <- [:stdio, :http], kind <- [:resource, :prompt] do
@@ -589,12 +610,11 @@ defmodule Ipse.Extension.MCPCallSessionTest do
     Process.exit(pid, :kill)
     assert_receive {:DOWN, ^monitor, :process, ^pid, :killed}, 5000
     transport_before = Fixture.records(ctx.root)
-    path = Path.join(ctx.dir, id <> ".jsonl")
-    journal_before = File.read!(path)
+    {:ok, journal_before} = Journal.load(ctx.dir, id)
     resumed = start(ctx, cfg, id)
     assert_receive {:ipse, ^resumed, {:question, ^question_id, _}}, 5000
     assert Session.info(resumed).phase == :question
-    assert File.read!(path) == journal_before
+    assert_inert_resume(ctx, id, journal_before)
     assert Fixture.records(ctx.root) == transport_before
     assert :ok = Session.answer(resumed, question_id, %{"continue" => "read"})
     done(resumed)
@@ -613,9 +633,9 @@ defmodule Ipse.Extension.MCPCallSessionTest do
     assert_receive {:ipse, ^pid, {:approval, ref, "extension:mcp.call", _}}, 5000
     File.write!(Path.join(ctx.root, "change-descriptor"), "changed")
     assert :ok = Session.approve(pid, ref, true)
-    done(pid)
+    done(pid, :error)
 
-    assert [%{"outcome" => %{"status" => "failed", "value" => %{"code" => "mcp_refused"}}}] =
+    assert [%{"outcome" => %{"status" => "unknown", "value" => %{}}}] =
              action_results(events(ctx, pid))
 
     assert Fixture.calls(ctx.root) == 0 and Fixture.discoveries(ctx.root) == 2
@@ -798,7 +818,7 @@ defmodule Ipse.Extension.MCPCallSessionTest do
       old_session = Fixture.http_session(http, handler)
 
       case unquote(interruption) do
-        :cancel -> assert :ok = Session.cancel(pid)
+        :cancel -> assert {:error, :cleanup_unconfirmed} = Session.cancel(pid)
         :owner_loss -> Process.exit(pid, :kill)
         _ -> :ok
       end
@@ -806,8 +826,13 @@ defmodule Ipse.Extension.MCPCallSessionTest do
       if unquote(interruption) == :owner_loss do
         assert_receive {:DOWN, ^monitor, :process, ^pid, :killed}, 5000
       else
-        done(pid, if(unquote(interruption) == :cancel, do: :cancelled, else: :error))
-        assert :ok = Session.close_confirmed(pid)
+        done(pid, :error)
+
+        if unquote(interruption) != :cancel do
+          assert {:error, :cleanup_unconfirmed} = Session.close_confirmed(pid)
+        end
+
+        assert_receive {:DOWN, ^monitor, :process, ^pid, _}, 5000
       end
 
       if mode == :hold, do: assert_receive({:extension_mcp_fixture, :closed, ^handler}, 5000)

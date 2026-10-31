@@ -36,6 +36,289 @@ defmodule Ipse.Runner do
          do: {:ok, helper}
   end
 
+  @doc false
+  def protected_helper_digest do
+    with {:ok, _} <- verified_operator_helper(),
+         do: {:ok, Base.encode16(@operator_helper_sha256, case: :lower)}
+  end
+
+  @doc false
+  # Fixed-marker experimental recipient. The caller owns the returned Port and
+  # must transfer ownership explicitly; this function accepts no payload or mode.
+  def open_synthetic_notice_terminal(cwd, remaining, purpose \\ :ordinary)
+
+  def open_synthetic_notice_terminal(cwd, remaining, purpose)
+      when is_binary(cwd) and is_integer(remaining) and remaining in 1..120_000 and
+             purpose in [:ordinary, :accepted, :review] and
+             (purpose == :review or remaining <= 5_000) do
+    with {:unix, :linux} <- :os.type(),
+         {:ok, helper} <- protected_helper(cwd) do
+      {:ok,
+       Port.open({:spawn_executable, String.to_charlist(helper)}, [
+         :binary,
+         :exit_status,
+         :nouse_stdio,
+         :hide,
+         args: [
+           "--operator-input",
+           Integer.to_string(remaining),
+           case purpose do
+             :accepted -> "v10-synthetic-accepted-notice-display"
+             :review -> "v13-session-review-group-input"
+             :ordinary -> "v9-synthetic-notice-display"
+           end
+         ]
+       ])}
+    else
+      _ -> {:error, :terminal_unavailable}
+    end
+  rescue
+    _ -> {:error, :terminal_unavailable}
+  end
+
+  def open_synthetic_notice_terminal(_, _, _), do: {:error, :terminal_unavailable}
+
+  @doc false
+  def open_owner_control do
+    with {:unix, :linux} <- :os.type(),
+         {:ok, helper} <- verified_operator_helper() do
+      port =
+        Port.open({:spawn_executable, String.to_charlist(helper)}, [
+          :binary,
+          :exit_status,
+          :use_stdio,
+          :hide,
+          args: ["--owner-control-send-v1"]
+        ])
+
+      {:ok, port}
+    else
+      _ -> {:error, :owner_control_unavailable}
+    end
+  rescue
+    _ -> {:error, :owner_control_unavailable}
+  end
+
+  @doc false
+  def prepare_owner_control(job_ref, intent, ticket, operation, deadline)
+      when is_reference(job_ref) and is_map(intent) and is_reference(ticket) and
+             is_binary(operation) and byte_size(operation) == 16 and is_integer(deadline) do
+    with {:unix, :linux} <- :os.type(),
+         {:ok, _} <- verified_operator_helper(),
+         true <- deadline > System.monotonic_time(:millisecond),
+         true <- deadline <= System.monotonic_time(:millisecond) + 5_000,
+         true <- operation != <<0::128>> do
+      {:ok,
+       %{
+         owner: self(),
+         job_ref: job_ref,
+         intent_sha256: Ipse.JSON.digest([intent]),
+         ticket: ticket,
+         operation: operation,
+         deadline: deadline,
+         helper: Path.expand(app_helper()),
+         helper_sha256: @operator_helper_sha256
+       }}
+    else
+      _ -> {:error, :owner_control_unavailable}
+    end
+  rescue
+    _ -> {:error, :owner_control_unavailable}
+  end
+
+  def prepare_owner_control(_, _, _, _, _), do: {:error, :owner_control_unavailable}
+
+  @doc false
+  def valid_owner_preparation?(prepared, owner, job_ref, intent) do
+    is_map(prepared) and
+      Enum.sort(Map.keys(prepared)) ==
+        Enum.sort(~w(owner job_ref intent_sha256 ticket operation deadline helper helper_sha256)a) and
+      prepared.owner == owner and prepared.job_ref == job_ref and is_reference(job_ref) and
+      is_map(intent) and prepared.intent_sha256 == Ipse.JSON.digest([intent]) and
+      is_reference(prepared.ticket) and
+      is_binary(prepared.operation) and byte_size(prepared.operation) == 16 and
+      prepared.operation != <<0::128>> and is_integer(prepared.deadline) and
+      prepared.deadline > System.monotonic_time(:millisecond) and
+      prepared.deadline <= System.monotonic_time(:millisecond) + 5_000 and
+      is_binary(app_helper()) and prepared.helper == Path.expand(app_helper()) and
+      is_binary(@operator_helper_sha256) and prepared.helper_sha256 == @operator_helper_sha256
+  rescue
+    _ -> false
+  end
+
+  @doc false
+  def open_prepared_owner_control(prepared, owner, job_ref, intent, mode \\ :legacy) do
+    if mode in [:legacy, :synthetic_notice] and
+         valid_owner_preparation?(prepared, owner, job_ref, intent) do
+      {:ok,
+       Port.open({:spawn_executable, String.to_charlist(prepared.helper)}, [
+         :binary,
+         :exit_status,
+         :use_stdio,
+         :hide,
+         args: [
+           if(mode == :synthetic_notice,
+             do: "--owner-control-send-v2",
+             else: "--owner-control-send-v1"
+           )
+         ]
+       ])}
+    else
+      {:error, :owner_control_unavailable}
+    end
+  rescue
+    _ -> {:error, :owner_control_unavailable}
+  end
+
+  @doc false
+  def open_review_owner_control(prepared, owner, job_ref, intent, overall_deadline)
+      when is_integer(overall_deadline),
+      do: open_review_owner_control(prepared, owner, job_ref, intent, overall_deadline, :eof)
+
+  def open_review_owner_control(_, _, _, _, _), do: {:error, :owner_control_unavailable}
+
+  @doc false
+  def open_review_notice_owner_control(prepared, owner, job_ref, intent, overall_deadline)
+      when is_integer(overall_deadline),
+      do: open_review_owner_control(prepared, owner, job_ref, intent, overall_deadline, :notice)
+
+  def open_review_notice_owner_control(_, _, _, _, _),
+    do: {:error, :owner_control_unavailable}
+
+  @doc false
+  # Session uses this only after checking its own ticket and current Host.
+  def open_prepared_review_notice_owner_control(
+        prepared,
+        owner,
+        job_ref,
+        intent,
+        overall_deadline
+      )
+      when is_integer(overall_deadline),
+      do:
+        open_review_owner_control(
+          prepared,
+          owner,
+          job_ref,
+          intent,
+          overall_deadline,
+          :session_notice
+        )
+
+  def open_prepared_review_notice_owner_control(_, _, _, _, _),
+    do: {:error, :owner_control_unavailable}
+
+  defp open_review_owner_control(prepared, owner, job_ref, intent, overall_deadline, mode)
+       when is_integer(overall_deadline) do
+    now = System.monotonic_time(:millisecond)
+    remaining = overall_deadline - now
+
+    with true <- mode == :session_notice or owner == self(),
+         true <- valid_owner_preparation?(prepared, owner, job_ref, intent),
+         {:ok, _} <- verified_operator_helper(),
+         true <- overall_deadline >= prepared.deadline,
+         true <- remaining in 5_000..120_000 do
+      {:ok,
+       Port.open({:spawn_executable, String.to_charlist(prepared.helper)}, [
+         :binary,
+         :exit_status,
+         :use_stdio,
+         :hide,
+         args: [
+           if(mode in [:notice, :session_notice],
+             do: "--owner-control-send-review-notice-v4",
+             else: "--owner-control-send-review-v3"
+           ),
+           Integer.to_string(remaining)
+         ]
+       ])}
+    else
+      _ -> {:error, :owner_control_unavailable}
+    end
+  rescue
+    _ -> {:error, :owner_control_unavailable}
+  end
+
+  @doc false
+  # The Port owner must first observe its bounded R/owner-control-v1 frame.
+  # A queued request is not a transfer or an owner-liveness acknowledgment.
+  def send_owner_control(port, operation, role, recipient, name, secret)
+      when is_port(port) and is_binary(operation) and byte_size(operation) == 16 and
+             role in [:session, :host, :management_cli, :management_journal] and
+             is_integer(recipient) and recipient in 1..4_294_967_295 and
+             is_binary(name) and byte_size(name) == 16 and is_binary(secret) and
+             byte_size(secret) == 32 do
+    if Port.info(port, :connected) == {:connected, self()} and operation != <<0::128>> and
+         name != <<0::128>> and secret != <<0::256>> do
+      role_id = if role in [:session, :management_cli], do: 1, else: 2
+      body = <<operation::binary, role_id, recipient::32, name::binary, secret::binary>>
+
+      if Port.command(port, <<?I, byte_size(body)::32, body::binary>>, [:nosuspend]),
+        do: :ok,
+        else: {:error, :owner_control_unconfirmed}
+    else
+      {:error, :owner_control_unavailable}
+    end
+  rescue
+    _ -> {:error, :owner_control_unconfirmed}
+  end
+
+  def send_owner_control(_, _, _, _, _, _), do: {:error, :owner_control_unavailable}
+
+  @doc false
+  def close_owner_control(port) when is_port(port) do
+    if Port.info(port, :connected) == {:connected, self()} do
+      Port.close(port)
+      :ok
+    else
+      {:error, :owner_control_unavailable}
+    end
+  rescue
+    _ -> {:error, :owner_control_unconfirmed}
+  end
+
+  def close_owner_control(_), do: {:error, :owner_control_unavailable}
+
+  @doc false
+  def cancel_unused_owner_control(port, deadline) when is_port(port) and is_integer(deadline) do
+    with {:connected, owner} when owner == self() <- Port.info(port, :connected),
+         true <- deadline > System.monotonic_time(:millisecond),
+         true <- Port.command(port, <<?C, 0::32>>, [:nosuspend]),
+         :ok <- owner_control_cancel_receipt(port, deadline, <<>>) do
+      :ok
+    else
+      _ -> {:error, :owner_control_unconfirmed}
+    end
+  rescue
+    _ -> {:error, :owner_control_unconfirmed}
+  end
+
+  def cancel_unused_owner_control(_, _), do: {:error, :owner_control_unconfirmed}
+
+  defp owner_control_cancel_receipt(port, deadline, buffer) do
+    expected = <<?C, 9::32, "cancelled">>
+
+    cond do
+      System.monotonic_time(:millisecond) >= deadline ->
+        {:error, :owner_control_unconfirmed}
+
+      byte_size(buffer) > byte_size(expected) or
+          binary_part(expected, 0, min(byte_size(buffer), byte_size(expected))) != buffer ->
+        {:error, :owner_control_unconfirmed}
+
+      true ->
+        receive do
+          {^port, {:data, bytes}} -> owner_control_cancel_receipt(port, deadline, buffer <> bytes)
+          {^port, {:exit_status, 0}} when buffer == expected -> :ok
+          {^port, {:exit_status, _}} -> {:error, :owner_control_unconfirmed}
+          {:EXIT, ^port, _} -> owner_control_cancel_receipt(port, deadline, buffer)
+        after
+          max(deadline - System.monotonic_time(:millisecond), 0) ->
+            {:error, :owner_control_unconfirmed}
+        end
+    end
+  end
+
   defp verified_helper do
     with {:ok, helper} <- helper_path(false), do: verify_helper_path(helper)
   end
@@ -510,6 +793,21 @@ defmodule Ipse.Runner do
     end
   end
 
+  @doc false
+  def operator_input(prompt, timeout_ms, 2, guard) when is_function(guard, 1) do
+    with true <- is_binary(prompt) and String.valid?(prompt),
+         true <- byte_size(prompt) in 1..16_777_216,
+         true <- is_integer(timeout_ms) and timeout_ms in 1_000..600_000,
+         true <- Ipse.CLI.Terminal.escape(prompt) == prompt,
+         {:ok, helper} <- verified_operator_helper() do
+      Ipse.Runner.Operator.run_guarded(helper, prompt, timeout_ms, guard)
+    else
+      _ -> {:error, :operator_input_unavailable}
+    end
+  end
+
+  def operator_input(_, _, _, _), do: {:error, :operator_input_unavailable}
+
   defp receive_operator(port, ticket, buffer, state, deadline) do
     case buffer do
       <<_kind, size::unsigned-big-32, _::binary>> when size > 8_208 ->
@@ -589,16 +887,82 @@ defmodule Ipse.Runner do
   end
 
   @doc "Acquire a persistent advisory lock. Its Port must remain owned by the session."
-  def lock(path) when is_binary(path) do
+  def lock(path), do: acquire_lock(path, :lock, false)
+
+  @doc false
+  def protected_lock(path), do: acquire_lock(path, :lock, true)
+
+  @doc false
+  # Internal candidate only; there is no active Session/export caller.
+  def protected_export_lock(path) do
+    if :os.type() == {:unix, :linux},
+      do: acquire_lock(path, :lock, true, :export_v1),
+      else: {:error, :export_lock_unavailable}
+  end
+
+  @doc false
+  def protected_header_lock(path) do
+    if :os.type() == {:unix, :linux},
+      do: acquire_lock(path, :lock, true, :header_v1),
+      else: {:error, :header_lock_unavailable}
+  end
+
+  @doc false
+  def protected_resume_lock(path) do
+    if :os.type() == {:unix, :linux},
+      do: acquire_lock(path, :lock, true, :resume_v1),
+      else: {:error, :header_lock_unavailable}
+  end
+
+  @doc false
+  def protected_share_header_lock(path) do
+    if :os.type() == {:unix, :linux},
+      do: acquire_lock(path, :lock, true, :header_share_v2),
+      else: {:error, :header_lock_unavailable}
+  end
+
+  @doc false
+  def protected_share_resume_lock(path) do
+    if :os.type() == {:unix, :linux},
+      do: acquire_lock(path, :lock, true, :resume_share_v2),
+      else: {:error, :header_lock_unavailable}
+  end
+
+  @doc false
+  # Reserved for inactive original journal readers after journal/lock checks.
+  def lock_source(path), do: acquire_lock(path, :source_lock, true)
+
+  defp acquire_lock(path, kind, protected, mode \\ :legacy)
+
+  defp acquire_lock(path, kind, protected, mode)
+       when is_binary(path) and
+              mode in [
+                :legacy,
+                :export_v1,
+                :header_v1,
+                :resume_v1,
+                :header_share_v2,
+                :resume_share_v2
+              ] do
     with :ok <- launch_text(path),
-         {:ok, helper} <- helper_path(),
+         {:ok, helper} <- if(protected, do: verified_operator_helper(), else: helper_path()),
          {:ok, port, ticket} <-
-           owned_port(:lock, helper, [
+           owned_port(kind, helper, [
              :binary,
              :exit_status,
              :use_stdio,
              :hide,
-             args: ["--lock", Path.expand(path)]
+             args: [
+               case mode do
+                 :export_v1 -> "--lock-export-v1"
+                 :header_v1 -> "--session-header-v1"
+                 :resume_v1 -> "--session-resume-v1"
+                 :header_share_v2 -> "--session-header-share-v2"
+                 :resume_share_v2 -> "--session-resume-share-v2"
+                 :legacy -> "--lock"
+               end,
+               Path.expand(path)
+             ]
            ]) do
       Process.put({__MODULE__, port}, ticket)
       result = receive_lock(port, <<>>, System.monotonic_time(:millisecond) + 5_000, ticket)
@@ -609,7 +973,311 @@ defmodule Ipse.Runner do
     error -> {:error, Exception.message(error)}
   end
 
-  def lock(_), do: {:error, "lock path must be a string"}
+  defp acquire_lock(_, _, _, _), do: {:error, "lock path must be a string"}
+
+  @doc false
+  def session_header_begin(port, deadline) when is_integer(deadline) do
+    case session_header_request(port, ?B, 1, <<0::32>>, deadline) do
+      {:ok, <<1::64, 1, dev::64, inode::64, uid::32>>} ->
+        {:ok, %{device: dev, inode: inode, uid: uid}}
+
+      _ ->
+        {:error, :header_unconfirmed}
+    end
+  end
+
+  @doc false
+  def session_header_write(port, bytes, owner, deadline)
+      when is_binary(bytes) and byte_size(bytes) in 1..16_777_217 and is_pid(owner) and
+             is_integer(deadline) do
+    with {:ok, <<2::64, 1>>} <-
+           session_header_request(port, ?H, 2, <<byte_size(bytes)::32>>, deadline),
+         {:ok, seq} <- session_header_chunks(port, bytes, owner, 3, deadline),
+         true <- Process.alive?(owner),
+         {:ok, <<^seq::64, 1>>} <- session_header_request(port, ?F, seq, <<>>, deadline) do
+      :ok
+    else
+      _ -> {:error, :header_unconfirmed}
+    end
+  end
+
+  def session_header_write(_, _, _, _), do: {:error, :header_unconfirmed}
+
+  @doc false
+  def session_share_export(port, seq, ordinal, operation, request, deadline)
+      when is_port(port) and seq in 1..18_446_744_073_709_551_615 and
+             ordinal in 1..18_446_744_073_709_551_615 and
+             is_binary(operation) and byte_size(operation) == 16 and is_binary(request) and
+             byte_size(request) == 68 and is_integer(deadline) do
+    remaining = min(max(deadline - System.monotonic_time(:millisecond), 0), 5_000)
+
+    case session_header_request(
+           port,
+           ?Y,
+           seq,
+           <<ordinal::64, operation::binary, remaining::32, request::binary>>,
+           deadline
+         ) do
+      {:ok, <<^seq::64, 1, ^ordinal::64, ^operation::binary-size(16)>>} -> :ok
+      _ -> {:error, :session_share_unconfirmed}
+    end
+  end
+
+  def session_share_export(_, _, _, _, _, _), do: {:error, :session_share_unconfirmed}
+
+  @doc false
+  def session_share_settle(port, seq, ordinal, operation, deadline)
+      when is_port(port) and seq in 1..18_446_744_073_709_551_615 and
+             ordinal in 1..18_446_744_073_709_551_615 and
+             is_binary(operation) and byte_size(operation) == 16 and is_integer(deadline) do
+    case session_header_request(port, ?K, seq, <<ordinal::64, operation::binary>>, deadline) do
+      {:ok, <<^seq::64, 1, ^ordinal::64, ^operation::binary-size(16)>>} -> :ok
+      _ -> {:error, :session_share_unconfirmed}
+    end
+  end
+
+  def session_share_settle(_, _, _, _, _), do: {:error, :session_share_unconfirmed}
+
+  @doc false
+  def session_header_lock_identity(port, deadline) when is_port(port) and is_integer(deadline) do
+    with {:connected, owner} when owner == self() <- Port.info(port, :connected),
+         {:ok, <<device::64, inode::64>>} <- session_header_send(port, ?I, <<>>, deadline),
+         true <- inode > 0 do
+      {:ok, %{device: device, inode: inode}}
+    else
+      _ -> {:error, :header_unconfirmed}
+    end
+  rescue
+    _ -> {:error, :header_unconfirmed}
+  end
+
+  def session_header_lock_identity(_, _), do: {:error, :header_unconfirmed}
+
+  @doc false
+  def session_journal_append(port, %{device: device, inode: inode}, offset, line, deadline)
+      when is_port(port) and is_integer(device) and device >= 0 and is_integer(inode) and
+             inode > 0 and
+             is_integer(offset) and offset > 0 and is_binary(line) and
+             byte_size(line) in 1..16_777_217 and is_integer(deadline) do
+    with {:connected, owner} when owner == self() <- Port.info(port, :connected),
+         {:ok, "ready"} <-
+           session_header_send(
+             port,
+             ?Q,
+             <<device::64, inode::64, offset::64, byte_size(line)::64>>,
+             deadline
+           ),
+         :ok <- session_journal_chunks(port, line, deadline),
+         {:ok, "synced"} <- session_header_send(port, ?E, <<>>, deadline) do
+      :ok
+    else
+      _ -> {:error, :journal_write_unconfirmed}
+    end
+  rescue
+    _ -> {:error, :journal_write_unconfirmed}
+  end
+
+  def session_journal_append(_, _, _, _, _), do: {:error, :journal_write_unconfirmed}
+
+  defp session_journal_chunks(_, <<>>, _), do: :ok
+
+  defp session_journal_chunks(port, line, deadline) do
+    size = min(byte_size(line), 16_384)
+    <<chunk::binary-size(^size), rest::binary>> = line
+
+    with {:ok, "staged"} <- session_header_send(port, ?W, chunk, deadline),
+         do: session_journal_chunks(port, rest, deadline)
+  end
+
+  @doc false
+  def session_journal_repair(
+        port,
+        %{device: device, inode: inode},
+        offset,
+        target,
+        action,
+        deadline
+      )
+      when is_port(port) and is_integer(device) and device >= 0 and is_integer(inode) and
+             inode > 0 and
+             is_integer(offset) and offset > 0 and is_integer(target) and target > 0 and
+             action in [0, 1] and is_integer(deadline) do
+    with {:connected, owner} when owner == self() <- Port.info(port, :connected),
+         {:ok, "synced"} <-
+           session_header_send(
+             port,
+             ?T,
+             <<device::64, inode::64, offset::64, target::64, action>>,
+             deadline
+           ) do
+      :ok
+    else
+      _ -> {:error, :journal_write_unconfirmed}
+    end
+  rescue
+    _ -> {:error, :journal_write_unconfirmed}
+  end
+
+  def session_journal_repair(_, _, _, _, _, _), do: {:error, :journal_write_unconfirmed}
+
+  @doc false
+  def publish_session_release(dir, session, operation, origin, lock, bytes)
+      when is_binary(dir) and is_binary(session) and is_binary(operation) and is_map(origin) and
+             is_map(lock) and is_binary(bytes) and byte_size(bytes) in 1..2_048 do
+    with true <- :os.type() == {:unix, :linux},
+         :ok <- launch_text(dir),
+         true <- origin["directory"] == dir,
+         true <-
+           Enum.all?(
+             [origin["major_device"], origin["inode"], lock[:device], lock[:inode]],
+             &Ipse.JSON.safe_uint?/1
+           ),
+         true <- byte_size(session) == 32 and byte_size(operation) == 32,
+         {:ok, helper} <- verified_operator_helper(),
+         args = [
+           "--session-release-v1",
+           dir,
+           session,
+           operation,
+           Integer.to_string(origin["major_device"]),
+           Integer.to_string(origin["inode"]),
+           Integer.to_string(lock.device),
+           Integer.to_string(lock.inode),
+           Integer.to_string(byte_size(bytes))
+         ],
+         {:ok, port, ticket} <-
+           owned_port(:lock, helper, [:binary, :exit_status, :use_stdio, :hide, args: args]) do
+      deadline = System.monotonic_time(:millisecond) + 5_000
+
+      result =
+        try do
+          release_publish_send(port, bytes, deadline)
+        after
+          close_stdio_port(port)
+        end
+
+      Ipse.Session.Resources.closed(ticket, result)
+      result
+    else
+      _ -> {:error, :cleanup_unconfirmed}
+    end
+  rescue
+    _ -> {:error, :cleanup_unconfirmed}
+  end
+
+  def publish_session_release(_, _, _, _, _, _), do: {:error, :cleanup_unconfirmed}
+
+  defp release_publish_send(port, bytes, deadline) do
+    if System.monotonic_time(:millisecond) >= deadline do
+      {:error, :cleanup_unconfirmed}
+    else
+      case Port.command(port, bytes, [:nosuspend]) do
+        true ->
+          release_publish_result(port, <<>>, deadline)
+
+        false ->
+          receive do
+            {^port, _} -> {:error, :cleanup_unconfirmed}
+          after
+            5 -> release_publish_send(port, bytes, deadline)
+          end
+      end
+    end
+  end
+
+  defp release_publish_result(port, buffer, deadline) do
+    expected = <<?P, 9::32, "published">>
+
+    if byte_size(buffer) > byte_size(expected) or
+         binary_part(expected, 0, byte_size(buffer)) != buffer do
+      {:error, :cleanup_unconfirmed}
+    else
+      receive do
+        {^port, {:data, bytes}}
+        when byte_size(buffer) + byte_size(bytes) <= byte_size(expected) ->
+          release_publish_result(port, buffer <> bytes, deadline)
+
+        {^port, {:exit_status, 0}} when buffer == expected ->
+          :ok
+
+        {^port, {:exit_status, _}} ->
+          {:error, :cleanup_unconfirmed}
+
+        {:EXIT, ^port, _} ->
+          release_publish_result(port, buffer, deadline)
+
+        {^port, _} ->
+          {:error, :cleanup_unconfirmed}
+      after
+        max(deadline - System.monotonic_time(:millisecond), 0) -> {:error, :cleanup_unconfirmed}
+      end
+    end
+  end
+
+  defp session_header_chunks(_port, <<>>, _owner, seq, _deadline), do: {:ok, seq}
+
+  defp session_header_chunks(port, bytes, owner, seq, deadline) do
+    count = min(byte_size(bytes), 16_384)
+    <<chunk::binary-size(^count), rest::binary>> = bytes
+
+    with true <- Process.alive?(owner),
+         {:ok, <<^seq::64, 1>>} <- session_header_request(port, ?D, seq, chunk, deadline),
+         do: session_header_chunks(port, rest, owner, seq + 1, deadline)
+  end
+
+  defp session_header_request(port, kind, seq, body, deadline) when is_port(port) do
+    if Port.info(port, :connected) == {:connected, self()} do
+      payload = <<seq::64, 1, body::binary>>
+      session_header_send(port, kind, payload, deadline)
+    else
+      {:error, :header_unconfirmed}
+    end
+  rescue
+    _ -> {:error, :header_unconfirmed}
+  end
+
+  defp session_header_send(port, kind, payload, deadline) do
+    if System.monotonic_time(:millisecond) >= deadline do
+      {:error, :header_unconfirmed}
+    else
+      case Port.command(port, <<kind, byte_size(payload)::32, payload::binary>>, [:nosuspend]) do
+        true ->
+          session_header_receive(port, kind, <<>>, deadline)
+
+        false ->
+          receive do
+            {^port, _} -> {:error, :header_unconfirmed}
+          after
+            5 -> session_header_send(port, kind, payload, deadline)
+          end
+      end
+    end
+  end
+
+  defp session_header_receive(
+         _port,
+         kind,
+         <<kind, size::32, body::binary-size(size)>>,
+         deadline
+       ) do
+    if System.monotonic_time(:millisecond) < deadline,
+      do: {:ok, body},
+      else: {:error, :header_unconfirmed}
+  end
+
+  defp session_header_receive(port, kind, bytes, deadline) when byte_size(bytes) <= 64 do
+    receive do
+      {^port, {:data, data}} when byte_size(bytes) + byte_size(data) <= 64 ->
+        session_header_receive(port, kind, bytes <> data, deadline)
+
+      {^port, _} ->
+        {:error, :header_unconfirmed}
+    after
+      max(deadline - System.monotonic_time(:millisecond), 0) -> {:error, :header_unconfirmed}
+    end
+  end
+
+  defp session_header_receive(_, _, _, _), do: {:error, :header_unconfirmed}
 
   @doc "Release an owned lock Port. The lock file remains to preserve inode identity."
   def unlock(port) when is_port(port) do
@@ -633,6 +1301,84 @@ defmodule Ipse.Runner do
   end
 
   def unlock(_), do: :ok
+
+  @doc false
+  # The candidate protocol distinguishes confirmed local release from an
+  # exported or otherwise uncertain description. Never use generic unlock here:
+  # it intentionally discards frames for the legacy lock protocol.
+  def unlock_export_candidate(port) when is_port(port) do
+    if Port.info(port, :connected) == {:connected, self()} do
+      ticket = Process.delete({__MODULE__, port})
+
+      result =
+        try do
+          export_cancel(port, System.monotonic_time(:millisecond) + 2_000)
+        rescue
+          ArgumentError -> {:error, :cleanup_unconfirmed}
+        after
+          close_stdio_port(port)
+        end
+
+      Ipse.Session.Resources.closed(ticket, result)
+      result
+    else
+      {:error, :cleanup_unconfirmed}
+    end
+  rescue
+    ArgumentError -> {:error, :cleanup_unconfirmed}
+  end
+
+  def unlock_export_candidate(_), do: {:error, :cleanup_unconfirmed}
+
+  defp export_cancel(port, deadline) do
+    if System.monotonic_time(:millisecond) >= deadline do
+      {:error, :cleanup_unconfirmed}
+    else
+      case Port.command(port, <<?C, 0::32>>, [:nosuspend]) do
+        true ->
+          export_release_result(port, <<>>, deadline)
+
+        false ->
+          receive do
+            {^port, {:data, _}} -> {:error, :cleanup_unconfirmed}
+            {^port, {:exit_status, _}} -> {:error, :cleanup_unconfirmed}
+            {:EXIT, ^port, _} -> {:error, :cleanup_unconfirmed}
+          after
+            5 -> export_cancel(port, deadline)
+          end
+      end
+    end
+  end
+
+  defp export_release_result(port, buffer, deadline) do
+    expected = <<?U, 8::unsigned-big-32, "unlocked">>
+
+    if byte_size(buffer) > byte_size(expected) or
+         binary_part(expected, 0, byte_size(buffer)) != buffer do
+      {:error, :cleanup_unconfirmed}
+    else
+      receive do
+        {^port, {:data, bytes}}
+        when byte_size(buffer) + byte_size(bytes) <= byte_size(expected) ->
+          export_release_result(port, buffer <> bytes, deadline)
+
+        {^port, {:data, _}} ->
+          {:error, :cleanup_unconfirmed}
+
+        {^port, {:exit_status, 0}} when buffer == expected ->
+          :ok
+
+        {^port, {:exit_status, _}} ->
+          {:error, :cleanup_unconfirmed}
+
+        {:EXIT, ^port, _} ->
+          export_release_result(port, buffer, deadline)
+      after
+        max(deadline - System.monotonic_time(:millisecond), 0) ->
+          {:error, :cleanup_unconfirmed}
+      end
+    end
+  end
 
   defp receive_lock(port, buffer, deadline, ticket) do
     case buffer do
@@ -692,14 +1438,21 @@ defmodule Ipse.Runner do
 
       true ->
         with {:ok, policy} <- Ipse.Tools.Sandbox.resolve(sandbox, cwd) do
-          run_supervised(
-            command,
-            policy.cwd,
-            timeout,
-            limit,
-            Keyword.get(opts, :emit),
-            policy.profile
-          )
+          invoke = fn ->
+            run_supervised(
+              command,
+              policy.cwd,
+              timeout,
+              limit,
+              Keyword.get(opts, :emit),
+              policy.profile,
+              Keyword.get(opts, :admit)
+            )
+          end
+
+          if is_function(Keyword.get(opts, :admit), 1),
+            do: Ipse.Session.Resources.file_effect(invoke),
+            else: invoke.()
         end
     end
   rescue
@@ -725,6 +1478,7 @@ defmodule Ipse.Runner do
     valid_text = &valid_text?/1
     listener = Keyword.get(opts, :owned_listener)
     protected = Keyword.get(opts, :protected_supervisor, false)
+    admit_start = Keyword.get(opts, :admit_start, false)
 
     valid_args =
       is_list(args) and length(args) <= 256 and Enum.all?(args, valid_text) and
@@ -743,6 +1497,9 @@ defmodule Ipse.Runner do
     cond do
       not is_boolean(protected) ->
         {:error, "protected_supervisor must be a boolean"}
+
+      not is_boolean(admit_start) or (admit_start and listener != nil) ->
+        {:error, "invalid managed stdio startup"}
 
       not valid_text.(executable) or executable == "" or byte_size(executable) > 4096 ->
         {:error, "invalid stdio executable"}
@@ -780,6 +1537,9 @@ defmodule Ipse.Runner do
              {:ok, helper} <- stdio_helper(policy.profile, policy.cwd, protected),
              {:ok, launch} <-
                stdio_launch_args(helper, policy, timeout_ms, executable, args, listener) do
+          launch =
+            if admit_start, do: List.replace_at(launch, 0, "--admitted-stdio"), else: launch
+
           selected = Map.merge(%{"PATH" => "/usr/bin:/bin", "LANG" => "C.UTF-8"}, selected_env)
           supervisor = %{"PATH" => "/usr/bin:/bin", "LANG" => "C.UTF-8"}
           # Port env uses false to unset inherited values. No values are logged
@@ -1001,6 +1761,37 @@ defmodule Ipse.Runner do
 
   def send_stdio(_, _), do: {:error, "invalid or oversized stdio input"}
 
+  @doc false
+  def grant_stdio_start(port, deadline)
+      when is_port(port) and is_integer(deadline) and deadline in 1..9_007_199_254_740_991 do
+    if Port.command(port, <<?G, 8::unsigned-big-32, deadline::unsigned-big-64>>, [:nosuspend]),
+      do: :ok,
+      else: {:error, "stdio startup is backpressured"}
+  rescue
+    _ -> {:error, "stdio transport is closed"}
+  end
+
+  def grant_stdio_start(_, _), do: {:error, "invalid managed stdio grant"}
+
+  @doc false
+  # The native owner checks the actual wall deadline immediately before each
+  # pipe write and acknowledges the complete nonce-bound frame. The caller
+  # must keep its admission lease until that acknowledgement arrives.
+  def send_stdio_before(port, bytes, deadline, nonce)
+      when is_port(port) and is_binary(bytes) and byte_size(bytes) in 1..32_768 and
+             is_integer(deadline) and deadline in 1..9_007_199_254_740_991 and
+             is_binary(nonce) and byte_size(nonce) == 16 do
+    payload = <<deadline::unsigned-big-64, nonce::binary, bytes::binary>>
+
+    if Port.command(port, [<<?D, byte_size(payload)::unsigned-big-32>>, payload], [:nosuspend]),
+      do: :ok,
+      else: {:error, "stdio input is backpressured"}
+  rescue
+    _ -> {:error, "stdio transport is closed"}
+  end
+
+  def send_stdio_before(_, _, _, _), do: {:error, "invalid managed stdio input"}
+
   @doc "Await supervisor exit within two seconds; cancel only if no terminal frame was observed."
   def close_stdio(port, mode \\ :cancel)
 
@@ -1165,9 +1956,15 @@ defmodule Ipse.Runner do
     _ -> :ok
   end
 
-  defp run_supervised(command, cwd, timeout, limit, emit, profile) do
-    with {:ok, helper} <- selected_helper(profile, cwd),
+  defp run_supervised(command, cwd, timeout, limit, emit, profile, admit) do
+    with {:ok, helper} <-
+           if(is_function(admit, 1),
+             do: protected_helper(cwd),
+             else: selected_helper(profile, cwd)
+           ),
          {:ok, args} <- launch_args(helper, profile, cwd, timeout, command),
+         true <- is_nil(admit) or is_function(admit, 1),
+         args = if(is_function(admit, 1), do: ["--admitted-shell" | args], else: args),
          {:ok, port, ticket} <-
            owned_port(:shell, helper, [
              :binary,
@@ -1194,7 +1991,16 @@ defmodule Ipse.Runner do
       deadline = System.monotonic_time(:millisecond) + timeout + setup_allowance
 
       try do
-        receive_output(port, state, deadline)
+        case shell_admission(port, ticket, admit) do
+          {:ok, buffer} ->
+            case frames(%{state | buffer: buffer}) do
+              {:ok, ready} -> receive_output(port, ready, deadline)
+              {:error, reason} -> {:unknown, reason}
+            end
+
+          other ->
+            other
+        end
       rescue
         _ ->
           {:unknown, "Shell supervision failed after possible dispatch. Inspect before retrying."}
@@ -1206,6 +2012,71 @@ defmodule Ipse.Runner do
         cleanup = if Port.info(port), do: close_stdio(port), else: {:error, :cleanup_unconfirmed}
         Ipse.Session.Resources.closed(ticket, cleanup)
       end
+    end
+  end
+
+  defp shell_admission(_port, _ticket, nil), do: {:ok, <<>>}
+
+  defp shell_admission(port, ticket, admit) do
+    with {:ok, <<>>} <- await_shell_boundary(port, ticket, ?R, "shell-ready-v1", <<>>) do
+      case admit.(fn deadline ->
+             # Ordinary effects have no source-lease deadline, but the native
+             # handshake still requires a bounded grant for starting the shell.
+             deadline =
+               if is_nil(deadline), do: System.system_time(:millisecond) + 10_000, else: deadline
+
+             with true <-
+                    Ipse.JSON.safe_uint?(deadline) and
+                      System.system_time(:millisecond) < deadline,
+                  true <- Ipse.Session.Resources.active?(),
+                  true <-
+                    Port.command(port, <<?G, 8::unsigned-big-32, deadline::unsigned-big-64>>, [
+                      :nosuspend
+                    ]),
+                  {:ok, tail} <- await_shell_boundary(port, ticket, ?A, "shell-started-v1", <<>>) do
+               {:shell_started, tail}
+             else
+               {:error, _} = refusal -> refusal
+               _ -> {:unknown, "Shell start was not confirmed; inspect before retrying."}
+             end
+           end) do
+        {:shell_started, tail} -> {:ok, tail}
+        {:error, _} = refusal -> refusal
+        {:unknown, _} = uncertain -> uncertain
+        _ -> {:unknown, "Shell start admission was not confirmed; inspect before retrying."}
+      end
+    end
+  end
+
+  defp await_shell_boundary(port, ticket, expected, payload, buffer) do
+    case buffer do
+      <<^expected, size::unsigned-big-32, rest::binary>> when byte_size(rest) >= size ->
+        <<observed::binary-size(^size), tail::binary>> = rest
+
+        if observed == payload,
+          do: {:ok, tail},
+          else: {:unknown, "Invalid shell admission receipt."}
+
+      <<?E, size::unsigned-big-32, rest::binary>> when byte_size(rest) >= size ->
+        <<reason::binary-size(^size), _::binary>> = rest
+        {:error, sanitize(reason)}
+
+      _ when byte_size(buffer) > 65_536 ->
+        {:unknown, "Shell admission exceeded its bound."}
+
+      _ ->
+        receive do
+          {^port, {:data, bytes}} ->
+            await_shell_boundary(port, ticket, expected, payload, buffer <> bytes)
+
+          {^port, {:exit_status, _}} ->
+            {:unknown, "Shell supervisor exited before confirming admission."}
+
+          {:ipse_cancel_resource, id} when ticket != nil and ticket.id == id ->
+            {:unknown, "Shell admission was cancelled; inspect before retrying."}
+        after
+          10_000 -> {:unknown, "Shell admission timed out; inspect before retrying."}
+        end
     end
   end
 

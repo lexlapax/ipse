@@ -2,10 +2,10 @@ defmodule Ipse.Extension.CollectionCall do
   @moduledoc "Bounded collection worker requests; protected host admission supplies all authority."
   alias Ipse.{JSON, Extension}
   alias Ipse.Extension.{Collection, SemanticAdmission, SemanticConsent}
-  @reads ~w(status snapshot get inspect scan)
+  @reads ~w(status snapshot get inspect scan index)
   @binding ~w(kind version namespace pin inner_op request_sha256)
   @summary ~w(version project generation floor floor_anchor)
-  @failures ~w(collection_unavailable collection_consent_denied collection_source_refused collection_policy_refused collection_result_limit collection_capacity collection_filesystem_unsupported collection_writer_fenced collection_duplicate)
+  @failures ~w(collection_unavailable collection_consent_denied collection_source_refused collection_policy_refused collection_deadline_unavailable collection_result_limit collection_capacity collection_filesystem_unsupported collection_writer_fenced collection_duplicate)
   @error {:error, :invalid_extension_collection_call}
 
   def operation?(request), do: is_map(request) and request["op"] == "collection.call"
@@ -19,7 +19,11 @@ defmodule Ipse.Extension.CollectionCall do
   def validate(request) do
     with true <- keys?(Map.delete(request, "proofs"), ~w(op request)) and operation?(request),
          inner when is_map(inner) <- request["request"],
-         true <- Collection.valid_request?(inner),
+         true <-
+           if(inner["op"] == "index",
+             do: index_request?(inner),
+             else: Collection.valid_request?(inner)
+           ),
          true <- inner["op"] in (@reads ++ ["commit"]),
          true <- public_request?(inner),
          true <- inner["op"] != "scan" or inner["limit"] in 1..4,
@@ -37,6 +41,7 @@ defmodule Ipse.Extension.CollectionCall do
   end
 
   defp public_request?(%{"op" => "get", "key" => key}), do: not private_key?(key)
+  defp public_request?(%{"op" => "index", "prefix" => prefix}), do: not private_key?(prefix)
   defp public_request?(%{"op" => "scan", "after" => key}), do: not private_key?(key)
 
   defp public_request?(%{"op" => "commit", "changes" => changes}),
@@ -44,6 +49,134 @@ defmodule Ipse.Extension.CollectionCall do
 
   defp public_request?(_), do: true
   defp private_key?(key), do: is_binary(key) and String.starts_with?(key, "host.validity.")
+
+  defp index_request?(request) do
+    keys?(request, ~w(op cursor limit prefix)) and request["op"] == "index" and
+      (is_nil(request["cursor"]) or
+         (is_binary(request["cursor"]) and byte_size(request["cursor"]) <= 2048)) and
+      is_integer(request["limit"]) and request["limit"] in 1..32 and
+      Ipse.Extension.Collection.Directory.key?(request["prefix"]) and
+      not private_key?(request["prefix"])
+  end
+
+  @doc false
+  def index_observation(c, intent) do
+    request = intent["request"]["request"]
+    scope = index_scope(c, intent)
+
+    with true <- index_request?(request),
+         {:ok, cursor} <-
+           read_index_cursor(c.index_scope.secret, request["cursor"], scope, request["prefix"]),
+         internal = %{
+           "op" => "index",
+           "prefix" => request["prefix"],
+           "limit" => request["limit"],
+           "after" => if(cursor, do: cursor["after"]),
+           "generation" => if(cursor, do: cursor["root_generation"])
+         },
+         {:ok, observation} <-
+           Collection.ObservedRead.read(
+             SemanticAdmission.collection_root(c.config[:home]),
+             intent["namespace"],
+             internal
+           ),
+         true <- is_nil(cursor) or cursor["root_sha256"] == observation["witness"]["root_sha256"],
+         {:ok, value} <- index_page(c.index_scope.secret, scope, request, observation) do
+      {:ok,
+       %{
+         observation
+         | "request_sha256" => JSON.digest([request]),
+           "value" => value,
+           "result_sha256" => JSON.digest([value])
+       }}
+    else
+      _ -> {:error, :collection_source_refused}
+    end
+  rescue
+    _ -> {:error, :collection_source_refused}
+  end
+
+  defp index_scope(c, intent),
+    do: %{
+      "version" => 1,
+      "session" => c.session_id,
+      "window" => c.index_scope.window,
+      "source_generation" => c.index_scope.generation,
+      "namespace" => intent["namespace"],
+      "pin_sha256" => JSON.digest([intent["effect_binding"]["pin"]])
+    }
+
+  defp read_index_cursor(_, nil, _, _), do: {:ok, nil}
+
+  defp read_index_cursor(secret, token, scope, prefix) do
+    with [body, signature] <- String.split(token, "."),
+         {:ok, bytes} <- Base.url_decode64(body, padding: false),
+         {:ok, mac} <- Base.url_decode64(signature, padding: false),
+         true <-
+           Base.url_encode64(bytes, padding: false) === body and
+             Base.url_encode64(mac, padding: false) === signature,
+         true <-
+           byte_size(bytes) <= 1024 and byte_size(mac) == 32 and
+             :crypto.hash_equals(mac, :crypto.mac(:hmac, :sha256, secret, bytes)),
+         {:ok, cursor} <- JSON.decode_unique(bytes),
+         true <- Map.take(cursor, Map.keys(scope)) === scope and cursor["prefix"] === prefix,
+         true <- keys?(cursor, Map.keys(scope) ++ ~w(prefix after root_generation root_sha256)),
+         true <-
+           JSON.safe_uint?(cursor["root_generation"]) and JSON.sha256?(cursor["root_sha256"]),
+         true <-
+           Ipse.Extension.Collection.Directory.key?(cursor["after"]) and
+             String.starts_with?(cursor["after"], prefix) and
+             not private_key?(cursor["after"]) do
+      {:ok, cursor}
+    else
+      _ -> {:error, :collection_source_refused}
+    end
+  end
+
+  defp index_cursor(secret, scope, request, observation, key) do
+    payload =
+      Map.merge(scope, %{
+        "prefix" => request["prefix"],
+        "after" => key,
+        "root_generation" => observation["value"]["generation"],
+        "root_sha256" => observation["witness"]["root_sha256"]
+      })
+
+    bytes = Jason.encode!(payload)
+
+    Base.url_encode64(bytes, padding: false) <>
+      "." <> Base.url_encode64(:crypto.mac(:hmac, :sha256, secret, bytes), padding: false)
+  end
+
+  defp index_page(secret, scope, request, observation) do
+    value = observation["value"]
+    records = value["records"]
+
+    make = fn selected ->
+      more = length(selected) < length(records) or value["next"] != nil
+
+      next =
+        if more and selected != [],
+          do: index_cursor(secret, scope, request, observation, List.last(selected)["key"])
+
+      value
+      |> Map.put("records", selected)
+      |> Map.put("next", next)
+      |> Map.put("coverage", "metadata_only")
+      |> Map.put("prefix", request["prefix"])
+    end
+
+    selected =
+      Enum.reduce_while(records, [], fn row, selected ->
+        if byte_size(Jason.encode!(make.(selected ++ [row]))) <= 4096,
+          do: {:cont, selected ++ [row]},
+          else: {:halt, selected}
+      end)
+
+    if (selected != [] or records == []) and byte_size(Jason.encode!(make.(selected))) <= 4096,
+      do: {:ok, make.(selected)},
+      else: {:error, :collection_source_refused}
+  end
 
   defp floor_required?(inner) do
     inner["advance_floor"] or
@@ -136,22 +269,60 @@ defmodule Ipse.Extension.CollectionCall do
   defp protected_execute(context, intent) do
     admission = context.config[:semantic_admission]
 
-    Ipse.Extension.ProjectIdentity.with_binding(
-      context.config[:home],
-      context.cwd,
-      admission["binding"],
-      fn _ ->
-        with {:ok, current, proofs} <- current_sources(context, intent),
-             {:ok, plan} <- plan(context, intent, current, proofs) do
-          if mutating?(intent["request"]),
-            do: publish(context, intent, current, proofs, plan),
-            else: read(context, intent, current, plan)
-        else
-          _ -> failed("collection_consent_denied")
+    selection =
+      Ipse.Extension.ProjectIdentity.with_binding(
+        context.config[:home],
+        context.cwd,
+        admission["binding"],
+        fn _ ->
+          with {:ok, current, proofs} <- current_sources(context, intent),
+               {:ok, plan} <- plan(context, intent, current, proofs) do
+            if mutating?(intent["request"]),
+              do: publish(context, intent, current, proofs, plan),
+              else: {:read, current, plan}
+          else
+            _ -> failed("collection_consent_denied")
+          end
         end
-      end
-    )
-    |> normalize()
+      )
+
+    case selection do
+      {:read, current, %{recipes: recipes}} when is_list(recipes) ->
+        if intent["request"]["request"]["op"] in ~w(get scan snapshot index) do
+          Ipse.Extension.ManagedRead.execute(
+            context,
+            intent,
+            recipes,
+            fn domain, fun -> protected_read(context, intent, current, domain, fun) end,
+            fn value, dependencies ->
+              with {:ok, value} <- bound_value(intent, value),
+                   :ok <-
+                     GenServer.call(
+                       context.owner,
+                       {:extension_managed_read, context.job_ref, intent, value, dependencies},
+                       5000
+                     ) do
+                {:ok, value}
+              else
+                _ -> {:error, :collection_source_refused}
+              end
+            end
+          )
+          |> normalize()
+        else
+          protected_read(context, intent, current, false, fn _, _ ->
+            storage(context, intent, :managed_metadata)
+          end)
+          |> normalize()
+        end
+
+      {:read, current, _} ->
+        protected_read(context, intent, current, false, fn _, _ -> storage(context, intent) end)
+        |> normalize()
+
+      result ->
+        normalize(result)
+    end
   end
 
   defp current_sources(context, intent),
@@ -212,13 +383,20 @@ defmodule Ipse.Extension.CollectionCall do
                      ),
                    {:ok, reservation} <-
                      SemanticConsent.authorize(pin, snapshot, current, effect, now()) do
-                {:ok, %{reservation: reservation, constraints: mapping["constraints"]}}
+                {:ok,
+                 %{
+                   reservation: reservation,
+                   constraints: mapping["constraints"],
+                   publish_before_ms: snapshot["policy"]["expires_at_ms"]
+                 }}
               else
                 _ -> {:error, :collection_policy_refused}
               end
             else
               with :ok <- SemanticConsent.check(pin, snapshot, current, effect, now()),
-                   do: {:ok, %{}}
+                   {:ok, recipes} <- read_recipes(snapshot["policy"]["settings"], mapping) do
+                {:ok, %{recipes: recipes}}
+              end
             end
 
           _ ->
@@ -228,7 +406,35 @@ defmodule Ipse.Extension.CollectionCall do
     )
   end
 
-  defp read(context, intent, current, _) do
+  defp read_recipes(settings, mapping) do
+    if Map.has_key?(mapping, "managed_read"),
+      do: SemanticConsent.managed_recipes(settings, mapping),
+      else: {:ok, nil}
+  end
+
+  defp protected_read(context, intent, current, domain, fun) do
+    binding = context.config[:semantic_admission]["binding"]
+    callback = fn cap, catalog -> read(context, intent, current, fn -> fun.(cap, catalog) end) end
+
+    if domain do
+      Ipse.Extension.ProjectIdentity.with_existing_domain_auth(
+        context.config[:home],
+        context.cwd,
+        binding,
+        %{namespace: intent["namespace"], format: "managed-metadata-v3"},
+        callback
+      )
+    else
+      Ipse.Extension.ProjectIdentity.with_binding(
+        context.config[:home],
+        context.cwd,
+        binding,
+        fn _ -> callback.(nil, nil) end
+      )
+    end
+  end
+
+  defp read(context, intent, current, fun) do
     pin = intent["effect_binding"]["pin"]
 
     Ipse.Extension.Consent.with_policy(
@@ -239,12 +445,24 @@ defmodule Ipse.Extension.CollectionCall do
       now(),
       fn _ ->
         with {:ok, ^current, []} <- current_sources(context, intent),
-             do: storage(context, intent)
+             do: fun.()
       end
     )
   end
 
   defp publish(context, intent, current, proofs, plan) do
+    case Collection.with_notes_publication_deadline(plan.publish_before_ms, fn ->
+           publish_authorized(context, intent, current, proofs, plan)
+         end) do
+      {:error, :collection_deadline_fence_unavailable} ->
+        failed("collection_deadline_unavailable")
+
+      other ->
+        other
+    end
+  end
+
+  defp publish_authorized(context, intent, current, proofs, plan) do
     alias Ipse.Extension.Consent
     pin = intent["effect_binding"]["pin"]
     root = SemanticAdmission.control_root(context.config[:home])
@@ -286,7 +504,11 @@ defmodule Ipse.Extension.CollectionCall do
           :unknown
       end
     else
-      _ -> failed("collection_consent_denied")
+      {:error, :collection_deadline_fence_unavailable} ->
+        failed("collection_deadline_unavailable")
+
+      _ ->
+        failed("collection_consent_denied")
     end
   end
 
@@ -301,8 +523,11 @@ defmodule Ipse.Extension.CollectionCall do
       else: Ipse.Extension.Consent.zero()
   end
 
-  defp storage(context, intent) do
-    operation = if intent["request"]["request"]["op"] == "scan", do: :scan_visible, else: :execute
+  defp storage(context, intent, access \\ :unmanaged) do
+    operation =
+      if access == :managed_metadata and intent["request"]["request"]["op"] in ~w(status inspect),
+        do: :execute,
+        else: :execute_unmanaged
 
     case apply(Collection, operation, [
            SemanticAdmission.collection_root(context.config[:home]),
@@ -311,19 +536,7 @@ defmodule Ipse.Extension.CollectionCall do
            intent["operation_id"]
          ]) do
       {:ok, value} ->
-        case intent["request"]["request"]["op"] do
-          "scan" ->
-            bound_scan(intent, value)
-
-          "status" ->
-            bound_status(intent, value)
-
-          _ ->
-            if(reply_fits?(intent, value),
-              do: {:ok, value},
-              else: failed("collection_result_limit")
-            )
-        end
+        bound_value(intent, value)
 
       {:conflict, value} ->
         {:conflict, value}
@@ -347,8 +560,25 @@ defmodule Ipse.Extension.CollectionCall do
     end
   end
 
+  defp bound_value(intent, value) do
+    case intent["request"]["request"]["op"] do
+      "scan" ->
+        bound_scan(intent, value)
+
+      "status" ->
+        bound_status(intent, value)
+
+      _ ->
+        if(reply_fits?(intent, value),
+          do: {:ok, value},
+          else: failed("collection_result_limit")
+        )
+    end
+  end
+
   defp failed(code), do: {:failed, %{"code" => code}}
   defp normalize({status, _} = result) when status in [:ok, :conflict, :failed], do: result
+  defp normalize({:error, :collection_source_refused}), do: failed("collection_source_refused")
   defp normalize({:error, _}), do: failed("collection_consent_denied")
   defp normalize(_), do: :unknown
   defp now, do: System.system_time(:millisecond)
@@ -453,6 +683,23 @@ defmodule Ipse.Extension.CollectionCall do
     do: keys?(value, ~w(generation floor request_sha256)) and Collection.Migration.receipt?(value)
 
   defp result?(%{"op" => "snapshot"}, value), do: keys?(value, @summary) and summary?(value)
+
+  defp result?(%{"op" => "index"} = request, value) do
+    keys?(value, @summary ++ ~w(records next count coverage prefix)) and summary?(value) and
+      value["coverage"] == "metadata_only" and value["prefix"] == request["prefix"] and
+      JSON.safe_uint?(value["count"]) and value["count"] <= 8192 and is_list(value["records"]) and
+      length(value["records"]) <= request["limit"] and value["count"] >= length(value["records"]) and
+      Enum.all?(value["records"], fn row ->
+        keys?(row, ~w(key revision bytes sha256)) and
+          is_binary(row["key"]) and String.starts_with?(row["key"], request["prefix"]) and
+          not private_key?(row["key"]) and
+          JSON.safe_uint?(row["revision"]) and row["revision"] > 0 and
+          JSON.safe_uint?(row["bytes"]) and row["bytes"] <= 6144 and JSON.sha256?(row["sha256"])
+      end) and
+      ordered?(value["records"], nil) and
+      (is_nil(value["next"]) or (is_binary(value["next"]) and byte_size(value["next"]) <= 2048)) and
+      byte_size(Jason.encode!(value)) <= 4096
+  end
 
   defp result?(%{"op" => "get", "key" => key}, value),
     do:

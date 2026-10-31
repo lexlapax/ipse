@@ -1,0 +1,23 @@
+Running ExUnit with seed: 47059, max_cases: 1
+Excluding tags: [:test]
+Including tags: [:metadata_transport_geometry]
+
+
+
+  1) test escaped metadata preserves exact packet bytes and refuses the measured digest read overflow (Ipse.KnowledgeCollectionDirectoryTest)
+     test/extensions/knowledge/collection_directory_test.exs:44
+     ** (MatchError) no match of right hand side value:
+
+         {"** (SyntaxError) invalid syntax found on test/support/metadata_transport_geometry.exs:105:153:\n     error: unexpected comma. Parentheses are required to solve ambiguity in nested calls.\n\n     This error happens when you have nested function calls without parentheses. For example:\n\n         parent_call a, nested_call b, c, d\n\n     In the example above, we don't know if the parameters \"c\" and \"d\" apply to the function \"parent_call\" or \"nested_call\". You can solve this by explicitly adding parentheses:\n\n         parent_call a, nested_call(b, c, d)\n\n     Or by adding commas (in case a nested call is not intended):\n\n         parent_call a, nested_call, b, c, d\n\n     Elixir cannot compile otherwise. Syntax error before: ','\n     │\n 105 │ catalog = fetch.(:catalog) |> Map.put(\"sources\", 1000) |> Map.put(\"chunks\", 10_000) |> Map.put(\"extracted_bytes\", 20 * 1024 * 1024) |> Map.put(\"pages\", for n <- 0..62, do: %{\"key\" => \"catalog.notes.\#{n}\", \"sha256\" => E.sha256(\"page\#{n}\")})\n     │                                                                                                                                                         ^\n     │\n     └─ test/support/metadata_transport_geometry.exs:105:153\n    (elixir 1.20.4) lib/code.ex:1639: Code.require_file/2\n    (stdlib 8.1) erl_eval.erl:1048: :erl_eval.do_apply/7\n",
+          1}
+
+     code: result = run_fixture("test/support/metadata_transport_geometry.exs")
+     stacktrace:
+       test/extensions/knowledge/collection_directory_test.exs:86: Ipse.KnowledgeCollectionDirectoryTest.run_fixture/1
+       test/extensions/knowledge/collection_directory_test.exs:45: (test)
+
+
+Finished in 2.2 seconds (0.06s on load, 0.00s async, 2.2s sync)
+
+Result: 0/1 passed, 4 excluded
+Failed: 1 test

@@ -27,7 +27,12 @@ defmodule Ipse.Session.Invocation do
             step: 0,
             effect_sources: %{},
             results: [],
+            managed_reads: [],
+            pending_contributions: nil,
             semantic_binding: nil,
+            document_context: nil,
+            document_embedding_context: nil,
+            document_producer: nil,
             interrupted: false
 
   @type t :: %__MODULE__{
@@ -37,20 +42,24 @@ defmodule Ipse.Session.Invocation do
           step: non_neg_integer(),
           effect_sources: map(),
           results: [map()],
+          managed_reads: [map()],
           interrupted: boolean()
         }
 
-  def restore(%{kind: :extension} = question, effect_sources) do
+  def restore(question, effect_sources, managed_reads \\ %{})
+
+  def restore(%{kind: :extension} = question, effect_sources, managed_reads) do
     %__MODULE__{
       parent: question.parent,
       action: %{intent: question.action},
       step: question.action["step"],
       effect_sources: effect_sources,
-      results: question.results
+      results: question.results,
+      managed_reads: Map.get(managed_reads, question.parent["invocation_id"], [])
     }
   end
 
-  def restore(_, _), do: %__MODULE__{}
+  def restore(_, _, _), do: %__MODULE__{}
 
   def invoke_export(s, kind, name, arguments) do
     stage = "invoke." <> Atom.to_string(kind)
@@ -183,6 +192,7 @@ defmodule Ipse.Session.Invocation do
       entry = Map.merge(entry, %{host_config: s.config, host_cwd: s.cwd})
       {clock, entry} = output_clock(entry, descriptor["stage"], ref)
       Session.record(s, intent)
+      s = Session.managed_event(s, intent)
 
       {:reply, {:ok, intent, entry},
        %{
@@ -353,9 +363,10 @@ defmodule Ipse.Session.Invocation do
   def prepare_mcp(s, ref, request) do
     with {:ok, limits} <- Ipse.Journal.normalize_limits(s.config[:journal]),
          true <- Ipse.Extension.EffectResult.source_record_limit() <= limits["max_record_bytes"],
-         {:ok, server, tool_id} <- extension_mcp_target(s, request) do
-      {:reply, {:ok, server, tool_id, s.cwd, %{owner: self(), job_ref: ref}},
-       %{s | extension_mcp_context: nil}}
+         {:ok, server, tool_id} <- extension_mcp_target(s, request),
+         {:ok, next, resource} <-
+           Ipse.Session.ManagedToolUse.begin_discovery(s, request, server, tool_id) do
+      {:reply, {:ok, server, tool_id, s.cwd, Map.put(resource, :job_ref, ref)}, next}
     else
       _ -> {:reply, {:error, :extension_mcp_refused}, s}
     end
@@ -371,7 +382,8 @@ defmodule Ipse.Session.Invocation do
              request,
              s.invocation.parent["identity"]
            ),
-         :ok <- Ipse.MCP.validate_call(descriptor, request["arguments"]) do
+         :ok <- Ipse.MCP.validate_call(descriptor, request["arguments"]),
+         {:ok, next} <- Ipse.Session.ManagedToolUse.finish_discovery(s, binding) do
       gate = %{
         request: Ipse.JSON.digest([request]),
         identity: Ipse.JSON.digest([s.invocation.parent["identity"]]),
@@ -380,9 +392,120 @@ defmodule Ipse.Session.Invocation do
         binding: binding
       }
 
-      {:reply, :ok, %{s | extension_mcp_context: gate}}
+      {:reply, :ok, %{next | extension_mcp_context: gate}}
     else
       _ -> {:reply, {:error, :extension_mcp_refused}, %{s | extension_mcp_context: nil}}
+    end
+  end
+
+  def prepare_document(s, ref, request) do
+    identity = s.invocation.parent["identity"]
+
+    with :ok <- Ipse.Extension.CollectionStore.validate(request),
+         true <- output_timely?(s) and not s.invocation.interrupted,
+         true <- Ipse.Extension.Registry.live?(identity),
+         true <- Actions.allowed?(identity, request, s.invocation.results),
+         true <- "host.collection.store" in identity["capabilities"],
+         true <- Ipse.Extension.CollectionStore.operator_binding?(identity["collection_binding"]) do
+      {:reply, {:ok, s.config[:home], s.cwd, identity, s.id},
+       %{s | invocation: %{s.invocation | document_context: %{job: ref}}}}
+    else
+      _ ->
+        {:reply, {:error, :document_store_refused},
+         %{s | invocation: %{s.invocation | document_context: nil}}}
+    end
+  end
+
+  def bind_document(s, ref, request, binding) do
+    with %{job: ^ref} <- s.invocation.document_context,
+         true <- output_timely?(s) and not s.invocation.interrupted,
+         true <-
+           Ipse.Extension.CollectionStore.valid_binding?(
+             binding,
+             request,
+             s.invocation.parent["identity"]
+           ),
+         true <- binding["session_id"] == s.id do
+      gate = %{
+        job: ref,
+        request: Ipse.JSON.digest([request]),
+        identity: Ipse.JSON.digest([s.invocation.parent["identity"]]),
+        binding: binding
+      }
+
+      {:reply, :ok, %{s | invocation: %{s.invocation | document_context: gate}}}
+    else
+      _ ->
+        {:reply, {:error, :document_store_refused},
+         %{s | invocation: %{s.invocation | document_context: nil}}}
+    end
+  end
+
+  def document_current(s, intent) do
+    reply =
+      with %{intent: ^intent} <- s.invocation.action,
+           true <- output_timely?(s) and not s.invocation.interrupted,
+           true <- Ipse.Extension.Registry.live?(s.invocation.parent["identity"]),
+           true <-
+             Ipse.Extension.CollectionStore.valid_binding?(
+               intent["effect_binding"],
+               intent["request"],
+               s.invocation.parent["identity"]
+             ),
+           true <- intent["effect_binding"]["session_id"] == s.id,
+           true <- intent["approval"] in ~w(not_required approved session_allow) do
+        :ok
+      else
+        _ -> {:error, :document_store_refused}
+      end
+
+    {:reply, reply, s}
+  end
+
+  def prepare_document_embedding(s, ref, request) do
+    identity = s.invocation.parent["identity"]
+    required = Ipse.Extension.CollectionStore.embedding_source_required?(identity)
+    guarded = Map.has_key?(request, "source_guard")
+
+    with :ok <- EmbeddingCall.validate(request),
+         true <- output_timely?(s) and not s.invocation.interrupted,
+         true <- Ipse.Extension.Registry.live?(identity),
+         true <- Actions.allowed?(identity, request, s.invocation.results),
+         true <- required === guarded do
+      if required do
+        {:reply, {:ok, s.config[:home], s.cwd, identity, s.id},
+         %{s | invocation: %{s.invocation | document_embedding_context: %{job: ref}}}}
+      else
+        {:reply, :ordinary, %{s | invocation: %{s.invocation | document_embedding_context: nil}}}
+      end
+    else
+      _ ->
+        {:reply, {:error, :document_source_use_refused}, Ipse.Session.DocumentEmbedding.poison(s)}
+    end
+  end
+
+  def bind_document_embedding(s, ref, request, binding) do
+    with %{job: ^ref} <- s.invocation.document_embedding_context,
+         true <- output_timely?(s) and not s.invocation.interrupted,
+         true <- Ipse.Extension.Registry.live?(s.invocation.parent["identity"]),
+         true <-
+           Ipse.Extension.CollectionStore.valid_source_binding?(
+             binding,
+             request,
+             s.invocation.parent["identity"]
+           ),
+         true <- binding["session_id"] === s.id do
+      gate = %{
+        job: ref,
+        request: Ipse.JSON.digest([request]),
+        binding: binding,
+        identity: Ipse.JSON.digest([s.invocation.parent["identity"]])
+      }
+
+      {:reply, :ok, %{s | invocation: %{s.invocation | document_embedding_context: gate}}}
+    else
+      _ ->
+        {:reply, {:error, :document_source_use_refused}, Ipse.Session.DocumentEmbedding.poison(s)}
     end
   end
 
@@ -426,6 +549,11 @@ defmodule Ipse.Session.Invocation do
          {:ok, context_hash} <- extension_action_context(s, request),
          {:ok, service} <- extension_service_context(s, request),
          {:ok, effect_binding} <- extension_effect_binding(s, request),
+         true <-
+           not EmbeddingCall.operation?(request) or
+             (EmbeddingCall.valid_identity?(parent["identity"], request, effect_binding) and
+                (not Map.has_key?(request, "source_guard") or
+                   Ipse.Session.DocumentEmbedding.allowed?(s.invocation, request, effect_binding))),
          :ok <- extension_model_configuration(s.config, request),
          {:ok, intent} <-
            Actions.intent(
@@ -440,6 +568,38 @@ defmodule Ipse.Session.Invocation do
            ),
          :ok <- extension_effect_record_capacity(s, intent) do
       cond do
+        mutation and request["op"] in ["collection.call", "collection.managed"] and
+            not Ipse.Session.ManagedToolUse.publication_prerequisites?(s, request, effect_binding) ->
+          {:reply, {:error, :managed_effect_unavailable}, s}
+
+        mutation and request["op"] == "collection.managed" and
+            not Ipse.Extension.ManagedCollectionCall.new_capture?(request) ->
+          Session.notify(
+            s,
+            {:error, Ipse.CLI.Errors.format(:collection_deadline_fence_unavailable)}
+          )
+
+          {:reply, {:error, :collection_deadline_fence_unavailable}, s}
+
+        mutation and request["op"] == "collection.store" and
+            Ipse.Session.ManagedToolUse.managed_invocation?(s) ->
+          {:reply, {:error, :managed_effect_unavailable}, s}
+
+        Ipse.Session.ManagedToolUse.managed_invocation?(s) and
+            request["op"] in ["state.put", "state.delete", "service.call"] ->
+          {:reply, {:error, :managed_effect_unavailable}, s}
+
+        Ipse.Session.ManagedToolUse.managed_invocation?(s) and
+            (Ipse.Extension.Actions.question?(request) or
+               (mutation and mode == :ask and not protected)) ->
+          Session.notify(
+            s,
+            {:error,
+             "Managed approval or question arguments cannot be displayed under current source ownership; no action was started."}
+          )
+
+          {:reply, {:error, :managed_argument_display_unavailable}, s}
+
         Ipse.Extension.Actions.question?(request) ->
           Session.record(s, intent)
 
@@ -518,6 +678,8 @@ defmodule Ipse.Session.Invocation do
                 {Session.record_extension_action(s, intent), nil}
             end
 
+          s = Session.managed_event(s, intent)
+
           context = extension_execution_context(s, intent, source)
 
           reply =
@@ -528,7 +690,12 @@ defmodule Ipse.Session.Invocation do
             end
 
           if Ipse.Extension.Actions.tool?(request) and match?({:ok, _, _}, reply),
-            do: Session.notify(s, {:tool, "extension:tool.call", request})
+            do:
+              Session.notify(
+                s,
+                {:tool, "extension:tool.call",
+                 if(Ipse.Session.ManagedToolUse.managed_invocation?(s), do: %{}, else: request)}
+              )
 
           {:reply, reply,
            %{
@@ -580,6 +747,37 @@ defmodule Ipse.Session.Invocation do
          true <- Ipse.Usage.capacity?(s.accounting),
          {:ok, config, execution} <- prepare_inference(s.config, intent["request"]),
          true <-
+           not EmbeddingCall.operation?(intent["request"]) or
+             EmbeddingCall.valid_identity?(
+               s.invocation.parent["identity"],
+               intent["request"],
+               intent["effect_binding"]
+             ),
+         true <-
+           not Map.has_key?(intent["request"], "source_guard") or
+             (Session.managed_empty?(s) and
+                Ipse.Session.DocumentEmbedding.allowed?(
+                  s.invocation,
+                  intent["request"],
+                  intent["effect_binding"]
+                ) and
+                match?(
+                  {:ok, %{route: _}},
+                  Ipse.InferenceDispatch.selection(
+                    s.config,
+                    config,
+                    intent["request"]["op"],
+                    intent["request"]["profile"]
+                  )
+                )),
+         true <-
+           Ipse.InferenceDispatch.selection(
+             s.config,
+             config,
+             intent["request"]["op"],
+             intent["request"]["profile"]
+           ) != {:ok, :unregistered} or Session.managed_empty?(s),
+         true <-
            not (EmbeddingCall.operation?(intent["request"]) or
                   DecisionCall.operation?(intent["request"])) or
              (intent["effect_binding"]["execution"] === execution and
@@ -599,6 +797,8 @@ defmodule Ipse.Session.Invocation do
 
       s = Session.account(s, source)
       s = Session.account(s, admission)
+      s = %{s | managed_result_seal: nil}
+      s = Session.managed_event(s, admission)
       active = %{admission: admission, started: System.monotonic_time(:millisecond)}
 
       s = %{s | extension_model: active, steps: s.steps + 1}
@@ -654,6 +854,13 @@ defmodule Ipse.Session.Invocation do
          true <- Ipse.Extension.Registry.live?(s.invocation.parent["identity"]),
          {:ok, runtime, execution} <- prepare_inference(s.config, request),
          true <-
+           not EmbeddingCall.operation?(request) or
+             EmbeddingCall.valid_identity?(
+               s.invocation.parent["identity"],
+               request,
+               intent["effect_binding"]
+             ),
+         true <-
            not (EmbeddingCall.operation?(request) or DecisionCall.operation?(request)) or
              (intent["effect_binding"]["execution"] === execution and
                 inference_destination(runtime, request) ==
@@ -705,6 +912,7 @@ defmodule Ipse.Session.Invocation do
   end
 
   def finish_model(s, intent, result, capture, reason, admission) do
+    {result, s} = Session.InferenceDispatch.consume_result(s, intent["request"]["op"], result)
     assistant = if is_map(capture), do: capture.value
 
     {s, retained} =
@@ -740,6 +948,7 @@ defmodule Ipse.Session.Invocation do
       finish_bounded_inference(s, intent, result, capture, reason, admission, started, :decision)
 
   defp finish_bounded_inference(s, intent, result, capture, reason, admission, started, kind) do
+    {result, s} = Session.InferenceDispatch.consume_result(s, intent["request"]["op"], result)
     adapter = if kind == :embedding, do: EmbeddingCall, else: DecisionCall
     operation = Atom.to_string(kind)
 
@@ -790,6 +999,11 @@ defmodule Ipse.Session.Invocation do
           reason in [operation <> "_cancelled", operation <> "_timeout"] ->
             {:failed, %{"code" => reason}}
 
+          kind == :decision and
+              (result == {:error, :invalid_decision_response} or
+                 match?({:error, {:invalid_decision_response, _}}, result)) ->
+            {:failed, %{"code" => "decision_response"}}
+
           match?({:ok, _, _}, result) and is_nil(source) ->
             {:failed, %{"code" => operation <> "_response"}}
 
@@ -826,36 +1040,95 @@ defmodule Ipse.Session.Invocation do
              Ipse.Extension.Registry.live?(intent["service"]["identity"]),
          {:ok, usage_reads} <- commit_usage_read(s, intent, event),
          {:ok, child_usage} <- commit_child_usage(s, intent, event),
+         {:ok, managed_read, managed_reads} <-
+           Ipse.Session.ManagedReads.bind_result(
+             s.id,
+             s.config,
+             s.invocation.parent,
+             s.invocation.action[:managed_read],
+             s.invocation.managed_reads,
+             event
+           ),
          {:ok, contributions} <-
            Ipse.Extension.Context.apply_result(
-             s.extension_contributions,
+             s.invocation.pending_contributions || s.extension_contributions,
              s.invocation.parent,
              s.invocation.results,
              event,
              if(s.reference, do: Ipse.Session.Reference.layout())
            ) do
-      s = Session.record_extension_action(s, event)
+      s =
+        if managed_read do
+          Session.record(s, managed_read)
+          Session.managed_event(s, managed_read)
+        else
+          s
+        end
 
-      if Ipse.Extension.Actions.tool?(intent["request"]),
+      s = Session.record_extension_action(s, event)
+      s = Session.managed_event(s, event)
+      s = %{s | invocation: Ipse.Session.DocumentEmbedding.record_action(s.invocation, event)}
+
+      withheld =
+        intent["request"]["op"] in ~w(tool.call mcp.call collection.store) and
+          (not match?(%Ipse.Session.ManagedLineage{unavailable: false}, s.managed_lineage) or
+             Ipse.Session.ManagedLineage.invocation_dependencies(
+               s.managed_lineage,
+               s.invocation.parent["invocation_id"]
+             ) != {:ok, []})
+
+      s =
+        if withheld do
+          refusal = Ipse.Session.ManagedToolUse.action_withheld(event)
+          Session.record(s, refusal)
+          Session.managed_event(s, refusal)
+        else
+          s
+        end
+
+      staged =
+        intent["request"]["op"] == "context.publish" and
+          Ipse.Session.ManagedLineage.invocation_dependencies(
+            s.managed_lineage,
+            s.invocation.parent["invocation_id"]
+          ) != {:ok, []}
+
+      if not withheld and Ipse.Extension.Actions.tool?(intent["request"]),
         do:
           Session.notify(
             s,
             {:tool_result, "extension:tool.call", Jason.encode!(event["outcome"])}
           )
 
-      {:reply, {:ok, Actions.resume(event)},
+      {:reply,
+       if(withheld,
+         do: {:error, :managed_action_output_unavailable},
+         else: {:ok, Actions.resume(event)}
+       ),
        %{
          s
          | invocation: %{
              s.invocation
              | action: nil,
-               interrupted: event["outcome"]["status"] == "unknown",
-               results: s.invocation.results ++ [event]
+               interrupted: withheld or event["outcome"]["status"] == "unknown",
+               results: s.invocation.results ++ [event],
+               document_embedding_context: nil,
+               managed_reads: managed_reads,
+               pending_contributions:
+                 if(staged, do: contributions, else: s.invocation.pending_contributions)
            },
            extension_mcp_context: nil,
            usage_reads: usage_reads,
            child_usage: child_usage,
-           extension_contributions: contributions
+           extension_contributions:
+             if(staged,
+               do:
+                 Map.delete(
+                   s.extension_contributions,
+                   s.invocation.parent["identity"]["instance"]
+                 ),
+               else: contributions
+             )
        }}
     else
       _ -> {:reply, {:error, :invalid_extension_action}, s}
@@ -870,6 +1143,7 @@ defmodule Ipse.Session.Invocation do
 
     allowed =
       allowed == true and
+        not Ipse.Session.ManagedToolUse.managed_invocation?(s) and
         not (get_in(s.invocation.parent, ["semantic_binding", "class"]) == "collection.read" and
                Actions.mutating?(intent["request"])) and
         Ipse.Extension.Mode.ordinary(mode, Actions.mutating?(intent["request"])) != :deny
@@ -878,6 +1152,7 @@ defmodule Ipse.Session.Invocation do
 
     if output_timely?(s) and Ipse.Extension.Registry.live?(s.invocation.parent["identity"]) do
       s = Session.record_extension_action(s, intent)
+      s = Session.managed_event(s, intent)
       s = Session.finish_wait(s, if(allowed == true, do: "approved", else: "denied"))
 
       reply =
@@ -890,7 +1165,15 @@ defmodule Ipse.Session.Invocation do
       GenServer.reply(caller, reply)
 
       if match?({:ok, _, _}, reply) and Ipse.Extension.Actions.tool?(intent["request"]),
-        do: Session.notify(s, {:tool, "extension:tool.call", intent["request"]})
+        do:
+          Session.notify(
+            s,
+            {:tool, "extension:tool.call",
+             if(Ipse.Session.ManagedToolUse.managed_invocation?(s),
+               do: %{},
+               else: intent["request"]
+             )}
+          )
 
       {:reply, :ok,
        %{
@@ -981,6 +1264,7 @@ defmodule Ipse.Session.Invocation do
            ),
          true <- expected == event do
       Session.record(s, event)
+      s = Session.managed_event(s, event)
       outcome = Invocation.event_outcome(s.invocation.results)
       Session.record(s, Subscriptions.result(delivery, outcome, true))
 
@@ -1071,6 +1355,14 @@ defmodule Ipse.Session.Invocation do
   @doc false
   def complete_invocation_result(s, event) do
     s = release_output(s)
+    s = Session.managed_event(s, event)
+
+    s = %{
+      s
+      | managed_outputs:
+          Map.put(s.managed_outputs, event["invocation_id"], s.invocation.managed_reads)
+    }
+
     s = %{s | invocation: %{s.invocation | parent: nil, request: nil}}
 
     if s.phase == :tool do
@@ -1132,6 +1424,14 @@ defmodule Ipse.Session.Invocation do
 
   defp extension_effect_binding(s, request) do
     cond do
+      Ipse.Extension.CollectionStore.operation?(request) ->
+        gate = s.invocation.document_context
+
+        if is_map(gate) and gate.job == s.job_ref and gate.request == Ipse.JSON.digest([request]) and
+             gate.identity == Ipse.JSON.digest([s.invocation.parent["identity"]]),
+           do: {:ok, gate.binding},
+           else: {:error, :document_store_refused}
+
       Ipse.Extension.ManagedCollectionCall.operation?(request) ->
         Ipse.Extension.ManagedCollectionCall.binding(s.config, s.invocation.parent, request)
 
@@ -1142,7 +1442,23 @@ defmodule Ipse.Session.Invocation do
         DecisionCall.binding(s.config, request)
 
       EmbeddingCall.operation?(request) ->
-        EmbeddingCall.binding(s.config, request)
+        gate = s.invocation.document_embedding_context
+
+        if Map.has_key?(request, "source_guard") do
+          if is_map(gate) and gate.job == s.job_ref and
+               gate.request == Ipse.JSON.digest([request]) and
+               gate.identity == Ipse.JSON.digest([s.invocation.parent["identity"]]),
+             do: EmbeddingCall.binding(s.config, request, gate.binding),
+             else: {:error, :document_source_use_refused}
+        else
+          EmbeddingCall.binding(s.config, request)
+        end
+
+      EmbeddingCall.profile_request?(request) ->
+        EmbeddingCall.profile_binding(
+          %{"embedding_profiles" => Ipse.Config.Profiles.embedding_snapshot(s.config)},
+          request
+        )
 
       Ipse.Extension.Actions.mcp?(request) ->
         gate = s.extension_mcp_context
@@ -1202,7 +1518,7 @@ defmodule Ipse.Session.Invocation do
       cwd: s.cwd,
       sandbox: Map.get(s.config, :sandbox, :off),
       parallel_child: Map.get(s.config, :parallel_child, false),
-      contributions: s.extension_contributions,
+      contributions: s.invocation.pending_contributions || s.extension_contributions,
       reference_layout: if(s.reference, do: Ipse.Session.Reference.layout()),
       identity: s.invocation.parent["identity"],
       actions: s.invocation.results
@@ -1217,9 +1533,27 @@ defmodule Ipse.Session.Invocation do
              session_id: s.id,
              parent: s.invocation.parent,
              owner: self(),
-             job_ref: s.job_ref
+             job_ref: s.job_ref,
+             history_dir: s.dir,
+             index_scope:
+               case Ipse.Journal.Writer.source_query(s.journal_writer, :index_scope) do
+                 {:ok, scope} -> scope
+                 _ -> nil
+               end
            }),
          else: context
+
+    context =
+      if Ipse.Extension.CollectionStore.operation?(intent["request"]),
+        do:
+          Map.merge(context, %{
+            config: s.config,
+            session_id: s.id,
+            parent: s.invocation.parent,
+            owner: self(),
+            job_ref: s.job_ref
+          }),
+        else: context
 
     context =
       if s.extension_output_clock,
@@ -1239,6 +1573,11 @@ defmodule Ipse.Session.Invocation do
             job_ref: s.job_ref,
             mcp_descriptor: s.extension_mcp_context.descriptor
           }),
+        else: context
+
+    context =
+      if intent["request"]["op"] in ~w(tool.call mcp.call collection.store),
+        do: Map.put(context, :managed_tool, %{owner: self(), job_ref: s.job_ref}),
         else: context
 
     context =

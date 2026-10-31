@@ -7,9 +7,10 @@ defmodule IpseKnowledge.Knowledge.DecisionPolicy do
   obtain permission, current eligibility, resources and actual operation admission.
   Raw Collection reads and these facts do not establish managed freshness.
 
-  Selection facts contain exact concatenable rendered chunks, including labels,
-  citations and separators. The planner returns IDs and adds no render framing.
-  Callers must deduct any shared frame before supplying the actual allocation.
+  Version 1 selection facts contain exact concatenable rendered chunks, including
+  labels, citations and separators. Version 2 carries the measured complete
+  projection for each pack, since grouped context items are not additive. The
+  planner returns IDs and adds no render framing.
   These untrusted facts prove no granted allocation: deriving that grant and
   rechecking the rendered projection remain a future trusted host responsibility.
   Pack members are sets, canonicalized by ID; permutations do not create choices.
@@ -25,6 +26,7 @@ defmodule IpseKnowledge.Knowledge.DecisionPolicy do
   @consumers ~w(notes.select notes.assess)
   @policy ~w(version consumer strategy profile qualification_sha256)
   @select ~w(version availability coverage allocation_bytes eligible_count eligible_rendered_bytes budget_available query candidates alternatives baseline_id)
+  @projected_select @select ++ ["source_binding_sha256"]
   @assess ~w(version availability budget_available candidates alternatives)
   @error {:error, :invalid_decision_policy}
   @probability 0.8
@@ -43,6 +45,7 @@ defmodule IpseKnowledge.Knowledge.DecisionPolicy do
       "assessment_candidates" => 8,
       "records_per_pack" => 4,
       "allocation_bytes" => 6144,
+      "projection_allocation_bytes" => 8192,
       "facts_bytes" => 16_384,
       "input_bytes" => 8192,
       "request_bytes" => 16_384,
@@ -75,6 +78,8 @@ defmodule IpseKnowledge.Knowledge.DecisionPolicy do
              facts["coverage"] == "complete" and fits_all?(facts),
            do: %{"pack" => nil, "members" => Enum.map(facts["candidates"], & &1["id"])},
            else: baseline
+
+      baseline = if baseline_available?(policy["consumer"], facts), do: baseline, else: nil
 
       request = if is_nil(reason), do: request(policy, facts, mapping)
       reason = if is_nil(reason) and is_nil(request), do: "request_limit", else: reason
@@ -130,12 +135,65 @@ defmodule IpseKnowledge.Knowledge.DecisionPolicy do
 
   def apply(_, _), do: @error
 
+  @doc "Map a failed host call to the baseline while preserving its outcome class."
+  def apply_failure(%Plan{} = plan, failure) do
+    reason =
+      case failure do
+        %{"status" => "unknown", "value" => value} when value == %{} ->
+          "decision_unknown"
+
+        %{"status" => "denied", "value" => value} when value == %{} ->
+          "decision_denied"
+
+        %{"status" => "failed", "value" => %{"code" => code} = value}
+        when map_size(value) == 1 and
+               code in ~w(decision_request_failed decision_response decision_timeout decision_cancelled decision_limit) ->
+          code
+
+        _ ->
+          nil
+      end
+
+    with true <- is_map(failure) and Enum.sort(Map.keys(failure)) == ~w(status value),
+         true <- is_binary(reason),
+         {:ok, rebuilt} <- plan(plan.policy, plan.facts, plan.mode),
+         true <- rebuilt === plan and is_nil(plan.reason) and is_map(plan.request) do
+      outcome(plan, plan.baseline, reason, nil)
+    else
+      _ -> @error
+    end
+  rescue
+    _ -> @error
+  end
+
+  def apply_failure(_, _), do: @error
+
   defp policy?(p) do
     keys?(p, @policy) and p["version"] === 1 and p["consumer"] in @consumers and
       p["strategy"] in ~w(none decision) and
       (is_nil(p["qualification_sha256"]) or sha?(p["qualification_sha256"])) and
       if(p["strategy"] == "none", do: is_nil(p["profile"]), else: profile?(p["profile"])) and
       SDK.validate(p) == :ok
+  end
+
+  defp facts?("notes.select", %{"version" => 2} = f) do
+    keys?(f, @projected_select) and common?(f, 2) and sha?(f["source_binding_sha256"]) and
+      f["coverage"] in ~w(complete partial unknown) and
+      uint?(f["allocation_bytes"]) and f["allocation_bytes"] <= 8192 and
+      nullable_uint?(f["eligible_count"]) and nullable_uint?(f["eligible_rendered_bytes"]) and
+      text?(f["query"], 0, 1024) and candidates?(f["candidates"], "rendered", 16, 6144) and
+      is_list(f["alternatives"]) and length(f["alternatives"]) <= 8 and
+      unique?(f["alternatives"], & &1["id"]) and
+      Enum.all?(f["alternatives"], fn a ->
+        keys?(a, ~w(id members rendered_bytes)) and id?(a["id"]) and
+          nullable_uint?(a["rendered_bytes"]) and is_list(a["members"]) and
+          length(a["members"]) in 1..4 and unique?(a["members"], & &1) and
+          Enum.all?(a["members"], fn id -> Enum.any?(f["candidates"], &(&1["id"] == id)) end)
+      end) and
+      unique?(f["alternatives"], &Enum.sort(&1["members"])) and
+      (is_nil(f["baseline_id"]) or id?(f["baseline_id"])) and
+      (f["coverage"] != "complete" or
+         (uint?(f["eligible_count"]) and f["eligible_count"] >= length(f["candidates"])))
   end
 
   defp facts?("notes.select", f) do
@@ -153,7 +211,8 @@ defmodule IpseKnowledge.Knowledge.DecisionPolicy do
       (f["coverage"] != "complete" or
          (uint?(f["eligible_count"]) and uint?(f["eligible_rendered_bytes"]) and
             f["eligible_count"] >= length(f["candidates"]) and
-            f["eligible_rendered_bytes"] >= rendered_bytes(f["candidates"]))) and
+            f["eligible_rendered_bytes"] >=
+              rendered_bytes(f["candidates"]) + f["eligible_count"] - length(f["candidates"]))) and
       (f["coverage"] != "complete" or f["eligible_count"] != length(f["candidates"]) or
          f["eligible_rendered_bytes"] == rendered_bytes(f["candidates"]))
   end
@@ -164,9 +223,9 @@ defmodule IpseKnowledge.Knowledge.DecisionPolicy do
         is_list(f["alternatives"]) and unique?(f["alternatives"], & &1) and
         Enum.all?(f["alternatives"], &(&1 in @choices))
 
-  defp common?(f),
+  defp common?(f, version \\ 1),
     do:
-      f["version"] === 1 and f["availability"] in ~w(available unavailable unknown) and
+      f["version"] === version and f["availability"] in ~w(available unavailable unknown) and
         is_boolean(f["budget_available"]) and SDK.validate(f) == :ok
 
   defp candidates?(rows, field, count, bytes),
@@ -183,6 +242,18 @@ defmodule IpseKnowledge.Knowledge.DecisionPolicy do
     {:ok, mapping, %{"candidates" => baseline}}
   end
 
+  defp alternatives("notes.select", %{"version" => 2} = f) do
+    mapping =
+      f["alternatives"]
+      |> Enum.filter(
+        &(is_integer(&1["rendered_bytes"]) and &1["rendered_bytes"] <= f["allocation_bytes"])
+      )
+      |> Enum.map(fn a -> %{"id" => a["id"], "members" => Enum.sort(a["members"])} end)
+      |> Enum.sort_by(& &1["id"])
+
+    selection_baseline(f, mapping)
+  end
+
   defp alternatives("notes.select", f) do
     candidates = Map.new(f["candidates"], &{&1["id"], &1["rendered"]})
 
@@ -195,6 +266,10 @@ defmodule IpseKnowledge.Knowledge.DecisionPolicy do
       |> Enum.sort_by(& &1["id"])
       |> Enum.uniq_by(& &1["members"])
 
+    selection_baseline(f, mapping)
+  end
+
+  defp selection_baseline(f, mapping) do
     original = Enum.find(f["alternatives"], &(&1["id"] == f["baseline_id"]))
 
     baseline =
@@ -204,7 +279,14 @@ defmodule IpseKnowledge.Knowledge.DecisionPolicy do
 
     cond do
       mapping == [] ->
-        {:ok, [], %{"pack" => nil, "members" => []}}
+        baseline =
+          if f["allocation_bytes"] == 0 or f["eligible_count"] == 0,
+            do: %{"pack" => nil, "members" => []}
+
+        {:ok, [], baseline}
+
+      not baseline_available?("notes.select", f) or fits_all?(f) ->
+        {:ok, mapping, nil}
 
       is_map(baseline) ->
         {:ok, mapping, %{"pack" => baseline["id"], "members" => baseline["members"]}}
@@ -216,28 +298,28 @@ defmodule IpseKnowledge.Knowledge.DecisionPolicy do
 
   defp bypass(p, f, mode, mapping) do
     cond do
-      p["strategy"] == "none" ->
-        "strategy_none"
-
-      mode == :production ->
-        "no_qualified_strategy"
-
       f["availability"] != "available" ->
         "eligibility_" <> f["availability"]
 
       p["consumer"] == "notes.select" and f["coverage"] != "complete" ->
         "coverage_incomplete"
 
+      p["consumer"] == "notes.select" and
+        whole_within?(f) and
+          f["eligible_count"] != length(f["candidates"]) ->
+        "fit_coverage_unavailable"
+
+      p["strategy"] == "none" ->
+        "strategy_none"
+
+      mode == :production ->
+        "no_qualified_strategy"
+
       p["consumer"] == "notes.select" and f["eligible_count"] == 0 ->
         "empty_eligible_set"
 
       p["consumer"] == "notes.select" and f["allocation_bytes"] == 0 ->
         "zero_allocation"
-
-      p["consumer"] == "notes.select" and
-        f["eligible_rendered_bytes"] <= f["allocation_bytes"] and
-          f["eligible_count"] != length(f["candidates"]) ->
-        "fit_coverage_unavailable"
 
       p["consumer"] == "notes.select" and fits_all?(f) ->
         "complete_set_fits"
@@ -262,7 +344,20 @@ defmodule IpseKnowledge.Knowledge.DecisionPolicy do
   defp fits_all?(f),
     do:
       f["eligible_count"] == length(f["candidates"]) and
+        whole_within?(f)
+
+  defp whole_within?(f),
+    do:
+      is_integer(f["eligible_rendered_bytes"]) and
         f["eligible_rendered_bytes"] <= f["allocation_bytes"]
+
+  defp baseline_available?(consumer, facts) do
+    facts["availability"] == "available" and
+      (consumer != "notes.select" or
+         (facts["coverage"] == "complete" and
+            not (whole_within?(facts) and
+                   facts["eligible_count"] != length(facts["candidates"]))))
+  end
 
   defp request(p, f, mapping) do
     {input, questions} =

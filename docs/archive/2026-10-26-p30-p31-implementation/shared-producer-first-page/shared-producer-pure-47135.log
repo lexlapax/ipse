@@ -1,0 +1,14 @@
+Running ExUnit with seed: 638047, max_cases: 4
+
+...%{
+  producer_reads: 69,
+  effects: 12,
+  inference_calls: 4,
+  max_host_frame: 12759,
+  ready_bytes: 4354,
+  page_bytes: 45064
+}
+.
+Finished in 1.0 seconds (0.3s on load, 0.00s async, 0.7s sync)
+
+Result: 4 passed

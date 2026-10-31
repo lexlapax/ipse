@@ -1,0 +1,285 @@
+{
+  "runtime": "unchanged669-file frozenRoot2 host inventory pinned by ancestor",
+  "version": 1,
+  "source": [
+    {
+      "path": "docs/archive/2026-10-26-p30-p31-implementation/document-compact-finalization-ledger/source/collection_recipe_ledger.exs",
+      "bytes": 22700,
+      "sha256": "c217a512e68a93a4f56b9606efb90e7977346cdb59e0c211256dafe00176adad",
+      "original": "_build/document-recipe-ledger-20261029/cohort-47121/collection_recipe_ledger.exs"
+    },
+    {
+      "path": "docs/archive/2026-10-26-p30-p31-implementation/document-compact-finalization-ledger/source/collection_recipe_model.ex",
+      "bytes": 10182,
+      "sha256": "fabcba3f9d475e0e276c5e09a2ade5c6ffa6043ad75bd7d57702efd7a4b1c5e4",
+      "original": "_build/document-recipe-ledger-20261029/cohort-47121/collection_recipe_model.ex"
+    },
+    {
+      "path": "docs/archive/2026-10-26-p30-p31-implementation/document-compact-finalization-ledger/source/collection_compact_ledger_report.exs",
+      "bytes": 4921,
+      "sha256": "9dab4494b69ac57dcb718862e141585e18165814ee065cd90cc223d3fdc933b2",
+      "original": "dev/knowledge/collection_compact_ledger_report.exs"
+    },
+    {
+      "path": "docs/archive/2026-10-26-p30-p31-implementation/document-compact-finalization-ledger/source/initial-report-47129.exs",
+      "bytes": 4447,
+      "sha256": "933ddb7ad45c77d060ded6598189941c8474aeeb4161732a783e2bc5a2dd97bb",
+      "original": "_build/document-recipe-ledger-20261029/compact-report-before-digest-check-fix-47129.exs"
+    },
+    {
+      "path": "docs/archive/2026-10-26-p30-p31-implementation/document-compact-finalization-ledger/freeze.exs",
+      "bytes": 3429,
+      "sha256": "d6048aa5ec4931df19fe9e1fb5be529e2bc808a8fd23e930e31c7c48b3b4793f",
+      "original": "_build/document-recipe-ledger-20261029/freeze-compact.exs"
+    }
+  ],
+  "kind": "new_compact_only_finalization_model",
+  "logs": [
+    {
+      "path": "docs/archive/2026-10-26-p30-p31-implementation/document-compact-finalization-ledger/document-recipe-compact-artifact-47120.log",
+      "bytes": 917,
+      "sha256": "937a2539e7a1b87f04cbbc075c1b91e137b7f7198b2800e611258ce2082aac28",
+      "original": "_build/document-recipe-compact-artifact-47120.log"
+    },
+    {
+      "path": "docs/archive/2026-10-26-p30-p31-implementation/document-compact-finalization-ledger/document-recipe-compact-code-md5-47122.log",
+      "bytes": 80,
+      "sha256": "fd1d9de012127b4a1367efbcd748acd322da9baa796f6e7e7e1dc5ffc74c4f24",
+      "original": "_build/document-recipe-compact-code-md5-47122.log"
+    },
+    {
+      "path": "docs/archive/2026-10-26-p30-p31-implementation/document-compact-finalization-ledger/document-recipe-ledger-verify-47127.log",
+      "bytes": 30,
+      "sha256": "3c1ce768280bc0edba7d0cdb580d6523054eb9ac49dad84185f4a41254ca99ce",
+      "original": "_build/document-recipe-ledger-verify-47127.log"
+    },
+    {
+      "path": "docs/archive/2026-10-26-p30-p31-implementation/document-compact-finalization-ledger/document-recipe-compact-comparison-47129.log",
+      "bytes": 310,
+      "sha256": "0ccb8e9d4e45538db0da4c36dfce6d1a549e7f3bfecc1b455cecd81813017c1e",
+      "original": "_build/document-recipe-compact-comparison-47129.log"
+    },
+    {
+      "path": "docs/archive/2026-10-26-p30-p31-implementation/document-compact-finalization-ledger/document-recipe-compact-comparison-47130.log",
+      "bytes": 2132,
+      "sha256": "47a316b2b0bd1d385993436265e3326c885b304e02251cc1c03a2609e9cb22ee",
+      "original": "_build/document-recipe-compact-comparison-47130.log"
+    }
+  ],
+  "reports": [
+    {
+      "path": "docs/archive/2026-10-26-p30-p31-implementation/document-compact-finalization-ledger/reports/compact-comparison-47130.json",
+      "bytes": 2131,
+      "sha256": "cf11cb8c35b5d9ecc4fbad9c0305c2bf7a57eb0c7fbbda4df8f5afb30603e38b",
+      "original": "_build/document-recipe-ledger-20261029/compact-comparison-47130.json"
+    },
+    {
+      "path": "docs/archive/2026-10-26-p30-p31-implementation/document-compact-finalization-ledger/reports/compact-finalization-47121/summary.json",
+      "bytes": 2294811,
+      "sha256": "c738db6a037b4cf8663f053d5da930fb4c1859815530d62e7c5e97f9470c829d",
+      "original": "_build/document-recipe-ledger-20261029/compact-finalization-47121/summary.json"
+    },
+    {
+      "path": "docs/archive/2026-10-26-p30-p31-implementation/document-compact-finalization-ledger/reports/compact-finalization-47121/public-results.jsonl",
+      "bytes": 934887,
+      "sha256": "f9c13d1ef18bb9f3d8bb02533538cbfd18a72c7cac0b774fc69a085bb30f1480",
+      "original": "_build/document-recipe-ledger-20261029/compact-finalization-47121/public-results.jsonl"
+    }
+  ],
+  "retained": [
+    {
+      "path": "_build/document-recipe-ledger-20261029/compact-finalization-47121/final-model.term",
+      "bytes": 5321690,
+      "sha256": "21e245e1e686d1990a83a4945eb5e01daae43c368937de0b50290b1de177510e"
+    },
+    {
+      "path": "_build/document-recipe-ledger-20261029/compact-finalization-47121/invocations.jsonl",
+      "bytes": 15753783,
+      "sha256": "fe8d4bb27d76fac3ce260a194138b4d516733534e066eded0223c99809a779a6"
+    },
+    {
+      "path": "_build/document-recipe-ledger-20261029/compact-finalization-47121/lexical-model.term",
+      "bytes": 4666340,
+      "sha256": "47a1319d5e46771ef5e7c1815dca4ff9505438343a352a6b51a5a526030d0961"
+    },
+    {
+      "path": "_build/document-recipe-ledger-20261029/compact-finalization-47121/lexical-summary.json",
+      "bytes": 1091109,
+      "sha256": "b3f451c90e212742bec4fc0dce64fe00f9b26e3f11d171dc07f90ff70f67532e"
+    },
+    {
+      "path": "_build/document-recipe-ledger-20261029/compact-finalization-47121/public-results.jsonl",
+      "bytes": 934887,
+      "sha256": "f9c13d1ef18bb9f3d8bb02533538cbfd18a72c7cac0b774fc69a085bb30f1480"
+    },
+    {
+      "path": "_build/document-recipe-ledger-20261029/compact-finalization-47121/source-summary.json",
+      "bytes": 1091109,
+      "sha256": "b3f451c90e212742bec4fc0dce64fe00f9b26e3f11d171dc07f90ff70f67532e"
+    },
+    {
+      "path": "_build/document-recipe-ledger-20261029/compact-finalization-47121/summary.json",
+      "bytes": 2294811,
+      "sha256": "c738db6a037b4cf8663f053d5da930fb4c1859815530d62e7c5e97f9470c829d"
+    },
+    {
+      "path": "_build/document-recipe-ledger-20261029/private-full-47083/shared-appended-model.term",
+      "bytes": 4666338,
+      "sha256": "293f66e981f7603b8e1bc54ce975a240093439acf0b4f66eb8e57f247d581656"
+    },
+    {
+      "path": "_build/document-recipe-ledger-20261029/output-full-47092/summary.json",
+      "bytes": 2294748,
+      "sha256": "faee1cec64eb40dacc5718fe8220a4a857fac1d58a44bf5465b7c15d21955cb4"
+    },
+    {
+      "path": "_build/document-recipe-ledger-20261029/output-full-47092/invocations.jsonl",
+      "bytes": 15787892,
+      "sha256": "fdde8013cc95825a910a880ed4876d4d5d54805f2986b04c9ceb186e832f8a9b"
+    },
+    {
+      "path": "_build/document-recipe-compact-finalization-47121.log",
+      "bytes": 2294812,
+      "sha256": "179580786f38d48444adf0786c63fe3fde49f77d676e6ca48af8dc0456fa51fb"
+    },
+    {
+      "path": "_build/document-recipe-compact-summary-47128.log",
+      "bytes": 54688,
+      "sha256": "6bc5e2684a7998f7e8e59f8fe322dfc9a6115149996fcea2fbaabbbeff98399a"
+    }
+  ],
+  "artifact_files": [
+    {
+      "path": "_build/generation-progress-corpus-sol-20261029/LICENSE",
+      "bytes": 11391,
+      "sha256": "a4b4034ccfb966fafe103ca64dd85157e35edb90742a070cf5575184c673bb98"
+    },
+    {
+      "path": "_build/generation-progress-corpus-sol-20261029/ebin/Elixir.IpseKnowledge.Adapters.beam",
+      "bytes": 82340,
+      "sha256": "3a2ca260dd65218b19bf47773d3b07b584bf54b46b35c0a29c7f5a4327b6a236"
+    },
+    {
+      "path": "_build/generation-progress-corpus-sol-20261029/ebin/Elixir.IpseKnowledge.Corpus.beam",
+      "bytes": 110960,
+      "sha256": "170d22c36836a50d54782cf32b5a40708978dd49f835edb43f56410a1319b231"
+    },
+    {
+      "path": "_build/generation-progress-corpus-sol-20261029/ebin/Elixir.IpseKnowledge.Documents.Docx.Styles.beam",
+      "bytes": 45604,
+      "sha256": "3efd770415c15596edabea37ed1b70902efcd4703bb8417f0fc99468b3d876dc"
+    },
+    {
+      "path": "_build/generation-progress-corpus-sol-20261029/ebin/Elixir.IpseKnowledge.Documents.Docx.beam",
+      "bytes": 64940,
+      "sha256": "ff5d0e1ab0051f64ee0a30fd6a6f8b896d646474c4b67c21bc694a375fe6a4e4"
+    },
+    {
+      "path": "_build/generation-progress-corpus-sol-20261029/ebin/Elixir.IpseKnowledge.Documents.ParserStage.beam",
+      "bytes": 30832,
+      "sha256": "04336c497d74d2a01dc6c7cf05549249675b62f9acffd58b83c135f822f72cbd"
+    },
+    {
+      "path": "_build/generation-progress-corpus-sol-20261029/ebin/Elixir.IpseKnowledge.Documents.Pdf.beam",
+      "bytes": 7960,
+      "sha256": "6730519cd8834f4bd03318500cbfe52bb5861eee5f58fe8071b71049fd7968d5"
+    },
+    {
+      "path": "_build/generation-progress-corpus-sol-20261029/ebin/Elixir.IpseKnowledge.Documents.Zip.beam",
+      "bytes": 11784,
+      "sha256": "c2429cee36cb6ba95d8b9b6b0878c01b87ee00eaf873685e4eb67e8e8d9fb6ef"
+    },
+    {
+      "path": "_build/generation-progress-corpus-sol-20261029/ebin/Elixir.IpseKnowledge.Documents.beam",
+      "bytes": 24180,
+      "sha256": "b32fca581931d53471519bf6d68a10d81da3ffb744bffca7c5d6c9c4834d0bf0"
+    },
+    {
+      "path": "_build/generation-progress-corpus-sol-20261029/ebin/Elixir.IpseKnowledge.Evidence.beam",
+      "bytes": 167800,
+      "sha256": "e42352eeab950f7e67959c72a2862af95fff72ff3d3efb1a5a042fe1f972e2b8"
+    },
+    {
+      "path": "_build/generation-progress-corpus-sol-20261029/ebin/Elixir.IpseKnowledge.Profiles.beam",
+      "bytes": 33084,
+      "sha256": "3b5f88b5ff6d69942adfda69bb309233c38c7798cfa36b70cd0dffcef20a66b4"
+    },
+    {
+      "path": "_build/generation-progress-corpus-sol-20261029/ebin/Elixir.IpseKnowledge.Store.Collection.Directory.beam",
+      "bytes": 49116,
+      "sha256": "fd820b1f4ffefe1ffc02bf9859565d8d2e5f9cb89a8ddc68843ba9e5899c28ff"
+    },
+    {
+      "path": "_build/generation-progress-corpus-sol-20261029/ebin/Elixir.IpseKnowledge.Store.Collection.Finalization.beam",
+      "bytes": 29916,
+      "sha256": "1ab8c96a70190a1357c425c73d11ffaf036c2765b4174c0ff5565ffbc3596a28"
+    },
+    {
+      "path": "_build/generation-progress-corpus-sol-20261029/ebin/Elixir.IpseKnowledge.Store.Collection.Generation.beam",
+      "bytes": 37148,
+      "sha256": "bb64b10bc18f1fd6ef21bd03e781790e5ea8b4876ff73d3fed3c4dd91032dc37"
+    },
+    {
+      "path": "_build/generation-progress-corpus-sol-20261029/ebin/Elixir.IpseKnowledge.Store.Collection.Index.beam",
+      "bytes": 104488,
+      "sha256": "6fecb244d82da792810602035ee4757cb35a85f74bf01e99629531c2da497739"
+    },
+    {
+      "path": "_build/generation-progress-corpus-sol-20261029/ebin/Elixir.IpseKnowledge.Store.Collection.Job.beam",
+      "bytes": 65308,
+      "sha256": "7fe0db564d23ab0805b6fa08757264fb55b1bfb9c645cd2724f1341772c4ebed"
+    },
+    {
+      "path": "_build/generation-progress-corpus-sol-20261029/ebin/Elixir.IpseKnowledge.Store.Collection.Paged.beam",
+      "bytes": 39744,
+      "sha256": "a590f5644aad08334267e17b2e8469a4f7cb0dd3529551edb8e13b23831e8a59"
+    },
+    {
+      "path": "_build/generation-progress-corpus-sol-20261029/ebin/Elixir.IpseKnowledge.Store.Collection.Projection.beam",
+      "bytes": 66968,
+      "sha256": "4e10cbf403da3ddca01f9d72a9cfd1a42c825bd81e6c6fe8722d4e8dcf08ea56"
+    },
+    {
+      "path": "_build/generation-progress-corpus-sol-20261029/ebin/Elixir.IpseKnowledge.Store.Collection.Reduction.beam",
+      "bytes": 29920,
+      "sha256": "9371b1fc61689ae4d885b5fc20d341a066307da2b1d51479752b116b6cddac20"
+    },
+    {
+      "path": "_build/generation-progress-corpus-sol-20261029/ebin/Elixir.IpseKnowledge.Store.Collection.Selected.beam",
+      "bytes": 21732,
+      "sha256": "d1bda1c92cbb23d613340142fb8e43892885495ef89c67694c477c2bf74573a1"
+    },
+    {
+      "path": "_build/generation-progress-corpus-sol-20261029/ebin/Elixir.IpseKnowledge.Store.Collection.beam",
+      "bytes": 141348,
+      "sha256": "36cedc30a4db7cfe60cc4d00f5b66aef2ddb414419a7911ba43f34a3257687a2"
+    },
+    {
+      "path": "_build/generation-progress-corpus-sol-20261029/ebin/Elixir.IpseKnowledge.Store.MCPCAS.beam",
+      "bytes": 47968,
+      "sha256": "1c4e72dcd9601abe4e221aa3d0c8da48af5b984858e06c99fbdb141fa3608f0b"
+    },
+    {
+      "path": "_build/generation-progress-corpus-sol-20261029/ebin/Elixir.IpseKnowledge.Store.State.beam",
+      "bytes": 33180,
+      "sha256": "fed99396a4a56b25953cda04773ae1047881854690e724b83123d91da5e58c54"
+    },
+    {
+      "path": "_build/generation-progress-corpus-sol-20261029/ebin/Elixir.IpseKnowledge.Store.beam",
+      "bytes": 218108,
+      "sha256": "242ab69696d11925d9d29ece367b85c8a8b00ee3aad61dff93a1531e0a4ecdd3"
+    },
+    {
+      "path": "_build/generation-progress-corpus-sol-20261029/extension.json",
+      "bytes": 13057,
+      "sha256": "004654fe41ab870398d806d51ad72fa5ef6d0e5b1396133deac8a43a933e72b0"
+    }
+  ],
+  "ancestor": {
+    "path": "docs/archive/2026-10-26-p30-p31-implementation/document-whole-recipe-ledger/manifest.json",
+    "bytes": 217873,
+    "sha256": "a06f8940224472bbb3da5feec88e26d97a70716a9eecc77dba410b2d8de4213f"
+  },
+  "native_effects": 0,
+  "restrictions": "known synthetic checkpoint and fresh IDs, no native replay/acquisition/rebuild/model/capacity/Session adoption qualification"
+}

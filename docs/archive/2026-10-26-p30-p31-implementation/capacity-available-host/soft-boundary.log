@@ -1,0 +1,24 @@
+
+15:27:19.156 [info] The function passed as a handler with ID "v3-capacity-6" is a local function.
+This means that it is either an anonymous function or a capture of a function without a module specified. That may cause a performance penalty when calling that handler. For more details see the note in `telemetry:attach/4` documentation.
+
+https://hexdocs.pm/telemetry/telemetry.html#attach/4
+confirmed 2550/4000
+confirmed 2600/4000
+confirmed 2650/4000
+confirmed 2700/4000
+confirmed 2750/4000
+confirmed 2800/4000
+confirmed 2850/4000
+confirmed 2900/4000
+confirmed 2950/4000
+** (MatchError) no match of right hand side value:
+
+    false
+
+    /home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/project/dev/knowledge/managed_v3_capacity.exs:603: anonymous fn/6 in Ipse.Development.ManagedV3Capacity.run/2
+    (elixir 1.20.4) lib/enum.ex:4636: Enum.map_range/4
+    (elixir 1.20.4) lib/enum.ex:4636: Enum.map_range/4
+    (elixir 1.20.4) lib/enum.ex:4636: Enum.map/2
+    /home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/project/dev/knowledge/managed_v3_capacity.exs:602: Ipse.Development.ManagedV3Capacity.run/2
+    /home/lexlapax/projects/lexlapax/ipse/_build/capacity-sol-20261028-02/project/dev/knowledge/managed_v3_capacity.exs:1186: (file)

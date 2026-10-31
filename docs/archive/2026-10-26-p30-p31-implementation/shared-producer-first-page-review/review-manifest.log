@@ -1,0 +1,19 @@
+SHARED_PRODUCER_FIRST_PAGE_VERIFIED: %{
+  sources: 15,
+  pinned_rows: 725,
+  logs: 8,
+  reports: 4,
+  runtime_resolved_paths: 669,
+  runtime_physical_files: 696,
+  unlisted_mix_cache_paths: 36,
+  inherited_symlink_sources: 9,
+  artifact_files: 26,
+  artifact_manifest_sha256: "108add8e7c37ed9c8b5f8546113778e4175e9e6a2645de02526c0505b3565107",
+  executable_existing_module_delta: ["Elixir.IpseKnowledge.Corpus.beam",
+   "Elixir.IpseKnowledge.Profiles.beam",
+   "Elixir.IpseKnowledge.Store.Collection.Generation.beam"],
+  new_producer_module: true,
+  actual_journal_events: 287,
+  actual_claim_before_embedding: true,
+  actual_receipt_inputs_and_vector_bytes_match: true
+}

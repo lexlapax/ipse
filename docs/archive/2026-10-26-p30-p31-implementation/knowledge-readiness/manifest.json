@@ -1,0 +1,70 @@
+{
+  "date": "2026-10-29",
+  "excluded": 7,
+  "files": {
+    "ipse-knowledge-readiness-compile-47002.log": {
+      "byte_count": 5437,
+      "sha256": "28ecb8ae999cf948784016feb8b8da7ecf0b58f0c5eee6fa87dc20fe7bca157b"
+    },
+    "ipse-knowledge-readiness-compile-47003.log": {
+      "byte_count": 31,
+      "sha256": "30002ae0dc17ff677e431065431513023541407658e7dd68f5241c53aab6327c"
+    },
+    "ipse-knowledge-readiness-native-47004.log": {
+      "byte_count": 210,
+      "sha256": "20f7124cc42d15bea6fd2602250d7cd6ad00c53b2fd1d055e0ba56b1f1f660a4"
+    },
+    "source/lib/ipse/cli/knowledge.ex": {
+      "byte_count": 24425,
+      "sha256": "a1217caa1c7bd9c19428ca60626399ceb7e1b18e55196d751234c49e0aa7b66f"
+    },
+    "source/lib/ipse/extension/collection.ex": {
+      "byte_count": 69484,
+      "sha256": "1f8c2ceb3820a605a411191dbc0d18200f4dcb8f2981c7f284005a77ba34ca0c"
+    },
+    "source/test/ipse/cli/knowledge_test.exs": {
+      "byte_count": 5619,
+      "sha256": "1ac297f302baa48310d97e6a283bd56cec60feb3dc3c2fc5b42b5cc65e24ff31"
+    },
+    "source/test/support/knowledge_setup.exs": {
+      "byte_count": 9924,
+      "sha256": "a091cc84cee326bb324e5e599adc58b97716aa0ea85910e9e4ca0acbdcaf69a3"
+    }
+  },
+  "helpers": {
+    "priv/ipse-pdf": {
+      "byte_count": 1991664,
+      "sha256": "85cde09bd8783ef99427bcd07f5708b33b9e46138e58288d2790eed1544b6556"
+    },
+    "priv/ipse-runner": {
+      "byte_count": 2777312,
+      "sha256": "c15b3ca0d654bf8097f1becb07dcaae584ad489d56cd2a108f8f3eded60e03d3"
+    }
+  },
+  "modules": {
+    "ebin/Elixir.Ipse.CLI.Knowledge.beam": {
+      "byte_count": 47940,
+      "sha256": "5e97419765be81fc6bf19bab8911835eb1ce60ee908f60b488eba726d80987f3"
+    },
+    "ebin/Elixir.Ipse.Config.Activation.beam": {
+      "byte_count": 23732,
+      "sha256": "3c41f41d33f26e804f0918604e6db320d87f9b1ad0f2f9e33c60c1e0e35eea53"
+    },
+    "ebin/Elixir.Ipse.Extension.Collection.beam": {
+      "byte_count": 134280,
+      "sha256": "6500d898e120a75123f29f817adb178bc5bb8ac633b45ebe133a6182238b39ff"
+    },
+    "ebin/Elixir.Ipse.Extension.Consent.beam": {
+      "byte_count": 79808,
+      "sha256": "9016fabbe7c522229bf381d241b4b0b7939f97f2519e107eb8b6a37ad1b1c6aa"
+    },
+    "ebin/Elixir.Ipse.Extension.ProjectIdentity.beam": {
+      "byte_count": 80188,
+      "sha256": "5414b8de8df784634487403080de9341f47851dc379aee167b14ac9b4ec26f40"
+    }
+  },
+  "passed": 1,
+  "runtime": "/home/lexlapax/projects/lexlapax/ipse/_build/knowledge-readiness-47002/lib/ipse",
+  "scope": "Knowledge activation matching and advisory publication availability, one actual native permission/status test; no Session/capture qualification",
+  "seed": 47004
+}

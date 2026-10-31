@@ -1,0 +1,219 @@
+     warning: incompatible types given to Ipse.Runner.open_owned_stdio/7:
+
+         Ipse.Runner.open_owned_stdio(
+           :shell,
+           child_scope,
+           "/bin/sh",
+           ["-c", "exec cat"],
+           c.root,
+           %{},
+           60000
+         )
+
+     given types:
+
+         -:shell-, dynamic(), binary(), non_empty_list(binary()), dynamic(), empty_map(), integer()
+
+     but expected one of:
+
+         :extension or :mcp, term(), term(), term(), term(), term(), term()
+
+     where "c" was given the types:
+
+         # type: dynamic()
+         # from: _build/source-lock-reserve-20261028/project/test/ipse/session/source_lock_capacity_test.exs:109:8
+         c
+
+         # type: dynamic(%{..., root: term()})
+         # from: _build/source-lock-reserve-20261028/project/test/ipse/session/source_lock_capacity_test.exs:128:38
+         Ipse.Runner.open_owned_stdio(
+           :shell,
+           child_scope,
+           "/bin/sh",
+           ["-c", "exec cat"],
+           c.root,
+           %{},
+           60000
+         )
+
+     where "child_scope" was given the type:
+
+         # type: dynamic()
+         # from: _build/source-lock-reserve-20261028/project/test/ipse/session/source_lock_capacity_test.exs:124:34
+         child_scope = Ipse.Session.Resources.current()
+
+     type warning found at:
+     │
+ 128 │ ...                   Runner.open_owned_stdio(
+     │                              ~
+     │
+     └─ _build/source-lock-reserve-20261028/project/test/ipse/session/source_lock_capacity_test.exs:128:38: Ipse.Session.SourceLockCapacityTest."test 128 actual source leases coexist with shell and protected transaction; independent caps refuse excess"/1
+
+Running ExUnit with seed: 410104, max_cases: 4
+Excluding tags: [:native_sandbox, :macos_sandbox, :macos_filesystem, :memory_scope]
+
+Synthetic source-lock fixture retained at /tmp/ipse-source-lock-capacity-e57e5191b69820b19705f9d9c85b5c1c
+
+20:40:17.731 [error] Task #PID<0.713.0> started from #PID<0.711.0> terminating
+** (ExUnit.AssertionError) 
+
+match (=) failed
+code:  assert {:ok, {:admitted, true}} =
+              Resources.controlled_owned_effect(
+                fn ->
+                  child_scope = Resources.current()
+                  assert child_scope != scope
+
+                  assert {:ok, shell, shell_ticket} =
+                           Runner.open_owned_stdio(
+                             :shell,
+                             child_scope,
+                             "/bin/sh",
+                             ["-c", "exec cat"],
+                             c.root,
+                             %{},
+                             60000
+                           )
+
+                  try do
+                    proofs = Enum.map(c.sources, & &1.proof)
+
+                    assert :admitted =
+                             StoredSources.with_verified(c.context, nil, proofs, fn actual ->
+                               assert Enum.map(actual, & &1["proof"]) === proofs
+                               assert Enum.all?(actual, &(&1["unavailable"] != true))
+                               state = :sys.get_state(child_scope)
+
+                               assert Enum.count(state.resources, fn {_, r} -> r.kind == :source_lock end) ==
+                                        128
+
+                               extra = Path.join(c.root, "extra-source.lock")
+                               File.write!(extra, "", [:exclusive])
+                               File.chmod!(extra, 384)
+                               assert {:error, :cleanup_scope_closed} = Runner.lock_source(extra)
+                               assert {:ok, cap} = Transaction.acquire(Path.join(c.protected, ".lock"))
+                               assert :ok = Transaction.check(cap)
+
+                               tickets =
+                                 for _ <- 1..30 do
+                                   assert {:ok, ticket} = Resources.register(:http)
+                                   ticket
+                                 end
+
+                               assert {:error, :cleanup_scope_closed} = Resources.register(:http)
+                               Enum.each(tickets, &Resources.closed(&1, :ok))
+                               assert :ok = Transaction.check(cap)
+                               assert :ok = Transaction.release(cap)
+                               :admitted
+                             end)
+
+                    :admitted
+                  after
+                    outcome = Runner.close_stdio(shell)
+                    Resources.closed(shell_ticket, outcome)
+                    assert outcome == :ok
+                  end
+                end,
+                60000
+              )
+left:  {:ok, {:admitted, true}}
+right: {:unknown, :effect_interrupted}
+
+    _build/source-lock-reserve-20261028/project/test/ipse/session/source_lock_capacity_test.exs:121: anonymous fn/2 in Ipse.Session.SourceLockCapacityTest."test 128 actual source leases coexist with shell and protected transaction; independent caps refuse excess"/1
+    (elixir 1.20.4) lib/task/supervised.ex:105: Task.Supervised.invoke_mfa/2
+    (elixir 1.20.4) lib/task/supervised.ex:40: Task.Supervised.reply/4
+Function: #Function<1.106422152/0 in Ipse.Session.SourceLockCapacityTest."test 128 actual source leases coexist with shell and protected transaction; independent caps refuse excess"/1>
+    Args: []
+
+
+  1) test 128 actual source leases coexist with shell and protected transaction; independent caps refuse excess (Ipse.Session.SourceLockCapacityTest)
+     _build/source-lock-reserve-20261028/project/test/ipse/session/source_lock_capacity_test.exs:108
+     ** (EXIT from #PID<0.711.0>) an exception was raised:
+
+          match (=) failed
+          code:  assert {:ok, {:admitted, true}} =
+                   Resources.controlled_owned_effect(
+                     fn ->
+                       child_scope = Resources.current()
+                       assert child_scope != scope
+
+                       assert {:ok, shell, shell_ticket} =
+                                Runner.open_owned_stdio(
+                                  :shell,
+                                  child_scope,
+                                  "/bin/sh",
+                                  ["-c", "exec cat"],
+                                  c.root,
+                                  %{},
+                                  60000
+                                )
+
+                       try do
+                         proofs = Enum.map(c.sources, & &1.proof)
+
+                         assert :admitted =
+                                  StoredSources.with_verified(c.context, nil, proofs, fn actual ->
+                                    assert Enum.map(actual, & &1["proof"]) === proofs
+                                    assert Enum.all?(actual, &(&1["unavailable"] != true))
+                                    state = :sys.get_state(child_scope)
+
+                                    assert Enum.count(state.resources, fn {_, r} -> r.kind == :source_lock end) ==
+                                             128
+
+                                    extra = Path.join(c.root, "extra-source.lock")
+                                    File.write!(extra, "", [:exclusive])
+                                    File.chmod!(extra, 384)
+                                    assert {:error, :cleanup_scope_closed} = Runner.lock_source(extra)
+                                    assert {:ok, cap} = Transaction.acquire(Path.join(c.protected, ".lock"))
+                                    assert :ok = Transaction.check(cap)
+
+                                    tickets =
+                                      for _ <- 1..30 do
+                                        assert {:ok, ticket} = Resources.register(:http)
+                                        ticket
+                                      end
+
+                                    assert {:error, :cleanup_scope_closed} = Resources.register(:http)
+                                    Enum.each(tickets, &Resources.closed(&1, :ok))
+                                    assert :ok = Transaction.check(cap)
+                                    assert :ok = Transaction.release(cap)
+                                    :admitted
+                                  end)
+
+                         :admitted
+                       after
+                         outcome = Runner.close_stdio(shell)
+                         Resources.closed(shell_ticket, outcome)
+                         assert outcome == :ok
+                       end
+                     end,
+                     60000
+                   )
+          left:  {:ok, {:admitted, true}}
+          right: {:unknown, :effect_interrupted}
+          stacktrace:
+            _build/source-lock-reserve-20261028/project/test/ipse/session/source_lock_capacity_test.exs:121: anonymous fn/2 in Ipse.Session.SourceLockCapacityTest."test 128 actual source leases coexist with shell and protected transaction; independent caps refuse excess"/1
+            (elixir 1.20.4) lib/task/supervised.ex:105: Task.Supervised.invoke_mfa/2
+            (elixir 1.20.4) lib/task/supervised.ex:40: Task.Supervised.reply/4
+
+
+
+
+  2) test owner death stops the controlled holder and releases distinct original leases (Ipse.Session.SourceLockCapacityTest)
+     _build/source-lock-reserve-20261028/project/test/ipse/session/source_lock_capacity_test.exs:207
+     ** (ArgumentError) errors were found at the given arguments:
+
+       * 2nd argument: not a pid
+
+     code: port_refs = Enum.map(ports, &Process.monitor/1)
+     stacktrace:
+       :erlang.monitor(:process, #Port<0.3>)
+       (elixir 1.20.4) lib/process.ex:556: Process.monitor/1
+       (elixir 1.20.4) lib/enum.ex:1725: Enum."-map/2-lists^map/1-1-"/2
+       _build/source-lock-reserve-20261028/project/test/ipse/session/source_lock_capacity_test.exs:259: (test)
+
+
+Finished in 0.6 seconds (0.2s on load, 0.00s async, 0.3s sync)
+
+Result: 0/2 passed
+Failed: 2 tests

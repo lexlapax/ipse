@@ -1,0 +1,41 @@
+{
+  "version": 1,
+  "records": 6910,
+  "kind": "byte_authenticated_modeled_physical_record_compression",
+  "physical_bytes": 157965754,
+  "unique_physical_objects": 6910,
+  "observed_physical_hashes": 0,
+  "public_object_4096_rounding": 175738880,
+  "independent_zlib_bytes": 9015971,
+  "selected_identity_or_zlib_bytes": 9015971,
+  "per_record_payload_4096_rounding": 29487104,
+  "proposed_one_MiB_pack_count": 9,
+  "proposed_pack_4096_rounding": 9035776,
+  "export_source_plus_per_record_payload": 205225984,
+  "export_source_plus_packed_payload": 184774656,
+  "two_distinct_source_target_roots_plus_packed_payload": 360513536,
+  "document_budget_bytes": 201326592,
+  "notes_reserved_bytes": 67108864,
+  "omitted_peak": "native metadata, artifact manifests/index/control, directory/lock allocation, old/staged pointer and file peaks, rollback/leases, cleanup and other retained data; no budget admission follows",
+  "provenance": "reconstructed model bytes matched original complete write SHA/count and original ordered part lengths; production Migration.encode used for packed wrapper; no native object files or artifact API executed",
+  "entropy": "supplied vectors repeat a short pattern and source paragraphs repeat a; favorable aggregate compression is not representative or a guaranteed ratio",
+  "poor_entropy_group": {
+    "scope": "separate bounded canonical G.pack_group control with seeded finite uniform coordinates; not the retained recipe, inference or a worst-case ratio guarantee",
+    "sources": 8,
+    "zlib_bytes": 335349,
+    "raw_bytes": 452960,
+    "pages": 10,
+    "vectors": 80,
+    "source_groups": 1,
+    "dimensions": 1024,
+    "maximum_zlib_page": 33551
+  },
+  "arbitrary_binary_codec_control": {
+    "scope": "bounded codec expansion control only, not a semantic document/vector fixture",
+    "zlib_bytes": 65562,
+    "raw_bytes": 65536,
+    "identity_or_zlib_bytes": 65536
+  },
+  "bounded_inflate_overflow_refused": true,
+  "representation": "proposed explicit identity-or-zlib per-record codec; no fallback after decode failure; 1MiB packs aligned to at-most8-record pages are sizing only, not an implemented artifact format"
+}

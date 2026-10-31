@@ -17,7 +17,14 @@ defmodule Ipse.Extension.ResultSource do
 
   defmodule Index do
     @moduledoc false
-    defstruct sources: %{}, committed: %{}, finals: %{}, begun_count: 0, source_bytes: 0
+    defstruct sources: %{},
+              committed: %{},
+              finals: %{},
+              recorded: %{},
+              releases: %{},
+              release_bytes: 0,
+              begun_count: 0,
+              source_bytes: 0
   end
 
   @enforce_keys [:intent, :begin, :bytes_hash, :chunks_hash]
@@ -60,6 +67,40 @@ defmodule Ipse.Extension.ResultSource do
     do: index.finals[event["invocation_id"]] === event
 
   def published?(_, _), do: false
+
+  @doc false
+  def recorded?(%Index{} = index, event) when is_map(event),
+    do: index.recorded[event["invocation_id"]] === event or published?(index, event)
+
+  def recorded?(_, _), do: false
+
+  @doc false
+  def released?(%Index{} = index, admission),
+    do: get_in(index.releases, [admission["release_id"], :admission]) === admission
+
+  @doc false
+  def released_message?(%Index{} = index, raw, message, admitted) do
+    Enum.any?(index.releases, fn {id, release} ->
+      admission = release.admission
+
+      MapSet.member?(admitted, id) and
+        release.result_sha256 === Ipse.JSON.digest([raw]) and
+        message ===
+          Ipse.Session.ManagedOutput.tool_message(
+            raw,
+            admission["decision"],
+            admission["write_facts"]
+          ) and
+        admission["projection_sha256"] ===
+          Ipse.JSON.digest([
+            Ipse.Session.ManagedOutput.delivery(
+              raw,
+              admission["decision"],
+              admission["write_facts"]
+            )
+          ])
+    end)
+  end
 
   def quota(%Index{} = index),
     do: %{begun_count: index.begun_count, source_bytes: index.source_bytes}
@@ -155,7 +196,8 @@ defmodule Ipse.Extension.ResultSource do
        %{
          next
          | committed: Map.put(next.committed, committed.begin["output_id"], committed),
-           finals: Map.put(next.finals, committed.intent["invocation_id"], event)
+           finals: Map.put(next.finals, committed.intent["invocation_id"], event),
+           recorded: Map.put(next.recorded, committed.intent["invocation_id"], event)
        }}
     else
       _ -> @error
@@ -356,7 +398,13 @@ defmodule Ipse.Extension.ResultSource do
 
   @doc "Derive a pure read index, including charged unreadable interrupted prefixes."
   def restore(events) when is_list(events) do
-    initial = %{index: %Index{}, intents: %{}, active: nil, recovered: MapSet.new()}
+    initial = %{
+      index: %Index{},
+      intents: %{},
+      active: nil,
+      recovered: MapSet.new(),
+      output_release: nil
+    }
 
     Enum.reduce_while(events, {:ok, initial}, fn event, {:ok, state} ->
       case restore_event(event, state) do
@@ -584,10 +632,27 @@ defmodule Ipse.Extension.ResultSource do
       index = %{
         updated.index
         | committed: Map.put(updated.index.committed, next.begin["output_id"], next),
-          finals: Map.put(updated.index.finals, next.intent["invocation_id"], event)
+          finals: Map.put(updated.index.finals, next.intent["invocation_id"], event),
+          recorded: Map.put(updated.index.recorded, next.intent["invocation_id"], event)
       }
 
-      {:ok, %{updated | index: index, active: nil}}
+      if state.output_release do
+        if Ipse.Session.ManagedOutput.bound_result?(state.output_release.intent, event),
+          do:
+            {:ok,
+             %{
+               state
+               | active: nil,
+                 index: %{
+                   state.index
+                   | recorded: Map.put(state.index.recorded, event["invocation_id"], event)
+                 },
+                 output_release: %{state.output_release | raw: event, saved: next}
+             }},
+          else: @error
+      else
+        {:ok, %{updated | index: index, active: nil}}
+      end
     else
       _ -> @error
     end
@@ -598,7 +663,85 @@ defmodule Ipse.Extension.ResultSource do
          source.intent["invocation_id"] == event["invocation_id"]
        end),
        do: @error,
-       else: {:ok, %{state | active: nil}}
+       else:
+         if(state.output_release,
+           do:
+             if(Ipse.Session.ManagedOutput.bound_result?(state.output_release.intent, event),
+               do:
+                 {:ok,
+                  %{state | active: nil, output_release: %{state.output_release | raw: event}}},
+               else: @error
+             ),
+           else: {:ok, %{state | active: nil}}
+         )
+  end
+
+  defp restore_event(%{"type" => "managed_output_release_intent"} = event, state) do
+    parent = state.intents[event["parent_invocation_id"]]
+
+    if is_map(parent) and is_nil(state.output_release) and
+         Ipse.Session.ManagedOutput.valid_intent?(
+           event,
+           parent["payload"]["session_id"],
+           parent,
+           event["actions_sha256"]
+         ),
+       do:
+         {:ok, %{state | output_release: %{intent: event, raw: nil, saved: nil, admission: nil}}},
+       else: @error
+  end
+
+  defp restore_event(%{"type" => "managed_output_release_result"} = event, state) do
+    with p when is_map(p) <- state.output_release,
+         true <- is_map(p.raw) and is_nil(p.admission),
+         true <-
+           Ipse.Session.ManagedOutput.valid_admission?(
+             event,
+             p.intent,
+             p.raw,
+             event["write_facts"]
+           ) do
+      bytes = byte_size(Jason.encode!(event)) + 128
+
+      if map_size(state.index.releases) < 2048 and
+           state.index.release_bytes + bytes <= 4 * 1024 * 1024 do
+        release = %{admission: event, result_sha256: Ipse.JSON.digest([p.raw])}
+
+        index = %{
+          state.index
+          | releases: Map.put(state.index.releases, event["release_id"], release),
+            release_bytes: state.index.release_bytes + bytes
+        }
+
+        {:ok, %{state | index: index, output_release: %{p | admission: event}}}
+      else
+        @error
+      end
+    else
+      _ -> @error
+    end
+  end
+
+  defp restore_event(%{"type" => "managed_output_release_cleanup"} = event, state) do
+    with p when is_map(p) <- state.output_release,
+         true <- is_map(p.admission),
+         true <- Ipse.Session.ManagedOutput.valid_cleanup?(event, p.intent, p.admission) do
+      if p.saved && p.admission["decision"] == "current" && event["status"] == "confirmed" do
+        {:ok, updated} = put_source(state, p.saved, 0)
+
+        index = %{
+          updated.index
+          | committed: Map.put(updated.index.committed, p.saved.begin["output_id"], p.saved),
+            finals: Map.put(updated.index.finals, p.saved.intent["invocation_id"], p.raw)
+        }
+
+        {:ok, %{updated | index: index, output_release: nil}}
+      else
+        {:ok, %{state | output_release: nil}}
+      end
+    else
+      _ -> @error
+    end
   end
 
   defp restore_event(%{"type" => type} = event, state)

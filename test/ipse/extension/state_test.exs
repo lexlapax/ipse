@@ -168,7 +168,9 @@ defmodule Ipse.Extension.StateTest do
     assert persisted["version"] == 1
   end
 
-  test "conditioned receipts prove both preconditions before deadline failure", ctx do
+  @tag lifetime_receipt_followup: true
+  test "conditioned receipts preserve CAS precedence and historical validation",
+       ctx do
     assert {:ok, original} = execute(ctx, put("note", 0, %{"private" => "original"}))
     operation_id = Ipse.Usage.id()
 
@@ -179,7 +181,20 @@ defmodule Ipse.Extension.StateTest do
 
     file = Path.join([ctx.root, ctx.namespace, "state.json"])
     bytes = File.read!(file)
-    assert {:failed, failure} = State.execute(ctx.root, ctx.namespace, request, operation_id)
+
+    assert {:failed, %{"code" => "write_deadline_elapsed", "checked_at_ms" => checked}} =
+             State.execute(ctx.root, ctx.namespace, request, operation_id)
+
+    assert checked >= request["write_before_ms"]
+
+    # Historical receipts remain inspectable; they do not authorize current execution.
+    failure = %{
+      "code" => "write_deadline_elapsed",
+      "checked_at_ms" => 0,
+      "generation" => original["generation"],
+      "record" => Map.drop(original["record"], ["value"])
+    }
+
     assert failure["generation"] == 1
     assert failure["record"] == Map.drop(original["record"], ["value"])
     assert State.valid_outcome?(request, "failed", failure, operation_id)
@@ -204,7 +219,9 @@ defmodule Ipse.Extension.StateTest do
         |> Map.put("expected_revision", revision)
         |> Map.put("expected_generation", generation)
 
-      assert {:conflict, conflict} = State.execute(ctx.root, ctx.namespace, stale, operation_id)
+      assert {:conflict, conflict} =
+               State.execute(ctx.root, ctx.namespace, stale, operation_id)
+
       assert State.valid_outcome?(stale, "conflict", conflict, operation_id)
 
       refute State.valid_outcome?(
@@ -226,10 +243,13 @@ defmodule Ipse.Extension.StateTest do
     end
 
     assert File.read!(file) == bytes
-    assert Path.wildcard(Path.join([ctx.root, ctx.namespace, ".pending-*"])) == []
+    assert Path.wildcard(Path.join([ctx.root, ctx.namespace, ".state-pending-*"])) == []
 
     live = Map.put(request, "write_before_ms", System.system_time(:millisecond) + 60_000)
-    assert {:ok, updated} = State.execute(ctx.root, ctx.namespace, live, operation_id)
+
+    assert {:ok, updated} =
+             State.execute(ctx.root, ctx.namespace, live, operation_id)
+
     assert updated["generation"] == 2 and updated["record"]["revision"] == 2
     assert State.valid_outcome?(live, "ok", updated, operation_id)
     refute State.valid_outcome?(live, "ok", Map.put(updated, "generation", 3), operation_id)
@@ -324,21 +344,34 @@ defmodule Ipse.Extension.StateTest do
     end
   end
 
-  test "elapsed write deadlines preserve state and produce exact known failed receipts", ctx do
+  @tag lifetime_receipt_followup: true
+  test "deadline writes preserve elapsed, conflict and successful receipts",
+       ctx do
     assert {:ok, original} = execute(ctx, put("note", 0, %{"text" => "original"}))
     file = Path.join([ctx.root, ctx.namespace, "state.json"])
     bytes = File.read!(file)
     request = Map.put(put("note", 1, %{"text" => "replacement"}), "write_before_ms", 0)
     operation_id = Ipse.Usage.id()
 
-    assert {:failed, failure} = State.execute(ctx.root, ctx.namespace, request, operation_id)
+    assert {:failed, %{"code" => "write_deadline_elapsed", "checked_at_ms" => checked}} =
+             State.execute(ctx.root, ctx.namespace, request, operation_id)
+
+    assert checked >= request["write_before_ms"]
+
+    failure = %{
+      "code" => "write_deadline_elapsed",
+      "checked_at_ms" => 0,
+      "generation" => original["generation"],
+      "record" => Map.drop(original["record"], ["value"])
+    }
+
     assert failure["code"] == "write_deadline_elapsed"
     assert failure["checked_at_ms"] >= request["write_before_ms"]
     assert failure["generation"] == original["generation"]
     assert failure["record"] == Map.drop(original["record"], ["value"])
     assert State.valid_outcome?(request, "failed", failure, operation_id)
     assert File.read!(file) == bytes
-    assert Path.wildcard(Path.join([ctx.root, ctx.namespace, ".pending-*"])) == []
+    assert Path.wildcard(Path.join([ctx.root, ctx.namespace, ".state-pending-*"])) == []
 
     for invalid <- [
           Map.put(failure, "code", "other"),
@@ -367,17 +400,34 @@ defmodule Ipse.Extension.StateTest do
            )
 
     stale = Map.put(request, "expected_revision", 0)
-    assert {:conflict, conflict} = State.execute(ctx.root, ctx.namespace, stale, operation_id)
+
+    assert {:conflict, conflict} =
+             State.execute(ctx.root, ctx.namespace, stale, operation_id)
+
     assert State.valid_outcome?(stale, "conflict", conflict, operation_id)
 
     missing = Map.put(request, "key", "missing") |> Map.put("expected_revision", 0)
-    assert {:failed, absent} = State.execute(ctx.root, ctx.namespace, missing, operation_id)
+
+    assert {:failed, %{"code" => "write_deadline_elapsed"}} =
+             State.execute(ctx.root, ctx.namespace, missing, operation_id)
+
+    absent =
+      put_in(failure, ["record"], %{
+        "key" => "missing",
+        "revision" => 0,
+        "deleted" => true,
+        "operation_id" => nil
+      })
+
     assert absent["record"]["revision"] == 0
     assert State.valid_outcome?(missing, "failed", absent, operation_id)
     assert File.read!(file) == bytes
 
     live = Map.put(request, "write_before_ms", System.system_time(:millisecond) + 60_000)
-    assert {:ok, updated} = State.execute(ctx.root, ctx.namespace, live, operation_id)
+
+    assert {:ok, updated} =
+             State.execute(ctx.root, ctx.namespace, live, operation_id)
+
     assert updated["record"]["revision"] == 2
     assert State.valid_outcome?(live, "ok", updated, operation_id)
     assert Enum.sort(Map.keys(updated)) == ~w(generation record)
@@ -506,7 +556,7 @@ defmodule Ipse.Extension.StateTest do
 
       assert State.valid_outcome?(request, "failed", failure, operation_id)
       assert File.read!(file) == before
-      assert Path.wildcard(Path.join([ctx.root, ctx.namespace, ".pending-*"])) == []
+      assert Path.wildcard(Path.join([ctx.root, ctx.namespace, ".state-pending-*"])) == []
     end
   end
 

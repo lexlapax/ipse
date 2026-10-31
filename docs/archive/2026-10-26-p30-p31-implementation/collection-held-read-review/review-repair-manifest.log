@@ -1,0 +1,7 @@
+COLLECTION_HELD_READ_REPAIR_MANIFEST_OK: %{
+  manifest_entries: 9,
+  source_files: 2,
+  runtime_files: 726,
+  changed_from_initial: ["Elixir.Ipse.Extension.Collection.beam"],
+  helper_unchanged: true
+}

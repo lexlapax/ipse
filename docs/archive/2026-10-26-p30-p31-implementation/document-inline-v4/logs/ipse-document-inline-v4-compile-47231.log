@@ -1,0 +1,42 @@
+
+== Compilation error in file _build/document-inline-v4-sol-20261029/lib/ipse/extension/registry.ex ==
+** (UndefinedFunctionError) function Ipse.Builtins.Memory.capabilities/0 is undefined (module Ipse.Builtins.Memory is not available)
+    Ipse.Builtins.Memory.capabilities()
+    _build/document-inline-v4-sol-20261029/lib/ipse/extension/registry.ex:258: (module)
+    (stdlib 8.1) lists.erl:2470: :lists.foldl_1/3
+** (MatchError) no match of right hand side value:
+
+    {:error,
+     [
+       %{
+         message: "** (UndefinedFunctionError) function Ipse.Builtins.Memory.capabilities/0 is undefined (module Ipse.Builtins.Memory is not available)\n    Ipse.Builtins.Memory.capabilities()\n    _build/document-inline-v4-sol-20261029/lib/ipse/extension/registry.ex:258: (module)\n    (stdlib 8.1) lists.erl:2470: :lists.foldl_1/3\n",
+         position: 258,
+         file: "/home/lexlapax/projects/lexlapax/ipse/_build/document-inline-v4-sol-20261029/lib/ipse/extension/registry.ex",
+         stacktrace: [
+           {Ipse.Builtins.Memory, :capabilities, [], []},
+           {:elixir_compiler_85, :__MODULE__, 1,
+            [
+              file: ~c"_build/document-inline-v4-sol-20261029/lib/ipse/extension/registry.ex",
+              line: 258
+            ]},
+           {:elixir_compiler, :dispatch, 4,
+            [file: ~c"src/elixir_compiler.erl", line: 102]},
+           {:elixir_compiler, :compile, 4,
+            [file: ~c"src/elixir_compiler.erl", line: 76]},
+           {:elixir_module, :eval_form, 7,
+            [file: ~c"src/elixir_module.erl", line: 491]},
+           {:elixir_module, :compile, 7,
+            [file: ~c"src/elixir_module.erl", line: 164]},
+           {:lists, :foldl_1, 3, [file: ~c"lists.erl", line: 2470]},
+           {:elixir_compiler, :optimize_defmodule, 2,
+            [file: ~c"src/elixir_compiler.erl", line: 41]}
+         ],
+         source: "/home/lexlapax/projects/lexlapax/ipse/_build/document-inline-v4-sol-20261029/lib/ipse/extension/registry.ex",
+         span: nil,
+         severity: :error,
+         details: {:error, :undef}
+       }
+     ], %{compile_warnings: [], runtime_warnings: []}}
+
+    /tmp/ipse-document-inline-v4-compile-47231.exs:20: (file)
+    (elixir 1.20.4) lib/code.ex:1639: Code.require_file/2

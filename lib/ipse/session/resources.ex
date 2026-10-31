@@ -192,17 +192,37 @@ defmodule Ipse.Session.Resources do
   end
 
   def handle_call({:register, kind, pid}, {pid, _}, %{closed: false} = state)
-      when kind in [:shell, :lock, :extension, :mcp, :http] and map_size(state.resources) < 32 do
-    :ok = Ipse.Session.Lock.track_in(state.lock_guard, pid, :peer)
-    id = make_ref()
-    resource = %{pid: pid, kind: kind, monitor: Process.monitor(pid)}
-    ticket = %{scope: self(), id: id}
-    {:reply, {:ok, ticket}, %{state | resources: Map.put(state.resources, id, resource)}}
+      when kind in [:shell, :lock, :extension, :mcp, :http, :source_lock] do
+    source? = kind == :source_lock
+
+    used =
+      Enum.count(state.resources, fn {_, resource} -> resource.kind == :source_lock == source? end)
+
+    limit = if source?, do: 128, else: 32
+
+    if used < limit do
+      :ok = Ipse.Session.Lock.track_in(state.lock_guard, pid, :peer)
+      id = make_ref()
+      resource = %{pid: pid, kind: kind, monitor: Process.monitor(pid)}
+      ticket = %{scope: self(), id: id}
+      {:reply, {:ok, ticket}, %{state | resources: Map.put(state.resources, id, resource)}}
+    else
+      {:reply, {:error, :cleanup_scope_closed}, state}
+    end
   end
 
   def handle_call({:track_task, pid}, {caller, _}, %{closed: false} = state) when is_pid(pid) do
     if caller in [state.owner, state.worker] or Map.has_key?(state.tasks, caller) do
-      :ok = Ipse.Session.Lock.track_in(state.lock_guard, pid, :worker)
+      # An MCP transport is already a resource peer. It must remain alive for
+      # scope-driven close even when it also needs task-registration authority.
+      kind =
+        if Enum.any?(state.resources, fn {_, resource} ->
+             resource.kind == :mcp and resource.pid == pid
+           end),
+           do: :peer,
+           else: :worker
+
+      :ok = Ipse.Session.Lock.track_in(state.lock_guard, pid, kind)
       {:reply, :ok, %{state | tasks: Map.put(state.tasks, pid, Process.monitor(pid))}}
     else
       {:reply, {:error, :cleanup_scope_closed}, state}
@@ -810,6 +830,343 @@ defmodule Ipse.Session.Resources do
       fun.()
     else
       perform_file_effect(fun, guard)
+    end
+  end
+
+  # Private standalone-management candidate. The actual caller owns `port`;
+  # only its exact tracked file-effect peer receives this one-use request.
+  # A transfer response is not a native recipient-close or effect receipt.
+  @doc false
+  def management_controlled_file_effect(fun, port, operation, deadline),
+    do: management_controlled_file_effect(fun, port, operation, deadline, deadline)
+
+  @doc false
+  def management_controlled_file_effect(fun, port, operation, deadline, overall)
+      when is_function(fun, 1) and is_port(port) and is_binary(operation) and
+             byte_size(operation) == 16 and operation != <<0::128>> and is_integer(deadline) and
+             is_integer(overall) do
+    owner = self()
+    scope = current()
+
+    with nil <- Process.get(@effect_key),
+         true <- Port.info(port, :connected) == {:connected, owner},
+         {:os_pid, sender} when is_integer(sender) and sender > 0 <- Port.info(port, :os_pid),
+         true <- deadline > System.monotonic_time(:millisecond),
+         true <- deadline <= System.monotonic_time(:millisecond) + 5_000,
+         true <- overall >= deadline and overall <= System.monotonic_time(:millisecond) + 120_000,
+         :ok <- management_control_ready(port, deadline, <<>>) do
+      ticket = make_ref()
+
+      {pid, ref} =
+        spawn_monitor(fn ->
+          control = %{
+            owner: owner,
+            effect: self(),
+            ticket: ticket,
+            operation: operation,
+            sender_pid: sender,
+            deadline: deadline,
+            overall_deadline: overall
+          }
+
+          execute_file_effect(owner, scope, fn -> fun.(control) end)
+        end)
+
+      try do
+        Process.put({__MODULE__, :management_deadline, ticket}, overall)
+
+        case scope do
+          nil -> :ok = Ipse.Session.Lock.track_in(Ipse.Session.Lock.current(), pid, :peer)
+          scope -> :ok = GenServer.call(scope, {:track_effect, pid})
+        end
+
+        send(pid, {:begin_file_effect, owner})
+        management_control_wait(pid, ref, port, ticket, operation, deadline, :idle, <<>>)
+      catch
+        kind, reason ->
+          Process.exit(pid, :kill)
+          Process.demonitor(ref, [:flush])
+          :erlang.raise(kind, reason, __STACKTRACE__)
+      after
+        Process.delete({__MODULE__, :management_deadline, ticket})
+      end
+    else
+      _ -> {:unknown, :management_control_unconfirmed}
+    end
+  end
+
+  def management_controlled_file_effect(_, _, _, _, _),
+    do: {:unknown, :management_control_unconfirmed}
+
+  @doc false
+  def management_control_transfer(
+        %{owner: owner, effect: effect, ticket: ticket, operation: operation, deadline: deadline},
+        recipient,
+        name,
+        secret
+      )
+      when owner != effect and effect == self() and is_pid(owner) and is_reference(ticket) and
+             is_binary(operation) and byte_size(operation) == 16 and is_integer(deadline) do
+    if Process.alive?(owner) and deadline > System.monotonic_time(:millisecond) do
+      monitor = Process.monitor(owner)
+      send(owner, {:management_control_request, ticket, effect, recipient, name, secret})
+
+      try do
+        receive do
+          {:management_control_reply, ^ticket, result} -> result
+          {:DOWN, ^monitor, :process, _, _} -> {:unknown, :management_control_unconfirmed}
+        after
+          max(deadline - System.monotonic_time(:millisecond), 0) ->
+            {:unknown, :management_control_unconfirmed}
+        end
+      after
+        Process.demonitor(monitor, [:flush])
+      end
+    else
+      {:unknown, :management_control_unconfirmed}
+    end
+  end
+
+  def management_control_transfer(_, _, _, _), do: {:unknown, :management_control_unconfirmed}
+
+  @doc false
+  def management_control_prepare_close(%{
+        owner: owner,
+        effect: effect,
+        ticket: ticket,
+        overall_deadline: deadline
+      })
+      when owner != effect and effect == self() and is_pid(owner) and is_reference(ticket) and
+             is_integer(deadline) do
+    management_control_call(
+      owner,
+      ticket,
+      deadline,
+      :management_control_prepare_close,
+      :management_control_close_ready
+    )
+  end
+
+  def management_control_prepare_close(_), do: {:unknown, :management_control_unconfirmed}
+
+  @doc false
+  def management_control_await_closed(%{
+        owner: owner,
+        effect: effect,
+        ticket: ticket,
+        overall_deadline: deadline
+      })
+      when owner != effect and effect == self() and is_pid(owner) and is_reference(ticket) and
+             is_integer(deadline) do
+    monitor = Process.monitor(owner)
+
+    try do
+      receive do
+        {:management_control_closed, ^ticket} -> :ok
+        {:DOWN, ^monitor, :process, _, _} -> {:unknown, :management_control_unconfirmed}
+      after
+        max(deadline - System.monotonic_time(:millisecond), 0) ->
+          {:unknown, :management_control_unconfirmed}
+      end
+    after
+      Process.demonitor(monitor, [:flush])
+    end
+  end
+
+  def management_control_await_closed(_), do: {:unknown, :management_control_unconfirmed}
+
+  defp management_control_call(owner, ticket, deadline, request, reply) do
+    if Process.alive?(owner) and deadline > System.monotonic_time(:millisecond) do
+      monitor = Process.monitor(owner)
+      send(owner, {request, ticket, self()})
+
+      try do
+        receive do
+          {^reply, ^ticket} -> :ok
+          {:DOWN, ^monitor, :process, _, _} -> {:unknown, :management_control_unconfirmed}
+        after
+          max(deadline - System.monotonic_time(:millisecond), 0) ->
+            {:unknown, :management_control_unconfirmed}
+        end
+      after
+        Process.demonitor(monitor, [:flush])
+      end
+    else
+      {:unknown, :management_control_unconfirmed}
+    end
+  end
+
+  defp management_control_ready(port, deadline, buffer) do
+    expected = <<?R, 16::32, "owner-control-v1">>
+
+    cond do
+      System.monotonic_time(:millisecond) >= deadline ->
+        :error
+
+      buffer == expected ->
+        :ok
+
+      byte_size(buffer) >= byte_size(expected) or
+          binary_part(expected, 0, byte_size(buffer)) != buffer ->
+        :error
+
+      true ->
+        receive do
+          {^port, {:data, bytes}} -> management_control_ready(port, deadline, buffer <> bytes)
+          {^port, _} -> :error
+        after
+          max(deadline - System.monotonic_time(:millisecond), 0) -> :error
+        end
+    end
+  end
+
+  defp management_control_wait(pid, ref, port, ticket, operation, deadline, phase, buffer) do
+    expected = <<?H, 17::32, operation::binary, 1, ?T, 17::32, operation::binary, 1>>
+
+    active_deadline =
+      if phase in [:transferred, :closing, :closed],
+        do: Process.get({__MODULE__, :management_deadline, ticket}, deadline),
+        else: deadline
+
+    timeout =
+      if phase == :failed,
+        do: :infinity,
+        else: max(active_deadline - System.monotonic_time(:millisecond), 0)
+
+    receive do
+      {:management_control_prepare_close, ^ticket, ^pid} when phase == :transferred ->
+        if System.monotonic_time(:millisecond) < active_deadline do
+          send(pid, {:management_control_close_ready, ticket})
+          management_control_wait(pid, ref, port, ticket, operation, deadline, :closing, <<>>)
+        else
+          if Port.info(port), do: Ipse.Runner.close_owner_control(port)
+          management_control_wait(pid, ref, port, ticket, operation, deadline, :failed, <<>>)
+        end
+
+      {:management_control_prepare_close, ^ticket, ^pid} ->
+        if Port.info(port), do: Ipse.Runner.close_owner_control(port)
+        management_control_wait(pid, ref, port, ticket, operation, deadline, :failed, <<>>)
+
+      {^port, {:exit_status, 0}} when phase == :closing ->
+        if System.monotonic_time(:millisecond) < active_deadline do
+          send(pid, {:management_control_closed, ticket})
+          management_control_wait(pid, ref, port, ticket, operation, deadline, :closed, <<>>)
+        else
+          management_control_wait(pid, ref, port, ticket, operation, deadline, :failed, <<>>)
+        end
+
+      {:management_control_request, ^ticket, ^pid, recipient, name, secret} when phase == :idle ->
+        if System.monotonic_time(:millisecond) < deadline and
+             Ipse.Runner.send_owner_control(
+               port,
+               operation,
+               :management_cli,
+               recipient,
+               name,
+               secret
+             ) == :ok do
+          management_control_wait(pid, ref, port, ticket, operation, deadline, :sending, <<>>)
+        else
+          send(
+            pid,
+            {:management_control_reply, ticket, {:unknown, :management_control_unconfirmed}}
+          )
+
+          Ipse.Runner.close_owner_control(port)
+          management_control_wait(pid, ref, port, ticket, operation, deadline, :failed, <<>>)
+        end
+
+      {:management_control_request, ^ticket, ^pid, _, _, _} ->
+        send(
+          pid,
+          {:management_control_reply, ticket, {:unknown, :management_control_unconfirmed}}
+        )
+
+        if Port.info(port), do: Ipse.Runner.close_owner_control(port)
+        management_control_wait(pid, ref, port, ticket, operation, deadline, :failed, <<>>)
+
+      {^port, {:data, bytes}} when phase == :sending ->
+        next = buffer <> bytes
+
+        cond do
+          System.monotonic_time(:millisecond) >= deadline or byte_size(next) > byte_size(expected) or
+              binary_part(expected, 0, min(byte_size(next), byte_size(expected))) != next ->
+            send(
+              pid,
+              {:management_control_reply, ticket, {:unknown, :management_control_unconfirmed}}
+            )
+
+            if Port.info(port), do: Ipse.Runner.close_owner_control(port)
+            management_control_wait(pid, ref, port, ticket, operation, deadline, :failed, <<>>)
+
+          next == expected ->
+            send(pid, {:management_control_reply, ticket, :ok})
+
+            management_control_wait(
+              pid,
+              ref,
+              port,
+              ticket,
+              operation,
+              deadline,
+              :transferred,
+              <<>>
+            )
+
+          true ->
+            management_control_wait(pid, ref, port, ticket, operation, deadline, :sending, next)
+        end
+
+      {^port, _} ->
+        if phase == :sending,
+          do:
+            send(
+              pid,
+              {:management_control_reply, ticket, {:unknown, :management_control_unconfirmed}}
+            )
+
+        if Port.info(port), do: Ipse.Runner.close_owner_control(port)
+        management_control_wait(pid, ref, port, ticket, operation, deadline, :failed, <<>>)
+
+      {^pid, {:returned, value}} ->
+        Process.demonitor(ref, [:flush])
+
+        case phase do
+          :idle ->
+            if match?({:error, _}, value) and
+                 Ipse.Runner.cancel_unused_owner_control(port, deadline) == :ok,
+               do: {:closed, value},
+               else: {:unknown, :management_control_unconfirmed}
+
+          :transferred ->
+            {:transferred, value}
+
+          :closed ->
+            if System.monotonic_time(:millisecond) < active_deadline,
+              do: {:closed, value},
+              else: {:unknown, :management_control_unconfirmed}
+
+          _ ->
+            {:unknown, :management_control_unconfirmed}
+        end
+
+      {^pid, {:raised, _, _, _}} ->
+        Process.demonitor(ref, [:flush])
+        {:unknown, :management_control_unconfirmed}
+
+      {:DOWN, ^ref, :process, ^pid, _} ->
+        {:unknown, :management_control_unconfirmed}
+    after
+      timeout ->
+        if phase == :sending,
+          do:
+            send(
+              pid,
+              {:management_control_reply, ticket, {:unknown, :management_control_unconfirmed}}
+            )
+
+        if Port.info(port), do: Ipse.Runner.close_owner_control(port)
+        management_control_wait(pid, ref, port, ticket, operation, deadline, :failed, <<>>)
     end
   end
 

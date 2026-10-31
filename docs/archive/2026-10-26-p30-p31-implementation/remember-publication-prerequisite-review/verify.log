@@ -1,0 +1,20 @@
+REMEMBER_FIRST_CONTROL_VERIFIED: %{
+  manifest_entries: 7,
+  overlay_sources: 6,
+  identical_parent_runtime_regular_files: 668,
+  root_observations: 2,
+  observed_keys: ["override.0bfb716503fc721b6fed48292598494af9c6e5cebf34ff2dfda19b3fbdbb2a98",
+   "note.0bfb716503fc721b6fed48292598494af9c6e5cebf34ff2dfda19b3fbdbb2a98"],
+  full_root: %{
+    "floor" => 0,
+    "floor_anchor" => :null,
+    "generation" => 0,
+    "manifest_sha256" => :null,
+    "project" => "dee614fa5a347b0b6be2b156258f1475ebf511de3caadf60b03741e69d01f6fe",
+    "root_sha256" => :null,
+    "root_state" => "absent"
+  },
+  snapshot_results: 0,
+  managed_publication_intents: 0,
+  repeated_tests_or_effects: 0
+}

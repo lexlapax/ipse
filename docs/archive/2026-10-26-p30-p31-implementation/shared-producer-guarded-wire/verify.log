@@ -1,0 +1,23 @@
+{
+  "manifest_sha256": "fc79fe5cef7190e5b2a0f6414b1107e9470f39758e566c6d759a2e0a8a558388",
+  "exact_rows_verified": 1440,
+  "graph_rows": [
+    700,
+    700
+  ],
+  "sdk_sources": 3,
+  "source_snapshots": 27,
+  "source_use_parent_inventory_exact": true,
+  "runtime_delta": {
+    "added": [],
+    "changed": [
+      "_build/dev/lib/ipse/ebin/Elixir.Ipse.Extension.Actions.beam",
+      "_build/dev/lib/ipse/ebin/Elixir.Ipse.Extension.CollectionStore.beam",
+      "_build/dev/lib/ipse/ebin/Elixir.Ipse.Extension.EmbeddingCall.beam",
+      "_build/dev/lib/ipse/ebin/Elixir.Ipse.Extension.Inference.beam",
+      "_build/dev/lib/ipse/ebin/Elixir.Ipse.Extension.ModelCall.beam"
+    ],
+    "removed": []
+  },
+  "no_tests_or_effects": true
+}

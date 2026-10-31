@@ -1,0 +1,12 @@
+ae8f9e886fb334a168891a26692b9b9d3ead0aba1da2fd1add97924b0206b643  _build/history-compaction-v2-sol-20261028/evidence-source-compaction/lib/ipse/cli/knowledge/management.ex
+b72943f33d251ea5b0a1af6e38957c0aaeecd8cee3ad0a1852caec2eb19552d5  _build/history-compaction-v2-sol-20261028/evidence-source-compaction/lib/ipse/extension/collection/managed_retention.ex
+91e62e8c1ebb45178088df141723faf1ac5c9c35c8473ac2d649de692c12aca1  _build/history-compaction-v2-sol-20261028/evidence-source-compaction/lib/ipse/extension/collection/normalizer_v3.ex
+14195bb7d878df306917765c53fe7ee9cbab70037d80dac54835697ecbcb6956  _build/history-compaction-v2-sol-20261028/evidence-source-compaction/lib/ipse/extension/collection/observed_read.ex
+f91f80729ab64b2918699deaf5d81de3cd583073dfaa6450e620a699e9643f6b  _build/history-compaction-v2-sol-20261028/evidence-source-compaction/lib/ipse/session/managed_lifecycle.ex
+916ef4e4423c92222b5d8561d121df9abc76e970fd156643195a4b13ea57fead  _build/history-compaction-v2-sol-20261028/evidence-source-compaction/lib/ipse/session/managed_reference.ex
+d4ab0744c85bd0175a54fea8a562ec7da5e1a9761f8475067fee5a715b7cb6ee  _build/history-compaction-v2-sol-20261028/evidence-source-compaction/lib/ipse/session/managed_supersession.ex
+5a81882447bcc6ac2061b4392b07edecad927ea615eb3a5835eec09b8949762b  _build/history-compaction-v2-sol-20261028/evidence-source-compaction/lib/ipse/session/managed_use.ex
+1802f6808818a2da9be29a9cde2abeb404e2e29e875adfe924d365a5d8dd1878  _build/history-compaction-v2-sol-20261028/evidence-source-compaction/test/ipse/session/managed_compaction_diagnostic_test.exs
+34c93db4285fa5ce23a74e86cc907f47e6e840cc3478a77bc8ffecf24ce70b3f  _build/history-compaction-v2-sol-20261028/evidence-source-compaction/test/support/managed_compaction_diagnostic.exs
+bedd0192dad096dfac7cb4e390c7f08e400f53ebd7b283b6170cb0e2dfbe7941  _build/history-compaction-v2-sol-20261028/evidence-source-compaction/test/support/managed_compaction_diagnostic_session.exs
+45c053d2148eb89294db18a718c9db23c8fe17625123663af62bdef61014cc13  _build/history-compaction-v2-sol-20261028/evidence-source-compaction/test/support/operator_pty.rs

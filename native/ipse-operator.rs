@@ -1,6 +1,6 @@
 //! Matching terminal observations; descriptor 3/4 pipes never carry operator input.
 #[cfg(any(target_os = "linux", target_os = "macos"))]
-mod unix {
+pub(crate) mod unix {
     use std::ffi::{CStr, OsStr};
     use std::fs::{File, OpenOptions, DirBuilder};
     use std::io::{Read, Write};
@@ -203,6 +203,30 @@ mod unix {
     pub fn run(args: &[String]) -> std::result::Result<(), String> {
         if args.len() == 4 && args[3] == "v2-probe" { return v2::probe(); }
         if args.len() == 4 && args[3] == "v2" { return v2::run(args); }
+        #[cfg(all(target_os = "linux", not(test)))]
+        if args.len() == 4 && args[3] == "v3-inert-lease-probe" { return v2::lease_probe(args, 0, false); }
+        #[cfg(all(target_os = "linux", not(test)))]
+        if args.len() == 4 && args[3] == "v4-synthetic-lease-display" { return v2::lease_probe(args, 8192, false); }
+        #[cfg(all(target_os = "linux", not(test)))]
+        if args.len() == 4 && args[3] == "v5-management-lease-display" { return v2::lease_probe(args, 65536, false); }
+        #[cfg(all(target_os = "linux", not(test)))]
+        if args.len() == 4 && args[3] == "v6-management-lease-input" { return v2::lease_input(args); }
+        #[cfg(all(target_os = "linux", not(test)))]
+        if args.len() == 4 && args[3] == "v7-management-source-lease-input" { return v2::lease_source_input(args); }
+        #[cfg(all(target_os = "linux", not(test)))]
+        if args.len() == 4 && args[3] == "v10-synthetic-source-group-display" { return v2::group_lease_probe(args); }
+        #[cfg(all(target_os = "linux", not(test)))]
+        if args.len() == 4 && args[3] == "v11-management-source-group-input" { return v2::lease_source_group_input(args); }
+        #[cfg(all(target_os = "linux", not(test)))]
+        if args.len() == 4 && args[3] == "v12-synthetic-source-group-notice-input" { return v2::lease_source_group_notice_input(args); }
+        #[cfg(all(target_os = "linux", not(test)))]
+        if args.len() == 4 && args[3] == "v13-session-review-group-input" { return v2::lease_session_review_input(args); }
+        #[cfg(all(target_os = "linux", not(test)))]
+        if args.len() == 4 && args[3] == "v8-synthetic-accepted-display" { return v2::accepted_lease_probe(args, false); }
+        #[cfg(all(target_os = "linux", not(test)))]
+        if args.len() == 4 && args[3] == "v9-synthetic-notice-display" { return v2::lease_probe(args, 8192, true); }
+        #[cfg(all(target_os = "linux", not(test)))]
+        if args.len() == 4 && args[3] == "v10-synthetic-accepted-notice-display" { return v2::accepted_lease_probe(args, true); }
         let mut output = fd(4).map_err(|_| "private operator output unavailable")?;
         if !output.metadata().map_err(|_| "private operator output unavailable")?.file_type().is_fifo() {
             return Err("private operator output pipe required".into());
@@ -250,10 +274,78 @@ mod unix {
     // The guardian and reader each retain the original terminal state and lock.
     // One unexpected process loss leaves a restorer; losing both is outside this
     // boundary. No replacement can read while either old holder retains the lock.
-    mod v2 {
+    pub(crate) mod v2 {
         use super::*;
         const INPUT_LIMIT: usize = 1_048_576;
         const DISPLAY_LIMIT: usize = 16_777_216;
+        #[cfg(all(target_os = "linux", not(test)))]
+        pub fn lease_probe(args: &[String], display_limit: usize, notice: bool) -> std::result::Result<(), String> {
+            let ms = args[2].parse::<u64>().ok().filter(|n| (1..=5000).contains(n)).ok_or("invalid probe deadline")?;
+            let deadline = Instant::now() + Duration::from_millis(ms);
+            let control = fd(3).map_err(|_| "probe control unavailable")?;
+            let output = fd(4).map_err(|_| "probe output unavailable")?;
+            if !control.metadata().is_ok_and(|m| m.file_type().is_fifo()) ||
+               !output.metadata().is_ok_and(|m| m.file_type().is_fifo()) { return Err("probe control pipes required".into()); }
+            let tty = terminal().map_err(|_| "matched probe terminal required")?;
+            let channel = channel_lock().map_err(|_| "probe terminal channel unavailable")?;
+            crate::ipse_terminal_lease::run(control, output, tty, channel, deadline, deadline, display_limit, false, 0, false, notice, false)
+        }
+        #[cfg(all(target_os = "linux", not(test)))]
+        pub fn accepted_lease_probe(args: &[String], notice: bool) -> std::result::Result<(), String> {
+            let ms = args[2].parse::<u64>().ok().filter(|n| (1..=5000).contains(n)).ok_or("invalid probe deadline")?;
+            let deadline = Instant::now() + Duration::from_millis(ms);
+            let control = fd(3).map_err(|_| "probe control unavailable")?;
+            let output = fd(4).map_err(|_| "probe output unavailable")?;
+            if !control.metadata().is_ok_and(|m| m.file_type().is_fifo()) ||
+               !output.metadata().is_ok_and(|m| m.file_type().is_fifo()) { return Err("probe control pipes required".into()); }
+            let tty = terminal().map_err(|_| "matched probe terminal required")?;
+            let channel = channel_lock().map_err(|_| "probe terminal channel unavailable")?;
+            crate::ipse_terminal_lease::run(control, output, tty, channel, deadline, deadline, 8192, false, 0, true, notice, false)
+        }
+        #[cfg(all(target_os = "linux", not(test)))]
+        pub fn group_lease_probe(args: &[String]) -> std::result::Result<(), String> {
+            let ms = args[2].parse::<u64>().ok().filter(|n| (1..=5000).contains(n)).ok_or("invalid probe deadline")?;
+            let deadline = Instant::now() + Duration::from_millis(ms);
+            let control = fd(3).map_err(|_| "probe control unavailable")?;
+            let output = fd(4).map_err(|_| "probe output unavailable")?;
+            if !control.metadata().is_ok_and(|m| m.file_type().is_fifo()) || !output.metadata().is_ok_and(|m| m.file_type().is_fifo()) { return Err("probe control pipes required".into()); }
+            let tty = terminal().map_err(|_| "matched probe terminal required")?;
+            let channel = channel_lock().map_err(|_| "probe terminal channel unavailable")?;
+            crate::ipse_terminal_lease::run(control, output, tty, channel, deadline, deadline, 8192, false, 128, false, false, false)
+        }
+        #[cfg(all(target_os = "linux", not(test)))]
+        pub fn lease_input(args: &[String]) -> std::result::Result<(), String> {
+            lease_input_with_source(args, 0, false, false)
+        }
+        #[cfg(all(target_os = "linux", not(test)))]
+        pub fn lease_source_input(args: &[String]) -> std::result::Result<(), String> {
+            lease_input_with_source(args, 1, false, false)
+        }
+        #[cfg(all(target_os = "linux", not(test)))]
+        pub fn lease_source_group_input(args: &[String]) -> std::result::Result<(), String> {
+            lease_input_with_source(args, 128, false, false)
+        }
+        #[cfg(all(target_os = "linux", not(test)))]
+        pub fn lease_source_group_notice_input(args: &[String]) -> std::result::Result<(), String> {
+            lease_input_with_source(args, 128, true, false)
+        }
+        #[cfg(all(target_os = "linux", not(test)))]
+        pub fn lease_session_review_input(args: &[String]) -> std::result::Result<(), String> {
+            lease_input_with_source(args, 128, true, true)
+        }
+        #[cfg(all(target_os = "linux", not(test)))]
+        fn lease_input_with_source(args: &[String], source: usize, notice: bool, session_payload: bool) -> std::result::Result<(), String> {
+            let ms = args[2].parse::<u64>().ok().filter(|n| (1..=120_000).contains(n)).ok_or("invalid input deadline")?;
+            let now = Instant::now();
+            let setup = now + Duration::from_millis(ms.min(5_000));
+            let overall = now + Duration::from_millis(ms);
+            let control = fd(3).map_err(|_| "input control unavailable")?;
+            let output = fd(4).map_err(|_| "input output unavailable")?;
+            if !control.metadata().is_ok_and(|m| m.file_type().is_fifo()) || !output.metadata().is_ok_and(|m| m.file_type().is_fifo()) { return Err("input control pipes required".into()); }
+            let tty = terminal().map_err(|_| "matched input terminal required")?;
+            let channel = channel_lock().map_err(|_| "input terminal channel unavailable")?;
+            crate::ipse_terminal_lease::run(control, output, tty, channel, setup, overall, 65536, true, source, false, notice, session_payload)
+        }
         pub fn probe() -> std::result::Result<(), String> {
             let mut output = fd(4).map_err(|_| "private operator output unavailable")?;
             nonblocking(&output).map_err(|_| "cannot bound operator output")?;
@@ -345,22 +437,43 @@ mod unix {
             unsafe { poll(&mut p, 1, 0); }
             p.revents != 0
         }
-        fn request(control: &mut File, deadline: Instant) -> Result<([u8; 16], Vec<u8>)> {
+        fn request(control: &mut File, deadline: Instant) -> Result<([u8; 16], Vec<u8>, Option<u64>)> {
             let mut header = [0; 5]; read_exact(control, &mut header, deadline)?;
             let count = u32::from_be_bytes(header[1..].try_into().unwrap()) as usize;
-            if header[0] != b'd' || !(17..=DISPLAY_LIMIT + 16).contains(&count) {
+            let managed = header[0] == b'D';
+            let prefix = if managed { 24 } else { 16 };
+            if (header[0] != b'd' && !managed) || !(prefix + 1..=DISPLAY_LIMIT + prefix).contains(&count) {
                 return Err(Failure::Refused("invalid v2 operator display request"));
             }
             let mut body = vec![0; count]; read_exact(control, &mut body, deadline)?;
-            if !std::str::from_utf8(&body[16..]).is_ok_and(|s|
+            let wall = if managed {
+                let value = u64::from_be_bytes(body[16..24].try_into().unwrap());
+                if value == 0 || value > 9_007_199_254_740_991 { return Err(Failure::Refused("invalid display deadline")); }
+                Some(value)
+            } else { None };
+            if !std::str::from_utf8(&body[prefix..]).is_ok_and(|s|
                 s.chars().all(|c| !c.is_control() || c == '\n' || c == '\t')) {
                 return Err(Failure::Refused("operator display contains control characters"));
             }
-            Ok((body[..16].try_into().unwrap(), body[16..].to_vec()))
+            Ok((body[..16].try_into().unwrap(), body[prefix..].to_vec(), wall))
+        }
+        fn display_current(wall: Option<u64>) -> Result<()> {
+            if let Some(deadline) = wall {
+                let now = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH)
+                    .map_err(|_| Failure::Refused("operator display clock unavailable"))?.as_millis();
+                if now >= u128::from(deadline) { return Err(Failure::Refused("operator display deadline elapsed")); }
+            }
+            Ok(())
         }
         fn io_ready(control: &File, guardian: &File, target: &File, event: i16, deadline: Instant) -> Result<()> {
+            io_ready_watch(control, guardian, target, event, deadline, &[])
+        }
+        fn io_ready_watch(control: &File, guardian: &File, target: &File, event: i16, deadline: Instant, watched: &[i32]) -> Result<()> {
             loop {
-                if Instant::now() >= deadline || lost(control) || lost(guardian) {
+                if Instant::now() >= deadline || lost(control) || lost(guardian) || watched.iter().any(|fd| {
+                    let mut p = Poll { fd: *fd, events: 1, revents: 0 };
+                    unsafe { poll(&mut p, 1, 0); } p.revents != 0
+                }) {
                     return Err(Failure::Cancelled);
                 }
                 let mut p = Poll { fd: target.as_raw_fd(), events: event, revents: 0 };
@@ -369,13 +482,22 @@ mod unix {
                     return Err(Failure::Refused("operator terminal poll failed"));
                 }
                 if p.revents & (8 | 16 | 32) != 0 { return Err(Failure::Cancelled); }
-                if p.revents & event != 0 { return Ok(()); }
+                if p.revents & event != 0 {
+                    if Instant::now() >= deadline || lost(control) || lost(guardian) || watched.iter().any(|fd| {
+                        let mut q = Poll { fd: *fd, events: 1, revents: 0 };
+                        unsafe { poll(&mut q, 1, 0); } q.revents != 0
+                    }) { return Err(Failure::Cancelled); }
+                    return Ok(());
+                }
             }
         }
         fn send(control: &File, guardian: &File, output: &mut File, body: &[u8], deadline: Instant) -> Result<()> {
+            send_watch(control, guardian, output, body, deadline, &[])
+        }
+        fn send_watch(control: &File, guardian: &File, output: &mut File, body: &[u8], deadline: Instant, watched: &[i32]) -> Result<()> {
             let mut at = 0;
             while at < body.len() {
-                io_ready(control, guardian, output, 4, deadline)?;
+                io_ready_watch(control, guardian, output, 4, deadline, watched)?;
                 match output.write(&body[at..(at + 4096).min(body.len())]) {
                     Ok(0) => return Err(Failure::Cancelled),
                     Ok(n) => at += n,
@@ -384,6 +506,40 @@ mod unix {
                 }
             }
             Ok(())
+        }
+        fn send_display(control: &File, guardian: &File, output: &mut File, body: &[u8], deadline: Instant, wall: Option<u64>) -> Result<()> {
+            let mut at = 0;
+            while at < body.len() {
+                io_ready(control, guardian, output, 4, deadline)?;
+                display_current(wall)?;
+                match output.write(&body[at..(at + 4096).min(body.len())]) {
+                    Ok(0) => return Err(Failure::Cancelled),
+                    Ok(n) => at += n,
+                    Err(e) if matches!(e.kind(), std::io::ErrorKind::Interrupted | std::io::ErrorKind::WouldBlock) => {},
+                    Err(_) => return Err(Failure::Refused("operator terminal output failed")),
+                }
+            }
+            Ok(())
+        }
+        fn await_release(guardian: &File, deadline: Instant) -> Result<()> {
+            let mut channel = guardian;
+            loop {
+                if Instant::now() >= deadline { return Err(Failure::Cancelled); }
+                let mut p = Poll { fd: guardian.as_raw_fd(), events: 1, revents: 0 };
+                let n = unsafe { poll(&mut p, 1, 20) };
+                if n < 0 && std::io::Error::last_os_error().kind() != std::io::ErrorKind::Interrupted {
+                    return Err(Failure::Refused("operator release poll failed"));
+                }
+                if p.revents & 1 != 0 {
+                    let mut byte = [0; 1];
+                    match channel.read(&mut byte) {
+                        Ok(1) if byte[0] == b'u' => return Ok(()),
+                        Err(e) if matches!(e.kind(), std::io::ErrorKind::Interrupted | std::io::ErrorKind::WouldBlock) => {},
+                        _ => return Err(Failure::Cancelled),
+                    }
+                }
+                if p.revents & (8 | 16 | 32) != 0 { return Err(Failure::Cancelled); }
+            }
         }
         fn escaped_echo(text: &[u8]) -> Vec<u8> {
             let mut result = String::new();
@@ -403,16 +559,16 @@ mod unix {
             }
             result.into_bytes()
         }
-        fn redraw(control: &File, guardian: &File, tty: &mut File, prefix: &[u8], text: &[u8], deadline: Instant) -> Result<()> {
-            send(control, guardian, tty, b"\r\x1b[2K", deadline)?;
-            send(control, guardian, tty, prefix, deadline)?;
-            send(control, guardian, tty, &escaped_echo(text), deadline)
+        fn redraw(control: &File, guardian: &File, tty: &mut File, prefix: &[u8], text: &[u8], deadline: Instant, watched: &[i32]) -> Result<()> {
+            send_watch(control, guardian, tty, b"\r\x1b[2K", deadline, watched)?;
+            send_watch(control, guardian, tty, prefix, deadline, watched)?;
+            send_watch(control, guardian, tty, &escaped_echo(text), deadline, watched)
         }
-        fn line(control: &File, guardian: &File, tty: &mut File, prefix: &[u8], deadline: Instant) -> Result<Option<Vec<u8>>> {
+        fn line(control: &File, guardian: &File, tty: &mut File, prefix: &[u8], deadline: Instant, watched: &[i32]) -> Result<Option<Vec<u8>>> {
             let mut text = Vec::new();
             let mut pending = Vec::new();
             loop {
-                io_ready(control, guardian, tty, 1, deadline)?;
+                io_ready_watch(control, guardian, tty, 1, deadline, watched)?;
                 let mut byte = [0; 1];
                 match tty.read(&mut byte) {
                     Ok(0) => return Err(Failure::Cancelled),
@@ -421,13 +577,13 @@ mod unix {
                             if std::str::from_utf8(&text).is_err() {
                                 return Err(Failure::Refused("invalid operator input UTF-8"));
                             }
-                            send(control, guardian, tty, b"\r\n", deadline)?;
+                            send_watch(control, guardian, tty, b"\r\n", deadline, watched)?;
                             return Ok(Some(text));
                         },
                         4 if text.is_empty() => return Ok(None),
                         4 => {
                             if std::str::from_utf8(&text).is_err() { return Err(Failure::Refused("invalid operator input UTF-8")); }
-                            send(control, guardian, tty, b"\r\n", deadline)?;
+                            send_watch(control, guardian, tty, b"\r\n", deadline, watched)?;
                             return Ok(Some(text));
                         },
                         3 => return Err(Failure::Refused("operator input interrupted")),
@@ -439,13 +595,13 @@ mod unix {
                                     if text.last().is_some_and(|b| b & 0xc0 == 0xc0) { text.pop(); }
                                 }
                                 pending.clear();
-                                redraw(control, guardian, tty, prefix, &text, deadline)?;
+                                redraw(control, guardian, tty, prefix, &text, deadline, watched)?;
                             }
                         },
                         21 => {
                             text.clear();
                             pending.clear();
-                            redraw(control, guardian, tty, prefix, &text, deadline)?;
+                            redraw(control, guardian, tty, prefix, &text, deadline, watched)?;
                         },
                         value => {
                             if text.len() >= INPUT_LIMIT { return Err(Failure::Refused("operator line exceeds 1 MiB")); }
@@ -453,11 +609,11 @@ mod unix {
                             pending.push(value);
                             match std::str::from_utf8(&pending) {
                                 Ok(_) => {
-                                    send(control, guardian, tty, &escaped_echo(&pending), deadline)?;
+                                    send_watch(control, guardian, tty, &escaped_echo(&pending), deadline, watched)?;
                                     pending.clear();
                                 },
                                 Err(e) if e.error_len().is_some() || pending.len() > 4 => {
-                                    send(control, guardian, tty, b"[invalid UTF-8]", deadline)?;
+                                    send_watch(control, guardian, tty, b"[invalid UTF-8]", deadline, watched)?;
                                     pending.clear();
                                 },
                                 Err(_) => {},
@@ -469,8 +625,34 @@ mod unix {
                 }
             }
         }
+        #[cfg(all(target_os = "linux", not(test)))]
+        #[derive(Clone)]
+        pub(crate) struct RetainedInput(Original);
+
+        #[cfg(all(target_os = "linux", not(test)))]
+        impl RetainedInput {
+            pub(crate) fn capture(tty: &File) -> std::result::Result<Self, String> {
+                Original::capture(tty).map(Self).map_err(|_| "operator input state unavailable".into())
+            }
+            pub(crate) fn restore(&self, tty: &File) -> std::result::Result<(), String> {
+                self.0.apply(tty, false).map_err(|_| "operator restoration unconfirmed")?;
+                if unsafe { tcflush(tty.as_raw_fd(), INPUT_QUEUE) } != 0 { return Err("operator input flush unconfirmed".into()); }
+                Ok(())
+            }
+            pub(crate) fn read(&self, control: &File, guardian: &File, tty: &mut File,
+                watched: &[i32], deadline: Instant) -> std::result::Result<Option<Vec<u8>>, String> {
+                self.0.apply(tty, true).map_err(|_| "operator input mode unavailable")?;
+                let result = (|| {
+                    if unsafe { tcflush(tty.as_raw_fd(), INPUT_QUEUE) } != 0 { return Err(Failure::Refused("cannot clear prior input")); }
+                    send_watch(control, guardian, tty, b"approval> ", deadline, watched)?;
+                    line(control, guardian, tty, b"approval> ", deadline, watched)
+                })();
+                self.restore(tty)?;
+                result.map_err(|_| "operator input unconfirmed".into())
+            }
+        }
         fn reader(control: &File, guardian: &File, tty: &mut File, output: &mut File,
-                  original: &Original, token: &[u8; 16], display: &[u8], deadline: Instant) -> Result<()> {
+                  original: &Original, token: &[u8; 16], display: &[u8], deadline: Instant, wall: Option<u64>) -> Result<()> {
             original.apply(tty, true)?;
             let result = (|| {
                 if unsafe { tcflush(tty.as_raw_fd(), INPUT_QUEUE) } != 0 {
@@ -478,10 +660,13 @@ mod unix {
                 }
                 let mut rendered = Vec::with_capacity(display.len() + display.len() / 16);
                 for byte in display { if *byte == b'\n' { rendered.push(b'\r'); } rendered.push(*byte); }
-                send(control, guardian, tty, &rendered, deadline)?;
+                send_display(control, guardian, tty, &rendered, deadline, wall)?;
+                display_current(wall)?;
                 send(control, guardian, output, &bytes(b'y', token), deadline)?;
-                let prefix = display.rsplit(|b| *b == b'\n').next().unwrap_or(&[]);
-                let (kind, text) = match line(control, guardian, tty, prefix, deadline)? {
+                if wall.is_some() { await_release(guardian, deadline)?; }
+                let prefix = if wall.is_some() { &b"approval> "[..] }
+                    else { display.rsplit(|b| *b == b'\n').next().unwrap_or(&[]) };
+                let (kind, text) = match line(control, guardian, tty, prefix, deadline, &[])? {
                     Some(text) => (b'i', text),
                     None => (b'f', Vec::new()),
                 };
@@ -515,11 +700,11 @@ mod unix {
                 }
                 let mut tty = terminal()?;
                 let _lock = channel_lock()?;
-                let (nonce, display) = request(&mut control, deadline)?; token = nonce;
+                let (nonce, display, wall) = request(&mut control, deadline)?; token = nonce;
                 let original = Original::capture(&tty)?;
                 let _restore = Restore { original: original.clone(), tty: tty.try_clone().map_err(|_| Failure::Refused("cannot retain operator restoration descriptor"))? };
                 let (mut events, mut emitter) = pair()?;
-                let (guardian, keep_guardian) = pair()?;
+                let (guardian, mut keep_guardian) = pair()?;
                 #[cfg(target_os = "linux")]
                 let child_signal = 17;
                 #[cfg(target_os = "macos")]
@@ -532,7 +717,7 @@ mod unix {
                 if child == 0 {
                     drop(events); drop(keep_guardian);
                     if unsafe { setpgid(0, 0) } != 0 { unsafe { _exit(1); } }
-                    let outcome = reader(&control, &guardian, &mut tty, &mut emitter, &original, &token, &display, deadline);
+                    let outcome = reader(&control, &guardian, &mut tty, &mut emitter, &original, &token, &display, deadline, wall);
                     let restored = original.apply(&tty, false).is_ok();
                     let flushed = unsafe { tcflush(tty.as_raw_fd(), INPUT_QUEUE) } == 0;
                     if let Err(Failure::Refused(reason)) = &outcome {
@@ -559,6 +744,8 @@ mod unix {
                 let mut cancelled = !ready_sent;
                 let mut stopped = false;
                 let mut exited = false;
+                let mut displayed = false;
+                let mut awaiting_release = wall.is_some();
                 loop {
                     if !exited {
                         let waited = unsafe { waitpid(child, &mut status, 1) };
@@ -568,7 +755,16 @@ mod unix {
                             return Err(Failure::Refused("operator reader exit unconfirmed"));
                         }
                     }
-                    if cancelled || Instant::now() >= deadline || lost(&control) {
+                    if awaiting_release && displayed && lost(&control) {
+                        let mut release = [0; 5];
+                        if read_exact(&mut control, &mut release, deadline).is_ok() && release == [b'U', 0, 0, 0, 0] {
+                            if keep_guardian.write_all(b"u").is_err() { cancelled = true; }
+                            awaiting_release = false;
+                        } else { cancelled = true; }
+                    } else if (!awaiting_release || !displayed) && lost(&control) {
+                        cancelled = true;
+                    }
+                    if cancelled || Instant::now() >= deadline {
                         cancelled = true;
                         if !exited { unsafe { kill(child, 9); } }
                     }
@@ -591,6 +787,7 @@ mod unix {
                             if write(&control, &mut output, &frame, deadline).is_err() {
                                 cancelled = true; if !exited { unsafe { kill(child, 9); } } break;
                             }
+                            if frame[0] == b'y' { displayed = true; }
                         }
                     }
                 }
@@ -752,6 +949,13 @@ mod tests {
             input.write_all(&[if self.v2 { b'd' } else { b'D' }]).unwrap(); input.write_all(&(body.len() as u32).to_be_bytes()).unwrap();
             input.write_all(&body).unwrap(); input.flush().unwrap();
         }
+        fn guarded_display(&mut self, text: &[u8], deadline: u64) {
+            assert!(self.v2);
+            let mut body = NONCE.to_vec(); body.extend_from_slice(&deadline.to_be_bytes()); body.extend_from_slice(text);
+            let input = self.input.as_mut().unwrap();
+            input.write_all(&[b'D']).unwrap(); input.write_all(&(body.len() as u32).to_be_bytes()).unwrap();
+            input.write_all(&body).unwrap(); input.flush().unwrap();
+        }
         fn frame(&mut self) -> (u8, Vec<u8>) {
             assert!(ready(&self.output, if self.v2 { 30_000 } else { 3_000 }), "native control response timed out");
             let mut header = [0; 5]; self.output.read_exact(&mut header).unwrap();
@@ -804,6 +1008,127 @@ mod tests {
         if std::env::var("IPSE_OPERATOR_VERSION").as_deref() == Ok("2") { args.push("v2".into()); }
         run(&args).unwrap();
         std::process::exit(0);
+    }
+    #[test]
+    fn guarded_display_with_elapsed_deadline_emits_no_terminal_bytes() {
+        let mut probe = Probe::v2();
+        probe.guarded_display(b"SYNTHETIC_GUARDED_SECRET", 1);
+        let (kind, _) = probe.frame(); assert_eq!(kind, b'g');
+        let mut saw_error = false;
+        loop {
+            let (kind, _) = probe.frame();
+            assert_ne!(kind, b'y');
+            if kind == b'e' { saw_error = true; }
+            if kind == b'R' { break; }
+        }
+        assert!(saw_error);
+        let mut visible = Vec::new();
+        let until = Instant::now() + Duration::from_millis(100);
+        while Instant::now() < until && ready(&probe.tty.master, 10) {
+            let mut chunk = [0; 1024];
+            match probe.tty.master.read(&mut chunk) {
+                Ok(0) => break,
+                Ok(n) => visible.extend_from_slice(&chunk[..n]),
+                Err(error) if error.kind() == std::io::ErrorKind::WouldBlock => break,
+                Err(error) => panic!("terminal read: {error}"),
+            }
+        }
+        assert!(!visible.windows(b"SYNTHETIC_GUARDED_SECRET".len()).any(|part| part == b"SYNTHETIC_GUARDED_SECRET"));
+        probe.done();
+    }
+    #[test]
+    fn guarded_review_waits_for_release_before_reading_input() {
+        let mut probe = Probe::v2();
+        let deadline = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_millis() as u64 + 5000;
+        probe.guarded_display(b"SYNTHETIC_REVIEW> ", deadline);
+        probe.displayed();
+        probe.tty.master.write_all(b"confirmed\n").unwrap();
+        assert!(!ready(&probe.output, 150), "input was consumed before release");
+        probe.input.as_mut().unwrap().write_all(&[b'U', 0, 0, 0, 0]).unwrap();
+        let (kind, body) = probe.frame(); assert_eq!(kind, b'i');
+        assert_eq!(&body[..16], &NONCE); assert_eq!(&body[16..], b"confirmed");
+        assert_eq!(probe.frame(), (b'R', NONCE.to_vec()));
+        probe.done();
+    }
+    #[test]
+    fn guarded_review_redraw_after_release_never_repeats_protected_tail() {
+        let mut probe = Probe::v2();
+        let deadline = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_millis() as u64 + 5000;
+        let secret = b"SYNTHETIC_PRIVATE_TAIL>";
+        probe.guarded_display(secret, deadline);
+        probe.displayed();
+        let mut before = Vec::new();
+        while !before.windows(secret.len()).any(|part| part == secret) {
+            assert!(ready(&probe.tty.master, 1000));
+            let mut chunk = [0; 1024]; let n = probe.tty.master.read(&mut chunk).unwrap();
+            assert!(n > 0 && before.len() + n <= 8192);
+            before.extend_from_slice(&chunk[..n]);
+        }
+        probe.input.as_mut().unwrap().write_all(&[b'U', 0, 0, 0, 0]).unwrap();
+        probe.tty.master.write_all(b"x\x7f").unwrap();
+        let mut after = Vec::new();
+        while !after.windows(b"approval> ".len()).any(|part| part == b"approval> ") {
+            assert!(ready(&probe.tty.master, 1000));
+            let mut chunk = [0; 1024]; let n = probe.tty.master.read(&mut chunk).unwrap();
+            assert!(n > 0 && after.len() + n <= 8192);
+            after.extend_from_slice(&chunk[..n]);
+        }
+        assert!(!after.windows(secret.len()).any(|part| part == secret));
+        probe.tty.master.write_all(b"\n").unwrap();
+        assert_eq!(probe.frame(), (b'i', NONCE.to_vec()));
+        assert_eq!(probe.frame(), (b'R', NONCE.to_vec()));
+        probe.done();
+    }
+    #[test]
+    fn guarded_review_bad_or_lost_release_restores_and_refuses_input() {
+        for frame in [Some(&[b'C', 0, 0, 0, 0][..]), None,
+                      Some(&[b'X', 0, 0, 0, 0][..]), Some(&[b'U', 0][..])] {
+            let mut probe = Probe::v2();
+            let original = terminal_state(&probe.tty);
+            let deadline = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_millis() as u64 + 5000;
+            probe.guarded_display(b"SYNTHETIC_REVIEW> ", deadline);
+            probe.displayed();
+            probe.tty.master.write_all(b"uncommitted input\n").unwrap();
+            if let Some(bytes) = frame { probe.input.as_mut().unwrap().write_all(bytes).unwrap(); }
+            if frame.is_none() || frame == Some(&[b'U', 0][..]) { probe.input.take(); }
+            assert_eq!(probe.frame(), (b'c', NONCE.to_vec()));
+            assert_eq!(probe.frame(), (b'R', NONCE.to_vec()));
+            probe.done();
+            assert_eq!(terminal_state(&probe.tty), original);
+            probe.tty.raw();
+            assert!(!ready(&probe.tty.slave, 50), "unconfirmed terminal input survived cleanup");
+        }
+    }
+    #[test]
+    fn guarded_review_reader_loss_before_release_restores_terminal() {
+        let mut probe = Probe::v2();
+        let original = terminal_state(&probe.tty);
+        let deadline = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_millis() as u64 + 5000;
+        probe.guarded_display(b"SYNTHETIC_REVIEW> ", deadline);
+        probe.displayed();
+        probe.tty.master.write_all(b"uncommitted input\n").unwrap();
+        assert_eq!(unsafe { kill(probe.reader.unwrap(), 9) }, 0);
+        assert_eq!(probe.frame(), (b'c', NONCE.to_vec()));
+        assert_eq!(probe.frame(), (b'R', NONCE.to_vec()));
+        probe.done();
+        assert_eq!(terminal_state(&probe.tty), original);
+        probe.tty.raw();
+        assert!(!ready(&probe.tty.slave, 50), "reader loss left terminal input queued");
+    }
+    #[test]
+    fn guarded_review_guardian_loss_before_release_is_unconfirmed() {
+        let mut probe = Probe::v2();
+        let original = terminal_state(&probe.tty);
+        let deadline = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_millis() as u64 + 5000;
+        probe.guarded_display(b"SYNTHETIC_REVIEW> ", deadline);
+        probe.displayed();
+        probe.tty.master.write_all(b"uncommitted input\n").unwrap();
+        assert_eq!(unsafe { kill(probe.child.id() as i32, 9) }, 0);
+        assert_eq!(probe.frame(), (b'r', NONCE.to_vec()));
+        wait_restored(&probe.tty, &original);
+        assert!(!probe.child.wait().unwrap().success());
+        probe.tty.raw();
+        assert!(!ready(&probe.tty.slave, 50), "guardian loss left terminal input queued");
     }
     #[test]
     fn matching_terminal_displays_exact_bytes_before_returning_typed_input() {

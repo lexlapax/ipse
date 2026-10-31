@@ -1,0 +1,23 @@
+Running ExUnit with seed: 126408, max_cases: 8
+Excluding tags: [:test]
+Including tags: [line: 140, line: 187, line: 242]
+
+
+09:48:05.244 [error] GenServer #PID<0.187.0> terminating
+** (stop) :redacted
+    (ipse 0.1.0) lib/ipse/session.ex:4681: Ipse.Session.journal_failed/2
+    (ipse 0.1.0) lib/ipse/session/turn.ex:102: Ipse.Session.Turn.commit_prompt/4
+    (stdlib 8.1) gen_server.erl:2470: :gen_server.try_handle_call/4
+    (stdlib 8.1) gen_server.erl:2499: :gen_server.handle_msg/3
+    (stdlib 8.1) proc_lib.erl:333: :proc_lib.init_p_do_apply/3
+Last message (from #PID<0.199.0>): :redacted
+State: %{id: "36ba2b2c0daee432f6c04558118c0836", phase: :idle}
+Client #PID<0.199.0> is alive
+
+    (stdlib 8.1) gen.erl:262: :gen.do_call/4
+    (elixir 1.20.4) lib/gen_server.ex:1180: GenServer.call/3
+    test/ipse/session/native_journal_fencing_test.exs:161: anonymous fn/2 in Ipse.Session.NativeJournalFencingTest."test native owner death before append leaves no journal write under a contender"/1
+...
+Finished in 0.4 seconds (0.2s on load, 0.00s async, 0.1s sync)
+
+Result: 3 passed, 5 excluded

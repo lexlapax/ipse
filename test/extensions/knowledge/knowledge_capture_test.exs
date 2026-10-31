@@ -30,7 +30,11 @@ defmodule IpseKnowledge.KnowledgeCaptureTest do
 
     Map.merge(ids, %{
       "version" => 1,
-      "kind" => if(origin == "assistant_proposal", do: "answer.original", else: "input.original"),
+      "kind" => case origin do
+        "assistant_proposal" -> "answer.original"
+        "native_operator_assertion" -> "input.assertion.ordinary"
+        _ -> "input.original"
+      end,
       "origin" => origin,
       "coverage" => "available",
       "text" => text,
@@ -56,7 +60,7 @@ defmodule IpseKnowledge.KnowledgeCaptureTest do
       })
 
   defp respond(state, value),
-    do: K.handle("host.actions", %{"outcome" => %{"status" => "ok", "value" => value}}, state)
+    do: K.handle("host.actions", %{"operation_id" => String.duplicate("a", 32), "outcome" => %{"status" => "ok", "value" => value}}, state)
 
   defp request({:ok, %{"kind" => "host_call", "request" => request}, state}), do: {request, state}
 
@@ -65,7 +69,7 @@ defmodule IpseKnowledge.KnowledgeCaptureTest do
 
   defp value({:ok, %{"kind" => "result", "value" => value}, state}), do: {value, state}
 
-  defp start(origin \\ "interactive_operator", args \\ attrs()) do
+  defp start(origin \\ "native_operator_assertion", args \\ attrs()) do
     {:ok, state} = K.init(options())
 
     {%{"op" => "source.read"}, state} =
@@ -80,7 +84,7 @@ defmodule IpseKnowledge.KnowledgeCaptureTest do
     state
   end
 
-  test "native exact capture carries public stable proof into a create-only commit" do
+  test "reviewed native capture carries public stable proof into a create-only commit" do
     state = start()
 
     {%{"request" => %{"key" => "note." <> _}}, state} =
@@ -96,7 +100,7 @@ defmodule IpseKnowledge.KnowledgeCaptureTest do
     assert change["expected_revision"] == 0
 
     assert change["value"]["evidence"]["sources"] |> hd() |> Map.fetch!("origin") ==
-             "interactive_operator"
+             "native_operator_assertion"
 
     assert commit["proofs"] == [
              %{"handle" => "synthetic.handle", "quote" => "Acme has owner Alex"}
@@ -106,6 +110,19 @@ defmodule IpseKnowledge.KnowledgeCaptureTest do
 
     {%{"status" => "saved", "category" => "ordinary"}, %{phase: :idle}} =
       value(respond(state, %{"generation" => 8}))
+  end
+
+  test "an operator-event fragment queues a proposal instead of a literal note" do
+    {:ok, state} = K.init(options())
+    {_, state} = request(K.handle("invoke.tool", %{"id" => "capture", "arguments" => attrs()}, state))
+    full = "The report says: Acme has owner Alex"
+    page = %{page("interactive_operator") | "text" => full, "content_sha256" => Ipse.JSON.sha256(full), "original_bytes" => byte_size(full)}
+    {_, state} = request(respond(state, page))
+    quote = attrs()["source"]["quote"]
+    start = byte_size("The report says: ")
+    receipt = %{quote_receipt(page) | "start_byte" => start, "end_byte" => start + byte_size(quote), "quote_sha256" => Ipse.JSON.sha256(quote)}
+    {_, state} = request(respond(state, receipt))
+    {%{"request" => %{"key" => "pending." <> _}}, _} = request(respond(state, %{"record" => nil}))
   end
 
   test "duplicate capture never overwrites or renews an existing record" do
@@ -139,17 +156,15 @@ defmodule IpseKnowledge.KnowledgeCaptureTest do
       )
   end
 
-  test "assistant claims remain pending with bounded retained queue and no hidden pruning" do
+  test "assistant claims remain pending and leave queue capacity to the protected host" do
     state = start("assistant_proposal")
 
     {%{"request" => %{"key" => "pending." <> _}}, state} =
       request(respond(state, %{"record" => nil}))
 
-    {%{"request" => %{"op" => "scan", "after" => "pending.", "generation" => 5}}, state} =
-      request(respond(state, %{"record" => nil, "generation" => 5}))
-
-    {commit, _} = request(respond(state, %{"records" => [], "next" => nil}))
+    {commit, _} = request(respond(state, %{"record" => nil, "generation" => 5}))
     assert commit["op"] == "collection.managed"
+    assert commit["request"]["expected_generation"] == 5
     assert {:ok, commit["recipe_sha256"]} ==
              Ipse.Extension.canonical_digest([IpseKnowledge.Knowledge.Contracts.recipe("pending")])
     [change] = commit["request"]["changes"]
@@ -157,21 +172,6 @@ defmodule IpseKnowledge.KnowledgeCaptureTest do
     assert change["value"]["state"] == "pending"
     assert change["value"]["expires_at_ms"] - change["value"]["created_at_ms"] == 604_800_000
 
-    rows =
-      for n <- 1..4,
-          do: %{
-            "key" => "pending." <> Integer.to_string(n),
-            "value" => %{"text" => "old proposal"}
-          }
-
-    state =
-      Enum.reduce(1..15, state, fn _, state ->
-        {_, state} = request(respond(state, %{"records" => rows, "next" => "pending.4"}))
-        state
-      end)
-
-    {%{"status" => "refused", "code" => "proposal_capacity"}, _} =
-      value(respond(state, %{"records" => rows, "next" => "pending.4"}))
   end
 
   test "conflict and unknown effects return terminal evidence without retrying" do
@@ -218,13 +218,14 @@ defmodule IpseKnowledge.KnowledgeCaptureTest do
   """
 
   test "bounded capture continuations run in an independent VM" do
+    modules = [IpseKnowledge.Profiles, IpseKnowledge.Knowledge]
+    before = Enum.map(modules, &:code.is_loaded/1)
     sdk = Application.app_dir(:ipse, "ebin")
     paths = Path.wildcard(Path.join(Path.dirname(Path.dirname(sdk)), "*/ebin"))
     args = ["--erl", "+S 2:2"] ++ Enum.flat_map(paths, &["-pa", &1]) ++ ["-e", @suite]
     {output, status} = System.cmd(System.find_executable("elixir"), args, stderr_to_stdout: true)
     assert status == 0, output
-    assert output =~ "6 passed"
-    refute :code.is_loaded(IpseKnowledge.Profiles)
-    refute :code.is_loaded(IpseKnowledge.Knowledge)
+    assert output =~ "7 passed"
+    assert Enum.map(modules, &:code.is_loaded/1) == before
   end
 end

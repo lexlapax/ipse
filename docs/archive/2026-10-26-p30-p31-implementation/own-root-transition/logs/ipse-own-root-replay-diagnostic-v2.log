@@ -1,0 +1,1 @@
+ROOT_DIAGNOSTIC: %{cached: 3, deps: 1, writes: 1, candidate: :ok, write_deps: [3]}

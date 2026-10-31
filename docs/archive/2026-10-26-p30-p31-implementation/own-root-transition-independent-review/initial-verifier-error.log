@@ -1,0 +1,5 @@
+The first reviewer verifier checked the manifest/runtime entries, then failed
+at canonical JSON digest because it loaded only the ipse ebin and omitted the
+existing Jason dependency ebin. The verifier now loads all previously hash-checked
+runtime ebins and decodes journal null with Jason's native nil convention. No
+application, candidate test, Saved replay or effect was started.

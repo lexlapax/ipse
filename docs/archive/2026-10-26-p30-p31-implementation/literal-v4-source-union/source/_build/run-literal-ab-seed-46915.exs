@@ -1,0 +1,10 @@
+graph = Path.expand("_build/retention-cli-final-switch-20261028/lib")
+root = "/tmp/ipse-literal-v4-ab-46915"
+File.mkdir_p!(root)
+File.chmod!(root, 0o700)
+driver = Path.join(root, "pty")
+{"", 0} = System.cmd("rustc", ["--edition=2021", "-D", "warnings", "test/support/operator_pty.rs", "-o", driver], stderr_to_stdout: true)
+paths = Path.wildcard(Path.join(graph, "*/ebin")) |> Enum.flat_map(&["-pa", &1])
+{output, status} = System.cmd(driver, ["--assertion", System.find_executable("elixir"), "--erl", "+S 2:2"] ++ paths ++ [Path.expand("test/support/managed_literal_ab_seed.exs"), root, "seed"], stderr_to_stdout: true)
+IO.write(output)
+System.halt(status)

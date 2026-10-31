@@ -16,6 +16,8 @@ defmodule Ipse.Development.ManagedStorageWorkloadTest do
 
     for category <- ~w(ordinary preference current) do
       fixture = W.fixture(1, category)
+      assert String.starts_with?(fixture.key, "pending.")
+      assert fixture.value["kind"] == "proposal"
       assert byte_size(fixture.value["text"]) == 1024
       assert byte_size(fixture.value["reason"]) == 256
       assert byte_size(Jason.encode!(fixture.value)) <= 6144
@@ -53,6 +55,7 @@ defmodule Ipse.Development.ManagedStorageWorkloadTest do
 
   test "typed outcome control keeps actual metadata text short and ordinary" do
     fixture = W.typed_fixture()
+    assert String.starts_with?(fixture.key, "note.")
     assert fixture.proof["origin"] == "typed_host_outcome"
     assert fixture.proof["kind"] == "tool.outcome"
     assert fixture.value["category"] == "ordinary"
@@ -72,7 +75,11 @@ defmodule Ipse.Development.ManagedStorageWorkloadTest do
       "original_request_sha256" => Ipse.JSON.digest([options.request])
     }
 
-    read = fn _ -> {:ok, nil} end
+    read = fn
+      %{"op" => "pending_summary"} -> {:ok, %{"bytes" => 0, "count" => 0}}
+      _ -> {:ok, nil}
+    end
+
     assert {:ok, _, _} = Ipse.Extension.Collection.Normalizer.normalize(witness, read, options)
 
     for change <- [

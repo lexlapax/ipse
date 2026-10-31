@@ -1,0 +1,48 @@
+Running ExUnit with seed: 943084, max_cases: 8
+Excluding tags: [:native_sandbox, :macos_sandbox, :macos_filesystem, :memory_scope]
+
+
+
+  1) test existing-only management inspection leaves missing and pending state unchanged (Ipse.Extension.ConsentManagementReadTest)
+     _build/management-snapshot-read-sol-20261029/read-source/test/ipse/extension/consent_management_read_test.exs:113
+     ** (RuntimeError) ExUnit setup callback in Ipse.Extension.ConsentManagementReadTest is trying to set reserved field :file to "/tmp/ipse-management-snapshot-c2e623767c598a716ab22640cc8f2877/control/c578cea19f767999426b45ef4810170c7d4716f8d496f15684d928432f291798/control.json"
+     stacktrace:
+       (ex_unit 1.20.4) lib/ex_unit/callbacks.ex:769: ExUnit.Callbacks.raise_merge_reserved!/4
+       (stdlib 8.1) maps.erl:405: :maps.merge_with_1/3
+       _build/management-snapshot-read-sol-20261029/read-source/test/ipse/extension/consent_management_read_test.exs:1: Ipse.Extension.ConsentManagementReadTest.__ex_unit__/2
+
+
+
+  2) test revoked snapshot can be inspected but stale and substituted management pins cannot enter (Ipse.Extension.ConsentManagementReadTest)
+     _build/management-snapshot-read-sol-20261029/read-source/test/ipse/extension/consent_management_read_test.exs:82
+     ** (RuntimeError) ExUnit setup callback in Ipse.Extension.ConsentManagementReadTest is trying to set reserved field :file to "/tmp/ipse-management-snapshot-50826b5f49d1cc1620c7ca35b13e89e2/control/c578cea19f767999426b45ef4810170c7d4716f8d496f15684d928432f291798/control.json"
+     stacktrace:
+       (ex_unit 1.20.4) lib/ex_unit/callbacks.ex:769: ExUnit.Callbacks.raise_merge_reserved!/4
+       (stdlib 8.1) maps.erl:405: :maps.merge_with_1/3
+       _build/management-snapshot-read-sol-20261029/read-source/test/ipse/extension/consent_management_read_test.exs:1: Ipse.Extension.ConsentManagementReadTest.__ex_unit__/2
+
+
+
+  3) test expired capture remains ineligible while its exact management snapshot retains the native lock (Ipse.Extension.ConsentManagementReadTest)
+     _build/management-snapshot-read-sol-20261029/read-source/test/ipse/extension/consent_management_read_test.exs:41
+     ** (RuntimeError) ExUnit setup callback in Ipse.Extension.ConsentManagementReadTest is trying to set reserved field :file to "/tmp/ipse-management-snapshot-ec475aeb53859a3552a36cc02e97f4e6/control/c578cea19f767999426b45ef4810170c7d4716f8d496f15684d928432f291798/control.json"
+     stacktrace:
+       (ex_unit 1.20.4) lib/ex_unit/callbacks.ex:769: ExUnit.Callbacks.raise_merge_reserved!/4
+       (stdlib 8.1) maps.erl:405: :maps.merge_with_1/3
+       _build/management-snapshot-read-sol-20261029/read-source/test/ipse/extension/consent_management_read_test.exs:1: Ipse.Extension.ConsentManagementReadTest.__ex_unit__/2
+
+
+
+  4) test helper loss with a new owner cannot publish the old callback snapshot (Ipse.Extension.ConsentManagementReadTest)
+     _build/management-snapshot-read-sol-20261029/read-source/test/ipse/extension/consent_management_read_test.exs:151
+     ** (RuntimeError) ExUnit setup callback in Ipse.Extension.ConsentManagementReadTest is trying to set reserved field :file to "/tmp/ipse-management-snapshot-629a0c543c6afa140598ec3c5a135c7d/control/c578cea19f767999426b45ef4810170c7d4716f8d496f15684d928432f291798/control.json"
+     stacktrace:
+       (ex_unit 1.20.4) lib/ex_unit/callbacks.ex:769: ExUnit.Callbacks.raise_merge_reserved!/4
+       (stdlib 8.1) maps.erl:405: :maps.merge_with_1/3
+       _build/management-snapshot-read-sol-20261029/read-source/test/ipse/extension/consent_management_read_test.exs:1: Ipse.Extension.ConsentManagementReadTest.__ex_unit__/2
+
+
+Finished in 0.3 seconds (0.1s on load, 0.00s async, 0.1s sync)
+
+Result: 0/4 passed
+Failed: 4 tests

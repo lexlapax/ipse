@@ -1,0 +1,64 @@
+{
+  "clock_controls": {
+    "actual_native_turnover_executed": false,
+    "first_temporal_update_after_day_90": true,
+    "ordinary_day_90_boundary": true,
+    "persistent_preference": true,
+    "pinned_history_persistent": true,
+    "pure_policy_only": true,
+    "qualification": false,
+    "recall_does_not_renew_deadline": true,
+    "saved_downgrade_deadline_not_renewed": true,
+    "saved_forget_suppresses_recapture": true,
+    "temporal_support_365_days_after_supersession": true
+  },
+  "manifest": {
+    "actual_native_turnover_executed": false,
+    "checkpoints": [
+      30,
+      90,
+      365
+    ],
+    "cycle_semantics": "update/correct/forget mix and targets require a frozen typed adapter before execution",
+    "day_90_burst_multiplier": 2,
+    "epoch_ms": 1800000000000,
+    "implemented_typed_increment": "exact native-reviewed signed literal forget",
+    "initial_persistent": {
+      "current": 50,
+      "pin": 100,
+      "preference": 50
+    },
+    "kind": "proposed_managed_v3_turnover",
+    "native_limits": {
+      "control_reserved_bytes": 23068672,
+      "data_bytes": 25165824,
+      "operations": 32768,
+      "records": 8192,
+      "total_bytes": 67108864,
+      "value_bytes": 6144
+    },
+    "offline_days": [
+      24,
+      25,
+      26,
+      27,
+      28,
+      29,
+      30
+    ],
+    "qualification": false,
+    "remaining_native_operations": [
+      "pin",
+      "retention_change",
+      "correction",
+      "temporal_supersession",
+      "expiry_collect",
+      "suppression_compaction",
+      "import_adoption"
+    ],
+    "schedule_sha256": "4115b9942b1fdf076e97ce7390a5eed1c7bac332d8e2c91343964e5027a103c4",
+    "separate_cycles": 10000,
+    "turns_per_day": 40,
+    "version": 1
+  }
+}

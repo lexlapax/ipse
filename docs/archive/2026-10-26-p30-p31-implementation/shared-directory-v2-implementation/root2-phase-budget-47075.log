@@ -1,0 +1,9 @@
+Running ExUnit with seed: 47075, max_cases: 1
+Excluding tags: [:test]
+Including tags: [:generation_paged_phase_budgets]
+
+GENERATION_PAGED_PHASE_BUDGETS {"manifest":{"invocations":23,"maximum_effects":5,"maximum_frame_bytes":13622,"maximum_reads":280,"total_effects":90},"maximum_summary_bytes":43748,"maximum_summary_packed_bytes":65534,"merge":{"invocations":2,"maximum_effects":6,"maximum_frame_bytes":13619,"maximum_reads":112,"total_effects":10},"model_calls":0,"native_operations":0}
+.
+Finished in 61.3 seconds (0.07s on load, 0.00s async, 61.2s sync)
+
+Result: 1 passed, 7 excluded

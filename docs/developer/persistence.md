@@ -40,12 +40,99 @@ protected outer invocation. Current protected permission is checked separately
 before every live effect. See the [collection SDK](collection-sdk.md) for the
 receipt versions and the read-only outer's categorical mutation denial.
 
-The owner still controls recovery order: acquire the session lock, reload and
-validate the locked journal and its sources, repair only a permitted torn tail,
-reload, then reconstruct pure facts. Afterward, event/subscription question
-recovery resolves its source pages. Workspace/skill discovery and writer startup
-remain owner-held IO. A successful pure reconstruction alone does not certify
+The owner controls recovery order: acquire the session lock, reload the locked
+journal, validate the saved prefix and its checked sources and budget evidence,
+and verify that a pending question can receive operator input and has valid
+event/subscription source checkpoints. These checks
+precede recording a new release owner or repairing a permitted torn tail, so
+their refusals leave the journal unchanged. Then reload and reconstruct pure
+facts and recheck question source pages. Other later checks do not have the same
+pre-mutation guarantee. Workspace and skill discovery and writer startup remain
+owner-held IO. A successful pure reconstruction alone does not certify
 those external sources or authorize a pending effect.
+For a fresh Session, the release-owner marker precedes budget-ledger creation;
+there is no existing recovery evidence to validate first.
+
+New Session headers also record their original canonical directory and file
+identity through `Ipse.Journal.SourceOrigin`. Creation derives that binding from
+the newly opened descriptor before writing the header. Locked resume compares
+it with the actual file before tail repair; Writer checks its own descriptor
+before accepting appends. Pure reconstruction validates only the recorded shape.
+A copied or replaced journal can remain readable for diagnosis without becoming
+the original live source. A directory alias that resolves to the same canonical
+location does not create a different source.
+
+For a fresh Linux Session, the host acquires the native Session lock before
+creating the header. Its lock owner exclusively creates a pending inode and
+returns its identity; `Journal` checks that identity while constructing the
+bounded header. The same native owner writes and syncs the record, publishes
+it without replacing another journal, and syncs the directory. If startup
+loses its owner before publication, the pending file is not a saved Session and
+is never automatically replayed. A lost publication acknowledgment is unknown:
+inspect the original state and resume an actually published journal explicitly
+after the lock is free. Non-Linux fresh startup retains its earlier ordering;
+the Linux tests do not establish the same guarantee there.
+
+The fresh Linux header also records the retained lock's device and inode before
+any journal work. For this layout, Writer retains JSON encoding, record and
+quota admission, while the native process holding that same flock checks the
+original journal identity and expected size, appends the bounded opaque line
+and syncs it before replying. Torn-tail repair uses a read-only tracked peer to
+derive the repair and the same native lock owner to perform and sync it. A lost
+reply remains unknown and is not automatically replayed. Inactive and legacy
+write/repair entry points refuse this layout; ordinary older journals retain
+their legacy behavior.
+
+Standalone knowledge management uses the same native header and append owner.
+It chooses the ID and acquires the lock before creating its journal, then tracks
+Writer in `header_v1` mode. Its `native_journal_layout` marker selects native-only
+mutation without claiming the Session signed-release protocol. Both this marker
+and the Session release marker make legacy creation, inactive append, legacy
+Writer and unfenced repair refuse. Read-only loading remains available. The
+locked constructor performs no directory creation or chmod: its caller supplies
+an admitted private directory and the actual retained native owner validates it.
+Management refuses an existing public directory or symlink unchanged. Header or
+Writer startup uncertainty and unconfirmed close/release cannot become a settled
+operation result. A header alone is not a completed management action.
+
+The host uses one monotonic admission and response deadline across the header
+exchange. Synchronous host preparation and native filesystem calls can block
+past that deadline; it is not a wall-clock bound on the whole operation. A
+timeout is unconfirmed: a native call already in progress can finish later
+while its helper still holds the lock. Close stops the Writer, obtains the
+framed lock-release result, and reports unconfirmed cleanup if either is not
+confirmed. Because the Writer cannot append after release, the lifecycle close
+record still says `cleanup_confirmed: false`. Fresh Linux Sessions write a
+separate owner-bound release intent while locked; after the exact framed release
+and cleanup are confirmed, the owner signs it and a pinned native helper writes,
+syncs and publishes an exclusive private sidecar. A missing publication reply
+leaves the close outcome unconfirmed, even when the file later exists. Diagnosis
+can report `signed_release_claim` after acquiring the Session lock and checking
+the latest owner, source, lock, helper and signature. This establishes the trusted
+signer's claim; it does not change an earlier lifecycle record or prove that a
+lost publication acknowledgment was received. A later owner marker invalidates
+current selection of the old claim. On Linux, an opted-in journal with a recorded
+header lock identity or prior release intent can resume with a framed lock opened
+without creating a lock file; its retained inode must match every applicable
+recorded identity before startup proceeds. Its close records a new claim for the
+resumed owner. Older opted-in journals missing both identities refuse active
+resume; unmarked older journals retain the legacy lock protocol. A stopped lifecycle
+recorder, missing sidecar or unverifiable identity leaves the claim unknown.
+
+SourceIndex incorporates the recorded origin digest into each new source version
+without exposing the private location in worker pages or proofs. The same
+committed occurrence and original file reproduce its version; another origin
+cannot revalidate that proof. Legacy headers keep their historical version rule
+and acquire no binding during resume. They remain conversation history, but the
+live collection-source callback refuses their protected publication authority.
+The protected [managed reader](collection-sdk.md) can now resolve inactive
+original Session sources in the consuming Session's selected state directory,
+under their retained ownership locks. This does not provide current recall or
+authority for later inference. The trust boundary remains cooperative storage:
+an arbitrary same-user writer can rewrite files and recorded facts coherently.
+A live source query rechecks the retained file's identity, expected length,
+canonical directory and private parent before returning cached data. Appends
+repeat these checks after sync, withholding success if the origin changed.
 
 Try the boundary in `iex -S mix` with a synthetic empty journal:
 
@@ -65,7 +152,8 @@ File.rm_rf!(scratch)
 
 Then follow the interrupted-write case in `test/ipse/session/recovery_test.exs` and the
 pending-question cases in `test/ipse/tools/questions_integration_test.exs`. Verify that an idle
-resume preserves the journal and workspace, and that a saved question still
+resume preserves the existing journal prefix and workspace; release-receipt
+layouts append a new owner marker. A saved question still
 requires a fresh explicit answer. `Questions.tool_result/3` supplies the same
 message shape to live question handling and saved-checkpoint validation.
 
@@ -78,11 +166,15 @@ Session monitors writer loss and stops dependent work if it disappears. There is
 no automatic writer restart or append retry.
 
 Only the owner may append, reserve capacity, release it, or close. For each record
-the writer encodes the JSON, checks descriptor/path identity and expected length,
-and admits a private
-filesystem completion owner. That process opens a separate append descriptor,
-checks identity/protection/length again, writes, fsyncs, closes, and replies. Session
-waits for confirmation before dispatching effects or exposing a lifecycle source.
+Writer encodes the JSON, checks descriptor/path identity and expected length,
+and admits the complete line against the journal limits. For native-only layouts,
+the tracked Writer sends bounded opaque chunks to the actual lock helper, which
+rechecks the identities and expected size, appends and fsyncs before replying.
+For unmarked legacy journals, a private filesystem completion owner instead opens
+a separate append descriptor, checks identity/protection/length again, writes,
+fsyncs, closes and replies. The caller waits for confirmation before dispatching
+effects or exposing a lifecycle source. A legacy completion process cannot
+substitute for the native owner of a protected layout.
 
 Checks include device/inode, owner, regular-file type, single link, permissions,
 and length. Replacement, foreign append, truncation, or protection changes close
@@ -138,10 +230,16 @@ cannot establish that fact. A stuck completion owner can retain the lock
 indefinitely; deleting the lock file would defeat ownership rather than repair it.
 Unexpected loss of the helper/guardian stops Session without another append.
 
-Stateless `Journal.append*` APIs are for inactive journals under the proper lock.
+Stateless `Journal.append*` APIs are for unmarked inactive journals under the proper lock.
 They validate history and perform synchronous completion-owned writes; repeated
 inactive appends therefore have linear validation cost. Embedded callers remain
-responsible for their own lock lifetime.
+responsible for their own lock lifetime. They refuse native-only layouts, even
+when the active owner has closed. Follow
+`test/ipse/journal/management_owner_test.exs` for native reserved appends,
+helper-loss exclusion and inactive-entry refusal; its syscall-hook case is
+separate from ordinary helper execution. The standalone caller control in
+`test/ipse/cli/management_journal_test.exs` uses an absent target to exercise
+startup and cleanup, not successful signed-note expiry.
 
 ## Bind an actual operator observation before recording origin
 
@@ -228,6 +326,16 @@ Version-1 answers and ordinary user-role text retain unverified origin. An answe
 does not accept a knowledge proposal or grant action permission; those consumers
 still require their own semantic admission.
 
+An explicit `/remember` review instead records one `operator_assertion` event
+with the exact statement, category, project/artifact/policy scope and native
+confirmation. Saved reconstruction validates that scope against the original
+semantic admission and rejects reused observations. SourceIndex binds the
+reviewed category into the occurrence kind. The source receipt is synced before
+the existing protected command starts, so its presence alone proves neither
+publication nor a grant to perform other effects. A resumed owner restores the
+receipt and unknown effects without repeating capture. Plain messages and
+question answers cannot acquire this origin by quoting the reviewed text.
+
 ## Serialize protected consent before publication
 
 `Ipse.Extension.Consent` is an internal host ledger, separate from conversation
@@ -245,6 +353,18 @@ paths, ownership, regular single-link files and protection before taking the
 retained native lock. Policies bind exact artifact/source hashes, operation names,
 settings, expiry, headless selection and finite period limits. Policy replacement
 and revocation use an epoch CAS; neither discards earlier liabilities.
+
+For trusted local management preparation, use
+`Consent.with_existing_management_snapshot/5` to retain the existing native lock
+around an exact positive epoch and management fingerprint. Unlike an active
+capture-policy read, this callback can inspect an expired policy or a revoked
+nil policy. It creates no ledger, reclaims no pending files and authorizes no
+display, capture or publication. The caller must separately retain Identity,
+Collection and original journal ownership before protected native review.
+A typed unknown callback result stays unknown; only a successful callback can
+reach the success-only final identity checks. Native release is attempted in
+either case. Follow `consent_management_read_test.exs` for contention, absent and
+stale snapshots, revoked inspection and actual native-owner loss.
 
 A generic collection mutation also needs a constrained publication mapping.
 `Ipse.Extension.CollectionPolicy` checks every key prefix and value against its
@@ -512,6 +632,16 @@ See [the selected profile](../../native/README.md#publish-protected-state-throug
 for its platform and kernel limits. The [compaction tests](../../test/ipse/extension/consent_compaction_test.exs)
 separate seeded large-format fixtures from actual repeated writes.
 
+The finite selector resolves the filesystem from the retained directory FD,
+then checks its kernel-specific page/block and mount/global huge-page features.
+Exact `7.2.11-arch1-1` x86_64 is admitted only for the qualified tmpfs combination;
+its Btrfs path refuses before protected publication. The older profile keeps
+its separate reviewed scope. Rebuild the helper and its compile-pinned Runner
+together after changing the selector; an ambient helper path cannot replace the
+protected binary. The [operator storage procedure](../operator/arch-linux.md#check-protected-storage-admission)
+explains location and volatility implications. A process-restart receipt cannot
+establish reboot or power-loss durability.
+
 Exhaustion refuses before dispatch rather than reclaiming liabilities or replay
 protection. This internal substrate is separate from sustainable notes storage,
 Git sharing and the saved-consent user workflow. The
@@ -776,6 +906,35 @@ their reviewed integration. Exercise the pure selector and native view suites:
 ```sh
 mix test test/ipse/extension/collection_directory_test.exs test/ipse/extension/collection_neighbors_test.exs test/ipse/extension/collection_read_view_test.exs test/ipse/extension/collection_empty_read_view_test.exs
 ```
+
+When trusted management preparation needs continuous target ownership, use
+`Collection.with_managed_read/3` instead of carrying a released view into review.
+It retains one actual notes Collection owner and supplies the same bounded read
+closure used by managed normalization:32shared units, one per exact key, four
+per neighbor lookup and eight for a pending summary. Reads check the native owner
+before and after IO, and the closure expires with its callback. Exhaustion is
+sticky; a caller cannot ignore it and return successful data. A normalizer's
+token seals before publication, so a later callback cannot change its budget
+and reclassify an already selected root. The root witness
+and record bytes still need their domain authentication and exact target checks.
+This storage callback grants no output or mutation permission. Identity, Consent,
+original journal and the native writer must retain their own required ownership;
+no Management caller currently combines them. Absent storage can create protected
+directories and retained locks, just as opening a view can. The focused
+`collection_held_read_test.exs` exercises contention, escape, budgets and actual
+owner loss; managed publication/directory tests cover the shared closure.
+
+For a signed literal, `ObservedRead.with_managed_record/7` performs the existing
+record/format/live/anchor checks inside that retained read and calls a trusted
+continuation with the same observation as `managed_record/6`. It keeps the
+Collection owner through continuation; the ordinary reader releases its view
+before returning. Compose it inside the actual matching Identity/domain-auth
+and management Consent callbacks. A revoked capture policy or expired target
+can remain inspectable for this faithful local purpose, without becoming current
+inference support. The `:held_target_read` controls in
+`collection_normalizer_v3_integration_test.exs` exercise this three-owner stack
+and substituted data. Native journal/tty attachment and production management
+remain separate requirements.
 
 ## Prepare a local authenticated-page repair
 

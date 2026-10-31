@@ -30,8 +30,16 @@ end
 
 tool = fn schema ->
   %{
-    "name" => "write_note",
-    "description" => "Write one note using the supplied path and content. #{secret || ""}",
+    "name" =>
+      if(scenario in ["planning_read", "planning_read_hang", "planning_read_controlled"],
+        do: "lookup",
+        else: "write_note"
+      ),
+    "description" =>
+      if(scenario in ["planning_read", "planning_read_hang", "planning_read_controlled"],
+        do: "Look up one synthetic record.",
+        else: "Write one note using the supplied path and content. #{secret || ""}"
+      ),
     "inputSchema" => schema
   }
 end
@@ -47,10 +55,22 @@ normal_schema = %{
 }
 
 schema = fn changed ->
-  if changed do
-    put_in(normal_schema, ["properties", "content", "maxLength"], 20)
+  if scenario in ["planning_read", "planning_read_hang", "planning_read_controlled"] do
+    %{
+      "type" => "object",
+      "properties" => %{
+        "query" =>
+          if(changed, do: %{"type" => "string", "maxLength" => 20}, else: %{"type" => "string"})
+      },
+      "required" => ["query"],
+      "additionalProperties" => false
+    }
   else
-    normal_schema
+    if changed do
+      put_in(normal_schema, ["properties", "content", "maxLength"], 20)
+    else
+      normal_schema
+    end
   end
 end
 
@@ -97,6 +117,19 @@ loop = fn loop, changed ->
         {:ok, %{"id" => id, "method" => "tools/list", "params" => params}} ->
           phase.("list_tools")
 
+          if scenario == "managed_gate" and File.exists?("managed-mcp-gate") do
+            publish.("managed-mcp-list-ready")
+
+            wait = fn wait ->
+              if not File.exists?("managed-mcp-list-release") do
+                Process.sleep(2)
+                wait.(wait)
+              end
+            end
+
+            wait.(wait)
+          end
+
           if scenario == "sampling" do
             write.(%{
               "jsonrpc" => "2.0",
@@ -141,7 +174,7 @@ loop = fn loop, changed ->
           phase.("call_tool")
           File.write!("calls.log", name <> "\n", [:append])
 
-          if scenario == "hang" do
+          if scenario in ["hang", "planning_read_hang"] do
             publish.("hang-ready")
             Process.sleep(:infinity)
           else
@@ -155,6 +188,29 @@ loop = fn loop, changed ->
             phase.("effect_written")
 
             cond do
+              scenario in ["planning_read", "planning_read_controlled"] ->
+                if scenario == "planning_read_controlled" do
+                  publish.("planning-read-ready")
+
+                  wait = fn wait ->
+                    if not File.exists?("planning-read-release") do
+                      Process.sleep(2)
+                      wait.(wait)
+                    end
+                  end
+
+                  wait.(wait)
+                end
+
+                write.(%{
+                  "jsonrpc" => "2.0",
+                  "id" => id,
+                  "result" => %{
+                    "content" => [%{"type" => "text", "text" => "Synthetic lookup result"}],
+                    "isError" => false
+                  }
+                })
+
               scenario == "disconnect_after_dispatch" ->
                 System.halt(0)
 

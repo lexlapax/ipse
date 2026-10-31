@@ -1,0 +1,16 @@
+     warning: IpseKnowledge.BuildSpec.operator/7 is undefined (module IpseKnowledge.BuildSpec is not available or is yet to be defined)
+     │
+ 841 │       IpseKnowledge.BuildSpec.operator(
+     │                               ~
+     │
+     └─ test/extensions/knowledge/document_acquisition_session_test.exs:841:31: Ipse.KnowledgeDocumentAcquisitionSessionTest."test generated collection preset requires its explicit operator binding and preserves old grants"/1
+     └─ test/extensions/knowledge/document_acquisition_session_test.exs:869:31: Ipse.KnowledgeDocumentAcquisitionSessionTest."test generated collection preset requires its explicit operator binding and preserves old grants"/1
+
+Running ExUnit with seed: 46817, max_cases: 1
+Excluding tags: [:test]
+Including tags: [:public_collection_refusal, :public_collection_grant]
+
+..
+Finished in 11.8 seconds (0.00s async, 11.8s sync)
+
+Result: 2 passed, 10 excluded

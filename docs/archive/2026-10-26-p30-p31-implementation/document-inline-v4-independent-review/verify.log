@@ -1,0 +1,4 @@
+document-inline-v4: 19 archive rows and 1697 runtime rows match
+document-source-use-v4: 12 archive rows and 669 runtime rows match
+175 tar inputs match; independent source-use snapshot matches combined source; 216 app modules
+669 base runtime rows match; exact one-BEAM source-use delta

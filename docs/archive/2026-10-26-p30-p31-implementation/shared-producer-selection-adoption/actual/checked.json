@@ -1,0 +1,26 @@
+{
+  "scope": "read-only actual public selection and zero-egress gate evidence; no private producer source dispatch qualification",
+  "version": 1,
+  "journal_bytes": 509717,
+  "journal_events": 173,
+  "journal_sha256": "5b0cc62a7c06a6db76b9590843da0f683c1c74d4644d3f33b2d9fba5f408455a",
+  "exact_metadata_bound_profile": true,
+  "reported_model": null,
+  "bootstrap_reads": 1,
+  "bootstrap_effects": 0,
+  "inference_admissions": 0,
+  "gated_page_actions": 0,
+  "claim": null,
+  "unchanged_native_boundary": true,
+  "event_types": {
+    "extension_action_intent": 71,
+    "extension_action_result": 71,
+    "extension_invocation_intent": 9,
+    "extension_invocation_result": 9,
+    "session": 1,
+    "session_release_owner_started": 1,
+    "skill_catalog_snapshot": 1,
+    "turn_finished": 9,
+    "workspace_context_snapshot": 1
+  }
+}

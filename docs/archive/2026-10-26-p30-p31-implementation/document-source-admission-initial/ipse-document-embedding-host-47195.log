@@ -1,0 +1,117 @@
+     warning: this clause of defp inputs/3 is never used (or it will always fail/warn when invoked)
+     │
+ 673 │   defp inputs(state, %{"type" => "extension_action_result"} = event, _) do
+     │        ~
+     │
+     └─ _build/document-embedding-admission-sol-20261029/lib/ipse/session/managed_lineage.ex:673:8: Ipse.Session.ManagedLineage.inputs/3
+
+     warning: this clause of defp inputs/3 is never used (or it will always fail/warn when invoked)
+     │
+ 844 │   defp inputs(state, %{"type" => type}, _) when type in ~w(cancelled turn_finished),
+     │        ~
+     │
+     └─ _build/document-embedding-admission-sol-20261029/lib/ipse/session/managed_lineage.ex:844:8: Ipse.Session.ManagedLineage.inputs/3
+
+     warning: unknown key .source_lookups in expression:
+
+         state.source_lookups
+
+     the given type does not have the given key:
+
+         dynamic(%Ipse.Session.ManagedLineage{
+           reference: %{..., session_id: term()},
+           requests: term(),
+           native_requests: term(),
+           output_release: term(),
+           output_release_ids: term(),
+           output_layout: term(),
+           calls: term(),
+           call_bindings:
+             %{..., __struct__: atom()} or nil or empty_list() or non_empty_list(term(), term()) or
+               non_struct_map(),
+           tool_effect_ids: term(),
+           tool_effect_inputs: term(),
+           tool_layout: term(),
+           active_tool:
+             %{..., __struct__: atom()} or nil or empty_list() or non_empty_list(term(), term()) or
+               non_struct_map(),
+           active_action: term(),
+           last_action_result: term(),
+           action_layout: term(),
+           active_discovery: term(),
+           discovery_ids: term(),
+           mcp_servers: term(),
+           tool_result_release: term(),
+           tool_result_ids: term(),
+           invocations: term(),
+           outputs: term(),
+           publishers: term(),
+           pending: term(),
+           effects: term(),
+           dictionary: term(),
+           write_facts: term(),
+           admissions: term(),
+           preflight: term(),
+           preflight_ids: term(),
+           helper_inputs: term(),
+           header: term(),
+           active_invocation: term(),
+           admission: term(),
+           strict: term(),
+           frozen_header: term(),
+           unavailable: false
+         })
+
+     where "state" was given the types:
+
+         # type: dynamic(%{..., reference: %{..., session_id: term()}})
+         # from: _build/document-embedding-admission-sol-20261029/lib/ipse/session/managed_lineage.ex:421:65
+         event["session_id"] === state.reference.session_id
+
+         # type: dynamic(%{
+           ...,
+           call_bindings:
+             %{..., __struct__: atom()} or nil or empty_list() or non_empty_list(term(), term()) or
+               non_struct_map(),
+           reference: %{..., session_id: term()}
+         })
+         # from: _build/document-embedding-admission-sol-20261029/lib/ipse/session/managed_lineage.ex:422:46
+         state.call_bindings[event["call_id"]]
+
+         # type: dynamic(%{
+           ...,
+           active_tool:
+             %{..., __struct__: atom()} or nil or empty_list() or non_empty_list(term(), term()) or
+               non_struct_map(),
+           call_bindings:
+             %{..., __struct__: atom()} or nil or empty_list() or non_empty_list(term(), term()) or
+               non_struct_map(),
+           reference: %{..., session_id: term()}
+         })
+         # from: _build/document-embedding-admission-sol-20261029/lib/ipse/session/managed_lineage.ex:423:35
+         state.active_tool["call_id"]
+
+         # type: dynamic(%Ipse.Session.ManagedLineage{
+           reference: %{..., session_id: term()},
+           call_bindings:
+             %{..., __struct__: atom()} or nil or empty_list() or non_empty_list(term(), term()) or
+               non_struct_map(),
+           active_tool:
+             %{..., __struct__: atom()} or nil or empty_list() or non_empty_list(term(), term()) or
+               non_struct_map(),
+           unavailable: false
+         })
+         # from: _build/document-embedding-admission-sol-20261029/lib/ipse/session/managed_lineage.ex:431:33
+         tool_dependencies(state, event["call_id"])
+
+     type warning found at:
+     │
+ 433 │          false <- Map.has_key?(state.source_lookups, event["call_id"]) do
+     │                                      ~~~~~~~~~~~~~~
+     │
+     └─ _build/document-embedding-admission-sol-20261029/lib/ipse/session/managed_lineage.ex:433:38: Ipse.Session.ManagedLineage.inputs/3
+
+Same complete host source snapshot with initialized Mix: {:ok,
+ [Ipse.Session.Saved, Ipse.MCP.HTTPTransport, Ipse.Extension.EffectResult,
+  Ipse.CLI.Terminal, Inspect.Ipse.Session.ReleaseReceipt.SigningKey,
+  Ipse.PrivateFile, ...], ...}

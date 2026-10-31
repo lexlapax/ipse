@@ -146,7 +146,8 @@ defmodule Ipse.Provider.RegistryTest do
     end
   end
 
-  test "pre-refactor saved sessions restore usage and resume idle without changing bytes", c do
+  test "pre-refactor sessions restore usage and resume idle with an explicit denial checkpoint",
+       c do
     for {id, provider, model, _, _, _} <- @constants, legacy? <- [false, true] do
       suffix = if legacy?, do: "-legacy", else: ""
 
@@ -184,6 +185,7 @@ defmodule Ipse.Provider.RegistryTest do
       File.write!(path, bytes)
       File.chmod!(path, 0o600)
       {:ok, usage} = Ipse.Usage.restore(events, session)
+      assert {:ok, previous_mode} = Ipse.Session.Saved.execution_mode(events, session)
 
       unless legacy? do
         expected = @fixtures |> Path.join(id <> "-usage.json") |> File.read!() |> Jason.decode!()
@@ -210,7 +212,15 @@ defmodule Ipse.Provider.RegistryTest do
 
       assert %{phase: :idle} = Ipse.Session.info(pid)
       assert :ok = Ipse.Session.close(pid)
-      assert File.read!(path) == bytes
+      assert {:ok, after_events} = Ipse.Journal.load(state, session)
+      assert Enum.take(after_events, length(events)) == events
+      assert [checkpoint] = Enum.drop(after_events, length(events))
+      assert checkpoint["type"] == "execution_mode_resumed" and checkpoint["version"] === 2
+      assert checkpoint["session_id"] == session
+      assert checkpoint["previous_sha256"] == Ipse.JSON.digest([previous_mode])
+      assert checkpoint["mode"]["approval"] == "deny"
+      assert {:ok, saved_mode} = Ipse.Session.Saved.execution_mode(after_events, session)
+      assert saved_mode == checkpoint["mode"]
       refute_received {:ipse, ^pid, {:text, _}}
     end
   end

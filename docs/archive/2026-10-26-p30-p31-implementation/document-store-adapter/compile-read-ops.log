@@ -1,0 +1,2 @@
+{:ok, [Ipse.Extension.Collection.DocumentStage, Ipse.Extension.CollectionStore],
+ %{compile_warnings: [], runtime_warnings: []}}

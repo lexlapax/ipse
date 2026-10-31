@@ -1,0 +1,8 @@
+SOURCE_EGRESS_REVIEW_OK: %{
+  source_only_tar_files: 28,
+  worker_sources_and_freezer: 4,
+  retained_logs: 3,
+  candidate_artifact_files: 26,
+  producer_snapshots_identical: true,
+  executed_tests: 0
+}

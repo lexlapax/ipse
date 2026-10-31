@@ -1,0 +1,533 @@
+{
+  "scope": "canonical public first-page adoption by exact source/descriptor comparison, strict artifact build and focused protocol/configuration controls; actual native qualification belongs to private ancestor artifact only; no new native/effect/model calls",
+  "version": 1,
+  "ancestors": [
+    {
+      "path": "docs/archive/2026-10-26-p30-p31-implementation/shared-producer-guard-session/manifest.json",
+      "bytes": 683271,
+      "sha256": "c191be053710bcc6c291b62edb8f600837477e9ee7c9642d489dfd36d6fe904b"
+    },
+    {
+      "path": "docs/archive/2026-10-26-p30-p31-implementation/shared-producer-finite-guard-session/manifest.json",
+      "bytes": 217579,
+      "sha256": "7b9d0f704b7a13cdd9ffc97b8c82ab2d93bc713e80aa33a1feacbf594e920b7f"
+    }
+  ],
+  "source": [
+    {
+      "path": "docs/archive/2026-10-26-p30-p31-implementation/shared-producer-public-adoption/source/extensions/knowledge/src/corpus.ex",
+      "bytes": 58634,
+      "sha256": "a39a3919ab92f5b561a741dc9f0e828b4752b932e47c81a6f7136052fa8eba95",
+      "original": "extensions/knowledge/src/corpus.ex"
+    },
+    {
+      "path": "docs/archive/2026-10-26-p30-p31-implementation/shared-producer-public-adoption/source/extensions/knowledge/src/store/collection/producer.ex",
+      "bytes": 23263,
+      "sha256": "56cd864d7527e84ccf72de449506d744108a5e4a108bb5d2bae0da36c97b4b77",
+      "original": "extensions/knowledge/src/store/collection/producer.ex"
+    },
+    {
+      "path": "docs/archive/2026-10-26-p30-p31-implementation/shared-producer-public-adoption/source/extensions/knowledge/src/adapters.ex",
+      "bytes": 34276,
+      "sha256": "b097f92d3e365c71c7c2c54b105d538e8cff86c758b3b97e197e1e622a6131c9",
+      "original": "extensions/knowledge/src/adapters.ex"
+    },
+    {
+      "path": "docs/archive/2026-10-26-p30-p31-implementation/shared-producer-public-adoption/source/extensions/knowledge/config.exs",
+      "bytes": 1591,
+      "sha256": "9be522a9c7309770c274211bba2544b22420f5b114a6f7a906f2e51d44e433ff",
+      "original": "extensions/knowledge/config.exs"
+    },
+    {
+      "path": "docs/archive/2026-10-26-p30-p31-implementation/shared-producer-public-adoption/source/extensions/knowledge/spec.exs",
+      "bytes": 8119,
+      "sha256": "9e8123538a0024048a5d75fc1b2d712ccb06544f2c3149987afcb260d35a2449",
+      "original": "extensions/knowledge/spec.exs"
+    },
+    {
+      "path": "docs/archive/2026-10-26-p30-p31-implementation/shared-producer-public-adoption/source/extensions/knowledge/build.exs",
+      "bytes": 4764,
+      "sha256": "715764fa4ee29a0ee2a0d7c14ea3d63b86f7e3b38ee177cfa92c33ecfdef6a5b",
+      "original": "extensions/knowledge/build.exs"
+    },
+    {
+      "path": "docs/archive/2026-10-26-p30-p31-implementation/shared-producer-public-adoption/source/test/extensions/knowledge/producer_configuration_test.exs",
+      "bytes": 3936,
+      "sha256": "9c72a384612e3ba46dfce66c64bab4d262cf079915fe1a3918f5cce37847f3d1",
+      "original": "test/extensions/knowledge/producer_configuration_test.exs"
+    },
+    {
+      "path": "docs/archive/2026-10-26-p30-p31-implementation/shared-producer-public-adoption/source/test/extensions/knowledge/shared_producer_guard_session_test.exs",
+      "bytes": 17330,
+      "sha256": "7a0390a1cb2f9701833eaa930512d25004e757064cf67509b02a802205e447e8",
+      "original": "test/extensions/knowledge/shared_producer_guard_session_test.exs"
+    },
+    {
+      "path": "docs/archive/2026-10-26-p30-p31-implementation/shared-producer-public-adoption/source/test/extensions/knowledge/shared_producer_session_test.exs",
+      "bytes": 13135,
+      "sha256": "99046587f0b24f4e2f482632e44a22dcd7314a3b43c505c26b30111c7128cc7c",
+      "original": "test/extensions/knowledge/shared_producer_session_test.exs"
+    },
+    {
+      "path": "docs/archive/2026-10-26-p30-p31-implementation/shared-producer-public-adoption/source/test/extensions/knowledge/shared_producer_test.exs",
+      "bytes": 3049,
+      "sha256": "0762789a2615818f9146be44a5219dca83bf5a723195c08da49865c9e4eb55d8",
+      "original": "test/extensions/knowledge/shared_producer_test.exs"
+    },
+    {
+      "path": "docs/archive/2026-10-26-p30-p31-implementation/shared-producer-public-adoption/source/test/support/shared_producer_fixture.exs",
+      "bytes": 43586,
+      "sha256": "f1fb77c48fe4ac57ab96614327eeccdb004e63746cc00a398849155459a472cc",
+      "original": "test/support/shared_producer_fixture.exs"
+    },
+    {
+      "path": "docs/archive/2026-10-26-p30-p31-implementation/shared-producer-public-adoption/source/docs/operator/corpus.md",
+      "bytes": 56621,
+      "sha256": "cda17b75f97c13bf8d3ef83cc95e788c85712d16327b70810aeb52f66f12ff20",
+      "original": "docs/operator/corpus.md"
+    },
+    {
+      "path": "docs/archive/2026-10-26-p30-p31-implementation/shared-producer-public-adoption/source/docs/developer/knowledge-extensions.md",
+      "bytes": 48410,
+      "sha256": "902baa03dbd5fa4399a06172aa4738915f4a61806dfd302f0ddd1a91763e831a",
+      "original": "docs/developer/knowledge-extensions.md"
+    },
+    {
+      "path": "docs/archive/2026-10-26-p30-p31-implementation/shared-producer-public-adoption/source/docs/developer/collection-sdk.md",
+      "bytes": 65865,
+      "sha256": "b43a9ea2de4b1a5988c7c395af37e8a2cb11fb01b7d03a9a7ef9b7854e5f59bb",
+      "original": "docs/developer/collection-sdk.md"
+    }
+  ],
+  "scripts": [
+    {
+      "path": "docs/archive/2026-10-26-p30-p31-implementation/shared-producer-public-adoption/scripts/check.exs",
+      "bytes": 3572,
+      "sha256": "9379064be2b0d36479d69603c123aea84a034504f0671a1a191e0e5064f1dc16",
+      "original": "_build/shared-producer-public-adoption-20261029/check.exs"
+    },
+    {
+      "path": "docs/archive/2026-10-26-p30-p31-implementation/shared-producer-public-adoption/scripts/freeze.exs",
+      "bytes": 3226,
+      "sha256": "b65325629fee32efe3ab349628b9cf123cfdc1a92ba2640958682d896463d568",
+      "original": "_build/shared-producer-public-adoption-20261029/freeze.exs"
+    }
+  ],
+  "logs": [
+    {
+      "path": "docs/archive/2026-10-26-p30-p31-implementation/shared-producer-public-adoption/logs/shared-producer-public-build-47222.log",
+      "bytes": 71,
+      "sha256": "95368604e44b6e98e749c06dd6e5482fff55eead7e3f7efd2dda6f57fe10f20d",
+      "original": "_build/shared-producer-public-build-47222.log"
+    },
+    {
+      "path": "docs/archive/2026-10-26-p30-p31-implementation/shared-producer-public-adoption/logs/shared-producer-public-build-47225.log",
+      "bytes": 71,
+      "sha256": "95368604e44b6e98e749c06dd6e5482fff55eead7e3f7efd2dda6f57fe10f20d",
+      "original": "_build/shared-producer-public-build-47225.log"
+    },
+    {
+      "path": "docs/archive/2026-10-26-p30-p31-implementation/shared-producer-public-adoption/logs/shared-producer-public-config-47224.log",
+      "bytes": 217,
+      "sha256": "f50fd9dd96bcbb1be0a5c9589f0fc48626c601d4caf0ed26f0b7195ec853bf87",
+      "original": "_build/shared-producer-public-config-47224.log"
+    },
+    {
+      "path": "docs/archive/2026-10-26-p30-p31-implementation/shared-producer-public-adoption/logs/shared-producer-public-entry-47223.log",
+      "bytes": 421,
+      "sha256": "4097b6642acc13465752b17d6455f0e3b9a71992e76ba1831b0f8e8b71aaae4c",
+      "original": "_build/shared-producer-public-entry-47223.log"
+    },
+    {
+      "path": "docs/archive/2026-10-26-p30-p31-implementation/shared-producer-public-adoption/logs/shared-producer-public-entry-selection-47226.log",
+      "bytes": 422,
+      "sha256": "41c114dfe2e9ca222e5f325afea1e40e58e3998987ee2124059c3e5187348666",
+      "original": "_build/shared-producer-public-entry-selection-47226.log"
+    },
+    {
+      "path": "docs/archive/2026-10-26-p30-p31-implementation/shared-producer-public-adoption/logs/shared-producer-public-freeze-47228.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "original": "_build/shared-producer-public-freeze-47228.log"
+    },
+    {
+      "path": "docs/archive/2026-10-26-p30-p31-implementation/shared-producer-public-adoption/logs/shared-producer-public-gate-47149.log",
+      "bytes": 907,
+      "sha256": "188ec3234a15fdcc89013d3662fcf01a077e3d3f4c0b3fa24f8e955565d62095",
+      "original": "_build/shared-producer-public-gate-47149.log"
+    },
+    {
+      "path": "docs/archive/2026-10-26-p30-p31-implementation/shared-producer-public-adoption/logs/shared-producer-public-gate-session-47151.log",
+      "bytes": 341,
+      "sha256": "da1d7d8f8348be34861068cad6ea7f518320f504b44cea8bfd74a1ac34cbcac5",
+      "original": "_build/shared-producer-public-gate-session-47151.log"
+    },
+    {
+      "path": "docs/archive/2026-10-26-p30-p31-implementation/shared-producer-public-adoption/logs/shared-producer-public-source-config-47227.log",
+      "bytes": 523,
+      "sha256": "8a2d2de4fe049cd0ff7f75a6925ba1bec9d7ef83f281f888491ea5216e9d6148",
+      "original": "_build/shared-producer-public-source-config-47227.log"
+    }
+  ],
+  "configuration": [
+    {
+      "path": "docs/archive/2026-10-26-p30-p31-implementation/shared-producer-public-adoption/options.json",
+      "bytes": 258,
+      "sha256": "5bd8e234d0d7dc7ff09ffa477b679116ddfb914031179daabe551fcc9b2c023a",
+      "original": "_build/shared-producer-public-adoption-20261029/options.json"
+    },
+    {
+      "path": "docs/archive/2026-10-26-p30-p31-implementation/shared-producer-public-adoption/inference.json",
+      "bytes": 308,
+      "sha256": "c57255cab97349a93f320b488fae36053f0e1a3ab05c64c5cdb1706e65a772d2",
+      "original": "_build/shared-producer-public-adoption-20261029/inference.json"
+    },
+    {
+      "path": "docs/archive/2026-10-26-p30-p31-implementation/shared-producer-public-adoption/operator.json",
+      "bytes": 1270,
+      "sha256": "9ad7155f13f20ad7042d4cd10b59e88a0d4f3e6e8e756ed6dc6bd5acce64c325",
+      "original": "_build/shared-producer-public-adoption-20261029/operator.json"
+    }
+  ],
+  "artifacts": [
+    {
+      "root": "_build/shared-producer-public-adoption-20261029/artifact",
+      "rows": [
+        {
+          "type": "regular",
+          "path": "_build/shared-producer-public-adoption-20261029/artifact/LICENSE",
+          "bytes": 11391,
+          "sha256": "a4b4034ccfb966fafe103ca64dd85157e35edb90742a070cf5575184c673bb98"
+        },
+        {
+          "type": "regular",
+          "path": "_build/shared-producer-public-adoption-20261029/artifact/ebin/Elixir.IpseKnowledge.Adapters.beam",
+          "bytes": 89512,
+          "sha256": "d4c210a761288c7966cf586d16cf130105b3303c9d7ad31cea5c69a68f9f6488"
+        },
+        {
+          "type": "regular",
+          "path": "_build/shared-producer-public-adoption-20261029/artifact/ebin/Elixir.IpseKnowledge.Corpus.beam",
+          "bytes": 115204,
+          "sha256": "3064a2882de0b9f02a599fa244b5ab364009835ec8aa9b254beb8660ea2eba52"
+        },
+        {
+          "type": "regular",
+          "path": "_build/shared-producer-public-adoption-20261029/artifact/ebin/Elixir.IpseKnowledge.Documents.Docx.Styles.beam",
+          "bytes": 45604,
+          "sha256": "3efd770415c15596edabea37ed1b70902efcd4703bb8417f0fc99468b3d876dc"
+        },
+        {
+          "type": "regular",
+          "path": "_build/shared-producer-public-adoption-20261029/artifact/ebin/Elixir.IpseKnowledge.Documents.Docx.beam",
+          "bytes": 64940,
+          "sha256": "ff5d0e1ab0051f64ee0a30fd6a6f8b896d646474c4b67c21bc694a375fe6a4e4"
+        },
+        {
+          "type": "regular",
+          "path": "_build/shared-producer-public-adoption-20261029/artifact/ebin/Elixir.IpseKnowledge.Documents.ParserStage.beam",
+          "bytes": 30832,
+          "sha256": "04336c497d74d2a01dc6c7cf05549249675b62f9acffd58b83c135f822f72cbd"
+        },
+        {
+          "type": "regular",
+          "path": "_build/shared-producer-public-adoption-20261029/artifact/ebin/Elixir.IpseKnowledge.Documents.Pdf.beam",
+          "bytes": 7960,
+          "sha256": "6730519cd8834f4bd03318500cbfe52bb5861eee5f58fe8071b71049fd7968d5"
+        },
+        {
+          "type": "regular",
+          "path": "_build/shared-producer-public-adoption-20261029/artifact/ebin/Elixir.IpseKnowledge.Documents.Zip.beam",
+          "bytes": 11784,
+          "sha256": "c2429cee36cb6ba95d8b9b6b0878c01b87ee00eaf873685e4eb67e8e8d9fb6ef"
+        },
+        {
+          "type": "regular",
+          "path": "_build/shared-producer-public-adoption-20261029/artifact/ebin/Elixir.IpseKnowledge.Documents.beam",
+          "bytes": 24180,
+          "sha256": "b32fca581931d53471519bf6d68a10d81da3ffb744bffca7c5d6c9c4834d0bf0"
+        },
+        {
+          "type": "regular",
+          "path": "_build/shared-producer-public-adoption-20261029/artifact/ebin/Elixir.IpseKnowledge.Evidence.beam",
+          "bytes": 167800,
+          "sha256": "e42352eeab950f7e67959c72a2862af95fff72ff3d3efb1a5a042fe1f972e2b8"
+        },
+        {
+          "type": "regular",
+          "path": "_build/shared-producer-public-adoption-20261029/artifact/ebin/Elixir.IpseKnowledge.Profiles.beam",
+          "bytes": 33384,
+          "sha256": "cc48d436d28be1dac8774afcf29b370e886d194cae3b7dc0158667141a893838"
+        },
+        {
+          "type": "regular",
+          "path": "_build/shared-producer-public-adoption-20261029/artifact/ebin/Elixir.IpseKnowledge.Store.Collection.Directory.beam",
+          "bytes": 49116,
+          "sha256": "fd820b1f4ffefe1ffc02bf9859565d8d2e5f9cb89a8ddc68843ba9e5899c28ff"
+        },
+        {
+          "type": "regular",
+          "path": "_build/shared-producer-public-adoption-20261029/artifact/ebin/Elixir.IpseKnowledge.Store.Collection.Finalization.beam",
+          "bytes": 29916,
+          "sha256": "1ab8c96a70190a1357c425c73d11ffaf036c2765b4174c0ff5565ffbc3596a28"
+        },
+        {
+          "type": "regular",
+          "path": "_build/shared-producer-public-adoption-20261029/artifact/ebin/Elixir.IpseKnowledge.Store.Collection.Generation.beam",
+          "bytes": 42660,
+          "sha256": "085aa88384aac5bf468c7878f4200e80f13ca6e72d74e9fafeef76828e49e112"
+        },
+        {
+          "type": "regular",
+          "path": "_build/shared-producer-public-adoption-20261029/artifact/ebin/Elixir.IpseKnowledge.Store.Collection.Index.beam",
+          "bytes": 104488,
+          "sha256": "6fecb244d82da792810602035ee4757cb35a85f74bf01e99629531c2da497739"
+        },
+        {
+          "type": "regular",
+          "path": "_build/shared-producer-public-adoption-20261029/artifact/ebin/Elixir.IpseKnowledge.Store.Collection.Job.beam",
+          "bytes": 65308,
+          "sha256": "7fe0db564d23ab0805b6fa08757264fb55b1bfb9c645cd2724f1341772c4ebed"
+        },
+        {
+          "type": "regular",
+          "path": "_build/shared-producer-public-adoption-20261029/artifact/ebin/Elixir.IpseKnowledge.Store.Collection.Paged.beam",
+          "bytes": 39744,
+          "sha256": "a590f5644aad08334267e17b2e8469a4f7cb0dd3529551edb8e13b23831e8a59"
+        },
+        {
+          "type": "regular",
+          "path": "_build/shared-producer-public-adoption-20261029/artifact/ebin/Elixir.IpseKnowledge.Store.Collection.Producer.beam",
+          "bytes": 65848,
+          "sha256": "ae8c8b972303149f73b85fc38ce18a2cb217e325aa0a5053d75a75f8baf20890"
+        },
+        {
+          "type": "regular",
+          "path": "_build/shared-producer-public-adoption-20261029/artifact/ebin/Elixir.IpseKnowledge.Store.Collection.Projection.beam",
+          "bytes": 66968,
+          "sha256": "4e10cbf403da3ddca01f9d72a9cfd1a42c825bd81e6c6fe8722d4e8dcf08ea56"
+        },
+        {
+          "type": "regular",
+          "path": "_build/shared-producer-public-adoption-20261029/artifact/ebin/Elixir.IpseKnowledge.Store.Collection.Reduction.beam",
+          "bytes": 29920,
+          "sha256": "9371b1fc61689ae4d885b5fc20d341a066307da2b1d51479752b116b6cddac20"
+        },
+        {
+          "type": "regular",
+          "path": "_build/shared-producer-public-adoption-20261029/artifact/ebin/Elixir.IpseKnowledge.Store.Collection.Selected.beam",
+          "bytes": 21732,
+          "sha256": "d1bda1c92cbb23d613340142fb8e43892885495ef89c67694c477c2bf74573a1"
+        },
+        {
+          "type": "regular",
+          "path": "_build/shared-producer-public-adoption-20261029/artifact/ebin/Elixir.IpseKnowledge.Store.Collection.beam",
+          "bytes": 141348,
+          "sha256": "36cedc30a4db7cfe60cc4d00f5b66aef2ddb414419a7911ba43f34a3257687a2"
+        },
+        {
+          "type": "regular",
+          "path": "_build/shared-producer-public-adoption-20261029/artifact/ebin/Elixir.IpseKnowledge.Store.MCPCAS.beam",
+          "bytes": 47968,
+          "sha256": "1c4e72dcd9601abe4e221aa3d0c8da48af5b984858e06c99fbdb141fa3608f0b"
+        },
+        {
+          "type": "regular",
+          "path": "_build/shared-producer-public-adoption-20261029/artifact/ebin/Elixir.IpseKnowledge.Store.State.beam",
+          "bytes": 33180,
+          "sha256": "fed99396a4a56b25953cda04773ae1047881854690e724b83123d91da5e58c54"
+        },
+        {
+          "type": "regular",
+          "path": "_build/shared-producer-public-adoption-20261029/artifact/ebin/Elixir.IpseKnowledge.Store.beam",
+          "bytes": 218108,
+          "sha256": "242ab69696d11925d9d29ece367b85c8a8b00ee3aad61dff93a1531e0a4ecdd3"
+        },
+        {
+          "type": "regular",
+          "path": "_build/shared-producer-public-adoption-20261029/artifact/extension.json",
+          "bytes": 14699,
+          "sha256": "fd59633e59e0cea1f69e05bedfc348de57db7ab0b9cdf148806b7bffe70497a9"
+        }
+      ]
+    },
+    {
+      "root": "_build/shared-producer-public-adoption-20261029/artifact-current",
+      "rows": [
+        {
+          "type": "regular",
+          "path": "_build/shared-producer-public-adoption-20261029/artifact-current/LICENSE",
+          "bytes": 11391,
+          "sha256": "a4b4034ccfb966fafe103ca64dd85157e35edb90742a070cf5575184c673bb98"
+        },
+        {
+          "type": "regular",
+          "path": "_build/shared-producer-public-adoption-20261029/artifact-current/ebin/Elixir.IpseKnowledge.Adapters.beam",
+          "bytes": 89512,
+          "sha256": "d4c210a761288c7966cf586d16cf130105b3303c9d7ad31cea5c69a68f9f6488"
+        },
+        {
+          "type": "regular",
+          "path": "_build/shared-producer-public-adoption-20261029/artifact-current/ebin/Elixir.IpseKnowledge.Corpus.beam",
+          "bytes": 115240,
+          "sha256": "e86d7660db280643dc9369408480cb20e5bebccc5fa62800f6ed4b002bdcacf0"
+        },
+        {
+          "type": "regular",
+          "path": "_build/shared-producer-public-adoption-20261029/artifact-current/ebin/Elixir.IpseKnowledge.Documents.Docx.Styles.beam",
+          "bytes": 45604,
+          "sha256": "3efd770415c15596edabea37ed1b70902efcd4703bb8417f0fc99468b3d876dc"
+        },
+        {
+          "type": "regular",
+          "path": "_build/shared-producer-public-adoption-20261029/artifact-current/ebin/Elixir.IpseKnowledge.Documents.Docx.beam",
+          "bytes": 64940,
+          "sha256": "ff5d0e1ab0051f64ee0a30fd6a6f8b896d646474c4b67c21bc694a375fe6a4e4"
+        },
+        {
+          "type": "regular",
+          "path": "_build/shared-producer-public-adoption-20261029/artifact-current/ebin/Elixir.IpseKnowledge.Documents.ParserStage.beam",
+          "bytes": 30832,
+          "sha256": "04336c497d74d2a01dc6c7cf05549249675b62f9acffd58b83c135f822f72cbd"
+        },
+        {
+          "type": "regular",
+          "path": "_build/shared-producer-public-adoption-20261029/artifact-current/ebin/Elixir.IpseKnowledge.Documents.Pdf.beam",
+          "bytes": 7960,
+          "sha256": "6730519cd8834f4bd03318500cbfe52bb5861eee5f58fe8071b71049fd7968d5"
+        },
+        {
+          "type": "regular",
+          "path": "_build/shared-producer-public-adoption-20261029/artifact-current/ebin/Elixir.IpseKnowledge.Documents.Zip.beam",
+          "bytes": 11784,
+          "sha256": "c2429cee36cb6ba95d8b9b6b0878c01b87ee00eaf873685e4eb67e8e8d9fb6ef"
+        },
+        {
+          "type": "regular",
+          "path": "_build/shared-producer-public-adoption-20261029/artifact-current/ebin/Elixir.IpseKnowledge.Documents.beam",
+          "bytes": 24180,
+          "sha256": "b32fca581931d53471519bf6d68a10d81da3ffb744bffca7c5d6c9c4834d0bf0"
+        },
+        {
+          "type": "regular",
+          "path": "_build/shared-producer-public-adoption-20261029/artifact-current/ebin/Elixir.IpseKnowledge.Evidence.beam",
+          "bytes": 167800,
+          "sha256": "e42352eeab950f7e67959c72a2862af95fff72ff3d3efb1a5a042fe1f972e2b8"
+        },
+        {
+          "type": "regular",
+          "path": "_build/shared-producer-public-adoption-20261029/artifact-current/ebin/Elixir.IpseKnowledge.Profiles.beam",
+          "bytes": 33384,
+          "sha256": "cc48d436d28be1dac8774afcf29b370e886d194cae3b7dc0158667141a893838"
+        },
+        {
+          "type": "regular",
+          "path": "_build/shared-producer-public-adoption-20261029/artifact-current/ebin/Elixir.IpseKnowledge.Store.Collection.Directory.beam",
+          "bytes": 49116,
+          "sha256": "fd820b1f4ffefe1ffc02bf9859565d8d2e5f9cb89a8ddc68843ba9e5899c28ff"
+        },
+        {
+          "type": "regular",
+          "path": "_build/shared-producer-public-adoption-20261029/artifact-current/ebin/Elixir.IpseKnowledge.Store.Collection.Finalization.beam",
+          "bytes": 29916,
+          "sha256": "1ab8c96a70190a1357c425c73d11ffaf036c2765b4174c0ff5565ffbc3596a28"
+        },
+        {
+          "type": "regular",
+          "path": "_build/shared-producer-public-adoption-20261029/artifact-current/ebin/Elixir.IpseKnowledge.Store.Collection.Generation.beam",
+          "bytes": 42660,
+          "sha256": "085aa88384aac5bf468c7878f4200e80f13ca6e72d74e9fafeef76828e49e112"
+        },
+        {
+          "type": "regular",
+          "path": "_build/shared-producer-public-adoption-20261029/artifact-current/ebin/Elixir.IpseKnowledge.Store.Collection.Index.beam",
+          "bytes": 104488,
+          "sha256": "6fecb244d82da792810602035ee4757cb35a85f74bf01e99629531c2da497739"
+        },
+        {
+          "type": "regular",
+          "path": "_build/shared-producer-public-adoption-20261029/artifact-current/ebin/Elixir.IpseKnowledge.Store.Collection.Job.beam",
+          "bytes": 65308,
+          "sha256": "7fe0db564d23ab0805b6fa08757264fb55b1bfb9c645cd2724f1341772c4ebed"
+        },
+        {
+          "type": "regular",
+          "path": "_build/shared-producer-public-adoption-20261029/artifact-current/ebin/Elixir.IpseKnowledge.Store.Collection.Paged.beam",
+          "bytes": 39744,
+          "sha256": "a590f5644aad08334267e17b2e8469a4f7cb0dd3529551edb8e13b23831e8a59"
+        },
+        {
+          "type": "regular",
+          "path": "_build/shared-producer-public-adoption-20261029/artifact-current/ebin/Elixir.IpseKnowledge.Store.Collection.Producer.beam",
+          "bytes": 65788,
+          "sha256": "bc3bc3b935b33e5a8c20f823ac97c63b74a58f8a5e7d13fe313c3eba6a7b0cc0"
+        },
+        {
+          "type": "regular",
+          "path": "_build/shared-producer-public-adoption-20261029/artifact-current/ebin/Elixir.IpseKnowledge.Store.Collection.Projection.beam",
+          "bytes": 66968,
+          "sha256": "4e10cbf403da3ddca01f9d72a9cfd1a42c825bd81e6c6fe8722d4e8dcf08ea56"
+        },
+        {
+          "type": "regular",
+          "path": "_build/shared-producer-public-adoption-20261029/artifact-current/ebin/Elixir.IpseKnowledge.Store.Collection.Reduction.beam",
+          "bytes": 29920,
+          "sha256": "9371b1fc61689ae4d885b5fc20d341a066307da2b1d51479752b116b6cddac20"
+        },
+        {
+          "type": "regular",
+          "path": "_build/shared-producer-public-adoption-20261029/artifact-current/ebin/Elixir.IpseKnowledge.Store.Collection.Selected.beam",
+          "bytes": 21732,
+          "sha256": "d1bda1c92cbb23d613340142fb8e43892885495ef89c67694c477c2bf74573a1"
+        },
+        {
+          "type": "regular",
+          "path": "_build/shared-producer-public-adoption-20261029/artifact-current/ebin/Elixir.IpseKnowledge.Store.Collection.beam",
+          "bytes": 141348,
+          "sha256": "36cedc30a4db7cfe60cc4d00f5b66aef2ddb414419a7911ba43f34a3257687a2"
+        },
+        {
+          "type": "regular",
+          "path": "_build/shared-producer-public-adoption-20261029/artifact-current/ebin/Elixir.IpseKnowledge.Store.MCPCAS.beam",
+          "bytes": 47968,
+          "sha256": "1c4e72dcd9601abe4e221aa3d0c8da48af5b984858e06c99fbdb141fa3608f0b"
+        },
+        {
+          "type": "regular",
+          "path": "_build/shared-producer-public-adoption-20261029/artifact-current/ebin/Elixir.IpseKnowledge.Store.State.beam",
+          "bytes": 33180,
+          "sha256": "fed99396a4a56b25953cda04773ae1047881854690e724b83123d91da5e58c54"
+        },
+        {
+          "type": "regular",
+          "path": "_build/shared-producer-public-adoption-20261029/artifact-current/ebin/Elixir.IpseKnowledge.Store.beam",
+          "bytes": 218108,
+          "sha256": "242ab69696d11925d9d29ece367b85c8a8b00ee3aad61dff93a1531e0a4ecdd3"
+        },
+        {
+          "type": "regular",
+          "path": "_build/shared-producer-public-adoption-20261029/artifact-current/extension.json",
+          "bytes": 14699,
+          "sha256": "a7eba4d0daf79bcd6ec2d268a22b12e41b16bdae55d839f17284372218b8a5e6"
+        }
+      ]
+    }
+  ],
+  "reviews": [
+    {
+      "path": "docs/archive/2026-10-26-p30-p31-implementation/shared-producer-guard-session-independent-review.md",
+      "bytes": 8490,
+      "sha256": "f63aa7f2b18af40c92e0bbf63ad5a24559dbbc3119943a376907b3b3336bc02c"
+    },
+    {
+      "path": "docs/archive/2026-10-26-p30-p31-implementation/shared-producer-finite-guard-session-independent-review.md",
+      "bytes": 3871,
+      "sha256": "3e2b75a9684b9a4fac1cb0e9bc8c545e01331eaba56f4d4b74e1d20ddeecf215"
+    },
+    {
+      "path": "docs/archive/2026-10-26-p30-p31-implementation/shared-producer-public-page-reopening-direction-independent-review.md",
+      "bytes": 4153,
+      "sha256": "beb946d6ae533a1524d12cc9224e4e50db5a4afaa1c601352dce44f0b935ff28"
+    }
+  ]
+}

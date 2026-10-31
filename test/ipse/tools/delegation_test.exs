@@ -112,6 +112,8 @@ defmodule Ipse.DelegationTest do
       subagents: true,
       mcp_servers: [:host_server],
       approval: :allow,
+      execution_mode: :planning,
+      planning_cli_start: true,
       compact: true,
       transcript: [%{"role" => "user", "content" => "secret parent transcript"}],
       context: "private parent context",
@@ -138,6 +140,8 @@ defmodule Ipse.DelegationTest do
     refute Map.has_key?(child, :messages)
     refute Map.has_key?(child, :tools)
     refute Map.has_key?(child, :mcp_tools)
+    refute Map.has_key?(child, :planning_cli_start)
+    assert child.enclosing_mode == "planning"
 
     assert Delegation.child_config(%{max_steps: 30}, "origin").max_steps == 6
     assert Delegation.child_config(%{max_steps: 2}, "origin").max_steps == 2

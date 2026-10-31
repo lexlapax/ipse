@@ -1,0 +1,15 @@
+DOCUMENT_HELD_READER_OK: %{
+  source_inputs: 208,
+  source_delta: ["lib/ipse/extension/collection.ex"],
+  affected_snapshots: 3,
+  retained_scripts_logs: 7,
+  runtime_nodes: [
+    {"_build/p30-p31-integrated-source-20261029", 699,
+     %{"regular" => 697, "symlink" => 2}},
+    {"_build/document-held-read-sol-20261029", 699,
+     %{"regular" => 697, "symlink" => 2}}
+  ],
+  runtime_delta: ["_build/dev/lib/ipse/ebin/Elixir.Ipse.Extension.Collection.beam"],
+  helper_identical: true,
+  repeated_tests: 0
+}

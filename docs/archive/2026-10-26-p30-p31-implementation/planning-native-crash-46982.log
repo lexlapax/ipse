@@ -1,0 +1,39 @@
+Running ExUnit with seed: 493411, max_cases: 4
+Excluding tags: [module: Ipse.CLIOperatorInputTest]
+Including tags: [planning_crash: true]
+
+
+
+  1) test native planning entry and exit recover correctly after Session death around receipts (Ipse.CLIOperatorInputTest)
+     test/ipse/cli/operator_input_test.exs:5
+     Type a task, $review, or /help. Use /cancel while work is running.
+     you> /plan
+     Session request acknowledgment is unconfirmed; it may have taken effect and was not retried. Inspect saved receipts and the workspace before continuing.
+     ** (ExUnit.AssertionError) 
+     
+     Assertion with == failed
+     code:  assert Enum.count(events, &(&1["type"] == "planning_entry_observed")) == entry_count
+     left:  0
+     right: 1
+     
+         (ex_unit 1.20.4) lib/ex_unit/assertions.ex:460: ExUnit.Assertions.assert/2
+         test/support/planning_crash_pty.exs:97: (file)
+
+     thread 'main' (1370885) panicked at test/support/operator_cli_pty.rs:434:30:
+     assertion `left == right` failed
+       left: 1
+      right: 2
+     note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+     code: for boundary <-
+     stacktrace:
+       test/ipse/cli/operator_input_test.exs:53: anonymous fn/4 in Ipse.CLIOperatorInputTest."test native planning entry and exit recover correctly after Session death around receipts"/1
+       (elixir 1.20.4) lib/enum.ex:1725: Enum."-map/2-lists^map/1-1-"/2
+       (elixir 1.20.4) lib/enum.ex:1725: Enum."-map/2-lists^map/1-1-"/2
+       test/ipse/cli/operator_input_test.exs:34: (test)
+
+
+Finished in 4.4 seconds (0.09s on load, 0.00s async, 4.3s sync)
+
+Result: 0/1 passed, 6 excluded
+Failed: 1 test

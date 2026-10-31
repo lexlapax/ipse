@@ -1,0 +1,10 @@
+EXTENSION_DISCOVERY_MANIFEST_OK: %{
+  sources: 2,
+  manifest_entries: 7,
+  runtime_files: 669,
+  base_inventory_files: 621,
+  additional_pinned_files: 48,
+  changed_modules: ["Elixir.Ipse.Extension.MCPCall.beam",
+   "Elixir.Ipse.Extension.ToolAction.beam"],
+  helper_unchanged: true
+}

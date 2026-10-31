@@ -1,0 +1,9 @@
+Running ExUnit with seed: 132429, max_cases: 4
+Excluding tags: [:test]
+Including tags: [v4_public_continuation: true, v4_pages: true]
+
+.V4_TWO_PAGES {"pages":2,"vectors":11,"embedding_calls":6,"maximum_store_frame":12758,"hydrate_reads":47,"native_operations":0}
+.
+Finished in 4.3 seconds (4.1s on load, 0.00s async, 0.1s sync)
+
+Result: 2 passed, 3 excluded

@@ -1,0 +1,22 @@
+Running ExUnit with seed: 58166, max_cases: 4
+Excluding tags: [:test]
+Including tags: [document_guard_v4_pages: true]
+
+
+
+  1) test actual public v4 continuation produces two guarded pages (Ipse.SharedProducerGuardSessionTest)
+     test/extensions/knowledge/shared_producer_guard_session_test.exs:409
+     ** (MatchError) no match of right hand side value:
+
+         {:error, :eperm}
+
+     code: c = open(c)
+     stacktrace:
+       test/extensions/knowledge/shared_producer_guard_session_test.exs:86: Ipse.SharedProducerGuardSessionTest.open/1
+       test/extensions/knowledge/shared_producer_guard_session_test.exs:410: (test)
+
+
+Finished in 0.3 seconds (0.3s on load, 0.00s async, 0.00s sync)
+
+Result: 0/1 passed, 3 excluded
+Failed: 1 test

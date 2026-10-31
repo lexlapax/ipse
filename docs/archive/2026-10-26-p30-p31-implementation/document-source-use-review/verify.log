@@ -1,0 +1,25 @@
+{
+  "ancestors": 3,
+  "helpers": [
+    "40fa075e85348990407c4baf16617c91a7649a4cfa48fb7fa816f0dfba5f8b02",
+    "40fa075e85348990407c4baf16617c91a7649a4cfa48fb7fa816f0dfba5f8b02"
+  ],
+  "source_snapshots": 2,
+  "manifest_sha256": "77ec4fd5cfb91e1d7be513f3c2aea0eb2d2a5a5841312f189d153b17d2f0371b",
+  "direct_manifest_rows": 26,
+  "retained": 19,
+  "graph_rows": [
+    699,
+    700
+  ],
+  "graph_regular": [
+    697,
+    698
+  ],
+  "ancestor_bound_rows": 33,
+  "exact_added_runtime_paths": [
+    "_build/dev/lib/ipse/ebin/Elixir.Ipse.Extension.Collection.DocumentSourceUse.beam"
+  ],
+  "inherited_graph_inventory_matches": true,
+  "no_tests_or_effects": true
+}

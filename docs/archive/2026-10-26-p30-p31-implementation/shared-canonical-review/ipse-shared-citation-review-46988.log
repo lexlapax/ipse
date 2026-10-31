@@ -1,0 +1,14 @@
+CITATION_SHAPE: %{source: 3, citation: 3, noncanonical_valid: false}
+SHARED_CITATION_REVIEW: %{
+  canonical_roundtrip: true,
+  citation_version: 3.0,
+  noncanonical_span_refused: true,
+  noncanonical_pack_refused: true
+}
+    warning: unused alias Directory
+    │
+  4 │ alias IpseKnowledge.{Evidence,Store.Collection,Store.Collection.Generation,Store.Collection.Directory}
+    │ ~
+    │
+    └─ /tmp/ipse-shared-citation-review-46986.exs:4:1
+

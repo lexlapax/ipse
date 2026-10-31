@@ -1,0 +1,25 @@
+Running ExUnit with seed: 46931, max_cases: 1
+Excluding tags: [:test]
+Including tags: [:public_shared_selected]
+
+NAMESPACE_TEST_ARTIFACT d8fe260ab5c997382a42b4469d58f783b44637db810892aabe34cab958b64c5f
+.
+
+  1) test public Corpus reads fully hydrated selected supplied projections with Word citations and current-source refusal (Ipse.KnowledgeCollectionAdapterSessionTest)
+     test/extensions/knowledge/collection_adapter_session_test.exs:345
+     Expected false or nil, got true
+     code: refute File.exists?(evidence)
+     arguments:
+
+         # 1
+         "_build/shared-projection-codec-20261029/tested-public-corpus-job-selected-final"
+
+     stacktrace:
+       test/extensions/knowledge/collection_adapter_session_test.exs:140: Ipse.KnowledgeCollectionAdapterSessionTest.__ex_unit_setup_0/1
+       test/extensions/knowledge/collection_adapter_session_test.exs:1: Ipse.KnowledgeCollectionAdapterSessionTest.__ex_unit__/2
+
+
+Finished in 12.5 seconds (1.0s on load, 0.00s async, 11.4s sync)
+
+Result: 1/2 passed, 31 excluded
+Failed: 1 test

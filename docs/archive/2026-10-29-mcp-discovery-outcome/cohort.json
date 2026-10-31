@@ -1,0 +1,12 @@
+{
+  "base_runtime_inventory": {
+    "path": "docs/archive/2026-10-26-p30-p31-implementation/document-decision-restoration/runtime-final.sha256",
+    "sha256": "ae5ba0ca55cc76377b67555bd3adc6c0e3dbd44f7bc3c334fa93573d063b6a2e"
+  },
+  "helper_sha256": "7e1913446865a16cdfb7c96ca0285dc9e117a018c36c7b1940ba249a72ffd067",
+  "notes": "Before47065 ran frozen document-decision MCP; final graph overlays only MCP/Session.47066 strict compile and47067 direct test were launched without a completion poll between them; both completed0, and old MCP necessarily fails this exact returned-tag assertion.47070 actual Session control ran after confirmed compile completion. Later native/Session barrier source changes are excluded.",
+  "overlays": [
+    "Ipse.MCP",
+    "Ipse.Session"
+  ]
+}

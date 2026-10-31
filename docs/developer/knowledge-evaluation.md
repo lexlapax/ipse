@@ -292,6 +292,11 @@ measurement recipe. It removes artifact/source paths, origins, and search port.
 The local seal adds exact paths, runtime bytes, GPU UUID, ports, and registry
 identity. A UUID change needs a fresh local seal; a context/device-policy change
 also needs a fresh declaration. No hostname or kernel-version allowlist is implied.
+The clean source snapshot admits up to 16,384 tracked files; the declaration
+and frozen manifest each admit at most 4 MiB. Both limits apply, so unusually
+long paths can exhaust the byte limit before the file count. A limit failure
+stops declaration rather than omitting files. Plan and dataset files retain
+their separate 1 MiB limits.
 
 Store phase receipts separately from authoritative freeze and report data:
 

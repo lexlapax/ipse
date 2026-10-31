@@ -1,0 +1,11 @@
+** (TokenMissingError) token missing on docs/archive/2026-10-26-p30-p31-implementation/document-source-use-review/verify.exs:69:524:
+    error: missing terminator: end
+    │
+ 45 │ indexed = fn graph ->
+    │           └ unclosed delimiter
+ ...
+ 69 │ IO.puts(Jason.encode!(%{manifest_sha256: expected, direct_manifest_rows: length(rows), source_snapshots: length(m["sources"]), retained: length(m["retained"]), graph_rows: Enum.map(graphs, &length(&1.rows)), graph_regular: Enum.map(graphs, fn graph -> Enum.count(graph.rows, &(&1["type"] == "regular")) end), ancestors: length(m["ancestors"]), ancestor_bound_rows: length(ancestor_rows), exact_added_runtime_paths: added, inherited_graph_inventory_matches: true, helpers: helpers, no_tests_or_effects: true}, pretty: true))
+    │                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            └ missing closing delimiter (expected "end")
+    │
+    └─ docs/archive/2026-10-26-p30-p31-implementation/document-source-use-review/verify.exs:69:524
+    (elixir 1.20.4) lib/code.ex:1639: Code.require_file/2

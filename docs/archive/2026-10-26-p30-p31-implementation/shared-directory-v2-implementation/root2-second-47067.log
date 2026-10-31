@@ -1,0 +1,23 @@
+Running ExUnit with seed: 47067, max_cases: 1
+Excluding tags: [:test]
+Including tags: [:generation_paged]
+
+
+
+  1) test explicit root2 finalization preserves v1 and verifies each ordered entity page durably (Ipse.KnowledgeCollectionDirectoryTest)
+     test/extensions/knowledge/collection_directory_test.exs:56
+     ** (MatchError) no match of right hand side value:
+
+         {"** (ArgumentError) cannot convert the given list to a string.\n\nTo be converted to a string, a list must either be empty or only\ncontain the following elements:\n\n  * strings\n  * integers representing Unicode code points\n  * a list containing one of these three elements\n\nPlease check the given list or call inspect/1 to get the list representation, got:\n\n[paged: true]\n\n    (elixir 1.20.4) lib/list.ex:1184: List.to_string/1\n    (elixir 1.20.4) lib/path.ex:835: Path.expand_home/1\n    (elixir 1.20.4) lib/path.ex:224: Path.expand/2\n    (elixir 1.20.4) lib/code.ex:2383: Code.find_file!/2\n    (elixir 1.20.4) lib/code.ex:1577: Code.eval_file/2\n    test/support/generation_paged.exs:1: (file)\n",
+          1}
+
+     code: result = run_fixture("test/support/generation_paged.exs")
+     stacktrace:
+       test/extensions/knowledge/collection_directory_test.exs:97: Ipse.KnowledgeCollectionDirectoryTest.run_fixture/1
+       test/extensions/knowledge/collection_directory_test.exs:57: (test)
+
+
+Finished in 2.3 seconds (0.07s on load, 0.00s async, 2.2s sync)
+
+Result: 0/1 passed, 5 excluded
+Failed: 1 test

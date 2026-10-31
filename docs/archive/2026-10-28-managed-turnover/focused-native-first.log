@@ -1,0 +1,27 @@
+Running ExUnit with seed: 330835, max_cases: 4
+Excluding tags: [:native_sandbox, :macos_sandbox, :macos_filesystem, :memory_scope]
+
+.
+
+  1) test actual native-reviewed Core forget retains signed suppression and rejects recapture/old import (Ipse.Session.ManagedLifecycleTest)
+     test/ipse/session/managed_lifecycle_test.exs:5
+     ** (ExUnit.AssertionError) 
+     
+     match (=) failed
+     code:  assert {:ok, core} = result
+     left:  {:ok, core}
+     right: {:error, :native_review_refused}
+     
+         test/support/managed_literal_forget.exs:154: anonymous fn/8 in :elixir_compiler_0.__FILE__/1
+         (ipse 0.1.0) lib/ipse/session/resources.ex:860: Ipse.Session.Resources.execute_file_effect/3
+
+     code: assert scenario("valid", "--review") =~ "NATIVE_MANAGED_LITERAL_FORGET_VALID_PASSED"
+     stacktrace:
+       test/ipse/session/managed_lifecycle_test.exs:41: Ipse.Session.ManagedLifecycleTest.scenario/2
+       test/ipse/session/managed_lifecycle_test.exs:6: (test)
+
+
+Finished in 6.0 seconds (0.04s on load, 0.00s async, 6.0s sync)
+
+Result: 1/2 passed
+Failed: 1 test

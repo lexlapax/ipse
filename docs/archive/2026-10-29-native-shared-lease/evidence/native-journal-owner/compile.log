@@ -1,0 +1,55 @@
+     error: cannot invoke remote function Access.get/2 inside a guard
+     │
+ 162 │         :valid when stats.bytes + 1 > limits["max_bytes"] ->
+     │                                             ^
+     │
+     └─ lib/ipse/journal.ex:162:45: Ipse.Journal.repair_tail_fenced/4
+
+
+== Compilation error in file lib/ipse/journal.ex ==
+** (CompileError) lib/ipse/journal.ex: cannot compile module Ipse.Journal (errors have been logged)
+    (stdlib 8.1) lists.erl:2673: :lists.mapfoldl_1/3
+{:error,
+ [
+   %{
+     message: "cannot invoke remote function Access.get/2 inside a guard",
+     position: {162, 45},
+     file: "/home/lexlapax/projects/lexlapax/ipse/lib/ipse/journal.ex",
+     stacktrace: [
+       {Ipse.Journal, :repair_tail_fenced, 4,
+        [file: "lib/ipse/journal.ex", column: 45, line: 162]}
+     ],
+     source: "/home/lexlapax/projects/lexlapax/ipse/lib/ipse/journal.ex",
+     span: nil,
+     severity: :error
+   },
+   %{
+     message: "** (CompileError) lib/ipse/journal.ex: cannot compile module Ipse.Journal (errors have been logged)\n    (stdlib 8.1) lists.erl:2673: :lists.mapfoldl_1/3\n",
+     position: 0,
+     file: "/home/lexlapax/projects/lexlapax/ipse/lib/ipse/journal.ex",
+     stacktrace: [
+       {:elixir_expand, :mapfold, 5,
+        [file: ~c"src/elixir_expand.erl", line: 746]},
+       {:elixir_expand, :expand_remote, 8,
+        [file: ~c"src/elixir_expand.erl", line: 987]},
+       {:elixir_clauses, :guard, 3,
+        [file: ~c"src/elixir_clauses.erl", line: 225]},
+       {:elixir_clauses, :guarded_head, 6,
+        [file: ~c"src/elixir_clauses.erl", line: 217]},
+       {:elixir_clauses, :clause, 6,
+        [file: ~c"src/elixir_clauses.erl", line: 201]},
+       {:elixir_clauses, :"-expand_clauses_origin/6-fun-0-", 7,
+        [file: ~c"src/elixir_clauses.erl", line: 516]},
+       {:lists, :mapfoldl_1, 3, [file: ~c"lists.erl", line: 2673]}
+     ],
+     source: "/home/lexlapax/projects/lexlapax/ipse/lib/ipse/journal.ex",
+     span: nil,
+     severity: :error,
+     details: {:error,
+      %CompileError{
+        file: "/home/lexlapax/projects/lexlapax/ipse/lib/ipse/journal.ex",
+        line: 0,
+        description: "cannot compile module Ipse.Journal (errors have been logged)"
+      }}
+   }
+ ], %{compile_warnings: [], runtime_warnings: []}}

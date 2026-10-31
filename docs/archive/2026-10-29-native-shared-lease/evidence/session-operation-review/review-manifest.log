@@ -1,0 +1,7 @@
+SESSION_OPERATION_MANIFEST_OK: %{
+  manifest_entries: 13,
+  source_files: 4,
+  runtime_files: 697,
+  helper_unchanged: true,
+  lock_and_runner_inherited: true
+}

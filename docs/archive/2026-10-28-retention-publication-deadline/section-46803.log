@@ -1,0 +1,219 @@
+Running ExUnit with seed: 46803, max_cases: 1
+Excluding tags: [:test]
+Including tags: [:retention_deadline_fence]
+
+
+
+  1) test trusted root deadline switches preserve pre-rename refusal and ordinary switching (Ipse.Runner.TransactionDeadlineTest)
+     test/ipse/runner/transaction_deadline_test.exs:7
+     match (=) failed
+     code:  assert :ok =
+              Transaction.switch_before(
+                cap,
+                stage,
+                "root.json",
+                System.system_time(:millisecond) + 60000
+              )
+     left:  :ok
+     right: {:unknown, :transaction_lost}
+     stacktrace:
+       test/ipse/runner/transaction_deadline_test.exs:47: anonymous fn/1 in Ipse.Runner.TransactionDeadlineTest."test trusted root deadline switches preserve pre-rename refusal and ordinary switching"/1
+       (ipse 0.1.0) lib/ipse/session/resources.ex:860: Ipse.Session.Resources.execute_file_effect/3
+
+
+
+  2) test actual native final retention switch refuses old and new deadline crossings (Ipse.Session.ManagedRetentionNativeTest)
+     test/ipse/session/managed_retention_native_test.exs:6
+     Review the complete proposed facts below. This confirmation applies only to this exact review.
+     {
+       "action_sha256": "6c32bfc63755b3d01abbf47564532b9c70fcc9c46a7725528caddec1d5a271c5",
+       "collection": {
+         "manifest_sha256": "f5a22b10e2d3aec7c6aa4d8f1d544f8386caf54ca95d3c8d590625054e79896a",
+         "root": {
+           "floor": 3,
+           "floor_anchor": "25c3b215c116c88d4b110cebef31ad33",
+           "generation": 3,
+           "project": "c6abf2a62f03a1ff496dff22f66c0ca0696b0487bada556c4e8f25ecbc6cefab",
+           "version": 3
+         },
+         "root_sha256": "431f16b92bb9c7b30391948418e269f42e09afddd2ed393774256e26d0f08867",
+         "root_state": "present"
+       },
+       "context": {
+         "binding_sha256": "5325b8741e724ad8773b4a2c1985fab0c148a9aad5b30646cfd335d1a833e32c",
+         "client_id": "bfd72ed5b26893a25fa6f2948f5037ce",
+         "job_id": "31a98e7bf2ec540a82f2448be728fcee",
+         "management_epoch": 0,
+         "management_sha256": "87e3763326b026392f40196f47ea9204eef19fe1012b41b0ab5b89bef000b933",
+         "namespace": "c6abf2a62f03a1ff496dff22f66c0ca0696b0487bada556c4e8f25ecbc6cefab",
+         "original_pin": null,
+         "project_id": "5a3551102e9978820a8a348cd5754dddf63a558dde00adbf9ece2129bef4a89a",
+         "recipe": {
+           "category_path": [
+             "category"
+           ],
+           "constraints_sha256": "d709745ab18405dff572c41053eda5cbe12c350ebbabdcd0d52ea1e80962368a",
+           "evidence_path": [
+             "evidence",
+             "sources"
+           ],
+           "key_prefix": "note.",
+           "kind": "literal_source",
+           "lineage_path": [
+             "lineage"
+           ],
+           "override_prefix": "override.",
+           "rules": [
+             {
+               "category": "current",
+               "max_age_ms": null,
+               "origins": [
+                 "native_operator_assertion",
+                 "typed_host_outcome"
+               ]
+             },
+             {
+               "category": "ordinary",
+               "max_age_ms": 7776000000,
+               "origins": [
+                 "native_operator_assertion",
+                 "typed_host_outcome"
+               ]
+             },
+             {
+               "category": "preference",
+               "max_age_ms": null,
+               "origins": [
+                 "native_operator_assertion",
+                 "typed_host_outcome"
+               ]
+             }
+           ],
+           "text_path": [
+             "text"
+           ],
+           "version": 1
+         },
+         "session_id": "b3582299034c9f957f7f636c00a72eb5"
+       },
+       "historical_gap": false,
+       "historical_gap_notice": null,
+       "kind": "managed_literal_retention",
+       "metadata": {
+         "category": "ordinary",
+         "first_admitted_ms": 1793151405840,
+         "lineage": "a25d954b728c71bc15cdfe3ef4c63f6a87e9f22be1dd1e5ddf9edf02ab769193",
+         "policy_sha256": "dbc7d380793c1fd92543f35461f649e62c5b1ffb7e82d904314ce91395ec651e",
+         "recipe_sha256": "9b330108f5f6d48b5ff93126cab258964531117619501ad5a00de3e4e8d3fc26",
+         "valid_until_ms": 1800927405840
+       },
+       "new_deadline_rule": {
+         "basis": "native_confirmation_time",
+         "duration_ms": 6000
+       },
+       "old_deadline_ms": 1800927405840,
+       "operation_id": "26d84fb14288541e3dd9070091f6b356",
+       "policy": {
+         "duration_ms": 6000,
+         "kind": "duration"
+       },
+       "reason": "Native fixture selected this exact policy",
+       "request_sha256": "94c4c00e1ff0a78c6bf1ab03851c2612e8ba1fe0bc9e58980884f14ac5bb3fb8",
+       "scope": "selected literal derivative; original journal, management review journal and shared evidence remain",
+       "target": {
+         "bytes": 1082,
+         "key": "note.a25d954b728c71bc15cdfe3ef4c63f6a87e9f22be1dd1e5ddf9edf02ab769193",
+         "operation_id": "278a48c1146665db1462322ea0b25145",
+         "revision": 1,
+         "sha256": "101616baaa98218c0d51799a5cf199ffeba4f26dec2cbef3b198fbc2d868c3c6",
+         "value": {
+           "category": "ordinary",
+           "created_at_ms": 864000000,
+           "event_at_ms": null,
+           "evidence": {
+             "sources": [
+               {
+                 "content_sha256": "4c1adf410e8092458cf9598d4ed4ba92a9ddc6c05fa3727c188a5fce5feada84",
+                 "coverage": "available",
+                 "end_byte": 19,
+                 "kind": "input.assertion.ordinary",
+                 "occurrence_id": "00000000000000000000000000000001",
+                 "origin": "native_operator_assertion",
+                 "path": null,
+                 "quote": "Acme has owner Alex",
+                 "quote_sha256": "4c1adf410e8092458cf9598d4ed4ba92a9ddc6c05fa3727c188a5fce5feada84",
+                 "receipt_sha256": "249ded81fc09301d955175885ad1d43c9b47dd399ac1e0fedb40e418eb5c1547",
+                 "session_id": "11111111111111111111111111111111",
+                 "start_byte": 0,
+                 "version": 1,
+                 "version_id": "33333333333333333333333333333333"
+               }
+             ]
+           },
+           "expires_at_ms": 8640000000,
+           "id": "a25d954b728c71bc15cdfe3ef4c63f6a87e9f22be1dd1e5ddf9edf02ab769193",
+           "lineage": "a25d954b728c71bc15cdfe3ef4c63f6a87e9f22be1dd1e5ddf9edf02ab769193",
+           "metadata_reserve": "0000000000000000000000000000000000000000000000000000000000000000",
+           "observed_at_ms": 864000000,
+           "previous_category": null,
+           "reason": "trusted fixture source",
+           "superseded_at_ms": null,
+           "text": "Acme has owner Alex",
+           "version": 1
+         }
+       },
+       "version": 1
+     }
+     Type duration 7e7c54df79f7716f to confirm, or anything else to cancel.
+     > duration 7e7c54df79f7716f
+     ** (ExUnit.AssertionError) 
+     
+     match (=) failed
+     code:  assert {:ok, core} = publish.(prepared, permit, facts)
+     left:  {:ok, core}
+     right: {:unknown, :project_identity_lock_lost}
+     
+         test/support/managed_literal_retention.exs:201: anonymous fn/5 in :elixir_compiler_0.__FILE__/1
+         (ipse 0.1.0) lib/ipse/runner/review.ex:139: Ipse.Runner.Review.enter/7
+         (ipse 0.1.0) lib/ipse/runner/review.ex:63: Ipse.Runner.Review.with_review/3
+         test/support/managed_literal_retention.exs:199: anonymous fn/5 in :elixir_compiler_0.__FILE__/1
+         test/support/managed_literal_retention.exs:232: anonymous fn/7 in :elixir_compiler_0.__FILE__/1
+         (ipse 0.1.0) lib/ipse/session/resources.ex:860: Ipse.Session.Resources.execute_file_effect/3
+     
+     ** (ExUnit.AssertionError) 
+     
+     match (=) failed
+     code:  assert {:ok, core} =
+                   Review.with_review(ManagedRetention.command(policy), facts, fn permit ->
+                     try do
+                       assert {:ok, core} = publish.(prepared, permit, facts)
+                       assert core["normalization"]["action_sha256"] == facts["action_sha256"]
+     
+                       assert {:error, :native_review_refused} =
+                                Review.consume(permit, ManagedRetention.command(policy), facts)
+     
+                       {:ok, core}
+                     rescue
+                       error ->
+                         IO.puts(Exception.format(:error, error, __STACKTRACE__))
+                         reraise error, __STACKTRACE__
+                     end
+                   end)
+     left:  {:ok, core}
+     right: {:unknown, :native_review_unconfirmed}
+     
+         test/support/managed_literal_retention.exs:198: anonymous fn/5 in :elixir_compiler_0.__FILE__/1
+         test/support/managed_literal_retention.exs:232: anonymous fn/7 in :elixir_compiler_0.__FILE__/1
+         (ipse 0.1.0) lib/ipse/session/resources.ex:860: Ipse.Session.Resources.execute_file_effect/3
+
+     code: for mode <- ~w(deadline-old deadline-new) do
+     stacktrace:
+       test/ipse/session/managed_retention_native_test.exs:36: anonymous fn/4 in Ipse.Session.ManagedRetentionNativeTest."test actual native final retention switch refuses old and new deadline crossings"/1
+       (elixir 1.20.4) lib/enum.ex:1725: Enum."-map/2-lists^map/1-1-"/2
+       test/ipse/session/managed_retention_native_test.exs:21: (test)
+
+
+Finished in 2.3 seconds (0.00s async, 2.3s sync)
+
+Result: 0/2 passed, 1 excluded
+Failed: 2 tests

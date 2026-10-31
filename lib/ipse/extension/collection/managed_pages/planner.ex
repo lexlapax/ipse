@@ -14,6 +14,31 @@ defmodule Ipse.Extension.Collection.ManagedPages.Planner do
 
   @doc "Prepare at most two edits; closure reads retain their existing 32-unit owner budget."
   def plan(cap, kind, edits, read) when is_function(read, 1) do
+    plan_with_expectations(cap, kind, edits, %{}, read)
+  end
+
+  def plan(_, _, _, _), do: @error
+
+  @doc "Prepare edits only when each authenticated old row equals its explicit expectation."
+  def plan_checked(cap, kind, edits, read) when is_list(edits) and is_function(read, 1) do
+    checked(fn ->
+      triples =
+        Enum.map(edits, fn
+          {id, :absent, row} -> {id, :absent, row}
+          {id, {:equal, old}, row} when not is_nil(old) -> {id, {:equal, old}, row}
+        end)
+
+      expected = Map.new(triples, fn {id, old, _} -> {id, old} end)
+      changes = Enum.map(triples, fn {id, _, row} -> {id, row} end)
+      true = map_size(expected) == length(triples)
+      {:ok, plan} = plan_with_expectations(cap, kind, changes, expected, read)
+      plan
+    end)
+  end
+
+  def plan_checked(_, _, _, _), do: @error
+
+  defp plan_with_expectations(cap, kind, edits, expected, read) do
     checked(fn ->
       edits = edits!(kind, edits)
 
@@ -36,13 +61,11 @@ defmodule Ipse.Extension.Collection.ManagedPages.Planner do
       true = Enum.all?(observations, &same_root?(&1, first))
 
       case first["state"] do
-        "uninitialized" -> initialize!(kind, edits, first)
-        "initialized" -> repair!(cap, kind, edits, observations, read)
+        "uninitialized" -> initialize!(kind, edits, expected, first)
+        "initialized" -> repair!(cap, kind, edits, expected, observations, read)
       end
     end)
   end
-
-  def plan(_, _, _, _), do: @error
 
   @doc "Seal against the same actual callback witness; revision comes from old global generation+1."
   def seal_changes(cap, witness, plan) do
@@ -69,9 +92,10 @@ defmodule Ipse.Extension.Collection.ManagedPages.Planner do
     end)
   end
 
-  defp initialize!(kind, edits, o) do
+  defp initialize!(kind, edits, expected, o) do
     true = o["witness"]["root_state"] == "absent" and o["state"] == "uninitialized"
     true = Enum.all?(edits, fn {_, row} -> not is_nil(row) end)
+    Enum.each(edits, fn {id, _} -> expected!(expected[id], %{}, id) end)
     rows = Map.new(edits)
     {:ok, body} = Pages.pack(kind, Pages.zero(kind), rows)
 
@@ -85,7 +109,7 @@ defmodule Ipse.Extension.Collection.ManagedPages.Planner do
     }
   end
 
-  defp repair!(cap, kind, edits, observations, read) do
+  defp repair!(cap, kind, edits, expected, observations, read) do
     selected = observations |> Enum.map(& &1["neighbors"]["selected"]["key"]) |> Enum.uniq()
 
     context =
@@ -115,7 +139,7 @@ defmodule Ipse.Extension.Collection.ManagedPages.Planner do
     groups =
       Enum.map(selected, fn key ->
         node = context[key]
-        next = apply_edits!(pages[key].entries, edits, node.range)
+        next = apply_edits!(pages[key].entries, edits, expected, node.range)
 
         if Pages.weight(kind, next) < p.floor and not node.range.single do
           slots = node.observation["neighbors"]
@@ -154,7 +178,7 @@ defmodule Ipse.Extension.Collection.ManagedPages.Planner do
           end)
 
         range = %{fence: lower, upper: upper}
-        rows = apply_edits!(rows, edits, range)
+        rows = apply_edits!(rows, edits, expected, range)
         true = map_size(rows) <= 514
         pieces = partition(kind, Enum.sort(rows))
         true = whole or Enum.all?(pieces, &(weight(kind, &1) >= p.floor))
@@ -248,9 +272,11 @@ defmodule Ipse.Extension.Collection.ManagedPages.Planner do
     edits
   end
 
-  defp apply_edits!(rows, edits, range) do
+  defp apply_edits!(rows, edits, expected, range) do
     Enum.reduce(edits, rows, fn {id, row}, acc ->
       if id >= range.fence and (is_nil(range.upper) or id < range.upper) do
+        expected!(expected[id], acc, id)
+
         if is_nil(row) do
           true = Map.has_key?(acc, id)
           Map.delete(acc, id)
@@ -262,6 +288,10 @@ defmodule Ipse.Extension.Collection.ManagedPages.Planner do
       end
     end)
   end
+
+  defp expected!(nil, _rows, _id), do: :ok
+  defp expected!(:absent, rows, id), do: true = not Map.has_key?(rows, id)
+  defp expected!({:equal, old}, rows, id), do: true = Map.fetch(rows, id) === {:ok, old}
 
   defp components(groups) do
     Enum.reduce(Enum.sort(groups), [], fn group, acc ->

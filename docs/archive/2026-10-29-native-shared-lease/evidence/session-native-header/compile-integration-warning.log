@@ -1,0 +1,29 @@
+     warning: the variable "count" is accessed inside size(...) of a bitstring but it was defined outside of the match. You must precede it with the pin operator
+     │
+ 693 │     <<chunk::binary-size(count), rest::binary>> = bytes
+     │                          ~
+     │
+     └─ _build/session-header-integration-sol-20261029/lib/ipse/lib/ipse/runner.ex:693:26: Ipse.Runner.session_header_chunks/4
+
+{:ok, [Ipse.Journal, Ipse.Runner, Ipse.Session, Ipse.Session.Lock],
+ %{
+   compile_warnings: [
+     %{
+       message: "the variable \"count\" is accessed inside size(...) of a bitstring but it was defined outside of the match. You must precede it with the pin operator",
+       position: {693, 26},
+       file: "/home/lexlapax/projects/lexlapax/ipse/_build/session-header-integration-sol-20261029/lib/ipse/lib/ipse/runner.ex",
+       stacktrace: [
+         {Ipse.Runner, :session_header_chunks, 4,
+          [
+            file: "_build/session-header-integration-sol-20261029/lib/ipse/lib/ipse/runner.ex",
+            column: 26,
+            line: 693
+          ]}
+       ],
+       source: "/home/lexlapax/projects/lexlapax/ipse/_build/session-header-integration-sol-20261029/lib/ipse/lib/ipse/runner.ex",
+       span: nil,
+       severity: :warning
+     }
+   ],
+   runtime_warnings: []
+ }}

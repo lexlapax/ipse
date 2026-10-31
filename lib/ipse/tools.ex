@@ -23,7 +23,7 @@ defmodule Ipse.Tools do
     [
       tool(
         "read",
-        "Read a UTF-8 file in the workspace. Line offsets start at 1; output is bounded.",
+        "Read workspace UTF-8 lines or explicit base64 bytes (up to 4096 bytes/reply). Binary byte_offset selects hash-bound pages of a complete file up to file_max_bytes (maximum 32768).",
         %{
           "path" => string("Workspace-relative file path"),
           "offset" => %{
@@ -31,7 +31,24 @@ defmodule Ipse.Tools do
             "minimum" => 1,
             "description" => "First line (default 1)"
           },
-          "max_lines" => %{"type" => "integer", "minimum" => 1, "maximum" => 1000}
+          "max_lines" => %{"type" => "integer", "minimum" => 1, "maximum" => 1000},
+          "encoding" => %{"type" => "string", "enum" => ["base64"]},
+          "max_bytes" => %{"type" => "integer", "minimum" => 1, "maximum" => 4096},
+          "byte_offset" => %{
+            "type" => "integer",
+            "minimum" => 0,
+            "maximum" => 32768,
+            "description" =>
+              "Select binary page offset; offsets above zero require the complete-file expected_sha256."
+          },
+          "file_max_bytes" => %{
+            "type" => "integer",
+            "minimum" => 1,
+            "maximum" => 32768,
+            "description" =>
+              "Complete file ceiling for binary pages; requires byte_offset (default 32768)."
+          },
+          "expected_sha256" => %{"type" => "string", "minLength" => 64, "maxLength" => 64}
         },
         ["path"]
       ),
@@ -69,7 +86,15 @@ defmodule Ipse.Tools do
   def mutating?(name), do: name in ["write", "edit", "shell"]
 
   def execute(name, args, context) when is_map(args) and is_map(context) do
-    dispatch(name, args, context)
+    if name in ~w(read write edit) and is_map(context[:managed_tool]) do
+      Ipse.Session.ManagedToolUse.with_effect(
+        context.managed_tool,
+        Ipse.Session.ManagedToolUse.native_binding(name, args),
+        fn _deadline -> dispatch(name, args, context) end
+      )
+    else
+      dispatch(name, args, context)
+    end
   rescue
     error ->
       if mutating?(name),
@@ -79,22 +104,16 @@ defmodule Ipse.Tools do
 
   def execute(_, _, _), do: {:error, "tool arguments and context must be objects"}
 
+  defp dispatch("read", %{"encoding" => "base64"} = args, context), do: read_binary(args, context)
+
   defp dispatch("read", args, context) do
-    with {:ok, path} <- checked_path(args["path"], context, false),
-         {:ok, offset} <- integer_arg(args, "offset", 1, 1, 100_000),
-         {:ok, max_lines} <- integer_arg(args, "max_lines", 200, 1, 1000),
-         {:ok, file} <- File.open(path, [:read, :binary]) do
-      try do
-        case read_chunks(file, offset, offset + max_lines, 1, @output_limit, @scan_limit, []) do
-          {:ok, chunks} -> {:ok, chunks |> Enum.reverse() |> IO.iodata_to_binary() |> utf8()}
-          error -> error
-        end
-      after
-        File.close(file)
-      end
-    else
-      {:error, reason} -> {:error, message(reason)}
-    end
+    with true <-
+           not Enum.any?(
+             ~w(encoding max_bytes byte_offset file_max_bytes expected_sha256),
+             &Map.has_key?(args, &1)
+           ) ||
+             {:error, "binary read options require encoding base64"},
+         do: read_text(args, context)
   end
 
   defp dispatch("write", args, context) do
@@ -134,7 +153,17 @@ defmodule Ipse.Tools do
              timeout_ms: timeout,
              output_limit: @output_limit,
              sandbox: Map.get(context, :sandbox, :off),
-             emit: Map.get(context, :emit)
+             emit: Map.get(context, :emit),
+             admit:
+               if(is_map(context[:managed_tool]),
+                 do: fn start ->
+                   Ipse.Session.ManagedToolUse.with_effect(
+                     context.managed_tool,
+                     Ipse.Session.ManagedToolUse.native_binding("shell", args),
+                     start
+                   )
+                 end
+               )
            ) do
       suffix = if result.timed_out, do: " (timed out)", else: ""
       {:ok, "Exit code: #{result.exit_code}#{suffix}\n" <> result.output}
@@ -146,6 +175,180 @@ defmodule Ipse.Tools do
 
   defp dispatch(name, _, _),
     do: {:error, "unknown tool: #{inspect(name, limit: 20, printable_limit: 100)}"}
+
+  defp read_text(args, context) do
+    with {:ok, path} <- checked_path(args["path"], context, false),
+         {:ok, offset} <- integer_arg(args, "offset", 1, 1, 100_000),
+         {:ok, max_lines} <- integer_arg(args, "max_lines", 200, 1, 1000),
+         {:ok, file} <- File.open(path, [:read, :binary]) do
+      try do
+        case read_chunks(file, offset, offset + max_lines, 1, @output_limit, @scan_limit, []) do
+          {:ok, chunks} -> {:ok, chunks |> Enum.reverse() |> IO.iodata_to_binary() |> utf8()}
+          error -> error
+        end
+      after
+        File.close(file)
+      end
+    else
+      {:error, reason} -> {:error, message(reason)}
+    end
+  end
+
+  defp read_binary(args, context) do
+    with true <-
+           not Enum.any?(~w(offset max_lines), &Map.has_key?(args, &1)) ||
+             {:error, "binary reads do not accept line options"},
+         {:ok, limit} <- integer_arg(args, "max_bytes", 4096, 1, 4096),
+         {:ok, file_limit, offset} <- binary_range(args, limit),
+         true <-
+           (is_nil(args["expected_sha256"]) or Ipse.JSON.sha256?(args["expected_sha256"])) ||
+             {:error, "expected_sha256 must be a lowercase SHA-256"},
+         {:ok, path} <- checked_path(args["path"], context, false),
+         {:ok, before} <- File.lstat(path, time: :posix),
+         true <-
+           (before.type == :regular and before.links == 1 and before.size <= file_limit and
+              offset <= before.size) ||
+             {:error, "binary read requires a complete regular single-link file within max_bytes"},
+         true <- Ipse.Session.Resources.active?() || {:error, "read owner is unavailable"},
+         {:ok, file} <- :file.open(String.to_charlist(path), [:read, :binary, :raw]) do
+      try do
+        with {:ok, info} <- :file.read_file_info(file, time: :posix),
+             true <- binary_identity(before) == binary_identity(File.Stat.from_record(info)),
+             {:ok, bytes} <- binary_bytes(file, file_limit),
+             true <- byte_size(bytes) == before.size,
+             {:ok, ^bytes} <- binary_bytes(file, file_limit),
+             {:ok, after_info} <- :file.read_file_info(file, time: :posix),
+             true <- binary_identity(before) == binary_identity(File.Stat.from_record(after_info)),
+             {:ok, ^path} <- checked_path(args["path"], context, false),
+             {:ok, after_path} <- File.lstat(path, time: :posix),
+             true <- binary_identity(before) == binary_identity(after_path),
+             sha = Ipse.JSON.sha256(bytes),
+             true <- is_nil(args["expected_sha256"]) or args["expected_sha256"] == sha,
+             true <- Ipse.Session.Resources.active?() do
+          value = %{
+            "version" => 1,
+            "encoding" => "base64",
+            "path" => args["path"],
+            "byte_count" => byte_size(bytes),
+            "sha256" => sha,
+            "data" => Base.encode64(bytes),
+            "complete" => true
+          }
+
+          value =
+            if Map.has_key?(args, "byte_offset") do
+              part = binary_part(bytes, offset, min(limit, byte_size(bytes) - offset))
+              finish = offset + byte_size(part)
+
+              value
+              |> Map.drop(["complete"])
+              |> Map.merge(%{
+                "version" => 2,
+                "offset" => offset,
+                "data" => Base.encode64(part),
+                "page_sha256" => Ipse.JSON.sha256(part),
+                "next" => if(finish < byte_size(bytes), do: finish, else: nil)
+              })
+            else
+              value
+            end
+
+          {:ok, Jason.encode!(value)}
+        else
+          _ ->
+            {:error,
+             "binary source changed, exceeded max_bytes, or differed from expected_sha256"}
+        end
+      after
+        :file.close(file)
+      end
+    else
+      {:error, reason} -> {:error, message(reason)}
+      _ -> {:error, "binary source unavailable"}
+    end
+  end
+
+  defp binary_range(args, limit) do
+    if Map.has_key?(args, "byte_offset") do
+      with {:ok, offset} <- integer_arg(args, "byte_offset", 0, 0, 32768),
+           {:ok, file_limit} <- integer_arg(args, "file_max_bytes", 32768, 1, 32768),
+           true <- offset == 0 or Ipse.JSON.sha256?(args["expected_sha256"]) do
+        {:ok, file_limit, offset}
+      else
+        _ -> {:error, "binary pages after offset zero require the complete file SHA-256"}
+      end
+    else
+      if Map.has_key?(args, "file_max_bytes"),
+        do: {:error, "file_max_bytes requires byte_offset"},
+        else: {:ok, limit, 0}
+    end
+  end
+
+  defp binary_bytes(file, limit) do
+    case :file.pread(file, 0, limit + 1) do
+      {:ok, bytes} when byte_size(bytes) <= limit -> {:ok, bytes}
+      :eof -> {:ok, ""}
+      _ -> {:error, :binary_read_limit}
+    end
+  end
+
+  defp binary_identity(stat),
+    do:
+      Map.take(
+        stat,
+        ~w(type links size inode major_device minor_device uid gid mode mtime ctime)a
+      )
+
+  @doc false
+  def binary_read_result?(text, args) do
+    with true <-
+           args["encoding"] == "base64" and
+             not Enum.any?(~w(offset max_lines), &Map.has_key?(args, &1)),
+         {:ok, limit} <- integer_arg(args, "max_bytes", 4096, 1, 4096),
+         {:ok, _, _} <- binary_range(args, limit),
+         {:ok, value} <- Ipse.JSON.decode_bounded(text, 8192),
+         true <- binary_envelope?(value, args),
+         true <- value["path"] === args["path"],
+         {:ok, bytes} <- Base.decode64(value["data"]),
+         true <- byte_size(bytes) <= limit,
+         true <- binary_payload?(value, bytes, args, limit),
+         true <- is_nil(args["expected_sha256"]) or args["expected_sha256"] == value["sha256"] do
+      true
+    else
+      _ -> false
+    end
+  rescue
+    _ -> false
+  end
+
+  defp binary_envelope?(value, args) do
+    if Map.has_key?(args, "byte_offset"),
+      do:
+        Enum.sort(Map.keys(value)) ==
+          ~w(byte_count data encoding next offset page_sha256 path sha256 version) and
+          value["version"] === 2 and value["encoding"] == "base64",
+      else:
+        Enum.sort(Map.keys(value)) == ~w(byte_count complete data encoding path sha256 version) and
+          value["version"] === 1 and value["encoding"] == "base64" and value["complete"] === true
+  end
+
+  defp binary_payload?(%{"version" => 1} = value, bytes, _, _),
+    do: value["byte_count"] === byte_size(bytes) and value["sha256"] === Ipse.JSON.sha256(bytes)
+
+  defp binary_payload?(%{"version" => 2} = value, bytes, args, limit) do
+    with {:ok, maximum, offset} <- binary_range(args, limit),
+         count when is_integer(count) and count >= 0 and count <= maximum <- value["byte_count"],
+         true <- value["offset"] === offset and offset <= count,
+         true <- byte_size(bytes) == min(limit, count - offset),
+         true <- value["page_sha256"] === Ipse.JSON.sha256(bytes),
+         true <- Ipse.JSON.sha256?(value["sha256"]),
+         finish = offset + byte_size(bytes),
+         true <- value["next"] === if(finish < count, do: finish, else: nil) do
+      true
+    else
+      _ -> false
+    end
+  end
 
   defp write_effect(path, content) do
     Ipse.Session.Resources.file_effect(fn -> write_file(path, content) end)

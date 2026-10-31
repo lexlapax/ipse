@@ -1,0 +1,9 @@
+Final notes test source has empty compile/runtime diagnostics; only strengthened shape case runs
+Running ExUnit with seed: 20261029, max_cases: 4
+Excluding tags: [:test]
+Including tags: [:notes_admission_shape]
+
+.
+Finished in 0.01 seconds (0.01s async, 0.00s sync)
+
+Result: 1 passed, 48 excluded

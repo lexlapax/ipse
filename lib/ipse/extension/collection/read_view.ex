@@ -18,7 +18,7 @@ defmodule Ipse.Extension.Collection.ReadView do
   """
   use GenServer
   alias Ipse.{JSON, Session.Resources}
-  alias Ipse.Extension.Collection.Directory
+  alias Ipse.Extension.Collection.{Directory, Profile}
   @bytes 4_194_304
   @reads 512
   @observations 512
@@ -240,9 +240,20 @@ defmodule Ipse.Extension.Collection.ReadView do
         |> Map.put("selected", selected)
         |> Map.put("next", next)
         |> Map.put("neighbors", neighbors)
+        |> Map.put("metadata_only", request["op"] == "visible_index")
+        |> Map.put(
+          "visible_count",
+          if(request["op"] == "visible_index",
+            do:
+              Enum.count(
+                Directory.matching(state.index, request["prefix"]),
+                &(not String.starts_with?(&1, "host.validity."))
+              )
+          )
+        )
         |> Map.put(
           "expected_generation",
-          if(request["op"] == "visible_scan", do: request["generation"])
+          if(request["op"] in ["visible_scan", "visible_index"], do: request["generation"])
         )
         |> Map.put("neighbor_request", if(neighbors, do: request["request"]))
 
@@ -270,7 +281,9 @@ defmodule Ipse.Extension.Collection.ReadView do
   def valid_request?(request), do: Directory.read_request?(request)
 
   defp cache?(cache) do
-    keys?(cache, @cache_keys) and cache["version"] === 2 and
+    ((keys?(cache, @cache_keys) and cache["version"] === 2) or
+       (keys?(cache, @cache_keys ++ ["storage_profile"]) and cache["version"] === 3 and
+          cache["storage_profile"] == Profile.documents())) and
       is_binary(cache["collection_root"]) and byte_size(cache["collection_root"]) <= 4096 and
       Path.type(cache["collection_root"]) == :absolute and
       JSON.sha256?(cache["project"]) and root_matches?(cache) and
@@ -285,7 +298,8 @@ defmodule Ipse.Extension.Collection.ReadView do
         key?(key) and keys?(ref, @record_keys) and ref["key"] === key and
           JSON.safe_uint?(ref["revision"]) and ref["revision"] > 0 and
           ref["revision"] <= cache["summary"]["generation"] and
-          JSON.sha256?(ref["sha256"]) and is_integer(ref["bytes"]) and ref["bytes"] in 2..6144 and
+          JSON.sha256?(ref["sha256"]) and is_integer(ref["bytes"]) and
+          ref["bytes"] in 2..value_limit(cache) and
           id?(ref["operation_id"])
       end)
   rescue
@@ -309,6 +323,8 @@ defmodule Ipse.Extension.Collection.ReadView do
          true <- JSON.sha256(cache["root_bytes"]) === cache["root_sha256"],
          true <- JSON.sha256?(cache["manifest_sha256"]),
          {:ok, pointer} <- JSON.decode_unique(cache["root_bytes"]),
+         {:ok, pointer} <-
+           Profile.unfence(pointer, Map.get(cache, "storage_profile", Profile.notes())),
          true <- keys?(pointer, ~w(version project generation floor floor_anchor manifest)),
          true <- pointer["version"] in [4, 5],
          true <- pointer["manifest"] === cache["manifest_sha256"] do
@@ -319,6 +335,11 @@ defmodule Ipse.Extension.Collection.ReadView do
   end
 
   defp root_matches?(_), do: false
+
+  defp value_limit(cache) do
+    {:ok, profile} = Profile.fetch(Map.get(cache, "storage_profile", Profile.notes()))
+    profile["value_bytes"]
+  end
 
   defp authorized?(state, caller) do
     Process.alive?(state.owner) and

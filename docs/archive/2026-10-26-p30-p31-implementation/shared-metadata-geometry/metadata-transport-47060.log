@@ -1,0 +1,23 @@
+Running ExUnit with seed: 47060, max_cases: 1
+Excluding tags: [:test]
+Including tags: [:metadata_transport_geometry]
+
+
+
+  1) test escaped metadata preserves exact packet bytes and refuses the measured digest read overflow (Ipse.KnowledgeCollectionDirectoryTest)
+     test/extensions/knowledge/collection_directory_test.exs:44
+     ** (MatchError) no match of right hand side value:
+
+         {"** (CaseClauseError) no case clause matching:\n\n    \"value.stat\"\n\n    test/support/metadata_transport_geometry.exs:144: anonymous fn/8 in :elixir_compiler_16.__FILE__/1\n    test/support/metadata_transport_geometry.exs:211: (file)\n",
+          1}
+
+     code: result = run_fixture("test/support/metadata_transport_geometry.exs")
+     stacktrace:
+       test/extensions/knowledge/collection_directory_test.exs:86: Ipse.KnowledgeCollectionDirectoryTest.run_fixture/1
+       test/extensions/knowledge/collection_directory_test.exs:45: (test)
+
+
+Finished in 4.0 seconds (0.06s on load, 0.00s async, 3.9s sync)
+
+Result: 0/1 passed, 4 excluded
+Failed: 1 test

@@ -1,0 +1,9 @@
+Correct witness location; only actual native relation case reruns
+Running ExUnit with seed: 20261029, max_cases: 4
+Excluding tags: [:test]
+Including tags: [:source_relation_native]
+
+.
+Finished in 0.09 seconds (0.00s async, 0.09s sync)
+
+Result: 1 passed, 7 excluded

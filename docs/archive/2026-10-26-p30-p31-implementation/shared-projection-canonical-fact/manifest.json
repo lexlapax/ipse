@@ -1,0 +1,88 @@
+{
+  "artifact": "/home/lexlapax/projects/lexlapax/ipse/_build/shared-projection-codec-20261029/tested-fixture-canonical",
+  "artifact_files": {
+    "LICENSE": {
+      "byte_count": 39,
+      "sha256": "ea7e2917c000022a1ca681e6ff9fa047d1b4e5c6e524668aa8dc8ca5231406b0"
+    },
+    "ebin/Elixir.IpseKnowledge.Documents.Docx.Styles.beam": {
+      "byte_count": 45604,
+      "sha256": "423001f1e0dbfb323a5e6fa2c0ddb17a4b9321ad56604e4e826f172c60fbdf01"
+    },
+    "ebin/Elixir.IpseKnowledge.Documents.Docx.beam": {
+      "byte_count": 64940,
+      "sha256": "41856b49adc47ab14fde156197fd6f5246b8cc5bc5d9f36659296f1c8542361d"
+    },
+    "ebin/Elixir.IpseKnowledge.Documents.ParserStage.beam": {
+      "byte_count": 30832,
+      "sha256": "7d14517e03606e92f8b7013e2258ead2bbbdaec5300a09e6bda928b18ef360ef"
+    },
+    "ebin/Elixir.IpseKnowledge.Documents.Pdf.beam": {
+      "byte_count": 7960,
+      "sha256": "005343cd9a68792d46a85c1c71d31ba8183d1568d2417b97c79f8f7890d5d9b0"
+    },
+    "ebin/Elixir.IpseKnowledge.Documents.Zip.beam": {
+      "byte_count": 11784,
+      "sha256": "ffffd079b38369e347909b14cfcfd6fca1fbfe220605a7d288d562c3a2a3125c"
+    },
+    "ebin/Elixir.IpseKnowledge.Documents.beam": {
+      "byte_count": 24180,
+      "sha256": "16b485bba5b7f9dd33fd990c4ddac144be3e8cbe3646971de525078564547fc4"
+    },
+    "ebin/Elixir.IpseKnowledge.Evidence.beam": {
+      "byte_count": 167344,
+      "sha256": "69fc4bc2c3d99439d310c5a1d0eefcdba369db8b98871cd5cd39cb92bfc09f26"
+    },
+    "ebin/Elixir.IpseKnowledge.Store.Collection.Generation.beam": {
+      "byte_count": 35620,
+      "sha256": "18c367e237d4fa4e675f01ee30e4701936c83f0de0f591a61f50777ea0876a00"
+    },
+    "ebin/Elixir.IpseKnowledge.Store.Collection.Index.beam": {
+      "byte_count": 104484,
+      "sha256": "f15151f1a31c0fb2975a57d673cbf042afa452c0fdb11b5e0339e1383e4a6c47"
+    },
+    "ebin/Elixir.IpseKnowledge.Store.Collection.Projection.beam": {
+      "byte_count": 66452,
+      "sha256": "18e3abf1557c1809a83c4414217df1c70fba86d05c9475dd614931b0124c5861"
+    },
+    "ebin/Elixir.IpseKnowledge.Store.Collection.beam": {
+      "byte_count": 138952,
+      "sha256": "62b01485b9d0fe50d344f3088b7bebb287888489a41f96a1b5a4b879b9049794"
+    },
+    "ebin/Elixir.IpseTest.CollectionAdapter.beam": {
+      "byte_count": 48424,
+      "sha256": "2d79254b0fb1d49929788296698ba2eecc35644efaadc7e7b3fbafb105817614"
+    },
+    "extension.json": {
+      "byte_count": 3468,
+      "sha256": "8901a14bf203dcd71b56235cf95ac7c555bf533fc63ae25280533d1dbe51a760"
+    }
+  },
+  "created_at": "2026-10-29T15:14:21.943516Z",
+  "gate_unchanged": true,
+  "logs": {
+    "shared-canonical-fact-46912.log": {
+      "byte_count": 866,
+      "sha256": "38ebbd65e02368b4d65058d2ad8233b049f448b777cf69a29cecade4cf0700aa"
+    }
+  },
+  "previous_manifest": "docs/archive/2026-10-26-p30-p31-implementation/shared-projection-codec/manifest.json",
+  "previous_manifest_sha256": "23d26f087283c8999ccfbbf96359f9a5edc6651a3fb1f2d33c52dee7313408d4",
+  "qualification": "canonical shared fact boundary and legacy compatibility only; read-only Session, no publication or capacity qualification",
+  "source_snapshot": "/home/lexlapax/projects/lexlapax/ipse/_build/shared-projection-codec-20261029/frozen-canonical-sources",
+  "sources": {
+    "extensions/knowledge/src/store/collection/generation.ex": {
+      "byte_count": 15032,
+      "sha256": "2483a045a3e1e501450ea20288185818c4266ac930aa5b5b06c8482ab2626c18"
+    },
+    "test/extensions/knowledge/collection_adapter_session_test.exs": {
+      "byte_count": 83754,
+      "sha256": "6ea578314e2a7648a4ec4b548172eea2c5c8d361721243567fd3d1fdbfaddf4f"
+    },
+    "test/support/collection_adapter_fixture.exs": {
+      "byte_count": 24145,
+      "sha256": "08468ee56b7bb817b35fa03ad378b0c01a64503a69e082be29627efc7658b41b"
+    }
+  },
+  "version": 1
+}

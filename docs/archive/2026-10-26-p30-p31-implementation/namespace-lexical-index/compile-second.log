@@ -1,0 +1,24 @@
+     warning: clauses with the same name and arity (number of arguments) should be grouped together, "defp done/2" was previously defined (extensions/knowledge/src/store/collection/index.ex:111)
+     │
+ 509 │   defp done(%{phase: phase} = s, value) when phase in [:begun, :progressed, :aborted] do
+     │        ~
+     │
+     └─ extensions/knowledge/src/store/collection/index.ex:509:8
+
+{:ok,
+ [IpseKnowledge.Evidence, IpseKnowledge.Store.Collection,
+  IpseKnowledge.Store.Collection.Index],
+ %{
+   compile_warnings: [
+     %{
+       message: "clauses with the same name and arity (number of arguments) should be grouped together, \"defp done/2\" was previously defined (extensions/knowledge/src/store/collection/index.ex:111)",
+       position: {509, 8},
+       file: "/home/lexlapax/projects/lexlapax/ipse/extensions/knowledge/src/store/collection/index.ex",
+       stacktrace: [],
+       source: "/home/lexlapax/projects/lexlapax/ipse/extensions/knowledge/src/store/collection/index.ex",
+       span: nil,
+       severity: :warning
+     }
+   ],
+   runtime_warnings: []
+ }}

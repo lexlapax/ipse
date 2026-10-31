@@ -1,0 +1,8 @@
+** (SyntaxError) invalid syntax found on nofile:1:130:
+    error: keyword argument must be followed by space after: seed:
+    │
+  1 │ {:ok,_}=Application.ensure_all_started(:ipse); ExUnit.configure(exclude: [:test],include: [document_guard_finite_positive: true],seed:47218);Code.require_file("test/extensions/knowledge/shared_producer_guard_session_test.exs")
+    │                                                                                                                                  ^
+    │
+    └─ nofile:1:130
+    (elixir 1.20.4) lib/code.ex:648: Code.validated_eval_string/4

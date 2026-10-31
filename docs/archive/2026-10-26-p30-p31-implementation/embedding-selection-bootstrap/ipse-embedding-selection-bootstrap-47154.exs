@@ -1,0 +1,6 @@
+Path.wildcard("_build/embedding-selection-sol-20261029/lib/*/ebin") |> Enum.each(&Code.prepend_path/1)
+{:ok, _} = Application.ensure_all_started(:ipse)
+ExUnit.start(autorun: false, seed: 20261029, exclude: [:test], include: [:selection_bootstrap, :selection_bootstrap_refusal])
+Code.require_file("test/ipse/extension/embedding_call_session_test.exs")
+result = ExUnit.run()
+System.halt(if result.failures == 0, do: 0, else: 1)

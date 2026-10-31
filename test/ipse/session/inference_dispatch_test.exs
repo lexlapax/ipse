@@ -109,6 +109,159 @@ defmodule Ipse.Session.InferenceDispatchTest do
     {task, holder}
   end
 
+  test "a mismatched active admission cannot commit a replay-invalid dispatch intent", c do
+    config = config(c, "http://127.0.0.1:11434")
+    pid = start(c, config)
+    state = :sys.get_state(pid)
+    turn_id = Usage.id()
+    admission = Usage.admission(state.id, state.config, "model", turn_id)
+
+    synthetic = %{
+      state
+      | phase: :compaction,
+        active_request: admission,
+        turn_id: turn_id,
+        task: %{pid: self()},
+        compaction: %{summary_messages: []}
+    }
+
+    runtime = Session.Context.summary_config(synthetic.config)
+
+    prepared =
+      Session.InferenceDispatch.prepare(synthetic, runtime, [], [], "compaction", admission)
+
+    assert {:ok, %{route: route}} =
+             Ipse.InferenceDispatch.selection(synthetic.config, runtime, "main", nil)
+
+    parent = self()
+
+    :sys.replace_state(pid, fn owner_state ->
+      mismatch = %{synthetic | task: %{pid: self()}}
+
+      refused =
+        Session.InferenceDispatch.commit(
+          mismatch,
+          self(),
+          "compaction",
+          admission,
+          prepared.expected,
+          %{"route" => route, "reservation_id" => Usage.id()}
+        )
+
+      send(parent, {:mismatched_control, refused})
+      valid_admission = Usage.admission(owner_state.id, owner_state.config, "compaction", turn_id)
+      valid = %{synthetic | active_request: valid_admission, task: %{pid: self()}}
+
+      valid_prepared =
+        Session.InferenceDispatch.prepare(valid, runtime, [], [], "compaction", valid_admission)
+
+      Session.record(valid, valid_admission)
+
+      result =
+        Session.InferenceDispatch.commit(
+          valid,
+          self(),
+          "compaction",
+          valid_admission,
+          valid_prepared.expected,
+          %{"route" => route, "reservation_id" => Usage.id()}
+        )
+
+      send(parent, {:valid_control, result})
+      owner_state
+    end)
+
+    assert_receive {:mismatched_control, {:reply, {:error, :inference_dispatch_refused}, _}}, 5000
+    assert_receive {:valid_control, {:reply, {:ok, %{"intent_id" => _}}, _}}, 5000
+
+    assert {:ok, events} = Ipse.Journal.load(c.dir, state.id)
+    assert :ok = Session.InferenceDispatch.validate_events(events)
+    assert Enum.count(events, &(&1["type"] == "inference_dispatch_intent")) == 1
+    intent = Enum.find(events, &(&1["type"] == "inference_dispatch_intent"))
+    admission = Enum.find(events, &(&1["type"] == "request_admitted"))
+    assert Session.InferenceDispatch.valid_intent?(intent, admission)
+
+    for malformed <- [Map.put(intent, "request_id", Usage.id()), Map.put(intent, "type", "other")] do
+      refute Session.InferenceDispatch.valid_intent?(malformed, admission)
+    end
+
+    decision =
+      Usage.admission(
+        state.id,
+        %{
+          provider: :system_one_compatible,
+          model: "fixture",
+          operation: :decision,
+          expected_model: "fixture",
+          service_id: "local",
+          execution: %{id: "decision"}
+        },
+        "extension",
+        turn_id
+      )
+
+    decision_intent =
+      Map.merge(intent, %{
+        "request_id" => decision["request_id"],
+        "attempt_id" => decision["attempt_id"],
+        "admission_sha256" => Ipse.JSON.digest([decision]),
+        "phase" => "decision.create",
+        "service_id" => "local"
+      })
+
+    assert Session.InferenceDispatch.valid_intent?(decision_intent, decision)
+    assert :ok = Session.InferenceDispatch.validate_events([decision, decision_intent])
+    changed_service = Map.put(decision_intent, "service_id", "other")
+    refute Session.InferenceDispatch.valid_intent?(changed_service, decision)
+
+    assert {:error, :invalid_inference_dispatch_intent} =
+             Session.InferenceDispatch.validate_events([decision, changed_service])
+  end
+
+  test "a terminal managed result seal binds one exact request, phase and native result", c do
+    pid = start(c, config(c, "http://127.0.0.1:11434"))
+    original = :sys.get_state(pid)
+    admission = Usage.admission(original.id, original.config, "model", Usage.id())
+    result = {:ok, %{"role" => "assistant", "content" => "Synthetic sealed output"}, %{}}
+    {:ok, value, usage} = result
+    sha = Ipse.JSON.digest([%{"value" => value, "usage" => usage}])
+    seal = %{request_id: admission["request_id"], phase: "model", result_sha: sha, expected: %{}}
+
+    state = %{
+      original
+      | active_request: admission,
+        managed_lineage: {:error, :managed_lineage_unavailable},
+        managed_result_seal: seal
+    }
+
+    assert {^result, consumed} = Session.InferenceDispatch.consume_result(state, "model", result)
+    assert consumed.managed_result_seal == nil
+    assert {{:error, _}, _} = Session.InferenceDispatch.consume_result(consumed, "model", result)
+
+    assert {{:error, _}, _} =
+             Session.InferenceDispatch.consume_result(
+               state,
+               "model",
+               {:ok, Map.put(value, "content", "different"), usage}
+             )
+
+    assert {{:error, _}, _} =
+             Session.InferenceDispatch.consume_result(
+               %{state | managed_result_seal: %{seal | request_id: Usage.id()}},
+               "model",
+               result
+             )
+
+    assert {{:error, _}, _} =
+             Session.InferenceDispatch.consume_result(
+               %{state | managed_result_seal: %{seal | phase: "compaction"}},
+               "model",
+               result
+             )
+
+    assert {^result, _} = Session.InferenceDispatch.consume_result(original, "model", result)
+  end
+
   test "actual main dispatch records intent before HTTP and releases before native read and next inference",
        c do
     File.write!(Path.join(c.root, "public.txt"), "Synthetic public source")

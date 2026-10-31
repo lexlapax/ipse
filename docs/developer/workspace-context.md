@@ -132,14 +132,79 @@ boundary, split a group, or hide an orphan result. References count toward conte
 bytes and summaries but never become pinned operator requests. The admission
 records are private journal records, without lifecycle-feed source projection.
 
+`Turn.start_question` validates new batches with `Questions.validate_new` before
+opening an operator wait. Questions with the same prompt, kind, ordered option
+labels and descriptions return an invalid-arguments tool result to the model;
+wire IDs, recommendations and omitted versus null optional fields do not change
+that identity. `Questions.validate` still accepts
+previously recorded batches under the original schema so saved conversations
+remain replayable. The new check does not deduplicate reworded questions or
+compare earlier turns. For the current visible user turn, `repeated_answer?`
+also matches a validated `ask_operator` call to its recorded answer and refuses
+the same question in a later round using that identity. It does not infer
+equivalence between reworded prompts or establish complete history
+after compaction. New dispatch uses this check without changing replay admission.
+
 ## Withdraw draft intent before ordinary work
+
+The CLI's `--planning` option selects the Session planning ceiling at startup.
+At an idle native-terminal prompt, `/plan` also requests a witnessed restrictive
+entry. The Session consumes the exact staged command, refuses unconfirmed work
+or cleanup, invalidates other input tickets, and writes a version-2 mode
+checkpoint, a new MCP epoch when declarations exist, and an observation-bound
+entry receipt before reporting success. `PlanningTransition` validates the
+receipt against its checkpoint. A crash before the receipt can leave a
+restrictive checkpoint without an entry receipt.
+The current entry path refuses unresolved drafts or active extension feeds;
+cancelled and fully consumed drafts can remain in history. Do not infer that
+idle alone proves every resource was drained.
+`Config.runtime` captures it with the approval origin. For a resumed Session,
+`Mode.resume` retains the saved active and enclosing ceilings separately;
+`Mode.inherit` still folds the parent's ceilings into a child's enclosing floor.
+A changed resume mode uses a version-2 checkpoint bound to the previous mode
+after the Session lock is acquired. Replay retains version-1 checkpoints, which
+may already have merged those ceilings; it cannot reconstruct missing origin or
+an earlier restriction that was never recorded. An older Ipse build that does
+not understand version-2 checkpoints refuses that history; retain the current
+runner for recovery. Neither mode field alone authorizes an in-session exit.
+`/plan exit` requires a fresh observed command and replayed local-entry
+provenance. Explicit CLI startup selection is bound to a new session header or
+to the normal-to-planning resume checkpoint; repeating the flag after an
+ambiguous historical planning selection does not reconstruct its origin. The
+resulting exit record changes only the local ceiling and preserves
+current approval, knowledge and enclosing floors. A version-1 checkpoint after
+entry discards that provenance. Entry or exit invalidates staged input, and an
+exit with declared MCP reads must commit a new epoch before dispatch resumes.
+If journal capacity ends between a transition and its epoch, replay accepts the
+valid terminal limit receipt for inspection while rejecting later work. The
+sealed journal cannot resume; use a fresh-session handoff. A checkpoint without
+its entry observation does not create local exit provenance.
+`Session.info` exposes the effective active and enclosing ceilings so the
+terminal describes the actual resumed policy. `Permissions.new` cannot activate
+an edit grant under that ceiling. An inherited or unrecorded planning ceiling
+does not by itself authorize exit, and deferred-decision publication remains unimplemented.
+After a resumed pending draft is cancelled or consumed, `PlanningMCP` replay
+returns from the temporary draft mode to the persisted startup mode; completion
+alone does not exit the draft. Check both an ordinary continuation and one that
+retains an enclosing planning ceiling when changing this path.
 
 The terminal's `/enhance` path uses the same Session and ordinary main route.
 `Session.Draft` owns bounded draft/revision transitions and exact interval
 projection; `DraftAcceptance` binds the proposed text to a freshly rendered
 native-terminal observation. The complete `/enhance TEXT` line remains the
 original witnessed input; the host removes its command prefix only when building
-the effective drafting instruction. Replay recomputes that transformation.
+the effective drafting instruction. Version 2 asks the model to check available
+context before material questions and to identify required missing information
+when clarification is unavailable. This is guidance, not proof that retrieval
+or clarification occurred. Replay recomputes the transformation using the
+recorded version; version 1 retains its original instruction.
+Older builds that only recognize version 1 refuse version-2 draft histories;
+use a build that understands the recorded version to resume them.
+Inline replacement similarly binds the complete terminal command to its input
+observation. `Draft` recomputes the trimmed replacement on replay, and
+`DraftAcceptance` rejects reuse of that observation. The `multi` command remains
+reserved for multiline entry; a literal `multi` replacement uses the next-line
+form.
 
 Trace `start_draft_observed`, `Turn.draft_prompt`, and `consume_accepted` together.
 Draft configuration narrows the active execution ceiling while retaining the
@@ -166,7 +231,20 @@ intent provenance, not current knowledge eligibility or effect permission.
 `DraftMCP` pins first-use discovery to the admitted tool catalog and requires
 fresh matching discovery when a pending draft question resumes. Setup intent
 precedes starting a configured server; an interrupted result is never replayed.
-Drafts invoke no MCP tools even though their declarations stay present.
+An operator-only planning-read declaration binds a selected tool to its reviewed
+endpoint and descriptor. `MCP.Planning.declared?/2` checks that binding; `Turn`
+separately requires the applicable approval, a current catalog and available
+draft evidence tracking. The MCP adapter re-discovers the descriptor before
+dispatch. Undeclared tools and extension callbacks remain unavailable in drafts.
+`Session.PlanningMCP` validates restricted-start replay against the recorded
+catalog, declaration and model call. Sessions with declarations record a
+declaration-bound mode checkpoint at startup and resume. Before a restricted
+read, `Turn` writes the checkpoint-bound planning intent and the ordinary tool
+start before launching the owned task. A lost response remains unknown.
+Session startup and resume compare the declaration map itself with its
+configuration manifest, in addition to the existing fingerprint comparison.
+In those sessions, ordinary MCP starts also carry a checkpoint-bound intent;
+replay checks it against the recorded call, catalog and server selection.
 
 Practice the complete transitions with synthetic providers and a native PTY:
 
@@ -196,6 +274,10 @@ It checks normalized host receipts, complete dependency unions, exact historical
 projection and replay. Session does not yet install this contract as a live
 freshness barrier. A valid receipt-shaped map grants neither permission nor
 current eligibility; the eventual protected reader must establish those facts.
+Withdrawal currently refuses a host reference carrying an `ipse_reference`
+marker: that marker binds the original content and cannot be retained on a
+rewritten message. Preserve the original journal and require a separately
+validated reference-aware projection before supporting that case.
 
 Version-2 dependencies distinguish a record from an absence selector. A record
 has its exact key/revision/value digest and host-derived validity. An absence
@@ -215,13 +297,48 @@ An arbitrary worker-supplied observation is not evidence of that read. Session
 still needs to create and inherit these dependencies from its actual committed
 reads before any consumer can rely on them.
 
-For version-2 subjects, the pure projector accepts a newer receipt for the same
-subject only after the host has proved that subject unchanged. Root/floor regression, substitution of
-another key, and a different root at the same generation refuse. Replay verifies
-recorded transformations and leaves live eligibility pending. Version-1 receipts
-remain compatible with their historical contract; do not reinterpret their null
-record as a version-2 absence or invent a manifest for an absent root. Practice
-these boundaries before connecting a reader or dispatch adapter:
+For version-1 and version-2 dependencies, the pure projector likewise requires
+the identical collection root. A worker can derive output from the root metadata
+as well as the selected record, so an unchanged record alone cannot validate its
+old output at a newer root. Direct support references must remain exact, and a
+refresh cannot extend the existing expiry; a shorter current expiry is retained
+for later checks. A previously suppressed or unavailable record cannot become
+eligible through refresh. New observations need their own authenticated
+admission. Replay verifies recorded transformations and leaves live eligibility
+pending; earlier changed-root projection events now refuse replay. A version-1
+null record has no selector, so do not reinterpret it as a version-2 absence or
+invent a manifest for an absent root.
+
+An internal version-4 record observation is a narrower experiment: its request
+selects one non-metadata key, and its result contains only that complete record
+or an explicit absence, without a Collection generation. The pure projector can
+compare matching request and result digests at a later monotonic root while
+checking the record's validity, supporting references and expiry. It does not
+authenticate those digests or establish that the worker saw no additional data.
+`Collection.ObservedRead` can produce the record-only value and a separate
+same-view root witness, and its internal constructor checks the structural
+binding to a supplied pin and validity. It refuses root or record bytes that do
+not match their canonical re-encoding. The operation is not exposed to
+extension workers, and these structural checks do not authenticate their inputs.
+Session-owned durable receipt binding, source and suppression history, current
+consent, complete descendant lineage and a dispatch barrier are still required
+before this can authorize reuse. A copied or worker-supplied version-4 object is
+not evidence of an observation.
+
+For literal notes, the internal managed-record reader can additionally verify
+the selected record against signed live and anchor pages through one checked
+view. Its returned metadata is historical evidence, not a current eligibility
+decision. It binds the supplied literal recipe to the signed live page and
+checks that recipe's override key in the same view. The reader authenticates
+native retention choices against signed metadata, but refuses retirement and
+legacy override records until their semantics are authenticated;
+source verification and current consent remain the caller's responsibility.
+The managed dependency constructor can derive validity from this metadata and a
+supplied exact source proof, checking recipe, lineage and expiry consistency.
+It retains the signed historical publication-policy digest separately from the
+current consent pin. It does not authenticate the supplied proof or establish a
+current lease.
+Practice these boundaries before connecting a reader or dispatch adapter:
 
 ```sh
 mix test test/ipse/session/managed_reference_test.exs

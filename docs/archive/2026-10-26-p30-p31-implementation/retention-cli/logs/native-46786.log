@@ -1,0 +1,8 @@
+Running ExUnit with seed: 310337, max_cases: 4
+Excluding tags: [:test, :native_sandbox, :macos_sandbox, :macos_filesystem, :memory_scope]
+Including tags: [assertion_scenario: "save_retention"]
+
+.
+Finished in 12.7 seconds (0.1s on load, 0.00s async, 12.6s sync)
+
+Result: 1 passed, 8 excluded

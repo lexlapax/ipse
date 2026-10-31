@@ -34,6 +34,9 @@ defmodule Ipse.Extension.ProjectIdentityTest do
       ~S'''
       #[path=__TRANSACTION__] mod ipse_transaction;
       #[path=__STORAGE__] mod ipse_storage;
+      #[path=__LEASE_TRANSFER__] mod ipse_lease_transfer;
+      #[cfg(target_os="linux")] #[path=__LEASE_SINK__] mod ipse_lease_sink;
+      #[cfg(target_os="linux")] #[path=__OWNER_CONTROL__] mod ipse_owner_control;
       use std::{env,fs,io::Write,process::{Command,exit},thread,time::Duration};
       use std::os::unix::process::CommandExt;
       unsafe extern "C" {fn mkfifo(path:*const std::ffi::c_char,mode:u32)->i32;fn kill(pid:i32,signal:i32)->i32;}
@@ -83,6 +86,15 @@ defmodule Ipse.Extension.ProjectIdentityTest do
       '''
       |> String.replace("__TRANSACTION__", inspect(Path.join(root, "native/ipse-transaction.rs")))
       |> String.replace("__STORAGE__", inspect(Path.join(root, "native/ipse-storage.rs")))
+      |> String.replace(
+        "__LEASE_TRANSFER__",
+        inspect(Path.join(root, "native/ipse-lease-transfer.rs"))
+      )
+      |> String.replace("__LEASE_SINK__", inspect(Path.join(root, "native/ipse-lease-sink.rs")))
+      |> String.replace(
+        "__OWNER_CONTROL__",
+        inspect(Path.join(root, "native/ipse-owner-control.rs"))
+      )
       |> String.replace("__CONFIG__", inspect(config))
     )
 

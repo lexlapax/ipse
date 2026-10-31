@@ -1,0 +1,160 @@
+{
+  "assertions": 20000,
+  "chunks": 10000,
+  "complete_recipe_available": false,
+  "dimensions": 1024,
+  "entities": 5000,
+  "excluded_work": [
+    "global_graph_catalog_and_index",
+    "all_profile_atomic_generation_and_rebuild",
+    "migration",
+    "collection",
+    "retention",
+    "saved_notes"
+  ],
+  "extracted_bytes": 20971520,
+  "fixture_geometry_only": true,
+  "implemented_initial_mutation_minimum": 37543,
+  "kind": "collection_profile_operation_lower_bound",
+  "lexical_index": {
+    "groups": 125,
+    "immutable_values": 250,
+    "initial_fresh_group_mutations": 750,
+    "initial_job_mutations": 784,
+    "initial_mutations": 1543,
+    "job_rewrites": 126,
+    "live_keys": 252,
+    "maximum_host_frame_bytes": 9164,
+    "publication_mutations": 9,
+    "rebuild_immutable_values_reused": 250,
+    "rebuild_mutations": 793
+  },
+  "live_key_ceiling": 8192,
+  "live_key_components": {
+    "facts": 2000,
+    "lexical_index": 252,
+    "source": 3064,
+    "vectors": 3000
+  },
+  "live_key_minimum": 8316,
+  "mandatory_initial_mutation_minimum": 36000,
+  "model_inference_executed": false,
+  "native_mutation_ceiling": 32768,
+  "native_operations_executed": 0,
+  "old_plus_staged_vector_live_key_minimum": 10316,
+  "one_vector_replacement_fact_reselection_and_lexical_rebuild_minimum": 22793,
+  "preflight": "refused_mutations",
+  "profile_qualified": false,
+  "samples": [
+    {
+      "assertions_per_source": 20,
+      "chunks_per_source": 10,
+      "fact_values": [
+        {
+          "body_bytes": 7885,
+          "maximum_host_frame_bytes": 9070,
+          "native_mutations": 1,
+          "transport": "inline"
+        }
+      ],
+      "mutation_minimum": 9072,
+      "per_source_mutation_minimum": {
+        "facts": 4,
+        "source": 13,
+        "vectors": 19
+      },
+      "source_text_bytes": 20979,
+      "source_values": [
+        {
+          "append_calls": 5,
+          "body_bytes": 24587,
+          "maximum_host_frame_bytes": 7009,
+          "native_mutations": 8,
+          "transport": "bounded_stage"
+        },
+        {
+          "body_bytes": 3643,
+          "maximum_host_frame_bytes": 4130,
+          "native_mutations": 1,
+          "transport": "inline"
+        }
+      ],
+      "sources": 252,
+      "unique_entities_per_source": 5,
+      "vector_values": [
+        {
+          "append_calls": 8,
+          "body_bytes": 45974,
+          "maximum_host_frame_bytes": 6397,
+          "native_mutations": 11,
+          "transport": "bounded_stage"
+        },
+        {
+          "append_calls": 2,
+          "body_bytes": 11636,
+          "maximum_host_frame_bytes": 6397,
+          "native_mutations": 5,
+          "transport": "bounded_stage"
+        }
+      ],
+      "vectors_per_source": 10
+    },
+    {
+      "assertions_per_source": 20,
+      "chunks_per_source": 10,
+      "fact_values": [
+        {
+          "body_bytes": 7885,
+          "maximum_host_frame_bytes": 9070,
+          "native_mutations": 1,
+          "transport": "inline"
+        }
+      ],
+      "mutation_minimum": 26928,
+      "per_source_mutation_minimum": {
+        "facts": 4,
+        "source": 13,
+        "vectors": 19
+      },
+      "source_text_bytes": 20969,
+      "source_values": [
+        {
+          "append_calls": 5,
+          "body_bytes": 24577,
+          "maximum_host_frame_bytes": 7009,
+          "native_mutations": 8,
+          "transport": "bounded_stage"
+        },
+        {
+          "body_bytes": 3642,
+          "maximum_host_frame_bytes": 4129,
+          "native_mutations": 1,
+          "transport": "inline"
+        }
+      ],
+      "sources": 748,
+      "unique_entities_per_source": 5,
+      "vector_values": [
+        {
+          "append_calls": 8,
+          "body_bytes": 45974,
+          "maximum_host_frame_bytes": 6397,
+          "native_mutations": 11,
+          "transport": "bounded_stage"
+        },
+        {
+          "append_calls": 2,
+          "body_bytes": 11636,
+          "maximum_host_frame_bytes": 6397,
+          "native_mutations": 5,
+          "transport": "bounded_stage"
+        }
+      ],
+      "vectors_per_source": 10
+    }
+  ],
+  "sources": 1000,
+  "transport_recipe": "staged_v1",
+  "vectors": 10000,
+  "version": 1
+}

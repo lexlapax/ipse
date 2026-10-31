@@ -247,7 +247,7 @@ defmodule IpseModelExample.Proof do
       budget_bytes = File.read!(budget_path)
       resumed = start(config, cwd, dir, id)
       true = Session.info(resumed).phase == :idle
-      true = File.read!(Path.join(dir, id <> ".jsonl")) == bytes
+      true = idle_resume_journal?(Path.join(dir, id <> ".jsonl"), bytes, id)
       true = File.read!(budget_path) == budget_bytes
 
       %{
@@ -322,6 +322,31 @@ defmodule IpseModelExample.Proof do
       {:ipse, ^pid, _} -> done(pid, expected)
     after
       5000 -> raise "Model proof did not finish"
+    end
+  end
+
+  defp idle_resume_journal?(path, before, id) do
+    after_resume = File.read!(path)
+
+    with true <- String.starts_with?(after_resume, before),
+         [header | _] <- String.split(before, "\n", trim: true),
+         {:ok, %{"metadata" => metadata}} <- Jason.decode(header) do
+      suffix =
+        binary_part(after_resume, byte_size(before), byte_size(after_resume) - byte_size(before))
+
+      if metadata["release_receipt_layout"] == Ipse.Session.ReleaseReceipt.layout() do
+        with [line] <- String.split(suffix, "\n", trim: true),
+             true <- suffix == line <> "\n",
+             {:ok, marker} <- Jason.decode(line) do
+          Ipse.Session.ReleaseReceipt.valid_owner_marker?(marker, id)
+        else
+          _ -> false
+        end
+      else
+        suffix == ""
+      end
+    else
+      _ -> false
     end
   end
 

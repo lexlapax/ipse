@@ -50,6 +50,75 @@ defmodule Ipse.Extension.Mode do
     end
   end
 
+  @doc "Resume the same owner while retaining separate local and enclosing ceilings."
+  def resume(saved, config) do
+    with true <- valid?(saved), {:ok, current} <- capture(config) do
+      ceiling = Enum.max_by([saved["ceiling"], current["ceiling"]], &ceiling_rank/1)
+
+      enclosing =
+        Enum.max_by([saved["enclosing_ceiling"], current["enclosing_ceiling"]], &ceiling_rank/1)
+
+      knowledge = Enum.max_by([saved["knowledge"], current["knowledge"]], &knowledge_rank/1)
+
+      current = %{
+        current
+        | "ceiling" => ceiling,
+          "enclosing_ceiling" => enclosing,
+          "knowledge" => knowledge
+      }
+
+      current =
+        if saved["approval"] == "deny" and saved["approval_origin"] == "explicit",
+          do: %{current | "approval" => "deny", "approval_origin" => "explicit"},
+          else: current
+
+      {:ok, current}
+    else
+      _ -> {:error, :invalid_execution_mode}
+    end
+  end
+
+  @doc false
+  def resumed?(saved, current) do
+    with true <- valid?(saved) and valid?(current),
+         {:ok, resumed} <- resume(saved, config(current)) do
+      resumed === current
+    else
+      _ -> false
+    end
+  end
+
+  @doc false
+  def inherited?(saved, current) do
+    with true <- valid?(saved) and valid?(current),
+         {:ok, inherited} <- inherit(saved, config(current)) do
+      inherited === current
+    else
+      _ -> false
+    end
+  end
+
+  @doc false
+  def config(mode) do
+    %{
+      approval: mode["approval"],
+      approval_origin: mode["approval_origin"],
+      headless: mode["headless"],
+      execution_mode: mode["ceiling"],
+      enclosing_mode: mode["enclosing_ceiling"],
+      knowledge_ceiling: mode["knowledge"]
+    }
+  end
+
+  @doc false
+  def checkpoint_required?(nil, current) do
+    current["ceiling"] != "normal" or current["enclosing_ceiling"] != "normal" or
+      current["knowledge"] != "available" or
+      (current["approval"] == "deny" and current["approval_origin"] == "explicit")
+  end
+
+  def checkpoint_required?(previous, current), do: previous !== current
+
   def valid?(value) when is_map(value) do
     Enum.sort(Map.keys(value)) == Enum.sort(@keys) and value["version"] === 1 and
       value["approval"] in ~w(ask allow deny) and
@@ -93,6 +162,23 @@ defmodule Ipse.Extension.Mode do
   end
 
   def ordinary(_, _), do: :deny
+
+  @doc "Ordinary approval for an independently declared planning read; grants no declaration."
+  def planning_read(value) do
+    cond do
+      not valid?(value) ->
+        :deny
+
+      value["ceiling"] == "read_only" or value["enclosing_ceiling"] == "read_only" ->
+        :deny
+
+      value["ceiling"] not in ~w(draft planning) and value["enclosing_ceiling"] != "planning" ->
+        :deny
+
+      true ->
+        String.to_existing_atom(value["approval"])
+    end
+  end
 
   defp origin?(%{
          "approval_origin" => "default_headless",

@@ -1,0 +1,9 @@
+6dea01db62ee9015d3407e9f433009d7ab8c557aadf28972379d37055f5c03db  _build/managed-mcp-full-20261028/sources/lib/ipse/mcp.ex
+e64aeb669f1090873490dec03cc5aee52aa33dc2b6bb5f4f6991efd47e717685  _build/managed-mcp-full-20261028/sources/lib/ipse/mcp/http_transport.ex
+47db0937e60ba1c55fe26008cc85bce346cd12b2bedb52e093eda5a29e8ecaec  _build/managed-mcp-full-20261028/sources/lib/ipse/mcp/stdio_transport.ex
+b58f837cdcc8c0811d3fd35704d9c87b36d919bce4d2cfc97e2bd8fd487fcc26  _build/managed-mcp-full-20261028/sources/lib/ipse/provider/mint_transport.ex
+404aa782b9fef36bc5fb140d32f14c71c6a263295d9d6fc78d4e52a6ddd61a9a  _build/managed-mcp-full-20261028/sources/native/ipse-stdio.rs
+57da4332f300f5c3d300a9ba8370b71d7c34e463e5f677edbd499f321178f7ab  _build/managed-mcp-full-20261028/sources/test/managed_collection_call_session_test.exs
+21b5d5fd36f1ffbbeefbc1e8820217c29a8c110f75a961c0b121004b77a9199c  _build/managed-mcp-full-20261028/sources/test/managed_mcp_http.exs
+5e7ecbac66ec46204f597769e8964475a7fa7e1d93905d37e80cb2902b0925ce  _build/managed-mcp-full-20261028/sources/test/mcp_server.exs
+66f84bad67a3e7ce89aa35c1e56f8644ae7805e9c48330669ccea196e6a6f655  _build/managed-mcp-full-20261028/sources/test/stdio_admission_test.exs

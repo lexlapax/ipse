@@ -1,0 +1,181 @@
+     warning: Ipse.Extension.Collection.ObservedRead.managed_history/6 is undefined or private. Did you mean:
+
+         * managed_proposal/6
+
+     │
+ 245 │                  ObservedRead.managed_history(
+     │                               ~
+     │
+     └─ lib/ipse/cli/knowledge/management.ex:245:31: Ipse.CLI.Knowledge.Management.journaled_forget/11
+
+     warning: Ipse.Session.Lock.request_confirm_share_thaw/3 is undefined or private
+     │
+ 183 │       request = Ipse.Session.Lock.request_confirm_share_thaw(state.lock_guard, token, operation)
+     │                                   ~
+     │
+     └─ lib/ipse/journal/writer.ex:183:35: Ipse.Journal.Writer.handle_call/3
+
+     warning: Ipse.Session.ManagedLifecycle.prepare_history_expiry/3 is undefined or private. Did you mean:
+
+         * prepare/3
+
+     │
+ 311 │     do: ManagedLifecycle.prepare_history_expiry(context, managed, now)
+     │                          ~
+     │
+     └─ lib/ipse/cli/knowledge/management.ex:311:26: Ipse.CLI.Knowledge.Management.prepare/4
+
+     warning: Ipse.Session.ManagedLifecycle.prepare_expiry/3 is undefined or private. Did you mean:
+
+         * prepare/3
+
+     │
+ 314 │     do: ManagedLifecycle.prepare_expiry(context, managed, now)
+     │                          ~
+     │
+     └─ lib/ipse/cli/knowledge/management.ex:314:26: Ipse.CLI.Knowledge.Management.prepare/4
+
+     warning: Ipse.Extension.Consent.expire_deferred/7 is undefined or private
+     │
+ 398 │           Consent.expire_deferred(
+     │                   ~
+     │
+     └─ lib/ipse/cli/knowledge/management.ex:398:19: Ipse.CLI.Knowledge.Management.publish/7
+
+     warning: Ipse.Extension.Collection.NormalizerV3.expire/3 is undefined or private
+     │
+ 504 │   defp normalizer("managed_literal_expiry"), do: &NormalizerV3.expire/3
+     │                                                                ~
+     │
+     └─ lib/ipse/cli/knowledge/management.ex:504:64: Ipse.CLI.Knowledge.Management.normalizer/1
+
+     warning: Ipse.Extension.Collection.NormalizerV3.expire_history/3 is undefined or private
+     │
+ 505 │   defp normalizer("managed_literal_history_expiry"), do: &NormalizerV3.expire_history/3
+     │                                                                        ~
+     │
+     └─ lib/ipse/cli/knowledge/management.ex:505:72: Ipse.CLI.Knowledge.Management.normalizer/1
+
+{:ok, [Ipse.CLI.Knowledge.Management, Ipse.Journal, Ipse.Journal.Writer],
+ %{
+   compile_warnings: [],
+   runtime_warnings: [
+     %{
+       message: "Ipse.Extension.Collection.ObservedRead.managed_history/6 is undefined or private. Did you mean:\n\n    * managed_proposal/6\n",
+       position: {245, 31},
+       file: "/home/lexlapax/projects/lexlapax/ipse/lib/ipse/cli/knowledge/management.ex",
+       group: true,
+       stacktrace: [
+         {Ipse.CLI.Knowledge.Management, :journaled_forget, 11,
+          [
+            file: ~c"lib/ipse/cli/knowledge/management.ex",
+            line: 245,
+            column: 31
+          ]}
+       ],
+       source: "/home/lexlapax/projects/lexlapax/ipse/lib/ipse/cli/knowledge/management.ex",
+       span: nil,
+       severity: :warning
+     },
+     %{
+       message: "Ipse.Session.ManagedLifecycle.prepare_history_expiry/3 is undefined or private. Did you mean:\n\n    * prepare/3\n",
+       position: {311, 26},
+       file: "/home/lexlapax/projects/lexlapax/ipse/lib/ipse/cli/knowledge/management.ex",
+       group: true,
+       stacktrace: [
+         {Ipse.CLI.Knowledge.Management, :prepare, 4,
+          [
+            file: ~c"lib/ipse/cli/knowledge/management.ex",
+            line: 311,
+            column: 26
+          ]}
+       ],
+       source: "/home/lexlapax/projects/lexlapax/ipse/lib/ipse/cli/knowledge/management.ex",
+       span: nil,
+       severity: :warning
+     },
+     %{
+       message: "Ipse.Session.ManagedLifecycle.prepare_expiry/3 is undefined or private. Did you mean:\n\n    * prepare/3\n",
+       position: {314, 26},
+       file: "/home/lexlapax/projects/lexlapax/ipse/lib/ipse/cli/knowledge/management.ex",
+       group: true,
+       stacktrace: [
+         {Ipse.CLI.Knowledge.Management, :prepare, 4,
+          [
+            file: ~c"lib/ipse/cli/knowledge/management.ex",
+            line: 314,
+            column: 26
+          ]}
+       ],
+       source: "/home/lexlapax/projects/lexlapax/ipse/lib/ipse/cli/knowledge/management.ex",
+       span: nil,
+       severity: :warning
+     },
+     %{
+       message: "Ipse.Extension.Consent.expire_deferred/7 is undefined or private",
+       position: {398, 19},
+       file: "/home/lexlapax/projects/lexlapax/ipse/lib/ipse/cli/knowledge/management.ex",
+       group: true,
+       stacktrace: [
+         {Ipse.CLI.Knowledge.Management, :publish, 7,
+          [
+            file: ~c"lib/ipse/cli/knowledge/management.ex",
+            line: 398,
+            column: 19
+          ]}
+       ],
+       source: "/home/lexlapax/projects/lexlapax/ipse/lib/ipse/cli/knowledge/management.ex",
+       span: nil,
+       severity: :warning
+     },
+     %{
+       message: "Ipse.Extension.Collection.NormalizerV3.expire/3 is undefined or private",
+       position: {504, 64},
+       file: "/home/lexlapax/projects/lexlapax/ipse/lib/ipse/cli/knowledge/management.ex",
+       group: true,
+       stacktrace: [
+         {Ipse.CLI.Knowledge.Management, :normalizer, 1,
+          [
+            file: ~c"lib/ipse/cli/knowledge/management.ex",
+            no_parens: true,
+            line: 504,
+            column: 64
+          ]}
+       ],
+       source: "/home/lexlapax/projects/lexlapax/ipse/lib/ipse/cli/knowledge/management.ex",
+       span: nil,
+       severity: :warning
+     },
+     %{
+       message: "Ipse.Extension.Collection.NormalizerV3.expire_history/3 is undefined or private",
+       position: {505, 72},
+       file: "/home/lexlapax/projects/lexlapax/ipse/lib/ipse/cli/knowledge/management.ex",
+       group: true,
+       stacktrace: [
+         {Ipse.CLI.Knowledge.Management, :normalizer, 1,
+          [
+            file: ~c"lib/ipse/cli/knowledge/management.ex",
+            no_parens: true,
+            line: 505,
+            column: 72
+          ]}
+       ],
+       source: "/home/lexlapax/projects/lexlapax/ipse/lib/ipse/cli/knowledge/management.ex",
+       span: nil,
+       severity: :warning
+     },
+     %{
+       message: "Ipse.Session.Lock.request_confirm_share_thaw/3 is undefined or private",
+       position: {183, 35},
+       file: "/home/lexlapax/projects/lexlapax/ipse/lib/ipse/journal/writer.ex",
+       group: true,
+       stacktrace: [
+         {Ipse.Journal.Writer, :handle_call, 3,
+          [file: ~c"lib/ipse/journal/writer.ex", line: 183, column: 35]}
+       ],
+       source: "/home/lexlapax/projects/lexlapax/ipse/lib/ipse/journal/writer.ex",
+       span: nil,
+       severity: :warning
+     }
+   ]
+ }}

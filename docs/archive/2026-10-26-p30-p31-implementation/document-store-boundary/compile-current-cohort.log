@@ -1,0 +1,10 @@
+
+== Compilation error in file lib/ipse/auth/xai.ex ==
+** (ArgumentError) errors were found at the given arguments:
+
+  * 1st argument: the table identifier does not refer to an existing ETS table
+
+    (stdlib 8.1) :ets.lookup(Mix.State, :env)
+    lib/mix/state.ex:30: Mix.State.get/2
+    lib/ipse/auth/xai.ex:307: (module)
+{:error, [%{...}], ...}

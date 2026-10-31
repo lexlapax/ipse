@@ -1,0 +1,109 @@
+%{
+  fixture: "headless-typed-loopback",
+  last_parent: "be70dcb631fc2f50487e600827bab56c",
+  dependencies: [],
+  source_list_calls: [
+    %{
+      "function" => %{"arguments" => "{\"limit\":32}", "name" => "source_list"},
+      "id" => "ollama_8a3cefe6eea3f3f4_0",
+      "type" => "function"
+    }
+  ],
+  source_list_dependencies: [
+    {"ollama_8a3cefe6eea3f3f4_0",
+     {:ok,
+      [
+        %{
+          "collection" => %{
+            "floor" => 0,
+            "floor_anchor" => nil,
+            "generation" => 0,
+            "manifest_sha256" => nil,
+            "project" => "1c98e286a8edfad33b1c86a4d13d4990a4fae163f7af4ec174b0c6d34a100a2d",
+            "root_sha256" => nil,
+            "root_state" => "absent"
+          },
+          "namespace" => "1c98e286a8edfad33b1c86a4d13d4990a4fae163f7af4ec174b0c6d34a100a2d",
+          "pin_sha256" => "3cf206dbde34667603a85ec8d8f122210a1db4c534ae04e37c79dd1893d0b3e3",
+          "policy_generation" => 1,
+          "project_id" => "30ced3d0b069f8b106cc715bc6b91401f33abeab7bd4c4a1a32114c45e8cec9f",
+          "subject" => %{
+            "kind" => "root_observation",
+            "request_sha256" => "279a4ccc9d8934a9fdad2b4822a41b2df53bb1631bd5672e54e9ad3cf3f80282",
+            "result_sha256" => "267fabf2c91cf5409f7726caa7419e3d3bb244baeeb3959c20b09b13002d4b54"
+          },
+          "version" => 3
+        }
+      ]}}
+  ]
+}
+%{
+  fixture: "headless-typed-direct",
+  last_parent: "27b211d4328ee59caece1bdc89c06ba8",
+  dependencies: [
+    %{
+      request: %{
+        "op" => "collection.call",
+        "request" => %{
+          "key" => "note.3e8aba5131710cc73d32492a1c68f9c57e630fd09b64f70d1e3d0076a68d24ca",
+          "op" => "get"
+        }
+      },
+      root: %{
+        "floor" => 0,
+        "floor_anchor" => nil,
+        "generation" => 0,
+        "manifest_sha256" => nil,
+        "project" => "933dfd340955245b4edf437f048b774b4e15b2db62cb09294887954f27da3216",
+        "root_sha256" => nil,
+        "root_state" => "absent"
+      },
+      kind: "root_observation",
+      same_parent: true
+    },
+    %{
+      request: %{
+        "op" => "collection.call",
+        "request" => %{
+          "key" => "override.3e8aba5131710cc73d32492a1c68f9c57e630fd09b64f70d1e3d0076a68d24ca",
+          "op" => "get"
+        }
+      },
+      root: %{
+        "floor" => 0,
+        "floor_anchor" => nil,
+        "generation" => 0,
+        "manifest_sha256" => nil,
+        "project" => "933dfd340955245b4edf437f048b774b4e15b2db62cb09294887954f27da3216",
+        "root_sha256" => nil,
+        "root_state" => "absent"
+      },
+      kind: "root_observation",
+      same_parent: true
+    },
+    %{
+      request: %{
+        "op" => "collection.call",
+        "request" => %{
+          "cursor" => nil,
+          "limit" => 32,
+          "op" => "index",
+          "prefix" => "note."
+        }
+      },
+      root: %{
+        "floor" => 0,
+        "floor_anchor" => nil,
+        "generation" => 0,
+        "manifest_sha256" => nil,
+        "project" => "933dfd340955245b4edf437f048b774b4e15b2db62cb09294887954f27da3216",
+        "root_sha256" => nil,
+        "root_state" => "absent"
+      },
+      kind: "root_observation",
+      same_parent: false
+    }
+  ],
+  source_list_calls: [],
+  source_list_dependencies: []
+}

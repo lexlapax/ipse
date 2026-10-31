@@ -1,0 +1,64 @@
+{
+  "build_filesystem": "btrfs",
+  "code": "document_store_deadline_unavailable",
+  "created_at": "2026-10-29T14:47:50.413452Z",
+  "host_graph": "/home/lexlapax/projects/lexlapax/ipse/_build/shared-projection-codec-20261029",
+  "logs": {
+    "compile-deadline-diagnostic.log": {
+      "byte_count": 22,
+      "sha256": "e2bb873a2deeffc2cb3a68e895986560efbf7914db43f5cce5252d4769cf9074"
+    },
+    "deadline-diagnostic-46887.log": {
+      "byte_count": 768,
+      "sha256": "055763fdab5095e093a74569d209c3ebaa4131b77a180253e54876bff3578f4a"
+    },
+    "deadline-scope-46888.log": {
+      "byte_count": 196,
+      "sha256": "743c65e2ef639a41fb636f066e0eeaf533fdd37b5a191075d43b731436c07e38"
+    },
+    "shared-controls-46889.log": {
+      "byte_count": 807,
+      "sha256": "4d506304bc37a90717d30ffbfae443a3f0f8bdb1028e59fc19463a418e2d17c7"
+    }
+  },
+  "native_helper_sha256": "a51c2d34654e21b0418b31bbe5ec2423d117230a3a8f3687803d5c1438d1c12e",
+  "native_runtime_filesystem": "tmpfs",
+  "native_runtime_fixture_root": "/tmp",
+  "qualification": "current strict gate diagnostic/deadline inheritance only; no protected publication, strict completion guarantee or broader capacity acceptance",
+  "section": "document-store-deadline-diagnostic",
+  "source_snapshot": "/home/lexlapax/projects/lexlapax/ipse/_build/shared-projection-codec-20261029/deadline-diagnostic-sources",
+  "sources": {
+    "extensions/knowledge/src/store/collection.ex": {
+      "byte_count": 58179,
+      "sha256": "08928cf241ed49d52f2498cdce10a7bad3b890a7120115a71c37b7faa0b289f4"
+    },
+    "lib/ipse/extension/collection/document_stage.ex": {
+      "byte_count": 26419,
+      "sha256": "2c93aff055f4571a62b243f60337a5d66e02c44f7f793ef04d643fe8f0f6e197"
+    },
+    "lib/ipse/extension/collection_store.ex": {
+      "byte_count": 14754,
+      "sha256": "808261288888db3a8c3d8e6c2a7a3a7caa173db9df1b2b43d8b256a8fa3c9e6e"
+    },
+    "test/extensions/knowledge/collection_adapter_session_test.exs": {
+      "byte_count": 82873,
+      "sha256": "dffb5e7e4b6744a95a4722a2738bdd043eede48fb4c5bf59dd05f23b8fb3b7dc"
+    },
+    "test/ipse/extension/collection_document_stage_test.exs": {
+      "byte_count": 23216,
+      "sha256": "5f2114cdad232a8b6e0312f614cccf7073fd289fba7b7ed049f854f204540b0a"
+    },
+    "test/support/collection_adapter_fixture.exs": {
+      "byte_count": 21428,
+      "sha256": "2175b29e0d9134cfd01133b84c14182c47458d75445173f559656f127cea1d68"
+    }
+  },
+  "strict_gate_manifest": "docs/archive/2026-10-26-p30-p31-implementation/strict-deadline-interposition/manifest.json",
+  "strict_gate_manifest_sha256": "ce03b1aa2e577f629c5d1c135fdc3d09deedcfab2680a573e298be4f5cbff107",
+  "tested_host_beams": {
+    "Elixir.Ipse.Extension.Collection.DocumentStage.beam": "5dd124477fea53827c2596477d633540c66fcd318f82e33b16bf9b8bb6b414ff",
+    "Elixir.Ipse.Extension.Collection.beam": "b26549afa77b3fffb16a4438a2ac1d92302e65ab9b15766a551f20fea07e371f",
+    "Elixir.Ipse.Extension.CollectionStore.beam": "3af4d28b5b201490afe42d452801deea6394d215fc469f17233b19d3165d2473"
+  },
+  "version": 1
+}

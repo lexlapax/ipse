@@ -1,0 +1,8 @@
+** (SyntaxError) invalid syntax found on docs/archive/2026-10-26-p30-p31-implementation/management-journal-owner-review/review-marker-repair.exs:9:73:
+    error: syntax error before: '->'
+    │
+  9 │     IO.inspect(%{key: to_string(key), input_type: cond(do: is_atom(key) -> :atom; is_list(key) -> :charlist; true -> :string), create: :refused, directory_exists: false}, label: "ORIGINAL_ALIAS_NOW_REFUSED")
+    │                                                                         ^
+    │
+    └─ docs/archive/2026-10-26-p30-p31-implementation/management-journal-owner-review/review-marker-repair.exs:9:73
+    (elixir 1.20.4) lib/code.ex:1639: Code.require_file/2

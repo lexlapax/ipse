@@ -1,0 +1,22 @@
+Running ExUnit with seed: 192255, max_cases: 8
+Excluding tags: [:test]
+Including tags: [managed_start_unknown: true]
+
+
+21:26:24.889 [debug] MCP Client: transport closed: :invalid_http_transport
+
+
+  1) test lost HTTP initialization response preserves possible startup as unknown (Ipse.Extension.ManagedCollectionCallSessionTest)
+     test/ipse/extension/managed_collection_call_session_test.exs:1920
+     ** (exit) exited in: GenServer.call(#PID<0.232.0>, :info, 5000)
+         ** (EXIT) normal
+     code: assert {:ok, events} = Journal.load(c.dir, Session.info(pid).id)
+     stacktrace:
+       (elixir 1.20.4) lib/gen_server.ex:1183: GenServer.call/3
+       test/ipse/extension/managed_collection_call_session_test.exs:1928: (test)
+
+
+Finished in 4.1 seconds (2.3s on load, 0.00s async, 1.7s sync)
+
+Result: 0/1 passed, 62 excluded
+Failed: 1 test

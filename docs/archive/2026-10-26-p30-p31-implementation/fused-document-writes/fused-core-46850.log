@@ -1,0 +1,18 @@
+Running ExUnit with seed: 46850, max_cases: 1
+Excluding tags: [:test]
+Including tags: [:fused_document]
+
+.warning: Range.new/2 and first..last default to a step of -1 when last < first. Use Range.new(first, last, -1) or first..last//-1, or pass 1 if that was your intention
+  test/ipse/extension/collection_document_stage_test.exs:78: anonymous fn/1 in Ipse.Extension.Collection.DocumentStageTest.chunks/1
+  (elixir 1.20.4) lib/stream.ex:1718: Stream.do_unfold/4
+  (elixir 1.20.4) lib/enum.ex:4667: Enum.reverse/1
+  (elixir 1.20.4) lib/enum.ex:3926: Enum.to_list/1
+  test/ipse/extension/collection_document_stage_test.exs:207: Ipse.Extension.Collection.DocumentStageTest."test fused parts publish complete original bytes in one CAS per bounded packet"/1
+  (ex_unit 1.20.4) lib/ex_unit/runner.ex:533: ExUnit.Runner.exec_test/2
+  (stdlib 8.1) timer.erl:599: :timer.tc/2
+  (ex_unit 1.20.4) lib/ex_unit/runner.ex:455: anonymous fn/6 in ExUnit.Runner.spawn_test_monitor/4
+
+..
+Finished in 5.1 seconds (0.00s async, 5.1s sync)
+
+Result: 3 passed, 7 excluded

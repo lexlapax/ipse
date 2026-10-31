@@ -1,5 +1,6 @@
 defmodule Ipse.Extension.HistoryTest do
   use ExUnit.Case, async: false
+  import Ipse.Test.ResumeAssertions
   alias Ipse.{Journal, Session}
   alias Ipse.Session.Lifecycle
   alias Ipse.Extension.{History, Config, Registry, Artifact, Catalog, Subscriptions}
@@ -834,7 +835,7 @@ defmodule Ipse.Extension.HistoryTest do
       trace = File.read!(c.trace)
       {:ok, resumed} = start(c, configuration, id)
       assert Session.info(resumed).phase == :idle
-      assert File.read!(path) == bytes
+      assert_idle_resume_journal(path, bytes, id)
       assert File.read!(c.trace) == trace
       :ok = Session.close(resumed)
     end

@@ -79,6 +79,12 @@ defmodule Ipse.CLI.Terminal do
   ipse knowledge status [--json]   Inspect saved project knowledge permission
   ipse knowledge permissions      Show the complete saved permission
   ipse knowledge disable          Revoke permission through a fresh native review
+  ipse knowledge review [--json] [--after KEY]  List bounded pending metadata without promotion
+  ipse knowledge review KEY       Display one pending proposal and review native acceptance
+  ipse knowledge forget NOTE_KEY  Review and forget one selected literal
+  ipse knowledge expire NOTE_KEY  Reclaim an already expired signed ordinary note
+  ipse knowledge retention KEY --policy POLICY  Review a selected native retention choice
+  ipse knowledge operation ID     Inspect a management journal without replaying its action
   ipse extension import PATH       Copy a local inert extension artifact
   ipse extension inspect DIGEST    Verify an installed artifact without executing it
   ipse extension list              List inert built-in extension descriptors
@@ -94,7 +100,8 @@ defmodule Ipse.CLI.Terminal do
   --cwd PATH                           Workspace (default: current directory)
   --handoff PATH                       Fresh chat only: import reviewed historical recovery context
   --resume ID                          Resume a saved session
-  --yes                                Allow mutations, shell, configured MCP, and enabled delegation
+  --yes                                Approve eligible effects; execution ceilings still apply
+  --planning                           Start or resume with a planning execution ceiling
   --base-url URL                       Explicit API/local endpoint (no subscription override)
   --upstream SLUG                      setup only: pinned OpenRouter upstream
   --data-collection deny|allow          setup only: OpenRouter policy (default deny)
@@ -127,12 +134,18 @@ defmodule Ipse.CLI.Terminal do
   --observability off|local|export      Operator diagnostic capture policy (default off)
 
   Chat asks before writes, shell, MCP, and delegation. Headless run denies them without --yes.
+  Protected Knowledge uses its separately saved permission.
   Shell execution uses your user permissions unless --sandbox native is selected.
   Native enforcement fails closed when unavailable; approvals remain required.
   --accept-edits                       Allow native workspace file edits in interactive chat
   Chat commands: /help /skills /session /info /diagnostics /permissions /permissions clear /observability off /events off /context /context refresh /ext [NAME JSON] /result JSON /cancel /exit.
   /enhance [TEXT]                      Draft a request in this conversation before submitting it
-  /enhance show|replace|replace multi|accept [ID]|cancel  Review and manage the draft
+  /remember CATEGORY TEXT              Review and capture an ordinary, preference or current statement
+  /correct NOTE_KEY TEXT               Unavailable pending native correction review
+  /supersede NOTE_KEY TEXT             Unavailable pending native supersession review
+  /plan                                Enter planning mode from an idle native terminal
+  /plan exit                           Exit a locally entered planning mode
+  /enhance show|replace [TEXT]|replace multi|accept [ID]|cancel  Review and manage the draft
   Invoke skills with $name.
   EOF finishes accepted work; errors and /cancel clear queued input.
   """
@@ -163,6 +176,59 @@ defmodule Ipse.CLI.Terminal do
 
       {:observed_prompt, text, ticket} ->
         cond do
+          match?({:ok, _, _, _}, Ipse.Session.OperatorAssertion.parse_intake(text)) and
+            not s.busy and s.draft_action == nil ->
+            case Ipse.Session.prepare_assertion(s.pid, s.input_channel, text, ticket) do
+              {:ok, %{"render_id" => id}} ->
+                relation =
+                  match?({:ok, _, _, %{}}, Ipse.Session.OperatorAssertion.parse_intake(text))
+
+                client_loop(%{s | assertion_accept_render: id, native_relation: relation})
+
+              {:error, :collection_deadline_fence_unavailable} ->
+                puts(:stderr, Ipse.CLI.Errors.format(:collection_deadline_fence_unavailable))
+                client_loop(s)
+
+              _ ->
+                puts(
+                  :stderr,
+                  "Statement review refused. Use a fresh session with the reviewed native knowledge permission."
+                )
+
+                client_loop(s)
+            end
+
+          text == "/plan exit" and not s.busy and s.draft_action == nil ->
+            result = Ipse.Session.exit_planning_observed(s.pid, s.input_channel, ticket)
+
+            if result == :ok do
+              puts(
+                "Local planning mode exited. Current enclosing and approval restrictions still apply."
+              )
+
+              if s.queued != [], do: puts(:stderr, "Queued input was discarded; submit it again.")
+              client_loop(%{s | queued: []})
+            else
+              puts(
+                :stderr,
+                "Planning exit was refused; local entry or idle work could not be verified."
+              )
+
+              client_loop(s)
+            end
+
+          text == "/plan" and not s.busy and s.draft_action == nil ->
+            result = Ipse.Session.enter_planning_observed(s.pid, s.input_channel, ticket)
+
+            if result == :ok do
+              puts("Planning mode entered. Restricted effects remain denied.")
+              if s.queued != [], do: puts(:stderr, "Queued input was discarded; submit it again.")
+              client_loop(%{s | queued: []})
+            else
+              puts(:stderr, "Planning entry was refused; finish active work and try again.")
+              client_loop(s)
+            end
+
           match?({:lines, _, _, _}, s.draft_action) and not s.busy ->
             {:lines, id, revision, lines} = s.draft_action
 
@@ -200,6 +266,30 @@ defmodule Ipse.CLI.Terminal do
               else: puts(:stderr, "Draft replacement was refused.")
 
             client_loop(%{s | draft_action: nil})
+
+          inline_replacement?(text) and not s.busy ->
+            case Ipse.Session.draft(s.pid) do
+              {:ok, %{id: id, revision: revision, status: :completed}} ->
+                result =
+                  Ipse.Session.replace_draft_command_observed(
+                    s.pid,
+                    s.input_channel,
+                    id,
+                    revision,
+                    text,
+                    ticket
+                  )
+
+                if result == :ok,
+                  do: puts("Draft replaced; review it before accepting."),
+                  else: puts(:stderr, "Draft replacement was refused.")
+
+              _ ->
+                Ipse.Session.discard_input(s.pid, s.input_channel, ticket)
+                puts(:stderr, "No completed draft is available.")
+            end
+
+            client_loop(s)
 
           inline_enhancement?(String.trim(text)) and not s.busy ->
             result = Ipse.Session.start_draft_observed(s.pid, s.input_channel, text, ticket)
@@ -290,6 +380,11 @@ defmodule Ipse.CLI.Terminal do
         Ipse.Session.cancel(s.pid)
         0
 
+      {:input, "/cancel"} when s.assertion_accept_render != nil and not s.busy ->
+        Ipse.Session.cancel(s.pid)
+        puts("Statement review cancelled.")
+        client_loop(%{s | assertion_accept_render: nil, native_relation: false})
+
       {:input, "/cancel"} when s.draft_action != nil and not s.busy ->
         case s.draft_action do
           {:lines, _, _, lines} ->
@@ -334,6 +429,38 @@ defmodule Ipse.CLI.Terminal do
 
       {:input, "/help"} ->
         help()
+        client_loop(s)
+
+      {:input, "/remember" <> _} ->
+        puts(
+          :stderr,
+          "Use /remember ordinary|preference|current TEXT from an idle native terminal with knowledge enabled."
+        )
+
+        client_loop(s)
+
+      {:input, "/correct" <> _} ->
+        puts(
+          :stderr,
+          "Use /correct NOTE_KEY TEXT from an idle native terminal with knowledge enabled."
+        )
+
+        client_loop(s)
+
+      {:input, "/supersede" <> _} ->
+        puts(
+          :stderr,
+          "Use /supersede NOTE_KEY TEXT from an idle native terminal with knowledge enabled."
+        )
+
+        client_loop(s)
+
+      {:input, "/plan"} ->
+        puts(:stderr, "Planning entry requires an idle native terminal.")
+        client_loop(s)
+
+      {:input, "/plan exit"} ->
+        puts(:stderr, "Planning exit requires an idle native terminal.")
         client_loop(s)
 
       {:input, "/enhance"} when s.input_mode == :native and not s.busy ->
@@ -742,6 +869,9 @@ defmodule Ipse.CLI.Terminal do
           })
         end
 
+      {:ipse, ^pid, :native_relation_ready} ->
+        client_loop(%{s | native_relation: false})
+
       {:ipse, ^pid, {:error, error}} ->
         puts(:stderr, "\nError: #{Ipse.CLI.Errors.format(error)}")
         client_loop(s)
@@ -881,6 +1011,8 @@ defmodule Ipse.CLI.Terminal do
     %{s | reader_key: :closed, reader_generation: make_ref()}
   end
 
+  defp refresh_reader(%{native_relation: true, assertion_accept_render: nil} = s), do: s
+
   defp refresh_reader(s) do
     s =
       if s.reader_key == nil and s.approval != nil,
@@ -921,6 +1053,9 @@ defmodule Ipse.CLI.Terminal do
 
   defp reader_request(%{draft_accept_render: render} = s) when is_binary(render),
     do: {s, {:draft, render}, %{"kind" => "draft", "render_id" => render}}
+
+  defp reader_request(%{assertion_accept_render: render, busy: false} = s) when is_binary(render),
+    do: {s, {:assertion, render}, %{"kind" => "assertion", "render_id" => render}}
 
   defp reader_request(%{question: {id, arguments, [item | _]}} = s) do
     item_id = item["id"]
@@ -995,7 +1130,13 @@ defmodule Ipse.CLI.Terminal do
       normalized == "" or
           (String.starts_with?(normalized, "/") and
              not (request["kind"] == "prompt" and not s.busy and
-                      inline_enhancement?(normalized))) ->
+                      (inline_enhancement?(normalized) or inline_replacement?(text) or
+                         (match?(
+                            {:ok, _, _, _},
+                            Ipse.Session.OperatorAssertion.parse_intake(text)
+                          ) and
+                            s.draft_action == nil) or
+                         (text in ["/plan", "/plan exit"] and s.draft_action == nil)))) ->
         Ipse.Session.discard_input(s.pid, s.input_channel, witness)
         next = %{s | reader_key: nil}
         next = if request["kind"] == "question", do: %{next | native_render: nil}, else: next
@@ -1037,6 +1178,31 @@ defmodule Ipse.CLI.Terminal do
             client_loop(%{s | native_render: nil})
         end
 
+      request["kind"] == "assertion" ->
+        result =
+          Ipse.Session.accept_assertion_observed(
+            s.pid,
+            s.input_channel,
+            request["render_id"],
+            text,
+            witness
+          )
+
+        if result != :ok,
+          do:
+            puts(
+              :stderr,
+              "Statement review or note publication admission was refused; inspect the saved permission and source history."
+            )
+
+        client_loop(%{
+          s
+          | reader_key: nil,
+            assertion_accept_render: nil,
+            busy: result == :ok,
+            native_relation: result == :ok and s.native_relation
+        })
+
       request["kind"] == "draft" ->
         result =
           Ipse.Session.accept_draft_observed(
@@ -1077,6 +1243,9 @@ defmodule Ipse.CLI.Terminal do
   end
 
   defp inline_enhancement?(_), do: false
+
+  defp inline_replacement?(text),
+    do: match?({:ok, _}, Ipse.Session.Draft.inline_replacement(text))
 
   defp render_enhancement(s, expected_id) do
     with {:ok, %{id: id, revision: revision, status: :completed}} <- Ipse.Session.draft(s.pid),
@@ -1203,6 +1372,8 @@ defmodule Ipse.CLI.Terminal do
         native_render: nil,
         draft_action: nil,
         draft_accept_render: nil,
+        assertion_accept_render: nil,
+        native_relation: false,
         busy: prompt != nil,
         cancelling: false,
         approval: nil,

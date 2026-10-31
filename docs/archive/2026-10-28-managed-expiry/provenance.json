@@ -1,0 +1,89 @@
+{
+  "affected_retry": {
+    "excluded": 39,
+    "native_passed": 1,
+    "seconds": 0.6,
+    "seed": 46805
+  },
+  "base_runtime": "docs/archive/2026-10-28-retention-publication-deadline/provenance.json",
+  "compiled_modules": [
+    "ManagedRetention",
+    "ManagedLifecycle",
+    "NormalizerV3"
+  ],
+  "date": "2026-10-28",
+  "first_result": {
+    "cause": "fixture compared changed summary instead of unchanged anchor record after known successful expiry",
+    "native_failed": 1,
+    "pure_passed": 2
+  },
+  "full_turnover_executed": false,
+  "graph": "/home/lexlapax/projects/lexlapax/ipse/_build/managed-expiry-sol-20261028",
+  "helper": {
+    "path": "/home/lexlapax/projects/lexlapax/ipse/_build/managed-expiry-sol-20261028/project/priv/ipse-runner",
+    "sha256": "113df584e83b7749a11a72509092cb9c2b32d6fdc3fcf91b0181335f5f8c2550"
+  },
+  "native_review_constructed": false,
+  "native_source_changed": false,
+  "production_clock_override": false,
+  "qualification": "actual native signed expiry with trusted synthetic source members/backdated admissions",
+  "source_inputs": {
+    "extensions/knowledge/src/knowledge/contracts.ex": {
+      "sha256": "d60694a680de3e869fe3939527fa75aaa75d44ad10115c5d5c7df61822b8474c",
+      "snapshot": "sources/extensions__knowledge__src__knowledge__contracts.ex"
+    },
+    "extensions/knowledge/src/knowledge/records.ex": {
+      "sha256": "e70863709ddcc580d8dba251ce0532fe7e4d72399b01841af7238c6048d9de12",
+      "snapshot": "sources/extensions__knowledge__src__knowledge__records.ex"
+    },
+    "extensions/knowledge/src/notes.ex": {
+      "sha256": "a0474155b87c6b1b1bd53d6e51e6f5cb045a52eee0e0fa80ba2e613f36e9802b",
+      "snapshot": "sources/extensions__knowledge__src__notes.ex"
+    },
+    "lib/ipse/extension/collection/managed_pages.ex": {
+      "sha256": "49342de0b48de4304ffec17169887dca54b934cea6a849fe11a739b23a17ebfd",
+      "snapshot": "sources/lib__ipse__extension__collection__managed_pages.ex"
+    },
+    "lib/ipse/extension/collection/managed_pages/planner.ex": {
+      "sha256": "54c86cbf341d85f47f2278a7f91ef703b810d1018aa421a0595c164ae8314923",
+      "snapshot": "sources/lib__ipse__extension__collection__managed_pages__planner.ex"
+    },
+    "lib/ipse/extension/collection/managed_retention.ex": {
+      "sha256": "b9952cfc8fc17a0316ebc67bceb92b39b6ec2c0ef00a0cd43d906685dc3610aa",
+      "snapshot": "sources/lib__ipse__extension__collection__managed_retention.ex"
+    },
+    "lib/ipse/extension/collection/normalizer_v3.ex": {
+      "sha256": "ca2a5e630dde77ec6b5aa956e6c662a823fd5f0d56c1286d26b3dc5a2c16f0ad",
+      "snapshot": "sources/lib__ipse__extension__collection__normalizer_v3.ex"
+    },
+    "lib/ipse/session/managed_lifecycle.ex": {
+      "sha256": "4e811a5d99c39353bc63a8b7b194eece9fedef11162fa1e64c4aed3036983386",
+      "snapshot": "sources/lib__ipse__session__managed_lifecycle.ex"
+    },
+    "test/ipse/extension/collection_expiry_native_test.exs": {
+      "sha256": "9cbd57ed62f1a5a2a86591236ba1de211a257d36b260280b6e9667cf5d32861a",
+      "snapshot": "sources/test__ipse__extension__collection_expiry_native_test.exs"
+    },
+    "test/ipse/extension/collection_managed_retention_test.exs": {
+      "sha256": "e4c7d14e0105cd73ce908d45308f8fec27b41811b9f8bf0f0e9a1c6415b38726",
+      "snapshot": "sources/test__ipse__extension__collection_managed_retention_test.exs"
+    },
+    "test/ipse/extension/collection_normalizer_v3_integration_test.exs": {
+      "sha256": "0e3e1c98b0380d55d47f0fe3fd77605f11db94cfa9c12153205c6669d8f4c9c8",
+      "snapshot": "sources/test__ipse__extension__collection_normalizer_v3_integration_test.exs"
+    },
+    "test/ipse/extension/collection_normalizer_v3_test.exs": {
+      "sha256": "bad3f670ad29dc08276f2a6ee94bf7af4d46f212da7127ef566accff0becbbdf",
+      "snapshot": "sources/test__ipse__extension__collection_normalizer_v3_test.exs"
+    },
+    "test/support/managed_policy.exs": {
+      "sha256": "d3e1c92b5b092ddf807df0d86230f20450bfec20fd92b3b8be7f40fe34f55e67",
+      "snapshot": "sources/test__support__managed_policy.exs"
+    },
+    "test/test_helper.exs": {
+      "sha256": "3fe1c5ac8fab2068cc8d0001bc79f3a17fc6e9f6d997df9ccb34600509d6d63d",
+      "snapshot": "sources/test__test_helper.exs"
+    }
+  },
+  "version": 1
+}

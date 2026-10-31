@@ -1,0 +1,13 @@
+df9837e722e780ad8f08c04eeb6b3534308b9e384cd7ddb27662aaec271dceb2  docs/archive/2026-10-29-native-shared-lease/evidence/output/source-v6.tar
+40ad8bac6b2579502580dcef31adeffed850c8fcba758a59720fda7c8c22583f  _build/shared-lease-sol-20261029/ipse-runner-output-disabled-v3
+1530d575670de7321bce886879c2253970751f68614c3fa395eec18cf4ac4471  _build/shared-lease-sol-20261029/ipse-runner-output-experiment-v3
+bf60a27ab59f810127bc5575fcedfcdca7390d7b97eafcd024476016d40b058b  _build/shared-lease-sol-20261029/ipse-runner-output-race-v3
+9cc08ea25f359914891a888a3b041b6fdc0407fd758409e4c5c0078b30f68668  _build/shared-lease-sol-20261029/transaction-export-output-v6
+5d3fcef98ad58dd856609fca2f85d7980fdb252b0aed513b05f1ca1190c414db  docs/archive/2026-10-29-native-shared-lease/evidence/output/collector-cap-shared-v3.log
+df39edbbba4e752d7901cb61ace9a8005ed894234bd6a3ea3584de7f049d9642  docs/archive/2026-10-29-native-shared-lease/evidence/output/collector-shared-v3.log
+b202c0e6046b3407f9bae8ac4d8f3be0a998416141ab9df49fd29e95c3ec0f27  docs/archive/2026-10-29-native-shared-lease/evidence/output/output-case-6-v2.log
+a6c652a1f5c687cc5b06dccd52f54e1b960c6c5b28c0d068764a50222c343ecc  docs/archive/2026-10-29-native-shared-lease/evidence/output/output-controls-v3.log
+393620b7237b2cad4a45b9186128e0676a4ab9ae391bd81e94ed57bfc46c3813  docs/archive/2026-10-29-native-shared-lease/evidence/output/output-controls-v4.log
+963b830727c8a2231c427cf036df8ea509fda55be5b5b275ba06aa21d2b39e06  docs/archive/2026-10-29-native-shared-lease/evidence/output/output-disabled-v3.log
+642aace8d292ed5d0f77b4958846d793926bc730e8edd36bb41c18a7dfe550b7  docs/archive/2026-10-29-native-shared-lease/evidence/output/output-fixture-compile-v1.log
+ed27918096f809cdafdf66cd6b7776e041fe3b33ef34b1694a70388d0fc2d70f  docs/archive/2026-10-29-native-shared-lease/evidence/output/output-race-v4.log

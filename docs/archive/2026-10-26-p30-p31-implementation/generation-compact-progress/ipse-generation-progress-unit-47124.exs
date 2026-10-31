@@ -1,0 +1,7 @@
+Path.wildcard("_build/generation-progress-sol-20261029/lib/*/ebin") |> Enum.each(&Code.prepend_path/1)
+Code.prepend_path("_build/generation-progress-corpus-sol-20261029/ebin")
+{:ok, _} = Application.ensure_all_started(:ipse)
+ExUnit.start(autorun: false, seed: 20261029)
+Code.require_file("test/extensions/knowledge/collection_job_progress_test.exs")
+result = ExUnit.run()
+System.halt(if result.failures == 0, do: 0, else: 1)

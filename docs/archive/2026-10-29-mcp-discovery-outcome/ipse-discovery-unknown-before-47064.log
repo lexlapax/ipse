@@ -1,0 +1,88 @@
+Running ExUnit with seed: 47064, max_cases: 8
+Excluding tags: [:test]
+Including tags: [discovery_unknown: true]
+
+
+
+  1) test bulk discovery retains lost session-close uncertainty and never starts the next server (Ipse.MCP.HTTPTest)
+     test/ipse/mcp/http_test.exs:117
+     match (=) failed
+     code:  assert {:unknown, message} = MCP.discover([uncertain, later], ctx.root)
+     left:  {:unknown, message}
+     right: {:ok,
+             [
+               %{
+                 name: "write",
+                 description: "stable",
+                 server: %{
+                   args: [],
+                   command: "http://127.0.0.1:46361/mcp",
+                   env: %{
+                     "IPSE_MCP_FIXTURE_TOKEN" => "synthetic-bearer-token"
+                   },
+                   id: "remote",
+                   tools: ["write"],
+                   url: "http://127.0.0.1:46361/mcp",
+                   fingerprint: "a4f3d57abb77b1d98c61e53f1f399b0c0802401cbef6ffef28947a098fb6112c",
+                   transport: :http,
+                   fingerprint_version: 2,
+                   timeout_ms: 5000,
+                   sandbox: :remote,
+                   resources: [],
+                   redactions: ["synthetic-bearer-token"],
+                   prompts: [],
+                   allow_insecure_loopback: true
+                 },
+                 digest: "eb8ea17fb694bbdee23e047170658962faa2479a591baeba3cd14dacdc45c2b0",
+                 tool_id: "mcp__remote__write",
+                 input_schema: %{
+                   "properties" => %{
+                     "text" => %{"type" => "string"}
+                   },
+                   "required" => ["text"],
+                   "type" => "object"
+                 },
+                 schema_version: 1
+               },
+               %{
+                 name: "write",
+                 description: "stable",
+                 server: %{
+                   args: [],
+                   command: "http://127.0.0.1:34863/mcp",
+                   env: %{
+                     "IPSE_MCP_FIXTURE_TOKEN" => "synthetic-bearer-token"
+                   },
+                   id: "remote",
+                   tools: ["write"],
+                   url: "http://127.0.0.1:34863/mcp",
+                   fingerprint: "35cc89c78796c3cbd1aab41ac235f9ba1599da965f6113f7b09d6026dfb460b8",
+                   transport: :http,
+                   fingerprint_version: 2,
+                   timeout_ms: 5000,
+                   sandbox: :remote,
+                   resources: [],
+                   redactions: ["synthetic-bearer-token"],
+                   prompts: [],
+                   allow_insecure_loopback: true
+                 },
+                 digest: "eb8ea17fb694bbdee23e047170658962faa2479a591baeba3cd14dacdc45c2b0",
+                 tool_id: "mcp__remote__write",
+                 input_schema: %{
+                   "properties" => %{
+                     "text" => %{"type" => "string"}
+                   },
+                   "required" => ["text"],
+                   "type" => "object"
+                 },
+                 schema_version: 1
+               }
+             ]}
+     stacktrace:
+       test/ipse/mcp/http_test.exs:122: (test)
+
+
+Finished in 0.4 seconds (0.4s on load, 0.00s async, 0.04s sync)
+
+Result: 0/1 passed, 13 excluded
+Failed: 1 test

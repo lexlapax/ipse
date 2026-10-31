@@ -1,0 +1,59 @@
+Running ExUnit with seed: 46805, max_cases: 1
+Excluding tags: [:test]
+Including tags: [:managed_expiry]
+
+..
+
+  1) test actual signed expiry preserves clocks, refuses persistent or forged targets and fences recapture/import (Ipse.Extension.CollectionExpiryNativeTest)
+     test/ipse/extension/collection_expiry_native_test.exs:118
+     Assertion with == failed
+     code:  assert get(c, anchor_key) == {:ok, anchor_before}
+     left:  {:ok,
+             %{
+               "floor" => 5,
+               "floor_anchor" => "8d252abe5044514124101c4bd774ba9a",
+               "generation" => 5,
+               "project" => "c6abf2a62f03a1ff496dff22f66c0ca0696b0487bada556c4e8f25ecbc6cefab",
+               "record" => %{
+                 "bytes" => 321,
+                 "key" => "host.validity.a.0000000000000000000000000000000000000000000000000000000000000000",
+                 "operation_id" => "03e7b7897996650a74800ffa10df072c",
+                 "revision" => 4,
+                 "sha256" => "e0a1716aafa50d7b09cbbc66affb958fa7055dbd6edae3ce7afb8c445df61fab",
+                 "value" => %{
+                   "data" => "SU1CAgIEAEIh1gVOwT9QN3hG0kEjYg4tTi3iSxS4o2sESGCfK9l_A6Wx7oGYNICw8fscAAAAol2VS3KMcbwVzf4-9MY_aofp8ivh3R5d357fAqt2kZMDpYH9hfszgLDx-xwAAADZ--UVw7QvvGLRb8NpdvBNhzL0VjkdR4EtMLL1GwadwQGlqaj71zMAAADezgatxPbbe-reqWvtWybZCdcbsz1qxAaZeCs6IFYZ9AGlqaj71zMAAA",
+                   "mac" => "j-kuinxFYPe4ISfjFFyP5hNYrwCLbAfRFrUd8_puZ8k",
+                   "version" => 3
+                 }
+               },
+               "version" => 3
+             }}
+     right: {:ok,
+             %{
+               "floor" => 4,
+               "floor_anchor" => "03e7b7897996650a74800ffa10df072c",
+               "generation" => 4,
+               "project" => "c6abf2a62f03a1ff496dff22f66c0ca0696b0487bada556c4e8f25ecbc6cefab",
+               "record" => %{
+                 "bytes" => 321,
+                 "key" => "host.validity.a.0000000000000000000000000000000000000000000000000000000000000000",
+                 "operation_id" => "03e7b7897996650a74800ffa10df072c",
+                 "revision" => 4,
+                 "sha256" => "e0a1716aafa50d7b09cbbc66affb958fa7055dbd6edae3ce7afb8c445df61fab",
+                 "value" => %{
+                   "data" => "SU1CAgIEAEIh1gVOwT9QN3hG0kEjYg4tTi3iSxS4o2sESGCfK9l_A6Wx7oGYNICw8fscAAAAol2VS3KMcbwVzf4-9MY_aofp8ivh3R5d357fAqt2kZMDpYH9hfszgLDx-xwAAADZ--UVw7QvvGLRb8NpdvBNhzL0VjkdR4EtMLL1GwadwQGlqaj71zMAAADezgatxPbbe-reqWvtWybZCdcbsz1qxAaZeCs6IFYZ9AGlqaj71zMAAA",
+                   "mac" => "j-kuinxFYPe4ISfjFFyP5hNYrwCLbAfRFrUd8_puZ8k",
+                   "version" => 3
+                 }
+               },
+               "version" => 3
+             }}
+     stacktrace:
+       test/ipse/extension/collection_expiry_native_test.exs:208: anonymous fn/10 in Ipse.Extension.CollectionExpiryNativeTest."test actual signed expiry preserves clocks, refuses persistent or forged targets and fences recapture/import"/1
+       (ipse 0.1.0) lib/ipse/session/resources.ex:860: Ipse.Session.Resources.execute_file_effect/3
+
+
+Finished in 0.5 seconds (0.01s async, 0.5s sync)
+
+Result: 2/3 passed, 37 excluded
+Failed: 1 test

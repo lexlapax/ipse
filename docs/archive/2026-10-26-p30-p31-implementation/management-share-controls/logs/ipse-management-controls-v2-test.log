@@ -1,0 +1,8 @@
+Running ExUnit with seed: 154242, max_cases: 8
+Excluding tags: [:test]
+Including tags: [management_controls: true, management_control_replay: true]
+
+..
+Finished in 0.5 seconds (0.4s on load, 0.00s async, 0.1s sync)
+
+Result: 2 passed, 2 excluded

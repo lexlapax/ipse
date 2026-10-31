@@ -1,0 +1,32 @@
+Running ExUnit with seed: 205225, max_cases: 8
+Excluding tags: [:test]
+Including tags: [line: 360]
+
+RETAINED_MEMORY_ROOT=/tmp/ipse-memory-session-be70ef2b022b73b1db0ed80b7b785f6b
+
+
+  1) test remember approved while the target is live can renew it (Ipse.Builtins.MemorySessionTest)
+     /tmp/ipse-memory-retained.exs:360
+     Assertion failed, no matching message after 5000ms
+     The following variables were pinned:
+       pid = #PID<0.206.0>
+     Showing 2 of 2 messages in the mailbox
+     code: assert_receive {:ipse, ^pid, {:done, :ok}}
+     mailbox:
+       pattern: {:ipse, ^pid, {:done, :ok}}
+       value:   {:ipse, #PID<0.206.0>,
+                 {:error,
+                  "Extension outcome unknown after refusal, failure or interruption. Inspect its receipt before retrying; no callback was replayed."}}
+
+       pattern: {:ipse, ^pid, {:done, :ok}}
+       value:   {:ipse, #PID<0.206.0>, {:done, :error}}
+     stacktrace:
+       /tmp/ipse-memory-retained.exs:140: Ipse.Builtins.MemorySessionTest.await_done/1
+       /tmp/ipse-memory-retained.exs:145: Ipse.Builtins.MemorySessionTest.command/3
+       /tmp/ipse-memory-retained.exs:172: Ipse.Builtins.MemorySessionTest.assert_renewal/3
+
+
+Finished in 5.6 seconds (0.4s on load, 0.00s async, 5.2s sync)
+
+Result: 0/1 passed, 15 excluded
+Failed: 1 test

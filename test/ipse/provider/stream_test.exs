@@ -2,6 +2,7 @@ Code.require_file("../../support/provider_fixture.ex", __DIR__)
 
 defmodule Ipse.Provider.StreamTest do
   import Ipse.Test.ProviderFixture, only: [sse: 1]
+  import Ipse.Test.ResumeAssertions
   use ExUnit.Case, async: false
   alias Ipse.Provider.Stream
   alias Ipse.Provider.OpenAI
@@ -95,7 +96,8 @@ defmodule Ipse.Provider.StreamTest do
         )
 
       on_exit(fn -> if Process.alive?(resumed), do: Ipse.Session.close(resumed) end)
-      assert File.read!(Path.join(dir, id <> ".jsonl")) == before
+      assert_idle_resume_journal(Path.join(dir, id <> ".jsonl"), before, id)
+      assert {:ok, ^snapshot} = Ipse.Usage.Budget.saved(dir, id)
       refute_receive :prefix_model_called, 20
       assert :ok = Ipse.Session.close(resumed)
     end

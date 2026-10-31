@@ -1,7 +1,50 @@
 defmodule Ipse.ParallelDelegationTest do
   use ExUnit.Case, async: false
+  import Ipse.Test.ResumeAssertions
   alias Ipse.Session
   alias Ipse.Journal
+
+  defp assert_closed_journal(state_dir, id, events) do
+    {:ok, closed_events} = Journal.load(state_dir, id)
+    assert Enum.take(closed_events, length(events)) == events
+
+    if get_in(hd(events), ["metadata", "release_receipt_layout"]) ==
+         Ipse.Session.ReleaseReceipt.layout() do
+      assert [
+               %{
+                 "type" => "lifecycle_epoch_closed",
+                 "session_id" => ^id,
+                 "closure" => "close",
+                 "cleanup_confirmed" => false,
+                 "epoch_id" => epoch
+               } = closure,
+               %{
+                 "type" => "session_release_intent",
+                 "session_id" => ^id,
+                 "epoch_id" => intent_epoch,
+                 "closure_sha256" => digest
+               }
+             ] = Enum.drop(closed_events, length(events))
+
+      assert intent_epoch == epoch
+      assert digest == Ipse.JSON.digest([closure])
+
+      assert {:ok, %{"release_claim" => "signed_release_claim"}} =
+               Ipse.Session.Saved.inspect_saved(state_dir, id)
+    else
+      assert [
+               %{
+                 "type" => "lifecycle_epoch_closed",
+                 "session_id" => ^id,
+                 "closure" => "close",
+                 "cleanup_confirmed" => true
+               }
+             ] =
+               Enum.drop(closed_events, length(events))
+    end
+
+    File.read!(Path.join(state_dir, id <> ".jsonl"))
+  end
 
   defmodule Provider do
     def complete(config, messages, tools, _emit) do
@@ -176,23 +219,13 @@ defmodule Ipse.ParallelDelegationTest do
     end
 
     assert :sys.get_state(pid).delegations == 2
-    :ok = Session.close(pid)
-    {:ok, closed_events} = Journal.load(ctx.state, id)
-    assert Enum.take(closed_events, length(events)) == events
-
-    assert [
-             %{
-               "type" => "lifecycle_epoch_closed",
-               "session_id" => ^id,
-               "closure" => "close",
-               "cleanup_confirmed" => true
-             }
-           ] = Enum.drop(closed_events, length(events))
+    :ok = Session.close_confirmed(pid)
+    closed = assert_closed_journal(ctx.state, id, events)
 
     {:ok, resumed} =
       DynamicSupervisor.start_child(Ipse.Sessions, {Session, Keyword.put(opts, :id, id)})
 
-    assert {:ok, ^closed_events} = Journal.load(ctx.state, id)
+    assert_idle_resume_journal(Path.join(ctx.state, id <> ".jsonl"), closed, id)
     assert Session.info(resumed).phase == :idle
     :ok = Session.close(resumed)
     mismatched = Keyword.put(opts, :config, %{opts[:config] | subagent_concurrency: 1})
@@ -396,23 +429,13 @@ defmodule Ipse.ParallelDelegationTest do
              &(get_in(&1, ["message", "ipse_tool_outcome", "status"]) == "unknown")
            )
 
-    :ok = Session.close(pid)
-    {:ok, closed_events} = Journal.load(ctx.state, id)
-    assert Enum.take(closed_events, length(events)) == events
-
-    assert [
-             %{
-               "type" => "lifecycle_epoch_closed",
-               "session_id" => ^id,
-               "closure" => "close",
-               "cleanup_confirmed" => true
-             }
-           ] = Enum.drop(closed_events, length(events))
+    :ok = Session.close_confirmed(pid)
+    closed = assert_closed_journal(ctx.state, id, events)
 
     {:ok, resumed} =
       DynamicSupervisor.start_child(Ipse.Sessions, {Session, Keyword.put(opts, :id, id)})
 
-    assert {:ok, ^closed_events} = Journal.load(ctx.state, id)
+    assert_idle_resume_journal(Path.join(ctx.state, id <> ".jsonl"), closed, id)
     refute_receive {:child_started, _, _, _, _}, 50
     :ok = Session.close(resumed)
   end

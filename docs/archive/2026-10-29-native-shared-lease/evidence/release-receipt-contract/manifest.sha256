@@ -1,0 +1,12 @@
+432d39242acb3a86ad7d7004d2cd9f7733cc381a3906779ddac7caf55a18ff55  docs/archive/2026-10-29-native-shared-lease/evidence/release-receipt-contract/compile-v2.log
+432d39242acb3a86ad7d7004d2cd9f7733cc381a3906779ddac7caf55a18ff55  docs/archive/2026-10-29-native-shared-lease/evidence/release-receipt-contract/compile-v3.log
+432d39242acb3a86ad7d7004d2cd9f7733cc381a3906779ddac7caf55a18ff55  docs/archive/2026-10-29-native-shared-lease/evidence/release-receipt-contract/compile-v4.log
+432d39242acb3a86ad7d7004d2cd9f7733cc381a3906779ddac7caf55a18ff55  docs/archive/2026-10-29-native-shared-lease/evidence/release-receipt-contract/compile.log
+c4c3b666ae3805db122d24c7c2ecfe8098b0eddf0b1903ecfc14c62920a06bda  docs/archive/2026-10-29-native-shared-lease/evidence/release-receipt-contract/forgery-v3.log
+9a0bafc939ac47d7cfeb0eea604e82686bfd2291a9d0803fd7549f67a619f81c  docs/archive/2026-10-29-native-shared-lease/evidence/release-receipt-contract/runtime.sha256
+8ea3155cae2f07a491cb6c50ba16b20a19f944b494a809a9540d43775e20defe  docs/archive/2026-10-29-native-shared-lease/evidence/release-receipt-contract/source.tar
+04d796171ae839f7d7a3cb965e4aad9f4283a36ddb476e66d32cb0e1d4ae5b21  docs/archive/2026-10-29-native-shared-lease/evidence/release-receipt-contract/test-initial.log
+0dd683c31e7b76ea9a1fa63f21ec87d7749c7fd20e9b6465c995c6b3996900d2  docs/archive/2026-10-29-native-shared-lease/evidence/release-receipt-contract/test-v2.log
+f0d4a931c99430efb87d4b4a82bc85d881a8bb0279d89361d7b1e85f8c898edc  docs/archive/2026-10-29-native-shared-lease/evidence/release-receipt-contract/test-v3.log
+1d736f412e178c6aa50dc506698d9d76209901276d7cdf3aaadb62b83ee45dd2  docs/archive/2026-10-29-native-shared-lease/evidence/release-receipt-contract/test-v4.log
+c15b3ca0d654bf8097f1becb07dcaae584ad489d56cd2a108f8f3eded60e03d3  _build/session-release-contract-v4-sol-20261029/lib/ipse/priv/ipse-runner

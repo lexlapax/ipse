@@ -219,7 +219,8 @@ defmodule Ipse.Development.Verification.Package do
     {:ok, _} = Application.ensure_all_started(:ipse)
     defmodule IpsePackagePermissionFixture do
       def complete(_config, messages, _tools, _emit) do
-        if List.last(messages)["role"] == "tool" do
+        last_real = messages |> Enum.reject(&Ipse.Session.Reference.reference?/1) |> List.last()
+        if last_real["role"] == "tool" do
           {:ok, %{"role" => "assistant", "content" => "Done"}, %{}}
         else
           calls = for {name, args, id} <- [
@@ -247,6 +248,8 @@ defmodule Ipse.Development.Verification.Package do
           :ok = Ipse.Session.approve(pid, ref, choice)
           wait.(wait, count + 1)
         {:ipse, ^pid, {:done, :ok}} -> count
+        {:ipse, ^pid, {:error, message}} -> raise "permission proof failed: \#{message}"
+        {:ipse, ^pid, {:done, status}} -> raise "permission proof ended: \#{inspect(status)}"
         _ -> wait.(wait, count)
       after
         5000 -> raise "permission proof timed out"
@@ -254,10 +257,13 @@ defmodule Ipse.Development.Verification.Package do
     end
     2 = wait.(wait, 0)
     "hello" = File.read!(#{inspect(Path.join(workspace, "second"))})
+    id = Ipse.Session.info(pid).id
+    {:ok, events} = Ipse.Journal.load(#{inspect(Path.join(root, "permissions-state"))}, id)
+    ["w1", "w2", "s1", "s2"] =
+      events |> Enum.filter(&(&1["type"] == "tool_started")) |> Enum.map(& &1["call_id"])
     %{"workspace_edits" => true, "commands" => [_]} = Ipse.Session.permissions(pid)
     :ok = Ipse.Session.clear_permissions(pid)
     %{"workspace_edits" => false, "commands" => []} = Ipse.Session.permissions(pid)
-    id = Ipse.Session.info(pid).id
     :ok = Ipse.Session.close_confirmed(pid)
     {:ok, resumed} = DynamicSupervisor.start_child(Ipse.Sessions, {Ipse.Session, opts ++ [id: id]})
     %{phase: :idle} = Ipse.Session.info(resumed)

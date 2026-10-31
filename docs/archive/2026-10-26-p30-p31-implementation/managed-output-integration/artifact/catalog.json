@@ -1,0 +1,10 @@
+{
+  "artifacts": [
+    {
+      "id": "knowledge",
+      "manifest_sha256": "26c3e913d377f1d3f2f67eab7666770506f6517e5bf7a82eb9e8c36c43d95b2b",
+      "path": "knowledge"
+    }
+  ],
+  "version": 1
+}

@@ -1,0 +1,32 @@
+{
+  "active_run_refs": 8,
+  "catalog_pages": 63,
+  "decoded_selector_bytes": 128,
+  "model_calls": 0,
+  "native_operations": 0,
+  "proposal_only": true,
+  "records": {
+    "catalog.abcdefghijklmnop": {
+      "body_bytes": 7371,
+      "maximum_frame_bytes": 8259,
+      "packed_bytes": 8048,
+      "parts": 2,
+      "write_frames": 1
+    },
+    "generation.abcdefghijklmnop": {
+      "body_bytes": 35192,
+      "maximum_frame_bytes": 13318,
+      "packed_bytes": 37470,
+      "parts": 6,
+      "write_frames": 3
+    },
+    "genjob.abcdefghijklmnop": {
+      "body_bytes": 44451,
+      "maximum_frame_bytes": 13576,
+      "packed_bytes": 47375,
+      "parts": 8,
+      "write_frames": 4
+    }
+  },
+  "selected_refs": 165
+}

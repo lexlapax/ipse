@@ -1,0 +1,8 @@
+Running ExUnit with seed: 46898, max_cases: 8
+Excluding tags: [:test]
+Including tags: [state_lifetime_gate: true]
+
+.
+Finished in 1.6 seconds (0.00s async, 1.6s sync)
+
+Result: 1 passed, 108 excluded

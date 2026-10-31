@@ -1,0 +1,106 @@
+{
+  "clock-controls.json": {
+    "bytes": 1729,
+    "sha256": "87bf3dee7224d442ce02fc397d8e2eb83cd64d5884c304af378f148c03345d62"
+  },
+  "disclosure-followup.json": {
+    "bytes": 1070,
+    "sha256": "8650eaf0ef31e7dfe747c846051ca07aaa70e894238930a1b026718528f467d3"
+  },
+  "focused-clock-first.log": {
+    "bytes": 218,
+    "sha256": "49bff352ddfc3ea5fbbd0da421809b814a232758853bce55dd577dc422bff063"
+  },
+  "focused-native-final.log": {
+    "bytes": 217,
+    "sha256": "e173f83cb6368a7ac57b562c7871e125dbd5eea738b15b771c88a0a581b97f1b"
+  },
+  "focused-native-first.log": {
+    "bytes": 1095,
+    "sha256": "c6610afd5325477fcbe8218420cd13d0c100e8bcfbe2f49b749dcd69282aec57"
+  },
+  "focused-native-second.log": {
+    "bytes": 2175,
+    "sha256": "6a41e1292b57b8715e0ad481cde4633230d1e0ddbe7286640cf097a5cc759d83"
+  },
+  "focused-native-third.log": {
+    "bytes": 2145,
+    "sha256": "6e1543493c0e10ae3059f09bf9acf764de9206ccca4b6539bab8d57941fa73c4"
+  },
+  "focused-native-unsandboxed.log": {
+    "bytes": 217,
+    "sha256": "7a395c4ca27a2d4e5e6a6ad1618f7ba3fbce48be52b98c42491b541cfb7a583c"
+  },
+  "index.md": {
+    "bytes": 8575,
+    "sha256": "1377285ab5f7787bdc43d19d43f5f4de5381406d6b332c72f9006f70b3ee5380"
+  },
+  "provenance.json": {
+    "bytes": 174440,
+    "sha256": "8cd1c44fd3e66ee64ec6b7e5d2eefe1513332bdf582f039f629b56cb8f78edc7"
+  },
+  "sources/dev__knowledge__managed_v3_turnover.exs": {
+    "bytes": 4767,
+    "sha256": "669d79ff31dc845f4481c25095170bc9399cc4536c08edf8abe77091a952e7e8"
+  },
+  "sources/disclosure-followup__lib__ipse__extension__collection__normalizer_v3.ex": {
+    "bytes": 18726,
+    "sha256": "94fcaccfdaded5fa7f67f8bcd89ad06fb065dd53c5e29cf6ffc86dec2d5283f1"
+  },
+  "sources/disclosure-followup__lib__ipse__session__managed_lifecycle.ex": {
+    "bytes": 4838,
+    "sha256": "09986e10ddbf6de245a9252faebd42dbae926e93190e7ecb89e2195546c865e1"
+  },
+  "sources/extensions__knowledge__src__knowledge__contracts.ex": {
+    "bytes": 6290,
+    "sha256": "d60694a680de3e869fe3939527fa75aaa75d44ad10115c5d5c7df61822b8474c"
+  },
+  "sources/extensions__knowledge__src__knowledge__records.ex": {
+    "bytes": 8006,
+    "sha256": "e70863709ddcc580d8dba251ce0532fe7e4d72399b01841af7238c6048d9de12"
+  },
+  "sources/extensions__knowledge__src__notes.ex": {
+    "bytes": 11402,
+    "sha256": "a0474155b87c6b1b1bd53d6e51e6f5cb045a52eee0e0fa80ba2e613f36e9802b"
+  },
+  "sources/lib__ipse__extension__collection__normalizer_v3.ex": {
+    "bytes": 18691,
+    "sha256": "70bb2e1caed0f5ab5188def5d991c6740ff66ba4a2f1d4e056d5bc60a3386521"
+  },
+  "sources/lib__ipse__session__managed_lifecycle.ex": {
+    "bytes": 4798,
+    "sha256": "a90f6acc0173b7bd059f9836564db4512a576b66cb97d1b17c09432b4d8df5a5"
+  },
+  "sources/test__dev__knowledge__managed_v3_turnover_test.exs": {
+    "bytes": 2112,
+    "sha256": "fb25e199bbbb66e58c24280fca908fca72bdba14fc98d47dc3cd01f7becb3a92"
+  },
+  "sources/test__ipse__extension__collection_normalizer_v3_integration_test.exs": {
+    "bytes": 55295,
+    "sha256": "0e3e1c98b0380d55d47f0fe3fd77605f11db94cfa9c12153205c6669d8f4c9c8"
+  },
+  "sources/test__ipse__extension__collection_normalizer_v3_test.exs": {
+    "bytes": 28939,
+    "sha256": "bad3f670ad29dc08276f2a6ee94bf7af4d46f212da7127ef566accff0becbbdf"
+  },
+  "sources/test__ipse__session__managed_lifecycle_test.exs": {
+    "bytes": 1593,
+    "sha256": "74e62a4c74d25780f7d8b886705957aa7297490410bed1b661d62b6a8a42ede0"
+  },
+  "sources/test__support__managed_literal_forget.exs": {
+    "bytes": 9637,
+    "sha256": "69209f3d1e835931e2a2d5a39ac9a4b149ddb4af778236a9e78298f5c8098535"
+  },
+  "sources/test__support__managed_policy.exs": {
+    "bytes": 6506,
+    "sha256": "d3e1c92b5b092ddf807df0d86230f20450bfec20fd92b3b8be7f40fe34f55e67"
+  },
+  "sources/test__support__operator_pty.rs": {
+    "bytes": 11092,
+    "sha256": "540acd738053c357a2ab002150e3741f813d1526356e24b35fcc3e493a322a6c"
+  },
+  "sources/test__test_helper.exs": {
+    "bytes": 1584,
+    "sha256": "3fe1c5ac8fab2068cc8d0001bc79f3a17fc6e9f6d997df9ccb34600509d6d63d"
+  }
+}

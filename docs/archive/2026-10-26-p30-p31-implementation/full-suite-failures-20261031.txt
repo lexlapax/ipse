@@ -1,0 +1,214 @@
+
+  1) test a genuinely reviewed short literal expires while a native read worker is processing (Ipse.Session.ManagedOutputNativeTest)
+
+
+  2) test genuine Session supersession: shared (Ipse.Session.ManagedCompactionDiagnosticTest)
+
+  3) test native correction and temporal successor publish together and keep the old note noncurrent (Ipse.Session.ManagedSupersessionNativeTest)
+
+  4) test SDK2 protected output retains version4 and the same original binding (Ipse.Extension.CollectionCallSessionTest)
+
+
+
+  5) test a known conflict is recorded and conservatively settled once without retry (Ipse.Extension.CollectionCallSessionTest)
+
+  6) test ambiguous reviewed publication mappings refuse rather than choosing a stronger operation (Ipse.Extension.CollectionCallSessionTest)
+
+  7) test an unrelated caller cannot use the actual current collection action or stale job reference (Ipse.Extension.CollectionCallSessionTest)
+
+
+
+  8) test revocation after worker entry is rechecked before collection reservation (Ipse.Extension.CollectionCallSessionTest)
+
+
+
+  9) test a read-only export enters headless planning but cannot publish or lend ordinary approval (Ipse.Extension.CollectionCallSessionTest)
+
+ 10) test headless protected capture journals exact outer and inner bindings and settles once (Ipse.Extension.CollectionCallSessionTest)
+
+
+
+ 11) test owner loss during protected publication retains liability and cannot publish after cleanup (Ipse.Extension.CollectionCallSessionTest)
+
+ 12) test typed correction and historical expiry record actual review and simulated as-of separately (Ipse.Development.ManagedV3TurnoverNativeTest)
+
+ 13) test actual native CLI statement review: save_history_expire (Ipse.Session.OperatorAssertionIntegrationTest)
+
+ 14) test genuine Session supersession: shared (Ipse.Session.ManagedSupersessionSessionTest)
+
+
+
+ 15) test genuine Session supersession: terminal_unknown (Ipse.Session.ManagedSupersessionSessionTest)
+
+
+
+ 16) test genuine Session supersession: relation_cancel (Ipse.Session.ManagedSupersessionSessionTest)
+
+
+
+ 17) test genuine Session supersession: revoke (Ipse.Session.ManagedSupersessionSessionTest)
+
+
+
+ 18) test genuine Session supersession: disabled (Ipse.Session.ManagedSupersessionSessionTest)
+
+
+
+ 19) test genuine Session supersession: terminal (Ipse.Session.ManagedSupersessionSessionTest)
+
+
+
+ 20) test genuine Session supersession: terminal_cancel (Ipse.Session.ManagedSupersessionSessionTest)
+
+
+
+ 21) test genuine Session supersession: current (Ipse.Session.ManagedSupersessionSessionTest)
+
+
+
+ 22) test genuine Session supersession: old_missing (Ipse.Session.ManagedSupersessionSessionTest)
+
+ 23) test genuine Session supersession: current (Ipse.Session.ManagedHistoryUseSessionTest)
+
+ 24) test a retained pending card uses a real one-use accept input after locks are released (Ipse.Extension.CollectionNormalizerV3IntegrationTest)
+
+ 25) test competing legacy saved-consent Sessions cannot both publish at 63 pending records (Ipse.Extension.ManagedCollectionCallSessionTest)
+
+ 26) test managed stdio owner loss stops a held server without replay (Ipse.Extension.ManagedCollectionCallSessionTest)
+
+ 27) test ambiguous reviewed publication mappings refuse rather than choosing a stronger operation (Ipse.Extension.ManagedCollectionCallSessionTest)
+
+
+ 28) test unmanaged ordinary publication fences delayed_stage at the actual native switch (Ipse.Extension.ManagedCollectionCallSessionTest)
+
+ 29) test owner loss during protected publication retains liability and cannot publish after cleanup (Ipse.Extension.ManagedCollectionCallSessionTest)
+
+
+
+ 30) test managed HTTP MCP expiry before approval opens no further connection (Ipse.Extension.ManagedCollectionCallSessionTest)
+
+ 31) test headless protected capture journals exact outer and inner bindings and settles once (Ipse.Extension.ManagedCollectionCallSessionTest)
+
+ 32) test competing V3 saved-consent Sessions cannot both publish at 63 pending records (Ipse.Extension.ManagedCollectionCallSessionTest)
+
+ 33) test managed HTTP MCP request refuses revocation after admitted connection (Ipse.Extension.ManagedCollectionCallSessionTest)
+
+ 34) test an unrelated caller cannot use the actual current collection action or stale job reference (Ipse.Extension.ManagedCollectionCallSessionTest)
+
+ 35) test managed stdio uses the build-pinned helper despite an override (Ipse.Extension.ManagedCollectionCallSessionTest)
+
+
+
+ 36) test managed native write waiting on approval refuses expiry without effect (Ipse.Extension.ManagedCollectionCallSessionTest)
+
+
+
+ 37) test upgraded literal v4 A cannot be discarded while candidate cites independent current B (Ipse.Extension.ManagedCollectionCallSessionTest)
+
+
+
+ 38) test managed shell waiting on approval refuses expiry before native spawn (Ipse.Extension.ManagedCollectionCallSessionTest)
+
+ 39) test managed MCP call waiting on approval refuses owner_loss without effect (Ipse.Extension.ManagedCollectionCallSessionTest)
+
+
+
+ 40) test source revocation while a managed shell runs withholds its buffered result (Ipse.Extension.ManagedCollectionCallSessionTest)
+
+ 41) test current managed MCP call admits server start and its exact request (Ipse.Extension.ManagedCollectionCallSessionTest)
+
+
+
+ 42) test current managed shell admits the native spawn and releases one bound result (Ipse.Extension.ManagedCollectionCallSessionTest)
+
+
+ 43) test unmanaged ordinary publication fences current at the actual native switch (Ipse.Extension.ManagedCollectionCallSessionTest)
+
+ 44) test current managed native write starts after approval and releases one bound result (Ipse.Extension.ManagedCollectionCallSessionTest)
+
+
+
+ 45) test SDK2 protected output retains version4 and the same original binding (Ipse.Extension.ManagedCollectionCallSessionTest)
+
+
+
+ 46) test managed HTTP MCP revoke before approval opens no further connection (Ipse.Extension.ManagedCollectionCallSessionTest)
+
+
+
+ 47) test lost HTTP initialization response preserves possible startup as unknown (Ipse.Extension.ManagedCollectionCallSessionTest)
+
+ 48) test a known conflict is recorded and conservatively settled once without retry (Ipse.Extension.ManagedCollectionCallSessionTest)
+
+ 49) test nested managed MCP discovery is admitted before approval and current is checked at effect entry (Ipse.Extension.ManagedCollectionCallSessionTest)
+
+
+
+ 50) test managed shell owner loss after spawn stops the process group and resumes inertly (Ipse.Extension.ManagedCollectionCallSessionTest)
+
+
+ 51) test a self-writing capture retains its raw reads and projects only host-bound historical write facts (Ipse.Extension.ManagedCollectionCallSessionTest)
+
+ 52) test managed shell waiting on approval refuses owner_loss before native spawn (Ipse.Extension.ManagedCollectionCallSessionTest)
+
+ 53) test nested managed MCP discovery is admitted before approval and root_change is checked at effect entry (Ipse.Extension.ManagedCollectionCallSessionTest)
+
+
+
+ 54) test managed native write waiting on approval refuses revoke without effect (Ipse.Extension.ManagedCollectionCallSessionTest)
+
+ 55) test managed native write waiting on approval refuses root_change without effect (Ipse.Extension.ManagedCollectionCallSessionTest)
+
+
+
+ 56) test a read-only export enters headless planning but cannot publish or lend ordinary approval (Ipse.Extension.ManagedCollectionCallSessionTest)
+
+ 57) test successive protected saves settle measured input and release only verified unused input (Ipse.Extension.ManagedCollectionCallSessionTest)
+
+
+
+ 58) test managed MCP call waiting on approval refuses root_change without effect (Ipse.Extension.ManagedCollectionCallSessionTest)
+
+ 59) test legacy saved-consent publication refuses a full pending queue (Ipse.Extension.ManagedCollectionCallSessionTest)
+
+ 60) test native loss after normalization does not refund or publish a successful managed result (Ipse.Extension.ManagedCollectionCallSessionTest)
+
+
+
+ 61) test managed MCP request refuses revocation after admitted server start (Ipse.Extension.ManagedCollectionCallSessionTest)
+
+
+
+ 62) test managed shell waiting on approval refuses revoke before native spawn (Ipse.Extension.ManagedCollectionCallSessionTest)
+
+ 63) test current managed HTTP MCP call admits connection and exact request (Ipse.Extension.ManagedCollectionCallSessionTest)
+
+
+
+ 64) test managed HTTP owner loss closes a held effect socket without replay (Ipse.Extension.ManagedCollectionCallSessionTest)
+
+ 65) test managed native write waiting on approval refuses owner_loss without effect (Ipse.Extension.ManagedCollectionCallSessionTest)
+
+ 66) test V2 outer Identity loss after checked deferred publication retains full liability across inert resume (Ipse.Extension.ManagedCollectionCallSessionTest)
+
+
+
+ 67) test managed shell waiting on approval refuses root_change before native spawn (Ipse.Extension.ManagedCollectionCallSessionTest)
+
+
+ 68) test unmanaged ordinary publication fences stopped_native at the actual native switch (Ipse.Extension.ManagedCollectionCallSessionTest)
+
+ 69) test revocation after worker entry is rechecked before collection reservation (Ipse.Extension.ManagedCollectionCallSessionTest)
+
+
+
+ 70) test managed MCP call waiting on approval refuses revoke without effect (Ipse.Extension.ManagedCollectionCallSessionTest)
+
+ 71) test managed MCP call waiting on approval refuses expiry without effect (Ipse.Extension.ManagedCollectionCallSessionTest)
+
+.............
+Finished in 5938.2 seconds (328.0s async, 5610.2s sync)
+
+Result: 3488/3559 passed, 108 skipped, 112 excluded
+Failed: 71 tests
+

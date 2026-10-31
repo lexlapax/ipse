@@ -1,0 +1,33 @@
+    warning: unused alias JSON
+    │
+  5 │   alias Ipse.{JSON, Usage}
+    │   ~
+    │
+    └─ test/ipse/extension/notes_publication_admission_test.exs:5:3
+
+** (MatchError) no match of right hand side value:
+
+    {:ok,
+     [Ipse.Extension.CollectionNormalizerV3IntegrationTest,
+      Ipse.Extension.CollectionNormalizerV3Test,
+      Ipse.Extension.ManagedCollectionCallTest,
+      Ipse.Extension.NotesPublicationAdmissionTest, Ipse.Test.ManagedPolicy,
+      Ipse.Test.NormalizerV3Fixture, IpseKnowledge.Knowledge.Contracts,
+      IpseKnowledge.Knowledge.Records, IpseKnowledge.Notes],
+     %{
+       compile_warnings: [
+         %{
+           message: "unused alias JSON",
+           position: {5, 3},
+           file: "/home/lexlapax/projects/lexlapax/ipse/test/ipse/extension/notes_publication_admission_test.exs",
+           stacktrace: [],
+           source: "/home/lexlapax/projects/lexlapax/ipse/test/ipse/extension/notes_publication_admission_test.exs",
+           span: nil,
+           severity: :warning
+         }
+       ],
+       runtime_warnings: []
+     }}
+
+    /tmp/ipse-notes-admission-test-compile-47169.exs:3: (file)
+    (elixir 1.20.4) lib/code.ex:1639: Code.require_file/2

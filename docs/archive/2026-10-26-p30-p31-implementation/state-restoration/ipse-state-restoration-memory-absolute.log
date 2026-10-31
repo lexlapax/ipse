@@ -1,0 +1,31 @@
+Running ExUnit with seed: 172164, max_cases: 8
+Excluding tags: [:test]
+Including tags: [line: 360, line: 364, line: 368, line: 372, line: 429]
+
+
+
+  1) test active import approved after target expiry cannot renew it (Ipse.Builtins.MemorySessionTest)
+     test/extensions/bundled/memory_session_test.exs:372
+     Assertion with == failed
+     code:  assert intents.(resumed_events) == intents.(journal)
+     left:  3
+     right: 2
+     stacktrace:
+       test/extensions/bundled/memory_session_test.exs:237: Ipse.Builtins.MemorySessionTest.assert_renewal/3
+
+...
+
+  2) test remember approved after target expiry cannot renew it (Ipse.Builtins.MemorySessionTest)
+     test/extensions/bundled/memory_session_test.exs:368
+     Assertion with == failed
+     code:  assert intents.(resumed_events) == intents.(journal)
+     left:  3
+     right: 2
+     stacktrace:
+       test/extensions/bundled/memory_session_test.exs:237: Ipse.Builtins.MemorySessionTest.assert_renewal/3
+
+
+Finished in 13.2 seconds (0.4s on load, 0.00s async, 12.7s sync)
+
+Result: 3/5 passed, 11 excluded
+Failed: 2 tests

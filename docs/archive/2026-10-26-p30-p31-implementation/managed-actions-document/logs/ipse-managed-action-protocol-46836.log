@@ -1,0 +1,8 @@
+Running ExUnit with seed: 46836, max_cases: 8
+Excluding tags: [:test]
+Including tags: [managed_action_protocol: true]
+
+..
+Finished in 0.02 seconds (0.02s async, 0.00s sync)
+
+Result: 2 passed, 6 excluded

@@ -1,0 +1,25 @@
+warning: :warnings_as_errors is deprecated as part of Code.get_compiler_option/1
+  (elixir 1.20.4) lib/code.ex:1716: Code.get_compiler_option/1
+  (elixir 1.20.4) lib/code.ex:1691: anonymous fn/2 in Code.compiler_options/1
+  (elixir 1.20.4) lib/enum.ex:2622: Enum."-reduce/3-lists^foldl/2-0-"/3
+  (elixir 1.20.4) lib/code.ex:1690: Code.compiler_options/1
+  (elixir 1.20.4) src/elixir.erl:382: :elixir.eval_external_handler/3
+  (stdlib 8.1) erl_eval.erl:1048: :erl_eval.do_apply/7
+
+warning: :warnings_as_errors is deprecated as part of Code.put_compiler_option/2, instead you must pass it as a --warnings-as-errors flag. If you need to set it as a default in a mix task, you can also set it under aliases: [compile: "compile --warnings-as-errors"]
+  (elixir 1.20.4) lib/code.ex:1900: Code.put_compiler_option/2
+  (elixir 1.20.4) lib/code.ex:1692: anonymous fn/2 in Code.compiler_options/1
+  (elixir 1.20.4) lib/enum.ex:2622: Enum."-reduce/3-lists^foldl/2-0-"/3
+  (elixir 1.20.4) lib/code.ex:1690: Code.compiler_options/1
+  (elixir 1.20.4) src/elixir.erl:382: :elixir.eval_external_handler/3
+  (stdlib 8.1) erl_eval.erl:1048: :erl_eval.do_apply/7
+
+warning: you must pass return_diagnostics: true when invoking Kernel.ParallelCompiler functions
+  (elixir 1.20.4) lib/kernel/parallel_compiler.ex:327: Kernel.ParallelCompiler.spawn_workers/3
+  (elixir 1.20.4) src/elixir.erl:382: :elixir.eval_external_handler/3
+  (stdlib 8.1) erl_eval.erl:1048: :erl_eval.do_apply/7
+  (stdlib 8.1) erl_eval.erl:608: :erl_eval.expr/6
+  (elixir 1.20.4) src/elixir.erl:365: :elixir.erl_eval/3
+  (elixir 1.20.4) src/elixir.erl:329: :elixir.eval_forms/4
+
+TRANSACTION_RETAINED_COMPILE_OK

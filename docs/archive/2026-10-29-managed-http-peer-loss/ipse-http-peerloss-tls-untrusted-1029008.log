@@ -1,0 +1,16 @@
+Running ExUnit with seed: 709340, max_cases: 8
+Excluding tags: [:test]
+Including tags: [managed_mcp_tls_untrusted: true]
+
+
+11:19:16.546 [notice] TLS :client: In state :wait_cert_cr at ssl_handshake.erl:2304 generated CLIENT ALERT: Fatal - Unknown CA
+
+
+11:19:16.547 [notice] TLS :server: In state :wait_finished received CLIENT ALERT: Fatal - Unknown CA
+
+
+11:19:16.557 [debug] MCP Client: transport closed: :invalid_http_transport
+.
+Finished in 6.7 seconds (4.7s on load, 0.00s async, 1.9s sync)
+
+Result: 1 passed, 115 excluded

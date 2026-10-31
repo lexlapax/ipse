@@ -463,8 +463,75 @@ defmodule Ipse.Extension.EmbeddingCall do
 
   def operation?(request), do: is_map(request) and request["op"] == "embedding.create"
 
+  def profile_request?(request), do: is_map(request) and request["op"] == "embedding.profile"
+
+  def validate_profile(request) do
+    if keys?(request, ~w(op version profile)) and profile_request?(request) and
+         request["version"] === 1 and profile_id?(request["profile"]),
+       do: :ok,
+       else: @error
+  end
+
+  def profile_binding(scope, request) do
+    with :ok <- validate_profile(request),
+         profile when is_map(profile) <- get_in(scope, ["embedding_profiles", request["profile"]]),
+         true <- Profiles.public_embedding_profile?(profile),
+         true <- profile["id"] == request["profile"],
+         {:ok, selection} <-
+           Profiles.embedding_selection_sha256(
+             Map.delete(profile, "destination"),
+             profile["destination"]
+           ) do
+      {:ok,
+       %{
+         "kind" => "embedding_profile",
+         "version" => 1,
+         "profile" => profile,
+         "selection_sha256" => selection
+       }}
+    else
+      _ -> @error
+    end
+  rescue
+    _ -> @error
+  end
+
+  def valid_profile_binding?(binding, request, scope \\ nil) do
+    with :ok <- validate_profile(request),
+         true <- keys?(binding, ~w(kind version profile selection_sha256)),
+         true <- binding["kind"] == "embedding_profile" and binding["version"] === 1,
+         own_scope = %{"embedding_profiles" => %{request["profile"] => binding["profile"]}},
+         {:ok, ^binding} <- profile_binding(own_scope, request) do
+      is_nil(scope) or profile_binding(scope, request) == {:ok, binding}
+    else
+      _ -> false
+    end
+  rescue
+    _ -> false
+  end
+
+  def profile_value(binding), do: Map.take(binding, ~w(version profile selection_sha256))
+
+  def valid_profile_outcome?(request, "ok", value) do
+    keys?(value, ~w(version profile selection_sha256)) and
+      valid_profile_binding?(Map.put(value, "kind", "embedding_profile"), request)
+  rescue
+    _ -> false
+  end
+
+  def valid_profile_outcome?(_, "unknown", value), do: value == %{}
+  def valid_profile_outcome?(_, _, _), do: false
+
+  def bound_profile?(event) do
+    event["outcome"]["status"] != "ok" or
+      (valid_profile_binding?(event["effect_binding"], event["request"]) and
+         event["outcome"]["value"] === profile_value(event["effect_binding"]))
+  rescue
+    _ -> false
+  end
+
   def validate(request) do
-    if keys?(request, ~w(op version profile inputs timeout_ms)) and operation?(request) and
+    if request_keys?(request) and operation?(request) and
          request["version"] in [1, 2] and profile_id?(request["profile"]) and
          is_integer(request["timeout_ms"]) and request["timeout_ms"] in 1000..120_000 and
          is_list(request["inputs"]) and length(request["inputs"]) in 1..8 and
@@ -477,26 +544,37 @@ defmodule Ipse.Extension.EmbeddingCall do
     _ -> @error
   end
 
-  def binding(config, request) do
-    with {:ok, runtime, execution} <- Profiles.prepare_embedding(config, request),
-         {:ok, destination} <- Ipse.Provider.destination(runtime) do
-      {:ok,
-       %{
-         "kind" => "embedding",
-         "version" => 1,
-         "execution" => execution,
-         "destination" => destination
-       }}
+  def binding(config, request, source_binding \\ nil) do
+    with :ok <- validate(request),
+         {:ok, runtime, execution} <- Profiles.prepare_embedding(config, request),
+         {:ok, destination} <- Ipse.Provider.destination(runtime),
+         binding = %{
+           "kind" => "embedding",
+           "version" => 1,
+           "execution" => execution,
+           "destination" => destination
+         },
+         true <- selection_matches?(request, binding),
+         binding =
+           if(is_nil(source_binding),
+             do: binding,
+             else: binding |> Map.put("version", 2) |> Map.put("source_binding", source_binding)
+           ),
+         true <- valid_binding?(binding, request) do
+      {:ok, binding}
+    else
+      _ -> @error
     end
   end
 
   def valid_binding?(binding, request, scope \\ nil) do
     with :ok <- validate(request),
-         true <- keys?(binding, ~w(kind version execution destination)),
-         true <- binding["kind"] == "embedding" and binding["version"] === 1,
+         true <- binding_shape?(binding, request),
+         true <- binding["kind"] == "embedding",
          true <- Ipse.Provider.valid_destination?(binding["destination"]),
          snapshot = Map.put(binding["execution"], "destination", binding["destination"]),
          true <- Profiles.public_embedding_profile?(snapshot),
+         true <- selection_matches?(request, binding),
          true <-
            snapshot["id"] == request["profile"] and
              snapshot["timeout_ms"] <= request["timeout_ms"] do
@@ -532,6 +610,30 @@ defmodule Ipse.Extension.EmbeddingCall do
   end
 
   def delegated_approval?(_, _), do: false
+
+  @doc false
+  def valid_identity?(identity, request, binding, session_id \\ nil) do
+    required = Ipse.Extension.CollectionStore.embedding_source_required?(identity)
+    guarded = is_map(request) and Map.has_key?(request, "source_guard")
+
+    cond do
+      required ->
+        guarded and valid_binding?(binding, request) and
+          Ipse.Extension.CollectionStore.valid_source_binding?(
+            binding["source_binding"],
+            request,
+            identity
+          ) and (is_nil(session_id) or binding["source_binding"]["session_id"] === session_id)
+
+      guarded ->
+        false
+
+      true ->
+        valid_binding?(binding, request)
+    end
+  rescue
+    _ -> false
+  end
 
   def source(intent, admission, execution) do
     intent
@@ -761,6 +863,8 @@ defmodule Ipse.Extension.EmbeddingCall do
     validate(request) == :ok and
       keys?(value, fields) and value["version"] === request["version"] and
       (request["version"] === 1 or Ipse.JSON.sha256?(value["selection_sha256"])) and
+      (not Map.has_key?(request, "expected_selection_sha256") or
+         request["expected_selection_sha256"] === value["selection_sha256"]) and
       value["request_id"] == operation and id?(value["attempt_id"]) and
       value["profile"] == request["profile"] and is_binary(value["reported_model"]) and
       Ipse.Provider.model_name(value["reported_model"]) == value["reported_model"] and
@@ -781,6 +885,36 @@ defmodule Ipse.Extension.EmbeddingCall do
   end
 
   defp failed(code), do: {:failed, %{"code" => code}}
+
+  defp request_keys?(request) do
+    keys?(request, ~w(op version profile inputs timeout_ms)) or
+      (keys?(request, ~w(op version profile inputs timeout_ms expected_selection_sha256)) and
+         request["version"] === 2 and Ipse.JSON.sha256?(request["expected_selection_sha256"])) or
+      (keys?(
+         request,
+         ~w(op version profile inputs timeout_ms expected_selection_sha256 source_guard)
+       ) and
+         request["version"] === 2 and Ipse.JSON.sha256?(request["expected_selection_sha256"]) and
+         is_list(request["inputs"]) and length(request["inputs"]) in 1..2 and
+         Ipse.Extension.Collection.DocumentSourceUse.guard?(request["source_guard"]))
+  end
+
+  defp binding_shape?(binding, request) do
+    if Map.has_key?(request, "source_guard") do
+      keys?(binding, ~w(kind version execution destination source_binding)) and
+        binding["version"] === 2 and
+        Ipse.Extension.CollectionStore.valid_source_binding?(binding["source_binding"], request)
+    else
+      keys?(binding, ~w(kind version execution destination)) and binding["version"] === 1
+    end
+  end
+
+  defp selection_matches?(request, binding) do
+    not Map.has_key?(request, "expected_selection_sha256") or
+      Profiles.embedding_selection_sha256(binding["execution"], binding["destination"]) ==
+        {:ok, request["expected_selection_sha256"]}
+  end
+
   defp text?(value), do: is_binary(value) and String.valid?(value) and byte_size(value) in 1..4096
 
   defp profile_id?(value),
@@ -798,8 +932,24 @@ defmodule Ipse.Extension.Inference do
       {:ok, config, admission} ->
         run(context, intent, kind, perform, config, admission, nil)
 
-      {:ok, config, admission, dispatch} ->
-        run(context, intent, kind, perform, config, admission, dispatch)
+      {:ok, config, admission, _dispatch} ->
+        case Ipse.Session.managed_preflight(
+               context.owner,
+               context.job_ref,
+               intent["request"]["op"]
+             ) do
+          {:ok, {^config, _, _, checked_dispatch}} ->
+            run(context, intent, kind, perform, config, admission, checked_dispatch)
+
+          _ ->
+            GenServer.call(
+              context.owner,
+              {finish_message(kind), context.job_ref, intent,
+               {:error, "Managed helper input could not be revalidated."}, nil,
+               "managed_history_unavailable"},
+              :infinity
+            )
+        end
 
       {:failed, _} = failure ->
         failure

@@ -14,8 +14,121 @@ File.mkdir_p!(cwd)
 File.chmod!(home, 0o700)
 config_path = Path.join(home, "config.json")
 
+defmodule KnowledgeRegisteredFixture do
+  def start do
+    Code.require_file("provider_fixture.ex", __DIR__)
+
+    {:ok, listener} =
+      :gen_tcp.listen(0, [:binary, active: false, reuseaddr: true, ip: {127, 0, 0, 1}])
+
+    {:ok, {_, port}} = :inet.sockname(listener)
+    base = "http://127.0.0.1:#{port}"
+
+    server =
+      Task.async(fn ->
+        try do
+          for step <- 1..3 do
+            {:ok, socket} = :gen_tcp.accept(listener, 60_000)
+
+            try do
+              {_, bytes} = Ipse.Test.ProviderFixture.request(socket, "")
+              request = Jason.decode!(bytes)
+              calls = calls(step, request)
+
+              message =
+                if calls == [],
+                  do: %{"role" => "assistant", "content" => "Fixture finished."},
+                  else: %{"role" => "assistant", "content" => "", "tool_calls" => calls}
+
+              body =
+                Jason.encode!(%{
+                  "model" => "synthetic",
+                  "message" => message,
+                  "done" => true,
+                  "prompt_eval_count" => 1,
+                  "eval_count" => 1
+                }) <> "\n"
+
+              :ok =
+                :gen_tcp.send(
+                  socket,
+                  "HTTP/1.1 200 Fixture\r\ncontent-type: application/x-ndjson\r\ncontent-length: #{byte_size(body)}\r\nconnection: close\r\n\r\n" <>
+                    body
+                )
+            after
+              :gen_tcp.close(socket)
+            end
+          end
+        after
+          :gen_tcp.close(listener)
+        end
+      end)
+
+    {base, server}
+  end
+
+  defp calls(1, _),
+    do: [%{"function" => %{"name" => "source_list", "arguments" => %{"limit" => 32}}}]
+
+  defp calls(2, request) do
+    result =
+      Enum.find(
+        Enum.reverse(request["messages"]),
+        &(&1["role"] == "tool" and &1["tool_name"] == "source_list")
+      )
+
+    page = Jason.decode!(result["content"])
+    source = Enum.find(page["sources"], &(&1["kind"] == "input.original"))
+
+    [
+      %{
+        "function" => %{
+          "name" => "ext__knowledge__capture",
+          "arguments" => %{
+            "text" => "Acme has owner Alex",
+            "category" => "ordinary",
+            "reason" => "fixture observation",
+            "event_at_ms" => nil,
+            "source" => %{"handle" => source["read_handle"], "quote" => "Acme has owner Alex"}
+          }
+        }
+      }
+    ]
+  end
+
+  defp calls(3, request) do
+    capture =
+      Enum.find(
+        request["messages"],
+        &(&1["role"] == "tool" and &1["tool_name"] == "ext__knowledge__capture")
+      )
+
+    true = is_map(capture) and is_binary(capture["content"])
+    []
+  end
+end
+
+{base, server} = if scenario == "save", do: KnowledgeRegisteredFixture.start(), else: {nil, nil}
+
 config_bytes =
-  Jason.encode!(%{"version" => 1, "settings" => %{"provider" => "demo", "model" => "scripted"}})
+  if server do
+    Jason.encode!(%{
+      "version" => 1,
+      "profiles" => %{
+        "local_fixture" => %{
+          "provider" => "ollama",
+          "model" => "synthetic",
+          "base_url" => base,
+          "max_output_tokens" => 64,
+          "timeout_ms" => 90_000
+        }
+      },
+      "roles" => %{"main" => "local_fixture"},
+      "inference_services" => %{"local" => %{"version" => 1, "origins" => [base]}}
+    })
+  else
+    Jason.encode!(%{"version" => 1, "settings" => %{"provider" => "demo", "model" => "scripted"}})
+  end
 
 File.write!(config_path, config_bytes)
 File.chmod!(config_path, 0o600)
@@ -166,6 +279,37 @@ assert status["policy_sha256"] == Ipse.JSON.digest([snapshot["policy"]])
 for path <- pending, do: assert(File.read!(path) == "synthetic pending record")
 for path <- pending, do: File.rm!(path)
 
+if scenario == "readiness" do
+  assert status["publication_supported_now"] == false
+  assert status["capture_ready_now"] == false
+  assert status["publication_unavailable_reason"] == "collection_deadline_fence_unavailable"
+
+  text =
+    ExUnit.CaptureIO.capture_io(fn ->
+      assert Ipse.CLI.Knowledge.run("status", opts, home, cwd) == 0
+    end)
+
+  assert text =~ "Saved knowledge selection matches the next new session."
+  assert text =~ "Broad protected note saving is not ready"
+  assert text =~ "A new statement may be saved through separate native review"
+  refute text =~ "selection is ready"
+
+  permissions =
+    ExUnit.CaptureIO.capture_io(fn ->
+      assert Ipse.CLI.Knowledge.run("permissions", opts, home, cwd) == 0
+    end)
+    |> Jason.decode!()
+
+  assert permissions["activation_ready_now"] == nil
+  assert permissions["publication_supported_now"] == false
+  assert permissions["capture_ready_now"] == false
+  assert permissions["policy"] == snapshot["policy"]
+  assert permissions["epoch"] == snapshot["epoch"]
+  assert File.read!(config_path) == config_bytes
+  IO.puts("KNOWLEDGE_NATIVE_READINESS_PUBLICATION_UNAVAILABLE")
+  System.halt(0)
+end
+
 writers = [
   Path.join([home, "project-identities", ".writer.lock"]),
   Path.join([
@@ -261,7 +405,7 @@ defmodule KnowledgeCLINativeFixture do
        }, %{}}
 end
 
-config = Map.put(config, :provider_module, KnowledgeCLINativeFixture)
+config = if server, do: config, else: Map.put(config, :provider_module, KnowledgeCLINativeFixture)
 
 {:ok, pid} =
   DynamicSupervisor.start_child(
@@ -271,7 +415,33 @@ config = Map.put(config, :provider_module, KnowledgeCLINativeFixture)
   )
 
 assert :ok = Ipse.Session.prompt(pid, "Acme has owner Alex")
-assert_receive {:ipse, ^pid, {:done, :ok}}, 30_000
+
+receive do
+  {:ipse, ^pid, {:done, :ok}} ->
+    :ok
+
+  {:ipse, ^pid, {:done, :error}} ->
+    state = :sys.get_state(pid)
+    dependencies_ok = match?({:ok, _}, Ipse.Session.managed_dependencies(state, "model"))
+
+    route_unregistered =
+      Ipse.InferenceDispatch.selection(state.config, state.config, "main", nil) ==
+        {:ok, :unregistered}
+
+    IO.puts(
+      "HEADLESS_POST_FAILURE_CHECK=" <>
+        Jason.encode!(%{
+          "dependencies_ok" => dependencies_ok,
+          "route_unregistered" => route_unregistered,
+          "managed_empty" => Ipse.Session.managed_empty?(state)
+        })
+    )
+
+    flunk("headless fixture did not complete")
+after
+  30_000 -> flunk("headless fixture timed out")
+end
+
 {:ok, events} = Ipse.Journal.load(Path.join(root, "sessions"), Ipse.Session.info(pid).id)
 
 commit =
@@ -301,4 +471,5 @@ assert map_size(revoked["operations"]) == 1
 {:ok, off} = Ipse.Config.Activation.fresh(config, cwd)
 assert off.extensions == []
 assert File.read!(config_path) == config_bytes
+assert Task.await(server, 5_000) == [:ok, :ok, :ok]
 IO.puts("KNOWLEDGE_NATIVE_SETUP_SAVE_DISABLE_PASSED")

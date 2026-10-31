@@ -1,0 +1,80 @@
+{
+  "ancestor": {
+    "bytes": 4874,
+    "path": "docs/archive/2026-10-26-p30-p31-implementation/document-held-reader/manifest.json",
+    "sha256": "848a8394f1fa2c4e72c7532a4d9ee4cb7c324a1587a96219d2e5c019a4f5fd44",
+    "type": "regular"
+  },
+  "graphs": [
+    {
+      "files": 699,
+      "graph": "_build/document-held-read-sol-20261029",
+      "inventory": {
+        "bytes": 175798,
+        "path": "docs/archive/2026-10-26-p30-p31-implementation/document-held-value/document-held-read-sol-20261029.json",
+        "sha256": "a3d6df60896cd800d0ef98b936c48f89bf0ddbae5fdaf06f59b456a772545c32",
+        "type": "regular"
+      }
+    },
+    {
+      "files": 699,
+      "graph": "_build/document-held-value-sol-20261029",
+      "inventory": {
+        "bytes": 176497,
+        "path": "docs/archive/2026-10-26-p30-p31-implementation/document-held-value/document-held-value-sol-20261029.json",
+        "sha256": "271e4fc5a3f04f5e252c838cf4b11fd0d8cba7636f10643c66e86f263a119c57",
+        "type": "regular"
+      }
+    }
+  ],
+  "retained": [
+    {
+      "bytes": 726,
+      "path": "docs/archive/2026-10-26-p30-p31-implementation/document-held-value/ipse-document-held-value-compile-47164.exs",
+      "sha256": "8b05acfd8b99c839936fc8e5a3ecc99b57442a7215413b679de49ffb53f19d80",
+      "type": "regular"
+    },
+    {
+      "bytes": 69,
+      "path": "docs/archive/2026-10-26-p30-p31-implementation/document-held-value/ipse-document-held-value-compile-47164.log",
+      "sha256": "1f79a9dbbd62092fc32a644966e3344c4450a064e3df6bfbd74c2ceed51f686a",
+      "type": "regular"
+    },
+    {
+      "bytes": 364,
+      "path": "docs/archive/2026-10-26-p30-p31-implementation/document-held-value/ipse-document-held-value-test-47165.exs",
+      "sha256": "4ab4b7a33f9a9c1e1900dcf9186bb60850f016a5bac6f177164deec2ff2cc328",
+      "type": "regular"
+    },
+    {
+      "bytes": 120,
+      "path": "docs/archive/2026-10-26-p30-p31-implementation/document-held-value/ipse-document-held-value-test-47165.log",
+      "sha256": "f6c9d748103b7c242ccbc2fd52c079ef87e2f059a18eb05545b109782be14096",
+      "type": "regular"
+    },
+    {
+      "bytes": 2349,
+      "path": "docs/archive/2026-10-26-p30-p31-implementation/document-held-value/ipse-freeze-document-held-value-47166.exs",
+      "sha256": "58f0abe4113f2f35e9fe034bb3a6968d75895492c6787e63e8d675d6f51c2360",
+      "type": "regular"
+    }
+  ],
+  "scope": "complete logical packed document read under trusted retained closure",
+  "sources": [
+    {
+      "bytes": 29168,
+      "path": "docs/archive/2026-10-26-p30-p31-implementation/document-held-value/lib__ipse__extension__collection__document_stage.ex.txt",
+      "sha256": "c5db55b3c3f95fb2dd097cdbdd02b769b6043633ce7bcaafff3f0788e9e12652",
+      "source": "lib/ipse/extension/collection/document_stage.ex",
+      "type": "regular"
+    },
+    {
+      "bytes": 4290,
+      "path": "docs/archive/2026-10-26-p30-p31-implementation/document-held-value/test__ipse__extension__collection_document_held_value_test.exs.txt",
+      "sha256": "da03bbc471402beddeb326ac75fe4e3fe14cdb26329eb944b683b00e89e68c27",
+      "source": "test/ipse/extension/collection_document_held_value_test.exs",
+      "type": "regular"
+    }
+  ],
+  "version": 1
+}

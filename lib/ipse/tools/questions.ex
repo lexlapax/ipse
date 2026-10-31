@@ -78,6 +78,72 @@ defmodule Ipse.Tools.Questions do
     end
   end
 
+  @doc "Validate a new question batch without rejecting historical receipts."
+  def validate_new(arguments) do
+    with {:ok, arguments} <- validate(arguments),
+         questions = Enum.map(arguments["questions"], &question_identity/1),
+         true <- unique?(questions) do
+      {:ok, arguments}
+    else
+      false -> {:error, "Do not repeat the same question in one clarification request."}
+      error -> error
+    end
+  end
+
+  @doc "Detect equivalent questions already answered in the current visible user turn."
+  def repeated_answer?(messages, arguments) when is_list(messages) do
+    recent =
+      messages
+      |> Enum.reverse()
+      |> Enum.reject(&Ipse.Session.Reference.reference?/1)
+      |> Enum.take_while(&(&1["role"] != "user"))
+      |> Enum.reverse()
+
+    answered =
+      for {%{"role" => "assistant", "tool_calls" => calls}, index} <- Enum.with_index(recent),
+          is_list(calls),
+          %{"id" => id, "function" => %{"name" => "ask_operator", "arguments" => raw}} <- calls,
+          is_binary(raw),
+          {:ok, prior} <- [Ipse.JSON.decode_unique(raw)],
+          {:ok, ^prior} <- [validate(prior)],
+          following = Enum.drop(recent, index + 1) |> Enum.take_while(&(&1["role"] == "tool")),
+          Enum.any?(following, &answered_call?(&1, id, prior)),
+          question <- prior["questions"],
+          do: question_identity(question)
+
+    Enum.any?(arguments["questions"], &(question_identity(&1) in answered))
+  rescue
+    _ -> false
+  end
+
+  # Wire IDs and recommendations do not change the choice being asked. Keep
+  # prompt, kind, ordered labels and descriptions exact to avoid guessing that
+  # differently worded or materially changed choices are equivalent.
+  defp question_identity(question) do
+    options =
+      Enum.map(question["options"] || [], fn option ->
+        {option["label"], option["description"]}
+      end)
+
+    {question["prompt"], question["kind"], options}
+  end
+
+  defp answered_call?(
+         %{"role" => "tool", "tool_call_id" => id, "content" => content} = message,
+         id,
+         prior
+       ) do
+    with "result_recorded" <- get_in(message, ["ipse_tool_outcome", "status"]),
+         {:ok, %{"answers" => answers}} <- Ipse.JSON.decode_unique(content),
+         {:ok, ^answers} <- validate_answers(prior, answers) do
+      true
+    else
+      _ -> false
+    end
+  end
+
+  defp answered_call?(_, _, _), do: false
+
   def validate_answers(arguments, answers) when is_map(answers) do
     with {:ok, _} <- validate(arguments),
          questions = arguments["questions"],

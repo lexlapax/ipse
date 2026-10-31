@@ -7,6 +7,41 @@ defmodule Ipse.Development.VerificationTest do
   alias Ipse.Development.Verification.Scenarios
   alias Ipse.Development.Verification.Runtime
 
+  test "decision verification rejects missing or false behavioral checks" do
+    spec = Scenarios.fetch!("decision")
+
+    checks =
+      Map.new(
+        ~w(approval_before_request compatible_route_no_authorization typed_advice ordered_usage_restores idle_resume_no_replay denial_no_egress interrupted_no_replay),
+        &{&1, true}
+      )
+
+    report = %{"checks" => checks, "synthetic" => true, "conversation_inference" => false}
+    assert :ok = Scenarios.validate!(spec, report, "default")
+
+    for key <- Map.keys(checks) do
+      assert catch_error(
+               Scenarios.validate!(spec, put_in(report, ["checks", key], false), "default")
+             )
+
+      assert catch_error(
+               Scenarios.validate!(
+                 spec,
+                 update_in(report, ["checks"], &Map.delete(&1, key)),
+                 "default"
+               )
+             )
+    end
+
+    assert catch_error(
+             Scenarios.validate!(spec, Map.put(report, "conversation_inference", true), "default")
+           )
+
+    assert catch_error(
+             Scenarios.parse!(~w(installed decision --archive a --input b --selection unknown))
+           )
+  end
+
   test "installed diagnosis rejects unexpected warnings for bare and configured routes" do
     validate = &Ipse.Development.Verification.Package.validate_doctor!/2
 
@@ -339,6 +374,10 @@ defmodule Ipse.Development.VerificationTest do
     File.write!(path, original)
     assert Runtime.reopen_evaluation!(path, Ipse.JSON.sha256(original), []) == nil
 
+    within_limit = original <> String.duplicate(" ", 1_048_576)
+    File.write!(path, within_limit)
+    assert Runtime.reopen_evaluation!(path, Ipse.JSON.sha256(within_limit), []) == nil
+
     duplicate = String.replace_prefix(original, "{", ~S|{"\u0076ersion":2,|)
 
     nested =
@@ -347,7 +386,7 @@ defmodule Ipse.Development.VerificationTest do
         "0" <>
         String.duplicate("]", 65) <> "," <> binary_part(original, 1, byte_size(original) - 1)
 
-    for refused <- [duplicate, nested, original <> String.duplicate(" ", 1_048_576)] do
+    for refused <- [duplicate, nested, original <> String.duplicate(" ", 4_194_304)] do
       File.write!(path, refused)
       assert catch_error(Runtime.reopen_evaluation!(path, Ipse.JSON.sha256(refused), []))
     end

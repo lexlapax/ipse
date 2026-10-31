@@ -1,0 +1,8 @@
+Running ExUnit with seed: 694244, max_cases: 8
+Excluding tags: [:test]
+Including tags: [managed_http_owner_loss: true]
+
+.
+Finished in 4.5 seconds (2.3s on load, 0.00s async, 2.1s sync)
+
+Result: 1 passed, 63 excluded

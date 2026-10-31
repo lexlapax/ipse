@@ -44,6 +44,26 @@ defmodule Ipse.Extension.ManagedCollectionCallTest do
     }
   end
 
+  @tag notes_admission: true, notes_admission_shape: true
+  test "new capture admission shape excludes legacy, replacement, deletion and batches" do
+    legacy = request()
+    fresh = Map.put(legacy, "metadata_version", 3)
+    assert ManagedCollectionCall.new_capture?(fresh)
+
+    for other <- [
+          legacy,
+          Map.put(fresh, "metadata_version", 2),
+          put_in(fresh, ["request", "changes", Access.at(0), "expected_revision"], 1),
+          put_in(fresh, ["request", "changes", Access.at(0), "value"], nil),
+          update_in(fresh, ["request", "changes"], fn [change] ->
+            [change, Map.put(change, "key", "pending.b")]
+          end),
+          Map.put(fresh, "op", "collection.call")
+        ] do
+      refute ManagedCollectionCall.new_capture?(other)
+    end
+  end
+
   test "managed selection is explicit, bounded and cannot expose or overwrite host metadata" do
     r = request()
     assert :ok = ManagedCollectionCall.validate(r)
@@ -129,6 +149,21 @@ defmodule Ipse.Extension.ManagedCollectionCallTest do
 
     assert charge["operations"] == 1 and charge["output_bytes"] == 16_384
     assert Collection.valid_request?(normalized)
+  end
+
+  test "V3 is an explicit exact integer selection with a five-change bounded reservation" do
+    legacy = request()
+    r = Map.put(legacy, "metadata_version", 3)
+    assert :ok = ManagedCollectionCall.validate(r)
+
+    for version <- [nil, 2, 3.0, "3", 4] do
+      assert {:error, _} =
+               ManagedCollectionCall.validate(Map.put(legacy, "metadata_version", version))
+    end
+
+    charge = ManagedCollectionCall.reservation(r)
+    assert charge["input_bytes"] == byte_size(Jason.encode!(r)) + 27_393
+    assert ManagedCollectionCall.reservation(legacy)["input_bytes"] < charge["input_bytes"]
   end
 
   test "private scan excludes metadata before selection and preserves exact public continuation" do

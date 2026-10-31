@@ -1,0 +1,13 @@
+Running ExUnit with seed: 47080, max_cases: 1
+Excluding tags: [:test]
+Including tags: [:document_inventory_native]
+
+
+12:19:54.565 [info] The function passed as a handler with ID "document-inventory-1d2af211a4bf9fa6ab426074024b701b" is a local function.
+This means that it is either an anonymous function or a capture of a function without a module specified. That may cause a performance penalty when calling that handler. For more details see the note in `telemetry:attach/4` documentation.
+
+https://hexdocs.pm/telemetry/telemetry.html#attach/4
+.
+Finished in 0.2 seconds (0.00s async, 0.2s sync)
+
+Result: 1 passed, 1 excluded

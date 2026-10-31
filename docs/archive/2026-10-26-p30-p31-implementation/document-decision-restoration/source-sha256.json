@@ -1,0 +1,16 @@
+{
+  "lib/ipse/extension/collection.ex": "2b9bfcfce4c3411f0b2fda925c3396103833987b18707ff26599171a8219e234",
+  "lib/ipse/extension/collection/document_stage.ex": "2c93aff055f4571a62b243f60337a5d66e02c44f7f793ef04d643fe8f0f6e197",
+  "lib/ipse/extension/collection_store.ex": "ade61bc5285f5950c26bd7a9e9d30c08940e2f4928e168e5179106a696169c55",
+  "lib/ipse/extension/state.ex": "7c94d9e23bd3d1a759faba7a6a05f2d4ff376414b0ffc3666cc59b2916ca7251",
+  "lib/ipse/session/invocation.ex": "7604b9c06b797fe7488cc6413b09ee7ac414be60f89a230d8c373b228d6a07d7",
+  "lib/ipse/session/managed_tool_use.ex": "da30d37ef86d8b051976ed3e3cad17e74ae8524ab32e3256e2891b04b1747154",
+  "test/ipse/extension/collection_deadline_gate_test.exs": "5b876220f9435cdfcbda70b711c93779d7117423c116161c3334826c55e04b6d",
+  "test/ipse/extension/collection_document_stage_test.exs": "4bceb400f9d4bdfd37813bac0a364bde3c0541e513e86d62ae56bb7cdc4fa5d6",
+  "test/ipse/extension/collection_store_session_test.exs": "fe6fc4a69a4eb172b2f6fd4def222e779a3600078f8966f30b9e7609e0d5441a",
+  "test/ipse/extension/managed_collection_call_session_test.exs": "bbf3a3876d2a63861f26ba12d3326dd29f2d101820a4c9c608ad0cd4a5ab096e",
+  "test/ipse/session/managed_tool_use_test.exs": "ef6e61a47625525919da55f3eba69f2aae8b9fbd5de5f107e5caef4a0b0d5a47",
+  "test/support/managed_mcp_http.exs": "1c1353b8a7146eb3cb5bea651248bb09b21c5588edb98c5e35413a69456a2452",
+  "test/support/provider_fixture.ex": "0b58205776df3b8881c250bd3f1fc82ee57921f8b3d563532aaeeb79e1d497b2",
+  "test/test_helper.exs": "3fe1c5ac8fab2068cc8d0001bc79f3a17fc6e9f6d997df9ccb34600509d6d63d"
+}

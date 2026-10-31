@@ -1,0 +1,6 @@
+NATIVE_JOURNAL_LOCK_LOSS_CONTROL: %{
+  root: "/tmp/ipse-native-journal-loss-5bbc2efaf19e40acd747220a9dafe248",
+  journal_unchanged_while_contender_holds: true,
+  startup_refused: true,
+  contender_retained_lock: true
+}

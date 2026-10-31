@@ -1,0 +1,16 @@
+REVIEWED_FORGET_CORE_OK: %{
+  source_snapshots: 6,
+  launch_logs: 8,
+  freeze_helpers: 2,
+  inventories: [
+    {"_build/management-review-input-sol-20261029", 699,
+     %{"regular" => 698, "symlink" => 1}},
+    {"_build/reviewed-forget-core-sol-20261029", 699,
+     %{"regular" => 698, "symlink" => 1}},
+    {"_build/reviewed-forget-cli-sol-20261029", 699,
+     %{"regular" => 698, "symlink" => 1}}
+  ],
+  core_delta: ["lib/ipse/ebin/Elixir.Ipse.Extension.Collection.beam"],
+  cli_delta: ["lib/ipse/ebin/Elixir.Ipse.CLI.Errors.beam",
+   "lib/ipse/ebin/Elixir.Ipse.CLI.Knowledge.beam"]
+}

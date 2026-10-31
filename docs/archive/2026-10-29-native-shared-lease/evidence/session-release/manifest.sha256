@@ -1,0 +1,11 @@
+c689f5e30e44158bbf5ddf7b50176f5638aada78d8d4652f8ced24908e6b0f89  docs/archive/2026-10-29-native-shared-lease/evidence/session-release/source.tar
+40ad8bac6b2579502580dcef31adeffed850c8fcba758a59720fda7c8c22583f  _build/session-export-release-sol-20261029/priv/ipse-runner
+908b74d3d5522743a6057c2272f2af46c918cff471c6e3ae324d4ab155a1c556  _build/session-export-release-sol-20261029/lib/ipse/ebin/Elixir.Ipse.Runner.beam
+b7a35df877b92a922a90a5601d5c19bfe3c285fccb8dd2aaa1063f3e79f4985d  _build/session-export-release-sol-20261029/lib/ipse/ebin/Elixir.Ipse.Session.Lock.beam
+7efecdddffcad68a4e84252186125b8f2ea82df7cc8c0b63963c7e3f0526f54f  docs/archive/2026-10-29-native-shared-lease/evidence/session-release/runtime.sha256
+e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855  docs/archive/2026-10-29-native-shared-lease/evidence/session-release/compile.log
+82ddc45e9dc6c856da0405837fc9a0c35febcc5423a51c203729c7e503dcfb16  docs/archive/2026-10-29-native-shared-lease/evidence/session-release/prior-manifest-verification.log
+f8691db60c0e52936c59d47acb429f879528d47ccc2e6e2a93421673664d435c  docs/archive/2026-10-29-native-shared-lease/evidence/session-release/prior-runtime-verification.log
+4d9db8fa8bce52a313482eaffca1b217524bb5fe5115d80d2f8c8bcb726acd55  docs/archive/2026-10-29-native-shared-lease/evidence/session-release/release-frame-controls.log
+ac40a6a0895aa939744a72550dd362e1135ca984816bc3ea64363c8bfae8ba0e  docs/archive/2026-10-29-native-shared-lease/evidence/session-release/release-test-fragmented.log
+001688fb552c7ff167e9ce8b90bcfd5a19efd037ab2c0ed26b3913d7cc48ff78  docs/archive/2026-10-29-native-shared-lease/evidence/session-release/release-test-v2.log

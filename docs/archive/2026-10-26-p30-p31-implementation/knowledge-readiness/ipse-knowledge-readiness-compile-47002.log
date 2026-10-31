@@ -1,0 +1,119 @@
+     warning: comparison between distinct types found:
+
+         publication == :ok
+
+     given types:
+
+         dynamic({:error, :collection_deadline_fence_unavailable}) == :ok
+
+     where "publication" was given the type:
+
+         # type: dynamic({:error, :collection_deadline_fence_unavailable})
+         # from: lib/ipse/cli/knowledge.ex:242:19
+         publication = Ipse.Extension.Collection.publication_support()
+
+     While Elixir can compare across all types, you are comparing across types which are always disjoint, and the result is either always true or always false
+
+     type warning found at:
+     │
+ 246 │         "publication_supported_now" => publication == :ok,
+     │                                                    ~
+     │
+     └─ lib/ipse/cli/knowledge.ex:246:52: Ipse.CLI.Knowledge.status/4
+
+     warning: comparison between distinct types found:
+
+         Ipse.Extension.Collection.publication_support() != :ok
+
+     given types:
+
+         dynamic({:error, :collection_deadline_fence_unavailable}) != :ok
+
+     While Elixir can compare across all types, you are comparing across types which are always disjoint, and the result is either always true or always false
+
+     type warning found at:
+     │
+ 321 │       if Collection.publication_support() != :ok, do: Terminal.puts(publication_notice())
+     │                                           ~
+     │
+     └─ lib/ipse/cli/knowledge.ex:321:43: Ipse.CLI.Knowledge.enable/3
+
+     warning: comparison between distinct types found:
+
+         Ipse.Extension.Collection.publication_support() == :ok
+
+     given types:
+
+         dynamic({:error, :collection_deadline_fence_unavailable}) == :ok
+
+     While Elixir can compare across all types, you are comparing across types which are always disjoint, and the result is either always true or always false
+
+     type warning found at:
+     │
+ 596 │       if(Collection.publication_support() == :ok, do: "", else: publication_notice() <> "\n") <>
+     │                                           ~
+     │
+     └─ lib/ipse/cli/knowledge.ex:596:43: Ipse.CLI.Knowledge.review/2
+
+{:ok, [Ipse.CLI.Knowledge, Ipse.Extension.Collection],
+ %{
+   compile_warnings: [],
+   runtime_warnings: [
+     %{
+       message: "comparison between distinct types found:\n\n    publication == :ok\n\ngiven types:\n\n    dynamic({:error, :collection_deadline_fence_unavailable}) == :ok\n\nwhere \"publication\" was given the type:\n\n    # type: dynamic({:error, :collection_deadline_fence_unavailable})\n    # from: lib/ipse/cli/knowledge.ex:242:19\n    publication = Ipse.Extension.Collection.publication_support()\n\nWhile Elixir can compare across all types, you are comparing across types which are always disjoint, and the result is either always true or always false\n",
+       position: {246, 52},
+       file: "/home/lexlapax/projects/lexlapax/ipse/lib/ipse/cli/knowledge.ex",
+       stacktrace: [
+         {Ipse.CLI.Knowledge, :status, 4,
+          [file: ~c"lib/ipse/cli/knowledge.ex", line: 246, column: 52]}
+       ],
+       source: "/home/lexlapax/projects/lexlapax/ipse/lib/ipse/cli/knowledge.ex",
+       span: nil,
+       severity: :warning,
+       details: %{
+         typing_traces: [
+           %{
+             name: :publication,
+             type: :variable,
+             context: nil,
+             traces: [
+               %{
+                 meta: [line: 242, column: 19],
+                 file: "/home/lexlapax/projects/lexlapax/ipse/lib/ipse/cli/knowledge.ex",
+                 formatted_type: "dynamic({:error, :collection_deadline_fence_unavailable})",
+                 formatted_expr: "publication = Ipse.Extension.Collection.publication_support()",
+                 formatted_hints: []
+               }
+             ]
+           }
+         ]
+       }
+     },
+     %{
+       message: "comparison between distinct types found:\n\n    Ipse.Extension.Collection.publication_support() != :ok\n\ngiven types:\n\n    dynamic({:error, :collection_deadline_fence_unavailable}) != :ok\n\nWhile Elixir can compare across all types, you are comparing across types which are always disjoint, and the result is either always true or always false\n",
+       position: {321, 43},
+       file: "/home/lexlapax/projects/lexlapax/ipse/lib/ipse/cli/knowledge.ex",
+       stacktrace: [
+         {Ipse.CLI.Knowledge, :enable, 3,
+          [file: ~c"lib/ipse/cli/knowledge.ex", line: 321, column: 43]}
+       ],
+       source: "/home/lexlapax/projects/lexlapax/ipse/lib/ipse/cli/knowledge.ex",
+       span: nil,
+       severity: :warning,
+       details: %{typing_traces: []}
+     },
+     %{
+       message: "comparison between distinct types found:\n\n    Ipse.Extension.Collection.publication_support() == :ok\n\ngiven types:\n\n    dynamic({:error, :collection_deadline_fence_unavailable}) == :ok\n\nWhile Elixir can compare across all types, you are comparing across types which are always disjoint, and the result is either always true or always false\n",
+       position: {596, 43},
+       file: "/home/lexlapax/projects/lexlapax/ipse/lib/ipse/cli/knowledge.ex",
+       stacktrace: [
+         {Ipse.CLI.Knowledge, :review, 2,
+          [file: ~c"lib/ipse/cli/knowledge.ex", line: 596, column: 43]}
+       ],
+       source: "/home/lexlapax/projects/lexlapax/ipse/lib/ipse/cli/knowledge.ex",
+       span: nil,
+       severity: :warning,
+       details: %{typing_traces: []}
+     }
+   ]
+ }}

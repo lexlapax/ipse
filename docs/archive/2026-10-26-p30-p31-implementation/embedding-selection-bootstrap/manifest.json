@@ -1,0 +1,138 @@
+{
+  "ancestor": {
+    "bytes": 6016,
+    "path": "docs/archive/2026-10-26-p30-p31-implementation/reviewed-forget-core/manifest.json",
+    "sha256": "47ec7ccfc5cd45581b5d21679eeed4f0533afe536d992072070af770ae477544",
+    "type": "regular"
+  },
+  "graphs": [
+    {
+      "files": 699,
+      "graph": "_build/reviewed-forget-cli-sol-20261029",
+      "inventory": {
+        "bytes": 169443,
+        "path": "docs/archive/2026-10-26-p30-p31-implementation/embedding-selection-bootstrap/reviewed-forget-cli-sol-20261029.json",
+        "sha256": "97fdc903af431106a099797565759e781822b09ce1c317a4d5be71911a912b0f",
+        "type": "regular"
+      }
+    },
+    {
+      "files": 699,
+      "graph": "_build/embedding-selection-sol-20261029",
+      "inventory": {
+        "bytes": 169443,
+        "path": "docs/archive/2026-10-26-p30-p31-implementation/embedding-selection-bootstrap/embedding-selection-sol-20261029.json",
+        "sha256": "59d60d772734e0e59b8e1b607076b253097904a8d481c01594b4987a7fa58fe1",
+        "type": "regular"
+      }
+    }
+  ],
+  "retained": [
+    {
+      "bytes": 662,
+      "path": "docs/archive/2026-10-26-p30-p31-implementation/embedding-selection-bootstrap/ipse-embedding-selection-compile-47151.exs",
+      "sha256": "87d62cfa18fef73f9c0400095cd7b246e914b0409301e8a78443da44b8cea984",
+      "type": "regular"
+    },
+    {
+      "bytes": 204,
+      "path": "docs/archive/2026-10-26-p30-p31-implementation/embedding-selection-bootstrap/ipse-embedding-selection-compile-47151.log",
+      "sha256": "cb918dd7fef2119aaab7edffebbb60373459ae0b996f78a896e138140f9e2d75",
+      "type": "regular"
+    },
+    {
+      "bytes": 290,
+      "path": "docs/archive/2026-10-26-p30-p31-implementation/embedding-selection-bootstrap/ipse-embedding-selection-pure-47152.exs",
+      "sha256": "0fbf7cdbca80823df6a0793a1356d936ab4c1103646ba2dfee4f9a77acd4d464",
+      "type": "regular"
+    },
+    {
+      "bytes": 133,
+      "path": "docs/archive/2026-10-26-p30-p31-implementation/embedding-selection-bootstrap/ipse-embedding-selection-pure-47152.log",
+      "sha256": "642b434bbfde42dd9e162c2fd4d6f6a8514c487ed5bdf5137b0fecb4fd64f473",
+      "type": "regular"
+    },
+    {
+      "bytes": 412,
+      "path": "docs/archive/2026-10-26-p30-p31-implementation/embedding-selection-bootstrap/ipse-embedding-selection-session-47153.exs",
+      "sha256": "cefaa24b8257109958660015a0deea57791c9a78f151ac2fc9c28601ac50515d",
+      "type": "regular"
+    },
+    {
+      "bytes": 9853,
+      "path": "docs/archive/2026-10-26-p30-p31-implementation/embedding-selection-bootstrap/ipse-embedding-selection-session-47153.log",
+      "sha256": "686a25d6074aa396a8646c0820853f1cd2321b723bd68a8983abc973c609df20",
+      "type": "regular"
+    },
+    {
+      "bytes": 426,
+      "path": "docs/archive/2026-10-26-p30-p31-implementation/embedding-selection-bootstrap/ipse-embedding-selection-bootstrap-47154.exs",
+      "sha256": "a32707214980fe570b352f26612ad39fc80c3b9246d7317979bea615272e2e43",
+      "type": "regular"
+    },
+    {
+      "bytes": 226,
+      "path": "docs/archive/2026-10-26-p30-p31-implementation/embedding-selection-bootstrap/ipse-embedding-selection-bootstrap-47154.log",
+      "sha256": "eb7464d2c7008a27a67d190bb91802aacef32db785faf91e9c3ba05c7b80a7a6",
+      "type": "regular"
+    },
+    {
+      "bytes": 39848,
+      "path": "docs/archive/2026-10-26-p30-p31-implementation/embedding-selection-bootstrap/ipse-embedding-selection-initial-session-47153.exs",
+      "sha256": "880147af52549088ea815ad74df5747cd27b24eab98ac1c51eb743ca1bdb2547",
+      "type": "regular"
+    },
+    {
+      "bytes": 2784,
+      "path": "docs/archive/2026-10-26-p30-p31-implementation/embedding-selection-bootstrap/ipse-freeze-embedding-selection-47155.exs",
+      "sha256": "95c7612754a275a3efe18df67e9ffa9f434b73061358fca1eed0e42bdf5d29af",
+      "type": "regular"
+    }
+  ],
+  "scope": "embedding profile bootstrap and optional v2 selection pin; no source-policy fence",
+  "sources": [
+    {
+      "bytes": 40540,
+      "path": "docs/archive/2026-10-26-p30-p31-implementation/embedding-selection-bootstrap/lib__ipse__extension__inference.ex.txt",
+      "sha256": "df4e084f594d388930f70aaa7c9543ab4bfce75b24a9b17cb064931020f9b266",
+      "source": "lib/ipse/extension/inference.ex",
+      "type": "regular"
+    },
+    {
+      "bytes": 49492,
+      "path": "docs/archive/2026-10-26-p30-p31-implementation/embedding-selection-bootstrap/lib__ipse__extension__actions.ex.txt",
+      "sha256": "80f2ce5235c393c2db60e36994054817f521f2e92cd5ba132dde1174c4f49463",
+      "source": "lib/ipse/extension/actions.ex",
+      "type": "regular"
+    },
+    {
+      "bytes": 26781,
+      "path": "docs/archive/2026-10-26-p30-p31-implementation/embedding-selection-bootstrap/lib__ipse__extension__host.ex.txt",
+      "sha256": "c6c38a732ae3d181841f9784b9a798a38a3d4b8bb5240e795d89d1f4a7ccfc29",
+      "source": "lib/ipse/extension/host.ex",
+      "type": "regular"
+    },
+    {
+      "bytes": 62378,
+      "path": "docs/archive/2026-10-26-p30-p31-implementation/embedding-selection-bootstrap/lib__ipse__session__invocation.ex.txt",
+      "sha256": "4f23b1a5d27a9eaaaa32b4cfb46211e3f5fe4bb5eb196fe930c63f019c398024",
+      "source": "lib/ipse/session/invocation.ex",
+      "type": "regular"
+    },
+    {
+      "bytes": 24701,
+      "path": "docs/archive/2026-10-26-p30-p31-implementation/embedding-selection-bootstrap/test__ipse__extension__embedding_result_test.exs.txt",
+      "sha256": "4e340ed9ab5378356ba33ab190d52b2e2dca0c97e5117e99c1708f76c0677f37",
+      "source": "test/ipse/extension/embedding_result_test.exs",
+      "type": "regular"
+    },
+    {
+      "bytes": 41316,
+      "path": "docs/archive/2026-10-26-p30-p31-implementation/embedding-selection-bootstrap/test__ipse__extension__embedding_call_session_test.exs.txt",
+      "sha256": "12ef6f20087fbf754f0ce78457fe0eb8bd66c1ed8661589c75a086e121daf33a",
+      "source": "test/ipse/extension/embedding_call_session_test.exs",
+      "type": "regular"
+    }
+  ],
+  "version": 1
+}

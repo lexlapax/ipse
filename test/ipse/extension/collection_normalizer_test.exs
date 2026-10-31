@@ -1,6 +1,6 @@
 Code.require_file("../../../extensions/knowledge/src/notes.ex", __DIR__)
-Code.require_file("../../../extensions/knowledge/src/knowledge/records.ex", __DIR__)
 Code.require_file("../../../extensions/knowledge/src/knowledge/contracts.ex", __DIR__)
+Code.require_file("../../../extensions/knowledge/src/knowledge/records.ex", __DIR__)
 
 defmodule Ipse.Extension.CollectionNormalizerTest do
   use ExUnit.Case, async: true
@@ -10,7 +10,8 @@ defmodule Ipse.Extension.CollectionNormalizerTest do
   alias Ipse.JSON
   @day 86_400_000
 
-  defp proof do
+  # Pure policy fixtures use shaped proofs; no terminal input is attested here.
+  defp proof(category \\ "ordinary", kind \\ "literal_source") do
     quote = "Acme has owner Alex"
 
     %{
@@ -18,8 +19,10 @@ defmodule Ipse.Extension.CollectionNormalizerTest do
       "session_id" => String.duplicate("1", 32),
       "occurrence_id" => String.duplicate("2", 32),
       "version_id" => String.duplicate("3", 32),
-      "kind" => "input.original",
-      "origin" => "interactive_operator",
+      "kind" =>
+        if(kind == "proposal", do: "input.original", else: "input.assertion." <> category),
+      "origin" =>
+        if(kind == "proposal", do: "interactive_operator", else: "native_operator_assertion"),
       "coverage" => "available",
       "path" => nil,
       "start_byte" => 0,
@@ -37,7 +40,7 @@ defmodule Ipse.Extension.CollectionNormalizerTest do
          category \\ "ordinary",
          now \\ 0
        ) do
-    p = proof()
+    p = proof(category, kind)
 
     {:ok, key, value} =
       Records.capture(
@@ -101,12 +104,16 @@ defmodule Ipse.Extension.CollectionNormalizerTest do
 
   # A deliberately synthetic in-memory reader. Native transaction/admission is
   # tested separately below; these values attest no source or filesystem origin.
-  defp normalize(options, values \\ %{}) do
-    read = fn key ->
-      case values[key] do
-        nil -> {:ok, nil}
-        value -> {:ok, %{"key" => key, "revision" => 1, "value" => value}}
-      end
+  defp normalize(options, values \\ %{}, summary \\ %{"count" => 0, "bytes" => 0}) do
+    read = fn
+      %{"op" => "pending_summary"} ->
+        {:ok, summary}
+
+      key ->
+        case values[key] do
+          nil -> {:ok, nil}
+          value -> {:ok, %{"key" => key, "revision" => 1, "value" => value}}
+        end
     end
 
     Normalizer.normalize(witness(options), read, options)
@@ -117,6 +124,44 @@ defmodule Ipse.Extension.CollectionNormalizerTest do
 
   defp anchors(values),
     do: Map.filter(values, fn {key, _} -> String.starts_with?(key, "host.validity.anchor.") end)
+
+  test "legacy pending publication refuses count and byte capacity overflow" do
+    opts = options("proposal", "Alex owns Acme")
+    value = hd(opts.request["changes"])["value"]
+    bytes = byte_size(Migration.encode(value))
+
+    assert {:ok, _, _} = normalize(opts, %{}, %{"count" => 63, "bytes" => 262_144 - bytes})
+
+    assert {:error, :managed_normalization_refused} =
+             normalize(opts, %{}, %{"count" => 64, "bytes" => 0})
+
+    assert {:error, :managed_normalization_refused} =
+             normalize(opts, %{}, %{"count" => 63, "bytes" => 262_145 - bytes})
+
+    for summary <- [
+          %{"count" => 1.0, "bytes" => 0},
+          %{"count" => 0, "bytes" => -1},
+          %{"count" => 0, "bytes" => 0, "extra" => true}
+        ] do
+      assert {:error, :managed_normalization_refused} = normalize(opts, %{}, summary)
+    end
+  end
+
+  test "legacy proposals in other reviewed prefixes do not use the pending queue limit" do
+    opts = options("proposal", "Alex owns Acme")
+    constraint = Map.put(opts.constraints, "key_prefix", "review.")
+
+    recipe =
+      opts.recipe
+      |> Map.put("key_prefix", "review.")
+      |> Map.put("constraints_sha256", JSON.digest([constraint]))
+
+    [change] = opts.request["changes"]
+    key = String.replace_prefix(change["key"], "pending.", "review.")
+    request = Map.put(opts.request, "changes", [%{change | "key" => key}])
+    changed = %{opts | request: request, constraints: constraint, recipe: recipe}
+    assert {:ok, _, _} = normalize(changed, %{}, %{"count" => 64, "bytes" => 262_144})
+  end
 
   test "actual host clock and canonical value bind both metadata pages; worker clock is ignored" do
     opts = options()

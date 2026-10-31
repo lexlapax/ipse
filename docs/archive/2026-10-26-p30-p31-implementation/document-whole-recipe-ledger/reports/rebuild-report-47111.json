@@ -1,0 +1,64 @@
+{
+  "input": "/home/lexlapax/projects/lexlapax/ipse/_build/document-recipe-ledger-20261029/rebuild-full-47096",
+  "version": 1,
+  "kind": "document_recipe_ledger_reduction",
+  "sections": {
+    "lexical": {
+      "events": 82708,
+      "reads": 41100,
+      "effects": 254,
+      "invocations": 252,
+      "action_journal_lower_bytes": 134497973
+    },
+    "shared_append": {
+      "events": 112370,
+      "reads": 48556,
+      "effects": 7629,
+      "invocations": 1875,
+      "action_journal_lower_bytes": 289514937
+    },
+    "shared_begin": {
+      "events": 86,
+      "reads": 40,
+      "effects": 3,
+      "invocations": 1,
+      "action_journal_lower_bytes": 188497
+    },
+    "shared_finalize": {
+      "events": 108690,
+      "reads": 52613,
+      "effects": 1732,
+      "invocations": 654,
+      "action_journal_lower_bytes": 184303576
+    }
+  },
+  "input_trace_sha256": "13048e7c17438be656a8ce8e73f7a088096876aafcd78fe5c4834ce368cda8db",
+  "total_action_ids": 151927,
+  "modeled_native_mutation_ids": 9618,
+  "model_seed_generation": 1000,
+  "missing_seed_history": "synthetic generation1000 is not a native manifest; no corresponding baseline IDs/receipts were supplied or counted. Lifetime admission must add actual Known(target).",
+  "native_ids_sha256": "0b1cadd077a18f16e30ef7f8cc6c75e6eed76df83b094b2881bc50a39de938b0",
+  "action_events_lower_bound": 303854,
+  "action_journal_bytes_lower_bound": 608504983,
+  "first_single_session_event_refusal": {
+    "item": 20,
+    "section": "shared_append",
+    "sequence": 558,
+    "stage_count": 0
+  },
+  "first_single_session_byte_refusal": {
+    "item": 250,
+    "section": "lexical",
+    "sequence": 251,
+    "stage_count": 0
+  },
+  "public_record_count": 6910,
+  "fresh_migration_optimistic_operation_minimum": 23438,
+  "fresh_migration_minimum_assumptions": "imports every known unique native operation identity; each existing public value costs at least one prepare and one accept; excludes larger multipart values, plans, operation pages, epoch open, progress, checkpoint, recovery, close and terminal cleanup",
+  "native_lifetime_ceiling": 32768,
+  "public_plus_private_live_key_ceiling": 8192,
+  "mutation_admission": "not authorized; maintenance and physical-layout export/import are not implemented",
+  "actual_native_operations": 0,
+  "actual_session_journal_measured": false,
+  "serialized_record_note": "JSON pair lower bounds are sufficient refusal evidence; full actual Session journal bytes/events remain unmeasured"
+}

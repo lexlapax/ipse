@@ -1,0 +1,9 @@
+Running ExUnit with seed: 57624, max_cases: 4
+Excluding tags: [:test]
+Including tags: [v4_segmented_geometry: true]
+
+V4_SEGMENTED_GEOMETRY {"sources":8,"chunks":256,"facts":256,"pages":32,"hydrate_reads":414,"append_max_reads":506,"append_invocations":37}
+.
+Finished in 288.3 seconds (4.1s on load, 0.00s async, 284.2s sync)
+
+Result: 1 passed, 9 excluded

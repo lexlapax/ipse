@@ -55,6 +55,21 @@ defmodule Ipse.Extension.DecisionSessionTest do
       "result_schema" => %{"type" => "object"}
     }
 
+    shadow = %{
+      "id" => "shadow",
+      "description" => "Synthetic decision-policy integration fixture",
+      "arguments_schema" => %{
+        "type" => "object",
+        "required" => ["facts", "consumer"],
+        "properties" => %{
+          "facts" => %{"type" => "object"},
+          "consumer" => %{"type" => "string", "enum" => ~w(notes.select notes.assess)}
+        },
+        "additionalProperties" => false
+      },
+      "result_schema" => %{"type" => "object"}
+    }
+
     job = %{
       "id" => "decide",
       "description" => "Explicit fixture decision before a model request",
@@ -68,7 +83,9 @@ defmodule Ipse.Extension.DecisionSessionTest do
     }
 
     exports =
-      Ipse.Extension.Catalog.empty() |> Map.put("commands", [command]) |> Map.put("jobs", [job])
+      Ipse.Extension.Catalog.empty()
+      |> Map.put("commands", [command, shadow])
+      |> Map.put("jobs", [job])
 
     subscriptions = [
       %{
@@ -86,10 +103,26 @@ defmodule Ipse.Extension.DecisionSessionTest do
     source = """
     defmodule #{module} do
       @behaviour Ipse.Extension
+      alias IpseKnowledge.Knowledge.DecisionPolicy, as: Policy
       def describe, do: %{"sdk" => 1, "capabilities" => #{inspect(caps)}, "exports" => #{inspect(exports)}, "subscriptions" => #{inspect(subscriptions)}}
       def init(options), do: {:ok, options}
+      def handle("invoke.command", %{"id" => "shadow", "arguments" => %{"facts" => facts, "consumer" => consumer}}, state) do
+        policy = Policy.default(consumer) |> Map.merge(%{"strategy" => "decision", "profile" => "advice"})
+        {:ok, plan} = Policy.plan(policy, facts, :development_experiment)
+        if plan.request do
+          {:ok, %{"api_version" => 1, "kind" => "host_call", "request" => plan.request}, Map.put(state, :plan, plan)}
+        else
+          {:ok, value} = Policy.apply(plan, nil)
+          {:ok, %{"api_version" => 1, "kind" => "result", "value" => value}, state}
+        end
+      end
       def handle("invoke.command", payload, state), do: {:ok, %{"api_version" => 1, "kind" => "host_call", "request" => payload["arguments"]["request"]}, state}
       def handle("event.job", _, state), do: {:ok, %{"api_version" => 1, "kind" => "host_call", "request" => #{inspect(request())}}, state}
+      def handle("host.actions", %{"outcome" => %{"status" => "ok", "value" => value}}, %{plan: plan} = state) do
+        {:ok, result} = Policy.apply(plan, value["result"])
+        {:ok, %{"api_version" => 1, "kind" => "result", "value" => result}, Map.delete(state, :plan)}
+      end
+      def handle("host.actions", %{"outcome" => outcome}, %{plan: _} = state), do: {:ok, %{"api_version" => 1, "kind" => "result", "value" => %{"status" => outcome["status"]}}, Map.delete(state, :plan)}
       def handle("host.actions", payload, state), do: {:ok, %{"api_version" => 1, "kind" => "result", "value" => payload["outcome"]}, state}
     end
     """
@@ -100,13 +133,24 @@ defmodule Ipse.Extension.DecisionSessionTest do
     {log, status} =
       System.cmd(
         System.find_executable("elixirc"),
-        ["-pa", Application.app_dir(:ipse, "ebin"), "-o", Path.join(root, "ebin"), file],
+        [
+          "-pa",
+          Application.app_dir(:ipse, "ebin"),
+          "-o",
+          Path.join(root, "ebin"),
+          file,
+          "extensions/knowledge/src/knowledge/decision_policy.ex"
+        ],
         stderr_to_stdout: true
       )
 
     assert status == 0, log
     File.write!(Path.join(root, "LICENSE"), "MIT synthetic fixture")
-    paths = ["LICENSE", "ebin/Elixir.#{module}.beam"]
+
+    paths = [
+      "LICENSE"
+      | Path.wildcard(Path.join(root, "ebin/*.beam")) |> Enum.map(&Path.relative_to(&1, root))
+    ]
 
     manifest = %{
       "format" => 1,
@@ -277,6 +321,9 @@ defmodule Ipse.Extension.DecisionSessionTest do
                 body
               ])
 
+            :disconnect ->
+              :ok
+
             {:tcp_closed, ^socket} ->
               send(owner, {:decision_http_closed, tag})
 
@@ -294,6 +341,127 @@ defmodule Ipse.Extension.DecisionSessionTest do
       _ ->
         :ok
     end
+  end
+
+  test "synthetic shadow selection exercises the Knowledge planner through Session approval",
+       ctx do
+    {base, tag} = http()
+    cfg = config(ctx, base)
+    pid = start(ctx, cfg)
+
+    facts = %{
+      "version" => 1,
+      "availability" => "available",
+      "coverage" => "complete",
+      "allocation_bytes" => 3,
+      "eligible_count" => 2,
+      "eligible_rendered_bytes" => 6,
+      "budget_available" => true,
+      "query" => "synthetic query",
+      "candidates" => [%{"id" => "a", "rendered" => "aaa"}, %{"id" => "b", "rendered" => "bbb"}],
+      "alternatives" => [
+        %{"id" => "first", "members" => ["a"]},
+        %{"id" => "second", "members" => ["b"]}
+      ],
+      "baseline_id" => "first"
+    }
+
+    fitting = Map.put(facts, "allocation_bytes", 6)
+
+    assert :ok =
+             Session.invoke_export(pid, :command, "ext__advice__shadow", %{
+               "facts" => fitting,
+               "consumer" => "notes.select"
+             })
+
+    done(pid)
+    assert Session.info(pid).extension_result["value"]["action"]["members"] == ["a", "b"]
+    refute_receive {:decision_http, ^tag, _, _, _}, 100
+    refute Enum.any?(events(ctx, pid), &(&1["type"] == "request_admitted"))
+
+    projected_fitting =
+      fitting
+      |> Map.put("version", 2)
+      |> Map.put("source_binding_sha256", String.duplicate("a", 64))
+      |> Map.put("baseline_id", nil)
+      |> Map.update!("alternatives", fn alternatives ->
+        Enum.map(alternatives, &Map.put(&1, "rendered_bytes", 5))
+      end)
+
+    assert :ok =
+             Session.invoke_export(pid, :command, "ext__advice__shadow", %{
+               "facts" => projected_fitting,
+               "consumer" => "notes.select"
+             })
+
+    done(pid)
+    assert Session.info(pid).extension_result["value"]["action"]["members"] == ["a", "b"]
+    refute_receive {:decision_http, ^tag, _, _, _}, 100
+    refute Enum.any?(events(ctx, pid), &(&1["type"] == "request_admitted"))
+
+    assert :ok =
+             Session.invoke_export(pid, :command, "ext__advice__shadow", %{
+               "facts" => facts,
+               "consumer" => "notes.select"
+             })
+
+    assert_receive {:ipse, ^pid, {:approval, ref, "extension:decision.create", proposed}}, 5_000
+    assert proposed["request"]["questions"] |> hd() |> Map.fetch!("id") == "pack"
+    refute_receive {:decision_http, ^tag, _, _, _}, 100
+    assert :ok = Session.approve(pid, ref, true)
+    assert_receive {:decision_http, ^tag, handler, _headers, body}, 5_000
+    assert body["questions"]["pack"]["type"] == "choice"
+
+    send(
+      handler,
+      {:respond,
+       %{
+         "model" => "fixture",
+         "answers" => %{
+           "pack" => %{
+             "type" => "choice",
+             "choice" => "second",
+             "confidence" => 0.2,
+             "probabilities" => %{"first" => 0.1, "second" => 0.9}
+           }
+         },
+         "usage" => %{"input_tokens" => 10, "output_tokens" => 2}
+       }}
+    )
+
+    done(pid)
+    result = Session.info(pid).extension_result["value"]
+    assert result["action"] == %{"pack" => "second", "members" => ["b"]}
+    assert result["receipt"]["source_facts"] == "untrusted"
+    ev = events(ctx, pid)
+    assert {:ok, _} = Actions.restore(ev)
+    assert Enum.count(ev, &(&1["type"] == "request_admitted")) == 1
+
+    refute Enum.any?(
+             ev,
+             &(&1["type"] == "extension_action_intent" and
+                 &1["request"]["op"] in ~w(state.put collection.managed))
+           )
+
+    assert :ok =
+             Session.invoke_export(pid, :command, "ext__advice__shadow", %{
+               "facts" => facts,
+               "consumer" => "notes.select"
+             })
+
+    assert_receive {:ipse, ^pid, {:approval, denied, "extension:decision.create", _}}, 5_000
+    assert :ok = Session.approve(pid, denied, false)
+    done(pid)
+    assert Session.info(pid).extension_result["value"] == %{"status" => "denied"}
+    refute_receive {:decision_http, ^tag, _, _, _}, 100
+    ev = events(ctx, pid)
+    assert Enum.count(ev, &(&1["type"] == "request_admitted")) == 1
+    assert {:ok, _} = Actions.restore(ev)
+    id = Session.info(pid).id
+    assert :ok = Session.close_confirmed(pid)
+    resumed = start(ctx, cfg, id)
+    assert Session.info(resumed).phase == :idle
+    refute_receive {:decision_http, ^tag, _, _, _}, 100
   end
 
   test "approval precedes actual egress and canonical typed response survives inert resume",
@@ -381,8 +549,96 @@ defmodule Ipse.Extension.DecisionSessionTest do
     before = File.read!(path)
     resumed = start(ctx, cfg, id)
     assert Session.info(resumed).phase == :idle
-    assert File.read!(path) == before
+    after_resume = File.read!(path)
+    assert String.starts_with?(after_resume, before)
+
+    suffix =
+      binary_part(after_resume, byte_size(before), byte_size(after_resume) - byte_size(before))
+
+    [marker] = String.split(suffix, "\n", trim: true) |> Enum.map(&Jason.decode!/1)
+    assert Ipse.Session.ReleaseReceipt.valid_owner_marker?(marker, id)
     refute_receive {:decision_http, ^tag, _, _, _}, 100
+  end
+
+  test "synthetic shadow assessment keeps low-probability candidates on the baseline", ctx do
+    {base, tag} = http()
+    pid = start(ctx, config(ctx, base))
+
+    facts = %{
+      "version" => 1,
+      "availability" => "available",
+      "budget_available" => true,
+      "candidates" => [
+        %{"id" => "a", "input" => "first synthetic candidate"},
+        %{"id" => "b", "input" => "second synthetic candidate"}
+      ],
+      "alternatives" => ~w(keep_baseline defer_candidate)
+    }
+
+    assert :ok =
+             Session.invoke_export(pid, :command, "ext__advice__shadow", %{
+               "facts" => Map.put(facts, "candidates", []),
+               "consumer" => "notes.assess"
+             })
+
+    done(pid)
+    assert Session.info(pid).extension_result["value"]["action"]["candidates"] == []
+    refute_receive {:decision_http, ^tag, _, _, _}, 100
+    refute Enum.any?(events(ctx, pid), &(&1["type"] == "request_admitted"))
+
+    assert :ok =
+             Session.invoke_export(pid, :command, "ext__advice__shadow", %{
+               "facts" => facts,
+               "consumer" => "notes.assess"
+             })
+
+    assert_receive {:ipse, ^pid, {:approval, ref, "extension:decision.create", proposed}}, 5_000
+    assert Enum.map(proposed["request"]["questions"], & &1["id"]) == ["a", "b"]
+    refute_receive {:decision_http, ^tag, _, _, _}, 100
+    assert :ok = Session.approve(pid, ref, true)
+    assert_receive {:decision_http, ^tag, handler, _headers, body}, 5_000
+    assert Map.keys(body["questions"]) |> Enum.sort() == ["a", "b"]
+
+    send(
+      handler,
+      {:respond,
+       %{
+         "model" => "fixture",
+         "answers" => %{
+           "a" => %{
+             "type" => "choice",
+             "choice" => "defer_candidate",
+             "confidence" => 0.4,
+             "probabilities" => %{"defer_candidate" => 0.9, "keep_baseline" => 0.1}
+           },
+           "b" => %{
+             "type" => "choice",
+             "choice" => "defer_candidate",
+             "confidence" => 0.4,
+             "probabilities" => %{"defer_candidate" => 0.6, "keep_baseline" => 0.4}
+           }
+         },
+         "usage" => %{"input_tokens" => 10, "output_tokens" => 2}
+       }}
+    )
+
+    done(pid)
+    result = Session.info(pid).extension_result["value"]
+
+    assert result["action"]["candidates"] == [
+             %{"id" => "a", "choice" => "defer_candidate", "reason" => "selected"},
+             %{"id" => "b", "choice" => "keep_baseline", "reason" => "low_probability"}
+           ]
+
+    assert result["receipt"]["source_facts"] == "untrusted"
+    ev = events(ctx, pid)
+    assert {:ok, _} = Actions.restore(ev)
+
+    refute Enum.any?(
+             ev,
+             &(&1["type"] == "extension_action_intent" and
+                 &1["request"]["op"] in ~w(state.put collection.managed))
+           )
   end
 
   test "each hosted wire subset retains its explicit route and key choice", ctx do
@@ -427,6 +683,86 @@ defmodule Ipse.Extension.DecisionSessionTest do
       assert Enum.find(ev, &(&1["type"] == "request_admitted"))["billing_mode"] == "api"
       refute Jason.encode!(ev) =~ "synthetic-decision-credential"
     end
+  end
+
+  test "shadow assessment preserves independent advice when OpenAI refuses one question", ctx do
+    {base, tag} = http()
+    old_key = System.get_env("OPENAI_API_KEY")
+    System.put_env("OPENAI_API_KEY", "synthetic-shadow-credential")
+
+    on_exit(fn ->
+      if old_key,
+        do: System.put_env("OPENAI_API_KEY", old_key),
+        else: System.delete_env("OPENAI_API_KEY")
+    end)
+
+    cfg = config(ctx, base)
+
+    profile =
+      cfg.decision_profiles["advice"]
+      |> Map.merge(%{
+        "provider" => "openai",
+        "model" => "gpt-6-luna",
+        "expected_model" => "gpt-6-luna"
+      })
+
+    pid = start(ctx, Map.put(cfg, :decision_profiles, %{"advice" => profile}))
+
+    facts = %{
+      "version" => 1,
+      "availability" => "available",
+      "budget_available" => true,
+      "candidates" => [
+        %{"id" => "a", "input" => "first synthetic candidate"},
+        %{"id" => "b", "input" => "second synthetic candidate"}
+      ],
+      "alternatives" => ~w(keep_baseline defer_candidate)
+    }
+
+    assert :ok =
+             Session.invoke_export(pid, :command, "ext__advice__shadow", %{
+               "facts" => facts,
+               "consumer" => "notes.assess"
+             })
+
+    assert_receive {:ipse, ^pid, {:approval, ref, "extension:decision.create", _}}, 5_000
+    assert :ok = Session.approve(pid, ref, true)
+    assert_receive {:decision_http, ^tag, handler, headers, body}, 5_000
+    assert headers =~ "POST /decisions HTTP/1.1"
+    assert Enum.map(body["questions"], & &1["name"]) == ["a", "b"]
+
+    send(
+      handler,
+      {:respond,
+       %{
+         "model" => "gpt-6-luna",
+         "answers" => [
+           %{"name" => "a", "type" => "refusal"},
+           %{
+             "name" => "b",
+             "type" => "choice",
+             "choice" => "defer_candidate",
+             "confidence" => 0.4,
+             "probabilities" => [
+               %{"value" => "defer_candidate", "probability" => 0.9},
+               %{"value" => "keep_baseline", "probability" => 0.1}
+             ]
+           }
+         ],
+         "usage" => %{"input_tokens" => 10, "output_tokens" => 0}
+       }}
+    )
+
+    done(pid)
+
+    assert Session.info(pid).extension_result["value"]["action"]["candidates"] == [
+             %{"id" => "a", "choice" => "keep_baseline", "reason" => "refusal"},
+             %{"id" => "b", "choice" => "defer_candidate", "reason" => "selected"}
+           ]
+
+    ev = events(ctx, pid)
+    assert {:ok, _} = Actions.restore(ev)
+    refute Jason.encode!(ev) =~ "synthetic-shadow-credential"
   end
 
   test "denial, unrecordable responses and unenforceable output budgets dispatch zero requests",
@@ -491,12 +827,62 @@ defmodule Ipse.Extension.DecisionSessionTest do
       send(handler, {:respond, response})
       done(pid)
       assert Session.info(pid).extension_result["value"]["status"] == "failed"
+      assert Session.info(pid).extension_result["value"]["value"]["code"] == "decision_response"
     end
 
     ev = events(ctx, pid)
     refute Enum.any?(ev, &(&1["type"] == "extension_decision_response"))
     assert {:ok, _} = Usage.restore(ev)
     assert {:ok, _} = Actions.restore(ev)
+  end
+
+  test "a disconnected decision request remains a request failure with partial accounting", ctx do
+    {base, tag} = http()
+    pid = start(ctx, config(ctx, base, %{approval: :allow}))
+    invoke(pid)
+    assert_receive {:decision_http, ^tag, handler, _, _}, 5000
+    send(handler, :disconnect)
+    done(pid)
+
+    assert Session.info(pid).extension_result["value"] == %{
+             "status" => "failed",
+             "value" => %{"code" => "decision_request_failed"}
+           }
+
+    ev = events(ctx, pid)
+    refute Enum.any?(ev, &(&1["type"] == "extension_decision_response"))
+
+    assert %{"outcome" => "failed", "finality" => "partial"} =
+             Enum.find(ev, &(&1["type"] == "request_finished"))
+
+    assert {:ok, _} = Usage.restore(ev)
+    assert {:ok, _} = Actions.restore(ev)
+    refute_receive {:decision_http, ^tag, _, _, _}, 200
+  end
+
+  test "malformed decision retains finite budget liability and is not replayed on resume", ctx do
+    {base, tag} = http()
+    cfg = config(ctx, base, %{approval: :allow, budget: %{"version" => 1, "max_requests" => 1}})
+    pid = start(ctx, cfg)
+    id = Session.info(pid).id
+    invoke(pid)
+    assert_receive {:decision_http, ^tag, handler, _, _}, 5000
+    send(handler, {:respond, put_in(native(), ["answers", "relevant", "noul"], 1.5)})
+    done(pid)
+    assert Session.info(pid).extension_result["value"]["value"]["code"] == "decision_response"
+    assert :ok = Session.close_confirmed(pid)
+    assert {:ok, snapshot} = Budget.saved(ctx.dir, id)
+    assert snapshot["request_count"] == 1
+    assert snapshot["unsettled_count"] + snapshot["partial_count"] >= 1
+    resumed = start(ctx, cfg, id)
+    assert Session.info(resumed).phase == :idle
+    refute_receive {:decision_http, ^tag, _, _, _}, 200
+    invoke(resumed)
+    done(resumed)
+    refute_receive {:decision_http, ^tag, _, _, _}, 200
+    assert {:ok, events} = Journal.load(ctx.dir, id)
+    assert {:ok, _} = Usage.restore(events)
+    assert {:ok, _} = Actions.restore(events)
   end
 
   for interruption <- [:timeout, :owner_loss] do

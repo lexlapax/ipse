@@ -183,7 +183,7 @@ defmodule Ipse.Development.Evaluation.Runner do
     :ok = checked(Contract.validate(plan))
     require!(plan["mode"] in ~w(heldout fixture), :freeze_mode)
     resolution = if options[:resolution], do: options[:resolution] |> read!() |> decode!()
-    {:ok, declaration} = Freeze.declare(File.cwd!(), bytes, plan["artifacts"], resolution)
+    declaration = checked(Freeze.declare(File.cwd!(), bytes, plan["artifacts"], resolution))
     output = Path.expand(options[:output])
     private_file!(output, declaration["bytes"])
     {:ok, declaration |> Map.delete("bytes") |> Map.put("path", output)}
@@ -200,7 +200,7 @@ defmodule Ipse.Development.Evaluation.Runner do
       )
 
   defp dispatch(:freeze_measured, options) do
-    bytes = read!(options[:experiment])
+    bytes = read!(options[:experiment], Freeze.snapshot_bytes())
 
     require!(
       Ipse.JSON.sha256?(options[:experiment_sha256]) and

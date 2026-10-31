@@ -1,0 +1,21 @@
+Running ExUnit with seed: 511736, max_cases: 8
+Excluding tags: [:test]
+Including tags: [line: 281]
+
+
+
+  1) test separate OS processes cannot both commit distinct keys at one generation (Ipse.Extension.StateTest)
+     test/ipse/extension/state_test.exs:281
+     State process barrier timed out
+     code: for key <- ~w(first second) do
+     stacktrace:
+       test/ipse/extension/state_test.exs:357: Ipse.Extension.StateTest.await_files/2
+       test/ipse/extension/state_test.exs:325: anonymous fn/4 in Ipse.Extension.StateTest."test separate OS processes cannot both commit distinct keys at one generation"/1
+       (elixir 1.20.4) lib/enum.ex:1725: Enum."-map/2-lists^map/1-1-"/2
+       test/ipse/extension/state_test.exs:315: (test)
+
+
+Finished in 20.4 seconds (0.4s on load, 0.00s async, 20.0s sync)
+
+Result: 0/1 passed, 11 excluded
+Failed: 1 test

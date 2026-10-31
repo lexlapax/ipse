@@ -1,0 +1,16 @@
+Running ExUnit with seed: 47187, max_cases: 8
+Excluding tags: [:native_sandbox, :macos_sandbox, :macos_filesystem, :memory_scope]
+
+Running ExUnit with seed: 872360, max_cases: 4
+Excluding tags: [:test]
+Including tags: [guard_adapter: true]
+
+..
+Finished in 4.5 seconds (4.2s on load, 0.00s async, 0.2s sync)
+
+Result: 2 passed, 20 excluded
+
+.
+Finished in 4.8 seconds (0.04s on load, 0.00s async, 4.8s sync)
+
+Result: 1 passed

@@ -1,0 +1,105 @@
+Running ExUnit with seed: 796521, max_cases: 4
+Excluding tags: [:test]
+Including tags: [v4_pages: true, v4_corruption: true, v4_selected_reuse: true, v4_append: true]
+
+.
+
+  1) test eleven chunks progress through two known pages and complete canonical assembly without truncation (Ipse.ProducerProgressTest)
+     test/extensions/knowledge/producer_progress_test.exs:252
+     Expected truthy, got false
+     code: assert Ipse.Extension.Collection.DocumentSourceUse.ready?(
+             d.model.records["genproducer4.notes.0"].value,
+             "genproducer4.notes.0"
+           )
+     arguments:
+
+         # 1
+         %{
+           "catalog_floor" => 0,
+           "catalog_sha256" => "ec1d5b068fcab83e6f8e8a6710d3fd24be987109608c495b4e088b2a18fc8637",
+           "claim" => %{
+             "operation_id" => "0000000000000000000000000000006D",
+             "revision" => 1013,
+             "sha256" => "5d7c435cfa4ea644c811975ecc4e39262e940bcd3e9045b6dd5e3c5265f65023"
+           },
+           "cursor" => 0,
+           "embedding" => "learned",
+           "fact_selection" => %{
+             "kind" => "explicit",
+             "profile" => nil,
+             "version" => 1
+           },
+           "input_count" => 8,
+           "input_refs_sha256" => "b4781d669a26ebd7684c9846cc3bf521302e512dd1798871213d1d545fa01454",
+           "job_id" => "c1e833ee491f32593141d14ef8022315",
+           "job_revision" => 1012,
+           "kind" => "shared_projection_producer",
+           "page" => %{
+             "byte_count" => 45064,
+             "key" => "genvec.notes.b9947767c08e419b8d163d6ac33d41e7c129c90d6f0e37aa06972a14dd1eaab3",
+             "sha256" => "b9947767c08e419b8d163d6ac33d41e7c129c90d6f0e37aa06972a14dd1eaab3"
+           },
+           "partition" => "notes",
+           "previous_ready" => nil,
+           "receipts" => [
+             %{
+               "input_sha256" => ["aea944044e59fba345675bfe17cd37796a79bf4432b6b7d7a40f32c2af0b247d",
+                "aea944044e59fba345675bfe17cd37796a79bf4432b6b7d7a40f32c2af0b247d"],
+               "operation_id" => "00000000000000000000000000000001",
+               "raw_input_sha256" => ["a2e659dacb4691e887ac0139f8893d04764ee197d70fb73d3190d56113d18e3e",
+                "a2e659dacb4691e887ac0139f8893d04764ee197d70fb73d3190d56113d18e3e"],
+               "source_sha256" => "65580527c2d91838a073f75a550680b66e8be43922a51d93c02780e769919ac2"
+             },
+             %{
+               "input_sha256" => ["aea944044e59fba345675bfe17cd37796a79bf4432b6b7d7a40f32c2af0b247d",
+                "aea944044e59fba345675bfe17cd37796a79bf4432b6b7d7a40f32c2af0b247d"],
+               "operation_id" => "00000000000000000000000000000002",
+               "raw_input_sha256" => ["a2e659dacb4691e887ac0139f8893d04764ee197d70fb73d3190d56113d18e3e",
+                "a2e659dacb4691e887ac0139f8893d04764ee197d70fb73d3190d56113d18e3e"],
+               "source_sha256" => "bd499b165fb7f387e40d44e0b9a1d1caa1e472eb3550702c42af665bdb6e5f70"
+             },
+             %{
+               "input_sha256" => ["aea944044e59fba345675bfe17cd37796a79bf4432b6b7d7a40f32c2af0b247d",
+                "aea944044e59fba345675bfe17cd37796a79bf4432b6b7d7a40f32c2af0b247d"],
+               "operation_id" => "00000000000000000000000000000003",
+               "raw_input_sha256" => ["a2e659dacb4691e887ac0139f8893d04764ee197d70fb73d3190d56113d18e3e",
+                "a2e659dacb4691e887ac0139f8893d04764ee197d70fb73d3190d56113d18e3e"],
+               "source_sha256" => "b872e9aaed5d9f82ba5bd8e033b911553811a20b023d2d8a596c005260b48dbd"
+             },
+             %{
+               "input_sha256" => ["aea944044e59fba345675bfe17cd37796a79bf4432b6b7d7a40f32c2af0b247d",
+                "aea944044e59fba345675bfe17cd37796a79bf4432b6b7d7a40f32c2af0b247d"],
+               "operation_id" => "00000000000000000000000000000004",
+               "raw_input_sha256" => ["a2e659dacb4691e887ac0139f8893d04764ee197d70fb73d3190d56113d18e3e",
+                "a2e659dacb4691e887ac0139f8893d04764ee197d70fb73d3190d56113d18e3e"],
+               "source_sha256" => "4d180fb7ad380aa054b94d928dcd992a0953fa375de7afcde139f3381b3a7ed7"
+             }
+           ],
+           "recipe" => "ipse.evidence.shared_producer.pages.v4",
+           "root_revision" => 0,
+           "root_sha256" => nil,
+           "source_set_sha256" => "ccec3690856b9f82908c91cf751719e45d5c4e8d9e63a821a2edc28706efb333",
+           "status" => "ready",
+           "vector_count" => 11,
+           "vector_cursor" => 0,
+           "vector_selection" => %{
+             "dimensions" => 1024,
+             "encoding" => "float32le",
+             "model" => "fixture-model",
+             "profile" => "encoder",
+             "selection_sha256" => "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+           },
+           "version" => 4
+         }
+
+         # 2
+         "genproducer4.notes.0"
+
+     stacktrace:
+       test/extensions/knowledge/producer_progress_test.exs:263: (test)
+
+..
+Finished in 4.5 seconds (4.0s on load, 0.00s async, 0.4s sync)
+
+Result: 3/4 passed, 4 excluded
+Failed: 1 test

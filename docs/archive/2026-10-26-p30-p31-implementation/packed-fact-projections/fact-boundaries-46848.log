@@ -1,0 +1,8 @@
+Running ExUnit with seed: 46848, max_cases: 1
+Excluding tags: [:test]
+Including tags: [:packed_fact_catalog_race, :collection_legacy_consumer]
+
+..
+Finished in 31.8 seconds (0.00s async, 31.8s sync)
+
+Result: 2 passed, 23 excluded

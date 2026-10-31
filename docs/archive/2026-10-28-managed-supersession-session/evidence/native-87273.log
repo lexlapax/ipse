@@ -1,0 +1,8 @@
+Running ExUnit with seed: 87273, max_cases: 4
+Excluding tags: [:test]
+Including tags: [history_use_scenario: "current"]
+
+.
+Finished in 8.9 seconds (0.08s on load, 0.00s async, 8.8s sync)
+
+Result: 1 passed

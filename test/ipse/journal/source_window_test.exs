@@ -39,6 +39,11 @@ defmodule Ipse.Journal.SourceWindowTest do
     assert {:ok, proof} = Writer.source_query(writer, {:proof, proof_request})
     assert proof["generation"] == after_append["generation"]
     assert proof["proof"]["origin"] == "unattended_input"
+    assert {:ok, ^proof} = Writer.source_query(writer, {:stored_proof, proof["proof"]})
+
+    assert {:error, _} =
+             Task.async(fn -> Writer.source_query(writer, {:stored_proof, proof["proof"]}) end)
+             |> Task.await()
 
     assert {:error, _} =
              Task.async(fn -> Writer.source_query(writer, {:proof, proof_request}) end)
@@ -49,5 +54,17 @@ defmodule Ipse.Journal.SourceWindowTest do
              |> Task.await()
 
     assert :ok = Writer.close(writer)
+
+    # Replay reconstructs the occurrence, but a new source window must not
+    # reuse the old window identity as authority.
+    assert {:ok, replayed_events} = Journal.load(directory, id)
+    assert {:ok, replayed} = Saved.restore(replayed_events, id)
+    assert {:ok, reopened} = Writer.start(directory, id, self())
+    on_exit(fn -> if Process.alive?(reopened), do: Writer.close(reopened) end)
+    assert :ok = Writer.install_source_window(reopened, replayed.source_window)
+    assert {:ok, checked} = Writer.source_query(reopened, {:stored_proof, proof["proof"]})
+    assert checked["proof"] == proof["proof"]
+    refute checked["window_id"] == proof["window_id"]
+    assert :ok = Writer.close(reopened)
   end
 end

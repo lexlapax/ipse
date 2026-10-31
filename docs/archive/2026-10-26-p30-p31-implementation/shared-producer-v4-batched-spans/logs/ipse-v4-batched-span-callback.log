@@ -1,0 +1,10 @@
+Running ExUnit with seed: 117005, max_cases: 4
+Excluding tags: [:test]
+Including tags: [v4_segmented_geometry: true]
+
+V4_CALLBACK_PROBE max_us=3351271 phase=:append_unit
+V4_SEGMENTED_GEOMETRY {"sources":8,"chunks":256,"facts":256,"pages":32,"hydrate_reads":414,"append_max_reads":0,"append_invocations":0}
+.
+Finished in 21.5 seconds (4.3s on load, 0.00s async, 17.2s sync)
+
+Result: 1 passed, 9 excluded

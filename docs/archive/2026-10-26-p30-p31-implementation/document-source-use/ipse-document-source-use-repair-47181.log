@@ -1,0 +1,42 @@
+Corrected test source compiled with empty diagnostics; production bytes unchanged
+Running ExUnit with seed: 20261029, max_cases: 4
+Excluding tags: [:test]
+Including tags: [:source_relation_repair]
+
+.
+
+  1) test rejects stale anchors, changed source transport and mismatched prepared inputs (Ipse.Extension.CollectionDocumentSourceUseTest)
+     test/ipse/extension/collection_document_source_use_test.exs:111
+     match (=) failed
+     code:  assert {:error, :document_source_use_refused} = authenticate(candidate)
+     left:  {:error, :document_source_use_refused}
+     right: {:ok,
+             %{
+               sources: [
+                 %{
+                   "expires_at_ms" => nil,
+                   "historical" => false,
+                   "observed_at_ms" => 10
+                 }
+               ],
+               claim_operation_id: "00000000000000000000000000000076",
+               claim_revision: 1014,
+               batch_count: 4,
+               reads: 7,
+               logical_bytes: 49902,
+               bundle_bytes: 44524,
+               batch_index: 0,
+               claim_key: "genproducer.notes",
+               claim_sha256: "15852af62ce20cc55fd44f21ed57aae5857d4fe0ddca8741b03b31683bd500db",
+               selection_sha256: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+             }}
+     stacktrace:
+       test/ipse/extension/collection_document_source_use_test.exs:133: anonymous fn/3 in Ipse.Extension.CollectionDocumentSourceUseTest."test rejects stale anchors, changed source transport and mismatched prepared inputs"/1
+       (stdlib 8.1) maps.erl:894: :maps.fold_1/4
+       test/ipse/extension/collection_document_source_use_test.exs:130: (test)
+
+
+Finished in 0.04 seconds (0.04s async, 0.00s sync)
+
+Result: 1/2 passed, 3 excluded
+Failed: 1 test

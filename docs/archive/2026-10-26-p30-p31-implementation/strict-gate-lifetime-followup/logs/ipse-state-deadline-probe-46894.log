@@ -1,0 +1,11 @@
+Running ExUnit with seed: 46894, max_cases: 8
+Excluding tags: [:test]
+Including tags: [state_deadline_probe: true]
+
+LATE_STATE_RENAME_PROVED checked_before=true resumed_after=true result=ok
+
+07:28:22.669 [error] handle_Info({:state_rename_release, #Reference<0.1909445442.3420454915.92031>}, _)
+.
+Finished in 1.0 seconds (0.00s async, 1.0s sync)
+
+Result: 1 passed

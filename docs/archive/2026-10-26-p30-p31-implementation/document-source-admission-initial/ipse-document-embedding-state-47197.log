@@ -1,0 +1,7 @@
+Focused document embedding shape/live-state tests compile without diagnostics
+Running ExUnit with seed: 20261029, max_cases: 4
+
+....
+Finished in 0.03 seconds (0.03s async, 0.00s sync)
+
+Result: 4 passed

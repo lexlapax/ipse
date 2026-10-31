@@ -35,6 +35,7 @@ action chain. A valid cursor alone cannot cross any of these boundaries.
 | --- | --- |
 | `input_received` plus its matching committed effective user message | Immutable original bytes with verified terminal or unattended origin; orphan input remains unavailable |
 | Native question checkpoint plus atomic `operator_answer` v2 | Assistant question and exact original answer payload, linked by host question/render/input hashes; parsed answer text alone supplies no origin |
+| `operator_assertion` after a native statement/category review | Exact endorsed statement and category, with project/artifact/policy scope; effect permission remains separate |
 | Admitted visible original assistant answer | Assistant proposal; presentation and hidden reasoning are excluded |
 | Typed native tool intent/outcome plus the actual matching tool message | Separate host outcome facts and attributed `read`, `shell` or MCP text; `write`/`edit` publish outcome facts only |
 | Successful MCP/embedding action plus its bound private source | Attributed MCP text or typed vector metadata; source-only/interrupted prefixes grant no read |
@@ -46,6 +47,25 @@ hidden reasoning never become sources. Tool stdout is an attributed reference;
 the typed outcome attests only the host-observed status, approval and timing.
 Neither establishes the truth of output prose. A terminal event also does not
 establish that a human supplied the bytes: automated PTYs exercise the same channel.
+
+`/remember` can obtain a fresh native statement/category confirmation and request
+one new v3 capture under the separately selected saved permission. The terminal
+client, an explicit authorized-client headless typed-outcome save, and a
+synthetic model-selected pending-proposal save have focused positives. A bounded
+host cache classifies authentic causal root-only reads; scans remain outside
+that classification. The cache does not grant current use. Model-selected source tools use the selected-source
+preflight described below. After a known capture, the narrow own-write transition
+also permits later source calls and successful turn completion under fresh guards.
+This does not establish full automatic-capture quality. Follow the
+[publication flow](collection-sdk.md#follow-one-capture-across-its-owners) rather
+than treating statement confirmation as a general capture grant.
+`operator_assertion` records carry the original endorsed text/category and
+project/artifact/policy scope. SourceIndex exposes category-specific
+`input.assertion.ordinary`, `input.assertion.preference` and
+`input.assertion.current` kinds when those records validate. Plain
+input and question answers cannot acquire that origin by repeating their text.
+These receipts prove recorded endorsement, not external truth or current effect
+permission. Reading one never bypasses current source, recipe or Consent checks.
 
 ## Bind a new terminal choice to revalidated facts
 
@@ -64,6 +84,22 @@ It requires exactly `command SPACE lowercase_challenge`, without trimming, and
 the actual native-v2 restoration/exit receipt, event ID and input/display hashes.
 EOF, cancellation, a mismatched challenge or bare yes enters no callback.
 
+For facts whose display itself depends on current protected sources, the internal
+`with_review/4` variant accepts a host-owned display guard. The guard acquires and
+rechecks the required source and policy leases, calls its one-use same-process
+display continuation with the earliest applicable wall-clock deadline, and holds
+those leases until the native helper acknowledges the complete display. It then
+releases them before the owner sends the native input-release frame; the helper
+does not enter its input wait until that frame arrives. The final callback must
+reacquire and rederive the facts and authority before consuming the permit; a
+display acknowledgement is not a publication grant. The native helper checks the
+deadline before its display writes, but a clock check and OS write are separate
+operations, so this is not a kernel-atomic deadline guarantee. Guard failure,
+an expired deadline or an unconfirmed display grants no review permit. A guarded
+Port is owned by the lease-holding BEAM process. An enclosing file-effect process
+can outlive its Session caller, so direct Port ownership alone does not establish
+upstream-owner cancellation; that separate integration boundary still needs proof.
+
 The callback receives an opaque same-process permit. Reacquire the effect's
 Identity/Consent/Collection locks and rederive the complete current facts before
 calling `consume/3`. Its first actual-owner attempt spends the permit, including
@@ -77,6 +113,27 @@ only `:ok` or `{:ok, value}` is a successful callback result. Errors, other retu
 values, exceptions or loss remain unconfirmed; inspect effects before any fresh
 review, without replay.
 An explicit callback error before consumption grants nothing.
+
+These checks detect expired callback results; they do not undo an effect after a
+permit expires. A real stopped transaction demonstrated late forgetting followed
+by outer Review `unknown`. The trusted forget normalizer admits one bounded
+reducing attempt when it consumes a live permit under fresh effect locks; it
+does not promise physical completion before permit expiry. Its private caller
+must preserve unknown outcomes through effect settlement and journal cleanup.
+Public `knowledge forget NOTE_KEY` uses that reducing path after a complete native
+review; its [operator procedure](../operator/knowledge-permissions.md#forget-a-selected-native-note)
+requires inspection of the printed management journal after uncertainty.
+The public session-only retention choice uses this same reviewed reducing path.
+Persistent retention uses a separate claimed review and timed final root switch;
+correction and supersession remain closed. Retained data formats alone supply no
+executable permission.
+
+Ordinary new-v3 capture has a different clock contract. Its native owner checks
+the earliest policy/lineage deadline at the final locked root-switch decision.
+An admitted switch may finish physically later without invalidating an otherwise
+confirmed ordinary result. Review additionally requires a live confirmed callback
+result, so a reducing forget can have happened while its outer Review returns
+unknown. Neither result permits automatic replay or promises physical rollback.
 
 Facts retain the existing JSON limits: 16 KiB total, eight KiB per string,
 twelve levels and 128 members per collection. The complete escaped display has
@@ -149,6 +206,48 @@ index. Existing sessions without this marker retain their admitted catalog. The
 three tools use the same argument objects shown above, without the operation name.
 Normal native tool intent/results, turn call limits, model steps and context bytes
 apply. Source reads do not imply another model or embedding call.
+
+Before **every** model-selected `source_list`, `source_read` or `source_quote`,
+Session obtains a one-use preflight bound to the exact task/job/call and arguments,
+even when its original dependency list is empty. Writer privately resolves the
+actual SourceIndex query and derives provenance for every selected row; a list
+cannot classify just its first result. Known empty producer lineage differs from
+a missing producer mapping. The complete original-plus-selected union must be
+empty or consist entirely of authentically cached payload-free observations of
+one current root. Record-bearing, mixed, stale or unclassified members refuse.
+The exact admitted call consumes this preflight once under the existing owners.
+
+After a confirmed new-v3 capture advances the root, Session can retain earlier
+payload-free metadata as explicitly historical. It authenticates the complete
+old write union, exact own operation and adjacent successor receipt under fresh
+Identity/Consent/Collection checks. Original messages, dependency objects and
+provider envelopes stay unchanged. A bounded host notice explains that the old
+root or absence does not establish current record eligibility; the notice has
+its own current guard. Producer and call resolution use the same verified
+successor mapping. Missing cache, record contents, mixed roots, unknown actions
+and intervening writes refuse instead of receiving this projection.
+
+Result preparation independently rederives the actual returned query and selected
+provenance before its dependencies and version-2 observation are committed.
+Saved repeats that relation chronologically against the original source window;
+historical token rebinding supplies no new live authority. Starts suppress source
+arguments and subscriber results use the fixed status-only message
+`Source tool result withheld from terminal preview.` Complete authenticated content
+remains in the journal/model continuation with its full lineage; this is not
+protected terminal payload rendering. The
+[reviewed preflight](../archive/2026-10-26-p30-p31-implementation/managed-source-tool-preflight-independent-review.md)
+owns the bounded implementation evidence.
+
+The [own-write transition review](../archive/2026-10-26-p30-p31-implementation/own-root-transition-independent-review.md)
+verifies a synthetic-model saved-consent journey through typed-outcome capture,
+later source list/read, successful turn completion, Saved reconstruction and
+confirmed close. Earlier settled-but-failed turns remain preserved in their
+original records. A separate synthetic headless control saves two distinct
+unattended proposals across close and resume. These controls do not qualify
+record-content release, compaction or all provider continuations. Actual untrusted argv/stdin
+[CLI controls](../archive/2026-10-26-p30-p31-implementation/headless-cli-untrusted.md)
+observed neither literal nor pending proposal, but returned unknown/error; they
+do not establish a confirmed semantic source refusal or successful proposal save.
 
 ## Grant an extension source access explicitly
 
@@ -233,6 +332,53 @@ Future occurrences/generations and mixed historical windows refuse. This is
 consistency checking of a protected journal, not a cryptographically signed
 transcript resistant to coherent rewriting by arbitrary same-user code.
 
+Stored managed-note proofs use a separate host path. `StoredSources` resolves
+only the consuming Session's selected state directory. The current owner checks
+its Writer descriptor and exact committed proof under the active collection
+action lease. An inactive source Session must have its original protected
+journal and retained lock; the reader holds that lock while validating the full
+Saved prefix and checking the proof. Copies and legacy origins refuse, as do an
+active other owner, incomplete tail, changed version or different protected
+project/namespace. This path never repairs, relocates or resumes the source.
+It monitors the actual retained native lock and refuses after ownership loss,
+even if the journal and lock path did not change. Writer rechecks its full
+recorded origin and private parent on cached queries and append boundaries.
+The private transferable-source API can verify distinct proofs from inactive
+original Sessions while retaining one lock per Session. Its grouped form returns
+owner-bound lease tokens in Session-ID order and refuses active-source and
+duplicate proofs. Each native recipient still imposes its own lease-count limit;
+the tokens alone do not authorize display or publication. Callers must bind all
+owners and deadlines and settle every exported lease.
+For a mixed active/inactive set, the source-union scope checks the active
+Session's exact proofs before and after the callback while retaining the
+inactive Session locks. Its callback receives lease tokens only for inactive
+Sessions. A separate active-Session share is still needed through any native
+display or effect; a successful source-union callback does not supply it.
+The private management terminal adapter can transfer a verified group into a
+native review display and input operation. This does not identify which proofs
+an effect requires: the caller must bind the complete proof set to the reviewed
+facts and revalidate current sources after input.
+The active-Session bridge has a separate synthetic group-display control. It
+does not yet authorize protected review or input for a relation.
+The private transaction helper can retain up to 128 source leases through one
+native root decision, alongside one journal lease. An isolated current-source
+native control exercises that capacity; the shipped helper must be rebuilt to
+match the host before using it. These leases do not by themselves admit a
+supersession.
+The [managed read adapter](collection-sdk.md) checks current consent, recipe,
+deadline and signed collection root while those source locks remain held.
+Its result becomes historical after return; later use needs revalidation.
+
+A resource scope reserves 128 source-lock entries, shared by inactive original
+Session journals and nontransferable acceptance-journal reads. Bound the complete
+set when combining them. These locks have a separate reserve from the ordinary
+32-resource registration limit, so source verification does not itself consume
+the slots needed for the protected transaction or other live resources. The
+existing controlled-child path can add up to 32 child entries separately;
+those entries count against subsequent ordinary registrations. These limits are
+per scope, not a machine-wide concurrency guarantee. When a source lease or its
+owner is lost, current use refuses and cleanup releases the retained locks.
+
 ## Construct a candidate proof without granting authority
 
 An independent worker can call the public SDK helper after a successful read and
@@ -246,8 +392,8 @@ quote:
 This continues the synthetic example above. The helper checks exact page/quote
 identity, bytes, offsets and hashes; it returns stable evidence JSON, not a token
 granting an effect. Protected publication independently rederives each proof from
-the current writer window. Original input, native operator answers, visible
-assistant answers and typed tool-outcome metadata currently qualify for this
+the current writer window. Original input, native operator answers, reviewed
+operator statements, visible assistant answers and typed tool-outcome metadata qualify for this
 generic proof step. Source stdout, file/external content, decision advice and
 legacy text refuse capture proof resolution even when public reading succeeds.
 File capture requires an original validated path receipt, not a path inferred
@@ -257,9 +403,12 @@ for its closed proof and request shapes.
 ## Verify a changed source boundary
 
 ```sh
+mix test test/ipse/session/operator_assertion_test.exs test/ipse/session/operator_assertion_integration_test.exs
 mix test test/ipse/session/source_index_test.exs test/ipse/session/source_window_test.exs
 mix test test/ipse/extension/source_read_test.exs test/ipse/extension/source_read_session_test.exs
 mix test test/ipse/journal/source_window_test.exs
+mix test test/ipse/journal/source_origin_test.exs test/ipse/session/stored_sources_test.exs test/ipse/session/managed_reads_test.exs
+mix test test/ipse/session/source_lock_capacity_test.exs test/ipse/session/source_lock_resource_budget_test.exs
 mix test test/ipse/cli/operator_input_test.exs test/ipse/session/question_eof_test.exs
 ```
 

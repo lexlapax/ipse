@@ -78,6 +78,23 @@ defmodule Ipse.Session.ManagedReferenceTest do
     )
   end
 
+  defp record_v4 do
+    d = record_v2()
+    record = d["subject"]["record"]
+
+    d
+    |> Map.put("version", 4)
+    |> Map.put("subject", %{
+      "kind" => "record_observation",
+      "key" => record["key"],
+      "request_sha256" => sha(%{"op" => "get_record", "key" => record["key"]}),
+      "result_sha256" => sha("complete synthetic record-only result"),
+      "publication_policy_sha256" => nil,
+      "record" => record,
+      "validity" => d["subject"]["validity"]
+    })
+  end
+
   defp binding(changes \\ %{}) do
     Map.merge(
       %{
@@ -111,6 +128,296 @@ defmodule Ipse.Session.ManagedReferenceTest do
     {:ok, event, state} = Managed.admit(state, producer(kind), 0, message, deps)
     {:ok, plan} = Managed.plan(state, [message])
     {event, state, plan}
+  end
+
+  test "withdrawal replaces a host reference with a closed notice and replays exact marker identity" do
+    content = Ipse.Session.Reference.content(%{"extensions" => "stale private quotation"})
+
+    message =
+      Ipse.Session.Reference.message(%{
+        "version" => 1,
+        "session_id" => @session,
+        "turn_id" => @turn,
+        "epoch" => 1,
+        "source_generation" => 1,
+        "policy_generation" => 0,
+        "content" => content,
+        "content_sha256" => JSON.sha256(content)
+      })
+
+    assert Ipse.Session.Reference.reference?(message)
+    {_, state, plan} = admitted(message)
+    assert {:ok, _, [^message], _} = Managed.project(plan, [verdict(dependency())], binding())
+
+    assert {:ok, event, [withdrawn], projected} =
+             Managed.project(plan, [verdict(dependency(), "suppressed")], binding())
+
+    assert Ipse.Session.Reference.reference?(withdrawn)
+    assert withdrawn["role"] == "user"
+
+    assert Map.delete(withdrawn["ipse_reference"], "content_sha256") ==
+             Map.delete(message["ipse_reference"], "content_sha256")
+
+    refute withdrawn["content"] =~ "stale private quotation"
+
+    assert {:ok, %{"extensions" => notice}} =
+             Ipse.Session.Reference.selected_publishers(withdrawn)
+
+    assert notice =~ "withdrawn"
+
+    assert {:ok, %{messages: [^withdrawn], state: ^projected, live_pending: true}} =
+             Managed.replay(state, [message], event, binding())
+
+    for forged <- [
+          put_in(message, ["ipse_reference", "session_id"], String.duplicate("f", 32)),
+          put_in(message, ["ipse_reference", "content_sha256"], sha("forged")),
+          Map.put(message, "provider_data", %{"opaque" => "stale private quotation"})
+        ] do
+      {_, _, forged_plan} = admitted(forged)
+
+      assert @unsafe ==
+               Managed.project(forged_plan, [verdict(dependency(), "suppressed")], binding())
+    end
+  end
+
+  test "legacy null-record observations cannot refresh across a changed collection root" do
+    legacy = Map.put(dependency(), "record", nil)
+    assert Managed.dependency?(legacy)
+    message = user("legacy whole-root result")
+    {_, state, plan} = admitted(message, [legacy])
+
+    assert {:ok, same_root_event, [^message], _} =
+             Managed.project(plan, [verdict(legacy)], binding())
+
+    for changed <- [
+          put_in(legacy, ["collection", "generation"], 11),
+          legacy
+          |> put_in(["collection", "generation"], 11)
+          |> put_in(["collection", "manifest_sha256"], sha("changed whole-root result")),
+          legacy
+          |> put_in(["collection", "generation"], 11)
+          |> put_in(["collection", "floor"], 1)
+          |> put_in(["collection", "floor_anchor"], @request)
+        ] do
+      assert Managed.dependency?(changed)
+      assert @error == Managed.project(plan, [verdict(legacy, "eligible", changed)], binding())
+
+      # The earlier projector recorded the unchanged message and the supplied
+      # refreshed verdict in exactly this event shape. Replay now refuses it.
+      prior_event = put_in(same_root_event, ["verdicts", Access.at(0), "current"], changed)
+      assert @error == Managed.replay(state, [message], prior_event, binding())
+    end
+
+    assert {:ok, _, [withdrawn], _} =
+             Managed.project(plan, [verdict(legacy, "root_changed")], binding())
+
+    refute withdrawn["content"] =~ "legacy whole-root result"
+  end
+
+  test "a deleted member withdraws the complete grouped reference rather than leaving its quoted bytes" do
+    first = dependency()
+    second = put_in(first, ["record", "value_sha256"], sha("second grouped member"))
+    content = Ipse.Session.Reference.content(%{"extensions" => "member one and member two"})
+
+    message =
+      Ipse.Session.Reference.message(%{
+        "version" => 1,
+        "session_id" => @session,
+        "turn_id" => @turn,
+        "epoch" => 1,
+        "source_generation" => 1,
+        "policy_generation" => 0,
+        "content" => content,
+        "content_sha256" => JSON.sha256(content)
+      })
+
+    {_, _, plan} = admitted(message, [first, second])
+
+    assert {:ok, _, [withdrawn], _} =
+             Managed.project(plan, [verdict(first), verdict(second, "suppressed")], binding())
+
+    refute withdrawn["content"] =~ "member one"
+    refute withdrawn["content"] =~ "member two"
+    assert Ipse.Session.Reference.reference?(withdrawn)
+  end
+
+  test "only a closed redundant native text envelope can be removed with the entire assistant occurrence" do
+    text = "managed-derived native text"
+
+    message = %{
+      "role" => "assistant",
+      "content" => text,
+      "provider_data" => %{
+        "provider" => "ollama",
+        "reported_model" => "synthetic",
+        "message" => %{
+          "role" => "assistant",
+          "content" => text,
+          "thinking" => "",
+          "tool_calls" => []
+        }
+      }
+    }
+
+    {_, _, plan} = admitted(message, [dependency()], "assistant.ollama_text")
+
+    assert {:ok, _, [withdrawn], _} =
+             Managed.project(plan, [verdict(dependency(), "suppressed")], binding())
+
+    refute Map.has_key?(withdrawn, "provider_data")
+    refute withdrawn["content"] =~ text
+
+    for opaque <- [
+          put_in(message, ["provider_data", "message", "thinking"], "private continuation"),
+          put_in(message, ["provider_data", "message", "tool_calls"], [%{"opaque" => true}]),
+          put_in(message, ["provider_data", "message", "content"], "different hidden text"),
+          put_in(message, ["provider_data", "message", "future_field"], "opaque"),
+          put_in(message, ["provider_data", "future_field"], "opaque"),
+          put_in(message, ["provider_data", "provider"], "openai")
+        ] do
+      {_, _, plan} = admitted(opaque, [dependency()], "assistant.ollama_text")
+      assert @unsafe == Managed.project(plan, [verdict(dependency(), "suppressed")], binding())
+    end
+
+    {_, _, unbound} = admitted(message, [dependency()], "assistant")
+    assert @unsafe == Managed.project(unbound, [verdict(dependency(), "suppressed")], binding())
+  end
+
+  test "refresh cannot silently replace or remove the record's supporting dependencies" do
+    support = %{"key" => "support.one", "revision" => 1, "value_sha256" => sha("support")}
+
+    for {old, validity_path} <- [
+          {dependency(), ["validity", "dependencies"]},
+          {record_v2(), ["subject", "validity", "dependencies"]}
+        ] do
+      with_support = put_in(old, validity_path, [support])
+      assert Managed.dependency?(with_support)
+
+      replaced = Map.put(support, "value_sha256", sha("replacement"))
+
+      for {original, changed_support} <- [
+            {old, [support]},
+            {with_support, []},
+            {with_support, [replaced]}
+          ] do
+        changed = put_in(original, validity_path, changed_support)
+
+        assert Managed.dependency?(changed)
+        {_, _, plan} = admitted(user(), [original])
+
+        assert @error ==
+                 Managed.project(plan, [verdict(original, "eligible", changed)], binding())
+
+        unchanged = put_in(changed, validity_path, get_in(original, validity_path))
+
+        assert {:ok, _, _, _} =
+                 Managed.project(plan, [verdict(original, "eligible", unchanged)], binding())
+      end
+    end
+  end
+
+  test "a refresh cannot substitute a floor anchor without advancing the floor" do
+    for old <- [dependency(), record_v2()] do
+      old =
+        old
+        |> put_in(["collection", "floor"], 5)
+        |> put_in(["collection", "floor_anchor"], @request)
+
+      current =
+        old
+        |> put_in(["collection", "generation"], 11)
+        |> put_in(["collection", "floor_anchor"], @turn)
+        |> put_in(["collection", "manifest_sha256"], sha("new manifest"))
+
+      current =
+        if current["version"] == 2,
+          do: put_in(current, ["collection", "root_sha256"], sha("new root")),
+          else: current
+
+      assert Managed.dependency?(old) and Managed.dependency?(current)
+      {_, _, plan} = admitted(user(), [old])
+      assert @error == Managed.project(plan, [verdict(old, "eligible", current)], binding())
+
+      retained = put_in(current, ["collection", "floor_anchor"], @request)
+
+      assert @error == Managed.project(plan, [verdict(old, "eligible", retained)], binding())
+
+      assert {:ok, _, _, _} =
+               Managed.project(plan, [verdict(old)], binding())
+    end
+  end
+
+  test "a fresh receipt cannot revive or extend an existing dependency's expiry" do
+    for {old, expiry_path} <- [
+          {dependency(), ["validity", "valid_until_ms"]},
+          {record_v2(), ["subject", "validity", "valid_until_ms"]}
+        ] do
+      current = old
+
+      {_, _, plan} = admitted(user(), [old])
+
+      for extended <- [3000, nil] do
+        fresh = put_in(current, expiry_path, extended)
+        assert Managed.dependency?(fresh)
+        assert @error == Managed.project(plan, [verdict(old, "eligible", fresh)], binding())
+
+        assert @error ==
+                 Managed.project(
+                   plan,
+                   [verdict(old, "eligible", fresh)],
+                   binding(%{"checked_at_ms" => 2200, "deadline_ms" => 2300})
+                 )
+      end
+
+      shortened = put_in(current, expiry_path, 1500)
+
+      assert {:ok, _, messages, next} =
+               Managed.project(plan, [verdict(old, "eligible", shortened)], binding())
+
+      assert {:ok, next_plan} = Managed.plan(next, messages)
+
+      assert @error ==
+               Managed.project(next_plan, [verdict(shortened, "eligible", current)], binding())
+
+      unbounded = put_in(old, expiry_path, nil)
+      {_, _, unbounded_plan} = admitted(user(), [unbounded])
+
+      assert {:ok, _, _, _} =
+               Managed.project(
+                 unbounded_plan,
+                 [verdict(unbounded, "eligible", shortened)],
+                 binding()
+               )
+    end
+  end
+
+  test "a fresh eligible receipt cannot revive an originally ineligible record" do
+    for {original, status_path} <- [
+          {dependency(), ["validity", "status"]},
+          {record_v2(), ["subject", "validity", "status"]}
+        ],
+        status <- ~w(suppressed unavailable) do
+      old = put_in(original, status_path, status)
+
+      current =
+        original
+        |> put_in(["collection", "generation"], 11)
+        |> put_in(["collection", "manifest_sha256"], sha("later eligible root"))
+
+      current =
+        if current["version"] == 2,
+          do: put_in(current, ["collection", "root_sha256"], sha("later eligible root")),
+          else: current
+
+      assert Managed.dependency?(old) and Managed.dependency?(current)
+      {_, _, plan} = admitted(user(), [old])
+      assert @error == Managed.project(plan, [verdict(old, "eligible", current)], binding())
+
+      assert {:ok, _, [withdrawn], _} =
+               Managed.project(plan, [verdict(old, status)], binding())
+
+      refute withdrawn["content"] == "managed excerpt"
+    end
   end
 
   test "no managed domain preserves exact messages and produces no projection event" do
@@ -185,6 +492,110 @@ defmodule Ipse.Session.ManagedReferenceTest do
     assert Managed.dependency?(absent)
     {_, _, absent_plan} = admitted(user("root was actually absent"), [absent])
     assert @error == Managed.project(absent_plan, [verdict(absent, "eligible", d)], binding())
+  end
+
+  test "record-only observations can refresh at a later root only with identical bound output" do
+    old = record_v4()
+    assert Managed.dependency?(old)
+    message = user("Result derived solely from the selected record")
+    {_, state, plan} = admitted(message, [old])
+
+    current =
+      old
+      |> put_in(["collection", "generation"], 11)
+      |> put_in(["collection", "root_sha256"], sha("next root"))
+      |> put_in(["collection", "manifest_sha256"], sha("next manifest"))
+
+    assert {:ok, event, [^message], next} =
+             Managed.project(plan, [verdict(old, "eligible", current)], binding())
+
+    assert {:ok, %{state: ^next, messages: [^message], live_pending: true}} =
+             Managed.replay(state, [message], event, binding())
+
+    for changed <- [
+          put_in(current, ["subject", "result_sha256"], sha("different output")),
+          put_in(
+            current,
+            ["subject", "publication_policy_sha256"],
+            sha("different publication policy")
+          ),
+          put_in(current, ["subject", "record", "revision"], 2),
+          put_in(current, ["subject", "validity", "status"], "suppressed"),
+          put_in(current, ["subject", "validity", "valid_until_ms"], 3000),
+          put_in(current, ["collection", "generation"], 9),
+          put_in(current, ["collection", "generation"], 10),
+          put_in(current, ["collection", "floor_anchor"], @turn),
+          Map.put(current, "pin_sha256", sha("foreign pin"))
+        ] do
+      assert @error == Managed.project(plan, [verdict(old, "eligible", changed)], binding())
+    end
+
+    for malformed <- [
+          put_in(old, ["subject", "key"], "host.validity.a"),
+          put_in(old, ["subject", "request_sha256"], sha("unrelated request")),
+          put_in(old, ["subject", "record", "key"], "record.other"),
+          put_in(old, ["subject", "record"], nil),
+          put_in(old, ["subject", "validity"], nil)
+        ],
+        do: refute(Managed.dependency?(malformed))
+  end
+
+  test "record-only absence is bound to the selected key and exact nil result" do
+    old =
+      absence_v2()
+      |> Map.put("version", 4)
+      |> Map.put("subject", %{
+        "kind" => "record_observation",
+        "key" => "record.0",
+        "request_sha256" => sha(%{"op" => "get_record", "key" => "record.0"}),
+        "result_sha256" => sha(%{"record" => nil}),
+        "publication_policy_sha256" => nil,
+        "record" => nil,
+        "validity" => nil
+      })
+
+    assert Managed.dependency?(old)
+    current = Map.put(old, "collection", record_v2()["collection"])
+    {_, _, plan} = admitted(user("The selected record was absent"), [old])
+    assert {:ok, _, _, _} = Managed.project(plan, [verdict(old, "eligible", current)], binding())
+    refute Managed.dependency?(put_in(old, ["subject", "result_sha256"], sha("not absent")))
+    refute Managed.dependency?(put_in(old, ["subject", "key"], "record.other"))
+  end
+
+  test "record-only refresh does not regress a floor or substitute its anchor" do
+    old =
+      record_v4()
+      |> put_in(["collection", "floor"], 5)
+      |> put_in(["collection", "floor_anchor"], @request)
+
+    {_, _, plan} = admitted(user(), [old])
+
+    later =
+      old
+      |> put_in(["collection", "generation"], 11)
+      |> put_in(["collection", "root_sha256"], sha("later root"))
+      |> put_in(["collection", "manifest_sha256"], sha("later manifest"))
+
+    assert {:ok, _, _, _} = Managed.project(plan, [verdict(old, "eligible", later)], binding())
+
+    assert @error ==
+             Managed.project(
+               plan,
+               [verdict(old, "eligible", put_in(later, ["collection", "floor_anchor"], @turn))],
+               binding()
+             )
+
+    assert @error ==
+             Managed.project(
+               plan,
+               [verdict(old, "eligible", put_in(later, ["collection", "floor"], 4))],
+               binding()
+             )
+
+    advanced =
+      later |> put_in(["collection", "floor"], 6) |> put_in(["collection", "floor_anchor"], @turn)
+
+    assert {:ok, _, _, _} = Managed.project(plan, [verdict(old, "eligible", advanced)], binding())
   end
 
   test "root observations survive inheritance and replay but require a fresh check" do
@@ -289,13 +700,7 @@ defmodule Ipse.Session.ManagedReferenceTest do
 
     assert Managed.dependency?(present)
 
-    assert {:ok, projected, [^message], next} =
-             Managed.project(plan, [verdict(d, "eligible", present)], binding())
-
-    assert {:ok, %{state: ^next, messages: [^message], live_pending: true}} =
-             Managed.replay(state, [message], projected, binding())
-
-    assert Map.values(next.dependencies) == [present]
+    assert @error == Managed.project(plan, [verdict(d, "eligible", present)], binding())
 
     for substituted <- [
           record_v2(),
@@ -314,11 +719,7 @@ defmodule Ipse.Session.ManagedReferenceTest do
     d = record_v2()
     {_, _, plan} = admitted(user(), [d])
 
-    current =
-      d
-      |> put_in(["collection", "generation"], 11)
-      |> put_in(["collection", "root_sha256"], sha("new root"))
-      |> put_in(["collection", "manifest_sha256"], sha("new manifest"))
+    current = d
 
     assert {:ok, _, _, _} = Managed.project(plan, [verdict(d, "eligible", current)], binding())
 
@@ -329,7 +730,7 @@ defmodule Ipse.Session.ManagedReferenceTest do
           put_in(current, ["subject", "validity", "source_versions"], []),
           put_in(current, ["subject", "validity", "status"], "suppressed"),
           put_in(current, ["subject", "validity", "valid_until_ms"], 1000),
-          put_in(current, ["collection", "generation"], 10),
+          put_in(current, ["collection", "generation"], 11),
           dependency()
         ],
         do:
@@ -360,6 +761,41 @@ defmodule Ipse.Session.ManagedReferenceTest do
           )
 
     refute Managed.dependency?(put_in(d, ["collection", "floor_anchor"], nil))
+  end
+
+  test "legacy occurrences cannot refresh root-dependent output at a different root" do
+    for old <- [dependency(), record_v2(), absence_v2(), absence_v2(%{"kind" => "collection"})] do
+      current =
+        old
+        |> put_in(["collection", "generation"], 11)
+        |> put_in(["collection", "manifest_sha256"], sha("later manifest"))
+
+      current =
+        if current["version"] == 2 do
+          current
+          |> put_in(["collection", "root_state"], "present")
+          |> put_in(["collection", "root_sha256"], sha("later root"))
+        else
+          current
+        end
+
+      assert Managed.dependency?(current)
+      message = user("Observed collection generation changed")
+      {_, state, plan} = admitted(message, [old])
+
+      assert {:ok, same_root_event, [^message], _} =
+               Managed.project(plan, [verdict(old)], binding())
+
+      assert @error == Managed.project(plan, [verdict(old, "eligible", current)], binding())
+
+      old_event = put_in(same_root_event, ["verdicts", Access.at(0), "current"], current)
+      assert @error == Managed.replay(state, [message], old_event, binding())
+
+      assert {:ok, _, [withdrawn], _} =
+               Managed.project(plan, [verdict(old, "root_changed")], binding())
+
+      refute withdrawn["content"] =~ "Observed collection generation changed"
+    end
   end
 
   test "admission binds original message, producer, position, Session and exact dependency union" do
@@ -469,6 +905,42 @@ defmodule Ipse.Session.ManagedReferenceTest do
         do: assert(@error == Managed.project(plan, invalid, binding()))
   end
 
+  test "actual extension result withdrawal removes its pointer and preserves the closed tool sequence" do
+    call = %{
+      "role" => "assistant",
+      "content" => "",
+      "tool_calls" => [%{"id" => "a", "function" => %{"name" => "lookup", "arguments" => "{}"}}]
+    }
+
+    result = %{
+      "role" => "tool",
+      "tool_call_id" => "a",
+      "content" => "Managed worker output",
+      "ipse_tool_outcome" => %{"status" => "result_recorded", "approval" => "not_required"},
+      "ipse_extension_result" => %{
+        "invocation_id" => String.duplicate("d", 32),
+        "artifact_sha256" => sha("artifact"),
+        "result_sha256" => sha("result")
+      }
+    }
+
+    {:ok, empty} = Managed.new(@session)
+
+    {:ok, _, state} =
+      Managed.admit(empty, producer("collection.result"), 1, result, [dependency()])
+
+    {:ok, plan} = Managed.plan(state, [call, result])
+
+    assert {:ok, _, [^call, withdrawn], _} =
+             Managed.project(plan, [verdict(dependency(), "unavailable")], binding())
+
+    assert withdrawn["tool_call_id"] == "a"
+    assert withdrawn["ipse_tool_outcome"] == result["ipse_tool_outcome"]
+    refute Map.has_key?(withdrawn, "ipse_extension_result")
+    refute withdrawn["content"] =~ "Managed worker output"
+    assert Ipse.Session.Reference.safe_tail?([call, withdrawn])
+  end
+
   test "expiry is exclusive at actual admission time and cannot be hidden by eligible verdict" do
     {_, _, plan} = admitted()
 
@@ -496,14 +968,11 @@ defmodule Ipse.Session.ManagedReferenceTest do
     assert message["content"] =~ "expired"
   end
 
-  test "host fresh clearance at a newer root preserves byte-identical unchanged content" do
+  test "host clearance at the same root preserves byte-identical unchanged content" do
     {_, state, plan} = admitted()
     old = dependency()
 
-    current =
-      old
-      |> put_in(["collection", "generation"], 11)
-      |> put_in(["collection", "manifest_sha256"], sha("new unrelated root"))
+    current = old
 
     values = [verdict(old, "eligible", current)]
     assert {:ok, event, messages, next} = Managed.project(plan, values, binding())
@@ -511,7 +980,6 @@ defmodule Ipse.Session.ManagedReferenceTest do
     assert event["withdrawals"] == []
     assert event["before_sha256"] == event["after_sha256"]
     assert next.dependencies == %{sha(current) => current}
-    refute Map.has_key?(next.dependencies, sha(old))
 
     assert {:ok, %{state: ^next, live_pending: true}} =
              Managed.replay(state, plan.messages, event, binding())
@@ -800,6 +1268,27 @@ defmodule Ipse.Session.ManagedReferenceTest do
              Managed.admit(state, producer("reference", 1024), 1024, user(), [dependency()])
 
     assert {:ok, _} = Managed.plan(state, Enum.reverse(messages))
+  end
+
+  test "a byte-identical derived output retains dependencies from every input" do
+    {:ok, state} = Managed.new(@session)
+    first = user("Retained bytes")
+    second = user("Other input")
+    {:ok, _, state} = Managed.admit(state, producer("reference", 0), 0, first, [dependency(0)])
+    {:ok, _, state} = Managed.admit(state, producer("reference", 1), 1, second, [dependency(1)])
+    assert {:ok, derived} = Managed.dependencies(state, [first, second])
+
+    assert {:ok, projected} =
+             Managed.rebuild_projection(
+               state,
+               [first, second],
+               [first],
+               producer("checkpoint"),
+               derived
+             )
+
+    assert {:ok, ^derived} = Managed.dependencies(projected, [first])
+    assert length(derived) == 2
   end
 
   defp sized_dependency(bytes, n \\ 0) do

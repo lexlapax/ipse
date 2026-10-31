@@ -176,6 +176,67 @@ defmodule Ipse.Extension.CollectionManagedPagesTest do
     assert Pages.profile(:live).maximum == 183
   end
 
+  test "accepted-decision live markers are distinct and restricted to note rows" do
+    {id, literal} = F.live(1)
+    accepted = List.replace_at(literal, 7, 3)
+    assert {:ok, body} = Pages.pack(:live, Pages.zero(:live), %{id => accepted})
+    assert {:ok, %{entries: %{^id => ^accepted}}} = Pages.unpack(:live, Pages.zero(:live), body)
+
+    pending = Pages.live_identity("pending." <> F.id(1))
+    assert {:error, _} = Pages.pack(:live, Pages.zero(:live), %{pending => accepted})
+
+    assert {:error, _} =
+             Pages.pack(:live, Pages.zero(:live), %{id => List.replace_at(accepted, 6, 4)})
+  end
+
+  test "four thousand skewed identities can be represented by bounded ordered pages" do
+    alias Ipse.Extension.Collection.Directory
+
+    for {kind, size, expected_pages} <- [{:anchor, 50, 80}, {:live, 20, 200}] do
+      entries =
+        Enum.map(1..4000, fn n ->
+          if kind == :anchor, do: {F.id(n), F.row()}, else: F.live(n)
+        end)
+
+      assert Enum.all?(entries, fn {id, _} -> String.starts_with?(id, "000") end)
+
+      pages =
+        entries
+        |> Enum.chunk_every(size)
+        |> Enum.with_index(fn group, index ->
+          fence = if index == 0, do: Pages.zero(kind), else: elem(hd(group), 0)
+          rows = Map.new(group)
+          assert Pages.weight(kind, rows) >= Pages.profile(kind).floor
+          assert {:ok, body} = Pages.pack(kind, fence, rows)
+          {fence, rows, body}
+        end)
+
+      keys = Enum.map(pages, fn {fence, _, _} -> Pages.page_key(kind, fence) end)
+      assert {:ok, index} = Directory.index(keys)
+      assert length(keys) == expected_pages
+
+      Enum.with_index(pages, fn {fence, rows, body}, i ->
+        upper = if next = Enum.at(pages, i + 1), do: elem(next, 0)
+        assert {:ok, %{entries: ^rows}} = Pages.unpack(kind, fence, body, upper)
+
+        for identity <- Map.keys(rows) do
+          request = %{
+            "op" => "neighbors",
+            "request" => %{
+              "version" => 1,
+              "prefix" => Pages.prefix(kind),
+              "fence_bytes" => Pages.width(kind),
+              "needle" => identity
+            }
+          }
+
+          assert {:ok, _, nil, neighbors} = Directory.select(index, request, "present")
+          assert neighbors["selected"] == Pages.page_key(kind, fence)
+        end
+      end)
+    end
+  end
+
   test "production capsule and both retirement syntaxes preserve exact closed bytes but grant no authority" do
     id = F.id(5)
 
@@ -550,6 +611,115 @@ defmodule Ipse.Extension.CollectionManagedPagesNativeTest do
              )
   end
 
+  test "planner inserts into an authenticated four-thousand-entry clustered directory", c do
+    pages =
+      (1..3850 |> Enum.chunk_every(50)) ++ [Enum.to_list(3851..3904), Enum.to_list(3905..4000)]
+
+    pages =
+      Enum.with_index(pages, fn group, index ->
+        {if(index == 0, do: 0, else: hd(group)), hd(group)..List.last(group)}
+      end)
+
+    [initial | remaining] = Enum.chunk_every(pages, 10)
+
+    assert {:ok, initial_records} =
+             first(c, fn cap -> seed(cap, c.scope.operation_id, initial) end)
+
+    old =
+      Enum.reduce(remaining, initial_records, fn batch, records ->
+        scope = %{c.scope | operation_id: Ipse.Usage.id(), initialize: false}
+
+        assert {:ok, batch_records} =
+                 Identity.with_domain_publication(
+                   c.home,
+                   c.cwd,
+                   c.binding,
+                   scope,
+                   fn _ -> :ok end,
+                   fn cap, _ -> {:ok, seed(cap, scope.operation_id, batch)} end
+                 )
+
+        Map.merge(records, batch_records)
+      end)
+
+    assert map_size(old) == 79
+    scope = %{c.scope | operation_id: Ipse.Usage.id(), initialize: false}
+
+    assert {:ok, :checked} =
+             Identity.with_domain_publication(
+               c.home,
+               c.cwd,
+               c.binding,
+               scope,
+               fn _ -> :ok end,
+               fn cap, _ ->
+                 Process.put(:managed_fixture_units, 0)
+                 id = F.id(4001)
+                 row = %{F.row() | "choice" => F.capsule(id), "retirement" => F.full(id)}
+                 before_read = F.read(old, 1)
+
+                 {:ok, before_observation} =
+                   before_read.(%{"op" => "neighbors", "request" => request(id)})
+
+                 before_key = before_observation["neighbors"]["selected"]["key"]
+
+                 assert {:ok, %{entries: before_entries}} =
+                          Pages.open(cap, old[before_key], before_observation)
+
+                 assert {:ok, plan} = Planner.plan(cap, :anchor, [{id, row}], F.read(old, 1))
+                 assert plan.old_pages == 1 and length(plan.changes) == 2
+                 assert Process.get(:managed_fixture_units) <= 15
+
+                 assert {:ok, changes} =
+                          Planner.seal_changes(cap, F.witness(1, scope.operation_id), plan)
+
+                 assert Enum.any?(
+                          changes,
+                          &(&1["key"] == before_key and &1["expected_revision"] == 1)
+                        )
+
+                 assert Enum.any?(
+                          changes,
+                          &(&1["key"] != before_key and &1["expected_revision"] == 0)
+                        )
+
+                 updated =
+                   Enum.reduce(changes, old, fn change, acc ->
+                     if change["value"] == nil do
+                       Map.delete(acc, change["key"])
+                     else
+                       Map.put(
+                         acc,
+                         change["key"],
+                         F.record(change["key"], change["value"], 2, scope.operation_id)
+                       )
+                     end
+                   end)
+
+                 read = F.read(updated, 2)
+
+                 entries =
+                   [F.id(3905), id]
+                   |> Enum.reduce(%{}, fn needle, acc ->
+                     {:ok, observation} =
+                       read.(%{"op" => "neighbors", "request" => request(needle)})
+
+                     selected = updated[observation["neighbors"]["selected"]["key"]]
+
+                     assert {:ok, %{entries: page_entries}} =
+                              Pages.open(cap, selected, observation)
+
+                     Map.merge(acc, page_entries)
+                   end)
+
+                 assert entries == Map.put(before_entries, id, row)
+                 changed_keys = Enum.map(changes, & &1["key"])
+                 assert Map.drop(updated, changed_keys) == Map.drop(old, changed_keys)
+                 {:ok, :checked}
+               end
+             )
+  end
+
   test "native absence initializes one zero leaf but present missing sentinel and bad maps refuse",
        c do
     assert {:ok, :checked} =
@@ -581,6 +751,42 @@ defmodule Ipse.Extension.CollectionManagedPagesNativeTest do
 
                assert {:error, _} =
                         Planner.plan(cap, :anchor, [{F.id(1), F.row()}], F.read(missing, 1))
+
+               :checked
+             end)
+  end
+
+  test "checked page edits refuse stale and occupied rows before producing a plan", c do
+    assert {:ok, :checked} =
+             first(c, fn cap ->
+               records = seed(cap, c.scope.operation_id, [{0, 1..4}])
+               old = F.row()
+               changed = %{old | "clocks" => [1, 2, nil, nil]}
+               read = F.read(records, 1)
+
+               for {edits, expected} <- [
+                     {[{F.id(1), {:equal, old}, changed}], :ok},
+                     {[{F.id(1), {:equal, old}, nil}], :ok},
+                     {[{F.id(5), :absent, changed}], :ok},
+                     {[{F.id(1), :absent, changed}], :error},
+                     {[{F.id(5), {:equal, old}, changed}], :error},
+                     {[{F.id(1), {:equal, changed}, nil}], :error},
+                     {[{F.id(1), :absent, nil}], :error}
+                   ] do
+                 Process.put(:managed_fixture_units, 0)
+                 result = Planner.plan_checked(cap, :anchor, edits, read)
+                 assert elem(result, 0) == expected
+               end
+
+               Process.put(:managed_fixture_units, 0)
+
+               assert {:error, _} =
+                        Planner.plan_checked(
+                          cap,
+                          :anchor,
+                          [{F.id(1), {:equal, old}, changed}, {F.id(1), :absent, old}],
+                          read
+                        )
 
                :checked
              end)

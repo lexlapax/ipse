@@ -1,0 +1,268 @@
+Running ExUnit with seed: 932868, max_cases: 4
+Excluding tags: [:test]
+Including tags: [v4_pages: true, v4_corruption: true, v4_selected_reuse: true, v4_append: true, v4_source_integrity: true, v4_unknown: true, v4_public_continuation: true]
+
+.
+
+  1) test catalog-bound source heads and immutable blocks refuse changed bytes before effects (Ipse.ProducerProgressTest)
+     test/extensions/knowledge/producer_progress_test.exs:450
+     match (=) failed
+     code:  assert {{:done, {:error, _, _}}, rejected} =
+              invoke(Producer.start(resolved, @profile, args), %{d | model: altered})
+     left:  {{:done, {:error, _, _}}, rejected}
+     right: {{:done,
+              {:ok,
+               %{
+                 "continuation" => nil,
+                 "coverage" => %{
+                   "all_pages_ready" => true,
+                   "effects_used" => 4,
+                   "fact_production_required" => true,
+                   "group_complete" => false,
+                   "model_receipt_provenance" => false,
+                   "reads_used" => 56,
+                   "recipe" => "ipse.evidence.shared_producer.pages.v4",
+                   "retry_available" => false,
+                   "selected_changed" => false
+                 },
+                 "page" => %{
+                   "byte_count" => 5801,
+                   "key" => "genvec.notes.b308d76a85cb6eda1bceafa113fbd2b3c627edd536481f79aeae9b53f0e0ec43",
+                   "sha256" => "b308d76a85cb6eda1bceafa113fbd2b3c627edd536481f79aeae9b53f0e0ec43"
+                 },
+                 "ready" => %{
+                   "byte_count" => 1536,
+                   "key" => "genproducer4.notes.0",
+                   "revision" => 1012,
+                   "sha256" => "19879623c24dc58814acc0e114df986c3f658a010ca75353f1b14dbaf6165aba"
+                 },
+                 "status" => "page_ready"
+               }}},
+             %{
+               calls: 1,
+               requests: [
+                 %{
+                   "op" => "collection.store",
+                   "request" => %{"op" => "snapshot"},
+                   "scope" => "project"
+                 },
+                 %{
+                   "op" => "collection.store",
+                   "request" => %{
+                     "generation" => 1009,
+                     "key" => "catalog.notes",
+                     "op" => "value.stat"
+                   },
+                   "scope" => "project"
+                 },
+                 %{
+                   "op" => "collection.store",
+                   "request" => %{
+                     "generation" => 1009,
+                     "key" => "catalog.notes",
+                     "offset" => 0,
+                     "op" => "value.read"
+                   },
+                   "scope" => "project"
+                 },
+                 %{
+                   "op" => "collection.store",
+                   "request" => %{"op" => "snapshot"},
+                   "scope" => "project"
+                 },
+                 %{
+                   "op" => "collection.store",
+                   "request" => %{
+                     "generation" => 1009,
+                     "key" => "generation.notes",
+                     "op" => "value.stat"
+                   },
+                   "scope" => "project"
+                 },
+                 %{
+                   "op" => "collection.store",
+                   "request" => %{"op" => "snapshot"},
+                   "scope" => "project"
+                 },
+                 %{
+                   "op" => "collection.store",
+                   "request" => %{
+                     "generation" => 1009,
+                     "key" => "genjob.notes",
+                     "op" => "value.stat"
+                   },
+                   "scope" => "project"
+                 },
+                 %{
+                   "op" => "collection.store",
+                   "request" => %{
+                     "generation" => 1009,
+                     "key" => "genjob.notes",
+                     "offset" => 0,
+                     "op" => "value.read"
+                   },
+                   "scope" => "project"
+                 },
+                 %{
+                   "op" => "collection.store",
+                   "request" => %{"op" => "snapshot"},
+                   "scope" => "project"
+                 },
+                 %{
+                   "op" => "collection.store",
+                   "request" => %{
+                     "generation" => 1009,
+                     "key" => "genproducer4.notes.0",
+                     "op" => "value.stat"
+                   },
+                   "scope" => "project"
+                 },
+                 %{
+                   "op" => "collection.store",
+                   "request" => %{"op" => "snapshot"},
+                   "scope" => "project"
+                 },
+                 %{
+                   "op" => "collection.store",
+                   "request" => %{
+                     "generation" => 1009,
+                     "key" => "catalog.notes.0",
+                     "op" => "value.stat"
+                   },
+                   "scope" => "project"
+                 },
+                 %{
+                   "op" => "collection.store",
+                   "request" => %{
+                     "generation" => 1009,
+                     "key" => "catalog.notes.0",
+                     "offset" => 0,
+                     "op" => "value.read"
+                   },
+                   "scope" => "project"
+                 },
+                 %{
+                   "op" => "collection.store",
+                   "request" => %{"op" => "snapshot"},
+                   "scope" => "project"
+                 },
+                 %{
+                   "op" => "collection.store",
+                   "request" => %{
+                     "generation" => 1009,
+                     "key" => "catalog.notes",
+                     "op" => "value.stat"
+                   },
+                   "scope" => "project"
+                 },
+                 %{
+                   "op" => "collection.store",
+                   "request" => %{
+                     "generation" => 1009,
+                     "key" => "catalog.notes",
+                     "offset" => 0,
+                     "op" => "value.read"
+                   },
+                   "scope" => "project"
+                 },
+                 %{
+                   "op" => "collection.store",
+                   "request" => %{
+                     "generation" => 1009,
+                     "key" => "source.notes.e49d57fa19a82eaf23ff6a7e1236f367ac3858d0d5ad66e7c97027f1926a8142",
+                     "offset" => 0,
+                     "op" => "value.read"
+                   },
+                   "scope" => "project"
+                 },
+                 %{
+                   "op" => "collection.store",
+                   "request" => %{
+                     "generation" => 1009,
+                     "key" => "catalog.notes.0",
+                     "offset" => 0,
+                     "op" => "value.read"
+                   },
+                   "scope" => "project"
+                 },
+                 %{
+                   "op" => "collection.store",
+                   "request" => %{
+                     "generation" => 1009,
+                     "key" => "data.notes.dab13e19baa265c0d3e87cadb70d3b6c73ae930f5f39f0de84536b4a34e8023d",
+                     "offset" => 0,
+                     "op" => "value.read"
+                   },
+                   "scope" => "project"
+                 },
+                 %{
+                   "op" => "collection.store",
+                   "request" => %{
+                     "generation" => 1009,
+                     "key" => "catalog.notes",
+                     "op" => "value.stat"
+                   },
+                   "scope" => "project"
+                 },
+                 %{
+                   "op" => "collection.store",
+                   "request" => %{"op" => "snapshot"},
+                   "scope" => "project"
+                 },
+                 %{
+                   "op" => "collection.store",
+                   "request" => %{
+                     "generation" => 1009,
+                     "key" => "genproducer4.notes.0",
+                     "op" => "value.stat"
+                   },
+                   "scope" => "project"
+                 },
+                 %{
+                   "op" => "collection.store",
+                   "request" => %{
+                     "generation" => 1009,
+                     "key" => "catalog.notes",
+                     "op" => "value.stat"
+                   },
+                   "scope" => "project"
+                 },
+                 %{
+                   "op" => "collection.store",
+                   "request" => %{
+                     "generation" => 1009,
+                     "key" => "generation.notes",
+                     "op" => "value.stat"
+                   },
+                   "scope" => "project"
+                 },
+                 %{
+                   "op" => "collection.store",
+                   "request" => %{
+                     "generation" => 1009,
+                     "key" => "genjob.notes",
+                     "op" => "value.stat"
+                   },
+                   "scope" => "project"
+                 },
+                 %{
+                   "op" => "collection.store",
+                   "request" => %{...},
+                   ...
+                 },
+                 ...
+               ],
+               ...
+             }}
+     stacktrace:
+       test/extensions/knowledge/producer_progress_test.exs:466: anonymous fn/4 in Ipse.ProducerProgressTest."test catalog-bound source heads and immutable blocks refuse changed bytes before effects"/1
+       (elixir 1.20.4) lib/enum.ex:1725: Enum."-map/2-lists^map/1-1-"/2
+       (elixir 1.20.4) lib/enum.ex:1725: Enum."-map/2-lists^map/1-1-"/2
+       test/extensions/knowledge/producer_progress_test.exs:457: (test)
+
+...V4_TWO_PAGES {"pages":2,"vectors":11,"embedding_calls":6,"maximum_store_frame":12758,"hydrate_reads":38,"native_operations":0}
+..
+Finished in 5.3 seconds (4.6s on load, 0.00s async, 0.7s sync)
+
+Result: 6/7 passed, 2 excluded
+Failed: 1 test

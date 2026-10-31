@@ -506,9 +506,21 @@ defmodule IpseKnowledgeExample.Proof do
               :idle = Session.info(pid).phase
               0 = Session.info(pid).accounting["request_count"]
 
-              true =
-                File.read!(Path.join([root, "sessions-" <> label, saved.id <> ".jsonl"])) ==
-                  saved.journal
+              journal =
+                File.read!(Path.join([root, "sessions-" <> label, saved.id <> ".jsonl"]))
+
+              true = String.starts_with?(journal, saved.journal)
+
+              suffix =
+                binary_part(
+                  journal,
+                  byte_size(saved.journal),
+                  byte_size(journal) - byte_size(saved.journal)
+                )
+
+              [owner] = suffix |> String.split("\n", trim: true) |> Enum.map(&Jason.decode!/1)
+              "session_release_owner_started" = owner["type"]
+              true = owner["session_id"] == saved.id
 
               true = state_files(home) == saved.state
               events(pid, root, label)

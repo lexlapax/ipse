@@ -1,0 +1,12 @@
+{
+  "graph": "/home/lexlapax/projects/lexlapax/ipse/_build/source-lock-reserve-20261028-03",
+  "owner_loss_graph": "/home/lexlapax/projects/lexlapax/ipse/_build/source-lock-reserve-20261028-02",
+  "helper_sha256": "113df584e83b7749a11a72509092cb9c2b32d6fdc3fcf91b0181335f5f8c2550",
+  "runner": "frozen production-profile Runner with exact current lock block; other concurrent Runner edits excluded",
+  "focused": {
+    "positive": "fourth.log (one passing case, one excluded)",
+    "owner_loss": "third.log (one passing case in a 1/2 batch)",
+    "child_budget": "resource-budget.log (one passing case)"
+  },
+  "fixture": "Synthetic original journals, actual source-origin file identity/native locks, supervised shell and protected transaction; no full managed-note or model-quality claim"
+}

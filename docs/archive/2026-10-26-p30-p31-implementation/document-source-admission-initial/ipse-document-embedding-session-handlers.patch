@@ -1,0 +1,43 @@
+*** Begin Patch
+*** Update File: /home/lexlapax/projects/lexlapax/ipse/lib/ipse/session.ex
+@@
+   def handle_call({:extension_document_current, _, _}, _, s),
+     do: {:reply, {:error, :document_store_refused}, s}
++
++  def handle_call(
++        {:extension_document_embedding_prepare, ref, request},
++        {caller, _},
++        %{job_ref: ref, task: %{pid: caller}, invocation: %{action: nil}, phase: phase} = s
++      )
++      when ref != nil and phase in [:tool, :extension_command, :extension_service, :extension_events],
++      do: CurrentInvocation.prepare_document_embedding(s, ref, request)
++
++  def handle_call(
++        {:extension_document_embedding_bound, ref, request, binding},
++        {caller, _},
++        %{job_ref: ref, task: %{pid: caller}, invocation: %{action: nil}, phase: phase} = s
++      )
++      when ref != nil and phase in [:tool, :extension_command, :extension_service, :extension_events],
++      do: CurrentInvocation.bind_document_embedding(s, ref, request, binding)
++
++  def handle_call(
++        {:document_embedding_admit, ref, phase, admission, expected, wire, sources},
++        {caller, _},
++        %{job_ref: ref, task: %{pid: worker}, invocation: %{action: %{intent: _}}, phase: current} = s
++      )
++      when ref != nil and current in [:tool, :extension_command, :extension_service, :extension_events] do
++    if caller == worker or Ipse.Session.Resources.authorized_effect?(worker, caller),
++      do: Ipse.Session.InferenceDispatch.document_admit(s, caller, phase, admission, expected, wire, sources),
++      else: {:reply, {:error, :document_source_use_refused}, s}
++  end
++
++  def handle_call({:extension_document_embedding_prepare, _, _}, _, s),
++    do: {:reply, {:error, :document_source_use_refused}, s}
++
++  def handle_call({:extension_document_embedding_bound, _, _, _}, _, s),
++    do: {:reply, {:error, :document_source_use_refused}, s}
++
++  def handle_call({:document_embedding_admit, _, _, _, _, _, _}, _, s),
++    do: {:reply, {:error, :document_source_use_refused}, s}
+*** End Patch
+

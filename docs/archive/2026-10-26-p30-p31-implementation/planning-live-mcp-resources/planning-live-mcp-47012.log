@@ -1,0 +1,48 @@
+Running ExUnit with seed: 47012, max_cases: 8
+Excluding tags: [:native_sandbox, :macos_sandbox, :macos_filesystem, :memory_scope]
+
+
+
+  1) test native transitions refuse live MCP carryover and owner loss stops actual resources without replay (Ipse.MCP.PlanningLiveResourcesTest)
+     test/ipse/mcp/planning_live_resources_test.exs:9
+     Type a task, $review, or /help. Use /cancel while work is running.
+     you> lookup
+     Running…
+     you> Running…
+
+     → mcp__notes__lookup {"query":"public"}
+     /plan
+     Planning entry requires an idle native terminal.
+     you> ← mcp__notes__lookup: Host-recorded MCP result: {"call_id":"live-read","recorded_at":"2026-10-29T16:05:10.932546Z","tool":"mcp__notes__lookup"}
+     Synthetic lookup result
+     Running…
+     ** (EXIT from #PID<0.95.0>) exited in: :sys.get_state(#PID<0.232.0>)
+         ** (EXIT) normal
+
+     [31m
+     09:05:10.932 [error] Task #PID<0.195.0> started from #PID<0.95.0> terminating
+     ** (stop) exited in: :sys.get_state(#PID<0.232.0>)
+         ** (EXIT) normal
+         (stdlib 8.1) sys.erl:753: :sys.send_system_msg/2
+         (stdlib 8.1) sys.erl:342: :sys.get_state/1
+         test/support/planning_live_mcp.exs:61: Ipse.Test.PlanningLiveMCP.monitor_live/3
+         (elixir 1.20.4) lib/task/supervised.ex:105: Task.Supervised.invoke_mfa/2
+         (elixir 1.20.4) lib/task/supervised.ex:40: Task.Supervised.reply/4
+     Function: #Function<0.76541832 in file:test/support/planning_live_mcp.exs>
+         Args: [][0m
+
+     thread 'main' (1636804) panicked at test/support/planning_live_mcp_pty.rs:123:5:
+     assertion failed: status.success()
+     note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+     code: for mode <- ~w(entry_release exit_kill) do
+     stacktrace:
+       test/ipse/mcp/planning_live_resources_test.exs:51: anonymous fn/4 in Ipse.MCP.PlanningLiveResourcesTest."test native transitions refuse live MCP carryover and owner loss stops actual resources without replay"/1
+       (elixir 1.20.4) lib/enum.ex:1725: Enum."-map/2-lists^map/1-1-"/2
+       test/ipse/mcp/planning_live_resources_test.exs:38: (test)
+
+
+Finished in 1.6 seconds (0.08s on load, 0.00s async, 1.5s sync)
+
+Result: 0/1 passed
+Failed: 1 test

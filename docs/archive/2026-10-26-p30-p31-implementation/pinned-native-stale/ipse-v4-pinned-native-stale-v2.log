@@ -1,0 +1,9 @@
+Running ExUnit with seed: 266086, max_cases: 4
+Excluding tags: [:test]
+Including tags: [pinned_native_stale: true]
+
+Retained synthetic pinned-read native store: /tmp/ipse-pinned-read-0a382c81669fd07f6f55f96a78635f49
+.
+Finished in 3.9 seconds (3.7s on load, 0.00s async, 0.2s sync)
+
+Result: 1 passed

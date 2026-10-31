@@ -1,0 +1,8 @@
+Running ExUnit with seed: 87235, max_cases: 4
+Excluding tags: [:test]
+Including tags: [history_expiry_consent: true]
+
+.
+Finished in 0.6 seconds (0.2s on load, 0.00s async, 0.4s sync)
+
+Result: 1 passed, 4 excluded

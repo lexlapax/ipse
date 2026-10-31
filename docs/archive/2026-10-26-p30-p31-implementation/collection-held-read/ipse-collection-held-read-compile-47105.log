@@ -1,0 +1,51 @@
+     warning: Ipse.Extension.Collection.Directory.document_index_request?/1 is undefined or private
+     │
+ 120 │          true <- Directory.document_index_request?(request) do
+     │                            ~
+     │
+     └─ lib/ipse/extension/collection.ex:120:28: Ipse.Extension.Collection.document_index/3
+
+     warning: Ipse.Extension.Collection.Directory.document_index/3 is undefined or private
+     │
+ 533 │                   Directory.document_index(state["records"], summary(state), request)
+     │                             ~
+     │
+     └─ lib/ipse/extension/collection.ex:533:29: Ipse.Extension.Collection.locked/5
+
+** (MatchError) no match of right hand side value:
+
+    {:ok, [Ipse.Extension.Collection],
+     %{
+       compile_warnings: [],
+       runtime_warnings: [
+         %{
+           message: "Ipse.Extension.Collection.Directory.document_index_request?/1 is undefined or private",
+           position: {120, 28},
+           file: "/home/lexlapax/projects/lexlapax/ipse/lib/ipse/extension/collection.ex",
+           group: true,
+           stacktrace: [
+             {Ipse.Extension.Collection, :document_index, 3,
+              [file: ~c"lib/ipse/extension/collection.ex", line: 120, column: 28]}
+           ],
+           source: "/home/lexlapax/projects/lexlapax/ipse/lib/ipse/extension/collection.ex",
+           span: nil,
+           severity: :warning
+         },
+         %{
+           message: "Ipse.Extension.Collection.Directory.document_index/3 is undefined or private",
+           position: {533, 29},
+           file: "/home/lexlapax/projects/lexlapax/ipse/lib/ipse/extension/collection.ex",
+           group: true,
+           stacktrace: [
+             {Ipse.Extension.Collection, :locked, 5,
+              [file: ~c"lib/ipse/extension/collection.ex", line: 533, column: 29]}
+           ],
+           source: "/home/lexlapax/projects/lexlapax/ipse/lib/ipse/extension/collection.ex",
+           span: nil,
+           severity: :warning
+         }
+       ]
+     }}
+
+    /tmp/ipse-collection-held-read-compile-47104.exs:4: (file)
+    (elixir 1.20.4) lib/code.ex:1639: Code.require_file/2

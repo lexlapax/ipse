@@ -1,0 +1,6 @@
+
+running 1 test
+test ipse_transaction::unix::tests::retained_root_deadline_switch_refuses_elapsed_and_malformed_before_rename ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 71 filtered out; finished in 0.00s
+

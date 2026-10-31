@@ -1,0 +1,9 @@
+Running ExUnit with seed: 47214, max_cases: 8
+Excluding tags: [:test]
+Including tags: [document_guard_expiry: true]
+
+DOCUMENT_GUARD_EXPIRY {"pending":true,"unchanged_selection":true,"http_body_requests":0,"approvals":1}
+.
+Finished in 45.0 seconds (0.2s on load, 0.00s async, 44.8s sync)
+
+Result: 1 passed, 1 excluded

@@ -1,0 +1,41 @@
+Running ExUnit with seed: 995381, max_cases: 1
+
+.
+
+  1) test explicit Word payload becomes a stored revision and exact paragraph/table citations (Ipse.KnowledgeDocumentIngestionTest)
+     test/extensions/knowledge/document_ingestion_test.exs:81
+     ** (ExUnit.AssertionError) 
+
+     %{"claims" => [], "continuation" => nil, "coverage" => %{}, "evidence" => [], "gaps" => [%{"code" => "profile_authority_mismatch"}], "status" => "refused", "version" => 1}
+
+         lib/ex_unit/assertions.ex:460: ExUnit.Assertions.assert/2
+         (stdlib 8.1) erl_eval.erl:1048: :erl_eval.do_apply/7
+         (stdlib 8.1) erl_eval.erl:276: :erl_eval.exprs/6
+
+     code: isolated(~S'''
+     stacktrace:
+       test/extensions/knowledge/document_ingestion_test.exs:77: Ipse.KnowledgeDocumentIngestionTest.isolated/1
+       test/extensions/knowledge/document_ingestion_test.exs:82: (test)
+
+
+
+  2) test partial Word coverage survives storage/query and forged receipts never enter ordinary put (Ipse.KnowledgeDocumentIngestionTest)
+     test/extensions/knowledge/document_ingestion_test.exs:134
+     ** (ExUnit.AssertionError) 
+
+     %{"claims" => [], "continuation" => nil, "coverage" => %{}, "evidence" => [], "gaps" => [%{"code" => "profile_authority_mismatch"}], "status" => "refused", "version" => 1}
+
+         lib/ex_unit/assertions.ex:460: ExUnit.Assertions.assert/2
+         (stdlib 8.1) erl_eval.erl:1048: :erl_eval.do_apply/7
+         (stdlib 8.1) erl_eval.erl:276: :erl_eval.exprs/6
+
+     code: isolated(~S'''
+     stacktrace:
+       test/extensions/knowledge/document_ingestion_test.exs:77: Ipse.KnowledgeDocumentIngestionTest.isolated/1
+       test/extensions/knowledge/document_ingestion_test.exs:135: (test)
+
+..
+Finished in 3.6 seconds (0.1s on load, 0.00s async, 3.5s sync)
+
+Result: 3/5 passed
+Failed: 2 tests

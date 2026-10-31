@@ -1,0 +1,8 @@
+Running ExUnit with seed: 945938, max_cases: 8
+Excluding tags: [:test]
+Including tags: [controlled_tty_loss: true]
+
+[32m.[0m
+Finished in 4.5 seconds (0.8s on load, 0.00s async, 3.7s sync)
+[32m
+Result: 1 passed, 17 excluded[0m

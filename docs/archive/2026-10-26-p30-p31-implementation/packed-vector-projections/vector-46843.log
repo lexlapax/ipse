@@ -1,0 +1,82 @@
+     warning: IpseKnowledge.Evidence.source/1 is undefined (module IpseKnowledge.Evidence is not available or is yet to be defined)
+     │
+ 236 │       e.source(%{
+     │         ~
+     │
+     └─ test/extensions/knowledge/collection_adapter_session_test.exs:236:9: Ipse.KnowledgeCollectionAdapterSessionTest."test packed float32 pages preserve complete ordered vector identities within existing string limits"/1
+
+     warning: IpseKnowledge.Evidence.chunks/1 is undefined (module IpseKnowledge.Evidence is not available or is yet to be defined)
+     │
+ 255 │     {:ok, chunks} = e.chunks(source)
+     │                       ~
+     │
+     └─ test/extensions/knowledge/collection_adapter_session_test.exs:255:23: Ipse.KnowledgeCollectionAdapterSessionTest."test packed float32 pages preserve complete ordered vector identities within existing string limits"/1
+
+     warning: IpseKnowledge.Evidence.vector/1 is undefined (module IpseKnowledge.Evidence is not available or is yet to be defined)
+     │
+ 272 │             e.vector(
+     │               ~
+     │
+     └─ test/extensions/knowledge/collection_adapter_session_test.exs:272:15: Ipse.KnowledgeCollectionAdapterSessionTest."test packed float32 pages preserve complete ordered vector identities within existing string limits"/1
+
+     warning: IpseKnowledge.Store.Collection.Projection.pack/3 is undefined (module IpseKnowledge.Store.Collection.Projection is not available or is yet to be defined)
+     │
+ 283 │       assert {:ok, pages} = p.pack(source, vectors, selection)
+     │                               ~
+     │
+     └─ test/extensions/knowledge/collection_adapter_session_test.exs:283:31: Ipse.KnowledgeCollectionAdapterSessionTest."test packed float32 pages preserve complete ordered vector identities within existing string limits"/1
+     └─ test/extensions/knowledge/collection_adapter_session_test.exs:294:30: Ipse.KnowledgeCollectionAdapterSessionTest."test packed float32 pages preserve complete ordered vector identities within existing string limits"/1
+     └─ test/extensions/knowledge/collection_adapter_session_test.exs:297:18: Ipse.KnowledgeCollectionAdapterSessionTest."test packed float32 pages preserve complete ordered vector identities within existing string limits"/1
+
+     warning: Ipse.JSON.encode!/1 is undefined or private
+     │
+ 287 │         assert byte_size(JSON.encode!(page) |> IO.iodata_to_binary()) <= 48 * 1024
+     │                               ~
+     │
+     └─ test/extensions/knowledge/collection_adapter_session_test.exs:287:31: Ipse.KnowledgeCollectionAdapterSessionTest."test packed float32 pages preserve complete ordered vector identities within existing string limits"/1
+
+     warning: IpseKnowledge.Store.Collection.Projection.unpack/3 is undefined (module IpseKnowledge.Store.Collection.Projection is not available or is yet to be defined)
+     │
+ 291 │       assert {:ok, ^vectors} = p.unpack(source, pages, selection)
+     │                                  ~
+     │
+     └─ test/extensions/knowledge/collection_adapter_session_test.exs:291:34: Ipse.KnowledgeCollectionAdapterSessionTest."test packed float32 pages preserve complete ordered vector identities within existing string limits"/1
+     └─ test/extensions/knowledge/collection_adapter_session_test.exs:292:30: Ipse.KnowledgeCollectionAdapterSessionTest."test packed float32 pages preserve complete ordered vector identities within existing string limits"/1
+     └─ test/extensions/knowledge/collection_adapter_session_test.exs:293:30: Ipse.KnowledgeCollectionAdapterSessionTest."test packed float32 pages preserve complete ordered vector identities within existing string limits"/1
+     └─ test/extensions/knowledge/collection_adapter_session_test.exs:308:30: Ipse.KnowledgeCollectionAdapterSessionTest."test packed float32 pages preserve complete ordered vector identities within existing string limits"/1
+
+Running ExUnit with seed: 46843, max_cases: 1
+Excluding tags: [:test]
+Including tags: [:packed_vector_geometry, :packed_vector_session]
+
+NAMESPACE_TEST_ARTIFACT f2578b4b0f935c7e4915fb20e5f6e2f9ef85497c6e62ed031c685ad15d0cf2dd
+
+
+  1) test packed float32 pages preserve complete ordered vector identities within existing string limits (Ipse.KnowledgeCollectionAdapterSessionTest)
+     test/extensions/knowledge/collection_adapter_session_test.exs:222
+     ** (MatchError) no match of right hand side value:
+
+         {:error, :invalid_vector}
+
+     code: for dimensions <- [1024, 4096] do
+     stacktrace:
+       test/extensions/knowledge/collection_adapter_session_test.exs:271: anonymous fn/4 in Ipse.KnowledgeCollectionAdapterSessionTest."test packed float32 pages preserve complete ordered vector identities within existing string limits"/1
+       (elixir 1.20.4) lib/enum.ex:2622: Enum."-reduce/3-lists^foldl/2-0-"/3
+       test/extensions/knowledge/collection_adapter_session_test.exs:268: anonymous fn/3 in Ipse.KnowledgeCollectionAdapterSessionTest."test packed float32 pages preserve complete ordered vector identities within existing string limits"/1
+       (elixir 1.20.4) lib/enum.ex:1725: Enum."-map/2-lists^map/1-1-"/2
+       test/extensions/knowledge/collection_adapter_session_test.exs:258: (test)
+
+
+
+  2) test actual Session stages packed vectors and atomically replaces their selected complete projection (Ipse.KnowledgeCollectionAdapterSessionTest)
+     test/extensions/knowledge/collection_adapter_session_test.exs:314
+     {"Extension outcome unknown after refusal, failure or interruption. Inspect its receipt before retrying; no callback was replayed.", [{"snapshot", "ok"}, {"value.stat", "ok"}, {"value.read", "ok"}, {"value.stat", "ok"}, {"value.read", "ok"}, {"value.stat", "ok"}, {"value.read", "ok"}, {"value.stat", "ok"}, {"value.read", "ok"}, {"value.read", "ok"}, {"value.read", "ok"}, {"value.read", "ok"}, {"value.stat", "ok"}]}
+     code: opened = invoke(c, "vectors", args)
+     stacktrace:
+       test/extensions/knowledge/collection_adapter_session_test.exs:318: (test)
+
+
+Finished in 3.7 seconds (0.00s async, 3.7s sync)
+
+Result: 0/2 passed, 17 excluded
+Failed: 2 tests

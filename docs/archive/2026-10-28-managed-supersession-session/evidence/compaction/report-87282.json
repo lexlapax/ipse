@@ -1,0 +1,37 @@
+{
+  "automatically_replayed": false,
+  "control_after_sha256": "bb94cea8de99bc71b0e1310a670fe958304f34cb1be5b5940941ff2c0df0f5d2",
+  "control_before_sha256": "05893d89406ee0bfb3d5506a06f1088c848af90858b8591de3ee4d3c25bef57f",
+  "controller_exit": ":normal",
+  "effect_alive_after_controller_exit": true,
+  "effect_exit": ":normal",
+  "inspection": {
+    "action_sha256": "e21a5dd365b169270d17c21c7d9915cd7d10e1e61999ae2cfa3ffb1c1858ea6e",
+    "control_status": "publishing",
+    "current_note_eligibility": "not_checked",
+    "journal_directory": "/tmp/ipse-supersession-session-b9d80cbb46174ad1ed48f6413fc62ddf/home/knowledge-management",
+    "journal_id": "c2024032bb669a859cae00ef77a38406",
+    "journal_status": "unconfirmed",
+    "namespace": "a6f3157f5c0e4089b9aea809d57278a1572b08b5a15412b931ad7698713c9a30",
+    "operation_id": "abf5589612a0c27dc7452b7756eee40b",
+    "project_id": "c4f4ff76d1bd2f3e707a82e6838b26da6cd5f3c2365550305d0955977dbc9bab",
+    "record_key": "note.dac24d62d13d8e6d83822658cf94afae9491ec5e484cb049d13f1522f4059ff2",
+    "replayed": false
+  },
+  "intent_choice_sha256": "e8248336b103f37c845eea45dcd3c82f3a9a7132d43e03466c9d52b8a03b6d42",
+  "intent_sha256": "690a9c9fe30fbaf05650e8a9a9afaa8ad0b88ffcabd336a17a4d4c958400e5f8",
+  "journal_id": "c2024032bb669a859cae00ef77a38406",
+  "port_closed_after_controller_exit": true,
+  "processes": {
+    "controller_monitors": "{:monitors, [process: #PID<0.826.0>, process: #PID<0.824.0>]}",
+    "controller_pid": "#PID<0.859.0>",
+    "effect_pid": "#PID<0.826.0>",
+    "effect_status": "{:status, :waiting}",
+    "native_os_pid": 1101161,
+    "victim_pid": "#PID<0.824.0>"
+  },
+  "result_present": true,
+  "result_status": "unconfirmed",
+  "root_after_sha256": "07085d52452683c86d5a6feacae77a89c3af394d94350330becf0f96989b80f4",
+  "root_before_sha256": "07085d52452683c86d5a6feacae77a89c3af394d94350330becf0f96989b80f4"
+}

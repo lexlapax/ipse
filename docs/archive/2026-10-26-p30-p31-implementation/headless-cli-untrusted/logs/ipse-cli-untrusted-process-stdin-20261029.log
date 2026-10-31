@@ -1,0 +1,906 @@
+Choose the knowledge identity for /tmp/ipse-cli-untrusted-process-stdin-20261029/project.
+Repository shares only with reciprocally verified worktrees; folder means only this canonical folder.
+Type one exact choice: folder 95499a1995c19c33
+> folder 95499a1995c19c33
+Enable native notes for /tmp/ipse-cli-untrusted-process-stdin-20261029/project (folder).
+This selection takes effect in the next new session, including headless run.
+Protected note saving is currently unavailable in this runtime; saved permission is retained.
+Literal notes require a separate native statement/category review or a typed host outcome; other inputs remain pending.
+Ordinary notes: 90 days; pending proposals: 7 days. Current/preferences may persist.
+No secondary model calls are authorized. Ordinary tool approvals remain separate.
+Exact permission, route, retention, artifact and daily limits:
+{
+  "artifact_sha256": "578cd2ade037601ee7f17a2b69f901d116efc664369459e53d9be566cdf317fc",
+  "expires_at_ms": 1824859196937,
+  "headless": true,
+  "limits": {
+    "cost_nanos": 0,
+    "download_bytes": 0,
+    "input_bytes": 2097152,
+    "model_calls": 0,
+    "operations": 100,
+    "output_bytes": 4194304
+  },
+  "operations": [
+    "notes.capture",
+    "notes.propose",
+    "notes.recall"
+  ],
+  "period_ms": 86400000,
+  "project": "b90c5d32cadd925e5919207ddbc02d1d3143159143ec06b05f13cb2464698269",
+  "settings": {
+    "activation": {
+      "allow_children": false,
+      "artifact": "578cd2ade037601ee7f17a2b69f901d116efc664369459e53d9be566cdf317fc",
+      "artifact_sha256": "578cd2ade037601ee7f17a2b69f901d116efc664369459e53d9be566cdf317fc",
+      "capabilities": [
+        "event.job",
+        "host.actions",
+        "host.actions.mixed",
+        "host.collection.managed",
+        "host.collection.read",
+        "host.context",
+        "host.sources",
+        "invoke.command",
+        "invoke.result.pages",
+        "invoke.tool"
+      ],
+      "instance": "knowledge",
+      "kind": "reviewed.bundle",
+      "lifetime": "session",
+      "main_timeout_ms": 5000,
+      "options": {
+        "embedding": {},
+        "extraction": {},
+        "fetch": {},
+        "rerank": {},
+        "retrieval": {},
+        "search": {},
+        "stores": {},
+        "version": 1
+      },
+      "order": 100,
+      "service_refs": [
+        {
+          "operation": "main",
+          "profile": null,
+          "service_id": "local"
+        }
+      ],
+      "sidecar_sha256": "6add073e340583f2debc3a59475298ccb2359bc1aab7f77b65f704fbb9553549",
+      "version": 1
+    },
+    "constraints": {
+      "78b6d7943b3430f0225a3ee45cc4cffc27de14ddd97c39f8e38c9f8fb85ca68e": {
+        "allow_delete": false,
+        "evidence_path": [
+          "evidence",
+          "sources"
+        ],
+        "key_prefix": "pending.",
+        "source_categories": [
+          "assistant_proposal",
+          "interactive_operator",
+          "native_operator_answer",
+          "native_operator_assertion",
+          "typed_host_outcome",
+          "unattended_input"
+        ],
+        "value_schema": {
+          "additionalProperties": false,
+          "properties": {
+            "assigned_category": {
+              "enum": [
+                "ordinary",
+                "preference",
+                "current"
+              ],
+              "type": "string"
+            },
+            "created_at_ms": {
+              "maximum": 9007199254740991,
+              "minimum": 0,
+              "type": "integer"
+            },
+            "event_at_ms": {
+              "maximum": 9007199254740991,
+              "minimum": 0,
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "evidence": {
+              "additionalProperties": false,
+              "properties": {
+                "sources": {
+                  "items": {
+                    "additionalProperties": false,
+                    "properties": {
+                      "content_sha256": {
+                        "maxLength": 64,
+                        "minLength": 64,
+                        "type": "string"
+                      },
+                      "coverage": {
+                        "enum": [
+                          "available",
+                          "partial"
+                        ],
+                        "type": "string"
+                      },
+                      "end_byte": {
+                        "maximum": 9007199254740991,
+                        "minimum": 0,
+                        "type": "integer"
+                      },
+                      "kind": {
+                        "enum": [
+                          "input.original",
+                          "input.operator_answer",
+                          "answer.original",
+                          "tool.outcome",
+                          "input.assertion.ordinary",
+                          "input.assertion.preference",
+                          "input.assertion.current"
+                        ],
+                        "type": "string"
+                      },
+                      "occurrence_id": {
+                        "maxLength": 32,
+                        "minLength": 32,
+                        "type": "string"
+                      },
+                      "origin": {
+                        "enum": [
+                          "assistant_proposal",
+                          "interactive_operator",
+                          "native_operator_answer",
+                          "native_operator_assertion",
+                          "typed_host_outcome",
+                          "unattended_input"
+                        ],
+                        "type": "string"
+                      },
+                      "path": {
+                        "type": "null"
+                      },
+                      "quote": {
+                        "maxLength": 1024,
+                        "minLength": 1,
+                        "type": "string"
+                      },
+                      "quote_sha256": {
+                        "maxLength": 64,
+                        "minLength": 64,
+                        "type": "string"
+                      },
+                      "receipt_sha256": {
+                        "maxLength": 64,
+                        "minLength": 64,
+                        "type": "string"
+                      },
+                      "session_id": {
+                        "maxLength": 32,
+                        "minLength": 32,
+                        "type": "string"
+                      },
+                      "start_byte": {
+                        "maximum": 9007199254740991,
+                        "minimum": 0,
+                        "type": "integer"
+                      },
+                      "version": {
+                        "enum": [
+                          1
+                        ],
+                        "type": "integer"
+                      },
+                      "version_id": {
+                        "maxLength": 32,
+                        "minLength": 32,
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "content_sha256",
+                      "coverage",
+                      "end_byte",
+                      "kind",
+                      "occurrence_id",
+                      "origin",
+                      "path",
+                      "quote",
+                      "quote_sha256",
+                      "receipt_sha256",
+                      "session_id",
+                      "start_byte",
+                      "version",
+                      "version_id"
+                    ],
+                    "type": "object"
+                  },
+                  "maxItems": 1,
+                  "minItems": 1,
+                  "type": "array"
+                }
+              },
+              "required": [
+                "sources"
+              ],
+              "type": "object"
+            },
+            "expires_at_ms": {
+              "maximum": 9007199254740991,
+              "minimum": 0,
+              "type": "integer"
+            },
+            "id": {
+              "maxLength": 64,
+              "minLength": 64,
+              "type": "string"
+            },
+            "kind": {
+              "enum": [
+                "proposal"
+              ],
+              "type": "string"
+            },
+            "lineage": {
+              "maxLength": 64,
+              "minLength": 64,
+              "type": "string"
+            },
+            "reason": {
+              "maxLength": 256,
+              "minLength": 1,
+              "type": "string"
+            },
+            "state": {
+              "enum": [
+                "pending"
+              ],
+              "type": "string"
+            },
+            "text": {
+              "maxLength": 2048,
+              "minLength": 1,
+              "type": "string"
+            },
+            "version": {
+              "enum": [
+                1
+              ],
+              "type": "integer"
+            }
+          },
+          "required": [
+            "assigned_category",
+            "created_at_ms",
+            "event_at_ms",
+            "evidence",
+            "expires_at_ms",
+            "id",
+            "kind",
+            "lineage",
+            "reason",
+            "state",
+            "text",
+            "version"
+          ],
+          "type": "object"
+        },
+        "version": 1
+      },
+      "d709745ab18405dff572c41053eda5cbe12c350ebbabdcd0d52ea1e80962368a": {
+        "allow_delete": false,
+        "evidence_path": [
+          "evidence",
+          "sources"
+        ],
+        "key_prefix": "note.",
+        "source_categories": [
+          "native_operator_assertion",
+          "typed_host_outcome"
+        ],
+        "value_schema": {
+          "additionalProperties": false,
+          "properties": {
+            "category": {
+              "enum": [
+                "ordinary",
+                "preference",
+                "current"
+              ],
+              "type": "string"
+            },
+            "created_at_ms": {
+              "maximum": 9007199254740991,
+              "minimum": 0,
+              "type": "integer"
+            },
+            "event_at_ms": {
+              "maximum": 9007199254740991,
+              "minimum": 0,
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "evidence": {
+              "additionalProperties": false,
+              "properties": {
+                "sources": {
+                  "items": {
+                    "additionalProperties": false,
+                    "properties": {
+                      "content_sha256": {
+                        "maxLength": 64,
+                        "minLength": 64,
+                        "type": "string"
+                      },
+                      "coverage": {
+                        "enum": [
+                          "available",
+                          "partial"
+                        ],
+                        "type": "string"
+                      },
+                      "end_byte": {
+                        "maximum": 9007199254740991,
+                        "minimum": 0,
+                        "type": "integer"
+                      },
+                      "kind": {
+                        "enum": [
+                          "input.original",
+                          "input.operator_answer",
+                          "answer.original",
+                          "tool.outcome",
+                          "input.assertion.ordinary",
+                          "input.assertion.preference",
+                          "input.assertion.current"
+                        ],
+                        "type": "string"
+                      },
+                      "occurrence_id": {
+                        "maxLength": 32,
+                        "minLength": 32,
+                        "type": "string"
+                      },
+                      "origin": {
+                        "enum": [
+                          "assistant_proposal",
+                          "interactive_operator",
+                          "native_operator_answer",
+                          "native_operator_assertion",
+                          "typed_host_outcome",
+                          "unattended_input"
+                        ],
+                        "type": "string"
+                      },
+                      "path": {
+                        "type": "null"
+                      },
+                      "quote": {
+                        "maxLength": 1024,
+                        "minLength": 1,
+                        "type": "string"
+                      },
+                      "quote_sha256": {
+                        "maxLength": 64,
+                        "minLength": 64,
+                        "type": "string"
+                      },
+                      "receipt_sha256": {
+                        "maxLength": 64,
+                        "minLength": 64,
+                        "type": "string"
+                      },
+                      "session_id": {
+                        "maxLength": 32,
+                        "minLength": 32,
+                        "type": "string"
+                      },
+                      "start_byte": {
+                        "maximum": 9007199254740991,
+                        "minimum": 0,
+                        "type": "integer"
+                      },
+                      "version": {
+                        "enum": [
+                          1
+                        ],
+                        "type": "integer"
+                      },
+                      "version_id": {
+                        "maxLength": 32,
+                        "minLength": 32,
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "content_sha256",
+                      "coverage",
+                      "end_byte",
+                      "kind",
+                      "occurrence_id",
+                      "origin",
+                      "path",
+                      "quote",
+                      "quote_sha256",
+                      "receipt_sha256",
+                      "session_id",
+                      "start_byte",
+                      "version",
+                      "version_id"
+                    ],
+                    "type": "object"
+                  },
+                  "maxItems": 1,
+                  "minItems": 1,
+                  "type": "array"
+                }
+              },
+              "required": [
+                "sources"
+              ],
+              "type": "object"
+            },
+            "expires_at_ms": {
+              "maximum": 9007199254740991,
+              "minimum": 0,
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "id": {
+              "maxLength": 64,
+              "minLength": 64,
+              "type": "string"
+            },
+            "lineage": {
+              "maxLength": 64,
+              "minLength": 64,
+              "type": "string"
+            },
+            "metadata_reserve": {
+              "enum": [
+                "",
+                "0000000000000000000000000000000000000000000000000000000000000000"
+              ],
+              "type": "string"
+            },
+            "observed_at_ms": {
+              "maximum": 9007199254740991,
+              "minimum": 0,
+              "type": "integer"
+            },
+            "previous_category": {
+              "type": "null"
+            },
+            "reason": {
+              "maxLength": 256,
+              "minLength": 1,
+              "type": "string"
+            },
+            "superseded_at_ms": {
+              "type": "null"
+            },
+            "text": {
+              "maxLength": 2048,
+              "minLength": 1,
+              "type": "string"
+            },
+            "version": {
+              "enum": [
+                1
+              ],
+              "type": "integer"
+            }
+          },
+          "required": [
+            "category",
+            "created_at_ms",
+            "event_at_ms",
+            "evidence",
+            "expires_at_ms",
+            "id",
+            "lineage",
+            "metadata_reserve",
+            "observed_at_ms",
+            "previous_category",
+            "reason",
+            "superseded_at_ms",
+            "text",
+            "version"
+          ],
+          "type": "object"
+        },
+        "version": 1
+      }
+    },
+    "domain": "knowledge",
+    "effects": [
+      {
+        "class": "collection.publish",
+        "constraints_sha256": "d709745ab18405dff572c41053eda5cbe12c350ebbabdcd0d52ea1e80962368a",
+        "inner_op": "collection.managed",
+        "operation": "notes.capture",
+        "outer_sha256": "cf9f0a54e5190bc3b41039899bcd6c0eee9ffa2367dfa15b2d8b1e55ffd16e53",
+        "recipe_sha256": "818634825cb494606d25195a6601971a17542ed2caa22f28d1e18b1971b18cf7"
+      },
+      {
+        "class": "collection.publish",
+        "constraints_sha256": "d709745ab18405dff572c41053eda5cbe12c350ebbabdcd0d52ea1e80962368a",
+        "inner_op": "collection.managed",
+        "operation": "notes.capture",
+        "outer_sha256": "f5a509bff213a11a6b58186e73da0ba7e08017d4a89c4b959e683f9f6433e91a",
+        "recipe_sha256": "818634825cb494606d25195a6601971a17542ed2caa22f28d1e18b1971b18cf7"
+      },
+      {
+        "class": "collection.publish",
+        "constraints_sha256": "78b6d7943b3430f0225a3ee45cc4cffc27de14ddd97c39f8e38c9f8fb85ca68e",
+        "inner_op": "collection.managed",
+        "operation": "notes.propose",
+        "outer_sha256": "cf9f0a54e5190bc3b41039899bcd6c0eee9ffa2367dfa15b2d8b1e55ffd16e53",
+        "recipe_sha256": "d2622a1dd0ede7863d677e7ba76ef22f29509f5fc19fb72096c1b5ff70e7505d"
+      },
+      {
+        "class": "collection.publish",
+        "constraints_sha256": "78b6d7943b3430f0225a3ee45cc4cffc27de14ddd97c39f8e38c9f8fb85ca68e",
+        "inner_op": "collection.managed",
+        "operation": "notes.propose",
+        "outer_sha256": "f5a509bff213a11a6b58186e73da0ba7e08017d4a89c4b959e683f9f6433e91a",
+        "recipe_sha256": "d2622a1dd0ede7863d677e7ba76ef22f29509f5fc19fb72096c1b5ff70e7505d"
+      },
+      {
+        "class": "collection.read",
+        "inner_op": "collection.call",
+        "managed_read": [
+          "818634825cb494606d25195a6601971a17542ed2caa22f28d1e18b1971b18cf7",
+          "d2622a1dd0ede7863d677e7ba76ef22f29509f5fc19fb72096c1b5ff70e7505d"
+        ],
+        "operation": "notes.recall",
+        "outer_sha256": "5853488b301eebd88d26683849d9a4aee30db0ce9aa68a93d6f8a1736ff9b694"
+      },
+      {
+        "class": "collection.read",
+        "inner_op": "collection.call",
+        "managed_read": [
+          "818634825cb494606d25195a6601971a17542ed2caa22f28d1e18b1971b18cf7",
+          "d2622a1dd0ede7863d677e7ba76ef22f29509f5fc19fb72096c1b5ff70e7505d"
+        ],
+        "operation": "notes.recall",
+        "outer_sha256": "bb98a46f483a56058075dccd8fef4654b50bb290c717ee218f4bacb021039697"
+      },
+      {
+        "class": "collection.read",
+        "inner_op": "collection.call",
+        "managed_read": [
+          "818634825cb494606d25195a6601971a17542ed2caa22f28d1e18b1971b18cf7",
+          "d2622a1dd0ede7863d677e7ba76ef22f29509f5fc19fb72096c1b5ff70e7505d"
+        ],
+        "operation": "notes.recall",
+        "outer_sha256": "cf9f0a54e5190bc3b41039899bcd6c0eee9ffa2367dfa15b2d8b1e55ffd16e53"
+      },
+      {
+        "class": "collection.read",
+        "inner_op": "collection.call",
+        "managed_read": [
+          "818634825cb494606d25195a6601971a17542ed2caa22f28d1e18b1971b18cf7",
+          "d2622a1dd0ede7863d677e7ba76ef22f29509f5fc19fb72096c1b5ff70e7505d"
+        ],
+        "operation": "notes.recall",
+        "outer_sha256": "ed389dd91a2ffacc289b2d9193e3c26bff237c46793a7becc1e0cf5f0559c413"
+      },
+      {
+        "class": "collection.read",
+        "inner_op": "collection.call",
+        "managed_read": [
+          "818634825cb494606d25195a6601971a17542ed2caa22f28d1e18b1971b18cf7",
+          "d2622a1dd0ede7863d677e7ba76ef22f29509f5fc19fb72096c1b5ff70e7505d"
+        ],
+        "operation": "notes.recall",
+        "outer_sha256": "f548bb5ce92246f7c3913b4156d07a9790bcfb858c8f1f7520ab195fe32d70cf"
+      },
+      {
+        "class": "collection.read",
+        "inner_op": "collection.call",
+        "managed_read": [
+          "818634825cb494606d25195a6601971a17542ed2caa22f28d1e18b1971b18cf7",
+          "d2622a1dd0ede7863d677e7ba76ef22f29509f5fc19fb72096c1b5ff70e7505d"
+        ],
+        "operation": "notes.recall",
+        "outer_sha256": "f5a509bff213a11a6b58186e73da0ba7e08017d4a89c4b959e683f9f6433e91a"
+      }
+    ],
+    "identity_sha256": "7235f97fa68aeefcf93eba113d837f5755e408d5b9ec9aa0515f9145b4010391",
+    "instance": "knowledge",
+    "namespace": "d410925b49eda07583904b755de2ea28feb8709852878429af0869d1f49b9906",
+    "recipes": {
+      "818634825cb494606d25195a6601971a17542ed2caa22f28d1e18b1971b18cf7": {
+        "category_path": [
+          "category"
+        ],
+        "constraints_sha256": "d709745ab18405dff572c41053eda5cbe12c350ebbabdcd0d52ea1e80962368a",
+        "evidence_path": [
+          "evidence",
+          "sources"
+        ],
+        "key_prefix": "note.",
+        "kind": "literal_source",
+        "lineage_path": [
+          "lineage"
+        ],
+        "override_prefix": "override.",
+        "rules": [
+          {
+            "category": "current",
+            "max_age_ms": null,
+            "origins": [
+              "native_operator_assertion"
+            ]
+          },
+          {
+            "category": "ordinary",
+            "max_age_ms": 7776000000,
+            "origins": [
+              "native_operator_assertion",
+              "typed_host_outcome"
+            ]
+          },
+          {
+            "category": "preference",
+            "max_age_ms": null,
+            "origins": [
+              "native_operator_assertion"
+            ]
+          }
+        ],
+        "text_path": [
+          "text"
+        ],
+        "version": 1
+      },
+      "d2622a1dd0ede7863d677e7ba76ef22f29509f5fc19fb72096c1b5ff70e7505d": {
+        "category_path": [
+          "assigned_category"
+        ],
+        "constraints_sha256": "78b6d7943b3430f0225a3ee45cc4cffc27de14ddd97c39f8e38c9f8fb85ca68e",
+        "evidence_path": [
+          "evidence",
+          "sources"
+        ],
+        "key_prefix": "pending.",
+        "kind": "proposal",
+        "lineage_path": [
+          "lineage"
+        ],
+        "override_prefix": "override.",
+        "rules": [
+          {
+            "category": "current",
+            "max_age_ms": 604800000,
+            "origins": [
+              "assistant_proposal",
+              "interactive_operator",
+              "native_operator_answer",
+              "native_operator_assertion",
+              "typed_host_outcome",
+              "unattended_input"
+            ]
+          },
+          {
+            "category": "ordinary",
+            "max_age_ms": 604800000,
+            "origins": [
+              "assistant_proposal",
+              "interactive_operator",
+              "native_operator_answer",
+              "native_operator_assertion",
+              "typed_host_outcome",
+              "unattended_input"
+            ]
+          },
+          {
+            "category": "preference",
+            "max_age_ms": 604800000,
+            "origins": [
+              "assistant_proposal",
+              "interactive_operator",
+              "native_operator_answer",
+              "native_operator_assertion",
+              "typed_host_outcome",
+              "unattended_input"
+            ]
+          }
+        ],
+        "text_path": [
+          "text"
+        ],
+        "version": 1
+      }
+    },
+    "retention": {
+      "automatic": 90,
+      "manual": 3650
+    },
+    "routes": [
+      {
+        "account_controls": null,
+        "billing_mode": "local",
+        "cache_retention": null,
+        "endpoint": "http://127.0.0.1:39027/api/chat",
+        "model": "synthetic",
+        "operation": "main",
+        "processing_region": null,
+        "profile": null,
+        "provider": "ollama",
+        "service_id": "local",
+        "storage_region": null
+      }
+    ],
+    "scope": {
+      "kind": "project",
+      "worktree_id": null
+    },
+    "sources": {
+      "categories": [
+        "assistant_proposal",
+        "interactive_operator",
+        "native_operator_answer",
+        "native_operator_assertion",
+        "typed_host_outcome",
+        "unattended_input"
+      ],
+      "exclusions": []
+    },
+    "storage": {
+      "collection": "knowledge",
+      "kind": "local_collection"
+    },
+    "version": 2
+  },
+  "source_sha256": "098be7eda6b0f8e8efb36093fb7cc6cdde8bb55bc60f9e43567576c0d88fdd77",
+  "version": 1
+}
+Type enable 42bcb9975e279c1b to confirm this exact review, or anything else to cancel.
+> enable 42bcb9975e279c1b
+Saved knowledge permission. Start a new chat or run to adopt this selection.
+Protected note saving is currently unavailable in this runtime; saved permission is retained.
+Ipse · ollama/synthetic
+Session: d8079f1f2a429e4f2d05ec966a23266f
+Workspace: /tmp/ipse-cli-untrusted-process-stdin-20261029/project
+Shell policy requested: off.
+Requested policy is not proof of activation; inspect each command result.
+Trusted local execution uses the user's filesystem and network permissions without an OS sandbox. Shell execution removes the common provider-token variables; other inherited environment and accessible files may remain available.
+Effective configuration:
+{
+  "sources": [
+    {
+      "scope": "operator",
+      "path": "/tmp/ipse-cli-untrusted-process-stdin-20261029/home/config.json",
+      "sha256": "d53d127faf65035086dac71f028df06862da830d9bcbbc69fce1b9f5ce2dbe54",
+      "canonical_path": "/tmp/ipse-cli-untrusted-process-stdin-20261029/home/config.json"
+    }
+  ],
+  "extensions": {
+    "instances": [],
+    "trust": []
+  },
+  "provenance": {
+    "compact": "built-in",
+    "context_bytes": "built-in",
+    "max_output_tokens": "profile local_fixture",
+    "max_steps": "built-in",
+    "model": "profile local_fixture",
+    "provider": "profile local_fixture",
+    "sandbox": "built-in",
+    "subagent_concurrency": "built-in",
+    "subagents": "built-in",
+    "timeout_ms": "profile local_fixture"
+  },
+  "settings": {
+    "compact": true,
+    "context_bytes": 400000,
+    "max_output_tokens": 64,
+    "max_steps": 30,
+    "model": "synthetic",
+    "provider": "ollama",
+    "sandbox": "off",
+    "subagent_concurrency": 1,
+    "subagents": false,
+    "timeout_ms": 5000
+  },
+  "observability": {
+    "policy": {
+      "event_bytes": 16384,
+      "file_bytes": 10485760,
+      "groups": [
+        "session",
+        "prompt",
+        "context",
+        "model",
+        "stream",
+        "tool",
+        "approval",
+        "question",
+        "child",
+        "compaction",
+        "extension",
+        "turn",
+        "error"
+      ],
+      "level": "info",
+      "mode": "off",
+      "queue_events": 256,
+      "retained_files": 2,
+      "sample_every": 1
+    },
+    "mode_source": "built-in"
+  },
+  "budget": null,
+  "profiles": {
+    "local_fixture": {
+      "base_url": "http://127.0.0.1:39027",
+      "max_output_tokens": 64,
+      "model": "synthetic",
+      "provider": "ollama",
+      "timeout_ms": 5000
+    }
+  },
+  "roles": {
+    "main": "local_fixture"
+  },
+  "fingerprint": "68d80dd3f3a3f9b9dc055151951d2eb73167423790f6142d7299af815873d617",
+  "inference_services": {
+    "local": {
+      "origins": [
+        "http://127.0.0.1:39027"
+      ],
+      "version": 1
+    }
+  },
+  "journal": {
+    "max_bytes": 134217728,
+    "max_events": 100000,
+    "max_record_bytes": 16777216
+  },
+  "execution": {
+    "id": "local_fixture",
+    "provider": "ollama",
+    "base_url": "http://127.0.0.1:39027",
+    "credential": "none",
+    "model": "synthetic",
+    "role": "main",
+    "reasoning_effort": null
+  }
+}
+Running…
+Running…
+
+→ read {}
+← read: UNTRUSTED_FILE_PROSE
+Running…
+← write: Denied: this run is read-only. Ask the user to enable execution.
+← shell: Denied: this run is read-only. Ask the user to enable execution.
+Running…
+
+→ source_list {}
+← source_list: Source tool result withheld from terminal preview.
+Running…
+
+→ source_read {}
+← source_read: Source tool result withheld from terminal preview.
+Running…
+
+→ ext__knowledge__capture {}
+
+Error: Extension outcome unknown after refusal, failure or interruption. Inspect its receipt before retrying; no callback was replayed. See docs/operator/recovery.md#diagnose-startup-and-service-errors.
+
+Finished with an error.
+UNTRUSTED_CLI_CODE 1
+UNTRUSTED_CLI_ROOT {"page":{"floor":0,"floor_anchor":null,"generation":0,"next":null,"project":"d410925b49eda07583904b755de2ea28feb8709852878429af0869d1f49b9906","records":[],"version":3},"snapshot":{"floor":0,"floor_anchor":null,"generation":0,"project":"d410925b49eda07583904b755de2ea28feb8709852878429af0869d1f49b9906","version":3}}
+UNTRUSTED_CLI_STDIN_PASSED

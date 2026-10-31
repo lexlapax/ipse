@@ -1,0 +1,8 @@
+TERMINAL_DISPLAY_MANIFEST_OK: %{
+  manifest_entries: 50,
+  source_files: 32,
+  production_helper: "94f32c7ffdaf426d08d28d91b3df0c5e9961d80fc31cce766793e62b49cdfa6a",
+  hook_helper: "1bba3c00b05a44b9d1b38d56ed086be1596d6e0393794e9d52f41c6a95ae54f4",
+  exact_one_lease_fixture_delta: true,
+  no_beam_runtime_graph_claimed: true
+}

@@ -1,0 +1,20 @@
+{
+  "base_manifest": {
+    "path": "docs/archive/2026-10-26-p30-p31-implementation/state-native-owner/manifest.sha256",
+    "sha256": "a70e1e68f13430566e4cb9dc31cd3336b67b363088f1e29ad91704e27c83b191"
+  },
+  "cohort_notes": "47041-47043 copied base with four compiled current modules (State, Collection, CollectionStore, Invocation), but older DocumentStage/ManagedToolUse. 47044 added current DocumentStage; 47045 failed fixture generation under expired scope;47046 fixed it;47047 staged-expiry passed;47048 components passed;47049 Session/notes passed, missing dictionary raised.47050 added closed managed classifier;47051 pure/actual gates passed.47052 intentional earlier Invocation overlay exercises execution backstop, not current public admission. Final inventories observed after all controls; no full initial runtime inventory was captured.",
+  "helper_sha256": "7e1913446865a16cdfb7c96ca0285dc9e117a018c36c7b1940ba249a72ffd067",
+  "initial_managed_tool_use_beam": {
+    "path": "_build/state-native-owner-v6-sol-20261029/lib/ipse/ebin/Elixir.Ipse.Session.ManagedToolUse.beam",
+    "sha256": "7f1bcc5c0444d47a3cbd8df0dc3f38617c918e4b8721024635c80f7485829a26"
+  },
+  "initial_old_document_stage_beam": {
+    "path": "_build/document-decision-sol-20261029/prior-document-stage.beam",
+    "sha256": "7d01a3b0f3f728c146397e94c07eb280332fe9903b4cde0ca9aad720d604805f"
+  },
+  "queued_invocation": {
+    "path": "_build/state-restoration-sol-20261029/source/lib/ipse/session/invocation.ex",
+    "sha256": "b54eb647a702ee9e169f921d3dbce2ccdc5c739cd7b7b191dce7405d5a3f0c24"
+  }
+}

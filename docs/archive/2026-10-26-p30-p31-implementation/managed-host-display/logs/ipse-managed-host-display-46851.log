@@ -1,0 +1,45 @@
+Running ExUnit with seed: 46851, max_cases: 8
+Excluding tags: [:test]
+Including tags: [managed_host_display: true]
+
+
+
+  1) test managed model call source_list cannot queue raw arguments or enter unqualified host IO (Ipse.Extension.ManagedCollectionCallSessionTest)
+     test/ipse/extension/managed_collection_call_session_test.exs:826
+     ** (MatchError) no match of right hand side value:
+
+         {:error, :extension_admission_refused}
+
+     stacktrace:
+       test/ipse/extension/managed_collection_call_session_test.exs:321: Ipse.Extension.ManagedCollectionCallSessionTest.__ex_unit_setup_0/1
+       test/ipse/extension/managed_collection_call_session_test.exs:4: Ipse.Extension.ManagedCollectionCallSessionTest.__ex_unit__/2
+
+
+
+  2) test ordinary untainted extension approval still shows complete proposed arguments (Ipse.Extension.ManagedCollectionCallSessionTest)
+     test/ipse/extension/managed_collection_call_session_test.exs:800
+     ** (MatchError) no match of right hand side value:
+
+         {:error, :extension_admission_refused}
+
+     stacktrace:
+       test/ipse/extension/managed_collection_call_session_test.exs:321: Ipse.Extension.ManagedCollectionCallSessionTest.__ex_unit_setup_0/1
+       test/ipse/extension/managed_collection_call_session_test.exs:4: Ipse.Extension.ManagedCollectionCallSessionTest.__ex_unit__/2
+
+.
+
+  3) test managed model call write approval cannot queue raw arguments or enter unqualified host IO (Ipse.Extension.ManagedCollectionCallSessionTest)
+     test/ipse/extension/managed_collection_call_session_test.exs:826
+     ** (MatchError) no match of right hand side value:
+
+         {:error, :extension_admission_refused}
+
+     stacktrace:
+       test/ipse/extension/managed_collection_call_session_test.exs:321: Ipse.Extension.ManagedCollectionCallSessionTest.__ex_unit_setup_0/1
+       test/ipse/extension/managed_collection_call_session_test.exs:4: Ipse.Extension.ManagedCollectionCallSessionTest.__ex_unit__/2
+
+..
+Finished in 2.5 seconds (0.00s async, 2.5s sync)
+
+Result: 3/6 passed, 78 excluded
+Failed: 3 tests

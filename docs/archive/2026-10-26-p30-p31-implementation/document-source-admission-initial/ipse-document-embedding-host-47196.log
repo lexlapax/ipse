@@ -1,0 +1,6 @@
+Removed 216 inherited host BEAMs from isolated candidate before source compilation
+Complete host source without stale struct metadata: {:ok,
+ [Ipse.Extension.ResultSource.Index, Ipse.Extension.Feeds, Ipse.Usage,
+  Ipse.Extension.ProjectIdentity.DomainAuth, Ipse.Application,
+  Ipse.Extension.ResultSource, ...], ...}
+All 175 host source inputs compile without diagnostics

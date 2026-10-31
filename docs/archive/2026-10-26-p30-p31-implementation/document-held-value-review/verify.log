@@ -1,0 +1,12 @@
+DOCUMENT_HELD_VALUE_OK: %{
+  delta: ["_build/dev/lib/ipse/ebin/Elixir.Ipse.Extension.Collection.DocumentStage.beam"],
+  source_snapshots: 2,
+  retained: 5,
+  graph_nodes: [
+    {"_build/document-held-read-sol-20261029",
+     %{"regular" => 697, "symlink" => 2}},
+    {"_build/document-held-value-sol-20261029",
+     %{"regular" => 697, "symlink" => 2}}
+  ],
+  repeated_tests: 0
+}

@@ -2,6 +2,7 @@ defmodule Ipse.TextStreamSessionTest do
   use ExUnit.Case, async: false
   alias Ipse.Session
   alias Ipse.Session.TextStream
+  import Ipse.Test.ResumeAssertions
 
   defmodule Visible do
     def complete(config, _messages, _tools, emit) do
@@ -333,7 +334,7 @@ defmodule Ipse.TextStreamSessionTest do
     bytes = File.read!(Path.join(ctx.dir, info.id <> ".jsonl"))
     resumed = start(ctx, info.id)
     assert :sys.get_state(resumed).text_stream == nil
-    assert File.read!(Path.join(ctx.dir, info.id <> ".jsonl")) == bytes
+    assert_idle_resume_journal(Path.join(ctx.dir, info.id <> ".jsonl"), bytes, info.id)
     refute_receive {:ipse_text, _, _}, 20
   end
 

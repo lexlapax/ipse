@@ -368,10 +368,10 @@ defmodule Ipse.Extension.SubscriptionsTest do
 
     assert Subscriptions.validate_events(changed) == {:error, :invalid_extension_subscription}
     :ok = Session.close(session)
-    bytes = File.read!(Path.join(c.dir, id <> ".jsonl"))
+    {:ok, before_events} = Journal.load(c.dir, id)
     before = trace(c)
     {:ok, resumed} = start(c, config, id)
-    assert File.read!(Path.join(c.dir, id <> ".jsonl")) == bytes
+    assert_inert_resume(c, id, before_events)
     assert trace(c) == before
     :ok = Session.close(resumed)
   end
@@ -587,12 +587,11 @@ defmodule Ipse.Extension.SubscriptionsTest do
     done(session, :ok)
     id = Session.info(session).id
     :ok = Session.close(session)
-    path = Path.join(c.dir, id <> ".jsonl")
-    bytes = File.read!(path)
+    {:ok, before_events} = Journal.load(c.dir, id)
     old_trace = trace(c)
     {:ok, resumed} = start(c, config, id)
     assert Session.info(resumed).id == id
-    assert File.read!(path) == bytes
+    assert_inert_resume(c, id, before_events)
     assert trace(c) == old_trace
     :ok = Session.prompt(resumed, "same prompt")
     done(resumed, :ok)
@@ -626,16 +625,28 @@ defmodule Ipse.Extension.SubscriptionsTest do
 
       eventually(fn -> not alive?(pid) end)
       if stop == :cancel, do: assert(:ok == Session.close(session))
-      bytes = File.read!(Path.join(c.dir, id <> ".jsonl"))
       entries = trace(c)
       eventually(fn -> match?({:ok, _}, Journal.load(c.dir, id)) end)
+      {:ok, before_events} = Journal.load(c.dir, id)
       {:ok, resumed} = start(c, config, id)
       assert Session.info(resumed).id == id
       assert Session.info(resumed).phase == :idle
-      assert File.read!(Path.join(c.dir, id <> ".jsonl")) == bytes
+      assert_inert_resume(c, id, before_events)
       assert trace(c) == entries
       :ok = Session.close(resumed)
     end
+  end
+
+  defp assert_inert_resume(c, id, before) do
+    assert {:ok, after_events} = Journal.load(c.dir, id)
+    assert Enum.take(after_events, length(before)) === before
+
+    assert Enum.all?(
+             Enum.drop(after_events, length(before)),
+             &(&1["type"] in ~w(session_release_owner_started session_release_intent lifecycle_epoch_started lifecycle_epoch_closed lifecycle_recording_stopped execution_mode_resumed))
+           )
+
+    assert {:ok, _} = Session.Saved.restore(after_events, id)
   end
 
   test "unknown versions, modes, views and widened read capabilities refuse inert admission", c do

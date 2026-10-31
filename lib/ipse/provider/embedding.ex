@@ -70,7 +70,8 @@ defmodule Ipse.Provider.Embedding do
          timeout = config[:timeout_ms] || 120_000,
          true <- is_integer(timeout) and timeout in 1..120_000,
          request = Finch.build(:post, endpoint(config), headers, Jason.encode!(body)),
-         {:ok, status, bytes} <- Ipse.HTTP.bounded_request(request, @body_limit, timeout),
+         {:ok, status, bytes} <-
+           Ipse.HTTP.bounded_request(request, @body_limit, timeout, "embedding"),
          true <- status in 200..299 do
       case parse(config.provider, bytes, config, inputs) do
         {:ok, _, _} = result ->

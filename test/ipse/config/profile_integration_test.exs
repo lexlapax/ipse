@@ -210,7 +210,8 @@ defmodule Ipse.ProfileSessionTest do
     assert meta["mcp_servers"] == []
     assert Session.info(parent).final =~ "Child verified SELECTED_EVIDENCE"
     :ok = Session.close(parent)
-    before_bytes = File.read!(Path.join(c.dir, id <> ".jsonl"))
+    assert {:ok, before_events} = Journal.load(c.dir, id)
+    assert {:ok, before_mode} = Session.Saved.execution_mode(before_events, id)
 
     config = %{
       provider: :demo,
@@ -227,7 +228,18 @@ defmodule Ipse.ProfileSessionTest do
       )
 
     assert Session.info(resumed).phase == :idle
-    assert File.read!(Path.join(c.dir, id <> ".jsonl")) == before_bytes
+    assert {:ok, after_events} = Journal.load(c.dir, id)
+    assert Enum.take(after_events, length(before_events)) == before_events
+
+    assert [%{"type" => "session_release_owner_started", "session_id" => ^id}, checkpoint] =
+             Enum.drop(after_events, length(before_events))
+
+    assert checkpoint["type"] == "execution_mode_resumed" and checkpoint["version"] === 2
+    assert checkpoint["session_id"] == id
+    assert checkpoint["previous_sha256"] == Ipse.JSON.digest([before_mode])
+    assert checkpoint["mode"]["approval"] == "deny"
+    assert {:ok, saved_mode} = Session.Saved.execution_mode(after_events, id)
+    assert saved_mode == checkpoint["mode"]
     :ok = Session.close(resumed)
   end
 

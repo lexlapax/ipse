@@ -62,6 +62,147 @@ defmodule Ipse.Runner.Operator do
     await(controller, monitor, call)
   end
 
+  @doc false
+  def run_guarded(helper, display, timeout, guard) when is_function(guard, 1) do
+    case Ipse.Session.Resources.register(:lock) do
+      {:ok, ticket} ->
+        {result, cleanup} = port_guarded(helper, display, timeout, ticket, guard)
+        Ipse.Session.Resources.closed(ticket, cleanup)
+        result
+
+      _ ->
+        {:error, :operator_input_unavailable}
+    end
+  end
+
+  def run_guarded(_, _, _, _), do: {:error, :operator_input_unavailable}
+
+  # The lease owner owns the native Port itself. Its death closes the control
+  # pipe without relying on a separate BEAM controller to handle a monitor.
+  defp port_guarded(helper, display, timeout, ticket, guard) do
+    owner = self()
+
+    port =
+      Port.open({:spawn_executable, String.to_charlist(helper)}, [
+        :binary,
+        :exit_status,
+        :nouse_stdio,
+        :hide,
+        args: ["--operator-input", Integer.to_string(timeout), "v2"]
+      ])
+
+    nonce = :crypto.strong_rand_bytes(16)
+    used = :atomics.new(1, [])
+    key = {__MODULE__, make_ref()}
+    overall = System.monotonic_time(:millisecond) + timeout + 2_000
+
+    initial = %{
+      nonce: nonce,
+      phase: :initial,
+      text: nil,
+      error: nil,
+      restored: false,
+      exited: false,
+      cancelled: false,
+      cancel_sent: false,
+      buffer: <<>>,
+      request: <<>>,
+      deadline: overall,
+      cancel_deadline: nil,
+      owner_ref: make_ref(),
+      ticket: ticket,
+      guarded: :direct,
+      guarded_stop: true
+    }
+
+    Process.put(key, initial)
+
+    send_display = fn wall ->
+      cond do
+        self() != owner ->
+          :atomics.put(used, 1, 3)
+          {:error, :operator_input_unavailable}
+
+        :atomics.compare_exchange(used, 1, 0, 1) != :ok ->
+          :atomics.put(used, 1, 3)
+          {:error, :operator_input_unavailable}
+
+        not Ipse.JSON.safe_uint?(wall) or System.system_time(:millisecond) >= wall ->
+          {:error, :operator_input_unavailable}
+
+        true ->
+          remaining = max(wall - System.system_time(:millisecond), 0)
+          body = <<nonce::binary, wall::unsigned-big-64, display::binary>>
+          current = Process.get(key)
+
+          next = %{
+            current
+            | request: <<?D, byte_size(body)::unsigned-big-32, body::binary>>,
+              deadline: min(overall, System.monotonic_time(:millisecond) + remaining)
+          }
+
+          next = loop(port, next)
+          Process.put(key, %{next | deadline: overall})
+
+          if next.phase in [:displayed, :input, :eof] and not next.cancelled and
+               is_nil(next.error) and System.system_time(:millisecond) < wall and
+               :atomics.compare_exchange(used, 1, 1, 2) == :ok do
+            :ok
+          else
+            {:error, :operator_input_unavailable}
+          end
+      end
+    end
+
+    try do
+      guarded =
+        try do
+          guard.(send_display)
+        rescue
+          _ -> {:error, :operator_input_unavailable}
+        catch
+          _, _ -> {:error, :operator_input_unavailable}
+        end
+
+      accepted = guarded === :ok and :atomics.get(used, 1) == 2
+      state = Process.delete(key)
+      state = %{state | guarded_stop: false}
+
+      # A cancellation queued while the guard unwound must win over release;
+      # otherwise already-buffered terminal input could be consumed first.
+      cancelled =
+        receive do
+          :ipse_cancel_operator_input -> true
+          :cancel -> true
+          {:ipse_cancel_resource, id} when ticket != nil and ticket.id == id -> true
+        after
+          0 -> false
+        end
+
+      # The helper cannot begin terminal input until the guard has returned and
+      # its source/policy leases have unwound in this same owner process.
+      accepted = accepted and not cancelled and Port.command(port, <<?U, 0::32>>, [:nosuspend])
+
+      state =
+        if accepted do
+          loop(port, state)
+        else
+          :atomics.put(used, 1, 3)
+          loop(port, cancel(port, state))
+        end
+
+      {result, cleanup} = operator_result(state, display)
+      if accepted, do: {result, cleanup}, else: {{:error, :operator_input_unavailable}, cleanup}
+    after
+      Process.delete(key)
+      if Port.info(port), do: Port.close(port)
+    end
+  rescue
+    _ -> {{:error, :operator_cleanup_unconfirmed}, {:error, :cleanup_unconfirmed}}
+  catch
+    _, _ -> {{:error, :operator_cleanup_unconfirmed}, {:error, :cleanup_unconfirmed}}
+  end
+
   defp await(controller, monitor, call) do
     receive do
       {^call, result} ->
@@ -113,6 +254,7 @@ defmodule Ipse.Runner.Operator do
       cancel_sent: false,
       buffer: <<>>,
       request: <<?d, byte_size(body)::unsigned-big-32, body::binary>>,
+      guarded: nil,
       deadline: System.monotonic_time(:millisecond) + timeout + 2_000,
       cancel_deadline: nil,
       owner_ref: owner_ref,
@@ -121,52 +263,55 @@ defmodule Ipse.Runner.Operator do
 
     try do
       state = loop(port, state)
-
-      cleanup =
-        if state.exited and state.buffer == <<>> and
-             (state.restored or state.phase == :nonterminal),
-           do: :ok,
-           else: {:error, :cleanup_unconfirmed}
-
-      result =
-        cond do
-          cleanup != :ok ->
-            {:error, :operator_cleanup_unconfirmed}
-
-          state.phase == :nonterminal ->
-            {:error, :operator_nonterminal}
-
-          state.error != nil ->
-            {:error, state.error}
-
-          state.cancelled ->
-            {:error, :operator_input_cancelled}
-
-          state.phase == :eof ->
-            {:error, :operator_input_eof}
-
-          state.phase == :input ->
-            {:ok,
-             %{
-               "version" => 2,
-               "event_id" => Base.encode16(nonce, case: :lower),
-               "text" => state.text,
-               "text_sha256" => Ipse.JSON.sha256(state.text),
-               "display_sha256" => Ipse.JSON.sha256(display),
-               "input_limit" => @input_limit,
-               "display_limit" => @display_limit
-             }}
-
-          true ->
-            {:error, :operator_input_unavailable}
-        end
-
-      {result, cleanup}
+      operator_result(state, display)
     after
       if Port.info(port), do: Port.close(port)
     end
   rescue
     _ -> {{:error, :operator_cleanup_unconfirmed}, {:error, :cleanup_unconfirmed}}
+  end
+
+  defp operator_result(state, display) do
+    cleanup =
+      if state.exited and state.buffer == <<>> and
+           (state.restored or state.phase == :nonterminal),
+         do: :ok,
+         else: {:error, :cleanup_unconfirmed}
+
+    result =
+      cond do
+        cleanup != :ok ->
+          {:error, :operator_cleanup_unconfirmed}
+
+        state.phase == :nonterminal ->
+          {:error, :operator_nonterminal}
+
+        state.error != nil ->
+          {:error, state.error}
+
+        state.cancelled ->
+          {:error, :operator_input_cancelled}
+
+        state.phase == :eof ->
+          {:error, :operator_input_eof}
+
+        state.phase == :input ->
+          {:ok,
+           %{
+             "version" => 2,
+             "event_id" => Base.encode16(state.nonce, case: :lower),
+             "text" => state.text,
+             "text_sha256" => Ipse.JSON.sha256(state.text),
+             "display_sha256" => Ipse.JSON.sha256(display),
+             "input_limit" => @input_limit,
+             "display_limit" => @display_limit
+           }}
+
+        true ->
+          {:error, :operator_input_unavailable}
+      end
+
+    {result, cleanup}
   end
 
   @doc false
@@ -199,6 +344,9 @@ defmodule Ipse.Runner.Operator do
   def validate_transcript(_, _), do: {:error, :invalid_operator_protocol}
 
   defp loop(_port, %{exited: true} = state), do: state
+
+  defp loop(_port, %{guarded_stop: true, phase: phase} = state)
+       when phase in [:displayed, :input, :eof], do: state
 
   defp loop(port, state) do
     state = flush_request(port, state)
@@ -238,6 +386,9 @@ defmodule Ipse.Runner.Operator do
         :cancel ->
           loop(port, cancel(port, state))
 
+        :ipse_cancel_operator_input ->
+          loop(port, cancel(port, state))
+
         {:EXIT, ^port, _} ->
           loop(port, state)
       after
@@ -264,6 +415,17 @@ defmodule Ipse.Runner.Operator do
   end
 
   defp cancel(_port, %{cancel_deadline: deadline} = s) when is_integer(deadline), do: s
+
+  defp cancel(port, %{guarded: guarded, phase: phase} = s)
+       when not is_nil(guarded) and phase in [:initial, :ready] do
+    # Do not finish an authority-bearing display frame after its owner or
+    # resource scope is lost. Closing the control port interrupts the helper;
+    # without its restoration receipt cleanup remains unconfirmed.
+    if Port.info(port), do: Port.close(port)
+    %{s | cancelled: true, exited: true, request: <<>>, error: :operator_cleanup_unconfirmed}
+  rescue
+    _ -> %{s | cancelled: true, exited: true, request: <<>>, error: :operator_cleanup_unconfirmed}
+  end
 
   defp cancel(port, s) do
     # Finish the original display frame so cancellation cannot become its body.

@@ -1,0 +1,47 @@
+Running ExUnit with seed: 340021, max_cases: 4
+Excluding tags: [:native_sandbox, :macos_sandbox, :macos_filesystem, :memory_scope]
+
+...................
+
+  1) test separate VM cannot revoke either parent or child lock while stack is retained (Ipse.Runner.TransactionTest)
+     test/ipse/runner/transaction_test.exs:445
+     match (=) failed
+     code:  assert {"{:error, :transaction_busy}\n", 0} =
+              System.cmd("elixir", paths ++ ["-e", code], stderr_to_stdout: true)
+     left:  {"{:error, :transaction_busy}\n", 0}
+     right: {"{:error, :transaction_unavailable}\n", 0}
+     stacktrace:
+       test/ipse/runner/transaction_test.exs:458: anonymous fn/2 in Ipse.Runner.TransactionTest."test separate VM cannot revoke either parent or child lock while stack is retained"/1
+       (elixir 1.20.4) lib/enum.ex:2622: Enum."-reduce/3-lists^foldl/2-0-"/3
+       test/ipse/runner/transaction_test.exs:449: (test)
+
+...
+
+  2) test the pinned production helper admits tmpfs quota and a protected publication without ambient bypass (Ipse.Runner.StorageProfileTest)
+     test/ipse/runner/storage_profile_test.exs:29
+     match (=) failed
+     The following variables were pinned:
+       receipt = %{"floor" => 1, "generation" => 1, "request_sha256" => "c6db4283a8a758b4f43d40be56da689833cc1f405c55ee42cef92217545fd5db"}
+     code:  assert {:existing, ^receipt} = Collection.execute(c.root <> "/collections", project, request, operation)
+     left:  {:existing, ^receipt}
+     right: {:existing,
+             %{
+               "floor" => 1,
+               "floor_anchor" => "6d9bd224b74b103cdb1982f0e9e74fb7",
+               "generation" => 1,
+               "operation" => %{
+                 "floor" => 1,
+                 "generation" => 1,
+                 "request_sha256" => "c6db4283a8a758b4f43d40be56da689833cc1f405c55ee42cef92217545fd5db"
+               },
+               "project" => "cb2145969ffb3ecb8e4ef5c09be5a135ed87127eac4ecd42d19800c10510337d",
+               "version" => 3
+             }}
+     stacktrace:
+       test/ipse/runner/storage_profile_test.exs:78: (test)
+
+
+Finished in 4.8 seconds (0.8s on load, 0.00s async, 4.0s sync)
+
+Result: 22/24 passed
+Failed: 2 tests

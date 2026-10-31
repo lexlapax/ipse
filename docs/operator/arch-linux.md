@@ -69,6 +69,41 @@ and helper outside the target workspace; use an installed bundle for Ipse
 self-development. See [shell policy](usage.md#choose-shell-confinement) for toolchain visibility
 and cleanup limits.
 
+## Check protected-storage admission
+
+Native knowledge permission and protected collection writes have a separate
+storage-allocation profile. Passing shell sandbox setup does not admit storage,
+and storage admission does not establish shell confinement.
+
+| Kernel and architecture | Protected storage admitted by the source implementation |
+| --- | --- |
+| Linux 64-bit `7.2.10` or `7.2.10-*` | Previously reviewed Btrfs/tmpfs features; see the [native contract](../../native/README.md#admit-allocated-bytes-before-writing) |
+| Exact `7.2.11-arch1-1`, x86_64 | tmpfs only: 4096-byte page/block units, selected global shmem policy `advise`, and the actual directory mount's `huge=advise` |
+| Other combinations, including Btrfs on `7.2.11-arch1-1` | Protected writes refuse |
+
+Check your intended locations before enabling knowledge:
+
+```sh
+uname -r
+getconf PAGESIZE
+findmnt -T /path/to/ipse-home -o FSTYPE,OPTIONS
+cat /sys/kernel/mm/transparent_hugepage/shmem_enabled
+```
+
+These observations help diagnose refusal; the helper checks the actual retained
+directory descriptor, mount identity, ownership and allocation features again.
+All protected home/control/state/collection locations must meet the profile.
+A default home on Btrfs remains unsupported on the newer kernel. Ipse does not
+silently move it to another filesystem.
+
+Tmpfs loses data at unmount or reboot. Selecting a qualified tmpfs location is
+an explicit choice for volatile work, not a durable-storage migration procedure.
+Do not assume `/run/user` or another mount has the same features, change global
+huge-page settings to silence a refusal, or relocate existing protected state
+without preserving its original identity. Existing releases retain their own
+compiled helper; rebuild the checkout or use a separately verified package to
+obtain a changed source profile.
+
 ## Recover from installation errors
 
 For missing `mix` or `rustc`, check versions and `PATH`. For dependency-fetch

@@ -1,0 +1,6 @@
+Path.wildcard("_build/notes-absence-publication-sol-20261029/_build/dev/lib/*/ebin") |> Enum.each(&Code.prepend_path/1)
+{:ok, _} = Application.ensure_all_started(:ipse)
+ExUnit.start(autorun: false, seed: 20261029, exclude: [:test], include: [:publication_prerequisite])
+Code.require_file("test/ipse/session/managed_tool_use_test.exs")
+result = ExUnit.run()
+System.halt(if result.failures == 0, do: 0, else: 1)

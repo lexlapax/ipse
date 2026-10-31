@@ -18,14 +18,209 @@ defmodule Ipse.Session.InferenceDispatch do
       admission: admission,
       cwd: s.cwd,
       session_id: s.id,
+      history_dir: Map.get(s, :dir),
+      owner: self(),
+      job_ref: Map.get(s, :job_ref),
+      wire: wire(runtime, input, tools, phase),
+      managed: managed_snapshot(s, phase),
+      document_source: document_source(s, phase),
       # Attribution for ordinary Sessions grants no project identity or consent.
       project_id:
         JSON.digest([get_in(s.config, [:semantic_admission, "pin", "project_id"]) || s.cwd]),
       request_sha256: JSON.digest([input, tools]),
       priority: "foreground",
-      expected: expected(s, input, tools, admission)
+      expected: expected(s, input, tools, admission, phase)
     }
   end
+
+  @doc false
+  def wire(runtime, input, tools, phase) do
+    {:ok, runtime} = Ipse.Usage.Budget.request_config(runtime)
+
+    {kind, target, payload} =
+      case phase do
+        "embedding.create" ->
+          {:ok, payload} = Ipse.Provider.Embedding.request_body(runtime, input["inputs"])
+          {"embedding", Ipse.Provider.Embedding.endpoint(runtime), payload}
+
+        "decision.create" ->
+          {:ok, payload} =
+            Ipse.Provider.Decision.encode(
+              Ipse.Provider.Decision.Transport.engine(runtime.provider),
+              Ipse.Extension.DecisionCall.neutral(input),
+              runtime.model
+            )
+
+          {"decision", Ipse.Provider.Decision.Transport.endpoint(runtime), payload}
+
+        _ ->
+          {:ok, spec} = Ipse.Provider.Registry.fetch(runtime.provider)
+
+          {"text", apply(spec.adapter, :endpoint, [runtime]),
+           apply(spec.adapter, :request_body, [runtime, input, tools])}
+      end
+
+    body = Jason.encode!(payload)
+
+    if byte_size(body) <= 8_388_608 do
+      %{
+        "kind" => kind,
+        "target_sha256" => JSON.sha256(target),
+        "body_sha256" => JSON.sha256(body)
+      }
+    end
+  rescue
+    _ -> nil
+  end
+
+  @doc false
+  def wire_use(s, caller, phase, admission, expected, facts) do
+    with true <- s.task != nil,
+         true <- caller == s.task.pid or Session.Resources.authorized_effect?(s.task.pid, caller),
+         {:ok, runtime, input, tools, ^admission} <- view(s, phase),
+         true <- binding_current?(s, phase, expected),
+         true <- is_map(facts) and facts === wire(runtime, input, tools, phase),
+         {:ok, %{route: _}} <-
+           Ipse.InferenceDispatch.selection(
+             s.config,
+             runtime,
+             operation(phase),
+             profile(phase, admission)
+           ) do
+      {:reply, :ok, s}
+    else
+      _ -> {:reply, {:error, :inference_dispatch_refused}, s}
+    end
+  rescue
+    _ -> {:reply, {:error, :inference_dispatch_refused}, s}
+  end
+
+  @doc false
+  def document_admit(s, caller, phase, admission, expected, wire, sources) do
+    with true <- phase == "embedding.create" and not is_nil(document_source(s, phase)),
+         {:reply, :ok, next} <- wire_use(s, caller, phase, admission, expected, wire) do
+      Session.DocumentEmbedding.admit(next, sources)
+    else
+      _ -> {:reply, {:error, :document_source_use_refused}, Session.DocumentEmbedding.poison(s)}
+    end
+  end
+
+  defp document_source(s, "embedding.create") do
+    case s do
+      %{invocation: %{action: %{intent: %{"request" => %{"source_guard" => _}}}}} ->
+        Session.DocumentEmbedding.dispatch_data(s)
+
+      _ ->
+        nil
+    end
+  end
+
+  defp document_source(_, _), do: nil
+
+  @doc false
+  def send(data, facts, continuation) do
+    with_current(data, fn ->
+      with :ok <- current_wire(data, facts), do: continuation.()
+    end)
+  end
+
+  @doc false
+  def release(data, result, fun) when is_function(fun, 0) do
+    Session.Resources.file_effect(fn ->
+      with_current(data, fn ->
+        with :ok <- current_wire(data, data.wire),
+             :ok <-
+               GenServer.call(
+                 data.owner,
+                 {:managed_result_admit, data.job_ref, data.phase, data.admission, data.expected,
+                  result_digest(result)},
+                 5_000
+               ),
+             do: fun.()
+      end)
+    end)
+  end
+
+  @doc false
+  def result_admit(s, caller, phase, admission, expected, result_sha) do
+    with true <- s.task != nil and is_nil(s.managed_result_seal),
+         true <- caller == s.task.pid or Session.Resources.authorized_effect?(s.task.pid, caller),
+         {:ok, _, _, _, ^admission} <- view(s, phase),
+         true <- binding_current?(s, phase, expected),
+         true <- JSON.sha256?(result_sha) do
+      seal = %{
+        request_id: admission["request_id"],
+        phase: phase,
+        expected: expected,
+        result_sha: result_sha
+      }
+
+      {:reply, :ok, %{s | managed_result_seal: seal}}
+    else
+      _ -> {:reply, {:error, :inference_dispatch_refused}, s}
+    end
+  rescue
+    _ -> {:reply, {:error, :inference_dispatch_refused}, s}
+  end
+
+  @doc false
+  def consume_result(s, phase, result) do
+    required =
+      case Session.managed_dependencies(s, phase) do
+        {:ok, %{dependencies: []}} -> false
+        _ -> true
+      end
+
+    admission =
+      if phase in ["model", "compaction"],
+        do: s.active_request,
+        else: if(s.extension_model, do: s.extension_model.admission)
+
+    valid =
+      case s.managed_result_seal do
+        %{request_id: id, phase: ^phase, result_sha: sha} ->
+          admission != nil and admission["request_id"] == id and sha == result_digest(result)
+
+        _ ->
+          not required
+      end
+
+    result =
+      if match?({:ok, _, _}, result) and not valid,
+        do: {:error, "Managed inference result was not admitted by its owner."},
+        else: result
+
+    {result, %{s | managed_result_seal: nil}}
+  end
+
+  defp result_digest({:ok, value, usage}),
+    do: JSON.digest([%{"value" => value, "usage" => usage}])
+
+  defp result_digest(_), do: nil
+
+  defp with_current(data, fun) do
+    context = %{
+      config: data.config,
+      cwd: data.cwd,
+      session_id: data.session_id,
+      history_dir: data.history_dir,
+      owner: data.owner,
+      job_ref: data.job_ref,
+      source_binding: {:inference, data.phase, data.expected}
+    }
+
+    Session.ManagedUse.with_dependencies(context, data.managed.dependencies, fn _ -> fun.() end)
+  catch
+    _, _ -> {:error, :inference_dispatch_refused}
+  end
+
+  defp current_wire(data, facts),
+    do:
+      GenServer.call(
+        data.owner,
+        {:inference_wire_use, data.job_ref, data.phase, data.admission, data.expected, facts},
+        5_000
+      )
 
   def gate(owner, job, data, facts) do
     append = fn ->
@@ -38,23 +233,51 @@ defmodule Ipse.Session.InferenceDispatch do
 
     descriptor = data.config[:semantic_admission]
 
-    if is_map(descriptor) and descriptor["pin"] != nil do
-      pin = descriptor["pin"]
+    managed = Map.get(data, :managed, %{dependencies: []})
 
-      with {:ok, _} <- SemanticAdmission.context(data.config, data.session_id, 0) do
-        ProjectIdentity.with_binding(data.config[:home], data.cwd, descriptor["binding"], fn _ ->
-          Consent.with_policy(
-            SemanticAdmission.control_root(data.config[:home]),
-            pin["project_id"],
-            pin["epoch"],
-            pin["policy_sha256"],
-            System.system_time(:millisecond),
-            fn _ -> append.() end
+    cond do
+      not is_map(managed) or not is_list(managed[:dependencies]) ->
+        {:error, :inference_dispatch_refused}
+
+      managed.dependencies != [] and not is_map(data[:wire]) ->
+        {:error, :inference_dispatch_refused}
+
+      managed.dependencies != [] ->
+        context = %{
+          config: data.config,
+          cwd: data.cwd,
+          session_id: data.session_id,
+          history_dir: data.history_dir,
+          owner: owner,
+          job_ref: job,
+          source_binding: {:inference, data.phase, data.expected}
+        }
+
+        Session.ManagedUse.with_dependencies(context, managed.dependencies, fn _ -> append.() end)
+
+      is_map(descriptor) and descriptor["pin"] != nil ->
+        pin = descriptor["pin"]
+
+        with {:ok, _} <- SemanticAdmission.context(data.config, data.session_id, 0) do
+          ProjectIdentity.with_binding(
+            data.config[:home],
+            data.cwd,
+            descriptor["binding"],
+            fn _ ->
+              Consent.with_policy(
+                SemanticAdmission.control_root(data.config[:home]),
+                pin["project_id"],
+                pin["epoch"],
+                pin["policy_sha256"],
+                System.system_time(:millisecond),
+                fn _ -> append.() end
+              )
+            end
           )
-        end)
-      end
-    else
-      append.()
+        end
+
+      true ->
+        append.()
     end
   catch
     :exit, _ -> {:error, :inference_dispatch_refused}
@@ -65,7 +288,7 @@ defmodule Ipse.Session.InferenceDispatch do
          true <- caller == s.task.pid or Session.Resources.authorized_effect?(s.task.pid, caller),
          {:ok, runtime, input, tools, current} <- view(s, phase),
          true <- current === admission,
-         true <- expected(s, input, tools, current) === expected,
+         true <- expected(s, input, tools, current, phase) === expected,
          {:ok, %{route: route}} <-
            Ipse.InferenceDispatch.selection(
              s.config,
@@ -75,24 +298,24 @@ defmodule Ipse.Session.InferenceDispatch do
            ),
          true <- is_map(facts) and facts["route"] === route,
          true <- id?(facts["reservation_id"]),
-         true <- pin_live?(s) do
-      event =
-        Map.merge(expected, %{
-          "type" => @event_type,
-          "version" => 1,
-          "intent_id" => Ipse.Usage.id(),
-          "session_id" => s.id,
-          "turn_id" => s.turn_id,
-          "request_id" => current["request_id"],
-          "attempt_id" => current["attempt_id"],
-          "phase" => phase,
-          "service_id" => route["service_id"],
-          "reservation_id" => facts["reservation_id"],
-          "route_sha256" => JSON.digest([route])
-        })
-
+         true <- pin_live?(s),
+         event =
+           Map.merge(expected, %{
+             "type" => @event_type,
+             "version" => 1,
+             "intent_id" => Ipse.Usage.id(),
+             "session_id" => s.id,
+             "turn_id" => s.turn_id,
+             "request_id" => current["request_id"],
+             "attempt_id" => current["attempt_id"],
+             "phase" => phase,
+             "service_id" => route["service_id"],
+             "reservation_id" => facts["reservation_id"],
+             "route_sha256" => JSON.digest([route])
+           }),
+         true <- valid_intent?(event, current) do
       Session.record(s, event)
-      {:reply, {:ok, %{"intent_id" => event["intent_id"]}}, s}
+      {:reply, {:ok, %{"intent_id" => event["intent_id"]}}, Session.managed_event(s, event)}
     else
       _ -> {:reply, {:error, :inference_dispatch_refused}, s}
     end
@@ -104,6 +327,17 @@ defmodule Ipse.Session.InferenceDispatch do
   def operation(phase), do: phase
   def profile(phase, _) when phase in ["model", "compaction"], do: nil
   def profile(_, admission), do: admission["selected_profile"]
+
+  @doc false
+  def binding_current?(s, phase, expected) do
+    with {:ok, _, input, tools, admission} <- view(s, phase) do
+      expected(s, input, tools, admission, phase) === expected
+    else
+      _ -> false
+    end
+  rescue
+    _ -> false
+  end
 
   defp view(s, phase) when phase in ["model", "compaction"],
     do: Session.Turn.dispatch_view(s, phase)
@@ -117,17 +351,34 @@ defmodule Ipse.Session.InferenceDispatch do
       match?({:ok, _}, SemanticAdmission.context(s.config, s.id, 0))
   end
 
-  defp expected(s, input, tools, admission) do
+  defp expected(s, input, tools, admission, phase) do
     {:ok, mode} = Mode.capture(s.config)
 
     %{
       "admission_sha256" => JSON.digest([admission]),
       "input_sha256" => JSON.digest([input]),
       "tools_sha256" => JSON.digest([tools]),
-      "source_sha256" => JSON.digest([Session.source_snapshot(s)]),
+      "source_sha256" => source_digest(s, phase),
       "mode_sha256" => JSON.digest([mode]),
       "pin_sha256" => JSON.digest([s.config[:semantic_admission]])
     }
+  end
+
+  defp managed_snapshot(s, phase) do
+    case Session.managed_dependencies(s, phase) do
+      {:ok, snapshot} -> snapshot
+      _ -> nil
+    end
+  end
+
+  defp source_digest(s, phase) do
+    source = Session.source_snapshot(s)
+
+    case managed_snapshot(s, phase) do
+      %{dependencies: [_ | _], sha256: digest} -> JSON.digest([source, digest])
+      %{dependencies: []} -> JSON.digest([source])
+      _ -> JSON.digest([source, "managed_lineage_unavailable"])
+    end
   end
 
   def validate_events(events) do
@@ -166,8 +417,10 @@ defmodule Ipse.Session.InferenceDispatch do
 
   def valid_intent?(event, admission) do
     is_map(admission) and not is_nil(Ipse.Usage.operation(admission)) and
-      Enum.sort(Map.keys(event)) == Enum.sort(@keys) and event["version"] === 1 and
+      Enum.sort(Map.keys(event)) == Enum.sort(@keys) and event["type"] == @event_type and
+      event["version"] === 1 and
       event["phase"] in @phases and id?(event["intent_id"]) and id?(event["reservation_id"]) and
+      event["request_id"] === admission["request_id"] and
       event["session_id"] === admission["session_id"] and
       event["turn_id"] === admission["turn_id"] and
       event["attempt_id"] === admission["attempt_id"] and
@@ -186,7 +439,8 @@ defmodule Ipse.Session.InferenceDispatch do
           Ipse.Usage.operation(admission) == "embedding"
 
         "decision.create" ->
-          Ipse.Usage.operation(admission) == "decision"
+          Ipse.Usage.operation(admission) == "decision" and
+            event["service_id"] === admission["service_id"]
       end
   rescue
     _ -> false

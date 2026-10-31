@@ -1,0 +1,16 @@
+operator channel unavailable: input terminal channel unavailable
+** (ExUnit.AssertionError) 
+
+match (=) failed
+code:  assert {:closed, {:ok, receipt}} =
+              Management.full_facts_review_candidate(
+                %{home: home},
+                cwd,
+                key,
+                "Forget selected synthetic claim"
+              )
+left:  {:closed, {:ok, receipt}}
+right: {:unknown, :knowledge_management_cleanup_unconfirmed}
+
+    test/support/management_full_facts.exs:418: (file)
+    (elixir 1.20.4) lib/code.ex:1639: Code.require_file/2

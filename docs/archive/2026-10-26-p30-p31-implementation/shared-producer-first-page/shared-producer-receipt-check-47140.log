@@ -1,0 +1,30 @@
+{
+  "scope": "read-only synthetic actual Session receipt/order/stage reduction, not historical external receipt authentication",
+  "version": 1,
+  "journal_bytes": 783207,
+  "journal_events": 287,
+  "journal_sha256": "42983a9e18edb8b9d0672ddb3710acbd29e7f1bc2aa80804d4009d92057a2dad",
+  "claim_commit_precedes_embedding_intent": true,
+  "typed_embedding_sources": 1,
+  "exact_vectors": 2,
+  "raw_and_canonical_input_hashes_match": true,
+  "page_f32_bytes_equal_actual_effect_source": true,
+  "active_stages_at_captured_boundary": 0,
+  "event_types": {
+    "extension_action_intent": 127,
+    "extension_action_result": 127,
+    "extension_effect_result": 1,
+    "extension_embedding_request": 1,
+    "extension_invocation_intent": 8,
+    "extension_invocation_result": 8,
+    "request_admitted": 1,
+    "request_finished": 1,
+    "request_usage_observed": 1,
+    "session": 1,
+    "session_release_owner_started": 1,
+    "skill_catalog_snapshot": 1,
+    "turn_finished": 8,
+    "workspace_context_snapshot": 1
+  },
+  "existing_provenance_flag": false
+}

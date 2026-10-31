@@ -1,0 +1,135 @@
+Retained management target at 1793312500188: signed deadline elapsed. Original source availability and current-use eligibility are not checked.
+Review the complete proposed facts below. This confirmation applies only to this exact review.
+{
+  "action_sha256": "693fcf14604245c8ff459e404f633a3ad6e227266f3cb8210b0096951d772f72",
+  "collection": {
+    "manifest_sha256": "5b7f7ffd1ee84d6723e7fb88012bf3beb1e03bd77b9f507de44d1a0d2ab1d9fd",
+    "root": {
+      "floor": 1,
+      "floor_anchor": "676f093cfc35752707e3c95889e9ef8c",
+      "generation": 1,
+      "project": "9131119b0dc8c405bd2ebbf3dd09252e26f3543d0e25a1b54aa183d8aa610041",
+      "version": 3
+    },
+    "root_sha256": "7fd2aca139e95a8737afd0a52d6360a5713d6f42b3defbe92424861afb9c3365",
+    "root_state": "present"
+  },
+  "context": {
+    "binding_sha256": "845379c9dfb6e912951448ef161ec3c6cf1b36263b3d1d5d9f964290260b2e8d",
+    "client_id": "cd007ac41bb68cff78d3fffef76b2516",
+    "job_id": "61daa756f9efd8b09382ae257923841e",
+    "management_epoch": 1,
+    "management_sha256": "0283a2b33641e80b56bf7a6d05a6daf9ae52cd01685d8d556a1cadc6a046a80d",
+    "namespace": "9131119b0dc8c405bd2ebbf3dd09252e26f3543d0e25a1b54aa183d8aa610041",
+    "original_pin": null,
+    "project_id": "7f780dcd24be4fd8cd87e18b71f690e1ff444c1756d439e1771c8f0864b11399",
+    "recipe": {
+      "category_path": [
+        "category"
+      ],
+      "constraints_sha256": "d709745ab18405dff572c41053eda5cbe12c350ebbabdcd0d52ea1e80962368a",
+      "evidence_path": [
+        "evidence",
+        "sources"
+      ],
+      "key_prefix": "note.",
+      "kind": "literal_source",
+      "lineage_path": [
+        "lineage"
+      ],
+      "override_prefix": "override.",
+      "rules": [
+        {
+          "category": "current",
+          "max_age_ms": null,
+          "origins": [
+            "native_operator_assertion"
+          ]
+        },
+        {
+          "category": "ordinary",
+          "max_age_ms": 7776000000,
+          "origins": [
+            "native_operator_assertion",
+            "typed_host_outcome"
+          ]
+        },
+        {
+          "category": "preference",
+          "max_age_ms": null,
+          "origins": [
+            "native_operator_assertion"
+          ]
+        }
+      ],
+      "text_path": [
+        "text"
+      ],
+      "version": 1
+    },
+    "session_id": "cfcc1a20851eeb9d92d4863aaaddb159"
+  },
+  "kind": "managed_literal_forget",
+  "metadata": {
+    "category": "ordinary",
+    "first_admitted_ms": 86400000,
+    "lineage": "a25d954b728c71bc15cdfe3ef4c63f6a87e9f22be1dd1e5ddf9edf02ab769193",
+    "policy_sha256": "dbc7d380793c1fd92543f35461f649e62c5b1ffb7e82d904314ce91395ec651e",
+    "recipe_sha256": "818634825cb494606d25195a6601971a17542ed2caa22f28d1e18b1971b18cf7",
+    "valid_until_ms": 7862400000
+  },
+  "operation_id": "20f1146c9d06a2a7c3f082edd3d70021",
+  "policy": {
+    "kind": "session"
+  },
+  "reason": "Forget selected synthetic claim",
+  "request_sha256": "9b051f6e9fac22bbf0b47263b253f36162c69aab241b56409474eba219923a79",
+  "scope": "selected literal derivative; original journal, management review journal and shared evidence remain",
+  "target": {
+    "bytes": 1082,
+    "key": "note.a25d954b728c71bc15cdfe3ef4c63f6a87e9f22be1dd1e5ddf9edf02ab769193",
+    "operation_id": "676f093cfc35752707e3c95889e9ef8c",
+    "revision": 1,
+    "sha256": "101616baaa98218c0d51799a5cf199ffeba4f26dec2cbef3b198fbc2d868c3c6",
+    "value": {
+      "category": "ordinary",
+      "created_at_ms": 864000000,
+      "event_at_ms": null,
+      "evidence": {
+        "sources": [
+          {
+            "content_sha256": "4c1adf410e8092458cf9598d4ed4ba92a9ddc6c05fa3727c188a5fce5feada84",
+            "coverage": "available",
+            "end_byte": 19,
+            "kind": "input.assertion.ordinary",
+            "occurrence_id": "00000000000000000000000000000001",
+            "origin": "native_operator_assertion",
+            "path": null,
+            "quote": "Acme has owner Alex",
+            "quote_sha256": "4c1adf410e8092458cf9598d4ed4ba92a9ddc6c05fa3727c188a5fce5feada84",
+            "receipt_sha256": "249ded81fc09301d955175885ad1d43c9b47dd399ac1e0fedb40e418eb5c1547",
+            "session_id": "11111111111111111111111111111111",
+            "start_byte": 0,
+            "version": 1,
+            "version_id": "33333333333333333333333333333333"
+          }
+        ]
+      },
+      "expires_at_ms": 8640000000,
+      "id": "a25d954b728c71bc15cdfe3ef4c63f6a87e9f22be1dd1e5ddf9edf02ab769193",
+      "lineage": "a25d954b728c71bc15cdfe3ef4c63f6a87e9f22be1dd1e5ddf9edf02ab769193",
+      "metadata_reserve": "0000000000000000000000000000000000000000000000000000000000000000",
+      "observed_at_ms": 864000000,
+      "previous_category": null,
+      "reason": "trusted fixture source",
+      "superseded_at_ms": null,
+      "text": "Acme has owner Alex",
+      "version": 1
+    }
+  },
+  "version": 1
+}
+Type forget c74b42c9e6568408 to confirm, or anything else to cancel.
+> approval> forget c74b42c9e6568408
+
+MANAGEMENT_GENUINE_REVIEW_CONSUMED f6dc1f6a1d11d4208c15bc53d0565bd5d36b364b5fa115b84017f740a58c3c76

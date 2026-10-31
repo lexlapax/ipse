@@ -33,6 +33,9 @@ defmodule Ipse.Runner.TransactionTest do
     File.write!(source, """
     #[path=#{inspect(Path.join(@root, "native/ipse-transaction.rs"))}] mod ipse_transaction;
     #[path=#{inspect(Path.join(@root, "native/ipse-storage.rs"))}] mod ipse_storage;
+    #[path=#{inspect(Path.join(@root, "native/ipse-lease-transfer.rs"))}] mod ipse_lease_transfer;
+    #[cfg(target_os="linux")] #[path=#{inspect(Path.join(@root, "native/ipse-lease-sink.rs"))}] mod ipse_lease_sink;
+    #[cfg(target_os="linux")] #[path=#{inspect(Path.join(@root, "native/ipse-owner-control.rs"))}] mod ipse_owner_control;
     use std::{io::{self,Write},process::Command};
     use std::os::unix::process::CommandExt;
     unsafe extern "C" {fn kill(pid:i32,signal:i32)->i32;}
@@ -453,6 +456,7 @@ defmodule Ipse.Runner.TransactionTest do
       paths =
         :code.get_path()
         |> Enum.reject(&(Path.basename(List.to_string(&1)) == "consolidated"))
+        |> Enum.reverse()
         |> Enum.flat_map(&["-pa", List.to_string(&1)])
 
       assert {"{:error, :transaction_busy}\n", 0} =

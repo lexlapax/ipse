@@ -1,0 +1,10 @@
+Running ExUnit with seed: 472321, max_cases: 4
+Excluding tags: [:test]
+Including tags: [v4_segmented_geometry: true]
+
+V4_BATCH_SPANS_BASELINE_COMPARE valid_and_four_invalid=true
+V4_SEGMENTED_GEOMETRY {"sources":8,"chunks":256,"facts":256,"pages":32,"hydrate_reads":414,"append_max_reads":0,"append_invocations":0}
+.
+Finished in 22.2 seconds (4.7s on load, 0.00s async, 17.5s sync)
+
+Result: 1 passed, 9 excluded

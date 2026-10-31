@@ -1,0 +1,9 @@
+Running ExUnit with seed: 47074, max_cases: 1
+Excluding tags: [:test]
+Including tags: [:generation_paged_budget]
+
+GENERATION_PAGED_BUDGET {"catalog_bytes":7390,"effects":9,"job_bytes":42871,"job_native_packed_bytes":45712,"maximum_counter":9007199254740991,"maximum_frame_bytes":13604,"maximum_parts":7,"metadata_resumes":[{"effects":9,"maximum_frame_bytes":13604,"reads":377,"unit":0},{"effects":5,"maximum_frame_bytes":13346,"reads":367,"unit":1},{"effects":4,"maximum_frame_bytes":13346,"reads":362,"unit":2},{"effects":1,"maximum_frame_bytes":319,"reads":355,"unit":3}],"model_calls":0,"native_operations":0,"per_page_effects":6,"per_page_reads":46,"proof_reads":330,"reads":377,"references":165,"root_bytes":35203,"root_native_packed_bytes":37481}
+.
+Finished in 4.4 seconds (0.07s on load, 0.00s async, 4.3s sync)
+
+Result: 1 passed, 6 excluded

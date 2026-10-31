@@ -1,0 +1,78 @@
+{
+  "logs/control-46792.log": {
+    "bytes": 220,
+    "sha256": "0845e90b7d2bba4ec861cbe1851a933511efc0bda06b6bb42014389b1ceb701b"
+  },
+  "logs/ledger-46791.log": {
+    "bytes": 218,
+    "sha256": "aa663ed05256b2fce397354c8af4f98fae426886a32126a824df465ca99977c6"
+  },
+  "logs/native-46793.log": {
+    "bytes": 287,
+    "sha256": "cfcb9e8a63da32d1545fd7f1a99d967980c726f3886f7124aef9831ac275b28d"
+  },
+  "provenance.json": {
+    "bytes": 702,
+    "sha256": "300bd808b2cc2f3be1fa69ddbb99c1fb6edf731ff505ce8bd273d66d2a39d2de"
+  },
+  "runtime.json": {
+    "bytes": 121813,
+    "sha256": "27be2084cfefa2fb9a55f592253a0d132f5cba31ec1ac0e95adab921a50f9fff"
+  },
+  "source/lib__ipse__cli.ex": {
+    "bytes": 21630,
+    "sha256": "1cee91d0fcb1ff406762fecfdf1f27d3a32d0e5a4093e4e20268175c40009849"
+  },
+  "source/lib__ipse__cli__knowledge.ex": {
+    "bytes": 22862,
+    "sha256": "c4bd7ea33a3b7dd250e85087c2031bc59f0132d4889abec9920f0238a73ab93d"
+  },
+  "source/lib__ipse__cli__knowledge__management.ex": {
+    "bytes": 17229,
+    "sha256": "e75d7d11816d1f9cc7aa6caee2c065e8fd2eed667dfb2b4e39a59aa0535963b2"
+  },
+  "source/lib__ipse__cli__terminal.ex": {
+    "bytes": 48468,
+    "sha256": "6ebc8bb42d480113b87e166632aa422c3d298f0d61e9f4b30da625b46a2c6ce9"
+  },
+  "source/lib__ipse__extension__collection__managed_retention.ex": {
+    "bytes": 7061,
+    "sha256": "b9952cfc8fc17a0316ebc67bceb92b39b6ec2c0ef00a0cd43d906685dc3610aa"
+  },
+  "source/lib__ipse__extension__collection__normalizer_v3.ex": {
+    "bytes": 26527,
+    "sha256": "ca2a5e630dde77ec6b5aa956e6c662a823fd5f0d56c1286d26b3dc5a2c16f0ad"
+  },
+  "source/lib__ipse__extension__consent.ex": {
+    "bytes": 40922,
+    "sha256": "916f60371169294de73b446ef2a86a2d68f10e4db73f6f3eadafc54eb4f19e90"
+  },
+  "source/lib__ipse__session__managed_lifecycle.ex": {
+    "bytes": 8333,
+    "sha256": "4e811a5d99c39353bc63a8b7b194eece9fedef11162fa1e64c4aed3036983386"
+  },
+  "source/test__ipse__cli__knowledge_management_test.exs": {
+    "bytes": 2141,
+    "sha256": "e7bb6d7f0a07b7f28ba6e04aff0a0762d5e7fae234aeac20be01fa879f0bdcbd"
+  },
+  "source/test__ipse__extension__consent_expiry_test.exs": {
+    "bytes": 7143,
+    "sha256": "7c144d01b8be2e65f7b880e4544cf9f756c3bf068cc12f2c72d2938ffdf06332"
+  },
+  "source/test__ipse__session__operator_assertion_integration_test.exs": {
+    "bytes": 1764,
+    "sha256": "b909a3fce1435d4b5f3350d63371647ee5850a46bb60640bda5aae1dd17df659"
+  },
+  "source/test__support__operator_assertion.exs": {
+    "bytes": 30397,
+    "sha256": "a0bdfd92e67dda9ed43d270ae193112ca4fb1deceb4a68ccb945f88fe2e156db"
+  },
+  "source/test__support__operator_pty.rs": {
+    "bytes": 11847,
+    "sha256": "8775d93c36e6f9e517f77b3d5305f29993c46b74fd90d27c41bce1c98593eecb"
+  },
+  "source/test__test_helper.exs": {
+    "bytes": 1584,
+    "sha256": "3fe1c5ac8fab2068cc8d0001bc79f3a17fc6e9f6d997df9ccb34600509d6d63d"
+  }
+}

@@ -1,0 +1,5 @@
+{:ok, _} = Application.ensure_all_started(:ipse)
+ExUnit.start(autorun: false, seed: 47093, max_cases: 1)
+Code.require_file("docs/archive/2026-10-26-p30-p31-implementation/pending-projection/source/test/extensions/knowledge/knowledge_records_test.exs")
+result = ExUnit.run()
+System.halt(if result.failures == 0, do: 0, else: 1)

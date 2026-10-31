@@ -1,0 +1,8 @@
+Running ExUnit with seed: 283580, max_cases: 8
+Excluding tags: [:test]
+Including tags: [location: {"test/ipse/runner/protected_lease_test.exs", 50}]
+
+.
+Finished in 0.07 seconds (0.00s async, 0.07s sync)
+
+Result: 1 passed, 2 excluded

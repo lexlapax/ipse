@@ -1,0 +1,309 @@
+      warning: the following clause cannot match because the previous clauses already matched all possible values:
+
+          _ ->
+
+      it attempts to match on the result of:
+
+          native
+
+      which has the already matched type:
+
+          nil
+
+      type warning found at:
+      │
+ 1211 │         if native,
+      │         ~~~~~~~~~~
+      │
+      └─ test/ipse/extension/managed_collection_call_session_test.exs:1211: Ipse.Extension.ManagedCollectionCallSessionTest."test managed ordinary publication fences current at the actual native switch"/1
+
+      warning: the following clause cannot match because the previous clauses already matched all possible values:
+
+          _ ->
+
+      it attempts to match on the result of:
+
+          native
+
+      which has the already matched type:
+
+          nil
+
+      type warning found at:
+      │
+ 1211 │         if native,
+      │         ~~~~~~~~~~
+      │
+      └─ test/ipse/extension/managed_collection_call_session_test.exs:1211: Ipse.Extension.ManagedCollectionCallSessionTest."test managed ordinary publication fences delayed_stage at the actual native switch"/1
+
+      warning: the following clause cannot match because the previous clauses already matched all possible values:
+
+          _ ->
+
+      it attempts to match on the result of:
+
+          native
+
+      which has the already matched type:
+
+          nil
+
+      type warning found at:
+      │
+ 1211 │         if native,
+      │         ~~~~~~~~~~
+      │
+      └─ test/ipse/extension/managed_collection_call_session_test.exs:1211: Ipse.Extension.ManagedCollectionCallSessionTest."test managed ordinary publication fences stopped_native at the actual native switch"/1
+
+      warning: the following clause cannot match because the previous clauses already matched all possible values:
+
+          _ ->
+
+      it attempts to match on the result of:
+
+          native
+
+      which has the already matched type:
+
+          nil
+
+      type warning found at:
+      │
+ 1211 │         if native,
+      │         ~~~~~~~~~~
+      │
+      └─ test/ipse/extension/managed_collection_call_session_test.exs:1211: Ipse.Extension.ManagedCollectionCallSessionTest."test unmanaged ordinary publication fences current at the actual native switch"/1
+
+      warning: the following clause cannot match because the previous clauses already matched all possible values:
+
+          _ ->
+
+      it attempts to match on the result of:
+
+          native
+
+      which has the already matched type:
+
+          nil
+
+      type warning found at:
+      │
+ 1211 │         if native,
+      │         ~~~~~~~~~~
+      │
+      └─ test/ipse/extension/managed_collection_call_session_test.exs:1211: Ipse.Extension.ManagedCollectionCallSessionTest."test unmanaged ordinary publication fences delayed_stage at the actual native switch"/1
+
+      warning: the following clause cannot match because the previous clauses already matched all possible values:
+
+          _ ->
+
+      it attempts to match on the result of:
+
+          native
+
+      which has the already matched type:
+
+          nil
+
+      type warning found at:
+      │
+ 1211 │         if native,
+      │         ~~~~~~~~~~
+      │
+      └─ test/ipse/extension/managed_collection_call_session_test.exs:1211: Ipse.Extension.ManagedCollectionCallSessionTest."test unmanaged ordinary publication fences stopped_native at the actual native switch"/1
+
+      warning: incompatible types given to Integer.to_string/1:
+
+          Integer.to_string(native)
+
+      given types:
+
+          -nil-
+
+      but expected one of:
+
+          integer()
+
+      where "native" was given the type:
+
+          # type: nil
+          # from: test/ipse/extension/managed_collection_call_session_test.exs:1129:14
+          native = nil
+
+      type warning found at:
+      │
+ 1213 │             System.cmd("/bin/kill", ["-CONT", Integer.to_string(native)], stderr_to_stdout: true)
+      │                                                       ~
+      │
+      └─ test/ipse/extension/managed_collection_call_session_test.exs:1213:55: Ipse.Extension.ManagedCollectionCallSessionTest."test managed ordinary publication fences current at the actual native switch"/1
+
+      warning: incompatible types given to Integer.to_string/1:
+
+          Integer.to_string(native)
+
+      given types:
+
+          -nil-
+
+      but expected one of:
+
+          integer()
+
+      where "native" was given the type:
+
+          # type: nil
+          # from: test/ipse/extension/managed_collection_call_session_test.exs:1129:14
+          native = nil
+
+      type warning found at:
+      │
+ 1213 │             System.cmd("/bin/kill", ["-CONT", Integer.to_string(native)], stderr_to_stdout: true)
+      │                                                       ~
+      │
+      └─ test/ipse/extension/managed_collection_call_session_test.exs:1213:55: Ipse.Extension.ManagedCollectionCallSessionTest."test managed ordinary publication fences delayed_stage at the actual native switch"/1
+
+      warning: incompatible types given to Integer.to_string/1:
+
+          Integer.to_string(native)
+
+      given types:
+
+          -nil-
+
+      but expected one of:
+
+          integer()
+
+      where "native" was given the type:
+
+          # type: nil
+          # from: test/ipse/extension/managed_collection_call_session_test.exs:1129:14
+          native = nil
+
+      type warning found at:
+      │
+ 1213 │             System.cmd("/bin/kill", ["-CONT", Integer.to_string(native)], stderr_to_stdout: true)
+      │                                                       ~
+      │
+      └─ test/ipse/extension/managed_collection_call_session_test.exs:1213:55: Ipse.Extension.ManagedCollectionCallSessionTest."test managed ordinary publication fences stopped_native at the actual native switch"/1
+
+      warning: incompatible types given to Integer.to_string/1:
+
+          Integer.to_string(native)
+
+      given types:
+
+          -nil-
+
+      but expected one of:
+
+          integer()
+
+      where "native" was given the type:
+
+          # type: nil
+          # from: test/ipse/extension/managed_collection_call_session_test.exs:1129:14
+          native = nil
+
+      type warning found at:
+      │
+ 1213 │             System.cmd("/bin/kill", ["-CONT", Integer.to_string(native)], stderr_to_stdout: true)
+      │                                                       ~
+      │
+      └─ test/ipse/extension/managed_collection_call_session_test.exs:1213:55: Ipse.Extension.ManagedCollectionCallSessionTest."test unmanaged ordinary publication fences current at the actual native switch"/1
+
+      warning: incompatible types given to Integer.to_string/1:
+
+          Integer.to_string(native)
+
+      given types:
+
+          -nil-
+
+      but expected one of:
+
+          integer()
+
+      where "native" was given the type:
+
+          # type: nil
+          # from: test/ipse/extension/managed_collection_call_session_test.exs:1129:14
+          native = nil
+
+      type warning found at:
+      │
+ 1213 │             System.cmd("/bin/kill", ["-CONT", Integer.to_string(native)], stderr_to_stdout: true)
+      │                                                       ~
+      │
+      └─ test/ipse/extension/managed_collection_call_session_test.exs:1213:55: Ipse.Extension.ManagedCollectionCallSessionTest."test unmanaged ordinary publication fences delayed_stage at the actual native switch"/1
+
+      warning: incompatible types given to Integer.to_string/1:
+
+          Integer.to_string(native)
+
+      given types:
+
+          -nil-
+
+      but expected one of:
+
+          integer()
+
+      where "native" was given the type:
+
+          # type: nil
+          # from: test/ipse/extension/managed_collection_call_session_test.exs:1129:14
+          native = nil
+
+      type warning found at:
+      │
+ 1213 │             System.cmd("/bin/kill", ["-CONT", Integer.to_string(native)], stderr_to_stdout: true)
+      │                                                       ~
+      │
+      └─ test/ipse/extension/managed_collection_call_session_test.exs:1213:55: Ipse.Extension.ManagedCollectionCallSessionTest."test unmanaged ordinary publication fences stopped_native at the actual native switch"/1
+
+Running ExUnit with seed: 46871, max_cases: 8
+Excluding tags: [:test]
+Including tags: [extension_question_recovery: true, extension_question_ordinary: true]
+
+
+
+  1) test interrupted legacy extension question withholds arguments after expiry (Ipse.Extension.ManagedCollectionCallSessionTest)
+     test/ipse/extension/managed_collection_call_session_test.exs:980
+     ** (MatchError) no match of right hand side value:
+
+         {:error, :extension_admission_refused}
+
+     stacktrace:
+       test/ipse/extension/managed_collection_call_session_test.exs:517: Ipse.Extension.ManagedCollectionCallSessionTest.__ex_unit_setup_0/1
+       test/ipse/extension/managed_collection_call_session_test.exs:4: Ipse.Extension.ManagedCollectionCallSessionTest.__ex_unit__/2
+
+
+
+  2) test interrupted legacy extension question withholds arguments after revoke (Ipse.Extension.ManagedCollectionCallSessionTest)
+     test/ipse/extension/managed_collection_call_session_test.exs:980
+     ** (MatchError) no match of right hand side value:
+
+         {:error, :extension_admission_refused}
+
+     stacktrace:
+       test/ipse/extension/managed_collection_call_session_test.exs:517: Ipse.Extension.ManagedCollectionCallSessionTest.__ex_unit_setup_0/1
+       test/ipse/extension/managed_collection_call_session_test.exs:4: Ipse.Extension.ManagedCollectionCallSessionTest.__ex_unit__/2
+
+
+
+  3) test ordinary extension question resumes with its exact full parent (Ipse.Extension.ManagedCollectionCallSessionTest)
+     test/ipse/extension/managed_collection_call_session_test.exs:1048
+     ** (MatchError) no match of right hand side value:
+
+         {:error, :extension_admission_refused}
+
+     stacktrace:
+       test/ipse/extension/managed_collection_call_session_test.exs:517: Ipse.Extension.ManagedCollectionCallSessionTest.__ex_unit_setup_0/1
+       test/ipse/extension/managed_collection_call_session_test.exs:4: Ipse.Extension.ManagedCollectionCallSessionTest.__ex_unit__/2
+
+
+Finished in 0.9 seconds (0.00s async, 0.9s sync)
+
+Result: 0/3 passed, 103 excluded
+Failed: 3 tests
