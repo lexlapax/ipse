@@ -110,6 +110,27 @@ content and safe tool tail separately; retain ordinary user messages and malform
 reference markers. This fixture selection grants no production authority and must
 not remove host context from the real provider request.
 
+For managed-history integration, use a registered native provider route even
+when responses are synthetic. A `provider_module` callback on the demo route
+does not supply actual send/completion ownership. Use the existing loopback HTTP
+fixture, explicit service registration and a supported request deadline; keep
+the normal adapter and completion witness. Do not construct a successful witness
+or remove managed dependencies to make a test proceed.
+
+The competing V3 capture case is a worked example:
+
+```sh
+mix test test/ipse/extension/managed_collection_call_session_test.exs --only registered_competing
+```
+
+One selected test first saves a synthetic protected candidate, fills the pending
+population to 63, and coordinates two Sessions at the capture barrier. Six
+synthetic native HTTP responses cover the initial save and both continuations.
+The test requires exactly one concurrent publication, validated saved history
+and settled accounting; the service slot is released before either extension
+waits at the barrier. Excluded cases have not run. This exercises protocol and
+ownership, without real model inference or semantic-quality evidence.
+
 Capture the journal after `Session.close_confirmed/1` returns. On idle resume,
 require those bytes as an exact prefix. With the current release-receipt layout,
 the only suffix before closing the resumed Session is one complete ownership

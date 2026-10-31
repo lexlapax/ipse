@@ -898,6 +898,25 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
 
         responses =
           cond do
+            c[:registered_competing] ->
+              barrier =
+                hd(responses)
+                |> Jason.decode!()
+                |> put_in(
+                  ["message", "tool_calls", Access.at(0), "function", "arguments", "mode"],
+                  "barrier"
+                )
+                |> Jason.encode!()
+
+              [
+                hd(responses),
+                List.last(responses),
+                barrier <> "\n",
+                barrier <> "\n",
+                List.last(responses),
+                List.last(responses)
+              ]
+
             c[:managed_pack_actual] ->
               responses
 
@@ -2604,7 +2623,7 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
     assert File.read!(c.trace) == trace
   end
 
-  @tag metadata_version: 3
+  @tag metadata_version: 3, registered_main: true, capture_write: true, registered_competing: true
   test "competing V3 saved-consent Sessions cannot both publish at 63 pending records", c do
     competing_pending(c)
   end
@@ -2667,6 +2686,11 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
 
     successes = Enum.count(statuses, &(&1 == "ok"))
     assert snapshot["generation"] == 9 + successes
+
+    if c[:registered_competing] do
+      assert successes == 1
+      assert length(Task.await(c.provider_server, 5000)) == 6
+    end
 
     if successes == 0 do
       retry = start(c)
