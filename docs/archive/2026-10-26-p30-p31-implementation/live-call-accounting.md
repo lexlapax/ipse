@@ -50,3 +50,13 @@ The zero exit code does not establish completion or model-quality acceptance.
 Keep the raw audit/progress private; publish only a sanitized numerical receipt.
 Any later request must account for this conservative charge and preserve the
 original partial first outcome.
+
+## First local primary-pair requests, 2026-10-31
+
+The separately declared [adapter smoke](local-primary-smoke-20261031.md) made two
+actual requests on the already acquired primary pair, with no retries or model
+downloads. Charge2of1000local calls, leaving998. One embedding response had a
+complete witness; the direct chat adapter response parsed successfully but its
+witness stayed false because the harness bypassed the normal Provider wrapper.
+Keep that first outcome and its scope limitation. These calls do not change the
+ChatGPT226of300conservative charge or supply semantic/installed qualification.

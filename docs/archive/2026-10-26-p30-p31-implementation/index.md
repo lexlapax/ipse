@@ -44,8 +44,10 @@ Later, the explicitly selected primary pair was pulled to
 records full reported digests, sizes, metadata and runtime. Summed artifact size
 is **3,963,324,792 bytes**, below the 12-GiB allowance; this is an upper bound on
 new artifact payload before shared-blob reuse, not measured network transfer.
-No local inference has run. Download success establishes neither quality nor
-resource/offline qualification. No daemon configuration or existing model was changed.
+No local inference ran during provisioning. A later [two-request adapter smoke](local-primary-smoke-20261031.md)
+charges2of1000local calls, leaving998; its loaded contexts were4096tokens and its
+direct chat witness remained false. Download success establishes neither quality
+nor resource/offline qualification. No daemon configuration or existing model was changed.
 
 ## P31A contracts and evidence
 
