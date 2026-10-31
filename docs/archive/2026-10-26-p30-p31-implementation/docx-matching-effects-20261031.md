@@ -88,3 +88,18 @@ recorded with the committed increment. Logs use `/tmp/ipse-docx-effects-*2026103
 original documents/results and probes are in `/tmp/ipse-word-public-20261031`.
 The failed whole-source baseline, real Word rendering, complete source-change
 tracking, large ingestion and model-quality qualification remain open.
+
+## Committed-source package
+
+After the source increment was committed and pushed as
+`25afe998a2b7a14747ac2e91acfa589510ef9d00`, its clean offline package build passed.
+The archive SHA256 is
+`454a7dcbefc783ad382e79c60643d64f451e2d0cbff00bda68b309278a4c39fe`.
+This build includes the rebuilt v13 bundled catalog. The complete generic
+installed-package proof passed, followed by all seven document-artifact checks
+and all seven independent decision-artifact checks against that exact archive.
+The [package receipt](installed-package-v13-20261031.json) retains the three final
+reports, artifact/whole-log hashes and clean committed-source identity.
+All inventories remained unchanged, with private homes and no system development
+toolchain on runtime PATH. No model inference, release publication or broader
+knowledge/Word-quality acceptance is implied.

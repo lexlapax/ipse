@@ -133,3 +133,7 @@ The selected loopback server now reports `0.40.13`, rather than the provisioning
 record's `0.40.5`; the primary Qwen embedding and 4B answer tags retain their full
 recorded weight digests. This is current availability, not qualification of the
 updated server, offline execution or protected local preset.
+
+The subsequent [recipe-v13 increment](docx-matching-effects-20261031.md#committed-source-package)
+also passed a fresh clean committed-source package and both independent installed
+artifacts. It preserves this verifier repair and all earlier failed archives.
