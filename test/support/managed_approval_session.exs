@@ -7,6 +7,8 @@ defmodule Ipse.Test.ManagedApprovalSession do
   alias Ipse.Extension.{Collection, Consent, ProjectIdentity, SemanticAdmission}
 
   def config(scenario) do
+    proposal = proposal(scenario)
+
     response =
       ProviderFixture.ndjson([
         %{
@@ -16,13 +18,7 @@ defmodule Ipse.Test.ManagedApprovalSession do
             "content" => "",
             "tool_calls" => [
               %{
-                "function" => %{
-                  "name" => "write",
-                  "arguments" => %{
-                    "path" => "result.txt",
-                    "content" => "Synthetic ordinary statement"
-                  }
-                }
+                "function" => proposal
               }
             ]
           },
@@ -88,6 +84,8 @@ defmodule Ipse.Test.ManagedApprovalSession do
   end
 
   def run(config, cwd, home, dir, records, original_id, scenario, active_session \\ nil) do
+    tool_name = proposal(scenario)["name"]
+    scenario = control_scenario(scenario)
     config = Map.drop(config, [:provider_module, :fixture_root])
 
     consumer =
@@ -186,10 +184,29 @@ defmodule Ipse.Test.ManagedApprovalSession do
     assert {:ok, events} = Journal.load(dir, id)
     assert {:ok, _} = Session.Saved.restore(events, id)
 
+    if tool_name == "shell" do
+      admissions = Enum.filter(events, &(&1["type"] == "managed_tool_effect_admitted"))
+
+      if allowed do
+        assert [admitted] = admissions
+        assert admitted["binding"]["name"] == "shell"
+
+        assert [%{"status" => "confirmed", "effect_id" => effect_id}] =
+                 Enum.filter(events, &(&1["type"] == "managed_tool_effect_cleanup"))
+
+        assert effect_id == admitted["effect_id"]
+
+        assert [%{"decision" => "current"}] =
+                 Enum.filter(events, &(&1["type"] == "managed_tool_result_release"))
+      else
+        assert admissions == []
+      end
+    end
+
     starts = Enum.filter(events, &(&1["type"] == "tool_started"))
 
     if allowed or scenario in ~w(save_managed_approval_source_stale save_managed_approval_revoked) do
-      assert [%{"name" => "write", "approval" => "approved"}] = starts
+      assert [%{"name" => ^tool_name, "approval" => "approved"}] = starts
     else
       assert starts == []
     end
@@ -219,6 +236,12 @@ defmodule Ipse.Test.ManagedApprovalSession do
     assert length(requests) == count
     assert Jason.encode!(elem(hd(requests), 1)) =~ "Synthetic ordinary statement"
 
+    if tool_name == "shell" and allowed do
+      {_, continuation} = List.last(requests)
+      assert [result] = Enum.filter(continuation["messages"], &(&1["role"] == "tool"))
+      assert result["content"] =~ "NATIVE_SHELL_RESULT"
+    end
+
     if input_owners do
       ref = make_ref()
       send(input_owners.pid, {:inspection_result, self(), ref})
@@ -232,6 +255,32 @@ defmodule Ipse.Test.ManagedApprovalSession do
       assert {:ok, lock} = Ipse.Runner.lock(Path.join(dir, original_id <> ".lock"))
       File.write!(source_path, original)
       assert :ok = Ipse.Runner.unlock(lock)
+    end
+
+    if tool_name == "shell" do
+      assert {:ok, closed} = Journal.load(dir, id)
+      assert {:ok, saved} = Session.Saved.restore(closed, id)
+
+      assert {:ok, resumed} =
+               DynamicSupervisor.start_child(
+                 Ipse.Sessions,
+                 {Session, config: config, cwd: cwd, state_dir: dir, subscriber: self(), id: id}
+               )
+
+      assert Session.info(resumed).phase == :idle
+      assert :sys.get_state(resumed).messages == saved.messages
+      assert {:ok, opened} = Journal.load(dir, id)
+      assert Enum.take(opened, length(closed)) == closed
+      assert [marker] = Enum.drop(opened, length(closed))
+      assert Session.ReleaseReceipt.valid_owner_marker?(marker, id)
+      assert :ok = Session.close_confirmed(resumed)
+
+      assert {:ok, %{"release_claim" => "signed_release_claim"}} =
+               Session.Saved.inspect_saved(dir, id)
+
+      if allowed,
+        do: assert(File.read!(Path.join(cwd, "result.txt")) == "Synthetic ordinary statement"),
+        else: refute(File.exists?(Path.join(cwd, "result.txt")))
     end
 
     IO.puts("NATIVE_MANAGED_APPROVAL_SESSION_PASSED")
@@ -369,7 +418,30 @@ defmodule Ipse.Test.ManagedApprovalSession do
 
   defp one_request?(scenario),
     do:
-      scenario in ~w(save_managed_approval_source_stale save_managed_approval_revoked save_managed_approval_owner_loss save_managed_approval_cancel save_managed_approval_exit)
+      control_scenario(scenario) in ~w(save_managed_approval_source_stale save_managed_approval_revoked save_managed_approval_owner_loss save_managed_approval_cancel save_managed_approval_exit)
+
+  defp proposal("save_managed_approval_shell" <> _) do
+    %{
+      "name" => "shell",
+      "arguments" => %{
+        "command" =>
+          "printf '%s' 'Synthetic ordinary statement' > result.txt; printf NATIVE_SHELL_RESULT",
+        "timeout_ms" => 2000
+      }
+    }
+  end
+
+  defp proposal(_) do
+    %{
+      "name" => "write",
+      "arguments" => %{"path" => "result.txt", "content" => "Synthetic ordinary statement"}
+    }
+  end
+
+  defp control_scenario("save_managed_approval_shell" <> suffix),
+    do: "save_managed_approval" <> suffix
+
+  defp control_scenario(scenario), do: scenario
 
   defp input_control(consumer, actual, cwd, home, dir, original_id, original, scenario) do
     root = Path.dirname(home)

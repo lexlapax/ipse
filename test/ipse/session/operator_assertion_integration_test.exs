@@ -20,10 +20,11 @@ defmodule Ipse.Session.OperatorAssertionIntegrationTest do
   end
 
   for scenario <-
-        ~w(save save_display_owners save_managed_approval save_managed_approval_active save_managed_approval_resume save_managed_approval_deny save_managed_approval_stale_token save_managed_approval_cancel save_managed_approval_exit save_managed_approval_delayed save_managed_approval_source_stale save_managed_approval_revoked save_managed_approval_owner_loss save_forget save_forget_cancel save_forget_stale save_retention save_expire save_history_expire cancel stale planning revoked) do
+        ~w(save save_display_owners save_managed_approval save_managed_approval_active save_managed_approval_resume save_managed_approval_deny save_managed_approval_stale_token save_managed_approval_cancel save_managed_approval_exit save_managed_approval_delayed save_managed_approval_source_stale save_managed_approval_revoked save_managed_approval_owner_loss save_managed_approval_shell save_managed_approval_shell_source_stale save_forget save_forget_cancel save_forget_stale save_retention save_expire save_history_expire cancel stale planning revoked) do
     @tag timeout: 90_000
     @tag assertion_scenario: scenario
     @tag managed_approval: String.starts_with?(scenario, "save_managed_approval")
+    @tag managed_shell_approval: String.starts_with?(scenario, "save_managed_approval_shell")
     test "actual native CLI statement review: #{scenario}", c do
       root = Path.join(System.tmp_dir!(), "ipse-assertion-" <> Ipse.Usage.id())
       File.mkdir!(root)

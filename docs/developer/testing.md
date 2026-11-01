@@ -697,7 +697,18 @@ The first suite checks paged delivery, strict Saved commitments and permission
 withdrawal between a committed read and the next actual VM input, including idle
 resume without callback replay. Its paged positive reads root metadata. The
 genuine approval fixture additionally reads a committed note and its original
-inactive Session proof. A disclosed one-use BEAM controller pause inspects the
+inactive Session proof. Its shell cases use the same actual native review and
+require an exact file effect, owned spawn/cleanup records and shell stdout in
+the next provider request's tool-result message. Checking the assistant's command
+text would not prove that stdout was delivered. The paired source-change case
+alters the original journal during the input wait and requires no effect admission
+or target file after approval. Select these two cases with
+`--only managed_shell_approval:true`; the complete `managed_approval:true` cohort
+also preserves write approvals, denial, stale tokens, cancellation and owner loss.
+Both shell consumers close and resume idle with their exact saved messages and
+only the validated ownership suffix. Confirm the final signed release claim and
+unchanged target after resume; recovery must start no command or model request.
+A disclosed one-use BEAM controller pause inspects the
 actual transaction's native descriptor set before its unchanged pipe write:
 three policy locks, consuming/original Session locks, Session/Writer controls and
 actual Worker stdin must belong to that same native process. The original lock

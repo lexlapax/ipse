@@ -973,6 +973,10 @@ source/policy owners, settles display, releases those locks before input and
 retains fresh effect admission afterward. Scoped synthetic-route native controls
 cover fresh/active/resumed writes, denial/stale code, cancellation/exit, delayed input,
 changed source, revocation and Session loss. The
+[actual-note shell follow-up](archive/2026-10-26-p30-p31-implementation/native-shell-approval-20261101.md)
+adds native approval, a physical command effect, owned cleanup and buffered stdout
+delivery, plus changed-source refusal before spawn. Broader shell loss/expiry
+and subscriber-fixture migration remain open. The
 [accepted-decision approval extension](archive/2026-10-26-p30-p31-implementation/accepted-approval-20261101.md)
 additionally retains original management journals at that same native sink,
 with Session/Writer-authenticated manifest counts/inodes. Native controls cover
