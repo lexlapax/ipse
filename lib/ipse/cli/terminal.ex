@@ -88,8 +88,8 @@ defmodule Ipse.CLI.Terminal do
   ipse knowledge disable          Revoke permission through a fresh native review
   ipse knowledge review [--json] [--after KEY]  List bounded pending metadata without promotion
   ipse knowledge review KEY       Display one pending proposal and review native acceptance
-  ipse knowledge forget NOTE_KEY  Review and forget one selected literal
-  ipse knowledge expire NOTE_KEY  Reclaim an already expired signed ordinary note
+  ipse knowledge forget NOTE_KEY  Review and forget one selected native note
+  ipse knowledge expire NOTE_KEY  Reclaim one note after its signed retention expires
   ipse knowledge retention KEY --policy POLICY  Review a selected native retention choice
   ipse knowledge operation ID     Inspect a management journal without replaying its action
   ipse extension import PATH       Copy a local inert extension artifact

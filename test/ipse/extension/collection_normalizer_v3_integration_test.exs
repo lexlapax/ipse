@@ -11,7 +11,7 @@ defmodule Ipse.Extension.CollectionNormalizerV3IntegrationTest do
   alias Ipse.Session.ManagedReference
   alias Ipse.Test.NormalizerV3Fixture, as: F
   alias IpseKnowledge.Knowledge.Records
-  alias Ipse.{JSON, Runner}
+  alias Ipse.{JSON, Runner, Usage}
   @moduletag timeout: 120_000
 
   # Author integration controls, not independent qualification. Source members
@@ -5251,6 +5251,77 @@ defmodule Ipse.Extension.CollectionNormalizerV3IntegrationTest do
       operation_id: Ipse.Usage.id(),
       initialize: initialize
     }
+
+  @tag :accepted_retention_generic_guard
+  test "generic V3 cannot publish an accepted retention receipt or omit its public target", c do
+    opts = options(1, 0)
+
+    assert {:ok, _} =
+             publish(
+               c,
+               opts,
+               %{
+                 namespace: c.namespace,
+                 format: "managed-metadata-v3",
+                 operation_id: Usage.id(),
+                 initialize: true
+               },
+               first: true
+             )
+
+    before = File.read!(Path.join([c.root, c.namespace, "root.json"]))
+    next = options(2, 1)
+
+    for omit_target? <- [false, true] do
+      operation = Usage.id()
+
+      result =
+        Identity.with_domain_publication(
+          c.home,
+          c.cwd,
+          c.binding,
+          %{
+            namespace: c.namespace,
+            format: "managed-metadata-v3",
+            operation_id: operation,
+            initialize: false
+          },
+          fn _ -> :ok end,
+          fn cap, catalog ->
+            C.execute_managed_v3(
+              c.root,
+              c.namespace,
+              next.request,
+              operation,
+              JSON.digest([next.recipe]),
+              fn witness, read ->
+                with {:ok, normalized, receipt} <-
+                       NormalizerV3.normalize(
+                         witness,
+                         read,
+                         Map.merge(next, %{domain_cap: cap, catalog: catalog})
+                       ) do
+                  changed =
+                    if omit_target?,
+                      do: Map.update!(normalized, "changes", &tl/1),
+                      else: normalized
+
+                  {:ok, changed, Map.put(receipt, "kind", "native_accepted_decision_retention")}
+                end
+              end
+            )
+          end
+        )
+
+      expected =
+        if omit_target?,
+          do: :managed_normalization_refused,
+          else: :native_review_publication_fence_unavailable
+
+      assert result == {:error, expected}
+      assert File.read!(Path.join([c.root, c.namespace, "root.json"])) == before
+    end
+  end
 
   def publish(c, opts, scope, flags \\ []) do
     authorize = fn _binding ->

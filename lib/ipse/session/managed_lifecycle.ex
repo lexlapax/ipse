@@ -112,10 +112,13 @@ defmodule Ipse.Session.ManagedLifecycle do
     alias Ipse.Extension.Collection.ManagedRetention
 
     with true <- ManagedRetention.policy?(policy) do
+      accepted? = get_in(managed, ["metadata", "management_target"]) == "accepted_decision"
+      prepare = if accepted?, do: &prepare_accepted_forget/3, else: &prepare/3
+
       if policy["kind"] == "session" do
-        prepare(context, managed, reason)
+        prepare.(context, managed, reason)
       else
-        with {:ok, prepared} <- prepare(context, managed, reason),
+        with {:ok, prepared} <- prepare.(context, managed, reason),
              target = prepared["facts"]["target"],
              request =
                put_in(prepared["request"], ["changes", Access.at(0), "value"], target["value"]),
@@ -125,7 +128,11 @@ defmodule Ipse.Session.ManagedLifecycle do
                prepared["facts"]
                |> Map.delete("action_sha256")
                |> Map.merge(%{
-                 "kind" => "managed_literal_retention",
+                 "kind" =>
+                   if(accepted?,
+                     do: "managed_accepted_decision_retention",
+                     else: "managed_literal_retention"
+                   ),
                  "policy" => policy,
                  "old_deadline_ms" => old["valid_until_ms"],
                  "new_deadline_rule" => ManagedRetention.deadline_rule(policy),
@@ -167,7 +174,8 @@ defmodule Ipse.Session.ManagedLifecycle do
     deadline = get_in(facts, ["metadata", "valid_until_ms"])
     first = get_in(facts, ["metadata", "first_admitted_ms"])
 
-    facts["kind"] === "managed_literal_retention" and ManagedRetention.policy?(policy) and
+    facts["kind"] in ~w(managed_literal_retention managed_accepted_decision_retention) and
+      ManagedRetention.policy?(policy) and
       command in ~w(pin ordinary duration) and ManagedRetention.command(policy) === command and
       JSON.safe_uint?(first) and first <= now and
       facts["old_deadline_ms"] === deadline and

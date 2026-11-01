@@ -285,7 +285,8 @@ defmodule Ipse.Extension.Collection.ObservedRead do
          metadata = observed["metadata"],
          record = observed["record"],
          link = observed["link"],
-         {:ok, values} <- PendingAcceptance.accepted_values(event, metadata["valid_until_ms"]),
+         {:ok, values} <-
+           PendingAcceptance.accepted_values(event, record["value"]["valid_until_ms"]),
          true <- record["key"] === values["note_key"] and record["value"] === values["note"],
          true <-
            record["sha256"] === values["note_sha256"] and
@@ -302,7 +303,9 @@ defmodule Ipse.Extension.Collection.ObservedRead do
          true <- metadata["policy_sha256"] === event["facts"]["policy_sha256"],
          true <- metadata["acceptance_event_sha256"] === JSON.digest([event]),
          true <- metadata["source_proof"] === verified_source,
-         true <- metadata["category"] === event["facts"]["assigned_category"],
+         true <- PendingAcceptance.accepted_retention_metadata?(event, metadata, now),
+         true <-
+           is_nil(metadata["choice"]) or metadata["record_value_sha256"] === record["sha256"],
          true <-
            JSON.safe_uint?(metadata["first_admitted_ms"]) and metadata["first_admitted_ms"] <= now,
          true <- valid_deadline?(metadata["valid_until_ms"], metadata["first_admitted_ms"], now),
@@ -341,6 +344,18 @@ defmodule Ipse.Extension.Collection.ObservedRead do
            "event_sha256" => metadata["acceptance_event_sha256"],
            "link" => link_identity
          },
+         acceptance =
+           if(is_nil(metadata["choice"]),
+             do: acceptance,
+             else:
+               Map.put(acceptance, "retention", %{
+                 "version" => 1,
+                 "kind" => "native_retention_choice",
+                 "choice_sha256" => JSON.digest([metadata["choice"]]),
+                 "policy" => metadata["choice"]["policy"],
+                 "observed_at_ms" => metadata["choice"]["observed_at_ms"]
+               })
+           ),
          subject =
            base["subject"]
            |> Map.put("kind", "accepted_decision_observation")
@@ -426,18 +441,19 @@ defmodule Ipse.Extension.Collection.ObservedRead do
   def with_managed_record(_, _, _, _, _, _, _), do: @error
 
   @doc """
-  Retain an exact signed literal or accepted-decision target for reducing management.
+  Retain an exact signed literal or accepted-decision target for native management.
 
   Accepted decisions require their distinct signed tag and same-root immutable
   link. This historical target route grants neither current-use eligibility nor
-  source/review authority. Only explicit forgetting or elapsed signed expiry may
-  use it; retention changes and supersession remain separate.
+  source/review authority. The owning host must derive the distinct forgetting,
+  retention or expiry facts and use that operation's actual publication boundary.
+  This route supplies no supersession or current-use authority.
   """
-  def with_managed_reducing_record(root, namespace, request, cap, catalog, recipe, fun)
+  def with_managed_note_record(root, namespace, request, cap, catalog, recipe, fun)
       when is_function(fun, 1),
       do: with_management_record(root, namespace, request, cap, catalog, recipe, fun, true)
 
-  def with_managed_reducing_record(_, _, _, _, _, _, _), do: @error
+  def with_managed_note_record(_, _, _, _, _, _, _), do: @error
 
   defp with_management_record(root, namespace, request, cap, catalog, recipe, fun, accepted?)
        when is_function(fun, 1) do

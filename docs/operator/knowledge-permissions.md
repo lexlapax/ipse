@@ -5,7 +5,7 @@ for a project. Setup imports the shipped artifact and saves a protected permissi
 it does not start a model or change your provider configuration. The selected
 tool becomes available in the **next new session**.
 
-The current development source supports one new v3 capture through a reviewed
+The current development source supports new v3 captures through a reviewed
 `/remember` statement and a separate interactive review to forget one existing
 native note on a supported Linux storage profile. A focused authorized-client
 headless control also saved a genuine typed host outcome under the knowledge-only
@@ -409,10 +409,9 @@ behavior have not yet been qualified for this path.
 
 ## Change a selected native note's retention
 
-Choose a retention policy for a selected stored literal on a supported Linux
-native terminal. Session-only also removes an accepted decision through its
-separate native forget review; other retention choices for accepted decisions
-remain unavailable. For example:
+Choose a retention policy for a selected stored literal or accepted decision on
+a supported Linux native terminal. Session-only removes the selected note through
+its separate native forget review. For example:
 
 ```sh
 ipse knowledge retention note.COPY_THE_64_CHARACTER_LINEAGE --policy session --cwd /path/to/project
@@ -427,6 +426,11 @@ explicit forgetting; it does not erase the original journal, management review
 journal or shared evidence. Pin has no selected expiry; automatic selects 90 days,
 and duration selects the positive number of days provided. The finite choice
 starts at native confirmation; the original admission clock remains recorded.
+For an accepted decision, the public record and immutable acceptance link also
+stay unchanged. Its recorded category and original deadline describe acceptance;
+the authenticated native retention choice supplies its effective lifetime. A fresh
+read must check that choice before recall or later use. Retention does not change
+the decision's original attribution, endorse its premises or grant other effects.
 An expired target cannot be extended by a new persistent choice. Existing signed
 choices remain readable, and dependencies cannot borrow another revision's
 deadline. Inspect uncertain operations with

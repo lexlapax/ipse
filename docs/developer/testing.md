@@ -740,6 +740,26 @@ No native clock, review time or storage receipt is manufactured. This short
 actual wait does not establish 30/90-day or annual endurance, human attribution,
 installed behavior or model quality. Run the ordinary literal/history expiry
 controls after changing their shared normalizer or management accounting.
+
+The accepted-retention journey checks the complete choice/read/lifecycle path:
+
+```sh
+IPSE_TEST_GENUINE_PENDING_ACCEPTED_RETENTION=1 mix test test/extensions/knowledge/knowledge_session_test.exs --only genuine_pending_accepted_retention --max-cases 1
+```
+
+For ordinary, preference and current decisions it requires public native pin,
+actual typed recall through the registered provider, cancellation without effect,
+automatic retention and a public one-day duration. A separate native host call
+selects a two-second duration through the same owned management entry, then waits
+for real expiry, requires a new pin to refuse without changing control state,
+and reclaims after disablement with the source unavailable.
+The public record/link remain byte-identical through all retention choices;
+only signed metadata changes, with one generation per committed operation.
+The expanded trusted fixture selects a finite 16-operation allowance for its
+five additional lifecycle effects and later refusal controls. Product limits
+remain unchanged. Check the compact retention witness in the read receipt and
+preserve the legacy deadline-mismatch refusal without that witness. The pure
+page/receipt fixtures prove syntax and consistency, never native Review authority.
 A shared lease must also work at the ordinary
 resource ceiling, reject foreign/forged/spent handles, and preserve the combined
 original-owner budget. Follow the

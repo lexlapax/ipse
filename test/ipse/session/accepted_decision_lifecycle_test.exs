@@ -92,7 +92,7 @@ defmodule Ipse.Session.AcceptedDecisionLifecycleTest do
              ])
   end
 
-  test "other signed eligibility tags, retirement and prior choices cannot become accepted targets",
+  test "other signed eligibility tags, retirement and malformed choices cannot become accepted targets",
        c do
     other_prefix = Map.put(c.recipe, "key_prefix", "other.")
     other_live = List.replace_at(c.live, 2, packed(JSON.digest([other_prefix])))
@@ -229,13 +229,84 @@ defmodule Ipse.Session.AcceptedDecisionLifecycleTest do
 
     assert {:error, _} = ManagedLifecycle.prepare(context, managed, "Cannot relabel this target")
 
-    assert {:error, _} =
+    assert {:ok, retention} =
              ManagedLifecycle.prepare_retention(
                context,
                managed,
                %{"kind" => "pin"},
-               "Cannot pin this target"
+               "Native pin for this accepted target"
              )
+
+    assert retention["facts"]["kind"] == "managed_accepted_decision_retention"
+
+    assert retention["request"]["changes"] == [
+             %{"key" => c.record["key"], "expected_revision" => 2, "value" => c.record["value"]}
+           ]
+  end
+
+  test "native-choice consistency preserves accepted value/link identities and original clocks",
+       c do
+    alias Ipse.Extension.Collection.ManagedRetention
+
+    for policy <- [
+          %{"kind" => "pin"},
+          %{"kind" => "ordinary"},
+          %{"kind" => "duration", "duration_ms" => 5000}
+        ] do
+      command = ManagedRetention.command(policy)
+      challenge = String.duplicate("d", 16)
+
+      choice = %{
+        "version" => 2,
+        "kind" => "native_management",
+        "lineage" => c.record["value"]["lineage"],
+        "event_id" => Usage.id(),
+        "display_sha256" => JSON.sha256("synthetic native-shaped display"),
+        "challenge" => challenge,
+        "input_sha256" => JSON.sha256(command <> " " <> challenge),
+        "observed_at_ms" => 1200,
+        "target_key" => c.record["key"],
+        "target_value_sha256" => c.record["sha256"],
+        "policy" => policy,
+        "reason" => "Synthetic consistency fixture"
+      }
+
+      {:ok, category, deadline} = ManagedRetention.selected(policy, 1200)
+
+      live =
+        c.live
+        |> List.replace_at(
+          5,
+          if(is_nil(deadline), do: nil, else: String.downcase(Integer.to_string(deadline, 36)))
+        )
+        |> List.replace_at(6, if(category == "pin", do: 3, else: 0))
+
+      changed = %{c | anchor: Map.put(c.anchor, "choice", choice), live: live}
+      assert {:ok, metadata} = inspect_target(changed)
+      assert metadata["choice"] == choice and metadata["category"] == category
+      assert metadata["valid_until_ms"] == deadline
+      assert metadata["first_admitted_ms"] == 1000
+      assert changed.record == c.record and changed.link == c.link
+
+      for {field, value} <- [
+            {"target_key", "note." <> JSON.sha256("different")},
+            {"target_value_sha256", JSON.sha256("different")},
+            {"observed_at_ms", 1099}
+          ] do
+        assert {:error, _} =
+                 inspect_target(%{
+                   changed
+                   | anchor: put_in(changed.anchor["choice"], Map.put(choice, field, value))
+                 })
+      end
+
+      if is_nil(deadline) do
+        refute PendingAcceptance.expired_retained_decision_metadata?(metadata, 10_000_000)
+      else
+        refute PendingAcceptance.expired_retained_decision_metadata?(metadata, deadline - 1)
+        assert PendingAcceptance.expired_retained_decision_metadata?(metadata, deadline)
+      end
+    end
   end
 
   defp inspect_target(c),

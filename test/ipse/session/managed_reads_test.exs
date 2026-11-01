@@ -379,6 +379,38 @@ defmodule Ipse.Session.ManagedReadsTest do
     assert ManagedReference.dependency?(dependency)
     assert {:ok, _} = ManagedReads.prepare(c.id, intent, result_value, [dependency])
 
+    retained =
+      dependency
+      |> put_in(["subject", "validity", "valid_until_ms"], nil)
+      |> put_in(["subject", "acceptance", "retention"], %{
+        "version" => 1,
+        "kind" => "native_retention_choice",
+        "choice_sha256" => JSON.sha256("synthetic authenticated-choice commitment"),
+        "policy" => %{"kind" => "pin"},
+        "observed_at_ms" => 1000
+      })
+
+    assert ManagedReference.dependency?(retained)
+    assert {:ok, _} = ManagedReads.prepare(c.id, intent, result_value, [retained])
+
+    assert ManagedReads.covered?(c.config.semantic_admission, c.parent, intent, result_value, [
+             retained
+           ])
+
+    for invalid <- [
+          put_in(retained, ["subject", "acceptance", "retention", "choice_sha256"], "unverified"),
+          put_in(retained, ["subject", "acceptance", "retention", "policy"], %{
+            "kind" => "session"
+          }),
+          put_in(retained, ["subject", "validity", "valid_until_ms"], 999_999)
+        ] do
+      refute ManagedReference.dependency?(invalid)
+
+      refute ManagedReads.covered?(c.config.semantic_admission, c.parent, intent, result_value, [
+               invalid
+             ])
+    end
+
     assert ManagedReads.covered?(c.config.semantic_admission, c.parent, intent, result_value, [
              dependency
            ])

@@ -596,24 +596,25 @@ Both belong inside the actual Identity/domain-auth callback. The result is a
 stored historical snapshot: it does not renew source eligibility or endorse its
 contents. Native journal/tty ownership, complete lease closure and the actual
 Review input remain separate and are not enabled by those read APIs.
-For reducing management, `ObservedRead.with_managed_reducing_record/7` also admits a distinct
+For note management, `ObservedRead.with_managed_note_record/7` also admits a distinct
 accepted-decision target. It authenticates the type-3 signed live row, matching
 anchor and same-root immutable acceptance link. The note's sealed value hash
 binds that link's exact bytes. `PendingAcceptance.retained_decision_metadata/5`
 checks their closed identities and original proof consistency without loading
 the original review journal or claiming current source eligibility. This is
-historical destructive-target inspection, not the version-6 current-use reader.
+historical target inspection, not the version-6 current-use reader.
 It cannot relabel an accepted decision as a literal or authorize later delivery.
 Public acceptance results and acceptance-journal inspection expose
 `accepted_note_key`, derived from the validated native event through
 `PendingAcceptance.accepted_note_key/1`. This lets an operator address the target
 without a raw Collection lookup. It is an intended identity, not a publication
 receipt or current-use proof; inspection retains separate status fields.
-`ManagedLifecycle.prepare_retention/4`
-constructs exact review facts; its session-only branch uses `prepare/3` for
-literal forgetting. `prepare_accepted_forget/3` instead binds the complete accepted
-target and distinct fact kind to one deletion. Literal retention, correction and
-supersession still refuse that representation. None of these preparations grants
+`ManagedLifecycle.prepare_retention/4` constructs exact review facts and selects
+the literal or accepted representation from authenticated metadata. Its
+session-only branch uses `prepare/3` for literal forgetting or
+`prepare_accepted_forget/3` for an accepted decision. The latter binds the complete
+accepted target and distinct fact kind to one deletion. Literal-only preparation,
+correction and supersession still refuse that representation. None of these preparations grants
 authority. Native `Runner.Review` binds a volatile
 same-owner permit to the complete display and fresh confirmation. Original source
 availability and capture TTL are not preconditions for reducing stored authority.
@@ -644,18 +645,43 @@ management review journal remain. An unavailable original source does not block
 this reducing operation. It supplies no current-use permission, and an uncertain
 forget is never automatically replayed.
 
-For literal retention, the CLI translates `automatic` to the exact
+For retention, the CLI translates `automatic` to the exact
 ordinary 90-day policy, or validates an explicit positive duration, pin or
 session-only choice. `Consent.retain_deferred/8` shares the management state
 machine but binds `collection.retention`, the retention fact kind and actual
 policy-specific native command; it cannot reuse a forget permit. Session-only
-uses the matching forget path, including accepted decisions. Other retention
-choices remain literal-only. `NormalizerV3.retain/3` performs a same-value CAS with a new
+uses the matching forget path, including accepted decisions.
+`NormalizerV3.retain/3` performs a same-value CAS with a new
 record revision and signed choice capsule, retaining original source/admission
 clocks and publication policy. Ordinary/duration deadlines use actual native
 confirmation time, as the displayed relative rule promises. Expired targets
 refuse non-session changes both before review and under the final native lock.
 The normalization receipt retains the earlier old/new finite deadline.
+
+Accepted retention uses the distinct `managed_accepted_decision_retention` facts
+and `NormalizerV3.retain_accepted/3`. Its original same-value request checks the
+exact immutable target under the Collection lock. The normalized mutation contains
+only bounded signed anchor/live changes: the public note, revision, operation ID
+and immutable acceptance link stay unchanged. The specialized retention validator
+checks the target value hash and reuses the V3 metadata bounds. Generic managed
+execution refuses this receipt kind; the owned native retention entry must bind
+the actual Review, synced intent, live Writer and final publication deadline.
+Accounting conservatively includes the original target assertion and actual
+metadata/receipt bytes without changing generic SDK accounting admission.
+
+The retained reader validates the native choice against the exact accepted value
+hash and unchanged first-admission clocks. Current reads retain original event,
+link, source and policy verification, while their version-6 acceptance reference
+adds a closed `retention` witness with the choice hash, policy and confirmation
+time. Later use recomputes that witness from authenticated current pages. A
+reference without it still matches the recorded accepted deadline; the new
+witness binds its effective deadline without rewriting the accepted value.
+The original record/link revision equality and source-version checks remain.
+The existing IMB2 bytes now admit the pin category for note-only accepted rows;
+history and pending combinations remain refused. Earlier source decoders with
+the 0..2 accepted-category restriction refuse accepted pins, and earlier reference
+readers refuse the new witness. Installed upgrade/downgrade qualification remains
+separate.
 Generic managed mutation still refuses retention and supersession. The public
 pin, ordinary and duration choices instead claim the exact review and bind the
 synced management intent and its live journal owner through the timed native root

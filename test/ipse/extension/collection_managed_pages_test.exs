@@ -182,6 +182,12 @@ defmodule Ipse.Extension.CollectionManagedPagesTest do
     assert {:ok, body} = Pages.pack(:live, Pages.zero(:live), %{id => accepted})
     assert {:ok, %{entries: %{^id => ^accepted}}} = Pages.unpack(:live, Pages.zero(:live), body)
 
+    pinned = accepted |> List.replace_at(6, 3) |> List.replace_at(5, nil)
+    assert {:ok, pinned_body} = Pages.pack(:live, Pages.zero(:live), %{id => pinned})
+
+    assert {:ok, %{entries: %{^id => ^pinned}}} =
+             Pages.unpack(:live, Pages.zero(:live), pinned_body)
+
     pending = Pages.live_identity("pending." <> F.id(1))
     assert {:error, _} = Pages.pack(:live, Pages.zero(:live), %{pending => accepted})
 

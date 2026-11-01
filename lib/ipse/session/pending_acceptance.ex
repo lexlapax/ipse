@@ -1069,12 +1069,14 @@ defmodule Ipse.Session.PendingAcceptance do
   end
 
   @doc """
-  Check a retained accepted-decision target for destructive native management.
+  Check a retained accepted-decision target for native management.
 
   The caller must authenticate the anchor/live rows and same-root record/link
   under Identity and management Consent. Eligibility tag 3 binds this distinct
   representation; the literal recipe supplies category limits only. This does
   not authenticate current sources, the original review journal, or later use.
+  A stored native retention choice must bind this exact unchanged value; it may
+  override the effective category/deadline while original clocks remain separate.
   Expired targets remain removable. No returned value grants a Review permit.
   """
   def retained_decision_metadata(recipe, record, link, anchor, live) do
@@ -1135,7 +1137,7 @@ defmodule Ipse.Session.PendingAcceptance do
              link["sha256"] === note["acceptance_link_sha256"],
          true <- link["bytes"] === byte_size(Migration.encode(value)),
          {:ok, _} <- ManagedPages.pack(:anchor, ManagedPages.zero(:anchor), %{lineage => anchor}),
-         %{"clocks" => [first, baseline, _, _], "choice" => nil, "retirement" => nil} <- anchor,
+         %{"clocks" => [first, baseline, _, _], "choice" => choice, "retirement" => nil} <- anchor,
          true <-
            JSON.safe_uint?(first) and JSON.safe_uint?(note["accepted_at_ms"]) and
              first <= note["accepted_at_ms"],
@@ -1155,6 +1157,7 @@ defmodule Ipse.Session.PendingAcceptance do
            is_nil(age) or
              (JSON.safe_uint?(age) and JSON.safe_uint?(first + age) and not is_nil(baseline) and
                 baseline <= first + age),
+         {:ok, category, effective_deadline} <- accepted_retention(note, record, choice),
          [_, _, _, packed_policy, _, _, _, 3] <- live,
          policy =
            packed_policy |> Base.url_decode64!(padding: false) |> Base.encode16(case: :lower),
@@ -1167,20 +1170,21 @@ defmodule Ipse.Session.PendingAcceptance do
                JSON.digest([recipe]),
                policy,
                first,
-               deadline,
-               note["category"],
+               effective_deadline,
+               category,
                3
              ) do
-      {:ok,
-       %{
-         "lineage" => lineage,
-         "recipe_sha256" => JSON.digest([recipe]),
-         "policy_sha256" => policy,
-         "first_admitted_ms" => first,
-         "valid_until_ms" => deadline,
-         "category" => note["category"],
-         "management_target" => "accepted_decision"
-       }}
+      metadata = %{
+        "lineage" => lineage,
+        "recipe_sha256" => JSON.digest([recipe]),
+        "policy_sha256" => policy,
+        "first_admitted_ms" => first,
+        "valid_until_ms" => effective_deadline,
+        "category" => category,
+        "management_target" => "accepted_decision"
+      }
+
+      {:ok, if(is_nil(choice), do: metadata, else: Map.put(metadata, "choice", choice))}
     else
       _ -> @error
     end
@@ -1190,12 +1194,14 @@ defmodule Ipse.Session.PendingAcceptance do
 
   @doc "Pure elapsed-deadline check for authenticated retained accepted metadata; grants no publication authority."
   def expired_retained_decision_metadata?(metadata, now) do
-    exact?(
-      metadata,
+    fields =
       ~w(lineage recipe_sha256 policy_sha256 first_admitted_ms valid_until_ms category management_target)
-    ) and
+
+    fields = if is_nil(metadata["choice"]), do: fields, else: ["choice" | fields]
+
+    exact?(metadata, fields) and
       metadata["management_target"] === "accepted_decision" and
-      metadata["category"] in ~w(ordinary preference current) and
+      metadata["category"] in ~w(ordinary preference current pin) and
       JSON.safe_uint?(now) and JSON.safe_uint?(metadata["first_admitted_ms"]) and
       JSON.safe_uint?(metadata["valid_until_ms"]) and metadata["valid_until_ms"] > 0 and
       metadata["first_admitted_ms"] < metadata["valid_until_ms"] and
@@ -1204,72 +1210,93 @@ defmodule Ipse.Session.PendingAcceptance do
     _ -> false
   end
 
+  defp accepted_retention(note, _record, nil), do: {:ok, note["category"], note["valid_until_ms"]}
+
+  defp accepted_retention(note, record, choice) do
+    with true <- choice["kind"] === "native_management",
+         true <- choice["lineage"] === note["lineage"] and choice["target_key"] === record["key"],
+         true <- choice["target_value_sha256"] === record["sha256"],
+         true <- choice["observed_at_ms"] >= note["accepted_at_ms"],
+         do:
+           Ipse.Extension.Collection.ManagedRetention.selected(
+             choice["policy"],
+             choice["observed_at_ms"]
+           ),
+         else: (_ -> @error)
+  end
+
   @doc "Check an accepted note and link against already authenticated rows; this grants no current-use authority."
   def stored_decision_metadata(event, recipe, record, link, anchor, live, now) do
-    with true <-
-           valid_event?(event) and ManagedRecipe.valid?(recipe) and
-             recipe["kind"] === "literal_source",
-         true <- JSON.safe_uint?(now),
+    with true <- valid_event?(event) and JSON.safe_uint?(now),
          note when is_map(note) <- record["value"],
          {:ok, values} <- accepted_values(event, note["valid_until_ms"]),
          true <- record["key"] === values["note_key"] and record["value"] === values["note"],
          true <- link["key"] === values["link_key"] and link["value"] === values["link"],
-         true <-
-           record["sha256"] === values["note_sha256"] and link["sha256"] === values["link_sha256"],
-         true <-
-           record["bytes"] === byte_size(Migration.encode(values["note"])) and
-             link["bytes"] === byte_size(Migration.encode(values["link"])),
-         true <-
-           JSON.safe_uint?(record["revision"]) and record["revision"] > 0 and
-             record["revision"] === link["revision"],
-         true <-
-           record["operation_id"] === event["facts"]["operation_id"] and
-             link["operation_id"] === event["facts"]["operation_id"],
-         lineage = values["note"]["lineage"],
-         {:ok, _} <- ManagedPages.pack(:anchor, ManagedPages.zero(:anchor), %{lineage => anchor}),
-         %{"clocks" => [first, baseline, _, _], "choice" => nil, "retirement" => nil} <- anchor,
-         true <-
-           JSON.safe_uint?(first) and first <= event["review"]["observed_at_ms"] and first <= now,
-         deadline = note["valid_until_ms"],
-         true <- is_nil(deadline) or (JSON.safe_uint?(deadline) and now < deadline),
-         true <-
-           is_nil(baseline) or
-             (JSON.safe_uint?(baseline) and not is_nil(deadline) and deadline <= baseline),
-         rule when is_map(rule) <-
-           Enum.find(recipe["rules"], &(&1["category"] === note["category"])),
-         age = rule["max_age_ms"],
-         true <-
-           is_nil(age) or
-             (JSON.safe_uint?(age) and JSON.safe_uint?(first + age) and not is_nil(baseline) and
-                baseline <= first + age),
-         expected_live =
-           live_row(
-             lineage,
-             values["note_sha256"],
-             JSON.digest([recipe]),
-             event["facts"]["policy_sha256"],
-             first,
-             deadline,
-             note["category"],
-             3
+         true <- record["operation_id"] === event["facts"]["operation_id"],
+         true <- link["operation_id"] === event["facts"]["operation_id"],
+         {:ok, retained} <- retained_decision_metadata(recipe, record, link, anchor, live),
+         true <- retained["policy_sha256"] === event["facts"]["policy_sha256"],
+         true <- retained["first_admitted_ms"] <= event["review"]["observed_at_ms"],
+         true <- retained["first_admitted_ms"] <= now,
+         true <- is_nil(retained["valid_until_ms"]) or now < retained["valid_until_ms"],
+         metadata =
+           retained
+           |> Map.delete("management_target")
+           |> Map.merge(%{
+             "acceptance_event_sha256" => JSON.digest([event]),
+             "source_proof" => event["facts"]["source_proof"]
+           }),
+         metadata =
+           if(is_nil(retained["choice"]),
+             do: metadata,
+             else: Map.put(metadata, "record_value_sha256", record["sha256"])
            ),
-         true <- live === expected_live do
-      {:ok,
-       %{
-         "lineage" => lineage,
-         "recipe_sha256" => JSON.digest([recipe]),
-         "policy_sha256" => event["facts"]["policy_sha256"],
-         "first_admitted_ms" => first,
-         "valid_until_ms" => deadline,
-         "category" => note["category"],
-         "acceptance_event_sha256" => JSON.digest([event]),
-         "source_proof" => event["facts"]["source_proof"]
-       }}
+         true <- accepted_retention_metadata?(event, metadata, now) do
+      {:ok, metadata}
     else
       _ -> @error
     end
   rescue
     _ -> @error
+  end
+
+  @doc "Pure consistency of an authenticated accepted category or native retention choice; grants no lease."
+  def accepted_retention_metadata?(event, metadata, now) do
+    with true <- valid_event?(event) and JSON.safe_uint?(now),
+         lineage = accepted_lineage(event["facts"]),
+         true <- metadata["lineage"] === lineage do
+      case metadata["choice"] do
+        nil ->
+          metadata["category"] === event["facts"]["assigned_category"]
+
+        choice ->
+          with true <- JSON.sha256?(metadata["record_value_sha256"]),
+               true <- choice["kind"] === "native_management" and choice["lineage"] === lineage,
+               true <- choice["target_key"] === "note." <> lineage,
+               true <- choice["target_value_sha256"] === metadata["record_value_sha256"],
+               true <-
+                 choice["observed_at_ms"] >= event["review"]["observed_at_ms"] and
+                   choice["observed_at_ms"] <= now,
+               anchor = %{
+                 "clocks" => [metadata["first_admitted_ms"], nil, nil, nil],
+                 "choice" => choice,
+                 "retirement" => nil
+               },
+               {:ok, _} <-
+                 ManagedPages.pack(:anchor, ManagedPages.zero(:anchor), %{lineage => anchor}),
+               {:ok, category, deadline} <-
+                 Ipse.Extension.Collection.ManagedRetention.selected(
+                   choice["policy"],
+                   choice["observed_at_ms"]
+                 ),
+               do: metadata["category"] === category and metadata["valid_until_ms"] === deadline,
+               else: (_ -> false)
+      end
+    else
+      _ -> false
+    end
+  rescue
+    _ -> false
   end
 
   @doc "Check current semantic policy for an already authenticated accepted decision; grants no lease."
@@ -1283,7 +1310,7 @@ defmodule Ipse.Session.PendingAcceptance do
          true <- metadata["recipe_sha256"] === JSON.digest([recipe]),
          true <- metadata["acceptance_event_sha256"] === JSON.digest([event]),
          true <- metadata["source_proof"] === event["facts"]["source_proof"],
-         true <- metadata["category"] === event["facts"]["assigned_category"],
+         true <- accepted_retention_metadata?(event, metadata, now),
          deadline = metadata["valid_until_ms"],
          true <- is_nil(deadline) or (JSON.safe_uint?(deadline) and now < deadline),
          settings = policy["settings"],
@@ -1609,7 +1636,9 @@ defmodule Ipse.Session.PendingAcceptance do
       if is_nil(value), do: nil, else: value |> Integer.to_string(36) |> String.downcase()
     end
 
-    category = Map.fetch!(%{"ordinary" => 0, "preference" => 1, "current" => 2}, category)
+    category =
+      Map.fetch!(%{"ordinary" => 0, "preference" => 1, "current" => 2, "pin" => 3}, category)
+
     packed ++ [number.(first), number.(deadline), category, eligibility]
   end
 

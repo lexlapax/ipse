@@ -692,7 +692,7 @@ defmodule Ipse.Extension.Collection.ManagedPages do
     true = category in 0..4 and eligibility in 0..3
 
     true =
-      eligibility != 3 or (String.starts_with?(live_key(identity), "note.") and category in 0..2)
+      eligibility != 3 or (String.starts_with?(live_key(identity), "note.") and category in 0..3)
 
     true = (category != 0 and eligibility != 1) or not is_nil(deadline)
     true

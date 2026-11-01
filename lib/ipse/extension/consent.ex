@@ -279,13 +279,15 @@ defmodule Ipse.Extension.Consent do
   def retain_deferred(root, project, epoch, request, permit, facts, now, fun)
       when is_function(fun, 0) do
     policy = facts["policy"]
+    kind = facts["kind"]
 
     if Ipse.Extension.Collection.ManagedRetention.policy?(policy) and
-         policy["kind"] in ~w(pin ordinary duration) do
+         policy["kind"] in ~w(pin ordinary duration) and
+         kind in ~w(managed_literal_retention managed_accepted_decision_retention) do
       reviewed_management(root, project, epoch, request, permit, facts, now, fun, %{
         command: policy["kind"],
         operation: "collection.retention",
-        kind: "managed_literal_retention"
+        kind: kind
       })
     else
       {:error, :consent_management_refused}
@@ -447,7 +449,8 @@ defmodule Ipse.Extension.Consent do
             try do
               with {:ok, actual, receipt} <- fun.(),
                    {:ok, review} <-
-                     if(selected.kind == "managed_literal_retention",
+                     if(
+                       selected.kind in ~w(managed_literal_retention managed_accepted_decision_retention),
                        do:
                          Ipse.Runner.Review.claimed_retention_receipt(
                            permit,

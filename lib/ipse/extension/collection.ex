@@ -1232,9 +1232,20 @@ defmodule Ipse.Extension.Collection do
 
     validation_version =
       cond do
-        match?({:retention, _, _, _}, version) -> 3
-        match?({:supersession, _}, version) -> :supersession
-        true -> version
+        match?(
+          {:retention, _, %{"facts" => %{"kind" => "managed_accepted_decision_retention"}}, _},
+          version
+        ) ->
+          :accepted_retention
+
+        match?({:retention, _, _, _}, version) ->
+          3
+
+        match?({:supersession, _}, version) ->
+          :supersession
+
+        true ->
+          version
       end
 
     with {:ok, normalized, normalization} <- normalizer.(witness, read),
@@ -1365,7 +1376,12 @@ defmodule Ipse.Extension.Collection do
     alias Ipse.Runner.Review
     facts = intent["facts"]
 
-    with true <- normalization["kind"] === "native_literal_retention",
+    expected_kind =
+      if facts["kind"] == "managed_accepted_decision_retention",
+        do: "native_accepted_decision_retention",
+        else: "native_literal_retention"
+
+    with true <- normalization["kind"] === expected_kind,
          true <- get_in(facts, ["collection", "root_sha256"]) === witness["root_sha256"],
          true <- facts["operation_id"] === id,
          {:ok, bound} <-
@@ -1408,7 +1424,7 @@ defmodule Ipse.Extension.Collection do
          _witness,
          _cap
        ) do
-    if normalization["kind"] in ~w(native_literal_retention native_literal_supersession),
+    if normalization["kind"] in ~w(native_literal_retention native_accepted_decision_retention native_literal_supersession),
       do: {:error, :native_review_publication_fence_unavailable},
       else:
         with_capture_deadline(normalization, fn ->
@@ -1652,6 +1668,20 @@ defmodule Ipse.Extension.Collection do
     else
       _ -> false
     end
+  rescue
+    _ -> false
+  end
+
+  defp normalized_managed?(original, normalized, state, root, :accepted_retention) do
+    with [target] <- original["changes"],
+         true <- target["value"]["kind"] === "accepted_decision",
+         true <-
+           target["value"] |> Migration.encode() |> JSON.sha256() ==
+             state["records"][target["key"]]["sha256"],
+         true <- Enum.all?(normalized["changes"], &(&1["key"] != target["key"])),
+         asserted = Map.update!(normalized, "changes", &(original["changes"] ++ &1)),
+         do: normalized_managed?(original, asserted, state, root, 3),
+         else: (_ -> false)
   rescue
     _ -> false
   end

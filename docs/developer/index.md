@@ -136,10 +136,13 @@ Exercise the nonpublishing interaction/probe boundary before adding real authori
 mix test test/dev/knowledge
 ```
 
-Those tests simulate origin proof and provider output; they publish no notes and
-establish no real terminal, model-quality or installed-user result. Follow the
-source owners named in the contracts for integrated changes, retaining old-session
-reconstruction and explicit provider/billing selection.
+These tests include pure policy/protocol fixtures and separate native lifecycle
+controls. Read each case's setup: synthetic source shapes do not establish native
+authority, while actual native publication still establishes no model quality or
+installed-user result. Follow the [testing chapter](testing.md) for the registered
+capture and native lifecycle journeys, and the source owners named in the
+contracts for integrated changes. Preserve old-session reconstruction and explicit
+provider/billing selection.
 
 To inspect main-model capture proposals on exposed synthetic inputs, use the
 [capture pilot](capture-pilot.md). Its optional private audit retains exact

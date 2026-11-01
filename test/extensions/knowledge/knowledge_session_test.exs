@@ -195,6 +195,20 @@ defmodule IpseKnowledge.KnowledgeSessionTest do
 
   for category <- ~w(ordinary preference current) do
     @tag :capture_parent_case
+    @tag :genuine_pending_accepted_retention
+    @tag timeout: 240_000
+    @tag skip:
+           if(System.get_env("IPSE_TEST_GENUINE_PENDING_ACCEPTED_RETENTION") == "1",
+             do: false,
+             else: "explicit native accepted-retention fixture required"
+           )
+    test "native accepted #{category} retention preserves immutable provenance through recall and expiry" do
+      capture(false, false, false, false, false, :public_retention, unquote(category))
+    end
+  end
+
+  for category <- ~w(ordinary preference current) do
+    @tag :capture_parent_case
     @tag :genuine_pending_accepted_expiry
     @tag timeout: 180_000
     @tag skip:
@@ -341,7 +355,7 @@ defmodule IpseKnowledge.KnowledgeSessionTest do
     File.mkdir_p!(cwd)
     File.chmod!(home, 0o700)
 
-    if accept? in [:public_recall, :public_expiry],
+    if accept? in [:public_recall, :public_expiry, :public_retention],
       do: IO.puts("ACCEPTED_RECALL_ROOT=" <> root),
       else: on_exit(fn -> File.rm_rf!(root) end)
 
@@ -602,9 +616,12 @@ defmodule IpseKnowledge.KnowledgeSessionTest do
       "effects" => effects,
       "limits" =>
         Map.merge(Consent.zero(), %{
-          "operations" => 8,
+          "operations" => if(accept? == :public_retention, do: 16, else: 8),
           "input_bytes" =>
-            if(accept? in [:public, :public_recall, :public_expiry], do: 1_000_000, else: 100_000),
+            if(accept? in [:public, :public_recall, :public_expiry, :public_retention],
+              do: 1_000_000,
+              else: 100_000
+            ),
           "output_bytes" => 200_000
         }),
       "period_ms" => 86_400_000,
@@ -613,7 +630,7 @@ defmodule IpseKnowledge.KnowledgeSessionTest do
     }
 
     {config, selection} =
-      if accept? in [:public_recall, :public_expiry] do
+      if accept? in [:public_recall, :public_expiry, :public_retention] do
         config = registered_capture_config(config, category)
 
         assert {:ok, routes} =
@@ -963,10 +980,12 @@ defmodule IpseKnowledge.KnowledgeSessionTest do
                   change,
                   second_change,
                   %{
-                    public?: accept? in [:public, :public_recall, :public_expiry],
+                    public?:
+                      accept? in [:public, :public_recall, :public_expiry, :public_retention],
                     config: config,
                     recall_accepted?: accept? === :public_recall,
                     expiry_accepted?: accept? === :public_expiry,
+                    retention_accepted?: accept? === :public_retention,
                     category: category
                   }
                 )
@@ -1313,6 +1332,68 @@ defmodule IpseKnowledge.KnowledgeSessionTest do
       assert output =~ "\"accepted_note_key\":\"#{note["record"]["key"]}\""
     end
 
+    if options.retention_accepted? do
+      assert {:ok, retention_binding} = ProjectIdentity.existing(home, Path.join(root, "work"))
+      retention_control = SemanticAdmission.control_root(home)
+
+      assert {:ok, retention_before} =
+               Consent.existing_snapshot(retention_control, retention_binding["project_id"])
+
+      File.write!(
+        Path.join(root, "accepted-retention.json"),
+        Jason.encode!(%{
+          "namespace" => namespace,
+          "key" => result["accepted_note_key"],
+          "link_key" => link["record"]["key"],
+          "peer_key" => second_change["key"],
+          "history_dir" => history_dir,
+          "recipe" => sidecar["recipes"]["note"]
+        })
+      )
+
+      for mode <- ~w(pin cancel automatic day_duration short_duration) do
+        {retention_output, retention_status} =
+          System.cmd(
+            driver,
+            [
+              if(mode == "cancel", do: "--management-review-cancel", else: "--assertion"),
+              System.find_executable("elixir"),
+              "--erl",
+              "+S 2:2"
+            ] ++
+              paths ++
+              [Path.expand("test/support/accepted_decision_retention_cli.exs"), root, mode],
+            stderr_to_stdout: true,
+            cd: root
+          )
+
+        File.write!(Path.join(root, "accepted-retention-#{mode}.log"), retention_output)
+        assert retention_status == 0, retention_output
+        assert retention_output =~ "NATIVE_ACCEPTED_RETENTION_#{String.upcase(mode)}_PASSED"
+
+        if mode == "pin",
+          do:
+            exercise_accepted_recall(
+              options.config,
+              Path.join(root, "work"),
+              history_dir,
+              result["event"]
+            )
+      end
+
+      assert {:ok, retention_after} =
+               Consent.existing_snapshot(retention_control, retention_binding["project_id"])
+
+      assert {:ok, _} =
+               Consent.replace(
+                 retention_control,
+                 retention_binding["project_id"],
+                 retention_after["epoch"],
+                 retention_before["policy"],
+                 System.system_time(:millisecond)
+               )
+    end
+
     if expiry_policy do
       assert note["record"]["value"]["category"] == options.category
 
@@ -1365,8 +1446,14 @@ defmodule IpseKnowledge.KnowledgeSessionTest do
 
     assert duplicate_before["record"] == link["record"]
 
-    assert duplicate_before["generation"] ==
-             link["generation"] + if(expiry_policy, do: 1, else: 0)
+    expected_advances =
+      cond do
+        options.retention_accepted? -> 5
+        expiry_policy -> 1
+        true -> 0
+      end
+
+    assert duplicate_before["generation"] == link["generation"] + expected_advances
 
     duplicate_args =
       ["--management-review", System.find_executable("elixir"), "--erl", "+S 2:2"] ++

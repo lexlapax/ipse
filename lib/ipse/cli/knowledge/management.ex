@@ -1482,10 +1482,7 @@ defmodule Ipse.CLI.Knowledge.Management do
           context["management_epoch"],
           context["management_sha256"],
           fn _ ->
-            reader =
-              if is_nil(policy),
-                do: &ObservedRead.with_managed_reducing_record/7,
-                else: &ObservedRead.with_managed_record/7
+            reader = &ObservedRead.with_managed_note_record/7
 
             reader.(
               SemanticAdmission.collection_root(home),
@@ -2032,7 +2029,7 @@ defmodule Ipse.CLI.Knowledge.Management do
              fn cap, catalog ->
                result =
                  if policy == :expiry do
-                   ObservedRead.with_managed_reducing_record(
+                   ObservedRead.with_managed_note_record(
                      SemanticAdmission.collection_root(config[:home]),
                      namespace,
                      %{"op" => "get_record", "key" => key},
@@ -2225,7 +2222,7 @@ defmodule Ipse.CLI.Knowledge.Management do
           )
         else
           consent =
-            if facts["kind"] == "managed_literal_retention",
+            if facts["kind"] in ~w(managed_literal_retention managed_accepted_decision_retention),
               do: &Consent.retain_deferred/8,
               else: &Consent.forget_deferred/8
 
@@ -2266,10 +2263,15 @@ defmodule Ipse.CLI.Knowledge.Management do
                if(is_nil(permit), do: options, else: Map.put(options, :permit, permit)),
              {:ok, normalized, normalization} = result <-
                normalizer.(witness, read, options),
+             accounting_normalized =
+               if(facts["kind"] == "managed_accepted_decision_retention",
+                 do: Map.update!(normalized, "changes", &(prepared["request"]["changes"] ++ &1)),
+                 else: normalized
+               ),
              {:ok, actual} <-
                ManagedCollectionCall.measured_accounting(
                  envelope,
-                 normalized,
+                 accounting_normalized,
                  normalization,
                  reserved
                ) do
@@ -2287,21 +2289,22 @@ defmodule Ipse.CLI.Knowledge.Management do
       recipe = JSON.digest([facts["context"]["recipe"]])
 
       result =
-        if facts["kind"] === "managed_literal_retention" and is_map(owned),
-          do:
-            Collection.execute_managed_retention(
-              root,
-              namespace,
-              request,
-              operation,
-              recipe,
-              normalize,
-              owned,
-              prepared["intent"],
-              permit
-            ),
-          else:
-            Collection.execute_managed_v3(root, namespace, request, operation, recipe, normalize)
+        if facts["kind"] in ~w(managed_literal_retention managed_accepted_decision_retention) and
+             is_map(owned),
+           do:
+             Collection.execute_managed_retention(
+               root,
+               namespace,
+               request,
+               operation,
+               recipe,
+               normalize,
+               owned,
+               prepared["intent"],
+               permit
+             ),
+           else:
+             Collection.execute_managed_v3(root, namespace, request, operation, recipe, normalize)
 
       with {:ok, core} <- result,
            {digest, normalization, actual} <- Process.get(slot),
@@ -2328,6 +2331,7 @@ defmodule Ipse.CLI.Knowledge.Management do
   defp operation("managed_accepted_decision_expiry"), do: "collection.expire"
   defp operation("managed_literal_history_expiry"), do: "collection.expire"
   defp operation("managed_literal_retention"), do: "collection.retention"
+  defp operation("managed_accepted_decision_retention"), do: "collection.retention"
   defp operation("managed_literal_forget"), do: "collection.forget"
   defp operation("managed_accepted_decision_forget"), do: "collection.forget"
 
@@ -2342,6 +2346,7 @@ defmodule Ipse.CLI.Knowledge.Management do
   defp normalizer("managed_accepted_decision_expiry"), do: &NormalizerV3.expire_accepted/3
   defp normalizer("managed_literal_history_expiry"), do: &NormalizerV3.expire_history/3
   defp normalizer("managed_literal_retention"), do: &NormalizerV3.retain/3
+  defp normalizer("managed_accepted_decision_retention"), do: &NormalizerV3.retain_accepted/3
   defp normalizer("managed_literal_forget"), do: &NormalizerV3.forget/3
   defp normalizer("managed_accepted_decision_forget"), do: &NormalizerV3.forget_accepted/3
 

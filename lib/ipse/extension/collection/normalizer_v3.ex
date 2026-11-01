@@ -673,6 +673,10 @@ defmodule Ipse.Extension.Collection.NormalizerV3 do
   @doc "Apply an exact native-reviewed policy choice while preserving the literal value and original admission clocks."
   def retain(witness, read, options), do: manage(witness, read, options, :retain)
 
+  @doc "Change only signed accepted retention metadata, preserving the immutable public note and acceptance link."
+  def retain_accepted(witness, read, options),
+    do: manage(witness, read, options, :retain_accepted)
+
   defp manage(witness, read, options, action) when is_function(read, 1) do
     checked(fn ->
       forget? = action in [:forget, :forget_accepted]
@@ -719,7 +723,7 @@ defmodule Ipse.Extension.Collection.NormalizerV3 do
       live = selected_row!(cap, :live, live_id, read, witness)
 
       {metadata, candidate} =
-        if action == :forget_accepted do
+        if action in [:forget_accepted, :retain_accepted] do
           {:ok, link} = read.("accept." <> record["value"]["candidate_id"])
 
           {:ok, metadata} =
@@ -753,10 +757,15 @@ defmodule Ipse.Extension.Collection.NormalizerV3 do
 
       true =
         forget? or
-          ManagedRetention.eligible_metadata?(candidate, record["sha256"], metadata, now)
+          if(action == :retain_accepted,
+            do: is_nil(metadata["valid_until_ms"]) or now < metadata["valid_until_ms"],
+            else: ManagedRetention.eligible_metadata?(candidate, record["sha256"], metadata, now)
+          )
 
       :ok = management_facts!(facts, request, witness, record, metadata, action)
-      if action == :retain, do: {:ok, _, _} = ManagedRetention.selected(facts["policy"], now)
+
+      if action in [:retain, :retain_accepted],
+        do: {:ok, _, _} = ManagedRetention.selected(facts["policy"], now)
 
       # The exact semantic checks precede spending native authority. The outer
       # Review callback withholds success after any consumed failure or
@@ -822,7 +831,12 @@ defmodule Ipse.Extension.Collection.NormalizerV3 do
       true = Enum.count(extras, &is_nil(&1["value"])) <= 1
       true = Enum.count(extras, &(not is_nil(&1["value"]))) <= 4
       true = length(Enum.uniq_by(extras, & &1["key"])) == length(extras)
-      normalized = Map.update!(request, "changes", &(&1 ++ extras))
+
+      normalized =
+        if action == :retain_accepted,
+          do: Map.put(request, "changes", extras),
+          else: Map.update!(request, "changes", &(&1 ++ extras))
+
       true = Ipse.Extension.Collection.valid_request?(normalized)
 
       receipt = %{
@@ -832,6 +846,7 @@ defmodule Ipse.Extension.Collection.NormalizerV3 do
             :forget -> "native_literal_forget"
             :forget_accepted -> "native_accepted_decision_forget"
             :retain -> "native_literal_retention"
+            :retain_accepted -> "native_accepted_decision_retention"
           end,
         "lineage" => lineage,
         "record_key" => key,
@@ -884,7 +899,7 @@ defmodule Ipse.Extension.Collection.NormalizerV3 do
       ~w(version kind operation_id context collection target metadata policy reason request_sha256 scope action_sha256)
 
     fields =
-      if action == :retain,
+      if action in [:retain, :retain_accepted],
         do: fields ++ ~w(old_deadline_ms new_deadline_rule historical_gap historical_gap_notice),
         else: fields
 
@@ -899,6 +914,7 @@ defmodule Ipse.Extension.Collection.NormalizerV3 do
         :forget -> "managed_literal_forget"
         :forget_accepted -> "managed_accepted_decision_forget"
         :retain -> "managed_literal_retention"
+        :retain_accepted -> "managed_accepted_decision_retention"
       end
 
     true = facts["version"] === 1 and facts["kind"] == kind
@@ -931,7 +947,7 @@ defmodule Ipse.Extension.Collection.NormalizerV3 do
 
     true =
       facts["scope"] ==
-        if(action == :forget_accepted,
+        if(action in [:forget_accepted, :retain_accepted],
           do:
             "selected accepted decision; immutable acceptance link, original journals and shared evidence remain",
           else:

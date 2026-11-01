@@ -169,12 +169,18 @@ defmodule Ipse.Session.ManagedReference do
       JSON.sha256?(subject["publication_policy_sha256"]) and
       record?(subject["record"]) and subject["record"]["key"] == subject["key"] and
       validity?(subject["validity"]) and
-      keys?(acceptance, ~w(journal_id journal_kind event_sha256 link)) and
+      keys?(
+        acceptance,
+        ~w(journal_id journal_kind event_sha256 link) ++
+          if(Map.has_key?(acceptance, "retention"), do: ["retention"], else: [])
+      ) and
       id?(acceptance["journal_id"]) and
       acceptance["journal_kind"] in ~w(knowledge_management session) and
       JSON.sha256?(acceptance["event_sha256"]) and record?(acceptance["link"]) and
       acceptance["link"]["key"] =~ ~r/\Aaccept\.[0-9a-f]{64}\z/ and
       acceptance["link"]["revision"] === subject["record"]["revision"] and
+      (not Map.has_key?(acceptance, "retention") or
+         accepted_retention?(acceptance["retention"], subject)) and
       length(subject["validity"]["source_versions"]) === 1 and
       subject["validity"]["dependencies"] === [acceptance["link"]] and
       fits?(d, @dependency_bytes)
@@ -183,6 +189,19 @@ defmodule Ipse.Session.ManagedReference do
   end
 
   def dependency?(_), do: false
+
+  defp accepted_retention?(retention, subject) do
+    keys?(retention, ~w(version kind choice_sha256 policy observed_at_ms)) and
+      retention["version"] === 1 and retention["kind"] === "native_retention_choice" and
+      JSON.sha256?(retention["choice_sha256"]) and uint?(retention["observed_at_ms"]) and
+      case Ipse.Extension.Collection.ManagedRetention.selected(
+             retention["policy"],
+             retention["observed_at_ms"]
+           ) do
+        {:ok, _, deadline} -> deadline === subject["validity"]["valid_until_ms"]
+        _ -> false
+      end
+  end
 
   @doc "Check a host-refreshed receipt against the original dependency without extending its authority."
   def current?(old, current, now) do

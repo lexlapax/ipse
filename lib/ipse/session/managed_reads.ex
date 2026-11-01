@@ -306,15 +306,23 @@ defmodule Ipse.Session.ManagedReads do
 
   # This only checks the receipt/value relation. Actual acceptance was verified
   # at read admission and must be reverified under its owners before later use.
-  defp read_lineage(%{"value" => %{"kind" => "accepted_decision"} = value}, _recipe, [proof], %{
-         "version" => 6,
-         "subject" => subject
-       }) do
-    with {:ok, _} <- Ipse.Extension.ManagedRecipe.source_identity(proof),
+  defp read_lineage(
+         %{"value" => %{"kind" => "accepted_decision"} = value},
+         _recipe,
+         [proof],
+         %{
+           "version" => 6,
+           "subject" => subject
+         } = dependency
+       ) do
+    with true <- ManagedReference.dependency?(dependency),
+         {:ok, _} <- Ipse.Extension.ManagedRecipe.source_identity(proof),
          true <- subject["acceptance"]["link"]["key"] === "accept." <> value["candidate_id"],
          true <- subject["acceptance"]["event_sha256"] === value["acceptance_event_sha256"],
          true <- subject["acceptance"]["link"]["value_sha256"] === value["acceptance_link_sha256"],
-         true <- subject["validity"]["valid_until_ms"] === value["valid_until_ms"] do
+         true <-
+           Map.has_key?(subject["acceptance"], "retention") or
+             subject["validity"]["valid_until_ms"] === value["valid_until_ms"] do
       {:ok, %{"lineage" => value["lineage"], "sources" => [proof]}}
     else
       _ -> @error

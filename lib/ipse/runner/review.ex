@@ -410,6 +410,7 @@ defmodule Ipse.Runner.Review do
         selected_deadline = receipt["valid_until_ms"]
         old_deadline = facts["old_deadline_ms"]
         deadlines = Enum.reject([old_deadline, selected_deadline], &is_nil/1)
+        accepted? = facts["kind"] == "managed_accepted_decision_retention"
 
         with true <- pending.command === command and facts === pending.facts and live?(pending),
              true <- Ipse.Session.ManagedLifecycle.retention_review?(command, facts, wall),
@@ -430,13 +431,22 @@ defmodule Ipse.Runner.Review do
                  change["value"] === target["value"],
              true <- Ipse.Extension.Collection.valid_request?(normalized),
              true <- Map.delete(request, "changes") === Map.delete(normalized, "changes"),
-             {original, extras} <- Enum.split(normalized["changes"], length(request["changes"])),
-             true <- original === request["changes"] and length(extras) in 1..5,
+             {original, extras} <-
+               if(accepted?,
+                 do: {[], normalized["changes"]},
+                 else: Enum.split(normalized["changes"], length(request["changes"]))
+               ),
+             true <- original === if(accepted?, do: [], else: request["changes"]),
+             true <- length(extras) in 1..5,
              true <- Enum.all?(extras, &String.starts_with?(&1["key"], "host.validity.")),
              true <-
                is_map(receipt) and Map.has_key?(receipt, "valid_until_ms") and
                  Map.has_key?(receipt, "publish_before_ms") and receipt["version"] === 3 and
-                 receipt["kind"] === "native_literal_retention" and
+                 receipt["kind"] ===
+                   if(accepted?,
+                     do: "native_accepted_decision_retention",
+                     else: "native_literal_retention"
+                   ) and
                  receipt["policy"] === facts["policy"],
              true <- receipt["action_sha256"] === facts["action_sha256"],
              true <-
