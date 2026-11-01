@@ -65,6 +65,15 @@ records not-started with null payload digest before startup, without truncation.
 A live lease, validated acknowledgment, and confirmed cleanup precede committed
 `extension_event_result`. Timeout/malformed/interrupted work is not retried.
 
+A private notification additionally needs a known empty managed dependency union.
+Session otherwise commits its ordinary delivery intent but supplies no payload
+to Host. The existing `not_started` result confirms that no Worker began; optional
+delivery can continue while required delivery fails settlement. Metadata views
+remain independent. Event jobs retain their separate
+[protected export-input route](session-sources.md#deliver-a-managed-export-input-under-its-original-owners).
+Neither a private-view capability nor a historical event hash supplies a current
+managed-data delivery grant.
+
 ## Declare a job with an exported handler
 
 A job names an `exports.jobs` descriptor in its own artifact. This complete-shaped
@@ -185,6 +194,14 @@ ack loops. A Session permits 10000 deliveries and 10000 leases. Full queues,
 capacity/oversized/unavailable private sources, invalid replies, timeout, expiry,
 or resource loss close coverage visibly with its first rejected source. Ordinary
 agent work continues, without silent drop, retry, or catch-up.
+
+For a matching private tool view, Session supplies a lazy known-empty managed
+lineage check to `Feeds.offer/5`. It runs before private projection, intent or
+mailbox admission. Managed or unavailable lineage records the actual gap source
+and closes that feed with `view_unavailable`; no private payload enters its queue.
+Metadata delivery uses its existing projection and capacity path. This is an
+explicit unsupported-purpose refusal, rather than a source receipt that could
+authorize a later Worker callback.
 
 Stop/cancel/close revokes admission and can abandon queued work. The close receipt
 retains cause, admitted/acknowledged counts, rejection reference, and actual cleanup.

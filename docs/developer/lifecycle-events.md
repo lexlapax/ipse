@@ -159,6 +159,13 @@ registers actual broker readiness, then ready before main dispatch. A live PID i
 not readiness. Workers may span turns. Failed optional resources can be replaced
 on fresh input only after cleanup; lost required policy needs explicit release.
 
+Selected Worker text consumers currently have no managed-input transport.
+`Turn.launch_request` refuses the dependent model request before admission when
+its complete managed dependency snapshot is nonempty and any selected text
+consumer is configured, including an optional one. Start a fresh Session with
+that consumer disabled. Ordinary visible-text delivery and metadata observation
+retain their own contracts; a private consumer grant is no managed source grant.
+
 An embedded receive fragment acknowledges each normal frame:
 
 ```elixir
@@ -216,6 +223,10 @@ death frees buffers; Session death stops broker/producer.
 
 Session commits request admission and registers the real producer before dispatch.
 Only it can begin/push/finish. Outcome accounting commits before end is queued.
+Required readiness checks run in that original producer before inference
+admission and in the registered dispatch gate. A registered transport child
+cannot call the broker as that producer. Buffered registered text returns to the
+original producer for delivery; the broker's caller checks stay unchanged.
 Optional peers do not delay answer admission for terminal ack; required peers do,
 within five seconds. A healthy optional peer may get complete transport before
 required peer loss refuses the answer. No later frame rewrites that receipt.

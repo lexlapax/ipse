@@ -2217,9 +2217,13 @@ defmodule Ipse.Session do
 
     if stage == expected and entry != nil and stage in entry.identity["capabilities"] and
          Ipse.Extension.Registry.live?(entry.identity) do
-      intent = Projection.intent(entry.identity, stage, input, s.messages)
-      record(s, intent)
-      {:reply, {:ok, intent, input}, %{s | extension_intent: intent}}
+      if stage == "transform.presentation" and not managed_empty?(s) do
+        {:reply, {:error, :managed_presentation_input_unavailable}, s}
+      else
+        intent = Projection.intent(entry.identity, stage, input, s.messages)
+        record(s, intent)
+        {:reply, {:ok, intent, input}, %{s | extension_intent: intent}}
+      end
     else
       {:reply, {:error, :extension_admission_refused}, s}
     end
@@ -2336,6 +2340,19 @@ defmodule Ipse.Session do
             {:reply, {:ok, intent, entry, nil}, s}
         end
       else
+        payload =
+          if declaration["view"] != "metadata" and not managed_empty?(s) do
+            notify(
+              s,
+              {:status,
+               "Managed private event delivery is unavailable; notification not started."}
+            )
+
+            nil
+          else
+            payload
+          end
+
         {:reply, {:ok, intent, entry, payload}, s}
       end
     else
@@ -6740,14 +6757,20 @@ defmodule Ipse.Session do
     if s.observation, do: Ipse.Observability.offer(s.observation, source, event)
 
     if not match?(%{status: :pending}, s.draft) do
-      Feeds.offer(s.feeds, source, event, fn intent ->
-        record_extension_lineage(s, intent)
+      Feeds.offer(
+        s.feeds,
+        source,
+        event,
+        fn intent ->
+          record_extension_lineage(s, intent)
 
-        case Writer.append(s.journal_writer, intent) do
-          :ok -> :ok
-          {:error, reason} -> journal_failed(s, reason)
-        end
-      end)
+          case Writer.append(s.journal_writer, intent) do
+            :ok -> :ok
+            {:error, reason} -> journal_failed(s, reason)
+          end
+        end,
+        fn -> managed_empty?(s) end
+      )
     end
 
     :ok

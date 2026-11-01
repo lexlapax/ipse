@@ -123,16 +123,19 @@ defmodule Ipse.Extension.Feeds do
   def active?(nil), do: false
   def active?(feeds), do: Enum.any?(feeds.resources, fn {_, r} -> FeedChannel.active?(r) end)
 
-  def offer(nil, _, _, _), do: :ok
-  def offer(%{resources: resources}, _, _, _) when map_size(resources) == 0, do: :ok
+  def offer(feeds, source, record, append),
+    do: offer(feeds, source, record, append, fn -> true end)
 
-  def offer(feeds, nil, _, _) do
+  def offer(nil, _, _, _, _), do: :ok
+  def offer(%{resources: resources}, _, _, _, _) when map_size(resources) == 0, do: :ok
+
+  def offer(feeds, nil, _, _, _) do
     Enum.each(feeds.resources, fn {_, r} ->
       if FeedChannel.active?(r), do: FeedChannel.stop(r, "source_unavailable")
     end)
   end
 
-  def offer(feeds, source, record, append) do
+  def offer(feeds, source, record, append, private_allowed?) do
     case Lifecycle.project(source, record, "metadata") do
       {:ok, event} ->
         Enum.each(feeds.resources, fn {id, r} ->
@@ -143,6 +146,11 @@ defmodule Ipse.Extension.Feeds do
             event["type"] == "tool.recording_stopped" and
                 r.intent["declaration"]["event"] in ~w(tool.intent_committed tool.outcome_recorded) ->
               FeedChannel.stop(r, "source_unavailable")
+
+            r.intent["declaration"]["event"] == event["type"] and
+              r.intent["declaration"]["view"] != "metadata" and private_allowed?.() != true ->
+              :ets.insert(r.pending, {:gap, source})
+              FeedChannel.stop(r, "view_unavailable")
 
             r.intent["declaration"]["event"] == event["type"] ->
               case Lifecycle.project(source, record, r.intent["declaration"]["view"]) do

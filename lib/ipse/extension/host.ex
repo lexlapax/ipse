@@ -250,6 +250,11 @@ defmodule Ipse.Extension.Host do
            :ok <- GenServer.call(owner, {:extension_commit, job_ref, event}) do
         {:cont, :ok}
       else
+        {:error, :managed_presentation_input_unavailable} ->
+          {:halt,
+           {:error,
+            "Managed answers cannot enter this formatter. Start a fresh session with the formatter disabled; the recorded answer remains available."}}
+
         _ ->
           {:halt,
            {:error,

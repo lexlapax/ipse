@@ -43,6 +43,12 @@ The annotation is attributed reference context, not a separate printed message o
 permission grant. Original provider data remains in the journal. Formatting
 changes completed presentation; raw text may stream first.
 
+Managed knowledge answers currently refuse presentation formatting before the
+formatter starts. To use notes in that chat, set the formatter instance's
+`enabled` field to `false` in your operator configuration, omit any `--extension`
+selection for that instance, and start a new session.
+The original answer remains recorded after a formatting refusal.
+
 `--extension INSTANCE` selects an already configured instance for the durable
 session without editing the file. Set `enabled: true` for future persistent use.
 `--no-extensions` disables new selections and cannot combine with `--extension`.
@@ -428,11 +434,23 @@ model tools or `/ext` commands. `/events off` stops feeds for this Session proce
 more input does not restart them. A compatible resumed process can enroll a fresh
 lease after explicit input. Catch-up requires an explicit deduplicating workflow.
 
+Private notifications and tool feeds currently withhold managed content. An
+optional notification records that it was not started; a required one stops
+settlement. A private feed closes with a visible view gap while agent work
+continues. Metadata notifications and feeds remain available. These refusals
+preserve an already completed answer or effect; inspect its recorded outcome
+before requesting new work.
+
 For text, `stream.text` excludes hidden reasoning, summaries, and completed
 formatting. `stream.text.events` adds frame identity. Operator `text_required: true`
 requires acknowledgment before answer admission. Optional consumers detach after
 failure or five-second pressure. Replacement waits for confirmed cleanup.
 Delivery completion is not durable answer acceptance. Resume replays no frames.
+Selecting a text consumer also stops a dependent model request that would use
+managed knowledge, even when that consumer is optional. Disable the consumer's
+instance in your operator configuration, omit its `--extension` selection and
+start a new session to continue without it. This refusal happens before that
+model request is sent.
 `/diagnostics` shows counts without private text. Diagnostic sinks have separate
 [capture controls](observability.md).
 

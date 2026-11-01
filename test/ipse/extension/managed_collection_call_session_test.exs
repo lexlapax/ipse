@@ -1,5 +1,6 @@
 Code.require_file("../../support/provider_fixture.ex", __DIR__)
 Code.require_file("../../support/managed_mcp_http.exs", __DIR__)
+Code.require_file("../../support/managed_delivery_sink.exs", __DIR__)
 
 defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
   use ExUnit.Case, async: false
@@ -56,6 +57,39 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
              ]
            }, %{}}
         end
+      end
+    end
+  end
+
+  defmodule PresentationModel do
+    def complete(_, _, _, _),
+      do: {:ok, %{"role" => "assistant", "content" => "Synthetic ordinary answer."}, %{}}
+  end
+
+  defmodule OrdinaryDeliveryModel do
+    def complete(_, messages, _, emit) do
+      if Enum.any?(messages, &(&1["role"] == "tool")) do
+        emit.({:text, "Synthetic ordinary delivery answer."})
+        {:ok, %{"role" => "assistant", "content" => "Synthetic ordinary delivery answer."}, %{}}
+      else
+        {:ok,
+         %{
+           "role" => "assistant",
+           "content" => "",
+           "tool_calls" => [
+             %{
+               "id" => "ordinary_delivery",
+               "function" => %{
+                 "name" => "write",
+                 "arguments" =>
+                   Jason.encode!(%{
+                     "path" => "ordinary-delivery.txt",
+                     "content" => "SYNTHETIC_ORDINARY_DELIVERY"
+                   })
+               }
+             }
+           ]
+         }, %{}}
       end
     end
   end
@@ -694,6 +728,42 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
         data
       end
 
+    data =
+      if c[:private_presentation] do
+        data
+        |> Map.update!("extension_trust", fn trust ->
+          trust ++
+            [
+              %{
+                "artifact" => "builtin:answer-format:1",
+                "capabilities" => ["transform.presentation"],
+                "allow_project" => false,
+                "allow_children" => false
+              }
+            ]
+        end)
+        |> Map.update!("extensions", fn entries ->
+          entries ++
+            [
+              %{
+                "instance" => "formatter",
+                "artifact" => "builtin:answer-format:1",
+                "enabled" => true,
+                "options" => %{"prefix" => "<answer>", "suffix" => "</answer>"},
+                "order" => 10,
+                "lifetime" => "persistent"
+              }
+            ]
+        end)
+      else
+        data
+      end
+
+    data =
+      if c[:managed_sink_role],
+        do: Ipse.Test.ManagedDeliverySink.select(data, home, root, c.managed_sink_role),
+        else: data
+
     {:ok, selected} =
       Ipse.Extension.Config.resolve(
         [%{scope: "operator", path: "/fixture/config.json", data: data}],
@@ -964,6 +1034,14 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
 
             c[:managed_helper] && !c[:helper_stale] ->
               responses ++ [List.last(responses)]
+
+            c[:ordinary_registered_text] ->
+              [
+                body.(%{
+                  "role" => "assistant",
+                  "content" => "Synthetic ordinary registered answer."
+                })
+              ]
 
             true ->
               responses
@@ -3715,6 +3793,231 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
     assert saved.messages == state.messages
     assert saved.managed_reads.outputs[result["invocation_id"]] != []
     assert :ok = Session.close_confirmed(pid)
+  end
+
+  for role <- [:notify, :text, :feed, :notify_required, :text_required] do
+    @tag :managed_sink_input
+    @tag managed_sink_role: role
+    test "ordinary #{role} private delivery retains its actual callback", c do
+      pid =
+        start(c, %{
+          provider_module: OrdinaryDeliveryModel,
+          approval: :allow,
+          approval_origin: :yes
+        })
+
+      assert :ok = Session.prompt(pid, "Write the synthetic ordinary file, then answer.")
+      assert_receive {:ipse, ^pid, {:done, :ok}}, 15_000
+      await_marker(Path.join(c.root, "delivery.jsonl"), "payload", 300)
+      id = Session.info(pid).id
+
+      if unquote(role) in [:notify, :notify_required, :feed],
+        do: assert(:ok == Ipse.Test.ManagedDeliverySink.await_ack(c.dir, id, unquote(role)))
+
+      assert :ok = Session.close_confirmed(pid)
+      deliveries = Ipse.Test.ManagedDeliverySink.read(c.root)
+      assert deliveries != []
+
+      assert File.read!(Path.join(c.cwd, "ordinary-delivery.txt")) ==
+               "SYNTHETIC_ORDINARY_DELIVERY"
+
+      if unquote(role) in [:text, :text_required] do
+        assert Enum.any?(
+                 deliveries,
+                 &(get_in(&1, ["payload", "frame", "text"]) ==
+                     "Synthetic ordinary delivery answer.")
+               )
+      end
+
+      assert {:ok, events} = Journal.load(c.dir, id)
+      assert {:ok, _} = Session.Saved.restore(events, id)
+    end
+
+    @tag :managed_sink_input
+    @tag managed_sink_role: role, registered_main: true, ordinary_effect: true
+    test "managed #{role} private delivery refuses before its unqualified callback", c do
+      pid = start(c, %{approval: :allow, approval_origin: :yes, headless: true})
+      assert :ok = Session.prompt(pid, "Read the protected root and complete the synthetic work.")
+      assert_receive {:ipse, ^pid, {:done, status}}, 15_000
+      server = c.provider_server.pid
+      assert_receive {:observed_provider_request, ^server, _}, 1000
+
+      try do
+        assert status ==
+                 if(unquote(role) in [:text, :text_required, :notify_required],
+                   do: :error,
+                   else: :ok
+                 )
+
+        id = Session.info(pid).id
+        assert :ok = Session.close_confirmed(pid)
+        assert {:ok, events} = Journal.load(c.dir, id)
+        assert Enum.any?(events, &(&1["type"] == "managed_read_observed"))
+        deliveries = Ipse.Test.ManagedDeliverySink.read(c.root)
+
+        if unquote(role) in [:text, :text_required] do
+          refute_receive {:observed_provider_request, ^server, _}, 100
+          refute Enum.any?(deliveries, &(get_in(&1, ["payload", "frame", "kind"]) == "text"))
+          refute File.exists?(Path.join(c.cwd, "managed-output.txt"))
+        else
+          assert deliveries == []
+
+          assert File.read!(Path.join(c.cwd, "managed-output.txt")) == "SYNTHETIC_MANAGED_WRITE"
+          assert_receive {:observed_provider_request, ^server, _}, 1000
+          assert_receive {:observed_provider_request, ^server, _}, 1000
+          refute_receive {:observed_provider_request, ^server, _}, 100
+
+          if unquote(role) in [:notify, :notify_required] do
+            assert Enum.any?(
+                     events,
+                     &(&1["type"] == "extension_event_result" and &1["outcome"] == "not_started")
+                   )
+          else
+            refute Enum.any?(events, &(&1["type"] == "extension_feed_delivery_intent"))
+
+            assert Enum.any?(
+                     events,
+                     &(&1["type"] == "extension_feed_closed" and
+                         &1["reason"] == "view_unavailable")
+                   )
+          end
+        end
+
+        assert {:ok, _} = Session.Saved.restore(events, id)
+        before = File.read!(Path.join(c.dir, id <> ".jsonl"))
+        trace = File.read!(c.trace)
+        resumed = start(c, %{approval: :allow, approval_origin: :yes, headless: true}, id)
+        assert Session.info(resumed).phase == :idle
+        assert Ipse.Test.ManagedDeliverySink.read(c.root) == deliveries
+        assert File.read!(c.trace) == trace
+
+        if unquote(role) == :feed do
+          after_resume = File.read!(Path.join(c.dir, id <> ".jsonl"))
+          assert String.starts_with?(after_resume, before)
+
+          suffix =
+            binary_part(
+              after_resume,
+              byte_size(before),
+              byte_size(after_resume) - byte_size(before)
+            )
+
+          assert [owner, epoch] =
+                   suffix |> String.split("\n", trim: true) |> Enum.map(&Jason.decode!/1)
+
+          assert Session.ReleaseReceipt.valid_owner_marker?(owner, id)
+          assert Session.RuntimeLifecycle.valid_record?(epoch)
+          assert epoch["mode"] == "resume" and epoch["previous_state"] == "closed"
+          closed = events |> Enum.filter(&(&1["type"] == "lifecycle_epoch_closed")) |> List.last()
+          assert epoch["session_id"] == id and epoch["previous_epoch_id"] == closed["epoch_id"]
+        else
+          assert_idle_resume_journal(Path.join(c.dir, id <> ".jsonl"), before, id)
+        end
+
+        assert {:ok, resumed_events} = Journal.load(c.dir, id)
+        assert {:ok, _} = Session.Saved.restore(resumed_events, id)
+        assert :ok = Session.close_confirmed(resumed)
+      after
+        Task.shutdown(c.provider_server, :brutal_kill)
+      end
+    end
+  end
+
+  @tag :managed_sink_input
+  @tag managed_sink_role: :text_required, registered_main: true, ordinary_registered_text: true
+  test "a required text consumer acknowledges an ordinary registered model answer", c do
+    pid = start(c)
+    assert :ok = Session.prompt(pid, "Return the synthetic ordinary registered answer.")
+    assert_receive {:ipse, ^pid, {:done, :ok}}, 10_000
+    id = Session.info(pid).id
+    assert :ok = Session.close_confirmed(pid)
+
+    assert Enum.any?(
+             Ipse.Test.ManagedDeliverySink.read(c.root),
+             &(get_in(&1, ["payload", "frame", "text"]) == "Synthetic ordinary registered answer.")
+           )
+
+    assert [_] = Task.await(c.provider_server, 1000)
+    assert {:ok, events} = Journal.load(c.dir, id)
+    refute Enum.any?(events, &(&1["type"] == "managed_read_observed"))
+    assert {:ok, _} = Session.Saved.restore(events, id)
+  end
+
+  for role <- [:notify_metadata, :feed_metadata] do
+    @tag :managed_sink_input
+    @tag managed_sink_role: role, registered_main: true, ordinary_effect: true
+    test "managed #{role} delivery remains metadata only and acknowledged", c do
+      pid = start(c, %{approval: :allow, approval_origin: :yes, headless: true})
+
+      try do
+        assert :ok =
+                 Session.prompt(pid, "Read the protected root and complete the synthetic work.")
+
+        assert_receive {:ipse, ^pid, {:done, :ok}}, 15_000
+        await_marker(Path.join(c.root, "delivery.jsonl"), "payload", 300)
+        id = Session.info(pid).id
+        assert :ok == Ipse.Test.ManagedDeliverySink.await_ack(c.dir, id, unquote(role))
+        assert :ok = Session.close_confirmed(pid)
+        deliveries = Ipse.Test.ManagedDeliverySink.read(c.root)
+        assert deliveries != []
+        assert Enum.all?(deliveries, &(get_in(&1, ["payload", "event", "view"]) == "metadata"))
+        refute inspect(deliveries) =~ "Synthetic ordinary tool complete."
+        assert {:ok, events} = Journal.load(c.dir, id)
+        assert {:ok, _} = Session.Saved.restore(events, id)
+      after
+        Task.shutdown(c.provider_server, :brutal_kill)
+      end
+    end
+  end
+
+  @tag :managed_presentation_input
+  @tag private_presentation: true
+  test "an ordinary answer still reaches its selected presentation callback", c do
+    pid = start(c, %{provider_module: PresentationModel})
+    assert :ok = Session.prompt(pid, "Return a synthetic ordinary answer.")
+    assert_receive {:ipse, ^pid, {:done, :ok}}, 10_000
+    assert {:ok, events} = Journal.load(c.dir, Session.info(pid).id)
+
+    assert Enum.any?(events, fn event ->
+             event["type"] == "extension_transform_result" and
+               event["stage"] == "transform.presentation" and
+               event["input"] == "Synthetic ordinary answer." and
+               event["output"] == "<answer>Synthetic ordinary answer.</answer>"
+           end)
+
+    assert {:ok, _} = Session.Saved.restore(events, Session.info(pid).id)
+    assert :ok = Session.close_confirmed(pid)
+  end
+
+  @tag :managed_presentation_input
+  @tag private_presentation: true, registered_main: true
+  test "managed answers refuse an unqualified presentation input before its Worker starts", c do
+    pid = start(c)
+    assert :ok = Session.prompt(pid, "Read the synthetic protected root and answer.")
+    assert_receive {:ipse, ^pid, {:done, status}}, 15_000
+    id = Session.info(pid).id
+    assert {:ok, events} = Journal.load(c.dir, id)
+
+    assert Enum.any?(events, &(&1["type"] == "managed_read_observed"))
+
+    assert Enum.filter(events, fn event ->
+             event["type"] in ~w(extension_transform_intent extension_transform_result) and
+               event["stage"] == "transform.presentation"
+           end) == []
+
+    assert status == :error
+    assert_receive {:ipse, ^pid, {:error, message}}, 50
+    assert message =~ "Managed answers cannot enter this formatter."
+    assert {:ok, saved} = Session.Saved.restore(events, id)
+    assert saved.worker_input_unknown == []
+    assert :ok = Session.close_confirmed(pid)
+    before = File.read!(Path.join(c.dir, id <> ".jsonl"))
+    trace = File.read!(c.trace)
+    resumed = start(c, %{}, id)
+    assert Session.info(resumed).phase == :idle
+    assert File.read!(c.trace) == trace
+    assert_idle_resume_journal(Path.join(c.dir, id <> ".jsonl"), before, id)
+    assert :ok = Session.close_confirmed(resumed)
   end
 
   @tag :managed_output_boundary

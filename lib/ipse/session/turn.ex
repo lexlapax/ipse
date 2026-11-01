@@ -687,12 +687,25 @@ defmodule Ipse.Session.Turn do
   end
 
   defp launch_request(s, config, messages, tools, phase) do
-    with {:ok, _} <- Session.managed_dependencies(s, Atom.to_string(phase)),
+    with {:ok, snapshot} <- Session.managed_dependencies(s, Atom.to_string(phase)),
+         :ok <-
+           if(
+             phase == :model and snapshot.dependencies != [] and
+               Ipse.Extension.TextResources.entries(s.config) != [],
+             do: {:error, :managed_text_input_unavailable},
+             else: :ok
+           ),
          true <-
            Ipse.InferenceDispatch.selection(s.config, config, "main", nil) != {:ok, :unregistered} or
              Session.managed_empty?(s) do
       launch_admitted_request(s, config, messages, tools, phase)
     else
+      {:error, :managed_text_input_unavailable} ->
+        fail(
+          s,
+          "Text consumers are unavailable for this managed answer. Start a fresh session with text consumers disabled; this model request was not sent."
+        )
+
       _ ->
         fail(
           s,
@@ -774,6 +787,9 @@ defmodule Ipse.Session.Turn do
                          do: Session.managed_preflight(owner, job_ref, Atom.to_string(phase)),
                          else: {:ok, {config, messages, tools, dispatch}}
                        ) do
+                  if required and (not ready or not text_ready?(stream, request_id)),
+                    do: raise(Ipse.Session.TextStream.RequiredFailure)
+
                   Ipse.InferenceDispatch.run(
                     s.config,
                     config,
@@ -782,12 +798,11 @@ defmodule Ipse.Session.Turn do
                     dispatch,
                     emit,
                     fn facts ->
-                      Session.InferenceDispatch.gate(owner, job_ref, dispatch, facts)
+                      if required and (not ready or not text_ready?(stream, request_id)),
+                        do: {:error, :required_text_consumer_closed},
+                        else: Session.InferenceDispatch.gate(owner, job_ref, dispatch, facts)
                     end,
                     fn admitted, emit, _prepared ->
-                      if required and (not ready or not text_ready?(stream, request_id)),
-                        do: raise(Ipse.Session.TextStream.RequiredFailure)
-
                       request(admitted, messages, tools, emit)
                     end
                   )

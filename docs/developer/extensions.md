@@ -74,6 +74,13 @@ grants no instructions or permissions. Presentation can change `Session.info.fin
 and its presentation event, without changing previously streamed text or saved
 native data. Private worker state is not durable memory.
 
+Presentation currently admits only a known empty managed dependency union.
+Session refuses a managed or unclassified answer before recording the transform
+intent or starting its Worker, retaining the original answer and explicit
+fresh-session recovery. The original-user-text prompt hook remains separate.
+Exports use the [managed input adapter](session-sources.md#deliver-a-managed-export-input-under-its-original-owners);
+selecting a transform grants no access through that export-only contract.
+
 ## Build an independent artifact
 
 Choose a fresh output path and compile the reviewed lab sources separately:

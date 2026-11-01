@@ -447,8 +447,13 @@ share the existing 128-entry reserve and native bound, in addition to the one
 consuming Session description. Missing owners or unconfirmed close withhold
 delivery. This Worker path supplies no accepted-decision terminal approval.
 
-Other Worker entry points, including transforms, event notifications and
-nested service calls, have no admission through this export adapter. A pinned
+Other Worker entry points have no admission through this export adapter.
+Managed presentation refuses before transform intent/start; private notifications
+remain known unstarted, private tool feeds close before queue admission, and
+selected text consumers stop the dependent managed model request. Their ordinary
+and metadata controls remain separate; see [event delivery](extension-events.md)
+and [text ownership](lifecycle-events.md#enroll-visible-text-consumers-before-dispatch).
+Nested managed service calls retain their effect gate. A pinned
 export's committed native-tool and MCP results can use its ordinary
 `host.actions` continuation: effect permission stays separate, the full inherited
 union remains attached, and this adapter fences the exact result before stdin.

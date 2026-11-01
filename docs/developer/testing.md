@@ -686,6 +686,19 @@ continuation. The effect must remain recorded while no result callback runs;
 the typed input is unknown and idle resume repeats neither effect nor delivery.
 This fixture pause supplies timing, not approval or a native delivery receipt.
 
+Use `--only managed_presentation_input` and `--only managed_sink_input` for the
+unsupported private Worker purposes. Preserve actual ordinary formatter/text/
+notification/feed callbacks and acknowledged managed metadata delivery. Managed
+private inputs must stop before their respective intent, queue or dependent
+model request; optional notifications remain known unstarted, required ones fail,
+and already committed effects survive. Include required text on an ordinary
+registered model route so a callback-child/producer identity error cannot pass
+as a managed-data refusal. Inspect exact idle suffixes: a selected
+`lifecycle.record` process records a valid new resume epoch as well as its release
+owner, while initializing no consumer or feed. These controls use synthetic
+root metadata and real callback artifacts; they establish no record-content,
+installed, human or quality qualification.
+
 Filesystem cases need actual case/normalization behavior and inode checks. Native
 fixtures use private homes, not the operator cache. The [sandbox chapter](sandbox.md)
 teaches Linux prerequisites, signing, listener identity, and detached-work limits.
