@@ -35,10 +35,12 @@ started once with at most120calls. It ended without a final receipt after96
 completed responses. The ledger conservatively charges the120-call reservation:
 226of300charged,74remaining; exact attempted calls and termination cause unknown.
 Subsequent [native enhancement controls](responses-optional-tools-20261031.md)
-used eight additional requests, including a retained partial failure: the current
-conservative total is234of300,66remaining. The detailed
-[accounting ledger](live-call-accounting.md#native-enhancement-investigation-2026-10-31)
-retains both bounded Sessions and the unknown liability without replay.
+used eight additional requests, including a retained partial failure: the
+conservative total at that checkpoint was234of300,66remaining. A later
+[complete native draft](enhance-complete-native-20261031.md) used four known-final
+requests, bringing the current total to238of300,62remaining. The detailed
+[accounting ledger](live-call-accounting.md#complete-native-draft-control-2026-10-31)
+retains all three bounded native Sessions and the earlier unknown liability without replay.
 
 Ollama **0.40.5** is already installed. Resident tags include `qwen3.5:9b` and
 `llama3.2:3b`; neither silently substitutes for the primary embedding/answer pair.
@@ -60,6 +62,7 @@ nor resource/offline qualification. No daemon configuration or existing model wa
 - [Full-source regression result](full-suite-20261031.md) retains the unchanged-source run's 71 failures and complete top-level failure extract; selected later controls do not replace this failed baseline.
 - [Completed c7cb484 default baseline](full-suite-c7cb484-20261031.md): 3518 passed,58 failed, with unchanged1057-file source; later isolated increments remain outside its scope.
 - [Running e86b1b8 concurrency limitation](full-suite-e86b1b8-concurrency-20261031.md) records overlapping author native-terminal work and the shared per-user input lock; no final aggregate or clean-environment qualification is implied.
+- [Completed e86b1b8 run](full-suite-e86b1b8-20261031.md) retains3538passed60failed109skipped112excluded, the verified7,760-file inventory with after-launch timing, and a separate same-source eight-pass isolated native cohort; the concurrency caveat remains.
 - [Registered competing V3 positive-fixture repair](registered-competing-fixture-20261031.md), preserving the original failed baseline.
 - [Current registered capture controls](registered-capture-controls-20261031.md) cover paged output, worker-entry revocation and ambiguous permissions without changing runtime gates.
 - [Installed inference inspection and reconciliation](inference-reconciliation-installed-20261031.md) records the exact clean package, generic installed proof and five synthetic native-terminal scenarios.
@@ -67,6 +70,7 @@ nor resource/offline qualification. No daemon configuration or existing model wa
 - [On-use acquired document checks](document-current-use-20261031.md) records native State/Collection file replacement, rename, deletion, redirect and concurrent-revision controls; producer/later-use qualification remains open.
 - [Responses optional-argument repair](responses-optional-tools-20261031.md) records the failed real enhancement reader, explicit schema mapping, native context-before-question follow-up and retained final-response bound failure.
 - [Draft response budgets](draft-response-budgets-20261031.md) separates proposal size from SSE framing, preserves tighter route limits and records explicit invalid-final refusal with synthetic Session accounting controls; live completion remains open.
+- [Complete native main-route draft](enhance-complete-native-20261031.md) records a later fresh read/question/proposal/cancel/unrelated journey, four known-final requests and unchanged source/runtime/workspace, without independent quality or installed acceptance.
 - [Clean 78d1555 installed candidate](candidate-78d1555-installed-20261031.md) passes the generic package baseline, retains the additional draft proof's production endpoint refusal and corrects pending-draft recovery text without qualifying installed draft completion.
 - [Optional Ollama text context](ollama-context-profile-20261031.md) records operator-only selection, exact native wire, delegated Saved history and legacy helper compatibility; effective context and job-level identity remain unqualified.
 - [Storage fixture mount selection](storage-profile-fixture-root-20261031.md) preserves the clean tmpfs clone failure, real Btrfs refusal and an explicit wrong-mount failure without changing production admission.

@@ -1012,8 +1012,11 @@ A later [response-budget repair](archive/2026-10-26-p30-p31-implementation/draft
 preserves the selected route's bounded transport instead of adding a 64-KiB
 draft-only wire cap. Synthetic Session controls distinguish SSE framing from
 proposal size, preserve tighter configured bounds and refuse oversized final
-proposals explicitly. Complete live draft and integrated knowledge clarification
-remain open. New native question
+proposals explicitly. A separate [fresh native main-route control](archive/2026-10-26-p30-p31-implementation/enhance-complete-native-20261031.md)
+completed read, missing-choice clarification, final proposal, cancellation and
+unrelated exact continuation within four known-final requests. This is exposed
+development evidence; independent quality, acceptance, installed drafts and
+integrated knowledge clarification remain open. New native question
 batches also refuse duplicate prompts, kinds and ordered option labels and
 descriptions even if wire IDs or recommendations differ. A matching answered
 question in the current visible turn is returned to the model before another

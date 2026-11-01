@@ -98,3 +98,23 @@ are under `/tmp/ipse-enhance-live-fixed-20261031`; journal SHA-256 is
 `198edbb55dfbd5f4f929313987953fe7e060253231191fa678418fcd0cd2b7d6`.
 The [provider repair record](responses-optional-tools-20261031.md) preserves both
 outcomes. No further live request was attempted in this investigation.
+
+## Complete native draft control, 2026-10-31
+
+After the full suite and its isolated native follow-up exited, a newly prepared
+Harbor case ran at `12652b2` with a matching rebuilt runtime. Its distinct native
+CLI Session had a hard four-request budget, explicit ChatGPT subscription/
+gpt-6.1-sol, synthetic input and no effect approval. Read, clarification and
+final draft completed; cancellation preceded one unrelated exact answer.
+All 4 admissions have completed/final outcomes, the budget books 4, and this new
+Session has zero unsettled/unknown liabilities. No failed request was replayed.
+
+Charge **4 additional calls: 238 of 300 conservatively charged, 62 remaining**.
+The earlier partial liability and 120-call conservative reservation are unchanged;
+no refund or manual settlement follows. Local usage stays 2 of 1,000, 998 remaining.
+No downloads, service/model substitution or API billing occurred.
+The [complete native control](enhance-complete-native-20261031.md) retains the
+scope and sanitized receipt; its private synthetic journal SHA-256 is
+`2d3b24970c1f126285a5d8919bf624ea3b2d706deeb87e9bf2ba445cd15198cb`.
+Source/runtime/config/workspace match before and after. This is functional
+development evidence, not independent quality or outgoing-wire proof.
