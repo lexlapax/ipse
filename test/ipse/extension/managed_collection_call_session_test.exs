@@ -141,6 +141,8 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
           call(%{"op" => "source.list", "limit" => 32}, Map.put(state, "step", "wide_query_list"))
         state["mode"] == "nested_mcp" ->
           call(%{"op" => "collection.call", "request" => %{"op" => "snapshot"}}, Map.put(state, "step", "nested_mcp"))
+        state["mode"] == "nested_native" ->
+          call(%{"op" => "collection.call", "request" => %{"op" => "snapshot"}}, Map.put(state, "step", "nested_native"))
         state["mode"] in ["nested_document", "nested_document_hold"] ->
           call(%{"op" => "collection.call", "request" => %{"op" => "snapshot"}}, Map.put(state, "step", "nested_document"))
         true ->
@@ -302,6 +304,9 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
       end
       defp advance("nested_mcp", _, state) do
         call(%{"op" => "mcp.call", "version" => 1, "binding" => "notes", "arguments" => %{"path" => "nested-mcp.txt", "content" => "SYNTHETIC_NESTED_MCP"}, "timeout_ms" => 5000}, Map.put(state, "step", "done"))
+      end
+      defp advance("nested_native", _, state) do
+        call(%{"op" => "tool.call", "name" => "write", "arguments" => %{"path" => "nested-native.txt", "content" => "SYNTHETIC_NESTED_NATIVE"}, "timeout_ms" => 5000}, Map.put(state, "step", "done"))
       end
       defp advance("nested_document", _, state) do
         if state["mode"] == "nested_document_hold" do
@@ -2308,6 +2313,171 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
       refute File.exists?(directory)
       assert {:ok, _} = Ipse.Session.Saved.restore(events, id)
       assert :ok = Session.close_confirmed(pid)
+    end
+  end
+
+  for kind <- [:native, :mcp] do
+    @tag :managed_nested_result
+    @tag nested_mcp: kind == :mcp, managed_mcp: kind == :mcp
+    test "an explicitly allowed nested #{kind} effect returns through its actual managed Worker input",
+         c do
+      pid = start(c, %{approval: :allow, approval_origin: :yes, headless: true})
+      mode = "nested_#{unquote(kind)}"
+      operation = if unquote(kind) == :native, do: "tool.call", else: "mcp.call"
+      marker = "SYNTHETIC_NESTED_#{String.upcase(to_string(unquote(kind)))}"
+
+      assert :ok =
+               Session.invoke_export(pid, :command, "ext__capture__capture", %{"mode" => mode})
+
+      assert_receive {:ipse, ^pid, {:done, status}}, 15_000
+      assert File.read!(Path.join(c.cwd, "nested-#{unquote(kind)}.txt")) == marker
+      id = Session.info(pid).id
+      assert {:ok, events} = Journal.load(c.dir, id)
+
+      assert status == :ok,
+             "physical nested effect settled but result continuation ended #{status}"
+
+      [action] =
+        Enum.filter(
+          events,
+          &(get_in(&1, ["request", "op"]) == operation and
+              &1["type"] == "extension_action_result")
+        )
+
+      assert action["outcome"]["status"] == "ok"
+      refute Enum.any?(events, &(&1["type"] == "managed_action_output_withheld"))
+      actions = Enum.filter(events, &(&1["type"] == "extension_action_result"))
+      input = events |> Enum.filter(&(&1["type"] == "worker_input_intent")) |> List.last()
+      assert input["actions_sha256"] == JSON.digest(actions)
+      assert input["payload_sha256"] == JSON.digest([Ipse.Extension.Actions.resume(action)])
+
+      assert Enum.any?(
+               events,
+               &(&1["type"] == "worker_input_result" and &1["input_id"] == input["input_id"] and
+                   &1["status"] == "delivered")
+             )
+
+      trace = File.read!(c.trace)
+      assert trace =~ Jason.encode!(action["outcome"])
+
+      if unquote(kind) == :native do
+        assert_receive {:ipse, ^pid, {:tool_result, "extension:tool.call", preview}}, 50
+        assert preview == "Managed tool result withheld from terminal preview."
+      else
+        refute_receive {:ipse, ^pid, {:tool_result, "extension:tool.call", _}}, 50
+      end
+
+      assert {:ok, saved} = Session.Saved.restore(events, id)
+      refute saved.managed_lineage.unavailable
+      assert :ok = Session.close_confirmed(pid)
+      journal = Path.join(c.dir, id <> ".jsonl")
+      before = File.read!(journal)
+      resumed = start(c, %{approval: :allow, approval_origin: :yes, headless: true}, id)
+      assert Session.info(resumed).phase == :idle
+      assert File.read!(c.trace) == trace
+      assert_idle_resume_journal(journal, before, id)
+      assert :ok = Session.close_confirmed(resumed)
+    end
+  end
+
+  for kind <- [:native, :mcp], boundary <- [:root_change, :revoke] do
+    @tag :managed_nested_result
+    @tag nested_mcp: kind == :mcp, managed_mcp: kind == :mcp
+    test "nested #{kind} result is withheld after #{boundary} between committed effect and Worker input",
+         c do
+      pid = start(c, %{approval: :allow, approval_origin: :yes, headless: true})
+      operation = if unquote(kind) == :native, do: "tool.call", else: "mcp.call"
+      owner = self()
+
+      hook = fn
+        :released, _, _ ->
+          :released
+
+        d, {:out, {:ok, payload}, _, %{invocation: %{results: results}}}, _ ->
+          action = List.last(results)
+
+          if get_in(action || %{}, ["request", "op"]) == operation and
+               get_in(action || %{}, ["outcome", "status"]) == "ok" and
+               payload["operation_id"] == action["operation_id"] do
+            send(owner, {:nested_result_committed, self(), action})
+            receive do: (:release_nested_result -> :released)
+          else
+            d
+          end
+
+        d, _, _ ->
+          d
+      end
+
+      assert :ok = :sys.install(pid, {hook, nil})
+
+      assert :ok =
+               Session.invoke_export(pid, :command, "ext__capture__capture", %{
+                 "mode" => "nested_#{unquote(kind)}"
+               })
+
+      assert_receive {:nested_result_committed, ^pid, action}, 15_000
+      trace = File.read!(c.trace)
+      target = Path.join(c.cwd, "nested-#{unquote(kind)}.txt")
+      assert File.read!(target) == "SYNTHETIC_NESTED_#{String.upcase(to_string(unquote(kind)))}"
+
+      try do
+        if unquote(boundary) == :revoke do
+          assert {:ok, policy} = Consent.snapshot(c.control, c.binding["project_id"])
+          assert {:ok, _} = Consent.revoke(c.control, c.binding["project_id"], policy["epoch"])
+        else
+          assert {:ok, _} =
+                   Ipse.Extension.Collection.execute(
+                     SemanticAdmission.collection_root(c.home),
+                     c.namespace,
+                     %{
+                       "op" => "commit",
+                       "expected_generation" => 0,
+                       "advance_floor" => false,
+                       "changes" => [
+                         %{
+                           "key" => "changed.before.result.input",
+                           "expected_revision" => 0,
+                           "value" => %{}
+                         }
+                       ]
+                     },
+                     Ipse.Usage.id()
+                   )
+        end
+      after
+        send(pid, :release_nested_result)
+      end
+
+      assert_receive {:ipse, ^pid, {:done, :error}}, 10_000
+      refute_receive {:ipse, ^pid, {:extension_result, _}}, 50
+      assert File.read!(c.trace) == trace
+      refute trace =~ Jason.encode!(action["outcome"])
+      id = Session.info(pid).id
+      assert {:ok, events} = Journal.load(c.dir, id)
+      assert action in events
+      refute Enum.any?(events, &(&1["type"] == "managed_action_output_withheld"))
+      input = events |> Enum.filter(&(&1["type"] == "worker_input_intent")) |> List.last()
+      assert input["payload_sha256"] == JSON.digest([Ipse.Extension.Actions.resume(action)])
+
+      assert Enum.any?(
+               events,
+               &(&1["type"] == "worker_input_result" and &1["input_id"] == input["input_id"] and
+                   &1["status"] == "unknown")
+             )
+
+      assert {:ok, saved} = Session.Saved.restore(events, id)
+      assert saved.managed_lineage.unavailable
+      assert input["input_id"] in saved.worker_input_unknown
+      assert :ok = Session.close_confirmed(pid)
+      journal = Path.join(c.dir, id <> ".jsonl")
+      before = File.read!(journal)
+      resumed = start(c, %{approval: :allow, approval_origin: :yes, headless: true}, id)
+      assert Session.info(resumed).phase == :idle
+      assert File.read!(c.trace) == trace
+      assert_idle_resume_journal(journal, before, id)
+      assert File.read!(target) == "SYNTHETIC_NESTED_#{String.upcase(to_string(unquote(kind)))}"
+      assert :ok = Session.close_confirmed(resumed)
     end
   end
 

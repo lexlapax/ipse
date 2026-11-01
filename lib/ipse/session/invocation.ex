@@ -1070,13 +1070,23 @@ defmodule Ipse.Session.Invocation do
       s = Session.managed_event(s, event)
       s = %{s | invocation: Ipse.Session.DocumentEmbedding.record_action(s.invocation, event)}
 
+      lineage_available =
+        match?(%Ipse.Session.ManagedLineage{unavailable: false}, s.managed_lineage)
+
+      managed =
+        not lineage_available or
+          Ipse.Session.ManagedLineage.invocation_dependencies(
+            s.managed_lineage,
+            s.invocation.parent["invocation_id"]
+          ) != {:ok, []}
+
+      # Only execute_export drives these action continuations. Its pinned entry
+      # uses the same configured predicate and independently fences the actual
+      # committed result before Worker stdin; a result here is no delivery grant.
       withheld =
-        intent["request"]["op"] in ~w(tool.call mcp.call collection.store) and
-          (not match?(%Ipse.Session.ManagedLineage{unavailable: false}, s.managed_lineage) or
-             Ipse.Session.ManagedLineage.invocation_dependencies(
-               s.managed_lineage,
-               s.invocation.parent["invocation_id"]
-             ) != {:ok, []})
+        intent["request"]["op"] in ~w(tool.call mcp.call collection.store) and managed and
+          (not lineage_available or intent["request"]["op"] == "collection.store" or
+             not Ipse.Session.WorkerInput.configured?(s.config))
 
       s =
         if withheld do
@@ -1098,7 +1108,11 @@ defmodule Ipse.Session.Invocation do
         do:
           Session.notify(
             s,
-            {:tool_result, "extension:tool.call", Jason.encode!(event["outcome"])}
+            {:tool_result, "extension:tool.call",
+             if(managed,
+               do: "Managed tool result withheld from terminal preview.",
+               else: Jason.encode!(event["outcome"])
+             )}
           )
 
       {:reply,

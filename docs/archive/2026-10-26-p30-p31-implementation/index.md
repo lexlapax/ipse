@@ -61,6 +61,7 @@ nor resource/offline qualification. No daemon configuration or existing model wa
 
 ## P31A contracts and evidence
 
+- [Nested native/MCP result continuation](nested-result-input-20261101.md) replaces the redundant result gate only for pinned exports using the actual managed input fence. Explicit-allow positives and post-effect root/revocation controls retain known effects, uncertain delivery and inert recovery; document and other unqualified purposes stay gated.
 - [Accepted-decision Worker input](accepted-worker-input-20261101.md) carries original management journals to the same native stdin writer, with genuine single/two-decision source inspection and strict settlement. Model-history composition after a settled Worker root transition preserves the original union and historical notice; qualification remains scoped.
 - [Actual Session-managed export input](worker-input-session-20261101.md) binds committed requests and complete dependencies to the same native Worker stdin owner, with strict unknown/no-replay restoration. Its genuine literal-source observer is disclosed; accepted-decision and other Worker purposes remain open.
 - [Retained native stdin through the existing transaction owner](worker-stdin-ownership-20261031.md) has actual pipe and owner-loss controls; exact Session/frame authority and managed SDK delivery remain open.

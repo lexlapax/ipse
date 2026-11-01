@@ -156,6 +156,15 @@ renewing the original callback timer. Ordinary invocations with known empty
 dependencies keep their ordinary transport. Neither route supplies effect
 permission to a returned host call.
 
+For a pinned export, a known native-tool or MCP outcome first commits its
+ordinary action result, then uses that same guarded input route. Committing the
+result is no delivery grant. If source ownership or permission changes before
+the next frame, the effect remains recorded but the callback receives nothing;
+the input stays unknown. Managed native-tool previews expose status only.
+Document-store continuations retain their separate gate. See
+[effect recovery](extension-effects.md#follow-the-common-action-sequence) before
+treating a failed continuation as a failed filesystem or remote effect.
+
 Follow `invoke_export/4`, `begin/6`, `begin_action/4`, and final result transitions.
 Session retains public handler guards, actual resource completion, and applicable
 accounting before calling these functions. It installs proposed facts only after

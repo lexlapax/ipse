@@ -443,6 +443,11 @@ confirmed cleanup. A crash, timeout, lost output, or interruption can leave unkn
 effects. A begin/seal record alone is not a published result. Do not replay a
 producer merely to repair a read; retain originals and follow [recovery](recovery.md).
 
+A file or MCP action can complete before its result is withheld from a later
+extension callback because a source or permission changed. Inspect the committed
+action and actual target using that recovery procedure; a failed continuation
+does not undo the action. Resume repeats neither the effect nor the delivery.
+
 Resume requires the pinned artifact, options, grants, expiry policy, and compatible
 runtime. Missing/extra/tampered selections refuse; `--no-extensions` cannot remove
 an existing pinned set. Committed results/context restore without callbacks;

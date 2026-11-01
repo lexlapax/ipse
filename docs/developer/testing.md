@@ -666,6 +666,17 @@ original-owner budget. Follow the
 with the corresponding opt-in variable and tag. These are synthetic source
 journeys, not independent human, live-model or installed evidence.
 
+Use `--only managed_nested_result` in
+`managed_collection_call_session_test.exs` for explicitly allowed native and MCP
+effects followed by actual guarded Worker continuations. Require the physical
+write, successful complete callback, exact last-result/action-chain input hashes,
+status-only native-tool preview and strict Saved/idle recovery. Its withdrawal
+controls pause the real Session at the committed action reply, change the actual
+root or permission outside the effect scope, then release the unchanged Host
+continuation. The effect must remain recorded while no result callback runs;
+the typed input is unknown and idle resume repeats neither effect nor delivery.
+This fixture pause supplies timing, not approval or a native delivery receipt.
+
 Filesystem cases need actual case/normalization behavior and inode checks. Native
 fixtures use private homes, not the operator cache. The [sandbox chapter](sandbox.md)
 teaches Linux prerequisites, signing, listener identity, and detached-work limits.

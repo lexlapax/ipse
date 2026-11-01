@@ -576,7 +576,7 @@ defmodule Ipse.Extension.Host do
   end
 
   defp protected_worker_input?(entry),
-    do: is_map(get_in(entry, [:host_config, :semantic_admission, "pin"]))
+    do: Ipse.Session.WorkerInput.configured?(entry[:host_config])
 
   defp worker_request(worker, entry, stage, payload, timeout) do
     if stage != "initialize" and protected_worker_input?(entry) do

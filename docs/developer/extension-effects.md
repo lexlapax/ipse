@@ -61,6 +61,18 @@ the GenServer. Session syncs its result before continuing the worker. Deadline,
 worker death, cancellation and lease expiry stop local owned work. They cannot
 undo effects that a remote service or filesystem has already performed.
 
+For a pinned export carrying managed dependencies, native-tool and MCP results
+also pass through the [managed Worker input fence](session-sources.md#deliver-a-managed-export-input-under-its-original-owners)
+after commitment. The host independently binds the exact last action result and
+complete inherited union to the pending immutable frame. Current source and
+policy owners must survive its actual write and settlement before the callback
+can consume the outcome. Native-tool terminal previews contain a fixed status
+message rather than raw outcome data. A current result can continue; a source or
+permission change after execution can withhold that continuation even though the
+original effect succeeded. Inspect the committed action before attempting new
+work. Unknown action outcomes never enter another callback, and document-store
+results and unqualified input purposes retain their own gates.
+
 An interrupted intent remains unknown. Recovery validates bindings and action
 ordering before repairing a torn journal tail; idle resume restores committed
 values without dispatch. Never add automatic replay to resolve an unknown result.
@@ -166,7 +178,8 @@ text use the same publication rule; extension source persistence also rechecks t
 The message retains at most 2048 UTF-8 bytes without splitting a codepoint, so
 even JSON escaping fits the SDK envelope. This response confirms dispatch, not
 rollback: a remote write may have partly completed. Inspect the service before
-requesting another approved call. It grants no successful source-read authority.
+requesting another approved call. Dispatch alone grants no source-read authority;
+the bound successful action result remains required.
 Transport loss or an invalid response remains `unknown` and stops continuation.
 
 New operations and explicit mixed invocations use version-two action records

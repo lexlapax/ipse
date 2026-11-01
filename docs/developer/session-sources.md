@@ -448,9 +448,16 @@ consuming Session description. Missing owners or unconfirmed close withhold
 delivery. This Worker path supplies no accepted-decision terminal approval.
 
 Other Worker entry points, including transforms, event notifications and
-nested service calls, have no admission through this export adapter. Managed
-nested tool/MCP result delivery retains its separate refusal gate. Do not infer
-those authorities from a successful export input.
+nested service calls, have no admission through this export adapter. A pinned
+export's committed native-tool and MCP results can use its ordinary
+`host.actions` continuation: effect permission stays separate, the full inherited
+union remains attached, and this adapter fences the exact result before stdin.
+Native-tool progress previews use the fixed status-only message
+`Managed tool result withheld from terminal preview.`
+A root change or revocation after the effect can therefore leave a known
+successful action and an unknown input without another VM callback. Inspect the
+effect before deciding on new work; idle resume repeats neither. Managed
+document-store result delivery and other unqualified purposes remain gated.
 The [native protocol](../../native/README.md#direct-stdio-server-transport) owns
 its frame details; [verification](testing.md#exercise-actual-os-policy-and-native-protocols)
 distinguishes component faults from actual Session qualification.

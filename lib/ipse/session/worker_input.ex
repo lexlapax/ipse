@@ -10,6 +10,12 @@ defmodule Ipse.Session.WorkerInput do
   @result_keys ~w(type version input_id intent_sha256 status)
   @transition_keys ~w(type version input_id intent_sha256 evidence checked_at_ms deadline_ms)
 
+  @doc false
+  def configured?(config) when is_map(config),
+    do: is_map(get_in(config, [:semantic_admission, "pin"]))
+
+  def configured?(_), do: false
+
   def record?(%{"type" => "worker_input_intent"} = event) do
     keys?(event, @intent_keys) and event["version"] === 1 and
       Enum.all?(~w(input_id session_id invocation_id), &id?(event[&1])) and
