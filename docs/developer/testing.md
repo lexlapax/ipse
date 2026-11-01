@@ -184,6 +184,7 @@ the same production path. Run the related native cases serially:
 
 ```sh
 mix test test/ipse/session/managed_supersession_session_test.exs test/ipse/session/managed_history_use_session_test.exs test/ipse/session/managed_compaction_diagnostic_test.exs --max-cases 1
+mix test test/ipse/session/managed_supersession_native_test.exs test/dev/knowledge/managed_v3_turnover_native_test.exs --max-cases 1
 ```
 
 History use checks signed historical attribution, successor removal, unavailable
@@ -192,6 +193,24 @@ staging and requires native controller exit, an unchanged root, unconfirmed
 journal/control status and no replay. Its printed directory retains synthetic
 diagnostic evidence. Neither check establishes annual turnover, complete capacity
 or model quality.
+
+`managed_supersession_native_test.exs` runs its six default modes through that
+genuine Session path. The split fixture pauses after the actual new assertion
+is committed but before its worker selects a root, then seeds explicitly
+synthetic page geometry around the authentic selected records. Publication must
+still authenticate the real old/new sources, use native review and commit all
+eight sidecars within the closed read and measured reservation bounds. Filler
+rows supply no source authority or capacity-quality result.
+
+The deadline control pauses at the actual root-switch boundary, waits past the
+exact signed target deadline and requires the native elapsed reply while its
+transaction remains live. Deterministic pause modules are installed in their
+isolated child host before initial permission review and retain stable inventoried
+BEAM paths. They change no native helper or production source. Distinguish these
+controlled-host faults from unmodified runtime qualification. Turnover records
+separate the genuine native review time from an explicitly supplied future
+as-of expiry component; neither a virtual timestamp nor native IO proves that
+a year actually elapsed.
 
 Distinguish timeout before command-handler startup from timeout during active work.
 The evaluation-session fixture observes its worker's readiness and active Session

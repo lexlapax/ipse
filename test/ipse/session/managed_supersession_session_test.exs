@@ -2,7 +2,7 @@ defmodule Ipse.Session.ManagedSupersessionSessionTest do
   use ExUnit.Case, async: false
 
   for scenario <-
-        ~w(current cross_session pin_history relation_cancel revoke old_missing terminal terminal_cancel terminal_unknown terminal_effect_unknown shared disabled) do
+        ~w(current cross_session pin_history relation_cancel revoke old_missing terminal terminal_cancel terminal_unknown terminal_effect_unknown terminal_deadline shared disabled) do
     @tag timeout: 90_000
     @tag supersession_scenario: scenario
     test "genuine Session supersession: #{scenario}" do
@@ -62,11 +62,16 @@ defmodule Ipse.Session.ManagedSupersessionSessionTest do
         |> Enum.each(&IO.puts/1)
       end
 
-      if unquote(scenario) == "terminal_effect_unknown" do
+      if unquote(scenario) in ~w(terminal_effect_unknown terminal_deadline) do
         output
         |> String.split("\n")
         |> Enum.map(&String.trim/1)
-        |> Enum.filter(&String.starts_with?(&1, "AFTER_EFFECT_CONTROL_SOURCE_SHA256="))
+        |> Enum.filter(
+          &String.starts_with?(&1, [
+            "AFTER_EFFECT_CONTROL_SOURCE_SHA256=",
+            "DEADLINE_CONTROL_SOURCE_SHA256="
+          ])
+        )
         |> Enum.each(&IO.puts/1)
       end
 

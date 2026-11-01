@@ -448,6 +448,15 @@ root switch, and a poisoned exported share stops Session. Saved reconstructs
 the historical intent/review but never replays the mutation or mints a permit.
 An explicitly reopened Session can remain idle after such loss.
 
+Expiry after staging can refuse the native root decision while the transaction
+is still live. The overall attempt remains unconfirmed because staged storage
+already changed. Its full publishing liability stays retained; read-only inspection
+does not settle it, and reconciliation requires an explicit trusted-host decision.
+The native deadline control requires the exact elapsed
+reply and unchanged selected root, then checks idle recovery without replay.
+It pauses before the decision and establishes no physical completion deadline
+for a switch already admitted before expiry.
+
 Run `managed_supersession_session_test.exs` for actual statement/relation reviews,
 ordinary and temporal replacements, cross-session source locks, cancellation,
 revocation, missing originals, shared lifecycle and no-replay recovery. Its

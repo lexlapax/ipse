@@ -978,7 +978,7 @@ reach the final native root decision under a claimed one-use review. Focused
 ordinary/temporal, cross-session, cancellation, revoked/missing source, shared
 lifecycle and owner-loss controls include idle recovery after a physical switch
 without replay. Headless replacement and accepted-decision targets remain closed;
-legacy synthetic turnover adapters, complete lifecycle/capacity, installed and
+complete lifecycle/capacity, installed and
 independent qualification remain open. This does not close C0 or P31.
 The [history-use and interrupted-compaction follow-ups](archive/2026-10-26-p30-p31-implementation/literal-lifecycle-launchers-20261031.md)
 now reuse this genuine publication and release-owner setup while preserving
@@ -988,6 +988,11 @@ The [genuine pinned-history control](archive/2026-10-26-p30-p31-implementation/p
 also covers public pin, temporal replacement and successor forgetting without
 removing signed persistent history; its pure future as-of check is not annual
 native turnover qualification.
+The [default lifecycle test migration](archive/2026-10-26-p30-p31-implementation/genuine-lifecycle-default-20261031.md)
+now exercises all six native modes through actual Session-reviewed sources,
+including eight-sidecar publication and a native elapsed root decision. Its
+explicit future as-of component and synthetic page geometry remain distinct
+from annual/full-capacity or independent quality acceptance.
 
 Public session-only retention uses the same full-facts native review, journal
 and reducing effect as explicit forgetting. Public pin, automatic and duration

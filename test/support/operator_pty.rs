@@ -227,7 +227,7 @@ fn main() {
         if assertion {
             let text = String::from_utf8_lossy(&output);
             let root = std::path::Path::new(&args[args.len() - 2]);
-            if args.last().is_some_and(|value| value == "terminal" || value == "terminal_cancel" || value == "terminal_unknown" || value == "terminal_effect_unknown") {
+            if args.last().is_some_and(|value| value == "terminal" || value == "terminal_cancel" || value == "terminal_unknown" || value == "terminal_effect_unknown" || value == "terminal_deadline") {
                 let ready = "IPSE_SUPERSESSION_TERMINAL_READY";
                 if let Some(start) = text.find(ready) {
                     let tail = &text[start + ready.len()..];

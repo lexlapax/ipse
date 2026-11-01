@@ -16,7 +16,14 @@ defmodule Ipse.Development.ManagedV3TurnoverNativeTest do
                stderr_to_stdout: true
              )
 
-    paths = Enum.reverse(:code.get_path()) |> Enum.flat_map(&["-pa", List.to_string(&1)])
+    paths =
+      :code.get_path()
+      |> Enum.map(&List.to_string/1)
+      |> Enum.reject(&(&1 == "."))
+      |> Enum.map(&Path.expand/1)
+      |> Enum.reverse()
+      |> Enum.flat_map(&["-pa", &1])
+
     graph = Ipse.Runner |> :code.which() |> List.to_string() |> Path.dirname() |> Path.expand()
 
     for {mode, expected_events} <- [{"ordinary", 1}, {"history_expiry", 2}] do
@@ -27,12 +34,12 @@ defmodule Ipse.Development.ManagedV3TurnoverNativeTest do
       {output, status} =
         System.cmd(
           helper,
-          ["--review", System.find_executable("elixir"), "--erl", "+S 2:2"] ++
+          ["--assertion", System.find_executable("elixir"), "--erl", "+S 2:2"] ++
             paths ++
             [
               "-pa",
               graph,
-              "test/support/managed_literal_supersession.exs",
+              Path.expand("test/support/managed_supersession_session.exs"),
               directory,
               "turnover_" <> mode
             ],
@@ -59,7 +66,7 @@ defmodule Ipse.Development.ManagedV3TurnoverNativeTest do
       assert Ipse.JSON.sha256?(review["review_sha256"]) and
                Ipse.JSON.sha256?(review["source_sha256"])
 
-      assert review["source_scope"] == "synthetic_trusted_fixture"
+      assert review["source_scope"] == "native_reviewed_session_fixture"
       frame = review["clock_frame"]
 
       assert review["virtual_ms"] ==

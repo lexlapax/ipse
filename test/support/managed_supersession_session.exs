@@ -2,6 +2,9 @@ ExUnit.start(autorun: false)
 import ExUnit.Assertions
 {:ok, _} = Application.ensure_all_started(:ipse)
 [root, scenario] = System.argv()
+turnover = String.starts_with?(scenario, "turnover_")
+scenario = String.replace_prefix(scenario, "turnover_", "")
+assert not turnover or scenario in ~w(ordinary history_expiry)
 followup = Process.delete({:managed_supersession_fixture, :followup})
 assert followup in [nil, :history_use, :compaction_diagnostic]
 assert followup != :history_use or scenario == "current"
@@ -10,6 +13,16 @@ assert followup != :compaction_diagnostic or scenario == "shared"
 if scenario == "terminal_effect_unknown" do
   Code.require_file("managed_supersession_unknown.exs", __DIR__)
   Ipse.Test.ManagedSupersessionUnknown.interpose_after_effect(root)
+end
+
+if scenario == "terminal_deadline" do
+  Code.require_file("managed_supersession_unknown.exs", __DIR__)
+  Ipse.Test.ManagedSupersessionUnknown.interpose_deadline(root)
+end
+
+if scenario == "split" do
+  Code.require_file("managed_split_session.exs", __DIR__)
+  Ipse.Test.ManagedSplitSession.install(root)
 end
 
 for key <- ~w(IPSE_PROVIDER IPSE_MODEL IPSE_CONFIG IPSE_PROFILE IPSE_SANDBOX IPSE_SUBAGENTS),
@@ -336,7 +349,28 @@ if scenario == "disabled" do
   System.halt(0)
 end
 
-if scenario in ~w(terminal_unknown terminal_effect_unknown) do
+{snapshot, expected_deadline} =
+  if scenario == "terminal_deadline" do
+    assert {:ok, choice} =
+             Ipse.CLI.Knowledge.Management.retain(config, cwd, ordinary["key"], %{
+               "kind" => "duration",
+               "duration_ms" => 4_500
+             })
+
+    assert {:ok, retained} =
+             Ipse.Extension.Collection.execute(
+               collection,
+               pin["namespace"],
+               %{"op" => "snapshot"},
+               Ipse.Usage.id()
+             )
+
+    {retained, choice["receipt"]["publication"]["normalization"]["valid_until_ms"]}
+  else
+    {snapshot, nil}
+  end
+
+if scenario in ~w(terminal_unknown terminal_effect_unknown terminal_deadline) do
   Code.require_file("managed_supersession_unknown.exs", __DIR__)
 
   Ipse.Test.ManagedSupersessionUnknown.run(
@@ -350,7 +384,12 @@ if scenario in ~w(terminal_unknown terminal_effect_unknown) do
     collection,
     pin,
     snapshot,
-    if(scenario == "terminal_effect_unknown", do: :after_effect, else: :input)
+    case scenario do
+      "terminal_effect_unknown" -> :after_effect
+      "terminal_deadline" -> :deadline
+      _ -> :input
+    end,
+    expected_deadline
   )
 
   IO.puts("MANAGED_SUPERSESSION_#{String.upcase(scenario)}_PASSED")
@@ -383,7 +422,7 @@ assert {:ok, relation_snapshot} =
            Ipse.Usage.id()
          )
 
-if scenario in ~w(current cross_session pin_history terminal shared) do
+if scenario in ~w(current ordinary temporal history_expiry split cross_session pin_history terminal shared) do
   if scenario == "terminal" do
     File.write!(
       Path.join(root, "supersession-terminal-command"),
@@ -393,27 +432,78 @@ if scenario in ~w(current cross_session pin_history terminal shared) do
     IO.puts("IPSE_SUPERSESSION_TERMINAL_READY")
     assert Ipse.CLI.Terminal.interact(session, Process.monitor(session), true, nil, cwd) == 0
   else
-    intake.(
-      session,
-      channel,
-      id,
-      "/correct " <> ordinary["key"] <> " My corrected ordinary value",
-      if(scenario == "shared", do: 4, else: 3),
-      :ok
-    )
+    if scenario == "split" do
+      owner = self()
+      handler = "actual-split-budget-" <> Ipse.Usage.id()
 
-    intake.(
-      session,
-      channel,
-      id,
-      "/supersede " <> current["key"] <> " My fixture timezone is Europe/Berlin",
-      if(scenario == "shared", do: 5, else: 4),
-      :ok
-    )
+      control =
+        Task.async(fn ->
+          Process.register(self(), :ipse_split_seed_control)
+          send(owner, :split_control_ready)
+          assert_receive {:split_source_ready, ^session, proof}, 20_000
+
+          assert {:ok, seed_generation} =
+                   Ipse.Test.ManagedSplitSession.prepare(
+                     Map.put(config, :semantic_admission, admission),
+                     cwd,
+                     home,
+                     ordinary,
+                     current,
+                     proof
+                   )
+
+          assert seed_generation == relation_snapshot["generation"] + 1
+
+          assert :ok =
+                   :telemetry.attach(
+                     handler,
+                     [:ipse, :extension, :collection, :staged],
+                     &Ipse.Test.ManagedSplitSession.capture_units/4,
+                     owner
+                   )
+
+          send(session, :split_seed_complete)
+        end)
+
+      assert_receive :split_control_ready, 1000
+
+      intake.(
+        session,
+        channel,
+        id,
+        "/supersede " <> current["key"] <> " My fixture timezone is Europe/Berlin",
+        3,
+        :ok
+      )
+
+      Task.await(control, 1000)
+      assert_receive {:native_split_units, units}, 1000
+      assert units <= 32
+      assert :ok = :telemetry.detach(handler)
+      IO.puts("SUPERCESSION_READ_UNITS=#{units}")
+    else
+      intake.(
+        session,
+        channel,
+        id,
+        "/correct " <> ordinary["key"] <> " My corrected ordinary value",
+        if(scenario == "shared", do: 4, else: 3),
+        :ok
+      )
+
+      intake.(
+        session,
+        channel,
+        id,
+        "/supersede " <> current["key"] <> " My fixture timezone is Europe/Berlin",
+        if(scenario == "shared", do: 5, else: 4),
+        :ok
+      )
+    end
   end
 
   assert {:ok, events} = Ipse.Journal.load(dir, id)
-  count = if scenario == "terminal", do: 1, else: 2
+  count = if scenario in ~w(terminal split), do: 1, else: 2
 
   extra_assertions =
     cond do
@@ -438,7 +528,9 @@ if scenario in ~w(current cross_session pin_history terminal shared) do
              Ipse.Usage.id()
            )
 
-  assert after_snapshot["generation"] == relation_snapshot["generation"] + count
+  assert after_snapshot["generation"] ==
+           relation_snapshot["generation"] + count + if(scenario == "split", do: 1, else: 0)
+
   assert after_snapshot["floor"] == after_snapshot["generation"]
 
   for event <- Enum.filter(events, &(&1["type"] == "managed_supersession_intent")) do
@@ -446,6 +538,43 @@ if scenario in ~w(current cross_session pin_history terminal shared) do
     result = Enum.find(results, &(&1["operation_id"] == event["operation_id"]))
     receipt = result["outcome"]["publication"]["receipt"]
     normalization = result["outcome"]["publication"]["normalization"]
+
+    if scenario == "split" do
+      assert length(normalization["metadata_refs"]) == 8
+
+      assert {:ok, operation} =
+               Ipse.Extension.Consent.operation(
+                 Ipse.Extension.SemanticAdmission.control_root(home),
+                 pin["project_id"],
+                 event["operation_id"]
+               )
+
+      assert operation["status"] == "settled"
+      assert operation["actual"]["input_bytes"] <= operation["reserved"]["input_bytes"]
+      IO.puts("SUPERSESSION_RECEIPT_BYTES=#{byte_size(Jason.encode!(normalization))}")
+      IO.puts("SUPERSESSION_CHARGED_BYTES=#{operation["actual"]["input_bytes"]}")
+    end
+
+    review =
+      Enum.find(
+        events,
+        &(&1["type"] == "managed_supersession_review" and
+            &1["operation_id"] == event["operation_id"])
+      )
+
+    if facts["mode"] == "ordinary" do
+      assert normalization["valid_until_ms"] == facts["metadata"]["valid_until_ms"]
+      assert normalization["history_valid_until_ms"] == facts["metadata"]["valid_until_ms"]
+    else
+      assert normalization["valid_until_ms"] == nil
+
+      expected =
+        if facts["metadata"]["category"] == "pin",
+          do: nil,
+          else: review["review"]["observed_at_ms"] + 365 * 86_400_000
+
+      assert normalization["history_valid_until_ms"] == expected
+    end
 
     assert {:ok, %{"operation" => ^receipt}} =
              Ipse.Extension.Collection.execute(
@@ -651,13 +780,39 @@ if scenario in ~w(current cross_session pin_history terminal shared) do
     )
   end
 
+  if scenario == "history_expiry" or turnover do
+    Code.require_file("managed_session_turnover.exs", __DIR__)
+
+    Ipse.Test.ManagedSessionTurnover.run(
+      Map.put(config, :semantic_admission, admission),
+      cwd,
+      home,
+      root,
+      events,
+      scenario,
+      turnover
+    )
+  end
+
   IO.puts(
     case scenario do
-      "terminal" -> "MANAGED_SUPERSESSION_TERMINAL_PASSED"
-      "shared" -> "MANAGED_SUPERSESSION_SHARED_PASSED"
-      "cross_session" -> "MANAGED_SUPERSESSION_CROSS_SESSION_PASSED"
-      "pin_history" -> "MANAGED_SUPERSESSION_PIN_HISTORY_PASSED"
-      _ -> "MANAGED_SUPERSESSION_SESSION_PASSED"
+      "terminal" ->
+        "MANAGED_SUPERSESSION_TERMINAL_PASSED"
+
+      "shared" ->
+        "MANAGED_SUPERSESSION_SHARED_PASSED"
+
+      "cross_session" ->
+        "MANAGED_SUPERSESSION_CROSS_SESSION_PASSED"
+
+      "pin_history" ->
+        "MANAGED_SUPERSESSION_PIN_HISTORY_PASSED"
+
+      mode when mode in ~w(ordinary temporal history_expiry split) ->
+        "NATIVE_SUPERSESSION_PASSED:" <> mode
+
+      _ ->
+        "MANAGED_SUPERSESSION_SESSION_PASSED"
     end
   )
 else
