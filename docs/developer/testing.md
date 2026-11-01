@@ -717,18 +717,31 @@ must remain busy. The native supervisor and importing transaction are distinct
 processes; a Port PID alone cannot identify the importer.
 
 Keep root-only metadata distinct from a signed note's contents. The original
-write/shell/MCP positives in `managed_collection_call_session_test.exs` use the
-`native_root_approval` tag. Their parent launches the same test and SDK fixture
-inside the existing PTY driver; the child retains the original policy, root
-observation, provider responses and proposed effect. Require the inspection tool
-followed by the approved effect, version-3 dependencies without a literal upgrade,
-three completed requests, confirmed effect cleanup/current result and strict
-Saved/idle recovery. An OTP Agent records actual HTTP requests because Terminal
-consumes its own mailbox; it supplies no response or completion witness. Observe
-the frozen Session with read-only system state, since ordinary `Session.info`
-can correctly refuse during ownership transfer. The paired subscriber control
-still withholds arguments when no native channel can own their display. Native
-approval is not permission to bypass that refusal.
+write/shell/MCP positives and approval-wait faults in
+`managed_collection_call_session_test.exs` use the `native_root_approval` tag.
+Their parent launches the same test and SDK fixture inside the existing PTY
+driver; the child retains the original policy, root observation, provider
+responses and proposed effect. Require the inspection tool followed by the
+approved effect, version-3 dependencies without a literal upgrade, three
+completed requests, confirmed effect cleanup/current result and strict Saved/idle
+recovery. An OTP Agent records actual HTTP requests because Terminal consumes its
+own mailbox; it supplies no response or completion witness. Observe the frozen
+Session with read-only system state, since ordinary `Session.info` can correctly
+refuse during ownership transfer.
+
+For each tool, inject root change, revocation, expiry or owner loss only after
+the actual terminal has displayed the full proposal and is waiting for input.
+The first three faults still receive the native answer but must admit no effect,
+release a withdrawn result and make no third provider request. Expiry waits for
+the original signed wall-clock deadline. Owner loss kills the original consumer
+and supplies no answer; require its actual lock to become acquirable before
+resuming that same Session. Do not delete or replace the lock. All faults retain
+the exact saved messages and version-3 dependencies across idle resume, with no
+target, MCP tool call or additional provider request. Use `--only native_root_fault`
+to select these twelve waiting controls; running-operation and HTTP boundaries
+need their own controls. The paired subscriber control still withholds arguments
+when no native channel can own their display. Native approval is not permission
+to bypass that refusal.
 
 Inject a fault at its actual purpose: a hook around shared source acquisition
 may now intercept an earlier Worker input, before a later publication watcher

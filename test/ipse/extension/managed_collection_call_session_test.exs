@@ -4454,67 +4454,10 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
   end
 
   for boundary <- [:root_change, :revoke, :expiry, :owner_loss] do
+    @tag native_root_approval: "write_#{boundary}", native_root_fault: true, timeout: 90_000
     @tag registered_main: true, ordinary_effect: true, wire_expiry: boundary == :expiry
     test "managed native write waiting on approval refuses #{boundary} without effect", c do
-      {pid, approval, path} = managed_write_approval(c)
-
-      case unquote(boundary) do
-        :root_change ->
-          assert {:ok, _} =
-                   Ipse.Extension.Collection.execute(
-                     SemanticAdmission.collection_root(c.home),
-                     c.namespace,
-                     %{
-                       "op" => "commit",
-                       "expected_generation" => 0,
-                       "advance_floor" => false,
-                       "changes" => [
-                         %{
-                           "key" => "changed.before.approval",
-                           "expected_revision" => 0,
-                           "value" => %{}
-                         }
-                       ]
-                     },
-                     Ipse.Usage.id()
-                   )
-
-        :revoke ->
-          assert {:ok, policy} = Consent.snapshot(c.control, c.binding["project_id"])
-          assert {:ok, _} = Consent.revoke(c.control, c.binding["project_id"], policy["epoch"])
-
-        :expiry ->
-          assert {:ok, policy} = Consent.snapshot(c.control, c.binding["project_id"])
-
-          Process.sleep(
-            max(policy["policy"]["expires_at_ms"] - System.system_time(:millisecond) + 10, 0)
-          )
-
-        :owner_loss ->
-          ref = Process.monitor(pid)
-          Process.exit(pid, :kill)
-          assert_receive {:DOWN, ^ref, :process, ^pid, :killed}, 3000
-      end
-
-      if unquote(boundary) != :owner_loss do
-        assert :ok = Session.approve(pid, approval, true)
-        assert_receive {:ipse, ^pid, {:done, :error}}, 10_000
-        assert {:ok, events} = Journal.load(c.dir, Session.info(pid).id)
-        refute Enum.any?(events, &(&1["type"] == "managed_tool_effect_admitted"))
-
-        assert Enum.any?(
-                 events,
-                 &(&1["type"] == "managed_tool_result_release" and &1["decision"] == "withdrawn")
-               )
-
-        assert {:ok, _} = Ipse.Session.Saved.restore(events, Session.info(pid).id)
-        assert :ok = Session.close_confirmed(pid)
-      else
-        refute Process.alive?(pid)
-      end
-
-      refute File.exists?(path)
-      Task.shutdown(c.provider_server, :brutal_kill)
+      native_root_approval(c, "write", unquote(boundary))
     end
   end
 
@@ -4525,63 +4468,14 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
   end
 
   for boundary <- [:root_change, :revoke, :expiry, :owner_loss] do
+    @tag native_root_approval: "shell_#{boundary}", native_root_fault: true, timeout: 90_000
     @tag registered_main: true,
          ordinary_effect: true,
          managed_shell: true,
          shell_pregrant_refusal: boundary != :owner_loss,
          wire_expiry: boundary == :expiry
     test "managed shell waiting on approval refuses #{boundary} before native spawn", c do
-      {pid, approval, path} = managed_shell_approval(c)
-
-      case unquote(boundary) do
-        :root_change ->
-          assert {:ok, _} =
-                   Ipse.Extension.Collection.execute(
-                     SemanticAdmission.collection_root(c.home),
-                     c.namespace,
-                     %{
-                       "op" => "commit",
-                       "expected_generation" => 0,
-                       "advance_floor" => false,
-                       "changes" => [
-                         %{
-                           "key" => "changed.before.shell",
-                           "expected_revision" => 0,
-                           "value" => %{}
-                         }
-                       ]
-                     },
-                     Ipse.Usage.id()
-                   )
-
-        :revoke ->
-          assert {:ok, policy} = Consent.snapshot(c.control, c.binding["project_id"])
-          assert {:ok, _} = Consent.revoke(c.control, c.binding["project_id"], policy["epoch"])
-
-        :expiry ->
-          assert {:ok, policy} = Consent.snapshot(c.control, c.binding["project_id"])
-
-          Process.sleep(
-            max(policy["policy"]["expires_at_ms"] - System.system_time(:millisecond) + 10, 0)
-          )
-
-        :owner_loss ->
-          ref = Process.monitor(pid)
-          Process.exit(pid, :kill)
-          assert_receive {:DOWN, ^ref, :process, ^pid, :killed}, 3000
-      end
-
-      if unquote(boundary) != :owner_loss do
-        assert :ok = Session.approve(pid, approval, true)
-        assert_receive {:ipse, ^pid, {:done, :error}}, 10_000
-        assert {:ok, events} = Journal.load(c.dir, Session.info(pid).id)
-        refute Enum.any?(events, &(&1["type"] == "managed_tool_effect_admitted"))
-        assert {:ok, _} = Ipse.Session.Saved.restore(events, Session.info(pid).id)
-        assert :ok = Session.close_confirmed(pid)
-      end
-
-      refute File.exists?(path)
-      Task.shutdown(c.provider_server, :brutal_kill)
+      native_root_approval(c, "shell", unquote(boundary))
     end
   end
 
@@ -4674,63 +4568,13 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
   end
 
   for boundary <- [:root_change, :revoke, :expiry, :owner_loss] do
+    @tag native_root_approval: "mcp_#{boundary}", native_root_fault: true, timeout: 90_000
     @tag registered_main: true,
          ordinary_effect: true,
          managed_mcp: true,
          wire_expiry: boundary == :expiry
     test "managed MCP call waiting on approval refuses #{boundary} without effect", c do
-      {pid, approval, path} = managed_mcp_approval(c)
-
-      case unquote(boundary) do
-        :root_change ->
-          assert {:ok, _} =
-                   Ipse.Extension.Collection.execute(
-                     SemanticAdmission.collection_root(c.home),
-                     c.namespace,
-                     %{
-                       "op" => "commit",
-                       "expected_generation" => 0,
-                       "advance_floor" => false,
-                       "changes" => [
-                         %{
-                           "key" => "changed.before.mcp",
-                           "expected_revision" => 0,
-                           "value" => %{}
-                         }
-                       ]
-                     },
-                     Ipse.Usage.id()
-                   )
-
-        :revoke ->
-          assert {:ok, policy} = Consent.snapshot(c.control, c.binding["project_id"])
-          assert {:ok, _} = Consent.revoke(c.control, c.binding["project_id"], policy["epoch"])
-
-        :expiry ->
-          assert {:ok, policy} = Consent.snapshot(c.control, c.binding["project_id"])
-
-          Process.sleep(
-            max(policy["policy"]["expires_at_ms"] - System.system_time(:millisecond) + 10, 0)
-          )
-
-        :owner_loss ->
-          ref = Process.monitor(pid)
-          Process.exit(pid, :kill)
-          assert_receive {:DOWN, ^ref, :process, ^pid, :killed}, 3000
-      end
-
-      if unquote(boundary) != :owner_loss do
-        assert :ok = Session.approve(pid, approval, true)
-        assert_receive {:ipse, ^pid, {:done, :error}}, 15_000
-        assert {:ok, events} = Journal.load(c.dir, Session.info(pid).id)
-        refute Enum.any?(events, &(&1["type"] == "managed_tool_effect_admitted"))
-        assert {:ok, _} = Ipse.Session.Saved.restore(events, Session.info(pid).id)
-        assert :ok = Session.close_confirmed(pid)
-      end
-
-      refute File.exists?(path)
-      refute File.exists?(Path.join(c.cwd, "calls.log"))
-      Task.shutdown(c.provider_server, :brutal_kill)
+      native_root_approval(c, "mcp", unquote(boundary))
     end
   end
 
@@ -5150,17 +4994,6 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
     {pid, approval, Path.join(c.cwd, "managed-mcp.txt")}
   end
 
-  defp managed_write_approval(c) do
-    pid = start(c, %{approval: :ask, approval_origin: :interactive, headless: false})
-
-    assert :ok =
-             Session.prompt(pid, "Use the synthetic managed observation in a workspace write.")
-
-    assert_receive {:ipse, ^pid, {:approval, approval, "write", arguments}}, 10_000
-    assert arguments == %{"path" => "managed-output.txt", "content" => "SYNTHETIC_MANAGED_WRITE"}
-    {pid, approval, Path.join(c.cwd, "managed-output.txt")}
-  end
-
   defp managed_shell_arguments(c) do
     command =
       if c[:managed_shell_delay],
@@ -5556,13 +5389,20 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
     refute File.read!(c.trace) =~ "read-returned\n"
   end
 
-  defp native_root_approval(c, kind) do
+  defp native_root_approval(c, kind, boundary \\ :current) do
     if @native_root_approval,
-      do: native_root_effect(c, kind),
-      else: native_root_terminal(kind)
+      do: native_root_effect(c, kind, boundary),
+      else: native_root_terminal(kind, boundary)
   end
 
-  defp native_root_terminal(kind) do
+  defp native_root_terminal(kind, boundary) do
+    selection = if boundary == :current, do: kind, else: kind <> "_" <> Atom.to_string(boundary)
+
+    scenario =
+      if boundary == :owner_loss,
+        do: "save_managed_approval_owner_loss",
+        else: "save_managed_approval_root_" <> selection
+
     root = Path.join(System.tmp_dir!(), "ipse-root-approval-" <> Ipse.Usage.id())
     File.mkdir!(root)
     File.chmod!(root, 0o700)
@@ -5593,17 +5433,18 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
                  paths ++
                  [
                    Path.expand("../../support/root_approval_cli.exs", __DIR__),
+                   selection,
                    root,
-                   "save_managed_approval_root_" <> kind
+                   scenario
                  ],
                stderr_to_stdout: true
              )
 
     assert status == 0, output
-    assert output =~ "NATIVE_ROOT_APPROVAL_#{String.upcase(kind)}_PASSED"
+    assert output =~ "NATIVE_ROOT_APPROVAL_#{String.upcase(selection)}_PASSED"
   end
 
-  defp native_root_effect(c, kind) do
+  defp native_root_effect(c, kind, boundary) do
     {tool, relative, content, arguments} =
       case kind do
         "write" ->
@@ -5634,15 +5475,20 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
           assert Enum.all?(state.managed_approval.dependencies, &(&1["version"] == 3))
           assert {:error, _} = Session.approve(pid, make_ref(), true)
           refute File.exists?(path)
+          native_root_boundary(c, pid, kind, boundary)
           File.write!(Path.join(c.root, "managed-approval-control-checked"), "checked")
-          native_root_idle(pid, 1500)
-          File.write!(Path.join(c.root, "managed-approval-exit-ready"), "ready")
+
+          if boundary != :owner_loss do
+            native_root_idle(pid, 1500)
+            File.write!(Path.join(c.root, "managed-approval-exit-ready"), "ready")
+          end
+
           File.write!(Path.join(c.root, "native-root-checked"), "checked")
         end)
 
       IO.puts("IPSE_MANAGED_APPROVAL_CLI_READY")
 
-      assert 0 ==
+      assert if(boundary == :owner_loss, do: 1, else: 0) ==
                Ipse.CLI.Terminal.interact(
                  pid,
                  Process.monitor(pid),
@@ -5655,24 +5501,43 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
       watcher_ref = Process.monitor(watcher)
       assert_receive {:DOWN, ^watcher_ref, :process, ^watcher, reason}, 1000
       assert reason in [:normal, :noproc]
-      assert File.read!(path) == content
-      state = :sys.get_state(pid)
+
+      if boundary == :current,
+        do: assert(File.read!(path) == content),
+        else: refute(File.exists?(path))
+
+      state = if boundary != :owner_loss, do: :sys.get_state(pid)
       assert {:ok, events} = Journal.load(c.dir, id)
 
-      assert [
-               %{"name" => "ext__capture__inspect", "approval" => "saved_consent"},
-               %{"name" => ^tool, "approval" => "approved"}
-             ] =
-               Enum.filter(events, &(&1["type"] == "tool_started"))
+      starts = Enum.filter(events, &(&1["type"] == "tool_started"))
+
+      if boundary == :owner_loss do
+        refute Process.alive?(pid)
+        assert [%{"name" => "ext__capture__inspect", "approval" => "saved_consent"}] = starts
+      else
+        assert [
+                 %{"name" => "ext__capture__inspect", "approval" => "saved_consent"},
+                 %{"name" => ^tool, "approval" => "approved"}
+               ] = starts
+      end
 
       admissions = Enum.filter(events, &(&1["type"] == "managed_tool_effect_admitted"))
 
-      if kind == "mcp" do
-        assert Enum.map(admissions, &get_in(&1, ["binding", "kind"])) == ["mcp.start", "mcp.send"]
-        assert File.read!(Path.join(c.cwd, "calls.log")) == "write_note\n"
-      else
-        assert [admitted] = admissions
-        assert admitted["binding"]["name"] == tool
+      cond do
+        boundary != :current ->
+          assert admissions == []
+
+        kind == "mcp" ->
+          assert Enum.map(admissions, &get_in(&1, ["binding", "kind"])) == [
+                   "mcp.start",
+                   "mcp.send"
+                 ]
+
+          assert File.read!(Path.join(c.cwd, "calls.log")) == "write_note\n"
+
+        true ->
+          assert [admitted] = admissions
+          assert admitted["binding"]["name"] == tool
       end
 
       for admitted <- admissions do
@@ -5683,43 +5548,123 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
                  end)
       end
 
-      assert [_] = Enum.filter(events, &(&1["type"] == "managed_tool_result_observed"))
+      observed = Enum.filter(events, &(&1["type"] == "managed_tool_result_observed"))
+      releases = Enum.filter(events, &(&1["type"] == "managed_tool_result_release"))
 
-      assert [%{"decision" => "current"}] =
-               Enum.filter(events, &(&1["type"] == "managed_tool_result_release"))
+      if boundary == :owner_loss do
+        assert observed == [] and releases == []
+      else
+        assert [_] = observed
+        decision = if boundary == :current, do: "current", else: "withdrawn"
+        assert [%{"decision" => ^decision}] = releases
+      end
 
       assert {:ok, saved} = Session.Saved.restore(events, id)
-      assert saved.messages == state.messages
+      if state, do: assert(saved.messages == state.messages)
 
       assert {:ok, dependencies} =
                Session.ManagedLineage.dependencies(saved.managed_lineage, saved.messages)
 
       assert dependencies != [] and Enum.all?(dependencies, &(&1["version"] == 3))
-      assert Enum.count(events, &(&1["type"] == "request_admitted")) == 3
+      count = if boundary == :current, do: 3, else: 2
+      assert Enum.count(events, &(&1["type"] == "request_admitted")) == count
 
       assert Enum.count(
                events,
                &(&1["type"] == "request_finished" and &1["outcome"] == "completed" and
                    &1["finality"] == "final")
-             ) == 3
+             ) == count
 
-      assert length(Agent.get(c.provider_requests, & &1)) == 3
-      assert :ok = Session.close_confirmed(pid)
+      assert length(Agent.get(c.provider_requests, & &1)) == count
+
+      if boundary == :owner_loss,
+        do: native_root_released(Path.join(c.dir, id <> ".lock"), 500),
+        else: assert(:ok = Session.close_confirmed(pid))
+
       journal = Path.join(c.dir, id <> ".jsonl")
       closed = File.read!(journal)
       resumed = start(c, %{approval: :ask, approval_origin: :interactive, headless: false}, id)
       assert Session.info(resumed).phase == :idle
+      assert :sys.get_state(resumed).messages == saved.messages
       assert_idle_resume_journal(journal, closed, id)
       assert :ok = Session.close_confirmed(resumed)
 
       assert {:ok, %{"release_claim" => "signed_release_claim"}} =
                Session.Saved.inspect_saved(c.dir, id)
 
-      assert File.read!(path) == content
-      assert length(Agent.get(c.provider_requests, & &1)) == 3
-      if kind == "mcp", do: assert(File.read!(Path.join(c.cwd, "calls.log")) == "write_note\n")
+      if boundary == :current,
+        do: assert(File.read!(path) == content),
+        else: refute(File.exists?(path))
+
+      assert length(Agent.get(c.provider_requests, & &1)) == count
+
+      if kind == "mcp" do
+        if boundary == :current,
+          do: assert(File.read!(Path.join(c.cwd, "calls.log")) == "write_note\n"),
+          else: refute(File.exists?(Path.join(c.cwd, "calls.log")))
+      end
     after
       Task.shutdown(c.provider_server, :brutal_kill)
+    end
+  end
+
+  defp native_root_boundary(_, _, _, :current), do: :ok
+
+  defp native_root_boundary(c, _, kind, :root_change) do
+    key =
+      Map.fetch!(
+        %{
+          "write" => "changed.before.approval",
+          "shell" => "changed.before.shell",
+          "mcp" => "changed.before.mcp"
+        },
+        kind
+      )
+
+    assert {:ok, _} =
+             Ipse.Extension.Collection.execute(
+               SemanticAdmission.collection_root(c.home),
+               c.namespace,
+               %{
+                 "op" => "commit",
+                 "expected_generation" => 0,
+                 "advance_floor" => false,
+                 "changes" => [
+                   %{"key" => key, "expected_revision" => 0, "value" => %{}}
+                 ]
+               },
+               Ipse.Usage.id()
+             )
+  end
+
+  defp native_root_boundary(c, _, _, :revoke) do
+    assert {:ok, policy} = Consent.snapshot(c.control, c.binding["project_id"])
+    assert {:ok, _} = Consent.revoke(c.control, c.binding["project_id"], policy["epoch"])
+  end
+
+  defp native_root_boundary(c, _, _, :expiry) do
+    assert {:ok, policy} = Consent.snapshot(c.control, c.binding["project_id"])
+    deadline = policy["policy"]["expires_at_ms"]
+    Process.sleep(max(deadline - System.system_time(:millisecond) + 10, 0))
+    assert System.system_time(:millisecond) >= deadline
+  end
+
+  defp native_root_boundary(_, pid, _, :owner_loss) do
+    monitor = Process.monitor(pid)
+    Process.exit(pid, :kill)
+    assert_receive {:DOWN, ^monitor, :process, ^pid, :killed}, 3000
+  end
+
+  defp native_root_released(_, 0), do: flunk("native root owner's original lock did not release")
+
+  defp native_root_released(path, remaining) do
+    case Ipse.Runner.lock_source(path) do
+      {:ok, lock} ->
+        assert :ok = Ipse.Runner.unlock(lock)
+
+      {:error, _} ->
+        Process.sleep(10)
+        native_root_released(path, remaining - 1)
     end
   end
 

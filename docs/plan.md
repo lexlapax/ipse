@@ -983,8 +983,11 @@ current result delivery and pre-dispatch source withdrawal. Root-only approval
 positives now have a separate
 [native caller migration](archive/2026-10-26-p30-p31-implementation/root-native-approval-20261101.md)
 that preserves the original snapshot, policy, provider sequence and effect
-assertions, including strict idle recovery. Root-only fault migrations, broader
-boundaries and HTTP retain separate qualification. The
+assertions, including strict idle recovery. The
+[root-only waiting-fault migration](archive/2026-10-26-p30-p31-implementation/root-native-faults-20261101.md)
+also preserves root-change, revocation, actual expiry and consumer-loss controls
+for write/shell/MCP through that native caller, with no effect or replay.
+Running-operation boundaries and HTTP retain separate qualification. The
 [accepted-decision approval extension](archive/2026-10-26-p30-p31-implementation/accepted-approval-20261101.md)
 additionally retains original management journals at that same native sink,
 with Session/Writer-authenticated manifest counts/inodes. Native controls cover
