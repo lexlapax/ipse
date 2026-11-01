@@ -139,7 +139,7 @@ defmodule Ipse.Test.ManagedSharedSupport do
                  intent = Enum.find(during, &(&1["type"] == "managed_lifecycle_intent"))
                  true = intent["facts"]["metadata"]["choice"] == choice
                  false = Enum.any?(during, &(&1["type"] == "managed_lifecycle_result"))
-                 {_, units, :open} = Process.get({Collection, :managed_read})
+                 {_, units, :closed} = Process.get({Collection, :managed_read})
                  send(test_owner, {:compaction_intent_before_switch, units})
                end,
                nil

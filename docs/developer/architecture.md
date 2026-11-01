@@ -178,6 +178,17 @@ advance to the existing fresh managed-effect admission. Embedded
 [source-owner flow](session-sources.md#reconstruct-without-giving-old-tokens-authority)
 for bounds, unsupported dependency types and native controls.
 
+Interactive native-note correction adds two distinct choices: endorsement of a
+new statement/category, then review of the exact old/new relation.
+`Session.ManagedSupersession` keeps that second review and publication in the
+actual tracked file-effect publisher. Session chooses the native display;
+Collection claims the consumed one-use review for the normalized mutation, and
+`Runner.SessionSource` retains Session, Writer and original-source controls at
+the native root decision. A physical replacement followed by lost cleanup is
+unknown and is never replayed on resume. The
+[source-owner flow](session-sources.md#reconstruct-without-giving-old-tokens-authority)
+connects those controls to their focused tests.
+
 `Session.Permissions` owns bounded, ephemeral grants in Session state. A native
 write/edit proposal may grant workspace edits; a shell proposal may grant that
 complete argument map, cwd and sandbox policy. `Session.approve/3` accepts

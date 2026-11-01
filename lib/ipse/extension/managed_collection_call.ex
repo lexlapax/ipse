@@ -146,12 +146,10 @@ defmodule Ipse.Extension.ManagedCollectionCall do
          true <- intent["effect_binding"]["outer_sha256"] == JSON.digest([parent["descriptor"]]),
          true <- intent["effect_binding"]["pin"]["session_id"] == context.session_id,
          true <- intent["namespace"] == intent["effect_binding"]["namespace"] do
-      # Supersession is refused until the native display itself retains every
-      # authority lease through acknowledgement, including owner-loss ordering.
       result =
         if is_nil(handoff),
           do: Ipse.Session.Resources.file_effect(fn -> protected(context, intent) end),
-          else: supersession_unconfirmed()
+          else: Ipse.Session.ManagedSupersession.coordinate(context, intent, handoff)
 
       if not is_nil(handoff) and not match?({:supersession, _}, result),
         do: supersession_unconfirmed(),

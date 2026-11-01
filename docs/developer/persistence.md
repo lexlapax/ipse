@@ -932,6 +932,14 @@ This storage callback grants no output or mutation permission. Identity, Consent
 original journal and the native writer must retain their own required ownership.
 Reviewed management and managed approval compose this storage callback through
 their separate typed adapters; the callback alone cannot authorize either path.
+Interactive literal correction and supersession additionally bind a consumed
+one-use review to the exact normalized mutation. Their `Runner.SessionSource`
+adapter transfers actual Session and Writer controls and every inactive original
+source lease to the existing native Collection owner through the final root
+decision. A changed root followed by owner or cleanup loss remains unknown;
+resuming reconstructs that history without retrying it. See the
+[complete source-owner flow](session-sources.md#reconstruct-without-giving-old-tokens-authority)
+before changing this admission or settlement order.
 Absent storage can create protected
 directories and retained locks, just as opening a view can. The focused
 `collection_held_read_test.exs` exercises contention, escape, budgets and actual

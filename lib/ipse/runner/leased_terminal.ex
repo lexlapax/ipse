@@ -35,7 +35,38 @@ defmodule Ipse.Runner.LeasedTerminal do
   end
 
   @doc false
-  def finish_approval(handle, token) do
+  def begin_relation(owner, job, intent, held, cwd, sha) do
+    proofs = Enum.reject(held.source_proofs, &(&1["session_id"] == held.session_id))
+    caps = [held.identity, held.consent, held.collection]
+
+    with nil <- Process.get(@approval_slot),
+         true <- held.owner == self(),
+         true <- Process.get({Ipse.Extension.ProjectIdentity, :lock_held}) === true,
+         true <- Process.get({Ipse.Extension.Consent, :lock_held}) === held.consent,
+         true <- Process.get({Ipse.Extension.Collection, :lock_held}) === held.collection,
+         {:ok, ^caps} <- Transaction.retained_share_stack(),
+         {:ok, sources} <- bound_source_identities(held.source_leases, proofs) do
+      exercise_mode(
+        owner,
+        job,
+        intent,
+        caps,
+        cwd,
+        {:relation, sources, sha, held.source_proofs, held.deadline_ms}
+      )
+    else
+      _ -> {:error, :cleanup_unconfirmed}
+    end
+  end
+
+  @doc false
+  def finish_approval(handle, token), do: finish_input(handle, {:approval, token})
+
+  @doc false
+  def finish_relation(handle, facts, command),
+    do: finish_input(handle, {:relation, facts, command})
+
+  defp finish_input(handle, expected) do
     case Process.get(@approval_slot) do
       %{handle: ^handle, owner_process: owner} = state when owner == self() ->
         Process.delete(@approval_slot)
@@ -44,7 +75,7 @@ defmodule Ipse.Runner.LeasedTerminal do
           with true <- not Process.get({Ipse.Extension.ProjectIdentity, :lock_held}, false),
                nil <- Process.get({Ipse.Extension.Consent, :lock_held}),
                nil <- Process.get({Ipse.Extension.Collection, :lock_held}),
-               true <- Ipse.JSON.sha256("allow " <> token) == state.allow_sha256,
+               true <- input_binding?(state, expected),
                true <-
                  Port.command(state.port, <<?U, state.controls.operation::binary>>, [:nosuspend]),
                {:ok, text} <-
@@ -55,6 +86,7 @@ defmodule Ipse.Runner.LeasedTerminal do
                    state.controls.operation,
                    <<>>
                  ),
+               permit_deadline = System.monotonic_time(:millisecond) + 30_000,
                :ok <- await_exit(state.port, state.owner, state.controls.overall_deadline),
                :ok <-
                  await_exit(
@@ -67,14 +99,7 @@ defmodule Ipse.Runner.LeasedTerminal do
                :ok <- Host.finish_session_share(state.owner, state.job, state.cap) do
             Resources.closed(state.ticket, :ok)
 
-            choice =
-              case text do
-                "/cancel" -> :cancel
-                "/exit" -> :exit
-                _ -> text == "allow " <> token
-              end
-
-            {:ok, choice}
+            input_result(state, expected, text, permit_deadline)
           else
             _ ->
               Resources.closed(state.ticket, {:error, :cleanup_unconfirmed})
@@ -90,6 +115,39 @@ defmodule Ipse.Runner.LeasedTerminal do
       _ ->
         {:error, :cleanup_unconfirmed}
     end
+  end
+
+  defp input_binding?(%{kind: :approval} = state, {:approval, token}),
+    do: Ipse.JSON.sha256("allow " <> token) == state.allow_sha256
+
+  defp input_binding?(%{kind: :relation, controls: controls}, {:relation, facts, command}),
+    do: controls.review_facts === facts and controls.review_command === command
+
+  defp input_binding?(_, _), do: false
+
+  defp input_result(_, {:approval, token}, text, _deadline) do
+    choice =
+      case text do
+        "/cancel" -> :cancel
+        "/exit" -> :exit
+        _ -> text == "allow " <> token
+      end
+
+    {:ok, choice}
+  end
+
+  defp input_result(state, {:relation, _, _}, text, deadline) do
+    observation = %{
+      "version" => 2,
+      "event_id" => Base.encode16(state.controls.operation, case: :lower),
+      "display_sha256" => Ipse.JSON.sha256(state.controls.payload),
+      "text_sha256" => Ipse.JSON.sha256(text),
+      "input_limit" => 1_048_576,
+      "display_limit" => 16_777_216,
+      "text" => text
+    }
+
+    {:ok, observation, state.controls.review_challenge, deadline}
   end
 
   def exercise(owner, job, intent, caps, cwd)
@@ -210,7 +268,7 @@ defmodule Ipse.Runner.LeasedTerminal do
          {:ok, helper} <- Ipse.Runner.protected_helper(cwd),
          {:ok, ticket} <- Resources.register(:lock) do
       mode =
-        if match?({:approval, _, _, _}, mode),
+        if match?({:approval, _, _, _}, mode) or match?({:relation, _, _, _, _}, mode),
           do: Tuple.insert_at(mode, tuple_size(mode), ticket),
           else: mode
 
@@ -220,6 +278,16 @@ defmodule Ipse.Runner.LeasedTerminal do
             cond do
               approval_mode?(mode) ->
                 Host.begin_approval_share(owner, job, intent, elem(mode, 2), elem(mode, 3))
+
+              relation_mode?(mode) ->
+                Host.begin_relation_share(
+                  owner,
+                  job,
+                  intent,
+                  elem(mode, 2),
+                  elem(mode, 3),
+                  elem(mode, 4)
+                )
 
               mode == :synthetic_notice ->
                 Host.begin_synthetic_notice_share(owner, job, intent)
@@ -283,6 +351,11 @@ defmodule Ipse.Runner.LeasedTerminal do
 
   defp relation_sources_match?({:supersession_review_group, _, _, digest}, controls),
     do: controls[:relation_inactive_sha256] === digest
+
+  defp relation_sources_match?({:relation, _, _, proofs, _, _}, controls) do
+    inactive = Enum.reject(proofs, &(&1["session_id"] == controls.review_session_id))
+    controls[:relation_inactive_sha256] === Ipse.JSON.digest([inactive])
+  end
 
   defp relation_sources_match?(_, _), do: true
 
@@ -349,7 +422,7 @@ defmodule Ipse.Runner.LeasedTerminal do
            expiry =
              if(mode == :synthetic_notice or review?, do: controls.wall_deadline, else: expiry),
            payload =
-             if(approval_mode?(mode),
+             if(approval_mode?(mode) or relation_mode?(mode),
                do: controls.payload,
                else: if(review?, do: @review_payload, else: @payload)
              ),
@@ -405,7 +478,8 @@ defmodule Ipse.Runner.LeasedTerminal do
            result <- complete_review(mode, owner, job, cap, controls, port, deadline),
            true <-
              result == :ok or
-               (approval_mode?(mode) and match?({:ok, {:leased_approval, _}}, result)) do
+               ((approval_mode?(mode) or relation_mode?(mode)) and
+                  match?({:ok, {:leased_approval, _}}, result)) do
         result
       else
         _ -> {:error, :cleanup_unconfirmed}
@@ -419,10 +493,14 @@ defmodule Ipse.Runner.LeasedTerminal do
   defp review_mode?({:review_group, _}), do: true
   defp review_mode?({:supersession_review_group, _, _, _}), do: true
   defp review_mode?({:approval, _, _, _, _}), do: true
+  defp review_mode?({:relation, _, _, _, _, _}), do: true
   defp review_mode?(_), do: false
 
   defp approval_mode?({:approval, _, _, _, _}), do: true
   defp approval_mode?(_), do: false
+
+  defp relation_mode?({:relation, _, _, _, _, _}), do: true
+  defp relation_mode?(_), do: false
 
   defp retained_approval_port?(port, kind) do
     case Process.get(@approval_slot) do
@@ -452,27 +530,19 @@ defmodule Ipse.Runner.LeasedTerminal do
     end
   end
 
-  defp complete_review({:approval, _, _, _, ticket}, owner, job, cap, controls, port, _deadline) do
-    with :ok <- Host.thaw_synthetic_review(owner, job, cap, port) do
-      handle = {:leased_approval, make_ref()}
+  defp complete_review({:approval, _, _, _, ticket}, owner, job, cap, controls, port, _deadline),
+    do: retain_input(:approval, ticket, owner, job, cap, controls, port)
 
-      Process.put(@approval_slot, %{
-        handle: handle,
-        owner_process: self(),
-        owner: owner,
-        job: job,
-        cap: cap,
-        controls: controls,
-        port: port,
-        ticket: ticket,
-        allow_sha256: controls.allow_sha256
-      })
-
-      {:ok, handle}
-    else
-      _ -> :error
-    end
-  end
+  defp complete_review(
+         {:relation, _, _, _, _, ticket},
+         owner,
+         job,
+         cap,
+         controls,
+         port,
+         _deadline
+       ),
+       do: retain_input(:relation, ticket, owner, job, cap, controls, port)
 
   defp complete_review(
          {:supersession_review_group, sources, _, _},
@@ -493,6 +563,29 @@ defmodule Ipse.Runner.LeasedTerminal do
          :ok <- await_session_closed(owner, cap, deadline),
          :ok <- Host.finish_session_share(owner, job, cap),
          do: :ok
+  end
+
+  defp retain_input(kind, ticket, owner, job, cap, controls, port) do
+    with :ok <- Host.thaw_synthetic_review(owner, job, cap, port) do
+      handle = {:leased_approval, make_ref()}
+
+      Process.put(@approval_slot, %{
+        handle: handle,
+        owner_process: self(),
+        owner: owner,
+        job: job,
+        cap: cap,
+        controls: controls,
+        port: port,
+        ticket: ticket,
+        kind: kind,
+        allow_sha256: controls[:allow_sha256]
+      })
+
+      {:ok, handle}
+    else
+      _ -> :error
+    end
   end
 
   defp approval_input(port, owner, deadline, operation, buffer) do

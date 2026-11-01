@@ -13,8 +13,9 @@ grant. Model-selected source lookups use selected-source preflight and
 status-only terminal previews. A synthetic loopback-model journey captured a
 note, performed later source reads and completed the turn; broader automatic
 capture and recall remain unqualified. Reviewed
-retention choices and forgetting have standalone management paths; correction
-and supersession remain unavailable.
+retention choices and forgetting have standalone management paths. Interactive
+chat also supports reviewed correction of an ordinary native note and replacement
+of a current statement or preference, as described below.
 Existing-note reads, permission inspection/revocation and elapsed-policy
 reclamation have their own rules. Full capture readiness remains false; saving
 permission and one successful path do not qualify every source or later use.
@@ -240,10 +241,48 @@ close the original conversation and use the current-note recall procedure below.
 
 ## Correct or supersede a native note
 
-The `/correct` and `/supersede` paths are temporarily unavailable while their
-protected native review is being repaired. If an attempt reports an unconfirmed
-result, inspect the Session journal and [recovery guidance](recovery.md) before
-another attempt. Resume does not replay it.
+Start interactive chat with the same project, private home and active native
+knowledge selection used for the original note. Use the supported protected
+Linux storage profile described above. Keep the original Session journal and
+its source pages available; closing that conversation is allowed. Obtain the
+exact `note.HASH` key from the capture result or a current note lookup.
+
+For an ordinary note, enter:
+
+```text
+/correct note.HASH My corrected statement
+```
+
+For a current statement or preference, enter:
+
+```text
+/supersede note.HASH My new current statement
+```
+
+Replace `note.HASH` with the complete key. The first review shows the replacement
+statement, its category and scope. Enter its fresh `remember CODE` to endorse
+those exact bytes. The second review shows the complete proposed relation,
+including the old and new records, source proofs and retention bounds. Wait for
+`approval>`, then enter that review's fresh `correct CODE` or `supersede CODE`.
+Bare `yes`, an earlier code or any other text does not confirm the relation.
+These are separate one-attempt reviews; saved permission and `--yes` cannot
+replace them. Headless correction and supersession remain unavailable.
+
+The statement is limited to 1 KiB. An oversized review refuses rather than
+truncating its facts. Display locks release before the second answer; the
+publication rechecks permission, the original sources and the exact selected
+collection root afterward. A changed or missing source, revoked permission or
+stale target can therefore refuse a previously displayed proposal. The input
+wait is bounded to 120 seconds, followed by a 30-second effect permit without
+renewal.
+
+A confirmed replacement becomes current while the original journal and record
+remain historical evidence. It does not erase earlier answers or transcripts.
+If an attempt reports an unconfirmed result, inspect the Session journal and
+current note state using the [recovery guidance](recovery.md) before another
+attempt: the replacement may already have happened. Resume makes no retry and
+does not restore either review's permission. These source controls do not qualify
+installed, human or live-model workflows, or replacement of accepted decisions.
 
 ## Use bounded current-note recall
 

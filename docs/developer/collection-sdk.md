@@ -697,10 +697,17 @@ Use `knowledge operation JOURNAL_ID` for bounded original-journal/control inspec
 It neither reconciles nor establishes current eligibility. Legacy/unrecognized
 recipes require separately reviewed treatment. Proposal acceptance follows its
 [signed event/link workflow](knowledge-extensions.md#confirm-a-pending-decision).
-Session-owned typed
-correction and supersession are currently unavailable while the protected native
-display and its lease ownership are repaired; standalone expiry does not perform
-that path. The final verification section groups the distinct current behaviors.
+Session-owned literal correction and supersession use a separate typed path.
+After new statement endorsement, `ManagedSupersession` performs a Session-chosen
+relation review with actual source/policy ownership through native display.
+Its trusted normalizer consumes that permit under fresh locks;
+`Collection.execute_reviewed_supersession/7` claims the exact normalized effect
+and `Runner.SessionSource` attaches Session, Writer and all original sources to
+the existing native root decision. The generic API remains closed. Standalone
+expiry supplies none of this relation authority. Follow the complete
+[source-owner flow](session-sources.md#reconstruct-without-giving-old-tokens-authority)
+and its genuine Session tests before changing that boundary. The final
+verification section groups the distinct current behaviors.
 
 ## Revalidate reads and downstream use
 

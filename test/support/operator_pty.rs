@@ -160,6 +160,14 @@ fn main() {
                             if !root.join("guard-review-ready").is_file() { continue; }
                         }
                         let assertion_case = args.last().unwrap().to_string_lossy();
+                        if assertion && (command == "correct" || command == "supersede") && !tail[16..].contains("approval> ") {
+                            continue;
+                        }
+                        if assertion && (command == "correct" || command == "supersede") && assertion_case == "cross_session" {
+                            let root = std::path::Path::new(&args[args.len() - 2]);
+                            std::fs::write(root.join(format!("cross-{command}-ready")), b"ready").unwrap();
+                            if !root.join(format!("cross-{command}-checked")).is_file() { continue; }
+                        }
                         if assertion && command == "forget" && assertion_case == "save_forget_stale" {
                             let root = std::path::Path::new(&args[args.len() - 2]);
                             std::fs::write(root.join("forget-review-ready"), b"ready").unwrap();
@@ -171,6 +179,8 @@ fn main() {
                             if !root.join("supersession-revoked").is_file() { continue; }
                         }
                         if assertion && command == "correct" && assertion_case == "terminal_unknown" {
+                            let root = std::path::Path::new(&args[args.len() - 2]);
+                            std::fs::write(root.join("supersession-unknown-input-ready"), b"ready").unwrap();
                             continue;
                         }
                         let wrong = format!("{command} {}", if code == "0000000000000000" { "1111111111111111" } else { "0000000000000000" });
@@ -217,7 +227,7 @@ fn main() {
         if assertion {
             let text = String::from_utf8_lossy(&output);
             let root = std::path::Path::new(&args[args.len() - 2]);
-            if args.last().is_some_and(|value| value == "terminal" || value == "terminal_cancel" || value == "terminal_unknown") {
+            if args.last().is_some_and(|value| value == "terminal" || value == "terminal_cancel" || value == "terminal_unknown" || value == "terminal_effect_unknown") {
                 let ready = "IPSE_SUPERSESSION_TERMINAL_READY";
                 if let Some(start) = text.find(ready) {
                     let tail = &text[start + ready.len()..];

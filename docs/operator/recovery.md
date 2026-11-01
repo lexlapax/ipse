@@ -61,9 +61,10 @@ Resolve unconfirmed cleanup before overlapping another attempt.
 Managed-derived document mutations remain unavailable until their required
 ownership boundaries are qualified. `--yes`, renewing consent, changing the
 timeout or moving to tmpfs cannot bypass runtime gates. The current development
-source has narrow reviewed capture, forgetting and retention paths on supported
-Linux protected-storage profiles. Forgetting and retention require their own
-native interactive review; see the [protected knowledge procedures](knowledge-permissions.md).
+source has narrow reviewed capture, literal replacement, forgetting and retention
+paths on supported Linux protected-storage profiles. These choices retain their
+separate native review requirements; see the
+[protected knowledge procedures](knowledge-permissions.md).
 Existing read/inspection and elapsed-policy reclamation have separate rules.
 
 Generic State's `write_before_ms` and ordinary fixed-profile document staging
@@ -94,6 +95,15 @@ Use the original home/configuration and Session ID. Status and permissions start
 no inference or worker; they can refuse when protected state is unavailable or
 malformed. Preserve that refusal. The diagnosis command reads saved history and
 does not reconcile Collection or accounting state.
+
+For an interrupted `/correct` or `/supersede`, keep the consuming Session ID and
+the original source Session. The replacement may have reached the stored root
+before the native owner or its confirmation was lost. Diagnosis and idle resume
+do not repeat the relation or restore its review permission. Inspect the exact
+old/new keys and actual storage outcome before requesting a new replacement;
+ask for developer-assisted inspection if ordinary current-note reads cannot
+establish it. The standalone management-journal command below does not substitute
+for inspection of that conversation's relation records.
 
 An interrupted write can also leave a private staging file. A later protected
 write checks and synchronizes retained stages before admitting more storage;

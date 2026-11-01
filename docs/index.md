@@ -25,6 +25,7 @@ quick start. Try the demo before configuring a model account.
 | Connect tools from another service | [Configure MCP](operator/mcp.md) |
 | Remember an explicit project note | [Use memory](operator/memory.md) |
 | Enable native knowledge, manage retention/expiry and inspect or revoke permission | [Manage native knowledge](operator/knowledge-permissions.md) |
+| Correct or replace an existing native literal through two fresh reviews | [Correct or supersede a note](operator/knowledge-permissions.md#correct-or-supersede-a-native-note) |
 | Retain source text and retrieve exact passages | [Use a corpus](operator/corpus.md) |
 | Set up shipped Word support without building an artifact | [Document setup](operator/corpus.md#set-up-packaged-word-support) |
 | Record relationships with exact source quotations | [Use Graph](operator/graph.md) |

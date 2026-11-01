@@ -124,9 +124,9 @@ Public `knowledge forget NOTE_KEY` uses that reducing path after a complete nati
 review; its [operator procedure](../operator/knowledge-permissions.md#forget-a-selected-native-note)
 requires inspection of the printed management journal after uncertainty.
 The public session-only retention choice uses this same reviewed reducing path.
-Persistent retention uses a separate claimed review and timed final root switch;
-correction and supersession remain closed. Retained data formats alone supply no
-executable permission.
+Persistent retention uses a separate claimed review and timed final root switch.
+Interactive correction and supersession use the Session-owned path below;
+retained data formats alone supply no executable permission.
 
 Ordinary new-v3 capture has a different clock contract. Its native owner checks
 the earliest policy/lineage deadline at the final locked root-switch decision.
@@ -315,8 +315,10 @@ source support, not entailment, current eligibility or truth.
 `Saved.restore/2` validates the complete owning prefix before building SourceWindow.
 Actual source references validate before permitted torn-tail repair. Startup may
 resolve bounded source pages; source list/read/quote operations themselves never
-repair a journal or run an effect. Idle resume preserves journal bytes. The new
-window and source-driven lifecycle epoch are admitted only when actual work starts.
+repair a journal or run an effect. Idle resume preserves the existing journal
+prefix and may append the current release-owner marker; it starts no model or
+old effect. The new window and source-driven lifecycle epoch are admitted only
+when actual work starts.
 
 Each live window uses a volatile secret and authenticated tokens bound to Session,
 window, source generation, policy generation, kind, version and offset. Resume
@@ -413,6 +415,48 @@ policy generation must still match after fresh resolution. Redaction, a policy
 fence, window replacement or generation rollback withholds the result. Approval
 and effect scopes still require exact index-generation equality. The active-source
 native journey checks successful result continuation as well as the physical write.
+
+For interactive `/correct` and `/supersede`, `OperatorAssertion.parse_intake/1`
+first prepares a new statement/category endorsement. `ManagedSupersession` then
+records its exact relation intent and performs the full-facts review inside the
+actual tracked file-effect publisher. There is no proxy process supplying review
+authority. Session's typed relation ticket rederives the pending purpose, facts
+and complete active/inactive proof union, chooses its own payload and fresh
+challenge, and issues the native v13 terminal. `LeasedTerminal.begin_relation/6`
+retains the same source and policy owners through display and settlement as
+ordinary approval. Its opaque handle survives their release; only the same
+process can finish input. `Review.with_session_input/4` checks the actual native
+observation and mints the one-use relation permit. The 30-second lifetime begins
+when native input returns, before terminal cleanup, without renewal.
+
+The publication callback reacquires sources, Identity, Consent and Collection,
+rederives the old signed record and exact root, and journals the fresh review.
+The trusted supersession normalizer consumes the permit. Collection's private
+`execute_reviewed_supersession/7` then claims that consumed permit for the exact
+intent, original request, normalized mutation and normalization receipt. A
+second claim refuses. Its finite deadline is the earlier of remaining review
+time and the normalized publication deadline.
+
+`Runner.SessionSource` transfers the actual Session control, original Session
+flock and drained Writer control into the existing native transaction owner.
+Every inactive original source group must match Session's authoritative proof
+set and reach that same native root decision. The final effect rechecks the
+claim under these retained owners; no serialized receipt or worker-selected
+lease can substitute. Settlement closes the sources and controls before Writer
+thaw. Ownership or cleanup loss remains unknown, including after a physical
+root switch, and a poisoned exported share stops Session. Saved reconstructs
+the historical intent/review but never replays the mutation or mints a permit.
+An explicitly reopened Session can remain idle after such loss.
+
+Run `managed_supersession_session_test.exs` for actual statement/relation reviews,
+ordinary and temporal replacements, cross-session source locks, cancellation,
+revocation, missing originals, shared lifecycle and no-replay recovery. Its
+post-switch owner-loss case uses an explicitly instrumented child host installed
+before permission review; this gives deterministic fault timing, not independent
+production or quality qualification. Accepted-decision v6 targets remain outside
+this literal-record adapter. Follow the
+[operator procedure](../operator/knowledge-permissions.md#correct-or-supersede-a-native-note)
+for the two distinct confirmation commands.
 
 The ordinary reader keeps its input generation across the handoff. `Session.Input`
 cancels its prior read and confirms native restoration before display begins;

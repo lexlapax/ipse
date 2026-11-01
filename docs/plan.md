@@ -969,6 +969,17 @@ changed source, revocation and Session loss. Accepted-decision dependencies,
 delegation and nested worker approval displays remain closed. This is component
 progress; full C0, installed/platform and independent quality acceptance remain open.
 
+Interactive literal correction and supersession now have a
+[Session-owned native review and publication adapter](archive/2026-10-26-p30-p31-implementation/managed-supersession-native-20261031.md).
+Two separate fresh choices endorse the new statement and exact old/new relation.
+Actual source/policy owners protect display, and Session/Writer/source controls
+reach the final native root decision under a claimed one-use review. Focused
+ordinary/temporal, cross-session, cancellation, revoked/missing source, shared
+lifecycle and owner-loss controls include idle recovery after a physical switch
+without replay. Headless replacement and accepted-decision targets remain closed;
+legacy synthetic turnover adapters, complete lifecycle/capacity, installed and
+independent qualification remain open. This does not close C0 or P31.
+
 Public session-only retention uses the same full-facts native review, journal
 and reducing effect as explicit forgetting. Public pin, automatic and duration
 use the guarded retention effect; native-terminal success and cancellation

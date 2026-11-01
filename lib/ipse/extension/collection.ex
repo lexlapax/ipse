@@ -545,6 +545,53 @@ defmodule Ipse.Extension.Collection do
   def execute_managed_supersession(_, _, _, _, _, _),
     do: {:error, :invalid_managed_collection_request}
 
+  @doc false
+  def execute_reviewed_supersession(
+        root,
+        project,
+        original,
+        operation_id,
+        recipe_sha256,
+        normalizer,
+        review
+      )
+      when is_function(normalizer, 2) and is_map(review) do
+    facts = review[:facts]
+    command = if facts["mode"] == "ordinary", do: "correct", else: "supersede"
+
+    with true <- is_map(review[:context]),
+         true <- facts["operation_id"] === operation_id,
+         true <- get_in(facts, ["context", "namespace"]) === project,
+         true <- get_in(facts, ["context", "session_id"]) === review.context.session_id,
+         true <- facts["request_sha256"] === JSON.digest([original]),
+         :ok <- Ipse.Runner.Review.check(review[:permit], command, facts) do
+      previous = Process.put(@acceptance_attempt_key, false)
+
+      try do
+        execute_managed_version(
+          root,
+          project,
+          original,
+          operation_id,
+          recipe_sha256,
+          normalizer,
+          {:supersession, review}
+        )
+      after
+        if is_nil(previous),
+          do: Process.delete(@acceptance_attempt_key),
+          else: Process.put(@acceptance_attempt_key, previous)
+      end
+    else
+      _ -> {:error, :invalid_managed_collection_request}
+    end
+  rescue
+    _ -> {:error, :invalid_managed_collection_request}
+  end
+
+  def execute_reviewed_supersession(_, _, _, _, _, _, _),
+    do: {:error, :invalid_managed_collection_request}
+
   defp execute_managed_version(
          root,
          project,
@@ -1183,7 +1230,12 @@ defmodule Ipse.Extension.Collection do
         "recipe_sha256" => recipe
       })
 
-    validation_version = if match?({:retention, _, _, _}, version), do: 3, else: version
+    validation_version =
+      cond do
+        match?({:retention, _, _, _}, version) -> 3
+        match?({:supersession, _}, version) -> :supersession
+        true -> version
+      end
 
     with {:ok, normalized, normalization} <- normalizer.(witness, read),
          :ok <- check.(),
@@ -1191,7 +1243,8 @@ defmodule Ipse.Extension.Collection do
          true <-
            validation_version == 2 or (is_map(normalization) and normalization["version"] === 3),
          true <-
-           version != :supersession or normalization["kind"] == "native_literal_supersession",
+           validation_version != :supersession or
+             normalization["kind"] == "native_literal_supersession",
          :ok <- JSON.validate_object(normalization),
          true <- byte_size(Jason.encode!(normalization)) <= 2048,
          :ok <- Transaction.check(cap) do
@@ -1232,6 +1285,66 @@ defmodule Ipse.Extension.Collection do
       end
     else
       _ -> {:error, :managed_normalization_refused}
+    end
+  end
+
+  defp managed_mutation(
+         path,
+         uid,
+         state,
+         manifest,
+         original,
+         request,
+         id,
+         extra,
+         normalization,
+         {:supersession, review},
+         witness,
+         cap
+       ) do
+    alias Ipse.Runner.{Review, SessionSource}
+
+    %{
+      permit: permit,
+      facts: facts,
+      intent: intent,
+      context: context,
+      purpose_sha256: sha,
+      source_leases: leases
+    } = review
+
+    with true <-
+           facts["operation_id"] === id and
+             get_in(facts, ["collection", "root_sha256"]) === witness["root_sha256"],
+         {:ok, bound} <-
+           Review.claim_supersession_effect(
+             permit,
+             facts,
+             intent,
+             original,
+             request,
+             normalization
+           ) do
+      SessionSource.with_supersession(cap, context, intent, sha, leases, fn ->
+        with {:ok, ^bound} <-
+               Review.claimed_supersession_effect(
+                 permit,
+                 facts,
+                 intent,
+                 original,
+                 request,
+                 normalization
+               ) do
+          with_notes_publication_deadline(bound.publish_before_ms, fn ->
+            Process.put(@acceptance_attempt_key, true)
+            apply_mutation(path, uid, state, manifest, request, id, extra)
+          end)
+        else
+          _ -> {:error, :native_review_publication_fence_unavailable}
+        end
+      end)
+    else
+      _ -> {:error, :native_review_publication_fence_unavailable}
     end
   end
 

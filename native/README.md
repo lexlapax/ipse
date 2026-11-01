@@ -441,10 +441,12 @@ The separate `v13-session-review-group-input` accepts bounded text supplied in
 its initial manifest; it does not authenticate the origin of those bytes on its
 own. The private synthetic Session path selects fixed text. The production
 managed approval path instead binds the exact pending model call, dependency
-union and complete escaped arguments to its own purpose. Session selects and
+union and complete escaped arguments to its own purpose. Interactive literal
+correction and supersession use a distinct typed relation purpose, binding the
+recorded intent, full facts and original/replacement proof union. Session selects and
 sends that payload and checks the manifest before transferring its control.
 Both paths require every lease's settled close and the peer notice before
-Writer thaw. For managed approval, source and policy scopes then release before
+Writer thaw. For both production purposes, source and policy scopes then release before
 the host sends `U` to begin input. The final exchange and input phase watch the
 Session/Host controls; settled source exporters may exit. Fresh effect admission
 still rechecks current sources and permission after the answer. Follow

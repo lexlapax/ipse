@@ -271,8 +271,10 @@ Both commands use the saved provider/profile. Headless ordinary mutations are
 denied without `--yes`. A separately reviewed [knowledge permission](knowledge-permissions.md)
 records only its declared collection scope for `run`. Saved consent can cover
 the narrowly supported native capture path without `--yes`; complete automatic
-CLI capture remains unqualified. Unsupported correction, supersession and
-managed document mutations still refuse. Follow that manual's current source,
+CLI capture remains unqualified. Correction and supersession require the separate
+[interactive two-review procedure](knowledge-permissions.md#correct-or-supersede-a-native-note);
+headless correction, supersession and managed document mutations still refuse.
+Follow that manual's current source,
 category and publication limits; `--yes` cannot widen the knowledge permission.
 Existing read/inspection routes remain separate.
 To forget an existing native note, use the separate interactive

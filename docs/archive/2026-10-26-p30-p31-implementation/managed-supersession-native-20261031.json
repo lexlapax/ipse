@@ -1,0 +1,522 @@
+{
+  "allowances_unchanged": {
+    "chatgpt_conservative_charged": 238,
+    "chatgpt_limit": 300,
+    "local_charged": 4,
+    "local_limit": 1000
+  },
+  "checks": [
+    {
+      "exit_code": 0,
+      "log": "/tmp/ipse-supersession-native-qualified-20261031.log",
+      "terminal_summary": [
+        "Finished in 91.9 seconds (0.00s async, 91.9s sync)",
+        "Result: 11 passed"
+      ]
+    },
+    {
+      "exit_code": 0,
+      "log": "/tmp/ipse-supersession-approval-serial-qualified-20261031.log",
+      "terminal_summary": [
+        "Finished in 126.2 seconds (0.00s async, 126.2s sync)",
+        "Result: 11 passed, 12 excluded"
+      ]
+    },
+    {
+      "exit_code": 0,
+      "log": "/tmp/ipse-supersession-regression-serial-qualified-20261031.log",
+      "terminal_summary": [
+        "Finished in 63.4 seconds (12.3s async, 51.1s sync)",
+        "Result: 214 passed, 46 skipped, 30 excluded"
+      ]
+    },
+    {
+      "exit_code": 0,
+      "log": "/tmp/ipse-supersession-core-regression-qualified-20261031.log",
+      "terminal_summary": [
+        "Finished in 8.1 seconds (2.1s async, 5.9s sync)",
+        "Result: 32 passed"
+      ]
+    },
+    {
+      "exit_code": 0,
+      "log": "/tmp/ipse-supersession-post-effect-loss-stable-identity-20261031.log",
+      "terminal_summary": [
+        "Finished in 15.4 seconds (0.00s async, 15.4s sync)",
+        "Result: 1 passed, 10 excluded"
+      ]
+    }
+  ],
+  "checks_other": {
+    "build-final-qualified": {
+      "exit_code": 0,
+      "log": "/tmp/ipse-supersession-build-final-qualified-20261031.log",
+      "result": "passed"
+    },
+    "ci-qualified": {
+      "exit_code": 0,
+      "log": "/tmp/ipse-supersession-ci-qualified-20261031.log",
+      "result": "passed"
+    },
+    "compile-qualified": {
+      "exit_code": 0,
+      "log": "/tmp/ipse-supersession-compile-qualified-20261031.log",
+      "result": "passed"
+    },
+    "demo-qualified": {
+      "exit_code": 0,
+      "log": "/tmp/ipse-supersession-demo-qualified-20261031.log",
+      "result": "passed"
+    },
+    "docs-qualified": {
+      "exit_code": 0,
+      "log": "/tmp/ipse-supersession-docs-qualified-20261031.log",
+      "result": "passed"
+    },
+    "format-qualified": {
+      "exit_code": 0,
+      "log": "/tmp/ipse-supersession-format-qualified-20261031.log",
+      "result": "passed"
+    }
+  },
+  "controlled_post_switch_fault": {
+    "checks": [
+      "root generation increment before kill",
+      "actual Session control helper kill",
+      "unconfirmed delivery and actual Session shutdown",
+      "Saved tamper refusal",
+      "idle resume and confirmed close",
+      "no invocation/action/inference replay",
+      "same incremented root after resume"
+    ],
+    "host_interposition": "child-only SessionSource BEAM installed and retained before initial permission review; pause after actual native root callback before settlement",
+    "native_helper_modified": false,
+    "scenario": "terminal_effect_unknown",
+    "source_sha256": "2b383f84ea8b3da48b3662213ac1319b45953843dc6f75fcd7b834045781fa88"
+  },
+  "date": "2026-10-31",
+  "downloads": 0,
+  "interrupted_run_reason": "boolean-key-only ExUnit tag selected true and false cases; two overlapping development runners deliberately SIGTERM-stopped; no completed summary, even though shell returned 0",
+  "interrupted_runs_not_acceptance": [
+    "/tmp/ipse-supersession-approval-regression-20261031.log",
+    "/tmp/ipse-supersession-regression-qualified-20261031.log"
+  ],
+  "logs": [
+    {
+      "bytes": 298,
+      "path": "/tmp/ipse-supersession-approval-regression-20261031.log",
+      "sha256": "048b4195bbed14854c16095992e4a77012f6cd040e23ec41c746a61e70d627a6"
+    },
+    {
+      "bytes": 328,
+      "path": "/tmp/ipse-supersession-approval-serial-qualified-20261031.log",
+      "sha256": "bcc38649d120abd46e160b0ac8756095351d70a3ae897dae7a39773c3a8ac479"
+    },
+    {
+      "bytes": 844,
+      "path": "/tmp/ipse-supersession-build-final-20261031.log",
+      "sha256": "77801d0e48c85f5997045a2dbeaec469f1f3c0a425fd25d08427a73a5586e4c2"
+    },
+    {
+      "bytes": 845,
+      "path": "/tmp/ipse-supersession-build-final-qualified-20261031.log",
+      "sha256": "84fe317567463420d15e195f84bcbb113e4db430754247c4895ecb55c0067faf"
+    },
+    {
+      "bytes": 845,
+      "path": "/tmp/ipse-supersession-build-qualified-20261031.log",
+      "sha256": "6a382b385793b43d65fdc26df5b87fef34173c25220aca55b437464c6ef0b8c0"
+    },
+    {
+      "bytes": 32,
+      "path": "/tmp/ipse-supersession-ci-qualified-20261031.log",
+      "sha256": "e856938f2d4ee3eb319a90056aca83ff6b7347ea57ff71bac975f84df18ae633"
+    },
+    {
+      "bytes": 0,
+      "path": "/tmp/ipse-supersession-compile-qualified-20261031.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "bytes": 42497,
+      "path": "/tmp/ipse-supersession-core-cohort-first-20261031.log",
+      "sha256": "b15ec08debeba31681ed876632774c786e5e6e48d601462791ff68548bd0b006"
+    },
+    {
+      "bytes": 280,
+      "path": "/tmp/ipse-supersession-core-regression-qualified-20261031.log",
+      "sha256": "1d4d2c5c64e1e5079ae894ec4328989ce66c37f35e14e1c9c652be92fdae0a92"
+    },
+    {
+      "bytes": 326,
+      "path": "/tmp/ipse-supersession-cross-session-first-20261031.log",
+      "sha256": "216039a1d5f1c1da65e577b3dfb666970c1cd6d6a488666bad685ceecf71d2d0"
+    },
+    {
+      "bytes": 33009,
+      "path": "/tmp/ipse-supersession-current-before-20261031.log",
+      "sha256": "fa8a6d8b62246eade0e0defe62e4cc6f64d337bca17678800fa919b88a692bdf"
+    },
+    {
+      "bytes": 54234,
+      "path": "/tmp/ipse-supersession-current-core-diagnostic-20261031.log",
+      "sha256": "47ca8ff05eee4ea414f0065c2b1f54df0da653750ff65a3bd911cc6aab634248"
+    },
+    {
+      "bytes": 33829,
+      "path": "/tmp/ipse-supersession-current-diagnostic-20261031.log",
+      "sha256": "adef81676aa937c2bc07ef2e04eac84896c717bb16701101b89c1ab96ec1947a"
+    },
+    {
+      "bytes": 33797,
+      "path": "/tmp/ipse-supersession-current-diagnostic-second-20261031.log",
+      "sha256": "fa1ecf18d6bd9b45db508d7b6944e1abc0dd236fa942ab2377d9a7cb60c4d68c"
+    },
+    {
+      "bytes": 403,
+      "path": "/tmp/ipse-supersession-current-fifth-20261031.log",
+      "sha256": "ac951491be800fbd3a3bca20b9db233831f98e824492b3c7ddfa0d7f5ce0d550"
+    },
+    {
+      "bytes": 45259,
+      "path": "/tmp/ipse-supersession-current-first-20261031.log",
+      "sha256": "6f4e9682395cf2afe9f49ae6b10b33cbba5b0035022227c8bfbb240f25935861"
+    },
+    {
+      "bytes": 61034,
+      "path": "/tmp/ipse-supersession-current-fourth-20261031.log",
+      "sha256": "7542d47ba140b87d1f85e34c43552561cccc0a8230faa91ed22e23f8f15129e5"
+    },
+    {
+      "bytes": 33584,
+      "path": "/tmp/ipse-supersession-current-second-20261031.log",
+      "sha256": "4cb0d32e34a3edaa242f8ec6720c149cd9f43b2ce59d9effab659b23c870b466"
+    },
+    {
+      "bytes": 54205,
+      "path": "/tmp/ipse-supersession-current-third-20261031.log",
+      "sha256": "032ce7157c498a8b71f3d0454db129956e4d8360edfe34fa659b59f6cd6cc414"
+    },
+    {
+      "bytes": 2720,
+      "path": "/tmp/ipse-supersession-demo-qualified-20261031.log",
+      "sha256": "20606fc47b4f4e5bd96ff9a2fd8cd17b0f113502c000699365b99e1dee85a83b"
+    },
+    {
+      "bytes": 756,
+      "path": "/tmp/ipse-supersession-docs-final-qualified-20261031.log",
+      "sha256": "55fa48c8a156ea65e6b7dc0b277da868544579667eefb773e2f385c498c11186"
+    },
+    {
+      "bytes": 756,
+      "path": "/tmp/ipse-supersession-docs-qualified-20261031.log",
+      "sha256": "55fa48c8a156ea65e6b7dc0b277da868544579667eefb773e2f385c498c11186"
+    },
+    {
+      "bytes": 0,
+      "path": "/tmp/ipse-supersession-format-qualified-20261031.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "bytes": 60127,
+      "path": "/tmp/ipse-supersession-lifecycle-cohort-first-20261031.log",
+      "sha256": "a040b808c7cf625fb96005a6179a7474a4eaa9b4af28d46e7d20ec9972e36f03"
+    },
+    {
+      "bytes": 533,
+      "path": "/tmp/ipse-supersession-native-qualified-20261031.log",
+      "sha256": "8bfce701bfb0e2762ab409faccce1291be4bfea54d19138333443d0d27490292"
+    },
+    {
+      "bytes": 329,
+      "path": "/tmp/ipse-supersession-owner-loss-first-20261031.log",
+      "sha256": "835ab9cc1446f5a8fbd79f99e85a30312b432f6a221886ce2302500a3023bd60"
+    },
+    {
+      "bytes": 44562,
+      "path": "/tmp/ipse-supersession-post-effect-loss-admission-20261031.log",
+      "sha256": "8368972c8e19ccd5db7e96633f46b7346b2650dc1b4dd92430e9d9ccf811e6f5"
+    },
+    {
+      "bytes": 44800,
+      "path": "/tmp/ipse-supersession-post-effect-loss-diagnostic-20261031.log",
+      "sha256": "27d3ae6a528ab44f6cfaa6ccecfbbd91bc834a4e0c56f16173da4f80dfc2d886"
+    },
+    {
+      "bytes": 45471,
+      "path": "/tmp/ipse-supersession-post-effect-loss-first-20261031.log",
+      "sha256": "4aa8cade6690254834ba32fbb4ae0b20249131e270de049e6c7a2cdf133ec3ff"
+    },
+    {
+      "bytes": 45388,
+      "path": "/tmp/ipse-supersession-post-effect-loss-second-20261031.log",
+      "sha256": "b0820eb0e91cd45b402f86f66749345beb92decbf73ba2ef672df7a085c69e94"
+    },
+    {
+      "bytes": 439,
+      "path": "/tmp/ipse-supersession-post-effect-loss-stable-identity-20261031.log",
+      "sha256": "40df14e81fa83ba2db711a3575f588cebd1ffc0dbf5ebee6bf409de181f201fb"
+    },
+    {
+      "bytes": 5738,
+      "path": "/tmp/ipse-supersession-regression-qualified-20261031.log",
+      "sha256": "d532aa0ac9b1069e10b1db4260de42ae13f470b333b616a9a46cf401f2e13f2d"
+    },
+    {
+      "bytes": 4345,
+      "path": "/tmp/ipse-supersession-regression-serial-qualified-20261031.log",
+      "sha256": "ade437b578fa868d9b1b85229c6290c8759466cc4419e2213db929d494a446b4"
+    },
+    {
+      "bytes": 68968,
+      "path": "/tmp/ipse-supersession-shared-second-20261031.log",
+      "sha256": "a89f9cbd902012e604dcb65702201937480b5918190c6f77915408bd6ad56586"
+    },
+    {
+      "bytes": 491,
+      "path": "/tmp/ipse-supersession-shared-third-20261031.log",
+      "sha256": "2143d9cbd3e74710f642133cc68f29494e6f089d5144773765c720711404ea79"
+    },
+    {
+      "bytes": 425,
+      "path": "/tmp/ipse-supersession-terminal-cohort-first-20261031.log",
+      "sha256": "d1f97a7c4591ce860a31e444fec0b42e27b0a1872941d13e9ab3d0ec24ce7ced"
+    }
+  ],
+  "manual_review": [
+    "docs/operator/knowledge-permissions.md",
+    "docs/operator/usage.md",
+    "docs/operator/recovery.md",
+    "docs/developer/session-sources.md",
+    "docs/developer/collection-sdk.md",
+    "docs/developer/persistence.md",
+    "docs/developer/architecture.md",
+    "native/README.md"
+  ],
+  "native_helper": {
+    "bytes": 955696,
+    "path": "priv/ipse-runner",
+    "sha256": "71d4125511930d6dd5694db290474e2a1640cdc27f13b0aaf8ee79bb59f87996"
+  },
+  "native_scope": "available Linux 7.2.11-arch1-1 x86_64/tmpfs; automated PTYs, no model requests",
+  "negative_history": [
+    "remember-only intake",
+    "closed dispatch gate",
+    "omitted relation ticket fields",
+    "empty inactive source list sent to generic nonempty transport",
+    "reviewed pre-effect refusal journal schema",
+    "release-owner marker assertions",
+    "retention generation baseline",
+    "sealed read closure expected open",
+    "fault host module path changed after consent",
+    "redundant watcher shutdown timeout"
+  ],
+  "new_dependencies": [],
+  "new_native_wire_format": false,
+  "not_qualified": [
+    "accepted-decision v6 targets",
+    "headless replacement",
+    "legacy synthetic Core supersession/turnover adapters",
+    "whole-current suite",
+    "full notes capacity/lifecycle",
+    "installed/platform/human/live-model quality",
+    "independent adversarial audit",
+    "full P30/P31 reviewer handoff"
+  ],
+  "previous_full_suite": {
+    "acceptance": false,
+    "caveat": "original concurrency/source-inventory timing retained; focused results do not change totals",
+    "excluded": 112,
+    "failed": 60,
+    "passed": 3538,
+    "seconds": 5751.0,
+    "skipped": 109,
+    "source": "e86b1b8"
+  },
+  "production_controls": [
+    "current",
+    "cross_session",
+    "relation_cancel",
+    "revoke",
+    "old_missing",
+    "terminal",
+    "terminal_cancel",
+    "terminal_unknown",
+    "shared",
+    "disabled"
+  ],
+  "real_inference_requests": 0,
+  "real_metadata_requests": 0,
+  "review_state_checks": [
+    "one same-owner claim",
+    "changed intent/request/mutation/receipt refusal",
+    "earlier publication cutoff",
+    "expiry without renewal"
+  ],
+  "scope": "interactive ordinary/temporal literal replacement through actual Session-owned review and native publication; component evidence only",
+  "source": [
+    {
+      "bytes": 48701,
+      "path": "docs/archive/2026-10-26-p30-p31-implementation/index.md",
+      "sha256": "628c3307e501523fd215e8b09fede8258d005e8741ed60b41335df166fdb4d5c"
+    },
+    {
+      "bytes": 6685,
+      "path": "docs/archive/2026-10-26-p30-p31-implementation/managed-supersession-native-20261031.md",
+      "sha256": "8bf2806d33387879ca327c0032286ec4102730b308762eacf5726457bc89a880"
+    },
+    {
+      "bytes": 20912,
+      "path": "docs/developer/architecture.md",
+      "sha256": "7f0499ca982bb80fe63a4e1a25aa7f2761f95aa847dd847b9d211c55d1eaaa48"
+    },
+    {
+      "bytes": 72386,
+      "path": "docs/developer/collection-sdk.md",
+      "sha256": "2b3710455efb3c216b2f6fa86d2a4146cdf65ebbcd75594430536ba640d5a9ff"
+    },
+    {
+      "bytes": 9381,
+      "path": "docs/developer/index.md",
+      "sha256": "035ef9be4a95840dd6043d649b24a9ac03fee92716e375c6bc797d9f857e1d00"
+    },
+    {
+      "bytes": 70958,
+      "path": "docs/developer/persistence.md",
+      "sha256": "9b3e2741ab580810185c524b4cfdf1750a24873c5e80af03f3b0aa4f47213c4f"
+    },
+    {
+      "bytes": 34838,
+      "path": "docs/developer/session-sources.md",
+      "sha256": "12ba7a7da7904cb3809e3703976324cfc57c6d5168301e2aef0672044118d004"
+    },
+    {
+      "bytes": 6827,
+      "path": "docs/index.md",
+      "sha256": "22608c3975dd6f825bbc1ff7a9b7e03ddfe579d502d368629fd7c9c457926041"
+    },
+    {
+      "bytes": 4537,
+      "path": "docs/operator/index.md",
+      "sha256": "50f2ac4fc94af1fe3ab6e5e595cd82b63b37500e5f5fb9ad3a63b5f37b8d60e1"
+    },
+    {
+      "bytes": 28853,
+      "path": "docs/operator/knowledge-permissions.md",
+      "sha256": "2813d395022c006f1dd80c68e81ea9e534a3c4122370add94e6535a6328f5aa8"
+    },
+    {
+      "bytes": 32735,
+      "path": "docs/operator/recovery.md",
+      "sha256": "8c087c2faa925f83a907f9a6dcfc45831edada0dbca924aa3a0676e4cc6f595d"
+    },
+    {
+      "bytes": 25427,
+      "path": "docs/operator/usage.md",
+      "sha256": "bc7355a314fb50f56579010ec4bdd4163bc1f971e78d522e52cd77ddd96676fa"
+    },
+    {
+      "bytes": 138176,
+      "path": "docs/plan.md",
+      "sha256": "7c08d1ca6e0aea11d538925adbe15bccb7926b084cdd8f60a9bb9a97a5eb6dac"
+    },
+    {
+      "bytes": 51007,
+      "path": "lib/ipse/cli/terminal.ex",
+      "sha256": "5d32a34c0197614662867b4ab352efa2b6f7b421aca906d77197f95ef8c51af9"
+    },
+    {
+      "bytes": 90874,
+      "path": "lib/ipse/extension/collection.ex",
+      "sha256": "18334c4c7ddca63a5391b4ddf13cf1404a9feeff5373d7abde9b4a48f34e4915"
+    },
+    {
+      "bytes": 31888,
+      "path": "lib/ipse/extension/host.ex",
+      "sha256": "1b2d0bc139c1f7a6450fe117bab50e55d04b37719624f062c2e67804915fb019"
+    },
+    {
+      "bytes": 31978,
+      "path": "lib/ipse/extension/managed_collection_call.ex",
+      "sha256": "5037cc63e0ff5e66b24ec371b710704234cc73834199ee24435f765e2f4d2f87"
+    },
+    {
+      "bytes": 29729,
+      "path": "lib/ipse/runner/leased_terminal.ex",
+      "sha256": "4a367e383a8706a1e0f804c2fd3501de638826c15786beabe86a54765b5eaa24"
+    },
+    {
+      "bytes": 29292,
+      "path": "lib/ipse/runner/review.ex",
+      "sha256": "92ed533462709f8eb4c7c915325e0c22f13661a4e960822b50ace2a116d6dd06"
+    },
+    {
+      "bytes": 6778,
+      "path": "lib/ipse/runner/session_source.ex",
+      "sha256": "6796168c4c6865418a3c30d6b48b7fd4e6e3369f10b9e54c916572f4480bdeba"
+    },
+    {
+      "bytes": 47877,
+      "path": "lib/ipse/runner/transaction.ex",
+      "sha256": "efa660cfd9c764e4998216a87231264a043f529167a4e15cfcf0997b59911a01"
+    },
+    {
+      "bytes": 267568,
+      "path": "lib/ipse/session.ex",
+      "sha256": "6a4b69131004d6c114e4ada402f5a782e81700a1c9d64c0055e7bad492d6a746"
+    },
+    {
+      "bytes": 48413,
+      "path": "lib/ipse/session/managed_supersession.ex",
+      "sha256": "d522dd480b850cd33b2cc2a4e7b6e9f2ebb69bf4b5c039f3b75f7777e9001981"
+    },
+    {
+      "bytes": 83385,
+      "path": "native/README.md",
+      "sha256": "f6e63bd2cc38ccb56ac965afd7ebd40cf1f4636ddf94e2f1c0efbc676c3303aa"
+    },
+    {
+      "bytes": 43945,
+      "path": "test/ipse/runner/review_test.exs",
+      "sha256": "87caaec4a5ddb3a2fa4fd396baa86111f00edb65327e971e94c007541eb7129e"
+    },
+    {
+      "bytes": 2445,
+      "path": "test/ipse/session/managed_supersession_session_test.exs",
+      "sha256": "8c385d99753ad6193442cf5771ef2ccb38b3583328a98cfd202edb243e398581"
+    },
+    {
+      "bytes": 12462,
+      "path": "test/support/managed_shared_support.exs",
+      "sha256": "7b9f87716ae06b25b047c53f435ca54042d8fe5e78a2a6191d8d04939e3dcfce"
+    },
+    {
+      "bytes": 25594,
+      "path": "test/support/managed_supersession_session.exs",
+      "sha256": "5a6be6b71448a06e02ad63bb76259528621945996c312d434c61a93e8b76dbe9"
+    },
+    {
+      "bytes": 7282,
+      "path": "test/support/managed_supersession_unknown.exs",
+      "sha256": "48b3d63ee92dabdac940ac3c477238a07aa0767ca954fc9e6c134f8fa41eeaa2"
+    },
+    {
+      "bytes": 22394,
+      "path": "test/support/operator_pty.rs",
+      "sha256": "a35bd0900e969e9be969bf22d4f29e22aa752ddc603e5828e55776eced7760ee"
+    }
+  ],
+  "source_base": "fe7d16a",
+  "storage_checks": [
+    "actual ordinary and temporal generations/receipts",
+    "historical raw values preserved",
+    "old current eligibility refused",
+    "new signed metadata and clocks",
+    "original source history preserved",
+    "cross-session policy and inactive source locks released before input",
+    "active conversation flock retained",
+    "shared signed history survives old-object reclamation",
+    "closed 13-unit shared expiry read"
+  ],
+  "version": 1
+}

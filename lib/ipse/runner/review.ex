@@ -101,6 +101,54 @@ defmodule Ipse.Runner.Review do
 
   def with_management_input(_, _, _, _), do: @error
 
+  @doc false
+  def with_session_input(command, facts, handle, fun) when is_function(fun, 1) do
+    with true <- command in ~w(correct supersede),
+         true <-
+           Ipse.Session.ManagedSupersession.reviewed_relation?(
+             command,
+             facts,
+             System.system_time(:millisecond)
+           ),
+         true <- is_nil(Process.get(@slot)) and valid?(command, facts) and Resources.active?(),
+         upstream when is_pid(upstream) <- Resources.file_effect_owner(),
+         true <- Process.alive?(upstream),
+         scope = Resources.current(),
+         {:ok, observation, challenge, deadline} <-
+           Ipse.Runner.LeasedTerminal.finish_relation(handle, facts, command),
+         observed_at = System.system_time(:millisecond),
+         input = command <> " " <> challenge,
+         true <- JSON.safe_uint?(observed_at) and observation["text"] === input,
+         true <- Ipse.Session.Input.valid_observation?(Map.delete(observation, "text"), input, 2),
+         true <- observation["display_sha256"] === JSON.sha256(display(command, facts, challenge)),
+         true <-
+           Resources.current() === scope and Resources.active?() and Process.alive?(upstream),
+         true <- now() < deadline do
+      receipt = %{
+        "version" => 1,
+        "kind" => "native_review",
+        "command" => command,
+        "event_id" => observation["event_id"],
+        "display_sha256" => observation["display_sha256"],
+        "challenge" => challenge,
+        "input_sha256" => observation["text_sha256"],
+        "observed_at_ms" => observed_at,
+        "facts_sha256" => JSON.digest([facts])
+      }
+
+      enter(command, facts, receipt, upstream, scope, deadline, fun)
+    else
+      {:unknown, _} -> @unknown
+      _ -> @error
+    end
+  rescue
+    _ -> @error
+  catch
+    _, _ -> @error
+  end
+
+  def with_session_input(_, _, _, _), do: @error
+
   defp review(command, facts, fun, guard, input_source) do
     with true <- is_nil(Process.get(@slot)),
          true <- valid?(command, facts) and Resources.active?(),
@@ -258,6 +306,89 @@ defmodule Ipse.Runner.Review do
   def consumed_receipt(permit, command, facts) do
     with {:ok, pending} <- pending(permit, command, facts, :consumed),
          do: {:ok, pending.receipt}
+  end
+
+  @doc false
+  def claim_supersession_effect(
+        %Permit{owner: owner, ref: ref},
+        facts,
+        intent,
+        request,
+        normalized,
+        receipt
+      )
+      when owner == self() do
+    case Process.get(@slot) do
+      %{ref: ^ref, status: :consumed} = held ->
+        Process.put(@slot, %{held | status: :refused})
+        command = if facts["mode"] == "ordinary", do: "correct", else: "supersede"
+        wall = System.system_time(:millisecond)
+
+        with true <- held.command === command and held.facts === facts and live?(held),
+             true <- Ipse.Session.ManagedSupersession.reviewed_relation?(command, facts, wall),
+             true <- facts["request_sha256"] === JSON.digest([request]),
+             true <-
+               receipt["kind"] === "native_literal_supersession" and receipt["version"] === 3,
+             true <- receipt["action_sha256"] === facts["action_sha256"],
+             true <- receipt["native_review_sha256"] === JSON.digest([held.receipt]),
+             true <- JSON.safe_uint?(receipt["publish_before_ms"]),
+             deadline = min(receipt["publish_before_ms"], wall + held.deadline - now()),
+             true <- wall < deadline do
+          claim = %{
+            intent: JSON.digest([intent]),
+            original: JSON.digest([request]),
+            normalized: JSON.digest([normalized]),
+            normalization: JSON.digest([receipt]),
+            deadline: deadline
+          }
+
+          Process.put(
+            @slot,
+            held |> Map.put(:status, :effect_claimed) |> Map.put(:supersession_claim, claim)
+          )
+
+          {:ok, %{review: held.receipt, publish_before_ms: deadline}}
+        else
+          _ -> @error
+        end
+
+      _ ->
+        @error
+    end
+  rescue
+    _ -> @error
+  end
+
+  def claim_supersession_effect(_, _, _, _, _, _), do: @error
+
+  @doc false
+  def claimed_supersession_effect(permit, facts, intent, request, normalized, receipt) do
+    command = if facts["mode"] == "ordinary", do: "correct", else: "supersede"
+
+    with {:ok, held} <- pending(permit, command, facts, :effect_claimed),
+         claim when is_map(claim) <- held[:supersession_claim],
+         true <-
+           claim.intent === JSON.digest([intent]) and claim.original === JSON.digest([request]),
+         true <-
+           claim.normalized === JSON.digest([normalized]) and
+             claim.normalization === JSON.digest([receipt]),
+         true <- System.system_time(:millisecond) < claim.deadline do
+      {:ok, %{review: held.receipt, publish_before_ms: claim.deadline}}
+    else
+      _ -> @error
+    end
+  rescue
+    _ -> @error
+  end
+
+  @doc false
+  def claimed_supersession_receipt(permit, command, facts) do
+    with true <- command in ~w(correct supersede),
+         {:ok, held} <- pending(permit, command, facts, :effect_claimed),
+         %{deadline: deadline} <- held[:supersession_claim],
+         true <- System.system_time(:millisecond) < deadline,
+         do: {:ok, held.receipt},
+         else: (_ -> @error)
   end
 
   @doc false

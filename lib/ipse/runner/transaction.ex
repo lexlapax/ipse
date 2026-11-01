@@ -470,6 +470,15 @@ defmodule Ipse.Runner.Transaction do
     {:unknown, :transaction_source_unconfirmed}
   end
 
+  @doc false
+  def abort_owned(%Capability{owner: owner, controller: controller}) when owner == self() do
+    if Process.get(@key) == controller,
+      do: abort_source(controller),
+      else: {:error, :invalid_transaction_capability}
+  end
+
+  def abort_owned(_), do: {:error, :invalid_transaction_capability}
+
   @doc "Release exactly the top capability; root release proves native cleanup."
   def release(cap), do: operation(cap, :release)
 

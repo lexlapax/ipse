@@ -132,6 +132,7 @@ source =
   )
 
 Code.compile_string(source, "review-permit-state-fixture.ex")
+Code.require_file("../../support/managed_policy.exs", __DIR__)
 
 defmodule Ipse.Runner.ReviewTest do
   use ExUnit.Case, async: false
@@ -702,6 +703,139 @@ defmodule Ipse.Runner.ReviewTest do
 
                {:error, :refused}
              end)
+  end
+
+  test "a consumed relation review binds its effect once and expires without renewal" do
+    alias Ipse.Test.ManagedPolicy, as: F
+    wall = System.system_time(:millisecond)
+    Process.put({ReviewRunner, :wall_now}, wall)
+
+    recipe =
+      F.policy()["settings"]["recipes"]
+      |> Map.values()
+      |> Enum.find(&(&1["kind"] == "literal_source"))
+
+    request = %{"op" => "commit", "expected_generation" => 7}
+    normalized = Map.put(request, "changes", [%{"key" => "synthetic replacement"}])
+    old = F.proof("native_operator_assertion", "old synthetic fact")
+    new = F.proof("native_operator_assertion", "new synthetic fact")
+
+    context =
+      Map.new(~w(project_id namespace binding_sha256 management_sha256), &{&1, F.hash(&1)})
+      |> Map.merge(%{
+        "session_id" => Ipse.Usage.id(),
+        "job_id" => Ipse.Usage.id(),
+        "client_id" => Ipse.Usage.id(),
+        "management_epoch" => 1,
+        "original_pin" => nil,
+        "recipe" => recipe
+      })
+
+    for {mode, command, category, deadline} <- [
+          {"ordinary", "correct", "ordinary", wall + 20_000},
+          {"temporal", "supersede", "current", nil}
+        ] do
+      Process.put({ReviewRunner, :wall_now}, wall)
+
+      metadata = %{
+        "category" => category,
+        "first_admitted_ms" => wall - 1,
+        "valid_until_ms" => deadline
+      }
+
+      body = %{
+        "kind" => "managed_literal_supersession",
+        "mode" => mode,
+        "context" => context,
+        "checked_at_ms" => wall,
+        "metadata" => metadata,
+        "history_rule" => Ipse.Extension.Collection.ManagedRetention.history_rule(metadata, mode),
+        "target" => %{"value" => %{"evidence" => %{"sources" => [old]}}},
+        "replacement" => %{"value" => %{"evidence" => %{"sources" => [new]}}},
+        "new_source_sha256" => Ipse.JSON.digest([[new]]),
+        "request_sha256" => Ipse.JSON.digest([request])
+      }
+
+      facts = Map.put(body, "action_sha256", Ipse.JSON.digest([body]))
+      intent = %{"facts" => facts, "type" => "synthetic relation intent"}
+
+      assert {:ok, :checked} =
+               ReviewFixture.with_review(command, facts, fn permit ->
+                 assert {:ok, review} = ReviewFixture.consume(permit, command, facts)
+
+                 receipt = %{
+                   "kind" => "native_literal_supersession",
+                   "version" => 3,
+                   "action_sha256" => facts["action_sha256"],
+                   "native_review_sha256" => Ipse.JSON.digest([review]),
+                   "publish_before_ms" => wall + 10_000
+                 }
+
+                 assert {:ok, bound} =
+                          ReviewFixture.claim_supersession_effect(
+                            permit,
+                            facts,
+                            intent,
+                            request,
+                            normalized,
+                            receipt
+                          )
+
+                 assert bound.publish_before_ms == wall + 10_000
+
+                 assert {:ok, ^bound} =
+                          ReviewFixture.claimed_supersession_effect(
+                            permit,
+                            facts,
+                            intent,
+                            request,
+                            normalized,
+                            receipt
+                          )
+
+                 assert {:error, :native_review_refused} =
+                          ReviewFixture.claim_supersession_effect(
+                            permit,
+                            facts,
+                            intent,
+                            request,
+                            normalized,
+                            receipt
+                          )
+
+                 for {i, r, n, s} <- [
+                       {Map.put(intent, "changed", true), request, normalized, receipt},
+                       {intent, Map.put(request, "expected_generation", 8), normalized, receipt},
+                       {intent, request, Map.put(normalized, "changed", true), receipt},
+                       {intent, request, normalized,
+                        Map.put(receipt, "publish_before_ms", wall + 11_000)}
+                     ] do
+                   assert {:error, :native_review_refused} =
+                            ReviewFixture.claimed_supersession_effect(permit, facts, i, r, n, s)
+                 end
+
+                 assert {:ok, ^review} =
+                          ReviewFixture.claimed_supersession_receipt(permit, command, facts)
+
+                 Process.put({ReviewRunner, :wall_now}, bound.publish_before_ms)
+
+                 assert {:error, :native_review_refused} =
+                          ReviewFixture.claimed_supersession_receipt(permit, command, facts)
+
+                 assert {:error, :native_review_refused} =
+                          ReviewFixture.claimed_supersession_effect(
+                            permit,
+                            facts,
+                            intent,
+                            request,
+                            normalized,
+                            receipt
+                          )
+
+                 Process.put({ReviewRunner, :wall_now}, wall)
+                 {:ok, :checked}
+               end)
+    end
   end
 
   test "changed command or exact facts spends the permit without a silent rebase", c do

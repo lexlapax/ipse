@@ -1087,6 +1087,80 @@ defmodule Ipse.Session do
     do: {:reply, {:error, :session_share_refused}, s}
 
   def handle_call(
+        {:session_control_ticket_relation_display, ref, intent, sha, proofs, wall},
+        {caller, _},
+        %{
+          share_barrier: nil,
+          job_ref: ref,
+          managed_supersession: %{prepared: prepared, candidate: candidate, records: [event]}
+        } = s
+      )
+      when ref != nil do
+    with true <- candidate === intent and sha === Ipse.JSON.digest([prepared, intent]),
+         true <- s.lock_mode in [:header_share_v2, :resume_share_v2],
+         true <- supersession_worker?(s, caller, intent),
+         true <- Enum.any?(s.config.extensions, &(&1.identity == s.invocation.parent["identity"])),
+         {:ok, binding} when is_map(binding) <- supersession_lookup(s, caller, intent),
+         true <- binding.source_binding === {:supersession, sha},
+         true <- Ipse.Session.ManagedSupersession.record?(event, prepared, candidate, []),
+         facts = event["facts"],
+         {:ok, selected} <-
+           Ipse.Session.ManagedSupersession.reviewed_display_sources(
+             facts,
+             s.id,
+             System.system_time(:millisecond)
+           ),
+         true <- is_list(proofs) and length(Enum.uniq(proofs)) == length(proofs),
+         true <- Enum.sort(proofs) === Enum.sort(selected.active ++ selected.inactive),
+         {:ok, sources} <- supersession_proofs(s, selected.active),
+         %{client: client, reader: reader} = channel <- s.operator_channel,
+         true <- Process.alive?(client) and Process.alive?(reader),
+         true <- Ipse.JSON.safe_uint?(wall) and wall > System.system_time(:millisecond),
+         command = if(prepared["mode"] == "ordinary", do: "correct", else: "supersede"),
+         {:ok, payload, challenge} <- Ipse.Runner.Review.preview_display(command, facts) do
+      now = System.monotonic_time(:millisecond)
+      wall = min(wall, System.system_time(:millisecond) + 5_000)
+      deadline = now + min(wall - System.system_time(:millisecond), 5_000)
+      overall = now + 120_000
+
+      ticket = %{
+        ticket: make_ref(),
+        operation: :crypto.strong_rand_bytes(16),
+        deadline: deadline,
+        caller: caller,
+        job_ref: ref,
+        intent: intent,
+        parent: s.invocation.parent,
+        phase: s.phase,
+        channel: channel,
+        relation_publisher: true,
+        protocol: :managed_relation_review,
+        terminal_purpose: :review,
+        source_proofs: selected.active,
+        expected_sources: sources,
+        wall_deadline: wall,
+        overall_deadline: overall,
+        overall_wall: System.system_time(:millisecond) + 120_000,
+        relation_display_purpose_sha256: sha,
+        relation_display_facts_sha256: selected.facts_sha256,
+        relation_display_inactive_sources: selected.inactive,
+        review_payload: payload,
+        review_challenge: challenge,
+        review_command: command,
+        review_facts: facts
+      }
+
+      {:reply, {:ok, ticket.ticket, ticket.operation, deadline, overall},
+       %{s | share_ticket: ticket}}
+    else
+      _ -> {:reply, {:error, :session_share_refused}, s}
+    end
+  end
+
+  def handle_call({:session_control_ticket_relation_display, _, _, _, _, _}, _, s),
+    do: {:reply, {:error, :session_share_refused}, s}
+
+  def handle_call(
         {:session_control_ticket, ref, intent},
         {caller, _},
         %{share_barrier: nil, job_ref: ref, task: %{pid: caller}, lock_mode: mode} = s
@@ -1177,11 +1251,7 @@ defmodule Ipse.Session do
            ),
          true <- binding.proof in sources.active,
          {:reply, {:ok, _, _, _} = result, next} <-
-           handle_call(
-             {:session_control_ticket_source_fixture, ref, intent, sources.active},
-             from,
-             s
-           ) do
+           supersession_effect_ticket(s, from, ref, intent, sources.active) do
       ticket =
         Map.merge(next.share_ticket, %{
           relation_facts_sha256: sources.facts_sha256,
@@ -1340,7 +1410,7 @@ defmodule Ipse.Session do
       protocol = Map.get(ticket, :protocol, :legacy)
 
       opened =
-        if protocol in [:synthetic_review, :managed_approval],
+        if protocol in [:synthetic_review, :managed_approval, :managed_relation_review],
           do:
             Ipse.Runner.open_prepared_review_notice_owner_control(
               prepared,
@@ -1428,6 +1498,11 @@ defmodule Ipse.Session do
             Map.merge(
               barrier,
               Map.take(ticket, [
+                :relation_publisher,
+                :review_payload,
+                :review_facts,
+                :review_command,
+                :review_challenge,
                 :relation_facts_sha256,
                 :relation_review_sha256,
                 :relation_inactive_sources,
@@ -1512,7 +1587,7 @@ defmodule Ipse.Session do
         } = s
       ) do
     remaining =
-      if b.owner_protocol in [:synthetic_review, :managed_approval],
+      if b.owner_protocol in [:synthetic_review, :managed_approval, :managed_relation_review],
         do: b.overall_deadline - System.monotonic_time(:millisecond),
         else: min(b.deadline - System.monotonic_time(:millisecond), 5_000)
 
@@ -1705,14 +1780,17 @@ defmodule Ipse.Session do
             } = b
         } = s
       )
-      when is_binary(prefix) and protocol in [:synthetic_review, :managed_approval] do
+      when is_binary(prefix) and
+             protocol in [:synthetic_review, :managed_approval, :managed_relation_review] do
     if not Map.get(b, :manifest_issued, false) and share_deadline_current?(b) and
          Port.info(port, :connected) == {:connected, caller} and
          synthetic_review_manifest?(prefix, b) do
       payload =
-        if protocol == :managed_approval,
-          do: s.managed_approval.display,
-          else: @synthetic_review_text
+        case protocol do
+          :managed_approval -> s.managed_approval.display
+          :managed_relation_review -> b.review_payload
+          _ -> @synthetic_review_text
+        end
 
       body = <<prefix::binary, byte_size(payload)::32, payload::binary>>
 
@@ -1743,9 +1821,14 @@ defmodule Ipse.Session do
             } = b
         } = s
       ) do
-    if (b.owner_protocol not in [:synthetic_notice, :synthetic_review, :managed_approval] or
+    if (b.owner_protocol not in [
+          :synthetic_notice,
+          :synthetic_review,
+          :managed_approval,
+          :managed_relation_review
+        ] or
           Map.has_key?(b, :issued_terminal)) and
-         (b.owner_protocol not in [:synthetic_review, :managed_approval] or
+         (b.owner_protocol not in [:synthetic_review, :managed_approval, :managed_relation_review] or
             Map.get(b, :manifest_issued, false)) and
          (not Map.has_key?(b, :writer_control) or
             (b.writer_control == :transferred and b.writer_recipient == recipient)) and
@@ -1782,7 +1865,8 @@ defmodule Ipse.Session do
             } = b
         } = s
       )
-      when is_port(terminal_port) and protocol in [:synthetic_review, :managed_approval] do
+      when is_port(terminal_port) and
+             protocol in [:synthetic_review, :managed_approval, :managed_relation_review] do
     if Map.get(b, :notice_received, false) and
          Port.info(terminal_port, :connected) == {:connected, caller} and
          Port.info(terminal_port, :os_pid) == {:os_pid, recipient} and Process.alive?(caller) and
@@ -1810,7 +1894,7 @@ defmodule Ipse.Session do
             } = b
         } = s
       )
-      when protocol in [:synthetic_review, :managed_approval] do
+      when protocol in [:synthetic_review, :managed_approval, :managed_relation_review] do
     if share_deadline_current?(b) and Port.info(b.host_port) == nil and
          Port.info(b.owner_port) == nil and Port.info(b.issued_terminal.port) == nil do
       Process.cancel_timer(b.timer)
@@ -1904,7 +1988,7 @@ defmodule Ipse.Session do
         } = s
       )
       when is_port(terminal_port) do
-    if b.owner_protocol not in [:synthetic_review, :managed_approval] and
+    if b.owner_protocol not in [:synthetic_review, :managed_approval, :managed_relation_review] and
          (b.owner_protocol != :synthetic_notice or Map.get(b, :notice_received, false)) and
          (not Map.has_key?(b, :issued_terminal) or b.issued_terminal.port == terminal_port) and
          Port.info(terminal_port, :connected) == {:connected, caller} and
@@ -1988,6 +2072,29 @@ defmodule Ipse.Session do
     result =
       if proofs === expected,
         do: Ipse.Session.ManagedUse.sources(s, caller, binding, proofs),
+        else: {:error, :collection_source_refused}
+
+    {:reply, result, s}
+  end
+
+  def handle_call(
+        {:managed_sources, ref, {:supersession, sha}, proofs},
+        {caller, _},
+        %{
+          job_ref: ref,
+          share_barrier: %{
+            owner_protocol: :managed_relation_review,
+            phase: :review_input,
+            caller: caller,
+            source_proofs: expected,
+            relation_display_purpose_sha256: sha
+          }
+        } = s
+      )
+      when ref != nil do
+    result =
+      if proofs === expected,
+        do: supersession_source_proofs(s, caller, sha, proofs),
         else: {:error, :collection_source_refused}
 
     {:reply, result, s}
@@ -3048,33 +3155,6 @@ defmodule Ipse.Session do
   def handle_call({:extension_supersession, _, _}, _, s),
     do: {:reply, {:error, :managed_supersession_refused}, s}
 
-  def handle_call(
-        {:managed_review_publisher, ref, sha, peer},
-        {caller, _},
-        %{job_ref: ref} = s
-      )
-      when ref != nil and is_pid(peer) do
-    reply =
-      with %{pid: ^caller} <- s.task,
-           %{prepared: prepared, candidate: candidate} when is_map(candidate) <-
-             s.managed_supersession,
-           true <- s.phase == :extension_command,
-           true <-
-             s.config[:managed_supersession_layout] == Ipse.Session.ManagedSupersession.layout(),
-           true <- sha == Ipse.JSON.digest([prepared, candidate]),
-           true <- supersession_worker?(s, peer, candidate),
-           true <- Ipse.Session.Resources.authorized_effect?(s.task.pid, peer) do
-        :ok
-      else
-        _ -> {:error, :managed_supersession_refused}
-      end
-
-    {:reply, reply, s}
-  end
-
-  def handle_call({:managed_review_publisher, _, _, _}, _, s),
-    do: {:reply, {:error, :managed_supersession_refused}, s}
-
   def handle_call({:supersession_record, ref, sha, event}, {caller, _}, %{job_ref: ref} = s)
       when ref != nil,
       do: supersession_record(s, caller, sha, event)
@@ -3088,17 +3168,7 @@ defmodule Ipse.Session do
         %{job_ref: ref} = s
       )
       when ref != nil do
-    reply =
-      with %{candidate: intent} <- s.managed_supersession,
-           {:ok, binding} when is_map(binding) <- supersession_lookup(s, caller, intent),
-           true <- binding.source_binding == {:supersession, sha},
-           true <- is_list(proofs) and length(proofs) in 1..8 and binding.proof in proofs,
-           true <- Enum.all?(proofs, &(is_map(&1) and &1["session_id"] == s.id)),
-           {:ok, verified} <- supersession_proofs(s, proofs) do
-        {:ok, verified}
-      else
-        _ -> {:error, :managed_supersession_refused}
-      end
+    reply = supersession_source_proofs(s, caller, sha, proofs)
 
     {:reply, reply, s}
   end
@@ -3487,7 +3557,7 @@ defmodule Ipse.Session do
         %{phase: :idle, operator_channel: %{id: channel, client: client}} = s
       ) do
     with true <- planning_entry_quiet?(s),
-         {:ok, category, statement} <- Ipse.Session.OperatorAssertion.parse_command(text),
+         {:ok, category, statement, purpose} <- Ipse.Session.OperatorAssertion.parse_intake(text),
          {:ok, scope, name} <- Ipse.Session.OperatorAssertion.selection(s.config),
          {:ok, origin} when is_map(origin) <- Writer.source_query(s.journal_writer, :origin),
          {:ok, window} <- Writer.source_query(s.journal_writer, :snapshot),
@@ -3496,7 +3566,7 @@ defmodule Ipse.Session do
            Ipse.Session.OperatorAssertion.render(s.id, channel, category, statement, scope) do
       pending = %{
         render: render,
-        purpose: nil,
+        purpose: purpose,
         name: name,
         source_generation: window["generation"],
         input_generation: s.input_generation
@@ -4712,8 +4782,10 @@ defmodule Ipse.Session do
 
   def handle_info(
         :managed_approval_share_failed,
-        %{share_barrier: %{phase: :poisoned, owner_protocol: :managed_approval}} = s
-      ),
+        %{share_barrier: %{phase: :poisoned} = barrier} = s
+      )
+      when barrier.owner_protocol in [:managed_approval, :managed_relation_review] or
+             is_map_key(barrier, :relation_publisher),
       do: {:stop, :normal, s}
 
   def handle_info(_, %{share_barrier: %{phase: :poisoned}} = s), do: {:noreply, s}
@@ -4758,7 +4830,7 @@ defmodule Ipse.Session do
             } = b
         } = s
       )
-      when protocol in [:synthetic_review, :managed_approval] do
+      when protocol in [:synthetic_review, :managed_approval, :managed_relation_review] do
     if Map.get(b, :notice_final, false) and Process.alive?(b.caller) and
          share_deadline_current?(b) do
       send(b.caller, {:session_owner_control, b.capability, :closed})
@@ -5537,14 +5609,19 @@ defmodule Ipse.Session do
           }
 
           controls =
-            if b.owner_protocol in [:synthetic_notice, :synthetic_review, :managed_approval],
-              do:
-                Map.merge(controls, %{
-                  wall_deadline: b.wall_deadline,
-                  overall_deadline: b.overall_deadline,
-                  overall_wall: b.overall_wall
-                }),
-              else: controls
+            if b.owner_protocol in [
+                 :synthetic_notice,
+                 :synthetic_review,
+                 :managed_approval,
+                 :managed_relation_review
+               ],
+               do:
+                 Map.merge(controls, %{
+                   wall_deadline: b.wall_deadline,
+                   overall_deadline: b.overall_deadline,
+                   overall_wall: b.overall_wall
+                 }),
+               else: controls
 
           controls =
             if Map.has_key?(b, :relation_display_inactive_sources),
@@ -5565,6 +5642,24 @@ defmodule Ipse.Session do
                 }),
               else: controls
 
+          controls =
+            if b.owner_protocol == :managed_relation_review do
+              Map.merge(controls, %{
+                payload: b.review_payload,
+                review_facts: b.review_facts,
+                review_command: b.review_command,
+                review_challenge: b.review_challenge,
+                review_session_id: s.id
+              })
+            else
+              controls
+            end
+
+          controls =
+            if Map.has_key?(b, :relation_inactive_sources),
+              do: Map.put(controls, :relation_source_proofs, b.relation_inactive_sources),
+              else: controls
+
           GenServer.reply(b.from, {:ok, b.capability, b.transport, b.snapshot, controls})
           {:noreply, %{s | share_barrier: %{b | phase: :armed, from: nil}}}
 
@@ -5577,6 +5672,12 @@ defmodule Ipse.Session do
   end
 
   defp maybe_deliver_controlled(s), do: {:noreply, s}
+
+  defp share_binding_current?(s, %{relation_publisher: true} = ticket) do
+    s.task != nil and s.job_ref == ticket.job_ref and
+      supersession_worker?(s, ticket.caller, ticket.intent) and
+      relation_ticket_current?(s, ticket)
+  end
 
   defp share_binding_current?(s, %{protocol: :managed_approval} = ticket) do
     s.task != nil and s.job_ref == ticket.job_ref and
@@ -5706,7 +5807,12 @@ defmodule Ipse.Session do
          deadline: deadline,
          wall_deadline: wall
        })
-       when protocol in [:synthetic_notice, :synthetic_review, :managed_approval] and
+       when protocol in [
+              :synthetic_notice,
+              :synthetic_review,
+              :managed_approval,
+              :managed_relation_review
+            ] and
               is_integer(wall),
        do:
          System.monotonic_time(:millisecond) < deadline and
@@ -5715,6 +5821,7 @@ defmodule Ipse.Session do
   defp share_deadline_current?(%{owner_protocol: :synthetic_notice}), do: false
   defp share_deadline_current?(%{owner_protocol: :synthetic_review}), do: false
   defp share_deadline_current?(%{owner_protocol: :managed_approval}), do: false
+  defp share_deadline_current?(%{owner_protocol: :managed_relation_review}), do: false
 
   defp share_deadline_current?(%{deadline: deadline}),
     do: System.monotonic_time(:millisecond) < deadline
@@ -5737,7 +5844,11 @@ defmodule Ipse.Session do
             %{b | owner_phase: :ready}
 
           {?R, "owner-control-v2", :starting}
-          when b.owner_protocol in [:synthetic_review, :managed_approval] ->
+          when b.owner_protocol in [
+                 :synthetic_review,
+                 :managed_approval,
+                 :managed_relation_review
+               ] ->
             %{b | owner_phase: :ready}
 
           {?H, <<operation::binary-size(16), 1>>, :sending} when operation == b.operation ->
@@ -5749,7 +5860,12 @@ defmodule Ipse.Session do
 
           {?N, <<operation::binary-size(16), 1, expiry::64>>, :transferred}
           when operation == b.operation and
-                 b.owner_protocol in [:synthetic_notice, :synthetic_review, :managed_approval] and
+                 b.owner_protocol in [
+                   :synthetic_notice,
+                   :synthetic_review,
+                   :managed_approval,
+                   :managed_relation_review
+                 ] and
                  b.phase in [:settling, :settled] ->
             if expiry == b.wall_deadline and Map.has_key?(b, :issued_terminal) and
                  not Map.get(b, :notice_received, false) do
@@ -5759,7 +5875,12 @@ defmodule Ipse.Session do
 
           {?F, <<operation::binary-size(16), 1>>, :transferred}
           when operation == b.operation and
-                 b.owner_protocol in [:synthetic_notice, :synthetic_review, :managed_approval] and
+                 b.owner_protocol in [
+                   :synthetic_notice,
+                   :synthetic_review,
+                   :managed_approval,
+                   :managed_relation_review
+                 ] and
                  b.phase in [:terminal_closing, :review_input] ->
             if Map.get(b, :notice_received, false) and not Map.get(b, :notice_final, false),
               do: Map.put(b, :notice_final, true)
@@ -5823,8 +5944,13 @@ defmodule Ipse.Session do
     if b.from, do: GenServer.reply(b.from, {:error, :cleanup_unconfirmed})
     if s.task && Process.alive?(s.task.pid), do: Process.exit(s.task.pid, :kill)
 
-    if b[:owner_protocol] == :managed_approval do
-      notify(s, {:error, "Managed approval ownership was lost; no proposed tool was started."})
+    if b[:owner_protocol] in [:managed_approval, :managed_relation_review] or
+         b[:relation_publisher] do
+      notify(
+        s,
+        {:error, "Protected review ownership was lost; inspect the journal before further work."}
+      )
+
       send(self(), :managed_approval_share_failed)
     end
 
@@ -6265,6 +6391,53 @@ defmodule Ipse.Session do
     end
   rescue
     _ -> {:error, :managed_supersession_refused}
+  end
+
+  defp supersession_source_proofs(s, caller, sha, proofs) do
+    with %{candidate: intent} <- s.managed_supersession,
+         {:ok, binding} when is_map(binding) <- supersession_lookup(s, caller, intent),
+         true <- binding.source_binding == {:supersession, sha},
+         true <- is_list(proofs) and length(proofs) in 1..8 and binding.proof in proofs,
+         true <- Enum.all?(proofs, &(is_map(&1) and &1["session_id"] == s.id)),
+         {:ok, verified} <- supersession_proofs(s, proofs) do
+      {:ok, verified}
+    else
+      _ -> {:error, :managed_supersession_refused}
+    end
+  end
+
+  defp supersession_effect_ticket(s, {caller, _} = from, ref, intent, proofs) do
+    if s.task.pid == caller do
+      handle_call({:session_control_ticket_source_fixture, ref, intent, proofs}, from, s)
+    else
+      with true <- s.share_barrier == nil and s.lock_mode in [:header_share_v2, :resume_share_v2],
+           true <- supersession_worker?(s, caller, intent),
+           true <-
+             Enum.any?(s.config.extensions, &(&1.identity == s.invocation.parent["identity"])),
+           {:ok, sources} <- supersession_proofs(s, proofs),
+           %{client: client, reader: reader} = channel <- s.operator_channel,
+           true <- Process.alive?(client) and Process.alive?(reader) do
+        ticket = %{
+          ticket: make_ref(),
+          operation: :crypto.strong_rand_bytes(16),
+          deadline: System.monotonic_time(:millisecond) + 5_000,
+          caller: caller,
+          job_ref: ref,
+          intent: intent,
+          parent: s.invocation.parent,
+          phase: s.phase,
+          channel: channel,
+          relation_publisher: true,
+          source_proofs: proofs,
+          expected_sources: sources
+        }
+
+        {:reply, {:ok, ticket.ticket, ticket.operation, ticket.deadline},
+         %{s | share_ticket: ticket}}
+      else
+        _ -> {:reply, {:error, :session_share_refused}, s}
+      end
+    end
   end
 
   defp supersession_proofs(s, proofs) do

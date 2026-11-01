@@ -144,148 +144,24 @@ defmodule Ipse.Session.ManagedSupersession do
 
   @doc false
   def coordinate(context, intent, handoff) do
-    coordinator = self()
-    ticket = make_ref()
-
-    task =
-      Resources.async(fn ->
-        try do
-          Resources.file_effect(fn ->
-            send(coordinator, {:managed_review_publisher, ticket, self()})
-            execute(context, intent, handoff, {coordinator, ticket})
-          end)
-        rescue
-          _ -> {:supersession, delivery(nil, "unconfirmed", nil)}
-        catch
-          _, _ -> {:supersession, delivery(nil, "unconfirmed", nil)}
-        end
-      end)
-
-    coordinate_wait(context, handoff, coordinator, ticket, task, nil, false)
+    Resources.file_effect(fn -> execute(context, intent, handoff) end)
   rescue
     _ -> {:supersession, delivery(nil, "unconfirmed", nil)}
   catch
     _, _ -> {:supersession, delivery(nil, "unconfirmed", nil)}
   end
 
-  defp coordinate_wait(context, handoff, coordinator, ticket, task, publisher, used) do
-    receive do
-      {:managed_review_publisher, ^ticket, peer} when is_nil(publisher) and is_pid(peer) ->
-        case GenServer.call(
-               context.owner,
-               {:managed_review_publisher, context.job_ref, elem(handoff.source_binding, 1),
-                peer},
-               5_000
-             ) do
-          :ok ->
-            coordinate_wait(
-              context,
-              handoff,
-              coordinator,
-              ticket,
-              task,
-              {peer, Process.monitor(peer)},
-              used
-            )
-
-          _ ->
-            Task.shutdown(task, :brutal_kill)
-            {:supersession, delivery(nil, "unconfirmed", nil)}
-        end
-
-      {:managed_review_input, ^ticket, peer, display, guard}
-      when not used and is_tuple(publisher) and is_binary(display) and
-             byte_size(display) <= 65_536 and is_function(guard, 1) ->
-        if elem(publisher, 0) === peer and Process.alive?(peer) do
-          secret = make_ref()
-          send(peer, {:managed_review_guard_authority, ticket, coordinator, secret})
-
-          result =
-            case Resources.controlled_owned_effect(
-                   fn ->
-                     Ipse.Runner.operator_input(display, 120_000, 2, fn continuation ->
-                       proxy_display(peer, ticket, secret, continuation)
-                     end)
-                   end,
-                   120_000
-                 ) do
-              {:ok, value} -> value
-              {:unknown, _} = unknown -> unknown
-              _ -> {:unknown, :native_review_unconfirmed}
-            end
-
-          send(peer, {:managed_review_result, ticket, coordinator, result})
-          coordinate_wait(context, handoff, coordinator, ticket, task, publisher, true)
-        else
-          Task.shutdown(task, :brutal_kill)
-          {:supersession, delivery(nil, "unconfirmed", nil)}
-        end
-
-      {ref, result} when ref == task.ref ->
-        Process.demonitor(task.ref, [:flush])
-        if is_tuple(publisher), do: Process.demonitor(elem(publisher, 1), [:flush])
-        result
-
-      {:DOWN, ref, :process, _, _} when ref == task.ref ->
-        {:supersession, delivery(nil, "unconfirmed", nil)}
-
-      {:DOWN, ref, :process, _, _} when is_tuple(publisher) and ref == elem(publisher, 1) ->
-        coordinate_wait(context, handoff, coordinator, ticket, task, publisher, used)
-    after
-      135_000 ->
-        Task.shutdown(task, :brutal_kill)
-        {:supersession, delivery(nil, "unconfirmed", nil)}
-    end
-  end
-
-  defp proxy_display(publisher, ticket, secret, _continuation) do
-    guard_ref = make_ref()
-    monitor = Process.monitor(publisher)
-    send(publisher, {:managed_review_guard, ticket, secret, self(), guard_ref})
-
-    try do
-      receive do
-        {:managed_review_deadline, ^ticket, ^publisher, ^guard_ref, deadline, authority}
-        when is_integer(deadline) and is_map(authority) ->
-          # The native terminal has not yet imported these owner descriptions.
-          # A host observation is not a substitute for that retained handoff.
-          send(publisher, {:managed_review_displayed, ticket, self(), guard_ref, @error})
-
-          receive do
-            {:managed_review_release, ^ticket, ^publisher, ^guard_ref, _} ->
-              @error
-
-            {:DOWN, ^monitor, :process, ^publisher, _} ->
-              @error
-          after
-            120_000 -> @error
-          end
-
-        {:managed_review_release, ^ticket, ^publisher, ^guard_ref, _} ->
-          @error
-
-        {:DOWN, ^monitor, :process, ^publisher, _} ->
-          @error
-      after
-        120_000 -> @error
-      end
-    after
-      Process.demonitor(monitor, [:flush])
-    end
-  end
-
-  def execute(
-        context,
-        intent,
-        %{
-          purpose: prepared,
-          prepared: prepared,
-          source_binding: {:supersession, sha},
-          proof: proof,
-          source: source
-        },
-        coordinator
-      ) do
+  defp execute(
+         context,
+         intent,
+         %{
+           purpose: prepared,
+           prepared: prepared,
+           source_binding: {:supersession, sha},
+           proof: proof,
+           source: source
+         }
+       ) do
     empty = delivery(sha, "unconfirmed", nil)
     slot = {__MODULE__, make_ref()}
     Process.put(slot, %{stage: :before, intent: nil, review: nil})
@@ -305,7 +181,10 @@ defmodule Ipse.Session.ManagedSupersession do
               guard_display(context, intent, prepared, sha, preview, continuation)
             end
 
-            Review.with_coordinated_review(
+            with_relation_review(
+              context,
+              intent,
+              sha,
               command,
               facts,
               fn permit ->
@@ -317,15 +196,21 @@ defmodule Ipse.Session.ManagedSupersession do
                      :ok <- append(context, sha, event) do
                   Process.put(slot, %{Process.get(slot) | review: event})
 
-                  with_sources(context, sha, sources, fn ->
-                    publish(context, intent, preview, permit, command, slot)
+                  with_sources_and_leases(context, sha, sources, fn _, leases, _ ->
+                    owned_preview =
+                      Map.merge(preview, %{
+                        source_leases: leases,
+                        intent: intent,
+                        purpose_sha256: sha
+                      })
+
+                    publish(context, intent, owned_preview, permit, command, slot)
                   end)
                 else
                   _ -> @error
                 end
               end,
-              display_guard,
-              coordinator
+              display_guard
             )
           else
             _ -> @error
@@ -353,7 +238,27 @@ defmodule Ipse.Session.ManagedSupersession do
     end
   end
 
-  def execute(_, _, _, _), do: {:supersession, delivery(nil, "unconfirmed", nil)}
+  defp execute(_, _, _), do: {:supersession, delivery(nil, "unconfirmed", nil)}
+
+  defp with_relation_review(context, intent, sha, command, facts, fun, guard) do
+    with {:ok, handle} <-
+           guard.(fn wall, authority ->
+             held = Map.put(authority.retained, :deadline_ms, wall)
+
+             Ipse.Runner.LeasedTerminal.begin_relation(
+               context.owner,
+               context.job_ref,
+               intent,
+               held,
+               context.cwd,
+               sha
+             )
+           end) do
+      Review.with_session_input(command, facts, handle, fun)
+    else
+      _ -> @error
+    end
+  end
 
   defp preflight(context, intent, prepared, sha, proof, source) do
     pin = get_in(intent, ["effect_binding", "pin"])
@@ -652,8 +557,20 @@ defmodule Ipse.Session.ManagedSupersession do
                              true <- deadline > System.system_time(:millisecond),
                              {:ok, authority} <-
                                display_authority(context, verified, leases, active?),
-                             :ok <- continuation.(deadline, authority) do
-                          {:ok, :displayed}
+                             {:ok, [identity, consent, collection]} <-
+                               Ipse.Runner.Transaction.retained_share_stack(),
+                             held = %{
+                               owner: self(),
+                               session_id: context.session_id,
+                               identity: identity,
+                               consent: consent,
+                               collection: collection,
+                               source_leases: leases,
+                               source_proofs: sources
+                             },
+                             {:ok, handle} <-
+                               continuation.(deadline, Map.put(authority, :retained, held)) do
+                          {:ok, {:displayed, handle}}
                         else
                           _ -> @error
                         end
@@ -671,7 +588,10 @@ defmodule Ipse.Session.ManagedSupersession do
         _ -> @error
       end
 
-    if result == {:ok, :displayed}, do: :ok, else: @error
+    case result do
+      {:ok, {:displayed, handle}} -> {:ok, handle}
+      _ -> @error
+    end
   end
 
   @doc false
@@ -796,7 +716,7 @@ defmodule Ipse.Session.ManagedSupersession do
 
     try do
       result =
-        Collection.execute_managed_supersession(
+        Collection.execute_reviewed_supersession(
           SemanticAdmission.collection_root(context.config[:home]),
           preview.pin["namespace"],
           prepared["request"],
@@ -830,10 +750,18 @@ defmodule Ipse.Session.ManagedSupersession do
             else
               _ -> {:error, :collection_accounting_invalid}
             end
-          end
+          end,
+          %{
+            permit: permit,
+            facts: facts,
+            intent: preview.intent,
+            context: context,
+            purpose_sha256: preview.purpose_sha256,
+            source_leases: preview.source_leases
+          }
         )
 
-      with {:ok, review} <- Review.consumed_receipt(permit, command, facts),
+      with {:ok, review} <- Review.claimed_supersession_receipt(permit, command, facts),
            %{review: %{"review" => ^review}} <- Process.get(slot),
            {:ok, core} <- result,
            {digest, normalization, actual} <- Process.get(accounting),
@@ -876,7 +804,7 @@ defmodule Ipse.Session.ManagedSupersession do
   end
 
   defp finish(_, _, {:unknown, _}, _), do: {"unconfirmed", nil}
-  defp finish(_, _, _, %{stage: :intent, review: nil}), do: {"refused", nil}
+  defp finish(_, _, _, %{stage: :intent}), do: {"refused", nil}
   defp finish(_, _, _, _), do: {"unconfirmed", nil}
 
   defp intent_event(intent, sha, candidate),
@@ -1271,7 +1199,7 @@ defmodule Ipse.Session.ManagedSupersession do
   end
 
   defp result_with_review?(event, intent, review_event, candidate) do
-    if event["status"] == "unconfirmed" do
+    if event["status"] in ~w(refused unconfirmed) do
       is_nil(event["outcome"])
     else
       facts = intent["facts"]

@@ -1,27 +1,68 @@
 defmodule Ipse.Test.ManagedSupersessionUnknown do
   import ExUnit.Assertions
 
-  def run(session, opts, root, cwd, dir, id, ordinary, collection, pin, before) do
+  def run(session, opts, root, cwd, dir, id, ordinary, collection, pin, before, mode) do
+    assert mode in [:input, :after_effect]
     parent = self()
-
-    observer =
-      spawn(fn ->
-        observe(%{
-          parent: parent,
-          session: session,
-          review: nil,
-          controller: nil,
-          native: nil,
-          ready: 0,
-          prompts: 0,
-          stopped: false
-        })
-      end)
-
-    :erlang.trace_pattern({Ipse.Runner.Operator, :run_guarded, 4}, true, [:local])
+    observer = spawn(fn -> observe(parent, session, %{ready: 0, prompts: 0}) end)
     :erlang.trace_pattern({Ipse.Session.Input, :start, 5}, true, [:local])
     :erlang.trace_pattern({Ipse.Session, :notify, 2}, true, [:local])
-    :erlang.trace(:all, true, [:call, :procs, :set_on_spawn, {:tracer, observer}])
+    :erlang.trace(session, true, [:call, {:tracer, observer}])
+
+    {:ok, watcher} =
+      Task.start(fn ->
+        Process.register(self(), :ipse_supersession_effect_control)
+        send(parent, {:loss_watcher_ready, self()})
+
+        publisher =
+          if mode == :input do
+            wait_file(
+              Path.join(root, "supersession-unknown-input-ready"),
+              System.monotonic_time(:millisecond) + 20_000
+            )
+
+            nil
+          else
+            assert_receive {:supersession_effect_published, publisher}, 20_000
+            assert Process.alive?(publisher)
+
+            pointer =
+              File.read!(Path.join([collection, pin["namespace"], "root.json"]))
+              |> Jason.decode!()
+
+            assert pointer["generation"] == before["generation"] + 1
+            publisher
+          end
+
+        state = :sys.get_state(session)
+        barrier = state.share_barrier
+
+        port =
+          if mode == :input do
+            assert barrier.owner_protocol == :managed_relation_review and
+                     barrier.phase == :review_input
+
+            assert barrier.notice_received and barrier.manifest_issued
+            barrier.issued_terminal.port
+          else
+            assert barrier.owner_protocol == :legacy and barrier.relation_publisher
+            assert barrier.writer_control == :transferred
+            barrier.owner_port
+          end
+
+        assert {:os_pid, native} = Port.info(port, :os_pid)
+
+        assert {_, 0} =
+                 System.cmd("/bin/kill", ["-KILL", Integer.to_string(native)],
+                   stderr_to_stdout: true
+                 )
+
+        if publisher, do: send(publisher, :release_effect_control)
+
+        File.write!(Path.join(root, "supersession-unknown-native-killed"), "killed")
+      end)
+
+    assert_receive {:loss_watcher_ready, ^watcher}, 1000
 
     try do
       File.write!(
@@ -32,36 +73,33 @@ defmodule Ipse.Test.ManagedSupersessionUnknown do
       IO.puts("IPSE_SUPERSESSION_TERMINAL_READY")
       assert Ipse.CLI.Terminal.interact(session, Process.monitor(session), true, nil, cwd) == 1
       refute Process.alive?(session)
-      Process.sleep(50)
+
+      wait_file(
+        Path.join(root, "supersession-unknown-native-killed"),
+        System.monotonic_time(:millisecond) + 1000
+      )
+
+      monitor = Process.monitor(watcher)
+      assert_receive {:DOWN, ^monitor, :process, ^watcher, reason}, 1000
+      assert reason in [:normal, :noproc]
       send(observer, :report)
-
-      receive do
-        {:unknown_review_report, report} ->
-          assert report.stopped
-          assert report.ready == 0
-          assert report.prompts == 1
-      after
-        8000 -> flunk("actual guarded native cleanup interruption was not reported")
-      end
+      assert_receive {:unknown_review_report, %{ready: 0, prompts: 1}}, 5000
     after
-      :erlang.trace(:all, false, [:call, :procs, :set_on_spawn])
+      for {module, name, arity} <- [{Ipse.Session.Input, :start, 5}, {Ipse.Session, :notify, 2}],
+          do: :erlang.trace_pattern({module, name, arity}, false, [:local])
 
-      for {module, name, arity} <- [
-            {Ipse.Runner.Operator, :run_guarded, 4},
-            {Ipse.Session.Input, :start, 5},
-            {Ipse.Session, :notify, 2}
-          ] do
-        :erlang.trace_pattern({module, name, arity}, false, [:local])
-      end
-
-      send(observer, :restore)
+      send(observer, :stop)
     end
 
     assert {:ok, events} = Ipse.Journal.load(dir, id)
     assert Enum.any?(events, &(&1["type"] == "managed_supersession_intent"))
+
     refute Enum.any?(events, &(&1["type"] == "managed_supersession_delivered"))
 
-    assert {:ok, after_snapshot} =
+    assert Enum.count(events, &(&1["type"] == "managed_supersession_review")) ==
+             if(mode == :input, do: 0, else: 1)
+
+    assert {:ok, actual} =
              Ipse.Extension.Collection.execute(
                collection,
                pin["namespace"],
@@ -69,39 +107,22 @@ defmodule Ipse.Test.ManagedSupersessionUnknown do
                Ipse.Usage.id()
              )
 
-    assert before == after_snapshot
+    if mode == :input,
+      do: assert(actual == before),
+      else: assert(actual["generation"] == before["generation"] + 1)
+
     assert {:ok, _} = Ipse.Session.Saved.restore(events, id)
-    lifecycle = Enum.find(events, &(&1["type"] == "managed_supersession_intent"))
 
-    candidate_result =
-      Enum.find(
-        events,
-        &(&1["type"] == "extension_action_result" and
-            &1["operation_id"] == lifecycle["candidate_operation_id"])
-      )
+    intent = Enum.find(events, &(&1["type"] == "managed_supersession_intent"))
 
-    assert candidate_result["outcome"] == %{
-             "status" => "failed",
-             "value" => %{"code" => "collection_policy_refused"}
-           }
-
-    changed =
+    altered =
       Enum.map(events, fn event ->
-        if event === candidate_result,
-          do: Map.put(event, "request_sha256", Ipse.JSON.sha256("unrelated candidate prefix")),
-          else: event
-      end)
-
-    assert {:error, :invalid_extension_action} = Ipse.Session.Saved.restore(changed, id)
-
-    changed =
-      Enum.map(events, fn event ->
-        if event === lifecycle,
+        if event === intent,
           do: Map.put(event, "candidate_operation_id", Ipse.Usage.id()),
           else: event
       end)
 
-    assert {:error, :invalid_extension_action} = Ipse.Session.Saved.restore(changed, id)
+    assert {:error, :invalid_extension_action} = Ipse.Session.Saved.restore(altered, id)
 
     assert {:ok, resumed} =
              DynamicSupervisor.start_child(
@@ -111,96 +132,80 @@ defmodule Ipse.Test.ManagedSupersessionUnknown do
 
     assert Ipse.Session.info(resumed).phase == :idle
     assert :ok = Ipse.Session.close_confirmed(resumed)
-    assert {:ok, ^events} = Ipse.Journal.load(dir, id)
+    assert {:ok, after_resume} = Ipse.Journal.load(dir, id)
+    assert Enum.take(after_resume, length(events)) === events
+
+    refute Enum.any?(
+             Enum.drop(after_resume, length(events)),
+             &(&1["type"] in ~w(extension_invocation_intent extension_action_intent request_admitted))
+           )
+
+    assert {:ok, ^actual} =
+             Ipse.Extension.Collection.execute(
+               collection,
+               pin["namespace"],
+               %{"op" => "snapshot"},
+               Ipse.Usage.id()
+             )
+
+    assert {:ok, _} = Ipse.Session.Saved.restore(after_resume, id)
     refute File.exists?(Path.join(root, "unexpected-model"))
   end
 
-  defp observe(state) do
-    receive do
-      {:trace, owner, :call, {Ipse.Runner.Operator, :run_guarded, _}} ->
-        observe(%{state | review: owner})
+  def interpose_after_effect(root) do
+    source = File.read!("lib/ipse/runner/session_source.ex")
+    anchor = "            case settle(cap, context, binding, transport, controls) do"
+    assert String.contains?(source, anchor)
 
-      {:trace, session, :call, {Ipse.Session.Input, :start, [binding | _]}}
-      when session == state.session ->
+    pause = """
+                send(Process.whereis(:ipse_supersession_effect_control), {:supersession_effect_published, self()})
+                receive do
+                  :release_effect_control -> :ok
+                after
+                  5_000 -> throw(:effect_control_not_released)
+                end
+    """
+
+    instrumented = String.replace(source, anchor, pause <> anchor, global: false)
+    IO.puts("AFTER_EFFECT_CONTROL_SOURCE_SHA256=" <> Ipse.JSON.sha256(instrumented))
+    [{module, beam}] = Code.compile_string(instrumented, "session-source-after-effect-control.ex")
+    path = Path.join(root, "Elixir.Ipse.Runner.SessionSource.beam")
+    File.write!(path, beam)
+    assert {:module, ^module} = :code.load_binary(module, String.to_charlist(path), beam)
+  end
+
+  defp observe(parent, session, counts) do
+    receive do
+      {:trace, ^session, :call, {Ipse.Session.Input, :start, [binding | _]}} ->
         observe(
+          parent,
+          session,
           if(binding[:purpose] == "prompt",
-            do: %{state | prompts: state.prompts + 1},
-            else: state
+            do: %{counts | prompts: counts.prompts + 1},
+            else: counts
           )
         )
 
-      {:trace, session, :call, {Ipse.Session, :notify, [_, :native_relation_ready]}}
-      when session == state.session ->
-        observe(%{state | ready: state.ready + 1})
-
-      {:trace, owner, :spawn, controller, _}
-      when owner == state.review and state.controller == nil ->
-        send(self(), {:find_native, 1000})
-        observe(%{state | controller: controller})
-
-      {:find_native, remaining} ->
-        case Enum.find(
-               :erlang.ports(),
-               &(Port.info(&1, :connected) == {:connected, state.controller})
-             ) do
-          nil when remaining > 0 ->
-            Process.send_after(self(), {:find_native, remaining - 1}, 5)
-            observe(state)
-
-          nil ->
-            send(state.parent, {:unknown_review_report, state})
-            observe(state)
-
-          port ->
-            {:os_pid, native} = Port.info(port, :os_pid)
-            {_, 0} = System.cmd("/bin/kill", ["-STOP", Integer.to_string(native)])
-            monitor = Process.monitor(state.session)
-
-            try do
-              Process.exit(state.review, :kill)
-
-              receive do
-                {:DOWN, ^monitor, :process, _, _} -> :ok
-              after
-                12_000 -> :ok
-              end
-            after
-              System.cmd("/bin/kill", ["-CONT", Integer.to_string(native)],
-                stderr_to_stdout: true
-              )
-
-              Process.demonitor(monitor, [:flush])
-            end
-
-            observe(%{state | native: native, stopped: true})
-        end
+      {:trace, ^session, :call, {Ipse.Session, :notify, [_, :native_relation_ready]}} ->
+        observe(parent, session, %{counts | ready: counts.ready + 1})
 
       :report ->
-        send(
-          state.parent,
-          {:unknown_review_report, Map.take(state, [:ready, :prompts, :stopped])}
-        )
+        send(parent, {:unknown_review_report, counts})
+        observe(parent, session, counts)
 
-        observe(state)
-
-      :restore ->
-        if state.native,
-          do:
-            System.cmd("/bin/kill", ["-CONT", Integer.to_string(state.native)],
-              stderr_to_stdout: true
-            )
-
+      :stop ->
         :ok
 
       _ ->
-        observe(state)
-    after
-      40_000 ->
-        if state.native,
-          do:
-            System.cmd("/bin/kill", ["-CONT", Integer.to_string(state.native)],
-              stderr_to_stdout: true
-            )
+        observe(parent, session, counts)
+    end
+  end
+
+  defp wait_file(path, deadline) do
+    unless File.exists?(path) do
+      assert System.monotonic_time(:millisecond) < deadline
+      Process.sleep(5)
+      wait_file(path, deadline)
     end
   end
 end

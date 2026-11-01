@@ -148,8 +148,8 @@ defmodule Ipse.CLI.Terminal do
   Chat commands: /help /skills /session /info /diagnostics /permissions /permissions clear /observability off /events off /context /context refresh /ext [NAME JSON] /result JSON /cancel /exit.
   /enhance [TEXT]                      Draft a request in this conversation before submitting it
   /remember CATEGORY TEXT              Review and capture an ordinary, preference or current statement
-  /correct NOTE_KEY TEXT               Unavailable pending native correction review
-  /supersede NOTE_KEY TEXT             Unavailable pending native supersession review
+  /correct NOTE_KEY TEXT               Review an ordinary replacement for a native note
+  /supersede NOTE_KEY TEXT             Review a new current statement and retained history
   /plan                                Enter planning mode from an idle native terminal
   /plan exit                           Exit a locally entered planning mode
   /enhance show|replace [TEXT]|replace multi|accept [ID]|cancel  Review and manage the draft
