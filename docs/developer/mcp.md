@@ -146,6 +146,16 @@ absence of `tools/call` does not prove zero discovery effects. These automated
 Linux/stdio controls do not qualify HTTP, all fault boundaries, human input or
 live-model quality. Broader transport controls below retain their separate scope.
 
+Keep root-metadata approval separate from that signed-note journey. The
+`native_root_mcp_boundary` selection in
+`test/ipse/extension/managed_collection_call_session_test.exs` pairs actual
+native approval and allowed calls with revocation between admitted start and send,
+for stdio and explicit loopback HTTP. Follow the
+[native testing flow](testing.md#exercise-actual-os-policy-and-native-protocols)
+to coordinate the existing catalog gate after initial discovery, require the
+precise admitted/withheld effects and verify strict idle recovery. A successful
+connection is not permission for the later request.
+
 ## Schema subset
 
 `Ipse.JSON` bounds schemas to 32 KiB, depth 8, and 256 nodes. The root may omit

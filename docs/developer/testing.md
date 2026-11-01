@@ -755,6 +755,22 @@ require their exit and an absent final file after the original command duration.
 Both cases retain strict Saved state and inert idle recovery. These controls do
 not establish native sandbox confinement or detached-descendant behavior.
 
+Use `--only native_root_mcp_boundary` for root-metadata approval across stdio and
+HTTP. Pair each allowed start/send with revocation after its admitted start. Set
+the existing service gate only during the native approval input wait, so ordinary
+initial discovery remains possible. After the fresh answer, wait for the real
+service's next catalog request and require exactly one journaled `mcp.start`
+admission before revoking and releasing that request. The service must receive
+no tool call and create no target; the journal retains confirmed start cleanup
+and withdrawn delivery without `mcp.send` or a third provider request. Preserve
+the positive's exact file, one tool call and separately confirmed start/send.
+Use the same strict Saved and idle recovery checks for both transports. For HTTP,
+take the complete accepted-connection log after confirmed close, including cleanup
+traffic, then require identical bytes after idle resume and its confirmed close.
+Do not filter out initialization or DELETE requests. HTTP uses an explicitly
+selected loopback fixture with the normal config loader; it supplies no TLS or
+remote-service qualification.
+
 Inject a fault at its actual purpose: a hook around shared source acquisition
 may now intercept an earlier Worker input, before a later publication watcher
 exists. Keep independent allowed-path and denial assertions, and preserve the

@@ -4528,7 +4528,7 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
     assert :ok = Session.close_confirmed(resumed)
   end
 
-  @tag native_root_approval: "mcp", timeout: 90_000
+  @tag native_root_approval: "mcp", native_root_mcp_boundary: true, timeout: 90_000
   @tag registered_main: true, ordinary_effect: true, managed_mcp: true
   test "current managed MCP call admits server start and its exact request", c do
     native_root_approval(c, "mcp")
@@ -4545,68 +4545,28 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
     end
   end
 
+  @tag native_root_approval: "mcp_start_revoke", native_root_mcp_boundary: true, timeout: 90_000
   @tag registered_main: true, ordinary_effect: true, managed_mcp: true, managed_gate: true
   test "managed MCP request refuses revocation after admitted server start", c do
-    {pid, approval, path} = managed_mcp_approval(c)
-    File.write!(Path.join(c.cwd, "managed-mcp-gate"), "gate")
-    assert :ok = Session.approve(pid, approval, true)
-    await_marker(Path.join(c.cwd, "managed-mcp-list-ready"), "", 500)
-    assert {:ok, policy} = Consent.snapshot(c.control, c.binding["project_id"])
-    assert {:ok, _} = Consent.revoke(c.control, c.binding["project_id"], policy["epoch"])
-    File.write!(Path.join(c.cwd, "managed-mcp-list-release"), "release")
-    assert_receive {:ipse, ^pid, {:done, :error}}, 15_000
-    refute File.exists?(path)
-    refute File.exists?(Path.join(c.cwd, "calls.log"))
-    assert {:ok, events} = Journal.load(c.dir, Session.info(pid).id)
-    admissions = Enum.filter(events, &(&1["type"] == "managed_tool_effect_admitted"))
-    assert Enum.map(admissions, &get_in(&1, ["binding", "kind"])) == ["mcp.start"]
-    assert {:ok, _} = Ipse.Session.Saved.restore(events, Session.info(pid).id)
-    assert :ok = Session.close_confirmed(pid)
-    Task.shutdown(c.provider_server, :brutal_kill)
+    native_root_approval(c, "mcp", :start_revoke)
   end
 
+  @tag native_root_approval: "http",
+       native_root_mcp_boundary: true,
+       native_root_http: true,
+       timeout: 90_000
   @tag registered_main: true, ordinary_effect: true, managed_mcp: true, managed_http: true
   test "current managed HTTP MCP call admits connection and exact request", c do
-    {pid, approval, path} = managed_mcp_approval(c)
-    refute File.exists?(path)
-    assert :ok = Session.approve(pid, approval, true)
-    assert_receive {:ipse, ^pid, {:done, :ok}}, 15_000
-    assert File.read!(path) == "SYNTHETIC_MANAGED_MCP"
-    assert File.read!(Path.join(c.cwd, "calls.log")) == "write_note\n"
-    state = :sys.get_state(pid)
-    assert {:ok, events} = Journal.load(c.dir, state.id)
-    admissions = Enum.filter(events, &(&1["type"] == "managed_tool_effect_admitted"))
-    assert Enum.map(admissions, &get_in(&1, ["binding", "kind"])) == ["mcp.start", "mcp.send"]
-
-    assert Enum.count(
-             events,
-             &(&1["type"] == "managed_tool_effect_cleanup" and &1["status"] == "confirmed")
-           ) == 2
-
-    assert {:ok, saved} = Ipse.Session.Saved.restore(events, state.id)
-    assert saved.messages == state.messages
-    assert :ok = Session.close_confirmed(pid)
-    Task.shutdown(c.provider_server, :brutal_kill)
+    native_root_approval(c, "http")
   end
 
+  @tag native_root_approval: "http_start_revoke",
+       native_root_mcp_boundary: true,
+       native_root_http: true,
+       timeout: 90_000
   @tag registered_main: true, ordinary_effect: true, managed_mcp: true, managed_http: true
   test "managed HTTP MCP request refuses revocation after admitted connection", c do
-    {pid, approval, path} = managed_mcp_approval(c)
-    File.write!(Path.join(c.cwd, "managed-mcp-gate"), "gate")
-    assert :ok = Session.approve(pid, approval, true)
-    await_marker(Path.join(c.cwd, "managed-mcp-list-ready"), "ready", 500)
-    assert {:ok, policy} = Consent.snapshot(c.control, c.binding["project_id"])
-    assert {:ok, _} = Consent.revoke(c.control, c.binding["project_id"], policy["epoch"])
-    File.write!(Path.join(c.cwd, "managed-mcp-list-release"), "release")
-    assert_receive {:ipse, ^pid, {:done, :error}}, 15_000
-    refute File.exists?(path)
-    refute File.exists?(Path.join(c.cwd, "calls.log"))
-    assert {:ok, events} = Journal.load(c.dir, Session.info(pid).id)
-    admissions = Enum.filter(events, &(&1["type"] == "managed_tool_effect_admitted"))
-    assert Enum.map(admissions, &get_in(&1, ["binding", "kind"])) == ["mcp.start"]
-    assert {:ok, _} = Ipse.Session.Saved.restore(events, Session.info(pid).id)
-    assert :ok = Session.close_confirmed(pid)
-    Task.shutdown(c.provider_server, :brutal_kill)
+    native_root_approval(c, "http", :start_revoke)
   end
 
   for boundary <- [:revoke, :expiry] do
@@ -5558,7 +5518,7 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
         "shell" ->
           {"shell", "managed-output.txt", "SYNTHETIC_MANAGED_SHELL", managed_shell_arguments(c)}
 
-        "mcp" ->
+        protocol when protocol in ["mcp", "http"] ->
           {"mcp__notes__write_note", "managed-mcp.txt", "SYNTHETIC_MANAGED_MCP",
            %{"path" => "managed-mcp.txt", "content" => "SYNTHETIC_MANAGED_MCP"}}
       end
@@ -5579,8 +5539,27 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
           assert Enum.all?(state.managed_approval.dependencies, &(&1["version"] == 3))
           assert {:error, _} = Session.approve(pid, make_ref(), true)
           refute File.exists?(path)
-          native_root_boundary(c, pid, kind, boundary)
+
+          if boundary == :start_revoke,
+            do: File.write!(Path.join(c.cwd, "managed-mcp-gate"), "gate"),
+            else: native_root_boundary(c, pid, kind, boundary)
+
           File.write!(Path.join(c.root, "managed-approval-control-checked"), "checked")
+
+          if boundary == :start_revoke do
+            marker = if kind == "http", do: "ready", else: ""
+            await_marker(Path.join(c.cwd, "managed-mcp-list-ready"), marker, 500)
+            assert {:ok, started} = Journal.load(c.dir, id)
+
+            assert [admitted] =
+                     Enum.filter(started, &(&1["type"] == "managed_tool_effect_admitted"))
+
+            assert admitted["binding"]["kind"] == "mcp.start"
+            refute File.exists?(path)
+            refute File.exists?(Path.join(c.cwd, "calls.log"))
+            native_root_boundary(c, pid, kind, :revoke)
+            File.write!(Path.join(c.cwd, "managed-mcp-list-release"), "release")
+          end
 
           if boundary != :owner_loss do
             native_root_idle(pid, 1500)
@@ -5628,10 +5607,14 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
       admissions = Enum.filter(events, &(&1["type"] == "managed_tool_effect_admitted"))
 
       cond do
+        boundary == :start_revoke ->
+          assert [admitted] = admissions
+          assert admitted["binding"]["kind"] == "mcp.start"
+
         boundary != :current ->
           assert admissions == []
 
-        kind == "mcp" ->
+        kind in ["mcp", "http"] ->
           assert Enum.map(admissions, &get_in(&1, ["binding", "kind"])) == [
                    "mcp.start",
                    "mcp.send"
@@ -5685,6 +5668,9 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
         do: native_root_released(Path.join(c.dir, id <> ".lock"), 500),
         else: assert(:ok = Session.close_confirmed(pid))
 
+      connections =
+        if kind == "http", do: File.read!(Path.join(c.cwd, "managed-mcp-connections.log"))
+
       journal = Path.join(c.dir, id <> ".jsonl")
       closed = File.read!(journal)
       resumed = start(c, %{approval: :ask, approval_origin: :interactive, headless: false}, id)
@@ -5702,7 +5688,11 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
 
       assert length(Agent.get(c.provider_requests, & &1)) == count
 
-      if kind == "mcp" do
+      if kind == "http" do
+        assert File.read!(Path.join(c.cwd, "managed-mcp-connections.log")) == connections
+      end
+
+      if kind in ["mcp", "http"] do
         if boundary == :current,
           do: assert(File.read!(Path.join(c.cwd, "calls.log")) == "write_note\n"),
           else: refute(File.exists?(Path.join(c.cwd, "calls.log")))

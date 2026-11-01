@@ -990,8 +990,12 @@ for write/shell/MCP through that native caller, with no effect or replay.
 [Running-shell revocation and owner-loss controls](archive/2026-10-26-p30-p31-implementation/root-native-running-shell-20261101.md)
 now preserve the original delayed command under native approval, withheld stdout
 after revocation and actual process-group exit after consumer loss, followed by
-strict idle recovery. MCP start/send boundaries and HTTP retain separate
-qualification. The
+strict idle recovery. The
+[root-only MCP start/send controls](archive/2026-10-26-p30-p31-implementation/root-native-mcp-start-20261101.md)
+pair native allowed stdio/HTTP calls with revocation after admitted start and
+before send, confirmed cleanup, withheld delivery and strict idle recovery.
+Broader HTTP pre-start/response-loss/owner-loss and helper-identity migrations
+retain separate qualification. The
 [accepted-decision approval extension](archive/2026-10-26-p30-p31-implementation/accepted-approval-20261101.md)
 additionally retains original management journals at that same native sink,
 with Session/Writer-authenticated manifest counts/inodes. Native controls cover
