@@ -61,6 +61,7 @@ nor resource/offline qualification. No daemon configuration or existing model wa
 
 ## P31A contracts and evidence
 
+- [Accepted-decision Worker input](accepted-worker-input-20261101.md) carries original management journals to the same native stdin writer, with genuine single/two-decision source inspection and strict settlement. Model-history composition after a settled Worker root transition preserves the original union and historical notice; qualification remains scoped.
 - [Actual Session-managed export input](worker-input-session-20261101.md) binds committed requests and complete dependencies to the same native Worker stdin owner, with strict unknown/no-replay restoration. Its genuine literal-source observer is disclosed; accepted-decision and other Worker purposes remain open.
 - [Retained native stdin through the existing transaction owner](worker-stdin-ownership-20261031.md) has actual pipe and owner-loss controls; exact Session/frame authority and managed SDK delivery remain open.
 - [Actual pending Worker input and sealed native frame](worker-input-frame-20261101.md) adds opaque reservation, early-response buffering and more than 256 successive handoffs. A retained substitution counterexample led to exact native byte binding; Session source authority and SDK adoption remain open.

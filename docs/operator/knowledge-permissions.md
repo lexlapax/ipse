@@ -236,9 +236,9 @@ if interruption occurred before a journal was created. Confirmed acceptance
 charges one operation with measured input/output bytes; cancellation and known
 pre-publication refusal settle zero effect usage. An uncertain attempt retains
 its reservation. This experimental path supports one selected card; batch
-acceptance and rejection/correction remain unfinished. Confirmed acceptance is
-durable, but delivery of accepted decisions through managed worker continuations
-remains unavailable as described below.
+acceptance and rejection/correction remain unfinished. After confirmed acceptance,
+close the original conversation and follow the bounded current-note recall
+procedure below. A saved acceptance alone does not prove successful later recall.
 
 ## Correct or supersede a native note
 
@@ -299,12 +299,14 @@ recall does not promote them to new operator statements.
 
 Accepted decisions retain their recorded user-decision attribution and original
 source; acceptance does not establish that the source's premises are true.
-Their managed worker delivery currently refuses because the additional original
-management-journal owner is not yet carried through that delivery path. A saved
-acceptance is therefore not evidence of successful later recall. Keep the
-original management and Session journals available for inspection. The registered
-provider route remains required for managed context; the credential-free demo
-does not qualify this delivery path.
+They can join the bounded pass on the supported Linux native path. Each read and
+later use checks the signed record, immutable acceptance link, original committed
+management journal, original Session source and current permission. Worker
+delivery retains both original journals through its native write and settlement.
+Keep both journals available; missing or changed originals withhold the decision
+text. The registered provider route remains required for managed context; the
+credential-free demo does not qualify this delivery path. These checks do not
+enable note-derived ordinary tool approval for accepted decisions.
 
 The automatic pass considers at most 32 notes and fits whole notes into the
 available context envelope. Larger sets or insufficient space produce partial

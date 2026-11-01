@@ -404,7 +404,7 @@ defmodule Ipse.Session.StoredSources do
 
   defp same_active_sources?(_, _, _), do: false
 
-  defp source_lock(%{shareable_source: true}, path), do: Runner.protected_share_resume_lock(path)
+  defp source_lock(%{shareable_source: true}, path), do: Runner.share_source_lock(path)
   defp source_lock(_, path), do: Runner.lock_source(path)
 
   defp prepare_share(%{shareable_source: true}, port, before, session_id) do

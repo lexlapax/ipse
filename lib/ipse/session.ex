@@ -387,7 +387,15 @@ defmodule Ipse.Session do
           }
 
           candidate =
-            case Ipse.Session.ManagedLineage.root_candidate(lineage, snapshot.dependencies) do
+            case if(phase == "model",
+                   do:
+                     Ipse.Session.ManagedLineage.root_projection_candidate(
+                       lineage,
+                       snapshot.dependencies
+                     ),
+                   else:
+                     Ipse.Session.ManagedLineage.root_candidate(lineage, snapshot.dependencies)
+                 ) do
               {:ok, action} -> action
               _ -> nil
             end

@@ -247,11 +247,53 @@ defmodule Ipse.Session.ManagedLineage do
   def root_candidate(_, _), do: @error
 
   @doc false
+  # A settled Worker transition can precede model projection. Only its exact
+  # authenticated successor may accompany the original cached prerequisites.
+  def root_projection_candidate(%__MODULE__{unavailable: false} = state, dependencies) do
+    case root_candidate(state, dependencies) do
+      {:ok, _} = candidate ->
+        candidate
+
+      _ ->
+        with {:ok, ^dependencies} <- ManagedReference.union([dependencies]),
+             candidates =
+               Enum.flat_map(state.root_writes, fn {operation, value} ->
+                 targets =
+                   value["dependencies"]
+                   |> Enum.map(&Map.get(state.root_transitions, JSON.digest([&1])))
+                   |> Enum.uniq()
+
+                 with [target] when is_binary(target) <- targets,
+                      guard when is_map(guard) <- state.dictionary[target],
+                      true <- state.root_observations[target] === true,
+                      true <- guard in dependencies,
+                      old = Enum.reject(dependencies, &(&1 === guard)),
+                      {:ok, action} <- root_candidate(state, old),
+                      true <- action["operation_id"] === operation do
+                   [action]
+                 else
+                   _ -> []
+                 end
+               end),
+             [action] <- candidates do
+          {:ok, action}
+        else
+          _ -> @error
+        end
+    end
+  rescue
+    _ -> @error
+  end
+
+  def root_projection_candidate(_, _), do: @error
+
+  @doc false
   def root_projection(state, messages, binding, observation, inspection) do
     with {:ok, plan} <- ManagedReference.plan(state.reference, messages),
          {:ok, dependencies} <- dependencies(state, messages),
          true <- plan.dependencies === dependencies,
-         {:ok, guard, evidence} <- root_evidence(state, dependencies, observation, inspection),
+         {:ok, guard, evidence} <-
+           root_evidence(state, dependencies, observation, inspection, :model),
          {:ok, event, projected, reference} <-
            ManagedReference.project_root_history(plan, binding, evidence),
          state = apply_root_transition(state, evidence["operation_id"], guard) do
@@ -300,10 +342,15 @@ defmodule Ipse.Session.ManagedLineage do
     _, _ -> @error
   end
 
-  defp root_evidence(state, dependencies, observation, inspection) do
+  defp root_evidence(state, dependencies, observation, inspection, purpose \\ :worker) do
     pin = get_in(state.admission, ["pin"])
 
-    with {:ok, action} <- root_candidate(state, dependencies),
+    candidate =
+      if purpose == :model,
+        do: root_projection_candidate(state, dependencies),
+        else: root_candidate(state, dependencies)
+
+    with {:ok, action} <- candidate,
          request = %{"op" => "snapshot"},
          {:ok, guard} <-
            Ipse.Extension.Collection.ObservedRead.root_dependency(request, observation, pin),

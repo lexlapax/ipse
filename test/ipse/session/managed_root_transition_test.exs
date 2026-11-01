@@ -92,6 +92,60 @@ defmodule Ipse.Session.ManagedRootTransitionTest do
   end
 
   @tag :candidate_root
+  test "model composition requires the actual settled successor mapping and preserves Worker strictness" do
+    {_, _, _, event, before} = fixture()
+    state = before.managed_lineage
+    projection = event["projection"]
+    {:ok, old} = ManagedLineage.dependencies(state, before.messages)
+    fresh = projection["fresh_dependency"]
+    {:ok, mixed} = Ipse.Session.ManagedReference.union([old, [fresh]])
+
+    assert {:error, _} = ManagedLineage.root_projection_candidate(state, mixed)
+
+    assert {:ok, _, _, _, settled} =
+             ManagedLineage.root_projection(
+               state,
+               before.messages,
+               projection["binding"],
+               projection["fresh_observation"],
+               projection["inspection"]
+             )
+
+    assert {:ok, action} = ManagedLineage.root_projection_candidate(settled, mixed)
+    assert action["operation_id"] == projection["operation_id"]
+    assert {:error, _} = ManagedLineage.root_candidate(settled, mixed)
+
+    assert {:error, _} =
+             ManagedLineage.root_projection_candidate(%{settled | root_transitions: %{}}, mixed)
+
+    assert {:error, _} =
+             ManagedLineage.root_projection_candidate(%{settled | root_writes: %{}}, mixed)
+
+    [original | _] = old
+    incomplete = Map.delete(settled.root_transitions, JSON.digest([original]))
+
+    assert {:error, _} =
+             ManagedLineage.root_projection_candidate(
+               %{settled | root_transitions: incomplete},
+               mixed
+             )
+
+    forged = put_in(fresh, ["collection", "generation"], fresh["collection"]["generation"] + 1)
+    {:ok, foreign} = Ipse.Session.ManagedReference.union([old, [forged]])
+    assert {:error, _} = ManagedLineage.root_projection_candidate(settled, foreign)
+
+    unknown =
+      put_in(
+        settled.root_writes,
+        [action["operation_id"], "action", "outcome", "status"],
+        "unknown"
+      )
+
+    assert {:error, _} =
+             ManagedLineage.root_projection_candidate(%{settled | root_writes: unknown}, mixed)
+  end
+
+  @tag :candidate_root
   test "candidate requires the known own action and every original cached payload-free prerequisite" do
     {_, _, _, event, before} = fixture()
     state = before.managed_lineage

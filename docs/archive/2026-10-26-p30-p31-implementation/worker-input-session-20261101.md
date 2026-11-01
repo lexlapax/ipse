@@ -8,6 +8,10 @@ Current contracts belong to [Session sources](../../developer/session-sources.md
 [testing](../../developer/testing.md#exercise-actual-os-policy-and-native-protocols).
 The [plan](../../plan.md) owns remaining scope.
 
+The later [accepted-input increment](accepted-worker-input-20261101.md) supersedes
+this record's then-unavailable version-6 Worker route and retains the earlier
+source/package results and limits below.
+
 ## Actual delivery and recovery boundary
 
 Host's protected export route now calls `Session.WorkerInput` for initial export

@@ -110,8 +110,8 @@ defmodule Ipse.Session.WorkerInput do
              ) do
         result =
           with {:ok, use_spec} <- rebase_if_needed(owner, job, spec) do
-            ManagedUse.with_display_dependencies(use_spec.context, use_spec.dependencies, fn _,
-                                                                                             held ->
+            ManagedUse.with_worker_dependencies(use_spec.context, use_spec.dependencies, fn _,
+                                                                                            held ->
               wall =
                 Enum.min([
                   held.deadline_ms,
@@ -128,7 +128,11 @@ defmodule Ipse.Session.WorkerInput do
                 held.source_leases,
                 held.source_proofs,
                 wall,
-                fn -> deliver(worker, handle, held, wall) end
+                fn ->
+                  with_journals(held.collection, held.journal_leases, fn ->
+                    deliver(worker, handle, held, wall)
+                  end)
+                end
               )
             end)
           end
@@ -157,6 +161,14 @@ defmodule Ipse.Session.WorkerInput do
     _ -> @unknown
   catch
     _, _ -> @unknown
+  end
+
+  defp with_journals(_, [], fun), do: fun.()
+
+  defp with_journals(cap, [lease | rest], fun) do
+    Transaction.with_inactive_acceptance_journal_lease(cap, lease.token, fn ->
+      with_journals(cap, rest, fun)
+    end)
   end
 
   defp rebase_if_needed(_, _, %{candidate: nil} = spec), do: {:ok, spec}

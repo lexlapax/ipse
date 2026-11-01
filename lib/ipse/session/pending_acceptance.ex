@@ -502,15 +502,58 @@ defmodule Ipse.Session.PendingAcceptance do
   @doc "Retain an authenticated inactive management journal with a private transferable lock."
   def with_shareable_committed_management_journal(home, project, namespace, link, fun)
       when is_binary(home) and is_map(link) and is_function(fun, 2) do
-    with_management_journal(home, project, namespace, link, true, fun)
+    with_shareable_committed_management_journals(home, project, namespace, [link], fn resolved,
+                                                                                      [lease] ->
+      fun.(Map.fetch!(resolved, link["journal_id"]), lease.token)
+    end)
   end
 
   def with_shareable_committed_management_journal(_, _, _, _, _), do: @error
 
+  @doc false
+  def with_shareable_committed_management_journals(home, project, namespace, links, fun)
+      when is_list(links) and is_function(fun, 2) do
+    with true <- length(links) in 1..128 and Enum.all?(links, &is_map/1),
+         links =
+           Enum.sort_by(Enum.uniq(links), &{&1["journal_id"], &1["acceptance_event_sha256"]}),
+         true <- length(Enum.uniq_by(links, & &1["journal_id"])) == length(links),
+         nil <- Process.get(@journal_share_slot) do
+      Process.put(@journal_share_slot, %{})
+
+      try do
+        retain_shareable_journals(home, project, namespace, links, %{}, [], fun)
+      after
+        Process.delete(@journal_share_slot)
+      end
+    else
+      _ -> @error
+    end
+  rescue
+    _ -> @error
+  end
+
+  def with_shareable_committed_management_journals(_, _, _, _, _), do: @error
+
+  defp retain_shareable_journals(_, _, _, [], resolved, leases, fun), do: fun.(resolved, leases)
+
+  defp retain_shareable_journals(home, project, namespace, [link | rest], resolved, leases, fun) do
+    with_management_journal(home, project, namespace, link, true, fn checked, token ->
+      retain_shareable_journals(
+        home,
+        project,
+        namespace,
+        rest,
+        Map.put(resolved, link["journal_id"], checked),
+        leases ++ [%{journal_id: link["journal_id"], link: link, token: token}],
+        fun
+      )
+    end)
+  end
+
   defp with_management_journal(home, project, namespace, link, shareable, fun) do
     with true <-
            Path.type(home) == :absolute and JSON.sha256?(project) and JSON.sha256?(namespace),
-         true <- not shareable or is_nil(Process.get(@journal_share_slot)),
+         true <- not shareable or is_map(Process.get(@journal_share_slot)),
          true <- link["journal_kind"] === "knowledge_management" and id?(link["journal_id"]),
          true <- JSON.sha256?(link["acceptance_event_sha256"]),
          directory = Path.join(home, "knowledge-management"),
@@ -521,7 +564,7 @@ defmodule Ipse.Session.PendingAcceptance do
          true <- journal_private?(before_lock),
          {:ok, lock} <-
            if(shareable,
-             do: Ipse.Runner.protected_share_resume_lock(lock_path),
+             do: Ipse.Runner.share_source_lock(lock_path),
              else: Ipse.Runner.lock_source(lock_path)
            ) do
       monitor = :erlang.monitor(:port, lock)
@@ -530,7 +573,7 @@ defmodule Ipse.Session.PendingAcceptance do
         try do
           with true <-
                  journal_lock_live?(lock, monitor) and journal_same_lock?(lock_path, before_lock),
-               {:ok, token} <- prepare_journal_share(shareable, lock, before_lock),
+               {:ok, token} <- prepare_journal_share(shareable, lock, before_lock, link),
                {:ok, file} <- :file.open(String.to_charlist(path), [:read, :binary, :raw]) do
             try do
               with {:ok, before} <- :file.read_file_info(file),
@@ -576,14 +619,20 @@ defmodule Ipse.Session.PendingAcceptance do
 
       live = journal_lock_live?(lock, monitor)
 
+      share =
+        Enum.find(Process.get(@journal_share_slot) || %{}, fn {_, state} -> state.port == lock end)
+
       share_ok =
         not shareable or
           match?(
-            %{phase: phase} when phase in [:ready, :settled],
-            Process.get(@journal_share_slot)
+            {_, %{phase: phase}} when phase in [:ready, :settled],
+            share
           )
 
-      if shareable, do: Process.delete(@journal_share_slot)
+      if shareable and match?({_, _}, share) do
+        {token, _} = share
+        Process.put(@journal_share_slot, Map.delete(Process.get(@journal_share_slot), token))
+      end
 
       released =
         if shareable,
@@ -599,20 +648,21 @@ defmodule Ipse.Session.PendingAcceptance do
     _ -> @error
   end
 
-  defp prepare_journal_share(false, _, _), do: {:ok, nil}
+  defp prepare_journal_share(false, _, _, _), do: {:ok, nil}
 
-  defp prepare_journal_share(true, port, before) do
+  defp prepare_journal_share(true, port, before, link) do
     deadline = System.monotonic_time(:millisecond) + 5_000
 
-    with nil <- Process.get(@journal_share_slot),
+    with shares when is_map(shares) and map_size(shares) < 128 <- Process.get(@journal_share_slot),
          {:os_pid, pid} when is_integer(pid) and pid > 0 <- Port.info(port, :os_pid),
          {:ok, %{device: device, inode: inode}} <-
            Ipse.Runner.session_header_lock_identity(port, deadline),
          true <- device == before.major_device and inode == before.inode do
       token = make_ref()
 
-      Process.put(@journal_share_slot, %{
+      put_journal_share(token, %{
         token: token,
+        link: link,
         owner: self(),
         port: port,
         identity: %{pid: pid, device: device, inode: inode},
@@ -627,7 +677,7 @@ defmodule Ipse.Session.PendingAcceptance do
 
   @doc false
   def journal_share_identity(token) do
-    case Process.get(@journal_share_slot) do
+    case journal_share(token) do
       %{token: ^token, owner: owner, port: port, identity: identity, phase: :ready}
       when owner == self() ->
         if Port.info(port, :connected) == {:connected, owner}, do: {:ok, identity}, else: @error
@@ -640,14 +690,22 @@ defmodule Ipse.Session.PendingAcceptance do
   end
 
   @doc false
+  def journal_share_verified_identity(token, link) do
+    with %{link: ^link} <- journal_share(token),
+         {:ok, identity} <- journal_share_identity(token),
+         do: {:ok, identity},
+         else: (_ -> @error)
+  end
+
+  @doc false
   def journal_share_export(token, operation, recipient, deadline) do
-    case Process.get(@journal_share_slot) do
+    case journal_share(token) do
       %{token: ^token, owner: owner, port: port, phase: :ready} = state when owner == self() ->
-        Process.put(@journal_share_slot, %{state | phase: :poisoned})
+        put_journal_share(token, %{state | phase: :poisoned})
 
         if Ipse.Runner.session_share_export(port, 1, 1, operation, recipient, deadline) == :ok do
-          Process.put(
-            @journal_share_slot,
+          put_journal_share(
+            token,
             Map.merge(state, %{phase: :shared, operation: operation})
           )
 
@@ -663,13 +721,13 @@ defmodule Ipse.Session.PendingAcceptance do
 
   @doc false
   def journal_share_settle(token, operation, deadline) do
-    case Process.get(@journal_share_slot) do
+    case journal_share(token) do
       %{token: ^token, owner: owner, port: port, phase: :shared, operation: ^operation} = state
       when owner == self() ->
-        Process.put(@journal_share_slot, %{state | phase: :poisoned})
+        put_journal_share(token, %{state | phase: :poisoned})
 
         if Ipse.Runner.session_share_settle(port, 2, 1, operation, deadline) == :ok do
-          Process.put(@journal_share_slot, %{state | phase: :settled})
+          put_journal_share(token, %{state | phase: :settled})
           :ok
         else
           @error
@@ -679,6 +737,11 @@ defmodule Ipse.Session.PendingAcceptance do
         @error
     end
   end
+
+  defp journal_share(token), do: Map.get(Process.get(@journal_share_slot) || %{}, token)
+
+  defp put_journal_share(token, state),
+    do: Process.put(@journal_share_slot, Map.put(Process.get(@journal_share_slot), token, state))
 
   defp journal_private?(stat),
     do: stat.type == :regular and stat.links == 1 and Bitwise.band(stat.mode, 0o077) == 0

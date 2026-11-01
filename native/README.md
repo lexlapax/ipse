@@ -719,8 +719,12 @@ no effect authority.
 
 The stdin commands remain internal transport primitives. The Linux
 `Session.WorkerInput` adapter uses them for exact protected export requests,
-host-action continuations and output-page requests with dependency versions 3–5;
-accepted-decision and other Worker purposes remain outside that adapter.
+host-action continuations and output-page requests with dependency versions 3–6.
+Accepted inputs additionally retain every original management-journal description
+through the same `Z` protocol before the actual write; those journals share the
+128-original-owner budget with inactive Session groups, alongside the one
+consuming Session description. Other Worker purposes and accepted-decision
+terminal approval remain outside that adapter.
 The trusted caller must establish the semantic roles of its
 locks, exact pending worker frame, source union and current permission. Three
 generic locks or a successful descriptor transfer prove none of those facts.

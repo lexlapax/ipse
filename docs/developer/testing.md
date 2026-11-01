@@ -628,7 +628,7 @@ For the actual managed export adapter, also run:
 ```sh
 mix test test/ipse/extension/managed_collection_call_session_test.exs --only worker_input_boundary --max-cases 1
 mix test test/ipse/session/managed_supersession_session_test.exs --max-cases 1
-mix test test/ipse/session/operator_assertion_integration_test.exs --only managed_approval --max-cases 1
+mix test test/ipse/session/operator_assertion_integration_test.exs --only managed_approval:true --max-cases 1
 ```
 
 The first suite checks paged delivery, strict Saved commitments and permission
@@ -649,6 +649,22 @@ first failed evidence when repairing fixture timing. These synthetic local-route
 controls establish neither human attribution, live-model quality, installed
 delivery nor accepted-decision support. Run Rust native tests and Mix terminal
 cohorts serially because they share the conservative per-user terminal lock.
+
+The separate opt-in `genuine_pending_accepted_recall` journey in
+`test/extensions/knowledge/knowledge_session_test.exs` uses freshly built isolated
+Knowledge artifacts, two ordinary captures and actual public native acceptance.
+Its registered capture and recall endpoints use distinct explicit service IDs;
+reusing a protected ID for a different origin is a real refusal. Wire fixtures
+must select actual returned source handles rather than infer task order from
+user-role messages after native reference framing. The accepted-input observer
+adds the original management journals to its actual importer descriptor checks.
+Run the single- and multiple-decision cases with strict Saved, original-source
+and altered-event controls. A shared lease must also work at the ordinary
+resource ceiling, reject foreign/forged/spent handles, and preserve the combined
+original-owner budget. Follow the
+[fresh-runtime recipe](../archive/2026-10-26-p30-p31-implementation/pending-review-boundary-20261031.md#local-evidence-and-limits)
+with the corresponding opt-in variable and tag. These are synthetic source
+journeys, not independent human, live-model or installed evidence.
 
 Filesystem cases need actual case/normalization behavior and inode checks. Native
 fixtures use private homes, not the operator cache. The [sandbox chapter](sandbox.md)

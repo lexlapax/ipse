@@ -319,14 +319,34 @@ defmodule Ipse.Session.ManagedUse do
   """
   def with_display_dependencies(context, dependencies, fun)
       when is_map(context) and is_list(dependencies) and is_function(fun, 2) do
+    retained_dependencies(context, dependencies, fun, :display)
+  end
+
+  def with_display_dependencies(_, _, _), do: @error
+
+  @doc false
+  # The Session-owned export adapter must transfer every returned journal lease
+  # to its actual stdin sink. This does not open accepted-decision UI display.
+  def with_worker_dependencies(context, dependencies, fun)
+      when is_map(context) and is_list(dependencies) and is_function(fun, 2),
+      do: retained_dependencies(context, dependencies, fun, :worker)
+
+  def with_worker_dependencies(_, _, _), do: @error
+
+  defp retained_dependencies(context, dependencies, fun, purpose) do
     entered = :atomics.new(2, signed: true)
 
     result =
-      prepare_display_dependencies(context, dependencies, fn current, held ->
-        :atomics.put(entered, 2, held.deadline)
-        :atomics.put(entered, 1, 1)
-        fun.(current, held)
-      end)
+      prepare_display_dependencies(
+        context,
+        dependencies,
+        fn current, held ->
+          :atomics.put(entered, 2, held.deadline)
+          :atomics.put(entered, 1, 1)
+          fun.(current, held)
+        end,
+        purpose
+      )
 
     if :atomics.get(entered, 1) == 1 and
          (not match?({:ok, _}, result) or
@@ -335,29 +355,52 @@ defmodule Ipse.Session.ManagedUse do
        else: result
   end
 
-  def with_display_dependencies(_, _, _), do: @error
-
-  defp prepare_display_dependencies(context, dependencies, fun) do
+  defp prepare_display_dependencies(context, dependencies, fun, purpose) do
     with true <- dependencies != [],
          {:ok, ^dependencies} <- ManagedReference.union([dependencies]),
-         true <- Enum.all?(dependencies, &(&1["version"] in [3, 4, 5])),
+         true <-
+           Enum.all?(
+             dependencies,
+             &(&1["version"] in if(purpose == :worker, do: [3, 4, 5, 6], else: [3, 4, 5]))
+           ),
          true <- bounded?(dependencies) and Enum.all?(dependencies, &bound?(&1, context)) do
       Resources.file_effect(fn ->
-        with {:ok, first} <-
-               protected(context, dependencies, fn cap, catalog, _ ->
-                 observe(context, dependencies, cap, catalog, %{})
-               end),
-             true <- length(first.proofs) <= @max_sources do
-          use = fn _sources, leases, active ->
-            display_dependencies_owned(context, dependencies, first, leases, active, fun)
-          end
+        with_input_journals(context, dependencies, purpose, fn journals, journal_leases ->
+          with {:ok, first} <-
+                 protected(context, dependencies, fn cap, catalog, _ ->
+                   observe(context, dependencies, cap, catalog, journals)
+                 end),
+               true <- length(first.proofs) <= @max_sources do
+            use = fn _sources, leases, active ->
+              if length(leases) + length(journal_leases) <= @max_sources and
+                   Enum.all?(journal_leases, fn lease ->
+                     match?(
+                       {:ok, _},
+                       PendingAcceptance.journal_share_verified_identity(lease.token, lease.link)
+                     )
+                   end) do
+                display_dependencies_owned(
+                  context,
+                  dependencies,
+                  first,
+                  leases,
+                  active,
+                  journals,
+                  journal_leases,
+                  fun
+                )
+              else
+                @error
+              end
+            end
 
-          if first.proofs == [],
-            do: use.([], [], false),
-            else: StoredSources.with_shareable_union(context, nil, first.proofs, use)
-        else
-          _ -> @error
-        end
+            if first.proofs == [],
+              do: use.([], [], false),
+              else: StoredSources.with_shareable_union(context, nil, first.proofs, use)
+          else
+            _ -> @error
+          end
+        end)
       end)
     else
       _ -> @error
@@ -368,9 +411,18 @@ defmodule Ipse.Session.ManagedUse do
     _, _ -> @error
   end
 
-  defp display_dependencies_owned(context, dependencies, first, leases, active, fun) do
+  defp display_dependencies_owned(
+         context,
+         dependencies,
+         first,
+         leases,
+         active,
+         journals,
+         journal_leases,
+         fun
+       ) do
     protected(context, dependencies, fn cap, catalog, policy ->
-      with {:ok, ^first} <- observe(context, dependencies, cap, catalog, %{}),
+      with {:ok, ^first} <- observe(context, dependencies, cap, catalog, journals),
            policy = use_deadline(policy, first.current),
            deadline = min(policy["expires_at_ms"], System.system_time(:millisecond) + 5_000),
            true <- System.system_time(:millisecond) < deadline,
@@ -410,6 +462,7 @@ defmodule Ipse.Session.ManagedUse do
                 consent: consent,
                 collection: collection,
                 source_leases: leases,
+                journal_leases: journal_leases,
                 source_proofs: first.proofs,
                 active_sources: active,
                 deadline: System.monotonic_time(:millisecond) + remaining,
@@ -759,10 +812,42 @@ defmodule Ipse.Session.ManagedUse do
   end
 
   defp with_accepted_journals(context, dependencies, fun) do
+    with {:ok, links} <- accepted_links(context, dependencies) do
+      if links == [],
+        do: fun.(%{}),
+        else:
+          PendingAcceptance.with_committed_management_journals(
+            context.config[:home],
+            context.config[:semantic_admission]["pin"]["project_id"],
+            context.config[:semantic_admission]["pin"]["namespace"],
+            links,
+            fun
+          )
+    end
+  end
+
+  defp with_input_journals(context, dependencies, :worker, fun) do
+    with {:ok, links} <- accepted_links(context, dependencies) do
+      if links == [],
+        do: fun.(%{}, []),
+        else:
+          PendingAcceptance.with_shareable_committed_management_journals(
+            context.config[:home],
+            context.config[:semantic_admission]["pin"]["project_id"],
+            context.config[:semantic_admission]["pin"]["namespace"],
+            links,
+            fun
+          )
+    end
+  end
+
+  defp with_input_journals(_, _, :display, fun), do: fun.(%{}, [])
+
+  defp accepted_links(context, dependencies) do
     accepted = Enum.filter(dependencies, &(&1["version"] === 6))
 
     if accepted == [] do
-      fun.(%{})
+      {:ok, []}
     else
       admission = context.config[:semantic_admission]
       pin = admission["pin"]
@@ -797,13 +882,7 @@ defmodule Ipse.Session.ManagedUse do
                  end
                end)
              end) do
-        PendingAcceptance.with_committed_management_journals(
-          context.config[:home],
-          pin["project_id"],
-          pin["namespace"],
-          links,
-          fun
-        )
+        {:ok, links}
       else
         _ -> @error
       end

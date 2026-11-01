@@ -933,6 +933,14 @@ defmodule Ipse.Runner do
   # Reserved for inactive original journal readers after journal/lock checks.
   def lock_source(path), do: acquire_lock(path, :source_lock, true)
 
+  @doc false
+  # Same protected resume/share protocol, using the existing original-source reserve.
+  def share_source_lock(path) do
+    if :os.type() == {:unix, :linux},
+      do: acquire_lock(path, :source_lock, true, :resume_share_v2),
+      else: {:error, :header_lock_unavailable}
+  end
+
   defp acquire_lock(path, kind, protected, mode \\ :legacy)
 
   defp acquire_lock(path, kind, protected, mode)

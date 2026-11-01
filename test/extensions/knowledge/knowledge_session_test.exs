@@ -592,6 +592,26 @@ defmodule IpseKnowledge.KnowledgeSessionTest do
       "headless" => true
     }
 
+    {config, selection} =
+      if accept? == :public_recall do
+        config = registered_capture_config(config)
+
+        assert {:ok, routes} =
+                 Ipse.Extension.SemanticRoutes.resolve(config, [
+                   Map.merge(
+                     Map.new(
+                       ~w(processing_region storage_region cache_retention account_controls),
+                       &{&1, nil}
+                     ),
+                     %{"operation" => "main", "profile" => nil}
+                   )
+                 ])
+
+        {config, Map.put(selection, "routes", routes)}
+      else
+        {config, selection}
+      end
+
     assert {:ok, policy} = SemanticConsent.prepare(binding, entry.identity, selection)
     control = SemanticAdmission.control_root(home)
     {:ok, before} = Consent.snapshot(control, binding["project_id"])
@@ -677,7 +697,8 @@ defmodule IpseKnowledge.KnowledgeSessionTest do
               get_in(&1, ["request", "request", "op"]) == "commit")
         )
 
-      assert commit
+      assert commit,
+             "Capture produced no commit: #{inspect(Enum.map(events, &recall_trace/1), limit: :infinity)}"
 
       if attack? do
         assert commit["outcome"]["status"] == "failed"
@@ -881,7 +902,31 @@ defmodule IpseKnowledge.KnowledgeSessionTest do
                    operation["status"] == "settled"
                  end)
 
-          assert {:ok, _} = Ipse.Session.Saved.restore(repeated_events, id)
+          assert {:ok, restored} = Ipse.Session.Saved.restore(repeated_events, id)
+
+          if accept? == :public_recall do
+            assert Enum.any?(repeated_events, fn event ->
+                     projection = event["projection"] || %{}
+
+                     roots =
+                       Enum.map(
+                         projection["old_dependencies"] || [],
+                         &get_in(&1, ["collection", "generation"])
+                       )
+
+                     projection["type"] == "managed_root_transition" and
+                       Enum.sort(Enum.uniq(roots)) == [1, 2]
+                   end)
+
+            assert Enum.any?(restored.messages, fn message ->
+                     message["ipse_root_history"] == %{
+                       "version" => 1,
+                       "old_generation" => 1,
+                       "new_generation" => 2
+                     }
+                   end)
+          end
+
           assert :ok = Session.close_confirmed(resumed)
 
           if accept? == :path_swap do
@@ -1381,6 +1426,16 @@ defmodule IpseKnowledge.KnowledgeSessionTest do
                )
     end
 
+    multi_policy =
+      if options.recall_accepted? do
+        assert {:ok, b} = ProjectIdentity.existing(home, Path.join(root, "work"))
+
+        assert {:ok, snapshot} =
+                 Consent.existing_snapshot(SemanticAdmission.control_root(home), b["project_id"])
+
+        snapshot["policy"]
+      end
+
     revoked_args =
       ["--management-review-race", System.find_executable("elixir"), "--erl", "+S 2:2"] ++
         paths ++
@@ -1444,6 +1499,51 @@ defmodule IpseKnowledge.KnowledgeSessionTest do
       assert index_output =~ "PUBLIC_PENDING_REVIEW_INDEX_PASSED"
       refute index_output =~ second_change["value"]["text"]
     end
+
+    if options.recall_accepted? do
+      assert {:ok, b} = ProjectIdentity.existing(home, Path.join(root, "work"))
+      control = SemanticAdmission.control_root(home)
+      assert {:ok, revoked} = Consent.existing_snapshot(control, b["project_id"])
+
+      assert {:ok, _} =
+               Consent.replace(
+                 control,
+                 b["project_id"],
+                 revoked["epoch"],
+                 multi_policy,
+                 System.system_time(:millisecond)
+               )
+
+      File.rename!(
+        Path.join(root, "pending-management-host-orchestrated.json"),
+        Path.join(root, "pending-management-first-receipt.json")
+      )
+
+      {output, status} =
+        System.cmd(
+          driver,
+          ["--management-review", System.find_executable("elixir"), "--erl", "+S 2:2"] ++
+            paths ++
+            [script, root, "host-orchestrated"],
+          stderr_to_stdout: true
+        )
+
+      assert status == 0, output
+      assert output =~ "Accepted the selected proposal as your decision"
+
+      second =
+        root
+        |> Path.join("pending-management-host-orchestrated.json")
+        |> File.read!()
+        |> Jason.decode!()
+
+      assert second["event"]["facts"]["journal_id"] != result["event"]["facts"]["journal_id"]
+
+      exercise_accepted_recall(options.config, Path.join(root, "work"), history_dir, [
+        result["event"],
+        second["event"]
+      ])
+    end
   end
 
   defp wait_for_fixture(path, deadline) do
@@ -1492,16 +1592,85 @@ defmodule IpseKnowledge.KnowledgeSessionTest do
                    end
 
                  try do
-                   Ipse.Session.PendingAcceptance.with_committed_management_journal(
-                     config.home,
-                     project,
-                     namespace,
-                     link,
-                     fn checked ->
-                       assert JSON.digest([checked.event]) == link["acceptance_event_sha256"]
-                       {:ok, :checked}
-                     end
-                   )
+                   assert {:ok, :checked} =
+                            Ipse.Session.PendingAcceptance.with_committed_management_journal(
+                              config.home,
+                              project,
+                              namespace,
+                              link,
+                              fn checked ->
+                                assert JSON.digest([checked.event]) ==
+                                         link["acceptance_event_sha256"]
+
+                                {:ok, :checked}
+                              end
+                            )
+
+                   assert {:ok, token} =
+                            Ipse.Session.PendingAcceptance.with_shareable_committed_management_journals(
+                              config.home,
+                              project,
+                              namespace,
+                              [link, link],
+                              fn checked, [lease] ->
+                                assert JSON.digest([checked[link["journal_id"]].event]) ==
+                                         link["acceptance_event_sha256"]
+
+                                assert {:ok, _} =
+                                         Ipse.Session.PendingAcceptance.journal_share_verified_identity(
+                                           lease.token,
+                                           link
+                                         )
+
+                                assert {:error, _} =
+                                         Ipse.Session.PendingAcceptance.journal_share_identity(
+                                           make_ref()
+                                         )
+
+                                assert {:error, _} =
+                                         Ipse.Session.PendingAcceptance.journal_share_verified_identity(
+                                           lease.token,
+                                           Map.put(
+                                             link,
+                                             "acceptance_event_sha256",
+                                             String.duplicate("0", 64)
+                                           )
+                                         )
+
+                                foreign =
+                                  Task.async(fn ->
+                                    Ipse.Session.PendingAcceptance.journal_share_identity(
+                                      lease.token
+                                    )
+                                  end)
+
+                                assert {:error, _} = Task.await(foreign, 5_000)
+                                {:ok, lease.token}
+                              end
+                            )
+
+                   assert {:error, _} =
+                            Ipse.Session.PendingAcceptance.journal_share_identity(token)
+
+                   assert {:error, _} =
+                            Ipse.Session.PendingAcceptance.with_shareable_committed_management_journals(
+                              config.home,
+                              project,
+                              namespace,
+                              [
+                                link,
+                                Map.put(
+                                  link,
+                                  "acceptance_event_sha256",
+                                  String.duplicate("0", 64)
+                                )
+                              ],
+                              fn _, _ ->
+                                flunk("conflicting journal identities reached a callback")
+                              end
+                            )
+
+                   {:ok, :checked}
                  after
                    Enum.each(tickets, &Resources.closed(&1, :ok))
                  end
@@ -1513,7 +1682,8 @@ defmodule IpseKnowledge.KnowledgeSessionTest do
   end
 
   defp exercise_accepted_recall(config, cwd, history_dir, event) do
-    {base, listener, server} = accepted_recall_server()
+    multiple = is_list(event)
+    {base, listener, server} = accepted_recall_server(if(multiple, do: 1, else: 3))
 
     on_exit(fn ->
       :gen_tcp.close(listener)
@@ -1528,7 +1698,12 @@ defmodule IpseKnowledge.KnowledgeSessionTest do
         base_url: base,
         timeout_ms: 5000,
         max_output_tokens: 64,
-        inference_services: %{"local" => %{"version" => 1, "origins" => [base]}}
+        inference_services: %{
+          if(multiple, do: "multi_recall", else: "local") => %{
+            "version" => 1,
+            "origins" => [base]
+          }
+        }
       })
 
     assert {:ok, binding} = ProjectIdentity.existing(config.home, cwd)
@@ -1572,31 +1747,35 @@ defmodule IpseKnowledge.KnowledgeSessionTest do
     assert {:ok, selections} = Ipse.Config.Semantics.selection(policy)
 
     config = Map.put(config, :semantic_selections, selections)
-    text = event["facts"]["text"]
+    text = if multiple, do: Enum.map(event, & &1["facts"]["text"]), else: event["facts"]["text"]
     accepted_recall_session(config, cwd, history_dir, text, true)
 
-    source_path = Path.join(history_dir, event["facts"]["source_proof"]["session_id"] <> ".jsonl")
-    withheld_path = source_path <> ".withheld"
-    File.rename!(source_path, withheld_path)
+    unless multiple do
+      source_path =
+        Path.join(history_dir, event["facts"]["source_proof"]["session_id"] <> ".jsonl")
 
-    try do
-      accepted_recall_session(config, cwd, history_dir, text, false)
-    after
-      File.rename!(withheld_path, source_path)
-    end
+      withheld_path = source_path <> ".withheld"
+      File.rename!(source_path, withheld_path)
 
-    journal_path =
-      Path.join([config.home, "knowledge-management", event["facts"]["journal_id"] <> ".jsonl"])
+      try do
+        accepted_recall_session(config, cwd, history_dir, text, false)
+      after
+        File.rename!(withheld_path, source_path)
+      end
 
-    journal = File.read!(journal_path)
-    corrupted = String.replace(journal, Jason.encode!(text), Jason.encode!(text <> " tampered"))
-    assert corrupted != journal
-    File.write!(journal_path, corrupted)
+      journal_path =
+        Path.join([config.home, "knowledge-management", event["facts"]["journal_id"] <> ".jsonl"])
 
-    try do
-      accepted_recall_session(config, cwd, history_dir, text, false)
-    after
-      File.write!(journal_path, journal)
+      journal = File.read!(journal_path)
+      corrupted = String.replace(journal, Jason.encode!(text), Jason.encode!(text <> " tampered"))
+      assert corrupted != journal
+      File.write!(journal_path, corrupted)
+
+      try do
+        accepted_recall_session(config, cwd, history_dir, text, false)
+      after
+        File.write!(journal_path, journal)
+      end
     end
 
     assert :ok = Task.await(server, 1000)
@@ -1610,8 +1789,27 @@ defmodule IpseKnowledge.KnowledgeSessionTest do
              )
 
     try do
+      input_owners =
+        if eligible?, do: inspect_accepted_input_owners(session, config, history_dir, text)
+
       assert :ok = Session.prompt(session, "Which decision was accepted?")
-      assert_receive {:ipse, ^session, {:done, :ok}}, 30_000
+      assert_receive {:ipse, ^session, {:done, status}}, 30_000
+
+      if status != :ok do
+        assert {:ok, events} = Journal.load(history_dir, Session.info(session).id)
+
+        reason =
+          receive do
+            {:ipse, ^session, {:error, reason}} -> reason
+          after
+            0 -> :missing_error
+          end
+
+        flunk(
+          "Accepted recall ended #{status} (#{inspect(reason)}): #{inspect(Enum.map(events, &recall_trace/1), limit: :infinity)}"
+        )
+      end
+
       assert_receive {:accepted_recall_request, messages}, 5_000
       rendered = Jason.encode!(messages)
       assert {:ok, events} = Journal.load(history_dir, Session.info(session).id)
@@ -1634,13 +1832,14 @@ defmodule IpseKnowledge.KnowledgeSessionTest do
         end)
 
       assert accepted_read? == eligible?
+      if input_owners, do: assert(:owners_checked == Task.await(input_owners, 5_000))
 
       if eligible? do
         assert rendered =~ "accepted_decision"
-        assert rendered =~ text
+        for item <- List.wrap(text), do: assert(rendered =~ item)
       else
         refute rendered =~ "note_parts_v2"
-        refute rendered =~ text
+        for item <- List.wrap(text), do: refute(rendered =~ item)
 
         assert Enum.any?(events, fn event ->
                  event["type"] == "extension_action_result" and
@@ -1656,14 +1855,246 @@ defmodule IpseKnowledge.KnowledgeSessionTest do
     end
   end
 
-  defp accepted_recall_server do
+  # Observe the actual importer under a one-use BEAM pause, before its unchanged
+  # native write. The Session, publisher and Worker supply every real handle.
+  defp inspect_accepted_input_owners(session, config, history, text) do
+    expected = List.wrap(text)
+
+    checker =
+      Task.async(fn ->
+        receive do
+          {:accepted_pipe, controller, cap, frame} ->
+            try do
+              state = :sys.get_state(session)
+              pending = state.invocation.worker_input
+              barrier = state.share_barrier
+              dependencies = Enum.filter(pending.snapshot.dependencies, &(&1["version"] == 6))
+              assert length(dependencies) == length(expected)
+              assert pending.binding.frame === frame and pending.caller == cap.owner
+              <<size::32, bytes::binary-size(size)>> = frame
+              assert %{"stage" => "host.actions", "payload" => payload} = Jason.decode!(bytes)
+              record = get_in(payload, ["outcome", "value", "record", "value"])
+              assert record["kind"] == "accepted_decision" and record["text"] in expected
+
+              originals =
+                Enum.map(dependencies, fn dependency ->
+                  journal = dependency["subject"]["acceptance"]["journal_id"]
+
+                  assert {:ok, %{events: events}} =
+                           Journal.read_path(
+                             Path.join([config.home, "knowledge-management", journal <> ".jsonl"])
+                           )
+
+                  [accepted] = Enum.filter(events, &(&1["type"] == "pending_proposal_accepted"))
+
+                  assert JSON.digest([accepted]) ==
+                           dependency["subject"]["acceptance"]["event_sha256"]
+
+                  {journal, accepted["facts"]["source_proof"]["session_id"]}
+                end)
+
+              native = barrier.owner_recipient
+              assert native == barrier.writer_recipient
+              assert {:os_pid, supervisor} = Port.info(cap.port, :os_pid)
+              assert native != supervisor
+              helper = File.stat!("/proc/#{supervisor}/exe")
+              actual = File.stat!("/proc/#{native}/exe")
+              assert {helper.major_device, helper.inode} == {actual.major_device, actual.inode}
+
+              identities =
+                for fd <- File.ls!("/proc/#{native}/fd"),
+                    {:ok, stat} <- [File.stat("/proc/#{native}/fd/#{fd}")],
+                    do: {stat.major_device, stat.inode}
+
+              pin = state.config.semantic_admission["pin"]
+
+              paths =
+                [
+                  Path.join([config.home, "project-identities", ".lock"]),
+                  Path.join([
+                    SemanticAdmission.control_root(config.home),
+                    pin["project_id"],
+                    ".lock"
+                  ]),
+                  Path.join([
+                    SemanticAdmission.collection_root(config.home),
+                    pin["namespace"],
+                    ".lock"
+                  ]),
+                  Path.join(history, state.id <> ".lock")
+                ] ++
+                  Enum.flat_map(originals, fn {journal, original} ->
+                    [
+                      Path.join(history, original <> ".lock"),
+                      Path.join([config.home, "knowledge-management", journal <> ".lock"])
+                    ]
+                  end)
+
+              for path <- paths do
+                stat = File.stat!(path)
+                assert {stat.major_device, stat.inode} in identities
+                assert {:error, _} = Ipse.Runner.lock(path)
+              end
+
+              writer = :sys.get_state(state.journal_writer).share_barrier.writer_control
+              assert {writer.device, writer.inode} in identities
+              assert {:os_pid, owner} = Port.info(barrier.owner_port, :os_pid)
+              control = File.stat!("/proc/#{owner}/fd/0")
+              assert {control.major_device, control.inode} in identities
+              worker = :sys.get_state(pending.worker)
+              assert worker.input.phase == :exported
+
+              assert {worker.input.binding.pipe.device, worker.input.binding.pipe.inode} in identities
+
+              :owners_checked
+            after
+              send(controller, :release_accepted_pipe)
+            end
+        after
+          20_000 -> flunk("accepted content never reached the actual native Worker writer")
+        end
+      end)
+
+    hook = fn
+      true, _, _ ->
+        true
+
+      _, {:in, {_, {publisher, _}, {:session_control_ticket_worker_input, _, _, _, proofs, _}}}, _
+      when length(proofs) >= length(expected) ->
+        {:dictionary, dictionary} = Process.info(publisher, :dictionary)
+        {_, controller} = List.keyfind(dictionary, {Ipse.Runner.Transaction, :controller}, 0)
+
+        gate = fn
+          :released, _, _ ->
+            :released
+
+          _, {:in, {_, _, {:pipe_write, cap, _, frame}}}, _ ->
+            send(checker.pid, {:accepted_pipe, self(), cap, frame})
+
+            receive do
+              :release_accepted_pipe -> :released
+            after
+              5_000 -> flunk("accepted-input owner inspection did not finish")
+            end
+
+          d, _, _ ->
+            d
+        end
+
+        assert :ok = :sys.install(controller, {gate, nil})
+        true
+
+      d, _, _ ->
+        d
+    end
+
+    assert :ok = :sys.install(session, {hook, false})
+    checker
+  end
+
+  # Two ordinary capture turns, using the real registered Ollama adapter rather
+  # than a provider-module override once managed dependencies enter history.
+  defp registered_capture_config(config) do
+    {:ok, listener} = :gen_tcp.listen(0, [:binary, active: false, ip: {127, 0, 0, 1}])
+    {:ok, {_, port}} = :inet.sockname(listener)
+    base = "http://127.0.0.1:#{port}"
+
+    server =
+      Task.async(fn ->
+        try do
+          for number <- 1..6 do
+            {:ok, socket} = :gen_tcp.accept(listener, 30_000)
+
+            try do
+              {_, bytes} = Ipse.Test.ProviderFixture.request(socket, "")
+              messages = Jason.decode!(bytes)["messages"]
+
+              message =
+                if rem(number, 3) == 0 do
+                  %{
+                    "role" => "assistant",
+                    "content" => "The unattended observation is pending review."
+                  }
+                else
+                  {name, arguments} =
+                    if rem(number, 3) == 1 do
+                      {"source_list", %{"limit" => 32}}
+                    else
+                      result = Enum.find(Enum.reverse(messages), &(&1["role"] == "tool"))
+                      sources = Jason.decode!(result["content"])["sources"]
+                      source = Enum.find(Enum.reverse(sources), &(&1["kind"] == "input.original"))
+
+                      text =
+                        Enum.at(
+                          ["Acme has owner Alex", "Beta has owner Mira"],
+                          div(number - 1, 3)
+                        )
+
+                      {"ext__knowledge__capture",
+                       %{
+                         "text" => text,
+                         "category" => "ordinary",
+                         "reason" => "selected observation",
+                         "event_at_ms" => nil,
+                         "source" => %{"handle" => source["read_handle"], "quote" => text}
+                       }}
+                    end
+
+                  %{
+                    "role" => "assistant",
+                    "content" => "",
+                    "tool_calls" => [%{"function" => %{"name" => name, "arguments" => arguments}}]
+                  }
+                end
+
+              body =
+                Jason.encode!(%{
+                  "model" => "synthetic",
+                  "message" => message,
+                  "done" => true,
+                  "prompt_eval_count" => 1,
+                  "eval_count" => 1
+                }) <> "\n"
+
+              :ok =
+                :gen_tcp.send(
+                  socket,
+                  "HTTP/1.1 200 Fixture\r\ncontent-type: application/x-ndjson\r\ncontent-length: #{byte_size(body)}\r\nconnection: close\r\n\r\n" <>
+                    body
+                )
+            after
+              :gen_tcp.close(socket)
+            end
+          end
+        after
+          :gen_tcp.close(listener)
+        end
+      end)
+
+    on_exit(fn ->
+      :gen_tcp.close(listener)
+      if Process.alive?(server.pid), do: Process.exit(server.pid, :kill)
+    end)
+
+    config
+    |> Map.delete(:provider_module)
+    |> Map.merge(%{
+      provider: :ollama,
+      base_url: base,
+      timeout_ms: 5000,
+      max_output_tokens: 64,
+      inference_services: %{"capture" => %{"version" => 1, "origins" => [base]}}
+    })
+  end
+
+  defp accepted_recall_server(count) do
     owner = self()
     {:ok, listener} = :gen_tcp.listen(0, [:binary, active: false, ip: {127, 0, 0, 1}])
     {:ok, {_, port}} = :inet.sockname(listener)
 
     task =
       Task.async(fn ->
-        for _ <- 1..3 do
+        for _ <- 1..count do
           {:ok, socket} = :gen_tcp.accept(listener, 30_000)
 
           try do
@@ -1696,6 +2127,7 @@ defmodule IpseKnowledge.KnowledgeSessionTest do
         :ok
       end)
 
+    Process.unlink(task.pid)
     {"http://127.0.0.1:#{port}", listener, task}
   end
 

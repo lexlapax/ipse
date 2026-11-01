@@ -261,12 +261,12 @@ source ownership and [Collection reads](collection-sdk.md#revalidate-reads-and-d
 for the generic host boundary.
 
 Managed export inputs use a separate native delivery admission after read
-commitment. Its current version-3–5 adapter refuses version-6 accepted decisions
-until the additional original management-journal owner reaches that same sink.
-Read validation and a saved acceptance therefore do not currently establish
-successful accepted-decision recall. The
+commitment. Its version-3–6 adapter transfers every original acceptance journal
+with the original Session sources and consuming Session/Writer controls to the
+same native stdin writer. Complete settlement precedes callback release. Read
+validation and a saved acceptance alone do not authorize that input. The
 [input contract](session-sources.md#deliver-a-managed-export-input-under-its-original-owners)
-defines that remaining boundary.
+defines its owner, deadline and uncertainty checks.
 
 ### Verify the complete boundary
 
@@ -297,8 +297,10 @@ synthetic Session capture through actual CLI/native review, cancellation, finite
 allowance, duplicate/expiry/revocation refusal and owner-loss inspection.
 `genuine_pending_accepted_recall` adds a registered loopback provider request,
 missing-source and altered-acceptance-event controls, Saved reconstruction and
-confirmed close. This positive remains required while version-6 worker delivery
-is unavailable. The [public CLI record](../archive/2026-10-26-p30-p31-implementation/pending-review-cli-20261031.md)
+confirmed close. Its disclosed one-use BEAM pause checks the actual native
+importer's source, management-journal, policy, Session/Writer and stdin
+descriptions before the unchanged write. These observations are distinct from
+human use or installed qualification. The [public CLI record](../archive/2026-10-26-p30-p31-implementation/pending-review-cli-20261031.md)
 and [recall record](../archive/2026-10-26-p30-p31-implementation/accepted-recall-20261031.md)
 describe fresh-artifact isolation and exact limits. Run terminal suites
 sequentially. These fixtures qualify no real model quality, installed journey,

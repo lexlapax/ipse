@@ -749,9 +749,11 @@ convert it into a literal operator statement or independent truth.
 
 Committing that version-6 read is separate from delivering its continuation.
 The current [managed export-input adapter](session-sources.md#deliver-a-managed-export-input-under-its-original-owners)
-supports versions 3–5 and refuses accepted-decision input until the original
-management-journal owner can also reach its native stdin sink. The historical
-read receipt cannot stand in for that missing owner.
+supports versions 3–6. Accepted-decision input requires every original
+management-journal owner alongside original Session sources, consuming Session
+ownership and current policy at that same native stdin sink. Their complete
+settlement precedes callback release. The historical read receipt cannot stand
+in for any of those owners.
 
 The adapter retains the admitted dependencies through Session's actual action
 commit. `ManagedReads` binds the exact bounded result, request, operation, Session,

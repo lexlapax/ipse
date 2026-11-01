@@ -227,6 +227,14 @@ its own current guard. Producer and call resolution use the same verified
 successor mapping. Missing cache, record contents, mixed roots, unknown actions
 and intervening writes refuse instead of receiving this projection.
 
+A settled Worker input can already have authenticated that same adjacent
+successor before model preparation. Model projection may then combine the
+original cached metadata with that exact successor guard. It requires the
+recorded mapping for every member of the complete causal write union and the
+known successful own action, reacquires the current root, and adds the same
+historical notice. Another root or an unrecorded fresh guard cannot join this
+case. Worker admission itself retains its stricter single-old-root rule.
+
 Result preparation independently rederives the actual returned query and selected
 provenance before its dependencies and version-2 observation are committed.
 Saved repeats that relation chronologically against the original source window;
@@ -403,7 +411,7 @@ artifact, publisher, stage, payload, request ID and immutable frame. A durable
 the payload or lend the worker a journal handle.
 
 The original tracked file-effect publisher acquires current source and policy
-owners through `ManagedUse.with_display_dependencies/3`. `Runner.SessionSource`
+owners through `ManagedUse.with_worker_dependencies/3`. `Runner.SessionSource`
 transfers the consuming Session's retained flock, Session control and drained
 Writer control, together with every inactive original source group, into the
 same native transaction that receives Worker stdin. Active proofs remain bound
@@ -427,9 +435,19 @@ It preserves original payload/dependency records and only resolves their
 historical root mapping for a freshly reacquired guard. Record contents, mixed
 roots, scans and unclassified dependencies cannot acquire that transition.
 
-This adapter supports dependency versions 3–5. Accepted-decision version 6 still
-refuses because its original management-journal owner must also reach the same
-sink. Other Worker entry points, including transforms, event notifications and
+This adapter supports dependency versions 3–6. For accepted decisions,
+`PendingAcceptance` authenticates the immutable acceptance links and retains
+each original committed management journal outside the policy owners. Its
+same-process tokens are bound to those exact links. The sink imports all of
+those journal descriptions alongside the original Session sources, consuming
+Session flock and controls; journal settlement precedes source/control close
+and Writer thaw. Duplicate links share one journal owner; conflicting identities
+for one journal refuse. Inactive original Session groups and management journals
+share the existing 128-entry reserve and native bound, in addition to the one
+consuming Session description. Missing owners or unconfirmed close withhold
+delivery. This Worker path supplies no accepted-decision terminal approval.
+
+Other Worker entry points, including transforms, event notifications and
 nested service calls, have no admission through this export adapter. Managed
 nested tool/MCP result delivery retains its separate refusal gate. Do not infer
 those authorities from a successful export input.
@@ -563,8 +581,8 @@ They establish no independent human, live-model, installed or accepted-decision
 approval qualification.
 
 A resource scope reserves 128 source-lock entries, shared by inactive original
-Session journals and nontransferable acceptance-journal reads. Bound the complete
-set when combining them. These locks have a separate reserve from the ordinary
+Session journals and acceptance-journal reads, including transferable ones.
+Bound the complete set when combining them. These locks have a separate reserve from the ordinary
 32-resource registration limit, so source verification does not itself consume
 the slots needed for the protected transaction or other live resources. The
 existing controlled-child path can add up to 32 child entries separately;
