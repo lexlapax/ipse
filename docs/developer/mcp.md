@@ -31,6 +31,18 @@ Flattened IDs are collision-checked, including the provider's 64-byte name limit
 Descriptions/schemas and exact selected targets reach model/approval manifests as
 untrusted data. Advertised capabilities do not expand the allowlist.
 
+When a model proposal depends on managed knowledge, follow
+`Session.ManagedApproval` before the ordinary dispatch below. Session binds the
+exact call, arguments, external target manifest and complete dependency union to
+its native display/input operation. Current original journals, Identity, policy,
+Collection and consuming Session/Writer ownership protect the displayed bytes.
+Display settlement releases those owners before the operator answers; execution
+then needs fresh current-use admission. Saved capture consent grants no MCP
+permission, and a subscriber's `Session.approve/3` call cannot replace this native
+review. Keep the [source-owner flow](session-sources.md#reconstruct-without-giving-old-tokens-authority)
+and transport effect boundary separate: a valid display does not prove that a
+later service start or request was admitted.
+
 Before approved dispatch, a short-lived client rediscovers and compares the
 reviewed descriptor digest. Session syncs `tool_started` before a request may
 execute. Resources and prompts require external-call approval too. Once dispatch
@@ -114,6 +126,25 @@ The Session tests exercise ordinary and extension calls through legacy journals,
 both extension transports, idle resume without replay, and refusal of unknown or
 mismatched versions. Changing the canonical fields requires another explicit
 format version, even if a new hash looks equivalent.
+
+For model-tool approval based on actual stored notes, build the matching native
+helper and host, then run the native journey serially:
+
+```sh
+mix test test/ipse/session/operator_assertion_integration_test.exs --only managed_mcp_approval:true --max-cases 1
+```
+
+The fixture explicitly selects one local stdio server through the normal config
+loader and recalls a genuinely captured signed statement. Its positive requires
+native approval, separate `mcp.start`/`mcp.send` admissions with confirmed cleanup,
+one server call, exact target bytes and the service reply in the next provider
+tool-result message. The paired control changes the original source while input
+waits; approval must then produce no tool-call admission or service effect.
+Both consumers reconstruct strict Saved state and resume idle without another
+call. Ordinary discovery may already have started the explicitly selected server;
+absence of `tools/call` does not prove zero discovery effects. These automated
+Linux/stdio controls do not qualify HTTP, all fault boundaries, human input or
+live-model quality. Broader transport controls below retain their separate scope.
 
 ## Schema subset
 

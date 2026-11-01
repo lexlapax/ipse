@@ -83,6 +83,32 @@ defmodule Ipse.Test.ManagedApprovalSession do
     }
   end
 
+  def mcp_config("save_managed_approval_mcp" <> _, home) do
+    path = Path.join(home, "approval-mcp.json")
+
+    server = %{
+      "id" => "notes",
+      "command" => System.find_executable("elixir"),
+      "args" => [
+        "--erl",
+        "+S 2:2",
+        "-pa",
+        Application.app_dir(:jason, "ebin"),
+        Path.expand("mcp_server.exs", __DIR__),
+        "normal"
+      ],
+      "tools" => ["write_note"],
+      "env" => %{"PATH" => Path.join(to_string(:code.root_dir()), "bin") <> ":/usr/bin:/bin"},
+      "timeout_ms" => 10_000
+    }
+
+    File.write!(path, Jason.encode!(%{"servers" => [server]}))
+    File.chmod!(path, 0o600)
+    path
+  end
+
+  def mcp_config(_, _), do: nil
+
   def run(config, cwd, home, dir, records, original_id, scenario, active_session \\ nil) do
     tool_name = proposal(scenario)["name"]
     scenario = control_scenario(scenario)
@@ -182,14 +208,27 @@ defmodule Ipse.Test.ManagedApprovalSession do
     end
 
     assert {:ok, events} = Journal.load(dir, id)
-    assert {:ok, _} = Session.Saved.restore(events, id)
+    assert {:ok, saved} = Session.Saved.restore(events, id)
 
-    if tool_name == "shell" do
+    if Process.alive?(consumer), do: assert(saved.messages == :sys.get_state(consumer).messages)
+
+    if allowed do
+      assert {:ok, dependencies} =
+               Session.ManagedLineage.dependencies(saved.managed_lineage, saved.messages)
+
+      assert dependencies != []
+      assert [_] = Enum.filter(events, &(&1["type"] == "managed_tool_result_observed"))
+
+      assert [%{"decision" => "current"}] =
+               Enum.filter(events, &(&1["type"] == "managed_tool_result_release"))
+    end
+
+    if tool_name in ["write", "shell"] do
       admissions = Enum.filter(events, &(&1["type"] == "managed_tool_effect_admitted"))
 
       if allowed do
         assert [admitted] = admissions
-        assert admitted["binding"]["name"] == "shell"
+        assert admitted["binding"]["name"] == tool_name
 
         assert [%{"status" => "confirmed", "effect_id" => effect_id}] =
                  Enum.filter(events, &(&1["type"] == "managed_tool_effect_cleanup"))
@@ -209,6 +248,35 @@ defmodule Ipse.Test.ManagedApprovalSession do
       assert [%{"name" => ^tool_name, "approval" => "approved"}] = starts
     else
       assert starts == []
+    end
+
+    if tool_name == "mcp__notes__write_note" do
+      [started] = starts
+
+      admissions =
+        Enum.filter(events, fn event ->
+          event["type"] == "managed_tool_effect_admitted" and
+            event["call_id"] == started["call_id"]
+        end)
+
+      if allowed do
+        assert File.read!(Path.join(cwd, "calls.log")) == "write_note\n"
+        assert Enum.map(admissions, &get_in(&1, ["binding", "kind"])) == ["mcp.start", "mcp.send"]
+
+        for admission <- admissions do
+          assert [%{"status" => "confirmed"}] =
+                   Enum.filter(events, fn event ->
+                     event["type"] == "managed_tool_effect_cleanup" and
+                       event["effect_id"] == admission["effect_id"]
+                   end)
+        end
+
+        assert [%{"decision" => "current"}] =
+                 Enum.filter(events, &(&1["type"] == "managed_tool_result_release"))
+      else
+        assert admissions == []
+        refute File.exists?(Path.join(cwd, "calls.log"))
+      end
     end
 
     count = if one_request?(scenario), do: 1, else: 2
@@ -242,6 +310,12 @@ defmodule Ipse.Test.ManagedApprovalSession do
       assert result["content"] =~ "NATIVE_SHELL_RESULT"
     end
 
+    if tool_name == "mcp__notes__write_note" and allowed do
+      {_, continuation} = List.last(requests)
+      assert [result] = Enum.filter(continuation["messages"], &(&1["role"] == "tool"))
+      assert result["content"] =~ "wrote note"
+    end
+
     if input_owners do
       ref = make_ref()
       send(input_owners.pid, {:inspection_result, self(), ref})
@@ -257,7 +331,8 @@ defmodule Ipse.Test.ManagedApprovalSession do
       assert :ok = Ipse.Runner.unlock(lock)
     end
 
-    if tool_name == "shell" do
+    if tool_name in ["write", "shell", "mcp__notes__write_note"] and
+         scenario != "save_managed_approval_owner_loss" do
       assert {:ok, closed} = Journal.load(dir, id)
       assert {:ok, saved} = Session.Saved.restore(closed, id)
 
@@ -281,6 +356,12 @@ defmodule Ipse.Test.ManagedApprovalSession do
       if allowed,
         do: assert(File.read!(Path.join(cwd, "result.txt")) == "Synthetic ordinary statement"),
         else: refute(File.exists?(Path.join(cwd, "result.txt")))
+
+      if tool_name == "mcp__notes__write_note" do
+        if allowed,
+          do: assert(File.read!(Path.join(cwd, "calls.log")) == "write_note\n"),
+          else: refute(File.exists?(Path.join(cwd, "calls.log")))
+      end
     end
 
     IO.puts("NATIVE_MANAGED_APPROVAL_SESSION_PASSED")
@@ -431,6 +512,13 @@ defmodule Ipse.Test.ManagedApprovalSession do
     }
   end
 
+  defp proposal("save_managed_approval_mcp" <> _) do
+    %{
+      "name" => "mcp__notes__write_note",
+      "arguments" => %{"path" => "result.txt", "content" => "Synthetic ordinary statement"}
+    }
+  end
+
   defp proposal(_) do
     %{
       "name" => "write",
@@ -439,6 +527,9 @@ defmodule Ipse.Test.ManagedApprovalSession do
   end
 
   defp control_scenario("save_managed_approval_shell" <> suffix),
+    do: "save_managed_approval" <> suffix
+
+  defp control_scenario("save_managed_approval_mcp" <> suffix),
     do: "save_managed_approval" <> suffix
 
   defp control_scenario(scenario), do: scenario

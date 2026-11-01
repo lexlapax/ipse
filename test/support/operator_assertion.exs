@@ -57,7 +57,11 @@ client = %{
   home: home,
   auth_dir: Path.join(home, "auth"),
   operator_home: root,
-  mcp_config: nil,
+  mcp_config:
+    if(managed_approval,
+      do: Ipse.Test.ManagedApprovalSession.mcp_config(requested_scenario, home),
+      else: nil
+    ),
   base_url: nil,
   operator_questions: true,
   accept_edits: false,

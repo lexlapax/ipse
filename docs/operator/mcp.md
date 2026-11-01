@@ -60,6 +60,17 @@ data. Every model-requested call, resource read, and prompt retrieval requires
 approval. Check the namespaced item, exact URI/name, fingerprint, sandbox, and
 full validated arguments, then use its printed `allow CODE` or deny with `n`.
 
+If a proposal uses protected native notes, the supported Linux chat path also
+needs the original note sources and current knowledge permission to display its
+complete arguments. Keep their original journals available. Display owners
+release before you answer, and the call checks them again before execution;
+a source change can therefore refuse a proposal you approved. Saved note-capture
+permission does not approve an MCP call. Follow
+[native knowledge approval](knowledge-permissions.md#review-the-project-and-exact-permission)
+for its storage/terminal prerequisites and
+[protected recovery](recovery.md#inspect-unconfirmed-protected-knowledge) after
+an unconfirmed display or effect.
+
 Prompt messages retain user/assistant roles as untrusted data; they do not become
 system instructions. Resources expose bounded text. Invalid/non-text
 resource/prompt results stop as unknown; ordinary tool results identify omitted

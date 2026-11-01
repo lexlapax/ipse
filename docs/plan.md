@@ -977,6 +977,10 @@ changed source, revocation and Session loss. The
 adds native approval, a physical command effect, owned cleanup and buffered stdout
 delivery, plus changed-source refusal before spawn. Broader shell loss/expiry
 and subscriber-fixture migration remain open. The
+[actual-note stdio MCP journey](archive/2026-10-26-p30-p31-implementation/native-mcp-approval-20261101.md)
+also covers native approval, separately admitted start/send, one service call,
+current result delivery and pre-dispatch source withdrawal. Root-only approval
+positives, broader fault boundaries and HTTP retain separate qualification. The
 [accepted-decision approval extension](archive/2026-10-26-p30-p31-implementation/accepted-approval-20261101.md)
 additionally retains original management journals at that same native sink,
 with Session/Writer-authenticated manifest counts/inodes. Native controls cover
