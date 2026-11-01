@@ -476,7 +476,7 @@ pub(crate) struct RetainedSource {
     peer: UnixStream,
     file: Option<File>,
     operation: [u8; 16],
-    pipe: bool,
+    pipe: Option<Vec<u8>>,
 }
 
 impl RetainedSource {
@@ -488,18 +488,20 @@ impl RetainedSource {
         ready(peer.as_raw_fd(), OUTPUT, Some(0), Some(item.process.as_raw_fd()), deadline)?;
         peer.write_all(b"A")?;
         if !retained_live(&item, &peer, &file) { return Err(error()); }
-        Ok(Self { item, peer, file: Some(file), operation, pipe: false })
+        Ok(Self { item, peer, file: Some(file), operation, pipe: None })
     }
 
     pub(crate) fn acquire_pipe(
-        entry: &[u8], operation: [u8; 16], expiry: u64, watched: &[i32], deadline: Instant,
+        entry: &[u8], operation: [u8; 16], expiry: u64, payload: &[u8], watched: &[i32], deadline: Instant,
     ) -> io::Result<Self> {
-        if entry.len() != ENTRY_SIZE || operation.iter().all(|b| *b == 0) { return Err(error()); }
+        if entry.len() != ENTRY_SIZE || operation.iter().all(|b| *b == 0) ||
+            payload.is_empty() || payload.len() > 32_772 { return Err(error()); }
         let item = expected(entry)?;
         let mut peer = open_peer_watch(&item, 0, watched, deadline)?;
-        let mut binding = [0u8; 24];
-        binding[..16].copy_from_slice(&operation);
-        binding[16..].copy_from_slice(&expiry.to_be_bytes());
+        let mut binding = operation.to_vec();
+        binding.extend_from_slice(&expiry.to_be_bytes());
+        binding.extend_from_slice(&(payload.len() as u32).to_be_bytes());
+        binding.extend_from_slice(payload);
         let mut guards = watched.to_vec();
         guards.push(item.process.as_raw_fd());
         let mut sent = 0;
@@ -520,14 +522,14 @@ impl RetainedSource {
         if (metadata.dev(), metadata.ino()) != (item.dev, item.ino) { return Err(error()); }
         ready_watch(peer.as_raw_fd(), OUTPUT, 0, &guards, deadline)?;
         peer.write_all(b"A")?;
-        let retained = Self { item, peer, file: Some(file), operation, pipe: true };
+        let retained = Self { item, peer, file: Some(file), operation, pipe: Some(payload.to_vec()) };
         if !retained.live() { return Err(error()); }
         Ok(retained)
     }
 
     pub(crate) fn live(&self) -> bool {
         self.file.as_ref().is_some_and(|file| {
-            if !self.pipe { return retained_live(&self.item, &self.peer, file); }
+            if self.pipe.is_none() { return retained_live(&self.item, &self.peer, file); }
             let Ok(metadata) = file.metadata() else { return false; };
             if !super::ipse_lease_transfer::pipe_identity(file, unsafe { geteuid() }) ||
                 (metadata.dev(), metadata.ino()) != (self.item.dev, self.item.ino) ||
@@ -545,7 +547,7 @@ impl RetainedSource {
         &mut self, bytes: &[u8], expiry: u64, deadline: Instant, valid: F,
     ) -> io::Result<()> {
         use std::time::{SystemTime, UNIX_EPOCH};
-        if !self.pipe || bytes.is_empty() || bytes.len() > 32_772 ||
+        if self.pipe.as_deref() != Some(bytes) || bytes.is_empty() || bytes.len() > 32_772 ||
             expiry == 0 || expiry > 9_007_199_254_740_991 { return Err(error()); }
         let mut offset = 0;
         while offset < bytes.len() {

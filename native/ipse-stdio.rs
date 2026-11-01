@@ -119,7 +119,7 @@ struct PipeShare {
 #[cfg(target_os = "linux")]
 fn pipe_share(
     input: &mut std::process::ChildStdin, state: &mut Option<PipeShare>,
-    used: &mut Vec<[u8; 16]>, kind: u8, body: &[u8], control: i32,
+    previous: &mut u64, kind: u8, body: &[u8], control: i32,
     cancelled: &AtomicBool,
 ) -> io::Result<()> {
     use std::fs::File;
@@ -134,13 +134,15 @@ fn pipe_share(
         crate::ipse_lease_transfer::control_quiet(control);
     if !valid() { return Err(error()); }
     match kind {
-        b'B' if body.len() == 24 && state.is_none() && used.len() < 256 => {
+        b'B' if body.len() == 24 && state.is_none() => {
             let operation: [u8; 16] = body[..16].try_into().unwrap();
+            let sequence = u64::from_be_bytes(operation[..8].try_into().unwrap());
             let expiry = u64::from_be_bytes(body[16..].try_into().unwrap());
             let before = Instant::now();
             let now = SystemTime::now().duration_since(UNIX_EPOCH).map_err(|_| error())?.as_millis();
             let remaining = u128::from(expiry).checked_sub(now).filter(|n| *n > 0 && *n <= 5_000).ok_or_else(error)?;
-            if operation.iter().all(|b| *b == 0) || used.contains(&operation) { return Err(error()); }
+            if sequence <= *previous || sequence > 9_007_199_254_740_991 ||
+                operation[8..].iter().all(|b| *b == 0) { return Err(error()); }
             let fd = input.as_raw_fd();
             let flags = unsafe { fcntl(fd, 3) };
             if flags < 0 || unsafe { fcntl(fd, 4, flags | 0x800) } < 0 { return Err(error()); }
@@ -149,7 +151,7 @@ fn pipe_share(
             let file = unsafe { File::from_raw_fd(duplicate) };
             if !crate::ipse_lease_transfer::pipe_identity(&file, unsafe { geteuid() }) { return Err(error()); }
             let m = file.metadata()?;
-            used.push(operation);
+            *previous = sequence;
             *state = Some(PipeShare { operation, expiry, file, flags,
                 deadline: before + Duration::from_millis(remaining as u64), transfer: None });
             let mut reply = operation.to_vec();
@@ -158,11 +160,13 @@ fn pipe_share(
             reply.extend_from_slice(&m.ino().to_be_bytes());
             frame(b'B', &reply)
         },
-        b'F' if body.len() == 84 => {
+        b'F' if (89..=32_860).contains(&body.len()) => {
             let share = state.as_mut().ok_or_else(error)?;
             if body[..16] != share.operation || share.transfer.is_some() || Instant::now() >= share.deadline { return Err(error()); }
+            let size = u32::from_be_bytes(body[84..88].try_into().unwrap()) as usize;
+            if size == 0 || size > 32_772 || body.len() != 88 + size { return Err(error()); }
             share.transfer = Some(crate::ipse_lease_transfer::export_pipe(
-                &share.file, &body[16..], share.operation, share.expiry, unsafe { geteuid() },
+                &share.file, &body[16..84], share.operation, share.expiry, &body[88..], unsafe { geteuid() },
                 control, share.deadline, valid,
             ).map_err(|_| error())?);
             frame(b'F', &share.operation)
@@ -315,11 +319,11 @@ fn input_reader(admitted: bool) -> io::Result<(
                 let valid = match header[0] {
                     b'B' => remaining == 24 && !managed_pending.load(Ordering::Acquire) &&
                         lease_pending.compare_exchange(false, true, Ordering::AcqRel, Ordering::Acquire).is_ok(),
-                    b'F' => remaining == 84 && lease_pending.load(Ordering::Acquire),
+                    b'F' => (89..=32_860).contains(&remaining) && lease_pending.load(Ordering::Acquire),
                     b'K' => remaining == 16 && lease_pending.load(Ordering::Acquire),
                     _ => false,
                 };
-                let mut body = vec![0u8; remaining.min(84)];
+                let mut body = vec![0u8; remaining.min(32_860)];
                 if !valid || owner.read_exact(&mut body).is_err() ||
                     input_tx.try_send(InputFrame::Lease(header[0], body, lease_pending.clone())).is_err() {
                     input_failure.store(2, Ordering::Release);
@@ -574,7 +578,7 @@ pub fn run(args: &[String]) -> Result<(), String> {
         #[cfg(target_os = "linux")]
         let mut pipe_state = None;
         #[cfg(target_os = "linux")]
-        let mut pipe_operations = Vec::new();
+        let mut pipe_sequence = 0;
         #[cfg(target_os = "macos")]
         if child_input.write_all(&input_prefix).is_err() {
             let _ = write_failure.compare_exchange(0, 2, Ordering::AcqRel, Ordering::Acquire);
@@ -591,7 +595,7 @@ pub fn run(args: &[String]) -> Result<(), String> {
             match input {
                 #[cfg(target_os = "linux")]
                 InputFrame::Lease(kind, body, pending) => {
-                    if pipe_share(&mut child_input, &mut pipe_state, &mut pipe_operations,
+                    if pipe_share(&mut child_input, &mut pipe_state, &mut pipe_sequence,
                         kind, &body, _cancel_control.as_raw_fd(), &input_cancelled).is_err() {
                         let _ = write_failure.compare_exchange(0, 2, Ordering::AcqRel, Ordering::Acquire);
                         signal_group(&input_group);

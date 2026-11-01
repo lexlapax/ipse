@@ -1,3 +1,5 @@
+Code.require_file("../../support/native_pipe_scope.exs", __DIR__)
+
 defmodule Ipse.Extension.WorkerTest do
   use ExUnit.Case, async: false
   alias Ipse.Extension.{Artifact, Worker}
@@ -106,6 +108,248 @@ defmodule Ipse.Extension.WorkerTest do
     assert {:ok, pid} = start(c, self(), options)
     assert {:ok, %{"sdk" => 1}} = Worker.call(pid, "initialize", options)
     pid
+  end
+
+  @tag skip: if(:os.type() == {:unix, :linux}, do: false, else: "Linux stdin ownership")
+  test "an actual prepared VM request stays private until native delivery settles", c do
+    assert {:ok, worker} =
+             Worker.start(
+               owner: self(),
+               store: c.store,
+               digest: c.digest,
+               trusted: c.digest,
+               protected_input: true,
+               input_session: self()
+             )
+
+    assert {:ok, %{"sdk" => 1}} = Worker.call(worker, "initialize", %{})
+    payload = %{"text" => "SYNTHETIC_PROTECTED_WORKER_FRAME café"}
+
+    assert {:error, :extension_input_unavailable} =
+             Task.async(fn ->
+               Worker.prepare_input(worker, "fixture.echo", payload)
+             end)
+             |> Task.await()
+
+    assert :sys.get_state(worker).sequence == 1
+    assert {:ok, handle, binding} = Worker.prepare_input(worker, "fixture.echo", payload)
+    assert binding.sequence == 2
+    assert <<2::64, _::binary-size(8)>> = binding.operation
+    assert binding.frame_sha256 == Ipse.JSON.sha256(binding.frame)
+    assert binding.payload_sha256 == Ipse.JSON.digest([payload])
+    assert binding.worker == worker and binding.caller == self() and binding.owner == self()
+    assert binding.artifact == c.digest
+    assert {:ok, ^binding} = Worker.input_binding(worker, handle, "fixture.echo", payload)
+    assert {:error, :extension_busy} = Worker.call(worker, "fixture.echo", %{})
+    assert {:error, :extension_input_unavailable} = Worker.await_input(worker, handle)
+
+    assert {:error, :extension_input_unavailable} =
+             Worker.input_binding(worker, handle, "fixture.echo", %{})
+
+    assert {:error, :extension_input_unavailable} =
+             Task.async(fn ->
+               Worker.input_binding(worker, handle, "fixture.echo", payload)
+             end)
+             |> Task.await()
+
+    result =
+      deliver_prepared(worker, handle, binding, c.root, fn ->
+        await_input_buffer(worker, System.monotonic_time(:millisecond) + 1_000)
+        assert {:error, :extension_input_unavailable} = Worker.await_input(worker, handle)
+        assert :sys.get_state(worker).pending.id == binding.sequence
+      end)
+
+    assert {:ok, %{"echo" => ^payload, "pid" => child}} = result
+    refute child == System.pid()
+    assert {:error, :extension_input_unavailable} = Worker.await_input(worker, handle)
+    assert {:ok, %{"echo" => %{}}} = Worker.call(worker, "fixture.echo", %{})
+    assert :ok = Worker.close(worker)
+  end
+
+  @tag timeout: 180_000
+  @tag skip: if(:os.type() == {:unix, :linux}, do: false, else: "Linux stdin ownership")
+  test "one actual worker settles more than 256 distinct native input handoffs", c do
+    assert {:ok, worker} =
+             Worker.start(
+               owner: self(),
+               store: c.store,
+               digest: c.digest,
+               trusted: c.digest,
+               protected_input: true
+             )
+
+    assert {:ok, %{"sdk" => 1}} = Worker.call(worker, "initialize", %{})
+
+    for step <- 1..257 do
+      payload = %{"step" => step}
+      assert {:ok, handle, binding} = Worker.prepare_input(worker, "fixture.echo", payload)
+      assert binding.sequence == step + 1
+
+      assert {:ok, %{"echo" => ^payload}} =
+               deliver_prepared(worker, handle, binding, c.root, fn -> :ok end)
+    end
+
+    assert :sys.get_state(worker).sequence == 258
+    assert :ok = Worker.close(worker)
+  end
+
+  defp deliver_prepared(worker, handle, binding, root, after_write) do
+    {scope, bound} = bind_prepared(worker, handle, binding, root)
+
+    assert :ok =
+             GenServer.call(
+               scope.cap.controller,
+               {:pipe_write, scope.cap, bound.operation, bound.frame}
+             )
+
+    after_write.()
+
+    closing =
+      :gen_server.send_request(scope.cap.controller, {:pipe_close, scope.cap, bound.operation})
+
+    assert :ok = Worker.settle_stdin(worker, handle)
+    assert {:reply, :ok} = :gen_server.receive_response(closing, 5_000)
+    Ipse.Test.NativePipeScope.close(scope)
+    Worker.await_input(worker, handle)
+  end
+
+  defp bind_prepared(worker, handle, binding, root) do
+    scope = Ipse.Test.NativePipeScope.open(Path.join(root, "controlled-" <> Ipse.Usage.id()))
+
+    wall =
+      System.system_time(:millisecond) +
+        min(3_000, binding.deadline - System.monotonic_time(:millisecond) - 1)
+
+    assert {:ok, bound} = Worker.bind_stdin(worker, handle, wall)
+    assert bound.frame == binding.frame and bound.frame_sha256 == binding.frame_sha256
+    assert bound.pipe.pid == binding.native_pid and bound.pipe.inode > 0
+    {name, secret} = {:crypto.strong_rand_bytes(16), :crypto.strong_rand_bytes(32)}
+    id = bound.pipe
+    entry = <<id.pid::32, name::binary, secret::binary, id.device::64, id.inode::64>>
+    recipient = <<scope.recipient::32, name::binary, secret::binary, id.device::64, id.inode::64>>
+
+    deadline =
+      System.monotonic_time(:millisecond) + min(3_000, wall - System.system_time(:millisecond))
+
+    request =
+      :gen_server.send_request(
+        scope.cap.controller,
+        {:pipe_import, scope.cap, bound.operation, entry, wall, deadline, bound.frame}
+      )
+
+    assert :ok = Worker.export_stdin(worker, handle, recipient)
+    assert {:reply, :ok} = :gen_server.receive_response(request, 5_000)
+
+    {scope, bound}
+  end
+
+  @tag :native_frame_binding
+  @tag skip: if(:os.type() == {:unix, :linux}, do: false, else: "Linux stdin ownership")
+  test "the native writer cannot replace the actual reserved worker frame", c do
+    assert {:ok, worker} =
+             Worker.start(
+               owner: self(),
+               store: c.store,
+               digest: c.digest,
+               trusted: c.digest,
+               protected_input: true
+             )
+
+    assert {:ok, %{"sdk" => 1}} = Worker.call(worker, "initialize", %{})
+
+    assert {:ok, handle, binding} =
+             Worker.prepare_input(worker, "fixture.echo", %{"expected" => true})
+
+    {scope, bound} = bind_prepared(worker, handle, binding, c.root)
+    <<size::32, body::binary-size(size)>> = bound.frame
+
+    replacement =
+      body |> Jason.decode!() |> Map.put("payload", %{"substituted" => true}) |> Jason.encode!()
+
+    altered = <<byte_size(replacement)::32, replacement::binary>>
+
+    assert {:unknown, :transaction_lost} =
+             GenServer.call(
+               scope.cap.controller,
+               {:pipe_write, scope.cap, bound.operation, altered}
+             )
+
+    assert :ok = Worker.close(worker)
+    Ipse.Test.NativePipeScope.close(scope)
+  end
+
+  test "ordinary workers do not acquire the private protected input interface", c do
+    worker = ready(c)
+
+    assert {:error, :extension_input_unavailable} =
+             Worker.prepare_input(worker, "fixture.echo", %{})
+
+    assert {:ok, %{"echo" => %{}}} = Worker.call(worker, "fixture.echo", %{})
+    assert :ok = Worker.close(worker)
+  end
+
+  @tag skip: if(:os.type() == {:unix, :linux}, do: false, else: "Linux stdin ownership")
+  test "a protected pending input ignores an alternate supervisor", c do
+    alternate = Path.join(c.root, "not-a-protected-supervisor")
+    File.write!(alternate, "not executable")
+    File.chmod!(alternate, 0o600)
+    previous = System.get_env("IPSE_RUNNER_PATH")
+    System.put_env("IPSE_RUNNER_PATH", alternate)
+
+    try do
+      assert {:ok, worker} =
+               Worker.start(
+                 owner: self(),
+                 store: c.store,
+                 digest: c.digest,
+                 trusted: c.digest,
+                 protected_input: true
+               )
+
+      assert {:ok, %{"sdk" => 1}} = Worker.call(worker, "initialize", %{})
+      assert {:ok, _, binding} = Worker.prepare_input(worker, "fixture.echo", %{})
+      assert {:ok, helper} = Ipse.Runner.protected_helper(c.root)
+      selected = File.stat!(helper)
+      actual = File.stat!("/proc/#{binding.native_pid}/exe")
+      assert {actual.major_device, actual.inode} == {selected.major_device, selected.inode}
+      assert :ok = Worker.close(worker)
+    after
+      if previous,
+        do: System.put_env("IPSE_RUNNER_PATH", previous),
+        else: System.delete_env("IPSE_RUNNER_PATH")
+    end
+  end
+
+  @tag skip: if(:os.type() == {:unix, :linux}, do: false, else: "Linux stdin ownership")
+  test "a prepared request keeps its original timer and confirms native cleanup", c do
+    counters = :atomics.new(9, signed: true)
+
+    assert {:ok, worker} =
+             Worker.start(
+               owner: self(),
+               store: c.store,
+               digest: c.digest,
+               trusted: c.digest,
+               protected_input: true,
+               cleanup_lease: counters
+             )
+
+    assert {:ok, %{"sdk" => 1}} = Worker.call(worker, "initialize", %{})
+    ref = Process.monitor(worker)
+    assert {:ok, handle, _} = Worker.prepare_input(worker, "fixture.echo", %{}, 100)
+    assert_receive {:DOWN, ^ref, :process, ^worker, :normal}, 3_000
+    assert :atomics.get(counters, 9) == 2
+    assert {:error, :extension_input_unavailable} = Worker.await_input(worker, handle)
+  end
+
+  defp await_input_buffer(worker, deadline) do
+    if is_binary(:sys.get_state(worker).input.response) do
+      :ok
+    else
+      assert System.monotonic_time(:millisecond) < deadline
+      Process.sleep(2)
+      await_input_buffer(worker, deadline)
+    end
   end
 
   test "explicit trust, options and compatibility are required before code loads", c do

@@ -349,19 +349,21 @@ pub(crate) fn export_retained<F: Fn() -> bool>(
 /// Lend the supervisor's actual nonblocking stdin write description once. This
 /// is a distinct descriptor class: it never satisfies a regular flock export.
 pub(crate) fn export_pipe<F: Fn() -> bool>(
-    file: &File, bytes: &[u8], operation: [u8; 16], expiry: u64, uid: u32,
+    file: &File, bytes: &[u8], operation: [u8; 16], expiry: u64, payload: &[u8], uid: u32,
     control: i32, deadline: Instant, valid: F,
 ) -> Result<RetainedTransfer, Failure> {
-    if operation.iter().all(|byte| *byte == 0) || bytes.len() != REQUEST_SIZE {
+    if operation.iter().all(|byte| *byte == 0) || bytes.len() != REQUEST_SIZE ||
+        payload.is_empty() || payload.len() > 32_772 {
         return Err(Failure::Refused);
     }
     let recipient = u32::from_be_bytes(bytes[..4].try_into().unwrap());
     let process = recipient_process(recipient)?;
     if !recipient_current(recipient, &process) { return Err(Failure::Refused); }
-    let mut binding = [0u8; 24];
-    binding[..16].copy_from_slice(&operation);
-    binding[16..].copy_from_slice(&expiry.to_be_bytes());
-    let stream = handoff(file, bytes, uid, control, deadline, valid, true, Some(binding))?;
+    let mut binding = operation.to_vec();
+    binding.extend_from_slice(&expiry.to_be_bytes());
+    binding.extend_from_slice(&(payload.len() as u32).to_be_bytes());
+    binding.extend_from_slice(payload);
+    let stream = handoff(file, bytes, uid, control, deadline, valid, true, Some(&binding))?;
     if !recipient_current(recipient, &process) { return Err(Failure::Unconfirmed); }
     Ok(RetainedTransfer { stream, operation, slot: 0, recipient, uid, process })
 }
@@ -382,7 +384,7 @@ fn handoff<F: Fn() -> bool>(
     outer_deadline: Instant,
     valid: F,
     uncertain_on_send: bool,
-    pipe: Option<[u8; 24]>,
+    pipe: Option<&[u8]>,
 ) -> Result<UnixStream, Failure> {
     if bytes.len() != REQUEST_SIZE {
         return Err(Failure::Refused);
@@ -431,7 +433,7 @@ fn handoff<F: Fn() -> bool>(
         return Err(Failure::Refused);
     }
     if let Some(binding) = pipe {
-        let mut received = [0u8; 24];
+        let mut received = vec![0u8; binding.len()];
         exact(&mut stream, control, &mut received, deadline)?;
         if received != binding || !valid() || !control_quiet(control) {
             return Err(Failure::Refused);

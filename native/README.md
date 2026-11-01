@@ -677,7 +677,8 @@ one command at a time, without suspending a busy Port. Ordinary command payloads
 are at most 8,192 bytes. A staged data payload is at most 16,393 bytes: its nine
 control bytes plus 16 KiB of file data. The private Linux `w` command permits
 32,781 bytes, including those nine control bytes, for one existing worker-sized
-frame. Partial frames and responses have a
+frame. The corresponding `p` import permits 32,877 bytes, including its control,
+identity, deadline and exact-frame binding. Partial frames and responses have a
 five-second bound within the original lifetime. Pipes are nonblocking; input
 EOF/error takes precedence over queued requests. Filesystem syscalls still depend
 on the host kernel; unconfirmed process cleanup remains unknown.
@@ -695,8 +696,8 @@ are exact, with no optional trailing bytes:
 | `z` | Close the most recently imported retained source using its 16-byte operation ID. |
 | `O`, `o` | Linux-only writer-control import (16-byte operation and 68-byte owner identity) and close (empty). |
 | `c`, `d` | Linux-only additional Session-control import (16-byte operation and 68-byte owner identity) and close (empty). The writer control must already be held; close imported sources and the Session control before closing the writer control. |
-| `p` | Linux-only stdin descriptor import: 16-byte operation, u64 original wall expiry and 68-byte supervisor/pipe identity. Requires three held locks, Writer and Session controls, and at least one retained source. |
-| `w` | One positive raw frame, at most 32,772 bytes. Consumes the imported pipe attempt; repeated writes refuse. |
+| `p` | Linux-only stdin descriptor import: 16-byte operation, u64 original wall expiry, 68-byte supervisor/pipe identity, u32 frame length and that exact frame (1..32,772 bytes). Requires three held locks, Writer and Session controls, and at least one retained source. |
+| `w` | One raw frame exactly equal to the frame sealed during import. Consumes the imported pipe attempt; substitution and repeated writes refuse. |
 | `q` | Close the imported stdin description using its 16-byte operation; complete exporter settlement before other operations. |
 | `j` | Empty: check the existing exact two-source acceptance guard. It refuses an additional Session control. |
 | `G` | u8 directory selector, u8 basename length, basename, u32 offset, u32 maximum total bytes (1..8 MiB). The basename is an allowlisted root target or immutable name. |
@@ -719,7 +720,11 @@ The stdin commands remain internal transport primitives without a Session or SDK
 delivery route. The trusted caller must establish the semantic roles of its
 locks, exact pending worker frame, source union and current permission. Three
 generic locks or a successful descriptor transfer prove none of those facts.
-While a pipe is imported, only check, its single write and close are allowed.
+The authenticated supervisor and importer compare the complete operation, original
+expiry and frame before lending the description. The importer retains those
+bytes and compares its write again; an operation ID or host-side hash alone
+does not bind the native write. While a pipe is imported, only check, its single
+write and close are allowed.
 Each nonblocking write checks the original expiry, fixed monotonic cutoff, held
 lock identities, both owner controls, original source exporters and pipe
 supervisor. Partial delivery or an unconfirmed final check remains unknown.
@@ -1184,13 +1189,15 @@ These are supervisor frames, separate from application bytes inside `I`:
 
 | Tag | Request and acknowledgement |
 | --- | --- |
-| `B` | Reserve the actual child stdin using a fresh 16-byte operation and u64 wall expiry, at most five seconds ahead. Replies with that operation, native supervisor PID (u32), device and inode (u64 each). |
-| `F` | Export that operation to a 68-byte recipient identity. The authenticated same-helper peer must echo the exact operation and original expiry before receiving the nonblocking write descriptor. Replies with the operation after transfer confirmation. |
+| `B` | Reserve the actual child stdin using a 16-byte operation (u64 increasing Worker request sequence plus a nonzero eight-byte nonce) and u64 wall expiry, at most five seconds ahead. Replies with that operation, native supervisor PID (u32), device and inode (u64 each). |
+| `F` | Export using the operation, 68-byte recipient identity, u32 frame length and exact frame (1..32,772 bytes). The authenticated same-helper peer must echo the operation, original expiry, length and complete frame before receiving the nonblocking write descriptor. Replies with the operation after transfer confirmation. |
 | `K` | Settle that operation after the importer closes its description. Replies with the operation after the existing C/F/G close handshake and restoration of stdin flags. |
 
 The supervisor pauses its own ordinary writes for the entire handoff. Concurrent
-`I`/`D`, another reservation, malformed transfer or reused operation stops the
-server group. A helper retains at most 256 used operation IDs. The importing
+`I`/`D`, another reservation, malformed transfer or non-increasing reserved
+sequence stops the server group. The supervisor retains only the last reserved
+sequence (1..9,007,199,254,740,991); intervening ordinary requests may leave gaps.
+This avoids a separate operation-count ceiling on an existing Worker. The importing
 transaction writes at most 32 KiB plus the existing four-byte worker prefix;
 neither this bound nor its one-use operation enlarges the worker JSON limit.
 Both the importer's close and the supervisor's `K` acknowledgement are required

@@ -600,11 +600,11 @@ For the private Linux stdin handoff, run the actual pipe/transaction component
 separately from Session qualification:
 
 ```sh
-mix test test/ipse/runner/transaction_pipe_test.exs --max-cases 1
+mix test test/ipse/runner/transaction_pipe_test.exs test/ipse/extension/worker_test.exs --max-cases 1
 ```
 
 It imports the real supervisor's stdin description and writes a complete bounded
-binary frame under kernel lock and owner controls. Wrong operation/expiry,
+binary frame under kernel lock and owner controls. Wrong operation/expiry/frame,
 duplicate delivery, concurrent ordinary input, elapsed admission and owner-loss
 cases must refuse or retain uncertainty at their actual boundaries. The small
 Rust reader fixes pipe capacity at 4096 bytes and records the first partial read
@@ -612,8 +612,15 @@ before Session-control, source-owner or supervisor loss. No complete-frame
 receipt may follow that partial delivery. For a pre-write zero-byte assertion,
 observe actual native source-owner exit; a BEAM actor's `DOWN` alone can precede
 its native cleanup. Policy/source lock contents are synthetic, not valid
-publication permission or original Session proofs. These controls qualify no
-SDK delivery, semantic source union, model quality or untested platform.
+publication permission or original Session proofs. The shared native-owner fixture
+keeps that distinction explicit. Worker cases independently build an artifact and
+exercise its actual VM: opaque preparation, exact native frame, early-response
+buffering, original timeout/cleanup, supervisor pinning and 257 successive handoffs
+through one Worker. The substitution control changes valid JSON while retaining
+the original protocol ID; native delivery must fail before that callback runs.
+These controls qualify no SDK authority, semantic source union, model quality or
+untested platform. Run Rust native tests and Mix terminal cohorts serially because
+they share the conservative per-user terminal lock.
 
 Filesystem cases need actual case/normalization behavior and inode checks. Native
 fixtures use private homes, not the operator cache. The [sandbox chapter](sandbox.md)

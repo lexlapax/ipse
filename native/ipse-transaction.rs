@@ -799,8 +799,8 @@ mod unix {
         Ok(rc != 0)
     }
     fn request_size(kind: u8, size: usize) -> bool {
-        size <= (if kind == b'w' { 32_781 } else { 16393 }) &&
-            (matches!(kind, b'D' | b'W' | b'w') || size <= 8192)
+        size <= (match kind { b'w' => 32_781, b'p' => 32_877, _ => 16393 }) &&
+            (matches!(kind, b'D' | b'W' | b'w' | b'p') || size <= 8192)
     }
     fn request(deadline: Instant) -> Result<Option<(u8, Vec<u8>)>, String> {
         let mut bytes = Vec::with_capacity(8197);
@@ -1187,11 +1187,15 @@ mod unix {
             }
             match kind {
                 #[cfg(target_os = "linux")]
-                b'p' if bytes.len() == 101 && stack.len() == 3 && writer_control.is_some() &&
+                b'p' if (106..=32_877).contains(&bytes.len()) && stack.len() == 3 && writer_control.is_some() &&
                     session_control.is_some() && !source.is_empty() && pipe.is_none() &&
                     state_intent.is_none() && !source_switch_attempted => {
                     let operation: [u8; 16] = bytes[9..25].try_into().unwrap();
                     let expiry = u64::from_be_bytes(bytes[25..33].try_into().unwrap());
+                    let size = u32::from_be_bytes(bytes[101..105].try_into().unwrap()) as usize;
+                    if size == 0 || size > 32_772 || bytes.len() != 105 + size {
+                        answer!(b'E', seq, Some(INVALID)); continue;
+                    }
                     let before = Instant::now();
                     let now = SystemTime::now().duration_since(UNIX_EPOCH).map_err(|_| "pipe clock unavailable")?.as_millis();
                     let remaining = u128::from(expiry).checked_sub(now);
@@ -1206,7 +1210,7 @@ mod unix {
                     for owner in [writer_control.as_ref().unwrap(), session_control.as_ref().unwrap()] {
                         watched.extend([owner.owner.as_raw_fd(), owner.expected.process.as_raw_fd(), owner.peer.as_raw_fd()]);
                     }
-                    match super::super::ipse_lease_sink::RetainedSource::acquire_pipe(&bytes[33..], operation, expiry, &watched, cutoff) {
+                    match super::super::ipse_lease_sink::RetainedSource::acquire_pipe(&bytes[33..101], operation, expiry, &bytes[105..], &watched, cutoff) {
                         Ok(held) if stack.iter().all(|h| valid(h, uid)) && source.iter().all(|h| h.live()) => {
                             pipe = Some((held, expiry, cutoff, false)); answer!(b'p', seq, None);
                         },

@@ -736,7 +736,7 @@ defmodule Ipse.Runner.Transaction do
 
     @impl true
     def handle_call(
-          {:pipe_import, cap, operation, entry, wall, deadline},
+          {:pipe_import, cap, operation, entry, wall, deadline, frame},
           {owner, _},
           %{
             owner: owner,
@@ -752,8 +752,16 @@ defmodule Ipse.Runner.Transaction do
            is_binary(entry) and byte_size(entry) == 68 and Ipse.JSON.safe_uint?(wall) and
            wall > System.system_time(:millisecond) and
            wall <= System.system_time(:millisecond) + 5_000 and
-           is_integer(deadline) and deadline > now() and deadline <= now() + 5_000 do
-        case command(s, ?p, <<operation::binary, wall::64, entry::binary>>, 3, deadline) do
+           is_integer(deadline) and deadline > now() and deadline <= now() + 5_000 and
+           is_binary(frame) and byte_size(frame) in 1..32_772 do
+        case command(
+               s,
+               ?p,
+               <<operation::binary, wall::64, entry::binary, byte_size(frame)::32,
+                 frame::binary>>,
+               3,
+               deadline
+             ) do
           {:ok, s, <<>>} -> {:reply, :ok, %{s | pipe: {operation, deadline, false}}}
           _ -> fail(s)
         end

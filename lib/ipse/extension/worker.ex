@@ -26,14 +26,48 @@ defmodule Ipse.Extension.Worker do
     :exit, _ -> {:error, :cleanup_unconfirmed}
   end
 
+  @doc false
+  # Private trusted-host transport. Preparation supplies no Session authority;
+  # the caller must hold and settle the complete source/policy scope separately.
+  def prepare_input(pid, stage, payload, timeout \\ 5_000),
+    do: input_call(pid, {:prepare_input, stage, payload, timeout})
+
+  @doc false
+  def input_binding(pid, handle, stage, payload),
+    do: input_call(pid, {:input_binding, handle, stage, payload}, 1_000)
+
+  @doc false
+  def bind_stdin(pid, handle, wall), do: input_call(pid, {:bind_stdin, handle, wall})
+
+  @doc false
+  def export_stdin(pid, handle, recipient),
+    do: input_call(pid, {:export_stdin, handle, recipient})
+
+  @doc false
+  def settle_stdin(pid, handle), do: input_call(pid, {:settle_stdin, handle})
+
+  @doc false
+  def await_input(pid, handle), do: input_call(pid, {:await_input, handle})
+
+  defp input_call(pid, request, timeout \\ :infinity) do
+    GenServer.call(pid, request, timeout)
+  catch
+    :exit, _ -> {:error, :extension_input_unavailable}
+  end
+
   @impl true
   def init(opts) do
     Process.flag(:trap_exit, true)
     owner = Keyword.fetch!(opts, :owner)
     digest = Keyword.fetch!(opts, :digest)
     options = Keyword.get(opts, :options, %{})
+    protected_input = Keyword.get(opts, :protected_input, false)
 
     with true <- is_pid(owner) and Process.alive?(owner),
+         true <- is_boolean(protected_input),
+         true <-
+           is_nil(opts[:input_session]) or
+             (is_pid(opts[:input_session]) and Process.alive?(opts[:input_session])),
          true <- Keyword.get(opts, :trusted) == digest,
          {:ok, artifact} <- Registry.lookup(Keyword.fetch!(opts, :store), digest),
          true <- is_nil(opts[:artifact_sha256]) or opts[:artifact_sha256] == artifact.digest,
@@ -53,7 +87,8 @@ defmodule Ipse.Extension.Worker do
              args,
              artifact.path,
              environment,
-             86_400_000
+             86_400_000,
+             protected_supervisor: protected_input
            ) do
       {:ok,
        %{
@@ -64,6 +99,10 @@ defmodule Ipse.Extension.Worker do
          cleanup_lease: opts[:cleanup_lease],
          options: options,
          manifest: artifact.manifest,
+         artifact: artifact.digest,
+         protected_input: protected_input,
+         input_session: opts[:input_session],
+         input: nil,
          pending: nil,
          sequence: 0,
          ready: false,
@@ -89,55 +128,146 @@ defmodule Ipse.Extension.Worker do
   end
 
   def handle_call({:invoke, stage, payload, timeout}, from, state) do
-    with true <- Process.alive?(state.owner),
-         true <- is_integer(timeout) and timeout >= 1 and timeout <= 30_000,
-         true <- permitted?(state, stage, payload),
-         :ok <- Ipse.Extension.validate(payload),
-         id = state.sequence + 1,
-         bytes =
-           Jason.encode!(%{"protocol" => 1, "id" => id, "stage" => stage, "payload" => payload}),
-         true <- byte_size(bytes) <= @limit,
-         :ok <-
-           Ipse.Runner.send_stdio(
-             state.port,
-             <<byte_size(bytes)::unsigned-big-32, bytes::binary>>
-           ) do
-      timer = Process.send_after(self(), {:timeout, id}, timeout)
-
-      origin =
-        if stage == "initialize",
-          do: nil,
-          else: state.origin || %{stage: stage, invocation_id: payload["invocation_id"]}
-
-      eligible =
-        not is_nil(origin) and
-          ResultPublication.eligible?(
-            state.manifest["sdk"],
-            state.manifest["capabilities"],
-            origin.stage
-          ) and
-          (is_nil(state.origin) or
-             (stage == "host.actions" and
-                payload["invocation_id"] === origin.invocation_id))
-
-      {:noreply,
-       %{
-         state
-         | pending: %{
-             id: id,
-             from: from,
-             timer: timer,
-             stage: stage,
-             payload: payload,
-             eligible: eligible
-           },
-           sequence: id,
-           origin: origin
-       }}
+    with {:ok, id, frame} <- encode_request(state, stage, payload, timeout),
+         :ok <- Ipse.Runner.send_stdio(state.port, frame) do
+      {:noreply, pending_request(state, id, stage, payload, timeout, from)}
     else
       _ -> {:reply, {:error, :invalid_extension_request}, state}
     end
   end
+
+  def handle_call({:prepare_input, stage, payload, timeout}, {caller, _}, %{pending: nil} = state) do
+    with true <- state.protected_input and :os.type() == {:unix, :linux},
+         true <- input_caller?(state, caller),
+         true <- stage != "initialize",
+         {:ok, id, frame} <- encode_request(state, stage, payload, timeout),
+         {:os_pid, pid} when is_integer(pid) and pid > 0 <- Port.info(state.port, :os_pid) do
+      handle = {:worker_input, make_ref()}
+      operation = <<id::64, :crypto.strong_rand_bytes(8)::binary>>
+
+      binding = %{
+        worker: self(),
+        owner: state.owner,
+        caller: caller,
+        artifact: state.artifact,
+        sequence: id,
+        operation: operation,
+        native_pid: pid,
+        stage: stage,
+        payload_sha256: Ipse.JSON.digest([payload]),
+        frame_sha256: Ipse.JSON.sha256(frame),
+        frame: frame
+      }
+
+      state = pending_request(state, id, stage, payload, timeout, nil)
+
+      input = %{
+        handle: handle,
+        caller: caller,
+        monitor: Process.monitor(caller),
+        binding: Map.put(binding, :deadline, state.pending.deadline),
+        phase: :prepared,
+        from: nil,
+        response: nil
+      }
+
+      {:reply, {:ok, handle, input.binding}, %{state | input: input}}
+    else
+      _ -> {:reply, {:error, :extension_input_unavailable}, state}
+    end
+  end
+
+  def handle_call(
+        {:input_binding, handle, stage, payload},
+        {caller, _},
+        %{input: %{handle: handle} = input, pending: pending} = state
+      ) do
+    if (caller == input.caller or caller == state.input_session) and
+         stage == pending.stage and payload == pending.payload and input_live?(state),
+       do: {:reply, {:ok, input.binding}, state},
+       else: {:reply, {:error, :extension_input_unavailable}, state}
+  end
+
+  def handle_call(
+        {:bind_stdin, handle, wall},
+        {caller, _} = from,
+        %{input: %{handle: handle, caller: caller, phase: :prepared} = input} = state
+      ) do
+    remaining = min(state.pending.deadline - now(), 5_000)
+
+    if input_live?(state) and Ipse.JSON.safe_uint?(wall) and
+         wall > System.system_time(:millisecond) and
+         wall <= System.system_time(:millisecond) + remaining and
+         Ipse.Runner.prepare_stdio_share(state.port, input.binding.operation, wall) == :ok do
+      binding = Map.put(input.binding, :wall_deadline, wall)
+      {:noreply, %{state | input: %{input | phase: :reserving, from: from, binding: binding}}}
+    else
+      {:reply, {:error, :extension_input_unavailable}, state}
+    end
+  end
+
+  def handle_call(
+        {:export_stdin, handle, recipient},
+        {caller, _} = from,
+        %{input: %{handle: handle, caller: caller, phase: :reserved} = input} = state
+      ) do
+    if input_live?(state) and
+         Ipse.Runner.export_stdio_share(
+           state.port,
+           input.binding.operation,
+           recipient,
+           input.binding.frame
+         ) == :ok,
+       do: {:noreply, %{state | input: %{input | phase: :exporting, from: from}}},
+       else: {:reply, {:error, :extension_input_unavailable}, state}
+  end
+
+  def handle_call(
+        {:settle_stdin, handle},
+        {caller, _} = from,
+        %{input: %{handle: handle, caller: caller, phase: :exported} = input} = state
+      ) do
+    if input_live?(state) and
+         Ipse.Runner.settle_stdio_share(state.port, input.binding.operation) == :ok,
+       do: {:noreply, %{state | input: %{input | phase: :settling, from: from}}},
+       else: {:reply, {:error, :extension_input_unavailable}, state}
+  end
+
+  def handle_call(
+        {:await_input, handle},
+        {caller, _} = from,
+        %{input: %{handle: handle, caller: caller, phase: :settled} = input} = state
+      ) do
+    if input_live?(state) do
+      state = %{
+        state
+        | pending: %{state.pending | from: from},
+          input: %{input | phase: :released}
+      }
+
+      if is_nil(input.response) do
+        {:noreply, state}
+      else
+        case response(state, input.response) do
+          {:ok, next} -> {:noreply, next}
+          :error -> stop(state, :invalid_extension_output)
+        end
+      end
+    else
+      {:reply, {:error, :extension_input_unavailable}, state}
+    end
+  end
+
+  def handle_call(request, _from, state)
+      when elem(request, 0) in [
+             :prepare_input,
+             :input_binding,
+             :bind_stdin,
+             :export_stdin,
+             :settle_stdin,
+             :await_input
+           ],
+      do: {:reply, {:error, :extension_input_unavailable}, state}
 
   def handle_call(:close, _from, state) do
     state = fail_pending(state, :extension_closed)
@@ -145,6 +275,62 @@ defmodule Ipse.Extension.Worker do
     record_cleanup(state, result)
     {:stop, :normal, result, %{state | port: nil}}
   end
+
+  defp encode_request(state, stage, payload, timeout) do
+    with true <- Process.alive?(state.owner),
+         true <- is_integer(timeout) and timeout in 1..30_000,
+         true <- permitted?(state, stage, payload),
+         :ok <- Ipse.Extension.validate(payload),
+         id = state.sequence + 1,
+         true <- id <= 9_007_199_254_740_991,
+         bytes =
+           Jason.encode!(%{"protocol" => 1, "id" => id, "stage" => stage, "payload" => payload}),
+         true <- byte_size(bytes) <= @limit,
+         do: {:ok, id, <<byte_size(bytes)::32, bytes::binary>>},
+         else: (_ -> {:error, :invalid_extension_request})
+  end
+
+  defp pending_request(state, id, stage, payload, timeout, from) do
+    origin =
+      if stage == "initialize",
+        do: nil,
+        else: state.origin || %{stage: stage, invocation_id: payload["invocation_id"]}
+
+    eligible =
+      not is_nil(origin) and
+        ResultPublication.eligible?(
+          state.manifest["sdk"],
+          state.manifest["capabilities"],
+          origin.stage
+        ) and
+        (is_nil(state.origin) or
+           (stage == "host.actions" and payload["invocation_id"] === origin.invocation_id))
+
+    %{
+      state
+      | sequence: id,
+        origin: origin,
+        pending: %{
+          id: id,
+          from: from,
+          timer: Process.send_after(self(), {:timeout, id}, timeout),
+          deadline: now() + timeout,
+          stage: stage,
+          payload: payload,
+          eligible: eligible
+        }
+    }
+  end
+
+  defp input_caller?(state, caller),
+    do: caller == state.owner or Ipse.Session.Resources.authorized_effect?(state.owner, caller)
+
+  defp input_live?(state),
+    do:
+      Process.alive?(state.owner) and
+        Process.alive?(state.input.caller) and now() < state.pending.deadline
+
+  defp now, do: System.monotonic_time(:millisecond)
 
   defp permitted?(%{producer: producer}, "result.output", payload) when not is_nil(producer),
     do: match?({:ok, _}, ResultPublication.request(producer, payload))
@@ -193,6 +379,9 @@ defmodule Ipse.Extension.Worker do
   def handle_info({:DOWN, ref, :process, _, _}, %{owner_ref: ref} = state),
     do: stop(state, :owner_exited)
 
+  def handle_info({:DOWN, ref, :process, _, _}, %{input: %{monitor: ref}} = state),
+    do: stop(state, :input_owner_exited)
+
   def handle_info(_, state), do: {:noreply, state}
 
   @impl true
@@ -230,8 +419,14 @@ defmodule Ipse.Extension.Worker do
 
   defp fail_pending(state, reason) do
     Process.cancel_timer(state.pending.timer)
-    GenServer.reply(state.pending.from, {:error, reason})
-    %{state | pending: nil}
+    if state.pending.from, do: GenServer.reply(state.pending.from, {:error, reason})
+
+    if state.input do
+      if state.input.from, do: GenServer.reply(state.input.from, {:error, reason})
+      Process.demonitor(state.input.monitor, [:flush])
+    end
+
+    %{state | pending: nil, input: nil}
   end
 
   defp frames(%{traffic: traffic}) when traffic > @traffic_limit, do: :error
@@ -250,7 +445,18 @@ defmodule Ipse.Extension.Worker do
 
         case kind do
           ?O ->
-            case messages(%{state | content: state.content <> payload}) do
+            case if(
+                   is_nil(state.input) or
+                     state.input.phase in [:exported, :settling, :settled, :released],
+                   do: messages(%{state | content: state.content <> payload}),
+                   else: :error
+                 ) do
+              {:ok, next} -> frames(next)
+              :error -> :error
+            end
+
+          kind when kind in [?B, ?F, ?K] ->
+            case input_frame(state, kind, payload) do
               {:ok, next} -> frames(next)
               :error -> :error
             end
@@ -268,6 +474,42 @@ defmodule Ipse.Extension.Worker do
   end
 
   defp frames(state), do: {:ok, state}
+
+  defp input_frame(
+         %{input: %{phase: :reserving} = input} = state,
+         ?B,
+         <<operation::binary-size(16), pid::32, device::64, inode::64>>
+       ) do
+    if input_live?(state) and operation == input.binding.operation and
+         pid == input.binding.native_pid and inode > 0 do
+      binding = Map.put(input.binding, :pipe, %{pid: pid, device: device, inode: inode})
+      GenServer.reply(input.from, {:ok, binding})
+      {:ok, %{state | input: %{input | phase: :reserved, from: nil, binding: binding}}}
+    else
+      :error
+    end
+  end
+
+  defp input_frame(
+         %{input: %{phase: phase} = input} = state,
+         kind,
+         <<operation::binary-size(16)>>
+       )
+       when (kind == ?F and phase == :exporting) or (kind == ?K and phase == :settling) do
+    if input_live?(state) and operation == input.binding.operation do
+      GenServer.reply(input.from, :ok)
+
+      {:ok,
+       %{
+         state
+         | input: %{input | phase: if(kind == ?F, do: :exported, else: :settled), from: nil}
+       }}
+    else
+      :error
+    end
+  end
+
+  defp input_frame(_, _, _), do: :error
 
   defp messages(%{content: <<size::unsigned-big-32, rest::binary>>} = state) do
     cond do
@@ -291,16 +533,34 @@ defmodule Ipse.Extension.Worker do
 
   defp response(%{pending: nil}, _bytes), do: :error
 
+  defp response(%{input: %{phase: phase, response: nil} = input} = state, bytes)
+       when phase in [:exported, :settling, :settled] do
+    with {:ok, _message} <- response_message(state, bytes),
+         do: {:ok, %{state | input: %{input | response: bytes}}},
+         else: (_ -> :error)
+  end
+
+  defp response(%{input: %{phase: phase}}, _) when phase != :released, do: :error
+
   defp response(state, bytes) do
+    with {:ok, message} <- response_message(state, bytes),
+         {:ok, next} <- producer_response(state, message["result"]) do
+      Process.cancel_timer(state.pending.timer)
+      if state.input, do: Process.demonitor(state.input.monitor, [:flush])
+      GenServer.reply(state.pending.from, {:ok, message["result"]})
+      {:ok, %{next | ready: true, pending: nil, input: nil}}
+    else
+      _ -> :error
+    end
+  end
+
+  defp response_message(state, bytes) do
     with {:ok, message} <- Ipse.JSON.decode_bounded(bytes),
          true <- is_map(message) and Enum.sort(Map.keys(message)) == ~w(id protocol result),
          true <- message["protocol"] === 1 and message["id"] === state.pending.id,
          :ok <- Ipse.Extension.validate(message["result"]),
-         true <- description_valid?(state, message["result"]),
-         {:ok, next} <- producer_response(state, message["result"]) do
-      Process.cancel_timer(state.pending.timer)
-      GenServer.reply(state.pending.from, {:ok, message["result"]})
-      {:ok, %{next | ready: true, pending: nil}}
+         true <- description_valid?(state, message["result"]) do
+      {:ok, message}
     else
       _ -> :error
     end

@@ -368,16 +368,33 @@ native control exercises that capacity; the shipped helper must be rebuilt to
 match the host before using it. These leases do not by themselves admit a
 supersession.
 The same transaction owner has a private Linux stdin handoff for future managed
-worker delivery. The stdio supervisor reserves its actual write description and
-pauses ordinary input. Its authenticated transfer binds one operation and the
-original expiry; the importer retains the three lock owners, Session and Writer
+worker delivery. An explicitly protected `Worker` can prepare an opaque pending
+input using its ordinary schema checks, next request ID and exact JSON encoder.
+Preparation starts the original callback timer without sending bytes. Its binding
+includes the artifact, owner, preparer, actual supervisor PID and immutable frame.
+Only its owner or tracked file-effect publisher can prepare it; a configured
+Session can query that exact pending stage/payload but receives no authority from
+the transport itself. Ordinary workers retain their existing transport behavior.
+
+The stdio supervisor reserves its actual write description and pauses ordinary
+input. Worker verifies its PID against the actual Port. The authenticated transfer
+compares the operation, original expiry and complete prepared frame before lending
+the descriptor; the importer also rejects a substituted write. The request sequence
+advances monotonically without a separate 256-handoff ceiling. The importer retains
+the three lock owners, Session and Writer
 controls and original source descriptions through each bounded pipe write.
 The complete frame is limited to 32 KiB plus its four-byte worker prefix.
 An attempt is consumed once; partial delivery and failed ownership checks remain
 unknown. Both sides complete the existing retained-description close handshake
-before ordinary stdin returns. This transport component does not derive a
-Session's dependency union or authorize an SDK continuation: the exact pending
-worker/frame ticket and end-to-end Session adapter are still required. Do not
+before ordinary stdin returns. Worker buffers an early callback response until
+the trusted preparer explicitly releases it after settlement; buffering does not
+advance the result producer or renew its timeout. Owner/preparer loss or expiry
+closes the actual owned group.
+
+This private transport does not derive a Session's dependency union or authorize
+an SDK continuation. The end-to-end Session adapter must bind the pending frame
+to its actual purpose, journal intent, transfer the complete original owners and
+confirm their settlement before releasing the response. Do not
 replace that missing admission with a host precheck or fabricated receipt.
 The [native protocol](../../native/README.md#direct-stdio-server-transport) owns
 its frame details; [verification](testing.md#exercise-actual-os-policy-and-native-protocols)

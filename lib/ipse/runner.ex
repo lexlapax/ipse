@@ -1806,12 +1806,18 @@ defmodule Ipse.Runner do
   def prepare_stdio_share(_, _, _), do: {:error, :invalid_stdio_share}
 
   @doc false
-  def export_stdio_share(port, operation, recipient)
+  def export_stdio_share(port, operation, recipient, frame)
       when is_port(port) and is_binary(operation) and byte_size(operation) == 16 and
-             is_binary(recipient) and byte_size(recipient) == 68,
-      do: stdio_share_frame(port, ?F, operation <> recipient)
+             is_binary(recipient) and byte_size(recipient) == 68 and
+             is_binary(frame) and byte_size(frame) in 1..32_772,
+      do:
+        stdio_share_frame(
+          port,
+          ?F,
+          <<operation::binary, recipient::binary, byte_size(frame)::32, frame::binary>>
+        )
 
-  def export_stdio_share(_, _, _), do: {:error, :invalid_stdio_share}
+  def export_stdio_share(_, _, _, _), do: {:error, :invalid_stdio_share}
 
   @doc false
   def settle_stdio_share(port, operation)
