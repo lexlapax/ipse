@@ -1,11 +1,8 @@
-# Actual CLI management and real deadline; successor source is an explicit trusted fixture.
+# Actual native Session correction followed by CLI management and real history expiry.
 defmodule Ipse.Test.ManagedHistoryCLI do
   import ExUnit.Assertions
-  alias Ipse.{JSON, Journal, Usage}
+  alias Ipse.{Journal, Session, Usage}
   alias Ipse.Extension.{Collection, Consent, ProjectIdentity, SemanticAdmission}
-  alias Ipse.Extension.Collection.{NormalizerV3, ObservedRead}
-  alias Ipse.Session.{ManagedLifecycle, Resources}
-  alias Ipse.Runner.Review
 
   def run(
         config,
@@ -24,14 +21,6 @@ defmodule Ipse.Test.ManagedHistoryCLI do
     {:ok, binding} = ProjectIdentity.existing(home, cwd)
     old_record = Enum.find(page["records"], &(&1["value"]["category"] == "preference"))
     old_key = old_record["key"]
-    ordinary = Enum.find(page["records"], &(&1["value"]["category"] == "ordinary"))
-
-    recipe =
-      admission["policy"]["settings"]["recipes"]
-      |> Map.values()
-      |> Enum.find(&(&1["kind"] == "literal_source"))
-
-    constraints = admission["policy"]["settings"]["constraints"][recipe["constraints_sha256"]]
 
     assert {:ok, choice} =
              Ipse.CLI.Knowledge.Management.retain(config, cwd, old_key, %{
@@ -40,173 +29,72 @@ defmodule Ipse.Test.ManagedHistoryCLI do
              })
 
     deadline = choice["receipt"]["publication"]["normalization"]["valid_until_ms"]
-
-    Code.require_file("../ipse/extension/collection_normalizer_v3_test.exs", __DIR__)
-    [source] = ordinary["value"]["evidence"]["sources"]
-    quote = "Synthetic replacement statement for history expiry"
-
-    source =
-      source
-      |> Map.merge(%{
-        "occurrence_id" => Usage.id(),
-        "version_id" => Usage.id(),
-        "quote" => quote,
-        "end_byte" => byte_size(quote),
-        "quote_sha256" => JSON.sha256(quote),
-        "content_sha256" => JSON.sha256(quote),
-        "receipt_sha256" => JSON.sha256("synthetic trusted successor receipt")
-      })
-
-    {:ok, new_key, new_value} =
-      IpseKnowledge.Knowledge.Records.capture(
-        %{
-          "text" => quote,
-          "category" => "ordinary",
-          "reason" => "trusted fixture successor",
-          "event_at_ms" => nil
-        },
-        source,
-        10 * 86_400_000
-      )
-
-    protect = fn fun ->
-      ProjectIdentity.with_existing_domain_auth(
-        home,
-        cwd,
-        binding,
-        %{namespace: pin["namespace"], format: "managed-metadata-v3"},
-        fun
-      )
-    end
-
-    {:ok, old} =
-      protect.(fn cap, catalog ->
-        ObservedRead.managed_record(
-          root,
-          pin["namespace"],
-          %{"op" => "get_record", "key" => old_key},
-          cap,
-          catalog,
-          recipe
-        )
-      end)
-
-    {:ok, snapshot} = Consent.existing_snapshot(control, binding["project_id"])
-    fixture_dir = Path.join(home, "synthetic-supersession-management")
-    {:ok, fixture_id} = Journal.create(fixture_dir, %{"kind" => "synthetic_history_cli_fixture"})
-
-    context = %{
-      "session_id" => fixture_id,
-      "job_id" => Usage.id(),
-      "client_id" => Usage.id(),
-      "project_id" => binding["project_id"],
-      "namespace" => pin["namespace"],
-      "binding_sha256" => binding["binding_sha256"],
-      "management_epoch" => snapshot["epoch"],
-      "management_sha256" =>
-        Consent.management_sha256(binding["project_id"], snapshot["epoch"], snapshot["policy"]),
-      "original_pin" => nil,
-      "recipe" => recipe
-    }
-
-    {:ok, prepared} =
-      ManagedLifecycle.prepare_supersession(
-        context,
-        old,
-        %{"key" => new_key, "value" => new_value},
-        %{
-          mode: "ordinary",
-          constraints: constraints,
-          verified_sources: [source],
-          policy_sha256: pin["policy_sha256"],
-          now_ms: System.system_time(:millisecond)
-        },
-        "Synthetic trusted successor fixture"
-      )
-
-    {:ok, scope} = Resources.start(self())
-    previous = Resources.bind(scope)
+    quote = "Native replacement statement for history expiry"
+    command = "/correct " <> old_key <> " " <> quote
+    opts = [config: config, cwd: cwd, state_dir: session_dir, subscriber: self()]
+    assert {:ok, session} = DynamicSupervisor.start_child(Ipse.Sessions, {Session, opts})
+    new_id = Session.info(session).id
+    assert new_id != session_id
+    assert {:ok, channel} = Session.open_input_channel(session, self())
 
     try do
-      assert {:ok, _} =
-               Resources.file_effect(fn ->
-                 {:ok, writer} = Journal.Writer.start(fixture_dir, fixture_id, self())
+      File.write!(Path.join(config.fixture_root, "supersession-input-1"), command)
+      IO.write("IPSE_SUPERSESSION_READ_1> ")
 
-                 try do
-                   assert :ok = Journal.Writer.append(writer, prepared["intent"])
+      assert {:ok, ^command, witness} =
+               Session.observe_channel(session, channel, %{"kind" => "prompt"}, 30_000)
 
-                   result =
-                     Review.with_review("correct", prepared["facts"], fn permit ->
-                       publication =
-                         ProjectIdentity.with_domain_publication(
-                           home,
-                           cwd,
-                           binding,
-                           %{
-                             namespace: pin["namespace"],
-                             format: "managed-metadata-v3",
-                             operation_id: prepared["facts"]["operation_id"],
-                             initialize: false
-                           },
-                           fn _ -> :ok end,
-                           fn cap, catalog ->
-                             Collection.execute_managed_supersession(
-                               root,
-                               pin["namespace"],
-                               prepared["request"],
-                               prepared["facts"]["operation_id"],
-                               JSON.digest([recipe]),
-                               fn witness, read ->
-                                 NormalizerV3.supersede(witness, read, %{
-                                   request: prepared["request"],
-                                   facts: prepared["facts"],
-                                   permit: permit,
-                                   constraints: constraints,
-                                   verified_sources: [source],
-                                   policy_sha256: pin["policy_sha256"],
-                                   now_ms: System.system_time(:millisecond),
-                                   capture_expires_at_ms: deadline + 60_000,
-                                   domain_cap: cap,
-                                   catalog: catalog
-                                 })
-                               end
-                             )
-                           end
-                         )
+      assert {:ok, ticket} = Session.stage_input(session, channel, command, witness)
 
-                       assert {:ok, review} =
-                                Review.consumed_receipt(permit, "correct", prepared["facts"])
+      assert {:ok, %{"render_id" => render}} =
+               Session.prepare_assertion(session, channel, command, ticket)
 
-                       assert :ok =
-                                Journal.Writer.append(writer, %{
-                                  "type" => "synthetic_native_review",
-                                  "receipt" => review
-                                })
+      assert {:ok, input, witness} =
+               Session.observe_channel(
+                 session,
+                 channel,
+                 %{"kind" => "assertion", "render_id" => render},
+                 30_000
+               )
 
-                       publication
-                     end)
-
-                   assert {:ok, core} = result
-
-                   assert :ok =
-                            Journal.Writer.append(writer, %{
-                              "type" => "synthetic_supersession_result",
-                              "result" => core
-                            })
-
-                   result
-                 after
-                   assert :ok = Journal.Writer.close(writer)
-                 end
-               end)
-
-      assert :ok = Resources.finish(scope)
+      assert :ok = Session.accept_assertion_observed(session, channel, render, input, witness)
+      assert_receive {:ipse, ^session, {:done, :ok}}, 20_000
     after
-      Resources.bind(previous)
-      if Process.alive?(scope), do: Resources.close(scope)
+      assert :ok = Session.close_confirmed(session)
     end
 
+    assert {:ok, correction} = Journal.load(session_dir, new_id)
+    assert {:ok, _} = Session.Saved.restore(correction, new_id)
+    [relation] = Enum.filter(correction, &(&1["type"] == "managed_supersession_intent"))
+    [result] = Enum.filter(correction, &(&1["type"] == "managed_supersession_result"))
+    [review] = Enum.filter(correction, &(&1["type"] == "managed_supersession_review"))
+    assert result["status"] == "settled"
+    assert review["operation_id"] == relation["operation_id"]
+    assert result["outcome"]["publication"]["normalization"]["history_valid_until_ms"] == deadline
+    assert relation["facts"]["target"]["key"] == old_key
+    new_key = relation["facts"]["replacement"]["key"]
+    proofs = get_in(relation, ["facts", "replacement", "value", "evidence", "sources"])
+
+    assert Enum.any?(
+             proofs,
+             &(&1["session_id"] == new_id and &1["origin"] == "native_operator_assertion")
+           )
+
+    refute Enum.any?(correction, &(&1["type"] == "request_admitted"))
+
+    assert {:ok, %{"record" => successor}} =
+             Collection.execute(
+               root,
+               pin["namespace"],
+               %{"op" => "get", "key" => new_key},
+               Usage.id()
+             )
+
+    new_value = successor["value"]
+    assert new_value["text"] == quote
+
     assert System.system_time(:millisecond) < deadline
+
     args = ["--cwd", cwd, "--config", config_path, "--no-project-config"]
     assert Ipse.CLI.run(["knowledge", "disable"] ++ args) == 0
     Process.sleep(max(deadline - System.system_time(:millisecond) + 10, 0))

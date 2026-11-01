@@ -650,6 +650,15 @@ controls establish neither human attribution, live-model quality, installed
 delivery nor accepted-decision support. Run Rust native tests and Mix terminal
 cohorts serially because they share the conservative per-user terminal lock.
 
+For history expiry, create the successor through the current native Session
+correction flow, retaining its actual statement source, separate relation review,
+settled publication and confirmed close. Keep the original signed retention
+deadline and wait for it before public reclamation. A standalone review receipt
+cannot replace the Session/source-owner fence of a current correction. The
+`save_history_expire` case in `operator_assertion_integration_test.exs` checks
+the complete path, including disabled capture, retained successor, zero inference
+and an unchanged original journal.
+
 The separate opt-in `genuine_pending_accepted_recall` journey in
 `test/extensions/knowledge/knowledge_session_test.exs` uses freshly built isolated
 Knowledge artifacts, two ordinary captures and actual public native acceptance.
