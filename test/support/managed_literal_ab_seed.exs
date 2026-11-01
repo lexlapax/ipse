@@ -1,5 +1,5 @@
-# Historical upgrade fixture: actual native assertion and publication in a
-# retained matched pre-gate runtime, never a current-runtime gate override.
+# Native assertion/publication seed. Record the caller's actual runtime cohort;
+# dated upgrade evidence retains its original matched runtime separately.
 ExUnit.start(autorun: false)
 import ExUnit.Assertions
 {:ok, _} = Application.ensure_all_started(:ipse)

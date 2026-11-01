@@ -686,6 +686,16 @@ continuation. The effect must remain recorded while no result callback runs;
 the typed input is unknown and idle resume repeats neither effect nor delivery.
 This fixture pause supplies timing, not approval or a native delivery receipt.
 
+Run `--only worker_inherited_union` in the same suite for actual A/B input
+boundaries. Each case builds its own matched PTY driver and creates a fresh
+current-runtime native statement/publication seed in a private home, with no
+external seed directory or historical BEAM overlay. Consumer selection remains
+explicit trusted fixture configuration. The negative pauses after B's actual
+quote commits, removes A's original journal and requires an unknown input with
+no next callback. The independent-B positive requires the actual stored record,
+current B proof, registered-model continuation, strict Saved/idle recovery and
+byte-identical restoration of A. Retained roots print as `WORKER_INHERITED_ROOT`.
+
 Use `--only managed_presentation_input` and `--only managed_sink_input` for the
 unsupported private Worker purposes. Preserve actual ordinary formatter/text/
 notification/feed callbacks and acknowledged managed metadata delivery. Managed

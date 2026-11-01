@@ -998,8 +998,15 @@ as known unstarted, private tool feeds before queue admission and selected text
 consumers before the dependent model request. Ordinary/required callbacks and
 managed metadata retain focused actual-artifact controls. Required registered
 text checks its original producer without granting the provider child broker
-authority. Complete inherited-source, capacity and integrated C0 qualification
+authority. Broader inherited-source, capacity and integrated C0 qualification
 remain open.
+
+The [current native A/B input controls](archive/2026-10-26-p30-p31-implementation/worker-inherited-union-20261101.md)
+now exercise the complete inherited union at the actual next Worker frame after
+a fresh quote commits. Losing original A withholds the frame and preserves known
+B/unknown input; an independent B-only Session still captures and completes while
+A is unavailable. Both use fresh current-runtime native source seeds. This
+qualifies that source boundary; capacity and full C0 acceptance remain open.
 
 Interactive literal correction and supersession now have a
 [Session-owned native review and publication adapter](archive/2026-10-26-p30-p31-implementation/managed-supersession-native-20261031.md).

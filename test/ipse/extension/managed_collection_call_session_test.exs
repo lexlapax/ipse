@@ -603,9 +603,18 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
 
   setup c do
     root =
-      if c[:literal_v4_ab],
-        do: System.fetch_env!("IPSE_LITERAL_AB_ROOT"),
-        else: Path.join(System.tmp_dir!(), "ipse-collection-sdk-" <> Ipse.Usage.id())
+      cond do
+        c[:worker_inherited_union] ->
+          Path.join(System.tmp_dir!(), "ipse-worker-inherited-" <> Ipse.Usage.id())
+
+        c[:literal_v4_ab] ->
+          System.fetch_env!("IPSE_LITERAL_AB_ROOT")
+
+        true ->
+          Path.join(System.tmp_dir!(), "ipse-collection-sdk-" <> Ipse.Usage.id())
+      end
+
+    if c[:worker_inherited_union], do: native_literal_seed(root)
 
     literal_seed =
       if c[:literal_v4_ab],
@@ -1943,6 +1952,164 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
       if unquote(op) == "service.call", do: assert(File.exists?(c.trace <> ".service"))
       assert {:ok, _} = Session.Saved.restore(events, Session.info(pid).id)
       assert :ok = Session.close_confirmed(pid)
+    end
+  end
+
+  @tag :worker_inherited_union
+  @tag literal_v4_ab: true, metadata_version: 3
+  test "fresh B quote cannot discard genuine inherited A at the actual next Worker frame", c do
+    seed = c.literal_seed
+    generation = collection_read(c, %{"op" => "snapshot"})["generation"]
+    File.write!(c.trace <> ".ab-release", "release")
+    pid = start(c, %{fixture_mode: "capture_ab_literal"})
+    owner = self()
+
+    hook = fn
+      :released, _, _ ->
+        :released
+
+      d, {:out, {:ok, payload}, _, state}, _ ->
+        action = List.last(state.invocation.results)
+
+        if get_in(action || %{}, ["request", "op"]) == "source.quote" and
+             get_in(action || %{}, ["outcome", "status"]) == "ok" and
+             payload["operation_id"] == action["operation_id"] do
+          {:ok, dependencies} =
+            Session.ManagedLineage.invocation_dependencies(
+              state.managed_lineage,
+              state.invocation.parent["invocation_id"],
+              state.invocation.managed_reads
+            )
+
+          send(owner, {:fresh_quote_committed, self(), action, dependencies})
+          receive do: (:release_fresh_quote -> :released)
+        else
+          d
+        end
+
+      d, _, _ ->
+        d
+    end
+
+    assert :ok = :sys.install(pid, {hook, nil})
+    on_exit(fn -> send(pid, :release_fresh_quote) end)
+    assert :ok = Session.prompt(pid, "Synthetic café observation")
+    assert_receive {:fresh_quote_committed, ^pid, quote, dependencies}, 15_000
+    assert quote["outcome"]["value"]["origin"] == "unattended_input"
+    assert quote["request"]["quote"] == "Synthetic café observation"
+    assert quote["outcome"]["value"]["quote_sha256"] == JSON.sha256("Synthetic café observation")
+
+    assert Enum.any?(
+             dependencies,
+             &(&1["version"] == 4 and get_in(&1, ["subject", "key"]) == seed["key"])
+           )
+
+    trace = File.read!(c.trace)
+    source = seed["source_journal"]
+    held = source <> ".held-for-worker-input"
+    assert JSON.sha256(File.read!(source)) == seed["source_sha256"]
+    File.rename!(source, held)
+
+    try do
+      send(pid, :release_fresh_quote)
+      assert_receive {:ipse, ^pid, {:done, :error}}, 10_000
+      assert File.read!(c.trace) == trace
+      refute trace =~ Jason.encode!(quote["outcome"])
+      assert collection_read(c, %{"op" => "snapshot"})["generation"] == generation
+      id = Session.info(pid).id
+      assert {:ok, events} = Journal.load(c.dir, id)
+      assert quote in events
+
+      refute Enum.any?(
+               events,
+               &(&1["type"] == "extension_action_intent" and
+                   get_in(&1, ["request", "op"]) == "collection.managed")
+             )
+
+      input = events |> Enum.filter(&(&1["type"] == "worker_input_intent")) |> List.last()
+      assert input["payload_sha256"] == JSON.digest([Ipse.Extension.Actions.resume(quote)])
+      assert input["dependencies_sha256"] == JSON.digest(dependencies)
+
+      assert Enum.any?(
+               events,
+               &(&1["type"] == "worker_input_result" and &1["input_id"] == input["input_id"] and
+                   &1["status"] == "unknown")
+             )
+
+      assert {:ok, saved} = Session.Saved.restore(events, id)
+      assert saved.managed_lineage.unavailable
+      assert input["input_id"] in saved.worker_input_unknown
+      assert :ok = Session.close_confirmed(pid)
+      journal = Path.join(c.dir, id <> ".jsonl")
+      before = File.read!(journal)
+      resumed = start(c, %{fixture_mode: "capture_ab_literal"}, id)
+      assert Session.info(resumed).phase == :idle
+      assert File.read!(c.trace) == trace
+      assert_idle_resume_journal(journal, before, id)
+      assert :ok = Session.close_confirmed(resumed)
+    after
+      send(pid, :release_fresh_quote)
+      File.rename!(held, source)
+      assert JSON.sha256(File.read!(source)) == seed["source_sha256"]
+    end
+  end
+
+  @tag :worker_inherited_union
+  @tag literal_v4_ab: true, metadata_version: 3, registered_main: true, capture_write: true
+  test "independent current B completes capture while unread A's original journal is unavailable",
+       c do
+    seed = c.literal_seed
+    source = seed["source_journal"]
+    held = source <> ".held-for-independent-b"
+    assert JSON.sha256(File.read!(source)) == seed["source_sha256"]
+    File.rename!(source, held)
+
+    try do
+      pid = start(c)
+      assert :ok = Session.prompt(pid, "Synthetic café observation")
+      assert_receive {:ipse, ^pid, {:done, status}}, 15_000
+      id = Session.info(pid).id
+      assert {:ok, events} = Journal.load(c.dir, id)
+      assert status == :ok
+
+      [publication] =
+        Enum.filter(
+          events,
+          &(&1["type"] == "extension_action_result" and
+              get_in(&1, ["request", "op"]) == "collection.managed")
+        )
+
+      assert publication["outcome"]["status"] == "ok"
+      [change] = get_in(publication, ["request", "request", "changes"])
+      record = collection_read(c, %{"op" => "get", "key" => change["key"]})["record"]
+      assert record["value"]["text"] == "Synthetic café observation"
+      assert [proof] = get_in(record, ["value", "evidence", "sources"])
+      assert proof["session_id"] == id and proof["origin"] == "unattended_input"
+
+      refute Enum.any?(events, fn event ->
+               event["type"] == "managed_read_observed" and
+                 Enum.any?(
+                   event["dependencies"],
+                   &(&1["version"] == 4 and get_in(&1, ["subject", "key"]) == seed["key"])
+                 )
+             end)
+
+      assert {:ok, saved} = Session.Saved.restore(events, id)
+      assert saved.worker_input_unknown == []
+      assert :ok = Session.close_confirmed(pid)
+      trace = File.read!(c.trace)
+      journal = Path.join(c.dir, id <> ".jsonl")
+      before = File.read!(journal)
+      resumed = start(c, %{}, id)
+      assert Session.info(resumed).phase == :idle
+      assert File.read!(c.trace) == trace
+      assert_idle_resume_journal(journal, before, id)
+      assert :ok = Session.close_confirmed(resumed)
+      assert [_, _] = requests = Task.await(c.provider_server, 1000)
+      refute inspect(requests) =~ seed["text"]
+    after
+      File.rename!(held, source)
+      assert JSON.sha256(File.read!(source)) == seed["source_sha256"]
     end
   end
 
@@ -7525,6 +7692,48 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
       Process.sleep(10)
       await_marker_count(path, marker, count, remaining - 1)
     end
+  end
+
+  defp native_literal_seed(root) do
+    File.mkdir!(root)
+    File.chmod!(root, 0o700)
+    driver = Path.join(root, "pty")
+
+    assert {"", 0} =
+             System.cmd(
+               "rustc",
+               [
+                 "--edition=2021",
+                 "-D",
+                 "warnings",
+                 Path.expand("test/support/operator_pty.rs"),
+                 "-o",
+                 driver
+               ],
+               stderr_to_stdout: true
+             )
+
+    paths =
+      :code.get_path()
+      |> Enum.map(&List.to_string/1)
+      |> Enum.reject(&(&1 == "."))
+      |> Enum.map(&Path.expand/1)
+      |> Enum.reverse()
+      |> Enum.flat_map(&["-pa", &1])
+
+    {output, status} =
+      System.cmd(
+        driver,
+        ["--assertion", System.find_executable("elixir"), "--erl", "+S 2:2"] ++
+          paths ++ [Path.expand("test/support/managed_literal_ab_seed.exs"), root, "seed"],
+        cd: root,
+        stderr_to_stdout: true
+      )
+
+    File.write!(Path.join(root, "native-seed.log"), output)
+    IO.puts("WORKER_INHERITED_ROOT=" <> root)
+    assert status == 0, output
+    assert File.regular?(Path.join(root, "literal-ab-seed.json"))
   end
 
   defp await_marker(_, _, 0), do: flunk("synthetic worker marker was not reached")

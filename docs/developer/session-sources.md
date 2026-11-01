@@ -410,6 +410,14 @@ artifact, publisher, stage, payload, request ID and immutable frame. A durable
 `worker_input_intent` binds these hashes before delivery; it does not duplicate
 the payload or lend the worker a journal handle.
 
+Keep that union when the newest result is independent evidence. If an invocation
+first reads managed note A, then quotes fresh input B, its next `host.actions`
+frame still inherits A. Losing A's original journal after B commits must withhold
+that frame; B's known successful quote remains recorded. A separate invocation
+that never reads A can capture current B while A's journal is unavailable. A
+metadata-only root observation supplies its own guard without asserting current
+eligibility for every stored record or requiring their unused source journals.
+
 The original tracked file-effect publisher acquires current source and policy
 owners through `ManagedUse.with_worker_dependencies/3`. `Runner.SessionSource`
 transfers the consuming Session's retained flock, Session control and drained
