@@ -89,6 +89,20 @@ and rerun only repaired cases while iterating. An exact-kernel tmpfs pass cannot
 qualify Btrfs, native shell confinement or reboot durability. Match a full
 source/package candidate to its own freshly built helper before final acceptance.
 
+The exact-kernel storage fixture distinguishes its two mounts. Its positive
+publication uses the qualified temporary filesystem. Its Btrfs refusal runs only
+when the checkout is on Btrfs or you explicitly select an existing Btrfs root:
+
+```sh
+IPSE_TEST_BTRFS_ROOT=/absolute/path/on/btrfs mix test test/ipse/runner/storage_profile_test.exs
+```
+
+The fixture creates and removes a private test directory under that root. A
+tmpfs checkout without an explicit root skips only the Btrfs case; that skip
+proves no Btrfs behavior. An explicitly selected wrong filesystem fails the
+assertion instead of silently skipping. The exact kernel requirement still
+applies; this test setting changes no production storage admission.
+
 CLI prompt display can precede turn completion: busy-to-idle keeps an already
 active reader rather than redrawing its prompt. A PTY fixture should require
 completion and the current prompt after its last question display, allowing

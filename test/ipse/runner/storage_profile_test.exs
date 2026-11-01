@@ -7,6 +7,10 @@ defmodule Ipse.Runner.StorageProfileTest do
 
   @available_host :os.type() == {:unix, :linux} and
                     System.cmd("uname", ["-r"]) == {"7.2.11-arch1-1\n", 0}
+  @explicit_btrfs System.get_env("IPSE_TEST_BTRFS_ROOT")
+  @btrfs_root Path.expand(@explicit_btrfs || File.cwd!())
+  @btrfs_available @available_host and
+                     System.cmd("stat", ["-f", "-c", "%T", @btrfs_root]) == {"btrfs\n", 0}
   @moduletag skip: not @available_host
 
   setup do
@@ -87,11 +91,20 @@ defmodule Ipse.Runner.StorageProfileTest do
              )
   end
 
-  test "the exact new kernel still refuses the unqualified workspace Btrfs before protected publication" do
-    # This is the explicitly declared available-host Btrfs mount; a different
-    # checkout mount is not silently counted as its qualification evidence.
-    assert {"btrfs\n", 0} = System.cmd("stat", ["-f", "-c", "%T", File.cwd!()])
-    root = Path.join(File.cwd!(), "_build/ipse-unqualified-btrfs-" <> Usage.id())
+  @tag skip:
+         (cond do
+            not @available_host ->
+              "requires exact qualified kernel 7.2.11-arch1-1"
+
+            not @btrfs_available and is_nil(@explicit_btrfs) ->
+              "requires a Btrfs checkout or explicit IPSE_TEST_BTRFS_ROOT"
+
+            true ->
+              false
+          end)
+  test "the exact new kernel still refuses declared Btrfs before protected publication" do
+    assert {"btrfs\n", 0} = System.cmd("stat", ["-f", "-c", "%T", @btrfs_root])
+    root = Path.join(@btrfs_root, ".ipse-unqualified-btrfs-" <> Usage.id())
     File.mkdir!(root)
     File.chmod!(root, 0o700)
     on_exit(fn -> File.rm_rf!(root) end)
