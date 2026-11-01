@@ -256,9 +256,12 @@ ipse run --cwd /path/to/scratch --yes \
 
 Both commands use the saved provider/profile. Headless ordinary mutations are
 denied without `--yes`. A separately reviewed [knowledge permission](knowledge-permissions.md)
-records only its declared collection scope for `run`. Protected collection
-capture currently refuses because its publication boundary is unavailable;
-`--yes` cannot restore it. Existing read/inspection routes remain separate.
+records only its declared collection scope for `run`. Saved consent can cover
+the narrowly supported native capture path without `--yes`; complete automatic
+CLI capture remains unqualified. Unsupported correction, supersession and
+managed document mutations still refuse. Follow that manual's current source,
+category and publication limits; `--yes` cannot widen the knowledge permission.
+Existing read/inspection routes remain separate.
 To forget an existing native note, use the separate interactive
 [`knowledge forget` review](knowledge-permissions.md#forget-a-selected-native-note)
 on a supported Linux protected-storage profile; it is not a headless `run` effect.

@@ -65,7 +65,7 @@ defmodule Ipse.Provider.OpenAI do
         additional_tools = %{
           "type" => "additional_tools",
           "role" => "developer",
-          "tools" => Enum.map(tools, &function_definition/1)
+          "tools" => Enum.map(tools, &function_definition(&1, :chatgpt))
         }
 
         [additional_tools | input]
@@ -91,10 +91,21 @@ defmodule Ipse.Provider.OpenAI do
 
     if config[:provider] == :chatgpt,
       do: body,
-      else: Map.put(body, "tools", Enum.map(tools, &function_definition/1))
+      else:
+        Map.put(
+          body,
+          "tools",
+          Enum.map(tools, &function_definition(&1, config[:provider] || :openai))
+        )
   end
 
-  defp function_definition(tool), do: Map.put(tool["function"], "type", "function")
+  defp function_definition(tool, provider) do
+    function = Map.put(tool["function"], "type", "function")
+
+    if provider in [:openai, :chatgpt],
+      do: Map.put_new(function, "strict", false),
+      else: function
+  end
 
   defp input(message, :chatgpt) do
     message =

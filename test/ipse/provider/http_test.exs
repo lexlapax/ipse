@@ -242,7 +242,11 @@ defmodule Ipse.Provider.HTTPTest do
 
     assert Enum.any?(request["input"], fn item ->
              item["type"] == "additional_tools" and item["role"] == "developer" and
-               item["tools"] == [Map.put(hd(tools)["function"], "type", "function")]
+               item["tools"] == [
+                 hd(tools)["function"]
+                 |> Map.put("type", "function")
+                 |> Map.put("strict", false)
+               ]
            end)
 
     assert Enum.any?(request["input"], fn item ->

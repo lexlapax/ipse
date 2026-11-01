@@ -112,6 +112,17 @@ provider continuation data. OpenAI/ChatGPT and Grok share bounded Responses
 machinery with distinct native replay namespaces; a shared wire format does not
 make their encrypted continuation or credentials interchangeable.
 
+OpenAI function definitions explicitly use `strict: false` unless the tool already
+selects a strict contract. Responses otherwise attempts to normalize schemas into
+strict mode, which can require optional arguments. For `read`, that can make a
+model fill binary options while trying to read ordinary text. The adapter keeps
+the original parameter schema: `{"path":"README.md"}` remains a complete text
+read. ChatGPT's `additional_tools` item and OpenAI API's top-level `tools` use this
+same conversion; Grok retains its separate mapping. Host argument validation and
+approval remain mandatory regardless of the provider's generation mode. Follow
+the [official function-calling contract](https://developers.openai.com/api/docs/guides/function-calling#strict-mode)
+and `test/ipse/provider/openai_test.exs` when changing optional-field handling.
+
 A provider returns assistant data separately from usage metadata. Preserve native
 continuation when changing visible text, and never render hidden reasoning.
 [`Provider.Transport`](../../lib/ipse/provider/transport.ex) bounds response bytes,

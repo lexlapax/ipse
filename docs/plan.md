@@ -1004,8 +1004,11 @@ allocation. See the
 
 P31I enhancement now asks the model to check available context before material
 questions, with versioned replay preserving the original draft instruction.
-Focused Session and replay controls pass; retrieval-before-question behavior and
-model quality are not established by that instruction. New native question
+Focused Session and replay controls pass; the instruction itself establishes no
+model quality. A later [real native ChatGPT control and Responses repair](archive/2026-10-26-p30-p31-implementation/responses-optional-tools-20261031.md)
+obtained workspace context before one missing-choice question, but its final
+draft exceeded the unchanged response-byte bound and remained uncommitted.
+Complete live draft and integrated knowledge clarification remain open. New native question
 batches also refuse duplicate prompts, kinds and ordered option labels and
 descriptions even if wire IDs or recommendations differ. A matching answered
 question in the current visible turn is returned to the model before another

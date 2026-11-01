@@ -34,6 +34,11 @@ That run was initially rejected before launch, then explicitly approved and
 started once with at most120calls. It ended without a final receipt after96
 completed responses. The ledger conservatively charges the120-call reservation:
 226of300charged,74remaining; exact attempted calls and termination cause unknown.
+Subsequent [native enhancement controls](responses-optional-tools-20261031.md)
+used eight additional requests, including a retained partial failure: the current
+conservative total is234of300,66remaining. The detailed
+[accounting ledger](live-call-accounting.md#native-enhancement-investigation-2026-10-31)
+retains both bounded Sessions and the unknown liability without replay.
 
 Ollama **0.40.5** is already installed. Resident tags include `qwen3.5:9b` and
 `llama3.2:3b`; neither silently substitutes for the primary embedding/answer pair.
@@ -59,6 +64,7 @@ nor resource/offline qualification. No daemon configuration or existing model wa
 - [Installed inference inspection and reconciliation](inference-reconciliation-installed-20261031.md) records the exact clean package, generic installed proof and five synthetic native-terminal scenarios.
 - [Selected Collection cosine/hybrid retrieval](collection-selected-semantic-20261031.md) records public-artifact native controls, encoder preflight/pinning and final source/Collection revalidation; namespace dense retrieval remains open.
 - [On-use acquired document checks](document-current-use-20261031.md) records native State/Collection file replacement, rename, deletion, redirect and concurrent-revision controls; producer/later-use qualification remains open.
+- [Responses optional-argument repair](responses-optional-tools-20261031.md) records the failed real enhancement reader, explicit schema mapping, native context-before-question follow-up and retained final-response bound failure.
 - [Current local follow-up](current-local-followup-20261031.md) records the integrated build/demo, 99 focused regressions, 79 P30 checks and fresh current-runtime two-source decision controls, with an exact runtime/test manifest.
 - [Bounded DOCX table styles](docx-table-style-20261031.md) records the reproduced nonhidden-style refusal, reuse of the existing style graph, recipe v12 and source/separate-artifact refusal controls; full Word fidelity remains open.
 - [Matching alternate DOCX style graphs](docx-matching-effects-20261031.md) records original public Word fixtures, recipe v13's exact graph agreement, native acquisition and separate source/installed artifact checks; differing graphs still refuse and rendered-Word fidelity remains open.

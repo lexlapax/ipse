@@ -172,9 +172,57 @@ defmodule Ipse.Provider.OpenAITest do
         [tool]
       )
 
-    assert body["tools"] == [Map.put(tool["function"], "type", "function")]
+    assert body["tools"] == [
+             tool["function"] |> Map.put("type", "function") |> Map.put("strict", false)
+           ]
+
     assert body["input"] == [%{"role" => "system", "content" => "rules"}]
     refute Enum.any?(body["input"], &(&1["type"] == "additional_tools"))
+  end
+
+  test "API and subscription definitions keep optional read arguments optional" do
+    read = Enum.find(Ipse.Tools.definitions(), &(get_in(&1, ["function", "name"]) == "read"))
+    schema = read["function"]["parameters"]
+    assert schema["required"] == ["path"]
+    assert :ok = Ipse.JSON.validate_arguments(schema, %{"path" => "brief.md"})
+
+    for provider <- [:openai, :chatgpt] do
+      body = OpenAI.request_body(%{provider: provider, model: "m"}, [], [read])
+
+      [definition] =
+        body
+        |> Jason.encode!()
+        |> Jason.decode!()
+        |> then(fn encoded ->
+          if provider == :chatgpt, do: hd(encoded["input"])["tools"], else: encoded["tools"]
+        end)
+
+      assert definition["strict"] === false
+      assert definition["parameters"] == schema
+      refute "encoding" in definition["parameters"]["required"]
+      refute "expected_sha256" in definition["parameters"]["required"]
+    end
+  end
+
+  test "an explicitly selected strict function contract survives both OpenAI routes" do
+    function = %{
+      "name" => "bounded",
+      "strict" => true,
+      "parameters" => %{
+        "type" => "object",
+        "properties" => %{"query" => %{"type" => "string"}},
+        "required" => ["query"],
+        "additionalProperties" => false
+      }
+    }
+
+    for provider <- [:openai, :chatgpt] do
+      body =
+        OpenAI.request_body(%{provider: provider, model: "m"}, [], [%{"function" => function}])
+
+      [definition] = if provider == :chatgpt, do: hd(body["input"])["tools"], else: body["tools"]
+      assert definition == Map.put(function, "type", "function")
+    end
   end
 
   test "ChatGPT billing omits empty tool injection and preserves continuation items" do
