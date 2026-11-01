@@ -1008,6 +1008,13 @@ B/unknown input; an independent B-only Session still captures and completes whil
 A is unavailable. Both use fresh current-runtime native source seeds. This
 qualifies that source boundary; capacity and full C0 acceptance remain open.
 
+The [page-input reservation follow-up](archive/2026-10-26-p30-p31-implementation/worker-input-reservation-20261101.md)
+now includes managed page input records in the existing output token. Actual
+byte/event contention controls complete publication, and insufficient full
+capacity refuses before source begin without leaking reservations. Source-byte
+quotas, native ownership and deadlines are unchanged. Maximum managed output,
+whole-producer capacity and integrated C0 qualification remain open.
+
 Interactive literal correction and supersession now have a
 [Session-owned native review and publication adapter](archive/2026-10-26-p30-p31-implementation/managed-supersession-native-20261031.md).
 Two separate fresh choices endorse the new statement and exact old/new relation.

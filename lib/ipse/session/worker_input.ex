@@ -9,12 +9,78 @@ defmodule Ipse.Session.WorkerInput do
   @intent_keys ~w(type version input_id session_id invocation_id parent_sha256 actions_sha256 stage payload_sha256 artifact_sha256 protocol_id frame_sha256 frame_bytes dependencies_sha256 checked_at_ms deadline_ms)
   @result_keys ~w(type version input_id intent_sha256 status)
   @transition_keys ~w(type version input_id intent_sha256 evidence checked_at_ms deadline_ms)
+  @transition_record_limit 16_384
+  @max_frame_bytes 32_772
+  @max_uint 9_007_199_254_740_991
 
   @doc false
   def configured?(config) when is_map(config),
     do: is_map(get_in(config, [:semantic_admission, "pin"]))
 
   def configured?(_), do: false
+
+  @doc false
+  def output_capacity(s, source, capacity) do
+    ordinary =
+      match?(%ManagedLineage{unavailable: false}, s.managed_lineage) and
+        ManagedLineage.invocation_dependencies(
+          s.managed_lineage,
+          s.invocation.parent["invocation_id"],
+          s.invocation.managed_reads
+        ) == {:ok, []}
+
+    if ordinary do
+      {:ok, capacity}
+    else
+      with {:ok, request} <- ResultSource.request(source) do
+        pages = div(source.begin["byte_count"] + request["limit"] - 1, request["limit"])
+        id = String.duplicate("0", 32)
+        sha = String.duplicate("0", 64)
+
+        intent = %{
+          "type" => "worker_input_intent",
+          "version" => 1,
+          "input_id" => id,
+          "session_id" => id,
+          "invocation_id" => id,
+          "parent_sha256" => sha,
+          "actions_sha256" => sha,
+          "stage" => "result.output",
+          "payload_sha256" => sha,
+          "artifact_sha256" => sha,
+          "protocol_id" => @max_uint,
+          "frame_sha256" => sha,
+          "frame_bytes" => @max_frame_bytes,
+          "dependencies_sha256" => sha,
+          "checked_at_ms" => @max_uint - 30_000,
+          "deadline_ms" => @max_uint
+        }
+
+        result = %{
+          "type" => "worker_input_result",
+          "version" => 1,
+          "input_id" => id,
+          "intent_sha256" => sha,
+          "status" => "delivered"
+        }
+
+        true = record?(intent) and record?(result)
+        pair_bytes = byte_size(Jason.encode!(intent)) + byte_size(Jason.encode!(result)) + 2
+
+        # A page can append its intent, one bounded root transition and result.
+        # These journal records are separate from the encoded source-byte quota.
+        {:ok,
+         %{
+           capacity
+           | bytes: capacity.bytes + pages * (pair_bytes + @transition_record_limit + 1),
+             events: capacity.events + pages * 3,
+             max_record_bytes: max(capacity.max_record_bytes, @transition_record_limit)
+         }}
+      end
+    end
+  rescue
+    _ -> @error
+  end
 
   def record?(%{"type" => "worker_input_intent"} = event) do
     keys?(event, @intent_keys) and event["version"] === 1 and
@@ -24,7 +90,7 @@ defmodule Ipse.Session.WorkerInput do
         &JSON.sha256?(event[&1])
       ) and is_binary(event["stage"]) and
       JSON.safe_uint?(event["protocol_id"]) and event["protocol_id"] > 0 and
-      is_integer(event["frame_bytes"]) and event["frame_bytes"] in 5..32_772 and
+      is_integer(event["frame_bytes"]) and event["frame_bytes"] in 5..@max_frame_bytes and
       JSON.safe_uint?(event["checked_at_ms"]) and JSON.safe_uint?(event["deadline_ms"]) and
       (event["deadline_ms"] - event["checked_at_ms"]) in 1..30_000
   rescue
@@ -51,7 +117,7 @@ defmodule Ipse.Session.WorkerInput do
       evidence["fresh_dependency"]["version"] === 3 and
       JSON.safe_uint?(event["checked_at_ms"]) and JSON.safe_uint?(event["deadline_ms"]) and
       (event["deadline_ms"] - event["checked_at_ms"]) in 1..30_000 and
-      byte_size(Jason.encode!(event)) <= 16_384
+      byte_size(Jason.encode!(event)) <= @transition_record_limit
   rescue
     _ -> false
   end
@@ -298,7 +364,7 @@ defmodule Ipse.Session.WorkerInput do
         stage: stage
       }
 
-      Session.record(s, intent)
+      record(s, intent, stage)
 
       next =
         s
@@ -348,7 +414,7 @@ defmodule Ipse.Session.WorkerInput do
              System.system_time(:millisecond)
            ),
          true <- record?(event) do
-      Session.record(s, event)
+      record(s, event, p.stage)
       next = Session.managed_event(s, event)
 
       with {:ok, payload} <- expected_payload(next, p.stage),
@@ -463,7 +529,7 @@ defmodule Ipse.Session.WorkerInput do
         "status" => Atom.to_string(status)
       }
 
-      Session.record(s, event)
+      record(s, event, p.stage)
       s = Session.managed_event(s, event)
 
       next = %{
@@ -482,6 +548,13 @@ defmodule Ipse.Session.WorkerInput do
   end
 
   def finish(s, _, _, _), do: {:reply, @error, s}
+
+  defp record(%{extension_output: output} = s, event, "result.output") when is_map(output) do
+    Ipse.Session.Invocation.record_output(s, event)
+    :ok
+  end
+
+  defp record(s, event, _), do: Session.record(s, event)
 
   defp worker?(s, caller),
     do:

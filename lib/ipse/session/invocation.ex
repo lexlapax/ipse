@@ -227,6 +227,7 @@ defmodule Ipse.Session.Invocation do
              120_000
            ),
          {:ok, capacity} <- ResultSource.reservation_size(source, final),
+         {:ok, capacity} <- Ipse.Session.WorkerInput.output_capacity(s, source, capacity),
          true <- ResultSource.fits_reservation?(s.extension_result_sources, capacity),
          {:ok, limits} <- Ipse.Journal.normalize_limits(s.config[:journal]),
          true <- capacity.max_record_bytes <= limits["max_record_bytes"],

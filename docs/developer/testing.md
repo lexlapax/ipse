@@ -696,6 +696,17 @@ no next callback. The independent-B positive requires the actual stored record,
 current B proof, registered-model continuation, strict Saved/idle recovery and
 byte-identical restoration of A. Retained roots print as `WORKER_INHERITED_ROOT`.
 
+Use `--only worker_input_capacity` for managed page-input journal accounting.
+After actual source begin, the disclosed owner-side hook obtains a real competing
+Writer reservation, leaving eight general events or 4096 general bytes. The
+admitted five-page result must complete from its own token, materialize, release
+only its unused capacity and survive strict Saved/idle checks. The hook changes
+no limits, deadlines or source permits. A separate 65536-byte journal case must
+refuse before source begin without sealing or leaking reservations. Retained
+contention roots print as `WORKER_CAPACITY_ROOT`. These small metadata controls
+do not establish maximum managed-output performance; keep the ordinary 4-MiB
+result regression and later managed capacity qualification separate.
+
 Use `--only managed_presentation_input` and `--only managed_sink_input` for the
 unsupported private Worker purposes. Preserve actual ordinary formatter/text/
 notification/feed callbacks and acknowledged managed metadata delivery. Managed

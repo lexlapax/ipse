@@ -625,7 +625,10 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
     File.mkdir_p!(home)
     File.mkdir_p!(cwd)
     File.chmod!(home, 0o700)
-    unless c[:literal_v4_ab], do: on_exit(fn -> File.rm_rf!(root) end)
+
+    unless c[:literal_v4_ab] || c[:worker_input_capacity],
+      do: on_exit(fn -> File.rm_rf!(root) end)
+
     trace = Path.join(root, "trace")
 
     if literal_seed do
@@ -5114,6 +5117,130 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
     assert_receive {:ipse, ^pid, {:done, :error}}, 5000
     assert {:ok, events} = Journal.load(c.dir, Session.info(pid).id)
     assert {:ok, _} = Ipse.Session.Saved.restore(events, Session.info(pid).id)
+  end
+
+  @tag :worker_input_capacity
+  test "managed page-input capacity refuses before source begin when its full reservation cannot fit",
+       c do
+    pid = start(c, %{journal: %{"max_bytes" => 65_536}})
+
+    assert :ok =
+             Session.invoke_export(pid, :command, "ext__capture__inspect", %{
+               "mode" => "paged_read"
+             })
+
+    assert_receive {:ipse, ^pid, {:done, :error}}, 15_000
+    id = Session.info(pid).id
+    assert {:ok, events} = Journal.load(c.dir, id)
+    refute Enum.any?(events, &(&1["type"] in Ipse.Extension.ResultSource.types()))
+    refute Enum.any?(events, &(&1["type"] == "journal_limit_reached"))
+    state = :sys.get_state(pid)
+    assert state.extension_output == nil
+    writer = :sys.get_state(state.journal_writer)
+    assert writer.reservations == %{}
+    assert writer.reserved_bytes == 0 and writer.reserved_events == 0
+    assert {:ok, saved} = Session.Saved.restore(events, id)
+    assert saved.worker_input_unknown == []
+    assert :ok = Session.close_confirmed(pid)
+  end
+
+  for dimension <- [:events, :bytes] do
+    @tag :worker_input_capacity
+    test "managed output reservation covers its page inputs with competing #{dimension} capacity",
+         c do
+      pid = start(c)
+      id = Session.info(pid).id
+      owner = self()
+      monitor = Process.monitor(pid)
+      IO.puts("WORKER_CAPACITY_ROOT=" <> c.root)
+
+      hook = fn
+        :reserved, _, _ ->
+          :reserved
+
+        _d, {:out, {:ok, %{"type" => "extension_output_begin"}}, _, state}, _ ->
+          writer = :sys.get_state(state.journal_writer)
+
+          capacity =
+            if unquote(dimension) == :events do
+              events = writer.limits["max_events"] - writer.count - writer.reserved_events - 1 - 8
+              %{events: events, bytes: events * 3}
+            else
+              bytes =
+                writer.limits["max_bytes"] - writer.offset - writer.reserved_bytes -
+                  Journal.reserve_bytes() - 4096
+
+              maximum = writer.limits["max_record_bytes"]
+              %{bytes: bytes, events: div(bytes + maximum - 1, maximum)}
+            end
+
+          assert {:ok, token} = Journal.Writer.reserve(state.journal_writer, capacity)
+          send(owner, {:output_competing_reservation, token, capacity})
+          :reserved
+
+        d, _, _ ->
+          d
+      end
+
+      assert :ok = :sys.install(pid, {hook, nil})
+
+      assert :ok =
+               Session.invoke_export(pid, :command, "ext__capture__inspect", %{
+                 "mode" => "paged_read"
+               })
+
+      assert_receive {:output_competing_reservation, token, capacity}, 10_000
+
+      release = fn ->
+        if Process.alive?(pid) do
+          :sys.replace_state(pid, fn state ->
+            assert :ok = Journal.Writer.release(state.journal_writer, token)
+            state
+          end)
+        end
+      end
+
+      try do
+        receive do
+          {:ipse, ^pid, {:done, :ok}} ->
+            :ok
+
+          {:ipse, ^pid, {:done, status}} ->
+            flunk("admitted output ended #{status}")
+
+          {:DOWN, ^monitor, :process, ^pid, reason} ->
+            flunk("admitted output lost journal capacity: #{inspect(reason)}")
+        after
+          15_000 -> flunk("admitted output did not complete")
+        end
+
+        assert_receive {:ipse, ^pid, {:extension_result, display}}, 1000
+
+        assert {:ok, %{value: %{"items" => items}}} =
+                 Session.materialize_result(pid, display["delivery"])
+
+        assert length(items) == 4
+        state = :sys.get_state(pid)
+        writer = :sys.get_state(state.journal_writer)
+        assert writer.reservations == %{token => capacity}
+        assert {:ok, events} = Journal.load(c.dir, id)
+        refute Enum.any?(events, &(&1["type"] == "journal_limit_reached"))
+        assert {:ok, saved} = Session.Saved.restore(events, id)
+        assert saved.worker_input_unknown == []
+      after
+        release.()
+        Process.demonitor(monitor, [:flush])
+      end
+
+      assert :ok = Session.close_confirmed(pid)
+      trace = File.read!(c.trace)
+      before = File.read!(Path.join(c.dir, id <> ".jsonl"))
+      resumed = start(c, %{}, id)
+      assert Session.info(resumed).phase == :idle
+      assert File.read!(c.trace) == trace
+      assert_idle_resume_journal(Path.join(c.dir, id <> ".jsonl"), before, id)
+      assert :ok = Session.close_confirmed(resumed)
+    end
   end
 
   @tag :managed_output_boundary

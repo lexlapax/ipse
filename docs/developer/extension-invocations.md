@@ -211,10 +211,21 @@ explicitly, and limits nesting to sixteen. Raising that general limit cannot
 replace the dedicated aggregate checks or enlarge SDK wire values.
 
 Reservations cover begin, fixed-stride fragments, seal, final result, and quota
-marker headroom. Other appends cannot spend them. Cancellation releases unused
-capacity before its control result; written bytes remain charged. Lower operator
-journal limits can refuse earlier. Reservations guarantee neither successful IO
-nor replay authority. [Persistence](persistence.md) teaches their completion owner.
+marker headroom. For managed pages, `WorkerInput.output_capacity/3` also budgets
+each page's maximum-width input intent/result and one possible bounded root
+transition. Those input records spend the same owner-only output token while
+transfer is active. The planner uses the actual source request stride and the
+existing 16-KiB transition-record bound. Known empty ordinary lineage retains its
+original reservation.
+
+Input metadata counts against total journal bytes/events/record size, separately
+from the unchanged 64-MiB encoded-source quota. Unused upper bounds return when
+the output reservation closes. Other appends cannot spend reserved capacity and
+still need their own headroom. Cancellation releases unused capacity before its
+control result; written bytes remain charged. Lower operator journal limits can
+refuse before source begin. Reservations guarantee neither successful IO, current
+source eligibility nor replay authority. [Persistence](persistence.md) teaches
+their completion owner.
 
 ## Materialize without repeating execution
 

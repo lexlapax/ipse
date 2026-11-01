@@ -140,8 +140,12 @@ after note expiry, forgetting, or source deletion. They prove no current eligibi
 
 The SDK object bound remains 16 KiB. Saved documents allow 4 MiB, 8-KiB strings,
 depth 12, and 4,096 members per collection. Sessions allow 64 begun attempts and
-64 MiB of encoded source records; interrupted attempts count. Lower journal
-limits can refuse capacity. No partial result becomes a successful publication.
+64 MiB of encoded source records; interrupted attempts count. Managed page
+transfers also reserve their input-check journal records, separately from that
+source quota. Lower [journal limits](configuration.md#set-request-and-journal-limits)
+can refuse before a source begins. If the existing journal has little room,
+follow the [fresh-session handoff](recovery.md#continue-in-a-fresh-session) after
+inspecting earlier effects. No partial result becomes a successful publication.
 Eligible SDK-2 calls share a two-minute deadline from original admission, including
 startup, approvals, effects, transfer, validation, and cleanup. Pages do not reset it.
 Services, jobs, transforms, and recovered question continuations remain inline.

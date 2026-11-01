@@ -410,6 +410,15 @@ artifact, publisher, stage, payload, request ID and immutable frame. A durable
 `worker_input_intent` binds these hashes before delivery; it does not duplicate
 the payload or lend the worker a journal handle.
 
+Paged output reserves its managed input records together with the source
+transfer. Intent, optional root transition and delivery result use that actual
+output token; unrelated reservations cannot consume their allowance. Other
+initial/action inputs keep ordinary journal admission. This resource budget
+supplies no source authority: the same fresh dependency, owner and immutable-frame
+checks still precede every page request. See
+[publication capacity](extension-invocations.md#reserve-capacity-and-commit-publication)
+for the distinct source-byte and journal limits.
+
 Keep that union when the newest result is independent evidence. If an invocation
 first reads managed note A, then quotes fresh input B, its next `host.actions`
 frame still inherits A. Losing A's original journal after B commits must withhold
