@@ -1008,7 +1008,12 @@ Focused Session and replay controls pass; the instruction itself establishes no
 model quality. A later [real native ChatGPT control and Responses repair](archive/2026-10-26-p30-p31-implementation/responses-optional-tools-20261031.md)
 obtained workspace context before one missing-choice question, but its final
 draft exceeded the unchanged response-byte bound and remained uncommitted.
-Complete live draft and integrated knowledge clarification remain open. New native question
+A later [response-budget repair](archive/2026-10-26-p30-p31-implementation/draft-response-budgets-20261031.md)
+preserves the selected route's bounded transport instead of adding a 64-KiB
+draft-only wire cap. Synthetic Session controls distinguish SSE framing from
+proposal size, preserve tighter configured bounds and refuse oversized final
+proposals explicitly. Complete live draft and integrated knowledge clarification
+remain open. New native question
 batches also refuse duplicate prompts, kinds and ordered option labels and
 descriptions even if wire IDs or recommendations differ. A matching answered
 question in the current visible turn is returned to the model before another

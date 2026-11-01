@@ -40,7 +40,6 @@ defmodule Ipse.Session.Draft do
     |> Map.put(:execution_mode, :draft)
     |> Map.put(:enclosing_mode, enclosing)
     |> Map.put(:max_steps, min(config[:max_steps] || 30, 3))
-    |> Map.put(:max_response_bytes, min(config[:max_response_bytes] || 65_536, 65_536))
   end
 
   def started(session, turn, id, original, effective, messages, reported_model, historical_model) do

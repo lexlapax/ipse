@@ -208,7 +208,15 @@ form.
 
 Trace `start_draft_observed`, `Turn.draft_prompt`, and `consume_accepted` together.
 Draft configuration narrows the active execution ceiling while retaining the
-enclosing ceiling and ordered tools. Dispatch denies mutations and external
+enclosing ceiling and ordered tools. It limits drafting to three model requests
+while preserving the selected route's transport, reasoning and token settings.
+`Provider.Transport` bounds the entire response, including SSE framing; this is
+separate from `Draft.text?/1`'s 32,768-byte UTF-8 proposal bound. A successful
+provider response with an empty or oversized proposal makes `Turn.finish_draft`
+report a failed turn without recording `draft_completed`. The original assistant
+message and completed provider accounting remain retained. A partial transport
+failure instead keeps its ordinary unknown-liability accounting.
+Dispatch denies mutations and external
 callbacks; approval flags cannot widen it. Acceptance journals the exact revision
 and provenance before submitting its proposal as a new ordinary turn. Cancellation
 journals an exact message-interval digest and then a neutral host notice. A crash
@@ -250,6 +258,7 @@ Practice the complete transitions with synthetic providers and a native PTY:
 
 ```sh
 mix test test/ipse/session/draft_vertical_test.exs test/ipse/session/draft_projection_test.exs
+mix test test/ipse/session/draft_response_limits_test.exs
 mix test test/ipse/session/draft_acceptance_test.exs test/ipse/session/draft_native_test.exs
 mix test test/ipse/session/draft_lineage_test.exs test/ipse/mcp/catalog_session_test.exs
 ```
@@ -271,9 +280,13 @@ Source attribution grants neither truth nor execution authority.
 For changes to managed knowledge projections, start with the pure
 [`Session.ManagedReference`](../../lib/ipse/session/managed_reference.ex) contract.
 It checks normalized host receipts, complete dependency unions, exact historical
-projection and replay. Session does not yet install this contract as a live
-freshness barrier. A valid receipt-shaped map grants neither permission nor
-current eligibility; the eventual protected reader must establish those facts.
+projection and replay. Constructing a dependency establishes no live freshness
+barrier. `ManagedReads` binds
+actual committed host reads; `ManagedLineage` derives their complete downstream
+union, and `ManagedUse` revalidates supported uses under current owners. Follow
+[managed read and downstream use](collection-sdk.md#revalidate-reads-and-downstream-use)
+for the execution path and its remaining integration gates. A valid
+receipt-shaped map alone grants neither permission nor current eligibility.
 Withdrawal currently refuses a host reference carrying an `ipse_reference`
 marker: that marker binds the original content and cannot be retained on a
 rewritten message. Preserve the original journal and require a separately
@@ -293,9 +306,10 @@ observation instead binds the host's exact request and committed result hashes.
 It does not invent record validity or claim that a filtered result proves the
 whole collection empty. Its eligibility requires the identical collection root,
 manifest, generation and floor; any root change needs a new actual observation.
-An arbitrary worker-supplied observation is not evidence of that read. Session
-still needs to create and inherit these dependencies from its actual committed
-reads before any consumer can rely on them.
+An arbitrary worker-supplied observation is not evidence of that read.
+`ManagedReads` creates the host receipt from the actual committed result, and
+Session inherits it through the registered lineage transitions. Replay verifies
+that history without granting current-use authority.
 
 For version-1 and version-2 dependencies, the pure projector likewise requires
 the identical collection root. A worker can derive output from the root metadata
@@ -320,10 +334,11 @@ same-view root witness, and its internal constructor checks the structural
 binding to a supplied pin and validity. It refuses root or record bytes that do
 not match their canonical re-encoding. The operation is not exposed to
 extension workers, and these structural checks do not authenticate their inputs.
-Session-owned durable receipt binding, source and suppression history, current
-consent, complete descendant lineage and a dispatch barrier are still required
-before this can authorize reuse. A copied or worker-supplied version-4 object is
-not evidence of an observation.
+Reuse additionally requires Session-owned durable receipt binding, source and
+suppression history, current consent, complete descendant lineage and the
+applicable dispatch barrier. Follow the host integration in the Collection SDK;
+the constructor supplies none of those owners. A copied or worker-supplied
+version-4 object is not evidence of an observation.
 
 For literal notes, the internal managed-record reader can additionally verify
 the selected record against signed live and anchor pages through one checked
@@ -338,7 +353,7 @@ supplied exact source proof, checking recipe, lineage and expiry consistency.
 It retains the signed historical publication-policy digest separately from the
 current consent pin. It does not authenticate the supplied proof or establish a
 current lease.
-Practice these boundaries before connecting a reader or dispatch adapter:
+Practice the pure receipt and replay boundaries separately from host admission:
 
 ```sh
 mix test test/ipse/session/managed_reference_test.exs

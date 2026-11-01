@@ -1624,7 +1624,7 @@ defmodule Ipse.Session.Turn do
   @doc false
   def finish(s, status) do
     s = CurrentInvocation.release_output(s)
-    s = finish_draft(s, status)
+    {s, status} = finish_draft(s, status)
     after_plans = Subscriptions.declarations(s.config, "after_turn")
     s = record_source_answer(s, status, after_plans)
 
@@ -1748,13 +1748,19 @@ defmodule Ipse.Session.Turn do
         {:draft_ready, draft.id, draft.revision}
       )
 
-      %{s | draft: Map.merge(draft, %{status: :completed, proposal: assistant["content"]})}
+      {%{s | draft: Map.merge(draft, %{status: :completed, proposal: assistant["content"]})}, :ok}
     else
-      s
+      Session.notify(
+        s,
+        {:error,
+         "Draft did not produce a nonempty UTF-8 proposal within 32768 bytes. Cancel it or supply a replacement before continuing."}
+      )
+
+      {s, :error}
     end
   end
 
-  defp finish_draft(s, _), do: s
+  defp finish_draft(s, status), do: {s, status}
 
   @doc false
   def continue_event_plan(s, delivery) do

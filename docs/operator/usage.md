@@ -222,9 +222,14 @@ Inline replacement removes surrounding whitespace. To use the literal text
 line; the inline form selects multiline entry.
 
 Keep the request and accepted proposal within 32 KiB. Drafting allows at most
-three model requests and three question rounds, narrowed by existing limits;
-response bytes are capped at 64 KiB. These bounds do not add an output-token cap
-to a route that does not support one or establish that remote work stopped.
+three model requests and three question rounds, narrowed by existing limits.
+Provider responses retain the selected route's transport limit: ordinarily
+8 MiB, or a tighter configured limit. That limit includes stream framing and
+provider continuation, separately from the proposal's 32-KiB UTF-8 limit.
+A transport failure can occur after partial text appears; that text is not a
+completed draft. An empty or oversized final proposal reports an error. Supply
+a replacement or cancel before continuing. These bounds do not add an output-token
+cap to a route that does not support one or establish that remote work stopped.
 If clarification cannot continue within the draft's question bounds, cancel the
 draft and include the missing information in a new request.
 At most sixteen accepted drafts can retain provenance in one Session. The active
