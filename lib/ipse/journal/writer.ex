@@ -83,6 +83,26 @@ defmodule Ipse.Journal.Writer do
         )
 
   @doc false
+  def request_share_barrier_display_sources(
+        writer,
+        operation,
+        job_ref,
+        owner_generation,
+        proofs,
+        inactive_ids,
+        %{directory: directory, ids: journal_ids} = journals
+      )
+      when is_pid(writer) and is_binary(operation) and byte_size(operation) == 16 and
+             is_reference(job_ref) and is_reference(owner_generation) and is_list(proofs) and
+             is_list(inactive_ids) and is_binary(directory) and is_list(journal_ids),
+      do:
+        :gen_server.send_request(
+          writer,
+          {:share_barrier_approval_sources, operation, job_ref, owner_generation, proofs,
+           inactive_ids, journals}
+        )
+
+  @doc false
   def thaw_share_barrier(writer, token, operation),
     do: call(writer, {:share_thaw, token, operation})
 
@@ -222,6 +242,24 @@ defmodule Ipse.Journal.Writer do
     with {:ok, sources} <- verified_barrier_sources(state, proofs, 0..128),
          {:ok, locks} <- inactive_lock_identities(state, inactive_ids) do
       share_barrier(state, operation, job_ref, generation, sources, locks)
+    else
+      _ -> {:reply, {:error, :source_index_refused}, state}
+    end
+  end
+
+  def handle_call(
+        {:share_barrier_approval_sources, operation, job_ref, generation, proofs, inactive_ids,
+         journals},
+        {owner, _},
+        %{owner: owner, share_barrier: nil, lock_mode: mode} = state
+      )
+      when mode in [:header_share_v2, :resume_share_v2] and is_binary(operation) and
+             byte_size(operation) == 16 and is_reference(job_ref) and is_reference(generation) do
+    with {:ok, sources} <- verified_barrier_sources(state, proofs, 0..128),
+         {:ok, locks} <- inactive_lock_identities(state, inactive_ids),
+         {:ok, journal_locks} <- approval_journal_locks(state, journals),
+         true <- length(locks) + length(journal_locks) <= 128 do
+      share_barrier(state, operation, job_ref, generation, sources, locks ++ journal_locks)
     else
       _ -> {:reply, {:error, :source_index_refused}, state}
     end
@@ -655,28 +693,48 @@ defmodule Ipse.Journal.Writer do
              ids,
              &(is_binary(&1) and &1 != state.id and Regex.match?(~r/\A[0-9a-f]{32}\z/, &1))
            ) do
-      Enum.reduce_while(ids, {:ok, []}, fn id, {:ok, acc} ->
-        case File.lstat(Path.join(Path.dirname(state.path), id <> ".lock")) do
-          {:ok, stat} when stat.uid == elem(state.identity, 3) ->
-            if protected?(stat) and stat.inode > 0,
-              do:
-                {:cont,
-                 {:ok, [%{session_id: id, device: stat.major_device, inode: stat.inode} | acc]}},
-              else: {:halt, {:error, :source_index_refused}}
-
-          _ ->
-            {:halt, {:error, :source_index_refused}}
-        end
-      end)
-      |> case do
-        {:ok, locks} -> {:ok, Enum.reverse(locks)}
-        error -> error
-      end
+      lock_identities(state, Path.dirname(state.path), ids)
     else
       _ -> {:error, :source_index_refused}
     end
   rescue
     _ -> {:error, :source_index_refused}
+  end
+
+  defp approval_journal_locks(state, %{directory: directory, ids: ids}) do
+    with true <-
+           is_binary(directory) and Path.type(directory) == :absolute and
+             Path.basename(directory) == "knowledge-management",
+         true <- is_list(ids) and length(ids) <= 128 and ids == Enum.sort(Enum.uniq(ids)),
+         true <- Enum.all?(ids, &(is_binary(&1) and Regex.match?(~r/\A[0-9a-f]{32}\z/, &1))) do
+      lock_identities(state, directory, ids)
+    else
+      _ -> {:error, :source_index_refused}
+    end
+  rescue
+    _ -> {:error, :source_index_refused}
+  end
+
+  defp approval_journal_locks(_, _), do: {:error, :source_index_refused}
+
+  defp lock_identities(state, directory, ids) do
+    Enum.reduce_while(ids, {:ok, []}, fn id, {:ok, acc} ->
+      case File.lstat(Path.join(directory, id <> ".lock")) do
+        {:ok, stat} when stat.uid == elem(state.identity, 3) ->
+          if protected?(stat) and stat.inode > 0,
+            do:
+              {:cont,
+               {:ok, [%{session_id: id, device: stat.major_device, inode: stat.inode} | acc]}},
+            else: {:halt, {:error, :source_index_refused}}
+
+        _ ->
+          {:halt, {:error, :source_index_refused}}
+      end
+    end)
+    |> case do
+      {:ok, locks} -> {:ok, Enum.reverse(locks)}
+      error -> error
+    end
   end
 
   defp share_barrier(state, operation, job_ref, generation, sources, locks \\ nil) do

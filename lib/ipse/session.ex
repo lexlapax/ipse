@@ -1476,6 +1476,23 @@ defmodule Ipse.Session do
                   inactive_ids
                 )
 
+              Map.has_key?(ticket, :approval_journals) ->
+                inactive_ids =
+                  ticket.relation_display_inactive_sources
+                  |> Enum.map(& &1["session_id"])
+                  |> Enum.uniq()
+                  |> Enum.sort()
+
+                Writer.request_share_barrier_display_sources(
+                  s.journal_writer,
+                  ticket.operation,
+                  ref,
+                  generation,
+                  ticket.source_proofs,
+                  inactive_ids,
+                  ticket.approval_journals
+                )
+
               Map.has_key?(ticket, :relation_display_inactive_sources) ->
                 inactive_ids =
                   ticket.relation_display_inactive_sources
@@ -1552,6 +1569,7 @@ defmodule Ipse.Session do
                 :relation_display_purpose_sha256,
                 :relation_display_facts_sha256,
                 :relation_display_inactive_sources,
+                :approval_journals,
                 :source_proofs,
                 :worker_input,
                 :worker_source_proofs
@@ -5873,7 +5891,7 @@ defmodule Ipse.Session do
                  (b.relation_display_inactive_sources
                   |> Enum.map(& &1["session_id"])
                   |> Enum.uniq()
-                  |> length()),
+                  |> length()) + length(Map.get(b, :approval_journals, %{ids: []}).ids),
          <<session_pid::32, _session::binary-size(64), host_pid::32, _host::binary-size(64),
            entries::binary-size(^count * 85), _device::64, _inode::64, _rdev::64, expiry::64,
            native_deadline::64, overall_wall::64, native_overall::64>> <- rest,

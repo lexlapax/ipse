@@ -103,8 +103,10 @@ permission again before execution. A changed source or revoked permission can
 therefore refuse a proposal that you approved.
 
 This development-source path requires the matching native helper, original
-source journals and a complete escaped display within 64 KiB. Accepted-decision
-dependencies, delegated proposals and nested worker approval displays remain
+source journals and a complete escaped display within 64 KiB. For an accepted
+decision, keep its original committed management journal as well: the display
+retains both original journals, then checks current authority again after your
+answer. Delegated proposals and nested worker approval displays remain
 unavailable. An unavailable owner or unsupported display refuses before the
 effect starts. Preserve the Session and inspect the refusal; saving knowledge
 permission does not bypass these limits.
@@ -322,8 +324,9 @@ management journal, original Session source and current permission. Worker
 delivery retains both original journals through its native write and settlement.
 Keep both journals available; missing or changed originals withhold the decision
 text. The registered provider route remains required for managed context; the
-credential-free demo does not qualify this delivery path. These checks do not
-enable note-derived ordinary tool approval for accepted decisions.
+credential-free demo does not qualify this delivery path. A later ordinary tool
+proposal uses the separate native `allow CODE` review described above; accepting
+the decision itself supplies no tool permission.
 
 The automatic pass considers at most 32 notes and fits whole notes into the
 available context envelope. Larger sets or insufficient space produce partial

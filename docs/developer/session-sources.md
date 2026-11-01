@@ -462,7 +462,8 @@ and Writer thaw. Duplicate links share one journal owner; conflicting identities
 for one journal refuse. Inactive original Session groups and management journals
 share the existing 128-entry reserve and native bound, in addition to the one
 consuming Session description. Missing owners or unconfirmed close withhold
-delivery. This Worker path supplies no accepted-decision terminal approval.
+delivery. Worker input and ordinary native tool approval use separate retained-owner
+adapters; each preserves the original journals and leaves effect permission separate.
 
 Other Worker entry points have no admission through this export adapter.
 Managed presentation refuses before transform intent/start; private notifications
@@ -498,8 +499,11 @@ receives the three owner-bound capabilities, exact proofs/group tokens, whether
 active sources need the separate Session share, and a deadline bounded by policy,
 source validity and five seconds. Callback failure, owner loss or a late result
 after entry stays unknown. Opaque tokens cannot be used after callback cleanup.
-Accepted-decision dependencies refuse this preparation path because their
-additional original management-journal lease must also reach the native sink.
+Accepted-decision dependencies refuse this generic preparation path. The narrow
+`ManagedUse.with_approval_dependencies/3` entry additionally authenticates and
+retains their original committed management journals, as does the separate
+Worker-input adapter. Other displays cannot acquire that support by selecting
+dependency version 6.
 
 This callback displays nothing and grants no approval. For ordinary model tool
 approval, `Session.ManagedApproval` binds its exact pending call, parsed arguments,
@@ -507,8 +511,18 @@ request, dependency union and full escaped payload to a new private terminal
 purpose. Session chooses the payload and native Port; workers cannot select them.
 Its actual Writer drains and seals active proofs and inactive source-lock
 identities before the original Session lock, all three policy owners and every
-inactive source group reach the same native display. The complete display is
-limited to 64 KiB and refuses rather than truncating.
+inactive source group reach the same native display. For accepted decisions,
+Session derives required management-journal IDs from its pending dependency
+union. Writer snapshots those private lock inodes together with inactive Session
+locks; Session requires the manifest's exact combined count and inode set.
+`LeasedTerminal` binds each actual journal token to its immutable acceptance link,
+exports it to that same native receiver and settles it alongside the source
+groups. The combined set stays within 128 original-owner entries. The complete
+display is limited to 64 KiB and refuses rather than truncating.
+
+Writer remains frozen under its owning Session through display and settlement.
+The native Session/Host control descriptors guard the display; the separate
+export/root-decision path described above also transfers a Writer control.
 
 `Runner.LeasedTerminal.begin_approval/5` confirms native display completion,
 every exporter settlement and the Session notice before thawing Writer. It returns
@@ -597,8 +611,8 @@ one per target. A cancellation that completes before its client starts awaiting
 retains a bounded cancellation acknowledgement, rather than becoming a channel
 failure. No full approval arguments go through subscriber status events.
 
-Accepted-decision v6 dependencies, delegation, nested worker approval displays
-and clients without the native channel retain their refusal paths. Run the
+Delegation, nested worker approval displays and clients without the native
+channel retain their refusal paths. Run the
 `managed_display_owner` cases in `managed_collection_call_session_test.exs` for
 held root/policy owners, `save_display_owners` for actual reviewed sources, and
 the `managed_approval` controls in `operator_assertion_integration_test.exs` for
@@ -606,8 +620,12 @@ the production adapter. The latter use native statement sources and a synthetic
 local model route: they cover fresh/active/resumed writes, denial/stale code,
 cancellation/exit, delayed input, changed source, revocation and Session loss,
 with Saved and request accounting checks.
-They establish no independent human, live-model, installed or accepted-decision
-approval qualification.
+The separate accepted-decision fixture in
+`knowledge_session_test.exs` covers native approval/denial, actual source and
+management-journal descriptors at display, and journal-owner loss before display.
+The loss must stop the poisoned consumer with no tool start; strict Saved and a
+fresh idle resume must preserve its history without replay. These synthetic
+source controls establish no independent human, live-model or installed result.
 
 A resource scope reserves 128 source-lock entries, shared by inactive original
 Session journals and acceptance-journal reads, including transferable ones.

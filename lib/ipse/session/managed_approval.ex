@@ -116,7 +116,14 @@ defmodule Ipse.Session.ManagedApproval do
          true <- JSON.safe_uint?(wall) and wall > System.system_time(:millisecond),
          %{client: client, reader: reader} = channel <- s.operator_channel,
          true <- Process.alive?(client) and Process.alive?(reader),
-         {:ok, _} <- Session.managed_dependencies(s, "tool.approval") do
+         {:ok, _} <- Session.managed_dependencies(s, "tool.approval"),
+         {:ok, journals} <- approval_journals(s),
+         true <-
+           length(journals.ids) +
+             (proofs
+              |> Enum.reject(&(&1["session_id"] == s.id))
+              |> Enum.uniq_by(& &1["session_id"])
+              |> length()) <= 128 do
       now = System.monotonic_time(:millisecond)
       wall = min(wall, System.system_time(:millisecond) + 5_000)
       deadline = now + min(wall - System.system_time(:millisecond), 5_000)
@@ -137,6 +144,7 @@ defmodule Ipse.Session.ManagedApproval do
         source_proofs: Enum.filter(proofs, &(&1["session_id"] == s.id)),
         expected_sources: sources,
         relation_display_inactive_sources: Enum.reject(proofs, &(&1["session_id"] == s.id)),
+        approval_journals: journals,
         wall_deadline: wall,
         overall_deadline: overall,
         overall_wall: System.system_time(:millisecond) + 120_000
@@ -146,6 +154,23 @@ defmodule Ipse.Session.ManagedApproval do
        %{s | share_ticket: ticket}}
     else
       _ -> {:reply, @error, s}
+    end
+  end
+
+  defp approval_journals(s) do
+    acceptances =
+      for dependency <- s.managed_approval.dependencies,
+          dependency["version"] === 6,
+          do: dependency["subject"]["acceptance"]
+
+    if Enum.all?(acceptances, &(&1["journal_kind"] === "knowledge_management")) do
+      {:ok,
+       %{
+         directory: Path.join(s.config.home, "knowledge-management"),
+         ids: acceptances |> Enum.map(& &1["journal_id"]) |> Enum.uniq() |> Enum.sort()
+       }}
+    else
+      @error
     end
   end
 
@@ -196,7 +221,7 @@ defmodule Ipse.Session.ManagedApproval do
     with :ok <- Input.await_output_release(release) do
       Resources.file_effect(fn ->
         with {:ok, handle} <-
-               ManagedUse.with_display_dependencies(context, spec.dependencies, fn _, held ->
+               ManagedUse.with_approval_dependencies(context, spec.dependencies, fn _, held ->
                  LeasedTerminal.begin_approval(owner, job, spec.input, held, context.cwd)
                end),
              {:ok, allowed} <- LeasedTerminal.finish_approval(handle, spec.token) do

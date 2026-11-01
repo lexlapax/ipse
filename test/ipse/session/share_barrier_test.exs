@@ -67,6 +67,147 @@ defmodule Ipse.Session.ShareBarrierTest do
     assert Enum.any?(events, &(&1["type"] == "fixture_after"))
   end
 
+  defp source_window(s, root) do
+    assert {:ok, events} = Journal.load(root, s.id)
+    assert {:ok, window} = Ipse.Session.SourceWindow.restore(events, s.id)
+    assert :ok = Writer.install_source_window(s.writer, window)
+  end
+
+  defp private_lock(directory, id) do
+    path = Path.join(directory, id <> ".lock")
+    File.write!(path, "", [:exclusive])
+    File.chmod!(path, 0o600)
+    path
+  end
+
+  @tag :approval_journal_snapshot
+  test "approval barrier binds both inactive source and management journal inodes", c do
+    s = start_owned(c)
+    source_window(s, c.root)
+    directory = Path.join(c.root, "knowledge-management")
+    File.mkdir!(directory)
+    File.chmod!(directory, 0o700)
+    source = Ipse.Usage.id()
+    journal = Ipse.Usage.id()
+    source_path = private_lock(c.root, source)
+    journal_path = private_lock(directory, journal)
+    operation = :crypto.strong_rand_bytes(16)
+
+    request =
+      Writer.request_share_barrier_display_sources(
+        s.writer,
+        operation,
+        make_ref(),
+        make_ref(),
+        [],
+        [source],
+        %{directory: directory, ids: [journal]}
+      )
+
+    assert {:ok, token, snapshot} = response(request)
+
+    expected =
+      for {id, path} <- [{source, source_path}, {journal, journal_path}] do
+        stat = File.stat!(path)
+        %{session_id: id, device: stat.major_device, inode: stat.inode}
+      end
+
+    assert snapshot.inactive_source_locks == expected
+
+    assert {:ok, _} = response(Lock.request_share_arm(s.guard, s.writer, token, operation))
+    assert :ok = response(Lock.request_share_cancel(s.guard, token, operation))
+    assert :ok = Writer.thaw_share_barrier(s.writer, token, operation)
+    assert :ok = Writer.append(s.writer, %{"type" => "after_approval_snapshot"})
+    finish(s)
+  end
+
+  for fault <- [:missing, :symlink, :hardlink, :permissions, :duplicate, :invalid_id] do
+    @tag :approval_journal_snapshot
+    test "approval journal #{fault} refuses before freezing the writer", c do
+      s = start_owned(c)
+      source_window(s, c.root)
+      directory = Path.join(c.root, "knowledge-management")
+      File.mkdir!(directory)
+      File.chmod!(directory, 0o700)
+      id = Ipse.Usage.id()
+      path = private_lock(directory, id)
+
+      ids =
+        case unquote(fault) do
+          :missing ->
+            File.rm!(path)
+            [id]
+
+          :symlink ->
+            File.rename!(path, path <> ".real")
+            File.ln_s!(path <> ".real", path)
+            [id]
+
+          :hardlink ->
+            File.ln!(path, path <> ".copy")
+            [id]
+
+          :permissions ->
+            File.chmod!(path, 0o644)
+            [id]
+
+          :duplicate ->
+            [id, id]
+
+          :invalid_id ->
+            ["../" <> id]
+        end
+
+      assert {:error, :source_index_refused} =
+               response(
+                 Writer.request_share_barrier_display_sources(
+                   s.writer,
+                   :crypto.strong_rand_bytes(16),
+                   make_ref(),
+                   make_ref(),
+                   [],
+                   [],
+                   %{directory: directory, ids: ids}
+                 )
+               )
+
+      assert :sys.get_state(s.writer).share_barrier == nil
+      assert :ok = Writer.append(s.writer, %{"type" => "after_refused_approval_snapshot"})
+      finish(s)
+    end
+  end
+
+  @tag :approval_journal_snapshot
+  test "approval barrier refuses a combined source and journal count above 128", c do
+    s = start_owned(c)
+    source_window(s, c.root)
+    directory = Path.join(c.root, "knowledge-management")
+    File.mkdir!(directory)
+    File.chmod!(directory, 0o700)
+
+    sources = for _ <- 1..64, do: Ipse.Usage.id()
+    journals = for _ <- 1..65, do: Ipse.Usage.id()
+    for id <- sources, do: private_lock(c.root, id)
+    for id <- journals, do: private_lock(directory, id)
+
+    assert {:error, :source_index_refused} =
+             response(
+               Writer.request_share_barrier_display_sources(
+                 s.writer,
+                 :crypto.strong_rand_bytes(16),
+                 make_ref(),
+                 make_ref(),
+                 [],
+                 Enum.sort(sources),
+                 %{directory: directory, ids: Enum.sort(journals)}
+               )
+             )
+
+    assert :sys.get_state(s.writer).share_barrier == nil
+    assert :ok = Writer.append(s.writer, %{"type" => "after_refused_approval_capacity"})
+    finish(s)
+  end
+
   test "barrier records only the two immediately preceding acceptance event digests", c do
     s = start_owned(c)
     event = %{"type" => "pending_proposal_accepted", "fixture" => "review"}

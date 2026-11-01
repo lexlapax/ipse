@@ -846,7 +846,7 @@ remain open.
 The later [complete clean-source baseline](archive/2026-10-26-p30-p31-implementation/full-suite-20261101.md)
 at `f44b63c` exited 2: 3,653 passed, 54 failed, 116 skipped and 112 excluded.
 It includes neither the subsequent root-prerequisite fixture repair nor the
-uncommitted accepted-approval work. Required positive integration, lifecycle and
+subsequent accepted-approval work. Required positive integration, lifecycle and
 fault controls remain open; focused passes do not reduce that aggregate.
 
 | Package | Output and prerequisites |
@@ -972,9 +972,14 @@ The adapter binds the pending call, full payload, original Session/Writer and
 source/policy owners, settles display, releases those locks before input and
 retains fresh effect admission afterward. Scoped synthetic-route native controls
 cover fresh/active/resumed writes, denial/stale code, cancellation/exit, delayed input,
-changed source, revocation and Session loss. Accepted-decision dependencies,
-delegation and nested worker approval displays remain closed. This is component
-progress; full C0, installed/platform and independent quality acceptance remain open.
+changed source, revocation and Session loss. The
+[accepted-decision approval extension](archive/2026-10-26-p30-p31-implementation/accepted-approval-20261101.md)
+additionally retains original management journals at that same native sink,
+with Session/Writer-authenticated manifest counts/inodes. Native controls cover
+approval, denial, actual descriptor ownership and journal loss before display,
+including stopped-consumer inert recovery. Delegation and nested worker approval
+displays remain closed. This is component progress; full C0, installed/platform
+and independent quality acceptance remain open.
 
 The [managed export-input adapter](archive/2026-10-26-p30-p31-implementation/worker-input-session-20261101.md)
 now binds actual initial calls, committed action continuations and output-page
@@ -987,8 +992,9 @@ allowed captures. The subsequent [accepted-input increment](archive/2026-10-26-p
 extends that adapter to version 6 by retaining original management journals at
 the same native sink. Genuine single/two-decision source controls also preserve
 the model historical notice after two captures across resume. Accepted-decision
-terminal approvals, other Worker entry points and integrated/installed
-qualification remain open. This does not close C0 or change effect permission.
+terminal approval uses its separate native adapter above; other Worker entry
+points and integrated/installed qualification remain open. This does not close
+C0 or change effect permission.
 
 The [nested native/MCP result follow-up](archive/2026-10-26-p30-p31-implementation/nested-result-input-20261101.md)
 now lets known outcomes continue through that pinned export input fence, with

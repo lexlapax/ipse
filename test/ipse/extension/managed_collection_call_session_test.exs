@@ -4048,8 +4048,8 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
     assert :ok = Session.close_confirmed(read)
   end
 
-  @tag registered_main: true, capture_write: true
-  test "a self-writing capture retains its raw reads and projects only host-bound historical write facts",
+  @tag metadata_version: 3, registered_main: true, capture_write: true
+  test "a self-writing V3 capture retains raw reads and binds its result to the authenticated successor",
        c do
     pid = start(c)
     assert :ok = Session.prompt(pid, "Synthetic café observation")
@@ -4057,16 +4057,18 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
     [_, {_, request}] = Task.await(c.provider_server, 5000)
     [tool] = Enum.filter(request["messages"], &(&1["role"] == "tool"))
     historical = Jason.decode!(tool["content"])
-    assert historical["status"] == "historical_write_outcome"
-    assert historical["current_eligibility"] == "not_established"
+    assert historical["status"] == "ok"
     refute tool["content"] =~ "Synthetic café observation"
     state = :sys.get_state(pid)
 
-    assert {:ok, []} =
+    assert {:ok, [current]} =
              Ipse.Session.ManagedLineage.dependencies(state.managed_lineage, state.messages)
+
+    assert current["version"] == 3 and current["collection"]["generation"] == 1
 
     assert {:ok, events} = Journal.load(c.dir, state.id)
     result = Enum.find(events, &(&1["type"] == "extension_invocation_result"))
+    assert tool["content"] === result["text"]
 
     action =
       Enum.find(
@@ -4079,7 +4081,36 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
     assert fact["operation_id"] == action["operation_id"]
     assert fact["action_sha256"] == JSON.digest([action])
     assert fact["generation"] == 1
-    assert tool["content"] =~ fact["receipt_sha256"]
+    assert JSON.digest([historical["value"]["receipt"]]) == fact["receipt_sha256"]
+
+    transition = Enum.find(events, &(&1["type"] == "worker_input_root_transition"))
+    projection = transition["evidence"]
+
+    assert projection["operation_id"] == fact["operation_id"]
+    assert projection["own_action_sha256"] == fact["action_sha256"]
+    assert projection["receipt_sha256"] == fact["receipt_sha256"]
+    assert projection["fresh_dependency"] == current
+
+    reads =
+      for event <- events,
+          event["type"] == "managed_read_observed",
+          event["parent_invocation_id"] == result["invocation_id"],
+          do: event["dependencies"]
+
+    assert {:ok, old} = Ipse.Session.ManagedReference.union(reads)
+    assert old != []
+    assert Enum.all?(old, &(&1["version"] == 3 and &1["collection"]["generation"] == 0))
+
+    input =
+      Enum.find(
+        events,
+        &(&1["input_id"] == transition["input_id"] and
+            &1["type"] == "worker_input_intent")
+      )
+
+    assert input["dependencies_sha256"] == JSON.digest(old)
+    assert transition["intent_sha256"] == JSON.digest([input])
+
     assert {:ok, saved} = Ipse.Session.Saved.restore(events, state.id)
     assert saved.messages == state.messages
     assert saved.managed_reads.outputs[result["invocation_id"]] != []

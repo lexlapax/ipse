@@ -193,6 +193,18 @@ defmodule IpseKnowledge.KnowledgeSessionTest do
     capture(false, false, false, false, false, :public_recall)
   end
 
+  @tag :capture_parent_case
+  @tag :genuine_pending_accepted_approval
+  @tag timeout: 300_000
+  @tag skip:
+         if(System.get_env("IPSE_TEST_GENUINE_PENDING_ACCEPTED_APPROVAL") == "1",
+           do: false,
+           else: "explicit native accepted-approval fixture required"
+         )
+  test "accepted decisions retain original journal owners through native tool approval" do
+    capture(false, false, false, false, false, :public_approval)
+  end
+
   for category <- ~w(ordinary preference current) do
     @tag :capture_parent_case
     @tag :genuine_pending_accepted_retention
@@ -355,7 +367,7 @@ defmodule IpseKnowledge.KnowledgeSessionTest do
     File.mkdir_p!(cwd)
     File.chmod!(home, 0o700)
 
-    if accept? in [:public_recall, :public_expiry, :public_retention],
+    if accept? in [:public_recall, :public_expiry, :public_retention, :public_approval],
       do: IO.puts("ACCEPTED_RECALL_ROOT=" <> root),
       else: on_exit(fn -> File.rm_rf!(root) end)
 
@@ -618,7 +630,14 @@ defmodule IpseKnowledge.KnowledgeSessionTest do
         Map.merge(Consent.zero(), %{
           "operations" => if(accept? == :public_retention, do: 16, else: 8),
           "input_bytes" =>
-            if(accept? in [:public, :public_recall, :public_expiry, :public_retention],
+            if(
+              accept? in [
+                :public,
+                :public_recall,
+                :public_expiry,
+                :public_retention,
+                :public_approval
+              ],
               do: 1_000_000,
               else: 100_000
             ),
@@ -630,8 +649,24 @@ defmodule IpseKnowledge.KnowledgeSessionTest do
     }
 
     {config, selection} =
-      if accept? in [:public_recall, :public_expiry, :public_retention] do
-        config = registered_capture_config(config, category)
+      if not recall? do
+        config =
+          if accept? in [:public_recall, :public_expiry, :public_retention, :public_approval] do
+            registered_capture_config(config, category)
+          else
+            requests = if native?, do: if(answer?, do: 4, else: 3), else: 6
+
+            inputs =
+              if native?,
+                do: ["synthetic café 日本語 1"],
+                else: ["Acme has owner Alex", "Beta has owner Mira"]
+
+            registered_capture_config(
+              config,
+              category,
+              {config.provider_module, requests, inputs}
+            )
+          end
 
         assert {:ok, routes} =
                  Ipse.Extension.SemanticRoutes.resolve(config, [
@@ -689,7 +724,7 @@ defmodule IpseKnowledge.KnowledgeSessionTest do
 
     unless answer? do
       assert_receive {:ipse, ^pid, {:done, status}}, 30_000
-      expected = if(attack? or recall?, do: :error, else: :ok)
+      expected = if(recall?, do: :error, else: :ok)
 
       if status != expected do
         assert {:ok, events} = Journal.load(dir, Session.info(pid).id)
@@ -702,6 +737,12 @@ defmodule IpseKnowledge.KnowledgeSessionTest do
     end
 
     {:ok, events} = Journal.load(dir, Session.info(pid).id)
+
+    if answer? do
+      assert Enum.any?(events, fn event ->
+               event["type"] == "turn_finished" and event["status"] == "ok"
+             end)
+    end
 
     if recall? do
       assert_receive {:ipse, ^pid, {:error, reason}}, 5_000
@@ -981,11 +1022,19 @@ defmodule IpseKnowledge.KnowledgeSessionTest do
                   second_change,
                   %{
                     public?:
-                      accept? in [:public, :public_recall, :public_expiry, :public_retention],
+                      accept? in [
+                        :public,
+                        :public_recall,
+                        :public_expiry,
+                        :public_retention,
+                        :public_approval
+                      ],
                     config: config,
                     recall_accepted?: accept? === :public_recall,
                     expiry_accepted?: accept? === :public_expiry,
                     retention_accepted?: accept? === :public_retention,
+                    approval_accepted?: accept? === :public_approval,
+                    extension_config: data,
                     category: category
                   }
                 )
@@ -1330,6 +1379,60 @@ defmodule IpseKnowledge.KnowledgeSessionTest do
     if public? do
       assert result["accepted_note_key"] == note["record"]["key"]
       assert output =~ "\"accepted_note_key\":\"#{note["record"]["key"]}\""
+    end
+
+    if options.approval_accepted? do
+      assert {:ok, approval_binding} = ProjectIdentity.existing(home, Path.join(root, "work"))
+      approval_control = SemanticAdmission.control_root(home)
+
+      assert {:ok, approval_before} =
+               Consent.existing_snapshot(approval_control, approval_binding["project_id"])
+
+      File.write!(
+        Path.join(root, "accepted-approval.json"),
+        Jason.encode!(%{
+          "extension_config" => options.extension_config,
+          "semantic_selections" => options.config.semantic_selections,
+          "history_dir" => history_dir,
+          "record" => note["record"],
+          "link" => link["record"]["value"]
+        }),
+        [:exclusive]
+      )
+
+      File.chmod!(Path.join(root, "accepted-approval.json"), 0o600)
+
+      for mode <-
+            ~w(save_managed_approval save_managed_approval_deny save_managed_approval_display_owners save_managed_approval_journal_loss) do
+        {approval_output, approval_status} =
+          System.cmd(
+            driver,
+            ["--assertion", System.find_executable("elixir"), "--erl", "+S 2:2"] ++
+              paths ++
+              [Path.expand("test/support/accepted_decision_approval_cli.exs"), root, mode],
+            stderr_to_stdout: true,
+            cd: root
+          )
+
+        File.write!(Path.join(root, "accepted-approval-#{mode}.log"), approval_output)
+        assert approval_status == 0, approval_output
+        assert approval_output =~ "NATIVE_ACCEPTED_APPROVAL_#{String.upcase(mode)}_PASSED"
+
+        if mode == "save_managed_approval_journal_loss",
+          do: refute(approval_output =~ "Type allow ")
+      end
+
+      assert {:ok, approval_after} =
+               Consent.existing_snapshot(approval_control, approval_binding["project_id"])
+
+      assert {:ok, _} =
+               Consent.replace(
+                 approval_control,
+                 approval_binding["project_id"],
+                 approval_after["epoch"],
+                 approval_before["policy"],
+                 System.system_time(:millisecond)
+               )
     end
 
     if options.retention_accepted? do
@@ -2234,9 +2337,9 @@ defmodule IpseKnowledge.KnowledgeSessionTest do
     checker
   end
 
-  # Two attributed capture turns, using the real registered Ollama adapter rather
-  # than a provider-module override once managed dependencies enter history.
-  defp registered_capture_config(config, category) do
+  # Keep synthetic choices behind the registered wire adapter when publication
+  # adds managed history. The unregistered recall-refusal fixture stays separate.
+  defp registered_capture_config(config, category, fixture \\ nil) do
     {:ok, listener} = :gen_tcp.listen(0, [:binary, active: false, ip: {127, 0, 0, 1}])
     {:ok, {_, port}} = :inet.sockname(listener)
     base = "http://127.0.0.1:#{port}"
@@ -2244,7 +2347,7 @@ defmodule IpseKnowledge.KnowledgeSessionTest do
     server =
       Task.async(fn ->
         try do
-          for number <- 1..6 do
+          for number <- 1..if(fixture, do: elem(fixture, 1), else: 6) do
             {:ok, socket} = :gen_tcp.accept(listener, 30_000)
 
             try do
@@ -2252,41 +2355,91 @@ defmodule IpseKnowledge.KnowledgeSessionTest do
               messages = Jason.decode!(bytes)["messages"]
 
               message =
-                if rem(number, 3) == 0 do
-                  %{
-                    "role" => "assistant",
-                    "content" => "The unattended observation is pending review."
-                  }
+                if fixture do
+                  # Ollama identifies tool results by name. Restore only IDs
+                  # actually issued earlier on this same synthetic wire request.
+                  {messages, _} =
+                    Enum.map_reduce(messages, %{}, fn message, ids ->
+                      ids =
+                        Enum.reduce(message["tool_calls"] || [], ids, fn call, ids ->
+                          Map.put(ids, call["function"]["name"], call["id"])
+                        end)
+
+                      message =
+                        if message["role"] == "tool",
+                          do:
+                            Map.put(
+                              message,
+                              "tool_call_id",
+                              Map.fetch!(ids, message["tool_name"])
+                            ),
+                          else: message
+
+                      {message, ids}
+                    end)
+
+                  {model, _, inputs} = fixture
+
+                  # The wire intentionally omits host Reference markers. This
+                  # synthetic responder uses only its declared literal inputs;
+                  # the real request still contains the complete reference data.
+                  messages =
+                    Enum.reject(messages, fn message ->
+                      message["role"] == "user" and message["content"] not in inputs
+                    end)
+
+                  {:ok, message, %{}} = model.complete(config, messages, [], fn _ -> :ok end)
+
+                  if message["tool_calls"] do
+                    Map.update!(message, "tool_calls", fn calls ->
+                      Enum.map(calls, fn call ->
+                        update_in(call, ["function", "arguments"], &Jason.decode!/1)
+                      end)
+                    end)
+                  else
+                    message
+                  end
                 else
-                  {name, arguments} =
-                    if rem(number, 3) == 1 do
-                      {"source_list", %{"limit" => 32}}
-                    else
-                      result = Enum.find(Enum.reverse(messages), &(&1["role"] == "tool"))
-                      sources = Jason.decode!(result["content"])["sources"]
-                      source = Enum.find(Enum.reverse(sources), &(&1["kind"] == "input.original"))
+                  if rem(number, 3) == 0 do
+                    %{
+                      "role" => "assistant",
+                      "content" => "The unattended observation is pending review."
+                    }
+                  else
+                    {name, arguments} =
+                      if rem(number, 3) == 1 do
+                        {"source_list", %{"limit" => 32}}
+                      else
+                        result = Enum.find(Enum.reverse(messages), &(&1["role"] == "tool"))
+                        sources = Jason.decode!(result["content"])["sources"]
 
-                      text =
-                        Enum.at(
-                          ["Acme has owner Alex", "Beta has owner Mira"],
-                          div(number - 1, 3)
-                        )
+                        source =
+                          Enum.find(Enum.reverse(sources), &(&1["kind"] == "input.original"))
 
-                      {"ext__knowledge__capture",
-                       %{
-                         "text" => text,
-                         "category" => category,
-                         "reason" => "selected observation",
-                         "event_at_ms" => nil,
-                         "source" => %{"handle" => source["read_handle"], "quote" => text}
-                       }}
-                    end
+                        text =
+                          Enum.at(
+                            ["Acme has owner Alex", "Beta has owner Mira"],
+                            div(number - 1, 3)
+                          )
 
-                  %{
-                    "role" => "assistant",
-                    "content" => "",
-                    "tool_calls" => [%{"function" => %{"name" => name, "arguments" => arguments}}]
-                  }
+                        {"ext__knowledge__capture",
+                         %{
+                           "text" => text,
+                           "category" => category,
+                           "reason" => "selected observation",
+                           "event_at_ms" => nil,
+                           "source" => %{"handle" => source["read_handle"], "quote" => text}
+                         }}
+                      end
+
+                    %{
+                      "role" => "assistant",
+                      "content" => "",
+                      "tool_calls" => [
+                        %{"function" => %{"name" => name, "arguments" => arguments}}
+                      ]
+                    }
+                  end
                 end
 
               body =

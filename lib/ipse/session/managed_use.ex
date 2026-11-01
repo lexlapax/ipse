@@ -325,6 +325,15 @@ defmodule Ipse.Session.ManagedUse do
   def with_display_dependencies(_, _, _), do: @error
 
   @doc false
+  # Ordinary model-tool approval additionally retains accepted-decision journals.
+  # Its native adapter must export and settle every returned lease before input.
+  def with_approval_dependencies(context, dependencies, fun)
+      when is_map(context) and is_list(dependencies) and is_function(fun, 2),
+      do: retained_dependencies(context, dependencies, fun, :approval)
+
+  def with_approval_dependencies(_, _, _), do: @error
+
+  @doc false
   # The Session-owned export adapter must transfer every returned journal lease
   # to its actual stdin sink. This does not open accepted-decision UI display.
   def with_worker_dependencies(context, dependencies, fun)
@@ -361,7 +370,10 @@ defmodule Ipse.Session.ManagedUse do
          true <-
            Enum.all?(
              dependencies,
-             &(&1["version"] in if(purpose == :worker, do: [3, 4, 5, 6], else: [3, 4, 5]))
+             &(&1["version"] in if(purpose in [:worker, :approval],
+                 do: [3, 4, 5, 6],
+                 else: [3, 4, 5]
+               ))
            ),
          true <- bounded?(dependencies) and Enum.all?(dependencies, &bound?(&1, context)) do
       Resources.file_effect(fn ->
@@ -826,7 +838,8 @@ defmodule Ipse.Session.ManagedUse do
     end
   end
 
-  defp with_input_journals(context, dependencies, :worker, fun) do
+  defp with_input_journals(context, dependencies, purpose, fun)
+       when purpose in [:worker, :approval] do
     with {:ok, links} <- accepted_links(context, dependencies) do
       if links == [],
         do: fun.(%{}, []),

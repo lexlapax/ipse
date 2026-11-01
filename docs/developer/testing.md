@@ -131,6 +131,18 @@ fixture, explicit service registration and a supported request deadline; keep
 the normal adapter and completion witness. Do not construct a successful witness
 or remove managed dependencies to make a test proceed.
 
+The default `knowledge_session_test.exs` capture positives use that registered
+wire route too. Its synthetic responder recognizes only its declared literal
+task inputs after the native request drops host-only Reference markers, and
+reconstructs tool-result IDs only from calls actually issued in that request.
+The real provider request retains all reference content. Keep the deliberately
+unregistered recall-refusal case separate, and require native-answer capture to
+finish its expected turn as well as publishing its record.
+A known refused capture can return its failed action to the registered model
+and finish the turn normally. Preserve that refusal's failed commit, empty
+effect accounting and unchanged store assertions; an unrelated unregistered-route
+error must not supply the negative control.
+
 Pure fixtures must also reproduce the host's canonical dependency union. Use
 `ManagedReference.union/1` before placing reads into an invocation, including
 negative variants. Session stores reads in digest order; two individually valid
@@ -687,8 +699,30 @@ may now intercept an earlier Worker input, before a later publication watcher
 exists. Keep independent allowed-path and denial assertions, and preserve the
 first failed evidence when repairing fixture timing. These synthetic local-route
 controls establish neither human attribution, live-model quality, installed
-delivery nor accepted-decision support. Run Rust native tests and Mix terminal
+delivery nor accepted-decision support by those cases. Run Rust native tests and Mix terminal
 cohorts serially because they share the conservative per-user terminal lock.
+
+For accepted-decision approval, run the distinct native journey and Writer
+snapshot controls serially:
+
+```sh
+IPSE_TEST_GENUINE_PENDING_ACCEPTED_APPROVAL=1 mix test test/extensions/knowledge/knowledge_session_test.exs --only genuine_pending_accepted_approval --max-cases 1
+mix test test/ipse/session/share_barrier_test.exs --only approval_journal_snapshot --max-cases 1
+```
+
+The journey first captures through the registered adapter and accepts a real
+pending card through the public native review. Unmodified consumer cases approve
+one exact workspace write and deny another, preserving both original journals.
+Observed child hosts install a disclosed pre-display pause before their normal
+entry/policy admission. The unchanged native send then receives the actual
+source, policy, consuming Session and acceptance-journal lock descriptors plus
+Session/Host controls. The observer checks the exact sealed/frozen Writer
+snapshot and current journal token/link/operation. Its separate loss case kills
+that actual exported journal helper before display, requiring no approval payload,
+no tool/effect start, CLI failure and consumer death, followed by strict Saved and
+idle recovery without replay. Private JSON fixture data supplies no native permit
+or completion witness. The small Writer tests establish private inode admission
+and the combined 128-entry bound; they do not establish 128-note recall capacity.
 
 For history expiry, create the successor through the current native Session
 correction flow, retaining its actual statement source, separate relation review,

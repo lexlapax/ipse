@@ -20,14 +20,16 @@ defmodule Ipse.Runner.LeasedTerminal do
          true <- Process.get({Ipse.Extension.Consent, :lock_held}) === held.consent,
          true <- Process.get({Ipse.Extension.Collection, :lock_held}) === held.collection,
          {:ok, ^caps} <- Transaction.retained_share_stack(),
-         {:ok, sources} <- bound_source_identities(held.source_leases, proofs) do
+         {:ok, sources} <- bound_source_identities(held.source_leases, proofs),
+         {:ok, journals} <- bound_journal_identities(held.journal_leases),
+         true <- length(sources) + length(journals) <= 128 do
       exercise_mode(
         owner,
         job,
         intent,
         caps,
         cwd,
-        {:approval, sources, held.source_proofs, held.deadline_ms}
+        {:approval, sources ++ journals, held.source_proofs, held.deadline_ms}
       )
     else
       _ -> {:error, :cleanup_unconfirmed}
@@ -260,6 +262,29 @@ defmodule Ipse.Runner.LeasedTerminal do
       other -> other
     end
   end
+
+  defp bound_journal_identities(leases) when is_list(leases) and length(leases) <= 128 do
+    tokens = Enum.map(leases, & &1[:token])
+
+    with true <- Enum.all?(tokens, &is_reference/1),
+         true <- length(Enum.uniq(tokens)) == length(tokens) do
+      Enum.reduce_while(leases, {:ok, []}, fn %{token: token, link: link}, {:ok, acc} ->
+        case Ipse.Session.PendingAcceptance.journal_share_verified_identity(token, link) do
+          {:ok, identity} ->
+            {:cont, {:ok, acc ++ [{{:acceptance_journal, token}, identity}]}}
+
+          _ ->
+            {:halt, {:error, :cleanup_unconfirmed}}
+        end
+      end)
+    else
+      _ -> {:error, :cleanup_unconfirmed}
+    end
+  rescue
+    _ -> {:error, :cleanup_unconfirmed}
+  end
+
+  defp bound_journal_identities(_), do: {:error, :cleanup_unconfirmed}
 
   defp exercise_mode(owner, job, intent, caps, cwd, mode) do
     with [a, b, c] <- caps,
@@ -768,12 +793,26 @@ defmodule Ipse.Runner.LeasedTerminal do
     if length(sources) == length(pairs) do
       Enum.zip(sources, pairs)
       |> Enum.reduce_while(:ok, fn {{token, id}, pair}, :ok ->
-        case Ipse.Session.StoredSources.share_export(
-               token,
-               operation,
-               recipient(pid, pair, id),
-               deadline
-             ) do
+        result =
+          case token do
+            {:acceptance_journal, journal} ->
+              Ipse.Session.PendingAcceptance.journal_share_export(
+                journal,
+                operation,
+                recipient(pid, pair, id),
+                deadline
+              )
+
+            source when is_reference(source) ->
+              Ipse.Session.StoredSources.share_export(
+                source,
+                operation,
+                recipient(pid, pair, id),
+                deadline
+              )
+          end
+
+        case result do
           :ok -> {:cont, :ok}
           _ -> {:halt, :error}
         end
@@ -785,7 +824,16 @@ defmodule Ipse.Runner.LeasedTerminal do
 
   defp settle_sources(sources, operation, deadline) do
     Enum.reduce_while(sources, :ok, fn {token, _}, :ok ->
-      case Ipse.Session.StoredSources.share_settle(token, operation, deadline) do
+      result =
+        case token do
+          {:acceptance_journal, journal} ->
+            Ipse.Session.PendingAcceptance.journal_share_settle(journal, operation, deadline)
+
+          source when is_reference(source) ->
+            Ipse.Session.StoredSources.share_settle(source, operation, deadline)
+        end
+
+      case result do
         :ok -> {:cont, :ok}
         _ -> {:halt, :error}
       end

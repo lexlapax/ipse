@@ -111,6 +111,13 @@ ask for developer-assisted inspection if ordinary current-note reads cannot
 establish it. The standalone management-journal command below does not substitute
 for inspection of that conversation's relation records.
 
+For a note-derived tool approval, preserve the consuming Session and original
+source journals. Accepted decisions also need their original committed management
+journal. Loss during protected display can stop the consumer before an approval
+prompt appears. Inspect its tool intents/results and the actual target, then use
+compatible idle resume after ownership cleanup; resume restores no approval or
+tool attempt. Keep the original journals available for later current use.
+
 An interrupted write can also leave a private staging file. A later protected
 write checks and synchronizes retained stages before admitting more storage;
 if synchronization fails, admission refuses and keeps those files. Status is
