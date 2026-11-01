@@ -691,6 +691,7 @@ For the actual managed export adapter, also run:
 mix test test/ipse/extension/managed_collection_call_session_test.exs --only worker_input_boundary --max-cases 1
 mix test test/ipse/session/managed_supersession_session_test.exs --max-cases 1
 mix test test/ipse/session/operator_assertion_integration_test.exs --only managed_approval:true --max-cases 1
+mix test test/ipse/extension/managed_collection_call_session_test.exs --only native_root_approval --only root_subscriber_refusal --max-cases 1
 ```
 
 The first suite checks paged delivery, strict Saved commitments and permission
@@ -714,6 +715,20 @@ three policy locks, consuming/original Session locks, Session/Writer controls an
 actual Worker stdin must belong to that same native process. The original lock
 must remain busy. The native supervisor and importing transaction are distinct
 processes; a Port PID alone cannot identify the importer.
+
+Keep root-only metadata distinct from a signed note's contents. The original
+write/shell/MCP positives in `managed_collection_call_session_test.exs` use the
+`native_root_approval` tag. Their parent launches the same test and SDK fixture
+inside the existing PTY driver; the child retains the original policy, root
+observation, provider responses and proposed effect. Require the inspection tool
+followed by the approved effect, version-3 dependencies without a literal upgrade,
+three completed requests, confirmed effect cleanup/current result and strict
+Saved/idle recovery. An OTP Agent records actual HTTP requests because Terminal
+consumes its own mailbox; it supplies no response or completion witness. Observe
+the frozen Session with read-only system state, since ordinary `Session.info`
+can correctly refuse during ownership transfer. The paired subscriber control
+still withholds arguments when no native channel can own their display. Native
+approval is not permission to bypass that refusal.
 
 Inject a fault at its actual purpose: a hook around shared source acquisition
 may now intercept an earlier Worker input, before a later publication watcher

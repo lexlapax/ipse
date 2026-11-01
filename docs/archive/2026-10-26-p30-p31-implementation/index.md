@@ -61,6 +61,7 @@ nor resource/offline qualification. No daemon configuration or existing model wa
 
 ## P31A contracts and evidence
 
+- [Original root-only native approval positives](root-native-approval-20261101.md) preserve the SDK/policy/snapshot and exact write/shell/MCP effects through actual terminal approval, completed result delivery and idle recovery. This is distinct from signed-note contents; fault migrations remain open.
 - [Actual-note native MCP approval](native-mcp-approval-20261101.md) covers explicitly configured stdio start/send, one physical service call, current result delivery and source withdrawal before dispatch, plus idle recovery. Distinct root-only subscriber positives remain intact and open.
 - [Actual-note native shell approval](native-shell-approval-20261101.md) reuses genuine statement capture and native review for physical shell effects, buffered result delivery and source withdrawal before spawn; legacy subscriber-shaped shell fault controls retain their separate qualification.
 - [Registered V3 lifecycle and queue controls](capture-lifecycle-20261101.md) preserve actual activation, second-publication success, full-queue refusal, settlement and idle recovery through the registered adapter; the distinct legacy publication failure remains open.

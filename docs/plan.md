@@ -980,7 +980,11 @@ and subscriber-fixture migration remain open. The
 [actual-note stdio MCP journey](archive/2026-10-26-p30-p31-implementation/native-mcp-approval-20261101.md)
 also covers native approval, separately admitted start/send, one service call,
 current result delivery and pre-dispatch source withdrawal. Root-only approval
-positives, broader fault boundaries and HTTP retain separate qualification. The
+positives now have a separate
+[native caller migration](archive/2026-10-26-p30-p31-implementation/root-native-approval-20261101.md)
+that preserves the original snapshot, policy, provider sequence and effect
+assertions, including strict idle recovery. Root-only fault migrations, broader
+boundaries and HTTP retain separate qualification. The
 [accepted-decision approval extension](archive/2026-10-26-p30-p31-implementation/accepted-approval-20261101.md)
 additionally retains original management journals at that same native sink,
 with Session/Writer-authenticated manifest counts/inodes. Native controls cover
