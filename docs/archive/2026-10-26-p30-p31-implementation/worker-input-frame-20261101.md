@@ -147,3 +147,30 @@ failed and overlapping outcomes separately:
 | `/tmp/ipse-worker-input-demo-20261101.log` | 2720 | `d0d163d485ec4787ccd9ae11bc5d71f7ca8ba1f3ea2a036b3966da849432402b` |
 
 No uncommitted or moving-source package is represented as committed qualification.
+
+## Committed package
+
+After committing and pushing **`5ecb411`**, the tracked worktree was clean.
+The committed source completed `./dev/build.sh`, then the deliberately parser-free
+`IPSE_BUILD_PDF=0 ./dev/package.sh`. The package recorded source reference
+`5ecb4111f913b063777caba4883e8e922449ad68`, with 52 documents and no missing local
+targets. The rebuilt helper exactly matches the source-qualification inventory.
+
+`elixir dev/verify.exs installed package` passed against that exact archive and
+`examples/memory-corpus.json`. It confirmed unchanged inventories, private homes,
+a precompiled harness and no system development toolchain on the runtime PATH.
+CLI/help/demo, ordinary ownership/resume, bundled functionality and the explicit
+Memory synthetic 100-record/100-query check passed without model dispatch.
+
+This is the generic installed-runtime proof; it does not exercise the installed
+private stdin/frame interface or managed Session/SDK delivery. It qualifies no PDF
+parser, domain quality, human journey, release publication or other platform.
+The exact archive and receipts are retained separately from earlier packages:
+
+| Path | Bytes | SHA256 |
+| --- | ---: | --- |
+| `/tmp/ipse-worker-input-5ecb411-package-20261101.tar.gz` | 14989037 | `fd5a5fb3a9c056053b4ab10416f4877fbb80f271a7ef622a9ce90e5aa36f4c81` |
+| `/tmp/ipse-worker-input-committed-build-20261101.log` | 845 | `fb3e0ff3d49ed0f14196369fbaad3ec210282ac90b373a5b85b7a8803c2ef4eb` |
+| `/tmp/ipse-worker-input-package-committed-20261101.log` | 1476 | `09346854cae7a6ece9b5ecd9c030c2d213c9e038c2117229f1ebbcfa12707966` |
+| `/tmp/ipse-worker-input-installed-package-20261101.log` | 2879 | `da6c39f77e37721d205bab67b797b6eccc5053a63104fa71f4f3c50451f2a3ff` |
+| `/tmp/ipse-worker-input-docs-final-20261101.log` | 756 | `40d9a9411264d02f9be32202f41dd89dc6d21faf28f759bebc40a134c4f052ff` |
