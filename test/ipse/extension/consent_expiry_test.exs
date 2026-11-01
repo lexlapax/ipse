@@ -206,6 +206,80 @@ defmodule Ipse.Extension.ConsentExpiryTest do
              call(second, fn -> flunk("replayed mismatched receipt") end)
   end
 
+  test "accepted expiry stays typed, finite and zero-service after capture revocation", c do
+    metadata =
+      Map.merge(c.facts["metadata"], %{
+        "lineage" => JSON.sha256("synthetic accepted lineage"),
+        "recipe_sha256" => JSON.sha256("synthetic accepted recipe"),
+        "management_target" => "accepted_decision"
+      })
+
+    body =
+      c.facts
+      |> Map.delete("action_sha256")
+      |> Map.put("kind", "managed_accepted_decision_expiry")
+      |> Map.put("metadata", metadata)
+
+    before = File.read!(Path.join([c.root, c.project, "control.json"]))
+
+    for changed <- [
+          Map.put(metadata, "category", "pin"),
+          Map.put(metadata, "management_target", "literal_source"),
+          Map.put(metadata, "valid_until_ms", nil),
+          Map.put(metadata, "valid_until_ms", c.now + 1),
+          Map.put(metadata, "extra", true)
+        ] do
+      facts = body |> Map.put("metadata", changed) |> seal()
+      selected = %{c | facts: facts, request: request(facts, c.request["artifact_sha256"])}
+
+      assert {:error, :consent_management_refused} =
+               call(selected, fn -> flunk("invalid accepted expiry") end)
+
+      assert File.read!(Path.join([c.root, c.project, "control.json"])) == before
+    end
+
+    facts = seal(body)
+    requested = request(facts, c.request["artifact_sha256"])
+
+    for changed <- [
+          Map.put(requested, "headless", true),
+          Map.put(requested, "operation", "collection.retention"),
+          put_in(requested, ["reserved", "model_calls"], 1),
+          put_in(requested, ["reserved", "download_bytes"], 1)
+        ] do
+      assert {:error, :consent_management_refused} =
+               call(%{c | facts: facts, request: changed}, fn ->
+                 flunk("widened accepted expiry")
+               end)
+
+      assert File.read!(Path.join([c.root, c.project, "control.json"])) == before
+    end
+
+    for category <- ~w(ordinary preference current) do
+      facts =
+        body
+        |> Map.put("operation_id", Usage.id())
+        |> put_in(["metadata", "category"], category)
+        |> seal()
+
+      selected = %{c | facts: facts, request: request(facts, c.request["artifact_sha256"])}
+
+      assert {:ok, packet} =
+               call(selected, fn -> {:ok, selected.request["reserved"], receipt(facts)} end)
+
+      assert {:error, :consent_management_refused} =
+               call(selected, fn -> flunk("replayed accepted expiry") end)
+
+      assert {:ok, _} =
+               Consent.settle(
+                 c.root,
+                 c.project,
+                 packet["ticket"],
+                 {:known, packet["actual"], packet["receipt"]}
+               )
+    end
+  end
+
   defp call(c, fun),
     do: Consent.expire_deferred(c.root, c.project, 2, c.request, c.facts, c.now, fun)
 

@@ -722,6 +722,24 @@ IPSE_TEST_GENUINE_PENDING_ACCEPTED_RECALL=1 mix test test/extensions/knowledge/k
 
 The pure target/type grid is `test/ipse/session/accepted_decision_lifecycle_test.exs`;
 those shaped fixtures grant no native authority or current-use permission.
+To verify accepted-decision reclamation, run the separate actual-deadline journey:
+
+```sh
+IPSE_TEST_GENUINE_PENDING_ACCEPTED_EXPIRY=1 mix test test/extensions/knowledge/knowledge_session_test.exs --only genuine_pending_accepted_expiry --max-cases 1
+```
+
+It captures through a registered synthetic provider and accepts through the real
+native CLI. The trusted fixture shortens the saved policy before acceptance;
+the resulting native publication stores that actual finite deadline. Require
+refusal before expiry with unchanged target/control, wait for the real deadline,
+then reclaim after disabling capture and temporarily withholding the original
+Session source. The target/live row must disappear while the authenticated anchor
+clocks, immutable link, peer and original journals stay unchanged. Check exact
+settled expiry intent/accounting and subsequent duplicate acceptance refusal.
+No native clock, review time or storage receipt is manufactured. This short
+actual wait does not establish 30/90-day or annual endurance, human attribution,
+installed behavior or model quality. Run the ordinary literal/history expiry
+controls after changing their shared normalizer or management accounting.
 A shared lease must also work at the ordinary
 resource ceiling, reject foreign/forged/spent handles, and preserve the combined
 original-owner budget. Follow the

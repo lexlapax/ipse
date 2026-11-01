@@ -195,6 +195,38 @@ defmodule Ipse.Session.AcceptedDecisionLifecycleTest do
              %{"key" => c.record["key"], "expected_revision" => 2, "value" => nil}
            ]
 
+    assert {:error, _} = ManagedLifecycle.prepare_accepted_expiry(context, managed, 1799)
+    assert {:ok, expiry} = ManagedLifecycle.prepare_accepted_expiry(context, managed, 1800)
+    assert expiry["request"] == prepared["request"]
+    assert expiry["facts"]["kind"] == "managed_accepted_decision_expiry"
+    assert expiry["facts"]["expired_at_ms"] == 1800
+    assert expiry["facts"]["checked_at_ms"] == 1800
+    refute Map.has_key?(expiry["facts"], "policy")
+
+    assert expiry["facts"]["action_sha256"] ==
+             JSON.digest([Map.delete(expiry["facts"], "action_sha256")])
+
+    assert expiry["intent"]["facts"] == expiry["facts"]
+
+    for invalid <- [nil, -1, "1800", 1799] do
+      refute PendingAcceptance.expired_retained_decision_metadata?(metadata, invalid)
+    end
+
+    refute PendingAcceptance.expired_retained_decision_metadata?(
+             Map.put(metadata, "valid_until_ms", nil),
+             1800
+           )
+
+    refute PendingAcceptance.expired_retained_decision_metadata?(
+             Map.put(metadata, "management_target", "literal_source"),
+             1800
+           )
+
+    refute PendingAcceptance.expired_retained_decision_metadata?(
+             Map.put(metadata, "extra", true),
+             1800
+           )
+
     assert {:error, _} = ManagedLifecycle.prepare(context, managed, "Cannot relabel this target")
 
     assert {:error, _} =

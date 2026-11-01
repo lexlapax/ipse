@@ -436,7 +436,7 @@ automatically replayed.
 ## Reclaim an expired native note
 
 After a signed finite retention deadline has elapsed, reclaim its stored literal
-with the exact note key:
+or accepted decision with the exact note key:
 
 ```sh
 ipse knowledge expire note.COPY_THE_64_CHARACTER_LINEAGE --cwd /path/to/project
@@ -449,8 +449,13 @@ It requires a normal interactive native terminal and respects execution ceilings
 and explicit effect denial. Headless use, provider overrides, `--yes` and `--json`
 are refused.
 
-An already expired ordinary policy or finite historical retention qualifies.
-Persistent pins, current statements and preferences remain stored; an explicit
+An already expired ordinary policy, finite historical retention or accepted-decision
+deadline qualifies. An accepted decision's signed deadline can be shorter than
+its category's age limit because acceptance is also bounded by the saved policy.
+An accepted decision with no finite deadline refuses reclamation. Its immutable
+acceptance link and original admission clocks remain after removal; the original
+pending card cannot be accepted again.
+Persistent literal pins, current statements and preferences remain stored; an explicit
 finite retention choice on one of those statements can later qualify. Reclamation
 preserves original admission clocks and, for history, its signed successor link;
 it advances the old-backup floor and leaves other notes and shared evidence in

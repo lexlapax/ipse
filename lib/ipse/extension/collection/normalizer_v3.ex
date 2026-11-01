@@ -150,6 +150,9 @@ defmodule Ipse.Extension.Collection.NormalizerV3 do
   @doc "Reclaim one finite, elapsed historical literal while retaining its signed successor edge."
   def expire_history(witness, read, options), do: expire_kind(witness, read, options, :history)
 
+  @doc "Reclaim an accepted decision after its signed finite deadline; retain its immutable link and admission clocks."
+  def expire_accepted(witness, read, options), do: expire_kind(witness, read, options, :accepted)
+
   defp expire_kind(witness, read, options, kind) when is_function(read, 1) do
     cache = :ets.new(__MODULE__, [:set, :private])
 
@@ -185,28 +188,51 @@ defmodule Ipse.Extension.Collection.NormalizerV3 do
         true = revision > 0 and revision <= witness["root"]["generation"]
         true = record["sha256"] == value_sha(record["value"])
 
-        {:ok, candidate} =
-          ManagedRecipe.extract(
-            recipe,
-            key,
-            record["value"],
-            get_in(record["value"], recipe["evidence_path"])
-          )
-
-        true = candidate["kind"] == "literal_source" and candidate["lineage"] == lineage
         anchor = selected_row!(cap, :anchor, lineage, read, witness)
         live_id = ManagedPages.live_identity(key)
         live = selected_row!(cap, :live, live_id, read, witness)
 
-        {:ok, metadata} =
-          if kind == :history,
-            do: ManagedRetention.history_metadata(candidate, record["sha256"], anchor, live),
-            else: ManagedRetention.metadata(candidate, record["sha256"], anchor, live)
+        metadata =
+          if kind == :accepted do
+            {:ok, link} = read.("accept." <> record["value"]["candidate_id"])
 
-        true =
-          if kind == :history,
-            do: ManagedRetention.expired_history_metadata?(metadata, now),
-            else: ManagedRetention.expired_metadata?(candidate, record["sha256"], metadata, now)
+            {:ok, metadata} =
+              Ipse.Session.PendingAcceptance.retained_decision_metadata(
+                recipe,
+                record,
+                link,
+                anchor,
+                live
+              )
+
+            true =
+              Ipse.Session.PendingAcceptance.expired_retained_decision_metadata?(metadata, now)
+
+            metadata
+          else
+            {:ok, candidate} =
+              ManagedRecipe.extract(
+                recipe,
+                key,
+                record["value"],
+                get_in(record["value"], recipe["evidence_path"])
+              )
+
+            true = candidate["kind"] == "literal_source" and candidate["lineage"] == lineage
+
+            {:ok, metadata} =
+              if kind == :history,
+                do: ManagedRetention.history_metadata(candidate, record["sha256"], anchor, live),
+                else: ManagedRetention.metadata(candidate, record["sha256"], anchor, live)
+
+            true =
+              if kind == :history,
+                do: ManagedRetention.expired_history_metadata?(metadata, now),
+                else:
+                  ManagedRetention.expired_metadata?(candidate, record["sha256"], metadata, now)
+
+            metadata
+          end
 
         :ok = expiry_facts!(facts, request, witness, record, metadata, now, kind)
         {:ok, plan} = Planner.plan(cap, :live, [{live_id, nil}], read)
@@ -256,11 +282,7 @@ defmodule Ipse.Extension.Collection.NormalizerV3 do
 
         receipt = %{
           "version" => 3,
-          "kind" =>
-            if(kind == :history,
-              do: "managed_literal_history_expiry",
-              else: "managed_literal_expiry"
-            ),
+          "kind" => expiry_kind(kind),
           "lineage" => lineage,
           "record_key" => key,
           "action_sha256" => facts["action_sha256"],
@@ -587,11 +609,7 @@ defmodule Ipse.Extension.Collection.NormalizerV3 do
 
     true =
       facts["version"] === 1 and
-        facts["kind"] ==
-          if(kind == :history,
-            do: "managed_literal_history_expiry",
-            else: "managed_literal_expiry"
-          )
+        facts["kind"] == expiry_kind(kind)
 
     true = id?(facts["operation_id"])
 
@@ -609,24 +627,33 @@ defmodule Ipse.Extension.Collection.NormalizerV3 do
 
     true =
       facts["reason"] ==
-        if(kind == :history,
-          do: "Stored signed historical retention deadline elapsed",
-          else: "Stored signed ordinary retention deadline elapsed"
-        )
+        case kind do
+          :history -> "Stored signed historical retention deadline elapsed"
+          :accepted -> "Stored signed accepted retention deadline elapsed"
+          :ordinary -> "Stored signed ordinary retention deadline elapsed"
+        end
 
     true =
       facts["scope"] ==
-        if(kind == :history,
-          do:
-            "expired historical literal; any superseded retention-choice capsule may be compacted and is preserved in this journal, signed successor edge, admission clocks, original and review journals and shared evidence remain",
-          else:
+        case kind do
+          :history ->
+            "expired historical literal; any superseded retention-choice capsule may be compacted and is preserved in this journal, signed successor edge, admission clocks, original and review journals and shared evidence remain"
+
+          :accepted ->
+            "selected accepted decision; immutable acceptance link, original journals and shared evidence remain"
+
+          :ordinary ->
             "selected literal derivative; original journal, management review journal and shared evidence remain"
-        )
+        end
 
     true = facts["action_sha256"] == JSON.digest([Map.delete(facts, "action_sha256")])
     true = byte_size(Jason.encode!(facts)) <= 16_384
     :ok
   end
+
+  defp expiry_kind(:ordinary), do: "managed_literal_expiry"
+  defp expiry_kind(:history), do: "managed_literal_history_expiry"
+  defp expiry_kind(:accepted), do: "managed_accepted_decision_expiry"
 
   @doc """
   Forget one exact signed literal under the owning host's management boundary.

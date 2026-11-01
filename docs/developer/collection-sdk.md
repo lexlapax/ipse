@@ -596,7 +596,7 @@ Both belong inside the actual Identity/domain-auth callback. The result is a
 stored historical snapshot: it does not renew source eligibility or endorse its
 contents. Native journal/tty ownership, complete lease closure and the actual
 Review input remain separate and are not enabled by those read APIs.
-For forgetting, `ObservedRead.with_managed_forget_record/7` also admits a distinct
+For reducing management, `ObservedRead.with_managed_reducing_record/7` also admits a distinct
 accepted-decision target. It authenticates the type-3 signed live row, matching
 anchor and same-root immutable acceptance link. The note's sealed value hash
 binds that link's exact bytes. `PendingAcceptance.retained_decision_metadata/5`
@@ -682,12 +682,13 @@ only a fresh authenticated read can establish the new choice. Pinning does not
 change a worker's origin category or authorize a stronger automatic recipe.
 
 For `knowledge expire NOTE_KEY`, the same management owner authenticates one
-already expired effective ordinary or historical policy. `prepare_expiry/3` and
-`prepare_history_expiry/3` derive exact target/root/metadata and deadline facts;
+already expired effective literal/history policy or accepted-decision deadline.
+`prepare_expiry/3`, `prepare_history_expiry/3` and `prepare_accepted_expiry/3`
+derive exact target/root/metadata and deadline facts;
 `Consent.expire_deferred/7` admits one
 zero-service operation under the existing positive management epoch, even with
 capture disabled. Its shape/clock checks do not authenticate stored metadata.
-The matching `NormalizerV3.expire/3` or `expire_history/3` must open the actual
+The matching `NormalizerV3.expire/3`, `expire_history/3` or `expire_accepted/3` must open the actual
 signed anchor/live pages with the real DomainAuth capability, check the exact
 preview and fresh host time, and delete the public/live derivative while
 retaining the original clocks. For elapsed finite history, the prepared intent
@@ -706,6 +707,19 @@ against an authenticated current anchor using `ManagedPages.compact_choice?/3`.
 `knowledge operation` does not yet perform that comparison; its journal/control
 status does not independently authenticate the capsule. A caller must obtain the
 current page through DomainAuth before treating the comparison as authenticated.
+
+Accepted expiry uses `ManagedLifecycle.prepare_accepted_expiry/3` and the distinct
+`managed_accepted_decision_expiry` fact/receipt kind. Its pure deadline predicate
+accepts only the closed retained accepted metadata; it grants no authority.
+Inside the actual publication, the normalizer reauthenticates the type-3 live
+row, original anchor, exact stored note and same-root immutable acceptance link,
+then rederives those facts and checks fresh host time. It removes the public
+note/live row and advances the destructive floor, preserving the anchor clocks
+and acceptance link. Any signed finite accepted deadline may qualify, including
+a preference/current decision bounded by an earlier saved-policy expiry. Null
+deadlines and unexpired targets refuse. This is a reducing management operation
+after disabled capture or unavailable original sources; it grants no retention
+extension, replacement, current use, headless access or model/service effect.
 
 This branch follows the previously saved signed expiry policy rather than
 spending a new native Review permit. It exposes no worker operation and cannot

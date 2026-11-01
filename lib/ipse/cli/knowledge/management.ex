@@ -1484,7 +1484,7 @@ defmodule Ipse.CLI.Knowledge.Management do
           fn _ ->
             reader =
               if is_nil(policy),
-                do: &ObservedRead.with_managed_forget_record/7,
+                do: &ObservedRead.with_managed_reducing_record/7,
                 else: &ObservedRead.with_managed_record/7
 
             reader.(
@@ -2031,14 +2031,26 @@ defmodule Ipse.CLI.Knowledge.Management do
              %{namespace: namespace, format: "managed-metadata-v3"},
              fn cap, catalog ->
                result =
-                 ObservedRead.managed_record(
-                   SemanticAdmission.collection_root(config[:home]),
-                   namespace,
-                   %{"op" => "get_record", "key" => key},
-                   cap,
-                   catalog,
-                   selection.recipe
-                 )
+                 if policy == :expiry do
+                   ObservedRead.with_managed_reducing_record(
+                     SemanticAdmission.collection_root(config[:home]),
+                     namespace,
+                     %{"op" => "get_record", "key" => key},
+                     cap,
+                     catalog,
+                     selection.recipe,
+                     &{:ok, &1}
+                   )
+                 else
+                   ObservedRead.managed_record(
+                     SemanticAdmission.collection_root(config[:home]),
+                     namespace,
+                     %{"op" => "get_record", "key" => key},
+                     cap,
+                     catalog,
+                     selection.recipe
+                   )
+                 end
 
                if policy == :expiry and match?({:error, _}, result) do
                  ObservedRead.managed_history(
@@ -2105,6 +2117,14 @@ defmodule Ipse.CLI.Knowledge.Management do
       _ -> @error
     end
   end
+
+  defp prepare(
+         context,
+         %{"metadata" => %{"management_target" => "accepted_decision"}} = managed,
+         :expiry,
+         now
+       ),
+       do: ManagedLifecycle.prepare_accepted_expiry(context, managed, now)
 
   defp prepare(context, %{"metadata" => %{"category" => "history"}} = managed, :expiry, now),
     do: ManagedLifecycle.prepare_history_expiry(context, managed, now)
@@ -2193,7 +2213,7 @@ defmodule Ipse.CLI.Knowledge.Management do
           measured_forget(config, prepared, request["reserved"], permit, cap, catalog, owned)
         end
 
-        if facts["kind"] in ~w(managed_literal_expiry managed_literal_history_expiry) do
+        if facts["kind"] in ~w(managed_literal_expiry managed_literal_history_expiry managed_accepted_decision_expiry) do
           Consent.expire_deferred(
             control,
             binding["project_id"],
@@ -2305,18 +2325,21 @@ defmodule Ipse.CLI.Knowledge.Management do
   end
 
   defp operation("managed_literal_expiry"), do: "collection.expire"
+  defp operation("managed_accepted_decision_expiry"), do: "collection.expire"
   defp operation("managed_literal_history_expiry"), do: "collection.expire"
   defp operation("managed_literal_retention"), do: "collection.retention"
   defp operation("managed_literal_forget"), do: "collection.forget"
   defp operation("managed_accepted_decision_forget"), do: "collection.forget"
 
   defp check_review(%{"kind" => "managed_literal_expiry"}, nil), do: :ok
+  defp check_review(%{"kind" => "managed_accepted_decision_expiry"}, nil), do: :ok
   defp check_review(%{"kind" => "managed_literal_history_expiry"}, nil), do: :ok
 
   defp check_review(facts, permit),
     do: Review.check(permit, ManagedRetention.command(facts["policy"]), facts)
 
   defp normalizer("managed_literal_expiry"), do: &NormalizerV3.expire/3
+  defp normalizer("managed_accepted_decision_expiry"), do: &NormalizerV3.expire_accepted/3
   defp normalizer("managed_literal_history_expiry"), do: &NormalizerV3.expire_history/3
   defp normalizer("managed_literal_retention"), do: &NormalizerV3.retain/3
   defp normalizer("managed_literal_forget"), do: &NormalizerV3.forget/3

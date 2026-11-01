@@ -1188,6 +1188,22 @@ defmodule Ipse.Session.PendingAcceptance do
     _ -> @error
   end
 
+  @doc "Pure elapsed-deadline check for authenticated retained accepted metadata; grants no publication authority."
+  def expired_retained_decision_metadata?(metadata, now) do
+    exact?(
+      metadata,
+      ~w(lineage recipe_sha256 policy_sha256 first_admitted_ms valid_until_ms category management_target)
+    ) and
+      metadata["management_target"] === "accepted_decision" and
+      metadata["category"] in ~w(ordinary preference current) and
+      JSON.safe_uint?(now) and JSON.safe_uint?(metadata["first_admitted_ms"]) and
+      JSON.safe_uint?(metadata["valid_until_ms"]) and metadata["valid_until_ms"] > 0 and
+      metadata["first_admitted_ms"] < metadata["valid_until_ms"] and
+      metadata["valid_until_ms"] <= now
+  rescue
+    _ -> false
+  end
+
   @doc "Check an accepted note and link against already authenticated rows; this grants no current-use authority."
   def stored_decision_metadata(event, recipe, record, link, anchor, live, now) do
     with true <-

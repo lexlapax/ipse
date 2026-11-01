@@ -193,6 +193,20 @@ defmodule IpseKnowledge.KnowledgeSessionTest do
     capture(false, false, false, false, false, :public_recall)
   end
 
+  for category <- ~w(ordinary preference current) do
+    @tag :capture_parent_case
+    @tag :genuine_pending_accepted_expiry
+    @tag timeout: 180_000
+    @tag skip:
+           if(System.get_env("IPSE_TEST_GENUINE_PENDING_ACCEPTED_EXPIRY") == "1",
+             do: false,
+             else: "explicit native accepted-expiry fixture required"
+           )
+    test "a public accepted #{category} decision is reclaimed after its actual signed deadline" do
+      capture(false, false, false, false, false, :public_expiry, unquote(category))
+    end
+  end
+
   @tag :capture_parent_case
   @tag :genuine_pending_path_swap
   @tag timeout: 180_000
@@ -317,7 +331,8 @@ defmodule IpseKnowledge.KnowledgeSessionTest do
          attack? \\ false,
          answer? \\ false,
          recall? \\ false,
-         accept? \\ false
+         accept? \\ false,
+         category \\ "ordinary"
        ) do
     root = Path.join(System.tmp_dir!(), "ipse-native-knowledge-session-" <> Ipse.Usage.id())
     home = Path.join(root, "home")
@@ -326,7 +341,7 @@ defmodule IpseKnowledge.KnowledgeSessionTest do
     File.mkdir_p!(cwd)
     File.chmod!(home, 0o700)
 
-    if accept? == :public_recall,
+    if accept? in [:public_recall, :public_expiry],
       do: IO.puts("ACCEPTED_RECALL_ROOT=" <> root),
       else: on_exit(fn -> File.rm_rf!(root) end)
 
@@ -588,7 +603,8 @@ defmodule IpseKnowledge.KnowledgeSessionTest do
       "limits" =>
         Map.merge(Consent.zero(), %{
           "operations" => 8,
-          "input_bytes" => if(accept? in [:public, :public_recall], do: 1_000_000, else: 100_000),
+          "input_bytes" =>
+            if(accept? in [:public, :public_recall, :public_expiry], do: 1_000_000, else: 100_000),
           "output_bytes" => 200_000
         }),
       "period_ms" => 86_400_000,
@@ -597,8 +613,8 @@ defmodule IpseKnowledge.KnowledgeSessionTest do
     }
 
     {config, selection} =
-      if accept? == :public_recall do
-        config = registered_capture_config(config)
+      if accept? in [:public_recall, :public_expiry] do
+        config = registered_capture_config(config, category)
 
         assert {:ok, routes} =
                  Ipse.Extension.SemanticRoutes.resolve(config, [
@@ -947,9 +963,11 @@ defmodule IpseKnowledge.KnowledgeSessionTest do
                   change,
                   second_change,
                   %{
-                    public?: accept? in [:public, :public_recall],
+                    public?: accept? in [:public, :public_recall, :public_expiry],
                     config: config,
-                    recall_accepted?: accept? === :public_recall
+                    recall_accepted?: accept? === :public_recall,
+                    expiry_accepted?: accept? === :public_expiry,
+                    category: category
                   }
                 )
           end
@@ -1213,6 +1231,27 @@ defmodule IpseKnowledge.KnowledgeSessionTest do
 
     assert after_cancel == before_cancel
 
+    expiry_policy =
+      if options.expiry_accepted? do
+        assert {:ok, binding} = ProjectIdentity.existing(home, Path.join(root, "work"))
+        control = SemanticAdmission.control_root(home)
+        assert {:ok, current} = Consent.existing_snapshot(control, binding["project_id"])
+
+        short =
+          Map.put(current["policy"], "expires_at_ms", System.system_time(:millisecond) + 15_000)
+
+        assert {:ok, _} =
+                 Consent.replace(
+                   control,
+                   binding["project_id"],
+                   current["epoch"],
+                   short,
+                   System.system_time(:millisecond)
+                 )
+
+        {binding, current["policy"]}
+      end
+
     args =
       ["--management-review", System.find_executable("elixir"), "--erl", "+S 2:2"] ++
         paths ++
@@ -1274,6 +1313,61 @@ defmodule IpseKnowledge.KnowledgeSessionTest do
       assert output =~ "\"accepted_note_key\":\"#{note["record"]["key"]}\""
     end
 
+    if expiry_policy do
+      assert note["record"]["value"]["category"] == options.category
+
+      File.write!(
+        Path.join(root, "accepted-expiry.json"),
+        Jason.encode!(%{
+          "namespace" => namespace,
+          "key" => result["accepted_note_key"],
+          "link_key" => link["record"]["key"],
+          "peer_key" => second_change["key"],
+          "history_dir" => history_dir,
+          "recipe" => sidecar["recipes"]["note"]
+        })
+      )
+
+      {expiry_output, expiry_status} =
+        System.cmd(
+          driver,
+          ["--assertion", System.find_executable("elixir"), "--erl", "+S 2:2"] ++
+            paths ++
+            [Path.expand("test/support/accepted_decision_expiry_cli.exs"), root],
+          stderr_to_stdout: true,
+          cd: root
+        )
+
+      File.write!(Path.join(root, "accepted-expiry.log"), expiry_output)
+      assert expiry_status == 0, expiry_output
+      assert expiry_output =~ "NATIVE_ACCEPTED_DECISION_EXPIRY_PASSED"
+      {binding, original_policy} = expiry_policy
+      control = SemanticAdmission.control_root(home)
+      assert {:ok, current} = Consent.existing_snapshot(control, binding["project_id"])
+
+      assert {:ok, _} =
+               Consent.replace(
+                 control,
+                 binding["project_id"],
+                 current["epoch"],
+                 original_policy,
+                 System.system_time(:millisecond)
+               )
+    end
+
+    assert {:ok, duplicate_before} =
+             Ipse.Extension.Collection.execute(
+               fixture["collection_root"],
+               namespace,
+               %{"op" => "get", "key" => "accept." <> id},
+               Ipse.Usage.id()
+             )
+
+    assert duplicate_before["record"] == link["record"]
+
+    assert duplicate_before["generation"] ==
+             link["generation"] + if(expiry_policy, do: 1, else: 0)
+
     duplicate_args =
       ["--management-review", System.find_executable("elixir"), "--erl", "+S 2:2"] ++
         paths ++
@@ -1298,7 +1392,7 @@ defmodule IpseKnowledge.KnowledgeSessionTest do
                Ipse.Usage.id()
              )
 
-    assert unchanged == link
+    assert unchanged == duplicate_before
 
     if options.recall_accepted? do
       exercise_management_journal_budget(
@@ -2053,9 +2147,9 @@ defmodule IpseKnowledge.KnowledgeSessionTest do
     checker
   end
 
-  # Two ordinary capture turns, using the real registered Ollama adapter rather
+  # Two attributed capture turns, using the real registered Ollama adapter rather
   # than a provider-module override once managed dependencies enter history.
-  defp registered_capture_config(config) do
+  defp registered_capture_config(config, category) do
     {:ok, listener} = :gen_tcp.listen(0, [:binary, active: false, ip: {127, 0, 0, 1}])
     {:ok, {_, port}} = :inet.sockname(listener)
     base = "http://127.0.0.1:#{port}"
@@ -2094,7 +2188,7 @@ defmodule IpseKnowledge.KnowledgeSessionTest do
                       {"ext__knowledge__capture",
                        %{
                          "text" => text,
-                         "category" => "ordinary",
+                         "category" => category,
                          "reason" => "selected observation",
                          "event_at_ms" => nil,
                          "source" => %{"handle" => source["read_handle"], "quote" => text}

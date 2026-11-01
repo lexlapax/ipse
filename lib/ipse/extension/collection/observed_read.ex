@@ -426,17 +426,18 @@ defmodule Ipse.Extension.Collection.ObservedRead do
   def with_managed_record(_, _, _, _, _, _, _), do: @error
 
   @doc """
-  Retain an exact signed literal or accepted-decision target for native forgetting.
+  Retain an exact signed literal or accepted-decision target for reducing management.
 
   Accepted decisions require their distinct signed tag and same-root immutable
   link. This historical target route grants neither current-use eligibility nor
-  source/review authority; it must not be used for retention or supersession.
+  source/review authority. Only explicit forgetting or elapsed signed expiry may
+  use it; retention changes and supersession remain separate.
   """
-  def with_managed_forget_record(root, namespace, request, cap, catalog, recipe, fun)
+  def with_managed_reducing_record(root, namespace, request, cap, catalog, recipe, fun)
       when is_function(fun, 1),
       do: with_management_record(root, namespace, request, cap, catalog, recipe, fun, true)
 
-  def with_managed_forget_record(_, _, _, _, _, _, _), do: @error
+  def with_managed_reducing_record(_, _, _, _, _, _, _), do: @error
 
   defp with_management_record(root, namespace, request, cap, catalog, recipe, fun, accepted?)
        when is_function(fun, 1) do

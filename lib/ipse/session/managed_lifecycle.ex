@@ -5,8 +5,9 @@ defmodule Ipse.Session.ManagedLifecycle do
   Preparation consumes an observation already obtained under the owning host's
   Identity and management policy boundary. It grants no authority. The owner
   must journal the returned intent before entering its protected publication
-  callback, and pass the actual volatile Review permit to the matching
-  NormalizerV3 forgetting entry. Accepted decisions have a distinct target and
+  callback. Reviewed changes pass the actual volatile Review permit; expiry
+  instead follows the already signed finite policy and fresh host time through
+  its distinct normalizer. Accepted decisions have a distinct target and
   fact kind; they cannot enter the literal retention or relation preparations.
   No worker operation or serialized receipt can construct that permit. Disabled
   capture and destructive management have separate policy; this module does not
@@ -204,6 +205,38 @@ defmodule Ipse.Session.ManagedLifecycle do
            |> Map.drop(["action_sha256", "policy"])
            |> Map.merge(%{
              "kind" => "managed_literal_expiry",
+             "expired_at_ms" => managed["metadata"]["valid_until_ms"],
+             "checked_at_ms" => now
+           }),
+         facts = Map.put(body, "action_sha256", JSON.digest([body])),
+         :ok <- JSON.validate_object(facts),
+         true <- byte_size(Jason.encode!(facts)) <= 16_384 do
+      {:ok, %{prepared | "facts" => facts, "intent" => %{prepared["intent"] | "facts" => facts}}}
+    else
+      _ -> @error
+    end
+  rescue
+    _ -> @error
+  end
+
+  @doc "Prepare reducing reclamation of an accepted decision after its authenticated finite deadline."
+  def prepare_accepted_expiry(context, managed, now) do
+    with true <-
+           Ipse.Session.PendingAcceptance.expired_retained_decision_metadata?(
+             managed["metadata"],
+             now
+           ),
+         {:ok, prepared} <-
+           prepare_accepted_forget(
+             context,
+             managed,
+             "Stored signed accepted retention deadline elapsed"
+           ),
+         body =
+           prepared["facts"]
+           |> Map.drop(["action_sha256", "policy"])
+           |> Map.merge(%{
+             "kind" => "managed_accepted_decision_expiry",
              "expired_at_ms" => managed["metadata"]["valid_until_ms"],
              "checked_at_ms" => now
            }),

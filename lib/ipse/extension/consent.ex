@@ -297,10 +297,11 @@ defmodule Ipse.Extension.Consent do
   def retain_deferred(_, _, _, _, _, _, _, _), do: {:error, :consent_management_refused}
 
   @doc """
-  Reserve an explicit host-owned reclamation of an already expired signed literal.
+  Reserve an explicit host-owned reclamation of an already expired signed note.
 
   This is separate from native-reviewed retention changes: the final trusted
-  normalizer must authenticate the existing ordinary or historical policy and elapsed deadline.
+  normalizer must authenticate the existing literal/history policy or accepted
+  decision and its elapsed signed deadline.
   No worker API exposes this operation. The owner journals the exact intent first,
   retains Identity around Core, verifies the actual normalized receipt, and settles
   only after outer cleanup. Revoked capture does not renew expired evidence or
@@ -361,11 +362,19 @@ defmodule Ipse.Extension.Consent do
     fields =
       ~w(version kind operation_id context collection target metadata reason request_sha256 scope expired_at_ms checked_at_ms action_sha256)
 
-    {kind, category} =
+    {kind, categories} =
       case facts["kind"] do
-        "managed_literal_expiry" -> {"managed_literal_expiry", "ordinary"}
-        "managed_literal_history_expiry" -> {"managed_literal_history_expiry", "history"}
-        _ -> {nil, nil}
+        "managed_literal_expiry" ->
+          {"managed_literal_expiry", ["ordinary"]}
+
+        "managed_literal_history_expiry" ->
+          {"managed_literal_history_expiry", ["history"]}
+
+        "managed_accepted_decision_expiry" ->
+          {"managed_accepted_decision_expiry", ~w(ordinary preference current)}
+
+        _ ->
+          {nil, []}
       end
 
     not is_nil(kind) and
@@ -379,7 +388,12 @@ defmodule Ipse.Extension.Consent do
       JSON.safe_uint?(facts["expired_at_ms"]) and facts["expired_at_ms"] > 0 and
       JSON.safe_uint?(facts["checked_at_ms"]) and
       facts["expired_at_ms"] <= facts["checked_at_ms"] and facts["checked_at_ms"] <= now and
-      facts["metadata"]["category"] == category and
+      facts["metadata"]["category"] in categories and
+      (kind != "managed_accepted_decision_expiry" or
+         Ipse.Session.PendingAcceptance.expired_retained_decision_metadata?(
+           facts["metadata"],
+           now
+         )) and
       facts["metadata"]["valid_until_ms"] === facts["expired_at_ms"]
   rescue
     _ -> false
