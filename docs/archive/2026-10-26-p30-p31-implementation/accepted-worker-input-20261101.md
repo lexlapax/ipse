@@ -233,3 +233,35 @@ Successful, failed and diagnostic evidence remain separate:
 | `/tmp/ipse-accepted-input-ci-final-20261101.log` | 32 | `e856938f2d4ee3eb319a90056aca83ff6b7347ea57ff71bac975f84df18ae633` |
 | `/tmp/ipse-accepted-input-demo-final-20261101.log` | 2720 | `7ba90d9e7764abe2808205cdcc08fef76a0cd8e10278bb0a9d3ebffa1bd5552e` |
 | `/tmp/ipse-accepted-input-docs-first-20261101.log` | 757 | `84f82c2e53a42310bf8b250866fe3ef74ab99c64c3436bd13da9408b01db0f58` |
+
+## Committed package
+
+After committing and pushing **`41fd954`**, its tracked worktree was clean.
+The deliberately parser-free `IPSE_BUILD_PDF=0 ./dev/package.sh` rebuilt the
+native helpers, all 183 production host modules and three inert bundles. The
+archive records source `41fd954cde215be348b376eb095e0410e347843c`, 52 documents
+and zero missing local targets. Its native helper matches the source inventory.
+The original versioned archive basename and generated checksum were retained
+together in the dedicated directory below.
+
+`elixir dev/verify.exs installed package` passed on its first attempt against
+that exact archive and `examples/memory-corpus.json`. It confirmed unchanged
+extracted inventories, private homes, a precompiled harness and no system
+development toolchain on runtime PATH. Generic CLI/help/demo/setup/doctor,
+ownership/helper checks, idle resume, ordinary bundled behavior and Memory's
+synthetic 100-record/100-query, six-Session/two-project workload passed without
+model dispatch. The final pre-package documentation check covered 1000 Markdown
+files and 8317 local links with zero errors.
+
+This is the generic installed-runtime baseline. The actual single/two-decision
+owner inspections above remain source-runtime fixtures. No installed accepted
+delivery, PDF, semantic quality, independent human, macOS, release publication
+or complete P30/P31 acceptance follows from this package proof.
+
+| Path | Bytes | SHA256 |
+| --- | ---: | --- |
+| `/tmp/ipse-accepted-input-41fd954-package-20261101/ipse-0.1.0-linux-x86_64-glibc-2.44.tar.gz` | 15020748 | `5866e2d697836fb869b0fd8f7f26cd039fe59c06f2c6391cf478168eb56826e0` |
+| `/tmp/ipse-accepted-input-41fd954-package-20261101/ipse-0.1.0-linux-x86_64-glibc-2.44.tar.gz.sha256` | 108 | `92e5a8dce3877fd95c90559a7c8f4740bf866b29fc7490f40a45d4c4d6e70217` |
+| `/tmp/ipse-accepted-input-package-committed-20261101.log` | 1476 | `bb407ff1771284f4dc954e045c4f1cd94169bfab4310d93269314908d6f25c55` |
+| `/tmp/ipse-accepted-input-installed-package-20261101.log` | 2879 | `093e89cfc2833690336409e9b741d36dff3dcea545d2f135e3cc1aa5d5f47239` |
+| `/tmp/ipse-accepted-input-docs-final-20261101.log` | 757 | `5cdc1cd4734c8c70bb423c188fce2a7da045199b967ad1ccbdd671faba655bf3` |
