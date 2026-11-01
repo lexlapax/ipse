@@ -4479,55 +4479,22 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
     end
   end
 
+  @tag native_root_approval: "shell_running_revoke", native_root_running: true, timeout: 90_000
   @tag registered_main: true,
        ordinary_effect: true,
        managed_shell: true,
        managed_shell_delay: true
   test "source revocation while a managed shell runs withholds its buffered result", c do
-    {pid, approval, _} = managed_shell_approval(c)
-    assert :ok = Session.approve(pid, approval, true)
-    await_marker(Path.join(c.cwd, "shell-started"), "begun", 500)
-    assert {:ok, policy} = Consent.snapshot(c.control, c.binding["project_id"])
-    assert {:ok, _} = Consent.revoke(c.control, c.binding["project_id"], policy["epoch"])
-    assert_receive {:ipse, ^pid, {:done, :error}}, 10_000
-
-    refute_receive {:ipse, ^pid,
-                    {:tool_result, "shell", "Exit code: 0\nSYNTHETIC_MANAGED_SHELL"}},
-                   100
-
-    assert {:ok, events} = Journal.load(c.dir, Session.info(pid).id)
-    observed = Enum.find(events, &(&1["type"] == "managed_tool_result_observed"))
-    assert get_in(observed, ["message", "content"]) =~ "SYNTHETIC_MANAGED_SHELL"
-
-    assert Enum.any?(
-             events,
-             &(&1["type"] == "managed_tool_result_release" and &1["decision"] == "withdrawn")
-           )
-
-    assert {:ok, saved} = Ipse.Session.Saved.restore(events, Session.info(pid).id)
-    assert List.last(saved.messages)["content"] =~ "withheld"
-    assert :ok = Session.close_confirmed(pid)
-    Task.shutdown(c.provider_server, :brutal_kill)
+    native_root_approval(c, "shell", :running_revoke)
   end
 
+  @tag native_root_approval: "shell_running_kill", native_root_running: true, timeout: 90_000
   @tag registered_main: true,
        ordinary_effect: true,
        managed_shell: true,
        managed_shell_delay: true
   test "managed shell owner loss after spawn stops the process group and resumes inertly", c do
-    {pid, approval, path} = managed_shell_approval(c)
-    assert :ok = Session.approve(pid, approval, true)
-    await_marker(Path.join(c.cwd, "shell-started"), "begun", 500)
-    id = Session.info(pid).id
-    ref = Process.monitor(pid)
-    Process.exit(pid, :kill)
-    assert_receive {:DOWN, ^ref, :process, ^pid, :killed}, 3000
-    Process.sleep(800)
-    refute File.exists?(path)
-    assert {:ok, events} = Journal.load(c.dir, id)
-    assert {:ok, _} = Ipse.Session.Saved.restore(events, id)
-    refute Enum.any?(events, &(&1["type"] == "managed_tool_result_observed"))
-    Task.shutdown(c.provider_server, :brutal_kill)
+    native_root_approval(c, "shell", :running_kill)
   end
 
   @tag :root_subscriber_refusal
@@ -5004,17 +4971,6 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
     %{"command" => command, "timeout_ms" => 2000}
   end
 
-  defp managed_shell_approval(c) do
-    pid = start(c, %{approval: :ask, approval_origin: :interactive, headless: false})
-
-    assert :ok =
-             Session.prompt(pid, "Use the synthetic managed observation in the exact shell call.")
-
-    assert_receive {:ipse, ^pid, {:approval, approval, "shell", arguments}}, 10_000
-    assert arguments == managed_shell_arguments(c)
-    {pid, approval, Path.join(c.cwd, "managed-output.txt")}
-  end
-
   @tag registered_main: true, postjournal_expiry: true
   test "expiry during actual tool-message journal IO settles each call once and resumes withheld",
        c do
@@ -5442,6 +5398,154 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
 
     assert status == 0, output
     assert output =~ "NATIVE_ROOT_APPROVAL_#{String.upcase(selection)}_PASSED"
+
+    if boundary == :running_revoke do
+      refute output =~ "← shell: Exit code: 0"
+      assert output =~ "withheld"
+    end
+  end
+
+  defp native_root_effect(c, "shell", boundary)
+       when boundary in [:running_revoke, :running_kill] do
+    lost? = boundary == :running_kill
+    path = Path.join(c.cwd, "managed-output.txt")
+
+    try do
+      pid = start(c, %{approval: :ask, approval_origin: :interactive, headless: false})
+      id = Session.info(pid).id
+      refute File.exists?(path)
+
+      {:ok, watcher} =
+        Task.start(fn ->
+          await_marker(Path.join(c.root, "managed-approval-input-ready"), "ready", 1500)
+          state = :sys.get_state(pid)
+          assert state.phase == :managed_approval and state.share_barrier.phase == :review_input
+          assert state.managed_approval.arguments == managed_shell_arguments(c)
+          assert state.managed_approval.dependencies != []
+          assert Enum.all?(state.managed_approval.dependencies, &(&1["version"] == 3))
+          assert {:error, _} = Session.approve(pid, make_ref(), true)
+          refute File.exists?(path)
+          File.write!(Path.join(c.root, "managed-approval-control-checked"), "checked")
+          await_marker(Path.join(c.cwd, "shell-started"), "begun", 500)
+          refute File.exists?(path)
+
+          if lost? do
+            task = :sys.get_state(pid).task.pid
+            [{scope, _}] = Elixir.Registry.lookup(Ipse.Registry, {Session.Resources, task})
+
+            [%{pid: effect}] =
+              :sys.get_state(scope).resources
+              |> Map.values()
+              |> Enum.filter(&(&1.kind == :shell))
+
+            {:links, links} = Process.info(effect, :links)
+            [port] = Enum.filter(links, &is_port/1)
+            {:os_pid, helper} = Port.info(port, :os_pid)
+            direct = native_root_children(helper)
+            assert length(direct) == 2
+
+            [{_shell, children}] =
+              for child <- direct,
+                  descendants = native_root_children(child),
+                  descendants != [],
+                  do: {child, descendants}
+
+            processes = [helper] ++ direct ++ children
+            native_root_boundary(c, pid, "shell", :owner_loss)
+            native_root_processes_stopped(processes, 500)
+            Process.sleep(800)
+            refute File.exists?(path)
+          else
+            native_root_boundary(c, pid, "shell", :revoke)
+            native_root_idle(pid, 1500)
+            File.write!(Path.join(c.root, "managed-approval-exit-ready"), "ready")
+          end
+
+          File.write!(Path.join(c.root, "native-root-checked"), "checked")
+        end)
+
+      IO.puts("IPSE_MANAGED_APPROVAL_CLI_READY")
+
+      assert if(lost?, do: 1, else: 0) ==
+               Ipse.CLI.Terminal.interact(
+                 pid,
+                 Process.monitor(pid),
+                 true,
+                 "Use the synthetic managed observation in the exact shell call.",
+                 c.cwd
+               )
+
+      await_marker(Path.join(c.root, "native-root-checked"), "checked", 600)
+      monitor = Process.monitor(watcher)
+      assert_receive {:DOWN, ^monitor, :process, ^watcher, reason}, 1000
+      assert reason in [:normal, :noproc]
+      assert {:ok, events} = Journal.load(c.dir, id)
+
+      assert [
+               %{"name" => "ext__capture__inspect", "approval" => "saved_consent"},
+               %{"name" => "shell", "approval" => "approved"}
+             ] = Enum.filter(events, &(&1["type"] == "tool_started"))
+
+      assert [admitted] = Enum.filter(events, &(&1["type"] == "managed_tool_effect_admitted"))
+      assert admitted["binding"]["name"] == "shell"
+      observed = Enum.filter(events, &(&1["type"] == "managed_tool_result_observed"))
+      releases = Enum.filter(events, &(&1["type"] == "managed_tool_result_release"))
+
+      if lost? do
+        refute Process.alive?(pid)
+        refute File.exists?(path)
+        assert observed == [] and releases == []
+        native_root_released(Path.join(c.dir, id <> ".lock"), 500)
+      else
+        assert File.read!(path) == "finished"
+        assert [result] = observed
+        assert get_in(result, ["message", "content"]) =~ "SYNTHETIC_MANAGED_SHELL"
+        assert [%{"decision" => "withdrawn"}] = releases
+
+        assert [%{"status" => "confirmed"}] =
+                 Enum.filter(events, fn event ->
+                   event["type"] == "managed_tool_effect_cleanup" and
+                     event["effect_id"] == admitted["effect_id"]
+                 end)
+      end
+
+      assert {:ok, saved} = Session.Saved.restore(events, id)
+
+      if !lost? do
+        assert saved.messages == :sys.get_state(pid).messages
+        assert List.last(saved.messages)["content"] =~ "withheld"
+        assert :ok = Session.close_confirmed(pid)
+      end
+
+      assert {:ok, dependencies} =
+               Session.ManagedLineage.dependencies(saved.managed_lineage, saved.messages)
+
+      assert dependencies != [] and Enum.all?(dependencies, &(&1["version"] == 3))
+      assert Enum.count(events, &(&1["type"] == "request_admitted")) == 2
+
+      assert Enum.count(
+               events,
+               &(&1["type"] == "request_finished" and &1["outcome"] == "completed" and
+                   &1["finality"] == "final")
+             ) == 2
+
+      assert length(Agent.get(c.provider_requests, & &1)) == 2
+      journal = Path.join(c.dir, id <> ".jsonl")
+      closed = File.read!(journal)
+      resumed = start(c, %{approval: :ask, approval_origin: :interactive, headless: false}, id)
+      assert Session.info(resumed).phase == :idle
+      assert :sys.get_state(resumed).messages == saved.messages
+      assert_idle_resume_journal(journal, closed, id)
+      assert :ok = Session.close_confirmed(resumed)
+
+      assert {:ok, %{"release_claim" => "signed_release_claim"}} =
+               Session.Saved.inspect_saved(c.dir, id)
+
+      if lost?, do: refute(File.exists?(path)), else: assert(File.read!(path) == "finished")
+      assert length(Agent.get(c.provider_requests, & &1)) == 2
+    after
+      Task.shutdown(c.provider_server, :brutal_kill)
+    end
   end
 
   defp native_root_effect(c, kind, boundary) do
@@ -5605,6 +5709,29 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
       end
     after
       Task.shutdown(c.provider_server, :brutal_kill)
+    end
+  end
+
+  defp native_root_children(pid) do
+    File.read!("/proc/#{pid}/task/#{pid}/children")
+    |> String.split()
+    |> Enum.map(&String.to_integer/1)
+  end
+
+  defp native_root_processes_stopped(_, 0), do: flunk("native shell group remained live")
+
+  defp native_root_processes_stopped(pids, remaining) do
+    stopped? = fn pid ->
+      case File.read("/proc/#{pid}/stat") do
+        {:error, :enoent} -> true
+        {:ok, stat} -> Regex.match?(~r/\) [ZX] /, stat)
+        _ -> false
+      end
+    end
+
+    unless Enum.all?(pids, stopped?) do
+      Process.sleep(10)
+      native_root_processes_stopped(pids, remaining - 1)
     end
   end
 

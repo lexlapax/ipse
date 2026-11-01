@@ -717,7 +717,7 @@ must remain busy. The native supervisor and importing transaction are distinct
 processes; a Port PID alone cannot identify the importer.
 
 Keep root-only metadata distinct from a signed note's contents. The original
-write/shell/MCP positives and approval-wait faults in
+write/shell/MCP positives and fault controls in
 `managed_collection_call_session_test.exs` use the `native_root_approval` tag.
 Their parent launches the same test and SDK fixture inside the existing PTY
 driver; the child retains the original policy, root observation, provider
@@ -742,6 +742,18 @@ to select these twelve waiting controls; running-operation and HTTP boundaries
 need their own controls. The paired subscriber control still withholds arguments
 when no native channel can own their display. Native approval is not permission
 to bypass that refusal.
+
+Select `--only native_root_running` for the two shell execution boundaries.
+Both receive genuine approval before the original delayed command creates its
+`shell-started` marker. Revocation then preserves the command's completed file
+and private observed stdout, but requires withdrawn result delivery, no stdout
+result in the captured terminal and no third provider request. Owner loss instead
+kills the consuming Session before the final write. Follow the registered shell
+resource to its actual effect process and native Port, rather than assuming the
+turn task owns that Port. Observe its process-group anchor, shell and sleep child;
+require their exit and an absent final file after the original command duration.
+Both cases retain strict Saved state and inert idle recovery. These controls do
+not establish native sandbox confinement or detached-descendant behavior.
 
 Inject a fault at its actual purpose: a hook around shared source acquisition
 may now intercept an earlier Worker input, before a later publication watcher

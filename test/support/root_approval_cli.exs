@@ -1,7 +1,7 @@
 [selection, root, scenario] = System.argv()
 
 allowed =
-  ~w(write shell mcp) ++
+  ~w(write shell mcp shell_running_revoke shell_running_kill) ++
     for(
       kind <- ~w(write shell mcp),
       boundary <- ~w(root_change revoke expiry owner_loss),

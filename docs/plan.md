@@ -975,8 +975,8 @@ cover fresh/active/resumed writes, denial/stale code, cancellation/exit, delayed
 changed source, revocation and Session loss. The
 [actual-note shell follow-up](archive/2026-10-26-p30-p31-implementation/native-shell-approval-20261101.md)
 adds native approval, a physical command effect, owned cleanup and buffered stdout
-delivery, plus changed-source refusal before spawn. Broader shell loss/expiry
-and subscriber-fixture migration remain open. The
+delivery, plus changed-source refusal before spawn. Broader actual-note shell
+loss/expiry qualification remains open. The
 [actual-note stdio MCP journey](archive/2026-10-26-p30-p31-implementation/native-mcp-approval-20261101.md)
 also covers native approval, separately admitted start/send, one service call,
 current result delivery and pre-dispatch source withdrawal. Root-only approval
@@ -987,7 +987,11 @@ assertions, including strict idle recovery. The
 [root-only waiting-fault migration](archive/2026-10-26-p30-p31-implementation/root-native-faults-20261101.md)
 also preserves root-change, revocation, actual expiry and consumer-loss controls
 for write/shell/MCP through that native caller, with no effect or replay.
-Running-operation boundaries and HTTP retain separate qualification. The
+[Running-shell revocation and owner-loss controls](archive/2026-10-26-p30-p31-implementation/root-native-running-shell-20261101.md)
+now preserve the original delayed command under native approval, withheld stdout
+after revocation and actual process-group exit after consumer loss, followed by
+strict idle recovery. MCP start/send boundaries and HTTP retain separate
+qualification. The
 [accepted-decision approval extension](archive/2026-10-26-p30-p31-implementation/accepted-approval-20261101.md)
 additionally retains original management journals at that same native sink,
 with Session/Writer-authenticated manifest counts/inodes. Native controls cover
