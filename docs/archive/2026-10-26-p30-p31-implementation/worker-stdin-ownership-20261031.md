@@ -110,6 +110,24 @@ documentation/platform adapter edits; its preserved archive is exploratory and
 does not qualify the final candidate. Parser-free packaging proves no PDF parser
 or parser-enabled release. No remote release is published by these checks.
 
+After committing and pushing **`bb333b4`**, a clean tracked worktree completed
+`./dev/build.sh` (182 host modules and the three inert bundles), then
+`IPSE_BUILD_PDF=0 ./dev/package.sh`. The archive's documentation check reported
+52 documents, zero missing local targets and source reference
+`bb333b49398d021113341047b9e5efee73ab892b`.
+`elixir dev/verify.exs installed package` passed for that exact archive and
+`examples/memory-corpus.json`. Its receipt confirms unchanged inventories,
+private homes, a precompiled harness and no system development toolchain on the
+runtime PATH. The standalone CLI/help/demo, workspace, ownership/idle-resume,
+bundled extension and synthetic explicit-Memory checks passed. Memory's 100
+records/100 queries are exact-token fixtures, not P31 semantic quality.
+
+The committed archive SHA256 is
+`e0cf540983f7ac2d009b0f0bd066ffa814bb13e71a9983b4a8ea8d1ecb076c94`.
+The rebuilt helper still matches the inventoried qualification bytes. This
+generic installed proof does not exercise an installed managed Worker route;
+that route is still absent. It proves no PDF parser or full notes journey.
+
 No live inference or model download ran. Charged allowances remain ChatGPT
 238/300 and local 4/1000. Dependencies and external-service selection are unchanged.
 The latest completed whole-source result remains the negative `e86b1b8` run:
@@ -139,8 +157,8 @@ journals remain a separate additional-owner requirement.
 
 ## Source, helper and available receipt inventory
 
-The inventory below records the actual source, helper and available logs. A
-post-commit bundled-runtime check remains to be appended separately.
+The inventory below records the actual source, helper and available logs.
+The post-commit archive and receipts are included at the end.
 
 | Path | SHA256 |
 | --- | --- |
@@ -187,3 +205,7 @@ post-commit bundled-runtime check remains to be appended separately.
 | `/tmp/ipse-worker-pipe-package-20261031.log` | `ac22a10854e416207d03c8a2f9d1269ba8ced6a6c172deb1c6b7de49884ed952` |
 | `/tmp/ipse-worker-pipe-package-first-20261031.tar.gz` | `6944ace86d84b8da65af84f984f5ad1b0cdc33745bc346931e7acdf22cac48e2` |
 | `/tmp/ipse-worker-pipe-docs-final-20261101.log` | `565dfd68f2892e4082512bde8abe4e4e0ab7526719a943c902248c5ebecc60e0` |
+| `/tmp/ipse-worker-pipe-committed-build-20261101.log` | `0e9bc50ef3e705cc9360df1f026b5d2cd744f282d376f73dea05b20c6e058d56` |
+| `/tmp/ipse-worker-pipe-package-committed-20261101.log` | `ecb958c1ea4a40ce4c94fa3fe9ee7b1e10c07b8567aac790f93bc58a36a120ff` |
+| `/tmp/ipse-worker-pipe-installed-package-20261101.log` | `248aacc92fdb6430b910ba523cc35ad2744283356829337726446b421a614e4f` |
+| `/tmp/ipse-worker-pipe-bb333b4-package-20261101.tar.gz` | `e0cf540983f7ac2d009b0f0bd066ffa814bb13e71a9983b4a8ea8d1ecb076c94` |
