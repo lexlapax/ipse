@@ -843,6 +843,12 @@ passes generic installed checks and the independent synthetic decision/document
 artifacts; full-source, consumer-quality and installed knowledge qualification
 remain open.
 
+The later [complete clean-source baseline](archive/2026-10-26-p30-p31-implementation/full-suite-20261101.md)
+at `f44b63c` exited 2: 3,653 passed, 54 failed, 116 skipped and 112 excluded.
+It includes neither the subsequent root-prerequisite fixture repair nor the
+uncommitted accepted-approval work. Required positive integration, lifecycle and
+fault controls remain open; focused passes do not reduce that aggregate.
+
 | Package | Output and prerequisites |
 | --- | --- |
 | P30A | Versioned neutral text contract and pure OpenAI/System One wire subsets implemented; synthetic fixtures and finite experiment/benefit criteria prepared; fixed foundation baseline and incremental audit pass. [Developer contract](developer/decisions.md) |

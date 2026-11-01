@@ -61,6 +61,7 @@ nor resource/offline qualification. No daemon configuration or existing model wa
 
 ## P31A contracts and evidence
 
+- [Complete clean-source baseline](full-suite-20261101.md) records the terminal f44b63c result: 3,653 passed, 54 failed, 116 skipped and 112 excluded, with all top-level failures, exact source/helper identity and explicit post-run inventory limits. Later repairs and drafts are excluded from that result.
 - [Native accepted-decision forgetting](accepted-decision-forget-20261101.md) adds a distinct signed destructive target to the existing public native review and measured management path; cancellation and disabled/source-unavailable removal preserve the immutable link, peer, journals and authenticated suppression. Current-use delivery and other accepted lifecycle choices retain separate gates.
 - [Accepted-decision post-effect loss](accepted-decision-forget-loss-20261101.md) kills the actual native owner after durable removal, preserving the unconfirmed journal/publishing liability and read-only nonreplaying inspection. A separate current-source 15-test lifecycle cohort passes; it does not replace the failed complete-suite aggregate.
 - [Accepted-decision expiry](accepted-decision-expiry-20261101.md) reclaims a signed finite accepted deadline through existing reducing management, preserving anchor clocks, immutable link and original journals. The genuine journey waits for actual expiry after native acceptance, with capture disabled and the original source unavailable; annual turnover remains separate.
