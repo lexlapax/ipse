@@ -747,13 +747,20 @@ authority by itself. `ManagedUse` reacquires these owners and current policy for
 each later use. The original weak source remains attributed; acceptance does not
 convert it into a literal operator statement or independent truth.
 
+Committing that version-6 read is separate from delivering its continuation.
+The current [managed export-input adapter](session-sources.md#deliver-a-managed-export-input-under-its-original-owners)
+supports versions 3–5 and refuses accepted-decision input until the original
+management-journal owner can also reach its native stdin sink. The historical
+read receipt cannot stand in for that missing owner.
+
 The adapter retains the admitted dependencies through Session's actual action
 commit. `ManagedReads` binds the exact bounded result, request, operation, Session,
 pin/epoch and root; every returned literal additionally needs its selected recipe
 and exact source versions. Scan receipts retain their root selection as well as
 each literal dependency. The owner prepares this privately under its current
 worker/action lease. On success it writes `managed_read_observed` before the
-action result and sends the continuation only after both durable appends.
+action result and admits the continuation only after both durable appends and
+the applicable current-input owner fence.
 An interrupted receipt without its result supplies no consumed read.
 
 Fresh headers pin `managed_reads_v1`; absent markers preserve older historical

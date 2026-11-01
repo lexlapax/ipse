@@ -193,3 +193,42 @@ Successful and failed evidence remain separate at these exact local paths:
 Earlier component package receipts describe their original source; they do not
 qualify this changed Session runtime. No moving-source package is represented as
 committed qualification.
+
+## Committed package
+
+After committing and pushing **`3f4d9db`**, its clean tracked source completed
+`./dev/build.sh` and the deliberately parser-free `IPSE_BUILD_PDF=0 ./dev/package.sh`.
+The package records source `3f4d9db99e6ca4c55e9d222df75f3a6dd7c7f656`, with
+52 documents and zero missing local targets. Its rebuilt native helper exactly
+matches the fixed-source inventory above.
+
+The first verifier attempt refused before startup because the retained archive
+copy omitted its checksum sidecar. After generating that sidecar, the second
+attempt refused the custom archive basename because it did not match the
+application version. The third attempt retained the original generated basename
+and matching original checksum in a dedicated directory. Its archive bytes are
+identical to the first retained copy; there was no rebuild between attempts.
+
+`elixir dev/verify.exs installed package` then passed against that exact archive
+and `examples/memory-corpus.json`. It verified unchanged extracted inventories,
+private homes, precompiled harness and no system development toolchain on runtime
+PATH. CLI/help/demo/setup/doctor, native ownership/helpers, idle resume, ordinary
+bundled behavior and Memory's synthetic 100-record/100-query, six-Session/two-project
+workload passed without model dispatch. This is the generic installed baseline;
+it does not exercise installed managed export-input, accepted-decision delivery,
+PDF, semantic quality, independent human, macOS or publication workflows.
+
+The two additional developer-manual descriptions of accepted reads were also
+reconciled with their separate unavailable worker-delivery boundary; the artifact
+above retains its exact committed documentation rather than claiming those later
+editorial changes were packaged.
+
+| Path | Bytes | SHA256 |
+| --- | ---: | --- |
+| `/tmp/ipse-worker-input-session-3f4d9db-package-20261101/ipse-0.1.0-linux-x86_64-glibc-2.44.tar.gz` | 15010939 | `ae3f16b19b85ba9d7c4f479e2c80de8abf5e1e7b52a1361da8a516b9775599da` |
+| `/tmp/ipse-worker-input-session-3f4d9db-package-20261101/ipse-0.1.0-linux-x86_64-glibc-2.44.tar.gz.sha256` | 108 | `22b8b31d7728d5b25ab47bbff8e0f8b63e6980a6499177088a1325d2f167316f` |
+| `/tmp/ipse-worker-input-session-committed-build-20261101.log` | 845 | `405c58d85aa993d274a348d68b45dfca2d93a6b18ea486a354c5401405669061` |
+| `/tmp/ipse-worker-input-session-package-committed-20261101.log` | 1476 | `17dc587d51985ffc47fe630f421271ae732183b58f149ffb1a85c7e3101f3ce2` |
+| `/tmp/ipse-worker-input-session-installed-package-20261101.log` | 307 | `571c64a55f12a541d6c73e83c336cbbe664a1a90c54adc4cae35681396a85385` |
+| `/tmp/ipse-worker-input-session-installed-package-second-20261101.log` | 751 | `b0400fb45bcc1f88c7976c60b909b85b12c29b3ec8b07298eb335591c15906bc` |
+| `/tmp/ipse-worker-input-session-installed-package-third-20261101.log` | 2879 | `afba86c8f86ff487504a38fd6ad483afdb80a1c0e49b224f2f8e79fec39be718` |

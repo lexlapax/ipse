@@ -174,8 +174,10 @@ weak-origin wrappers refuse. When the internal override marker is also a possibl
 user reason, `:absent` is only a host assertion requiring a fresh protected absence
 check. The host authenticates the exact prior choice before applying a change.
 Public forgetting and session-only retention use their reducing management route;
-pin/automatic/duration use a separate guarded effect. Correction and supersession
-remain unavailable.
+pin/automatic/duration use a separate guarded effect. Interactive literal
+correction and supersession have their own Session-owned source/policy review
+and publication adapter; generic unreviewed replacement remains unavailable.
+Follow [the source-owner flow](session-sources.md#retain-sources-through-a-protected-display-or-review).
 
 ### Confirm a pending decision
 
@@ -236,7 +238,7 @@ Accepted decisions use a distinct version-6 dependency. `ManagedRead` discovers
 their immutable link, retains the original committed management journal outside
 Identity/Consent, obtains the original Session source, then reproduces the
 protected read. Signed anchor/live rows, actual event, note and link must agree
-before a value reaches the worker. A direct link or an accepted record without
+before committing a read result. A direct link or an accepted record without
 its selected recipe refuses. `Records.accepted_projection/2` checks only that
 delivered structure; it does not authenticate acceptance.
 
@@ -257,6 +259,14 @@ adapter expands the result for its caller. Neither replay nor a preflight verdic
 establishes current authority. See [Session sources](session-sources.md) for
 source ownership and [Collection reads](collection-sdk.md#revalidate-reads-and-downstream-use)
 for the generic host boundary.
+
+Managed export inputs use a separate native delivery admission after read
+commitment. Its current version-3–5 adapter refuses version-6 accepted decisions
+until the additional original management-journal owner reaches that same sink.
+Read validation and a saved acceptance therefore do not currently establish
+successful accepted-decision recall. The
+[input contract](session-sources.md#deliver-a-managed-export-input-under-its-original-owners)
+defines that remaining boundary.
 
 ### Verify the complete boundary
 
@@ -287,7 +297,8 @@ synthetic Session capture through actual CLI/native review, cancellation, finite
 allowance, duplicate/expiry/revocation refusal and owner-loss inspection.
 `genuine_pending_accepted_recall` adds a registered loopback provider request,
 missing-source and altered-acceptance-event controls, Saved reconstruction and
-confirmed close. The [public CLI record](../archive/2026-10-26-p30-p31-implementation/pending-review-cli-20261031.md)
+confirmed close. This positive remains required while version-6 worker delivery
+is unavailable. The [public CLI record](../archive/2026-10-26-p30-p31-implementation/pending-review-cli-20261031.md)
 and [recall record](../archive/2026-10-26-p30-p31-implementation/accepted-recall-20261031.md)
 describe fresh-artifact isolation and exact limits. Run terminal suites
 sequentially. These fixtures qualify no real model quality, installed journey,
