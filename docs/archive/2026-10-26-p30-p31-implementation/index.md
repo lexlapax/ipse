@@ -61,6 +61,7 @@ nor resource/offline qualification. No daemon configuration or existing model wa
 
 ## P31A contracts and evidence
 
+- [Registered V3 lifecycle and queue controls](capture-lifecycle-20261101.md) preserve actual activation, second-publication success, full-queue refusal, settlement and idle recovery through the registered adapter; the distinct legacy publication failure remains open.
 - [Same-owner first-use domain selection](domain-selection-20261101.md) removes a preliminary-verifier race in concurrent V3 capture, preserves legacy authorizer ordering and prepared-state refusal, and records focused Identity, actual competing-publication and repeated-capture controls. Full-source and integrated qualification remain open.
 - [Complete clean-source baseline](full-suite-20261101.md) records the terminal f44b63c result: 3,653 passed, 54 failed, 116 skipped and 112 excluded, with all top-level failures, exact source/helper identity and explicit post-run inventory limits. Later repairs and drafts are excluded from that result.
 - [Accepted-decision native approval](accepted-approval-20261101.md) binds original management-journal locks through Session/Writer validation to the actual native display, with approval/denial, descriptor ownership and pre-display peer-loss controls; separate source regressions and broader acceptance retain their own scope.

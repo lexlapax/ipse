@@ -155,8 +155,18 @@ Session cases below establish those boundaries separately.
 Use the registered V3 capture cases as worked examples:
 
 ```sh
-mix test test/ipse/extension/managed_collection_call_session_test.exs --only registered_capture_sequence --only registered_competing --only registered_capture --max-cases 1
+mix test test/ipse/extension/managed_collection_call_session_test.exs --only registered_capture_lifecycle --only registered_capture_sequence --only registered_competing --only registered_capture --max-cases 1
 ```
+
+The lifecycle cases require actual first-publication Identity activation, a
+second new Session's successful addition and unchanged active domain metadata.
+They preserve exact request/effect bindings, measured settlement, strict Saved
+reconstruction and idle resume without Worker or model replay. The queue case
+first proves admission below capacity, then requires a failed capture action at
+64 pending records with unchanged root bytes and settled liability. Its registered
+model receives that known refusal and can complete the turn normally. Require two
+completed adapter requests per attempt, including the refused attempt; a route
+error cannot stand in for the capacity control.
 
 The sequence case saves 27 candidates through 54 actual adapter requests, checks
 the resulting records and distinct original Session proofs, and crosses a nonzero

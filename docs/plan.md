@@ -1181,7 +1181,11 @@ retention endurance or annual turnover. A subsequent
 removes a preliminary-verifier race in competing V3 publication while preserving
 prepared-state refusal and existing one-use authorization order. Focused Identity,
 actual competing-publication and repeated-capture controls pass; integrated and
-whole-source qualification remain open. [Actual headless CLI argv/stdin controls](archive/2026-10-26-p30-p31-implementation/headless-cli-pending-20261101.md)
+whole-source qualification remain open. The
+[registered lifecycle/queue follow-up](archive/2026-10-26-p30-p31-implementation/capture-lifecycle-20261101.md)
+also preserves first-use activation, later publication, settled full-queue refusal
+and idle recovery; the separately reproduced legacy publication gate remains open.
+[Actual headless CLI argv/stdin controls](archive/2026-10-26-p30-p31-implementation/headless-cli-pending-20261101.md)
 now require a completed turn and one attributed pending save under native saved
 consent without `--yes`, while ordinary write/shell effects stay denied. Broader
 source, loss, installed and quality qualification remain open.

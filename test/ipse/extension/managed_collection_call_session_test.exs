@@ -2974,7 +2974,11 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
     put_in(c, [:config, :semantic_selections], selected)
   end
 
-  @tag metadata_version: 3
+  @tag :registered_capture_lifecycle
+  @tag metadata_version: 3,
+       registered_main: true,
+       capture_write: true,
+       registered_capture_count: 2
   test "explicit V3 activates only after actual first publication and resumes without replay",
        c do
     pid = start(c)
@@ -3003,6 +3007,7 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
     assert :ok = Ipse.Extension.Actions.validate_events(events)
     assert :ok = Ipse.Extension.Invocation.validate_events(events)
     assert {:ok, _} = Session.restore_context(events)
+    assert {:ok, _} = Session.Saved.restore(events, id)
 
     for changed <- [
           Map.delete(result["request"], "metadata_version"),
@@ -3020,8 +3025,12 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
     assert operation["status"] == "settled"
     assert operation["actual"]["input_bytes"] < operation["reserved"]["input_bytes"]
     assert :ok = Session.close_confirmed(pid)
+    path = Path.join(c.dir, id <> ".jsonl")
+    closed = File.read!(path)
     before = File.read!(c.trace)
     resumed = start(c, %{}, id)
+    assert Session.info(resumed).phase == :idle
+    assert_idle_resume_journal(path, closed, id)
     assert :ok = Session.close_confirmed(resumed)
     assert File.read!(c.trace) == before
 
@@ -3038,6 +3047,20 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
 
     assert follow_on["outcome"]["status"] == "ok"
     assert follow_on["outcome"]["value"]["receipt"]["generation"] == 2
+    assert {:ok, _} = Session.Saved.restore(later, Session.info(next).id)
+
+    for captured <- [events, later] do
+      assert Enum.count(captured, &(&1["type"] == "request_admitted")) == 2
+
+      assert Enum.count(
+               captured,
+               &(&1["type"] == "request_finished" and &1["outcome"] == "completed" and
+                   &1["finality"] == "final")
+             ) == 2
+    end
+
+    assert :ok = Session.close_confirmed(next)
+    assert length(Task.await(c.provider_server, 5000)) == 4
 
     state =
       c.home |> Path.join("project-identities/index.json") |> File.read!() |> Jason.decode!()
@@ -3045,7 +3068,11 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
     assert state["domain_keys"][c.binding["project_id"]]["namespaces"][c.namespace] == entry
   end
 
-  @tag metadata_version: 3
+  @tag :registered_capture_lifecycle
+  @tag metadata_version: 3,
+       registered_main: true,
+       capture_write: true,
+       registered_capture_count: 3
   test "saved-consent V3 publication refuses a full pending queue and settles its action", c do
     first = start(c)
     assert :ok = Session.prompt(first, "Synthetic café observation")
@@ -3082,11 +3109,19 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
 
     pid = start(c)
     assert :ok = Session.prompt(pid, "Synthetic café observation")
-    assert_receive {:ipse, ^pid, {:done, :error}}, 15_000
+    assert_receive {:ipse, ^pid, {:done, :ok}}, 15_000
     id = Session.info(pid).id
     assert {:ok, events} = Journal.load(c.dir, id)
     assert :ok = Ipse.Extension.Actions.validate_events(events)
     assert {:ok, _} = Session.restore_context(events)
+    assert {:ok, _} = Session.Saved.restore(events, id)
+    assert Enum.count(events, &(&1["type"] == "request_admitted")) == 2
+
+    assert Enum.count(
+             events,
+             &(&1["type"] == "request_finished" and &1["outcome"] == "completed" and
+                 &1["finality"] == "final")
+           ) == 2
 
     result =
       Enum.find(events, fn event ->
@@ -3112,10 +3147,15 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
     assert {:ok, ledger} = Consent.snapshot(c.control, c.binding["project_id"])
     assert ledger["operations"][result["operation_id"]]["status"] == "settled"
     assert :ok = Session.close_confirmed(pid)
+    path = Path.join(c.dir, id <> ".jsonl")
+    closed = File.read!(path)
     trace = File.read!(c.trace)
     resumed = start(c, %{}, id)
+    assert Session.info(resumed).phase == :idle
+    assert_idle_resume_journal(path, closed, id)
     assert :ok = Session.close_confirmed(resumed)
     assert File.read!(c.trace) == trace
+    assert length(Task.await(c.provider_server, 5000)) == 6
   end
 
   test "legacy saved-consent publication refuses a full pending queue", c do
