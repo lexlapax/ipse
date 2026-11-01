@@ -131,6 +131,15 @@ fixture, explicit service registration and a supported request deadline; keep
 the normal adapter and completion witness. Do not construct a successful witness
 or remove managed dependencies to make a test proceed.
 
+Pure fixtures must also reproduce the host's canonical dependency union. Use
+`ManagedReference.union/1` before placing reads into an invocation, including
+negative variants. Session stores reads in digest order; two individually valid
+cached root observations in another order are not a valid invocation input.
+Keep the full set and change only the intended root, policy or cache condition
+when testing its refusal. A populated fixture cache is trusted consistency data,
+not evidence of a committed read or current publication authority; the registered
+Session cases below establish those boundaries separately.
+
 Use the registered V3 capture cases as worked examples:
 
 ```sh

@@ -1,7 +1,7 @@
 defmodule Ipse.Session.ManagedToolUseTest do
   use ExUnit.Case, async: true
   alias Ipse.{JSON, Usage}
-  alias Ipse.Session.{ManagedLineage, ManagedToolUse}
+  alias Ipse.Session.{ManagedLineage, ManagedReference, ManagedToolUse}
 
   defp prepared do
     dependency = %{
@@ -436,6 +436,9 @@ defmodule Ipse.Session.ManagedToolUseTest do
   end
 
   defp replace_publication_reads(state, reads) do
+    # Session stores the canonical union; negative variants must retain that order
+    # so their intended root, policy or cache mismatch is the reason for refusal.
+    assert {:ok, reads} = ManagedReference.union([reads])
     id = state.invocation.parent["invocation_id"]
     dictionary = Map.new(reads, &{JSON.digest([&1]), &1})
 

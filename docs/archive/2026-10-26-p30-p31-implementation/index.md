@@ -90,6 +90,7 @@ nor resource/offline qualification. No daemon configuration or existing model wa
 - [Completed c7cb484 default baseline](full-suite-c7cb484-20261031.md): 3518 passed,58 failed, with unchanged1057-file source; later isolated increments remain outside its scope.
 - [Running e86b1b8 concurrency limitation](full-suite-e86b1b8-concurrency-20261031.md) records overlapping author native-terminal work and the shared per-user input lock; no final aggregate or clean-environment qualification is implied.
 - [Completed e86b1b8 run](full-suite-e86b1b8-20261031.md) retains3538passed60failed109skipped112excluded, the verified7,760-file inventory with after-launch timing, and a separate same-source eight-pass isolated native cohort; the concurrency caveat remains.
+- [Canonical root-prerequisite fixture repair](root-prerequisite-fixture-20261101.md) preserves the first failure from the clean f44b63c baseline, fixes its noncanonical trusted input without changing runtime validation, and records the separate pure controls.
 - [Registered competing V3 positive-fixture repair](registered-competing-fixture-20261031.md), preserving the original failed baseline.
 - [Current registered capture controls](registered-capture-controls-20261031.md) cover paged output, worker-entry revocation and ambiguous permissions without changing runtime gates.
 - [Installed inference inspection and reconciliation](inference-reconciliation-installed-20261031.md) records the exact clean package, generic installed proof and five synthetic native-terminal scenarios.
