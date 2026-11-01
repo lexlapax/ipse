@@ -4570,6 +4570,7 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
   end
 
   for boundary <- [:revoke, :expiry] do
+    @tag native_root_approval: "http_#{boundary}", native_root_prestart: true, timeout: 90_000
     @tag registered_main: true,
          ordinary_effect: true,
          managed_mcp: true,
@@ -4577,31 +4578,7 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
          managed_http_prestart: true,
          wire_expiry: boundary == :expiry
     test "managed HTTP MCP #{boundary} before approval opens no further connection", c do
-      {pid, approval, path} = managed_mcp_approval(c)
-      connections = Path.join(c.cwd, "managed-mcp-connections.log")
-      before = File.read!(connections)
-      assert {:ok, policy} = Consent.snapshot(c.control, c.binding["project_id"])
-
-      case unquote(boundary) do
-        :revoke ->
-          assert {:ok, _} = Consent.revoke(c.control, c.binding["project_id"], policy["epoch"])
-
-        :expiry ->
-          Process.sleep(
-            max(policy["policy"]["expires_at_ms"] - System.system_time(:millisecond) + 10, 0)
-          )
-      end
-
-      assert :ok = Session.approve(pid, approval, true)
-      assert_receive {:ipse, ^pid, {:done, :error}}, 15_000
-      assert File.read!(connections) == before
-      refute File.exists?(path)
-      refute File.exists?(Path.join(c.cwd, "calls.log"))
-      assert {:ok, events} = Journal.load(c.dir, Session.info(pid).id)
-      refute Enum.any?(events, &(&1["type"] == "managed_tool_effect_admitted"))
-      assert {:ok, _} = Ipse.Session.Saved.restore(events, Session.info(pid).id)
-      assert :ok = Session.close_confirmed(pid)
-      Task.shutdown(c.provider_server, :brutal_kill)
+      native_root_approval(c, "http", unquote(boundary))
     end
   end
 
@@ -4876,38 +4853,13 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
     end
   end
 
+  @tag native_root_approval: "mcp_pinned", native_root_prestart: true, timeout: 90_000
   @tag registered_main: true,
        ordinary_effect: true,
        managed_mcp: true,
        managed_helper_identity: true
   test "managed stdio uses the build-pinned helper despite an override", c do
-    {pid, approval, path} = managed_mcp_approval(c)
-    marker = Path.join(c.cwd, "substitute-helper-used")
-    substitute = Path.join(c.root, "substitute-helper")
-    real_helper = Path.join(to_string(:code.priv_dir(:ipse)), "ipse-runner")
-
-    File.write!(
-      substitute,
-      "#!/bin/sh\nif [ \"$1\" = \"--admitted-stdio\" ]; then printf invoked > #{inspect(marker)}; fi\nexec #{inspect(real_helper)} \"$@\"\n"
-    )
-
-    File.chmod!(substitute, 0o700)
-    old = System.get_env("IPSE_RUNNER_PATH")
-
-    try do
-      System.put_env("IPSE_RUNNER_PATH", substitute)
-      assert :ok = Session.approve(pid, approval, true)
-      assert_receive {:ipse, ^pid, {:done, :ok}}, 15_000
-      assert File.read!(path) == "SYNTHETIC_MANAGED_MCP"
-      refute File.exists?(marker)
-      assert :ok = Session.close_confirmed(pid)
-    after
-      if old,
-        do: System.put_env("IPSE_RUNNER_PATH", old),
-        else: System.delete_env("IPSE_RUNNER_PATH")
-
-      Task.shutdown(c.provider_server, :brutal_kill)
-    end
+    native_root_approval(c, "mcp_pinned")
   end
 
   defp managed_mcp_approval(c) do
@@ -5518,10 +5470,13 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
         "shell" ->
           {"shell", "managed-output.txt", "SYNTHETIC_MANAGED_SHELL", managed_shell_arguments(c)}
 
-        protocol when protocol in ["mcp", "http"] ->
+        protocol when protocol in ["mcp", "http", "mcp_pinned"] ->
           {"mcp__notes__write_note", "managed-mcp.txt", "SYNTHETIC_MANAGED_MCP",
            %{"path" => "managed-mcp.txt", "content" => "SYNTHETIC_MANAGED_MCP"}}
       end
+
+    old_helper = System.get_env("IPSE_RUNNER_PATH")
+    substitute_marker = Path.join(c.cwd, "substitute-helper-used")
 
     try do
       pid = start(c, %{approval: :ask, approval_origin: :interactive, headless: false})
@@ -5539,6 +5494,24 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
           assert Enum.all?(state.managed_approval.dependencies, &(&1["version"] == 3))
           assert {:error, _} = Session.approve(pid, make_ref(), true)
           refute File.exists?(path)
+
+          if kind == "mcp_pinned" do
+            substitute = Path.join(c.root, "substitute-helper")
+            helper = Path.join(to_string(:code.priv_dir(:ipse)), "ipse-runner")
+
+            File.write!(
+              substitute,
+              "#!/bin/sh\nif [ \"$1\" = \"--admitted-stdio\" ]; then printf invoked > #{inspect(substitute_marker)}; fi\nexec #{inspect(helper)} \"$@\"\n"
+            )
+
+            File.chmod!(substitute, 0o700)
+            System.put_env("IPSE_RUNNER_PATH", substitute)
+          end
+
+          if kind == "http" and boundary in [:revoke, :expiry] do
+            before = File.read!(Path.join(c.cwd, "managed-mcp-connections.log"))
+            File.write!(Path.join(c.root, "native-root-prestart-connections"), before)
+          end
 
           if boundary == :start_revoke,
             do: File.write!(Path.join(c.cwd, "managed-mcp-gate"), "gate"),
@@ -5589,6 +5562,13 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
         do: assert(File.read!(path) == content),
         else: refute(File.exists?(path))
 
+      if kind == "http" and boundary in [:revoke, :expiry] do
+        assert File.read!(Path.join(c.cwd, "managed-mcp-connections.log")) ==
+                 File.read!(Path.join(c.root, "native-root-prestart-connections"))
+      end
+
+      if kind == "mcp_pinned", do: refute(File.exists?(substitute_marker))
+
       state = if boundary != :owner_loss, do: :sys.get_state(pid)
       assert {:ok, events} = Journal.load(c.dir, id)
 
@@ -5614,7 +5594,7 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
         boundary != :current ->
           assert admissions == []
 
-        kind in ["mcp", "http"] ->
+        kind in ["mcp", "http", "mcp_pinned"] ->
           assert Enum.map(admissions, &get_in(&1, ["binding", "kind"])) == [
                    "mcp.start",
                    "mcp.send"
@@ -5692,12 +5672,20 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
         assert File.read!(Path.join(c.cwd, "managed-mcp-connections.log")) == connections
       end
 
-      if kind in ["mcp", "http"] do
+      if kind == "mcp_pinned", do: refute(File.exists?(substitute_marker))
+
+      if kind in ["mcp", "http", "mcp_pinned"] do
         if boundary == :current,
           do: assert(File.read!(Path.join(c.cwd, "calls.log")) == "write_note\n"),
           else: refute(File.exists?(Path.join(c.cwd, "calls.log")))
       end
     after
+      if kind == "mcp_pinned" do
+        if old_helper,
+          do: System.put_env("IPSE_RUNNER_PATH", old_helper),
+          else: System.delete_env("IPSE_RUNNER_PATH")
+      end
+
       Task.shutdown(c.provider_server, :brutal_kill)
     end
   end

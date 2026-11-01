@@ -764,6 +764,15 @@ admission before revoking and releasing that request. The service must receive
 no tool call and create no target; the journal retains confirmed start cleanup
 and withdrawn delivery without `mcp.send` or a third provider request. Preserve
 the positive's exact file, one tool call and separately confirmed start/send.
+The `--only native_root_prestart` selection adds HTTP revocation/expiry during
+the native input wait and a stdio helper-identity positive. Capture all accepted
+HTTP connections before changing the policy, wait for the original signed expiry
+when selected, and require identical traffic after the answer with no admitted
+effect, target or tool call. For helper identity, set the existing substitute
+only after the genuine display and before the answer; the full allowed call must
+complete while its `--admitted-stdio` marker stays absent. Restore the prior
+environment selection in `after`, including on assertion failure.
+
 Use the same strict Saved and idle recovery checks for both transports. For HTTP,
 take the complete accepted-connection log after confirmed close, including cleanup
 traffic, then require identical bytes after idle resume and its confirmed close.

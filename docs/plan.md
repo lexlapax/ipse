@@ -994,8 +994,11 @@ strict idle recovery. The
 [root-only MCP start/send controls](archive/2026-10-26-p30-p31-implementation/root-native-mcp-start-20261101.md)
 pair native allowed stdio/HTTP calls with revocation after admitted start and
 before send, confirmed cleanup, withheld delivery and strict idle recovery.
-Broader HTTP pre-start/response-loss/owner-loss and helper-identity migrations
-retain separate qualification. The
+[HTTP pre-start and pinned-helper controls](archive/2026-10-26-p30-p31-implementation/root-native-prestart-pinned-20261101.md)
+also preserve zero additional connections after native-input revocation/expiry
+and successful stdio dispatch despite an unpinned helper override. HTTP
+response-loss/owner-loss and stdio held-owner-loss migrations retain separate
+qualification. The
 [accepted-decision approval extension](archive/2026-10-26-p30-p31-implementation/accepted-approval-20261101.md)
 additionally retains original management journals at that same native sink,
 with Session/Writer-authenticated manifest counts/inodes. Native controls cover

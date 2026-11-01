@@ -154,7 +154,11 @@ for stdio and explicit loopback HTTP. Follow the
 [native testing flow](testing.md#exercise-actual-os-policy-and-native-protocols)
 to coordinate the existing catalog gate after initial discovery, require the
 precise admitted/withheld effects and verify strict idle recovery. A successful
-connection is not permission for the later request.
+connection is not permission for the later request. The separate
+`native_root_prestart` selection checks HTTP refusal without another connection
+after native-input revocation/expiry and a successful stdio call that ignores
+an unpinned helper override. Preserve the allowed control and actual traffic
+observations when changing either admission boundary.
 
 ## Schema subset
 

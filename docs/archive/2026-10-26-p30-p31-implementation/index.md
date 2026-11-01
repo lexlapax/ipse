@@ -61,6 +61,7 @@ nor resource/offline qualification. No daemon configuration or existing model wa
 
 ## P31A contracts and evidence
 
+- [Original HTTP pre-start and pinned-helper controls](root-native-prestart-pinned-20261101.md) preserve genuine input, the exact signed expiry, no further connection after pre-start refusal, and successful stdio dispatch despite an unpinned helper override. Strict Saved and inert recovery retain exact traffic/effect counts; startup/held-owner loss remains open.
 - [Original root-only MCP start/send controls](root-native-mcp-start-20261101.md) pair native allowed stdio/HTTP effects with actual post-start revocation before send, confirmed cleanup, withdrawn delivery and strict idle recovery; HTTP additionally checks unchanged complete connection traffic after settled close. Broader fault migrations remain open.
 - [Original root-only running shell controls](root-native-running-shell-20261101.md) preserve genuine approval before revocation or consumer loss, exact completed/absent effects, withdrawn stdout, actual native group exit and strict nonreplaying recovery. MCP start/send and HTTP migrations remain open.
 - [Original root-only native approval waiting faults](root-native-faults-20261101.md) retain all twelve write/shell/MCP root-change, revocation, actual-expiry and consumer-loss cases through the native terminal caller, with strict Saved and inert recovery. Running-operation and HTTP boundaries remain open.
