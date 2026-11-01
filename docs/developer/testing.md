@@ -752,8 +752,12 @@ kills the consuming Session before the final write. Follow the registered shell
 resource to its actual effect process and native Port, rather than assuming the
 turn task owns that Port. Observe its process-group anchor, shell and sleep child;
 require their exit and an absent final file after the original command duration.
-Both cases retain strict Saved state and inert idle recovery. These controls do
-not establish native sandbox confinement or detached-descendant behavior.
+Both cases compare the complete retained reference union with the actual approval
+snapshot and preserve strict Saved state and inert idle recovery. Use the shared
+`native_root_loss_lineage/2` assertion for these and the MCP loss cases below:
+missing effect cleanup keeps lineage reconstruction unavailable across resume.
+These controls do not establish native sandbox confinement or detached-descendant
+behavior.
 
 Use `--only native_root_mcp_boundary` for root-metadata approval across stdio and
 HTTP. Pair each allowed start/send with revocation after its admitted start. Set
@@ -787,10 +791,11 @@ automatic termination or killing the consumer. Held loss must stop the registere
 transport and close the real HTTP socket or stop the recorded stdio server PID.
 Wait for the original OS lock to release before strict Saved and idle recovery.
 Compare the complete retained reference dependencies with those displayed for
-approval. In these fixtures, derive later usability from committed effect cleanup:
-a missing record requires `managed_lineage_unavailable`, which must survive resume;
-all confirmed cleanup retains the usable dependency union. Do not forge a cleanup
-record or delay the original fault merely to get a usable lineage. Require the appropriate
+approval. In these fixtures, derive reconstruction availability from committed
+effect cleanup: a missing record requires `managed_lineage_unavailable`, which
+must survive resume; confirmed cleanup lets the reconstruction API return the
+retained union. Current use still requires fresh admission. Do not forge a cleanup
+record or delay the original fault to obtain an available lineage. Require the appropriate
 absent/preserved target, unchanged tool/model counts and, for HTTP, identical full
 traffic after settled cleanup and resume.
 

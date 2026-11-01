@@ -1000,9 +1000,13 @@ and successful stdio dispatch despite an unpinned helper override. The
 [lost-initialization and held-owner-loss controls](archive/2026-10-26-p30-p31-implementation/root-native-mcp-loss-20261101.md)
 now preserve actual startup uncertainty, held HTTP socket/stdio server cleanup,
 the complete original root dependencies and inert recovery. Missing effect
-cleanup keeps lineage unavailable rather than authorizing reuse. These original
-root-only native approval migrations do not close full C0, combined-module,
-installed/platform or actual-note quality qualification. The
+cleanup keeps lineage unavailable rather than authorizing reuse. The
+[complete frozen managed-collection module](archive/2026-10-26-p30-p31-implementation/managed-collection-module-20261101.md)
+still fails. A [shared loss-lineage assertion follow-up](archive/2026-10-26-p30-p31-implementation/native-loss-lineage-shared-20261101.md)
+now compares exact retained approval sources and journal-derived reconstruction
+availability for shell and MCP, preserving unavailable lineage after unconfirmed
+cleanup. These focused controls do not replace the failed module aggregate or
+close full C0, installed/platform or actual-note quality qualification. The
 [accepted-decision approval extension](archive/2026-10-26-p30-p31-implementation/accepted-approval-20261101.md)
 additionally retains original management journals at that same native sink,
 with Session/Writer-authenticated manifest counts/inodes. Native controls cover

@@ -5268,6 +5268,12 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
           assert Enum.all?(state.managed_approval.dependencies, &(&1["version"] == 3))
           assert {:error, _} = Session.approve(pid, make_ref(), true)
           refute File.exists?(path)
+
+          File.write!(
+            Path.join(c.root, "native-root-loss-dependencies.json"),
+            Jason.encode!(state.managed_approval.dependencies)
+          )
+
           File.write!(Path.join(c.root, "managed-approval-control-checked"), "checked")
           await_marker(Path.join(c.cwd, "shell-started"), "begun", 500)
           refute File.exists?(path)
@@ -5360,10 +5366,7 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
         assert :ok = Session.close_confirmed(pid)
       end
 
-      assert {:ok, dependencies} =
-               Session.ManagedLineage.dependencies(saved.managed_lineage, saved.messages)
-
-      assert dependencies != [] and Enum.all?(dependencies, &(&1["version"] == 3))
+      unconfirmed? = native_root_loss_lineage(c, saved)
       assert Enum.count(events, &(&1["type"] == "request_admitted")) == 2
 
       assert Enum.count(
@@ -5378,6 +5381,7 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
       resumed = start(c, %{approval: :ask, approval_origin: :interactive, headless: false}, id)
       assert Session.info(resumed).phase == :idle
       assert :sys.get_state(resumed).messages == saved.messages
+      assert :sys.get_state(resumed).managed_lineage.unavailable == unconfirmed?
       assert_idle_resume_journal(journal, closed, id)
       assert :ok = Session.close_confirmed(resumed)
 
@@ -5523,34 +5527,7 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
 
       assert {:ok, saved} = Session.Saved.restore(events, id)
 
-      assert {:ok, dependencies} =
-               Session.ManagedReference.dependencies(
-                 saved.managed_lineage.reference,
-                 saved.messages
-               )
-
-      assert dependencies != [] and Enum.all?(dependencies, &(&1["version"] == 3))
-
-      assert dependencies ==
-               c.root
-               |> Path.join("native-root-loss-dependencies.json")
-               |> File.read!()
-               |> Jason.decode!()
-
-      unconfirmed? =
-        Enum.any?(saved.managed_lineage.tool_effect_inputs, fn {_, effect} ->
-          effect.cleanup != "confirmed"
-        end)
-
-      assert saved.managed_lineage.unavailable == unconfirmed?
-
-      expected_dependencies =
-        if unconfirmed?,
-          do: {:error, :managed_lineage_unavailable},
-          else: {:ok, dependencies}
-
-      assert Session.ManagedLineage.dependencies(saved.managed_lineage, saved.messages) ==
-               expected_dependencies
+      unconfirmed? = native_root_loss_lineage(c, saved)
 
       assert Enum.count(events, &(&1["type"] == "request_admitted")) == 2
 
@@ -5823,6 +5800,38 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
 
       Task.shutdown(c.provider_server, :brutal_kill)
     end
+  end
+
+  defp native_root_loss_lineage(c, saved) do
+    assert {:ok, dependencies} =
+             Session.ManagedReference.dependencies(
+               saved.managed_lineage.reference,
+               saved.messages
+             )
+
+    reviewed =
+      c.root
+      |> Path.join("native-root-loss-dependencies.json")
+      |> File.read!()
+      |> Jason.decode!()
+
+    assert dependencies != [] and Enum.all?(dependencies, &(&1["version"] == 3))
+    assert dependencies == reviewed
+
+    unconfirmed? =
+      Enum.any?(saved.managed_lineage.tool_effect_inputs, fn {_, effect} ->
+        effect.cleanup != "confirmed"
+      end)
+
+    assert saved.managed_lineage.unavailable == unconfirmed?
+
+    expected =
+      if unconfirmed?,
+        do: {:error, :managed_lineage_unavailable},
+        else: {:ok, dependencies}
+
+    assert Session.ManagedLineage.dependencies(saved.managed_lineage, saved.messages) == expected
+    unconfirmed?
   end
 
   defp native_root_children(pid) do
