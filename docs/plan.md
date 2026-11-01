@@ -1028,6 +1028,11 @@ The same record's [read-only export follow-up](archive/2026-10-26-p30-p31-implem
 restores the current V3 permission-denial fixture while preserving output/replay
 negatives and unchanged accounting/storage assertions; it supplies no new
 complete-module or suite aggregate.
+The [paired source-origin controls](archive/2026-10-26-p30-p31-implementation/legacy-origin-boundary-20261101.md)
+also reach the actual missing-origin publication refusal without first attempting
+unsupported legacy protected-input delivery, alongside a current V3 publication,
+accounting and idle-recovery positive. Full C0 and whole-source acceptance remain
+open.
 
 The [managed export-input adapter](archive/2026-10-26-p30-p31-implementation/worker-input-session-20261101.md)
 now binds actual initial calls, committed action continuations and output-page

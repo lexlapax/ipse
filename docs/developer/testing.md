@@ -226,6 +226,18 @@ Its deliberately unregistered main route refuses the later managed continuation;
 registering that route would remove a separate negative control. A legacy-shape
 refusal before any publication intent does not test the read-class denial.
 
+For a missing-original-source negative, isolate source authority from protected
+delivery. The `legacy_origin` cases build a legacy journal without its original
+file binding and submit an untrusted generation-zero candidate without first
+requesting a managed snapshot. Legacy consumers cannot receive the current
+protected snapshot frame; testing that earlier refusal would never reach the
+source-origin check. Require the V3 action's exact `collection_consent_denied`
+outcome, no reservation or storage change, valid historical reconstruction and
+inert legacy resume. V2 remains refused before intent. Pair those negatives with
+the same no-snapshot V3 request from a current Session: it must actually publish,
+settle and complete through the registered route, then resume without replay.
+The worker's claimed generation is only a CAS input, never source authority.
+
 Capture the journal after `Session.close_confirmed/1` returns. On idle resume,
 require those bytes as an exact prefix. With the current release-receipt layout,
 the only suffix before closing the resumed Session is one complete ownership

@@ -376,10 +376,13 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
       defp advance("quote", %{"status" => "ok", "value" => quote}, state) do
         {:ok, proof} = Ipse.Extension.source_proof(state["page"], quote, "Synthetic café observation")
         state = state |> Map.put("step", "snapshot") |> Map.put("proof", proof)
-        if state["mode"] == "capture_ab_literal" do
-          advance("snapshot", %{"status" => "ok", "value" => state["prior_a"]["value"]}, state)
-        else
-          call(%{"op" => "collection.call", "request" => %{"op" => "snapshot"}}, state)
+        cond do
+          state["mode"] == "capture_unobserved" ->
+            advance("snapshot", %{"status" => "ok", "value" => %{"generation" => 0}}, state)
+          state["mode"] == "capture_ab_literal" ->
+            advance("snapshot", %{"status" => "ok", "value" => state["prior_a"]["value"]}, state)
+          true ->
+            call(%{"op" => "collection.call", "request" => %{"op" => "snapshot"}}, state)
         end
       end
       defp advance("snapshot", %{"status" => "ok", "value" => snapshot}, state) do
@@ -4244,7 +4247,7 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
   end
 
   for metadata_version <- [2, 3] do
-    @tag metadata_version: metadata_version
+    @tag metadata_version: metadata_version, legacy_origin: true
     test "legacy journal origin cannot publish managed metadata V#{metadata_version}", c do
       pid = start(c)
       id = Session.info(pid).id
@@ -4273,9 +4276,10 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
       )
 
       assert {:ok, before} = Consent.snapshot(c.control, c.binding["project_id"])
-      resumed = start(c, %{}, id)
+      resumed = start(c, %{fixture_mode: "capture_unobserved"}, id)
       assert :ok = Session.prompt(resumed, "Synthetic café observation")
-      assert_receive {:ipse, ^resumed, {:done, :error}}, 15_000
+      expected = if c.metadata_version == 3, do: :ok, else: :error
+      assert_receive {:ipse, ^resumed, {:done, ^expected}}, 15_000
       assert :ok = Session.close_confirmed(resumed)
       assert {:ok, ^before} = Consent.snapshot(c.control, c.binding["project_id"])
       assert {:ok, [saved_header | events]} = Journal.load(c.dir, id)
@@ -4295,11 +4299,76 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
                    get_in(event, ["request", "request", "op"]) == "commit"
                end)
       else
-        assert [%{"outcome" => %{"status" => "failed"}}] = commits
+        assert [commit] = commits
+
+        assert commit["outcome"] == %{
+                 "status" => "failed",
+                 "value" => %{"code" => "collection_consent_denied"}
+               }
+
+        assert commit["approval"] == "saved_consent"
       end
 
       assert {:ok, _} = Session.restore_context([saved_header | events])
+      refute Enum.any?(events, &(&1["type"] == "managed_read_observed"))
+      assert %{"generation" => 0, "floor" => 0} = collection_read(c, %{"op" => "snapshot"})
+
+      path = Path.join(c.dir, id <> ".jsonl")
+      closed = File.read!(path)
+      trace = File.read!(c.trace)
+      idle = start(c, %{}, id)
+      assert Session.info(idle).phase == :idle
+      assert File.read!(path) == closed
+      assert :ok = Session.close_confirmed(idle)
+      assert File.read!(c.trace) == trace
+      assert {:ok, ^before} = Consent.snapshot(c.control, c.binding["project_id"])
+      assert {:ok, %{"release_claim" => "unknown"}} = Ipse.Session.Saved.inspect_saved(c.dir, id)
     end
+  end
+
+  @tag legacy_origin: true,
+       metadata_version: 3,
+       registered_main: true,
+       capture_write: true,
+       registered_capture_mode: "capture_unobserved"
+  test "a current source can publish a new V3 candidate without a prior managed snapshot", c do
+    pid = start(c)
+    id = Session.info(pid).id
+    assert :ok = Session.prompt(pid, "Synthetic café observation")
+    assert_receive {:ipse, ^pid, {:done, :ok}}, 15_000
+    assert :ok = Session.close_confirmed(pid)
+    assert {:ok, [header | events]} = Journal.load(c.dir, id)
+    assert is_map(header["metadata"]["source_origin"])
+
+    [commit] =
+      Enum.filter(events, fn event ->
+        event["type"] == "extension_action_result" and
+          get_in(event, ["request", "op"]) == "collection.managed"
+      end)
+
+    assert commit["approval"] == "saved_consent"
+    assert commit["outcome"]["status"] == "ok"
+    assert commit["outcome"]["value"]["normalization"]["version"] == 3
+    refute Enum.any?(events, &(&1["type"] == "managed_read_observed"))
+    assert {:ok, saved} = Ipse.Session.Saved.restore([header | events], id)
+    assert {:ok, control} = Consent.snapshot(c.control, c.binding["project_id"])
+    assert map_size(control["operations"]) == 1
+    assert control["operations"][commit["operation_id"]]["status"] == "settled"
+    assert %{"generation" => 1, "floor" => 1} = collection_read(c, %{"op" => "snapshot"})
+    assert [_, _] = Task.await(c.provider_server, 5000)
+
+    before = File.read!(c.trace)
+    path = Path.join(c.dir, id <> ".jsonl")
+    journal = File.read!(path)
+    resumed = start(c, %{}, id)
+    assert :sys.get_state(resumed).messages == saved.messages
+    assert_idle_resume_journal(path, journal, id)
+    assert :ok = Session.close_confirmed(resumed)
+    assert File.read!(c.trace) == before
+    assert {:ok, ^control} = Consent.snapshot(c.control, c.binding["project_id"])
+
+    assert {:ok, %{"release_claim" => "signed_release_claim"}} =
+             Ipse.Session.Saved.inspect_saved(c.dir, id)
   end
 
   test "the policy snapshot stays bounded and a low enclosing journal limit refuses before worker entry",
