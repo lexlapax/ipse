@@ -67,7 +67,7 @@ defmodule Ipse.CLI.ManagementFullFactsTest do
     {output, status} = run(c, "cli-session", ["--management-review"])
     assert status == 0, output
     assert output =~ "MANAGEMENT_PUBLIC_SESSION_RETENTION_SETTLED"
-    assert output =~ "Removed the reviewed stored literal for session-only retention."
+    assert output =~ "Removed the reviewed stored note for session-only retention."
   end
 
   @tag :management_session_retention

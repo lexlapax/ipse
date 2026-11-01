@@ -86,6 +86,7 @@ else
     assert code === 0
     [event] = Enum.filter(records, &(&1["type"] === "pending_proposal_accepted"))
     assert Ipse.Session.PendingAcceptance.valid_event?(event)
+    assert {:ok, accepted_note_key} = Ipse.Session.PendingAcceptance.accepted_note_key(event)
     assert event["facts"]["operation_id"] === id
     assert operation["actual"]["operations"] === 1
     assert operation["actual"]["input_bytes"] > 0
@@ -116,6 +117,9 @@ else
       assert inspected["control_status"] === "settled"
       assert inspected["journal_status"] === journal_status
       assert inspected["replayed"] === false
+
+      if selected == event["facts"]["journal_id"],
+        do: assert(inspected["accepted_note_key"] === accepted_note_key)
     end
 
     assert {:ok, ^after_control} =
@@ -130,7 +134,11 @@ else
 
     File.write!(
       Path.join(root, "pending-management-host-orchestrated.json"),
-      Jason.encode!(%{"event" => event, "receipt" => receipt}),
+      Jason.encode!(%{
+        "event" => event,
+        "receipt" => receipt,
+        "accepted_note_key" => accepted_note_key
+      }),
       [:exclusive]
     )
   else

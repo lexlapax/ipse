@@ -995,14 +995,7 @@ defmodule Ipse.Session.PendingAcceptance do
              do: facts["assigned_category"] in ~w(preference current),
              else: JSON.safe_uint?(valid_until_ms) and valid_until_ms > accepted_at
            ),
-         lineage =
-           JSON.digest([
-             "ipse-knowledge",
-             1,
-             "accepted_decision",
-             facts["candidate_id"],
-             facts["lineage"]
-           ]),
+         lineage = accepted_lineage(facts),
          note_key = "note." <> lineage,
          link_key = "accept." <> facts["candidate_id"],
          event_sha256 = JSON.digest([event]),
@@ -1067,6 +1060,133 @@ defmodule Ipse.Session.PendingAcceptance do
   end
 
   def valid_accepted_values?(_, _), do: false
+
+  @doc "Derive the intended note key from a validated acceptance event; proves neither publication nor current eligibility."
+  def accepted_note_key(event) do
+    if valid_event?(event), do: {:ok, "note." <> accepted_lineage(event["facts"])}, else: @error
+  rescue
+    _ -> @error
+  end
+
+  @doc """
+  Check a retained accepted-decision target for destructive native management.
+
+  The caller must authenticate the anchor/live rows and same-root record/link
+  under Identity and management Consent. Eligibility tag 3 binds this distinct
+  representation; the literal recipe supplies category limits only. This does
+  not authenticate current sources, the original review journal, or later use.
+  Expired targets remain removable. No returned value grants a Review permit.
+  """
+  def retained_decision_metadata(recipe, record, link, anchor, live) do
+    with true <- ManagedRecipe.valid?(recipe) and recipe["kind"] === "literal_source",
+         true <- recipe["key_prefix"] === "note.",
+         note when is_map(note) <- record["value"],
+         true <-
+           exact?(
+             note,
+             ~w(version kind lineage candidate_id text category reason source_proof acceptance_event_sha256 acceptance_link_sha256 accepted_at_ms valid_until_ms)
+           ),
+         true <- note["version"] === 1 and note["kind"] === "accepted_decision",
+         true <-
+           is_binary(note["text"]) and String.valid?(note["text"]) and
+             byte_size(note["text"]) in 1..2048,
+         true <-
+           is_binary(note["reason"]) and String.valid?(note["reason"]) and
+             byte_size(note["reason"]) in 1..256,
+         true <-
+           Enum.all?(
+             ~w(lineage candidate_id acceptance_event_sha256 acceptance_link_sha256),
+             &JSON.sha256?(note[&1])
+           ),
+         {:ok, original_lineage} <- ManagedRecipe.source_identity(note["source_proof"]),
+         {:ok, candidate_id} <- ManagedRecipe.proposal_identity(original_lineage, note["text"]),
+         true <- candidate_id === note["candidate_id"],
+         lineage =
+           accepted_lineage(%{"candidate_id" => candidate_id, "lineage" => original_lineage}),
+         true <- note["lineage"] === lineage and record["key"] === "note." <> lineage,
+         true <- record["sha256"] === JSON.sha256(Migration.encode(note)),
+         true <- record["bytes"] === byte_size(Migration.encode(note)),
+         true <- positive?(record["revision"]) and id?(record["operation_id"]),
+         value when is_map(value) <- link["value"],
+         true <-
+           exact?(
+             value,
+             ~w(version kind candidate_id journal_id journal_kind pending_key pending_revision pending_value_sha256 original_lineage accepted_note_key acceptance_event_sha256 source_proof_sha256)
+           ),
+         true <- value["version"] === 1 and value["kind"] === "candidate_acceptance_link",
+         true <-
+           value["candidate_id"] === candidate_id and
+             value["original_lineage"] === original_lineage,
+         true <-
+           value["accepted_note_key"] === record["key"] and
+             value["pending_key"] === "pending." <> candidate_id,
+         true <-
+           id?(value["journal_id"]) and value["journal_kind"] in ~w(session knowledge_management),
+         true <-
+           positive?(value["pending_revision"]) and JSON.sha256?(value["pending_value_sha256"]),
+         true <- value["acceptance_event_sha256"] === note["acceptance_event_sha256"],
+         true <- value["source_proof_sha256"] === JSON.digest([note["source_proof"]]),
+         true <- link["key"] === "accept." <> candidate_id,
+         true <-
+           link["revision"] === record["revision"] and
+             link["operation_id"] === record["operation_id"],
+         true <-
+           link["sha256"] === JSON.sha256(Migration.encode(value)) and
+             link["sha256"] === note["acceptance_link_sha256"],
+         true <- link["bytes"] === byte_size(Migration.encode(value)),
+         {:ok, _} <- ManagedPages.pack(:anchor, ManagedPages.zero(:anchor), %{lineage => anchor}),
+         %{"clocks" => [first, baseline, _, _], "choice" => nil, "retirement" => nil} <- anchor,
+         true <-
+           JSON.safe_uint?(first) and JSON.safe_uint?(note["accepted_at_ms"]) and
+             first <= note["accepted_at_ms"],
+         deadline = note["valid_until_ms"],
+         true <-
+           if(is_nil(deadline),
+             do: note["category"] in ~w(preference current),
+             else: JSON.safe_uint?(deadline) and deadline > note["accepted_at_ms"]
+           ),
+         true <-
+           is_nil(baseline) or
+             (JSON.safe_uint?(baseline) and not is_nil(deadline) and deadline <= baseline),
+         rule when is_map(rule) <-
+           Enum.find(recipe["rules"], &(&1["category"] === note["category"])),
+         age = rule["max_age_ms"],
+         true <-
+           is_nil(age) or
+             (JSON.safe_uint?(age) and JSON.safe_uint?(first + age) and not is_nil(baseline) and
+                baseline <= first + age),
+         [_, _, _, packed_policy, _, _, _, 3] <- live,
+         policy =
+           packed_policy |> Base.url_decode64!(padding: false) |> Base.encode16(case: :lower),
+         true <- JSON.sha256?(policy),
+         true <-
+           live ===
+             live_row(
+               lineage,
+               record["sha256"],
+               JSON.digest([recipe]),
+               policy,
+               first,
+               deadline,
+               note["category"],
+               3
+             ) do
+      {:ok,
+       %{
+         "lineage" => lineage,
+         "recipe_sha256" => JSON.digest([recipe]),
+         "policy_sha256" => policy,
+         "first_admitted_ms" => first,
+         "valid_until_ms" => deadline,
+         "category" => note["category"],
+         "management_target" => "accepted_decision"
+       }}
+    else
+      _ -> @error
+    end
+  rescue
+    _ -> @error
+  end
 
   @doc "Check an accepted note and link against already authenticated rows; this grants no current-use authority."
   def stored_decision_metadata(event, recipe, record, link, anchor, live, now) do
@@ -1205,14 +1325,7 @@ defmodule Ipse.Session.PendingAcceptance do
          rule when is_map(rule) <-
            Enum.find(recipe["rules"], &(&1["category"] === facts["assigned_category"])),
          true <- is_nil(policy_deadline) or JSON.safe_uint?(policy_deadline),
-         lineage =
-           JSON.digest([
-             "ipse-knowledge",
-             1,
-             "accepted_decision",
-             facts["candidate_id"],
-             facts["lineage"]
-           ]),
+         lineage = accepted_lineage(facts),
          {:ok, row} <- accepted_anchor(prior, lineage),
          %{"clocks" => [old_first, old_baseline, pending, pending_baseline]} <- row,
          true <- (is_nil(old_first) or old_first <= at) and (is_nil(pending) or pending <= at),
@@ -1271,14 +1384,7 @@ defmodule Ipse.Session.PendingAcceptance do
          witness when is_map(witness) <- get_in(managed, ["observation", "witness"]),
          true <- witness["root_sha256"] === facts["root_sha256"],
          root when is_map(root) <- witness["root"],
-         lineage =
-           JSON.digest([
-             "ipse-knowledge",
-             1,
-             "accepted_decision",
-             facts["candidate_id"],
-             facts["lineage"]
-           ]),
+         lineage = accepted_lineage(facts),
          true <- ManagedRecipe.valid?(recipe) and recipe["kind"] === "literal_source",
          {:ok, nil} <- read.(recipe["override_prefix"] <> lineage),
          {:ok, prior} <- retained_anchor(cap, lineage, witness, root, read),
@@ -1653,6 +1759,16 @@ defmodule Ipse.Session.PendingAcceptance do
       JSON.safe_uint?(receipt["observed_at_ms"]) and
       receipt["facts_sha256"] === JSON.digest([facts])
   end
+
+  defp accepted_lineage(facts),
+    do:
+      JSON.digest([
+        "ipse-knowledge",
+        1,
+        "accepted_decision",
+        facts["candidate_id"],
+        facts["lineage"]
+      ])
 
   defp positive?(v), do: JSON.safe_uint?(v) and v > 0
   defp id?(v), do: is_binary(v) and Regex.match?(~r/\A[0-9a-f]{32}\z/, v)

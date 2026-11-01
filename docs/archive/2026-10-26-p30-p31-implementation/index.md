@@ -61,6 +61,7 @@ nor resource/offline qualification. No daemon configuration or existing model wa
 
 ## P31A contracts and evidence
 
+- [Native accepted-decision forgetting](accepted-decision-forget-20261101.md) adds a distinct signed destructive target to the existing public native review and measured management path; cancellation and disabled/source-unavailable removal preserve the immutable link, peer, journals and authenticated suppression. Current-use delivery and other accepted lifecycle choices retain separate gates.
 - [Headless CLI pending saves](headless-cli-pending-20261101.md) use actual native setup followed by separate argv/stdin CLI processes; strict positive controls require one attributed pending record, completed requests, settled consent and denied workspace/shell effects. This supersedes the old empty-store diagnostic only for its current-source path.
 - [Registered repeated V3 capture](repeated-v3-capture-20261101.md) preserves successful publication expectations through the actual adapter, with a nonzero live split fence, distinct original sources, settled accounting and idle recovery; legacy reader access still refuses. Retention endurance and full-source acceptance remain open.
 - [Nested native/MCP result continuation](nested-result-input-20261101.md) replaces the redundant result gate only for pinned exports using the actual managed input fence. Explicit-allow positives and post-effect root/revocation controls retain known effects, uncertain delivery and inert recovery; document and other unqualified purposes stay gated.

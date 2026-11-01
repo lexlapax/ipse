@@ -235,6 +235,11 @@ Historical display can succeed while the original source is unavailable.
 Publication freshly checks that source, current permission and the unchanged
 signed target. A confirmed success removes the pending row and stores an
 accepted decision with its original proof and immutable acceptance link.
+A successful result prints `accepted_note_key`; keep that complete `note.` key
+for later management, including [forgetting](#forget-a-selected-native-note).
+Operation inspection also reports this intended key. The key alone does not
+prove that publication completed or that the decision is currently eligible;
+check the separate journal/control status and actual target.
 A repeated attempt cannot accept it twice. An error or lost reply requires
 inspection before new work:
 
@@ -356,7 +361,8 @@ answers; it does not erase those historical copies.
 ## Forget a selected native note
 
 From the original project and Ipse home, use the complete `note.` key followed
-by its 64 lowercase hexadecimal characters:
+by its 64 lowercase hexadecimal characters. The key can select a native literal
+or an accepted decision:
 
 ```sh
 ipse knowledge forget note.COPY_THE_64_CHARACTER_LINEAGE --cwd /path/to/project
@@ -378,9 +384,11 @@ original source is unavailable. It does not establish that source's current
 eligibility or authorize another use of its text. Ipse checks the target and
 management state again before applying the confirmed action.
 
-On confirmed success, the selected literal is removed and signed suppression
-remains; the command prints the settled operation receipt. Original Session and
-management review journals and shared evidence remain. Previously delivered
+On confirmed success, the selected note is removed and signed suppression
+remains; the command prints the settled operation receipt. For an accepted
+decision, its immutable acceptance link also remains, preventing the original
+card from being accepted again. Original Session and acceptance/management
+review journals and shared evidence remain. Previously delivered
 answers are not recalled or erased. If the command reports an unconfirmed
 result, or it stops before reporting one, inspect the printed journal ID before
 another attempt:
@@ -402,7 +410,9 @@ behavior have not yet been qualified for this path.
 ## Change a selected native note's retention
 
 Choose a retention policy for a selected stored literal on a supported Linux
-native terminal. For example:
+native terminal. Session-only also removes an accepted decision through its
+separate native forget review; other retention choices for accepted decisions
+remain unavailable. For example:
 
 ```sh
 ipse knowledge retention note.COPY_THE_64_CHARACTER_LINEAGE --policy session --cwd /path/to/project

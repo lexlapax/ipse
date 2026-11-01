@@ -699,7 +699,16 @@ must select actual returned source handles rather than infer task order from
 user-role messages after native reference framing. The accepted-input observer
 adds the original management journals to its actual importer descriptor checks.
 Run the single- and multiple-decision cases with strict Saved, original-source
-and altered-event controls. A shared lease must also work at the ordinary
+and altered-event controls. After the multiple-decision recall, the same journey
+also cancels a native forget without changing the target, disables capture, then
+forgets one accepted decision while its original Session journal is temporarily
+unavailable. It authenticates the retained exact-target suppression, refuses
+reacceptance planning from that retired anchor, preserves the immutable link and
+other decision, and verifies settled zero-service accounting and unchanged
+original journals. Its synthetic root prints as `ACCEPTED_RECALL_ROOT`.
+The pure target/type grid is `test/ipse/session/accepted_decision_lifecycle_test.exs`;
+those shaped fixtures grant no native authority or current-use permission.
+A shared lease must also work at the ordinary
 resource ceiling, reject foreign/forged/spent handles, and preserve the combined
 original-owner budget. Follow the
 [fresh-runtime recipe](../archive/2026-10-26-p30-p31-implementation/pending-review-boundary-20261031.md#local-evidence-and-limits)

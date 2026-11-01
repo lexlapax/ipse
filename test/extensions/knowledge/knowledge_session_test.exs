@@ -325,7 +325,11 @@ defmodule IpseKnowledge.KnowledgeSessionTest do
     File.mkdir_p!(home)
     File.mkdir_p!(cwd)
     File.chmod!(home, 0o700)
-    on_exit(fn -> File.rm_rf!(root) end)
+
+    if accept? == :public_recall,
+      do: IO.puts("ACCEPTED_RECALL_ROOT=" <> root),
+      else: on_exit(fn -> File.rm_rf!(root) end)
+
     output = Path.join(root, "artifact")
     sdk = Application.app_dir(:ipse, "ebin")
     paths = Path.wildcard(Path.join(Path.dirname(Path.dirname(sdk)), "*/ebin"))
@@ -1265,6 +1269,11 @@ defmodule IpseKnowledge.KnowledgeSessionTest do
     assert note["record"]["value"]["kind"] == "accepted_decision"
     assert note["record"]["value"]["text"] == change["value"]["text"]
 
+    if public? do
+      assert result["accepted_note_key"] == note["record"]["key"]
+      assert output =~ "\"accepted_note_key\":\"#{note["record"]["key"]}\""
+    end
+
     duplicate_args =
       ["--management-review", System.find_executable("elixir"), "--erl", "+S 2:2"] ++
         paths ++
@@ -1543,6 +1552,41 @@ defmodule IpseKnowledge.KnowledgeSessionTest do
         result["event"],
         second["event"]
       ])
+
+      peer_key = second["accepted_note_key"]
+      assert is_binary(peer_key)
+
+      File.write!(
+        Path.join(root, "accepted-forget.json"),
+        Jason.encode!(%{
+          "namespace" => namespace,
+          "key" => result["accepted_note_key"],
+          "link_key" => link["record"]["key"],
+          "peer_key" => peer_key,
+          "history_dir" => history_dir,
+          "event" => result["event"],
+          "note_recipe" => sidecar["recipes"]["note"]
+        })
+      )
+
+      for {mode, driver_mode} <- [
+            {"cancel", "--management-review-cancel"},
+            {"forget", "--assertion"}
+          ] do
+        {output, status} =
+          System.cmd(
+            driver,
+            [driver_mode, System.find_executable("elixir"), "--erl", "+S 2:2"] ++
+              paths ++
+              [Path.expand("test/support/accepted_decision_forget_cli.exs"), root, mode],
+            stderr_to_stdout: true,
+            cd: root
+          )
+
+        File.write!(Path.join(root, "accepted-#{mode}.log"), output)
+        assert status == 0, output
+        assert output =~ "NATIVE_ACCEPTED_DECISION_#{String.upcase(mode)}_PASSED"
+      end
     end
   end
 

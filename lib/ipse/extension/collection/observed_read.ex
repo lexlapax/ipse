@@ -420,7 +420,26 @@ defmodule Ipse.Extension.Collection.ObservedRead do
   Native display still requires the separate complete owner/closure protocol.
   """
   def with_managed_record(root, namespace, request, cap, catalog, recipe, fun)
-      when is_function(fun, 1) do
+      when is_function(fun, 1),
+      do: with_management_record(root, namespace, request, cap, catalog, recipe, fun, false)
+
+  def with_managed_record(_, _, _, _, _, _, _), do: @error
+
+  @doc """
+  Retain an exact signed literal or accepted-decision target for native forgetting.
+
+  Accepted decisions require their distinct signed tag and same-root immutable
+  link. This historical target route grants neither current-use eligibility nor
+  source/review authority; it must not be used for retention or supersession.
+  """
+  def with_managed_forget_record(root, namespace, request, cap, catalog, recipe, fun)
+      when is_function(fun, 1),
+      do: with_management_record(root, namespace, request, cap, catalog, recipe, fun, true)
+
+  def with_managed_forget_record(_, _, _, _, _, _, _), do: @error
+
+  defp with_management_record(root, namespace, request, cap, catalog, recipe, fun, accepted?)
+       when is_function(fun, 1) do
     with {:ok, _, :get_record} <- select(request),
          "note." <> lineage <- request["key"],
          true <- JSON.sha256?(lineage),
@@ -434,7 +453,7 @@ defmodule Ipse.Extension.Collection.ObservedRead do
         neighbors = fn selected -> read.(%{"op" => "neighbors", "request" => selected}) end
 
         with {:ok, observation} <-
-               managed_record_read(values, neighbors, request, cap, lineage, recipe),
+               managed_record_read(values, neighbors, request, cap, lineage, recipe, accepted?),
              do: fun.(observation)
       end)
     else
@@ -445,8 +464,6 @@ defmodule Ipse.Extension.Collection.ObservedRead do
   catch
     _, _ -> @error
   end
-
-  def with_managed_record(_, _, _, _, _, _, _), do: @error
 
   @doc """
   Check one accepted note, link and signed rows under the held Collection owner.
@@ -884,7 +901,7 @@ defmodule Ipse.Extension.Collection.ObservedRead do
     )
   end
 
-  defp managed_record_read(read, neighbors, request, cap, lineage, recipe) do
+  defp managed_record_read(read, neighbors, request, cap, lineage, recipe, accepted? \\ false) do
     keys = [request["key"], ManagedPages.format_key(), recipe["override_prefix"] <> lineage]
 
     with {:ok, first} <- read.(%{"op" => "get_many", "keys" => keys}),
@@ -902,12 +919,9 @@ defmodule Ipse.Extension.Collection.ObservedRead do
              ManagedPages.live_identity(request["key"]),
              first
            ),
-         sources when is_list(sources) <- get_in(record["value"], recipe["evidence_path"]),
-         {:ok, candidate} <-
-           ManagedRecipe.extract(recipe, request["key"], record["value"], sources),
-         true <- candidate["kind"] == "literal_source" and candidate["lineage"] === lineage,
          {:ok, anchor} <- managed_row_read(read, neighbors, cap, :anchor, lineage, first),
-         {:ok, metadata} <- ManagedRetention.metadata(candidate, record["sha256"], anchor, live),
+         {:ok, metadata} <-
+           management_record_metadata(read, first, record, recipe, anchor, live, accepted?),
          observation = %{
            "version" => 1,
            "request_sha256" => JSON.digest([request]),
@@ -920,6 +934,44 @@ defmodule Ipse.Extension.Collection.ObservedRead do
          "observation" => observation,
          "metadata" => metadata
        }}
+    else
+      _ -> @error
+    end
+  end
+
+  defp management_record_metadata(
+         read,
+         first,
+         %{"value" => %{"kind" => "accepted_decision"}} = record,
+         recipe,
+         anchor,
+         live,
+         true
+       ) do
+    key = "accept." <> record["value"]["candidate_id"]
+
+    with {:ok, linked} <- read.(%{"op" => "get_many", "keys" => [key]}),
+         true <- linked["witness"] === first["witness"] and linked["summary"] === first["summary"],
+         true <- linked["keys"] === [key],
+         [link] <- linked["records"] do
+      Ipse.Session.PendingAcceptance.retained_decision_metadata(
+        recipe,
+        record,
+        link,
+        anchor,
+        live
+      )
+    else
+      _ -> @error
+    end
+  end
+
+  defp management_record_metadata(_, _, record, recipe, anchor, live, _) do
+    with sources when is_list(sources) <- get_in(record["value"], recipe["evidence_path"]),
+         {:ok, candidate} <-
+           ManagedRecipe.extract(recipe, record["key"], record["value"], sources),
+         true <- candidate["kind"] == "literal_source" do
+      ManagedRetention.metadata(candidate, record["sha256"], anchor, live)
     else
       _ -> @error
     end

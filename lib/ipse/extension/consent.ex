@@ -253,7 +253,7 @@ defmodule Ipse.Extension.Consent do
     do: JSON.digest(["management.v1", project, epoch, policy])
 
   @doc """
-  Reserve and mark one native-reviewed literal forget before its short publication.
+  Reserve and mark one native-reviewed note forget before its short publication.
 
   This host-only path requires an actual same-owner review, an existing protected
   control and its exact management epoch. It remains available with expired or
@@ -263,12 +263,13 @@ defmodule Ipse.Extension.Consent do
   consumes it before mutation. A possible effect stays publishing until the owner
   settles the returned packet after all outer checks and cleanup succeed.
   """
-  def forget_deferred(root, project, epoch, request, permit, facts, now, fun)
-      when is_function(fun, 0) do
+  def forget_deferred(root, project, epoch, request, permit, %{"kind" => kind} = facts, now, fun)
+      when is_function(fun, 0) and
+             kind in ["managed_literal_forget", "managed_accepted_decision_forget"] do
     reviewed_management(root, project, epoch, request, permit, facts, now, fun, %{
       command: "forget",
       operation: "collection.forget",
-      kind: "managed_literal_forget"
+      kind: kind
     })
   end
 

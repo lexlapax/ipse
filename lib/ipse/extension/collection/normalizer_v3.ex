@@ -639,11 +639,16 @@ defmodule Ipse.Extension.Collection.NormalizerV3 do
   """
   def forget(witness, read, options), do: manage(witness, read, options, :forget)
 
+  @doc "Forget one signed accepted decision while preserving its immutable acceptance link and original journals."
+  def forget_accepted(witness, read, options),
+    do: manage(witness, read, options, :forget_accepted)
+
   @doc "Apply an exact native-reviewed policy choice while preserving the literal value and original admission clocks."
   def retain(witness, read, options), do: manage(witness, read, options, :retain)
 
   defp manage(witness, read, options, action) when is_function(read, 1) do
     checked(fn ->
+      forget? = action in [:forget, :forget_accepted]
       true = keys?(options, ~w(request facts permit now_ms domain_cap catalog)a)
 
       %{
@@ -669,7 +674,7 @@ defmodule Ipse.Extension.Collection.NormalizerV3 do
       true = request["op"] == "commit" and request["advance_floor"] === true
       true = request["expected_generation"] === witness["root"]["generation"]
       [%{"key" => key, "expected_revision" => revision, "value" => desired}] = request["changes"]
-      true = if(action == :forget, do: is_nil(desired), else: is_map(desired))
+      true = if(forget?, do: is_nil(desired), else: is_map(desired))
       "note." <> lineage = key
       true = JSON.sha256?(lineage) and key == recipe["key_prefix"] <> lineage
       read = bounded_read(read)
@@ -679,28 +684,48 @@ defmodule Ipse.Extension.Collection.NormalizerV3 do
       true = is_map(record) and record["key"] == key and record["revision"] === revision
       true = revision > 0 and revision <= witness["root"]["generation"]
       true = record["sha256"] == value_sha(record["value"])
-      true = action == :forget or desired === record["value"]
+      true = forget? or desired === record["value"]
       {:ok, nil} = read.(recipe["override_prefix"] <> lineage)
 
-      {:ok, candidate} =
-        ManagedRecipe.extract(
-          recipe,
-          key,
-          record["value"],
-          get_in(record["value"], recipe["evidence_path"])
-        )
-
-      true = candidate["kind"] == "literal_source" and candidate["lineage"] == lineage
       anchor = selected_row!(cap, :anchor, lineage, read, witness)
       live_id = ManagedPages.live_identity(key)
       live = selected_row!(cap, :live, live_id, read, witness)
-      {:ok, metadata} = ManagedRetention.metadata(candidate, record["sha256"], anchor, live)
+
+      {metadata, candidate} =
+        if action == :forget_accepted do
+          {:ok, link} = read.("accept." <> record["value"]["candidate_id"])
+
+          {:ok, metadata} =
+            Ipse.Session.PendingAcceptance.retained_decision_metadata(
+              recipe,
+              record,
+              link,
+              anchor,
+              live
+            )
+
+          {metadata, nil}
+        else
+          {:ok, candidate} =
+            ManagedRecipe.extract(
+              recipe,
+              key,
+              record["value"],
+              get_in(record["value"], recipe["evidence_path"])
+            )
+
+          true = candidate["kind"] == "literal_source" and candidate["lineage"] == lineage
+          {:ok, metadata} = ManagedRetention.metadata(candidate, record["sha256"], anchor, live)
+          {metadata, candidate}
+        end
+
+      true = metadata["lineage"] == lineage
       first = metadata["first_admitted_ms"]
       true = first <= now
       true = is_nil(metadata["choice"]) or metadata["choice"]["observed_at_ms"] <= now
 
       true =
-        action == :forget or
+        forget? or
           ManagedRetention.eligible_metadata?(candidate, record["sha256"], metadata, now)
 
       :ok = management_facts!(facts, request, witness, record, metadata, action)
@@ -730,11 +755,20 @@ defmodule Ipse.Extension.Collection.NormalizerV3 do
       }
 
       {updated, live_value, selected} =
-        if action == :forget do
+        if forget? do
+          retirement =
+            if action == :forget_accepted,
+              do: %{
+                "record_key" => key,
+                "record_value_sha256" => record["sha256"],
+                "at_ms" => now
+              },
+              else: %{"target_kind" => "native_literal_note", "at_ms" => now}
+
           {%{
              anchor
              | "choice" => capsule,
-               "retirement" => %{"target_kind" => "native_literal_note", "at_ms" => now}
+               "retirement" => retirement
            }, nil, nil}
         else
           {:ok, category, deadline} =
@@ -767,12 +801,16 @@ defmodule Ipse.Extension.Collection.NormalizerV3 do
       receipt = %{
         "version" => 3,
         "kind" =>
-          if(action == :forget, do: "native_literal_forget", else: "native_literal_retention"),
+          case action do
+            :forget -> "native_literal_forget"
+            :forget_accepted -> "native_accepted_decision_forget"
+            :retain -> "native_literal_retention"
+          end,
         "lineage" => lineage,
         "record_key" => key,
         "action_sha256" => facts["action_sha256"],
         "native_review_sha256" => JSON.digest([review]),
-        "eligibility" => if(action == :forget, do: "retired", else: "current"),
+        "eligibility" => if(forget?, do: "retired", else: "current"),
         "metadata_changes" =>
           Enum.map(extras, fn extra ->
             %{
@@ -785,7 +823,7 @@ defmodule Ipse.Extension.Collection.NormalizerV3 do
       }
 
       receipt =
-        if action == :forget do
+        if forget? do
           Map.put(receipt, "retired_at_ms", now)
         else
           {category, deadline} = selected
@@ -829,7 +867,13 @@ defmodule Ipse.Extension.Collection.NormalizerV3 do
         fields
       )
 
-    kind = if action == :forget, do: "managed_literal_forget", else: "managed_literal_retention"
+    kind =
+      case action do
+        :forget -> "managed_literal_forget"
+        :forget_accepted -> "managed_accepted_decision_forget"
+        :retain -> "managed_literal_retention"
+      end
+
     true = facts["version"] === 1 and facts["kind"] == kind
     true = id?(facts["operation_id"])
 
@@ -840,7 +884,7 @@ defmodule Ipse.Extension.Collection.NormalizerV3 do
     true = facts["request_sha256"] == JSON.digest([request])
     true = ManagedRetention.policy?(facts["policy"])
 
-    if action == :forget do
+    if action in [:forget, :forget_accepted] do
       true = facts["policy"] === %{"kind" => "session"}
     else
       true = facts["policy"]["kind"] != "session"
@@ -860,7 +904,12 @@ defmodule Ipse.Extension.Collection.NormalizerV3 do
 
     true =
       facts["scope"] ==
-        "selected literal derivative; original journal, management review journal and shared evidence remain"
+        if(action == :forget_accepted,
+          do:
+            "selected accepted decision; immutable acceptance link, original journals and shared evidence remain",
+          else:
+            "selected literal derivative; original journal, management review journal and shared evidence remain"
+        )
 
     reason = facts["reason"]
     true = is_binary(reason) and String.valid?(reason) and byte_size(reason) in 1..64

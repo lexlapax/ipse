@@ -153,13 +153,16 @@ defmodule Ipse.CLI.Knowledge.Management do
     {outcome, reported} =
       case result do
         {:closed, {:ok, {:host_committed, event, receipt, actual}}} ->
+          {:ok, accepted_note_key} = Ipse.Session.PendingAcceptance.accepted_note_key(event)
+
           packet = %{
             "journal_id" => event["facts"]["journal_id"],
             "event_sha256" => JSON.digest([event]),
             "receipt" => receipt
           }
 
-          {{:known, actual, packet}, {:ok, packet}}
+          {{:known, actual, packet},
+           {:ok, Map.put(packet, "accepted_note_key", accepted_note_key)}}
 
         {:closed, {:error, _} = error} ->
           {{:known, Consent.zero(), %{"refused" => true}}, error}
@@ -182,7 +185,7 @@ defmodule Ipse.CLI.Knowledge.Management do
            config,
            cwd,
            key,
-           "Operator requested forgetting this selected literal"
+           "Operator requested forgetting this selected note"
          ) do
       {:closed, result} -> result
       result -> result
@@ -1479,7 +1482,12 @@ defmodule Ipse.CLI.Knowledge.Management do
           context["management_epoch"],
           context["management_sha256"],
           fn _ ->
-            ObservedRead.with_managed_record(
+            reader =
+              if is_nil(policy),
+                do: &ObservedRead.with_managed_forget_record/7,
+                else: &ObservedRead.with_managed_record/7
+
+            reader.(
               SemanticAdmission.collection_root(home),
               namespace,
               %{"op" => "get_record", "key" => key},
@@ -1490,7 +1498,12 @@ defmodule Ipse.CLI.Knowledge.Management do
                 with {:ok, ^selected} <- selection(home),
                      {:ok, prepared} <-
                        if(is_nil(policy),
-                         do: ManagedLifecycle.prepare(context, managed, reason),
+                         do:
+                           if(managed["metadata"]["management_target"] == "accepted_decision",
+                             do:
+                               ManagedLifecycle.prepare_accepted_forget(context, managed, reason),
+                             else: ManagedLifecycle.prepare(context, managed, reason)
+                           ),
                          else:
                            ManagedLifecycle.prepare_retention(context, managed, policy, reason)
                        ),
@@ -1849,6 +1862,7 @@ defmodule Ipse.CLI.Knowledge.Management do
          results <- Enum.filter(events, &(&1["type"] === "pending_acceptance_result")),
          true <- length(intents) <= 1 and length(results) <= 1,
          true <- length(events) === 1 + length(intents) + length(results),
+         {:ok, accepted_note_key} <- PendingAcceptance.accepted_note_key(event),
          {:ok, unknown} <- PendingAcceptance.unknown_effects(records, id) do
       intent = List.first(intents)
       result = List.first(results)
@@ -1870,6 +1884,7 @@ defmodule Ipse.CLI.Knowledge.Management do
          "namespace" => namespace,
          "operation_id" => event["facts"]["operation_id"],
          "record_key" => event["facts"]["pending_key"],
+         "accepted_note_key" => accepted_note_key,
          "journal_status" => status,
          "control_status" => acceptance_control_status(config, binding, event),
          "action_sha256" => nil,
@@ -2293,6 +2308,7 @@ defmodule Ipse.CLI.Knowledge.Management do
   defp operation("managed_literal_history_expiry"), do: "collection.expire"
   defp operation("managed_literal_retention"), do: "collection.retention"
   defp operation("managed_literal_forget"), do: "collection.forget"
+  defp operation("managed_accepted_decision_forget"), do: "collection.forget"
 
   defp check_review(%{"kind" => "managed_literal_expiry"}, nil), do: :ok
   defp check_review(%{"kind" => "managed_literal_history_expiry"}, nil), do: :ok
@@ -2304,6 +2320,7 @@ defmodule Ipse.CLI.Knowledge.Management do
   defp normalizer("managed_literal_history_expiry"), do: &NormalizerV3.expire_history/3
   defp normalizer("managed_literal_retention"), do: &NormalizerV3.retain/3
   defp normalizer("managed_literal_forget"), do: &NormalizerV3.forget/3
+  defp normalizer("managed_accepted_decision_forget"), do: &NormalizerV3.forget_accepted/3
 
   defp selection(home) do
     with {:ok, entries} <- Bundles.inventory(),

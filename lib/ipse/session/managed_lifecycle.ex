@@ -1,11 +1,13 @@
 defmodule Ipse.Session.ManagedLifecycle do
   @moduledoc """
-  Host-private exact facts for native management of one signed literal note.
+  Host-private exact facts for native management of one signed retained note.
 
   Preparation consumes an observation already obtained under the owning host's
   Identity and management policy boundary. It grants no authority. The owner
   must journal the returned intent before entering its protected publication
-  callback, and pass the actual volatile Review permit to NormalizerV3.forget/3.
+  callback, and pass the actual volatile Review permit to the matching
+  NormalizerV3 forgetting entry. Accepted decisions have a distinct target and
+  fact kind; they cannot enter the literal retention or relation preparations.
   No worker operation or serialized receipt can construct that permit. Disabled
   capture and destructive management have separate policy; this module does not
   reinterpret a saved automatic-capture grant as management permission.
@@ -18,8 +20,25 @@ defmodule Ipse.Session.ManagedLifecycle do
            )
 
   @doc "Build the complete immutable native review and journal intent from a checked managed observation."
-  def prepare(context, managed, reason) do
+  def prepare(context, managed, reason),
+    do: prepare_forget(context, managed, reason, "managed_literal_forget")
+
+  @doc "Prepare only destructive management of a signed accepted-decision target; grants no authority."
+  def prepare_accepted_forget(context, managed, reason),
+    do: prepare_forget(context, managed, reason, "managed_accepted_decision_forget")
+
+  defp prepare_forget(context, managed, reason, kind) do
     with true <- context?(context),
+         true <-
+           if(kind == "managed_accepted_decision_forget",
+             do:
+               get_in(managed, ["metadata", "management_target"]) === "accepted_decision" and
+                 get_in(managed, ["observation", "value", "record", "value", "kind"]) ===
+                   "accepted_decision",
+             else:
+               get_in(managed, ["observation", "value", "record", "value", "kind"]) !==
+                 "accepted_decision"
+           ),
          true <- is_binary(reason) and String.valid?(reason) and byte_size(reason) in 1..64,
          true <- Enum.sort(Map.keys(managed)) == ~w(metadata observation),
          observation = managed["observation"],
@@ -47,7 +66,7 @@ defmodule Ipse.Session.ManagedLifecycle do
          operation = Usage.id(),
          body = %{
            "version" => 1,
-           "kind" => "managed_literal_forget",
+           "kind" => kind,
            "operation_id" => operation,
            "context" => context,
            "collection" =>
@@ -59,7 +78,12 @@ defmodule Ipse.Session.ManagedLifecycle do
            "reason" => reason,
            "request_sha256" => JSON.digest([request]),
            "scope" =>
-             "selected literal derivative; original journal, management review journal and shared evidence remain"
+             if(kind == "managed_accepted_decision_forget",
+               do:
+                 "selected accepted decision; immutable acceptance link, original journals and shared evidence remain",
+               else:
+                 "selected literal derivative; original journal, management review journal and shared evidence remain"
+             )
          },
          facts = Map.put(body, "action_sha256", JSON.digest([body])),
          :ok <- JSON.validate_object(facts),

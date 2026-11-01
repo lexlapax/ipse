@@ -170,7 +170,7 @@ defmodule Ipse.CLI.Knowledge do
         {:ok, result} ->
           Terminal.puts(
             if(policy["kind"] == "session",
-              do: "Removed the reviewed stored literal for session-only retention.",
+              do: "Removed the reviewed stored note for session-only retention.",
               else: "Saved the exact reviewed retention choice; original admission clocks remain."
             )
           )

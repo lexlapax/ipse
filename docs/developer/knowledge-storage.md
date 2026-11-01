@@ -1,8 +1,8 @@
 # Publish retained sources through bounded transactions
 
-Choose the owner before changing retained storage. The host-private schema-3
-components prepare an authenticated Collection path; the committed SDK consumer
-still selects schema 2. The existing Corpus/Graph/Research
+Choose the owner before changing retained storage. Protected native capture uses
+the authenticated schema-3 Collection path through its explicit SDK version;
+legacy schema-2 requests keep their original interpreter. The existing Corpus/Graph/Research
 source stores below use explicit State or remote CAS contracts. Neither path
 treats a successfully written orphan page as published content. Start with
 [retrieval training](knowledge-extensions.md) and the
@@ -15,16 +15,18 @@ Generic State knows opaque values/revisions, without enforcing domain root count
 or inspecting note/source fields. The operator's
 [explicit Memory workflow](../operator/memory.md) retains that State contract;
 [native knowledge permission](../operator/knowledge-permissions.md) does not
-implicitly migrate its records or enable schema-3 recall.
+implicitly migrate State records or admit them to protected native recall.
 
 ## Publish one fresh record with authenticated metadata
 
 Start with `Collection.NormalizerV3`, `Collection.ManagedPages` and its local
 `Planner`. NormalizerV3 prepares an unchanged public insert plus authenticated
 sidecars; `Collection.execute_managed_v3/6` performs the atomic storage commit.
-These are internal host components. The current managed SDK still selects
-`Collection.execute_managed/6` and its version-2 Normalizer. Selecting a version
-in worker JSON cannot switch the SDK path or supply a domain capability.
+These are internal host components. `ManagedCollectionCall` dispatches a validated
+`metadata_version: 3` request to this interpreter; legacy requests use
+`Collection.execute_managed/6` and its version-2 Normalizer. A version field
+supplies no domain capability or saved permission: the host still checks the
+exact selected recipe, sources, effect mapping and admitted new-record shape.
 
 The owning adapter must authenticate original sources and current protected
 permission before entering Identity → Consent → Collection. Pass the actual
@@ -88,7 +90,11 @@ deletion with its exact positive old revision. Format is never rewritten or
 deleted. Every complete wrapped value remains at most 6144 bytes; the closed
 normalization receipt is at most 2048 bytes and lists the exact extra changes in
 publication order, including canonical value hashes and null only for deletion.
-The current SDK's two-sidecar reserve does not admit an arbitrary v3 plan.
+The SDK reserves four full sidecar values and one possible deletion for version
+three, including complete envelopes and normalization bytes. Version two retains
+its two-sidecar reserve. Neither version admits an arbitrary plan or raises the
+Collection read/repair limits. Native reviewed management uses its separate
+[retained-target contract](collection-sdk.md#manage-a-retained-note-through-native-review).
 
 ### Exercise actual Collection and domain authentication
 
@@ -99,8 +105,8 @@ allocation profile, run the complete author integration controls:
 mix test test/ipse/extension/collection_normalizer_v3_integration_test.exs --max-cases 1
 ```
 
-This file loads nine earlier trusted-Collection fixture controls and runs six
-additional actual Collection/Identity/DomainAuth controls. Sources and recipes
+This file combines trusted-function fixtures with actual
+Collection/Identity/DomainAuth controls. Sources and recipes
 are explicit trusted synthetic fixtures, not SessionSource or human-origin
 attestations. The actual path calls the same internal seam an adapter uses:
 

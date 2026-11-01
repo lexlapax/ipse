@@ -584,7 +584,7 @@ normalization metadata **do not establish current managed eligibility**. Managed
 reads, host-derived producer lineage and owned inference use have separate checks
 below. Do not expose a stored `current` label as a freshness guarantee.
 
-## Manage a signed literal through native review
+## Manage a retained note through native review
 
 Standalone `CLI.Knowledge.Management` derives its project, namespace and management
 epoch from actual protected state, selects the installed literal recipe, and
@@ -596,9 +596,25 @@ Both belong inside the actual Identity/domain-auth callback. The result is a
 stored historical snapshot: it does not renew source eligibility or endorse its
 contents. Native journal/tty ownership, complete lease closure and the actual
 Review input remain separate and are not enabled by those read APIs.
+For forgetting, `ObservedRead.with_managed_forget_record/7` also admits a distinct
+accepted-decision target. It authenticates the type-3 signed live row, matching
+anchor and same-root immutable acceptance link. The note's sealed value hash
+binds that link's exact bytes. `PendingAcceptance.retained_decision_metadata/5`
+checks their closed identities and original proof consistency without loading
+the original review journal or claiming current source eligibility. This is
+historical destructive-target inspection, not the version-6 current-use reader.
+It cannot relabel an accepted decision as a literal or authorize later delivery.
+Public acceptance results and acceptance-journal inspection expose
+`accepted_note_key`, derived from the validated native event through
+`PendingAcceptance.accepted_note_key/1`. This lets an operator address the target
+without a raw Collection lookup. It is an intended identity, not a publication
+receipt or current-use proof; inspection retains separate status fields.
 `ManagedLifecycle.prepare_retention/4`
 constructs exact review facts; its session-only branch uses `prepare/3` for
-forgetting. Neither grants authority. Native `Runner.Review` binds a volatile
+literal forgetting. `prepare_accepted_forget/3` instead binds the complete accepted
+target and distinct fact kind to one deletion. Literal retention, correction and
+supersession still refuse that representation. None of these preparations grants
+authority. Native `Runner.Review` binds a volatile
 same-owner permit to the complete display and fresh confirmation. Original source
 availability and capture TTL are not preconditions for reducing stored authority.
 Normal execution ceilings and explicit denial remain enforced.
@@ -613,20 +629,28 @@ host-only path permits a bounded one-record forget after capture expiry/revocati
 it does not mutate through `with_policy`'s read callback or grant other effects.
 It marks its finite operation publishing before entering Core.
 
-`NormalizerV3.forget/3` rechecks the exact signed record/root and consumes the
-permit inside the native transaction before deleting the public/live rows and
-retaining signed lineage suppression. The caller captures actual normalization
+`NormalizerV3.forget/3` and `forget_accepted/3` recheck their distinct signed
+record/root representations and consume the permit inside the native transaction
+before deleting the selected public/live rows and retaining signed lineage
+suppression. The accepted branch rechecks the same-root link, then uses the
+existing exact-target retirement encoding to bind the removed key and value hash;
+the immutable link remains. It does not change the storage format or native ABI.
+The caller captures actual normalization
 sizing in that same process and checks the returned Core binding. Settlement
 waits for Identity finalization and release; success also requires journal close,
 retained-lock release and owned-resource cleanup. Uncertain effects never replay.
-The original Session, shared evidence and management review journal remain.
+The original Session, original acceptance journal, shared evidence and new
+management review journal remain. An unavailable original source does not block
+this reducing operation. It supplies no current-use permission, and an uncertain
+forget is never automatically replayed.
 
-In the retained retention contract, the CLI translates `automatic` to the exact
+For literal retention, the CLI translates `automatic` to the exact
 ordinary 90-day policy, or validates an explicit positive duration, pin or
 session-only choice. `Consent.retain_deferred/8` shares the management state
 machine but binds `collection.retention`, the retention fact kind and actual
 policy-specific native command; it cannot reuse a forget permit. Session-only
-uses the forget path. `NormalizerV3.retain/3` performs a same-value CAS with a new
+uses the matching forget path, including accepted decisions. Other retention
+choices remain literal-only. `NormalizerV3.retain/3` performs a same-value CAS with a new
 record revision and signed choice capsule, retaining original source/admission
 clocks and publication policy. Ordinary/duration deadlines use actual native
 confirmation time, as the displayed relative rule promises. Expired targets
@@ -1007,8 +1031,9 @@ the new approval tag. SDK-2 output retains its paged binding without downgrading
 to a legacy inline or saved result.
 
 Legacy publication reserves one operation, encoded worker-request input bytes and
-16384 output bytes. Managed publication additionally reserves two full 6144-byte
-sidecar values, their exact worst-case key/revision/change envelopes and comma
+16384 output bytes. Version-2 managed publication additionally reserves two full
+6144-byte sidecar values; version three reserves four full values and one possible
+deletion. Both include exact worst-case key/revision/change envelopes and comma
 overhead, plus 2048 normalization bytes before effects. Values use the same JSON
 escaping as storage; the boundary test exercises control bytes at the full limit.
 Model, download and money resources are zero. A successful managed save measures
