@@ -1753,7 +1753,7 @@ defmodule Ipse.Session.Turn do
       Session.notify(
         s,
         {:error,
-         "Draft did not produce a nonempty UTF-8 proposal within 32768 bytes. Cancel it or supply a replacement before continuing."}
+         "Draft did not produce a nonempty UTF-8 proposal within 32768 bytes. Cancel this draft before starting a new request."}
       )
 
       {s, :error}

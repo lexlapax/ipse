@@ -227,8 +227,9 @@ Provider responses retain the selected route's transport limit: ordinarily
 8 MiB, or a tighter configured limit. That limit includes stream framing and
 provider continuation, separately from the proposal's 32-KiB UTF-8 limit.
 A transport failure can occur after partial text appears; that text is not a
-completed draft. An empty or oversized final proposal reports an error. Supply
-a replacement or cancel before continuing. These bounds do not add an output-token
+completed draft. An empty or oversized final proposal reports an error. Cancel
+that pending draft before starting a new request; replacement requires a completed
+proposal. These bounds do not add an output-token
 cap to a route that does not support one or establish that remote work stopped.
 If clarification cannot continue within the draft's question bounds, cancel the
 draft and include the missing information in a new request.

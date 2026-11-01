@@ -158,11 +158,18 @@ defmodule Ipse.Session.DraftResponseLimitsTest do
     assert :ok = Session.start_draft(pid, "Draft this bounded request")
     assert_receive {:ipse, ^pid, {:error, error}}, 10_000
     assert error =~ "32768"
+    assert error =~ "Cancel this draft"
     assert_receive {:ipse, ^pid, {:done, :error}}, 5_000
-    assert {:ok, %{status: :pending}} = Session.draft(pid)
+    assert {:ok, %{status: :pending} = draft} = Session.draft(pid)
+
+    assert {:error, :stale_draft} =
+             Session.replace_draft(pid, draft.id, draft.revision, "replacement")
+
+    assert :ok = Session.cancel_draft(pid)
     assert [{_, _}] = Task.await(server, 5_000)
     id = Session.info(pid).id
-    {events, _} = saved(c, pid)
+    {events, restored} = saved(c, pid)
+    assert restored.draft.status == :cancelled
     refute Enum.any?(events, &(&1["type"] == "draft_completed"))
     assert Enum.any?(events, &(get_in(&1, ["message", "content"]) == text))
 
