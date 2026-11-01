@@ -2,6 +2,10 @@ ExUnit.start(autorun: false)
 import ExUnit.Assertions
 {:ok, _} = Application.ensure_all_started(:ipse)
 [root, scenario] = System.argv()
+followup = Process.delete({:managed_supersession_fixture, :followup})
+assert followup in [nil, :history_use, :compaction_diagnostic]
+assert followup != :history_use or scenario == "current"
+assert followup != :compaction_diagnostic or scenario == "shared"
 
 if scenario == "terminal_effect_unknown" do
   Code.require_file("managed_supersession_unknown.exs", __DIR__)
@@ -602,9 +606,16 @@ if scenario in ~w(current cross_session terminal shared) do
   end
 
   if scenario == "shared" do
-    Code.require_file("managed_shared_support.exs", __DIR__)
+    helper =
+      if followup == :compaction_diagnostic do
+        Code.require_file("managed_compaction_diagnostic.exs", __DIR__)
+        Ipse.Test.ManagedCompactionDiagnostic
+      else
+        Code.require_file("managed_shared_support.exs", __DIR__)
+        Ipse.Test.ManagedSharedSupport
+      end
 
-    Ipse.Test.ManagedSharedSupport.run(
+    helper.run(
       Map.put(config, :semantic_admission, admission),
       cwd,
       home,
@@ -614,6 +625,11 @@ if scenario in ~w(current cross_session terminal shared) do
       current,
       shared_deadline
     )
+  end
+
+  if followup == :history_use do
+    Code.require_file("managed_history_use.exs", __DIR__)
+    Ipse.Test.ManagedHistoryUse.run(config, opts, cwd, home, dir, current)
   end
 
   IO.puts(

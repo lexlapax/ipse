@@ -1,0 +1,146 @@
+{
+  "allowances_unchanged": {
+    "chatgpt_conservative_charged": 238,
+    "chatgpt_limit": 300,
+    "local_charged": 4,
+    "local_limit": 1000
+  },
+  "checks": [
+    {
+      "bytes": 129305,
+      "exit_code": 2,
+      "path": "/tmp/ipse-supersession-lifecycle-launchers-before-20261031.log",
+      "sha256": "c1de8d4d76652f6ceebc15498e7203cb72142ce8a00a7e0b706a8b9ccc4c407f",
+      "terminal_summary": [
+        "Finished in 13.0 seconds (0.00s async, 13.0s sync)",
+        "Result: 0/2 passed"
+      ]
+    },
+    {
+      "bytes": 2095,
+      "exit_code": 0,
+      "path": "/tmp/ipse-supersession-lifecycle-launchers-first-20261031.log",
+      "sha256": "0e55e732480e8b44587a8fec936cde528fee84ad33bca823922b196312f54e22",
+      "terminal_summary": [
+        "Finished in 28.0 seconds (0.00s async, 28.0s sync)",
+        "Result: 2 passed"
+      ]
+    },
+    {
+      "bytes": 2423,
+      "exit_code": 0,
+      "path": "/tmp/ipse-supersession-lifecycle-launchers-qualified-20261031.log",
+      "sha256": "2655f2381a37a13e773dd36f253051eec832662f352148363a70511363e6030a",
+      "terminal_summary": [
+        "Finished in 57.1 seconds (0.00s async, 57.1s sync)",
+        "Result: 4 passed, 9 excluded"
+      ]
+    }
+  ],
+  "checks_other": [
+    {
+      "bytes": 756,
+      "path": "/tmp/ipse-lifecycle-launchers-docs-qualified-20261031.log",
+      "sha256": "78d6b2e1fecba90cb852c5022d22071435a8a291ee3f65d84940fc0dcb42fa8b"
+    },
+    {
+      "bytes": 0,
+      "path": "/tmp/ipse-lifecycle-launchers-format-qualified-20261031.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  ],
+  "compaction_checks": [
+    "actual stage before original caller kill",
+    "controller exit before completion-worker exit",
+    "unchanged root digest",
+    "unconfirmed result",
+    "publishing liability",
+    "no replay"
+  ],
+  "date": "2026-10-31",
+  "downloads": 0,
+  "execution": "serial max_cases1 seed20261031; final4passed9excluded57.1seconds",
+  "final_selection": [
+    "supersession_scenario:current",
+    "supersession_scenario:shared",
+    "history_use_scenario",
+    "compaction_diagnostic"
+  ],
+  "history_checks": [
+    "signed original attribution and successor",
+    "successor forgetting",
+    "missing original refusal",
+    "revoked permission refusal"
+  ],
+  "manual_review": [
+    "whole developer testing chapter",
+    "unchanged operator two-review and recovery procedure"
+  ],
+  "native_helper": {
+    "bytes": 955696,
+    "path": "priv/ipse-runner",
+    "sha256": "71d4125511930d6dd5694db290474e2a1640cdc27f13b0aaf8ee79bb59f87996"
+  },
+  "native_helper_changed": false,
+  "negative_reason": "both actual replacements succeeded; duplicated launchers expected no append after close/resume despite actual release/owner markers",
+  "not_qualified": [
+    "legacy Core supersession/turnover adapter",
+    "annual/full-capacity lifecycle",
+    "whole-current suite",
+    "installed/platform/human/model quality",
+    "independent audit",
+    "full P30/P31 handoff"
+  ],
+  "previous_full_suite_unchanged": {
+    "acceptance": false,
+    "excluded": 112,
+    "failed": 60,
+    "passed": 3538,
+    "skipped": 109,
+    "source": "e86b1b8"
+  },
+  "real_inference_requests": 0,
+  "real_metadata_requests": 0,
+  "runtime_changed": false,
+  "scope": "consolidated genuine setup with distinct history-use and interrupted-compaction follow-ups; tests/docs only",
+  "source": [
+    {
+      "bytes": 209,
+      "path": "test/support/managed_history_use_session.exs",
+      "sha256": "e40c10a11d29414f64f6e4bdebd7ed74ccd69d9c2b4601743e9acfe5e862d4f7"
+    },
+    {
+      "bytes": 222,
+      "path": "test/support/managed_compaction_diagnostic_session.exs",
+      "sha256": "9c9eb5325c254b89ed055a5299fbde24208733eb274f19f65cd4a6c6fdbf112f"
+    },
+    {
+      "bytes": 26241,
+      "path": "test/support/managed_supersession_session.exs",
+      "sha256": "3ae4e920c21d882e20a1c87098aea6ca9d6055e85106aa3bf9bd7c332ba6b3a3"
+    },
+    {
+      "bytes": 42697,
+      "path": "docs/developer/testing.md",
+      "sha256": "c553b253ba959c00ec69e04318bfc5d95ea243e8ad8b246926877ea4a3dc6d31"
+    },
+    {
+      "bytes": 138527,
+      "path": "docs/plan.md",
+      "sha256": "73514faf1364300068f535a02e950a9cb7bcca35ebb3c3e724c4d2f2755246a6"
+    },
+    {
+      "bytes": 48919,
+      "path": "docs/archive/2026-10-26-p30-p31-implementation/index.md",
+      "sha256": "ad34aad6426b0c6ed0d2199cf6e201102c9e865f0261a6046524cd59d6ec40e9"
+    },
+    {
+      "bytes": 2496,
+      "path": "docs/archive/2026-10-26-p30-p31-implementation/literal-lifecycle-launchers-20261031.md",
+      "sha256": "6281a34f5c7ba647e149a3ea264c4983acb7763ee22c322724362d3ef73793f5"
+    }
+  ],
+  "source_base": "7b6ccd1",
+  "synthetic_diagnostic_directory_retained": true,
+  "version": 1
+}

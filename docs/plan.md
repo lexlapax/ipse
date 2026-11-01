@@ -979,6 +979,10 @@ lifecycle and owner-loss controls include idle recovery after a physical switch
 without replay. Headless replacement and accepted-decision targets remain closed;
 legacy synthetic turnover adapters, complete lifecycle/capacity, installed and
 independent qualification remain open. This does not close C0 or P31.
+The [history-use and interrupted-compaction follow-ups](archive/2026-10-26-p30-p31-implementation/literal-lifecycle-launchers-20261031.md)
+now reuse this genuine publication and release-owner setup while preserving
+their separate history, revocation and unknown-liability assertions; this is
+component verification, not complete lifecycle acceptance.
 
 Public session-only retention uses the same full-facts native review, journal
 and reducing effect as explicit forgetting. Public pin, automatic and duration

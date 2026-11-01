@@ -174,6 +174,25 @@ record or shifted byte offset can invalidate lifecycle sources before the
 domain-specific checkpoint validator runs. Keep a separate pure validator control
 when its narrower refusal is also part of the contract.
 
+For literal-replacement lifecycle checks, reuse
+`test/support/managed_supersession_session.exs` for actual statement/relation
+reviews, physical publication and exact close/resume suffixes. The history-use
+and interrupted-compaction launchers select their distinct follow-up checks in
+that isolated child process. Extend those checks rather than copying the setup:
+a copied fixture can retain obsolete ownership assertions even while exercising
+the same production path. Run the related native cases serially:
+
+```sh
+mix test test/ipse/session/managed_supersession_session_test.exs test/ipse/session/managed_history_use_session_test.exs test/ipse/session/managed_compaction_diagnostic_test.exs --max-cases 1
+```
+
+History use checks signed historical attribution, successor removal, unavailable
+originals and revocation. Interrupted compaction kills the original caller after
+staging and requires native controller exit, an unchanged root, unconfirmed
+journal/control status and no replay. Its printed directory retains synthetic
+diagnostic evidence. Neither check establishes annual turnover, complete capacity
+or model quality.
+
 Distinguish timeout before command-handler startup from timeout during active work.
 The evaluation-session fixture observes its worker's readiness and active Session
 phase before asserting post-effect cancellation; a separate delayed-start case
