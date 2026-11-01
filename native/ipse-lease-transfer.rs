@@ -8,6 +8,7 @@ use std::mem::size_of;
 use std::os::fd::{AsRawFd, FromRawFd};
 use std::os::linux::net::SocketAddrExt;
 use std::os::unix::fs::MetadataExt;
+use std::os::unix::fs::FileTypeExt;
 use std::os::unix::net::{SocketAddr, UnixListener, UnixStream};
 use std::time::{Duration, Instant};
 
@@ -322,7 +323,7 @@ pub(crate) fn export<F: Fn() -> bool>(
     outer_deadline: Instant,
     valid: F,
 ) -> Result<(), Failure> {
-    handoff(file, bytes, uid, control, outer_deadline, valid, false).map(|_| ())
+    handoff(file, bytes, uid, control, outer_deadline, valid, false, None).map(|_| ())
 }
 
 pub(crate) fn export_retained<F: Fn() -> bool>(
@@ -340,9 +341,37 @@ pub(crate) fn export_retained<F: Fn() -> bool>(
     let recipient = u32::from_be_bytes(bytes[..4].try_into().unwrap());
     let process = recipient_process(recipient)?;
     if !recipient_current(recipient, &process) { return Err(Failure::Refused); }
-    let stream = handoff(file, bytes, uid, control, outer_deadline, valid, true)?;
+    let stream = handoff(file, bytes, uid, control, outer_deadline, valid, true, None)?;
     if !recipient_current(recipient, &process) { return Err(Failure::Unconfirmed); }
     Ok(RetainedTransfer { stream, operation, slot, recipient, uid, process })
+}
+
+/// Lend the supervisor's actual nonblocking stdin write description once. This
+/// is a distinct descriptor class: it never satisfies a regular flock export.
+pub(crate) fn export_pipe<F: Fn() -> bool>(
+    file: &File, bytes: &[u8], operation: [u8; 16], expiry: u64, uid: u32,
+    control: i32, deadline: Instant, valid: F,
+) -> Result<RetainedTransfer, Failure> {
+    if operation.iter().all(|byte| *byte == 0) || bytes.len() != REQUEST_SIZE {
+        return Err(Failure::Refused);
+    }
+    let recipient = u32::from_be_bytes(bytes[..4].try_into().unwrap());
+    let process = recipient_process(recipient)?;
+    if !recipient_current(recipient, &process) { return Err(Failure::Refused); }
+    let mut binding = [0u8; 24];
+    binding[..16].copy_from_slice(&operation);
+    binding[16..].copy_from_slice(&expiry.to_be_bytes());
+    let stream = handoff(file, bytes, uid, control, deadline, valid, true, Some(binding))?;
+    if !recipient_current(recipient, &process) { return Err(Failure::Unconfirmed); }
+    Ok(RetainedTransfer { stream, operation, slot: 0, recipient, uid, process })
+}
+
+pub(crate) fn pipe_identity(file: &File, uid: u32) -> bool {
+    unsafe extern "C" { fn fcntl(fd: i32, command: i32, ...) -> i32; }
+    let Ok(meta) = file.metadata() else { return false; };
+    let flags = unsafe { fcntl(file.as_raw_fd(), 3) };
+    meta.file_type().is_fifo() && meta.uid() == uid && flags >= 0 &&
+        flags & 3 == 1 && flags & 0x800 != 0
 }
 
 fn handoff<F: Fn() -> bool>(
@@ -353,6 +382,7 @@ fn handoff<F: Fn() -> bool>(
     outer_deadline: Instant,
     valid: F,
     uncertain_on_send: bool,
+    pipe: Option<[u8; 24]>,
 ) -> Result<UnixStream, Failure> {
     if bytes.len() != REQUEST_SIZE {
         return Err(Failure::Refused);
@@ -363,14 +393,14 @@ fn handoff<F: Fn() -> bool>(
     let dev = u64::from_be_bytes(bytes[52..60].try_into().unwrap());
     let ino = u64::from_be_bytes(bytes[60..68].try_into().unwrap());
     let meta = file.metadata().map_err(|_| Failure::Refused)?;
+    let descriptor_valid = if pipe.is_some() { pipe_identity(file, uid) } else {
+        meta.is_file() && meta.nlink() == 1 && meta.mode() & 0o7777 == 0o600 && meta.len() == 0
+    };
     if pid == 0
         || name.iter().all(|v| *v == 0)
         || secret.iter().all(|v| *v == 0)
-        || !meta.is_file()
         || meta.uid() != uid
-        || meta.nlink() != 1
-        || meta.mode() & 0o7777 != 0o600
-        || meta.len() != 0
+        || !descriptor_valid
         || meta.dev() != dev
         || meta.ino() != ino
         || !valid()
@@ -399,6 +429,13 @@ fn handoff<F: Fn() -> bool>(
         .fold(0u8, |acc, (left, right)| acc | (left ^ right));
     if mismatch != 0 || !valid() || !control_quiet(control) {
         return Err(Failure::Refused);
+    }
+    if let Some(binding) = pipe {
+        let mut received = [0u8; 24];
+        exact(&mut stream, control, &mut received, deadline)?;
+        if received != binding || !valid() || !control_quiet(control) {
+            return Err(Failure::Refused);
+        }
     }
     #[cfg(ipse_lease_export_test_hook)]
     test_before_send();

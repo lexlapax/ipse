@@ -106,6 +106,78 @@ enum InputFrame {
     Plain(Vec<u8>),
     Start(u64),
     Managed { deadline: u64, nonce: [u8; 16], bytes: Vec<u8>, pending: Arc<AtomicBool> },
+    #[cfg(target_os = "linux")]
+    Lease(u8, Vec<u8>, Arc<AtomicBool>),
+}
+
+#[cfg(target_os = "linux")]
+struct PipeShare {
+    operation: [u8; 16], expiry: u64, file: std::fs::File, flags: i32, deadline: Instant,
+    transfer: Option<crate::ipse_lease_transfer::RetainedTransfer>,
+}
+
+#[cfg(target_os = "linux")]
+fn pipe_share(
+    input: &mut std::process::ChildStdin, state: &mut Option<PipeShare>,
+    used: &mut Vec<[u8; 16]>, kind: u8, body: &[u8], control: i32,
+    cancelled: &AtomicBool,
+) -> io::Result<()> {
+    use std::fs::File;
+    use std::os::fd::FromRawFd;
+    use std::os::unix::fs::MetadataExt;
+    unsafe extern "C" {
+        fn fcntl(fd: i32, cmd: i32, ...) -> i32;
+        fn geteuid() -> u32;
+    }
+    let error = || io::Error::other("stdio pipe handoff unconfirmed");
+    let valid = || !cancelled.load(Ordering::SeqCst) &&
+        crate::ipse_lease_transfer::control_quiet(control);
+    if !valid() { return Err(error()); }
+    match kind {
+        b'B' if body.len() == 24 && state.is_none() && used.len() < 256 => {
+            let operation: [u8; 16] = body[..16].try_into().unwrap();
+            let expiry = u64::from_be_bytes(body[16..].try_into().unwrap());
+            let before = Instant::now();
+            let now = SystemTime::now().duration_since(UNIX_EPOCH).map_err(|_| error())?.as_millis();
+            let remaining = u128::from(expiry).checked_sub(now).filter(|n| *n > 0 && *n <= 5_000).ok_or_else(error)?;
+            if operation.iter().all(|b| *b == 0) || used.contains(&operation) { return Err(error()); }
+            let fd = input.as_raw_fd();
+            let flags = unsafe { fcntl(fd, 3) };
+            if flags < 0 || unsafe { fcntl(fd, 4, flags | 0x800) } < 0 { return Err(error()); }
+            let duplicate = unsafe { fcntl(fd, 1030, 0) };
+            if duplicate < 0 { return Err(error()); }
+            let file = unsafe { File::from_raw_fd(duplicate) };
+            if !crate::ipse_lease_transfer::pipe_identity(&file, unsafe { geteuid() }) { return Err(error()); }
+            let m = file.metadata()?;
+            used.push(operation);
+            *state = Some(PipeShare { operation, expiry, file, flags,
+                deadline: before + Duration::from_millis(remaining as u64), transfer: None });
+            let mut reply = operation.to_vec();
+            reply.extend_from_slice(&std::process::id().to_be_bytes());
+            reply.extend_from_slice(&m.dev().to_be_bytes());
+            reply.extend_from_slice(&m.ino().to_be_bytes());
+            frame(b'B', &reply)
+        },
+        b'F' if body.len() == 84 => {
+            let share = state.as_mut().ok_or_else(error)?;
+            if body[..16] != share.operation || share.transfer.is_some() || Instant::now() >= share.deadline { return Err(error()); }
+            share.transfer = Some(crate::ipse_lease_transfer::export_pipe(
+                &share.file, &body[16..], share.operation, share.expiry, unsafe { geteuid() },
+                control, share.deadline, valid,
+            ).map_err(|_| error())?);
+            frame(b'F', &share.operation)
+        },
+        b'K' if body.len() == 16 => {
+            let mut share = state.take().ok_or_else(error)?;
+            if body != share.operation || Instant::now() >= share.deadline { return Err(error()); }
+            share.transfer.take().ok_or_else(error)?.settle(
+                &share.operation, 0, control, share.deadline, valid,
+            ).map_err(|_| error())?;
+            if !valid() || unsafe { fcntl(input.as_raw_fd(), 4, share.flags) } < 0 { return Err(error()); }
+            Ok(())
+        },
+        _ => Err(error()),
+    }
 }
 
 // 0 means no bytes were written; 1 means the complete frame was written;
@@ -156,12 +228,13 @@ fn managed_write<W: Write + AsRawFd>(output: &mut W, bytes: &[u8], deadline: u64
     if unsafe { fcntl(fd, 4, flags) } < 0 { 2 } else { result }
 }
 
-fn input_reader(admitted: bool) -> (
+fn input_reader(admitted: bool) -> io::Result<(
     mpsc::Receiver<InputFrame>,
     Arc<AtomicU8>,
     Arc<AtomicBool>,
     Arc<std::sync::Mutex<Option<i32>>>,
-) {
+    std::os::unix::net::UnixStream,
+)> {
     let failure = Arc::new(AtomicU8::new(0));
     let (input_tx, input_rx) = mpsc::sync_channel::<InputFrame>(INPUT_CHUNKS);
     let input_failure = failure.clone();
@@ -170,7 +243,11 @@ fn input_reader(admitted: bool) -> (
     let reader_slot = slot.clone();
     let reader_cancelled = cancelled.clone();
     let managed_pending = Arc::new(AtomicBool::new(false));
+    #[cfg(target_os = "linux")]
+    let lease_pending = Arc::new(AtomicBool::new(false));
+    let (cancel_read, cancel_write) = std::os::unix::net::UnixStream::pair()?;
     thread::spawn(move || {
+        let _cancel_owner = cancel_write;
         let mut owner = io::stdin();
         let mut bytes = [0u8; CHUNK];
         let mut awaiting_start = admitted;
@@ -228,6 +305,32 @@ fn input_reader(admitted: bool) -> (
                 continue;
             }
             if awaiting_start {
+                input_failure.store(2, Ordering::Release);
+                reader_cancelled.store(true, Ordering::SeqCst);
+                signal_group(&reader_slot);
+                break;
+            }
+            #[cfg(target_os = "linux")]
+            if matches!(header[0], b'B' | b'F' | b'K') {
+                let valid = match header[0] {
+                    b'B' => remaining == 24 && !managed_pending.load(Ordering::Acquire) &&
+                        lease_pending.compare_exchange(false, true, Ordering::AcqRel, Ordering::Acquire).is_ok(),
+                    b'F' => remaining == 84 && lease_pending.load(Ordering::Acquire),
+                    b'K' => remaining == 16 && lease_pending.load(Ordering::Acquire),
+                    _ => false,
+                };
+                let mut body = vec![0u8; remaining.min(84)];
+                if !valid || owner.read_exact(&mut body).is_err() ||
+                    input_tx.try_send(InputFrame::Lease(header[0], body, lease_pending.clone())).is_err() {
+                    input_failure.store(2, Ordering::Release);
+                    reader_cancelled.store(true, Ordering::SeqCst);
+                    signal_group(&reader_slot);
+                    break;
+                }
+                continue;
+            }
+            #[cfg(target_os = "linux")]
+            if lease_pending.load(Ordering::Acquire) {
                 input_failure.store(2, Ordering::Release);
                 reader_cancelled.store(true, Ordering::SeqCst);
                 signal_group(&reader_slot);
@@ -297,7 +400,7 @@ fn input_reader(admitted: bool) -> (
             }
         }
     });
-    (input_rx, failure, cancelled, slot)
+    Ok((input_rx, failure, cancelled, slot, cancel_read))
 }
 
 pub fn run(args: &[String]) -> Result<(), String> {
@@ -322,7 +425,8 @@ pub fn run(args: &[String]) -> Result<(), String> {
         Some(listener::Listener::new(listener::port(&args[4])?)?)
     } else { None };
     let selected = launch_environment()?;
-    let (input_rx, failure, cancelled, slot) = input_reader(admitted);
+    let (input_rx, failure, cancelled, slot, _cancel_control) = input_reader(admitted)
+        .map_err(|_| "stdio cancellation control unavailable")?;
     let sandboxed = !listener_mode && args[4] == "--sandbox";
     let mut executable = if listener_mode { 6 } else { 4 };
     if sandboxed {
@@ -467,6 +571,10 @@ pub fn run(args: &[String]) -> Result<(), String> {
     let input_group = slot.clone();
     let input_cancelled = cancelled.clone();
     thread::spawn(move || {
+        #[cfg(target_os = "linux")]
+        let mut pipe_state = None;
+        #[cfg(target_os = "linux")]
+        let mut pipe_operations = Vec::new();
         #[cfg(target_os = "macos")]
         if child_input.write_all(&input_prefix).is_err() {
             let _ = write_failure.compare_exchange(0, 2, Ordering::AcqRel, Ordering::Acquire);
@@ -474,7 +582,30 @@ pub fn run(args: &[String]) -> Result<(), String> {
             return;
         }
         for input in input_rx {
+            #[cfg(target_os = "linux")]
+            if pipe_state.is_some() && !matches!(&input, InputFrame::Lease(..)) {
+                let _ = write_failure.compare_exchange(0, 2, Ordering::AcqRel, Ordering::Acquire);
+                signal_group(&input_group);
+                break;
+            }
             match input {
+                #[cfg(target_os = "linux")]
+                InputFrame::Lease(kind, body, pending) => {
+                    if pipe_share(&mut child_input, &mut pipe_state, &mut pipe_operations,
+                        kind, &body, _cancel_control.as_raw_fd(), &input_cancelled).is_err() {
+                        let _ = write_failure.compare_exchange(0, 2, Ordering::AcqRel, Ordering::Acquire);
+                        signal_group(&input_group);
+                        break;
+                    }
+                    if kind == b'K' {
+                        pending.store(false, Ordering::Release);
+                        if frame(b'K', &body).is_err() {
+                            let _ = write_failure.compare_exchange(0, 2, Ordering::AcqRel, Ordering::Acquire);
+                            signal_group(&input_group);
+                            break;
+                        }
+                    }
+                },
                 InputFrame::Plain(bytes) => {
                     if child_input.write_all(&bytes).is_err() {
                         let _ = write_failure.compare_exchange(0, 2, Ordering::AcqRel, Ordering::Acquire);

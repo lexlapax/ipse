@@ -367,6 +367,21 @@ native root decision, alongside one journal lease. An isolated current-source
 native control exercises that capacity; the shipped helper must be rebuilt to
 match the host before using it. These leases do not by themselves admit a
 supersession.
+The same transaction owner has a private Linux stdin handoff for future managed
+worker delivery. The stdio supervisor reserves its actual write description and
+pauses ordinary input. Its authenticated transfer binds one operation and the
+original expiry; the importer retains the three lock owners, Session and Writer
+controls and original source descriptions through each bounded pipe write.
+The complete frame is limited to 32 KiB plus its four-byte worker prefix.
+An attempt is consumed once; partial delivery and failed ownership checks remain
+unknown. Both sides complete the existing retained-description close handshake
+before ordinary stdin returns. This transport component does not derive a
+Session's dependency union or authorize an SDK continuation: the exact pending
+worker/frame ticket and end-to-end Session adapter are still required. Do not
+replace that missing admission with a host precheck or fabricated receipt.
+The [native protocol](../../native/README.md#direct-stdio-server-transport) owns
+its frame details; [verification](testing.md#exercise-actual-os-policy-and-native-protocols)
+distinguishes component faults from actual Session qualification.
 The [managed read adapter](collection-sdk.md) checks current consent, recipe,
 deadline and signed collection root while those source locks remain held.
 Its result becomes historical after return; later use needs revalidation.

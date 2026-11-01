@@ -61,6 +61,8 @@ nor resource/offline qualification. No daemon configuration or existing model wa
 
 ## P31A contracts and evidence
 
+- [Retained native stdin through the existing transaction owner](worker-stdin-ownership-20261031.md) has actual pipe and owner-loss controls; exact Session/frame authority and managed SDK delivery remain open.
+
 - [Ordinary model-tool approval through the actual native sink](managed-approval-native-20261031.md) binds Session/purpose/full payload and current source/policy owners, releases display locks before input and rechecks effects; accepted decisions and other unqualified shapes remain closed.
 - [Interactive literal correction and supersession through actual native owners](managed-supersession-native-20261031.md) binds two fresh reviews, exact normalized publication and active/inactive sources; native loss controls preserve unknown effects without replay.
 - [Lifecycle launchers reuse that genuine journey](literal-lifecycle-launchers-20261031.md) and retain distinct signed-history use and interrupted-compaction checks; obsolete zero-append resume assertions are removed.

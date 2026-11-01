@@ -596,6 +596,25 @@ rustc --edition=2021 --test native/ipse-macos-sandbox.rs -o "$IPSE_MAC_TESTS/pol
 ```
 
 Included tests fail when requirements are absent; exclusions/skips prove no policy.
+For the private Linux stdin handoff, run the actual pipe/transaction component
+separately from Session qualification:
+
+```sh
+mix test test/ipse/runner/transaction_pipe_test.exs --max-cases 1
+```
+
+It imports the real supervisor's stdin description and writes a complete bounded
+binary frame under kernel lock and owner controls. Wrong operation/expiry,
+duplicate delivery, concurrent ordinary input, elapsed admission and owner-loss
+cases must refuse or retain uncertainty at their actual boundaries. The small
+Rust reader fixes pipe capacity at 4096 bytes and records the first partial read
+before Session-control, source-owner or supervisor loss. No complete-frame
+receipt may follow that partial delivery. For a pre-write zero-byte assertion,
+observe actual native source-owner exit; a BEAM actor's `DOWN` alone can precede
+its native cleanup. Policy/source lock contents are synthetic, not valid
+publication permission or original Session proofs. These controls qualify no
+SDK delivery, semantic source union, model quality or untested platform.
+
 Filesystem cases need actual case/normalization behavior and inode checks. Native
 fixtures use private homes, not the operator cache. The [sandbox chapter](sandbox.md)
 teaches Linux prerequisites, signing, listener identity, and detached-work limits.

@@ -798,6 +798,10 @@ mod unix {
         if p.revents & (8 | 16 | 32) != 0 { return Ok(false); }
         Ok(rc != 0)
     }
+    fn request_size(kind: u8, size: usize) -> bool {
+        size <= (if kind == b'w' { 32_781 } else { 16393 }) &&
+            (matches!(kind, b'D' | b'W' | b'w') || size <= 8192)
+    }
     fn request(deadline: Instant) -> Result<Option<(u8, Vec<u8>)>, String> {
         let mut bytes = Vec::with_capacity(8197);
         let mut end = deadline;
@@ -812,7 +816,7 @@ mod unix {
             }
             let need = if bytes.len() < 5 { 5 - bytes.len() } else {
                 let size = u32::from_be_bytes(bytes[1..5].try_into().unwrap()) as usize;
-                if size > 16393 || (!matches!(bytes[0], b'D' | b'W') && size > 8192) { return Err("transaction frame limit".into()); }
+                if !request_size(bytes[0], size) { return Err("transaction frame limit".into()); }
                 5 + size - bytes.len()
             };
             if need == 0 { return Ok(Some((bytes[0], bytes[5..].to_vec()))); }
@@ -827,7 +831,7 @@ mod unix {
             }
             if bytes.len() >= 5 {
                 let size = u32::from_be_bytes(bytes[1..5].try_into().unwrap()) as usize;
-                if size > 16393 || (!matches!(bytes[0], b'D' | b'W') && size > 8192) { return Err("transaction frame limit".into()); }
+                if !request_size(bytes[0], size) { return Err("transaction frame limit".into()); }
                 if bytes.len() == size + 5 { return Ok(Some((bytes[0], bytes[5..].to_vec()))); }
             }
         }
@@ -1098,6 +1102,8 @@ mod unix {
         let mut writer_control: Option<WriterControl> = None;
         #[cfg(target_os = "linux")]
         let mut session_control: Option<WriterControl> = None;
+        #[cfg(target_os = "linux")]
+        let mut pipe: Option<(super::super::ipse_lease_sink::RetainedSource, u64, Instant, bool)> = None;
         macro_rules! answer {
             ($kind:expr, $seq:expr, $code:expr) => {{
                 if !stack.iter().all(|held| valid(held, uid)) {
@@ -1144,6 +1150,10 @@ mod unix {
                 reply(b'U', seq, stack.len(), Some(UNSAFE))?; return Ok(());
             }
             #[cfg(target_os = "linux")]
+            if pipe.is_some() && !matches!(kind, b'P' | b'w' | b'q') {
+                reply(b'U', seq, stack.len(), Some(INVALID))?; return Ok(());
+            }
+            #[cfg(target_os = "linux")]
             if !source.is_empty() && matches!(kind, b'A' | b'R' | b'X' | b'Y' | b'K' | b'S') {
                 reply(b'U', seq, stack.len(), Some(INVALID))?; return Ok(());
             }
@@ -1176,6 +1186,60 @@ mod unix {
                 reply(b'U', seq, stack.len(), Some(IO))?; return Ok(());
             }
             match kind {
+                #[cfg(target_os = "linux")]
+                b'p' if bytes.len() == 101 && stack.len() == 3 && writer_control.is_some() &&
+                    session_control.is_some() && !source.is_empty() && pipe.is_none() &&
+                    state_intent.is_none() && !source_switch_attempted => {
+                    let operation: [u8; 16] = bytes[9..25].try_into().unwrap();
+                    let expiry = u64::from_be_bytes(bytes[25..33].try_into().unwrap());
+                    let before = Instant::now();
+                    let now = SystemTime::now().duration_since(UNIX_EPOCH).map_err(|_| "pipe clock unavailable")?.as_millis();
+                    let remaining = u128::from(expiry).checked_sub(now);
+                    if expiry > 9_007_199_254_740_991 ||
+                        !remaining.is_some_and(|n| n > 0 && n <= 5_000) ||
+                        used_operations.contains(&operation) || used_operations.len() >= 256 {
+                        answer!(b'E', seq, Some(INVALID)); continue;
+                    }
+                    let cutoff = deadline.min(before + Duration::from_millis(remaining.unwrap() as u64));
+                    used_operations.push(operation);
+                    let mut watched = Vec::new();
+                    for owner in [writer_control.as_ref().unwrap(), session_control.as_ref().unwrap()] {
+                        watched.extend([owner.owner.as_raw_fd(), owner.expected.process.as_raw_fd(), owner.peer.as_raw_fd()]);
+                    }
+                    match super::super::ipse_lease_sink::RetainedSource::acquire_pipe(&bytes[33..], operation, expiry, &watched, cutoff) {
+                        Ok(held) if stack.iter().all(|h| valid(h, uid)) && source.iter().all(|h| h.live()) => {
+                            pipe = Some((held, expiry, cutoff, false)); answer!(b'p', seq, None);
+                        },
+                        _ => { reply(b'U', seq, stack.len(), Some(IO))?; return Ok(()); },
+                    }
+                },
+                #[cfg(target_os = "linux")]
+                b'w' if bytes.len() > 9 && bytes.len() <= 32_781 && pipe.is_some() => {
+                    let (held, expiry, cutoff, attempted) = pipe.as_mut().unwrap();
+                    if *attempted { reply(b'U', seq, stack.len(), Some(INVALID))?; return Ok(()); }
+                    *attempted = true;
+                    let now = SystemTime::now().duration_since(UNIX_EPOCH).map_err(|_| "pipe clock unavailable")?.as_millis();
+                    if now >= u128::from(*expiry) || Instant::now() >= *cutoff {
+                        answer!(b'E', seq, Some(EXPIRED)); continue;
+                    }
+                    let valid_owners = || stack.len() == 3 && stack.iter().all(|h| valid(h, uid)) &&
+                        !source.is_empty() && source.iter().all(|h| h.live()) &&
+                        writer_control.as_ref().is_some_and(|c| c.live()) &&
+                        session_control.as_ref().is_some_and(|c| c.live());
+                    if held.write_pipe(&bytes[9..], *expiry, *cutoff, valid_owners).is_err() {
+                        reply(b'U', seq, stack.len(), Some(IO))?; return Ok(());
+                    }
+                    answer!(b'w', seq, None);
+                },
+                #[cfg(target_os = "linux")]
+                b'q' if bytes.len() == 25 && pipe.is_some() => {
+                    let operation: [u8; 16] = bytes[9..].try_into().unwrap();
+                    let (held, _, cutoff, _) = pipe.take().unwrap();
+                    if held.close(&operation, cutoff).is_err() {
+                        reply(b'U', seq, stack.len(), Some(IO))?; return Ok(());
+                    }
+                    answer!(b'q', seq, None);
+                },
                 #[cfg(target_os = "linux")]
                 b'j' if bytes.len() == 9 && stack.len() == 3 => {
                     if session_control.is_none() && source.len() == 2 && writer_control.as_ref().is_some_and(|control| control.live()) && source.iter().all(|held| held.live()) {

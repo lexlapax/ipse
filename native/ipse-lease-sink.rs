@@ -476,6 +476,7 @@ pub(crate) struct RetainedSource {
     peer: UnixStream,
     file: Option<File>,
     operation: [u8; 16],
+    pipe: bool,
 }
 
 impl RetainedSource {
@@ -487,11 +488,91 @@ impl RetainedSource {
         ready(peer.as_raw_fd(), OUTPUT, Some(0), Some(item.process.as_raw_fd()), deadline)?;
         peer.write_all(b"A")?;
         if !retained_live(&item, &peer, &file) { return Err(error()); }
-        Ok(Self { item, peer, file: Some(file), operation })
+        Ok(Self { item, peer, file: Some(file), operation, pipe: false })
+    }
+
+    pub(crate) fn acquire_pipe(
+        entry: &[u8], operation: [u8; 16], expiry: u64, watched: &[i32], deadline: Instant,
+    ) -> io::Result<Self> {
+        if entry.len() != ENTRY_SIZE || operation.iter().all(|b| *b == 0) { return Err(error()); }
+        let item = expected(entry)?;
+        let mut peer = open_peer_watch(&item, 0, watched, deadline)?;
+        let mut binding = [0u8; 24];
+        binding[..16].copy_from_slice(&operation);
+        binding[16..].copy_from_slice(&expiry.to_be_bytes());
+        let mut guards = watched.to_vec();
+        guards.push(item.process.as_raw_fd());
+        let mut sent = 0;
+        while sent < binding.len() {
+            ready_watch(peer.as_raw_fd(), OUTPUT, 0, &guards, deadline)?;
+            match peer.write(&binding[sent..]) {
+                Ok(0) => return Err(error()),
+                Ok(n) => sent += n,
+                Err(e) if matches!(e.kind(), io::ErrorKind::Interrupted | io::ErrorKind::WouldBlock) => (),
+                Err(e) => return Err(e),
+            }
+        }
+        let file = receive_raw_watch(&peer, &item, 0, watched, deadline)?;
+        if !super::ipse_lease_transfer::pipe_identity(&file, unsafe { geteuid() }) {
+            return Err(error());
+        }
+        let metadata = file.metadata()?;
+        if (metadata.dev(), metadata.ino()) != (item.dev, item.ino) { return Err(error()); }
+        ready_watch(peer.as_raw_fd(), OUTPUT, 0, &guards, deadline)?;
+        peer.write_all(b"A")?;
+        let retained = Self { item, peer, file: Some(file), operation, pipe: true };
+        if !retained.live() { return Err(error()); }
+        Ok(retained)
     }
 
     pub(crate) fn live(&self) -> bool {
-        self.file.as_ref().is_some_and(|file| retained_live(&self.item, &self.peer, file))
+        self.file.as_ref().is_some_and(|file| {
+            if !self.pipe { return retained_live(&self.item, &self.peer, file); }
+            let Ok(metadata) = file.metadata() else { return false; };
+            if !super::ipse_lease_transfer::pipe_identity(file, unsafe { geteuid() }) ||
+                (metadata.dev(), metadata.ino()) != (self.item.dev, self.item.ino) ||
+                same_helper(self.item.pid).is_err() { return false; }
+            let mut fds = [Poll { fd: self.peer.as_raw_fd(), events: INPUT, revents: 0 },
+                Poll { fd: self.item.process.as_raw_fd(), events: INPUT, revents: 0 }];
+            unsafe { poll(fds.as_mut_ptr(), fds.len(), 0) == 0 }
+        })
+    }
+
+    /// One exact bounded frame under the importing controller's live owners.
+    /// The controller consumes the operation before entering this method.
+    /// A partial write or failed final check is always an unknown effect.
+    pub(crate) fn write_pipe<F: Fn() -> bool>(
+        &mut self, bytes: &[u8], expiry: u64, deadline: Instant, valid: F,
+    ) -> io::Result<()> {
+        use std::time::{SystemTime, UNIX_EPOCH};
+        if !self.pipe || bytes.is_empty() || bytes.len() > 32_772 ||
+            expiry == 0 || expiry > 9_007_199_254_740_991 { return Err(error()); }
+        let mut offset = 0;
+        while offset < bytes.len() {
+            let current = || SystemTime::now().duration_since(UNIX_EPOCH)
+                .is_ok_and(|n| n.as_millis() < u128::from(expiry));
+            if Instant::now() >= deadline || !current() || !valid() || !self.live() ||
+                !super::ipse_lease_transfer::control_quiet(0) { return Err(error()); }
+            let file = self.file.as_mut().ok_or_else(error)?;
+            match file.write(&bytes[offset..(offset + 4096).min(bytes.len())]) {
+                Ok(0) => return Err(error()),
+                Ok(n) => offset += n,
+                Err(e) if e.kind() == io::ErrorKind::Interrupted => (),
+                Err(e) if e.kind() == io::ErrorKind::WouldBlock => {
+                    // A bounded wait never hides owner loss or renews a deadline.
+                    let mut p = Poll { fd: file.as_raw_fd(), events: OUTPUT, revents: 0 };
+                    let rc = unsafe { poll(&mut p, 1, 5) };
+                    if rc < 0 && io::Error::last_os_error().kind() != io::ErrorKind::Interrupted ||
+                        p.revents & BAD != 0 { return Err(error()); }
+                },
+                Err(e) => return Err(e),
+            }
+        }
+        if Instant::now() >= deadline || !valid() || !self.live() ||
+            !super::ipse_lease_transfer::control_quiet(0) ||
+            !SystemTime::now().duration_since(UNIX_EPOCH)
+                .is_ok_and(|n| n.as_millis() < u128::from(expiry)) { return Err(error()); }
+        Ok(())
     }
 
     /// Drop this owner's description before the exporter settles. A caller

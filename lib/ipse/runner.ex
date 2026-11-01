@@ -1793,6 +1793,43 @@ defmodule Ipse.Runner do
 
   def send_stdio_before(_, _, _, _), do: {:error, "invalid managed stdio input"}
 
+  @doc false
+  # These frames lend the supervisor's actual stdin description to a protected
+  # transaction. Queueing is not admission or delivery: await B/F/K receipts.
+  # No extension-worker or Session delivery route is admitted by this adapter.
+  def prepare_stdio_share(port, operation, expiry)
+      when is_port(port) and is_binary(operation) and byte_size(operation) == 16 and
+             is_integer(expiry) and expiry in 1..9_007_199_254_740_991 do
+    stdio_share_frame(port, ?B, <<operation::binary, expiry::64>>)
+  end
+
+  def prepare_stdio_share(_, _, _), do: {:error, :invalid_stdio_share}
+
+  @doc false
+  def export_stdio_share(port, operation, recipient)
+      when is_port(port) and is_binary(operation) and byte_size(operation) == 16 and
+             is_binary(recipient) and byte_size(recipient) == 68,
+      do: stdio_share_frame(port, ?F, operation <> recipient)
+
+  def export_stdio_share(_, _, _), do: {:error, :invalid_stdio_share}
+
+  @doc false
+  def settle_stdio_share(port, operation)
+      when is_port(port) and is_binary(operation) and byte_size(operation) == 16,
+      do: stdio_share_frame(port, ?K, operation)
+
+  def settle_stdio_share(_, _), do: {:error, :invalid_stdio_share}
+
+  defp stdio_share_frame(port, tag, body) do
+    cond do
+      :os.type() != {:unix, :linux} -> {:error, :stdio_share_unavailable}
+      Port.command(port, <<tag, byte_size(body)::32, body::binary>>, [:nosuspend]) -> :ok
+      true -> {:error, :stdio_share_backpressured}
+    end
+  rescue
+    _ -> {:error, :stdio_share_closed}
+  end
+
   @doc "Await supervisor exit within two seconds; cancel only if no terminal frame was observed."
   def close_stdio(port, mode \\ :cancel)
 

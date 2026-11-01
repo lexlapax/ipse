@@ -716,6 +716,7 @@ defmodule Ipse.Runner.Transaction do
                source_operations: [],
                writer_control: false,
                session_control: false,
+               pipe: nil,
                cleanup: nil
              }}
 
@@ -734,6 +735,63 @@ defmodule Ipse.Runner.Transaction do
     end
 
     @impl true
+    def handle_call(
+          {:pipe_import, cap, operation, entry, wall, deadline},
+          {owner, _},
+          %{
+            owner: owner,
+            caps: [cap | _],
+            writer_control: true,
+            session_control: true,
+            source_operations: [_ | _],
+            retained_share: nil,
+            pipe: nil
+          } = s
+        ) do
+      if cap.depth == 3 and is_binary(operation) and byte_size(operation) == 16 and
+           is_binary(entry) and byte_size(entry) == 68 and Ipse.JSON.safe_uint?(wall) and
+           wall > System.system_time(:millisecond) and
+           wall <= System.system_time(:millisecond) + 5_000 and
+           is_integer(deadline) and deadline > now() and deadline <= now() + 5_000 do
+        case command(s, ?p, <<operation::binary, wall::64, entry::binary>>, 3, deadline) do
+          {:ok, s, <<>>} -> {:reply, :ok, %{s | pipe: {operation, deadline, false}}}
+          _ -> fail(s)
+        end
+      else
+        {:reply, {:error, :invalid_transaction_capability}, s}
+      end
+    end
+
+    def handle_call(
+          {:pipe_write, cap, operation, bytes},
+          {owner, _},
+          %{owner: owner, caps: [cap | _], pipe: {operation, deadline, false}} = s
+        )
+        when is_binary(bytes) and byte_size(bytes) in 1..32_772 do
+      s = %{s | pipe: {operation, deadline, true}}
+
+      case command(s, ?w, bytes, 3, deadline) do
+        {:ok, s, <<>>} -> {:reply, :ok, s}
+        {:error, code, s} -> {:reply, {:error, code}, s}
+        _ -> fail(s)
+      end
+    end
+
+    def handle_call(
+          {:pipe_close, cap, operation},
+          {owner, _},
+          %{owner: owner, caps: [cap | _], pipe: {operation, deadline, _}} = s
+        ) do
+      case command(s, ?q, operation, 3, deadline) do
+        {:ok, s, <<>>} -> {:reply, :ok, %{s | pipe: nil}}
+        _ -> fail(s)
+      end
+    end
+
+    def handle_call({:operation, _, _}, {owner, _}, %{owner: owner, pipe: pipe} = s)
+        when not is_nil(pipe),
+        do: {:reply, {:error, :transaction_pipe_frozen}, s}
+
     def handle_call(
           {:writer_control_import, cap, operation, entry, deadline},
           {owner, _},
@@ -1338,6 +1396,9 @@ defmodule Ipse.Runner.Transaction do
 
       cond do
         tag not in [
+          ?p,
+          ?w,
+          ?q,
           ?A,
           ?P,
           ?R,

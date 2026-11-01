@@ -675,7 +675,9 @@ The child entry is `--transaction-lock TIMEOUT_MS`, with an absolute lifetime of
 one-byte tag and unsigned big-endian u32 payload length. The host sends at most
 one command at a time, without suspending a busy Port. Ordinary command payloads
 are at most 8,192 bytes. A staged data payload is at most 16,393 bytes: its nine
-control bytes plus 16 KiB of file data. Partial frames and responses have a
+control bytes plus 16 KiB of file data. The private Linux `w` command permits
+32,781 bytes, including those nine control bytes, for one existing worker-sized
+frame. Partial frames and responses have a
 five-second bound within the original lifetime. Pipes are nonblocking; input
 EOF/error takes precedence over queued requests. Filesystem syscalls still depend
 on the host kernel; unconfirmed process cleanup remains unknown.
@@ -693,6 +695,9 @@ are exact, with no optional trailing bytes:
 | `z` | Close the most recently imported retained source using its 16-byte operation ID. |
 | `O`, `o` | Linux-only writer-control import (16-byte operation and 68-byte owner identity) and close (empty). |
 | `c`, `d` | Linux-only additional Session-control import (16-byte operation and 68-byte owner identity) and close (empty). The writer control must already be held; close imported sources and the Session control before closing the writer control. |
+| `p` | Linux-only stdin descriptor import: 16-byte operation, u64 original wall expiry and 68-byte supervisor/pipe identity. Requires three held locks, Writer and Session controls, and at least one retained source. |
+| `w` | One positive raw frame, at most 32,772 bytes. Consumes the imported pipe attempt; repeated writes refuse. |
+| `q` | Close the imported stdin description using its 16-byte operation; complete exporter settlement before other operations. |
 | `j` | Empty: check the existing exact two-source acceptance guard. It refuses an additional Session control. |
 | `G` | u8 directory selector, u8 basename length, basename, u32 offset, u32 maximum total bytes (1..8 MiB). The basename is an allowlisted root target or immutable name. |
 | `H` | Version byte `1`, followed by the exact `G` payload. No other version or trailing bytes are accepted. |
@@ -706,9 +711,19 @@ are exact, with no optional trailing bytes:
 | `T` | u64 wall deadline, 41-byte pending basename and `root.json`; checks retained source and control owners at the final switch decision. |
 | `Q` | u8 directory selector, u8 count, then u8 basename length and basename per orphan. |
 
-The second control slot is an experimental native boundary, not an active
-Session publication adapter. The trusted host must still bind the control to
-the actual Session, writer, reviewed facts and current source set before use.
+The additional Session control is used by the reviewed literal-supersession
+adapter. The trusted host binds it to the actual Session, Writer, reviewed facts
+and current source set; transfer alone grants no effect authority.
+
+The stdin commands remain internal transport primitives without a Session or SDK
+delivery route. The trusted caller must establish the semantic roles of its
+locks, exact pending worker frame, source union and current permission. Three
+generic locks or a successful descriptor transfer prove none of those facts.
+While a pipe is imported, only check, its single write and close are allowed.
+Each nonblocking write checks the original expiry, fixed monotonic cutoff, held
+lock identities, both owner controls, original source exporters and pipe
+supervisor. Partial delivery or an unconfirmed final check remains unknown.
+These are final checked admissions, not kernel-atomic cancellation or expiry.
 
 An `X` export selects a still-held lock in the same checked stack; it does not
 open a caller-supplied lock path. Its exact 68-byte export fields are recipient
@@ -1155,6 +1170,33 @@ the Port. It returns `:ok` only after an exit-status confirmation; otherwise it
 returns a fixed cleanup-unconfirmed error. Do not reuse a server slot as if
 cleanup succeeded after an unconfirmed result. Abrupt owner death still closes
 the pipe and independently kills the ordinary process group.
+
+The existing `--admitted-stdio` variant emits empty `R` before launching the
+server and requires `G` with an eight-byte wall deadline; empty `A` acknowledges
+launch. The private `D` input frame carries a u64 wall deadline, 16-byte nonce
+and 1..32,768 raw bytes. Its `A` acknowledgement carries that nonce and one byte:
+`0` no bytes, `1` complete frame, or `2` partial/unconfirmed. The native writer
+checks the wall deadline before each write; the caller must retain its admission
+through acknowledgement. These clock-only frames import no source descriptions.
+
+Linux also has a private retained-stdin handoff for the transaction owner above.
+These are supervisor frames, separate from application bytes inside `I`:
+
+| Tag | Request and acknowledgement |
+| --- | --- |
+| `B` | Reserve the actual child stdin using a fresh 16-byte operation and u64 wall expiry, at most five seconds ahead. Replies with that operation, native supervisor PID (u32), device and inode (u64 each). |
+| `F` | Export that operation to a 68-byte recipient identity. The authenticated same-helper peer must echo the exact operation and original expiry before receiving the nonblocking write descriptor. Replies with the operation after transfer confirmation. |
+| `K` | Settle that operation after the importer closes its description. Replies with the operation after the existing C/F/G close handshake and restoration of stdin flags. |
+
+The supervisor pauses its own ordinary writes for the entire handoff. Concurrent
+`I`/`D`, another reservation, malformed transfer or reused operation stops the
+server group. A helper retains at most 256 used operation IDs. The importing
+transaction writes at most 32 KiB plus the existing four-byte worker prefix;
+neither this bound nor its one-use operation enlarges the worker JSON limit.
+Both the importer's close and the supervisor's `K` acknowledgement are required
+before returning ordinary input ownership. A queueing response is not proof of
+transfer, delivery or settlement. These primitives supply no public extension
+capability and do not qualify managed worker-result continuation.
 
 Output uses the existing one-byte kind and unsigned big-endian four-byte length
 framing: `O` is server stdout, `S` is server stderr, `X` contains
