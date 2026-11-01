@@ -309,7 +309,7 @@ automatic capture/current-note recall acceptance.
 | --- | --- |
 | Project sandbox | May tighten to native, never weaken an earlier native selection |
 | Explicit operator environment/CLI sandbox | May choose either supported mode |
-| Profile endpoints/deadlines/IDs | Projects cannot introduce `base_url` or `model_call_timeout_ms`, or replace operator IDs |
+| Profile endpoint/context/deadline/IDs | Projects cannot introduce `base_url`, `ollama_context_tokens` or `model_call_timeout_ms`, or replace operator IDs |
 | Embedding profiles | Operator-only, separate from text profiles/roles |
 | Budget/journal/trust/diagnostics | Operator-only policies; project declarations refuse |
 | Extension options/selection | Still require artifact/trust admission before callbacks |
@@ -361,6 +361,32 @@ provider support before approval. Children retain six admitted main/helper calls
 120 seconds active time, and the parent's context ceiling. [Architecture](architecture.md)
 teaches child ownership. Extension inference uses its separately granted private
 profile catalog; main/routine/review roles do not select it.
+
+For an optional provider field, follow `ollama_context_tokens` from the Registry
+Spec through `Profiles.manifest`, `runtime` and `child_config` to
+`Ollama.request_body`. The Spec declares its finite integer schema and
+`optional_route_fields`; provider validation additionally requires an actual
+integer. `Config.profile_authority` rejects project definitions even under project
+trust. This is a named operator-profile field, with no new setting, CLI or
+environment key. `ModelCall.snapshot` binds it into selected extension execution
+and approval facts when present. Ordinary main/draft/summary and owned Mint paths
+share the same body builder, so the exact wire digest also includes `num_ctx`.
+
+Absence preserves the prior manifest, public helper snapshot and wire shape;
+adding a null default would break that saved equality. Registry keeps existing
+required route fields separate from optional fields selected by actual presence.
+The public helper validator accepts either exact known shape and still rejects
+unknown keys. Routing to another profile does not retain the parent's context
+request. Summaries merge their temperature/output controls with existing options
+so they retain the selected window while narrowing output tokens.
+
+Practice with `mix test test/ipse/provider/ollama_context_test.exs
+test/ipse/config/profile_integration_test.exs test/ipse/extension/model_call_test.exs`
+as one command. Synthetic native HTTP controls inspect actual normal/draft/summary
+bodies. The delegated Session fixture additionally reconstructs saved child
+history with the exact selected context. These prove requested bytes and replay
+compatibility, not effective loaded context, a fitting prompt or immutable model
+identity. Job-level metadata checks and local-route qualification remain separate.
 
 Extended helper deadlines require `model_call_timeout_ms`. Profiles validates it
 without projecting it into main/child settings. `Extension.ModelCall.snapshot/1`

@@ -272,7 +272,10 @@ defmodule Ipse.Extension.ModelCall do
   def valid_outcome?(_, _, _, _), do: false
 
   def valid_profile?(profile) do
-    keys?(profile, @execution_keys ++ Ipse.Provider.Registry.profile_keys(profile["provider"])) and
+    keys?(
+      profile,
+      @execution_keys ++ Ipse.Provider.Registry.profile_keys(profile["provider"], profile)
+    ) and
       Ipse.Provider.Registry.valid_profile_values?(profile) and
       is_binary(profile["id"]) and
       Regex.match?(~r/\A[A-Za-z][A-Za-z0-9_-]{0,63}\z/, profile["id"]) and

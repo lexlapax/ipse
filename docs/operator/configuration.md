@@ -151,6 +151,7 @@ uses a subscription model for main work and a local model for routine children:
       "model": "qwen3:8b",
       "max_steps": 4,
       "max_output_tokens": 4096,
+      "ollama_context_tokens": 8192,
       "timeout_ms": 120000
     }
   },
@@ -245,6 +246,35 @@ does not retry or change a tag. Cleanup may outlast the budget; a late result
 refuses. Inspection requests no inference, download,
 activation or configuration write. Provisioning and local-only qualification
 remain separate from this metadata check.
+
+### Request an Ollama context window
+
+The `local` profile in the complete example above requests 8,192 context tokens
+through Ollama's `options.num_ctx`. To use it for main work, explicitly select it:
+
+```sh
+ipse config --config /private/path/models.json --no-project-config --profile local
+ipse chat --config /private/path/models.json --no-project-config --profile local --cwd /path/to/project
+```
+
+`ollama_context_tokens` accepts integers in 512..262144 in operator-owned Ollama
+text profiles. It follows that selected profile through main work, drafting,
+compaction, routed children and extension text inference. A different selected
+profile has its own setting. Omission leaves the service default unchanged.
+Other providers, project profiles, embedding profiles and top-level `settings`
+cannot set this field. There is no corresponding CLI or environment override.
+
+Choose a window that fits the prompt and generated output, including reasoning.
+A larger window can require more memory; the service or model may cap or refuse
+the request. This is a requested limit, not evidence of allocated context or
+per-request weights. After a request, use
+[model inspection](#inspect-an-installed-ollama-model) to check reported loaded
+context; an unloaded model remains unverified. Neither that scan nor this setting
+prevents silent truncation by a misbehaving service or establishes offline execution.
+See Ollama's [context guide](https://docs.ollama.com/context-length) and
+[parameter reference](https://docs.ollama.com/modelfile#valid-parameters-and-values).
+Changing the profile requires a fresh Session or the documented configuration
+recovery; it does not change an already admitted Session.
 
 ### Use Grok through xAI
 
@@ -523,11 +553,10 @@ metadata before relying on that default.
 
 The output allowance and the model's context window are separate limits. Context
 must fit the prompt and all generated tokens, including reasoning. Increasing
-`max_output_tokens` does not increase an Ollama server's context window. For a
-server you manage, select its context through Ollama's
-[context configuration](https://github.com/ollama/ollama/blob/main/docs/faq.mdx),
-then check the loaded model's `context_length` in `/api/ps` after a request.
-Ipse's ordinary provider profile does not configure that server setting.
+`max_output_tokens` does not increase an Ollama server's context window. Set
+[`ollama_context_tokens`](#request-an-ollama-context-window) on the selected
+operator text profile when a request needs an explicit window, then inspect the
+loaded context after a request. Omitting the field retains the service default.
 For the optional measured comparison, use the explicit service context in the
 [evaluation procedure](../developer/knowledge-evaluation.md#bind-a-fresh-service-and-local-output-paths).
 
@@ -626,7 +655,7 @@ ipse chat --cwd /path/to/project --trust-project-config
 Trust applies to that invocation and can change provider or billing selection.
 It does not approve effects. Project profiles may use default endpoints and
 assign roles, but cannot replace operator profile IDs, set endpoints or define
-`model_call_timeout_ms`.
+`model_call_timeout_ms` or `ollama_context_tokens`.
 Automatically discovered aliases must resolve within the repository. An
 explicit operator file may be a symlink.
 

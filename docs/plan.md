@@ -1021,6 +1021,13 @@ operator wait. Reworded questions and earlier turns are not deduplicated. A
 draft that cannot accept another question reports that limit separately from
 unavailable interactive input.
 
+Named operator Ollama text profiles can now request a bounded context window
+through the existing native adapter. Synthetic native-wire, delegated Session and
+legacy helper-snapshot controls cover explicit selection, summary preservation
+and project refusal. This configures requested context only; job-level model
+identity, effective-context verification and optional local-pair qualification
+remain open. See the [scoped implementation evidence](archive/2026-10-26-p30-p31-implementation/ollama-context-profile-20261031.md).
+
 The private P31B Session/terminal bridge now binds close preparation to the
 PID selected for its Session owner-control transfer. This narrows port
 substitution, but the synthetic bridge still lacks independently authenticated

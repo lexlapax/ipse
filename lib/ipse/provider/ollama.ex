@@ -3,6 +3,26 @@ defmodule Ipse.Provider.Ollama do
   alias Ipse.Provider.Stream
   alias Ipse.Provider.Transport
 
+  def validate_profile(profile) do
+    if not Map.has_key?(profile, "ollama_context_tokens") or
+         context_tokens?(profile["ollama_context_tokens"]),
+       do: :ok,
+       else: context_error()
+  end
+
+  def validate_request(config) do
+    value = config[:ollama_context_tokens]
+
+    if is_nil(value) or context_tokens?(value),
+      do: :ok,
+      else: context_error()
+  end
+
+  defp context_tokens?(value), do: is_integer(value) and value in 512..262_144
+
+  defp context_error,
+    do: {:error, "Ollama context request must be an integer in 512..262144 tokens."}
+
   def endpoint(config),
     do:
       Ipse.Provider.endpoint(
@@ -41,6 +61,18 @@ defmodule Ipse.Provider.Ollama do
 
     limit = Ipse.Provider.output_tokens(config)
     body = if limit, do: Map.put(body, "options", %{"num_predict" => limit}), else: body
+
+    body =
+      if config[:ollama_context_tokens],
+        do:
+          Map.update(
+            body,
+            "options",
+            %{"num_ctx" => config.ollama_context_tokens},
+            &Map.put(&1, "num_ctx", config.ollama_context_tokens)
+          ),
+        else: body
+
     body = if config[:reasoning_effort] == "none", do: Map.put(body, "think", false), else: body
 
     body =
@@ -52,10 +84,11 @@ defmodule Ipse.Provider.Ollama do
       Map.merge(body, %{
         "format" => config.summary_schema,
         "think" => false,
-        "options" => %{
-          "temperature" => 0,
-          "num_predict" => Ipse.Provider.narrow_output_tokens(limit, 4096)
-        }
+        "options" =>
+          Map.merge(body["options"] || %{}, %{
+            "temperature" => 0,
+            "num_predict" => Ipse.Provider.narrow_output_tokens(limit, 4096)
+          })
       })
     else
       body

@@ -178,6 +178,7 @@ defmodule Ipse.ProfileSessionTest do
       "provider" => "ollama",
       "model" => "configured-local",
       "base_url" => base,
+      "ollama_context_tokens" => 8192,
       "timeout_ms" => 5000
     }
 
@@ -190,6 +191,7 @@ defmodule Ipse.ProfileSessionTest do
     assert_receive {:ipse, ^parent, {:done, :ok}}, 5000
     {headers, request} = Task.await(server)
     assert request["model"] == "configured-local"
+    assert request["options"]["num_ctx"] == 8192
     assert Jason.encode!(request) =~ "SELECTED_EVIDENCE"
     refute Jason.encode!(request) <> headers =~ "PARENT_HISTORY_PRIVATE"
     refute Jason.encode!(request) <> headers =~ "PARENT_NATIVE_PRIVATE"
@@ -207,6 +209,8 @@ defmodule Ipse.ProfileSessionTest do
     assert meta["provider"] == "ollama"
     assert meta["execution"]["id"] == "local"
     assert meta["execution"]["role"] == "routine"
+    assert meta["execution"]["ollama_context_tokens"] == 8192
+    assert {:ok, _} = Session.Saved.restore(child_events, child)
     assert meta["mcp_servers"] == []
     assert Session.info(parent).final =~ "Child verified SELECTED_EVIDENCE"
     :ok = Session.close(parent)

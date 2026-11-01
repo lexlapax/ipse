@@ -25,6 +25,7 @@ defmodule Ipse.Provider.Spec do
     profile_fields: %{},
     profile_defaults: %{},
     route_fields: [],
+    optional_route_fields: [],
     output_limit_scope: :all_output,
     structured_output?: false,
     summary_schema?: false,
@@ -111,6 +112,12 @@ defmodule Ipse.Provider.Registry do
       billing_mode: "local",
       output_limit: 1..1_000_000,
       reasoning: &__MODULE__.ollama_reasoning/2,
+      profile_validator: &Ipse.Provider.Ollama.validate_profile/1,
+      request_validator: &Ipse.Provider.Ollama.validate_request/1,
+      profile_fields: %{
+        "ollama_context_tokens" => %{"type" => "integer", "minimum" => 512, "maximum" => 262_144}
+      },
+      optional_route_fields: [{"ollama_context_tokens", :ollama_context_tokens}],
       usage_extractor: &__MODULE__.ollama_usage/1,
       embedding: %{
         usage_extractor: &__MODULE__.ollama_embedding_usage/1,
@@ -343,14 +350,27 @@ defmodule Ipse.Provider.Registry do
     end
   end
 
+  def profile_keys(provider, values) do
+    spec = fetch!(provider)
+
+    profile_keys(provider) ++
+      for {key, _} <- spec.optional_route_fields, Map.has_key?(values, key), do: key
+  end
+
   def profile_values(profile) do
     spec = fetch!(profile["provider"])
-    Map.merge(spec.profile_defaults, Map.take(profile, profile_keys(spec.id)))
+    Map.merge(spec.profile_defaults, Map.take(profile, profile_keys(spec.id, profile)))
   end
 
   def profile_runtime(profile) do
     values = profile_values(profile)
-    Map.new(fetch!(profile["provider"]).route_fields, fn {key, atom} -> {atom, values[key]} end)
+    spec = fetch!(profile["provider"])
+
+    fields =
+      spec.route_fields ++
+        Enum.filter(spec.optional_route_fields, &Map.has_key?(values, elem(&1, 0)))
+
+    Map.new(fields, fn {key, atom} -> {atom, values[key]} end)
   end
 
   def runtime_fields(nil), do: %{}
@@ -358,7 +378,13 @@ defmodule Ipse.Provider.Registry do
   def runtime_fields(execution) do
     spec = fetch!(execution[:provider] || execution["provider"])
 
-    Map.new(spec.route_fields, fn {key, atom} ->
+    fields =
+      spec.route_fields ++
+        Enum.filter(spec.optional_route_fields, fn {key, atom} ->
+          Map.has_key?(execution, key) or Map.has_key?(execution, atom)
+        end)
+
+    Map.new(fields, fn {key, atom} ->
       {atom, Map.get(execution, atom, execution[key])}
     end)
   end
@@ -411,7 +437,7 @@ defmodule Ipse.Provider.Registry do
         "required" => profile_keys(spec.id),
         "additionalProperties" => false
       },
-      Map.take(profile, profile_keys(spec.id))
+      Map.take(profile, profile_keys(spec.id, profile))
     ) == :ok and (is_nil(spec.profile_validator) or spec.profile_validator.(profile) == :ok)
   end
 
