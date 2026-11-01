@@ -165,10 +165,21 @@ not mean nothing was saved, and resume does not repeat capture. General
 end-to-end automatic `run` capture remains unqualified.
 
 Eligible unattended input remains a pending proposal rather than an endorsed
-fact. Repeated pending saves under the knowledge grant have registered
-synthetic-provider controls, including confirmed close and idle resume without
-another capture. These controls do not establish retention endurance or model
-quality; the end-to-end CLI journey remains unqualified. If a capture
+fact. After native permission setup, a headless task can use the saved grant
+without `--yes`, through either task arguments or standard input:
+
+```sh
+ipse run 'Record this as a pending proposal: prefer ISO dates in reports.' --cwd /path/to/project
+printf '%s\n' 'Record this as a pending proposal: prefer ISO dates in reports.' | ipse run --cwd /path/to/project
+```
+
+Both task forms are unattended input. A permitted model-selected capture stores
+an attributed pending proposal even if the model assigns a preference category;
+it cannot create an endorsed preference from that task. Workspace writes and
+shell commands remain denied under ordinary headless defaults. The saved grant
+supplies no authority to run them. Keep the returned pending key for separate
+native acceptance below. These development-source paths do not qualify model
+capture quality, retention endurance or installed use. If a capture
 reports an unknown outcome, inspect the Session
 journal and stored state before attempting new work. Do not promote quoted
 reports or unattended task text to endorsed facts.

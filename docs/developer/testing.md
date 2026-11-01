@@ -146,6 +146,24 @@ registered route, then requires a newly reviewed legacy reader to refuse its tex
 These two cases retain private synthetic roots printed as `REGISTERED_CAPTURE_ROOT`.
 They exercise repeated additions, not elapsed retention, annual turnover or quality.
 
+For the bundled headless CLI path, run:
+
+```sh
+mix test test/ipse/cli/knowledge_test.exs --only headless_pending_cli --max-cases 1
+```
+
+Each case performs actual native permission setup, then starts a separate CLI
+process with argv text or a regular file redirected to its OS stdin. The task
+remains `unattended_input`; five registered adapter requests must finish and one
+exact pending record must preserve that source, with `never_current` eligibility,
+settled consent accounting, valid Saved reconstruction and a signed release claim.
+Require zero CLI exit, a completed turn and denied write/shell targets. An empty
+store or an unknown capture must fail; checking only that no literal exists is
+vacuous. The process has no `--yes`, grant injection or historical BEAM overlay.
+Run the complete file after changing its launcher to preserve setup/refusal cases.
+Synthetic responses establish this source path, not live-model quality or an
+installed runtime.
+
 The concurrency case first saves a synthetic protected candidate, fills the pending
 population to 63, and coordinates two Sessions at the capture barrier. Five
 synthetic native HTTP responses cover the initial save, both competing requests

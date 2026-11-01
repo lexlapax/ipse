@@ -270,8 +270,10 @@ ipse run --cwd /path/to/scratch --yes \
 Both commands use the saved provider/profile. Headless ordinary mutations are
 denied without `--yes`. A separately reviewed [knowledge permission](knowledge-permissions.md)
 records only its declared collection scope for `run`. Saved consent can cover
-the narrowly supported native capture path without `--yes`; complete automatic
-CLI capture remains unqualified. Correction and supersession require the separate
+the narrow native capture path and attributed pending proposals from argv or
+standard input without `--yes`. These development-source paths remain experimental;
+installed behavior and capture quality are not qualified. Correction and
+supersession require the separate
 [interactive two-review procedure](knowledge-permissions.md#correct-or-supersede-a-native-note);
 headless correction, supersession and managed document mutations still refuse.
 Follow that manual's current source,

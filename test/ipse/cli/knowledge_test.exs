@@ -14,6 +14,14 @@ defmodule Ipse.CLI.KnowledgeTest do
     assert scenario("save", "--knowledge") =~ "KNOWLEDGE_NATIVE_SETUP_SAVE_DISABLE_PASSED"
   end
 
+  for input <- ~w(argv stdin) do
+    @tag timeout: 90_000, headless_pending_cli: true
+    test "headless #{input} saves one attributed pending proposal without ordinary mutation authority" do
+      assert scenario(unquote(input), "--knowledge", "headless_cli_untrusted_process.exs") =~
+               "UNTRUSTED_CLI_#{String.upcase(unquote(input))}_PASSED"
+    end
+  end
+
   @tag knowledge_readiness: true
   test "saved native permission distinguishes activation matching from unavailable capture" do
     output = scenario("readiness", "--knowledge")
@@ -154,7 +162,7 @@ defmodule Ipse.CLI.KnowledgeTest do
     refute File.exists?(control)
   end
 
-  defp scenario(name, mode) do
+  defp scenario(name, mode, script \\ "knowledge_setup.exs") do
     root = private_root()
 
     paths =
@@ -167,7 +175,7 @@ defmodule Ipse.CLI.KnowledgeTest do
 
     args =
       ["--erl", "+S 2:2"] ++
-        paths ++ [Path.expand("test/support/knowledge_setup.exs"), root, name]
+        paths ++ [Path.expand("test/support/" <> script), root, name]
 
     {executable, args} =
       if mode do
@@ -192,7 +200,7 @@ defmodule Ipse.CLI.KnowledgeTest do
         {System.find_executable("elixir"), args}
       end
 
-    {output, status} = System.cmd(executable, args, stderr_to_stdout: true)
+    {output, status} = System.cmd(executable, args, stderr_to_stdout: true, cd: root)
     assert status == 0, output
     output
   end

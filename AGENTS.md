@@ -136,11 +136,10 @@ historical records when simplifying current source, commands and manuals.
   resume must mark its outcome unknown and never automatically replay it.
 - Keep cross-process locking for sessions and rotating refresh tokens. Lock
   files remain in place to preserve inode identity; release the OS lock instead.
-- Interactive mutations require approval unless explicitly enabled. Current
-  headless mutation is denied without `--yes`. The approved P31 design permits
-  a future knowledge-only exception using protected saved consent; implementation
-  still requires task authorization. It must not widen workspace, shell, MCP or
-  delegation authority. Until implemented, the existing runtime gate remains.
+- Interactive mutations require approval unless explicitly enabled. Headless
+  ordinary mutation is denied without `--yes`. The narrow knowledge-only path
+  uses protected saved consent and preserves source, category, effect and current-use
+  fences. It must not widen workspace, shell, MCP or delegation authority.
   Display full proposed approval arguments.
 - Local child delegation is opt-in with `--subagents`; parent and child approval
   and journaling remain separate. Children cannot use MCP or delegate recursively.

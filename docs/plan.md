@@ -1164,8 +1164,10 @@ model-selected headless Session saved two distinct proposals across close and
 resume. The [registered repeated-capture control](archive/2026-10-26-p30-p31-implementation/repeated-v3-capture-20261101.md)
 extends initial additions across 27 Sessions and a nonzero live-page split fence,
 with actual adapter continuations, settlement and idle recovery. This is not
-retention endurance or annual turnover. The end-to-end CLI journey and broader
-source, loss and quality qualification remain open.
+retention endurance or annual turnover. [Actual headless CLI argv/stdin controls](archive/2026-10-26-p30-p31-implementation/headless-cli-pending-20261101.md)
+now require a completed turn and one attributed pending save under native saved
+consent without `--yes`, while ordinary write/shell effects stay denied. Broader
+source, loss, installed and quality qualification remain open.
 
 The evaluation source snapshot now admits up to 16,384 files and 4 MiB for
 declarations and frozen manifests. A synthetic checkout with more than 8,193
