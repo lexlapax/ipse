@@ -1160,11 +1160,12 @@ minimal-artifact and saved-Reference controls cover that boundary.
 Pending-proposal capacity is checked by the host under the Collection lock;
 the worker no longer reads existing proposal values to count the queue. Scans
 remain outside the root-only prerequisite classification. A synthetic
-model-selected headless Session saved one unattended proposal under saved
-consent, closed and resumed, and saved a second distinct proposal; both
-operations settled and Saved reconstructed the resulting journal. The
-end-to-end CLI journey and broader repeated-capture, source and loss
-qualification remain open.
+model-selected headless Session saved two distinct proposals across close and
+resume. The [registered repeated-capture control](archive/2026-10-26-p30-p31-implementation/repeated-v3-capture-20261101.md)
+extends initial additions across 27 Sessions and a nonzero live-page split fence,
+with actual adapter continuations, settlement and idle recovery. This is not
+retention endurance or annual turnover. The end-to-end CLI journey and broader
+source, loss and quality qualification remain open.
 
 The evaluation source snapshot now admits up to 16,384 files and 4 MiB for
 declarations and frozen manifests. A synthetic checkout with more than 8,193

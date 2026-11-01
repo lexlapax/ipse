@@ -626,8 +626,12 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
     File.mkdir_p!(cwd)
     File.chmod!(home, 0o700)
 
-    unless c[:literal_v4_ab] || c[:worker_input_capacity],
-      do: on_exit(fn -> File.rm_rf!(root) end)
+    unless c[:literal_v4_ab] || c[:worker_input_capacity] || c[:registered_capture_sequence] ||
+             c[:registered_competing],
+           do: on_exit(fn -> File.rm_rf!(root) end)
+
+    if c[:registered_capture_sequence], do: IO.puts("REGISTERED_CAPTURE_ROOT=" <> root)
+    if c[:registered_competing], do: IO.puts("COMPETING_CAPTURE_ROOT=" <> root)
 
     trace = Path.join(root, "trace")
 
@@ -985,6 +989,9 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
 
         responses =
           cond do
+            c[:registered_capture_count] ->
+              List.duplicate(responses, c.registered_capture_count) |> List.flatten()
+
             c[:registered_capture_no_continuation] ->
               Enum.take(responses, 1)
 
@@ -1003,7 +1010,6 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
                 List.last(responses),
                 barrier <> "\n",
                 barrier <> "\n",
-                List.last(responses),
                 List.last(responses)
               ]
 
@@ -2809,7 +2815,8 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
     end
   end
 
-  @tag metadata_version: 3
+  @tag :registered_capture_sequence
+  @tag metadata_version: 3, registered_main: true, capture_write: true
   test "a newly reviewed legacy reader cannot expose an existing managed namespace", c do
     capture = start(c)
     assert :ok = Session.prompt(capture, "Synthetic café observation")
@@ -2840,6 +2847,7 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
 
     [record] = page["records"]
     assert record["value"]["text"] == "Synthetic café observation"
+    assert length(Task.await(c.provider_server, 5000)) == 2
     c = legacy_reader(c)
     reader = start(c)
 
@@ -3165,7 +3173,14 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
     assert :ok = Session.prompt(first, "Synthetic café observation")
     assert_receive {:ipse, ^first, {:done, :ok}}, 15_000
     assert :ok = Session.close_confirmed(first)
+    setup_started = System.monotonic_time(:millisecond)
     seed_pending(c, 62)
+
+    if c[:registered_competing],
+      do:
+        IO.puts(
+          "COMPETING_PENDING_SETUP_MS=#{System.monotonic_time(:millisecond) - setup_started}"
+        )
 
     left = start(c, %{fixture_mode: "barrier"})
     right = start(c, %{fixture_mode: "barrier"})
@@ -3174,8 +3189,14 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
     assert :ok = Session.prompt(right, "Synthetic café observation")
     await_marker_count(c.trace, "barrier\n", 2, 1000)
     File.write!(c.trace <> ".release", "go")
-    assert_receive {:ipse, ^left, {:done, :ok}}, 20_000
-    assert_receive {:ipse, ^right, {:done, :ok}}, 20_000
+
+    outcomes =
+      Map.new([left, right], fn pid ->
+        assert_receive {:ipse, ^pid, {:done, outcome}}, 20_000
+        {pid, outcome}
+      end)
+
+    unless c[:registered_competing], do: assert(Enum.all?(outcomes, fn {_, v} -> v == :ok end))
 
     results =
       for pid <- [left, right] do
@@ -3217,7 +3238,46 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
 
     if c[:registered_competing] do
       assert successes == 1
-      assert length(Task.await(c.provider_server, 5000)) == 6
+      assert length(Task.await(c.provider_server, 5000)) == 5
+
+      for {pid, result} <- Enum.zip([left, right], results) do
+        id = Session.info(pid).id
+        assert {:ok, events} = Journal.load(c.dir, id)
+
+        if result["outcome"]["status"] == "ok" do
+          assert outcomes[pid] == :ok
+          assert Enum.count(events, &(&1["type"] == "request_admitted")) == 2
+
+          refute Enum.any?(
+                   events,
+                   &(&1["type"] == "worker_input_result" and &1["status"] == "unknown")
+                 )
+        else
+          # The winner changed the root read by both Workers. The known failed
+          # action remains recorded; its next input cannot discard that old read.
+          assert outcomes[pid] == :error
+          assert result["outcome"]["value"]["code"] == "collection_consent_denied"
+          assert Enum.count(events, &(&1["type"] == "request_admitted")) == 1
+
+          assert Enum.any?(
+                   events,
+                   &(&1["type"] == "worker_input_result" and &1["status"] == "unknown")
+                 )
+
+          assert {:ok, saved} = Ipse.Session.Saved.restore(events, id)
+          assert saved.managed_lineage.unavailable
+        end
+
+        assert :ok = Session.close_confirmed(pid)
+        path = Path.join(c.dir, id <> ".jsonl")
+        closed = File.read!(path)
+        trace = File.read!(c.trace)
+        resumed = start(c, %{}, id)
+        assert Session.info(resumed).phase == :idle
+        assert_idle_resume_journal(path, closed, id)
+        assert :ok = Session.close_confirmed(resumed)
+        assert File.read!(c.trace) == trace
+      end
     end
 
     if successes == 0 do
@@ -3321,7 +3381,12 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
     assert collection_read(c, %{"op" => "snapshot"})["generation"] == 1
   end
 
-  @tag metadata_version: 3
+  @tag :registered_capture_sequence
+  @tag metadata_version: 3,
+       registered_main: true,
+       capture_write: true,
+       registered_capture_count: 27
+  @tag timeout: 180_000
   test "V3 actual Session publications validate a nonzero live split fence", c do
     {:ok, initial} = Consent.snapshot(c.control, c.binding["project_id"])
 
@@ -3374,7 +3439,25 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
                )
 
         assert {:ok, _} = Session.restore_context(events)
+        assert Enum.count(events, &(&1["type"] == "request_admitted")) == 2
+
+        assert Enum.count(
+                 events,
+                 &(&1["type"] == "request_finished" and &1["outcome"] == "completed" and
+                     &1["finality"] == "final")
+               ) == 2
+
+        id = Session.info(pid).id
         assert :ok = Session.close_confirmed(pid)
+
+        path = Path.join(c.dir, id <> ".jsonl")
+        closed = File.read!(path)
+        trace = File.read!(c.trace)
+        resumed = start(c, %{}, id)
+        assert Session.info(resumed).phase == :idle
+        assert_idle_resume_journal(path, closed, id)
+        assert :ok = Session.close_confirmed(resumed)
+        assert File.read!(c.trace) == trace
 
         seen or
           Enum.any?(value["normalization"]["metadata_changes"], fn extra ->
@@ -3388,6 +3471,44 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
       end)
 
     assert nonzero?
+    assert length(Task.await(c.provider_server, 5000)) == 54
+    assert {:ok, final} = Consent.snapshot(c.control, c.binding["project_id"])
+    assert map_size(final["operations"]) == 27
+
+    assert Enum.all?(final["operations"], fn {_, operation} ->
+             operation["status"] == "settled"
+           end)
+
+    snapshot = collection_read(c, %{"op" => "snapshot"})
+    assert snapshot["generation"] == 27
+
+    assert {:ok, page} =
+             Ipse.Extension.Collection.scan_visible(
+               SemanticAdmission.collection_root(c.home),
+               c.namespace,
+               %{
+                 "op" => "scan",
+                 "generation" => snapshot["generation"],
+                 "after" => nil,
+                 "limit" => 32
+               },
+               Ipse.Usage.id()
+             )
+
+    assert length(page["records"]) == 27
+    assert page["next"] == nil
+    assert Enum.all?(page["records"], &(&1["value"]["text"] == "Synthetic café observation"))
+
+    sources =
+      Enum.map(page["records"], fn record ->
+        assert String.starts_with?(record["key"], "pending.")
+        [source] = record["value"]["evidence"]["sources"]
+        assert source["quote"] == record["value"]["text"]
+        assert File.regular?(Path.join(c.dir, source["session_id"] <> ".jsonl"))
+        source["session_id"]
+      end)
+
+    assert length(Enum.uniq(sources)) == 27
   end
 
   test "headless protected capture journals exact outer and inner bindings and settles once", c do

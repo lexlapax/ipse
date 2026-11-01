@@ -61,6 +61,7 @@ nor resource/offline qualification. No daemon configuration or existing model wa
 
 ## P31A contracts and evidence
 
+- [Registered repeated V3 capture](repeated-v3-capture-20261101.md) preserves successful publication expectations through the actual adapter, with a nonzero live split fence, distinct original sources, settled accounting and idle recovery; legacy reader access still refuses. Retention endurance and full-source acceptance remain open.
 - [Nested native/MCP result continuation](nested-result-input-20261101.md) replaces the redundant result gate only for pinned exports using the actual managed input fence. Explicit-allow positives and post-effect root/revocation controls retain known effects, uncertain delivery and inert recovery; document and other unqualified purposes stay gated.
 - [Unsupported private Worker input refusals](private-worker-input-refusals-20261101.md) preserve ordinary and metadata delivery while closing managed presentation, notification, tool-feed and selected text entry; required registered text retains its original producer and acknowledgment checks.
 - [Current native A/B Worker input controls](worker-inherited-union-20261101.md) retain a genuine inherited source at the next fresh quote frame and complete an independent-B capture with A unavailable; each case creates its own current-runtime native seed.

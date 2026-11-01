@@ -131,19 +131,32 @@ fixture, explicit service registration and a supported request deadline; keep
 the normal adapter and completion witness. Do not construct a successful witness
 or remove managed dependencies to make a test proceed.
 
-The competing V3 capture case is a worked example:
+Use the registered V3 capture cases as worked examples:
 
 ```sh
-mix test test/ipse/extension/managed_collection_call_session_test.exs --only registered_competing
+mix test test/ipse/extension/managed_collection_call_session_test.exs --only registered_capture_sequence --only registered_competing --only registered_capture --max-cases 1
 ```
 
-One selected test first saves a synthetic protected candidate, fills the pending
-population to 63, and coordinates two Sessions at the capture barrier. Six
-synthetic native HTTP responses cover the initial save and both continuations.
-The test requires exactly one concurrent publication, validated saved history
-and settled accounting; the service slot is released before either extension
-waits at the barrier. Excluded cases have not run. This exercises protocol and
-ownership, without real model inference or semantic-quality evidence.
+The sequence case saves 27 candidates through 54 actual adapter requests, checks
+the resulting records and distinct original Session proofs, and crosses a nonzero
+live-page split fence. Each Session must complete, settle and close; idle resume
+may append only its ownership record before confirmed close, with no Worker replay.
+A separate legacy-reader case first creates a genuine managed record through the
+registered route, then requires a newly reviewed legacy reader to refuse its text.
+These two cases retain private synthetic roots printed as `REGISTERED_CAPTURE_ROOT`.
+They exercise repeated additions, not elapsed retention, annual turnover or quality.
+
+The concurrency case first saves a synthetic protected candidate, fills the pending
+population to 63, and coordinates two Sessions at the capture barrier. Five
+synthetic native HTTP responses cover the initial save, both competing requests
+and only the winner's continuation. Exactly one writer must publish and finish.
+The loser retains a known refused action, then cannot deliver its next Worker
+input using the root invalidated by the winner; its turn must fail without a
+second inference request. Require strict Saved and idle recovery for both, with
+settled accounting and no Worker replay. Its retained root prints as
+`COMPETING_CAPTURE_ROOT`. The service slot releases before either extension
+waits at the barrier. Excluded cases have not run. These are protocol and
+ownership controls, without real model inference or semantic-quality evidence.
 
 Use the supported single-new-record V3 publication shape when a fixture is
 testing current capture rather than the deliberately closed legacy API. The

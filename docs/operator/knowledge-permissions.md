@@ -165,9 +165,10 @@ not mean nothing was saved, and resume does not repeat capture. General
 end-to-end automatic `run` capture remains unqualified.
 
 Eligible unattended input remains a pending proposal rather than an endorsed
-fact. A synthetic headless Session can save such a proposal under the saved
-knowledge grant, including two distinct proposals across a close and resume in
-a synthetic test. The end-to-end CLI journey remains unqualified. If a capture
+fact. Repeated pending saves under the knowledge grant have registered
+synthetic-provider controls, including confirmed close and idle resume without
+another capture. These controls do not establish retention endurance or model
+quality; the end-to-end CLI journey remains unqualified. If a capture
 reports an unknown outcome, inspect the Session
 journal and stored state before attempting new work. Do not promote quoted
 reports or unattended task text to endorsed facts.
