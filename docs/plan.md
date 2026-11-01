@@ -952,7 +952,10 @@ Named operator text/embedding profiles bind expected metadata and minimum loaded
 context into saved execution; embedding selection also binds the pin and requested
 context. Synthetic main/SDK/controlled-child checks cover successful publication,
 preflight refusal, withheld text/tools/vectors and retained measured charges.
-Immutable per-request weights, offline execution, real context/quality and installed
+The first [actual primary-pair Session controls](archive/2026-10-26-p30-p31-implementation/local-pinned-jobs-20261031.md)
+pass public embedding reconstruction, ordinary main completion, reported 8,192-token context,
+service settlement and Saved/idle resume. Immutable per-request weights, offline
+execution, long-input/context-fit/quality and installed
 qualification remain open; these checks do not close D1 or F.
 
 Public session-only retention uses the same full-facts native review, journal

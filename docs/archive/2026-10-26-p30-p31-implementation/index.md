@@ -53,12 +53,16 @@ is **3,963,324,792 bytes**, below the 12-GiB allowance; this is an upper bound o
 new artifact payload before shared-blob reuse, not measured network transfer.
 No local inference ran during provisioning. A later [two-request adapter smoke](local-primary-smoke-20261031.md)
 charges2of1000local calls, leaving998; its loaded contexts were4096tokens and its
-direct chat witness remained false. Download success establishes neither quality
+direct chat witness remained false. Later [pinned registered Session jobs](local-pinned-jobs-20261031.md)
+used two further calls, both completed/final, with reported 8,192 context tokens,
+settled service reservations and valid idle resume. Local usage is now 4 of 1,000,
+996 remaining. Download success establishes neither quality
 nor resource/offline qualification. No daemon configuration or existing model was changed.
 
 ## P31A contracts and evidence
 
 - [Cooperative Ollama model/context checks around registered text and embedding jobs](ollama-model-pin-jobs-20261031.md) retain saved-profile identity, private output release and measured charges; physical request attestation and live qualification remain separate.
+- [Actual pinned primary-pair Session jobs](local-pinned-jobs-20261031.md) cover public embedding reconstruction, ordinary main completion, reported context and service/Saved settlement without quality or installed claims.
 - [Installed idle-resume verifier repair](package-idle-resume-20261031.md) preserves the exact failed archive, native ownership/release assertions and source checks; a replacement archive still requires installed verification.
 - [Full-source regression result](full-suite-20261031.md) retains the unchanged-source run's 71 failures and complete top-level failure extract; selected later controls do not replace this failed baseline.
 - [Completed c7cb484 default baseline](full-suite-c7cb484-20261031.md): 3518 passed,58 failed, with unchanged1057-file source; later isolated increments remain outside its scope.

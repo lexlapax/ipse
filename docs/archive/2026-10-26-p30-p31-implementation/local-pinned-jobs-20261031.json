@@ -1,0 +1,316 @@
+{
+  "artifact_digest": "373517dfac3ddc80cc815dc9b060e53ac1458c87bfd1e86752159bcc52520eb5",
+  "audits": {
+    "answer": {
+      "admission_phase": null,
+      "after_inspection": {
+        "assurance": "cooperative_service_metadata_not_request_attestation",
+        "loaded": {
+          "context_length": 8192,
+          "digest": "d8b0f5e9760cd1682034f292d7ef72ec46f432149be0df7574bf2d6e92e38c04",
+          "size": 3278907636,
+          "size_vram": 3278907636
+        },
+        "manifest_sha256": "d8b0f5e9760cd1682034f292d7ef72ec46f432149be0df7574bf2d6e92e38c04",
+        "metadata_sha256": "c2ed7207a7cd47d14d7f7ddd1ab7a9e013ba0b94e95e11ab9c582f91c545cbe2",
+        "model": "qwen3.5:4b",
+        "runtime_version": "0.40.13"
+      },
+      "booked_requests": 1,
+      "domain": {
+        "exact_ready": true
+      },
+      "journal_bytes": 20947,
+      "journal_sha256": "504205b58aea036f0379451f3c33a23451d7e19e1effc34cce11a548f6f58618",
+      "request_outcome": {
+        "finality": "final",
+        "outcome": "completed",
+        "reported_model": "qwen3.5:4b",
+        "usage": {
+          "counts": {
+            "input_cache_write_1h_tokens": null,
+            "input_cache_write_5m_tokens": null,
+            "input_cache_write_tokens": null,
+            "input_cached_tokens": 0,
+            "input_tokens": 3756,
+            "input_uncached_tokens": null,
+            "output_reasoning_tokens": null,
+            "output_tokens": 2,
+            "provider_duration_ns": 1995108000,
+            "provider_web_fetch_requests": null,
+            "provider_web_search_requests": null,
+            "total_tokens": 3758
+          },
+          "derived_fields": [
+            "total_tokens"
+          ],
+          "issues": [],
+          "quality": "totals_known",
+          "version": 1
+        }
+      },
+      "saved_restore_after_idle_resume_and_close": "passed",
+      "service_active": null,
+      "service_recent_count": 2,
+      "session_id": "8704536641d2979c00cdcbd5fef62521",
+      "unknown_liability_count": 0
+    },
+    "embedding": {
+      "admission_phase": null,
+      "after_inspection": {
+        "assurance": "cooperative_service_metadata_not_request_attestation",
+        "loaded": {
+          "context_length": 8192,
+          "digest": "ac6da0dfba84a81fdbfbaf330198c33cd77c4cdfc53e8bc50eb581914a15621d",
+          "size": 1715396935,
+          "size_vram": 1715396935
+        },
+        "manifest_sha256": "ac6da0dfba84a81fdbfbaf330198c33cd77c4cdfc53e8bc50eb581914a15621d",
+        "metadata_sha256": "100dbc797299e63f4e4240b2f9036e21a92861f74903ea12115575506847aea3",
+        "model": "qwen3-embedding:0.6b-q8_0",
+        "runtime_version": "0.40.13"
+      },
+      "booked_requests": 1,
+      "domain": {
+        "dimensions": 1024,
+        "reported_model": "qwen3-embedding:0.6b-q8_0",
+        "vector_count": 1,
+        "vector_metadata": {
+          "bytes": 4096,
+          "index": 0,
+          "input_sha256": "cc87ecf8e5c31b0628aaf9c2e8124b65c39cc8be7064934bc30498c66f63c2a3",
+          "pages": 2,
+          "sha256": "275b446a193d7375bea6be7b8e124717ac375b5fa09ef237c499255e20b2e11e"
+        }
+      },
+      "journal_bytes": 42843,
+      "journal_sha256": "d69f6362995ae88984476017da613944cd67fce49eb0eeae58c01d7b213258c6",
+      "request_outcome": {
+        "finality": "final",
+        "outcome": "completed",
+        "reported_model": "qwen3-embedding:0.6b-q8_0",
+        "usage": {
+          "counts": {
+            "input_cache_write_1h_tokens": null,
+            "input_cache_write_5m_tokens": null,
+            "input_cache_write_tokens": null,
+            "input_cached_tokens": null,
+            "input_tokens": 13,
+            "input_uncached_tokens": null,
+            "output_reasoning_tokens": null,
+            "output_tokens": null,
+            "provider_duration_ns": 1574606392,
+            "provider_web_fetch_requests": null,
+            "provider_web_search_requests": null,
+            "total_tokens": 13
+          },
+          "derived_fields": [
+            "total_tokens"
+          ],
+          "issues": [],
+          "not_applicable_fields": [
+            "output_tokens"
+          ],
+          "operation": "embedding",
+          "quality": "totals_known",
+          "version": 2
+        }
+      },
+      "saved_restore_after_idle_resume_and_close": "passed",
+      "service_active": null,
+      "service_recent_count": 1,
+      "session_id": "cac0cc089a6c4ebcf0b2d65aca775a25",
+      "unknown_liability_count": 0
+    }
+  },
+  "build": "committed 1d014f6 rebuilt before declaration; no runtime source edits during control",
+  "chatgpt_conservative_charged": 238,
+  "chatgpt_remaining": 62,
+  "date": "2026-10-31",
+  "declaration": {
+    "answer_output_cap": 32,
+    "answer_thinking": "none",
+    "deadline_ms": 100000,
+    "effects": "explicit embedding only, then main answer with effects denied; no daemon stop/configuration/download",
+    "local_call_limit": 1000,
+    "maximum_inference_attempts": 2,
+    "maximum_metadata_requests": 48,
+    "origin": "http://127.0.0.1:11434",
+    "pins": {
+      "qwen3-embedding:0.6b-q8_0": {
+        "manifest_sha256": "ac6da0dfba84a81fdbfbaf330198c33cd77c4cdfc53e8bc50eb581914a15621d",
+        "metadata_sha256": "100dbc797299e63f4e4240b2f9036e21a92861f74903ea12115575506847aea3",
+        "minimum_context_tokens": 8192,
+        "runtime_version": "0.40.13",
+        "trust_boundary": "cooperative_service_metadata",
+        "version": 1
+      },
+      "qwen3.5:4b": {
+        "manifest_sha256": "d8b0f5e9760cd1682034f292d7ef72ec46f432149be0df7574bf2d6e92e38c04",
+        "metadata_sha256": "c2ed7207a7cd47d14d7f7ddd1ab7a9e013ba0b94e95e11ab9c582f91c545cbe2",
+        "minimum_context_tokens": 8192,
+        "runtime_version": "0.40.13",
+        "trust_boundary": "cooperative_service_metadata",
+        "version": 1
+      }
+    },
+    "prior_service_ledger_check": "prior smoke used no registered service; default and smoke trees absent before this control",
+    "quality": "development synthetic adapter/Session control; no independent quality claim",
+    "requested_context_tokens": 8192,
+    "retries": 0,
+    "source_commit": "1d014f650c94c8aad129218a84e2e02d8187640e",
+    "starting_local_calls_charged": 2,
+    "version": 1
+  },
+  "documentation_checks": "passed; 990 Markdown files, 8231 local links, zero errors; unrelated private-directory warnings retained",
+  "downloads": 0,
+  "files": [
+    {
+      "bytes": 642,
+      "path": "/tmp/ipse-local-pinned-jobs-prepare-20261031.exs",
+      "sha256": "990beb8d4faca87dec5cf9a4b020f3de1119d9fa82e84f8020d711b594be714c"
+    },
+    {
+      "bytes": 8561,
+      "path": "/tmp/ipse-local-pinned-jobs-run-20261031.exs",
+      "sha256": "5cf7a22360fef6e06220f8f44b1c02610974137d557b0982304832fa5c2acb89"
+    },
+    {
+      "bytes": 996,
+      "path": "/tmp/ipse-local-pinned-jobs-continue-prepare-20261031.exs",
+      "sha256": "eb315c545d6d4e5fabf9e5b7eb8160f84c591bfaabf659c81cb0a5e2f7bed01e"
+    },
+    {
+      "bytes": 8652,
+      "path": "/tmp/ipse-local-pinned-jobs-continue-20261031.exs",
+      "sha256": "537e961111118dce9507f553668f459e6f421bbbd578da557f6870e323f75aaa"
+    },
+    {
+      "bytes": 3431,
+      "path": "/tmp/ipse-local-pinned-jobs-audit-20261031.exs",
+      "sha256": "dcee149b9d0900ee8db4a02e6a69e7971f4e9ab2636acc11d40a622b018b05f9"
+    },
+    {
+      "bytes": 787,
+      "path": "/tmp/ipse-local-pinned-jobs-build-20261031.log",
+      "sha256": "696bcf83fbfba6090281aaf466a33567867c86323419ee36b50843703b3bf7cc"
+    },
+    {
+      "bytes": 112,
+      "path": "/tmp/ipse-local-pinned-jobs-prepare-20261031.log",
+      "sha256": "1985190f7ebe8922a4e650aeb1990ae71629f58a2d47d1de6fa8ca012f3aae17"
+    },
+    {
+      "bytes": 213,
+      "path": "/tmp/ipse-local-pinned-jobs-run-20261031.log",
+      "sha256": "00e0f0f12eb57a5918e0687625d19b78c2dec537deb47398704722e388a4a0cb"
+    },
+    {
+      "bytes": 119,
+      "path": "/tmp/ipse-local-pinned-jobs-continue-20261031.log",
+      "sha256": "1cf0aeb45c42a6804910dad1b993d770931b1a12ac6df7c5708de63cc35b4984"
+    },
+    {
+      "bytes": 297,
+      "path": "/tmp/ipse-local-pinned-jobs-audit-20261031.log",
+      "sha256": "5f0041b6fa3de0aa1b57b7ab6c663a6b0c09b3f5a4fe02189a8572f00b9b2973"
+    },
+    {
+      "bytes": 756,
+      "path": "/tmp/ipse-local-pinned-jobs-docs-20261031.log",
+      "sha256": "6286dc42157f7dd61ce3930d91eca8d9168d7efe2dd15e5c25c2639d7b6bdab1"
+    },
+    {
+      "bytes": 1478,
+      "path": "/tmp/ipse-local-pinned-jobs-20261031/declaration.json",
+      "sha256": "b643a0dea1d1f891c85f07138fc114174f2c9c2208436e5fbef1e01ace202c06"
+    },
+    {
+      "bytes": 166059,
+      "path": "/tmp/ipse-local-pinned-jobs-20261031/source-before.json",
+      "sha256": "608b404787c7765930b461c4c53ee3fa90cba880ecd3a465bb57b72e9a04042c"
+    },
+    {
+      "bytes": 1698,
+      "path": "/tmp/ipse-local-pinned-jobs-20261031/prepared.json",
+      "sha256": "4ecb75f12f6ec40a60a68d047725c2e6be397e108b0586b6f998c1243098a31a"
+    },
+    {
+      "bytes": 1676,
+      "path": "/tmp/ipse-local-pinned-jobs-20261031/embedding-config.json",
+      "sha256": "147406a80f68eea78a8a0a733e530167cb60e553cc45d1a69989ef33110cbbb4"
+    },
+    {
+      "bytes": 994,
+      "path": "/tmp/ipse-local-pinned-jobs-20261031/answer-config.json",
+      "sha256": "de82cd26bfb76834d38eba26a3965ff9285d7b38ae54a5c8fe0d936ded1c364b"
+    },
+    {
+      "bytes": 216,
+      "path": "/tmp/ipse-local-pinned-jobs-20261031/calls.jsonl",
+      "sha256": "661f6d7c630a2e017938d41294e8568bcf17cb95bc1f7ff9a75c47fcc6b465a3"
+    },
+    {
+      "bytes": 19,
+      "path": "/tmp/ipse-local-pinned-jobs-20261031/embedding-first-outcome.json",
+      "sha256": "c3736b0d4f2826db0c9e95a0073627d110ba5d886497469fc2ad5620b5dab96b"
+    },
+    {
+      "bytes": 130,
+      "path": "/tmp/ipse-local-pinned-jobs-20261031/answer-first-outcome.json",
+      "sha256": "f23e42ffd7bec6a62d6c29097537ffc538dfc9498cbd3cc0c46ab9efcc73d7ae"
+    },
+    {
+      "bytes": 502,
+      "path": "/tmp/ipse-local-pinned-jobs-20261031/embedding-budget.json",
+      "sha256": "6825f58381471f5d1308f0fa0c0d428fd6536cf2a96918f7b71909b10120c71a"
+    },
+    {
+      "bytes": 502,
+      "path": "/tmp/ipse-local-pinned-jobs-20261031/answer-budget.json",
+      "sha256": "16977d577ac40dd17ab749d9623a56badacb081b394240113831498cb67ca2b2"
+    },
+    {
+      "bytes": 869,
+      "path": "/tmp/ipse-local-pinned-jobs-20261031/embedding-service.json",
+      "sha256": "3bae3988be72412c1b9686519f1bf6261f29550f69153105324cf64038942014"
+    },
+    {
+      "bytes": 1511,
+      "path": "/tmp/ipse-local-pinned-jobs-20261031/answer-service.json",
+      "sha256": "bc47aa7c8f0b9b112c8a96bf0c9118a1b6ff9c5e48cbb3ca8e9c50d2a4bb78ce"
+    },
+    {
+      "bytes": 5237,
+      "path": "/tmp/ipse-local-pinned-jobs-20261031/final-audit.json",
+      "sha256": "1f504357d08d47ff2ac45b833bebea31ce223855b0da9df4c022e1711122aa3c"
+    },
+    {
+      "bytes": 106,
+      "path": "/tmp/ipse-local-pinned-jobs-20261031/artifact-build.log",
+      "sha256": "fba3af756757238e5b6f01b8421dc5872ebc0c2603eb5c1e910c0867864259f4"
+    },
+    {
+      "bytes": 1548,
+      "path": "/tmp/ipse-local-pinned-jobs-20261031/artifact/extension.json",
+      "sha256": "373517dfac3ddc80cc815dc9b060e53ac1458c87bfd1e86752159bcc52520eb5"
+    }
+  ],
+  "first_failure": "artifact import used an incorrect subdirectory; stopped before calls file, Session or inference; continuation used the original metadata/declaration and correct artifact root",
+  "installed_candidate": false,
+  "kind": "actual_source_checkout_pinned_registered_primary_pair_sessions",
+  "local_calls_charged": 4,
+  "local_calls_remaining": 996,
+  "manual_review": "operator Configuration and Extensions and developer Configuration reviewed in model-pin implementation; no manual behavior changes in this receipt increment",
+  "metadata_request_upper_bound": 48,
+  "offline_execution": "not_attested",
+  "qualification": "source functional control only; no independent semantic quality, long-context fit, immutable weights, offline or installed acceptance",
+  "quality": "unverified",
+  "real_inference_requests_this_control": 2,
+  "source_commit": "1d014f650c94c8aad129218a84e2e02d8187640e",
+  "source_file_and_beam_count": 1110,
+  "source_inventory_sha256": "608b404787c7765930b461c4c53ee3fa90cba880ecd3a465bb57b72e9a04042c",
+  "source_unchanged_after_completed_control": true,
+  "version": 1,
+  "wire_request_count_measured": false
+}

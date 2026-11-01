@@ -118,3 +118,20 @@ scope and sanitized receipt; its private synthetic journal SHA-256 is
 `2d3b24970c1f126285a5d8919bf624ea3b2d706deeb87e9bf2ba445cd15198cb`.
 Source/runtime/config/workspace match before and after. This is functional
 development evidence, not independent quality or outgoing-wire proof.
+
+## Pinned local Session jobs, 2026-10-31
+
+The separately declared [two-job control](local-pinned-jobs-20261031.md) used
+committed source `1d014f6`, a matching rebuilt runtime, the existing primary pair
+and one registered service. The public embedding example reconstructed a complete
+vector; the ordinary main Session returned its exact synthetic answer with effects
+denied. Both jobs passed cooperative model/context checks, completed/final usage,
+service settlement and Saved/idle-resume controls. Each had one booked request
+and zero unsettled/unknown budget liabilities.
+
+Charge **2 additional local calls: 4 of 1,000 charged, 996 remaining**. ChatGPT
+stays **238 of 300 conservatively charged, 62 remaining**. No downloads, retries,
+provider substitutions, manual settlements or refunds occurred. A harness artifact
+path error stopped before Session creation or inference and was corrected through
+a continuation preserving the original declaration/metadata. This is functional
+source evidence, not independent quality, immutable weights or offline proof.
