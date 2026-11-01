@@ -92,6 +92,11 @@ MCP and delegation keep their separate approval requirements. The grant expires
 after one year and has daily limits of 100 operations, 2 MiB of input and 4 MiB of
 output. A refusal or uncertain attempt may consume conservative allowance.
 
+An action proposed from protected note content can still refuse before ordinary
+interactive approval when its native output owners are unavailable. Saving
+knowledge permission does not enable that display path. Inspect the refusal and
+preserve the Session; do not broaden effect approval to work around it.
+
 After successful setup, start a new conversation:
 
 ```sh

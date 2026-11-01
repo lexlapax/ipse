@@ -1,0 +1,191 @@
+{
+  "allowances_unchanged": {
+    "chatgpt_conservative_charged": 238,
+    "chatgpt_limit": 300,
+    "local_charged": 4,
+    "local_limit": 1000
+  },
+  "checks": [
+    {
+      "excluded": 138,
+      "log": "/tmp/ipse-display-owners-third-20261031.log",
+      "name": "final actual policy/root owner and callback loss/deadline controls",
+      "passed": 2,
+      "seconds": 13.0
+    },
+    {
+      "excluded": 11,
+      "log": "/tmp/ipse-display-owners-native-second-20261031.log",
+      "name": "final serialized genuine terminal/source-owner control",
+      "passed": 1,
+      "seconds": 5.9
+    },
+    {
+      "log": "/tmp/ipse-display-owners-regression-20261031.log",
+      "name": "current-use/reference/stored-source/tool/observation regression",
+      "passed": 95,
+      "seconds": 22.6
+    }
+  ],
+  "checks_other": {
+    "build": "passed; 180 host modules and three inert bundled artifacts",
+    "ci_policy": "passed",
+    "demo": "passed; credential free",
+    "docs": "passed; 991 Markdown files, 8237 local links, zero errors; unrelated private-directory warnings retained",
+    "format": "passed",
+    "strict_compile": "passed"
+  },
+  "date": "2026-10-31",
+  "downloads": 0,
+  "logs": [
+    {
+      "bytes": 336,
+      "path": "/tmp/ipse-display-owners-first-20261031.log",
+      "sha256": "ca30dc6ff5be74eb759ac35fb5c996ba26f999805fbab4f547d7d18c34afafc6"
+    },
+    {
+      "bytes": 336,
+      "path": "/tmp/ipse-display-owners-second-20261031.log",
+      "sha256": "67838891e98c84c9788e9c79c5ff178b5e96ac78257ca5a5e8c1497a1d46fc1c"
+    },
+    {
+      "bytes": 338,
+      "path": "/tmp/ipse-display-owners-third-20261031.log",
+      "sha256": "6c46fbfdff4ff12695a14718e4f49dde171db7cb3775a64d75aee9171f1783e3"
+    },
+    {
+      "bytes": 328,
+      "path": "/tmp/ipse-display-owners-native-first-20261031.log",
+      "sha256": "bbb4cd745165413b37578defcf595354096977a8658755aebb486c78da78f594"
+    },
+    {
+      "bytes": 328,
+      "path": "/tmp/ipse-display-owners-native-second-20261031.log",
+      "sha256": "cc055a3b81ae7f4177df0e4eb76c0d81b1633f8d0736fb6ea3e04941c2a3e0e6"
+    },
+    {
+      "bytes": 345,
+      "path": "/tmp/ipse-display-owners-regression-20261031.log",
+      "sha256": "952cf408d972c87230fce1118d216df4534170716f9364db5e49a09afcf5374c"
+    },
+    {
+      "bytes": 787,
+      "path": "/tmp/ipse-display-owners-build-20261031.log",
+      "sha256": "ec90e640289482df4bf48b4f7f5b3d258803acd7a87465fae80eadc5223d0871"
+    },
+    {
+      "bytes": 0,
+      "path": "/tmp/ipse-display-owners-format-20261031.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "bytes": 0,
+      "path": "/tmp/ipse-display-owners-compile-20261031.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "bytes": 4431,
+      "path": "/tmp/ipse-display-owners-demo-20261031.log",
+      "sha256": "7ccb5cec37d5b4adcf1edd8e7250bd020f44706d09a5f5cdfd3f74634ea6b9aa"
+    },
+    {
+      "bytes": 32,
+      "path": "/tmp/ipse-display-owners-ci-20261031.log",
+      "sha256": "e856938f2d4ee3eb319a90056aca83ff6b7347ea57ff71bac975f84df18ae633"
+    },
+    {
+      "bytes": 756,
+      "path": "/tmp/ipse-display-owners-docs-20261031.log",
+      "sha256": "c5834404ff90cacb149108ee91d0cb27f6655efebeb03e4130494edb163ef773"
+    }
+  ],
+  "manual_review": [
+    "docs/developer/session-sources.md",
+    "docs/operator/knowledge-permissions.md"
+  ],
+  "native_helper": {
+    "bytes": 955648,
+    "path": "priv/ipse-runner",
+    "sha256": "c6768890455697de64284463092806fa2e30305a7ea7b8e6ee60c625f3f0ccff"
+  },
+  "native_protocol_changes": false,
+  "native_scope": "available Linux 7.2.11-arch1-1/tmpfs profile; automated actual input and original source journals, not human attribution",
+  "native_source_control": {
+    "actual_transaction_roles": [
+      "Identity",
+      "Consent",
+      "Collection"
+    ],
+    "consumer_model_or_tool_admissions": 0,
+    "fixture_explicitly_restores_original_after_refusal": true,
+    "reviewed_statements": 3,
+    "selected_dependencies": 3,
+    "source_journals_retained_after_test_teardown": false,
+    "source_original_sessions": 1,
+    "source_tail_repaired_by_reader": false,
+    "source_torn_tail_refusal": true
+  },
+  "new_dependencies": [],
+  "not_qualified": [
+    "actual production approval display",
+    "Session/purpose/full payload/sink binding",
+    "active original Writer/Session share",
+    "accepted-decision additional management-journal transfer",
+    "full 128-source display",
+    "correction/supersession/delegation/worker-pipe output",
+    "whole-current-source positive suite",
+    "installed/platform/human qualification",
+    "complete P30/P31 audit and handoff"
+  ],
+  "real_inference_requests": 0,
+  "real_metadata_service_requests": 0,
+  "reuse": [
+    "ManagedReference canonical union/current checks",
+    "StoredSources grouped transferable originals",
+    "Identity domain auth and Consent policy",
+    "Collection held managed read",
+    "existing structural root projection",
+    "Transaction owner-bound retained stack"
+  ],
+  "scope": "retained actual source/policy owner preparation only; production managed approval refusal unchanged",
+  "source": [
+    {
+      "bytes": 37327,
+      "path": "lib/ipse/session/managed_use.ex",
+      "sha256": "8b2ab617c691f45cbaa2030224894130e5a81f606855b01033a671ed73b480f5"
+    },
+    {
+      "bytes": 46300,
+      "path": "lib/ipse/extension/collection/observed_read.ex",
+      "sha256": "4739baafccd4c0e01647bbd2434e1543b61ee702e077850d1c7b16b76cf54414"
+    },
+    {
+      "bytes": 275272,
+      "path": "test/ipse/extension/managed_collection_call_session_test.exs",
+      "sha256": "56351ecfc6e5c9fb3d47e7e610fd3bdd4211febf791e9af78b4a48b778c2333f"
+    },
+    {
+      "bytes": 1804,
+      "path": "test/ipse/session/operator_assertion_integration_test.exs",
+      "sha256": "8a877e273a48724acbf0825094f5bf0a3da0e9ec4e63d70f57e3f7d61b9e23d8"
+    },
+    {
+      "bytes": 31736,
+      "path": "test/support/operator_assertion.exs",
+      "sha256": "0dddbff9f74691b3850b30dfe90e4a5231e2d8157e2c1f9d4dbdcb9edb171d4d"
+    },
+    {
+      "bytes": 5663,
+      "path": "test/support/managed_display_owners.exs",
+      "sha256": "6d7eb2efe76106576b12d75022850b400697f7aad8da7714cdf42fd71f3fab1e"
+    }
+  ],
+  "source_base": "c47e661",
+  "uncertainty_controls": [
+    "callback error",
+    "callback exception",
+    "late successful callback",
+    "native transaction controller loss"
+  ],
+  "version": 1
+}

@@ -20,7 +20,7 @@ defmodule Ipse.Session.OperatorAssertionIntegrationTest do
   end
 
   for scenario <-
-        ~w(save save_forget save_forget_cancel save_forget_stale save_retention save_expire save_history_expire cancel stale planning revoked) do
+        ~w(save save_display_owners save_forget save_forget_cancel save_forget_stale save_retention save_expire save_history_expire cancel stale planning revoked) do
     @tag timeout: 90_000
     @tag assertion_scenario: scenario
     test "actual native CLI statement review: #{scenario}", c do

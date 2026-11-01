@@ -10,6 +10,7 @@ defmodule Ipse.Session.ManagedUse do
   alias Ipse.{JSON, Journal.Writer}
 
   alias Ipse.Extension.{
+    Collection,
     Collection.ObservedRead,
     Consent,
     ManagedRecipe,
@@ -20,6 +21,7 @@ defmodule Ipse.Session.ManagedUse do
   }
 
   alias Ipse.Session.{ManagedReference, PendingAcceptance, Resources, StoredSources}
+  alias Ipse.Runner.Transaction
   @error {:error, :managed_dependency_unavailable}
   @max_sources 128
 
@@ -301,6 +303,127 @@ defmodule Ipse.Session.ManagedUse do
     _ -> @error
   catch
     _, _ -> @error
+  end
+
+  @doc """
+  Retain transferable original sources and the actual Identity/Consent/Collection
+  owners for a trusted display adapter. No bytes are displayed by this function.
+
+  The adapter must bind its exact Session, purpose, payload and native sink,
+  transfer every owner, and confirm settlement before returning. Active original
+  proofs still require the owning Session's separate sealed Writer/lock handoff.
+  Accepted decisions refuse here: their additional original management-journal
+  owner must also be transferred by an accepted-decision display adapter.
+  Once the adapter is entered, refusal, interruption or unconfirmed cleanup is
+  unknown; it never becomes a claim that no display happened.
+  """
+  def with_display_dependencies(context, dependencies, fun)
+      when is_map(context) and is_list(dependencies) and is_function(fun, 2) do
+    entered = :atomics.new(2, signed: true)
+
+    result =
+      prepare_display_dependencies(context, dependencies, fn current, held ->
+        :atomics.put(entered, 2, held.deadline)
+        :atomics.put(entered, 1, 1)
+        fun.(current, held)
+      end)
+
+    if :atomics.get(entered, 1) == 1 and
+         (not match?({:ok, _}, result) or
+            System.monotonic_time(:millisecond) >= :atomics.get(entered, 2)),
+       do: {:unknown, :managed_display_ownership_unconfirmed},
+       else: result
+  end
+
+  def with_display_dependencies(_, _, _), do: @error
+
+  defp prepare_display_dependencies(context, dependencies, fun) do
+    with true <- dependencies != [],
+         {:ok, ^dependencies} <- ManagedReference.union([dependencies]),
+         true <- Enum.all?(dependencies, &(&1["version"] in [3, 4, 5])),
+         true <- bounded?(dependencies) and Enum.all?(dependencies, &bound?(&1, context)) do
+      Resources.file_effect(fn ->
+        with {:ok, first} <-
+               protected(context, dependencies, fn cap, catalog, _ ->
+                 observe(context, dependencies, cap, catalog, %{})
+               end),
+             true <- length(first.proofs) <= @max_sources do
+          use = fn _sources, leases, active ->
+            display_dependencies_owned(context, dependencies, first, leases, active, fun)
+          end
+
+          if first.proofs == [],
+            do: use.([], [], false),
+            else: StoredSources.with_shareable_union(context, nil, first.proofs, use)
+        else
+          _ -> @error
+        end
+      end)
+    else
+      _ -> @error
+    end
+  rescue
+    _ -> @error
+  catch
+    _, _ -> @error
+  end
+
+  defp display_dependencies_owned(context, dependencies, first, leases, active, fun) do
+    protected(context, dependencies, fn cap, catalog, policy ->
+      with {:ok, ^first} <- observe(context, dependencies, cap, catalog, %{}),
+           policy = use_deadline(policy, first.current),
+           deadline = min(policy["expires_at_ms"], System.system_time(:millisecond) + 5_000),
+           true <- System.system_time(:millisecond) < deadline,
+           true <-
+             Enum.all?(Enum.zip(dependencies, first.current), fn {old, current} ->
+               ManagedReference.current?(old, current, System.system_time(:millisecond))
+             end) do
+        pin = context.config.semantic_admission["pin"]
+
+        Collection.with_managed_read(
+          SemanticAdmission.collection_root(context.config.home),
+          pin["namespace"],
+          fn witness, _read, alive ->
+            with {:ok, pointer} <-
+                   if(is_binary(witness["root_bytes"]),
+                     do: JSON.decode_bounded(witness["root_bytes"], 1024),
+                     else: {:ok, nil}
+                   ),
+                 root_witness =
+                   witness
+                   |> Map.take(~w(version root_state root_sha256 manifest_sha256))
+                   |> Map.put("root", pointer),
+                 {:ok, root} <- ObservedRead.root_identity(root_witness, pin["namespace"]),
+                 true <- Enum.all?(first.current, &(&1["collection"] === root)),
+                 {:ok, [identity, consent, collection] = caps} <-
+                   Transaction.retained_share_stack(),
+                 true <- Process.get({ProjectIdentity, :lock_held}) === true,
+                 true <- Process.get({Consent, :lock_held}) === consent,
+                 true <- Process.get({Collection, :lock_held}) === collection,
+                 true <- Enum.all?(caps, &(&1.owner == self())),
+                 :ok <- alive.(),
+                 remaining = min(deadline - System.system_time(:millisecond), 5_000),
+                 true <- remaining > 0 do
+              fun.(first.current, %{
+                owner: self(),
+                identity: identity,
+                consent: consent,
+                collection: collection,
+                source_leases: leases,
+                source_proofs: first.proofs,
+                active_sources: active,
+                deadline: System.monotonic_time(:millisecond) + remaining,
+                deadline_ms: deadline
+              })
+            else
+              _ -> @error
+            end
+          end
+        )
+      else
+        _ -> @error
+      end
+    end)
   end
 
   @doc """

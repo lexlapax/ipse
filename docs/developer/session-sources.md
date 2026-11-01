@@ -369,6 +369,28 @@ The [managed read adapter](collection-sdk.md) checks current consent, recipe,
 deadline and signed collection root while those source locks remain held.
 Its result becomes historical after return; later use needs revalidation.
 
+For a strict display adapter, `ManagedUse.with_display_dependencies/3` first
+rederives the complete current dependency/proof union, then retains transferable
+inactive source locks and the actual Identity, Consent and Collection owners.
+Its final held Collection root must equal every authenticated observation; a
+root precheck followed by an unlocked callback is insufficient. The callback
+receives the three owner-bound capabilities, exact proofs/group tokens, whether
+active sources need the separate Session share, and a deadline bounded by policy,
+source validity and five seconds. Callback failure, owner loss or a late result
+after entry stays unknown. Opaque tokens cannot be used after callback cleanup.
+Accepted-decision dependencies refuse this preparation path because their
+additional original management-journal lease must also reach the native sink.
+
+This callback displays nothing and grants no approval. An actual adapter must
+still bind the exact owning Session, purpose, full payload and native output
+channel, transfer all owners, confirm native completion and settlement, release
+display locks before input, and revalidate execution afterward. Ordinary managed
+approval remains closed while that adapter is unavailable. Run the focused
+`managed_display_owner` cases in `managed_collection_call_session_test.exs` for
+the held root/policy owners and the `save_display_owners` scenario in
+`operator_assertion_integration_test.exs` for genuine reviewed original sources;
+these tests do not establish protected payload delivery or accepted-decision UI.
+
 A resource scope reserves 128 source-lock entries, shared by inactive original
 Session journals and nontransferable acceptance-journal reads. Bound the complete
 set when combining them. These locks have a separate reserve from the ordinary

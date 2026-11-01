@@ -1324,6 +1324,113 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
     pid
   end
 
+  @tag managed_display_owner: true
+  test "display preparation retains the actual Identity Consent and Collection owners", c do
+    alias Ipse.Runner.Transaction
+    alias Ipse.Session.ManagedUse
+    alias Ipse.Extension.Collection.ObservedRead
+    pid = start(c)
+    state = :sys.get_state(pid)
+    context = %{config: state.config, cwd: c.cwd, session_id: state.id, history_dir: c.dir}
+    root = SemanticAdmission.collection_root(c.home)
+    request = %{"op" => "snapshot"}
+    pin = state.config.semantic_admission["pin"]
+    assert {:ok, observation} = ObservedRead.read(root, c.namespace, request)
+    assert {:ok, dependency} = ObservedRead.root_dependency(request, observation, pin)
+
+    assert {:ok, caps} =
+             ManagedUse.with_display_dependencies(context, [dependency], fn [current], held ->
+               assert current == dependency
+               assert held.owner == self()
+               assert held.source_proofs == [] and held.source_leases == []
+               assert held.active_sources == false
+               assert held.deadline_ms > System.system_time(:millisecond)
+               assert held.deadline_ms <= System.system_time(:millisecond) + 5_000
+               caps = [held.identity, held.consent, held.collection]
+               assert {:ok, ^caps} = Transaction.retained_share_stack()
+
+               ids =
+                 Enum.map(caps, fn cap ->
+                   assert {:ok, id} = Transaction.retained_share_identity(cap)
+                   id
+                 end)
+
+               assert Enum.map(ids, & &1.slot) == [0, 1, 2]
+               assert length(Enum.uniq(Enum.map(ids, & &1.pid))) == 1
+               assert length(Enum.uniq(Enum.map(ids, &{&1.device, &1.inode}))) == 3
+
+               assert {:error, _} =
+                        Task.async(fn ->
+                          Transaction.retained_share_identity(held.collection)
+                        end)
+                        |> Task.await()
+
+               {:ok, caps}
+             end)
+
+    for cap <- caps, do: assert(match?({:error, _}, Transaction.retained_share_identity(cap)))
+
+    for callback <- [
+          fn _, _ -> {:error, :synthetic_sink_refused} end,
+          fn _, _ -> raise "synthetic sink interruption" end,
+          fn _, held ->
+            Process.sleep(max(held.deadline - System.monotonic_time(:millisecond) + 1, 0))
+            {:ok, :late}
+          end,
+          fn _, held ->
+            monitor = Process.monitor(held.collection.controller)
+            Process.exit(held.collection.controller, :kill)
+            assert_receive {:DOWN, ^monitor, :process, _, _}, 2_000
+            {:ok, :lost_owner}
+          end
+        ] do
+      assert {:unknown, :managed_display_ownership_unconfirmed} =
+               ManagedUse.with_display_dependencies(context, [dependency], callback)
+    end
+
+    assert :ok = Session.close_confirmed(pid)
+  end
+
+  @tag managed_display_owner: true
+  test "a changed current root refuses display preparation before entering its adapter", c do
+    alias Ipse.Extension.Collection
+    alias Ipse.Extension.Collection.ObservedRead
+    pid = start(c)
+    state = :sys.get_state(pid)
+    context = %{config: state.config, cwd: c.cwd, session_id: state.id, history_dir: c.dir}
+    root = SemanticAdmission.collection_root(c.home)
+    request = %{"op" => "snapshot"}
+    pin = state.config.semantic_admission["pin"]
+    assert {:ok, observation} = ObservedRead.read(root, c.namespace, request)
+    assert {:ok, dependency} = ObservedRead.root_dependency(request, observation, pin)
+
+    assert {:ok, _} =
+             Collection.execute(
+               root,
+               c.namespace,
+               %{
+                 "op" => "commit",
+                 "expected_generation" => 0,
+                 "advance_floor" => true,
+                 "changes" => [
+                   %{
+                     "key" => "fixture",
+                     "expected_revision" => 0,
+                     "value" => %{"changed" => true}
+                   }
+                 ]
+               },
+               Ipse.Usage.id()
+             )
+
+    assert {:error, _} =
+             Ipse.Session.ManagedUse.with_display_dependencies(context, [dependency], fn _, _ ->
+               flunk("stale display preparation entered the adapter")
+             end)
+
+    assert :ok = Session.close_confirmed(pid)
+  end
+
   for kind <- [:managed, :unmanaged] do
     @tag strict_deadline_gate: true, metadata_version: 3
     test "protected #{kind} publication applies its admitted deadline policy", c do

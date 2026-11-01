@@ -124,7 +124,7 @@ assert length(assertions) == expected_assertions
 assert {:ok, restored} = Ipse.Session.Saved.restore(events, id)
 assert restored.managed_reads.outputs == :sys.get_state(session).managed_outputs
 
-if scenario == "save" do
+if scenario == "save" and requested_scenario != "save_display_owners" do
   receipts = Enum.filter(events, &(&1["type"] == "managed_read_observed"))
   assert length(receipts) == 6
   [receipt | _] = receipts
@@ -177,7 +177,7 @@ assert {:ok, page} =
 
 assert length(page["records"]) == if(scenario == "save", do: 3, else: 0)
 
-if scenario == "save" do
+if scenario == "save" and requested_scenario != "save_display_owners" do
   assert Enum.sort(Enum.map(page["records"], & &1["value"]["category"])) ==
            ~w(current ordinary preference)
 
@@ -291,7 +291,12 @@ source_config = :sys.get_state(session).config
 assert :ok = Ipse.Session.close_confirmed(session)
 assert {:ok, before_resume} = Ipse.Journal.load(dir, id)
 
-if scenario == "save" do
+if requested_scenario == "save_display_owners" do
+  Code.require_file("managed_display_owners.exs", __DIR__)
+  Ipse.Test.ManagedDisplayOwners.run(config, cwd, home, dir, page["records"], id)
+end
+
+if scenario == "save" and requested_scenario != "save_display_owners" do
   proofs = Enum.flat_map(page["records"], & &1["value"]["evidence"]["sources"])
   context = %{config: source_config, history_dir: dir, session_id: Ipse.Usage.id()}
   checked = fn c, p, fun -> Ipse.Session.StoredSources.with_verified(c, %{}, p, fun) end

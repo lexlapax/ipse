@@ -958,6 +958,13 @@ service settlement and Saved/idle resume. Immutable per-request weights, offline
 execution, long-input/context-fit/quality and installed
 qualification remain open; these checks do not close D1 or F.
 
+P31C0 strict approval display now has a
+[retained source/policy-owner preparation callback](archive/2026-10-26-p30-p31-implementation/managed-display-owners-20261031.md).
+Actual native statement sources and current root/policy owners have scoped
+controls, including changed-source/root refusal and unknown after callback loss
+or lateness. Production Session/purpose/payload/native-sink wiring and successful
+managed approval remain open; the existing refusal gate is unchanged.
+
 Public session-only retention uses the same full-facts native review, journal
 and reducing effect as explicit forgetting. Public pin, automatic and duration
 use the guarded retention effect; native-terminal success and cancellation

@@ -84,7 +84,7 @@ defmodule Ipse.Extension.Collection.ObservedRead do
          true <- observation["version"] === 1,
          true <- observation["request_sha256"] === JSON.digest([request]),
          true <- observation["result_sha256"] === JSON.digest([observation["value"]]),
-         {:ok, collection} <- witnessed_root(observation["witness"], pin["namespace"]),
+         {:ok, collection} <- root_identity(observation["witness"], pin["namespace"]),
          dependency = %{
            "version" => 3,
            "project_id" => pin["project_id"],
@@ -118,7 +118,7 @@ defmodule Ipse.Extension.Collection.ObservedRead do
          value = observation["value"],
          true <-
            exact?(value, ["record"]) and observation["result_sha256"] === JSON.digest([value]),
-         {:ok, collection} <- witnessed_root(observation["witness"], pin["namespace"]),
+         {:ok, collection} <- root_identity(observation["witness"], pin["namespace"]),
          {:ok, record} <- record_identity(value["record"], request["key"], collection),
          true <- if(is_nil(record), do: is_nil(validity), else: is_map(validity)),
          dependency = %{
@@ -1018,7 +1018,8 @@ defmodule Ipse.Extension.Collection.ObservedRead do
   defp number(nil), do: nil
   defp number(value), do: String.to_integer(value, 36)
 
-  defp witnessed_root(witness, namespace) do
+  @doc "Structurally project an actual Collection witness; the caller must retain and authenticate its owner."
+  def root_identity(witness, namespace) do
     with true <- exact?(witness, ~w(version root_state root root_sha256 manifest_sha256)),
          true <- witness["version"] === 2 do
       case witness["root_state"] do
