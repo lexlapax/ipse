@@ -59,6 +59,7 @@ nor resource/offline qualification. No daemon configuration or existing model wa
 - [Installed idle-resume verifier repair](package-idle-resume-20261031.md) preserves the exact failed archive, native ownership/release assertions and source checks; a replacement archive still requires installed verification.
 - [Full-source regression result](full-suite-20261031.md) retains the unchanged-source run's 71 failures and complete top-level failure extract; selected later controls do not replace this failed baseline.
 - [Completed c7cb484 default baseline](full-suite-c7cb484-20261031.md): 3518 passed,58 failed, with unchanged1057-file source; later isolated increments remain outside its scope.
+- [Running e86b1b8 concurrency limitation](full-suite-e86b1b8-concurrency-20261031.md) records overlapping author native-terminal work and the shared per-user input lock; no final aggregate or clean-environment qualification is implied.
 - [Registered competing V3 positive-fixture repair](registered-competing-fixture-20261031.md), preserving the original failed baseline.
 - [Current registered capture controls](registered-capture-controls-20261031.md) cover paged output, worker-entry revocation and ambiguous permissions without changing runtime gates.
 - [Installed inference inspection and reconciliation](inference-reconciliation-installed-20261031.md) records the exact clean package, generic installed proof and five synthetic native-terminal scenarios.
