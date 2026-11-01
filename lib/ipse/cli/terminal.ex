@@ -879,6 +879,16 @@ defmodule Ipse.CLI.Terminal do
       {:ipse, ^pid, :native_relation_ready} ->
         client_loop(%{s | native_relation: false})
 
+      {:ipse, ^pid, :managed_approval_wait} ->
+        client_loop(%{s | native_relation: true})
+
+      {:ipse, ^pid, :managed_approval_ready} ->
+        client_loop(%{s | native_relation: false})
+
+      {:ipse, ^pid, {:managed_approval_cancel, exit}} when is_boolean(exit) ->
+        discard_queue(s)
+        client_loop(%{s | queued: [], exit: exit})
+
       {:ipse, ^pid, {:error, error}} ->
         puts(:stderr, "\nError: #{Ipse.CLI.Errors.format(error)}")
         client_loop(s)
@@ -1099,14 +1109,17 @@ defmodule Ipse.CLI.Terminal do
   defp reader_request(s), do: {s, {:prompt, s.cancelling}, %{"kind" => "prompt"}}
 
   @doc false
-  def approval_display(name, args, context, token, cwd) do
+  def approval_display(name, args, context, token, cwd, once_only \\ false) do
     display =
       if(context,
         do: "External MCP target:\n" <> Jason.encode!(context, pretty: true) <> "\n",
         else: ""
       ) <>
         "\nWaiting for approval: #{name}\nAllow #{name}?\n#{Jason.encode!(args, pretty: true)}\nType allow #{token} to allow once, n to deny." <>
-        permission_choice(name, token, cwd) <> "\napproval> "
+        if(once_only,
+          do: "\n",
+          else: permission_choice(name, token, cwd) <> "\napproval> "
+        )
 
     display = escape(display)
 

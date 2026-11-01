@@ -286,8 +286,11 @@ defmodule Ipse.Session.StoredSources do
       result = with_sessions(rest, c, i, current ++ verified, fun)
 
       case local(c, i, proofs) do
-        {:ok, ^current} -> result
-        _ -> @error
+        {:ok, after_use} ->
+          if same_active_sources?(c, current, after_use), do: result, else: @error
+
+        _ ->
+          @error
       end
     end
   end
@@ -378,6 +381,28 @@ defmodule Ipse.Session.StoredSources do
       _ -> @error
     end
   end
+
+  defp same_active_sources?(_, before_use, after_use) when before_use === after_use, do: true
+
+  # Publishing the bound tool result admits new outcome sources in this same
+  # window. Its selected original proofs and policy must still revalidate exactly.
+  defp same_active_sources?(
+         %{source_binding: {:snapshot, "tool.result", _}},
+         before_use,
+         after_use
+       )
+       when is_list(before_use) and is_list(after_use) do
+    length(before_use) == length(after_use) and
+      Enum.zip(before_use, after_use)
+      |> Enum.all?(fn {before_row, after_row} ->
+        Map.delete(before_row, "generation") === Map.delete(after_row, "generation") and
+          JSON.safe_uint?(before_row["generation"]) and
+          JSON.safe_uint?(after_row["generation"]) and
+          after_row["generation"] >= before_row["generation"]
+      end)
+  end
+
+  defp same_active_sources?(_, _, _), do: false
 
   defp source_lock(%{shareable_source: true}, path), do: Runner.protected_share_resume_lock(path)
   defp source_lock(_, path), do: Runner.lock_source(path)

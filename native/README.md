@@ -429,8 +429,9 @@ display or consent notice. Its host must enforce the independently selected
 absolute review deadline and owner binding; a live control alone grants no
 authority. The separate `--owner-control-send-review-notice-v4 MILLISECONDS`
 combines that lifetime with the v2 peer-notice exchange. Its notice still proves
-only receipt of bytes from the authenticated peer; no Session review or protected
-delivery uses this experimental mode.
+only receipt of bytes from the authenticated peer. The managed approval adapter
+uses it only with the Session's pending-call binding and separately confirmed
+native display and exporter settlement.
 The private `v12-synthetic-source-group-notice-input` terminal combines the
 grouped source-lease input protocol with that notice exchange. It accepts only
 its fixed synthetic review text. PTY fixtures exercise confirmation and loss of
@@ -438,10 +439,17 @@ the Session control during input; they do not supply protected facts or prove
 Session writer-thaw integration.
 The separate `v13-session-review-group-input` accepts bounded text supplied in
 its initial manifest; it does not authenticate the origin of those bytes on its
-own. The private synthetic Session path selects and sends its fixed text before
-transferring the Session control and checks the manifest shape. Do not use v13
-for protected facts without independently binding the Session's chosen content,
-source owners and authority to the exact terminal operation.
+own. The private synthetic Session path selects fixed text. The production
+managed approval path instead binds the exact pending model call, dependency
+union and complete escaped arguments to its own purpose. Session selects and
+sends that payload and checks the manifest before transferring its control.
+Both paths require every lease's settled close and the peer notice before
+Writer thaw. For managed approval, source and policy scopes then release before
+the host sends `U` to begin input. The final exchange and input phase watch the
+Session/Host controls; settled source exporters may exit. Fresh effect admission
+still rechecks current sources and permission after the answer. Follow
+[the host flow](../docs/developer/session-sources.md#reconstruct-without-giving-old-tokens-authority)
+for unsupported dependencies and the separate synthetic/native evidence limits.
 The separate `v9-synthetic-notice-display` terminal mode accepts only the fixed
 synthetic marker and sends its notice after its lease-close handshakes. This
 fixture mode does not deliver protected content. A private synthetic Session

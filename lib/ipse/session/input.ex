@@ -42,6 +42,12 @@ defmodule Ipse.Session.Input do
   def cancel_read, do: GenServer.call(__MODULE__, :cancel_read)
 
   @doc false
+  def release_for_output, do: GenServer.call(__MODULE__, :release_for_output)
+  @doc false
+  def await_output_release(ticket),
+    do: GenServer.call(__MODULE__, {:await_output_release, ticket}, 6_000)
+
+  @doc false
   def invalidate do
     GenServer.call(__MODULE__, :invalidate)
   catch
@@ -49,7 +55,55 @@ defmodule Ipse.Session.Input do
   end
 
   @impl true
-  def init(_), do: {:ok, %{entries: %{}}}
+  def init(_), do: {:ok, %{entries: %{}, output_releases: %{}}}
+
+  def handle_call(:release_for_output, {target, _}, s) do
+    if map_size(s.output_releases) >= @limit or
+         Enum.any?(s.output_releases, fn {_, release} -> release.target == target end) do
+      {:reply, {:error, :operator_input_busy}, s}
+    else
+      refs = for {_, e} <- s.entries, e.target == target and e.task != nil, do: e.task.ref
+      ticket = make_ref()
+      timer = Process.send_after(self(), {:output_release_expired, ticket}, 5_000)
+
+      release = %{
+        target: target,
+        pending: MapSet.new(refs),
+        failed: false,
+        from: nil,
+        timer: timer
+      }
+
+      s =
+        Enum.reduce(s.entries, s, fn {key, e}, acc ->
+          if e.target == target and Map.get(e, :kind) != :staged do
+            if e.from, do: GenServer.reply(e.from, {:error, :operator_input_cancelled})
+            remove(acc, key, Map.put(e, :output_cancelled, e.task != nil and e.from == nil))
+          else
+            acc
+          end
+        end)
+
+      {:reply, {:ok, ticket}, put_in(s.output_releases[ticket], release)}
+    end
+  end
+
+  def handle_call({:await_output_release, ticket}, from, s) do
+    case s.output_releases[ticket] do
+      %{from: nil, pending: pending} = release ->
+        if MapSet.size(pending) == 0 do
+          Process.cancel_timer(release.timer)
+
+          {:reply, if(release.failed, do: {:error, :operator_cleanup_unconfirmed}, else: :ok),
+           %{s | output_releases: Map.delete(s.output_releases, ticket)}}
+        else
+          {:noreply, put_in(s.output_releases[ticket], %{release | from: from})}
+        end
+
+      _ ->
+        {:reply, {:error, :operator_cleanup_unconfirmed}, s}
+    end
+  end
 
   @impl true
   def handle_call(:invalidate, {caller, _}, s) do
@@ -214,6 +268,12 @@ defmodule Ipse.Session.Input do
 
   def handle_call({:await, key}, {client, _} = from, s) do
     case s.entries[key] do
+      %{client: ^client, cancelled: true, output_cancelled: true} = e ->
+        e = Map.delete(e, :output_cancelled)
+
+        {:reply, {:error, :operator_input_cancelled},
+         if(e.task == nil, do: remove(s, key, e), else: put_in(s.entries[key], e))}
+
       %{client: ^client, cancelled: false, from: nil, task: nil, observation: o} when is_map(o) ->
         {:reply, {:ok, o["text"], key}, s}
 
@@ -246,6 +306,8 @@ defmodule Ipse.Session.Input do
 
   @impl true
   def handle_info({ref, result}, s) when is_reference(ref) do
+    s = output_release_result(s, ref, result)
+
     case Enum.find(s.entries, fn {_, e} -> e.task != nil and e.task.ref == ref end) do
       {key, entry} ->
         Process.demonitor(ref, [:flush])
@@ -300,11 +362,26 @@ defmodule Ipse.Session.Input do
   def handle_info({:expire, key}, s) do
     case s.entries[key] do
       nil -> {:noreply, s}
-      entry -> {:noreply, remove(s, key, entry)}
+      entry -> {:noreply, remove(s, key, Map.delete(entry, :output_cancelled))}
+    end
+  end
+
+  def handle_info({:output_release_expired, ticket}, s) do
+    case s.output_releases[ticket] do
+      nil ->
+        {:noreply, s}
+
+      release ->
+        if release.from,
+          do: GenServer.reply(release.from, {:error, :operator_cleanup_unconfirmed})
+
+        {:noreply, %{s | output_releases: Map.delete(s.output_releases, ticket)}}
     end
   end
 
   def handle_info({:DOWN, ref, :process, _, _}, s) do
+    s = output_release_result(s, ref, {:error, :operator_cleanup_unconfirmed})
+
     s =
       Enum.reduce(s.entries, s, fn {key, e}, acc ->
         if ref in [e.target_monitor, e.client_monitor] or (e.task != nil and ref == e.task.ref) do
@@ -339,8 +416,44 @@ defmodule Ipse.Session.Input do
       send(e.task.pid, :ipse_cancel_operator_input)
       put_in(s.entries[key], %{e | cancelled: true, from: nil})
     else
-      %{s | entries: Map.delete(s.entries, key)}
+      if Map.get(e, :output_cancelled, false) do
+        timer = Process.send_after(self(), {:expire, key}, 5_000)
+        put_in(s.entries[key], %{e | timer: timer})
+      else
+        %{s | entries: Map.delete(s.entries, key)}
+      end
     end
+  end
+
+  defp output_release_result(s, ref, result) do
+    known =
+      match?({:error, :operator_input_cancelled}, result) or
+        match?({:ok, %{"version" => 2}}, result)
+
+    Enum.reduce(s.output_releases, s, fn {ticket, release}, acc ->
+      if MapSet.member?(release.pending, ref) do
+        release = %{
+          release
+          | pending: MapSet.delete(release.pending, ref),
+            failed: release.failed or not known
+        }
+
+        if MapSet.size(release.pending) == 0 and release.from != nil do
+          Process.cancel_timer(release.timer)
+
+          GenServer.reply(
+            release.from,
+            if(release.failed, do: {:error, :operator_cleanup_unconfirmed}, else: :ok)
+          )
+
+          %{acc | output_releases: Map.delete(acc.output_releases, ticket)}
+        else
+          put_in(acc.output_releases[ticket], release)
+        end
+      else
+        acc
+      end
+    end)
   end
 
   defp attach(scope, task) do

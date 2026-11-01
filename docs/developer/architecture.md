@@ -168,6 +168,16 @@ denies it, and verifies no target exists. Then follow the allowed case:
 3. Journal admitted intent before starting the effect in owned work.
 4. Retain outcome and cleanup evidence before admitting dependent work.
 
+For managed-derived ordinary model proposals, `Session.ManagedApproval` owns a
+separate pending-call binding. Full arguments reach the Session-issued native
+terminal under the actual source, Identity, Consent and Collection owners;
+subscriber events carry only waiting/ready status. The native display settles
+before those locks release and input begins. An exact one-use answer can then
+advance to the existing fresh managed-effect admission. Embedded
+`Session.approve/3` cannot substitute for this path. Follow the
+[source-owner flow](session-sources.md#reconstruct-without-giving-old-tokens-authority)
+for bounds, unsupported dependency types and native controls.
+
 `Session.Permissions` owns bounded, ephemeral grants in Session state. A native
 write/edit proposal may grant workspace edits; a shell proposal may grant that
 complete argument map, cwd and sandbox policy. `Session.approve/3` accepts

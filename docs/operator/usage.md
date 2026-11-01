@@ -109,6 +109,13 @@ interactive chat with native edits already enabled, use:
 ipse chat --accept-edits --cwd /path/to/project
 ```
 
+Protected-note-derived model proposals have a separate Linux native display
+path with one-use `allow CODE` or denial only. Wait for its `approval>` prompt;
+its source and policy owners release before input, and execution rechecks them.
+Unsupported dependencies or an oversized complete display refuse. Follow
+[knowledge permission](knowledge-permissions.md#review-the-project-and-exact-permission)
+for its prerequisites and remaining limits.
+
 Shell, MCP, extension effects and child actions still require their own approvals.
 Native file checks continue to reject workspace escapes, symlinks and `.git`
 mutations; session edit grants also refuse hardlinked targets. These checks are

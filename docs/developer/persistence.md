@@ -83,6 +83,17 @@ reply remains unknown and is not automatically replayed. Inactive and legacy
 write/repair entry points refuse this layout; ordinary older journals retain
 their legacy behavior.
 
+Fresh Linux Sessions and framed resume use the share-capable native lock modes
+`header_share_v2` and `resume_share_v2`. The original flock remains held throughout;
+there is no close/reacquire upgrade. A qualified terminal operation freezes
+Session state and drains its actual Writer before exporting that retained lock.
+The Writer snapshot binds the active source proofs and inactive original lock
+identities to the exact job and owner generation. Confirmed recipient settlement
+is required before thaw. The
+[managed approval adapter](session-sources.md#reconstruct-without-giving-old-tokens-authority)
+adds the pending-call, full-payload and terminal-purpose checks; lock sharing
+alone supplies no display or approval authority.
+
 Standalone knowledge management uses the same native header and append owner.
 It chooses the ID and acquires the lock before creating its journal, then tracks
 Writer in `header_v1` mode. Its `native_journal_layout` marker selects native-only
@@ -918,8 +929,10 @@ token seals before publication, so a later callback cannot change its budget
 and reclassify an already selected root. The root witness
 and record bytes still need their domain authentication and exact target checks.
 This storage callback grants no output or mutation permission. Identity, Consent,
-original journal and the native writer must retain their own required ownership;
-no Management caller currently combines them. Absent storage can create protected
+original journal and the native writer must retain their own required ownership.
+Reviewed management and managed approval compose this storage callback through
+their separate typed adapters; the callback alone cannot authorize either path.
+Absent storage can create protected
 directories and retained locks, just as opening a view can. The focused
 `collection_held_read_test.exs` exercises contention, escape, budgets and actual
 owner loss; managed publication/directory tests cover the shared closure.
@@ -933,8 +946,8 @@ and management Consent callbacks. A revoked capture policy or expired target
 can remain inspectable for this faithful local purpose, without becoming current
 inference support. The `:held_target_read` controls in
 `collection_normalizer_v3_integration_test.exs` exercise this three-owner stack
-and substituted data. Native journal/tty attachment and production management
-remain separate requirements.
+and substituted data. Follow the [reviewed management flow](session-sources.md#bind-a-new-terminal-choice-to-revalidated-facts)
+for native journal/tty attachment and reducing-effect admission.
 
 ## Prepare a local authenticated-page repair
 

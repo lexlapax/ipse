@@ -108,6 +108,12 @@ fn main() {
             }
         } else if !can_read { std::thread::sleep(Duration::from_millis(5)); }
         let marker = format!("IPSE_FIXTURE_INPUT_{number}> {}", if channel { "you> " } else { "" });
+        if let Some((_, tail)) = String::from_utf8_lossy(&output).split_once("IPSE_FIXTURE_RELEASE_STAGE") {
+            if tail.contains("you> ") && !answered.iter().any(|s| s == "release-stage") {
+                master.write_all(b"retained queued task\n").unwrap();
+                answered.push("release-stage".to_owned());
+            }
+        }
         if String::from_utf8_lossy(&output).contains(&marker) {
             master.write_all(format!("synthetic café 日本語 {number}\n").as_bytes()).unwrap();
             number += 1;
@@ -127,6 +133,7 @@ fn main() {
                     }
                     let reply = format!("{command} {code}");
                     if !answered.contains(&reply) {
+                        if command == "pin" && code == "0123456789abcdef" && !tail.contains("approval> ") { continue; }
                         if (management_review || (assertion && ["forget", "pin", "ordinary", "duration"].contains(&command))) && !tail.contains("approval> ") { continue; }
                         if hold_session_review { continue; }
                         if race_session_review {
@@ -238,6 +245,39 @@ fn main() {
                 }
             }
             let scenario = args.last().unwrap().to_string_lossy();
+            if scenario.starts_with("save_managed_approval") {
+                if let Some((_, tail)) = text.rsplit_once("IPSE_MANAGED_APPROVAL_CLI_READY") {
+                    for (index, _) in tail.match_indices("Type allow ") {
+                        let value = &tail[index + "Type allow ".len()..];
+                        let Some(code) = value.get(..16) else { continue; };
+                        if !code.bytes().all(|b| b.is_ascii_hexdigit()) || !value[16..].starts_with(" to allow once") || !value.contains("approval> ") { continue; }
+                        let reply = format!("allow {code}");
+                        if !answered.contains(&reply) {
+                            let root = std::path::Path::new(&args[args.len() - 2]);
+                            std::fs::write(root.join("managed-approval-input-ready"), b"ready").unwrap();
+                            if !root.join("managed-approval-control-checked").is_file() { continue; }
+                            if scenario == "save_managed_approval_owner_loss" { continue; }
+                            let line = match scenario.as_ref() {
+                                "save_managed_approval_deny" => "n".to_owned(),
+                                "save_managed_approval_cancel" => "/cancel".to_owned(),
+                                "save_managed_approval_exit" => "/exit".to_owned(),
+                                "save_managed_approval_stale_token" => format!("allow {}", if code == "0000000000000000" { "1111111111111111" } else { "0000000000000000" }),
+                                _ => reply.clone(),
+                            };
+                            master.write_all(format!("{line}\n").as_bytes()).unwrap();
+                            answered.push(reply);
+                        }
+                    }
+                    if let Some(finished) = tail.rfind("Finished.").or_else(|| tail.rfind("Finished with an error.")).or_else(|| tail.rfind("Cancelled.")) {
+                        let root = std::path::Path::new(&args[args.len() - 2]);
+                        let prompt_ready = if scenario == "save_managed_approval_cancel" { tail[finished..].contains("you> ") } else { tail.contains("you> ") };
+                        if scenario != "save_managed_approval_exit" && finished > 0 && prompt_ready && root.join("managed-approval-exit-ready").is_file() && !answered.iter().any(|s| s == "managed-exit") {
+                            master.write_all(b"/exit\n").unwrap();
+                            answered.push("managed-exit".to_owned());
+                        }
+                    }
+                }
+            }
             let scenario = if scenario.starts_with("save_") { std::borrow::Cow::Borrowed("save") } else { scenario };
             for (index, _) in text.match_indices("Type remember ") {
                 let tail = &text[index + "Type remember ".len()..];

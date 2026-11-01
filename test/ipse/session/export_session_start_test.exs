@@ -105,14 +105,14 @@ defmodule Ipse.Session.ExportSessionStartTest do
 
   test "ordinary Session options do not select the candidate", c do
     {session, state, path} = start_session(c, :legacy)
-    assert state.lock_mode == :header_v1
-    assert :sys.get_state(state.lock_guard).mode == :header_v1
+    assert state.lock_mode == :header_share_v2
+    assert :sys.get_state(state.lock_guard).mode == :header_share_v2
     assert {:error, _} = Runner.protected_lock(path)
     assert :ok = Session.close_confirmed(session)
     assert_lifecycle_cleanup(c.state, state.id, false)
     {resumed, resumed_state, _} = start_session(c, :legacy, state.id)
-    assert resumed_state.lock_mode == :resume_v1
-    assert :sys.get_state(resumed_state.lock_guard).mode == :resume_v1
+    assert resumed_state.lock_mode == :resume_share_v2
+    assert :sys.get_state(resumed_state.lock_guard).mode == :resume_share_v2
     assert {:error, _} = Runner.protected_lock(path)
     assert :ok = Session.close_confirmed(resumed)
   end

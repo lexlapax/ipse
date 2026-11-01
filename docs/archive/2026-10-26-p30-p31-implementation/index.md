@@ -61,7 +61,8 @@ nor resource/offline qualification. No daemon configuration or existing model wa
 
 ## P31A contracts and evidence
 
-- [Strict display preparation with retained actual source/policy owners](managed-display-owners-20261031.md) has genuine source and loss/deadline controls; production approval display remains closed pending Session/purpose/sink integration.
+- [Ordinary model-tool approval through the actual native sink](managed-approval-native-20261031.md) binds Session/purpose/full payload and current source/policy owners, releases display locks before input and rechecks effects; accepted decisions and other unqualified shapes remain closed.
+- [Strict display preparation with retained actual source/policy owners](managed-display-owners-20261031.md) preserves its earlier prerequisite-only evidence and loss/deadline controls.
 - [Cooperative Ollama model/context checks around registered text and embedding jobs](ollama-model-pin-jobs-20261031.md) retain saved-profile identity, private output release and measured charges; physical request attestation and live qualification remain separate.
 - [Actual pinned primary-pair Session jobs](local-pinned-jobs-20261031.md) cover public embedding reconstruction, ordinary main completion, reported context and service/Saved settlement without quality or installed claims.
 - [Installed idle-resume verifier repair](package-idle-resume-20261031.md) preserves the exact failed archive, native ownership/release assertions and source checks; a replacement archive still requires installed verification.

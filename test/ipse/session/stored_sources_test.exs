@@ -12,6 +12,24 @@ defmodule Ipse.Session.StoredSourcesTest do
     def start_link(mode), do: GenServer.start_link(__MODULE__, mode)
     def init(mode), do: {:ok, {mode, 0}}
 
+    def handle_call(
+          {:managed_sources, _, _, proofs},
+          _from,
+          {{:indexes, before, after_use}, count}
+        ) do
+      index = if count == 0, do: before, else: after_use
+
+      result =
+        Enum.reduce_while(proofs, {:ok, []}, fn proof, {:ok, rows} ->
+          case SourceIndex.revalidate_stored(index, proof) do
+            {:ok, row} -> {:cont, {:ok, rows ++ [row]}}
+            error -> {:halt, error}
+          end
+        end)
+
+      {:reply, result, {{:indexes, before, after_use}, count + 1}}
+    end
+
     def handle_call({:managed_sources, _, _, proofs}, _from, {mode, count}) do
       result = Enum.map(proofs, &%{"proof" => &1})
       result = if mode == :change_after and count > 0, do: [], else: result
@@ -150,8 +168,74 @@ defmodule Ipse.Session.StoredSourcesTest do
       second_proof: second_proof,
       second_lock_path: second_lock_path,
       lock_path: lock_path,
-      journal_path: Path.join(directory, id <> ".jsonl")
+      journal_path: Path.join(directory, id <> ".jsonl"),
+      index: saved.source_window.index
     }
+  end
+
+  test "bound result publication can append sources without invalidating selected originals", c do
+    text = "A newly committed source"
+    input = Input.received(c.proof["session_id"], Usage.id(), text, text, nil)
+    message = %{"type" => "message", "message" => %{"role" => "user", "content" => text}}
+    assert {:ok, appended} = SourceIndex.admit_input(c.index, input, message)
+    assert appended.generation > c.index.generation
+    assert {:ok, owner} = LocalSourceOwner.start_link({:indexes, c.index, appended})
+
+    context = active_context(c, owner, "tool.result")
+
+    assert :published =
+             StoredSources.with_verified(context, nil, [c.proof], fn [_] -> :published end)
+  end
+
+  test "active result postcheck refuses policy fences, redaction, window replacement and rollback",
+       c do
+    assert {:ok, fenced} = SourceIndex.revalidate(c.index, c.index.policy_generation + 1)
+
+    assert {:ok, redacted} =
+             SourceIndex.redact(c.index, c.proof["occurrence_id"], c.index.policy_generation + 1)
+
+    for changed <- [
+          fenced,
+          redacted,
+          %{c.index | window_id: Usage.id()},
+          %{c.index | generation: c.index.generation - 1}
+        ] do
+      assert {:ok, owner} = LocalSourceOwner.start_link({:indexes, c.index, changed})
+      context = active_context(c, owner, "tool.result")
+
+      assert {:error, :collection_source_refused} =
+               StoredSources.with_verified(context, nil, [c.proof], fn [_] -> :must_not_escape end)
+
+      GenServer.stop(owner)
+    end
+  end
+
+  test "source append still invalidates approval and effect scopes", c do
+    text = "Another committed source"
+    input = Input.received(c.proof["session_id"], Usage.id(), text, text, nil)
+    message = %{"type" => "message", "message" => %{"role" => "user", "content" => text}}
+    assert {:ok, appended} = SourceIndex.admit_input(c.index, input, message)
+
+    for purpose <- ["tool.approval", "tool.effect"] do
+      assert {:ok, owner} = LocalSourceOwner.start_link({:indexes, c.index, appended})
+
+      assert {:error, :collection_source_refused} =
+               StoredSources.with_verified(active_context(c, owner, purpose), nil, [c.proof], fn [
+                                                                                                   _
+                                                                                                 ] ->
+                 :must_not_escape
+               end)
+
+      GenServer.stop(owner)
+    end
+  end
+
+  defp active_context(c, owner, purpose) do
+    c.context
+    |> Map.put(:session_id, c.proof["session_id"])
+    |> Map.put(:owner, owner)
+    |> Map.put(:job_ref, make_ref())
+    |> Map.put(:source_binding, {:snapshot, purpose, JSON.sha256("bound result fixture")})
   end
 
   test "grouped source leases hold both inactive sessions and preserve proof order", c do

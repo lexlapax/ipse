@@ -43,14 +43,14 @@ defmodule Ipse.Runner do
   end
 
   @doc false
-  # Fixed-marker experimental recipient. The caller owns the returned Port and
-  # must transfer ownership explicitly; this function accepts no payload or mode.
+  # Session chooses the recipient purpose and sends its own checked payload.
+  # The returned Port must be transferred to the exact current host owner.
   def open_synthetic_notice_terminal(cwd, remaining, purpose \\ :ordinary)
 
   def open_synthetic_notice_terminal(cwd, remaining, purpose)
       when is_binary(cwd) and is_integer(remaining) and remaining in 1..120_000 and
-             purpose in [:ordinary, :accepted, :review] and
-             (purpose == :review or remaining <= 5_000) do
+             purpose in [:ordinary, :accepted, :review, :approval] and
+             (purpose in [:review, :approval] or remaining <= 5_000) do
     with {:unix, :linux} <- :os.type(),
          {:ok, helper} <- protected_helper(cwd) do
       {:ok,
@@ -65,6 +65,7 @@ defmodule Ipse.Runner do
            case purpose do
              :accepted -> "v10-synthetic-accepted-notice-display"
              :review -> "v13-session-review-group-input"
+             :approval -> "v13-session-review-group-input"
              :ordinary -> "v9-synthetic-notice-display"
            end
          ]

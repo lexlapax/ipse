@@ -1,0 +1,592 @@
+{
+  "active_proof_continuity": {
+    "approval_postcheck": "exact task/job/pending binding, exact selected proofs, review_input phase after Writer thaw",
+    "negative_controls": [
+      "redaction",
+      "policy fence",
+      "window replacement",
+      "generation rollback",
+      "append during approval",
+      "append during effect"
+    ],
+    "result_postcheck": "freshly revalidated identical selected proofs/window/policy; only tool.result allows monotonic global index generation advance",
+    "test_owner_simulation": "unit fixture resolves actual SourceIndex objects; production authority evidence comes from separate actual active CLI control"
+  },
+  "allowances_unchanged": {
+    "chatgpt_conservative_charged": 238,
+    "chatgpt_limit": 300,
+    "local_charged": 4,
+    "local_limit": 1000
+  },
+  "checks": [
+    {
+      "log": "/tmp/ipse-managed-approval-native-qualified-20261031.log",
+      "terminal_summary": [
+        "Finished in 127.4 seconds (0.00s async, 127.4s sync)",
+        "Result: 11 passed, 12 excluded"
+      ]
+    },
+    {
+      "log": "/tmp/ipse-managed-approval-regression-qualified-20261031.log",
+      "terminal_summary": [
+        "Finished in 63.9 seconds (12.1s async, 51.8s sync)",
+        "Result: 187 passed, 46 skipped, 30 excluded"
+      ]
+    },
+    {
+      "log": "/tmp/ipse-managed-approval-active-sources-20261031.log",
+      "terminal_summary": [
+        "Finished in 1.4 seconds (0.00s async, 1.4s sync)",
+        "Result: 27 passed"
+      ]
+    },
+    {
+      "log": "/tmp/ipse-managed-approval-active-fixed-20261031.log",
+      "terminal_summary": [
+        "Finished in 10.5 seconds (0.00s async, 10.5s sync)",
+        "Result: 1 passed, 22 excluded"
+      ]
+    },
+    {
+      "log": "/tmp/ipse-managed-approval-input-final-20261031.log",
+      "terminal_summary": [
+        "Finished in 4.7 seconds (0.00s async, 4.7s sync)",
+        "Result: 3 passed"
+      ]
+    },
+    {
+      "log": "/tmp/ipse-managed-approval-existing-v13-mixed-20261031.log",
+      "terminal_summary": [
+        "Finished in 3.5 seconds (0.00s async, 3.5s sync)\r",
+        "Result: 1 passed, 82 excluded\u001B[0m\r"
+      ]
+    },
+    {
+      "log": "/tmp/ipse-managed-approval-existing-v13-active-20261031.log",
+      "terminal_summary": [
+        "Finished in 3.4 seconds (0.00s async, 3.4s sync)\r",
+        "Result: 1 passed, 82 excluded\u001B[0m\r"
+      ]
+    }
+  ],
+  "checks_other": {
+    "build": {
+      "log": "/tmp/ipse-managed-approval-build-qualified-20261031.log",
+      "result": "passed"
+    },
+    "ci": {
+      "log": "/tmp/ipse-managed-approval-ci-qualified-20261031.log",
+      "result": "passed"
+    },
+    "compile": {
+      "log": "/tmp/ipse-managed-approval-compile-qualified-20261031.log",
+      "result": "passed"
+    },
+    "demo": {
+      "log": "/tmp/ipse-managed-approval-demo-qualified-20261031.log",
+      "result": "passed"
+    },
+    "docs": {
+      "log": "/tmp/ipse-managed-approval-docs-qualified-20261031.log",
+      "result": "passed"
+    },
+    "format": {
+      "log": "/tmp/ipse-managed-approval-format-qualified-20261031.log",
+      "result": "passed"
+    }
+  },
+  "date": "2026-10-31",
+  "downloads": 0,
+  "input_handoff": [
+    "confirmed native read cancellation/restoration",
+    "one-use release ticket",
+    "duplicate refusal",
+    "late cancellation acknowledgement",
+    "preserved staged queued prompt",
+    "one-use queued submission"
+  ],
+  "logs": [
+    {
+      "bytes": 49092,
+      "path": "/tmp/ipse-managed-approval-active-after-20261031.log",
+      "sha256": "7d96c9c06839e7ff1d0ca663d014aac9791393a625ef85d7221b23f1d2ac21b5"
+    },
+    {
+      "bytes": 49358,
+      "path": "/tmp/ipse-managed-approval-active-before-20261031.log",
+      "sha256": "db47b9a416b4be51065878edbe052cf409dccdfe45479f5c18e31827970932fc"
+    },
+    {
+      "bytes": 49988,
+      "path": "/tmp/ipse-managed-approval-active-diagnostic-20261031.log",
+      "sha256": "48177f9b04629383ebf869c62d940e97d01a0dc799b1d673c2664eea27565213"
+    },
+    {
+      "bytes": 341,
+      "path": "/tmp/ipse-managed-approval-active-fixed-20261031.log",
+      "sha256": "37a77543f2d58793617d0cc86bd48e0a5334a927e08cde64357087f611ed1bd9"
+    },
+    {
+      "bytes": 302,
+      "path": "/tmp/ipse-managed-approval-active-sources-20261031.log",
+      "sha256": "fa74137b675bf0702eaec27599f475f33bc686cf624fb56f0b8dad191045bcbc"
+    },
+    {
+      "bytes": 786,
+      "path": "/tmp/ipse-managed-approval-build-20261031.log",
+      "sha256": "7282fe20ae1a89709897b034ac9054c0e2fcf1cc8c59bf728b7af240e3e33c01"
+    },
+    {
+      "bytes": 845,
+      "path": "/tmp/ipse-managed-approval-build-final-20261031.log",
+      "sha256": "bdbea0dcb645a4d40342877a2e1c33f3486159ed89a689ae54d7830612e945f9"
+    },
+    {
+      "bytes": 844,
+      "path": "/tmp/ipse-managed-approval-build-qualified-20261031.log",
+      "sha256": "f453b3be2cefba18a27560c9df9491450f099c6f9685f23a3808649eceab1485"
+    },
+    {
+      "bytes": 32,
+      "path": "/tmp/ipse-managed-approval-ci-final-20261031.log",
+      "sha256": "e856938f2d4ee3eb319a90056aca83ff6b7347ea57ff71bac975f84df18ae633"
+    },
+    {
+      "bytes": 32,
+      "path": "/tmp/ipse-managed-approval-ci-qualified-20261031.log",
+      "sha256": "e856938f2d4ee3eb319a90056aca83ff6b7347ea57ff71bac975f84df18ae633"
+    },
+    {
+      "bytes": 0,
+      "path": "/tmp/ipse-managed-approval-compile-final-20261031.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "bytes": 784,
+      "path": "/tmp/ipse-managed-approval-compile-first-20261031.log",
+      "sha256": "6e723d2096f39c30f5613f2d2bb41bd92a2facfad972eb859aa5290608d6cf2f"
+    },
+    {
+      "bytes": 0,
+      "path": "/tmp/ipse-managed-approval-compile-qualified-20261031.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "bytes": 777,
+      "path": "/tmp/ipse-managed-approval-compile-second-20261031.log",
+      "sha256": "d9a1042b54e692b01ddcf497d2e858e0709e5666412d48e0b2b7011d86e3a10e"
+    },
+    {
+      "bytes": 4431,
+      "path": "/tmp/ipse-managed-approval-demo-qualified-20261031.log",
+      "sha256": "647640b41d9711981bf444cd9a5c9be8bb68194c500a68309552b1c252bdc60f"
+    },
+    {
+      "bytes": 756,
+      "path": "/tmp/ipse-managed-approval-docs-qualified-20261031.log",
+      "sha256": "19dced668ca885a342fd8ac2285b5cb9d785f3ace85734a7a13488a386ae6a23"
+    },
+    {
+      "bytes": 14498,
+      "path": "/tmp/ipse-managed-approval-existing-v13-20261031.log",
+      "sha256": "af579364834be09e95016711c0b98411434ee929f698c1f3dd4bf0e01885dc93"
+    },
+    {
+      "bytes": 417,
+      "path": "/tmp/ipse-managed-approval-existing-v13-active-20261031.log",
+      "sha256": "932a354b09e7eb901c9da7ebad59f85b018c63e7f74aa0e1b8221fb54e889387"
+    },
+    {
+      "bytes": 391,
+      "path": "/tmp/ipse-managed-approval-existing-v13-mixed-20261031.log",
+      "sha256": "6d787a6cab4d0019d3e8b751d1a4363bc5e815f8b9628f7169b0cf590cbe4aef"
+    },
+    {
+      "bytes": 0,
+      "path": "/tmp/ipse-managed-approval-format-final-20261031.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "bytes": 0,
+      "path": "/tmp/ipse-managed-approval-format-helper-20261031.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "bytes": 0,
+      "path": "/tmp/ipse-managed-approval-format-qualified-20261031.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "bytes": 277,
+      "path": "/tmp/ipse-managed-approval-input-final-20261031.log",
+      "sha256": "8366b75d4109f29c17f707ed9cac2d806e545e9f5b84b7f49cf4db8d9414b798"
+    },
+    {
+      "bytes": 339525,
+      "path": "/tmp/ipse-managed-approval-native-cohort-first-20261031.log",
+      "sha256": "1a443cee6c7dbc6233360210c5ab54b5738f3c5da943a5ec25112ec98bd2e12b"
+    },
+    {
+      "bytes": 319,
+      "path": "/tmp/ipse-managed-approval-native-cohort-second-20261031.log",
+      "sha256": "82a6c56c77f0e37072f7cd1b2a4e77002ff552422a152e1d6ccddd2fb084f704"
+    },
+    {
+      "bytes": 49130,
+      "path": "/tmp/ipse-managed-approval-native-eighth-20261031.log",
+      "sha256": "03ad9201f02e1a5c9e76d84ee88d99f02e05e5606474ecff1c1c66cfa53f96a7"
+    },
+    {
+      "bytes": 49899,
+      "path": "/tmp/ipse-managed-approval-native-eleventh-20261031.log",
+      "sha256": "9949da92ce3a9cee9427957df192ba3af36d8bcfc72e46e86e364e25f84ebc5c"
+    },
+    {
+      "bytes": 48373,
+      "path": "/tmp/ipse-managed-approval-native-fifteenth-20261031.log",
+      "sha256": "499c5f893a2cad496226b94a05280dd969a0822e425856a8f7a54b754aaf9b3e"
+    },
+    {
+      "bytes": 47986,
+      "path": "/tmp/ipse-managed-approval-native-fifth-20261031.log",
+      "sha256": "2666687f4b43ff2f29b07a2a22e357d690bf7d4893dac3f264ffdd840f2d0474"
+    },
+    {
+      "bytes": 48406,
+      "path": "/tmp/ipse-managed-approval-native-final-20261031.log",
+      "sha256": "86b4768998a00a3a57fedde1e2e1fa0fb13405ff71f898bfa200572008e7a27f"
+    },
+    {
+      "bytes": 48616,
+      "path": "/tmp/ipse-managed-approval-native-final-second-20261031.log",
+      "sha256": "44421c1f404f4438470748cebbeaabb058f524c4e87a79d5643f4c379c27d3ae"
+    },
+    {
+      "bytes": 327,
+      "path": "/tmp/ipse-managed-approval-native-final-third-20261031.log",
+      "sha256": "9e95fc8535a6b62d968c2aa55f08014c7230cef67b830915f61326f626555fd3"
+    },
+    {
+      "bytes": 48486,
+      "path": "/tmp/ipse-managed-approval-native-first-20261031.log",
+      "sha256": "1383009c0d0359c5268f7bce2f08167add5d26a732e86e9af702c3f579a1f011"
+    },
+    {
+      "bytes": 49216,
+      "path": "/tmp/ipse-managed-approval-native-fourteenth-20261031.log",
+      "sha256": "1037c14e6e3850c933309e4592181a19922afc25b585deb45ceba651fae94241"
+    },
+    {
+      "bytes": 78295,
+      "path": "/tmp/ipse-managed-approval-native-fourth-20261031.log",
+      "sha256": "d40eb32a004f5f4e5dd6f9c170a3e2c788dd95cca5590a1b5b59eb8260c1682b"
+    },
+    {
+      "bytes": 49750,
+      "path": "/tmp/ipse-managed-approval-native-ninth-20261031.log",
+      "sha256": "2cc1731285629ec6f84bcb7943d72f8f206466e8549f457ff8540bf032f89afa"
+    },
+    {
+      "bytes": 328,
+      "path": "/tmp/ipse-managed-approval-native-qualified-20261031.log",
+      "sha256": "2ab2a980ccde9d228517dadebd5532c500438be6da22c9245f3ff9e9b75c32c1"
+    },
+    {
+      "bytes": 48764,
+      "path": "/tmp/ipse-managed-approval-native-second-20261031.log",
+      "sha256": "7876b3869d680c63c7bb32a2e5ed4b49c14a50fb05a2d6cf69fc8c0d0ffb8dc3"
+    },
+    {
+      "bytes": 48622,
+      "path": "/tmp/ipse-managed-approval-native-seventh-20261031.log",
+      "sha256": "1f337b01da6e0b7f195bad6ceda9e5625a1ce48aeed3ddaf1d63bd366a841cbd"
+    },
+    {
+      "bytes": 48300,
+      "path": "/tmp/ipse-managed-approval-native-sixteenth-20261031.log",
+      "sha256": "291fdf8e019d75c620fb29e26d2ac2fa23e9391766d1bda6b2a65601de353b80"
+    },
+    {
+      "bytes": 47986,
+      "path": "/tmp/ipse-managed-approval-native-sixth-20261031.log",
+      "sha256": "d41206e316cd85eab40583c4b3897ca02684ec564146040e3c843e3a0018dafe"
+    },
+    {
+      "bytes": 49833,
+      "path": "/tmp/ipse-managed-approval-native-tenth-20261031.log",
+      "sha256": "2086098de8dcd068c3959dd74a0c30482759cd6d61a3be07af26fe93dc29853f"
+    },
+    {
+      "bytes": 48764,
+      "path": "/tmp/ipse-managed-approval-native-third-20261031.log",
+      "sha256": "5bcccfc23073b473245fcbc94e29253beb7e4045f0441527cf4826f6845efaa5"
+    },
+    {
+      "bytes": 49130,
+      "path": "/tmp/ipse-managed-approval-native-thirteenth-20261031.log",
+      "sha256": "644531f4828afaa64b75e82c286bdf15f99e987744e92138498e901619fd341f"
+    },
+    {
+      "bytes": 51336,
+      "path": "/tmp/ipse-managed-approval-native-twelfth-20261031.log",
+      "sha256": "bcae3f83c412427eaba353b573bd6aa56bff3825457e08f103bf80939a001466"
+    },
+    {
+      "bytes": 4314,
+      "path": "/tmp/ipse-managed-approval-regression-final-20261031.log",
+      "sha256": "df93dae00a6d1dcd6989018e5c870917bb93f9c40a4ded1d9064a9f2302d2e2a"
+    },
+    {
+      "bytes": 9294,
+      "path": "/tmp/ipse-managed-approval-regression-first-20261031.log",
+      "sha256": "b9f6ba5b8862d120449c8a5ee6823d3f5ae5fde784c8b21fe4fb92e5557d8b3c"
+    },
+    {
+      "bytes": 4317,
+      "path": "/tmp/ipse-managed-approval-regression-qualified-20261031.log",
+      "sha256": "8eb3c1b73bdf65ce1ff4e9fb4222b1881dfbf2d5b9bb5e33fbeecb3da8d8a4aa"
+    },
+    {
+      "bytes": 4302,
+      "path": "/tmp/ipse-managed-approval-regression-second-20261031.log",
+      "sha256": "34b8f8358d7a4e23d3d439c9b2f333f6ab024101a916013ea561d076f4318733"
+    }
+  ],
+  "manual_review": [
+    "docs/operator/knowledge-permissions.md",
+    "docs/operator/usage.md",
+    "docs/developer/session-sources.md",
+    "docs/developer/persistence.md",
+    "docs/developer/architecture.md",
+    "native/README.md"
+  ],
+  "native_change": "v13 final input exchange watches surviving Session/Host controls after confirmed source exporter settlement",
+  "native_helper": {
+    "bytes": 955696,
+    "path": "priv/ipse-runner",
+    "sha256": "71d4125511930d6dd5694db290474e2a1640cdc27f13b0aaf8ee79bb59f87996"
+  },
+  "native_scope": "available Linux 7.2.11-arch1-1 x86_64/tmpfs; automated PTYs and synthetic registered Ollama responses, no human or live-model qualification",
+  "native_source_control": {
+    "active_original_conversation_lock_retained": true,
+    "active_original_prefix_retained_with_consumer_appends": true,
+    "categories": [
+      "ordinary",
+      "preference",
+      "current"
+    ],
+    "fixture_explicitly_restores_original_after_refusal": true,
+    "inactive_original_bytes_unchanged_except_explicit_controlled_torn_tail": true,
+    "inactive_original_lock_release_before_input": true,
+    "native_reviewed_statements_per_case": 3,
+    "policy_lock_release_before_input": true,
+    "saved_and_confirmed_close": "checked for surviving owners; owner-loss case checks Saved but cannot confirm close of a killed owner",
+    "source_journals_retained_after_test_teardown": false,
+    "source_original_sessions_per_case": 1,
+    "torn_tail_repaired_by_reader": false
+  },
+  "negative_history": [
+    "production header lock selection",
+    "frozen reader retries",
+    "zero active proof barrier",
+    "strict boolean cleanup",
+    "settled source exporter final watcher",
+    "active post-display frozen gate",
+    "physical write then unknown result from source generation advance",
+    "fixture readiness and mailbox and process-exit races",
+    "two overlapping negative development runs; final PTYs serial"
+  ],
+  "new_dependencies": [],
+  "new_native_wire_format": false,
+  "not_qualified": [
+    "accepted-decision additional management-journal display owner",
+    "delegation and nested worker approval display",
+    "full 128-note recall/display capacity",
+    "all HTTP faults and protected worker pipes",
+    "correction and supersession",
+    "whole-current positive suite",
+    "installed/platform/human/live-model quality",
+    "independent adversarial audit",
+    "full P30/P31 and reviewer handoff"
+  ],
+  "previous_full_suite": {
+    "acceptance": false,
+    "caveat": "original concurrency and source-inventory timing retained; focused passes do not change original totals",
+    "excluded": 112,
+    "failed": 60,
+    "passed": 3538,
+    "seconds": 5751.0,
+    "skipped": 109,
+    "source": "e86b1b8"
+  },
+  "production_controls": [
+    "fresh",
+    "active_original",
+    "resumed",
+    "deny",
+    "stale_code",
+    "cancel",
+    "exit",
+    "delayed_input",
+    "changed_original",
+    "revoked_permission",
+    "session_loss"
+  ],
+  "real_inference_requests": 0,
+  "real_metadata_service_requests": 0,
+  "scope": "ordinary managed model-tool approval through the actual Session-owned native display; component evidence, not milestone acceptance",
+  "source": [
+    {
+      "bytes": 48434,
+      "path": "docs/archive/2026-10-26-p30-p31-implementation/index.md",
+      "sha256": "20b3b4a46753031114031de728deb18ea702d5da4eb9d380c55a97f503d6aaa1"
+    },
+    {
+      "bytes": 20197,
+      "path": "docs/developer/architecture.md",
+      "sha256": "366037a38017dd010211baf2cbe7f76422d88324c3327a846da7853849ee7f3d"
+    },
+    {
+      "bytes": 9359,
+      "path": "docs/developer/index.md",
+      "sha256": "216ad934f5df9d1c2ad15633cfc19da33549c9c7b5f0ad91b0ee4a4845bf61e5"
+    },
+    {
+      "bytes": 70357,
+      "path": "docs/developer/persistence.md",
+      "sha256": "0d943c1c7fa7309562772875466f5d74b30f500ebf8fa409f786e1d426855c72"
+    },
+    {
+      "bytes": 31834,
+      "path": "docs/developer/session-sources.md",
+      "sha256": "fbcdc1a8c921e4d8e1974d304923660ec2edf95e3040f8d9a0a3fbab74ae9f64"
+    },
+    {
+      "bytes": 4540,
+      "path": "docs/operator/index.md",
+      "sha256": "a8b0d24b7cb0e52aca1ceb78403a59cf1810c8b2c9fddda67dfc26f9112d18ce"
+    },
+    {
+      "bytes": 26821,
+      "path": "docs/operator/knowledge-permissions.md",
+      "sha256": "425ecd4905090f537331798d67f069779f78b0734b6623f1e6530e66f5786c50"
+    },
+    {
+      "bytes": 25284,
+      "path": "docs/operator/usage.md",
+      "sha256": "31ad8a83c2ebe9d7c9198cb4581a5dffe599997ae49b2102942287680cbb5767"
+    },
+    {
+      "bytes": 137350,
+      "path": "docs/plan.md",
+      "sha256": "8740a4d1c8bd76cc71bc945ed63233723584a11425c3d093ddffd1fdc5f82aab"
+    },
+    {
+      "bytes": 50998,
+      "path": "lib/ipse/cli/terminal.ex",
+      "sha256": "1828593c924aa8c6b79c15b389016166d05856b79bf5050ddd8556c218eeed6b"
+    },
+    {
+      "bytes": 31576,
+      "path": "lib/ipse/extension/host.ex",
+      "sha256": "dcc51e08082bdd4ab75286e6face395d8240d0880c3f696a303cd5458c7e85cc"
+    },
+    {
+      "bytes": 32479,
+      "path": "lib/ipse/journal/writer.ex",
+      "sha256": "a04111b11a134799e88ed0a6729f97e9377d4dff4169abe190a29db8490807a1"
+    },
+    {
+      "bytes": 79300,
+      "path": "lib/ipse/runner.ex",
+      "sha256": "55f8d0161b21639c0c1f722bf71f34f8603e591051e5af9d1d1ccae2121c3949"
+    },
+    {
+      "bytes": 26436,
+      "path": "lib/ipse/runner/leased_terminal.ex",
+      "sha256": "9866faca636da202018e749ea46c24286eaf3360fc39b64e5ebc211b09c81ce2"
+    },
+    {
+      "bytes": 261025,
+      "path": "lib/ipse/session.ex",
+      "sha256": "e9cb17addcb57cbfc67e6474ff5fbb5873b09e64139fcd4efe6e2c0189365999"
+    },
+    {
+      "bytes": 20157,
+      "path": "lib/ipse/session/input.ex",
+      "sha256": "637a07a80867ad81d9710e5382b95157722a9e32a47394952c194156c0f0ef74"
+    },
+    {
+      "bytes": 7400,
+      "path": "lib/ipse/session/managed_approval.ex",
+      "sha256": "75864dca7236d9d098a28f4044598e12d85ac23ab2373ee3ac062e5982db8c0e"
+    },
+    {
+      "bytes": 18393,
+      "path": "lib/ipse/session/stored_sources.ex",
+      "sha256": "c6f39b120db2d9b7cbcbcb5a641cbbd84a1dcb563fe34678c083e048ae21bbdd"
+    },
+    {
+      "bytes": 73516,
+      "path": "lib/ipse/session/turn.ex",
+      "sha256": "86038c5edfb76167c36a3da793450779c90f8ff61679f270ff2e42ecaf1df4d2"
+    },
+    {
+      "bytes": 83212,
+      "path": "native/README.md",
+      "sha256": "31e520b6e49eeb6f179e5c86d19b5e5ad122467c597fb23d1bee01e28a9bf2f8"
+    },
+    {
+      "bytes": 34792,
+      "path": "native/ipse-terminal-lease.rs",
+      "sha256": "6f88a8304cee88462793efcaae06c264b40157ba87877478cd69cf15185d42c5"
+    },
+    {
+      "bytes": 1533,
+      "path": "test/ipse/session/export_session_candidate_gate_test.exs",
+      "sha256": "aa1354080f118f09776d2a00465c4f9bc342febc126e23347efaf37e457144bd"
+    },
+    {
+      "bytes": 11308,
+      "path": "test/ipse/session/export_session_start_test.exs",
+      "sha256": "77786b9d9b597b49faf0562e6375daa7c6be2b0cbb2d0f4fbfdc344f9fa9c7e4"
+    },
+    {
+      "bytes": 25307,
+      "path": "test/ipse/session/native_header_session_test.exs",
+      "sha256": "45fa574d24301e17239604320a1fe39caeb267798e4f882c594dc659da3a4370"
+    },
+    {
+      "bytes": 2211,
+      "path": "test/ipse/session/operator_assertion_integration_test.exs",
+      "sha256": "1c1c8ed3b83a7de4ba4be6016cdeb1f47f0f75666ac13714ea4ef9ca4736f864"
+    },
+    {
+      "bytes": 70442,
+      "path": "test/ipse/session/stored_sources_test.exs",
+      "sha256": "7305ffeca13c17387d10ee8942c18996951cb72388c1479d6cb75643839c9d0a"
+    },
+    {
+      "bytes": 9920,
+      "path": "test/support/managed_approval_session.exs",
+      "sha256": "988d8d4d4d17f662f0aa8a253c3c8d867eab924b7230e81f419b82979c50cd3c"
+    },
+    {
+      "bytes": 32546,
+      "path": "test/support/operator_assertion.exs",
+      "sha256": "73d0149f595b0de7c087d354834b618a51ad168c97be96aab008cbc836251ea9"
+    },
+    {
+      "bytes": 21521,
+      "path": "test/support/operator_pty.rs",
+      "sha256": "44864c3cff46c2da1eea169a3b15b73338ce46467fd82ee28485e86c4523330b"
+    },
+    {
+      "bytes": 13218,
+      "path": "test/support/operator_session.exs",
+      "sha256": "02d496c762d1b4a84e650864d4455e391929f548090bc953972f04aba5d3317e"
+    }
+  ],
+  "source_base": "e33f49b",
+  "version": 1
+}

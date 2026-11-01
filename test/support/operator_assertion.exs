@@ -6,6 +6,8 @@ for key <- ~w(IPSE_PROVIDER IPSE_MODEL IPSE_CONFIG IPSE_PROFILE IPSE_SANDBOX IPS
     do: System.delete_env(key)
 
 [root, requested_scenario] = System.argv()
+managed_approval = String.starts_with?(requested_scenario, "save_managed_approval")
+isolated_save = managed_approval or requested_scenario == "save_display_owners"
 
 scenario =
   if String.starts_with?(requested_scenario, "save_"), do: "save", else: requested_scenario
@@ -21,10 +23,15 @@ end
 System.put_env("IPSE_HOME", home)
 config_path = Path.join(home, "config.json")
 
-File.write!(
-  config_path,
-  Jason.encode!(%{"version" => 1, "settings" => %{"provider" => "demo", "model" => "scripted"}})
-)
+document =
+  if managed_approval do
+    Code.require_file("managed_approval_session.exs", __DIR__)
+    Ipse.Test.ManagedApprovalSession.config(requested_scenario)
+  else
+    %{"version" => 1, "settings" => %{"provider" => "demo", "model" => "scripted"}}
+  end
+
+File.write!(config_path, Jason.encode!(document))
 
 File.chmod!(config_path, 0o600)
 
@@ -64,6 +71,8 @@ client = %{
 
 {:ok, config} = Ipse.Config.runtime(effective, client)
 config = Map.merge(config, %{provider_module: AssertionUnexpectedModel, fixture_root: root})
+active_approval = requested_scenario == "save_managed_approval_active"
+config = if active_approval, do: Map.drop(config, [:provider_module, :fixture_root]), else: config
 config = if scenario == "planning", do: Map.put(config, :execution_mode, :planning), else: config
 dir = Path.join(home, "sessions")
 opts = [config: config, cwd: cwd, state_dir: dir, subscriber: self()]
@@ -124,7 +133,7 @@ assert length(assertions) == expected_assertions
 assert {:ok, restored} = Ipse.Session.Saved.restore(events, id)
 assert restored.managed_reads.outputs == :sys.get_state(session).managed_outputs
 
-if scenario == "save" and requested_scenario != "save_display_owners" do
+if scenario == "save" and not isolated_save do
   receipts = Enum.filter(events, &(&1["type"] == "managed_read_observed"))
   assert length(receipts) == 6
   [receipt | _] = receipts
@@ -177,7 +186,7 @@ assert {:ok, page} =
 
 assert length(page["records"]) == if(scenario == "save", do: 3, else: 0)
 
-if scenario == "save" and requested_scenario != "save_display_owners" do
+if scenario == "save" and not isolated_save do
   assert Enum.sort(Enum.map(page["records"], & &1["value"]["category"])) ==
            ~w(current ordinary preference)
 
@@ -288,7 +297,7 @@ if scenario == "save" and requested_scenario != "save_display_owners" do
 end
 
 source_config = :sys.get_state(session).config
-assert :ok = Ipse.Session.close_confirmed(session)
+unless active_approval, do: assert(:ok = Ipse.Session.close_confirmed(session))
 assert {:ok, before_resume} = Ipse.Journal.load(dir, id)
 
 if requested_scenario == "save_display_owners" do
@@ -296,7 +305,28 @@ if requested_scenario == "save_display_owners" do
   Ipse.Test.ManagedDisplayOwners.run(config, cwd, home, dir, page["records"], id)
 end
 
-if scenario == "save" and requested_scenario != "save_display_owners" do
+if managed_approval do
+  Ipse.Test.ManagedApprovalSession.run(
+    config,
+    cwd,
+    home,
+    dir,
+    page["records"],
+    id,
+    requested_scenario,
+    if(active_approval, do: session)
+  )
+end
+
+before_resume =
+  if active_approval do
+    assert {:ok, current} = Ipse.Journal.load(dir, id)
+    current
+  else
+    before_resume
+  end
+
+if scenario == "save" and not isolated_save do
   proofs = Enum.flat_map(page["records"], & &1["value"]["evidence"]["sources"])
   context = %{config: source_config, history_dir: dir, session_id: Ipse.Usage.id()}
   checked = fn c, p, fun -> Ipse.Session.StoredSources.with_verified(c, %{}, p, fun) end

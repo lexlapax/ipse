@@ -38,8 +38,8 @@ defmodule Ipse.Session.NativeHeaderSessionTest do
     {:ok, session} = Session.start_link(c.opts)
     Process.unlink(session)
     state = :sys.get_state(session)
-    assert state.lock_mode == :header_v1
-    assert :sys.get_state(state.lock_guard).mode == :header_v1
+    assert state.lock_mode == :header_share_v2
+    assert :sys.get_state(state.lock_guard).mode == :header_share_v2
     journal = Path.join(c.dir, state.id <> ".jsonl")
     lock = Path.join(c.dir, state.id <> ".lock")
     refute Enum.any?(File.ls!(c.dir), &String.starts_with?(&1, ".pending-header-"))
@@ -156,8 +156,8 @@ defmodule Ipse.Session.NativeHeaderSessionTest do
     refute Map.has_key?(diagnosis, "cleanup_confirmed")
     {:ok, resumed} = Session.start_link(Keyword.put(c.opts, :id, state.id))
     Process.unlink(resumed)
-    assert :sys.get_state(:sys.get_state(resumed).lock_guard).mode == :resume_v1
-    assert :sys.get_state(resumed).lock_mode == :resume_v1
+    assert :sys.get_state(:sys.get_state(resumed).lock_guard).mode == :resume_share_v2
+    assert :sys.get_state(resumed).lock_mode == :resume_share_v2
     assert {:ok, resumed_events} = Journal.load(c.dir, state.id)
 
     assert [^first_owner, second_owner] =
@@ -256,7 +256,7 @@ defmodule Ipse.Session.NativeHeaderSessionTest do
     old_epoch = Enum.find(events, &(&1["type"] == "lifecycle_epoch_started"))["epoch_id"]
     {:ok, resumed} = Session.start_link(Keyword.put(c.opts, :id, state.id))
     Process.unlink(resumed)
-    assert :sys.get_state(resumed).lock_mode == :resume_v1
+    assert :sys.get_state(resumed).lock_mode == :resume_share_v2
     assert :ok = Session.close_confirmed(resumed)
 
     assert {:ok, after_resume} = Journal.load(c.dir, state.id)
@@ -344,7 +344,7 @@ defmodule Ipse.Session.NativeHeaderSessionTest do
     File.rename!(saved_lock, lock_path)
     {:ok, resumed} = Session.start_link(Keyword.put(c.opts, :id, id))
     Process.unlink(resumed)
-    assert :sys.get_state(resumed).lock_mode == :resume_v1
+    assert :sys.get_state(resumed).lock_mode == :resume_share_v2
     assert :ok = Session.close_confirmed(resumed)
   end
 
@@ -394,7 +394,7 @@ defmodule Ipse.Session.NativeHeaderSessionTest do
     {:ok, resumed} = Session.start_link(Keyword.put(c.opts, :id, id))
     Process.unlink(resumed)
     state = :sys.get_state(resumed)
-    assert state.lock_mode == :resume_v1
+    assert state.lock_mode == :resume_share_v2
     {:os_pid, native} = Port.info(state.lock, :os_pid)
     :ok = :sys.suspend(resumed)
     parent = self()
@@ -554,7 +554,7 @@ defmodule Ipse.Session.NativeHeaderSessionTest do
       if Process.alive?(resumed), do: Process.exit(resumed, :kill)
     end)
 
-    assert :sys.get_state(resumed).lock_mode == :resume_v1
+    assert :sys.get_state(resumed).lock_mode == :resume_share_v2
     ref = Process.monitor(resumed)
     parent = self()
     spawn(fn -> send(parent, {:resume_interrupted, Session.close_confirmed(resumed)}) end)

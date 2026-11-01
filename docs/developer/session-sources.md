@@ -358,8 +358,8 @@ The private management terminal adapter can transfer a verified group into a
 native review display and input operation. This does not identify which proofs
 an effect requires: the caller must bind the complete proof set to the reviewed
 facts and revalidate current sources after input.
-The active-Session bridge has a separate synthetic group-display control. It
-does not yet authorize protected review or input for a relation.
+The active-Session bridge also retains separate fixed-text synthetic controls;
+their results do not qualify another protected purpose or payload.
 The private transaction helper can retain up to 128 source leases through one
 native root decision, alongside one journal lease. An isolated current-source
 native control exercises that capacity; the shipped helper must be rebuilt to
@@ -381,15 +381,58 @@ after entry stays unknown. Opaque tokens cannot be used after callback cleanup.
 Accepted-decision dependencies refuse this preparation path because their
 additional original management-journal lease must also reach the native sink.
 
-This callback displays nothing and grants no approval. An actual adapter must
-still bind the exact owning Session, purpose, full payload and native output
-channel, transfer all owners, confirm native completion and settlement, release
-display locks before input, and revalidate execution afterward. Ordinary managed
-approval remains closed while that adapter is unavailable. Run the focused
+This callback displays nothing and grants no approval. For ordinary model tool
+approval, `Session.ManagedApproval` binds its exact pending call, parsed arguments,
+request, dependency union and full escaped payload to a new private terminal
+purpose. Session chooses the payload and native Port; workers cannot select them.
+Its actual Writer drains and seals active proofs and inactive source-lock
+identities before the original Session lock, all three policy owners and every
+inactive source group reach the same native display. The complete display is
+limited to 64 KiB and refuses rather than truncating.
+
+`Runner.LeasedTerminal.begin_approval/5` confirms native display completion,
+every exporter settlement and the Session notice before thawing Writer. It returns
+an opaque same-process handle inside an enclosing file-effect owner that remains
+alive through input. Only after the source and policy scopes release does
+`finish_approval/2` release native input. The helper watches Session/Host controls
+through that bounded 120-second phase; settled source exporters may now exit.
+Only the exact fresh `allow CODE` confirms one attempt. `/cancel` and `/exit`
+use the ordinary Session cancellation path and discard queued prompts; exit also
+closes the terminal interaction. Other text denies the proposal;
+unconfirmed display, input or cleanup grants nothing. A poisoned exported share
+stops the owning Session. The eventual tool still reacquires current managed
+authority through `ManagedToolUse`; displayed bytes and an answer are historical
+by that point, and resume never reconstructs an approval grant.
+
+When the consuming Session also owns an original source, approval's post-display
+check runs after Writer thaw under the exact pending approval binding. It must
+return the same selected proofs. Later, publishing the bound tool result adds
+outcome sources to that same index. `StoredSources` permits the global generation
+to advance only for `tool.result`: every selected proof, window identity and
+policy generation must still match after fresh resolution. Redaction, a policy
+fence, window replacement or generation rollback withholds the result. Approval
+and effect scopes still require exact index-generation equality. The active-source
+native journey checks successful result continuation as well as the physical write.
+
+The ordinary reader keeps its input generation across the handoff. `Session.Input`
+cancels its prior read and confirms native restoration before display begins;
+registered-reader retries receive busy while approval owns the terminal. Release
+tickets are one-use, expire after five seconds and are bounded to 64 globally and
+one per target. A cancellation that completes before its client starts awaiting
+retains a bounded cancellation acknowledgement, rather than becoming a channel
+failure. No full approval arguments go through subscriber status events.
+
+Accepted-decision v6 dependencies, delegation, nested worker approval displays
+and clients without the native channel retain their refusal paths. Run the
 `managed_display_owner` cases in `managed_collection_call_session_test.exs` for
-the held root/policy owners and the `save_display_owners` scenario in
-`operator_assertion_integration_test.exs` for genuine reviewed original sources;
-these tests do not establish protected payload delivery or accepted-decision UI.
+held root/policy owners, `save_display_owners` for actual reviewed sources, and
+the `managed_approval` controls in `operator_assertion_integration_test.exs` for
+the production adapter. The latter use native statement sources and a synthetic
+local model route: they cover fresh/active/resumed writes, denial/stale code,
+cancellation/exit, delayed input, changed source, revocation and Session loss,
+with Saved and request accounting checks.
+They establish no independent human, live-model, installed or accepted-decision
+approval qualification.
 
 A resource scope reserves 128 source-lock entries, shared by inactive original
 Session journals and nontransferable acceptance-journal reads. Bound the complete

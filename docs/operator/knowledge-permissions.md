@@ -92,10 +92,21 @@ MCP and delegation keep their separate approval requirements. The grant expires
 after one year and has daily limits of 100 operations, 2 MiB of input and 4 MiB of
 output. A refusal or uncertain attempt may consume conservative allowance.
 
-An action proposed from protected note content can still refuse before ordinary
-interactive approval when its native output owners are unavailable. Saving
-knowledge permission does not enable that display path. Inspect the refusal and
-preserve the Session; do not broaden effect approval to work around it.
+For an ordinary model proposal derived from protected native notes, the Linux
+chat client can display the complete arguments under their current source and
+policy owners. Wait for `approval>`, then enter the displayed `allow CODE` for
+one attempt or `n` to deny it. This review offers no reusable session grant.
+`/cancel` stops the turn and clears queued prompts; `/exit` also leaves chat.
+The display owners release before you answer; Ipse checks the sources and
+permission again before execution. A changed source or revoked permission can
+therefore refuse a proposal that you approved.
+
+This development-source path requires the matching native helper, original
+source journals and a complete escaped display within 64 KiB. Accepted-decision
+dependencies, delegated proposals and nested worker approval displays remain
+unavailable. An unavailable owner or unsupported display refuses before the
+effect starts. Preserve the Session and inspect the refusal; saving knowledge
+permission does not bypass these limits.
 
 After successful setup, start a new conversation:
 

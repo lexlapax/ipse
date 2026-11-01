@@ -45,7 +45,7 @@ defmodule Ipse.Session.ExportSessionCandidateGateTest do
     Process.unlink(session)
 
     assert :sys.get_state(session).lock_mode ==
-             if(:os.type() == {:unix, :linux}, do: :header_v1, else: :legacy)
+             if(:os.type() == {:unix, :linux}, do: :header_share_v2, else: :legacy)
 
     assert :ok = Session.close_confirmed(session)
   end

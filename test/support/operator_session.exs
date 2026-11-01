@@ -161,6 +161,74 @@ eventually.(fn -> :sys.get_state(Ipse.Session.Input).entries == %{} end)
 
 owner = self()
 
+release_target = new.(nil)
+
+release_reader =
+  spawn(fn ->
+    receive do
+      {:channel, channel} ->
+        {:ok, text, witness} =
+          Ipse.Session.observe_channel(release_target, channel, %{"kind" => "prompt"}, 5000)
+
+        send(owner, {:release_stage_observed, text, witness})
+
+        receive do
+          :next -> :ok
+        end
+
+        {:ok, lease} =
+          GenServer.call(release_target, {:observe_channel, channel, %{"kind" => "prompt"}, 5000})
+
+        send(owner, {:release_reader_started, lease})
+
+        receive do
+          :await -> send(owner, {:release_reader_result, Ipse.Session.Input.await(lease, 5000)})
+        end
+
+        receive do
+          :finish -> :ok
+        end
+    end
+  end)
+
+assert {:ok, release_channel} = Ipse.Session.open_input_channel(release_target, release_reader)
+IO.puts("IPSE_FIXTURE_RELEASE_STAGE")
+send(release_reader, {:channel, release_channel})
+
+assert_receive {:release_stage_observed, "retained queued task" = queued_text, queued_witness},
+               5000
+
+assert {:ok, queued_ticket} =
+         Ipse.Session.stage_input(release_target, release_channel, queued_text, queued_witness)
+
+send(release_reader, :next)
+assert_receive {:release_reader_started, _lease}, 5000
+
+:sys.replace_state(release_target, fn s ->
+  {:ok, ticket} = Ipse.Session.Input.release_for_output()
+  assert {:error, :operator_input_busy} = Ipse.Session.Input.release_for_output()
+  send(owner, {:output_release, ticket})
+  s
+end)
+
+assert_receive {:output_release, release_ticket}, 5000
+assert :ok = Ipse.Session.Input.await_output_release(release_ticket)
+
+assert {:error, :operator_cleanup_unconfirmed} =
+         Ipse.Session.Input.await_output_release(release_ticket)
+
+send(release_reader, :await)
+assert_receive {:release_reader_result, {:error, :operator_input_cancelled}}, 5000
+assert :ok = Ipse.Session.prompt(release_target, queued_text, queued_ticket)
+done.(release_target)
+
+assert {:error, :invalid_input_witness} =
+         Ipse.Session.prompt(release_target, queued_text, queued_ticket)
+
+eventually.(fn -> :sys.get_state(Ipse.Session.Input).entries == %{} end)
+assert :ok = Ipse.Session.close_confirmed(release_target)
+send(release_reader, :finish)
+
 client =
   spawn(fn ->
     result = Ipse.Session.observe_input(resumed, "IPSE_FIXTURE_INPUT_73> ", 5000)

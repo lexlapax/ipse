@@ -219,7 +219,7 @@ defmodule Ipse.Journal.Writer do
       )
       when mode in [:header_share_v2, :resume_share_v2] and is_binary(operation) and
              byte_size(operation) == 16 and is_reference(job_ref) and is_reference(generation) do
-    with {:ok, sources} <- verified_barrier_sources(state, proofs),
+    with {:ok, sources} <- verified_barrier_sources(state, proofs, 0..128),
          {:ok, locks} <- inactive_lock_identities(state, inactive_ids) do
       share_barrier(state, operation, job_ref, generation, sources, locks)
     else
@@ -632,9 +632,9 @@ defmodule Ipse.Journal.Writer do
 
   defp recent_lifecycle_intent(_), do: nil
 
-  defp verified_barrier_sources(state, proofs) do
+  defp verified_barrier_sources(state, proofs, bounds \\ 1..8) do
     with true <-
-           is_list(proofs) and length(proofs) in 1..8 and
+           is_list(proofs) and length(proofs) in bounds and
              length(Enum.uniq(proofs)) == length(proofs),
          %{index: index} <- state.source_window,
          {:ok, sources} <-

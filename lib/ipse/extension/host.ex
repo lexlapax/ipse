@@ -24,6 +24,10 @@ defmodule Ipse.Extension.Host do
     do: begin_controlled_session_share(owner, job_ref, intent, :synthetic_review)
 
   @doc false
+  def begin_approval_share(owner, job_ref, intent, proofs, wall),
+    do: begin_controlled_session_share(owner, job_ref, intent, {:approval, proofs, wall})
+
+  @doc false
   def begin_synthetic_source_share(owner, job_ref, intent, proofs),
     do: begin_controlled_session_share(owner, job_ref, intent, {:synthetic_source, proofs})
 
@@ -44,6 +48,9 @@ defmodule Ipse.Extension.Host do
   defp begin_controlled_session_share(owner, job_ref, intent, mode) do
     ticket_request =
       case mode do
+        {:approval, proofs, wall} ->
+          {:session_control_ticket_approval, job_ref, intent, proofs, wall}
+
         :synthetic_notice ->
           {:session_control_ticket_synthetic, job_ref, intent}
 

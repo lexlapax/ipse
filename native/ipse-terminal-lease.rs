@@ -1042,7 +1042,8 @@ pub(crate) fn run(
             final_notice[0] = b'F';
             final_notice[1..].copy_from_slice(&operation);
             let peer_fd = owners[0].2.as_raw_fd();
-            let other_watch: Vec<i32> = watched.iter().copied().filter(|fd| *fd != peer_fd).collect();
+            let final_watch = if input_phase { &owner_watch } else { &watched };
+            let other_watch: Vec<i32> = final_watch.iter().copied().filter(|fd| *fd != peer_fd).collect();
             send_peer(&mut owners[0].2, &final_notice, control_fd, &other_watch, deadline)?;
             let mut ack = [0u8; 1];
             read_peer(&mut owners[0].2, &mut ack, control_fd, &other_watch, deadline)?;

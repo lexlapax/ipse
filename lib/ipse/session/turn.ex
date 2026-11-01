@@ -1141,13 +1141,19 @@ defmodule Ipse.Session.Turn do
 
       requires_approval and mode == :ask and is_nil(grant_source) ->
         if managed do
-          tool_result(
-            s,
-            call,
-            "Managed approval arguments cannot be displayed under current source ownership; no tool was started.",
-            "denied",
-            "policy_denied"
-          )
+          case Ipse.Session.ManagedApproval.start(s, call, args) do
+            {:ok, next} ->
+              next
+
+            _ ->
+              tool_result(
+                s,
+                call,
+                "Managed approval arguments cannot be displayed under current source ownership; no tool was started.",
+                "denied",
+                "policy_denied"
+              )
+          end
         else
           ref = make_ref()
 
@@ -1173,6 +1179,13 @@ defmodule Ipse.Session.Turn do
         launch_tool(s, call, args, decision)
     end
   end
+
+  @doc false
+  def complete_managed_approval(s, call, args, true),
+    do: launch_tool(s, call, args, "approved")
+
+  def complete_managed_approval(s, call, _args, false),
+    do: tool_result(s, call, "Denied by user. Do not evade this denial.", "denied", "denied")
 
   def semantic_outer_completed(s, {call, args, {:ok, binding}}) do
     name = get_in(call, ["function", "name"])
@@ -1684,6 +1697,7 @@ defmodule Ipse.Session.Turn do
         | phase: :idle,
           task: nil,
           approval: nil,
+          managed_approval: nil,
           job_ref: nil,
           compaction: nil,
           extension_intent: nil,
