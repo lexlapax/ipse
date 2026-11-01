@@ -2,7 +2,7 @@ defmodule Ipse.Session.ManagedSupersessionSessionTest do
   use ExUnit.Case, async: false
 
   for scenario <-
-        ~w(current cross_session relation_cancel revoke old_missing terminal terminal_cancel terminal_unknown terminal_effect_unknown shared disabled) do
+        ~w(current cross_session pin_history relation_cancel revoke old_missing terminal terminal_cancel terminal_unknown terminal_effect_unknown shared disabled) do
     @tag timeout: 90_000
     @tag supersession_scenario: scenario
     test "genuine Session supersession: #{scenario}" do
@@ -48,6 +48,10 @@ defmodule Ipse.Session.ManagedSupersessionSessionTest do
         )
 
       assert status == 0, output
+
+      if unquote(scenario) == "pin_history",
+        do: assert(output =~ "NATIVE_PINNED_HISTORY_SESSION_PASSED")
+
       if unquote(scenario) in ~w(old_missing disabled), do: refute(output =~ "Type correct ")
 
       if unquote(scenario) == "shared" do

@@ -278,6 +278,9 @@ renewal.
 
 A confirmed replacement becomes current while the original journal and record
 remain historical evidence. It does not erase earlier answers or transcripts.
+A pinned target keeps its persistent signed historical support after temporal
+replacement; forgetting the successor does not erase that history. Later use
+still checks current permission and original sources.
 If an attempt reports an unconfirmed result, inspect the Session journal and
 current note state using the [recovery guidance](recovery.md) before another
 attempt: the replacement may already have happened. Resume makes no retry and

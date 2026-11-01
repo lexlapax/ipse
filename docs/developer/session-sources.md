@@ -451,6 +451,10 @@ An explicitly reopened Session can remain idle after such loss.
 Run `managed_supersession_session_test.exs` for actual statement/relation reviews,
 ordinary and temporal replacements, cross-session source locks, cancellation,
 revocation, missing originals, shared lifecycle and no-replay recovery. Its
+`pin_history` case performs public native pin, temporal replacement and successor
+forgetting, then authenticates the retained persistent history. Its far-future
+eligibility check is an explicit pure as-of calculation, not elapsed-time or
+annual native qualification. Its
 post-switch owner-loss case uses an explicitly instrumented child host installed
 before permission review; this gives deterministic fault timing, not independent
 production or quality qualification. Accepted-decision v6 targets remain outside

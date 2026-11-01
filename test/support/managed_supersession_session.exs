@@ -368,6 +368,13 @@ shared_deadline =
     choice["receipt"]["publication"]["normalization"]["valid_until_ms"]
   end
 
+if scenario == "pin_history" do
+  assert {:ok, choice} =
+           Ipse.CLI.Knowledge.Management.retain(config, cwd, current["key"], %{"kind" => "pin"})
+
+  assert choice["receipt"]["publication"]["normalization"]["category"] == "pin"
+end
+
 assert {:ok, relation_snapshot} =
          Ipse.Extension.Collection.execute(
            collection,
@@ -376,7 +383,7 @@ assert {:ok, relation_snapshot} =
            Ipse.Usage.id()
          )
 
-if scenario in ~w(current cross_session terminal shared) do
+if scenario in ~w(current cross_session pin_history terminal shared) do
   if scenario == "terminal" do
     File.write!(
       Path.join(root, "supersession-terminal-command"),
@@ -632,11 +639,24 @@ if scenario in ~w(current cross_session terminal shared) do
     Ipse.Test.ManagedHistoryUse.run(config, opts, cwd, home, dir, current)
   end
 
+  if scenario == "pin_history" do
+    Code.require_file("managed_pinned_history_session.exs", __DIR__)
+
+    Ipse.Test.ManagedPinnedHistorySession.run(
+      Map.put(config, :semantic_admission, admission),
+      cwd,
+      home,
+      current,
+      events
+    )
+  end
+
   IO.puts(
     case scenario do
       "terminal" -> "MANAGED_SUPERSESSION_TERMINAL_PASSED"
       "shared" -> "MANAGED_SUPERSESSION_SHARED_PASSED"
       "cross_session" -> "MANAGED_SUPERSESSION_CROSS_SESSION_PASSED"
+      "pin_history" -> "MANAGED_SUPERSESSION_PIN_HISTORY_PASSED"
       _ -> "MANAGED_SUPERSESSION_SESSION_PASSED"
     end
   )
