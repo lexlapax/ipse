@@ -467,8 +467,8 @@ operation:
 
 | Host API | Normalization envelope | Metadata changes beyond the original |
 | --- | --- | --- |
-| `Collection.execute_managed/6` | Version 2, used by the current SDK | 1..16 nondeleted `host.validity.` records |
-| `Collection.execute_managed_v3/6` | Version 3, host-private | At most five changes, four nonnull values and one deletion |
+| `Collection.execute_managed/6` | Version 2, used by metadata-version-2 SDK requests | 1..16 nondeleted `host.validity.` records |
+| `Collection.execute_managed_v3/6` | Version 3, host-private adapter for explicit metadata-version-3 requests | At most five changes, four nonnull values and one deletion |
 
 Both check original generation/revisions,
 writer fencing and duplicate identity before entering the host normalizer under
@@ -524,9 +524,10 @@ readers refuse it. The in-memory storage summary remains version 3. The ordinary
 SDK call and its receipt contract do not gain this operation implicitly.
 
 `Collection.Normalizer.normalize/3` supplies the schema-2 implementation used by
-the current SDK callback. It checks the selected recipe, constraints and authenticated host
-proofs, then adds two packed host pages alongside one fresh public record. The
-source anchor keeps separate first-admission clocks for notes and pending proposals.
+the metadata-version-2 callback. It checks the selected recipe, constraints and
+authenticated host proofs, then adds two packed host pages alongside one fresh
+public record. The source anchor keeps separate first-admission clocks for notes
+and pending proposals.
 Later publications can shorten a baseline deadline but cannot renew it, including
 after the public record is removed. Only a genuinely new authenticated occurrence
 starts another source clock. The current host clock determines admission; worker
@@ -668,9 +669,9 @@ mix test test/ipse/extension/consent_test.exs test/ipse/extension/consent_compac
 
 Storage hashes establish byte identity; they do not establish that an original
 source was authenticated by the host. `ProjectIdentity` has an internal scoped
-domain-authentication boundary for future metadata adapters. Its persistent
-project master lives in the private top-level `domain_keys` map of index version
-2, outside the public project and binding maps. Existing version-1 indexes remain
+domain-authentication boundary used by the explicit metadata-v3 adapter. Its
+persistent project master lives in the private top-level `domain_keys` map of
+index version 2, outside the public project and binding maps. Existing version-1 indexes remain
 readable and keyless. Adding a key/catalog entry changes the index revision but
 preserves public bindings and their digest. Ordinary identity mutations retain
 the private map. Preview, existing-binding inspection and verifier reads never
@@ -691,17 +692,28 @@ The internal APIs have distinct jobs:
 | `with_domain_publication/6` | Supply an exact current-policy authorizer and journaled operation; use its signer only in the trusted authenticated publication adapter. Initialization must be explicitly selected. |
 | `reconcile_domain/6` | Explicitly inspect a prepared entry using the exact expected key/fence/operation and a current-policy/root-proof callback. Never repeat the original publication. |
 
-First use writes a prepared namespace entry under Identity after the short
-authorizer releases its nested Consent lock. Only that callback receives the
-volatile first-use signer. The trusted adapter must distinguish actual native
-absence from a materialized empty root and authenticate its first Collection
-completion witness. Once child locks release, Identity writes the active entry
-and checks/releases before returning success. Later publications do not rewrite
-the Identity index. Identity validates callback bindings; its trusted adapter
-must establish the actual Collection witness. The
+Select initialization and authorize it under the same retained Identity owner.
+The two-argument authorizer receives `(binding, fresh?)` from that transaction's
+domain selection. Selection constructs only an in-memory candidate: denial
+writes no prepared entry. The new-v3 adapter checks current sources and policy,
+then requires actual native absence only when `fresh?` is true. A busy or failed
+separate verifier cannot establish first use. Existing one-argument authorizers
+retain their original order: authorize first, then select the domain. Preserve
+that order for callers that consume a one-use review permit.
+
+After authorization releases its nested Consent lock, first use writes the
+prepared namespace entry under Identity. The publication callback then receives
+the volatile first-use signer. Its adapter must distinguish native absence from
+a materialized empty root, recheck absence under the Collection owner, and
+authenticate the first completion witness. Once child locks release, Identity
+writes the active entry and checks/releases before returning success. Later
+publications select the active entry without rewriting the Identity index.
+Identity validates callback bindings; its trusted adapter must establish the
+actual Collection witness. The
 [NormalizerV3 integration exercise](knowledge-storage.md#exercise-actual-collection-and-domain-authentication)
 demonstrates that check with actual Collection reads and publications. The
-current SDK's version-2 path does not select this authenticated adapter.
+SDK's metadata-version-2 path retains its unsigned interpreter; an explicit
+`metadata_version: 3` request selects the authenticated adapter.
 
 An interrupted first use remains prepared. A matching durable root may be checked
 by an explicit reconciliation callback; absence is not permission to reset the
@@ -724,12 +736,12 @@ callbacks.
 The tag primitive binds the private project/namespace/format/key/fence scope,
 closed page context and exact raw body bytes. Context version 1 selects metadata
 schema 3 and binds its reserved page key, kind, operation ID and positive record
-revision. It returns a 32-byte tag, not a sealed storage envelope. The eventual
+revision. It returns a 32-byte tag, not a sealed storage envelope. The
 normalizer must authenticate every inherited page before update/reseal and check
 the final envelope's own size and allocation. MAC verification establishes past
 host authentication; it does not establish present permission, source truth,
 expiry, suppression or safe import adoption. Unsigned format-2 pages remain
-unavailable to that future current-read path unless independently recovered from
+unavailable to the authenticated current-read path unless independently recovered from
 actual validated original history. Coherent raw same-user rollback is outside
 the cooperative storage boundary; supported import must retain its separate
 floor and adoption checks.
@@ -769,9 +781,10 @@ end
 
 Follow the [domain-auth tests](../../test/ipse/extension/project_domain_auth_test.exs)
 for prepared/active transitions, explicit reconciliation, native loss after both
-index switches, owner/scope cancellation and separate-VM contention. Their root
-witnesses are deliberately trusted callback fixtures. Use the separate actual
-Collection integration exercise for its storage-root checks; neither fixture
+index switches, selected-state authorization, owner/scope cancellation and
+separate-VM contention. Their root witnesses are deliberately trusted callback
+fixtures. Use the separate actual Collection integration exercise for its
+storage-root checks; neither fixture
 establishes Session-source or end-user management authority.
 
 ## Read several collection pages under one validated index
@@ -960,7 +973,7 @@ for native journal/tty attachment and reducing-effect admission.
 ## Prepare a local authenticated-page repair
 
 `Collection.ManagedPages` is the internal schema-3 codec used by the host-private
-NormalizerV3. The current SDK normalizer still uses its schema-2
+NormalizerV3. SDK requests without explicit metadata version 3 retain schema-2
 metadata. Calling the codec does not select a new format, adopt an old store or
 grant publication authority. Its fixed descriptor names the page syntax,
 immutable geometry, authentication context and retirement encodings.

@@ -72,6 +72,174 @@ defmodule Ipse.Extension.ProjectDomainAuthTest do
     assert File.ls!(absent) == []
   end
 
+  @tag :domain_publication_selection
+  test "publication authorizes the actual first-use state under the retained Identity owner", c do
+    original = File.read!(index(c))
+    parent = self()
+
+    assert {:ok, :first} =
+             publish(
+               c,
+               fn binding, fresh? ->
+                 assert binding == c.binding and fresh? === true
+                 assert File.read!(index(c)) == original
+                 assert {:error, :project_identity_lock_order} = P.assert_order()
+                 send(parent, :authorized_first)
+                 :ok
+               end,
+               fn cap, receipt ->
+                 assert receipt["state"] == "prepared"
+                 assert {:ok, _} = D.seal(cap, context(c.scope), "body")
+                 {:first_publication, witness(c.scope, receipt), :first}
+               end
+             )
+
+    assert_received :authorized_first
+    active = File.read!(index(c))
+    later = %{c | scope: %{c.scope | operation_id: Ipse.Usage.id()}}
+
+    assert {:ok, :later} =
+             publish(
+               later,
+               fn binding, fresh? ->
+                 assert binding == c.binding and fresh? === false
+                 assert File.read!(index(c)) == active
+                 assert {:error, :project_identity_lock_order} = P.assert_order()
+                 :ok
+               end,
+               fn cap, receipt ->
+                 assert receipt["state"] == "active"
+                 assert {:ok, _} = D.seal(cap, context(later.scope), "later")
+                 {:ok, :later}
+               end
+             )
+
+    assert File.read!(index(c)) == active
+  end
+
+  @tag :domain_publication_selection
+  test "denied or stale selected-state publication persists no new domain", c do
+    original = File.read!(index(c))
+
+    assert {:error, :denied} =
+             publish(
+               c,
+               fn binding, true ->
+                 assert binding == c.binding
+                 {:error, :denied}
+               end,
+               fn _, _ -> flunk("denied publication callback") end
+             )
+
+    assert File.read!(index(c)) == original
+
+    assert {:error, :project_domain_unavailable} =
+             publish(
+               %{c | scope: %{c.scope | initialize: false}},
+               fn _, _ -> flunk("unselected initialization authorizer") end,
+               fn _, _ -> flunk("unselected initialization publication") end
+             )
+
+    assert {:error, :project_domain_auth_refused} =
+             publish(
+               %{c | scope: Map.put(c.scope, :unknown, true)},
+               fn _, _ -> flunk("invalid scope authorizer") end,
+               fn _, _ -> flunk("invalid scope publication") end
+             )
+
+    assert File.read!(index(c)) == original
+
+    assert {:error, :stale_project_identity} =
+             publish(
+               %{c | binding: Map.put(c.binding, "binding_sha256", Ipse.JSON.sha256("stale"))},
+               fn _, _ -> flunk("stale authorizer") end,
+               fn _, _ -> flunk("stale publication") end
+             )
+
+    assert File.read!(index(c)) == original
+  end
+
+  @tag :domain_publication_selection
+  test "prepared state refuses selected-state authorization and preserves legacy authorization order",
+       c do
+    assert {:unknown, :project_domain_initialization_unconfirmed} =
+             publish(c, fn _ -> :ok end, fn _, _ -> :unknown end)
+
+    prepared = File.read!(index(c))
+
+    assert {:error, :project_domain_initialization_pending} =
+             publish(c, fn _, _ -> flunk("selected prepared domain") end, fn _, _ ->
+               flunk("replayed prepared publication")
+             end)
+
+    parent = self()
+
+    assert {:error, :project_domain_initialization_pending} =
+             publish(
+               c,
+               fn _ ->
+                 send(parent, :legacy_authorized_before_prepare)
+                 :ok
+               end,
+               fn _, _ -> flunk("legacy prepared publication") end
+             )
+
+    assert_received :legacy_authorized_before_prepare
+    assert File.read!(index(c)) == prepared
+  end
+
+  @tag :domain_publication_selection
+  test "a busy preliminary verifier cannot turn an active domain into first use", c do
+    assert {:ok, _} = initialize(c)
+    active = File.read!(index(c))
+    parent = self()
+
+    holder =
+      Task.async(fn ->
+        existing(c, fn _, _ ->
+          send(parent, {:identity_held, self()})
+
+          receive do
+            :release -> :ok
+          after
+            3_000 -> flunk("identity holder was not released")
+          end
+        end)
+      end)
+
+    assert_receive {:identity_held, owner}, 2_000
+
+    try do
+      assert {:error, :project_identity_unavailable} = existing(c, fn _, _ -> :active end)
+
+      assert {:error, :project_identity_unavailable} =
+               publish(c, fn _, _ -> flunk("busy authorizer") end, fn _, _ ->
+                 flunk("busy publication")
+               end)
+    after
+      send(owner, :release)
+    end
+
+    assert :ok = Task.await(holder, 4_000)
+    assert File.read!(index(c)) == active
+    later = %{c | scope: %{c.scope | operation_id: Ipse.Usage.id()}}
+
+    assert {:ok, :active} =
+             publish(
+               later,
+               fn _, fresh? ->
+                 assert fresh? === false
+                 :ok
+               end,
+               fn _, receipt ->
+                 assert receipt["state"] == "active"
+                 {:ok, :active}
+               end
+             )
+
+    assert File.read!(index(c)) == active
+  end
+
   test "prepared and active first-use transitions preserve private state on ordinary admission",
        c do
     original = state(c)

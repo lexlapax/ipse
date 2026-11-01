@@ -110,6 +110,14 @@ Managed settlement waits until the enclosing Identity checks and release succeed
 Lock order is ProjectIdentity, Consent, then Collection. Slow IO runs in owned
 effect workers, never inside Session.
 
+For metadata version 3, the publication authorizer receives the fresh/active
+selection from that same retained Identity transaction. It checks native root
+absence only for first use, before prepared state is written. An earlier busy
+verifier is no initialization evidence. Active domains still require their
+authenticated format; prepared domains refuse without retry. The
+[storage walkthrough](knowledge-storage.md#publish-one-fresh-record-with-authenticated-metadata)
+connects this selection to the actual Collection witness and final activation.
+
 For the new-v3 shape, `Collection.with_notes_publication_deadline/2` installs a
 trusted same-owner [admission scope](../archive/2026-10-26-p30-p31-implementation/notes-publication-admission.md)
 around that existing publisher. The authenticated policy

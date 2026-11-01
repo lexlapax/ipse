@@ -147,19 +147,23 @@ defmodule Ipse.Extension.ProjectIdentity do
   journaled first intent and an exact current protected-policy authorizer. The
   trusted adapter must prove a genuinely new absent root before first use.
 
+  A two-argument authorizer receives the binding and whether the namespace was
+  selected for first use under this same retained Identity transaction. It runs
+  before any prepared state is written. A one-argument authorizer runs before
+  selection, preserving its original attempt/permit semantics.
+
   First completion accepts a trusted host root witness, not worker JSON. Actual
   Collection proof authentication is an adapter obligation and is not provided
   by this independent component. Prepared state is never automatically retried.
   Callback output is withheld until native index checks and release succeed.
   """
   def with_domain_publication(home, cwd, binding, scope, authorize, fun)
-      when is_function(authorize, 1) and is_function(fun, 2) do
+      when (is_function(authorize, 1) or is_function(authorize, 2)) and is_function(fun, 2) do
     if DomainAuth.publication_scope?(scope) do
       transaction(home, cwd, fn context, state ->
         domain_callback(context, state, binding, fn ->
-          with :ok <- authorize.(binding),
-               {:ok, next, record, entry, fresh?} <-
-                 DomainAuth.prepare(state, binding["project_id"], scope),
+          with {:ok, next, record, entry, fresh?} <-
+                 prepare_authorized_domain(state, binding, scope, authorize),
                :ok <- if(fresh?, do: write(context.root, advance(next), context.lock), else: :ok) do
             next = if fresh?, do: advance(next), else: next
 
@@ -176,6 +180,20 @@ defmodule Ipse.Extension.ProjectIdentity do
   end
 
   def with_domain_publication(_, _, _, _, _, _), do: @error
+
+  defp prepare_authorized_domain(state, binding, scope, authorize)
+       when is_function(authorize, 1) do
+    with :ok <- authorize.(binding),
+         do: DomainAuth.prepare(state, binding["project_id"], scope)
+  end
+
+  defp prepare_authorized_domain(state, binding, scope, authorize)
+       when is_function(authorize, 2) do
+    with {:ok, _, _, _, fresh?} = selected <-
+           DomainAuth.prepare(state, binding["project_id"], scope),
+         :ok <- authorize.(binding, fresh?),
+         do: selected
+  end
 
   @doc "Explicit prepared-state reconciliation by a trusted current-policy/root-proof callback; never publishes Collection work."
   def reconcile_domain(home, cwd, binding, expected, authorize, prove)

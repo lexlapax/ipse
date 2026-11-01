@@ -89,6 +89,9 @@ The gate does not prove that an old operation left storage unchanged.
 Keep the original Ipse home, protected control/identity/collection files and
 Session journal. A lost confirmation can leave a saved grant, a durable note,
 pending liability or a prepared first-use domain. It does not prove absence.
+Concurrent capture can refuse while another process owns Identity. That refusal
+does not make an existing collection new or authorize resetting it; inspect the
+recorded outcome and wait for ownership cleanup before deciding on new work.
 After the original owner has stopped and cleanup is confirmed, inspect locally:
 
 ```sh

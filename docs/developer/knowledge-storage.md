@@ -46,13 +46,19 @@ identities refuse. No replacement, typed correction, pin, forget, retention
 change or stored choice/retirement is admitted by this automatic interpreter.
 
 First use needs native-confirmed absence and the matching prepared Identity
-catalog. The caller checks actual absence in one ReadView and closes it before
-Identity prepares the domain. Inside the publication, Collection checks absence
-again under its actual native owner. Initialization emits format plus the anchor
-and live zero-fence pages. An active catalog requires the exact authenticated
-format already present. An existing root with missing format, unsigned V2 pages
-or a disappeared active store refuses. No implicit adoption, reseal, reset or
-import path exists.
+catalog. `ManagedCollectionCall` uses the two-argument publication authorizer:
+Identity selects fresh or active state under its retained lock before supplying
+`fresh?`. The authorizer checks sources and policy, and for fresh state checks
+actual absence in one ReadView, closing it before Identity writes prepared state.
+It never infers absence from a busy verifier or another probe's failure. Inside
+publication, Collection checks absence again under its actual native owner.
+Initialization emits format plus the anchor and live zero-fence pages. An active
+catalog requires the exact authenticated format already present. An existing
+root with missing format, unsigned V2 pages or a disappeared active store refuses.
+A prepared catalog also refuses rather than replaying the first attempt. No
+implicit adoption, reseal, reset or import path exists. Follow the
+[Identity callback contract](persistence.md#keep-project-domain-attestations-private)
+for selection, authorization and activation ordering.
 
 Keep final Identity activation separate from a successful inner Collection call.
 Before returning a first-publication witness, the host opens one new actual

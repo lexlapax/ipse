@@ -223,24 +223,23 @@ defmodule Ipse.Extension.ManagedCollectionCall do
   defp protected_v3(c, i) do
     alias Ipse.Extension.ProjectIdentity
     binding = c.config[:semantic_admission]["binding"]
-    scope = %{namespace: i["namespace"], format: "managed-metadata-v3"}
 
-    existing =
-      ProjectIdentity.with_existing_domain_auth(c.config[:home], c.cwd, binding, scope, fn _, _ ->
-        :active
-      end)
-
-    scope = Map.merge(scope, %{operation_id: i["operation_id"], initialize: existing != :active})
+    scope = %{
+      namespace: i["namespace"],
+      format: "managed-metadata-v3",
+      operation_id: i["operation_id"],
+      initialize: true
+    }
 
     ProjectIdentity.with_domain_publication(
       c.config[:home],
       c.cwd,
       binding,
       scope,
-      fn _ ->
+      fn _, fresh? ->
         with {:ok, current, proofs} <- current_sources(c, i),
              {:ok, _} <- plan(c, i, current, proofs),
-             :ok <- if(scope.initialize, do: native_absence(c, i), else: :ok) do
+             :ok <- if(fresh?, do: native_absence(c, i), else: :ok) do
           :ok
         else
           _ -> {:error, :collection_domain_refused}
