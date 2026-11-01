@@ -780,6 +780,20 @@ Do not filter out initialization or DELETE requests. HTTP uses an explicitly
 selected loopback fixture with the normal config loader; it supplies no TLS or
 remote-service qualification.
 
+Select `--only native_root_loss` for lost HTTP initialization and held HTTP/stdio
+owner loss. Set the existing fault flag during native input, then require the
+actual initialization-received marker or physical tool effect before observing
+automatic termination or killing the consumer. Held loss must stop the registered
+transport and close the real HTTP socket or stop the recorded stdio server PID.
+Wait for the original OS lock to release before strict Saved and idle recovery.
+Compare the complete retained reference dependencies with those displayed for
+approval. In these fixtures, derive later usability from committed effect cleanup:
+a missing record requires `managed_lineage_unavailable`, which must survive resume;
+all confirmed cleanup retains the usable dependency union. Do not forge a cleanup
+record or delay the original fault merely to get a usable lineage. Require the appropriate
+absent/preserved target, unchanged tool/model counts and, for HTTP, identical full
+traffic after settled cleanup and resume.
+
 Inject a fault at its actual purpose: a hook around shared source acquisition
 may now intercept an earlier Worker input, before a later publication watcher
 exists. Keep independent allowed-path and denial assertions, and preserve the

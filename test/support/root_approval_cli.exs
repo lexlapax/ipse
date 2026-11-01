@@ -1,7 +1,7 @@
 [selection, root, scenario] = System.argv()
 
 allowed =
-  ~w(write shell mcp http mcp_pinned http_revoke http_expiry shell_running_revoke shell_running_kill mcp_start_revoke http_start_revoke) ++
+  ~w(write shell mcp http mcp_pinned http_revoke http_expiry http_lost_start http_held_loss mcp_held_loss shell_running_revoke shell_running_kill mcp_start_revoke http_start_revoke) ++
     for(
       kind <- ~w(write shell mcp),
       boundary <- ~w(root_change revoke expiry owner_loss),

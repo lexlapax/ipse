@@ -996,9 +996,13 @@ pair native allowed stdio/HTTP calls with revocation after admitted start and
 before send, confirmed cleanup, withheld delivery and strict idle recovery.
 [HTTP pre-start and pinned-helper controls](archive/2026-10-26-p30-p31-implementation/root-native-prestart-pinned-20261101.md)
 also preserve zero additional connections after native-input revocation/expiry
-and successful stdio dispatch despite an unpinned helper override. HTTP
-response-loss/owner-loss and stdio held-owner-loss migrations retain separate
-qualification. The
+and successful stdio dispatch despite an unpinned helper override. The
+[lost-initialization and held-owner-loss controls](archive/2026-10-26-p30-p31-implementation/root-native-mcp-loss-20261101.md)
+now preserve actual startup uncertainty, held HTTP socket/stdio server cleanup,
+the complete original root dependencies and inert recovery. Missing effect
+cleanup keeps lineage unavailable rather than authorizing reuse. These original
+root-only native approval migrations do not close full C0, combined-module,
+installed/platform or actual-note quality qualification. The
 [accepted-decision approval extension](archive/2026-10-26-p30-p31-implementation/accepted-approval-20261101.md)
 additionally retains original management journals at that same native sink,
 with Session/Writer-authenticated manifest counts/inodes. Native controls cover

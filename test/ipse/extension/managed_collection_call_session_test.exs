@@ -4582,60 +4582,24 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
     end
   end
 
+  @tag native_root_approval: "http_lost_start", native_root_loss: true, timeout: 90_000
   @tag registered_main: true,
        ordinary_effect: true,
        managed_mcp: true,
        managed_http: true,
        managed_start_unknown: true
   test "lost HTTP initialization response preserves possible startup as unknown", c do
-    {pid, approval, path} = managed_mcp_approval(c)
-    id = Session.info(pid).id
-    owner_ref = Process.monitor(pid)
-    File.write!(Path.join(c.cwd, "managed-mcp-drop-start"), "drop")
-    assert :ok = Session.approve(pid, approval, true)
-    assert_receive {:ipse, ^pid, {:done, :error}}, 15_000
-    assert_receive {:DOWN, ^owner_ref, :process, ^pid, _}, 5000
-    assert File.read!(Path.join(c.cwd, "managed-mcp-start-received")) == "received"
-    refute File.exists?(path)
-    refute File.exists?(Path.join(c.cwd, "calls.log"))
-    assert {:ok, events} = Journal.load(c.dir, id)
-
-    assert Enum.any?(
-             events,
-             &(get_in(&1, ["message", "ipse_tool_outcome", "status"]) == "unknown")
-           )
-
-    assert {:ok, _} = Ipse.Session.Saved.restore(events, id)
-    server = c.provider_server.pid
-    for _ <- 1..2, do: assert_receive({:observed_provider_request, ^server, _}, 1000)
-    refute_receive {:observed_provider_request, ^server, _}, 200
-    Task.shutdown(c.provider_server, :brutal_kill)
+    native_root_approval(c, "http", :lost_start)
   end
 
+  @tag native_root_approval: "http_held_loss", native_root_loss: true, timeout: 90_000
   @tag registered_main: true,
        ordinary_effect: true,
        managed_mcp: true,
        managed_http: true,
        managed_http_owner_loss: true
   test "managed HTTP owner loss closes a held effect socket without replay", c do
-    {pid, approval, path} = managed_mcp_approval(c)
-    id = Session.info(pid).id
-    owner_ref = Process.monitor(pid)
-    File.write!(Path.join(c.cwd, "managed-mcp-hold-call"), "hold")
-    assert :ok = Session.approve(pid, approval, true)
-    await_marker(Path.join(c.cwd, "managed-mcp-call-held"), "held", 500)
-    assert File.read!(path) == "SYNTHETIC_MANAGED_MCP"
-    Process.exit(pid, :kill)
-    assert_receive {:DOWN, ^owner_ref, :process, ^pid, :killed}, 5000
-    await_marker(Path.join(c.cwd, "managed-mcp-call-closed"), "{:error, :closed}", 500)
-    assert File.read!(Path.join(c.cwd, "calls.log")) == "write_note\n"
-    assert {:ok, events} = Journal.load(c.dir, id)
-    assert {:ok, _} = Ipse.Session.Saved.restore(events, id)
-    resumed = start(c, %{approval: :ask, approval_origin: :interactive, headless: false}, id)
-    assert Session.info(resumed).phase == :idle
-    assert File.read!(Path.join(c.cwd, "calls.log")) == "write_note\n"
-    assert :ok = Session.close_confirmed(resumed)
-    Task.shutdown(c.provider_server, :brutal_kill)
+    native_root_approval(c, "http", :held_loss)
   end
 
   for loss <- [:session, :transport] do
@@ -4808,36 +4772,14 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
     assert :ok = Session.close_confirmed(resumed)
   end
 
+  @tag native_root_approval: "mcp_held_loss", native_root_loss: true, timeout: 90_000
   @tag registered_main: true,
        ordinary_effect: true,
        managed_mcp: true,
        managed_held: true,
        managed_stdio_owner_loss: true
   test "managed stdio owner loss stops a held server without replay", c do
-    {pid, approval, path} = managed_mcp_approval(c)
-    id = Session.info(pid).id
-    owner_ref = Process.monitor(pid)
-    assert :ok = Session.approve(pid, approval, true)
-    ready = Path.join(c.cwd, "disconnect-ready")
-    await_marker(ready, "", 500)
-    assert File.read!(path) == "SYNTHETIC_MANAGED_MCP"
-    server_pid = File.read!(ready)
-    assert Regex.match?(~r/\A[0-9]+\z/, server_pid)
-    transports = :sys.get_state(pid).mcp_resources |> Map.keys()
-    assert length(transports) == 1
-    refs = Enum.map(transports, &{&1, Process.monitor(&1)})
-    Process.exit(pid, :kill)
-    assert_receive {:DOWN, ^owner_ref, :process, ^pid, :killed}, 5000
-    for {transport, ref} <- refs, do: assert_receive({:DOWN, ^ref, :process, ^transport, _}, 5000)
-    await_os_process_exit(server_pid, 500)
-    assert File.read!(Path.join(c.cwd, "calls.log")) == "write_note\n"
-    assert {:ok, events} = Journal.load(c.dir, id)
-    assert {:ok, _} = Ipse.Session.Saved.restore(events, id)
-    resumed = start(c, %{approval: :ask, approval_origin: :interactive, headless: false}, id)
-    assert Session.info(resumed).phase == :idle
-    assert File.read!(Path.join(c.cwd, "calls.log")) == "write_note\n"
-    assert :ok = Session.close_confirmed(resumed)
-    Task.shutdown(c.provider_server, :brutal_kill)
+    native_root_approval(c, "mcp", :held_loss)
   end
 
   defp await_os_process_exit(_, 0), do: flunk("synthetic MCP server remained alive")
@@ -4860,17 +4802,6 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
        managed_helper_identity: true
   test "managed stdio uses the build-pinned helper despite an override", c do
     native_root_approval(c, "mcp_pinned")
-  end
-
-  defp managed_mcp_approval(c) do
-    pid = start(c, %{approval: :ask, approval_origin: :interactive, headless: false})
-    assert :ok = Session.prompt(pid, "Use the synthetic managed observation in an MCP write.")
-
-    assert_receive {:ipse, ^pid, {:approval, approval, "mcp__notes__write_note", arguments}},
-                   10_000
-
-    assert arguments == %{"path" => "managed-mcp.txt", "content" => "SYNTHETIC_MANAGED_MCP"}
-    {pid, approval, Path.join(c.cwd, "managed-mcp.txt")}
   end
 
   defp managed_shell_arguments(c) do
@@ -5455,6 +5386,210 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
 
       if lost?, do: refute(File.exists?(path)), else: assert(File.read!(path) == "finished")
       assert length(Agent.get(c.provider_requests, & &1)) == 2
+    after
+      Task.shutdown(c.provider_server, :brutal_kill)
+    end
+  end
+
+  defp native_root_effect(c, kind, boundary)
+       when kind in ["mcp", "http"] and boundary in [:lost_start, :held_loss] do
+    lost_start? = boundary == :lost_start
+    path = Path.join(c.cwd, "managed-mcp.txt")
+
+    try do
+      pid = start(c, %{approval: :ask, approval_origin: :interactive, headless: false})
+      id = Session.info(pid).id
+      refute File.exists?(path)
+
+      {:ok, watcher} =
+        Task.start(fn ->
+          await_marker(Path.join(c.root, "managed-approval-input-ready"), "ready", 1500)
+          state = :sys.get_state(pid)
+          assert state.phase == :managed_approval and state.share_barrier.phase == :review_input
+
+          assert state.managed_approval.arguments == %{
+                   "path" => "managed-mcp.txt",
+                   "content" => "SYNTHETIC_MANAGED_MCP"
+                 }
+
+          assert state.managed_approval.dependencies != []
+          assert Enum.all?(state.managed_approval.dependencies, &(&1["version"] == 3))
+          assert {:error, _} = Session.approve(pid, make_ref(), true)
+          refute File.exists?(path)
+
+          File.write!(
+            Path.join(c.root, "native-root-loss-dependencies.json"),
+            Jason.encode!(state.managed_approval.dependencies)
+          )
+
+          owner_ref = Process.monitor(pid)
+
+          if kind == "http" do
+            flag = if lost_start?, do: "managed-mcp-drop-start", else: "managed-mcp-hold-call"
+            File.write!(Path.join(c.cwd, flag), if(lost_start?, do: "drop", else: "hold"))
+          end
+
+          File.write!(Path.join(c.root, "managed-approval-control-checked"), "checked")
+
+          if lost_start? do
+            await_marker(Path.join(c.cwd, "managed-mcp-start-received"), "received", 500)
+            assert_receive {:DOWN, ^owner_ref, :process, ^pid, _}, 15_000
+            refute File.exists?(path)
+            refute File.exists?(Path.join(c.cwd, "calls.log"))
+          else
+            ready =
+              Path.join(
+                c.cwd,
+                if(kind == "http", do: "managed-mcp-call-held", else: "disconnect-ready")
+              )
+
+            await_marker(ready, if(kind == "http", do: "held", else: ""), 500)
+            assert File.read!(path) == "SYNTHETIC_MANAGED_MCP"
+            assert File.read!(Path.join(c.cwd, "calls.log")) == "write_note\n"
+            [transport] = :sys.get_state(pid).mcp_resources |> Map.keys()
+            transport_ref = Process.monitor(transport)
+            server_pid = if kind == "mcp", do: File.read!(ready)
+            if server_pid, do: assert(Regex.match?(~r/\A[0-9]+\z/, server_pid))
+            assert {:ok, started} = Journal.load(c.dir, id)
+
+            assert Enum.map(
+                     Enum.filter(started, &(&1["type"] == "managed_tool_effect_admitted")),
+                     &get_in(&1, ["binding", "kind"])
+                   ) == ["mcp.start", "mcp.send"]
+
+            Process.exit(pid, :kill)
+            assert_receive {:DOWN, ^owner_ref, :process, ^pid, :killed}, 5000
+            assert_receive {:DOWN, ^transport_ref, :process, ^transport, _}, 5000
+
+            if kind == "http",
+              do:
+                await_marker(
+                  Path.join(c.cwd, "managed-mcp-call-closed"),
+                  "{:error, :closed}",
+                  500
+                ),
+              else: await_os_process_exit(server_pid, 500)
+          end
+
+          File.write!(Path.join(c.root, "native-root-checked"), "checked")
+        end)
+
+      IO.puts("IPSE_MANAGED_APPROVAL_CLI_READY")
+
+      assert 1 ==
+               Ipse.CLI.Terminal.interact(
+                 pid,
+                 Process.monitor(pid),
+                 true,
+                 "Use the synthetic managed observation in an MCP write.",
+                 c.cwd
+               )
+
+      await_marker(Path.join(c.root, "native-root-checked"), "checked", 600)
+      monitor = Process.monitor(watcher)
+      assert_receive {:DOWN, ^monitor, :process, ^watcher, reason}, 1000
+      assert reason in [:normal, :noproc]
+      refute Process.alive?(pid)
+      native_root_released(Path.join(c.dir, id <> ".lock"), 500)
+      assert {:ok, events} = Journal.load(c.dir, id)
+
+      assert [
+               %{"name" => "ext__capture__inspect", "approval" => "saved_consent"},
+               %{"name" => "mcp__notes__write_note", "approval" => "approved"}
+             ] = Enum.filter(events, &(&1["type"] == "tool_started"))
+
+      kinds =
+        events
+        |> Enum.filter(&(&1["type"] == "managed_tool_effect_admitted"))
+        |> Enum.map(&get_in(&1, ["binding", "kind"]))
+
+      assert kinds == if(lost_start?, do: ["mcp.start"], else: ["mcp.start", "mcp.send"])
+
+      if lost_start? do
+        assert File.read!(Path.join(c.cwd, "managed-mcp-start-received")) == "received"
+        refute File.exists?(path)
+        refute File.exists?(Path.join(c.cwd, "calls.log"))
+
+        assert Enum.any?(
+                 events,
+                 &(get_in(&1, ["message", "ipse_tool_outcome", "status"]) == "unknown")
+               )
+      else
+        assert File.read!(path) == "SYNTHETIC_MANAGED_MCP"
+        assert File.read!(Path.join(c.cwd, "calls.log")) == "write_note\n"
+        refute Enum.any?(events, &(&1["type"] == "managed_tool_result_observed"))
+        refute Enum.any?(events, &(&1["type"] == "managed_tool_result_release"))
+      end
+
+      assert {:ok, saved} = Session.Saved.restore(events, id)
+
+      assert {:ok, dependencies} =
+               Session.ManagedReference.dependencies(
+                 saved.managed_lineage.reference,
+                 saved.messages
+               )
+
+      assert dependencies != [] and Enum.all?(dependencies, &(&1["version"] == 3))
+
+      assert dependencies ==
+               c.root
+               |> Path.join("native-root-loss-dependencies.json")
+               |> File.read!()
+               |> Jason.decode!()
+
+      unconfirmed? =
+        Enum.any?(saved.managed_lineage.tool_effect_inputs, fn {_, effect} ->
+          effect.cleanup != "confirmed"
+        end)
+
+      assert saved.managed_lineage.unavailable == unconfirmed?
+
+      expected_dependencies =
+        if unconfirmed?,
+          do: {:error, :managed_lineage_unavailable},
+          else: {:ok, dependencies}
+
+      assert Session.ManagedLineage.dependencies(saved.managed_lineage, saved.messages) ==
+               expected_dependencies
+
+      assert Enum.count(events, &(&1["type"] == "request_admitted")) == 2
+
+      assert Enum.count(
+               events,
+               &(&1["type"] == "request_finished" and &1["outcome"] == "completed" and
+                   &1["finality"] == "final")
+             ) == 2
+
+      assert length(Agent.get(c.provider_requests, & &1)) == 2
+
+      connections =
+        if kind == "http", do: File.read!(Path.join(c.cwd, "managed-mcp-connections.log"))
+
+      journal = Path.join(c.dir, id <> ".jsonl")
+      closed = File.read!(journal)
+      resumed = start(c, %{approval: :ask, approval_origin: :interactive, headless: false}, id)
+      assert Session.info(resumed).phase == :idle
+      assert :sys.get_state(resumed).messages == saved.messages
+      assert :sys.get_state(resumed).managed_lineage.unavailable == unconfirmed?
+      assert_idle_resume_journal(journal, closed, id)
+      assert :ok = Session.close_confirmed(resumed)
+
+      assert {:ok, %{"release_claim" => "signed_release_claim"}} =
+               Session.Saved.inspect_saved(c.dir, id)
+
+      if lost_start? do
+        refute File.exists?(path)
+        refute File.exists?(Path.join(c.cwd, "calls.log"))
+      else
+        assert File.read!(path) == "SYNTHETIC_MANAGED_MCP"
+        assert File.read!(Path.join(c.cwd, "calls.log")) == "write_note\n"
+      end
+
+      assert length(Agent.get(c.provider_requests, & &1)) == 2
+
+      if kind == "http" do
+        assert File.read!(Path.join(c.cwd, "managed-mcp-connections.log")) == connections
+      end
     after
       Task.shutdown(c.provider_server, :brutal_kill)
     end

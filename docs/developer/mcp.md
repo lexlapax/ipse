@@ -158,7 +158,10 @@ connection is not permission for the later request. The separate
 `native_root_prestart` selection checks HTTP refusal without another connection
 after native-input revocation/expiry and a successful stdio call that ignores
 an unpinned helper override. Preserve the allowed control and actual traffic
-observations when changing either admission boundary.
+observations when changing either admission boundary. Use `native_root_loss`
+for lost initialization and held HTTP/stdio consumer loss. Its source-retention
+checks are independent of whether an unconfirmed effect requires recovery to
+refuse later lineage use; preserving unknown work does not grant it a new permit.
 
 ## Schema subset
 
