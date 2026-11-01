@@ -3022,6 +3022,22 @@ defmodule Ipse.Session do
     do: {:reply, {:error, :extension_action_refused}, s}
 
   def handle_call(
+        {:extension_managed_approval_finish, ref, result},
+        {caller, _},
+        %{
+          job_ref: ref,
+          task: %{pid: caller},
+          phase: :managed_approval,
+          managed_approval: %{input: %{"kind" => "extension.action.approval"}}
+        } = s
+      )
+      when ref != nil,
+      do: Ipse.Session.ManagedApproval.complete_extension(s, result)
+
+  def handle_call({:extension_managed_approval_finish, _, _}, _, s),
+    do: {:reply, {:error, :managed_argument_display_unavailable}, s}
+
+  def handle_call(
         {:extension_collection_sources, ref, intent},
         {caller, _},
         %{job_ref: ref, task: %{pid: worker}, invocation: %{action: %{intent: intent}}} = s

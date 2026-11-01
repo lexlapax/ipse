@@ -1015,9 +1015,15 @@ or actual-note quality qualification. The
 additionally retains original management journals at that same native sink,
 with Session/Writer-authenticated manifest counts/inodes. Native controls cover
 approval, denial, actual descriptor ownership and journal loss before display,
-including stopped-consumer inert recovery. Delegation and nested worker approval
-displays remain closed. This is component progress; full C0, installed/platform
-and independent quality acceptance remain open.
+including stopped-consumer inert recovery. A [nested native-approval adapter](archive/2026-10-26-p30-p31-implementation/nested-native-approval-20261101.md)
+now binds an extension's original parent/action and full source union to that same
+terminal, with root-derived MCP, native-file, text, embedding and decision
+approval/denial/source-change controls, preserved MCP cancellation/loss cases and
+strict idle recovery. The combined frozen cohort's wire-assertion failure and its
+focused correction remain separately recorded. Source-content, installed and
+whole-source qualification remain open.
+Delegation and managed question displays remain closed. This is component progress;
+full C0, installed/platform and independent quality acceptance remain open.
 
 The [managed export-input adapter](archive/2026-10-26-p30-p31-implementation/worker-input-session-20261101.md)
 now binds actual initial calls, committed action continuations and output-page

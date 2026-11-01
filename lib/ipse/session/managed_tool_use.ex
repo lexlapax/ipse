@@ -24,7 +24,7 @@ defmodule Ipse.Session.ManagedToolUse do
 
   @doc false
   def managed_invocation?(s) do
-    invocation_union(s) != {:ok, []}
+    invocation_dependencies(s) != {:ok, []}
   rescue
     _ -> true
   catch
@@ -33,7 +33,7 @@ defmodule Ipse.Session.ManagedToolUse do
 
   @doc false
   def publication_prerequisites?(s, request, binding) do
-    with {:ok, dependencies} <- invocation_union(s) do
+    with {:ok, dependencies} <- invocation_dependencies(s) do
       if dependencies == [] do
         true
       else
@@ -181,7 +181,7 @@ defmodule Ipse.Session.ManagedToolUse do
   def begin_discovery(s, request, server, tool_id) do
     with %ManagedLineage{unavailable: false} <- s.managed_lineage,
          parent when is_map(parent) <- s.invocation.parent,
-         {:ok, deps} <- invocation_union(s),
+         {:ok, deps} <- invocation_dependencies(s),
          true <- is_nil(s.invocation.action),
          true <- not match?(%{discovery: _}, s.extension_mcp_context) do
       base = %{owner: self(), job_ref: s.job_ref}
@@ -973,7 +973,8 @@ defmodule Ipse.Session.ManagedToolUse do
 
   def snapshot(s), do: model_snapshot(s)
 
-  defp invocation_union(s) do
+  @doc false
+  def invocation_dependencies(s) do
     with %ManagedLineage{unavailable: false} <- s.managed_lineage,
          parent when is_map(parent) <- s.invocation.parent,
          true <- s.managed_lineage.active_invocation == parent["invocation_id"],
@@ -997,7 +998,7 @@ defmodule Ipse.Session.ManagedToolUse do
          %{discovery: intent, job: job, identity: identity} <- s.extension_mcp_context,
          true <- job == s.job_ref and identity == JSON.digest([s.invocation.parent["identity"]]),
          %{active_discovery: %{intent: ^intent}} <- s.managed_lineage,
-         {:ok, deps} <- invocation_union(s),
+         {:ok, deps} <- invocation_dependencies(s),
          true <- valid_discovery_intent?(intent, s.invocation.parent, deps),
          input = discovery_input(s.id, s.invocation.parent, intent) do
       {:ok,
@@ -1058,7 +1059,7 @@ defmodule Ipse.Session.ManagedToolUse do
          true <- intent["parent_invocation_id"] == parent["invocation_id"],
          true <- intent["request"]["op"] in ~w(tool.call mcp.call collection.store),
          true <- intent["approval"] != "denied",
-         {:ok, deps} <- invocation_union(s),
+         {:ok, deps} <- invocation_dependencies(s),
          input = action_input(s.id, parent, intent) do
       {:ok,
        %{

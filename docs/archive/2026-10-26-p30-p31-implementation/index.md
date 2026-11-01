@@ -61,6 +61,7 @@ nor resource/offline qualification. No daemon configuration or existing model wa
 
 ## P31A contracts and evidence
 
+- [Nested native extension approval](nested-native-approval-20261101.md) binds the original Host task, parent/action and inherited union to the existing native display, preserving discovery before approval and separate effect/Worker-input fences. Follow-up controls cover all five operation types on root metadata, with unchanged frozen source/build inventories, the retained combined wire-assertion failure and a focused correction. Whole-source/content/installed qualification remains open.
 - [Paired stale-helper input boundaries](stale-helper-boundary-20261101.md) distinguish zero helper egress and unknown unfinished-Worker input from successful completed-output withdrawal, preserving both current-helper positives, exact accounting and inert recovery. This is a focused test repair, not a new complete baseline.
 - [Shared native loss-lineage assertions](native-loss-lineage-shared-20261101.md) preserve the exact approval/reference union and journal-derived reconstruction fence for both shell and MCP, including idle recovery. Five focused native controls pass; the complete module aggregate remains separate.
 - [Complete frozen managed-collection module](managed-collection-module-20261101.md) records 130 passed, 22 failed and 15 skipped at clean `098559f`, with all parent failures and unchanged pre/post source, test-build and helper inventories. This is a failed module baseline, not a complete-suite result.

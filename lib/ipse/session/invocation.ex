@@ -592,8 +592,7 @@ defmodule Ipse.Session.Invocation do
           {:reply, {:error, :managed_effect_unavailable}, s}
 
         Ipse.Session.ManagedToolUse.managed_invocation?(s) and
-            (Ipse.Extension.Actions.question?(request) or
-               (mutation and mode == :ask and not protected)) ->
+            Ipse.Extension.Actions.question?(request) ->
           Session.notify(
             s,
             {:error,
@@ -651,16 +650,20 @@ defmodule Ipse.Session.Invocation do
               do: Map.put(proposed, "effect_binding", effect_binding),
               else: proposed
 
-          Session.notify(s, {:approval, approval_ref, "extension:" <> request["op"], proposed})
+          if Ipse.Session.ManagedToolUse.managed_invocation?(s) do
+            Ipse.Session.ManagedApproval.start_extension(s, intent, proposed, phase)
+          else
+            Session.notify(s, {:approval, approval_ref, "extension:" <> request["op"], proposed})
 
-          {:noreply,
-           %{
-             s
-             | phase: :extension_approval,
-               approval: {:extension, approval_ref, from, phase},
-               extension_tool_context: nil,
-               invocation: %{s.invocation | action: %{intent: intent}}
-           }}
+            {:noreply,
+             %{
+               s
+               | phase: :extension_approval,
+                 approval: {:extension, approval_ref, from, phase},
+                 extension_tool_context: nil,
+                 invocation: %{s.invocation | action: %{intent: intent}}
+             }}
+          end
 
         true ->
           s =
@@ -1152,6 +1155,18 @@ defmodule Ipse.Session.Invocation do
   end
 
   def approve(s, allowed, caller, phase, action) do
+    {reply, next} = approve_action(s, allowed, phase, action, false)
+    GenServer.reply(caller, reply)
+    {:reply, :ok, next}
+  end
+
+  @doc false
+  def approve_managed(s, allowed, phase, action) do
+    {reply, next} = approve_action(s, allowed, phase, action, true)
+    {:reply, reply, next}
+  end
+
+  defp approve_action(s, allowed, phase, action, native) do
     intent =
       Map.put(action.intent, "approval", if(allowed == true, do: "approved", else: "denied"))
 
@@ -1159,7 +1174,7 @@ defmodule Ipse.Session.Invocation do
 
     allowed =
       allowed == true and
-        not Ipse.Session.ManagedToolUse.managed_invocation?(s) and
+        (native or not Ipse.Session.ManagedToolUse.managed_invocation?(s)) and
         not (get_in(s.invocation.parent, ["semantic_binding", "class"]) == "collection.read" and
                Actions.mutating?(intent["request"])) and
         Ipse.Extension.Mode.ordinary(mode, Actions.mutating?(intent["request"])) != :deny
@@ -1178,8 +1193,6 @@ defmodule Ipse.Session.Invocation do
           true -> {:denied, intent}
         end
 
-      GenServer.reply(caller, reply)
-
       if match?({:ok, _, _}, reply) and Ipse.Extension.Actions.tool?(intent["request"]),
         do:
           Session.notify(
@@ -1191,7 +1204,7 @@ defmodule Ipse.Session.Invocation do
              )}
           )
 
-      {:reply, :ok,
+      {reply,
        %{
          s
          | approval: nil,
@@ -1200,8 +1213,9 @@ defmodule Ipse.Session.Invocation do
        }}
     else
       s = Session.finish_wait(s, "expired")
-      GenServer.reply(caller, {:error, :extension_action_expired})
-      {:reply, :ok, %{s | approval: nil, phase: phase, invocation: %{s.invocation | action: nil}}}
+
+      {{:error, :extension_action_expired},
+       %{s | approval: nil, phase: phase, invocation: %{s.invocation | action: nil}}}
     end
   end
 

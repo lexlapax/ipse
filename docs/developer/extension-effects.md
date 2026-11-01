@@ -56,6 +56,16 @@ separate effect. [Protected collection work](collection-sdk.md) uses an explicit
 ceilings. That narrow path never applies to ordinary file, shell, MCP, service or
 inference actions.
 
+When an invocation carries managed dependencies, `ManagedApproval` binds its
+complete inherited union, original parent and pending action to the Session-issued
+native terminal. The full proposal includes its existing execution or MCP binding.
+Source/policy owners settle before input; a fresh answer still needs ordinary
+effect admission afterward. Host waits within its original invocation task and
+returns the private native result to that same Session/job, without giving the
+Worker a terminal handle or approval token. Raw subscriber approval cannot replace
+this path. Managed questions, State/service effects and unqualified purposes keep
+their separate refusal gates.
+
 Session syncs the intent before dispatch. Slow work runs in an owned task outside
 the GenServer. Session syncs its result before continuing the worker. Deadline,
 worker death, cancellation and lease expiry stop local owned work. They cannot

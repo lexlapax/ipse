@@ -226,6 +226,12 @@ answers silently. Interrupted continuations remain unknown.
 Workflow file/shell calls use ordinary workspace guidance, approvals, confinement,
 and 1–30,000-ms deadlines. Text is bounded to 4 KiB plus its escaped envelope.
 Oversized reads fail without partial data; incomplete shell work can be unknown.
+When a proposed action uses managed knowledge, the supported native terminal
+displays its complete extension request under current source ownership. Answer
+only the fresh printed code. Saved knowledge permission does not approve this
+ordinary action, and changed sources can still prevent execution after approval.
+A client without that native channel receives no protected approval arguments.
+
 Delegation is not a host call. [MCP setup](mcp.md#allow-a-reviewed-extension-to-use-a-selected-item)
 owns external selected-item bindings.
 

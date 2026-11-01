@@ -168,13 +168,17 @@ denies it, and verifies no target exists. Then follow the allowed case:
 3. Journal admitted intent before starting the effect in owned work.
 4. Retain outcome and cleanup evidence before admitting dependent work.
 
-For managed-derived ordinary model proposals, `Session.ManagedApproval` owns a
-separate pending-call binding. Full arguments reach the Session-issued native
+For managed-derived ordinary model proposals and nested extension effects,
+`Session.ManagedApproval` owns a separate pending-call or pending-action binding. Full arguments reach the Session-issued native
 terminal under the actual source, Identity, Consent and Collection owners;
 subscriber events carry only waiting/ready status. The native display settles
 before those locks release and input begins. An exact one-use answer can then
 advance to the existing fresh managed-effect admission. Embedded
-`Session.approve/3` cannot substitute for this path. Follow the
+`Session.approve/3` cannot substitute for this path. A nested action retains its
+original invocation task: Host performs the native wait in tracked owned work,
+and Session accepts completion only from that original task/job with the exact
+parent, action and dependency commitment. Effect intent is committed after the
+native choice; result delivery has its separate Worker-input fence. Follow the
 [source-owner flow](session-sources.md#reconstruct-without-giving-old-tokens-authority)
 for bounds, unsupported dependency types and native controls.
 

@@ -915,6 +915,35 @@ original-owner budget. Follow the
 with the corresponding opt-in variable and tag. These are synthetic source
 journeys, not independent human, live-model or installed evidence.
 
+Pair native approval with actual effect and input observations in
+`managed_collection_call_session_test.exs`:
+
+| Selection | Required boundary |
+| --- | --- |
+| `--only nested_discovery` | MCP discovery finishes with at least four version-3 admissions before native input; current, denied, changed-root, revoked, stale-code, cancelled and lost-Session outcomes remain distinct |
+| `--only native_nested_tool` | An approved file tool writes once and returns through guarded input; denial writes nothing; a stale-root write remains an unknown action without another Worker frame |
+| `--only native_inference_approval` | Text, embedding and decision helpers retain their original model-tool invocation task, exact approved wire input, accounting and continuation across approval, denial and changed root |
+
+Inspect the sealed parent/action/source binding and original task's tracked
+effect owner during the native input wait. Foreign approval and completion calls
+must refuse while its share is frozen. An allowed MCP or file effect requires
+the physical target, successful guarded callback and completed command. Denial
+returns a known denied action without dispatch. Cancellation and Session loss
+commit neither the requested action intent nor another input. The separate
+no-channel subscriber case must still withhold all approval arguments.
+
+For inference, capture actual HTTP bodies through the registered native adapter.
+Require only the approved helper messages or typed request, with no parent history
+or tool definitions; an empty `tools` array supplies no definitions. A source
+change during approval sends only the initial main request while retaining the
+helper's failed/partial metering admission and unknown next input. Keep that
+distinct from an unknown native write: Host stops before preparing another frame,
+so the only delivered input is the original committed root read. Do not manufacture
+an unknown input to represent that action. Each case preserves strict Saved state,
+source commitments, exact idle-resume suffixes and unchanged effects/traffic. These
+root-metadata controls establish no signed-note-content, live-model, human or
+installed qualification.
+
 Use `--only managed_nested_result` in
 `managed_collection_call_session_test.exs` for explicitly allowed native and MCP
 effects followed by actual guarded Worker continuations. Require the physical

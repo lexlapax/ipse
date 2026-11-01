@@ -1,7 +1,17 @@
 defmodule Ipse.Session.ManagedApproval do
   @moduledoc false
   alias Ipse.{JSON, Session}
-  alias Ipse.Session.{Input, ManagedLineage, ManagedReference, ManagedUse, Resources}
+
+  alias Ipse.Session.{
+    Input,
+    Invocation,
+    ManagedLineage,
+    ManagedReference,
+    ManagedToolUse,
+    ManagedUse,
+    Resources
+  }
+
   alias Ipse.Runner.LeasedTerminal
   @error {:error, :managed_argument_display_unavailable}
 
@@ -80,6 +90,117 @@ defmodule Ipse.Session.ManagedApproval do
     _ -> @error
   end
 
+  def start_extension(s, intent, proposed, phase) do
+    with %{client: client, reader: reader} <- s.operator_channel,
+         true <- Process.alive?(client) and Process.alive?(reader),
+         true <- s.lock_mode in [:header_share_v2, :resume_share_v2],
+         true <-
+           intent["request"]["op"] in ~w(tool.call mcp.call model.complete embedding.create decision.create),
+         {:ok, dependencies} <- ManagedToolUse.invocation_dependencies(s),
+         true <- dependencies != [],
+         token = Base.encode16(:crypto.strong_rand_bytes(8), case: :lower),
+         {:ok, display} <-
+           Ipse.CLI.Terminal.approval_display(
+             "extension:" <> intent["request"]["op"],
+             proposed,
+             nil,
+             token,
+             s.cwd,
+             true
+           ),
+         true <- byte_size(display) <= 65_536,
+         {:ok, release} <- Input.release_for_output() do
+      id = Ipse.Usage.id()
+
+      input = %{
+        "kind" => "extension.action.approval",
+        "session_id" => s.id,
+        "approval_id" => id,
+        "parent_sha256" => JSON.digest([s.invocation.parent]),
+        "action_sha256" => JSON.digest([intent]),
+        "arguments" => proposed,
+        "dependencies_sha256" => JSON.digest(dependencies),
+        "allow_sha256" => JSON.sha256("allow " <> token),
+        "display_sha256" => JSON.sha256(display)
+      }
+
+      spec = %{
+        id: id,
+        intent: intent,
+        parent: s.invocation.parent,
+        previous_phase: phase,
+        arguments: proposed,
+        dependencies: dependencies,
+        input: input,
+        sha256: JSON.digest([input, dependencies]),
+        token: token,
+        display: display
+      }
+
+      context = %{
+        config: s.config,
+        cwd: s.cwd,
+        session_id: s.id,
+        history_dir: s.dir,
+        owner: self(),
+        job_ref: s.job_ref,
+        source_binding: {:snapshot, "tool.approval", spec.sha256}
+      }
+
+      Session.notify(s, :managed_approval_wait)
+
+      next = %{
+        s
+        | phase: :managed_approval,
+          managed_approval: spec,
+          extension_tool_context: nil,
+          invocation: %{s.invocation | action: %{intent: intent}}
+      }
+
+      {:reply, {:managed_approval, context, spec, release}, next}
+    else
+      _ -> {:reply, @error, Session.finish_wait(s, "denied")}
+    end
+  rescue
+    _ -> {:reply, @error, Session.finish_wait(s, "denied")}
+  end
+
+  @doc false
+  def await_extension(owner, job, context, spec, release) do
+    result = run(owner, job, context, spec, release)
+    GenServer.call(owner, {:extension_managed_approval_finish, job, result}, :infinity)
+  end
+
+  def complete_extension(s, result) do
+    %{previous_phase: phase, intent: intent} = s.managed_approval
+    Session.notify(s, :managed_approval_ready)
+
+    case result do
+      {:managed_approval, id, sha, choice} when choice in [true, false, :cancel, :exit] ->
+        with %{id: ^id, sha256: ^sha, input: input} <- s.managed_approval,
+             true <- s.share_barrier == nil and current?(s, input) do
+          if choice in [:cancel, :exit] do
+            Session.notify(s, {:managed_approval_cancel, choice == :exit})
+            Session.cancel_work(s, false)
+          else
+            Invocation.approve_managed(%{s | managed_approval: nil}, choice, phase, %{
+              intent: intent
+            })
+          end
+        else
+          _ -> extension_failed(s, phase)
+        end
+
+      _ ->
+        extension_failed(s, phase)
+    end
+  end
+
+  defp extension_failed(s, phase) do
+    next = Session.finish_wait(s, "denied")
+    {:reply, @error, %{next | managed_approval: nil, phase: phase}}
+  end
+
   def snapshot(s) do
     with %{dependencies: dependencies, input: input, sha256: sha} <- s.managed_approval,
          true <- current?(s, input) do
@@ -87,6 +208,25 @@ defmodule Ipse.Session.ManagedApproval do
     else
       _ -> @error
     end
+  end
+
+  def current?(s, %{"kind" => "extension.action.approval"} = input) do
+    with %{input: ^input, intent: intent, parent: parent, dependencies: dependencies} <-
+           s.managed_approval,
+         true <- s.phase == :managed_approval and s.id == input["session_id"],
+         %{parent: ^parent, action: %{intent: ^intent}, interrupted: false} <- s.invocation,
+         true <-
+           Invocation.output_timely?(s) and Ipse.Extension.Registry.live?(parent["identity"]),
+         true <- JSON.digest([parent]) == input["parent_sha256"],
+         true <- JSON.digest([intent]) == input["action_sha256"],
+         {:ok, ^dependencies} <- ManagedToolUse.invocation_dependencies(s),
+         true <- JSON.digest(dependencies) == input["dependencies_sha256"] do
+      true
+    else
+      _ -> false
+    end
+  rescue
+    _ -> false
   end
 
   def current?(s, input) do

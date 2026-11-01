@@ -515,10 +515,13 @@ retains their original committed management journals, as does the separate
 Worker-input adapter. Other displays cannot acquire that support by selecting
 dependency version 6.
 
-This callback displays nothing and grants no approval. For ordinary model tool
-approval, `Session.ManagedApproval` binds its exact pending call, parsed arguments,
-request, dependency union and full escaped payload to a new private terminal
-purpose. Session chooses the payload and native Port; workers cannot select them.
+This callback displays nothing and grants no approval. `Session.ManagedApproval`
+binds an ordinary model's pending call or an extension's pending action, complete
+arguments, dependency union and full escaped payload to a private terminal purpose.
+For an extension it additionally commits the original parent and action digests.
+The original Host task performs the native wait inside tracked file-effect work;
+only that same task/job can return its private completion to Session. Public
+approval references and worker JSON cannot supply that completion. Session chooses the payload and native Port; workers cannot select them.
 Its actual Writer drains and seals active proofs and inactive source-lock
 identities before the original Session lock, all three policy owners and every
 inactive source group reach the same native display. For accepted decisions,
@@ -621,8 +624,15 @@ one per target. A cancellation that completes before its client starts awaiting
 retains a bounded cancellation acknowledgement, rather than becoming a channel
 failure. No full approval arguments go through subscriber status events.
 
-Delegation, nested worker approval displays and clients without the native
-channel retain their refusal paths. Run the
+Delegation, managed question displays and clients without the native channel
+retain their refusal paths. Nested action approval reuses the same native display
+and owner settlement, then commits its approved or denied action through Invocation.
+MCP discovery remains separately fenced before approval. A current effect can
+continue through the export-input adapter. Root change or revocation during input
+can refuse an MCP or inference request, then leave its failed action's next input
+unknown. An unknown native write instead stops Host before another input is
+prepared: retain that unknown action without inventing a delivery attempt. These
+are separate uncertainty fields, and neither permits automatic replay. Run the
 `managed_display_owner` cases in `managed_collection_call_session_test.exs` for
 held root/policy owners, `save_display_owners` for actual reviewed sources, and
 the `managed_approval` controls in `operator_assertion_integration_test.exs` for

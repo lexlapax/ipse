@@ -189,6 +189,13 @@ prevents call dispatch. Changed descriptors refuse before dispatch. Project
 configuration cannot supply bindings. Children cannot use them, even if an
 extension otherwise permits child use.
 
+A bound extension that derives its request from managed knowledge uses the same
+native source-protected approval channel as a note-derived model proposal. Check
+its full request and target, then answer the fresh code. Discovery can finish
+before approval; changed knowledge or revoked permission during the input wait
+can still prevent the call. If a later callback is withheld, inspect the recorded
+action and service before requesting new work. Idle resume repeats neither.
+
 Successful text is saved privately before the command receives its descriptor.
 The reader consumes UTF-8 windows of at most 4096 bytes and displays only the
 complete byte count and hash. The complete source is bounded to 65536 bytes.

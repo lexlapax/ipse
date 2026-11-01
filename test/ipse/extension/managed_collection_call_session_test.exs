@@ -102,7 +102,7 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
     name = "Independent.Collection#{System.unique_integer([:positive])}"
 
     capabilities =
-      ~w(invoke.tool invoke.command invoke.service invoke.result.pages host.actions host.sources host.collection.read host.collection.write host.collection.managed host.context host.tools host.model host.decision host.mcp host.state.read host.state.write host.question)
+      ~w(invoke.tool invoke.command invoke.service invoke.result.pages host.actions host.sources host.collection.read host.collection.write host.collection.managed host.context host.tools host.model host.decision host.embedding host.mcp host.state.read host.state.write host.question)
 
     service = %{
       "id" => "observe",
@@ -164,6 +164,8 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
           call(%{"op" => "collection.call", "request" => %{"op" => "snapshot"}}, Map.put(state, "step", "done"))
         state["mode"] == "helper" ->
           call(%{"op" => "collection.call", "request" => %{"op" => "snapshot"}}, Map.put(state, "step", "helper_read"))
+        state["mode"] == "embedding_helper" ->
+          call(%{"op" => "collection.call", "request" => %{"op" => "snapshot"}}, Map.put(state, "step", "embedding_read"))
         state["mode"] == "decision_helper" ->
           call(%{"op" => "collection.call", "request" => %{"op" => "snapshot"}}, Map.put(state, "step", "decision_read"))
         state["mode"] == "decision_literal" ->
@@ -190,6 +192,9 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
       end
       defp advance("helper_read", outcome, state) do
         call(%{"op" => "model.complete", "version" => 1, "profile" => "extract", "instruction" => "Summarize the supplied observation", "input" => Jason.encode!(outcome), "max_output_bytes" => 1024, "timeout_ms" => 3000}, Map.put(state, "step", "done"))
+      end
+      defp advance("embedding_read", outcome, state) do
+        call(%{"op" => "embedding.create", "version" => 2, "profile" => "embed", "inputs" => [Jason.encode!(outcome)], "timeout_ms" => 3000}, Map.put(state, "step", "done"))
       end
       defp advance("decision_read", outcome, state) do
         call(%{"op" => "decision.create", "version" => 1, "profile" => "advice", "input" => Jason.encode!(outcome), "questions" => [%{"id" => "relevant", "type" => "predicate", "instructions" => "Synthetic fixture"}], "timeout_ms" => 3000}, Map.put(state, "step", "done"))
@@ -921,6 +926,7 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
                             c[:managed_pack_actual] -> "decision_pack_actual"
                             c[:managed_pack] -> "decision_pack"
                             c[:managed_decision_literal] -> "decision_literal"
+                            c[:managed_embedding] -> "embedding_helper"
                             c[:managed_decision] -> "decision_helper"
                             c[:managed_helper] -> "helper"
                             c[:capture_write] -> c[:registered_capture_mode] || "capture"
@@ -1057,6 +1063,20 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
                 List.last(responses)
               ]
 
+            c[:native_inference_boundary] == :deny ->
+              responses
+
+            c[:managed_embedding] ->
+              [
+                hd(responses),
+                Jason.encode!(%{
+                  "model" => "synthetic",
+                  "embeddings" => [[0.1, 0.2, 0.3]],
+                  "prompt_eval_count" => 1
+                }),
+                List.last(responses)
+              ]
+
             c[:managed_decision] && !c[:helper_stale] ->
               [
                 hd(responses),
@@ -1134,6 +1154,22 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
                   "model" => "synthetic",
                   "expected_model" => "synthetic",
                   "service_id" => "local",
+                  "base_url" => base,
+                  "timeout_ms" => 3000
+                }
+              }),
+            else: config
+
+        config =
+          if c[:managed_embedding],
+            do:
+              Map.put(config, :embedding_profiles, %{
+                "embed" => %{
+                  "operation" => "embedding",
+                  "provider" => "ollama",
+                  "model" => "synthetic",
+                  "dimensions" => 3,
+                  "dimension_mode" => "native",
                   "base_url" => base,
                   "timeout_ms" => 3000
                 }
@@ -1258,8 +1294,20 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
       else
         if c[:managed_helper] do
           [main] = selection["routes"]
-          helper = main |> Map.put("operation", "model.complete") |> Map.put("profile", "extract")
-          Map.put(selection, "routes", [main, helper])
+
+          helper =
+            if c[:managed_embedding],
+              do:
+                main
+                |> Map.put("operation", "embedding.create")
+                |> Map.put("profile", "embed")
+                |> Map.put("endpoint", config.base_url <> "/api/embed"),
+              else:
+                main |> Map.put("operation", "model.complete") |> Map.put("profile", "extract")
+
+          {:ok, selectors} = Ipse.Extension.SemanticRoutes.selectors([main, helper])
+          {:ok, routes} = Ipse.Extension.SemanticRoutes.resolve(config, selectors)
+          Map.put(selection, "routes", routes)
         else
           selection
         end
@@ -2757,83 +2805,526 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
     end
   end
 
-  for boundary <- [:current, :root_change] do
+  for boundary <- [:current, :root_change, :revoke, :deny, :stale_token, :cancel, :owner_loss] do
     @tag nested_discovery: true, nested_mcp: true, managed_mcp: true
+    @tag native_root_approval:
+           if(boundary == :current, do: "nested_mcp", else: "nested_mcp_" <> to_string(boundary)),
+         timeout: 90_000
     test "nested managed MCP discovery is admitted before approval and #{boundary} is checked at effect entry",
          c do
-      pid = start(c, %{approval: :ask, approval_origin: :interactive, headless: false})
+      if @native_root_approval,
+        do: native_nested_effect_approval(c, :mcp, unquote(boundary)),
+        else: native_root_terminal("nested_mcp", unquote(boundary))
+    end
+  end
 
-      assert :ok =
-               Session.invoke_export(pid, :command, "ext__capture__capture", %{
-                 "mode" => "nested_mcp"
-               })
+  for boundary <- [:current, :deny, :root_change] do
+    @tag native_nested_tool: true
+    @tag native_root_approval:
+           "nested_native" <> if(boundary == :current, do: "", else: "_" <> to_string(boundary)),
+         timeout: 90_000
+    test "native approval of a nested file tool preserves #{boundary} effect and recovery", c do
+      if @native_root_approval,
+        do: native_nested_effect_approval(c, :native, unquote(boundary)),
+        else: native_root_terminal("nested_native", unquote(boundary))
+    end
+  end
 
-      assert_receive {:ipse, ^pid, {:approval, approval, "extension:mcp.call", proposed}}, 15_000
+  @tag nested_discovery: true, nested_mcp: true, managed_mcp: true
+  test "a subscriber without the native channel cannot display nested managed approval arguments",
+       c do
+    pid = start(c, %{approval: :ask, approval_origin: :interactive, headless: false})
 
-      assert proposed["request"]["arguments"] == %{
-               "path" => "nested-mcp.txt",
-               "content" => "SYNTHETIC_NESTED_MCP"
-             }
+    assert :ok =
+             Session.invoke_export(pid, :command, "ext__capture__capture", %{
+               "mode" => "nested_mcp"
+             })
 
-      id = Session.info(pid).id
-      assert {:ok, discovered} = Journal.load(c.dir, id)
-      assert Enum.count(discovered, &(&1["type"] == "managed_mcp_discovery_intent")) == 1
-      assert Enum.count(discovered, &(&1["type"] == "managed_mcp_discovery_result")) == 1
-      discovery_effects = Enum.filter(discovered, &(&1["type"] == "managed_tool_effect_admitted"))
-      assert length(discovery_effects) >= 4
-      assert Enum.all?(discovery_effects, &(&1["version"] == 3))
-      assert {:ok, _} = Ipse.Session.Saved.restore(discovered, id)
-      path = Path.join(c.cwd, "nested-mcp.txt")
-      refute File.exists?(path)
+    assert_receive {:ipse, ^pid, {:done, :error}}, 15_000
+    refute_receive {:ipse, ^pid, {:approval, _, _, _}}, 50
+    refute File.exists?(Path.join(c.cwd, "nested-mcp.txt"))
+    refute File.exists?(Path.join(c.cwd, "calls.log"))
+    assert {:ok, events} = Journal.load(c.dir, Session.info(pid).id)
+    assert Enum.count(events, &(&1["type"] == "managed_mcp_discovery_intent")) == 1
 
-      if unquote(boundary) == :root_change do
-        assert {:ok, _} =
-                 Ipse.Extension.Collection.execute(
-                   SemanticAdmission.collection_root(c.home),
-                   c.namespace,
-                   %{
-                     "op" => "commit",
-                     "expected_generation" => 0,
-                     "advance_floor" => false,
-                     "changes" => [
-                       %{
-                         "key" => "changed.before.nested.mcp",
-                         "expected_revision" => 0,
-                         "value" => %{}
-                       }
-                     ]
-                   },
-                   Ipse.Usage.id()
+    refute Enum.any?(
+             events,
+             &(&1["type"] == "extension_action_intent" and
+                 get_in(&1, ["request", "op"]) == "mcp.call")
+           )
+
+    assert {:ok, _} = Session.Saved.restore(events, Session.info(pid).id)
+    assert :ok = Session.close_confirmed(pid)
+  end
+
+  defp native_nested_effect_approval(c, kind, boundary) do
+    mode = "nested_#{kind}"
+    operation = if kind == :mcp, do: "mcp.call", else: "tool.call"
+    marker = "SYNTHETIC_NESTED_#{String.upcase(to_string(kind))}"
+    pid = start(c, %{approval: :ask, approval_origin: :interactive, headless: false})
+    id = Session.info(pid).id
+    path = Path.join(c.cwd, "nested-#{kind}.txt")
+    refute File.exists?(path)
+
+    watcher =
+      Task.async(fn ->
+        try do
+          native_nested_channel(pid, 500)
+
+          assert :ok =
+                   Session.invoke_export(pid, :command, "ext__capture__capture", %{
+                     "mode" => mode
+                   })
+
+          await_marker(Path.join(c.root, "managed-approval-input-ready"), "ready", 1500)
+          state = :sys.get_state(pid)
+          assert state.phase == :managed_approval and state.share_barrier.phase == :review_input
+          spec = state.managed_approval
+          assert spec.input["kind"] == "extension.action.approval"
+
+          assert spec.arguments["request"]["arguments"] == %{
+                   "path" => "nested-#{kind}.txt",
+                   "content" => marker
+                 }
+
+          assert spec.dependencies != [] and Enum.all?(spec.dependencies, &(&1["version"] == 3))
+          assert Session.ManagedApproval.current?(state, spec.input)
+
+          refute Session.ManagedApproval.current?(
+                   state,
+                   Map.put(spec.input, "action_sha256", JSON.sha256("foreign action"))
                  )
+
+          [{scope, _}] =
+            Elixir.Registry.lookup(Ipse.Registry, {Session.Resources, state.task.pid})
+
+          resource_state = :sys.get_state(scope)
+          assert resource_state.owner == pid and resource_state.worker == state.task.pid
+          assert Map.has_key?(resource_state.effects, state.share_barrier.caller)
+          assert {:error, :session_share_frozen} = Session.approve(pid, spec.id, true)
+
+          assert {:error, :session_share_frozen} =
+                   GenServer.call(
+                     pid,
+                     {:extension_managed_approval_finish, state.job_ref,
+                      {:managed_approval, spec.id, spec.sha256, true}}
+                   )
+
+          assert {:ok, discovered} = Journal.load(c.dir, id)
+          effects = Enum.filter(discovered, &(&1["type"] == "managed_tool_effect_admitted"))
+
+          if kind == :mcp do
+            assert Enum.count(discovered, &(&1["type"] == "managed_mcp_discovery_intent")) == 1
+            assert Enum.count(discovered, &(&1["type"] == "managed_mcp_discovery_result")) == 1
+            assert length(effects) >= 4 and Enum.all?(effects, &(&1["version"] == 3))
+          else
+            refute Enum.any?(discovered, &(&1["type"] == "managed_mcp_discovery_intent"))
+            assert effects == []
+          end
+
+          assert {:ok, _} = Session.Saved.restore(discovered, id)
+          refute File.exists?(path)
+          refute File.exists?(Path.join(c.cwd, "calls.log"))
+
+          File.write!(
+            Path.join(c.root, "nested-approval-dependencies.json"),
+            Jason.encode!(spec.dependencies)
+          )
+
+          if boundary in [:current, :root_change, :revoke, :owner_loss],
+            do: native_root_boundary(c, pid, mode, boundary)
+
+          File.write!(Path.join(c.root, "managed-approval-control-checked"), "checked")
+
+          if boundary == :owner_loss,
+            do: native_root_released(Path.join(c.dir, id <> ".lock"), 500),
+            else: native_root_idle(pid, 1500)
+
+          File.write!(Path.join(c.root, "managed-approval-exit-ready"), "ready")
+          File.write!(Path.join(c.root, "native-root-checked"), "checked")
+        after
+          File.write!(Path.join(c.root, "managed-approval-exit-ready"), "ready")
+        end
+      end)
+
+    IO.puts("IPSE_MANAGED_APPROVAL_CLI_READY")
+
+    assert if(boundary == :owner_loss, do: 1, else: 0) ==
+             Ipse.CLI.Terminal.interact(pid, Process.monitor(pid), true, nil, c.cwd)
+
+    await_marker(Path.join(c.root, "native-root-checked"), "checked", 100)
+    Process.demonitor(watcher.ref, [:flush])
+    monitor = Process.monitor(watcher.pid)
+    assert_receive {:DOWN, ^monitor, :process, _, reason}, 1000
+    assert reason in [:normal, :noproc]
+    assert {:ok, events} = Journal.load(c.dir, id)
+
+    actions =
+      Enum.filter(
+        events,
+        &(&1["type"] == "extension_action_result" and get_in(&1, ["request", "op"]) == operation)
+      )
+
+    effects =
+      Enum.filter(events, &(&1["type"] == "managed_tool_effect_admitted" and &1["version"] == 2))
+
+    input = events |> Enum.filter(&(&1["type"] == "worker_input_intent")) |> List.last()
+    assert {:ok, saved} = Session.Saved.restore(events, id)
+
+    if boundary in [:cancel, :owner_loss] do
+      assert actions == [] and effects == []
+
+      refute Enum.any?(
+               events,
+               &(&1["type"] == "extension_action_intent" and
+                   get_in(&1, ["request", "op"]) == operation)
+             )
+
+      assert Enum.count(events, &(&1["type"] == "worker_input_intent")) == 1
+      refute File.exists?(path)
+      refute File.exists?(Path.join(c.cwd, "calls.log"))
+      assert saved.worker_input_unknown == []
+      if boundary == :owner_loss, do: refute(Process.alive?(pid))
+    else
+      assert [action] = actions
+      expected_approval = if boundary in [:deny, :stale_token], do: "denied", else: "approved"
+      assert action["approval"] == expected_approval
+
+      unless kind == :native and boundary == :root_change,
+        do:
+          assert(input["payload_sha256"] == JSON.digest([Ipse.Extension.Actions.resume(action)]))
+
+      cond do
+        boundary == :current ->
+          assert File.read!(path) == marker
+          if kind == :mcp, do: assert(File.read!(Path.join(c.cwd, "calls.log")) == "write_note\n")
+          assert action["outcome"]["status"] == "ok"
+          assert length(effects) == if(kind == :mcp, do: 2, else: 1)
+          refute Enum.any?(events, &(&1["type"] == "managed_action_output_withheld"))
+          assert File.read!(c.trace) =~ Jason.encode!(action["outcome"])
+          assert saved.worker_input_unknown == []
+          refute saved.managed_lineage.unavailable
+
+        boundary in [:deny, :stale_token] ->
+          assert action["outcome"] == %{"status" => "denied", "value" => %{}}
+          assert effects == []
+          assert File.read!(c.trace) =~ Jason.encode!(action["outcome"])
+          assert saved.worker_input_unknown == []
+          refute saved.managed_lineage.unavailable
+          refute File.exists?(path)
+          refute File.exists?(Path.join(c.cwd, "calls.log"))
+
+        kind == :native and boundary == :root_change ->
+          assert action["outcome"] == %{"status" => "unknown", "value" => %{}}
+          assert effects == []
+          assert Enum.count(events, &(&1["type"] == "worker_input_intent")) == 1
+
+          [root_action] =
+            Enum.filter(
+              events,
+              &(&1["type"] == "extension_action_result" and
+                  get_in(&1, ["request", "op"]) == "collection.call")
+            )
+
+          assert input["payload_sha256"] ==
+                   JSON.digest([Ipse.Extension.Actions.resume(root_action)])
+
+          assert [%{"status" => "delivered"}] =
+                   Enum.filter(events, &(&1["type"] == "worker_input_result"))
+                   |> Enum.map(&Map.take(&1, ["status"]))
+
+          assert saved.worker_input_unknown == []
+          refute saved.managed_lineage.unavailable
+          refute File.exists?(path)
+          refute File.read!(c.trace) =~ Jason.encode!(action["outcome"])
+
+        true ->
+          refute File.exists?(path)
+          refute File.exists?(Path.join(c.cwd, "calls.log"))
+          assert effects == []
+          assert saved.worker_input_unknown == [input["input_id"]]
+          assert saved.managed_lineage.unavailable
+          refute File.read!(c.trace) =~ Jason.encode!(action["outcome"])
       end
 
-      assert :ok = Session.approve(pid, approval, true)
-      assert_receive {:ipse, ^pid, {:done, :error}}, 15_000
+      expected_status = if boundary in [:current, :deny, :stale_token], do: "ok", else: "error"
+
+      assert Enum.filter(events, &(&1["type"] == "turn_finished")) == [
+               %{"type" => "turn_finished", "status" => expected_status}
+             ]
+    end
+
+    assert Enum.count(events, &(&1["type"] == "request_admitted")) == 0
+
+    dependencies =
+      Path.join(c.root, "nested-approval-dependencies.json") |> File.read!() |> Jason.decode!()
+
+    assert input["dependencies_sha256"] == JSON.digest(dependencies)
+    trace = File.read!(c.trace)
+    if boundary != :owner_loss, do: assert(:ok = Session.close_confirmed(pid))
+    journal = Path.join(c.dir, id <> ".jsonl")
+    before = File.read!(journal)
+    resumed = start(c, %{approval: :ask, approval_origin: :interactive, headless: false}, id)
+    assert Session.info(resumed).phase == :idle
+    assert :sys.get_state(resumed).messages == saved.messages
+
+    assert :sys.get_state(resumed).managed_lineage.unavailable ==
+             saved.managed_lineage.unavailable
+
+    assert_idle_resume_journal(journal, before, id)
+    assert File.read!(c.trace) == trace
+    assert :ok = Session.close_confirmed(resumed)
+
+    assert {:ok, %{"release_claim" => "signed_release_claim"}} =
+             Session.Saved.inspect_saved(c.dir, id)
+
+    if boundary == :current do
+      assert File.read!(path) == marker
+      if kind == :mcp, do: assert(File.read!(Path.join(c.cwd, "calls.log")) == "write_note\n")
+    else
+      refute File.exists?(path)
+    end
+  end
+
+  defp native_nested_channel(_, 0), do: flunk("native operator channel did not start")
+
+  defp native_nested_channel(pid, remaining) do
+    if :sys.get_state(pid).operator_channel == nil do
+      Process.sleep(10)
+      native_nested_channel(pid, remaining - 1)
+    end
+  end
+
+  for kind <- [:model, :decision, :embedding], boundary <- [:current, :deny, :root_change] do
+    @tag native_inference_approval: true, registered_main: true, managed_helper: true
+    @tag managed_decision: kind == :decision,
+         managed_embedding: kind == :embedding,
+         native_inference_boundary: boundary
+    @tag native_root_approval:
+           "helper_" <>
+             to_string(kind) <> if(boundary == :current, do: "", else: "_" <> to_string(boundary)),
+         timeout: 90_000
+    test "native approval of a managed #{kind} helper preserves #{boundary} dispatch and recovery",
+         c do
+      if @native_root_approval,
+        do: native_inference_approval(c, unquote(kind), unquote(boundary)),
+        else: native_root_terminal("helper_#{unquote(kind)}", unquote(boundary))
+    end
+  end
+
+  defp native_inference_approval(c, kind, boundary) do
+    {operation, profile} =
+      case kind do
+        :decision -> {"decision.create", "advice"}
+        :model -> {"model.complete", "extract"}
+        :embedding -> {"embedding.create", "embed"}
+      end
+
+    pid = start(c, %{approval: :ask, approval_origin: :interactive, headless: false})
+    id = Session.info(pid).id
+
+    watcher =
+      Task.async(fn ->
+        await_marker(Path.join(c.root, "managed-approval-input-ready"), "ready", 1500)
+        state = :sys.get_state(pid)
+        assert state.phase == :managed_approval and state.share_barrier.phase == :review_input
+        spec = state.managed_approval
+        assert spec.previous_phase == :tool
+        assert spec.input["kind"] == "extension.action.approval"
+        assert spec.arguments["request"]["op"] == operation
+        assert spec.arguments["request"]["profile"] == profile
+
+        helper_input =
+          if kind == :embedding,
+            do: hd(spec.arguments["request"]["inputs"]),
+            else: spec.arguments["request"]["input"]
+
+        assert helper_input =~ "generation"
+        assert spec.arguments["destination"]["origin"] == c.config.base_url
+        assert spec.dependencies != [] and Enum.all?(spec.dependencies, &(&1["version"] == 3))
+        assert Session.ManagedApproval.current?(state, spec.input)
+        assert length(Agent.get(c.provider_requests, & &1)) == 1
+        assert {:error, :session_share_frozen} = Session.approve(pid, spec.id, true)
+
+        File.write!(
+          Path.join(c.root, "native-helper-dependencies.json"),
+          Jason.encode!(spec.dependencies)
+        )
+
+        if boundary == :root_change, do: native_root_boundary(c, pid, "helper_#{kind}", boundary)
+        File.write!(Path.join(c.root, "managed-approval-control-checked"), "checked")
+        native_root_idle(pid, 1500)
+        File.write!(Path.join(c.root, "managed-approval-exit-ready"), "ready")
+        File.write!(Path.join(c.root, "native-helper-checked"), "checked")
+      end)
+
+    try do
+      IO.puts("IPSE_MANAGED_APPROVAL_CLI_READY")
+
+      assert 0 ==
+               Ipse.CLI.Terminal.interact(
+                 pid,
+                 Process.monitor(pid),
+                 true,
+                 "Use the synthetic managed observation in the selected #{kind} helper.",
+                 c.cwd
+               )
+
+      await_marker(Path.join(c.root, "native-helper-checked"), "checked", 100)
+      Process.demonitor(watcher.ref, [:flush])
+      monitor = Process.monitor(watcher.pid)
+      assert_receive {:DOWN, ^monitor, :process, _, reason}, 1000
+      assert reason in [:normal, :noproc]
       assert {:ok, events} = Journal.load(c.dir, id)
 
-      if unquote(boundary) == :current do
-        assert File.read!(path) == "SYNTHETIC_NESTED_MCP"
+      [action] =
+        Enum.filter(
+          events,
+          &(&1["type"] == "extension_action_result" and get_in(&1, ["request", "op"]) == operation)
+        )
 
-        assert Enum.count(
-                 events,
-                 &(&1["type"] == "managed_tool_effect_admitted" and &1["version"] == 2)
-               ) == 2
+      inputs = Enum.filter(events, &(&1["type"] == "worker_input_intent"))
+      assert [read_input, result_input] = inputs
 
-        assert Enum.any?(events, &(&1["type"] == "managed_action_output_withheld"))
-        refute File.read!(c.trace) =~ "SYNTHETIC_NESTED_MCP"
-        refute_receive {:ipse, ^pid, {:tool_result, "extension:tool.call", _}}, 50
-      else
-        refute File.exists?(path)
+      dependencies =
+        Path.join(c.root, "native-helper-dependencies.json") |> File.read!() |> Jason.decode!()
 
-        refute Enum.any?(
-                 events,
-                 &(&1["type"] == "managed_tool_effect_admitted" and &1["version"] == 2)
-               )
+      assert Enum.all?(inputs, &(&1["dependencies_sha256"] == JSON.digest(dependencies)))
+
+      assert result_input["payload_sha256"] ==
+               JSON.digest([Ipse.Extension.Actions.resume(action)])
+
+      admissions = Enum.filter(events, &(&1["type"] == "request_admitted"))
+      finishes = Enum.filter(events, &(&1["type"] == "request_finished"))
+      phases = for e <- events, e["type"] == "inference_dispatch_intent", do: e["phase"]
+      trace = File.read!(c.trace)
+      assert {:ok, saved} = Session.Saved.restore(events, id)
+
+      case boundary do
+        :current ->
+          assert action["approval"] == "approved" and action["outcome"]["status"] == "ok"
+          assert phases == ["model", operation, "model"]
+          assert length(admissions) == 3 and length(finishes) == 3
+
+          assert Enum.all?(
+                   finishes,
+                   &(&1["outcome"] == "completed" and &1["finality"] == "final")
+                 )
+
+          assert trace =~ Jason.encode!(action["outcome"])
+          assert saved.worker_input_unknown == []
+          refute saved.managed_lineage.unavailable
+
+          wire = c.provider_requests |> Agent.get(& &1) |> Enum.at(1)
+          request = action["request"]
+
+          case kind do
+            :model ->
+              assert wire["messages"] ==
+                       Session.Context.helper_messages(request["instruction"], request["input"])
+
+              assert wire["tools"] == []
+
+            :decision ->
+              assert {:ok, expected} =
+                       Ipse.Provider.Decision.encode(
+                         :system_one,
+                         Ipse.Extension.DecisionCall.neutral(request),
+                         "synthetic"
+                       )
+
+              assert wire == expected
+
+            :embedding ->
+              assert wire == %{
+                       "model" => "synthetic",
+                       "input" => request["inputs"],
+                       "truncate" => false
+                     }
+          end
+
+        :deny ->
+          assert action["approval"] == "denied"
+          assert action["outcome"] == %{"status" => "denied", "value" => %{}}
+          assert phases == ["model", "model"]
+          assert length(admissions) == 2 and length(finishes) == 2
+
+          assert Enum.all?(
+                   finishes,
+                   &(&1["outcome"] == "completed" and &1["finality"] == "final")
+                 )
+
+          assert trace =~ Jason.encode!(action["outcome"])
+          assert saved.worker_input_unknown == []
+          refute saved.managed_lineage.unavailable
+
+        :root_change ->
+          assert action["approval"] == "approved" and action["outcome"]["status"] == "failed"
+          assert phases == ["model"]
+          assert [main, helper] = admissions
+          assert helper["request_id"] == action["operation_id"]
+          assert [main_finish, helper_finish] = finishes
+          assert main_finish["request_id"] == main["request_id"]
+
+          assert Map.take(main_finish, ~w(outcome finality)) == %{
+                   "outcome" => "completed",
+                   "finality" => "final"
+                 }
+
+          assert Map.take(helper_finish, ~w(request_id outcome finality)) == %{
+                   "request_id" => helper["request_id"],
+                   "outcome" => "failed",
+                   "finality" => "partial"
+                 }
+
+          assert saved.worker_input_unknown == [result_input["input_id"]]
+          assert saved.managed_lineage.unavailable
+          refute trace =~ Jason.encode!(action["outcome"])
       end
 
-      assert {:ok, saved} = Ipse.Session.Saved.restore(events, id)
-      assert saved.managed_lineage.unavailable
+      expected_status = if boundary == :root_change, do: "error", else: "ok"
+
+      assert Enum.filter(events, &(&1["type"] == "turn_finished")) == [
+               %{"type" => "turn_finished", "status" => expected_status}
+             ]
+
+      assert Enum.map(
+               Enum.filter(events, &(&1["type"] == "worker_input_result")),
+               &{&1["input_id"], &1["status"]}
+             ) == [
+               {read_input["input_id"], "delivered"},
+               {result_input["input_id"],
+                if(boundary == :root_change, do: "unknown", else: "delivered")}
+             ]
+
+      count =
+        case boundary do
+          :current -> 3
+          :deny -> 2
+          :root_change -> 1
+        end
+
+      assert length(Agent.get(c.provider_requests, & &1)) == count
       assert :ok = Session.close_confirmed(pid)
+      journal = Path.join(c.dir, id <> ".jsonl")
+      closed = File.read!(journal)
+      resumed = start(c, %{approval: :ask, approval_origin: :interactive, headless: false}, id)
+      assert Session.info(resumed).phase == :idle
+      assert :sys.get_state(resumed).messages == saved.messages
+
+      assert :sys.get_state(resumed).managed_lineage.unavailable ==
+               saved.managed_lineage.unavailable
+
+      assert_idle_resume_journal(journal, closed, id)
+      assert File.read!(c.trace) == trace
+      assert :ok = Session.close_confirmed(resumed)
+
+      assert {:ok, %{"release_claim" => "signed_release_claim"}} =
+               Session.Saved.inspect_saved(c.dir, id)
+
+      assert length(Agent.get(c.provider_requests, & &1)) == count
+    after
+      Task.shutdown(c.provider_server, :brutal_kill)
     end
   end
 
@@ -5198,9 +5689,17 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
     selection = if boundary == :current, do: kind, else: kind <> "_" <> Atom.to_string(boundary)
 
     scenario =
-      if boundary == :owner_loss,
-        do: "save_managed_approval_owner_loss",
-        else: "save_managed_approval_root_" <> selection
+      cond do
+        boundary == :owner_loss ->
+          "save_managed_approval_owner_loss"
+
+        kind in ~w(nested_mcp nested_native helper_model helper_decision helper_embedding) and
+            boundary in [:deny, :stale_token, :cancel] ->
+          "save_managed_approval_" <> to_string(boundary)
+
+        true ->
+          "save_managed_approval_root_" <> selection
+      end
 
     root = Path.join(System.tmp_dir!(), "ipse-root-approval-" <> Ipse.Usage.id())
     File.mkdir!(root)
@@ -5865,7 +6364,12 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
         %{
           "write" => "changed.before.approval",
           "shell" => "changed.before.shell",
-          "mcp" => "changed.before.mcp"
+          "mcp" => "changed.before.mcp",
+          "nested_mcp" => "changed.before.nested.mcp",
+          "helper_model" => "changed.before.helper.model",
+          "helper_decision" => "changed.before.helper.decision",
+          "helper_embedding" => "changed.before.helper.embedding",
+          "nested_native" => "changed.before.nested.native"
         },
         kind
       )

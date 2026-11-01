@@ -673,7 +673,18 @@ defmodule Ipse.Extension.Host do
   end
 
   defp run_admitted_action(owner, job_ref, worker, request) do
-    case GenServer.call(owner, {:extension_action_begin, job_ref, request}, :infinity) do
+    admission = GenServer.call(owner, {:extension_action_begin, job_ref, request}, :infinity)
+
+    admission =
+      case admission do
+        {:managed_approval, context, spec, release} ->
+          Ipse.Session.ManagedApproval.await_extension(owner, job_ref, context, spec, release)
+
+        other ->
+          other
+      end
+
+    case admission do
       {:ok, intent, context} ->
         case execute_admitted_action(context, worker, intent, request) do
           {:supersession, delivery} ->
