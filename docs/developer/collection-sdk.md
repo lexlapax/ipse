@@ -83,8 +83,12 @@ ProjectIdentity and Consent locks, requires the exact active pin and artifact,
 honors execution ceilings, and derives the outer class from the exact exported
 descriptor's mappings. Any publication mapping keeps that export mutating and
 requires a constrained publication mapping. An export with only read mappings can
-enter under the read class, including planning mode. It permits entry to the reviewed worker only. The host
-repeats that current check before worker startup.
+enter under the read class, including planning mode. It permits entry to the
+reviewed worker only. The host repeats that current check before worker startup.
+A supported publication request from that read-class export is still denied,
+including under ordinary `--yes`; neither Consent accounting nor the Collection
+generation advances. Test that permission boundary with a supported request:
+refusal of an unsupported legacy shape before intent does not exercise it.
 
 The worker requests source list/read/quote through its normal action chain and
 constructs a candidate value. [`CollectionCall`](../../lib/ipse/extension/collection_call.ex)

@@ -217,6 +217,15 @@ the registered route refuses another model dispatch; require the denied commit,
 empty reservation ledger and exactly one dispatch intent. Waiting for a fake
 second HTTP response would hide that correct refusal behind a fixture timeout.
 
+The `read_only_export` case uses that same supported V3 shape to test a different
+boundary: a read-class export can enter planning, but its publication must be
+recorded as denied even under ordinary `--yes`. Require an empty Consent ledger
+and unchanged generation/floor, as well as denied workspace writes. Keep its
+original read/output-release, interrupted-cleanup and tampered-replay assertions.
+Its deliberately unregistered main route refuses the later managed continuation;
+registering that route would remove a separate negative control. A legacy-shape
+refusal before any publication intent does not test the read-class denial.
+
 Capture the journal after `Session.close_confirmed/1` returns. On idle resume,
 require those bytes as an exact prefix. With the current release-receipt layout,
 the only suffix before closing the resumed Session is one complete ownership

@@ -4328,6 +4328,7 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
              {:error, :invalid_extension_value}
   end
 
+  @tag read_only_export: true, metadata_version: 3
   test "a read-only export enters headless planning but cannot publish or lend ordinary approval",
        c do
     read = start(c, %{execution_mode: :planning, fixture_export: "inspect", fixture_mode: "read"})
@@ -4467,6 +4468,7 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
     refute File.exists?(Path.join(c.cwd, "forbidden"))
     {:ok, snapshot} = Consent.snapshot(c.control, c.binding["project_id"])
     assert snapshot["operations"] == %{}
+    assert %{"generation" => 0, "floor" => 0} = collection_read(c, %{"op" => "snapshot"})
   end
 
   @tag registered_main: true

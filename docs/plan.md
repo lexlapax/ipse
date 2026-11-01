@@ -1024,6 +1024,10 @@ focused correction remain separately recorded. Source-content, installed and
 whole-source qualification remain open.
 Delegation and managed question displays remain closed. This is component progress;
 full C0, installed/platform and independent quality acceptance remain open.
+The same record's [read-only export follow-up](archive/2026-10-26-p30-p31-implementation/nested-native-approval-20261101.md#read-only-export-permission-control)
+restores the current V3 permission-denial fixture while preserving output/replay
+negatives and unchanged accounting/storage assertions; it supplies no new
+complete-module or suite aggregate.
 
 The [managed export-input adapter](archive/2026-10-26-p30-p31-implementation/worker-input-session-20261101.md)
 now binds actual initial calls, committed action continuations and output-page

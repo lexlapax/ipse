@@ -170,3 +170,42 @@ source hashes are recorded separately. The tests exercise automated Linux native
 input with synthetic services and root metadata. Signed-note/accepted-decision
 content, independent review, installed/platform/model quality and the complete
 source/milestone gates remain open. No live inference calls were added.
+
+## Read-only export permission control
+
+A subsequent test-only follow-up based on committed `714077c` selects the supported
+metadata-version-3 shape for the existing read-only export test. The previous
+legacy shape refused before publication intent, so it could not reach the intended
+read-class permission denial. No production behavior or permission changed.
+
+```sh
+mix test test/ipse/extension/managed_collection_call_session_test.exs --only read_only_export --max-cases 1 --seed 791710
+```
+
+The terminal result is **1 passed, 184 excluded**, 12.0 seconds, exit 0. The log
+is `/tmp/ipse-read-only-export-v3-20261101.log`, SHA256
+`cd0e3baa5e9438e927798e91fbafbdc63dbd6b5a2bba6a82a2e9b6cd30d5b096`.
+The tested module SHA256 is
+`4f75e37040701b191561a10c9e8d71eabc19fdeb6bae9c322ebc042eb247a38a`;
+these are selected post-run hashes, not a prelaunch/runtime inventory.
+
+The test retains planning entry, real root-read dependencies, guarded output and
+confirmed cleanup, withheld interrupted/unknown cleanup, tampered/missing/duplicate
+release checks, legacy unavailable lineage and forged-class rejection. Its
+deliberately unregistered initial main route still refuses later managed use.
+The supported publication now reaches a known denied action under read class
+despite ordinary allow/`--yes`. A separate ordinary write is denied, Consent's
+operation ledger stays empty, and the added assertion requires generation and
+floor to stay zero. The frozen module and suite failures above remain unchanged
+historical aggregates. This is synthetic source verification, with no installed,
+human, external-model or full-milestone acceptance.
+
+The Collection SDK chapter was reviewed end to end; its owner, ordinary document,
+managed publication, current-read, replay and verification flows remain distinct.
+The existing testing and operator manual review applies to this fixture-only
+change; current operator behavior is unchanged. The testing chapter now teaches
+how to reach the read-class denial without discarding its separate negative route.
+Formatting and `git diff --check` exit zero. The documentation check reports
+1,028 Markdown files, 8,520 local links and zero errors; existing private-directory
+discovery warnings remain separate. No build/runtime changes were made in this
+follow-up, and no broader passing aggregate is inferred.
