@@ -258,10 +258,10 @@ ipse chat --config /private/path/models.json --no-project-config --profile local
 ```
 
 `ollama_context_tokens` accepts integers in 512..262144 in operator-owned Ollama
-text profiles. It follows that selected profile through main work, drafting,
-compaction, routed children and extension text inference. A different selected
-profile has its own setting. Omission leaves the service default unchanged.
-Other providers, project profiles, embedding profiles and top-level `settings`
+text and embedding profiles. It follows the selected text profile through main
+work, drafting, compaction, routed children and extension text inference. A
+different selected profile has its own setting. Omission leaves the service
+default unchanged. Other providers, project profiles and top-level `settings`
 cannot set this field. There is no corresponding CLI or environment override.
 
 Choose a window that fits the prompt and generated output, including reasoning.
@@ -275,6 +275,83 @@ See Ollama's [context guide](https://docs.ollama.com/context-length) and
 [parameter reference](https://docs.ollama.com/modelfile#valid-parameters-and-values).
 Changing the profile requires a fresh Session or the documented configuration
 recovery; it does not change an already admitted Session.
+
+### Check an Ollama model around each job
+
+Use an optional `ollama_model_pin` when you want the host to refuse generated
+output if the selected service's model metadata changes or its reported loaded
+context is too small. First inspect the exact model at the intended endpoint
+using the commands above. Review its capabilities, manifest and metadata hashes,
+runtime version and context requirements. This explicitly trusts cooperative
+service metadata; it does not attest the weights used for a request, prevent
+other clients from changing the daemon or prove offline execution.
+
+Save this complete example as `/private/path/pinned-local.json`. Replace the
+example model, runtime version and both 64-character hashes with your reviewed
+inspection values before starting inference. The zero hashes deliberately cannot
+qualify an ordinary installed model. Set a minimum appropriate for your workload:
+
+```json
+{
+  "version": 1,
+  "profiles": {
+    "local": {
+      "provider": "ollama",
+      "model": "qwen3.5:4b",
+      "base_url": "http://127.0.0.1:11434",
+      "timeout_ms": 100000,
+      "max_output_tokens": 512,
+      "ollama_context_tokens": 8192,
+      "ollama_model_pin": {
+        "version": 1,
+        "trust_boundary": "cooperative_service_metadata",
+        "manifest_sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+        "metadata_sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+        "runtime_version": "0.0.0",
+        "minimum_context_tokens": 8192
+      }
+    }
+  },
+  "roles": {"main": "local"},
+  "inference_services": {
+    "local": {"version": 1, "origins": ["http://127.0.0.1:11434"]}
+  }
+}
+```
+
+Use your existing service ID, aliases and operator home if this daemon already
+has a registered ledger. Follow [shared-service setup](#serialize-a-shared-inference-service)
+for its protected-storage prerequisites; a new home must not bypass an unresolved
+reservation. Configuration inspection stays offline:
+
+```sh
+ipse config --config /private/path/pinned-local.json --no-project-config
+ipse chat --config /private/path/pinned-local.json --no-project-config --cwd /path/to/project
+```
+
+Pinned jobs require one matching registered service and an effective timeout at
+most 100000 ms. While holding its slot, the host performs a six-request metadata
+scan before inference and another after successful inference. Each scan has at
+most ten seconds within the existing job deadline, with 1 MiB per response. A
+successful job therefore uses twelve metadata requests and one inference request.
+There is no retry or alternate route. An unloaded or smaller pre-job context can
+be loaded by the request; after it, the reported context must meet the minimum.
+If supplied, `ollama_context_tokens` must be at least that minimum. The response
+must also report the exact requested model name.
+
+A failed precheck sends no prompt or inference request. A failed postcheck
+withholds generated text, tool calls and vectors; measured usage still counts.
+A known completed inference can release its service reservation even when the
+metadata check refuses its output. Interrupted inference remains unknown under
+the ordinary [recovery rules](recovery.md#reconcile-an-unresolved-inference-reservation).
+Neither error authorizes replay. Review the service and adopt a new pin only in a
+fresh Session. Resume requires the original selected profile and pin.
+
+Pins are operator-only named profile fields for Ollama text or embeddings, with
+no top-level setting, CLI or environment override. Embedding selection identity
+includes the full pin and requested context. Changing either requires an explicit
+separate bounded rebuild before those vectors can share a selected index; the
+host does not migrate, mix or delete existing vectors automatically.
 
 ### Use Grok through xAI
 
@@ -655,7 +732,7 @@ ipse chat --cwd /path/to/project --trust-project-config
 Trust applies to that invocation and can change provider or billing selection.
 It does not approve effects. Project profiles may use default endpoints and
 assign roles, but cannot replace operator profile IDs, set endpoints or define
-`model_call_timeout_ms` or `ollama_context_tokens`.
+`model_call_timeout_ms`, `ollama_context_tokens` or `ollama_model_pin`.
 Automatically discovered aliases must resolve within the repository. An
 explicit operator file may be a symlink.
 

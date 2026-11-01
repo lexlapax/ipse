@@ -557,7 +557,7 @@ defmodule Ipse.Config do
           Enum.any?(source.data["profiles"] || %{}, fn {id, profile} ->
             MapSet.member?(operator_ids, id) or
               Enum.any?(
-                ~w(base_url model_call_timeout_ms ollama_context_tokens),
+                ~w(base_url model_call_timeout_ms ollama_context_tokens ollama_model_pin),
                 &Map.has_key?(profile, &1)
               )
           end)
@@ -566,7 +566,7 @@ defmodule Ipse.Config do
     if invalid,
       do:
         {:error,
-         "Project configuration cannot define provider endpoints or Ollama context requests, extend model-call timeouts or replace operator profiles. No task was started; move those settings to operator configuration or use --no-project-config."},
+         "Project configuration cannot define provider endpoints, Ollama context requests or model pins, extend model-call timeouts or replace operator profiles. No task was started; move those settings to operator configuration or use --no-project-config."},
       else: :ok
   end
 

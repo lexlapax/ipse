@@ -12,6 +12,7 @@ defmodule Ipse.Provider.MintText do
          model when is_binary(model) <- runtime[:model],
          true <- Ipse.Provider.model_name(model) == model,
          :ok <- Ipse.Provider.Registry.validate_request(runtime),
+         :ok <- Ipse.Provider.Ollama.Models.request_allowed?(runtime),
          :ok <- Ipse.Config.Profiles.reasoning("ollama", model, runtime[:reasoning_effort]),
          :ok <- Ipse.Provider.validate_output_limit(runtime),
          :ok <- Ipse.Provider.response_contract(runtime),

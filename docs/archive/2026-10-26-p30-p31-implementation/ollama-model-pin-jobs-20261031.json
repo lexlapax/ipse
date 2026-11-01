@@ -1,0 +1,273 @@
+{
+  "allowances_unchanged": {
+    "chatgpt_conservative_charged": 238,
+    "chatgpt_limit": 300,
+    "local_charged": 2,
+    "local_limit": 1000
+  },
+  "assurance": "cooperative_service_metadata_not_request_attestation",
+  "candidate": "base plus exact listed source/test hashes; no claim of immutable request weights",
+  "checks": [
+    {
+      "failed": 0,
+      "files": 22,
+      "log": "/tmp/ipse-model-pin-broad-first-20261031.log",
+      "name": "provider/profile/SDK regression",
+      "passed": 185,
+      "seconds": 41.2
+    },
+    {
+      "failed": 0,
+      "files": 7,
+      "log": "/tmp/ipse-model-pin-regression-second-20261031.log",
+      "name": "legacy configuration/provider/service regression",
+      "passed": 153,
+      "seconds": 14.3
+    },
+    {
+      "failed": 0,
+      "files": 4,
+      "log": "/tmp/ipse-model-pin-final-controls-second-20261031.log",
+      "name": "final pinned main/SDK/controlled-child controls",
+      "passed": 23,
+      "seconds": 10.6
+    }
+  ],
+  "date": "2026-10-31",
+  "dependencies_added": [],
+  "downloads": 0,
+  "first_failures_retained": [
+    "Initial compile refused local binding/1 conflict before tests; renamed job_binding/1.",
+    "SDK-first cohort 14/15 passed; Session harness obtained nil ID from wrong event; corrected to Session.info.id.",
+    "Budget-third cohort 8/9 passed; HTTP tuple JSON encoding fixture failed; corrected assertion.",
+    "Final-controls cohort 22/23 passed; fixture expected error instead of existing failed outcome label; corrected assertion.",
+    "Sandbox budget-fourth and doc-example attempts refused Mix TCP lock; explicit approved loopback reruns passed."
+  ],
+  "logs": [
+    {
+      "bytes": 454,
+      "path": "/tmp/ipse-model-pin-existing-first-20261031.log",
+      "sha256": "74cb4d5231b2b321bb3eaf75910e33f569f3d789ad64838e2d4ef191d67ccb73"
+    },
+    {
+      "bytes": 328,
+      "path": "/tmp/ipse-model-pin-existing-second-20261031.log",
+      "sha256": "c98e6104df298b70d90303c66262beaa68862b1081340160250b67bcbdedbb8a"
+    },
+    {
+      "bytes": 257,
+      "path": "/tmp/ipse-model-pin-new-first-20261031.log",
+      "sha256": "17e9abe04b95f2533c55ca0d398cf43ec44a311b5996217796e044f734b7a2f0"
+    },
+    {
+      "bytes": 286,
+      "path": "/tmp/ipse-model-pin-bound-selection-20261031.log",
+      "sha256": "0d6d3fa6ad3d3b750e5301ae81b2daa777a9c8186062b4a9c8a9a6415e6cd9f9"
+    },
+    {
+      "bytes": 730,
+      "path": "/tmp/ipse-model-pin-sdk-first-20261031.log",
+      "sha256": "2a2de42103298cb23beccc2a81f0feb4944f7953f3fd36c983f322e5f0541255"
+    },
+    {
+      "bytes": 292,
+      "path": "/tmp/ipse-model-pin-integrated-second-20261031.log",
+      "sha256": "373ce9234e073fbe3bf993f1889fc516e359d6ddcd2827135ebcbdc57c9fd600"
+    },
+    {
+      "bytes": 3816,
+      "path": "/tmp/ipse-model-pin-budget-third-20261031.log",
+      "sha256": "969396c6f6a9da99091c5a9eaedc5ea03b46615f61bc7cf4b84c032aae0d9c57"
+    },
+    {
+      "bytes": 139,
+      "path": "/tmp/ipse-model-pin-budget-fourth-20261031.log",
+      "sha256": "e10cbee50e01b07ab2cf163c0fede103c5bb7cfbb8a51f2ee434856106979efb"
+    },
+    {
+      "bytes": 256,
+      "path": "/tmp/ipse-model-pin-budget-fifth-20261031.log",
+      "sha256": "8ee9518e64651c73f2ed5de291df05ea370ec10d9a335cdef5700e8d5249d480"
+    },
+    {
+      "bytes": 1108,
+      "path": "/tmp/ipse-model-pin-broad-first-20261031.log",
+      "sha256": "72314589dda14bdae88944f9f389d16706d3bc665ba10b2e4a9710970b015831"
+    },
+    {
+      "bytes": 428,
+      "path": "/tmp/ipse-model-pin-regression-second-20261031.log",
+      "sha256": "5c62f650775f6ff44c432e80cb4a68f0cacd97d34caae950e44ce3e2545368dc"
+    },
+    {
+      "bytes": 713,
+      "path": "/tmp/ipse-model-pin-final-controls-20261031.log",
+      "sha256": "5fc3e5d565158654432befd7281610c8d5a6cdfb1e967a34f0a8130097097aa2"
+    },
+    {
+      "bytes": 272,
+      "path": "/tmp/ipse-model-pin-final-controls-second-20261031.log",
+      "sha256": "de81b89964f7b39ebd54b969fa4203f759aa6a1faafde5f3869136260c4372e4"
+    },
+    {
+      "bytes": 787,
+      "path": "/tmp/ipse-model-pin-build-20261031.log",
+      "sha256": "3b9f93ad866f46a50943f620647db6f3f8e16497f88faf7dce41e53615447d74"
+    },
+    {
+      "bytes": 0,
+      "path": "/tmp/ipse-model-pin-format-20261031.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "bytes": 0,
+      "path": "/tmp/ipse-model-pin-compile-20261031.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "bytes": 4431,
+      "path": "/tmp/ipse-model-pin-demo-20261031.log",
+      "sha256": "e6da131a1ec3cd70e04182cc03dcc5c1540046e2731d29316e9e51918a0da2c6"
+    },
+    {
+      "bytes": 32,
+      "path": "/tmp/ipse-model-pin-ci-20261031.log",
+      "sha256": "e856938f2d4ee3eb319a90056aca83ff6b7347ea57ff71bac975f84df18ae633"
+    },
+    {
+      "bytes": 309,
+      "path": "/tmp/ipse-model-pin-doc-example-20261031.log",
+      "sha256": "15df038328e4593e0ce3bfb55771d39a8c5b65d00600a2176504babd97476d46"
+    },
+    {
+      "bytes": 3180,
+      "path": "/tmp/ipse-model-pin-doc-example-second-20261031.log",
+      "sha256": "40c87bd636e01c23a2bfbe821e3de3cd91fbf96c8ab1ee79ffb5418eebfc3548"
+    },
+    {
+      "bytes": 891,
+      "path": "/tmp/ipse-model-pin-docs-first-20261031.log",
+      "sha256": "c4287edb3aa4916e711fb56fc2d0a0ed83c6506d089bb0e93560f53161befd36"
+    },
+    {
+      "bytes": 756,
+      "path": "/tmp/ipse-model-pin-docs-second-20261031.log",
+      "sha256": "a75dddb37b4033784ea43d947a069a524f7d469c92c1522eda7ba5c94b5d4e71"
+    }
+  ],
+  "native_helper": {
+    "bytes": 955648,
+    "path": "/home/lexlapax/projects/lexlapax/ipse/priv/ipse-runner",
+    "sha256": "c6768890455697de64284463092806fa2e30305a7ea7b8e6ee60c625f3f0ccff"
+  },
+  "other_checks": {
+    "build": "passed; 180 host modules and three inert bundled artifacts",
+    "ci_policy": "passed",
+    "complete_documented_configuration": "passed offline CLI inspection; no operator-home creation",
+    "demo": "passed; credential free",
+    "documentation_links": "passed; 989 Markdown files, 8223 local links, zero errors; unrelated private-directory warnings retained",
+    "format": "passed",
+    "strict_compile": "passed",
+    "whole_manual_review": [
+      "docs/operator/configuration.md",
+      "docs/operator/extensions.md",
+      "docs/developer/configuration.md"
+    ]
+  },
+  "positive_native_scope": "available qualified Linux 7.2.11-arch1-1/tmpfs protected storage and synthetic HTTP; not terminal or live model quality",
+  "real_inference_calls": 0,
+  "real_metadata_requests": 0,
+  "remaining": [
+    "whole-current-source positive suite",
+    "installed pin journeys",
+    "live primary-pair and effective context qualification",
+    "immutable per-request model identity",
+    "offline proof",
+    "independent semantic quality",
+    "complete P30/P31 audit and handoff"
+  ],
+  "source": [
+    {
+      "bytes": 23778,
+      "path": "lib/ipse/config.ex",
+      "sha256": "add4e3216d8d3c9a8817657a86266621247327f073e41894b5a933ab5bd06da4"
+    },
+    {
+      "bytes": 19959,
+      "path": "lib/ipse/config/profiles.ex",
+      "sha256": "46c2f8f397738a1e961bf519325e53cd20ee485fedcbbb87f991eb976d4e870a"
+    },
+    {
+      "bytes": 18330,
+      "path": "lib/ipse/inference_dispatch.ex",
+      "sha256": "189cdc00eebed08fda01690a5a340f1bd0f7b8d2fb2eb042b233455cf6fd377f"
+    },
+    {
+      "bytes": 9526,
+      "path": "lib/ipse/provider.ex",
+      "sha256": "9f115737089ce26410b41b20e1433939cfc0bee8e25f26116e71784edfa940f4"
+    },
+    {
+      "bytes": 11322,
+      "path": "lib/ipse/provider/embedding.ex",
+      "sha256": "1a0b71c8103eedf75f5c7bf2a91dd402159736cb0cdf14047507676f677f0518"
+    },
+    {
+      "bytes": 2022,
+      "path": "lib/ipse/provider/mint_embedding.ex",
+      "sha256": "0cfc9b294aaf4bd8dd28a44e1bc32961b8e4b0822bd801c80e651cf097d2d8a4"
+    },
+    {
+      "bytes": 4168,
+      "path": "lib/ipse/provider/mint_owned.ex",
+      "sha256": "160d325d5b7fe0772bcffa0b4d045b66c53703e5d141018467b12e9f80bd0b86"
+    },
+    {
+      "bytes": 1877,
+      "path": "lib/ipse/provider/mint_text.ex",
+      "sha256": "79b9d493f0f4faf1a77d66a6e66c97b8cd9faee5028dc584b4a632b3a03fd1dc"
+    },
+    {
+      "bytes": 10716,
+      "path": "lib/ipse/provider/ollama.ex",
+      "sha256": "09744c785b910ac68d67192e6ad8bd9125966abca05a1bd5ab51a04a56cd1a0e"
+    },
+    {
+      "bytes": 14774,
+      "path": "lib/ipse/provider/ollama_models.ex",
+      "sha256": "0979f97c109b6ff55af99c4fe6cc810664c1e1bb6acc662c7d338516b446a072"
+    },
+    {
+      "bytes": 25141,
+      "path": "lib/ipse/provider/registry.ex",
+      "sha256": "3298a9c2a46817b25b46812f00635724505f5c1a606df7d58b73258b8a4b4f2b"
+    },
+    {
+      "bytes": 32273,
+      "path": "test/ipse/extension/inference_dispatch_session_test.exs",
+      "sha256": "250de12119eca5a91c5bef6b0366a84bf8d7d44da5242b1059db9b9278ed29a4"
+    },
+    {
+      "bytes": 8041,
+      "path": "test/ipse/provider/mint_owned_dispatch_test.exs",
+      "sha256": "9020768cc5285e1dba92d46a511c393f206147ebd8cc0222313434e58442bbf0"
+    },
+    {
+      "bytes": 7319,
+      "path": "test/ipse/provider/ollama_model_pin_test.exs",
+      "sha256": "9dc72fda07416f8ef8b3b038725c7274d97c569fe3b227f5c258556529a8a5bd"
+    },
+    {
+      "bytes": 10136,
+      "path": "test/ipse/session/ollama_model_pin_test.exs",
+      "sha256": "bb4bf898eaed5fe2b26217a4a7e738cbea14df8ded44ca40de8a0633ebfc3e51"
+    },
+    {
+      "bytes": 1298,
+      "path": "test/support/ollama_metadata_fixture.ex",
+      "sha256": "103c6a9e453b5cd815b718056350a50ac7452be1ebfe4a76829675157b6d8eaa"
+    }
+  ],
+  "source_base": "0b9c5f30e27ef2ddd39ab7f7ecbf7cb1c8b5b374",
+  "version": 1
+}

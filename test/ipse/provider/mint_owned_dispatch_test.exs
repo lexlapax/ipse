@@ -1,3 +1,6 @@
+Code.require_file("../../support/provider_fixture.ex", __DIR__)
+Code.require_file("../../support/ollama_metadata_fixture.ex", __DIR__)
+
 defmodule Ipse.Provider.MintOwnedDispatchTest do
   use ExUnit.Case, async: false
   alias Ipse.{InferenceDispatch, InferenceSlots, Usage}
@@ -187,6 +190,81 @@ defmodule Ipse.Provider.MintOwnedDispatchTest do
       end
     after
       finish(scope, worker)
+    end
+  end
+
+  test "the controlled native text child inherits a current checked model job", c do
+    {scan, pin} = Ipse.Test.OllamaMetadataFixture.scan()
+
+    text =
+      Ipse.Test.ProviderFixture.ndjson([
+        %{
+          "model" => "fixture",
+          "message" => %{"role" => "assistant", "content" => "PINNED_CHILD"},
+          "done" => true,
+          "prompt_eval_count" => 1,
+          "eval_count" => 1
+        }
+      ])
+
+    {base, server} = Ipse.Test.ProviderFixture.sequence(scan ++ [text] ++ scan)
+    on_exit(fn -> if Process.alive?(server.pid), do: Process.exit(server.pid, :kill) end)
+
+    profile = %{
+      "provider" => "ollama",
+      "model" => "fixture",
+      "base_url" => base,
+      "ollama_model_pin" => pin,
+      "ollama_context_tokens" => 8192
+    }
+
+    runtime =
+      runtime(c, base, true)
+      |> Map.merge(%{
+        timeout_ms: 15000,
+        ollama_model_pin: pin,
+        ollama_context_tokens: 8192,
+        execution: Ipse.Config.Profiles.manifest("local", profile)
+      })
+
+    case InferenceSlots.status(runtime, cwd: c.cwd) do
+      {:error, :service_filesystem_unsupported} ->
+        IO.puts("pinned controlled child: unsupported filesystem; positive NOT RUN")
+
+      {:ok, _} ->
+        {scope, worker} =
+          start_owned(fn ->
+            InferenceDispatch.run(
+              runtime,
+              runtime,
+              "main",
+              nil,
+              context(c, runtime),
+              fn _ -> :ok end,
+              fn _ -> {:ok, nil} end,
+              fn selected, _, _ ->
+                case Ipse.Provider.MintText.complete(
+                       "model",
+                       selected,
+                       [%{"role" => "user", "content" => "fixture"}],
+                       [],
+                       fn _, send -> send.() end
+                     ) do
+                  {:settled, result} -> result
+                  _ -> {:error, "controlled pinned inference failed"}
+                end
+              end
+            )
+          end)
+
+        try do
+          assert_receive {:result, {:ok, %{"content" => "PINNED_CHILD"}, _}}, 20000
+          assert length(Task.await(server)) == 13
+          assert {:ok, ledger} = InferenceSlots.status(runtime, cwd: c.cwd)
+          assert ledger["services"]["local"]["active"] == nil
+        after
+          finish(scope, worker)
+        end
     end
   end
 end

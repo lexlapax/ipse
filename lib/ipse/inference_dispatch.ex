@@ -3,6 +3,7 @@ defmodule Ipse.InferenceDispatch do
   alias Ipse.{InferenceSlots, JSON, Session.Resources}
   alias Ipse.Extension.SemanticRoutes
   alias Ipse.Provider.CompletionWitness
+  alias Ipse.Provider.Ollama.Models
   @labels ~w(processing_region storage_region cache_retention account_controls)
 
   # The caller is the existing Session-owned inference task. It alone runs the
@@ -31,7 +32,12 @@ defmodule Ipse.InferenceDispatch do
           )
       end
     else
-      _ -> {:error, "Inference service selection is invalid; no provider request was dispatched."}
+      {:error, :pinned_model_requires_registered_service} ->
+        {:error,
+         "Pinned Ollama jobs require one registered inference service for the selected endpoint; no inference request was dispatched."}
+
+      _ ->
+        {:error, "Inference service selection is invalid; no provider request was dispatched."}
     end
   end
 
@@ -44,7 +50,9 @@ defmodule Ipse.InferenceDispatch do
          {:ok, target, destination} <- destination(runtime, operation) do
       case for {id, entry} <- registry, destination["origin"] in entry["origins"], do: id do
         [] ->
-          {:ok, :unregistered}
+          if Map.has_key?(runtime, :ollama_model_pin),
+            do: {:error, :pinned_model_requires_registered_service},
+            else: {:ok, :unregistered}
 
         [_] ->
           selector =
@@ -129,93 +137,112 @@ defmodule Ipse.InferenceDispatch do
 
           callback = fn facts ->
             with :ok <- InferenceSlots.current_check() do
-              buffer_key = {__MODULE__, ref}
+              case Models.begin_job(runtime, kind(operation), timeout) do
+                {:ok, model_check} ->
+                  Models.with_job(model_check, runtime, fn runtime ->
+                    buffer_key = {__MODULE__, ref}
 
-              Process.put(buffer_key, %{
-                chunks: [],
-                bytes: 0,
-                count: 0,
-                entered: false,
-                overflow: false,
-                started: mono()
-              })
+                    Process.put(buffer_key, %{
+                      chunks: [],
+                      bytes: 0,
+                      count: 0,
+                      entered: false,
+                      overflow: false,
+                      started: mono()
+                    })
 
-              buffered_emit = fn
-                {:text, text} when is_binary(text) and byte_size(text) > 0 ->
-                  buffer = Process.get(buffer_key)
+                    buffered_emit = fn
+                      {:text, text} when is_binary(text) and byte_size(text) > 0 ->
+                        buffer = Process.get(buffer_key)
 
-                  if buffer.count == 0,
-                    do:
-                      emit.(
-                        {:inference_service_timing,
-                         %{"upstream_first_text_ms" => mono() - buffer.started}}
+                        if buffer.count == 0,
+                          do:
+                            emit.(
+                              {:inference_service_timing,
+                               %{"upstream_first_text_ms" => mono() - buffer.started}}
+                            )
+
+                        if buffer.count < 8192 and buffer.bytes + byte_size(text) <= 8_388_608 do
+                          Process.put(buffer_key, %{
+                            buffer
+                            | chunks: [text | buffer.chunks],
+                              bytes: buffer.bytes + byte_size(text),
+                              count: buffer.count + 1
+                          })
+                        else
+                          Process.put(buffer_key, %{buffer | overflow: true})
+                        end
+
+                      {:text, _} ->
+                        :ok
+
+                      event ->
+                        emit.(event)
+                    end
+
+                    try do
+                      {result, terminal?} =
+                        CompletionWitness.capture(runtime, kind(operation), target, fn ->
+                          Ipse.Usage.Budget.run(
+                            runtime,
+                            context.admission,
+                            buffered_emit,
+                            fn admitted, guarded ->
+                              with :ok <- InferenceSlots.current_check() do
+                                Process.put(buffer_key, %{Process.get(buffer_key) | entered: true})
+
+                                managed_execute(
+                                  context,
+                                  admitted,
+                                  kind(operation),
+                                  target,
+                                  timeout,
+                                  fn -> execute.(admitted, guarded, facts[:prepared]) end,
+                                  caller,
+                                  ref,
+                                  buffer_key
+                                )
+                              end
+                            end
+                          )
+                        end)
+
+                      result = Models.finish_job(model_check, runtime, result)
+
+                      buffer = Process.get(buffer_key)
+
+                      result =
+                        if buffer.overflow,
+                          do:
+                            {:error,
+                             "Selected inference text exceeded its private publication buffer; no assistant text was published."},
+                          else: result
+
+                      send(
+                        coordinator,
+                        {ref, :provider_result, result, Enum.reverse(buffer.chunks)}
                       )
 
-                  if buffer.count < 8192 and buffer.bytes + byte_size(text) <= 8_388_608 do
-                    Process.put(buffer_key, %{
-                      buffer
-                      | chunks: [text | buffer.chunks],
-                        bytes: buffer.bytes + byte_size(text),
-                        count: buffer.count + 1
-                    })
-                  else
-                    Process.put(buffer_key, %{buffer | overflow: true})
-                  end
+                      cond do
+                        not buffer.entered ->
+                          {:unstarted, result}
 
-                {:text, _} ->
-                  :ok
+                        terminal? ->
+                          {:settled, result}
 
-                event ->
-                  emit.(event)
-              end
+                        true ->
+                          if match?({:ok, _, _}, result),
+                            do: emit.({:provider_usage, elem(result, 2)})
 
-              try do
-                {result, terminal?} =
-                  CompletionWitness.capture(runtime, kind(operation), target, fn ->
-                    Ipse.Usage.Budget.run(runtime, context.admission, buffered_emit, fn admitted,
-                                                                                        guarded ->
-                      with :ok <- InferenceSlots.current_check() do
-                        Process.put(buffer_key, %{Process.get(buffer_key) | entered: true})
-
-                        managed_execute(
-                          context,
-                          admitted,
-                          kind(operation),
-                          target,
-                          timeout,
-                          fn -> execute.(admitted, guarded, facts[:prepared]) end,
-                          caller,
-                          ref,
-                          buffer_key
-                        )
+                          :unknown
                       end
-                    end)
+                    after
+                      Process.delete(buffer_key)
+                    end
                   end)
 
-                buffer = Process.get(buffer_key)
-
-                result =
-                  if buffer.overflow,
-                    do:
-                      {:error,
-                       "Selected inference text exceeded its private publication buffer; no assistant text was published."},
-                    else: result
-
-                send(coordinator, {ref, :provider_result, result, Enum.reverse(buffer.chunks)})
-
-                cond do
-                  not buffer.entered ->
-                    {:unstarted, result}
-
-                  terminal? ->
-                    {:settled, result}
-
-                  true ->
-                    if match?({:ok, _, _}, result), do: emit.({:provider_usage, elem(result, 2)})
-                    :unknown
-                end
-              after
-                Process.delete(buffer_key)
+                error ->
+                  {:unstarted, error}
               end
             end
           end

@@ -40,7 +40,8 @@ defmodule Ipse.Provider.Embedding do
   end
 
   def request_body(config, inputs) do
-    with true <- runtime?(config) and inputs?(inputs) do
+    with true <- runtime?(config) and inputs?(inputs),
+         :ok <- Ipse.Provider.Registry.validate_request(config) do
       body =
         case config.provider do
           :openai ->
@@ -48,6 +49,11 @@ defmodule Ipse.Provider.Embedding do
 
           :ollama ->
             %{"model" => config.model, "input" => inputs, "truncate" => false}
+            |> then(fn body ->
+              if config[:ollama_context_tokens],
+                do: Map.put(body, "options", %{"num_ctx" => config.ollama_context_tokens}),
+                else: body
+            end)
         end
 
       body =
@@ -65,6 +71,7 @@ defmodule Ipse.Provider.Embedding do
 
   def embed(config, inputs, emit) when is_function(emit, 1) do
     with {:ok, body} <- request_body(config, inputs),
+         :ok <- Ipse.Provider.Ollama.Models.request_allowed?(config, :embedding),
          {:ok, _} <- destination(config),
          {:ok, headers} <- headers(config),
          timeout = config[:timeout_ms] || 120_000,
@@ -257,7 +264,12 @@ defmodule Ipse.Provider.Embedding do
     keys =
       ~w(id operation provider model billing_mode endpoint_sha256 dimensions dimension_mode timeout_ms)
 
-    is_map(execution) and keys?(Map.delete(execution, "destination"), keys) and
+    is_map(execution) and
+      keys?(
+        Map.delete(execution, "destination"),
+        keys ++ Ipse.Provider.Registry.profile_keys(execution["provider"], execution)
+      ) and
+      Ipse.Provider.Registry.valid_profile_values?(execution) and
       is_binary(execution["id"]) and
       Regex.match?(~r/\A[A-Za-z][A-Za-z0-9_-]{0,63}\z/, execution["id"]) and
       execution["operation"] == "embedding" and execution["provider"] in ~w(openai ollama) and

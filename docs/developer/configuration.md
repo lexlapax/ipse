@@ -309,7 +309,7 @@ automatic capture/current-note recall acceptance.
 | --- | --- |
 | Project sandbox | May tighten to native, never weaken an earlier native selection |
 | Explicit operator environment/CLI sandbox | May choose either supported mode |
-| Profile endpoint/context/deadline/IDs | Projects cannot introduce `base_url`, `ollama_context_tokens` or `model_call_timeout_ms`, or replace operator IDs |
+| Profile endpoint/context/pin/deadline/IDs | Projects cannot introduce `base_url`, `ollama_context_tokens`, `ollama_model_pin` or `model_call_timeout_ms`, or replace operator IDs |
 | Embedding profiles | Operator-only, separate from text profiles/roles |
 | Budget/journal/trust/diagnostics | Operator-only policies; project declarations refuse |
 | Extension options/selection | Still require artifact/trust admission before callbacks |
@@ -386,7 +386,8 @@ as one command. Synthetic native HTTP controls inspect actual normal/draft/summa
 bodies. The delegated Session fixture additionally reconstructs saved child
 history with the exact selected context. These prove requested bytes and replay
 compatibility, not effective loaded context, a fitting prompt or immutable model
-identity. Job-level metadata checks and local-route qualification remain separate.
+identity. The optional job checks below add cooperative metadata verification;
+local-route and immutable request identity qualification remain separate.
 
 Extended helper deadlines require `model_call_timeout_ms`. Profiles validates it
 without projecting it into main/child settings. `Extension.ModelCall.snapshot/1`
@@ -465,6 +466,62 @@ test/ipse/provider/conformance_test.exs` as one command. The synthetic endpoint
 checks exact read-only request paths, changed tag/runtime, resident mismatch,
 duplicate/ambiguous metadata and bounded refusal. The CLI control preserves a
 separate malformed conversation configuration and creates no operator home.
+
+### Hold a model check through registered inference
+
+`ollama_model_pin` reuses that reader for optional operator-selected job checks.
+The Registry declares its closed schema; `Ollama.validate_profile/1` additionally
+checks actual integer types, lowercase hashes, a parseable runtime version and
+the relation between requested and minimum context. Project definitions refuse
+even with project trust. `Profiles` carries present fields into text/embedding
+execution, SDK approval snapshots and saved Session identity. Request validation
+requires the runtime pin, model and context to match the saved named execution;
+dropping either copy refuses instead of silently resuming an unpinned route.
+
+Trace `InferenceDispatch.selected/…` into `Models.begin_job/3`, `with_job/3` and
+`finish_job/3`. These run only under an admitted registered service slot. Before
+inference, a bounded metadata scan must match the expected manifest, full metadata
+digest, runtime and text/embedding capability. A process-private job scope binds
+the provider, endpoint, model, pin, context, kind and remaining deadline. Direct
+pinned adapter calls outside that scope refuse. Existing controlled Mint children
+inherit this scope explicitly; it is neither a serialized authority receipt nor
+a source or permission grant.
+
+Metadata HTTP stays outside `CompletionWitness.capture`. The existing Provider
+wrapper still owns inference completion and Budget settlement. After successful
+inference, the second scan checks the same identity, reported loaded context and
+exact response model before the existing private output buffer can release text,
+tool batches or vectors. Native completion remains independently known if the
+postcheck rejects the domain result, so measured charges remain and the service
+can settle. A failed precheck is unstarted and books no inference reservation.
+Unknown native completion still blocks the service. Existing final managed-source
+and permission gates remain necessary before publication.
+
+Each scan uses up to six 1-MiB responses and ten seconds, narrowed by the same job
+deadline; no scan extends it or retries. Loaded context may be absent or smaller
+before a request loads the model, but must meet the pin minimum afterward.
+Service metadata is cooperative evidence, not an immutable request attestation
+or an offline-execution proof. Standalone inspection and idle resume make no
+inference request; ordinary configuration inspection makes no metadata request.
+
+For embeddings, `Profiles.embedding_selection_sha256/2` retains the exact legacy
+version-1 digest when optional fields are absent. Present context/pin fields use
+version 2 and include their full canonical values. Do not substitute a model name
+for that identity or reuse vectors across pin changes. Rebuild is an explicit
+bounded domain operation; profile validation performs no migration or deletion.
+
+Run the following together. The Session controls use synthetic HTTP and the
+qualified native storage helper, while the SDK control compiles a separate worker:
+
+```sh
+mix test test/ipse/provider/ollama_model_pin_test.exs test/ipse/session/ollama_model_pin_test.exs test/ipse/extension/inference_dispatch_session_test.exs test/ipse/provider/mint_owned_dispatch_test.exs
+```
+
+They check main text, SDK text/embedding, controlled Mint ownership, refused
+preflight without prompt egress, changed metadata/context without generated
+publication, retained token charges and unchanged idle resume. Treat these as
+protocol fixtures; they establish neither live local-model quality nor physical
+weight isolation.
 
 ## Preserve reasoning and destination facts
 

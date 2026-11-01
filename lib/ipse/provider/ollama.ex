@@ -4,24 +4,80 @@ defmodule Ipse.Provider.Ollama do
   alias Ipse.Provider.Transport
 
   def validate_profile(profile) do
-    if not Map.has_key?(profile, "ollama_context_tokens") or
-         context_tokens?(profile["ollama_context_tokens"]),
-       do: :ok,
-       else: context_error()
+    with true <-
+           not Map.has_key?(profile, "ollama_context_tokens") or
+             context_tokens?(profile["ollama_context_tokens"]),
+         true <-
+           not Map.has_key?(profile, "ollama_model_pin") or
+             pin?(profile["ollama_model_pin"], profile["ollama_context_tokens"]) do
+      :ok
+    else
+      _ -> context_error()
+    end
   end
 
   def validate_request(config) do
     value = config[:ollama_context_tokens]
 
-    if is_nil(value) or context_tokens?(value),
-      do: :ok,
-      else: context_error()
+    cond do
+      not (is_nil(value) or context_tokens?(value)) ->
+        context_error()
+
+      Map.has_key?(config, :ollama_model_pin) and not pin?(config[:ollama_model_pin], value) ->
+        context_error()
+
+      not selected_pin?(config) ->
+        {:error, "Pinned Ollama inference requires the matching saved named profile selection."}
+
+      true ->
+        :ok
+    end
   end
 
   defp context_tokens?(value), do: is_integer(value) and value in 512..262_144
 
+  defp pin?(pin, context),
+    do:
+      Ipse.Provider.Ollama.Models.valid_pin?(pin) and
+        (is_nil(context) or context >= pin["minimum_context_tokens"])
+
+  # Pinned runtime data must come from the saved named execution selection.
+  # Dropping only the runtime field cannot silently resume an unpinned route.
+  defp selected_pin?(config) do
+    execution = config[:execution] || %{}
+    if is_map(execution), do: selected_pin?(config, execution), else: false
+  end
+
+  defp selected_pin?(config, execution) do
+    configured = Map.fetch(config, :ollama_model_pin)
+    selected = execution_field(execution, :ollama_model_pin)
+
+    case {configured, selected} do
+      {:error, :error} ->
+        true
+
+      {{:ok, pin}, {:ok, pin}} ->
+        execution_field(execution, :provider) == {:ok, "ollama"} and
+          execution_field(execution, :model) == Map.fetch(config, :model) and
+          execution_field(execution, :ollama_context_tokens) ==
+            Map.fetch(config, :ollama_context_tokens)
+
+      _ ->
+        false
+    end
+  end
+
+  defp execution_field(execution, key) do
+    case Map.fetch(execution, key) do
+      :error -> Map.fetch(execution, Atom.to_string(key))
+      value -> value
+    end
+  end
+
   defp context_error,
-    do: {:error, "Ollama context request must be an integer in 512..262144 tokens."}
+    do:
+      {:error,
+       "Ollama context request must be an integer in 512..262144 tokens and satisfy any valid model pin."}
 
   def endpoint(config),
     do:
@@ -106,7 +162,8 @@ defmodule Ipse.Provider.Ollama do
         do: [],
         else: [{"authorization", "Bearer " <> config[:api_key]}]
 
-    with {:ok, state} <-
+    with :ok <- Ipse.Provider.Ollama.Models.request_allowed?(config),
+         {:ok, state} <-
            Transport.stream(url, headers, body, config, state, fn state, chunk ->
              consume(state, chunk, emit)
            end),

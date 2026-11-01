@@ -1,4 +1,5 @@
 Code.require_file("../../support/provider_fixture.ex", __DIR__)
+Code.require_file("../../support/ollama_metadata_fixture.ex", __DIR__)
 
 defmodule Ipse.Extension.InferenceDispatchSessionTest do
   use ExUnit.Case, async: false
@@ -533,6 +534,191 @@ defmodule Ipse.Extension.InferenceDispatchSessionTest do
 
       other ->
         flunk("bootstrap failed: #{inspect(other)}")
+    end
+  end
+
+  test "actual SDK text and embedding bind cooperative pins and complete checked jobs", c do
+    {scan, pin} = Ipse.Test.OllamaMetadataFixture.scan()
+
+    text =
+      ProviderFixture.ndjson([
+        %{
+          "model" => "fixture",
+          "message" => %{"role" => "assistant", "content" => "PINNED_HELPER"},
+          "done" => true,
+          "prompt_eval_count" => 1,
+          "eval_count" => 1
+        }
+      ])
+
+    embedding =
+      Jason.encode!(%{
+        "model" => "fixture",
+        "embeddings" => [[1.0, 0.5]],
+        "prompt_eval_count" => 1
+      })
+
+    {base, server} =
+      ProviderFixture.sequence(scan ++ [text] ++ scan ++ scan ++ [embedding] ++ scan)
+
+    on_exit(fn -> if Process.alive?(server.pid), do: Process.exit(server.pid, :kill) end)
+    config = config(c, base) |> Map.put(:timeout_ms, 15000)
+
+    config =
+      update_in(
+        config,
+        [:model_profiles, "answer"],
+        &Map.merge(&1, %{
+          "ollama_model_pin" => pin,
+          "ollama_context_tokens" => 8192,
+          "timeout_ms" => 15000
+        })
+      )
+
+    config =
+      update_in(
+        config,
+        [:embedding_profiles, "search"],
+        &Map.merge(&1, %{
+          "ollama_model_pin" => pin,
+          "ollama_context_tokens" => 8192,
+          "timeout_ms" => 15000
+        })
+      )
+
+    case InferenceSlots.status(config, cwd: c.cwd) do
+      {:error, :service_filesystem_unsupported} ->
+        IO.puts("#{c.test}: filesystem unsupported; pinned SDK positive NOT RUN")
+
+      {:ok, _} ->
+        {config, _, _} = pin_config(c, config)
+
+        assert {:ok, pid} =
+                 DynamicSupervisor.start_child(
+                   Ipse.Sessions,
+                   {Session,
+                    config: config, cwd: c.cwd, state_dir: c.sessions, subscriber: self()}
+                 )
+
+        on_exit(fn -> if Process.alive?(pid), do: Session.close_confirmed(pid) end)
+
+        for request <- [
+              %{
+                "op" => "model.complete",
+                "version" => 1,
+                "profile" => "answer",
+                "instruction" => "Return synthetic text",
+                "input" => "Public fixture",
+                "max_output_bytes" => 1024,
+                "timeout_ms" => 10000
+              },
+              %{
+                "op" => "embedding.create",
+                "version" => 1,
+                "profile" => "search",
+                "inputs" => ["Public fixture"],
+                "timeout_ms" => 10000
+              }
+            ] do
+          assert :ok =
+                   Session.invoke_export(pid, :command, "ext__probe__infer", %{
+                     "request" => request
+                   })
+
+          assert_receive {:ipse, ^pid, {:done, :ok}}, 20000
+        end
+
+        requests = Task.await(server)
+        assert length(requests) == 26
+
+        for {headers, body} <- requests,
+            String.starts_with?(headers, "POST /api/chat ") or
+              String.starts_with?(headers, "POST /api/embed "),
+            do: assert(body["options"]["num_ctx"] == 8192)
+
+        assert {:ok, events} = Ipse.Journal.load(c.sessions, Session.info(pid).id)
+        assert {:ok, _} = Session.Saved.restore(events, Session.info(pid).id)
+        results = Enum.filter(events, &(&1["type"] == "extension_action_result"))
+        assert length(results) == 2 and Enum.all?(results, &(&1["outcome"]["status"] == "ok"))
+
+        assert Enum.all?(
+                 Enum.filter(
+                   events,
+                   &(&1["type"] in ~w(extension_model_request extension_embedding_request))
+                 ),
+                 &(&1["execution"]["ollama_model_pin"] == pin)
+               )
+
+        assert {:ok, state} = InferenceSlots.status(config, cwd: c.cwd)
+        assert state["services"]["local"]["active"] == nil
+        assert length(state["recent"]) == 2
+    end
+  end
+
+  test "a pinned SDK embedding with insufficient post-job context publishes no vectors", c do
+    {scan, pin} = Ipse.Test.OllamaMetadataFixture.scan()
+    {post, _} = Ipse.Test.OllamaMetadataFixture.scan(context: 4096)
+
+    response =
+      Jason.encode!(%{
+        "model" => "fixture",
+        "embeddings" => [[1.0, 0.5]],
+        "prompt_eval_count" => 1
+      })
+
+    {base, server} = ProviderFixture.sequence(scan ++ [response] ++ post)
+    on_exit(fn -> if Process.alive?(server.pid), do: Process.exit(server.pid, :kill) end)
+    config = config(c, base) |> Map.put(:timeout_ms, 15000)
+
+    config =
+      update_in(config, [:embedding_profiles, "search"], fn profile ->
+        Map.merge(profile, %{
+          "ollama_model_pin" => pin,
+          "ollama_context_tokens" => 8192,
+          "timeout_ms" => 15000
+        })
+      end)
+
+    case InferenceSlots.status(config, cwd: c.cwd) do
+      {:error, :service_filesystem_unsupported} ->
+        IO.puts("#{c.test}: filesystem unsupported; pinned SDK refusal NOT RUN")
+
+      {:ok, _} ->
+        {config, _, _} = pin_config(c, config)
+
+        assert {:ok, pid} =
+                 DynamicSupervisor.start_child(
+                   Ipse.Sessions,
+                   {Session,
+                    config: config, cwd: c.cwd, state_dir: c.sessions, subscriber: self()}
+                 )
+
+        on_exit(fn -> if Process.alive?(pid), do: Session.close_confirmed(pid) end)
+
+        assert :ok =
+                 Session.invoke_export(pid, :command, "ext__probe__infer", %{
+                   "request" => %{
+                     "op" => "embedding.create",
+                     "version" => 1,
+                     "profile" => "search",
+                     "inputs" => ["Public fixture"],
+                     "timeout_ms" => 10000
+                   }
+                 })
+
+        assert_receive {:ipse, ^pid, {:done, :ok}}, 20000
+        assert length(Task.await(server)) == 13
+        id = Session.info(pid).id
+        assert :ok = Session.close_confirmed(pid)
+        assert {:ok, events} = Ipse.Journal.load(c.sessions, id)
+        assert {:ok, _} = Session.Saved.restore(events, id)
+        refute Enum.any?(events, &(&1["type"] == "extension_effect_result"))
+        [result] = Enum.filter(events, &(&1["type"] == "extension_action_result"))
+        assert result["outcome"]["status"] == "failed"
+        assert Enum.any?(events, &(&1["type"] == "request_usage_observed"))
+        assert {:ok, state} = InferenceSlots.status(config, cwd: c.cwd)
+        assert state["services"]["local"]["active"] == nil
+        assert length(state["recent"]) == 1
     end
   end
 

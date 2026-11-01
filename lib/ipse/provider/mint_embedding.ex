@@ -16,6 +16,7 @@ defmodule Ipse.Provider.MintEmbedding do
   # Response bytes stay in the owned child until parsing and cleanup settle.
   def embed(%{provider: :ollama} = runtime, inputs, admit) when is_function(admit, 2) do
     with {:ok, request} <- Embedding.request_body(runtime, inputs),
+         :ok <- Ipse.Provider.Ollama.Models.request_allowed?(runtime, :embedding),
          {:ok, _} <- Embedding.destination(runtime),
          timeout when is_integer(timeout) and timeout in 1..120_000 <-
            runtime[:timeout_ms] || 120_000,

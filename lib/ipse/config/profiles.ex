@@ -337,7 +337,7 @@ defmodule Ipse.Config.Profiles do
   @embedding_providers Map.take(@providers, Ipse.Provider.Registry.embedding_ids())
   @embedding_credentials Map.take(@credentials, Ipse.Provider.Registry.embedding_ids())
   @required ~w(operation provider model dimensions dimension_mode)
-  @optional ~w(credential base_url timeout_ms)
+  @optional ~w(credential base_url timeout_ms ollama_context_tokens ollama_model_pin)
   @public ~w(id operation provider model billing_mode endpoint_sha256 dimensions dimension_mode timeout_ms destination)
   @error {:error, "Invalid operator embedding profile configuration."}
 
@@ -374,6 +374,7 @@ defmodule Ipse.Config.Profiles do
              @embedding_providers[profile["provider"]],
              profile["base_url"]
            ),
+         :ok <- Ipse.Provider.Registry.validate_profile(profile),
          :ok <- Ipse.Extension.validate(profile),
          {:ok, _} <- Embedding.destination(embedding_runtime(profile)) do
       :ok
@@ -449,7 +450,8 @@ defmodule Ipse.Config.Profiles do
            "timeout_ms" =>
              min(Map.get(profile, "timeout_ms", 120_000), config[:timeout_ms] || 120_000),
            "destination" => destination
-         }}
+         }
+         |> Map.merge(Ipse.Provider.Registry.profile_values(profile))}
       end)
     end
   end
@@ -477,15 +479,17 @@ defmodule Ipse.Config.Profiles do
          {:ok, execution} <- embedding_execution(scope, request),
          profile when is_map(profile) <- (config[:embedding_profiles] || %{})[request["profile"]],
          :ok <- validate_embedding_profile(profile),
-         selected = %{
-           id: request["profile"],
-           role: "extension",
-           provider: profile["provider"],
-           model: profile["model"],
-           credential:
-             Map.get(profile, "credential", @embedding_credentials[profile["provider"]]),
-           base_url: profile["base_url"]
-         },
+         selected =
+           %{
+             id: request["profile"],
+             role: "extension",
+             provider: profile["provider"],
+             model: profile["model"],
+             credential:
+               Map.get(profile, "credential", @embedding_credentials[profile["provider"]]),
+             base_url: profile["base_url"]
+           }
+           |> Map.merge(Ipse.Provider.Registry.profile_runtime(profile)),
          private =
            config
            |> Map.take([:budget, :budget_root, :budget_checkpoint, :delegation_origin])
@@ -506,7 +510,9 @@ defmodule Ipse.Config.Profiles do
   end
 
   def public_embedding_profile?(profile) do
-    keys?(profile, @public) and id?(profile["id"]) and profile["operation"] == "embedding" and
+    keys?(profile, @public ++ Ipse.Provider.Registry.profile_keys(profile["provider"], profile)) and
+      Ipse.Provider.Registry.valid_profile_values?(profile) and
+      id?(profile["id"]) and profile["operation"] == "embedding" and
       is_map_key(@embedding_providers, profile["provider"]) and is_binary(profile["model"]) and
       Ipse.Provider.model_name(profile["model"]) == profile["model"] and
       profile["billing_mode"] ==
@@ -522,20 +528,24 @@ defmodule Ipse.Config.Profiles do
   def embedding_selection_sha256(execution, destination) do
     if is_map(execution) and not Map.has_key?(execution, "destination") and
          public_embedding_profile?(Map.put(execution, "destination", destination)) do
-      {:ok,
-       Ipse.JSON.digest([
-         "ipse.embedding.selection",
-         1,
-         execution["id"],
-         execution["operation"],
-         execution["provider"],
-         execution["model"],
-         execution["billing_mode"],
-         destination["origin"],
-         destination["target_sha256"],
-         execution["dimensions"],
-         execution["dimension_mode"]
-       ])}
+      optional = Ipse.Provider.Registry.profile_values(execution)
+      version = if map_size(optional) == 0, do: 1, else: 2
+
+      fields = [
+        "ipse.embedding.selection",
+        version,
+        execution["id"],
+        execution["operation"],
+        execution["provider"],
+        execution["model"],
+        execution["billing_mode"],
+        destination["origin"],
+        destination["target_sha256"],
+        execution["dimensions"],
+        execution["dimension_mode"]
+      ]
+
+      {:ok, Ipse.JSON.digest(if(version == 1, do: fields, else: fields ++ [optional]))}
     else
       @error
     end
@@ -558,6 +568,7 @@ defmodule Ipse.Config.Profiles do
       dimension_mode: profile["dimension_mode"]
     }
 
+    base = Map.merge(base, Ipse.Provider.Registry.profile_runtime(profile))
     if profile["base_url"], do: Map.put(base, :base_url, profile["base_url"]), else: base
   end
 

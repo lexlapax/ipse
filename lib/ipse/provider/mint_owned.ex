@@ -6,12 +6,13 @@ defmodule Ipse.Provider.MintOwned do
 
   @doc false
   def execute(runtime, kind, target, timeout, fun) when is_function(fun, 0) do
-    with {:ok, capability} <- CompletionWitness.reserve_owned_child(runtime, kind, target),
+    with :ok <- Ipse.Provider.Ollama.Models.request_allowed?(runtime, kind),
+         {:ok, capability} <- CompletionWitness.reserve_owned_child(runtime, kind, target),
          {:ok, {result, true}} <-
            Resources.controlled_owned_effect(
-             fn ->
+             Ipse.Provider.Ollama.Models.inherit_job(fn ->
                CompletionWitness.capture(runtime, kind, target, fun)
-             end,
+             end),
              timeout
            ),
          :ok <- CompletionWitness.complete_owned_child(runtime, kind, target, capability) do
@@ -39,11 +40,12 @@ defmodule Ipse.Provider.MintOwned do
   def run(runtime, kind, url, headers, body, timeout, limit, initial, consume, admit, finish)
       when is_map(runtime) and kind in [:text, :embedding, :decision] and
              is_function(finish, 1) do
+    :ok = Ipse.Provider.Ollama.Models.request_allowed?(runtime, kind)
     {:ok, capability} = CompletionWitness.reserve_owned_child(runtime, kind, url)
 
     scoped =
       Resources.controlled_owned_effect(
-        fn ->
+        Ipse.Provider.Ollama.Models.inherit_job(fn ->
           result =
             CompletionWitness.capture(runtime, kind, url, fn ->
               case MintTransport.stream_witnessed(
@@ -75,7 +77,7 @@ defmodule Ipse.Provider.MintOwned do
             end)
 
           {capability, result}
-        end,
+        end),
         timeout
       )
 

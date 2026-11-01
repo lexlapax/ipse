@@ -277,6 +277,16 @@ the configured width and needs provider/model support. Mismatch fails, with no
 silent shortening. Ollama explicitly disables truncation. For OpenAI use
 `credential: "OPENAI_API_KEY"` and your chosen embedding model/dimensions.
 
+An Ollama embedding profile may also set `ollama_context_tokens` and the optional
+[`ollama_model_pin`](configuration.md#check-an-ollama-model-around-each-job).
+Review the exact installed embedding model's metadata before copying that pin;
+a text profile's pin does not select the embedding model. Pinned embedding jobs
+require the same registered service slot and before/after checks as pinned text
+jobs. A failed postcheck publishes no vectors while retaining measured usage.
+The pin and requested context become part of embedding selection identity;
+changing them requires a separate explicit rebuild rather than reusing an older
+index. Profiles omitting both fields retain their previous selection identity.
+
 Calls accept one to eight nonempty UTF-8 inputs, 4096 bytes each and 12,288 together,
 within the escaped 16-KiB object. Timeout is 1000..120000 ms, narrowed by policy.
 Provider context limits still apply. Check a custom `journal.max_record_bytes`

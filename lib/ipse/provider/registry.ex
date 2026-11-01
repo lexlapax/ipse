@@ -115,9 +115,13 @@ defmodule Ipse.Provider.Registry do
       profile_validator: &Ipse.Provider.Ollama.validate_profile/1,
       request_validator: &Ipse.Provider.Ollama.validate_request/1,
       profile_fields: %{
-        "ollama_context_tokens" => %{"type" => "integer", "minimum" => 512, "maximum" => 262_144}
+        "ollama_context_tokens" => %{"type" => "integer", "minimum" => 512, "maximum" => 262_144},
+        "ollama_model_pin" => Ipse.Provider.Ollama.Models.pin_schema()
       },
-      optional_route_fields: [{"ollama_context_tokens", :ollama_context_tokens}],
+      optional_route_fields: [
+        {"ollama_context_tokens", :ollama_context_tokens},
+        {"ollama_model_pin", :ollama_model_pin}
+      ],
       usage_extractor: &__MODULE__.ollama_usage/1,
       embedding: %{
         usage_extractor: &__MODULE__.ollama_embedding_usage/1,

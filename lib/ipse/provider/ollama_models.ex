@@ -1,7 +1,24 @@
 defmodule Ipse.Provider.Ollama.Models do
-  @moduledoc "Bounded read-only inspection of an explicitly selected loopback model service. No inference or provisioning."
+  @moduledoc "Bounded read-only Ollama inspection and cooperative metadata checks around registered inference jobs. No provisioning."
   alias Ipse.{HTTP, JSON, Provider}
   @limit 1_048_576
+  @job {__MODULE__, :job}
+  @pin_error {:error,
+              "The selected Ollama model pin or loaded context could not be verified; no generated output was released."}
+  @pin_schema %{
+    "type" => "object",
+    "properties" => %{
+      "version" => %{"type" => "integer", "enum" => [1]},
+      "trust_boundary" => %{"type" => "string", "enum" => ["cooperative_service_metadata"]},
+      "manifest_sha256" => %{"type" => "string", "minLength" => 64, "maxLength" => 64},
+      "metadata_sha256" => %{"type" => "string", "minLength" => 64, "maxLength" => 64},
+      "runtime_version" => %{"type" => "string", "minLength" => 1, "maxLength" => 64},
+      "minimum_context_tokens" => %{"type" => "integer", "minimum" => 512, "maximum" => 262_144}
+    },
+    "required" =>
+      ~w(version trust_boundary manifest_sha256 metadata_sha256 runtime_version minimum_context_tokens),
+    "additionalProperties" => false
+  }
   @text %{"type" => "string", "maxLength" => 256}
   @row %{
     "type" => "object",
@@ -225,4 +242,169 @@ defmodule Ipse.Provider.Ollama.Models do
   defp optional_hash(value) when is_binary(value), do: JSON.sha256(value)
   defp optional_hash(_), do: nil
   defp label(value), do: Ipse.Provider.Transport.safe(value, :code)
+
+  @doc false
+  def pin_schema, do: @pin_schema
+
+  @doc false
+  def valid_pin?(pin) do
+    with :ok <- JSON.validate_arguments(@pin_schema, pin),
+         true <- pin["version"] === 1,
+         true <- JSON.sha256?(pin["manifest_sha256"]) and JSON.sha256?(pin["metadata_sha256"]),
+         true <- is_integer(pin["minimum_context_tokens"]),
+         {:ok, _} <- Version.parse(pin["runtime_version"]) do
+      true
+    else
+      _ -> false
+    end
+  rescue
+    _ -> false
+  end
+
+  # Metadata is checked outside CompletionWitness.capture: metadata HTTP must
+  # never start, complete or invalidate the selected inference witness.
+  @doc false
+  def begin_job(runtime, kind, timeout) do
+    if Map.has_key?(runtime, :ollama_model_pin) do
+      deadline = System.monotonic_time(:millisecond) + timeout
+
+      with true <- runtime[:provider] == :ollama and kind in [:text, :embedding],
+           :ok <- Ipse.Provider.Registry.validate_request(runtime),
+           true <- valid_pin?(runtime.ollama_model_pin),
+           nil <- Process.get(@job),
+           {:ok, report} <- job_read(runtime, deadline),
+           true <- pinned?(runtime, kind, report) do
+        {:ok,
+         %{
+           owner: self(),
+           ref: make_ref(),
+           binding: job_binding(runtime),
+           kind: kind,
+           deadline: deadline
+         }}
+      else
+        _ -> @pin_error
+      end
+    else
+      {:ok, nil}
+    end
+  rescue
+    _ -> @pin_error
+  end
+
+  @doc false
+  def with_job(nil, runtime, fun), do: fun.(runtime)
+
+  def with_job(check, runtime, fun) do
+    with true <- check.owner == self() and is_reference(check.ref),
+         true <- check.binding == job_binding(runtime),
+         nil <- Process.get(@job) do
+      Process.put(@job, check)
+
+      try do
+        selected =
+          Map.put(
+            runtime,
+            :timeout_ms,
+            min(runtime[:timeout_ms] || 120_000, remaining(check.deadline))
+          )
+
+        fun.(selected)
+      after
+        Process.delete(@job)
+      end
+    else
+      _ -> {:unstarted, @pin_error}
+    end
+  end
+
+  @doc false
+  def finish_job(nil, _runtime, result), do: result
+
+  def finish_job(check, runtime, {:ok, value, _} = result) do
+    with :ok <- request_allowed?(runtime, check.kind),
+         true <- check == Process.get(@job),
+         {:ok, report} <- job_read(runtime, check.deadline),
+         true <- pinned?(runtime, check.kind, report),
+         true <- is_map(report["loaded"]),
+         true <-
+           report["loaded"]["context_length"] >=
+             runtime.ollama_model_pin["minimum_context_tokens"],
+         true <- reported_model(value, check.kind) == runtime.model,
+         true <- remaining(check.deadline) > 0 do
+      result
+    else
+      _ -> @pin_error
+    end
+  rescue
+    _ -> @pin_error
+  end
+
+  def finish_job(_check, _runtime, result), do: result
+
+  @doc false
+  def request_allowed?(runtime, kind \\ :text) do
+    if Map.has_key?(runtime, :ollama_model_pin) do
+      case Process.get(@job) do
+        %{owner: owner, ref: ref, binding: expected, deadline: deadline, kind: ^kind}
+        when owner == self() and is_reference(ref) ->
+          if runtime[:provider] == :ollama and expected == job_binding(runtime) and
+               remaining(deadline) > 0, do: :ok, else: @pin_error
+
+        _ ->
+          @pin_error
+      end
+    else
+      :ok
+    end
+  end
+
+  # Carry the existing trusted job scope into the existing controlled native
+  # child. This is not a serialized receipt or a permission/source grant.
+  @doc false
+  def inherit_job(fun) do
+    case Process.get(@job) do
+      nil ->
+        fun
+
+      check ->
+        fn ->
+          nil = Process.get(@job)
+          Process.put(@job, %{check | owner: self()})
+          try do: fun.(), after: Process.delete(@job)
+        end
+    end
+  end
+
+  defp job_read(runtime, deadline) do
+    budget = min(remaining(deadline), 10_000)
+    base = runtime[:base_url] || Ipse.Provider.Registry.fetch!(:ollama).default_base_url
+    if budget >= 1000, do: read(base, runtime.model, budget), else: @pin_error
+  end
+
+  defp pinned?(runtime, kind, report) do
+    pin = runtime.ollama_model_pin
+
+    report["manifest_sha256"] == pin["manifest_sha256"] and
+      report["metadata_sha256"] == pin["metadata_sha256"] and
+      report["runtime_version"] == pin["runtime_version"] and
+      report["model"] == runtime.model and
+      if(kind == :embedding, do: "embedding", else: "completion") in report[
+        "declared_capabilities"
+      ]
+  end
+
+  defp job_binding(runtime),
+    do:
+      JSON.digest([
+        runtime[:provider] |> to_string(),
+        runtime[:model],
+        runtime[:base_url],
+        runtime[:ollama_model_pin],
+        runtime[:ollama_context_tokens]
+      ])
+
+  defp remaining(deadline), do: max(deadline - System.monotonic_time(:millisecond), 0)
+  defp reported_model(value, :embedding), do: value["reported_model"]
+  defp reported_model(value, :text), do: get_in(value, ["provider_data", "reported_model"])
 end

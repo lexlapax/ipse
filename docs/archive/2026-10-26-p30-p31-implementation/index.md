@@ -58,6 +58,7 @@ nor resource/offline qualification. No daemon configuration or existing model wa
 
 ## P31A contracts and evidence
 
+- [Cooperative Ollama model/context checks around registered text and embedding jobs](ollama-model-pin-jobs-20261031.md) retain saved-profile identity, private output release and measured charges; physical request attestation and live qualification remain separate.
 - [Installed idle-resume verifier repair](package-idle-resume-20261031.md) preserves the exact failed archive, native ownership/release assertions and source checks; a replacement archive still requires installed verification.
 - [Full-source regression result](full-suite-20261031.md) retains the unchanged-source run's 71 failures and complete top-level failure extract; selected later controls do not replace this failed baseline.
 - [Completed c7cb484 default baseline](full-suite-c7cb484-20261031.md): 3518 passed,58 failed, with unchanged1057-file source; later isolated increments remain outside its scope.

@@ -13,6 +13,7 @@ defmodule Ipse.Provider do
       try do
         with :ok <- response_contract(config),
              :ok <- Registry.validate_request(config),
+             :ok <- Ipse.Provider.Ollama.Models.request_allowed?(config),
              :ok <-
                Ipse.Config.Profiles.reasoning(
                  to_string(config[:provider]),
