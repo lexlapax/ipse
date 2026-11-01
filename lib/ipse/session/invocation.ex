@@ -28,6 +28,7 @@ defmodule Ipse.Session.Invocation do
             effect_sources: %{},
             results: [],
             managed_reads: [],
+            worker_input: nil,
             pending_contributions: nil,
             semantic_binding: nil,
             document_context: nil,

@@ -352,6 +352,63 @@ defmodule Ipse.Extension.WorkerTest do
     end
   end
 
+  @tag skip: if(:os.type() == {:unix, :linux}, do: false, else: "Linux stdin ownership")
+  test "only the registered Worker can recognize its actual file-effect publisher", c do
+    alias Ipse.Session.Resources
+    session = self()
+    assert {:ok, scope} = Resources.start(session)
+
+    task =
+      Task.async(fn ->
+        receive do: (:start -> :ok)
+        Resources.bind(scope)
+
+        assert {:ok, worker} =
+                 Worker.start(
+                   owner: self(),
+                   store: c.store,
+                   digest: c.digest,
+                   trusted: c.digest,
+                   protected_input: true,
+                   input_session: session
+                 )
+
+        assert {:ok, %{"sdk" => 1}} = Worker.call(worker, "initialize", %{})
+        host = self()
+
+        result =
+          Resources.file_effect(fn ->
+            payload = %{"publisher" => "actual tracked peer"}
+            assert {:ok, handle, binding} = Worker.prepare_input(worker, "fixture.echo", payload)
+            assert binding.owner == host and binding.caller == self()
+            ticket = :sys.get_state(worker).cleanup_ticket
+            send(session, {:publisher_ready, host, self(), worker, ticket})
+            receive do: (:continue -> :ok)
+            deliver_prepared(worker, handle, binding, c.root, fn -> :ok end)
+          end)
+
+        assert {:ok, %{"echo" => %{"publisher" => "actual tracked peer"}}} = result
+        assert :ok = Worker.close(worker)
+        assert :ok = Resources.finish(scope)
+      end)
+
+    assert :ok = Resources.attach(scope, task.pid)
+    send(task.pid, :start)
+    assert_receive {:publisher_ready, host, publisher, worker, ticket}, 5_000
+    assert host == task.pid
+    assert Resources.authorized_effect?(host, publisher)
+    refute Resources.resource_effect?(ticket, host, publisher)
+    refute Task.async(fn -> Resources.authorized_effect?(host, publisher) end) |> Task.await()
+
+    refute Task.async(fn -> Resources.resource_effect?(ticket, host, publisher) end)
+           |> Task.await()
+
+    assert Process.alive?(worker)
+    send(publisher, :continue)
+    assert :ok = Task.await(task, 10_000)
+    assert :ok = Resources.close(scope)
+  end
+
   test "explicit trust, options and compatibility are required before code loads", c do
     File.rm(c.marker)
 

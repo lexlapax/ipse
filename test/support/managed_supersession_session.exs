@@ -733,6 +733,45 @@ if scenario in ~w(current ordinary temporal history_expiry split cross_session p
            Ipse.Session.supersession_display(List.last(deliveries))
 
   assert saved.messages == :sys.get_state(session).messages
+
+  if scenario == "current" do
+    [transition | _] = Enum.filter(events, &(&1["type"] == "worker_input_root_transition"))
+
+    input =
+      Enum.find(
+        events,
+        &(&1["type"] == "worker_input_intent" and
+            &1["input_id"] == transition["input_id"])
+      )
+
+    assert Ipse.Session.WorkerInput.bound_transition?(transition, input)
+    assert transition["deadline_ms"] == input["deadline_ms"]
+
+    assert Enum.any?(
+             events,
+             &(&1["type"] == "worker_input_result" and
+                 &1["input_id"] == input["input_id"] and &1["status"] == "delivered")
+           )
+
+    altered = [
+      Map.put(transition, "input_id", String.duplicate("0", 32)),
+      put_in(transition, ["evidence", "own_action_sha256"], String.duplicate("0", 64)),
+      update_in(
+        transition,
+        ["evidence", "fresh_dependency", "collection", "generation"],
+        &(&1 + 1)
+      ),
+      Map.update!(transition, "deadline_ms", &(&1 + 1))
+    ]
+
+    for replacement <- altered do
+      bad =
+        Enum.map(events, fn event -> if event === transition, do: replacement, else: event end)
+
+      assert {:error, _} = Ipse.Session.Saved.restore(bad, id)
+    end
+  end
+
   _closed_events = idle_resume.(session, id, events)
 
   if original_source do

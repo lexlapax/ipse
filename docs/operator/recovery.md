@@ -4,6 +4,12 @@ Inspect the workspace and any external service before asking Ipse to continue.
 An effect can finish without a recorded result. Resume preserves that uncertainty
 and never automatically repeats the action.
 
+A managed extension input can also remain unconfirmed after some or all bytes
+reached its worker. A delivered-input receipt describes transport settlement;
+it does not establish callback completion or a successful later effect. Preserve
+the original Session journal and inspect its action outcomes before starting new
+work. Idle resume recreates no pending input and sends no saved callback again.
+
 ## Find the original session
 
 Use its original state directory, normally `IPSE_HOME/sessions`:

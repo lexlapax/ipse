@@ -6,16 +6,38 @@ defmodule Ipse.Runner.SessionSource do
   @unknown {:unknown, :session_source_ownership_unconfirmed}
 
   def with_supersession(cap, context, intent, sha, leases, fun) when is_function(fun, 0) do
+    with_sources(cap, context, leases, fun, fn ->
+      Host.begin_supersession_source_share(context.owner, context.job_ref, intent, sha)
+    end)
+  end
+
+  def with_supersession(_, _, _, _, _, _), do: @unknown
+
+  def with_worker_input(cap, context, intent, sha, leases, proofs, wall, fun)
+      when is_function(fun, 0) do
+    with_sources(cap, context, leases, fun, fn ->
+      Host.begin_worker_input_share(context.owner, context.job_ref, intent, sha, proofs, wall)
+    end)
+  end
+
+  def with_worker_input(_, _, _, _, _, _, _, _), do: @unknown
+
+  defp with_sources(cap, context, leases, fun, begin_share) do
     with %Transaction.Capability{owner: owner, depth: 3} <- cap,
          true <- owner == self() and Resources.active?(),
          {:ok, %{pid: recipient}} <- Transaction.retained_share_identity(cap),
          {:ok, ticket} <- Resources.register(:lock),
          {:ok, binding, transport, snapshot, controls} <-
-           Host.begin_supersession_source_share(context.owner, context.job_ref, intent, sha) do
+           begin_share.() do
       result =
         try do
           with true <- snapshot.session_id === context.session_id,
-               true <- bound_leases?(leases, controls[:relation_source_proofs]),
+               true <-
+                 bound_leases?(
+                   leases,
+                   controls[:original_source_proofs],
+                   snapshot[:inactive_source_locks]
+                 ),
                :ok <- import_writer(cap, context, binding, recipient, controls),
                :ok <- import_session(cap, context, binding, recipient, controls),
                :ok <- import_source(cap, context, binding, recipient, transport, controls) do
@@ -65,22 +87,24 @@ defmodule Ipse.Runner.SessionSource do
     _, _ -> @unknown
   end
 
-  def with_supersession(_, _, _, _, _, _), do: @unknown
-
-  defp bound_leases?(leases, proofs) when is_list(leases) and is_list(proofs) do
+  defp bound_leases?(leases, proofs, locks) when is_list(leases) and is_list(proofs) do
     groups = Enum.group_by(proofs, & &1["session_id"])
 
     length(leases) == map_size(groups) and
       Enum.sort(Enum.map(leases, & &1.session_id)) === Enum.sort(Map.keys(groups)) and
       Enum.all?(leases, fn %{session_id: id, token: token} ->
-        match?(
-          {:ok, _},
-          Ipse.Session.StoredSources.share_verified_identity(token, Map.fetch!(groups, id))
-        )
-      end)
+        case Ipse.Session.StoredSources.share_verified_identity(token, Map.fetch!(groups, id)) do
+          {:ok, %{identity: identity}} ->
+            is_nil(locks) or
+              %{session_id: id, device: identity.device, inode: identity.inode} in locks
+
+          _ ->
+            false
+        end
+      end) and (is_nil(locks) or length(locks) == length(leases))
   end
 
-  defp bound_leases?(_, _), do: false
+  defp bound_leases?(_, _, _), do: false
 
   defp import_writer(cap, c, binding, recipient, controls) do
     with {:ok, identity} <- Host.session_share_writer_open(c.owner, c.job_ref, binding) do

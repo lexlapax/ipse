@@ -304,30 +304,7 @@ defmodule Ipse.Runner.TransactionPipeTest do
     end
   end
 
-  defp await_native_exit(pid, limit \\ nil) do
-    limit = limit || System.monotonic_time(:millisecond) + 5_000
-
-    case File.read("/proc/#{pid}/stat") do
-      {:error, :enoent} ->
-        :ok
-
-      {:ok, stat} ->
-        cond do
-          Regex.match?(~r/\) [ZX] /, stat) ->
-            :ok
-
-          System.monotonic_time(:millisecond) >= limit ->
-            flunk("native source owner did not exit")
-
-          true ->
-            Process.sleep(5)
-            await_native_exit(pid, limit)
-        end
-
-      _ ->
-        flunk("native source owner state unavailable")
-    end
-  end
+  defp await_native_exit(pid), do: Ipse.Test.NativePipeScope.await_native_exit(pid)
 
   defp frame(port, kind), do: frame(port, kind, Process.get({__MODULE__, port}, <<>>))
 

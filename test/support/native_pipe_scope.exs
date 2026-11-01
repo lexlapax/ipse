@@ -154,7 +154,8 @@ defmodule Ipse.Test.NativePipeScope do
   defp entry(pid, name, secret, device, inode),
     do: <<pid::32, name::binary, secret::binary, device::64, inode::64>>
 
-  defp await_native_exit(pid, limit \\ nil) do
+  @doc false
+  def await_native_exit(pid, limit \\ nil) do
     limit = limit || System.monotonic_time(:millisecond) + 5_000
 
     case File.read("/proc/#{pid}/stat") do
@@ -174,8 +175,15 @@ defmodule Ipse.Test.NativePipeScope do
             await_native_exit(pid, limit)
         end
 
-      _ ->
-        flunk("native source owner state unavailable")
+      {:error, reason} ->
+        if System.monotonic_time(:millisecond) >= limit do
+          flunk("native source owner state unavailable: #{inspect(reason)}")
+        else
+          # A failed read is not proof of exit. Recheck within the same bound;
+          # only a subsequent missing process or native exit state can succeed.
+          Process.sleep(5)
+          await_native_exit(pid, limit)
+        end
     end
   end
 

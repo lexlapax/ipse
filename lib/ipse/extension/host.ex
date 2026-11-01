@@ -40,6 +40,10 @@ defmodule Ipse.Extension.Host do
     do: begin_controlled_session_share(owner, job_ref, intent, {:supersession_source, sha})
 
   @doc false
+  def begin_worker_input_share(owner, job_ref, intent, sha, proofs, wall),
+    do: begin_controlled_session_share(owner, job_ref, intent, {:worker_input, sha, proofs, wall})
+
+  @doc false
   def begin_synthetic_supersession_review_share(owner, job_ref, intent, sha),
     do:
       begin_controlled_session_share(owner, job_ref, intent, {:supersession_display_fixture, sha})
@@ -52,6 +56,9 @@ defmodule Ipse.Extension.Host do
   defp begin_controlled_session_share(owner, job_ref, intent, mode) do
     ticket_request =
       case mode do
+        {:worker_input, sha, proofs, wall} ->
+          {:session_control_ticket_worker_input, job_ref, intent, sha, proofs, wall}
+
         {:relation, sha, proofs, wall} ->
           {:session_control_ticket_relation_display, job_ref, intent, sha, proofs, wall}
 
@@ -435,6 +442,8 @@ defmodule Ipse.Extension.Host do
   end
 
   defp execute_export(entry, intent, stage, payload, owner, job_ref, prior_actions) do
+    entry = Map.put(entry, :worker_input_context, {owner, job_ref})
+
     entry =
       if Enum.any?(
            ~w(host.usage.scan host.state.scan host.results host.sources host.collection.read host.actions.mixed),
@@ -453,7 +462,9 @@ defmodule Ipse.Extension.Host do
              digest: entry.identity["artifact"],
              trusted: entry.identity["artifact"],
              artifact_sha256: entry.identity["artifact_sha256"],
-             options: entry.options
+             options: entry.options,
+             protected_input: protected_worker_input?(entry),
+             input_session: owner
            ) do
       try do
         with {:ok, _} <- export_call(worker, entry, "initialize", entry.options),
@@ -556,11 +567,23 @@ defmodule Ipse.Extension.Host do
         else: 5_000
 
     with true <- remaining > 0,
-         {:ok, reply} <- Worker.call(worker, stage, payload, min(5_000, remaining)),
+         {:ok, reply} <- worker_request(worker, entry, stage, payload, min(5_000, remaining)),
          true <- output_timely?(entry) do
       {:ok, reply}
     else
       _ -> {:error, :extension_deadline_or_callback_failed}
+    end
+  end
+
+  defp protected_worker_input?(entry),
+    do: is_map(get_in(entry, [:host_config, :semantic_admission, "pin"]))
+
+  defp worker_request(worker, entry, stage, payload, timeout) do
+    if stage != "initialize" and protected_worker_input?(entry) do
+      {owner, job} = entry.worker_input_context
+      Ipse.Session.WorkerInput.call(owner, job, worker, stage, payload, timeout)
+    else
+      Worker.call(worker, stage, payload, timeout)
     end
   end
 

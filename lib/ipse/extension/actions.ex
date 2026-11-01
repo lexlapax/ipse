@@ -1,6 +1,6 @@
 defmodule Ipse.Extension.Actions do
   @moduledoc "Typed finite host-call continuations with source-bound durable operation receipts."
-  alias Ipse.Extension.{CollectionCall, ManagedCollectionCall}
+  alias Ipse.Extension.{CollectionCall, ManagedCollectionCall, ResultSource}
 
   @keys ~w(type version parent_invocation_id operation_id step identity_sha256 namespace context_sha256 service request request_sha256 approval)
   @types ~w(extension_action_intent extension_action_result)
@@ -324,6 +324,10 @@ defmodule Ipse.Extension.Actions do
       output_layout: output_layout,
       output_release: nil,
       output_release_ids: MapSet.new(),
+      worker_input: nil,
+      worker_input_ids: MapSet.new(),
+      worker_input_unknown: [],
+      worker_output: nil,
       pending_contributions: nil,
       last_display: nil,
       managed_config: %{
@@ -350,6 +354,20 @@ defmodule Ipse.Extension.Actions do
     end)
     |> case do
       {:ok, state} ->
+        state =
+          if is_map(state.worker_input) do
+            %{
+              state
+              | worker_input_unknown: [
+                  state.worker_input["input_id"] | state.worker_input_unknown
+                ],
+                worker_input: nil,
+                unknown: true
+            }
+          else
+            state
+          end
+
         {reversed, state} = Map.pop!(state, :results_rev)
         {:ok, Map.put(state, :results, Enum.reverse(reversed))}
 
@@ -452,6 +470,7 @@ defmodule Ipse.Extension.Actions do
               step: 0,
               unknown: false,
               results_rev: [],
+              worker_output: nil,
               managed_read: nil,
               managed_dependencies: [],
               effect_sources: %{},
@@ -463,7 +482,7 @@ defmodule Ipse.Extension.Actions do
 
   defp validate_event(%{"type" => "extension_invocation_result"} = event, state, _) do
     if state.parent != nil and event["invocation_id"] == state.parent["invocation_id"] and
-         is_nil(state.action) and not state.unknown and
+         is_nil(state.action) and is_nil(state.worker_input) and not state.unknown and
          is_nil(state.resume_needed) and is_nil(state.question) and
          event["action_count"] == state.step and
          event["actions_sha256"] == Ipse.JSON.digest(Enum.reverse(state.results_rev)) and
@@ -488,6 +507,103 @@ defmodule Ipse.Extension.Actions do
                 Map.put(state.managed_outputs, event["invocation_id"], state.managed_dependencies)
           }},
        else: @error
+  end
+
+  defp validate_event(%{"type" => "worker_input_intent"} = event, state, _) do
+    payload =
+      cond do
+        event["stage"] == "host.actions" and state.results_rev != [] ->
+          {:ok, resume(hd(state.results_rev))}
+
+        event["stage"] == "result.output" and state.worker_output != nil ->
+          ResultSource.request(
+            state.parent,
+            state.worker_output.begin,
+            state.worker_output.offset
+          )
+
+        state.results_rev == [] and is_map(state.parent) and
+            event["stage"] == state.parent["descriptor"]["stage"] ->
+          {:ok, state.parent["payload"]}
+
+        true ->
+          :error
+      end
+
+    with true <- is_map(state.parent) and is_nil(state.action) and not state.unknown,
+         true <- is_nil(state.worker_input) and is_nil(state.question),
+         false <- MapSet.member?(state.worker_input_ids, event["input_id"]),
+         {:ok, actual} <- payload,
+         true <-
+           Ipse.Session.WorkerInput.valid_intent?(
+             event,
+             state.parent,
+             Ipse.JSON.digest(Enum.reverse(state.results_rev)),
+             actual
+           ) do
+      {:ok,
+       %{
+         state
+         | worker_input: event,
+           worker_input_ids: MapSet.put(state.worker_input_ids, event["input_id"])
+       }}
+    else
+      _ -> @error
+    end
+  end
+
+  defp validate_event(%{"type" => "worker_input_result"} = event, state, _) do
+    with intent when is_map(intent) <- state.worker_input,
+         true <- Ipse.Session.WorkerInput.bound_result?(event, intent) do
+      {:ok,
+       %{
+         state
+         | worker_input: nil,
+           unknown: state.unknown or event["status"] == "unknown",
+           worker_input_unknown:
+             if(event["status"] == "unknown",
+               do: [intent["input_id"] | state.worker_input_unknown],
+               else: state.worker_input_unknown
+             )
+       }}
+    else
+      _ -> @error
+    end
+  end
+
+  defp validate_event(%{"type" => "worker_input_root_transition"} = event, state, _) do
+    if is_map(state.worker_input) and
+         Ipse.Session.WorkerInput.bound_transition?(event, state.worker_input),
+       do: {:ok, state},
+       else: @error
+  end
+
+  defp validate_event(%{"type" => "extension_output_begin"} = event, state, _) do
+    if worker_output_current?(state, event) and is_nil(state.worker_output),
+      do: {:ok, %{state | worker_output: %{begin: event, offset: 0}}},
+      else: @error
+  end
+
+  defp validate_event(%{"type" => "extension_output_chunk"} = event, state, _) do
+    with true <- worker_output_current?(state, event),
+         output when is_map(output) <- state.worker_output,
+         true <- event["output_id"] == output.begin["output_id"],
+         true <- event["offset"] === output.offset and is_integer(event["next"]),
+         true <- event["next"] > output.offset and event["next"] <= output.begin["byte_count"] do
+      {:ok, %{state | worker_output: %{output | offset: event["next"]}}}
+    else
+      _ -> @error
+    end
+  end
+
+  defp validate_event(%{"type" => "extension_output_seal"} = event, state, _) do
+    with true <- worker_output_current?(state, event),
+         output when is_map(output) <- state.worker_output,
+         true <-
+           event["output_id"] == output.begin["output_id"] and
+             output.offset == output.begin["byte_count"],
+         do: {:ok, %{state | worker_output: nil}},
+         else: (_ -> @error)
   end
 
   defp validate_event(%{"type" => "managed_output_release_intent"} = event, state, _) do
@@ -570,17 +686,9 @@ defmodule Ipse.Extension.Actions do
     end
   end
 
-  defp validate_event(%{"type" => type} = event, state, _)
-       when type in ~w(extension_output_begin extension_output_chunk extension_output_seal) do
-    if state.parent != nil and event["invocation_id"] == state.parent["invocation_id"] and
-         is_nil(state.action) and not state.unknown and is_nil(state.resume_needed) and
-         is_nil(state.question),
-       do: {:ok, state},
-       else: @error
-  end
-
   defp validate_event(%{"type" => "extension_action_intent"} = event, state, cwd) do
-    if state.parent != nil and is_nil(state.action) and not state.unknown and
+    if state.parent != nil and is_nil(state.action) and is_nil(state.worker_input) and
+         not state.unknown and
          is_nil(state.resume_needed) and is_nil(state.question) and
          event["step"] == state.step + 1 and
          not MapSet.member?(state.seen, event["operation_id"]) and
@@ -814,7 +922,21 @@ defmodule Ipse.Extension.Actions do
 
   defp validate_event(%{"type" => type}, state, _) when type in ~w(cancelled turn_finished) do
     {:ok,
-     %{state | parent: nil, action: nil, question: nil, resume_needed: nil, context_request: nil}}
+     %{
+       state
+       | parent: nil,
+         action: nil,
+         question: nil,
+         resume_needed: nil,
+         context_request: nil,
+         worker_output: nil,
+         worker_input: nil,
+         worker_input_unknown:
+           if(is_map(state.worker_input),
+             do: [state.worker_input["input_id"] | state.worker_input_unknown],
+             else: state.worker_input_unknown
+           )
+     }}
   end
 
   defp validate_event(%{"type" => "message", "message" => %{"role" => "user"}}, state, _) do
@@ -861,6 +983,12 @@ defmodule Ipse.Extension.Actions do
   end
 
   defp keys?(map, keys), do: is_map(map) and Enum.sort(Map.keys(map)) == Enum.sort(keys)
+
+  defp worker_output_current?(state, event),
+    do:
+      is_map(state.parent) and event["invocation_id"] == state.parent["invocation_id"] and
+        is_nil(state.action) and is_nil(state.worker_input) and not state.unknown and
+        is_nil(state.resume_needed) and is_nil(state.question)
 
   defp service_source?(event, state) do
     if service?(event["request"]) do

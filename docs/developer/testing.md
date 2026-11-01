@@ -618,9 +618,37 @@ exercise its actual VM: opaque preparation, exact native frame, early-response
 buffering, original timeout/cleanup, supervisor pinning and 257 successive handoffs
 through one Worker. The substitution control changes valid JSON while retaining
 the original protocol ID; native delivery must fail before that callback runs.
-These controls qualify no SDK authority, semantic source union, model quality or
-untested platform. Run Rust native tests and Mix terminal cohorts serially because
-they share the conservative per-user terminal lock.
+These component controls qualify no SDK authority, semantic source union, model
+quality or untested platform. Native-exit observation retries transient procfs
+read errors within its original bound; success still requires an absent process
+or an observed exited state. Persistent read failure is not proof of exit.
+
+For the actual managed export adapter, also run:
+
+```sh
+mix test test/ipse/extension/managed_collection_call_session_test.exs --only worker_input_boundary --max-cases 1
+mix test test/ipse/session/managed_supersession_session_test.exs --max-cases 1
+mix test test/ipse/session/operator_assertion_integration_test.exs --only managed_approval --max-cases 1
+```
+
+The first suite checks paged delivery, strict Saved commitments and permission
+withdrawal between a committed read and the next actual VM input, including idle
+resume without callback replay. Its paged positive reads root metadata. The
+genuine approval fixture additionally reads a committed note and its original
+inactive Session proof. A disclosed one-use BEAM controller pause inspects the
+actual transaction's native descriptor set before its unchanged pipe write:
+three policy locks, consuming/original Session locks, Session/Writer controls and
+actual Worker stdin must belong to that same native process. The original lock
+must remain busy. The native supervisor and importing transaction are distinct
+processes; a Port PID alone cannot identify the importer.
+
+Inject a fault at its actual purpose: a hook around shared source acquisition
+may now intercept an earlier Worker input, before a later publication watcher
+exists. Keep independent allowed-path and denial assertions, and preserve the
+first failed evidence when repairing fixture timing. These synthetic local-route
+controls establish neither human attribution, live-model quality, installed
+delivery nor accepted-decision support. Run Rust native tests and Mix terminal
+cohorts serially because they share the conservative per-user terminal lock.
 
 Filesystem cases need actual case/normalization behavior and inode checks. Native
 fixtures use private homes, not the operator cache. The [sandbox chapter](sandbox.md)

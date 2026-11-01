@@ -367,8 +367,12 @@ native root decision, alongside one journal lease. An isolated current-source
 native control exercises that capacity; the shipped helper must be rebuilt to
 match the host before using it. These leases do not by themselves admit a
 supersession.
-The same transaction owner has a private Linux stdin handoff for future managed
-worker delivery. An explicitly protected `Worker` can prepare an opaque pending
+## Deliver a managed export input under its original owners
+
+The same transaction owner supplies the Linux stdin handoff used by
+`Session.WorkerInput` for protected export calls, committed host-action
+continuations and complete-result page requests. An explicitly protected `Worker`
+can prepare an opaque pending
 input using its ordinary schema checks, next request ID and exact JSON encoder.
 Preparation starts the original callback timer without sending bytes. Its binding
 includes the artifact, owner, preparer, actual supervisor PID and immutable frame.
@@ -391,17 +395,52 @@ the trusted preparer explicitly releases it after settlement; buffering does not
 advance the result producer or renew its timeout. Owner/preparer loss or expiry
 closes the actual owned group.
 
-This private transport does not derive a Session's dependency union or authorize
-an SDK continuation. The end-to-end Session adapter must bind the pending frame
-to its actual purpose, journal intent, transfer the complete original owners and
-confirm their settlement before releasing the response. Do not
-replace that missing admission with a host precheck or fabricated receipt.
+Session independently reconstructs the actual request from its committed parent,
+last action result or current output cursor. It derives the complete inherited
+dependency union, including explicit reads, and matches the actual Worker,
+artifact, publisher, stage, payload, request ID and immutable frame. A durable
+`worker_input_intent` binds these hashes before delivery; it does not duplicate
+the payload or lend the worker a journal handle.
+
+The original tracked file-effect publisher acquires current source and policy
+owners through `ManagedUse.with_display_dependencies/3`. `Runner.SessionSource`
+transfers the consuming Session's retained flock, Session control and drained
+Writer control, together with every inactive original source group, into the
+same native transaction that receives Worker stdin. Active proofs remain bound
+to the Writer snapshot. Even a metadata-only request retains the consuming
+Session owner. No synthetic terminal or approval is involved in this typed
+input purpose. Ordinary effect approval remains separate.
+
+After pipe settlement, every source/control scope must close and Writer must
+thaw before Session commits `worker_input_result: delivered` and the publisher
+awaits the buffered callback response. Computation runs outside those locks,
+under the original callback timer. Failure after preparation remains unknown;
+an acknowledged write alone does not establish successful scope settlement.
+Saved validates the parent, action chain, exact reconstructed request and complete
+dependency commitment chronologically. An interrupted intent marks lineage
+unavailable and reconstructs no handle, timer, permit or automatic delivery.
+
+The narrow own-write metadata transition described above also applies here.
+`worker_input_root_transition` binds the original input intent and unchanged
+deadline to its authenticated own successful capture and exact adjacent root.
+It preserves original payload/dependency records and only resolves their
+historical root mapping for a freshly reacquired guard. Record contents, mixed
+roots, scans and unclassified dependencies cannot acquire that transition.
+
+This adapter supports dependency versions 3–5. Accepted-decision version 6 still
+refuses because its original management-journal owner must also reach the same
+sink. Other Worker entry points, including transforms, event notifications and
+nested service calls, have no admission through this export adapter. Managed
+nested tool/MCP result delivery retains its separate refusal gate. Do not infer
+those authorities from a successful export input.
 The [native protocol](../../native/README.md#direct-stdio-server-transport) owns
 its frame details; [verification](testing.md#exercise-actual-os-policy-and-native-protocols)
 distinguishes component faults from actual Session qualification.
 The [managed read adapter](collection-sdk.md) checks current consent, recipe,
 deadline and signed collection root while those source locks remain held.
 Its result becomes historical after return; later use needs revalidation.
+
+## Retain sources through a protected display or review
 
 For a strict display adapter, `ManagedUse.with_display_dependencies/3` first
 rederives the complete current dependency/proof union, then retains transferable

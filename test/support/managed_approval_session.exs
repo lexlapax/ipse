@@ -87,7 +87,7 @@ defmodule Ipse.Test.ManagedApprovalSession do
     }
   end
 
-  def run(config, cwd, home, dir, _records, original_id, scenario, active_session \\ nil) do
+  def run(config, cwd, home, dir, records, original_id, scenario, active_session \\ nil) do
     config = Map.drop(config, [:provider_module, :fixture_root])
 
     consumer =
@@ -133,6 +133,10 @@ defmodule Ipse.Test.ManagedApprovalSession do
     assert actual.semantic_admission["status"] == "active"
     source_path = Path.join(dir, original_id <> ".jsonl")
     original = File.read!(source_path)
+
+    input_owners =
+      if scenario == "save_managed_approval",
+        do: inspect_worker_input(consumer, actual, home, dir, original_id, records)
 
     {:ok, watcher} =
       Task.start(fn ->
@@ -214,6 +218,14 @@ defmodule Ipse.Test.ManagedApprovalSession do
 
     assert length(requests) == count
     assert Jason.encode!(elem(hd(requests), 1)) =~ "Synthetic ordinary statement"
+
+    if input_owners do
+      ref = make_ref()
+      send(input_owners.pid, {:inspection_result, self(), ref})
+      assert_receive {^ref, :owners_checked}, 5_000
+      assert :owners_checked == Task.await(input_owners, 5_000)
+    end
+
     if Process.alive?(consumer), do: assert(:ok = Session.close_confirmed(consumer))
 
     if scenario == "save_managed_approval_source_stale" do
@@ -223,6 +235,136 @@ defmodule Ipse.Test.ManagedApprovalSession do
     end
 
     IO.puts("NATIVE_MANAGED_APPROVAL_SESSION_PASSED")
+  end
+
+  # Pause the real controller immediately before its actual pipe write. All
+  # handles come from the executing Session/publisher; none is manufactured.
+  defp inspect_worker_input(consumer, config, home, dir, original_id, records) do
+    expected = Map.new(records, &{&1["key"], &1})
+
+    checker =
+      Task.async(fn ->
+        result =
+          receive do
+            {:worker_pipe_waiting, controller, cap, frame} ->
+              try do
+                assert cap.controller == controller and cap.depth == 3
+                state = :sys.get_state(consumer)
+                barrier = state.share_barrier
+                assert is_binary(barrier.worker_input)
+                assert barrier.writer_control == :transferred
+                assert barrier.owner_phase == :transferred
+                pending = state.invocation.worker_input
+                assert pending.caller == cap.owner
+                assert Enum.any?(pending.snapshot.dependencies, &(&1["version"] == 4))
+                assert pending.binding.frame === frame
+                <<size::32, bytes::binary-size(size)>> = frame
+                assert %{"stage" => "host.actions", "payload" => payload} = Jason.decode!(bytes)
+                record = get_in(payload, ["outcome", "value", "record"])
+                assert record === expected[record["key"]]
+                [proof] = get_in(record, ["value", "evidence", "sources"])
+                assert proof["session_id"] == original_id
+                assert record["value"]["text"] === proof["quote"]
+                worker = :sys.get_state(pending.worker)
+                assert worker.input.phase == :exported
+                pipe = worker.input.binding.pipe
+                assert pipe.pid == pending.binding.native_pid
+                assert Port.info(cap.port, :connected) == {:connected, controller}
+                assert {:os_pid, supervisor} = Port.info(cap.port, :os_pid)
+                native = barrier.owner_recipient
+                assert native != supervisor and barrier.writer_recipient == native
+                helper = File.stat!("/proc/#{supervisor}/exe")
+                actual_helper = File.stat!("/proc/#{native}/exe")
+
+                assert {actual_helper.major_device, actual_helper.inode} ==
+                         {helper.major_device, helper.inode}
+
+                identities =
+                  for fd <- File.ls!("/proc/#{native}/fd"),
+                      {:ok, stat} <- [File.stat("/proc/#{native}/fd/#{fd}")],
+                      do: {stat.major_device, stat.inode}
+
+                pin = config.semantic_admission["pin"]
+
+                paths = [
+                  Path.join([home, "project-identities", ".lock"]),
+                  Path.join([SemanticAdmission.control_root(home), pin["project_id"], ".lock"]),
+                  Path.join([SemanticAdmission.collection_root(home), pin["namespace"], ".lock"]),
+                  Path.join(dir, state.id <> ".lock"),
+                  Path.join(dir, original_id <> ".lock")
+                ]
+
+                for path <- paths do
+                  stat = File.stat!(path)
+                  assert {stat.major_device, stat.inode} in identities
+                end
+
+                writer = :sys.get_state(state.journal_writer).share_barrier.writer_control
+                assert {writer.device, writer.inode} in identities
+                assert {:os_pid, session_control} = Port.info(barrier.owner_port, :os_pid)
+                control = File.stat!("/proc/#{session_control}/fd/0")
+                assert {control.major_device, control.inode} in identities
+                assert {pipe.device, pipe.inode} in identities
+                assert {:error, _} = Ipse.Runner.lock(Path.join(dir, original_id <> ".lock"))
+                :owners_checked
+              after
+                send(controller, :release_worker_pipe)
+              end
+          after
+            30_000 -> flunk("no original-source Worker input reached the native writer")
+          end
+
+        # Terminal consumes client events from its mailbox. Hold the Task result
+        # until its caller has returned from that loop and explicitly asks.
+        receive do
+          {:inspection_result, caller, ref} -> send(caller, {ref, result})
+        after
+          30_000 -> flunk("Worker input inspection result was not collected")
+        end
+
+        result
+      end)
+
+    hook = fn
+      true, _, _ ->
+        true
+
+      _,
+      {:in, {_, {publisher, _}, {:session_control_ticket_worker_input, _, _, _, proofs, _}}},
+      _ ->
+        if Enum.any?(proofs, &(&1["session_id"] == original_id)) do
+          {:dictionary, dictionary} = Process.info(publisher, :dictionary)
+          {_, controller} = List.keyfind(dictionary, {Ipse.Runner.Transaction, :controller}, 0)
+
+          gate = fn
+            :released, _, _ ->
+              :released
+
+            _, {:in, {_, _, {:pipe_write, cap, _, frame}}}, _ ->
+              send(checker.pid, {:worker_pipe_waiting, self(), cap, frame})
+
+              receive do
+                :release_worker_pipe -> :released
+              after
+                5_000 -> flunk("native Worker input ownership inspection did not finish")
+              end
+
+            state, _, _ ->
+              state
+          end
+
+          assert :ok = :sys.install(controller, {gate, nil})
+          true
+        else
+          false
+        end
+
+      state, _, _ ->
+        state
+    end
+
+    assert :ok = :sys.install(consumer, {hook, false})
+    checker
   end
 
   defp one_request?(scenario),

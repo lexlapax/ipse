@@ -125,6 +125,7 @@ SDK-1 contracts and protocol/API version 1 remain unchanged.
 | `Extension.Catalog` / `Extension.Invocation` | Resolve/validate export, arguments, identity, and durable protocol |
 | `Session` / `Session.Invocation` | Admit work, commit intent, retain decisions/resources/capacity, and apply transitions in one process |
 | `Extension.Host` / `Worker` | Execute owned work outside the GenServer, negotiate output, validate bytes/schema, and confirm close |
+| `Session.WorkerInput` | Bind managed export requests to the actual pending frame and committed causal dependencies, then settle retained native delivery |
 | `Extension.ResultSource` | Validate source transitions/closure, materialize committed bytes, and derive read/quota indexes |
 | `Journal.Writer` | Durably append using owner-only reservations |
 | `Extension.ResultView` | Construct bounded structured views of authorized historical output |
@@ -144,6 +145,16 @@ Session admits slow-worker messages by caller, active reference, and phase.
 [`Session.Invocation`](../../lib/ipse/session/invocation.ex) contains current
 parent/action/step/results/source facts and the synchronous transition implementation.
 It is not another process or a separate approval authority.
+
+For an export carrying managed dependencies, Session independently reconstructs
+the initial payload, last committed action continuation or next output-page
+request before Worker sends bytes. Its typed input intent precedes the effect.
+The [source-owner delivery path](session-sources.md#deliver-a-managed-export-input-under-its-original-owners)
+holds the complete original source and current policy owners through the native
+write and settlement. It releases them before awaiting computation, without
+renewing the original callback timer. Ordinary invocations with known empty
+dependencies keep their ordinary transport. Neither route supplies effect
+permission to a returned host call.
 
 Follow `invoke_export/4`, `begin/6`, `begin_action/4`, and final result transitions.
 Session retains public handler guards, actual resource completion, and applicable
@@ -261,6 +272,10 @@ A committed tool receipt reconstructs its exact message if the redundant message
 append was interrupted; an existing message is added once. Command/service displays
 restore separately from assistant answers. Idle resume starts no callback, action,
 query, or unfinished output. Inspect unknown evidence before new work.
+An interrupted managed-input intent also remains unknown: restoration validates
+its exact historical frame commitment but cannot recreate an executable input
+handle. A delivered input receipt records transport settlement, not successful
+callback completion or a reusable permission.
 One serialized lane permits at most 10000 invocations. Intent records permit
 64 KiB and final records 128 KiB; those journal bounds do not enlarge SDK messages.
 

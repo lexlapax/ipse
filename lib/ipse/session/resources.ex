@@ -99,6 +99,16 @@ defmodule Ipse.Session.Resources do
 
   def authorized_effect?(_, _), do: false
 
+  @doc false
+  def resource_effect?(%{scope: scope, id: id}, worker, caller)
+      when is_pid(scope) and is_pid(worker) and is_pid(caller) do
+    GenServer.call(scope, {:resource_effect, id, worker, caller})
+  catch
+    :exit, _ -> false
+  end
+
+  def resource_effect?(_, _, _), do: false
+
   def close(scope) do
     GenServer.call(scope, :close, 5_000)
   catch
@@ -346,6 +356,28 @@ defmodule Ipse.Session.Resources do
   end
 
   def handle_call({:authorized_effect, _, _}, _, state), do: {:reply, false, state}
+
+  # A host Worker can query only its own registered extension resource. This
+  # does not broaden the owner-only Session query above or admit another task.
+  def handle_call(
+        {:resource_effect, id, worker, caller},
+        {resource, _},
+        %{worker: worker, closed: false} = state
+      ) do
+    admitted =
+      case state.resources[id] do
+        %{pid: ^resource, kind: :extension} ->
+          Process.alive?(state.owner) and Process.alive?(worker) and Process.alive?(caller) and
+            Map.has_key?(state.effects, caller)
+
+        _ ->
+          false
+      end
+
+    {:reply, admitted, state}
+  end
+
+  def handle_call({:resource_effect, _, _, _}, _, state), do: {:reply, false, state}
 
   def handle_call(:active, {caller, _}, %{closed: false} = state) do
     admitted =

@@ -258,21 +258,28 @@ defmodule Ipse.Extension.ResultSource do
 
   @doc "Build the next fixed-stride worker request."
   def request(%__MODULE__{phase: :draining} = source) do
-    if source.offset < source.begin["byte_count"] do
+    request(source.intent, source.begin, source.offset)
+  end
+
+  def request(_), do: @error
+
+  @doc false
+  def request(intent, begin, offset) do
+    if is_map(intent) and is_map(begin) and is_integer(offset) and offset >= 0 and
+         is_integer(begin["byte_count"]) and offset < begin["byte_count"] and
+         begin["invocation_id"] == intent["invocation_id"] do
       {:ok,
        %{
          "api_version" => 1,
-         "invocation_id" => source.intent["invocation_id"],
-         "output_id" => source.begin["output_id"],
-         "offset" => source.offset,
+         "invocation_id" => intent["invocation_id"],
+         "output_id" => begin["output_id"],
+         "offset" => offset,
          "limit" => @page_bytes
        }}
     else
       @error
     end
   end
-
-  def request(_), do: @error
 
   @doc "Validate one bounded SDK fragment and advance the private source."
   def push(%__MODULE__{phase: :draining} = source, reply) do

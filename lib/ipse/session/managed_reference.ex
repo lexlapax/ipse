@@ -404,28 +404,10 @@ defmodule Ipse.Session.ManagedReference do
   def project_root_history(%Plan{} = plan, binding, evidence) when is_map(evidence) do
     with true <- valid_plan?(plan) and binding?(binding, plan.state.session_id),
          true <- Ipse.Session.Reference.safe_tail?(plan.messages),
-         true <-
-           Enum.sort(Map.keys(evidence)) ==
-             ~w(fresh_dependency fresh_observation inspection operation_id own_action_sha256 receipt_sha256),
-         old when is_list(old) and old != [] <- plan.dependencies,
-         true <- Enum.all?(old, &(&1["version"] === 3)),
+         old = plan.dependencies,
+         true <- root_history_evidence?(old, evidence),
          prior = hd(old)["collection"],
-         identity = Map.take(hd(old), ~w(project_id namespace pin_sha256 policy_generation)),
-         true <-
-           Enum.all?(old, fn dependency ->
-             dependency["collection"] === prior and
-               Map.take(dependency, ~w(project_id namespace pin_sha256 policy_generation)) ===
-                 identity
-           end),
          guard = evidence["fresh_dependency"],
-         true <- dependency?(guard) and guard["version"] === 3,
-         true <-
-           Map.take(guard, ~w(project_id namespace pin_sha256 policy_generation)) === identity,
-         true <- guard["collection"]["generation"] === prior["generation"] + 1,
-         true <-
-           JSON.sha256?(evidence["own_action_sha256"]) and
-             JSON.sha256?(evidence["receipt_sha256"]) and id?(evidence["operation_id"]),
-         true <- is_map(evidence["fresh_observation"]),
          notice = root_history_notice(prior["generation"], guard["collection"]["generation"]),
          messages = plan.messages ++ [notice],
          ids = [digest(guard)],
@@ -464,6 +446,38 @@ defmodule Ipse.Session.ManagedReference do
   end
 
   def project_root_history(_, _, _), do: @error
+
+  @doc false
+  # Structural historical metadata checks shared by model and Worker purposes.
+  # Their owners must also authenticate the complete causal write and live root.
+  def root_history_evidence?(old, evidence) do
+    with true <- is_list(old) and old != [] and is_map(evidence),
+         true <-
+           Enum.sort(Map.keys(evidence)) ==
+             ~w(fresh_dependency fresh_observation inspection operation_id own_action_sha256 receipt_sha256),
+         true <- Enum.all?(old, &(&1["version"] === 3)),
+         prior = hd(old)["collection"],
+         identity = Map.take(hd(old), ~w(project_id namespace pin_sha256 policy_generation)),
+         true <-
+           Enum.all?(old, fn dependency ->
+             dependency["collection"] === prior and
+               Map.take(dependency, ~w(project_id namespace pin_sha256 policy_generation)) ===
+                 identity
+           end),
+         guard = evidence["fresh_dependency"],
+         true <- dependency?(guard) and guard["version"] === 3,
+         true <-
+           Map.take(guard, ~w(project_id namespace pin_sha256 policy_generation)) === identity,
+         true <- guard["collection"]["generation"] === prior["generation"] + 1,
+         true <-
+           JSON.sha256?(evidence["own_action_sha256"]) and
+             JSON.sha256?(evidence["receipt_sha256"]) and id?(evidence["operation_id"]),
+         true <- is_map(evidence["fresh_observation"]),
+         do: true,
+         else: (_ -> false)
+  rescue
+    _ -> false
+  end
 
   defp root_history_notice(old, current) do
     %{

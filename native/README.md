@@ -713,11 +713,15 @@ are exact, with no optional trailing bytes:
 | `Q` | u8 directory selector, u8 count, then u8 basename length and basename per orphan. |
 
 The additional Session control is used by the reviewed literal-supersession
-adapter. The trusted host binds it to the actual Session, Writer, reviewed facts
-and current source set; transfer alone grants no effect authority.
+and managed export-input adapters. The trusted host binds it to the actual
+Session, Writer, pending purpose and current source set; transfer alone grants
+no effect authority.
 
-The stdin commands remain internal transport primitives without a Session or SDK
-delivery route. The trusted caller must establish the semantic roles of its
+The stdin commands remain internal transport primitives. The Linux
+`Session.WorkerInput` adapter uses them for exact protected export requests,
+host-action continuations and output-page requests with dependency versions 3–5;
+accepted-decision and other Worker purposes remain outside that adapter.
+The trusted caller must establish the semantic roles of its
 locks, exact pending worker frame, source union and current permission. Three
 generic locks or a successful descriptor transfer prove none of those facts.
 The authenticated supervisor and importer compare the complete operation, original

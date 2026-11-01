@@ -216,19 +216,28 @@ defmodule Ipse.Test.ManagedSupersessionUnknown do
 
   def interpose_after_effect(root) do
     source = File.read!("lib/ipse/runner/session_source.ex")
-    anchor = "            case settle(cap, context, binding, transport, controls) do"
-    assert String.contains?(source, anchor)
 
-    pause = """
-                send(Process.whereis(:ipse_supersession_effect_control), {:supersession_effect_published, self()})
-                receive do
-                  :release_effect_control -> :ok
-                after
-                  5_000 -> throw(:effect_control_not_released)
-                end
+    anchor =
+      "    with_sources(cap, context, leases, fun, fn ->\n      Host.begin_supersession_source_share"
+
+    assert length(:binary.matches(source, anchor)) == 1
+
+    replacement = """
+        paused = fn ->
+          result = fun.()
+          send(Process.whereis(:ipse_supersession_effect_control), {:supersession_effect_published, self()})
+          receive do
+            :release_effect_control -> :ok
+          after
+            5_000 -> throw(:effect_control_not_released)
+          end
+          result
+        end
+        with_sources(cap, context, leases, paused, fn ->
+          Host.begin_supersession_source_share\
     """
 
-    instrumented = String.replace(source, anchor, pause <> anchor, global: false)
+    instrumented = String.replace(source, anchor, replacement, global: false)
     IO.puts("AFTER_EFFECT_CONTROL_SOURCE_SHA256=" <> Ipse.JSON.sha256(instrumented))
     [{module, beam}] = Code.compile_string(instrumented, "session-source-after-effect-control.ex")
     path = Path.join(root, "Elixir.Ipse.Runner.SessionSource.beam")

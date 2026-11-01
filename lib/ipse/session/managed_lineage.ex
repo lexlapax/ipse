@@ -9,6 +9,7 @@ defmodule Ipse.Session.ManagedLineage do
     output_release: nil,
     output_release_ids: %{},
     output_layout: nil,
+    worker_input: nil,
     calls: %{},
     call_bindings: %{},
     tool_effect_ids: %{},
@@ -247,12 +248,62 @@ defmodule Ipse.Session.ManagedLineage do
 
   @doc false
   def root_projection(state, messages, binding, observation, inspection) do
-    pin = get_in(state.admission, ["pin"])
-
     with {:ok, plan} <- ManagedReference.plan(state.reference, messages),
          {:ok, dependencies} <- dependencies(state, messages),
          true <- plan.dependencies === dependencies,
-         {:ok, action} <- root_candidate(state, dependencies),
+         {:ok, guard, evidence} <- root_evidence(state, dependencies, observation, inspection),
+         {:ok, event, projected, reference} <-
+           ManagedReference.project_root_history(plan, binding, evidence),
+         state = apply_root_transition(state, evidence["operation_id"], guard) do
+      {:ok, event, projected, reference, state}
+    else
+      _ -> @error
+    end
+  rescue
+    _ -> @error
+  catch
+    :throw, :managed_lineage_capacity -> @error
+    _, _ -> @error
+  end
+
+  # A worker continuation can follow its own known capture before that result
+  # has entered conversation messages. Only authentic payload-free prerequisites
+  # can receive the same historical-root mapping used by model projection.
+  @doc false
+  def worker_root_transition(state, intent, observation, inspection, now) do
+    with true <- state.worker_input === intent,
+         true <- state.active_invocation == intent["invocation_id"],
+         true <-
+           JSON.safe_uint?(now) and now >= intent["checked_at_ms"] and
+             now < intent["deadline_ms"],
+         {:ok, dependencies} <- invocation_dependencies(state, intent["invocation_id"]),
+         true <- JSON.digest(dependencies) == intent["dependencies_sha256"],
+         {:ok, guard, evidence} <- root_evidence(state, dependencies, observation, inspection),
+         true <- ManagedReference.root_history_evidence?(dependencies, evidence) do
+      event = %{
+        "type" => "worker_input_root_transition",
+        "version" => 1,
+        "input_id" => intent["input_id"],
+        "intent_sha256" => JSON.digest([intent]),
+        "evidence" => evidence,
+        "checked_at_ms" => now,
+        "deadline_ms" => intent["deadline_ms"]
+      }
+
+      {:ok, event, apply_root_transition(state, evidence["operation_id"], guard)}
+    else
+      _ -> @error
+    end
+  rescue
+    _ -> @error
+  catch
+    _, _ -> @error
+  end
+
+  defp root_evidence(state, dependencies, observation, inspection) do
+    pin = get_in(state.admission, ["pin"])
+
+    with {:ok, action} <- root_candidate(state, dependencies),
          request = %{"op" => "snapshot"},
          {:ok, guard} <-
            Ipse.Extension.Collection.ObservedRead.root_dependency(request, observation, pin),
@@ -280,22 +331,8 @@ defmodule Ipse.Session.ManagedLineage do
            "operation_id" => operation,
            "own_action_sha256" => JSON.digest([action]),
            "receipt_sha256" => JSON.digest([receipt])
-         },
-         {:ok, event, projected, reference} <-
-           ManagedReference.project_root_history(plan, binding, evidence),
-         {state, [guard_id]} <- pack(state, [guard]),
-         write_dependencies = state.root_writes[operation]["dependencies"],
-         transitions =
-           Enum.reduce(write_dependencies, state.root_transitions, fn dependency, acc ->
-             Map.put(acc, JSON.digest([dependency]), guard_id)
-           end),
-         state =
-           checked(%{
-             state
-             | root_transitions: transitions,
-               root_observations: Map.put(state.root_observations, guard_id, true)
-           }) do
-      {:ok, event, projected, reference, state}
+         } do
+      {:ok, guard, evidence}
     else
       _ -> @error
     end
@@ -304,6 +341,23 @@ defmodule Ipse.Session.ManagedLineage do
   catch
     :throw, :managed_lineage_capacity -> @error
     _, _ -> @error
+  end
+
+  defp apply_root_transition(state, operation, guard) do
+    {state, [guard_id]} = pack(state, [guard])
+
+    transitions =
+      Enum.reduce(
+        state.root_writes[operation]["dependencies"],
+        state.root_transitions,
+        fn dependency, acc -> Map.put(acc, JSON.digest([dependency]), guard_id) end
+      )
+
+    checked(%{
+      state
+      | root_transitions: transitions,
+        root_observations: Map.put(state.root_observations, guard_id, true)
+    })
   end
 
   defp valid_preflight?(state, event, messages) do
@@ -964,6 +1018,49 @@ defmodule Ipse.Session.ManagedLineage do
       else: @error
   end
 
+  defp inputs(state, %{"type" => "worker_input_intent"} = event, _) do
+    with true <- is_nil(state.worker_input) and is_nil(state.active_action),
+         true <- state.active_invocation == event["invocation_id"],
+         true <- event["session_id"] == state.reference.session_id,
+         true <- Ipse.Session.WorkerInput.record?(event),
+         {:ok, dependencies} <- invocation_dependencies(state, event["invocation_id"]),
+         true <- dependencies != [] and JSON.digest(dependencies) == event["dependencies_sha256"] do
+      {:ok, %{state | worker_input: event}}
+    else
+      _ -> @error
+    end
+  end
+
+  defp inputs(state, %{"type" => "worker_input_result"} = event, _) do
+    with input when is_map(input) <- state.worker_input,
+         true <- Ipse.Session.WorkerInput.bound_result?(event, input),
+         do:
+           {:ok,
+            %{
+              state
+              | worker_input: nil,
+                unavailable: state.unavailable or event["status"] == "unknown"
+            }},
+         else: (_ -> @error)
+  end
+
+  defp inputs(state, %{"type" => "worker_input_root_transition"} = event, _) do
+    with true <- Ipse.Session.WorkerInput.record?(event),
+         intent when is_map(intent) <- state.worker_input,
+         evidence = event["evidence"],
+         {:ok, expected, next} <-
+           worker_root_transition(
+             state,
+             intent,
+             evidence["fresh_observation"],
+             evidence["inspection"],
+             event["checked_at_ms"]
+           ),
+         true <- event === expected,
+         do: {:ok, next},
+         else: (_ -> @error)
+  end
+
   defp inputs(state, %{"type" => type}, _) when type in ~w(cancelled turn_finished),
     do:
       {:ok,
@@ -971,7 +1068,9 @@ defmodule Ipse.Session.ManagedLineage do
          state
          | active_invocation: nil,
            active_action: nil,
-           unavailable: state.unavailable or state.active_discovery != nil,
+           unavailable:
+             state.unavailable or state.active_discovery != nil or state.worker_input != nil,
+           worker_input: nil,
            pending: %{},
            root_pending: %{},
            preflight: nil,
@@ -1330,6 +1429,27 @@ defmodule Ipse.Session.ManagedLineage do
       _ ->
         {:ok, []}
     end
+  end
+
+  @doc false
+  def invocation_dependencies(state, id, extra) when is_list(extra) do
+    with {:ok, inherited} <- invocation_dependencies(state, id),
+         {:ok, ^extra} <- ManagedReference.union([extra]) do
+      resolved =
+        Enum.map(extra, fn dependency ->
+          key = JSON.digest([dependency])
+
+          if Map.has_key?(state.dictionary, key),
+            do: resolve_root_ref(state, key, 0),
+            else: dependency
+        end)
+
+      ManagedReference.union([inherited, resolved])
+    else
+      _ -> @error
+    end
+  rescue
+    _ -> @error
   end
 
   defp lookup(state, field, id), do: decode(state, Map.get(Map.fetch!(state, field), id, []))

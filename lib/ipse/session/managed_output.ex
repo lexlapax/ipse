@@ -2,7 +2,7 @@ defmodule Ipse.Session.ManagedOutput do
   @moduledoc "Owned release of managed worker results; historical records never grant current delivery."
   alias Ipse.{JSON, Session}
   alias Ipse.Extension.{Invocation, Registry, ResultSource}
-  alias Ipse.Session.{ManagedLineage, ManagedReference, ManagedUse, Resources}
+  alias Ipse.Session.{ManagedLineage, ManagedUse, Resources}
   alias Ipse.Session.Invocation, as: CurrentInvocation
   @layout "managed_output_release_v1"
   @error {:error, :managed_output_unavailable}
@@ -253,9 +253,12 @@ defmodule Ipse.Session.ManagedOutput do
          true <- is_nil(s.invocation.action) and not s.invocation.interrupted,
          true <- CurrentInvocation.output_timely?(s) and Registry.live?(parent["identity"]),
          {:ok, raw, index} <- validate_output(s, kind, payload),
-         {:ok, inherited} <-
-           ManagedLineage.invocation_dependencies(s.managed_lineage, parent["invocation_id"]),
-         {:ok, deps} <- ManagedReference.union([inherited, s.invocation.managed_reads]) do
+         {:ok, deps} <-
+           ManagedLineage.invocation_dependencies(
+             s.managed_lineage,
+             parent["invocation_id"],
+             s.invocation.managed_reads
+           ) do
       if deps == [] do
         {:reply, {:ok, :ordinary}, s}
       else

@@ -236,8 +236,9 @@ if interruption occurred before a journal was created. Confirmed acceptance
 charges one operation with measured input/output bytes; cancellation and known
 pre-publication refusal settle zero effect usage. An uncertain attempt retains
 its reservation. This experimental path supports one selected card; batch
-acceptance and rejection/correction remain unfinished. After confirmed acceptance,
-close the original conversation and use the current-note recall procedure below.
+acceptance and rejection/correction remain unfinished. Confirmed acceptance is
+durable, but delivery of accepted decisions through managed worker continuations
+remains unavailable as described below.
 
 ## Correct or supersede a native note
 
@@ -296,14 +297,14 @@ the native selection prepares a turn-local Reference from current authenticated
 notes without another model service. Notes remain attributed derived evidence;
 recall does not promote them to new operator statements.
 
-Accepted decisions can join this pass. Their context explicitly labels them as
-recorded user decisions and preserves the original source attribution; acceptance
-does not establish that the source's premises are true. Each read and later use
-checks the original committed management journal, immutable acceptance link,
-signed record, original Session source and current permission. Keep both original
-journals available. Missing sources or altered acceptance events withhold the
-decision text. The registered provider route remains required for managed context;
-the credential-free demo does not qualify this delivery path.
+Accepted decisions retain their recorded user-decision attribution and original
+source; acceptance does not establish that the source's premises are true.
+Their managed worker delivery currently refuses because the additional original
+management-journal owner is not yet carried through that delivery path. A saved
+acceptance is therefore not evidence of successful later recall. Keep the
+original management and Session journals available for inspection. The registered
+provider route remains required for managed context; the credential-free demo
+does not qualify this delivery path.
 
 The automatic pass considers at most 32 notes and fits whole notes into the
 available context envelope. Larger sets or insufficient space produce partial

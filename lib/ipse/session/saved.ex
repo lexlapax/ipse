@@ -52,6 +52,11 @@ defmodule Ipse.Session.Saved do
       {question, managed_lineage, question_recovery} =
         recover_question(question, managed_lineage, extension_state)
 
+      managed_lineage =
+        if extension_state.worker_input_unknown != [],
+          do: %{managed_lineage | unavailable: true, worker_input: nil},
+          else: managed_lineage
+
       {:ok,
        %{
          accounting: accounting,
@@ -72,6 +77,7 @@ defmodule Ipse.Session.Saved do
          question: question,
          question_recovery: question_recovery,
          pending_acceptance_unknown: pending_acceptance_unknown,
+         worker_input_unknown: extension_state.worker_input_unknown,
          historical_model: safe_historical_model(events, draft, visible_messages),
          last_request_id: request_field(events, "request_id"),
          turn_id: request_field(events, "turn_id"),

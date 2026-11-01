@@ -978,9 +978,12 @@ defmodule Ipse.Session.ManagedToolUse do
          parent when is_map(parent) <- s.invocation.parent,
          true <- s.managed_lineage.active_invocation == parent["invocation_id"],
          %{parent: ^parent} <- s.managed_lineage.invocations[parent["invocation_id"]],
-         {:ok, inherited} <-
-           ManagedLineage.invocation_dependencies(s.managed_lineage, parent["invocation_id"]),
-         {:ok, deps} <- ManagedReference.union([inherited, s.invocation.managed_reads]) do
+         {:ok, deps} <-
+           ManagedLineage.invocation_dependencies(
+             s.managed_lineage,
+             parent["invocation_id"],
+             s.invocation.managed_reads
+           ) do
       {:ok, deps}
     else
       _ -> @error

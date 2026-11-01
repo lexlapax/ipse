@@ -280,13 +280,22 @@ defmodule Ipse.Extension.Worker do
     with true <- Process.alive?(state.owner),
          true <- is_integer(timeout) and timeout in 1..30_000,
          true <- permitted?(state, stage, payload),
-         :ok <- Ipse.Extension.validate(payload),
          id = state.sequence + 1,
-         true <- id <= 9_007_199_254_740_991,
+         {:ok, frame} <- frame(id, stage, payload),
+         do: {:ok, id, frame},
+         else: (_ -> {:error, :invalid_extension_request})
+  end
+
+  @doc false
+  # Pure framing is shared with historical validation; it grants no permission.
+  def frame(id, stage, payload) do
+    with true <- is_integer(id) and id in 1..9_007_199_254_740_991,
+         true <- is_binary(stage),
+         :ok <- Ipse.Extension.validate(payload),
          bytes =
            Jason.encode!(%{"protocol" => 1, "id" => id, "stage" => stage, "payload" => payload}),
          true <- byte_size(bytes) <= @limit,
-         do: {:ok, id, <<byte_size(bytes)::32, bytes::binary>>},
+         do: {:ok, <<byte_size(bytes)::32, bytes::binary>>},
          else: (_ -> {:error, :invalid_extension_request})
   end
 
@@ -323,7 +332,9 @@ defmodule Ipse.Extension.Worker do
   end
 
   defp input_caller?(state, caller),
-    do: caller == state.owner or Ipse.Session.Resources.authorized_effect?(state.owner, caller)
+    do:
+      caller == state.owner or
+        Ipse.Session.Resources.resource_effect?(state.cleanup_ticket, state.owner, caller)
 
   defp input_live?(state),
     do:

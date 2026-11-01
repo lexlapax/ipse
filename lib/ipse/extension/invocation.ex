@@ -349,6 +349,20 @@ defmodule Ipse.Extension.Invocation do
 
   defp validate_event(%{"type" => type}, _, _, _) when type in @types, do: @error
 
+  defp validate_event(%{"type" => "worker_input_intent"} = event, state, _, _) do
+    if Ipse.Session.WorkerInput.record?(event) and state.active == event["invocation_id"],
+      do: {:ok, state},
+      else: @error
+  end
+
+  defp validate_event(%{"type" => "worker_input_result"} = event, state, _, _) do
+    if Ipse.Session.WorkerInput.record?(event), do: {:ok, state}, else: @error
+  end
+
+  defp validate_event(%{"type" => "worker_input_root_transition"} = event, state, _, _) do
+    if Ipse.Session.WorkerInput.record?(event), do: {:ok, state}, else: @error
+  end
+
   defp validate_event(event, state, _, _) do
     if Map.has_key?(event, "invocation_id"), do: @error, else: {:ok, state}
   end

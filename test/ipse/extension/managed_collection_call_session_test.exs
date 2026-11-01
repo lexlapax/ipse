@@ -4477,6 +4477,7 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
   end
 
   @tag :managed_output_boundary
+  @tag :worker_input_boundary
   test "current managed paged command output becomes readable only after its causal release", c do
     pid = start(c)
 
@@ -4496,6 +4497,38 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
     assert {:ok, events} = Journal.load(c.dir, Session.info(pid).id)
     assert {:ok, saved} = Ipse.Session.Saved.restore(events, Session.info(pid).id)
     assert saved.extension_state.last_display == display
+    inputs = Enum.filter(events, &(&1["type"] == "worker_input_intent"))
+    assert Enum.any?(inputs, &(&1["stage"] == "host.actions"))
+    assert Enum.any?(inputs, &(&1["stage"] == "result.output"))
+
+    assert inputs |> Enum.map(& &1["protocol_id"]) |> Enum.sort() ==
+             Enum.map(inputs, & &1["protocol_id"])
+
+    for input <- inputs do
+      assert Enum.any?(events, fn result ->
+               result["type"] == "worker_input_result" and result["status"] == "delivered" and
+                 Ipse.Session.WorkerInput.bound_result?(result, input)
+             end)
+    end
+
+    assert saved.worker_input_unknown == []
+
+    for field <- ~w(parent_sha256 actions_sha256 payload_sha256 frame_sha256 dependencies_sha256) do
+      bad =
+        Enum.map(events, fn event ->
+          if event === hd(inputs),
+            do: Map.put(event, field, String.duplicate("0", 64)),
+            else: event
+        end)
+
+      assert {:error, _} = Ipse.Session.Saved.restore(bad, Session.info(pid).id)
+    end
+
+    first_input = Enum.find_index(events, &(&1 === hd(inputs)))
+    prefix = Enum.take(events, first_input + 1)
+    assert {:ok, interrupted} = Ipse.Session.Saved.restore(prefix, Session.info(pid).id)
+    assert interrupted.worker_input_unknown == [hd(inputs)["input_id"]]
+    assert interrupted.managed_lineage.unavailable
 
     uncertain =
       Enum.map(events, fn event ->
@@ -4524,6 +4557,71 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
 
     assert {:error, _} =
              Ipse.Extension.ResultSource.readable_source(unconfirmed, display["delivery"])
+
+    id = Session.info(pid).id
+    assert :ok = Session.close_confirmed(pid)
+    journal = Path.join(c.dir, id <> ".jsonl")
+    before = File.read!(journal)
+    trace = File.read!(c.trace)
+    resumed = start(c, %{}, id)
+    assert Session.info(resumed).phase == :idle
+    assert File.read!(c.trace) == trace
+    assert_idle_resume_journal(journal, before, id)
+    assert :ok = Session.close_confirmed(resumed)
+  end
+
+  @tag :worker_input_boundary
+  test "revocation after the committed read prevents the actual next VM callback", c do
+    pid = start(c)
+    owner = self()
+
+    gate = fn
+      :released, _, _ ->
+        :released
+
+      _, {:in, {_, _, {:worker_input_select, _, "host.actions", _}}}, _ ->
+        send(owner, {:worker_input_waiting, self()})
+        receive do: (:release_worker_input -> :released)
+
+      state, _, _ ->
+        state
+    end
+
+    assert :ok = :sys.install(pid, {gate, nil})
+
+    assert :ok =
+             Session.invoke_export(pid, :command, "ext__capture__inspect", %{"mode" => "read"})
+
+    assert_receive {:worker_input_waiting, ^pid}, 5_000
+    assert {:ok, policy} = Consent.snapshot(c.control, c.binding["project_id"])
+    assert {:ok, _} = Consent.revoke(c.control, c.binding["project_id"], policy["epoch"])
+    send(pid, :release_worker_input)
+    assert_receive {:ipse, ^pid, {:done, :error}}, 10_000
+    refute_receive {:ipse, ^pid, {:extension_result, _}}, 50
+    assert File.read!(c.trace) == "entered\n"
+    id = Session.info(pid).id
+    assert {:ok, events} = Journal.load(c.dir, id)
+
+    assert Enum.any?(events, fn event ->
+             event["type"] == "extension_action_result" and event["outcome"]["status"] == "ok" and
+               get_in(event, ["request", "op"]) == "collection.call"
+           end)
+
+    [input] = Enum.filter(events, &(&1["type"] == "worker_input_intent"))
+    [outcome] = Enum.filter(events, &(&1["type"] == "worker_input_result"))
+    assert outcome["status"] == "unknown"
+    assert Ipse.Session.WorkerInput.bound_result?(outcome, input)
+    assert {:ok, saved} = Session.Saved.restore(events, id)
+    assert saved.worker_input_unknown == [input["input_id"]]
+    assert saved.managed_lineage.unavailable
+    assert :ok = Session.close_confirmed(pid)
+    journal = Path.join(c.dir, id <> ".jsonl")
+    before = File.read!(journal)
+    resumed = start(c, %{}, id)
+    assert Session.info(resumed).phase == :idle
+    assert File.read!(c.trace) == "entered\n"
+    assert_idle_resume_journal(journal, before, id)
+    assert :ok = Session.close_confirmed(resumed)
   end
 
   @tag :managed_output_owner_loss

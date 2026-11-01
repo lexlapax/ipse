@@ -9,6 +9,10 @@ Current contracts belong to [Session sources](../../developer/session-sources.md
 and the [native protocol](../../../native/README.md#direct-stdio-server-transport).
 The [plan](../../plan.md) owns remaining scope.
 
+The later [Session adoption record](worker-input-session-20261101.md) supersedes
+this record's then-missing export adapter, while retaining the component results
+and original limits below.
+
 ## Exact transport boundary
 
 An explicitly protected Worker can reserve its next ordinary request without
