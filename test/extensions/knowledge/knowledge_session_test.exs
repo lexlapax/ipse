@@ -1571,8 +1571,25 @@ defmodule IpseKnowledge.KnowledgeSessionTest do
 
       for {mode, driver_mode} <- [
             {"cancel", "--management-review-cancel"},
-            {"forget", "--assertion"}
+            {"forget", "--assertion"},
+            {"post_effect_loss", "--assertion"}
           ] do
+        if mode == "post_effect_loss" do
+          fixture =
+            root |> Path.join("accepted-forget.json") |> File.read!() |> Jason.decode!()
+
+          File.write!(
+            Path.join(root, "accepted-forget.json"),
+            Jason.encode!(%{
+              fixture
+              | "key" => peer_key,
+                "link_key" => "accept." <> second["event"]["facts"]["candidate_id"],
+                "peer_key" => result["accepted_note_key"],
+                "event" => second["event"]
+            })
+          )
+        end
+
         {output, status} =
           System.cmd(
             driver,

@@ -706,6 +706,20 @@ unavailable. It authenticates the retained exact-target suppression, refuses
 reacceptance planning from that retired anchor, preserves the immutable link and
 other decision, and verifies settled zero-service accounting and unchanged
 original journals. Its synthetic root prints as `ACCEPTED_RECALL_ROOT`.
+The same journey then forgets the remaining accepted decision with the native
+transaction owner killed after its durable root switch and before cleanup.
+`accepted_decision_forget_loss.exs` installs a test-only child-host pause at that
+exact boundary; the native helper and production source files are unchanged.
+Require a failed CLI result, an absent target, authenticated exact-target
+suppression, the unchanged immutable link, and stopped native owner/Port.
+The management journal must be unconfirmed and its reservation remain publishing.
+Inspect twice and require identical journal/control bytes and no replay. This
+controlled-host fault is separate from the unmodified successful forget.
+
+```sh
+IPSE_TEST_GENUINE_PENDING_ACCEPTED_RECALL=1 mix test test/extensions/knowledge/knowledge_session_test.exs --only genuine_pending_accepted_recall --max-cases 1
+```
+
 The pure target/type grid is `test/ipse/session/accepted_decision_lifecycle_test.exs`;
 those shaped fixtures grant no native authority or current-use permission.
 A shared lease must also work at the ordinary
