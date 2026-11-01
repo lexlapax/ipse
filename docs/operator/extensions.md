@@ -470,6 +470,12 @@ extension callback because a source or permission changed. Inspect the committed
 action and actual target using that recovery procedure; a failed continuation
 does not undo the action. Resume repeats neither the effect nor the delivery.
 
+A source change before an extension's model or decision helper request can block
+that request and also prevent returning the refusal to its worker. The turn then
+stops; inspect its saved outcomes before starting fresh work. A separately
+completed worker result can instead be replaced with a withdrawal notice for the
+main conversation. A notice does not authorize resuming an unfinished callback.
+
 Resume requires the pinned artifact, options, grants, expiry policy, and compatible
 runtime. Missing/extra/tampered selections refuse; `--no-extensions` cannot remove
 an existing pinned set. Committed results/context restore without callbacks;

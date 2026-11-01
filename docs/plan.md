@@ -1005,8 +1005,12 @@ cleanup keeps lineage unavailable rather than authorizing reuse. The
 still fails. A [shared loss-lineage assertion follow-up](archive/2026-10-26-p30-p31-implementation/native-loss-lineage-shared-20261101.md)
 now compares exact retained approval sources and journal-derived reconstruction
 availability for shell and MCP, preserving unavailable lineage after unconfirmed
-cleanup. These focused controls do not replace the failed module aggregate or
-close full C0, installed/platform or actual-note quality qualification. The
+cleanup. A [paired helper-input follow-up](archive/2026-10-26-p30-p31-implementation/stale-helper-boundary-20261101.md)
+now distinguishes zero helper egress plus unknown unfinished-Worker input from
+completed-Worker withdrawal and successful later-main continuation, retaining
+current-helper positives, accounting and inert recovery. These focused controls
+do not replace the failed module aggregate or close full C0, installed/platform
+or actual-note quality qualification. The
 [accepted-decision approval extension](archive/2026-10-26-p30-p31-implementation/accepted-approval-20261101.md)
 additionally retains original management journals at that same native sink,
 with Session/Writer-authenticated manifest counts/inodes. Native controls cover

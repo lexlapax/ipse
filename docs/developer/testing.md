@@ -926,6 +926,18 @@ continuation. The effect must remain recorded while no result callback runs;
 the typed input is unknown and idle resume repeats neither effect nor delivery.
 This fixture pause supplies timing, not approval or a native delivery receipt.
 
+Use `--only helper_withdrawal_boundary` in the same suite to pair current generic
+and decision helpers with source changes before their actual dispatch. Each stale
+case must keep two metering admissions but observe exactly one HTTP request: the
+initial main request. Require the failed helper action, its exact intent binding,
+partial helper accounting and an unknown next input carrying the complete original
+dependency commitment. Keep the listener alive through strict Saved reconstruction
+and idle resume, with unchanged callback trace, messages and unknown input. The
+separate completed-Worker case must still finish through a later main request
+containing only the withdrawal notice; its original result remains unchanged.
+These distinct timings prevent an earlier input refusal from masquerading as a
+successful later-main continuation.
+
 Run `--only worker_inherited_union` in the same suite for actual A/B input
 boundaries. Each case builds its own matched PTY driver and creates a fresh
 current-runtime native statement/publication seed in a private home, with no

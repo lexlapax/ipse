@@ -61,6 +61,7 @@ nor resource/offline qualification. No daemon configuration or existing model wa
 
 ## P31A contracts and evidence
 
+- [Paired stale-helper input boundaries](stale-helper-boundary-20261101.md) distinguish zero helper egress and unknown unfinished-Worker input from successful completed-output withdrawal, preserving both current-helper positives, exact accounting and inert recovery. This is a focused test repair, not a new complete baseline.
 - [Shared native loss-lineage assertions](native-loss-lineage-shared-20261101.md) preserve the exact approval/reference union and journal-derived reconstruction fence for both shell and MCP, including idle recovery. Five focused native controls pass; the complete module aggregate remains separate.
 - [Complete frozen managed-collection module](managed-collection-module-20261101.md) records 130 passed, 22 failed and 15 skipped at clean `098559f`, with all parent failures and unchanged pre/post source, test-build and helper inventories. This is a failed module baseline, not a complete-suite result.
 - [Original lost-initialization and held-owner-loss controls](root-native-mcp-loss-20261101.md) retain native approval before the actual HTTP/stdio fault, observed socket/server exit, exact original source union and no replay; missing cleanup keeps the recovery lineage unavailable. Combined-module and broader C0 qualification remain open.

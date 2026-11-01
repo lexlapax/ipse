@@ -441,6 +441,16 @@ thaw before Session commits `worker_input_result: delivered` and the publisher
 awaits the buffered callback response. Computation runs outside those locks,
 under the original callback timer. Failure after preparation remains unknown;
 an acknowledged write alone does not establish successful scope settlement.
+A source change before a nested model or decision helper dispatch sends no helper
+request. Its failed action is still committed, but returning that action to the
+Worker requires the same inherited source union. If that input cannot settle,
+the turn stops with an unknown input; neither a callback nor a later main-model
+request follows. Request admission can already exist without network dispatch,
+so preserve partial accounting rather than inferring zero liability from zero
+helper requests. When the Worker has already completed, the separate model-history
+projection can instead withdraw its historical content and continue with a notice.
+That projection cannot authorize another input to the unfinished Worker.
+
 Saved validates the parent, action chain, exact reconstructed request and complete
 dependency commitment chronologically. An interrupted intent marks lineage
 unavailable and reconstructs no handle, timer, permit or automatic delivery.

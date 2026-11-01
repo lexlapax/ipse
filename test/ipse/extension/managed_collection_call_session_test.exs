@@ -5926,6 +5926,91 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
     end
   end
 
+  defp assert_stale_helper_recovery(c, pid, operation, code) do
+    assert_receive {:ipse, ^pid, {:done, :error}}, 15_000
+    server = c.provider_server.pid
+    assert_receive {:observed_provider_request, ^server, _}, 1000
+    refute_receive {:observed_provider_request, ^server, _}, 100
+    id = Session.info(pid).id
+    assert {:ok, events} = Journal.load(c.dir, id)
+    observations = Enum.filter(events, &(&1["type"] == "managed_read_observed"))
+    assert observations != []
+
+    assert {:ok, dependencies} =
+             Session.ManagedReference.union(Enum.map(observations, & &1["dependencies"]))
+
+    assert dependencies != []
+
+    [intent] =
+      Enum.filter(
+        events,
+        &(&1["type"] == "extension_action_intent" and
+            get_in(&1, ["request", "op"]) == operation)
+      )
+
+    [action] =
+      Enum.filter(
+        events,
+        &(&1["type"] == "extension_action_result" and
+            get_in(&1, ["request", "op"]) == operation)
+      )
+
+    assert action["outcome"] == %{"status" => "failed", "value" => %{"code" => code}}
+    assert Map.drop(action, ~w(type outcome outcome_sha256)) == Map.delete(intent, "type")
+    [dispatch] = Enum.filter(events, &(&1["type"] == "inference_dispatch_intent"))
+    assert dispatch["phase"] == "model"
+    [main, helper] = Enum.filter(events, &(&1["type"] == "request_admitted"))
+    assert helper["request_id"] == action["operation_id"]
+    [main_finish, helper_finish] = Enum.filter(events, &(&1["type"] == "request_finished"))
+    assert main_finish["request_id"] == main["request_id"]
+
+    assert Map.take(main_finish, ~w(outcome finality)) == %{
+             "outcome" => "completed",
+             "finality" => "final"
+           }
+
+    assert helper_finish["request_id"] == helper["request_id"]
+
+    assert Map.take(helper_finish, ~w(outcome finality)) == %{
+             "outcome" => "failed",
+             "finality" => "partial"
+           }
+
+    [delivered, unknown] = Enum.filter(events, &(&1["type"] == "worker_input_intent"))
+    assert delivered["dependencies_sha256"] == JSON.digest(dependencies)
+    assert unknown["dependencies_sha256"] == delivered["dependencies_sha256"]
+    assert unknown["payload_sha256"] == JSON.digest([Ipse.Extension.Actions.resume(action)])
+    results = Enum.filter(events, &(&1["type"] == "worker_input_result"))
+
+    assert Enum.map(results, &{&1["input_id"], &1["status"]}) == [
+             {delivered["input_id"], "delivered"},
+             {unknown["input_id"], "unknown"}
+           ]
+
+    assert {:ok, saved} = Session.Saved.restore(events, id)
+    assert saved.worker_input_unknown == [unknown["input_id"]]
+    assert saved.managed_lineage.unavailable
+    trace = File.read!(c.trace)
+    refute trace =~ Jason.encode!(action["outcome"])
+    assert :ok = Session.close_confirmed(pid)
+    journal = Path.join(c.dir, id <> ".jsonl")
+    closed = File.read!(journal)
+    resumed = start(c, %{approval: :allow, approval_origin: :yes}, id)
+    assert Session.info(resumed).phase == :idle
+    state = :sys.get_state(resumed)
+    assert state.messages == saved.messages
+    assert state.managed_lineage.unavailable
+    assert {:ok, recovered} = Journal.load(c.dir, id)
+    assert {:ok, restored} = Session.Saved.restore(recovered, id)
+    assert restored.worker_input_unknown == saved.worker_input_unknown
+    assert_idle_resume_journal(journal, closed, id)
+    assert File.read!(c.trace) == trace
+    refute_receive {:observed_provider_request, ^server, _}, 100
+    assert :ok = Session.close_confirmed(resumed)
+    refute_receive {:observed_provider_request, ^server, _}, 100
+    assert File.read!(c.trace) == trace
+  end
+
   defp observed_provider(bodies, gate, timeout \\ 10_000, collector \\ nil) do
     owner = self()
 
@@ -6344,6 +6429,7 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
   end
 
   @tag registered_main: true, managed_helper: true
+  @tag helper_withdrawal_boundary: true
   test "a registered helper revalidates inherited worker reads before its actual native request",
        c do
     pid = start(c, %{approval: :allow, approval_origin: :yes})
@@ -7291,6 +7377,7 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
   end
 
   @tag registered_main: true, managed_helper: true, managed_decision: true
+  @tag helper_withdrawal_boundary: true
   @tag :managed_current_decision
   test "a current managed root permits the selected decision helper", c do
     pid = start(c, %{approval: :allow, approval_origin: :yes})
@@ -7323,6 +7410,7 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
   end
 
   @tag registered_main: true, managed_helper: true, managed_decision: true, helper_stale: true
+  @tag helper_withdrawal_boundary: true
   @tag :managed_stale_decision
   test "a changed managed root prevents decision helper egress", c do
     pid = start(c, %{approval: :allow, approval_origin: :yes})
@@ -7338,51 +7426,38 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
         count
     end
 
-    assert :ok = :sys.install(pid, {gate, 0})
-    assert :ok = Session.prompt(pid, "Synthetic stale decision")
-    assert_receive {:decision_preflight_blocked, ^pid}, 10_000
+    on_exit(fn -> send(pid, :release_decision_preflight) end)
 
-    assert {:ok, _} =
-             Ipse.Extension.Collection.execute(
-               SemanticAdmission.collection_root(c.home),
-               c.namespace,
-               %{
-                 "op" => "commit",
-                 "expected_generation" => 0,
-                 "advance_floor" => false,
-                 "changes" => [
-                   %{
-                     "key" => "synthetic.changed",
-                     "expected_revision" => 0,
-                     "value" => %{"text" => "changed"}
-                   }
-                 ]
-               },
-               Ipse.Usage.id()
-             )
+    try do
+      assert :ok = :sys.install(pid, {gate, 0})
+      assert :ok = Session.prompt(pid, "Synthetic stale decision")
+      assert_receive {:decision_preflight_blocked, ^pid}, 10_000
 
-    send(pid, :release_decision_preflight)
-    assert_receive {:ipse, ^pid, {:done, :ok}}, 15_000
-    server = c.provider_server.pid
-    assert_receive {:observed_provider_request, ^server, _}, 1000
-    assert_receive {:observed_provider_request, ^server, _}, 1000
-    refute_receive {:observed_provider_request, ^server, _}, 100
-    assert {:ok, events} = Journal.load(c.dir, Session.info(pid).id)
-    assert Enum.any?(events, &(&1["type"] == "managed_read_observed"))
+      assert {:ok, _} =
+               Ipse.Extension.Collection.execute(
+                 SemanticAdmission.collection_root(c.home),
+                 c.namespace,
+                 %{
+                   "op" => "commit",
+                   "expected_generation" => 0,
+                   "advance_floor" => false,
+                   "changes" => [
+                     %{
+                       "key" => "synthetic.changed",
+                       "expected_revision" => 0,
+                       "value" => %{"text" => "changed"}
+                     }
+                   ]
+                 },
+                 Ipse.Usage.id()
+               )
 
-    assert Enum.any?(events, fn event ->
-             event["type"] == "extension_action_intent" and
-               get_in(event, ["request", "op"]) == "decision.create"
-           end)
-
-    refute Enum.any?(
-             events,
-             &(&1["type"] == "inference_dispatch_intent" and &1["phase"] == "decision.create")
-           )
-
-    assert {:ok, _} = Ipse.Session.Saved.restore(events, Session.info(pid).id)
-    Task.shutdown(c.provider_server, :brutal_kill)
-    assert :ok = Session.close_confirmed(pid)
+      send(pid, :release_decision_preflight)
+      assert_stale_helper_recovery(c, pid, "decision.create", "decision_request_failed")
+    after
+      send(pid, :release_decision_preflight)
+      Task.shutdown(c.provider_server, :brutal_kill)
+    end
   end
 
   @tag registered_main: true, managed_helper: true, managed_decision: true, response_change: true
@@ -7486,7 +7561,8 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
   end
 
   @tag registered_main: true, managed_helper: true, helper_stale: true
-  test "a stale helper input refuses before helper bytes and the later main request sees only withdrawn output",
+  @tag helper_withdrawal_boundary: true
+  test "a stale helper input refuses helper egress and leaves its continuation unknown",
        c do
     pid = start(c, %{approval: :allow, approval_origin: :yes})
     owner = self()
@@ -7501,60 +7577,42 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
         count
     end
 
-    assert :ok = :sys.install(pid, {gate, 0})
-    assert :ok = Session.prompt(pid, "Synthetic stale helper")
-    assert_receive {:helper_preflight_blocked, ^pid}, 10_000
+    on_exit(fn -> send(pid, :release_helper_preflight) end)
 
-    assert {:ok, _} =
-             Ipse.Extension.Collection.execute(
-               SemanticAdmission.collection_root(c.home),
-               c.namespace,
-               %{
-                 "op" => "commit",
-                 "expected_generation" => 0,
-                 "advance_floor" => false,
-                 "changes" => [
-                   %{
-                     "key" => "synthetic.changed",
-                     "expected_revision" => 0,
-                     "value" => %{"text" => "changed"}
-                   }
-                 ]
-               },
-               Ipse.Usage.id()
-             )
+    try do
+      assert :ok = :sys.install(pid, {gate, 0})
+      assert :ok = Session.prompt(pid, "Synthetic stale helper")
+      assert_receive {:helper_preflight_blocked, ^pid}, 10_000
 
-    send(pid, :release_helper_preflight)
-    assert_receive {:ipse, ^pid, {:done, :ok}}, 15_000
-    server = c.provider_server.pid
-    assert_receive {:observed_provider_request, ^server, _}, 1000
-    assert_receive {:observed_provider_request, ^server, main}, 1000
+      assert {:ok, _} =
+               Ipse.Extension.Collection.execute(
+                 SemanticAdmission.collection_root(c.home),
+                 c.namespace,
+                 %{
+                   "op" => "commit",
+                   "expected_generation" => 0,
+                   "advance_floor" => false,
+                   "changes" => [
+                     %{
+                       "key" => "synthetic.changed",
+                       "expected_revision" => 0,
+                       "value" => %{"text" => "changed"}
+                     }
+                   ]
+                 },
+                 Ipse.Usage.id()
+               )
 
-    assert Enum.any?(main["messages"], fn message ->
-             message["role"] == "tool" and message["tool_name"] == "ext__capture__capture" and
-               Jason.decode(message["content"]) ==
-                 {:ok,
-                  %{
-                    "historical_receipt" => true,
-                    "reason" => "managed_dependencies_unavailable",
-                    "status" => "withheld"
-                  }}
-           end)
-
-    refute_receive {:observed_provider_request, ^server, _}, 100
-    assert {:ok, events} = Journal.load(c.dir, Session.info(pid).id)
-
-    refute Enum.any?(
-             events,
-             &(&1["type"] == "inference_dispatch_intent" and &1["phase"] == "model.complete")
-           )
-
-    assert {:ok, _} = Ipse.Session.Saved.restore(events, Session.info(pid).id)
-    Task.shutdown(c.provider_server, :brutal_kill)
-    assert :ok = Session.close_confirmed(pid)
+      send(pid, :release_helper_preflight)
+      assert_stale_helper_recovery(c, pid, "model.complete", "model_request_failed")
+    after
+      send(pid, :release_helper_preflight)
+      Task.shutdown(c.provider_server, :brutal_kill)
+    end
   end
 
   @tag registered_main: true
+  @tag helper_withdrawal_boundary: true
   test "a changed managed root withdraws actual worker text before native provider bytes and replays from its prior intent",
        c do
     read = start(c, %{execution_mode: :planning, fixture_export: "inspect", fixture_mode: "read"})
