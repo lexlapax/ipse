@@ -958,6 +958,16 @@ and an available Qwen3.5 9B comparison. Model details and contracts live in the
 | P31I | In progress: static ceilings deny durable research writes; the [CLI can select a persisted planning ceiling](archive/2026-10-26-p30-p31-implementation/planning-cli-followup.md) at startup. Witnessed idle-terminal `/plan` entry and local `/plan exit`, including newly recorded CLI selections, have [Session, replay and PTY controls](archive/2026-10-26-p30-p31-implementation/planning-transition-design-followup.md); a [native-terminal Session-death control](archive/2026-10-26-p30-p31-implementation/planning-transition-design-followup.md#controlled-session-death-at-journal-boundaries) passed at four entry/exit receipt boundaries and two declared-MCP epoch boundaries; [actual live-stdio MCP controls](archive/2026-10-26-p30-p31-implementation/planning-live-mcp-resources.md) additionally cover busy transition refusal, fresh entry/exit after read cleanup and real Session-death/no-replay resource cleanup in a mixed runtime. Broader crash-boundary and resource qualification remain open. Version-2 same-owner resume checkpoints preserve active and enclosing ceilings separately, while legacy collapsed provenance stays ambiguous; neither authorizes an exit by itself. The [main-Session enhancement integration](archive/2026-10-26-p30-p31-implementation/enhance-integration.md) adds experimental `/enhance`, native witnessed editing/acceptance, cancellation/source isolation, bounded questions and MCP catalog revalidation from the independently reviewed private prototype. Inline replacement has local replay and PTY controls. [Declared planning MCP reads](archive/2026-10-26-p30-p31-implementation/planning-mcp-live-read-followup.md) have synthetic Session and terminal acceptance coverage; whole-source/platform qualification, provider carryover and deferred decisions remain open. Integrated knowledge/document clarification still needs E/F; this is not P31I completion |
 | P31J | Integrated safety, quality, resource, installed-user, migration and whole-manual acceptance; records supported, experimental and unverified slices explicitly |
 
+P31C1a now has a [frozen native initial-population runner](archive/2026-10-26-p30-p31-implementation/native-notes-seed-20261102.md),
+using actual Session statement/category capture and native pin review. Its full
+plan counts 2,000 captures plus 100 pin publications across 21 seed days without
+changing the existing 100-operation daily limit. The two-day smoke verifies seven
+1,024-byte-source notes, one pin, fresh-process clock coherence, actual public
+values, signed metadata, settled resource records and unchanged prior journals.
+The full 2,000-note run, final complete metadata/payload qualification and annual
+normal-use plus 10,000 mixed changes remain open; a driver smoke is not endurance
+acceptance.
+
 P31D1 now has optional [cooperative model checks around registered Ollama jobs](archive/2026-10-26-p30-p31-implementation/ollama-model-pin-jobs-20261031.md).
 Named operator text/embedding profiles bind expected metadata and minimum loaded
 context into saved execution; embedding selection also binds the pin and requested

@@ -1,0 +1,399 @@
+{
+  "base_commit": "078981aee9e2e6bca505e251681b15fd3c4fbce0",
+  "checks": {
+    "allocation_scope_failure": {
+      "cause": "Whole home contains installed assets deeper than the storage helper's bound; now inspect actual protected component roots separately; native helper unchanged; inflight retained",
+      "exit_code": 1,
+      "log": {
+        "bytes": 35315,
+        "path": "/tmp/ipse-native-seed-smoke-20261102-third/logs/segment-1.log",
+        "sha256": "4bad1fc9d8ee1273430296cf5dfb72a6246a2498bd0f27d1f6ad43fe6704dc75"
+      },
+      "native_effects_before_failure": 4
+    },
+    "bounded_component_smoke": {
+      "exit_code": 0,
+      "fresh_processes": 2,
+      "log": {
+        "bytes": 114,
+        "path": "/tmp/ipse-native-notes-seed-smoke-final-20261102.log",
+        "sha256": "a68b1a26fea88695642bf041dd3f39a103c46f52c71daf03a32f67357230a2fe"
+      },
+      "native_captures": 7,
+      "native_pins": 1,
+      "scope": "After heap and explicit component-allocation additions; short statements"
+    },
+    "combined_clock_regression": {
+      "exit_code": 0,
+      "log": {
+        "bytes": 1094,
+        "path": "/tmp/ipse-native-notes-seed-regression-791829.log",
+        "sha256": "9765aad995a7eb81d4f0ce071f4c735696b11ed5b646c9f715da20b22c05228b"
+      },
+      "passed": 6,
+      "seconds": 36.9,
+      "seed": 791829
+    },
+    "documentation": {
+      "errors": 0,
+      "local_links": 8689,
+      "log": {
+        "bytes": 757,
+        "path": "/tmp/ipse-native-notes-seed-docs-final-20261102.log",
+        "sha256": "6548ef8db44f01c41113770f6614c809d220d2989a699939ea4bdf262eeb0a80"
+      },
+      "markdown_files": 1050,
+      "scope": "Private permission-denied directories not inspected"
+    },
+    "final_plan": {
+      "log": {
+        "bytes": 249,
+        "path": "/tmp/ipse-native-notes-seed-final-plan-791830.log",
+        "sha256": "8add5b860f83188f761399cfb56ce3f757fc0f8e161de5ddc8647870aa5aa044"
+      },
+      "passed": 2,
+      "seconds": 0.1,
+      "seed": 791830
+    },
+    "first_pure": {
+      "log": {
+        "bytes": 641,
+        "path": "/tmp/ipse-native-notes-seed-plan-791827.log",
+        "sha256": "874cfa446414c06bf813f330092fcbe1c3dfff0e56c9d921ad650fcf7d2073a8"
+      },
+      "passed": 2,
+      "seed": 791827,
+      "warning": "Clock module was dynamically required later; caller now uses the actual returned module"
+    },
+    "format": {
+      "exit_code": 0,
+      "log": {
+        "bytes": 0,
+        "path": "/tmp/ipse-native-notes-seed-format-final-20261102.log",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    },
+    "initial_isolated_compile": {
+      "log": {
+        "bytes": 588,
+        "path": "/tmp/ipse-native-notes-seed-strict-20261102.log",
+        "sha256": "edd67a10e3927803f32bb830cc4022f42eba14f76944983e74e3ec2155071d59"
+      },
+      "scope": "Missing existing telemetry dependency from isolated code path; no source suppression or dependency change",
+      "warnings": 2
+    },
+    "payload_smoke": {
+      "annual_workload_qualification": false,
+      "exit_code": 0,
+      "fresh_processes": 2,
+      "largest_record_encoded_bytes": 3129,
+      "log": {
+        "bytes": 114,
+        "path": "/tmp/ipse-native-notes-seed-smoke-payload-20261102.log",
+        "sha256": "a68b1a26fea88695642bf041dd3f39a103c46f52c71daf03a32f67357230a2fe"
+      },
+      "model_calls": 0,
+      "native_captures": 7,
+      "native_pins": 1,
+      "settled_operations": 8,
+      "statement_bytes": 1024
+    },
+    "pure_without_warning": {
+      "log": {
+        "bytes": 249,
+        "path": "/tmp/ipse-native-notes-seed-plan-791828.log",
+        "sha256": "7664003e02d59b1594de8cb24da48e517f73aadf77871672d6f2169887741491"
+      },
+      "passed": 2,
+      "seed": 791828
+    },
+    "refusal_controls": {
+      "cases": [
+        "inflight",
+        "completed",
+        "source_drift"
+      ],
+      "exit_code": 0,
+      "log": {
+        "bytes": 99,
+        "path": "/tmp/ipse-native-seed-refusal-controls-20261102.log",
+        "sha256": "9d70267dc20cff66ec73999f926f517c3c72c0c465c2e2a0395c3922df9c32b1"
+      },
+      "logs": [
+        {
+          "bytes": 297,
+          "path": "/tmp/ipse-native-seed-inflight-refusal-20261102.log",
+          "sha256": "206b41ae2a22e43e408760871dfcc18322136144cbcd552fc4029926ac12e17d"
+        },
+        {
+          "bytes": 243,
+          "path": "/tmp/ipse-native-seed-complete-refusal-20261102.log",
+          "sha256": "f6fb49efbeebe5ea630a73b75d8b2e0f8631b8a1ce13ed92075bd96081d6b3db"
+        },
+        {
+          "bytes": 839,
+          "path": "/tmp/ipse-native-seed-drift-refusal-20261102.log",
+          "sha256": "ebfb7a01a119044d0b01d491bdbb05c04a76e97e6ae08c2ff5be06c2e4a49425"
+        }
+      ],
+      "publications": 0
+    },
+    "scan_inspector_failure": {
+      "cause": "Inspector used unsupported 128-row scan/nil generation after three captures and pin; fixed to existing 32-row snapshot-generation contract; inflight retained, never replayed",
+      "exit_code": 1,
+      "log": {
+        "bytes": 35080,
+        "path": "/tmp/ipse-native-seed-smoke-20261102-second/logs/segment-1.log",
+        "sha256": "ccc6ebb93cee18189c9f83511f0370ffc95090d17181676ef9b2ed3b13b0a95f"
+      },
+      "native_effects_before_failure": 4
+    },
+    "short_statement_smoke": {
+      "exit_code": 0,
+      "fresh_processes": 2,
+      "log": {
+        "bytes": 114,
+        "path": "/tmp/ipse-native-notes-seed-smoke-fourth-20261102.log",
+        "sha256": "a68b1a26fea88695642bf041dd3f39a103c46f52c71daf03a32f67357230a2fe"
+      },
+      "native_captures": 7,
+      "native_pins": 1
+    },
+    "strict_compile_final": {
+      "exit_code": 0,
+      "log": {
+        "bytes": 0,
+        "path": "/tmp/ipse-native-notes-seed-strict-final-20261102.log",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "scope": "Isolated elixirc with Ipse/Jason/telemetry code paths",
+      "warnings": 0
+    }
+  },
+  "cohort": {
+    "clock_library": {
+      "bytes": 424904,
+      "path": "/tmp/ipse-native-seed-smoke-20261102-payload/clock.so",
+      "sha256": "c9e614c891fb81661cdebba4b58ada033d39360451a743cc189f037aa0e8a7f2"
+    },
+    "closed_checkpoints": [
+      {
+        "bytes": 378,
+        "path": "/tmp/ipse-native-seed-smoke-20261102-payload/checkpoints/closed-1.json",
+        "sha256": "7aed2b961dbfcd4ad1b3bfef5712221d16789ae473ccb89934228715592ee3df"
+      },
+      {
+        "bytes": 378,
+        "path": "/tmp/ipse-native-seed-smoke-20261102-payload/checkpoints/closed-2.json",
+        "sha256": "2458249867b71c6e09da08632d165faf3848d99d700fd2c49f276336692659fb"
+      }
+    ],
+    "frozen_files_verified": 727,
+    "initial_seed_complete": false,
+    "manifest": {
+      "bytes": 157691,
+      "path": "/tmp/ipse-native-seed-smoke-20261102-payload/manifest.json",
+      "sha256": "a97b49df56ac087e0fc8ff3de75f7ce970aafc8bc92f0170e282c605ad142515"
+    },
+    "native_helper": {
+      "bytes": 969344,
+      "path": "/tmp/ipse-native-seed-smoke-20261102-payload/stdio-runtime/ipse/priv/ipse-runner",
+      "sha256": "5487c57a84b99be7b5b4381d097b637d3c45350b92b492d1786712f2bfbf8c7a"
+    },
+    "private_adapter": {
+      "bytes": 486,
+      "path": "/tmp/ipse-native-seed-smoke-20261102-payload/clock-stdio-runtime.json",
+      "sha256": "2f5b88944b83d40c7de42aa80d15fa5d8c79c55993c774d0e3a07e97afeca45a"
+    },
+    "pty_driver": {
+      "bytes": 736488,
+      "path": "/tmp/ipse-native-seed-smoke-20261102-payload/pty",
+      "sha256": "4a902fa0498da49a4dba906e663791e3803c3c2edce36922f4c2532c73074d23"
+    },
+    "reported_samples": [
+      {
+        "annual_workload_qualification": false,
+        "beam_memory_after_segment": 61487808,
+        "day": 0,
+        "index": 1,
+        "initial_seed_complete": false,
+        "largest_new_record_encoded_bytes": 3129,
+        "physical_allocations": {
+          "control": {
+            "allocated_bytes": 24576,
+            "entries": 5,
+            "logical_bytes": 21870
+          },
+          "identity": {
+            "allocated_bytes": 4096,
+            "entries": 4,
+            "logical_bytes": 1397
+          },
+          "management": {
+            "allocated_bytes": 12288,
+            "entries": 3,
+            "logical_bytes": 8643
+          },
+          "sessions": {
+            "allocated_bytes": 200704,
+            "entries": 4,
+            "logical_bytes": 195667
+          }
+        },
+        "public_records": 3,
+        "staged_accounted_allocation_peak": 23142400,
+        "staged_publications": 4
+      },
+      {
+        "annual_workload_qualification": false,
+        "beam_memory_after_segment": 61159576,
+        "day": 1,
+        "index": 2,
+        "initial_seed_complete": false,
+        "largest_new_record_encoded_bytes": 3129,
+        "physical_allocations": {
+          "control": {
+            "allocated_bytes": 32768,
+            "entries": 5,
+            "logical_bytes": 30438
+          },
+          "identity": {
+            "allocated_bytes": 4096,
+            "entries": 4,
+            "logical_bytes": 1397
+          },
+          "management": {
+            "allocated_bytes": 12288,
+            "entries": 3,
+            "logical_bytes": 8643
+          },
+          "sessions": {
+            "allocated_bytes": 458752,
+            "entries": 7,
+            "logical_bytes": 448234
+          }
+        },
+        "public_records": 7,
+        "staged_accounted_allocation_peak": 23158784,
+        "staged_publications": 4
+      }
+    ],
+    "reports": [
+      {
+        "bytes": 11743,
+        "path": "/tmp/ipse-native-seed-smoke-20261102-payload/checkpoints/report-1.json",
+        "sha256": "ec97ff441937be13f4d86a2535d75424c3f5a5e4fc6b76bba8fe34665b9c4bc1"
+      },
+      {
+        "bytes": 14802,
+        "path": "/tmp/ipse-native-seed-smoke-20261102-payload/checkpoints/report-2.json",
+        "sha256": "4017a406ac24721159eefad6a330a9a0bfa8af8675f25c4239b755b5a9f904fc"
+      }
+    ],
+    "root": "/tmp/ipse-native-seed-smoke-20261102-payload",
+    "scope": "Only Runner differs for disclosed environment propagation; helper matches current production helper; no global machine-clock or production source change",
+    "sdk_differences_from_current_dev": [
+      "Elixir.Ipse.Runner.beam"
+    ],
+    "sdk_files": 231
+  },
+  "date": "2026-11-02",
+  "dependencies_added": [],
+  "full_suite": {
+    "covers_this_increment": false,
+    "latest_passing_commit": "9f1707cb33a7d9619c7a632dac83ae4ce313bc85"
+  },
+  "initial_plan": {
+    "captures": 2000,
+    "daily_operations": 100,
+    "executed_as_full_initial_cohort": false,
+    "final_categories": {
+      "current": 50,
+      "ordinary": 1800,
+      "pin": 100,
+      "preference": 50
+    },
+    "maximum_effects_per_segment": 8,
+    "pins": 100,
+    "publications": 2100,
+    "seed_days": 21,
+    "segments": 273
+  },
+  "inventory_limit": "Frozen on-disk prelaunch file inventory plus post-run checks/reports; not complete environment, system-library, permission or in-memory closure; component allocations and post-segment BEAM memory are not full physical/RAM peaks",
+  "live_calls": 0,
+  "local_orchestration": [
+    {
+      "bytes": 1549,
+      "path": "/tmp/ipse-native-seed-refusal-check.exs",
+      "sha256": "83fa6fa8eb262b3e3d9e041cd83dcd68a9288c93d2a7b97c613bd87f113344cc"
+    },
+    {
+      "bytes": 8691,
+      "path": "/tmp/ipse-native-notes-seed-receipt.exs",
+      "sha256": "b3f7c5b88d1321cd2f2a1cfed4a1024e3f5be3e5393068e033825a1bbc7f1ab8"
+    }
+  ],
+  "manual_review": "Retained whole owning-manual reviews; integrated native population workflow, existing limits, original-source costs, controlled clock and safe stopped/completed continuation into storage/testing tasks; operator behavior unchanged",
+  "manuals": [
+    {
+      "bytes": 37874,
+      "path": "docs/developer/knowledge-storage.md",
+      "sha256": "9da01c3c6801aa2b390a57888fd7930657db5d098d584f698cc9d435e1b3408e"
+    },
+    {
+      "bytes": 87843,
+      "path": "docs/developer/testing.md",
+      "sha256": "ac7893c91c6bfe472ad9bc6d45d532a29beb008e37c143c6101ec139f91efe0b"
+    },
+    {
+      "bytes": 161337,
+      "path": "docs/plan.md",
+      "sha256": "ddc10c5b48438c7bbe9790ae366eb34270d7c222d6ae5eb149f720ada20f661c"
+    }
+  ],
+  "production_runtime_changed": false,
+  "release_published": false,
+  "remaining": [
+    "complete 2000-record population",
+    "full signed metadata/mix and reachable payload audit at capacity",
+    "pilot-derived intake and complete effect ledger",
+    "30/90/year normal workload plus10000mixed changes",
+    "overlap/offline/import/compaction/physical-RAM-latency qualification",
+    "other P30/P31 gates, adversarial audit, final suite and reviewer handoff"
+  ],
+  "scope": "Author-controlled native source/category/pin input through copied SDK, actual protected helper and private stdio clock adapter; not human, independent, installed, maximum-record, initial-capacity or annual qualification",
+  "sources": [
+    {
+      "bytes": 22412,
+      "path": "dev/knowledge/native_notes_seed.ex",
+      "sha256": "b40c7c981d148b7af469a48ceefbd755638861d37820e92eab5ad10179dd9b20"
+    },
+    {
+      "bytes": 104,
+      "path": "dev/knowledge/native_notes_seed.exs",
+      "sha256": "e524d502f04ffb26394916a0cfd2dd237eed6f75222428a704fdebbf855735d5"
+    },
+    {
+      "bytes": 1762,
+      "path": "test/dev/knowledge/native_notes_seed_test.exs",
+      "sha256": "c23f321715da4c46569c68a9745d2729d33c4a664a43be82bf959b9f34732c70"
+    },
+    {
+      "bytes": 22683,
+      "path": "test/support/managed_clock_lifecycle.exs",
+      "sha256": "71ee6667f1389f6315fca305a6d4af819f26f8f8db0da7ff61552ca39723e104"
+    },
+    {
+      "bytes": 3801,
+      "path": "dev/fixtures/process_clock.rs",
+      "sha256": "07828b7e1fe9e878d46e4df4ef3a1a4d5d5d65cc7c84c1fdd2acbeb3d9be421c"
+    },
+    {
+      "bytes": 22752,
+      "path": "test/support/operator_pty.rs",
+      "sha256": "bcf2ce303c72ab32d74d6959883ecef4b17a63613c7f4047057fdc18eef6d92c"
+    }
+  ],
+  "status": "native_population_driver_and_two_day_smoke_verified_full_initial_run_pending",
+  "version": 1
+}

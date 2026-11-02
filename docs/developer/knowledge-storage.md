@@ -236,6 +236,73 @@ to distinguish the measured scenario from a proposed storage redesign. Preserve
 exact operation inspection, duplicate detection, original generations and unknown
 liabilities when evaluating a new representation.
 
+### Populate through actual native statements
+
+Use `native_notes_seed.exs` to establish a native initial population before
+building an endurance driver. It calls the actual Session input-channel,
+statement/category review and capture paths, then standalone native pin review;
+it does not insert trusted records through a normalization seam. Each statement
+uses the current 1,024-byte original-quote bound with deterministic varied bytes.
+The resulting record size is measured, not padded to the separate 6-KiB ceiling.
+
+Build the checkout first and use Linux/glibc x86-64 with the supported native
+storage/terminal profile. Rust compiles only the existing PTY and process-clock
+fixtures. Start with a fresh nonexisting `/tmp/ipse-native-seed-*` path:
+
+```sh
+mix test test/dev/knowledge/native_notes_seed_test.exs
+mix run --no-start dev/knowledge/native_notes_seed.exs --init /tmp/ipse-native-seed-smoke-example smoke
+mix run --no-start dev/knowledge/native_notes_seed.exs --run /tmp/ipse-native-seed-smoke-example all
+```
+
+The smoke plan makes seven native notes and one pin across two fresh processes
+at simulated days 0 and 1. Require eight retained Collection IDs, settled control
+usage, signed category/clocks, exact public values, strict saved Session release
+claims and unchanged prior source journals. Both processes probe their actual
+protected stdio child clock; an unrelated environment canary must stay absent.
+This checks the driver, not 2,000-note capacity or an annual workload.
+
+For the complete initial plan, choose another fresh root:
+
+```sh
+mix run --no-start dev/knowledge/native_notes_seed.exs --init /tmp/ipse-native-seed-initial-example initial
+mix run --no-start dev/knowledge/native_notes_seed.exs --run /tmp/ipse-native-seed-initial-example 1
+mix run --no-start dev/knowledge/native_notes_seed.exs --run /tmp/ipse-native-seed-initial-example all
+```
+
+The plan has 2,000 captures followed by their required pin reviews within each
+bounded segment: 100 pins, 50 preferences, 50 current assertions and 1,800 other
+ordinary notes. Its **2,100 publications** use 21 seed days with 100 operations
+per day, split into 273 segments of at most eight effects. It preserves the
+existing grant and quota. This population happens before the normal annual
+workload; initial pin reviews add 100 effects beyond the older capture-only
+arithmetic floor. Pilot-derived intake and the complete annual ledger remain
+separate prerequisites for endurance acceptance.
+
+Initialization copies SDK/dependency BEAMs and shipped assets, freezes their
+hashes and the runner sources, and creates a disclosed private clock adapter.
+Only that private Runner's two stdio environment maps propagate the fixture
+preload/offset; production files and the machine/kernel clock do not change.
+No inference is allowed. A run checks those frozen bytes, earlier source hashes,
+the prior actual root and complete visible values before more effects. Each
+segment uses a new Session and OS process. It records actual per-staging allocation,
+capture latency, post-segment BEAM memory and separate Collection, control,
+identity, management-journal and source-session accounting. These are component
+samples, not complete worker/process-tree RAM peaks or reference-hardware latency
+qualification. Original journals remain outside the Collection's selected record
+objects and are reported separately rather than omitted from resource evidence.
+
+Keep every `inflight.json`, log and checkpoint. A failed/unknown segment retains
+its marker and refuses further execution. Do not delete it, replay the segment,
+replace the root, or reset IDs to continue the same cohort. A known completed
+segment needs both its verified report and a parent-observed exit-zero closure;
+`--run` continues only after those closed segments. Completed plans also refuse
+further execution. A changed frozen file refuses before another marker/effect.
+All reports keep `annual_workload_qualification: false`: this tool does not run
+daily intake, corrections/forgetting/supersession, reclamation, concurrency,
+offline imports, compaction or the additional 10,000 mixed changes. Full maximum
+record, mixed-lifecycle and final persistent-metadata qualification remain open.
+
 ## Claim a draft before writing immutable pages
 
 A put/open reads a bounded snapshot and validates its partition. New-root admission

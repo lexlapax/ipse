@@ -61,7 +61,7 @@ defmodule Ipse.Test.ManagedClockLifecycle do
     IO.puts("NATIVE_CLOCK_STDIO_RUNTIME=" <> ebin)
   end
 
-  defp stdio_clock(root) do
+  def check_stdio_clock(root) do
     manifest = root |> Path.join("clock-stdio-runtime.json") |> File.read!() |> Jason.decode!()
 
     assert JSON.sha256(File.read!(to_string(:code.which(Ipse.Runner)))) ==
@@ -127,7 +127,7 @@ defmodule Ipse.Test.ManagedClockLifecycle do
   end
 
   def seed_late(config, root, id, current) do
-    stdio_clock(root)
+    check_stdio_clock(root)
     admission = config.semantic_admission
     assert DynamicSupervisor.which_children(Ipse.Sessions) == []
     strict_saved(config.home, id)
@@ -159,7 +159,7 @@ defmodule Ipse.Test.ManagedClockLifecycle do
   end
 
   def run_late(root, day) when day in [100, 366, 464, 466] do
-    stdio_clock(root)
+    check_stdio_clock(root)
     seed = root |> Path.join("clock-late-seed.json") |> File.read!() |> Jason.decode!()
     assert seed["version"] == 1
     c = late_context(root, seed)

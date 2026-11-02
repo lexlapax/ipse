@@ -409,6 +409,18 @@ overlapping owners, offline imports, compaction, maximum payloads or annual
 turnover with the selected additional 10,000 mixed changes. Run that complete
 workload separately. No active Session is carried across these process dates.
 
+The [native population runner](knowledge-storage.md#populate-through-actual-native-statements)
+reuses the public `ManagedClockLifecycle.check_stdio_clock/1` fixture probe. Its
+own source and SDK/dependency bytes are copied and checked before each bounded
+segment. Run its two-day smoke separately from a full initial population. Check
+the complete 2,100-effect plan with `test/dev/knowledge/native_notes_seed_test.exs`;
+the existing process-clock/lifecycle tests must still pass after probe changes.
+Keep failed cohorts and their inflight markers. Refusal controls must show that
+pending effects, a completed plan and changed frozen source cannot start another
+segment; restoring a deliberately altered empty fixture never authorizes replay
+of a stopped publication. The runner has no annual, maximum-record, human or
+installed qualification merely because the smoke passes.
+
 Distinguish timeout before command-handler startup from timeout during active work.
 The evaluation-session fixture observes its worker's readiness and active Session
 phase before asserting post-effect cancellation; a separate delayed-start case
