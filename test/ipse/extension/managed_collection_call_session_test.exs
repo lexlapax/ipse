@@ -674,6 +674,7 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
     if literal_seed do
       File.write!(trace, "")
       File.rm(trace <> ".ab-release")
+      File.rm(trace <> ".candidate-release")
     end
 
     {:ok, artifact} =
@@ -2245,18 +2246,26 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
   end
 
   @tag literal_v4_ab: true, metadata_version: 3
+  @tag :historical_literal_capture
+  @tag skip:
+         if(System.get_env("IPSE_LITERAL_AB_ROOT"),
+           do: false,
+           else: "historical literal fixture required"
+         )
   test "upgraded literal v4 A cannot be discarded while candidate cites independent current B",
        c do
     seed = c.literal_seed
     assert File.read!(seed["source_journal"]) |> JSON.sha256() == seed["source_sha256"]
     assert seed["closed_at_ms"] < seed["policy"]["settings"]["expires_at_ms"]
     baseline = collection_read(c, %{"op" => "snapshot"})
+    witness = collection_witness(SemanticAdmission.collection_root(c.home), c.namespace)
+    assert {:ok, ledger} = Consent.existing_snapshot(c.control, c.binding["project_id"])
 
-    consumer = start(c, %{fixture_mode: "capture_ab_literal"})
+    consumer = start(c, %{fixture_mode: "capture_ab_literal_publication_hold"})
     id = Session.info(consumer).id
     assert id != seed["session_id"]
     assert :ok = Session.prompt(consumer, "Synthetic café observation")
-    await_marker(c.trace, "ab-held", 1000)
+    await_marker(c.trace, "candidate-held", 1000)
     assert {:ok, before_events} = Journal.load(c.dir, id)
 
     literals =
@@ -2282,6 +2291,32 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
     assert source_a["session_id"] == seed["session_id"]
     IO.puts("LITERAL_V4_AB_REAL_READ=true inherited_union=true")
 
+    [quote_b] =
+      Enum.filter(
+        before_events,
+        &(&1["type"] == "extension_action_result" and
+            get_in(&1, ["request", "op"]) == "source.quote")
+      )
+
+    assert quote_b["outcome"]["status"] == "ok"
+    assert quote_b["outcome"]["value"]["origin"] == "unattended_input"
+
+    [read_b] =
+      Enum.filter(
+        before_events,
+        &(&1["type"] == "extension_action_result" and
+            get_in(&1, ["request", "op"]) == "source.read")
+      )
+
+    assert {:ok, proof_b} =
+             Ipse.Extension.source_proof(
+               read_b["outcome"]["value"],
+               quote_b["outcome"]["value"],
+               "Synthetic café observation"
+             )
+
+    assert proof_b["session_id"] == id
+
     module = Ipse.Session.ManagedToolUse
 
     assert :erlang.trace_pattern(
@@ -2295,10 +2330,19 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
     File.rename!(seed["source_journal"], held_path)
 
     try do
-      File.write!(c.trace <> ".ab-release", "release")
+      File.write!(c.trace <> ".candidate-release", "release")
+
+      assert_receive {:trace, ^consumer, :call,
+                      {^module, :publication_prerequisites?, [at_call, candidate, _]}},
+                     15_000
+
+      assert {:ok, dependencies} = Session.ManagedToolUse.invocation_dependencies(at_call)
+      assert literal in dependencies
+      [change] = candidate["request"]["changes"]
+      assert change["value"]["evidence"]["sources"] == [proof_b]
 
       assert_receive {:trace, ^consumer, :return_from, {^module, :publication_prerequisites?, 3},
-                      false},
+                      true},
                      15_000
 
       assert_receive {:ipse, ^consumer, {:done, :error}}, 15_000
@@ -2311,8 +2355,7 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
               get_in(&1, ["request", "op"]) == "source.quote")
         )
 
-      assert [%{"outcome" => %{"status" => "ok", "value" => quote}}] = quotes
-      assert quote["origin"] == "unattended_input"
+      assert quotes == [quote_b]
 
       assert Enum.any?(
                events,
@@ -2320,11 +2363,15 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
                    get_in(&1, ["message", "content"]) == "Synthetic café observation")
              )
 
-      refute Enum.any?(
-               events,
-               &(&1["type"] == "extension_action_intent" and
-                   get_in(&1, ["request", "op"]) == "collection.managed")
-             )
+      assert [intent] =
+               Enum.filter(
+                 events,
+                 &(&1["type"] == "extension_action_intent" and
+                     get_in(&1, ["request", "op"]) == "collection.managed")
+               )
+
+      assert intent["request"] == candidate
+      refute Enum.any?(capture_results(events), &(&1["outcome"]["status"] == "ok"))
 
       notifications = drain_literal_ab_notifications(consumer, [])
       refute inspect(notifications) =~ seed["text"]
@@ -2335,16 +2382,29 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
 
       assert {:ok, restored} = Session.Saved.restore(events, id)
       refute inspect(restored.messages) =~ seed["text"]
-      assert collection_read(c, %{"op" => "snapshot"})["generation"] == baseline["generation"]
+      assert collection_read(c, %{"op" => "snapshot"}) == baseline
+      assert collection_witness(SemanticAdmission.collection_root(c.home), c.namespace) == witness
+      assert {:ok, ^ledger} = Consent.existing_snapshot(c.control, c.binding["project_id"])
 
       IO.puts(
-        "LITERAL_V4_AB_INHERITANCE_REFUSED=true candidate_intents=0 current_B_quote=true raw_subscriber_leak=false blanket_gate_reached=false"
+        "LITERAL_V4_AB_INHERITANCE_REFUSED=true candidate_intents=1 current_B_quote=true raw_subscriber_leak=false blanket_gate_reached=false"
       )
 
       assert :ok = Session.close_confirmed(consumer)
+      path = Path.join(c.dir, id <> ".jsonl")
+      closed = File.read!(path)
+      trace = File.read!(c.trace)
+      resumed = start(c, %{}, id)
+      assert Session.info(resumed).phase == :idle
+      assert :sys.get_state(resumed).messages == restored.messages
+      assert_idle_resume_journal(path, closed, id)
+      assert :ok = Session.close_confirmed(resumed)
+      assert File.read!(c.trace) == trace
+      assert {:ok, ^ledger} = Consent.existing_snapshot(c.control, c.binding["project_id"])
     after
       :erlang.trace_pattern({module, :publication_prerequisites?, 3}, false, [:local])
       if Process.alive?(consumer), do: :erlang.trace(consumer, false, [:call])
+      File.write!(c.trace <> ".candidate-release", "release")
       if File.exists?(held_path), do: File.rename!(held_path, seed["source_journal"])
     end
 
@@ -4015,45 +4075,9 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
     assert length(Task.await(c.provider_server, 5000)) == 6
   end
 
-  test "legacy saved-consent publication refuses a full pending queue", c do
-    first = start(c)
-    assert :ok = Session.prompt(first, "Synthetic café observation")
-    assert_receive {:ipse, ^first, {:done, :ok}}, 15_000
-    assert :ok = Session.close_confirmed(first)
-    seed_pending(c, 63)
-
-    root = SemanticAdmission.collection_root(c.home)
-    before = collection_witness(root, c.namespace)
-    pid = start(c)
-    assert :ok = Session.prompt(pid, "Synthetic café observation")
-    assert_receive {:ipse, ^pid, {:done, :ok}}, 15_000
-    id = Session.info(pid).id
-    assert {:ok, events} = Journal.load(c.dir, id)
-    assert :ok = Ipse.Extension.Actions.validate_events(events)
-    assert {:ok, _} = Session.restore_context(events)
-
-    result =
-      Enum.find(events, fn event ->
-        event["type"] == "extension_action_result" and
-          event["request"]["op"] == "collection.managed"
-      end)
-
-    assert result["approval"] == "saved_consent"
-    assert result["effect_binding"]["version"] == 2
-
-    assert result["outcome"] == %{
-             "status" => "failed",
-             "value" => %{"code" => "collection_unavailable"}
-           }
-
-    assert collection_witness(root, c.namespace) == before
-    assert {:ok, ledger} = Consent.snapshot(c.control, c.binding["project_id"])
-    assert ledger["operations"][result["operation_id"]]["status"] == "settled"
-    assert :ok = Session.close_confirmed(pid)
-    trace = File.read!(c.trace)
-    resumed = start(c, %{}, id)
-    assert :ok = Session.close_confirmed(resumed)
-    assert File.read!(c.trace) == trace
+  @tag :legacy_managed_refusal
+  test "legacy V2 publication remains unstarted with a full pending queue", c do
+    legacy_managed_refusal(c, 64, false)
   end
 
   @tag metadata_version: 3, registered_main: true, capture_write: true, registered_competing: true
@@ -4061,8 +4085,103 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
     competing_pending(c)
   end
 
-  test "competing legacy saved-consent Sessions cannot both publish at 63 pending records", c do
-    competing_pending(c)
+  @tag :legacy_managed_refusal
+  test "competing legacy V2 candidates cannot borrow the V3 publication grant", c do
+    legacy_managed_refusal(c, 63, true)
+  end
+
+  @tag :legacy_managed_refusal
+  test "legacy V2 refusal precedes deferred publication and leaves no liability", c do
+    legacy_managed_refusal(c, 0, false)
+  end
+
+  defp legacy_managed_refusal(c, pending, competing) do
+    if pending > 0, do: seed_pending(c, pending, 0)
+    before = collection_read(c, %{"op" => "snapshot"})
+
+    witness =
+      if pending > 0,
+        do: collection_witness(SemanticAdmission.collection_root(c.home), c.namespace)
+
+    assert {:ok, ledger} = Consent.existing_snapshot(c.control, c.binding["project_id"])
+    assert ledger["operations"] == %{}
+    owner = self()
+
+    hook = fn
+      value,
+      {:in, {_, _, {:extension_action_begin, _, %{"op" => "collection.managed"} = request}}},
+      _ ->
+        send(owner, {:legacy_candidate, self(), request})
+        value
+
+      value, {:out, {:error, :collection_deadline_fence_unavailable}, _, _}, _ ->
+        send(owner, {:legacy_publication_refused, self()})
+        value
+
+      value, _, _ ->
+        value
+    end
+
+    sessions =
+      for _ <- 1..if(competing, do: 2, else: 1) do
+        pid = start(c, %{fixture_mode: if(competing, do: "barrier", else: "capture")})
+        assert :ok = :sys.install(pid, {hook, nil})
+        pid
+      end
+
+    for {pid, index} <- Enum.with_index(sessions, 1) do
+      assert :ok = Session.prompt(pid, "Synthetic café observation")
+      if competing, do: await_marker_count(c.trace, "barrier\n", index, 1000)
+    end
+
+    if competing do
+      on_exit(fn -> File.write!(c.trace <> ".release", "go") end)
+      await_marker_count(c.trace, "barrier\n", 2, 1000)
+      File.write!(c.trace <> ".release", "go")
+    end
+
+    for pid <- sessions do
+      assert_receive {:legacy_candidate, ^pid, request}, 15_000
+      assert :ok = Ipse.Extension.ManagedCollectionCall.validate(request)
+      refute Ipse.Extension.ManagedCollectionCall.new_capture?(request)
+      refute Map.has_key?(request, "metadata_version")
+      assert_receive {:legacy_publication_refused, ^pid}, 5000
+      assert_receive {:ipse, ^pid, {:error, text}}, 5000
+      assert text == Ipse.CLI.Errors.format(:collection_deadline_fence_unavailable)
+      assert_receive {:ipse, ^pid, {:done, :error}}, 10_000
+      id = Session.info(pid).id
+      assert {:ok, events} = Journal.load(c.dir, id)
+      assert :ok = Ipse.Extension.Actions.validate_events(events)
+
+      refute Enum.any?(
+               events,
+               &(&1["type"] in ~w(extension_action_intent extension_action_result) and
+                   get_in(&1, ["request", "op"]) == "collection.managed")
+             )
+
+      assert {:ok, saved} = Session.Saved.restore(events, id)
+      assert saved.worker_input_unknown == []
+      assert :ok = Session.close_confirmed(pid)
+      path = Path.join(c.dir, id <> ".jsonl")
+      closed = File.read!(path)
+      trace = File.read!(c.trace)
+      resumed = start(c, %{}, id)
+      assert Session.info(resumed).phase == :idle
+      assert :sys.get_state(resumed).messages == saved.messages
+      assert_idle_resume_journal(path, closed, id)
+      assert :ok = Session.close_confirmed(resumed)
+      assert File.read!(c.trace) == trace
+    end
+
+    assert collection_read(c, %{"op" => "snapshot"}) == before
+
+    if pending > 0,
+      do:
+        assert(
+          collection_witness(SemanticAdmission.collection_root(c.home), c.namespace) == witness
+        )
+
+    assert {:ok, ^ledger} = Consent.existing_snapshot(c.control, c.binding["project_id"])
   end
 
   defp competing_pending(c) do
@@ -4193,7 +4312,7 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
     end
   end
 
-  defp seed_pending(c, count) do
+  defp seed_pending(c, count, generation \\ 1) do
     root = SemanticAdmission.collection_root(c.home)
 
     for batch <- 0..div(count - 1, 8) do
@@ -4212,7 +4331,7 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
                  c.namespace,
                  %{
                    "op" => "commit",
-                   "expected_generation" => batch + 1,
+                   "expected_generation" => batch + generation,
                    "advance_floor" => false,
                    "changes" => changes
                  },
@@ -9077,93 +9196,98 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
 
   def fence_first_postproof(_, _, _, _), do: :ok
 
-  for version <- [2, 3] do
-    @tag metadata_version: version
-    test "V#{version} outer Identity loss after checked deferred publication retains full liability across inert resume",
-         c do
-      owner = self()
+  @tag :publication_identity_loss
+  @tag metadata_version: 3,
+       registered_main: true,
+       capture_write: true,
+       registered_capture_no_continuation: true
+  test "V3 outer Identity loss after checked deferred publication retains full liability across inert resume",
+       c do
+    owner = self()
 
-      tracer =
-        spawn_link(fn ->
-          Process.flag(:priority, :high)
-          send(owner, :settlement_tracer_ready)
-          trace_identity_completion(owner, %{})
-        end)
+    tracer =
+      spawn_link(fn ->
+        Process.flag(:priority, :high)
+        send(owner, :settlement_tracer_ready)
+        trace_identity_completion(owner, %{})
+      end)
 
-      assert_receive :settlement_tracer_ready
+    assert_receive :settlement_tracer_ready
 
-      assert :erlang.trace_pattern(
-               {Consent, :publish_deferred, 5},
-               [{:_, [], [{:return_trace}]}],
-               [
-                 :local
-               ]
-             ) == 1
+    assert :erlang.trace_pattern(
+             {Consent, :publish_deferred, 5},
+             [{:_, [], [{:return_trace}]}],
+             [
+               :local
+             ]
+           ) == 1
 
-      :erlang.trace(:all, true, [:call, {:tracer, tracer}])
-      handler = {__MODULE__, make_ref()}
+    :erlang.trace(:all, true, [:call, {:tracer, tracer}])
+    handler = {__MODULE__, make_ref()}
 
-      :ok =
-        :telemetry.attach(
-          handler,
-          [:ipse, :extension, :collection, :staged],
-          &__MODULE__.observe_settlement_port/4,
-          tracer
+    :ok =
+      :telemetry.attach(
+        handler,
+        [:ipse, :extension, :collection, :staged],
+        &__MODULE__.observe_settlement_port/4,
+        tracer
+      )
+
+    try do
+      pid = start(c)
+      id = Session.info(pid).id
+      assert :ok = Session.prompt(pid, "Synthetic café observation")
+      assert_receive {:identity_completion_fenced, true, packet}, 15_000
+      assert packet["version"] === 1
+      assert_receive {:ipse, ^pid, {:done, :error}}, 15_000
+      {:ok, events} = Journal.load(c.dir, id)
+
+      [event] =
+        Enum.filter(
+          events,
+          &(&1["type"] == "extension_action_result" and
+              get_in(&1, ["request", "op"]) == "collection.managed")
         )
 
-      try do
-        pid = start(c)
-        id = Session.info(pid).id
-        assert :ok = Session.prompt(pid, "Synthetic café observation")
-        assert_receive {:identity_completion_fenced, true, packet}, 15_000
-        assert packet["version"] === 1
-        assert_receive {:ipse, ^pid, {:done, :error}}, 15_000
-        {:ok, events} = Journal.load(c.dir, id)
+      assert event["outcome"]["status"] == "unknown"
+      {:ok, control} = Consent.snapshot(c.control, c.binding["project_id"])
+      operation = control["operations"][event["operation_id"]]
+      assert operation["status"] in ~w(publishing unknown)
+      assert operation["actual"] == nil and operation["receipt"] == nil
 
-        [event] =
-          Enum.filter(
-            events,
-            &(&1["type"] == "extension_action_result" and
-                get_in(&1, ["request", "op"]) == "collection.managed")
-          )
+      assert operation["reserved"] ==
+               Ipse.Extension.ManagedCollectionCall.reservation(event["request"])
 
-        assert event["outcome"]["status"] == "unknown"
-        {:ok, control} = Consent.snapshot(c.control, c.binding["project_id"])
-        operation = control["operations"][event["operation_id"]]
-        assert operation["status"] in ~w(publishing unknown)
-        assert operation["actual"] == nil and operation["receipt"] == nil
+      assert packet["actual"]["input_bytes"] < operation["reserved"]["input_bytes"]
+      assert collection_read(c, %{"op" => "snapshot"})["generation"] == 1
 
-        assert operation["reserved"] ==
-                 Ipse.Extension.ManagedCollectionCall.reservation(event["request"])
+      state =
+        c.home
+        |> Path.join("project-identities/index.json")
+        |> File.read!()
+        |> Jason.decode!()
 
-        assert packet["actual"]["input_bytes"] < operation["reserved"]["input_bytes"]
-        assert collection_read(c, %{"op" => "snapshot"})["generation"] == 1
+      assert state["domain_keys"][c.binding["project_id"]]["namespaces"][c.namespace]["state"] ==
+               "prepared"
 
-        if c[:metadata_version] == 3 do
-          state =
-            c.home
-            |> Path.join("project-identities/index.json")
-            |> File.read!()
-            |> Jason.decode!()
+      assert {:ok, saved} = Session.Saved.restore(events, id)
 
-          assert state["domain_keys"][c.binding["project_id"]]["namespaces"][c.namespace]["state"] ==
-                   "prepared"
-        end
-
-        before = File.read!(c.trace)
-        assert {:error, :cleanup_unconfirmed} = Session.close_confirmed(pid)
-        refute Process.alive?(pid)
-        resumed = start(c, %{}, id)
-        assert :ok = Session.close_confirmed(resumed)
-        assert File.read!(c.trace) == before
-        {:ok, after_control} = Consent.snapshot(c.control, c.binding["project_id"])
-        assert after_control["operations"][event["operation_id"]] == operation
-      after
-        :telemetry.detach(handler)
-        :erlang.trace(:all, false, [:call])
-        :erlang.trace_pattern({Consent, :publish_deferred, 5}, false, [:local])
-        if Process.alive?(tracer), do: send(tracer, :stop)
-      end
+      before = File.read!(c.trace)
+      assert {:error, :cleanup_unconfirmed} = Session.close_confirmed(pid)
+      refute Process.alive?(pid)
+      resumed = start(c, %{}, id)
+      assert Session.info(resumed).phase == :idle
+      assert :sys.get_state(resumed).messages == saved.messages
+      assert :ok = Session.close_confirmed(resumed)
+      assert File.read!(c.trace) == before
+      {:ok, after_control} = Consent.snapshot(c.control, c.binding["project_id"])
+      assert after_control["operations"][event["operation_id"]] == operation
+      assert [_] = Task.await(c.provider_server, 5000)
+    after
+      :telemetry.detach(handler)
+      :erlang.trace(:all, false, [:call])
+      :erlang.trace_pattern({Consent, :publish_deferred, 5}, false, [:local])
+      if Process.alive?(tracer), do: send(tracer, :stop)
     end
   end
 

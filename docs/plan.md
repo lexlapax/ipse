@@ -1281,7 +1281,12 @@ actual competing-publication and repeated-capture controls pass; integrated and
 whole-source qualification remain open. The
 [registered lifecycle/queue follow-up](archive/2026-10-26-p30-p31-implementation/capture-lifecycle-20261101.md)
 also preserves first-use activation, later publication, settled full-queue refusal
-and idle recovery; the separately reproduced legacy publication gate remains open.
+and idle recovery. The [compatibility follow-up](archive/2026-10-26-p30-p31-implementation/managed-compatibility-boundaries-20261102.md)
+keeps unsupported V2 managed publication refused before intent/reservation while
+retaining actual V3 queue, competing-last-slot and registered late-Identity-loss
+controls. It separately verifies the current source-withdrawal boundary against a
+fresh genuine historical-runtime literal, without copying its original journal.
+These are focused controls, not a replacement complete module/suite aggregate.
 [Actual headless CLI argv/stdin controls](archive/2026-10-26-p30-p31-implementation/headless-cli-pending-20261101.md)
 now require a completed turn and one attributed pending save under native saved
 consent without `--yes`, while ordinary write/shell effects stay denied. Broader

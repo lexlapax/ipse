@@ -3,7 +3,7 @@ defmodule Ipse.CLI.ErrorsTest do
   import ExUnit.CaptureIO
   alias Ipse.CLI.Errors
 
-  @mapped ~w(invalid_handoff invalid_handoff_record resume_configuration_mismatch journal_limit_reached invalid_session session_not_found invalid_id invalid_journal incomplete_journal session_locked header_unconfirmed session_lock_identity_unavailable journal_lock_owner_required journal_unavailable workspace_not_found workspace_path_unavailable invalid_provider_endpoint question_confirmation invalid_answer)a
+  @mapped ~w(collection_deadline_fence_unavailable invalid_handoff invalid_handoff_record resume_configuration_mismatch journal_limit_reached invalid_session session_not_found invalid_id invalid_journal incomplete_journal session_locked header_unconfirmed session_lock_identity_unavailable journal_lock_owner_required journal_unavailable workspace_not_found workspace_path_unavailable invalid_provider_endpoint question_confirmation invalid_answer)a
 
   @tag lifetime_receipt_followup: true
   test "each mapped error supplies a cause and a real recovery anchor without term dumps" do

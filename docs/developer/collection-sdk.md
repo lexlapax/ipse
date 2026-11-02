@@ -174,6 +174,11 @@ replacement or supersession. The action gate retains the one-new-record predicat
 for `collection.managed`. Selected native management routes use their own review
 and publication checks. A direct Core component positive does not qualify every
 public source, later-use sink or full notes readiness.
+An older V2 managed request remains a valid historical protocol object without
+becoming a supported Session mutation. Test its shape refusal before intent and
+reservation, including a populated queue and concurrent candidates. Keep the
+current V3 queue and late-loss positives separate: a V2 refusal supplies no
+capacity or deferred-settlement evidence.
 
 ## Declare the narrow operations
 
@@ -1184,6 +1189,7 @@ From a coherent built checkout, start with the boundary your change affects:
 mix test test/ipse/extension/collection_deadline_gate_test.exs
 mix test test/ipse/extension/notes_publication_admission_test.exs
 mix test test/ipse/session/managed_tool_use_test.exs --only publication_prerequisite
+mix test test/ipse/extension/managed_collection_call_session_test.exs --only legacy_managed_refusal --only registered_capture_lifecycle --only registered_competing --only publication_identity_loss --max-cases 1
 mix test test/ipse/extension/collection_document_stage_test.exs --only document_decision_restoration
 mix test test/ipse/extension/collection_document_stage_test.exs --only document_deadline_scope
 mix test test/ipse/extension/collection_document_stage_test.exs --only document_decision_expiry

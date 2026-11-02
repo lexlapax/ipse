@@ -10,8 +10,8 @@ defmodule Ipse.CLI.Errors do
       {"Deadline-bearing State writes are temporarily unavailable: the clock check and rename are separate operations. No write was started. Keep existing drafts and inspect earlier uncertain writes; do not remove the deadline to retry.",
        "diagnose-startup-and-service-errors"},
     collection_deadline_fence_unavailable:
-      {"Protected collection publication is temporarily unavailable: the native clock check cannot fence scheduling before rename. No publication was started. Keep existing records and inspect saved receipts; --yes cannot bypass this gate.",
-       "diagnose-startup-and-service-errors"},
+      {"Protected collection publication is temporarily unavailable for this request shape. No publication was started. Use the supported native knowledge commands, keep existing records and inspect saved receipts; --yes cannot bypass this gate.",
+       "inspect-unconfirmed-protected-knowledge"},
     invalid_handoff:
       {"Invalid handoff: expected one closed version-1 UTF-8 artifact of at most 16 KiB with consistent unknown-effect provenance. No session was started; review the artifact before importing it.",
        "continue-in-a-fresh-session"},

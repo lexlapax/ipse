@@ -82,9 +82,20 @@ Any lost completion may have changed storage. Preserve drafts; do not strip
 deadlines or switch stores to retry. See [document Collection recovery](corpus.md#query-a-document-collection) and
 [explicit Memory](memory.md#remember-and-inspect-a-note) for its target-expiry rule.
 
-A new explicit gate refusal starts no protected publication. Earlier uncertain
-attempts, including attempts made before this gate, still need inspection below.
-The gate does not prove that an old operation left storage unchanged.
+A publication refusal for an unsupported request shape starts no protected
+publication. An older extension's managed publication cannot borrow the current
+native capture path merely because saved permission matches. Use the supported
+[native knowledge procedures](knowledge-permissions.md) with a matching artifact
+in a new Session; preserve older records and do not edit their requests or grants
+to bypass the refusal. This shape gate is distinct from a storage-profile or
+expired-source refusal. Earlier uncertain attempts still need inspection below;
+a new refusal does not prove that an old operation left storage unchanged.
+
+A current capture can also settle successfully before delivery of its result is
+withheld. If a recalled note's original source disappears or permission is revoked
+after the new pending proposal is saved, the turn can stop with an unknown Worker
+input. Inspect the saved proposal and operation before new work. Do not repeat the
+capture to recover its lost delivery; idle resume recreates neither attempt.
 
 Keep the original Ipse home, protected control/identity/collection files and
 Session journal. A lost confirmation can leave a saved grant, a durable note,

@@ -1,0 +1,157 @@
+{
+  "base_commit": "ce43601",
+  "checks": {
+    "build": 0,
+    "compile_warnings_as_errors": 0,
+    "demo": 0,
+    "docs": {
+      "errors": 0,
+      "exit_code": 0,
+      "local_links": 8568,
+      "markdown_files": 1034
+    },
+    "format": 0
+  },
+  "date_utc": "2026-11-02",
+  "error_shape_deadline_contracts": {
+    "exit_code": 0,
+    "passed": 27,
+    "seconds": 0.8,
+    "seed": 791755
+  },
+  "external_model_calls": 0,
+  "files": {
+    "lib/ipse/cli/errors.ex": {
+      "bytes": 7852,
+      "sha256": "7bc383a2aefc7635b9eb59cca493bad951efb291b7f6820c92b00055b1a5ddda"
+    },
+    "priv/ipse-runner": {
+      "bytes": 969344,
+      "sha256": "5487c57a84b99be7b5b4381d097b637d3c45350b92b492d1786712f2bfbf8c7a"
+    },
+    "test/ipse/cli/errors_test.exs": {
+      "bytes": 14496,
+      "sha256": "4468be8e6e03ad5c918266aed193d19bfebbc9b12f6fecc146585bacd9a1003e"
+    },
+    "test/ipse/extension/managed_collection_call_session_test.exs": {
+      "bytes": 376036,
+      "sha256": "5184855f2c34fb27aa1dbb5c4ef384002b8430cdd6585ccacb14f7ab2545a81f"
+    }
+  },
+  "final_boundary_check": {
+    "excluded": 182,
+    "exit_code": 0,
+    "passed": 8,
+    "seconds": 33.4,
+    "seed": 791757
+  },
+  "fixtures": {
+    "/tmp/ipse-historical-literal-20261102-391b473af4f54ab0": {
+      "original_session_id": "5d9587275ce5dafb1154fd46c882c635",
+      "original_source": {
+        "bytes": 58553,
+        "sha256": "7213ce067b8f912d2ebf8a868f7dc011c2aeb2fb5e67385909650e876f3f4029"
+      },
+      "seed": {
+        "bytes": 11725,
+        "sha256": "eb72abd00702c597a665723ad73aea1d17e61daccc414a46f8b828c67b7ed701"
+      },
+      "seed_generation": 1
+    },
+    "/tmp/ipse-historical-literal-20261102-c17077cf869560a6": {
+      "original_session_id": "89a77a6afd3abe422f6029960b756cb4",
+      "original_source": {
+        "bytes": 58553,
+        "sha256": "dfe5becf5536f5c46484a9255669f6bb0ca9926497168e94fc658868e909d4f4"
+      },
+      "seed": {
+        "bytes": 11725,
+        "sha256": "b505b5af75c0cb1f8816a2f196e41105562e5b9bdb5db28d7c3ae90e987bb9a4"
+      },
+      "seed_generation": 1
+    }
+  },
+  "historical_inventory": {
+    "current_beam_app_files": 615,
+    "limit": "Original transitive identities, system runtime, environment, in-memory execution and permissions/inodes excluded",
+    "recorded_host_helper_matches": 209,
+    "unchanged_pre_post": true
+  },
+  "logs": {
+    "/tmp/ipse-historical-literal-current-consumer-20261102.log": {
+      "bytes": 499,
+      "sha256": "ec83e5f2bb7bbac61ff72f440659ab6a9b15368c2bd3fbea9973fba0c2b7fcc3"
+    },
+    "/tmp/ipse-historical-literal-fresh-seed-20261102.log": {
+      "bytes": 25024,
+      "sha256": "ed5c97dcabb83a996d646c81303ddf5b356f025f7ebd8956d65bca93f4d2b080"
+    },
+    "/tmp/ipse-historical-literal-inventory-postcheck-20261102.log": {
+      "bytes": 190,
+      "sha256": "ec49b13c09e6502bfc2f6318ab6c9881593492b914f0ee477a510464ee57b142"
+    },
+    "/tmp/ipse-historical-literal-postcheck-20261102.json": {
+      "bytes": 78867,
+      "sha256": "f666bf7273e33d760e95759b9a75a1ecbe6d2966c7ff2809afb9896b0e99c929"
+    },
+    "/tmp/ipse-historical-literal-prelaunch-20261102.json": {
+      "bytes": 78867,
+      "sha256": "f666bf7273e33d760e95759b9a75a1ecbe6d2966c7ff2809afb9896b0e99c929"
+    },
+    "/tmp/ipse-historical-literal-reuse-inspection-20261102.log": {
+      "bytes": 1347,
+      "sha256": "15246063c230ba4bc4d4d5dce19c2f9a52e96c87f520b8679deb52a37d1143e0"
+    },
+    "/tmp/ipse-historical-literal-seed-20261102.log": {
+      "bytes": 25024,
+      "sha256": "7d2edb791350d5630c22bf95554ae5c385502083beaa8a24f5b76b516ff9703c"
+    },
+    "/tmp/ipse-legacy-managed-error-contracts-20261102.log": {
+      "bytes": 273,
+      "sha256": "f81e6bcf15278bee05f1fa11dca9e5457dc9e964f6e39d6fae03faefe584d018"
+    },
+    "/tmp/ipse-legacy-managed-session-boundaries-20261102.log": {
+      "bytes": 1561,
+      "sha256": "c89f0ef0f3ce8f3c0bad358ce335c1463248451486c6c8f30da0e91e1df16b97"
+    },
+    "/tmp/ipse-legacy-managed-session-boundaries-final-20261102.log": {
+      "bytes": 512,
+      "sha256": "f24ad11e81b0ae21ec45086df2e8604968430ec6d9ab443010d8daa4b35dbb73"
+    },
+    "/tmp/ipse-legacy-managed-session-current-20261102.log": {
+      "bytes": 5835,
+      "sha256": "8d427bc4d3f87bbae8af5f3f9587a26251caa4da80f4d4c95c720cc0be9c5a32"
+    },
+    "/tmp/ipse-managed-compatibility-build-20261102.log": {
+      "bytes": 845,
+      "sha256": "fcad4d84d848be53036d7d46606a0f76e4c66b9b105488ea928e1963b3afab63"
+    },
+    "/tmp/ipse-managed-compatibility-compile-20261102.log": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "/tmp/ipse-managed-compatibility-demo-20261102.log": {
+      "bytes": 4431,
+      "sha256": "8b783219e8013f59a8a8f02b684bbca35059a26d241fa9156b312e7b09c244bb"
+    },
+    "/tmp/ipse-managed-compatibility-docs-20261102.log": {
+      "bytes": 757,
+      "sha256": "783e5fa9be9550f34634fe5e3b9cc9b149be6be13fcece791c937ac8407a05f3"
+    },
+    "/tmp/ipse-managed-compatibility-format-20261102.log": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "/tmp/ipse-managed-compatibility-postbuild-20261102.log": {
+      "bytes": 2415,
+      "sha256": "b275be5c380e3434ae66d0f7d6b3686f98e370295471a8593152327e562605a3"
+    },
+    "/tmp/ipse-managed-compatibility-postbuild-final-20261102.log": {
+      "bytes": 725,
+      "sha256": "4bfe03dd414562667af8a0a487156f299c55a82ffba170672bc632749baadbd2"
+    }
+  },
+  "qualification_limit": "No V2 publication/capacity/late-loss qualification, independent quality or new complete module/suite aggregate",
+  "scope": "Author-run V2 pre-publication refusal, registered V3 actual queue/concurrency/late loss and genuine historical-source withdrawal",
+  "version": 1
+}
