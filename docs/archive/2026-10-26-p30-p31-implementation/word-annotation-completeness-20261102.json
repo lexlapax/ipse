@@ -1,0 +1,381 @@
+{
+  "inventory_limit": "Explicit post-run source/SDK/log hashes; no complete prelaunch environment/system-library/in-memory closure or machine isolation claim",
+  "documentation_check_including_receipt": {
+    "errors": 0,
+    "exit_code": 0,
+    "local_links": 8607,
+    "log": "/tmp/ipse-docx-v15-candidate-record-docs-20261102.log",
+    "log_sha256": "35a06ffa27e7115c80693d3365b755cfe7de2874cf4d67d83c8de8a80d16a3f3",
+    "markdown_files": 1040
+  },
+  "documentation_check_before_receipt": {
+    "errors": 0,
+    "exit_code": 0,
+    "local_links": 8603,
+    "log": "/tmp/ipse-docx-v15-current-docs-20261102.log",
+    "log_sha256": "3d09ad9031814516d1305b5da32b9662ddd7d7a24242d5b1b0a0166c1656f5f6",
+    "markdown_files": 1039
+  },
+  "independent_artifact": {
+    "build": {
+      "exit_code": 0,
+      "log": "/tmp/ipse-docx-v15-independent-artifact-build-preset-20261102.log",
+      "log_sha256": "5c98f60a74cd52d1bbe6e7d081f0e63dcb83ea8ce9ec7e5a524e4e2752903197",
+      "preset": "state-documents"
+    },
+    "initial_build_refusal": {
+      "cause": "missing required preset; refusal before construction",
+      "exit_code": 1,
+      "log": "/tmp/ipse-docx-v15-independent-artifact-build-20261102.log",
+      "log_sha256": "7cd7c07c62347a015e42af063922f9261179c08ebf14e9ed159422777ea400bd"
+    },
+    "installed_proof": "pending",
+    "manifest_sha256": "783d7f0938f409a647c6a21defaec7893513016c61ebb1ce8b2f0cbecce0888d",
+    "path": "/tmp/ipse-docx-v15-independent-corpus-20261102",
+    "source_proof": {
+      "exec_session": 32049,
+      "exit_code": 0,
+      "log": "/tmp/ipse-docx-v15-independent-source-proof-20261102.log",
+      "log_sha256": "445709ccee76d08cad1338237087a451b54f7d5485ffe0869e53d8580f8c4933",
+      "report": {
+        "checks": {
+          "artifact_modules": true,
+          "dependency_notices": true,
+          "docx_annotation_links": true,
+          "docx_block_packing": true,
+          "docx_matching_style_effects": true,
+          "docx_revision": true,
+          "pdf_default_off": true,
+          "pdf_explicit_extraction": true,
+          "text_unicode": true
+        },
+        "live_inference": false,
+        "pdf_resource_backend": "available",
+        "synthetic": true,
+        "verification": {
+          "inventories_unchanged": true,
+          "mode": "source",
+          "precompiled_harness": true,
+          "private_home": true,
+          "scenario": "documents",
+          "system_toolchain_on_runtime_path": false
+        }
+      }
+    }
+  },
+  "final_source_documentation_check": {
+    "errors": 0,
+    "exit_code": 0,
+    "local_links": 8634,
+    "log": "/tmp/ipse-docx-v15-source-receipt-docs-20261102.log",
+    "log_sha256": "83c085e3fc3163313c89ec4f2f814e0a95857e3bb86e24c546fc99ec8010f87c",
+    "markdown_files": 1043,
+    "scope": "Whole worktree, including separate private-clock draft; permission-denied private staging directories not inspected"
+  },
+  "public_fixture": {
+    "bytes": 16079,
+    "path": "/tmp/ipse-word-broader-20261031/0.docx",
+    "scope": "Unchanged public original; source-byte roundtrip, not independent rendering oracle",
+    "sha256": "e9efad0ad358200a8e1e0fe4c072d2496177c3698e7e4a3da406141ddfb40c2d"
+  },
+  "verifier_gate": {
+    "excluded": 34,
+    "exec_session": 76571,
+    "exit_code": 0,
+    "log": "/tmp/ipse-docx-v15-verifier-gate-20261102.log",
+    "log_sha256": "67f91cf09f6929ab704a1e833314fd083b55d562c09b53764cc852f40debbd04",
+    "passed": 1,
+    "required_named_checks": 9,
+    "seconds": 0.8,
+    "seed": 791795
+  },
+  "live_inference_calls": 0,
+  "remaining": [
+    "exact candidate package and same-artifact installed proof",
+    "independent Word quality",
+    "full lifecycle and capacity",
+    "local-pair quality",
+    "final candidate whole-source checks and milestone-wide audit"
+  ],
+  "native_runs": [
+    {
+      "cause": "Collection profile correctly returned draft; new test incorrectly expected immediate final success",
+      "excluded": 22,
+      "exec_session": 32688,
+      "exit_code": 2,
+      "failed": 1,
+      "log": "/tmp/ipse-docx-v15-native-annotations-20261102.log",
+      "log_sha256": "fd3dfd5ba3a8e46cd7d9b9049e3db37afae9b4151a8e064f47e7541f627d996d",
+      "passed": 1,
+      "seconds": 10.8,
+      "seed": 791790
+    },
+    {
+      "excluded": 22,
+      "exec_session": 76194,
+      "exit_code": 0,
+      "failed": 0,
+      "log": "/tmp/ipse-docx-v15-native-annotations-staged-20261102.log",
+      "log_sha256": "09a6dc93092bd9ac83debc38d3ca290dd46d1eb2c8af50fefdd555f61ad3c2ff",
+      "passed": 2,
+      "seconds": 20.5,
+      "seed": 791791
+    },
+    {
+      "exec_session": 17991,
+      "exit_code": 0,
+      "failed": 0,
+      "frozen_public_fixture_enabled": true,
+      "log": "/tmp/ipse-docx-v15-native-regressions-20261102.log",
+      "log_sha256": "68f603d1381dbd43b91519940d601eec9dabc4221d273974f58579dacde4ed05",
+      "passed": 32,
+      "seconds": 128.5,
+      "seed": 791793
+    }
+  ],
+  "status": "source_and_native_component_verified_package_pending",
+  "pure_runs": [
+    {
+      "log": "/tmp/ipse-docx-annotation-before-20261102.log",
+      "log_sha256": "2d116edb2ec4c31f7a96e3c8754a24807fdec1de49af6d1e1119266fe22fbc9b",
+      "scope": "old parser red control",
+      "seed": 791776,
+      "summary": [
+        "Finished in 3.4 seconds (0.1s on load, 0.00s async, 3.2s sync)",
+        "Result: 1/3 passed, 25 excluded",
+        "Failed: 2 tests"
+      ],
+      "terminal_exit_code": 2
+    },
+    {
+      "log": "/tmp/ipse-docx-annotation-pure-regressions-20261102.log",
+      "log_sha256": "c612a797f0e0ee3de166c231600a802157722e68701d954417018eed459d3060",
+      "scope": "outdated probe assertion and denied loopback listener",
+      "seed": 791778,
+      "summary": [
+        "Finished in 46.7 seconds (0.1s on load, 0.00s async, 46.6s sync)",
+        "Result: 38/40 passed",
+        "Failed: 2 tests"
+      ],
+      "terminal_exit_code": 2
+    },
+    {
+      "log": "/tmp/ipse-docx-annotation-pure-regressions-permitted-20261102.log",
+      "log_sha256": "8e7bfaae36103f0e1994e3a9759d097b6b525b42c4be030d01f67d6736895d57",
+      "scope": "permitted intermediate pure candidate",
+      "seed": 791779,
+      "summary": [
+        "Finished in 46.2 seconds (0.1s on load, 0.00s async, 46.0s sync)",
+        "Result: 40 passed"
+      ],
+      "terminal_exit_code": 0
+    },
+    {
+      "log": "/tmp/ipse-docx-v15-manual-command-20261102.log",
+      "log_sha256": "dc81fd1d2af454e6d221683cd1180898517f6b21944195aa22d33137a70ca279",
+      "scope": "intermediate candidate before source roundtrip",
+      "seed": 791782,
+      "summary": [
+        "Finished in 48.0 seconds (0.1s on load, 0.00s async, 47.8s sync)",
+        "Result: 41 passed"
+      ],
+      "terminal_exit_code": 0
+    },
+    {
+      "log": "/tmp/ipse-docx-v15-source-citation-final-20261102.log",
+      "log_sha256": "90f7079605e2af78aee2e0a29ca46ad80cc5243f1ee60cf3bea6e43fe46aea52",
+      "scope": "missing child SDK path and invalid source fixture",
+      "seed": 791783,
+      "summary": [
+        "Finished in 64.8 seconds (0.1s on load, 0.00s async, 64.7s sync)",
+        "Result: 13/41 passed",
+        "Failed: 28 tests"
+      ],
+      "terminal_exit_code": 2
+    },
+    {
+      "log": "/tmp/ipse-docx-v15-source-citation-sdk-path-20261102.log",
+      "log_sha256": "d99961c06f2c7cedf2c52df8533fc02ed62b2792542ddcb36b7bacd3bd33daea",
+      "scope": "invalid source fixture after SDK path repair",
+      "seed": 791784,
+      "summary": [
+        "Finished in 7.0 seconds (0.1s on load, 0.00s async, 6.9s sync)",
+        "Result: 3/4 passed, 25 excluded",
+        "Failed: 1 test"
+      ],
+      "terminal_exit_code": 2
+    },
+    {
+      "log": "/tmp/ipse-docx-v15-current-final-pure-20261102.log",
+      "log_sha256": "fcd91d7d198b802c29be31004633438cf178a558ba37d8f9486bdfd5d532ad7a",
+      "scope": "same invalid source fixture; 40/41 passed",
+      "seed": 791785,
+      "summary": [
+        "Finished in 64.9 seconds (0.1s on load, 0.00s async, 64.8s sync)",
+        "Result: 40/41 passed",
+        "Failed: 1 test"
+      ],
+      "terminal_exit_code": 2
+    },
+    {
+      "log": "/tmp/ipse-docx-v15-source-citation-shape-20261102.log",
+      "log_sha256": "25488527f54c9603fa17cbf03b38f79f5461b1da3232ac0022602817553e88c3",
+      "scope": "four targeted cases after fixture shape repair",
+      "seed": 791786,
+      "summary": [
+        "Finished in 7.0 seconds (0.1s on load, 0.00s async, 6.9s sync)",
+        "Result: 4 passed, 25 excluded"
+      ],
+      "terminal_exit_code": 0
+    },
+    {
+      "log": "/tmp/ipse-docx-v15-source-citation-shape-full-20261102.log",
+      "log_sha256": "ee0fc778479713d085655192ac73e215b746dfd7810a7aa527d7393ba30f092c",
+      "scope": "41 passed after fixture repair",
+      "seed": 791787,
+      "summary": [
+        "Finished in 65.1 seconds (0.1s on load, 0.00s async, 65.0s sync)",
+        "Result: 41 passed"
+      ],
+      "terminal_exit_code": 0
+    },
+    {
+      "log": "/tmp/ipse-docx-v15-final-formatted-pure-20261102.log",
+      "log_sha256": "8f6a054563e012611bf822f0ae87e437bc840d3bb03703d41bae0eb642006145",
+      "scope": "41 passed on formatted candidate",
+      "seed": 791788,
+      "summary": [
+        "Finished in 64.6 seconds (0.1s on load, 0.00s async, 64.5s sync)",
+        "Result: 41 passed"
+      ],
+      "terminal_exit_code": 0
+    },
+    {
+      "log": "/tmp/ipse-docx-v15-evidence-chunking-20261102.log",
+      "log_sha256": "69775244df43ecedbd8bc96eb844788259160cf9eeba2157311d2bf4e1fa8f54",
+      "scope": "32 separate evidence/chunking tests passed",
+      "seed": 791789,
+      "summary": [
+        "Finished in 30.1 seconds (0.1s on load, 0.00s async, 30.0s sync)",
+        "Result: 32 passed"
+      ],
+      "terminal_exit_code": 0
+    }
+  ],
+  "native_session_controls_run": true,
+  "source_base": "bd222bf7f14780d01d283ca7058d94ae233bafe2",
+  "date": "2026-11-02",
+  "verifier_regressions": {
+    "exec_session": 47286,
+    "exit_code": 0,
+    "log": "/tmp/ipse-docx-v15-verification-regressions-20261102.log",
+    "log_sha256": "ca768b8816c020a3b160a0ad34b6000b2d66048645b84f89f4bf5c9bf664510f",
+    "passed": 35,
+    "seconds": 80.8,
+    "seed": 791796
+  },
+  "native_helper_sha256": "5487c57a84b99be7b5b4381d097b637d3c45350b92b492d1786712f2bfbf8c7a",
+  "complete_baseline": {
+    "contains_this_increment": false,
+    "failed": 0,
+    "passed": 3753,
+    "receipt": "full-suite-cancel-repair-20261102.json",
+    "source": "9f1707cb33a7d9619c7a632dac83ae4ce313bc85"
+  },
+  "sdk_beam_sha256": {
+    "_build/dev/lib/ipse/ebin/Elixir.Ipse.Extension.beam": "af7909af9b7c484a2a760a2525d50ee2f7a9ad9d36e72e4959daa92be5f2cf30",
+    "_build/dev/lib/ipse/ebin/Elixir.Ipse.Usage.beam": "7a679525253a8a10b39c5d5445d4ff55b1b4b9d4a1b6ec40caaf415d2b18b500"
+  },
+  "native_session_tag": "docx_annotation_session",
+  "builds": {
+    "default": {
+      "exec_session": 45968,
+      "exit_code": 0,
+      "log": "/tmp/ipse-docx-v15-current-build-20261102.log",
+      "log_sha256": "73c9bec3069b99fbdb148e4328d803587e52f1848cc8bfe77f65ebbed6633fb2",
+      "source_base": "82fcdf82dec2139c2657379a55e2f62463c96e07"
+    },
+    "parser_enabled": {
+      "exec_session": 87348,
+      "exit_code": 0,
+      "log": "/tmp/ipse-docx-v15-parser-enabled-build-20261102.log",
+      "log_sha256": "bd3ff8352cee3c09fe1207dc66cdc96c5449e6beaf55ccf28c1f0f0a99debaf7",
+      "source_base": "8c1b50afbc0e858b6575ad9157b3da48bdf4e1fe"
+    }
+  },
+  "final_fidelity_rerun": {
+    "exec_session": 4813,
+    "exit_code": 0,
+    "log": "/tmp/ipse-docx-v15-final-sdk-path-fidelity-20261102.log",
+    "log_sha256": "5229b39ae3c5691abc07a3bc373669239cc0695f1a8fb87bb8d49bd9353c58ab",
+    "passed": 29,
+    "scope": "Final child SDK path-order correction; separate rerun, not independent sample count",
+    "seconds": 50.0,
+    "seed": 791794
+  },
+  "demos": [
+    {
+      "cause": "relative subprocess executable returned enoent before startup",
+      "exit_code": 1,
+      "log": "/tmp/ipse-docx-v15-demo-20261102.log",
+      "log_sha256": "d6f814dbd596c825fe0e7301e34b11515e7f1bceafc8936e0c5451e23ab21f78"
+    },
+    {
+      "exit_code": 0,
+      "host": "default PDF-free source build",
+      "log": "/tmp/ipse-docx-v15-demo-absolute-20261102.log",
+      "log_sha256": "0f024ca2702b8c0b40936e0b56f9b34c93720f546826064c3f79ab903f905479"
+    },
+    {
+      "exit_code": 0,
+      "host": "parser-enabled source build",
+      "log": "/tmp/ipse-docx-v15-parser-enabled-demo-20261102.log",
+      "log_sha256": "a7baecedaf97c0565cc270cdc844df2ede5b24a69bd9798e58755c3b6bfb9c57"
+    }
+  ],
+  "final_precommit_revision": "8c1b50afbc0e858b6575ad9157b3da48bdf4e1fe",
+  "format_check": {
+    "command": "mix format --check-formatted",
+    "exit_code": 0
+  },
+  "version": 2,
+  "independent_source_host_variant": "separate existing-parser-enabled build; no default PDF acquisition",
+  "source_native_host_variant": "default PDF-free source build, current extension sources",
+  "source_sha256": {
+    "dev/verification/documents.exs": "81c668c81edd4a38230321f176ed97db985f74261a8b19eef0f650c7f5ceb6db",
+    "dev/verification/scenarios.exs": "6c76c48c46b60e2b9ad6fae58141c7db15246a467826b0a5b48af33c626a4d5e",
+    "extensions/knowledge/src/documents.ex": "a9ccbe8fc30e9c539eb946e50739d38878753df4add6420c945f7c264d3c3bc8",
+    "extensions/knowledge/src/documents/docx.ex": "a278d9f13d5e0a8b00b343a4f352d4a1f49cca6fbd80bc0ef4750051ac25a197",
+    "extensions/knowledge/src/evidence.ex": "f2ee54dbfc70f713281fa39579143006c8ddcd3be72f622a453e5c00b2070b77",
+    "test/dev/verification_test.exs": "1015c5d5ee977849f696b64a537804069b9c044f627fbbdd965e9378566fff6f",
+    "test/extensions/knowledge/document_acquisition_session_test.exs": "a6123c31781579b3c8920eeeb15e8c383e54859ae590a27b61e23e140ecebda8",
+    "test/extensions/knowledge/document_paragraph_packing_test.exs": "3541511c1a618299849bac7e428999acd10e7f6b9d75ee5f17c6442ab06be081",
+    "test/extensions/knowledge/documents_fidelity_test.exs": "9e656d50256418ac79a28a99fd4047bc19eb96e6006edbbdaf21db7b8870e6e1",
+    "test/extensions/knowledge/documents_test.exs": "ff52f183d9684af4852ade8855d7854cfc3c3cac50ab99f44118d1fe2c786a4d",
+    "test/support/docx_artifact_probe.exs": "c587e429d1c39894d5a839ba6998b8f15e0ad809a4ec70f1e8430b9b9df4e466"
+  },
+  "milestone_qualification": false,
+  "whole_manual_review": [
+    "docs/developer/knowledge-extensions.md",
+    "docs/operator/corpus.md",
+    "docs/developer/testing.md",
+    "docs/operator/recovery.md"
+  ],
+  "isolated_compile": {
+    "exit_code": 0,
+    "log": "/tmp/ipse-docx-v15-final-compile-20261102.log",
+    "log_sha256": "85cdddaff674d95feb37c0e77bd412c34992c8ff77679b403874086487fb723c",
+    "output": "/tmp/ipse-docx-v15-final-compile-20261102",
+    "warnings_as_errors": true
+  },
+  "native_session_cases_added": 2,
+  "post_run_parser_enabled_sdk_sha256": {
+    "_build/dev/lib/ipse/ebin/Elixir.Ipse.DocumentParser.beam": "2e588d84eb7a296b69967e1514e7db0afbb71f4475f7fa546017b28c06269797",
+    "_build/dev/lib/ipse/ebin/Elixir.Ipse.Extension.beam": "553cd7a45545b1791151a07f8881accb38c70a9f756d9a665c449903d13f7ca3",
+    "_build/dev/lib/ipse/ebin/Elixir.Ipse.Usage.beam": "92b433a208b4b3cc137f5baaf73c5e34e641c4316e7dc5c4fa5852c4615054d5"
+  },
+  "strict_mix_compile": {
+    "command": "mix compile --warnings-as-errors",
+    "exit_code": 0
+  }
+}

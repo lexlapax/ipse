@@ -689,7 +689,7 @@ defmodule Ipse.KnowledgeDocumentAcquisitionSessionTest do
     [hit] = result["evidence"]
     citation = hit["citation"]
     assert citation["document"]["original_sha256"] == JSON.sha256(bytes)
-    assert citation["document"]["extraction_version"] == "ipse-documents-v14"
+    assert citation["document"]["extraction_version"] == "ipse-documents-v15"
 
     assert citation["quote"] ==
              binary_part(
@@ -767,7 +767,7 @@ defmodule Ipse.KnowledgeDocumentAcquisitionSessionTest do
       citation = hit["citation"]
       assert citation["quote"] =~ "orbitalneedle"
       assert citation["document"]["original_sha256"] == JSON.sha256(bytes)
-      assert citation["document"]["extraction_version"] == "ipse-documents-v14"
+      assert citation["document"]["extraction_version"] == "ipse-documents-v15"
 
       if citation["document"]["version"] == 2 do
         assert Enum.any?(citation["document"]["spans"], fn
@@ -790,6 +790,138 @@ defmodule Ipse.KnowledgeDocumentAcquisitionSessionTest do
         DynamicSupervisor.start_child(Ipse.Sessions, {Session, Keyword.put(run.opts, :id, id)})
 
       assert query_blocks.(%{run | pid: resumed})["evidence"] == result["evidence"]
+      assert :ok = Session.close_confirmed(resumed)
+    end
+  end
+
+  for preset <- ~w(state-documents collection-documents) do
+    @tag :docx_annotation_session
+    @tag annotation_preset: preset
+    test "linked Word annotations retain complete coverage and cited locations (#{preset})", c do
+      run = open(c, c.annotation_preset)
+      word = "http://schemas.openxmlformats.org/wordprocessingml/2006/main"
+      relations = "http://schemas.openxmlformats.org/package/2006/relationships"
+      prefix = "http://schemas.openxmlformats.org/officeDocument/2006/relationships/"
+
+      annotations = [
+        {"footnotes", "footnote", "7", "footnoteneedle α"},
+        {"endnotes", "endnote", "8", "endnoteneedle β"},
+        {"comments", "comment", "9", "commentneedle γ"}
+      ]
+
+      body =
+        "<w:p><w:r><w:t>café </w:t></w:r><w:commentRangeStart w:id=\"9\"/>" <>
+          "<w:r><w:t>chosen</w:t></w:r><w:commentRangeEnd w:id=\"9\"/>" <>
+          "<w:r><w:footnoteReference w:id=\"7\"/><w:endnoteReference w:id=\"8\"/>" <>
+          "<w:commentReference w:id=\"9\"/></w:r></w:p>"
+
+      {:ok, entries} = :zip.extract(document_body(body, []), [:memory])
+
+      entries =
+        Enum.map(entries, fn
+          {~c"[Content_Types].xml", types} ->
+            additions =
+              Enum.map_join(annotations, fn {part, _, _, _} ->
+                "<Override PartName=\"/word/#{part}.xml\" ContentType=\"application/vnd.openxmlformats-officedocument.wordprocessingml.#{part}+xml\"/>"
+              end)
+
+            {~c"[Content_Types].xml", String.replace(types, "</Types>", additions <> "</Types>")}
+
+          entry ->
+            entry
+        end)
+
+      links =
+        Enum.map_join(annotations, fn {part, _, _, _} ->
+          "<Relationship Id=\"#{part}\" Type=\"#{prefix}#{part}\" Target=\"#{part}.xml\"/>"
+        end)
+
+      parts =
+        Enum.map(annotations, fn {part, item, id, text} ->
+          {String.to_charlist("word/#{part}.xml"),
+           "<w:#{part} xmlns:w=\"#{word}\"><w:#{item} w:id=\"#{id}\"><w:p><w:r><w:t>#{text}</w:t></w:r></w:p></w:#{item}></w:#{part}>"}
+        end)
+
+      {:ok, {_, bytes}} =
+        :zip.create(
+          ~c"annotations.docx",
+          entries ++
+            [
+              {~c"word/_rels/document.xml.rels",
+               "<Relationships xmlns=\"#{relations}\">#{links}</Relationships>"}
+            ] ++ parts,
+          [:memory]
+        )
+
+      File.write!(Path.join(run.cwd, "source.docx"), bytes)
+      opened = invoke(run, "source", args())
+      stored = if opened["status"] == "draft", do: finish_staging(run, opened), else: opened
+      assert stored["status"] == "ok", inspect(stored)
+
+      query_annotation = fn selected, text ->
+        if c.annotation_preset == "collection-documents" do
+          invoke(selected, "query_selected", %{
+            "store" => "notes",
+            "retrieval" => "words",
+            "query" => text,
+            "top_k" => 1,
+            "as_of_ms" => 20,
+            "source_ids" => ["workspace:source"]
+          })
+        else
+          query(selected, text)
+        end
+      end
+
+      evidence =
+        for {part, _, annotation_id, text} <- annotations do
+          result = query_annotation.(run, text)
+          assert result["status"] == "ok", inspect(result)
+          [hit] = result["evidence"]
+          citation = hit["citation"]
+          assert citation["quote"] == text
+          assert citation["document"]["status"] == "complete"
+          assert citation["document"]["extraction_version"] == "ipse-documents-v15"
+          assert citation["document"]["original_sha256"] == JSON.sha256(bytes)
+          locator = citation["document"]["locator"]
+          assert locator["part"] == "word/#{part}.xml"
+          assert locator["annotation_id"] == annotation_id
+
+          assert locator["reference_site"] == %{
+                   "kind" => "paragraph",
+                   "part" => "word/document.xml",
+                   "paragraph" => 1,
+                   "byte_offset" => 12
+                 }
+
+          if part == "comments" do
+            assert locator["reference_range"] == %{
+                     "kind" => "paragraph",
+                     "part" => "word/document.xml",
+                     "paragraph" => 1,
+                     "start_byte" => 6,
+                     "end_byte" => 12
+                   }
+          else
+            refute Map.has_key?(locator, "reference_range")
+          end
+
+          result["evidence"]
+        end
+
+      id = Session.info(run.pid).id
+      assert {:ok, events} = Journal.load(run.dir, id)
+      refute Enum.any?(events, &(&1["type"] == "request_admitted"))
+      assert {:ok, _} = Session.Saved.restore(events, id)
+      assert :ok = Session.close_confirmed(run.pid)
+
+      {:ok, resumed} =
+        DynamicSupervisor.start_child(Ipse.Sessions, {Session, Keyword.put(run.opts, :id, id)})
+
+      for {{_, _, _, text}, expected} <- Enum.zip(annotations, evidence) do
+        assert query_annotation.(%{run | pid: resumed}, text)["evidence"] == expected
+      end
+
       assert :ok = Session.close_confirmed(resumed)
     end
   end
@@ -865,7 +997,7 @@ defmodule Ipse.KnowledgeDocumentAcquisitionSessionTest do
       citation = hit["citation"]
       assert citation["quote"] == text
       assert citation["document"]["original_sha256"] == JSON.sha256(bytes)
-      assert citation["document"]["extraction_version"] == "ipse-documents-v14"
+      assert citation["document"]["extraction_version"] == "ipse-documents-v15"
 
       assert citation["document"]["locator"] == %{
                "kind" => "table_cell",

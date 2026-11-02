@@ -3,10 +3,17 @@ defmodule Ipse.KnowledgeDocumentsFidelityTest do
   @root Path.expand("../../..", __DIR__)
 
   defp pure(body) do
-    files = ~w(documents/zip documents/docx documents/parser_stage documents/pdf documents)
+    files =
+      ~w(evidence documents/zip documents/docx documents/parser_stage documents/pdf documents)
 
     arguments =
       Enum.flat_map(files, &["-r", Path.join(@root, "extensions/knowledge/src/#{&1}.ex")])
+
+    paths =
+      :code.get_path()
+      |> Enum.reject(&(&1 == ~c"."))
+      |> Enum.reverse()
+      |> Enum.flat_map(&["-pa", to_string(&1)])
 
     bootstrap = ~S'''
     import ExUnit.Assertions
@@ -38,7 +45,9 @@ defmodule Ipse.KnowledgeDocumentsFidelityTest do
     '''
 
     {output, status} =
-      System.cmd(System.find_executable("elixir"), arguments ++ ["-e", bootstrap <> body],
+      System.cmd(
+        System.find_executable("elixir"),
+        paths ++ arguments ++ ["-e", bootstrap <> body],
         stderr_to_stdout: true
       )
 
@@ -94,7 +103,7 @@ defmodule Ipse.KnowledgeDocumentsFidelityTest do
       assert result["status"]=="complete" and result["warnings"]==[]
       assert result["revision_policy"]=="insertions_included_deletions_excluded"
       assert result["visibility_policy"]=="bounded_style_and_direct_hidden_excluded"
-      assert result["extraction_version"]=="ipse-documents-v14"
+      assert result["extraction_version"]=="ipse-documents-v15"
     end
     for value <- ["false","0","off"] do
       {:ok,result}=D.extract(doc.("<w:p><w:r><w:rPr><w:vanish w:val=\"#{value}\"/></w:rPr><w:t>visible</w:t></w:r></w:p>"),"a.docx")
@@ -258,7 +267,7 @@ defmodule Ipse.KnowledgeDocumentsFidelityTest do
     assert Map.take(first["locator"],~w(kind table row cell))==%{"kind"=>"table_cell","table"=>1,"row"=>1,"cell"=>1}
     assert Map.take(second["locator"],~w(kind table row cell))==%{"kind"=>"table_cell","table"=>2,"row"=>1,"cell"=>1}
     assert result["status"]=="complete" and result["warnings"]==[]
-    assert result["extraction_version"]=="ipse-documents-v14"
+    assert result["extraction_version"]=="ipse-documents-v15"
     ''')
   end
 
@@ -484,6 +493,96 @@ defmodule Ipse.KnowledgeDocumentsFidelityTest do
     ''')
   end
 
+  @tag :annotation_completeness
+  test "fully linked footnote and endnote paragraphs resolve their annotation coverage" do
+    pure(~S'''
+    for {part,item,ref} <- [{"footnotes","footnote","footnoteReference"},{"endnotes","endnote","endnoteReference"}] do
+      body="<w:p>"<>run.("café")<>"<w:r><w:#{ref} w:id=\"7\"/></w:r>"<>run.(" end")<>"</w:p>"
+      annotation="<w:#{part} xmlns:w=\"#{word}\"><w:#{item} w:id=\"+07\"><w:p>"<>run.("first α")<>"</w:p><w:p>"<>run.("second β")<>"</w:p></w:#{item}></w:#{part}>"
+      {:ok,result}=D.extract(zip.([{"word/document.xml",xml.(body)},{"word/#{part}.xml",annotation}]),"resolved.docx")
+      assert result["status"]=="complete" and result["warnings"]==[]
+      assert Enum.map(result["segments"],& &1["text"])==["café end","first α","second β"]
+      for segment <- tl(result["segments"]) do
+        assert segment["locator"]["reference_site"]["byte_offset"]==5
+        assert segment["locator"]["annotation_id"]=="+07"
+      end
+      alias IpseKnowledge.Evidence, as: E
+      {:ok,payload}=D.source_payload(result)
+      assert E.valid_document?(payload["document"],payload["text"])
+      receipt=E.document_storage_receipt!(payload["document"])
+      assert receipt["version"]==3
+      attrs=%{"source_id"=>"annotation:"<>part,"partition"=>"notes","generation"=>1,
+        "title"=>"Linked notes","text"=>payload["text"],
+        "uri"=>"provided:resolved.docx","observed_at_ms"=>10,"event_at_ms"=>nil,"expires_at_ms"=>nil,
+        "origin"=>%{"kind"=>"provided","store_profile"=>"notes","partition_or_scope"=>"notes",
+          "receipt"=>receipt,"historical"=>false}}
+      assert {:error,:invalid_source}=E.source(Map.put(attrs,"document",payload["document"]))
+      {:ok,source}=E.source(attrs)
+      {:ok,chunks}=E.chunks(source)
+      quote="first α"
+      {start,count}=:binary.match(payload["text"],quote)
+      chunk=Enum.find(chunks,&(start >= &1["start_byte"] and start+count <= &1["end_byte"]))
+      {:ok,citation}=E.citation(source,chunk,start,start+count)
+      assert citation["document"]["extraction_version"]=="ipse-documents-v15"
+      assert citation["document"]["locator"]["reference_site"]["byte_offset"]==5
+      assert E.valid_span?(source,citation)
+      refute E.valid_span?(source,put_in(citation,["document","locator","reference_site","byte_offset"],4))
+    end
+    ''')
+  end
+
+  @tag :annotation_completeness
+  test "fully linked point and same-paragraph range comments resolve annotation coverage" do
+    pure(~S'''
+    note="<w:comments xmlns:w=\"#{word}\"><w:comment w:id=\"7\"><w:p>"<>run.("review")<>"</w:p></w:comment></w:comments>"
+    reference="<w:r><w:commentReference w:id=\"07\"/></w:r>"
+    for range <- [false,true] do
+      start=if range, do: "<w:commentRangeStart w:id=\"+7\"/>", else: ""
+      finish=if range, do: "<w:commentRangeEnd w:id=\"7\"/>", else: ""
+      body="<w:p>"<>run.("α")<>start<>run.("café")<>finish<>reference<>"</w:p>"
+      {:ok,result}=D.extract(zip.([{"word/document.xml",xml.(body)},{"word/comments.xml",note}]),"comments.docx")
+      assert result["status"]=="complete" and result["warnings"]==[]
+      locator=List.last(result["segments"])["locator"]
+      assert locator["reference_site"]["byte_offset"]==7
+      if range, do: assert(locator["reference_range"]["start_byte"]==2 and locator["reference_range"]["end_byte"]==7)
+    end
+    ''')
+  end
+
+  @tag :annotation_completeness
+  test "annotation completeness requires every body reference and every annotation identity" do
+    pure(~S'''
+    reference=fn id -> "<w:r><w:footnoteReference w:id=\"#{id}\"/></w:r>" end
+    note=fn id,text -> "<w:footnote w:id=\"#{id}\"><w:p>"<>run.(text)<>"</w:p></w:footnote>" end
+    for {refs,notes} <- [
+      {reference.("7"),note.("7","linked")<>note.("8","orphan")},
+      {reference.("7")<>reference.("8"),note.("7","linked")},
+      {reference.("7")<>reference.("+07"),note.("7","ambiguous")},
+      {reference.("7"),note.("7","")},
+      {"<w:r><w:rPr><w:vanish/></w:rPr><w:footnoteReference w:id=\"7\"/></w:r>",note.("7","hidden anchor")}
+    ] do
+      body="<w:p>"<>run.("body")<>refs<>"</w:p>"
+      annotation="<w:footnotes xmlns:w=\"#{word}\">"<>notes<>"</w:footnotes>"
+      {:ok,result}=D.extract(zip.([{"word/document.xml",xml.(body)},{"word/footnotes.xml",annotation}]),"incomplete.docx")
+      assert result["status"]=="partial"
+      assert "annotation_anchors_unresolved" in codes.(result)
+    end
+    ''')
+  end
+
+  @tag :annotation_completeness
+  test "resolved annotation anchors do not hide unsupported annotation rendering" do
+    pure(~S'''
+    body="<w:p>"<>run.("body")<>"<w:r><w:footnoteReference w:id=\"7\"/></w:r></w:p>"
+    notes="<w:footnotes xmlns:w=\"#{word}\"><w:footnote w:id=\"7\"><w:p><w:r><w:footnoteRef/></w:r>"<>run.("note")<>"</w:p></w:footnote></w:footnotes>"
+    {:ok,result}=D.extract(zip.([{"word/document.xml",xml.(body)},{"word/footnotes.xml",notes}]),"numbered-note.docx")
+    assert result["status"]=="partial"
+    assert "unsupported_word_content" in codes.(result)
+    assert Enum.at(result["segments"],1)["locator"]["reference_site"]["byte_offset"]==4
+    refute "annotation_anchors_unresolved" in codes.(result)
+    ''')
+  end
+
   test "visible body annotation references carry a point in extracted text" do
     pure(~S'''
     make_note=fn id,text -> "<w:footnote w:id=\"#{id}\"><w:p>"<>run.(text)<>"</w:p></w:footnote>" end
@@ -530,7 +629,7 @@ defmodule Ipse.KnowledgeDocumentsFidelityTest do
       result
     end
     result=extract.("<w:p>"<>run.("α")<>start<>run.("café")<>finish<>ref<>run.("!")<>"</w:p>")
-    assert result["status"]=="partial"
+    assert result["status"]=="complete" and result["warnings"]==[]
     [body,note]=result["segments"]
     assert body["text"]=="αcafé!"
     assert note["locator"]["reference_range"]==%{"part"=>"word/document.xml","kind"=>"paragraph","paragraph"=>1,"start_byte"=>2,"end_byte"=>7}
@@ -543,7 +642,9 @@ defmodule Ipse.KnowledgeDocumentsFidelityTest do
       "<w:p><w:del>"<>start<>"</w:del>"<>start<>run.("a")<>finish<>ref<>"</w:p>",
       "<w:p>"<>start<>run.("a")<>finish<>ref<>ref<>"</w:p>"
     ] do
-      note=extract.(body)["segments"] |> List.last()
+      result=extract.(body)
+      assert result["status"]=="partial"
+      note=result["segments"] |> List.last()
       refute Map.has_key?(note["locator"],"reference_range")
     end
     table="<w:tbl><w:tr><w:tc><w:p>"<>run.("α")<>start<>run.("β")<>finish<>ref<>"</w:p></w:tc></w:tr></w:tbl>"

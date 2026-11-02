@@ -28,7 +28,7 @@ defmodule IpseKnowledge.Documents do
   def version, do: "ipse-documents-v2"
 
   @doc "Return the immutable extraction recipe selected for a result format."
-  def version("docx"), do: "ipse-documents-v14"
+  def version("docx"), do: "ipse-documents-v15"
   def version(format) when format in ~w(text markdown pdf), do: version()
 
   @doc "Project an extracted DOCX into the bounded explicit source-put contract."
@@ -43,9 +43,10 @@ defmodule IpseKnowledge.Documents do
     chunk_bytes = if chunking == 2, do: 4096, else: 2048
 
     segments =
-      if length(segments) > 32 and document["extraction_version"] == version("docx"),
-        do: pack_blocks(segments, chunk_bytes),
-        else: segments
+      if length(segments) > 32 and
+           document["extraction_version"] in ["ipse-documents-v14", version("docx")],
+         do: pack_blocks(segments, chunk_bytes),
+         else: segments
 
     if length(segments) > 32 do
       {:error, :document_source_limit}

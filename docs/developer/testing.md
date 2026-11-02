@@ -566,6 +566,7 @@ retain runtime/evidence to reopen exact files. Retention authorizes no retry.
 | `knowledge-recovery`, `knowledge-graph-lifecycle` | Graph state-model |
 | `knowledge-corpus-lifecycle`, `knowledge-selection` | Corpus state-dense |
 | `knowledge-mcp`, `knowledge-research` | Corpus mcp-lexical / Research mcp |
+| `documents` | Corpus artifact; matching parser-enabled source host or standard archive; default selection |
 | `model-service` | Compiled model-service Rust probe and fresh evidence output |
 | `measured-knowledge`, `measured-authority` | Seven-artifact map, clean repository, fresh output, optional Linux backend |
 

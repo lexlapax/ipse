@@ -336,10 +336,10 @@ defmodule Ipse.Development.Verification.Scenarios do
 
     all_true!(
       report["checks"],
-      ~w(artifact_modules text_unicode docx_revision docx_matching_style_effects docx_block_packing pdf_default_off pdf_explicit_extraction dependency_notices)
+      ~w(artifact_modules text_unicode docx_revision docx_matching_style_effects docx_block_packing docx_annotation_links pdf_default_off pdf_explicit_extraction dependency_notices)
     )
 
-    checks!(report, 8)
+    checks!(report, 9)
   end
 
   def validate!(%{name: "model"}, report, selection) do

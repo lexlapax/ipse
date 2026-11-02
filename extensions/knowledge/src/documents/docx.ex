@@ -90,12 +90,14 @@ defmodule IpseKnowledge.Documents.Docx do
 
     styles = Map.get(style_graphs, "word/styles.xml", IpseKnowledge.Documents.Docx.Styles.empty())
 
-    {segments, warnings, expanded, text, refs, references, ranges, ranges_unsafe} =
+    {segments, warnings, expanded, text, refs, references, ranges, ranges_unsafe, annotations} =
       Enum.reduce(
         selected,
         {[], [], authority_bytes + style_bytes + relationship_bytes, 0, MapSet.new(), %{}, %{},
-         false},
-        fn entry, {segments, warnings, expanded, text, refs, references, ranges, ranges_unsafe} ->
+         false, %{}},
+        fn entry,
+           {segments, warnings, expanded, text, refs, references, ranges, ranges_unsafe,
+            annotations} ->
           xml = Zip.read(bytes, entry, limits.max_expanded_bytes - expanded)
           state = parse(xml, entry.name, limits, length(segments), text, styles)
 
@@ -109,7 +111,7 @@ defmodule IpseKnowledge.Documents.Docx do
 
           {segments ++ Enum.reverse(state.segments), warnings ++ state.warnings,
            expanded + byte_size(xml), state.text_bytes, MapSet.union(refs, state.section_refs),
-           references, ranges, ranges_unsafe}
+           references, ranges, ranges_unsafe, Map.put(annotations, entry.name, state.note_ids)}
         end
       )
 
@@ -163,14 +165,7 @@ defmodule IpseKnowledge.Documents.Docx do
           do: %{"code" => "part_not_extracted", "part" => name}
 
     annotation_warnings =
-      for entry <- selected,
-          entry.name in tl(@parts),
-          do: %{"code" => "annotation_anchors_unresolved", "part" => entry.name}
-
-    reference_warnings =
-      if map_size(references) > 0 or map_size(ranges) > 0 or ranges_unsafe,
-        do: [%{"code" => "annotation_anchors_unresolved", "part" => "word/document.xml"}],
-        else: []
+      annotation_warnings(segments, annotations, references, ranges, ranges_unsafe)
 
     relationship_warnings =
       Enum.flat_map(
@@ -202,7 +197,7 @@ defmodule IpseKnowledge.Documents.Docx do
       Enum.uniq(
         warnings ++
           omissions ++
-          annotation_warnings ++ reference_warnings ++ relationship_warnings ++ unexamined
+          annotation_warnings ++ relationship_warnings ++ unexamined
       )
 
     {:ok,
@@ -214,6 +209,46 @@ defmodule IpseKnowledge.Documents.Docx do
        "segments" => segments,
        "warnings" => warnings
      }}
+  end
+
+  defp annotation_warnings(segments, annotations, references, ranges, ranges_unsafe) do
+    grouped =
+      segments
+      |> Enum.filter(&Map.has_key?(&1["locator"], "annotation_id"))
+      |> Enum.group_by(fn %{"locator" => locator} ->
+        {locator["part"], numeric_annotation_id!(locator["annotation_id"])}
+      end)
+
+    resolved =
+      for {key, paragraphs} <- grouped,
+          {part, id} = key,
+          MapSet.member?(Map.get(annotations, part, MapSet.new()), id),
+          is_map(references[key]),
+          Enum.all?(paragraphs, fn %{"locator" => locator} ->
+            is_map(locator["reference_site"]) and
+              (part != "word/comments.xml" or not Map.has_key?(ranges, id) or
+                 is_map(locator["reference_range"]))
+          end),
+          into: MapSet.new(),
+          do: key
+
+    parts =
+      for part <- tl(@parts),
+          Enum.any?(
+            Map.get(annotations, part, MapSet.new()),
+            &(not MapSet.member?(resolved, {part, &1}))
+          ),
+          do: %{"code" => "annotation_anchors_unresolved", "part" => part}
+
+    unresolved_body =
+      ranges_unsafe or Enum.any?(references, fn {key, _} -> not MapSet.member?(resolved, key) end) or
+        Enum.any?(ranges, fn {id, _} ->
+          not MapSet.member?(resolved, {"word/comments.xml", id})
+        end)
+
+    if unresolved_body,
+      do: [%{"code" => "annotation_anchors_unresolved", "part" => "word/document.xml"} | parts],
+      else: parts
   end
 
   defp parse(xml, part, limits, count, text, styles, region \\ nil) do

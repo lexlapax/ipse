@@ -87,13 +87,68 @@ defmodule Ipse.Development.Verification.Documents do
 
     {:ok,
      %{
-       "extraction_version" => "ipse-documents-v14",
+       "extraction_version" => "ipse-documents-v15",
        "status" => "complete",
        "segments" => [%{"text" => "visible inserted"}]
      }} = extract.(styled_document.(styles), "styles.docx")
 
     {:error, :unsupported_docx_style_visibility} =
       extract.(styled_document.(String.replace(styles, "Normal", "Other")), "mismatch.docx")
+
+    for {part, item, reference} <- [
+          {"footnotes", "footnote", "footnoteReference"},
+          {"endnotes", "endnote", "endnoteReference"},
+          {"comments", "comment", "commentReference"}
+        ] do
+      annotation =
+        "<w:#{part} xmlns:w=\"http://schemas.openxmlformats.org/wordprocessingml/2006/main\"><w:#{item} w:id=\"+07\"><w:p><w:r><w:t>linked café</w:t></w:r></w:p></w:#{item}></w:#{part}>"
+
+      types =
+        String.replace(
+          content_types,
+          "</Types>",
+          "<Override PartName=\"/word/#{part}.xml\" ContentType=\"application/vnd.openxmlformats-officedocument.wordprocessingml.#{part}+xml\"/></Types>"
+        )
+
+      links =
+        "<Relationships xmlns=\"http://schemas.openxmlformats.org/package/2006/relationships\"><Relationship Id=\"annotation\" Type=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/#{part}\" Target=\"#{part}.xml\"/></Relationships>"
+
+      for linked <- [true, false] do
+        body =
+          if linked,
+            do: String.replace(xml, "</w:p>", "<w:r><w:#{reference} w:id=\"7\"/></w:r></w:p>"),
+            else: xml
+
+        {:ok, {_, bytes}} =
+          :zip.create(
+            ~c"annotations.docx",
+            [
+              {~c"word/document.xml", body},
+              {~c"_rels/.rels", root_relationship},
+              {~c"[Content_Types].xml", types},
+              {~c"word/_rels/document.xml.rels", links},
+              {String.to_charlist("word/#{part}.xml"), annotation}
+            ],
+            [:memory]
+          )
+
+        {:ok, result} = extract.(bytes, "annotations.docx")
+        [_, %{"text" => "linked café", "locator" => locator}] = result["segments"]
+        "+07" = locator["annotation_id"]
+
+        if linked do
+          "complete" = result["status"]
+          [] = result["warnings"]
+
+          %{"byte_offset" => 16, "paragraph" => 1, "part" => "word/document.xml"} =
+            locator["reference_site"]
+        else
+          "partial" = result["status"]
+          false = Map.has_key?(locator, "reference_site")
+          true = Enum.any?(result["warnings"], &(&1["code"] == "annotation_anchors_unresolved"))
+        end
+      end
+    end
 
     evidence = IpseKnowledge.Evidence
 
@@ -190,7 +245,7 @@ defmodule Ipse.Development.Verification.Documents do
       "pdf_resource_backend" => backend,
       "checks" =>
         Map.new(
-          ~w(artifact_modules text_unicode docx_revision docx_matching_style_effects docx_block_packing pdf_default_off pdf_explicit_extraction dependency_notices),
+          ~w(artifact_modules text_unicode docx_revision docx_matching_style_effects docx_block_packing docx_annotation_links pdf_default_off pdf_explicit_extraction dependency_notices),
           &{&1, true}
         )
     }

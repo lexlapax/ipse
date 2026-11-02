@@ -26,6 +26,10 @@ defmodule Ipse.KnowledgeDocumentParagraphPackingTest do
     assert length(payload["document"]["segments"]) <= 32
     assert byte_size(IO.iodata_to_binary(JSON.encode!(payload["document"]))) <= 16384
     assert Evidence.valid_document?(payload["document"], payload["text"])
+    legacy=put_in(document,["extraction_version"],"ipse-documents-v14")
+    {:ok,legacy_payload}=Documents.source_payload(legacy,65536)
+    assert legacy_payload["document"]["extraction_version"]=="ipse-documents-v14"
+    assert Evidence.valid_document?(legacy_payload["document"],legacy_payload["text"])
     receipt = Evidence.document_storage_receipt!(payload["document"])
     assert receipt["version"] == 4
     attrs = %{"source_id" => "packing:unicode", "partition" => "notes", "generation" => 1,
@@ -54,6 +58,14 @@ defmodule Ipse.KnowledgeDocumentParagraphPackingTest do
     assert crossing["document"]["version"] == 2
     assert length(crossing["document"]["spans"]) > 1
     assert Evidence.valid_span?(source, crossing)
+    legacy_attrs=attrs |> Map.put("document",legacy_payload["document"])
+      |> put_in(["origin","receipt"],Evidence.document_storage_receipt!(legacy_payload["document"]))
+    {:ok,legacy_source}=Evidence.source(legacy_attrs)
+    {:ok,[legacy_first|_]}=Evidence.chunks(legacy_source)
+    {:ok,legacy_crossing}=Evidence.citation(legacy_source,legacy_first,0,80)
+    assert legacy_crossing["document"]["extraction_version"]=="ipse-documents-v14"
+    assert Evidence.valid_span?(legacy_source,legacy_crossing)
+    refute Evidence.valid_document?(put_in(payload["document"],["extraction_version"],"ipse-documents-v16"),payload["text"])
     refute Evidence.valid_span?(source, put_in(crossing, ["document", "spans", Access.at(0), Access.at(0)], 2))
     {mixed_start, _} = :binary.match(payload["text"], Enum.at(segments, 16)["text"])
     {:ok, mixed} = Evidence.citation(source, first, mixed_start, mixed_start + 80)

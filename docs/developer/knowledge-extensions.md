@@ -455,8 +455,8 @@ compact receipt version 4, retaining exact manifest hash/byte count, segment and
 warning counts, origin and one immutable manifest-head reference. Storage paging
 does not change the extraction recipe.
 
-For recipe v14, an extraction with more than 32 blocks can pack adjacent plain
-paragraphs and table cells from one part into groups. Each group contains at most
+For recipes v14 and v15, an extraction with more than 32 blocks can pack adjacent
+plain paragraphs and table cells from one part into groups. Each group contains at most
 64 original blocks and fits the selected chunk-byte bound. Its `block_group`
 locator stores compact rows `[paragraph, text_bytes]` or
 `[paragraph, text_bytes, table, row, cell]`. Original paragraph numbers may have
@@ -465,8 +465,8 @@ anchors or header regions, prevent grouping. The complete text keeps the same
 newline joins as an unpacked extraction. Evidence checks row widths, coordinates,
 summed byte counts, UTF-8 boundaries, separators and the complete group hash.
 Groups remain subject to the existing metadata and chunk ceilings; packing does
-not truncate an extraction or increase storage/action allowances. Older recipes
-retain their existing block boundaries and are never repacked on read.
+not truncate an extraction or increase storage/action allowances. Recipes before
+v14 retain their existing block boundaries. Stored sources are never repacked on read.
 
 Follow larger manifests through `document_content` JSON slices of at most 1,024 bytes
 and `document` progress records. At most 16 slices/32 records fit the bound. Each
@@ -493,8 +493,8 @@ the inherited deadline immediately before selecting the pointer. The original
 contract permits a pre-expiry decision to finish physically later; it does not
 make clock sampling and rename atomic. Notes capture uses its own narrowly
 admitted v3 scope; reviewed forgetting has its separate one-use contract.
-Managed document mutations and supersession retain their gates; standalone
-native-note retention uses its separate reviewed route. Never
+Managed document mutations and generic unreviewed supersession retain their gates;
+native-note retention and interactive literal replacement use their reviewed routes. Never
 drop a domain deadline to retry a draft. Explicit collection first clears an expired draft claim while
 preserving the selected source, then reclaims unreferenced pages. MCP uses the
 client deadline gate; this does not claim a remote server publication fence.
@@ -605,7 +605,7 @@ not extracted.
 Footnote, endnote and comment paragraphs carry their annotation ID. The parser
 requires distinct numeric IDs within each part and refuses paragraphs outside
 an annotation. A uniquely matched visible reference in the main body supplies a
-`reference_site` paragraph locator and UTF-8 byte offset; it is a point, not a
+`reference_site` paragraph or table-cell locator and UTF-8 byte offset; it is a point, not a
 comment range. A unique pair of direct paragraph comment-range markers before
 the matching reference also identifies a nonempty span of visible extracted
 text in that same emitted paragraph or table cell, with UTF-8 byte offsets.
@@ -613,9 +613,14 @@ Hidden or unexamined range markers in the main story conservatively suppress
 range links. Multiple visible references leave an annotation unlinked;
 duplicate range markers prevent a range. Unreferenced annotations and
 references in paragraphs with no extracted text have no site.
-Other document stories and ranges spanning paragraphs remain unresolved, so
-annotation parts and references mark coverage partial. An annotation's text
-alone does not establish where it applies in the document.
+Coverage checks every declared annotation identity and every visible body
+reference. Uniquely linked footnote/endnote paragraphs and point or supported
+same-paragraph comments need no unresolved-anchor warning. An orphan, empty
+annotation, missing target, ambiguous reference or unmapped range keeps coverage
+partial. Other document stories and ranges spanning paragraphs remain unresolved.
+Unsupported annotation rendering, including automatically numbered note marks,
+retains its own warning even when the reference site is resolved. An annotation's
+text alone does not establish where it applies in the document.
 
 DOCX relationship targets are never fetched. A checked external relationship,
 an unexamined internal relationship, or an unexamined relationship part marks
@@ -634,10 +639,13 @@ relationship still refuses; this does not implement general Word text effects.
 Both parts count toward the aggregate expanded-byte bound.
 
 Recipes are format-specific: `Documents.version("docx")` is
-`ipse-documents-v14`, while text, Markdown and PDF use `ipse-documents-v2`.
+`ipse-documents-v15`, while text, Markdown and PDF use `ipse-documents-v2`.
 The legacy `version/0` returns the v2 value; use `version/1` when binding an
 extraction to a source version. Earlier DOCX results are not automatically
-migrated or equivalent. Future indexing must explicitly rebuild or requalify them.
+migrated or equivalent. V14 packed receipts and citations retain their original
+recipe and remain readable; v15 uses the same bounded block-map geometry. A
+future recipe cannot inherit that geometry without explicit validation support.
+Future indexing must explicitly rebuild or requalify older extraction results.
 The optional PDF backend requires a separately host-admitted protected parser;
 its installation does not activate PDF acquisition. The
 [parser contract](../../native/ipse-pdf/README.md) describes its lifetime and
@@ -650,13 +658,42 @@ Exercise synthetic DOCX relationships, bounded XML and Unicode extraction from
 the repository root:
 
 ```sh
-ERL_FLAGS='+S 2:2' elixir -e 'ExUnit.start(seed: 20270116); Code.require_file("test/extensions/knowledge/documents_test.exs"); Code.require_file("test/extensions/knowledge/documents_fidelity_test.exs")'
+elixir --erl '+S 2:2' \
+  -pa _build/dev/lib/ipse/ebin -pa _build/dev/lib/jason/ebin \
+  -e 'Application.load(:ipse); ExUnit.start(seed: 791782); Code.require_file("test/extensions/knowledge/documents_fidelity_test.exs"); Code.require_file("test/extensions/knowledge/documents_test.exs"); Code.require_file("test/extensions/knowledge/document_paragraph_packing_test.exs")'
 ```
 
-One fixture opens a loopback listener to verify that an external relationship
-is not fetched. These parser controls do not establish real Word fidelity,
+The artifact control uses the built SDK above without starting the Ipse
+application. One fixture opens a loopback listener to verify that an external
+relationship is not fetched; use a terminal permitted to open that listener.
+These parser controls do not establish real Word fidelity,
 PDF quality or migration; the separate Session controls exercise the bounded
 ingestion path.
+
+To verify an independently built Corpus artifact, use a parser-enabled source
+host because the complete document proof also exercises the optional PDF backend:
+
+```sh
+IPSE_BUILD_PDF=1 ./dev/build.sh
+IPSE_DOCUMENT_CHECK=$(mktemp -d)
+elixir extensions/knowledge/build.exs --sdk _build/dev/lib/ipse/ebin \
+  --output "$IPSE_DOCUMENT_CHECK/corpus" --package corpus --preset state-documents
+elixir dev/verify.exs source documents --sdk _build/dev/lib/ipse/ebin \
+  --input "$IPSE_DOCUMENT_CHECK/corpus"
+```
+
+Require all nine named checks, including linked and orphaned Word annotations,
+revision visibility, packed citations and the explicit/default-off PDF distinction.
+The proof inventories the actual artifact and host before and after execution;
+it does not rebuild an input artifact. These synthetic controls establish no
+independent Word-rendering or retrieval-quality result. After building a matching
+standard archive and setting `IPSE_ARCHIVE` to its exact path, verify the same
+artifact bytes in the installed runtime:
+
+```sh
+elixir dev/verify.exs installed documents --archive "$IPSE_ARCHIVE" \
+  --input "$IPSE_DOCUMENT_CHECK/corpus"
+```
 
 ## Keep source bytes distinct from semantic support
 
@@ -665,7 +702,7 @@ objects. Use Elixir `JSON.encode!/decode!`, not raw Erlang encoding: binary sizi
 and `nil`→null semantics matter to persisted IDs. Sources allow 64 KiB UTF-8,
 with at most 32 chunks. Legacy sources keep their 2048-byte recipe; explicit
 Collection Source3 uses the versioned 4096-byte recipe. Document chunks remain
-inside their typed segments. V14 groups may contain several original blocks and
+inside their typed segments. V14/v15 groups may contain several original blocks and
 their newline joins; separators between groups need not belong to a chunk.
 Citations bind generation/content/chunk,
 absolute byte range, literal quote/hash, URI, times, and origin. Quote bounds are

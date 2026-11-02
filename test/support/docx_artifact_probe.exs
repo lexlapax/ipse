@@ -27,7 +27,7 @@ make = fn body ->
 end
 
 run = fn text -> "<w:r><w:t>#{text}</w:t></w:r>" end
-"ipse-documents-v14" = D.version("docx")
+"ipse-documents-v15" = D.version("docx")
 
 {:error, :unsupported_docx_text_structure} =
   D.extract(
@@ -43,7 +43,7 @@ run = fn text -> "<w:r><w:t>#{text}</w:t></w:r>" end
 
 {:ok,
  %{
-   "extraction_version" => "ipse-documents-v14",
+   "extraction_version" => "ipse-documents-v15",
    "segments" => [%{"text" => "visible"}],
    "status" => "complete"
  }} = D.extract(make.("<w:p>" <> run.("visible") <> "</w:p>"), "test.docx")
@@ -79,7 +79,7 @@ note_types =
     [:memory]
   )
 
-{:ok, %{"status" => "partial", "segments" => [_, %{"locator" => locator}]}} =
+{:ok, %{"status" => "complete", "warnings" => [], "segments" => [_, %{"locator" => locator}]}} =
   D.extract(linked, "linked.docx")
 
 %{"part" => "word/document.xml", "paragraph" => 1, "byte_offset" => 2} =
@@ -112,7 +112,8 @@ comment_links = String.replace(links, "footnotes", "comments")
     [:memory]
   )
 
-{:ok, %{"status" => "partial", "segments" => [_, %{"locator" => range_locator}]}} =
+{:ok,
+ %{"status" => "complete", "warnings" => [], "segments" => [_, %{"locator" => range_locator}]}} =
   D.extract(ranged, "ranged.docx")
 
 %{"part" => "word/document.xml", "paragraph" => 1, "start_byte" => 2, "end_byte" => 6} =

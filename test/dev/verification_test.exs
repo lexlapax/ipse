@@ -42,12 +42,12 @@ defmodule Ipse.Development.VerificationTest do
            )
   end
 
-  test "document verification requires every named safety and packing check" do
+  test "document verification requires every named safety, packing and annotation check" do
     spec = Scenarios.fetch!("documents")
 
     checks =
       Map.new(
-        ~w(artifact_modules text_unicode docx_revision docx_matching_style_effects docx_block_packing pdf_default_off pdf_explicit_extraction dependency_notices),
+        ~w(artifact_modules text_unicode docx_revision docx_matching_style_effects docx_block_packing docx_annotation_links pdf_default_off pdf_explicit_extraction dependency_notices),
         &{&1, true}
       )
 

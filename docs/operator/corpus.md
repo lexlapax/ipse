@@ -331,8 +331,15 @@ list properties also remain unsupported. A document with both `styles.xml` and
 `stylesWithEffects.xml` is readable only when their checked style graphs agree.
 Different style types, inheritance, defaults or hidden-text settings refuse;
 unsupported effect namespaces also refuse. The current DOCX recipe is
-`ipse-documents-v14`. Reacquire and explicitly replace an older source when you
+`ipse-documents-v15`. Reacquire and explicitly replace an older source when you
 need the newer recipe; existing extractions are not silently rebuilt.
+
+Footnotes, endnotes and comments retain their annotation IDs. A unique visible
+body reference supplies its paragraph/table-cell location and UTF-8 byte offset;
+a supported comment range also retains its exact span. Missing, orphaned or
+ambiguous links keep coverage partial. Unsupported numbering or layout can keep
+that partial status even when a note's reference is located. Existing v14
+packed sources and citations keep their original recipe and remain readable.
 
 For replacement, inspect the source and use its current revision with the next
 generation. Supply the new file's concrete SHA-256 as `expected_sha256`; only an
@@ -438,7 +445,8 @@ execution check for an already queued action. Its document grant supplies no
 protected-note permission. The separately reviewed `/remember` new-v3 capture
 and native `knowledge forget` routes use their own authority; session-only
 retention uses the same reviewed removal; other retention choices have their
-own reviewed management path. Supersession remains closed. See
+own reviewed management path. Generic unreviewed supersession remains unavailable;
+interactive native-note correction and replacement use their two separate reviews. See
 [protected knowledge procedures](knowledge-permissions.md) for those limits;
 full notes readiness and automatic headless capture remain unqualified.
 No fallback to State, MCP or a different namespace occurs. Follow

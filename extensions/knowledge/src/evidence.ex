@@ -13,6 +13,7 @@ defmodule IpseKnowledge.Evidence do
   @safe 9_007_199_254_740_991
   @collection_chunking %{"version" => 2, "max_bytes" => 4096}
   @document_span_fields ~w(paragraph start_byte end_byte quote_start_byte quote_end_byte table row cell)
+  @document_block_recipes ~w(ipse-documents-v14 ipse-documents-v15)
 
   def safe_integer_max, do: @safe
   def safe_uint?(value), do: is_integer(value) and value in 0..@safe
@@ -1414,7 +1415,7 @@ defmodule IpseKnowledge.Evidence do
       String.valid?(text) and
       byte_size(text) in 1..65_536 and
       List.last(metadata["segments"])["end_byte"] == byte_size(text) and
-      document_segments?(metadata["segments"], text) and
+      document_segments?(metadata["segments"], text, metadata["extraction_version"]) and
       length(
         chunk_spans(%{
           "text" => text,
@@ -1606,7 +1607,7 @@ defmodule IpseKnowledge.Evidence do
       Regex.match?(~r/\A[0-9a-f]{32}\z/, acquisition["operation_id"])
   end
 
-  defp document_segments?(segments, text) do
+  defp document_segments?(segments, text, recipe) do
     Enum.reduce_while(segments, {:ok, 0}, fn segment, {:ok, offset} ->
       start = segment["start_byte"]
       finish = segment["end_byte"]
@@ -1614,7 +1615,7 @@ defmodule IpseKnowledge.Evidence do
       if exact?(segment, ~w(start_byte end_byte text_sha256 locator)) and
            safe_uint?(start) and safe_positive?(finish) and finish > start and
            start == offset and finish <= byte_size(text) and
-           segment_locator?(segment["locator"], "ipse-documents-v14") and
+           segment_locator?(segment["locator"], recipe) and
            block_group_text?(segment["locator"], binary_part(text, start, finish - start)) and
            sha256?(segment["text_sha256"]) and
            sha256(binary_part(text, start, finish - start)) == segment["text_sha256"] and
@@ -1654,7 +1655,7 @@ defmodule IpseKnowledge.Evidence do
   end
 
   defp segment_locator?(%{"kind" => "block_group"} = locator, recipe) do
-    exact?(locator, ~w(kind part blocks)) and recipe == "ipse-documents-v14" and
+    exact?(locator, ~w(kind part blocks)) and recipe in @document_block_recipes and
       is_list(locator["blocks"]) and length(locator["blocks"]) in 2..64 and
       Enum.reduce_while(locator["blocks"], 0, fn
         [paragraph, bytes | _] = row, prior
@@ -1784,7 +1785,7 @@ defmodule IpseKnowledge.Evidence do
       ) and
         location["span_fields"] === @document_span_fields and
         sha256?(location["original_sha256"]) and
-        location["extraction_version"] == "ipse-documents-v14" and
+        location["extraction_version"] in @document_block_recipes and
         location["status"] in ~w(complete partial) and is_list(location["spans"]) and
         length(location["spans"]) in 1..64 and ordered_group_spans?(location["spans"]) and
         Enum.all?(location["spans"], fn
