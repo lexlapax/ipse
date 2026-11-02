@@ -106,6 +106,45 @@ options = [
 source_path = Path.join(fixture["history_dir"], proof["session_id"] <> ".jsonl")
 held_path = source_path <> ".correction-unavailable"
 
+if mode in ~w(correct grant-race) do
+  # Actual Session-produced candidate; read-only deferral does not require its
+  # source journal to be available and leaves the later review unchanged.
+  assert {:ok, lock} = Ipse.Runner.lock(Path.rootname(source_path) <> ".lock")
+  File.rename!(source_path, held_path)
+  assert :ok = Ipse.Runner.unlock(lock)
+
+  try do
+    output =
+      ExUnit.CaptureIO.capture_io(fn ->
+        assert CLI.run([
+                 "knowledge",
+                 "defer",
+                 key,
+                 "--json",
+                 "--cwd",
+                 cwd,
+                 "--config",
+                 Path.join(home, "config.json"),
+                 "--no-project-config"
+               ]) == 0
+      end)
+
+    deferred = Jason.decode!(output)
+    assert deferred["status"] == "pending" and deferred["stored_effect"] == "none"
+    assert deferred["key"] === target["key"] and deferred["record_sha256"] === target["sha256"]
+    assert {:ok, ^before_control} = Consent.existing_snapshot(control, binding["project_id"])
+
+    assert {:ok, ^before_state} =
+             Collection.execute(collection, namespace, %{"op" => "snapshot"}, Usage.id())
+
+    assert old_journals === Path.wildcard(Path.join(home, "knowledge-management/*.jsonl"))
+  after
+    assert {:ok, lock} = Ipse.Runner.lock(Path.rootname(source_path) <> ".lock")
+    File.rename!(held_path, source_path)
+    assert :ok = Ipse.Runner.unlock(lock)
+  end
+end
+
 if mode == "deadline" do
   owner = self()
 

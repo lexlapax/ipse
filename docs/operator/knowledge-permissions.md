@@ -262,9 +262,29 @@ if interruption occurred before a journal was created. Confirmed acceptance
 charges one operation with measured input/output bytes; cancellation and known
 pre-publication refusal settle zero effect usage. An uncertain attempt retains
 its reservation. This experimental path supports one selected card; batch
-acceptance and explicit deferral remain unfinished. After confirmed acceptance,
+acceptance remains unfinished. After confirmed acceptance,
 close the original conversation and follow the bounded current-note recall
 procedure below. A saved acceptance alone does not prove successful later recall.
+
+### Leave a proposal for later
+
+Choose a key from the historical list and run:
+
+```sh
+ipse knowledge defer pending.COPY_THE_64_CHARACTER_ID --cwd /path/to/project
+```
+
+This checks that exact stored proposal and its signed expiry, then reports it
+as still pending or already expired. Nothing is saved or rescheduled. Its source,
+text and original seven-day deadline remain unchanged; deferral cannot renew an
+expired item. Repeat the command with `--json` for bounded status output.
+
+Deferral works with capture disabled or permission revoked, and does not need
+the original source journal or a terminal. It starts no worker, model request,
+management journal or charged operation. To return later, use `knowledge review`
+with the same key and complete a fresh native acceptance review. That later
+publication independently checks current permission, source and expiry. A
+successful deferral report supplies no acceptance or source eligibility.
 
 ### Reject one pending candidate
 

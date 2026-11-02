@@ -195,6 +195,8 @@ uses one atomic publication and retains a
 candidate-specific suppression while replacing one pending/live identity. Its
 net pending count stays unchanged, but the retained marker, operation receipt
 and journal still add costs. A later acceptance is a separate publication.
+Explicit `knowledge defer` is a checked read and adds no publication ID, marker
+or resource reservation; it preserves the original pending deadline.
 
 Resolve an impossible budget through an explicitly reviewed storage design;
 do not reset identities, discard liabilities, raise a limit to hide failure or

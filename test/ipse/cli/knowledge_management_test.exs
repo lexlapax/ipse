@@ -47,4 +47,27 @@ defmodule Ipse.CLI.KnowledgeManagementTest do
       assert output != ""
     end
   end
+
+  test "deferral refuses malformed targets and unrelated effect or provider options" do
+    root = Path.join(System.tmp_dir!(), "ipse-deferral-invalid-" <> Ipse.Usage.id())
+
+    for key <- [nil, "", "note." <> Ipse.JSON.sha256("wrong kind"), "pending.short"] do
+      assert {:error, :knowledge_management_refused} = Management.defer(%{home: root}, root, key)
+    end
+
+    refute File.exists?(root)
+
+    key = "pending." <> Ipse.JSON.sha256("deferral option target")
+
+    for extra <- [["--yes"], ["--provider", "demo"], ["--state-dir", root], ["--policy", "pin"]] do
+      output =
+        ExUnit.CaptureIO.capture_io(:stderr, fn ->
+          assert Ipse.CLI.run(["knowledge", "defer", key, "--cwd", root] ++ extra) == 1
+        end)
+
+      assert output != ""
+    end
+
+    refute File.exists?(root)
+  end
 end

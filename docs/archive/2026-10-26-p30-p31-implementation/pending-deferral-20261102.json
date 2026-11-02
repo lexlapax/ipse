@@ -1,0 +1,234 @@
+{
+  "base_commit": "4bcf7cbd4090ee7e12e9b9b4ea03059d4a42ca5b",
+  "checks": {
+    "actual_session": {
+      "excluded": 17,
+      "exit_code": 0,
+      "log": {
+        "bytes": 376,
+        "path": "/tmp/ipse-pending-deferral-genuine-791812.log",
+        "sha256": "54947a4b60cceaa272f51326a74c6290a9dc1eb1ed6a7be1ce40ad53676d7e5c"
+      },
+      "passed": 1,
+      "scope": "Fresh SDK/bundle, Session-produced pending candidate, original source journal temporarily unavailable for read-only deferral, original control/root unchanged, later native correction and separate fresh acceptance",
+      "seconds": 18.7,
+      "seed": 791812
+    },
+    "build": {
+      "command": "./dev/build.sh",
+      "exit_code": 0,
+      "log": {
+        "bytes": 752,
+        "path": "/tmp/ipse-pending-deferral-build-20261102.log",
+        "sha256": "231a65819222c12a5799e5293af0dec76c76e26110a4528242f2da98192142a0"
+      }
+    },
+    "documentation": {
+      "errors": 0,
+      "local_links": 8673,
+      "log": {
+        "bytes": 757,
+        "path": "/tmp/ipse-pending-deferral-docs-final-20261102.log",
+        "sha256": "c9062bbc7e5c1133fa0df20c222e3ba2e23d18fdb43264bdb8511dd0fa2de8dd"
+      },
+      "markdown_files": 1048,
+      "scope": "Private permission-denied directories not inspected"
+    },
+    "final_cli": {
+      "log": {
+        "bytes": 271,
+        "path": "/tmp/ipse-pending-deferral-final-cli-791820.log",
+        "sha256": "3125eaa507610d234d37baa8450f4e3091b4fc3dcbc9e52cbfa5503517a0450b"
+      },
+      "passed": 12,
+      "seconds": 1.0,
+      "seed": 791820,
+      "skipped": 1
+    },
+    "finish_checks": {
+      "fail_fast_exit_code": 0,
+      "logs": [
+        {
+          "bytes": 0,
+          "path": "/tmp/ipse-pending-deferral-format-20261102.log",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "bytes": 0,
+          "path": "/tmp/ipse-pending-deferral-compile-20261102.log",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "bytes": 2720,
+          "path": "/tmp/ipse-pending-deferral-demo-20261102.log",
+          "sha256": "2222482fb37dcc764e9d69807fa706fd1d6b6d1d6d8aa2a744e08fd7108aec5c"
+        },
+        {
+          "bytes": 7856,
+          "path": "/tmp/ipse-pending-deferral-help-20261102.log",
+          "sha256": "f112645e7834f3c2257191f3c49ed8235d56ba10685d5e8c4141302171dfdc10"
+        }
+      ]
+    },
+    "initial_native": {
+      "cause": "Deferral state checks passed; fixture expected knowledge_management_refused for an absent key, while held reader correctly returned collection_observation_refused; fixture expectation corrected only",
+      "exit_code": 2,
+      "failed": 5,
+      "log": {
+        "bytes": 11365,
+        "path": "/tmp/ipse-pending-deferral-native-791819.log",
+        "sha256": "46fcf5a5d6014e80403a62e18610c505d83d36dc0bf39e0c5066399d5a40070d"
+      },
+      "passed": 3,
+      "seconds": 41.7,
+      "seed": 791819
+    },
+    "native_final": {
+      "exit_code": 0,
+      "log": {
+        "bytes": 273,
+        "path": "/tmp/ipse-pending-deferral-native-791819-second.log",
+        "sha256": "029844cb47f0ef0b3514d29b050e5fe2c122d9496bc07238d1c026c214c685ad"
+      },
+      "passed": 8,
+      "scope": "Three option tests and five serial native tests with eight synthetic-source scenarios: repeated JSON deferral, revoked/expired/shared-source cases, missing targets and later native rejection",
+      "seconds": 70.9,
+      "seed": 791819
+    },
+    "options": {
+      "log": {
+        "bytes": 277,
+        "path": "/tmp/ipse-pending-deferral-options-791818.log",
+        "sha256": "8b96e4b7e4d6ccafbf990b09a314dbcdc705e2da8703b4377d94177dfff7f648"
+      },
+      "passed": 3,
+      "seed": 791818
+    }
+  },
+  "date": "2026-11-02",
+  "dependencies_added": [],
+  "design": {
+    "available_after_revocation": true,
+    "expired_status_visible": true,
+    "later_acceptance_requires_fresh_native_review": true,
+    "new_acceptance_authority": false,
+    "new_journal": false,
+    "original_source_required_for_deferral": false,
+    "renews_expiry": false,
+    "resource_reservation": false,
+    "stored_effect": "none"
+  },
+  "full_suite": {
+    "covers_this_increment": false,
+    "latest_passing_commit": "9f1707cb33a7d9619c7a632dac83ae4ce313bc85",
+    "new_final_candidate_suite_required": true
+  },
+  "inventory_limit": "Explicit post-run source/SDK/helper/manifest/log hashes; no complete prelaunch environment, system-library or in-memory closure. Fresh private bundle staging intentional",
+  "live_calls": 0,
+  "local_orchestration": [
+    {
+      "bytes": 1141,
+      "path": "/tmp/ipse-pending-correction-isolated-run.exs",
+      "sha256": "5c2633bd8aa9b289c5e0543cbefa2c8e075e5f1f7e043915f99e2ba68339c7b8"
+    },
+    {
+      "bytes": 5862,
+      "path": "/tmp/ipse-pending-deferral-receipt.exs",
+      "sha256": "9d23d44e1b1c920909df592f0673e226247f62f6b6d9a7e3b881bf605f7ec421"
+    }
+  ],
+  "manual_review": "Owning whole-document reviews retained; changed acceptance/defer/edit procedures, training ownership, storage costs and verification reconciled as reader tasks",
+  "manuals": [
+    {
+      "bytes": 37839,
+      "path": "docs/operator/knowledge-permissions.md",
+      "sha256": "b10281397d1745f2e8914f76c22e796cd5f7dbb172c5e0cd6c7c9e6fe9e9d1f5"
+    },
+    {
+      "bytes": 74817,
+      "path": "docs/developer/knowledge-extensions.md",
+      "sha256": "decd807376dbcef19ccf61aef31e1fab4807753781b3daf88ff8c622821d0247"
+    },
+    {
+      "bytes": 33389,
+      "path": "docs/developer/knowledge-storage.md",
+      "sha256": "ab750653ac293f3ca5eb4e0319d0626b89e65089a798f8a30e7bab5d09244f9d"
+    },
+    {
+      "bytes": 85300,
+      "path": "docs/developer/testing.md",
+      "sha256": "119ee46407c4329c6791a8f3508c0cc10c791b18773998677b554b05318516b2"
+    },
+    {
+      "bytes": 160208,
+      "path": "docs/plan.md",
+      "sha256": "998c428e5e4b5824058e9c4d7312a4038230969f4823d9fe1ec8815c20683470"
+    }
+  ],
+  "native_protocol_changed": false,
+  "release_published": false,
+  "remaining": [
+    "batch review",
+    "broader geometry/loss qualification",
+    "installed/platform and selected annual workload",
+    "independent audit",
+    "final integrated suite and reviewer handoff"
+  ],
+  "runtime": {
+    "artifact_manifest": {
+      "bytes": 5270,
+      "path": "/tmp/ipse-native-knowledge-session-a6ba9832522528a89fa3929322930da6/artifact/extension.json",
+      "sha256": "6d23252c6b7f6cded49ce1d5a74116b16a95b8c9b4b9e35ed19bd1f390831a11"
+    },
+    "artifact_matches_staged_manifest": true,
+    "ebin_files": 229,
+    "ebin_matches_current_dev": true,
+    "genuine_store": "/tmp/ipse-native-knowledge-session-a6ba9832522528a89fa3929322930da6",
+    "helper": {
+      "bytes": 969344,
+      "path": "/tmp/ipse-pending-deferral-isolated-20261102-first/lib/ipse/priv/ipse-runner",
+      "sha256": "5487c57a84b99be7b5b4381d097b637d3c45350b92b492d1786712f2bfbf8c7a"
+    },
+    "path": "/tmp/ipse-pending-deferral-isolated-20261102-first",
+    "staged_manifest": {
+      "bytes": 5270,
+      "path": "/tmp/ipse-pending-deferral-isolated-20261102-first/lib/ipse/priv/extension-bundles/knowledge/extension.json",
+      "sha256": "6d23252c6b7f6cded49ce1d5a74116b16a95b8c9b4b9e35ed19bd1f390831a11"
+    }
+  },
+  "scope": "Author-run signed native reads and actual Session-produced candidate with synthetic main-model behavior; no independent/human/installed, real-model, annual-workload or final full-source qualification",
+  "sources": [
+    {
+      "bytes": 29820,
+      "path": "lib/ipse/cli/knowledge.ex",
+      "sha256": "d8639ead5b7cbbe791dd5f79a87340c63180e6d6c444fe0d3ae462413675338a"
+    },
+    {
+      "bytes": 90838,
+      "path": "lib/ipse/cli/knowledge/management.ex",
+      "sha256": "a7ec98f7a2d0c9d8a820e88e4aa19651f3e28cfb6fccfcbe0aab4bbbd47511db"
+    },
+    {
+      "bytes": 51267,
+      "path": "lib/ipse/cli/terminal.ex",
+      "sha256": "b9582a25b40cb8d7735cd19c65c7db815f4a7f0fff9397fbe10d7ec05d03e7b2"
+    },
+    {
+      "bytes": 2949,
+      "path": "test/ipse/cli/knowledge_management_test.exs",
+      "sha256": "bc626149a027f7ab5f901ef5bf8fbb331286f3e0bbaad72a22a7ead4770fe281"
+    },
+    {
+      "bytes": 14755,
+      "path": "test/support/pending_rejection.exs",
+      "sha256": "fa43b89492b837c0d5490eb7bf8c451575081c4b670cf15041757e5a19ebd683"
+    },
+    {
+      "bytes": 12346,
+      "path": "test/support/pending_correction_cli.exs",
+      "sha256": "95152b35fa466925c6c8f36ba225bc85b082c4317735fe0c3ff249be965fb560"
+    }
+  ],
+  "status": "scoped_read_only_deferral_component_verified",
+  "version": 1
+}

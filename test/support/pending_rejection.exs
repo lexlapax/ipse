@@ -248,6 +248,60 @@ File.write!(
 
 File.chmod!(config_path, 0o600)
 
+defer_args = [
+  "knowledge",
+  "defer",
+  target["key"],
+  "--json",
+  "--cwd",
+  cwd,
+  "--config",
+  config_path,
+  "--no-project-config"
+]
+
+# Deferral is an authenticated read, including after revocation, expiry or a
+# shared source's retention change. It creates no journal or effect liability.
+journals_before_defer =
+  Map.new(Path.wildcard(Path.join(home, "knowledge-management/*.jsonl")), &{&1, File.read!(&1)})
+
+deferred =
+  for _ <- 1..2 do
+    output = ExUnit.CaptureIO.capture_io(fn -> assert Ipse.CLI.run(defer_args) == 0 end)
+    result = Jason.decode!(output)
+    assert result["kind"] == "pending_review_later"
+    assert result["key"] == target["key"]
+    assert result["record_sha256"] == managed["observation"]["value"]["record"]["sha256"]
+    assert result["first_admitted_ms"] == managed["metadata"]["first_admitted_ms"]
+    assert result["valid_until_ms"] == managed["metadata"]["valid_until_ms"]
+    assert result["status"] == if(mode == "expired", do: "expired", else: "pending")
+    assert result["stored_effect"] == "none"
+    assert result["source_eligibility"] == "not_checked"
+    assert result["acceptance"] == "requires_fresh_native_review"
+    assert snapshot.() === before
+    assert {:ok, ^before_control} = Consent.existing_snapshot(control, binding["project_id"])
+
+    assert journals_before_defer ===
+             Map.new(
+               Path.wildcard(Path.join(home, "knowledge-management/*.jsonl")),
+               &{&1, File.read!(&1)}
+             )
+
+    Map.delete(result, "observed_at_ms")
+  end
+
+assert hd(deferred) === List.last(deferred)
+
+assert {:error, :knowledge_management_refused} =
+         Ipse.CLI.Knowledge.Management.defer(%{home: home}, cwd, other_key <> "0")
+
+assert {:error, :collection_observation_refused} =
+         Ipse.CLI.Knowledge.Management.defer(
+           %{home: home},
+           cwd,
+           "pending." <> JSON.sha256("absent")
+         )
+
 args = [
   "knowledge",
   "reject",

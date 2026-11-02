@@ -110,6 +110,28 @@ defmodule Ipse.CLI.Knowledge do
     end
   end
 
+  def run_target("defer", key, opts, home, cwd) do
+    with true <- Enum.all?(Keyword.keys(opts), &(&1 in @options)),
+         {:ok, cwd} <- Ipse.Workspace.canonical_path(cwd),
+         {:ok, config} <- runtime(opts, home, cwd),
+         {:ok, result} <- Ipse.CLI.Knowledge.Management.defer(config, cwd, key) do
+      unless opts[:json] do
+        Terminal.puts(
+          if(result["status"] == "expired",
+            do: "This proposal has expired; deferral cannot renew it. Nothing was changed.",
+            else:
+              "Left this proposal pending for later review. Its original expiry is unchanged; acceptance requires fresh native review."
+          )
+        )
+      end
+
+      Terminal.puts(Jason.encode!(result, pretty: opts[:json] != true))
+      0
+    else
+      _ -> fail(:knowledge_management_refused)
+    end
+  end
+
   def run_target("review", key, opts, home, cwd) do
     with true <-
            Enum.all?(Keyword.keys(opts), &(&1 in (@options ++ [:state_dir]))) and

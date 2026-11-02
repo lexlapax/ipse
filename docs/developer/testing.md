@@ -994,6 +994,14 @@ mix test test/ipse/cli/management_reject_public_test.exs test/ipse/session/pendi
 IPSE_TEST_GENUINE_PENDING_REJECTION=1 mix test test/extensions/knowledge/knowledge_session_test.exs --only genuine_pending_rejection --max-cases 1
 ```
 
+The same pending-rejection fixture checks read-only `knowledge defer KEY --json`
+twice before native review, including revoked permission, expired targets and
+shared-source retention changes. Require the exact signed deadline/revision/hash,
+visible expired status and unchanged Collection, control ledger and existing
+journal bytes. Deferral creates no acceptance capability or renewed expiry. The
+genuine pending-correction journey also defers an actual Session-produced candidate
+while its original journal is unavailable, then performs later fresh review.
+
 The grid covers live and expired candidates after capture revocation, stale/cancelled
 input, concurrent management/Collection changes, forged permits and a shared
 literal's native pin/forget choices. The opt-in journey starts with actual

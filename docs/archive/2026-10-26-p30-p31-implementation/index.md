@@ -61,6 +61,7 @@ nor resource/offline qualification. No daemon configuration or existing model wa
 
 ## P31A contracts and evidence
 
+- [Explicit pending deferral](pending-deferral-20261102.md) reports an exact signed candidate as pending or expired without renewal, storage effects or acceptance authority; batch review and broader qualification remain open.
 - [Native pending-text correction](pending-correction-20261102.md) preserves original attribution and expiry, creates a new pending identity and requires separate fresh acceptance; actual source withdrawal, revocation and staged-deadline controls retain their distinct outcomes and liabilities. Batch/defer, broader loss, installed and annual workload gates remain open.
 - [Native single-candidate rejection](pending-rejection-20261102.md) preserves shared source anchors, rejects exact recapture and keeps reducing management available after capture revocation; a fresh-artifact synthetic-model Session covers actual public cancellation/rejection and old-backup refusal. Batch/correction, installed and annual workload qualification remain open.
 - [Annual change-count clarification](workload-change-count-20261102.md) records the developer's selection of 10,000 mixed changes total in addition to normal annual work; pilot intake, complete native costs and endurance remain open.

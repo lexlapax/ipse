@@ -219,8 +219,27 @@ retains liability. Preserve both printed IDs. `Consent.operation/3` and
 `knowledge operation ID` inspect recent/compacted resource records without
 settlement or replay, including a reservation created before any journal.
 An acceptance journal additionally correlates the native event with its ledger
-entry. This path currently supports one selected card; batch acceptance and
-explicit deferral remain open. Pending text has its separate native edit path below.
+entry. This path currently supports one selected card; batch acceptance remains
+open. Deferral and pending text editing have separate paths below.
+
+### Leave the exact candidate pending
+
+`Management.defer/3` implements `knowledge defer PENDING_KEY` as a checked
+historical read. Reuse the existing project identity, installed recipe,
+management snapshot and `ObservedRead.with_managed_proposal_removal/7` adapter
+to authenticate the exact record and signed clocks at one held root. Capture
+may be disabled or revoked; no original-source lease is needed for this read.
+The returned `pending_review_later` result identifies the record revision/hash,
+first admission and deadline, and reports `pending` or `expired` at observation.
+
+Deferral neither mutates the Collection nor saves a snooze deadline. It creates
+no Review permit, human-acceptance event, journal, worker or resource reservation.
+This preserves the original seven-day bound and leaves later acceptance to its
+independent fresh display/source/consent checks. JSON and nonterminal clients may
+request the read because its result grants no attestation or publication authority.
+Repeat it against expired or revoked fixtures and compare the complete root,
+control snapshot and existing journal bytes before and after; `observed_at_ms`
+is the only changing response field when the candidate and expiry status are stable.
 
 ### Reject a proposal without retiring its source
 

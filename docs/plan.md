@@ -1195,7 +1195,10 @@ restoration. The [native pending-text correction](archive/2026-10-26-p30-p31-imp
 replaces one candidate while preserving its original source and signed clocks;
 fresh-artifact Session controls cover separate later acceptance, source loss,
 revocation and actual consent expiry after staging with retained unknown liability.
-These local controls establish no workload capacity. Batch review, deferral,
+The [explicit review-later command](archive/2026-10-26-p30-p31-implementation/pending-deferral-20261102.md)
+reads the signed pending candidate without changing its expiry, reserving an
+operation or creating acceptance authority, including after revocation and expiry.
+These local controls establish no workload capacity. Batch review,
 broader effect-loss boundaries, installed/provider and
 whole-source qualification remain open.
 

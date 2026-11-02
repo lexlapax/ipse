@@ -90,6 +90,79 @@ defmodule Ipse.CLI.Knowledge.Management do
     _ -> @error
   end
 
+  # Choosing to review later has no stored effect and grants no attestation.
+  # Read the exact signed historical candidate; never renew its clock or turn
+  # deferral into a suppression, automatic acceptance or new capture operation.
+  def defer(config, cwd, "pending." <> id = key) when is_map(config) and is_binary(cwd) do
+    home = config[:home]
+
+    with true <- JSON.sha256?(id),
+         {:ok, binding} <- ProjectIdentity.existing(home, cwd),
+         {:ok, namespace} <- SemanticConsent.namespace(binding["project_id"], "knowledge"),
+         control = SemanticAdmission.control_root(home),
+         {:ok, snapshot} <- Consent.existing_snapshot(control, binding["project_id"]),
+         true <- snapshot["epoch"] > 0,
+         {:ok, selected} <- selection(home) do
+      ProjectIdentity.with_existing_domain_auth(
+        home,
+        cwd,
+        binding,
+        %{namespace: namespace, format: "managed-metadata-v3"},
+        fn cap, catalog ->
+          Consent.with_existing_management_snapshot(
+            control,
+            binding["project_id"],
+            snapshot["epoch"],
+            Consent.management_sha256(
+              binding["project_id"],
+              snapshot["epoch"],
+              snapshot["policy"]
+            ),
+            fn _ ->
+              ObservedRead.with_managed_proposal_removal(
+                SemanticAdmission.collection_root(home),
+                namespace,
+                %{"op" => "get_record", "key" => key},
+                cap,
+                catalog,
+                selected.proposal,
+                fn managed ->
+                  record = managed["observation"]["value"]["record"]
+                  metadata = managed["metadata"]
+                  now = System.system_time(:millisecond)
+
+                  {:ok,
+                   %{
+                     "version" => 1,
+                     "kind" => "pending_review_later",
+                     "project_id" => binding["project_id"],
+                     "key" => record["key"],
+                     "revision" => record["revision"],
+                     "record_sha256" => record["sha256"],
+                     "first_admitted_ms" => metadata["first_admitted_ms"],
+                     "valid_until_ms" => metadata["valid_until_ms"],
+                     "observed_at_ms" => now,
+                     "status" =>
+                       if(now < metadata["valid_until_ms"], do: "pending", else: "expired"),
+                     "stored_effect" => "none",
+                     "source_eligibility" => "not_checked",
+                     "acceptance" => "requires_fresh_native_review"
+                   }}
+                end
+              )
+            end
+          )
+        end
+      )
+    else
+      _ -> @error
+    end
+  rescue
+    _ -> @error
+  end
+
+  def defer(_, _, _), do: @error
+
   def review(config, cwd, history_dir, "pending." <> id = key)
       when is_map(config) and is_binary(cwd) and is_binary(history_dir) do
     overall = System.monotonic_time(:millisecond) + 120_000
