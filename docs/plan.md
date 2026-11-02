@@ -843,11 +843,13 @@ passes generic installed checks and the independent synthetic decision/document
 artifacts; full-source, consumer-quality and installed knowledge qualification
 remain open.
 
-The later [complete clean-source baseline](archive/2026-10-26-p30-p31-implementation/full-suite-20261101.md)
-at `f44b63c` exited 2: 3,653 passed, 54 failed, 116 skipped and 112 excluded.
-It includes neither the subsequent root-prerequisite fixture repair nor the
-subsequent accepted-approval work. Required positive integration, lifecycle and
-fault controls remain open; focused passes do not reduce that aggregate.
+The latest [complete frozen-source baseline](archive/2026-10-26-p30-p31-implementation/full-suite-20261102.md)
+at `39c8043` exited 2: 3,747 passed, one failed, 118 skipped and 112 excluded,
+with unchanged pre/post source, build and helper inventories. The single failure
+is interrupted protected-outer cancellation returning unconfirmed cleanup; its
+cause remains open. The earlier `f44b63c` baseline remains preserved separately.
+Required positive integration, lifecycle and fault controls remain open; focused
+passes do not turn either failed aggregate into a passing one.
 
 | Package | Output and prerequisites |
 | --- | --- |
@@ -1001,10 +1003,13 @@ and successful stdio dispatch despite an unpinned helper override. The
 now preserve actual startup uncertainty, held HTTP socket/stdio server cleanup,
 the complete original root dependencies and inert recovery. Missing effect
 cleanup keeps lineage unavailable rather than authorizing reuse. The
-[latest complete frozen managed-collection module](archive/2026-10-26-p30-p31-implementation/managed-collection-module-current-20261102.md)
+[prior complete frozen managed-collection module](archive/2026-10-26-p30-p31-implementation/managed-collection-module-current-20261102.md)
 at clean isolated `2f628a9` has 170 passed, 5 failed and 15 skipped, with unchanged
 pre/post source/build/helper inventories. A subsequent focused legacy-question
 synchronization passes both original cases without replacing that aggregate.
+The later [complete source run](archive/2026-10-26-p30-p31-implementation/full-suite-20261102.md)
+at `39c8043` retains one protected-outer cancellation failure in this module;
+its 3,747 passing cases do not establish confirmed cleanup at that boundary.
 The [preceding V3 module](archive/2026-10-26-p30-p31-implementation/managed-collection-module-v3-20261101.md)
 and the
 [earlier module result](archive/2026-10-26-p30-p31-implementation/managed-collection-module-20261101.md)
