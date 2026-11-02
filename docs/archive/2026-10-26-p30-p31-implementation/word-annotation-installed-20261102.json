@@ -1,0 +1,113 @@
+{
+  "archive": "/tmp/ipse-word-v15-package-20261102/dist/ipse-0.1.0-linux-x86_64-glibc-2.44.tar.gz",
+  "archive_bytes": 16140836,
+  "archive_sha256_before_and_after": "2b7af9038aefbe1e79387dbe3e5a997766007120b871fa1e22f0be01a2411bbc",
+  "artifact_manifest_sha256": "783d7f0938f409a647c6a21defaec7893513016c61ebb1ce8b2f0cbecce0888d",
+  "build": {
+    "exec_session": 28747,
+    "exit_code": 0,
+    "manual_documents": 52,
+    "missing_local_targets": 0,
+    "offline_cached_dependencies": true
+  },
+  "checksum_sidecar_sha256": "6de6d2f4dc423b4340959aacb464d8feffdf50d5f40dd47077985541cc77d0ce",
+  "clone": "/tmp/ipse-word-v15-package-20261102",
+  "date": "2026-11-02",
+  "documentation_check": {
+    "errors": 0,
+    "exit_code": 0,
+    "local_links": 8642,
+    "log": "/tmp/ipse-word-v15-package-docs-20261102.log",
+    "log_sha256": "84ec0a6e909236178373806797839aa2534a61afbffebeb86bf1d9893f267e90",
+    "markdown_files": 1044,
+    "scope": "Whole worktree; private staging directories not inspected"
+  },
+  "documents_installed": {
+    "exec_session": 73991,
+    "exit_code": 0,
+    "report": {
+      "checks": {
+        "artifact_modules": true,
+        "dependency_notices": true,
+        "docx_annotation_links": true,
+        "docx_block_packing": true,
+        "docx_matching_style_effects": true,
+        "docx_revision": true,
+        "pdf_default_off": true,
+        "pdf_explicit_extraction": true,
+        "text_unicode": true
+      },
+      "live_inference": false,
+      "pdf_resource_backend": "available",
+      "synthetic": true,
+      "verification": {
+        "inventories_unchanged": true,
+        "mode": "installed",
+        "precompiled_harness": true,
+        "private_home": true,
+        "scenario": "documents",
+        "system_toolchain_on_runtime_path": false
+      }
+    }
+  },
+  "documents_source": {
+    "checks": {
+      "artifact_modules": true,
+      "dependency_notices": true,
+      "docx_annotation_links": true,
+      "docx_block_packing": true,
+      "docx_matching_style_effects": true,
+      "docx_revision": true,
+      "pdf_default_off": true,
+      "pdf_explicit_extraction": true,
+      "text_unicode": true
+    },
+    "live_inference": false,
+    "pdf_resource_backend": "available",
+    "synthetic": true,
+    "verification": {
+      "inventories_unchanged": true,
+      "mode": "source",
+      "precompiled_harness": true,
+      "private_home": true,
+      "scenario": "documents",
+      "system_toolchain_on_runtime_path": false
+    }
+  },
+  "generic_installed": {
+    "exec_session": 11974,
+    "exit_code": 0,
+    "report": {
+      "explicit_memory": true,
+      "passed": true,
+      "standalone_release_checks": true,
+      "verification": {
+        "inventories_unchanged": true,
+        "mode": "installed",
+        "precompiled_harness": true,
+        "private_home": true,
+        "scenario": "package",
+        "system_toolchain_on_runtime_path": false
+      }
+    }
+  },
+  "log_sha256": {
+    "/tmp/ipse-docx-v15-independent-source-proof-20261102.log": "445709ccee76d08cad1338237087a451b54f7d5485ffe0869e53d8580f8c4933",
+    "/tmp/ipse-word-v15-installed-documents-20261102.log": "2e5a5e921f74e6be6b74652ca898502c31d67b25c5a921d3b5ca1b4cad71089c",
+    "/tmp/ipse-word-v15-installed-package-20261102.log": "a0b509ecd58a309971a62912355a2e99bae08c26d9b32f24928f2613ab001320",
+    "/tmp/ipse-word-v15-package-build-20261102.log": "7ed84bfb27ef87ffc7f24773170abe9b4064de6b5df7d498f52d3b7784afab7e",
+    "/tmp/ipse-word-v15-package-setup-20261102.log": "d8208a5697fda357702f9ddacfbf761f87df40772831950c7b08360f34d04f7f"
+  },
+  "publication": false,
+  "same_artifact_used": true,
+  "scope": "Exact local Linux package and synthetic artifact controls; not complete installed knowledge, semantic Word quality, annual capacity, other platforms or milestone acceptance",
+  "source_commit": "23d99498bf5fceb4ab7149102dc324d7aa95ba66",
+  "tracked_clean_before_and_after": true,
+  "version": 1,
+  "whole_manual_review": [
+    "docs/developer/testing.md",
+    "docs/developer/knowledge-extensions.md",
+    "docs/operator/corpus.md",
+    "docs/operator/install.md"
+  ]
+}

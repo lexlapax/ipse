@@ -1,8 +1,8 @@
 # Word annotation completeness and cited locations
 
 2026-11-02, worktree based on `bd222bf`. This is a candidate implementation
-record, **not P31F acceptance**. Pure and native Session component checks pass;
-final package and independent Word-quality verification remain pending.
+record, **not P31F acceptance**. Pure, native Session and exact package component
+checks pass; independent Word-quality qualification remains pending.
 Current procedures and extraction contracts belong to
 [Corpus](../../operator/corpus.md#acquire-a-small-word-document-from-the-workspace)
 and the [developer guide](../../developer/knowledge-extensions.md#follow-acquired-document-bytes-into-cited-storage).
@@ -107,6 +107,7 @@ Current native/Mix/PTY cohorts remain serialized.
 
 The owning operator/developer chapters were reviewed as whole manuals and their
 annotation, citation and recipe explanations integrated with existing acquisition
-procedures. Installed artifact checks and exact candidate packaging,
-independent Word quality, full document lifecycle/capacity, local-pair quality and
+procedures. The clean committed-source [package and same-artifact installed checks](word-annotation-installed-20261102.md)
+also pass, with all nine document checks and the generic package proof.
+Independent Word quality, full document lifecycle/capacity, local-pair quality and
 the original milestone-wide audit remain separate open gates.

@@ -29,7 +29,34 @@
       "log": "/tmp/ipse-docx-v15-independent-artifact-build-20261102.log",
       "log_sha256": "7cd7c07c62347a015e42af063922f9261179c08ebf14e9ed159422777ea400bd"
     },
-    "installed_proof": "pending",
+    "installed_proof": {
+      "exit_code": 0,
+      "receipt": "word-annotation-installed-20261102.json",
+      "report": {
+        "checks": {
+          "artifact_modules": true,
+          "dependency_notices": true,
+          "docx_annotation_links": true,
+          "docx_block_packing": true,
+          "docx_matching_style_effects": true,
+          "docx_revision": true,
+          "pdf_default_off": true,
+          "pdf_explicit_extraction": true,
+          "text_unicode": true
+        },
+        "live_inference": false,
+        "pdf_resource_backend": "available",
+        "synthetic": true,
+        "verification": {
+          "inventories_unchanged": true,
+          "mode": "installed",
+          "precompiled_harness": true,
+          "private_home": true,
+          "scenario": "documents",
+          "system_toolchain_on_runtime_path": false
+        }
+      }
+    },
     "manifest_sha256": "783d7f0938f409a647c6a21defaec7893513016c61ebb1ce8b2f0cbecce0888d",
     "path": "/tmp/ipse-docx-v15-independent-corpus-20261102",
     "source_proof": {
@@ -91,7 +118,6 @@
   },
   "live_inference_calls": 0,
   "remaining": [
-    "exact candidate package and same-artifact installed proof",
     "independent Word quality",
     "full lifecycle and capacity",
     "local-pair quality",
@@ -133,7 +159,7 @@
       "seed": 791793
     }
   ],
-  "status": "source_and_native_component_verified_package_pending",
+  "status": "source_native_and_exact_package_component_verified",
   "pure_runs": [
     {
       "log": "/tmp/ipse-docx-annotation-before-20261102.log",
