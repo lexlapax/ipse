@@ -193,16 +193,18 @@ defmodule Ipse.Extension.ManagedCollectionCall do
 
   defp protected(context, intent, key) do
     result =
-      if metadata_version(intent["request"]) == 3 do
-        protected_v3(context, intent)
-      else
-        Ipse.Extension.ProjectIdentity.with_binding(
-          context.config[:home],
-          context.cwd,
-          context.config[:semantic_admission]["binding"],
-          fn _ -> authorized_publication(context, intent) end
-        )
-      end
+      Ipse.Session.ManagedCapture.with_publication(context, intent, fn owned ->
+        if metadata_version(intent["request"]) == 3 do
+          protected_v3(owned, intent)
+        else
+          Ipse.Extension.ProjectIdentity.with_binding(
+            owned.config[:home],
+            owned.cwd,
+            owned.config[:semantic_admission]["binding"],
+            fn _ -> authorized_publication(owned, intent) end
+          )
+        end
+      end)
 
     case result do
       {:ok, {:deferred, packet}} -> settle_deferred(context, intent, packet)
@@ -483,9 +485,25 @@ defmodule Ipse.Extension.ManagedCollectionCall do
     request = i["request"]
 
     execute =
-      if metadata_version(request) == 3,
-        do: &Collection.execute_managed_v3/6,
-        else: &Collection.execute_managed/6
+      case Map.get(c, :managed_capture) do
+        nil ->
+          if metadata_version(request) == 3,
+            do: &Collection.execute_managed_v3/6,
+            else: &Collection.execute_managed/6
+
+        held ->
+          fn root, project, original, id, recipe, normalizer ->
+            Collection.execute_managed_capture(
+              root,
+              project,
+              original,
+              id,
+              recipe,
+              normalizer,
+              held
+            )
+          end
+      end
 
     case execute.(
            SemanticAdmission.collection_root(c.config[:home]),

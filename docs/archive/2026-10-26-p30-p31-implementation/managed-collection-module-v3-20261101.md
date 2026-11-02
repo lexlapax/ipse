@@ -268,6 +268,11 @@ This positive is a next implementation target for full C0, independently of the
 remaining obsolete/externally supplied regression fixtures. Safe refusal alone
 does not complete the authorized notes capture/recall goal.
 
+The subsequent [source-dependent capture implementation](current-source-capture-publication-20261102.md)
+adds the genuine positive and paired native faults. It supersedes this observed
+implementation gap within that stated scope, preserving the failing probe and
+leaving broader C0 and complete-suite acceptance open.
+
 The evidence-only follow-up passes diff-whitespace checking. Documentation
 checking reports 1,030 Markdown files, 8,536 local links and zero errors;
 pre-existing private-directory discovery warnings remain separate. No passing

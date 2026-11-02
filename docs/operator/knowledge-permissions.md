@@ -12,8 +12,13 @@ headless control also saved a genuine typed host outcome under the knowledge-onl
 grant. Model-selected source lookups use selected-source preflight and
 status-only terminal previews. A synthetic loopback-model journey captured a
 note, performed later source reads and completed the turn; broader automatic
-capture and recall remain unqualified. Reviewed
-retention choices and forgetting have standalone management paths. Interactive
+capture and recall remain unqualified. A focused native control also reads a
+current literal and saves a separate unattended-input proposal while retaining
+the earlier source through publication. A missing original or revoked permission
+stops the save; the new proposal stays pending. This does not qualify automatic
+capture quality, every source combination or installed use.
+
+Reviewed retention choices and forgetting have standalone management paths. Interactive
 chat also supports reviewed correction of an ordinary native note and replacement
 of a current statement or preference, as described below.
 Existing-note reads, permission inspection/revocation and elapsed-policy
@@ -106,8 +111,9 @@ This development-source path requires the matching native helper, original
 source journals and a complete escaped display within 64 KiB. For an accepted
 decision, keep its original committed management journal as well: the display
 retains both original journals, then checks current authority again after your
-answer. Delegated proposals and nested worker approval displays remain
-unavailable. An unavailable owner or unsupported display refuses before the
+answer. Nested action approvals use the same native review for supported shapes;
+delegated proposals and unqualified nested displays remain unavailable.
+An unavailable owner or unsupported display refuses before the
 effect starts. Preserve the Session and inspect the refusal; saving knowledge
 permission does not bypass these limits.
 

@@ -38,12 +38,41 @@ root-only prerequisite must either match its own committed
 current-parent snapshot/nil-get or have an exact positive host classification
 derived from its original authenticated receipt/result pair. Cached classification
 permits closed snapshots, explicit nil-gets and an initial empty metadata-only
-index, never arbitrary index pages or record contents. All members must bind one
-identical complete root, project, pin, policy and expected generation. Inherited
-content, scans, mixed roots, missing/false cache entries and unmatched results
+index, never arbitrary index pages or record contents. All root-only members must bind one
+identical complete root, project, pin, policy and expected generation. Scans,
+mixed root-only observations, missing/false cache entries and unmatched results
 refuse. These observations are
 [CAS prerequisites](../archive/2026-10-26-p30-p31-implementation/notes-publication-prerequisites.md),
 not current permission; the protected publisher rechecks that later.
+
+An invocation that has read authenticated literal, historical or accepted-note
+content takes the separate `Session.ManagedCapture` path for the same one-new-v3
+shape. Structural admission preserves every inherited and own dependency; it
+does not classify content as payload-free metadata. Before publication locks,
+`ManagedUse.with_publication_dependencies/4` authenticates the current records,
+recipes, policy and acceptance links, then retains original Session sources and
+any original management journals together with the candidate's exact source.
+The selected publisher acquires Identity, Consent and Collection in their normal
+order. Its actual root witness must equal every provisional current observation;
+a newer root requires a new attempt, never an implicit rebase of the candidate.
+
+At the native mutation, the capture-specific Session ticket binds the original
+parent, exact action and full dependency digest. `Runner.SessionSource` transfers
+the consuming Session, drained Writer and original source owners into that same
+transaction; accepted references additionally import their management journals.
+The earliest source, policy and normalization deadline limits the native final
+decision. All source/control scopes and Identity must close before deferred
+settlement can release unused input. Loss keeps the operation uncertain, including
+when Session stops before an action result can be appended. Saved retains the
+original dependencies without reconstructing a publication permit.
+
+The current native Session controls cover a genuine literal A followed by a new
+unattended-input B proposal, source/policy withdrawal after B delivery and loss
+of A's native owner after staging. B remains attributed and never-current until
+its separate acceptance; the full conversation union still contains A. These
+controls do not qualify historical/accepted-note publication combinations,
+maximum source counts, all later-use sinks or complete capture quality. See the
+[capture integration record](../archive/2026-10-26-p30-p31-implementation/current-source-capture-publication-20261102.md).
 
 `/remember` obtains a fresh native statement/category confirmation before this
 path. Its terminal-client positive covers one new literal. A later direct
@@ -110,7 +139,7 @@ ProjectIdentity remains locked while the host reserves and admits protected
 work. Legacy `Consent.publish` and managed `Consent.publish_deferred` recheck the
 pinned policy under the control lock. Their callbacks rederive current source
 proofs and apply constraints again before the short Collection transaction.
-Managed settlement waits until the enclosing Identity checks and release succeed.
+Managed settlement waits until the enclosing source scopes, Identity checks and release succeed.
 Lock order is ProjectIdentity, Consent, then Collection. Slow IO runs in owned
 effect workers, never inside Session.
 
@@ -565,7 +594,9 @@ checked again. `Collection.execute_managed/6` then checks the original generatio
 revision and operation ID under one native collection lock before invoking the
 trusted `Collection.Normalizer` for the version-2 request shown above. A request
 with `metadata_version: 3`, used by the native Knowledge artifact, instead uses
-`execute_managed_v3/6` and `NormalizerV3`; its authenticated pages and receipt
+`execute_managed_v3/6` and `NormalizerV3`; source-dependent capture uses the
+host-only `execute_managed_capture/7` variant with the retained owner handoff above.
+Its authenticated pages and receipt
 have version 3 and can require up to five sidecar changes. In both paths the read
 closure is host-only and expires when the callback returns. The normalizer
 derives literal identity and exact quote support, or a proposal identity and
@@ -1113,7 +1144,8 @@ The publication remains provisional through the enclosing Identity transaction.
 `Consent.publish_deferred` durably records `publishing` with full reserved
 liability and null actual/receipt, then checks and releases its nested native lock
 before returning a host-private ticket/measurement/receipt packet. Only checked
-Identity completion and release permit the host to finalize that exact ticket
+Identity completion, release and any enclosing original-source scope settlement
+permit the host to finalize that exact ticket
 with `Consent.settle(..., {:known, actual, receipt})`. Current scope/owner liveness
 and every reserved dimension are checked again. The callback-started marker
 keeps an enclosing error unknown after an effect may have occurred; it cannot

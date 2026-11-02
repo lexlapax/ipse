@@ -1081,6 +1081,31 @@ defmodule Ipse.Session do
 
   # Core approval and private extension protocols seal Session state before
   # queuing the Writer drain. Cancellation quarantines an exported share.
+  def handle_call({:managed_capture_prepare, ref, intent}, {caller, _}, %{job_ref: ref} = s)
+      when ref != nil,
+      do: {:reply, Ipse.Session.ManagedCapture.prepare(s, caller, intent), s}
+
+  def handle_call({:managed_capture_prepare, _, _}, _, s),
+    do: {:reply, {:error, :managed_capture_unavailable}, s}
+
+  def handle_call(
+        {:session_control_ticket_capture, ref, intent, sha, proofs, wall},
+        {caller, _},
+        s
+      )
+      when is_list(proofs) and length(proofs) <= 128 do
+    with true <- Enum.all?(proofs, &is_map/1),
+         active = Enum.filter(proofs, &(&1["session_id"] == s.id)),
+         {:ok, sources} <- supersession_proofs(s, active) do
+      Ipse.Session.ManagedCapture.ticket(s, caller, ref, intent, sha, proofs, wall, sources)
+    else
+      _ -> {:reply, {:error, :session_share_refused}, s}
+    end
+  end
+
+  def handle_call({:session_control_ticket_capture, _, _, _, _, _}, _, s),
+    do: {:reply, {:error, :session_share_refused}, s}
+
   def handle_call(
         {:session_control_ticket_worker_input, ref, intent, sha, proofs, wall},
         {caller, _},
@@ -1572,6 +1597,7 @@ defmodule Ipse.Session do
                 :approval_journals,
                 :source_proofs,
                 :worker_input,
+                :managed_capture,
                 :worker_source_proofs
               ])
             )
@@ -1653,7 +1679,8 @@ defmodule Ipse.Session do
         do: b.overall_deadline - System.monotonic_time(:millisecond),
         else: min(b.deadline - System.monotonic_time(:millisecond), 5_000)
 
-    if remaining > 0 and not Map.has_key?(b, :worker_input) and Process.alive?(caller) and
+    if remaining > 0 and not Map.has_key?(b, :worker_input) and
+         not Map.has_key?(b, :managed_capture) and Process.alive?(caller) and
          share_deadline_current?(b) and
          not Map.has_key?(b, :issued_terminal) do
       case Ipse.Runner.open_synthetic_notice_terminal(s.cwd, remaining, b.terminal_purpose) do
@@ -4922,7 +4949,8 @@ defmodule Ipse.Session do
         %{share_barrier: %{phase: :poisoned} = barrier} = s
       )
       when barrier.owner_protocol in [:managed_approval, :managed_relation_review] or
-             is_map_key(barrier, :relation_publisher) or is_map_key(barrier, :worker_input),
+             is_map_key(barrier, :relation_publisher) or is_map_key(barrier, :worker_input) or
+             is_map_key(barrier, :managed_capture),
       do: {:stop, :normal, s}
 
   def handle_info(_, %{share_barrier: %{phase: :poisoned}} = s), do: {:noreply, s}
@@ -5739,7 +5767,11 @@ defmodule Ipse.Session do
             deadline: b.deadline,
             session_pid: pid,
             host_port: b.host_port,
-            channel_id: if(Map.has_key?(b, :worker_input), do: nil, else: b.channel.id),
+            channel_id:
+              if(Map.has_key?(b, :worker_input) or Map.has_key?(b, :managed_capture),
+                do: nil,
+                else: b.channel.id
+              ),
             original_source_proofs:
               b[:worker_source_proofs] || b[:relation_inactive_sources] || []
           }
@@ -5814,12 +5846,20 @@ defmodule Ipse.Session do
       s.invocation.worker_input.snapshot.sha256 === sha
   end
 
+  defp controlled_actor_current?(s, %{managed_capture: sha, intent: intent, caller: caller}),
+    do:
+      Ipse.Session.ManagedCapture.actor?(s, caller, intent) and
+        Ipse.Session.ManagedCapture.binding_current?(s, sha)
+
   defp controlled_actor_current?(s, %{channel: channel}) do
     is_map(channel) and s.operator_channel == channel and
       Process.alive?(channel.client) and Process.alive?(channel.reader)
   end
 
   defp share_binding_current?(s, %{worker_input: _} = ticket),
+    do: controlled_actor_current?(s, ticket)
+
+  defp share_binding_current?(s, %{managed_capture: _} = ticket),
     do: controlled_actor_current?(s, ticket)
 
   defp share_binding_current?(s, %{relation_publisher: true} = ticket) do
@@ -5951,10 +5991,11 @@ defmodule Ipse.Session do
 
   defp synthetic_review_source_locks_match?(_, _), do: true
 
-  defp share_deadline_current?(%{worker_input: _, deadline: deadline, wall_deadline: wall}),
-    do:
-      System.monotonic_time(:millisecond) < deadline and
-        System.system_time(:millisecond) < wall
+  defp share_deadline_current?(%{deadline: deadline, wall_deadline: wall} = share)
+       when is_map_key(share, :worker_input) or is_map_key(share, :managed_capture),
+       do:
+         System.monotonic_time(:millisecond) < deadline and
+           System.system_time(:millisecond) < wall
 
   defp share_deadline_current?(%{
          owner_protocol: protocol,
@@ -6099,7 +6140,8 @@ defmodule Ipse.Session do
     if s.task && Process.alive?(s.task.pid), do: Process.exit(s.task.pid, :kill)
 
     if b[:owner_protocol] in [:managed_approval, :managed_relation_review] or
-         Map.get(b, :relation_publisher, false) or Map.has_key?(b, :worker_input) do
+         Map.get(b, :relation_publisher, false) or Map.has_key?(b, :worker_input) or
+         Map.has_key?(b, :managed_capture) do
       notify(
         s,
         {:error, "Protected review ownership was lost; inspect the journal before further work."}

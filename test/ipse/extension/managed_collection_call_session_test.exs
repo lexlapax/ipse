@@ -154,7 +154,7 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
           call(%{"op" => "tool.call", "name" => "write", "timeout_ms" => 1000, "arguments" => %{"path" => "forbidden", "content" => "denied"}}, Map.put(state, "step", "done"))
         state["mode"] in ["capture_ab", "capture_ab_publication"] ->
           call(%{"op" => "collection.call", "request" => %{"op" => "snapshot"}}, Map.put(state, "step", "ab_snapshot"))
-        state["mode"] == "capture_ab_literal" ->
+        state["mode"] in ["capture_ab_literal", "capture_ab_literal_publication", "capture_ab_literal_publication_hold"] ->
           call(%{"op" => "collection.call", "request" => %{"op" => "get", "key" => state["literal_key"]}}, Map.put(state, "step", "ab_literal_read"))
         String.starts_with?(state["mode"], "host_ordinary:") ->
           advance("nested_host", nil, state)
@@ -309,7 +309,7 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
         advance("ab_read", Map.put(outcome, "value", value), state)
       end
       defp advance("ab_read", %{"status" => "ok", "value" => %{"records" => [_ | _]}} = outcome, state) do
-        if state["mode"] != "capture_ab_publication" do
+        if state["mode"] not in ["capture_ab_publication", "capture_ab_literal_publication", "capture_ab_literal_publication_hold"] do
         File.write!(state["trace"], "ab-held\\n", [:append])
         wait = fn wait, n ->
           cond do
@@ -378,7 +378,7 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
       defp advance("quote", %{"status" => "ok", "value" => quote}, state) do
         {:ok, proof} = Ipse.Extension.source_proof(state["page"], quote, "Synthetic café observation")
         state = state |> Map.put("step", "snapshot") |> Map.put("proof", proof)
-        if state["mode"] == "capture_ab_publication" do
+        if state["mode"] in ["capture_ab_publication", "capture_ab_literal_publication_hold"] do
           File.write!(state["trace"], "candidate-held\\n", [:append])
           wait = fn wait, n ->
             cond do
@@ -392,7 +392,7 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
         cond do
           state["mode"] in ["capture_unobserved", "conflict_unobserved"] ->
             advance("snapshot", %{"status" => "ok", "value" => %{"generation" => 0}}, state)
-          state["mode"] in ["capture_ab_literal", "capture_ab_publication"] ->
+          state["mode"] in ["capture_ab_literal", "capture_ab_publication", "capture_ab_literal_publication", "capture_ab_literal_publication_hold"] ->
             advance("snapshot", %{"status" => "ok", "value" => state["prior_a"]["value"]}, state)
           true ->
             call(%{"op" => "collection.call", "request" => %{"op" => "snapshot"}}, state)
@@ -2348,6 +2348,198 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
     end
 
     assert File.read!(seed["source_journal"]) |> JSON.sha256() == seed["source_sha256"]
+  end
+
+  @tag current_literal_publication: true,
+       worker_inherited_union: true,
+       literal_v4_ab: true,
+       metadata_version: 3,
+       registered_main: true,
+       capture_write: true,
+       registered_capture_mode: "capture_ab_literal_publication"
+  test "current literal A remains in the causal union while a new B proposal publishes", c do
+    seed = c.literal_seed
+    before = collection_read(c, %{"op" => "snapshot"})
+    pid = start(c)
+    id = Session.info(pid).id
+    assert :ok = Session.prompt(pid, "Synthetic café observation")
+    assert_receive {:ipse, ^pid, {:done, :ok}}, 15_000
+    assert {:ok, events} = Journal.load(c.dir, id)
+
+    [literal] =
+      for event <- events,
+          event["type"] == "managed_read_observed",
+          dependency <- event["dependencies"],
+          dependency["version"] == 4,
+          do: dependency
+
+    assert literal["subject"]["key"] == seed["key"]
+    [publication] = capture_results(events)
+    assert publication["outcome"]["status"] == "ok"
+    assert publication["outcome"]["value"]["normalization"]["eligibility"] == "never_current"
+    [change] = publication["request"]["request"]["changes"]
+    [proof] = change["value"]["evidence"]["sources"]
+    assert proof["session_id"] == id and id != seed["session_id"]
+    assert proof["origin"] == "unattended_input"
+
+    assert collection_read(c, %{"op" => "get", "key" => change["key"]})["record"]["value"] ==
+             change["value"]
+
+    assert collection_read(c, %{"op" => "snapshot"})["generation"] == before["generation"] + 1
+    assert JSON.sha256(File.read!(seed["source_journal"])) == seed["source_sha256"]
+    assert {:ok, saved} = Session.Saved.restore(events, id)
+    refute saved.managed_lineage.unavailable
+    assert saved.managed_lineage.dictionary[JSON.digest([literal])] == literal
+
+    assert JSON.digest([literal]) in saved.managed_lineage.outputs[
+             publication["parent_invocation_id"]
+           ]
+
+    assert saved.worker_input_unknown == []
+    assert {:ok, ledger} = Consent.snapshot(c.control, c.binding["project_id"])
+    operation = ledger["operations"][publication["operation_id"]]
+    assert operation["status"] == "settled"
+    assert operation["actual"]["input_bytes"] < operation["reserved"]["input_bytes"]
+    assert :ok = Session.close_confirmed(pid)
+    assert_capture_idle_resume(c, id, saved)
+    assert [_, _] = Task.await(c.provider_server, 5000)
+  end
+
+  for boundary <- [:source, :policy] do
+    @tag current_literal_publication: true,
+         worker_inherited_union: true,
+         literal_v4_ab: true,
+         metadata_version: 3,
+         registered_main: true,
+         capture_write: true,
+         registered_capture_no_continuation: true,
+         registered_capture_mode: "capture_ab_literal_publication_hold"
+    test "current-literal capture refuses #{boundary} loss after B input before publication", c do
+      seed = c.literal_seed
+      before = collection_read(c, %{"op" => "snapshot"})
+      assert {:ok, ledger} = Consent.snapshot(c.control, c.binding["project_id"])
+      pid = start(c)
+      id = Session.info(pid).id
+      assert :ok = Session.prompt(pid, "Synthetic café observation")
+      await_marker(c.trace, "candidate-held", 1500)
+      held = seed["source_journal"] <> ".capture-held"
+
+      try do
+        case unquote(boundary) do
+          :source ->
+            File.rename!(seed["source_journal"], held)
+
+          :policy ->
+            assert {:ok, _} = Consent.revoke(c.control, c.binding["project_id"], ledger["epoch"])
+        end
+
+        File.write!(c.trace <> ".candidate-release", "release")
+        assert_receive {:ipse, ^pid, {:done, :error}}, 15_000
+        assert {:ok, events} = Journal.load(c.dir, id)
+        refute Enum.any?(capture_results(events), &(&1["outcome"]["status"] == "ok"))
+
+        assert Enum.any?(
+                 events,
+                 &(&1["type"] == "extension_action_result" and
+                     get_in(&1, ["request", "op"]) == "source.quote" and
+                     get_in(&1, ["outcome", "status"]) == "ok")
+               )
+
+        assert collection_read(c, %{"op" => "snapshot"}) == before
+        assert {:ok, after_ledger} = Consent.snapshot(c.control, c.binding["project_id"])
+        assert after_ledger["operations"] == ledger["operations"]
+        assert {:ok, saved} = Session.Saved.restore(events, id)
+        assert :ok = Session.close_confirmed(pid)
+        assert_capture_idle_resume(c, id, saved)
+      after
+        File.write!(c.trace <> ".candidate-release", "release")
+        if File.exists?(held), do: File.rename!(held, seed["source_journal"])
+      end
+    end
+  end
+
+  @tag current_literal_publication: true,
+       worker_inherited_union: true,
+       literal_v4_ab: true,
+       metadata_version: 3,
+       registered_main: true,
+       capture_write: true,
+       registered_capture_no_continuation: true,
+       registered_capture_mode: "capture_ab_literal_publication"
+  test "original A owner loss after staging prevents the native B publication and refunds nothing",
+       c do
+    owner = self()
+    handler = {__MODULE__, make_ref()}
+    before = collection_read(c, %{"op" => "snapshot"})
+
+    :ok =
+      :telemetry.attach(
+        handler,
+        [:ipse, :extension, :collection, :staged],
+        &__MODULE__.lose_capture_source/4,
+        {owner, c.literal_seed["session_id"]}
+      )
+
+    on_exit(fn -> :telemetry.detach(handler) end)
+    pid = start(c)
+    monitor = Process.monitor(pid)
+    id = Session.info(pid).id
+    assert :ok = Session.prompt(pid, "Synthetic café observation")
+    assert_receive {:capture_source_owner_closed, true}, 15_000
+    assert_receive {:DOWN, ^monitor, :process, ^pid, :normal}, 15_000
+    assert {:ok, events} = Journal.load(c.dir, id)
+    assert capture_results(events) == []
+
+    [publication] =
+      Enum.filter(
+        events,
+        &(&1["type"] == "extension_action_intent" and
+            get_in(&1, ["request", "op"]) == "collection.managed")
+      )
+
+    assert collection_read(c, %{"op" => "snapshot"}) == before
+    assert {:ok, ledger} = Consent.snapshot(c.control, c.binding["project_id"])
+    operation = ledger["operations"][publication["operation_id"]]
+    assert operation["status"] in ~w(publishing unknown)
+    assert operation["actual"] == nil and operation["receipt"] == nil
+
+    assert operation["reserved"] ==
+             Ipse.Extension.ManagedCollectionCall.reservation(publication["request"])
+
+    assert {:ok, saved} = Session.Saved.restore(events, id)
+    assert saved.extension_state.unknown or is_map(saved.extension_state.action)
+    assert_capture_idle_resume(c, id, saved)
+    assert {:ok, after_ledger} = Consent.snapshot(c.control, c.binding["project_id"])
+    assert after_ledger["operations"][publication["operation_id"]] == operation
+  end
+
+  def lose_capture_source(_, _, _, {owner, id}) do
+    shares = Process.get({Ipse.Session.StoredSources, :shareable_source}) || %{}
+
+    case Enum.find(shares, fn {_, share} -> share.session_id == id and share.phase == :shared end) do
+      {_, %{port: port}} -> send(owner, {:capture_source_owner_closed, Port.close(port)})
+      _ -> :ok
+    end
+  end
+
+  defp capture_results(events),
+    do:
+      Enum.filter(
+        events,
+        &(&1["type"] == "extension_action_result" and
+            get_in(&1, ["request", "op"]) == "collection.managed")
+      )
+
+  defp assert_capture_idle_resume(c, id, saved) do
+    path = Path.join(c.dir, id <> ".jsonl")
+    journal = File.read!(path)
+    trace = File.read!(c.trace)
+    resumed = start(c, %{}, id)
+    assert Session.info(resumed).phase == :idle
+    assert :sys.get_state(resumed).messages == saved.messages
+    assert_idle_resume_journal(path, journal, id)
+    assert :ok = Session.close_confirmed(resumed)
+    assert File.read!(c.trace) == trace
   end
 
   defp drain_literal_ab_notifications(pid, acc) do

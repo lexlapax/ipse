@@ -49,7 +49,7 @@ defmodule Ipse.Session.ManagedToolUse do
               binding,
               request["request"]["expected_generation"]
             )
-        end)
+        end) or Ipse.Session.ManagedCapture.supported?(s, request, binding)
       end
     else
       _ -> false

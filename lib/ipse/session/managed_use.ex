@@ -342,6 +342,74 @@ defmodule Ipse.Session.ManagedUse do
 
   def with_worker_dependencies(_, _, _), do: @error
 
+  @doc false
+  # Publication acquires Identity/Consent/Collection itself. Retain original
+  # journals first, then hand the provisional observation to that publisher;
+  # its actual native owner must match the selected root and import every lease.
+  def with_publication_dependencies(context, dependencies, proofs, fun)
+      when is_list(dependencies) and is_list(proofs) and is_function(fun, 1) do
+    with true <- dependencies != [],
+         {:ok, ^dependencies} <- ManagedReference.union([dependencies]),
+         true <- bounded?(dependencies) and Enum.all?(dependencies, &bound?(&1, context)) do
+      with_input_journals(context, dependencies, :worker, fn journals, journal_leases ->
+        with {:ok, first} <-
+               protected(context, dependencies, fn cap, catalog, policy ->
+                 with {:ok, observed} <- observe(context, dependencies, cap, catalog, journals),
+                      true <-
+                        Enum.all?(Enum.zip(dependencies, observed.current), fn {old, current} ->
+                          ManagedReference.current?(
+                            old,
+                            current,
+                            System.system_time(:millisecond)
+                          )
+                        end) do
+                   {:ok,
+                    Map.put(
+                      observed,
+                      :deadline_ms,
+                      use_deadline(policy, observed.current)["expires_at_ms"]
+                    )}
+                 else
+                   _ -> @error
+                 end
+               end),
+             all = Enum.uniq(first.proofs ++ proofs),
+             true <- length(all) in 1..@max_sources do
+          StoredSources.with_shareable_union(context, nil, all, fn _, leases, _ ->
+            with true <- length(leases) + length(journal_leases) <= @max_sources,
+                 true <- System.system_time(:millisecond) < first.deadline_ms,
+                 true <-
+                   Enum.all?(journal_leases, fn lease ->
+                     match?(
+                       {:ok, _},
+                       PendingAcceptance.journal_share_verified_identity(lease.token, lease.link)
+                     )
+                   end) do
+              fun.(%{
+                owner: self(),
+                current: first.current,
+                source_proofs: all,
+                source_leases: leases,
+                journal_leases: journal_leases,
+                deadline_ms: first.deadline_ms
+              })
+            else
+              _ -> @error
+            end
+          end)
+        else
+          _ -> @error
+        end
+      end)
+    else
+      _ -> @error
+    end
+  rescue
+    _ -> @error
+  catch
+    _, _ -> @error
+  end
+
   defp retained_dependencies(context, dependencies, fun, purpose) do
     entered = :atomics.new(2, signed: true)
 
@@ -763,6 +831,9 @@ defmodule Ipse.Session.ManagedUse do
 
   defp binding_current?(s, {:inference, phase, expected}),
     do: Ipse.Session.InferenceDispatch.binding_current?(s, phase, expected)
+
+  defp binding_current?(s, {:capture, sha}),
+    do: Ipse.Session.ManagedCapture.binding_current?(s, sha)
 
   defp binding_current?(_, _), do: false
 

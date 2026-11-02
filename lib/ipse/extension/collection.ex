@@ -473,6 +473,28 @@ defmodule Ipse.Extension.Collection do
   def execute_managed_v3(_, _, _, _, _, _), do: {:error, :invalid_managed_collection_request}
 
   @doc false
+  def execute_managed_capture(
+        root,
+        project,
+        original,
+        operation_id,
+        recipe_sha256,
+        normalizer,
+        held
+      )
+      when is_function(normalizer, 2) and is_map(held),
+      do:
+        execute_managed_version(
+          root,
+          project,
+          original,
+          operation_id,
+          recipe_sha256,
+          normalizer,
+          {:capture, held}
+        )
+
+  @doc false
   def execute_managed_retention(
         root,
         project,
@@ -1244,6 +1266,9 @@ defmodule Ipse.Extension.Collection do
         match?({:supersession, _}, version) ->
           :supersession
 
+        match?({:capture, _}, version) ->
+          3
+
         true ->
           version
       end
@@ -1297,6 +1322,27 @@ defmodule Ipse.Extension.Collection do
     else
       _ -> {:error, :managed_normalization_refused}
     end
+  end
+
+  defp managed_mutation(
+         path,
+         uid,
+         state,
+         manifest,
+         _original,
+         request,
+         id,
+         extra,
+         normalization,
+         {:capture, held},
+         witness,
+         cap
+       ) do
+    Ipse.Session.ManagedCapture.with_native_publication(cap, witness, held, fn ->
+      with_capture_deadline(normalization, fn ->
+        apply_mutation(path, uid, state, manifest, request, id, extra)
+      end)
+    end)
   end
 
   defp managed_mutation(

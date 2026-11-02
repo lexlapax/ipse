@@ -1053,10 +1053,16 @@ publication guard, with independent registered seed/winner positives and inert
 recovery. It is distinct from the earlier Worker-input source-withdrawal control
 and does not qualify full current-source publication.
 A [separate genuine-current-literal positive probe](archive/2026-10-26-p30-p31-implementation/managed-collection-module-v3-20261101.md#open-positive-capture-after-a-current-literal-read)
-now confirms that this remains an implementation gap: A is eligible and unchanged,
+confirmed an implementation gap at `1560cb7`: A is eligible and unchanged,
 B is quoted successfully, but the root-only prerequisite gate refuses capture
-before publication intent. Full-union native publication integration remains
-required; do not remove the guard or treat refusal-only controls as completion.
+before publication intent. The [source-dependent capture integration](archive/2026-10-26-p30-p31-implementation/current-source-capture-publication-20261102.md)
+now retains the whole union and actual original-source owners through the native
+publication decision. A genuine current literal plus new pending B completes;
+source/policy withdrawal and original-owner loss retain refusal/unknown semantics,
+accounting and inert recovery. Four new controls join a passing 14-case focused
+cohort, and six complete component modules pass 89 tests. These results do not
+replace the failed complete-module/suite aggregates. Historical/accepted-note
+combinations, maximum unions, broader expiry/loss and full C0 remain open.
 
 The [managed export-input adapter](archive/2026-10-26-p30-p31-implementation/worker-input-session-20261101.md)
 now binds actual initial calls, committed action continuations and output-page

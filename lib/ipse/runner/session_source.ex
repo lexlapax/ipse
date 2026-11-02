@@ -22,6 +22,13 @@ defmodule Ipse.Runner.SessionSource do
 
   def with_worker_input(_, _, _, _, _, _, _, _), do: @unknown
 
+  def with_capture(cap, context, intent, sha, leases, proofs, wall, fun)
+      when is_function(fun, 0) do
+    with_sources(cap, context, leases, fun, fn ->
+      Host.begin_capture_source_share(context.owner, context.job_ref, intent, sha, proofs, wall)
+    end)
+  end
+
   defp with_sources(cap, context, leases, fun, begin_share) do
     with %Transaction.Capability{owner: owner, depth: 3} <- cap,
          true <- owner == self() and Resources.active?(),

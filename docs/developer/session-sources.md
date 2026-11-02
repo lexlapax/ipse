@@ -59,6 +59,12 @@ also permits later source calls and successful turn completion under fresh guard
 This does not establish full automatic-capture quality. Follow the
 [publication flow](collection-sdk.md#follow-one-capture-across-its-owners) rather
 than treating statement confirmation as a general capture grant.
+Source-dependent new-v3 capture has a separate native publication handoff:
+after a current literal read, a new unattended-input proposal can publish while
+retaining that literal in the complete conversation union. The publication owner
+must match the provisional current root, retain every original source and enforce
+their deadlines. The newer candidate's own proof cannot replace earlier reads.
+Its pending status supplies no current-note eligibility or tool permission.
 `operator_assertion` records carry the original endorsed text/category and
 project/artifact/policy scope. SourceIndex exposes category-specific
 `input.assertion.ordinary`, `input.assertion.preference` and
