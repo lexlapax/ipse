@@ -222,7 +222,9 @@ Cancellation releases blocked pushes and makes accepted text incomplete. Consume
 death frees buffers; Session death stops broker/producer.
 
 Session commits request admission and registers the real producer before dispatch.
-Only it can begin/push/finish. Outcome accounting commits before end is queued.
+Only it can begin/push/finish. The producer queues a transport end after provider
+completion; required acknowledgment can still fail before Session records the
+final canonical request outcome and admits the answer.
 Required readiness checks run in that original producer before inference
 admission and in the registered dispatch gate. A registered transport child
 cannot call the broker as that producer. Buffered registered text returns to the
@@ -230,6 +232,9 @@ original producer for delivery; the broker's caller checks stay unchanged.
 Optional peers do not delay answer admission for terminal ack; required peers do,
 within five seconds. A healthy optional peer may get complete transport before
 required peer loss refuses the answer. No later frame rewrites that receipt.
+Conversely, Session completion can precede an optional callback. Closing Session
+stops that worker and can discard its remaining frames; a client measuring delivery
+must independently observe the desired frame or terminal callback before closing.
 Acknowledgment proves receipt, not display, business success, or playback. Use
 Session completion or `answer.committed` for accepted-answer workflows.
 

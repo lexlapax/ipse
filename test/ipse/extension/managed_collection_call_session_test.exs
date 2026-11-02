@@ -1620,7 +1620,10 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
   end
 
   for kind <- [:managed, :unmanaged] do
-    @tag strict_deadline_gate: true, metadata_version: 3
+    @tag strict_deadline_gate: true,
+         metadata_version: 3,
+         registered_main: kind == :managed,
+         capture_write: kind == :managed
     test "protected #{kind} publication applies its admitted deadline policy", c do
       c = if unquote(kind) == :unmanaged, do: legacy_publisher(c), else: c
       mode = if unquote(kind) == :managed, do: "capture", else: "legacy_commit"
@@ -4788,7 +4791,13 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
 
       assert :ok = Session.prompt(pid, "Write the synthetic ordinary file, then answer.")
       assert_receive {:ipse, ^pid, {:done, :ok}}, 15_000
-      await_marker(Path.join(c.root, "delivery.jsonl"), "payload", 300)
+
+      marker =
+        if unquote(role) in [:text, :text_required],
+          do: "Synthetic ordinary delivery answer.",
+          else: "payload"
+
+      await_marker(Path.join(c.root, "delivery.jsonl"), marker, 300)
       id = Session.info(pid).id
 
       if unquote(role) in [:notify, :notify_required, :feed],

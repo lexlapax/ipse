@@ -266,6 +266,15 @@ Require replay rejection after recalculating the outcome digest, so a trivial
 stale digest is not the only barrier. The unchanged positive must also settle,
 preserve one visible attributed candidate and resume without replay.
 
+For ordinary private text callbacks, keep Session open until the actual expected
+text reaches the fixture. A first-request start/end or a generic payload marker
+does not prove delivery of a later request's answer. Optional consumers do not
+delay Session completion for acknowledgments, and close cancels queued work.
+The `managed_sink_input` matrix must still retain its exact frame-text and physical
+file assertions, its required-consumer positive and all managed-content refusals.
+Use the stream integration tests to distinguish a completed transport end from
+later required-delivery failure and canonical answer admission.
+
 Capture the journal after `Session.close_confirmed/1` returns. On idle resume,
 require those bytes as an exact prefix. With the current release-receipt layout,
 the only suffix before closing the resumed Session is one complete ownership

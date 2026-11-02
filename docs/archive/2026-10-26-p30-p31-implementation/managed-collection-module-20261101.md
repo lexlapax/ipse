@@ -3,6 +3,8 @@
 Dated **2026-11-01**, author-run synthetic Linux verification of clean commit
 `098559f` on `codex/p30-p31`. This is a failed, complete module baseline, not
 milestone acceptance or a replacement for the [complete frozen suite](full-suite-20261101.md).
+The [later complete V3 module run](managed-collection-module-v3-20261101.md)
+supersedes this as the latest module baseline; this original result is retained.
 The [plan](../../plan.md) owns current status and
 [testing](../../developer/testing.md) teaches verification and recovery assertions.
 

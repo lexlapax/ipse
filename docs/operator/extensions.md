@@ -456,6 +456,9 @@ formatting. `stream.text.events` adds frame identity. Operator `text_required: t
 requires acknowledgment before answer admission. Optional consumers detach after
 failure or five-second pressure. Replacement waits for confirmed cleanup.
 Delivery completion is not durable answer acceptance. Resume replays no frames.
+An answer can complete while an optional consumer is still processing frames.
+If you need its complete output, wait for that consumer's own completion before
+closing the Session; close stops the consumer and can discard queued frames.
 Selecting a text consumer also stops a dependent model request that would use
 managed knowledge, even when that consumer is optional. Disable the consumer's
 instance in your operator configuration, omit its `--extension` selection and

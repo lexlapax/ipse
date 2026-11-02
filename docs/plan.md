@@ -1001,8 +1001,10 @@ and successful stdio dispatch despite an unpinned helper override. The
 now preserve actual startup uncertainty, held HTTP socket/stdio server cleanup,
 the complete original root dependencies and inert recovery. Missing effect
 cleanup keeps lineage unavailable rather than authorizing reuse. The
-[complete frozen managed-collection module](archive/2026-10-26-p30-p31-implementation/managed-collection-module-20261101.md)
-still fails. A [shared loss-lineage assertion follow-up](archive/2026-10-26-p30-p31-implementation/native-loss-lineage-shared-20261101.md)
+[latest complete frozen managed-collection module](archive/2026-10-26-p30-p31-implementation/managed-collection-module-v3-20261101.md)
+at `7e9f533` has 164 passed, 7 failed and 15 skipped; the
+[earlier module result](archive/2026-10-26-p30-p31-implementation/managed-collection-module-20261101.md)
+is retained. A [shared loss-lineage assertion follow-up](archive/2026-10-26-p30-p31-implementation/native-loss-lineage-shared-20261101.md)
 now compares exact retained approval sources and journal-derived reconstruction
 availability for shell and MCP, preserving unavailable lineage after unconfirmed
 cleanup. A [paired helper-input follow-up](archive/2026-10-26-p30-p31-implementation/stale-helper-boundary-20261101.md)
@@ -1041,6 +1043,10 @@ the failed complete-module baseline.
 The [current V3 binding follow-up](archive/2026-10-26-p30-p31-implementation/managed-collection-module-20261101.md#current-v3-binding-follow-up)
 also preserves the headless publication positive and its outer/policy/inner
 tamper controls using actual V3 page metadata and registered continuation.
+The [new complete module and subsequent focused repair](archive/2026-10-26-p30-p31-implementation/managed-collection-module-v3-20261101.md#focused-text-delivery-and-deadline-follow-up)
+retain all seven failures at `7e9f533`, then separately verify optional text
+callback synchronization and successful registered deadline continuation.
+Neither focused pass establishes a new complete-module or whole-suite aggregate.
 
 The [managed export-input adapter](archive/2026-10-26-p30-p31-implementation/worker-input-session-20261101.md)
 now binds actual initial calls, committed action continuations and output-page
