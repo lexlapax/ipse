@@ -160,3 +160,46 @@ Final formatting and diff-whitespace checks exit zero. Documentation checking
 reports 1,029 Markdown files, 8,525 local links and zero errors; existing private
 directory discovery warnings remain separate. No runtime/build check was repeated
 for this test/documentation-only increment.
+
+## Current V3 binding follow-up
+
+Dated **2026-11-01**, test/documentation work based on committed `94ff9c4`.
+The original headless binding test used metadata V2 and the unregistered demo
+continuation. It now performs successful supported V3 capture through the
+registered synthetic adapter, preserving all original outer-policy, descriptor,
+class, request/recipe, expiry, receipt and legacy-outer tamper controls. Its page
+substitution uses an actual V3 anchor metadata entry and another valid V3 fence
+instead of the obsolete V2 `anchor_key` field. A separate downgrade of the
+effect's `metadata_version` also refuses. Outcome hashes are recomputed before
+validation; each changed inner record must fail both result validation and Saved
+reconstruction.
+
+The unchanged positive requires successful normalization with `never_current`
+eligibility, generation/floor one, one visible record, one settled operation,
+two actual local HTTP requests, confirmed close and idle recovery with no
+Worker replay. Action/result version 3 and its effect binding version 3 plus
+`metadata_version: 3` are asserted independently. The SDK receipt table and
+binding explanation were corrected during whole-chapter review to distinguish
+these current fields from historical metadata-V2 effect binding version 2.
+No production or authority behavior changed; current operator procedures and
+the preceding whole recovery-manual review remain applicable.
+
+```sh
+mix test test/ipse/extension/managed_collection_call_session_test.exs --only publication_binding --only publication_accounting --max-cases 1 --seed 791717
+```
+
+Terminal result: **3 passed, 183 excluded**, 17.4 seconds, exit 0. Selected
+post-run hashes, not a prelaunch/complete loaded-runtime inventory:
+
+| File | SHA256 |
+| --- | --- |
+| `/tmp/ipse-publication-binding-v3-20261101.log` | `8c0836b15174ba29e349456d714c84505a4c9b049082a7629048f86d74895b89` |
+| Final Session test module | `154f362740d74dd3b184cb768af956bafed7cbf8b77d772c93656103d466e1ee` |
+
+The frozen failed complete-module/suite aggregates remain unchanged above.
+This synthetic source control supplies no installed, external-model, independent
+quality or full P30/P31 acceptance. No native helper, dependency or runtime
+source changed and no external model call was added.
+Final formatting and diff-whitespace checks exit zero. Documentation checking
+reports 1,029 Markdown files, 8,526 local links and zero errors; existing private
+directory discovery warnings remain separate.

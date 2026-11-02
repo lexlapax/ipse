@@ -1067,7 +1067,7 @@ delegation; a protected outer export cannot lend its grant to those operations.
 | Outer invocation intent / inline result | Version 3, original closed outer binding |
 | Outer paged result | Version 4, retains the original version-3 binding |
 | Legacy inner collection action | Version 2, exact `effect_binding` |
-| Managed inner action / result | Version 3, distinct managed `effect_binding` version 2 |
+| Managed inner action / result | Version 3 action/result; managed `effect_binding` version 3 with `metadata_version: 3` for current V3 capture, version 2 for historical V2 metadata |
 
 The outer binding contains `kind: "semantic.outer"`, `version: 1`, host-derived
 `class`, namespace, pin, artifact SHA256 and descriptor SHA256. Replay derives that
@@ -1076,8 +1076,10 @@ together cannot downgrade an honestly mutating export. A read outer categoricall
 denies every mutating inner action even under broad `--yes`. The inner binding contains
 `kind: "collection"`, `version: 1`, namespace, pin, inner operation and exact inner
 request digest. A managed binding instead has `kind: "collection.managed"`,
-version 2, namespace, pin, exact outer descriptor digest, inner commit digest and
-recipe digest. Saved validation matches the Session header pin, artifact,
+namespace, pin, exact outer descriptor digest, inner commit digest and recipe
+digest. A current V3 request requires binding `version: 3` and `metadata_version: 3`.
+Historical V2 metadata retains binding version 2; replay does not promote it into
+current publication authority. Saved validation matches the Session header pin, artifact,
 descriptor, parent source and chronological results. Old versions do not acquire
 the new approval tag. SDK-2 output retains its paged binding without downgrading
 to a legacy inline or saved result.

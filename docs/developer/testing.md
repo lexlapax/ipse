@@ -257,6 +257,15 @@ unchanged accounting and Worker trace. Blocking the second query cannot prove
 that post-admission boundary. The separate foreign/stale/changed-action callers
 must all refuse while the genuine caller still publishes successfully.
 
+The `publication_binding` control keeps a successful headless V3 capture and
+mutates one binding or receipt field at a time. Current inner action/result
+version 3 contains effect binding version 3 plus `metadata_version: 3`; historical
+metadata-V2 bindings keep version 2. Check actual V3 anchor-page metadata when
+tampering with its selected key, rather than adding an obsolete V2 `anchor_key`.
+Require replay rejection after recalculating the outcome digest, so a trivial
+stale digest is not the only barrier. The unchanged positive must also settle,
+preserve one visible attributed candidate and resume without replay.
+
 Capture the journal after `Session.close_confirmed/1` returns. On idle resume,
 require those bytes as an exact prefix. With the current release-receipt layout,
 the only suffix before closing the resumed Session is one complete ownership

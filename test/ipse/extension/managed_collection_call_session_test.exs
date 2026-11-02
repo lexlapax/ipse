@@ -4081,6 +4081,10 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
     assert length(Enum.uniq(sources)) == 27
   end
 
+  @tag publication_binding: true,
+       metadata_version: 3,
+       registered_main: true,
+       capture_write: true
   test "headless protected capture journals exact outer and inner bindings and settles once", c do
     pid = start(c)
     assert :sys.get_state(pid).config.semantic_admission["status"] == "active"
@@ -4147,23 +4151,38 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
     assert commit["version"] == 3 and commit["approval"] == "saved_consent"
     assert commit["namespace"] == c.namespace
     assert commit["effect_binding"]["kind"] == "collection.managed"
-    assert commit["effect_binding"]["version"] == 2
-    assert commit["outcome"]["value"]["normalization"]["version"] == 2
+    assert commit["effect_binding"]["version"] == 3
+    assert commit["effect_binding"]["metadata_version"] == 3
+    assert commit["outcome"]["value"]["normalization"]["version"] == 3
     assert commit["outcome"]["value"]["normalization"]["eligibility"] == "never_current"
-    current_anchor = get_in(commit, ["outcome", "value", "normalization", "anchor_key"])
+    metadata = get_in(commit, ["outcome", "value", "normalization", "metadata_changes"])
+    anchor_at = Enum.find_index(metadata, &String.starts_with?(&1["key"], "host.validity.a."))
+    current_anchor = Enum.at(metadata, anchor_at)["key"]
 
-    foreign_shard =
-      if String.starts_with?(current_anchor, "host.validity.anchor.00."), do: "ff", else: "00"
+    foreign_anchor =
+      "host.validity.a." <>
+        if(String.ends_with?(current_anchor, String.duplicate("0", 64)),
+          do: String.duplicate("f", 64),
+          else: String.duplicate("0", 64)
+        )
 
     for changed <- [
           Map.put(commit, "version", 2),
+          put_in(commit, ["effect_binding", "metadata_version"], 2),
           put_in(commit, ["effect_binding", "recipe_sha256"], JSON.sha256("different recipe")),
           put_in(commit, ["effect_binding", "request_sha256"], JSON.sha256("different original")),
           put_in(commit, ["outcome", "value", "normalization", "version"], 1),
           put_in(
             commit,
-            ["outcome", "value", "normalization", "anchor_key"],
-            "host.validity.anchor." <> foreign_shard <> ".0"
+            [
+              "outcome",
+              "value",
+              "normalization",
+              "metadata_changes",
+              Access.at(anchor_at),
+              "key"
+            ],
+            foreign_anchor
           ),
           put_in(commit, ["outcome", "value", "normalization", "valid_until_ms"], nil),
           put_in(
@@ -4226,6 +4245,7 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
     resumed = start(c, %{}, id)
     assert :ok = Session.close_confirmed(resumed)
     assert File.read!(c.trace) |> String.split("entered\n") |> length() == 2
+    assert [_, _] = Task.await(c.provider_server, 5000)
   end
 
   test "revoked outer permission refuses before worker entry", c do
