@@ -1,10 +1,17 @@
 # Publish retained sources through bounded transactions
 
 Choose the owner before changing retained storage. Protected native capture uses
-the authenticated schema-3 Collection path through its explicit SDK version;
-legacy schema-2 requests keep their original interpreter. The existing Corpus/Graph/Research
-source stores below use explicit State or remote CAS contracts. Neither path
-treats a successfully written orphan page as published content. Start with
+the authenticated schema-3 Collection path through its explicit SDK version.
+The current Session publisher admits one new V3 record; a historical V2 managed
+object remains valid protocol data but refuses live publication before intent or
+reservation. The separately admitted unmanaged `collection.call` publisher keeps
+its own permission and execution checks. Follow the
+[SDK capture boundary](collection-sdk.md#follow-one-capture-across-its-owners)
+when selecting a host route.
+
+The existing Corpus/Graph/Research source stores below use explicit State or
+remote CAS contracts. Neither path treats a successfully written orphan page as
+published content. Start with
 [retrieval training](knowledge-extensions.md) and the
 [operator source workflow](../operator/corpus.md).
 
@@ -22,11 +29,13 @@ implicitly migrate State records or admit them to protected native recall.
 Start with `Collection.NormalizerV3`, `Collection.ManagedPages` and its local
 `Planner`. NormalizerV3 prepares an unchanged public insert plus authenticated
 sidecars; `Collection.execute_managed_v3/6` performs the atomic storage commit.
-These are internal host components. `ManagedCollectionCall` dispatches a validated
-`metadata_version: 3` request to this interpreter; legacy requests use
-`Collection.execute_managed/6` and its version-2 Normalizer. A version field
-supplies no domain capability or saved permission: the host still checks the
-exact selected recipe, sources, effect mapping and admitted new-record shape.
+These are internal host components. A worker's `metadata_version: 3` request must
+pass the Session's new-record shape gate before `ManagedCollectionCall` can
+dispatch it to this interpreter. The older `Collection.execute_managed/6` and
+version-2 Normalizer retain their historical protocol; their presence does not
+open the Session publication gate. A version field supplies no domain capability
+or saved permission: the host still checks the exact selected recipe, sources,
+effect mapping and admitted new-record shape.
 
 The owning adapter must authenticate original sources and current protected
 permission before entering Identity → Consent → Collection. Pass the actual
