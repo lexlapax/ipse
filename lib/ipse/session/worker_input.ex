@@ -209,18 +209,24 @@ defmodule Ipse.Session.WorkerInput do
             end)
           end
 
-        if result == {:ok, :input_delivered} and
-             GenServer.call(
-               owner,
-               {:worker_input_finish, job, spec.intent["input_id"], :delivered}
-             ) ==
-               :ok do
-          # All retained source/policy scopes have returned. Keep this original
-          # publisher alive, but hold no policy locks while waiting for compute.
-          Worker.await_input(worker, handle)
+        if result == {:ok, :input_delivered} do
+          case finish_input(owner, job, spec.intent["input_id"], :delivered) do
+            :ok ->
+              # All retained source/policy scopes have returned. Keep this original
+              # publisher alive, but hold no policy locks while waiting for compute.
+              Worker.await_input(worker, handle)
+
+            {:error, :worker_input_interrupted} ->
+              @unknown
+
+            _ ->
+              Worker.close(worker)
+              finish_input(owner, job, spec.intent["input_id"], :unknown)
+              @unknown
+          end
         else
           Worker.close(worker)
-          GenServer.call(owner, {:worker_input_finish, job, spec.intent["input_id"], :unknown})
+          finish_input(owner, job, spec.intent["input_id"], :unknown)
           @unknown
         end
       else
@@ -233,6 +239,47 @@ defmodule Ipse.Session.WorkerInput do
     _ -> @unknown
   catch
     _, _ -> @unknown
+  end
+
+  def interrupt(s) do
+    case s.invocation.worker_input do
+      %{caller: caller, job: job, intent: %{"input_id" => id}} ->
+        send(caller, {:worker_input_interrupted, self(), job, id})
+
+      nil ->
+        :ok
+    end
+  end
+
+  defp finish_input(owner, job, id, status) do
+    request = :gen_server.send_request(owner, {:worker_input_finish, job, id, status})
+
+    try do
+      finish_response(request, owner, job, id, System.monotonic_time(:millisecond) + 5_000)
+    after
+      # Abandon a pending alias so cancellation cannot leave a late reply behind.
+      :gen_server.receive_response(request, 0)
+    end
+  end
+
+  defp finish_response(request, owner, job, id, deadline) do
+    receive do
+      {:worker_input_interrupted, ^owner, ^job, ^id} ->
+        {:error, :worker_input_interrupted}
+    after
+      0 ->
+        remaining = deadline - System.monotonic_time(:millisecond)
+
+        if remaining > 0 do
+          case :gen_server.wait_response(request, min(remaining, 10)) do
+            {:reply, reply} -> reply
+            {:error, _} -> @unknown
+            :timeout -> finish_response(request, owner, job, id, deadline)
+          end
+        else
+          @unknown
+        end
+    end
   end
 
   defp with_journals(_, [], fun), do: fun.()

@@ -802,15 +802,28 @@ For the actual managed export adapter, also run:
 
 ```sh
 mix test test/ipse/extension/managed_collection_call_session_test.exs --only worker_input_boundary --max-cases 1
+mix test test/ipse/extension/managed_collection_call_session_test.exs --only protected_outer_cancel --max-cases 1
 mix test test/ipse/session/managed_supersession_session_test.exs --max-cases 1
 mix test test/ipse/session/operator_assertion_integration_test.exs --only managed_approval:true --max-cases 1
 mix test test/ipse/extension/managed_collection_call_session_test.exs --only native_root_approval --only root_subscriber_refusal --max-cases 1
 ```
 
-The first suite checks paged delivery, strict Saved commitments and permission
-withdrawal between a committed read and the next actual VM input, including idle
-resume without callback replay. Its paged positive reads root metadata. The
-genuine approval fixture additionally reads a committed note and its original
+The Worker-input selection checks paged delivery, strict Saved commitments and
+permission withdrawal between a committed read and the next actual VM input,
+including idle resume without callback replay. Its paged positive reads root metadata.
+For cancellation, keep the independent VM at its explicit barrier. A callback
+marker alone does not establish host input settlement. The settled case waits
+for the matching delivered receipt before cancelling. The pre-settlement case
+holds the actual writer-thaw response, queues cancellation in Session's mailbox,
+then releases that response before the publisher can commit input completion.
+Require actual publisher, Worker and native-helper exit, no invented input or
+outer result, strict reconstruction and idle resume without callback replay.
+The paired mismatch case sends different Session/job/input identifiers and must
+still obtain the genuine delivered receipt. No hook changes authority or supplies
+a successful native response. These synthetic controls do not replace a complete
+source-suite run or installed/platform qualification.
+
+The genuine approval fixture additionally reads a committed note and its original
 inactive Session proof. Its shell cases use the same actual native review and
 require an exact file effect, owned spawn/cleanup records and shell stdout in
 the next provider request's tool-result message. Checking the assistant's command

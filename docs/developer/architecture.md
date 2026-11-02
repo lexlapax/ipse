@@ -79,6 +79,17 @@ controlled peer is reserved for reviewed, fenced operations, not arbitrary file
 IO, and currently has no inference caller. See
 [persistence](persistence.md) before changing close/recovery ordering.
 
+Protected Worker input keeps its original tracked publisher through native
+delivery and callback computation. Once all source/policy scopes return, that
+publisher asks Session to commit input completion. This last request must remain
+interruptible: Session can already be cancelling and waiting for the publisher's
+exit. `WorkerInput` uses an OTP request alias and checks an interruption bound to
+the exact Session, job and input ID. Cancellation signals that wait before closing
+the task scope; it neither kills an outstanding file effect nor invents a
+delivered receipt. Resource cleanup still requires the Worker/native receipts
+and publisher exit. Follow the paired completion-boundary controls in
+[testing](testing.md#require-positive-controls-and-inspect-uncertainty).
+
 ## Trace prompt admission and the provider response
 
 The example's central exchange is:

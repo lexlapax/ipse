@@ -663,11 +663,12 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
 
     unless c[:native_root_approval] || c[:literal_v4_ab] || c[:worker_input_capacity] ||
              c[:registered_capture_sequence] ||
-             c[:registered_competing],
+             c[:registered_competing] || c[:protected_outer_cancel],
            do: on_exit(fn -> File.rm_rf!(root) end)
 
     if c[:registered_capture_sequence], do: IO.puts("REGISTERED_CAPTURE_ROOT=" <> root)
     if c[:registered_competing], do: IO.puts("COMPETING_CAPTURE_ROOT=" <> root)
+    if c[:protected_outer_cancel], do: IO.puts("PROTECTED_OUTER_CANCEL_ROOT=" <> root)
 
     trace = Path.join(root, "trace")
 
@@ -8838,10 +8839,104 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
     assert [_] = Task.await(c.provider_server, 5000)
   end
 
-  test "interrupted protected outer remains unknown and never replays on resume", c do
-    pid = start(c, %{fixture_mode: "hold"})
+  @tag protected_outer_cancel: true
+  test "cancellation queued before worker input completion confirms cleanup without replay", c do
+    {pid, id, input, task} = held_input_thaw(c)
+    [{scope, _}] = Elixir.Registry.lookup(Ipse.Registry, {Session.Resources, task})
+    assert Map.has_key?(:sys.get_state(scope).effects, input.caller)
+    effect_ref = Process.monitor(input.caller)
+    worker_ref = Process.monitor(input.worker)
+    {:os_pid, helper} = Port.info(:sys.get_state(input.worker).port, :os_pid)
+    cancel = Task.async(fn -> Session.cancel(pid) end)
+    await_cancel_queued(pid, cancel.pid, 300)
+    send(pid, :release_input_thaw)
+    assert :ok = Task.await(cancel, 10_000)
+    assert_receive {:DOWN, ^effect_ref, :process, _, _}, 1_000
+    assert_receive {:DOWN, ^worker_ref, :process, _, _}, 1_000
+    await_os_process_exit(Integer.to_string(helper), 100)
+    assert :ok = Session.close_confirmed(pid)
+    assert {:ok, events} = Journal.load(c.dir, id)
+
+    assert Enum.any?(
+             events,
+             &(&1["type"] == "worker_input_intent" and &1["input_id"] == input.intent["input_id"])
+           )
+
+    refute Enum.any?(
+             events,
+             &(&1["type"] == "worker_input_result" and &1["input_id"] == input.intent["input_id"])
+           )
+
+    refute Enum.any?(events, &(&1["type"] == "extension_invocation_result"))
+    assert {:ok, _} = Session.restore_context(events)
+    before = File.read!(c.trace)
+    resumed = start(c, %{}, id)
+    assert File.read!(c.trace) == before
+    assert :ok = Session.close_confirmed(resumed)
+  end
+
+  @tag protected_outer_cancel: true
+  test "mismatched input interruption messages cannot suppress delivered input", c do
+    {pid, id, input, _} = held_input_thaw(c)
+    input_id = input.intent["input_id"]
+    send(input.caller, {:worker_input_interrupted, self(), input.job, input_id})
+    send(input.caller, {:worker_input_interrupted, pid, make_ref(), input_id})
+    send(input.caller, {:worker_input_interrupted, pid, input.job, Ipse.Usage.id()})
+    send(pid, :release_input_thaw)
+    await_worker_input_settlement(pid, 300)
+    assert Process.alive?(input.caller)
+    assert {:ok, events} = Journal.load(c.dir, id)
+
+    assert Enum.any?(
+             events,
+             &(&1["type"] == "worker_input_result" and &1["input_id"] == input_id and
+                 &1["status"] == "delivered")
+           )
+
+    assert :ok = Session.cancel(pid)
+    assert :ok = Session.close_confirmed(pid)
+  end
+
+  defp held_input_thaw(c) do
+    pid = start(c, %{fixture_mode: "barrier"})
+    id = Session.info(pid).id
+    owner = self()
+
+    gate = fn
+      :released, _, _ ->
+        :released
+
+      {:thawing, input, task}, {:in, _message}, _ ->
+        send(owner, {:input_thaw_waiting, self(), input, task})
+        receive do: (:release_input_thaw -> :released)
+
+      {:prepared, input, task}, {:in, {_, _, {:session_share_finish, _, _}}}, _ ->
+        {:thawing, input, task}
+
+      state, {:out, {:ok, %{intent: %{"stage" => "host.actions"}}}, _, session}, _ ->
+        if get_in(List.last(session.invocation.results), ["request", "request", "op"]) ==
+             "snapshot",
+           do: {:prepared, session.invocation.worker_input, session.task.pid},
+           else: state
+
+      state, _, _ ->
+        state
+    end
+
+    assert :ok = :sys.install(pid, {gate, nil})
+    on_exit(fn -> send(pid, :release_input_thaw) end)
     assert :ok = Session.prompt(pid, "Synthetic café observation")
-    await_marker(c.trace, "held\n", 300)
+    assert_receive {:input_thaw_waiting, ^pid, input, task}, 5_000
+    await_marker(c.trace, "barrier\n", 300)
+    {pid, id, input, task}
+  end
+
+  @tag protected_outer_cancel: true
+  test "interrupted protected outer remains unknown and never replays on resume", c do
+    pid = start(c, %{fixture_mode: "barrier"})
+    assert :ok = Session.prompt(pid, "Synthetic café observation")
+    await_marker(c.trace, "barrier\n", 300)
+    await_worker_input_settlement(pid, 300)
     id = Session.info(pid).id
     assert :ok = Session.cancel(pid)
     assert :ok = Session.close_confirmed(pid)
@@ -9554,6 +9649,19 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
     IO.puts("WORKER_INHERITED_ROOT=" <> root)
     assert status == 0, output
     assert File.regular?(Path.join(root, "literal-ab-seed.json"))
+  end
+
+  defp await_cancel_queued(_, _, 0), do: flunk("cancellation did not reach the Session queue")
+
+  defp await_cancel_queued(pid, caller, remaining) do
+    {:messages, messages} = Process.info(pid, :messages)
+
+    if Enum.any?(messages, &match?({:"$gen_call", {^caller, _}, :cancel}, &1)) do
+      :ok
+    else
+      Process.sleep(10)
+      await_cancel_queued(pid, caller, remaining - 1)
+    end
   end
 
   defp await_worker_input_settlement(_, 0),

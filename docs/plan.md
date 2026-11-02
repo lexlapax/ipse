@@ -846,8 +846,11 @@ remain open.
 The latest [complete frozen-source baseline](archive/2026-10-26-p30-p31-implementation/full-suite-20261102.md)
 at `39c8043` exited 2: 3,747 passed, one failed, 118 skipped and 112 excluded,
 with unchanged pre/post source, build and helper inventories. The single failure
-is interrupted protected-outer cancellation returning unconfirmed cleanup; its
-cause remains open. The earlier `f44b63c` baseline remains preserved separately.
+is interrupted protected-outer cancellation returning unconfirmed cleanup. A
+[controlled follow-up](archive/2026-10-26-p30-p31-implementation/worker-input-cancel-20261102.md)
+reproduces a Session/publisher completion wait and verifies a focused interruption
+repair; a new complete source baseline remains required. The earlier `f44b63c`
+baseline remains preserved separately.
 Required positive integration, lifecycle and fault controls remain open; focused
 passes do not turn either failed aggregate into a passing one.
 

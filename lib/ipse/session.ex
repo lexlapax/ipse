@@ -4841,6 +4841,8 @@ defmodule Ipse.Session do
       |> Enum.filter(&Process.alive?/1)
       |> Enum.map(&Ipse.MCP.StdioTransport.close/1)
 
+    Ipse.Session.WorkerInput.interrupt(s)
+
     task_cleanup =
       if s.task, do: [Ipse.Session.Resources.close_task(s.task.pid)], else: []
 
