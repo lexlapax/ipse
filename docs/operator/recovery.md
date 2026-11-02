@@ -186,9 +186,18 @@ effect: `committed`, `refused`, `not_started`, or `unknown`. A missing result
 after intent, or an incomplete journal tail, reports `unknown`. The command
 does not check whether an accepted note is currently present or eligible, and
 its receipt alone does not establish a current storage state. For public
-single-card review, `control_status` reports the correlated protected consent
+review, `control_status` reports the correlated protected consent
 operation; older private acceptance fixtures may report `unavailable`. A
 still-running owner can append after this snapshot.
+
+For a selected batch, inspect each printed management journal/reservation ID.
+An acceptance journal additionally reports `batch_manifest_sha256`, `batch_id`,
+`batch_index` and `batch_count`. These correlate the frozen selection; they do
+not establish that other items succeeded. Each item has separate input,
+publication and accounting. Cancellation or an uncertain result stops the batch
+and leaves earlier confirmed items saved. List remaining pending keys before a
+new review; do not replay the original command with already accepted keys or
+assume a rollback. A new selection has a fresh manifest and acceptance codes.
 
 Public proposal review prints a separate `Knowledge reservation` ID before its
 management journal is created. If interruption occurred before that journal,

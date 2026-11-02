@@ -1035,6 +1035,29 @@ review acknowledgment or native completion is fabricated. Its telemetry pause
 is disclosed controlled-host instrumentation; it is not human, installed or
 annual-workload evidence. Both roots print as `PENDING_CORRECTION_ROOT`.
 
+For selected batches, run the pure boundary/membership and CLI denial checks,
+then each actual-Session native case in its own fresh SDK/bundle runtime:
+
+```sh
+mix test test/ipse/session/pending_batch_test.exs test/ipse/cli/management_batch_public_test.exs
+IPSE_TEST_GENUINE_PENDING_BATCH=1 mix test test/extensions/knowledge/knowledge_session_test.exs --only genuine_pending_batch --max-cases 1
+IPSE_TEST_GENUINE_PENDING_BATCH_PARTIAL=1 mix test test/extensions/knowledge/knowledge_session_test.exs --only genuine_pending_batch_partial --max-cases 1
+IPSE_TEST_GENUINE_PENDING_BATCH_EIGHT=1 mix test test/extensions/knowledge/knowledge_session_test.exs --only genuine_pending_batch_eight --max-cases 1
+```
+
+The pure 8-KiB boundary vectors are shapes, not native/source attestation. Actual
+journeys must produce their proposals through Session capture, retain the original
+journals, and obtain different native acceptance events/codes for each item under
+one manifest hash. Cancellation, stale input and original-source withdrawal must
+stop before promotion. Cancelling the second item must retain the first acceptance
+and the remaining exact pending record, with separate known accounting and inert
+inspection. The eight-item case uses eight actual captures and an explicit
+16-operation fixture allowance; no product quota changes. Each accepted event
+must validate its full manifest and exact original source proof, and each operation
+inspection must report the same hash and correct item index/count. No real-model,
+human, installed or annual-workload qualification follows from synthetic main
+responses or same-user PTY input. Roots print as `PENDING_BATCH_ROOT`.
+
 The separate opt-in `genuine_pending_accepted_recall` journey in
 `test/extensions/knowledge/knowledge_session_test.exs` uses freshly built isolated
 Knowledge artifacts, two ordinary captures and actual public native acceptance.

@@ -46,13 +46,14 @@ fn main() {
     let channel = args.first().is_some_and(|a| a == "--channel");
     if channel { args.remove(0); }
     let guarded_review = args.first().is_some_and(|a| a == "--review-guarded");
-    let management_review = args.first().is_some_and(|a| a == "--management-review" || a == "--management-review-cancel" || a == "--management-review-stale" || a == "--management-review-race" || a == "--management-review-hold" || a == "--management-review-session-hold" || a == "--management-review-session-race");
+    let management_review = args.first().is_some_and(|a| a == "--management-review" || a == "--management-review-cancel" || a == "--management-review-cancel-second" || a == "--management-review-stale" || a == "--management-review-race" || a == "--management-review-hold" || a == "--management-review-session-hold" || a == "--management-review-session-race");
     let hold_review = args.first().is_some_and(|a| a == "--management-review-hold");
     let hold_session_review = args.first().is_some_and(|a| a == "--management-review-session-hold");
     let race_session_review = args.first().is_some_and(|a| a == "--management-review-session-race");
     let management_race = args.first().is_some_and(|a| a == "--management-review-race");
     let review = guarded_review || management_review || args.first().is_some_and(|a| a == "--review" || a == "--review-cancel" || a == "--review-stale");
     let cancel_review = args.first().is_some_and(|a| a == "--review-cancel" || a == "--management-review-cancel");
+    let cancel_second = args.first().is_some_and(|a| a == "--management-review-cancel-second");
     let stale_review = args.first().is_some_and(|a| a == "--review-stale" || a == "--management-review-stale");
     if review { args.remove(0); }
     let knowledge = assertion || args.first().is_some_and(|a| a == "--knowledge" || a == "--knowledge-cancel" || a == "--knowledge-stale" || a == "--knowledge-cas" || a == "--knowledge-config");
@@ -186,7 +187,8 @@ fn main() {
                         let wrong = format!("{command} {}", if code == "0000000000000000" { "1111111111111111" } else { "0000000000000000" });
                         let cancel_forget = assertion && command == "forget" && assertion_case == "save_forget_cancel";
                         let cancel_correction = assertion && command == "correct" && (assertion_case == "relation_cancel" || assertion_case == "terminal_cancel");
-                        let line = if cancel_review || cancel_forget || cancel_correction { "yes" } else if stale_review { &wrong } else { &reply };
+                        let cancel_batch_item = cancel_second && command == "accept" && answered.iter().filter(|s| s.starts_with("accept ")).count() == 1;
+                        let line = if cancel_review || cancel_forget || cancel_correction || cancel_batch_item { "yes" } else if stale_review { &wrong } else { &reply };
                         master.write_all(format!("{line}\n").as_bytes()).unwrap();
                         answered.push(reply);
                     }

@@ -261,10 +261,47 @@ Inspection does not replay or settle anything. The reservation ID remains useful
 if interruption occurred before a journal was created. Confirmed acceptance
 charges one operation with measured input/output bytes; cancellation and known
 pre-publication refusal settle zero effect usage. An uncertain attempt retains
-its reservation. This experimental path supports one selected card; batch
-acceptance remains unfinished. After confirmed acceptance,
+its reservation. Review can also take a bounded explicit selection as described
+below. After confirmed acceptance,
 close the original conversation and follow the bounded current-note recall
 procedure below. A saved acceptance alone does not prove successful later recall.
+
+### Review selected proposals together
+
+Choose two to eight complete keys from the historical list:
+
+```sh
+ipse knowledge review pending.FIRST_64_CHARACTER_ID pending.SECOND_64_CHARACTER_ID --cwd /path/to/project
+```
+
+Use the same project/home, saved configuration and original Sessions directory
+as single-candidate review. Add `--state-dir /path/to/original/sessions` when
+needed. Duplicate keys, more than eight items and an immutable manifest over
+8 KiB refuse before a review reservation. Split a larger selection into separate
+commands. Provider overrides, `--yes`, `--json` and piped acceptance are refused.
+
+Keep the printed batch/manifest identity and each reservation/journal ID. Each
+native prompt displays the complete frozen manifest: exact selected texts,
+record hashes/revisions, source classes and provenance, signed pending deadlines
+and proposed accepted retention. It also displays the current candidate's full
+source proof and highlights its position. Read the current item, then enter its
+fresh `accept CODE`. Every item needs separate fresh input. Selecting keys in the
+command does not accept any of them, and there is no unseen accept-all action.
+
+Each publication independently rechecks its exact record, source, exclusions,
+installed selection and active permission. A changed selected candidate refuses
+instead of silently rebuilding the manifest. Cancellation, refusal or an uncertain
+outcome stops the rest of the batch. Earlier confirmed items remain saved; other
+items keep their original pending expiry. There is no rollback or automatic replay.
+List remaining pending keys and start a new review when ready.
+
+Each confirmed item charges its own measured operation. Inspect each printed
+journal/reservation ID after interruption with `knowledge operation ID`. An
+acceptance journal reports its manifest hash, batch ID, zero-based item index and
+count; these identify the original selection and do not prove current source
+eligibility. A partial batch needs per-item inspection rather than an assumption
+that the whole selection succeeded. This source/native path remains experimental;
+installed, human and annual-workload qualification are separate.
 
 ### Leave a proposal for later
 

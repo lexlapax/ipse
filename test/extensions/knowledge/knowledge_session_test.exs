@@ -43,6 +43,42 @@ defmodule IpseKnowledge.KnowledgeSessionTest do
         [] ->
           tool("list-#{turn}", "source_list", %{"limit" => 32})
 
+        pages when mode == :paged ->
+          last = Jason.decode!(List.last(pages)["content"])
+
+          cond do
+            is_binary(last["next"]) and is_list(last["sources"]) ->
+              tool("list-#{turn}-#{length(pages)}", "source_list", %{
+                "limit" => 32,
+                "cursor" => last["next"]
+              })
+
+            is_list(last["sources"]) ->
+              sources = Enum.flat_map(pages, &(Jason.decode!(&1["content"])["sources"] || []))
+              source = Enum.find(Enum.reverse(sources), &(&1["kind"] == "input.original"))
+
+              input =
+                Enum.find(
+                  Enum.reverse(messages),
+                  &(&1["role"] == "user" and not Ipse.Session.Reference.reference?(&1))
+                )["content"]
+
+              tool("capture-#{turn}", "ext__knowledge__capture", %{
+                "text" => input,
+                "category" => "ordinary",
+                "reason" => "selected observation",
+                "event_at_ms" => nil,
+                "source" => %{"handle" => source["read_handle"], "quote" => input}
+              })
+
+            true ->
+              {:ok,
+               %{
+                 "role" => "assistant",
+                 "content" => "The unattended observation is pending review."
+               }, %{}}
+          end
+
         [result] ->
           list = Jason.decode!(result["content"])
           source = Enum.find(Enum.reverse(list["sources"]), &(&1["kind"] == "input.original"))
@@ -90,6 +126,10 @@ defmodule IpseKnowledge.KnowledgeSessionTest do
 
   defmodule FragmentModel do
     def complete(_, messages, _, _), do: Model.complete_with(:fragment, messages)
+  end
+
+  defmodule PagedModel do
+    def complete(_, messages, _, _), do: Model.complete_with(:paged, messages)
   end
 
   defmodule AnswerModel do
@@ -203,6 +243,30 @@ defmodule IpseKnowledge.KnowledgeSessionTest do
   @tag skip: System.get_env("IPSE_TEST_GENUINE_PENDING_CORRECTION_DEADLINE") != "1"
   test "a pending correction staged before actual consent expiry cannot publish after its final deadline" do
     capture(false, false, false, false, false, :public_correct_deadline)
+  end
+
+  @tag :capture_parent_case
+  @tag :genuine_pending_batch
+  @tag timeout: 180_000
+  @tag skip: System.get_env("IPSE_TEST_GENUINE_PENDING_BATCH") != "1"
+  test "an immutable pending batch requires fresh native acceptance for each exact candidate" do
+    capture(false, false, false, false, false, :public_batch)
+  end
+
+  @tag :capture_parent_case
+  @tag :genuine_pending_batch_partial
+  @tag timeout: 180_000
+  @tag skip: System.get_env("IPSE_TEST_GENUINE_PENDING_BATCH_PARTIAL") != "1"
+  test "cancelling the second batch item preserves the first acceptance and leaves the rest pending" do
+    capture(false, false, false, false, false, :public_batch_partial)
+  end
+
+  @tag :capture_parent_case
+  @tag :genuine_pending_batch_eight
+  @tag timeout: 180_000
+  @tag skip: System.get_env("IPSE_TEST_GENUINE_PENDING_BATCH_EIGHT") != "1"
+  test "eight Session-produced proposals each require native input under the same bounded manifest" do
+    capture(false, false, false, false, false, :public_batch_eight)
   end
 
   @tag :capture_parent_case
@@ -398,6 +462,9 @@ defmodule IpseKnowledge.KnowledgeSessionTest do
       accept? in [:public_correct, :public_correct_deadline] ->
         IO.puts("PENDING_CORRECTION_ROOT=" <> root)
 
+      accept? in [:public_batch, :public_batch_partial, :public_batch_eight] ->
+        IO.puts("PENDING_BATCH_ROOT=" <> root)
+
       accept? in [:public_recall, :public_expiry, :public_retention, :public_approval] ->
         IO.puts("ACCEPTED_RECALL_ROOT=" <> root)
 
@@ -524,7 +591,14 @@ defmodule IpseKnowledge.KnowledgeSessionTest do
     config = %{
       provider: :demo,
       provider_module:
-        if(answer?, do: AnswerModel, else: if(fragment?, do: FragmentModel, else: Model)),
+        if(answer?,
+          do: AnswerModel,
+          else:
+            if(fragment?,
+              do: FragmentModel,
+              else: if(accept? == :public_batch_eight, do: PagedModel, else: Model)
+            )
+        ),
       model: "synthetic",
       home: home,
       approval: :deny,
@@ -662,13 +736,17 @@ defmodule IpseKnowledge.KnowledgeSessionTest do
       "effects" => effects,
       "limits" =>
         Map.merge(Consent.zero(), %{
-          "operations" => if(accept? == :public_retention, do: 16, else: 8),
+          "operations" =>
+            if(accept? in [:public_retention, :public_batch_eight], do: 16, else: 8),
           "input_bytes" =>
             if(
               accept? in [
                 :public,
                 :public_correct,
                 :public_correct_deadline,
+                :public_batch,
+                :public_batch_partial,
+                :public_batch_eight,
                 :public_recall,
                 :public_expiry,
                 :public_retention,
@@ -690,12 +768,20 @@ defmodule IpseKnowledge.KnowledgeSessionTest do
           if accept? in [:public_recall, :public_expiry, :public_retention, :public_approval] do
             registered_capture_config(config, category)
           else
-            requests = if native?, do: if(answer?, do: 4, else: 3), else: 6
+            requests =
+              if accept? == :public_batch_eight,
+                do: 160,
+                else: if(native?, do: if(answer?, do: 4, else: 3), else: 6)
 
             inputs =
               if native?,
                 do: ["synthetic café 日本語 1"],
-                else: ["Acme has owner Alex", "Beta has owner Mira"]
+                else:
+                  ["Acme has owner Alex", "Beta has owner Mira"] ++
+                    if(accept? == :public_batch_eight,
+                      do: Enum.map(3..8, &"Proposal number #{&1}"),
+                      else: []
+                    )
 
             registered_capture_config(
               config,
@@ -1041,10 +1127,50 @@ defmodule IpseKnowledge.KnowledgeSessionTest do
                    end)
           end
 
+          extra_keys =
+            if accept? == :public_batch_eight do
+              for number <- 3..8 do
+                assert :ok = Session.prompt(resumed, "Proposal number #{number}")
+                assert_receive {:ipse, ^resumed, {:done, :ok}}, 30_000
+              end
+
+              assert {:ok, eight_events} = Journal.load(dir, id)
+
+              eight_commits =
+                Enum.filter(eight_events, fn event ->
+                  event["type"] == "extension_action_result" and
+                    get_in(event, ["request", "op"]) == "collection.managed" and
+                    get_in(event, ["outcome", "status"]) == "ok"
+                end)
+
+              assert length(eight_commits) == 8
+              assert {:ok, _} = Ipse.Session.Saved.restore(eight_events, id)
+
+              Enum.drop(eight_commits, 2)
+              |> Enum.map(fn event ->
+                [item] = event["request"]["request"]["changes"]
+                item["key"]
+              end)
+            else
+              []
+            end
+
           assert :ok = Session.close_confirmed(resumed)
 
-          if accept? in [:public_reject, :public_correct, :public_correct_deadline] do
-            operation = if accept? == :public_reject, do: "rejection", else: "correction"
+          if accept? in [
+               :public_reject,
+               :public_correct,
+               :public_correct_deadline,
+               :public_batch,
+               :public_batch_partial,
+               :public_batch_eight
+             ] do
+            operation =
+              cond do
+                accept? == :public_reject -> "rejection"
+                accept? in [:public_batch, :public_batch_partial, :public_batch_eight] -> "batch"
+                true -> "correction"
+              end
 
             exercise_pending_management(
               root,
@@ -1054,7 +1180,19 @@ defmodule IpseKnowledge.KnowledgeSessionTest do
               change,
               second_change,
               operation,
-              accept? == :public_correct_deadline
+              cond do
+                accept? == :public_correct_deadline ->
+                  :deadline
+
+                accept? == :public_batch_partial ->
+                  :partial
+
+                accept? == :public_batch_eight ->
+                  {:eight, [change["key"], second_change["key"] | extra_keys]}
+
+                true ->
+                  :ordinary
+              end
             )
           else
             if accept? == :path_swap do
@@ -1202,7 +1340,7 @@ defmodule IpseKnowledge.KnowledgeSessionTest do
          change,
          peer,
          operation,
-         deadline?
+         variant
        ) do
     config_path = Path.join(home, "config.json")
 
@@ -1223,7 +1361,8 @@ defmodule IpseKnowledge.KnowledgeSessionTest do
         "namespace" => namespace,
         "history_dir" => history_dir,
         "key" => change["key"],
-        "peer_key" => peer["key"]
+        "peer_key" => peer["key"],
+        "keys" => if(match?({:eight, _}, variant), do: elem(variant, 1), else: nil)
       }),
       [:exclusive]
     )
@@ -1259,7 +1398,28 @@ defmodule IpseKnowledge.KnowledgeSessionTest do
           {"grant-race", "--management-review-race"}
         ]
 
-    modes = if deadline?, do: [{"deadline", "--management-review"}], else: modes
+    modes =
+      cond do
+        variant == :deadline ->
+          [{"deadline", "--management-review"}]
+
+        operation == "batch" and match?({:eight, _}, variant) ->
+          [{"accept", "--management-review"}]
+
+        operation == "batch" and variant == :partial ->
+          [{"partial", "--management-review-cancel-second"}]
+
+        operation == "batch" ->
+          [
+            {"cancel", "--management-review-cancel"},
+            {"stale", "--management-review-stale"},
+            {"source-loss", "--management-review-race"},
+            {"accept", "--management-review"}
+          ]
+
+        true ->
+          modes
+      end
 
     for {mode, flag} <- modes do
       {output, code} =

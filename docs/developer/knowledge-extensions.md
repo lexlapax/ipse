@@ -219,8 +219,47 @@ retains liability. Preserve both printed IDs. `Consent.operation/3` and
 `knowledge operation ID` inspect recent/compacted resource records without
 settlement or replay, including a reservation created before any journal.
 An acceptance journal additionally correlates the native event with its ledger
-entry. This path currently supports one selected card; batch acceptance remains
-open. Deferral and pending text editing have separate paths below.
+entry. Selected batches reuse this per-card publication boundary. Deferral and
+pending text editing have separate paths below.
+
+### Freeze a bounded selection and accept each item separately
+
+`CLI.Knowledge.Batch` handles `knowledge review KEY KEY [...]`. It admits two to
+eight distinct keys, checks active source-selection policy, then reads each exact
+signed historical candidate under existing Identity/Consent owners. All initial
+cards must describe the same Collection root. `Session.PendingBatch` freezes an
+at-most-eight-item, at-most-8-KiB manifest with project/binding/policy/recipe,
+source provenance, exact text, revision/value hash, signed admission/deadline and
+category retention rules. The manifest digest uses the existing canonical JSON
+digest. These data grant no source or review authority.
+
+For each selected key, the batch owner calls ordinary `Management.review` with
+that immutable manifest and item index. This creates a separate resource
+reservation and management journal. An optional closed `batch` member in the
+pending card records the full manifest, hash and index; its selected member must
+match the actual prepared card. Original cards/events remain readable without
+this member. The native display repeats the complete manifest and identifies the
+current item; its fresh `accept CODE` and exact facts digest cover the batch member
+as well as that candidate. No per-item permit is derived from another item's
+input, and selecting argv keys grants no acceptance.
+
+Manifest-bearing facts use the existing Review limits of 16 KiB of facts and
+64 KiB of escaped display, with no raised native/global quota. The manifest itself
+still has the 8-KiB bound; ordinary one-card review retains its original 8-KiB
+display bound. Oversized facts or displays refuse without truncation. Accepted
+note/link values and per-publication sidecar/read/change limits are unchanged.
+
+Publication reconstructs the exact card, including manifest membership, under
+fresh current source/Consent/Collection owners. Each candidate keeps its own
+native permit, journal intent, source lease and final publication deadline. An
+earlier batch publication may advance the root; the next card uses that actual
+root while matching its frozen revision/value/provenance and signed clocks.
+Changed candidates cannot substitute into the manifest. Stop after cancellation,
+refusal or uncertainty and retain earlier confirmed results. Never automatically
+replay a stopped item or roll back earlier accepted decisions. The accepted event
+persists the full immutable selection, while operation inspection exposes its
+manifest identity/index without granting current eligibility. Account for each
+item's existing operation and the additional manifest bytes in its journal/input.
 
 ### Leave the exact candidate pending
 

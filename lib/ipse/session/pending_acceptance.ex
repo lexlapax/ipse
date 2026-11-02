@@ -907,9 +907,14 @@ defmodule Ipse.Session.PendingAcceptance do
            "valid_until_ms" => metadata["valid_until_ms"],
            "root_sha256" => witness["root_sha256"]
          },
+         facts =
+           if(Map.has_key?(context, "batch"),
+             do: Map.put(facts, "batch", context["batch"]),
+             else: facts
+           ),
          true <- facts?(facts),
          {:ok, display, _} <- Review.preview_display("accept", facts),
-         true <- byte_size(display) <= 8192 do
+         true <- byte_size(display) <= review_display_limit(facts) do
       {:ok, facts}
     else
       _ -> @error
@@ -976,6 +981,9 @@ defmodule Ipse.Session.PendingAcceptance do
   rescue
     _ -> false
   end
+
+  @doc false
+  def review_display_limit(facts), do: if(Map.has_key?(facts, "batch"), do: 65_536, else: 8192)
 
   @doc """
   Construct the bounded accepted-decision and immutable link values for an event.
@@ -1755,7 +1763,7 @@ defmodule Ipse.Session.PendingAcceptance do
   def public_plan(_, _, _, _, _), do: @error
 
   defp context?(c) do
-    exact?(c, @context) and Enum.all?(~w(operation_id journal_id client_id), &id?(c[&1])) and
+    batch_shape?(c, @context) and Enum.all?(~w(operation_id journal_id client_id), &id?(c[&1])) and
       (is_nil(c["session_id"]) or id?(c["session_id"])) and
       Enum.all?(~w(project_id namespace binding_sha256 policy_sha256), &JSON.sha256?(c[&1])) and
       positive?(c["capture_epoch"]) and positive?(c["render_revision"]) and
@@ -1771,7 +1779,10 @@ defmodule Ipse.Session.PendingAcceptance do
   end
 
   defp facts?(facts) do
-    exact?(facts, @facts) and facts["version"] === 1 and facts["kind"] === "pending_proposal_card" and
+    batch_shape?(facts, @facts) and
+      (not Map.has_key?(facts, "batch") or
+         Ipse.Session.PendingBatch.member?(facts["batch"], facts)) and
+      facts["version"] === 1 and facts["kind"] === "pending_proposal_card" and
       Enum.all?(~w(operation_id journal_id client_id), &id?(facts[&1])) and
       (is_nil(facts["session_id"]) or id?(facts["session_id"])) and
       Enum.all?(
@@ -1793,8 +1804,14 @@ defmodule Ipse.Session.PendingAcceptance do
         {:ok, facts["candidate_id"]} and
       JSON.safe_uint?(facts["first_admitted_ms"]) and JSON.safe_uint?(facts["valid_until_ms"]) and
       facts["first_admitted_ms"] < facts["valid_until_ms"] and
-      byte_size(Jason.encode!(facts)) <= 8192
+      byte_size(Jason.encode!(facts)) <= if(Map.has_key?(facts, "batch"), do: 16_384, else: 8192)
   end
+
+  defp batch_shape?(value, keys),
+    do:
+      exact?(value, keys) or
+        (exact?(value, keys ++ ["batch"]) and is_nil(value["session_id"]) and
+           Ipse.Session.PendingBatch.valid_binding?(value["batch"]))
 
   defp review?(receipt, facts) do
     exact?(receipt, @receipt) and receipt["version"] === 1 and receipt["kind"] === "native_review" and

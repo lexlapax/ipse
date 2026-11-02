@@ -1,0 +1,485 @@
+{
+  "base_commit": "14a5190dc58b1c5ec410f4559f50c68991e2685f",
+  "checks": {
+    "affected_regression": {
+      "exit_code": 0,
+      "log": {
+        "bytes": 786,
+        "path": "/tmp/ipse-pending-batch-regression-791826.log",
+        "sha256": "2f39a9590a46174e7a23d3799c33345a1d17035482bb1a972438f1f3ef9d2505"
+      },
+      "passed": 84,
+      "seconds": 72.9,
+      "seed": 791826,
+      "skipped": 1
+    },
+    "complete_attempts": [
+      {
+        "cause": "Cancellation and unchanged state passed; fixture asserted nonexistent downloads field instead of download_bytes; fixture-only fix",
+        "excluded": 19,
+        "exit_code": 2,
+        "failed": 1,
+        "log": {
+          "bytes": 9198,
+          "path": "/tmp/ipse-pending-batch-genuine-791823.log",
+          "sha256": "a0cdfec233cd8027c2c1915222d114294e0d064eb3af425d966021891952d2dc"
+        },
+        "passed": 0,
+        "seconds": 10.8,
+        "seed": 791823
+      },
+      {
+        "excluded": 19,
+        "exit_code": 0,
+        "log": {
+          "bytes": 364,
+          "path": "/tmp/ipse-pending-batch-genuine-791823-second.log",
+          "sha256": "d5a987a4301a608d352470df79c8b539585dd9ae0eab01a2f19c35d8ef0fa20a"
+        },
+        "passed": 1,
+        "scope": "Before inspection fields",
+        "seconds": 15.3,
+        "seed": 791823
+      },
+      {
+        "excluded": 20,
+        "exit_code": 0,
+        "log": {
+          "bytes": 363,
+          "path": "/tmp/ipse-pending-batch-genuine-791823-final.log",
+          "sha256": "dbcb9b1bc24ab55347b141c2285d3405f156901b23bbf7b808ddb6ee2024c4a6"
+        },
+        "passed": 1,
+        "scope": "Final SDK: cancel/stale/source-loss stop without promotion; two separately confirmed events and operations under one manifest, with inspection identity",
+        "seconds": 15.3,
+        "seed": 791823
+      }
+    ],
+    "documentation": {
+      "errors": 0,
+      "local_links": 8680,
+      "log": {
+        "bytes": 757,
+        "path": "/tmp/ipse-pending-batch-docs-20261102.log",
+        "sha256": "49ae91fea493f929206d655799827bea3d40d7397dbea90679feefd6417cf6df"
+      },
+      "markdown_files": 1049,
+      "scope": "Owning manuals/record; private permission-denied directories not inspected"
+    },
+    "documentation_final": {
+      "errors": 0,
+      "local_links": 8680,
+      "log": {
+        "bytes": 757,
+        "path": "/tmp/ipse-pending-batch-docs-final-20261102.log",
+        "sha256": "49ae91fea493f929206d655799827bea3d40d7397dbea90679feefd6417cf6df"
+      },
+      "markdown_files": 1049,
+      "scope": "Final narrative receipt, owning manuals and structured receipt; private permission-denied directories not inspected"
+    },
+    "eight_attempts": [
+      {
+        "cause": "Synthetic responder used first source-list page only: three captures succeeded, later five source quotes refused; fixture now follows actual returned cursors, no production/source authority bypass",
+        "excluded": 20,
+        "exit_code": 2,
+        "failed": 1,
+        "log": {
+          "bytes": 898,
+          "path": "/tmp/ipse-pending-batch-genuine-791825.log",
+          "sha256": "88e32f9c8336d6fe3aacc96ecbbfe66bc4a83dcae071fe438db04b6a3b3d7c9f"
+        },
+        "passed": 0,
+        "seconds": 25.4,
+        "seed": 791825
+      },
+      {
+        "actual_captures": 8,
+        "actual_native_acceptance_events": 8,
+        "excluded": 20,
+        "exit_code": 0,
+        "fixture_operation_allowance": 16,
+        "log": {
+          "bytes": 376,
+          "path": "/tmp/ipse-pending-batch-genuine-791825-second.log",
+          "sha256": "51c7b65fda1d9452230ee87685be6d785c368ea6b7d9f0d76260c54ee52c75ab"
+        },
+        "passed": 1,
+        "scope": "Actual paged source handles, Saved reconstruction/confirmed close, eight separate native codes/events and operations under one bounded manifest",
+        "seconds": 55.0,
+        "seed": 791825
+      }
+    ],
+    "final_build": {
+      "command": "./dev/build.sh",
+      "exit_code": 0,
+      "host_source_files_compiled": 189,
+      "log": {
+        "bytes": 753,
+        "path": "/tmp/ipse-pending-batch-build-final-20261102.log",
+        "sha256": "686c7fbc19a2b74141de8c29a35604dfb8231f28493ee6644d09a238711a3a46"
+      }
+    },
+    "finish_checks": {
+      "fail_fast_exit_code": 0,
+      "logs": [
+        {
+          "bytes": 0,
+          "path": "/tmp/ipse-pending-batch-format-20261102.log",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "bytes": 0,
+          "path": "/tmp/ipse-pending-batch-compile-final-20261102.log",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "bytes": 2720,
+          "path": "/tmp/ipse-pending-batch-demo-20261102.log",
+          "sha256": "d94c36c77a10e2188d4764818cdfab2416a78cf137f1327d17d1f6066cdd41ba"
+        },
+        {
+          "bytes": 7953,
+          "path": "/tmp/ipse-pending-batch-help-20261102.log",
+          "sha256": "108415ce4713f67131131f11cab5075992d50ce0160d18c4b09a4ad22f3f3230"
+        }
+      ]
+    },
+    "initial_build": {
+      "command": "./dev/build.sh",
+      "exit_code": 0,
+      "log": {
+        "bytes": 753,
+        "path": "/tmp/ipse-pending-batch-build-20261102.log",
+        "sha256": "39acd3d2d74221fb21e473cd16ac68b9304fa11f63b908a48db3d3474116a717"
+      }
+    },
+    "legacy_single_card": {
+      "excluded": 20,
+      "exit_code": 0,
+      "log": {
+        "bytes": 380,
+        "path": "/tmp/ipse-pending-batch-legacy-791812.log",
+        "sha256": "58ec4f5b102fc3ce57ef33f76d92366398bc2e3389271c17d0b51a563fc97b42"
+      },
+      "passed": 1,
+      "scope": "Existing source withdrawal/revocation/correction and separate fresh acceptance path without a batch member",
+      "seconds": 19.1,
+      "seed": 791812
+    },
+    "partial_attempts": [
+      {
+        "excluded": 19,
+        "exit_code": 0,
+        "log": {
+          "bytes": 379,
+          "path": "/tmp/ipse-pending-batch-genuine-791824.log",
+          "sha256": "d128b34ff157e62717b685b108ec98bedcbc65fea1f55469a0c99204d2842e86"
+        },
+        "passed": 1,
+        "seconds": 11.5,
+        "seed": 791824
+      },
+      {
+        "excluded": 20,
+        "exit_code": 0,
+        "log": {
+          "bytes": 379,
+          "path": "/tmp/ipse-pending-batch-genuine-791824-final.log",
+          "sha256": "ffa469caa46c94558c87fbace71ba1e9839fd6db4775cae24b9f8d9f9ff67322"
+        },
+        "passed": 1,
+        "scope": "Final SDK: second item cancelled, first accepted; exact remaining pending record, per-item known accounting, repeated inspection inert",
+        "seconds": 12.2,
+        "seed": 791824
+      }
+    ],
+    "preflight": {
+      "log": {
+        "bytes": 259,
+        "path": "/tmp/ipse-pending-batch-preflight-791822.log",
+        "sha256": "90235aeb9b621bb45d9682d5b29a912e60f19fe3ae7a8d9d0859de7e28b50cac"
+      },
+      "passed": 11,
+      "seed": 791822
+    },
+    "pure": {
+      "log": {
+        "bytes": 300,
+        "path": "/tmp/ipse-pending-batch-pure-791821.log",
+        "sha256": "c5a490f256e5429fe0f3497201ef1366659644bf9f50c83687dc0416c24e8ada"
+      },
+      "passed": 9,
+      "seed": 791821
+    }
+  },
+  "date": "2026-11-02",
+  "dependencies_added": [],
+  "full_suite": {
+    "covers_this_increment": false,
+    "latest_passing_commit": "9f1707cb33a7d9619c7a632dac83ae4ce313bc85",
+    "new_final_candidate_suite_required": true
+  },
+  "inventory_limit": "Explicit post-run source/SDK/helper/manifest/log and retained fixture byte inventory; no complete prelaunch, native-library, in-memory or physical peak closure. Private bundle staging intentional; phases retain their own failures/results",
+  "live_calls": 0,
+  "local_orchestration": [
+    {
+      "bytes": 1429,
+      "path": "/tmp/ipse-pending-batch-isolated-run.exs",
+      "sha256": "b9f635548821b8e2e0742061a191482924da5a5ae4579c8bb32d88ee673fe449"
+    },
+    {
+      "bytes": 1141,
+      "path": "/tmp/ipse-pending-correction-isolated-run.exs",
+      "sha256": "5c2633bd8aa9b289c5e0543cbefa2c8e075e5f1f7e043915f99e2ba68339c7b8"
+    },
+    {
+      "bytes": 9484,
+      "path": "/tmp/ipse-pending-batch-receipt.exs",
+      "sha256": "7099cb0a33d16322eb134ceb83c6c32ca0822a465041cd06310d16ea6efd8b67"
+    }
+  ],
+  "manual_review": "Retained whole owning-manual reviews plus current complete workflow reconciliation across single/batch acceptance, defer/edit, partial recovery, storage costs and developer verification",
+  "manuals": [
+    {
+      "bytes": 40004,
+      "path": "docs/operator/knowledge-permissions.md",
+      "sha256": "fa706e9bde6c5b27ec3a816f9334fa0ba03501be7e2404ec917f9923b30e5242"
+    },
+    {
+      "bytes": 36198,
+      "path": "docs/operator/recovery.md",
+      "sha256": "8a8f3b9367b22f37aa3f88d8fec1ba5d058391e53f8846d3a7d0fcf48592ca7c"
+    },
+    {
+      "bytes": 77436,
+      "path": "docs/developer/knowledge-extensions.md",
+      "sha256": "74c8e9460365efd12dc311d78083630ad4a2431c75df7f7ec4de17b66c7a2c6e"
+    },
+    {
+      "bytes": 33656,
+      "path": "docs/developer/knowledge-storage.md",
+      "sha256": "2f356d3cb833b5054a738587d8d0b3fe0bc350ed45a909bcbaaaf2afeba88fa5"
+    },
+    {
+      "bytes": 86967,
+      "path": "docs/developer/testing.md",
+      "sha256": "86d0f0d499513d9a1d1e2bc932adeae86ef7e1e8cc54c026d65a57b16e1d5e28"
+    },
+    {
+      "bytes": 160625,
+      "path": "docs/plan.md",
+      "sha256": "d91bc1af3b9a5d4dd35b7b52f5dc8af512a0823471898e4230c7a9483eeb0199"
+    }
+  ],
+  "native_protocol_changed": false,
+  "release_published": false,
+  "remaining": [
+    "wider payload/deadline/owner-loss and cross-item confusion qualification",
+    "installed/human/platform qualification",
+    "normal year plus 10000 mixed changes with manifest/journal/effect costs",
+    "independent audit",
+    "final integrated full suite and reviewer handoff"
+  ],
+  "runtimes": [
+    {
+      "artifact_manifest": {
+        "bytes": 5270,
+        "path": "/tmp/ipse-native-knowledge-session-50569e1f353c2d799f0fc58bb199beaf/artifact/extension.json",
+        "sha256": "ec11470c02e3847dd659e766cf332b0188893501c5c0590ee26dfd3a9d40099c"
+      },
+      "artifact_matches_staged_manifest": true,
+      "ebin_files": 231,
+      "ebin_matches_current_dev": true,
+      "genuine_store": "/tmp/ipse-native-knowledge-session-50569e1f353c2d799f0fc58bb199beaf",
+      "helper": {
+        "bytes": 969344,
+        "path": "/tmp/ipse-pending-batch-isolated-20261102-final/lib/ipse/priv/ipse-runner",
+        "sha256": "5487c57a84b99be7b5b4381d097b637d3c45350b92b492d1786712f2bfbf8c7a"
+      },
+      "retained_component_stats": {
+        "accepted_events": 2,
+        "batch_accepted_events": 2,
+        "batch_manifest_encoded_sizes": [
+          2000
+        ],
+        "management_journals": 5,
+        "max_accepted_facts_encoded_bytes": 4134,
+        "retained_management_journal_bytes": 25573,
+        "scope": "Post-run retained component bytes, not native allocation peaks, prelaunch closure or annual capacity"
+      },
+      "runtime": "/tmp/ipse-pending-batch-isolated-20261102-final",
+      "staged_manifest": {
+        "bytes": 5270,
+        "path": "/tmp/ipse-pending-batch-isolated-20261102-final/lib/ipse/priv/extension-bundles/knowledge/extension.json",
+        "sha256": "ec11470c02e3847dd659e766cf332b0188893501c5c0590ee26dfd3a9d40099c"
+      }
+    },
+    {
+      "artifact_manifest": {
+        "bytes": 5270,
+        "path": "/tmp/ipse-native-knowledge-session-87cecec980677dc3b19cbdca4d7754c4/artifact/extension.json",
+        "sha256": "32e7d7315dc77608cf07860c6984ab0107baaf418dd3e497fb0ffa4f42bd9db7"
+      },
+      "artifact_matches_staged_manifest": true,
+      "ebin_files": 231,
+      "ebin_matches_current_dev": true,
+      "genuine_store": "/tmp/ipse-native-knowledge-session-87cecec980677dc3b19cbdca4d7754c4",
+      "helper": {
+        "bytes": 969344,
+        "path": "/tmp/ipse-pending-batch-partial-isolated-20261102-final/lib/ipse/priv/ipse-runner",
+        "sha256": "5487c57a84b99be7b5b4381d097b637d3c45350b92b492d1786712f2bfbf8c7a"
+      },
+      "retained_component_stats": {
+        "accepted_events": 1,
+        "batch_accepted_events": 1,
+        "batch_manifest_encoded_sizes": [
+          2000
+        ],
+        "management_journals": 2,
+        "max_accepted_facts_encoded_bytes": 4134,
+        "retained_management_journal_bytes": 12447,
+        "scope": "Post-run retained component bytes, not native allocation peaks, prelaunch closure or annual capacity"
+      },
+      "runtime": "/tmp/ipse-pending-batch-partial-isolated-20261102-final",
+      "staged_manifest": {
+        "bytes": 5270,
+        "path": "/tmp/ipse-pending-batch-partial-isolated-20261102-final/lib/ipse/priv/extension-bundles/knowledge/extension.json",
+        "sha256": "32e7d7315dc77608cf07860c6984ab0107baaf418dd3e497fb0ffa4f42bd9db7"
+      }
+    },
+    {
+      "artifact_manifest": {
+        "bytes": 5270,
+        "path": "/tmp/ipse-native-knowledge-session-5230a33f44c729e4c6478b36d5230c08/artifact/extension.json",
+        "sha256": "1155d395b092f46c60b5ac6caa763d9da86f82814494e88057c61e82d44667a1"
+      },
+      "artifact_matches_staged_manifest": true,
+      "ebin_files": 231,
+      "ebin_matches_current_dev": true,
+      "genuine_store": "/tmp/ipse-native-knowledge-session-5230a33f44c729e4c6478b36d5230c08",
+      "helper": {
+        "bytes": 969344,
+        "path": "/tmp/ipse-pending-batch-eight-isolated-20261102-second/lib/ipse/priv/ipse-runner",
+        "sha256": "5487c57a84b99be7b5b4381d097b637d3c45350b92b492d1786712f2bfbf8c7a"
+      },
+      "retained_component_stats": {
+        "accepted_events": 8,
+        "batch_accepted_events": 8,
+        "batch_manifest_encoded_sizes": [
+          5840
+        ],
+        "management_journals": 8,
+        "max_accepted_facts_encoded_bytes": 7974,
+        "retained_management_journal_bytes": 136834,
+        "scope": "Post-run retained component bytes, not native allocation peaks, prelaunch closure or annual capacity"
+      },
+      "runtime": "/tmp/ipse-pending-batch-eight-isolated-20261102-second",
+      "staged_manifest": {
+        "bytes": 5270,
+        "path": "/tmp/ipse-pending-batch-eight-isolated-20261102-second/lib/ipse/priv/extension-bundles/knowledge/extension.json",
+        "sha256": "1155d395b092f46c60b5ac6caa763d9da86f82814494e88057c61e82d44667a1"
+      }
+    },
+    {
+      "artifact_manifest": {
+        "bytes": 5270,
+        "path": "/tmp/ipse-native-knowledge-session-b144020c7336db5156977f1b12fbcd15/artifact/extension.json",
+        "sha256": "6a23d79d9f385cbb6f68e536f2408d9abbe026a16d6a4f2d9cf21be9f01786d5"
+      },
+      "artifact_matches_staged_manifest": true,
+      "ebin_files": 231,
+      "ebin_matches_current_dev": true,
+      "genuine_store": "/tmp/ipse-native-knowledge-session-b144020c7336db5156977f1b12fbcd15",
+      "helper": {
+        "bytes": 969344,
+        "path": "/tmp/ipse-pending-batch-legacy-isolated-20261102-first/lib/ipse/priv/ipse-runner",
+        "sha256": "5487c57a84b99be7b5b4381d097b637d3c45350b92b492d1786712f2bfbf8c7a"
+      },
+      "retained_component_stats": {
+        "accepted_events": 1,
+        "batch_accepted_events": 0,
+        "batch_manifest_encoded_sizes": [],
+        "management_journals": 7,
+        "max_accepted_facts_encoded_bytes": 2072,
+        "retained_management_journal_bytes": 25150,
+        "scope": "Post-run retained component bytes, not native allocation peaks, prelaunch closure or annual capacity"
+      },
+      "runtime": "/tmp/ipse-pending-batch-legacy-isolated-20261102-first",
+      "staged_manifest": {
+        "bytes": 5270,
+        "path": "/tmp/ipse-pending-batch-legacy-isolated-20261102-first/lib/ipse/priv/extension-bundles/knowledge/extension.json",
+        "sha256": "6a23d79d9f385cbb6f68e536f2408d9abbe026a16d6a4f2d9cf21be9f01786d5"
+      }
+    }
+  ],
+  "scope": "Author-run actual Session production and native per-item CLI with synthetic main-model behavior; not independent, human, installed, real-model, annual-workload or final full-source qualification",
+  "sources": [
+    {
+      "bytes": 22815,
+      "path": "lib/ipse/cli.ex",
+      "sha256": "52adac8adf416c48c5bd1ced937a93627030d4871c1a376e4b22505ce8e24f81"
+    },
+    {
+      "bytes": 31076,
+      "path": "lib/ipse/cli/knowledge.ex",
+      "sha256": "45e97361dc6949512571b49bb19e217a97d3e6a01a938003999696ffd1db91cd"
+    },
+    {
+      "bytes": 4575,
+      "path": "lib/ipse/cli/knowledge/batch.ex",
+      "sha256": "4e59641abc7573735fe676381a2a40f0fce65c52cb8d5d2e7fd3a1c310a2f49a"
+    },
+    {
+      "bytes": 92970,
+      "path": "lib/ipse/cli/knowledge/management.ex",
+      "sha256": "01a9030599d940d50c99448e8ddf8deaa92e01d04e386ce1c1be2fb6ceabd978"
+    },
+    {
+      "bytes": 51366,
+      "path": "lib/ipse/cli/terminal.ex",
+      "sha256": "5679fb3778fedac368d6494794859e122766e2686d1f7d223fedd6830138c072"
+    },
+    {
+      "bytes": 27279,
+      "path": "lib/ipse/runner/management_terminal.ex",
+      "sha256": "4394020763a4a71f9e1389295aaadcc8a61742b04fd4ad722fe571352b0fedde"
+    },
+    {
+      "bytes": 76298,
+      "path": "lib/ipse/session/pending_acceptance.ex",
+      "sha256": "de1bb499aa3746510823d5b77cf740fe5fd171260b434ef5e2ab7bd9c97b9187"
+    },
+    {
+      "bytes": 6765,
+      "path": "lib/ipse/session/pending_batch.ex",
+      "sha256": "b1bb050603a4ca96e2d207935f793051dc2d701665ec355584f52762ffc2ce98"
+    },
+    {
+      "bytes": 99500,
+      "path": "test/extensions/knowledge/knowledge_session_test.exs",
+      "sha256": "4c6d1d11a5c1375cdfd30faa03c43180826a59d0b16115f6cd4854dad4c19d93"
+    },
+    {
+      "bytes": 7687,
+      "path": "test/ipse/session/pending_batch_test.exs",
+      "sha256": "5dcceafbf3d342ef31c98036b1663ae94d63a633e255ed3414fad582f777a261"
+    },
+    {
+      "bytes": 1726,
+      "path": "test/ipse/cli/management_batch_public_test.exs",
+      "sha256": "83f072ffa883d88326bcfe426ccce3529a1a011de336e55fc92103f08f6ab57f"
+    },
+    {
+      "bytes": 7193,
+      "path": "test/support/pending_batch_cli.exs",
+      "sha256": "398fbe2043463cc2068ae9d9e30a3de7c25e94b7b0ac4ab664cbb82010081b7f"
+    },
+    {
+      "bytes": 22752,
+      "path": "test/support/operator_pty.rs",
+      "sha256": "bcf2ce303c72ab32d74d6959883ecef4b17a63613c7f4047057fdc18eef6d92c"
+    }
+  ],
+  "status": "scoped_immutable_batch_source_native_and_actual_session_component_verified",
+  "version": 1
+}

@@ -197,6 +197,10 @@ net pending count stays unchanged, but the retained marker, operation receipt
 and journal still add costs. A later acceptance is a separate publication.
 Explicit `knowledge defer` is a checked read and adds no publication ID, marker
 or resource reservation; it preserves the original pending deadline.
+Selected batch review still publishes and accounts for each accepted candidate
+separately. Its immutable manifest is repeated in each accepted event/journal and
+measured input; grouping the UI does not reduce the operation or physical-byte
+ledger to one batch entry.
 
 Resolve an impossible budget through an explicitly reviewed storage design;
 do not reset identities, discard liabilities, raise a limit to hide failure or

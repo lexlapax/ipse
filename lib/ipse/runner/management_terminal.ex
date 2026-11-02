@@ -119,7 +119,7 @@ defmodule Ipse.Runner.ManagementTerminal do
          true <- owned.journal_owner == self() and owned.cli_owner == owned.cli_control.owner,
          true <- owned.cli_control.operation == owned.journal_control.operation,
          {:ok, display, challenge, wall} <- review_display(command, facts, overall_wall),
-         {:ok, display} <- annotate_display(command, annotation, display),
+         {:ok, display} <- annotate_display(command, annotation, display, facts),
          {:ok, helper} <- Runner.protected_helper(Path.dirname(owned.directory)),
          {:ok, ticket} <- Resources.register(:lock) do
       result =
@@ -150,14 +150,17 @@ defmodule Ipse.Runner.ManagementTerminal do
 
   defp begin_review_for(_, _, _, _, _, _, _), do: {:error, :management_display_refused}
 
-  defp annotate_display(_, nil, display), do: {:ok, display}
+  defp annotate_display(_, nil, display, _), do: {:ok, display}
 
-  defp annotate_display("accept", annotation, display) when is_binary(annotation) do
+  defp annotate_display("accept", annotation, display, facts) when is_binary(annotation) do
     display = Ipse.CLI.Terminal.escape(annotation) <> display
-    if byte_size(display) <= 8192, do: {:ok, display}, else: {:error, :management_display_refused}
+
+    if byte_size(display) <= Ipse.Session.PendingAcceptance.review_display_limit(facts),
+      do: {:ok, display},
+      else: {:error, :management_display_refused}
   end
 
-  defp annotate_display(_, _, _), do: {:error, :management_display_refused}
+  defp annotate_display(_, _, _, _), do: {:error, :management_display_refused}
 
   defp source_identity("forget", nil), do: {:ok, nil}
   defp source_identity("reject", nil), do: {:ok, nil}
@@ -215,7 +218,7 @@ defmodule Ipse.Runner.ManagementTerminal do
          display =
            "Historical pending candidate; current source eligibility requires revalidation before publication.\n" <>
              display,
-         true <- byte_size(display) <= 8192 do
+         true <- byte_size(display) <= Ipse.Session.PendingAcceptance.review_display_limit(facts) do
       {:ok, display, challenge, min(wall, facts["valid_until_ms"])}
     else
       _ -> {:error, :management_display_refused}

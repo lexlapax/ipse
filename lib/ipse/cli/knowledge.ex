@@ -110,6 +110,39 @@ defmodule Ipse.CLI.Knowledge do
     end
   end
 
+  def run_batch(keys, opts, home, cwd) do
+    with true <- Ipse.Session.PendingBatch.keys?(keys),
+         true <-
+           Enum.all?(Keyword.keys(opts), &(&1 in (@options ++ [:state_dir]))) and
+             opts[:json] != true,
+         {:ok, cwd} <- Ipse.Workspace.canonical_path(cwd),
+         {:ok, config} <- runtime(Keyword.delete(opts, :state_dir), home, cwd) do
+      history_dir = Path.expand(opts[:state_dir] || Path.join(home, "sessions"))
+
+      case Ipse.CLI.Knowledge.Batch.run(config, cwd, history_dir, keys) do
+        {:ok, result} ->
+          Terminal.puts(Jason.encode!(result))
+          0
+
+        result ->
+          Terminal.puts(
+            :stderr,
+            "Batch review stopped: #{inspect(result)}. Earlier confirmed items remain saved. Keep printed journal/reservation IDs, inspect uncertain outcomes, and begin fresh review for remaining candidates; nothing is replayed."
+          )
+
+          1
+      end
+    else
+      _ ->
+        Terminal.puts(
+          :stderr,
+          "Select two to eight distinct pending keys for knowledge review KEY KEY [...]. A manifest over 8 KiB refuses; native per-item acceptance is required. Provider overrides, --yes and --json are unsupported."
+        )
+
+        1
+    end
+  end
+
   def run_target("defer", key, opts, home, cwd) do
     with true <- Enum.all?(Keyword.keys(opts), &(&1 in @options)),
          {:ok, cwd} <- Ipse.Workspace.canonical_path(cwd),

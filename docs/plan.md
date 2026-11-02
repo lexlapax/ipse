@@ -1198,8 +1198,13 @@ revocation and actual consent expiry after staging with retained unknown liabili
 The [explicit review-later command](archive/2026-10-26-p30-p31-implementation/pending-deferral-20261102.md)
 reads the signed pending candidate without changing its expiry, reserving an
 operation or creating acceptance authority, including after revocation and expiry.
-These local controls establish no workload capacity. Batch review,
-broader effect-loss boundaries, installed/provider and
+The [immutable selected batch path](archive/2026-10-26-p30-p31-implementation/pending-batch-20261102.md)
+freezes at most eight items/8 KiB and uses separate fresh native acceptance for
+each candidate. Actual Session-produced two/eight-item and second-item cancellation
+controls preserve original attribution, per-item settlement and partial results;
+manifest identity is retained in events and operation inspection. These local
+controls establish no workload capacity. Broader batch geometry/effect-loss
+boundaries, installed/provider and
 whole-source qualification remain open.
 
 The legacy protected Collection SDK also has an isolated final-admission

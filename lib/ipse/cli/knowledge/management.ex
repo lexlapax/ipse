@@ -163,7 +163,10 @@ defmodule Ipse.CLI.Knowledge.Management do
 
   def defer(_, _, _), do: @error
 
-  def review(config, cwd, history_dir, "pending." <> id = key)
+  def review(config, cwd, history_dir, key), do: review(config, cwd, history_dir, key, nil)
+
+  @doc false
+  def review(config, cwd, history_dir, "pending." <> id = key, batch)
       when is_map(config) and is_binary(cwd) and is_binary(history_dir) do
     overall = System.monotonic_time(:millisecond) + 120_000
 
@@ -171,13 +174,24 @@ defmodule Ipse.CLI.Knowledge.Management do
          :ok <- management_effect_mode(config),
          {:ok, selected} <- acceptance_source_selection(config, cwd, history_dir, Usage.id()),
          policy = selected.snapshot["policy"],
+         true <-
+           is_nil(batch) or
+             (Ipse.Session.PendingBatch.selection?(
+                batch,
+                selected.binding,
+                selected.context.config.semantic_admission["pin"],
+                selected.selection.recipe,
+                selected.selection.proposal,
+                policy
+              ) and
+                Enum.at(batch["manifest"]["items"], batch["index"])["pending_key"] === key),
          request = %{
            "id" => Usage.id(),
            "operation" => "notes.capture",
            "artifact_sha256" => selected.selection.digest,
            "source_sha256" => policy["source_sha256"],
            "policy_sha256" => JSON.digest([policy]),
-           "request_sha256" => JSON.digest(["native_pending_review", 1, key]),
+           "request_sha256" => acceptance_request_sha256(key, batch),
            "source_generation" => 0,
            "headless" => false,
            "reserved" =>
@@ -202,7 +216,7 @@ defmodule Ipse.CLI.Knowledge.Management do
               history_dir,
               key,
               overall,
-              %{ticket: ticket, request: request}
+              %{ticket: ticket, request: request, batch: batch}
             )
 
           settle_acceptance_review(control, project, ticket, result)
@@ -220,7 +234,12 @@ defmodule Ipse.CLI.Knowledge.Management do
     _ -> {:unknown, :acceptance_publication_unconfirmed}
   end
 
-  def review(_, _, _, _), do: @error
+  def review(_, _, _, _, _), do: @error
+
+  defp acceptance_request_sha256(key, nil), do: JSON.digest(["native_pending_review", 1, key])
+
+  defp acceptance_request_sha256(key, batch),
+    do: JSON.digest(["native_pending_review", 2, key, batch["manifest_sha256"], batch["index"]])
 
   defp settle_acceptance_review(control, project, ticket, result) do
     {outcome, reported} =
@@ -432,6 +451,14 @@ defmodule Ipse.CLI.Knowledge.Management do
                "Acceptance records your decision, not independent truth or permission for other effects.\n" <>
                  "Proposed accepted-decision retention (null maximum age means no category age limit):\n" <>
                  Jason.encode!(proposed, pretty: true) <> "\n",
+             annotation =
+               if(Map.has_key?(facts, "batch"),
+                 do:
+                   "Immutable batch manifest #{facts["batch"]["manifest_sha256"]}; item #{facts["batch"]["index"] + 1} of #{length(facts["batch"]["manifest"]["items"])}.\n" <>
+                     "This fresh code confirms only #{facts["pending_key"]}. Other items require separate fresh input; cancellation stops the remaining batch.\n" <>
+                     annotation,
+                 else: annotation
+               ),
              {:ok, caps} <- Ipse.Runner.Transaction.retained_share_stack(),
              {:ok, handle} <-
                Ipse.Runner.ManagementTerminal.begin_historical_accept_review(
@@ -480,6 +507,11 @@ defmodule Ipse.CLI.Knowledge.Management do
            "render_revision" => 1,
            "recipe" => selected.selection.proposal
          },
+         template =
+           if(is_map(supplied_context) and Map.has_key?(supplied_context, "batch"),
+             do: Map.put(template, "batch", supplied_context["batch"]),
+             else: template
+           ),
          facts_context = if(is_nil(supplied_context), do: template, else: supplied_context),
          true <-
            is_map(facts_context) and
@@ -523,6 +555,12 @@ defmodule Ipse.CLI.Knowledge.Management do
           "render_revision" => 1,
           "recipe" => selected.selection.proposal
         }
+
+        context =
+          if(is_map(accounting) and not is_nil(accounting[:batch]),
+            do: Map.put(context, "batch", accounting.batch),
+            else: context
+          )
 
         wall =
           System.system_time(:millisecond) +
@@ -696,7 +734,7 @@ defmodule Ipse.CLI.Knowledge.Management do
               context =
                 facts
                 |> Map.take(
-                  ~w(operation_id journal_id client_id session_id project_id namespace binding_sha256 policy_sha256 capture_epoch render_revision)
+                  ~w(operation_id journal_id client_id session_id project_id namespace binding_sha256 policy_sha256 capture_epoch render_revision batch)
                 )
                 |> Map.put("recipe", selected.selection.proposal)
 
@@ -1995,6 +2033,17 @@ defmodule Ipse.CLI.Knowledge.Management do
          {:ok, unknown} <- PendingAcceptance.unknown_effects(records, id) do
       intent = List.first(intents)
       result = List.first(results)
+      batch = event["facts"]["batch"]
+
+      batch_fields =
+        if is_nil(batch),
+          do: %{},
+          else: %{
+            "batch_manifest_sha256" => batch["manifest_sha256"],
+            "batch_id" => batch["manifest"]["id"],
+            "batch_index" => batch["index"],
+            "batch_count" => length(batch["manifest"]["items"])
+          }
 
       status =
         cond do
@@ -2020,7 +2069,8 @@ defmodule Ipse.CLI.Knowledge.Management do
          "request_sha256" => if(intent, do: intent["request_sha256"]),
          "replayed" => false,
          "current_note_eligibility" => "not_checked"
-       }}
+       }
+       |> Map.merge(batch_fields)}
     else
       _ -> @error
     end
@@ -2040,7 +2090,7 @@ defmodule Ipse.CLI.Knowledge.Management do
          true <- operation["epoch"] === facts["capture_epoch"],
          true <-
            operation["request_sha256"] ===
-             JSON.digest(["native_pending_review", 1, facts["pending_key"]]),
+             acceptance_request_sha256(facts["pending_key"], facts["batch"]),
          do: operation["status"],
          else: (_ -> "unavailable")
   end
