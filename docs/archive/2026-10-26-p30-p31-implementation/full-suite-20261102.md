@@ -6,6 +6,10 @@ This is a failed regression baseline, not milestone completion, installed
 qualification or an independent audit. [The plan](../../plan.md) owns current
 status; [testing](../../developer/testing.md) owns the verification procedure.
 
+The later [complete cancellation-repair baseline](full-suite-cancel-repair-20261102.md)
+passes on its own frozen `9f1707c` source. This earlier failed execution and its
+original diagnosis status remain preserved below.
+
 ## Actual terminal result
 
 ```sh

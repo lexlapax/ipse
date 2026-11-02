@@ -837,27 +837,26 @@ No local engine, SDK, new dependency or live account eligibility is established.
 The [2026-10-31 local follow-up](archive/2026-10-26-p30-p31-implementation/current-local-followup-20261031.md)
 has current typed/Session regressions and protected shadow controls over eight
 native-reviewed notes from two original Sessions. It does not qualify a
-production consumer or replace the failed whole-source baseline.
+production consumer or replace the separate whole-source baseline.
 The later [exact Linux package proof](archive/2026-10-26-p30-p31-implementation/package-idle-resume-20261031.md#passing-final-package)
 passes generic installed checks and the independent synthetic decision/document
 artifacts; full-source, consumer-quality and installed knowledge qualification
 remain open.
 
-The latest [complete frozen-source baseline](archive/2026-10-26-p30-p31-implementation/full-suite-20261102.md)
-at `39c8043` exited 2: 3,747 passed, one failed, 118 skipped and 112 excluded,
-with unchanged pre/post source, build and helper inventories. The single failure
-is interrupted protected-outer cancellation returning unconfirmed cleanup. A
-[controlled follow-up](archive/2026-10-26-p30-p31-implementation/worker-input-cancel-20261102.md)
-reproduces a Session/publisher completion wait and verifies a focused interruption
-repair; a new complete source baseline remains required. The earlier `f44b63c`
-baseline remains preserved separately.
+The latest [complete frozen-source baseline](archive/2026-10-26-p30-p31-implementation/full-suite-cancel-repair-20261102.md)
+at `9f1707c` exited 0: 3,753 passed, zero failed, 118 skipped and 112 excluded,
+with unchanged pre/post source, build and helper inventories. It follows the
+[controlled cancellation repair](archive/2026-10-26-p30-p31-implementation/worker-input-cancel-20261102.md).
+The earlier [failed `39c8043` execution](archive/2026-10-26-p30-p31-implementation/full-suite-20261102.md)
+and `f44b63c` baseline remain preserved. Later Word/clock increments are outside
+the passing snapshot and need their own qualification.
 Required positive integration, lifecycle and fault controls remain open; focused
-passes do not turn either failed aggregate into a passing one.
+passes never alter a historical aggregate.
 
 | Package | Output and prerequisites |
 | --- | --- |
 | P30A | Versioned neutral text contract and pure OpenAI/System One wire subsets implemented; synthetic fixtures and finite experiment/benefit criteria prepared; fixed foundation baseline and incremental audit pass. [Developer contract](developer/decisions.md) |
-| P30B | In progress: operator-only profiles, bounded owned HTTP, `host.decision`, Session/replay bindings, v3 usage/prices and shared budgets implemented; [current-source synthetic controls](archive/2026-10-26-p30-p31-implementation/p30-current-decision-followup.md) cover zero-egress refusal, hosted/compatible wire, tampering, owner loss, inert resume and child approvals. A separately built decision artifact and the exact generic Linux package pass synthetic installed checks; the full-source baseline still fails, and live account access is unverified. No qualified consumer is implied |
+| P30B | In progress: operator-only profiles, bounded owned HTTP, `host.decision`, Session/replay bindings, v3 usage/prices and shared budgets implemented; [current-source synthetic controls](archive/2026-10-26-p30-p31-implementation/p30-current-decision-followup.md) cover zero-egress refusal, hosted/compatible wire, tampering, owner loss, inert resume and child approvals. A separately built decision artifact and the exact generic Linux package pass synthetic installed checks; the repaired 9f1707c full-source baseline passes, while later increments and live account access remain unverified. No qualified consumer is implied |
 | P30C | In progress: [pure Knowledge planners and zero-call controls](archive/2026-10-26-p30-p31-implementation/p30c-pure-policy.md) have an [independent pure-scope audit and reporting correction](archive/2026-10-26-p30-p31-implementation/p30c-pure-policy-audit.md). A later [coverage-gap repair](archive/2026-10-26-p30-p31-implementation/p30c-coverage-followup.md) has a [separate pure-scope review and adversarial grid](archive/2026-10-26-p30-p31-implementation/p30c-coverage-independent-audit.md). A [synthetic planner-to-Session fixture](archive/2026-10-26-p30-p31-implementation/p30-current-decision-followup.md#synthetic-planner-to-session-shadow-control) covers approval and advice mapping; protected helper integration and qualified consumer selection remain open after B and P31B |
 | P30D | Implement bounded experiments: notes selection beyond the context budget and candidate assessment in replay/shadow mode on real main-tool inputs; after C and P31E |
 | P30E | Evaluate frozen experiments against engine-free baselines and installed workflows; record useful, rejected/no-benefit and unverified dispositions plus separate live/model access; after D; document/graph routing is a later independently qualified addition |
