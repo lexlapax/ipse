@@ -203,6 +203,50 @@ separately. Its immutable manifest is repeated in each accepted event/journal an
 measured input; grouping the UI does not reduce the operation or physical-byte
 ledger to one batch entry.
 
+Next construct an action calendar instead of treating every retained note as
+one Collection slot. This plain-VM command models the initial intake floor:
+
+```sh
+elixir --erl '+S 2:2' \
+  -pa _build/dev/lib/ipse/ebin -pa _build/dev/lib/jason/ebin \
+  -pa _build/dev/lib/telemetry/ebin \
+  dev/knowledge/storage_workload.exs --native-calendar 20
+```
+
+The calendar keeps 40 planned main turns/day and the doubled day-90 workload.
+It spreads the additional 10,000 changes evenly across the year, cycling through
+update/correct/forget: 3,334 temporal updates, 3,333 ordinary corrections and
+3,333 forgets. This is a balanced working fixture choice, not a developer-fixed
+ratio or ratified pilot mix. Native target aliases are expectation data, not
+source handles or authority. Each correction keeps the old ordinary deadline;
+temporal history keeps 365 days after its update. One initial current statement
+has its first update on day 100. Pins/preferences and 50 current slots survive.
+
+Expired-record cleanup uses only daily operation capacity left after required
+changes, with a conservative next-day deadline margin. It retains every removal's
+anchor and counts each reclamation as another publication. At intake 20 this
+schedule has 6,859 reclamations and 29,939 initial-plus-annual publications,
+before the listed unplanned requirements. A higher intake that exceeds the daily
+limit reports its full required actions and excess instead of trimming capture.
+No native publication, main request or actual turn runs in this command.
+
+Inspect the returned record lower bound before running the calendar. The current
+page profiles permit at most 122 anchor rows and 26 live rows per page, even at
+their minimum charged row weights. Every admitted lineage retains its anchor;
+each present literal/history needs a live row, plus the format record. The
+working calendar reaches 8,012 public notes and requires at least **8,478 total
+Collection records**, exceeding the unchanged 8,192-record limit by at least
+286. If every public value at that peak occupied the 6-KiB ceiling, those values
+alone would occupy 49,225,728 bytes, above the 24-MiB logical limit. This is a
+conditional payload bound, not an actual native maximum-record result.
+
+This working schedule is ruled out by the record-count bound; it does not
+qualify any workload or freeze intake. Offline/concurrent owners, imports,
+compaction, consent renewal, proposal bursts, maximum-payload production,
+resource peaks and independent quality remain unplanned. Use the calendar's
+explicit actions when implementing the native driver, then extend those missing
+journeys and authenticate every actual target/source/deadline at execution.
+
 Resolve an impossible budget through an explicitly reviewed storage design;
 do not reset identities, discard liabilities, raise a limit to hide failure or
 count primitive churn as native lifecycle coverage. The

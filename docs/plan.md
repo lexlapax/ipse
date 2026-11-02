@@ -1353,6 +1353,16 @@ additional to the simulated year's normal work. Its 23,080-ID lower bound is
 below the unchanged 32,768-ID limit; complete effect overhead and pilot-derived
 intake remain unverified. This pure preflight qualifies no native workload and
 does not authorize resetting IDs or omitting required coverage.
+The [annual action calendar](archive/2026-10-26-p30-p31-implementation/native-annual-calendar-20261102.md)
+now also models the 20-item floor with a balanced working split of the selected
+10,000 changes. It schedules 6,859 expiry publications and 29,939 initial-plus-year
+publications, with no required daily operation overflow. Its 8,012 public-note
+peak nevertheless requires at least 8,478 Collection records once retained anchors,
+live rows and format are included, above the unchanged 8,192 limit. All-values-at-
+ceiling logical bytes also exceed 24 MiB. This pure fixture is unratified and
+executes zero turns/effects; it establishes a concrete storage-design gap for
+that working mix, not a new required ratio or actual annual capacity result.
+Complete effect overhead and pilot-derived mix/intake remain open.
 The [retained-receipt geometry probe](archive/2026-10-26-p30-p31-implementation/native-receipt-geometry-20261102.md)
 also measures 8,639,325 canonical packed bytes for 42,980 managed receipts and
 2,000 public record descriptors, above the unchanged 8-MiB ceiling before domain

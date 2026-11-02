@@ -1,0 +1,222 @@
+{
+  "actual_model_calls": 0,
+  "actual_native_operations": 0,
+  "actual_turns": 0,
+  "base_commit": "d1863c7bb0656635ce72612f88190f0939441fa6",
+  "checks": {
+    "cli": {
+      "bytes": 1483,
+      "path": "/tmp/ipse-native-annual-calendar-cli-complete-20261102.jsonl",
+      "sha256": "c276b7db781978978b283380f90a4c621e134f50ffe607a07474b72b20b07b84"
+    },
+    "cli_stderr": {
+      "bytes": 0,
+      "path": "/tmp/ipse-native-annual-calendar-cli-complete-20261102.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "corrected_pure_selection": {
+      "bytes": 142,
+      "path": "/tmp/ipse-native-annual-calendar-pure-final-20261102.log",
+      "sha256": "6021de738462f6ba223061da75f1809f335b9bd2f133773203333fb014b79449"
+    },
+    "final_pure_regression": {
+      "log": {
+        "bytes": 142,
+        "path": "/tmp/ipse-native-annual-calendar-regression-20261102.log",
+        "sha256": "39c0781561df8b869b0e9ed91ba340ace76d7510b1e422a38fa00a02d113eade"
+      },
+      "passed": 11,
+      "seed": 791838
+    },
+    "first_pure_failure": {
+      "bytes": 551,
+      "path": "/tmp/ipse-native-annual-calendar-pure-first-20261102.log",
+      "sha256": "30501dedbf982815423cde26bcce94ad289551e13c5c22a2b7fc0ef2fb48bb41"
+    },
+    "format": {
+      "bytes": 37,
+      "path": "/tmp/ipse-native-annual-calendar-format-20261102.log",
+      "sha256": "7f064015a55d204c2884130f5c153cbd0c4e03253f2e3c8a7babb472c07f2abf"
+    },
+    "higher_intake_cli": {
+      "bytes": 1488,
+      "path": "/tmp/ipse-native-annual-calendar-overflow-cli-20261102.jsonl",
+      "sha256": "b8b14272d8896cd249790e4b28dc58cf398ba758a968c65f0439293fbf8c4473"
+    },
+    "higher_intake_cli_stderr": {
+      "bytes": 0,
+      "path": "/tmp/ipse-native-annual-calendar-overflow-cli-20261102.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "primitive_pure_regression": {
+      "bytes": 115,
+      "path": "/tmp/ipse-native-annual-calendar-primitive-regression-20261102.log",
+      "sha256": "373958b59b5389b25b656c8d83e3f788cfdd62c1dac17a4feb2eb48f029d1447"
+    },
+    "prior_floor_cli": {
+      "bytes": 1408,
+      "path": "/tmp/ipse-native-annual-calendar-floor-regression-20261102.jsonl",
+      "sha256": "abb04420703d23a05b115bc9761ffc7958ca52a802e48cb2e5c9baa3c7167599"
+    },
+    "prior_floor_cli_stderr": {
+      "bytes": 0,
+      "path": "/tmp/ipse-native-annual-calendar-floor-regression-20261102.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "strict_compile": {
+      "bytes": 0,
+      "path": "/tmp/ipse-native-annual-calendar-strict-final-20261102.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  },
+  "date": "2026-11-02",
+  "documentation": {
+    "bytes": 757,
+    "path": "/tmp/ipse-native-annual-calendar-docs-20261102.log",
+    "sha256": "4b398613e4b15d6228850ee9cb6cf3c25518b823f6258722f7709b95c2d37dea"
+  },
+  "higher_intake_summary": {
+    "actual_native_operations": 0,
+    "actual_turns": 0,
+    "additional_mix": {
+      "correct": 3333,
+      "forget": 3333,
+      "update": 3334
+    },
+    "additional_mix_scope": "balanced working fixture selection, not a developer-specified ratio",
+    "additional_mixed_changes": 10000,
+    "all_required_days_fit_operation_limit": false,
+    "annual_publications_by_effect": {
+      "additional_churn": 10000,
+      "elapsed_cleanup": 6577,
+      "explicit_forgets": 732,
+      "ordinary_additions": 14640,
+      "ordinary_corrections": 1464,
+      "temporal_supersessions": 1464
+    },
+    "collection_record_limit": 8192,
+    "collection_record_limit_excess_lower_bound": 8241,
+    "final_retained_anchor_lineages": 26235,
+    "initial_last_process_day": 20,
+    "initial_pin_publications": 100,
+    "initial_plus_scheduled_publications": 36977,
+    "initial_publications": 2100,
+    "intake_ratified": false,
+    "kind": "native_annual_action_calendar",
+    "logical_record_byte_limit": 25165824,
+    "main_turns": 14600,
+    "maximum_public_note_records": 15615,
+    "maximum_value_payload_bytes_at_public_peak": 95938560,
+    "metadata_row_capacity_upper_bounds": {
+      "anchor": 122,
+      "live": 26
+    },
+    "minimum_peak_collection_records": 16433,
+    "ordinary_intake_per_day": 40,
+    "payload_bound_scope": "Public record count times the profile value ceiling; no maximum-payload source or signed record produced",
+    "qualification_passed": false,
+    "storage_fit": "ruled_out_by_minimum_record_count_for_this_working_calendar",
+    "unplanned_requirements": [
+      "offline_week",
+      "concurrent_owners",
+      "imports",
+      "compaction",
+      "consent_renewal",
+      "proposal_burst",
+      "maximum_payload",
+      "resource_peaks",
+      "independent_quality"
+    ],
+    "version": 1
+  },
+  "qualification_passed": false,
+  "runtime_limits_changed": false,
+  "scope": "Pure action calendar and conservative geometry; no annual driver execution, pilot ratification or native capacity qualification",
+  "sources": [
+    {
+      "bytes": 12256,
+      "path": "dev/knowledge/native_notes_workload.ex",
+      "sha256": "bac95a8dffa79a36af94c647f2003c67fee1e73ab7850bf84c739a6ba871c5d7"
+    },
+    {
+      "bytes": 1220,
+      "path": "dev/knowledge/storage_workload.exs",
+      "sha256": "a7f7b5899a465853cdc244b5fe6b4285ec25c34787a9dc8ae7b0f568f0352db3"
+    },
+    {
+      "bytes": 6149,
+      "path": "test/dev/knowledge/native_notes_workload_test.exs",
+      "sha256": "babbb76780e74dc844c24da64a29a6ed51b325250bb55f9ba5af368af189ab45"
+    },
+    {
+      "bytes": 31538,
+      "path": "dev/knowledge/native_notes_seed.ex",
+      "sha256": "6202f3a8cbc072052407c68ea6f4299487858435ba267da831566f3a34ab7a25"
+    },
+    {
+      "bytes": 27793,
+      "path": "lib/ipse/extension/collection/managed_pages.ex",
+      "sha256": "e6297c68a2b308952003124b57534ec430f36859a88bfaea7fff8d509d55594b"
+    },
+    {
+      "bytes": 96337,
+      "path": "lib/ipse/extension/collection.ex",
+      "sha256": "5e5ceed838a53022da8b8ce5e6b5029efa80943ce355c26cd6ad6f12011421a2"
+    }
+  ],
+  "version": 1,
+  "working_summary": {
+    "actual_native_operations": 0,
+    "actual_turns": 0,
+    "additional_mix": {
+      "correct": 3333,
+      "forget": 3333,
+      "update": 3334
+    },
+    "additional_mix_scope": "balanced working fixture selection, not a developer-specified ratio",
+    "additional_mixed_changes": 10000,
+    "all_required_days_fit_operation_limit": true,
+    "annual_publications_by_effect": {
+      "additional_churn": 10000,
+      "elapsed_cleanup": 6859,
+      "explicit_forgets": 732,
+      "ordinary_additions": 7320,
+      "ordinary_corrections": 1464,
+      "temporal_supersessions": 1464
+    },
+    "collection_record_limit": 8192,
+    "collection_record_limit_excess_lower_bound": 286,
+    "final_retained_anchor_lineages": 18915,
+    "initial_last_process_day": 20,
+    "initial_pin_publications": 100,
+    "initial_plus_scheduled_publications": 29939,
+    "initial_publications": 2100,
+    "intake_ratified": false,
+    "kind": "native_annual_action_calendar",
+    "logical_record_byte_limit": 25165824,
+    "main_turns": 14600,
+    "maximum_public_note_records": 8012,
+    "maximum_value_payload_bytes_at_public_peak": 49225728,
+    "metadata_row_capacity_upper_bounds": {
+      "anchor": 122,
+      "live": 26
+    },
+    "minimum_peak_collection_records": 8478,
+    "ordinary_intake_per_day": 20,
+    "payload_bound_scope": "Public record count times the profile value ceiling; no maximum-payload source or signed record produced",
+    "qualification_passed": false,
+    "storage_fit": "ruled_out_by_minimum_record_count_for_this_working_calendar",
+    "unplanned_requirements": [
+      "offline_week",
+      "concurrent_owners",
+      "imports",
+      "compaction",
+      "consent_renewal",
+      "proposal_burst",
+      "maximum_payload",
+      "resource_peaks",
+      "independent_quality"
+    ],
+    "version": 1
+  }
+}
