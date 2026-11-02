@@ -1,0 +1,121 @@
+{
+  "calendar_commit": "da2cedb8e22de3984d4920b3d3635f7ab2698f74",
+  "closed_checkpoint_inventory_count": 376,
+  "closed_checkpoint_inventory_sha256": "9424e335a29135d2a7442ecac43be21cda903efc8ad2a8f1a29ebeae8c398a09",
+  "documentation_log": {
+    "bytes": 757,
+    "path": "/tmp/ipse-notes-layout-assessment-docs-20261102.log",
+    "sha256": "09288e36ec12cb2fc2edd804e5dafaff22b4b62728797bb0c9904d033cc2fa3d"
+  },
+  "final_analysis_log": {
+    "bytes": 1994,
+    "path": "/tmp/ipse-notes-layout-assessment-final-20261102.log",
+    "sha256": "96545c966276116ec19aa129dadf3747f414a347b8f55773651f7a7cc088f6d7"
+  },
+  "geometry": [
+    {
+      "blocks": {
+        "block_bytes": 7293003,
+        "blocks": 269,
+        "current_decoder_roundtrip": "exact",
+        "manifest_bytes": 36660,
+        "status": "encoded"
+      },
+      "current_8_mib_ceiling_excess": 0,
+      "packed_bytes": 8101602,
+      "sha256": "1047b5da6243acea1b1ec583456697c5bdd3e01d53c591ea8e55878fc0463b68",
+      "synthetic_managed_operations": 29939,
+      "synthetic_records": 8192
+    },
+    {
+      "blocks": {
+        "block_bytes": 7346907,
+        "blocks": 281,
+        "current_decoder_roundtrip": "refused:invalid_collection_blocks",
+        "manifest_bytes": 38328,
+        "status": "encoded"
+      },
+      "current_8_mib_ceiling_excess": 0,
+      "packed_bytes": 8189404,
+      "sha256": "faec7a37dc87815eec40bde8ef68798c49669f5d36cb34f995c3aa03c06a9b51",
+      "synthetic_managed_operations": 29939,
+      "synthetic_records": 8478
+    },
+    {
+      "blocks": {
+        "reason": "invalid_collection_blocks",
+        "status": "refused"
+      },
+      "current_8_mib_ceiling_excess": 268051,
+      "packed_bytes": 8656659,
+      "sha256": "dda9164efd9e7761253af0567111d067a344b2cd2be9b66cecd7f82cbe3e640f",
+      "synthetic_managed_operations": 29939,
+      "synthetic_records": 10000
+    }
+  ],
+  "initial_analysis_log": {
+    "bytes": 1346,
+    "path": "/tmp/ipse-notes-layout-assessment-20261102.log",
+    "sha256": "f8a6b3aacbb7c75bdb077c768c92b3bcc9b773b31e6747638656059f2adafe95"
+  },
+  "live_row_base64_only_lower_bound": 681899,
+  "logical_budget_still_counts_raw_canonical_values": true,
+  "native_operations": 0,
+  "observed_closed_seed_values": 1348,
+  "observed_native_sample_value_bytes_by_category": {
+    "current": 3118,
+    "ordinary": 3129,
+    "preference": 3124
+  },
+  "observed_raw_value_bytes": 4217092,
+  "observed_zlib_bytes": 1547250,
+  "projection_scope": "Final calendar using the observed native-statement value shapes and fixed 1024-byte varied ASCII statement/quote; no new source or signed record produced; excludes all anchor/wrapper/clock/dictionary bytes",
+  "qualification": false,
+  "runtime_limits_changed": false,
+  "same_shape_24_mib_excess_lower_bound": 466336,
+  "same_shape_final_public_records": 7991,
+  "same_shape_final_public_value_bytes": 24950261,
+  "same_shape_logical_data_lower_bound": 25632160,
+  "scope": "Pure metadata geometry and reversible per-value compression observation; no authority, native effect or budget change",
+  "source_commit": "da2cedb8e22de3984d4920b3d3635f7ab2698f74",
+  "source_files": [
+    {
+      "bytes": 5582,
+      "path": "docs/archive/2026-10-26-p30-p31-implementation/notes-layout-assessment-20261102.exs",
+      "sha256": "1315b23f6466dcdc9440c19436a3afff25a73e522b74127aee6426844b2fe063"
+    },
+    {
+      "bytes": 12256,
+      "path": "dev/knowledge/native_notes_workload.ex",
+      "sha256": "bac95a8dffa79a36af94c647f2003c67fee1e73ab7850bf84c739a6ba871c5d7"
+    },
+    {
+      "bytes": 31538,
+      "path": "dev/knowledge/native_notes_seed.ex",
+      "sha256": "6202f3a8cbc072052407c68ea6f4299487858435ba267da831566f3a34ab7a25"
+    },
+    {
+      "bytes": 6794,
+      "path": "lib/ipse/extension/collection/encoding.ex",
+      "sha256": "fb43986d1f8d984b4425fc6df0c645ed692dea34ae6a852803a80e002d07b377"
+    },
+    {
+      "bytes": 12262,
+      "path": "lib/ipse/extension/collection/blocks.ex",
+      "sha256": "bb18f0ab46f13d53c4170553d710cf1717928717741d5e91b89537f308705fa9"
+    },
+    {
+      "bytes": 27793,
+      "path": "lib/ipse/extension/collection/managed_pages.ex",
+      "sha256": "e6297c68a2b308952003124b57534ec430f36859a88bfaea7fff8d509d55594b"
+    },
+    {
+      "bytes": 96337,
+      "path": "lib/ipse/extension/collection.ex",
+      "sha256": "5e5ceed838a53022da8b8ce5e6b5029efa80943ce355c26cd6ad6f12011421a2"
+    }
+  ],
+  "source_journals_rewritten": false,
+  "version": 1,
+  "zlib_roundtrip_exact": true
+}
