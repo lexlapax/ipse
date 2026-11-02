@@ -176,11 +176,14 @@ day-90 doubled workload, 10,000 mixed operations require at least 22,980 IDs;
 10,000 complete update/correct/forget cycles require at least 42,980. The current
 Collection limit is 32,768 retained IDs. The complete-cycle lower bound therefore
 already exceeds it, before expiry, imports, compaction or recovery operations.
-The mixed lower bound does not establish that the complete workload fits.
+The developer [selected 10,000 mixed changes total](../archive/2026-10-26-p30-p31-implementation/workload-change-count-20261102.md),
+additional to the normal annual workload. Use `:mixed_operations` when freezing
+that preflight; keep the three-action row as a comparison. The selected lower
+bound does not establish that the complete workload fits.
 
 Both rows report zero actual native operations/turns and false qualification.
-Ratify cycle semantics and pilot-derived intake before freezing an endurance
-run. Resolve an impossible budget through an explicitly reviewed storage design;
+Ratify pilot-derived intake and account for the complete supported effect ledger
+before freezing an endurance run. Resolve an impossible budget through an explicitly reviewed storage design;
 do not reset identities, discard liabilities, raise a limit to hide failure or
 count primitive churn as native lifecycle coverage. The
 [frozen qualification contract](../archive/2026-10-26-p30-p31-implementation/qualification.md#storage-and-performance)
@@ -198,11 +201,14 @@ elixir --erl '+S 2:2' \
 
 It compares unbound and managed receipts, zero and 2,000 public record
 descriptors, and a scenario where every operation advances the destructive
-floor. At 42,980 managed receipts, the packed state occupies 8,026,433 bytes
+floor. The selected initial 22,980-ID floor with 2,000 public descriptors occupies
+4,899,325 packed bytes in this synthetic scenario. At 42,980 managed receipts,
+the three-action comparison occupies 8,026,433 bytes
 without records, or 8,639,325 bytes with the 2,000 descriptors. The latter exceeds
 the current 8-MiB canonical-state ceiling before authenticated sidecars or
 migration overlap. The unchanged encoder refuses the larger ID set independently.
-Raising only the ID count would not make this scenario fit.
+Raising only the ID count would not make that comparison fit. Qualification must
+measure the selected workload's actual receipt/sidecar mix and cleanup overhead.
 
 These are metadata geometry controls, not authenticated notes, value objects,
 native allocation, actual workload composition or latency measurements. Use the

@@ -1311,14 +1311,17 @@ now separates the primitive driver's generic churn from authenticated lifecycle
 cycles. At the unchanged initial annual floor, the current single-new-record
 route needs at least 22,980 IDs for 10,000 mixed operations or 42,980 for 10,000
 complete update/correct/forget cycles, before expiry/import/compaction costs.
-The latter exceeds the unchanged 32,768-ID limit. Cycle semantics and
-pilot-derived intake remain unratified; this pure preflight qualifies no native
-workload and does not authorize resetting IDs or reducing the required coverage.
+The developer [selected 10,000 mixed changes total](archive/2026-10-26-p30-p31-implementation/workload-change-count-20261102.md),
+additional to the simulated year's normal work. Its 22,980-ID lower bound is
+below the unchanged 32,768-ID limit; complete effect overhead and pilot-derived
+intake remain unverified. This pure preflight qualifies no native workload and
+does not authorize resetting IDs or omitting required coverage.
 The [retained-receipt geometry probe](archive/2026-10-26-p30-p31-implementation/native-receipt-geometry-20261102.md)
 also measures 8,639,325 canonical packed bytes for 42,980 managed receipts and
 2,000 public record descriptors, above the unchanged 8-MiB ceiling before domain
-sidecars. That synthetic scenario makes an ID-only increase insufficient; actual
-composition, allocation and an explicitly reviewed storage repair remain open.
+sidecars. That retained three-action comparison makes an ID-only increase
+insufficient for its scenario. The selected mixed workload still needs actual
+composition/allocation evidence; any required storage repair needs explicit review.
 
 F and D1 develop together: parser/acquisition code can run in source fixtures
 before packaging; F's installed acceptance requires D1's relevant artifacts.

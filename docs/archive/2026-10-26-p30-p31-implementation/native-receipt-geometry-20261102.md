@@ -8,6 +8,10 @@ and changes no runtime, permission, ID limit or byte bound. The
 owns the runnable procedure. The [machine record](native-receipt-geometry-20261102.json)
 retains source/SDK/log hashes and all twelve observations.
 
+Subsequent [developer clarification](workload-change-count-20261102.md) selects
+10,000 mixed changes total. This pre-clarification investigation retains both
+comparison scenarios; its 42,980-ID case is not the selected churn requirement.
+
 ## Test the next bound before choosing a repair
 
 The current `Blocks` encoder limits retained IDs to 32,768 and also bounds the

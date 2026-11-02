@@ -5,6 +5,10 @@ Historical contract record, **2026-10-26**, source `fbb207d`; use the
 and [current plan](../../plan.md). Targets below are declared before implementation
 evaluation. None is an observed pass merely because it appears in this document.
 
+The [2026-11-02 developer clarification](workload-change-count-20261102.md)
+selects 10,000 mixed changes total, additional to normal annual work, for the
+ambiguous “cycles” term below. The original declaration remains preserved here.
+
 ## Separate populations and evidence
 
 | Main route | Required protocol evidence | Live scope at declaration |

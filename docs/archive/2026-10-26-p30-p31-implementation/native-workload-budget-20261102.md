@@ -9,6 +9,10 @@ owns current procedure. The original
 The [receipt](native-workload-budget-20261102.json) binds the source/log hashes
 and both CLI reports.
 
+Subsequent [developer clarification](workload-change-count-20261102.md) selects
+10,000 mixed changes total in addition to normal annual work. The pre-clarification
+comparison and its original unresolved status remain preserved below.
+
 ## Separate the two workloads
 
 The old primitive driver starts 2,000 records in 16 batches and calls generic

@@ -61,6 +61,7 @@ nor resource/offline qualification. No daemon configuration or existing model wa
 
 ## P31A contracts and evidence
 
+- [Annual change-count clarification](workload-change-count-20261102.md) records the developer's selection of 10,000 mixed changes total in addition to normal annual work; pilot intake, complete native costs and endurance remain open.
 - [Native workload operation-budget preflight](native-workload-budget-20261102.md) distinguishes mixed operations from complete lifecycle cycles, preserves the initial annual floor and exposes a complete-cycle lower bound above the unchanged ID limit. Pure tests and CLI arithmetic establish no actual endurance or semantic acceptance.
 - [Retained receipt geometry](native-receipt-geometry-20261102.md) measures managed/unbound receipts with zero/2,000 public descriptors; the 42,980-managed-receipt scenario also exceeds the canonical-state byte ceiling. It changes no limit and qualifies no native workload.
 - [Worker-input cancellation completion boundary](worker-input-cancel-20261102.md) records a controlled pre-repair cleanup failure and the focused interruptible-completion repair, actual native exit, mismatched-identifier refusal and inert recovery. The earlier failed full-suite aggregate remains preserved; a new complete baseline is required.
