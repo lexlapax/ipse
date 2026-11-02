@@ -970,9 +970,12 @@ exact root/control state and original-source reconstruction remain unchanged,
 with separate per-note evidence and component allocation. Active/incomplete
 cohorts and output reuse refuse before audit output. This is a smoke-sized
 audit, not a full initial-population result.
-The full 2,000-note run, final complete metadata/payload qualification and annual
-normal-use plus 10,000 mixed changes remain open; a driver smoke is not endurance
-acceptance.
+The [full initial population](archive/2026-10-26-p30-p31-implementation/native-initial-population-20261102.md)
+has now closed with 2,000 captures and 100 pin publications. The separate
+whole-population signed-record audit was running at that checkpoint; maximum
+payload and annual normal-use plus 10,000 mixed changes remain open. Source
+Session allocations are reported alongside Collection/control costs. Initial
+population alone is not endurance acceptance.
 
 P31D1 now has optional [cooperative model checks around registered Ollama jobs](archive/2026-10-26-p30-p31-implementation/ollama-model-pin-jobs-20261031.md).
 Named operator text/embedding profiles bind expected metadata and minimum loaded

@@ -1,0 +1,100 @@
+{
+  "annual_workload_qualification": false,
+  "capture_elapsed_p95_us": 3973481,
+  "capture_elapsed_sample_count": 2000,
+  "capture_elapsed_scope": "whole native statement capture, including input/review; not local publication or reference-hardware qualification",
+  "closed_segments": 273,
+  "documentation_log": {
+    "bytes": 757,
+    "path": "/tmp/ipse-native-initial-population-docs-20261102.log",
+    "sha256": "73a07862fdf9155fdd644064932a2d1ebe345b12e0fffc70e8d51b72bb97e1bc"
+  },
+  "final_actual_components_allocated_bytes": 134131712,
+  "final_physical_allocations": {
+    "control": {
+      "allocated_bytes": 610304,
+      "entries": 5,
+      "logical_bytes": 606708
+    },
+    "identity": {
+      "allocated_bytes": 4096,
+      "entries": 4,
+      "logical_bytes": 1397
+    },
+    "management": {
+      "allocated_bytes": 1228800,
+      "entries": 201,
+      "logical_bytes": 862338
+    },
+    "sessions": {
+      "allocated_bytes": 122515456,
+      "entries": 820,
+      "logical_bytes": 120875969
+    }
+  },
+  "final_status": {
+    "accounted_allocated_bytes": 32841728,
+    "accounted_total_bytes": 30593424,
+    "allocated_bytes": 9773056,
+    "checkpoint": null,
+    "checkpoint_data_bytes": 0,
+    "checkpoint_records": 0,
+    "data_bytes": 6716634,
+    "disk_bytes": 7524752,
+    "envelope_data_bytes": 6716634,
+    "floor": 2100,
+    "floor_anchor": "b0132484795ca25475bc9933581c461f",
+    "generation": 2100,
+    "limits": {
+      "control_reserved_bytes": 23068672,
+      "data_bytes": 25165824,
+      "operations": 32768,
+      "records": 8192,
+      "total_bytes": 67108864,
+      "value_bytes": 6144
+    },
+    "migration": null,
+    "notice": null,
+    "operations": 2100,
+    "project": "f3537665da81fce7f312f79e6b278786a8121159b059d002f4c05ba1d8aee6be",
+    "records": 2150,
+    "reserved_operation_slots": 0,
+    "staged_data_bytes": 0,
+    "staged_records": 0,
+    "version": 3
+  },
+  "frozen_files_verified": 727,
+  "full_population_readonly_audit": "pending",
+  "kind": "closed_initial_population_checkpoint_summary",
+  "manifest": {
+    "bytes": 270858,
+    "path": "/tmp/ipse-native-seed-initial-20261102-first/manifest.json",
+    "sha256": "57652e548c1416d340944284734b8d6a0e3b377e06edbf6c70544687ad347e37"
+  },
+  "max_post_segment_beam_bytes": 79503384,
+  "max_record_encoded_bytes": 3129,
+  "maximum_payload_qualification": false,
+  "metrics_log": {
+    "bytes": 2100,
+    "path": "/tmp/ipse-native-population-metrics-20261102.log",
+    "sha256": "1e7724db35a2fa92d448e669480c702580aaf819c7979ceb5b300150fc443909"
+  },
+  "metrics_script": {
+    "bytes": 2908,
+    "path": "docs/archive/2026-10-26-p30-p31-implementation/native-initial-population-20261102.exs",
+    "sha256": "a5fd19c4414135409543e8cff6a5cecb921a39d6a637e09c68a6c0f444b465e9"
+  },
+  "notes": 2000,
+  "operations": 2100,
+  "peak_post_segment_actual_components_bytes": 134131712,
+  "peak_scope": "sampled post-segment component allocations and separate Collection staging telemetry; not full process-tree RAM or disk peak",
+  "peak_staged_accounted_collection_bytes": 32935936,
+  "publisher_run_log": {
+    "bytes": 17469,
+    "path": "/tmp/ipse-native-notes-seed-initial-run-20261102.log",
+    "sha256": "8e1b3b4944d1d31e8c7e2991f710e423b4e714bc4f56254a507b346646422a32"
+  },
+  "publisher_source_commit": "5331e60b9772c44131c054978c8f0d4428cbc2d6",
+  "root": "/tmp/ipse-native-seed-initial-20261102-first",
+  "version": 1
+}
