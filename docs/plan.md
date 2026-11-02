@@ -1314,6 +1314,11 @@ complete update/correct/forget cycles, before expiry/import/compaction costs.
 The latter exceeds the unchanged 32,768-ID limit. Cycle semantics and
 pilot-derived intake remain unratified; this pure preflight qualifies no native
 workload and does not authorize resetting IDs or reducing the required coverage.
+The [retained-receipt geometry probe](archive/2026-10-26-p30-p31-implementation/native-receipt-geometry-20261102.md)
+also measures 8,639,325 canonical packed bytes for 42,980 managed receipts and
+2,000 public record descriptors, above the unchanged 8-MiB ceiling before domain
+sidecars. That synthetic scenario makes an ID-only increase insufficient; actual
+composition, allocation and an explicitly reviewed storage repair remain open.
 
 F and D1 develop together: parser/acquisition code can run in source fixtures
 before packaging; F's installed acceptance requires D1's relevant artifacts.

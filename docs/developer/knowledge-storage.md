@@ -186,6 +186,31 @@ count primitive churn as native lifecycle coverage. The
 [frozen qualification contract](../archive/2026-10-26-p30-p31-implementation/qualification.md#storage-and-performance)
 owns the workload floors; a preflight is no replacement for its actual runs.
 
+Check serialized receipt overhead separately from ID count. From the same built
+checkout, this plain-VM probe writes synthetic metadata measurements without
+starting Ipse, opening a Collection or changing a limit:
+
+```sh
+elixir --erl '+S 2:2' \
+  -pa _build/dev/lib/ipse/ebin -pa _build/dev/lib/jason/ebin \
+  dev/knowledge/native_receipt_geometry.exs --output /tmp/ipse-native-receipts.json
+```
+
+It compares unbound and managed receipts, zero and 2,000 public record
+descriptors, and a scenario where every operation advances the destructive
+floor. At 42,980 managed receipts, the packed state occupies 8,026,433 bytes
+without records, or 8,639,325 bytes with the 2,000 descriptors. The latter exceeds
+the current 8-MiB canonical-state ceiling before authenticated sidecars or
+migration overlap. The unchanged encoder refuses the larger ID set independently.
+Raising only the ID count would not make this scenario fit.
+
+These are metadata geometry controls, not authenticated notes, value objects,
+native allocation, actual workload composition or latency measurements. Use the
+[dated receipt](../archive/2026-10-26-p30-p31-implementation/native-receipt-geometry-20261102.md)
+to distinguish the measured scenario from a proposed storage redesign. Preserve
+exact operation inspection, duplicate detection, original generations and unknown
+liabilities when evaluating a new representation.
+
 ## Claim a draft before writing immutable pages
 
 A put/open reads a bounded snapshot and validates its partition. New-root admission

@@ -1,0 +1,267 @@
+{
+  "actual_terminal_exec_session": 9395,
+  "actual_terminal_exit_code": 0,
+  "command": "elixir --erl '+S 2:2' -pa _build/dev/lib/ipse/ebin -pa _build/dev/lib/jason/ebin dev/knowledge/native_receipt_geometry.exs --output /tmp/ipse-native-receipt-geometry-repository-20261102.json",
+  "current_limits_unchanged": true,
+  "date": "2026-11-02",
+  "documentation_check": {
+    "errors": 0,
+    "exit_code": 0,
+    "local_links": 8614,
+    "log": "/tmp/ipse-native-receipt-geometry-docs-20261102.log",
+    "log_sha256": "63fd66d04150f5da35942e1fb1afbb1ca5ceb30d65236116ed856a20f45676fa",
+    "markdown_files": 1041,
+    "scope": "Whole worktree including separate uncommitted Word candidate; private staging directories not inspected"
+  },
+  "format_check": {
+    "exit_code": 0,
+    "method": "Code.format_string! exact comparison on probe"
+  },
+  "inventory_limit": "Explicit source/SDK/log hashes; no complete environment/system-library/in-memory closure or native allocation evidence",
+  "isolated_compile": {
+    "cli_executed": false,
+    "diagnostics": [],
+    "exit_code": 0,
+    "log": "/tmp/ipse-native-receipt-geometry-compile-20261102.log",
+    "log_sha256": "b81d0f402180c78ae22d2b6c1b70bd09be4516f24e834a69f94fff760eb6ceaf"
+  },
+  "kind": "synthetic_retained_receipt_geometry",
+  "log": "/tmp/ipse-native-receipt-geometry-repository-20261102.log",
+  "log_sha256": "0736d78527a67d98eed494a323fa5e09284c9ce43e44a0c563986c9eab8ab7c5",
+  "matches_temporary_probe_rows": true,
+  "no_warnings": true,
+  "qualification": false,
+  "row_count": 12,
+  "rows": [
+    {
+      "above_decoded_byte_ceiling": false,
+      "actual_native_operations": 0,
+      "all_operations_advance_floor": true,
+      "all_receipts_managed": false,
+      "canonical_packed_state_bytes": 2608893,
+      "current_blocks_encode": {
+        "block_bytes": 2742293,
+        "blocks": 135,
+        "manifest_bytes": 18254,
+        "status": "encoded"
+      },
+      "decoded_byte_ceiling": 8388608,
+      "live_record_descriptors": 0,
+      "packed_state_sha256": "f5a0b6751d89645cdfd9b694e64bfe0a694cdc2814c6396b5ea4f6c0f0ea2c3f",
+      "qualification": false,
+      "synthetic_receipts": 22980
+    },
+    {
+      "above_decoded_byte_ceiling": false,
+      "actual_native_operations": 0,
+      "all_operations_advance_floor": true,
+      "all_receipts_managed": false,
+      "canonical_packed_state_bytes": 3221785,
+      "current_blocks_encode": {
+        "block_bytes": 3114351,
+        "blocks": 156,
+        "manifest_bytes": 21130,
+        "status": "encoded"
+      },
+      "decoded_byte_ceiling": 8388608,
+      "live_record_descriptors": 2000,
+      "packed_state_sha256": "96e43cdc9aae3c663da303fc987180f0c62aef3e0a73a41edbdbb78c4b8d4a19",
+      "qualification": false,
+      "synthetic_receipts": 22980
+    },
+    {
+      "above_decoded_byte_ceiling": false,
+      "actual_native_operations": 0,
+      "all_operations_advance_floor": true,
+      "all_receipts_managed": true,
+      "canonical_packed_state_bytes": 4286433,
+      "current_blocks_encode": {
+        "block_bytes": 4419833,
+        "blocks": 135,
+        "manifest_bytes": 18254,
+        "status": "encoded"
+      },
+      "decoded_byte_ceiling": 8388608,
+      "live_record_descriptors": 0,
+      "packed_state_sha256": "72f2500cc0ed8aef4b1f4f5a935d59ce9d5600dea13cae4c7eb42f9d7a98c773",
+      "qualification": false,
+      "synthetic_receipts": 22980
+    },
+    {
+      "above_decoded_byte_ceiling": false,
+      "actual_native_operations": 0,
+      "all_operations_advance_floor": true,
+      "all_receipts_managed": true,
+      "canonical_packed_state_bytes": 4899325,
+      "current_blocks_encode": {
+        "block_bytes": 4791891,
+        "blocks": 156,
+        "manifest_bytes": 21130,
+        "status": "encoded"
+      },
+      "decoded_byte_ceiling": 8388608,
+      "live_record_descriptors": 2000,
+      "packed_state_sha256": "38ec1a3e98c6541f67cb7d3f152fe48f47220f20dbd3dea0e88efe91802e9114",
+      "qualification": false,
+      "synthetic_receipts": 22980
+    },
+    {
+      "above_decoded_byte_ceiling": false,
+      "actual_native_operations": 0,
+      "all_operations_advance_floor": true,
+      "all_receipts_managed": false,
+      "canonical_packed_state_bytes": 3724725,
+      "current_blocks_encode": {
+        "block_bytes": 3919798,
+        "blocks": 192,
+        "manifest_bytes": 25873,
+        "status": "encoded"
+      },
+      "decoded_byte_ceiling": 8388608,
+      "live_record_descriptors": 0,
+      "packed_state_sha256": "802bafce265aafeaae2dacfad774e6666e6e3c3246f3827338a467db6b182ffb",
+      "qualification": false,
+      "synthetic_receipts": 32768
+    },
+    {
+      "above_decoded_byte_ceiling": false,
+      "actual_native_operations": 0,
+      "all_operations_advance_floor": true,
+      "all_receipts_managed": false,
+      "canonical_packed_state_bytes": 4337617,
+      "current_blocks_encode": {
+        "block_bytes": 4291856,
+        "blocks": 213,
+        "manifest_bytes": 28749,
+        "status": "encoded"
+      },
+      "decoded_byte_ceiling": 8388608,
+      "live_record_descriptors": 2000,
+      "packed_state_sha256": "fa3a965b0ddaf82d530d9d2102174d4197d75251e64a8cc92263f1e43da6ea72",
+      "qualification": false,
+      "synthetic_receipts": 32768
+    },
+    {
+      "above_decoded_byte_ceiling": false,
+      "actual_native_operations": 0,
+      "all_operations_advance_floor": true,
+      "all_receipts_managed": true,
+      "canonical_packed_state_bytes": 6116789,
+      "current_blocks_encode": {
+        "block_bytes": 6311862,
+        "blocks": 192,
+        "manifest_bytes": 25873,
+        "status": "encoded"
+      },
+      "decoded_byte_ceiling": 8388608,
+      "live_record_descriptors": 0,
+      "packed_state_sha256": "9b514e87ee16ae9b4cce215939703ab899a2a77c8df390ba9ba9d4c5769c2afc",
+      "qualification": false,
+      "synthetic_receipts": 32768
+    },
+    {
+      "above_decoded_byte_ceiling": false,
+      "actual_native_operations": 0,
+      "all_operations_advance_floor": true,
+      "all_receipts_managed": true,
+      "canonical_packed_state_bytes": 6729681,
+      "current_blocks_encode": {
+        "block_bytes": 6683920,
+        "blocks": 213,
+        "manifest_bytes": 28749,
+        "status": "encoded"
+      },
+      "decoded_byte_ceiling": 8388608,
+      "live_record_descriptors": 2000,
+      "packed_state_sha256": "eca83797b78927fe268d16b16756a9f2f040592dce22486a083458988ba31903",
+      "qualification": false,
+      "synthetic_receipts": 32768
+    },
+    {
+      "above_decoded_byte_ceiling": false,
+      "actual_native_operations": 0,
+      "all_operations_advance_floor": true,
+      "all_receipts_managed": false,
+      "canonical_packed_state_bytes": 4888893,
+      "current_blocks_encode": {
+        "reason": "invalid_collection_blocks",
+        "status": "refused"
+      },
+      "decoded_byte_ceiling": 8388608,
+      "live_record_descriptors": 0,
+      "packed_state_sha256": "596cbb4b36f462798ca2a9eebe22a7324f6f22e7709880644010843b49f5b4b7",
+      "qualification": false,
+      "synthetic_receipts": 42980
+    },
+    {
+      "above_decoded_byte_ceiling": false,
+      "actual_native_operations": 0,
+      "all_operations_advance_floor": true,
+      "all_receipts_managed": false,
+      "canonical_packed_state_bytes": 5501785,
+      "current_blocks_encode": {
+        "reason": "invalid_collection_blocks",
+        "status": "refused"
+      },
+      "decoded_byte_ceiling": 8388608,
+      "live_record_descriptors": 2000,
+      "packed_state_sha256": "53ad085a1ea2e7136dd0f0ecd5b771661ad7995b143b4973e906ed98731d8656",
+      "qualification": false,
+      "synthetic_receipts": 42980
+    },
+    {
+      "above_decoded_byte_ceiling": false,
+      "actual_native_operations": 0,
+      "all_operations_advance_floor": true,
+      "all_receipts_managed": true,
+      "canonical_packed_state_bytes": 8026433,
+      "current_blocks_encode": {
+        "reason": "invalid_collection_blocks",
+        "status": "refused"
+      },
+      "decoded_byte_ceiling": 8388608,
+      "live_record_descriptors": 0,
+      "packed_state_sha256": "5837d31795ccd01a008137f5edd26e0fe3bfda88f2d1ac40b0ee80492007a2fa",
+      "qualification": false,
+      "synthetic_receipts": 42980
+    },
+    {
+      "above_decoded_byte_ceiling": true,
+      "actual_native_operations": 0,
+      "all_operations_advance_floor": true,
+      "all_receipts_managed": true,
+      "canonical_packed_state_bytes": 8639325,
+      "current_blocks_encode": {
+        "reason": "invalid_collection_blocks",
+        "status": "refused"
+      },
+      "decoded_byte_ceiling": 8388608,
+      "live_record_descriptors": 2000,
+      "packed_state_sha256": "b27466ee6f48b09d4c108a6b1829a53413e96ac73238ee471ca7106c6180ee92",
+      "qualification": false,
+      "synthetic_receipts": 42980
+    }
+  ],
+  "scope": "Synthetic receipt rows, destructive-floor lineage and zero/2000 public record descriptors; no value objects, authenticated sidecars, domain publication, native allocation, migration, peak or performance acceptance",
+  "sdk_beam_sha256": {
+    "_build/dev/lib/ipse/ebin/Elixir.Ipse.Extension.Collection.Blocks.beam": "1196f353d323d46ea076f6fefc1932b9504a2b6c31868e335243a72f58f104c3",
+    "_build/dev/lib/ipse/ebin/Elixir.Ipse.Extension.Collection.Encoding.beam": "6aee62042072cfda2f07ff24ede4cf89485c440c9da6ad15e5519fdf9057aa6a",
+    "_build/dev/lib/ipse/ebin/Elixir.Ipse.Extension.Collection.Migration.beam": "ba7f89593e0ad08a64f9ef893b941f0a9cb02ebc2225bc31bc3724e12401b07a"
+  },
+  "source_base": "bd222bf7f14780d01d283ca7058d94ae233bafe2",
+  "source_sha256": {
+    "dev/knowledge/native_receipt_geometry.exs": "4719ffca4d121bc033eebe8dfc0c1d9483abf69d51a0a905e77efa9f619a73c0",
+    "lib/ipse/extension/collection/blocks.ex": "bb18f0ab46f13d53c4170553d710cf1717928717741d5e91b89537f308705fa9",
+    "lib/ipse/extension/collection/encoding.ex": "fb43986d1f8d984b4425fc6df0c645ed692dea34ae6a852803a80e002d07b377",
+    "lib/ipse/extension/collection/migration.ex": "90387e266dc5f2d05f4ab12af3a9d37ce8578ab6037b79f2743b7cae19c33900"
+  },
+  "temporary_probe_log_sha256": {
+    "/tmp/ipse-native-receipt-geometry-20261102.log": "50672ee18220776fbd53756c055acddf64b5469ae03e2bc702f2b9828647ac6a",
+    "/tmp/ipse-native-receipt-geometry-selected-20261102.log": "0736d78527a67d98eed494a323fa5e09284c9ce43e44a0c563986c9eab8ab7c5"
+  },
+  "version": 1,
+  "whole_manual_review": [
+    "docs/developer/knowledge-storage.md",
+    "docs/operator/knowledge-permissions.md"
+  ]
+}
