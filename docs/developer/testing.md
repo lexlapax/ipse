@@ -338,10 +338,33 @@ exact signed target deadline and requires the native elapsed reply while its
 transaction remains live. Deterministic pause modules are installed in their
 isolated child host before initial permission review and retain stable inventoried
 BEAM paths. They change no native helper or production source. Distinguish these
-controlled-host faults from unmodified runtime qualification. Turnover records
-separate the genuine native review time from an explicitly supplied future
-as-of expiry component; neither a virtual timestamp nor native IO proves that
-a year actually elapsed.
+controlled-host faults from unmodified runtime qualification. The existing
+turnover records separate genuine native review time from an explicitly supplied
+future as-of expiry component. They do not exercise a native year-long lifecycle.
+
+Before building a process-clock lifecycle workload, verify that the selected VM
+and Rust standard library observe the same instrumented clock:
+
+```sh
+elixir -e 'ExUnit.start(max_cases: 1); Code.require_file("test/dev/knowledge/process_clock_test.exs")'
+```
+
+This standalone check starts no Ipse application and needs no built SDK or native
+terminal. It compiles `dev/fixtures/process_clock.rs` as a private Linux/glibc
+x86-64 preload library and uses fresh plain VMs/Rust children in private homes.
+It compares realtime clocks with raw kernel observations at zero, fractional-second
+and 30/90/365/400-day offsets, checks real monotonic timers, and requires malformed
+or missing offsets to refuse wall reads. Other platforms skip explicitly.
+The loader and syscall ABI reuse the [existing host dependency](dependencies.md#host-and-build-inventory).
+
+The offset is fixed before exec and applies only to that process tree. A lifecycle
+driver must finish or inspect all admitted work, confirm owner exit and release,
+then start new processes at the next simulated day; it must not advance clocks
+across a live native permit or unknown operation. Actual native review, signed
+deadlines, publication, accounting and recovery remain required. This fixture
+does not alter the machine clock, kernel file timestamps or the production helper,
+and its preload is never a production configuration option. Clock coherence alone
+qualifies no turnover, capacity, model quality or elapsed real year.
 
 Distinguish timeout before command-handler startup from timeout during active work.
 The evaluation-session fixture observes its worker's readiness and active Session

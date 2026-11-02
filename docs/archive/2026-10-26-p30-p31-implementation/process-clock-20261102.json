@@ -1,0 +1,112 @@
+{
+  "actual_native_turnover_executed": false,
+  "command": "elixir -e 'ExUnit.start(max_cases: 1); Code.require_file(\"test/dev/knowledge/process_clock_test.exs\")'",
+  "compiled_artifacts_sha256_reported_by_final_test": {
+    "library": "12654639c1912cebbb70e99af4e4e5aecc5d3a5d2c6618bdc333ae4b68dff562",
+    "probe": "08a9fa4f93c657e42671f9b7e6955a8f49007b545ec96eb37cdf8967bbfb8a90"
+  },
+  "documentation_check": {
+    "actual_terminal_exec_session": 7517,
+    "actual_terminal_exit_code": 0,
+    "command": "elixir --erl '+S 2:2' dev/check-docs.exs",
+    "errors": 0,
+    "local_links": 8575,
+    "log": "/tmp/ipse-process-clock-docs-20261102.log",
+    "log_sha256": "b97ce88e679ea35ff080bf84c2e093a2256b6de2dfdf124d206b38ad9be7cc46",
+    "markdown_files": 1035,
+    "scope_limit": "Git enumeration emitted permission warnings for private staging directories; their contents were not inspected or copied"
+  },
+  "full_suite_scope": "existing isolated full suite at 39c8043 remains separate and live on exec32509; new fixture is absent from its frozen inputs",
+  "invalid_settings": [
+    null,
+    "",
+    "-1",
+    "1x",
+    "1.5",
+    "99999999999999999999",
+    "34560000001"
+  ],
+  "manual_review": {
+    "changed": [
+      "docs/developer/testing.md",
+      "docs/developer/dependencies.md"
+    ],
+    "operator_scope_reviewed_unchanged": "docs/operator/knowledge-permissions.md",
+    "result": "integrated clock preparation into existing lifecycle verification; retained real-deadline native controls and operator authority/qualification limits; no production procedure added"
+  },
+  "no_new_dependency": true,
+  "offsets_ms": [
+    0,
+    999,
+    1001,
+    2592000000,
+    7776000000,
+    31536000000,
+    34560000000
+  ],
+  "qualification": false,
+  "recorded_at_utc": "2026-11-02T04:31:31.051865Z",
+  "result_counts_are_separate_runs_not_summed": true,
+  "results": [
+    {
+      "actual_terminal_exec_session": 53409,
+      "actual_terminal_exit_code": 0,
+      "elapsed_seconds": 1.4,
+      "failed": 0,
+      "log": "/tmp/ipse-process-clock-20261102.log",
+      "log_sha256": "8a157a384bc7dfc8a88b8334f7b3a1fc49b6084fb80d9d1cfc623e5b0df12efd",
+      "passed": 2,
+      "scope": "initial three-offset component",
+      "seed": 791759
+    },
+    {
+      "actual_terminal_exec_session": 2086,
+      "actual_terminal_exit_code": 0,
+      "elapsed_seconds": 2.7,
+      "failed": 0,
+      "log": "/tmp/ipse-process-clock-boundaries-20261102.log",
+      "log_sha256": "6cb196c0a1e10bf574c20e36d9202bf99c83673fa70e508b8ea51d59e69c701c",
+      "passed": 2,
+      "scope": "expanded seven-offset component",
+      "seed": 791760
+    },
+    {
+      "actual_terminal_exec_session": 53676,
+      "actual_terminal_exit_code": 0,
+      "elapsed_seconds": 2.8,
+      "failed": 0,
+      "log": "/tmp/ipse-process-clock-private-20261102.log",
+      "log_sha256": "4124d73242d288884ecebb973c4df2503d874d7906a06e8fd7227d9ee226e417",
+      "passed": 2,
+      "scope": "final private-home seven-offset component",
+      "seed": 791761
+    },
+    {
+      "actual_terminal_exec_session": 22349,
+      "actual_terminal_exit_code": 0,
+      "elapsed_seconds": 2.8,
+      "failed": 0,
+      "log": "/tmp/ipse-process-clock-manual-20261102.log",
+      "log_sha256": "9fa8aa37550f28905fe714bf158cff5fe632f0318ca5950cf7433c607b8e7071",
+      "passed": 2,
+      "scope": "exact standalone manual command",
+      "seed": 509027
+    }
+  ],
+  "runtime_scope_limits": "source and test-reported library/probe bytes plus version observations; not full system-library/environment/in-memory closure; older Rust floor and other platforms not executed",
+  "scope": "author-run isolated process-clock component; no Ipse/native permission/store/model/installed/endurance qualification",
+  "source_base_commit": "39c8043f84d5f9c15ab22acf41afc7dde6adc123",
+  "source_files_sha256": {
+    "dev/fixtures/process_clock.rs": "40a0ce4491fd5224a42efd7ca4a0b28be451963de7484f62ae1f54b65921c94e",
+    "dev/fixtures/process_clock_probe.exs": "1f33737fcd802472096850b1fb11c2dd046599c28129e6fca83de55c11e598da",
+    "test/dev/knowledge/process_clock_test.exs": "c3933fc8fdd3f768403d7a39809287698dc939aff3e41a78a71761532b2932ca",
+    "test/support/process_clock_probe.rs": "650b8e1a6f22066e728cb4dbfa58fabae1b2428f36082bfeaacc1b16fc28e8fc"
+  },
+  "toolchain": {
+    "elixir": "Erlang/OTP 29 [erts-17.1] [source] [64-bit] [smp:20:20] [ds:20:20:10] [async-threads:1] [jit:ns]\n\nElixir 1.20.4 (compiled with Erlang/OTP 29)",
+    "kernel": "Linux 7.2.11-arch1-1",
+    "libc": "glibc 2.44",
+    "rustc": "rustc 1.99.1 (58cf8f9c3 2026-10-13) (Arch Linux rust 1:1.99.1-1)"
+  },
+  "version": 1
+}
