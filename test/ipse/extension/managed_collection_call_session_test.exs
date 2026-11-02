@@ -1765,6 +1765,7 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
                })
 
       await_marker(c.trace, "host-held", 500)
+      await_worker_input_settlement(pid, 500)
       id = Session.info(pid).id
       # Model only the old producer's missing managed tracking. The actual
       # extension action, checkpoint, wait and source events are emitted by Session.
@@ -9424,6 +9425,38 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
     IO.puts("WORKER_INHERITED_ROOT=" <> root)
     assert status == 0, output
     assert File.regular?(Path.join(root, "literal-ab-seed.json"))
+  end
+
+  defp await_worker_input_settlement(_, 0),
+    do: flunk("the held worker's original read input did not settle")
+
+  defp await_worker_input_settlement(pid, remaining) do
+    state = :sys.get_state(pid)
+
+    if state.invocation.worker_input == nil and state.share_barrier == nil do
+      result = List.last(state.invocation.results)
+      assert result["request"]["op"] == "collection.call"
+      assert {:ok, events} = Journal.load(state.dir, state.id)
+      payload_sha = JSON.digest([Ipse.Extension.Actions.resume(result)])
+
+      [input] =
+        Enum.filter(
+          events,
+          &(&1["type"] == "worker_input_intent" and
+              &1["payload_sha256"] == payload_sha)
+        )
+
+      assert Enum.any?(
+               events,
+               &(&1["type"] == "worker_input_result" and
+                   &1["input_id"] == input["input_id"] and &1["status"] == "delivered")
+             )
+
+      :ok
+    else
+      Process.sleep(10)
+      await_worker_input_settlement(pid, remaining - 1)
+    end
   end
 
   defp await_marker(_, _, 0), do: flunk("synthetic worker marker was not reached")

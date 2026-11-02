@@ -1001,8 +1001,12 @@ and successful stdio dispatch despite an unpinned helper override. The
 now preserve actual startup uncertainty, held HTTP socket/stdio server cleanup,
 the complete original root dependencies and inert recovery. Missing effect
 cleanup keeps lineage unavailable rather than authorizing reuse. The
-[latest complete frozen managed-collection module](archive/2026-10-26-p30-p31-implementation/managed-collection-module-v3-20261101.md)
-at `7e9f533` has 164 passed, 7 failed and 15 skipped; the
+[latest complete frozen managed-collection module](archive/2026-10-26-p30-p31-implementation/managed-collection-module-current-20261102.md)
+at clean isolated `2f628a9` has 170 passed, 5 failed and 15 skipped, with unchanged
+pre/post source/build/helper inventories. A subsequent focused legacy-question
+synchronization passes both original cases without replacing that aggregate.
+The [preceding V3 module](archive/2026-10-26-p30-p31-implementation/managed-collection-module-v3-20261101.md)
+and the
 [earlier module result](archive/2026-10-26-p30-p31-implementation/managed-collection-module-20261101.md)
 is retained. A [shared loss-lineage assertion follow-up](archive/2026-10-26-p30-p31-implementation/native-loss-lineage-shared-20261101.md)
 now compares exact retained approval sources and journal-derived reconstruction

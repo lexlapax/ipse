@@ -8,6 +8,10 @@ result, all parent failures and native fixture roots. This supersedes the
 complete module run, while preserving that earlier failed cohort unchanged.
 The [plan](../../plan.md) owns milestone scope and open acceptance.
 
+The later [complete source-dependent capture module](managed-collection-module-current-20261102.md)
+supersedes this aggregate as the latest complete-module result. This frozen
+cohort, its failures and subsequent focused controls remain historical evidence.
+
 ## Terminal result and frozen inputs
 
 ```sh
