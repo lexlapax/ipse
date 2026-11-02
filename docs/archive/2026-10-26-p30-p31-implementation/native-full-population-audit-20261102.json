@@ -1,0 +1,125 @@
+{
+  "allocation_scope": "Collection plus actual control, identity, management and original Session sources; excludes installed artifacts, frozen SDK and benchmark oracle; no double-counted control reserve",
+  "annual_workload_qualification": false,
+  "audit_caller": {
+    "bytes": 31538,
+    "path": "/tmp/ipse-native-seed-audit-initial-20261102-first.json.driver.ex",
+    "sha256": "6202f3a8cbc072052407c68ea6f4299487858435ba267da831566f3a34ab7a25"
+  },
+  "audit_caller_commit": "d1863c7bb0656635ce72612f88190f0939441fa6",
+  "audit_exit_code": 0,
+  "audit_output": {
+    "bytes": 2532,
+    "path": "/tmp/ipse-native-seed-audit-initial-20261102-first.json",
+    "sha256": "5fb7787824aa14fbf610d8f547455a640b676b7b772fea2285433da784c8b216"
+  },
+  "child_log": {
+    "bytes": 738,
+    "path": "/tmp/ipse-native-seed-audit-initial-20261102-first.json.log",
+    "sha256": "90a2f6c74885e5b5e48ab30b8be26d49080a7a38a39d94f664967668a8de2ac8"
+  },
+  "date": "2026-11-02",
+  "full_6_kib_record_payload_qualification": false,
+  "kind": "closed_native_initial_population_signed_audit",
+  "largest_record_encoded_bytes": 3129,
+  "manifest": {
+    "bytes": 270858,
+    "path": "/tmp/ipse-native-seed-initial-20261102-first/manifest.json",
+    "sha256": "57652e548c1416d340944284734b8d6a0e3b377e06edbf6c70544687ad347e37"
+  },
+  "measured_components_allocated_bytes": 134131712,
+  "parent_log": {
+    "bytes": 738,
+    "path": "/tmp/ipse-native-seed-audit-initial-parent-20261102-first.log",
+    "sha256": "90a2f6c74885e5b5e48ab30b8be26d49080a7a38a39d94f664967668a8de2ac8"
+  },
+  "physical_allocations": {
+    "control": {
+      "allocated_bytes": 610304,
+      "entries": 5,
+      "logical_bytes": 606708
+    },
+    "identity": {
+      "allocated_bytes": 4096,
+      "entries": 4,
+      "logical_bytes": 1397
+    },
+    "management": {
+      "allocated_bytes": 1228800,
+      "entries": 201,
+      "logical_bytes": 862338
+    },
+    "sessions": {
+      "allocated_bytes": 122515456,
+      "entries": 820,
+      "logical_bytes": 120875969
+    }
+  },
+  "publisher_source_commit": "5331e60b9772c44131c054978c8f0d4428cbc2d6",
+  "receipt_generator": {
+    "bytes": 2740,
+    "path": "docs/archive/2026-10-26-p30-p31-implementation/native-full-population-audit-20261102.exs",
+    "sha256": "631c4215e9acf13ef0cc70d332dadf35035fbdc4f241741d3cf430ca616789cb"
+  },
+  "root_sha256": "9d6401255c1f7d15835af6427277da9dbb7f70fa01252f0c5e58a32814f6b2a7",
+  "rows_sha256": "f0414efa757d02739fb48eb6126b1fca1086559eb941ada44a216bfa903c97c0",
+  "seed_metrics": {
+    "bytes": 2541,
+    "path": "/tmp/ipse-native-population-metrics-20261102.json",
+    "sha256": "0fe5baa4929df3db167337712ca22961ae3f850314d891c867faf0eb4adc8282"
+  },
+  "snapshot": {
+    "floor": 2100,
+    "floor_anchor": "b0132484795ca25475bc9933581c461f",
+    "generation": 2100,
+    "project": "f3537665da81fce7f312f79e6b278786a8121159b059d002f4c05ba1d8aee6be",
+    "version": 3
+  },
+  "status": {
+    "accounted_allocated_bytes": 32841728,
+    "accounted_total_bytes": 30593424,
+    "allocated_bytes": 9773056,
+    "checkpoint": null,
+    "checkpoint_data_bytes": 0,
+    "checkpoint_records": 0,
+    "data_bytes": 6716634,
+    "disk_bytes": 7524752,
+    "envelope_data_bytes": 6716634,
+    "floor": 2100,
+    "floor_anchor": "b0132484795ca25475bc9933581c461f",
+    "generation": 2100,
+    "limits": {
+      "control_reserved_bytes": 23068672,
+      "data_bytes": 25165824,
+      "operations": 32768,
+      "records": 8192,
+      "total_bytes": 67108864,
+      "value_bytes": 6144
+    },
+    "migration": null,
+    "notice": null,
+    "operations": 2100,
+    "project": "f3537665da81fce7f312f79e6b278786a8121159b059d002f4c05ba1d8aee6be",
+    "records": 2150,
+    "reserved_operation_slots": 0,
+    "staged_data_bytes": 0,
+    "staged_records": 0,
+    "version": 3
+  },
+  "unchanged_control": true,
+  "unchanged_root": true,
+  "unchanged_sources": 373,
+  "verified_categories": {
+    "current": 50,
+    "ordinary": 1800,
+    "pin": 100,
+    "preference": 50
+  },
+  "verified_records": 2000,
+  "verified_rows": {
+    "bytes": 1143445,
+    "path": "/tmp/ipse-native-seed-audit-initial-20261102-first.json.rows.json",
+    "sha256": "880505ad085c92d39c50f7df3b7f9d803e46884aa329597ef736d427899447cc"
+  },
+  "version": 1
+}
