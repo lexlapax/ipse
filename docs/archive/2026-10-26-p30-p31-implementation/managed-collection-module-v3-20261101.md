@@ -138,3 +138,73 @@ Final formatting and diff-whitespace checks exit zero. Documentation checking
 reports 1,030 Markdown files, 8,532 local links and zero errors; existing private
 directory discovery warnings remain separate. No build/package check was repeated
 for this test/documentation-only follow-up.
+
+## Late A/B publication boundary
+
+Subsequent test-only work based on committed `38e5816` restores failure 3's
+actual publication purpose. The registered response sequence is explicitly
+interleaved: seed capture/answer, consumer capture, concurrent capture/answer.
+Repeating complete pairs would incorrectly answer the concurrent Session before
+its capture. Both real saves must finish and settle through the native adapter.
+
+The dedicated fixture mode reads root-bound A data, then obtains and receives
+the exact source list/read/quote for independent unattended input B while A is
+still current. It blocks inside the quote callback after constructing its normal
+SDK proof, before requesting publication, and reuses A's original generation.
+Only then does the independent writer advance the root from one to two.
+No state replacement, fabricated dependency or grant bypass is used.
+
+At the released consumer's actual `publication_prerequisites?/3` call, the
+controller requires the exact inherited union captured before the root change,
+including A's observed dependencies. The attempted candidate must contain B's
+exact complete proof and the submitted proof request must use its original page
+handle. The real guard must return false. The consumer records no managed
+publication intent or successful write; the winner's snapshot stays unchanged.
+Strict Saved and idle resume preserve messages and the ownership suffix without
+Worker replay; the two successful operations remain settled and exactly five
+actual local HTTP requests finish.
+
+This is root-bound record-content inheritance, not a signed literal/accepted-note
+publication positive. The existing fresh-source `worker_inherited_union` pair
+separately covers literal A withdrawal before B's next input and successful
+independent B capture. Historical upgraded A requires its distinct missing fixture
+and is not silently replaced by these controls. Full current-source publication
+and C0 integration remain open.
+
+| Seed | Selection | Result | Seconds | Exit |
+| --- | --- | --- | --- | --- |
+| 791721 | First restored publication fixture | 0 passed, 1 failed, 185 excluded | 12.8 | 2 |
+| 791722 | Exact proof/union/guard and recovery control | 1 passed, 185 excluded | 14.7 | 0 |
+| 791723 | Late publication plus both genuine inherited-input cases, registered capture, accounting and deadlines | 10 passed, 176 excluded | 37.5 | 0 |
+
+The first run failed a new assertion for a nonexistent top-level `session_id`
+in the quote response. The correction authenticates B through its committed
+source-read page's window and the public SDK's exact proof constructor, then
+compares that complete proof at the attempted publication. Source schema,
+runtime guard and retained refusal assertions are unchanged.
+
+```sh
+mix test test/ipse/extension/managed_collection_call_session_test.exs --only managed_ab_probe --only worker_inherited_union --only registered_capture --only publication_accounting --only strict_deadline_gate --max-cases 1 --seed 791723
+```
+
+Selected post-run hashes, not a complete runtime inventory:
+
+| File | SHA256 |
+| --- | --- |
+| `/tmp/ipse-managed-ab-publication-20261101.log` | `a0ab7c09b0fd2165b137c547f6fdadd76a9368081f47c628e95fc8847a097383` |
+| `/tmp/ipse-managed-ab-publication-paired-20261101.log` | `09f1ed7c68e8b4fa3077c9bcc4f7b32fba66760d80ecc269661dbfeb999d675d` |
+| `/tmp/ipse-managed-ab-publication-regressions-20261101.log` | `1084ab8650f6fd407096b4201c9306b064774384d7232b8dfa42bf53a27b3795` |
+| Final Session test module | `7c4ed3f45446bfc12dc9923f66489aec293c1050c24a0828d8dcee3098f500da` |
+
+The whole Collection SDK/source and operator extension/recovery explanations
+were reviewed in the preceding increments; this fixture changes no operator
+behavior. Testing guidance now separates the two actual race points within its
+existing positive/uncertainty flow. Each cohort reached terminal completion
+before source edits. No production, helper, dependency, package or external
+model call changed. The frozen complete-module and suite totals above remain
+unchanged; these focused results supply no new aggregate or milestone acceptance.
+
+Final formatting and diff-whitespace checks exit zero. Documentation checking
+reports 1,030 Markdown files, 8,533 local links and zero errors; existing private
+directory discovery warnings remain separate. No runtime/build/package check was
+repeated for this fixture/documentation-only increment.

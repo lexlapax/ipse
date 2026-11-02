@@ -152,7 +152,7 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
           call(%{"op" => "collection.call", "request" => %{"op" => "get", "key" => key}}, Map.put(state, "step", "done"))
         state["mode"] == "ordinary" ->
           call(%{"op" => "tool.call", "name" => "write", "timeout_ms" => 1000, "arguments" => %{"path" => "forbidden", "content" => "denied"}}, Map.put(state, "step", "done"))
-        state["mode"] == "capture_ab" ->
+        state["mode"] in ["capture_ab", "capture_ab_publication"] ->
           call(%{"op" => "collection.call", "request" => %{"op" => "snapshot"}}, Map.put(state, "step", "ab_snapshot"))
         state["mode"] == "capture_ab_literal" ->
           call(%{"op" => "collection.call", "request" => %{"op" => "get", "key" => state["literal_key"]}}, Map.put(state, "step", "ab_literal_read"))
@@ -309,6 +309,7 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
         advance("ab_read", Map.put(outcome, "value", value), state)
       end
       defp advance("ab_read", %{"status" => "ok", "value" => %{"records" => [_ | _]}} = outcome, state) do
+        if state["mode"] != "capture_ab_publication" do
         File.write!(state["trace"], "ab-held\\n", [:append])
         wait = fn wait, n ->
           cond do
@@ -318,6 +319,7 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
           end
         end
         wait.(wait, 1000)
+        end
         call(%{"op" => "source.list", "limit" => 32}, state |> Map.put("step", "list") |> Map.put("prior_a", outcome))
       end
       defp advance("nested_host", _, state) do
@@ -376,10 +378,21 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
       defp advance("quote", %{"status" => "ok", "value" => quote}, state) do
         {:ok, proof} = Ipse.Extension.source_proof(state["page"], quote, "Synthetic café observation")
         state = state |> Map.put("step", "snapshot") |> Map.put("proof", proof)
+        if state["mode"] == "capture_ab_publication" do
+          File.write!(state["trace"], "candidate-held\\n", [:append])
+          wait = fn wait, n ->
+            cond do
+              File.exists?(state["trace"] <> ".candidate-release") -> :ok
+              n == 0 -> raise "candidate wait expired"
+              true -> Process.sleep(10); wait.(wait, n - 1)
+            end
+          end
+          wait.(wait, 1000)
+        end
         cond do
           state["mode"] in ["capture_unobserved", "conflict_unobserved"] ->
             advance("snapshot", %{"status" => "ok", "value" => %{"generation" => 0}}, state)
-          state["mode"] == "capture_ab_literal" ->
+          state["mode"] in ["capture_ab_literal", "capture_ab_publication"] ->
             advance("snapshot", %{"status" => "ok", "value" => state["prior_a"]["value"]}, state)
           true ->
             call(%{"op" => "collection.call", "request" => %{"op" => "snapshot"}}, state)
@@ -1016,6 +1029,24 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
 
         responses =
           cond do
+            c[:registered_ab_publication] ->
+              candidate =
+                hd(responses)
+                |> Jason.decode!()
+                |> put_in(
+                  ["message", "tool_calls", Access.at(0), "function", "arguments", "mode"],
+                  "capture_ab_publication"
+                )
+                |> Jason.encode!()
+
+              [
+                hd(responses),
+                List.last(responses),
+                candidate <> "\n",
+                hd(responses),
+                List.last(responses)
+              ]
+
             c[:registered_capture_modes] ->
               Enum.flat_map(c.registered_capture_modes, fn mode ->
                 request =
@@ -2327,7 +2358,11 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
     end
   end
 
-  @tag managed_ab_probe: true, metadata_version: 3
+  @tag managed_ab_probe: true,
+       metadata_version: 3,
+       registered_main: true,
+       capture_write: true,
+       registered_ab_publication: true
   test "publication cannot discard an earlier stale managed A while citing current source B", c do
     seed = start(c)
     assert :ok = Session.prompt(seed, "Synthetic café observation")
@@ -2342,30 +2377,104 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
                  &1["request"]["op"] == "collection.managed" and &1["outcome"]["status"] == "ok")
            )
 
-    consumer = start(c, %{fixture_mode: "capture_ab"})
+    consumer = start(c, %{fixture_mode: "capture_ab_publication"})
     assert :ok = Session.prompt(consumer, "Synthetic café observation")
-    await_marker(c.trace, "ab-held", 500)
+    await_marker(c.trace, "candidate-held", 500)
     id = Session.info(consumer).id
     assert {:ok, before_events} = Journal.load(c.dir, id)
 
-    IO.puts(
-      "MANAGED_AB_OBSERVATIONS=" <>
-        inspect(
-          for e <- before_events,
-              e["type"] == "managed_read_observed",
-              d <- e["dependencies"],
-              do: {d["version"], get_in(d, ["subject", "kind"]), d["record"] != nil}
-        )
-    )
+    [scan] =
+      Enum.filter(before_events, fn event ->
+        event["type"] == "extension_action_result" and
+          get_in(event, ["request", "request", "op"]) == "scan"
+      end)
 
-    read_a = Enum.find(before_events, &(&1["type"] == "managed_read_observed"))
-    assert read_a
+    assert scan["outcome"]["status"] == "ok"
+    [record_a] = get_in(scan, ["outcome", "value", "records"])
+    [source_a] = get_in(record_a, ["value", "evidence", "sources"])
+    assert source_a["session_id"] == seed_id
+
+    read_a =
+      Enum.find(
+        before_events,
+        &(&1["type"] == "managed_read_observed" and &1["operation_id"] == scan["operation_id"])
+      )
+
+    assert read_a["dependencies"] != []
+
+    [quote_b] =
+      Enum.filter(before_events, fn event ->
+        event["type"] == "extension_action_result" and
+          get_in(event, ["request", "op"]) == "source.quote"
+      end)
+
+    assert quote_b["outcome"]["status"] == "ok"
+    assert quote_b["outcome"]["value"]["origin"] == "unattended_input"
+    assert quote_b["request"]["quote"] == "Synthetic café observation"
+
+    [read_b] =
+      Enum.filter(before_events, fn event ->
+        event["type"] == "extension_action_result" and
+          get_in(event, ["request", "op"]) == "source.read"
+      end)
+
+    page_b = read_b["outcome"]["value"]
+    assert page_b["window"]["session_id"] == id
+
+    assert {:ok, proof_b} =
+             Ipse.Extension.source_proof(
+               page_b,
+               quote_b["outcome"]["value"],
+               "Synthetic café observation"
+             )
+
+    assert proof_b["session_id"] == id and id != source_a["session_id"]
+    state = :sys.get_state(consumer)
+    assert {:ok, dependencies} = Session.ManagedToolUse.invocation_dependencies(state)
+    assert dependencies != []
+    assert Enum.all?(read_a["dependencies"], &(&1 in dependencies))
+
+    module = Session.ManagedToolUse
+
+    assert :erlang.trace_pattern(
+             {module, :publication_prerequisites?, 3},
+             [{:_, [], [{:return_trace}]}],
+             [:local]
+           ) == 1
+
+    :erlang.trace(consumer, true, [:call])
+
+    on_exit(fn ->
+      :erlang.trace_pattern({module, :publication_prerequisites?, 3}, false, [:local])
+      if Process.alive?(consumer), do: :erlang.trace(consumer, false, [:call])
+      File.write!(c.trace <> ".candidate-release", "release")
+    end)
+
     concurrent = start(c)
     assert :ok = Session.prompt(concurrent, "Synthetic café observation")
     assert_receive {:ipse, ^concurrent, {:done, :ok}}, 15_000
     assert :ok = Session.close_confirmed(concurrent)
-    File.write!(c.trace <> ".ab-release", "release")
-    assert_receive {:ipse, ^consumer, {:done, _}}, 15_000
+    after_winner = collection_read(c, %{"op" => "snapshot"})
+    assert after_winner["generation"] == 2
+    File.write!(c.trace <> ".candidate-release", "release")
+
+    assert_receive {:trace, ^consumer, :call,
+                    {^module, :publication_prerequisites?, [at_call, candidate, _binding]}},
+                   15_000
+
+    assert {:ok, ^dependencies} = Session.ManagedToolUse.invocation_dependencies(at_call)
+    [change] = candidate["request"]["changes"]
+    assert change["value"]["evidence"]["sources"] == [proof_b]
+
+    assert candidate["proofs"] == [
+             %{"handle" => page_b["handle"], "quote" => "Synthetic café observation"}
+           ]
+
+    assert_receive {:trace, ^consumer, :return_from, {^module, :publication_prerequisites?, 3},
+                    false},
+                   15_000
+
+    assert_receive {:ipse, ^consumer, {:done, :error}}, 15_000
     assert {:ok, events} = Journal.load(c.dir, id)
 
     writes =
@@ -2374,8 +2483,6 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
         &(&1["type"] == "extension_action_result" and &1["request"]["op"] == "collection.managed")
       )
 
-    IO.puts("MANAGED_AB_WRITE_STATUSES=" <> inspect(Enum.map(writes, & &1["outcome"]["status"])))
-
     refute Enum.any?(
              events,
              &(&1["type"] == "extension_action_intent" and
@@ -2383,8 +2490,27 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
            )
 
     refute Enum.any?(writes, &(&1["outcome"]["status"] == "ok"))
-    assert {:ok, _} = Session.Saved.restore(events, id)
+    assert quote_b in events
+    assert collection_read(c, %{"op" => "snapshot"}) == after_winner
+    assert {:ok, saved} = Session.Saved.restore(events, id)
     assert :ok = Session.close_confirmed(consumer)
+    path = Path.join(c.dir, id <> ".jsonl")
+    journal = File.read!(path)
+    trace = File.read!(c.trace)
+    resumed = start(c, %{}, id)
+    assert Session.info(resumed).phase == :idle
+    assert :sys.get_state(resumed).messages == saved.messages
+    assert_idle_resume_journal(path, journal, id)
+    assert :ok = Session.close_confirmed(resumed)
+    assert File.read!(c.trace) == trace
+    assert {:ok, ledger} = Consent.snapshot(c.control, c.binding["project_id"])
+    assert map_size(ledger["operations"]) == 2
+
+    assert Enum.all?(ledger["operations"], fn {_, operation} ->
+             operation["status"] == "settled"
+           end)
+
+    assert length(Task.await(c.provider_server, 5000)) == 5
   end
 
   @tag managed_question_ordinary: true

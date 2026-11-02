@@ -1047,6 +1047,11 @@ The [new complete module and subsequent focused repair](archive/2026-10-26-p30-p
 retain all seven failures at `7e9f533`, then separately verify optional text
 callback synchronization and successful registered deadline continuation.
 Neither focused pass establishes a new complete-module or whole-suite aggregate.
+The [late A/B publication follow-up](archive/2026-10-26-p30-p31-implementation/managed-collection-module-v3-20261101.md#late-ab-publication-boundary)
+now retains the actual earlier root-bound read and delivered B quote at the
+publication guard, with independent registered seed/winner positives and inert
+recovery. It is distinct from the earlier Worker-input source-withdrawal control
+and does not qualify full current-source publication.
 
 The [managed export-input adapter](archive/2026-10-26-p30-p31-implementation/worker-input-session-20261101.md)
 now binds actual initial calls, committed action continuations and output-page

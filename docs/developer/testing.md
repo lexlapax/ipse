@@ -275,6 +275,17 @@ file assertions, its required-consumer positive and all managed-content refusals
 Use the stream integration tests to distinguish a completed transport end from
 later required-delivery failure and canonical answer admission.
 
+Keep the two A/B race points distinct. `worker_inherited_union` withdraws original
+literal A after B's quote commits but before its next Worker frame is delivered.
+`managed_ab_probe` instead lets the Worker receive B's genuine quote while the
+root-bound A read is current, then holds inside that quote callback before the
+candidate is submitted. A separate registered Session advances the root. Trace
+the actual publication-prerequisite call: its state must retain the full earlier
+union, its candidate must contain B's exact SDK proof, and admission must refuse
+before a publication intent. Require real seed/winner saves, unchanged winner
+root, settled accounting, strict Saved and inert recovery. A seed route error or
+an earlier input-frame refusal cannot qualify that later publication boundary.
+
 Capture the journal after `Session.close_confirmed/1` returns. On idle resume,
 require those bytes as an exact prefix. With the current release-receipt layout,
 the only suffix before closing the resumed Session is one complete ownership
