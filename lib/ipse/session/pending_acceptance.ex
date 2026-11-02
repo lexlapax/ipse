@@ -1429,6 +1429,7 @@ defmodule Ipse.Session.PendingAcceptance do
          root when is_map(root) <- witness["root"],
          lineage = accepted_lineage(facts),
          true <- ManagedRecipe.valid?(recipe) and recipe["kind"] === "literal_source",
+         {:ok, nil} <- read.("reject." <> facts["candidate_id"]),
          {:ok, nil} <- read.(recipe["override_prefix"] <> lineage),
          {:ok, prior} <- retained_anchor(cap, lineage, witness, root, read),
          {:ok, retention} <- retention_plan(event, recipe, prior, policy_deadline, now),

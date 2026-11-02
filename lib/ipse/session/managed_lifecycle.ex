@@ -381,7 +381,10 @@ defmodule Ipse.Session.ManagedLifecycle do
   end
 
   @doc false
-  def context?(context) do
+  def context?(context), do: context?(context, "literal_source")
+
+  @doc false
+  def context?(context, kind) when kind in ~w(literal_source proposal) do
     is_map(context) and Enum.sort(Map.keys(context)) == @context and
       Enum.all?(~w(session_id job_id client_id), &id?(context[&1])) and
       Enum.all?(
@@ -390,10 +393,12 @@ defmodule Ipse.Session.ManagedLifecycle do
       ) and
       JSON.safe_uint?(context["management_epoch"]) and
       original_pin?(context["original_pin"], context) and
-      ManagedRecipe.valid?(context["recipe"]) and context["recipe"]["kind"] == "literal_source"
+      ManagedRecipe.valid?(context["recipe"]) and context["recipe"]["kind"] == kind
   rescue
     _ -> false
   end
+
+  def context?(_, _), do: false
 
   defp original_pin?(nil, _), do: true
 

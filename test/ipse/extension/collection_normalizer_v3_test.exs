@@ -237,7 +237,7 @@ defmodule Ipse.Extension.CollectionNormalizerV3Test do
                options = F.options()
                w = F.witness(options, 0, c.scope.operation_id)
                assert {:ok, normalized, receipt} = normalize(cap, catalog, options, w, %{})
-               assert Process.get(:v3_read_units) == 19
+               assert Process.get(:v3_read_units) == 11
                assert hd(normalized["changes"]) == hd(options.request["changes"])
                extras = tl(normalized["changes"])
                assert length(extras) == 3 and hd(extras)["key"] == ManagedPages.format_key()
@@ -613,7 +613,7 @@ defmodule Ipse.Extension.CollectionNormalizerV3Test do
 
                extras = tl(normalized["changes"])
                assert length(extras) == 5 and Enum.count(extras, &is_nil(&1["value"])) == 1
-               assert Process.get(:v3_read_units) == 24
+               assert Process.get(:v3_read_units) == 14
                deletion = Enum.find(extras, &is_nil(&1["value"]))
                assert deletion["key"] == ManagedPages.page_key(:anchor, id.(number + 1))
                assert deletion["expected_revision"] == 1
@@ -706,7 +706,7 @@ defmodule Ipse.Extension.CollectionNormalizerV3Test do
                assert {:ok, normalized, _} =
                         normalize(cap, catalog, opts, F.witness(opts, 1, operation), old)
 
-               assert Process.get(:v3_read_units) == 32
+               assert Process.get(:v3_read_units) == 23
                assert Enum.count(tl(normalized["changes"]), &is_nil(&1["value"])) == 1
                {:ok, :checked}
              end)

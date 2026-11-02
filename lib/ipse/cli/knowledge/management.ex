@@ -194,6 +194,25 @@ defmodule Ipse.CLI.Knowledge.Management do
 
   def expire(config, cwd, key), do: manage(config, cwd, key, :expiry)
 
+  def reject(config, cwd, "pending." <> id = key) do
+    if JSON.sha256?(id) do
+      case full_facts_removal_candidate(
+             config,
+             cwd,
+             key,
+             "Operator rejected this selected proposal",
+             :reject
+           ) do
+        {:closed, result} -> result
+        result -> result
+      end
+    else
+      @error
+    end
+  end
+
+  def reject(_, _, _), do: @error
+
   def retain(config, cwd, key, policy) do
     cond do
       not ManagedRetention.policy?(policy) ->
@@ -1273,12 +1292,20 @@ defmodule Ipse.CLI.Knowledge.Management do
   @doc false
   def full_facts_forget_candidate(config, cwd, "note." <> lineage = key, reason)
       when is_map(config) and is_binary(cwd) and is_binary(reason) do
+    if JSON.sha256?(lineage),
+      do: full_facts_removal_candidate(config, cwd, key, reason, :forget),
+      else: @error
+  end
+
+  def full_facts_forget_candidate(_, _, _, _), do: @error
+
+  defp full_facts_removal_candidate(config, cwd, key, reason, action)
+       when is_map(config) and is_binary(cwd) and is_binary(reason) do
     overall = System.monotonic_time(:millisecond) + 120_000
     wall = System.system_time(:millisecond) + 120_000
     home = config[:home]
 
-    with true <- JSON.sha256?(lineage),
-         {:ok, mode} <- Ipse.Extension.Mode.capture(config),
+    with {:ok, mode} <- Ipse.Extension.Mode.capture(config),
          true <- mode["headless"] === false and mode["approval_origin"] == "interactive",
          true <- Ipse.Extension.Mode.ordinary(mode, true) in [:ask, :allow],
          {:ok, :native} <- Ipse.Runner.operator_channel(),
@@ -1305,7 +1332,7 @@ defmodule Ipse.CLI.Knowledge.Management do
                 snapshot["policy"]
               ),
             "original_pin" => nil,
-            "recipe" => selected.recipe
+            "recipe" => if(action == :reject, do: selected.proposal, else: selected.recipe)
           }
 
           with {:ok, token} <- Writer.reserve(owned.writer, %{bytes: 65_536, events: 3}) do
@@ -1324,8 +1351,13 @@ defmodule Ipse.CLI.Knowledge.Management do
                          context,
                          fn prepared ->
                            with {:ok, caps} <- Ipse.Runner.Transaction.retained_share_stack(),
+                                begin_review =
+                                  if(action == :reject,
+                                    do: &Ipse.Runner.ManagementTerminal.begin_reject_review/4,
+                                    else: &Ipse.Runner.ManagementTerminal.begin_review/4
+                                  ),
                                 {:ok, handle} <-
-                                  Ipse.Runner.ManagementTerminal.begin_review(
+                                  begin_review.(
                                     owned,
                                     caps,
                                     prepared["facts"],
@@ -1370,7 +1402,7 @@ defmodule Ipse.CLI.Knowledge.Management do
     _, _ -> {:unknown, :knowledge_management_unconfirmed}
   end
 
-  def full_facts_forget_candidate(_, _, _, _), do: @error
+  defp full_facts_removal_candidate(_, _, _, _, _), do: @error
 
   defp reviewed_forget_effect(
          config,
@@ -1388,7 +1420,7 @@ defmodule Ipse.CLI.Knowledge.Management do
     try do
       result =
         Review.with_management_input(
-          ManagedRetention.command(prepared["facts"]["policy"]),
+          management_command(prepared["facts"]),
           prepared["facts"],
           handle,
           fn permit ->
@@ -1482,7 +1514,13 @@ defmodule Ipse.CLI.Knowledge.Management do
           context["management_epoch"],
           context["management_sha256"],
           fn _ ->
-            reader = &ObservedRead.with_managed_note_record/7
+            proposal? = context["recipe"]["kind"] == "proposal"
+
+            reader =
+              if(proposal?,
+                do: &ObservedRead.with_managed_proposal_removal/7,
+                else: &ObservedRead.with_managed_note_record/7
+              )
 
             reader.(
               SemanticAdmission.collection_root(home),
@@ -1490,19 +1528,32 @@ defmodule Ipse.CLI.Knowledge.Management do
               %{"op" => "get_record", "key" => key},
               domain_cap,
               catalog,
-              selected.recipe,
+              context["recipe"],
               fn managed ->
                 with {:ok, ^selected} <- selection(home),
                      {:ok, prepared} <-
-                       if(is_nil(policy),
-                         do:
-                           if(managed["metadata"]["management_target"] == "accepted_decision",
-                             do:
-                               ManagedLifecycle.prepare_accepted_forget(context, managed, reason),
-                             else: ManagedLifecycle.prepare(context, managed, reason)
-                           ),
+                       if(proposal?,
+                         do: Ipse.Session.PendingRejection.prepare(context, managed, reason),
                          else:
-                           ManagedLifecycle.prepare_retention(context, managed, policy, reason)
+                           if(is_nil(policy),
+                             do:
+                               if(managed["metadata"]["management_target"] == "accepted_decision",
+                                 do:
+                                   ManagedLifecycle.prepare_accepted_forget(
+                                     context,
+                                     managed,
+                                     reason
+                                   ),
+                                 else: ManagedLifecycle.prepare(context, managed, reason)
+                               ),
+                             else:
+                               ManagedLifecycle.prepare_retention(
+                                 context,
+                                 managed,
+                                 policy,
+                                 reason
+                               )
+                           )
                        ),
                      do: fun.(prepared)
               end
@@ -2222,9 +2273,16 @@ defmodule Ipse.CLI.Knowledge.Management do
           )
         else
           consent =
-            if facts["kind"] in ~w(managed_literal_retention managed_accepted_decision_retention),
-              do: &Consent.retain_deferred/8,
-              else: &Consent.forget_deferred/8
+            cond do
+              facts["kind"] == "managed_proposal_reject" ->
+                &Consent.reject_deferred/8
+
+              facts["kind"] in ~w(managed_literal_retention managed_accepted_decision_retention) ->
+                &Consent.retain_deferred/8
+
+              true ->
+                &Consent.forget_deferred/8
+            end
 
           consent.(
             control,
@@ -2333,6 +2391,7 @@ defmodule Ipse.CLI.Knowledge.Management do
   defp operation("managed_literal_retention"), do: "collection.retention"
   defp operation("managed_accepted_decision_retention"), do: "collection.retention"
   defp operation("managed_literal_forget"), do: "collection.forget"
+  defp operation("managed_proposal_reject"), do: "collection.forget"
   defp operation("managed_accepted_decision_forget"), do: "collection.forget"
 
   defp check_review(%{"kind" => "managed_literal_expiry"}, nil), do: :ok
@@ -2340,7 +2399,10 @@ defmodule Ipse.CLI.Knowledge.Management do
   defp check_review(%{"kind" => "managed_literal_history_expiry"}, nil), do: :ok
 
   defp check_review(facts, permit),
-    do: Review.check(permit, ManagedRetention.command(facts["policy"]), facts)
+    do: Review.check(permit, management_command(facts), facts)
+
+  defp management_command(%{"kind" => "managed_proposal_reject"}), do: "reject"
+  defp management_command(facts), do: ManagedRetention.command(facts["policy"])
 
   defp normalizer("managed_literal_expiry"), do: &NormalizerV3.expire/3
   defp normalizer("managed_accepted_decision_expiry"), do: &NormalizerV3.expire_accepted/3
@@ -2348,6 +2410,7 @@ defmodule Ipse.CLI.Knowledge.Management do
   defp normalizer("managed_literal_retention"), do: &NormalizerV3.retain/3
   defp normalizer("managed_accepted_decision_retention"), do: &NormalizerV3.retain_accepted/3
   defp normalizer("managed_literal_forget"), do: &NormalizerV3.forget/3
+  defp normalizer("managed_proposal_reject"), do: &NormalizerV3.reject/3
   defp normalizer("managed_accepted_decision_forget"), do: &NormalizerV3.forget_accepted/3
 
   defp selection(home) do

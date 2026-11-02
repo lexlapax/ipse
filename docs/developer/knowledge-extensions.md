@@ -219,8 +219,59 @@ retains liability. Preserve both printed IDs. `Consent.operation/3` and
 `knowledge operation ID` inspect recent/compacted resource records without
 settlement or replay, including a reservation created before any journal.
 An acceptance journal additionally correlates the native event with its ledger
-entry. This path currently supports one selected card; complete batch/reject/
-correct workflows remain open.
+entry. This path currently supports one selected card; batch acceptance and
+correction of pending text remain open.
+
+### Reject a proposal without retiring its source
+
+`knowledge reject PENDING_KEY` uses the existing management journal, protected
+native display and one-use Review flow. Unlike acceptance, it retains the
+existing management snapshot after capture revocation and requires no original
+source reacquisition. `ObservedRead.with_managed_proposal_removal/7` authenticates the
+actual pending record and signed anchor/live rows. `PendingRejection.prepare/3`
+binds its exact revision, value hash, text/proof, project, management epoch and
+two fully displayed public CAS changes: delete the pending record and insert `reject.<id>`.
+Preparation and decoded facts supply no authority.
+
+The target owners release before native `reject CODE` input. Publication repeats
+Identity, installed selection and management-policy checks under their owners.
+`Consent.reject_deferred/8` reserves one reducing `collection.forget` operation;
+`NormalizerV3.reject/3` reproduces the exact facts against the current Collection
+root, checks the original signed row, consumes the actual permit and repairs
+only its live index. The source anchor remains byte-for-byte unchanged: several
+candidate texts and a literal can share that anchor. Lineage-wide retirement
+would incorrectly suppress those other records. The reducing reader also allows
+a signed literal choice/retirement or saved override on that shared lineage;
+those cannot prevent deletion of a separately authenticated pending target.
+Acceptance retains its stricter eligibility reader.
+
+The public rejection marker binds the candidate ID, original revision/hash and
+management operation. It grants no current-use authority. Fresh automatic
+publication refuses any marker at that candidate key; acceptance also checks
+its absence. Capture normalization caches exact reads only within its held,
+unchanged Collection callback, retaining the 32 charged-read ceiling while
+checking suppression. Nothing persists that cache across owners or generations.
+The advancing backup floor prevents an older root from undoing the deletion.
+Suppression markers and management ledger/journal costs remain part of workload
+qualification; they are not silently pruned.
+
+After all owner cleanup, the caller settles measured usage and writes the
+management result. Lost replies retain uncertainty and never replay. Exercise
+the synthetic-source/native-terminal controls with:
+
+```sh
+mix test test/ipse/cli/management_reject_public_test.exs test/ipse/session/pending_rejection_test.exs --include native_sandbox
+```
+
+These controls cover live/expired pending targets after capture revocation,
+shared-lineage isolation, exact recapture suppression, forged permits,
+cancellation, stale codes, concurrent policy/root changes and a shared literal's
+native pin/forget choices. The separate opt-in `genuine_pending_rejection` case
+starts with actual synthetic-model Session production and checks public rejection
+after native disable and unavailable original-source storage, preserving original
+journals and a peer proposal. Run it against an isolated fresh-bundle runtime as
+for the public acceptance controls below. These are source components; installed
+use and annual workload capacity remain separate.
 
 ### Revalidate recall before use
 

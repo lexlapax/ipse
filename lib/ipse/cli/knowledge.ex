@@ -147,6 +147,35 @@ defmodule Ipse.CLI.Knowledge do
     end
   end
 
+  def run_target("reject", key, opts, home, cwd) do
+    with true <- Enum.all?(Keyword.keys(opts), &(&1 in @options)) and opts[:json] != true,
+         {:ok, cwd} <- Ipse.Workspace.canonical_path(cwd),
+         {:ok, config} <- runtime(opts, home, cwd) do
+      case Ipse.CLI.Knowledge.Management.reject(config, cwd, key) do
+        {:ok, result} ->
+          Terminal.puts("Rejected the selected proposal; exact candidate suppression remains.")
+          Terminal.puts(Jason.encode!(result))
+          0
+
+        result ->
+          Terminal.puts(
+            :stderr,
+            "No successful rejection is confirmed: #{inspect(result)}. Inspect the management journal and stored state before new work; unknown effects never replay."
+          )
+
+          1
+      end
+    else
+      _ ->
+        Terminal.puts(
+          :stderr,
+          "Use knowledge reject PENDING_KEY in a native terminal with the saved configuration; provider overrides, --yes and --json are unsupported."
+        )
+
+        1
+    end
+  end
+
   def run_target("retention", key, opts, home, cwd) do
     with true <-
            Enum.all?(Keyword.keys(opts), &(&1 in (@options ++ [:policy, :days]))) and

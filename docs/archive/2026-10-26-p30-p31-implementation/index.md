@@ -61,6 +61,7 @@ nor resource/offline qualification. No daemon configuration or existing model wa
 
 ## P31A contracts and evidence
 
+- [Native single-candidate rejection](pending-rejection-20261102.md) preserves shared source anchors, rejects exact recapture and keeps reducing management available after capture revocation; a fresh-artifact synthetic-model Session covers actual public cancellation/rejection and old-backup refusal. Batch/correction, installed and annual workload qualification remain open.
 - [Annual change-count clarification](workload-change-count-20261102.md) records the developer's selection of 10,000 mixed changes total in addition to normal annual work; pilot intake, complete native costs and endurance remain open.
 - [Native workload operation-budget preflight](native-workload-budget-20261102.md) distinguishes mixed operations from complete lifecycle cycles, preserves the initial annual floor and exposes a complete-cycle lower bound above the unchanged ID limit. Pure tests and CLI arithmetic establish no actual endurance or semantic acceptance.
 - [Retained receipt geometry](native-receipt-geometry-20261102.md) measures managed/unbound receipts with zero/2,000 public descriptors; the 42,980-managed-receipt scenario also exceeds the canonical-state byte ceiling. It changes no limit and qualifies no native workload.

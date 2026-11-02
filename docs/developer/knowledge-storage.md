@@ -51,7 +51,7 @@ Only one fresh revision-zero public record is supported: a literal at
 commit must explicitly advance the destructive import floor. Literal categories
 are ordinary, preference or current; a proposal remains `never_current` even
 when its text quotes a native source. Existing public values or retained live
-identities refuse. No replacement, typed correction, pin, forget, retention
+identities and exact candidate rejection markers refuse. No replacement, typed correction, pin, forget, retention
 change or stored choice/retirement is admitted by this automatic interpreter.
 
 First use needs native-confirmed absence and the matching prepared Identity
@@ -98,8 +98,10 @@ selected nonsingle leaf is checked for its immutable minimum occupancy and range
 before a local repair. Parsing a management capsule mints no review authority.
 
 Every lookup uses the actual shared closure. A neighbor request costs four units
-including nil positions; a selected value costs another. NormalizerV3 needs at
-most 24 of the closure's 32 units without a cache bypass. The combined anchor and
+including nil positions; a selected value costs another. NormalizerV3 enforces
+the closure's 32-unit ceiling and caches repeated exact requests only within
+that unchanged held callback. Proposal admission includes its rejection-marker
+absence and bounded pending-summary checks. The combined anchor and
 live plans permit at most five metadata changes: four nonnull values and one
 deletion with its exact positive old revision. Format is never rewritten or
 deleted. Every complete wrapped value remains at most 6144 bytes; the closed
@@ -145,9 +147,10 @@ and duplicate IDs cannot enter the callback. Owner-loss tests preserve prepared
 Identity and durable Collection state without automatic retry.
 
 The separate `collection_normalizer_v3_test.exs` reproduces the maximum
-shrink/redistribution plus live split with 24 reads and five changes, using actual
-Identity tags but trusted Collection observations. The actual small series uses
-19/23 units and does not exercise that merge. These controls establish neither
+shrink/redistribution plus live split with 14 charged reads and five changes, using actual
+Identity tags but trusted Collection observations. Its proposal repair plus
+pending-summary control uses 23 units. The actual small literal series uses
+11/13 units and does not exercise that merge. These controls establish neither
 current-note recall nor sustainable 2,000-note/annual capacity. Source expiry,
 withdrawal, lifecycle management, SDK reservation/dispatch and migration retain
 their own integration and qualification requirements.
@@ -183,7 +186,11 @@ bound does not establish that the complete workload fits.
 
 Both rows report zero actual native operations/turns and false qualification.
 Ratify pilot-derived intake and account for the complete supported effect ledger
-before freezing an endurance run. Resolve an impossible budget through an explicitly reviewed storage design;
+before freezing an endurance run. Include proposal-management effects: each
+native rejection uses one management operation and retains a public suppression
+descriptor/value while deleting the selected pending record and live row. Its
+shared source anchor and original journals remain. Do not treat removal from the
+pending queue as removal of all storage costs. Resolve an impossible budget through an explicitly reviewed storage design;
 do not reset identities, discard liabilities, raise a limit to hide failure or
 count primitive churn as native lifecycle coverage. The
 [frozen qualification contract](../archive/2026-10-26-p30-p31-implementation/qualification.md#storage-and-performance)

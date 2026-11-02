@@ -52,6 +52,10 @@ defmodule Ipse.Runner.ManagementTerminal do
     do: begin_review_for("forget", owned, caps, facts, overall_wall, nil)
 
   @doc false
+  def begin_reject_review(owned, caps, facts, overall_wall),
+    do: begin_review_for("reject", owned, caps, facts, overall_wall, nil)
+
+  @doc false
   def begin_accept_review(owned, caps, facts, overall_wall, source_lease),
     do: begin_review_for("accept", owned, caps, facts, overall_wall, source_lease)
 
@@ -152,6 +156,7 @@ defmodule Ipse.Runner.ManagementTerminal do
   defp annotate_display(_, _, _), do: {:error, :management_display_refused}
 
   defp source_identity("forget", nil), do: {:ok, nil}
+  defp source_identity("reject", nil), do: {:ok, nil}
   defp source_identity(command, nil) when command in ~w(pin ordinary duration), do: {:ok, nil}
   defp source_identity("accept", :historical_pending), do: {:ok, :historical_pending}
 
@@ -180,6 +185,13 @@ defmodule Ipse.Runner.ManagementTerminal do
   defp review_display("forget", facts, wall) do
     with {:ok, display, challenge} <-
            Review.preview_management_display("forget", facts, System.system_time(:millisecond)),
+         do: {:ok, display, challenge, wall}
+  end
+
+  defp review_display("reject", facts, wall) do
+    with true <- Ipse.Session.PendingRejection.valid_facts?(facts),
+         {:ok, display, challenge} <-
+           Review.preview_management_display("reject", facts, System.system_time(:millisecond)),
          do: {:ok, display, challenge, wall}
   end
 

@@ -1,0 +1,383 @@
+{
+  "base_commit": "9ada4f1c0af5b6834337d2f4c7bdbf4dac1fd6cb",
+  "checks": {
+    "build": {
+      "command": "./dev/build.sh",
+      "exit_code": 0,
+      "log": {
+        "bytes": 753,
+        "path": "/tmp/ipse-pending-rejection-build-20261102.log",
+        "sha256": "d78f9eb16006838516983d4a07c95a6b7be248b8fe41445784505710957deb23"
+      }
+    },
+    "documentation_before_receipt": {
+      "errors": 0,
+      "exit_code": 0,
+      "local_links": 8659,
+      "log": {
+        "bytes": 757,
+        "path": "/tmp/ipse-pending-rejection-docs-final-20261102.log",
+        "sha256": "74b74425a68150b97f2478e1d7b3245d776759aa42164a095767a27978d13ace"
+      },
+      "markdown_files": 1046,
+      "scope": "Before final receipt and testing/recovery manual additions"
+    },
+    "documentation_final": {
+      "errors": 0,
+      "exit_code": 0,
+      "local_links": 8659,
+      "log": {
+        "path": "/tmp/ipse-pending-rejection-docs-staged-20261102.log",
+        "sha256": "74b74425a68150b97f2478e1d7b3245d776759aa42164a095767a27978d13ace"
+      },
+      "markdown_files": 1046,
+      "scope": "Final source, owning manuals and component receipt; private permission-denied staging directories not inspected"
+    },
+    "expanded_native_management": {
+      "exit_code": 0,
+      "log": {
+        "bytes": 421,
+        "path": "/tmp/ipse-pending-rejection-native-791806.log",
+        "sha256": "688f2259b4d399f1943a16b9f0580609f6f9e741c7e0ece49ac1cb31a7e42044"
+      },
+      "passed": 21,
+      "scope": "Expanded rejection, existing public forget and retention; before full-request/reducing-reader refinement",
+      "seconds": 339.0,
+      "seed": 791806,
+      "skipped": 1
+    },
+    "final_native_modes": {
+      "exit_code": 0,
+      "log": {
+        "bytes": 298,
+        "path": "/tmp/ipse-pending-rejection-native-791807.log",
+        "sha256": "87d9b5ee4963dbf2aa90177336f7bdfe59d75bc37a70bbb477913ceabf9ef369"
+      },
+      "native_scenarios": 8,
+      "passed": 7,
+      "scope": "Five native tests plus two mode/options tests; complete displayed request and shared-literal pin/forget",
+      "seconds": 68.1,
+      "seed": 791807
+    },
+    "final_regression": {
+      "exit_code": 0,
+      "log": {
+        "bytes": 774,
+        "path": "/tmp/ipse-pending-rejection-final-regression-791808.log",
+        "sha256": "f38479772201d97818d21fa6fdde6af671e11f5997fc65469fbc517e28e5c167"
+      },
+      "passed": 86,
+      "seconds": 64.6,
+      "seed": 791808
+    },
+    "finish_checks": {
+      "fail_fast_exit_code": 0,
+      "logs": [
+        {
+          "bytes": 0,
+          "path": "/tmp/ipse-pending-rejection-format-verified-20261102.log",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "bytes": 0,
+          "path": "/tmp/ipse-pending-rejection-compile-verified-20261102.log",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "bytes": 2720,
+          "path": "/tmp/ipse-pending-rejection-demo-verified-20261102.log",
+          "sha256": "5e1dbaefca2d84bf6431d6fd7810fafe6e627ac9a2a5e20069a8e88155b5048a"
+        },
+        {
+          "bytes": 7690,
+          "path": "/tmp/ipse-pending-rejection-help-verified-20261102.log",
+          "sha256": "07ebeeff706a87d5a634d2b2f1b62896b2250c357ce773ae072b155013d63077"
+        }
+      ]
+    },
+    "genuine_driver_setup_failure": {
+      "cause": "Cancellation passed; missing existing --knowledge answer mode caused native disable input timeout; child killed at driver bound",
+      "excluded": 15,
+      "exit_code": 2,
+      "failed": 1,
+      "log": {
+        "bytes": 1581,
+        "path": "/tmp/ipse-pending-rejection-genuine-791809-third.log",
+        "sha256": "9e5eafdd0fc84a0210831234250f2067f16a0badd4211b679a0981748818f502"
+      },
+      "passed": 0,
+      "seconds": 70.6,
+      "seed": 791809
+    },
+    "genuine_final": {
+      "actual_session": true,
+      "cancellation_unchanged": true,
+      "excluded": 15,
+      "exit_code": 0,
+      "log": {
+        "bytes": 376,
+        "path": "/tmp/ipse-pending-rejection-genuine-791809-fourth.log",
+        "sha256": "b49cefa522f4d6463f9cfa8987ae5f2a117b2d18f5fbf4d289abb60087165b0e"
+      },
+      "main_model_behavior": "synthetic",
+      "native_disable": true,
+      "old_backup_refused": true,
+      "original_journals_peer_anchor_unchanged": true,
+      "original_source_unavailable_during_rejection": true,
+      "passed": 1,
+      "seconds": 11.9,
+      "seed": 791809,
+      "settled_zero_service_accounting": true
+    },
+    "genuine_read_setup_failures": [
+      {
+        "cause": "Unsupported fixture get_record API, before rejection effect; corrected to bounded ReadView get_many",
+        "excluded": 15,
+        "exit_code": 2,
+        "failed": 1,
+        "log": {
+          "bytes": 1697,
+          "path": "/tmp/ipse-pending-rejection-genuine-791809.log",
+          "sha256": "3c8b52fe1c811e533589ab8d2a5ea9714e5f720c415018475b72662c2b5e7612"
+        },
+        "passed": 0,
+        "seconds": 10.1,
+        "seed": 791809
+      },
+      {
+        "cause": "Unsupported fixture get_record API, before rejection effect; corrected to bounded ReadView get_many",
+        "excluded": 15,
+        "exit_code": 2,
+        "failed": 1,
+        "log": {
+          "bytes": 1552,
+          "path": "/tmp/ipse-pending-rejection-genuine-791809-second.log",
+          "sha256": "c06eb71ca8e51520ae771676ff0047abdcc834a090389863b3797feb71f6d12c"
+        },
+        "passed": 0,
+        "seconds": 10.2,
+        "seed": 791809
+      }
+    ],
+    "initial_mode_options": {
+      "excluded": 3,
+      "exit_code": 0,
+      "passed": 2,
+      "seed": 791802
+    },
+    "initial_native": {
+      "exit_code": 0,
+      "log": {
+        "bytes": 269,
+        "path": "/tmp/ipse-pending-rejection-native-791803.log",
+        "sha256": "e6c76eaab9dcf1e38d9e40550be81dfe50e47cf750f1b484bc527a131d32e4e0"
+      },
+      "passed": 3,
+      "seconds": 32.9,
+      "seed": 791803
+    },
+    "initial_regression_failure": {
+      "cause": "Old exact read-count expectations after held-callback cache; successful effects/receipts were still required",
+      "exit_code": 2,
+      "failed": 4,
+      "log": {
+        "bytes": 5685,
+        "path": "/tmp/ipse-pending-rejection-regression-791804.log",
+        "sha256": "e279d14f0d751438a464a6695eccb6fd9192c92038c638583a8d1858c4654191"
+      },
+      "passed": 77,
+      "seconds": 65.7,
+      "seed": 791804
+    },
+    "repaired_regression": {
+      "exit_code": 0,
+      "log": {
+        "bytes": 771,
+        "path": "/tmp/ipse-pending-rejection-regression-791805.log",
+        "sha256": "aa3c1306bb1b3a03a15a2703d3cdebfca7e874bd2539d1b35376ef7899b41ccb"
+      },
+      "passed": 81,
+      "seconds": 69.0,
+      "seed": 791805
+    }
+  },
+  "date": "2026-11-02",
+  "dependencies_added": [],
+  "fresh_artifact_manifest": {
+    "bytes": 5270,
+    "path": "/tmp/ipse-native-knowledge-session-2afe9067770df4fd58c54b7ea8b4bdbf/artifact/extension.json",
+    "sha256": "77f76d884fb64713a72dbbb7755542c10539f2942070a6f5ab53d4ca815dd514"
+  },
+  "full_suite": {
+    "covers_this_increment": false,
+    "latest_passing_commit": "9f1707cb33a7d9619c7a632dac83ae4ce313bc85",
+    "new_final_candidate_suite_required": true
+  },
+  "genuine_store": "/tmp/ipse-native-knowledge-session-2afe9067770df4fd58c54b7ea8b4bdbf",
+  "helper": {
+    "bytes": 969344,
+    "path": "priv/ipse-runner",
+    "sha256": "5487c57a84b99be7b5b4381d097b637d3c45350b92b492d1786712f2bfbf8c7a"
+  },
+  "inventory_limit": "Explicit post-run source/SDK/log inventory; no complete prelaunch environment, native-library or in-memory closure claim",
+  "isolated_ebin_files": 227,
+  "isolated_ebin_matches_current_dev": true,
+  "isolated_runtime": "/tmp/ipse-pending-rejection-isolated-20261102-fourth",
+  "live_calls": 0,
+  "local_orchestration": [
+    {
+      "bytes": 1139,
+      "path": "/tmp/ipse-pending-rejection-isolated-run.exs",
+      "sha256": "15dffbff504de370369c852c01139422626320009e01aeff2a33de33465068c1"
+    },
+    {
+      "bytes": 7020,
+      "path": "/tmp/ipse-pending-rejection-receipt.exs",
+      "sha256": "fdec61e95dd648320654b1b767f497b41680d7c77f05647e168532b0daf4ac00"
+    }
+  ],
+  "manual_review": "Reviewed owning operator/developer documents as whole tasks using the prior whole-document reviews and current changed sections; reconciled pending acceptance/rejection, shared retention, storage costs, testing and recovery guidance",
+  "manuals": [
+    {
+      "bytes": 70182,
+      "path": "docs/developer/knowledge-extensions.md",
+      "sha256": "89d9c5fdc081a333dfd0049730dffa12086b67d776b90340cad7aceb4194c0ee"
+    },
+    {
+      "bytes": 32937,
+      "path": "docs/developer/knowledge-storage.md",
+      "sha256": "1cb2376e010a5a908f1ab35abfc95875349c257ea92437681df2d34e7adec879"
+    },
+    {
+      "bytes": 83271,
+      "path": "docs/developer/testing.md",
+      "sha256": "9c1b50ab8da2bd588610a8f12f05e6882bc462a178765b7849fd85538b7ba15f"
+    },
+    {
+      "bytes": 34633,
+      "path": "docs/operator/knowledge-permissions.md",
+      "sha256": "a6c02ff9bd0c9b669ff5126e1e9786e0d4e884ad8b3353603822165ea609a612"
+    },
+    {
+      "bytes": 35082,
+      "path": "docs/operator/recovery.md",
+      "sha256": "4fdb00dbba94e37eea5c58b5bb561f5ed4275edbfa9da74c1bb0b9ea207d8659"
+    },
+    {
+      "bytes": 159616,
+      "path": "docs/plan.md",
+      "sha256": "c12888e1ae5a4851b7f65f85852cace5c568b3888d5be0bcab33d5fbd17c399c"
+    }
+  ],
+  "native_protocol_changed": false,
+  "release_published": false,
+  "remaining": [
+    "batch review",
+    "pending correction/defer",
+    "broader loss boundaries",
+    "installed/platform qualification",
+    "selected annual workload including suppression and management overhead",
+    "independent audit",
+    "final full-suite/reviewer handoff"
+  ],
+  "scope": "Author-run source/native component with actual Session production and synthetic main-model behavior; no independent, installed, real-model, annual-workload or final full-source qualification",
+  "sources": [
+    {
+      "bytes": 27660,
+      "path": "lib/ipse/cli/knowledge.ex",
+      "sha256": "ac7da0314562e2f8e4329fa002adc1748aa35ba7d16e810b78b1b8dd3c7d2fdf"
+    },
+    {
+      "bytes": 87602,
+      "path": "lib/ipse/cli/knowledge/management.ex",
+      "sha256": "9bbc7ddca66a57d2f2b320f706f66d419307395dc56d592f23f4c79ab803895c"
+    },
+    {
+      "bytes": 51097,
+      "path": "lib/ipse/cli/terminal.ex",
+      "sha256": "73380934850a09886fc64f69758199f73d64653bf1ff995ebfd159242f46b65e"
+    },
+    {
+      "bytes": 47984,
+      "path": "lib/ipse/extension/collection/normalizer_v3.ex",
+      "sha256": "93d12f8b53fb9c75886717f863f743db1b7799499f256118f325a2009bb8f765"
+    },
+    {
+      "bytes": 49550,
+      "path": "lib/ipse/extension/collection/observed_read.ex",
+      "sha256": "a4b8e6bb6b704ee2d17fd44cc9a095ca6004a5e2b73ff3ec0e0b69d22ec42d17"
+    },
+    {
+      "bytes": 44733,
+      "path": "lib/ipse/extension/consent.ex",
+      "sha256": "4ce9cccabf505945b47689de1160f782c2734fcf666bf5c39ff3001ebe010d17"
+    },
+    {
+      "bytes": 26534,
+      "path": "lib/ipse/runner/management_terminal.ex",
+      "sha256": "517d9c03616ec3609e06faa9722cf522002d316b1f8fea387f9845fa704eaa3e"
+    },
+    {
+      "bytes": 29770,
+      "path": "lib/ipse/runner/review.ex",
+      "sha256": "267ae64490f27e85d6525f3141904e3aaf564cd44d3bdc7582deb80faee5f884"
+    },
+    {
+      "bytes": 17343,
+      "path": "lib/ipse/session/managed_lifecycle.ex",
+      "sha256": "000707c65bb7cdcaf607f7122aa9c18f5c1647471346a8d70161b9c44dcfa70a"
+    },
+    {
+      "bytes": 75600,
+      "path": "lib/ipse/session/pending_acceptance.ex",
+      "sha256": "0b3cc2828e135a9428601bddea751c483e89565a2920e4d19d9d3dba9f3ea0ab"
+    },
+    {
+      "bytes": 6923,
+      "path": "lib/ipse/session/pending_rejection.ex",
+      "sha256": "980e0974af3d33e8b508a859057860dedff6addb5429a086ae3e54f556d5fdbb"
+    },
+    {
+      "bytes": 1870,
+      "path": "test/ipse/cli/management_reject_public_test.exs",
+      "sha256": "374f6673883dfbeb46a6168052d31af0229c7dfa3dff2b3799a49f4f13f923aa"
+    },
+    {
+      "bytes": 2602,
+      "path": "test/ipse/session/pending_rejection_test.exs",
+      "sha256": "a1dc34ca0d1e09079c702ce288ec472074a3e033bde4d3f32e280ffb5405b792"
+    },
+    {
+      "bytes": 28939,
+      "path": "test/ipse/extension/collection_normalizer_v3_test.exs",
+      "sha256": "cf5a63598ca150e8ec0a876440ef022f8a4787b8138fc8553fc37c39355deffa"
+    },
+    {
+      "bytes": 211251,
+      "path": "test/ipse/extension/collection_normalizer_v3_integration_test.exs",
+      "sha256": "dce67f134851789ccba1fd49a33eacd42444371a99c9e0e89e14c881a98e46c1"
+    },
+    {
+      "bytes": 92202,
+      "path": "test/extensions/knowledge/knowledge_session_test.exs",
+      "sha256": "25f0f57565d49b2fe4878f13923bd85cb9737a782aa9104e2fe6f7e47ae45349"
+    },
+    {
+      "bytes": 22436,
+      "path": "test/support/operator_pty.rs",
+      "sha256": "17849d0755f75cdd09e49bdcf77efccdc00d270be82e653e322bc487d273af5e"
+    },
+    {
+      "bytes": 12838,
+      "path": "test/support/pending_rejection.exs",
+      "sha256": "45b697ee6e17b6336a3e770631764b111cfaea2866ba2884adaed580efd3ba67"
+    },
+    {
+      "bytes": 5849,
+      "path": "test/support/pending_rejection_cli.exs",
+      "sha256": "2a7a12209a680c7430bfaa89bd5e360804b251fce9fae9e4221622315d375f62"
+    }
+  ],
+  "status": "source_native_and_actual_session_component_verified",
+  "version": 1
+}

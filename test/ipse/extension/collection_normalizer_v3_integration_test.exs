@@ -82,7 +82,7 @@ defmodule Ipse.Extension.CollectionNormalizerV3IntegrationTest do
   test "native absence initializes then actual active literal/proposal publications retain MAC provenance",
        c do
     assert {:ok, first} = publish(c, options(1, 0), scope(c), first: true)
-    assert first.read_units == 19
+    assert first.read_units == 11
     assert length(first.core["normalization"]["metadata_changes"]) == 3
     assert entry(c)["state"] == "active"
     first_format = first.format
@@ -91,7 +91,7 @@ defmodule Ipse.Extension.CollectionNormalizerV3IntegrationTest do
     assert {:ok, second} =
              publish(c, options(2, 1, "literal_source", "preference"), scope(c, false))
 
-    assert second.read_units == 23
+    assert second.read_units == 13
     assert second.format == first_format
     assert second.core["normalization"]["valid_until_ms"] == nil
     assert {:ok, third} = publish(c, options(3, 2, "proposal"), scope(c, false))

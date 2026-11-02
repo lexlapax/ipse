@@ -123,7 +123,7 @@ fn main() {
         }
         if review || assertion {
             let text = String::from_utf8_lossy(&output);
-            for command in ["pin", "ordinary", "forget", "duration", "accept", "correct", "supersede", "reconcile"] {
+            for command in ["pin", "ordinary", "forget", "reject", "duration", "accept", "correct", "supersede", "reconcile"] {
                 let prefix = format!("\nType {command} ");
                 for (index, _) in text.match_indices(&prefix) {
                     let tail = &text[index + prefix.len()..];

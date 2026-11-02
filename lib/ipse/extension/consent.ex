@@ -275,6 +275,22 @@ defmodule Ipse.Extension.Consent do
 
   def forget_deferred(_, _, _, _, _, _, _, _), do: {:error, :consent_management_refused}
 
+  @doc "Reject one exact native-reviewed proposal under existing management policy, including after capture revocation."
+  def reject_deferred(root, project, epoch, request, permit, facts, now, fun)
+      when is_function(fun, 0) do
+    if Ipse.Session.PendingRejection.valid_facts?(facts) do
+      reviewed_management(root, project, epoch, request, permit, facts, now, fun, %{
+        command: "reject",
+        operation: "collection.forget",
+        kind: "managed_proposal_reject"
+      })
+    else
+      {:error, :consent_management_refused}
+    end
+  end
+
+  def reject_deferred(_, _, _, _, _, _, _, _), do: {:error, :consent_management_refused}
+
   @doc "Reserve a same-owner native pin, ordinary or duration choice; settlement follows outer Identity cleanup."
   def retain_deferred(root, project, epoch, request, permit, facts, now, fun)
       when is_function(fun, 0) do

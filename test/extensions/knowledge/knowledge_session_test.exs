@@ -182,6 +182,14 @@ defmodule IpseKnowledge.KnowledgeSessionTest do
   end
 
   @tag :capture_parent_case
+  @tag :genuine_pending_rejection
+  @tag timeout: 180_000
+  @tag skip: System.get_env("IPSE_TEST_GENUINE_PENDING_REJECTION") != "1"
+  test "a main-model pending proposal reaches public native rejection after capture revocation" do
+    capture(false, false, false, false, false, :public_reject)
+  end
+
+  @tag :capture_parent_case
   @tag :genuine_pending_accepted_recall
   @tag timeout: 180_000
   @tag skip:
@@ -367,9 +375,16 @@ defmodule IpseKnowledge.KnowledgeSessionTest do
     File.mkdir_p!(cwd)
     File.chmod!(home, 0o700)
 
-    if accept? in [:public_recall, :public_expiry, :public_retention, :public_approval],
-      do: IO.puts("ACCEPTED_RECALL_ROOT=" <> root),
-      else: on_exit(fn -> File.rm_rf!(root) end)
+    cond do
+      accept? == :public_reject ->
+        IO.puts("PENDING_REJECTION_ROOT=" <> root)
+
+      accept? in [:public_recall, :public_expiry, :public_retention, :public_approval] ->
+        IO.puts("ACCEPTED_RECALL_ROOT=" <> root)
+
+      true ->
+        on_exit(fn -> File.rm_rf!(root) end)
+    end
 
     output = Path.join(root, "artifact")
     sdk = Application.app_dir(:ipse, "ebin")
@@ -1007,37 +1022,41 @@ defmodule IpseKnowledge.KnowledgeSessionTest do
 
           assert :ok = Session.close_confirmed(resumed)
 
-          if accept? == :path_swap do
-            exercise_pending_path_swap(root, home, dir, namespace, sidecar, change)
+          if accept? == :public_reject do
+            exercise_pending_rejection(root, home, dir, namespace, change, second_change)
           else
-            if accept?,
-              do:
-                exercise_pending_acceptance(
-                  root,
-                  home,
-                  dir,
-                  namespace,
-                  sidecar,
-                  change,
-                  second_change,
-                  %{
-                    public?:
-                      accept? in [
-                        :public,
-                        :public_recall,
-                        :public_expiry,
-                        :public_retention,
-                        :public_approval
-                      ],
-                    config: config,
-                    recall_accepted?: accept? === :public_recall,
-                    expiry_accepted?: accept? === :public_expiry,
-                    retention_accepted?: accept? === :public_retention,
-                    approval_accepted?: accept? === :public_approval,
-                    extension_config: data,
-                    category: category
-                  }
-                )
+            if accept? == :path_swap do
+              exercise_pending_path_swap(root, home, dir, namespace, sidecar, change)
+            else
+              if accept?,
+                do:
+                  exercise_pending_acceptance(
+                    root,
+                    home,
+                    dir,
+                    namespace,
+                    sidecar,
+                    change,
+                    second_change,
+                    %{
+                      public?:
+                        accept? in [
+                          :public,
+                          :public_recall,
+                          :public_expiry,
+                          :public_retention,
+                          :public_approval
+                        ],
+                      config: config,
+                      recall_accepted?: accept? === :public_recall,
+                      expiry_accepted?: accept? === :public_expiry,
+                      retention_accepted?: accept? === :public_retention,
+                      approval_accepted?: accept? === :public_approval,
+                      extension_config: data,
+                      category: category
+                    }
+                  )
+            end
           end
         end
       end
@@ -1140,6 +1159,66 @@ defmodule IpseKnowledge.KnowledgeSessionTest do
         File.rm(source)
         File.rename!(held, source)
       end
+    end
+  end
+
+  defp exercise_pending_rejection(root, home, history_dir, namespace, change, peer) do
+    config_path = Path.join(home, "config.json")
+
+    File.write!(
+      config_path,
+      Jason.encode!(%{
+        "version" => 1,
+        "settings" => %{"provider" => "demo", "model" => "synthetic"}
+      }),
+      [:exclusive]
+    )
+
+    File.chmod!(config_path, 0o600)
+
+    File.write!(
+      Path.join(root, "pending-rejection.json"),
+      Jason.encode!(%{
+        "namespace" => namespace,
+        "history_dir" => history_dir,
+        "key" => change["key"],
+        "peer_key" => peer["key"]
+      }),
+      [:exclusive]
+    )
+
+    driver = Path.join(root, "rejection-pty")
+
+    assert {"", 0} =
+             System.cmd(
+               "rustc",
+               ["--edition=2021", "-D", "warnings", "test/support/operator_pty.rs", "-o", driver],
+               stderr_to_stdout: true
+             )
+
+    paths =
+      :code.get_path()
+      |> Enum.map(&List.to_string/1)
+      |> Enum.reject(&(&1 == "."))
+      |> Enum.map(&Path.expand/1)
+      |> Enum.reverse()
+      |> Enum.flat_map(&["-pa", &1])
+
+    for {mode, flag} <- [
+          {"cancel", "--management-review-cancel"},
+          {"reject", "--management-review"}
+        ] do
+      {output, code} =
+        System.cmd(
+          driver,
+          [flag, "--knowledge", System.find_executable("elixir"), "--erl", "+S 2:2"] ++
+            paths ++
+            [Path.expand("test/support/pending_rejection_cli.exs"), root, mode],
+          stderr_to_stdout: true
+        )
+
+      assert code == 0, output
+      assert output =~ "PUBLIC_SESSION_PENDING_REJECTION_#{String.upcase(mode)}_PASSED"
     end
   end
 

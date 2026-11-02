@@ -262,9 +262,41 @@ if interruption occurred before a journal was created. Confirmed acceptance
 charges one operation with measured input/output bytes; cancellation and known
 pre-publication refusal settle zero effect usage. An uncertain attempt retains
 its reservation. This experimental path supports one selected card; batch
-acceptance and rejection/correction remain unfinished. After confirmed acceptance,
+acceptance and correction of pending text remain unfinished. After confirmed acceptance,
 close the original conversation and follow the bounded current-note recall
 procedure below. A saved acceptance alone does not prove successful later recall.
+
+### Reject one pending candidate
+
+Use the same historical metadata list to select an unwanted proposal, then run:
+
+```sh
+ipse knowledge reject pending.COPY_THE_64_CHARACTER_ID --cwd /path/to/project
+```
+
+Keep the printed `Management journal` ID. Read the complete selected candidate,
+signed metadata and rejection scope, then enter the fresh `reject CODE` at
+`approval>`. Anything else cancels. This command requires the same project,
+private home, installed bundle, native terminal and supported Linux protected
+storage profile. Provider overrides, `--yes` and `--json` are refused. No model
+or worker starts, and the original source Session need not be available.
+Rejection remains available after capture permission expires or is disabled,
+including when the candidate's signed seven-day deadline has elapsed.
+
+A confirmed rejection removes that pending candidate and saves an exact
+candidate suppression. It does not reject another proposal or literal note
+derived from the same source. The source's original admission clocks and
+retention stay unchanged. The same source/text candidate cannot be captured
+again; other candidate texts still follow their existing policy and deadlines.
+Original journals, shared evidence and earlier delivered answers remain.
+Each rejection uses one management operation and retains a suppression record;
+this path has no background removal of those records.
+
+If rejection is unconfirmed, inspect `knowledge operation MANAGEMENT_JOURNAL_ID`
+and actual stored state before new work. The candidate may already have been
+removed; inspection and resume never repeat the effect. Cancellation and stale
+codes leave the selected state unchanged. This source-runtime path is
+experimental; installed, human and full-workload qualification remain open.
 
 ## Correct or supersede a native note
 

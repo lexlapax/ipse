@@ -154,7 +154,7 @@ contents. [Knowledge permissions](knowledge-permissions.md) explains known
 configuration conflicts that can be resolved with a fresh review.
 
 Standalone knowledge management prints a separate journal ID before the
-forget review and effect. Preserve that ID and `$IPSE_HOME/knowledge-management`
+forget, retention or pending-rejection review and effect. Preserve that ID and `$IPSE_HOME/knowledge-management`
 with the protected state, then inspect it using the original workspace and
 configuration:
 
@@ -166,9 +166,14 @@ This read-only command reports the historical journal status and current
 protected-control operation status. It does not replay, settle, reconcile or
 check current note eligibility. A `publishing`, unconfirmed or missing result
 requires inspection of the actual storage outcome before another action. An
-already admitted forget can finish after review expiry or owner loss; a lost
+already admitted reducing action can finish after review expiry or owner loss; a lost
 reply does not prove whether the target remains. Even if inspection finds a
 settled operation, an earlier unconfirmed close remains a separate outcome.
+For pending rejection, inspect both the exact `pending.` target and its
+candidate suppression through developer-assisted protected-state inspection;
+the absence of a pending row alone does not prove which operation removed it.
+Other proposals from the same source can remain. Rejection retains the original
+and management journals, and an uncertain attempt is never repeated automatically.
 For an acceptance journal, `journal_status` describes the recorded acceptance
 effect: `committed`, `refused`, `not_started`, or `unknown`. A missing result
 after intent, or an incomplete journal tail, reports `unknown`. The command

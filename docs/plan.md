@@ -1185,8 +1185,15 @@ quota, expiry, revocation, input-owner death and operation inspection. A
 [current accepted-decision recall control](archive/2026-10-26-p30-p31-implementation/accepted-recall-20261031.md)
 reaches a fresh Session's registered synthetic Ollama request with explicit
 decision attribution and version-6 dependencies; missing original sources and
-altered acceptance events withhold the text. Batch/reject/correct workflows, broader effect-loss boundaries,
-installed/provider and whole-source qualification remain open.
+altered acceptance events withhold the text. The
+[single-candidate rejection increment](archive/2026-10-26-p30-p31-implementation/pending-rejection-20261102.md)
+adds native review after capture revocation, candidate-specific suppression and
+shared-source preservation. A fresh-artifact synthetic-model Session reaches
+actual public cancellation, native disable and rejection with its original
+source unavailable, preserving journals/peer/anchor and refusing old-backup
+restoration. These local controls establish no workload capacity. Batch review, correction
+of pending text, broader effect-loss boundaries, installed/provider and
+whole-source qualification remain open.
 
 The legacy protected Collection SDK also has an isolated final-admission
 [restoration control](archive/2026-10-26-p30-p31-implementation/legacy-sdk-admission-20261031.md).

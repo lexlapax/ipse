@@ -690,6 +690,25 @@ defmodule Ipse.Extension.Collection.ObservedRead do
 
   def with_managed_proposal(_, _, _, _, _, _, _), do: @error
 
+  @doc "Retain an authenticated pending target for reducing management, regardless of a shared literal's choice or override."
+  def with_managed_proposal_removal(root, namespace, request, cap, catalog, recipe, fun)
+      when is_function(fun, 1),
+      do:
+        held_proposal(
+          root,
+          namespace,
+          request,
+          cap,
+          catalog,
+          recipe,
+          false,
+          fn observation, _read -> fun.(observation) end,
+          false,
+          true
+        )
+
+  def with_managed_proposal_removal(_, _, _, _, _, _, _), do: @error
+
   @doc "Retain the checked proposal and same-owner read closure for host-only bounded planning."
   def with_managed_proposal_plan(root, namespace, request, cap, catalog, recipe, fun)
       when is_function(fun, 2),
@@ -713,7 +732,8 @@ defmodule Ipse.Extension.Collection.ObservedRead do
          recipe,
          reuse,
          fun,
-         acceptance \\ false
+         acceptance \\ false,
+         removal \\ false
        ) do
     with {:ok, _, :get_record} <- select(request),
          "pending." <> id <- request["key"],
@@ -785,7 +805,7 @@ defmodule Ipse.Extension.Collection.ObservedRead do
           neighbors = fn selected -> capture.(%{"op" => "neighbors", "request" => selected}) end
 
           with {:ok, observation} <-
-                 managed_proposal_read(values, neighbors, request, cap, recipe, id) do
+                 managed_proposal_read(values, neighbors, request, cap, recipe, id, removal) do
             selected_read = if(reuse, do: planned_read, else: read)
 
             if acceptance,
@@ -823,7 +843,7 @@ defmodule Ipse.Extension.Collection.ObservedRead do
     )
   end
 
-  defp managed_proposal_read(read, neighbors, request, cap, recipe, id) do
+  defp managed_proposal_read(read, neighbors, request, cap, recipe, id, removal \\ false) do
     keys = [request["key"], ManagedPages.format_key()]
 
     with {:ok, first} <- read.(%{"op" => "get_many", "keys" => keys}),
@@ -842,7 +862,8 @@ defmodule Ipse.Extension.Collection.ObservedRead do
          true <-
            override["witness"] === first["witness"] and override["summary"] === first["summary"],
          true <- override["keys"] === [override_key],
-         [nil] <- override["records"],
+         [stored_override] <- override["records"],
+         true <- removal or is_nil(stored_override),
          {:ok, live} <-
            managed_row_read(
              read,
@@ -868,10 +889,9 @@ defmodule Ipse.Extension.Collection.ObservedRead do
          {:ok, anchor} <-
            managed_row_read(read, neighbors, cap, :anchor, candidate["lineage"], first),
          %{
-           "clocks" => [_, _, anchor_first, anchor_deadline],
-           "choice" => nil,
-           "retirement" => nil
+           "clocks" => [_, _, anchor_first, anchor_deadline]
          } <- anchor,
+         true <- removal or (is_nil(anchor["choice"]) and is_nil(anchor["retirement"])),
          first_ms = number(first_ms),
          deadline_ms = number(deadline_ms),
          true <- first_ms === anchor_first and deadline_ms === anchor_deadline,

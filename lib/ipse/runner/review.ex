@@ -55,6 +55,7 @@ defmodule Ipse.Runner.Review do
   def with_management_input(command, facts, handle, fun) when is_function(fun, 1) do
     with true <-
            command === "forget" or
+             (command === "reject" and Ipse.Session.PendingRejection.valid_facts?(facts)) or
              (command === "accept" and Ipse.Session.PendingAcceptance.valid_facts?(facts)) or
              Ipse.Session.ManagedLifecycle.retention_review?(
                command,

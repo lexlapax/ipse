@@ -987,6 +987,26 @@ cannot replace the Session/source-owner fence of a current correction. The
 the complete path, including disabled capture, retained successor, zero inference
 and an unchanged original journal.
 
+For pending rejection, first run the synthetic-source/native management grid:
+
+```sh
+mix test test/ipse/cli/management_reject_public_test.exs test/ipse/session/pending_rejection_test.exs --include native_sandbox --max-cases 1
+IPSE_TEST_GENUINE_PENDING_REJECTION=1 mix test test/extensions/knowledge/knowledge_session_test.exs --only genuine_pending_rejection --max-cases 1
+```
+
+The grid covers live and expired candidates after capture revocation, stale/cancelled
+input, concurrent management/Collection changes, forged permits and a shared
+literal's native pin/forget choices. The opt-in journey starts with actual
+Session capture using synthetic main-model behavior and a freshly built artifact.
+It requires cancellation without effects, native disable, rejection with the
+original source temporarily unavailable, unchanged original journals/peer/anchor,
+settled zero-service accounting, read-only inspection and old-backup import refusal.
+Its retained synthetic root prints as `PENDING_REJECTION_ROOT`. Select both
+existing `--management-review` and `--knowledge` PTY answer modes when combining
+disable and rejection in one child. Follow the fresh-runtime recipe linked below
+with the rejection variable/tag; trusted source members and synthetic model
+behavior remain distinct from human or live-model evidence.
+
 The separate opt-in `genuine_pending_accepted_recall` journey in
 `test/extensions/knowledge/knowledge_session_test.exs` uses freshly built isolated
 Knowledge artifacts, two ordinary captures and actual public native acceptance.

@@ -10,11 +10,11 @@ defmodule Ipse.Extension.Collection.NormalizerV3 do
   review permit and retains signed suppression. Import, adoption and resealing
   are not supported here.
 
-  No-cache worst-case lookup costs 32 charged units: format/override/public-key
-  reads (3), two semantic neighbor/value reads (10), anchor repair including a
-  buddy (6), fresh live insertion repair (5), and a bounded pending-reference
-  summary for proposals (8). Every read uses the original held closure; an
-  independent local counter also refuses above 32 units.
+  Every read uses the original held closure; an independent local counter
+  refuses above 32 charged units. Exact repeated requests are cached only inside
+  one unchanged held callback, so semantic lookup and page planning can share
+  those reads while checking candidate-specific rejection. Proposals also
+  require the bounded pending-reference summary (8 charged units).
   """
   alias Ipse.{JSON, Extension.CollectionPolicy, Extension.ManagedRecipe}
 
@@ -35,6 +35,18 @@ defmodule Ipse.Extension.Collection.NormalizerV3 do
 
   @doc "Prepare an explicit unchanged public change plus bounded signed sidecars; perform no publication."
   def normalize(witness, read, options) when is_function(read, 1) do
+    cache = :ets.new(__MODULE__, [:set, :private])
+
+    try do
+      normalize_cached(witness, cached_read(read, cache), options)
+    after
+      :ets.delete(cache)
+    end
+  end
+
+  def normalize(_, _, _), do: @error
+
+  defp normalize_cached(witness, read, options) do
     checked(fn ->
       true = keys?(options, @options)
 
@@ -63,11 +75,16 @@ defmodule Ipse.Extension.Collection.NormalizerV3 do
       {:ok, candidate} = ManagedRecipe.extract(recipe, change["key"], change["value"], sources)
       :ok = fixed_key!(candidate)
       :ok = catalog!(catalog, witness)
-      read = bounded_read(read)
       {:ok, format_record} = read.(ManagedPages.format_key())
       {initial?, format_sha} = format!(cap, format_record, catalog, witness)
       {:ok, nil} = read.(recipe["override_prefix"] <> candidate["lineage"])
       {:ok, nil} = read.(candidate["key"])
+
+      if candidate["kind"] == "proposal" do
+        "pending." <> id = candidate["key"]
+        {:ok, nil} = read.("reject." <> id)
+      end
+
       :ok = PendingCapacity.check(candidate, change["value"], read)
       row = selected_row!(cap, :anchor, candidate["lineage"], read, witness)
       row = row || %{"clocks" => [nil, nil, nil, nil], "choice" => nil, "retirement" => nil}
@@ -133,8 +150,6 @@ defmodule Ipse.Extension.Collection.NormalizerV3 do
       _ -> @error
     end
   end
-
-  def normalize(_, _, _), do: @error
 
   @doc """
   Reclaim one exactly observed signed ordinary literal after its stored deadline.
@@ -893,6 +908,135 @@ defmodule Ipse.Extension.Collection.NormalizerV3 do
   end
 
   defp manage(_, _, _, _), do: @error
+
+  @doc "Reject one exactly reviewed pending candidate; preserve shared anchor clocks and other candidates."
+  def reject(witness, read, options) when is_function(read, 1) do
+    alias Ipse.Session.PendingRejection
+
+    checked(fn ->
+      true = keys?(options, ~w(request facts permit now_ms domain_cap catalog)a)
+
+      %{
+        request: request,
+        facts: facts,
+        permit: permit,
+        now_ms: now,
+        domain_cap: cap,
+        catalog: catalog
+      } = options
+
+      true = JSON.safe_uint?(now) and PendingRejection.valid_facts?(facts)
+      context = facts["context"]
+      recipe = context["recipe"]
+      true = witness["operation_id"] === facts["operation_id"]
+      true = witness["recipe_sha256"] === JSON.digest([recipe])
+      true = witness["original_request_sha256"] === JSON.digest([request])
+      true = witness["root"]["project"] === context["namespace"]
+      :ok = catalog!(catalog, witness)
+      true = witness["root_state"] === "present" and catalog["state"] === "active"
+      true = Ipse.Extension.Collection.valid_request?(request)
+      true = request["op"] === "commit" and request["advance_floor"] === true
+      true = request["expected_generation"] === witness["root"]["generation"]
+
+      [
+        %{"key" => "pending." <> id = key, "expected_revision" => revision, "value" => nil},
+        %{"key" => rejection_key, "expected_revision" => 0, "value" => suppression}
+      ] = request["changes"]
+
+      true = JSON.sha256?(id) and rejection_key === "reject." <> id
+      read = bounded_read(read)
+      {:ok, format} = read.(ManagedPages.format_key())
+      {false, _} = format!(cap, format, catalog, witness)
+      {:ok, record} = read.(key)
+      true = is_map(record) and record["revision"] === revision and revision > 0
+      true = record["sha256"] === value_sha(record["value"])
+      true = record["value"]["kind"] === "proposal" and record["value"]["state"] === "pending"
+      true = record["value"]["id"] === id
+
+      {:ok, candidate} =
+        ManagedRecipe.extract(
+          recipe,
+          key,
+          record["value"],
+          get_in(record["value"], recipe["evidence_path"])
+        )
+
+      :ok = fixed_key!(candidate)
+      {:ok, nil} = read.(rejection_key)
+      lineage = candidate["lineage"]
+      anchor = selected_row!(cap, :anchor, lineage, read, witness)
+      %{"clocks" => [_, _, first, deadline]} = anchor
+      true = JSON.safe_uint?(first) and JSON.safe_uint?(deadline) and first <= now
+      true = deadline >= first and deadline - first <= candidate["max_age_ms"]
+      metadata = facts["metadata"]
+
+      true =
+        metadata["lineage"] === lineage and metadata["first_admitted_ms"] === first and
+          metadata["valid_until_ms"] === deadline and
+          metadata["category"] === candidate["category"]
+
+      live_id = ManagedPages.live_identity(key)
+      stored_live = selected_row!(cap, :live, live_id, read, witness)
+
+      true =
+        stored_live ===
+          live(candidate, record["value"], metadata["policy_sha256"], first, deadline)
+
+      true = PendingRejection.revalidate(facts, request, witness, record, metadata)
+
+      true =
+        suppression === %{
+          "version" => 1,
+          "kind" => "rejected_proposal",
+          "candidate_id" => id,
+          "lineage" => lineage,
+          "record_sha256" => record["sha256"],
+          "record_revision" => revision,
+          "management_operation_id" => facts["operation_id"]
+        }
+
+      {:ok, plan} =
+        Planner.plan_checked(cap, :live, [{live_id, {:equal, stored_live}, nil}], read)
+
+      true = same_root?(plan, witness)
+      true = length(plan.changes) in 1..3
+      true = Enum.count(plan.changes, &is_nil(&1.body)) <= 1
+      {:ok, review} = Ipse.Runner.Review.consume(permit, "reject", facts)
+      true = review["observed_at_ms"] <= now and review["observed_at_ms"] >= first
+      {:ok, extras} = Planner.seal_changes(cap, witness, plan)
+      normalized = Map.update!(request, "changes", &(&1 ++ extras))
+      true = Ipse.Extension.Collection.valid_request?(normalized)
+
+      receipt = %{
+        "version" => 3,
+        "kind" => "native_proposal_reject",
+        "lineage" => lineage,
+        "record_key" => key,
+        "action_sha256" => facts["action_sha256"],
+        "native_review_sha256" => JSON.digest([review]),
+        "eligibility" => "rejected",
+        "rejection_key" => rejection_key,
+        "metadata_changes" =>
+          Enum.map(extras, fn extra ->
+            %{
+              "key" => extra["key"],
+              "expected_revision" => extra["expected_revision"],
+              "value_sha256" =>
+                if(is_nil(extra["value"]), do: nil, else: value_sha(extra["value"]))
+            }
+          end)
+      }
+
+      true = byte_size(Migration.encode(receipt)) <= 2048
+      {normalized, receipt}
+    end)
+    |> case do
+      {:ok, {request, receipt}} -> {:ok, request, receipt}
+      _ -> @error
+    end
+  end
+
+  def reject(_, _, _), do: @error
 
   defp management_facts!(facts, request, witness, record, metadata, action) do
     fields =
