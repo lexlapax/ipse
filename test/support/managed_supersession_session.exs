@@ -6,9 +6,10 @@ turnover = String.starts_with?(scenario, "turnover_")
 scenario = String.replace_prefix(scenario, "turnover_", "")
 assert not turnover or scenario in ~w(ordinary history_expiry)
 followup = Process.delete({:managed_supersession_fixture, :followup})
-assert followup in [nil, :history_use, :compaction_diagnostic]
+assert followup in [nil, :history_use, :compaction_diagnostic, :clock_seed]
 assert followup != :history_use or scenario == "current"
 assert followup != :compaction_diagnostic or scenario == "shared"
+assert followup != :clock_seed or scenario == "current"
 
 if scenario == "terminal_effect_unknown" do
   Code.require_file("managed_supersession_unknown.exs", __DIR__)
@@ -773,6 +774,17 @@ if scenario in ~w(current ordinary temporal history_expiry split cross_session p
   end
 
   _closed_events = idle_resume.(session, id, events)
+
+  if followup == :clock_seed do
+    Code.require_file("managed_clock_lifecycle.exs", __DIR__)
+
+    Ipse.Test.ManagedClockLifecycle.seed(
+      Map.put(config, :semantic_admission, admission),
+      root,
+      events,
+      id
+    )
+  end
 
   if original_source do
     Task.await(input_control, 1000)

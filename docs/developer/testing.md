@@ -366,6 +366,27 @@ does not alter the machine clock, kernel file timestamps or the production helpe
 and its preload is never a production configuration option. Clock coherence alone
 qualifies no turnover, capacity, model quality or elapsed real year.
 
+After building the matching helper on a supported native allocation profile,
+exercise actual signed retention across fresh processes:
+
+```sh
+mix test test/dev/knowledge/managed_clock_lifecycle_test.exs --max-cases 1
+```
+
+The seed reuses the genuine reviewed Session correction/supersession fixture
+and its confirmed close/idle-resume checks. New processes inspect the same store
+at days 30, 91 and 366. Require early-expiry refusals with unchanged roots, a
+native pin review whose signed time falls inside the actual day-30 operation,
+ordinary reclamation after its original 90-day deadline and temporal-history
+reclamation after its signed 365-day deadline. The pinned successor and original
+Session bytes must survive. Inspect settled operations twice without journal
+mutation and validate Saved reconstruction/release claims at each checkpoint.
+The printed `NATIVE_CLOCK_LIFECYCLE_ROOT` retains synthetic logs and phase reports,
+including failures. No application, helper or machine clock is changed globally.
+These few operations establish the clocked native path, not the frozen daily
+intake, overlapping owners, offline imports, late first supersession, compaction,
+maximum payloads or annual turnover. Run the full workload separately.
+
 Distinguish timeout before command-handler startup from timeout during active work.
 The evaluation-session fixture observes its worker's readiness and active Session
 phase before asserting post-effect cancellation; a separate delayed-start case

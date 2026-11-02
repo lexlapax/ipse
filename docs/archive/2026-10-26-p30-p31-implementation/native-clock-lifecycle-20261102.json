@@ -1,0 +1,134 @@
+{
+  "actual_terminal_exec_session": 90779,
+  "actual_terminal_exit_code": 0,
+  "annual_workload_qualification": false,
+  "cohort_start_commit": "cd7a438",
+  "command": "mix test test/dev/knowledge/managed_clock_lifecycle_test.exs --max-cases 1 --seed 791762",
+  "default_fixture_followup": {
+    "actual_terminal_exec_session": 31022,
+    "actual_terminal_exit_code": 0,
+    "command": "mix test test/ipse/session/managed_supersession_session_test.exs --only supersession_scenario:current --max-cases 1 --seed 791764",
+    "elapsed_seconds": 9.6,
+    "excluded": 12,
+    "log": "/tmp/ipse-native-clock-original-current-20261102.log",
+    "log_sha256": "3555af1cb150092ac006c7c47c1536704d8de4ab9f8ce2b2f7579a9cc3f7095b",
+    "passed": 1
+  },
+  "documentation_check": {
+    "actual_terminal_exec_session": 57949,
+    "actual_terminal_exit_code": 0,
+    "errors": 0,
+    "local_links": 8588,
+    "log": "/tmp/ipse-native-clock-docs-20261102.log",
+    "log_sha256": "977d900b48fd2796cc3dd5869f9b747fdf81131d5a39140fc20eb4e4afd3ff60",
+    "markdown_files": 1037,
+    "scope_limit": "Git enumeration warnings for private staging directories; their contents were not inspected or copied"
+  },
+  "elapsed_seconds": 17.0,
+  "failed": 0,
+  "format_check": {
+    "actual_terminal_exec_session": 43719,
+    "actual_terminal_exit_code": 0,
+    "command": "mix format --check-formatted"
+  },
+  "generated_evidence_sha256": {
+    "/tmp/ipse-native-clock-6ecd6581d00a7b5aae75108ecd070f90/clock-day-30.json": "2c736d7fc376b249212144e910eb90fde8fe501e61553aff118b7269b7d2cb48",
+    "/tmp/ipse-native-clock-6ecd6581d00a7b5aae75108ecd070f90/clock-day-366.json": "372f5d80faa17922eda4f6c742f894ce7b8849de2d1ae25d4a658cf6ea673d00",
+    "/tmp/ipse-native-clock-6ecd6581d00a7b5aae75108ecd070f90/clock-day-91.json": "9588eda1f300586f9794bccc9fb0a328cf08b90d760f17fe0303c157daacd2b9",
+    "/tmp/ipse-native-clock-6ecd6581d00a7b5aae75108ecd070f90/clock-process-0.log": "70be7da25f8662f71f1e042bac6c4a2889a9856d583d43f8323131e623e2948b",
+    "/tmp/ipse-native-clock-6ecd6581d00a7b5aae75108ecd070f90/clock-process-30.log": "0e623190a9fe59a84b85e0df8a926fbd9aa8e97aa43cdde7106235e3d1acaad8",
+    "/tmp/ipse-native-clock-6ecd6581d00a7b5aae75108ecd070f90/clock-process-366.log": "026ec3834eb1d26f8abd7418c07a2b76882559248fde049d023e34d76d144d57",
+    "/tmp/ipse-native-clock-6ecd6581d00a7b5aae75108ecd070f90/clock-process-91.log": "78dd9aa813d9d2a04cb2d2bf1701d4f9befa941fcf4cb6d83f86e4e5be32c426",
+    "/tmp/ipse-native-clock-6ecd6581d00a7b5aae75108ecd070f90/clock-seed.json": "93d443eb5c88d251e992934e4e6198975e9e942b3d8289f678807d329c4b4da7"
+  },
+  "inventory_commit": "d52764b858a28431ba5a1bd5ca40d619b1f47066",
+  "inventory_limit": "post-run explicit source/helper/evidence hashes and test-reported generated binaries; not complete prelaunch system-library/environment/permissions/in-memory closure",
+  "log_path": "/tmp/ipse-native-clock-lifecycle-first-20261102.log",
+  "log_sha256": "da3c14a653c4f4c56ed163a9ed9cdfad70ca7375305e1ef5b3a7d06e64783706",
+  "native_helper_sha256": "5487c57a84b99be7b5b4381d097b637d3c45350b92b492d1786712f2bfbf8c7a",
+  "passed": 1,
+  "phases": [
+    {
+      "actual_native_clock_component": true,
+      "annual_workload_qualification": false,
+      "day": 30,
+      "expired_operations": [],
+      "generation_after": 5,
+      "generation_before": 4,
+      "retention_operations": [
+        {
+          "journal_id": "c6c8f82f84ae0cdd57ff4f9a75b3cca3",
+          "native_review_at_ms": 1796190612206,
+          "operation_id": "19304a3a28fd5ff54f8d05db4cec78a9",
+          "storage_status": "settled"
+        }
+      ],
+      "seed_sha256": "93d443eb5c88d251e992934e4e6198975e9e942b3d8289f678807d329c4b4da7",
+      "source_sha256": "fdd44883a79bdf6b25ee9c3cfafcfdd1d6f6175fd18c08f17c1b402d4f09404e",
+      "wall_ms": 1796190611059
+    },
+    {
+      "actual_native_clock_component": true,
+      "annual_workload_qualification": false,
+      "day": 91,
+      "expired_operations": [
+        {
+          "checked_at_ms": 1801461014423,
+          "journal_id": "bce05a916e4d2540ef2779c4ed5e1cf6",
+          "operation_id": "dd1c9cc6b3bf3498d7fc3a04b526e1ca",
+          "storage_status": "settled"
+        },
+        {
+          "checked_at_ms": 1801461014752,
+          "journal_id": "5e1c9a55909d80c133d3125fea79e775",
+          "operation_id": "c79091425a795afbada3e9ff6822edee",
+          "storage_status": "settled"
+        }
+      ],
+      "generation_after": 7,
+      "generation_before": 5,
+      "retention_operations": [],
+      "seed_sha256": "93d443eb5c88d251e992934e4e6198975e9e942b3d8289f678807d329c4b4da7",
+      "source_sha256": "fdd44883a79bdf6b25ee9c3cfafcfdd1d6f6175fd18c08f17c1b402d4f09404e",
+      "wall_ms": 1801461013460
+    },
+    {
+      "actual_native_clock_component": true,
+      "annual_workload_qualification": false,
+      "day": 366,
+      "expired_operations": [
+        {
+          "checked_at_ms": 1825221016972,
+          "journal_id": "222e2b436ad62517bf9ba0047d10c431",
+          "operation_id": "c5b38d9d0b7b58c249160ce8d040e320",
+          "storage_status": "settled"
+        }
+      ],
+      "generation_after": 8,
+      "generation_before": 7,
+      "retention_operations": [],
+      "seed_sha256": "93d443eb5c88d251e992934e4e6198975e9e942b3d8289f678807d329c4b4da7",
+      "source_sha256": "fdd44883a79bdf6b25ee9c3cfafcfdd1d6f6175fd18c08f17c1b402d4f09404e",
+      "wall_ms": 1825221015950
+    }
+  ],
+  "production_runtime_source_matches": "39c8043",
+  "recorded_at_utc": "2026-11-02T06:07:13.706730Z",
+  "scope": "author-run controlled-clock actual native review/reclamation component with strict saved reconstruction and immutable original journal; no full annual workload, live model, human, installed or independent qualification",
+  "source_sha256": {
+    "dev/fixtures/process_clock.rs": "40a0ce4491fd5224a42efd7ca4a0b28be451963de7484f62ae1f54b65921c94e",
+    "test/dev/knowledge/managed_clock_lifecycle_test.exs": "0bccae26886982cbec431dc71f80f74fe05cbd569da2abb071ff6668b8559878",
+    "test/support/managed_clock_day.exs": "8523a80a4f65f3fcae347298ab22db8341c049df01878f9377c94aae86006cd5",
+    "test/support/managed_clock_lifecycle.exs": "108dd18af42c43e85e939f7fddd5bb67033715491b41a99129d08357612c2d5e",
+    "test/support/managed_clock_seed.exs": "3e4de642d4a8f76eed6d08cfe862d66e5d5619395a72d5d62083efab95507f99",
+    "test/support/managed_supersession_session.exs": "0c65994c556c5bf8e6a1f3e9fa802f4f1297bcd712afed13f6698b730f65a5ff",
+    "test/support/operator_pty.rs": "c242e711c0c14097fc516b6c2ebded824caab553892375e3422f62c02e8448e4"
+  },
+  "synthetic_root": "/tmp/ipse-native-clock-6ecd6581d00a7b5aae75108ecd070f90",
+  "test_reported_artifacts_sha256": {
+    "driver": "ed5aee10d730dee1ae123669b0499bad93d1e8985e9f95fc1c0b44489c673672",
+    "library": "12654639c1912cebbb70e99af4e4e5aecc5d3a5d2c6618bdc333ae4b68dff562"
+  },
+  "version": 1,
+  "whole_suite_result_is_separate": "39c8043:3747 passed,1failed,118skipped,112excluded; failure remains open"
+}

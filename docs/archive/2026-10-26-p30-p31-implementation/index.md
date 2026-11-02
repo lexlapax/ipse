@@ -61,6 +61,7 @@ nor resource/offline qualification. No daemon configuration or existing model wa
 
 ## P31A contracts and evidence
 
+- [Actual native clocked lifecycle](native-clock-lifecycle-20261102.md) advances one genuine store across fresh day-30/day-91/day-366 processes, with a signed native pin review, elapsed ordinary/history reclamation, unchanged original source and nonmutating receipt inspection. This establishes the instrumented native path, not annual workload or capacity acceptance.
 - [Complete frozen-source baseline](full-suite-20261102.md) records 3,747 passed, one failed, 118 skipped and 112 excluded at isolated `39c8043`, with matching pre/post source/build/private-asset/helper inventories. The protected-outer cancellation failure remains open; this is a failed aggregate, separate from earlier results and later focused checks.
 - [Test-process clock for lifecycle workloads](process-clock-20261102.md) verifies coherent plain-VM/Rust wall clocks at fixed process offsets, unchanged monotonic timers and malformed-setting refusal without starting Ipse or rebuilding its helper. Actual protected turnover and lifecycle qualification remain open.
 - [Managed compatibility and historical-source boundaries](managed-compatibility-boundaries-20261102.md) distinguishes explicit unsupported V2 refusal from actual registered V3 queue/concurrency/late-loss controls, corrects the refusal diagnostic and verifies current source withdrawal against a fresh genuine old-runtime literal. Complete-suite and independent acceptance remain separate.
