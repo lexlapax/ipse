@@ -964,6 +964,12 @@ plan counts 2,000 captures plus 100 pin publications across 21 seed days without
 changing the existing 100-operation daily limit. The two-day smoke verifies seven
 1,024-byte-source notes, one pin, fresh-process clock coherence, actual public
 values, signed metadata, settled resource records and unchanged prior journals.
+The [read-only population auditor](archive/2026-10-26-p30-p31-implementation/native-notes-audit-20261102.md)
+also passes the closed seven-note store: every signed target/category/clock,
+exact root/control state and original-source reconstruction remain unchanged,
+with separate per-note evidence and component allocation. Active/incomplete
+cohorts and output reuse refuse before audit output. This is a smoke-sized
+audit, not a full initial-population result.
 The full 2,000-note run, final complete metadata/payload qualification and annual
 normal-use plus 10,000 mixed changes remain open; a driver smoke is not endurance
 acceptance.

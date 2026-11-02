@@ -1,0 +1,249 @@
+{
+  "actual_model_calls": 0,
+  "actual_publications": 0,
+  "allocation_scope": "Collection plus actual control, identity, management and original Session sources; excludes installed artifacts, frozen SDK and benchmark oracle; no double-counted control reserve",
+  "annual_workload_qualification": false,
+  "audit_report": {
+    "bytes": 2467,
+    "path": "/tmp/ipse-native-seed-audit-smoke-20261102-final.json",
+    "sha256": "28144abca4f06892f031bcdcdd018ce4b86904913029465088582ef328aa4e2c"
+  },
+  "audit_source": {
+    "bytes": 31538,
+    "path": "/tmp/ipse-native-seed-audit-smoke-20261102-final.json.driver.ex",
+    "sha256": "6202f3a8cbc072052407c68ea6f4299487858435ba267da831566f3a34ab7a25"
+  },
+  "base_commit": "580f64c7f54da398a0d5d141699f21524b95f044",
+  "checks": [
+    {
+      "bytes": 2251,
+      "path": "/tmp/ipse-native-seed-audit-smoke-20261102-first.json",
+      "sha256": "c5c05144600eb80281ea71e0ab0e775d32dd1dc261d37af2ea78c9addf611df6"
+    },
+    {
+      "bytes": 2469,
+      "path": "/tmp/ipse-native-seed-audit-smoke-20261102-second.json",
+      "sha256": "a5521c19f74d8b4659e06a79b334eccdbb4c4bcab998b4710fe94af6d8be1233"
+    },
+    {
+      "bytes": 117,
+      "path": "/tmp/ipse-native-seed-audit-smoke-parent-20261102-first.log",
+      "sha256": "53d1159cb8b664cfa36a58ead90bb9bbe693ca6b2e5fb4758a43d4bd9a38ccb4"
+    },
+    {
+      "bytes": 117,
+      "path": "/tmp/ipse-native-seed-audit-smoke-parent-20261102-second.log",
+      "sha256": "53d1159cb8b664cfa36a58ead90bb9bbe693ca6b2e5fb4758a43d4bd9a38ccb4"
+    },
+    {
+      "bytes": 117,
+      "path": "/tmp/ipse-native-seed-audit-smoke-parent-20261102-final.log",
+      "sha256": "53d1159cb8b664cfa36a58ead90bb9bbe693ca6b2e5fb4758a43d4bd9a38ccb4"
+    },
+    {
+      "bytes": 117,
+      "path": "/tmp/ipse-native-seed-audit-smoke-20261102-final.json.log",
+      "sha256": "53d1159cb8b664cfa36a58ead90bb9bbe693ca6b2e5fb4758a43d4bd9a38ccb4"
+    },
+    {
+      "bytes": 874,
+      "path": "/tmp/ipse-native-seed-audit-controls-20261102.log",
+      "sha256": "c796152d05d40b50cd495b8afd81213f784e6a656c83d384e26531774a40ebe8"
+    },
+    {
+      "bytes": 133,
+      "path": "/tmp/ipse-native-seed-audit-controls-final-20261102.log",
+      "sha256": "86f3b3389abd1b4a0eb778679c78914ca298ec2848cd593939081f9e6fac999f"
+    },
+    {
+      "bytes": 2096,
+      "path": "/tmp/ipse-native-seed-audit-controls-20261102.exs",
+      "sha256": "1299db778d3e9d3c1ce19df132fbcfa2c12a087c2a3ce6733ae5dec44d7fd9f1"
+    },
+    {
+      "bytes": 255,
+      "path": "/tmp/ipse-native-seed-audit-live-refusal-20261102.json.refusal-observation.log",
+      "sha256": "94f89406f7ab5066a10e83f44324300f9d3c5af9e9688f6b0af6c1f7e0f8c73a"
+    },
+    {
+      "bytes": 403,
+      "path": "/tmp/ipse-native-seed-audit-smoke-20261102-final.json.refusal-observation.log",
+      "sha256": "71d879bcc189b12889b887bd0286705b172b6579a559e6aa757cae7e3e4f7dec"
+    },
+    {
+      "bytes": 133,
+      "path": "/tmp/ipse-native-notes-audit-final-pure-20261102.log",
+      "sha256": "388415313138efa1095d33528925571a01d069f31a705ec74a4e6305709a3aea"
+    },
+    {
+      "bytes": 0,
+      "path": "/tmp/ipse-native-notes-audit-strict-bounded-20261102.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "bytes": 31,
+      "path": "/tmp/ipse-native-notes-audit-format-20261102.log",
+      "sha256": "7b3a63a9a933c530a8b1d946b8b9f142b2a3c559c0a241dee4df410c55e181b3"
+    },
+    {
+      "bytes": 33,
+      "path": "/tmp/ipse-native-notes-audit-argv-20261102.log",
+      "sha256": "7429cc6359e78b7eaea0f04e0d693ad00ff6c63e93897ede2dbab6b4d66bbc9d"
+    },
+    {
+      "bytes": 328,
+      "path": "/tmp/ipse-native-notes-audit-active-refusal-20261102.log",
+      "sha256": "5e7bf03da5ebb5ff08dea13b73c7a6f73a7aba7eb84a9dbbf2c18ed0704e335f"
+    }
+  ],
+  "cohort_manifest": {
+    "bytes": 157691,
+    "path": "/tmp/ipse-native-seed-smoke-20261102-payload/manifest.json",
+    "sha256": "a97b49df56ac087e0fc8ff3de75f7ce970aafc8bc92f0170e282c605ad142515"
+  },
+  "cohort_root": "/tmp/ipse-native-seed-smoke-20261102-payload",
+  "collection_status": {
+    "accounted_allocated_bytes": 23130112,
+    "accounted_total_bytes": 23097841,
+    "allocated_bytes": 61440,
+    "checkpoint": null,
+    "checkpoint_data_bytes": 0,
+    "checkpoint_records": 0,
+    "data_bytes": 24841,
+    "disk_bytes": 29169,
+    "envelope_data_bytes": 24841,
+    "floor": 8,
+    "floor_anchor": "1cf3b803be793257ce25921d631f9131",
+    "generation": 8,
+    "limits": {
+      "control_reserved_bytes": 23068672,
+      "data_bytes": 25165824,
+      "operations": 32768,
+      "records": 8192,
+      "total_bytes": 67108864,
+      "value_bytes": 6144
+    },
+    "migration": null,
+    "notice": null,
+    "operations": 8,
+    "project": "d0fd41e58babf761b6f761e217f77d2d4484adcf9cc408cb88abd69e209c4dd6",
+    "records": 10,
+    "reserved_operation_slots": 0,
+    "staged_data_bytes": 0,
+    "staged_records": 0,
+    "version": 3
+  },
+  "date": "2026-11-02",
+  "documentation": {
+    "bytes": 757,
+    "path": "/tmp/ipse-native-notes-audit-docs-20261102.log",
+    "sha256": "a4c1acc71655e5b2770424dbcc6b1ce9c095de8f847e25b2ec94a7532f8ef59e"
+  },
+  "full_6_kib_record_payload_qualification": false,
+  "full_initial_population_qualification": false,
+  "largest_record_encoded_bytes": 3129,
+  "measured_components_allocated_bytes": 569344,
+  "physical_allocations": {
+    "control": {
+      "allocated_bytes": 32768,
+      "entries": 5,
+      "logical_bytes": 30438
+    },
+    "identity": {
+      "allocated_bytes": 4096,
+      "entries": 4,
+      "logical_bytes": 1397
+    },
+    "management": {
+      "allocated_bytes": 12288,
+      "entries": 3,
+      "logical_bytes": 8643
+    },
+    "sessions": {
+      "allocated_bytes": 458752,
+      "entries": 7,
+      "logical_bytes": 448234
+    }
+  },
+  "scope": "Read-only audit caller against a closed seven-note native smoke; no complete initial-population result claimed",
+  "separate_initial_population_checkpoint": {
+    "closed_marker": {
+      "bytes": 384,
+      "path": "/tmp/ipse-native-seed-initial-20261102-first/checkpoints/closed-143.json",
+      "sha256": "cd4350019dee8349d339439716e68ce4a48639987f11a044fa87707a7c6d4862"
+    },
+    "collection_allocated_bytes": 4902912,
+    "includes_original_session_sources": true,
+    "measured_components_allocated_bytes": 67964928,
+    "operations": 1100,
+    "physical_allocations": {
+      "control": {
+        "allocated_bytes": 385024,
+        "entries": 5,
+        "logical_bytes": 383279
+      },
+      "identity": {
+        "allocated_bytes": 4096,
+        "entries": 4,
+        "logical_bytes": 1397
+      },
+      "management": {
+        "allocated_bytes": 1228800,
+        "entries": 201,
+        "logical_bytes": 862338
+      },
+      "sessions": {
+        "allocated_bytes": 61444096,
+        "entries": 430,
+        "logical_bytes": 60581978
+      }
+    },
+    "public_records": 1000,
+    "report": {
+      "bytes": 14859,
+      "path": "/tmp/ipse-native-seed-initial-20261102-first/checkpoints/report-143.json",
+      "sha256": "a7173c532b24af2e6201f9696ad6febf597b19586eb7d74ac93a0e53bf22a612"
+    },
+    "resource_qualification": false,
+    "whole_population_audit": false
+  },
+  "sources": [
+    {
+      "bytes": 31538,
+      "path": "dev/knowledge/native_notes_seed.ex",
+      "sha256": "6202f3a8cbc072052407c68ea6f4299487858435ba267da831566f3a34ab7a25"
+    },
+    {
+      "bytes": 104,
+      "path": "dev/knowledge/native_notes_seed.exs",
+      "sha256": "e524d502f04ffb26394916a0cfd2dd237eed6f75222428a704fdebbf855735d5"
+    },
+    {
+      "bytes": 1762,
+      "path": "test/dev/knowledge/native_notes_seed_test.exs",
+      "sha256": "c23f321715da4c46569c68a9745d2729d33c4a664a43be82bf959b9f34732c70"
+    },
+    {
+      "bytes": 22683,
+      "path": "test/support/managed_clock_lifecycle.exs",
+      "sha256": "71ee6667f1389f6315fca305a6d4af819f26f8f8db0da7ff61552ca39723e104"
+    }
+  ],
+  "unchanged_control": true,
+  "unchanged_frozen_files": 727,
+  "unchanged_root": true,
+  "unchanged_sources": 3,
+  "verified_categories": {
+    "current": 1,
+    "ordinary": 4,
+    "pin": 1,
+    "preference": 1
+  },
+  "verified_records": 7,
+  "verified_rows": {
+    "bytes": 4385,
+    "path": "/tmp/ipse-native-seed-audit-smoke-20261102-final.json.rows.json",
+    "sha256": "38cb0c5897ef9d74aa9d54bdd21b398a2ab83077447d36c0087ec9348b51a5bd"
+  },
+  "version": 1
+}

@@ -255,6 +255,7 @@ fixtures. Start with a fresh nonexisting `/tmp/ipse-native-seed-*` path:
 mix test test/dev/knowledge/native_notes_seed_test.exs
 mix run --no-start dev/knowledge/native_notes_seed.exs --init /tmp/ipse-native-seed-smoke-example smoke
 mix run --no-start dev/knowledge/native_notes_seed.exs --run /tmp/ipse-native-seed-smoke-example all
+mix run --no-start dev/knowledge/native_notes_seed.exs --audit /tmp/ipse-native-seed-smoke-example /tmp/ipse-native-seed-audit-smoke-example.json
 ```
 
 The smoke plan makes seven native notes and one pin across two fresh processes
@@ -270,6 +271,7 @@ For the complete initial plan, choose another fresh root:
 mix run --no-start dev/knowledge/native_notes_seed.exs --init /tmp/ipse-native-seed-initial-example initial
 mix run --no-start dev/knowledge/native_notes_seed.exs --run /tmp/ipse-native-seed-initial-example 1
 mix run --no-start dev/knowledge/native_notes_seed.exs --run /tmp/ipse-native-seed-initial-example all
+mix run --no-start dev/knowledge/native_notes_seed.exs --audit /tmp/ipse-native-seed-initial-example /tmp/ipse-native-seed-audit-initial-example.json
 ```
 
 The plan has 2,000 captures followed by their required pin reviews within each
@@ -304,6 +306,39 @@ All reports keep `annual_workload_qualification: false`: this tool does not run
 daily intake, corrections/forgetting/supersession, reclamation, concurrency,
 offline imports, compaction or the additional 10,000 mixed changes. Full maximum
 record, mixed-lifecycle and final persistent-metadata qualification remain open.
+
+### Audit the complete retained population
+
+Run `--audit ROOT OUTPUT` only after all segments have their closed markers.
+An inflight or incomplete plan refuses before creating audit output; an existing
+output or companion file also refuses. Use a fresh absolute
+`/tmp/ipse-native-seed-audit-*` output path. The audit starts no Session, terminal
+review, model or publication. Its native reads retain the actual Identity and
+Collection owners for each selected record.
+
+The caller copies its current source beside the output and uses the cohort's
+frozen SDK, clock and helper for the child process. The cohort's original runtime
+files remain frozen; updating the audit caller does not change which publisher
+produced those notes. Require exact last-closed root and control state, complete
+visible values, unchanged original journals, strict saved-Session reconstruction,
+and actual signed category, recipe, policy and nonrenewed retention clocks for
+every note. Session reconstruction is discarded after each source check.
+
+The summary binds a separate `OUTPUT.rows.json` containing the checked per-note
+metadata, plus the exact copied caller and original cohort manifest. Preserve
+those files with `OUTPUT.log` and the cohort checkpoints. It reports actual
+Collection allocation and separate control, identity, management and source-Session
+allocation, together with their measured sum. The sum adds actual control bytes
+rather than counting the Collection's reserved control allowance again. Installed
+artifacts, the frozen SDK and the benchmark oracle are outside that measured sum;
+whole-process RAM/disk peaks still need their own measurement.
+
+A successful smoke audit proves the seven-note smoke population, not the full
+initial plan. A successful full audit proves only its current initial population:
+maximum-record, annual lifecycle, cleanup, concurrent-owner and independent
+semantic qualification remain separate. Both report fields
+`full_6_kib_record_payload_qualification` and `annual_workload_qualification`
+remain false.
 
 ## Claim a draft before writing immutable pages
 

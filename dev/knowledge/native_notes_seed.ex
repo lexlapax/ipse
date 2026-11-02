@@ -60,7 +60,253 @@ defmodule Ipse.Development.NativeNotesSeed do
   def main(["--init", root, kind]) when kind in ~w(initial smoke), do: initialize(root, kind)
   def main(["--run", root, count]), do: run(root, count)
   def main(["--child", root, index]), do: child(root, String.to_integer(index))
-  def main(_), do: raise("use --init ROOT initial|smoke, or --run ROOT SEGMENTS|all")
+  def main(["--audit", root, output]), do: audit(root, output)
+  def main(["--audit-child", root, output]), do: audit_child(root, output)
+
+  def main(_),
+    do: raise("use --init ROOT initial|smoke, --run ROOT SEGMENTS|all, or --audit ROOT OUTPUT")
+
+  defp audit(root, output) do
+    manifest = manifest(root)
+    assert not File.exists?(Path.join(root, "inflight.json"))
+    assert length(closed(root, manifest)) == length(manifest["plan"])
+    verify_files(manifest)
+
+    assert Path.dirname(output) == "/tmp" and
+             String.starts_with?(Path.basename(output), "ipse-native-seed-audit-")
+
+    for path <- [output, output <> ".log", output <> ".driver.ex", output <> ".rows.json"],
+        do: assert(not File.exists?(path))
+
+    source = output <> ".driver.ex"
+    File.cp!(__ENV__.file, source)
+    File.chmod!(source, 0o600)
+    day = List.last(manifest["plan"])["day"]
+
+    {log, code} =
+      System.cmd(
+        System.find_executable("elixir"),
+        ["--erl", "+S 2:2 +C multi_time_warp"] ++
+          private_paths(root) ++
+          [
+            "-r",
+            source,
+            "-e",
+            "Ipse.Development.NativeNotesSeed.main(System.argv())",
+            "--",
+            "--audit-child",
+            root,
+            output
+          ],
+        stderr_to_stdout: true,
+        env: [
+          {"LD_PRELOAD", Path.join(root, "clock.so")},
+          {"IPSE_TEST_CLOCK_OFFSET_MS", Integer.to_string(day * @day)},
+          {"HOME", root},
+          {"IPSE_HOME", Path.join(root, "home")},
+          {"TMPDIR", root}
+        ]
+      )
+
+    File.write!(output <> ".log", log, [:exclusive])
+    File.chmod!(output <> ".log", 0o600)
+
+    assert code == 0,
+           "read-only population audit refused; inspect #{output}.log; no publication replay"
+
+    IO.write(log)
+  end
+
+  defp audit_child(root, output) do
+    Process.flag(:max_heap_size, %{size: 16_000_000, kill: true, error_logger: true})
+    manifest = manifest(root)
+    verify_files(manifest)
+    assert not File.exists?(Path.join(root, "inflight.json"))
+    reports = closed(root, manifest)
+    assert length(reports) == length(manifest["plan"])
+    modules = Code.require_file(Path.join(root, "runtime/managed_clock_lifecycle.exs"))
+
+    {clock_module, _} =
+      Enum.find(modules, fn {module, _} -> module === Ipse.Test.ManagedClockLifecycle end)
+
+    {:ok, _} = Application.ensure_all_started(:ipse)
+    clock_module.check_stdio_clock(root)
+    home = Path.join(root, "home")
+    cwd = Path.join(root, "work")
+    assert {:ok, binding} = ProjectIdentity.existing(home, cwd)
+
+    assert {:ok, namespace} =
+             Ipse.Extension.SemanticConsent.namespace(binding["project_id"], "knowledge")
+
+    collection = SemanticAdmission.collection_root(home)
+    assert {:ok, selected} = Management.selection(home)
+
+    assert {:ok, control} =
+             Consent.existing_snapshot(
+               SemanticAdmission.control_root(home),
+               binding["project_id"]
+             )
+
+    assert JSON.digest([control]) === List.last(reports)["control_sha256"]
+
+    assert {:ok, initial} = ObservedRead.read(collection, namespace, %{"op" => "snapshot"})
+    assert initial["value"] === List.last(reports)["snapshot"]
+    root_sha = initial["witness"]["root_sha256"]
+
+    records =
+      Enum.reduce(reports, %{}, fn report, all -> Map.merge(all, report["new_records"]) end)
+
+    assert visible(collection, namespace) === expected_records(records)
+    actions = Enum.flat_map(manifest["plan"], & &1["actions"])
+    pins = actions |> Enum.filter(&(&1["op"] == "pin")) |> MapSet.new(& &1["number"])
+
+    capture_days =
+      Map.new(
+        Enum.flat_map(manifest["plan"], fn segment ->
+          for action <- segment["actions"],
+              action["op"] == "capture",
+              do: {action["number"], segment["day"]}
+        end)
+      )
+
+    sources = Enum.flat_map(reports, & &1["sources"])
+
+    Enum.each(sources, fn source ->
+      verify_fingerprint(source)
+
+      if Path.dirname(source["path"]) == Path.join(home, "sessions") do
+        id = Path.basename(source["path"], ".jsonl")
+
+        assert {:ok, %{"release_claim" => "signed_release_claim"}} =
+                 Session.Saved.inspect_saved(Path.dirname(source["path"]), id)
+
+        assert {:ok, events} = Journal.load(Path.dirname(source["path"]), id)
+        assert {:ok, _} = Session.Saved.restore(events, id)
+      end
+    end)
+
+    rows =
+      records
+      |> Enum.sort_by(fn {number, _} -> String.to_integer(number) end)
+      |> Enum.map(fn {number, expected} ->
+        number = String.to_integer(number)
+
+        assert {:ok, managed} =
+                 ProjectIdentity.with_existing_domain_auth(
+                   home,
+                   cwd,
+                   binding,
+                   %{namespace: namespace, format: "managed-metadata-v3"},
+                   fn cap, catalog ->
+                     ObservedRead.with_managed_note_record(
+                       collection,
+                       namespace,
+                       %{"op" => "get_record", "key" => expected["key"]},
+                       cap,
+                       catalog,
+                       selected.recipe,
+                       &{:ok, &1}
+                     )
+                   end
+                 )
+
+        actual = managed["observation"]["value"]["record"]
+        metadata = managed["metadata"]
+        assert managed["observation"]["witness"]["root_sha256"] === root_sha
+        assert actual["value"] === expected["value"]
+        assert metadata["recipe_sha256"] === JSON.digest([selected.recipe])
+        assert metadata["policy_sha256"] === JSON.digest([control["policy"]])
+        category = if MapSet.member?(pins, number), do: "pin", else: expected["category"]
+        assert metadata["category"] === category
+        first = metadata["first_admitted_ms"]
+        day = capture_days[number]
+        assert first >= manifest["created_wall_ms"] + day * @day
+        assert first < manifest["created_wall_ms"] + (day + 1) * @day
+        deadline = metadata["valid_until_ms"]
+        assert deadline === if(category == "ordinary", do: first + 90 * @day, else: nil)
+        assert is_nil(deadline) or System.system_time(:millisecond) < deadline
+        if rem(number, 100) == 0, do: IO.puts("NATIVE_NOTES_AUDIT_RECORD=#{number}")
+
+        %{
+          "number" => number,
+          "key" => expected["key"],
+          "record_sha256" => actual["sha256"],
+          "metadata" => metadata,
+          "encoded_bytes" => actual["bytes"]
+        }
+      end)
+
+    categories = Enum.frequencies_by(rows, & &1["metadata"]["category"])
+
+    expected_categories =
+      actions
+      |> Enum.filter(&(&1["op"] == "capture"))
+      |> Enum.frequencies_by(fn action ->
+        if MapSet.member?(pins, action["number"]), do: "pin", else: action["category"]
+      end)
+
+    assert categories === expected_categories
+    assert {:ok, ^initial} = ObservedRead.read(collection, namespace, %{"op" => "snapshot"})
+
+    assert {:ok, ^control} =
+             Consent.existing_snapshot(
+               SemanticAdmission.control_root(home),
+               binding["project_id"]
+             )
+
+    for source <- sources, do: verify_fingerprint(source)
+    verify_files(manifest)
+
+    assert {:ok, status} =
+             Collection.execute(collection, namespace, %{"op" => "status"}, Usage.id())
+
+    physical =
+      Map.new(
+        [
+          {"control", SemanticAdmission.control_root(home)},
+          {"identity", Path.join(home, "project-identities")},
+          {"management", Path.join(home, "knowledge-management")},
+          {"sessions", Path.join(home, "sessions")}
+        ],
+        fn {name, path} ->
+          assert {:ok, allocation} = Ipse.Runner.storage_allocation(path)
+          {name, allocation}
+        end
+      )
+
+    measured =
+      status["allocated_bytes"] +
+        Enum.sum(Enum.map(physical, fn {_, usage} -> usage["allocated_bytes"] end))
+
+    save(output <> ".rows.json", rows)
+
+    save(output, %{
+      "version" => 1,
+      "root" => root,
+      "kind" => manifest["kind"],
+      "manifest" => fingerprint(Path.join(root, "manifest.json")),
+      "audit_source" => fingerprint(__ENV__.file),
+      "verified_records" => length(rows),
+      "verified_categories" => categories,
+      "verified_rows" => fingerprint(output <> ".rows.json"),
+      "rows_sha256" => JSON.digest([rows]),
+      "largest_record_encoded_bytes" => Enum.max(Enum.map(rows, & &1["encoded_bytes"])),
+      "root_sha256" => root_sha,
+      "snapshot" => initial["value"],
+      "unchanged_sources" => length(sources),
+      "unchanged_control" => true,
+      "unchanged_root" => true,
+      "status" => status,
+      "physical_allocations" => physical,
+      "measured_components_allocated_bytes" => measured,
+      "allocation_scope" =>
+        "Collection plus actual control, identity, management and original Session sources; excludes installed artifacts, frozen SDK and benchmark oracle; no double-counted control reserve",
+      "full_6_kib_record_payload_qualification" => false,
+      "annual_workload_qualification" => false
+    })
+
+    IO.puts("NATIVE_NOTES_AUDIT_CLOSED=#{length(rows)} categories=#{Jason.encode!(categories)}")
+  end
 
   defp initialize(root, kind) do
     assert :os.type() == {:unix, :linux}

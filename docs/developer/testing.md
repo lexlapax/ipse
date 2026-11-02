@@ -415,11 +415,19 @@ own source and SDK/dependency bytes are copied and checked before each bounded
 segment. Run its two-day smoke separately from a full initial population. Check
 the complete 2,100-effect plan with `test/dev/knowledge/native_notes_seed_test.exs`;
 the existing process-clock/lifecycle tests must still pass after probe changes.
+After a plan closes, use its [complete population audit](knowledge-storage.md#audit-the-complete-retained-population)
+to check every signed note against the exact closed root and control state,
+retaining per-note metadata and unchanged original-source evidence. The audit
+uses the cohort's frozen SDK with a separately copied current caller. It starts
+no terminal review or publication, so an isolated completed smoke store can be
+audited without borrowing a live cohort's terminal or storage owners. The live
+cohort itself must still refuse audit while inflight or incomplete. Verify
+output-reuse refusal and preserve prior reports rather than overwriting them.
 Keep failed cohorts and their inflight markers. Refusal controls must show that
 pending effects, a completed plan and changed frozen source cannot start another
 segment; restoring a deliberately altered empty fixture never authorizes replay
-of a stopped publication. The runner has no annual, maximum-record, human or
-installed qualification merely because the smoke passes.
+of a stopped publication. The runner and audit have no annual, maximum-record,
+human or installed qualification merely because the smoke passes.
 
 Distinguish timeout before command-handler startup from timeout during active work.
 The evaluation-session fixture observes its worker's readiness and active Session
