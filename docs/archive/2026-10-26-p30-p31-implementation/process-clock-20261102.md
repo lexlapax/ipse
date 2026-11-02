@@ -7,6 +7,10 @@ This is an engineering record, not operator clock guidance. The
 owns its current verification procedure; the [plan](../../plan.md#p31-usable-knowledge-and-prompt-assistance)
 owns the still-open lifecycle acceptance.
 
+The later [late-supersession cohort](native-clock-late-supersession-20261102.md)
+extends the private bound to 500 days and records controlled stdio propagation.
+This original 400-day fixture execution and its exact receipt remain preserved.
+
 ## Requirement and choice
 
 The required 30/90/365-day native workload must exercise admission, actual native

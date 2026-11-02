@@ -10,7 +10,7 @@ compile_error!("the process-clock fixture supports only Linux/glibc x86-64");
 use std::ffi::{c_char, c_int, c_long, c_void};
 use std::sync::OnceLock;
 
-const MAX_OFFSET_MS: i64 = 400 * 86_400_000;
+const MAX_OFFSET_MS: i64 = 500 * 86_400_000;
 const SYS_CLOCK_GETTIME: c_long = 228;
 const SYS_GETTIMEOFDAY: c_long = 96;
 

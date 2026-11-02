@@ -7,6 +7,294 @@ defmodule Ipse.Test.ManagedClockLifecycle do
   alias Ipse.CLI.Knowledge.Management
   @day 86_400_000
 
+  defmodule UnexpectedModel do
+    def complete(config, _, _, _) do
+      File.write!(Path.join(config.fixture_root, "unexpected-model"), "called")
+      raise "native lifecycle must not invoke a model"
+    end
+  end
+
+  def prepare_stdio_clock([root, original_ebin]) do
+    isolated = Path.join(root, "stdio-runtime/ipse")
+    ebin = Path.join(isolated, "ebin")
+    File.mkdir_p!(isolated)
+    File.cp_r!(original_ebin, ebin)
+
+    assert {"", 0} =
+             System.cmd("cp", [
+               "-R",
+               "-L",
+               Path.expand("../priv", original_ebin),
+               Path.join(isolated, "priv")
+             ])
+
+    source = File.read!("lib/ipse/runner.ex")
+    environment = ~S(%{"PATH" => "/usr/bin:/bin", "LANG" => "C.UTF-8"})
+    assert length(:binary.matches(source, environment)) == 2
+
+    instrumented =
+      String.replace(
+        source,
+        environment,
+        "Map.merge(" <>
+          environment <>
+          ", Map.new(~w(LD_PRELOAD IPSE_TEST_CLOCK_OFFSET_MS), &{&1, System.fetch_env!(&1)}))"
+      )
+
+    source_path = Path.join(isolated, "lib/ipse/runner.ex")
+    File.mkdir_p!(Path.dirname(source_path))
+    File.write!(source_path, instrumented)
+    Code.compiler_options(ignore_module_conflict: true)
+    [{Ipse.Runner, beam}] = Code.compile_string(instrumented, source_path)
+    File.write!(Path.join(ebin, "Elixir.Ipse.Runner.beam"), beam)
+
+    write_report(root, "clock-stdio-runtime.json", %{
+      "production_source_sha256" => JSON.sha256(source),
+      "instrumented_source_sha256" => JSON.sha256(instrumented),
+      "runner_beam_sha256" => JSON.sha256(beam),
+      "helper_sha256" => JSON.sha256(File.read!(Path.join(isolated, "priv/ipse-runner"))),
+      "environment_additions" => ~w(LD_PRELOAD IPSE_TEST_CLOCK_OFFSET_MS),
+      "production_source_modified" => false,
+      "qualification" => false
+    })
+
+    IO.puts("NATIVE_CLOCK_STDIO_RUNTIME=" <> ebin)
+  end
+
+  defp stdio_clock(root) do
+    manifest = root |> Path.join("clock-stdio-runtime.json") |> File.read!() |> Jason.decode!()
+
+    assert JSON.sha256(File.read!(to_string(:code.which(Ipse.Runner)))) ==
+             manifest["runner_beam_sha256"]
+
+    previous = System.get_env("IPSE_CLOCK_SANITIZATION_CANARY")
+    System.put_env("IPSE_CLOCK_SANITIZATION_CANARY", "must-not-reach-the-child")
+
+    try do
+      before = System.system_time(:millisecond)
+
+      script = ~S'''
+      IO.puts(JSON.encode!(%{"wall_ms" => System.system_time(:millisecond),
+        "canary" => System.get_env("IPSE_CLOCK_SANITIZATION_CANARY")}))
+      IO.read(:stdio, 1)
+      '''
+
+      assert {:ok, port} =
+               Ipse.Runner.open_protected_stdio(
+                 System.find_executable("elixir"),
+                 ["--erl", "+S 2:2", "-e", script],
+                 Path.join(root, "work"),
+                 %{"HOME" => root, "TMPDIR" => root},
+                 5_000
+               )
+
+      observed = stdio_clock_output(port, <<>>, <<>>, System.monotonic_time(:millisecond) + 5_000)
+      assert observed["wall_ms"] in before..System.system_time(:millisecond)
+      assert observed["canary"] == nil
+      assert :ok = Ipse.Runner.close_stdio(port)
+      IO.puts("NATIVE_CLOCK_STDIO_COHERENT")
+    after
+      if previous,
+        do: System.put_env("IPSE_CLOCK_SANITIZATION_CANARY", previous),
+        else: System.delete_env("IPSE_CLOCK_SANITIZATION_CANARY")
+    end
+  end
+
+  defp stdio_clock_output(
+         port,
+         <<kind, bytes::32, body::binary-size(bytes), rest::binary>>,
+         output,
+         deadline
+       ) do
+    output = if kind == ?O, do: output <> body, else: output
+    assert byte_size(output) <= 4096
+
+    if String.contains?(output, "\n"),
+      do: output |> String.split("\n", parts: 2) |> hd() |> Jason.decode!(),
+      else: stdio_clock_output(port, rest, output, deadline)
+  end
+
+  defp stdio_clock_output(port, buffer, output, deadline) do
+    assert byte_size(buffer) <= 8192
+
+    receive do
+      {^port, {:data, bytes}} -> stdio_clock_output(port, buffer <> bytes, output, deadline)
+      {^port, other} -> flunk("clock probe exited before its observation: #{inspect(other)}")
+    after
+      max(0, deadline - System.monotonic_time(:millisecond)) ->
+        flunk("stdio clock probe timed out")
+    end
+  end
+
+  def seed_late(config, root, id, current) do
+    stdio_clock(root)
+    admission = config.semantic_admission
+    assert DynamicSupervisor.which_children(Ipse.Sessions) == []
+    strict_saved(config.home, id)
+
+    recipe =
+      admission["policy"]["settings"]["recipes"]
+      |> Map.values()
+      |> Enum.find(&(&1["kind"] == "literal_source"))
+
+    assert is_map(recipe)
+    source = Path.join([config.home, "sessions", id <> ".jsonl"])
+
+    seed = %{
+      "version" => 1,
+      "session_id" => id,
+      "source_sha256" => JSON.sha256(File.read!(source)),
+      "binding" => admission["binding"],
+      "namespace" => admission["pin"]["namespace"],
+      "recipe" => recipe,
+      "current" => current,
+      "seed_wall_ms" => System.system_time(:millisecond)
+    }
+
+    observed = live(late_context(root, seed), current)
+    assert observed["metadata"]["category"] == "current"
+    assert observed["metadata"]["valid_until_ms"] == nil
+    write_report(root, "clock-late-seed.json", seed)
+    IO.puts("NATIVE_CLOCK_LATE_SEED_PASSED")
+  end
+
+  def run_late(root, day) when day in [100, 366, 464, 466] do
+    stdio_clock(root)
+    seed = root |> Path.join("clock-late-seed.json") |> File.read!() |> Jason.decode!()
+    assert seed["version"] == 1
+    c = late_context(root, seed)
+    System.put_env("IPSE_HOME", c.home)
+    assert {:ok, binding} = ProjectIdentity.existing(c.home, c.cwd)
+    assert binding === seed["binding"]
+    now = System.system_time(:millisecond)
+    assert now >= seed["seed_wall_ms"] + day * @day
+    assert now < seed["seed_wall_ms"] + (day + 1) * @day
+    source = Path.join([c.home, "sessions", seed["session_id"] <> ".jsonl"])
+    assert JSON.sha256(File.read!(source)) == seed["source_sha256"]
+    strict_saved(c.home, seed["session_id"])
+
+    relation =
+      if day == 100 do
+        observed = live(c, seed["current"])
+        assert observed["metadata"]["category"] == "current"
+        assert observed["metadata"]["valid_until_ms"] == nil
+        config = config(root, c.home, c.cwd)
+        config = Map.merge(config, %{provider_module: UnexpectedModel, fixture_root: root})
+        relation = supersede_late(config, root, seed)
+        write_report(root, "clock-late-relation.json", relation)
+        relation
+      else
+        root |> Path.join("clock-late-relation.json") |> File.read!() |> Jason.decode!()
+      end
+
+    now = System.system_time(:millisecond)
+    config = config(root, c.home, c.cwd)
+
+    expired =
+      if day == 466 do
+        assert now > relation["history_deadline_ms"]
+        [expire(config, c, seed["current"]["key"], relation["history_deadline_ms"])]
+      else
+        retained = history(c, seed["current"])
+        assert retained["metadata"]["valid_until_ms"] == relation["history_deadline_ms"]
+        assert retained["metadata"]["successor"]["key"] == relation["replacement"]["key"]
+        assert ManagedRetention.eligible_history_metadata?(retained["metadata"], now)
+        before = snapshot(c)
+        assert {:error, _} = Management.expire(config, c.cwd, seed["current"]["key"])
+        assert snapshot(c) === before
+        []
+      end
+
+    successor = live(c, relation["replacement"])
+    assert successor["metadata"]["valid_until_ms"] == nil
+    assert relation["history_deadline_ms"] == relation["reviewed_at_ms"] + 365 * @day
+    assert relation["reviewed_at_ms"] > seed["seed_wall_ms"] + 90 * @day
+    assert relation["history_deadline_ms"] > seed["seed_wall_ms"] + 465 * @day
+    assert JSON.sha256(File.read!(source)) == seed["source_sha256"]
+    strict_saved(c.home, seed["session_id"])
+    strict_saved(c.home, relation["consumer_session_id"])
+    refute File.exists?(Path.join(root, "unexpected-model"))
+    assert DynamicSupervisor.which_children(Ipse.Sessions) == []
+
+    write_report(root, "clock-late-day-#{day}.json", %{
+      "day" => day,
+      "wall_ms" => now,
+      "first_supersession_after_day_90" => true,
+      "controlled_stdio_clock_propagation" => true,
+      "history_deadline_ms" => relation["history_deadline_ms"],
+      "expired_operations" => expired,
+      "source_sha256" => seed["source_sha256"],
+      "annual_workload_qualification" => false
+    })
+
+    IO.puts("NATIVE_CLOCK_LATE_DAY_PASSED=#{day}")
+  end
+
+  defp supersede_late(config, root, seed) do
+    dir = Path.join(config.home, "sessions")
+    opts = [config: config, cwd: Path.join(root, "work"), state_dir: dir, subscriber: self()]
+    assert {:ok, session} = DynamicSupervisor.start_child(Ipse.Sessions, {Ipse.Session, opts})
+    id = Ipse.Session.info(session).id
+    assert {:ok, channel} = Ipse.Session.open_input_channel(session, self())
+    command = "/supersede " <> seed["current"]["key"] <> " My fixture timezone is Europe/Berlin"
+    File.write!(Path.join(root, "supersession-input-1"), command)
+    IO.write("IPSE_SUPERSESSION_READ_1> ")
+
+    assert {:ok, ^command, witness} =
+             Ipse.Session.observe_channel(session, channel, %{"kind" => "prompt"}, 30_000)
+
+    assert {:ok, ticket} = Ipse.Session.stage_input(session, channel, command, witness)
+
+    assert {:ok, %{"render_id" => render}} =
+             Ipse.Session.prepare_assertion(session, channel, command, ticket)
+
+    assert {:ok, input, witness} =
+             Ipse.Session.observe_channel(
+               session,
+               channel,
+               %{"kind" => "assertion", "render_id" => render},
+               30_000
+             )
+
+    assert :ok = Ipse.Session.accept_assertion_observed(session, channel, render, input, witness)
+    assert_receive {:ipse, ^session, {:done, :ok}}, 20_000
+    assert :ok = Ipse.Session.close_confirmed(session)
+    assert {:ok, events} = Journal.load(dir, id)
+    temporal = intent(events, "temporal")
+    settled = result(events, temporal["operation_id"])
+    assert temporal["facts"]["target"]["key"] == seed["current"]["key"]
+
+    [review] = Enum.filter(events, &(&1["type"] == "managed_supersession_review"))
+    refute Enum.any?(events, &(&1["type"] in ~w(request_admitted inference_dispatch_intent)))
+
+    %{
+      "consumer_session_id" => id,
+      "replacement" => temporal["facts"]["replacement"],
+      "reviewed_at_ms" => review["review"]["observed_at_ms"],
+      "history_deadline_ms" =>
+        settled["outcome"]["publication"]["normalization"]["history_valid_until_ms"]
+    }
+  end
+
+  defp late_context(root, seed) do
+    home = Path.join(root, "home")
+
+    %{
+      root: SemanticAdmission.collection_root(home),
+      home: home,
+      cwd: Path.join(root, "work"),
+      binding: seed["binding"],
+      namespace: seed["namespace"],
+      recipe: seed["recipe"]
+    }
+  end
+
+  defp write_report(root, filename, report) do
+    path = Path.join(root, filename)
+    File.write!(path, Jason.encode!(report), [:exclusive])
+    File.chmod!(path, 0o600)
+  end
+
   def seed(config, root, events, id) do
     admission = config.semantic_admission
     ordinary = intent(events, "ordinary")

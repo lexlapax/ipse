@@ -1,0 +1,5 @@
+ExUnit.start(autorun: false)
+{:ok, _} = Application.ensure_all_started(:ipse)
+[root, day] = System.argv()
+Code.require_file("managed_clock_lifecycle.exs", __DIR__)
+Ipse.Test.ManagedClockLifecycle.run_late(root, String.to_integer(day))

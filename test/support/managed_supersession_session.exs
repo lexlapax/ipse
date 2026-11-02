@@ -6,10 +6,11 @@ turnover = String.starts_with?(scenario, "turnover_")
 scenario = String.replace_prefix(scenario, "turnover_", "")
 assert not turnover or scenario in ~w(ordinary history_expiry)
 followup = Process.delete({:managed_supersession_fixture, :followup})
-assert followup in [nil, :history_use, :compaction_diagnostic, :clock_seed]
+assert followup in [nil, :history_use, :compaction_diagnostic, :clock_seed, :clock_late_seed]
 assert followup != :history_use or scenario == "current"
 assert followup != :compaction_diagnostic or scenario == "shared"
 assert followup != :clock_seed or scenario == "current"
+assert followup != :clock_late_seed or scenario == "current"
 
 if scenario == "terminal_effect_unknown" do
   Code.require_file("managed_supersession_unknown.exs", __DIR__)
@@ -214,6 +215,22 @@ assert {:ok, page} =
 
 ordinary = Enum.find(page["records"], &(&1["value"]["text"] == "My fixture ordinary value"))
 current = Enum.find(page["records"], &(&1["value"]["category"] == "current"))
+
+if followup == :clock_late_seed do
+  assert {:ok, seed_events} = Ipse.Journal.load(dir, id)
+  refute Enum.any?(seed_events, &(&1["type"] == "managed_supersession_intent"))
+  idle_resume.(session, id, seed_events)
+  Code.require_file("managed_clock_lifecycle.exs", __DIR__)
+
+  Ipse.Test.ManagedClockLifecycle.seed_late(
+    Map.put(config, :semantic_admission, admission),
+    root,
+    id,
+    current
+  )
+
+  System.halt(0)
+end
 
 original_source =
   if scenario == "cross_session" do

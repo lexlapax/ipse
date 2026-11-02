@@ -7,6 +7,11 @@ runtime source is unchanged from `39c8043` across both revisions.
 Current procedures belong to [testing](../../developer/testing.md#require-positive-controls-and-inspect-uncertainty);
 milestone acceptance belongs to [the plan](../../plan.md#p31-usable-knowledge-and-prompt-assistance).
 
+The later [day-100 first-supersession component](native-clock-late-supersession-20261102.md)
+has separate controlled-host evidence, while preserving this stock-host journey.
+The [complete cancellation-repair baseline](full-suite-cancel-repair-20261102.md)
+also passes separately. Original observations and open scope below remain historical.
+
 ## Executed path
 
 ```sh

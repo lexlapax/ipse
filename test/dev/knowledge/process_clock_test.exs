@@ -40,7 +40,17 @@ defmodule Ipse.Development.ProcessClockTest do
        context do
     original_wall = System.system_time(:millisecond)
 
-    for offset <- [0, 999, 1001, 30 * @day, 90 * @day, 365 * @day, 400 * @day] do
+    for offset <- [
+          0,
+          999,
+          1001,
+          30 * @day,
+          90 * @day,
+          365 * @day,
+          400 * @day,
+          466 * @day,
+          500 * @day
+        ] do
       {output, status} =
         System.cmd(
           System.find_executable("elixir"),
@@ -80,7 +90,7 @@ defmodule Ipse.Development.ProcessClockTest do
   end
 
   test "absent, malformed, negative and excessive offsets refuse wall reads", context do
-    for value <- [nil, "", "-1", "1x", "1.5", "99999999999999999999", "34560000001"] do
+    for value <- [nil, "", "-1", "1x", "1.5", "99999999999999999999", "43200000001"] do
       {output, status} =
         System.cmd(context.probe, ["--invalid"],
           env: environment(context, value),

@@ -353,7 +353,7 @@ This standalone check starts no Ipse application and needs no built SDK or nativ
 terminal. It compiles `dev/fixtures/process_clock.rs` as a private Linux/glibc
 x86-64 preload library and uses fresh plain VMs/Rust children in private homes.
 It compares realtime clocks with raw kernel observations at zero, fractional-second
-and 30/90/365/400-day offsets, checks real monotonic timers, and requires malformed
+and 30/90/365/400/466/500-day offsets, checks real monotonic timers, and requires malformed
 or missing offsets to refuse wall reads. Other platforms skip explicitly.
 The loader and syscall ABI reuse the [existing host dependency](dependencies.md#host-and-build-inventory).
 
@@ -373,19 +373,41 @@ exercise actual signed retention across fresh processes:
 mix test test/dev/knowledge/managed_clock_lifecycle_test.exs --max-cases 1
 ```
 
-The seed reuses the genuine reviewed Session correction/supersession fixture
-and its confirmed close/idle-resume checks. New processes inspect the same store
-at days 30, 91 and 366. Require early-expiry refusals with unchanged roots, a
+The first journey reuses the genuine reviewed Session correction/supersession
+fixture and its confirmed close/idle-resume checks. New processes inspect the
+same store at days 30, 91 and 366. Require early-expiry refusals with unchanged roots, a
 native pin review whose signed time falls inside the actual day-30 operation,
 ordinary reclamation after its original 90-day deadline and temporal-history
 reclamation after its signed 365-day deadline. The pinned successor and original
 Session bytes must survive. Inspect settled operations twice without journal
 mutation and validate Saved reconstruction/release claims at each checkpoint.
-The printed `NATIVE_CLOCK_LIFECYCLE_ROOT` retains synthetic logs and phase reports,
-including failures. No application, helper or machine clock is changed globally.
-These few operations establish the clocked native path, not the frozen daily
-intake, overlapping owners, offline imports, late first supersession, compaction,
-maximum payloads or annual turnover. Run the full workload separately.
+The second journey seeds a current statement at day 0 without a supersession.
+At day 100 a new Session obtains genuine statement and relation reviews and
+publishes its first successor. Days 366 and 464 must retain the signed history
+and refuse early reclamation without root changes. Day 466 reclaims that history
+after its original 365-days-after-review deadline, preserving the successor and
+original journal. Reads must never renew the deadline. This checks signed
+retention eligibility; later use still needs current source and permission checks.
+
+Late Session work also needs coherent clocks inside stdio. Production stdio
+deliberately removes ambient environment from its supervisor and child. Its
+unchanged native pipe handoff refuses a deadline more than five seconds away,
+so preloading only the outer VM cannot establish this test clock. The late
+journey therefore uses a private copied SDK whose Runner adapter adds only
+`LD_PRELOAD` and `IPSE_TEST_CLOCK_OFFSET_MS` to both stdio environments. Every
+phase checks the copied Runner hash, actual child-clock coherence and removal
+of an unrelated synthetic environment canary. This is a disclosed controlled
+host; production source, helper bytes, five-second handoff bound and permissions
+are unchanged. The first journey retains the stock host. Never add these test
+variables to production environment handling.
+
+The printed `NATIVE_CLOCK_LIFECYCLE_ROOT` retains synthetic logs, copied runtime
+identity and phase reports, including failures. All work closes before the next
+process date; no application, helper or machine clock changes globally. These
+few operations establish their clocked paths, not frozen daily intake,
+overlapping owners, offline imports, compaction, maximum payloads or annual
+turnover with the selected additional 10,000 mixed changes. Run that complete
+workload separately. No active Session is carried across these process dates.
 
 Distinguish timeout before command-handler startup from timeout during active work.
 The evaluation-session fixture observes its worker's readiness and active Session
