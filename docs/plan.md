@@ -1033,6 +1033,11 @@ also reach the actual missing-origin publication refusal without first attemptin
 unsupported legacy protected-input delivery, alongside a current V3 publication,
 accounting and idle-recovery positive. Full C0 and whole-source acceptance remain
 open.
+The [current V3 accounting/fault controls](archive/2026-10-26-p30-p31-implementation/managed-collection-module-20261101.md#current-v3-accounting-and-publication-fault-controls)
+restore conservative conflict settlement, measured successive-save refunds,
+native normalization loss, post-admission Session loss and foreign-caller
+negatives on the supported path. Their focused result remains separate from
+the failed complete-module baseline.
 
 The [managed export-input adapter](archive/2026-10-26-p30-p31-implementation/worker-input-session-20261101.md)
 now binds actual initial calls, committed action continuations and output-page

@@ -238,6 +238,25 @@ the same no-snapshot V3 request from a current Session: it must actually publish
 settle and complete through the registered route, then resume without replay.
 The worker's claimed generation is only a CAS input, never source authority.
 
+Use `publication_accounting` and `publication_fault` in the same Session module
+for supported V3 accounting and owned-loss changes. The conflict control first
+publishes successfully, then submits an unobserved stale generation. A managed
+snapshot at the newer root would instead trigger the prerequisite guard before
+storage CAS. Require one conflict, conservative full settlement, no retry and an
+unchanged root. The successive-save control reconstructs every V3 metadata change
+from actual stored values and prior revisions, checks its receipt/hash and exact
+measured charge, and proves the fixed budget fits actual-first plus reserved-next
+but cannot fit two conservative reservations.
+
+Keep the native-loss and foreign-caller controls at their actual boundaries. V3
+checks sources before domain preparation, before admission and inside the admitted
+publication callback. The Session-loss fixture blocks the third query, after a
+durable `publishing` row exists, then kills the owner. Require actual lock-owner
+exit, full unresolved liability, no selected root and strict idle recovery with
+unchanged accounting and Worker trace. Blocking the second query cannot prove
+that post-admission boundary. The separate foreign/stale/changed-action callers
+must all refuse while the genuine caller still publishes successfully.
+
 Capture the journal after `Session.close_confirmed/1` returns. On idle resume,
 require those bytes as an exact prefix. With the current release-receipt layout,
 the only suffix before closing the resumed Session is one complete ownership

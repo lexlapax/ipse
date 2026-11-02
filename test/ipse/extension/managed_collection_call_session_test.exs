@@ -377,7 +377,7 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
         {:ok, proof} = Ipse.Extension.source_proof(state["page"], quote, "Synthetic café observation")
         state = state |> Map.put("step", "snapshot") |> Map.put("proof", proof)
         cond do
-          state["mode"] == "capture_unobserved" ->
+          state["mode"] in ["capture_unobserved", "conflict_unobserved"] ->
             advance("snapshot", %{"status" => "ok", "value" => %{"generation" => 0}}, state)
           state["mode"] == "capture_ab_literal" ->
             advance("snapshot", %{"status" => "ok", "value" => state["prior_a"]["value"]}, state)
@@ -404,7 +404,7 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
         suffix = [["lineage", lineage], ["text", text]] |> Jason.encode!() |> then(&:crypto.hash(:sha256, &1)) |> Base.encode16(case: :lower)
         key = "pending." <> suffix
         value = %{"lineage" => lineage, "text" => text, "assigned_category" => "ordinary", "evidence" => %{"sources" => [state["proof"]]}}
-        commit = %{"op" => "collection.managed", "recipe_sha256" => state["recipe"], "request" => %{"op" => "commit", "expected_generation" => if(state["mode"] == "conflict", do: 0, else: snapshot["generation"]), "advance_floor" => true,
+        commit = %{"op" => "collection.managed", "recipe_sha256" => state["recipe"], "request" => %{"op" => "commit", "expected_generation" => if(state["mode"] in ["conflict", "conflict_unobserved"], do: 0, else: snapshot["generation"]), "advance_floor" => true,
           "changes" => [%{"key" => key, "expected_revision" => 0, "value" => value}]},
           "proofs" => [%{"handle" => state["page"]["handle"], "quote" => "Synthetic café observation"}]}
         commit = if state["metadata_version"] == 3, do: Map.put(commit, "metadata_version", 3), else: commit
@@ -1016,6 +1016,20 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
 
         responses =
           cond do
+            c[:registered_capture_modes] ->
+              Enum.flat_map(c.registered_capture_modes, fn mode ->
+                request =
+                  hd(responses)
+                  |> Jason.decode!()
+                  |> put_in(
+                    ["message", "tool_calls", Access.at(0), "function", "arguments", "mode"],
+                    mode
+                  )
+                  |> Jason.encode!()
+
+                [request <> "\n", List.last(responses)]
+              end)
+
             c[:registered_capture_count] ->
               List.duplicate(responses, c.registered_capture_count) |> List.flatten()
 
@@ -8437,12 +8451,17 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
     assert [_, _] = Task.await(c.provider_server, 5000)
   end
 
+  @tag publication_accounting: true,
+       metadata_version: 3,
+       registered_main: true,
+       capture_write: true,
+       registered_capture_modes: ["capture", "conflict_unobserved"]
   test "a known conflict is recorded and conservatively settled once without retry", c do
     first = start(c)
     assert :ok = Session.prompt(first, "Synthetic café observation")
     assert_receive {:ipse, ^first, {:done, :ok}}, 10_000
     assert :ok = Session.close_confirmed(first)
-    second = start(c, %{fixture_mode: "conflict"})
+    second = start(c, %{fixture_mode: "conflict_unobserved"})
     assert :ok = Session.prompt(second, "Synthetic café observation")
     assert_receive {:ipse, ^second, {:done, :ok}}, 10_000
     {:ok, events} = Journal.load(c.dir, Session.info(second).id)
@@ -8463,12 +8482,21 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
              Ipse.Extension.ManagedCollectionCall.reservation(commit["request"])
 
     assert map_size(snapshot["operations"]) == 2
+    assert %{"generation" => 1, "floor" => 1} = collection_read(c, %{"op" => "snapshot"})
+    assert length(Task.await(c.provider_server, 5000)) == 4
+    assert {:ok, _} = Session.restore_context(events)
+    assert :ok = Session.close_confirmed(second)
   end
 
+  @tag publication_accounting: true,
+       metadata_version: 3,
+       registered_main: true,
+       capture_write: true,
+       registered_capture_count: 2
   test "successive protected saves settle measured input and release only verified unused input",
        c do
     {:ok, initial} = Consent.snapshot(c.control, c.binding["project_id"])
-    policy = put_in(initial["policy"], ["limits", "input_bytes"], 30_000)
+    policy = put_in(initial["policy"], ["limits", "input_bytes"], 40_000)
 
     assert {:ok, _} =
              Consent.replace(
@@ -8511,15 +8539,22 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
         value = commit["outcome"]["value"]
         normalization = value["normalization"]
 
+        assert normalization["version"] == 3
+
         extra =
-          for name <- ~w(anchor_key live_key) do
-            key = normalization[name]
+          for metadata <- normalization["metadata_changes"] do
+            key = metadata["key"]
             stored = collection_read(c, %{"op" => "get", "key" => key})["record"]
+            assert metadata["expected_revision"] == Map.get(revisions, key, 0)
+            value = if stored, do: stored["value"]
+
+            assert metadata["value_sha256"] ==
+                     if(value, do: JSON.sha256(Jason.encode!(value)))
 
             %{
               "key" => key,
               "expected_revision" => Map.get(revisions, key, 0),
-              "value" => stored["value"]
+              "value" => value
             }
           end
 
@@ -8543,10 +8578,12 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
       end
 
     [{first_actual, first_reserved}, {_, second_reserved}] = saves
-    assert first_actual + second_reserved <= 30_000
-    assert first_reserved + second_reserved > 30_000
+    assert first_actual + second_reserved <= 40_000
+    assert first_reserved + second_reserved > 40_000
+    assert length(Task.await(c.provider_server, 5000)) == 4
   end
 
+  @tag publication_fault: true, metadata_version: 3
   test "native loss after normalization does not refund or publish a successful managed result",
        c do
     owner = self()
@@ -8818,14 +8855,17 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
     value
   end
 
+  @tag publication_fault: true, metadata_version: 3
   test "owner loss during protected publication retains liability and cannot publish after cleanup",
        c do
     pid = start(c, %{fixture_mode: "hold"})
+    state = :sys.get_state(pid)
+    guard = Process.monitor(state.lock_guard)
     assert :ok = Session.prompt(pid, "Synthetic café observation")
     await_marker(c.trace, "held\n", 300)
     owner = self()
 
-    assert :ok = :sys.install(pid, {publication_gate(owner), 0})
+    assert :ok = :sys.install(pid, {publication_gate(owner, 3), 0})
     assert_receive {:publication_query_blocked, _, _}, 5000
     control_file = Path.join([c.control, c.binding["project_id"], "control.json"])
     publishing = await_publication(control_file, 300)
@@ -8833,9 +8873,13 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
     ref = Process.monitor(pid)
     Process.exit(pid, :kill)
     assert_receive {:DOWN, ^ref, :process, ^pid, :killed}, 2000
+    assert_receive {:DOWN, ^guard, :process, _, _}, 10_000
     {:ok, snapshot} = Consent.snapshot(c.control, c.binding["project_id"])
-    assert snapshot["operations"][publishing["id"]]["status"] in ~w(admitted publishing unknown)
-    assert snapshot["operations"][publishing["id"]]["actual"] == nil
+    operation = snapshot["operations"][publishing["id"]]
+    assert operation["status"] in ~w(publishing unknown)
+    assert operation["actual"] == nil and operation["receipt"] == nil
+    assert operation["reserved"] == publishing["reserved"]
+    assert operation["reserved"]["operations"] == 1
 
     assert {:ok, stored} =
              Ipse.Extension.Collection.execute(
@@ -8845,9 +8889,27 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
                Ipse.Usage.id()
              )
 
-    assert stored["generation"] == 0
+    assert stored["generation"] == 0 and stored["floor"] == 0
+    assert {:ok, events} = Journal.load(c.dir, state.id)
+    assert {:ok, saved} = Ipse.Session.Saved.restore(events, state.id)
+    before = File.read!(c.trace)
+    path = Path.join(c.dir, state.id <> ".jsonl")
+    journal = File.read!(path)
+    resumed = start(c, %{}, state.id)
+    assert Session.info(resumed).phase == :idle
+    assert :sys.get_state(resumed).messages == saved.messages
+    assert_idle_resume_journal(path, journal, state.id)
+    assert :ok = Session.close_confirmed(resumed)
+    assert File.read!(c.trace) == before
+    assert {:ok, after_resume} = Consent.snapshot(c.control, c.binding["project_id"])
+    assert after_resume["operations"][publishing["id"]] == operation
   end
 
+  @tag publication_fault: true,
+       metadata_version: 3,
+       registered_main: true,
+       capture_write: true,
+       registered_capture_mode: "hold"
   test "an unrelated caller cannot use the actual current collection action or stale job reference",
        c do
     pid = start(c, %{fixture_mode: "hold"})
@@ -8893,11 +8955,11 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
     assert result["outcome"]["status"] == "ok"
   end
 
-  defp publication_gate(owner) do
+  defp publication_gate(owner, query \\ 2) do
     fn
       count, {:in, {:"$gen_call", _, {:extension_collection_sources, ref, intent}}}, _ ->
         if get_in(intent, ["request", "request", "op"]) == "commit" do
-          if count == 1 do
+          if count + 1 == query do
             send(owner, {:publication_query_blocked, ref, intent})
             receive do: (:release_publication -> :ok)
           end

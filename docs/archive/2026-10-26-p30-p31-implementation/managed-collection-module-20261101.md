@@ -87,3 +87,76 @@ Full C0/capacity/lifecycle, P30/P31 completion, final whole-source/package check
 and adversarial audit remain open. The earlier complete-suite aggregate remains
 3,653 passed and 54 failed at `f44b63c`; neither this module nor later focused
 passes establish a new passing complete suite.
+
+## Current V3 accounting and publication-fault controls
+
+Dated **2026-11-01**, subsequent author-run test-only work based on committed
+`d641974`. The five original accounting/fault cases used a metadata-V2 worker
+publication now deliberately gated before effect. They now use the supported
+single-new-record V3 request while retaining their original positive/fault
+requirements. No production, native-helper or dependency change was made.
+
+The shared synthetic provider can select an explicit sequence of capture modes.
+The conflict case first makes a genuine registered capture, then submits claimed
+generation zero without reading the newer managed root. Its untrusted CAS input
+reaches native conflict accounting rather than an earlier stale-observation
+guard. It requires exactly one conflict, full conservative settlement, two total
+operations, unchanged generation/floor one and four actual local HTTP requests.
+The first publication remains a necessary positive.
+
+Successive saves reconstruct the normalized commit from the V3 receipt's ordered
+metadata changes, actual stored values and observed prior revisions. They verify
+every metadata hash/revision, normalized request digest and exact measured input
+formula. The fixed input budget is 40,000 bytes for V3's larger conservative
+sidecar reservation: the test requires actual-first plus reserved-next to fit,
+while two conservative reservations exceed that budget. Both saves must succeed
+and settle with all other reserved resource dimensions unchanged. Four actual
+registered requests complete. This preserves the original refund boundary
+rather than merely increasing the budget until two worst cases fit.
+
+Native-owner loss still physically closes the actual Collection port after
+normalization/staging, requires an unknown result and retains the full pending
+reservation with no selected generation. Foreign, stale-job and altered-action
+callers still queue at the live Session and all receive `collection_source_refused`,
+while the original authorized caller publishes successfully.
+
+The original Session-loss hook blocked its second source query. V3 has a new
+preparation proof before its normal admission, so that point has no publishing
+liability yet. Its first migrated run retained an empty ledger and failed the
+required publishing-row assertion. The hook now selects the third query inside
+the admitted publication callback. The controller first requires durable
+`publishing`, kills the Session, waits for the actual native lock guardian to
+exit, and requires full unresolved liability plus generation/floor zero. Strict
+Saved/idle recovery must preserve messages, the exact ownership suffix, worker
+trace and the original operation without replay or settlement.
+
+| Seed | Selection | Result | Seconds | Exit |
+| --- | --- | --- | --- | --- |
+| 791715 | Five migrated accounting/fault controls | 4 passed, 1 failed, 181 excluded | 32.0 | 2 |
+| 791716 | Final five plus paired origin and registered-capture regressions | 11 passed, 175 excluded | 30.3 | 0 |
+
+```sh
+mix test test/ipse/extension/managed_collection_call_session_test.exs --only publication_accounting --only publication_fault --only legacy_origin --only registered_capture --max-cases 1 --seed 791716
+```
+
+Selected post-run hashes, not a prelaunch or complete loaded-runtime inventory:
+
+| File | SHA256 |
+| --- | --- |
+| `/tmp/ipse-publication-current-20261101.log` | `68e9b81ed91f660c58d889e6fc4948df2fb948af02ff2a8a836a998ecc71b666` |
+| `/tmp/ipse-publication-current-final-20261101.log` | `c03e363e094400d512b3b055b817e86f57aea25866da8b7c08c79d149ec1e2b9` |
+| Final Session test module | `0acda75f8e9d938e4380bc70d3b43a0a15a418f3efac47cb10346e424e67fee0` |
+
+Each cohort finished before the next source edit. The first failure and both
+terminal logs remain retained. The complete-module and complete-suite aggregates
+above are not reduced by these focused results. These are synthetic source/local
+HTTP/native controls, not installed, real-model, independent-human, non-Linux or
+full-capacity acceptance. The whole Collection SDK and operator recovery manual
+review from the preceding increment applies: their publication accounting,
+authority, unknown-effect and no-replay explanations remain coherent. The testing
+chapter now integrates the V3 source-check ordering and exact accounting exercise.
+Full P30/P31 delivery and final audit remain open.
+Final formatting and diff-whitespace checks exit zero. Documentation checking
+reports 1,029 Markdown files, 8,525 local links and zero errors; existing private
+directory discovery warnings remain separate. No runtime/build check was repeated
+for this test/documentation-only increment.
