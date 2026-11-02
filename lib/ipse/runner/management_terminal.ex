@@ -56,6 +56,10 @@ defmodule Ipse.Runner.ManagementTerminal do
     do: begin_review_for("reject", owned, caps, facts, overall_wall, nil)
 
   @doc false
+  def begin_pending_correction_review(owned, caps, facts, overall_wall),
+    do: begin_review_for("correct", owned, caps, facts, overall_wall, nil)
+
+  @doc false
   def begin_accept_review(owned, caps, facts, overall_wall, source_lease),
     do: begin_review_for("accept", owned, caps, facts, overall_wall, source_lease)
 
@@ -157,6 +161,7 @@ defmodule Ipse.Runner.ManagementTerminal do
 
   defp source_identity("forget", nil), do: {:ok, nil}
   defp source_identity("reject", nil), do: {:ok, nil}
+  defp source_identity("correct", nil), do: {:ok, nil}
   defp source_identity(command, nil) when command in ~w(pin ordinary duration), do: {:ok, nil}
   defp source_identity("accept", :historical_pending), do: {:ok, :historical_pending}
 
@@ -193,6 +198,14 @@ defmodule Ipse.Runner.ManagementTerminal do
          {:ok, display, challenge} <-
            Review.preview_management_display("reject", facts, System.system_time(:millisecond)),
          do: {:ok, display, challenge, wall}
+  end
+
+  defp review_display("correct", facts, wall) do
+    with true <-
+           Ipse.Session.PendingCorrection.current_review?(facts, System.system_time(:millisecond)),
+         {:ok, display, challenge} <-
+           Review.preview_management_display("correct", facts, System.system_time(:millisecond)),
+         do: {:ok, display, challenge, min(wall, facts["publish_before_ms"])}
   end
 
   defp review_display("accept", facts, wall) do

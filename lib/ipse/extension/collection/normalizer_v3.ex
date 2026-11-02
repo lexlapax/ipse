@@ -1038,6 +1038,177 @@ defmodule Ipse.Extension.Collection.NormalizerV3 do
 
   def reject(_, _, _), do: @error
 
+  @doc "Prepare one native-reviewed pending edit, retaining source attribution and signed clocks."
+  def correct_pending(witness, read, options) when is_function(read, 1) do
+    cache = :ets.new(__MODULE__, [:set, :private])
+
+    try do
+      correct_pending_cached(witness, cached_read(read, cache), options)
+    after
+      :ets.delete(cache)
+    end
+  end
+
+  def correct_pending(_, _, _), do: @error
+
+  defp correct_pending_cached(witness, read, options) do
+    alias Ipse.Session.{PendingAcceptance, PendingCorrection}
+
+    checked(fn ->
+      true =
+        keys?(
+          options,
+          ~w(request facts permit now_ms domain_cap catalog policy note_recipe verified_sources)a
+        )
+
+      %{
+        request: request,
+        facts: facts,
+        permit: permit,
+        now_ms: now,
+        domain_cap: cap,
+        catalog: catalog,
+        policy: policy,
+        note_recipe: note_recipe,
+        verified_sources: sources
+      } = options
+
+      true = PendingCorrection.current_review?(facts, now)
+      context = facts["context"]
+      recipe = context["recipe"]
+      card = facts["source_card"]
+      :ok = PendingAcceptance.check_source_policy(card, policy, note_recipe, now)
+      true = policy["expires_at_ms"] === facts["policy_expires_at_ms"]
+      true = sources === [card["source_proof"]]
+      true = witness["operation_id"] === facts["operation_id"]
+      true = witness["recipe_sha256"] === JSON.digest([recipe])
+      true = witness["original_request_sha256"] === JSON.digest([request])
+      true = request === facts["request"] and Ipse.Extension.Collection.valid_request?(request)
+      true = witness["root"]["project"] === context["namespace"]
+      :ok = catalog!(catalog, witness)
+      true = witness["root_state"] === "present" and catalog["state"] === "active"
+      {:ok, format} = read.(ManagedPages.format_key())
+      {false, _} = format!(cap, format, catalog, witness)
+      [removed, inserted, _suppressed] = request["changes"]
+      {:ok, record} = read.(removed["key"])
+      true = is_map(record) and record === facts["target"]
+      true = record["sha256"] === value_sha(record["value"])
+      {:ok, old} = ManagedRecipe.extract(recipe, record["key"], record["value"], sources)
+
+      {:ok, candidate} =
+        ManagedRecipe.extract(recipe, inserted["key"], inserted["value"], sources)
+
+      :ok = fixed_key!(old)
+      :ok = fixed_key!(candidate)
+      true = candidate["lineage"] === old["lineage"] and candidate["category"] === old["category"]
+      {:ok, nil} = read.(recipe["override_prefix"] <> candidate["lineage"])
+      "pending." <> new_id = inserted["key"]
+      {:ok, nil} = read.("reject." <> new_id)
+      {:ok, nil} = read.("accept." <> new_id)
+      :ok = PendingCapacity.replace(candidate, inserted["value"], record, read)
+      lineage = old["lineage"]
+      anchor = selected_row!(cap, :anchor, lineage, read, witness)
+      %{"clocks" => [_, _, first, deadline]} = anchor
+
+      true =
+        JSON.safe_uint?(first) and JSON.safe_uint?(deadline) and first <= now and now < deadline
+
+      true = deadline - first <= old["max_age_ms"]
+      metadata = facts["metadata"]
+
+      true =
+        metadata["lineage"] === lineage and metadata["first_admitted_ms"] === first and
+          metadata["valid_until_ms"] === deadline and metadata["category"] === old["category"]
+
+      live_id = ManagedPages.live_identity(record["key"])
+      stored_live = selected_row!(cap, :live, live_id, read, witness)
+
+      true =
+        stored_live === live(old, record["value"], metadata["policy_sha256"], first, deadline)
+
+      {:ok, original_root} = JSON.decode_unique(witness["root_bytes"])
+
+      managed = %{
+        "metadata" => metadata,
+        "observation" => %{
+          "version" => 1,
+          "request_sha256" => JSON.digest([%{"op" => "get_record", "key" => record["key"]}]),
+          "result_sha256" => JSON.digest([%{"record" => record}]),
+          "value" => %{"record" => record},
+          "witness" =>
+            witness
+            |> Map.take(~w(root_state root_sha256 manifest_sha256))
+            |> Map.put("root", original_root)
+        }
+      }
+
+      {:ok, reproduced} =
+        PendingCorrection.prepare(
+          context,
+          managed,
+          inserted["value"]["text"],
+          policy["expires_at_ms"],
+          now
+        )
+
+      true = reproduced["facts"] === facts and reproduced["request"] === request
+      new_live = live(candidate, inserted["value"], card["policy_sha256"], first, deadline)
+      # The actual Core callback has already checked all three public CAS
+      # prerequisites. Do not spend extra reads rechecking revision-zero public
+      # keys; independently check both authenticated live-row expectations.
+      {:ok, plan} =
+        Planner.plan_checked(
+          cap,
+          :live,
+          [
+            {live_id, {:equal, stored_live}, nil},
+            {ManagedPages.live_identity(inserted["key"]), :absent, new_live}
+          ],
+          read
+        )
+
+      true = same_root?(plan, witness)
+      true = length(plan.changes) in 1..5
+      true = Enum.count(plan.changes, &is_nil(&1.body)) <= 1
+      true = Enum.count(plan.changes, &(not is_nil(&1.body))) <= 4
+      {:ok, review} = Ipse.Runner.Review.consume(permit, "correct", facts)
+      true = first <= review["observed_at_ms"] and review["observed_at_ms"] <= now
+      {:ok, extras} = Planner.seal_changes(cap, witness, plan)
+      normalized = Map.update!(request, "changes", &(&1 ++ extras))
+      true = Ipse.Extension.Collection.valid_request?(normalized)
+
+      receipt = %{
+        "version" => 3,
+        "kind" => "native_pending_correction",
+        "lineage" => lineage,
+        "record_key" => record["key"],
+        "replacement_key" => inserted["key"],
+        "action_sha256" => facts["action_sha256"],
+        "native_review_sha256" => JSON.digest([review]),
+        "eligibility" => "never_current",
+        "first_admitted_ms" => first,
+        "valid_until_ms" => deadline,
+        "publish_before_ms" => facts["publish_before_ms"],
+        "metadata_changes" =>
+          Enum.map(extras, fn extra ->
+            %{
+              "key" => extra["key"],
+              "expected_revision" => extra["expected_revision"],
+              "value_sha256" =>
+                if(is_nil(extra["value"]), do: nil, else: value_sha(extra["value"]))
+            }
+          end)
+      }
+
+      true = byte_size(Migration.encode(receipt)) <= 2048
+      {normalized, receipt}
+    end)
+    |> case do
+      {:ok, {normalized, receipt}} -> {:ok, normalized, receipt}
+      _ -> @error
+    end
+  end
+
   defp management_facts!(facts, request, witness, record, metadata, action) do
     fields =
       ~w(version kind operation_id context collection target metadata policy reason request_sha256 scope action_sha256)

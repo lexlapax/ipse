@@ -190,7 +190,13 @@ before freezing an endurance run. Include proposal-management effects: each
 native rejection uses one management operation and retains a public suppression
 descriptor/value while deleting the selected pending record and live row. Its
 shared source anchor and original journals remain. Do not treat removal from the
-pending queue as removal of all storage costs. Resolve an impossible budget through an explicitly reviewed storage design;
+pending queue as removal of all storage costs. Pending correction similarly
+uses one atomic publication and retains a
+candidate-specific suppression while replacing one pending/live identity. Its
+net pending count stays unchanged, but the retained marker, operation receipt
+and journal still add costs. A later acceptance is a separate publication.
+
+Resolve an impossible budget through an explicitly reviewed storage design;
 do not reset identities, discard liabilities, raise a limit to hide failure or
 count primitive churn as native lifecycle coverage. The
 [frozen qualification contract](../archive/2026-10-26-p30-p31-implementation/qualification.md#storage-and-performance)

@@ -34,7 +34,7 @@ defmodule Ipse.Extension.CollectionReviewGateTest do
           ]
       end)
 
-    for kind <- ~w(native_literal_retention native_literal_supersession) do
+    for kind <- ~w(native_literal_retention native_literal_supersession native_pending_correction) do
       operation = Ipse.Usage.id()
 
       assert {:error, :native_review_publication_fence_unavailable} =

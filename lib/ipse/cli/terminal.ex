@@ -89,6 +89,7 @@ defmodule Ipse.CLI.Terminal do
   ipse knowledge review [--json] [--after KEY]  List bounded pending metadata without promotion
   ipse knowledge review KEY       Display one pending proposal and review native acceptance
   ipse knowledge reject KEY       Review rejection of one exact pending candidate
+  ipse knowledge correct KEY 'TEXT' Review edited pending text without accepting it
   ipse knowledge forget NOTE_KEY  Review and forget one selected native note
   ipse knowledge expire NOTE_KEY  Reclaim one note after its signed retention expires
   ipse knowledge retention KEY --policy POLICY  Review a selected native retention choice

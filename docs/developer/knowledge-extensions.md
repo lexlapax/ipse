@@ -220,7 +220,7 @@ retains liability. Preserve both printed IDs. `Consent.operation/3` and
 settlement or replay, including a reservation created before any journal.
 An acceptance journal additionally correlates the native event with its ledger
 entry. This path currently supports one selected card; batch acceptance and
-correction of pending text remain open.
+explicit deferral remain open. Pending text has its separate native edit path below.
 
 ### Reject a proposal without retiring its source
 
@@ -272,6 +272,56 @@ after native disable and unavailable original-source storage, preserving origina
 journals and a peer proposal. Run it against an isolated fresh-bundle runtime as
 for the public acceptance controls below. These are source components; installed
 use and annual workload capacity remain separate.
+
+### Edit pending text under its original source
+
+`CLI.Knowledge.Correction` owns standalone text editing. It reuses the existing
+management journal/native display, protected selection and finite `notes.capture`
+reservation. `PendingCorrection.prepare/5` combines a checked historical pending
+observation with its current capture pin, replacement text and policy expiry.
+It preserves source attribution, category, reason, worker-recorded times and
+signed admission clocks. The new source/text identity is a new pending key;
+the displayed three-change request removes the old row, inserts the replacement
+and inserts a candidate-specific correction/suppression link at the old ID.
+Preparation or a parsed link grants no review or publication authority.
+
+Historical display holds Identity, active Consent, Collection and management
+journal owners; it does not require the original source. They release before
+`correct CODE` input. Publication reacquires that actual source through the
+existing `PendingAcceptance.with_shareable_source/3`, checks the current pin,
+installed selection, source policy and unchanged stored target, and repeats the
+exact preparation. A signed literal choice on a shared lineage does not supply
+new pending authority; source/override and current-consent checks still apply.
+
+`NormalizerV3.correct_pending/3` checks the actual signed old row and original
+anchor, unchanged first/deadline and replacement schema/source binding. Public
+CAS prerequisites were already checked by Core. Bounded live-page planning
+requires the exact old row and an absent new identity. `PendingCapacity.replace/4`
+accounts for the removed pending bytes, allowing an exact replacement at the
+64-item ceiling without evicting another item or exceeding 256 KiB. Its source
+anchor stays unchanged. The normalizer consumes the live permit only after
+those checks and seals at most five sidecars under the original 32-read ceiling.
+
+Generic Collection publication refuses the new correction kind.
+`Collection.execute_pending_correction/10` instead claims the exact reviewed
+intent/request/normalization, freezes the actual last synced lifecycle intent
+through the existing Writer/journal lease and attaches the actual original-source
+lease to the same native transaction. Its final deadline is the earliest of
+pending expiry, active policy expiry and remaining native permit life. This
+uses existing native protocols; no new Rust permission or global limit is added.
+After all owners and journal cleanup confirm, the caller settles measured usage.
+Uncertain effects retain liability and never replay. Journal inspection reports
+the intended replacement key without asserting its presence or acceptance.
+
+The `genuine_pending_correction` journey starts with actual Session production
+and a fresh artifact, using synthetic model behavior. It checks stale/cancelled
+input, source loss and revocation during input, exact original proof/clock and
+peer preservation, old-key refusal and separate fresh acceptance of the edit.
+The distinct `genuine_pending_correction_deadline` journey shortens a trusted
+fixture's saved policy, stages before its real deadline and waits past it;
+the root remains unchanged, liability stays unknown and repeated inspection
+is inert. Neither fixture manufactures native completion or establishes installed,
+human, full-workload or real-model quality.
 
 ### Revalidate recall before use
 

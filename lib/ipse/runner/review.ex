@@ -56,6 +56,11 @@ defmodule Ipse.Runner.Review do
     with true <-
            command === "forget" or
              (command === "reject" and Ipse.Session.PendingRejection.valid_facts?(facts)) or
+             (command === "correct" and
+                Ipse.Session.PendingCorrection.current_review?(
+                  facts,
+                  System.system_time(:millisecond)
+                )) or
              (command === "accept" and Ipse.Session.PendingAcceptance.valid_facts?(facts)) or
              Ipse.Session.ManagedLifecycle.retention_review?(
                command,
@@ -390,6 +395,88 @@ defmodule Ipse.Runner.Review do
          true <- System.system_time(:millisecond) < deadline,
          do: {:ok, held.receipt},
          else: (_ -> @error)
+  end
+
+  @doc false
+  def claim_pending_correction_effect(
+        %Permit{owner: owner, ref: ref},
+        facts,
+        intent,
+        request,
+        normalized,
+        receipt
+      )
+      when owner == self() do
+    case Process.get(@slot) do
+      %{ref: ^ref, status: :consumed} = held ->
+        Process.put(@slot, %{held | status: :refused})
+        wall = System.system_time(:millisecond)
+
+        with true <- held.command === "correct" and held.facts === facts and live?(held),
+             true <- Ipse.Session.PendingCorrection.current_review?(facts, wall),
+             true <-
+               intent === %{
+                 "type" => "managed_lifecycle_intent",
+                 "version" => 1,
+                 "operation_id" => facts["operation_id"],
+                 "facts" => facts
+               },
+             true <-
+               request === facts["request"] and facts["request_sha256"] === JSON.digest([request]),
+             true <- Ipse.Extension.Collection.valid_request?(normalized),
+             true <- Map.delete(request, "changes") === Map.delete(normalized, "changes"),
+             {original, extras} = Enum.split(normalized["changes"], 3),
+             true <- original === request["changes"] and length(extras) in 1..5,
+             true <- Enum.all?(extras, &String.starts_with?(&1["key"], "host.validity.")),
+             true <- receipt["kind"] === "native_pending_correction" and receipt["version"] === 3,
+             true <- receipt["action_sha256"] === facts["action_sha256"],
+             true <- receipt["native_review_sha256"] === JSON.digest([held.receipt]),
+             true <- receipt["publish_before_ms"] === facts["publish_before_ms"],
+             deadline = min(facts["publish_before_ms"], wall + held.deadline - now()),
+             true <- wall < deadline do
+          claim = %{
+            intent: JSON.digest([intent]),
+            original: JSON.digest([request]),
+            normalized: JSON.digest([normalized]),
+            normalization: JSON.digest([receipt]),
+            deadline: deadline
+          }
+
+          Process.put(
+            @slot,
+            held |> Map.put(:status, :effect_claimed) |> Map.put(:pending_correction_claim, claim)
+          )
+
+          {:ok, %{review: held.receipt, publish_before_ms: deadline}}
+        else
+          _ -> @error
+        end
+
+      _ ->
+        @error
+    end
+  rescue
+    _ -> @error
+  end
+
+  def claim_pending_correction_effect(_, _, _, _, _, _), do: @error
+
+  @doc false
+  def claimed_pending_correction_effect(permit, facts, intent, request, normalized, receipt) do
+    with {:ok, held} <- pending(permit, "correct", facts, :effect_claimed),
+         claim when is_map(claim) <- held[:pending_correction_claim],
+         true <-
+           claim.intent === JSON.digest([intent]) and claim.original === JSON.digest([request]),
+         true <-
+           claim.normalized === JSON.digest([normalized]) and
+             claim.normalization === JSON.digest([receipt]),
+         true <- System.system_time(:millisecond) < claim.deadline do
+      {:ok, %{review: held.receipt, publish_before_ms: claim.deadline}}
+    else
+      _ -> @error
+    end
+  rescue
+    _ -> @error
   end
 
   @doc false

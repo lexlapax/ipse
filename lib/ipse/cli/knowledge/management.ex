@@ -1277,7 +1277,8 @@ defmodule Ipse.CLI.Knowledge.Management do
 
   defp retention_candidate(_, _, _, _, _, _), do: @error
 
-  defp management_effect_mode(config) do
+  @doc false
+  def management_effect_mode(config) do
     with {:ok, mode} <- Ipse.Extension.Mode.capture(config),
          true <- mode["headless"] === false and mode["approval_origin"] == "interactive",
          true <- Ipse.Extension.Mode.ordinary(mode, true) in [:ask, :allow],
@@ -1883,9 +1884,16 @@ defmodule Ipse.CLI.Knowledge.Management do
            if(tail == :none and result, do: result["status"], else: "unconfirmed"),
          "control_status" => if(operation, do: operation["status"], else: "unavailable"),
          "action_sha256" => if(intent, do: intent["facts"]["action_sha256"]),
+         "replacement_pending_key" =>
+           if(
+             intent && intent["facts"]["kind"] === "managed_proposal_correction" &&
+               Ipse.Session.PendingCorrection.valid_facts?(intent["facts"]),
+             do: Enum.at(intent["facts"]["request"]["changes"], 1)["key"]
+           ),
          "replayed" => false,
          "current_note_eligibility" => "not_checked"
-       }}
+       }
+       |> Map.reject(fn {key, value} -> key == "replacement_pending_key" and is_nil(value) end)}
     else
       _ -> @error
     end
@@ -2413,7 +2421,8 @@ defmodule Ipse.CLI.Knowledge.Management do
   defp normalizer("managed_proposal_reject"), do: &NormalizerV3.reject/3
   defp normalizer("managed_accepted_decision_forget"), do: &NormalizerV3.forget_accepted/3
 
-  defp selection(home) do
+  @doc false
+  def selection(home) do
     with {:ok, entries} <- Bundles.inventory(),
          %{digest: digest} <- Enum.find(entries, &(&1.id == "knowledge")),
          {:ok, _} <- Artifact.lookup(Path.join(home, "extensions/artifacts"), digest),

@@ -303,6 +303,57 @@ defmodule Ipse.Runner.Transaction do
 
   def with_lifecycle_journal_lease(_, _, _, _), do: {:error, :invalid_transaction_request}
 
+  @doc false
+  def with_pending_correction_journal_lease(cap, owned, intent, fun) when is_function(fun, 0) do
+    facts = intent["facts"]
+
+    with %Capability{owner: owner, depth: 3} <- cap,
+         true <- owner == self() and is_nil(Process.get(@lifecycle_key)),
+         true <- is_map(owned) and get_in(facts, ["context", "session_id"]) === owned[:id],
+         true <-
+           Ipse.Session.PendingCorrection.current_review?(facts, System.system_time(:millisecond)),
+         true <-
+           intent === %{
+             "type" => "managed_lifecycle_intent",
+             "version" => 1,
+             "operation_id" => facts["operation_id"],
+             "facts" => facts
+           },
+         digest = Ipse.JSON.digest([intent]) do
+      with_journal_lease(cap, owned, {:lifecycle, digest}, fn ->
+        Process.put(@lifecycle_key, {self(), cap, digest})
+
+        try do
+          fun.()
+        after
+          Process.delete(@lifecycle_key)
+        end
+      end)
+    else
+      _ -> {:error, :invalid_transaction_request}
+    end
+  rescue
+    _ -> {:error, :invalid_transaction_request}
+  end
+
+  def with_pending_correction_journal_lease(_, _, _, _),
+    do: {:error, :invalid_transaction_request}
+
+  @doc false
+  def pending_correction_guard(cap, intent) do
+    with {owner, ^cap, digest} <- Process.get(@lifecycle_key),
+         true <- owner == self() and digest === Ipse.JSON.digest([intent]),
+         true <-
+           Ipse.Session.PendingCorrection.current_review?(
+             intent["facts"],
+             System.system_time(:millisecond)
+           ),
+         do: check(cap),
+         else: (_ -> {:error, :invalid_transaction_capability})
+  rescue
+    _ -> {:error, :invalid_transaction_capability}
+  end
+
   defp with_journal_lease(
          %Capability{owner: owner, controller: controller, depth: 3} = cap,
          owned,

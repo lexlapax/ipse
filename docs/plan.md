@@ -1191,8 +1191,12 @@ adds native review after capture revocation, candidate-specific suppression and
 shared-source preservation. A fresh-artifact synthetic-model Session reaches
 actual public cancellation, native disable and rejection with its original
 source unavailable, preserving journals/peer/anchor and refusing old-backup
-restoration. These local controls establish no workload capacity. Batch review, correction
-of pending text, broader effect-loss boundaries, installed/provider and
+restoration. The [native pending-text correction](archive/2026-10-26-p30-p31-implementation/pending-correction-20261102.md)
+replaces one candidate while preserving its original source and signed clocks;
+fresh-artifact Session controls cover separate later acceptance, source loss,
+revocation and actual consent expiry after staging with retained unknown liability.
+These local controls establish no workload capacity. Batch review, deferral,
+broader effect-loss boundaries, installed/provider and
 whole-source qualification remain open.
 
 The legacy protected Collection SDK also has an isolated final-admission

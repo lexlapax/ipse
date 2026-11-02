@@ -543,6 +543,58 @@ defmodule Ipse.Extension.Collection do
   def execute_managed_retention(_, _, _, _, _, _, _, _, _),
     do: {:error, :invalid_managed_collection_request}
 
+  @doc false
+  def execute_pending_correction(
+        root,
+        project,
+        original,
+        operation_id,
+        recipe_sha256,
+        normalizer,
+        owned,
+        intent,
+        permit,
+        source_lease
+      )
+      when is_function(normalizer, 2) and is_map(owned) and is_map(intent) and
+             is_reference(source_lease) do
+    facts = intent["facts"]
+
+    with true <- owned[:journal_owner] === self(),
+         true <- intent["operation_id"] === operation_id,
+         true <- get_in(facts, ["context", "namespace"]) === project,
+         true <- get_in(facts, ["context", "session_id"]) === owned[:id],
+         true <-
+           Ipse.Session.PendingCorrection.current_review?(facts, System.system_time(:millisecond)),
+         true <- facts["request"] === original,
+         :ok <- Ipse.Runner.Review.check(permit, "correct", facts) do
+      previous = Process.put(@acceptance_attempt_key, false)
+
+      try do
+        execute_managed_version(
+          root,
+          project,
+          original,
+          operation_id,
+          recipe_sha256,
+          normalizer,
+          {:pending_correction, owned, intent, permit, source_lease}
+        )
+      after
+        if is_nil(previous),
+          do: Process.delete(@acceptance_attempt_key),
+          else: Process.put(@acceptance_attempt_key, previous)
+      end
+    else
+      _ -> {:error, :invalid_managed_collection_request}
+    end
+  rescue
+    _ -> {:error, :invalid_managed_collection_request}
+  end
+
+  def execute_pending_correction(_, _, _, _, _, _, _, _, _, _),
+    do: {:error, :invalid_managed_collection_request}
+
   @doc "Host-only atomic literal supersession; this does not widen the worker publication profile."
   def execute_managed_supersession(
         root,
@@ -1269,6 +1321,9 @@ defmodule Ipse.Extension.Collection do
         match?({:capture, _}, version) ->
           3
 
+        match?({:pending_correction, _, _, _, _}, version) ->
+          3
+
         true ->
           version
       end
@@ -1461,6 +1516,61 @@ defmodule Ipse.Extension.Collection do
          uid,
          state,
          manifest,
+         original,
+         request,
+         id,
+         extra,
+         normalization,
+         {:pending_correction, owned, intent, permit, source_lease},
+         witness,
+         cap
+       ) do
+    alias Ipse.Runner.Review
+    facts = intent["facts"]
+
+    with true <- normalization["kind"] === "native_pending_correction",
+         true <- get_in(facts, ["collection", "root_sha256"]) === witness["root_sha256"],
+         true <- facts["operation_id"] === id,
+         {:ok, bound} <-
+           Review.claim_pending_correction_effect(
+             permit,
+             facts,
+             intent,
+             original,
+             request,
+             normalization
+           ) do
+      Transaction.with_pending_correction_journal_lease(cap, owned, intent, fn ->
+        Transaction.with_source_lease(cap, source_lease, fn ->
+          with :ok <- Transaction.pending_correction_guard(cap, intent),
+               {:ok, ^bound} <-
+                 Review.claimed_pending_correction_effect(
+                   permit,
+                   facts,
+                   intent,
+                   original,
+                   request,
+                   normalization
+                 ) do
+            with_notes_publication_deadline(bound.publish_before_ms, fn ->
+              Process.put(@acceptance_attempt_key, true)
+              apply_mutation(path, uid, state, manifest, request, id, extra)
+            end)
+          else
+            _ -> {:error, :native_review_publication_fence_unavailable}
+          end
+        end)
+      end)
+    else
+      _ -> {:error, :native_review_publication_fence_unavailable}
+    end
+  end
+
+  defp managed_mutation(
+         path,
+         uid,
+         state,
+         manifest,
          _original,
          request,
          id,
@@ -1470,7 +1580,7 @@ defmodule Ipse.Extension.Collection do
          _witness,
          _cap
        ) do
-    if normalization["kind"] in ~w(native_literal_retention native_accepted_decision_retention native_literal_supersession),
+    if normalization["kind"] in ~w(native_literal_retention native_accepted_decision_retention native_literal_supersession native_pending_correction),
       do: {:error, :native_review_publication_fence_unavailable},
       else:
         with_capture_deadline(normalization, fn ->

@@ -190,6 +190,22 @@ defmodule IpseKnowledge.KnowledgeSessionTest do
   end
 
   @tag :capture_parent_case
+  @tag :genuine_pending_correction
+  @tag timeout: 180_000
+  @tag skip: System.get_env("IPSE_TEST_GENUINE_PENDING_CORRECTION") != "1"
+  test "a main-model pending proposal can be edited under native review and accepted only by a later fresh review" do
+    capture(false, false, false, false, false, :public_correct)
+  end
+
+  @tag :capture_parent_case
+  @tag :genuine_pending_correction_deadline
+  @tag timeout: 180_000
+  @tag skip: System.get_env("IPSE_TEST_GENUINE_PENDING_CORRECTION_DEADLINE") != "1"
+  test "a pending correction staged before actual consent expiry cannot publish after its final deadline" do
+    capture(false, false, false, false, false, :public_correct_deadline)
+  end
+
+  @tag :capture_parent_case
   @tag :genuine_pending_accepted_recall
   @tag timeout: 180_000
   @tag skip:
@@ -378,6 +394,9 @@ defmodule IpseKnowledge.KnowledgeSessionTest do
     cond do
       accept? == :public_reject ->
         IO.puts("PENDING_REJECTION_ROOT=" <> root)
+
+      accept? in [:public_correct, :public_correct_deadline] ->
+        IO.puts("PENDING_CORRECTION_ROOT=" <> root)
 
       accept? in [:public_recall, :public_expiry, :public_retention, :public_approval] ->
         IO.puts("ACCEPTED_RECALL_ROOT=" <> root)
@@ -648,6 +667,8 @@ defmodule IpseKnowledge.KnowledgeSessionTest do
             if(
               accept? in [
                 :public,
+                :public_correct,
+                :public_correct_deadline,
                 :public_recall,
                 :public_expiry,
                 :public_retention,
@@ -1022,8 +1043,19 @@ defmodule IpseKnowledge.KnowledgeSessionTest do
 
           assert :ok = Session.close_confirmed(resumed)
 
-          if accept? == :public_reject do
-            exercise_pending_rejection(root, home, dir, namespace, change, second_change)
+          if accept? in [:public_reject, :public_correct, :public_correct_deadline] do
+            operation = if accept? == :public_reject, do: "rejection", else: "correction"
+
+            exercise_pending_management(
+              root,
+              home,
+              dir,
+              namespace,
+              change,
+              second_change,
+              operation,
+              accept? == :public_correct_deadline
+            )
           else
             if accept? == :path_swap do
               exercise_pending_path_swap(root, home, dir, namespace, sidecar, change)
@@ -1162,7 +1194,16 @@ defmodule IpseKnowledge.KnowledgeSessionTest do
     end
   end
 
-  defp exercise_pending_rejection(root, home, history_dir, namespace, change, peer) do
+  defp exercise_pending_management(
+         root,
+         home,
+         history_dir,
+         namespace,
+         change,
+         peer,
+         operation,
+         deadline?
+       ) do
     config_path = Path.join(home, "config.json")
 
     File.write!(
@@ -1177,7 +1218,7 @@ defmodule IpseKnowledge.KnowledgeSessionTest do
     File.chmod!(config_path, 0o600)
 
     File.write!(
-      Path.join(root, "pending-rejection.json"),
+      Path.join(root, "pending-#{operation}.json"),
       Jason.encode!(%{
         "namespace" => namespace,
         "history_dir" => history_dir,
@@ -1187,7 +1228,7 @@ defmodule IpseKnowledge.KnowledgeSessionTest do
       [:exclusive]
     )
 
-    driver = Path.join(root, "rejection-pty")
+    driver = Path.join(root, "#{operation}-pty")
 
     assert {"", 0} =
              System.cmd(
@@ -1204,21 +1245,36 @@ defmodule IpseKnowledge.KnowledgeSessionTest do
       |> Enum.reverse()
       |> Enum.flat_map(&["-pa", &1])
 
-    for {mode, flag} <- [
+    modes =
+      if operation == "rejection",
+        do: [
           {"cancel", "--management-review-cancel"},
           {"reject", "--management-review"}
-        ] do
+        ],
+        else: [
+          {"stale", "--management-review-stale"},
+          {"cancel", "--management-review-cancel"},
+          {"source-loss", "--management-review-race"},
+          {"correct", "--management-review"},
+          {"grant-race", "--management-review-race"}
+        ]
+
+    modes = if deadline?, do: [{"deadline", "--management-review"}], else: modes
+
+    for {mode, flag} <- modes do
       {output, code} =
         System.cmd(
           driver,
           [flag, "--knowledge", System.find_executable("elixir"), "--erl", "+S 2:2"] ++
             paths ++
-            [Path.expand("test/support/pending_rejection_cli.exs"), root, mode],
+            [Path.expand("test/support/pending_#{operation}_cli.exs"), root, mode],
           stderr_to_stdout: true
         )
 
       assert code == 0, output
-      assert output =~ "PUBLIC_SESSION_PENDING_REJECTION_#{String.upcase(mode)}_PASSED"
+
+      assert output =~
+               "PUBLIC_SESSION_PENDING_#{String.upcase(operation)}_#{String.upcase(mode)}_PASSED"
     end
   end
 

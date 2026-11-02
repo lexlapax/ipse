@@ -1007,6 +1007,26 @@ disable and rejection in one child. Follow the fresh-runtime recipe linked below
 with the rejection variable/tag; trusted source members and synthetic model
 behavior remain distinct from human or live-model evidence.
 
+Pending-text correction has its own preparation, capacity and native journeys:
+
+```sh
+mix test test/ipse/session/pending_correction_test.exs test/ipse/cli/management_correction_public_test.exs test/ipse/extension/pending_capacity_test.exs test/ipse/extension/collection_review_gate_test.exs
+IPSE_TEST_GENUINE_PENDING_CORRECTION=1 mix test test/extensions/knowledge/knowledge_session_test.exs --only genuine_pending_correction --max-cases 1
+IPSE_TEST_GENUINE_PENDING_CORRECTION_DEADLINE=1 mix test test/extensions/knowledge/knowledge_session_test.exs --only genuine_pending_correction_deadline --max-cases 1
+```
+
+Run each opt-in case with its own fresh-bundle runtime. Preparation/capacity
+fixtures grant no source or native authority. The main journey requires exact
+source/time/category preservation, unchanged peers, stale/cancelled refusal,
+source withdrawal and revocation during input, old-key refusal and separate fresh
+acceptance of the edited pending key. The deadline case uses an explicitly
+short trusted fixture policy in actual protected state, stages before its real
+expiry and waits past it. Require the old root, unknown liability with the full
+reservation, an unconfirmed journal and identical repeated inspection. No clock,
+review acknowledgment or native completion is fabricated. Its telemetry pause
+is disclosed controlled-host instrumentation; it is not human, installed or
+annual-workload evidence. Both roots print as `PENDING_CORRECTION_ROOT`.
+
 The separate opt-in `genuine_pending_accepted_recall` journey in
 `test/extensions/knowledge/knowledge_session_test.exs` uses freshly built isolated
 Knowledge artifacts, two ordinary captures and actual public native acceptance.

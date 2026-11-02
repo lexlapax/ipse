@@ -19,7 +19,7 @@ earlier literal. A missing original or revoked permission before publication
 stops the save; the new proposal stays pending. This does not qualify automatic
 capture quality, every source combination or installed use.
 
-Reviewed retention choices and forgetting have standalone management paths. Interactive
+Pending review/editing, retention choices and forgetting have standalone management paths. Interactive
 chat also supports reviewed correction of an ordinary native note and replacement
 of a current statement or preference, as described below.
 Existing-note reads, permission inspection/revocation and elapsed-policy
@@ -262,7 +262,7 @@ if interruption occurred before a journal was created. Confirmed acceptance
 charges one operation with measured input/output bytes; cancellation and known
 pre-publication refusal settle zero effect usage. An uncertain attempt retains
 its reservation. This experimental path supports one selected card; batch
-acceptance and correction of pending text remain unfinished. After confirmed acceptance,
+acceptance and explicit deferral remain unfinished. After confirmed acceptance,
 close the original conversation and follow the bounded current-note recall
 procedure below. A saved acceptance alone does not prove successful later recall.
 
@@ -297,6 +297,46 @@ and actual stored state before new work. The candidate may already have been
 removed; inspection and resume never repeat the effect. Cancellation and stale
 codes leave the selected state unchanged. This source-runtime path is
 experimental; installed, human and full-workload qualification remain open.
+
+### Edit one pending proposal
+
+Use the complete pending key and your proposed replacement text:
+
+```sh
+ipse knowledge correct pending.COPY_THE_64_CHARACTER_ID 'Use ISO dates in the release report.' --cwd /path/to/project
+```
+
+This edits text while preserving the displayed category, original source
+attribution and signed pending deadline. It requires active capture permission,
+the same project/home and supported Linux native terminal/storage profile.
+Keep the original source Session journal available; add
+`--state-dir /path/to/original/sessions` when it is outside the default directory.
+No model or worker runs. Provider overrides, `--yes` and `--json` are refused.
+Text is limited to 2,048 UTF-8 bytes and must differ from the selected text.
+An oversized review refuses without truncation.
+
+Keep both printed IDs. Read the complete original candidate, replacement text,
+storage changes and unchanged expiry, then enter the fresh `correct CODE` at
+`approval>`. Anything else cancels. The displayed original is historical data;
+publication checks its source version, exclusions, active consent and exact
+stored target again. A missing source, revoked consent or changed target can
+therefore refuse an edit after its display.
+
+Confirmed success removes the old pending identity, suppresses its exact
+source/text candidate and prints `replacement_pending_key`. The replacement
+stays pending with its original proof and admission clocks. Original journals,
+shared source metadata and other proposals remain. To accept the edited decision,
+run `knowledge review` with that new key and complete its separate fresh
+`accept CODE` review. The old key cannot be accepted after replacement.
+
+Correction charges one operation with measured input/output; subsequent acceptance
+has its own operation. Cancellation and known refusals settle zero effect usage.
+An unconfirmed attempt retains its reservation and may already have changed
+storage. Inspect `knowledge operation MANAGEMENT_JOURNAL_ID` before new work.
+Its `replacement_pending_key` is the intended target, including for an uncertain
+attempt; it proves neither presence nor acceptance. Inspection never replays or
+settles the attempt. This experimental source path has no installed, human or
+annual-workload qualification.
 
 ## Correct or supersede a native note
 

@@ -74,6 +74,42 @@ defmodule Ipse.CLI.Knowledge do
 
   def run(_, _, _, _), do: fail(:unknown_knowledge_command)
 
+  def run_correction(key, text, opts, home, cwd) do
+    with true <-
+           Enum.all?(Keyword.keys(opts), &(&1 in (@options ++ [:state_dir]))) and
+             opts[:json] != true,
+         {:ok, cwd} <- Ipse.Workspace.canonical_path(cwd),
+         {:ok, config} <- runtime(Keyword.delete(opts, :state_dir), home, cwd) do
+      history_dir = Path.expand(opts[:state_dir] || Path.join(home, "sessions"))
+
+      case Ipse.CLI.Knowledge.Correction.run(config, cwd, history_dir, key, text) do
+        {:ok, result} ->
+          Terminal.puts(
+            "Saved the corrected pending proposal; review its new key separately for acceptance. Original provenance and expiry remain."
+          )
+
+          Terminal.puts(Jason.encode!(result))
+          0
+
+        result ->
+          Terminal.puts(
+            :stderr,
+            "No successful pending correction is confirmed: #{inspect(result)}. Inspect the management journal and actual storage before new work; unknown effects never replay."
+          )
+
+          1
+      end
+    else
+      _ ->
+        Terminal.puts(
+          :stderr,
+          "Use knowledge correct PENDING_KEY 'NEW TEXT' in a native terminal with the saved configuration and original sessions directory; provider overrides, --yes and --json are unsupported."
+        )
+
+        1
+    end
+  end
+
   def run_target("review", key, opts, home, cwd) do
     with true <-
            Enum.all?(Keyword.keys(opts), &(&1 in (@options ++ [:state_dir]))) and
