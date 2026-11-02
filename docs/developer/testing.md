@@ -1207,6 +1207,27 @@ containing only the withdrawal notice; its original result remains unchanged.
 These distinct timings prevent an earlier input refusal from masquerading as a
 successful later-main continuation.
 
+For the same preflight boundary with eight actual signed notes, use separate
+fresh roots for the allowed and withdrawn-source cases. First build the matching
+helper with `./dev/build.sh`, then build the test graph and run:
+
+```sh
+MIX_ENV=test mix compile --warnings-as-errors
+elixir --erl '+S 2:2' test/support/managed_literal_pair_runner.exs /tmp/ipse-decision-pack-ok _build/test/lib split
+IPSE_LITERAL_AB_ROOT=/tmp/ipse-decision-pack-ok IPSE_TEST_MANAGED_PACK=1 mix test test/ipse/extension/managed_collection_call_session_test.exs --only managed_pack_actual_overflow --max-cases 1
+elixir --erl '+S 2:2' test/support/managed_literal_pair_runner.exs /tmp/ipse-decision-pack-stale _build/test/lib split
+IPSE_LITERAL_AB_ROOT=/tmp/ipse-decision-pack-stale IPSE_TEST_MANAGED_PACK=1 mix test test/ipse/extension/managed_collection_call_session_test.exs --only managed_pack_actual_overflow_stale --max-cases 1
+```
+
+The allowed path must deliver the shadow result without publishing notes. For
+withdrawal, require all eight observed note dependencies, a failed decision
+with no decision dispatch, one main request, partial helper accounting and an
+unknown next Worker input. Restore the original source inode and bytes, then
+require strict saved reconstruction and idle resume with no replay. Fixture
+cleanup also restores a held source after an interrupted assertion. The
+loopback service and terminal input are synthetic, not live-engine or human
+quality qualification.
+
 Run `--only worker_inherited_union` in the same suite for actual A/B input
 boundaries. Each case builds its own matched PTY driver and creates a fresh
 current-runtime native statement/publication seed in a private home, with no

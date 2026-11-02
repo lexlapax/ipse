@@ -7805,53 +7805,123 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
     selected_source = Enum.fetch!(seed["source_journals"], source_index)
     source = selected_source["path"]
     held = source <> ".wide-pack-fixture-held"
+
+    on_exit(fn ->
+      if File.exists?(held) and not File.exists?(source), do: File.rename!(held, source)
+    end)
+
     File.rename!(source, held)
 
-    try do
-      send(pid, :release_wide_preflight)
-      assert_receive {:ipse, ^pid, {:done, :ok}}, 20_000
-      server = c.provider_server.pid
-      assert_receive {:observed_provider_request, ^server, _}, 1000
-      assert_receive {:observed_provider_request, ^server, _}, 1000
-      refute_receive {:observed_provider_request, ^server, _}, 100
-      refute File.read!(c.trace) =~ "pack-reprojected\n"
-      assert {:ok, events} = Journal.load(c.dir, Session.info(pid).id)
+    {id, saved, trace} =
+      try do
+        send(pid, :release_wide_preflight)
+        assert_receive {:ipse, ^pid, {:done, :error}}, 20_000
+        server = c.provider_server.pid
+        assert_receive {:observed_provider_request, ^server, _}, 1000
+        refute_receive {:observed_provider_request, ^server, _}, 100
+        refute File.read!(c.trace) =~ "pack-reprojected\n"
+        id = Session.info(pid).id
+        assert {:ok, events} = Journal.load(c.dir, id)
 
-      observed =
-        for event <- events,
-            event["type"] == "managed_read_observed",
-            dependency <- event["dependencies"],
-            dependency["version"] == 4,
-            do: get_in(dependency, ["subject", "key"])
+        observed =
+          for event <- events,
+              event["type"] == "managed_read_observed",
+              dependency <- event["dependencies"],
+              dependency["version"] == 4,
+              do: get_in(dependency, ["subject", "key"])
 
-      assert MapSet.subset?(MapSet.new(seed["keys"]), MapSet.new(observed))
+        assert MapSet.subset?(MapSet.new(seed["keys"]), MapSet.new(observed))
 
-      intent =
-        Enum.find(events, fn event ->
-          event["type"] == "extension_action_intent" and
-            get_in(event, ["request", "op"]) == "decision.create"
-        end)
+        intent =
+          Enum.find(events, fn event ->
+            event["type"] == "extension_action_intent" and
+              get_in(event, ["request", "op"]) == "decision.create"
+          end)
 
-      assert Jason.decode!(intent["request"]["input"])["query"] ==
-               "Synthetic stale wide selection"
+        assert Jason.decode!(intent["request"]["input"])["query"] ==
+                 "Synthetic stale wide selection"
 
-      refute Enum.any?(
-               events,
-               &(&1["type"] == "inference_dispatch_intent" and &1["phase"] == "decision.create")
-             )
+        [action] =
+          Enum.filter(events, fn event ->
+            event["type"] == "extension_action_result" and
+              get_in(event, ["request", "op"]) == "decision.create"
+          end)
 
-      assert {:ok, _} = Ipse.Session.Saved.restore(events, Session.info(pid).id)
-      Task.shutdown(c.provider_server, :brutal_kill)
-      assert :ok = Session.close_confirmed(pid)
-    after
-      if File.exists?(held), do: File.rename!(held, source)
-    end
+        assert action["outcome"] == %{
+                 "status" => "failed",
+                 "value" => %{"code" => "decision_request_failed"}
+               }
+
+        [dispatch] = Enum.filter(events, &(&1["type"] == "inference_dispatch_intent"))
+        assert dispatch["phase"] == "model"
+        [main, helper] = Enum.filter(events, &(&1["type"] == "request_admitted"))
+        assert helper["request_id"] == action["operation_id"]
+        [main_finish, helper_finish] = Enum.filter(events, &(&1["type"] == "request_finished"))
+        assert main_finish["request_id"] == main["request_id"]
+
+        assert Map.take(main_finish, ~w(outcome finality)) == %{
+                 "outcome" => "completed",
+                 "finality" => "final"
+               }
+
+        assert helper_finish["request_id"] == helper["request_id"]
+
+        assert Map.take(helper_finish, ~w(outcome finality)) == %{
+                 "outcome" => "failed",
+                 "finality" => "partial"
+               }
+
+        [unknown] =
+          Enum.filter(
+            events,
+            &(&1["type"] == "worker_input_result" and &1["status"] == "unknown")
+          )
+
+        [unknown_intent] =
+          Enum.filter(
+            events,
+            &(&1["type"] == "worker_input_intent" and &1["input_id"] == unknown["input_id"])
+          )
+
+        assert unknown_intent["payload_sha256"] ==
+                 JSON.digest([Ipse.Extension.Actions.resume(action)])
+
+        observations = Enum.filter(events, &(&1["type"] == "managed_read_observed"))
+
+        assert {:ok, dependencies} =
+                 Session.ManagedReference.union(Enum.map(observations, & &1["dependencies"]))
+
+        assert unknown_intent["dependencies_sha256"] == JSON.digest(dependencies)
+        assert {:ok, saved} = Ipse.Session.Saved.restore(events, id)
+        assert saved.worker_input_unknown == [unknown["input_id"]]
+        assert saved.managed_lineage.unavailable
+        trace = File.read!(c.trace)
+        refute trace =~ Jason.encode!(action["outcome"])
+        Task.shutdown(c.provider_server, :brutal_kill)
+        assert :ok = Session.close_confirmed(pid)
+        {id, saved, trace}
+      after
+        if File.exists?(held) and not File.exists?(source), do: File.rename!(held, source)
+      end
 
     assert File.read!(source) |> JSON.sha256() == selected_source["sha256"]
 
     for original <- seed["source_journals"] do
       assert File.read!(original["path"]) |> JSON.sha256() == original["sha256"]
     end
+
+    journal = Path.join(c.dir, id <> ".jsonl")
+    closed = File.read!(journal)
+    resumed = start(c, %{approval: :allow, approval_origin: :yes}, id)
+    assert Session.info(resumed).phase == :idle
+    assert {:ok, recovered} = Journal.load(c.dir, id)
+    assert {:ok, restored} = Session.Saved.restore(recovered, id)
+    assert restored.worker_input_unknown == saved.worker_input_unknown
+    assert restored.managed_lineage.unavailable
+    assert_idle_resume_journal(journal, closed, id)
+    assert File.read!(c.trace) == trace
+    assert :ok = Session.close_confirmed(resumed)
+    assert File.read!(c.trace) == trace
   end
 
   @tag literal_v4_ab: true,

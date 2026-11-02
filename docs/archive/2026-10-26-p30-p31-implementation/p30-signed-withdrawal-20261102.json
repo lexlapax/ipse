@@ -1,0 +1,210 @@
+{
+  "current_stale_decision_regression": {
+    "excluded": 190,
+    "passed": 2,
+    "seed": 791843
+  },
+  "date": "2026-11-02",
+  "documentation_log": {
+    "bytes": 757,
+    "path": "/tmp/ipse-p30-signed-withdrawal-docs-20261102.log",
+    "sha256": "b6863ed4bb2afd052ead0b7be3ca8c66d5cab41cd7193a533a7b5adce592e343"
+  },
+  "final_withdrawal": {
+    "excluded": 191,
+    "passed": 1,
+    "seed": 791844
+  },
+  "fixtures": [
+    {
+      "seed": {
+        "bytes": 15050,
+        "path": "/tmp/ipse-p30-current-split-20261102-post-population/literal-ab-seed.json",
+        "sha256": "1818e90045372b93d49c757b139fb22626ae790064fc8e26ab7cea3dd367f4d5"
+      },
+      "sources": [
+        {
+          "bytes": 249267,
+          "path": "/tmp/ipse-p30-current-split-20261102-post-population/home/sessions/a087b40777c5304bae3fed37156022da.jsonl",
+          "sha256": "a1edb2ed1227451547f99af716116d16f64aff1f59b45411fc63b5af2b20cd1d"
+        },
+        {
+          "bytes": 249222,
+          "path": "/tmp/ipse-p30-current-split-20261102-post-population/home/sessions/7c03421ea386300c93126015b1eb20ae.jsonl",
+          "sha256": "e869ad7acf70644a1c49968a38c3c4eae9ac3ace8b959dab0b5f40e4e0252d50"
+        }
+      ]
+    },
+    {
+      "seed": {
+        "bytes": 15020,
+        "path": "/tmp/ipse-p30-current-stale-20261102-fresh/literal-ab-seed.json",
+        "sha256": "b7e7ce005f3b1b17f7690ca9476b2430b0e6527c10d480a38e6df028c35e6cd6"
+      },
+      "sources": [
+        {
+          "bytes": 249127,
+          "path": "/tmp/ipse-p30-current-stale-20261102-fresh/home/sessions/8f7aab915257c25af422ac2a93379f45.jsonl",
+          "sha256": "70498e002ba775c8b12565a852bfc094fc14e131c934983d7ea1f94838a29e6c"
+        },
+        {
+          "bytes": 249082,
+          "path": "/tmp/ipse-p30-current-stale-20261102-fresh/home/sessions/d570e030d856ddd22fa2c1d0f1a49a0e.jsonl",
+          "sha256": "fe845c83629bf5ebc406832359dd0e745038b5ba45c048fc1156190f85f71051"
+        }
+      ]
+    },
+    {
+      "seed": {
+        "bytes": 15020,
+        "path": "/tmp/ipse-p30-current-stale-20261102-final/literal-ab-seed.json",
+        "sha256": "d60185fb8ceee6a802d9afd5471b9bdf2a2591cdc5d56497db3e7418866dd6e1"
+      },
+      "sources": [
+        {
+          "bytes": 249127,
+          "path": "/tmp/ipse-p30-current-stale-20261102-final/home/sessions/331fd52a09794c0c747bbca36e405b9f.jsonl",
+          "sha256": "3c2d8a66d583f7e629b5014da40bdaaf4341ec21a84e17533a26db7b685f23c2"
+        },
+        {
+          "bytes": 249082,
+          "path": "/tmp/ipse-p30-current-stale-20261102-final/home/sessions/7387789d1d9d051b43d5a2932528eac3.jsonl",
+          "sha256": "192095604b98e34e4076c0d5b66c69b16c3e69b30b4f5a72731e2349804efcb7"
+        }
+      ]
+    }
+  ],
+  "helper": {
+    "bytes": 969344,
+    "path": "_build/test/lib/ipse/priv/ipse-runner",
+    "sha256": "5487c57a84b99be7b5b4381d097b637d3c45350b92b492d1786712f2bfbf8c7a"
+  },
+  "initial_withdrawal_failures": 2,
+  "inventory_scope": "Selected source, helper, synthetic seed and log hashes; not a complete pre/post build-graph inventory",
+  "kind": "signed_note_decision_withdrawal_control",
+  "logs": [
+    {
+      "bytes": 0,
+      "path": "/tmp/ipse-p30-current-compile-20261102.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "bytes": 47777,
+      "path": "/tmp/ipse-p30-current-split-seed-20261102-post-population.log",
+      "sha256": "48f55eecd56bb09bde8afeb7cd22758207a9c98f52378d714a839fc288f62066"
+    },
+    {
+      "bytes": 318,
+      "path": "/tmp/ipse-p30-current-overflow-20261102-post-population.log",
+      "sha256": "196d95406ba21bcd7d76bc848bebd25956a6cceffc5eeebccadfb96ca982e79b"
+    },
+    {
+      "bytes": 2074,
+      "path": "/tmp/ipse-p30-current-overflow-stale-20261102-post-population.log",
+      "sha256": "e1ed27d1eaa6d9a4f6be0ac8fa2e05e3710e290f081ef8c919edf748fa70b46e"
+    },
+    {
+      "bytes": 47677,
+      "path": "/tmp/ipse-p30-current-stale-seed-20261102-fresh.log",
+      "sha256": "395569b630c584b51b22e9ebf1f5274e3aa6d3907bd37767b0a43946505a52d3"
+    },
+    {
+      "bytes": 2074,
+      "path": "/tmp/ipse-p30-current-overflow-stale-20261102-fresh.log",
+      "sha256": "934dd75f9f9f96c7a3993a06c53efb2ce1a322680330f28c3c8e66270a111d8a"
+    },
+    {
+      "bytes": 60,
+      "path": "/tmp/ipse-p30-stale-source-restore-20261102.log",
+      "sha256": "bade52d9c535c87676dec4bae7a75fbf7aeed7e533dfbe13dfc091a32f1fb7f4"
+    },
+    {
+      "bytes": 47707,
+      "path": "/tmp/ipse-p30-current-stale-seed-20261102-repaired.log",
+      "sha256": "0bf3bb372dccdbe4e37d496590ce9dc167dcd6be11a9b698d882fd5aaea396d5"
+    },
+    {
+      "bytes": 324,
+      "path": "/tmp/ipse-p30-current-overflow-stale-20261102-repaired.log",
+      "sha256": "000ff6fbbeb4123db1c2ccb6bf1dc7573e83f0ac2c9d811e250f32ee7d90e4a7"
+    },
+    {
+      "bytes": 340,
+      "path": "/tmp/ipse-p30-current-decision-regression-20261102.log",
+      "sha256": "bc36edcfdafb5d4c26f019c40d0c03dc0b285e683759876fd5f5a9efd6a47748"
+    },
+    {
+      "bytes": 47677,
+      "path": "/tmp/ipse-p30-current-stale-seed-20261102-final.log",
+      "sha256": "705d241db1a28c280c990070282d60423eef2312b57672023d358b5a3c23cda8"
+    },
+    {
+      "bytes": 324,
+      "path": "/tmp/ipse-p30-current-overflow-stale-20261102-final.log",
+      "sha256": "cf7ff2b65d772b448e301628770effd44a9b2ae6094273daeb69cd2ebe8cde64"
+    },
+    {
+      "bytes": 0,
+      "path": "/tmp/ipse-p30-stale-control-format-final-20261102.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  ],
+  "paid_model_calls": 0,
+  "positive": {
+    "excluded": 191,
+    "passed": 1,
+    "seed": 791839
+  },
+  "preliminary_repair": {
+    "excluded": 191,
+    "passed": 1,
+    "seed": 791842,
+    "source_snapshot": "not separately retained"
+  },
+  "qualification_passed": false,
+  "receipt_generator": {
+    "bytes": 3303,
+    "path": "docs/archive/2026-10-26-p30-p31-implementation/p30-signed-withdrawal-20261102.exs",
+    "sha256": "74df681d14db30258008c1fe70c7c676c3ba4712e1c0221cc0eaa6063ef4c15e"
+  },
+  "runtime_base_commit": "e68566d",
+  "scope": "Synthetic local decision service and native fixture; no live engine or human quality claim",
+  "sources": [
+    {
+      "bytes": 383072,
+      "path": "test/ipse/extension/managed_collection_call_session_test.exs",
+      "sha256": "e1ce73470a54578717a6de7bcf21f0d87e003fdf23ba237c4440af9639d1454d"
+    },
+    {
+      "bytes": 1091,
+      "path": "test/support/managed_literal_pair_runner.exs",
+      "sha256": "3e4ea2d5560dbd08a7a28495ace0c9ce99deba4875c97c9ca55a449cbb8967cf"
+    },
+    {
+      "bytes": 8255,
+      "path": "test/support/managed_literal_ab_seed.exs",
+      "sha256": "ffe48358bb0c17febbab3ebb734ab688c152b00bdb0d93958e6ed09e2913f9a9"
+    },
+    {
+      "bytes": 3117,
+      "path": "test/support/provider_fixture.ex",
+      "sha256": "0092d34f9e3adeed2bf184e3ab48feabd79eeacd2b5f0e5c1b5c654ceba2dcc1"
+    },
+    {
+      "bytes": 22752,
+      "path": "test/support/operator_pty.rs",
+      "sha256": "bcf2ce303c72ab32d74d6959883ecef4b17a63613c7f4047057fdc18eef6d92c"
+    },
+    {
+      "bytes": 13980,
+      "path": "lib/ipse/extension/decision_call.ex",
+      "sha256": "b6d0f8e2142a9a18826702a27dbeee60dfad7c08988faecb961f2690ad60b825"
+    },
+    {
+      "bytes": 49550,
+      "path": "lib/ipse/extension/collection/observed_read.ex",
+      "sha256": "a4b8e6bb6b704ee2d17fd44cc9a095ca6004a5e2b73ff3ec0e0b69d22ec42d17"
+    }
+  ],
+  "version": 1
+}

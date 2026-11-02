@@ -877,6 +877,13 @@ verified scope. Incomplete local protocol or integration evidence remains open.
 Only useful, qualified strategies become selectable; fitting note sets bypass retrieval decisions
 without an extra call. Protocol success is not model quality.
 
+The [current signed-note shadow follow-up](archive/2026-10-26-p30-p31-implementation/p30-signed-withdrawal-20261102.md)
+passes an eight-note synthetic decision positive and its source-withdrawal
+control. The latter checks no decision dispatch, partial accounting, unknown
+Worker input, original-source restoration and idle recovery. Earlier failed
+fixture expectations are retained in that record. This is scoped P30C
+integration evidence; consumer selection, live engines and quality remain open.
+
 ## P31: usable knowledge and prompt assistance
 
 **Active implementation track; P31A qualification and P31B host primitives in progress.**
