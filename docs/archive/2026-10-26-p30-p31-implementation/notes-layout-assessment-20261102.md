@@ -1,5 +1,10 @@
 # Notes layout assessment — 2026-11-02
 
+**Historical correction:** The calendar used here renewed corrected replacements
+incorrectly. Its projected record count and ordinary-sized data-overflow claim
+are withdrawn; see the [corrected assessment](native-calendar-correction-deadline-20261102.md).
+The original calculations remain below as historical evidence.
+
 This author-run, pure assessment uses the working calendar at `da2cedb` and
 closed synthetic native seed checkpoints 1–188. The [plan](../../plan.md) owns
 current acceptance and the [storage chapter](../../developer/knowledge-storage.md)

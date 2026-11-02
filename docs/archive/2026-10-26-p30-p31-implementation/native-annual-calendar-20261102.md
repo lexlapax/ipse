@@ -1,5 +1,10 @@
 # Account for retained history and expiry before a native year
 
+**Historical correction:** This calendar incorrectly renewed corrected
+replacements. Its record-count and derived data-overflow conclusions are
+withdrawn; use the [corrected calendar](native-calendar-correction-deadline-20261102.md).
+The original result below is retained as historical evidence.
+
 Dated **2026-11-02**, based on `d1863c7` plus the source inventory in the
 [structured receipt](native-annual-calendar-20261102.json). This is a pure
 action calendar for the next native driver, not a completed driver, actual

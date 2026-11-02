@@ -218,14 +218,15 @@ It spreads the additional 10,000 changes evenly across the year, cycling through
 update/correct/forget: 3,334 temporal updates, 3,333 ordinary corrections and
 3,333 forgets. This is a balanced working fixture choice, not a developer-fixed
 ratio or ratified pilot mix. Native target aliases are expectation data, not
-source handles or authority. Each correction keeps the old ordinary deadline;
+source handles or authority. The historical value and its corrected replacement
+both keep the old ordinary deadline;
 temporal history keeps 365 days after its update. One initial current statement
 has its first update on day 100. Pins/preferences and 50 current slots survive.
 
 Expired-record cleanup uses only daily operation capacity left after required
 changes, with a conservative next-day deadline margin. It retains every removal's
 anchor and counts each reclamation as another publication. At intake 20 this
-schedule has 6,859 reclamations and 29,939 initial-plus-annual publications,
+schedule has 7,972 reclamations and 31,052 initial-plus-annual publications,
 before the listed unplanned requirements. A higher intake that exceeds the daily
 limit reports its full required actions and excess instead of trimming capture.
 No native publication, main request or actual turn runs in this command.
@@ -234,14 +235,16 @@ Inspect the returned record lower bound before running the calendar. The current
 page profiles permit at most 122 anchor rows and 26 live rows per page, even at
 their minimum charged row weights. Every admitted lineage retains its anchor;
 each present literal/history needs a live row, plus the format record. The
-working calendar reaches 8,012 public notes and requires at least **8,478 total
-Collection records**, exceeding the unchanged 8,192-record limit by at least
-286. If every public value at that peak occupied the 6-KiB ceiling, those values
-alone would occupy 49,225,728 bytes, above the 24-MiB logical limit. This is a
+working calendar reaches 6,903 public notes and requires at least **7,326 total
+Collection records**. This lower bound is below the unchanged 8,192-record limit;
+actual packing and the full workload may still exceed it. If every public value at
+that peak occupied the 6-KiB ceiling, those values alone would occupy 42,412,032
+bytes, above the 24-MiB logical limit. This is a
 conditional payload bound, not an actual native maximum-record result.
 
-This working schedule is ruled out by the record-count bound; it does not
-qualify any workload or freeze intake. Offline/concurrent owners, imports,
+The lower bound does not qualify any workload or freeze intake. An earlier
+calendar incorrectly renewed corrected replacements; the [correction record](../archive/2026-10-26-p30-p31-implementation/native-calendar-correction-deadline-20261102.md)
+preserves that error and its effects on the storage assessment. Offline/concurrent owners, imports,
 compaction, consent renewal, proposal bursts, maximum-payload production,
 resource peaks and independent quality remain unplanned. Use the calendar's
 explicit actions when implementing the native driver, then extend those missing

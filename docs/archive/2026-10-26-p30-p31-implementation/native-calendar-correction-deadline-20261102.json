@@ -1,0 +1,198 @@
+{
+  "version": 1,
+  "date": "2026-11-02",
+  "base_commit": "3b140489ff928abe9e3a88a79b721a54706ed266",
+  "files_sha256": {
+    "/tmp/ipse-native-calendar-expiry-repair-final-20-20261102.json": "e46fe573a40515fa8996bd3d104e2971294ba72fb8dac6329c59b8266de7cd5f",
+    "/tmp/ipse-native-calendar-expiry-repair-final-40-20261102.json": "b8b14272d8896cd249790e4b28dc58cf398ba758a968c65f0439293fbf8c4473",
+    "/tmp/ipse-native-calendar-expiry-repair-regression-20261102.log": "20263b4e6cc99575fb01239c3575395aaddb7fdbfb4bff1889d9a9a0525f6192",
+    "/tmp/ipse-notes-layout-assessment-expiry-repair-20261102.json": "2c580ca04c43f86e221b564e012d19ed17133288f2984d7b6f5544842b100258",
+    "dev/knowledge/native_notes_workload.ex": "76b3792f0f9c21531a1a49b814968687d8322262eb88d22ac727b0878840ec39",
+    "docs/archive/2026-10-26-p30-p31-implementation/native-calendar-correction-deadline-20261102.exs": "a58062978d8180cb85b6058d46c5c9574c1f65b3719b4776c29ebc8ac5f0cd5a",
+    "lib/ipse/extension/collection/normalizer_v3.ex": "b5ad0e5378ed5e067e5755b03c045b2c71dc85881e3499fbf581e4cd5db31462",
+    "test/dev/knowledge/native_notes_workload_test.exs": "1c3212bf9c56e804c9137b32689bba97284e0d30b16da6699e584d367276750e"
+  },
+  "pure_tests": {
+    "exit_status": 0,
+    "failed": 0,
+    "seed": 791847,
+    "passed": 8
+  },
+  "calendar_20": {
+    "actual_native_operations": 0,
+    "actual_turns": 0,
+    "additional_mix": {
+      "correct": 3333,
+      "forget": 3333,
+      "update": 3334
+    },
+    "additional_mix_scope": "balanced working fixture selection, not a developer-specified ratio",
+    "additional_mixed_changes": 10000,
+    "all_required_days_fit_operation_limit": true,
+    "annual_publications_by_effect": {
+      "additional_churn": 10000,
+      "elapsed_cleanup": 7972,
+      "explicit_forgets": 732,
+      "ordinary_additions": 7320,
+      "ordinary_corrections": 1464,
+      "temporal_supersessions": 1464
+    },
+    "collection_record_limit": 8192,
+    "collection_record_limit_excess_lower_bound": 0,
+    "final_retained_anchor_lineages": 18915,
+    "initial_last_process_day": 20,
+    "initial_pin_publications": 100,
+    "initial_plus_scheduled_publications": 31052,
+    "initial_publications": 2100,
+    "intake_ratified": false,
+    "kind": "native_annual_action_calendar",
+    "logical_record_byte_limit": 25165824,
+    "main_turns": 14600,
+    "maximum_public_note_records": 6903,
+    "maximum_value_payload_bytes_at_public_peak": 42412032,
+    "metadata_row_capacity_upper_bounds": {
+      "anchor": 122,
+      "live": 26
+    },
+    "minimum_peak_collection_records": 7326,
+    "ordinary_intake_per_day": 20,
+    "payload_bound_scope": "Public record count times the profile value ceiling; no maximum-payload source or signed record produced",
+    "qualification_passed": false,
+    "storage_fit": "unverified: excludes actual signed-page and retained-operation geometry",
+    "unplanned_requirements": [
+      "offline_week",
+      "concurrent_owners",
+      "imports",
+      "compaction",
+      "consent_renewal",
+      "proposal_burst",
+      "maximum_payload",
+      "resource_peaks",
+      "independent_quality"
+    ],
+    "version": 1
+  },
+  "calendar_40": {
+    "actual_native_operations": 0,
+    "actual_turns": 0,
+    "additional_mix": {
+      "correct": 3333,
+      "forget": 3333,
+      "update": 3334
+    },
+    "additional_mix_scope": "balanced working fixture selection, not a developer-specified ratio",
+    "additional_mixed_changes": 10000,
+    "all_required_days_fit_operation_limit": false,
+    "annual_publications_by_effect": {
+      "additional_churn": 10000,
+      "elapsed_cleanup": 6577,
+      "explicit_forgets": 732,
+      "ordinary_additions": 14640,
+      "ordinary_corrections": 1464,
+      "temporal_supersessions": 1464
+    },
+    "collection_record_limit": 8192,
+    "collection_record_limit_excess_lower_bound": 8241,
+    "final_retained_anchor_lineages": 26235,
+    "initial_last_process_day": 20,
+    "initial_pin_publications": 100,
+    "initial_plus_scheduled_publications": 36977,
+    "initial_publications": 2100,
+    "intake_ratified": false,
+    "kind": "native_annual_action_calendar",
+    "logical_record_byte_limit": 25165824,
+    "main_turns": 14600,
+    "maximum_public_note_records": 15615,
+    "maximum_value_payload_bytes_at_public_peak": 95938560,
+    "metadata_row_capacity_upper_bounds": {
+      "anchor": 122,
+      "live": 26
+    },
+    "minimum_peak_collection_records": 16433,
+    "ordinary_intake_per_day": 40,
+    "payload_bound_scope": "Public record count times the profile value ceiling; no maximum-payload source or signed record produced",
+    "qualification_passed": false,
+    "storage_fit": "ruled_out_by_minimum_record_count_for_this_working_calendar",
+    "unplanned_requirements": [
+      "offline_week",
+      "concurrent_owners",
+      "imports",
+      "compaction",
+      "consent_renewal",
+      "proposal_burst",
+      "maximum_payload",
+      "resource_peaks",
+      "independent_quality"
+    ],
+    "version": 1
+  },
+  "layout": {
+    "calendar_commit": "working tree after correction-deadline repair; source hash recorded separately",
+    "geometry": [
+      {
+        "blocks": {
+          "block_bytes": 7508173,
+          "blocks": 276,
+          "current_decoder_roundtrip": "exact",
+          "manifest_bytes": 37595,
+          "status": "encoded"
+        },
+        "current_8_mib_ceiling_excess": 0,
+        "packed_bytes": 8309733,
+        "sha256": "8db2846c95ea729167c1ce4a4ab7626e1cc781aeeaaf139d61259c020e2bffd2",
+        "synthetic_managed_operations": 31052,
+        "synthetic_records": 8192
+      },
+      {
+        "blocks": {
+          "block_bytes": 7345858,
+          "blocks": 255,
+          "current_decoder_roundtrip": "exact",
+          "manifest_bytes": 34667,
+          "status": "encoded"
+        },
+        "current_8_mib_ceiling_excess": 0,
+        "packed_bytes": 8043871,
+        "sha256": "287ec95aa266871b295a42b3e2a80c6277b9866aa865418e29f119a8af267de0",
+        "synthetic_managed_operations": 31052,
+        "synthetic_records": 7326
+      },
+      {
+        "blocks": {
+          "reason": "invalid_collection_blocks",
+          "status": "refused"
+        },
+        "current_8_mib_ceiling_excess": 476182,
+        "packed_bytes": 8864790,
+        "sha256": "b38f3d6d70958db90b8b323d44380d1c8bfed7e50eb3c20f3a431d282585ec75",
+        "synthetic_managed_operations": 31052,
+        "synthetic_records": 10000
+      }
+    ],
+    "live_row_base64_only_lower_bound": 586923,
+    "logical_budget_still_counts_raw_canonical_values": true,
+    "native_operations": 0,
+    "observed_closed_seed_values": 1348,
+    "observed_native_sample_value_bytes_by_category": {
+      "current": 3118,
+      "ordinary": 3129,
+      "preference": 3124
+    },
+    "observed_raw_value_bytes": 4217092,
+    "observed_zlib_bytes": 1547250,
+    "projection_scope": "Final calendar using the observed native-statement value shapes and fixed 1024-byte varied ASCII statement/quote; no new source or signed record produced; excludes all anchor/wrapper/clock/dictionary bytes",
+    "qualification": false,
+    "runtime_limits_changed": false,
+    "same_shape_24_mib_excess_lower_bound": 0,
+    "same_shape_final_public_records": 6878,
+    "same_shape_final_public_value_bytes": 21467684,
+    "same_shape_logical_data_lower_bound": 22054607,
+    "scope": "Pure metadata geometry and reversible per-value compression observation; no authority, native effect or budget change",
+    "source_journals_rewritten": false,
+    "version": 1,
+    "zlib_roundtrip_exact": true
+  },
+  "native_operations": 0,
+  "model_calls": 0,
+  "qualification": false
+}

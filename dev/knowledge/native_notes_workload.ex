@@ -184,7 +184,10 @@ defmodule Ipse.Development.NativeNotesWorkload do
     {target, state} = ordinary(state, date)
     {id, state} = next(state, day, "correct")
     state = put(state, %{target | status: "history", category: "history"})
-    state = put(state, record(id, "ordinary", date)) |> count(reason)
+
+    state =
+      put(state, %{record(id, "ordinary", date) | deadline_day: target.deadline_day})
+      |> count(reason)
 
     {%{
        "op" => "correct",

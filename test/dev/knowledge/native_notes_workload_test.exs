@@ -29,11 +29,11 @@ defmodule Ipse.Development.NativeNotesWorkloadTest do
              "explicit_forgets" => 732,
              "temporal_supersessions" => 1464,
              "additional_churn" => 10_000,
-             "elapsed_cleanup" => 6859
+             "elapsed_cleanup" => 7972
            }
 
     assert plan["initial_plus_scheduled_publications"] == length(actions) + 2100
-    assert plan["initial_plus_scheduled_publications"] == 29_939
+    assert plan["initial_plus_scheduled_publications"] == 31_052
     assert plan["main_turns"] == 14_600
     assert Enum.map(plan["days"], & &1["process_offset_day"]) == Enum.to_list(21..385)
     assert Enum.all?(plan["days"], &(&1["main_turns"] == 40))
@@ -73,9 +73,11 @@ defmodule Ipse.Development.NativeNotesWorkloadTest do
         "correct" ->
           target = Map.fetch!(records, action["target"])
           assert target.category == "history" and is_nil(target.slot)
-          assert target.deadline_day == target.admitted_day + 90
+          assert target.deadline_day <= target.admitted_day + 90
           assert target.deadline_day == action["history_deadline_day"]
           assert target.deadline_day > day["process_offset_day"]
+          replacement = Map.fetch!(records, action["result"])
+          assert replacement.deadline_day == target.deadline_day
 
         "update" ->
           target = Map.fetch!(records, action["target"])
@@ -88,6 +90,12 @@ defmodule Ipse.Development.NativeNotesWorkloadTest do
           assert action["category"] == "ordinary"
       end
     end
+
+    assert Enum.any?(actions, fn action ->
+             action["op"] == "correct" and
+               Map.fetch!(records, action["result"]).deadline_day <
+                 Map.fetch!(records, action["result"]).admitted_day + 90
+           end)
   end
 
   test "persistent slots and the first post-day-90 update survive daily churn", %{plan: plan} do
@@ -109,14 +117,18 @@ defmodule Ipse.Development.NativeNotesWorkloadTest do
     end
   end
 
-  test "retained anchors and live rows rule out this working calendar before native execution", %{
+  test "retained anchors and live rows bound but do not qualify the working calendar", %{
     plan: plan
   } do
     assert plan["metadata_row_capacity_upper_bounds"] == %{"anchor" => 122, "live" => 26}
-    assert plan["maximum_public_note_records"] == 8012
-    assert plan["minimum_peak_collection_records"] > plan["collection_record_limit"]
-    assert plan["collection_record_limit_excess_lower_bound"] > 0
-    assert plan["storage_fit"] == "ruled_out_by_minimum_record_count_for_this_working_calendar"
+    assert plan["maximum_public_note_records"] == 6903
+    assert plan["minimum_peak_collection_records"] == 7326
+    assert plan["minimum_peak_collection_records"] < plan["collection_record_limit"]
+    assert plan["collection_record_limit_excess_lower_bound"] == 0
+
+    assert plan["storage_fit"] ==
+             "unverified: excludes actual signed-page and retained-operation geometry"
+
     assert plan["maximum_value_payload_bytes_at_public_peak"] > plan["logical_record_byte_limit"]
     assert plan["actual_native_operations"] == 0
     assert plan["actual_turns"] == 0
