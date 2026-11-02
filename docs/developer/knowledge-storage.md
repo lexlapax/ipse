@@ -152,6 +152,40 @@ current-note recall nor sustainable 2,000-note/annual capacity. Source expiry,
 withdrawal, lifecycle management, SDK reservation/dispatch and migration retain
 their own integration and qualification requirements.
 
+### Budget native effects before an endurance run
+
+Count the actual supported mutation shapes before choosing a workload driver.
+The primitive storage driver batches its 2,000 initial records and calls generic
+one-key update/delete/recreate operations “cycles”. Those operations do not
+exercise native correction or authenticated forgetting. The current native
+new-record route admits one new public record per publication.
+
+After building the checkout, inspect both explicit cycle interpretations without
+starting Ipse, opening storage or publishing anything:
+
+```sh
+elixir --erl '+S 2:2' \
+  -pa _build/dev/lib/ipse/ebin \
+  -pa _build/dev/lib/jason/ebin \
+  -pa _build/dev/lib/telemetry/ebin \
+  dev/knowledge/storage_workload.exs --native-operation-floor
+```
+
+Expect two JSON rows. At the initial annual intake floor, including the declared
+day-90 doubled workload, 10,000 mixed operations require at least 22,980 IDs;
+10,000 complete update/correct/forget cycles require at least 42,980. The current
+Collection limit is 32,768 retained IDs. The complete-cycle lower bound therefore
+already exceeds it, before expiry, imports, compaction or recovery operations.
+The mixed lower bound does not establish that the complete workload fits.
+
+Both rows report zero actual native operations/turns and false qualification.
+Ratify cycle semantics and pilot-derived intake before freezing an endurance
+run. Resolve an impossible budget through an explicitly reviewed storage design;
+do not reset identities, discard liabilities, raise a limit to hide failure or
+count primitive churn as native lifecycle coverage. The
+[frozen qualification contract](../archive/2026-10-26-p30-p31-implementation/qualification.md#storage-and-performance)
+owns the workload floors; a preflight is no replacement for its actual runs.
+
 ## Claim a draft before writing immutable pages
 
 A put/open reads a bounded snapshot and validates its partition. New-root admission

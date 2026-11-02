@@ -4,6 +4,14 @@ Code.require_file("storage_continuation.exs", __DIR__)
 Code.require_file("storage_annual.exs", __DIR__)
 
 case System.argv() do
+  ["--native-operation-floor"] ->
+    for interpretation <- [:mixed_operations, :complete_cycles] do
+      report =
+        Ipse.Development.StorageWorkload.native_operation_floor(365, 10_000, interpretation)
+
+      IO.puts(Jason.encode!(report))
+    end
+
   ["--check"] ->
     Ipse.Development.StorageWorkload.check()
 

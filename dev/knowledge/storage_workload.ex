@@ -4,6 +4,47 @@ defmodule Ipse.Development.StorageWorkload do
   @day 86_400_000
   @base 90 * @day
 
+  # Arithmetic preflight for the current single-new-record native route, not
+  # the primitive driver's batched initial publication or one-key churn.
+  def native_operation_floor(days, cycles, interpretation)
+      when days in 1..365 and cycles in 0..10_000 and
+             interpretation in [:mixed_operations, :complete_cycles] do
+    workdays = days + if(days >= 90, do: 1, else: 0)
+
+    operations = %{
+      "initial_records" => 2000,
+      "ordinary_additions" => 20 * workdays,
+      "ordinary_corrections" => 4 * workdays,
+      "explicit_forgets" => 2 * workdays,
+      "temporal_supersessions" => 4 * workdays,
+      "additional_churn" => cycles * if(interpretation == :complete_cycles, do: 3, else: 1)
+    }
+
+    minimum = operations |> Map.values() |> Enum.sum()
+    limit = C.limits()["operations"]
+
+    %{
+      "kind" => "native_notes_operation_lower_bound",
+      "days" => days,
+      "cycles" => cycles,
+      "cycle_interpretation" => Atom.to_string(interpretation),
+      "minimum_operations_by_effect" => operations,
+      "minimum_operations" => minimum,
+      "current_operation_limit" => limit,
+      "minimum_excess" => max(minimum - limit, 0),
+      "disposition" =>
+        if(minimum > limit,
+          do: "exceeds_current_operation_limit",
+          else: "not_ruled_out_by_operation_floor"
+        ),
+      "unaccounted_operations" => ~w(expiry imports compaction recovery control_management),
+      "actual_native_operations" => 0,
+      "actual_turns" => 0,
+      "intake_scope" => "initial floor only; pilot-derived intake and mix not ratified",
+      "qualification_passed" => false
+    }
+  end
+
   def check do
     initial = seed("representative")
     true = map_size(initial) == 2000

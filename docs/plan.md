@@ -1306,6 +1306,15 @@ files and manifests over 1 MiB passed declaration, sealing and verification;
 16,385 files refused before output. This is a capacity control, not a full
 evaluation or qualification of every larger path distribution.
 
+The [native operation-budget preflight](archive/2026-10-26-p30-p31-implementation/native-workload-budget-20261102.md)
+now separates the primitive driver's generic churn from authenticated lifecycle
+cycles. At the unchanged initial annual floor, the current single-new-record
+route needs at least 22,980 IDs for 10,000 mixed operations or 42,980 for 10,000
+complete update/correct/forget cycles, before expiry/import/compaction costs.
+The latter exceeds the unchanged 32,768-ID limit. Cycle semantics and
+pilot-derived intake remain unratified; this pure preflight qualifies no native
+workload and does not authorize resetting IDs or reducing the required coverage.
+
 F and D1 develop together: parser/acquisition code can run in source fixtures
 before packaging; F's installed acceptance requires D1's relevant artifacts.
 Do not turn this integration relationship into a sequential implementation deadlock.
