@@ -214,26 +214,16 @@ defmodule Ipse.Session.ManagedLineage do
   def root_candidate(%__MODULE__{unavailable: false} = state, dependencies) do
     with {:ok, ^dependencies} <- ManagedReference.union([dependencies]),
          true <- dependencies != [],
-         root = hd(dependencies)["collection"],
          matches =
            Enum.filter(state.root_writes, fn {_, value} ->
              action = value["action"]
-             binding = action["effect_binding"]
              request = action["request"]
 
              Ipse.Extension.Actions.valid_result?(action) and
                action["outcome"]["status"] === "ok" and
                Ipse.Extension.ManagedCollectionCall.new_capture?(request) and
                Enum.all?(dependencies, &(&1 in value["dependencies"])) and
-               Enum.all?(value["dependencies"], fn dependency ->
-                 dependency["collection"] === root and
-                   Ipse.Session.ManagedReads.cached_root_prerequisite?(
-                     dependency,
-                     state.root_observations,
-                     binding,
-                     request["request"]["expected_generation"]
-                   )
-               end)
+               root_write_union?(state, action, value["dependencies"])
            end),
          [{_, value}] <- matches do
       {:ok, value["action"]}
@@ -260,6 +250,7 @@ defmodule Ipse.Session.ManagedLineage do
                Enum.flat_map(state.root_writes, fn {operation, value} ->
                  targets =
                    value["dependencies"]
+                   |> Enum.filter(&(&1["version"] == 3))
                    |> Enum.map(&Map.get(state.root_transitions, JSON.digest([&1])))
                    |> Enum.uniq()
 
@@ -397,7 +388,11 @@ defmodule Ipse.Session.ManagedLineage do
       Enum.reduce(
         state.root_writes[operation]["dependencies"],
         state.root_transitions,
-        fn dependency, acc -> Map.put(acc, JSON.digest([dependency]), guard_id) end
+        fn dependency, acc ->
+          if dependency["version"] == 3,
+            do: Map.put(acc, JSON.digest([dependency]), guard_id),
+            else: acc
+        end
       )
 
     checked(%{
@@ -1591,9 +1586,21 @@ defmodule Ipse.Session.ManagedLineage do
           binding = event["effect_binding"]
           generation = get_in(dependency, ["collection", "generation"])
 
-          if Ipse.Session.ManagedReads.root_prerequisite?(dependency, event, binding, generation),
-            do: Map.put(acc, JSON.digest([dependency]), true),
-            else: acc
+          cond do
+            Ipse.Session.ManagedReads.root_prerequisite?(dependency, event, binding, generation) ->
+              Map.put(acc, JSON.digest([dependency]), true)
+
+            Ipse.Session.ManagedReads.root_history_metadata?(
+              dependency,
+              event,
+              binding,
+              generation
+            ) ->
+              Map.put(acc, JSON.digest([dependency]), "metadata_only")
+
+            true ->
+              acc
+          end
         end)
 
       checked(%{state | root_observations: cache})
@@ -1603,29 +1610,48 @@ defmodule Ipse.Session.ManagedLineage do
   end
 
   defp remember_root_write(state, intent, event, dependencies) do
-    binding = event["effect_binding"]
     request = event["request"]
-    generation = get_in(request, ["request", "expected_generation"])
 
     if is_map(intent) and Ipse.Extension.Actions.valid_result?(event) and
          Ipse.Extension.Actions.result_intent(event) === intent and
          event["outcome"]["status"] === "ok" and
          Ipse.Extension.ManagedCollectionCall.new_capture?(request) and
-         dependencies != [] and
-         Enum.all?(dependencies, fn dependency ->
-           dependency["collection"] === hd(dependencies)["collection"] and
-             Ipse.Session.ManagedReads.cached_root_prerequisite?(
-               dependency,
-               state.root_observations,
-               binding,
-               generation
-             )
-         end) do
+         root_write_union?(state, event, dependencies) do
       value = %{"action" => event, "dependencies" => dependencies}
       checked(%{state | root_writes: Map.put(state.root_writes, event["operation_id"], value)})
     else
       state
     end
+  end
+
+  defp root_write_union?(state, action, dependencies) do
+    metadata = Enum.filter(dependencies, &(&1["version"] == 3))
+
+    with [first | _] <- metadata,
+         binding = action["effect_binding"],
+         generation = action["request"]["request"]["expected_generation"],
+         identity = Map.take(first, ~w(project_id namespace pin_sha256 policy_generation)) do
+      Enum.all?(dependencies, fn dependency ->
+        Map.take(dependency, Map.keys(identity)) === identity and
+          if dependency["version"] == 3 do
+            dependency["collection"] === first["collection"] and
+              Ipse.Session.ManagedReads.cached_root_history?(
+                dependency,
+                state.root_observations,
+                binding,
+                generation
+              )
+          else
+            dependency["version"] in [4, 5, 6] and
+              is_map(get_in(dependency, ["subject", "record"])) and
+              get_in(dependency, ["subject", "validity", "status"]) == "eligible"
+          end
+      end)
+    else
+      _ -> false
+    end
+  rescue
+    _ -> false
   end
 
   defp historical_write(state, event) do

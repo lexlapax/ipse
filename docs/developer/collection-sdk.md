@@ -45,10 +45,11 @@ refuse. These observations are
 [CAS prerequisites](../archive/2026-10-26-p30-p31-implementation/notes-publication-prerequisites.md),
 not current permission; the protected publisher rechecks that later.
 
-An invocation that has read authenticated literal, historical or accepted-note
-content takes the separate `Session.ManagedCapture` path for the same one-new-v3
-shape. Structural admission preserves every inherited and own dependency; it
-does not classify content as payload-free metadata. Before publication locks,
+Other canonical nonempty unions of supported dependency versions 3–6 take the
+separate `Session.ManagedCapture` path for the same one-new-v3 shape. This includes
+an authenticated literal alongside nonempty metadata index pages from automatic
+recall. Structural admission preserves every inherited and own dependency; it
+does not classify content or arbitrary root reads as CAS prerequisites. Before publication locks,
 `ManagedUse.with_publication_dependencies/4` authenticates the current records,
 recipes, policy and acceptance links, then retains original Session sources and
 any original management journals together with the candidate's exact source.
@@ -84,20 +85,24 @@ explain that bounded historical classification; the
 [implementation review](../archive/2026-10-26-p30-p31-implementation/causal-root-cache-independent-review.md)
 accepts that scope. Model-selected source tools now preflight all actual selected
 provenances before lookup and rederive them at result admission. Even an initially
-empty call must classify its complete selected union. Only truly empty or
-authentically cached payload-free same-root dependencies continue; missing
-producer/cache state and record-bearing data refuse. Starts suppress source
+empty call must resolve its complete selected union. Canonical versions 3–6
+can continue only through fresh full-union ownership and eligibility checks at
+the actual query and result release. Missing producer state or unavailable
+current dependencies refuse. The CAS cache is not a source-read grant. Starts suppress source
 arguments and subscriber results use a fixed status-only preview. The
 [source-tool review](../archive/2026-10-26-p30-p31-implementation/managed-source-tool-preflight-independent-review.md)
 accepts this bounded source/preview and inherited-root implementation. After a
-known new-v3 capture, the host can preserve prior root-only observations as
+known new-v3 capture, the host can preserve prior authenticated metadata as
 historical while guarding subsequent use with its exact own adjacent successor.
 It checks the original complete write union, fresh snapshot, actual own receipt
 and floor anchor, then resolves both active observations and producer/call
 obligations through that same successor. Original dependencies and messages stay
 unchanged; an independently guarded notice explains their historical meaning.
-Record contents, mixed roots, missing cache and unknown or intervening writes
-refuse. The [own-write implementation review](../archive/2026-10-26-p30-p31-implementation/own-root-transition-independent-review.md)
+Metadata-only index descriptors have their own authenticated history classification,
+including nonempty pages. Every signed-record dependency stays attached and must
+pass fresh eligibility and original-source checks; it never becomes a root guard.
+Scans, mixed metadata roots, missing classification and unknown or intervening
+writes refuse the history transition. The [own-write implementation review](../archive/2026-10-26-p30-p31-implementation/own-root-transition-independent-review.md)
 includes an actual synthetic-model turn that captures, performs later source
 reads and completes successfully. Full notes and provider qualification remain
 separate; the earlier settled-but-failed turns retain their original scope.
@@ -894,7 +899,11 @@ cleared on lifecycle boundaries, and cache/pending state count toward the existi
 2,048-entry/four-MiB lineage limits. Saved rebuilds it chronologically from the
 original receipt/result pair rather than trusting a serialized cache. This can
 qualify an earlier empty metadata-only index as historical CAS information while
-preserving the whole union. Actual source/recipe/policy expiry, native ownership
+preserving the whole union. A separate `metadata_only` cache value authenticates
+nonempty or later index descriptors for the own-write historical transition; it
+does not satisfy the narrower CAS-prerequisite predicate. Both entries derive
+from actual committed observation/result pairs under the same existing bounds.
+Actual source/recipe/policy expiry, native ownership
 and the final Collection root still require fresh validation; the cache supplies
 neither current-use permission nor full capture readiness.
 

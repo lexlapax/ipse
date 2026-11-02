@@ -12,15 +12,8 @@ defmodule Ipse.Session.ManagedCapture do
     with true <- ManagedCollectionCall.new_capture?(request),
          {:ok, dependencies} <- ManagedToolUse.invocation_dependencies(s),
          true <- dependencies != [] do
-      Enum.all?(dependencies, fn dependency ->
-        dependency["version"] in [4, 5, 6] or
-          Ipse.Session.ManagedReads.cached_root_prerequisite?(
-            dependency,
-            s.managed_lineage.root_observations,
-            binding,
-            request["request"]["expected_generation"]
-          )
-      end)
+      binding["namespace"] == get_in(s.config, [:semantic_admission, "pin", "namespace"]) and
+        ManagedToolUse.source_dependencies_supported?(dependencies)
     else
       _ -> false
     end
@@ -31,7 +24,7 @@ defmodule Ipse.Session.ManagedCapture do
   def prepare(s, caller, intent) do
     with true <- actor?(s, caller, intent),
          {:ok, dependencies} <- ManagedToolUse.invocation_dependencies(s) do
-      if Enum.any?(dependencies, &(&1["version"] in [4, 5, 6])) do
+      if dependencies != [] and not ManagedToolUse.root_only?(s, dependencies) do
         with true <- supported?(s, intent["request"], intent["effect_binding"]) do
           {:ok, %{dependencies: dependencies, sha256: digest(s, intent, dependencies)}}
         else

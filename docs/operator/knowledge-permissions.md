@@ -12,9 +12,10 @@ headless control also saved a genuine typed host outcome under the knowledge-onl
 grant. Model-selected source lookups use selected-source preflight and
 status-only terminal previews. A synthetic loopback-model journey captured a
 note, performed later source reads and completed the turn; broader automatic
-capture and recall remain unqualified. A focused native control also reads a
-current literal and saves a separate unattended-input proposal while retaining
-the earlier source through publication. A missing original or revoked permission
+capture and recall remain unqualified. A shipped-artifact local-provider control
+also recalls a current literal, looks up the new conversation input, saves a
+separate unattended-input proposal and completes its turn while retaining the
+earlier literal. A missing original or revoked permission before publication
 stops the save; the new proposal stays pending. This does not qualify automatic
 capture quality, every source combination or installed use.
 
@@ -357,6 +358,16 @@ generation, recall or search also withholds that pass and reports unavailable
 coverage. Start a new pass to inspect the current collection. These checks do
 not lock the collection for the entire pass; a later change still requires
 current-use revalidation.
+
+The selected main model can still look up this conversation's sources and propose
+a new capture after recall. Earlier notes keep their original attribution and
+source requirements. A confirmed new capture can make earlier index metadata
+historical; Ipse adds a notice and checks the recalled records again before
+continuing. The new pending proposal supplies no substitute for those records'
+original sources. If a source becomes unavailable or permission is revoked after
+publication, the proposal may already be saved even though the turn stops before
+its next result is delivered. Inspect the Session journal and pending metadata
+before deciding on new work. Resume does not retry the capture or its delivery.
 
 This integration remains experimental: installed journeys, retrieval quality,
 cache behavior and latency are not yet qualified. The tested later-turn withdrawal

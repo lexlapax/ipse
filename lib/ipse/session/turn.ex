@@ -1088,7 +1088,7 @@ defmodule Ipse.Session.Turn do
 
     cond do
       managed and Ipse.Session.ManagedToolUse.host_operation_unqualified?(name) and
-          not Ipse.Session.ManagedToolUse.root_only_source_call?(s, call) ->
+          not Ipse.Session.ManagedToolUse.source_call_supported?(s, call) ->
         tool_result(
           s,
           call,

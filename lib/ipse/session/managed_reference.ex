@@ -427,15 +427,24 @@ defmodule Ipse.Session.ManagedReference do
          guard = evidence["fresh_dependency"],
          prior_dependencies = Enum.reject(old, &(&1 === guard)),
          true <- root_history_evidence?(prior_dependencies, evidence),
-         prior = hd(prior_dependencies)["collection"],
+         prior = Enum.find(prior_dependencies, &(&1["version"] == 3))["collection"],
          notice = root_history_notice(prior["generation"], guard["collection"]["generation"]),
          messages = plan.messages ++ [notice],
-         ids = [digest(guard)],
+         retained = Enum.reject(prior_dependencies, &(&1["version"] == 3)),
          occurrences =
            Map.new(plan.state.occurrences, fn {id, item} ->
+             ids =
+               Enum.map(item.dependency_ids, fn dependency_id ->
+                 if plan.state.dependencies[dependency_id]["version"] == 3,
+                   do: digest(guard),
+                   else: dependency_id
+               end)
+               |> Enum.uniq()
+               |> Enum.sort()
+
              {id, if(item.withdrawn, do: item, else: %{item | dependency_ids: ids})}
            end),
-         {:ok, next} <- rebuild(plan.state, occurrences, [guard]),
+         {:ok, next} <- rebuild(plan.state, occurrences, [guard | retained]),
          producer = %{"kind" => "reference", "id" => evidence["operation_id"], "parent_id" => nil},
          {:ok, _, next} <- admit(next, producer, length(plan.messages), notice, [guard]),
          event = %{
@@ -475,15 +484,18 @@ defmodule Ipse.Session.ManagedReference do
          true <-
            Enum.sort(Map.keys(evidence)) ==
              ~w(fresh_dependency fresh_observation inspection operation_id own_action_sha256 receipt_sha256),
-         true <- Enum.all?(old, &(&1["version"] === 3)),
-         prior = hd(old)["collection"],
-         identity = Map.take(hd(old), ~w(project_id namespace pin_sha256 policy_generation)),
+         {:ok, ^old} <- union([old]),
+         [first | _] = metadata <- Enum.filter(old, &(&1["version"] == 3)),
+         true <- Enum.all?(old, &(&1["version"] in [3, 4, 5, 6])),
+         prior = first["collection"],
+         identity = Map.take(first, ~w(project_id namespace pin_sha256 policy_generation)),
          true <-
-           Enum.all?(old, fn dependency ->
+           Enum.all?(metadata, fn dependency ->
              dependency["collection"] === prior and
                Map.take(dependency, ~w(project_id namespace pin_sha256 policy_generation)) ===
                  identity
            end),
+         true <- Enum.all?(old, &(Map.take(&1, Map.keys(identity)) === identity)),
          guard = evidence["fresh_dependency"],
          true <- dependency?(guard) and guard["version"] === 3,
          true <-

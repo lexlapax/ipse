@@ -1,0 +1,179 @@
+{
+  "base_commit": "460a358",
+  "checks": {
+    "build": 0,
+    "compile_warnings_as_errors": 0,
+    "demo": 0,
+    "docs": {
+      "errors": 0,
+      "exit_code": 0,
+      "local_links": 8557,
+      "markdown_files": 1033,
+      "private_directory_enumeration_warnings": true
+    },
+    "format": 0
+  },
+  "date_utc": "2026-11-02",
+  "external_model_calls": 0,
+  "files": {
+    "lib/ipse/session.ex": {
+      "bytes": 274736,
+      "sha256": "4ce88d12169f4a33c45f81714fa6b6f7d825c1eef56624886bc856dd47604952"
+    },
+    "lib/ipse/session/managed_capture.ex": {
+      "bytes": 5986,
+      "sha256": "37304c1f5d9ee40b30d61f23861075c498b420cc650f16fb73e39fe510fd2c20"
+    },
+    "lib/ipse/session/managed_lineage.ex": {
+      "bytes": 60240,
+      "sha256": "72855b56458f2cc5fc889c42ff7a8471d2c1e4e48d9e41e8ead6d8e78358c2c8"
+    },
+    "lib/ipse/session/managed_reads.ex": {
+      "bytes": 13484,
+      "sha256": "6957018532c2e2844713cb246103f810cf9a3c74d611e3a7bf214707725e01ed"
+    },
+    "lib/ipse/session/managed_reference.ex": {
+      "bytes": 44137,
+      "sha256": "53629818a04ed94f4a04e83d61c9cc9c51fa4d73e003d281fcceec9503aaaa38"
+    },
+    "lib/ipse/session/managed_tool_use.ex": {
+      "bytes": 50181,
+      "sha256": "9f2bb97f0b86890db93188e9daf9575bfa606a10b22795ef8e02294c725643d0"
+    },
+    "lib/ipse/session/saved.ex": {
+      "bytes": 40188,
+      "sha256": "83437e9d7af007d60df5bbd352b822cd66b10c60731491b31dfb5ab8dbe08821"
+    },
+    "lib/ipse/session/turn.ex": {
+      "bytes": 74187,
+      "sha256": "104adf5bc5a3e5f138d81de03e9bc84e0382408c3cba9468d1ed2b8122285fb4"
+    },
+    "priv/ipse-runner": {
+      "bytes": 969344,
+      "sha256": "5487c57a84b99be7b5b4381d097b637d3c45350b92b492d1786712f2bfbf8c7a"
+    },
+    "test/extensions/knowledge/recall_capture_session_test.exs": {
+      "bytes": 17807,
+      "sha256": "1414eab3c1e71925985b2000b838d0334f8a2f1ed4dc72e8ee284cf0ac853548"
+    },
+    "test/ipse/extension/managed_collection_call_session_test.exs": {
+      "bytes": 371447,
+      "sha256": "1dd28801d513e4a7a0e7102bc9e21892051a63f03e52b53b4f7aeabee1b3a47e"
+    }
+  },
+  "final_components": {
+    "exit_code": 0,
+    "passed": 165,
+    "seconds": 82.0,
+    "seed": 791749
+  },
+  "final_focused": {
+    "excluded": 176,
+    "exit_code": 0,
+    "passed": 17,
+    "seconds": 99.2,
+    "seed": 791748
+  },
+  "inventory_limit": "Selected final edited runtime/test files and helper only; no pre/post whole-runtime, machine or full dependency attestation",
+  "logs": {
+    "/tmp/ipse-shipped-recall-capture-authority-20261102.log": {
+      "bytes": 3352,
+      "sha256": "7aa4af054ffec27c7b87b401f3a79e8d74930c354d251e12cb2d063e603a656a"
+    },
+    "/tmp/ipse-shipped-recall-capture-authority-cleanup-20261102.log": {
+      "bytes": 1696,
+      "sha256": "779d72ecd0a2d6e1f178c0dc787342e93721f4293919ed7d1b73ddcb88911fc5"
+    },
+    "/tmp/ipse-shipped-recall-capture-bound-20261102.log": {
+      "bytes": 4968,
+      "sha256": "807e58fbec210f4990df6021d3125c906ba4a2b61800191bf7e69d9544366a0c"
+    },
+    "/tmp/ipse-shipped-recall-capture-build-20261102.log": {
+      "bytes": 845,
+      "sha256": "c20562a726c55bd56ba48be7c6031cedde6de0b4950ca57340dffef6a2fa3302"
+    },
+    "/tmp/ipse-shipped-recall-capture-compile-20261102.log": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "/tmp/ipse-shipped-recall-capture-components-final-20261102.log": {
+      "bytes": 2654,
+      "sha256": "864c2e11c94bb9a00489ded10521db33391841bd6b9b0d524c24f5058cb15abf"
+    },
+    "/tmp/ipse-shipped-recall-capture-demo-20261102.log": {
+      "bytes": 4431,
+      "sha256": "67865dba45332a8b2a3a9e51768154037ba81e77ff80fe7b48063f06cbeb07ae"
+    },
+    "/tmp/ipse-shipped-recall-capture-docs-20261102.log": {
+      "bytes": 757,
+      "sha256": "06e0e0652652f339a191314805a646c1e8234d6e823288269a5fd9e2943361f3"
+    },
+    "/tmp/ipse-shipped-recall-capture-first-20261102.log": {
+      "bytes": 1003,
+      "sha256": "a8370af8b00756f477958590220ea4511c42be4f2f6d4ac93e9cf69cf99285bb"
+    },
+    "/tmp/ipse-shipped-recall-capture-focused-20261102.log": {
+      "bytes": 24298,
+      "sha256": "de950c96d4a582fb4a71264c869c74758c4b4e778977fc261af7c8b65cf481d9"
+    },
+    "/tmp/ipse-shipped-recall-capture-focused-final-20261102.log": {
+      "bytes": 1200,
+      "sha256": "e091ed4de8efc1d3dd8c54619d211e0ea602e4a8cc4e395009fc41b2beec4625"
+    },
+    "/tmp/ipse-shipped-recall-capture-format-20261102.log": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "/tmp/ipse-shipped-recall-capture-frame-20261102.log": {
+      "bytes": 485,
+      "sha256": "7d06c4cd8daef724ee8b60904bb529a24b3ff54df39ba44d5e174d33dcd0dad2"
+    },
+    "/tmp/ipse-shipped-recall-capture-generic-20261102.log": {
+      "bytes": 672,
+      "sha256": "b6bfa7940f25581fbac1c1f45fb96d5e80d6f1094807d8ae22b6187b2e275025"
+    },
+    "/tmp/ipse-shipped-recall-capture-genuine-20261102.log": {
+      "bytes": 888,
+      "sha256": "ee36f563b43a313ded067426a0dd6d51678f8b636016ac87fdde5116ae7c840d"
+    },
+    "/tmp/ipse-shipped-recall-capture-history-20261102.log": {
+      "bytes": 378,
+      "sha256": "ca2f215ea832555b2366e935911d005b122db9f0d88540d4defa4916d9219907"
+    },
+    "/tmp/ipse-shipped-recall-capture-postbuild-20261102.log": {
+      "bytes": 570,
+      "sha256": "a94d01eb5e487cae639948d3fab73d6a3317750fc7b321d9800e2500e9f8a23a"
+    },
+    "/tmp/ipse-shipped-recall-capture-preparation-20261102.log": {
+      "bytes": 107852,
+      "sha256": "f40321e8dbde2d326adbfd90ad227b4252c6b954d82b18cec0a8e39f3c7a0de5"
+    },
+    "/tmp/ipse-shipped-recall-capture-publication-owned-20261102.log": {
+      "bytes": 3902,
+      "sha256": "216697c90a2c58db79b831cf056e28afb5699798a19d2fa55095f91711877944"
+    },
+    "/tmp/ipse-shipped-recall-capture-revoke-diagnostic-20261102.log": {
+      "bytes": 1746,
+      "sha256": "a7bdcfe558a4209eb4f792081c72836f039b51a6cf3655574e6c4a3f5816d6d0"
+    },
+    "/tmp/ipse-shipped-recall-capture-source-owned-20261102.log": {
+      "bytes": 3802,
+      "sha256": "ac5d41e9ecb1b6710b0d6057202e0eb5e9c92a01b9fa5a527fe24194dedb7aa2"
+    },
+    "/tmp/ipse-shipped-recall-source-components-20261102.log": {
+      "bytes": 1164,
+      "sha256": "56bfc3e3945c2b19333be815dcbb2d115eef1ccfdde228616ccc21559e4642ac"
+    }
+  },
+  "new_complete_managed_collection_module": false,
+  "new_complete_suite": false,
+  "postbuild": {
+    "excluded": 189,
+    "exit_code": 0,
+    "passed": 4,
+    "seconds": 48.0,
+    "seed": 791750
+  },
+  "scope": "Author-run synthetic shipped-artifact recall/source lookup/new pending capture/continuation and withdrawal controls",
+  "version": 1
+}

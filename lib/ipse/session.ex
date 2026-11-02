@@ -4464,7 +4464,7 @@ defmodule Ipse.Session do
              rows
            ),
          next = %{s | managed_lineage: lineage},
-         true <- dependencies == [] or Ipse.Session.ManagedToolUse.root_only?(next, dependencies),
+         true <- Ipse.Session.ManagedToolUse.source_dependencies_supported?(dependencies),
          event = %{
            "type" => "managed_source_lookup_prepared",
            "version" => 1,
@@ -4523,7 +4523,7 @@ defmodule Ipse.Session do
          get_in(call, ["function", "name"]) == name and
          Ipse.JSON.decode_unique(get_in(call, ["function", "arguments"])) == {:ok, request} and
          pending.binding == Ipse.Session.ManagedToolUse.native_binding(name, request) and
-         Ipse.Session.ManagedToolUse.root_only_source_call?(s, call),
+         Ipse.Session.ManagedToolUse.source_call_supported?(s, call),
        do: {:reply, source_query(s, operation, request), consume_source_lookup(s, call["id"])},
        else: {:reply, {:error, :source_index_refused}, s}
   end

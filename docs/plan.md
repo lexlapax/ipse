@@ -1068,6 +1068,16 @@ cohort, and six complete component modules pass 89 tests. These results do not
 replace the failed complete-module/suite aggregates. Historical/accepted-note
 combinations, maximum unions, broader expiry/loss and full C0 remain open.
 
+The [shipped recall/capture follow-up](archive/2026-10-26-p30-p31-implementation/shipped-recall-capture-20261102.md)
+addresses the actual native artifact's nonempty index plus current-literal union.
+Main-model source lookup, new pending publication and historical-metadata
+continuation now have a complete synthetic local-provider positive. Original
+literal dependencies remain attached; source withdrawal and revocation after
+publication withhold the next Worker input while retaining settled storage and
+inert resume. Replay-tamper controls remain separate from live source checks.
+This is author-run component integration, not independent model quality,
+installed qualification or a replacement complete-suite/module aggregate.
+
 The [managed export-input adapter](archive/2026-10-26-p30-p31-implementation/worker-input-session-20261101.md)
 now binds actual initial calls, committed action continuations and output-page
 requests to their complete Session-derived dependencies and immutable Worker

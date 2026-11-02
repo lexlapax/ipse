@@ -64,11 +64,11 @@ defmodule Ipse.Session.ManagedToolUse do
       name in ~w(load_skill load_skill_resource research_source research_claim research_ledger saved_result_read source_list source_read source_quote ask_operator)
 
   @doc false
-  def root_only_source_call?(s, call) do
+  def source_call_supported?(s, call) do
     with true <- get_in(call, ["function", "name"]) in ~w(source_list source_read source_quote),
          {:ok, dependencies} <- ManagedLineage.tool_dependencies(s.managed_lineage, call["id"]),
          true <- dependencies != [] do
-      root_only?(s, dependencies)
+      source_dependencies_supported?(dependencies)
     else
       _ -> false
     end
@@ -77,6 +77,22 @@ defmodule Ipse.Session.ManagedToolUse do
   end
 
   @doc false
+  # Structural support only. SourceRead's actual query and result admission
+  # independently reacquire current authority for the complete selected union.
+  def source_dependencies_supported?(dependencies) when is_list(dependencies) do
+    with {:ok, ^dependencies} <- ManagedReference.union([dependencies]) do
+      Enum.all?(dependencies, &(&1["version"] in [3, 4, 5, 6]))
+    else
+      _ -> false
+    end
+  rescue
+    _ -> false
+  end
+
+  def source_dependencies_supported?(_), do: false
+
+  @doc false
+  # Historical CAS classification stays narrower than current owned source use.
   def root_only?(s, dependencies) when is_list(dependencies) and dependencies != [] do
     pin = s.config.semantic_admission["pin"]
     root = hd(dependencies)["collection"]
@@ -722,7 +738,7 @@ defmodule Ipse.Session.ManagedToolUse do
            {:ok, lineage, dependencies} <-
              ManagedLineage.add_selected_source_dependencies(s.managed_lineage, call["id"], rows),
            next = %{s | managed_lineage: lineage},
-           true <- dependencies == [] or root_only?(next, dependencies) do
+           true <- source_dependencies_supported?(dependencies) do
         {:ok, next, rows}
       else
         _ -> @error

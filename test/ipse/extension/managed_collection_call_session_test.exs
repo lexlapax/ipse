@@ -2663,8 +2663,10 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
              %{"handle" => page_b["handle"], "quote" => "Synthetic café observation"}
            ]
 
+    # Shape admission preserves the full union; the retained current-use
+    # check must still reject A before reservation or native publication.
     assert_receive {:trace, ^consumer, :return_from, {^module, :publication_prerequisites?, 3},
-                    false},
+                    true},
                    15_000
 
     assert_receive {:ipse, ^consumer, {:done, :error}}, 15_000
@@ -2676,11 +2678,14 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
         &(&1["type"] == "extension_action_result" and &1["request"]["op"] == "collection.managed")
       )
 
-    refute Enum.any?(
-             events,
-             &(&1["type"] == "extension_action_intent" and
-                 get_in(&1, ["request", "op"]) == "collection.managed")
-           )
+    assert [intent] =
+             Enum.filter(
+               events,
+               &(&1["type"] == "extension_action_intent" and
+                   get_in(&1, ["request", "op"]) == "collection.managed")
+             )
+
+    assert intent["request"] == candidate
 
     refute Enum.any?(writes, &(&1["outcome"]["status"] == "ok"))
     assert quote_b in events

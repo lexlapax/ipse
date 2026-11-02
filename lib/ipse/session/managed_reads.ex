@@ -103,31 +103,61 @@ defmodule Ipse.Session.ManagedReads do
 
   @doc false
   def root_prerequisite?(dependency, event, binding, generation) do
-    request = event["request"]
     value = event["outcome"]["value"]
-    inner = request["request"]
+    inner = event["request"]["request"]
 
+    root_observation?(dependency, event, binding, generation) and
+      (inner == %{"op" => "snapshot"} or
+         (inner["op"] == "get" and Map.has_key?(value, "record") and value["record"] === nil) or
+         (inner["op"] == "index" and inner["cursor"] === nil and
+            value["coverage"] === "metadata_only" and value["count"] === 0 and
+            value["records"] === [] and value["next"] === nil))
+  rescue
+    _ -> false
+  end
+
+  @doc false
+  # Nonempty index descriptors can become explicitly historical after an exact
+  # own write. This is not the narrower root-only publication prerequisite.
+  def root_history_metadata?(dependency, event, binding, generation) do
+    value = event["outcome"]["value"]
+
+    root_observation?(dependency, event, binding, generation) and
+      event["request"]["request"]["op"] == "index" and
+      value["coverage"] == "metadata_only" and
+      Enum.all?(value["records"], &(&1["revision"] <= generation))
+  rescue
+    _ -> false
+  end
+
+  defp root_observation?(dependency, event, binding, generation) do
     dependency["version"] === 3 and
       dependency["namespace"] === binding["namespace"] and
       dependency["collection"]["generation"] === generation and
       event["type"] == "extension_action_result" and event["outcome"]["status"] == "ok" and
       event["namespace"] === binding["namespace"] and
       event["effect_binding"]["pin"] === binding["pin"] and
-      request["op"] == "collection.call" and
-      (inner == %{"op" => "snapshot"} or
-         (inner["op"] == "get" and Map.has_key?(value, "record") and value["record"] === nil) or
-         (inner["op"] == "index" and inner["cursor"] === nil and
-            value["coverage"] === "metadata_only" and value["count"] === 0 and
-            value["records"] === [] and value["next"] === nil)) and
-      CollectionCall.valid_outcome?(request, "ok", value, event["operation_id"]) and
+      event["request"]["op"] == "collection.call" and
+      CollectionCall.valid_outcome?(
+        event["request"],
+        "ok",
+        event["outcome"]["value"],
+        event["operation_id"]
+      ) and
       CollectionCall.bound_outcome?(event) and
-      bound?(dependency, event, value)
-  rescue
-    _ -> false
+      bound?(dependency, event, event["outcome"]["value"])
   end
 
   @doc false
   def cached_root_prerequisite?(dependency, cache, binding, generation) do
+    cached_root?(dependency, cache, binding, generation, [true])
+  end
+
+  @doc false
+  def cached_root_history?(dependency, cache, binding, generation),
+    do: cached_root?(dependency, cache, binding, generation, [true, "metadata_only"])
+
+  defp cached_root?(dependency, cache, binding, generation, classifications) do
     pin = binding["pin"]
 
     ManagedReference.dependency?(dependency) and dependency["version"] === 3 and
@@ -137,7 +167,7 @@ defmodule Ipse.Session.ManagedReads do
       dependency["pin_sha256"] === JSON.digest([pin]) and
       dependency["policy_generation"] === pin["epoch"] and
       dependency["collection"]["generation"] === generation and
-      Map.get(cache, JSON.digest([dependency])) === true
+      Map.get(cache, JSON.digest([dependency])) in classifications
   rescue
     _ -> false
   end

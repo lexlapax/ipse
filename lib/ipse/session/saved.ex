@@ -404,11 +404,7 @@ defmodule Ipse.Session.Saved do
            ),
          true <- event["dependencies_sha256"] === Ipse.JSON.digest(dependencies),
          true <-
-           dependencies == [] or
-             Ipse.Session.ManagedToolUse.root_only?(
-               %{managed_lineage: next, config: %{semantic_admission: next.admission}},
-               dependencies
-             ) do
+           Ipse.Session.ManagedToolUse.source_dependencies_supported?(dependencies) do
       {:ok, next}
     else
       _ -> {:error, :managed_lineage_unavailable}
@@ -445,10 +441,7 @@ defmodule Ipse.Session.Saved do
              rows
            ),
          true <-
-           Ipse.Session.ManagedToolUse.root_only?(
-             %{managed_lineage: next, config: %{semantic_admission: next.admission}},
-             dependencies
-           ) do
+           Ipse.Session.ManagedToolUse.source_dependencies_supported?(dependencies) do
       {:ok, next}
     else
       _ -> {:error, :managed_lineage_unavailable}

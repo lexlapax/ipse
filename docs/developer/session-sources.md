@@ -52,10 +52,12 @@ establish that a human supplied the bytes: automated PTYs exercise the same chan
 one new v3 capture under the separately selected saved permission. The terminal
 client, an explicit authorized-client headless typed-outcome save, and a
 synthetic model-selected pending-proposal save have focused positives. A bounded
-host cache classifies authentic causal root-only reads; scans remain outside
-that classification. The cache does not grant current use. Model-selected source tools use the selected-source
-preflight described below. After a known capture, the narrow own-write transition
-also permits later source calls and successful turn completion under fresh guards.
+host cache distinguishes authentic CAS prerequisites from metadata-only index
+observations; scans remain outside both historical classifications. The cache
+does not grant current use. Model-selected source tools preserve the complete
+selected-source union through the preflight described below. After a known
+capture, the own-write transition can preserve earlier metadata as historical
+while keeping every signed-record dependency for fresh eligibility checks.
 This does not establish full automatic-capture quality. Follow the
 [publication flow](collection-sdk.md#follow-one-capture-across-its-owners) rather
 than treating statement confirmation as a general capture grant.
@@ -219,27 +221,37 @@ even when its original dependency list is empty. Writer privately resolves the
 actual SourceIndex query and derives provenance for every selected row; a list
 cannot classify just its first result. Known empty producer lineage differs from
 a missing producer mapping. The complete original-plus-selected union must be
-empty or consist entirely of authentically cached payload-free observations of
-one current root. Record-bearing, mixed, stale or unclassified members refuse.
-The exact admitted call consumes this preflight once under the existing owners.
+canonical and use supported dependency versions 3–6. This structural check grants
+no read: the actual query reacquires current policy, roots, signed records and
+original source owners through `ManagedToolUse.with_effect`. Result release
+independently revalidates the same complete union. Missing producer mappings,
+unsupported dependencies and unavailable current owners refuse. The exact
+admitted call consumes its task/job/argument-bound preflight once.
 
 After a confirmed new-v3 capture advances the root, Session can retain earlier
-payload-free metadata as explicitly historical. It authenticates the complete
-old write union, exact own operation and adjacent successor receipt under fresh
+payload-free metadata as explicitly historical. Authenticated nonempty or later
+metadata-only index pages qualify for this history classification, alongside
+the narrower snapshot/nil-get/initial-empty-index CAS prerequisites. Neither
+classification includes scan payloads. Session authenticates the complete old
+write union, exact own operation and adjacent successor receipt under fresh
 Identity/Consent/Collection checks. Original messages, dependency objects and
 provider envelopes stay unchanged. A bounded host notice explains that the old
 root or absence does not establish current record eligibility; the notice has
-its own current guard. Producer and call resolution use the same verified
-successor mapping. Missing cache, record contents, mixed roots, unknown actions
-and intervening writes refuse instead of receiving this projection.
+its own current guard. Only version-3 metadata receives the successor mapping.
+Every literal, historical or accepted-record dependency remains attached to its
+producer and Reference occurrence and must pass its separate current-use checks.
+Missing metadata classification, mixed metadata roots, unknown actions and
+intervening writes refuse instead of receiving this projection.
 
 A settled Worker input can already have authenticated that same adjacent
 successor before model preparation. Model projection may then combine the
 original cached metadata with that exact successor guard. It requires the
-recorded mapping for every member of the complete causal write union and the
-known successful own action, reacquires the current root, and adds the same
-historical notice. Another root or an unrecorded fresh guard cannot join this
-case. Worker admission itself retains its stricter single-old-root rule.
+recorded mapping for every metadata member of the complete causal write union
+and the known successful own action, reacquires the current root, and adds the
+same historical notice. Signed records remain separate obligations, including
+their original source journals and deadlines. Another metadata root or an
+unrecorded fresh guard cannot join this case. Worker transition requires all
+original metadata members to describe the same old root.
 
 Result preparation independently rederives the actual returned query and selected
 provenance before its dependencies and version-2 observation are committed.
@@ -252,16 +264,24 @@ protected terminal payload rendering. The
 [reviewed preflight](../archive/2026-10-26-p30-p31-implementation/managed-source-tool-preflight-independent-review.md)
 owns the bounded implementation evidence.
 
-The [own-write transition review](../archive/2026-10-26-p30-p31-implementation/own-root-transition-independent-review.md)
-verifies a synthetic-model saved-consent journey through typed-outcome capture,
-later source list/read, successful turn completion, Saved reconstruction and
-confirmed close. Earlier settled-but-failed turns remain preserved in their
-original records. A separate synthetic headless control saves two distinct
-unattended proposals across close and resume. These controls do not qualify
-record-content release, compaction or all provider continuations. Actual untrusted argv/stdin
-[CLI controls](../archive/2026-10-26-p30-p31-implementation/headless-cli-untrusted.md)
-observed neither literal nor pending proposal, but returned unknown/error; they
-do not establish a confirmed semantic source refusal or successful proposal save.
+Exercise that whole path with the shipped artifact:
+
+```sh
+mix test test/extensions/knowledge/recall_capture_session_test.exs --max-cases 1
+```
+
+The fixture creates a genuinely reviewed literal, recalls it through the actual
+Knowledge artifact, performs a main-model source lookup and saves a separate
+unattended-input pending proposal. Inspect the final model request for both the
+literal and historical metadata notice. Strict Saved reconstruction must keep
+that literal in its output and Reference dependency sets without a version-4
+root mapping. Altered or missing own-write transition evidence must reject replay.
+The paired source-withdrawal and revocation cases hold the next preparation
+before its reply, after the capture is known and settled. They require an unknown
+input for that exact result, no final model request and inert idle resume with
+unchanged storage/accounting. These synthetic local-provider controls establish
+neither model quality, compaction nor all provider continuations. Dated results
+and earlier failures remain in the [implementation record](../archive/2026-10-26-p30-p31-implementation/shipped-recall-capture-20261102.md).
 
 ## Grant an extension source access explicitly
 
@@ -465,8 +485,13 @@ The narrow own-write metadata transition described above also applies here.
 `worker_input_root_transition` binds the original input intent and unchanged
 deadline to its authenticated own successful capture and exact adjacent root.
 It preserves original payload/dependency records and only resolves their
-historical root mapping for a freshly reacquired guard. Record contents, mixed
-roots, scans and unclassified dependencies cannot acquire that transition.
+historical root mapping for a freshly reacquired guard. Only authenticated
+metadata members receive that mapping; signed-record members remain unchanged
+and are revalidated before the actual frame write. A new pending proposal cannot
+discard an earlier recalled literal. Source loss or revocation after a known
+publication can therefore leave the capture settled while its next input remains
+unknown. Mixed metadata roots, scans and unclassified metadata cannot acquire
+the transition.
 
 This adapter supports dependency versions 3–6. For accepted decisions,
 `PendingAcceptance` authenticates the immutable acceptance links and retains
