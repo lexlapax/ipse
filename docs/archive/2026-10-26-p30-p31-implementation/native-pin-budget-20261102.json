@@ -1,0 +1,131 @@
+{
+  "actual_model_requests": 0,
+  "actual_native_operations": 0,
+  "actual_turns": 0,
+  "base_commit": "5331e60b9772c44131c054978c8f0d4428cbc2d6",
+  "checks": {
+    "cli_reports": {
+      "bytes": 1408,
+      "path": "/tmp/ipse-native-budget-pins-cli-20261102.jsonl",
+      "sha256": "abb04420703d23a05b115bc9761ffc7958ca52a802e48cb2e5c9baa3c7167599"
+    },
+    "cli_stderr": {
+      "bytes": 0,
+      "path": "/tmp/ipse-native-budget-pins-cli-20261102.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "documentation": {
+      "bytes": 757,
+      "path": "/tmp/ipse-native-pin-budget-docs-20261102.log",
+      "sha256": "800bc7190d1093d344040668d6e9e44b62c759e5b7c5e80912f99af3d0e35605"
+    },
+    "first_tests_with_missing_notes_path_warnings": {
+      "bytes": 2176,
+      "path": "/tmp/ipse-native-budget-pins-pure-20261102.log",
+      "sha256": "cdb355c723bc53fe5096ac4a251296e02d5fd69dd5481de3f4b177f4d10585ba"
+    },
+    "format": {
+      "bytes": 29,
+      "path": "/tmp/ipse-native-pin-budget-format-20261102.log",
+      "sha256": "f72ce320d86ce81e41a9faba3024a6702591d6463170f7b7feaff9f4c7d87720"
+    },
+    "pure_tests": {
+      "log": {
+        "bytes": 136,
+        "path": "/tmp/ipse-native-budget-pins-pure-final-20261102.log",
+        "sha256": "466a29814098d5a4faf8ebcdedf5f9444ebbe68360a869438365a5ae459d8756"
+      },
+      "passed": 5,
+      "seed": 791833
+    },
+    "strict_compile": {
+      "bytes": 0,
+      "path": "/tmp/ipse-native-pin-budget-strict-20261102.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  },
+  "date": "2026-11-02",
+  "initial_capture_and_pin_effects": 2100,
+  "qualification_passed": false,
+  "reports": [
+    {
+      "actual_native_operations": 0,
+      "actual_turns": 0,
+      "current_operation_limit": 32768,
+      "cycle_interpretation": "mixed_operations",
+      "cycles": 10000,
+      "days": 365,
+      "disposition": "not_ruled_out_by_operation_floor",
+      "intake_scope": "initial floor only; pilot-derived intake and mix not ratified",
+      "kind": "native_notes_operation_lower_bound",
+      "minimum_excess": 0,
+      "minimum_operations": 23080,
+      "minimum_operations_by_effect": {
+        "additional_churn": 10000,
+        "explicit_forgets": 732,
+        "initial_pin_promotions": 100,
+        "initial_records": 2000,
+        "ordinary_additions": 7320,
+        "ordinary_corrections": 1464,
+        "temporal_supersessions": 1464
+      },
+      "qualification_passed": false,
+      "unaccounted_operations": [
+        "expiry",
+        "imports",
+        "compaction",
+        "recovery",
+        "control_management"
+      ]
+    },
+    {
+      "actual_native_operations": 0,
+      "actual_turns": 0,
+      "current_operation_limit": 32768,
+      "cycle_interpretation": "complete_cycles",
+      "cycles": 10000,
+      "days": 365,
+      "disposition": "exceeds_current_operation_limit",
+      "intake_scope": "initial floor only; pilot-derived intake and mix not ratified",
+      "kind": "native_notes_operation_lower_bound",
+      "minimum_excess": 10312,
+      "minimum_operations": 43080,
+      "minimum_operations_by_effect": {
+        "additional_churn": 30000,
+        "explicit_forgets": 732,
+        "initial_pin_promotions": 100,
+        "initial_records": 2000,
+        "ordinary_additions": 7320,
+        "ordinary_corrections": 1464,
+        "temporal_supersessions": 1464
+      },
+      "qualification_passed": false,
+      "unaccounted_operations": [
+        "expiry",
+        "imports",
+        "compaction",
+        "recovery",
+        "control_management"
+      ]
+    }
+  ],
+  "scope": "Pure operation accounting; native population remains frozen at base commit",
+  "sources": [
+    {
+      "bytes": 36422,
+      "path": "dev/knowledge/storage_workload.ex",
+      "sha256": "3337ae7cc9e8529f9ce165947b511bdf19ff2933b9181528967b88c200206f7e"
+    },
+    {
+      "bytes": 3092,
+      "path": "test/dev/knowledge/native_workload_budget_test.exs",
+      "sha256": "abfdcdc7ed826426adeafa633466245738ad60da3e18f024e51376fe8aba5b01"
+    },
+    {
+      "bytes": 1762,
+      "path": "test/dev/knowledge/native_notes_seed_test.exs",
+      "sha256": "c23f321715da4c46569c68a9745d2729d33c4a664a43be82bf959b9f34732c70"
+    }
+  ],
+  "version": 1
+}

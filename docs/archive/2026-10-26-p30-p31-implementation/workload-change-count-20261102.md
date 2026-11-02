@@ -20,6 +20,11 @@ no native permission, runtime limit, paid-call allowance or release authority.
 
 ## Apply the selected count
 
+The later [native pin accounting](native-pin-budget-20261102.md) adds 100
+initial pin publications to this historical preflight, giving a selected
+23,080-operation minimum. The earlier arithmetic and geometry remain below as
+dated evidence; current procedure belongs to the linked training chapter.
+
 Use `StorageWorkload.native_operation_floor(365, 10_000, :mixed_operations)` for
 the initial arithmetic preflight. Its **22,980** minimum IDs exclude expiry,
 imports, compaction, recovery and control management. Actual intake/mix still

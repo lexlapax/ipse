@@ -175,9 +175,10 @@ elixir --erl '+S 2:2' \
 ```
 
 Expect two JSON rows. At the initial annual intake floor, including the declared
-day-90 doubled workload, 10,000 mixed operations require at least 22,980 IDs;
-10,000 complete update/correct/forget cycles require at least 42,980. The current
-Collection limit is 32,768 retained IDs. The complete-cycle lower bound therefore
+day-90 doubled workload and 100 initial native pin reviews, 10,000 mixed
+operations require at least 23,080 IDs; 10,000 complete update/correct/forget
+cycles require at least 43,080. The current Collection limit is 32,768 retained
+IDs. The complete-cycle lower bound therefore
 already exceeds it, before expiry, imports, compaction or recovery operations.
 The developer [selected 10,000 mixed changes total](../archive/2026-10-26-p30-p31-implementation/workload-change-count-20261102.md),
 additional to the normal annual workload. Use `:mixed_operations` when freezing
@@ -220,9 +221,10 @@ elixir --erl '+S 2:2' \
 
 It compares unbound and managed receipts, zero and 2,000 public record
 descriptors, and a scenario where every operation advances the destructive
-floor. The selected initial 22,980-ID floor with 2,000 public descriptors occupies
-4,899,325 packed bytes in this synthetic scenario. At 42,980 managed receipts,
-the three-action comparison occupies 8,026,433 bytes
+floor. Its earlier 22,980-ID scenario, before accounting for initial pin reviews,
+with 2,000 public descriptors occupies 4,899,325 packed bytes. This remains a
+historical geometry measurement, not a measurement of the revised 23,080-ID
+minimum. At 42,980 managed receipts, the three-action comparison occupies 8,026,433 bytes
 without records, or 8,639,325 bytes with the 2,000 descriptors. The latter exceeds
 the current 8-MiB canonical-state ceiling before authenticated sidecars or
 migration overlap. The unchanged encoder refuses the larger ID set independently.
@@ -275,9 +277,9 @@ bounded segment: 100 pins, 50 preferences, 50 current assertions and 1,800 other
 ordinary notes. Its **2,100 publications** use 21 seed days with 100 operations
 per day, split into 273 segments of at most eight effects. It preserves the
 existing grant and quota. This population happens before the normal annual
-workload; initial pin reviews add 100 effects beyond the older capture-only
-arithmetic floor. Pilot-derived intake and the complete annual ledger remain
-separate prerequisites for endurance acceptance.
+workload; the arithmetic floor includes its 100 initial pin reviews.
+Pilot-derived intake and the complete annual ledger remain separate prerequisites
+for endurance acceptance.
 
 Initialization copies SDK/dependency BEAMs and shipped assets, freezes their
 hashes and the runner sources, and creates a disclosed private clock adapter.

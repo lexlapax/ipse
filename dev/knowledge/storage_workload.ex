@@ -13,6 +13,7 @@ defmodule Ipse.Development.StorageWorkload do
 
     operations = %{
       "initial_records" => 2000,
+      "initial_pin_promotions" => 100,
       "ordinary_additions" => 20 * workdays,
       "ordinary_corrections" => 4 * workdays,
       "explicit_forgets" => 2 * workdays,

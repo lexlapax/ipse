@@ -1,4 +1,5 @@
 Code.require_file("../../../dev/knowledge/storage_workload.ex", __DIR__)
+Code.require_file("../../../dev/knowledge/native_notes_seed.ex", __DIR__)
 
 defmodule Ipse.Development.NativeWorkloadBudgetTest do
   use ExUnit.Case, async: true
@@ -7,14 +8,14 @@ defmodule Ipse.Development.NativeWorkloadBudgetTest do
   test "complete lifecycle cycles cannot borrow the primitive churn's identity count" do
     mixed = StorageWorkload.native_operation_floor(365, 10_000, :mixed_operations)
     complete = StorageWorkload.native_operation_floor(365, 10_000, :complete_cycles)
-    assert mixed["minimum_operations"] == 22_980
-    assert complete["minimum_operations"] == 42_980
+    assert mixed["minimum_operations"] == 23_080
+    assert complete["minimum_operations"] == 43_080
     assert mixed["minimum_operations_by_effect"]["additional_churn"] == 10_000
     assert complete["minimum_operations_by_effect"]["additional_churn"] == 30_000
     assert mixed["disposition"] == "not_ruled_out_by_operation_floor"
     assert complete["disposition"] == "exceeds_current_operation_limit"
     assert complete["current_operation_limit"] == Ipse.Extension.Collection.limits()["operations"]
-    assert complete["minimum_excess"] == 10_212
+    assert complete["minimum_excess"] == 10_312
 
     for report <- [mixed, complete] do
       assert report["actual_native_operations"] == 0
@@ -30,8 +31,19 @@ defmodule Ipse.Development.NativeWorkloadBudgetTest do
     early = StorageWorkload.native_operation_floor(30, 0, :complete_cycles)
     before_burst = StorageWorkload.native_operation_floor(89, 0, :complete_cycles)
     after_burst = StorageWorkload.native_operation_floor(90, 0, :complete_cycles)
-    assert early["minimum_operations"] == 2900
+    assert early["minimum_operations"] == 3000
     assert early["minimum_operations_by_effect"]["initial_records"] == 2000
+    assert early["minimum_operations_by_effect"]["initial_pin_promotions"] == 100
+
+    seed_operations =
+      Ipse.Development.NativeNotesSeed.plan("initial")
+      |> Enum.flat_map(& &1["actions"])
+      |> length()
+
+    assert seed_operations ==
+             early["minimum_operations_by_effect"]["initial_records"] +
+               early["minimum_operations_by_effect"]["initial_pin_promotions"]
+
     assert early["minimum_operations_by_effect"]["ordinary_additions"] == 600
     assert after_burst["minimum_operations"] - before_burst["minimum_operations"] == 60
     assert after_burst["minimum_operations_by_effect"]["temporal_supersessions"] == 364
