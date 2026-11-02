@@ -208,3 +208,67 @@ Final formatting and diff-whitespace checks exit zero. Documentation checking
 reports 1,030 Markdown files, 8,533 local links and zero errors; existing private
 directory discovery warnings remain separate. No runtime/build/package check was
 repeated for this fixture/documentation-only increment.
+
+## Open positive: capture after a current literal read
+
+On **2026-11-02 UTC**, a separate acceptance probe based on committed `1560cb7`
+tested the positive complement of the preceding refusals. This is an expected
+current implementation gap, not an enabled capability or a passing qualification.
+The [exact generator](current-literal-publication-probe-20261102.exs) derives an
+isolated temporary test module from that committed Session fixture. Its synthetic
+worker mode reads a genuine freshly native-reviewed literal A, obtains B's real
+source list/read/quote, then submits a normal new-V3 pending candidate at A's
+original generation. No source is withdrawn, no root changes, no tracking is
+erased, and no grant or gate is bypassed. A's source and B's new candidate belong
+to distinct Sessions. The selected main route is the registered local fixture.
+
+```sh
+mix test /tmp/ipse-current-literal-publication-20261102_test.exs --only current_literal_publication --max-cases 1 --seed 791724
+```
+
+Terminal result: **0 passed, 1 failed, 186 excluded**, 14.4 seconds, exit 2.
+The generated test first requires A's genuine version-4 read, B's successful
+unattended-input quote and valid Saved reconstruction. Those assertions pass;
+the required completed capture fails, with no publication action results.
+This probe is outside the default source suite and is not added to or subtracted
+from its aggregates.
+
+A subsequent read-only [diagnostic receipt](current-literal-publication-probe-20261102.json)
+identifies the actual synthetic consumer and original seed. The source journal
+still matches its saved hash. A's observed validity is `eligible`, with its
+original finite deadline retained. There is one model admission, successful B
+quote and **zero publication intents and zero publication results**. The retained
+root is `/tmp/ipse-worker-inherited-f161fb5a9c32b5d546cfad2d9f70354c`; the
+diagnostic mutates/replays nothing and supplies no new current-use permit.
+
+Source inspection locates the current restriction in
+`ManagedToolUse.publication_prerequisites?/3`: an empty union can enter, otherwise
+every member must classify as a cached root-only CAS prerequisite. A literal
+version-4 dependency cannot supply that classification. This explains the early
+refusal; it does not justify deleting or relabeling the dependency. A full current
+source publication needs original-source and consuming Session/Writer ownership,
+fresh policy and selected-root validation at the actual native publication
+decision, conservative accounting, guarded result delivery and causal replay.
+Reusing `ManagedUse`, the retained publication owner and the Session source bridge
+requires a concrete integration design; a userspace precheck followed by an
+unfenced write would not implement the required positive.
+
+| Selected post-run artifact | SHA256 |
+| --- | --- |
+| Exact generator | `b8b7ef43b2467dab484f95233480a171b590430452b1ca3aa822ffc2b13cb4d1` |
+| Generated temporary test module | `6ea5409f3f6fce555c64c1a117515ce06d4f390e35fc2de8465b83c5455f0344` |
+| `/tmp/ipse-current-literal-publication-20261102.log` | `55b44a78c35b52db79f731d422036acc6bbbcdf44c391c4abaf919a9e969c1ad` |
+
+These are selected hashes, not a prelaunch or complete loaded-runtime inventory.
+Only the known synthetic root was inspected; private qualification labels and
+untracked `.serenity-*` directories remain unopened. No runtime, helper,
+dependency or external model call changed. The current manuals already describe
+the narrower CAS-only publication scope and are not widened by this record.
+This positive is a next implementation target for full C0, independently of the
+remaining obsolete/externally supplied regression fixtures. Safe refusal alone
+does not complete the authorized notes capture/recall goal.
+
+The evidence-only follow-up passes diff-whitespace checking. Documentation
+checking reports 1,030 Markdown files, 8,536 local links and zero errors;
+pre-existing private-directory discovery warnings remain separate. No passing
+runtime aggregate, package result or milestone acceptance is inferred.

@@ -1052,6 +1052,11 @@ now retains the actual earlier root-bound read and delivered B quote at the
 publication guard, with independent registered seed/winner positives and inert
 recovery. It is distinct from the earlier Worker-input source-withdrawal control
 and does not qualify full current-source publication.
+A [separate genuine-current-literal positive probe](archive/2026-10-26-p30-p31-implementation/managed-collection-module-v3-20261101.md#open-positive-capture-after-a-current-literal-read)
+now confirms that this remains an implementation gap: A is eligible and unchanged,
+B is quoted successfully, but the root-only prerequisite gate refuses capture
+before publication intent. Full-union native publication integration remains
+required; do not remove the guard or treat refusal-only controls as completion.
 
 The [managed export-input adapter](archive/2026-10-26-p30-p31-implementation/worker-input-session-20261101.md)
 now binds actual initial calls, committed action continuations and output-page
