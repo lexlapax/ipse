@@ -1,0 +1,4 @@
+0cff15b98639e5dacc92e03017ac86a7f1faf633a344d56cfa4401ac8a84d01f  lib/ipse/session/managed_reads.ex
+1cb7e93f4c3346ba5713e1176c40a90a4fd568ca19408caec76c1a80eedd8f8c  test/ipse/session/managed_reads_test.exs
+8a8f3b9367b22f37aa3f88d8fec1ba5d058391e53f8846d3a7d0fcf48592ca7c  docs/operator/recovery.md
+90827f8c01852f066b4f93c2ef9b0433c12d7b3c2b5e2ac6d9d81db25e6cec16  docs/developer/knowledge-extensions.md

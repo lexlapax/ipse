@@ -185,6 +185,16 @@ same-root host classification and is not complete. When the internal override
 marker is also a possible user reason, `:absent` is only a host assertion requiring
 a fresh protected absence check. The host authenticates the exact prior choice
 before applying a change.
+
+Recorded managed-read results are checked by the same classification rule on
+Saved reconstruction: an unmatched nonempty generic value cannot be covered
+only by a version-3 root receipt. This can make an older recorded Session refuse
+reconstruction; preserve the journal and follow the operator's
+[recovery procedure](../operator/recovery.md#find-the-original-session).
+The separate marked version-7 proposal assessment is unchanged. Older unmarked
+histories without a managed-read receipt do not pass through this check and need
+separate qualification.
+
 Public forgetting and session-only retention use their reducing management route;
 pin/automatic/duration use a separate guarded effect. Interactive literal
 correction and supersession have their own Session-owned source/policy review

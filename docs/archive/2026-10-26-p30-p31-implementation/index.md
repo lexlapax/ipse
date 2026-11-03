@@ -73,6 +73,7 @@ nor resource/offline qualification. No daemon configuration or existing model wa
 
 ## P31A contracts and evidence
 
+- [Recorded managed-read replay containment](managed-read-replay-containment-20261103.md) checks a genuine old synthetic receipt against the baseline and repaired reconstruction paths, with an intentional fail-closed compatibility change.
 - [Strict 33-note recall attempt](recall33-one-shot-20261103.md) delivered all recorded Worker inputs and proposed 32 available notes, but failed before the loopback provider received a request; the cause remains unknown.
 - [Combined Worker v4 coalescing](worker-v4-coalescing-bde96-20261103.md) records focused v4 batching and v7 compatibility controls, not a completed populated recall journey.
 - [Historical pending replay control](pending-legacy-resume-control-20261103.md) records two startup refusals after genuine old-runtime pending disclosure, with compatible-resume and network-observation limits still open.

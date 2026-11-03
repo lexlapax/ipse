@@ -1,0 +1,4 @@
+lib/ipse/session/managed_reads.ex: OK
+test/ipse/session/managed_reads_test.exs: OK
+docs/operator/recovery.md: OK
+docs/developer/knowledge-extensions.md: OK

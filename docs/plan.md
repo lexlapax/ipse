@@ -109,6 +109,10 @@ following limits until the end-to-end paths are qualified:
    now refuses unclassified managed values rather than exposing a proposal after
    loss of its source. It also temporarily refuses generic reads of saved
    overrides and unrelated managed values; a safe compatible path remains open.
+   [Recorded generic reads](archive/2026-10-26-p30-p31-implementation/managed-read-replay-containment-20261103.md)
+   now apply the same classification during reconstruction, so affected older
+   Sessions fail closed rather than using a root-only receipt; receiptless
+   historical lineage remains a separate limitation.
 2. **Sustainable notes — P31A/C1a.** Complete the pilot evidence within its
    authorized bounds, record unavailable routes, and freeze intake and retention
    mix. Then run the integrated 30-, 90- and 365-day

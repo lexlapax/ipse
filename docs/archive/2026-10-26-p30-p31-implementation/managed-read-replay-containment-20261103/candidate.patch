@@ -1,0 +1,235 @@
+--- a/lib/ipse/session/managed_reads.ex
++++ b/lib/ipse/session/managed_reads.ex
+@@ -411,9 +411,9 @@
+                  String.starts_with?(record["key"], &1["key_prefix"]))
+            ) do
+         [] ->
+-          if match?(%{"value" => %{"kind" => "accepted_decision"}}, record),
+-            do: {:halt, @error},
+-            else: {:cont, {:ok, keys}}
++          # Match live managed-read containment: no raw nonempty value is
++          # covered by a root receipt when no literal recipe selected it.
++          {:halt, @error}
+ 
+         [recipe] ->
+           accepted? = match?(%{"value" => %{"kind" => "accepted_decision"}}, record)
+--- a/test/ipse/session/managed_reads_test.exs
++++ b/test/ipse/session/managed_reads_test.exs
+@@ -166,7 +166,7 @@
+ 
+     ordinary = %{"key" => "other", "value" => %{"kind" => "ordinary"}}
+ 
+-    assert ManagedReads.covered?(
++    refute ManagedReads.covered?(
+              admission,
+              c.parent,
+              c.intent,
+@@ -175,6 +175,110 @@
+            )
+   end
+ 
++  test "root-only receipts cannot cover nonempty unclassified get or scan results", c do
++    for key <- [
++          "pending." <> JSON.sha256("proposal"),
++          "override." <> JSON.sha256("override"),
++          "other.value"
++        ] do
++      value = %{"kind" => "historical_unclassified", "text" => "synthetic value"}
++      bytes = Ipse.Extension.Collection.Migration.encode(value)
++
++      record = %{
++        "key" => key,
++        "revision" => 1,
++        "operation_id" => Usage.id(),
++        "value" => value,
++        "bytes" => byte_size(bytes),
++        "sha256" => JSON.sha256(bytes)
++      }
++
++      for inner <- [
++            %{"op" => "get", "key" => key},
++            %{"op" => "scan", "generation" => 1, "after" => nil, "limit" => 4}
++          ] do
++        intent = put_in(c.intent, ["request", "request"], inner)
++        intent = Map.put(intent, "request_sha256", JSON.digest([intent["request"]]))
++        result_value = c.value |> Map.delete("record") |> Map.put("generation", 1)
++
++        result_value =
++          if inner["op"] == "get",
++            do: Map.put(result_value, "record", record),
++            else: Map.merge(result_value, %{"records" => [record], "next" => nil})
++
++        dependency =
++          c.dependency
++          |> put_in(["collection", "generation"], 1)
++          |> put_in(["collection", "root_state"], "present")
++          |> put_in(["collection", "root_sha256"], JSON.sha256("root"))
++          |> put_in(["collection", "manifest_sha256"], JSON.sha256("manifest"))
++          |> put_in(["subject", "request_sha256"], JSON.digest([inner]))
++          |> put_in(["subject", "result_sha256"], JSON.digest([result_value]))
++
++        assert {:ok, receipt} = ManagedReads.prepare(c.id, intent, result_value, [dependency])
++
++        event =
++          intent
++          |> Map.put("type", "extension_action_result")
++          |> Map.put("outcome", %{"status" => "ok", "value" => result_value})
++
++        refute ManagedReads.covered?(
++                 c.config.semantic_admission,
++                 c.parent,
++                 intent,
++                 result_value,
++                 [dependency]
++               )
++
++        assert @error = ManagedReads.bind_result(c.id, c.config, c.parent, receipt, [], event)
++      end
++    end
++  end
++
++  test "metadata-only index rows remain covered without interpreting them as values", c do
++    inner = %{"op" => "index", "prefix" => "pending.", "cursor" => nil, "limit" => 1}
++    intent = put_in(c.intent, ["request", "request"], inner)
++    intent = Map.put(intent, "request_sha256", JSON.digest([intent["request"]]))
++
++    value =
++      c.value
++      |> Map.delete("record")
++      |> Map.put("generation", 1)
++      |> Map.merge(%{
++        "records" => [
++          %{
++            "key" => "pending." <> JSON.sha256("candidate"),
++            "revision" => 1,
++            "bytes" => 12,
++            "sha256" => JSON.sha256("candidate")
++          }
++        ],
++        "next" => nil,
++        "count" => 1,
++        "coverage" => "metadata_only",
++        "prefix" => "pending."
++      })
++
++    dependency =
++      c.dependency
++      |> put_in(["collection", "generation"], 1)
++      |> put_in(["collection", "root_state"], "present")
++      |> put_in(["collection", "root_sha256"], JSON.sha256("root"))
++      |> put_in(["collection", "manifest_sha256"], JSON.sha256("manifest"))
++      |> put_in(["subject", "request_sha256"], JSON.digest([inner]))
++      |> put_in(["subject", "result_sha256"], JSON.digest([value]))
++
++    assert {:ok, receipt} = ManagedReads.prepare(c.id, intent, value, [dependency])
++
++    event =
++      intent
++      |> Map.put("type", "extension_action_result")
++      |> Map.put("outcome", %{"status" => "ok", "value" => value})
++
++    assert {:ok, ^receipt, [^dependency]} =
++             ManagedReads.bind_result(c.id, c.config, c.parent, receipt, [], event)
++  end
++
+   test "new layout requires a prepared observation before a successful managed read", c do
+     assert @error = ManagedReads.bind_result(c.id, c.config, c.parent, nil, [], result(c))
+ 
+@@ -284,6 +388,46 @@
+              dependency
+            ])
+ 
++    unrelated = %{"kind" => "historical_unclassified", "text" => "synthetic value"}
++    unrelated_bytes = Ipse.Extension.Collection.Migration.encode(unrelated)
++
++    unrelated_record = %{
++      "key" => "other.value",
++      "revision" => 1,
++      "operation_id" => Usage.id(),
++      "value" => unrelated,
++      "bytes" => byte_size(unrelated_bytes),
++      "sha256" => JSON.sha256(unrelated_bytes)
++    }
++
++    scan = %{"op" => "scan", "generation" => 1, "after" => nil, "limit" => 4}
++
++    scan_intent =
++      put_in(intent, ["request", "request"], scan)
++      |> Map.put("request_sha256", JSON.digest([%{"op" => "collection.call", "request" => scan}]))
++
++    scan_value =
++      result_value
++      |> Map.delete("record")
++      |> Map.put("records", [record, unrelated_record])
++      |> Map.put("next", nil)
++
++    root =
++      c.dependency
++      |> Map.put("collection", dependency["collection"])
++      |> put_in(["subject", "request_sha256"], JSON.digest([scan]))
++      |> put_in(["subject", "result_sha256"], JSON.digest([scan_value]))
++
++    assert {:ok, receipt} =
++             ManagedReads.prepare(c.id, scan_intent, scan_value, [root, dependency])
++
++    scan_event =
++      scan_intent
++      |> Map.put("type", "extension_action_result")
++      |> Map.put("outcome", %{"status" => "ok", "value" => scan_value})
++
++    assert @error = ManagedReads.bind_result(c.id, c.config, c.parent, receipt, [], scan_event)
++
+     refute ManagedReads.covered?(c.config.semantic_admission, c.parent, intent, result_value, [])
+ 
+     changed =
+--- a/docs/operator/recovery.md
++++ b/docs/operator/recovery.md
+@@ -36,6 +36,18 @@
+ | Saved journal is incomplete | Inspect with diagnosis before deciding whether ordinary locked resume can repair a torn final record |
+ | Saved journal does not match its original location or file identity | Preserve the copy/replacement; use the original file and state directory, or a reviewed fresh-session handoff |
+ 
++An older Session with a recorded managed read can also refuse reconstruction
++if a generic read returned a nonempty value without a selected matching literal
++recipe. This does not describe the separate marked proposal assessment.
++Affected results can include historical pending proposals, overrides and unrelated values.
++The refusal alone does not identify the cause, and `diagnose` or the automatic
++handoff may also refuse the same history. Preserve the original journal, sources
++and lock files; do not edit the saved result or remove records to make it open.
++Inspect any uncertain effects and current protected state before beginning a new
++Session. If ordinary inspection cannot establish the outcome, ask for
++developer-assisted inspection and use a newly written task only after that
++review. A fresh Session grants no authority to reuse unavailable source text.
++
+ Diagnosis reports phase, unknown calls, context bytes, accounting, recent request
+ durations, and journal-limit receipts. Its context scope excludes live system
+ headers. Bytes are not tokens. Durations cover owned model/compaction work, not
+@@ -306,8 +318,8 @@
+ but cannot resume as the original live source. Use the original file in its
+ original directory, or the [fresh-session handoff](#continue-in-a-fresh-session)
+ procedure. Recreating a file at the same pathname does not restore its identity.
+-Older journals remain usable as conversation history; resume does not upgrade
+-them into protected publication sources.
++Older journals can remain usable as conversation history when their complete
++history validates; resume does not upgrade them into protected publication sources.
+ 
+ ## Recover a request draft
+ 
+--- a/docs/developer/knowledge-extensions.md
++++ b/docs/developer/knowledge-extensions.md
+@@ -185,6 +185,16 @@
+ marker is also a possible user reason, `:absent` is only a host assertion requiring
+ a fresh protected absence check. The host authenticates the exact prior choice
+ before applying a change.
++
++Recorded managed-read results are checked by the same classification rule on
++Saved reconstruction: an unmatched nonempty generic value cannot be covered
++only by a version-3 root receipt. This can make an older recorded Session refuse
++reconstruction; preserve the journal and follow the operator's
++[recovery procedure](../operator/recovery.md#find-the-original-session).
++The separate marked version-7 proposal assessment is unchanged. Older unmarked
++histories without a managed-read receipt do not pass through this check and need
++separate qualification.
++
+ Public forgetting and session-only retention use their reducing management route;
+ pin/automatic/duration use a separate guarded effect. Interactive literal
+ correction and supersession have their own Session-owned source/policy review

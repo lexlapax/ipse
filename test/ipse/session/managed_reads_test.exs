@@ -166,13 +166,117 @@ defmodule Ipse.Session.ManagedReadsTest do
 
     ordinary = %{"key" => "other", "value" => %{"kind" => "ordinary"}}
 
-    assert ManagedReads.covered?(
+    refute ManagedReads.covered?(
              admission,
              c.parent,
              c.intent,
              Map.put(c.value, "record", ordinary),
              [c.dependency]
            )
+  end
+
+  test "root-only receipts cannot cover nonempty unclassified get or scan results", c do
+    for key <- [
+          "pending." <> JSON.sha256("proposal"),
+          "override." <> JSON.sha256("override"),
+          "other.value"
+        ] do
+      value = %{"kind" => "historical_unclassified", "text" => "synthetic value"}
+      bytes = Ipse.Extension.Collection.Migration.encode(value)
+
+      record = %{
+        "key" => key,
+        "revision" => 1,
+        "operation_id" => Usage.id(),
+        "value" => value,
+        "bytes" => byte_size(bytes),
+        "sha256" => JSON.sha256(bytes)
+      }
+
+      for inner <- [
+            %{"op" => "get", "key" => key},
+            %{"op" => "scan", "generation" => 1, "after" => nil, "limit" => 4}
+          ] do
+        intent = put_in(c.intent, ["request", "request"], inner)
+        intent = Map.put(intent, "request_sha256", JSON.digest([intent["request"]]))
+        result_value = c.value |> Map.delete("record") |> Map.put("generation", 1)
+
+        result_value =
+          if inner["op"] == "get",
+            do: Map.put(result_value, "record", record),
+            else: Map.merge(result_value, %{"records" => [record], "next" => nil})
+
+        dependency =
+          c.dependency
+          |> put_in(["collection", "generation"], 1)
+          |> put_in(["collection", "root_state"], "present")
+          |> put_in(["collection", "root_sha256"], JSON.sha256("root"))
+          |> put_in(["collection", "manifest_sha256"], JSON.sha256("manifest"))
+          |> put_in(["subject", "request_sha256"], JSON.digest([inner]))
+          |> put_in(["subject", "result_sha256"], JSON.digest([result_value]))
+
+        assert {:ok, receipt} = ManagedReads.prepare(c.id, intent, result_value, [dependency])
+
+        event =
+          intent
+          |> Map.put("type", "extension_action_result")
+          |> Map.put("outcome", %{"status" => "ok", "value" => result_value})
+
+        refute ManagedReads.covered?(
+                 c.config.semantic_admission,
+                 c.parent,
+                 intent,
+                 result_value,
+                 [dependency]
+               )
+
+        assert @error = ManagedReads.bind_result(c.id, c.config, c.parent, receipt, [], event)
+      end
+    end
+  end
+
+  test "metadata-only index rows remain covered without interpreting them as values", c do
+    inner = %{"op" => "index", "prefix" => "pending.", "cursor" => nil, "limit" => 1}
+    intent = put_in(c.intent, ["request", "request"], inner)
+    intent = Map.put(intent, "request_sha256", JSON.digest([intent["request"]]))
+
+    value =
+      c.value
+      |> Map.delete("record")
+      |> Map.put("generation", 1)
+      |> Map.merge(%{
+        "records" => [
+          %{
+            "key" => "pending." <> JSON.sha256("candidate"),
+            "revision" => 1,
+            "bytes" => 12,
+            "sha256" => JSON.sha256("candidate")
+          }
+        ],
+        "next" => nil,
+        "count" => 1,
+        "coverage" => "metadata_only",
+        "prefix" => "pending."
+      })
+
+    dependency =
+      c.dependency
+      |> put_in(["collection", "generation"], 1)
+      |> put_in(["collection", "root_state"], "present")
+      |> put_in(["collection", "root_sha256"], JSON.sha256("root"))
+      |> put_in(["collection", "manifest_sha256"], JSON.sha256("manifest"))
+      |> put_in(["subject", "request_sha256"], JSON.digest([inner]))
+      |> put_in(["subject", "result_sha256"], JSON.digest([value]))
+
+    assert {:ok, receipt} = ManagedReads.prepare(c.id, intent, value, [dependency])
+
+    event =
+      intent
+      |> Map.put("type", "extension_action_result")
+      |> Map.put("outcome", %{"status" => "ok", "value" => value})
+
+    assert {:ok, ^receipt, [^dependency]} =
+             ManagedReads.bind_result(c.id, c.config, c.parent, receipt, [], event)
   end
 
   test "new layout requires a prepared observation before a successful managed read", c do
@@ -283,6 +387,46 @@ defmodule Ipse.Session.ManagedReadsTest do
     assert ManagedReads.covered?(c.config.semantic_admission, c.parent, intent, result_value, [
              dependency
            ])
+
+    unrelated = %{"kind" => "historical_unclassified", "text" => "synthetic value"}
+    unrelated_bytes = Ipse.Extension.Collection.Migration.encode(unrelated)
+
+    unrelated_record = %{
+      "key" => "other.value",
+      "revision" => 1,
+      "operation_id" => Usage.id(),
+      "value" => unrelated,
+      "bytes" => byte_size(unrelated_bytes),
+      "sha256" => JSON.sha256(unrelated_bytes)
+    }
+
+    scan = %{"op" => "scan", "generation" => 1, "after" => nil, "limit" => 4}
+
+    scan_intent =
+      put_in(intent, ["request", "request"], scan)
+      |> Map.put("request_sha256", JSON.digest([%{"op" => "collection.call", "request" => scan}]))
+
+    scan_value =
+      result_value
+      |> Map.delete("record")
+      |> Map.put("records", [record, unrelated_record])
+      |> Map.put("next", nil)
+
+    root =
+      c.dependency
+      |> Map.put("collection", dependency["collection"])
+      |> put_in(["subject", "request_sha256"], JSON.digest([scan]))
+      |> put_in(["subject", "result_sha256"], JSON.digest([scan_value]))
+
+    assert {:ok, receipt} =
+             ManagedReads.prepare(c.id, scan_intent, scan_value, [root, dependency])
+
+    scan_event =
+      scan_intent
+      |> Map.put("type", "extension_action_result")
+      |> Map.put("outcome", %{"status" => "ok", "value" => scan_value})
+
+    assert @error = ManagedReads.bind_result(c.id, c.config, c.parent, receipt, [], scan_event)
 
     refute ManagedReads.covered?(c.config.semantic_admission, c.parent, intent, result_value, [])
 

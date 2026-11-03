@@ -1,0 +1,4 @@
+2da0ae6995af8d614113ab9bdb4665ae94fd797b318654b3ba923f803c7b7e7a  overlay/lib/ipse/session/managed_reads.ex
+e6cbf5f5ab92ecd5e8516e0ea7f163275e1c041dbebfa3652e7964edc81bcb4a  overlay/test/ipse/session/managed_reads_test.exs
+9ddd8495c1f49f03a00b853c43f5916653a2208dfb8b1f7c8ff6ebe9cb641395  overlay/docs/operator/recovery.md.txt
+150e414b19ebcb875cf011dae9308f49558d4b766c9502e2338ba3070de94721  overlay/docs/developer/knowledge-extensions.md.txt

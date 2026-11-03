@@ -36,6 +36,18 @@ work and do not make an incompatible or damaged journal safe to rewrite:
 | Saved journal is incomplete | Inspect with diagnosis before deciding whether ordinary locked resume can repair a torn final record |
 | Saved journal does not match its original location or file identity | Preserve the copy/replacement; use the original file and state directory, or a reviewed fresh-session handoff |
 
+An older Session with a recorded managed read can also refuse reconstruction
+if a generic read returned a nonempty value without a selected matching literal
+recipe. This does not describe the separate marked proposal assessment.
+Affected results can include historical pending proposals, overrides and unrelated values.
+The refusal alone does not identify the cause, and `diagnose` or the automatic
+handoff may also refuse the same history. Preserve the original journal, sources
+and lock files; do not edit the saved result or remove records to make it open.
+Inspect any uncertain effects and current protected state before beginning a new
+Session. If ordinary inspection cannot establish the outcome, ask for
+developer-assisted inspection and use a newly written task only after that
+review. A fresh Session grants no authority to reuse unavailable source text.
+
 Diagnosis reports phase, unknown calls, context bytes, accounting, recent request
 durations, and journal-limit receipts. Its context scope excludes live system
 headers. Bytes are not tokens. Durations cover owned model/compaction work, not
@@ -306,8 +318,8 @@ identity. A copied, moved or replaced file can remain readable for inspection,
 but cannot resume as the original live source. Use the original file in its
 original directory, or the [fresh-session handoff](#continue-in-a-fresh-session)
 procedure. Recreating a file at the same pathname does not restore its identity.
-Older journals remain usable as conversation history; resume does not upgrade
-them into protected publication sources.
+Older journals can remain usable as conversation history when their complete
+history validates; resume does not upgrade them into protected publication sources.
 
 ## Recover a request draft
 

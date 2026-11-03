@@ -1,0 +1,8 @@
+lib/ipse/session/managed_reads.ex: OK
+test/ipse/session/managed_reads_test.exs: OK
+test/support/pending_legacy_receipt_replay.exs: OK
+baseline/test/support/pending_legacy_receipt_replay.exs: OK
+docs/operator/recovery.md: OK
+docs/developer/knowledge-extensions.md: OK
+synthetic-history/0d5df9e52ed1f6b2b124b8b96ba5de73.jsonl: OK
+synthetic-history/7ef6001d50230563e7b8bd060fc37299.jsonl: OK

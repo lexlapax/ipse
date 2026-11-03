@@ -1,0 +1,15 @@
+{
+  "version": 1,
+  "kind": "synthetic_legacy_pending_get",
+  "consumer_session_id": "7ef6001d50230563e7b8bd060fc37299",
+  "original_source_session_id": "0d5df9e52ed1f6b2b124b8b96ba5de73",
+  "action_index_zero_based": 26,
+  "receipt_index_zero_based": 25,
+  "operation_id": "6cc9578cb345ef22b7b1b6b5c2d67a7e",
+  "record_key": "pending.8683ac1dcec7493a58504e0ea61af953f4b49888d2ad36fb5cf8c61fea097d7a",
+  "recorded_result_sha256": "57e6512ae06b060ad5ea86e25d6be84d2a185e5d7b179f3c1e3f090742fc54ca",
+  "dependency_versions": [
+    3
+  ],
+  "tool_message_contains_marker": true
+}

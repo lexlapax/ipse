@@ -1,0 +1,4 @@
+overlay/lib/ipse/session/managed_reads.ex: OK
+overlay/test/ipse/session/managed_reads_test.exs: OK
+overlay/docs/operator/recovery.md.txt: OK
+overlay/docs/developer/knowledge-extensions.md.txt: OK

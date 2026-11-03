@@ -411,9 +411,9 @@ defmodule Ipse.Session.ManagedReads do
                  String.starts_with?(record["key"], &1["key_prefix"]))
            ) do
         [] ->
-          if match?(%{"value" => %{"kind" => "accepted_decision"}}, record),
-            do: {:halt, @error},
-            else: {:cont, {:ok, keys}}
+          # Match live managed-read containment: no raw nonempty value is
+          # covered by a root receipt when no literal recipe selected it.
+          {:halt, @error}
 
         [recipe] ->
           accepted? = match?(%{"value" => %{"kind" => "accepted_decision"}}, record)
