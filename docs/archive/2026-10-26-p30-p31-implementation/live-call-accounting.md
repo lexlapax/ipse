@@ -135,3 +135,14 @@ provider substitutions, manual settlements or refunds occurred. A harness artifa
 path error stopped before Session creation or inference and was corrected through
 a continuation preserving the original declaration/metadata. This is functional
 source evidence, not independent quality, immutable weights or offline proof.
+
+## Local pilot pre-reservation refusal, 2026-11-03
+
+The [local-pilot refusal](pilot-local-refusal-20261103.md) followed a pinned
+loopback inspection reporting zero inference calls. The launcher left empty
+attempt, progress and candidate files, and its authorization directory was
+absent on inspection. No reservation or inference is recorded. The account
+directory's observed permissions explain the refusal under the tested code,
+although the generic error did not identify its failing check. No account
+permissions were changed and the pilot was not retried. Accounting remains
+**4 of 1,000 local calls** and **238 of 300 conservatively charged ChatGPT calls**.

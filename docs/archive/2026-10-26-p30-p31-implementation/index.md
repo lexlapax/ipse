@@ -65,6 +65,9 @@ nor resource/offline qualification. No daemon configuration or existing model wa
 
 ## P31A contracts and evidence
 
+- [Local-pilot pre-reservation refusal](pilot-local-refusal-20261103.md) records the pinned zero-inference inspection, empty attempt files and observed account-directory permission mismatch; the pilot was not retried and no reservation is recorded.
+- [Small worker-handoff diagnostic](worker-handoff-small-20261103.md) records a passing eight-note control and a failing trace-wrapper count guard; neither establishes the cause of the populated-cohort failure.
+- [Explicit sparse-paging fixture timeout](explicit-sparse-paging-timeout-20261103.md) preserves the first 33-note setup's terminal deadline and absence of a paging result.
 - [Committed local-pilot synthetic gate](pilot-local-integrated-20261103.md) repeats the clean offline build and 27 focused controls on the integrated committed source; it does not include a live model call or semantic labels.
 - [Retained-cohort diagnostic](retained-probe-20261103.md) preserves a separate read-only Session failure before inference, unchanged prior files and an unknown Worker-input outcome; the cause remains unproven.
 - [Local pilot synthetic preflight](pilot-local-preflight-20261103.md) records a fixed-route one-shot launcher, 27 focused controls and no live calls; semantic labels and workload qualification remain open.

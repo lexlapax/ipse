@@ -133,7 +133,10 @@ following limits until the end-to-end paths are qualified:
    cause remains unproven and neither failed turn is replayed. A
    [local pilot launcher preflight](archive/2026-10-26-p30-p31-implementation/pilot-local-preflight-20261103.md)
    passed 27 synthetic controls without model calls; live results and independent
-   semantic labels are still missing.
+   semantic labels are still missing. Its first local launch
+   [refused before any recorded reservation or inference](archive/2026-10-26-p30-p31-implementation/pilot-local-refusal-20261103.md);
+   the observed account-directory mode explains the refusal under the tested
+   code, though the generic error did not identify its failing check.
    Workload tooling can advance alongside the notes journey; the completed
    integrated workload depends on the Session and recall behavior it exercises.
 3. **Documents and local retrieval — P31C1b/D1/F.** Independently finish document
