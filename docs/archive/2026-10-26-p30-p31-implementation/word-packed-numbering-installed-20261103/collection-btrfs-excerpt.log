@@ -1,0 +1,5 @@
+Could not save private configuration; inspect the original and any timestamped backup before retrying setup. See docs/operator/recovery.md#diagnose-startup-and-service-errors.
+Assertion with == failed
+code:  assert result == 0
+left:  1
+right: 0

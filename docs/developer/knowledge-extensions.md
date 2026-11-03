@@ -754,6 +754,32 @@ table/row/cell coordinates. V14 and v15 rows contain five values for paragraphs
 and eight for table cells. V16 rows have nine fixed positions: the first five,
 nullable table/row/cell coordinates and nullable numbering metadata. Quotation
 offsets retain the newline gaps between original blocks.
+
+For example, suppose a v16 citation quotes the following four complete blocks:
+
+```text
+First café item
+amberneedle exact evidence
+Plain middle
+Table numbered
+```
+
+If the first two paragraphs are numbered starting at 3, the third is plain and
+the fourth is the next numbered paragraph in table 1, row 1, cell 1, the span
+rows have these byte ranges. End offsets are exclusive; `é` occupies two UTF-8
+bytes and each joining newline occupies one quotation byte.
+
+| Paragraph | Local range | Quote range | Table/row/cell | Numbering ordinal and label |
+| --- | --- | --- | --- | --- |
+| 1 | 0–16 | 0–16 | null/null/null | 3, `3.` |
+| 2 | 0–26 | 17–43 | null/null/null | 4, `4.` |
+| 3 | 0–12 | 44–56 | null/null/null | null |
+| 4 | 0–14 | 57–71 | 1/1/1 | 5, `5.` |
+
+The actual numbering map also carries its version, list identity, level,
+template and suffix. The derived labels are metadata, not characters in the
+quote.
+
 Rows must be ordered and are reconstructed exactly from the stored block map;
 changed coordinates, offsets or column labels refuse. Evidence revalidates the typed receipt,
 canonical envelope and source spans. An ordinary text `put` cannot smuggle in

@@ -1107,8 +1107,10 @@ The [bounded v16 Word numbering increment](archive/2026-10-26-p30-p31-implementa
 records direct single-level decimal labels as locator metadata, with focused
 extraction and native Session checks. A [PDF-free synthetic Linux package](archive/2026-10-26-p30-p31-implementation/word-numbering-installed-20261103.md)
 also passes acquisition, cited retrieval, changed-file refusal and resume in
-both State and Collection. Larger packed spans, standard PDF-enabled release
-integration, independent Word quality and the broader P31F requirements remain open.
+both State and Collection. A [40-block packed-numbering fixture](archive/2026-10-26-p30-p31-implementation/word-packed-numbering-installed-20261103.md)
+also passes those paths in both profiles, with a separate pure forged-label
+control. Broader document capacity, standard PDF-enabled release integration,
+independent Word quality and the broader P31F requirements remain open.
 
 The [operator-authored planning-decision increment](archive/2026-10-26-p30-p31-implementation/operator-planning-20261103/index.md)
 adds a separate native acceptance and explicit post-exit save with linked original

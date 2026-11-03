@@ -331,9 +331,10 @@ with both `styles.xml` and `stylesWithEffects.xml` is readable only when their
 checked style graphs and WordprocessingML dialects agree. Different style types, inheritance, defaults or
 hidden-text settings refuse; unsupported effect namespaces also refuse.
 
-For a directly numbered body paragraph, the reader supports a narrow list format:
-a single decimal level with an explicit start and an optional start override. It
-tracks separate list instances. Its citation locator includes a `numbering` map
+For a directly numbered body paragraph, including one inside a table cell, the
+reader supports a narrow list format: a single decimal level with an explicit
+start and an optional start override. It tracks separate list instances. Its
+citation locator includes a `numbering` map
 with the derived ordinal, label and suffix; for example, `3.` is separate from the
 paragraph's quoted words. A multi-block v16 citation has fixed span fields for
 table, row, cell and numbering; absent coordinates or numbering are `null`.

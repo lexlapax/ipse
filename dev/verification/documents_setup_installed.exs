@@ -32,7 +32,7 @@ File.chmod!(home, 0o700)
 
 {identity, 0} =
   System.cmd(Path.join(release, "ipse"), ["version", "--json"],
-    env: [{"PATH", utilities}, {"HOME", home}, {"IPSE_HOME", nil}, {"ERL_FLAGS", "+S 2:2"}],
+    env: [{"PATH", utilities}, {"IPSE_HOME", home}, {"ERL_FLAGS", "+S 2:2"}],
     stderr_to_stdout: true
   )
 
@@ -93,8 +93,7 @@ results =
         stderr_to_stdout: true,
         env: [
           {"PATH", utilities},
-          {"HOME", home},
-          {"IPSE_HOME", nil},
+          {"IPSE_HOME", home},
           {"ERL_FLAGS", "+S 2:2"},
           {"RELEASE_DISTRIBUTION", "none"}
         ]

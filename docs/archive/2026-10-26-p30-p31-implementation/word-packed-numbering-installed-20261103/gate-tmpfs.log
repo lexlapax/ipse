@@ -1,0 +1,7 @@
+PASS installed document setup: state
+PASS installed document setup: collection
+PASS installed document setup: cancel
+PASS installed document setup: stale
+PASS installed document setup: race
+PASS installed document setup: pipe
+INSTALLED_DOCUMENT_SETUP_ALL_SIX_PASSED

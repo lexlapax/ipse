@@ -46,8 +46,27 @@ defmodule DocumentSetupJourney do
            "<w:numbering xmlns:w=\"#{word}\"><w:abstractNum w:abstractNumId=\"1\"><w:multiLevelType w:val=\"singleLevel\"/><w:lvl w:ilvl=\"0\"><w:start w:val=\"3\"/><w:numFmt w:val=\"decimal\"/><w:lvlText w:val=\"%1.\"/></w:lvl></w:abstractNum><w:num w:numId=\"7\"><w:abstractNumId w:val=\"1\"/></w:num></w:numbering>"},
           {~c"word/document.xml",
            "<w:document xmlns:w=\"#{word}\"><w:body>" <>
-             Enum.map_join(["First item", "amberneedle exact evidence"], fn text ->
-               "<w:p><w:pPr><w:numPr><w:ilvl w:val=\"0\"/><w:numId w:val=\"7\"/></w:numPr></w:pPr><w:r><w:t>#{text}</w:t></w:r></w:p>"
+             Enum.map_join(1..40, fn n ->
+               text =
+                 case n do
+                   1 -> "First café item"
+                   2 -> "amberneedle exact evidence"
+                   3 -> "Plain middle"
+                   4 -> "Table numbered"
+                   _ -> "Filler #{n}"
+                 end
+
+               props =
+                 if n in [1, 2, 4],
+                   do:
+                     "<w:pPr><w:numPr><w:ilvl w:val=\"0\"/><w:numId w:val=\"7\"/></w:numPr></w:pPr>",
+                   else: ""
+
+               paragraph = "<w:p>#{props}<w:r><w:t>#{text}</w:t></w:r></w:p>"
+
+               if n == 4,
+                 do: "<w:tbl><w:tr><w:tc>#{paragraph}</w:tc></w:tr></w:tbl>",
+                 else: paragraph
              end) <> "</w:body></w:document>"}
         ],
         [:memory]
@@ -342,16 +361,26 @@ else
   assert doc["original_sha256"] == Ipse.JSON.sha256(numbered)
   assert doc["extraction_version"] == "ipse-documents-v16"
 
-  if doc["version"] == 2 do
-    assert Enum.any?(doc["spans"], fn
-             [2, _, _, _, _, nil, nil, nil, %{"ordinal" => 4, "label" => "4."}] -> true
-             _ -> false
-           end)
-  else
-    assert doc["locator"]["paragraph"] == 2
-    assert doc["locator"]["numbering"]["ordinal"] == 4
-    assert doc["locator"]["numbering"]["label"] == "4."
-  end
+  assert doc["version"] == 2, "the installed journey did not return a packed multi-block citation"
+
+  assert doc["span_fields"] ==
+           ~w(paragraph start_byte end_byte quote_start_byte quote_end_byte table row cell numbering)
+
+  expected = ["First café item", "amberneedle exact evidence", "Plain middle", "Table numbered"]
+  assert String.starts_with?(citation["quote"], Enum.join(expected, "\n"))
+  [first, second, plain, table | _] = doc["spans"]
+
+  Enum.zip([first, second, plain, table], expected)
+  |> Enum.reduce(0, fn {row, text}, offset ->
+    assert length(row) == 9
+    assert Enum.slice(row, 1, 4) == [0, byte_size(text), offset, offset + byte_size(text)]
+    offset + byte_size(text) + 1
+  end)
+
+  assert [1, _, _, _, _, nil, nil, nil, %{"ordinal" => 3, "label" => "3."}] = first
+  assert [2, _, _, _, _, nil, nil, nil, %{"ordinal" => 4, "label" => "4."}] = second
+  assert [3, _, _, _, _, nil, nil, nil, nil] = plain
+  assert [4, _, _, _, _, 1, 1, 1, %{"ordinal" => 5, "label" => "5."}] = table
 
   File.write!(numbered_path, DocumentSetupJourney.document())
   changed = find_numbered.(resumed)
@@ -370,6 +399,53 @@ else
 
   assert find_numbered.(resumed_numbered)["evidence"] == numbered_result["evidence"]
   :ok = Ipse.Session.close_confirmed(resumed_numbered)
+
+  # Inspect the same imported package after the live Session journey has closed.
+  artifact_ebin = Path.join([home, "extensions", "artifacts", instance["artifact"], "ebin"])
+  Code.prepend_path(artifact_ebin)
+  documents = IpseKnowledge.Documents
+  evidence = IpseKnowledge.Evidence
+  Code.ensure_loaded!(documents)
+  Code.ensure_loaded!(evidence)
+  assert Path.dirname(to_string(:code.which(documents))) == artifact_ebin
+  assert Path.dirname(to_string(:code.which(evidence))) == artifact_ebin
+  assert {:ok, extracted} = apply(documents, :extract, [numbered, "numbered.docx"])
+  assert length(extracted["segments"]) == 40
+  assert {:ok, payload} = apply(documents, :source_payload, [extracted, 65_536])
+  assert length(payload["document"]["segments"]) < 40
+  assert apply(evidence, :valid_document?, [payload["document"], payload["text"]])
+  receipt = apply(evidence, :document_storage_receipt!, [payload["document"]])
+
+  attrs = %{
+    "source_id" => "provided:packed-numbered",
+    "partition" => "notes",
+    "generation" => 1,
+    "title" => "Packed numbered control",
+    "text" => payload["text"],
+    "uri" => "provided:numbered.docx",
+    "observed_at_ms" => 10,
+    "event_at_ms" => nil,
+    "expires_at_ms" => nil,
+    "origin" => %{
+      "kind" => "provided",
+      "store_profile" => "notes",
+      "partition_or_scope" => "notes",
+      "receipt" => receipt,
+      "historical" => false
+    }
+  }
+
+  attrs =
+    if receipt["version"] == 4, do: Map.put(attrs, "document", payload["document"]), else: attrs
+
+  assert {:ok, source} = apply(evidence, :source, [attrs])
+  assert {:ok, [chunk | _]} = apply(evidence, :chunks, [source])
+  quote = Enum.join(expected, "\n")
+  assert {:ok, crossing} = apply(evidence, :citation, [source, chunk, 0, byte_size(quote)])
+  assert crossing["quote"] == quote and crossing["document"]["version"] == 2
+  assert apply(evidence, :valid_span?, [source, crossing])
+  forged = put_in(crossing, ["document", "spans", Access.at(1), Access.at(8), "label"], "5.")
+  refute apply(evidence, :valid_span?, [source, forged])
 
   assert Ipse.CLI.run(["documents", "disable", "--cwd", cwd, "--write"]) == 0
   disabled = Jason.decode!(File.read!(path))

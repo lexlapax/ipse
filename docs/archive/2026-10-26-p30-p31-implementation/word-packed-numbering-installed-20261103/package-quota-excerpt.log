@@ -1,0 +1,2 @@
+Compiling lib/ipse/session.ex (it's taking more than 10s)
+    ** (File.Error) could not write to file "<snapshot>/_build/prod/lib/ipse/ebin/Elixir.Ipse.Extension.Consent.beam": disk quota exceeded
