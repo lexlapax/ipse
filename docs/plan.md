@@ -1039,7 +1039,9 @@ generic; a separate [timestamp-correlated synthetic trace](archive/2026-10-26-p3
 demonstrates the two-call limit caused refusal in that instrumented run.
 An [independent cross-process control](archive/2026-10-26-p30-p31-implementation/p30-cross-process-allowance-20261103.md)
 also observes that refusal in a new OS process using the same protected ledger,
-with no third dispatch. Simultaneous cross-process reservations remain untested.
+with no third dispatch. A later [in-flight attempt](archive/2026-10-26-p30-p31-implementation/p30-inflight-allowance-20261103.md)
+failed at the second operator channel before its approval or allowance check;
+in-flight and simultaneous cross-process reservations remain untested.
 The later [exact Linux package proof](archive/2026-10-26-p30-p31-implementation/package-idle-resume-20261031.md#passing-final-package)
 passes generic installed checks and the independent synthetic decision/document
 artifacts; full-source, consumer-quality and installed knowledge qualification

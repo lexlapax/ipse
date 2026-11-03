@@ -1,0 +1,5 @@
+contender_operator_channel_unavailable=true
+contender_pass_marker=false
+contender_refusal_observed=false
+contender_terminal_interact_failed=true
+winner_assessed=true

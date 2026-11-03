@@ -1,0 +1,17 @@
+Running ExUnit with seed: 0, max_cases: 4
+
+Retaining concurrent synthetic fixture: /dev/shm/ipse-p30-concurrent-dcbb-20261103-01/task-tmp/ipse-shadow-session-eae81eabae96196eff62e06fa3f04ef3
+
+
+  1) test actual bundled shadow Session is cross-process in-flight limit (IpseKnowledge.ShadowConcurrentSessionTest)
+     test/extensions/knowledge/shadow_concurrent_session_test.exs:9
+     Synthetic fixture failed; see retained root /dev/shm/ipse-p30-concurrent-dcbb-20261103-01/task-tmp/ipse-shadow-session-eae81eabae96196eff62e06fa3f04ef3
+     code: assert status == 0, "Synthetic fixture failed; see retained root #{root}"
+     stacktrace:
+       test/extensions/knowledge/shadow_concurrent_session_test.exs:57: (test)
+
+
+Finished in 14.3 seconds (0.00s async, 14.3s sync)
+
+Result: 0/1 passed
+Failed: 1 test
