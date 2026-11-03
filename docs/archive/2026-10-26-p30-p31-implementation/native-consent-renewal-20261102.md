@@ -38,6 +38,10 @@ renewal, old Session behavior, later owner-loss cases, periodic renewal during
 the complete workload and independent quality remain open. No runtime code,
 permission scope, budget or storage limit changed.
 
+The subsequent [recall and source-loss control](native-renewal-recall-20261102.md)
+tests a fresh Session's synthetic loopback request after renewal; the other
+limitations above remain.
+
 ## Incomplete full-source run
 
 Before the focused controls, a clean independently built clone of `3b14048`

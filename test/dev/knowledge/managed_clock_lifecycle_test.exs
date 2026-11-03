@@ -97,6 +97,26 @@ defmodule Ipse.Development.ManagedClockLifecycleTest do
     refute File.exists?(Path.join(root, "unexpected-model"))
   end
 
+  @tag clock_consent_recall: true
+  test "a later synthetic provider request can receive a current note saved before renewal" do
+    root =
+      clocked_phases(
+        "ipse-native-clock-renewal-recall-",
+        [
+          {0, "managed_clock_late_seed.exs", "current", "NATIVE_CLOCK_LATE_SEED_PASSED"},
+          {364, "managed_clock_recall_renewal.exs", "364", "NATIVE_RENEWAL_RECALL_PASSED=364"},
+          {386, "managed_clock_recall_renewal.exs", "386", "NATIVE_RENEWAL_RECALL_PASSED=386"}
+        ],
+        stdio_clock: true
+      )
+
+    report = root |> Path.join("clock-renewal-recall.json") |> File.read!() |> Jason.decode!()
+    assert report["synthetic_requests"] == 2
+    assert report["old_note_in_request"] == true
+    assert report["missing_source_withheld"] == true
+    assert report["annual_workload_qualification"] == false
+  end
+
   defp clocked_phases(prefix, phases, options \\ []) do
     assert is_nil(System.get_env("IPSE_RUNNER_PATH"))
     root = Path.join(System.tmp_dir!(), prefix <> Ipse.Usage.id())

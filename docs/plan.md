@@ -1377,8 +1377,10 @@ zero turns/effects. Actual page packing, remaining effect overhead and pilot-der
 mix/intake remain open.
 The [native consent-renewal control](archive/2026-10-26-p30-p31-implementation/native-consent-renewal-20261102.md)
 checks expired-policy refusal and a later native capture after fresh review,
-preserving the original signed stored note and saved source. Old-note delivery
-after renewal and full annual continuity remain open.
+preserving the original signed stored note and saved source. The follow-up
+[renewed recall and source-loss control](archive/2026-10-26-p30-p31-implementation/native-renewal-recall-20261102.md)
+checks fresh-Session delivery to a synthetic loopback provider and withholding
+after source loss. Existing-Session behavior and full annual continuity remain open.
 The [retained-receipt geometry probe](archive/2026-10-26-p30-p31-implementation/native-receipt-geometry-20261102.md)
 also measures 8,639,325 canonical packed bytes for 42,980 managed receipts and
 2,000 public record descriptors, above the unchanged 8-MiB ceiling before domain

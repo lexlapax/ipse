@@ -1,0 +1,58 @@
+{
+  "annual_qualification": false,
+  "base_commit": "c2e218c",
+  "corrected_focused": {
+    "excluded": 4,
+    "exit_status": 0,
+    "passed": 1,
+    "seed": 791855
+  },
+  "date": "2026-11-02",
+  "external_provider_calls": 0,
+  "files_sha256": {
+    "/tmp/ipse-native-clock-renewal-recall-20261102-final.log": "ab695dbb2d04091e32967aaf7ff49e2db9d57677edead60424b6c75c488151bd",
+    "/tmp/ipse-native-clock-renewal-recall-20261102-first.log": "c227792caffcce32e505ff8f6762643e2e6ca7f0b4ef185a623fbf327dbbed18",
+    "/tmp/ipse-native-clock-renewal-recall-20261102-loss-final.log": "84ee19917528bfa8921b5498a101c1001037b369b8374dfe938ebc2588b27eb1",
+    "/tmp/ipse-native-clock-renewal-recall-20261102-loss.log": "4cf5a863cda3b0ee209699d0780c12757155ca9908439545e305e0c4eb54de8e",
+    "/tmp/ipse-native-clock-renewal-recall-20261102-regression-final.log": "729bf295a2857a2ac50e0734ac2376f557bf5868ff847cef9ecf5401913c0d59",
+    "/tmp/ipse-native-clock-renewal-recall-20261102-regression.log": "857a3871b6dad58cabe5aaa76184852a1309a5cfe3cc0d588768ed2dbc3c1d0f",
+    "dev/fixtures/process_clock.rs": "07828b7e1fe9e878d46e4df4ef3a1a4d5d5d65cc7c84c1fdd2acbeb3d9be421c",
+    "priv/ipse-runner": "5487c57a84b99be7b5b4381d097b637d3c45350b92b492d1786712f2bfbf8c7a",
+    "test/dev/knowledge/managed_clock_lifecycle_test.exs": "648da1c8d9b8788b9d6289bcfa22529d86a62a015a84048108e9ebd18b8e229d",
+    "test/support/managed_clock_lifecycle.exs": "71ee6667f1389f6315fca305a6d4af819f26f8f8db0da7ff61552ca39723e104",
+    "test/support/managed_clock_recall_renewal.exs": "4c4033ec5bc61acbb9e8cc32b49eea99bb2817b49a392dbb02688de4c6717442",
+    "test/support/operator_pty.rs": "bcf2ce303c72ab32d74d6959883ecef4b17a63613c7f4047057fdc18eef6d92c",
+    "test/support/provider_fixture.ex": "0092d34f9e3adeed2bf184e3ab48feabd79eeacd2b5f0e5c1b5c654ceba2dcc1"
+  },
+  "final_clock_file": {
+    "exit_status": 0,
+    "log": "/tmp/ipse-native-clock-renewal-recall-20261102-regression-final.log",
+    "failed": 0,
+    "seed": 791857,
+    "passed": 5
+  },
+  "previous_clock_file": {
+    "exit_status": 0,
+    "failed": 0,
+    "seed": 791856,
+    "passed": 5
+  },
+  "report": {
+    "annual_workload_qualification": false,
+    "missing_source_withheld": true,
+    "old_note_in_request": true,
+    "synthetic_requests": 2
+  },
+  "snapshot_scope": "selected source and helper hashes collected after execution; no complete pre/post runtime inventory",
+  "source_loss_fixture_failure": {
+    "actual": "[:ok, :ok]",
+    "exit_status": 2,
+    "expected": ":ok",
+    "failed_source_version_separately_snapshotted": false,
+    "held_file_exists": false,
+    "seed": 791854,
+    "source_restored_sha256_matches": true
+  },
+  "synthetic_loopback_requests": 2,
+  "version": 1
+}
