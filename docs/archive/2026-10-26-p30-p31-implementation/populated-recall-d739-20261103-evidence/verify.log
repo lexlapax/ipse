@@ -1,0 +1,14 @@
+     warning: Ipse.Development.SyntheticOllamaRetained.start/2 is undefined (module Ipse.Development.SyntheticOllamaRetained is not available or is yet to be defined)
+     │
+ 165 │     {:ok, server} = provider.start(seed["fixture_port"], self())
+     │                              ~
+     │
+     └─ /dev/shm/ipse-fresh-recall-probe-d739-20261103-02/probe.exs:165:30: Ipse.Development.FreshPopulatedProbe.main/1
+
+     warning: Ipse.Development.SyntheticOllamaRetained.prompt/0 is undefined (module Ipse.Development.SyntheticOllamaRetained is not available or is yet to be defined)
+     │
+ 175 │       prompt = provider.prompt()
+     │                         ~
+     │
+     └─ /dev/shm/ipse-fresh-recall-probe-d739-20261103-02/probe.exs:175:25: Ipse.Development.FreshPopulatedProbe.main/1
+

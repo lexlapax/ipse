@@ -136,7 +136,11 @@ following limits until the end-to-end paths are qualified:
    cause remains unproven and neither failed turn is replayed. A later
    [traced distinct Session](archive/2026-10-26-p30-p31-implementation/retained-worker-trace-20261103.md)
    measured two slow protected observations before another unresolved handoff;
-   it did not establish the earlier failures' cause. A
+   it did not establish the earlier failures' cause. A subsequent
+   [fresh 2,000-record candidate run](archive/2026-10-26-p30-p31-implementation/populated-recall-d739-20261103.md)
+   completed its seed and audit but ended with another unknown Worker input
+   before inference. The batching candidate therefore has not fixed populated
+   recall, and the new uncertain turn is not replayed. A
    [local pilot launcher preflight](archive/2026-10-26-p30-p31-implementation/pilot-local-preflight-20261103.md)
    passed 27 synthetic controls without model calls; live results and independent
    semantic labels are still missing. Its first local launch
@@ -1144,6 +1148,11 @@ adds a separate native acceptance and explicit post-exit save with linked origin
 provenance. Its synthetic verification passed 11 native journeys and 95 focused
 regressions. Assistant-proposal acceptance, wider source combinations, installed
 and independent-human qualification, and the rest of P31I remain open.
+
+The [Ollama draft recovery increment](archive/2026-10-26-p30-p31-implementation/ollama-draft-recovery-20261103.md)
+supports cancellation or acceptance of a plain-text draft while preserving unrelated
+native continuation on later turns and resume. Synthetic Session, loopback and
+terminal controls pass; live-model, installed and full integrated checks remain open.
 
 A [current direct-client control](archive/2026-10-26-p30-p31-implementation/assistant-proposal-current-20261102.md)
 now saves a synthetic completed assistant reply as signed pending material with

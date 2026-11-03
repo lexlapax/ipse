@@ -61,6 +61,7 @@ nor resource/offline qualification. No daemon configuration or existing model wa
 
 ## P31I planning and acceptance
 
+- [Ollama draft recovery](ollama-draft-recovery-20261103.md) records focused synthetic cancellation, acceptance and resume controls, with full-suite and installed qualification still open.
 - [Leased terminal deadline rounding](leased-terminal-quantization-20261103.md) repairs a bounded conversion excess and records focused review controls; cross-clock rate and suspend assumptions remain open.
 - [Acceptance clock-domain assessment](session-acceptance-clock-anchor-assessment-20261103.md) records why the native wall cutoff does not establish the BEAM Review lifetime and compares unimplemented alternatives; it also identifies an existing terminal-conversion qualification.
 - [Synthetic Session-owner discriminator](session-guard-owner-discriminator-20261103.md) records a successful test-only transfer and failed wrong-recipient diagnostics; production acceptance and recipient refusal remain unproven.
@@ -72,6 +73,7 @@ nor resource/offline qualification. No daemon configuration or existing model wa
 
 ## P31A contracts and evidence
 
+- [Fresh populated recall candidate](populated-recall-d739-20261103.md) records a completed 2,000-record seed and audit, followed by an unknown Worker input in a distinct Session before inference; the candidate did not pass populated recall.
 - [Traced retained-cohort handoff](retained-worker-trace-20261103.md) records two slow protected observations in a distinct unresolved synthetic Session; the timeout handler did not establish the initiating cause, and original evidence was preserved.
 - [Same-source recapture preflight refusal](same-source-recapture-refusal-20261103.md) records a post-rejection turn stopped before inference; its exact failed predicate and recapture outcome remain unknown.
 - [Native recapture controls after containment](native-recapture-after-containment-20261103.md) verifies signed forget and rejection at the native publication boundary with trusted synthetic sources; bundled-worker and legacy override behavior remain separate.

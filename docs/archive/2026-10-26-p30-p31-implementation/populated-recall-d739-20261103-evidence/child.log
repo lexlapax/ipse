@@ -1,0 +1,7 @@
+** (ExUnit.AssertionError) 
+
+new Session failed: :error
+
+    (ex_unit 1.20.4) lib/ex_unit/assertions.ex:1121: ExUnit.Assertions.flunk/1
+    /dev/shm/ipse-fresh-recall-probe-d739-20261103-02/probe.exs:181: Ipse.Development.FreshPopulatedProbe.main/1
+    /dev/shm/ipse-fresh-recall-probe-d739-20261103-02/probe.exs:391: (file)

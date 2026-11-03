@@ -1,0 +1,7 @@
+** (MatchError) no match of right hand side value:
+
+    {:error, :directory_sync_unavailable}
+
+    .recall-populated-probe-20261103/probe.exs:374: Ipse.Development.FreshPopulatedProbe.write!/2
+    .recall-populated-probe-20261103/probe.exs:44: Ipse.Development.FreshPopulatedProbe.main/1
+    .recall-populated-probe-20261103/probe.exs:378: (file)
