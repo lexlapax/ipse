@@ -1,0 +1,3 @@
+dc77a3bb9fe1bc4b577740670921ff9b0418657d8419cdc185f3fa9a1580d4bf  dev/verification/ollama_draft_installed.exs
+4dd8e3a0962565e9a7ace692829864fd8f7db55364b3841e54b93540938f3a43  test/support/draft_cli_pty.exs
+d1d002b7583b700dad9a818cf20afdda67f24e7bcb9ba1b9fe4470d32b10f103  docs/developer/workspace-context.md

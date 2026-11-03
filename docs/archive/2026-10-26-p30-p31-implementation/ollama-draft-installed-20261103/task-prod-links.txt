@@ -1,0 +1,2 @@
+_build/prod/lib/ipse/priv -> ../../../../priv
+_build/prod/lib/telemetry/src -> ../../../../deps/telemetry/src

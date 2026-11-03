@@ -303,6 +303,30 @@ After the required build, the planning-decision tests exercise replay and
 one-shot status plus synthetic PTY save, refusal and resume boundaries. They do
 not establish installed or independent-human use.
 
+To exercise the Ollama no-tool acceptance and cancellation paths against a
+built package, record the expected archive hash and commit label independently.
+Use a new private output directory and retain the adjacent checksum sidecar:
+
+```sh
+IPSE_DRAFT_ARCHIVE=/absolute/path/to/ipse.tar.gz
+IPSE_DRAFT_PROOF_ROOT=/absolute/private/path/new-draft-proof
+IPSE_DRAFT_ARCHIVE_SHA256=replace-with-recorded-64-character-sha256
+IPSE_DRAFT_COMMIT=replace-with-recorded-40-character-commit
+elixir dev/verification/ollama_draft_installed.exs \
+  "$IPSE_DRAFT_ARCHIVE" "$IPSE_DRAFT_PROOF_ROOT" \
+  "$IPSE_DRAFT_ARCHIVE_SHA256" "$IPSE_DRAFT_COMMIT"
+```
+
+The verifier needs a Linux native PTY, Rust compiler, precompiled ExUnit and
+loopback access. It runs the existing synthetic terminal fixture against the
+packaged Session, terminal and Ollama adapter. It checks the release inventory,
+the fixture's draft-thinking canary stays out of terminal output, and the saved
+continuation after an idle reopen.
+The package commit label is not source-provenance proof. Preserve the private
+output on failure; terminal logs contain synthetic acceptance codes. This
+fixture does not run the installed chat command or establish independent human
+use or live-model behavior.
+
 Check zero file effects under existing grants, stale acceptance, exact original
 command bytes, question provenance, canary absence after cancellation, changed
 MCP catalogs, owner loss, truncated boundaries and inert resume. A PTY proves

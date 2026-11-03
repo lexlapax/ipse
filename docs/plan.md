@@ -1181,8 +1181,10 @@ The [Ollama draft recovery increment](archive/2026-10-26-p30-p31-implementation/
 supports cancellation or acceptance of a plain-text draft while preserving unrelated
 native continuation on later turns and resume. A [no-tool thinking follow-up](archive/2026-10-26-p30-p31-implementation/ollama-draft-thinking-20261103.md)
 also withdraws a bounded native thinking field with the draft, with synthetic
-Session and terminal acceptance/cancellation controls. Tool-assisted drafts,
-live-model, installed and full integrated checks remain open.
+Session and terminal acceptance/cancellation controls. A [packaged synthetic
+follow-up](archive/2026-10-26-p30-p31-implementation/ollama-draft-installed-20261103.md)
+passes acceptance and cancellation via release eval. Tool-assisted drafts,
+public installed chat, live-model and full integrated checks remain open.
 
 A [current direct-client control](archive/2026-10-26-p30-p31-implementation/assistant-proposal-current-20261102.md)
 now saves a synthetic completed assistant reply as signed pending material with

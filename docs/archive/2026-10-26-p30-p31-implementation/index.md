@@ -61,6 +61,7 @@ nor resource/offline qualification. No daemon configuration or existing model wa
 
 ## P31I planning and acceptance
 
+- [Installed Ollama draft controls](ollama-draft-installed-20261103.md) pass synthetic packaged acceptance and cancellation through release eval, with live and public-chat limits.
 - [Ollama no-tool draft thinking](ollama-draft-thinking-20261103.md) records synthetic Session and terminal acceptance/cancellation checks while retaining stricter managed-source admission.
 - [Ollama draft recovery](ollama-draft-recovery-20261103.md) records focused synthetic cancellation, acceptance and resume controls, with full-suite and installed qualification still open.
 - [Leased terminal deadline rounding](leased-terminal-quantization-20261103.md) repairs a bounded conversion excess and records focused review controls; cross-clock rate and suspend assumptions remain open.

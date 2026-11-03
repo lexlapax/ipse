@@ -1,0 +1,8 @@
+Running ExUnit with seed: 0, max_cases: 4
+Excluding tags: [:test]
+Including tags: [test: :"test native enhance command retains exact input and rejects a stale ID before acceptance"]
+
+.
+Finished in 3.0 seconds (3.0s async, 0.00s sync)
+
+Result: 1 passed, 8 excluded

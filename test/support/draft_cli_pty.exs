@@ -517,6 +517,13 @@ end
 assert :ok = Ipse.Session.close_confirmed(session)
 
 if transport do
+  {:ok, before_reopen} = Ipse.Journal.load(Path.join(root, "state"), id)
+
+  replay_types =
+    ~w(request_admitted inference_dispatch_intent extension_invocation_intent extension_action_intent)
+
+  prior_intents = Enum.filter(before_reopen, &(&1["type"] in replay_types))
+
   {:ok, resumed} =
     Ipse.Session.start_link(
       config: session_config,
@@ -526,6 +533,9 @@ if transport do
       id: id
     )
 
+  assert Ipse.Session.info(resumed).phase == :idle
+  {:ok, after_reopen} = Ipse.Journal.load(Path.join(root, "state"), id)
+  assert Enum.filter(after_reopen, &(&1["type"] in replay_types)) == prior_intents
   assert :ok = Ipse.Session.prompt(resumed, "later resumed task")
   assert_receive {:ipse, ^resumed, {:done, :ok}}, 5_000
   assert :ok = Ipse.Session.close_confirmed(resumed)

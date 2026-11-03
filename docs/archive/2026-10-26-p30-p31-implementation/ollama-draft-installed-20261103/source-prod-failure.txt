@@ -1,0 +1,9 @@
+Focused source control, initial production-mode attempt
+Selected test: native enhance command retains exact input and rejects a stale ID before acceptance
+Observed result: 0 passed, 1 failed, 8 excluded
+Observed Session startup error: invalid_provider_endpoint
+Original complete synthetic test log SHA-256: 1eb36b05df1d4d6f8300f1c5d1b2e35fb6ea2b0bf2994317867c4130f93f934e
+The retained log does not identify the loop iteration. Source inspection supports
+the explanation that the ChatGPT synthetic loopback mode was refused because
+production builds disable test-only endpoints. This diagnosis is an inference.
+The full original log remains in the private scratch, not this evidence bundle.
