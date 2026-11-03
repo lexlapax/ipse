@@ -451,15 +451,8 @@ defmodule Ipse.Runner.LeasedTerminal do
                do: controls.payload,
                else: if(review?, do: @review_payload, else: @payload)
              ),
-           extra =
-             if(review?,
-               do:
-                 <<native_clock + max(deadline - System.monotonic_time(:millisecond), 0)::64,
-                   controls.overall_wall::64,
-                   native_clock +
-                     max(controls.overall_deadline - System.monotonic_time(:millisecond), 0)::64>>,
-               else: <<>>
-             ),
+           {:ok, extra} <-
+             review_deadline_extension(review?, native_clock, deadline, controls),
            prefix =
              <<controls.operation::binary, count, session_entry::binary, host_entry::binary,
                manifest::binary, tty.major_device::64, tty.inode::64, tty.minor_device::64,
@@ -539,6 +532,44 @@ defmodule Ipse.Runner.LeasedTerminal do
 
   defp review_clock(port, owner, deadline, true) do
     with {:ok, <<clock::64>>} <- frame(port, ?R, owner, deadline), do: {:ok, clock}
+  end
+
+  # Both host readings are quantized to milliseconds. Reserving one complete
+  # millisecond prevents their difference from extending the native cutoff by
+  # the fractional part of the later reading, assuming compatible clocks.
+  @doc false
+  def native_review_deadlines(native_clock, display_deadline, overall_deadline, now)
+      when is_integer(native_clock) and native_clock >= 0 and is_integer(display_deadline) and
+             is_integer(overall_deadline) and is_integer(now) do
+    display = display_deadline - now - 1
+    overall = overall_deadline - now - 1
+    max_u64 = 18_446_744_073_709_551_615
+
+    if display > 0 and overall >= display and native_clock <= max_u64 - overall do
+      {:ok, {native_clock + display, native_clock + overall}}
+    else
+      {:error, :cleanup_unconfirmed}
+    end
+  end
+
+  def native_review_deadlines(_, _, _, _), do: {:error, :cleanup_unconfirmed}
+
+  defp review_deadline_extension(false, _, _, _), do: {:ok, <<>>}
+
+  defp review_deadline_extension(true, native_clock, deadline, controls) do
+    with {:ok, {display, overall}} <-
+           native_review_deadlines(
+             native_clock,
+             deadline,
+             controls.overall_deadline,
+             System.monotonic_time(:millisecond)
+           ),
+         wall when is_integer(wall) and wall > 0 and wall <= 9_007_199_254_740_991 <-
+           controls.overall_wall do
+      {:ok, <<display::64, wall::64, overall::64>>}
+    else
+      _ -> {:error, :cleanup_unconfirmed}
+    end
   end
 
   defp complete_review({:review_group, _}, owner, job, cap, controls, port, _deadline) do

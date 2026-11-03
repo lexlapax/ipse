@@ -595,6 +595,10 @@ an opaque same-process handle inside an enclosing file-effect owner that remains
 alive through input. Only after the source and policy scopes release does
 `finish_approval/2` release native input. The helper watches Session/Host controls
 through that bounded 120-second phase; settled source exporters may now exit.
+The host reserves one millisecond when translating quantized BEAM remaining time
+to each native display and overall deadline. That prevents the demonstrated
+rounding excess when the clocks advance compatibly; it does not establish equal
+clock rates or suspend behavior between BEAM and the native helper.
 Only the exact fresh `allow CODE` confirms one attempt. `/cancel` and `/exit`
 use the ordinary Session cancellation path and discard queued prompts; exit also
 closes the terminal interaction. Other text denies the proposal;
@@ -632,7 +636,11 @@ The trusted supersession normalizer consumes the permit. Collection's private
 `execute_reviewed_supersession/7` then claims that consumed permit for the exact
 intent, original request, normalized mutation and normalization receipt. A
 second claim refuses. Its finite deadline is the earlier of remaining review
-time and the normalized publication deadline.
+time and the normalized publication deadline. The host converts the remaining
+BEAM-monotonic review lifetime to a wall cutoff for the later switch; that
+conversion does not establish strict BEAM-monotonic expiry at the switch if the
+wall clock moves backward. Treat interrupted or uncertain outcomes as unknown,
+and do not interpret this cutoff as a proven cross-clock lifetime guarantee.
 
 `Runner.SessionSource` transfers the actual Session control, original Session
 flock and drained Writer control into the existing native transaction owner.

@@ -450,8 +450,13 @@ Writer thaw. For both production purposes, source and policy scopes then release
 the host sends `U` to begin input. The final exchange and input phase watch the
 Session/Host controls; settled source exporters may exit. Fresh effect admission
 still rechecks current sources and permission after the answer. Follow
-[the host flow](../docs/developer/session-sources.md#reconstruct-without-giving-old-tokens-authority)
+[the host flow](../docs/developer/session-sources.md#retain-sources-through-a-protected-display-or-review)
 for unsupported dependencies and the separate synthetic/native evidence limits.
+For each display and overall deadline, the host reserves one millisecond when
+converting its quantized remaining time to the earlier native clock reading;
+one millisecond or less remaining refuses. This addresses rounding only. It
+does not establish that the BEAM and native clocks have identical rates or
+suspend behavior.
 The separate `v9-synthetic-notice-display` terminal mode accepts only the fixed
 synthetic marker and sends its notice after its lease-close handshakes. This
 fixture mode does not deliver protected content. A private synthetic Session
@@ -622,7 +627,7 @@ Use these operations while the exact top capability is held:
 | `check(cap)` | Observe every retained logical parent/lock identity; discard read results after loss. It does not fence arbitrary Elixir callback IO. |
 | `read(cap, directory, basename, maximum)` | Read at most 8 MiB from an allowlisted root or immutable file through the native lock owner. It opens, validates, reads and closes each data FD before replying; host assembly checks identical size/device/inode across bounded chunks. |
 | `read_optional(cap, directory, basename, maximum)` | Apply the same bounded read checks, returning `{:ok, bytes}` for a present file (including an empty file) or `:absent` only for a validated native missing basename. Final lease check/release remain mandatory before exposing a consumer result. |
-| `quota(cap, mode, ceiling)` | Configure or narrow a per-lock staging ceiling, 1..64 MiB; mode is `:flat` or `:collection`. Mode changes and widening refuse. |
+| `quota(cap, mode, ceiling)` | Configure or narrow a per-lock staging ceiling from 1 byte through 192 MiB for a trusted host profile; mode is `:flat` or `:collection`. Mode changes and widening refuse. Legacy notes callers retain their smaller limits. |
 | `preflight(cap, sizes)` | Check a full plan of at most 256 positive file sizes, each at most 8 MiB and at most 64 MiB total, before sending payload. |
 | `stage(cap, directory, entries)` | Exclusively create and sync 1..128 distinct pending files, at most 8 MiB total. The native process checks its configured quota before readiness, then retains all scope writer leases through final sync. |
 | `install(cap, directory, pending, immutable)` | Rename a pending file to a 64-lowercase-hex `.json` name without replacement; an existing target is a known refusal. Elixir verifies existing content/hash when needed. |
