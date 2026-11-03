@@ -1,0 +1,4 @@
+5ba8a4c545f3b90abba381047e6cc1a2523866c679010fc445750d94c5b61f80  lib/ipse/session/saved.ex
+4ea117b48fd1fb04ed28a6d2a938ad85f2523ba189d47aae71deb667971b8e6c  test/ipse/session/source_window_test.exs
+bdbbc3914cedc30615a4c62d1594b9374ab65552ba24365cea0089e2248cc3b0  test/ipse/session/draft_vertical_test.exs
+841dab8dd164179f270bac3c8c08d5be1c31e6109c72655e69e9d313f6ce51fa  docs/developer/session-sources.md

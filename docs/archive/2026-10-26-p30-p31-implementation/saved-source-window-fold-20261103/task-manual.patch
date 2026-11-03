@@ -1,0 +1,16 @@
+--- a/docs/developer/session-sources.md
++++ b/docs/developer/session-sources.md
+@@ -33,6 +33,13 @@
+ source leases nor attest current permission: `StoredSources` must still check
+ the original journal and current owners for each protected use.
+ 
++For a normal Session header, `Saved.restore/2` retains the source window advanced
++by its chronological replay rather than replaying the events a second time.
++After all Saved validators succeed, it gives the returned index a fresh window ID
++and secret, so old handles remain invalid. Other first-record shapes keep the
++independent reconstruction path. This does not skip current source-page or
++owner checks.
++
+ For an inactive original journal, a task can also reuse a reconstructed source
+ index after `Saved.restore/2` has validated the complete decoded event list. The
+ task-owned cache computes its own digest of the exact events and Session ID; it

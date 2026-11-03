@@ -1,0 +1,175 @@
+--- a/lib/ipse/session/saved.ex
++++ b/lib/ipse/session/saved.ex
+@@ -30,7 +30,7 @@
+          {:ok, extension_state} <- Actions.restore(events),
+          {:ok, result_sources} <- ResultSource.restore(events),
+          :ok <- validate_context_events(events),
+-         {:ok, projected_messages, native, managed_lineage} <-
++         {:ok, projected_messages, native, managed_lineage, replayed_window} <-
+            project_with_lineage(events, :validate, id),
+          {:ok, visible_messages} <-
+            Ipse.Session.Draft.project(
+@@ -49,7 +49,7 @@
+              projected_messages,
+              messages
+            ),
+-         {:ok, source_window} <- Ipse.Session.SourceWindow.restore(events, id) do
++         {:ok, source_window} <- final_source_window(events, id, replayed_window) do
+       {question, managed_lineage, question_recovery} =
+         recover_question(question, managed_lineage, extension_state)
+ 
+@@ -97,6 +97,26 @@
+     end
+   end
+ 
++  # The chronological fold already advanced this window through each event.
++  # Only the normal Session header is known to be a no-op when it is seen again
++  # by that fold; retain the original independent replay for other first records.
++  defp final_source_window(
++         [%{"type" => "session"} | _],
++         id,
++         %Ipse.Session.SourceWindow{index: %Ipse.Session.SourceIndex{session_id: id} = index} =
++           window
++       ) do
++    with {:ok, identity} <-
++           Ipse.Session.SourceIndex.new(id, index.policy_generation, index.origin_sha256) do
++      {:ok, %{window | index: %{index | window_id: identity.window_id, secret: identity.secret}}}
++    else
++      _ -> {:error, :invalid_source_window}
++    end
++  end
++
++  defp final_source_window(events, id, _window),
++    do: Ipse.Session.SourceWindow.restore(events, id)
++
+   defp validate_release_receipts(events, id) do
+     case get_in(List.first(events) || %{}, ["metadata", "release_receipt_layout"]) do
+       nil ->
+@@ -285,7 +305,7 @@
+         Enum.find_value(events, & &1["session_id"]) || String.duplicate("0", 32)
+ 
+     case project_with_lineage(events, question_mode, id) do
+-      {:ok, messages, native, _lineage} -> {:ok, messages, native}
++      {:ok, messages, native, _lineage, _source_window} -> {:ok, messages, native}
+       error -> error
+     end
+   end
+@@ -368,7 +388,7 @@
+       end
+     )
+     |> case do
+-      {:ok, messages, native, _, _, lineage, _} ->
++      {:ok, messages, native, _, _, lineage, source_window} ->
+         before =
+           Enum.reverse(messages)
+           |> Ipse.Session.ManagedOutput.withhold_pending(lineage)
+@@ -383,7 +403,7 @@
+                  before,
+                  restored
+                ) do
+-          {:ok, restored, native, lineage}
++          {:ok, restored, native, lineage, source_window}
+         end
+ 
+       error ->
+--- a/test/ipse/session/source_window_test.exs
++++ b/test/ipse/session/source_window_test.exs
+@@ -109,6 +109,34 @@
+       else: {page, acc ++ page["sources"]}
+   end
+ 
++  defp comparable_window(window) do
++    window
++    |> Map.from_struct()
++    |> Map.update!(:index, fn index ->
++      index |> Map.from_struct() |> Map.drop([:window_id, :secret])
++    end)
++  end
++
++  test "legacy non-session first record keeps single-pass source-window behavior" do
++    id = Ipse.Usage.id()
++
++    events = [
++      %{
++        "type" => "message",
++        "metadata" => %{},
++        "message" => %{"role" => "user", "content" => "legacy source"}
++      }
++    ]
++
++    assert {:ok, expected} = SourceWindow.restore(events, id)
++    assert expected.coverage["legacy_unverified"] == 1
++    assert {:ok, saved} = Session.Saved.restore(events, id)
++    assert comparable_window(saved.source_window) == comparable_window(expected)
++    assert saved.source_window.coverage["legacy_unverified"] == 1
++    refute saved.source_window.index.window_id == expected.index.window_id
++    refute saved.source_window.index.secret == expected.index.secret
++  end
++
+   test "64 actual typed receipts remain readable with no extension inline context and replay exactly",
+        c do
+     session = start(c)
+@@ -171,8 +199,20 @@
+     id = Session.info(session).id
+     assert :ok = Session.close_confirmed(session)
+     assert {:ok, events} = Journal.load(c.dir, id)
++    assert {:ok, expected_window} = SourceWindow.restore(events, id)
+     assert {:ok, saved} = Session.Saved.restore(events, id)
+     assert saved.source_window.coverage["indexed"] == 130
++    assert comparable_window(saved.source_window) == comparable_window(expected_window)
++    refute saved.source_window.index.window_id == expected_window.index.window_id
++    refute saved.source_window.index.secret == expected_window.index.secret
++
++    assert {:ok, %{"sources" => [first | _]}} =
++             SourceWindow.execute(expected_window, "source.list", %{"limit" => 1})
++
++    assert {:error, _} =
++             SourceWindow.execute(saved.source_window, "source.read", %{
++               "handle" => first["read_handle"]
++             })
+ 
+     native_pages =
+       for %{
+--- a/test/ipse/session/draft_vertical_test.exs
++++ b/test/ipse/session/draft_vertical_test.exs
+@@ -203,6 +203,23 @@
+     {pid, config.test_label}
+   end
+ 
++  defp assert_source_window_equivalent(events, id) do
++    assert {:ok, expected} = Ipse.Session.SourceWindow.restore(events, id)
++    assert {:ok, saved} = Session.Saved.restore(events, id)
++
++    comparable = fn window ->
++      window
++      |> Map.from_struct()
++      |> Map.update!(:index, fn index ->
++        index |> Map.from_struct() |> Map.drop([:window_id, :secret])
++      end)
++    end
++
++    assert comparable.(saved.source_window) == comparable.(expected)
++    refute saved.source_window.index.window_id == expected.index.window_id
++    refute saved.source_window.index.secret == expected.index.secret
++  end
++
+   # Tests replay and authority after acceptance. A separate PTY test proves the
+   # witness; this synthetic journal fixture does not claim terminal origin.
+   defp synthetic_accepted_resume(c, pid, extra \\ %{}) do
+@@ -410,6 +427,7 @@
+     {:ok, events} = Journal.load(c.dir, id)
+     refute Enum.any?(events, &(&1["type"] == "draft_completed"))
+     assert {:ok, %{draft: %{status: :cancelled}}} = Session.Saved.restore(events, id)
++    assert_source_window_equivalent(events, id)
+     {resumed, resumed_label} = start(c, %{}, id)
+     refute_receive {:request, _, _, _, _}, 100
+     assert :ok = Session.prompt(resumed, "ordinary")
+@@ -448,6 +466,8 @@
+     assert {:ok, %{draft: %{status: :consumed, revision: 2, accepted_message: true}}} =
+              Session.Saved.restore(events, id)
+ 
++    assert_source_window_equivalent(events, id)
++
+     through = fn type ->
+       {before, [event | _]} = Enum.split_while(events, &(&1["type"] != type))
+       before ++ [event]

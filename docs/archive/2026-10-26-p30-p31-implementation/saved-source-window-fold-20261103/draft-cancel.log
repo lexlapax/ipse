@@ -1,0 +1,8 @@
+Running ExUnit with seed: 0, max_cases: 4
+Excluding tags: [:test]
+Including tags: [test: :"test cancelling in-flight work fences its task and remains inert on resume"]
+
+.
+Finished in 0.2 seconds (0.00s async, 0.2s sync)
+
+Result: 1 passed, 19 excluded

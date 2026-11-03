@@ -1,0 +1,87 @@
+Resolving Hex dependencies...
+Resolution completed in 0.007s
+All dependencies have been fetched
+==> mime
+Compiling 1 file (.ex)
+Generated mime app
+==> nimble_options
+Compiling 3 files (.ex)
+Generated nimble_options app
+==> ex_json_pointer
+Compiling 5 files (.ex)
+Generated ex_json_pointer app
+==> jason
+Compiling 10 files (.ex)
+Generated jason app
+==> plug_crypto
+Compiling 5 files (.ex)
+Generated plug_crypto app
+==> hpax
+Compiling 4 files (.ex)
+Generated hpax app
+==> mint
+Compiling 1 file (.erl)
+Compiling 21 files (.ex)
+Generated mint app
+==> elixir_uuid
+Compiling 1 file (.ex)
+    warning: use Bitwise is deprecated. import Bitwise instead
+    │
+  2 │   use Bitwise, only_operators: true
+    │   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    │
+    └─ lib/uuid.ex:2: UUID (module)
+
+Generated elixir_uuid app
+==> ipse
+===> Analyzing applications...
+===> Compiling telemetry
+==> jsonschex
+Compiling 32 files (.ex)
+    warning: the variable "pos" is accessed inside size(...) of a bitstring but it was defined outside of the match. You must precede it with the pin operator
+    │
+ 47 │         <<local::binary-size(pos), ?@, domain::binary>> = data
+    │                              ~
+    │
+    └─ lib/jsonschex/formats/email.ex:47:30: JSONSchex.Formats.Email.split_local_domain/1
+
+    warning: the variable "pos" is accessed inside size(...) of a bitstring but it was defined outside of the match. You must precede it with the pin operator
+    │
+ 53 │         <<local::binary-size(pos), ?@, domain::binary>> = data
+    │                              ~
+    │
+    └─ lib/jsonschex/formats/email.ex:53:30: JSONSchex.Formats.Email.split_local_domain/1
+
+     warning: this clause of defp update_context_if_needed/2 is never used (or it will always fail/warn when invoked)
+     │
+ 614 │   defp update_context_if_needed(%{source_id: nil}, %ValidationContext{} = root_context) do
+     │        ~
+     │
+     └─ lib/jsonschex/validator.ex:614:8: JSONSchex.Validator.update_context_if_needed/2
+
+Generated jsonschex app
+==> plug
+Compiling 1 file (.erl)
+Compiling 42 files (.ex)
+Generated plug app
+==> nimble_pool
+Compiling 2 files (.ex)
+Generated nimble_pool app
+==> finch
+Compiling 23 files (.ex)
+Generated finch app
+==> req
+Compiling 24 files (.ex)
+Generated req app
+==> mcp_elixir_sdk
+Compiling 60 files (.ex)
+Generated mcp_elixir_sdk app
+==> ipse
+Compiling 192 files (.ex)
+Compiling lib/ipse/session.ex (it's taking more than 10s)
+Generated ipse app
+Built corpus/collection-documents. Import, trust and enable it explicitly.
+Built corpus/state-documents. Import, trust and enable it explicitly.
+Built knowledge/native. Import, trust and enable it explicitly.
+Built knowledge/decision-shadow. Import, trust and enable it explicitly.
+Built inert extension bundle catalog; artifacts remain disabled until operator setup.

@@ -1,0 +1,29 @@
+--- task-source.sha256
++++ strict-source.sha256
+@@ -1034,7 +1034,7 @@
+ c66ffc446973edcec202d3e676976eaa7effc873978494f0a53aeb39deed5df7  ./test/ipse/session/native_header_session_loss_test.exs
+ 45fa574d24301e17239604320a1fe39caeb267798e4f882c594dc659da3a4370  ./test/ipse/session/native_header_session_test.exs
+ a2478966885309b31aeb06ad184fc100e28816f5cbce26753988af286f272e60  ./test/ipse/session/native_journal_fencing_test.exs
+-62e22a75dedf02066d5bebf028ae983e8dddb8af9184810731614fbcfad4cbf6  ./test/ipse/session/native_note_recall_test.exs
++7ade54540a703efcbfaa7af625f30d224d9df2941928f3b26be1bd53131e5c89  ./test/ipse/session/native_note_recall_test.exs
+ bb4bf898eaed5fe2b26217a4a7e738cbea14df8ded44ca40de8a0633ebfc3e51  ./test/ipse/session/ollama_model_pin_test.exs
+ de2b586039352d4abc013cacdc4c6bc6f862e6c6f5d71f6f4a92112121254a59  ./test/ipse/session/operator_answer_test.exs
+ 25d3deae1be0a731d08ef792152d3698fc7206ae620a21dce4e3a8bf3d1cf77b  ./test/ipse/session/operator_assertion_integration_test.exs
+@@ -1202,7 +1202,7 @@
+ 5e7ecbac66ec46204f597769e8964475a7fa7e1d93905d37e80cb2902b0925ce  ./test/support/mcp_server.exs
+ 3669bfb63391e202c55b62399b52d8cd48b08f74dd38d4d50ad5edf03ede606c  ./test/support/metadata_transport_geometry.exs
+ 2b9371db4fd3e00c22c7cb6e24661b6fb11c9ea1e76e87ce53c708c833add2ad  ./test/support/native_note_recall.exs
+-08d175d301136364d9152c2cab9577957adf3beac441a9a2c7295a8300ba46fe  ./test/support/native_note_recall_many.exs
++a10eba9eee7b76e01dbee3dac239b2dd7740208006e539dee2ae46c52ad8d856  ./test/support/native_note_recall_many.exs
+ 1d91f39b8fd3e1b4a33415db7f7ce1d118fe9c534ec4f878b2892b4314be71be  ./test/support/native_pipe_scope.exs
+ 866a26f9815a3bcfe816fd7d639135b2ef2abff8f020c956255d55fd7ecea6c3  ./test/support/native_recall_filler.exs
+ 7c18388f9690dd5367ab2521f8d2571d5ba4853a10109be479bceeec252b2a17  ./test/support/native_review.exs
+@@ -1214,7 +1214,7 @@
+ f9e78b380d3418cb89851d9d3ab6c9b1a021e1fc241a8493ebacfbadd78408aa  ./test/support/operator_eof.exs
+ 0653061250674e01c27320794ff01ca03800b1e42f087908ca9dff58633f1a6f  ./test/support/operator_forgery.rs
+ 1c1f1372f05f2671e7be8ad67068b8240880033790fa42d04762d4e37dfa86d9  ./test/support/operator_protocol_probe.rs
+-21a78892e9868328faf1f3cb0b353734012a6b33e414a898acd5ba50c996ed71  ./test/support/operator_pty.rs
++e65e1bbdd75621bf312a9c97138998dd7612963898f6a38f6acf7f654da2453f  ./test/support/operator_pty.rs
+ 02d496c762d1b4a84e650864d4455e391929f548090bc953972f04aba5d3317e  ./test/support/operator_session.exs
+ b0f43b2d304292f8c4a4f2cef531459b3539b724aeea38f66c0d2269d1a02a8c  ./test/support/pending_acceptance_cli.exs
+ 436967c17e905848934ee4bb3d41dc4b459f08fca79b0f1ff0811b997507a3eb  ./test/support/pending_acceptance_management.exs

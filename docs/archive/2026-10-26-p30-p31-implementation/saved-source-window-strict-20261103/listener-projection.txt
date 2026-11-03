@@ -1,0 +1,3 @@
+The synthetic listener reported provider_closed=true after its initial receive returned closed.
+Original private one-shot log SHA-256: 805d2c3985121ee0292aa0dd6c105c9fd3234a70fd8c86ff2e1fc46197cffa37
+The raw terminal log is not archived; its synthetic approval codes remain private.

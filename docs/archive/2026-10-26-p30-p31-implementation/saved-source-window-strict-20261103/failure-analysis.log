@@ -1,0 +1,44 @@
+source_restoration: %{
+  source_count: 33,
+  source_fingerprints_match: 33,
+  source_fingerprints_mismatch: 0
+}
+%{
+  index: 208,
+  keys: ["admission_sha256", "before_sha256", "checked_at_ms", "deadline_ms",
+   "dependencies_sha256", "input_sha256", "intent_id", "phase",
+   "policy_generation", "request_id", "route_sha256", "session_id",
+   "snapshot_sha256", "source_generation", "tools_sha256", "turn_id", "type",
+   "version"],
+  fields: %{"type" => "managed_preflight_intent"}
+}
+%{
+  index: 209,
+  keys: ["intent_id", "projection", "type", "verdicts", "version"],
+  fields: %{"type" => "managed_preflight_result"}
+}
+%{
+  index: 210,
+  keys: ["admission_sha256", "attempt_id", "input_sha256", "intent_id",
+   "mode_sha256", "phase", "pin_sha256", "request_id", "reservation_id",
+   "route_sha256", "service_id", "session_id", "source_sha256", "tools_sha256",
+   "turn_id", "type", "version"],
+  fields: %{"type" => "inference_dispatch_intent"}
+}
+%{
+  index: 211,
+  keys: ["duration_ms", "kind", "outcome", "type"],
+  fields: %{"duration_ms" => 17180, "type" => "request_measured"}
+}
+%{
+  index: 212,
+  keys: ["attempt_id", "duration_ms", "finality", "outcome", "reported_model",
+   "request_id", "type", "usage", "version"],
+  fields: %{"duration_ms" => 17181, "type" => "request_finished"}
+}
+%{
+  index: 213,
+  keys: ["status", "type"],
+  fields: %{"status" => "error", "type" => "turn_finished"}
+}
+worker_input_statuses: %{"delivered" => 37}

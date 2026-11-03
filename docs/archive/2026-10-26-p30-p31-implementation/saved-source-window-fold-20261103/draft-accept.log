@@ -1,0 +1,8 @@
+Running ExUnit with seed: 0, max_cases: 4
+Excluding tags: [:test]
+Including tags: [test: :"test replacement acceptance sends only the accepted intent and survives replay"]
+
+.
+Finished in 0.5 seconds (0.00s async, 0.5s sync)
+
+Result: 1 passed, 19 excluded
