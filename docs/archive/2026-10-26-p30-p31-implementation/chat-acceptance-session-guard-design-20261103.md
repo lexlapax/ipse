@@ -75,6 +75,14 @@ applicable transfer scope, review/effect permit, source/record validity and
 consent deadlines.
 Do not renew a deadline on a retry or stretch the existing bounded handoff for
 human think time; expire and freshly render when the relevant authority lapses.
+The current native primitive receives only a wall cutoff, while the existing
+Review permit uses BEAM monotonic time. Converting the permit's remaining time
+to wall time does not prove that the native switch cannot outlive that permit,
+especially across descheduling or clock changes. Do not integrate the primitive
+with that permit until a separately reviewed clock-domain binding enforces the
+permit's actual lifetime through the switch; no such binding is established here.
+The [clock-domain assessment](session-acceptance-clock-anchor-assessment-20261103.md)
+compares conditional and native-clock alternatives without adopting either.
 No ordinary unfenced root switch is a fallback. An uncertain switch or cleanup
 is unknown even when a later read suggests publication happened.
 

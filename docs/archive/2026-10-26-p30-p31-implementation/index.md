@@ -61,6 +61,7 @@ nor resource/offline qualification. No daemon configuration or existing model wa
 
 ## P31I planning and acceptance
 
+- [Acceptance clock-domain assessment](session-acceptance-clock-anchor-assessment-20261103.md) records why the native wall cutoff does not establish the BEAM Review lifetime and compares unimplemented alternatives; it also identifies an existing terminal-conversion qualification.
 - [Synthetic Session-owner discriminator](session-guard-owner-discriminator-20261103.md) records a successful test-only transfer and failed wrong-recipient diagnostics; production acceptance and recipient refusal remain unproven.
 - [Same-reply proposal and card map](same-reply-proposal-card-map-20261103.md) identifies the missing nomination, answer and display-owner bindings; implementation and end-to-end verification remain open.
 - [Session acceptance native primitive](session-acceptance-native-primitive-20261103.md) records an isolated one-shot guard and owner-loss controls using synthetic helper owners; actual Session binding and the same-reply journey remain open.
