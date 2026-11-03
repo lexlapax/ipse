@@ -8,6 +8,9 @@ defmodule Ipse.Development.NativeNotesWorkload do
   @daily_limit 100
   @ordinary_days 90
   @history_days 365
+  @day_ms 86_400_000
+  @clock_max_ms 500 * @day_ms
+  @safe_uint 9_007_199_254_740_991
 
   def calendar(intake) when is_integer(intake) and intake in 20..320 do
     seed = Seed.plan("initial")
@@ -206,6 +209,62 @@ defmodule Ipse.Development.NativeNotesWorkload do
     |> Enum.with_index(1)
     |> Enum.map(fn {segment, index} -> Map.put(segment, "index", index) end)
   end
+
+  @doc """
+  Plan one fixture-clock day from an unshifted real start time. Persist this
+  anchor before dispatch and reuse its offset for every batch and restart that
+  day. It is arithmetic only and grants no permission to set a clock or effect.
+  """
+  def clock_day(seed_ms, day, real_start_ms, previous_virtual_ms)
+      when is_integer(seed_ms) and seed_ms in 0..@safe_uint and is_integer(day) and
+             day in 0..500 and is_integer(real_start_ms) and real_start_ms in 0..@safe_uint and
+             is_integer(previous_virtual_ms) and previous_virtual_ms in 0..@safe_uint do
+    start_ms = seed_ms + day * @day_ms
+    end_ms = start_ms + @day_ms
+    offset_ms = start_ms - real_start_ms
+
+    if end_ms <= @safe_uint and previous_virtual_ms < start_ms and
+         offset_ms in 0..@clock_max_ms do
+      {:ok,
+       %{
+         "seed_ms" => seed_ms,
+         "day" => day,
+         "real_start_ms" => real_start_ms,
+         "previous_virtual_ms" => previous_virtual_ms,
+         "start_ms" => start_ms,
+         "end_ms" => end_ms,
+         "offset_ms" => offset_ms
+       }}
+    else
+      {:error, :fixture_clock_refused}
+    end
+  end
+
+  def clock_day(_, _, _, _), do: {:error, :fixture_clock_refused}
+
+  @doc "Check a persisted day anchor against the latest real and virtual times."
+  def clock_now(anchor, real_ms, previous_virtual_ms)
+      when is_map(anchor) and is_integer(real_ms) and real_ms in 0..@safe_uint and
+             is_integer(previous_virtual_ms) and previous_virtual_ms in 0..@safe_uint do
+    with {:ok, expected} <-
+           clock_day(
+             anchor["seed_ms"],
+             anchor["day"],
+             anchor["real_start_ms"],
+             anchor["previous_virtual_ms"]
+           ),
+         true <- anchor === expected,
+         true <- real_ms >= anchor["real_start_ms"],
+         true <- previous_virtual_ms >= anchor["previous_virtual_ms"],
+         virtual_ms = real_ms + anchor["offset_ms"],
+         true <- virtual_ms >= previous_virtual_ms and virtual_ms < anchor["end_ms"] do
+      {:ok, %{"virtual_ms" => virtual_ms, "offset_ms" => anchor["offset_ms"]}}
+    else
+      _ -> {:error, :fixture_clock_refused}
+    end
+  end
+
+  def clock_now(_, _, _), do: {:error, :fixture_clock_refused}
 
   defp record(id, category, day, slot \\ nil) do
     %{

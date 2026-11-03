@@ -249,6 +249,28 @@ authenticate resolved targets and preserve closure/unknown-effect recovery;
 the [segment preflight](../archive/2026-10-26-p30-p31-implementation/native-calendar-segments-20261102.md)
 does not implement that driver.
 
+The short seed and turnover probes add a fixed day offset to the current real
+clock. For a long-running continuation, use a per-day anchor that compensates
+for elapsed real time; otherwise the simulated calendar drifts. This example
+plans day 21 after 27 real hours without executing an effect:
+
+```sh
+elixir --erl '+S 2:2' \
+  -pa _build/dev/lib/ipse/ebin -pa _build/dev/lib/jason/ebin \
+  -pa _build/dev/lib/telemetry/ebin \
+  dev/knowledge/storage_workload.exs --native-clock \
+    1800000000000 21 1800097200000 1801728000000 1800097200000
+```
+
+The result has offset `1717200000` milliseconds and virtual start
+`1801814400000`; it reports zero operations and turns. Persist the actual day's
+anchor before dispatch and reuse its offset across that day, including restart.
+Check the latest unshifted real time against the last verified virtual time and
+the day's exclusive end before each effect. A changed anchor, backwards time,
+day overflow or unsupported offset refuses. The
+[clock preflight](../archive/2026-10-26-p30-p31-implementation/native-calendar-clock-anchor-20261102.md)
+does not persist the anchor or implement the live driver.
+
 Inspect the returned record lower bound before running the calendar. The current
 page profiles permit at most 122 anchor rows and 26 live rows per page, even at
 their minimum charged row weights. Every admitted lineage retains its anchor;

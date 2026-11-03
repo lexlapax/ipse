@@ -1,3 +1,6 @@
+Code.require_file("../../../dev/knowledge/native_notes_seed.ex", __DIR__)
+Code.require_file("../../../dev/knowledge/native_notes_workload.ex", __DIR__)
+
 defmodule Ipse.Development.ProcessClockTest do
   use ExUnit.Case, async: false
   @moduletag timeout: 120_000
@@ -100,6 +103,48 @@ defmodule Ipse.Development.ProcessClockTest do
 
       assert status == 0, output
       assert output == "invalid_offset_refused=1\n"
+    end
+  end
+
+  test "a compensated day offset works in fresh BEAM and Rust processes", context do
+    alias Ipse.Development.NativeNotesWorkload, as: Workload
+    real_start = System.system_time(:millisecond)
+    seed = real_start - 27 * 3_600_000
+    previous = seed + 20 * @day
+    assert {:ok, anchor} = Workload.clock_day(seed, 21, real_start, previous)
+    assert anchor["offset_ms"] == 21 * @day - 27 * 3_600_000
+
+    {output, status} =
+      System.cmd(
+        System.find_executable("elixir"),
+        [
+          "--erl",
+          "+S 2:2 +C multi_time_warp",
+          Path.expand("dev/fixtures/process_clock_probe.exs"),
+          context.probe
+        ],
+        env: environment(context, Integer.to_string(anchor["offset_ms"])),
+        cd: context.root,
+        stderr_to_stdout: true
+      )
+
+    assert status == 0, output
+
+    values =
+      output
+      |> String.split("\n", trim: true)
+      |> Map.new(fn line ->
+        [key, value] = String.split(line, "=", parts: 2)
+        {key, String.to_integer(value)}
+      end)
+
+    assert {:ok, after_probe} =
+             Workload.clock_now(anchor, System.system_time(:millisecond), previous)
+
+    for key <- ~w(beam_wall_ms os_wall_ms) do
+      assert values[key] >= anchor["start_ms"]
+      assert values[key] <= after_probe["virtual_ms"]
+      assert after_probe["virtual_ms"] - values[key] < 10_000
     end
   end
 

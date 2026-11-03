@@ -1,0 +1,53 @@
+{
+  "version": 1,
+  "date": "2026-11-02",
+  "base_commit": "fb96381",
+  "files_sha256": {
+    "/tmp/ipse-native-calendar-clock-anchor-20261102-cli.json": "3740894c01d72d2427e8c392a79fe92fc69b952ef7af901115a5610d06b5c69d",
+    "/tmp/ipse-native-calendar-clock-anchor-20261102-final.log": "c80c26243e00c31c4674e0d6c9e8fbc92a60fc275c2d191389fff5aa2f6575c0",
+    "/tmp/ipse-native-calendar-clock-anchor-20261102-refusal.log": "f5f06179c5bb1e6ae2e9e578cd2991c47548a25b8d5431fb03df31fcf3688f35",
+    "/tmp/ipse-native-calendar-clock-anchor-20261102.log": "8d85b1c6288399f34fde257785adbc73f7e14ff23815ebff689158e673a01957",
+    "dev/fixtures/process_clock.rs": "07828b7e1fe9e878d46e4df4ef3a1a4d5d5d65cc7c84c1fdd2acbeb3d9be421c",
+    "dev/knowledge/native_notes_workload.ex": "86067401c6e9ceab05d2a5b04df6e8d44f98f95b134b23f41066a0e6fb7f8a09",
+    "dev/knowledge/storage_workload.exs": "29f19ad4c99951c9dad658006c5d2ca914c2a0cd44d9f0d95d3870911c4424bb",
+    "test/dev/knowledge/native_notes_workload_test.exs": "aa99dde4a0f549538aefb95be620b74716c768896e896470d1840465ee1bde2e",
+    "test/dev/knowledge/process_clock_test.exs": "1f1f4c739850a0bb11719d6bcbb0b7c9f609f098f5557e3a269ef1ec8cef7a75",
+    "test/support/process_clock_probe.rs": "650b8e1a6f22066e728cb4dbfa58fabae1b2428f36082bfeaacc1b16fc28e8fc"
+  },
+  "selected_tests": {
+    "exit_status": 0,
+    "failed": 0,
+    "seed": 791861,
+    "passed": 16
+  },
+  "earlier_tests": {
+    "exit_status": 0,
+    "failed": 0,
+    "seed": 791860,
+    "passed": 16
+  },
+  "example": {
+    "actual_native_operations": 0,
+    "actual_turns": 0,
+    "anchor": {
+      "day": 21,
+      "end_ms": 1801900800000,
+      "offset_ms": 1717200000,
+      "previous_virtual_ms": 1801728000000,
+      "real_start_ms": 1800097200000,
+      "seed_ms": 1800000000000,
+      "start_ms": 1801814400000
+    },
+    "current": {
+      "offset_ms": 1717200000,
+      "virtual_ms": 1801814400000
+    },
+    "kind": "native_fixture_clock_preflight",
+    "qualification_passed": false
+  },
+  "day_overflow_exit_status": 2,
+  "model_calls": 0,
+  "actual_native_operations": 0,
+  "actual_turns": 0,
+  "annual_qualification": false
+}

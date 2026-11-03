@@ -205,6 +205,60 @@ defmodule Ipse.Development.NativeNotesWorkloadTest do
              Enum.map(actions, &[&1])
   end
 
+  test "fixture-clock days compensate elapsed real time and retain one offset on restart" do
+    day_ms = 86_400_000
+    seed = 1_800_000_000_000
+    real_start = seed + 3 * 3_600_000
+    previous = seed + 20 * day_ms + 2 * 3_600_000
+
+    assert {:ok, first} = Workload.clock_day(seed, 21, real_start, previous)
+    assert first["start_ms"] == seed + 21 * day_ms
+    assert first["offset_ms"] == 21 * day_ms - 3 * 3_600_000
+
+    assert {:ok, one} = Workload.clock_now(first, real_start + 3_600_000, previous)
+    assert one["virtual_ms"] == first["start_ms"] + 3_600_000
+
+    assert {:ok, resumed} =
+             Workload.clock_now(first, real_start + 12 * 3_600_000, one["virtual_ms"])
+
+    assert resumed["offset_ms"] == first["offset_ms"]
+    assert resumed["virtual_ms"] == first["start_ms"] + 12 * 3_600_000
+
+    assert {:ok, second} =
+             Workload.clock_day(seed, 22, real_start + 12 * 3_600_000, resumed["virtual_ms"])
+
+    assert second["start_ms"] == seed + 22 * day_ms
+    assert second["offset_ms"] == 22 * day_ms - 15 * 3_600_000
+  end
+
+  test "fixture-clock planning refuses backward time, a day overflow and unsupported offsets" do
+    day_ms = 86_400_000
+    seed = 1_800_000_000_000
+    real_start = seed + 3_600_000
+    prior = seed + 20 * day_ms
+    assert {:ok, anchor} = Workload.clock_day(seed, 21, real_start, prior)
+    assert {:error, :fixture_clock_refused} = Workload.clock_now(anchor, real_start - 1, prior)
+
+    assert {:error, :fixture_clock_refused} =
+             Workload.clock_now(anchor, real_start + day_ms, prior)
+
+    assert {:error, :fixture_clock_refused} =
+             Workload.clock_now(anchor, real_start, anchor["start_ms"] + 1)
+
+    assert {:error, :fixture_clock_refused} = Workload.clock_now(anchor, real_start, prior - 1)
+
+    assert {:error, :fixture_clock_refused} =
+             Workload.clock_now(Map.put(anchor, "offset_ms", 0), real_start, prior)
+
+    assert {:error, :fixture_clock_refused} =
+             Workload.clock_day(seed, 21, seed + 22 * day_ms, prior)
+
+    assert {:error, :fixture_clock_refused} =
+             Workload.clock_day(seed, 21, real_start, anchor["start_ms"])
+
+    assert {:error, :fixture_clock_refused} = Workload.clock_day(seed, 501, real_start, prior)
+  end
+
   test "out-of-contract intake cannot silently lower useful capture" do
     for value <- [nil, 0, 19, 321, 20.0, "20"] do
       assert_raise FunctionClauseError, fn -> Workload.calendar(value) end

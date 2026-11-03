@@ -1387,6 +1387,9 @@ The [segment preflight](archive/2026-10-26-p30-p31-implementation/native-calenda
 preserves the working calendar in bounded day-local batches; it executes neither
 effects nor turns. A scalable continuation with authenticated targets, durable
 closure and nonreplaying recovery remains to be built.
+The [compensated fixture-clock preflight](archive/2026-10-26-p30-p31-implementation/native-calendar-clock-anchor-20261102.md)
+accounts for real elapsed time between simulated days and refuses a backward or
+overflowed day. Persistence and actual long-running clock behavior remain open.
 The [native consent-renewal control](archive/2026-10-26-p30-p31-implementation/native-consent-renewal-20261102.md)
 checks expired-policy refusal and a later native capture after fresh review,
 preserving the original signed stored note and saved source. The follow-up

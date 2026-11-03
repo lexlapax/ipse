@@ -4,6 +4,33 @@ Code.require_file("storage_continuation.exs", __DIR__)
 Code.require_file("storage_annual.exs", __DIR__)
 
 case System.argv() do
+  ["--native-clock", seed, day, real_start, previous, real_now] ->
+    Code.require_file("native_notes_seed.ex", __DIR__)
+    Code.require_file("native_notes_workload.ex", __DIR__)
+
+    [seed, day, real_start, previous, real_now] =
+      Enum.map([seed, day, real_start, previous, real_now], &String.to_integer/1)
+
+    with {:ok, anchor} <-
+           Ipse.Development.NativeNotesWorkload.clock_day(seed, day, real_start, previous),
+         {:ok, current} <-
+           Ipse.Development.NativeNotesWorkload.clock_now(anchor, real_now, previous) do
+      IO.puts(
+        Jason.encode!(%{
+          "kind" => "native_fixture_clock_preflight",
+          "anchor" => anchor,
+          "current" => current,
+          "actual_native_operations" => 0,
+          "actual_turns" => 0,
+          "qualification_passed" => false
+        })
+      )
+    else
+      _ ->
+        IO.puts(:stderr, "Fixture clock refused the requested timeline")
+        System.halt(2)
+    end
+
   ["--native-segments", intake, maximum] ->
     Process.flag(:max_heap_size, %{size: 16_000_000, kill: true, error_logger: true})
     Code.require_file("native_notes_seed.ex", __DIR__)
