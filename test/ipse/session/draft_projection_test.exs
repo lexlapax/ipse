@@ -138,4 +138,70 @@ defmodule Ipse.Session.DraftProjectionTest do
                segment_only
              )
   end
+
+  test "Ollama plain-text drafts withdraw intact and reject unsafe native continuations" do
+    native = %{
+      "role" => "assistant",
+      "content" => "private proposal",
+      "provider_data" => %{
+        "provider" => "ollama",
+        "reported_model" => "fixture",
+        "message" => %{
+          "role" => "assistant",
+          "content" => "private proposal",
+          "thinking" => "",
+          "tool_calls" => []
+        }
+      }
+    }
+
+    segment = [%{"role" => "user", "content" => "private draft"}, native]
+    {cancelled, messages} = projection(segment)
+    assert {:ok, projected} = Draft.project(cancelled, messages, MapSet.new(), :ollama)
+    refute Jason.encode!(projected) =~ "private proposal"
+    refute Jason.encode!(projected) =~ "private draft"
+
+    accepted = %{cancelled | status: :consumed} |> Map.put(:accepted_message, true)
+    assert {:ok, ^projected} = Draft.project(accepted, messages, MapSet.new(), :ollama)
+
+    unsafe = [
+      put_in(native, ["provider_data", "message", "thinking"], "private thinking"),
+      put_in(native, ["provider_data", "message", "content"], "different native text"),
+      put_in(native, ["provider_data", "message", "tool_calls"], [%{"function" => %{}}]),
+      put_in(native, ["provider_data", "message", "unknown"], "opaque"),
+      put_in(native, ["provider_data", "unexpected"], "opaque")
+    ]
+
+    for message <- unsafe do
+      {draft, history} = projection([%{"role" => "user", "content" => "draft"}, message])
+
+      assert {:error, :draft_projection_unsafe} =
+               Draft.project(draft, history, MapSet.new(), :ollama)
+    end
+
+    {draft, history} = projection(segment)
+    assert {:error, :draft_projection_unsafe} = Draft.project(draft, history)
+
+    earlier = put_in(native, ["provider_data", "message", "thinking"], "earlier thinking")
+    later = put_in(native, ["provider_data", "message", "thinking"], "later thinking")
+    call = %{"id" => "outside-call", "function" => %{"name" => "read", "arguments" => "{}"}}
+    call_message = %{"role" => "assistant", "content" => "", "tool_calls" => [call]}
+
+    result = %{
+      "role" => "tool",
+      "tool_call_id" => "outside-call",
+      "content" => "unknown result",
+      "ipse_tool_outcome" => %{"status" => "unknown"}
+    }
+
+    prefix = [earlier, call_message, result]
+    {draft, history} = projection(segment, prefix)
+    history = history ++ [later, call_message, result]
+    assert {:ok, visible} = Draft.project(draft, history, MapSet.new(), :ollama)
+    assert Enum.take(visible, 3) == prefix
+    assert Enum.take(visible, -3) == [later, call_message, result]
+
+    assert {:error, :draft_projection_unsafe} =
+             Draft.project(draft, history ++ [call_message], MapSet.new(), :ollama)
+  end
 end

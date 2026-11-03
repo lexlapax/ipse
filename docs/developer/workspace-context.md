@@ -253,9 +253,15 @@ the notice; no inference is replayed.
 `Draft.project` validates the original prefix, segment, reference occurrences and
 native tool grouping before withholding the interval from later dispatch.
 `Saved` repeats those checks chronologically and validates rebasing before
-compaction. The original journal remains intact. Only the stateless ChatGPT
-Responses subset has a native continuation isolation validator here; unsupported
-opaque continuation refuses projection instead of dropping selected fields.
+compaction. The original journal remains intact. ChatGPT uses the stateless
+Responses isolation validator. Ollama also permits a complete no-tool draft
+interval when each removed native assistant message has the strict plain-text
+shape checked by `DraftNative.plain_text_only?/1`: its visible and native text
+match, thinking and tool calls are empty, and no unknown fields are present.
+Native messages outside that interval are preserved unchanged. The prefix,
+removed interval and tail each require complete tool grouping. Replay selects the
+policy from the saved provider; unsupported native continuation refuses projection
+instead of dropping selected fields.
 `DraftHistory` produces bounded withheld ranges for extension history reads, and
 `SourceWindow` excludes draft material from eligible evidence. Pending drafts
 cannot be exposed through an ordinary history page.
@@ -319,10 +325,12 @@ union, and `ManagedUse` revalidates supported uses under current owners. Follow
 [managed read and downstream use](collection-sdk.md#revalidate-reads-and-downstream-use)
 for the execution path and its remaining integration gates. A valid
 receipt-shaped map alone grants neither permission nor current eligibility.
-Withdrawal currently refuses a host reference carrying an `ipse_reference`
-marker: that marker binds the original content and cannot be retained on a
-rewritten message. Preserve the original journal and require a separately
-validated reference-aware projection before supporting that case.
+For a reference producer bound to this Session, withdrawal can also replace
+a valid, parseable `ipse_reference` message with a notice. The projection
+preserves the reference identity and role while updating the content hash; it
+leaves the original journal unchanged. Other unsupported markers or malformed
+references still refuse. This historical projection does not establish current
+source eligibility or grant permission for later use.
 
 Version-2 dependencies distinguish a record from an absence selector. A record
 has its exact key/revision/value digest and host-derived validity. An absence

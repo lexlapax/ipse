@@ -292,7 +292,14 @@ request when you need to invoke a skill.
 Cancelled draft text and clarification answers remain in the private journal,
 but are withheld from later model input and eligible Session sources. Accepted
 text is admitted as fresh intent with links to its original input, answers and
-read evidence. Unsupported provider continuation, required compaction, or active
+read evidence. With Ollama, this same-Session continuation supports plain-text
+native assistant messages with no thinking or tool calls. A draft can still
+complete or be cancelled if it contains a tool exchange, thinking or unsupported
+native fields, but acceptance or later continuation can refuse when the draft
+cannot be safely withheld. Follow the recovery procedure below; no native data is
+silently removed. Earlier and later ordinary history remains available, subject to
+complete tool-call boundaries.
+Unsupported provider continuation, required compaction, or active
 extension delivery can refuse drafting or later continuation. Use the explicit
 [draft recovery procedure](recovery.md#recover-a-request-draft); no alternate
 provider or fresh conversation is selected automatically. Knowledge retrieval,

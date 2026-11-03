@@ -1,0 +1,8 @@
+fatal: not a git repository (or any parent up to mount point /dev)
+Stopping at filesystem boundary (GIT_DISCOVERY_ACROSS_FILESYSTEM not set).
+** (MatchError) no match of right hand side value:
+
+    {"", 128}
+
+    dev/check-docs.exs:10: Ipse.DocsCheck.run/0
+    dev/check-docs.exs:302: (file)

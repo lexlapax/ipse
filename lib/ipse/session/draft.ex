@@ -334,11 +334,27 @@ defmodule Ipse.Session.Draft do
     do:
       is_map(message) and
         (not Map.has_key?(message, "provider_data") or
-           (native_policy == :chatgpt and Ipse.Session.DraftNative.responses_owned?([message]))) and
+           safe_native?(message, native_policy)) and
         not Map.has_key?(message, "ipse_checkpoint") and
         (not Map.has_key?(message, "ipse_reference") or
            (Ipse.Session.Reference.reference?(message) and
               MapSet.member?(references, JSON.digest([message]))))
+
+  defp safe_native?(message, :chatgpt),
+    do: Ipse.Session.DraftNative.responses_owned?([message])
+
+  defp safe_native?(message, :ollama),
+    do: Ipse.Session.DraftNative.plain_text_only?(message)
+
+  defp safe_native?(_, _), do: false
+
+  defp native_interval?(prefix, segment, tail, :ollama) do
+    Enum.all?(segment, fn message ->
+      message["role"] != "tool" and message["tool_calls"] in [nil, []] and
+        (not Map.has_key?(message, "provider_data") or safe_native?(message, :ollama))
+    end) and
+      Enum.all?([prefix, segment, tail], &Ipse.Session.Reference.safe_tail?/1)
+  end
 
   defp native_interval?(prefix, segment, tail, policy) do
     if Enum.any?(segment, &Map.has_key?(&1, "provider_data")),

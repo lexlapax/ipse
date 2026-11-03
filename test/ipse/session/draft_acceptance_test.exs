@@ -134,7 +134,7 @@ defmodule Ipse.Session.DraftAcceptanceTest do
       |> Enum.reverse()
       |> Enum.flat_map(&["-pa", &1])
 
-    for mode <- ["basic", "transport"] do
+    for mode <- ["basic", "transport", "ollama"] do
       workspace = Path.join(root, mode)
       File.mkdir!(workspace)
       File.chmod!(workspace, 0o700)
@@ -144,13 +144,14 @@ defmodule Ipse.Session.DraftAcceptanceTest do
           driver,
           ["--draft-cli", System.find_executable("elixir"), "--erl", "+S 2:2"] ++
             paths ++ [Path.expand("test/support/draft_cli_pty.exs"), workspace],
-          env: [{"IPSE_TEST_DRAFT_TRANSPORT", if(mode == "transport", do: "1", else: "0")}],
+          env: [{"IPSE_TEST_DRAFT_TRANSPORT", if(mode == "transport", do: "1", else: mode)}],
           stderr_to_stdout: true
         )
 
       assert status == 0, output
       assert output =~ "SYNTHETIC_DRAFT_CLI_PASSED"
       if mode == "transport", do: assert(output =~ "DRAFT_NATIVE_TRANSPORT_PASSED")
+      if mode == "ollama", do: assert(output =~ "DRAFT_OLLAMA_TRANSPORT_PASSED")
     end
   end
 

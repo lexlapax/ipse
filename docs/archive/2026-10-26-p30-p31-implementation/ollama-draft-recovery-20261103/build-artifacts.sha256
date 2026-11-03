@@ -1,0 +1,6 @@
+6b16270a86286fcaff1d95e5d934cb13b6fc8fd14e270dfd3db9187b26e3f751  _build/test/lib/ipse/ebin/Elixir.Ipse.Session.Draft.beam
+e7e689cf2f35ac19870d8951213bfdf3d69650446f96f56b1d100a7c68f025ec  _build/test/lib/ipse/ebin/Elixir.Ipse.Session.DraftNative.beam
+73d475e2b785f143c70fc8301737f25f1d7b82e55683401b853246d280cdf20c  _build/test/lib/ipse/ebin/Elixir.Ipse.Session.Saved.beam
+ac424d10e2ce6809cedcb157acd70092b00ca68aa7a48201a6007ac5dccbf33b  priv/ipse-runner
+92fb72cdcdf2bb2b6e884ca8b3ef82f0d36bb4a456ab40dba10f85a298387fb5  priv/extension-bundles/knowledge/extension.json
+6add073e340583f2debc3a59475298ccb2359bc1aab7f77b65f704fbb9553549  priv/extension-bundles/knowledge/operator.json

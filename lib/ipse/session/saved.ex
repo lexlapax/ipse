@@ -232,6 +232,7 @@ defmodule Ipse.Session.Saved do
   end
 
   defp draft_native_policy([%{"metadata" => %{"provider" => "chatgpt"}} | _]), do: :chatgpt
+  defp draft_native_policy([%{"metadata" => %{"provider" => "ollama"}} | _]), do: :ollama
   defp draft_native_policy(_), do: :none
 
   def context(events) do

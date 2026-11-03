@@ -7,7 +7,9 @@ question = "question" in System.argv()
 mcp = "mcp" in System.argv()
 cancel = "cancel" in System.argv()
 inline_replace = "inline" in System.argv()
-transport = System.get_env("IPSE_TEST_DRAFT_TRANSPORT") == "1"
+transport_mode = System.get_env("IPSE_TEST_DRAFT_TRANSPORT")
+transport = transport_mode in ["1", "ollama"]
+ollama_transport = transport_mode == "ollama"
 
 original =
   if multi or question or mcp,
@@ -143,89 +145,125 @@ end
   end
 
 {provider_config, transport_server} =
-  if transport do
-    Code.require_file(Path.expand("test/support/provider_fixture.ex"))
-    fixture = Ipse.Test.ProviderFixture
+  cond do
+    ollama_transport ->
+      Code.require_file(Path.expand("test/support/provider_fixture.ex"))
+      fixture = Ipse.Test.ProviderFixture
 
-    reply = fn id, text, private ->
-      output =
-        if(private,
-          do: [
-            %{
-              "type" => "reasoning",
-              "id" => "rs_private",
-              "summary" => [],
-              "encrypted_content" => "private encrypted canary"
-            }
-          ],
-          else: []
-        ) ++
-          [
-            %{
-              "type" => "message",
-              "id" => id,
-              "role" => "assistant",
-              "status" => "completed",
-              "content" => [%{"type" => "output_text", "text" => text, "annotations" => []}]
-            }
-          ]
-
-      fixture.sse(%{
-        "type" => "response.completed",
-        "response" => %{
-          "status" => "completed",
-          "model" => "fixture-model",
-          "output" => output,
-          "usage" => %{"input_tokens" => 1, "output_tokens" => 1}
-        }
-      })
-    end
-
-    receiver = self()
-    capture = Path.join(root, "transport-capture.json")
-
-    spawn_link(fn ->
-      {base_url, server} =
-        fixture.sequence([
-          reply.("msg_private", "suggested request", true),
-          reply.("msg_accepted", "accepted response", false),
-          reply.("msg_resumed", "resumed response", false)
+      reply = fn text ->
+        fixture.ndjson([
+          %{
+            "model" => "synthetic",
+            "message" => %{"role" => "assistant", "content" => text},
+            "done" => true
+          }
         ])
+      end
 
-      send(receiver, {:fixture_url, base_url})
-      requests = Task.await(server, 30_000) |> Enum.map(&elem(&1, 1))
-      File.write!(capture, Jason.encode!(requests))
-      send(receiver, :fixture_capture_complete)
-    end)
+      receiver = self()
+      capture = Path.join(root, "ollama-transport-capture.json")
 
-    base_url = receive do: ({:fixture_url, url} -> url)
-    auth = Path.join(root, "transport-auth")
+      spawn_link(fn ->
+        {base_url, server} =
+          fixture.sequence([
+            reply.("suggested request"),
+            reply.("accepted response"),
+            reply.("resumed response")
+          ])
 
-    record = %{
-      "access_token" => "fixture-access",
-      "refresh_token" => "fixture-refresh",
-      "id_token" => "fixture-id",
-      "client_id" => "oaiapp_fixture",
-      "ext_agent_host_id" => "urn:uuid:00112233-4455-4677-8899-aabbccddeeff",
-      "subject" => "fixture",
-      "issuer" => "https://auth.openai.com",
-      "email" => "fixture@example.test",
-      "expires_at" => System.system_time(:second) + 3600,
-      "scopes" => ["chatgpt.tokens.use.direct"]
-    }
+        send(receiver, {:fixture_url, base_url})
+        requests = Task.await(server, 30_000) |> Enum.map(&elem(&1, 1))
+        File.write!(capture, Jason.encode!(requests))
+        send(receiver, :fixture_capture_complete)
+      end)
 
-    :ok =
-      Ipse.Auth.with_credential_lock(auth, fn -> Ipse.Auth.write_credentials(auth, record) end)
+      base_url = receive do: ({:fixture_url, url} -> url)
+      {%{provider: :ollama, provider_module: Ipse.Provider.Ollama, base_url: base_url}, capture}
 
-    {%{
-       provider: :chatgpt,
-       provider_module: Ipse.Provider.OpenAI,
-       auth_dir: auth,
-       base_url: base_url,
-       max_output_tokens: nil
-     }, capture}
-  else
-    {%{provider: :demo, provider_module: DraftCLIProvider}, nil}
+    transport ->
+      Code.require_file(Path.expand("test/support/provider_fixture.ex"))
+      fixture = Ipse.Test.ProviderFixture
+
+      reply = fn id, text, private ->
+        output =
+          if(private,
+            do: [
+              %{
+                "type" => "reasoning",
+                "id" => "rs_private",
+                "summary" => [],
+                "encrypted_content" => "private encrypted canary"
+              }
+            ],
+            else: []
+          ) ++
+            [
+              %{
+                "type" => "message",
+                "id" => id,
+                "role" => "assistant",
+                "status" => "completed",
+                "content" => [%{"type" => "output_text", "text" => text, "annotations" => []}]
+              }
+            ]
+
+        fixture.sse(%{
+          "type" => "response.completed",
+          "response" => %{
+            "status" => "completed",
+            "model" => "fixture-model",
+            "output" => output,
+            "usage" => %{"input_tokens" => 1, "output_tokens" => 1}
+          }
+        })
+      end
+
+      receiver = self()
+      capture = Path.join(root, "transport-capture.json")
+
+      spawn_link(fn ->
+        {base_url, server} =
+          fixture.sequence([
+            reply.("msg_private", "suggested request", true),
+            reply.("msg_accepted", "accepted response", false),
+            reply.("msg_resumed", "resumed response", false)
+          ])
+
+        send(receiver, {:fixture_url, base_url})
+        requests = Task.await(server, 30_000) |> Enum.map(&elem(&1, 1))
+        File.write!(capture, Jason.encode!(requests))
+        send(receiver, :fixture_capture_complete)
+      end)
+
+      base_url = receive do: ({:fixture_url, url} -> url)
+      auth = Path.join(root, "transport-auth")
+
+      record = %{
+        "access_token" => "fixture-access",
+        "refresh_token" => "fixture-refresh",
+        "id_token" => "fixture-id",
+        "client_id" => "oaiapp_fixture",
+        "ext_agent_host_id" => "urn:uuid:00112233-4455-4677-8899-aabbccddeeff",
+        "subject" => "fixture",
+        "issuer" => "https://auth.openai.com",
+        "email" => "fixture@example.test",
+        "expires_at" => System.system_time(:second) + 3600,
+        "scopes" => ["chatgpt.tokens.use.direct"]
+      }
+
+      :ok =
+        Ipse.Auth.with_credential_lock(auth, fn -> Ipse.Auth.write_credentials(auth, record) end)
+
+      {%{
+         provider: :chatgpt,
+         provider_module: Ipse.Provider.OpenAI,
+         auth_dir: auth,
+         base_url: base_url,
+         max_output_tokens: nil
+       }, capture}
+
+    true ->
+      {%{provider: :demo, provider_module: DraftCLIProvider}, nil}
   end
 
 session_config =
@@ -403,7 +441,11 @@ assert {:ok, final} =
            draft,
            messages,
            Ipse.Session.Reference.occurrences(events),
-           if(transport, do: :chatgpt, else: :none)
+           cond do
+             ollama_transport -> :ollama
+             transport -> :chatgpt
+             true -> :none
+           end
          )
 
 assert Enum.any?(final, &(&1["content"] == expected))
@@ -437,7 +479,7 @@ if transport do
   assert Jason.encode!(first) =~ "private initial request"
   assert Jason.encode!(second) =~ "accepted replacement"
   assert Jason.encode!(third) =~ "later resumed task"
-  assert Jason.encode!(third) =~ "msg_accepted"
+  unless ollama_transport, do: assert(Jason.encode!(third) =~ "msg_accepted")
   assert Jason.encode!(third) =~ "accepted response"
 
   for canary <- [
@@ -450,7 +492,9 @@ if transport do
     for request <- [second, third], do: refute(Jason.encode!(request) =~ canary)
   end
 
-  IO.puts("DRAFT_NATIVE_TRANSPORT_PASSED")
+  if ollama_transport,
+    do: IO.puts("DRAFT_OLLAMA_TRANSPORT_PASSED"),
+    else: IO.puts("DRAFT_NATIVE_TRANSPORT_PASSED")
 end
 
 IO.puts("SYNTHETIC_DRAFT_CLI_PASSED")

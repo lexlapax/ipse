@@ -2,6 +2,7 @@ defmodule Ipse.Session.DraftNative do
   @moduledoc false
 
   def policy(%{provider: :chatgpt}), do: :chatgpt
+  def policy(%{provider: :ollama}), do: :ollama
   def policy(_), do: :none
 
   @doc false

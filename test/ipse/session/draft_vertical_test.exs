@@ -899,6 +899,140 @@ defmodule Ipse.Session.DraftVerticalTest do
     end
   end
 
+  test "Ollama transport withdraws plain drafts on cancellation and acceptance across resume",
+       c do
+    fixture = Ipse.Test.ProviderFixture
+
+    reply = fn text, thinking ->
+      fixture.ndjson([
+        %{
+          "model" => "synthetic",
+          "message" => %{"role" => "assistant", "content" => text, "thinking" => thinking},
+          "done" => true
+        }
+      ])
+    end
+
+    tool_call =
+      fixture.ndjson([
+        %{
+          "model" => "synthetic",
+          "message" => %{
+            "role" => "assistant",
+            "content" => "",
+            "tool_calls" => [
+              %{"function" => %{"name" => "read", "arguments" => %{"path" => "retained.txt"}}}
+            ]
+          },
+          "done" => true
+        }
+      ])
+
+    File.write!(Path.join(c.root, "retained.txt"), "outside tool result canary")
+
+    {base_url, server} =
+      fixture.sequence([
+        reply.("earlier response", "earlier thinking canary"),
+        reply.("private proposal", ""),
+        tool_call,
+        reply.("ordinary response", "later thinking canary"),
+        reply.("resumed response", ""),
+        reply.("private proposal", ""),
+        reply.("accepted response", ""),
+        reply.("after acceptance response", "")
+      ])
+
+    cfg = %{provider: :ollama, provider_module: Ipse.Provider.Ollama, base_url: base_url}
+    {pid, _} = start(c, cfg)
+    id = Session.info(pid).id
+    assert :ok = Session.prompt(pid, "earlier task")
+    assert_receive {:ipse, ^pid, {:done, :ok}}, 5_000
+    assert :ok = Session.start_draft(pid, "private draft input")
+    assert_receive {:ipse, ^pid, {:done, :ok}}, 5_000
+    assert :ok = Session.cancel_draft(pid)
+    assert :ok = Session.prompt(pid, "ordinary task")
+    assert_receive {:ipse, ^pid, {:done, :ok}}, 5_000
+    assert :ok = Session.close_confirmed(pid)
+    {:ok, events} = Journal.load(c.dir, id)
+    assert {:ok, %{draft: %{status: :cancelled}}} = Session.Saved.restore(events, id)
+
+    # Reconstruct the original journal prefix at the later ordinary tool-call
+    # boundary, before its result. Replay must preserve the native call and
+    # insert an unknown result without re-executing the tool.
+    call_index =
+      Enum.find_index(events, fn event ->
+        get_in(event, ["message", "role"]) == "assistant" and
+          is_list(get_in(event, ["message", "tool_calls"])) and
+          get_in(event, ["message", "tool_calls"]) != []
+      end)
+
+    assert is_integer(call_index)
+    call_message = Enum.at(events, call_index)["message"]
+    [call] = call_message["tool_calls"]
+    assert {:ok, interrupted} = Session.Saved.restore(Enum.take(events, call_index + 1), id)
+    assert Enum.any?(interrupted.messages, &(&1 == call_message))
+
+    assert Enum.any?(interrupted.messages, fn message ->
+             message["tool_call_id"] == call["id"] and
+               get_in(message, ["ipse_tool_outcome", "status"]) == "unknown"
+           end)
+
+    {resumed, _} = start(c, cfg, id)
+    assert :ok = Session.prompt(resumed, "resumed task")
+    assert_receive {:ipse, ^resumed, {:done, :ok}}, 5_000
+    assert :ok = Session.close_confirmed(resumed)
+
+    accepted_context = %{c | dir: Path.join(c.root, "ollama-accepted")}
+    {draft_session, _} = start(accepted_context, cfg)
+    accepted_id = Session.info(draft_session).id
+    assert :ok = Session.start_draft(draft_session, "private draft input")
+    assert_receive {:ipse, ^draft_session, {:done, :ok}}, 5_000
+    assert {:ok, %{id: draft_id, revision: 1}} = Session.draft(draft_session)
+    assert :ok = Session.replace_draft(draft_session, draft_id, 1, "accepted clean task")
+    {accepted, _} = synthetic_accepted_resume(accepted_context, draft_session, cfg)
+    assert_receive {:ipse, ^accepted, {:done, :ok}}, 5_000
+    assert :ok = Session.close_confirmed(accepted)
+    {after_accept, _} = start(accepted_context, cfg, accepted_id)
+    assert :ok = Session.prompt(after_accept, "later accepted task")
+    assert_receive {:ipse, ^after_accept, {:done, :ok}}, 5_000
+    assert :ok = Session.close_confirmed(after_accept)
+    {:ok, accepted_events} = Journal.load(accepted_context.dir, accepted_id)
+
+    assert {:ok, %{draft: %{status: :consumed}}} =
+             Session.Saved.restore(accepted_events, accepted_id)
+
+    [
+      {_, earlier},
+      {_, draft},
+      {_, ordinary},
+      {_, after_tool},
+      {_, resumed_request},
+      {_, accepted_draft},
+      {_, accepted_request},
+      {_, later_request}
+    ] = Task.await(server, 5_000)
+
+    assert Jason.encode!(earlier["messages"]) =~ "earlier task"
+    assert Jason.encode!(draft["messages"]) =~ "private draft input"
+    assert Jason.encode!(ordinary["messages"]) =~ "ordinary task"
+    assert Jason.encode!(ordinary["messages"]) =~ "earlier thinking canary"
+    assert Jason.encode!(after_tool["messages"]) =~ "retained.txt"
+    assert Jason.encode!(after_tool["messages"]) =~ "outside tool result canary"
+    assert Jason.encode!(resumed_request["messages"]) =~ "resumed task"
+    assert Jason.encode!(resumed_request["messages"]) =~ "ordinary response"
+    assert Jason.encode!(resumed_request["messages"]) =~ "later thinking canary"
+    assert Jason.encode!(resumed_request["messages"]) =~ "outside tool result canary"
+    assert Jason.encode!(accepted_draft["messages"]) =~ "private draft input"
+    assert Jason.encode!(accepted_request["messages"]) =~ "accepted clean task"
+    assert Jason.encode!(later_request["messages"]) =~ "later accepted task"
+    assert Jason.encode!(later_request["messages"]) =~ "accepted response"
+
+    for body <- [ordinary, after_tool, resumed_request, accepted_request, later_request],
+        canary <- ["private draft input", "private proposal"] do
+      refute Jason.encode!(body) =~ canary
+    end
+  end
+
   test "accepted intent binds tool evidence and withdraws its bytes", c do
     File.write!(Path.join(c.root, "evidence.txt"), "private evidence canary")
     {pid, label} = start(c, %{draft_read: true})

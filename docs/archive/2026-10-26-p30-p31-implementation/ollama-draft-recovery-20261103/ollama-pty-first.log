@@ -1,0 +1,8 @@
+Running ExUnit with seed: 0, max_cases: 1
+Excluding tags: [:test]
+Including tags: [location: {"test/ipse/session/draft_acceptance_test.exs", 108}]
+
+.
+Finished in 2.9 seconds (2.9s async, 0.00s sync)
+
+Result: 1 passed, 8 excluded
