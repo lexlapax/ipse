@@ -290,8 +290,8 @@ defmodule IpseKnowledge.Knowledge do
         |> Map.merge(%{"strategy" => "decision", "profile" => "advice"})
 
       case DecisionPolicy.plan(policy, facts, :development_experiment) do
-        {:ok, %{request: request}} when is_map(request) ->
-          call(request, %{state | phase: :assess_decision})
+        {:ok, %{request: request} = plan} when is_map(request) ->
+          call(request, %{state | phase: :assess_decision, ctx: Map.put(state.ctx, :plan, plan)})
 
         _ ->
           refused(state, :assessment_unavailable)
@@ -303,8 +303,25 @@ defmodule IpseKnowledge.Knowledge do
 
   defp advance(:assess_read, _, state), do: refused(state, :assessment_unavailable)
 
-  defp advance(:assess_decision, _, state),
-    do: finish(state, %{"status" => "assessed", "key" => state.ctx.key})
+  defp advance(:assess_decision, value, state) do
+    with {:ok, %{"action" => %{"candidates" => [candidate]}}} <-
+           DecisionPolicy.apply(state.ctx.plan, value["result"]),
+         %{"id" => "candidate", "choice" => choice, "reason" => reason} <- candidate,
+         true <- choice in ~w(keep_baseline defer_candidate) and is_binary(reason) do
+      finish(state, %{
+        "status" => "assessed",
+        "key" => state.ctx.key,
+        "experimental" => true,
+        "note_mutation" => "none",
+        "advice" => %{
+          "choice" => if(reason == "selected", do: choice, else: nil),
+          "reason" => reason
+        }
+      })
+    else
+      _ -> refused(state, :assessment_unavailable)
+    end
+  end
 
   defp advance(:recall_index, value, %{ctx: %{mode: :seed}} = state),
     do: recall_seed_index(value, state)

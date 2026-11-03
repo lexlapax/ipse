@@ -3,6 +3,8 @@ defmodule IpseKnowledge.ShadowExperimentSessionTest do
 
   for {name, scenario} <- [
         {"approved", "save_managed_approval_root_shadow"},
+        {"low confidence", "save_managed_approval_low_confidence"},
+        {"source withdrawn before output release", "save_managed_approval_output_source_lost"},
         {"denied", "save_managed_approval_deny"},
         {"revoked grant", "save_managed_approval_revoked_grant"},
         {"expired while preflight is blocked", "save_managed_approval_root_shadow_expiry"},

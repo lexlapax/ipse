@@ -478,6 +478,16 @@ its liability. An admitted send can finish after expiry, while result release
 checks the reviewed deadline again. None of this establishes a monetary cap or
 qualifies a hosted engine.
 
+The worker retains its bounded assessment plan until the host returns the
+validated decision result. `DecisionPolicy.apply/2` maps that result to the
+permitted choice or an abstention reason; the tool returns the choice only when
+the policy selected it. The result is marked experimental and records that it
+does not mutate the note; the separately approved decision call is an effect.
+`ManagedOutput.release` rechecks the invocation's dependency union before
+releasing that result, so a stale note or source is withheld instead of being
+presented as current advice. This saved-note control does not assess a pending
+main-tool candidate or change ordinary capture.
+
 Run the focused synthetic controls when changing this boundary:
 
 ```sh

@@ -156,7 +156,28 @@ defmodule IpseKnowledge.KnowledgeCaptureTest do
              %{"id" => "candidate", "input" => IO.iodata_to_binary(JSON.encode!(note))}
            ]
 
-    {%{"status" => "assessed", "key" => ^key}, %{phase: :idle}} =
+    answer = fn probability ->
+      %{"version" => 1, "answers" => [%{
+        "id" => "candidate", "type" => "choice", "choice" => "defer_candidate",
+        "confidence" => probability,
+        "probabilities" => [
+          %{"id" => "defer_candidate", "probability" => probability},
+          %{"id" => "keep_baseline", "probability" => 1 - probability}
+        ]
+      }]}
+    end
+
+    for {result, expected_choice, expected_reason} <- [
+          {answer.(0.9), "defer_candidate", "selected"},
+          {answer.(0.6), nil, "low_probability"},
+          {%{"version" => 1, "answers" => [%{"id" => "candidate", "type" => "refusal"}]}, nil, "refusal"}
+        ] do
+      {%{"status" => "assessed", "key" => ^key, "experimental" => true,
+         "note_mutation" => "none", "advice" => %{"choice" => ^expected_choice, "reason" => ^expected_reason}},
+       %{phase: :idle}} = value(shadow_respond(pending, %{"result" => result}))
+    end
+
+    {%{"status" => "refused"}, %{phase: :idle}} =
       value(shadow_respond(pending, %{"result" => %{}}))
 
     assert Enum.any?(Shadow.describe()["exports"]["tools"], &(&1["id"] == "assess"))

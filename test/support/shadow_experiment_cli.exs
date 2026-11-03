@@ -13,6 +13,8 @@ release_expiry? = scenario == "save_managed_approval_root_shadow_release_expiry"
 expiry? = preflight_expiry? or release_expiry?
 denied? = scenario == "save_managed_approval_deny"
 revoked? = scenario == "save_managed_approval_revoked_grant"
+low_confidence? = scenario == "save_managed_approval_low_confidence"
+output_source_lost? = scenario == "save_managed_approval_output_source_lost"
 home = Path.join(root, "home")
 cwd = Path.join(root, "project")
 dir = Path.join(root, "sessions")
@@ -42,14 +44,19 @@ server =
 
           {response, next} =
             if decision? do
+              probability = if low_confidence?, do: 0.6, else: 0.9
+
               {%{
                  "model" => "synthetic",
                  "answers" => %{
                    "candidate" => %{
                      "type" => "choice",
                      "choice" => "keep_baseline",
-                     "confidence" => 0.9,
-                     "probabilities" => %{"keep_baseline" => 0.9, "defer_candidate" => 0.1}
+                     "confidence" => probability,
+                     "probabilities" => %{
+                       "keep_baseline" => probability,
+                       "defer_candidate" => 1 - probability
+                     }
                    }
                  },
                  "usage" => %{"input_tokens" => 10, "output_tokens" => 2}
@@ -240,9 +247,20 @@ assert [seed_write] =
 
 [%{"key" => key}] = get_in(seed_write, ["request", "request", "changes"])
 assert String.starts_with?(key, "note.")
+namespace = :sys.get_state(seed).config.semantic_admission["pin"]["namespace"]
 Agent.update(assessed_key, fn _ -> key end)
 refute Enum.any?(Agent.get(calls, & &1), &(elem(&1, 0) == :decision))
 assert :ok = Ipse.Session.close_confirmed(seed)
+
+collection = Ipse.Extension.SemanticAdmission.collection_root(home)
+
+assert {:ok, before_assessment} =
+         Ipse.Extension.Collection.execute(
+           collection,
+           namespace,
+           %{"op" => "snapshot"},
+           Ipse.Usage.id()
+         )
 
 if revoked? do
   {:ok, current} = Ipse.Extension.Consent.existing_snapshot(control, binding["project_id"])
@@ -300,7 +318,7 @@ end
     wait_file.(wait_file, Path.join(root, "managed-approval-input-ready"), 1500)
     assert :sys.get_state(pid).phase == :managed_approval
 
-    if expiry? do
+    if expiry? or output_source_lost? do
       watcher = self()
 
       hook = fn
@@ -316,13 +334,27 @@ end
           receive do: (:release_shadow_wire -> :ok)
           count + 1
 
+        count,
+        {:in,
+         {:"$gen_call", _,
+          {:managed_output_prepare, _, :inline,
+           %{"value" => %{"status" => "assessed", "key" => ^key, "experimental" => true}}}}},
+        _
+        when output_source_lost? ->
+          send(watcher, {:shadow_output_blocked, self()})
+          receive do: (:release_shadow_output -> :ok)
+          count + 1
+
         count, _, _ ->
           count
       end
 
       assert :ok = :sys.install(pid, {hook, 0})
-      delay = max(expires - System.system_time(:millisecond) - 4_000, 0)
-      Process.sleep(delay)
+
+      if expiry? do
+        delay = max(expires - System.system_time(:millisecond) - 4_000, 0)
+        Process.sleep(delay)
+      end
     end
 
     File.write!(Path.join(root, "managed-approval-control-checked"), "checked")
@@ -344,7 +376,31 @@ end
           )
     end
 
-    idle.(idle, 2000)
+    if output_source_lost? do
+      assert_receive {:shadow_output_blocked, ^pid}, 40_000
+      assert length(Enum.filter(Agent.get(calls, & &1), &(elem(&1, 0) == :decision))) == 1
+      journal = Path.join(dir, seed_id <> ".jsonl")
+      held = journal <> ".output-source-held"
+      before = File.stat!(journal)
+      digest = Ipse.JSON.sha256(File.read!(journal))
+      refute File.exists?(held)
+      File.rename!(journal, held)
+
+      try do
+        refute File.exists?(journal)
+        send(pid, :release_shadow_output)
+        idle.(idle, 2000)
+      after
+        if File.exists?(held) and not File.exists?(journal), do: File.rename!(held, journal)
+      end
+
+      restored = File.stat!(journal)
+      assert restored.major_device == before.major_device and restored.inode == before.inode
+      assert Ipse.JSON.sha256(File.read!(journal)) == digest
+    else
+      idle.(idle, 2000)
+    end
+
     File.write!(Path.join(root, "managed-approval-exit-ready"), "ready")
   end)
 
@@ -385,9 +441,79 @@ cond do
     assert reservation["status"] == "unknown" and reservation["reserved"]["model_calls"] == 1
     refute Enum.any?(events, &(&1["type"] == "extension_decision_response"))
 
+  output_source_lost? ->
+    assert reservation["status"] == "settled" and reservation["actual"]["model_calls"] == 1
+    assert action["outcome"]["status"] == "ok"
+
+    assert [raw] =
+             Enum.filter(
+               events,
+               &(&1["type"] == "extension_invocation_result" and
+                   get_in(&1, ["value", "status"]) == "assessed" and
+                   get_in(&1, ["value", "key"]) == key)
+             )
+
+    assert [intent] =
+             Enum.filter(
+               events,
+               &(&1["type"] == "managed_output_release_intent" and
+                   &1["parent_invocation_id"] == raw["invocation_id"])
+             )
+
+    assert Enum.any?(
+             events,
+             &(&1["type"] == "managed_output_release_result" and
+                 &1["release_id"] == intent["release_id"] and &1["decision"] == "withdrawn")
+           )
+
+    refute Enum.any?(Agent.get(calls, & &1), fn
+             {:main, %{"messages" => messages}} ->
+               Enum.any?(messages, fn message ->
+                 message["role"] == "tool" and message["tool_name"] == "ext__knowledge__assess" and
+                   String.contains?(message["content"] || "", "\"status\":\"assessed\"")
+               end)
+
+             _ ->
+               false
+           end)
+
   true ->
     assert reservation["status"] == "settled" and reservation["actual"]["model_calls"] == 1
     assert action["outcome"]["status"] == "ok"
+
+    output =
+      Agent.get(calls, & &1)
+      |> Enum.find_value(fn
+        {:main, %{"messages" => messages}} ->
+          Enum.find(
+            messages,
+            &(&1["role"] == "tool" and &1["tool_name"] == "ext__knowledge__assess")
+          )
+
+        _ ->
+          nil
+      end)
+
+    assert is_map(output)
+
+    assert %{
+             "status" => "assessed",
+             "key" => ^key,
+             "experimental" => true,
+             "note_mutation" => "none",
+             "advice" => advice
+           } = Jason.decode!(output["content"])
+
+    assert advice ==
+             if(low_confidence?,
+               do: %{"choice" => nil, "reason" => "low_probability"},
+               else: %{"choice" => "keep_baseline", "reason" => "selected"}
+             )
+
+    assert Enum.any?(
+             events,
+             &(&1["type"] == "managed_output_release_result" and &1["decision"] == "current")
+           )
 end
 
 refute Enum.any?(events, fn event ->
@@ -395,7 +521,33 @@ refute Enum.any?(events, fn event ->
            get_in(event, ["request", "op"]) == "collection.managed"
        end)
 
+assert {:ok, after_assessment} =
+         Ipse.Extension.Collection.execute(
+           collection,
+           namespace,
+           %{"op" => "snapshot"},
+           Ipse.Usage.id()
+         )
+
+assert after_assessment == before_assessment
+assert {:ok, _} = Ipse.Session.Saved.restore(events, id)
+
 assert :ok = Ipse.Session.close_confirmed(pid)
+
+unless denied? or expiry? do
+  prior_calls = Agent.get(calls, & &1)
+
+  assert {:ok, resumed} =
+           DynamicSupervisor.start_child(
+             Ipse.Sessions,
+             {Ipse.Session, config: runtime, cwd: cwd, state_dir: dir, subscriber: self(), id: id}
+           )
+
+  assert Ipse.Session.info(resumed).phase == :idle
+  assert Agent.get(calls, & &1) == prior_calls
+  assert :ok = Ipse.Session.close_confirmed(resumed)
+end
+
 :gen_tcp.close(listener)
 Task.shutdown(server, :brutal_kill)
 IO.puts("SHADOW_EXPERIMENT_SESSION_PASSED")

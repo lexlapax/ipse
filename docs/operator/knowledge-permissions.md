@@ -7,17 +7,13 @@ tool becomes available in the **next new session**.
 
 The current development source supports new v3 captures through a reviewed
 `/remember` statement and a separate interactive review to forget one existing
-native note on a supported Linux storage profile. A focused authorized-client
-headless control also saved a genuine typed host outcome under the knowledge-only
-grant. Model-selected source lookups use selected-source preflight and
-status-only terminal previews. A synthetic loopback-model journey captured a
-note, performed later source reads and completed the turn; broader automatic
-capture and recall remain unqualified. A shipped-artifact local-provider control
-also recalls a current literal, looks up the new conversation input, saves a
-separate unattended-input proposal and completes its turn while retaining the
-earlier literal. A missing original or revoked permission before publication
-stops the save; the new proposal stays pending. This does not qualify automatic
-capture quality, every source combination or installed use.
+native note on a supported Linux storage profile. An authorized headless client
+can also save an eligible typed host outcome under the knowledge-only grant.
+Model-selected source lookups use selected-source preflight and status-only
+terminal previews. The selected main model can propose a separate pending
+capture after recalling an earlier note; each retains its own source and
+permission requirements. [Synthetic capture and recall evidence](../archive/2026-10-26-p30-p31-implementation/shipped-recall-capture-20261102.md)
+does not qualify automatic-capture quality, every source combination or installed use.
 
 Pending review/editing, retention choices and forgetting have standalone management paths. Interactive
 chat also supports reviewed correction of an ordinary native note and replacement
@@ -193,9 +189,14 @@ Use the knowledge assess tool on note.<64-hex-character-key>.
 
 Replace the placeholder with the actual key. `assess` is a model tool, not a
 slash command; the model must choose to call it. Review and approve each decision
-request separately. A successful tool result reports `assessed` and does not
-include the advice; the decision action is recorded in the Session journal.
-Advice is shadow data and does not change the note or authorize another effect.
+request separately. A successful tool result reports `assessed`, the note key,
+and an experimental advice choice. `keep_baseline` recommends retaining the
+ordinary baseline; `defer_candidate` is a deferral option intended for ambiguity,
+conflict or low durability. The result does not identify which concern applies.
+These labels are for comparison only; neither changes the note. A null choice with a
+reason such as `low_probability` or `refusal` means no advice was selected.
+The decision action is recorded in the Session journal. Advice does not authorize
+another effect.
 A denied request sends no
 decision call. Work admitted before expiry may finish sending later; an unknown
 outcome retains its reservation. After the experiment, restore the ordinary
@@ -356,9 +357,8 @@ if interruption occurred before a journal was created. Confirmed acceptance
 charges one operation with measured input/output bytes; cancellation and known
 pre-publication refusal settle zero effect usage. An uncertain attempt retains
 its reservation. Review can also take a bounded explicit selection as described
-below. After confirmed acceptance,
-close the original conversation and follow the bounded current-note recall
-procedure below. A saved acceptance alone does not prove successful later recall.
+below. After confirmed acceptance, follow the bounded current-note recall procedure
+below. A saved acceptance alone does not prove successful later recall.
 
 ### Review selected proposals together
 

@@ -982,6 +982,11 @@ adds an explicitly reviewed, finite numeric-loopback experiment and passes
 synthetic bundled approval, denial, expiry and revoked-grant controls. The
 same-Session post-write case still refuses; held-out experiments, quality and
 final integrated qualification remain open.
+The [saved-note shadow result](archive/2026-10-26-p30-p31-implementation/saved-note-shadow-result-20261103.md)
+now returns bounded experimental advice or an abstention reason. Synthetic
+Session controls cover separate approval, settled accounting, unchanged notes,
+source withdrawal at output release and idle reopen without a new request.
+This does not assess a pending main-tool candidate or qualify a strategy.
 The later [exact Linux package proof](archive/2026-10-26-p30-p31-implementation/package-idle-resume-20261031.md#passing-final-package)
 passes generic installed checks and the independent synthetic decision/document
 artifacts; full-source, consumer-quality and installed knowledge qualification
