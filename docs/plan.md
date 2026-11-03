@@ -172,7 +172,8 @@ following limits until the end-to-end paths are qualified:
    BEAM-monotonic Review permit's lifetime through publication. A focused
    [terminal rounding repair](archive/2026-10-26-p30-p31-implementation/leased-terminal-quantization-20261103.md)
    removes a sub-millisecond conversion excess under compatible clocks; clock
-   rate and suspend compatibility remain unproven. Acceptance
+   rate and suspend compatibility remain unproven. An acceptance-only native
+   BOOTTIME permit is a reviewed direction, not an implemented handoff. Acceptance
    binding and the complete same-reply journey
    remain open. The [proposal and card map](archive/2026-10-26-p30-p31-implementation/same-reply-proposal-card-map-20261103.md)
    identifies the missing turn-bound nomination, exact-answer and native
@@ -1127,8 +1128,10 @@ extraction and native Session checks. A [PDF-free synthetic Linux package](archi
 also passes acquisition, cited retrieval, changed-file refusal and resume in
 both State and Collection. A [40-block packed-numbering fixture](archive/2026-10-26-p30-p31-implementation/word-packed-numbering-installed-20261103.md)
 also passes those paths in both profiles, with a separate pure forged-label
-control. Broader document capacity, standard PDF-enabled release integration,
-independent Word quality and the broader P31F requirements remain open.
+control. The [default PDF-enabled Linux package](archive/2026-10-26-p30-p31-implementation/default-pdf-package-20261103.md)
+also passes synthetic installed document and packed Word setup controls in both
+profiles. Broader document capacity, independent Word and PDF quality, other
+platforms and the broader P31F requirements remain open.
 
 The [operator-authored planning-decision increment](archive/2026-10-26-p30-p31-implementation/operator-planning-20261103/index.md)
 adds a separate native acceptance and explicit post-exit save with linked original

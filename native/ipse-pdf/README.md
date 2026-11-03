@@ -23,8 +23,10 @@ parser artifacts. Text/DOCX and the credential-free demo need no PDF toolchain.
 `./dev/package.sh` defaults to `IPSE_BUILD_PDF=1`; `IPSE_BUILD_PDF=0` deliberately
 produces a parser-free bundle. Parser-enabled bundles contain the executable
 and all 60 locked third-party crate notice directories, both in application
-`priv/ipse-pdf-notices` and the release license collection. Installed operators
-need no Rust, Cargo, Elixir compiler, model service or download to parse a PDF.
+`priv/ipse-pdf-notices` and the release license collection, without requiring
+an installed Rust, Cargo or Elixir compiler. The installed synthetic check
+exercises the internal explicit extraction adapter; operator-facing PDF
+acquisition and selection are not yet implemented.
 
 The builder uses the checked lockfile, verifies the reviewed
 [dependency inventory](DEPENDENCIES.md), and retains upstream notices. It accepts

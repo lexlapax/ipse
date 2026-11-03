@@ -1,0 +1,4 @@
+   Compiling ipse-pdf v0.1.0 (/home/lexlapax/projects/lexlapax/ipse/.document-default-package-JSTWB1/source/native/ipse-pdf)
+    Finished `release` profile [optimized] target(s) in 13.36s
+Built optional experimental PDF parser and retained dependency notices.
+** (Mix) failed to acquire filesystem lock using TCP, reason: :eperm
