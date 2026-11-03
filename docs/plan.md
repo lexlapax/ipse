@@ -965,6 +965,10 @@ now refuses different Session and journal IDs before review and rejects a source
 check using another Session's pinned admission; it does not create an in-chat
 review or effect path. A source-owner adapter now distinguishes inactive leases
 from an active Session that still needs its real Session/Writer share.
+The [33-note native recall diagnostic](archive/2026-10-26-p30-p31-implementation/recall-many-native-20261102.md)
+found an unconfirmed worker-input handoff before provider dispatch on both the
+original 32-note worker and an attempted larger candidate limit. The expansion
+was not retained; fitting-set recall and the host failure remain open.
 
 | Package | Output and prerequisites |
 | --- | --- |
@@ -1016,8 +1020,9 @@ adds frozen-source validation, UTC-aligned windows, native renewal and refusal
 controls. Neither executes main turns or qualifies the annual calendar; active
 effect loss, concurrent restart and power loss remain unverified.
 The [first large-seed calendar day](archive/2026-10-26-p30-p31-implementation/native-calendar-first-day-20261102.md)
-closed and independently checked 57 effects; the other 364 days and main-model
-turns remain open.
+closed and independently checked 57 effects. A [second day](archive/2026-10-26-p30-p31-implementation/native-calendar-two-day-20261102.md)
+brings the checked total to 114 effects, including 54 of the additional 10,000
+changes. The other 363 days and all main-model turns remain open.
 
 P31D1 now has optional [cooperative model checks around registered Ollama jobs](archive/2026-10-26-p30-p31-implementation/ollama-model-pin-jobs-20261031.md).
 Named operator text/embedding profiles bind expected metadata and minimum loaded

@@ -11,6 +11,17 @@ defmodule Ipse.Session.NativeNoteRecallTest do
     run("save_race")
   end
 
+  @tag timeout: 300_000
+  @tag :recall_many
+  @tag skip:
+         if(System.get_env("IPSE_TEST_RECALL_MANY") == "1",
+           do: false,
+           else: "multi-page native recall remains unqualified; opt in for the diagnostic"
+         )
+  test "a fresh Session recalls 33 short, natively reviewed notes" do
+    run("recall-many")
+  end
+
   defp run(mode) do
     root = Path.join(System.tmp_dir!(), "ipse-native-recall-" <> Ipse.Usage.id())
     File.mkdir!(root)
@@ -38,17 +49,37 @@ defmodule Ipse.Session.NativeNoteRecallTest do
         driver,
         ["--assertion", System.find_executable("elixir"), "--erl", "+S 2:2"] ++
           paths ++
-          [Path.expand("test/support/native_note_recall.exs"), root, mode],
+          [
+            Path.expand(
+              if(mode == "recall-many",
+                do: "test/support/native_note_recall_many.exs",
+                else: "test/support/native_note_recall.exs"
+              )
+            ),
+            root,
+            mode
+          ],
         stderr_to_stdout: true
       )
 
-    assert status == 0, output
+    assert status == 0, String.slice(output, -8000, 8000)
 
-    assert output =~
-             if(mode == "save_race",
-               do: "NATIVE_NOTE_RECALL_RACE_PASSED",
-               else: "NATIVE_NOTE_RECALL_PASSED"
-             )
+    expected =
+      case mode do
+        "save_race" ->
+          "NATIVE_NOTE_RECALL_RACE_PASSED"
+
+        "recall-many" ->
+          if(System.get_env("IPSE_RECALL_BASELINE_CONTROL") == "1",
+            do: "NATIVE_NOTE_RECALL_BASELINE_PASSED",
+            else: "NATIVE_NOTE_RECALL_MANY_PASSED"
+          )
+
+        _ ->
+          "NATIVE_NOTE_RECALL_PASSED"
+      end
+
+    assert output =~ expected
 
     if mode == "save_race" do
       [_, outcome] =

@@ -1,0 +1,9 @@
+# Second large-seed calendar day, 2026-11-02
+
+This historical development receipt continues the [first simulated day](native-calendar-first-day-20261102.md). It is not annual qualification; the [plan](../../plan.md#p31-usable-knowledge-and-prompt-assistance) records the remaining work.
+
+The frozen native continuation closed segments 16–30 on simulated process day 22, with 57 effects. Across both days, the 30 segments comprise 40 captures, 26 corrections, 22 forgets and 26 temporal updates. The working calendar labels 54 of these as additional mixed changes, leaving 9,946 of the authorized 10,000. No model calls or main turns were made; the working intake and mix are not ratified quality evidence.
+
+The separate [read-only audit](native-calendar-two-day-20261102.exs) verified every closure's input, report and log fingerprint; all 92 surviving new signed values; absence of the 22 forgotten targets; frozen source fingerprints; settled consent operations; and unchanged Collection root and control during the audit. The [result](native-calendar-two-day-20261102.json) records generation and control sequence 2,214, 2,226 Collection records and 6,962,178 logical data bytes. This is a point measurement, not a peak or capacity projection.
+
+The first audit invocation failed before reading the Collection because the isolated native stdio clock helper did not start. A second invocation with the frozen clock and private temporary-directory environment passed; the exact cause of the initial failure was not separately established. The retained, formatted audit script was run again under that environment and produced identical result bytes. The temporary store remains under `/tmp/ipse-native-seed-initial-20261102-first`; it is not durable evidence. The remaining 363 days, 14,600 main turns, concurrent-owner and offline/restart workload, maximum payloads, quality and complete resource peaks remain unverified.
