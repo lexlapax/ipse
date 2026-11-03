@@ -46,6 +46,15 @@ not replace the underlying evidence. The [contention note](integrated-full-day-f
 records concurrent pure-Elixir and filesystem activity, so timing samples are
 not uncontended performance results.
 
+A separate byte-for-byte forensic backup is retained at
+`/tmp/ipse-retained-forensic-backup-b10df4a5`. Its
+[97-file hash manifest](integrated-full-day-failure-20261103-backup.sha256)
+was verified against both the backup and the original files. It includes the
+failed turn journal and markers, all 14 effect intents/results/closures and
+their referenced inputs/reports/logs, and seed-audit artifacts. The copied
+files have different paths and inodes and cannot provide the original source
+authority; no automatic restoration or replay is permitted.
+
 The 20-addition intake and balanced additional-change mix are provisional
 synthetic choices, not pilot-derived or accepted as representative. No 40-turn
 day, full 57-effect day, quality evaluation or annual qualification passed. A

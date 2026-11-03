@@ -1,0 +1,2 @@
+Mix requires the Hex package manager to fetch dependencies
+Shall I install Hex? (if running non-interactively, use "mix local.hex --force") [Yn] ** (Mix) Could not find an SCM for dependency :mcp_elixir_sdk from Ipse.MixProject

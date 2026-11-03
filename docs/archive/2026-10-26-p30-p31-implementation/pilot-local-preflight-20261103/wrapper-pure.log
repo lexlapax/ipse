@@ -1,0 +1,37 @@
+Running ExUnit with seed: 813, max_cases: 2
+
+
+
+  1) test the wrapper checks pin and guard, records intent, and checks the returned job (Ipse.Development.Knowledge.LocalPilotTest)
+     test/dev/knowledge/local_pilot_test.exs:33
+     ** (RuntimeError) ExUnit setup callback in Ipse.Development.Knowledge.LocalPilotTest is trying to set reserved field :file to #PID<0.155.0>
+     stacktrace:
+       (ex_unit 1.20.4) lib/ex_unit/callbacks.ex:769: ExUnit.Callbacks.raise_merge_reserved!/4
+       (stdlib 8.1) maps.erl:405: :maps.merge_with_1/3
+       test/dev/knowledge/local_pilot_test.exs:17: Ipse.Development.Knowledge.LocalPilotTest.__ex_unit__/2
+
+
+
+  2) test a failed post-job check retains its attempt and is never retried by the wrapper (Ipse.Development.Knowledge.LocalPilotTest)
+     test/dev/knowledge/local_pilot_test.exs:112
+     ** (RuntimeError) ExUnit setup callback in Ipse.Development.Knowledge.LocalPilotTest is trying to set reserved field :file to #PID<0.158.0>
+     stacktrace:
+       (ex_unit 1.20.4) lib/ex_unit/callbacks.ex:769: ExUnit.Callbacks.raise_merge_reserved!/4
+       (stdlib 8.1) maps.erl:405: :maps.merge_with_1/3
+       test/dev/knowledge/local_pilot_test.exs:17: Ipse.Development.Knowledge.LocalPilotTest.__ex_unit__/2
+
+
+
+  3) test pin refusal and a lost guard stop before an attempt or provider call (Ipse.Development.Knowledge.LocalPilotTest)
+     test/dev/knowledge/local_pilot_test.exs:70
+     ** (RuntimeError) ExUnit setup callback in Ipse.Development.Knowledge.LocalPilotTest is trying to set reserved field :file to #PID<0.161.0>
+     stacktrace:
+       (ex_unit 1.20.4) lib/ex_unit/callbacks.ex:769: ExUnit.Callbacks.raise_merge_reserved!/4
+       (stdlib 8.1) maps.erl:405: :maps.merge_with_1/3
+       test/dev/knowledge/local_pilot_test.exs:17: Ipse.Development.Knowledge.LocalPilotTest.__ex_unit__/2
+
+
+Finished in 0.00 seconds (0.00s async, 0.00s sync)
+
+Result: 0/3 passed
+Failed: 3 tests

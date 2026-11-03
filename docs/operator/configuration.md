@@ -247,6 +247,13 @@ refuses. Inspection requests no inference, download,
 activation or configuration write. Provisioning and local-only qualification
 remain separate from this metadata check.
 
+The separate source-checkout [capture pilot](../developer/capture-pilot.md#use-the-one-shot-local-route)
+uses a fixed Ollama model and one durable 120-call authorization. Once created,
+the full reservation remains charged even after an early stop. The pilot does
+not use a registered-service slot. Coordinate other daemon users and review the
+private reservation and current allowance before starting it. This development pilot
+does not change the model selected for ordinary chat or publish knowledge.
+
 ### Request an Ollama context window
 
 The `local` profile in the complete example above requests 8,192 context tokens

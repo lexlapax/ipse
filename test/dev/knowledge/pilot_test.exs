@@ -21,6 +21,29 @@ defmodule Ipse.Development.Knowledge.PilotTest do
     assert Enum.frequencies_by(records, & &1.session) == %{1 => 20, 2 => 20, 3 => 20}
   end
 
+  test "explicit local route remains selected for all three nonpublishing sessions" do
+    config = %{
+      provider: :ollama,
+      model: "qwen3.5:4b",
+      base_url: "http://127.0.0.1:11434",
+      max_output_tokens: 4096
+    }
+
+    request = fn actual, messages, tools, _ ->
+      assert actual.provider == config.provider
+      assert actual.model == config.model
+      assert actual.base_url == config.base_url
+      assert actual.max_output_tokens == config.max_output_tokens
+      assert List.last(messages)["role"] == "user"
+      assert tools == Pilot.tool()
+      {:ok, %{"role" => "assistant", "content" => "done"}, %{}}
+    end
+
+    assert {:ok, records, 60} = Pilot.run(config, request)
+    assert Enum.frequencies_by(records, & &1.session) == %{1 => 20, 2 => 20, 3 => 20}
+    assert Enum.all?(records, &(&1.published == 0))
+  end
+
   test "capture is source-bound and at most one continuation is attempted per turn" do
     request = fn _, messages, _, _ ->
       case List.last(messages)["role"] do

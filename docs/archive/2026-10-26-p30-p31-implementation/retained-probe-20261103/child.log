@@ -1,0 +1,7 @@
+** (ExUnit.AssertionError) 
+
+new Session failed: :error
+
+    (ex_unit 1.20.4) lib/ex_unit/assertions.ex:1121: ExUnit.Assertions.flunk/1
+    /tmp/ipse-retained-readonly-b10-20261103-01/native_notes_retained_probe.ex:284: Ipse.Development.NativeNotesRetainedProbe.main/1
+    /tmp/ipse-retained-readonly-b10-20261103-01/native_notes_retained_probe.exs:3: (file)

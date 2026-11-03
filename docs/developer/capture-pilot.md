@@ -12,27 +12,34 @@ For held-out retrieval and answer qualification, follow the
 `dev/knowledge/pilot.exs` owns twenty exposed cases and a simulated capture tool.
 It runs three independent conversations, each with the same twenty cases. Each
 turn permits one initial request and at most one continuation, for at most 120
-requests overall. The provider stays selected by the caller. The command-line
-runner accepts the configured ChatGPT route with no active extensions; the pure
-runner also supports an explicitly selected Ollama route. Neither switches models
-or downloads anything.
+requests overall. The provider stays selected by the caller. The ChatGPT runner
+uses the configured route without active extensions. The separate local runner
+uses the exact pinned Ollama route described below. Neither runner switches
+models or downloads anything.
 
 The pilot narrows request timeout to at most 60 seconds and response size to 128 KiB.
-It refuses shared budgets because its direct provider loop cannot enforce that
-contract. Obtain a finite call allowance before a live run and account for prior
-runs against it. A failed request counts as attempted; the pilot stops rather
-than retrying. A local pre-dispatch history-limit refusal does not count a
+The ChatGPT runner refuses shared budgets because its direct provider loop cannot
+enforce that contract. The local runner uses its own fixed configuration and does
+not enforce ordinary configured budgets or service slots; coordinate separately.
+Obtain a finite call allowance before a live run and account for prior
+runs against it. The loop counts a failed request attempt conservatively and
+stops rather than retrying; the count does not by itself prove dispatch. A local
+pre-dispatch history-limit refusal does not count a
 nonexistent request.
 
 Run the local synthetic controls first:
 
 ```sh
-mix test test/dev/knowledge/pilot_test.exs
+mix test test/dev/knowledge/pilot_test.exs \
+  test/dev/knowledge/local_pilot_test.exs \
+  test/dev/knowledge/pilot_reservation_test.exs
 ```
 
 The fake provider exercises the real pilot loop without model access. Controls
 cover exact source matching, malformed calls, bounded continuations, request
-accounting and audit failures. They do not qualify model behavior.
+accounting and audit failures. The reservation tests also use Ipse's native
+protected helper and temporary owner-only directories. These controls do not
+qualify model behavior.
 
 ## Choose whether to retain candidate text
 
@@ -43,10 +50,18 @@ Its `usage` field uses Ipse's normalized counter record, including explicit
 unknown/invalid counter quality. Raw provider usage is excluded because it can
 contain attribution content as well as token counters.
 
-To retain inspectable inputs, supply a new audit directory explicitly. Start with
-an already configured and authenticated Ipse ChatGPT profile without extensions;
-use Ipse's [documented authentication](../operator/usage.md), and verify the
-selected model and finite allowance before running:
+To retain inspectable inputs, supply a new audit directory explicitly. The local
+runner requires this directory; the ChatGPT runner can instead retain only public
+numerical progress. Each route needs its own allowance and evidence. Do not
+resume an uncertain request or combine an interrupted run with a later run as
+though they were uninterrupted. The local pilot does not complete an interrupted
+ChatGPT pilot; their allowances are accounted separately.
+
+### Use the configured ChatGPT route
+
+Start with an already configured and authenticated Ipse ChatGPT profile without
+extensions; use Ipse's [documented authentication](../operator/usage.md), and
+verify the selected model and finite allowance before running:
 
 ```sh
 IPSE_PILOT_PARENT=$(mktemp -d)
@@ -55,11 +70,81 @@ IPSE_KNOWLEDGE_PILOT_AUDIT_DIR="$IPSE_PILOT_PARENT/capture-audit" \
   mix run dev/pilot-knowledge.exs
 ```
 
-The runner creates the audit directory with mode 0700 and a new
-`candidates.jsonl` file with mode 0600. An existing directory is refused so a
-previous run is not overwritten. Omit `IPSE_KNOWLEDGE_PILOT_AUDIT_DIR` to retain
-only public numerical progress. The first plan record reports whether the
-private candidate audit is enabled.
+The ChatGPT runner's first plan record reports whether its private candidate
+audit is enabled. Omit `IPSE_KNOWLEDGE_PILOT_AUDIT_DIR` for numerical progress
+only. The runner creates a mode-0700 audit directory and a new mode-0600
+`candidates.jsonl` file; an existing directory is refused.
+
+### Use the one-shot local route
+
+This source-checkout launcher is tied to the previously selected primary answer
+model, `qwen3.5:4b`, on `http://127.0.0.1:11434`. It requires the recorded
+manifest `d8b0f5e9760cd1682034f292d7ef72ec46f432149be0df7574bf2d6e92e38c04`,
+metadata digest `c2ed7207a7cd47d14d7f7ddd1ab7a9e013ba0b94e95e11ab9c582f91c545cbe2`,
+and Ollama runtime version `0.40.13`. It requests an 8,192-token context, at
+most 4,096 output tokens and `think: false`. It does not pull a model. Inspect
+the selected installation and compare these values before running:
+
+```sh
+./bin/ipse model inspect --provider ollama --model qwen3.5:4b \
+  --base-url http://127.0.0.1:11434 --json
+```
+
+The launcher uses a fixed authorization ID under the local account's canonical
+`.ipse/p31a-pilot-authorizations` directory. The home is resolved from exactly
+one local `/etc/passwd` entry for the native helper's UID, not from `IPSE_HOME`
+or the audit directory. The account must have a unique local entry; its `.ipse`
+and pilot-authorization directories must be canonical, owner-only and usable by
+the protected native helper. This launcher currently requires Linux. Ambiguous or
+nonlocal account records refuse, as does any existing entry in the authorization
+directory.
+Prepare and review the installation without deleting existing locks or changing
+this location to bypass a prior run.
+
+Before the first metadata or inference request, the launcher durably reserves
+**120 local inference calls** under that fixed ID. Once the reservation exists,
+all 120 remain charged even if the run finishes early, fails, or is interrupted;
+this tool has no refund or replay path. An existing lock or reservation,
+including incomplete state, refuses a new run. Inspect the retained private
+evidence and the project's
+[call accounting](../archive/2026-10-26-p30-p31-implementation/live-call-accounting.md)
+before deciding how to proceed. The reservation protects this one pilot; it is
+not a shared service budget and does not account for other clients. The direct
+pilot does not acquire an Ipse registered-service slot. Stop or coordinate
+other users of the selected daemon and account for unresolved service work
+before launching.
+
+Once the selected route, allowance and private destination are ready, run once
+from the built checkout:
+
+```sh
+umask 077
+IPSE_PILOT_PARENT=$(mktemp -d)
+IPSE_KNOWLEDGE_PILOT_CONFIRM=ollama-qwen3.5:4b \
+IPSE_KNOWLEDGE_PILOT_AUDIT_DIR="$IPSE_PILOT_PARENT/audit" \
+  mix run dev/pilot-knowledge-local.exs > "$IPSE_PILOT_PARENT/run.log" 2>&1
+```
+
+The audit path must be a new absolute, canonical directory. The runner creates
+it mode 0700 and writes mode-0600 declaration, candidate, progress and attempt
+files. Each pre-dispatch attempt record is synced before the provider call; it
+is an intent, not proof the daemon received the request. When the loop returns a
+completed or stopped result and owner cleanup is confirmed, `result.json` reports both the loop's
+count and the full 120-call charge. The loop count is conservative: a model-pin
+precheck can increment it before an attempt record or provider invocation. A
+synced attempt record is a separate pre-dispatch intent, and neither proves that
+the daemon received an inference request. If the result or cleanup is missing or
+unverifiable, retain the full charge and preserve the directory; never infer a
+zero-call refund from absent rows. Keep the output and audit files private.
+
+The host's existing cooperative model-pin check reads metadata before each
+attempt and, after a successful inference, checks the reported model and loaded
+context again. Up to 1,440 read-only metadata requests are separate from the
+120-call inference ceiling. A selected installed model may load during a
+request. Changed metadata, a missing model, an invalid result or a failed
+postcheck stops the loop; there is no automatic retry. These checks do not attest
+the weights used for each request, rule out server-side context truncation, or
+confine or attest the daemon's own network behavior.
 
 Each accepted initial response produces one audit record, including when it
 proposes no candidate. The record contains the exact exposed source, validated
@@ -72,9 +157,10 @@ Source-invalid candidates stop the run before the audit callback.
 Audit rows are bounded to 64 KiB and the file is synced before another request.
 This sync is not a claim of a crash-atomic audit directory or a model-service
 transaction. If encoding, writing, syncing or a supplied audit callback fails,
-the run reports `pilot_audit_failed`, counts the response already received and
-does not send its continuation or replay the request. Preserve a partial file as
-partial evidence; do not merge it with a later run as though uninterrupted.
+the loop stops after counting the response already received and does not send
+its continuation or replay the request. Preserve a partial file as partial
+evidence. The local runner retains its entire 120-call charge regardless of the
+loop's observed count.
 
 The pure API's optional fourth argument is an audit callback returning `:ok`.
 Its ordinary third argument remains the public progress callback. Keep these
@@ -84,7 +170,9 @@ outputs separate when embedding the pilot in another development command.
 
 Retain the exact source revision/diff, case/tool hashes, selected route/model,
 request limits, attempted-call count, first failures, numerical output and private
-audit hash. Keep candidate data private for the authorized reviewers; do not
+audit hash. Build and inspect the recorded source and loaded BEAM hashes; the
+declaration does not prove that fingerprinted source corresponds to the code
+executing in the VM. Keep candidate data private for the authorized reviewers; do not
 commit private model transcripts or credentials. Review original source and
 candidate together, including omitted, uncertain, contradictory and repeated
 cases. Source-byte validity does not establish entailment or usefulness.

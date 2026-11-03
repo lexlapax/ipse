@@ -103,6 +103,12 @@ time estimates only after measuring the integrated workload and available capaci
    seeded and audited 2,000 notes, then closed 14 ordinary day effects before
    its first turn failed during recall. It completed zero day turns and remains
    a separate incomplete run, not an additional annual-acceptance result.
+   A [separate read-only diagnostic](archive/2026-10-26-p30-p31-implementation/retained-probe-20261103.md)
+   also stopped before inference with an unknown Worker-input outcome; its
+   cause remains unproven and neither failed turn is replayed. A
+   [local pilot launcher preflight](archive/2026-10-26-p30-p31-implementation/pilot-local-preflight-20261103.md)
+   passed 27 synthetic controls without model calls; live results and independent
+   semantic labels are still missing.
    Workload tooling can advance alongside the notes journey; the completed
    integrated workload depends on the Session and recall behavior it exercises.
 3. **Documents and local retrieval — P31C1b/D1/F.** Independently finish document
