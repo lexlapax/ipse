@@ -151,7 +151,11 @@ following limits until the end-to-end paths are qualified:
    explicit post-exit save with current-source and permission checks; ordinary
    exit must not publish them. The terminal work can proceed independently, but
    decision acceptance depends on the relevant P31E path, and retrieve-first
-   clarification depends on the notes and document paths it uses.
+   clarification depends on the notes and document paths it uses. An
+   [in-chat acceptance protocol plan](archive/2026-10-26-p30-p31-implementation/chat-acceptance-host-protocol-plan-20261103.md)
+   records why the existing standalone management review cannot be reused as
+   a Session-owned decision without new owner-bound handoffs; it is not an
+   implementation or passing journey.
 5. **Decision engines — P30A–E.** Complete the host protocol and protected
    consumer integration independently of document/graph work. Enforce the explicit
    finite allowance across the whole authorized experiment, using the existing

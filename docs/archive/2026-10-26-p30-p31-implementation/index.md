@@ -59,8 +59,13 @@ settled service reservations and valid idle resume. Local usage is now 4 of 1,00
 996 remaining. Download success establishes neither quality
 nor resource/offline qualification. No daemon configuration or existing model was changed.
 
+## P31I planning and acceptance
+
+- [Chat acceptance host-protocol plan](chat-acceptance-host-protocol-plan-20261103.md) records the ownership and later-use gaps for a proposed single-card journey; no implementation or test is claimed.
+
 ## P31A contracts and evidence
 
+- [Committed local-pilot synthetic gate](pilot-local-integrated-20261103.md) repeats the clean offline build and 27 focused controls on the integrated committed source; it does not include a live model call or semantic labels.
 - [Retained-cohort diagnostic](retained-probe-20261103.md) preserves a separate read-only Session failure before inference, unchanged prior files and an unknown Worker-input outcome; the cause remains unproven.
 - [Local pilot synthetic preflight](pilot-local-preflight-20261103.md) records a fixed-route one-shot launcher, 27 focused controls and no live calls; semantic labels and workload qualification remain open.
 - [Populated integrated-day failure](integrated-full-day-failure-20261103.md) preserves a separately audited 2,000-note seed, 14 completed day effects and a first turn stopped during recall; the turn remains unresolved and the day is incomplete.
