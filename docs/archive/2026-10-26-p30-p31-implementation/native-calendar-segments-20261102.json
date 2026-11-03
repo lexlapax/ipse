@@ -1,0 +1,60 @@
+{
+  "version": 1,
+  "date": "2026-11-02",
+  "base_commit": "d4ec4d5",
+  "files_sha256": {
+    "/tmp/ipse-native-calendar-segments-20261102-cli.json": "9edd4345b5c7aabddc719dbd775d291848061574fdd95607c7e99758ecc77c53",
+    "/tmp/ipse-native-calendar-segments-20261102-eight.json": "40f244cef5217ac9a0768860c1ecfb8e71c3f613842a824ccd57c81d2de73abf",
+    "/tmp/ipse-native-calendar-segments-20261102-final.log": "6dc4fde9f08e5d542ee7bc89ceaad521e3b8a9f243bc00601a372d479ccd64a2",
+    "/tmp/ipse-native-calendar-segments-20261102-first.log": "75759317ab0855458a2616feb746ffb8c5f150f1b3e58d729624ccfb65bacd86",
+    "/tmp/ipse-native-calendar-segments-20261102-quota.json": "2a7b5e3858454423067cd9d9e02855dcabc090140571ed0896cad195f089a667",
+    "dev/knowledge/native_notes_workload.ex": "98d40bc59a9c42b3acb53c7189b451349e162f2701308823941c1e5b22618b41",
+    "dev/knowledge/storage_workload.exs": "ec036dce93010813b847dfef4b693a9d0878e148f673d2fdce743002091d4bd3",
+    "test/dev/knowledge/native_notes_workload_test.exs": "a60f3dad00e789675c636605d1b1e3ac92f0f805d56a504d0a031c2fe9cf394d"
+  },
+  "tests": {
+    "exit_status": 0,
+    "failed": 0,
+    "seed": 791859,
+    "passed": 11
+  },
+  "selected_four": {
+    "actual_native_operations": 0,
+    "actual_turns": 0,
+    "daily_quota_excess_days": 0,
+    "kind": "native_annual_segment_preflight",
+    "maximum_effects_per_segment": 4,
+    "ordinary_intake_per_day": 20,
+    "planned_main_turns": 14600,
+    "qualification_passed": false,
+    "scheduled_effects": 28952,
+    "segments": 7351
+  },
+  "selected_eight": {
+    "actual_native_operations": 0,
+    "actual_turns": 0,
+    "daily_quota_excess_days": 0,
+    "kind": "native_annual_segment_preflight",
+    "maximum_effects_per_segment": 8,
+    "ordinary_intake_per_day": 20,
+    "planned_main_turns": 14600,
+    "qualification_passed": false,
+    "scheduled_effects": 28952,
+    "segments": 3784
+  },
+  "higher_eight": {
+    "actual_native_operations": 0,
+    "actual_turns": 0,
+    "daily_quota_excess_days": 1,
+    "kind": "native_annual_segment_preflight",
+    "maximum_effects_per_segment": 8,
+    "ordinary_intake_per_day": 40,
+    "planned_main_turns": 14600,
+    "qualification_passed": false,
+    "scheduled_effects": 34877,
+    "segments": 4529
+  },
+  "actual_native_operations": 0,
+  "actual_turns": 0,
+  "annual_qualification": false
+}

@@ -1379,6 +1379,10 @@ The prior calendar's contrary record-count conclusion and associated same-shape
 data-overflow claim are withdrawn. This pure fixture is unratified and executes
 zero turns/effects. Actual page packing, remaining effect overhead and pilot-derived
 mix/intake remain open.
+The [segment preflight](archive/2026-10-26-p30-p31-implementation/native-calendar-segments-20261102.md)
+preserves the working calendar in bounded day-local batches; it executes neither
+effects nor turns. A scalable continuation with authenticated targets, durable
+closure and nonreplaying recovery remains to be built.
 The [native consent-renewal control](archive/2026-10-26-p30-p31-implementation/native-consent-renewal-20261102.md)
 checks expired-policy refusal and a later native capture after fresh review,
 preserving the original signed stored note and saved source. The follow-up

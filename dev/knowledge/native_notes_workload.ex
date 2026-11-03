@@ -162,6 +162,51 @@ defmodule Ipse.Development.NativeNotesWorkload do
     }
   end
 
+  @doc """
+  Split a calendar into bounded ordered batches without using an identity created
+  within the same batch as a target. Aliases remain expectations, not authority;
+  a live driver must resolve and authenticate each target after the preceding
+  batch has closed. This function does not perform effects or execute turns.
+  """
+  def segments(%{"kind" => "native_annual_action_calendar", "days" => days}, limit)
+      when is_list(days) and is_integer(limit) and limit in 1..8 do
+    days
+    |> Enum.flat_map(fn day ->
+      {groups, pending, _created} =
+        Enum.reduce(day["actions"], {[], [], MapSet.new()}, fn action,
+                                                               {groups, pending, created} ->
+          split = length(pending) == limit or MapSet.member?(created, action["target"])
+
+          {groups, pending, created} =
+            if split,
+              do: {groups ++ [Enum.reverse(pending)], [], MapSet.new()},
+              else: {groups, pending, created}
+
+          created =
+            if is_binary(action["result"]),
+              do: MapSet.put(created, action["result"]),
+              else: created
+
+          {groups, [action | pending], created}
+        end)
+
+      groups = if pending == [], do: groups, else: groups ++ [Enum.reverse(pending)]
+
+      Enum.with_index(groups, 1)
+      |> Enum.map(fn {actions, daily_index} ->
+        %{
+          "day" => day["day"],
+          "process_offset_day" => day["process_offset_day"],
+          "daily_segment" => daily_index,
+          "daily_required_quota_excess" => day["required_quota_excess"],
+          "actions" => actions
+        }
+      end)
+    end)
+    |> Enum.with_index(1)
+    |> Enum.map(fn {segment, index} -> Map.put(segment, "index", index) end)
+  end
+
   defp record(id, category, day, slot \\ nil) do
     %{
       id: id,

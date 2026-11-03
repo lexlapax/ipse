@@ -149,9 +149,71 @@ defmodule Ipse.Development.NativeNotesWorkloadTest do
     assert plan["actual_native_operations"] == 0
   end
 
+  test "bounded segments preserve the full calendar and resolve targets only after a prior segment",
+       %{
+         plan: plan
+       } do
+    segments = Workload.segments(plan, 4)
+    assert Enum.map(segments, & &1["index"]) == Enum.to_list(1..length(segments))
+
+    assert Enum.flat_map(segments, & &1["actions"]) ==
+             Enum.flat_map(plan["days"], & &1["actions"])
+
+    known = MapSet.new(1..2000, &"seed/#{&1}")
+
+    Enum.reduce(segments, known, fn segment, known ->
+      assert length(segment["actions"]) in 1..4
+      assert segment["daily_required_quota_excess"] == 0
+
+      for action <- segment["actions"], is_binary(action["target"]) do
+        assert MapSet.member?(known, action["target"])
+      end
+
+      Enum.reduce(segment["actions"], known, fn action, acc ->
+        if is_binary(action["result"]), do: MapSet.put(acc, action["result"]), else: acc
+      end)
+    end)
+  end
+
+  test "segmentation preserves an over-quota day for the caller to refuse" do
+    plan = Workload.calendar(40)
+    burst = Enum.filter(Workload.segments(plan, 8), &(&1["day"] == 90))
+    assert Enum.all?(burst, &(&1["daily_required_quota_excess"] == 27))
+    assert burst |> Enum.flat_map(& &1["actions"]) |> length() == 127
+  end
+
+  test "a chain of newly created targets waits for separate segment closures" do
+    actions = [
+      %{"op" => "capture", "result" => "a"},
+      %{"op" => "correct", "target" => "a", "result" => "b"},
+      %{"op" => "forget", "target" => "b"}
+    ]
+
+    plan = %{
+      "kind" => "native_annual_action_calendar",
+      "days" => [
+        %{
+          "day" => 1,
+          "process_offset_day" => 21,
+          "required_quota_excess" => 0,
+          "actions" => actions
+        }
+      ]
+    }
+
+    assert Enum.map(Workload.segments(plan, 8), & &1["actions"]) ==
+             Enum.map(actions, &[&1])
+  end
+
   test "out-of-contract intake cannot silently lower useful capture" do
     for value <- [nil, 0, 19, 321, 20.0, "20"] do
       assert_raise FunctionClauseError, fn -> Workload.calendar(value) end
+    end
+
+    for limit <- [0, 9, 4.0, "4"] do
+      assert_raise FunctionClauseError, fn ->
+        Workload.segments(%{"kind" => "native_annual_action_calendar", "days" => []}, limit)
+      end
     end
   end
 end

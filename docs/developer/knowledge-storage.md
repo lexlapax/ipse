@@ -231,6 +231,24 @@ before the listed unplanned requirements. A higher intake that exceeds the daily
 limit reports its full required actions and excess instead of trimming capture.
 No native publication, main request or actual turn runs in this command.
 
+Before building a continuation, inspect the bounded segment geometry:
+
+```sh
+elixir --erl '+S 2:2' \
+  -pa _build/dev/lib/ipse/ebin -pa _build/dev/lib/jason/ebin \
+  -pa _build/dev/lib/telemetry/ebin \
+  dev/knowledge/storage_workload.exs --native-segments 20 8
+```
+
+This working case reports 3,784 segments and 28,952 effects after the seed,
+with 14,600 planned turns and zero actual operations or turns. Each segment
+stays within a day and has at most eight effects; a target created in that
+segment waits for a later one. A higher-intake plan retains its over-quota day
+and reports it rather than silently dropping effects. The eventual driver must
+authenticate resolved targets and preserve closure/unknown-effect recovery;
+the [segment preflight](../archive/2026-10-26-p30-p31-implementation/native-calendar-segments-20261102.md)
+does not implement that driver.
+
 Inspect the returned record lower bound before running the calendar. The current
 page profiles permit at most 122 anchor rows and 26 live rows per page, even at
 their minimum charged row weights. Every admitted lineage retains its anchor;
